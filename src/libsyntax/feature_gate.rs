@@ -394,7 +394,7 @@ impl<'a> Context<'a> {
                                are reserved for internal compiler diagnostics");
         } else if name.starts_with("derive_") {
             self.gate_feature("custom_derive", attr.span,
-                              "attributes of the form `#[derive_*]` are reserved
+                              "attributes of the form `#[derive_*]` are reserved \
                                for the compiler");
         } else {
             self.gate_feature("custom_attribute", attr.span,
@@ -620,7 +620,7 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                                   pattern.span,
                                   "multiple-element slice matches anywhere \
                                    but at the end of a slice (e.g. \
-                                   `[0, ..xs, 0]` are experimental")
+                                   `[0, ..xs, 0]`) are experimental")
             }
             ast::PatVec(..) => {
                 self.gate_feature("slice_patterns",

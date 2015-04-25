@@ -8,20 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that the use of smid types in the ffi is gated by `smid_ffi` feature gate.
+// Test that `#![plugin(...)]` attribute is gated by `plugin` feature gate
 
-#![feature(simd)]
-
-#[repr(C)]
-#[derive(Copy, Clone)]
-#[simd]
-pub struct f32x4(f32, f32, f32, f32);
-
-#[allow(dead_code)]
-extern {
-    fn foo(x: f32x4);
-    //~^ ERROR use of SIMD type `f32x4` in FFI is highly experimental and may result in invalid code
-    //~| HELP add #![feature(simd_ffi)] to the crate attributes to enable
-}
+#![plugin(foo)]
+//~^ ERROR compiler plugins are experimental and possibly buggy
 
 fn main() {}
