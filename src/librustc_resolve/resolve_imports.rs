@@ -903,6 +903,17 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                                   },
                                   &token::get_name(name));
                 span_err!(self.resolver.session, import_span, E0252, "{}", &msg[..]);
+                if let Some(sp) = target.bindings.span_for_namespace(namespace) {
+                    span_note!(self.resolver.session, sp,
+                               "first import of {} `{}` here",
+                               match namespace {
+                                   TypeNS => "type",
+                                   ValueNS => "value",
+                               },
+                               token::get_name(name));
+                } else {
+                    span_note!(self.resolver.session, import_span, "I can't find where it was previously imported");
+                }
             }
             Some(_) | None => {}
         }
