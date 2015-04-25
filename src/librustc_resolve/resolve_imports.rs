@@ -897,6 +897,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         match target {
             Some(ref target) if target.shadowable != Shadowable::Always => {
                 use syntax::ast_map::NodeItem;
+
                 let ns_word = match namespace {
                     TypeNS => "type",
                     ValueNS => "value",
@@ -907,19 +908,10 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                                   &token::get_name(name));
                 let use_id = import_resolution.id(namespace);
                 if let NodeItem(item) = self.resolver.ast_map.get(use_id) {
-                    // Assert item.node is ItemUse
-                    // I feel like this should maybe mention the type,
-                    // as it's otherwise a bit of work to look up...
-                    // use syntax::ast::Item;
+                    // item is syntax::ast::Item;
                     span_note!(self.resolver.session, item.span,
-                               "Previously import of {} `{}` here",
-                               ns_word, token::get_name(name));
-                }
-                // Also showing the definition is reasonable?
-                if let Some(sp) = target.bindings.span_for_namespace(namespace) {
-                    span_note!(self.resolver.session, sp,
-                               "definition of {} `{}` here",
-                               ns_word, token::get_name(name));
+                               "previous import of `{}` here",
+                               token::get_name(name));
                 }
             }
             Some(_) | None => {}
