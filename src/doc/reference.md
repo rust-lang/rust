@@ -65,14 +65,9 @@ explicit code point lists. [^inputformat]
   provided to the grammar verifier, restricted to ASCII range, when verifying the
   grammar in this document.
 
-## Special Unicode Productions
+## Identifiers
 
-The following productions in the Rust grammar are defined in terms of Unicode
-properties: `ident`, `non_null`, `non_eol`, `non_single_quote` and `non_double_quote`.
-
-### Identifiers
-
-The `ident` production is any nonempty Unicode[^non_ascii_idents] string of the following form:
+An identifier is any nonempty Unicode[^non_ascii_idents] string of the following form:
 
 [^non_ascii_idents]: Non-ASCII characters in identifiers are currently feature
   gated. This is expected to improve soon.
@@ -86,40 +81,34 @@ that does _not_ occur in the set of [keywords](#keywords).
 > character ranges used to form the more familiar C and Java language-family
 > identifiers.
 
-### Delimiter-restricted productions
-
-Some productions are defined by exclusion of particular Unicode characters:
-
-- `non_null` is any single Unicode character aside from `U+0000` (null)
-- `non_eol` is `non_null` restricted to exclude `U+000A` (`'\n'`)
-- `non_single_quote` is `non_null` restricted to exclude `U+0027`  (`'`)
-- `non_double_quote` is `non_null` restricted to exclude `U+0022` (`"`)
-
 ## Comments
 
-Comments in Rust code follow the general C++ style of line and block-comment
-forms. Nested block comments are supported.
+Comments in Rust code follow the general C++ style of line (`//`) and
+block-comment (`/* ... */`) forms. Nested block comments are supported.
 
 Line comments beginning with exactly _three_ slashes (`///`), and block
 comments beginning with exactly one repeated asterisk in the block-open
 sequence (`/**`), are interpreted as a special syntax for `doc`
 [attributes](#attributes). That is, they are equivalent to writing
-`#[doc="..."]` around the body of the comment (this includes the comment
-characters themselves, i.e. `/// Foo` turns into `#[doc="/// Foo"]`).
+`#[doc="..."]` around the body of the comment, i.e., `/// Foo` turns into
+`#[doc="Foo"]`.
 
 Line comments beginning with `//!` and block comments beginning with `/*!` are
 doc comments that apply to the parent of the comment, rather than the item
 that follows.  That is, they are equivalent to writing `#![doc="..."]` around
-the body of the comment. `//!` comments are usually used to display
-information on the crate index page.
+the body of the comment. `//!` comments are usually used to document
+modules that occupy a source file.
 
 Non-doc comments are interpreted as a form of whitespace.
 
 ## Whitespace
 
-The `whitespace_char` production is any nonempty Unicode string consisting of
-any of the following Unicode characters: `U+0020` (space, `' '`), `U+0009`
-(tab, `'\t'`), `U+000A` (LF, `'\n'`), `U+000D` (CR, `'\r'`).
+Whitespace is any non-empty string containing any the following characters:
+
+- `U+0020` (space, `' '`)
+- `U+0009` (tab, `'\t'`)
+- `U+000A` (LF, `'\n'`)
+- `U+000D` (CR, `'\r'`)
 
 Rust is a "free-form" language, meaning that all forms of whitespace serve only
 to separate _tokens_ in the grammar, and have no semantic significance.
