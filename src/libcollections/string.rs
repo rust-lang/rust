@@ -951,12 +951,13 @@ impl<'a> Deref for DerefString<'a> {
 /// # #![feature(collections)]
 /// use std::string::as_string;
 ///
-/// fn string_consumer(s: String) {
-///     assert_eq!(s, "foo".to_string());
+/// // Let's pretend we have a function that requires `&String`
+/// fn string_consumer(s: &String) {
+///     assert_eq!(s, "foo");
 /// }
 ///
-/// let string = as_string("foo").clone();
-/// string_consumer(string);
+/// // Provide a `&String` from a `&str` without allocating
+/// string_consumer(&as_string("foo"));
 /// ```
 #[unstable(feature = "collections")]
 pub fn as_string<'a>(x: &'a str) -> DerefString<'a> {
