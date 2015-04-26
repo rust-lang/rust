@@ -35,8 +35,12 @@ pub mod rt {
 
     use ast::{TokenTree, Generics, Expr};
 
+    use std::iter;
+
     pub use parse::new_parser_from_tts;
     pub use codemap::{BytePos, Span, dummy_spanned};
+    pub use std::iter::IntoIterator;
+    pub use parse::attr::ParserAttr;
 
     pub trait ToTokens {
         fn to_tokens(&self, _cx: &ExtCtxt) -> Vec<TokenTree> ;
@@ -310,23 +314,6 @@ pub mod rt {
         )
     }
 
-    impl_to_tokens! { ast::Ident }
-    impl_to_tokens! { ast::Path }
-    impl_to_tokens! { P<ast::Item> }
-    impl_to_tokens! { P<ast::ImplItem> }
-    impl_to_tokens! { P<ast::TraitItem> }
-    impl_to_tokens! { P<ast::Pat> }
-    impl_to_tokens! { ast::Arm }
-    impl_to_tokens_lifetime! { &'a [P<ast::Item>] }
-    impl_to_tokens! { ast::Ty }
-    impl_to_tokens_lifetime! { &'a [ast::Ty] }
-    impl_to_tokens! { Generics }
-    impl_to_tokens! { ast::WhereClause }
-    impl_to_tokens! { P<ast::Stmt> }
-    impl_to_tokens! { P<ast::Expr> }
-    impl_to_tokens! { ast::Block }
-    impl_to_tokens! { ast::Arg }
-    impl_to_tokens! { ast::Attribute_ }
     impl_to_tokens_lifetime! { &'a str }
     impl_to_tokens! { () }
     impl_to_tokens! { char }
@@ -399,6 +386,86 @@ pub mod rt {
 
     }
 
+    pub struct IterWrapper<I> {
+        inner: I,
+        empty: bool,
+    }
+
+    impl<T, I: Iterator<Item=T>> Iterator for IterWrapper<I> {
+        type Item = T;
+        fn next(&mut self) -> Option<T> {
+            match self.inner.next() {
+                Some(elem) => {
+                    self.empty = false;
+                    Some(elem)
+                }
+                None => {
+                    assert!(!self.empty, "a fragment must repeat at least once in quasiquotation");
+                    None
+                }
+            }
+        }
+    }
+
+    pub trait IntoWrappedIter {
+        type Item;
+        type IntoIter: Iterator<Item=Self::Item>;
+        fn into_wrapped_iter(self, one_or_more: bool) -> IterWrapper<Self::IntoIter>;
+    }
+
+    impl<I: IntoIterator> IntoWrappedIter for I {
+        type Item = I::Item;
+        type IntoIter = I::IntoIter;
+        fn into_wrapped_iter(self, one_or_more: bool) -> IterWrapper<I::IntoIter> {
+            IterWrapper { empty: one_or_more, inner: self.into_iter() }
+        }
+    }
+
+    impl<T: Clone> IntoWrappedIter for Spanned<T> {
+        type Item = Spanned<T>;
+        type IntoIter = iter::Repeat<Spanned<T>>;
+        fn into_wrapped_iter(self, one_or_more: bool) -> IterWrapper<iter::Repeat<Spanned<T>>> {
+            IterWrapper { empty: one_or_more, inner: iter::repeat(self) }
+        }
+    }
+
+    impl IntoWrappedIter for TokenTree {
+        type Item = TokenTree;
+        type IntoIter = iter::Repeat<TokenTree>;
+        fn into_wrapped_iter(self, one_or_more: bool) -> IterWrapper<iter::Repeat<TokenTree>> {
+            IterWrapper { empty: one_or_more, inner: iter::repeat(self) }
+        }
+    }
+
+    macro_rules! impl_to_tokens_local {
+        ($t:ty) => (
+            impl_to_tokens!($t);
+
+            impl IntoWrappedIter for $t {
+                type Item = $t;
+                type IntoIter = iter::Repeat<$t>;
+                fn into_wrapped_iter(self, one_or_more: bool) -> IterWrapper<iter::Repeat<$t>> {
+                    IterWrapper { empty: one_or_more, inner: iter::repeat(self) }
+                }
+            }
+        )
+    }
+
+    impl_to_tokens_local! { ast::Ident }
+    impl_to_tokens_local! { ast::Path }
+    impl_to_tokens_local! { P<ast::Item> }
+    impl_to_tokens_local! { P<ast::ImplItem> }
+    impl_to_tokens_local! { P<ast::TraitItem> }
+    impl_to_tokens_local! { P<ast::Pat> }
+    impl_to_tokens_local! { ast::Arm }
+    impl_to_tokens_local! { ast::Ty }
+    impl_to_tokens_local! { Generics }
+    impl_to_tokens_local! { ast::WhereClause }
+    impl_to_tokens_local! { P<ast::Stmt> }
+    impl_to_tokens_local! { P<ast::Expr> }
+    impl_to_tokens_local! { ast::Block }
+    impl_to_tokens_local! { ast::Arg }
+    impl_to_tokens_local! { ast::Attribute_ }
 }
 
 pub fn expand_quote_tokens<'cx>(cx: &'cx mut ExtCtxt,
@@ -406,7 +473,7 @@ pub fn expand_quote_tokens<'cx>(cx: &'cx mut ExtCtxt,
                                 tts: &[ast::TokenTree])
                                 -> Box<base::MacResult+'cx> {
     let (cx_expr, expr) = expand_tts(cx, sp, tts);
-    let expanded = expand_wrapper(cx, sp, cx_expr, expr, &[&["syntax", "ext", "quote", "rt"]]);
+    let expanded = expand_wrapper(cx, sp, cx_expr, expr);
     base::MacEager::expr(expanded)
 }
 
@@ -474,13 +541,13 @@ pub fn expand_quote_matcher(cx: &mut ExtCtxt,
                             -> Box<base::MacResult+'static> {
     let (cx_expr, tts) = parse_arguments_to_quote(cx, tts);
     let mut vector = mk_stmts_let(cx, sp);
-    vector.extend(statements_mk_tts(cx, &tts[..], true).into_iter());
+    vector.extend(statements_mk_tts(cx, &tts[..], true).0.into_iter());
     let block = cx.expr_block(
         cx.block_all(sp,
                      vector,
                      Some(cx.expr_ident(sp, id_ext("tt")))));
 
-    let expanded = expand_wrapper(cx, sp, cx_expr, block, &[&["syntax", "ext", "quote", "rt"]]);
+    let expanded = expand_wrapper(cx, sp, cx_expr, block);
     base::MacEager::expr(expanded)
 }
 
@@ -677,7 +744,8 @@ fn expr_mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> P<ast::Expr> {
     mk_token_path(cx, sp, name)
 }
 
-fn statements_mk_tt(cx: &ExtCtxt, tt: &ast::TokenTree, matcher: bool) -> Vec<P<ast::Stmt>> {
+fn statements_mk_tt(cx: &ExtCtxt, tt: &ast::TokenTree, matcher: bool) -> (Vec<P<ast::Stmt>>,
+                                                                          Vec<ast::Ident>) {
     match *tt {
         ast::TtToken(sp, SubstNt(ident, _)) => {
             // tt.extend($ident.to_tokens(ext_cx).into_iter())
@@ -696,7 +764,7 @@ fn statements_mk_tt(cx: &ExtCtxt, tt: &ast::TokenTree, matcher: bool) -> Vec<P<a
                                     id_ext("extend"),
                                     vec!(e_to_toks));
 
-            vec!(cx.stmt_expr(e_push))
+            (vec![cx.stmt_expr(e_push)], vec![ident])
         }
         ref tt @ ast::TtToken(_, MatchNt(..)) if !matcher => {
             let mut seq = vec![];
@@ -715,56 +783,117 @@ fn statements_mk_tt(cx: &ExtCtxt, tt: &ast::TokenTree, matcher: bool) -> Vec<P<a
                                     cx.expr_ident(sp, id_ext("tt")),
                                     id_ext("push"),
                                     vec!(e_tok));
-            vec!(cx.stmt_expr(e_push))
+            (vec![cx.stmt_expr(e_push)], vec![])
         },
         ast::TtDelimited(_, ref delimed) => {
-            statements_mk_tt(cx, &delimed.open_tt(), matcher).into_iter()
-                .chain(delimed.tts.iter()
-                                  .flat_map(|tt| statements_mk_tt(cx, tt, matcher).into_iter()))
-                .chain(statements_mk_tt(cx, &delimed.close_tt(), matcher).into_iter())
-                .collect()
+            let (stmts, idents) = statements_mk_tts(cx, &delimed.tts[..], matcher);
+            (statements_mk_tt(cx, &delimed.open_tt(), matcher).0.into_iter()
+                .chain(stmts.into_iter())
+                .chain(statements_mk_tt(cx, &delimed.close_tt(), matcher).0.into_iter())
+                .collect(),
+             idents)
         },
         ast::TtSequence(sp, ref seq) => {
-            if !matcher {
-                panic!("TtSequence in quote!");
+            if matcher {
+                let e_sp = cx.expr_ident(sp, id_ext("_sp"));
+
+                let stmt_let_tt = cx.stmt_let(sp, true, id_ext("tt"), cx.expr_vec_ng(sp));
+                let mut tts_stmts = vec![stmt_let_tt];
+                tts_stmts.extend(statements_mk_tts(cx, &seq.tts[..], matcher).0.into_iter());
+                let e_tts = cx.expr_block(cx.block(sp, tts_stmts,
+                                                       Some(cx.expr_ident(sp, id_ext("tt")))));
+                let e_separator = match seq.separator {
+                    Some(ref sep) => cx.expr_some(sp, expr_mk_token(cx, sp, sep)),
+                    None => cx.expr_none(sp),
+                };
+                let e_op = match seq.op {
+                    ast::ZeroOrMore => mk_ast_path(cx, sp, "ZeroOrMore"),
+                    ast::OneOrMore => mk_ast_path(cx, sp, "OneOrMore"),
+                };
+                let fields = vec![cx.field_imm(sp, id_ext("tts"), e_tts),
+                                  cx.field_imm(sp, id_ext("separator"), e_separator),
+                                  cx.field_imm(sp, id_ext("op"), e_op),
+                                  cx.field_imm(sp, id_ext("num_captures"),
+                                                   cx.expr_usize(sp, seq.num_captures))];
+                let seq_path = vec![id_ext("syntax"), id_ext("ast"), id_ext("SequenceRepetition")];
+                let e_seq_struct = cx.expr_struct(sp, cx.path_global(sp, seq_path), fields);
+                let e_rc_new = cx.expr_call_global(sp, vec![id_ext("std"),
+                                                            id_ext("rc"),
+                                                            id_ext("Rc"),
+                                                            id_ext("new")],
+                                                       vec![e_seq_struct]);
+                let e_tok = cx.expr_call(sp,
+                                         mk_ast_path(cx, sp, "TtSequence"),
+                                         vec!(e_sp, e_rc_new));
+                let e_push =
+                    cx.expr_method_call(sp,
+                                        cx.expr_ident(sp, id_ext("tt")),
+                                        id_ext("push"),
+                                        vec!(e_tok));
+                (vec![cx.stmt_expr(e_push)], vec![])
+            } else {
+                // Repeating fragments in a loop:
+                // for (...(a, b), ...) in a.into_wrapped_iter().zip(b.into_wrapped_iter())... {
+                //     // (quasiquotation with $a, $b, ...)
+                //}
+                let (mut stmts, idents) = statements_mk_tts(cx, &seq.tts[..], matcher);
+                if idents.is_empty() {
+                    cx.span_fatal(sp, "attempted to repeat an expression containing \
+                                       no syntax variables matched as repeating at this depth");
+                }
+
+                let mut iter = idents.clone().into_iter();
+                let first = iter.next().unwrap();
+                let mut zipped = cx.expr_ident(sp, first);
+                let one_or_more = cx.expr_bool(sp, seq.op == ast::OneOrMore);
+                zipped = cx.expr_method_call(sp, zipped, id_ext("into_wrapped_iter"),
+                                                         vec![one_or_more.clone()]);
+                let mut pat = cx.pat_ident(sp, first);
+                for ident in iter {
+                    // Assertion: zipped iterators must have at least one element
+                    // if one_or_more == `true`.
+                    let expr_ident = cx.expr_ident(sp, ident);
+                    let expr = cx.expr_method_call(sp, expr_ident,
+                                                       id_ext("into_wrapped_iter"),
+                                                       vec![one_or_more.clone()]);
+                    zipped = cx.expr_method_call(sp, zipped, id_ext("zip"), vec![expr]);
+                    pat = cx.pat_tuple(sp, vec!(pat, cx.pat_ident(sp, ident)));
+                }
+
+                match seq.separator {
+                    Some(ref tok) => {
+                        // Intersperse the separator
+                        stmts.extend(statements_mk_tt(cx, &ast::TtToken(sp, tok.clone()),
+                                                          false).0.into_iter());
+                    }
+                    None => {}
+                }
+
+                let stmt_for = cx.stmt_expr(P(ast::Expr {
+                    id: ast::DUMMY_NODE_ID,
+                    node: ast::ExprForLoop(pat, zipped, cx.block(sp, stmts, None), None),
+                    span: sp,
+                }));
+
+                let stmts_for = if seq.separator.is_some() {
+                    // Pop the last occurence of the separator
+                    let tt = cx.expr_ident(sp, id_ext("tt"));
+                    let len = cx.expr_method_call(sp, tt.clone(), id_ext("len"), vec!());
+                    let _len_ident = gensym_ident("_len");
+                    let _len = cx.expr_ident(sp, _len_ident);
+                    let cond = cx.expr_binary(sp, ast::BiNe, len.clone(), _len);
+                    let then = cx.expr_method_call(sp, tt, id_ext("pop"), vec!());
+                    let then = cx.expr_block(cx.block(sp, vec![cx.stmt_expr(then)], None));
+                    let if_len_eq = cx.expr_if(sp, cond, then, None);
+                    vec![cx.stmt_let(sp, false, _len_ident, len),
+                         stmt_for,
+                         cx.stmt_expr(if_len_eq)]
+                } else {
+                    vec![stmt_for]
+                };
+
+                (stmts_for, idents)
             }
-
-            let e_sp = cx.expr_ident(sp, id_ext("_sp"));
-
-            let stmt_let_tt = cx.stmt_let(sp, true, id_ext("tt"), cx.expr_vec_ng(sp));
-            let mut tts_stmts = vec![stmt_let_tt];
-            tts_stmts.extend(statements_mk_tts(cx, &seq.tts[..], matcher).into_iter());
-            let e_tts = cx.expr_block(cx.block(sp, tts_stmts,
-                                                   Some(cx.expr_ident(sp, id_ext("tt")))));
-            let e_separator = match seq.separator {
-                Some(ref sep) => cx.expr_some(sp, expr_mk_token(cx, sp, sep)),
-                None => cx.expr_none(sp),
-            };
-            let e_op = match seq.op {
-                ast::ZeroOrMore => mk_ast_path(cx, sp, "ZeroOrMore"),
-                ast::OneOrMore => mk_ast_path(cx, sp, "OneOrMore"),
-            };
-            let fields = vec![cx.field_imm(sp, id_ext("tts"), e_tts),
-                              cx.field_imm(sp, id_ext("separator"), e_separator),
-                              cx.field_imm(sp, id_ext("op"), e_op),
-                              cx.field_imm(sp, id_ext("num_captures"),
-                                               cx.expr_usize(sp, seq.num_captures))];
-            let seq_path = vec![id_ext("syntax"), id_ext("ast"), id_ext("SequenceRepetition")];
-            let e_seq_struct = cx.expr_struct(sp, cx.path_global(sp, seq_path), fields);
-            let e_rc_new = cx.expr_call_global(sp, vec![id_ext("std"),
-                                                        id_ext("rc"),
-                                                        id_ext("Rc"),
-                                                        id_ext("new")],
-                                                   vec![e_seq_struct]);
-            let e_tok = cx.expr_call(sp,
-                                     mk_ast_path(cx, sp, "TtSequence"),
-                                     vec!(e_sp, e_rc_new));
-            let e_push =
-                cx.expr_method_call(sp,
-                                    cx.expr_ident(sp, id_ext("tt")),
-                                    id_ext("push"),
-                                    vec!(e_tok));
-            vec!(cx.stmt_expr(e_push))
         }
     }
 }
@@ -832,12 +961,16 @@ fn mk_stmts_let(cx: &ExtCtxt, sp: Span) -> Vec<P<ast::Stmt>> {
     vec!(stmt_let_sp, stmt_let_tt)
 }
 
-fn statements_mk_tts(cx: &ExtCtxt, tts: &[ast::TokenTree], matcher: bool) -> Vec<P<ast::Stmt>> {
-    let mut ss = Vec::new();
+fn statements_mk_tts(cx: &ExtCtxt, tts: &[ast::TokenTree], matcher: bool) -> (Vec<P<ast::Stmt>>,
+                                                                              Vec<ast::Ident>) {
+    let mut stmts = Vec::new();
+    let mut idents = Vec::new();
     for tt in tts {
-        ss.extend(statements_mk_tt(cx, tt, matcher).into_iter());
+        let (ss, is) = statements_mk_tt(cx, tt, matcher);
+        stmts.extend(ss.into_iter());
+        idents.extend(is.into_iter());
     }
-    ss
+    (stmts, idents)
 }
 
 fn expand_tts(cx: &ExtCtxt, sp: Span, tts: &[ast::TokenTree])
@@ -845,7 +978,7 @@ fn expand_tts(cx: &ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     let (cx_expr, tts) = parse_arguments_to_quote(cx, tts);
 
     let mut vector = mk_stmts_let(cx, sp);
-    vector.extend(statements_mk_tts(cx, &tts[..], false).into_iter());
+    vector.extend(statements_mk_tts(cx, &tts[..], false).0.into_iter());
     let block = cx.expr_block(
         cx.block_all(sp,
                      vector,
@@ -857,13 +990,14 @@ fn expand_tts(cx: &ExtCtxt, sp: Span, tts: &[ast::TokenTree])
 fn expand_wrapper(cx: &ExtCtxt,
                   sp: Span,
                   cx_expr: P<ast::Expr>,
-                  expr: P<ast::Expr>,
-                  imports: &[&[&str]]) -> P<ast::Expr> {
+                  expr: P<ast::Expr>) -> P<ast::Expr> {
     // Explicitly borrow to avoid moving from the invoker (#16992)
     let cx_expr_borrow = cx.expr_addr_of(sp, cx.expr_deref(sp, cx_expr));
     let stmt_let_ext_cx = cx.stmt_let(sp, false, id_ext("ext_cx"), cx_expr_borrow);
 
-    let stmts = imports.iter().map(|path| {
+    let stmts = [
+        &["syntax", "ext", "quote", "rt"]
+    ].iter().map(|path| {
         // make item: `use ...;`
         let path = path.iter().map(|s| s.to_string()).collect();
         cx.stmt_item(sp, cx.item_use_glob(sp, ast::Inherited, ids_ext(path)))
@@ -895,10 +1029,5 @@ fn expand_parse_call(cx: &ExtCtxt,
     let expr = cx.expr_method_call(sp, new_parser_call, id_ext(parse_method),
                                    arg_exprs);
 
-    if parse_method == "parse_attribute" {
-        expand_wrapper(cx, sp, cx_expr, expr, &[&["syntax", "ext", "quote", "rt"],
-                                                &["syntax", "parse", "attr"]])
-    } else {
-        expand_wrapper(cx, sp, cx_expr, expr, &[&["syntax", "ext", "quote", "rt"]])
-    }
+    expand_wrapper(cx, sp, cx_expr, expr)
 }
