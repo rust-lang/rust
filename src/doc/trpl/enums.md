@@ -28,6 +28,16 @@ In `Character`, for instance, `Digit` gives a meaningful name for an `i32`
 value, where `Other` is only a name. However, the fact that they represent
 distinct categories of `Character` is a very useful property.
 
+We use the `::` syntax to use the name of each variant: They’re scoped by the name
+of the `enum` itself. This allows both of these to work:
+
+```rust,ignore
+Character::Digit(10);
+Hand::Digit;
+```
+
+Both variants are named `Digit`, but they’re scoped to the `enum` name.
+
 The variants of an `enum` by default are not comparable with equality operators
 (`==`, `!=`), have no ordering (`<`, `>=`, etc.), and do not support other
 binary operations such as `*` and `+`. As such, the following code is invalid
@@ -47,16 +57,6 @@ let four_is_smaller = four <= ten;
 // Error: `==` is not implemented for type `Character`
 let four_equals_ten = four == ten;
 ```
-
-We use the `::` syntax to use the name of each variant: They’re scoped by the name
-of the `enum` itself. This allows both of these to work:
-
-```rust,ignore
-Character::Digit(10);
-Hand::Digit;
-```
-
-Both variants are named `Digit`, but since they’re scoped to the `enum` name,
 
 Not supporting these operations may seem rather limiting, but it’s a limitation
 which we can overcome. There are two ways: by implementing equality ourselves,

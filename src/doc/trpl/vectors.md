@@ -19,6 +19,8 @@ There’s an alternate form of `vec!` for repeating an initial value:
 let v = vec![0; 10]; // ten zeroes
 ```
 
+[generic]: generics.html
+
 ## Accessing elements
 
 To get the value at a particular index in the vector, we use `[]`s:
@@ -56,4 +58,3 @@ Vectors have many more useful methods, which you can read about in [their
 API documentation][vec].
 
 [vec]: ../std/vec/index.html
-[generic]: generics.html
