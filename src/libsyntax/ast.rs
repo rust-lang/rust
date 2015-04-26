@@ -89,12 +89,6 @@ impl Ident {
     pub fn as_str<'a>(&'a self) -> &'a str {
         self.name.as_str()
     }
-
-    pub fn encode_with_hygiene(&self) -> String {
-        format!("\x00name_{},ctxt_{}\x00",
-                self.name.usize(),
-                self.ctxt)
-    }
 }
 
 impl fmt::Debug for Ident {
