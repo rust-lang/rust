@@ -9,59 +9,56 @@
 // except according to those terms.
 
 // ignore-cross-compile
-// ignore-pretty
 
 #![feature(quote, rustc_private)]
 
 extern crate syntax;
 
-use syntax::ast;
-use syntax::codemap;
-use syntax::parse;
-use syntax::print::pprust;
-
-trait FakeExtCtxt {
-    fn call_site(&self) -> codemap::Span;
-    fn cfg(&self) -> ast::CrateConfig;
-    fn ident_of(&self, st: &str) -> ast::Ident;
-    fn name_of(&self, st: &str) -> ast::Name;
-    fn parse_sess(&self) -> &parse::ParseSess;
-}
-
-impl FakeExtCtxt for parse::ParseSess {
-    fn call_site(&self) -> codemap::Span {
-        codemap::Span {
-            lo: codemap::BytePos(0),
-            hi: codemap::BytePos(0),
-            expn_id: codemap::NO_EXPANSION,
-        }
-    }
-    fn cfg(&self) -> ast::CrateConfig { Vec::new() }
-    fn ident_of(&self, st: &str) -> ast::Ident {
-        parse::token::str_to_ident(st)
-    }
-    fn name_of(&self, st: &str) -> ast::Name {
-        parse::token::intern(st)
-    }
-    fn parse_sess(&self) -> &parse::ParseSess { self }
-}
+use syntax::codemap::DUMMY_SP;
+use syntax::print::pprust::*;
 
 fn main() {
-    let cx = parse::new_parse_sess();
+    let ps = syntax::parse::new_parse_sess();
+    let mut cx = syntax::ext::base::ExtCtxt::new(
+        &ps, vec![],
+        syntax::ext::expand::ExpansionConfig::default("qquote".to_string()));
+    cx.bt_push(syntax::codemap::ExpnInfo {
+        call_site: DUMMY_SP,
+        callee: syntax::codemap::NameAndSpan {
+            name: "".to_string(),
+            format: syntax::codemap::MacroBang,
+            allow_internal_unstable: false,
+            span: None,
+        }
+    });
+    let cx = &mut cx;
 
-    assert_eq!(pprust::expr_to_string(&*quote_expr!(&cx, 23)), "23");
-    assert_eq!(pprust::pat_to_string(&*quote_pat!(&cx, Some(_))), "Some(_)");
-    assert_eq!(pprust::ty_to_string(&*quote_ty!(&cx, isize)), "isize");
+    macro_rules! check {
+        ($f: ident, $($e: expr),+; $expect: expr) => ({
+            $(assert_eq!($f(&$e), $expect);)+
+        });
+    }
 
-    let arm = quote_arm!(&cx, (ref x, ref y) => (x, y),);
-    assert_eq!(pprust::arm_to_string(&arm), " (ref x, ref y) => (x, y),");
+    let abc = quote_expr!(cx, 23);
+    check!(expr_to_string, abc, *quote_expr!(cx, $abc); "23");
 
-    let attr = quote_attr!(&cx, #![cfg(foo = "bar")]);
-    assert_eq!(pprust::attr_to_string(&attr), "#![cfg(foo = \"bar\")]");
+    let ty = quote_ty!(cx, isize);
+    check!(ty_to_string, ty, *quote_ty!(cx, $ty); "isize");
 
-    let item = quote_item!(&cx, static x : isize = 10;).unwrap();
-    assert_eq!(pprust::item_to_string(&*item), "static x: isize = 10;");
+    let item = quote_item!(cx, static x: $ty = 10;).unwrap();
+    check!(item_to_string, item, quote_item!(cx, $item).unwrap(); "static x: isize = 10;");
 
-    let stmt = quote_stmt!(&cx, let x = 20;).unwrap();
-    assert_eq!(pprust::stmt_to_string(&*stmt), "let x = 20;");
+    let twenty: u16 = 20;
+    let stmt = quote_stmt!(cx, let x = $twenty;).unwrap();
+    check!(stmt_to_string, stmt, *quote_stmt!(cx, $stmt).unwrap(); "let x = 20u16;");
+
+    let pat = quote_pat!(cx, Some(_));
+    check!(pat_to_string, pat, *quote_pat!(cx, $pat); "Some(_)");
+
+    let expr = quote_expr!(cx, (x, y));
+    let arm = quote_arm!(cx, (ref x, ref y) => $expr,);
+    check!(arm_to_string, arm, quote_arm!(cx, $arm); " (ref x, ref y) => (x, y),");
+
+    let attr = quote_attr!(cx, #![cfg(foo = "bar")]);
+    check!(attribute_to_string, attr, quote_attr!(cx, $attr); r#"#![cfg(foo = "bar")]"#);
 }

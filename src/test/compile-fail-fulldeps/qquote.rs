@@ -15,38 +15,25 @@
 extern crate syntax;
 
 use syntax::ast;
-use syntax::codemap;
+use syntax::codemap::{self, DUMMY_SP};
 use syntax::parse;
 use syntax::print::pprust;
 
-trait FakeExtCtxt {
-    fn call_site(&self) -> codemap::Span;
-    fn cfg(&self) -> ast::CrateConfig;
-    fn ident_of(&self, st: &str) -> ast::Ident;
-    fn name_of(&self, st: &str) -> ast::Name;
-    fn parse_sess(&self) -> &parse::ParseSess;
-}
-
-impl FakeExtCtxt for parse::ParseSess {
-    fn call_site(&self) -> codemap::Span {
-        codemap::Span {
-            lo: codemap::BytePos(0),
-            hi: codemap::BytePos(0),
-            expn_id: codemap::NO_EXPANSION,
-        }
-    }
-    fn cfg(&self) -> ast::CrateConfig { Vec::new() }
-    fn ident_of(&self, st: &str) -> ast::Ident {
-        parse::token::str_to_ident(st)
-    }
-    fn name_of(&self, st: &str) -> ast::Name {
-        parse::token::intern(st)
-    }
-    fn parse_sess(&self) -> &parse::ParseSess { self }
-}
-
 fn main() {
-    let cx = parse::new_parse_sess();
+    let ps = syntax::parse::new_parse_sess();
+    let mut cx = syntax::ext::base::ExtCtxt::new(
+        &ps, vec![],
+        syntax::ext::expand::ExpansionConfig::default("qquote".to_string()));
+    cx.bt_push(syntax::codemap::ExpnInfo {
+        call_site: DUMMY_SP,
+        callee: syntax::codemap::NameAndSpan {
+            name: "".to_string(),
+            format: syntax::codemap::MacroBang,
+            allow_internal_unstable: false,
+            span: None,
+        }
+    });
+    let cx = &mut cx;
 
     assert_eq!(pprust::expr_to_string(&*quote_expr!(&cx, 23)), "23");
 

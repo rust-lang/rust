@@ -682,6 +682,13 @@ pub fn noop_fold_interpolated<T: Folder>(nt: token::Nonterminal, fld: &mut T)
         token::NtMeta(meta_item) => token::NtMeta(fld.fold_meta_item(meta_item)),
         token::NtPath(path) => token::NtPath(Box::new(fld.fold_path(*path))),
         token::NtTT(tt) => token::NtTT(P(fld.fold_tt(&*tt))),
+        token::NtArm(arm) => token::NtArm(fld.fold_arm(arm)),
+        token::NtImplItem(arm) =>
+            token::NtImplItem(fld.fold_impl_item(arm)
+                              .expect_one("expected fold to produce exactly one item")),
+        token::NtTraitItem(arm) =>
+            token::NtTraitItem(fld.fold_trait_item(arm)
+                               .expect_one("expected fold to produce exactly one item")),
     }
 }
 
