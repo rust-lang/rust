@@ -116,11 +116,7 @@ static MAX_MEMORY_SIZE: usize = isize::MAX as usize;
 /// stack.push(2);
 /// stack.push(3);
 ///
-/// loop {
-///     let top = match stack.pop() {
-///         None => break, // empty
-///         Some(x) => x,
-///     };
+/// while let Some(top) = stack.pop() {
 ///     // Prints 3, 2, 1
 ///     println!("{}", top);
 /// }
