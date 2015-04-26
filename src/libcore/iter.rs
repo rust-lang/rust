@@ -179,8 +179,8 @@ pub trait Iterator {
 
     /// Creates an iterator that iterates over both this and the specified
     /// iterators simultaneously, yielding the two elements as pairs. When
-    /// either iterator returns `None`, all further invocations of next() will
-    /// return `None`.
+    /// either iterator returns `None`, all further invocations of `next()`
+    /// will return `None`.
     ///
     /// # Examples
     ///
