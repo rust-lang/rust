@@ -155,6 +155,10 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Status)] = &[
 
     // Allows use of unary negate on unsigned integers, e.g. -e for e: u8
     ("negate_unsigned", "1.0.0", Active),
+
+    // Allows the definition of associated constants in `trait` or `impl`
+    // blocks.
+    ("associated_consts", "1.0.0", Active),
 ];
 // (changing above list without updating src/doc/reference.md makes @cmr sad)
 
@@ -658,6 +662,30 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
             _ => {}
         }
         visit::walk_fn(self, fn_kind, fn_decl, block, span);
+    }
+
+    fn visit_trait_item(&mut self, ti: &'v ast::TraitItem) {
+        match ti.node {
+            ast::ConstTraitItem(..) => {
+                self.gate_feature("associated_consts",
+                                  ti.span,
+                                  "associated constants are experimental")
+            }
+            _ => {}
+        }
+        visit::walk_trait_item(self, ti);
+    }
+
+    fn visit_impl_item(&mut self, ii: &'v ast::ImplItem) {
+        match ii.node {
+            ast::ConstImplItem(..) => {
+                self.gate_feature("associated_consts",
+                                  ii.span,
+                                  "associated constants are experimental")
+            }
+            _ => {}
+        }
+        visit::walk_impl_item(self, ii);
     }
 }
 

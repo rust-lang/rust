@@ -434,7 +434,7 @@ pub fn get_vtable_index_of_object_method<'tcx>(tcx: &ty::ctxt<'tcx>,
         for trait_item in &**trait_items {
             match *trait_item {
                 ty::MethodTraitItem(_) => method_count += 1,
-                ty::TypeTraitItem(_) => {}
+                _ => {}
             }
         }
     }
@@ -445,14 +445,14 @@ pub fn get_vtable_index_of_object_method<'tcx>(tcx: &ty::ctxt<'tcx>,
     for trait_item in trait_items.iter().take(method_offset_in_trait) {
         match *trait_item {
             ty::MethodTraitItem(_) => method_count += 1,
-            ty::TypeTraitItem(_) => {}
+            _ => {}
         }
     }
 
     // the item at the offset we were given really ought to be a method
     assert!(match trait_items[method_offset_in_trait] {
         ty::MethodTraitItem(_) => true,
-        ty::TypeTraitItem(_) => false
+        _ => false
     });
 
     method_count

@@ -119,6 +119,15 @@ impl<'v> Visitor<'v> for ParentVisitor {
         visit::walk_fn(self, a, b, c, d);
     }
 
+    fn visit_impl_item(&mut self, ii: &'v ast::ImplItem) {
+        // visit_fn handles methods, but associated consts have to be handled
+        // here.
+        if !self.parents.contains_key(&ii.id) {
+            self.parents.insert(ii.id, self.curparent);
+        }
+        visit::walk_impl_item(self, ii);
+    }
+
     fn visit_struct_def(&mut self, s: &ast::StructDef, _: ast::Ident,
                         _: &'v ast::Generics, n: ast::NodeId) {
         // Struct constructors are parented to their struct definitions because
@@ -272,6 +281,12 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
                 if public_ty || public_trait {
                     for impl_item in impl_items {
                         match impl_item.node {
+                            ast::ConstImplItem(..) => {
+                                if (public_ty && impl_item.vis == ast::Public)
+                                    || tr.is_some() {
+                                    self.exported_items.insert(impl_item.id);
+                                }
+                            }
                             ast::MethodImplItem(ref sig, _) => {
                                 let meth_public = match sig.explicit_self.node {
                                     ast::SelfStatic => public_ty,
@@ -399,6 +414,33 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
             debug!("privacy - is {:?} a public method", did);
 
             return match self.tcx.impl_or_trait_items.borrow().get(&did) {
+                Some(&ty::ConstTraitItem(ref ac)) => {
+                    debug!("privacy - it's a const: {:?}", *ac);
+                    match ac.container {
+                        ty::TraitContainer(id) => {
+                            debug!("privacy - recursing on trait {:?}", id);
+                            self.def_privacy(id)
+                        }
+                        ty::ImplContainer(id) => {
+                            match ty::impl_trait_ref(self.tcx, id) {
+                                Some(t) => {
+                                    debug!("privacy - impl of trait {:?}", id);
+                                    self.def_privacy(t.def_id)
+                                }
+                                None => {
+                                    debug!("privacy - found inherent \
+                                            associated constant {:?}",
+                                            ac.vis);
+                                    if ac.vis == ast::Public {
+                                        Allowable
+                                    } else {
+                                        ExternallyDenied
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
                 Some(&ty::MethodTraitItem(ref meth)) => {
                     debug!("privacy - well at least it's a method: {:?}",
                            *meth);
@@ -490,6 +532,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
                 //               where the method was defined?
                 Some(ast_map::NodeImplItem(ii)) => {
                     match ii.node {
+                        ast::ConstImplItem(..) |
                         ast::MethodImplItem(..) => {
                             let imp = self.tcx.map
                                           .get_parent_did(closest_private_id);
@@ -693,7 +736,11 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
             ty::MethodTraitItem(method_type) => {
                 method_type.provided_source.unwrap_or(method_id)
             }
-            ty::TypeTraitItem(_) => method_id,
+            _ => {
+                self.tcx.sess
+                    .span_bug(span,
+                              "got non-method item in check_static_method")
+            }
         };
 
         let string = token::get_name(name);
@@ -787,6 +834,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
             def::DefFn(..) => ck("function"),
             def::DefStatic(..) => ck("static"),
             def::DefConst(..) => ck("const"),
+            def::DefAssociatedConst(..) => ck("associated const"),
             def::DefVariant(..) => ck("variant"),
             def::DefTy(_, false) => ck("type"),
             def::DefTy(_, true) => ck("enum"),
@@ -1128,8 +1176,7 @@ impl<'a, 'tcx> SanePrivacyVisitor<'a, 'tcx> {
                         ast::MethodImplItem(..) => {
                             check_inherited(tcx, impl_item.span, impl_item.vis);
                         }
-                        ast::TypeImplItem(_) |
-                        ast::MacImplItem(_) => {}
+                        _ => {}
                     }
                 }
             }
@@ -1307,6 +1354,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
                     impl_items.iter()
                               .any(|impl_item| {
                                   match impl_item.node {
+                                      ast::ConstImplItem(..) |
                                       ast::MethodImplItem(..) => {
                                           self.exported_items.contains(&impl_item.id)
                                       }
@@ -1330,6 +1378,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
                                 // don't erroneously report errors for private
                                 // types in private items.
                                 match impl_item.node {
+                                    ast::ConstImplItem(..) |
                                     ast::MethodImplItem(..)
                                         if self.item_is_public(&impl_item.id, impl_item.vis) =>
                                     {
@@ -1360,12 +1409,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
 
                             // Those in 3. are warned with this call.
                             for impl_item in impl_items {
-                                match impl_item.node {
-                                    ast::TypeImplItem(ref ty) => {
-                                        self.visit_ty(ty);
-                                    }
-                                    ast::MethodImplItem(..) |
-                                    ast::MacImplItem(_) => {},
+                                if let ast::TypeImplItem(ref ty) = impl_item.node {
+                                    self.visit_ty(ty);
                                 }
                             }
                         }
@@ -1376,15 +1421,20 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
                     let mut found_pub_static = false;
                     for impl_item in impl_items {
                         match impl_item.node {
-                            ast::MethodImplItem(ref sig, _) => {
-                                if sig.explicit_self.node == ast::SelfStatic &&
-                                        self.item_is_public(&impl_item.id, impl_item.vis) {
+                            ast::ConstImplItem(..) => {
+                                if self.item_is_public(&impl_item.id, impl_item.vis) {
                                     found_pub_static = true;
                                     visit::walk_impl_item(self, impl_item);
                                 }
                             }
-                            ast::TypeImplItem(_) |
-                            ast::MacImplItem(_) => {}
+                            ast::MethodImplItem(ref sig, _) => {
+                                if sig.explicit_self.node == ast::SelfStatic &&
+                                      self.item_is_public(&impl_item.id, impl_item.vis) {
+                                    found_pub_static = true;
+                                    visit::walk_impl_item(self, impl_item);
+                                }
+                            }
+                            _ => {}
                         }
                     }
                     if found_pub_static {

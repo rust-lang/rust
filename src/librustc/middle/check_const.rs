@@ -223,6 +223,28 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
         }
     }
 
+    fn visit_trait_item(&mut self, t: &'v ast::TraitItem) {
+        match t.node {
+            ast::ConstTraitItem(_, ref default) => {
+                if let Some(ref expr) = *default {
+                    self.global_expr(Mode::Const, &*expr);
+                } else {
+                    visit::walk_trait_item(self, t);
+                }
+            }
+            _ => self.with_mode(Mode::Var, |v| visit::walk_trait_item(v, t)),
+        }
+    }
+
+    fn visit_impl_item(&mut self, i: &'v ast::ImplItem) {
+        match i.node {
+            ast::ConstImplItem(_, ref expr) => {
+                self.global_expr(Mode::Const, &*expr);
+            }
+            _ => self.with_mode(Mode::Var, |v| visit::walk_impl_item(v, i)),
+        }
+    }
+
     fn visit_fn(&mut self,
                 fk: visit::FnKind<'v>,
                 fd: &'v ast::FnDecl,
@@ -468,13 +490,16 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
                         Mode::Var => v.add_qualif(NOT_CONST)
                     }
                 }
-                Some(def::DefConst(did)) => {
-                    if let Some(expr) = const_eval::lookup_const_by_id(v.tcx, did) {
+                Some(def::DefConst(did)) |
+                Some(def::DefAssociatedConst(did, _)) => {
+                    if let Some(expr) = const_eval::lookup_const_by_id(v.tcx, did,
+                                                                       Some(e.id)) {
                         let inner = v.global_expr(Mode::Const, expr);
                         v.add_qualif(inner);
                     } else {
-                        v.tcx.sess.span_bug(e.span, "DefConst doesn't point \
-                                                     to an ItemConst");
+                        v.tcx.sess.span_bug(e.span,
+                                            "DefConst or DefAssociatedConst \
+                                             doesn't point to a constant");
                     }
                 }
                 def => {

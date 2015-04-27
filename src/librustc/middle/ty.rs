@@ -80,7 +80,7 @@ use std::vec::IntoIter;
 use collections::enum_set::{EnumSet, CLike};
 use std::collections::{HashMap, HashSet};
 use syntax::abi;
-use syntax::ast::{CrateNum, DefId, ItemTrait, LOCAL_CRATE};
+use syntax::ast::{CrateNum, DefId, ItemImpl, ItemTrait, LOCAL_CRATE};
 use syntax::ast::{MutImmutable, MutMutable, Name, NamedField, NodeId};
 use syntax::ast::{StmtExpr, StmtSemi, StructField, UnnamedField, Visibility};
 use syntax::ast_util::{self, is_local, lit_is_str, local_def};
@@ -133,6 +133,7 @@ impl ImplOrTraitItemContainer {
 
 #[derive(Clone, Debug)]
 pub enum ImplOrTraitItem<'tcx> {
+    ConstTraitItem(Rc<AssociatedConst<'tcx>>),
     MethodTraitItem(Rc<Method<'tcx>>),
     TypeTraitItem(Rc<AssociatedType>),
 }
@@ -140,6 +141,9 @@ pub enum ImplOrTraitItem<'tcx> {
 impl<'tcx> ImplOrTraitItem<'tcx> {
     fn id(&self) -> ImplOrTraitItemId {
         match *self {
+            ConstTraitItem(ref associated_const) => {
+                ConstTraitItemId(associated_const.def_id)
+            }
             MethodTraitItem(ref method) => MethodTraitItemId(method.def_id),
             TypeTraitItem(ref associated_type) => {
                 TypeTraitItemId(associated_type.def_id)
@@ -149,6 +153,7 @@ impl<'tcx> ImplOrTraitItem<'tcx> {
 
     pub fn def_id(&self) -> ast::DefId {
         match *self {
+            ConstTraitItem(ref associated_const) => associated_const.def_id,
             MethodTraitItem(ref method) => method.def_id,
             TypeTraitItem(ref associated_type) => associated_type.def_id,
         }
@@ -156,13 +161,23 @@ impl<'tcx> ImplOrTraitItem<'tcx> {
 
     pub fn name(&self) -> ast::Name {
         match *self {
+            ConstTraitItem(ref associated_const) => associated_const.name,
             MethodTraitItem(ref method) => method.name,
             TypeTraitItem(ref associated_type) => associated_type.name,
         }
     }
 
+    pub fn vis(&self) -> ast::Visibility {
+        match *self {
+            ConstTraitItem(ref associated_const) => associated_const.vis,
+            MethodTraitItem(ref method) => method.vis,
+            TypeTraitItem(ref associated_type) => associated_type.vis,
+        }
+    }
+
     pub fn container(&self) -> ImplOrTraitItemContainer {
         match *self {
+            ConstTraitItem(ref associated_const) => associated_const.container,
             MethodTraitItem(ref method) => method.container,
             TypeTraitItem(ref associated_type) => associated_type.container,
         }
@@ -171,13 +186,14 @@ impl<'tcx> ImplOrTraitItem<'tcx> {
     pub fn as_opt_method(&self) -> Option<Rc<Method<'tcx>>> {
         match *self {
             MethodTraitItem(ref m) => Some((*m).clone()),
-            TypeTraitItem(_) => None
+            _ => None,
         }
     }
 }
 
 #[derive(Clone, Copy, Debug)]
 pub enum ImplOrTraitItemId {
+    ConstTraitItemId(ast::DefId),
     MethodTraitItemId(ast::DefId),
     TypeTraitItemId(ast::DefId),
 }
@@ -185,6 +201,7 @@ pub enum ImplOrTraitItemId {
 impl ImplOrTraitItemId {
     pub fn def_id(&self) -> ast::DefId {
         match *self {
+            ConstTraitItemId(def_id) => def_id,
             MethodTraitItemId(def_id) => def_id,
             TypeTraitItemId(def_id) => def_id,
         }
@@ -236,6 +253,16 @@ impl<'tcx> Method<'tcx> {
             ImplContainer(id) => id,
         }
     }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct AssociatedConst<'tcx> {
+    pub name: ast::Name,
+    pub ty: Ty<'tcx>,
+    pub vis: ast::Visibility,
+    pub def_id: ast::DefId,
+    pub container: ImplOrTraitItemContainer,
+    pub default: Option<ast::DefId>,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -2291,6 +2318,16 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
         match cx.map.find(id) {
             Some(ast_map::NodeImplItem(ref impl_item)) => {
                 match impl_item.node {
+                    ast::ConstImplItem(_, _) => {
+                        let def_id = ast_util::local_def(id);
+                        let scheme = lookup_item_type(cx, def_id);
+                        let predicates = lookup_predicates(cx, def_id);
+                        construct_parameter_environment(cx,
+                                                        impl_item.span,
+                                                        &scheme.generics,
+                                                        &predicates,
+                                                        id)
+                    }
                     ast::MethodImplItem(_, ref body) => {
                         let method_def_id = ast_util::local_def(id);
                         match ty::impl_or_trait_item(cx, method_def_id) {
@@ -2304,11 +2341,10 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                                     method_bounds,
                                     body.id)
                             }
-                            TypeTraitItem(_) => {
+                            _ => {
                                 cx.sess
                                   .bug("ParameterEnvironment::for_item(): \
-                                        can't create a parameter environment \
-                                        for type trait items")
+                                        got non-method item from impl method?!")
                             }
                         }
                     }
@@ -2322,6 +2358,25 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
             }
             Some(ast_map::NodeTraitItem(trait_item)) => {
                 match trait_item.node {
+                    ast::ConstTraitItem(_, ref default) => {
+                        match *default {
+                            Some(_) => {
+                                let def_id = ast_util::local_def(id);
+                                let scheme = lookup_item_type(cx, def_id);
+                                let predicates = lookup_predicates(cx, def_id);
+                                construct_parameter_environment(cx,
+                                                                trait_item.span,
+                                                                &scheme.generics,
+                                                                &predicates,
+                                                                id)
+                            }
+                            None => {
+                                cx.sess.bug("ParameterEnvironment::from_item(): \
+                                             can't create a parameter environment \
+                                             for const trait items without defaults")
+                            }
+                        }
+                    }
                     ast::MethodTraitItem(_, None) => {
                         cx.sess.span_bug(trait_item.span,
                                          "ParameterEnvironment::for_item():
@@ -2342,11 +2397,11 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                                     method_bounds,
                                     body.id)
                             }
-                            TypeTraitItem(_) => {
+                            _ => {
                                 cx.sess
                                   .bug("ParameterEnvironment::for_item(): \
-                                        can't create a parameter environment \
-                                        for type trait items")
+                                        got non-method item from provided \
+                                        method?!")
                             }
                         }
                     }
@@ -4719,7 +4774,8 @@ pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
                 def::DefUpvar(..) |
                 def::DefLocal(..) => LvalueExpr,
 
-                def::DefConst(..) => RvalueDatumExpr,
+                def::DefConst(..) |
+                def::DefAssociatedConst(..) => RvalueDatumExpr,
 
                 def => {
                     tcx.sess.span_bug(
@@ -5070,10 +5126,10 @@ pub fn provided_trait_methods<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)
                 if let ast::MethodTraitItem(_, Some(_)) = ti.node {
                     match impl_or_trait_item(cx, ast_util::local_def(ti.id)) {
                         MethodTraitItem(m) => Some(m),
-                        TypeTraitItem(_) => {
+                        _ => {
                             cx.sess.bug("provided_trait_methods(): \
-                                         associated type found from \
-                                         looking up ProvidedMethod?!")
+                                         non-method item found from \
+                                         looking up provided method?!")
                         }
                     }
                 } else {
@@ -5085,6 +5141,52 @@ pub fn provided_trait_methods<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)
         }
     } else {
         csearch::get_provided_trait_methods(cx, id)
+    }
+}
+
+pub fn associated_consts<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)
+                               -> Vec<Rc<AssociatedConst<'tcx>>> {
+    if is_local(id) {
+        match cx.map.expect_item(id.node).node {
+            ItemTrait(_, _, _, ref tis) => {
+                tis.iter().filter_map(|ti| {
+                    if let ast::ConstTraitItem(_, _) = ti.node {
+                        match impl_or_trait_item(cx, ast_util::local_def(ti.id)) {
+                            ConstTraitItem(ac) => Some(ac),
+                            _ => {
+                                cx.sess.bug("associated_consts(): \
+                                             non-const item found from \
+                                             looking up a constant?!")
+                            }
+                        }
+                    } else {
+                        None
+                    }
+                }).collect()
+            }
+            ItemImpl(_, _, _, _, _, ref iis) => {
+                iis.iter().filter_map(|ii| {
+                    if let ast::ConstImplItem(_, _) = ii.node {
+                        match impl_or_trait_item(cx, ast_util::local_def(ii.id)) {
+                            ConstTraitItem(ac) => Some(ac),
+                            _ => {
+                                cx.sess.bug("associated_consts(): \
+                                             non-const item found from \
+                                             looking up a constant?!")
+                            }
+                        }
+                    } else {
+                        None
+                    }
+                }).collect()
+            }
+            _ => {
+                cx.sess.bug(&format!("associated_consts: `{:?}` is not a trait \
+                                      or impl", id))
+            }
+        }
+    } else {
+        csearch::get_associated_consts(cx, id)
     }
 }
 
@@ -5174,7 +5276,7 @@ pub fn is_associated_type(cx: &ctxt, id: ast::DefId) -> bool {
                 Some(ref item) => {
                     match **item {
                         TypeTraitItem(_) => true,
-                        MethodTraitItem(_) => false,
+                        _ => false,
                     }
                 }
                 None => false,
@@ -6188,7 +6290,7 @@ pub fn populate_implementations_for_type_if_necessary(tcx: &ctxt,
                            .insert(method_def_id, source);
                     }
                 }
-                TypeTraitItem(_) => {}
+                _ => {}
             }
         }
 
@@ -6240,7 +6342,7 @@ pub fn populate_implementations_for_trait_if_necessary(
                             .insert(method_def_id, source);
                     }
                 }
-                TypeTraitItem(_) => {}
+                _ => {}
             }
         }
 

@@ -28,6 +28,7 @@ pub enum Def {
     DefForeignMod(ast::DefId),
     DefStatic(ast::DefId, bool /* is_mutbl */),
     DefConst(ast::DefId),
+    DefAssociatedConst(ast::DefId /* const */, MethodProvenance),
     DefLocal(ast::NodeId),
     DefVariant(ast::DefId /* enum */, ast::DefId /* variant */, bool /* is_structure */),
     DefTy(ast::DefId, bool /* is_enum */),
@@ -140,7 +141,8 @@ impl Def {
             DefFn(id, _) | DefMod(id) | DefForeignMod(id) | DefStatic(id, _) |
             DefVariant(_, id, _) | DefTy(id, _) | DefAssociatedTy(_, id) |
             DefTyParam(_, _, id, _) | DefUse(id) | DefStruct(id) | DefTrait(id) |
-            DefMethod(id, _) | DefConst(id) | DefSelfTy(Some(id), None)=> {
+            DefMethod(id, _) | DefConst(id) | DefAssociatedConst(id, _) |
+            DefSelfTy(Some(id), None)=> {
                 id
             }
             DefLocal(id) |

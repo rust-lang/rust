@@ -863,7 +863,7 @@ fn confirm_impl_candidate<'cx,'tcx>(
     for impl_item in impl_items {
         let assoc_type = match *impl_or_trait_items_map.get(&impl_item.def_id()).unwrap() {
             ty::TypeTraitItem(ref assoc_type) => assoc_type.clone(),
-            ty::MethodTraitItem(..) => { continue; }
+            ty::ConstTraitItem(..) | ty::MethodTraitItem(..) => { continue; }
         };
 
         if assoc_type.name != obligation.predicate.item_name {

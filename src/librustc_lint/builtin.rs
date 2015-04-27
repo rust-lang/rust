@@ -1068,6 +1068,26 @@ impl LintPass for NonUpperCaseGlobals {
         }
     }
 
+    fn check_trait_item(&mut self, cx: &Context, ti: &ast::TraitItem) {
+        match ti.node {
+            ast::ConstTraitItem(..) => {
+                NonUpperCaseGlobals::check_upper_case(cx, "associated constant",
+                                                      ti.ident, ti.span);
+            }
+            _ => {}
+        }
+    }
+
+    fn check_impl_item(&mut self, cx: &Context, ii: &ast::ImplItem) {
+        match ii.node {
+            ast::ConstImplItem(..) => {
+                NonUpperCaseGlobals::check_upper_case(cx, "associated constant",
+                                                      ii.ident, ii.span);
+            }
+            _ => {}
+        }
+    }
+
     fn check_pat(&mut self, cx: &Context, p: &ast::Pat) {
         // Lint for constants that look like binding identifiers (#7526)
         match (&p.node, cx.tcx.def_map.borrow().get(&p.id).map(|d| d.full_def())) {
@@ -1584,8 +1604,9 @@ impl LintPass for MissingDoc {
         if self.private_traits.contains(&trait_item.id) { return }
 
         let desc = match trait_item.node {
+            ast::ConstTraitItem(..) => "an associated constant",
             ast::MethodTraitItem(..) => "a trait method",
-            ast::TypeTraitItem(..) => "an associated type"
+            ast::TypeTraitItem(..) => "an associated type",
         };
 
         self.check_missing_docs_attrs(cx, Some(trait_item.id),
@@ -1600,9 +1621,10 @@ impl LintPass for MissingDoc {
         }
 
         let desc = match impl_item.node {
+            ast::ConstImplItem(..) => "an associated constant",
             ast::MethodImplItem(..) => "a method",
             ast::TypeImplItem(_) => "an associated type",
-            ast::MacImplItem(_) => "an impl item macro"
+            ast::MacImplItem(_) => "an impl item macro",
         };
         self.check_missing_docs_attrs(cx, Some(impl_item.id),
                                       &impl_item.attrs,

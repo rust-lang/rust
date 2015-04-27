@@ -74,8 +74,7 @@ pub fn trans_impl(ccx: &CrateContext,
                 ast::MethodImplItem(..) => {
                     visit::walk_impl_item(&mut v, impl_item);
                 }
-                ast::TypeImplItem(_) |
-                ast::MacImplItem(_) => {}
+                _ => {}
             }
         }
         return;
@@ -98,8 +97,7 @@ pub fn trans_impl(ccx: &CrateContext,
                 }
                 visit::walk_impl_item(&mut v, impl_item);
             }
-            ast::TypeImplItem(_) |
-            ast::MacImplItem(_) => {}
+            _ => {}
         }
     }
 }
@@ -336,9 +334,9 @@ fn trans_monomorphized_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             let impl_did = vtable_impl.impl_def_id;
             let mname = match ty::trait_item(ccx.tcx(), trait_id, n_method) {
                 ty::MethodTraitItem(method) => method.name,
-                ty::TypeTraitItem(_) => {
-                    bcx.tcx().sess.bug("can't monomorphize an associated \
-                                        type")
+                _ => {
+                    bcx.tcx().sess.bug("can't monomorphize a non-method trait \
+                                        item")
                 }
             };
             let mth_id = method_with_name(bcx.ccx(), impl_did, mname);
@@ -579,8 +577,8 @@ pub fn trans_object_shim<'a, 'tcx>(
     // Lookup the type of this method as declared in the trait and apply substitutions.
     let method_ty = match ty::trait_item(tcx, trait_id, method_offset_in_trait) {
         ty::MethodTraitItem(method) => method,
-        ty::TypeTraitItem(_) => {
-            tcx.sess.bug("can't create a method shim for an associated type")
+        _ => {
+            tcx.sess.bug("can't create a method shim for a non-method item")
         }
     };
     let fty = monomorphize::apply_param_substs(tcx, &object_substs, &method_ty.fty);
@@ -789,11 +787,11 @@ fn emit_vtable_methods<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     trait_item_def_ids
         .iter()
 
-        // Filter out the associated types.
+        // Filter out non-method items.
         .filter_map(|item_def_id| {
             match *item_def_id {
                 ty::MethodTraitItemId(def_id) => Some(def_id),
-                ty::TypeTraitItemId(_) => None,
+                _ => None,
             }
         })
 
@@ -806,7 +804,7 @@ fn emit_vtable_methods<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
             let trait_method_type = match ty::impl_or_trait_item(tcx, trait_method_def_id) {
                 ty::MethodTraitItem(m) => m,
-                ty::TypeTraitItem(_) => ccx.sess().bug("should be a method, not assoc type")
+                _ => ccx.sess().bug("should be a method, not other assoc item"),
             };
             let name = trait_method_type.name;
 
@@ -824,7 +822,7 @@ fn emit_vtable_methods<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             let impl_method_def_id = method_with_name(ccx, impl_id, name);
             let impl_method_type = match ty::impl_or_trait_item(tcx, impl_method_def_id) {
                 ty::MethodTraitItem(m) => m,
-                ty::TypeTraitItem(_) => ccx.sess().bug("should be a method, not assoc type")
+                _ => ccx.sess().bug("should be a method, not other assoc item"),
             };
 
             debug!("emit_vtable_methods: impl_method_type={}",
