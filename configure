@@ -733,6 +733,14 @@ then
    probe CFG_JAVAC            javac
 fi
 
+# the valgrind rpass tests will fail if you don't have a valgrind, but they're
+# only disabled if you opt out.
+if [ -z "$CFG_VALGRIND" ]
+then
+    CFG_DISABLE_VALGRIND_RPASS=1
+    putvar CFG_DISABLE_VALGRIND_RPASS
+fi
+
 if [ ! -z "$CFG_GDB" ]
 then
     # Store GDB's version
