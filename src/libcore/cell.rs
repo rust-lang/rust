@@ -417,7 +417,7 @@ impl<T> RefCell<T> {
     ///
     /// let result = thread::spawn(move || {
     ///    let c = RefCell::new(5);
-    ///    let m = c.borrow_mut();
+    ///    let m = c.borrow();
     ///
     ///    let b = c.borrow_mut(); // this causes a panic
     /// }).join();
