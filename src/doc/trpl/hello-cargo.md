@@ -32,6 +32,13 @@ $ mkdir src
 $ mv main.rs src/main.rs
 ```
 
+Note that since we're creating an executable, we used `main.rs`. If we
+want to make a library instead, we should use `lib.rs`.
+Custom file locations for the entry point can be specified
+with a [`[[lib]]` or `[[bin]]`][crates-custom] key in the TOML file described below.
+
+[crates-custom]: http://doc.crates.io/manifest.html#configuring-a-target
+
 Cargo expects your source files to live inside a `src` directory. That leaves
 the top level for other things, like READMEs, license information, and anything
 not related to your code. Cargo helps us keep our projects nice and tidy. A
