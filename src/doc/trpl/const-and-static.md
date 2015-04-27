@@ -66,6 +66,8 @@ unsafe {
 }
 ```
 
+[unsafe]: unsafe.html
+
 Furthermore, any type stored in a `static` must be `Sync`.
 
 # Initializing
