@@ -471,8 +471,11 @@ pub fn iter_structural_ty<'blk, 'tcx, F>(cx: Block<'blk, 'tcx>,
 
           match adt::trans_switch(cx, &*repr, av) {
               (_match::Single, None) => {
-                  cx = iter_variant(cx, &*repr, av, &*(*variants)[0],
-                                    substs, &mut f);
+                  if n_variants != 0 {
+                      assert!(n_variants == 1);
+                      cx = iter_variant(cx, &*repr, av, &*(*variants)[0],
+                                        substs, &mut f);
+                  }
               }
               (_match::Switch, Some(lldiscrim_a)) => {
                   cx = f(cx, lldiscrim_a, cx.tcx().types.isize);
