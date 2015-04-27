@@ -453,29 +453,25 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'tcx>(
             let dtor_predicates = ty::lookup_predicates(rcx.tcx(), impl_did);
 
             let has_pred_of_interest = dtor_predicates.predicates.iter().any(|pred| {
-                // In `impl<T> Drop where ...`, we automatically
-                // assume some predicate will be meaningful and thus
-                // represents a type through which we could reach
-                // borrowed data. However, there can be implicit
-                // predicates (namely for Sized), and so we still need
-                // to walk through and filter out those cases.
+                // In `impl<T> Drop where ...`, assume most predicates
+                // represent capability on `T` via which a destructor
+                // could access borrowed data. But some bounds (Sized,
+                // Copy, etc), have no items, i.e. no added capabilty
+                // for such type-specific access.
 
                 let result = match *pred {
                     ty::Predicate::Trait(ty::Binder(ref t_pred)) => {
                         let def_id = t_pred.trait_ref.def_id;
-                        match rcx.tcx().lang_items.to_builtin_kind(def_id) {
-                            // Issue 24895: deliberately do not include `BoundCopy` here.
-                            Some(ty::BoundSend) |
-                            Some(ty::BoundSized) |
-                            Some(ty::BoundSync) => false,
-                            _ => true,
-                        }
+                        // A OIBIT (or even a normal builtin) trait
+                        // defines no associated items, and is
+                        // uninteresting from point of view of dropck.
+                        ty::trait_items(rcx.tcx(), def_id).len() != 0
                     }
                     ty::Predicate::Equate(..) |
                     ty::Predicate::RegionOutlives(..) |
                     ty::Predicate::TypeOutlives(..) |
                     ty::Predicate::Projection(..) => {
-                        // we assume all of these where-clauses may
+                        // for now, assume all other where-clauses may
                         // give the drop implementation the capabilty
                         // to access borrowed data.
                         true
