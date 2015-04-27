@@ -35,7 +35,6 @@
 #![feature(core)]
 #![feature(staged_api)]
 #![feature(unboxed_closures)]
-#![feature(unsafe_destructor)]
 #![cfg_attr(test, feature(test))]
 
 extern crate alloc;
@@ -124,7 +123,6 @@ fn chunk(size: usize, is_copy: bool) -> Chunk {
     }
 }
 
-#[unsafe_destructor]
 impl<'longer_than_self> Drop for Arena<'longer_than_self> {
     fn drop(&mut self) {
         unsafe {
@@ -510,7 +508,6 @@ impl<T> TypedArena<T> {
     }
 }
 
-#[unsafe_destructor]
 impl<T> Drop for TypedArena<T> {
     fn drop(&mut self) {
         unsafe {

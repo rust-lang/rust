@@ -35,17 +35,7 @@ use hash::Hasher;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang="send"]
 #[rustc_on_unimplemented = "`{Self}` cannot be sent between threads safely"]
-#[cfg(not(stage0))]
 pub unsafe trait Send {
-    // empty.
-}
-
-/// Types able to be transferred across thread boundaries.
-#[stable(feature = "rust1", since = "1.0.0")]
-#[lang="send"]
-#[rustc_on_unimplemented = "`{Self}` cannot be sent between threads safely"]
-#[cfg(stage0)]
-pub unsafe trait Send : MarkerTrait {
     // empty.
 }
 
@@ -60,18 +50,7 @@ impl !Send for Managed { }
 #[lang="sized"]
 #[rustc_on_unimplemented = "`{Self}` does not have a constant size known at compile-time"]
 #[fundamental] // for Default, for example, which requires that `[T]: !Default` be evaluatable
-#[cfg(not(stage0))]
 pub trait Sized {
-    // Empty.
-}
-
-/// Types with a constant size known at compile-time.
-#[stable(feature = "rust1", since = "1.0.0")]
-#[lang="sized"]
-#[rustc_on_unimplemented = "`{Self}` does not have a constant size known at compile-time"]
-#[fundamental] // for Default, for example, which requires that `[T]: !Default` be evaluatable
-#[cfg(stage0)]
-pub trait Sized : MarkerTrait {
     // Empty.
 }
 
@@ -222,20 +201,10 @@ pub trait Copy : Clone {
 /// wrapper around the value(s) which can be mutated when behind a `&`
 /// reference; not doing this is undefined behaviour (for example,
 /// `transmute`-ing from `&T` to `&mut T` is illegal).
-#[cfg(not(stage0))]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang="sync"]
 #[rustc_on_unimplemented = "`{Self}` cannot be shared between threads safely"]
 pub unsafe trait Sync {
-    // Empty
-}
-
-/// dox
-#[cfg(stage0)]
-#[stable(feature = "rust1", since = "1.0.0")]
-#[lang="sync"]
-#[rustc_on_unimplemented = "`{Self}` cannot be shared between threads safely"]
-pub unsafe trait Sync : MarkerTrait {
     // Empty
 }
 
@@ -299,20 +268,6 @@ macro_rules! impls{
             }
         }
         )
-}
-
-/// dox
-#[stable(feature = "rust1", since = "1.0.0")]
-#[cfg(stage0)]
-pub trait MarkerTrait : PhantomFn<Self,Self> { }
-
-#[cfg(stage0)]
-impl<T: ?Sized> MarkerTrait for T {}
-
-/// dox
-#[lang="phantom_fn"]
-#[cfg(stage0)]
-pub trait PhantomFn<A:?Sized,R:?Sized=()> {
 }
 
 /// `PhantomData<T>` allows you to describe that a type acts as if it stores a value of type `T`,
@@ -461,14 +416,6 @@ mod impls {
 #[rustc_reflect_like]
 #[unstable(feature = "core", reason = "requires RFC and more experience")]
 #[allow(deprecated)]
-#[cfg(not(stage0))]
 pub trait Reflect {}
 
-/// dox
-#[rustc_reflect_like]
-#[unstable(feature = "core", reason = "requires RFC and more experience")]
-#[cfg(stage0)]
-pub trait Reflect: MarkerTrait {}
-
 impl Reflect for .. { }
-

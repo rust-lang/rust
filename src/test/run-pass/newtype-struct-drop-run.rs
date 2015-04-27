@@ -8,16 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-#![feature(unsafe_destructor)]
-
 // Make sure the destructor is run for newtype structs.
 
 use std::cell::Cell;
 
 struct Foo<'a>(&'a Cell<isize>);
 
-#[unsafe_destructor]
 impl<'a> Drop for Foo<'a> {
     fn drop(&mut self) {
         let Foo(i) = *self;

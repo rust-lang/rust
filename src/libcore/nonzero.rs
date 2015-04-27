@@ -12,15 +12,9 @@
 
 use marker::Sized;
 use ops::Deref;
-#[cfg(stage0)] use marker::MarkerTrait;
 
 /// Unsafe trait to indicate what types are usable with the NonZero struct
-#[cfg(not(stage0))]
 pub unsafe trait Zeroable {}
-
-/// Unsafe trait to indicate what types are usable with the NonZero struct
-#[cfg(stage0)]
-pub unsafe trait Zeroable: MarkerTrait {}
 
 unsafe impl<T:?Sized> Zeroable for *const T {}
 unsafe impl<T:?Sized> Zeroable for *mut T {}

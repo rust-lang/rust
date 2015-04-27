@@ -106,27 +106,10 @@ use cmp::Ordering::{self, Less, Equal, Greater};
 // FIXME #19649: intrinsic docs don't render, so these have no docs :(
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg(not(stage0))]
 pub use intrinsics::copy_nonoverlapping;
 
-/// dox
-#[cfg(stage0)]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize) {
-    intrinsics::copy_nonoverlapping(dst, src, count)
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-#[cfg(not(stage0))]
 pub use intrinsics::copy;
-
-/// dox
-#[cfg(stage0)]
-#[stable(feature = "rust1", since = "1.0.0")]
-pub unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
-    intrinsics::copy(dst, src, count)
-}
-
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use intrinsics::write_bytes;

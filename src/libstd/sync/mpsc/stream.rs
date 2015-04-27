@@ -471,7 +471,6 @@ impl<T> Packet<T> {
     }
 }
 
-#[unsafe_destructor]
 impl<T> Drop for Packet<T> {
     fn drop(&mut self) {
         // Note that this load is not only an assert for correctness about

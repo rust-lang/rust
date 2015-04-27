@@ -23,8 +23,6 @@
 //  `'a` in `&'a D<'a>` cannot be satisfied when `D<'a>` implements
 //  `Drop`.)
 
-#![feature(unsafe_destructor)]
-
 use std::cell::Cell;
 
 struct D<'a> {
@@ -36,7 +34,6 @@ impl<'a> D<'a> {
     fn new(name: String) -> D<'a> { D { name: name, p: Cell::new(None) } }
 }
 
-#[unsafe_destructor]
 impl<'a> Drop for D<'a> {
     fn drop(&mut self) {
         println!("dropping {} whose sibling is {:?}",

@@ -1626,7 +1626,6 @@ impl<'a, T: Clone> Add<&'a [T]> for Vec<T> {
     }
 }
 
-#[unsafe_destructor]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Drop for Vec<T> {
     fn drop(&mut self) {
@@ -1808,7 +1807,6 @@ impl<T> DoubleEndedIterator for IntoIter<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ExactSizeIterator for IntoIter<T> {}
 
-#[unsafe_destructor]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Drop for IntoIter<T> {
     fn drop(&mut self) {
@@ -1867,7 +1865,6 @@ impl<'a, T> DoubleEndedIterator for Drain<'a, T> {
     }
 }
 
-#[unsafe_destructor]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Drop for Drain<'a, T> {
     fn drop(&mut self) {
@@ -1914,7 +1911,6 @@ impl<'a, T> Deref for DerefVec<'a, T> {
 }
 
 // Prevent the inner `Vec<T>` from attempting to deallocate memory.
-#[unsafe_destructor]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Drop for DerefVec<'a, T> {
     fn drop(&mut self) {
@@ -1983,7 +1979,6 @@ struct PartialVecZeroSized<T,U> {
     marker: PhantomData<::core::cell::Cell<(T,U)>>,
 }
 
-#[unsafe_destructor]
 impl<T,U> Drop for PartialVecNonZeroSized<T,U> {
     fn drop(&mut self) {
         unsafe {
@@ -2009,7 +2004,6 @@ impl<T,U> Drop for PartialVecNonZeroSized<T,U> {
     }
 }
 
-#[unsafe_destructor]
 impl<T,U> Drop for PartialVecZeroSized<T,U> {
     fn drop(&mut self) {
         unsafe {

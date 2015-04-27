@@ -508,8 +508,6 @@ macro_rules! neg_impl_numeric {
 macro_rules! neg_impl_unsigned {
     ($($t:ty)*) => {
         neg_impl_core!{ x => {
-            #[cfg(stage0)]
-            use ::num::wrapping::WrappingOps;
             !x.wrapping_add(1)
         }, $($t)*} }
 }
@@ -1162,7 +1160,6 @@ pub trait FnOnce<Args> {
     extern "rust-call" fn call_once(self, args: Args) -> Self::Output;
 }
 
-#[cfg(not(stage0))]
 mod impls {
     use marker::Sized;
     use super::{Fn, FnMut, FnOnce};
