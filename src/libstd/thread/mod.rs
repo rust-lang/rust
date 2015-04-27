@@ -115,8 +115,7 @@
 //! ## Configuring threads
 //!
 //! A new thread can be configured before it is spawned via the `Builder` type,
-//! which currently allows you to set the name, stack size, and writers for
-//! `println!` and `panic!` for the child thread:
+//! which currently allows you to set the name and stack size for the child thread:
 //!
 //! ```rust
 //! # #![allow(unused_must_use)]
