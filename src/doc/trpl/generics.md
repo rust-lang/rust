@@ -83,7 +83,7 @@ fn takes_anything<T>(x: T) {
 ```
 
 The syntax has two parts: the `<T>` says “this function is generic over one
-type, `T`”, and the `x: T` says “x has the type `T`”.
+type, `T`”, and the `x: T` says “x has the type `T`.”
 
 Multiple arguments can have the same generic type:
 
