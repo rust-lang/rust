@@ -940,6 +940,12 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
         }
         Some(NodeImplItem(ii)) => {
             match ii.node {
+                ConstImplItem(..) => {
+                    format!("assoc const {} in {}{}",
+                            token::get_ident(ii.ident),
+                            map.path_to_string(id),
+                            id_str)
+                }
                 MethodImplItem(..) => {
                     format!("method {} in {}{}",
                             token::get_ident(ii.ident),
@@ -959,9 +965,9 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
         }
         Some(NodeTraitItem(ti)) => {
             let kind = match ti.node {
+                ConstTraitItem(..) => "assoc constant",
                 MethodTraitItem(..) => "trait method",
                 TypeTraitItem(..) => "assoc type",
-//                 ConstTraitItem(..) => "assoc constant"
             };
 
             format!("{} {} in {}{}",

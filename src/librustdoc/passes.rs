@@ -184,7 +184,8 @@ impl<'a> fold::DocFolder for Stripper<'a> {
             // Primitives are never stripped
             clean::PrimitiveItem(..) => {}
 
-            // Associated types are never stripped
+            // Associated consts and types are never stripped
+            clean::AssociatedConstItem(..) |
             clean::AssociatedTypeItem(..) => {}
         }
 

@@ -2135,7 +2135,10 @@ The currently implemented features of the reference compiler are:
           semantics are likely to change, so this macro usage must be opted
           into.
 
-* `associated_types` - Allows type aliases in traits. Experimental.
+* `associated_consts` - Allows constants to be defined in `impl` and `trait`
+                        blocks, so that they can be associated with a type or
+                        trait in a similar manner to methods and associated
+                        types.
 
 * `box_patterns` - Allows `box` patterns, the exact semantics of which
                    is subject to change.

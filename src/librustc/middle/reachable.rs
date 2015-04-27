@@ -113,7 +113,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ReachableContext<'a, 'tcx> {
                             // If this path leads to a constant, then we need to
                             // recurse into the constant to continue finding
                             // items that are reachable.
-                            def::DefConst(..) => {
+                            def::DefConst(..) | def::DefAssociatedConst(..) => {
                                 self.worklist.push(def_id.node);
                             }
 
@@ -183,12 +183,14 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
             }
             Some(ast_map::NodeTraitItem(trait_method)) => {
                 match trait_method.node {
+                    ast::ConstTraitItem(_, ref default) => default.is_some(),
                     ast::MethodTraitItem(_, ref body) => body.is_some(),
                     ast::TypeTraitItem(..) => false,
                 }
             }
             Some(ast_map::NodeImplItem(impl_item)) => {
                 match impl_item.node {
+                    ast::ConstImplItem(..) => true,
                     ast::MethodImplItem(ref sig, _) => {
                         if generics_require_inlining(&sig.generics) ||
                                 attr::requests_inline(&impl_item.attrs) {
@@ -303,8 +305,12 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
             }
             ast_map::NodeTraitItem(trait_method) => {
                 match trait_method.node {
+                    ast::ConstTraitItem(_, None) |
                     ast::MethodTraitItem(_, None) => {
                         // Keep going, nothing to get exported
+                    }
+                    ast::ConstTraitItem(_, Some(ref expr)) => {
+                        self.visit_expr(&*expr);
                     }
                     ast::MethodTraitItem(_, Some(ref body)) => {
                         visit::walk_block(self, body);
@@ -314,6 +320,9 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
             }
             ast_map::NodeImplItem(impl_item) => {
                 match impl_item.node {
+                    ast::ConstImplItem(_, ref expr) => {
+                        self.visit_expr(&*expr);
+                    }
                     ast::MethodImplItem(ref sig, ref body) => {
                         let did = self.tcx.map.get_parent_did(search_item);
                         if method_might_be_inlined(self.tcx, sig, impl_item, did) {

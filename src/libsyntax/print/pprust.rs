@@ -761,6 +761,26 @@ impl<'a> State<'a> {
         }
     }
 
+    fn print_associated_const(&mut self,
+                              ident: ast::Ident,
+                              ty: &ast::Ty,
+                              default: Option<&ast::Expr>,
+                              vis: ast::Visibility)
+                              -> io::Result<()>
+    {
+        try!(word(&mut self.s, &visibility_qualified(vis, "")));
+        try!(self.word_space("const"));
+        try!(self.print_ident(ident));
+        try!(self.word_space(":"));
+        try!(self.print_type(ty));
+        if let Some(expr) = default {
+            try!(space(&mut self.s));
+            try!(self.word_space("="));
+            try!(self.print_expr(expr));
+        }
+        word(&mut self.s, ";")
+    }
+
     fn print_associated_type(&mut self,
                              ident: ast::Ident,
                              bounds: Option<&ast::TyParamBounds>,
@@ -1234,6 +1254,11 @@ impl<'a> State<'a> {
         try!(self.maybe_print_comment(ti.span.lo));
         try!(self.print_outer_attributes(&ti.attrs));
         match ti.node {
+            ast::ConstTraitItem(ref ty, ref default) => {
+                try!(self.print_associated_const(ti.ident, &ty,
+                                                 default.as_ref().map(|expr| &**expr),
+                                                 ast::Inherited));
+            }
             ast::MethodTraitItem(ref sig, ref body) => {
                 if body.is_some() {
                     try!(self.head(""));
@@ -1260,6 +1285,9 @@ impl<'a> State<'a> {
         try!(self.maybe_print_comment(ii.span.lo));
         try!(self.print_outer_attributes(&ii.attrs));
         match ii.node {
+            ast::ConstImplItem(ref ty, ref expr) => {
+                try!(self.print_associated_const(ii.ident, &ty, Some(&expr), ii.vis));
+            }
             ast::MethodImplItem(ref sig, ref body) => {
                 try!(self.head(""));
                 try!(self.print_method_sig(ii.ident, sig, ii.vis));
@@ -2151,6 +2179,9 @@ impl<'a> State<'a> {
                         }
                     }
                 }
+            }
+            ast::PatQPath(ref qself, ref path) => {
+                try!(self.print_qpath(path, qself, false));
             }
             ast::PatStruct(ref path, ref fields, etc) => {
                 try!(self.print_path(path, true, 0));

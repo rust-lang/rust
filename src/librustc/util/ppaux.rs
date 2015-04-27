@@ -830,6 +830,7 @@ impl<'tcx> Repr<'tcx> for ty::TraitDef<'tcx> {
 impl<'tcx> Repr<'tcx> for ast::TraitItem {
     fn repr(&self, _tcx: &ctxt) -> String {
         let kind = match self.node {
+            ast::ConstTraitItem(..) => "ConstTraitItem",
             ast::MethodTraitItem(..) => "MethodTraitItem",
             ast::TypeTraitItem(..) => "TypeTraitItem",
         };
@@ -1054,9 +1055,39 @@ impl<'tcx> Repr<'tcx> for ty::Variance {
     }
 }
 
+impl<'tcx> Repr<'tcx> for ty::ImplOrTraitItem<'tcx> {
+    fn repr(&self, tcx: &ctxt<'tcx>) -> String {
+        format!("ImplOrTraitItem({})",
+                match *self {
+                    ty::ImplOrTraitItem::MethodTraitItem(ref i) => i.repr(tcx),
+                    ty::ImplOrTraitItem::ConstTraitItem(ref i) => i.repr(tcx),
+                    ty::ImplOrTraitItem::TypeTraitItem(ref i) => i.repr(tcx),
+                })
+    }
+}
+
+impl<'tcx> Repr<'tcx> for ty::AssociatedConst<'tcx> {
+    fn repr(&self, tcx: &ctxt<'tcx>) -> String {
+        format!("AssociatedConst(name: {}, ty: {}, vis: {}, def_id: {})",
+                self.name.repr(tcx),
+                self.ty.repr(tcx),
+                self.vis.repr(tcx),
+                self.def_id.repr(tcx))
+    }
+}
+
+impl<'tcx> Repr<'tcx> for ty::AssociatedType {
+    fn repr(&self, tcx: &ctxt<'tcx>) -> String {
+        format!("AssociatedType(name: {}, vis: {}, def_id: {})",
+                self.name.repr(tcx),
+                self.vis.repr(tcx),
+                self.def_id.repr(tcx))
+    }
+}
+
 impl<'tcx> Repr<'tcx> for ty::Method<'tcx> {
     fn repr(&self, tcx: &ctxt<'tcx>) -> String {
-        format!("method(name: {}, generics: {}, predicates: {}, fty: {}, \
+        format!("Method(name: {}, generics: {}, predicates: {}, fty: {}, \
                  explicit_self: {}, vis: {}, def_id: {})",
                 self.name.repr(tcx),
                 self.generics.repr(tcx),
