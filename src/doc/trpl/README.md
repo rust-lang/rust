@@ -127,7 +127,7 @@ vector. When we try to compile this program, we get an error:
 
 ```text
 error: cannot borrow `x` as mutable because it is also borrowed as immutable
-    x.push(4);
+    x.push("foo");
     ^
 note: previous borrow of `x` occurs here; the immutable borrow prevents
 subsequent moves or mutable borrows of `x` until the borrow ends
