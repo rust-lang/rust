@@ -540,7 +540,7 @@ impl<T> Vec<T> {
     ///
     /// # Panics
     ///
-    /// Panics if `i` is out of bounds.
+    /// Panics if `index` is out of bounds.
     ///
     /// # Examples
     ///
