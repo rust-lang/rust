@@ -2407,12 +2407,14 @@ pub trait Step: PartialOrd {
     /// `start` should always be less than `end`, so the result should never
     /// be negative.
     ///
+    /// `by` must be > 0.
+    ///
     /// Returns `None` if it is not possible to calculate steps_between
     /// without overflow.
     fn steps_between(start: &Self, end: &Self, by: &Self) -> Option<usize>;
 }
 
-macro_rules! step_impl {
+macro_rules! step_impl_unsigned {
     ($($t:ty)*) => ($(
         impl Step for $t {
             #[inline]
@@ -2423,7 +2425,33 @@ macro_rules! step_impl {
             #[allow(trivial_numeric_casts)]
             fn steps_between(start: &$t, end: &$t, by: &$t) -> Option<usize> {
                 if *start <= *end {
-                    Some(((*end - *start) / *by) as usize)
+                    // Note: We assume $t <= usize here
+                    Some((*end - *start) as usize / (*by as usize))
+                } else {
+                    Some(0)
+                }
+            }
+        }
+    )*)
+}
+macro_rules! step_impl_signed {
+    ($($t:ty)*) => ($(
+        impl Step for $t {
+            #[inline]
+            fn step(&self, by: &$t) -> Option<$t> {
+                (*self).checked_add(*by)
+            }
+            #[inline]
+            #[allow(trivial_numeric_casts)]
+            fn steps_between(start: &$t, end: &$t, by: &$t) -> Option<usize> {
+                if *start <= *end {
+                    // Note: We assume $t <= isize here
+                    // Use .wrapping_sub and cast to usize to compute the
+                    // difference that may not fit inside the range of isize.
+                    Some(
+                        ((*end as isize).wrapping_sub(*start as isize) as usize
+                        / (*by as usize))
+                    )
                 } else {
                     Some(0)
                 }
@@ -2447,9 +2475,12 @@ macro_rules! step_impl_no_between {
     )*)
 }
 
-step_impl!(usize u8 u16 u32 isize i8 i16 i32);
+step_impl_unsigned!(usize u8 u16 u32);
+step_impl_signed!(isize i8 i16 i32);
 #[cfg(target_pointer_width = "64")]
-step_impl!(u64 i64);
+step_impl_unsigned!(u64);
+#[cfg(target_pointer_width = "64")]
+step_impl_signed!(i64);
 #[cfg(target_pointer_width = "32")]
 step_impl_no_between!(u64 i64);
 
