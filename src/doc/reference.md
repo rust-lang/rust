@@ -84,7 +84,7 @@ that does _not_ occur in the set of [keywords](#keywords).
 ## Comments
 
 Comments in Rust code follow the general C++ style of line (`//`) and
-block-comment (`/* ... */`) forms. Nested block comments are supported.
+block (`/* ... */`) comment forms. Nested block comments are supported.
 
 Line comments beginning with exactly _three_ slashes (`///`), and block
 comments beginning with exactly one repeated asterisk in the block-open
@@ -192,13 +192,13 @@ which must be _escaped_ by a preceding `U+005C` character (`\`).
 
 A _string literal_ is a sequence of any Unicode characters enclosed within two
 `U+0022` (double-quote) characters, with the exception of `U+0022` itself,
-which must be _escaped_ by a preceding `U+005C` character (`\`), or a _raw
-string literal_.
+which must be _escaped_ by a preceding `U+005C` character (`\`).
 
-A multi-line string literal may be defined by terminating each line with a
-`U+005C` character (`\`) immediately before the newline. This causes the
-`U+005C` character, the newline, and all whitespace at the beginning of the
-next line to be ignored.
+Line-break characters are allowed in string literals. Normally they represent
+themselves (i.e. no translation), but as a special exception, when a `U+005C`
+character (`\`) occurs immediately before the newline, the `U+005C` character,
+the newline, and all whitespace at the beginning of the next line are ignored.
+Thus `a` and `b` are equal:
 
 ```rust
 let a = "foobar";
@@ -366,10 +366,18 @@ A _floating-point literal_ has one of two forms:
   optionally followed by another decimal literal, with an optional _exponent_.
 * A single _decimal literal_ followed by an _exponent_.
 
-By default, a floating-point literal has a generic type, and, like integer
-literals, the type must be uniquely determined from the context. There are two valid
+Like integer literals, a floating-point literal may be followed by a
+suffix, so long as the pre-suffix part does not end with `U+002E` (`.`).
+The suffix forcibly sets the type of the literal. There are two valid
 _floating-point suffixes_, `f32` and `f64` (the 32-bit and 64-bit floating point
 types), which explicitly determine the type of the literal.
+
+The type of an _unsuffixed_ floating-point literal is determined by type
+inference. If a floating-point type can be _uniquely_ determined from the
+surrounding program context, the unsuffixed floating-point literal has that type.
+If the program context underconstrains the type, it defaults to double-precision `f64`;
+if the program context overconstrains the type, it is considered a static type
+error.
 
 Examples of floating-point literals of various forms:
 

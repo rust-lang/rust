@@ -536,7 +536,7 @@ impl<T> Vec<T> {
     ///
     /// # Panics
     ///
-    /// Panics if `i` is out of bounds.
+    /// Panics if `index` is out of bounds.
     ///
     /// # Examples
     ///
@@ -1915,6 +1915,22 @@ impl<'a, T> Drop for DerefVec<'a, T> {
 }
 
 /// Converts a slice to a wrapper type providing a `&Vec<T>` reference.
+///
+/// # Examples
+///
+/// ```
+/// # #![feature(collections)]
+/// use std::vec::as_vec;
+///
+/// // Let's pretend we have a function that requires `&Vec<i32>`
+/// fn vec_consumer(s: &Vec<i32>) {
+///     assert_eq!(s, &[1, 2, 3]);
+/// }
+///
+/// // Provide a `&Vec<i32>` from a `&[i32]` without allocating
+/// let values = [1, 2, 3];
+/// vec_consumer(&as_vec(&values));
+/// ```
 #[unstable(feature = "collections")]
 pub fn as_vec<'a, T>(x: &'a [T]) -> DerefVec<'a, T> {
     unsafe {
