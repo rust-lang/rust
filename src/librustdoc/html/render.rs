@@ -1460,7 +1460,7 @@ impl<'a> fmt::Display for Item<'a> {
         try!(write!(fmt, "<span class='out-of-band'>"));
         try!(write!(fmt,
         r##"<span id='render-detail'>
-            <a id="toggle-all-docs" href="#" title="collapse all docs">[-]</a>
+            <a id="toggle-all-docs" href="#" title="collapse all docs">[−]</a>
         </span>"##));
 
         // Write `src` tag
