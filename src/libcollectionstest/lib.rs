@@ -10,6 +10,7 @@
 
 #![feature(box_syntax)]
 #![feature(collections)]
+#![feature(collections_drain)]
 #![feature(core)]
 #![feature(hash)]
 #![feature(rand)]
