@@ -292,7 +292,6 @@ impl<W: Write+Seek> Seek for BufWriter<W> {
     }
 }
 
-#[unsafe_destructor]
 impl<W: Write> Drop for BufWriter<W> {
     fn drop(&mut self) {
         if self.inner.is_some() {

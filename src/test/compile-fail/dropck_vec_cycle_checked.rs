@@ -12,8 +12,6 @@
 //
 // (Compare against compile-fail/dropck_arr_cycle_checked.rs)
 
-#![feature(unsafe_destructor)]
-
 use std::cell::Cell;
 use id::Id;
 
@@ -68,7 +66,6 @@ struct CheckId<T:HasId> {
 #[allow(non_snake_case)]
 fn CheckId<T:HasId>(t: T) -> CheckId<T> { CheckId{ v: t } }
 
-#[unsafe_destructor]
 impl<T:HasId> Drop for CheckId<T> {
     fn drop(&mut self) {
         assert!(self.v.count() > 0);

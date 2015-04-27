@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-#![feature(unsafe_destructor)]
-
 use std::cell::Cell;
 
 // This test should behave exactly like issue-2735-2
@@ -18,7 +15,6 @@ struct defer<'a> {
     b: &'a Cell<bool>,
 }
 
-#[unsafe_destructor]
 impl<'a> Drop for defer<'a> {
     fn drop(&mut self) {
         self.b.set(true);

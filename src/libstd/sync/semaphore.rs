@@ -100,7 +100,6 @@ impl Semaphore {
     }
 }
 
-#[unsafe_destructor]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Drop for SemaphoreGuard<'a> {
     fn drop(&mut self) {

@@ -30,7 +30,6 @@
 #![feature(libc)]
 #![feature(link_args)]
 #![feature(staged_api)]
-#![feature(unsafe_destructor)]
 
 extern crate libc;
 #[macro_use] #[no_link] extern crate rustc_bitflags;

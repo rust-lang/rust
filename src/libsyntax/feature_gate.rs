@@ -93,10 +93,6 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Status)] = &[
 
     ("fundamental", "1.0.0", Active),
 
-    // Deprecate after snapshot
-    // SNAP 5520801
-    ("unsafe_destructor", "1.0.0", Active),
-
     // A temporary feature gate used to enable parser extensions needed
     // to bootstrap fix for #5723.
     ("issue_5723_bootstrap", "1.0.0", Accepted),
@@ -209,8 +205,6 @@ pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType)] = &[
     ("link_args", Normal),
     ("macro_escape", Normal),
 
-    ("unsafe_destructor", Gated("unsafe_destructor",
-                                "`#[unsafe_destructor]` does nothing anymore")),
     ("staged_api", Gated("staged_api",
                          "staged_api is for use by rustc only")),
     ("plugin", Gated("plugin",

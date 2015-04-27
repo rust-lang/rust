@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-#![feature(unsafe_destructor)]
-
 // Ensures that class dtors run if the object is inside an enum
 // variant
 
@@ -23,7 +20,6 @@ struct close_res<'a> {
 
 }
 
-#[unsafe_destructor]
 impl<'a> Drop for close_res<'a> {
     fn drop(&mut self) {
         self.i.set(false);

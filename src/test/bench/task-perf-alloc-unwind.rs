@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(unsafe_destructor, box_syntax, std_misc, collections)]
+#![feature(box_syntax, std_misc, collections)]
 
 use std::env;
 use std::thread;
@@ -54,7 +54,6 @@ struct r {
   _l: Box<nillist>,
 }
 
-#[unsafe_destructor]
 impl Drop for r {
     fn drop(&mut self) {}
 }

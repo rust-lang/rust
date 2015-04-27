@@ -493,7 +493,6 @@ impl<'b> BorrowRef<'b> {
     }
 }
 
-#[unsafe_destructor]
 impl<'b> Drop for BorrowRef<'b> {
     #[inline]
     fn drop(&mut self) {
@@ -557,7 +556,6 @@ struct BorrowRefMut<'b> {
     _borrow: &'b Cell<BorrowFlag>,
 }
 
-#[unsafe_destructor]
 impl<'b> Drop for BorrowRefMut<'b> {
     #[inline]
     fn drop(&mut self) {

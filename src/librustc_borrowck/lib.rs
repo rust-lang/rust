@@ -25,7 +25,6 @@
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
-#![feature(unsafe_destructor)]
 #![feature(into_cow)]
 
 #[macro_use] extern crate log;

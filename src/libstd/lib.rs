@@ -118,7 +118,6 @@
 #![feature(staged_api)]
 #![feature(unboxed_closures)]
 #![feature(unicode)]
-#![feature(unsafe_destructor)]
 #![feature(unsafe_no_drop_flag, filling_drop)]
 #![feature(macro_reexport)]
 #![feature(unique)]

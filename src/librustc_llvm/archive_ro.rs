@@ -105,7 +105,6 @@ impl<'a> Iterator for Iter<'a> {
     }
 }
 
-#[unsafe_destructor]
 impl<'a> Drop for Iter<'a> {
     fn drop(&mut self) {
         unsafe {

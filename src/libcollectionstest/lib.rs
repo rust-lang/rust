@@ -18,7 +18,6 @@
 #![feature(test)]
 #![feature(unboxed_closures)]
 #![feature(unicode)]
-#![feature(unsafe_destructor)]
 #![feature(into_cow)]
 #![feature(step_by)]
 #![cfg_attr(test, feature(str_char))]

@@ -303,13 +303,7 @@ extern "rust-intrinsic" {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg(not(stage0))]
     pub fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
-
-    /// dox
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg(stage0)]
-    pub fn copy_nonoverlapping<T>(dst: *mut T, src: *const T, count: usize);
 
     /// Copies `count * size_of<T>` bytes from `src` to `dst`. The source
     /// and destination may overlap.
@@ -340,13 +334,7 @@ extern "rust-intrinsic" {
     /// ```
     ///
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg(not(stage0))]
     pub fn copy<T>(src: *const T, dst: *mut T, count: usize);
-
-    /// dox
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg(stage0)]
-    pub fn copy<T>(dst: *mut T, src: *const T, count: usize);
 
     /// Invokes memset on the specified pointer, setting `count * size_of::<T>()`
     /// bytes of memory starting at `dst` to `c`.
@@ -572,7 +560,5 @@ extern "rust-intrinsic" {
 
     /// Returns the value of the discriminant for the variant in 'v',
     /// cast to a `u64`; if `T` has no discriminant, returns 0.
-    // SNAP 5520801
-    #[cfg(not(stage0))]
     pub fn discriminant_value<T>(v: &T) -> u64;
 }
