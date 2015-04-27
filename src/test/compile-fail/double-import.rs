@@ -19,7 +19,7 @@ mod sub2 {
     fn foo() {} // implementation 2
 }
 
-use sub1::foo; //~ note previous import of `foo` here
-use sub2::foo; //~ error a value named `foo` has already been imported in this module [e0252]
+use sub1::foo; //~ NOTE previous import of `foo` here
+use sub2::foo; //~ ERROR a value named `foo` has already been imported in this module [E0252]
 
 fn main() {}
