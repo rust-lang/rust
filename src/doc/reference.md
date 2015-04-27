@@ -192,13 +192,13 @@ which must be _escaped_ by a preceding `U+005C` character (`\`).
 
 A _string literal_ is a sequence of any Unicode characters enclosed within two
 `U+0022` (double-quote) characters, with the exception of `U+0022` itself,
-which must be _escaped_ by a preceding `U+005C` character (`\`), or a _raw
-string literal_.
+which must be _escaped_ by a preceding `U+005C` character (`\`).
 
-A multi-line string literal may be defined by terminating each line with a
-`U+005C` character (`\`) immediately before the newline. This causes the
-`U+005C` character, the newline, and all whitespace at the beginning of the
-next line to be ignored.
+Line-break characters are allowed in string literals. Normally they represent
+themselves (i.e. no translation), but as a special exception, when a `U+005C`
+character (`\`) occurs immediately before the newline, the `U+005C` character,
+the newline, and all whitespace at the beginning of the next line are ignored.
+Thus `a` and `b` are equal:
 
 ```rust
 let a = "foobar";
