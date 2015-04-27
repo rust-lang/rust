@@ -1,7 +1,7 @@
-- Feature Name: Duration Reform
+- Feature Name: duration
 - Start Date: 2015-03-24
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: https://github.com/rust-lang/rfcs/pull/1040
+- Rust Issue: https://github.com/rust-lang/rust/issues/24874
 
 # Summary
 
@@ -109,10 +109,10 @@ In general, this RFC assumes that timeout APIs permit spurious updates (see, for
 * `Add`, `Sub`, `Mul`, `Div` which follow the overflow and underflow
   rules for `u64` when applied to the `secs` field (in particular,
   `Sub` will panic if the result would be negative). Nanoseconds
-  must be less than 1 billion and great than or equal to 0, and carry 
+  must be less than 1 billion and great than or equal to 0, and carry
   into the `secs` field.
 * `Display`, which prints a number of seconds, milliseconds and
-  nanoseconds (if more than 0). For example, a `Duration` would be 
+  nanoseconds (if more than 0). For example, a `Duration` would be
   represented as `"15 seconds, 306 milliseconds, and 13 nanoseconds"`
 * `Debug`, `Ord` (and `PartialOrd`), `Eq` (and `PartialEq`), `Copy`
   and `Clone`, which are derived.
