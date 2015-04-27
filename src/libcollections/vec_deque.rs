@@ -1395,6 +1395,42 @@ impl<T> VecDeque<T> {
         // naive impl
         self.extend(other.drain());
     }
+
+    /// Retains only the elements specified by the predicate.
+    ///
+    /// In other words, remove all elements `e` such that `f(&e)` returns false.
+    /// This method operates in place and preserves the order of the retained
+    /// elements.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(vec_deque_retain)]
+    /// use std::collections::VecDeque;
+    ///
+    /// let mut buf = VecDeque::new();
+    /// buf.extend(1..5);
+    /// buf.retain(|&x| x%2 == 0);
+    ///
+    /// let v: Vec<_> = buf.into_iter().collect();
+    /// assert_eq!(&v[..], &[2, 4]);
+    /// ```
+    #[unstable(feature = "vec_deque_retain",
+               reason = "new API, waiting for dust to settle")]
+    pub fn retain<F>(&mut self, mut f: F) where F: FnMut(&T) -> bool {
+        let len = self.len();
+        let mut del = 0;
+        for i in 0..len {
+            if !f(&self[i]) {
+                del += 1;
+            } else if del > 0 {
+                self.swap(i-del, i);
+            }
+        }
+        if del > 0 {
+            self.truncate(len - del);
+        }
+    }
 }
 
 impl<T: Clone> VecDeque<T> {
