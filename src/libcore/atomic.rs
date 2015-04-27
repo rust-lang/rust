@@ -129,6 +129,12 @@ pub struct AtomicPtr<T> {
     _marker: PhantomData<*mut T>,
 }
 
+impl<T> Default for AtomicPtr<T> {
+    fn default() -> AtomicPtr<T> {
+        AtomicPtr::new(::ptr::null_mut())
+    }
+}
+
 unsafe impl<T> Sync for AtomicPtr<T> {}
 
 /// Atomic memory orderings
