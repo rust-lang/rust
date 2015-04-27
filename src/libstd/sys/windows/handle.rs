@@ -12,6 +12,7 @@ use prelude::v1::*;
 
 use io::ErrorKind;
 use io;
+use libc::funcs::extra::kernel32::{GetCurrentProcess, DuplicateHandle};
 use libc::{self, HANDLE};
 use mem;
 use ptr;
@@ -64,6 +65,18 @@ impl Handle {
                             ptr::null_mut())
         }));
         Ok(amt as usize)
+    }
+
+    pub fn duplicate(&self, access: libc::DWORD, inherit: bool,
+                     options: libc::DWORD) -> io::Result<Handle> {
+        let mut ret = 0 as libc::HANDLE;
+        try!(cvt(unsafe {
+            let cur_proc = GetCurrentProcess();
+            DuplicateHandle(cur_proc, self.0, cur_proc, &mut ret,
+                            access, inherit as libc::BOOL,
+                            options)
+        }));
+        Ok(Handle::new(ret))
     }
 }
 
