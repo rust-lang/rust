@@ -254,18 +254,6 @@ impl<F> CharEq for F where F: FnMut(char) -> bool {
     fn only_ascii(&self) -> bool { false }
 }
 
-impl<'a> CharEq for &'a [char] {
-    #[inline]
-    fn matches(&mut self, c: char) -> bool {
-        self.iter().any(|&m| { let mut m = m; m.matches(c) })
-    }
-
-    #[inline]
-    fn only_ascii(&self) -> bool {
-        self.iter().all(|m| m.only_ascii())
-    }
-}
-
 struct CharEqPattern<C: CharEq>(C);
 
 #[derive(Clone)]
@@ -566,31 +554,6 @@ impl<'a> DoubleEndedSearcher<'a> for CharSearcher<'a> {}
 /// Searches for chars that are equal to a given char
 impl<'a> Pattern<'a> for char {
     pattern_methods!(CharSearcher<'a>, CharEqPattern, CharSearcher);
-}
-
-/////////////////////////////////////////////////////////////////////////////
-// Impl for &[char]
-/////////////////////////////////////////////////////////////////////////////
-
-// Todo: Change / Remove due to ambiguity in meaning.
-
-/// Associated type for `<&[char] as Pattern<'a>>::Searcher`.
-#[derive(Clone)]
-pub struct CharSliceSearcher<'a, 'b>(<CharEqPattern<&'b [char]> as Pattern<'a>>::Searcher);
-
-unsafe impl<'a, 'b> Searcher<'a> for CharSliceSearcher<'a, 'b> {
-    searcher_methods!(forward);
-}
-
-unsafe impl<'a, 'b> ReverseSearcher<'a> for CharSliceSearcher<'a, 'b> {
-    searcher_methods!(reverse);
-}
-
-impl<'a, 'b> DoubleEndedSearcher<'a> for CharSliceSearcher<'a, 'b> {}
-
-/// Searches for chars that are equal to any of the chars in the array
-impl<'a, 'b> Pattern<'a> for &'b [char] {
-    pattern_methods!(CharSliceSearcher<'a, 'b>, CharEqPattern, CharSliceSearcher);
 }
 
 /////////////////////////////////////////////////////////////////////////////

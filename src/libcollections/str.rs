@@ -1194,15 +1194,13 @@ impl str {
     ///
     /// ```
     /// assert_eq!("11foo1bar11".trim_matches('1'), "foo1bar");
-    ///
-    /// let x: &[_] = &['1', '2'];
-    /// assert_eq!("12foo1bar12".trim_matches(x), "foo1bar");
     /// ```
     ///
     /// More complex patterns with closures:
     ///
     /// ```
     /// assert_eq!("123foo1bar123".trim_matches(|c: char| c.is_numeric()), "foo1bar");
+    /// assert_eq!("12foo1bar12".trim_matches(|c| "21".contains(c)), "foo1bar");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn trim_matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> &'a str
@@ -1223,15 +1221,14 @@ impl str {
     ///
     /// ```
     /// assert_eq!("11foo1bar11".trim_left_matches('1'), "foo1bar11");
-    ///
-    /// let x: &[_] = &['1', '2'];
-    /// assert_eq!("12foo1bar12".trim_left_matches(x), "foo1bar12");
+    /// assert_eq!("()()(())()()".trim_left_matches("()"), "(())()()");
     /// ```
     ///
     /// More complex patterns with closures:
     ///
     /// ```
     /// assert_eq!("123foo1bar123".trim_left_matches(|c: char| c.is_numeric()), "foo1bar123");
+    /// assert_eq!("12foo1bar12".trim_left_matches(|c| "21".contains(c)), "foo1bar12");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn trim_left_matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> &'a str {
@@ -1250,14 +1247,14 @@ impl str {
     ///
     /// ```
     /// assert_eq!("11foo1bar11".trim_right_matches('1'), "11foo1bar");
-    /// let x: &[_] = &['1', '2'];
-    /// assert_eq!("12foo1bar12".trim_right_matches(x), "12foo1bar");
+    /// assert_eq!("()()(())()()".trim_right_matches("()"), "()()(())");
     /// ```
     ///
     /// More complex patterns with closures:
     ///
     /// ```
     /// assert_eq!("123foo1bar123".trim_right_matches(|c: char| c.is_numeric()), "123foo1bar");
+    /// assert_eq!("12foo1bar12".trim_right_matches(|c| "21".contains(c)), "12foo1bar");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn trim_right_matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> &'a str
@@ -1485,7 +1482,6 @@ impl str {
     /// assert_eq!(s.find('L'), Some(0));
     /// assert_eq!(s.find('é'), Some(14));
     /// assert_eq!(s.find("Léopard"), Some(13));
-    ///
     /// ```
     ///
     /// More complex patterns with closures:
@@ -1501,9 +1497,8 @@ impl str {
     ///
     /// ```
     /// let s = "Löwe 老虎 Léopard";
-    /// let x: &[_] = &['1', '2'];
     ///
-    /// assert_eq!(s.find(x), None);
+    /// assert_eq!(s.find("?!"), None);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn find<'a, P: Pattern<'a>>(&'a self, pat: P) -> Option<usize> {
@@ -1528,6 +1523,7 @@ impl str {
     ///
     /// assert_eq!(s.rfind('L'), Some(13));
     /// assert_eq!(s.rfind('é'), Some(14));
+    /// assert_eq!(s.rfind("Léopard"), Some(13));
     /// ```
     ///
     /// More complex patterns with closures:
@@ -1543,9 +1539,8 @@ impl str {
     ///
     /// ```
     /// let s = "Löwe 老虎 Léopard";
-    /// let x: &[_] = &['1', '2'];
     ///
-    /// assert_eq!(s.rfind(x), None);
+    /// assert_eq!(s.rfind("?!"), None);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn rfind<'a, P: Pattern<'a>>(&'a self, pat: P) -> Option<usize>
