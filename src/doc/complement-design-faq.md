@@ -79,7 +79,7 @@ feature.
 A nice replacement is the [lazy constructor macro][lcm] by [Marvin
 Löbel][kim].
 
-[fqa]: https://mail.mozilla.org/pipermail/rust-dev/2013-April/003815.html
+[fqa]: http://yosefk.com/c++fqa/ctors.html#fqa-10.12
 [elp]: http://ericlippert.com/2013/02/06/static-constructors-part-one/
 [lcm]: https://gist.github.com/Kimundi/8782487
 [kim]: https://github.com/Kimundi
