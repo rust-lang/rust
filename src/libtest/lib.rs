@@ -316,7 +316,8 @@ fn optgroups() -> Vec<getopts::OptGroup> {
       getopts::optflag("h", "help", "Display this message (longer with --help)"),
       getopts::optopt("", "logfile", "Write logs to the specified file instead \
                           of stdout", "PATH"),
-      getopts::optflag("", "no-capture", "don't capture stdout/stderr of each \
+      getopts::optflag("", "nocapture", "Deprecated. Use --no-capture."),
+      getopts::optflag("", "no-capture", "Don't capture stdout/stderr of each \
                                          task, allow printing directly"),
       getopts::optopt("", "color", "Configure coloring of output:
             auto   = colorize if stdout is a tty and tests are run on serially (default);
@@ -386,6 +387,17 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
         no_capture = env::var("RUST_TEST_NO_CAPTURE").is_ok();
     }
 
+    // Warn on deprecated options but still accept them.
+    if matches.opt_present("nocapture") {
+        warn("--nocapture is deprecated. Use --no-capture instead.");
+        no_capture = true;
+    }
+
+    if env::var("RUST_TEST_NOCAPTURE").is_ok() {
+        warn("RUST_TEST_NOCAPTURE is deprecated. Use RUST_TEST_NO_CAPTURE instead.");
+        no_capture = true;
+    }
+
     let color = match matches.opt_str("color").as_ref().map(|s| &**s) {
         Some("auto") | None => AutoColor,
         Some("always") => AlwaysColor,
@@ -407,6 +419,11 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
     };
 
     Some(Ok(test_opts))
+}
+
+/// Writes a warning message to stderr.
+fn warn(message: &str) {
+    writeln!(io::stderr(), "WARN: {}", message).unwrap();
 }
 
 #[derive(Clone, PartialEq)]
