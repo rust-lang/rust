@@ -124,7 +124,9 @@ pub fn write_list<'b>(items: &[(String, String)], formatting: &ListFormatting<'b
         result.push_str(item);
 
         if tactic != ListTactic::Vertical && comment.len() > 0 {
-            result.push(' ');
+            if !comment.starts_with('\n') {
+                result.push(' ');
+            }
             result.push_str(comment);
         }
 
@@ -133,7 +135,9 @@ pub fn write_list<'b>(items: &[(String, String)], formatting: &ListFormatting<'b
         }
 
         if tactic == ListTactic::Vertical && comment.len() > 0 {
-            result.push(' ');
+            if !comment.starts_with('\n') {
+                result.push(' ');
+            }
             result.push_str(comment);
         }
     }

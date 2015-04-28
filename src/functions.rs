@@ -236,10 +236,11 @@ impl<'a> FmtVisitor<'a> {
             let cur_start = get_lo(&item);
             let snippet = self.snippet(codemap::mk_sp(prev_end, cur_start));
             let mut snippet = snippet.trim();
+            let white_space: &[_] = &[' ', '\t'];
             if snippet.starts_with(separator) {
-                snippet = snippet[1..].trim();
+                snippet = snippet[separator.len()..].trim_matches(white_space);
             } else if snippet.ends_with(separator) {
-                snippet = snippet[..snippet.len()-1].trim();
+                snippet = snippet[..snippet.len()-separator.len()].trim_matches(white_space);
             }
             result.push(snippet.to_string());
             prev_end = get_hi(&item);

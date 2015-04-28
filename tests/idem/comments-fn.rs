@@ -4,7 +4,10 @@
 fn foo<F, G>(a: aaaaaaaaaaaaa, // A comment
              b: bbbbbbbbbbbbb, /* a second comment */
              c: ccccccccccccc,
+             // Newline comment
              d: ddddddddddddd,
+             //  A multi line comment
+             // between args.
              e: eeeeeeeeeeeee /* comment before paren*/)
     -> bar
     where F: Foo, // COmment after where clause
