@@ -312,7 +312,11 @@ impl<I: DoubleEndedIterator + ?Sized> DoubleEndedIterator for Box<I> {
     fn next_back(&mut self) -> Option<I::Item> { (**self).next_back() }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<I: ExactSizeIterator + ?Sized> ExactSizeIterator for Box<I> {}
+impl<I: ExactSizeIterator + ?Sized> ExactSizeIterator for Box<I> {
+    fn len(&self) -> usize {
+        (**self).len()
+    }
+}
 
 
 /// `FnBox` is a version of the `FnOnce` intended for use with boxed
