@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(box_syntax, std_misc, collections)]
+#![feature(box_syntax, duration, duration_span, collections)]
 
 use std::env;
 use std::thread;
