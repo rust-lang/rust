@@ -42,7 +42,8 @@
 #![feature(slice_patterns)]
 #![feature(debug_builders)]
 #![feature(utf8_error)]
-#![cfg_attr(test, feature(rand, rustc_private, test, hash, collections))]
+#![cfg_attr(test, feature(rand, rustc_private, test, hash, collections,
+                          collections_drain, collections_range))]
 #![cfg_attr(test, allow(deprecated))] // rand
 
 #![feature(no_std)]
@@ -82,6 +83,7 @@ pub mod borrow;
 pub mod enum_set;
 pub mod fmt;
 pub mod linked_list;
+pub mod range;
 pub mod slice;
 pub mod str;
 pub mod string;

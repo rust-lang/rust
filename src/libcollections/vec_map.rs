@@ -418,7 +418,7 @@ impl<V> VecMap<V> {
         }
         let filter: fn((usize, Option<V>)) -> Option<(usize, V)> = filter; // coerce to fn ptr
 
-        Drain { iter: self.v.drain().enumerate().filter_map(filter) }
+        Drain { iter: self.v.drain(..).enumerate().filter_map(filter) }
     }
 
     /// Returns the number of elements in the map.
