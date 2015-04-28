@@ -70,6 +70,8 @@ pub struct OpenOptions {
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct FilePermissions { attrs: libc::DWORD }
 
+pub struct DirBuilder;
+
 impl Iterator for ReadDir {
     type Item = io::Result<DirEntry>;
     fn next(&mut self) -> Option<io::Result<DirEntry>> {
@@ -425,12 +427,16 @@ impl FileType {
     pub fn is_symlink(&self) -> bool { *self == FileType::Symlink }
 }
 
-pub fn mkdir(p: &Path) -> io::Result<()> {
-    let p = to_utf16(p);
-    try!(cvt(unsafe {
-        libc::CreateDirectoryW(p.as_ptr(), ptr::null_mut())
-    }));
-    Ok(())
+impl DirBuilder {
+    pub fn new() -> DirBuilder { DirBuilder }
+
+    pub fn mkdir(&self, p: &Path) -> io::Result<()> {
+        let p = to_utf16(p);
+        try!(cvt(unsafe {
+            libc::CreateDirectoryW(p.as_ptr(), ptr::null_mut())
+        }));
+        Ok(())
+    }
 }
 
 pub fn readdir(p: &Path) -> io::Result<ReadDir> {

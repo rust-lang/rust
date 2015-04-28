@@ -864,7 +864,7 @@ fn link_args(cmd: &mut Command,
     // target descriptor
     let t = &sess.target.target;
 
-    cmd.arg("-L").arg(&lib_path);
+    cmd.arg("-L").arg(&fix_windows_verbatim_for_gcc(&lib_path));
 
     cmd.arg("-o").arg(out_filename).arg(obj_filename);
 

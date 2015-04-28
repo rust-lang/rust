@@ -152,6 +152,15 @@ pub struct Permissions(fs_imp::FilePermissions);
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct FileType(fs_imp::FileType);
 
+/// A builder used to create directories in various manners.
+///
+/// This builder also supports platform-specific options.
+#[unstable(feature = "dir_builder", reason = "recently added API")]
+pub struct DirBuilder {
+    inner: fs_imp::DirBuilder,
+    recursive: bool,
+}
+
 impl File {
     /// Attempts to open a file in read-only mode.
     ///
@@ -997,7 +1006,7 @@ pub fn canonicalize<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn create_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
-    fs_imp::mkdir(path.as_ref())
+    DirBuilder::new().create(path.as_ref())
 }
 
 /// Recursively create a directory and all of its parent components if they
@@ -1022,10 +1031,7 @@ pub fn create_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn create_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
-    let path = path.as_ref();
-    if path == Path::new("") || path.is_dir() { return Ok(()) }
-    if let Some(p) = path.parent() { try!(create_dir_all(p)) }
-    create_dir(path)
+    DirBuilder::new().recursive(true).create(path.as_ref())
 }
 
 /// Removes an existing, empty directory.
@@ -1284,6 +1290,52 @@ pub fn set_file_times<P: AsRef<Path>>(path: P, accessed: u64,
                      method may not always exist")]
 pub fn set_permissions<P: AsRef<Path>>(path: P, perm: Permissions) -> io::Result<()> {
     fs_imp::set_perm(path.as_ref(), perm.0)
+}
+
+impl DirBuilder {
+    /// Creates a new set of options with default mode/security settings for all
+    /// platforms and also non-recursive.
+    pub fn new() -> DirBuilder {
+        DirBuilder {
+            inner: fs_imp::DirBuilder::new(),
+            recursive: false,
+        }
+    }
+
+    /// Indicate that directories create should be created recursively, creating
+    /// all parent directories if they do not exist with the same security and
+    /// permissions settings.
+    ///
+    /// This option defaults to `false`
+    pub fn recursive(&mut self, recursive: bool) -> &mut Self {
+        self.recursive = recursive;
+        self
+    }
+
+    /// Create the specified directory with the options configured in this
+    /// builder.
+    pub fn create<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
+        let path = path.as_ref();
+        if self.recursive {
+            self.create_dir_all(path)
+        } else {
+            self.inner.mkdir(path)
+        }
+    }
+
+    fn create_dir_all(&self, path: &Path) -> io::Result<()> {
+        if path == Path::new("") || path.is_dir() { return Ok(()) }
+        if let Some(p) = path.parent() {
+            try!(self.create_dir_all(p))
+        }
+        self.inner.mkdir(path)
+    }
+}
+
+impl AsInnerMut<fs_imp::DirBuilder> for DirBuilder {
+    fn as_inner_mut(&mut self) -> &mut fs_imp::DirBuilder {
+        &mut self.inner
+    }
 }
 
 #[cfg(test)]
