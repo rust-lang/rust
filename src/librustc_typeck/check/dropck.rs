@@ -450,41 +450,57 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'tcx>(
 
             let dtor_typescheme = ty::lookup_item_type(rcx.tcx(), impl_did);
             let dtor_generics = dtor_typescheme.generics;
-            let dtor_predicates = ty::lookup_predicates(rcx.tcx(), impl_did);
 
-            let has_pred_of_interest = dtor_predicates.predicates.iter().any(|pred| {
-                // In `impl<T> Drop where ...`, assume most predicates
-                // represent capability on `T` via which a destructor
-                // could access borrowed data. But some bounds (Sized,
-                // Copy, etc), have no items, i.e. no added capabilty
-                // for such type-specific access.
+            let mut has_pred_of_interest = false;
 
-                let result = match *pred {
-                    ty::Predicate::Trait(ty::Binder(ref t_pred)) => {
-                        let def_id = t_pred.trait_ref.def_id;
-                        // A OIBIT (or even a normal builtin) trait
-                        // defines no associated items, and is
-                        // uninteresting from point of view of dropck.
-                        ty::trait_items(rcx.tcx(), def_id).len() != 0
-                    }
-                    ty::Predicate::Equate(..) |
-                    ty::Predicate::RegionOutlives(..) |
-                    ty::Predicate::TypeOutlives(..) |
-                    ty::Predicate::Projection(..) => {
-                        // for now, assume all other where-clauses may
-                        // give the drop implementation the capabilty
-                        // to access borrowed data.
-                        true
-                    }
-                };
-
-                if result {
-                    debug!("typ: {} has interesting dtor due to generic preds, e.g. {}",
-                           typ.repr(rcx.tcx()), pred.repr(rcx.tcx()));
+            let mut seen_items = Vec::new();
+            let mut items_to_inspect = vec![impl_did];
+            'items: while let Some(item_def_id) = items_to_inspect.pop() {
+                if seen_items.contains(&item_def_id) {
+                    continue;
                 }
 
-                result
-            });
+                for pred in ty::lookup_predicates(rcx.tcx(), item_def_id).predicates {
+                    let result = match pred {
+                        ty::Predicate::Equate(..) |
+                        ty::Predicate::RegionOutlives(..) |
+                        ty::Predicate::TypeOutlives(..) |
+                        ty::Predicate::Projection(..) => {
+                            // For now, assume all these where-clauses
+                            // may give drop implementation capabilty
+                            // to access borrowed data.
+                            true
+                        }
+
+                        ty::Predicate::Trait(ty::Binder(ref t_pred)) => {
+                            let def_id = t_pred.trait_ref.def_id;
+                            if ty::trait_items(rcx.tcx(), def_id).len() != 0 {
+                                // If trait has items, assume it adds
+                                // capability to access borrowed data.
+                                true
+                            } else {
+                                // Trait without items is itself
+                                // uninteresting from POV of dropck.
+                                //
+                                // However, may have parent w/ items;
+                                // so schedule checking of predicates,
+                                items_to_inspect.push(def_id);
+                                // and say "no capability found" for now.
+                                false
+                            }
+                        }
+                    };
+
+                    if result {
+                        has_pred_of_interest = true;
+                        debug!("typ: {} has interesting dtor due to generic preds, e.g. {}",
+                               typ.repr(rcx.tcx()), pred.repr(rcx.tcx()));
+                        break 'items;
+                    }
+                }
+
+                seen_items.push(item_def_id);
+            }
 
             // In `impl<'a> Drop ...`, we automatically assume
             // `'a` is meaningful and thus represents a bound
