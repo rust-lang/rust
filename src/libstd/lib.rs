@@ -307,13 +307,12 @@ mod std {
     pub use sync; // used for select!()
     pub use error; // used for try!()
     pub use fmt; // used for any formatting strings
-    pub use option; // used for bitflags!{}
+    pub use option; // used for thread_local!{}
     pub use rt; // used for panic!()
     pub use vec; // used for vec![]
     pub use cell; // used for tls!
     pub use thread; // used for thread_local!
     pub use marker;  // used for tls!
-    pub use ops; // used for bitflags!
 
     // The test runner calls ::std::env::args() but really wants realstd
     #[cfg(test)] pub use realstd::env as env;
