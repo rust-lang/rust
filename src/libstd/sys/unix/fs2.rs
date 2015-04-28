@@ -61,6 +61,8 @@ pub struct FilePermissions { mode: mode_t }
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct FileType { mode: mode_t }
 
+pub struct DirBuilder { mode: mode_t }
+
 impl FileAttr {
     pub fn size(&self) -> u64 { self.stat.st_size as u64 }
     pub fn perm(&self) -> FilePermissions {
@@ -342,6 +344,22 @@ impl File {
     pub fn fd(&self) -> &FileDesc { &self.0 }
 }
 
+impl DirBuilder {
+    pub fn new() -> DirBuilder {
+        DirBuilder { mode: 0o777 }
+    }
+
+    pub fn mkdir(&self, p: &Path) -> io::Result<()> {
+        let p = try!(cstr(p));
+        try!(cvt(unsafe { libc::mkdir(p.as_ptr(), self.mode) }));
+        Ok(())
+    }
+
+    pub fn set_mode(&mut self, mode: mode_t) {
+        self.mode = mode;
+    }
+}
+
 fn cstr(path: &Path) -> io::Result<CString> {
     path.as_os_str().to_cstring().ok_or(
         io::Error::new(io::ErrorKind::InvalidInput, "path contained a null"))
@@ -399,12 +417,6 @@ impl fmt::Debug for File {
         }
         b.finish()
     }
-}
-
-pub fn mkdir(p: &Path) -> io::Result<()> {
-    let p = try!(cstr(p));
-    try!(cvt(unsafe { libc::mkdir(p.as_ptr(), 0o777) }));
-    Ok(())
 }
 
 pub fn readdir(p: &Path) -> io::Result<ReadDir> {
