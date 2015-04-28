@@ -14,6 +14,7 @@ use std::collections::BTreeMap;
 use ast;
 use ast::{Ident, Name, TokenTree};
 use codemap::Span;
+use diagnostics::metadata::{check_uniqueness, output_metadata, Duplicate};
 use ext::base::{ExtCtxt, MacEager, MacResult};
 use ext::build::AstBuilder;
 use parse::token;
@@ -24,28 +25,24 @@ use util::small_vector::SmallVector;
 const MAX_DESCRIPTION_WIDTH: usize = 80;
 
 thread_local! {
-    static REGISTERED_DIAGNOSTICS: RefCell<BTreeMap<Name, Option<Name>>> = {
+    static REGISTERED_DIAGNOSTICS: RefCell<ErrorMap> = {
         RefCell::new(BTreeMap::new())
     }
 }
-thread_local! {
-    static USED_DIAGNOSTICS: RefCell<BTreeMap<Name, Span>> = {
-        RefCell::new(BTreeMap::new())
-    }
+
+/// Error information type.
+pub struct ErrorInfo {
+    pub description: Option<Name>,
+    pub use_site: Option<Span>
 }
+
+/// Mapping from error codes to metadata.
+pub type ErrorMap = BTreeMap<Name, ErrorInfo>;
 
 fn with_registered_diagnostics<T, F>(f: F) -> T where
-    F: FnOnce(&mut BTreeMap<Name, Option<Name>>) -> T,
+    F: FnOnce(&mut ErrorMap) -> T,
 {
     REGISTERED_DIAGNOSTICS.with(move |slot| {
-        f(&mut *slot.borrow_mut())
-    })
-}
-
-fn with_used_diagnostics<T, F>(f: F) -> T where
-    F: FnOnce(&mut BTreeMap<Name, Span>) -> T,
-{
-    USED_DIAGNOSTICS.with(move |slot| {
         f(&mut *slot.borrow_mut())
     })
 }
@@ -58,23 +55,26 @@ pub fn expand_diagnostic_used<'cx>(ecx: &'cx mut ExtCtxt,
         (1, Some(&ast::TtToken(_, token::Ident(code, _)))) => code,
         _ => unreachable!()
     };
-    with_used_diagnostics(|diagnostics| {
-        match diagnostics.insert(code.name, span) {
-            Some(previous_span) => {
+
+    with_registered_diagnostics(|diagnostics| {
+        match diagnostics.get_mut(&code.name) {
+            // Previously used errors.
+            Some(&mut ErrorInfo { description: _, use_site: Some(previous_span) }) => {
                 ecx.span_warn(span, &format!(
                     "diagnostic code {} already used", &token::get_ident(code)
                 ));
                 ecx.span_note(previous_span, "previous invocation");
-            },
-            None => ()
-        }
-        ()
-    });
-    with_registered_diagnostics(|diagnostics| {
-        if !diagnostics.contains_key(&code.name) {
-            ecx.span_err(span, &format!(
-                "used diagnostic code {} not registered", &token::get_ident(code)
-            ));
+            }
+            // Newly used errors.
+            Some(ref mut info) => {
+                info.use_site = Some(span);
+            }
+            // Unregistered errors.
+            None => {
+                ecx.span_err(span, &format!(
+                    "used diagnostic code {} not registered", &token::get_ident(code)
+                ));
+            }
         }
     });
     MacEager::expr(ecx.expr_tuple(span, Vec::new()))
@@ -116,10 +116,14 @@ pub fn expand_register_diagnostic<'cx>(ecx: &'cx mut ExtCtxt,
                 token::get_ident(*code), MAX_DESCRIPTION_WIDTH
             ));
         }
-        raw_msg
     });
+    // Add the error to the map.
     with_registered_diagnostics(|diagnostics| {
-        if diagnostics.insert(code.name, description).is_some() {
+        let info = ErrorInfo {
+            description: description,
+            use_site: None
+        };
+        if diagnostics.insert(code.name, info).is_some() {
             ecx.span_err(span, &format!(
                 "diagnostic code {} already registered", &token::get_ident(*code)
             ));
@@ -143,19 +147,43 @@ pub fn expand_build_diagnostic_array<'cx>(ecx: &'cx mut ExtCtxt,
                                           span: Span,
                                           token_tree: &[TokenTree])
                                           -> Box<MacResult+'cx> {
-    let name = match (token_tree.len(), token_tree.get(0)) {
-        (1, Some(&ast::TtToken(_, token::Ident(ref name, _)))) => name,
+    assert_eq!(token_tree.len(), 3);
+    let (crate_name, name) = match (&token_tree[0], &token_tree[2]) {
+        (
+            // Crate name.
+            &ast::TtToken(_, token::Ident(ref crate_name, _)),
+            // DIAGNOSTICS ident.
+            &ast::TtToken(_, token::Ident(ref name, _))
+        ) => (crate_name.as_str(), name),
         _ => unreachable!()
     };
 
+    // Check uniqueness of errors and output metadata.
+    with_registered_diagnostics(|diagnostics| {
+        match check_uniqueness(crate_name, &*diagnostics) {
+            Ok(Duplicate(err, location)) => {
+                ecx.span_err(span, &format!(
+                    "error {} from `{}' also found in `{}'",
+                    err, crate_name, location
+                ));
+            },
+            Ok(_) => (),
+            Err(e) => panic!("{}", e.description())
+        }
+
+        output_metadata(&*ecx, crate_name, &*diagnostics).ok().expect("metadata output error");
+    });
+
+    // Construct the output expression.
     let (count, expr) =
         with_registered_diagnostics(|diagnostics| {
             let descriptions: Vec<P<ast::Expr>> =
-                diagnostics.iter().filter_map(|(code, description)| {
-                    description.map(|description| {
+                diagnostics.iter().filter_map(|(code, info)| {
+                    info.description.map(|description| {
                         ecx.expr_tuple(span, vec![
                             ecx.expr_str(span, token::get_name(*code)),
-                            ecx.expr_str(span, token::get_name(description))])
+                            ecx.expr_str(span, token::get_name(description))
+                        ])
                     })
                 }).collect();
             (descriptions.len(), ecx.expr_vec(span, descriptions))
