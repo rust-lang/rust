@@ -68,7 +68,7 @@ const MAX_WIDTH: usize = 100;
 const MIN_STRING: usize = 10;
 const TAB_SPACES: usize = 4;
 const FN_BRACE_STYLE: BraceStyle = BraceStyle::SameLineWhere;
-const FN_RETURN_INDENT: ReturnIndent = ReturnIndent::WithWhereClauseOrArgs;
+const FN_RETURN_INDENT: ReturnIndent = ReturnIndent::WithArgs;
 // When we get scoped annotations, we should have rustfmt::skip.
 const SKIP_ANNOTATION: &'static str = "rustfmt_skip";
 
@@ -99,8 +99,6 @@ enum ReturnIndent {
     WithArgs,
     // Aligned with the where clause
     WithWhereClause,
-    // Aligned with the where clause if there is one, otherwise the args.
-    WithWhereClauseOrArgs,
 }
 
 // Formatting which depends on the AST.

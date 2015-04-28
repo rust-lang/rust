@@ -1,5 +1,12 @@
 // Test attributes and doc comments are preserved.
 
+extern crate Foo;
+#[Attr1]
+extern crate Bar;
+#[Attr2]
+#[Attr2]
+extern crate Baz;
+
 /// Blah blah blah.
 impl Bar {
     /// Blah blah blooo.

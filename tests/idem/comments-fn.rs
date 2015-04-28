@@ -9,7 +9,7 @@ fn foo<F, G>(a: aaaaaaaaaaaaa, // A comment
              //  A multi line comment
              // between args.
              e: eeeeeeeeeeeee /* comment before paren*/)
-    -> bar
+             -> bar
     where F: Foo, // COmment after where clause
           G: Goo /* final comment */
 {

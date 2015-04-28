@@ -88,9 +88,6 @@ impl<'a> FmtVisitor<'a> {
                result.len() + indent + ret_str.len() > MAX_WIDTH {
                 let indent = match FN_RETURN_INDENT {
                     ReturnIndent::WithWhereClause => indent + 4,
-                    ReturnIndent::WithWhereClauseOrArgs if where_clause.predicates.len() > 0 => {
-                        indent + 4
-                    }
                     // TODO we might want to check that using the arg indent doesn't
                     // blow our budget, and if it does, then fallback to the where
                     // clause indent.
@@ -254,7 +251,8 @@ impl<'a> FmtVisitor<'a> {
         // The fix is comments in the AST or a span for the closing paren.
         let snippet = self.snippet(codemap::mk_sp(prev_end, next_span_start));
         let snippet = snippet.trim();
-        let snippet = &snippet[..snippet.find(terminator).unwrap_or(snippet.len())];
+        let snippet = &snippet[..snippet.find(terminator)
+                                    .unwrap_or(snippet.find(separator).unwrap_or(snippet.len()))];
         let snippet = snippet.trim();
         result.push(snippet.to_string());
 
