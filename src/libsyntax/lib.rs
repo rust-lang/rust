@@ -69,6 +69,7 @@ pub mod diagnostics {
     pub mod macros;
     pub mod plugin;
     pub mod registry;
+    pub mod metadata;
 }
 
 pub mod syntax {

@@ -13,5 +13,3 @@
 register_diagnostics! {
     E0373 // closure may outlive current fn, but it borrows {}, which is owned by current fn
 }
-
-__build_diagnostic_array! { DIAGNOSTICS }
