@@ -18,7 +18,6 @@ use cell::UnsafeCell;
 
 // Sure wish we had macro hygiene, no?
 #[doc(hidden)]
-#[unstable(feature = "thread_local_internals")]
 pub mod __impl {
     pub use super::imp::Key as KeyInner;
     pub use super::imp::destroy_value;
@@ -78,12 +77,10 @@ pub struct LocalKey<T> {
     // This is trivially devirtualizable by LLVM because we never store anything
     // to this field and rustc can declare the `static` as constant as well.
     #[doc(hidden)]
-    #[unstable(feature = "thread_local_internals")]
     pub inner: fn() -> &'static __impl::KeyInner<UnsafeCell<Option<T>>>,
 
     // initialization routine to invoke to create a value
     #[doc(hidden)]
-    #[unstable(feature = "thread_local_internals")]
     pub init: fn() -> T,
 }
 
@@ -297,6 +294,7 @@ impl<T: 'static> LocalKey<T> {
 }
 
 #[cfg(all(any(target_os = "macos", target_os = "linux"), not(target_arch = "aarch64")))]
+#[doc(hidden)]
 mod imp {
     use prelude::v1::*;
 
@@ -304,8 +302,6 @@ mod imp {
     use intrinsics;
     use ptr;
 
-    #[doc(hidden)]
-    #[unstable(feature = "thread_local_internals")]
     pub struct Key<T> {
         // Place the inner bits in an `UnsafeCell` to currently get around the
         // "only Sync statics" restriction. This allows any type to be placed in
@@ -313,20 +309,16 @@ mod imp {
         //
         // Note that all access requires `T: 'static` so it can't be a type with
         // any borrowed pointers still.
-        #[unstable(feature = "thread_local_internals")]
         pub inner: UnsafeCell<T>,
 
         // Metadata to keep track of the state of the destructor. Remember that
         // these variables are thread-local, not global.
-        #[unstable(feature = "thread_local_internals")]
         pub dtor_registered: UnsafeCell<bool>, // should be Cell
-        #[unstable(feature = "thread_local_internals")]
         pub dtor_running: UnsafeCell<bool>, // should be Cell
     }
 
     unsafe impl<T> ::marker::Sync for Key<T> { }
 
-    #[doc(hidden)]
     impl<T> Key<T> {
         pub unsafe fn get(&'static self) -> Option<&'static T> {
             if intrinsics::needs_drop::<T>() && *self.dtor_running.get() {
@@ -422,8 +414,6 @@ mod imp {
         _tlv_atexit(dtor, t);
     }
 
-    #[doc(hidden)]
-    #[unstable(feature = "thread_local_internals")]
     pub unsafe extern fn destroy_value<T>(ptr: *mut u8) {
         let ptr = ptr as *mut Key<T>;
         // Right before we run the user destructor be sure to flag the
@@ -435,6 +425,7 @@ mod imp {
 }
 
 #[cfg(any(not(any(target_os = "macos", target_os = "linux")), target_arch = "aarch64"))]
+#[doc(hidden)]
 mod imp {
     use prelude::v1::*;
 
@@ -444,16 +435,12 @@ mod imp {
     use ptr;
     use sys_common::thread_local::StaticKey as OsStaticKey;
 
-    #[doc(hidden)]
-    #[unstable(feature = "thread_local_internals")]
     pub struct Key<T> {
         // Statically allocated initialization expression, using an `UnsafeCell`
         // for the same reasons as above.
-        #[unstable(feature = "thread_local_internals")]
         pub inner: UnsafeCell<T>,
 
         // OS-TLS key that we'll use to key off.
-        #[unstable(feature = "thread_local_internals")]
         pub os: OsStaticKey,
     }
 
@@ -464,7 +451,6 @@ mod imp {
         value: T,
     }
 
-    #[doc(hidden)]
     impl<T> Key<T> {
         pub unsafe fn get(&'static self) -> Option<&'static T> {
             self.ptr().map(|p| &*p)
@@ -489,14 +475,12 @@ mod imp {
                 key: self,
                 value: mem::transmute_copy(&self.inner),
             };
-            let ptr: *mut Value<T> = boxed::into_raw(ptr);
+            let ptr = boxed::into_raw(ptr);
             self.os.set(ptr as *mut u8);
             Some(&mut (*ptr).value as *mut T)
         }
     }
 
-    #[doc(hidden)]
-    #[unstable(feature = "thread_local_internals")]
     pub unsafe extern fn destroy_value<T: 'static>(ptr: *mut u8) {
         // The OS TLS ensures that this key contains a NULL value when this
         // destructor starts to run. We set it back to a sentinel value of 1 to
@@ -505,7 +489,7 @@ mod imp {
         //
         // Note that to prevent an infinite loop we reset it back to null right
         // before we return from the destructor ourselves.
-        let ptr: Box<Value<T>> = Box::from_raw(ptr as *mut Value<T>);
+        let ptr = Box::from_raw(ptr as *mut Value<T>);
         let key = ptr.key;
         key.os.set(1 as *mut u8);
         drop(ptr);
