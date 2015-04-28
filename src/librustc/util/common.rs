@@ -55,8 +55,8 @@ pub fn time<T, U, F>(do_it: bool, what: &str, u: U, f: F) -> T where
     };
     let rv = rv.unwrap();
 
-    println!("{}time: {}.{:03} \t{}", repeat("  ").take(old).collect::<String>(),
-             dur.num_seconds(), dur.num_milliseconds() % 1000, what);
+    println!("{}time: {} \t{}", repeat("  ").take(old).collect::<String>(),
+             dur, what);
     DEPTH.with(|slot| slot.set(old));
 
     rv

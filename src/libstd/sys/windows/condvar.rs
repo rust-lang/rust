@@ -42,7 +42,7 @@ impl Condvar {
     pub unsafe fn wait_timeout(&self, mutex: &Mutex, dur: Duration) -> bool {
         let r = ffi::SleepConditionVariableSRW(self.inner.get(),
                                                mutex::raw(mutex),
-                                               dur.num_milliseconds() as DWORD,
+                                               super::dur2timeout(dur),
                                                0);
         if r == 0 {
             const ERROR_TIMEOUT: DWORD = 0x5B4;

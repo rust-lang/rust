@@ -69,12 +69,12 @@ pub struct Condvar { inner: Box<StaticCondvar> }
 /// # Examples
 ///
 /// ```
-/// # #![feature(std_misc)]
+/// # #![feature(static_condvar)]
 /// use std::sync::{StaticCondvar, CONDVAR_INIT};
 ///
 /// static CVAR: StaticCondvar = CONDVAR_INIT;
 /// ```
-#[unstable(feature = "std_misc",
+#[unstable(feature = "static_condvar",
            reason = "may be merged with Condvar in the future")]
 pub struct StaticCondvar {
     inner: sys::Condvar,
@@ -82,7 +82,7 @@ pub struct StaticCondvar {
 }
 
 /// Constant initializer for a statically allocated condition variable.
-#[unstable(feature = "std_misc",
+#[unstable(feature = "static_condvar",
            reason = "may be merged with Condvar in the future")]
 pub const CONDVAR_INIT: StaticCondvar = StaticCondvar {
     inner: sys::CONDVAR_INIT,
@@ -164,6 +164,30 @@ impl Condvar {
     /// Waits on this condition variable for a notification, timing out after a
     /// specified duration.
     ///
+    /// The semantics of this function are equivalent to `wait()` except that
+    /// the thread will be blocked for roughly no longer than `dur`. This
+    /// method should not be used for precise timing due to anomalies such as
+    /// preemption or platform differences that may not cause the maximum
+    /// amount of time waited to be precisely `dur`.
+    ///
+    /// The returned boolean is `false` only if the timeout is known
+    /// to have elapsed.
+    ///
+    /// Like `wait`, the lock specified will be re-acquired when this function
+    /// returns, regardless of whether the timeout elapsed or not.
+    #[unstable(feature = "wait_timeout", reason = "waiting for Duration")]
+    pub fn wait_timeout<'a, T>(&self, guard: MutexGuard<'a, T>,
+                               dur: Duration)
+                               -> LockResult<(MutexGuard<'a, T>, bool)> {
+        unsafe {
+            let me: &'static Condvar = &*(self as *const _);
+            me.inner.wait_timeout(guard, dur)
+        }
+    }
+
+    /// Waits on this condition variable for a notification, timing out after a
+    /// specified duration.
+    ///
     /// The semantics of this function are equivalent to `wait_timeout` except
     /// that the implementation will repeatedly wait while the duration has not
     /// passed and the provided function returns `false`.
@@ -214,7 +238,7 @@ impl StaticCondvar {
     /// notification.
     ///
     /// See `Condvar::wait`.
-    #[unstable(feature = "std_misc",
+    #[unstable(feature = "static_condvar",
                reason = "may be merged with Condvar in the future")]
     pub fn wait<'a, T>(&'static self, guard: MutexGuard<'a, T>)
                        -> LockResult<MutexGuard<'a, T>> {
@@ -235,14 +259,27 @@ impl StaticCondvar {
     /// specified duration.
     ///
     /// See `Condvar::wait_timeout`.
-    #[unstable(feature = "std_misc",
+    #[unstable(feature = "static_condvar",
                reason = "may be merged with Condvar in the future")]
     pub fn wait_timeout_ms<'a, T>(&'static self, guard: MutexGuard<'a, T>, ms: u32)
                                   -> LockResult<(MutexGuard<'a, T>, bool)> {
+        self.wait_timeout(guard, Duration::from_millis(ms as u64))
+    }
+
+    /// Waits on this condition variable for a notification, timing out after a
+    /// specified duration.
+    ///
+    /// See `Condvar::wait_timeout`.
+    #[unstable(feature = "static_condvar",
+               reason = "may be merged with Condvar in the future")]
+    pub fn wait_timeout<'a, T>(&'static self,
+                               guard: MutexGuard<'a, T>,
+                               timeout: Duration)
+                               -> LockResult<(MutexGuard<'a, T>, bool)> {
         let (poisoned, success) = unsafe {
             let lock = mutex::guard_lock(&guard);
             self.verify(lock);
-            let success = self.inner.wait_timeout(lock, Duration::milliseconds(ms as i64));
+            let success = self.inner.wait_timeout(lock, timeout);
             (mutex::guard_poison(&guard).get(), success)
         };
         if poisoned {
@@ -259,7 +296,7 @@ impl StaticCondvar {
     /// passed and the function returns `false`.
     ///
     /// See `Condvar::wait_timeout_with`.
-    #[unstable(feature = "std_misc",
+    #[unstable(feature = "static_condvar",
                reason = "may be merged with Condvar in the future")]
     pub fn wait_timeout_with<'a, T, F>(&'static self,
                                        guard: MutexGuard<'a, T>,
@@ -267,7 +304,8 @@ impl StaticCondvar {
                                        mut f: F)
                                        -> LockResult<(MutexGuard<'a, T>, bool)>
             where F: FnMut(LockResult<&mut T>) -> bool {
-        // This could be made more efficient by pushing the implementation into sys::condvar
+        // This could be made more efficient by pushing the implementation into
+        // sys::condvar
         let start = SteadyTime::now();
         let mut guard_result: LockResult<MutexGuard<'a, T>> = Ok(guard);
         while !f(guard_result
@@ -277,12 +315,15 @@ impl StaticCondvar {
             let now = SteadyTime::now();
             let consumed = &now - &start;
             let guard = guard_result.unwrap_or_else(|e| e.into_inner());
-            let res = self.wait_timeout_ms(guard, (dur - consumed).num_milliseconds() as u32);
-            let (new_guard_result, no_timeout) = match res {
-                Ok((new_guard, no_timeout)) => (Ok(new_guard), no_timeout),
-                Err(err) => {
-                    let (new_guard, no_timeout) = err.into_inner();
-                    (Err(PoisonError::new(new_guard)), no_timeout)
+            let (new_guard_result, no_timeout) = if consumed > dur {
+                (Ok(guard), false)
+            } else {
+                match self.wait_timeout(guard, dur - consumed) {
+                    Ok((new_guard, no_timeout)) => (Ok(new_guard), no_timeout),
+                    Err(err) => {
+                        let (new_guard, no_timeout) = err.into_inner();
+                        (Err(PoisonError::new(new_guard)), no_timeout)
+                    }
                 }
             };
             guard_result = new_guard_result;
@@ -301,14 +342,14 @@ impl StaticCondvar {
     /// Wakes up one blocked thread on this condvar.
     ///
     /// See `Condvar::notify_one`.
-    #[unstable(feature = "std_misc",
+    #[unstable(feature = "static_condvar",
                reason = "may be merged with Condvar in the future")]
     pub fn notify_one(&'static self) { unsafe { self.inner.notify_one() } }
 
     /// Wakes up all blocked threads on this condvar.
     ///
     /// See `Condvar::notify_all`.
-    #[unstable(feature = "std_misc",
+    #[unstable(feature = "static_condvar",
                reason = "may be merged with Condvar in the future")]
     pub fn notify_all(&'static self) { unsafe { self.inner.notify_all() } }
 
@@ -318,7 +359,7 @@ impl StaticCondvar {
     /// active users of the condvar, and this also doesn't prevent any future
     /// users of the condvar. This method is required to be called to not leak
     /// memory on all platforms.
-    #[unstable(feature = "std_misc",
+    #[unstable(feature = "static_condvar",
                reason = "may be merged with Condvar in the future")]
     pub unsafe fn destroy(&'static self) {
         self.inner.destroy()
@@ -447,7 +488,9 @@ mod tests {
         static S: AtomicUsize = ATOMIC_USIZE_INIT;
 
         let g = M.lock().unwrap();
-        let (g, success) = C.wait_timeout_with(g, Duration::nanoseconds(1000), |_| false).unwrap();
+        let (g, success) = C.wait_timeout_with(g, Duration::new(0, 1000), |_| {
+            false
+        }).unwrap();
         assert!(!success);
 
         let (tx, rx) = channel();
@@ -471,7 +514,8 @@ mod tests {
         });
 
         let mut state = 0;
-        let (_g, success) = C.wait_timeout_with(g, Duration::days(1), |_| {
+        let day = 24 * 60 * 60;
+        let (_g, success) = C.wait_timeout_with(g, Duration::new(day, 0), |_| {
             assert_eq!(state, S.load(Ordering::SeqCst));
             tx.send(()).unwrap();
             state += 1;
