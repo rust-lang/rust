@@ -737,8 +737,14 @@ fi
 # only disabled if you opt out.
 if [ -z "$CFG_VALGRIND" ]
 then
-    CFG_DISABLE_VALGRIND_RPASS=1
-    putvar CFG_DISABLE_VALGRIND_RPASS
+    # If the user has explicitly asked for valgrind tests, then fail
+    if [ -n "$CFG_ENABLE_VALGRIND" ] && [ -n "$CFG_ENABLE_VALGRIND_PROVIDED" ]
+    then
+        err "No valgrind present, but valgrind tests explicitly requested"
+    else
+        CFG_DISABLE_VALGRIND_RPASS=1
+        putvar CFG_DISABLE_VALGRIND_RPASS
+    fi
 fi
 
 if [ ! -z "$CFG_GDB" ]
