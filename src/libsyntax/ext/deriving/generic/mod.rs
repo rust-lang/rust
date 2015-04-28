@@ -197,7 +197,7 @@ use ast::{EnumDef, Expr, Ident, Generics, StructDef};
 use ast_util;
 use attr;
 use attr::AttrMetaMethods;
-use ext::base::ExtCtxt;
+use ext::base::{ExtCtxt, Annotatable};
 use ext::build::AstBuilder;
 use codemap::{self, DUMMY_SP};
 use codemap::Span;
@@ -378,41 +378,48 @@ impl<'a> TraitDef<'a> {
     pub fn expand(&self,
                   cx: &mut ExtCtxt,
                   mitem: &ast::MetaItem,
-                  item: &ast::Item,
-                  push: &mut FnMut(P<ast::Item>))
+                  item: Annotatable,
+                  push: &mut FnMut(Annotatable))
     {
-        let newitem = match item.node {
-            ast::ItemStruct(ref struct_def, ref generics) => {
-                self.expand_struct_def(cx,
-                                       &**struct_def,
-                                       item.ident,
-                                       generics)
-            }
-            ast::ItemEnum(ref enum_def, ref generics) => {
-                self.expand_enum_def(cx,
-                                     enum_def,
-                                     &item.attrs[..],
-                                     item.ident,
-                                     generics)
+        match item {
+            Annotatable::Item(item) => {
+                let newitem = match item.node {
+                    ast::ItemStruct(ref struct_def, ref generics) => {
+                        self.expand_struct_def(cx,
+                                               &**struct_def,
+                                               item.ident,
+                                               generics)
+                    }
+                    ast::ItemEnum(ref enum_def, ref generics) => {
+                        self.expand_enum_def(cx,
+                                             enum_def,
+                                             &item.attrs[..],
+                                             item.ident,
+                                             generics)
+                    }
+                    _ => {
+                        cx.span_err(mitem.span, "`derive` may only be applied to structs and enums");
+                        return;
+                    }
+                };
+                // Keep the lint attributes of the previous item to control how the
+                // generated implementations are linted
+                let mut attrs = newitem.attrs.clone();
+                attrs.extend(item.attrs.iter().filter(|a| {
+                    match &a.name()[..] {
+                        "allow" | "warn" | "deny" | "forbid" => true,
+                        _ => false,
+                    }
+                }).cloned());
+                push(Annotatable::Item(P(ast::Item {
+                    attrs: attrs,
+                    ..(*newitem).clone()
+                })))
             }
             _ => {
-                cx.span_err(mitem.span, "`derive` may only be applied to structs and enums");
-                return;
+                cx.span_err(mitem.span, "`derive` may only be applied to structs and enums");                
             }
-        };
-        // Keep the lint attributes of the previous item to control how the
-        // generated implementations are linted
-        let mut attrs = newitem.attrs.clone();
-        attrs.extend(item.attrs.iter().filter(|a| {
-            match &a.name()[..] {
-                "allow" | "warn" | "deny" | "forbid" => true,
-                _ => false,
-            }
-        }).cloned());
-        push(P(ast::Item {
-            attrs: attrs,
-            ..(*newitem).clone()
-        }))
+        }
     }
 
     /// Given that we are deriving a trait `DerivedTrait` for a type like:
