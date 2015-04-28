@@ -75,8 +75,7 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
         self.format_missing(s.lo);
         self.last_pos = s.lo;
 
-        // TODO need to check against expected indent
-        let indent = self.codemap.lookup_char_pos(s.lo).col.0;
+        let indent = self.block_indent;
         match fk {
             visit::FkItemFn(ident, ref generics, ref unsafety, ref abi, vis) => {
                 let new_fn = self.rewrite_fn(indent,
@@ -110,7 +109,7 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
     }
 
     fn visit_item(&mut self, item: &'v ast::Item) {
-        if item.attrs.iter().any(|a| is_skip(&a.node.value)) {
+        if self.visit_attrs(&item.attrs) {
             return;
         }
 
@@ -147,14 +146,14 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
     }
 
     fn visit_trait_item(&mut self, ti: &'v ast::TraitItem) {
-        if ti.attrs.iter().any(|a| is_skip(&a.node.value)) {
+        if self.visit_attrs(&ti.attrs) {
             return;
         }
         visit::walk_trait_item(self, ti)
     }
 
     fn visit_impl_item(&mut self, ii: &'v ast::ImplItem) {
-        if ii.attrs.iter().any(|a| is_skip(&a.node.value)) {
+        if self.visit_attrs(&ii.attrs) {
             return;
         }
         visit::walk_impl_item(self, ii)
@@ -194,6 +193,22 @@ impl<'a> FmtVisitor<'a> {
                 "".to_string()
             }
         }
+    }
+
+    // Returns true if we should skip the following item.
+    fn visit_attrs(&mut self, attrs: &[ast::Attribute]) -> bool {
+        for a in attrs {
+            self.format_missing_with_indent(a.span.lo);
+            if is_skip(&a.node.value) {
+                return true;
+            }
+
+            let attr_str = self.snippet(a.span);
+            self.changes.push_str_span(a.span, &attr_str);
+            self.last_pos = a.span.hi;
+        }
+
+        false
     }
 }
 

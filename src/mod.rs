@@ -20,8 +20,9 @@
 // TODO for lint violations of names, emit a refactor script
 
 // TODO priorities
+// annotations/doc comments
 // Fix fns and methods properly
-//   dead spans (comments) - in where clause (wait for fixed spans, test)
+//   dead spans (comments) - in where clause - test
 //
 // Smoke testing till we can use it
 // take config options from a file
@@ -67,7 +68,7 @@ const MAX_WIDTH: usize = 100;
 const MIN_STRING: usize = 10;
 const TAB_SPACES: usize = 4;
 const FN_BRACE_STYLE: BraceStyle = BraceStyle::SameLineWhere;
-const FN_RETURN_INDENT: ReturnIndent = ReturnIndent::WithArgs;
+const FN_RETURN_INDENT: ReturnIndent = ReturnIndent::WithWhereClauseOrArgs;
 // When we get scoped annotations, we should have rustfmt::skip.
 const SKIP_ANNOTATION: &'static str = "rustfmt_skip";
 
@@ -98,6 +99,8 @@ enum ReturnIndent {
     WithArgs,
     // Aligned with the where clause
     WithWhereClause,
+    // Aligned with the where clause if there is one, otherwise the args.
+    WithWhereClauseOrArgs,
 }
 
 // Formatting which depends on the AST.
@@ -354,6 +357,7 @@ mod test {
             if result[file_name] != text {
                 fails += 1;
                 println!("Mismatch in {}.", file_name);
+                println!("{}", result[file_name]);
             }
         }
 

@@ -80,9 +80,6 @@ impl<'a> FmtVisitor<'a> {
                                            span_for_return(&fd.output)));
         result.push(')');
 
-        // Where clause.
-        result.push_str(&self.rewrite_where_clause(where_clause, indent, next_span));
-
         // Return type.
         if ret_str.len() > 0 {
             // If we've already gone multi-line, or the return type would push
@@ -91,10 +88,13 @@ impl<'a> FmtVisitor<'a> {
                result.len() + indent + ret_str.len() > MAX_WIDTH {
                 let indent = match FN_RETURN_INDENT {
                     ReturnIndent::WithWhereClause => indent + 4,
+                    ReturnIndent::WithWhereClauseOrArgs if where_clause.predicates.len() > 0 => {
+                        indent + 4
+                    }
                     // TODO we might want to check that using the arg indent doesn't
                     // blow our budget, and if it does, then fallback to the where
                     // clause indent.
-                    ReturnIndent::WithArgs => arg_indent,
+                    _ => arg_indent,
                 };
 
                 result.push('\n');
@@ -103,9 +103,27 @@ impl<'a> FmtVisitor<'a> {
                 result.push(' ');
             }
             result.push_str(&ret_str);
+
+            // Comment between return type and the end of the decl.
+            let snippet_lo = fd.output.span().hi;
+            if where_clause.predicates.len() == 0 {
+                let snippet_hi = next_span.lo;
+                let snippet = self.snippet(codemap::mk_sp(snippet_lo, snippet_hi));
+                let snippet = snippet.trim();
+                if snippet.len() > 0 {
+                    println!("found comment {}", snippet);
+                    result.push(' ');
+                    result.push_str(snippet);
+                }
+            } else {
+                // FIXME it would be nice to catch comments between the return type
+                // and the where clause, but we don't have a span for the where
+                // clause.
+            }
         }
 
-        // TODO any comments here?
+        // Where clause.
+        result.push_str(&self.rewrite_where_clause(where_clause, indent, next_span));
 
         // Prepare for the function body by possibly adding a newline and indent.
         // FIXME we'll miss anything between the end of the signature and the start
@@ -236,7 +254,7 @@ impl<'a> FmtVisitor<'a> {
         // The fix is comments in the AST or a span for the closing paren.
         let snippet = self.snippet(codemap::mk_sp(prev_end, next_span_start));
         let snippet = snippet.trim();
-        let snippet = &snippet[..snippet.find(terminator).unwrap()];
+        let snippet = &snippet[..snippet.find(terminator).unwrap_or(snippet.len())];
         let snippet = snippet.trim();
         result.push(snippet.to_string());
 
@@ -377,16 +395,13 @@ impl<'a> FmtVisitor<'a> {
         result.push_str(&make_indent(indent + 4));
         result.push_str("where ");
 
-        let comments = vec![String::new(); where_clause.predicates.len()];
-        // TODO uncomment when spans are fixed
-        // println!("{:?} {:?}", where_clause.predicates.iter().map(|p| self.snippet(span_for_where_pred(p))).collect::<Vec<_>>(), next_span.lo);
-        // let comments = self.make_comments_for_list(Vec::new(),
-        //                                            where_clause.predicates.iter(),
-        //                                            ",",
-        //                                            "{",
-        //                                            |pred| span_for_where_pred(pred).lo,
-        //                                            |pred| span_for_where_pred(pred).hi,
-        //                                            next_span.lo);
+        let comments = self.make_comments_for_list(Vec::new(),
+                                                   where_clause.predicates.iter(),
+                                                   ",",
+                                                   "{",
+                                                   |pred| span_for_where_pred(pred).lo,
+                                                   |pred| span_for_where_pred(pred).hi,
+                                                   next_span.lo);
         let where_strs: Vec<_> = where_clause.predicates.iter()
                                                         .map(|p| (self.rewrite_pred(p)))
                                                         .zip(comments.into_iter())
