@@ -297,7 +297,7 @@ transcriber : '(' transcriber * ')' | '[' transcriber * ']'
 
 ```antlr
 item : mod_item | fn_item | type_item | struct_item | enum_item
-     | static_item | trait_item | impl_item | extern_block ;
+     | const_item | static_item | trait_item | impl_item | extern_block ;
 ```
 
 ### Type Parameters
@@ -366,6 +366,10 @@ path_item : ident | "mod" ;
 **FIXME:** grammar?
 
 ### Structures
+
+**FIXME:** grammar?
+
+### Enumerations
 
 **FIXME:** grammar?
 
