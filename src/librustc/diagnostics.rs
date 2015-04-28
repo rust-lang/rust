@@ -337,8 +337,8 @@ enum Method { GET, POST }
 "##,
 
 E0265: r##"
-This error indicates that a constant references itself.
-All constants need to resolve to a value in an acyclic manner.
+This error indicates that a static or constant references itself.
+All statics and constants need to resolve to a value in an acyclic manner.
 
 For example, neither of the following can be sensibly compiled:
 
