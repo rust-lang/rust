@@ -12,6 +12,7 @@
 // Do not remove on snapshot creation. Needed for bootstrap. (Issue #22364)
 #![cfg_attr(stage0, feature(custom_attribute))]
 #![crate_name = "rustc_bitflags"]
+#![feature(associated_consts)]
 #![feature(staged_api)]
 #![staged_api]
 #![crate_type = "rlib"]
@@ -34,6 +35,7 @@
 ///
 /// ```{.rust}
 /// # #![feature(rustc_private)]
+/// # #![feature(associated_consts)]
 /// #[macro_use] extern crate rustc_bitflags;
 ///
 /// bitflags! {
@@ -144,9 +146,9 @@ macro_rules! bitflags {
             bits: $T,
         }
 
-        $($(#[$Flag_attr])* pub const $Flag: $BitFlags = $BitFlags { bits: $value };)+
-
         impl $BitFlags {
+            $($(#[$Flag_attr])* pub const $Flag: $BitFlags = $BitFlags { bits: $value };)+
+
             /// Returns an empty set of flags.
             #[inline]
             pub fn empty() -> $BitFlags {
