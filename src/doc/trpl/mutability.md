@@ -84,7 +84,7 @@ safety, and the mechanism by which Rust guarantees it, the
 
 > You may have one or the other of these two kinds of borrows, but not both at
 > the same time:
-> 
+>
 > * 0 to N references (`&T`) to a resource.
 > * exactly one mutable reference (`&mut T`)
 
@@ -169,7 +169,7 @@ struct Point {
     y: Cell<i32>,
 }
 
-let mut point = Point { x: 5, y: Cell::new(6) };
+let point = Point { x: 5, y: Cell::new(6) };
 
 point.y.set(7);
 
