@@ -28,17 +28,20 @@ impl<'a> FmtVisitor<'a> {
                             path: &ast::Path,
                             path_list: &[ast::PathListItem],
                             vp_span: Span) -> String {
-        // FIXME remove unused imports
-
         // FIXME check indentation
         let l_loc = self.codemap.lookup_char_pos(vp_span.lo);
 
         let path_str = pprust::path_to_string(&path);
 
-        // 3 = :: + {
-        let indent = l_loc.col.0 + path_str.len() + 3;
+
+        // 1 = {
+        let mut indent = l_loc.col.0 + path_str.len() + 1;
+        if path_str.len() > 0 {
+            // 2 = ::
+            indent += 2;
+        }
         // 2 = } + ;
-        let used_width = indent + path_str.len() + 2;
+        let used_width = indent + 2;
         let budget = if used_width >= IDEAL_WIDTH {
             if used_width < MAX_WIDTH {
                 MAX_WIDTH - used_width
@@ -82,6 +85,10 @@ impl<'a> FmtVisitor<'a> {
             }
         })).collect();
 
-        format!("use {}::{{{}}};", path_str, write_list(&items, &fmt))
+        if path_str.len() == 0 {
+            format!("use {{{}}};", write_list(&items, &fmt))
+        } else {
+            format!("use {}::{{{}}};", path_str, write_list(&items, &fmt))
+        }
     }
 }
