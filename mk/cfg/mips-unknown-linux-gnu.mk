@@ -12,15 +12,11 @@ CFG_GCCISH_CFLAGS_mips-unknown-linux-gnu := -Wall -g -fPIC -mips32r2 -msoft-floa
 CFG_GCCISH_CXXFLAGS_mips-unknown-linux-gnu := -fno-rtti $(CXXFLAGS)
 CFG_GCCISH_LINK_FLAGS_mips-unknown-linux-gnu := -shared -fPIC -g -mips32r2 -msoft-float -mabi=32
 CFG_GCCISH_DEF_FLAG_mips-unknown-linux-gnu := -Wl,--export-dynamic,--dynamic-list=
-CFG_GCCISH_PRE_LIB_FLAGS_mips-unknown-linux-gnu := -Wl,-whole-archive
-CFG_GCCISH_POST_LIB_FLAGS_mips-unknown-linux-gnu := -Wl,-no-whole-archive
-CFG_DEF_SUFFIX_mips-unknown-linux-gnu := .linux.def
 CFG_LLC_FLAGS_mips-unknown-linux-gnu :=
 CFG_INSTALL_NAME_mips-unknown-linux-gnu =
 CFG_EXE_SUFFIX_mips-unknown-linux-gnu :=
 CFG_WINDOWSY_mips-unknown-linux-gnu :=
 CFG_UNIXY_mips-unknown-linux-gnu := 1
-CFG_PATH_MUNGE_mips-unknown-linux-gnu := true
 CFG_LDPATH_mips-unknown-linux-gnu :=
 CFG_RUN_mips-unknown-linux-gnu=
 CFG_RUN_TARG_mips-unknown-linux-gnu=

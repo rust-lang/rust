@@ -8,11 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//ignore-android
-//ignore-freebsd
-//ignore-ios
-//ignore-dragonfly
-//ignore-bitrig
+// ignore-android
+// ignore-freebsd
+// ignore-ios
+// ignore-dragonfly
+// ignore-bitrig
+// ignore-musl
 
 #![feature(asm)]
 

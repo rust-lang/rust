@@ -140,9 +140,13 @@ pub use funcs::bsd43::*;
 
 // On NaCl, these libraries are static. Thus it would be a Bad Idea to link them
 // in when creating a test crate.
-#[cfg(not(any(windows, all(target_os = "nacl", test))))]
+#[cfg(not(any(windows, target_env = "musl", all(target_os = "nacl", test))))]
 #[link(name = "c")]
 #[link(name = "m")]
+extern {}
+
+#[cfg(all(target_env = "musl", not(test)))]
+#[link(name = "c", kind = "static")]
 extern {}
 
 // libnacl provides functions that require a trip through the IRT to work.
