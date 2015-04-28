@@ -123,6 +123,16 @@ impl Annotatable {
         }
     }
 
+    pub fn map_item_or<F, G>(self, mut f: F, mut or: G) -> Annotatable
+        where F: FnMut(P<ast::Item>) -> P<ast::Item>,
+              G: FnMut(Annotatable) -> Annotatable
+    {
+        match self {
+            Annotatable::Item(i) => Annotatable::Item(f(i)),
+            _ => or(self)
+        }
+    }
+
     pub fn expect_trait_item(self) -> P<ast::TraitItem> {
         match self {
             Annotatable::TraitItem(i) => i,
@@ -144,18 +154,18 @@ pub trait MultiItemDecorator {
               ecx: &mut ExtCtxt,
               sp: Span,
               meta_item: &ast::MetaItem,
-              item: &Annotatable,
-              push:  &mut FnMut(Annotatable));
+              item: Annotatable,
+              push: &mut FnMut(Annotatable));
 }
 
 impl<F> MultiItemDecorator for F
-    where F : Fn(&mut ExtCtxt, Span, &ast::MetaItem, &Annotatable, &mut FnMut(Annotatable))
+    where F : Fn(&mut ExtCtxt, Span, &ast::MetaItem, Annotatable, &mut FnMut(Annotatable))
 {
     fn expand(&self,
               ecx: &mut ExtCtxt,
               sp: Span,
               meta_item: &ast::MetaItem,
-              item: &Annotatable,
+              item: Annotatable,
               push: &mut FnMut(Annotatable)) {
         (*self)(ecx, sp, meta_item, item, push)
     }
@@ -433,6 +443,7 @@ pub enum SyntaxExtension {
     /// based upon it.
     #[unstable(feature = "rustc_private")]
     #[deprecated(since = "1.0.0", reason = "replaced by MultiDecorator")]
+    #[allow(deprecated)]
     Decorator(Box<ItemDecorator + 'static>),
 
     /// A syntax extension that is attached to an item and creates new items
@@ -445,6 +456,7 @@ pub enum SyntaxExtension {
     /// in-place.
     #[unstable(feature = "rustc_private")]
     #[deprecated(since = "1.0.0", reason = "replaced by MultiModifier")]
+    #[allow(deprecated)]
     Modifier(Box<ItemModifier + 'static>),
 
     /// A syntax extension that is attached to an item and modifies it
