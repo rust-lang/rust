@@ -59,32 +59,6 @@ mod dragonfly_base;
 mod bitrig_base;
 mod openbsd_base;
 
-mod armv7_apple_ios;
-mod armv7s_apple_ios;
-mod i386_apple_ios;
-
-mod arm_linux_androideabi;
-mod arm_unknown_linux_gnueabi;
-mod arm_unknown_linux_gnueabihf;
-mod aarch64_apple_ios;
-mod aarch64_linux_android;
-mod aarch64_unknown_linux_gnu;
-mod i686_apple_darwin;
-mod i686_pc_windows_gnu;
-mod i686_unknown_dragonfly;
-mod i686_unknown_linux_gnu;
-mod mips_unknown_linux_gnu;
-mod mipsel_unknown_linux_gnu;
-mod powerpc_unknown_linux_gnu;
-mod x86_64_apple_darwin;
-mod x86_64_apple_ios;
-mod x86_64_pc_windows_gnu;
-mod x86_64_unknown_freebsd;
-mod x86_64_unknown_dragonfly;
-mod x86_64_unknown_bitrig;
-mod x86_64_unknown_linux_gnu;
-mod x86_64_unknown_openbsd;
-
 /// Everything `rustc` knows about how to compile for a specific target.
 ///
 /// Every field here must be specified, and has no default value.
@@ -100,6 +74,8 @@ pub struct Target {
     pub target_pointer_width: String,
     /// OS name to use for conditional compilation.
     pub target_os: String,
+    /// Environment name to use for conditional compilation.
+    pub target_env: String,
     /// Architecture to use for ABI considerations. Valid options: "x86", "x86_64", "arm",
     /// "aarch64", "mips", and "powerpc". "mips" includes "mipsel".
     pub arch: String,
@@ -115,14 +91,22 @@ pub struct Target {
 pub struct TargetOptions {
     /// Linker to invoke. Defaults to "cc".
     pub linker: String,
-    /// Linker arguments that are unconditionally passed *before* any user-defined libraries.
+    /// Linker arguments that are unconditionally passed *before* any
+    /// user-defined libraries.
     pub pre_link_args: Vec<String>,
-    /// Linker arguments that are unconditionally passed *after* any user-defined libraries.
+    /// Linker arguments that are unconditionally passed *after* any
+    /// user-defined libraries.
     pub post_link_args: Vec<String>,
-    /// Default CPU to pass to LLVM. Corresponds to `llc -mcpu=$cpu`. Defaults to "default".
+    /// Objects to link before and after all others, always found within the
+    /// sysroot folder.
+    pub pre_link_objects: Vec<String>,
+    pub post_link_objects: Vec<String>,
+    /// Default CPU to pass to LLVM. Corresponds to `llc -mcpu=$cpu`. Defaults
+    /// to "default".
     pub cpu: String,
-    /// Default target features to pass to LLVM. These features will *always* be passed, and cannot
-    /// be disabled even via `-C`. Corresponds to `llc -mattr=$features`.
+    /// Default target features to pass to LLVM. These features will *always* be
+    /// passed, and cannot be disabled even via `-C`. Corresponds to `llc
+    /// -mattr=$features`.
     pub features: String,
     /// Whether dynamic linking is available on this target. Defaults to false.
     pub dynamic_linking: bool,
@@ -207,6 +191,8 @@ impl Default for TargetOptions {
             has_rpath: false,
             no_compiler_rt: false,
             position_independent_executables: false,
+            pre_link_objects: Vec::new(),
+            post_link_objects: Vec::new(),
         }
     }
 }
@@ -250,6 +236,8 @@ impl Target {
             target_pointer_width: get_req_field("target-pointer-width"),
             arch: get_req_field("arch"),
             target_os: get_req_field("os"),
+            target_env: obj.find("env").and_then(|s| s.as_string())
+                           .map(|s| s.to_string()).unwrap_or(String::new()),
             options: Default::default(),
         };
 
@@ -329,6 +317,7 @@ impl Target {
         macro_rules! load_specific {
             ( $($name:ident),+ ) => (
                 {
+                    $(mod $name;)*
                     let target = target.replace("-", "_");
                     if false { }
                     $(
@@ -358,6 +347,7 @@ impl Target {
             arm_unknown_linux_gnueabi,
             arm_unknown_linux_gnueabihf,
             aarch64_unknown_linux_gnu,
+            x86_64_unknown_linux_musl,
 
             arm_linux_androideabi,
             aarch64_linux_android,

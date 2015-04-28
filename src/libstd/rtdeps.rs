@@ -24,7 +24,7 @@ extern {}
 //
 // On Linux, librt and libdl are indirect dependencies via std,
 // and binutils 2.22+ won't add them automatically
-#[cfg(target_os = "linux")]
+#[cfg(all(target_os = "linux", not(target_env = "musl")))]
 #[link(name = "dl")]
 #[link(name = "pthread")]
 extern {}

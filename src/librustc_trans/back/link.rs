@@ -794,13 +794,21 @@ fn link_natively(sess: &Session, trans: &CrateTranslation, dylib: bool,
     let pname = get_cc_prog(sess);
     let mut cmd = Command::new(&pname[..]);
 
+    let root = sess.target_filesearch(PathKind::Native).get_lib_path();
     cmd.args(&sess.target.target.options.pre_link_args);
+    for obj in &sess.target.target.options.pre_link_objects {
+        cmd.arg(root.join(obj));
+    }
+
     link_args(&mut cmd, sess, dylib, tmpdir.path(),
               trans, obj_filename, out_filename);
-    cmd.args(&sess.target.target.options.post_link_args);
     if !sess.target.target.options.no_compiler_rt {
         cmd.arg("-lcompiler-rt");
     }
+    for obj in &sess.target.target.options.post_link_objects {
+        cmd.arg(root.join(obj));
+    }
+    cmd.args(&sess.target.target.options.post_link_args);
 
     if sess.opts.debugging_opts.print_link_args {
         println!("{:?}", &cmd);

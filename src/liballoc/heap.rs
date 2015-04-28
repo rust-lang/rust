@@ -211,7 +211,9 @@ mod imp {
     }
 
     // -lpthread needs to occur after -ljemalloc, the earlier argument isn't enough
-    #[cfg(all(not(windows), not(target_os = "android")))]
+    #[cfg(all(not(windows),
+              not(target_os = "android"),
+              not(target_env = "musl")))]
     #[link(name = "pthread")]
     extern {}
 

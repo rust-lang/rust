@@ -74,7 +74,8 @@ $$(RT_OUTPUT_DIR_$(1))/%.o: $(S)src/rt/%.ll $$(MKFILE_DEPS) \
 	@mkdir -p $$(@D)
 	@$$(call E, compile: $$@)
 	$$(Q)$$(LLC_$$(CFG_BUILD)) $$(CFG_LLC_FLAGS_$(1)) \
-	    -filetype=obj -mtriple=$$(CFG_LLVM_TARGET_$(1)) -relocation-model=pic -o $$@ $$<
+	    -filetype=obj -mtriple=$$(CFG_LLVM_TARGET_$(1)) \
+	    -relocation-model=pic -o $$@ $$<
 
 $$(RT_OUTPUT_DIR_$(1))/%.o: $(S)src/rt/%.c $$(MKFILE_DEPS)
 	@mkdir -p $$(@D)
@@ -109,6 +110,11 @@ NATIVE_$(2)_$(1) := $$(call CFG_STATIC_LIB_NAME_$(1),$(2))
 $$(RT_OUTPUT_DIR_$(1))/$$(NATIVE_$(2)_$(1)): $$(OBJS_$(2)_$(1))
 	@$$(call E, link: $$@)
 	$$(Q)$$(AR_$(1)) rcs $$@ $$^
+
+ifeq ($$(findstring windows,$(1)),windows)
+$$(RT_OUTPUT_DIR_$(1))/lib$(2).a: $$(RT_OUTPUT_DIR_$(1))/$$(NATIVE_$(2)_$(1))
+	$$(Q)cp $$^ $$@
+endif
 
 endef
 
@@ -221,7 +227,7 @@ COMPRT_DEPS := $(wildcard \
               $(S)src/compiler-rt/*/*/*/*)
 endif
 
-COMPRT_NAME_$(1) := $$(call CFG_STATIC_LIB_NAME_$(1),compiler-rt)
+COMPRT_NAME_$(1) := libcompiler-rt.a
 COMPRT_LIB_$(1) := $$(RT_OUTPUT_DIR_$(1))/$$(COMPRT_NAME_$(1))
 COMPRT_BUILD_DIR_$(1) := $$(RT_OUTPUT_DIR_$(1))/compiler-rt
 
@@ -311,6 +317,19 @@ $$(BACKTRACE_LIB_$(1)): $$(BACKTRACE_BUILD_DIR_$(1))/Makefile $$(MKFILE_DEPS)
 endif # endif for windowsy
 endif # endif for ios
 endif # endif for darwin
+
+################################################################################
+# libc/libunwind for musl
+#
+# When we're building a musl-like target we're going to link libc/libunwind
+# statically into the standard library and liblibc, so we need to make sure
+# they're in a location that we can find
+################################################################################
+
+ifeq ($$(findstring musl,$(1)),musl)
+$$(RT_OUTPUT_DIR_$(1))/%: $$(CFG_MUSL_ROOT)/lib/%
+	cp $$^ $$@
+endif
 
 endef
 

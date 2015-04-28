@@ -14,8 +14,8 @@
 
 // Test accessing external items from multiple compilation units.
 
+extern crate sepcomp_extern_lib;
 
-#[link(name = "sepcomp_extern_lib")]
 extern {
     #[allow(ctypes)]
     fn foo() -> usize;
