@@ -16,7 +16,7 @@ use syntax::codemap::Span;
 use syntax::parse::token;
 use syntax::print::pprust;
 
-use IDEAL_WIDTH;
+use {IDEAL_WIDTH, MAX_WIDTH};
 
 // TODO change import lists with one item to a single import
 //      remove empty lists (if they're even possible)
@@ -25,9 +25,9 @@ use IDEAL_WIDTH;
 impl<'a> FmtVisitor<'a> {
     // Basically just pretty prints a multi-item import.
     pub fn rewrite_use_list(&mut self,
-                        path: &ast::Path,
-                        path_list: &[ast::PathListItem],
-                        vp_span: Span) -> String {
+                            path: &ast::Path,
+                            path_list: &[ast::PathListItem],
+                            vp_span: Span) -> String {
         // FIXME remove unused imports
 
         // FIXME check indentation
@@ -37,14 +37,25 @@ impl<'a> FmtVisitor<'a> {
 
         // 3 = :: + {
         let indent = l_loc.col.0 + path_str.len() + 3;
+        // 2 = } + ;
+        let used_width = indent + path_str.len() + 2;
+        let budget = if used_width >= IDEAL_WIDTH {
+            if used_width < MAX_WIDTH {
+                MAX_WIDTH - used_width
+            } else {
+                // Give up
+                return String::new();
+            }
+        } else {
+            IDEAL_WIDTH - used_width
+        };
         let fmt = ListFormatting {
             tactic: ListTactic::Mixed,
             separator: ",",
             trailing_separator: SeparatorTactic::Never,
             indent: indent,
-            // 2 = } + ;
-            h_width: IDEAL_WIDTH - (indent + path_str.len() + 2),
-            v_width: IDEAL_WIDTH - (indent + path_str.len() + 2),
+            h_width: budget,
+            v_width: budget,
         };
 
         // TODO handle any comments inbetween items.

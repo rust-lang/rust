@@ -111,7 +111,6 @@ impl<'a> FmtVisitor<'a> {
                 let snippet = self.snippet(codemap::mk_sp(snippet_lo, snippet_hi));
                 let snippet = snippet.trim();
                 if snippet.len() > 0 {
-                    println!("found comment {}", snippet);
                     result.push(' ');
                     result.push_str(snippet);
                 }
