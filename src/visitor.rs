@@ -109,8 +109,17 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
     }
 
     fn visit_item(&mut self, item: &'v ast::Item) {
-        if self.visit_attrs(&item.attrs) {
-            return;
+        // Don't look at attributes for modules.
+        // We want to avoid looking at attributes in another file, which the AST
+        // doesn't distinguish. FIXME This is overly conservative and means we miss
+        // attributes on inline modules.
+        match item.node {
+            ast::Item_::ItemMod(_) => {}
+            _ => {
+                if self.visit_attrs(&item.attrs) {
+                    return;
+                }
+            }
         }
 
         match item.node {
