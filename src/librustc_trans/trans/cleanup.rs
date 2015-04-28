@@ -438,10 +438,10 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
     /// `ty`. The scheduled code handles extracting the discriminant
     /// and dropping the contents associated with that variant
     /// *without* executing any associated drop implementation.
-    fn schedule_drop_enum_contents(&self,
-                                   cleanup_scope: ScopeId,
-                                   val: ValueRef,
-                                   ty: Ty<'tcx>) {
+    fn schedule_drop_adt_contents(&self,
+                                  cleanup_scope: ScopeId,
+                                  val: ValueRef,
+                                  ty: Ty<'tcx>) {
         // `if` below could be "!contents_needs_drop"; skipping drop
         // is just an optimization, so sound to be conservative.
         if !self.type_needs_drop(ty) { return; }
@@ -455,7 +455,7 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
             skip_dtor: true,
         };
 
-        debug!("schedule_drop_enum_contents({:?}, val={}, ty={}) fill_on_drop={} skip_dtor={}",
+        debug!("schedule_drop_adt_contents({:?}, val={}, ty={}) fill_on_drop={} skip_dtor={}",
                cleanup_scope,
                self.ccx.tn().val_to_string(val),
                ty.repr(self.ccx.tcx()),
@@ -1240,10 +1240,10 @@ pub trait CleanupMethods<'blk, 'tcx> {
                                   cleanup_scope: ScopeId,
                                   val: ValueRef,
                                   ty: Ty<'tcx>);
-    fn schedule_drop_enum_contents(&self,
-                                   cleanup_scope: ScopeId,
-                                   val: ValueRef,
-                                   ty: Ty<'tcx>);
+    fn schedule_drop_adt_contents(&self,
+                                  cleanup_scope: ScopeId,
+                                  val: ValueRef,
+                                  ty: Ty<'tcx>);
     fn schedule_drop_immediate(&self,
                                cleanup_scope: ScopeId,
                                val: ValueRef,
