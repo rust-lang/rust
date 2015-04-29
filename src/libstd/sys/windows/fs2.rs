@@ -65,6 +65,7 @@ pub struct OpenOptions {
     share_mode: Option<libc::DWORD>,
     creation_disposition: Option<libc::DWORD>,
     flags_and_attributes: Option<libc::DWORD>,
+    security_attributes: usize, // *mut T doesn't have a Default impl
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -169,6 +170,9 @@ impl OpenOptions {
     pub fn share_mode(&mut self, val: i32) {
         self.share_mode = Some(val as libc::DWORD);
     }
+    pub fn security_attributes(&mut self, attrs: libc::LPSECURITY_ATTRIBUTES) {
+        self.security_attributes = attrs as usize;
+    }
 
     fn get_desired_access(&self) -> libc::DWORD {
         self.desired_access.unwrap_or({
@@ -227,7 +231,7 @@ impl File {
             libc::CreateFileW(path.as_ptr(),
                               opts.get_desired_access(),
                               opts.get_share_mode(),
-                              ptr::null_mut(),
+                              opts.security_attributes as *mut _,
                               opts.get_creation_disposition(),
                               opts.get_flags_and_attributes(),
                               ptr::null_mut())
@@ -344,6 +348,8 @@ impl File {
             Ok(PathBuf::from(OsString::from_wide(subst)))
         }
     }
+
+    pub fn into_handle(self) -> Handle { self.handle }
 }
 
 impl FromInner<libc::HANDLE> for File {
