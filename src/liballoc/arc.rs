@@ -355,7 +355,6 @@ impl<T: Clone> Arc<T> {
     }
 }
 
-#[unsafe_destructor]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Drop for Arc<T> {
     /// Drops the `Arc<T>`.
@@ -489,7 +488,6 @@ impl<T> Clone for Weak<T> {
     }
 }
 
-#[unsafe_destructor]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Drop for Weak<T> {
     /// Drops the `Weak<T>`.

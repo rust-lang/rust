@@ -700,7 +700,6 @@ impl<'a, T: Send + 'a> JoinGuard<'a, T> {
     }
 }
 
-#[unsafe_destructor]
 #[unstable(feature = "scoped",
            reason = "memory unsafe if destructor is avoided, see #24292")]
 impl<'a, T: Send + 'a> Drop for JoinGuard<'a, T> {

@@ -249,7 +249,6 @@ impl<T> RwLock<T> {
     }
 }
 
-#[unsafe_destructor]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Drop for RwLock<T> {
     fn drop(&mut self) {
@@ -387,7 +386,6 @@ impl<'rwlock, T> DerefMut for RwLockWriteGuard<'rwlock, T> {
     }
 }
 
-#[unsafe_destructor]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Drop for RwLockReadGuard<'a, T> {
     fn drop(&mut self) {
@@ -395,7 +393,6 @@ impl<'a, T> Drop for RwLockReadGuard<'a, T> {
     }
 }
 
-#[unsafe_destructor]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Drop for RwLockWriteGuard<'a, T> {
     fn drop(&mut self) {

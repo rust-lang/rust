@@ -82,7 +82,6 @@ This API is completely unstable and subject to change.
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
-#![feature(unsafe_destructor)]
 #![feature(staged_api)]
 
 #[macro_use] extern crate log;

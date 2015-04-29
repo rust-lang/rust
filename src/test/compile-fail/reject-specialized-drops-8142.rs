@@ -11,8 +11,6 @@
 // Issue 8142: Test that Drop impls cannot be specialized beyond the
 // predicates attached to the struct/enum definition itself.
 
-#![feature(unsafe_destructor)]
-
 trait Bound { fn foo(&self) { } }
 struct K<'l1,'l2> { x: &'l1 i8, y: &'l2 u8 }
 struct L<'l1,'l2> { x: &'l1 i8, y: &'l2 u8 }
@@ -28,51 +26,39 @@ struct U;
 struct V<Tva, Tvb> { x: *const Tva, y: *const Tvb }
 struct W<'l1, 'l2> { x: &'l1 i8, y: &'l2 u8 }
 
-#[unsafe_destructor]
 impl<'al,'adds_bnd:'al> Drop for K<'al,'adds_bnd> {                        // REJECT
     //~^ ERROR The requirement `'adds_bnd : 'al` is added only by the Drop impl.
     fn drop(&mut self) { } }
 
-#[unsafe_destructor]
 impl<'al,'adds_bnd>     Drop for L<'al,'adds_bnd> where 'adds_bnd:'al {    // REJECT
     //~^ ERROR The requirement `'adds_bnd : 'al` is added only by the Drop impl.
     fn drop(&mut self) { } }
 
-#[unsafe_destructor]
 impl<'ml>               Drop for M<'ml>         { fn drop(&mut self) { } } // ACCEPT
 
-#[unsafe_destructor]
 impl                    Drop for N<'static>     { fn drop(&mut self) { } } // REJECT
 //~^ ERROR Implementations of Drop cannot be specialized
 
-#[unsafe_destructor]
 impl<Cok_nobound> Drop for O<Cok_nobound> { fn drop(&mut self) { } } // ACCEPT
 
-#[unsafe_destructor]
 impl              Drop for P<i8>          { fn drop(&mut self) { } } // REJECT
 //~^ ERROR Implementations of Drop cannot be specialized
 
-#[unsafe_destructor]
 impl<Adds_bnd:Bound> Drop for Q<Adds_bnd> { fn drop(&mut self) { } } // REJECT
 //~^ ERROR The requirement `Adds_bnd : Bound` is added only by the Drop impl.
 
-#[unsafe_destructor]
 impl<'rbnd,Adds_rbnd:'rbnd> Drop for R<Adds_rbnd> { fn drop(&mut self) { } } // REJECT
 //~^ ERROR The requirement `Adds_rbnd : 'rbnd` is added only by the Drop impl.
 
-#[unsafe_destructor]
 impl<Bs:Bound>    Drop for S<Bs>          { fn drop(&mut self) { } } // ACCEPT
 
-#[unsafe_destructor]
 impl<'t,Bt:'t>    Drop for T<'t,Bt>       { fn drop(&mut self) { } } // ACCEPT
 
 impl              Drop for U              { fn drop(&mut self) { } } // ACCEPT
 
-#[unsafe_destructor]
 impl<One>         Drop for V<One,One>     { fn drop(&mut self) { } } // REJECT
 //~^ERROR Implementations of Drop cannot be specialized
 
-#[unsafe_destructor]
 impl<'lw>         Drop for W<'lw,'lw>     { fn drop(&mut self) { } } // REJECT
 //~^ERROR Implementations of Drop cannot be specialized
 

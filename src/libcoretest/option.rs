@@ -44,8 +44,7 @@ fn test_get_resource() {
        i: Rc<RefCell<isize>>,
     }
 
-    #[unsafe_destructor]
-    impl Drop for R {
+        impl Drop for R {
        fn drop(&mut self) {
             let ii = &*self.i;
             let i = *ii.borrow();

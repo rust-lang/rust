@@ -8,15 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(unsafe_destructor)]
-
 use std::cell::Cell;
 
 struct shrinky_pointer<'a> {
   i: &'a Cell<isize>,
 }
 
-#[unsafe_destructor]
 impl<'a> Drop for shrinky_pointer<'a> {
     fn drop(&mut self) {
         println!("Hello!"); self.i.set(self.i.get() - 1);

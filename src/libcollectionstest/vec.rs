@@ -18,7 +18,6 @@ struct DropCounter<'a> {
     count: &'a mut u32
 }
 
-#[unsafe_destructor]
 impl<'a> Drop for DropCounter<'a> {
     fn drop(&mut self) {
         *self.count += 1;

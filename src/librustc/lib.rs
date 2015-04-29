@@ -34,7 +34,6 @@
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
-#![feature(unsafe_destructor)]
 #![feature(staged_api)]
 #![feature(std_misc)]
 #![feature(path_ext)]

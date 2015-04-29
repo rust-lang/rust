@@ -20,7 +20,6 @@
 // this was reduced to better understand its error message.)
 
 #![allow(unstable)]
-#![feature(unsafe_destructor)]
 
 extern crate arena;
 
@@ -35,7 +34,6 @@ struct CheckId<T:HasId> { v: T }
 // interface to CheckId does not (and cannot) know that, and therefore
 // when encountering the a value V of type CheckId<S>, we must
 // conservatively force the type S to strictly outlive V.
-#[unsafe_destructor]
 impl<T:HasId> Drop for CheckId<T> {
     fn drop(&mut self) {
         assert!(self.v.count() > 0);

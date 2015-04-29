@@ -8,14 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-#![feature(unsafe_destructor)]
-
 struct Leak<'a> {
     dropped: &'a mut bool
 }
 
-#[unsafe_destructor]
 impl<'a> Drop for Leak<'a> {
     fn drop(&mut self) {
         *self.dropped = true;

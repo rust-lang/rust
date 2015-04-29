@@ -16,9 +16,8 @@
 // shows a similar setup, but restricts `f` so that the struct `C<'a>`
 // is force-fed a lifetime equal to that of the borrowed arena.
 
-
 #![allow(unstable)]
-#![feature(unsafe_destructor, rustc_private)]
+#![feature(rustc_private)]
 
 extern crate arena;
 
@@ -33,7 +32,6 @@ struct CheckId<T:HasId> { v: T }
 // interface to CheckId does not (and cannot) know that, and therefore
 // when encountering the a value V of type CheckId<S>, we must
 // conservatively force the type S to strictly outlive V.
-#[unsafe_destructor]
 impl<T:HasId> Drop for CheckId<T> {
     fn drop(&mut self) {
         assert!(self.v.count() > 0);
