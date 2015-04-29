@@ -130,11 +130,6 @@ of tokens, that immediately and directly denotes the value it evaluates to,
 rather than referring to it by name or some other evaluation rule. A literal is
 a form of constant expression, so is evaluated (primarily) at compile time.
 
-The optional suffix is only used for certain numeric literals, but is
-reserved for future extension, that is, the above gives the lexical
-grammar, but a Rust parser will reject everything but the 12 special
-cases mentioned in [Number literals](#number-literals) below.
-
 #### Examples
 
 ##### Characters and strings
