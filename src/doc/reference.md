@@ -1897,8 +1897,8 @@ release builds.
 
 There are two kinds of configuration options, one that is either defined or not
 (`#[cfg(foo)]`), and the other that contains a string that can be checked
-against (`#[cfg(bar = "baz")]` (currently only compiler-defined configuration
-options can have the latter form).
+against (`#[cfg(bar = "baz")]`). Currently, only compiler-defined configuration
+options can have the latter form.
 
 ```
 // The function is only included in the build when compiling for OSX
