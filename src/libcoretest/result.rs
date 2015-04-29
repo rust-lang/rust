@@ -65,7 +65,6 @@ fn test_impl_map_err() {
     assert!(Err::<isize, isize>(1).map_err(|x| x + 1) == Err(2));
 }
 
-/* FIXME(#20575)
 #[test]
 fn test_collect() {
     let v: Result<Vec<isize>, ()> = (0..0).map(|_| Ok::<isize, ()>(0)).collect();
@@ -86,7 +85,6 @@ fn test_collect() {
     let v: Result<Vec<()>, isize> = functions.iter_mut().map(|f| (*f)()).collect();
     assert!(v == Err(1));
 }
-*/
 
 #[test]
 fn test_fmt_default() {

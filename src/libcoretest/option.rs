@@ -219,7 +219,6 @@ fn test_ord() {
     assert!(big > None);
 }
 
-/* FIXME(#20575)
 #[test]
 fn test_collect() {
     let v: Option<Vec<isize>> = (0..0).map(|_| Some(0)).collect();
@@ -241,7 +240,7 @@ fn test_collect() {
 
     assert!(v == None);
 }
-*/
+
 
 #[test]
 fn test_cloned() {
