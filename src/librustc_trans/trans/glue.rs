@@ -383,7 +383,7 @@ fn trans_struct_drop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     // Issue #23611: schedule cleanup of contents, re-inspecting the
     // discriminant (if any) in case of variant swap in drop code.
-    bcx.fcx.schedule_drop_enum_contents(cleanup::CustomScope(contents_scope), v0, t);
+    bcx.fcx.schedule_drop_adt_contents(cleanup::CustomScope(contents_scope), v0, t);
 
     let glue_type = get_drop_glue_type(bcx.ccx(), t);
     let dtor_ty = ty::mk_ctor_fn(bcx.tcx(), class_did, &[glue_type], ty::mk_nil(bcx.tcx()));
