@@ -30,6 +30,7 @@ pub fn expr_requires_semi_to_be_stmt(e: &ast::Expr) -> bool {
         | ast::ExprWhile(..)
         | ast::ExprWhileLet(..)
         | ast::ExprLoop(..)
+        | ast::ExprQuestion(..)
         | ast::ExprForLoop(..) => false,
         _ => true
     }

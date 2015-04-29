@@ -621,6 +621,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
         ast::ExprBreak(_) |
         ast::ExprAgain(_) |
         ast::ExprRet(_) |
+        ast::ExprQuestion(_) |
 
         // Miscellaneous expressions that could be implemented.
         ast::ExprRange(..) |

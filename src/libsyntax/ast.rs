@@ -907,7 +907,10 @@ pub enum Expr_ {
     ExprRepeat(P<Expr>, P<Expr>),
 
     /// No-op: used solely so we can pretty-print faithfully
-    ExprParen(P<Expr>)
+    ExprParen(P<Expr>),
+
+    /// `expr?`
+    ExprQuestion(P<Expr>),
 }
 
 /// The explicit Self type in a "qualified path". The actual
