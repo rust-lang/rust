@@ -144,6 +144,9 @@ pub fn check_intrinsics(ccx: &CrateContext) {
     ccx.sess().abort_if_errors();
 }
 
+/// Remember to add all intrinsics here, in librustc_typeck/check/mod.rs,
+/// and in libcore/intrinsics.rs; if you need access to any llvm intrinsics,
+/// add them to librustc_trans/trans/context.rs
 pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                             node: ast::NodeId,
                                             callee_ty: Ty<'tcx>,
@@ -675,6 +678,11 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                     llargs[0],
                                     llargs[1],
                                     call_debug_location),
+
+        (_, "unchecked_udiv") => UDiv(bcx, llargs[0], llargs[1], call_debug_location),
+        (_, "unchecked_sdiv") => SDiv(bcx, llargs[0], llargs[1], call_debug_location),
+        (_, "unchecked_urem") => URem(bcx, llargs[0], llargs[1], call_debug_location),
+        (_, "unchecked_srem") => SRem(bcx, llargs[0], llargs[1], call_debug_location),
 
         (_, "overflowing_add") => Add(bcx, llargs[0], llargs[1], call_debug_location),
         (_, "overflowing_sub") => Sub(bcx, llargs[0], llargs[1], call_debug_location),
