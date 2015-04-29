@@ -68,6 +68,7 @@ use astconv::{self, AstConv, ty_of_arg, ast_ty_to_ty, ast_region_to_region};
 use middle::def;
 use constrained_type_params as ctp;
 use middle::lang_items::SizedTraitLangItem;
+use middle::free_region::FreeRegionMap;
 use middle::region;
 use middle::resolve_lifetime;
 use middle::subst::{Substs, FnSpace, ParamSpace, SelfSpace, TypeSpace, VecPerParamSpace};
@@ -2158,7 +2159,16 @@ fn check_method_self_type<'a, 'tcx, RS:RegionScope>(
                 format!("mismatched self type: expected `{}`",
                         ppaux::ty_to_string(tcx, required_type))
         }));
-        infcx.resolve_regions_and_report_errors(body_id);
+
+        // We could conceviably add more free-reion relations here,
+        // but since this code is just concerned with checking that
+        // the `&Self` types etc match up, it's not really necessary.
+        // It would just allow people to be more approximate in some
+        // cases. In any case, we can do it later as we feel the need;
+        // I'd like this function to go away eventually.
+        let free_regions = FreeRegionMap::new();
+
+        infcx.resolve_regions_and_report_errors(&free_regions, body_id);
     }
 
     fn liberate_early_bound_regions<'tcx,T>(
