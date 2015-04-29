@@ -2142,3 +2142,57 @@ impl LintPass for UnstableFeatures {
         }
     }
 }
+
+/// Lints for attempts to impl Drop on types that have `#[repr(C)]`
+/// attribute (see issue #24585).
+#[derive(Copy, Clone)]
+pub struct DropWithReprExtern;
+
+declare_lint! {
+    DROP_WITH_REPR_EXTERN,
+    Warn,
+    "use of #[repr(C)] on a type that implements Drop"
+}
+
+impl LintPass for DropWithReprExtern {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(DROP_WITH_REPR_EXTERN)
+    }
+    fn check_crate(&mut self, ctx: &Context, _: &ast::Crate) {
+        for dtor_did in ctx.tcx.destructors.borrow().iter() {
+            let (drop_impl_did, dtor_self_type) =
+                if dtor_did.krate == ast::LOCAL_CRATE {
+                    let impl_did = ctx.tcx.map.get_parent_did(dtor_did.node);
+                    let ty = ty::lookup_item_type(ctx.tcx, impl_did).ty;
+                    (impl_did, ty)
+                } else {
+                    continue;
+                };
+
+            match dtor_self_type.sty {
+                ty::ty_enum(self_type_did, _) |
+                ty::ty_struct(self_type_did, _) |
+                ty::ty_closure(self_type_did, _) => {
+                    let hints = ty::lookup_repr_hints(ctx.tcx, self_type_did);
+                    if hints.iter().any(|attr| *attr == attr::ReprExtern) &&
+                        ty::ty_dtor(ctx.tcx, self_type_did).has_drop_flag() {
+                        let drop_impl_span = ctx.tcx.map.def_id_span(drop_impl_did,
+                                                                     codemap::DUMMY_SP);
+                        let self_defn_span = ctx.tcx.map.def_id_span(self_type_did,
+                                                                     codemap::DUMMY_SP);
+                        ctx.span_lint(DROP_WITH_REPR_EXTERN,
+                                      drop_impl_span,
+                                      "implementing Drop adds hidden state to types, \
+                                       possibly conflicting with `#[repr(C)]`");
+                        // FIXME #19668: could be span_lint_note instead of manual guard.
+                        if ctx.current_level(DROP_WITH_REPR_EXTERN) != Level::Allow {
+                            ctx.sess().span_note(self_defn_span,
+                                               "the `#[repr(C)]` attribute is attached here");
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+}
