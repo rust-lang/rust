@@ -35,13 +35,13 @@ More to come, please [file an issue](https://github.com/Manishearth/rust-clippy/
 
 ##Usage
 Add in your `Cargo.toml`:
-```
+```toml
 [dependencies.clippy]
 git = "https://github.com/Manishearth/rust-clippy"
 ```
 
 Sample `main.rs`:
-```
+```rust
 #![feature(plugin)]
 
 #![plugin(clippy)]
