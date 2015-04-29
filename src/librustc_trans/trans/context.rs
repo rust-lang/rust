@@ -735,6 +735,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
     }
 }
 
+/// Declare any llvm intrinsics that you might need
 fn declare_intrinsic(ccx: &CrateContext, key: & &'static str) -> Option<ValueRef> {
     macro_rules! ifn {
         ($name:expr, fn() -> $ret:expr) => (
