@@ -8,10 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Networking primitives for TCP/UDP communication
-//!
-//! > **NOTE**: This module is very much a work in progress and is under active
-//! > development.
+//! Networking primitives for TCP/UDP communication.
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
