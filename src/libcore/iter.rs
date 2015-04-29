@@ -1205,8 +1205,14 @@ pub trait RandomAccessIterator: Iterator {
 /// This trait is a helper for iterators like the vector iterator, so that
 /// it can support double-ended enumeration.
 ///
-/// `Iterator::size_hint` *must* return the exact size of the iterator.
-/// Note that the size must fit in `usize`.
+/// `ExactSizeIterator::len` must return the exact size of the iterator.
+///
+/// Note: The default implementation of `ExactSizeIterator::len` assumes
+/// that `Iterator::size_hint` returns the exact size of the iterator
+/// (`(exact_size, Some(exact_size))`). If this is not the case, you must
+/// provide your own `ExactSizeIterator::len` implementation.
+///
+/// Also Note: The size must fit in `usize`.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait ExactSizeIterator: Iterator {
     #[inline]
@@ -1224,26 +1230,53 @@ pub trait ExactSizeIterator: Iterator {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, I: ExactSizeIterator + ?Sized> ExactSizeIterator for &'a mut I {}
+impl<'a, I: ExactSizeIterator + ?Sized> ExactSizeIterator for &'a mut I {
+    fn len(&self) -> usize {
+        (**self).len()
+    }
+}
 
 // All adaptors that preserve the size of the wrapped iterator are fine
 // Adaptors that may overflow in `size_hint` are not, i.e. `Chain`.
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<I> ExactSizeIterator for Enumerate<I> where I: ExactSizeIterator {}
+impl<I> ExactSizeIterator for Enumerate<I>
+    where I: ExactSizeIterator {
+
+    fn len(&self) -> usize {
+        self.iter.len()
+    }
+}
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<I: ExactSizeIterator, F> ExactSizeIterator for Inspect<I, F> where
-    F: FnMut(&I::Item),
-{}
+impl<I: ExactSizeIterator, F> ExactSizeIterator for Inspect<I, F>
+    where F: FnMut(&I::Item) {
+
+    fn len(&self) -> usize {
+        self.iter.len()
+    }
+}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<I> ExactSizeIterator for Rev<I>
-    where I: ExactSizeIterator + DoubleEndedIterator {}
+    where I: ExactSizeIterator + DoubleEndedIterator {
+
+    fn len(&self) -> usize {
+        self.iter.len()
+    }
+}
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<B, I: ExactSizeIterator, F> ExactSizeIterator for Map<I, F> where
-    F: FnMut(I::Item) -> B,
-{}
+impl<B, I: ExactSizeIterator, F> ExactSizeIterator for Map<I, F>
+    where F: FnMut(I::Item) -> B {
+
+    fn len(&self) -> usize {
+        self.iter.len()
+    }
+}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A, B> ExactSizeIterator for Zip<A, B>
-    where A: ExactSizeIterator, B: ExactSizeIterator {}
+    where A: ExactSizeIterator, B: ExactSizeIterator {
+    fn len(&self) -> usize {
+        cmp::min(self.a.len(), self.b.len())
+    }
+}
 
 /// An double-ended iterator with the direction inverted
 #[derive(Clone)]
@@ -1369,8 +1402,12 @@ impl<'a, I, T: 'a> DoubleEndedIterator for Cloned<I>
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, I, T: 'a> ExactSizeIterator for Cloned<I>
-    where I: ExactSizeIterator<Item=&'a T>, T: Clone
-{}
+    where I: ExactSizeIterator<Item=&'a T>, T: Clone {
+
+    fn len(&self) -> usize {
+        self.it.len()
+    }
+}
 
 #[unstable(feature = "core", reason = "trait is experimental")]
 impl<'a, I, T: 'a> RandomAccessIterator for Cloned<I>
@@ -1853,7 +1890,11 @@ impl<I: Iterator> Iterator for Peekable<I> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<I: ExactSizeIterator> ExactSizeIterator for Peekable<I> {}
+impl<I: ExactSizeIterator> ExactSizeIterator for Peekable<I> {
+    fn len(&self) -> usize {
+        (if self.peeked.is_some() { 1 } else { 0 }) + self.iter.len()
+    }
+}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<I: Iterator> Peekable<I> {
@@ -2018,7 +2059,11 @@ impl<I> RandomAccessIterator for Skip<I> where I: RandomAccessIterator{
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<I> ExactSizeIterator for Skip<I> where I: ExactSizeIterator {}
+impl<I> ExactSizeIterator for Skip<I> where I: ExactSizeIterator {
+    fn len(&self) -> usize {
+        self.iter.len().saturating_sub(self.n)
+    }
+}
 
 /// An iterator that only iterates over the first `n` iterations of `iter`.
 #[derive(Clone)]
@@ -2076,7 +2121,11 @@ impl<I> RandomAccessIterator for Take<I> where I: RandomAccessIterator{
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<I> ExactSizeIterator for Take<I> where I: ExactSizeIterator {}
+impl<I> ExactSizeIterator for Take<I> where I: ExactSizeIterator {
+    fn len(&self) -> usize {
+        cmp::min(self.iter.len(), self.n)
+    }
+}
 
 
 /// An iterator to maintain state while iterating another iterator
@@ -2243,7 +2292,11 @@ impl<I> RandomAccessIterator for Fuse<I> where I: RandomAccessIterator {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<I> ExactSizeIterator for Fuse<I> where I: ExactSizeIterator {}
+impl<I> ExactSizeIterator for Fuse<I> where I: ExactSizeIterator {
+    fn len(&self) -> usize {
+        self.iter.len()
+    }
+}
 
 impl<I> Fuse<I> {
     /// Resets the `Fuse` such that the next call to `.next()` or
