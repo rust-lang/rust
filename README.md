@@ -74,7 +74,7 @@ You can add `OPTIONS` to `allow`/`warn`/`deny`:
 - the whole set using the `clippy` lint group (`#[deny(clippy)]`, etc)
 - only some lints (`#[deny(single_match, box_vec)]`, etc)
 
-*`deny` produce error instead of warnings*
+*`deny` produces error instead of warnings*
 
 ##License
 Licensed under [MPL](https://www.mozilla.org/MPL/2.0/). If you're having issues with the license, let me know and I'll try to change it to something more permissive.
