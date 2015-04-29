@@ -20,8 +20,8 @@ Some examples that demonstrate different aspects of the language:
 * The standard library's [json] module. Enums and pattern matching
 
 [sprocketnes]: https://github.com/pcwalton/sprocketnes
-[hash]: https://github.com/rust-lang/rust/blob/master/src/libstd/hash/mod.rs
-[HashMap]: https://github.com/rust-lang/rust/blob/master/src/libcollections/hashmap.rs
+[hash]: https://github.com/rust-lang/rust/blob/master/src/libcore/hash/mod.rs
+[HashMap]: https://github.com/rust-lang/rust/blob/master/src/libstd/collections/hash/map.rs#L309
 [json]: https://github.com/rust-lang/rust/blob/master/src/libserialize/json.rs
 
 You may also be interested in browsing [trending Rust repositories][github-rust] on GitHub.
