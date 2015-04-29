@@ -41,12 +41,12 @@ use thread;
 /// use std::process::Command;
 ///
 /// let mut child = Command::new("/bin/cat")
-///     .arg("file.txt")
-///     .spawn()
-///     .unwrap_or_else(|e| { panic!("failed to execute child: {}", e) });
+///                         .arg("file.txt")
+///                         .spawn()
+///                         .unwrap_or_else(|e| { panic!("failed to execute child: {}", e) });
 ///
 /// let ecode = child.wait()
-///     .unwrap_or_else(|e| { panic!("failed to wait on child: {}", e) });
+///                  .unwrap_or_else(|e| { panic!("failed to wait on child: {}", e) });
 ///
 /// assert!(ecode.success());
 /// ```
@@ -123,10 +123,10 @@ impl Read for ChildStderr {
 /// use std::process::Command;
 ///
 /// let output = Command::new("sh")
-///     .arg("-c")
-///     .arg("echo hello")
-///     .output()
-///     .unwrap_or_else(|e| { panic!("failed to execute process: {}", e) });
+///                      .arg("-c")
+///                      .arg("echo hello")
+///                      .output()
+///                      .unwrap_or_else(|e| { panic!("failed to execute process: {}", e) });
 /// let hello = output.stdout;
 /// ```
 #[stable(feature = "process", since = "1.0.0")]
