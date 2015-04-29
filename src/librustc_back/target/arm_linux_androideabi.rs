@@ -13,8 +13,6 @@ use target::Target;
 pub fn target() -> Target {
     let mut base = super::android_base::opts();
     base.features = "+v7".to_string();
-    // FIXME #17437 (and #17448): Android doesn't support position dependent executables anymore.
-    base.position_independent_executables = false;
 
     Target {
         data_layout: "e-p:32:32:32-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-\
