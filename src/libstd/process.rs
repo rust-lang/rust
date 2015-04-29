@@ -40,11 +40,15 @@ use thread;
 /// ```should_panic
 /// use std::process::Command;
 ///
-/// let output = Command::new("/bin/cat").arg("file.txt").output().unwrap_or_else(|e| {
-///     panic!("failed to execute child: {}", e)
-/// });
-/// let contents = output.stdout;
-/// assert!(output.status.success());
+/// let mut child = Command::new("/bin/cat")
+///     .arg("file.txt")
+///     .spawn()
+///     .unwrap_or_else(|e| { panic!("failed to execute child: {}", e) });
+///
+/// let ecode = child.wait()
+///     .unwrap_or_else(|e| { panic!("failed to wait on child: {}", e) });
+///
+/// assert!(ecode.success());
 /// ```
 #[stable(feature = "process", since = "1.0.0")]
 pub struct Child {
@@ -118,9 +122,11 @@ impl Read for ChildStderr {
 /// ```
 /// use std::process::Command;
 ///
-/// let output = Command::new("sh").arg("-c").arg("echo hello").output().unwrap_or_else(|e| {
-///   panic!("failed to execute process: {}", e)
-/// });
+/// let output = Command::new("sh")
+///     .arg("-c")
+///     .arg("echo hello")
+///     .output()
+///     .unwrap_or_else(|e| { panic!("failed to execute process: {}", e) });
 /// let hello = output.stdout;
 /// ```
 #[stable(feature = "process", since = "1.0.0")]
@@ -140,7 +146,7 @@ impl Command {
     /// * No arguments to the program
     /// * Inherit the current process's environment
     /// * Inherit the current process's working directory
-    /// * Inherit stdin/stdout/stderr for `run` or `status`, but create pipes for `output`
+    /// * Inherit stdin/stdout/stderr for `spawn` or `status`, but create pipes for `output`
     ///
     /// Builder methods are provided to change these defaults and
     /// otherwise configure the process.
@@ -202,7 +208,6 @@ impl Command {
     }
 
     /// Configuration for the child process's stdin handle (file descriptor 0).
-    /// Defaults to `CreatePipe(true, false)` so the input can be written to.
     #[stable(feature = "process", since = "1.0.0")]
     pub fn stdin(&mut self, cfg: Stdio) -> &mut Command {
         self.stdin = Some(cfg.0);
@@ -210,7 +215,6 @@ impl Command {
     }
 
     /// Configuration for the child process's stdout handle (file descriptor 1).
-    /// Defaults to `CreatePipe(false, true)` so the output can be collected.
     #[stable(feature = "process", since = "1.0.0")]
     pub fn stdout(&mut self, cfg: Stdio) -> &mut Command {
         self.stdout = Some(cfg.0);
@@ -218,7 +222,6 @@ impl Command {
     }
 
     /// Configuration for the child process's stderr handle (file descriptor 2).
-    /// Defaults to `CreatePipe(false, true)` so the output can be collected.
     #[stable(feature = "process", since = "1.0.0")]
     pub fn stderr(&mut self, cfg: Stdio) -> &mut Command {
         self.stderr = Some(cfg.0);
@@ -356,7 +359,7 @@ pub struct Output {
     pub stderr: Vec<u8>,
 }
 
-/// Describes what to do with a standard io stream for a child process.
+/// Describes what to do with a standard I/O stream for a child process.
 #[stable(feature = "process", since = "1.0.0")]
 pub struct Stdio(StdioImp);
 
