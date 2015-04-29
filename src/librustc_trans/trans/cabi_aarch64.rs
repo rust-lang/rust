@@ -163,7 +163,7 @@ fn is_homogenous_aggregate_ty(ty: Type) -> Option<(Type, u64)> {
 
 fn classify_ret_ty(ccx: &CrateContext, ty: Type) -> ArgType {
     if is_reg_ty(ty) {
-        let attr = if ty == Type::i1(ccx) { Some(Attribute::ZExtAttribute) } else { None };
+        let attr = if ty == Type::i1(ccx) { Some(Attribute::ZExt) } else { None };
         return ArgType::direct(ty, None, None, attr);
     }
     if let Some((base_ty, members)) = is_homogenous_aggregate_ty(ty) {
@@ -185,12 +185,12 @@ fn classify_ret_ty(ccx: &CrateContext, ty: Type) -> ArgType {
         };
         return ArgType::direct(ty, Some(llty), None, None);
     }
-    ArgType::indirect(ty, Some(Attribute::StructRetAttribute))
+    ArgType::indirect(ty, Some(Attribute::StructRet))
 }
 
 fn classify_arg_ty(ccx: &CrateContext, ty: Type) -> ArgType {
     if is_reg_ty(ty) {
-        let attr = if ty == Type::i1(ccx) { Some(Attribute::ZExtAttribute) } else { None };
+        let attr = if ty == Type::i1(ccx) { Some(Attribute::ZExt) } else { None };
         return ArgType::direct(ty, None, None, attr);
     }
     if let Some((base_ty, members)) = is_homogenous_aggregate_ty(ty) {
