@@ -10,8 +10,7 @@
 
 #![allow(non_upper_case_globals)]
 
-use llvm::{Integer, Pointer, Float, Double, Struct, Array, Vector};
-use llvm::{StructRetAttribute, ZExtAttribute};
+use llvm::{Integer, Pointer, Float, Double, Struct, Array, Vector, Attribute};
 use trans::cabi::{FnType, ArgType};
 use trans::context::CrateContext;
 use trans::type_::Type;
@@ -164,7 +163,7 @@ fn is_homogenous_aggregate_ty(ty: Type) -> Option<(Type, u64)> {
 
 fn classify_ret_ty(ccx: &CrateContext, ty: Type) -> ArgType {
     if is_reg_ty(ty) {
-        let attr = if ty == Type::i1(ccx) { Some(ZExtAttribute) } else { None };
+        let attr = if ty == Type::i1(ccx) { Some(Attribute::ZExtAttribute) } else { None };
         return ArgType::direct(ty, None, None, attr);
     }
     if let Some((base_ty, members)) = is_homogenous_aggregate_ty(ty) {
@@ -186,12 +185,12 @@ fn classify_ret_ty(ccx: &CrateContext, ty: Type) -> ArgType {
         };
         return ArgType::direct(ty, Some(llty), None, None);
     }
-    ArgType::indirect(ty, Some(StructRetAttribute))
+    ArgType::indirect(ty, Some(Attribute::StructRetAttribute))
 }
 
 fn classify_arg_ty(ccx: &CrateContext, ty: Type) -> ArgType {
     if is_reg_ty(ty) {
-        let attr = if ty == Type::i1(ccx) { Some(ZExtAttribute) } else { None };
+        let attr = if ty == Type::i1(ccx) { Some(Attribute::ZExtAttribute) } else { None };
         return ArgType::direct(ty, None, None, attr);
     }
     if let Some((base_ty, members)) = is_homogenous_aggregate_ty(ty) {
