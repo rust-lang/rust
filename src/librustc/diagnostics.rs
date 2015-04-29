@@ -168,6 +168,25 @@ match x {
 ```
 "##,
 
+E0013: r##"
+Static and const variables can refer to other const variables. But a const
+variable cannot refer to a static variable. For example, `Y` cannot refer to `X`
+here:
+
+```
+static X: i32 = 42;
+const Y: i32 = X;
+```
+
+To fix this, the value can be extracted as a const and then used:
+
+```
+const A: i32 = 42;
+static X: i32 = A;
+const Y: i32 = A;
+```
+"##,
+
 E0015: r##"
 The only function calls allowed in static or constant expressions are enum
 variant constructors or struct constructors (for unit or tuple structs). This
@@ -462,7 +481,6 @@ register_diagnostics! {
     E0010,
     E0011,
     E0012,
-    E0013,
     E0014,
     E0016,
     E0017,
