@@ -27,9 +27,11 @@ use rustc::middle::dataflow::DataFlowOperator;
 use rustc::middle::dataflow::KillFrom;
 use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::mem_categorization as mc;
+use rustc::middle::free_region::FreeRegionMap;
 use rustc::middle::region;
 use rustc::middle::ty::{self, Ty};
 use rustc::util::ppaux::{note_and_explain_region, Repr, UserString};
+use std::mem;
 use std::rc::Rc;
 use std::string::String;
 use syntax::ast;
@@ -56,7 +58,20 @@ pub type LoanDataFlow<'a, 'tcx> = DataFlowContext<'a, 'tcx, LoanDataFlowOperator
 impl<'a, 'tcx, 'v> Visitor<'v> for BorrowckCtxt<'a, 'tcx> {
     fn visit_fn(&mut self, fk: FnKind<'v>, fd: &'v FnDecl,
                 b: &'v Block, s: Span, id: ast::NodeId) {
-        borrowck_fn(self, fk, fd, b, s, id);
+        match fk {
+            visit::FkItemFn(..) |
+            visit::FkMethod(..) => {
+                let new_free_region_map = self.tcx.free_region_map(id);
+                let old_free_region_map =
+                    mem::replace(&mut self.free_region_map, new_free_region_map);
+                borrowck_fn(self, fk, fd, b, s, id);
+                self.free_region_map = old_free_region_map;
+            }
+
+            visit::FkFnBlock => {
+                borrowck_fn(self, fk, fd, b, s, id);
+            }
+        }
     }
 
     fn visit_item(&mut self, item: &ast::Item) {
@@ -67,6 +82,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for BorrowckCtxt<'a, 'tcx> {
 pub fn check_crate(tcx: &ty::ctxt) {
     let mut bccx = BorrowckCtxt {
         tcx: tcx,
+        free_region_map: FreeRegionMap::new(),
         stats: BorrowStats {
             loaned_paths_same: 0,
             loaned_paths_imm: 0,
@@ -129,11 +145,13 @@ fn borrowck_fn(this: &mut BorrowckCtxt,
     let cfg = cfg::CFG::new(this.tcx, body);
     let AnalysisData { all_loans,
                        loans: loan_dfcx,
-                       move_data:flowed_moves } =
+                       move_data: flowed_moves } =
         build_borrowck_dataflow_data(this, fk, decl, &cfg, body, sp, id);
 
     move_data::fragments::instrument_move_fragments(&flowed_moves.move_data,
-                                                    this.tcx, sp, id);
+                                                    this.tcx,
+                                                    sp,
+                                                    id);
 
     check_loans::check_loans(this,
                              &loan_dfcx,
@@ -152,7 +170,9 @@ fn build_borrowck_dataflow_data<'a, 'tcx>(this: &mut BorrowckCtxt<'a, 'tcx>,
                                           cfg: &cfg::CFG,
                                           body: &ast::Block,
                                           sp: Span,
-                                          id: ast::NodeId) -> AnalysisData<'a, 'tcx> {
+                                          id: ast::NodeId)
+                                          -> AnalysisData<'a, 'tcx>
+{
     // Check the body of fn items.
     let id_range = ast_util::compute_id_range_for_fn_body(fk, decl, body, sp, id);
     let (all_loans, move_data) =
@@ -203,10 +223,13 @@ impl<'a> FnPartsWithCFG<'a> {
 /// the `BorrowckCtxt` itself , e.g. the flowgraph visualizer.
 pub fn build_borrowck_dataflow_data_for_fn<'a, 'tcx>(
     tcx: &'a ty::ctxt<'tcx>,
-    input: FnPartsWithCFG<'a>) -> (BorrowckCtxt<'a, 'tcx>, AnalysisData<'a, 'tcx>) {
+    input: FnPartsWithCFG<'a>)
+    -> (BorrowckCtxt<'a, 'tcx>, AnalysisData<'a, 'tcx>)
+{
 
     let mut bccx = BorrowckCtxt {
         tcx: tcx,
+        free_region_map: FreeRegionMap::new(),
         stats: BorrowStats {
             loaned_paths_same: 0,
             loaned_paths_imm: 0,
@@ -233,6 +256,18 @@ pub fn build_borrowck_dataflow_data_for_fn<'a, 'tcx>(
 
 pub struct BorrowckCtxt<'a, 'tcx: 'a> {
     tcx: &'a ty::ctxt<'tcx>,
+
+    // Hacky. As we visit various fns, we have to load up the
+    // free-region map for each one. This map is computed by during
+    // typeck for each fn item and stored -- closures just use the map
+    // from the fn item that encloses them. Since we walk the fns in
+    // order, we basically just overwrite this field as we enter a fn
+    // item and restore it afterwards in a stack-like fashion. Then
+    // the borrow checking code can assume that `free_region_map` is
+    // always the correct map for the current fn. Feels like it'd be
+    // better to just recompute this, rather than store it, but it's a
+    // bit of a pain to factor that code out at the moment.
+    free_region_map: FreeRegionMap,
 
     // Statistics:
     stats: BorrowStats
@@ -518,8 +553,9 @@ pub enum MovedValueUseKind {
 
 impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
     pub fn is_subregion_of(&self, r_sub: ty::Region, r_sup: ty::Region)
-                           -> bool {
-        self.tcx.region_maps.is_subregion_of(r_sub, r_sup)
+                           -> bool
+    {
+        self.free_region_map.is_subregion_of(self.tcx, r_sub, r_sup)
     }
 
     pub fn report(&self, err: BckError<'tcx>) {

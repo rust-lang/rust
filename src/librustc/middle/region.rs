@@ -17,9 +17,8 @@
 //! `middle/typeck/infer/region_inference.rs`
 
 use session::Session;
-use middle::ty::{self, Ty, FreeRegion};
+use middle::ty::{self, Ty};
 use util::nodemap::{FnvHashMap, FnvHashSet, NodeMap};
-use util::common::can_reach;
 
 use std::cell::RefCell;
 use syntax::codemap::{self, Span};
@@ -234,14 +233,6 @@ pub struct RegionMaps {
     /// which that variable is declared.
     var_map: RefCell<NodeMap<CodeExtent>>,
 
-    /// `free_region_map` maps from a free region `a` to a list of
-    /// free regions `bs` such that `a <= b for all b in bs`
-    ///
-    /// NB. the free region map is populated during type check as we
-    /// check each function. See the function `relate_free_regions`
-    /// for more information.
-    free_region_map: RefCell<FnvHashMap<FreeRegion, Vec<FreeRegion>>>,
-
     /// `rvalue_scopes` includes entries for those expressions whose cleanup scope is
     /// larger than the default. The map goes from the expression id
     /// to the cleanup scope id. For rvalues not present in this
@@ -390,13 +381,6 @@ impl RegionMaps {
             e(child, parent)
         }
     }
-    pub fn each_encl_free_region<E>(&self, mut e:E) where E: FnMut(&FreeRegion, &FreeRegion) {
-        for (child, parents) in self.free_region_map.borrow().iter() {
-            for parent in parents.iter() {
-                e(child, parent)
-            }
-        }
-    }
     pub fn each_rvalue_scope<E>(&self, mut e:E) where E: FnMut(&ast::NodeId, &CodeExtent) {
         for (child, parent) in self.rvalue_scopes.borrow().iter() {
             e(child, parent)
@@ -406,21 +390,6 @@ impl RegionMaps {
         for scope in self.terminating_scopes.borrow().iter() {
             e(scope)
         }
-    }
-
-    pub fn relate_free_regions(&self, sub: FreeRegion, sup: FreeRegion) {
-        match self.free_region_map.borrow_mut().get_mut(&sub) {
-            Some(sups) => {
-                if !sups.iter().any(|x| x == &sup) {
-                    sups.push(sup);
-                }
-                return;
-            }
-            None => {}
-        }
-
-        debug!("relate_free_regions(sub={:?}, sup={:?})", sub, sup);
-        self.free_region_map.borrow_mut().insert(sub, vec!(sup));
     }
 
     /// Records that `sub_fn` is defined within `sup_fn`. These ids
@@ -565,56 +534,6 @@ impl RegionMaps {
                subscope, superscope);
 
         return true;
-    }
-
-    /// Determines whether two free regions have a subregion relationship
-    /// by walking the graph encoded in `free_region_map`.  Note that
-    /// it is possible that `sub != sup` and `sub <= sup` and `sup <= sub`
-    /// (that is, the user can give two different names to the same lifetime).
-    pub fn sub_free_region(&self, sub: FreeRegion, sup: FreeRegion) -> bool {
-        can_reach(&*self.free_region_map.borrow(), sub, sup)
-    }
-
-    /// Determines whether one region is a subregion of another.  This is intended to run *after
-    /// inference* and sadly the logic is somewhat duplicated with the code in infer.rs.
-    pub fn is_subregion_of(&self,
-                           sub_region: ty::Region,
-                           super_region: ty::Region)
-                           -> bool {
-        debug!("is_subregion_of(sub_region={:?}, super_region={:?})",
-               sub_region, super_region);
-
-        sub_region == super_region || {
-            match (sub_region, super_region) {
-                (ty::ReEmpty, _) |
-                (_, ty::ReStatic) => {
-                    true
-                }
-
-                (ty::ReScope(sub_scope), ty::ReScope(super_scope)) => {
-                    self.is_subscope_of(sub_scope, super_scope)
-                }
-
-                (ty::ReScope(sub_scope), ty::ReFree(ref fr)) => {
-                    self.is_subscope_of(sub_scope, fr.scope.to_code_extent())
-                }
-
-                (ty::ReFree(sub_fr), ty::ReFree(super_fr)) => {
-                    self.sub_free_region(sub_fr, super_fr)
-                }
-
-                (ty::ReEarlyBound(data_a), ty::ReEarlyBound(data_b)) => {
-                    // This case is used only to make sure that explicitly-
-                    // specified `Self` types match the real self type in
-                    // implementations. Yuck.
-                    data_a == data_b
-                }
-
-                _ => {
-                    false
-                }
-            }
-        }
     }
 
     /// Finds the nearest common ancestor (if any) of two scopes.  That is, finds the smallest
@@ -1291,7 +1210,6 @@ pub fn resolve_crate(sess: &Session, krate: &ast::Crate) -> RegionMaps {
     let maps = RegionMaps {
         scope_map: RefCell::new(FnvHashMap()),
         var_map: RefCell::new(NodeMap()),
-        free_region_map: RefCell::new(FnvHashMap()),
         rvalue_scopes: RefCell::new(NodeMap()),
         terminating_scopes: RefCell::new(FnvHashSet()),
         fn_tree: RefCell::new(NodeMap()),

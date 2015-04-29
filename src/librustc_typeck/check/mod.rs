@@ -132,7 +132,6 @@ pub mod dropck;
 pub mod _match;
 pub mod vtable;
 pub mod writeback;
-pub mod implicator;
 pub mod regionck;
 pub mod coercion;
 pub mod demand;
