@@ -56,6 +56,24 @@ fn grow_by_insertion(b: &mut Bencher) {
 }
 
 #[bench]
+fn grow_by_insertion_large(b: &mut Bencher) {
+    use super::map::HashMap;
+
+    let mut m = HashMap::new();
+
+    for i in range_inclusive(1, 1000) {
+        m.insert(i, (String::new(), String::new()));
+    }
+
+    let mut k = 1001;
+
+    b.iter(|| {
+        m.insert(k, (String::new(), String::new()));
+        k += 1;
+    });
+}
+
+#[bench]
 fn find_existing(b: &mut Bencher) {
     use super::map::HashMap;
 
