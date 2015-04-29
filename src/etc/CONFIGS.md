@@ -2,6 +2,7 @@
 
 Here are some links to repos with configs which ease the use of rust:
 
+* [.editorconfig](https://gist.github.com/derhuerst/c9d1b9309e308d9851fa) ([what is this?](http://editorconfig.org/))
 * [rust.vim](https://github.com/rust-lang/rust.vim)
 * [emacs rust-mode](https://github.com/rust-lang/rust-mode)
 * [gedit-config](https://github.com/rust-lang/gedit-config)
