@@ -27,7 +27,16 @@ use sys_common::FromInner;
 use vec::Vec;
 
 pub struct File { handle: Handle }
-pub struct FileAttr { data: c::WIN32_FILE_ATTRIBUTE_DATA }
+
+pub struct FileAttr {
+    data: c::WIN32_FILE_ATTRIBUTE_DATA,
+    is_symlink: bool,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+pub enum FileType {
+    Dir, File, Symlink, ReparsePoint
+}
 
 pub struct ReadDir {
     handle: FindNextFileHandle,
@@ -60,6 +69,8 @@ pub struct OpenOptions {
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct FilePermissions { attrs: libc::DWORD }
+
+pub struct DirBuilder;
 
 impl Iterator for ReadDir {
     type Item = io::Result<DirEntry>;
@@ -111,8 +122,31 @@ impl DirEntry {
     }
 
     pub fn path(&self) -> PathBuf {
+        self.root.join(&self.file_name())
+    }
+
+    pub fn file_name(&self) -> OsString {
         let filename = super::truncate_utf16_at_nul(&self.data.cFileName);
-        self.root.join(&<OsString as OsStringExt>::from_wide(filename))
+        OsString::from_wide(filename)
+    }
+
+    pub fn file_type(&self) -> io::Result<FileType> {
+        Ok(FileType::new(self.data.dwFileAttributes,
+                         self.data.dwReserved0 == c::IO_REPARSE_TAG_SYMLINK))
+    }
+
+    pub fn metadata(&self) -> io::Result<FileAttr> {
+        Ok(FileAttr {
+            data: c::WIN32_FILE_ATTRIBUTE_DATA {
+                dwFileAttributes: self.data.dwFileAttributes,
+                ftCreationTime: self.data.ftCreationTime,
+                ftLastAccessTime: self.data.ftLastAccessTime,
+                ftLastWriteTime: self.data.ftLastWriteTime,
+                nFileSizeHigh: self.data.nFileSizeHigh,
+                nFileSizeLow: self.data.nFileSizeLow,
+            },
+            is_symlink: self.data.dwReserved0 == c::IO_REPARSE_TAG_SYMLINK,
+        })
     }
 }
 
@@ -180,6 +214,13 @@ impl OpenOptions {
 }
 
 impl File {
+    fn open_reparse_point(path: &Path) -> io::Result<File> {
+        let mut opts = OpenOptions::new();
+        opts.read(true);
+        opts.flags_and_attributes(c::FILE_FLAG_OPEN_REPARSE_POINT as i32);
+        File::open(path, &opts)
+    }
+
     pub fn open(path: &Path, opts: &OpenOptions) -> io::Result<File> {
         let path = to_utf16(path);
         let handle = unsafe {
@@ -224,7 +265,7 @@ impl File {
             let mut info: c::BY_HANDLE_FILE_INFORMATION = mem::zeroed();
             try!(cvt(c::GetFileInformationByHandle(self.handle.raw(),
                                                    &mut info)));
-            Ok(FileAttr {
+            let mut attr = FileAttr {
                 data: c::WIN32_FILE_ATTRIBUTE_DATA {
                     dwFileAttributes: info.dwFileAttributes,
                     ftCreationTime: info.ftCreationTime,
@@ -232,8 +273,13 @@ impl File {
                     ftLastWriteTime: info.ftLastWriteTime,
                     nFileSizeHigh: info.nFileSizeHigh,
                     nFileSizeLow: info.nFileSizeLow,
-                }
-            })
+                },
+                is_symlink: false,
+            };
+            if attr.is_reparse_point() {
+                attr.is_symlink = self.is_symlink();
+            }
+            Ok(attr)
         }
     }
 
@@ -263,6 +309,41 @@ impl File {
     }
 
     pub fn handle(&self) -> &Handle { &self.handle }
+
+    fn is_symlink(&self) -> bool {
+        self.readlink().is_ok()
+    }
+
+    fn readlink(&self) -> io::Result<PathBuf> {
+        let mut space = [0u8; c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
+        let mut bytes = 0;
+
+        unsafe {
+            try!(cvt({
+                c::DeviceIoControl(self.handle.raw(),
+                                   c::FSCTL_GET_REPARSE_POINT,
+                                   0 as *mut _,
+                                   0,
+                                   space.as_mut_ptr() as *mut _,
+                                   space.len() as libc::DWORD,
+                                   &mut bytes,
+                                   0 as *mut _)
+            }));
+            let buf: *const c::REPARSE_DATA_BUFFER = space.as_ptr() as *const _;
+            if (*buf).ReparseTag != c::IO_REPARSE_TAG_SYMLINK {
+                return Err(io::Error::new(io::ErrorKind::Other, "not a symlink"))
+            }
+            let info: *const c::SYMBOLIC_LINK_REPARSE_BUFFER =
+                    &(*buf).rest as *const _ as *const _;
+            let path_buffer = &(*info).PathBuffer as *const _ as *const u16;
+            let subst_off = (*info).SubstituteNameOffset / 2;
+            let subst_ptr = path_buffer.offset(subst_off as isize);
+            let subst_len = (*info).SubstituteNameLength / 2;
+            let subst = slice::from_raw_parts(subst_ptr, subst_len as usize);
+
+            Ok(PathBuf::from(OsString::from_wide(subst)))
+        }
+    }
 }
 
 impl FromInner<libc::HANDLE> for File {
@@ -285,27 +366,30 @@ pub fn to_utf16(s: &Path) -> Vec<u16> {
 }
 
 impl FileAttr {
-    pub fn is_dir(&self) -> bool {
-        self.data.dwFileAttributes & c::FILE_ATTRIBUTE_DIRECTORY != 0
-    }
-    pub fn is_file(&self) -> bool {
-        !self.is_dir()
-    }
     pub fn size(&self) -> u64 {
         ((self.data.nFileSizeHigh as u64) << 32) | (self.data.nFileSizeLow as u64)
     }
+
     pub fn perm(&self) -> FilePermissions {
         FilePermissions { attrs: self.data.dwFileAttributes }
     }
 
-    pub fn accessed(&self) -> u64 { self.to_ms(&self.data.ftLastAccessTime) }
-    pub fn modified(&self) -> u64 { self.to_ms(&self.data.ftLastWriteTime) }
+    pub fn attrs(&self) -> u32 { self.data.dwFileAttributes as u32 }
 
-    fn to_ms(&self, ft: &libc::FILETIME) -> u64 {
-        // FILETIME is in 100ns intervals and there are 10000 intervals in a
-        // millisecond.
-        let bits = (ft.dwLowDateTime as u64) | ((ft.dwHighDateTime as u64) << 32);
-        bits / 10000
+    pub fn file_type(&self) -> FileType {
+        FileType::new(self.data.dwFileAttributes, self.is_symlink)
+    }
+
+    pub fn created(&self) -> u64 { self.to_u64(&self.data.ftCreationTime) }
+    pub fn accessed(&self) -> u64 { self.to_u64(&self.data.ftLastAccessTime) }
+    pub fn modified(&self) -> u64 { self.to_u64(&self.data.ftLastWriteTime) }
+
+    fn to_u64(&self, ft: &libc::FILETIME) -> u64 {
+        (ft.dwLowDateTime as u64) | ((ft.dwHighDateTime as u64) << 32)
+    }
+
+    fn is_reparse_point(&self) -> bool {
+        self.data.dwFileAttributes & libc::FILE_ATTRIBUTE_REPARSE_POINT != 0
     }
 }
 
@@ -323,12 +407,36 @@ impl FilePermissions {
     }
 }
 
-pub fn mkdir(p: &Path) -> io::Result<()> {
-    let p = to_utf16(p);
-    try!(cvt(unsafe {
-        libc::CreateDirectoryW(p.as_ptr(), ptr::null_mut())
-    }));
-    Ok(())
+impl FileType {
+    fn new(attrs: libc::DWORD, is_symlink: bool) -> FileType {
+        if attrs & libc::FILE_ATTRIBUTE_REPARSE_POINT != 0 {
+            if is_symlink {
+                FileType::Symlink
+            } else {
+                FileType::ReparsePoint
+            }
+        } else if attrs & c::FILE_ATTRIBUTE_DIRECTORY != 0 {
+            FileType::Dir
+        } else {
+            FileType::File
+        }
+    }
+
+    pub fn is_dir(&self) -> bool { *self == FileType::Dir }
+    pub fn is_file(&self) -> bool { *self == FileType::File }
+    pub fn is_symlink(&self) -> bool { *self == FileType::Symlink }
+}
+
+impl DirBuilder {
+    pub fn new() -> DirBuilder { DirBuilder }
+
+    pub fn mkdir(&self, p: &Path) -> io::Result<()> {
+        let p = to_utf16(p);
+        try!(cvt(unsafe {
+            libc::CreateDirectoryW(p.as_ptr(), ptr::null_mut())
+        }));
+        Ok(())
+    }
 }
 
 pub fn readdir(p: &Path) -> io::Result<ReadDir> {
@@ -374,40 +482,8 @@ pub fn rmdir(p: &Path) -> io::Result<()> {
 }
 
 pub fn readlink(p: &Path) -> io::Result<PathBuf> {
-    let mut opts = OpenOptions::new();
-    opts.read(true);
-    opts.flags_and_attributes(c::FILE_FLAG_OPEN_REPARSE_POINT as i32);
-    let file = try!(File::open(p, &opts));
-
-    let mut space = [0u8; c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
-    let mut bytes = 0;
-
-    unsafe {
-        try!(cvt({
-            c::DeviceIoControl(file.handle.raw(),
-                               c::FSCTL_GET_REPARSE_POINT,
-                               0 as *mut _,
-                               0,
-                               space.as_mut_ptr() as *mut _,
-                               space.len() as libc::DWORD,
-                               &mut bytes,
-                               0 as *mut _)
-        }));
-        let buf: *const c::REPARSE_DATA_BUFFER = space.as_ptr() as *const _;
-        if (*buf).ReparseTag != c::IO_REPARSE_TAG_SYMLINK {
-            return Err(io::Error::new(io::ErrorKind::Other, "not a symlink"))
-        }
-        let info: *const c::SYMBOLIC_LINK_REPARSE_BUFFER =
-                &(*buf).rest as *const _ as *const _;
-        let path_buffer = &(*info).PathBuffer as *const _ as *const u16;
-        let subst_off = (*info).SubstituteNameOffset / 2;
-        let subst_ptr = path_buffer.offset(subst_off as isize);
-        let subst_len = (*info).SubstituteNameLength / 2;
-        let subst = slice::from_raw_parts(subst_ptr, subst_len as usize);
-
-        Ok(PathBuf::from(OsString::from_wide(subst)))
-    }
-
+    let file = try!(File::open_reparse_point(p));
+    file.readlink()
 }
 
 pub fn symlink(src: &Path, dst: &Path) -> io::Result<()> {
@@ -435,12 +511,28 @@ pub fn link(src: &Path, dst: &Path) -> io::Result<()> {
 }
 
 pub fn stat(p: &Path) -> io::Result<FileAttr> {
-    let p = to_utf16(p);
+    let attr = try!(lstat(p));
+    if attr.data.dwFileAttributes & libc::FILE_ATTRIBUTE_REPARSE_POINT != 0 {
+        let opts = OpenOptions::new();
+        let file = try!(File::open(p, &opts));
+        file.file_attr()
+    } else {
+        Ok(attr)
+    }
+}
+
+pub fn lstat(p: &Path) -> io::Result<FileAttr> {
+    let utf16 = to_utf16(p);
     unsafe {
         let mut attr: FileAttr = mem::zeroed();
-        try!(cvt(c::GetFileAttributesExW(p.as_ptr(),
+        try!(cvt(c::GetFileAttributesExW(utf16.as_ptr(),
                                          c::GetFileExInfoStandard,
                                          &mut attr.data as *mut _ as *mut _)));
+        if attr.is_reparse_point() {
+            attr.is_symlink = File::open_reparse_point(p).map(|f| {
+                f.is_symlink()
+            }).unwrap_or(false);
+        }
         Ok(attr)
     }
 }
@@ -464,4 +556,18 @@ pub fn utimes(p: &Path, atime: u64, mtime: u64) -> io::Result<()> {
         c::SetFileTime(f.handle.raw(), 0 as *const _, &atime, &mtime)
     }));
     Ok(())
+}
+
+pub fn canonicalize(p: &Path) -> io::Result<PathBuf> {
+    use sys::c::compat::kernel32::GetFinalPathNameByHandleW;
+
+    let mut opts = OpenOptions::new();
+    opts.read(true);
+    let f = try!(File::open(p, &opts));
+    super::fill_utf16_buf(|buf, sz| unsafe {
+        GetFinalPathNameByHandleW(f.handle.raw(), buf, sz,
+                                  libc::VOLUME_NAME_DOS)
+    }, |buf| {
+        PathBuf::from(OsString::from_wide(buf))
+    })
 }
