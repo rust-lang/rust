@@ -664,7 +664,7 @@ fn import_codemap(local_codemap: &codemap::CodeMap,
                     .into_inner()
                     .map_in_place(|mbc|
                         codemap::MultiByteChar {
-                            pos: mbc.pos + start_pos,
+                            pos: mbc.pos - start_pos,
                             bytes: mbc.bytes
                         });
 
