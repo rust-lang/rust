@@ -35,6 +35,8 @@
 // gdb-command: print none
 // gdb-check:$6 = None
 
+#![allow(unused_variables)]
+
 fn main() {
 
     // &[]

@@ -76,6 +76,8 @@
 // gdb-command: print none_check2
 // gdb-check:$18 = None
 
+#![allow(dead_code, unused_variables)]
+
 use self::CStyleEnum::{CStyleEnumVar1, CStyleEnumVar2, CStyleEnumVar3};
 use self::MixedEnum::{MixedEnumCStyleVar, MixedEnumTupleVar, MixedEnumStructVar};
 use self::NestedEnum::{NestedVariant1, NestedVariant2};
