@@ -20,10 +20,9 @@
 pub use self::MacroFormat::*;
 
 use std::cell::RefCell;
+use std::fmt;
 use std::ops::{Add, Sub};
 use std::rc::Rc;
-
-use std::fmt;
 
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 

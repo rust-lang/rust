@@ -8,6 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// FIXME: This was copied from core/str/mod.rs because it is currently unstable.
 pub fn char_at(s: &str, byte: usize) -> char {
     s[byte..].chars().next().unwrap()
+}
+
+// FIXME: This was copied from core/str/mod.rs because it is currently unstable.
+#[inline]
+pub fn slice_shift_char(s: &str) -> Option<(char, &str)> {
+    if s.is_empty() {
+        None
+    } else {
+        let ch = char_at(s, 0);
+        Some((ch, &s[ch.len_utf8()..]))
+    }
 }

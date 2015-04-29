@@ -27,6 +27,7 @@ use print::pp::{Breaks, eof};
 use print::pp::Breaks::{Consistent, Inconsistent};
 use ptr::P;
 use std_inject;
+use str::slice_shift_char;
 
 use std::ascii;
 use std::io::{self, Write, Read};
@@ -1901,7 +1902,7 @@ impl<'a> State<'a> {
 
                 try!(self.commasep(Inconsistent, &a.outputs,
                                    |s, &(ref co, ref o, is_rw)| {
-                    match co.slice_shift_char() {
+                    match slice_shift_char(co) {
                         Some(('=', operand)) if is_rw => {
                             try!(s.print_string(&format!("+{}", operand),
                                                 ast::CookedStr))

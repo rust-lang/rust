@@ -25,7 +25,6 @@ use codemap::{respan, Span, Spanned};
 use owned_slice::OwnedSlice;
 use parse::token;
 use ptr::P;
-use std::ptr;
 use util::small_vector::SmallVector;
 
 use std::rc::Rc;
@@ -36,14 +35,8 @@ pub trait MoveMap<T> {
 }
 
 impl<T> MoveMap<T> for Vec<T> {
-    fn move_map<F>(mut self, mut f: F) -> Vec<T> where F: FnMut(T) -> T {
-        for p in &mut self {
-            unsafe {
-                // FIXME(#5016) this shouldn't need to zero to be safe.
-                ptr::write(p, f(ptr::read_and_drop(p)));
-            }
-        }
-        self
+    fn move_map<F>(self, mut f: F) -> Vec<T> where F: FnMut(T) -> T {
+        self.into_iter().map(|p| f(p)).collect()
     }
 }
 
