@@ -10,7 +10,6 @@
 
 #![omit_gdb_pretty_printer_section]
 
-// ignore-android: FIXME(#10381)
 // min-lldb-version: 310
 
 // aux-build:cross_crate_spans.rs

@@ -10,7 +10,7 @@
 
 // ignore-tidy-linelength
 // ignore-lldb
-// ignore-android: FIXME(#10381)
+// ignore-android: FIXME(#24958)
 
 // compile-flags:-g
 
