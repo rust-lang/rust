@@ -368,6 +368,73 @@ loop. Without a loop to break out of or continue in, no sensible action can be
 taken.
 "##,
 
+E0282: r##"
+This error indicates that type inference did not result in one unique possible
+type, and extra information is required. In most cases this can be provided
+by adding a type annotation. Sometimes you need to specify a generic type
+parameter manually.
+
+A common example is the `collect` method on `Iterator`. It has a generic type
+parameter with a `FromIterator` bound, which is implemented by `Vec` and
+`VecDeque` among others. Consider the following snippet:
+
+```
+let x = (1_i32 .. 10).collect();
+```
+
+In this case, the compiler cannot infer what the type of `x` should be:
+`Vec<i32>` and `VecDeque<i32>` are both suitable candidates. To specify which
+type to use, you can use a type annotation on `x`:
+
+```
+let x: Vec<i32> = (1_i32 .. 10).collect();
+```
+
+It is not necessary to annotate the full type, once the ambiguity is resolved,
+the compiler can infer the rest:
+
+```
+let x: Vec<_> = (1_i32 .. 10).collect();
+```
+
+Another way to provide the compiler with enough information, is to specify the
+generic type parameter:
+
+```
+let x = (1_i32 .. 10).collect::<Vec<i32>>();
+```
+
+Again, you need not specify the full type if the compiler can infer it:
+
+```
+let x = (1_i32 .. 10).collect::<Vec<_>>();
+```
+
+Apart from a method or function with a generic type parameter, this error can
+occur when a type parameter of a struct or trait cannot be inferred. In that
+case it is not always possible to use a type annotation, because all candidates
+have the same return type. For instance:
+
+```
+struct Foo<T> {
+    // Some fields omitted.
+}
+
+impl<T> Foo<T> {
+    fn bar() -> i32 {
+        0
+    }
+
+    fn baz() {
+        let number = Foo::bar();
+    }
+}
+```
+
+This will fail because the compiler does not know which instance of `Foo` to
+call `bar` on. Change `Foo::bar()` to `Foo::<T>::bar()` to resolve the error.
+"##,
+
 E0296: r##"
 This error indicates that the given recursion limit could not be parsed. Ensure
 that the value provided is a positive integer between quotes, like so:
@@ -515,7 +582,6 @@ register_diagnostics! {
     E0279, // requirement is not satisfied
     E0280, // requirement is not satisfied
     E0281, // type implements trait but other trait is required
-    E0282, // unable to infer enough type information about
     E0283, // cannot resolve type
     E0284, // cannot resolve type
     E0285, // overflow evaluation builtin bounds
