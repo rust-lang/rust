@@ -15,6 +15,7 @@ pub use self::FulfillmentErrorCode::*;
 pub use self::Vtable::*;
 pub use self::ObligationCauseCode::*;
 
+use middle::free_region::FreeRegionMap;
 use middle::subst;
 use middle::ty::{self, HasProjectionTypes, Ty};
 use middle::ty_fold::TypeFoldable;
@@ -424,7 +425,8 @@ pub fn normalize_param_env_or_error<'a,'tcx>(unnormalized_env: ty::ParameterEnvi
         }
     };
 
-    infcx.resolve_regions_and_report_errors(body_id);
+    let free_regions = FreeRegionMap::new();
+    infcx.resolve_regions_and_report_errors(&free_regions, body_id);
     let predicates = match infcx.fully_resolve(&predicates) {
         Ok(predicates) => predicates,
         Err(fixup_err) => {
