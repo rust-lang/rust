@@ -159,12 +159,9 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
                 }
                 visit::walk_item(self, item);
             }
-            ast::Item_::ItemImpl(..) => {
-                self.block_indent += TAB_SPACES;
-                visit::walk_item(self, item);
-                self.block_indent -= TAB_SPACES;
-            }
-            ast::Item_::ItemMod(_) => {
+            ast::Item_::ItemImpl(..) |
+            ast::Item_::ItemMod(_) |
+            ast::Item_::ItemTrait(..) => {
                 self.block_indent += TAB_SPACES;
                 visit::walk_item(self, item);
                 self.block_indent -= TAB_SPACES;
