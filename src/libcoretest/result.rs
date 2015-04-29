@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub fn op1() -> Result<isize, &'static str> { Ok(666) }
-pub fn op2() -> Result<isize, &'static str> { Err("sadface") }
+fn op1() -> Result<isize, &'static str> { Ok(666) }
+fn op2() -> Result<isize, &'static str> { Err("sadface") }
 
 #[test]
-pub fn test_and() {
+fn test_and() {
     assert_eq!(op1().and(Ok(667)).unwrap(), 667);
     assert_eq!(op1().and(Err::<i32, &'static str>("bad")).unwrap_err(),
                "bad");
@@ -23,7 +23,7 @@ pub fn test_and() {
 }
 
 #[test]
-pub fn test_and_then() {
+fn test_and_then() {
     assert_eq!(op1().and_then(|i| Ok::<isize, &'static str>(i + 1)).unwrap(), 667);
     assert_eq!(op1().and_then(|_| Err::<isize, &'static str>("bad")).unwrap_err(),
                "bad");
@@ -35,7 +35,7 @@ pub fn test_and_then() {
 }
 
 #[test]
-pub fn test_or() {
+fn test_or() {
     assert_eq!(op1().or(Ok::<_, &'static str>(667)).unwrap(), 666);
     assert_eq!(op1().or(Err("bad")).unwrap(), 666);
 
@@ -44,7 +44,7 @@ pub fn test_or() {
 }
 
 #[test]
-pub fn test_or_else() {
+fn test_or_else() {
     assert_eq!(op1().or_else(|_| Ok::<isize, &'static str>(667)).unwrap(), 666);
     assert_eq!(op1().or_else(|e| Err::<isize, &'static str>(e)).unwrap(), 666);
 
@@ -54,13 +54,13 @@ pub fn test_or_else() {
 }
 
 #[test]
-pub fn test_impl_map() {
+fn test_impl_map() {
     assert!(Ok::<isize, isize>(1).map(|x| x + 1) == Ok(2));
     assert!(Err::<isize, isize>(1).map(|x| x + 1) == Err(1));
 }
 
 #[test]
-pub fn test_impl_map_err() {
+fn test_impl_map_err() {
     assert!(Ok::<isize, isize>(1).map_err(|x| x + 1) == Ok(1));
     assert!(Err::<isize, isize>(1).map_err(|x| x + 1) == Err(2));
 }
@@ -89,7 +89,7 @@ fn test_collect() {
 */
 
 #[test]
-pub fn test_fmt_default() {
+fn test_fmt_default() {
     let ok: Result<isize, &'static str> = Ok(100);
     let err: Result<isize, &'static str> = Err("Err");
 
@@ -100,7 +100,7 @@ pub fn test_fmt_default() {
 }
 
 #[test]
-pub fn test_unwrap_or() {
+fn test_unwrap_or() {
     let ok: Result<isize, &'static str> = Ok(100);
     let ok_err: Result<isize, &'static str> = Err("Err");
 
@@ -109,7 +109,7 @@ pub fn test_unwrap_or() {
 }
 
 #[test]
-pub fn test_unwrap_or_else() {
+fn test_unwrap_or_else() {
     fn handler(msg: &'static str) -> isize {
         if msg == "I got this." {
             50
