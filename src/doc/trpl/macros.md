@@ -765,7 +765,7 @@ as `unimplemented!` until you’re ready to write them.
 # Procedural macros
 
 If Rust’s macro system can’t do what you need, you may want to write a
-[compiler plugin](plugins.html) instead. Compared to `macro_rules!`
+[compiler plugin](compiler-plugins.html) instead. Compared to `macro_rules!`
 macros, this is significantly more work, the interfaces are much less stable,
 and bugs can be much harder to track down. In exchange you get the
 flexibility of running arbitrary Rust code within the compiler. Syntax
