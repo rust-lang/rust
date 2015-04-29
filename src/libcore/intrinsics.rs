@@ -145,13 +145,13 @@ extern "rust-intrinsic" {
     /// but no instructions will be emitted for it. This is appropriate for operations
     /// on the same thread that may be preempted, such as when interacting with signal
     /// handlers.
-    #[cfg(not(stage0))]     // SNAP 5520801
+    #[cfg(not(stage0))]     // SNAP 857ef6e
     pub fn atomic_singlethreadfence();
-    #[cfg(not(stage0))]     // SNAP 5520801
+    #[cfg(not(stage0))]     // SNAP 857ef6e
     pub fn atomic_singlethreadfence_acq();
-    #[cfg(not(stage0))]     // SNAP 5520801
+    #[cfg(not(stage0))]     // SNAP 857ef6e
     pub fn atomic_singlethreadfence_rel();
-    #[cfg(not(stage0))]     // SNAP 5520801
+    #[cfg(not(stage0))]     // SNAP 857ef6e
     pub fn atomic_singlethreadfence_acqrel();
 
     /// Aborts the execution of the process.
