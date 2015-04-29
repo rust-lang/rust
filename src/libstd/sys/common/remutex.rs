@@ -96,7 +96,6 @@ impl<T> ReentrantMutex<T> {
     }
 }
 
-#[unsafe_destructor]
 impl<T> Drop for ReentrantMutex<T> {
     fn drop(&mut self) {
         // This is actually safe b/c we know that there is no further usage of
@@ -138,7 +137,6 @@ impl<'mutex, T> Deref for ReentrantMutexGuard<'mutex, T> {
     }
 }
 
-#[unsafe_destructor]
 impl<'a, T> Drop for ReentrantMutexGuard<'a, T> {
     #[inline]
     fn drop(&mut self) {

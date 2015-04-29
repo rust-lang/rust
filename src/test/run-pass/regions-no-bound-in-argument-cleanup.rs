@@ -10,8 +10,6 @@
 
 // pretty-expanded FIXME #23616
 
-#![feature(unsafe_destructor)]
-
 use std::marker;
 
 pub struct Foo<T>(marker::PhantomData<T>);
@@ -24,7 +22,6 @@ impl<T> Iterator for Foo<T> {
     }
 }
 
-#[unsafe_destructor]
 impl<T> Drop for Foo<T> {
     fn drop(&mut self) {
         self.next();

@@ -226,7 +226,6 @@ impl<T> Queue<T> {
     }
 }
 
-#[unsafe_destructor]
 impl<T> Drop for Queue<T> {
     fn drop(&mut self) {
         unsafe {

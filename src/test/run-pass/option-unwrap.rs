@@ -8,16 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-#![feature(unsafe_destructor)]
-
 use std::cell::Cell;
 
 struct dtor<'a> {
     x: &'a Cell<isize>,
 }
 
-#[unsafe_destructor]
 impl<'a> Drop for dtor<'a> {
     fn drop(&mut self) {
         self.x.set(self.x.get() - 1);

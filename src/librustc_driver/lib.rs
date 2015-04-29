@@ -31,7 +31,6 @@
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
-#![feature(unsafe_destructor)]
 #![feature(staged_api)]
 #![feature(exit_status)]
 #![feature(set_stdio)]
