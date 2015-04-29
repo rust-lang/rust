@@ -81,7 +81,7 @@ impl<'a> FmtVisitor<'a> {
         result.push_str(&token::get_ident(ty_param.ident));
         if ty_param.bounds.len() > 0 {
             result.push_str(": ");
-            result.push_str(&ty_param.bounds.iter().map(|b| self.rewrite_ty_bound(b)).collect::<Vec<_>>().connect(", "));
+            result.push_str(&ty_param.bounds.iter().map(|b| self.rewrite_ty_bound(b)).collect::<Vec<_>>().connect("+"));
         }
         if let Some(ref def) = ty_param.default {
             result.push_str(" = ");

@@ -40,3 +40,10 @@ impl Foo {
     {
     }
 }
+
+pub fn render<'a, N: Clone+'a, E: Clone+'a, G: Labeller<'a, N, E>+GraphWalk<'a, N, E>, W: Write>
+    (g: &'a G,
+     w: &mut W)
+     -> io::Result<()> {
+    render_opts(g, w, &[])
+}
