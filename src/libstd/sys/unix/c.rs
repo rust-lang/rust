@@ -161,6 +161,8 @@ extern {
     pub fn gai_strerror(errcode: libc::c_int) -> *const libc::c_char;
     pub fn setgroups(ngroups: libc::c_int,
                      ptr: *const libc::c_void) -> libc::c_int;
+    pub fn realpath(pathname: *const libc::c_char, resolved: *mut libc::c_char)
+                    -> *mut libc::c_char;
 }
 
 #[cfg(any(target_os = "macos", target_os = "ios"))]

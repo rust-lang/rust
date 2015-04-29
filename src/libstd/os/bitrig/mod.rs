@@ -1,4 +1,4 @@
-// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,9 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! OS-specific functionality
+//! Bitrig-specific definitions
 
-#![stable(feature = "os", since = "1.0.0")]
+#![unstable(feature = "raw_ext", reason = "recently added API")]
 
-#[cfg(unix)] pub use sys::ext as unix;
-#[cfg(windows)] pub use sys::ext as windows;
+pub mod raw;
+
+pub mod fs {
+    pub use sys::fs2::MetadataExt;
+}
