@@ -849,7 +849,6 @@ impl<'tcx> ctxt<'tcx> {
 // recursing over the type itself.
 bitflags! {
     flags TypeFlags: u32 {
-        const NO_TYPE_FLAGS     = 0,
         const HAS_PARAMS        = 1 << 0,
         const HAS_SELF          = 1 << 1,
         const HAS_TY_INFER      = 1 << 2,
@@ -2925,7 +2924,7 @@ struct FlagComputation {
 
 impl FlagComputation {
     fn new() -> FlagComputation {
-        FlagComputation { flags: TypeFlags::NO_TYPE_FLAGS, depth: 0 }
+        FlagComputation { flags: TypeFlags::empty(), depth: 0 }
     }
 
     fn for_sty(st: &sty) -> FlagComputation {

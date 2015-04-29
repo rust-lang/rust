@@ -88,7 +88,6 @@ use std::slice;
 
 bitflags! {
     flags Restrictions: u8 {
-        const UNRESTRICTED                  = 0,
         const RESTRICTION_STMT_EXPR         = 1 << 0,
         const RESTRICTION_NO_STRUCT_LITERAL = 1 << 1,
     }
@@ -339,7 +338,7 @@ impl<'a> Parser<'a> {
             buffer_start: 0,
             buffer_end: 0,
             tokens_consumed: 0,
-            restrictions: Restrictions::UNRESTRICTED,
+            restrictions: Restrictions::empty(),
             quote_depth: 0,
             obsolete_set: HashSet::new(),
             mod_path_stack: Vec::new(),
@@ -2991,7 +2990,7 @@ impl<'a> Parser<'a> {
 
     /// Parse an expression
     pub fn parse_expr_nopanic(&mut self) -> PResult<P<Expr>> {
-        return self.parse_expr_res(Restrictions::UNRESTRICTED);
+        self.parse_expr_res(Restrictions::empty())
     }
 
     /// Parse an expression, subject to the given restrictions
