@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-android: FIXME(#9116) Bus error
-
 use std::mem;
 
 #[repr(packed)]
