@@ -103,7 +103,7 @@ Non-doc comments are interpreted as a form of whitespace.
 
 ## Whitespace
 
-Whitespace is any non-empty string containing any the following characters:
+Whitespace is any non-empty string containing only the following characters:
 
 - `U+0020` (space, `' '`)
 - `U+0009` (tab, `'\t'`)
