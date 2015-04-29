@@ -582,3 +582,20 @@ extern "rust-intrinsic" {
     /// cast to a `u64`; if `T` has no discriminant, returns 0.
     pub fn discriminant_value<T>(v: &T) -> u64;
 }
+
+#[cfg(not(stage0))]
+extern "rust-intrinsic" {
+    /// Performs an unchecked signed division, which results in undefined behavior,
+    /// in cases where y == 0, or x == int::MIN and y == -1
+    pub fn unchecked_sdiv<T>(x: T, y: T) -> T;
+    /// Performs an unchecked unsigned division, which results in undefined behavior,
+    /// in cases where y == 0
+    pub fn unchecked_udiv<T>(x: T, y: T) -> T;
+
+    /// Returns the remainder of an unchecked signed division, which results in
+    /// undefined behavior, in cases where y == 0, or x == int::MIN and y == -1
+    pub fn unchecked_urem<T>(x: T, y: T) -> T;
+    /// Returns the remainder of an unchecked signed division, which results in
+    /// undefined behavior, in cases where y == 0
+    pub fn unchecked_srem<T>(x: T, y: T) -> T;
+}
