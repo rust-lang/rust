@@ -44,6 +44,8 @@ impl<'a> FmtVisitor<'a> {
                self.codemap.lookup_char_pos(end));
 
         if start == end {
+            let file_name = &self.codemap.lookup_char_pos(start).file.name;
+            process_last_snippet(self, "", file_name, "");
             return;
         }
 

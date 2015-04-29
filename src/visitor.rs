@@ -9,8 +9,10 @@
 // except according to those terms.
 
 use syntax::ast;
-use syntax::codemap::{CodeMap, Span, BytePos};
+use syntax::codemap::{self, CodeMap, Span, BytePos};
 use syntax::visit;
+
+use utils;
 
 use {MAX_WIDTH, TAB_SPACES, SKIP_ANNOTATION};
 use changes::ChangeSet;
@@ -35,6 +37,26 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
         self.last_pos = ex.span.hi;
     }
 
+    fn visit_stmt(&mut self, stmt: &'v ast::Stmt) {
+        // If the stmt is actually an item, then we'll handle any missing spans
+        // there. This is important because of annotations.
+        // Although it might make more sense for the statement span to include
+        // any annotations on the item.
+        let skip_missing = match stmt.node {
+            ast::Stmt_::StmtDecl(ref decl, _) => {
+                match decl.node {
+                    ast::Decl_::DeclItem(_) => true,
+                    _ => false,
+                }
+            }
+            _ => false,
+        };
+        if !skip_missing {
+            self.format_missing_with_indent(stmt.span.lo);
+        }
+        visit::walk_stmt(self, stmt);
+    }
+
     fn visit_block(&mut self, b: &'v ast::Block) {
         debug!("visit_block: {:?} {:?}",
                self.codemap.lookup_char_pos(b.span.lo),
@@ -46,7 +68,6 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
         self.block_indent += TAB_SPACES;
 
         for stmt in &b.stmts {
-            self.format_missing_with_indent(stmt.span.lo);
             self.visit_stmt(&stmt)
         }
         match b.expr {
@@ -148,6 +169,12 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
                 visit::walk_item(self, item);
                 self.block_indent -= TAB_SPACES;
             }
+            ast::Item_::ItemExternCrate(_) => {
+                self.format_missing_with_indent(item.span.lo);
+                let new_str = self.snippet(item.span);
+                self.changes.push_str_span(item.span, &new_str);
+                self.last_pos = item.span.hi;
+            }
             _ => {
                 visit::walk_item(self, item);
             }
@@ -206,18 +233,50 @@ impl<'a> FmtVisitor<'a> {
 
     // Returns true if we should skip the following item.
     fn visit_attrs(&mut self, attrs: &[ast::Attribute]) -> bool {
-        for a in attrs {
-            self.format_missing_with_indent(a.span.lo);
-            if is_skip(&a.node.value) {
-                return true;
-            }
-
-            let attr_str = self.snippet(a.span);
-            self.changes.push_str_span(a.span, &attr_str);
-            self.last_pos = a.span.hi;
+        if attrs.len() == 0 {
+            return false;
         }
 
-        false
+        let first = &attrs[0];
+        self.format_missing_with_indent(first.span.lo);
+
+        match self.rewrite_attrs(attrs, self.block_indent) {
+            Some(s) => {
+                self.changes.push_str_span(first.span, &s);
+                let last = attrs.last().unwrap();
+                self.last_pos = last.span.hi;
+                false
+            }
+            None => true
+        }
+    }
+
+    fn rewrite_attrs(&self, attrs: &[ast::Attribute], indent: usize) -> Option<String> {
+        let mut result = String::new();
+        let indent = utils::make_indent(indent);
+
+        for (i, a) in attrs.iter().enumerate() {
+            if is_skip(&a.node.value) {
+                return None;
+            }
+
+            result.push_str(&self.snippet(a.span));
+
+            if i < attrs.len() - 1 {
+                result.push('\n');
+                result.push_str(&indent);
+
+                let comment = self.snippet(codemap::mk_sp(a.span.hi, attrs[i+1].span.lo));
+                let comment = comment.trim();
+                if comment.len() > 0 {
+                    result.push_str(&self.snippet(a.span));
+                    result.push('\n');
+                    result.push_str(comment);
+                }
+            }
+        }
+
+        Some(result)
     }
 }
 

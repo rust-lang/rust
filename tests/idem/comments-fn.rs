@@ -16,7 +16,8 @@ fn foo<F, G>(a: aaaaaaaaaaaaa, // A comment
 
 }
 
-fn bar<F /* comment on F */, G /* comment on G */>() {}
+fn bar<F /* comment on F */, G /* comment on G */>() {
+}
 
 fn baz() -> Baz /* Comment after return type */ {
 }
