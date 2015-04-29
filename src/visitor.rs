@@ -257,19 +257,29 @@ impl<'a> FmtVisitor<'a> {
                 return None;
             }
 
-            result.push_str(&self.snippet(a.span));
+            let a_str = self.snippet(a.span);
 
-            if i < attrs.len() - 1 {
-                result.push('\n');
-                result.push_str(&indent);
-
-                let comment = self.snippet(codemap::mk_sp(a.span.hi, attrs[i+1].span.lo));
+            if i > 0 {
+                let comment = self.snippet(codemap::mk_sp(attrs[i-1].span.hi, a.span.lo));
+                // This particular horror show is to preserve line breaks in between doc
+                // comments. An alternative would be to force such line breaks to start
+                // with the usual doc comment token.
+                let multi_line = a_str.starts_with("//") && comment.matches('\n').count() > 1;
                 let comment = comment.trim();
                 if comment.len() > 0 {
-                    result.push_str(&self.snippet(a.span));
-                    result.push('\n');
+                    result.push_str(&indent);
                     result.push_str(comment);
+                    result.push('\n');
+                } else if multi_line {
+                    result.push('\n');
                 }
+                result.push_str(&indent);
+            }
+
+            result.push_str(&a_str);
+
+            if i < attrs.len() -1 {
+                result.push('\n');
             }
         }
 
