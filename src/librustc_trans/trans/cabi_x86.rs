@@ -52,11 +52,11 @@ pub fn compute_abi_info(ccx: &CrateContext,
                 ret_ty = ArgType::direct(rty, Some(t), None, None);
             }
             RetPointer => {
-                ret_ty = ArgType::indirect(rty, Some(StructRetAttribute));
+                ret_ty = ArgType::indirect(rty, Some(Attribute::StructRetAttribute));
             }
         }
     } else {
-        let attr = if rty == Type::i1(ccx) { Some(ZExtAttribute) } else { None };
+        let attr = if rty == Type::i1(ccx) { Some(Attribute::ZExtAttribute) } else { None };
         ret_ty = ArgType::direct(rty, None, None, attr);
     }
 
@@ -67,11 +67,11 @@ pub fn compute_abi_info(ccx: &CrateContext,
                 if size == 0 {
                     ArgType::ignore(t)
                 } else {
-                    ArgType::indirect(t, Some(ByValAttribute))
+                    ArgType::indirect(t, Some(Attribute::ByValAttribute))
                 }
             }
             _ => {
-                let attr = if t == Type::i1(ccx) { Some(ZExtAttribute) } else { None };
+                let attr = if t == Type::i1(ccx) { Some(Attribute::ZExtAttribute) } else { None };
                 ArgType::direct(t, None, None, attr)
             }
         };

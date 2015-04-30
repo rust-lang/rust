@@ -17,7 +17,6 @@
 //  for the error message we see here.)
 
 #![allow(unstable)]
-#![feature(unsafe_destructor)]
 
 extern crate arena;
 
@@ -76,7 +75,6 @@ struct CheckId<T:HasId> {
 #[allow(non_snake_case)]
 fn CheckId<T:HasId>(t: T) -> CheckId<T> { CheckId{ v: t } }
 
-#[unsafe_destructor]
 impl<T:HasId> Drop for CheckId<T> {
     fn drop(&mut self) {
         assert!(self.v.count() > 0);

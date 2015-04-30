@@ -682,6 +682,13 @@ pub fn noop_fold_interpolated<T: Folder>(nt: token::Nonterminal, fld: &mut T)
         token::NtMeta(meta_item) => token::NtMeta(fld.fold_meta_item(meta_item)),
         token::NtPath(path) => token::NtPath(Box::new(fld.fold_path(*path))),
         token::NtTT(tt) => token::NtTT(P(fld.fold_tt(&*tt))),
+        token::NtArm(arm) => token::NtArm(fld.fold_arm(arm)),
+        token::NtImplItem(arm) =>
+            token::NtImplItem(fld.fold_impl_item(arm)
+                              .expect_one("expected fold to produce exactly one item")),
+        token::NtTraitItem(arm) =>
+            token::NtTraitItem(fld.fold_trait_item(arm)
+                               .expect_one("expected fold to produce exactly one item")),
     }
 }
 
@@ -973,6 +980,10 @@ pub fn noop_fold_trait_item<T: Folder>(i: P<TraitItem>, folder: &mut T)
         ident: folder.fold_ident(ident),
         attrs: fold_attrs(attrs, folder),
         node: match node {
+            ConstTraitItem(ty, default) => {
+                ConstTraitItem(folder.fold_ty(ty),
+                               default.map(|x| folder.fold_expr(x)))
+            }
             MethodTraitItem(sig, body) => {
                 MethodTraitItem(noop_fold_method_sig(sig, folder),
                                 body.map(|x| folder.fold_block(x)))
@@ -994,6 +1005,9 @@ pub fn noop_fold_impl_item<T: Folder>(i: P<ImplItem>, folder: &mut T)
         attrs: fold_attrs(attrs, folder),
         vis: vis,
         node: match node  {
+            ConstImplItem(ty, expr) => {
+                ConstImplItem(folder.fold_ty(ty), folder.fold_expr(expr))
+            }
             MethodImplItem(sig, body) => {
                 MethodImplItem(noop_fold_method_sig(sig, folder),
                                folder.fold_block(body))
@@ -1126,6 +1140,10 @@ pub fn noop_fold_pat<T: Folder>(p: P<Pat>, folder: &mut T) -> P<Pat> {
             PatEnum(pth, pats) => {
                 PatEnum(folder.fold_path(pth),
                         pats.map(|pats| pats.move_map(|x| folder.fold_pat(x))))
+            }
+            PatQPath(qself, pth) => {
+                let qself = QSelf {ty: folder.fold_ty(qself.ty), .. qself};
+                PatQPath(qself, folder.fold_path(pth))
             }
             PatStruct(pth, fields, etc) => {
                 let pth = folder.fold_path(pth);
@@ -1343,7 +1361,7 @@ pub fn noop_fold_stmt<T: Folder>(Spanned {node, span}: Stmt, folder: &mut T)
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use std::io;
     use ast;
     use util::parser_testing::{string_to_crate, matches_codepattern};

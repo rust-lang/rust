@@ -82,7 +82,6 @@ This API is completely unstable and subject to change.
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
-#![feature(unsafe_destructor)]
 #![feature(staged_api)]
 
 #[macro_use] extern crate log;
@@ -344,3 +343,8 @@ pub fn check_crate(tcx: &ty::ctxt, trait_map: ty::TraitMap) {
     check_for_entry_fn(&ccx);
     tcx.sess.abort_if_errors();
 }
+
+#[cfg(stage0)]
+__build_diagnostic_array! { DIAGNOSTICS }
+#[cfg(not(stage0))]
+__build_diagnostic_array! { librustc_typeck, DIAGNOSTICS }

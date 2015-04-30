@@ -411,7 +411,6 @@ impl<T> Packet<T> {
     }
 }
 
-#[unsafe_destructor]
 impl<T> Drop for Packet<T> {
     fn drop(&mut self) {
         assert_eq!(self.channels.load(Ordering::SeqCst), 0);

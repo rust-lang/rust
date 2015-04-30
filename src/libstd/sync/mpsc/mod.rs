@@ -619,7 +619,6 @@ impl<T> Clone for Sender<T> {
     }
 }
 
-#[unsafe_destructor]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Drop for Sender<T> {
     fn drop(&mut self) {
@@ -683,7 +682,6 @@ impl<T> Clone for SyncSender<T> {
     }
 }
 
-#[unsafe_destructor]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Drop for SyncSender<T> {
     fn drop(&mut self) {
@@ -930,7 +928,6 @@ impl <T> IntoIterator for Receiver<T> {
     }
 }
 
-#[unsafe_destructor]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Drop for Receiver<T> {
     fn drop(&mut self) {
@@ -1065,7 +1062,7 @@ impl error::Error for TryRecvError {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use prelude::v1::*;
 
     use std::env;

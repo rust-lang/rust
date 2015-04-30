@@ -14,7 +14,7 @@ use std::marker::PhantomData;
 use snapshot_vec as sv;
 
 #[cfg(test)]
-mod test;
+mod tests;
 
 /// This trait is implemented by any type that can serve as a type
 /// variable. We call such variables *unification keys*. For example,

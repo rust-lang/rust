@@ -211,7 +211,9 @@ mod imp {
     }
 
     // -lpthread needs to occur after -ljemalloc, the earlier argument isn't enough
-    #[cfg(all(not(windows), not(target_os = "android")))]
+    #[cfg(all(not(windows),
+              not(target_os = "android"),
+              not(target_env = "musl")))]
     #[link(name = "pthread")]
     extern {}
 
@@ -384,7 +386,7 @@ mod imp {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     extern crate test;
     use self::test::Bencher;
     use boxed::Box;

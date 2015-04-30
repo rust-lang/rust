@@ -36,7 +36,7 @@ use std::usize;
 use snapshot_vec::{SnapshotVec, SnapshotVecDelegate};
 
 #[cfg(test)]
-mod test;
+mod tests;
 
 pub struct Graph<N,E> {
     nodes: SnapshotVec<Node<N>> ,

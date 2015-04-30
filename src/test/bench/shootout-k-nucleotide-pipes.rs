@@ -8,12 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-android: FIXME(#10393)
+// ignore-android: FIXME(#10393) hangs without output
 // ignore-pretty very bad with line comments
 
 // multi tasking k-nucleotide
-
-#![allow(bad_style)]
 
 use std::ascii::AsciiExt;
 use std::cmp::Ordering::{self, Less, Greater, Equal};
@@ -47,7 +45,7 @@ fn sort_and_fmt(mm: &HashMap<Vec<u8> , usize>, total: usize) -> String {
    }
 
    // sort by key, then by value
-   fn sortKV(mut orig: Vec<(Vec<u8> ,f64)> ) -> Vec<(Vec<u8> ,f64)> {
+   fn sort_kv(mut orig: Vec<(Vec<u8> ,f64)> ) -> Vec<(Vec<u8> ,f64)> {
         orig.sort_by(|&(ref a, _), &(ref b, _)| a.cmp(b));
         orig.sort_by(|&(_, a), &(_, b)| f64_cmp(b, a));
         orig
@@ -60,7 +58,7 @@ fn sort_and_fmt(mm: &HashMap<Vec<u8> , usize>, total: usize) -> String {
       pairs.push(((*key).clone(), pct(val, total)));
    }
 
-   let pairs_sorted = sortKV(pairs);
+   let pairs_sorted = sort_kv(pairs);
 
    let mut buffer = String::new();
    for &(ref k, v) in &pairs_sorted {

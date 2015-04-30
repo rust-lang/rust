@@ -115,8 +115,7 @@
 //! ## Configuring threads
 //!
 //! A new thread can be configured before it is spawned via the `Builder` type,
-//! which currently allows you to set the name, stack size, and writers for
-//! `println!` and `panic!` for the child thread:
+//! which currently allows you to set the name and stack size for the child thread:
 //!
 //! ```rust
 //! # #![allow(unused_must_use)]
@@ -264,7 +263,7 @@ impl Builder {
     ///
     /// The child thread may outlive the parent (unless the parent thread
     /// is the main thread; the whole process is terminated when the main
-    /// thread finishes.) The join handle can be used to block on
+    /// thread finishes). The join handle can be used to block on
     /// termination of the child thread, including recovering its panics.
     ///
     /// # Errors
@@ -408,7 +407,9 @@ pub fn scoped<'a, T, F>(f: F) -> JoinGuard<'a, T> where
 /// Gets a handle to the thread that invokes it.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn current() -> Thread {
-    thread_info::current_thread()
+    thread_info::current_thread().expect("use of std::thread::current() is not \
+                                          possible after the thread's local \
+                                          data has been destroyed")
 }
 
 /// Cooperatively gives up a timeslice to the OS scheduler.
@@ -699,7 +700,6 @@ impl<'a, T: Send + 'a> JoinGuard<'a, T> {
     }
 }
 
-#[unsafe_destructor]
 #[unstable(feature = "scoped",
            reason = "memory unsafe if destructor is avoided, see #24292")]
 impl<'a, T: Send + 'a> Drop for JoinGuard<'a, T> {
@@ -722,7 +722,7 @@ fn _assert_sync_and_send() {
 ////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
-mod test {
+mod tests {
     use prelude::v1::*;
 
     use any::Any;

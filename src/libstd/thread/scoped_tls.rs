@@ -171,8 +171,7 @@ impl<T> ScopedKey<T> {
             key: &'a __impl::KeyInner<T>,
             val: *mut T,
         }
-        #[unsafe_destructor]
-        impl<'a, T> Drop for Reset<'a, T> {
+                impl<'a, T> Drop for Reset<'a, T> {
             fn drop(&mut self) {
                 unsafe { self.key.set(self.val) }
             }

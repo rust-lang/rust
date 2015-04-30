@@ -20,8 +20,9 @@ use metadata::csearch::{each_impl, get_impl_trait};
 use metadata::csearch;
 use middle::subst::{self, Subst};
 use middle::ty::RegionEscape;
-use middle::ty::{ImplContainer, ImplOrTraitItemId, MethodTraitItemId};
-use middle::ty::{ParameterEnvironment, TypeTraitItemId, lookup_item_type};
+use middle::ty::{ImplContainer, ImplOrTraitItemId, ConstTraitItemId};
+use middle::ty::{MethodTraitItemId, TypeTraitItemId};
+use middle::ty::{ParameterEnvironment, lookup_item_type};
 use middle::ty::{Ty, ty_bool, ty_char, ty_enum, ty_err};
 use middle::ty::{ty_param, TypeScheme, ty_ptr};
 use middle::ty::{ty_rptr, ty_struct, ty_trait, ty_tup};
@@ -278,6 +279,9 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
                 let mut items: Vec<ImplOrTraitItemId> =
                         impl_items.iter().map(|impl_item| {
                     match impl_item.node {
+                        ast::ConstImplItem(..) => {
+                            ConstTraitItemId(local_def(impl_item.id))
+                        }
                         ast::MethodImplItem(..) => {
                             MethodTraitItemId(local_def(impl_item.id))
                         }
@@ -348,7 +352,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
                            .insert(item_def_id.def_id(), source);
                     }
                 }
-                ty::TypeTraitItem(_) => {}
+                _ => {}
             }
         }
 

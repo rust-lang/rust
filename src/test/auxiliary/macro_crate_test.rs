@@ -16,7 +16,7 @@
 extern crate syntax;
 extern crate rustc;
 
-use syntax::ast::{self, TokenTree, Item, MetaItem};
+use syntax::ast::{self, TokenTree, Item, MetaItem, Method, ImplItem, TraitItem};
 use syntax::codemap::Span;
 use syntax::ext::base::*;
 use syntax::parse::{self, token};
@@ -31,7 +31,6 @@ macro_rules! unexported_macro { () => (3) }
 #[plugin_registrar]
 pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_macro("make_a_1", expand_make_a_1);
-    reg.register_macro("forged_ident", expand_forged_ident);
     reg.register_macro("identity", expand_identity);
     reg.register_syntax_extension(
         token::intern("into_foo"),

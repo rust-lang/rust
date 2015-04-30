@@ -13,15 +13,11 @@ CFG_GCCISH_CFLAGS_arm-unknown-linux-gnueabihf := -Wall -g -fPIC -D__arm__ $(CFLA
 CFG_GCCISH_CXXFLAGS_arm-unknown-linux-gnueabihf := -fno-rtti $(CXXFLAGS)
 CFG_GCCISH_LINK_FLAGS_arm-unknown-linux-gnueabihf := -shared -fPIC -g
 CFG_GCCISH_DEF_FLAG_arm-unknown-linux-gnueabihf := -Wl,--export-dynamic,--dynamic-list=
-CFG_GCCISH_PRE_LIB_FLAGS_arm-unknown-linux-gnueabihf := -Wl,-whole-archive
-CFG_GCCISH_POST_LIB_FLAGS_arm-unknown-linux-gnueabihf := -Wl,-no-whole-archive
-CFG_DEF_SUFFIX_arm-unknown-linux-gnueabihf := .linux.def
 CFG_LLC_FLAGS_arm-unknown-linux-gnueabihf :=
 CFG_INSTALL_NAME_ar,-unknown-linux-gnueabihf =
 CFG_EXE_SUFFIX_arm-unknown-linux-gnueabihf :=
 CFG_WINDOWSY_arm-unknown-linux-gnueabihf :=
 CFG_UNIXY_arm-unknown-linux-gnueabihf := 1
-CFG_PATH_MUNGE_arm-unknown-linux-gnueabihf := true
 CFG_LDPATH_arm-unknown-linux-gnueabihf :=
 CFG_RUN_arm-unknown-linux-gnueabihf=$(2)
 CFG_RUN_TARG_arm-unknown-linux-gnueabihf=$(call CFG_RUN_arm-unknown-linux-gnueabihf,,$(2))

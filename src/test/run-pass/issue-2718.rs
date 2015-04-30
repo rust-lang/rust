@@ -9,7 +9,7 @@
 // except according to those terms.
 //
 
-#![feature(unsafe_destructor, std_misc)]
+#![feature(std_misc)]
 
 pub type Task = isize;
 
@@ -165,8 +165,7 @@ pub mod pipes {
         p: Option<*const packet<T>>,
     }
 
-    #[unsafe_destructor]
-    impl<T:Send> Drop for send_packet<T> {
+        impl<T:Send> Drop for send_packet<T> {
         fn drop(&mut self) {
             unsafe {
                 if self.p != None {
@@ -195,8 +194,7 @@ pub mod pipes {
         p: Option<*const packet<T>>,
     }
 
-    #[unsafe_destructor]
-    impl<T:Send> Drop for recv_packet<T> {
+        impl<T:Send> Drop for recv_packet<T> {
         fn drop(&mut self) {
             unsafe {
                 if self.p != None {

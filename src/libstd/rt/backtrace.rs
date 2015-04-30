@@ -38,7 +38,7 @@ pub fn log_enabled() -> bool {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use prelude::v1::*;
     use sys_common;
     macro_rules! t { ($a:expr, $b:expr) => ({

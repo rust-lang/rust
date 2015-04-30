@@ -41,7 +41,7 @@ pub enum SocketAddr {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct SocketAddrV4 { inner: libc::sockaddr_in }
 
-/// An IPv6 socket address
+/// An IPv6 socket address.
 #[derive(Copy)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct SocketAddrV6 { inner: libc::sockaddr_in6 }
@@ -56,7 +56,7 @@ impl SocketAddr {
         }
     }
 
-    /// Gets the IP address associated with this socket address.
+    /// Returns the IP address associated with this socket address.
     #[unstable(feature = "ip_addr", reason = "recent addition")]
     pub fn ip(&self) -> IpAddr {
         match *self {
@@ -65,7 +65,7 @@ impl SocketAddr {
         }
     }
 
-    /// Gets the port number associated with this socket address
+    /// Returns the port number associated with this socket address.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn port(&self) -> u16 {
         match *self {
@@ -89,7 +89,7 @@ impl SocketAddrV4 {
         }
     }
 
-    /// Gets the IP address associated with this socket address.
+    /// Returns the IP address associated with this socket address.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn ip(&self) -> &Ipv4Addr {
         unsafe {
@@ -97,7 +97,7 @@ impl SocketAddrV4 {
         }
     }
 
-    /// Gets the port number associated with this socket address
+    /// Returns the port number associated with this socket address.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn port(&self) -> u16 { ntoh(self.inner.sin_port) }
 }
@@ -120,7 +120,7 @@ impl SocketAddrV6 {
         }
     }
 
-    /// Gets the IP address associated with this socket address.
+    /// Returns the IP address associated with this socket address.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn ip(&self) -> &Ipv6Addr {
         unsafe {
@@ -128,16 +128,16 @@ impl SocketAddrV6 {
         }
     }
 
-    /// Gets the port number associated with this socket address
+    /// Returns the port number associated with this socket address.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn port(&self) -> u16 { ntoh(self.inner.sin6_port) }
 
-    /// Gets scope ID associated with this address, corresponding to the
+    /// Returns scope ID associated with this address, corresponding to the
     /// `sin6_flowinfo` field in C.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn flowinfo(&self) -> u32 { ntoh(self.inner.sin6_flowinfo) }
 
-    /// Gets scope ID associated with this address, corresponding to the
+    /// Returns scope ID associated with this address, corresponding to the
     /// `sin6_scope_id` field in C.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn scope_id(&self) -> u32 { ntoh(self.inner.sin6_scope_id) }

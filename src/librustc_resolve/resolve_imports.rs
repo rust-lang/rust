@@ -10,7 +10,7 @@
 
 use self::ImportDirectiveSubclass::*;
 
-use {PUBLIC, IMPORTABLE};
+use DefModifiers;
 use Module;
 use Namespace::{self, TypeNS, ValueNS};
 use NameBindings;
@@ -848,7 +848,9 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         // Merge the child item into the import resolution.
         {
             let mut merge_child_item = |namespace| {
-                if name_bindings.defined_in_namespace_with(namespace, IMPORTABLE | PUBLIC) {
+                let modifier = DefModifiers::IMPORTABLE | DefModifiers::PUBLIC;
+
+                if name_bindings.defined_in_namespace_with(namespace, modifier) {
                     let namespace_name = match namespace {
                         TypeNS => "type",
                         ValueNS => "value",
@@ -914,7 +916,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                                        import_span: Span,
                                        name: Name,
                                        namespace: Namespace) {
-        if !name_bindings.defined_in_namespace_with(namespace, IMPORTABLE) {
+        if !name_bindings.defined_in_namespace_with(namespace, DefModifiers::IMPORTABLE) {
             let msg = format!("`{}` is not directly importable",
                               token::get_name(name));
             span_err!(self.resolver.session, import_span, E0253, "{}", &msg[..]);

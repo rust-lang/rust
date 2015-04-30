@@ -25,7 +25,6 @@
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
-#![feature(unsafe_destructor)]
 #![feature(into_cow)]
 
 #[macro_use] extern crate log;
@@ -47,3 +46,8 @@ pub mod diagnostics;
 mod borrowck;
 
 pub mod graphviz;
+
+#[cfg(stage0)]
+__build_diagnostic_array! { DIAGNOSTICS }
+#[cfg(not(stage0))]
+__build_diagnostic_array! { librustc_borrowck, DIAGNOSTICS }

@@ -12,6 +12,7 @@
 
 #![allow(unused_mut)]
 #![feature(collections)]
+#![feature(collections_drain)]
 
 extern crate collections;
 
@@ -96,5 +97,6 @@ fn main() {
 
     all_sync_send!(VecMap::<usize>::new(), iter, iter_mut, drain, into_iter, keys, values);
 
-    all_sync_send!(Vec::<usize>::new(), into_iter, drain);
+    all_sync_send!(Vec::<usize>::new(), into_iter);
+    is_sync_send!(Vec::<usize>::new(), drain(..));
 }

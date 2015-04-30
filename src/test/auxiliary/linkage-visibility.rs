@@ -10,6 +10,10 @@
 
 #![feature(std_misc)]
 
+// We're testing linkage visibility; the compiler warns us, but we want to
+// do the runtime check that these functions aren't exported.
+#![allow(private_no_mangle_fns)]
+
 use std::dynamic_lib::DynamicLibrary;
 
 #[no_mangle]
@@ -25,6 +29,7 @@ pub fn foo2<T>() {
 #[no_mangle]
 fn bar() { }
 
+#[allow(dead_code)]
 #[no_mangle]
 fn baz() { }
 

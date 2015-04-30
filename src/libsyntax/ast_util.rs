@@ -579,7 +579,7 @@ pub fn walk_pat<F>(pat: &Pat, mut it: F) -> bool where F: FnMut(&Pat) -> bool {
             }
             PatMac(_) => panic!("attempted to analyze unexpanded pattern"),
             PatWild(_) | PatLit(_) | PatRange(_, _) | PatIdent(_, _, _) |
-            PatEnum(_, _) => {
+            PatEnum(_, _) | PatQPath(_, _) => {
                 true
             }
         }
@@ -632,7 +632,7 @@ pub fn lit_is_str(lit: &Lit) -> bool {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use ast::*;
     use super::*;
 

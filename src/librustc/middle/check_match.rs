@@ -439,10 +439,11 @@ impl<'map> ast_util::IdVisitingOperation for RenamingRecorder<'map> {
 impl<'a, 'tcx> Folder for StaticInliner<'a, 'tcx> {
     fn fold_pat(&mut self, pat: P<Pat>) -> P<Pat> {
         return match pat.node {
-            ast::PatIdent(..) | ast::PatEnum(..) => {
+            ast::PatIdent(..) | ast::PatEnum(..) | ast::PatQPath(..) => {
                 let def = self.tcx.def_map.borrow().get(&pat.id).map(|d| d.full_def());
                 match def {
-                    Some(DefConst(did)) => match lookup_const_by_id(self.tcx, did) {
+                    Some(DefAssociatedConst(did, _)) |
+                    Some(DefConst(did)) => match lookup_const_by_id(self.tcx, did, Some(pat.id)) {
                         Some(const_expr) => {
                             const_expr_to_pat(self.tcx, const_expr, pat.span).map(|new_pat| {
 
@@ -746,7 +747,7 @@ fn pat_constructors(cx: &MatchCheckCtxt, p: &Pat,
     match pat.node {
         ast::PatIdent(..) =>
             match cx.tcx.def_map.borrow().get(&pat.id).map(|d| d.full_def()) {
-                Some(DefConst(..)) =>
+                Some(DefConst(..)) | Some(DefAssociatedConst(..)) =>
                     cx.tcx.sess.span_bug(pat.span, "const pattern should've \
                                                     been rewritten"),
                 Some(DefStruct(_)) => vec!(Single),
@@ -755,15 +756,18 @@ fn pat_constructors(cx: &MatchCheckCtxt, p: &Pat,
             },
         ast::PatEnum(..) =>
             match cx.tcx.def_map.borrow().get(&pat.id).map(|d| d.full_def()) {
-                Some(DefConst(..)) =>
+                Some(DefConst(..)) | Some(DefAssociatedConst(..)) =>
                     cx.tcx.sess.span_bug(pat.span, "const pattern should've \
                                                     been rewritten"),
                 Some(DefVariant(_, id, _)) => vec!(Variant(id)),
                 _ => vec!(Single)
             },
+        ast::PatQPath(..) =>
+            cx.tcx.sess.span_bug(pat.span, "const pattern should've \
+                                            been rewritten"),
         ast::PatStruct(..) =>
             match cx.tcx.def_map.borrow().get(&pat.id).map(|d| d.full_def()) {
-                Some(DefConst(..)) =>
+                Some(DefConst(..)) | Some(DefAssociatedConst(..)) =>
                     cx.tcx.sess.span_bug(pat.span, "const pattern should've \
                                                     been rewritten"),
                 Some(DefVariant(_, id, _)) => vec!(Variant(id)),
@@ -861,7 +865,7 @@ pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat],
         ast::PatIdent(_, _, _) => {
             let opt_def = cx.tcx.def_map.borrow().get(&pat_id).map(|d| d.full_def());
             match opt_def {
-                Some(DefConst(..)) =>
+                Some(DefConst(..)) | Some(DefAssociatedConst(..)) =>
                     cx.tcx.sess.span_bug(pat_span, "const pattern should've \
                                                     been rewritten"),
                 Some(DefVariant(_, id, _)) => if *constructor == Variant(id) {
@@ -876,7 +880,7 @@ pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat],
         ast::PatEnum(_, ref args) => {
             let def = cx.tcx.def_map.borrow().get(&pat_id).unwrap().full_def();
             match def {
-                DefConst(..) =>
+                DefConst(..) | DefAssociatedConst(..) =>
                     cx.tcx.sess.span_bug(pat_span, "const pattern should've \
                                                     been rewritten"),
                 DefVariant(_, id, _) if *constructor != Variant(id) => None,
@@ -890,11 +894,16 @@ pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat],
             }
         }
 
+        ast::PatQPath(_, _) => {
+            cx.tcx.sess.span_bug(pat_span, "const pattern should've \
+                                            been rewritten")
+        }
+
         ast::PatStruct(_, ref pattern_fields, _) => {
             // Is this a struct or an enum variant?
             let def = cx.tcx.def_map.borrow().get(&pat_id).unwrap().full_def();
             let class_id = match def {
-                DefConst(..) =>
+                DefConst(..) | DefAssociatedConst(..) =>
                     cx.tcx.sess.span_bug(pat_span, "const pattern should've \
                                                     been rewritten"),
                 DefVariant(_, variant_id, _) => if *constructor == Variant(variant_id) {

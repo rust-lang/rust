@@ -71,12 +71,12 @@ pub fn declare_fn(ccx: &CrateContext, name: &str, callconv: llvm::CallConv, ty: 
     llvm::SetUnnamedAddr(llfn, true);
 
     if output == ty::FnDiverging {
-        llvm::SetFunctionAttribute(llfn, llvm::NoReturnAttribute);
+        llvm::SetFunctionAttribute(llfn, llvm::Attribute::NoReturnAttribute);
     }
 
     if ccx.tcx().sess.opts.cg.no_redzone
         .unwrap_or(ccx.tcx().sess.target.target.options.disable_redzone) {
-        llvm::SetFunctionAttribute(llfn, llvm::NoRedZoneAttribute)
+        llvm::SetFunctionAttribute(llfn, llvm::Attribute::NoRedZoneAttribute)
     }
 
     if ccx.is_split_stack_supported() && !ccx.sess().opts.cg.no_stack_check {

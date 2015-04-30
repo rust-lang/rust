@@ -916,8 +916,8 @@ fn insert_lllocals<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
 
         let datum = Datum::new(llval, binding_info.ty, Lvalue);
         if let Some(cs) = cs {
-            bcx.fcx.schedule_drop_and_zero_mem(cs, llval, binding_info.ty);
             bcx.fcx.schedule_lifetime_end(cs, binding_info.llmatch);
+            bcx.fcx.schedule_drop_and_fill_mem(cs, llval, binding_info.ty);
         }
 
         debug!("binding {} to {}", binding_info.id, bcx.val_to_string(llval));
@@ -1809,7 +1809,8 @@ fn bind_irrefutable_pat<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         ast::PatMac(..) => {
             bcx.sess().span_bug(pat.span, "unexpanded macro");
         }
-        ast::PatWild(_) | ast::PatLit(_) | ast::PatRange(_, _) => ()
+        ast::PatQPath(..) | ast::PatWild(_) | ast::PatLit(_) |
+        ast::PatRange(_, _) => ()
     }
     return bcx;
 }

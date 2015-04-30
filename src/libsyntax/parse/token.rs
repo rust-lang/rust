@@ -173,6 +173,14 @@ pub enum Token {
 }
 
 impl Token {
+    /// Returns `true` if the token starts with '>'.
+    pub fn is_like_gt(&self) -> bool {
+        match *self {
+            BinOp(Shr) | BinOpEq(Shr) | Gt | Ge => true,
+            _ => false,
+        }
+    }
+
     /// Returns `true` if the token can appear at the start of an expression.
     pub fn can_begin_expr(&self) -> bool {
         match *self {
@@ -373,6 +381,10 @@ pub enum Nonterminal {
     NtMeta(P<ast::MetaItem>),
     NtPath(Box<ast::Path>),
     NtTT(P<ast::TokenTree>), // needs P'ed to break a circularity
+    // These is not exposed to macros, but is used by quasiquote.
+    NtArm(ast::Arm),
+    NtImplItem(P<ast::ImplItem>),
+    NtTraitItem(P<ast::TraitItem>),
 }
 
 impl fmt::Debug for Nonterminal {
@@ -388,6 +400,9 @@ impl fmt::Debug for Nonterminal {
             NtMeta(..) => f.pad("NtMeta(..)"),
             NtPath(..) => f.pad("NtPath(..)"),
             NtTT(..) => f.pad("NtTT(..)"),
+            NtArm(..) => f.pad("NtArm(..)"),
+            NtImplItem(..) => f.pad("NtImplItem(..)"),
+            NtTraitItem(..) => f.pad("NtTraitItem(..)"),
         }
     }
 }
@@ -746,7 +761,7 @@ pub fn fresh_mark() -> ast::Mrk {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
     use ast;
     use ext::mtwt;

@@ -96,7 +96,6 @@ impl<T> ReentrantMutex<T> {
     }
 }
 
-#[unsafe_destructor]
 impl<T> Drop for ReentrantMutex<T> {
     fn drop(&mut self) {
         // This is actually safe b/c we know that there is no further usage of
@@ -138,7 +137,6 @@ impl<'mutex, T> Deref for ReentrantMutexGuard<'mutex, T> {
     }
 }
 
-#[unsafe_destructor]
 impl<'a, T> Drop for ReentrantMutexGuard<'a, T> {
     #[inline]
     fn drop(&mut self) {
@@ -151,7 +149,7 @@ impl<'a, T> Drop for ReentrantMutexGuard<'a, T> {
 
 
 #[cfg(test)]
-mod test {
+mod tests {
     use prelude::v1::*;
     use sys_common::remutex::{ReentrantMutex, ReentrantMutexGuard};
     use cell::RefCell;

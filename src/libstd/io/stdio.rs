@@ -418,7 +418,7 @@ pub fn _print(args: fmt::Arguments) {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use thread;
     use super::*;
 

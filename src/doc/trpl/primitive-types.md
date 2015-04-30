@@ -62,14 +62,14 @@ let y = 1.0; // y has type f64
 Here’s a list of the different numeric types, with links to their documentation
 in the standard library:
 
+* [i8](../std/primitive.i8.html)
 * [i16](../std/primitive.i16.html)
 * [i32](../std/primitive.i32.html)
 * [i64](../std/primitive.i64.html)
-* [i8](../std/primitive.i8.html)
+* [u8](../std/primitive.u8.html)
 * [u16](../std/primitive.u16.html)
 * [u32](../std/primitive.u32.html)
 * [u64](../std/primitive.u64.html)
-* [u8](../std/primitive.u8.html)
 * [isize](../std/primitive.isize.html)
 * [usize](../std/primitive.usize.html)
 * [f32](../std/primitive.f32.html)
@@ -82,12 +82,12 @@ Let’s go over them by category:
 Integer types come in two varieties: signed and unsigned. To understand the
 difference, let’s consider a number with four bits of size. A signed, four-bit
 number would let you store numbers from `-8` to `+7`. Signed numbers use
-‘two’s compliment representation’. An unsigned four bit number, since it does
+“two’s compliment representation”. An unsigned four bit number, since it does
 not need to store negatives, can store values from `0` to `+15`.
 
 Unsigned types use a `u` for their category, and signed types use `i`. The `i`
 is for ‘integer’. So `u8` is an eight-bit unsigned number, and `i8` is an
-eight-bit signed number. 
+eight-bit signed number.
 
 ## Fixed size types
 
@@ -103,7 +103,7 @@ and unsigned varieties. This makes for two types: `isize` and `usize`.
 
 ## Floating-point types
 
-Rust also two floating point types: `f32` and `f64`. These correspond to 
+Rust also has two floating point types: `f32` and `f64`. These correspond to
 IEEE-754 single and double precision numbers.
 
 # Arrays
@@ -241,8 +241,8 @@ println!("x is {}", x);
 Remember [before][let] when I said the left-hand side of a `let` statement was more
 powerful than just assigning a binding? Here we are. We can put a pattern on
 the left-hand side of the `let`, and if it matches up to the right-hand side,
-we can assign multiple bindings at once. In this case, `let` "destructures,"
-or "breaks up," the tuple, and assigns the bits to three bindings.
+we can assign multiple bindings at once. In this case, `let` “destructures”
+or “breaks up” the tuple, and assigns the bits to three bindings.
 
 [let]: variable-bindings.html
 

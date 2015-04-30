@@ -465,6 +465,9 @@ impl tr for def::Def {
           def::DefForeignMod(did) => { def::DefForeignMod(did.tr(dcx)) }
           def::DefStatic(did, m) => { def::DefStatic(did.tr(dcx), m) }
           def::DefConst(did) => { def::DefConst(did.tr(dcx)) }
+          def::DefAssociatedConst(did, p) => {
+              def::DefAssociatedConst(did.tr(dcx), p.map(|did2| did2.tr(dcx)))
+          }
           def::DefLocal(nid) => { def::DefLocal(dcx.tr_id(nid)) }
           def::DefVariant(e_did, v_did, is_s) => {
             def::DefVariant(e_did.tr(dcx), v_did.tr(dcx), is_s)
@@ -1835,29 +1838,31 @@ fn decode_item_ast(par_doc: rbml::Doc) -> ast::Item {
 }
 
 #[cfg(test)]
-trait fake_ext_ctxt {
+trait FakeExtCtxt {
+    fn call_site(&self) -> codemap::Span;
     fn cfg(&self) -> ast::CrateConfig;
-    fn parse_sess<'a>(&'a self) -> &'a parse::ParseSess;
-    fn call_site(&self) -> Span;
     fn ident_of(&self, st: &str) -> ast::Ident;
+    fn name_of(&self, st: &str) -> ast::Name;
+    fn parse_sess(&self) -> &parse::ParseSess;
 }
 
 #[cfg(test)]
-impl fake_ext_ctxt for parse::ParseSess {
-    fn cfg(&self) -> ast::CrateConfig {
-        Vec::new()
-    }
-    fn parse_sess<'a>(&'a self) -> &'a parse::ParseSess { self }
-    fn call_site(&self) -> Span {
+impl FakeExtCtxt for parse::ParseSess {
+    fn call_site(&self) -> codemap::Span {
         codemap::Span {
             lo: codemap::BytePos(0),
             hi: codemap::BytePos(0),
-            expn_id: codemap::NO_EXPANSION
+            expn_id: codemap::NO_EXPANSION,
         }
     }
+    fn cfg(&self) -> ast::CrateConfig { Vec::new() }
     fn ident_of(&self, st: &str) -> ast::Ident {
-        token::str_to_ident(st)
+        parse::token::str_to_ident(st)
     }
+    fn name_of(&self, st: &str) -> ast::Name {
+        parse::token::intern(st)
+    }
+    fn parse_sess(&self) -> &parse::ParseSess { self }
 }
 
 #[cfg(test)]
@@ -1883,7 +1888,7 @@ fn test_basic() {
         fn foo() {}
     ));
 }
-/* NOTE: When there's a snapshot, update this (yay quasiquoter!)
+
 #[test]
 fn test_smalltalk() {
     let cx = mk_ctxt();
@@ -1891,7 +1896,6 @@ fn test_smalltalk() {
         fn foo() -> isize { 3 + 4 } // first smalltalk program ever executed.
     ));
 }
-*/
 
 #[test]
 fn test_more() {

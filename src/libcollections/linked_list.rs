@@ -624,7 +624,6 @@ impl<T> LinkedList<T> {
     }
 }
 
-#[unsafe_destructor]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Drop for LinkedList<T> {
     fn drop(&mut self) {
@@ -933,7 +932,7 @@ impl<A: Hash> Hash for LinkedList<A> {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use std::clone::Clone;
     use std::iter::{Iterator, IntoIterator};
     use std::option::Option::{Some, None, self};

@@ -417,7 +417,7 @@ impl<T> RefCell<T> {
     ///
     /// let result = thread::spawn(move || {
     ///    let c = RefCell::new(5);
-    ///    let m = c.borrow_mut();
+    ///    let m = c.borrow();
     ///
     ///    let b = c.borrow_mut(); // this causes a panic
     /// }).join();
@@ -493,7 +493,6 @@ impl<'b> BorrowRef<'b> {
     }
 }
 
-#[unsafe_destructor]
 impl<'b> Drop for BorrowRef<'b> {
     #[inline]
     fn drop(&mut self) {
@@ -557,7 +556,6 @@ struct BorrowRefMut<'b> {
     _borrow: &'b Cell<BorrowFlag>,
 }
 
-#[unsafe_destructor]
 impl<'b> Drop for BorrowRefMut<'b> {
     #[inline]
     fn drop(&mut self) {

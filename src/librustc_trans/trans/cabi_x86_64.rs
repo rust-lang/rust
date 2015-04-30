@@ -16,7 +16,6 @@ use self::RegClass::*;
 
 use llvm::{Integer, Pointer, Float, Double};
 use llvm::{Struct, Array, Attribute, Vector};
-use llvm::{StructRetAttribute, ByValAttribute, ZExtAttribute};
 use trans::cabi::{ArgType, FnType};
 use trans::context::CrateContext;
 use trans::type_::Type;
@@ -407,19 +406,19 @@ pub fn compute_abi_info(ccx: &CrateContext,
                                 None)
             }
         } else {
-            let attr = if ty == Type::i1(ccx) { Some(ZExtAttribute) } else { None };
+            let attr = if ty == Type::i1(ccx) { Some(Attribute::ZExtAttribute) } else { None };
             ArgType::direct(ty, None, None, attr)
         }
     }
 
     let mut arg_tys = Vec::new();
     for t in atys {
-        let ty = x86_64_ty(ccx, *t, |cls| cls.is_pass_byval(), ByValAttribute);
+        let ty = x86_64_ty(ccx, *t, |cls| cls.is_pass_byval(), Attribute::ByValAttribute);
         arg_tys.push(ty);
     }
 
     let ret_ty = if ret_def {
-        x86_64_ty(ccx, rty, |cls| cls.is_ret_bysret(), StructRetAttribute)
+        x86_64_ty(ccx, rty, |cls| cls.is_ret_bysret(), Attribute::StructRetAttribute)
     } else {
         ArgType::direct(Type::void(ccx), None, None, None)
     };

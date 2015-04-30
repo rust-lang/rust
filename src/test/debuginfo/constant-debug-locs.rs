@@ -8,13 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-android: FIXME(#10381)
 // min-lldb-version: 310
 
 // compile-flags:-g
 
-#![allow(unused_variables)]
-#![allow(dead_code)]
+#![allow(dead_code, unused_variables)]
 #![omit_gdb_pretty_printer_section]
 #![feature(std_misc, core)]
 

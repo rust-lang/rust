@@ -96,12 +96,16 @@ explicit codepoint lists. [^inputformat]
 ## Special Unicode Productions
 
 The following productions in the Rust grammar are defined in terms of Unicode
-properties: `ident`, `non_null`, `non_star`, `non_eol`, `non_slash_or_star`,
-`non_single_quote` and `non_double_quote`.
+properties: `ident`, `non_null`, `non_eol`, `non_single_quote` and
+`non_double_quote`.
 
 ### Identifiers
 
-The `ident` production is any nonempty Unicode string of the following form:
+The `ident` production is any nonempty Unicode[^non_ascii_idents] string of
+the following form:
+
+[^non_ascii_idents]: Non-ASCII characters in identifiers are currently feature
+  gated. This is expected to improve soon.
 
 - The first character has property `XID_start`
 - The remaining characters have property `XID_continue`
@@ -118,8 +122,6 @@ Some productions are defined by exclusion of particular Unicode characters:
 
 - `non_null` is any single Unicode character aside from `U+0000` (null)
 - `non_eol` is `non_null` restricted to exclude `U+000A` (`'\n'`)
-- `non_star` is `non_null` restricted to exclude `U+002A` (`*`)
-- `non_slash_or_star` is `non_null` restricted to exclude `U+002F` (`/`) and `U+002A` (`*`)
 - `non_single_quote` is `non_null` restricted to exclude `U+0027`  (`'`)
 - `non_double_quote` is `non_null` restricted to exclude `U+0022` (`"`)
 
@@ -152,19 +154,19 @@ token : simple_token | ident | literal | symbol | whitespace token ;
 
 <p id="keyword-table-marker"></p>
 
-|          |          |          |          |        |
-|----------|----------|----------|----------|--------|
-| abstract | alignof  | as       | become   | box    |
-| break    | const    | continue | crate    | do     |
-| else     | enum     | extern   | false    | final  |
-| fn       | for      | if       | impl     | in     |
-| let      | loop     | match    | mod      | move   |
-| mut      | offsetof | once     | override | priv   |
-| proc     | pub      | pure     | ref      | return |
-| sizeof   | static   | self     | struct   | super  |
-| true     | trait    | type     | typeof   | unsafe |
-| unsized  | use      | virtual  | where    | while  |
-| yield    |          |          |          |        |
+|          |          |          |          |         |
+|----------|----------|----------|----------|---------|
+| abstract | alignof  | as       | become   | box     |
+| break    | const    | continue | crate    | do      |
+| else     | enum     | extern   | false    | final   |
+| fn       | for      | if       | impl     | in      |
+| let      | loop     | macro    | match    | mod     |
+| move     | mut      | offsetof | override | priv    |
+| proc     | pub      | pure     | ref      | return  |
+| Self     | self     | sizeof   | static   | struct  |
+| super    | trait    | true     | type     | typeof  |
+| unsafe   | unsized  | use      | virtual  | where   |
+| while    | yield    |          |          |         |
 
 
 Each of these keywords has special meaning in its grammar, and all of them are
@@ -524,6 +526,15 @@ array_elems : [expr [',' expr]*] | [expr ',' ".." expr] ;
 idx_expr : expr '[' expr ']' ;
 ```
 
+### Range expressions
+
+```antlr
+range_expr : expr ".." expr |
+             expr ".." |
+             ".." expr |
+             ".." ;
+```
+
 ### Unary operator expressions
 
 **FIXME:** grammar?
@@ -610,7 +621,7 @@ lambda_expr : '|' ident_list '|' expr ;
 ### While loops
 
 ```antlr
-while_expr : "while" no_struct_literal_expr '{' block '}' ;
+while_expr : [ lifetime ':' ] "while" no_struct_literal_expr '{' block '}' ;
 ```
 
 ### Infinite loops
@@ -634,7 +645,7 @@ continue_expr : "continue" [ lifetime ];
 ### For expressions
 
 ```antlr
-for_expr : "for" pat "in" no_struct_literal_expr '{' block '}' ;
+for_expr : [ lifetime ':' ] "for" pat "in" no_struct_literal_expr '{' block '}' ;
 ```
 
 ### If expressions
