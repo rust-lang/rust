@@ -1,0 +1,12 @@
+[root]
+name = "rustfmt"
+version = "0.0.1"
+dependencies = [
+ "strings 0.0.1 (git+https://github.com/nrc/strings.rs.git)",
+]
+
+[[package]]
+name = "strings"
+version = "0.0.1"
+source = "git+https://github.com/nrc/strings.rs.git#551331d01911b7e8da056a4a019eb367cfaf03bd"
+
