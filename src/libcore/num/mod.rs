@@ -113,12 +113,14 @@ macro_rules! int_impl {
      $mul_with_overflow:path) => {
         /// Returns the smallest value that can be represented by this integer type.
         #[stable(feature = "rust1", since = "1.0.0")]
+        #[inline]
         pub fn min_value() -> $T {
             (-1 as $T) << ($BITS - 1)
         }
 
         /// Returns the largest value that can be represented by this integer type.
         #[stable(feature = "rust1", since = "1.0.0")]
+        #[inline]
         pub fn max_value() -> $T {
             let min = $T::min_value(); !min
         }
