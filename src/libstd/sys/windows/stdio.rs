@@ -21,9 +21,9 @@ use sys::c;
 use sys::cvt;
 use sys::handle::Handle;
 
-struct NoClose(Option<Handle>);
+pub struct NoClose(Option<Handle>);
 
-enum Output {
+pub enum Output {
     Console(NoClose),
     Pipe(NoClose),
 }
@@ -35,7 +35,7 @@ pub struct Stdin {
 pub struct Stdout(Output);
 pub struct Stderr(Output);
 
-fn get(handle: libc::DWORD) -> io::Result<Output> {
+pub fn get(handle: libc::DWORD) -> io::Result<Output> {
     let handle = unsafe { c::GetStdHandle(handle) };
     if handle == libc::INVALID_HANDLE_VALUE {
         Err(io::Error::last_os_error())
@@ -156,6 +156,16 @@ impl NoClose {
 impl Drop for NoClose {
     fn drop(&mut self) {
         self.0.take().unwrap().into_raw();
+    }
+}
+
+impl Output {
+    pub fn handle(&self) -> &Handle {
+        let nc = match *self {
+            Output::Console(ref c) => c,
+            Output::Pipe(ref c) => c,
+        };
+        nc.0.as_ref().unwrap()
     }
 }
 

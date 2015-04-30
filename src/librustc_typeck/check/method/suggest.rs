@@ -364,7 +364,7 @@ pub fn all_traits<'a>(ccx: &'a CrateCtxt) -> AllTraits<'a> {
 }
 
 pub struct AllTraits<'a> {
-    borrow: cell::Ref<'a Option<AllTraitsVec>>,
+    borrow: cell::Ref<'a, Option<AllTraitsVec>>,
     idx: usize
 }
 
