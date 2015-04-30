@@ -11,7 +11,7 @@
 //! iOS-specific raw type definitions
 
 use os::raw::c_long;
-use os::unix::raw::{uid_t, gid_t, pid_t};
+use os::unix::raw::{uid_t, gid_t};
 
 pub type blkcnt_t = i64;
 pub type blksize_t = i32;
