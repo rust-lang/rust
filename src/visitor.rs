@@ -148,7 +148,10 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
                 match vp.node {
                     ast::ViewPath_::ViewPathList(ref path, ref path_list) => {
                         self.format_missing(item.span.lo);
-                        let new_str = self.rewrite_use_list(path, path_list, vp.span);
+                        let new_str = self.rewrite_use_list(path,
+                                                            path_list,
+                                                            item.vis,
+                                                            vp.span);
                         self.changes.push_str_span(item.span, &new_str);
                         self.last_pos = item.span.hi;
                     }

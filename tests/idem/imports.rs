@@ -6,3 +6,5 @@ use syntax::ast::{ItemForeignMod, ItemImpl, ItemMac, ItemMod, ItemStatic,
 
 use {Foo, Bar};
 use Foo::{Bar, Baz};
+pub use syntax::ast::{Expr_, Expr, ExprAssign, ExprCall, ExprMethodCall,
+                      ExprPath};

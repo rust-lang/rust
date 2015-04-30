@@ -27,12 +27,17 @@ impl<'a> FmtVisitor<'a> {
     pub fn rewrite_use_list(&mut self,
                             path: &ast::Path,
                             path_list: &[ast::PathListItem],
+                            visibility: ast::Visibility,
                             vp_span: Span) -> String {
         // FIXME check indentation
         let l_loc = self.codemap.lookup_char_pos(vp_span.lo);
 
         let path_str = pprust::path_to_string(&path);
 
+        let vis = match visibility {
+            ast::Public => "pub ",
+            _ => ""
+        };
 
         // 1 = {
         let mut indent = l_loc.col.0 + path_str.len() + 1;
@@ -41,7 +46,7 @@ impl<'a> FmtVisitor<'a> {
             indent += 2;
         }
         // 2 = } + ;
-        let used_width = indent + 2;
+        let used_width = indent + 2 + vis.len();
         let budget = if used_width >= IDEAL_WIDTH {
             if used_width < MAX_WIDTH {
                 MAX_WIDTH - used_width
@@ -84,11 +89,10 @@ impl<'a> FmtVisitor<'a> {
                 ast::PathListItem_::PathListMod{ .. } => None,
             }
         })).collect();
-
         if path_str.len() == 0 {
-            format!("use {{{}}};", write_list(&items, &fmt))
+            format!("{}use {{{}}};", vis, write_list(&items, &fmt))
         } else {
-            format!("use {}::{{{}}};", path_str, write_list(&items, &fmt))
+            format!("{}use {}::{{{}}};", vis, path_str, write_list(&items, &fmt))
         }
     }
 }
