@@ -12,8 +12,9 @@
 #![feature(box_patterns)]
 #![feature(rustc_private)]
 #![feature(collections)]
-#![feature(exit_status)]
 #![feature(str_char)]
+
+#![cfg_attr(not(test), feature(exit_status))]
 
 // TODO we're going to allocate a whole bunch of temp Strings, is it worth
 // keeping some scratch mem for this and running our own StrPool?
@@ -253,6 +254,7 @@ fn run(args: Vec<String>, write_mode: WriteMode) {
     rustc_driver::run_compiler(&args, &mut call_ctxt);
 }
 
+#[cfg(not(test))]
 fn main() {
     let args: Vec<_> = std::env::args().collect();
     //run(args, WriteMode::Display);
