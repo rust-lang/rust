@@ -19,6 +19,8 @@
 
 use rustc::plugin::Registry;
 use rustc::lint::*;
+use rustc::middle::const_eval::lookup_const_by_id;
+use rustc::middle::def::*;
 use syntax::ast::*;
 use syntax::ast_util::{is_comparison_binop, binop_to_string};
 use syntax::ptr::P;
@@ -41,7 +43,7 @@ impl LintPass for BitMask {
     fn check_expr(&mut self, cx: &Context, e: &Expr) {
         if let ExprBinary(ref cmp, ref left, ref right) = e.node {
 			if is_comparison_binop(cmp.node) {
-				fetch_int_literal(&right.node).map(|cmp_value| check_compare(cx, left, cmp.node, cmp_value, &e.span));
+				fetch_int_literal(cx, right).map(|cmp_value| check_compare(cx, left, cmp.node, cmp_value, &e.span));
 			}
 		}
     }
@@ -52,9 +54,9 @@ fn check_compare(cx: &Context, bit_op: &Expr, cmp_op: BinOp_, cmp_value: u64, sp
 		&ExprParen(ref subexp) => check_compare(cx, subexp, cmp_op, cmp_value, span),
 		&ExprBinary(ref op, ref left, ref right) => {
 			if op.node != BiBitAnd && op.node != BiBitOr { return; }
-			if let Some(mask_value) = fetch_int_literal(&right.node) {
+			if let Some(mask_value) = fetch_int_literal(cx, right) {
 				check_bit_mask(cx, op.node, cmp_op, mask_value, cmp_value, span);
-			} else if let Some(mask_value) = fetch_int_literal(&left.node) {
+			} else if let Some(mask_value) = fetch_int_literal(cx, left) {
 				check_bit_mask(cx, op.node, cmp_op, mask_value, cmp_value, span);
 			}
 		},
@@ -101,11 +103,22 @@ fn check_bit_mask(cx: &Context, bit_op: BinOp_, cmp_op: BinOp_, mask_value: u64,
 	}
 }
 
-fn fetch_int_literal(lit : &Expr_) -> Option<u64> {
-	if let &ExprLit(ref lit_ptr) = lit {
-		if let &LitInt(value, _) = &lit_ptr.node {
-			return Option::Some(value); //TODO: Handle sign
-		}
+fn fetch_int_literal(cx: &Context, lit : &Expr) -> Option<u64> {
+	match &lit.node {
+		&ExprLit(ref lit_ptr) => {
+			if let &LitInt(value, _) = &lit_ptr.node {
+				Option::Some(value) //TODO: Handle sign
+			} else { Option::None }
+		},
+		&ExprPath(_, _) => {
+			let def_map = cx.tcx.def_map.borrow();
+			let path_res_op = def_map.get(&lit.id);
+			path_res_op.as_ref().and_then(|x| {
+				if let &DefConst(def_id) = &x.base_def {
+					lookup_const_by_id(cx.tcx, def_id, Option::None).and_then(|l| fetch_int_literal(cx, l))
+				} else { Option::None }
+			})
+		},
+		_ => Option::None
 	}
-	Option::None
 }
