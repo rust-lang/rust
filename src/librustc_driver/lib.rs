@@ -855,10 +855,10 @@ pub fn monitor<F:FnOnce()+Send+'static>(f: F) {
 pub fn diagnostics_registry() -> diagnostics::registry::Registry {
     use syntax::diagnostics::registry::Registry;
 
-    let all_errors = Vec::new() +
-        &rustc::diagnostics::DIAGNOSTICS[..] +
-        &rustc_typeck::diagnostics::DIAGNOSTICS[..] +
-        &rustc_resolve::diagnostics::DIAGNOSTICS[..];
+    let mut all_errors = Vec::new();
+    all_errors.push_all(&rustc::diagnostics::DIAGNOSTICS);
+    all_errors.push_all(&rustc_typeck::diagnostics::DIAGNOSTICS);
+    all_errors.push_all(&rustc_resolve::diagnostics::DIAGNOSTICS);
 
     Registry::new(&*all_errors)
 }
