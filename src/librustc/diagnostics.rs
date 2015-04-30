@@ -227,6 +227,31 @@ This error indicates that an attempt was made to divide by zero (or take the
 remainder of a zero divisor) in a static or constant expression.
 "##,
 
+E0079: r##"
+Enum variants which contain no data can be given a custom integer
+representation. This error indicates that the value provided is not an
+integer literal and is therefore invalid.
+"##,
+
+E0080: r##"
+This error indicates that the compiler was unable to sensibly evaluate an
+integer expression provided as an enum discriminant. Attempting to divide by 0
+or causing integer overflow are two ways to induce this error. For example:
+
+```
+enum Enum {
+    X = (1 << 500),
+    Y = (1 / 0)
+}
+```
+
+Ensure that the expressions given can be evaluated as the desired integer type.
+See the FFI section of the Reference for more information about using a custom
+integer type:
+
+http://doc.rust-lang.org/reference.html#ffi-attributes
+"##,
+
 E0133: r##"
 Using unsafe functionality, such as dereferencing raw pointers and calling
 functions via FFI or marked as unsafe, is potentially dangerous and disallowed
@@ -507,8 +532,6 @@ register_diagnostics! {
     E0017,
     E0019,
     E0022,
-    E0079, // enum variant: expected signed integer constant
-    E0080, // enum variant: constant evaluation error
     E0109,
     E0110,
     E0134,
