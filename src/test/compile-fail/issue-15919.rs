@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// error-pattern: the type `[i32; 9223372036854775808]` is too big for the current architecture
+
 fn main() {
-    let x = [0usize; 9223372036854775808]; // We don't officially support 128-bit architecture
-//~^ error: the type `[usize; 9223372036854775808]` is too big for the current architecture
+    let _x = [0; 9223372036854775808];
 }
