@@ -1,14 +1,14 @@
 [package]
-
 name = "clippy"
 version = "0.0.1"
-authors = ["Manish Goregaokar <manishsmail@gmail.com>"]
+authors = [
+	"Manish Goregaokar <manishsmail@gmail.com>",
+	"Andre Bogus <bogusandre@gmail.com>"
+]
 
 [lib]
 name = "clippy"
 crate_type = ["dylib"]
-
-
 
 [dev-dependencies.compiletest]
 git = "https://github.com/laumann/compiletest-rs.git"
