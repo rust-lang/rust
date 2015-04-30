@@ -15,6 +15,7 @@ to run on the top file. You'll probably want to set the `WriteMode` in the call
 to `run` in `main()`. Eventually you should be able to set the mode from the
 command line or from a config file or something.
 
+You'll need a pretty up to date version of the nightly version of Rust.
 
 ## Use cases
 
