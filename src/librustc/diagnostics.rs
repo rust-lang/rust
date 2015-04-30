@@ -375,39 +375,40 @@ by adding a type annotation. Sometimes you need to specify a generic type
 parameter manually.
 
 A common example is the `collect` method on `Iterator`. It has a generic type
-parameter with a `FromIterator` bound, which is implemented by `Vec` and
-`VecDeque` among others. Consider the following snippet:
+parameter with a `FromIterator` bound, which for a `char` iterator is
+implemented by `Vec` and `String` among others. Consider the following snippet
+that reverses the characters of a string:
 
 ```
-let x = (1_i32 .. 10).collect();
+let x = "hello".chars().rev().collect();
 ```
 
 In this case, the compiler cannot infer what the type of `x` should be:
-`Vec<i32>` and `VecDeque<i32>` are both suitable candidates. To specify which
-type to use, you can use a type annotation on `x`:
+`Vec<char>` and `String` are both suitable candidates. To specify which type to
+use, you can use a type annotation on `x`:
 
 ```
-let x: Vec<i32> = (1_i32 .. 10).collect();
+let x: Vec<char> = "hello".chars().rev().collect();
 ```
 
-It is not necessary to annotate the full type, once the ambiguity is resolved,
+It is not necessary to annotate the full type. Once the ambiguity is resolved,
 the compiler can infer the rest:
 
 ```
-let x: Vec<_> = (1_i32 .. 10).collect();
+let x: Vec<_> = "hello".chars().rev().collect();
 ```
 
 Another way to provide the compiler with enough information, is to specify the
 generic type parameter:
 
 ```
-let x = (1_i32 .. 10).collect::<Vec<i32>>();
+let x = "hello".chars().rev().collect::<Vec<char>>();
 ```
 
 Again, you need not specify the full type if the compiler can infer it:
 
 ```
-let x = (1_i32 .. 10).collect::<Vec<_>>();
+let x = "hello".chars().rev().collect::<Vec<_>>();
 ```
 
 Apart from a method or function with a generic type parameter, this error can
