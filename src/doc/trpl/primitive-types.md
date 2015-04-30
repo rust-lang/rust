@@ -248,6 +248,14 @@ or “breaks up” the tuple, and assigns the bits to three bindings.
 
 This pattern is very powerful, and we’ll see it repeated more later.
 
+You can disambiguate a single-element tuple from a value in parentheses with a
+comma:
+
+```
+(0,); // single-element tuple
+(0); // zero in parentheses
+```
+
 ## Tuple Indexing
 
 You can also access fields of a tuple with indexing syntax:
