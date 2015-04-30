@@ -3,7 +3,7 @@
 name = "rustfmt"
 version = "0.0.1"
 authors = ["Nicholas Cameron <nrc@ncameron.org>"]
-description = "tool to find and fix Rust formatting issues"
+description = "Tool to find and fix Rust formatting issues"
 repository = "https://github.com/nick29581/rustfmt"
 readme = "README.md"
 license = "Apache-2.0/MIT"
@@ -11,7 +11,3 @@ license = "Apache-2.0/MIT"
 [dependencies.strings]
 strings = "0.0.1"
 git = "https://github.com/nrc/strings.rs.git"
-
-[[bin]]
-name = "rustfmt"
-path = "src/mod.rs"

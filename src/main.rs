@@ -312,8 +312,9 @@ mod test {
             count += 1;
         }
         // And also dogfood ourselves!
-        println!("Testing 'src/mod.rs'...");
-        run(vec!["rustfmt".to_owned(), "src/mod.rs".to_owned()], WriteMode::Return(HANDLE_RESULT));
+        println!("Testing 'src/main.rs'...");
+        run(vec!["rustfmt".to_string(), "src/main.rs".to_string()],
+            WriteMode::Return(HANDLE_RESULT));
         count += 1;
 
         // Display results
