@@ -19,17 +19,15 @@ this reason.
 # `static`
 
 Rust provides a ‘global variable’ sort of facility in static items. They’re
-similar to [constants][const], but static items aren’t inlined upon use. This
-means that there is only one instance for each value, and it’s at a fixed
-location in memory.
+similar to constants, but static items aren’t inlined upon use. This means that
+there is only one instance for each value, and it’s at a fixed location in
+memory.
 
 Here’s an example:
 
 ```rust
 static N: i32 = 5;
 ```
-
-[const]: const.html
 
 Unlike [`let`][let] bindings, you must annotate the type of a `static`.
 
