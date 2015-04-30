@@ -168,6 +168,12 @@ match x {
 ```
 "##,
 
+E0010: r##"
+The value of statics and constants must be known at compile time, and they live
+for the entire lifetime of a program. Creating a boxed value allocates memory on
+the heap at runtime, and therefore cannot be done at compile time.
+"##,
+
 E0013: r##"
 Static and const variables can refer to other const variables. But a const
 variable cannot refer to a static variable. For example, `Y` cannot refer to `X`
@@ -494,7 +500,6 @@ a compile-time constant.
 }
 
 register_diagnostics! {
-    E0010,
     E0011,
     E0012,
     E0014,
