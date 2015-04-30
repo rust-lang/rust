@@ -544,7 +544,7 @@ fi
 BOOL_OPTIONS=""
 VAL_OPTIONS=""
 
-opt debug 0 "debug mode"
+opt debug 0 "debug mode; disables optimization unless \`--enable-optimize\` given"
 opt valgrind 0 "run tests with valgrind (memcheck by default)"
 opt helgrind 0 "run tests with helgrind instead of memcheck"
 opt valgrind-rpass 1 "run rpass-valgrind tests with valgrind"
