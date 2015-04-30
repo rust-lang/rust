@@ -176,8 +176,14 @@ excluded from the `ident` rule.
 
 ```antlr
 lit_suffix : ident;
-literal : [ string_lit | char_lit | byte_string_lit | byte_lit | num_lit ] lit_suffix ?;
+literal : [ string_lit | char_lit | byte_string_lit | byte_lit | num_lit | bool_lit ] lit_suffix ?;
 ```
+
+The optional `lit_suffix` production is only used for certain numeric literals,
+but is reserved for future extension. That is, the above gives the lexical
+grammar, but a Rust parser will reject everything but the 12 special cases
+mentioned in [Number literals](reference.html#number-literals) in the
+reference.
 
 #### Character and string literals
 
@@ -238,7 +244,9 @@ dec_lit : [ dec_digit | '_' ] + ;
 
 #### Boolean literals
 
-**FIXME:** write grammar
+```antlr
+bool_lit : [ "true" | "false" ] ;
+```
 
 The two values of the boolean type are written `true` and `false`.
 
@@ -297,7 +305,7 @@ transcriber : '(' transcriber * ')' | '[' transcriber * ']'
 
 ```antlr
 item : mod_item | fn_item | type_item | struct_item | enum_item
-     | static_item | trait_item | impl_item | extern_block ;
+     | const_item | static_item | trait_item | impl_item | extern_block ;
 ```
 
 ### Type Parameters
@@ -366,6 +374,10 @@ path_item : ident | "mod" ;
 **FIXME:** grammar?
 
 ### Structures
+
+**FIXME:** grammar?
+
+### Enumerations
 
 **FIXME:** grammar?
 
