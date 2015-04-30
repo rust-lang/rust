@@ -222,8 +222,7 @@ impl<'a> FnLikeNode<'a> {
                     ast::MethodImplItem(ref sig, ref body) => {
                         method(ii.id, ii.ident, sig, Some(ii.vis), body, ii.span)
                     }
-                    ast::TypeImplItem(_) |
-                    ast::MacImplItem(_) => {
+                    _ => {
                         panic!("impl method FnLikeNode that is not fn-like")
                     }
                 }

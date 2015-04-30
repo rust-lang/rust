@@ -117,7 +117,7 @@ impl DynamicLibrary {
 }
 
 #[cfg(all(test, not(target_os = "ios")))]
-mod test {
+mod tests {
     use super::*;
     use prelude::v1::*;
     use libc;
@@ -125,7 +125,9 @@ mod test {
     use path::Path;
 
     #[test]
-    #[cfg_attr(any(windows, target_os = "android"), ignore)] // FIXME #8818, #10379
+    #[cfg_attr(any(windows,
+                   target_os = "android",  // FIXME #10379
+                   target_env = "musl"), ignore)]
     fn test_loading_cosine() {
         // The math library does not need to be loaded since it is already
         // statically linked in

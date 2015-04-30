@@ -1580,7 +1580,7 @@ impl<'a, 'v> Visitor<'v> for MacroExterminator<'a> {
 
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::{pattern_bindings, expand_crate};
     use super::{PatIdentFinder, IdentRenamer, PatIdentRenamer, ExpansionConfig};
     use ast;

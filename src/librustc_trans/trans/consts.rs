@@ -173,13 +173,11 @@ pub fn get_const_expr<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                             "cross crate constant could not be inlined");
     }
 
-    let item = ccx.tcx().map.expect_item(def_id.node);
-    if let ast::ItemConst(_, ref expr) = item.node {
-        &**expr
-    } else {
-        ccx.sess().span_bug(ref_expr.span,
-                            &format!("get_const_expr given non-constant item {}",
-                                     item.repr(ccx.tcx())));
+    match const_eval::lookup_const_by_id(ccx.tcx(), def_id, Some(ref_expr.id)) {
+        Some(ref expr) => expr,
+        None => {
+            ccx.sess().span_bug(ref_expr.span, "constant item not found")
+        }
     }
 }
 
@@ -188,7 +186,7 @@ fn get_const_val(ccx: &CrateContext,
                  ref_expr: &ast::Expr) -> ValueRef {
     let expr = get_const_expr(ccx, def_id, ref_expr);
     let empty_substs = ccx.tcx().mk_substs(Substs::trans_empty());
-    get_const_expr_as_global(ccx, expr, check_const::PURE_CONST, empty_substs)
+    get_const_expr_as_global(ccx, expr, check_const::ConstQualif::PURE_CONST, empty_substs)
 }
 
 pub fn get_const_expr_as_global<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
@@ -201,7 +199,7 @@ pub fn get_const_expr_as_global<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         ast::ExprPath(..) => {
             let def = ccx.tcx().def_map.borrow().get(&expr.id).unwrap().full_def();
             match def {
-                def::DefConst(def_id) => {
+                def::DefConst(def_id) | def::DefAssociatedConst(def_id, _) => {
                     if !ccx.tcx().adjustments.borrow().contains_key(&expr.id) {
                         return get_const_val(ccx, def_id, expr);
                     }
@@ -217,7 +215,7 @@ pub fn get_const_expr_as_global<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         Some(&val) => return val,
         None => {}
     }
-    let val = if qualif.intersects(check_const::NON_STATIC_BORROWS) {
+    let val = if qualif.intersects(check_const::ConstQualif::NON_STATIC_BORROWS) {
         // Avoid autorefs as they would create global instead of stack
         // references, even when only the latter are correct.
         let ty = monomorphize::apply_param_substs(ccx.tcx(), param_substs,
@@ -774,7 +772,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 def::DefFn(..) | def::DefMethod(..) => {
                     expr::trans_def_fn_unadjusted(cx, e, def, param_substs).val
                 }
-                def::DefConst(def_id) => {
+                def::DefConst(def_id) | def::DefAssociatedConst(def_id, _) => {
                     const_deref_ptr(cx, get_const_val(cx, def_id, e))
                 }
                 def::DefVariant(enum_did, variant_did, _) => {

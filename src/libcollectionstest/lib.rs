@@ -10,6 +10,7 @@
 
 #![feature(box_syntax)]
 #![feature(collections)]
+#![feature(collections_drain)]
 #![feature(core)]
 #![feature(hash)]
 #![feature(rand)]
@@ -17,7 +18,6 @@
 #![feature(test)]
 #![feature(unboxed_closures)]
 #![feature(unicode)]
-#![feature(unsafe_destructor)]
 #![feature(into_cow)]
 #![feature(step_by)]
 #![cfg_attr(test, feature(str_char))]

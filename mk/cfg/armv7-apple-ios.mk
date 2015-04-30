@@ -19,15 +19,11 @@ CFG_GCCISH_CFLAGS_armv7-apple-ios := -Wall -Werror -g -fPIC $(CFG_IOS_SDK_FLAGS_
 CFG_GCCISH_CXXFLAGS_armv7-apple-ios := -fno-rtti $(CFG_IOS_SDK_FLAGS_armv7-apple-ios) -I$(CFG_IOS_SDK_armv7-apple-ios)/usr/include/c++/4.2.1
 CFG_GCCISH_LINK_FLAGS_armv7-apple-ios := -lpthread -syslibroot $(CFG_IOS_SDK_armv7-apple-ios) -Wl,-no_compact_unwind
 CFG_GCCISH_DEF_FLAG_armv7-apple-ios := -Wl,-exported_symbols_list,
-CFG_GCCISH_PRE_LIB_FLAGS_armv7-apple-ios :=
-CFG_GCCISH_POST_LIB_FLAGS_armv7-apple-ios :=
-CFG_DEF_SUFFIX_armv7-apple-ios := .darwin.def
 CFG_LLC_FLAGS_armv7-apple-ios := -mattr=+vfp3,+v7,+neon -march=arm
 CFG_INSTALL_NAME_armv7-apple-ios = -Wl,-install_name,@rpath/$(1)
 CFG_EXE_SUFFIX_armv7-apple-ios :=
 CFG_WINDOWSY_armv7-apple-ios :=
 CFG_UNIXY_armv7-apple-ios := 1
-CFG_PATH_MUNGE_armv7-apple-ios := true
 CFG_LDPATH_armv7-apple-ios :=
 CFG_RUN_armv7-apple-ios = $(2)
 CFG_RUN_TARG_armv7-apple-ios = $(call CFG_RUN_armv7-apple-ios,,$(2))

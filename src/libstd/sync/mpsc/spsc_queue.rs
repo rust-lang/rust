@@ -226,7 +226,6 @@ impl<T> Queue<T> {
     }
 }
 
-#[unsafe_destructor]
 impl<T> Drop for Queue<T> {
     fn drop(&mut self) {
         unsafe {
@@ -241,7 +240,7 @@ impl<T> Drop for Queue<T> {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use prelude::v1::*;
 
     use sync::Arc;

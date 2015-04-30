@@ -414,6 +414,10 @@ fn find_discr_field_candidate<'tcx>(tcx: &ty::ctxt<'tcx>,
             assert_eq!(nonzero_fields.len(), 1);
             let nonzero_field = ty::lookup_field_type(tcx, did, nonzero_fields[0].id, substs);
             match nonzero_field.sty {
+                ty::ty_ptr(ty::mt { ty, .. }) if !type_is_sized(tcx, ty) => {
+                    path.push_all(&[0, FAT_PTR_ADDR]);
+                    Some(path)
+                },
                 ty::ty_ptr(..) | ty::ty_int(..) | ty::ty_uint(..) => {
                     path.push(0);
                     Some(path)
@@ -429,6 +433,22 @@ fn find_discr_field_candidate<'tcx>(tcx: &ty::ctxt<'tcx>,
             for (j, field) in fields.iter().enumerate() {
                 let field_ty = ty::lookup_field_type(tcx, def_id, field.id, substs);
                 if let Some(mut fpath) = find_discr_field_candidate(tcx, field_ty, path.clone()) {
+                    fpath.push(j);
+                    return Some(fpath);
+                }
+            }
+            None
+        },
+
+        // Perhaps one of the upvars of this struct is non-zero
+        // Let's recurse and find out!
+        ty::ty_closure(def_id, substs) => {
+            let typer = NormalizingClosureTyper::new(tcx);
+            let upvars = typer.closure_upvars(def_id, substs).unwrap();
+            let upvar_types = upvars.iter().map(|u| u.ty).collect::<Vec<_>>();
+
+            for (j, &ty) in upvar_types.iter().enumerate() {
+                if let Some(mut fpath) = find_discr_field_candidate(tcx, ty, path.clone()) {
                     fpath.push(j);
                     return Some(fpath);
                 }
@@ -767,6 +787,7 @@ pub fn trans_switch<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             (_match::Switch, Some(trans_get_discr(bcx, r, scrutinee, None)))
         }
         Univariant(..) => {
+            // N.B.: Univariant means <= 1 enum variants (*not* == 1 variants).
             (_match::Single, None)
         }
     }
@@ -1058,7 +1079,7 @@ pub fn trans_drop_flag_ptr<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>, r: &Repr<'tcx
             ));
             bcx = fold_variants(bcx, r, val, |variant_cx, st, value| {
                 let ptr = struct_field_ptr(variant_cx, st, value, (st.fields.len() - 1), false);
-                datum::Datum::new(ptr, ptr_ty, datum::Rvalue::new(datum::ByRef))
+                datum::Datum::new(ptr, ptr_ty, datum::Lvalue)
                     .store_to(variant_cx, scratch.val)
             });
             let expr_datum = scratch.to_expr_datum();

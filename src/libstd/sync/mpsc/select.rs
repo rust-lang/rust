@@ -315,7 +315,6 @@ impl<'rx, T: Send> Handle<'rx, T> {
     }
 }
 
-#[unsafe_destructor]
 impl Drop for Select {
     fn drop(&mut self) {
         assert!(self.head.is_null());
@@ -323,7 +322,6 @@ impl Drop for Select {
     }
 }
 
-#[unsafe_destructor]
 impl<'rx, T: Send> Drop for Handle<'rx, T> {
     fn drop(&mut self) {
         unsafe { self.remove() }
@@ -346,7 +344,7 @@ impl Iterator for Packets {
 
 #[cfg(test)]
 #[allow(unused_imports)]
-mod test {
+mod tests {
     use prelude::v1::*;
 
     use thread;

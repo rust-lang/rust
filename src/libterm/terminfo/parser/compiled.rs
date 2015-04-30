@@ -345,7 +345,7 @@ pub fn msys_terminfo() -> Box<TermInfo> {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
 
     use super::{boolnames, boolfnames, numnames, numfnames, stringnames, stringfnames};
 

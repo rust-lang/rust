@@ -1068,6 +1068,26 @@ impl LintPass for NonUpperCaseGlobals {
         }
     }
 
+    fn check_trait_item(&mut self, cx: &Context, ti: &ast::TraitItem) {
+        match ti.node {
+            ast::ConstTraitItem(..) => {
+                NonUpperCaseGlobals::check_upper_case(cx, "associated constant",
+                                                      ti.ident, ti.span);
+            }
+            _ => {}
+        }
+    }
+
+    fn check_impl_item(&mut self, cx: &Context, ii: &ast::ImplItem) {
+        match ii.node {
+            ast::ConstImplItem(..) => {
+                NonUpperCaseGlobals::check_upper_case(cx, "associated constant",
+                                                      ii.ident, ii.span);
+            }
+            _ => {}
+        }
+    }
+
     fn check_pat(&mut self, cx: &Context, p: &ast::Pat) {
         // Lint for constants that look like binding identifiers (#7526)
         match (&p.node, cx.tcx.def_map.borrow().get(&p.id).map(|d| d.full_def())) {
@@ -1584,8 +1604,9 @@ impl LintPass for MissingDoc {
         if self.private_traits.contains(&trait_item.id) { return }
 
         let desc = match trait_item.node {
+            ast::ConstTraitItem(..) => "an associated constant",
             ast::MethodTraitItem(..) => "a trait method",
-            ast::TypeTraitItem(..) => "an associated type"
+            ast::TypeTraitItem(..) => "an associated type",
         };
 
         self.check_missing_docs_attrs(cx, Some(trait_item.id),
@@ -1600,9 +1621,10 @@ impl LintPass for MissingDoc {
         }
 
         let desc = match impl_item.node {
+            ast::ConstImplItem(..) => "an associated constant",
             ast::MethodImplItem(..) => "a method",
             ast::TypeImplItem(_) => "an associated type",
-            ast::MacImplItem(_) => "an impl item macro"
+            ast::MacImplItem(_) => "an impl item macro",
         };
         self.check_missing_docs_attrs(cx, Some(impl_item.id),
                                       &impl_item.attrs,
@@ -2117,6 +2139,60 @@ impl LintPass for UnstableFeatures {
     fn check_attribute(&mut self, ctx: &Context, attr: &ast::Attribute) {
         if attr::contains_name(&[attr.node.value.clone()], "feature") {
             ctx.span_lint(UNSTABLE_FEATURES, attr.span, "unstable feature");
+        }
+    }
+}
+
+/// Lints for attempts to impl Drop on types that have `#[repr(C)]`
+/// attribute (see issue #24585).
+#[derive(Copy, Clone)]
+pub struct DropWithReprExtern;
+
+declare_lint! {
+    DROP_WITH_REPR_EXTERN,
+    Warn,
+    "use of #[repr(C)] on a type that implements Drop"
+}
+
+impl LintPass for DropWithReprExtern {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(DROP_WITH_REPR_EXTERN)
+    }
+    fn check_crate(&mut self, ctx: &Context, _: &ast::Crate) {
+        for dtor_did in ctx.tcx.destructors.borrow().iter() {
+            let (drop_impl_did, dtor_self_type) =
+                if dtor_did.krate == ast::LOCAL_CRATE {
+                    let impl_did = ctx.tcx.map.get_parent_did(dtor_did.node);
+                    let ty = ty::lookup_item_type(ctx.tcx, impl_did).ty;
+                    (impl_did, ty)
+                } else {
+                    continue;
+                };
+
+            match dtor_self_type.sty {
+                ty::ty_enum(self_type_did, _) |
+                ty::ty_struct(self_type_did, _) |
+                ty::ty_closure(self_type_did, _) => {
+                    let hints = ty::lookup_repr_hints(ctx.tcx, self_type_did);
+                    if hints.iter().any(|attr| *attr == attr::ReprExtern) &&
+                        ty::ty_dtor(ctx.tcx, self_type_did).has_drop_flag() {
+                        let drop_impl_span = ctx.tcx.map.def_id_span(drop_impl_did,
+                                                                     codemap::DUMMY_SP);
+                        let self_defn_span = ctx.tcx.map.def_id_span(self_type_did,
+                                                                     codemap::DUMMY_SP);
+                        ctx.span_lint(DROP_WITH_REPR_EXTERN,
+                                      drop_impl_span,
+                                      "implementing Drop adds hidden state to types, \
+                                       possibly conflicting with `#[repr(C)]`");
+                        // FIXME #19668: could be span_lint_note instead of manual guard.
+                        if ctx.current_level(DROP_WITH_REPR_EXTERN) != Level::Allow {
+                            ctx.sess().span_note(self_defn_span,
+                                               "the `#[repr(C)]` attribute is attached here");
+                        }
+                    }
+                }
+                _ => {}
+            }
         }
     }
 }

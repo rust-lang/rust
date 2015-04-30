@@ -142,7 +142,7 @@ pub fn is_whitespace(c: char) -> bool {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
 
     #[test] fn eqmodws() {

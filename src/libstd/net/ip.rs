@@ -60,7 +60,7 @@ pub enum Ipv6MulticastScope {
 impl Ipv4Addr {
     /// Creates a new IPv4 address from four eight-bit octets.
     ///
-    /// The result will represent the IP address a.b.c.d
+    /// The result will represent the IP address `a`.`b`.`c`.`d`.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(a: u8, b: u8, c: u8, d: u8) -> Ipv4Addr {
         Ipv4Addr {
@@ -73,19 +73,19 @@ impl Ipv4Addr {
         }
     }
 
-    /// Returns the four eight-bit integers that make up this address
+    /// Returns the four eight-bit integers that make up this address.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn octets(&self) -> [u8; 4] {
         let bits = ntoh(self.inner.s_addr);
         [(bits >> 24) as u8, (bits >> 16) as u8, (bits >> 8) as u8, bits as u8]
     }
 
-    /// Returns true for the special 'unspecified' address 0.0.0.0
+    /// Returns true for the special 'unspecified' address 0.0.0.0.
     pub fn is_unspecified(&self) -> bool {
         self.inner.s_addr == 0
     }
 
-    /// Returns true if this is a loopback address (127.0.0.0/8)
+    /// Returns true if this is a loopback address (127.0.0.0/8).
     pub fn is_loopback(&self) -> bool {
         self.octets()[0] == 127
     }
@@ -106,7 +106,7 @@ impl Ipv4Addr {
         }
     }
 
-    /// Returns true if the address is link-local (169.254.0.0/16)
+    /// Returns true if the address is link-local (169.254.0.0/16).
     pub fn is_link_local(&self) -> bool {
         self.octets()[0] == 169 && self.octets()[1] == 254
     }
@@ -116,7 +116,7 @@ impl Ipv4Addr {
     /// Non-globally-routable networks include the private networks (10.0.0.0/8,
     /// 172.16.0.0/12 and 192.168.0.0/16), the loopback network (127.0.0.0/8),
     /// the link-local network (169.254.0.0/16), the broadcast address (255.255.255.255/32) and
-    /// the test networks used for documentation (192.0.2.0/24, 198.51.100.0/24 and 203.0.113.0/24)
+    /// the test networks used for documentation (192.0.2.0/24, 198.51.100.0/24 and 203.0.113.0/24).
     pub fn is_global(&self) -> bool {
         !self.is_private() && !self.is_loopback() && !self.is_link_local() &&
         !self.is_broadcast() && !self.is_documentation()
@@ -131,13 +131,13 @@ impl Ipv4Addr {
 
     /// Returns true if this is a broadcast address.
     ///
-    /// A broadcast address has all octets set to 255 as defined in RFC 919
+    /// A broadcast address has all octets set to 255 as defined in RFC 919.
     pub fn is_broadcast(&self) -> bool {
         self.octets()[0] == 255 && self.octets()[1] == 255 &&
         self.octets()[2] == 255 && self.octets()[3] == 255
     }
 
-    /// Returns true if this address is in a range designated for documentation
+    /// Returns true if this address is in a range designated for documentation.
     ///
     /// This is defined in RFC 5737
     /// - 192.0.2.0/24 (TEST-NET-1)
@@ -152,7 +152,7 @@ impl Ipv4Addr {
         }
     }
 
-    /// Converts this address to an IPv4-compatible IPv6 address
+    /// Converts this address to an IPv4-compatible IPv6 address.
     ///
     /// a.b.c.d becomes ::a.b.c.d
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -162,7 +162,7 @@ impl Ipv4Addr {
                       ((self.octets()[2] as u16) << 8) | self.octets()[3] as u16)
     }
 
-    /// Converts this address to an IPv4-mapped IPv6 address
+    /// Converts this address to an IPv4-mapped IPv6 address.
     ///
     /// a.b.c.d becomes ::ffff:a.b.c.d
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -247,7 +247,7 @@ impl FromInner<libc::in_addr> for Ipv4Addr {
 impl Ipv6Addr {
     /// Creates a new IPv6 address from eight 16-bit segments.
     ///
-    /// The result will represent the IP address a:b:c:d:e:f:g:h
+    /// The result will represent the IP address a:b:c:d:e:f:g:h.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(a: u16, b: u16, c: u16, d: u16, e: u16, f: u16, g: u16,
                h: u16) -> Ipv6Addr {
@@ -259,7 +259,7 @@ impl Ipv6Addr {
         }
     }
 
-    /// Returns the eight 16-bit segments that make up this address
+    /// Returns the eight 16-bit segments that make up this address.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn segments(&self) -> [u16; 8] {
         [ntoh(self.inner.s6_addr[0]),
@@ -272,12 +272,12 @@ impl Ipv6Addr {
          ntoh(self.inner.s6_addr[7])]
     }
 
-    /// Returns true for the special 'unspecified' address ::
+    /// Returns true for the special 'unspecified' address ::.
     pub fn is_unspecified(&self) -> bool {
         self.segments() == [0, 0, 0, 0, 0, 0, 0, 0]
     }
 
-    /// Returns true if this is a loopback address (::1)
+    /// Returns true if this is a loopback address (::1).
     pub fn is_loopback(&self) -> bool {
         self.segments() == [0, 0, 0, 0, 0, 0, 0, 1]
     }
@@ -295,25 +295,25 @@ impl Ipv6Addr {
         }
     }
 
-    /// Returns true if this is a unique local address (IPv6)
+    /// Returns true if this is a unique local address (IPv6).
     ///
-    /// Unique local addresses are defined in RFC4193 and have the form fc00::/7
+    /// Unique local addresses are defined in RFC4193 and have the form fc00::/7.
     pub fn is_unique_local(&self) -> bool {
         (self.segments()[0] & 0xfe00) == 0xfc00
     }
 
-    /// Returns true if the address is unicast and link-local (fe80::/10)
+    /// Returns true if the address is unicast and link-local (fe80::/10).
     pub fn is_unicast_link_local(&self) -> bool {
         (self.segments()[0] & 0xffc0) == 0xfe80
     }
 
     /// Returns true if this is a deprecated unicast site-local address (IPv6
-    /// fec0::/10)
+    /// fec0::/10).
     pub fn is_unicast_site_local(&self) -> bool {
         (self.segments()[0] & 0xffc0) == 0xfec0
     }
 
-    /// Returns true if the address is a globally routable unicast address
+    /// Returns true if the address is a globally routable unicast address.
     ///
     /// Non-globally-routable unicast addresses include the loopback address,
     /// the link-local addresses, the deprecated site-local addresses and the

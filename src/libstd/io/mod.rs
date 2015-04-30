@@ -70,8 +70,7 @@ fn append_to_string<F>(buf: &mut String, f: F) -> Result<usize>
     where F: FnOnce(&mut Vec<u8>) -> Result<usize>
 {
     struct Guard<'a> { s: &'a mut Vec<u8>, len: usize }
-    #[unsafe_destructor]
-    impl<'a> Drop for Guard<'a> {
+        impl<'a> Drop for Guard<'a> {
         fn drop(&mut self) {
             unsafe { self.s.set_len(self.len); }
         }

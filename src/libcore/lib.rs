@@ -65,7 +65,7 @@
 
 #![feature(intrinsics, lang_items)]
 #![feature(on_unimplemented)]
-#![feature(simd, unsafe_destructor)]
+#![feature(simd)]
 #![feature(staged_api)]
 #![feature(unboxed_closures)]
 #![feature(rustc_attrs)]

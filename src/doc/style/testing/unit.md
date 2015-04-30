@@ -1,10 +1,10 @@
 % Unit testing
 
-Unit tests should live in a `test` submodule at the bottom of the module they
-test. Mark the `test` submodule with `#[cfg(test)]` so it is only compiled when
+Unit tests should live in a `tests` submodule at the bottom of the module they
+test. Mark the `tests` submodule with `#[cfg(test)]` so it is only compiled when
 testing.
 
-The `test` module should contain:
+The `tests` module should contain:
 
 * Imports needed only for testing.
 * Functions marked with `#[test]` striving for full coverage of the parent module's
@@ -17,7 +17,7 @@ For example:
 // Excerpt from std::str
 
 #[cfg(test)]
-mod test {
+mod tests {
     #[test]
     fn test_eq() {
         assert!((eq(&"".to_owned(), &"".to_owned())));

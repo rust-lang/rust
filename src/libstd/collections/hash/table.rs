@@ -943,7 +943,6 @@ impl<'a, K, V> ExactSizeIterator for Drain<'a, K, V> {
     fn len(&self) -> usize { self.table.size() }
 }
 
-#[unsafe_destructor]
 impl<'a, K: 'a, V: 'a> Drop for Drain<'a, K, V> {
     fn drop(&mut self) {
         for _ in self.by_ref() {}
@@ -986,7 +985,6 @@ impl<K: Clone, V: Clone> Clone for RawTable<K, V> {
     }
 }
 
-#[unsafe_destructor]
 impl<K, V> Drop for RawTable<K, V> {
     fn drop(&mut self) {
         if self.capacity == 0 || self.capacity == mem::POST_DROP_USIZE {

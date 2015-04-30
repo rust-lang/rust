@@ -562,11 +562,7 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
             }
             Err(..) => {
                 let tcx = rcx.fcx.tcx();
-                if tcx.sess.has_errors() {
-                    // cannot run dropck; okay b/c in error state anyway.
-                } else {
-                    tcx.sess.span_bug(expr.span, "cat_expr_unadjusted Errd");
-                }
+                tcx.sess.delay_span_bug(expr.span, "cat_expr_unadjusted Errd");
             }
         }
     }
@@ -583,11 +579,7 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
         }
         Err(..) => {
             let tcx = rcx.fcx.tcx();
-            if tcx.sess.has_errors() {
-                // cannot run dropck; okay b/c in error state anyway.
-            } else {
-                tcx.sess.span_bug(expr.span, "cat_expr Errd");
-            }
+            tcx.sess.delay_span_bug(expr.span, "cat_expr Errd");
         }
     }
 

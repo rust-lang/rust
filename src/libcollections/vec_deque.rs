@@ -59,7 +59,6 @@ impl<T: Clone> Clone for VecDeque<T> {
     }
 }
 
-#[unsafe_destructor]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Drop for VecDeque<T> {
     fn drop(&mut self) {
@@ -1612,7 +1611,6 @@ pub struct Drain<'a, T: 'a> {
     inner: &'a mut VecDeque<T>,
 }
 
-#[unsafe_destructor]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: 'a> Drop for Drain<'a, T> {
     fn drop(&mut self) {
@@ -1772,7 +1770,7 @@ impl<T: fmt::Debug> fmt::Debug for VecDeque<T> {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use core::iter::{Iterator, self};
     use core::option::Option::Some;
 

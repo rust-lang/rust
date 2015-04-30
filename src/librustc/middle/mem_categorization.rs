@@ -589,7 +589,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
 
         match def {
           def::DefStruct(..) | def::DefVariant(..) | def::DefConst(..) |
-          def::DefFn(..) | def::DefMethod(..) => {
+          def::DefAssociatedConst(..) | def::DefFn(..) | def::DefMethod(..) => {
                 Ok(self.cat_rvalue_node(id, span, expr_ty))
           }
           def::DefMod(_) | def::DefForeignMod(_) | def::DefUse(_) |
@@ -838,20 +838,20 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                            expr_ty: Ty<'tcx>)
                            -> cmt<'tcx> {
         let qualif = self.tcx().const_qualif_map.borrow().get(&id).cloned()
-                               .unwrap_or(check_const::NOT_CONST);
+                               .unwrap_or(check_const::ConstQualif::NOT_CONST);
 
         // Only promote `[T; 0]` before an RFC for rvalue promotions
         // is accepted.
         let qualif = match expr_ty.sty {
             ty::ty_vec(_, Some(0)) => qualif,
-            _ => check_const::NOT_CONST
+            _ => check_const::ConstQualif::NOT_CONST
         };
 
         // Compute maximum lifetime of this rvalue. This is 'static if
         // we can promote to a constant, otherwise equal to enclosing temp
         // lifetime.
-        let re = match qualif & check_const::NON_STATIC_BORROWS {
-            check_const::PURE_CONST => ty::ReStatic,
+        let re = match qualif & check_const::ConstQualif::NON_STATIC_BORROWS {
+            check_const::ConstQualif::PURE_CONST => ty::ReStatic,
             _ => self.temporary_scope(id),
         };
         let ret = self.cat_rvalue(id, span, re, expr_ty);
@@ -1286,7 +1286,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                         try!(self.cat_pattern_(cmt_field, &**subpat, op));
                     }
                 }
-                Some(def::DefConst(..)) => {
+                Some(def::DefConst(..)) | Some(def::DefAssociatedConst(..)) => {
                     for subpat in subpats {
                         try!(self.cat_pattern_(cmt.clone(), &**subpat, op));
                     }
@@ -1297,6 +1297,10 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                         "enum pattern didn't resolve to enum or struct");
                 }
             }
+          }
+
+          ast::PatQPath(..) => {
+              // Lone constant: ignore
           }
 
           ast::PatIdent(_, _, Some(ref subpat)) => {

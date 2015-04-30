@@ -32,7 +32,7 @@ use std::ffi::OsString;
 use std::fs::{self, PathExt};
 use std::io::{self, Read, Write};
 use std::mem;
-use std::path::{Path, PathBuf};
+use std::path::{self, Path, PathBuf};
 use std::process::Command;
 use std::str;
 use flate;
@@ -794,13 +794,21 @@ fn link_natively(sess: &Session, trans: &CrateTranslation, dylib: bool,
     let pname = get_cc_prog(sess);
     let mut cmd = Command::new(&pname[..]);
 
+    let root = sess.target_filesearch(PathKind::Native).get_lib_path();
     cmd.args(&sess.target.target.options.pre_link_args);
+    for obj in &sess.target.target.options.pre_link_objects {
+        cmd.arg(root.join(obj));
+    }
+
     link_args(&mut cmd, sess, dylib, tmpdir.path(),
               trans, obj_filename, out_filename);
-    cmd.args(&sess.target.target.options.post_link_args);
     if !sess.target.target.options.no_compiler_rt {
         cmd.arg("-lcompiler-rt");
     }
+    for obj in &sess.target.target.options.post_link_objects {
+        cmd.arg(root.join(obj));
+    }
+    cmd.args(&sess.target.target.options.post_link_args);
 
     if sess.opts.debugging_opts.print_link_args {
         println!("{:?}", &cmd);
@@ -864,7 +872,7 @@ fn link_args(cmd: &mut Command,
     // target descriptor
     let t = &sess.target.target;
 
-    cmd.arg("-L").arg(&lib_path);
+    cmd.arg("-L").arg(&fix_windows_verbatim_for_gcc(&lib_path));
 
     cmd.arg("-o").arg(out_filename).arg(obj_filename);
 
@@ -916,8 +924,9 @@ fn link_args(cmd: &mut Command,
         // stripped away as much as it could. This has not been seen to impact
         // link times negatively.
         //
-        // -dead_strip can't be part of the pre_link_args because it's also used for partial
-        // linking when using multiple codegen units (-r). So we insert it here.
+        // -dead_strip can't be part of the pre_link_args because it's also used
+        // for partial linking when using multiple codegen units (-r). So we
+        // insert it here.
         cmd.arg("-Wl,-dead_strip");
     }
 
@@ -1043,7 +1052,6 @@ fn link_args(cmd: &mut Command,
             has_rpath: sess.target.target.options.has_rpath,
             is_like_osx: sess.target.target.options.is_like_osx,
             get_install_prefix_lib_path: &mut get_install_prefix_lib_path,
-            realpath: &mut ::util::fs::realpath
         };
         cmd.args(&rpath::get_rpath_flags(&mut rpath_config));
     }
@@ -1258,7 +1266,7 @@ fn add_upstream_rust_crates(cmd: &mut Command, sess: &Session,
                 }
             });
         } else {
-            cmd.arg(cratepath);
+            cmd.arg(&fix_windows_verbatim_for_gcc(cratepath));
         }
     }
 
@@ -1271,7 +1279,7 @@ fn add_upstream_rust_crates(cmd: &mut Command, sess: &Session,
         // Just need to tell the linker about where the library lives and
         // what its name is
         if let Some(dir) = cratepath.parent() {
-            cmd.arg("-L").arg(dir);
+            cmd.arg("-L").arg(&fix_windows_verbatim_for_gcc(dir));
         }
         let filestem = cratepath.file_stem().unwrap().to_str().unwrap();
         cmd.arg(&format!("-l{}", unlib(&sess.target, filestem)));
@@ -1324,4 +1332,30 @@ fn add_upstream_native_libraries(cmd: &mut Command, sess: &Session) {
             }
         }
     }
+}
+
+// Unfortunately, on windows, gcc cannot accept paths of the form `\\?\C:\...`
+// (a verbatim path). This form of path is generally pretty rare, but the
+// implementation of `fs::canonicalize` currently generates paths of this form,
+// meaning that we're going to be passing quite a few of these down to gcc.
+//
+// For now we just strip the "verbatim prefix" of `\\?\` from the path. This
+// will probably lose information in some cases, but there's not a whole lot
+// more we can do with a buggy gcc...
+fn fix_windows_verbatim_for_gcc(p: &Path) -> PathBuf {
+    if !cfg!(windows) {
+        return p.to_path_buf()
+    }
+    let mut components = p.components();
+    let prefix = match components.next() {
+        Some(path::Component::Prefix(p)) => p,
+        _ => return p.to_path_buf(),
+    };
+    let disk = match prefix.kind() {
+        path::Prefix::VerbatimDisk(disk) => disk,
+        _ => return p.to_path_buf(),
+    };
+    let mut base = OsString::from(format!("{}:", disk as char));
+    base.push(components.as_path());
+    PathBuf::from(base)
 }

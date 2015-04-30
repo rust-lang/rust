@@ -197,7 +197,7 @@ impl<'a,'tcx> CrateCtxt<'a,'tcx> {
         let def_id = local_def(method_id);
         match *self.tcx.impl_or_trait_items.borrow().get(&def_id).unwrap() {
             ty::MethodTraitItem(ref mty) => mty.clone(),
-            ty::TypeTraitItem(..) => {
+            _ => {
                 self.tcx.sess.bug(&format!("method with id {} has the wrong type", method_id));
             }
         }
@@ -692,11 +692,37 @@ fn convert_field<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     }
 }
 
+fn convert_associated_const<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
+                                      container: ImplOrTraitItemContainer,
+                                      ident: ast::Ident,
+                                      id: ast::NodeId,
+                                      vis: ast::Visibility,
+                                      ty: ty::Ty<'tcx>,
+                                      default: Option<&ast::Expr>)
+{
+    ccx.tcx.predicates.borrow_mut().insert(local_def(id),
+                                           ty::GenericPredicates::empty());
+
+    write_ty_to_tcx(ccx.tcx, id, ty);
+    let default_id = default.map(|expr| local_def(expr.id));
+
+    let associated_const = Rc::new(ty::AssociatedConst {
+        name: ident.name,
+        vis: vis,
+        def_id: local_def(id),
+        container: container,
+        ty: ty,
+        default: default_id,
+    });
+    ccx.tcx.impl_or_trait_items.borrow_mut()
+       .insert(local_def(id), ty::ConstTraitItem(associated_const));
+}
+
 fn as_refsociated_type<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
-                                     container: ImplOrTraitItemContainer,
-                                     ident: ast::Ident,
-                                     id: ast::NodeId,
-                                     vis: ast::Visibility)
+                                 container: ImplOrTraitItemContainer,
+                                 ident: ast::Ident,
+                                 id: ast::NodeId,
+                                 vis: ast::Visibility)
 {
     let associated_type = Rc::new(ty::AssociatedType {
         name: ident.name,
@@ -829,45 +855,56 @@ fn convert_item(ccx: &CrateCtxt, it: &ast::Item) {
                 it.vis
             };
 
+            // Convert all the associated consts.
+            for impl_item in impl_items {
+                if let ast::ConstImplItem(ref ty, ref expr) = impl_item.node {
+                    let ty = ccx.icx(&ty_predicates)
+                                .to_ty(&ExplicitRscope, &*ty);
+                    tcx.tcache.borrow_mut().insert(local_def(impl_item.id),
+                                                   TypeScheme {
+                                                       generics: ty_generics.clone(),
+                                                       ty: ty,
+                                                   });
+                    convert_associated_const(ccx, ImplContainer(local_def(it.id)),
+                                             impl_item.ident, impl_item.id,
+                                             impl_item.vis.inherit_from(parent_visibility),
+                                             ty, Some(&*expr));
+                }
+            }
+
             // Convert all the associated types.
             for impl_item in impl_items {
-                match impl_item.node {
-                    ast::TypeImplItem(ref ty) => {
-                        if opt_trait_ref.is_none() {
-                            span_err!(tcx.sess, impl_item.span, E0202,
-                                              "associated items are not allowed in inherent impls");
-                        }
-
-                        as_refsociated_type(ccx, ImplContainer(local_def(it.id)),
-                                                impl_item.ident, impl_item.id, impl_item.vis);
-
-                        let typ = ccx.icx(&ty_predicates).to_ty(&ExplicitRscope, ty);
-                        tcx.tcache.borrow_mut().insert(local_def(impl_item.id),
-                                                       TypeScheme {
-                                                           generics: ty::Generics::empty(),
-                                                           ty: typ,
-                                                       });
-                        tcx.predicates.borrow_mut().insert(local_def(impl_item.id),
-                                                           ty::GenericPredicates::empty());
-                        write_ty_to_tcx(tcx, impl_item.id, typ);
+                if let ast::TypeImplItem(ref ty) = impl_item.node {
+                    if opt_trait_ref.is_none() {
+                        span_err!(tcx.sess, impl_item.span, E0202,
+                                  "associated items are not allowed in inherent impls");
                     }
-                    ast::MethodImplItem(..) |
-                    ast::MacImplItem(_) => {}
+
+                    as_refsociated_type(ccx, ImplContainer(local_def(it.id)),
+                                        impl_item.ident, impl_item.id, impl_item.vis);
+
+                    let typ = ccx.icx(&ty_predicates).to_ty(&ExplicitRscope, ty);
+                    tcx.tcache.borrow_mut().insert(local_def(impl_item.id),
+                                                   TypeScheme {
+                                                       generics: ty::Generics::empty(),
+                                                       ty: typ,
+                                                   });
+                    tcx.predicates.borrow_mut().insert(local_def(impl_item.id),
+                                                       ty::GenericPredicates::empty());
+                    write_ty_to_tcx(tcx, impl_item.id, typ);
                 }
             }
 
             let methods = impl_items.iter().filter_map(|ii| {
-                match ii.node {
-                    ast::MethodImplItem(ref sig, _) => {
-                        // if the method specifies a visibility, use that, otherwise
-                        // inherit the visibility from the impl (so `foo` in `pub impl
-                        // { fn foo(); }` is public, but private in `priv impl { fn
-                        // foo(); }`).
-                        let method_vis = ii.vis.inherit_from(parent_visibility);
-                        Some((sig, ii.id, ii.ident, method_vis, ii.span))
-                    }
-                    ast::TypeImplItem(_) |
-                    ast::MacImplItem(_) => None
+                if let ast::MethodImplItem(ref sig, _) = ii.node {
+                    // if the method specifies a visibility, use that, otherwise
+                    // inherit the visibility from the impl (so `foo` in `pub impl
+                    // { fn foo(); }` is public, but private in `priv impl { fn
+                    // foo(); }`).
+                    let method_vis = ii.vis.inherit_from(parent_visibility);
+                    Some((sig, ii.id, ii.ident, method_vis, ii.span))
+                } else {
+                    None
                 }
             });
             convert_methods(ccx,
@@ -878,18 +915,14 @@ fn convert_item(ccx: &CrateCtxt, it: &ast::Item) {
                             &ty_predicates);
 
             for impl_item in impl_items {
-                match impl_item.node {
-                    ast::MethodImplItem(ref sig, ref body) => {
-                        let body_id = body.id;
-                        check_method_self_type(ccx,
-                                               &BindingRscope::new(),
-                                               ccx.method_ty(impl_item.id),
-                                               selfty,
-                                               &sig.explicit_self,
-                                               body_id);
-                    }
-                    ast::TypeImplItem(_) |
-                    ast::MacImplItem(_) => {}
+                if let ast::MethodImplItem(ref sig, ref body) = impl_item.node {
+                    let body_id = body.id;
+                    check_method_self_type(ccx,
+                                           &BindingRscope::new(),
+                                           ccx.method_ty(impl_item.id),
+                                           selfty,
+                                           &sig.explicit_self,
+                                           body_id);
                 }
             }
 
@@ -920,18 +953,37 @@ fn convert_item(ccx: &CrateCtxt, it: &ast::Item) {
             // Convert all the associated types.
             for trait_item in trait_items {
                 match trait_item.node {
-                    ast::MethodTraitItem(..) => {}
+                    ast::ConstTraitItem(ref ty, ref default) => {
+                        let ty = ccx.icx(&trait_predicates)
+                                    .to_ty(&ExplicitRscope, ty);
+                        tcx.tcache.borrow_mut().insert(local_def(trait_item.id),
+                                                       TypeScheme {
+                                                           generics: trait_def.generics.clone(),
+                                                           ty: ty,
+                                                       });
+                        convert_associated_const(ccx, TraitContainer(local_def(it.id)),
+                                                 trait_item.ident, trait_item.id,
+                                                 ast::Public, ty, default.as_ref().map(|d| &**d));
+                    }
+                    _ => {}
+                }
+            };
+
+            // Convert all the associated types.
+            for trait_item in trait_items {
+                match trait_item.node {
                     ast::TypeTraitItem(..) => {
                         as_refsociated_type(ccx, TraitContainer(local_def(it.id)),
                                                 trait_item.ident, trait_item.id, ast::Public);
                     }
+                    _ => {}
                 }
             };
 
             let methods = trait_items.iter().filter_map(|ti| {
                 let sig = match ti.node {
                     ast::MethodTraitItem(ref sig, _) => sig,
-                    ast::TypeTraitItem(..) => return None,
+                    _ => return None,
                 };
                 Some((sig, ti.id, ti.ident, ast::Inherited, ti.span))
             });
@@ -948,6 +1000,9 @@ fn convert_item(ccx: &CrateCtxt, it: &ast::Item) {
             let trait_item_def_ids = Rc::new(trait_items.iter().map(|trait_item| {
                 let def_id = local_def(trait_item.id);
                 match trait_item.node {
+                    ast::ConstTraitItem(..) => {
+                        ty::ConstTraitItemId(def_id)
+                    }
                     ast::MethodTraitItem(..) => {
                         ty::MethodTraitItemId(def_id)
                     }
@@ -963,7 +1018,7 @@ fn convert_item(ccx: &CrateCtxt, it: &ast::Item) {
             for trait_item in trait_items {
                 let sig = match trait_item.node {
                     ast::MethodTraitItem(ref sig, _) => sig,
-                    ast::TypeTraitItem(..) => continue
+                    _ => continue
                 };
                 check_method_self_type(ccx,
                                        &BindingRscope::new(),
@@ -1186,8 +1241,8 @@ fn trait_def_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
     let associated_type_names: Vec<_> = items.iter().filter_map(|trait_item| {
         match trait_item.node {
-            ast::MethodTraitItem(..) => None,
             ast::TypeTraitItem(..) => Some(trait_item.ident.name),
+            _ => None,
         }
     }).collect();
 
@@ -1261,7 +1316,7 @@ fn trait_defines_associated_type_named(ccx: &CrateCtxt,
     trait_items.iter().any(|trait_item| {
         match trait_item.node {
             ast::TypeTraitItem(..) => trait_item.ident.name == assoc_name,
-            ast::MethodTraitItem(..) => false,
+            _ => false,
         }
     })
 }
@@ -1321,7 +1376,7 @@ fn convert_trait_predicates<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, it: &ast::Item)
         trait_items.iter().flat_map(|trait_item| {
             let bounds = match trait_item.node {
                 ast::TypeTraitItem(ref bounds, _) => bounds,
-                ast::MethodTraitItem(..) => {
+                _ => {
                     return vec!().into_iter();
                 }
             };
@@ -2237,7 +2292,8 @@ fn enforce_impl_params_are_constrained<'tcx>(tcx: &ty::ctxt<'tcx>,
         impl_items.iter()
                   .filter_map(|item| match item.node {
                       ast::TypeImplItem(..) => Some(ty::node_id_to_type(tcx, item.id)),
-                      ast::MethodImplItem(..) | ast::MacImplItem(..) => None,
+                      ast::ConstImplItem(..) | ast::MethodImplItem(..) |
+                      ast::MacImplItem(..) => None,
                   })
                   .flat_map(|ty| ctp::parameters_for_type(ty).into_iter())
                   .filter_map(|p| match p {

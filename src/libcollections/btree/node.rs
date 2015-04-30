@@ -270,14 +270,12 @@ impl<T> DoubleEndedIterator for RawItems<T> {
     }
 }
 
-#[unsafe_destructor]
 impl<T> Drop for RawItems<T> {
     fn drop(&mut self) {
         for _ in self.by_ref() {}
     }
 }
 
-#[unsafe_destructor]
 impl<K, V> Drop for Node<K, V> {
     fn drop(&mut self) {
         if self.keys.is_null() ||
@@ -1394,7 +1392,6 @@ impl<K, V> TraversalImpl for MoveTraversalImpl<K, V> {
     }
 }
 
-#[unsafe_destructor]
 impl<K, V> Drop for MoveTraversalImpl<K, V> {
     fn drop(&mut self) {
         // We need to cleanup the stored values manually, as the RawItems destructor would run

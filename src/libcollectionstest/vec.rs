@@ -18,7 +18,6 @@ struct DropCounter<'a> {
     count: &'a mut u32
 }
 
-#[unsafe_destructor]
 impl<'a> Drop for DropCounter<'a> {
     fn drop(&mut self) {
         *self.count += 1;
@@ -460,7 +459,7 @@ fn test_move_items_zero_sized() {
 fn test_drain_items() {
     let mut vec = vec![1, 2, 3];
     let mut vec2 = vec![];
-    for i in vec.drain() {
+    for i in vec.drain(..) {
         vec2.push(i);
     }
     assert_eq!(vec, []);
@@ -471,7 +470,7 @@ fn test_drain_items() {
 fn test_drain_items_reverse() {
     let mut vec = vec![1, 2, 3];
     let mut vec2 = vec![];
-    for i in vec.drain().rev() {
+    for i in vec.drain(..).rev() {
         vec2.push(i);
     }
     assert_eq!(vec, []);
@@ -482,11 +481,41 @@ fn test_drain_items_reverse() {
 fn test_drain_items_zero_sized() {
     let mut vec = vec![(), (), ()];
     let mut vec2 = vec![];
-    for i in vec.drain() {
+    for i in vec.drain(..) {
         vec2.push(i);
     }
     assert_eq!(vec, []);
     assert_eq!(vec2, [(), (), ()]);
+}
+
+#[test]
+#[should_panic]
+fn test_drain_out_of_bounds() {
+    let mut v = vec![1, 2, 3, 4, 5];
+    v.drain(5..6);
+}
+
+#[test]
+fn test_drain_range() {
+    let mut v = vec![1, 2, 3, 4, 5];
+    for _ in v.drain(4..) {
+    }
+    assert_eq!(v, &[1, 2, 3, 4]);
+
+    let mut v: Vec<_> = (1..6).map(|x| x.to_string()).collect();
+    for _ in v.drain(1..4) {
+    }
+    assert_eq!(v, &[1.to_string(), 5.to_string()]);
+
+    let mut v: Vec<_> = (1..6).map(|x| x.to_string()).collect();
+    for _ in v.drain(1..4).rev() {
+    }
+    assert_eq!(v, &[1.to_string(), 5.to_string()]);
+
+    let mut v: Vec<_> = vec![(); 5];
+    for _ in v.drain(1..4).rev() {
+    }
+    assert_eq!(v, &[(), ()]);
 }
 
 #[test]

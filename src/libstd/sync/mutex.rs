@@ -244,7 +244,6 @@ impl<T> Mutex<T> {
     }
 }
 
-#[unsafe_destructor]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Drop for Mutex<T> {
     fn drop(&mut self) {
@@ -340,7 +339,6 @@ impl<'mutex, T> DerefMut for MutexGuard<'mutex, T> {
     }
 }
 
-#[unsafe_destructor]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Drop for MutexGuard<'a, T> {
     #[inline]
@@ -361,7 +359,7 @@ pub fn guard_poison<'a, T>(guard: &MutexGuard<'a, T>) -> &'a poison::Flag {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use prelude::v1::*;
 
     use sync::mpsc::channel;

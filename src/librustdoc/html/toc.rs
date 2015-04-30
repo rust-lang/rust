@@ -198,7 +198,7 @@ impl fmt::Display for Toc {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::{TocBuilder, Toc, TocEntry};
 
     #[test]

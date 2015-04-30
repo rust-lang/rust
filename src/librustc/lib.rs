@@ -25,22 +25,23 @@
       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
       html_root_url = "http://doc.rust-lang.org/nightly/")]
 
+#![feature(associated_consts)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(collections)]
 #![feature(core)]
+#![feature(fs_canonicalize)]
 #![feature(hash)]
+#![feature(into_cow)]
 #![feature(libc)]
+#![feature(path_ext)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
-#![feature(unsafe_destructor)]
+#![feature(slice_patterns)]
 #![feature(staged_api)]
 #![feature(std_misc)]
-#![feature(path_ext)]
 #![feature(str_char)]
-#![feature(into_cow)]
-#![feature(slice_patterns)]
 #![cfg_attr(test, feature(test))]
 
 #![allow(trivial_casts)]
@@ -139,7 +140,6 @@ pub mod plugin;
 pub mod lint;
 
 pub mod util {
-    pub use rustc_back::fs;
     pub use rustc_back::sha2;
 
     pub mod common;
@@ -161,3 +161,9 @@ pub mod lib {
 mod rustc {
     pub use lint;
 }
+
+// Build the diagnostics array at the end so that the metadata includes error use sites.
+#[cfg(stage0)]
+__build_diagnostic_array! { DIAGNOSTICS }
+#[cfg(not(stage0))]
+__build_diagnostic_array! { librustc, DIAGNOSTICS }

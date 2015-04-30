@@ -168,6 +168,25 @@ match x {
 ```
 "##,
 
+E0013: r##"
+Static and const variables can refer to other const variables. But a const
+variable cannot refer to a static variable. For example, `Y` cannot refer to `X`
+here:
+
+```
+static X: i32 = 42;
+const Y: i32 = X;
+```
+
+To fix this, the value can be extracted as a const and then used:
+
+```
+const A: i32 = 42;
+static X: i32 = A;
+const Y: i32 = A;
+```
+"##,
+
 E0015: r##"
 The only function calls allowed in static or constant expressions are enum
 variant constructors or struct constructors (for unit or tuple structs). This
@@ -336,6 +355,22 @@ enum Method { GET, POST }
 ```
 "##,
 
+E0265: r##"
+This error indicates that a static or constant references itself.
+All statics and constants need to resolve to a value in an acyclic manner.
+
+For example, neither of the following can be sensibly compiled:
+
+```
+const X: u32 = X;
+```
+
+```
+const X: u32 = Y;
+const Y: u32 = X;
+```
+"##,
+
 E0267: r##"
 This error indicates the use of loop keyword (break or continue) inside a
 closure but outside of any loop. Break and continue can be used as normal
@@ -462,7 +497,6 @@ register_diagnostics! {
     E0010,
     E0011,
     E0012,
-    E0013,
     E0014,
     E0016,
     E0017,
@@ -482,7 +516,6 @@ register_diagnostics! {
     E0262, // illegal lifetime parameter name
     E0263, // lifetime name declared twice in same scope
     E0264, // unknown external lang item
-    E0265, // recursive constant
     E0266, // expected item
     E0269, // not all control paths return a value
     E0270, // computation may converge in a function marked as diverging
@@ -517,5 +550,3 @@ register_diagnostics! {
     E0316, // nested quantification of lifetimes
     E0370  // discriminant overflow
 }
-
-__build_diagnostic_array! { DIAGNOSTICS }
