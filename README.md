@@ -50,7 +50,7 @@ move bounds to where clauses, combine multiple impls into a single impl, etc.
 However, we will not change the names of variables or make any changes which
 *could* change the semantics. To be ever so slightly formal, we might imagine
 a compilers high level intermediate representation, we should strive to only
-make changes which do change the HIR, even if they do change the AST.
+make changes which do not change the HIR, even if they do change the AST.
 
 I would like to be able to output refactoring scripts for making deeper changes
 though. (E.g., renaming variables to satisfy our style guidelines).
