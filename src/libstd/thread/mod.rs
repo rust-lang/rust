@@ -263,7 +263,7 @@ impl Builder {
     ///
     /// The child thread may outlive the parent (unless the parent thread
     /// is the main thread; the whole process is terminated when the main
-    /// thread finishes.) The join handle can be used to block on
+    /// thread finishes). The join handle can be used to block on
     /// termination of the child thread, including recovering its panics.
     ///
     /// # Errors

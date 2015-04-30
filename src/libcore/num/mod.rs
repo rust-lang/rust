@@ -745,7 +745,20 @@ macro_rules! uint_impl {
         #[stable(feature = "rust1", since = "1.0.0")]
         #[inline]
         pub fn trailing_zeros(self) -> u32 {
-            unsafe { $cttz(self as $ActualT) as u32 }
+            // As of LLVM 3.6 the codegen for the zero-safe cttz8 intrinsic
+            // emits two conditional moves on x86_64. By promoting the value to
+            // u16 and setting bit 8, we get better code without any conditional
+            // operations.
+            // FIXME: There's a LLVM patch (http://reviews.llvm.org/D9284)
+            // pending, remove this workaround once LLVM generates better code
+            // for cttz8.
+            unsafe {
+                if $BITS == 8 {
+                    intrinsics::cttz16(self as u16 | 0x100) as u32
+                } else {
+                    $cttz(self as $ActualT) as u32
+                }
+            }
         }
 
         /// Shifts the bits to the left by a specified amount, `n`,

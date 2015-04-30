@@ -46,18 +46,19 @@
 //! specified by the target, rather than replace.
 
 use serialize::json::Json;
-use syntax::{diagnostic, abi};
 use std::default::Default;
 use std::io::prelude::*;
+use syntax::{diagnostic, abi};
 
-mod windows_base;
-mod linux_base;
+mod android_base;
 mod apple_base;
 mod apple_ios_base;
-mod freebsd_base;
-mod dragonfly_base;
 mod bitrig_base;
+mod dragonfly_base;
+mod freebsd_base;
+mod linux_base;
 mod openbsd_base;
+mod windows_base;
 
 /// Everything `rustc` knows about how to compile for a specific target.
 ///

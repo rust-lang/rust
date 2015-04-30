@@ -21,8 +21,10 @@ use metadata::decoder;
 use metadata::loader;
 use metadata::loader::CratePaths;
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::rc::Rc;
+use std::fs;
+
 use syntax::ast;
 use syntax::abi;
 use syntax::attr;
@@ -32,7 +34,6 @@ use syntax::parse;
 use syntax::parse::token::InternedString;
 use syntax::parse::token;
 use syntax::visit;
-use util::fs;
 use log;
 
 pub struct CrateReader<'a> {
@@ -322,7 +323,7 @@ impl<'a> CrateReader<'a> {
             let source = self.sess.cstore.get_used_crate_source(cnum).unwrap();
             if let Some(locs) = self.sess.opts.externs.get(name) {
                 let found = locs.iter().any(|l| {
-                    let l = fs::realpath(&Path::new(&l[..])).ok();
+                    let l = fs::canonicalize(l).ok();
                     source.dylib.as_ref().map(|p| &p.0) == l.as_ref() ||
                     source.rlib.as_ref().map(|p| &p.0) == l.as_ref()
                 });

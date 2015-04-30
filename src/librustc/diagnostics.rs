@@ -355,6 +355,22 @@ enum Method { GET, POST }
 ```
 "##,
 
+E0265: r##"
+This error indicates that a static or constant references itself.
+All statics and constants need to resolve to a value in an acyclic manner.
+
+For example, neither of the following can be sensibly compiled:
+
+```
+const X: u32 = X;
+```
+
+```
+const X: u32 = Y;
+const Y: u32 = X;
+```
+"##,
+
 E0267: r##"
 This error indicates the use of loop keyword (break or continue) inside a
 closure but outside of any loop. Break and continue can be used as normal
@@ -500,7 +516,6 @@ register_diagnostics! {
     E0262, // illegal lifetime parameter name
     E0263, // lifetime name declared twice in same scope
     E0264, // unknown external lang item
-    E0265, // recursive constant
     E0266, // expected item
     E0269, // not all control paths return a value
     E0270, // computation may converge in a function marked as diverging

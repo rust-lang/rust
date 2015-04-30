@@ -11,21 +11,13 @@
 use target::Target;
 
 pub fn target() -> Target {
-    let mut base = super::linux_base::opts();
+    let mut base = super::android_base::opts();
     base.features = "+v7".to_string();
-    // Many of the symbols defined in compiler-rt are also defined in libgcc.  Android
-    // linker doesn't like that by default.
-    base.pre_link_args.push("-Wl,--allow-multiple-definition".to_string());
-    base.is_like_android = true;
-    // FIXME #17437 (and #17448): Android doesn't support position dependent executables anymore.
-    base.position_independent_executables = false;
 
     Target {
-        data_layout: "e-p:32:32:32\
-                      -i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64\
-                      -f32:32:32-f64:64:64\
-                      -v64:64:64-v128:64:128\
-                      -a:0:64-n32".to_string(),
+        data_layout: "e-p:32:32:32-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-\
+                      f32:32:32-f64:64:64-v64:64:64-v128:64:128-a:0:64-\
+                      n32".to_string(),
         llvm_target: "arm-linux-androideabi".to_string(),
         target_endian: "little".to_string(),
         target_pointer_width: "32".to_string(),

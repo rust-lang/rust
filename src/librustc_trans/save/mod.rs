@@ -295,6 +295,8 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
             return;
         }
 
+        debug!("process_method: {}:{}", id, token::get_name(name));
+
         let mut scope_id;
         // The qualname for a method is the trait name or name of the struct in an impl in
         // which the method is declared in, followed by the method's name.
@@ -704,7 +706,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
 
         self.process_generic_params(type_parameters, item.span, "", item.id);
         for impl_item in impl_items {
-            visit::walk_impl_item(self, impl_item);
+            self.visit_impl_item(impl_item);
         }
     }
 
@@ -1258,7 +1260,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
         match impl_item.node {
             ast::ConstImplItem(ref ty, ref expr) => {
                 self.process_const(impl_item.id, &impl_item.ident,
-                                   impl_item.span, &*ty, &*expr);
+                                   impl_item.span, &ty, &expr);
             }
             ast::MethodImplItem(ref sig, ref body) => {
                 self.process_method(sig, Some(body), impl_item.id,

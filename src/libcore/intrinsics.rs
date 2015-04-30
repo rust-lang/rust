@@ -139,6 +139,21 @@ extern "rust-intrinsic" {
     pub fn atomic_fence_rel();
     pub fn atomic_fence_acqrel();
 
+    /// A compiler-only memory barrier.
+    ///
+    /// Memory accesses will never be reordered across this barrier by the compiler,
+    /// but no instructions will be emitted for it. This is appropriate for operations
+    /// on the same thread that may be preempted, such as when interacting with signal
+    /// handlers.
+    #[cfg(not(stage0))]     // SNAP 857ef6e
+    pub fn atomic_singlethreadfence();
+    #[cfg(not(stage0))]     // SNAP 857ef6e
+    pub fn atomic_singlethreadfence_acq();
+    #[cfg(not(stage0))]     // SNAP 857ef6e
+    pub fn atomic_singlethreadfence_rel();
+    #[cfg(not(stage0))]     // SNAP 857ef6e
+    pub fn atomic_singlethreadfence_acqrel();
+
     /// Aborts the execution of the process.
     pub fn abort() -> !;
 
@@ -255,12 +270,17 @@ extern "rust-intrinsic" {
     /// Returns `true` if a type is managed (will be allocated on the local heap)
     pub fn owns_managed<T>() -> bool;
 
-    /// Calculates the offset from a pointer. The offset *must* be in-bounds of
-    /// the object, or one-byte-past-the-end. An arithmetic overflow is also
-    /// undefined behaviour.
+    /// Calculates the offset from a pointer.
     ///
     /// This is implemented as an intrinsic to avoid converting to and from an
     /// integer, since the conversion would throw away aliasing information.
+    ///
+    /// # Safety
+    ///
+    /// Both the starting and resulting pointer must be either in bounds or one
+    /// byte past the end of an allocated object. If either pointer is out of
+    /// bounds or arithmetic overflow occurs then any further use of the
+    /// returned value will result in undefined behavior.
     pub fn offset<T>(dst: *const T, offset: isize) -> *const T;
 
     /// Copies `count * size_of<T>` bytes from `src` to `dst`. The source
@@ -561,4 +581,21 @@ extern "rust-intrinsic" {
     /// Returns the value of the discriminant for the variant in 'v',
     /// cast to a `u64`; if `T` has no discriminant, returns 0.
     pub fn discriminant_value<T>(v: &T) -> u64;
+}
+
+#[cfg(not(stage0))]
+extern "rust-intrinsic" {
+    /// Performs an unchecked signed division, which results in undefined behavior,
+    /// in cases where y == 0, or x == int::MIN and y == -1
+    pub fn unchecked_sdiv<T>(x: T, y: T) -> T;
+    /// Performs an unchecked unsigned division, which results in undefined behavior,
+    /// in cases where y == 0
+    pub fn unchecked_udiv<T>(x: T, y: T) -> T;
+
+    /// Returns the remainder of an unchecked signed division, which results in
+    /// undefined behavior, in cases where y == 0, or x == int::MIN and y == -1
+    pub fn unchecked_urem<T>(x: T, y: T) -> T;
+    /// Returns the remainder of an unchecked signed division, which results in
+    /// undefined behavior, in cases where y == 0
+    pub fn unchecked_srem<T>(x: T, y: T) -> T;
 }

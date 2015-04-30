@@ -225,12 +225,12 @@ use metadata::encoder;
 use metadata::filesearch::{FileSearch, FileMatches, FileDoesntMatch};
 use syntax::codemap::Span;
 use syntax::diagnostic::SpanHandler;
-use util::fs;
 use util::common;
 use rustc_back::target::Target;
 
 use std::cmp;
 use std::collections::HashMap;
+use std::fs;
 use std::io::prelude::*;
 use std::io;
 use std::path::{Path, PathBuf};
@@ -430,9 +430,9 @@ impl<'a> Context<'a> {
                                  .or_insert_with(|| (HashMap::new(), HashMap::new()));
             let (ref mut rlibs, ref mut dylibs) = *slot;
             if rlib {
-                rlibs.insert(fs::realpath(path).unwrap(), kind);
+                rlibs.insert(fs::canonicalize(path).unwrap(), kind);
             } else {
-                dylibs.insert(fs::realpath(path).unwrap(), kind);
+                dylibs.insert(fs::canonicalize(path).unwrap(), kind);
             }
 
             FileMatches
@@ -660,10 +660,10 @@ impl<'a> Context<'a> {
             // there's at most one rlib and at most one dylib.
             for loc in locs {
                 if loc.file_name().unwrap().to_str().unwrap().ends_with(".rlib") {
-                    rlibs.insert(fs::realpath(&loc).unwrap(),
+                    rlibs.insert(fs::canonicalize(&loc).unwrap(),
                                  PathKind::ExternFlag);
                 } else {
-                    dylibs.insert(fs::realpath(&loc).unwrap(),
+                    dylibs.insert(fs::canonicalize(&loc).unwrap(),
                                   PathKind::ExternFlag);
                 }
             }

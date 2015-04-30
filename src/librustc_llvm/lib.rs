@@ -25,6 +25,7 @@
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/nightly/")]
 
+#![feature(associated_consts)]
 #![feature(box_syntax)]
 #![feature(collections)]
 #![feature(libc)]
@@ -42,6 +43,7 @@ pub use self::RealPredicate::*;
 pub use self::TypeKind::*;
 pub use self::AtomicBinOp::*;
 pub use self::AtomicOrdering::*;
+pub use self::SynchronizationScope::*;
 pub use self::FileType::*;
 pub use self::MetadataType::*;
 pub use self::AsmDialect::*;
@@ -123,32 +125,32 @@ pub enum DiagnosticSeverity {
 
 bitflags! {
     flags Attribute : u32 {
-        const ZExtAttribute = 1 << 0,
-        const SExtAttribute = 1 << 1,
-        const NoReturnAttribute = 1 << 2,
-        const InRegAttribute = 1 << 3,
-        const StructRetAttribute = 1 << 4,
-        const NoUnwindAttribute = 1 << 5,
-        const NoAliasAttribute = 1 << 6,
-        const ByValAttribute = 1 << 7,
-        const NestAttribute = 1 << 8,
-        const ReadNoneAttribute = 1 << 9,
-        const ReadOnlyAttribute = 1 << 10,
-        const NoInlineAttribute = 1 << 11,
-        const AlwaysInlineAttribute = 1 << 12,
+        const ZExtAttribute            = 1 << 0,
+        const SExtAttribute            = 1 << 1,
+        const NoReturnAttribute        = 1 << 2,
+        const InRegAttribute           = 1 << 3,
+        const StructRetAttribute       = 1 << 4,
+        const NoUnwindAttribute        = 1 << 5,
+        const NoAliasAttribute         = 1 << 6,
+        const ByValAttribute           = 1 << 7,
+        const NestAttribute            = 1 << 8,
+        const ReadNoneAttribute        = 1 << 9,
+        const ReadOnlyAttribute        = 1 << 10,
+        const NoInlineAttribute        = 1 << 11,
+        const AlwaysInlineAttribute    = 1 << 12,
         const OptimizeForSizeAttribute = 1 << 13,
-        const StackProtectAttribute = 1 << 14,
+        const StackProtectAttribute    = 1 << 14,
         const StackProtectReqAttribute = 1 << 15,
-        const AlignmentAttribute = 31 << 16,
-        const NoCaptureAttribute = 1 << 21,
-        const NoRedZoneAttribute = 1 << 22,
+        const AlignmentAttribute       = 1 << 16,
+        const NoCaptureAttribute       = 1 << 21,
+        const NoRedZoneAttribute       = 1 << 22,
         const NoImplicitFloatAttribute = 1 << 23,
-        const NakedAttribute = 1 << 24,
-        const InlineHintAttribute = 1 << 25,
-        const StackAttribute = 7 << 26,
-        const ReturnsTwiceAttribute = 1 << 29,
-        const UWTableAttribute = 1 << 30,
-        const NonLazyBindAttribute = 1 << 31,
+        const NakedAttribute           = 1 << 24,
+        const InlineHintAttribute      = 1 << 25,
+        const StackAttribute           = 7 << 26,
+        const ReturnsTwiceAttribute    = 1 << 29,
+        const UWTableAttribute         = 1 << 30,
+        const NonLazyBindAttribute     = 1 << 31,
     }
 }
 
@@ -358,6 +360,13 @@ pub enum AtomicOrdering {
     Release = 5,
     AcquireRelease = 6,
     SequentiallyConsistent = 7
+}
+
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub enum SynchronizationScope {
+    SingleThread = 0,
+    CrossThread = 1
 }
 
 // Consts for the LLVMCodeGenFileType type (in include/llvm/c/TargetMachine.h)
@@ -1533,7 +1542,9 @@ extern {
                               SingleThreaded: Bool)
                               -> ValueRef;
 
-    pub fn LLVMBuildAtomicFence(B: BuilderRef, Order: AtomicOrdering);
+    pub fn LLVMBuildAtomicFence(B: BuilderRef,
+                                Order: AtomicOrdering,
+                                Scope: SynchronizationScope);
 
 
     /* Selected entries from the downcasts. */

@@ -440,6 +440,22 @@ fn find_discr_field_candidate<'tcx>(tcx: &ty::ctxt<'tcx>,
             None
         },
 
+        // Perhaps one of the upvars of this struct is non-zero
+        // Let's recurse and find out!
+        ty::ty_closure(def_id, substs) => {
+            let typer = NormalizingClosureTyper::new(tcx);
+            let upvars = typer.closure_upvars(def_id, substs).unwrap();
+            let upvar_types = upvars.iter().map(|u| u.ty).collect::<Vec<_>>();
+
+            for (j, &ty) in upvar_types.iter().enumerate() {
+                if let Some(mut fpath) = find_discr_field_candidate(tcx, ty, path.clone()) {
+                    fpath.push(j);
+                    return Some(fpath);
+                }
+            }
+            None
+        },
+
         // Can we use one of the fields in this tuple?
         ty::ty_tup(ref tys) => {
             for (j, &ty) in tys.iter().enumerate() {
