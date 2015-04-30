@@ -844,6 +844,9 @@ pub fn symlink_metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
 
 /// Rename a file or directory to a new name.
 ///
+/// Moving a file or directory is also a rename, in a sense, and so this
+/// function is not limited a single directory.
+///
 /// # Errors
 ///
 /// This function will return an error if the provided `from` doesn't exist, if
@@ -858,6 +861,17 @@ pub fn symlink_metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
 ///
 /// # fn foo() -> std::io::Result<()> {
 /// try!(fs::rename("a.txt", "b.txt"));
+/// # Ok(())
+/// # }
+/// ```
+///
+/// Moving:
+///
+/// ```
+/// use std::fs;
+///
+/// # fn foo() -> std::io::Result<()> {
+/// try!(fs::rename("from/a.txt", "to/b.txt"));
 /// # Ok(())
 /// # }
 /// ```
