@@ -19,13 +19,6 @@
 // keeping some scratch mem for this and running our own StrPool?
 // TODO for lint violations of names, emit a refactor script
 
-// TODO priorities
-// annotations/doc comments
-// Fix fns and methods properly
-//   dead spans (comments) - in where clause - test
-//
-// Smoke testing till we can use it
-// take config options from a file
 
 #[macro_use]
 extern crate log;
@@ -287,19 +280,6 @@ fn main() {
     // println!("  {}", s);
 }
 
-// FIXME comments
-// comments aren't in the AST, which makes processing them difficult, but then
-// comments are complicated anyway. I think I am happy putting off tackling them
-// for now. Long term the soluton is for comments to be in the AST, but that means
-// only the libsyntax AST, not the rustc one, which means waiting for the ASTs
-// to diverge one day....
-
-// Once we do have comments, we just have to implement a simple word wrapping
-// algorithm to keep the width under IDEAL_WIDTH. We should also convert multiline
-// /* ... */ comments to // and check doc comments are in the right place and of
-// the right kind.
-
-// Should also make sure comments have the right indent
 
 #[cfg(test)]
 mod test {
@@ -311,7 +291,7 @@ mod test {
 
     // For now, the only supported regression tests are idempotent tests - the input and
     // output must match exactly.
-    // TODO would be good to check for error messages and fail on them, or at least report.
+    // FIXME(#28) would be good to check for error messages and fail on them, or at least report.
     #[test]
     fn idempotent_tests() {
         println!("Idempotent tests:");
