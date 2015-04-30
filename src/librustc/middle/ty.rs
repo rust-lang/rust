@@ -2522,6 +2522,11 @@ pub struct TraitDef<'tcx> {
     /// for resolving `X::Foo` type markers.
     pub associated_type_names: Vec<ast::Name>,
 
+    // Impls of this trait. To allow for quicker lookup, the impls are indexed
+    // by a simplified version of their Self type: impls with a simplifiable
+    // Self are stored in nonblanket_impls keyed by it, while all other impls
+    // are stored in blanket_impls.
+
     /// Impls of the trait.
     pub nonblanket_impls: RefCell<
         FnvHashMap<fast_reject::SimplifiedType, Vec<DefId>>
@@ -2530,6 +2535,7 @@ pub struct TraitDef<'tcx> {
     /// Blanket impls associated with the trait.
     pub blanket_impls: RefCell<Vec<DefId>>,
 
+    /// Various flags
     pub flags: Cell<TraitFlags>
 }
 
@@ -2544,6 +2550,7 @@ impl<'tcx> TraitDef<'tcx> {
     }
 
     pub fn set_object_safety(&self, is_safe: bool) {
+        assert!(self.object_safety().map(|cs| cs == is_safe).unwrap_or(true));
         self.flags.set(
             self.flags.get() | if is_safe {
                 TraitFlags::OBJECT_SAFETY_VALID | TraitFlags::IS_OBJECT_SAFE
@@ -2563,14 +2570,18 @@ impl<'tcx> TraitDef<'tcx> {
 
         if let Some(sty) = fast_reject::simplify_type(tcx,
                                                       impl_trait_ref.self_ty(), false) {
-            if !self.nonblanket_impls.borrow().get(&sty).map(
-                    |s| s.contains(&impl_def_id)).unwrap_or(false) {
-                self.nonblanket_impls.borrow_mut().entry(sty).or_insert(vec![]).push(impl_def_id)
+            if let Some(is) = self.nonblanket_impls.borrow().get(&sty) {
+                if is.contains(&impl_def_id) {
+                    return // duplicate - skip
+                }
             }
+
+            self.nonblanket_impls.borrow_mut().entry(sty).or_insert(vec![]).push(impl_def_id)
         } else {
-            if !self.blanket_impls.borrow().contains(&impl_def_id) {
-                self.blanket_impls.borrow_mut().push(impl_def_id)
+            if self.blanket_impls.borrow().contains(&impl_def_id) {
+                return // duplicate - skip
             }
+            self.blanket_impls.borrow_mut().push(impl_def_id)
         }
     }
 
@@ -2591,7 +2602,7 @@ impl<'tcx> TraitDef<'tcx> {
 
     pub fn for_each_relevant_impl<F: FnMut(DefId)>(&self,
                                                    tcx: &ctxt<'tcx>,
-                                                   trait_ref: TraitRef<'tcx>,
+                                                   self_ty: Ty<'tcx>,
                                                    mut f: F)
     {
         ty::populate_implementations_for_trait_if_necessary(tcx, self.trait_ref.def_id);
@@ -2600,14 +2611,12 @@ impl<'tcx> TraitDef<'tcx> {
             f(impl_def_id);
         }
 
-        if let Some(self_ty) = trait_ref.substs.self_ty() {
-            if let Some(simp) = fast_reject::simplify_type(tcx, self_ty, false) {
-                if let Some(impls) = self.nonblanket_impls.borrow().get(&simp) {
-                    for &impl_def_id in impls {
-                        f(impl_def_id);
-                    }
+        if let Some(simp) = fast_reject::simplify_type(tcx, self_ty, false) {
+            if let Some(impls) = self.nonblanket_impls.borrow().get(&simp) {
+                for &impl_def_id in impls {
+                    f(impl_def_id);
                 }
-                return; // don't process all non-blanket impls
+                return; // we don't need to process the other non-blanket impls
             }
         }
 

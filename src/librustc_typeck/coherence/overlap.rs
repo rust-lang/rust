@@ -134,7 +134,8 @@ impl<'cx, 'tcx> OverlapChecker<'cx, 'tcx> {
                               impl2_def_id: ast::DefId)
     {
         if let Some((impl1_def_id, impl2_def_id)) = self.order_impls(
-            impl1_def_id, impl2_def_id) {
+            impl1_def_id, impl2_def_id)
+        {
             debug!("check_if_impls_overlap({}, {}, {})",
                    trait_def_id.repr(self.tcx),
                    impl1_def_id.repr(self.tcx),
