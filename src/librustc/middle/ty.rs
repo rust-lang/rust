@@ -848,16 +848,18 @@ impl<'tcx> ctxt<'tcx> {
 // recursing over the type itself.
 bitflags! {
     flags TypeFlags: u32 {
-        const NO_TYPE_FLAGS       = 0b0,
-        const HAS_PARAMS          = 0b1,
-        const HAS_SELF            = 0b10,
-        const HAS_TY_INFER        = 0b100,
-        const HAS_RE_INFER        = 0b1000,
-        const HAS_RE_LATE_BOUND   = 0b10000,
-        const HAS_REGIONS         = 0b100000,
-        const HAS_TY_ERR          = 0b1000000,
-        const HAS_PROJECTION      = 0b10000000,
-        const NEEDS_SUBST   = HAS_PARAMS.bits | HAS_SELF.bits | HAS_REGIONS.bits,
+        const NO_TYPE_FLAGS     = 0,
+        const HAS_PARAMS        = 1 << 0,
+        const HAS_SELF          = 1 << 1,
+        const HAS_TY_INFER      = 1 << 2,
+        const HAS_RE_INFER      = 1 << 3,
+        const HAS_RE_LATE_BOUND = 1 << 4,
+        const HAS_REGIONS       = 1 << 5,
+        const HAS_TY_ERR        = 1 << 6,
+        const HAS_PROJECTION    = 1 << 7,
+        const NEEDS_SUBST       = TypeFlags::HAS_PARAMS.bits |
+                                  TypeFlags::HAS_SELF.bits |
+                                  TypeFlags::HAS_REGIONS.bits,
     }
 }
 
@@ -890,8 +892,8 @@ macro_rules! sty_debug_print {
                         ty::ty_err => /* unimportant */ continue,
                         $(ty::$variant(..) => &mut $variant,)*
                     };
-                    let region = t.flags.intersects(ty::HAS_RE_INFER);
-                    let ty = t.flags.intersects(ty::HAS_TY_INFER);
+                    let region = t.flags.intersects(ty::TypeFlags::HAS_RE_INFER);
+                    let ty = t.flags.intersects(ty::TypeFlags::HAS_TY_INFER);
 
                     variant.total += 1;
                     total.total += 1;
@@ -993,23 +995,23 @@ impl<'tcx> Borrow<sty<'tcx>> for InternedTy<'tcx> {
 }
 
 pub fn type_has_params(ty: Ty) -> bool {
-    ty.flags.intersects(HAS_PARAMS)
+    ty.flags.intersects(TypeFlags::HAS_PARAMS)
 }
 pub fn type_has_self(ty: Ty) -> bool {
-    ty.flags.intersects(HAS_SELF)
+    ty.flags.intersects(TypeFlags::HAS_SELF)
 }
 pub fn type_has_ty_infer(ty: Ty) -> bool {
-    ty.flags.intersects(HAS_TY_INFER)
+    ty.flags.intersects(TypeFlags::HAS_TY_INFER)
 }
 pub fn type_needs_infer(ty: Ty) -> bool {
-    ty.flags.intersects(HAS_TY_INFER | HAS_RE_INFER)
+    ty.flags.intersects(TypeFlags::HAS_TY_INFER | TypeFlags::HAS_RE_INFER)
 }
 pub fn type_has_projection(ty: Ty) -> bool {
-    ty.flags.intersects(HAS_PROJECTION)
+    ty.flags.intersects(TypeFlags::HAS_PROJECTION)
 }
 
 pub fn type_has_late_bound_regions(ty: Ty) -> bool {
-    ty.flags.intersects(HAS_RE_LATE_BOUND)
+    ty.flags.intersects(TypeFlags::HAS_RE_LATE_BOUND)
 }
 
 /// An "escaping region" is a bound region whose binder is not part of `t`.
@@ -2810,7 +2812,7 @@ struct FlagComputation {
 
 impl FlagComputation {
     fn new() -> FlagComputation {
-        FlagComputation { flags: NO_TYPE_FLAGS, depth: 0 }
+        FlagComputation { flags: TypeFlags::NO_TYPE_FLAGS, depth: 0 }
     }
 
     fn for_sty(st: &sty) -> FlagComputation {
@@ -2855,20 +2857,20 @@ impl FlagComputation {
 
             // You might think that we could just return ty_err for
             // any type containing ty_err as a component, and get
-            // rid of the HAS_TY_ERR flag -- likewise for ty_bot (with
+            // rid of the TypeFlags::HAS_TY_ERR flag -- likewise for ty_bot (with
             // the exception of function types that return bot).
             // But doing so caused sporadic memory corruption, and
             // neither I (tjc) nor nmatsakis could figure out why,
             // so we're doing it this way.
             &ty_err => {
-                self.add_flags(HAS_TY_ERR)
+                self.add_flags(TypeFlags::HAS_TY_ERR)
             }
 
             &ty_param(ref p) => {
                 if p.space == subst::SelfSpace {
-                    self.add_flags(HAS_SELF);
+                    self.add_flags(TypeFlags::HAS_SELF);
                 } else {
-                    self.add_flags(HAS_PARAMS);
+                    self.add_flags(TypeFlags::HAS_PARAMS);
                 }
             }
 
@@ -2877,7 +2879,7 @@ impl FlagComputation {
             }
 
             &ty_infer(_) => {
-                self.add_flags(HAS_TY_INFER)
+                self.add_flags(TypeFlags::HAS_TY_INFER)
             }
 
             &ty_enum(_, substs) | &ty_struct(_, substs) => {
@@ -2885,7 +2887,7 @@ impl FlagComputation {
             }
 
             &ty_projection(ref data) => {
-                self.add_flags(HAS_PROJECTION);
+                self.add_flags(TypeFlags::HAS_PROJECTION);
                 self.add_projection_ty(data);
             }
 
@@ -2949,11 +2951,11 @@ impl FlagComputation {
     }
 
     fn add_region(&mut self, r: Region) {
-        self.add_flags(HAS_REGIONS);
+        self.add_flags(TypeFlags::HAS_REGIONS);
         match r {
-            ty::ReInfer(_) => { self.add_flags(HAS_RE_INFER); }
+            ty::ReInfer(_) => { self.add_flags(TypeFlags::HAS_RE_INFER); }
             ty::ReLateBound(debruijn, _) => {
-                self.add_flags(HAS_RE_LATE_BOUND);
+                self.add_flags(TypeFlags::HAS_RE_LATE_BOUND);
                 self.add_depth(debruijn.depth);
             }
             _ => { }
@@ -3307,11 +3309,11 @@ pub fn type_is_nil(ty: Ty) -> bool {
 }
 
 pub fn type_is_error(ty: Ty) -> bool {
-    ty.flags.intersects(HAS_TY_ERR)
+    ty.flags.intersects(TypeFlags::HAS_TY_ERR)
 }
 
 pub fn type_needs_subst(ty: Ty) -> bool {
-    ty.flags.intersects(NEEDS_SUBST)
+    ty.flags.intersects(TypeFlags::NEEDS_SUBST)
 }
 
 pub fn trait_ref_contains_error(tref: &ty::TraitRef) -> bool {

@@ -755,11 +755,14 @@ mod opt {
     pub fn   multi(a: S, b: S, c: S, d: S) -> R { stable(getopts::optmulti(a, b, c, d)) }
     pub fn    flag(a: S, b: S, c: S)       -> R { stable(getopts::optflag(a, b, c)) }
     pub fn flagopt(a: S, b: S, c: S, d: S) -> R { stable(getopts::optflagopt(a, b, c, d)) }
+    pub fn flagmulti(a: S, b: S, c: S)     -> R { stable(getopts::optflagmulti(a, b, c)) }
+
 
     pub fn     opt_u(a: S, b: S, c: S, d: S) -> R { unstable(getopts::optopt(a, b, c, d)) }
     pub fn   multi_u(a: S, b: S, c: S, d: S) -> R { unstable(getopts::optmulti(a, b, c, d)) }
     pub fn    flag_u(a: S, b: S, c: S)       -> R { unstable(getopts::optflag(a, b, c)) }
     pub fn flagopt_u(a: S, b: S, c: S, d: S) -> R { unstable(getopts::optflagopt(a, b, c, d)) }
+    pub fn flagmulti_u(a: S, b: S, c: S)     -> R { unstable(getopts::optflagmulti(a, b, c)) }
 }
 
 /// Returns the "short" subset of the rustc command line options,
@@ -786,8 +789,8 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
         opt::multi("", "print", "Comma separated list of compiler information to \
                                print on stdout",
                  "[crate-name|file-names|sysroot]"),
-        opt::flag("g",  "",  "Equivalent to -C debuginfo=2"),
-        opt::flag("O", "", "Equivalent to -C opt-level=2"),
+        opt::flagmulti("g",  "",  "Equivalent to -C debuginfo=2"),
+        opt::flagmulti("O", "", "Equivalent to -C opt-level=2"),
         opt::opt("o", "", "Write output to <filename>", "FILENAME"),
         opt::opt("",  "out-dir", "Write output to compiler-chosen filename \
                                 in <dir>", "DIR"),

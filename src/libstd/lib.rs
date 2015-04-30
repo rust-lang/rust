@@ -107,26 +107,27 @@
 #![doc(test(attr(allow(dead_code, deprecated, unused_variables, unused_mut))))]
 
 #![feature(alloc)]
+#![feature(allow_internal_unstable)]
+#![feature(associated_consts)]
 #![feature(box_syntax)]
 #![feature(collections)]
 #![feature(core)]
+#![feature(debug_builders)]
+#![feature(into_cow)]
 #![feature(lang_items)]
 #![feature(libc)]
 #![feature(linkage, thread_local, asm)]
+#![feature(macro_reexport)]
 #![feature(optin_builtin_traits)]
 #![feature(rand)]
+#![feature(slice_patterns)]
 #![feature(staged_api)]
+#![feature(std_misc)]
+#![feature(str_char)]
 #![feature(unboxed_closures)]
 #![feature(unicode)]
-#![feature(unsafe_no_drop_flag, filling_drop)]
-#![feature(macro_reexport)]
 #![feature(unique)]
-#![feature(allow_internal_unstable)]
-#![feature(str_char)]
-#![feature(into_cow)]
-#![feature(std_misc)]
-#![feature(slice_patterns)]
-#![feature(debug_builders)]
+#![feature(unsafe_no_drop_flag, filling_drop)]
 #![feature(zero_one)]
 #![cfg_attr(test, feature(float_from_str_radix))]
 #![cfg_attr(test, feature(test, rustc_private, std_misc))]
@@ -307,13 +308,12 @@ mod std {
     pub use sync; // used for select!()
     pub use error; // used for try!()
     pub use fmt; // used for any formatting strings
-    pub use option; // used for bitflags!{}
+    pub use option; // used for thread_local!{}
     pub use rt; // used for panic!()
     pub use vec; // used for vec![]
     pub use cell; // used for tls!
     pub use thread; // used for thread_local!
     pub use marker;  // used for tls!
-    pub use ops; // used for bitflags!
 
     // The test runner calls ::std::env::args() but really wants realstd
     #[cfg(test)] pub use realstd::env as env;

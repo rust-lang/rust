@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // aux-build:issue24687_lib.rs
+// compile-flags:-g
 
 extern crate issue24687_lib as d;
 

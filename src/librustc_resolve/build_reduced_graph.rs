@@ -13,7 +13,7 @@
 //! Here we build the "reduced graph": the graph of the module tree without
 //! any imports resolved.
 
-use {DefModifiers, PUBLIC, IMPORTABLE};
+use DefModifiers;
 use resolve_imports::ImportDirective;
 use resolve_imports::ImportDirectiveSubclass::{self, SingleImport, GlobImport};
 use resolve_imports::ImportResolution;
@@ -262,7 +262,11 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
         let name = item.ident.name;
         let sp = item.span;
         let is_public = item.vis == ast::Public;
-        let modifiers = if is_public { PUBLIC } else { DefModifiers::empty() } | IMPORTABLE;
+        let modifiers = if is_public {
+            DefModifiers::PUBLIC
+        } else {
+            DefModifiers::empty()
+        } | DefModifiers::IMPORTABLE;
 
         match item.node {
             ItemUse(ref view_path) => {
@@ -533,20 +537,20 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                         ast::ConstTraitItem(..) => {
                             let def = DefAssociatedConst(local_def(trait_item.id),
                                                          FromTrait(local_def(item.id)));
-                            // NB: not IMPORTABLE
-                            name_bindings.define_value(def, trait_item.span, PUBLIC);
+                            // NB: not DefModifiers::IMPORTABLE
+                            name_bindings.define_value(def, trait_item.span, DefModifiers::PUBLIC);
                         }
                         ast::MethodTraitItem(..) => {
                             let def = DefMethod(local_def(trait_item.id),
                                                 FromTrait(local_def(item.id)));
-                            // NB: not IMPORTABLE
-                            name_bindings.define_value(def, trait_item.span, PUBLIC);
+                            // NB: not DefModifiers::IMPORTABLE
+                            name_bindings.define_value(def, trait_item.span, DefModifiers::PUBLIC);
                         }
                         ast::TypeTraitItem(..) => {
                             let def = DefAssociatedTy(local_def(item.id),
                                                       local_def(trait_item.id));
-                            // NB: not IMPORTABLE
-                            name_bindings.define_type(def, trait_item.span, PUBLIC);
+                            // NB: not DefModifiers::IMPORTABLE
+                            name_bindings.define_type(def, trait_item.span, DefModifiers::PUBLIC);
                         }
                     }
 
@@ -584,10 +588,10 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
         // used
         child.define_value(DefVariant(item_id,
                                       local_def(variant.node.id), is_exported),
-                           variant.span, PUBLIC | IMPORTABLE);
+                           variant.span, DefModifiers::PUBLIC | DefModifiers::IMPORTABLE);
         child.define_type(DefVariant(item_id,
                                      local_def(variant.node.id), is_exported),
-                          variant.span, PUBLIC | IMPORTABLE);
+                          variant.span, DefModifiers::PUBLIC | DefModifiers::IMPORTABLE);
     }
 
     /// Constructs the reduced graph for one foreign item.
@@ -596,7 +600,11 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                                             parent: &Rc<Module>) {
         let name = foreign_item.ident.name;
         let is_public = foreign_item.vis == ast::Public;
-        let modifiers = if is_public { PUBLIC } else { DefModifiers::empty() } | IMPORTABLE;
+        let modifiers = if is_public {
+            DefModifiers::PUBLIC
+        } else {
+            DefModifiers::empty()
+        } | DefModifiers::IMPORTABLE;
         let name_bindings =
             self.add_child(name, parent, ForbidDuplicateValues,
                            foreign_item.span);
@@ -644,7 +652,11 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                 external crate) building external def {}, priv {:?}",
                final_ident, vis);
         let is_public = vis == ast::Public;
-        let modifiers = if is_public { PUBLIC } else { DefModifiers::empty() } | IMPORTABLE;
+        let modifiers = if is_public {
+            DefModifiers::PUBLIC
+        } else {
+            DefModifiers::empty()
+        } | DefModifiers::IMPORTABLE;
         let is_exported = is_public && match new_parent.def_id.get() {
             None => true,
             Some(did) => self.external_exports.contains(&did)
@@ -695,7 +707,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                       final_ident);
               // variants are always treated as importable to allow them to be
               // glob used
-              let modifiers = PUBLIC | IMPORTABLE;
+              let modifiers = DefModifiers::PUBLIC | DefModifiers::IMPORTABLE;
               if is_struct {
                   child_name_bindings.define_type(def, DUMMY_SP, modifiers);
                   // Not adding fields for variants as they are not accessed with a self receiver
@@ -715,11 +727,12 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                     crate) building value (fn/static) {}", final_ident);
             // impl methods have already been defined with the correct importability modifier
             let mut modifiers = match *child_name_bindings.value_def.borrow() {
-                Some(ref def) => (modifiers & !IMPORTABLE) | (def.modifiers & IMPORTABLE),
+                Some(ref def) => (modifiers & !DefModifiers::IMPORTABLE) |
+                             (def.modifiers &  DefModifiers::IMPORTABLE),
                 None => modifiers
             };
             if new_parent.kind.get() != NormalModuleKind {
-                modifiers = modifiers & !IMPORTABLE;
+                modifiers = modifiers & !DefModifiers::IMPORTABLE;
             }
             child_name_bindings.define_value(def, DUMMY_SP, modifiers);
           }

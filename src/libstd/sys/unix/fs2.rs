@@ -21,14 +21,15 @@ use path::{Path, PathBuf};
 use ptr;
 use sync::Arc;
 use sys::fd::FileDesc;
+use sys::platform::raw;
 use sys::{c, cvt, cvt_r};
-use sys_common::FromInner;
+use sys_common::{AsInner, FromInner};
 use vec::Vec;
 
 pub struct File(FileDesc);
 
 pub struct FileAttr {
-    stat: libc::stat,
+    stat: raw::stat,
 }
 
 pub struct ReadDir {
@@ -57,13 +58,12 @@ pub struct OpenOptions {
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct FilePermissions { mode: mode_t }
 
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+pub struct FileType { mode: mode_t }
+
+pub struct DirBuilder { mode: mode_t }
+
 impl FileAttr {
-    pub fn is_dir(&self) -> bool {
-        (self.stat.st_mode as mode_t) & libc::S_IFMT == libc::S_IFDIR
-    }
-    pub fn is_file(&self) -> bool {
-        (self.stat.st_mode as mode_t) & libc::S_IFMT == libc::S_IFREG
-    }
     pub fn size(&self) -> u64 { self.stat.st_size as u64 }
     pub fn perm(&self) -> FilePermissions {
         FilePermissions { mode: (self.stat.st_mode as mode_t) & 0o777 }
@@ -76,10 +76,33 @@ impl FileAttr {
         self.mktime(self.stat.st_mtime as u64, self.stat.st_mtime_nsec as u64)
     }
 
+    pub fn file_type(&self) -> FileType {
+        FileType { mode: self.stat.st_mode as mode_t }
+    }
+
+    pub fn raw(&self) -> &raw::stat { &self.stat }
+
     // times are in milliseconds (currently)
     fn mktime(&self, secs: u64, nsecs: u64) -> u64 {
         secs * 1000 + nsecs / 1000000
     }
+}
+
+impl AsInner<raw::stat> for FileAttr {
+    fn as_inner(&self) -> &raw::stat { &self.stat }
+}
+
+#[unstable(feature = "metadata_ext", reason = "recently added API")]
+pub trait MetadataExt {
+    fn as_raw_stat(&self) -> &raw::stat;
+}
+
+impl MetadataExt for ::fs::Metadata {
+    fn as_raw_stat(&self) -> &raw::stat { &self.as_inner().stat }
+}
+
+impl MetadataExt for ::os::unix::fs::Metadata {
+    fn as_raw_stat(&self) -> &raw::stat { self.as_inner() }
 }
 
 impl FilePermissions {
@@ -91,11 +114,19 @@ impl FilePermissions {
             self.mode |= 0o222;
         }
     }
-    pub fn mode(&self) -> i32 { self.mode as i32 }
+    pub fn mode(&self) -> raw::mode_t { self.mode }
 }
 
-impl FromInner<i32> for FilePermissions {
-    fn from_inner(mode: i32) -> FilePermissions {
+impl FileType {
+    pub fn is_dir(&self) -> bool { self.is(libc::S_IFDIR) }
+    pub fn is_file(&self) -> bool { self.is(libc::S_IFREG) }
+    pub fn is_symlink(&self) -> bool { self.is(libc::S_IFLNK) }
+
+    fn is(&self, mode: mode_t) -> bool { self.mode & libc::S_IFMT == mode }
+}
+
+impl FromInner<raw::mode_t> for FilePermissions {
+    fn from_inner(mode: raw::mode_t) -> FilePermissions {
         FilePermissions { mode: mode as mode_t }
     }
 }
@@ -147,6 +178,33 @@ impl DirEntry {
         self.root.join(<OsStr as OsStrExt>::from_bytes(self.name_bytes()))
     }
 
+    pub fn file_name(&self) -> OsString {
+        OsStr::from_bytes(self.name_bytes()).to_os_string()
+    }
+
+    pub fn metadata(&self) -> io::Result<FileAttr> {
+        lstat(&self.path())
+    }
+
+    pub fn file_type(&self) -> io::Result<FileType> {
+        extern {
+            fn rust_dir_get_mode(ptr: *mut libc::dirent_t) -> c_int;
+        }
+        unsafe {
+            match rust_dir_get_mode(self.dirent()) {
+                -1 => lstat(&self.path()).map(|m| m.file_type()),
+                n => Ok(FileType { mode: n as mode_t }),
+            }
+        }
+    }
+
+    pub fn ino(&self) -> raw::ino_t {
+        extern {
+            fn rust_dir_get_ino(ptr: *mut libc::dirent_t) -> raw::ino_t;
+        }
+        unsafe { rust_dir_get_ino(self.dirent()) }
+    }
+
     fn name_bytes(&self) -> &[u8] {
         extern {
             fn rust_list_dir_val(ptr: *mut libc::dirent_t) -> *const c_char;
@@ -191,7 +249,7 @@ impl OpenOptions {
         self.flag(libc::O_CREAT, create);
     }
 
-    pub fn mode(&mut self, mode: i32) {
+    pub fn mode(&mut self, mode: raw::mode_t) {
         self.mode = mode as mode_t;
     }
 
@@ -228,8 +286,10 @@ impl File {
     pub fn into_fd(self) -> FileDesc { self.0 }
 
     pub fn file_attr(&self) -> io::Result<FileAttr> {
-        let mut stat: libc::stat = unsafe { mem::zeroed() };
-        try!(cvt(unsafe { libc::fstat(self.0.raw(), &mut stat) }));
+        let mut stat: raw::stat = unsafe { mem::zeroed() };
+        try!(cvt(unsafe {
+            libc::fstat(self.0.raw(), &mut stat as *mut _ as *mut _)
+        }));
         Ok(FileAttr { stat: stat })
     }
 
@@ -282,6 +342,22 @@ impl File {
     }
 
     pub fn fd(&self) -> &FileDesc { &self.0 }
+}
+
+impl DirBuilder {
+    pub fn new() -> DirBuilder {
+        DirBuilder { mode: 0o777 }
+    }
+
+    pub fn mkdir(&self, p: &Path) -> io::Result<()> {
+        let p = try!(cstr(p));
+        try!(cvt(unsafe { libc::mkdir(p.as_ptr(), self.mode) }));
+        Ok(())
+    }
+
+    pub fn set_mode(&mut self, mode: mode_t) {
+        self.mode = mode;
+    }
 }
 
 fn cstr(path: &Path) -> io::Result<CString> {
@@ -341,12 +417,6 @@ impl fmt::Debug for File {
         }
         b.finish()
     }
-}
-
-pub fn mkdir(p: &Path) -> io::Result<()> {
-    let p = try!(cstr(p));
-    try!(cvt(unsafe { libc::mkdir(p.as_ptr(), 0o777) }));
-    Ok(())
 }
 
 pub fn readdir(p: &Path) -> io::Result<ReadDir> {
@@ -420,15 +490,19 @@ pub fn link(src: &Path, dst: &Path) -> io::Result<()> {
 
 pub fn stat(p: &Path) -> io::Result<FileAttr> {
     let p = try!(cstr(p));
-    let mut stat: libc::stat = unsafe { mem::zeroed() };
-    try!(cvt(unsafe { libc::stat(p.as_ptr(), &mut stat) }));
+    let mut stat: raw::stat = unsafe { mem::zeroed() };
+    try!(cvt(unsafe {
+        libc::stat(p.as_ptr(), &mut stat as *mut _ as *mut _)
+    }));
     Ok(FileAttr { stat: stat })
 }
 
 pub fn lstat(p: &Path) -> io::Result<FileAttr> {
     let p = try!(cstr(p));
-    let mut stat: libc::stat = unsafe { mem::zeroed() };
-    try!(cvt(unsafe { libc::lstat(p.as_ptr(), &mut stat) }));
+    let mut stat: raw::stat = unsafe { mem::zeroed() };
+    try!(cvt(unsafe {
+        libc::lstat(p.as_ptr(), &mut stat as *mut _ as *mut _)
+    }));
     Ok(FileAttr { stat: stat })
 }
 
@@ -437,4 +511,18 @@ pub fn utimes(p: &Path, atime: u64, mtime: u64) -> io::Result<()> {
     let buf = [super::ms_to_timeval(atime), super::ms_to_timeval(mtime)];
     try!(cvt(unsafe { c::utimes(p.as_ptr(), buf.as_ptr()) }));
     Ok(())
+}
+
+pub fn canonicalize(p: &Path) -> io::Result<PathBuf> {
+    let path = try!(CString::new(p.as_os_str().as_bytes()));
+    let mut buf = vec![0u8; 16 * 1024];
+    unsafe {
+        let r = c::realpath(path.as_ptr(), buf.as_mut_ptr() as *mut _);
+        if r.is_null() {
+            return Err(io::Error::last_os_error())
+        }
+    }
+    let p = buf.iter().position(|i| *i == 0).unwrap();
+    buf.truncate(p);
+    Ok(PathBuf::from(OsString::from_vec(buf)))
 }

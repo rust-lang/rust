@@ -88,9 +88,9 @@ use std::slice;
 
 bitflags! {
     flags Restrictions: u8 {
-        const UNRESTRICTED                  = 0b0000,
-        const RESTRICTION_STMT_EXPR         = 0b0001,
-        const RESTRICTION_NO_STRUCT_LITERAL = 0b0010,
+        const UNRESTRICTED                  = 0,
+        const RESTRICTION_STMT_EXPR         = 1 << 0,
+        const RESTRICTION_NO_STRUCT_LITERAL = 1 << 1,
     }
 }
 
@@ -339,7 +339,7 @@ impl<'a> Parser<'a> {
             buffer_start: 0,
             buffer_end: 0,
             tokens_consumed: 0,
-            restrictions: UNRESTRICTED,
+            restrictions: Restrictions::UNRESTRICTED,
             quote_depth: 0,
             obsolete_set: HashSet::new(),
             mod_path_stack: Vec::new(),
@@ -2198,7 +2198,10 @@ impl<'a> Parser<'a> {
                     if self.check(&token::OpenDelim(token::Brace)) {
                         // This is a struct literal, unless we're prohibited
                         // from parsing struct literals here.
-                        if !self.restrictions.contains(RESTRICTION_NO_STRUCT_LITERAL) {
+                        let prohibited = self.restrictions.contains(
+                            Restrictions::RESTRICTION_NO_STRUCT_LITERAL
+                        );
+                        if !prohibited {
                             // It's a struct literal.
                             try!(self.bump());
                             let mut fields = Vec::new();
@@ -2759,7 +2762,7 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse_assign_expr_with(&mut self, lhs: P<Expr>) -> PResult<P<Expr>> {
-        let restrictions = self.restrictions & RESTRICTION_NO_STRUCT_LITERAL;
+        let restrictions = self.restrictions & Restrictions::RESTRICTION_NO_STRUCT_LITERAL;
         let op_span = self.span;
         match self.token {
           token::Eq => {
@@ -2814,7 +2817,7 @@ impl<'a> Parser<'a> {
         if self.token.can_begin_expr() {
             // parse `for i in 1.. { }` as infinite loop, not as `for i in (1..{})`.
             if self.token == token::OpenDelim(token::Brace) {
-                return !self.restrictions.contains(RESTRICTION_NO_STRUCT_LITERAL);
+                return !self.restrictions.contains(Restrictions::RESTRICTION_NO_STRUCT_LITERAL);
             }
             true
         } else {
@@ -2828,7 +2831,7 @@ impl<'a> Parser<'a> {
             return self.parse_if_let_expr();
         }
         let lo = self.last_span.lo;
-        let cond = try!(self.parse_expr_res(RESTRICTION_NO_STRUCT_LITERAL));
+        let cond = try!(self.parse_expr_res(Restrictions::RESTRICTION_NO_STRUCT_LITERAL));
         let thn = try!(self.parse_block());
         let mut els: Option<P<Expr>> = None;
         let mut hi = thn.span.hi;
@@ -2846,7 +2849,7 @@ impl<'a> Parser<'a> {
         try!(self.expect_keyword(keywords::Let));
         let pat = try!(self.parse_pat_nopanic());
         try!(self.expect(&token::Eq));
-        let expr = try!(self.parse_expr_res(RESTRICTION_NO_STRUCT_LITERAL));
+        let expr = try!(self.parse_expr_res(Restrictions::RESTRICTION_NO_STRUCT_LITERAL));
         let thn = try!(self.parse_block());
         let (hi, els) = if try!(self.eat_keyword(keywords::Else) ){
             let expr = try!(self.parse_else_expr());
@@ -2905,7 +2908,7 @@ impl<'a> Parser<'a> {
         let lo = self.last_span.lo;
         let pat = try!(self.parse_pat_nopanic());
         try!(self.expect_keyword(keywords::In));
-        let expr = try!(self.parse_expr_res(RESTRICTION_NO_STRUCT_LITERAL));
+        let expr = try!(self.parse_expr_res(Restrictions::RESTRICTION_NO_STRUCT_LITERAL));
         let loop_block = try!(self.parse_block());
         let hi = self.last_span.hi;
 
@@ -2918,7 +2921,7 @@ impl<'a> Parser<'a> {
             return self.parse_while_let_expr(opt_ident);
         }
         let lo = self.last_span.lo;
-        let cond = try!(self.parse_expr_res(RESTRICTION_NO_STRUCT_LITERAL));
+        let cond = try!(self.parse_expr_res(Restrictions::RESTRICTION_NO_STRUCT_LITERAL));
         let body = try!(self.parse_block());
         let hi = body.span.hi;
         return Ok(self.mk_expr(lo, hi, ExprWhile(cond, body, opt_ident)));
@@ -2930,7 +2933,7 @@ impl<'a> Parser<'a> {
         try!(self.expect_keyword(keywords::Let));
         let pat = try!(self.parse_pat_nopanic());
         try!(self.expect(&token::Eq));
-        let expr = try!(self.parse_expr_res(RESTRICTION_NO_STRUCT_LITERAL));
+        let expr = try!(self.parse_expr_res(Restrictions::RESTRICTION_NO_STRUCT_LITERAL));
         let body = try!(self.parse_block());
         let hi = body.span.hi;
         return Ok(self.mk_expr(lo, hi, ExprWhileLet(pat, expr, body, opt_ident)));
@@ -2945,7 +2948,7 @@ impl<'a> Parser<'a> {
 
     fn parse_match_expr(&mut self) -> PResult<P<Expr>> {
         let lo = self.last_span.lo;
-        let discriminant = try!(self.parse_expr_res(RESTRICTION_NO_STRUCT_LITERAL));
+        let discriminant = try!(self.parse_expr_res(Restrictions::RESTRICTION_NO_STRUCT_LITERAL));
         try!(self.commit_expr_expecting(&*discriminant, token::OpenDelim(token::Brace)));
         let mut arms: Vec<Arm> = Vec::new();
         while self.token != token::CloseDelim(token::Brace) {
@@ -2966,7 +2969,7 @@ impl<'a> Parser<'a> {
             guard = Some(try!(self.parse_expr_nopanic()));
         }
         try!(self.expect(&token::FatArrow));
-        let expr = try!(self.parse_expr_res(RESTRICTION_STMT_EXPR));
+        let expr = try!(self.parse_expr_res(Restrictions::RESTRICTION_STMT_EXPR));
 
         let require_comma =
             !classify::expr_is_simple_block(&*expr)
@@ -2988,7 +2991,7 @@ impl<'a> Parser<'a> {
 
     /// Parse an expression
     pub fn parse_expr_nopanic(&mut self) -> PResult<P<Expr>> {
-        return self.parse_expr_res(UNRESTRICTED);
+        return self.parse_expr_res(Restrictions::UNRESTRICTED);
     }
 
     /// Parse an expression, subject to the given restrictions
@@ -3564,7 +3567,7 @@ impl<'a> Parser<'a> {
                     }
 
                     // Remainder are line-expr stmts.
-                    let e = try!(self.parse_expr_res(RESTRICTION_STMT_EXPR));
+                    let e = try!(self.parse_expr_res(Restrictions::RESTRICTION_STMT_EXPR));
                     spanned(lo, e.span.hi, StmtExpr(e, ast::DUMMY_NODE_ID))
                 }
             }
@@ -3573,7 +3576,7 @@ impl<'a> Parser<'a> {
 
     /// Is this expression a successfully-parsed statement?
     fn expr_is_complete(&mut self, e: &Expr) -> bool {
-        self.restrictions.contains(RESTRICTION_STMT_EXPR) &&
+        self.restrictions.contains(Restrictions::RESTRICTION_STMT_EXPR) &&
             !classify::expr_requires_semi_to_be_stmt(e)
     }
 

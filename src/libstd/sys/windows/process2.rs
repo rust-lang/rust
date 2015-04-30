@@ -13,17 +13,23 @@ use prelude::v1::*;
 use ascii::*;
 use collections::HashMap;
 use collections;
+use env::split_paths;
 use env;
 use ffi::{OsString, OsStr};
 use fmt;
 use fs;
 use io::{self, Error};
 use libc::{self, c_void};
+use mem;
 use os::windows::ffi::OsStrExt;
+use path::Path;
 use ptr;
 use sync::{StaticMutex, MUTEX_INIT};
+use sys::c;
+use sys::fs2::{OpenOptions, File};
 use sys::handle::Handle;
 use sys::pipe2::AnonPipe;
+use sys::stdio;
 use sys::{self, cvt};
 use sys_common::{AsInner, FromInner};
 
@@ -90,18 +96,12 @@ impl Command {
 // Processes
 ////////////////////////////////////////////////////////////////////////////////
 
-// `CreateProcess` is racy!
-// http://support.microsoft.com/kb/315939
-static CREATE_PROCESS_LOCK: StaticMutex = MUTEX_INIT;
-
 /// A value representing a child process.
 ///
 /// The lifetime of this value is linked to the lifetime of the actual
 /// process - the Process destructor calls self.finish() which waits
 /// for the process to terminate.
 pub struct Process {
-    /// A HANDLE to the process, which will prevent the pid being
-    /// re-used until the handle is closed.
     handle: Handle,
 }
 
@@ -112,32 +112,17 @@ pub enum Stdio {
 }
 
 impl Process {
-    #[allow(deprecated)]
     pub fn spawn(cfg: &Command,
-                 in_fd: Stdio,
-                 out_fd: Stdio,
-                 err_fd: Stdio) -> io::Result<Process>
+                 in_handle: Stdio,
+                 out_handle: Stdio,
+                 err_handle: Stdio) -> io::Result<Process>
     {
-        use libc::types::os::arch::extra::{DWORD, HANDLE, STARTUPINFO};
-        use libc::consts::os::extra::{
-            TRUE, FALSE,
-            STARTF_USESTDHANDLES,
-            INVALID_HANDLE_VALUE,
-            DUPLICATE_SAME_ACCESS
-        };
-        use libc::funcs::extra::kernel32::{
-            GetCurrentProcess,
-            DuplicateHandle,
-            CloseHandle,
-            CreateProcessW
-        };
+        use libc::{TRUE, STARTF_USESTDHANDLES};
+        use libc::{DWORD, STARTUPINFO, CreateProcessW};
 
-        use env::split_paths;
-        use mem;
-        use iter::Iterator;
-
-        // To have the spawning semantics of unix/windows stay the same, we need to
-        // read the *child's* PATH if one is provided. See #15149 for more details.
+        // To have the spawning semantics of unix/windows stay the same, we need
+        // to read the *child's* PATH if one is provided. See #15149 for more
+        // details.
         let program = cfg.env.as_ref().and_then(|env| {
             for (key, v) in env {
                 if OsStr::new("PATH") != &**key { continue }
@@ -156,118 +141,51 @@ impl Process {
             None
         });
 
-        unsafe {
-            let mut si = zeroed_startupinfo();
-            si.cb = mem::size_of::<STARTUPINFO>() as DWORD;
-            si.dwFlags = STARTF_USESTDHANDLES;
+        let mut si = zeroed_startupinfo();
+        si.cb = mem::size_of::<STARTUPINFO>() as DWORD;
+        si.dwFlags = STARTF_USESTDHANDLES;
 
-            let cur_proc = GetCurrentProcess();
+        let stdin = try!(in_handle.to_handle(c::STD_INPUT_HANDLE));
+        let stdout = try!(out_handle.to_handle(c::STD_OUTPUT_HANDLE));
+        let stderr = try!(err_handle.to_handle(c::STD_ERROR_HANDLE));
 
-            let set_fd = |fd: &Stdio, slot: &mut HANDLE,
-                          is_stdin: bool| {
-                match *fd {
-                    Stdio::Inherit => {}
+        si.hStdInput = stdin.raw();
+        si.hStdOutput = stdout.raw();
+        si.hStdError = stderr.raw();
 
-                    // Similarly to unix, we don't actually leave holes for the
-                    // stdio file descriptors, but rather open up /dev/null
-                    // equivalents. These equivalents are drawn from libuv's
-                    // windows process spawning.
-                    Stdio::None => {
-                        let access = if is_stdin {
-                            libc::FILE_GENERIC_READ
-                        } else {
-                            libc::FILE_GENERIC_WRITE | libc::FILE_READ_ATTRIBUTES
-                        };
-                        let size = mem::size_of::<libc::SECURITY_ATTRIBUTES>();
-                        let mut sa = libc::SECURITY_ATTRIBUTES {
-                            nLength: size as libc::DWORD,
-                            lpSecurityDescriptor: ptr::null_mut(),
-                            bInheritHandle: 1,
-                        };
-                        let mut filename: Vec<u16> = "NUL".utf16_units().collect();
-                        filename.push(0);
-                        *slot = libc::CreateFileW(filename.as_ptr(),
-                                                  access,
-                                                  libc::FILE_SHARE_READ |
-                                                      libc::FILE_SHARE_WRITE,
-                                                  &mut sa,
-                                                  libc::OPEN_EXISTING,
-                                                  0,
-                                                  ptr::null_mut());
-                        if *slot == INVALID_HANDLE_VALUE {
-                            return Err(Error::last_os_error())
-                        }
-                    }
-                    Stdio::Piped(ref pipe) => {
-                        let orig = pipe.handle().raw();
-                        if DuplicateHandle(cur_proc, orig, cur_proc, slot,
-                                           0, TRUE, DUPLICATE_SAME_ACCESS) == FALSE {
-                            return Err(Error::last_os_error())
-                        }
-                    }
-                }
-                Ok(())
-            };
+        let program = program.as_ref().unwrap_or(&cfg.program);
+        let mut cmd_str = make_command_line(program, &cfg.args);
+        cmd_str.push(0); // add null terminator
 
-            try!(set_fd(&in_fd, &mut si.hStdInput, true));
-            try!(set_fd(&out_fd, &mut si.hStdOutput, false));
-            try!(set_fd(&err_fd, &mut si.hStdError, false));
-
-            let mut cmd_str = make_command_line(program.as_ref().unwrap_or(&cfg.program),
-                                            &cfg.args);
-            cmd_str.push(0); // add null terminator
-
-            let mut pi = zeroed_process_information();
-            let mut create_err = None;
-
-            // stolen from the libuv code.
-            let mut flags = libc::CREATE_UNICODE_ENVIRONMENT;
-            if cfg.detach {
-                flags |= libc::DETACHED_PROCESS | libc::CREATE_NEW_PROCESS_GROUP;
-            }
-
-            with_envp(cfg.env.as_ref(), |envp| {
-                with_dirp(cfg.cwd.as_ref(), |dirp| {
-                    let _lock = CREATE_PROCESS_LOCK.lock().unwrap();
-                    let created = CreateProcessW(ptr::null(),
-                                                 cmd_str.as_mut_ptr(),
-                                                 ptr::null_mut(),
-                                                 ptr::null_mut(),
-                                                 TRUE,
-                                                 flags, envp, dirp,
-                                                 &mut si, &mut pi);
-                    if created == FALSE {
-                        create_err = Some(Error::last_os_error());
-                    }
-                })
-            });
-
-            if !in_fd.inherited() {
-                assert!(CloseHandle(si.hStdInput) != 0);
-            }
-            if !out_fd.inherited() {
-                assert!(CloseHandle(si.hStdOutput) != 0);
-            }
-            if !err_fd.inherited() {
-                assert!(CloseHandle(si.hStdError) != 0);
-            }
-
-            match create_err {
-                Some(err) => return Err(err),
-                None => {}
-            }
-
-            // We close the thread handle because we don't care about keeping the
-            // thread id valid, and we aren't keeping the thread handle around to be
-            // able to close it later. We don't close the process handle however
-            // because std::we want the process id to stay valid at least until the
-            // calling code closes the process handle.
-            assert!(CloseHandle(pi.hThread) != 0);
-
-            Ok(Process {
-                handle: Handle::new(pi.hProcess)
-            })
+        // stolen from the libuv code.
+        let mut flags = libc::CREATE_UNICODE_ENVIRONMENT;
+        if cfg.detach {
+            flags |= libc::DETACHED_PROCESS | libc::CREATE_NEW_PROCESS_GROUP;
         }
+
+        let (envp, _data) = make_envp(cfg.env.as_ref());
+        let (dirp, _data) = make_dirp(cfg.cwd.as_ref());
+        let mut pi = zeroed_process_information();
+        try!(unsafe {
+            // `CreateProcess` is racy!
+            // http://support.microsoft.com/kb/315939
+            static CREATE_PROCESS_LOCK: StaticMutex = MUTEX_INIT;
+            let _lock = CREATE_PROCESS_LOCK.lock();
+
+            cvt(CreateProcessW(ptr::null(),
+                               cmd_str.as_mut_ptr(),
+                               ptr::null_mut(),
+                               ptr::null_mut(),
+                               TRUE, flags, envp, dirp,
+                               &mut si, &mut pi))
+        });
+
+        // We close the thread handle because we don't care about keeping
+        // the thread id valid, and we aren't keeping the thread handle
+        // around to be able to close it later.
+        drop(Handle::new(pi.hThread));
+
+        Ok(Process { handle: Handle::new(pi.hProcess) })
     }
 
     pub unsafe fn kill(&self) -> io::Result<()> {
@@ -276,42 +194,22 @@ impl Process {
     }
 
     pub fn wait(&self) -> io::Result<ExitStatus> {
-        use libc::consts::os::extra::{
-            FALSE,
-            STILL_ACTIVE,
-            INFINITE,
-            WAIT_OBJECT_0,
-        };
-        use libc::funcs::extra::kernel32::{
-            GetExitCodeProcess,
-            WaitForSingleObject,
-        };
+        use libc::{STILL_ACTIVE, INFINITE, WAIT_OBJECT_0};
+        use libc::{GetExitCodeProcess, WaitForSingleObject};
 
         unsafe {
             loop {
                 let mut status = 0;
-                if GetExitCodeProcess(self.handle.raw(), &mut status) == FALSE {
-                    let err = Err(Error::last_os_error());
-                    return err;
-                }
+                try!(cvt(GetExitCodeProcess(self.handle.raw(), &mut status)));
                 if status != STILL_ACTIVE {
                     return Ok(ExitStatus(status as i32));
                 }
                 match WaitForSingleObject(self.handle.raw(), INFINITE) {
                     WAIT_OBJECT_0 => {}
-                    _ => {
-                        let err = Err(Error::last_os_error());
-                        return err
-                    }
+                    _ => return Err(Error::last_os_error()),
                 }
             }
         }
-    }
-}
-
-impl Stdio {
-    fn inherited(&self) -> bool {
-        match *self { Stdio::Inherit => true, _ => false }
     }
 }
 
@@ -415,9 +313,8 @@ fn make_command_line(prog: &OsStr, args: &[OsString]) -> Vec<u16> {
     }
 }
 
-fn with_envp<F, T>(env: Option<&collections::HashMap<OsString, OsString>>, cb: F) -> T
-    where F: FnOnce(*mut c_void) -> T,
-{
+fn make_envp(env: Option<&collections::HashMap<OsString, OsString>>)
+             -> (*mut c_void, Vec<u16>) {
     // On Windows we pass an "environment block" which is not a char**, but
     // rather a concatenation of null-terminated k=v\0 sequences, with a final
     // \0 to terminate.
@@ -432,22 +329,57 @@ fn with_envp<F, T>(env: Option<&collections::HashMap<OsString, OsString>>, cb: F
                 blk.push(0);
             }
             blk.push(0);
-            cb(blk.as_mut_ptr() as *mut c_void)
+            (blk.as_mut_ptr() as *mut c_void, blk)
         }
-        _ => cb(ptr::null_mut())
+        _ => (ptr::null_mut(), Vec::new())
     }
 }
 
-fn with_dirp<T, F>(d: Option<&OsString>, cb: F) -> T where
-    F: FnOnce(*const u16) -> T,
-{
+fn make_dirp(d: Option<&OsString>) -> (*const u16, Vec<u16>) {
     match d {
-      Some(dir) => {
-          let mut dir_str: Vec<u16> = dir.encode_wide().collect();
-          dir_str.push(0);
-          cb(dir_str.as_ptr())
-      },
-      None => cb(ptr::null())
+        Some(dir) => {
+            let mut dir_str: Vec<u16> = dir.encode_wide().collect();
+            dir_str.push(0);
+            (dir_str.as_ptr(), dir_str)
+        },
+        None => (ptr::null(), Vec::new())
+    }
+}
+
+impl Stdio {
+    fn to_handle(&self, stdio_id: libc::DWORD) -> io::Result<Handle> {
+        use libc::DUPLICATE_SAME_ACCESS;
+
+        match *self {
+            Stdio::Inherit => {
+                stdio::get(stdio_id).and_then(|io| {
+                    io.handle().duplicate(0, true, DUPLICATE_SAME_ACCESS)
+                })
+            }
+            Stdio::Piped(ref pipe) => {
+                pipe.handle().duplicate(0, true, DUPLICATE_SAME_ACCESS)
+            }
+
+            // Similarly to unix, we don't actually leave holes for the
+            // stdio file descriptors, but rather open up /dev/null
+            // equivalents. These equivalents are drawn from libuv's
+            // windows process spawning.
+            Stdio::None => {
+                let size = mem::size_of::<libc::SECURITY_ATTRIBUTES>();
+                let mut sa = libc::SECURITY_ATTRIBUTES {
+                    nLength: size as libc::DWORD,
+                    lpSecurityDescriptor: ptr::null_mut(),
+                    bInheritHandle: 1,
+                };
+                let mut opts = OpenOptions::new();
+                opts.read(stdio_id == c::STD_INPUT_HANDLE);
+                opts.write(stdio_id != c::STD_INPUT_HANDLE);
+                opts.security_attributes(&mut sa);
+                File::open(Path::new("NUL"), &opts).map(|file| {
+                    file.into_handle()
+                })
+            }
+        }
     }
 }
 

@@ -103,7 +103,7 @@ Non-doc comments are interpreted as a form of whitespace.
 
 ## Whitespace
 
-Whitespace is any non-empty string containing any the following characters:
+Whitespace is any non-empty string containing only the following characters:
 
 - `U+0020` (space, `' '`)
 - `U+0009` (tab, `'\t'`)
@@ -1897,8 +1897,8 @@ release builds.
 
 There are two kinds of configuration options, one that is either defined or not
 (`#[cfg(foo)]`), and the other that contains a string that can be checked
-against (`#[cfg(bar = "baz")]` (currently only compiler-defined configuration
-options can have the latter form).
+against (`#[cfg(bar = "baz")]`). Currently, only compiler-defined configuration
+options can have the latter form.
 
 ```
 // The function is only included in the build when compiling for OSX

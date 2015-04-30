@@ -125,7 +125,7 @@ impl TcpStream {
         self.0.duplicate().map(TcpStream)
     }
 
-    /// Sets the nodelay flag on this connection to the boolean specified
+    /// Sets the nodelay flag on this connection to the boolean specified.
     pub fn set_nodelay(&self, nodelay: bool) -> io::Result<()> {
         self.0.set_nodelay(nodelay)
     }

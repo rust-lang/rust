@@ -632,6 +632,13 @@ ifndef CFG_DISABLE_OPTIMIZE_TESTS
 CTEST_RUSTC_FLAGS += -O
 endif
 
+# Analogously to the above, whether to pass `-g` when compiling tests
+# is a separate choice from whether to pass `-g` when building the
+# compiler and standard library themselves.
+CTEST_RUSTC_FLAGS := $$(subst -g,,$$(CTEST_RUSTC_FLAGS))
+ifdef CFG_ENABLE_DEBUGINFO_TESTS
+CTEST_RUSTC_FLAGS += -g
+endif
 
 CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3) := \
 		--compile-lib-path $$(HLIB$(1)_H_$(3)) \

@@ -4882,6 +4882,8 @@ pub fn check_bounds_are_used<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     }
 }
 
+/// Remember to add all intrinsics here, in librustc_trans/trans/intrinsic.rs,
+/// and in libcore/intrinsics.rs
 pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
     fn param<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, n: u32) -> Ty<'tcx> {
         let name = token::intern(&format!("P{}", n));
@@ -4910,7 +4912,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
                 (1, vec!(ty::mk_mut_ptr(tcx, param(ccx, 0)), param(ccx, 0)),
                  param(ccx, 0))
             }
-            "fence" => {
+            "fence" | "singlethreadfence" => {
                 (0, Vec::new(), ty::mk_nil(tcx))
             }
             op => {
@@ -5118,6 +5120,9 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
             "u64_add_with_overflow" | "u64_sub_with_overflow"  | "u64_mul_with_overflow" =>
                 (0, vec!(tcx.types.u64, tcx.types.u64),
                 ty::mk_tup(tcx, vec!(tcx.types.u64, tcx.types.bool))),
+
+            "unchecked_udiv" | "unchecked_sdiv" | "unchecked_urem" | "unchecked_srem" =>
+                (1, vec![param(ccx, 0), param(ccx, 0)], param(ccx, 0)),
 
             "overflowing_add" | "overflowing_sub" | "overflowing_mul" =>
                 (1, vec![param(ccx, 0), param(ccx, 0)], param(ccx, 0)),

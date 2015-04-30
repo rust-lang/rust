@@ -71,7 +71,7 @@ The rustc crate itself consists of the following submodules
 - util: ubiquitous types and helper functions
 - lib: bindings to LLVM
 
-The entry-point for the compiler is main() in the librustc_trans
+The entry-point for the compiler is main() in the librustc_driver
 crate.
 
 The 3 central data structures:
