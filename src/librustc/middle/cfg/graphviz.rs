@@ -16,8 +16,8 @@ use std::borrow::IntoCow;
 // For clarity, rename the graphviz crate locally to dot.
 use graphviz as dot;
 
+use rustc_ast_map as ast_map;
 use syntax::ast;
-use syntax::ast_map;
 
 use middle::cfg;
 

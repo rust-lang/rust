@@ -27,6 +27,7 @@
 #[macro_use] extern crate syntax;
 
 extern crate rustc;
+extern crate rustc_ast_map;
 
 use self::PrivacyResult::*;
 use self::FieldName::*;
@@ -46,7 +47,8 @@ use rustc::middle::ty::MethodTraitObject;
 use rustc::middle::ty::{self, Ty};
 use rustc::util::nodemap::{NodeMap, NodeSet};
 
-use syntax::{ast, ast_map};
+use rustc_ast_map as ast_map;
+use syntax::ast;
 use syntax::ast_util::{is_local, local_def};
 use syntax::codemap::Span;
 use syntax::parse::token;

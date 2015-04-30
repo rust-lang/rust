@@ -17,10 +17,11 @@ use llvm::debuginfo::DIScope;
 use trans::common::CrateContext;
 use middle::ty::{self, ClosureTyper};
 
+use rustc_ast_map as ast_map;
 use std::ffi::CString;
 use std::ptr;
 use std::rc::{Rc, Weak};
-use syntax::{ast, ast_map};
+use syntax::ast;
 use syntax::parse::token;
 
 pub struct NamespaceTreeNode {

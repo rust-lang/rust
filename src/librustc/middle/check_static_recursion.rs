@@ -14,8 +14,9 @@
 use session::Session;
 use middle::def::{DefStatic, DefConst, DefAssociatedConst, DefMap};
 
+use rustc_ast_map as ast_map;
 use syntax::ast;
-use syntax::{ast_util, ast_map};
+use syntax::ast_util;
 use syntax::codemap::Span;
 use syntax::visit::Visitor;
 use syntax::visit;

@@ -19,9 +19,9 @@ use middle::ty;
 
 use rbml;
 use rbml::reader;
+use rustc_ast_map as ast_map;
 use std::rc::Rc;
 use syntax::ast;
-use syntax::ast_map;
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
 use syntax::diagnostic::expect;

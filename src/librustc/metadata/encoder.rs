@@ -32,9 +32,11 @@ use std::cell::RefCell;
 use std::hash::{Hash, Hasher, SipHasher};
 use std::io::prelude::*;
 use std::io::{Cursor, SeekFrom};
+use rbml::writer::Encoder;
+use rustc_ast_map as ast_map;
+use rustc_ast_map::{LinkedPath, PathElem, PathElems};
 use syntax::abi;
 use syntax::ast::{self, DefId, NodeId};
-use syntax::ast_map::{self, LinkedPath, PathElem, PathElems};
 use syntax::ast_util::*;
 use syntax::ast_util;
 use syntax::attr;
@@ -47,7 +49,6 @@ use syntax::ptr::P;
 use syntax::visit::Visitor;
 use syntax::visit;
 use syntax;
-use rbml::writer::Encoder;
 
 /// A borrowed version of `ast::InlinedItem`.
 pub enum InlinedItemRef<'a> {

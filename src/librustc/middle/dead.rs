@@ -17,7 +17,8 @@ use lint;
 use util::nodemap::NodeSet;
 
 use std::collections::HashSet;
-use syntax::{ast, ast_map, codemap};
+use rustc_ast_map as ast_map;
+use syntax::{ast, codemap};
 use syntax::ast_util::{local_def, is_local};
 use syntax::attr::{self, AttrMetaMethods};
 use syntax::visit::{self, Visitor};

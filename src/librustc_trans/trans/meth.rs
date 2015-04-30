@@ -40,9 +40,10 @@ use middle::ty::{self, Ty};
 use middle::ty::MethodCall;
 use util::ppaux::Repr;
 
+use rustc_ast_map as ast_map;
 use syntax::abi::{Rust, RustCall};
 use syntax::parse::token;
-use syntax::{ast, ast_map, attr, visit};
+use syntax::{ast, attr, visit};
 use syntax::codemap::DUMMY_SP;
 use syntax::ptr::P;
 

@@ -8,18 +8,35 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![crate_name = "rustc_ast_map"]
+#![unstable(feature = "rustc_private")]
+#![staged_api]
+#![crate_type = "dylib"]
+#![crate_type = "rlib"]
+#![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
+       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
+       html_root_url = "http://doc.rust-lang.org/nightly/")]
+
+#![feature(core)]
+#![feature(rustc_private)]
+#![feature(staged_api)]
+
+extern crate arena;
+extern crate syntax;
+#[macro_use] extern crate log;
+
 pub use self::Node::*;
 pub use self::PathElem::*;
 use self::MapEntry::*;
 
-use abi;
-use ast::*;
-use ast_util;
-use codemap::{DUMMY_SP, Span, Spanned};
-use fold::Folder;
-use parse::token;
-use print::pprust;
-use visit::{self, Visitor};
+use syntax::abi;
+use syntax::ast::*;
+use syntax::ast_util;
+use syntax::codemap::{DUMMY_SP, Span, Spanned};
+use syntax::fold::Folder;
+use syntax::parse::token;
+use syntax::print::pprust;
+use syntax::visit::{self, Visitor};
 
 use arena::TypedArena;
 use std::cell::RefCell;

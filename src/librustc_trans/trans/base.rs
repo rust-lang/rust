@@ -85,6 +85,7 @@ use util::nodemap::NodeMap;
 
 use arena::TypedArena;
 use libc::c_uint;
+use rustc_ast_map as ast_map;
 use std::ffi::{CStr, CString};
 use std::cell::{Cell, RefCell};
 use std::collections::HashSet;
@@ -99,7 +100,7 @@ use syntax::codemap::Span;
 use syntax::parse::token::InternedString;
 use syntax::visit::Visitor;
 use syntax::visit;
-use syntax::{ast, ast_util, ast_map};
+use syntax::{ast, ast_util};
 
 thread_local! {
     static TASK_LOCAL_INSN_KEY: RefCell<Option<Vec<&'static str>>> = {

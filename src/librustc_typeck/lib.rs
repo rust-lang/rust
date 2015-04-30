@@ -90,6 +90,7 @@ This API is completely unstable and subject to change.
 extern crate arena;
 extern crate fmt_macros;
 extern crate rustc;
+extern crate rustc_ast_map;
 
 pub use rustc::lint;
 pub use rustc::metadata;
@@ -108,8 +109,9 @@ use util::ppaux;
 
 use syntax::codemap::Span;
 use syntax::print::pprust::*;
-use syntax::{ast, ast_map, abi};
+use syntax::{ast, abi};
 use syntax::ast_util::local_def;
+use rustc_ast_map as ast_map;
 
 use std::cell::RefCell;
 

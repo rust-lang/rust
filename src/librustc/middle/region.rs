@@ -20,12 +20,12 @@ use session::Session;
 use middle::ty::{self, Ty};
 use util::nodemap::{FnvHashMap, FnvHashSet, NodeMap};
 
+use rustc_ast_map as ast_map;
 use std::cell::RefCell;
 use syntax::codemap::{self, Span};
 use syntax::{ast, visit};
 use syntax::ast::{Block, Item, FnDecl, NodeId, Arm, Pat, Stmt, Expr, Local};
 use syntax::ast_util::stmt_id;
-use syntax::ast_map;
 use syntax::ptr::P;
 use syntax::visit::{Visitor, FnKind};
 

@@ -34,12 +34,13 @@ use session::config::{self, FullDebugInfo, LimitedDebugInfo, NoDebugInfo};
 use util::nodemap::{DefIdMap, NodeMap, FnvHashMap, FnvHashSet};
 
 use libc::c_uint;
+use rustc_ast_map as ast_map;
 use std::cell::{Cell, RefCell};
 use std::ffi::CString;
 use std::ptr;
 use std::rc::Rc;
 use syntax::codemap::{Span, Pos};
-use syntax::{ast, codemap, ast_util, ast_map};
+use syntax::{ast, codemap, ast_util};
 use syntax::parse::token::{self, special_idents};
 
 pub mod gdb;

@@ -25,12 +25,13 @@ use rustc::middle::cfg::graphviz::LabelledCFG;
 use rustc::session::Session;
 use rustc::session::config::Input;
 use rustc::util::ppaux;
+use rustc_ast_map as ast_map;
+use rustc_ast_map::{blocks, NodePrinter};
 use rustc_borrowck as borrowck;
 use rustc_borrowck::graphviz as borrowck_dot;
 use rustc_resolve as resolve;
 
 use syntax::ast;
-use syntax::ast_map::{self, blocks, NodePrinter};
 use syntax::codemap;
 use syntax::fold::{self, Folder};
 use syntax::print::{pp, pprust};

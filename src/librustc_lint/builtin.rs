@@ -44,7 +44,8 @@ use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::{cmp, slice};
 use std::{i8, i16, i32, i64, u8, u16, u32, u64, f32, f64};
 
-use syntax::{abi, ast, ast_map};
+use rustc_ast_map as ast_map;
+use syntax::{abi, ast};
 use syntax::ast_util::{self, is_shift_binop, local_def};
 use syntax::attr::{self, AttrMetaMethods};
 use syntax::codemap::{self, Span};

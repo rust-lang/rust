@@ -79,6 +79,8 @@ use std::ops;
 use std::rc::Rc;
 use std::vec::IntoIter;
 use collections::enum_set::{EnumSet, CLike};
+use rustc_ast_map as ast_map;
+use rustc_ast_map::LinkedPath;
 use std::collections::{HashMap, HashSet};
 use syntax::abi;
 use syntax::ast::{CrateNum, DefId, ItemImpl, ItemTrait, LOCAL_CRATE};
@@ -91,7 +93,6 @@ use syntax::parse::token::{self, InternedString, special_idents};
 use syntax::print::pprust;
 use syntax::ptr::P;
 use syntax::ast;
-use syntax::ast_map::{self, LinkedPath};
 
 pub type Disr = u64;
 

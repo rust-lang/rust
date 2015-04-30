@@ -17,12 +17,12 @@ use std::mem;
 use syntax::abi;
 use syntax::ast;
 use syntax::ast_util;
-use syntax::ast_map;
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
 use syntax::codemap::Span;
 
 use rustc::middle::stability;
+use rustc_ast_map as ast_map;
 
 use core;
 use doctree::*;

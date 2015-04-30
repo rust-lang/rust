@@ -15,10 +15,10 @@ use middle::ty::{TransmuteRestriction, ctxt, ty_bare_fn};
 use middle::ty::{self, Ty};
 use util::ppaux::Repr;
 
+use rustc_ast_map::NodeForeignItem;
 use syntax::abi::RustIntrinsic;
 use syntax::ast::DefId;
 use syntax::ast;
-use syntax::ast_map::NodeForeignItem;
 use syntax::codemap::Span;
 use syntax::parse::token;
 use syntax::visit::Visitor;

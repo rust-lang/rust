@@ -31,12 +31,11 @@ use middle::subst::VecPerParamSpace;
 use middle::ty::{self, Ty, MethodCall, MethodCallee, MethodOrigin};
 use util::ppaux::ty_to_string;
 
-use syntax::{ast, ast_map, ast_util, codemap, fold};
+use syntax::{self, ast, ast_util, codemap, fold};
 use syntax::codemap::Span;
 use syntax::fold::Folder;
 use syntax::parse::token;
 use syntax::ptr::P;
-use syntax;
 
 use std::cell::Cell;
 use std::io::SeekFrom;
@@ -46,6 +45,7 @@ use std::fmt::Debug;
 use rbml::reader;
 use rbml::writer::Encoder;
 use rbml;
+use rustc_ast_map as ast_map;
 use serialize;
 use serialize::{Decodable, Decoder, DecoderHelpers, Encodable};
 use serialize::EncoderHelpers;

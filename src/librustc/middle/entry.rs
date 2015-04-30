@@ -9,9 +9,9 @@
 // except according to those terms.
 
 
+use rustc_ast_map as ast_map;
 use session::{config, Session};
 use syntax::ast::{Name, NodeId, Item, ItemFn};
-use syntax::ast_map;
 use syntax::attr;
 use syntax::codemap::Span;
 use syntax::parse::token;

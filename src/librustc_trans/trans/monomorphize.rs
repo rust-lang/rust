@@ -27,9 +27,9 @@ use trans::foreign;
 use middle::ty::{self, HasProjectionTypes, Ty};
 use util::ppaux::Repr;
 
+use rustc_ast_map as ast_map;
 use syntax::abi;
 use syntax::ast;
-use syntax::ast_map;
 use syntax::ast_util::local_def;
 use syntax::attr;
 use syntax::codemap::DUMMY_SP;
