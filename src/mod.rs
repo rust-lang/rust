@@ -286,6 +286,7 @@ mod test {
     use std::collections::HashMap;
     use std::fs;
     use std::io::Read;
+    use std::sync::atomic;
     use super::*;
     use super::run;
 
@@ -295,7 +296,7 @@ mod test {
     #[test]
     fn idempotent_tests() {
         println!("Idempotent tests:");
-        unsafe { FAILURES = 0; }
+        FAILURES.store(0, atomic::Ordering::Relaxed);
 
         // Get all files in the tests/idem directory
         let files = fs::read_dir("tests/idem").unwrap();
@@ -314,13 +315,13 @@ mod test {
         count += 1;
 
         // Display results
-        let fails = unsafe { FAILURES };
+        let fails = FAILURES.load(atomic::Ordering::Relaxed);
         println!("Ran {} idempotent tests; {} failures.", count, fails);
         assert!(fails == 0, "{} idempotent tests failed", fails);
     }
 
     // 'global' used by sys_tests and handle_result.
-    static mut FAILURES: i32 = 0;
+    static FAILURES: atomic::AtomicUsize = atomic::ATOMIC_USIZE_INIT;
     // Ick, just needed to get a &'static to handle_result.
     static HANDLE_RESULT: &'static Fn(HashMap<String, String>) = &handle_result;
 
@@ -340,9 +341,7 @@ mod test {
         }
 
         if fails > 0 {
-            unsafe {
-                FAILURES += 1;
-            }
+            FAILURES.fetch_add(1, atomic::Ordering::Relaxed);
         }
     }
 }
