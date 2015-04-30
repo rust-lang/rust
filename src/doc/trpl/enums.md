@@ -1,6 +1,6 @@
 % Enums
 
-Rust has a‘sum type’, an `enum`. Enums are an incredibly useful feature of
+Rust has a ‘sum type’, an `enum`. Enums are an incredibly useful feature of
 Rust, and are used throughout the standard library. An `enum` is a type which
 relates a set of alternates to a specific name. For example, below we define
 `Character` to be either a `Digit` or something else.

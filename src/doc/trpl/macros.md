@@ -12,7 +12,7 @@ or cumbersome to express that pattern as a generic function, a trait, or
 anything else within Rust’s semantics.
 
 Macros allow us to abstract at a syntactic level. A macro invocation is
-shorthand for an‘expanded’syntactic form. This expansion happens early in
+shorthand for an ‘expanded’ syntactic form. This expansion happens early in
 compilation, before any static checking. As a result, macros can capture many
 patterns of code reuse that Rust’s core abstractions cannot.
 
@@ -23,7 +23,7 @@ difficult to design a well-behaved macro!  Additionally, compiler errors in
 macro code are harder to interpret, because they describe problems in the
 expanded code, not the source-level form that developers use.
 
-These drawbacks make macros something of a‘feature of last resort’. That’s not
+These drawbacks make macros something of a ‘feature of last resort’. That’s not
 to say that macros are bad; they are part of Rust because sometimes they’re
 needed for truly concise, well-abstracted code. Just keep this tradeoff in
 mind.
@@ -98,7 +98,7 @@ cases. Above, we had
 
 This is like a `match` expression arm, but the matching happens on Rust syntax
 trees, at compile time. The semicolon is optional on the last (here, only)
-case. The‘pattern’on the left-hand side of `=>` is known as a ‘matcher’.
+case. The ‘pattern’ on the left-hand side of `=>` is known as a ‘matcher’.
 These have [their own little grammar] within the language.
 
 [their own little grammar]: ../reference.html#macros
@@ -154,7 +154,7 @@ $(
 ```
 
 Each matched expression `$x` will produce a single `push` statement in the
-macro expansion. The repetition in the expansion proceeds in‘lockstep’with
+macro expansion. The repetition in the expansion proceeds in ‘lockstep’ with
 repetition in the matcher (more on this in a moment).
 
 Because `$x` was already declared as matching an expression, we don’t repeat
@@ -190,7 +190,7 @@ shorthand for a data type could be valid as either an expression or a pattern.
 
 The repetition operator follows two principal rules:
 
-1. `$(...)*` walks through one‘layer’of repetitions, for all of the `$name`s
+1. `$(...)*` walks through one ‘layer’ of repetitions, for all of the `$name`s
    it contains, in lockstep, and
 2. each `$name` must be under at least as many `$(...)*`s as it was matched
    against. If it is under more, it’ll be duplicated, as appropriate.
@@ -219,8 +219,8 @@ fn main() {
 ```
 
 That’s most of the matcher syntax. These examples use `$(...)*`, which is a
-‘zero or more’match. Alternatively you can write `$(...)+` for a‘one or
-more’match. Both forms optionally include a separator, which can be any token
+‘zero or more’ match. Alternatively you can write `$(...)+` for a ‘one or
+more’ match. Both forms optionally include a separator, which can be any token
 except `+` or `*`.
 
 This system is based on
@@ -316,7 +316,7 @@ fn main() {
 This works because Rust has a [hygienic macro system][]. Each macro expansion
 happens in a distinct ‘syntax context’, and each variable is tagged with the
 syntax context where it was introduced. It’s as though the variable `state`
-inside `main` is painted a different‘color’from the variable `state` inside
+inside `main` is painted a different ‘color’ from the variable `state` inside
 the macro, and therefore they don’t conflict.
 
 [hygienic macro system]: http://en.wikipedia.org/wiki/Hygienic_macro
@@ -418,7 +418,7 @@ tell you about the syntax contexts.
 they are unstable and require feature gates.
 
 * `log_syntax!(...)` will print its arguments to standard output, at compile
-  time, and‘expand’to nothing.
+  time, and ‘expand’ to nothing.
 
 * `trace_macros!(true)` will enable a compiler message every time a macro is
   expanded. Use `trace_macros!(false)` later in expansion to turn it off.
@@ -471,7 +471,7 @@ which syntactic form it matches.
 * `block`: a brace-delimited sequence of statements. Example:
   `{ log(error, "hi"); return 12; }`.
 * `item`: an [item][]. Examples: `fn foo() { }`; `struct Bar;`.
-* `meta`: a‘meta item’, as found in attributes. Example: `cfg(target_os = "windows")`.
+* `meta`: a ‘meta item’, as found in attributes. Example: `cfg(target_os = "windows")`.
 * `tt`: a single token tree.
 
 There are additional rules regarding the next token after a metavariable:
