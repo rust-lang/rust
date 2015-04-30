@@ -16,6 +16,8 @@ use rustc::lint::LintPassObject;
 
 pub mod types;
 pub mod misc;
+pub mod eq_op;
+pub mod bit_mask;
 
 #[plugin_registrar]
 pub fn plugin_registrar(reg: &mut Registry) {
@@ -23,7 +25,10 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_lint_pass(box misc::MiscPass as LintPassObject);
     reg.register_lint_pass(box misc::StrToStringPass as LintPassObject);
     reg.register_lint_pass(box misc::TopLevelRefPass as LintPassObject);
+    reg.register_lint_pass(box eq_op::EqOp as LintPassObject);
+    reg.register_lint_pass(box bit_mask::BitMask as LintPassObject);
     reg.register_lint_group("clippy", vec![types::BOX_VEC, types::LINKEDLIST,
                                            misc::SINGLE_MATCH, misc::STR_TO_STRING,
-                                           misc::TOPLEVEL_REF_ARG]);
+                                           misc::TOPLEVEL_REF_ARG, eq_op::EQ_OP,
+                                           bit_mask::BAD_BIT_MASK]);
 }

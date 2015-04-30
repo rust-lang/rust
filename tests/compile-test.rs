@@ -1,11 +1,8 @@
 extern crate compiletest;
 
-use std::env;
-use std::process::Command;
 use std::path::PathBuf;
 
 fn run_mode(mode: &'static str) {
-
     let mut config = compiletest::default_config();
     let cfg_mode = mode.parse().ok().expect("Invalid mode");
     config.target_rustcflags = Some("-L target/debug/".to_string());
@@ -19,5 +16,4 @@ fn run_mode(mode: &'static str) {
 #[test]
 fn compile_test() {
     run_mode("compile-fail");
-    // run_mode("run-pass");
 }
