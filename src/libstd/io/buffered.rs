@@ -118,7 +118,7 @@ impl<R> fmt::Debug for BufReader<R> where R: fmt::Debug {
     }
 }
 
-#[unstable(feature = "buf_seek", reason = "recently added")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<R: Seek> Seek for BufReader<R> {
     /// Seek to an offset, in bytes, in the underlying reader.
     ///
@@ -282,8 +282,8 @@ impl<W: Write> fmt::Debug for BufWriter<W> where W: fmt::Debug {
     }
 }
 
-#[unstable(feature = "buf_seek", reason = "recently added")]
-impl<W: Write+Seek> Seek for BufWriter<W> {
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<W: Write + Seek> Seek for BufWriter<W> {
     /// Seek to the offset, in bytes, in the underlying writer.
     ///
     /// Seeking always writes out the internal buffer before seeking.
