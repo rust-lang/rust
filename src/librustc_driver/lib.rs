@@ -852,11 +852,11 @@ pub fn monitor<F:FnOnce()+Send+'static>(f: F) {
 pub fn diagnostics_registry() -> diagnostics::registry::Registry {
     use syntax::diagnostics::registry::Registry;
 
-    let all_errors = Vec::new() +
-        &rustc::DIAGNOSTICS[..] +
-        &rustc_typeck::DIAGNOSTICS[..] +
-        &rustc_borrowck::DIAGNOSTICS[..] +
-        &rustc_resolve::DIAGNOSTICS[..];
+    let mut all_errors = Vec::new();
+    all_errors.push_all(&rustc::DIAGNOSTICS);
+    all_errors.push_all(&rustc_typeck::DIAGNOSTICS);
+    all_errors.push_all(&rustc_borrowck::DIAGNOSTICS);
+    all_errors.push_all(&rustc_resolve::DIAGNOSTICS);
 
     Registry::new(&*all_errors)
 }
