@@ -550,5 +550,3 @@ register_diagnostics! {
     E0316, // nested quantification of lifetimes
     E0370  // discriminant overflow
 }
-
-__build_diagnostic_array! { DIAGNOSTICS }

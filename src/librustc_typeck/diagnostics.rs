@@ -188,5 +188,3 @@ register_diagnostics! {
     E0371, // impl Trait for Trait is illegal
     E0372  // impl Trait for Trait where Trait is not object safe
 }
-
-__build_diagnostic_array! { DIAGNOSTICS }
