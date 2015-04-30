@@ -10,6 +10,7 @@
 
 use prelude::v1::*;
 
+use libc;
 use cell::UnsafeCell;
 use sys::sync as ffi;
 
@@ -26,7 +27,23 @@ impl RWLock {
     #[inline]
     pub unsafe fn read(&self) {
         let r = ffi::pthread_rwlock_rdlock(self.inner.get());
-        debug_assert_eq!(r, 0);
+
+        // According to the pthread_rwlock_rdlock spec, this function **may**
+        // fail with EDEADLK if a deadlock is detected. On the other hand
+        // pthread mutexes will *never* return EDEADLK if they are initialized
+        // as the "fast" kind (which ours always are). As a result, a deadlock
+        // situation may actually return from the call to pthread_rwlock_rdlock
+        // instead of blocking forever (as mutexes and Windows rwlocks do). Note
+        // that not all unix implementations, however, will return EDEADLK for
+        // their rwlocks.
+        //
+        // We roughly maintain the deadlocking behavior by panicking to ensure
+        // that this lock acquisition does not succeed.
+        if r == libc::EDEADLK {
+            panic!("rwlock read lock would result in deadlock");
+        } else {
+            debug_assert_eq!(r, 0);
+        }
     }
     #[inline]
     pub unsafe fn try_read(&self) -> bool {
@@ -35,7 +52,12 @@ impl RWLock {
     #[inline]
     pub unsafe fn write(&self) {
         let r = ffi::pthread_rwlock_wrlock(self.inner.get());
-        debug_assert_eq!(r, 0);
+        // see comments above for why we check for EDEADLK
+        if r == libc::EDEADLK {
+            panic!("rwlock write lock would result in deadlock");
+        } else {
+            debug_assert_eq!(r, 0);
+        }
     }
     #[inline]
     pub unsafe fn try_write(&self) -> bool {
