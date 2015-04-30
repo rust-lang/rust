@@ -18,8 +18,10 @@ use std::collections::HashMap;
 use syntax::codemap::{CodeMap, Span, BytePos};
 use std::fmt;
 use std::fs::File;
-use std::io::Write;
+use std::io::{Write, stdout};
 use WriteMode;
+use NEWLINE_STYLE;
+use NewlineStyle;
 
 // This is basically a wrapper around a bunch of Ropes which makes it convenient
 // to work with libsyntax. It is badly named.
@@ -148,6 +150,28 @@ impl<'a> ChangeSet<'a> {
                       -> Result<Option<String>, ::std::io::Error> {
         let text = &self.file_map[filename];
 
+        // prints all newlines either as `\n` or as `\r\n`
+        fn write_system_newlines<T>(
+            mut writer: T,
+            text: &StringBuffer)
+            -> Result<(), ::std::io::Error>
+            where T: Write,
+        {
+            match NEWLINE_STYLE {
+                NewlineStyle::Unix => write!(writer, "{}", text),
+                NewlineStyle::Windows => {
+                    for (c, _) in text.chars() {
+                        match c {
+                            '\n' => try!(write!(writer, "\r\n")),
+                            '\r' => continue,
+                            c => try!(write!(writer, "{}", c)),
+                        }
+                    }
+                    Ok(())
+                },
+            }
+        }
+
         match mode {
             WriteMode::Overwrite => {
                 // Do a little dance to make writing safer - write to a temp file
@@ -157,8 +181,8 @@ impl<'a> ChangeSet<'a> {
                 let bk_name = filename.to_owned() + ".bk";
                 {
                     // Write text to temp file
-                    let mut tmp_file = try!(File::create(&tmp_name));
-                    try!(write!(tmp_file, "{}", text));
+                    let tmp_file = try!(File::create(&tmp_name));
+                    try!(write_system_newlines(tmp_file, text));
                 }
 
                 try!(::std::fs::rename(filename, bk_name));
@@ -166,15 +190,21 @@ impl<'a> ChangeSet<'a> {
             }
             WriteMode::NewFile(extn) => {
                 let filename = filename.to_owned() + "." + extn;
-                let mut file = try!(File::create(&filename));
-                try!(write!(file, "{}", text));
+                let file = try!(File::create(&filename));
+                try!(write_system_newlines(file, text));
             }
             WriteMode::Display => {
                 println!("{}:\n", filename);
-                println!("{}", text);
+                let stdout = stdout();
+                let stdout_lock = stdout.lock();
+                try!(write_system_newlines(stdout_lock, text));
             }
             WriteMode::Return(_) => {
-                return Ok(Some(text.to_string()));
+                // io::Write is not implemented for String, working around with Vec<u8>
+                let mut v = Vec::new();
+                try!(write_system_newlines(&mut v, text));
+                // won't panic, we are writing correct utf8
+                return Ok(Some(String::from_utf8(v).unwrap()));
             }
         }
 
