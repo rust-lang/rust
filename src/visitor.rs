@@ -226,7 +226,7 @@ impl<'a> FmtVisitor<'a> {
                 println!("Couldn't make snippet for span {:?}->{:?}",
                          self.codemap.lookup_char_pos(span.lo),
                          self.codemap.lookup_char_pos(span.hi));
-                "".to_string()
+                "".to_owned()
             }
         }
     }

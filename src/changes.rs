@@ -153,8 +153,8 @@ impl<'a> ChangeSet<'a> {
                 // Do a little dance to make writing safer - write to a temp file
                 // rename the original to a .bk, then rename the temp file to the
                 // original.
-                let tmp_name = filename.to_string() + ".tmp";
-                let bk_name = filename.to_string() + ".bk";
+                let tmp_name = filename.to_owned() + ".tmp";
+                let bk_name = filename.to_owned() + ".bk";
                 {
                     // Write text to temp file
                     let mut tmp_file = try!(File::create(&tmp_name));
@@ -165,7 +165,7 @@ impl<'a> ChangeSet<'a> {
                 try!(::std::fs::rename(tmp_name, filename));
             }
             WriteMode::NewFile(extn) => {
-                let filename = filename.to_string() + "." + extn;
+                let filename = filename.to_owned() + "." + extn;
                 let mut file = try!(File::create(&filename));
                 try!(write!(file, "{}", text));
             }

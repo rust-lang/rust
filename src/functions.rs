@@ -154,7 +154,7 @@ impl<'a> FmtVisitor<'a> {
                         &None => String::new(),
                     };
                     let mut_str = match m {
-                        &ast::Mutability::MutMutable => "mut ".to_string(),
+                        &ast::Mutability::MutMutable => "mut ".to_owned(),
                         &ast::Mutability::MutImmutable => String::new(),
                     };
                     arg_item_strs[0] = format!("&{}{}self", lt_str, mut_str);
@@ -164,7 +164,7 @@ impl<'a> FmtVisitor<'a> {
                     arg_item_strs[0] = format!("self: {}", pprust::ty_to_string(ty));
                 }
                 ast::ExplicitSelf_::SelfValue(_) => {
-                    arg_item_strs[0] = "self".to_string();
+                    arg_item_strs[0] = "self".to_owned();
                     min_args = 2;
                 }
                 _ => {}
@@ -174,7 +174,7 @@ impl<'a> FmtVisitor<'a> {
         // Comments between args
         let mut arg_comments = Vec::new();
         if min_args == 2 {
-            arg_comments.push("".to_string());
+            arg_comments.push("".to_owned());
         }
         // TODO if there are no args, there might still be a comment, but without
         // spans for the comment or parens, there is no chance of getting it right.
@@ -239,7 +239,7 @@ impl<'a> FmtVisitor<'a> {
             } else if snippet.ends_with(separator) {
                 snippet = snippet[..snippet.len()-separator.len()].trim_matches(white_space);
             }
-            result.push(snippet.to_string());
+            result.push(snippet.to_owned());
             prev_end = get_hi(&item);
         }
         // Get the last commment.
@@ -254,7 +254,7 @@ impl<'a> FmtVisitor<'a> {
         let snippet = &snippet[..snippet.find(terminator)
                                     .unwrap_or(snippet.find(separator).unwrap_or(snippet.len()))];
         let snippet = snippet.trim();
-        result.push(snippet.to_string());
+        result.push(snippet.to_owned());
 
         result
     }
@@ -422,8 +422,8 @@ impl<'a> FmtVisitor<'a> {
     fn rewrite_return(&self, ret: &ast::FunctionRetTy) -> String {
         match *ret {
             ast::FunctionRetTy::DefaultReturn(_) => String::new(),
-            ast::FunctionRetTy::NoReturn(_) => "-> !".to_string(),
-            ast::FunctionRetTy::Return(ref ty) => "-> ".to_string() + &pprust::ty_to_string(ty),
+            ast::FunctionRetTy::NoReturn(_) => "-> !".to_owned(),
+            ast::FunctionRetTy::Return(ref ty) => "-> ".to_owned() + &pprust::ty_to_string(ty),
         }
     }
 

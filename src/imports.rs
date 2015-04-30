@@ -75,7 +75,7 @@ impl<'a> FmtVisitor<'a> {
                 false
             }
         ) {
-            Some(("self".to_string(), String::new()))
+            Some(("self".to_owned(), String::new()))
         } else {
             None
         };

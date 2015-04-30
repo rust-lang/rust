@@ -307,12 +307,12 @@ mod test {
             let path = entry.unwrap().path();
             let file_name = path.to_str().unwrap();
             println!("Testing '{}'...", file_name);
-            run(vec!["rustfmt".to_string(), file_name.to_string()], WriteMode::Return(HANDLE_RESULT));
+            run(vec!["rustfmt".to_owned(), file_name.to_owned()], WriteMode::Return(HANDLE_RESULT));
             count += 1;
         }
         // And also dogfood ourselves!
         println!("Testing 'src/mod.rs'...");
-        run(vec!["rustfmt".to_string(), "src/mod.rs".to_string()], WriteMode::Return(HANDLE_RESULT));
+        run(vec!["rustfmt".to_owned(), "src/mod.rs".to_owned()], WriteMode::Return(HANDLE_RESULT));
         count += 1;
 
         // Display results
