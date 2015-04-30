@@ -5732,8 +5732,10 @@ fn compute_enum_variants<'tcx>(cx: &ctxt<'tcx>,
                     Ok(const_eval::const_int(val)) => current_disr_val = val as Disr,
                     Ok(const_eval::const_uint(val)) => current_disr_val = val as Disr,
                     Ok(_) => {
+                        let sign_desc = if repr_type.is_signed() { "signed" } else { "unsigned" };
                         span_err!(cx.sess, e.span, E0079,
-                                  "expected signed integer constant");
+                                  "expected {} integer constant",
+                                  sign_desc);
                         current_disr_val = attempt_fresh_value();
                     }
                     Err(ref err) => {
