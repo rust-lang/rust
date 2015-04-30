@@ -670,6 +670,13 @@ impl CodeMap {
     pub fn span_to_lines(&self, sp: Span) -> FileLines {
         let lo = self.lookup_char_pos(sp.lo);
         let hi = self.lookup_char_pos(sp.hi);
+
+        // If you are hitting these errors, perhaps change your
+        // call-site to call span_to_snippet instead. (Or revise this
+        // code to return a similar Result...)
+        assert_eq!(lo.file.name, hi.file.name);
+        assert!(hi.line >= lo.line);
+
         let mut lines = Vec::with_capacity(hi.line - lo.line + 1);
 
         // The span starts partway through the first line,
