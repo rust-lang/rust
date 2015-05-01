@@ -4775,7 +4775,7 @@ impl<'a> Parser<'a> {
         return self.parse_single_struct_field(Inherited, attrs);
     }
 
-    /// Parse visibility: PUB, PRIV, or nothing
+    /// Parse visibility: PUB or nothing
     fn parse_visibility(&mut self) -> PResult<Visibility> {
         if try!(self.eat_keyword(keywords::Pub)) { Ok(Public) }
         else { Ok(Inherited) }
