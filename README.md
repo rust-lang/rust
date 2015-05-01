@@ -10,12 +10,12 @@ Lints included in this crate:
  - `box_vec`: Warns on usage of `Box<Vec<T>>`
  - `dlist`: Warns on usage of `DList`
  - `str_to_string`: Warns on usage of `str::to_string()`
- - `toplevel_ref_arg`: Warns when a function argument is declared `ref` (i.e. `fn foo(ref x: u8)`, but not `fn foo((ref x, ref y): (u8, u8))`).
+ - `toplevel_ref_arg`: Warns when a function argument is declared `ref` (i.e. `fn foo(ref x: u8)`, but not `fn foo((ref x, ref y): (u8, u8))`)
  - `eq_op`: Warns on equal operands on both sides of a comparison or bitwise combination
  - `bad_bit_mask`: Denies expressions of the form `_ & mask == select` that will only ever return `true` or `false` (because in the example `select` containing bits that `mask` doesn't have)
+ - `needless_bool` : Warns on if-statements with plain booleans in the then- and else-clause, e.g. `if p { true } else { false }`
 
 You can allow/warn/deny the whole set using the `clippy` lint group (`#[allow(clippy)]`, etc)
-
 
 More to come, please [file an issue](https://github.com/Manishearth/rust-clippy/issues) if you have ideas!
 
