@@ -11,7 +11,7 @@
 use core::iter::*;
 use core::iter::order::*;
 use core::iter::MinMaxResult::*;
-use core::isize;
+use core::{i8, i16, isize};
 use core::usize;
 use core::cmp;
 
@@ -786,6 +786,18 @@ fn test_range_step() {
     assert_eq!((200..255).step_by(50).collect::<Vec<u8>>(), [200, 250]);
     assert_eq!((200..-5).step_by(1).collect::<Vec<isize>>(), []);
     assert_eq!((200..200).step_by(1).collect::<Vec<isize>>(), []);
+
+    assert_eq!((0..20).step_by(1).size_hint(), (20, Some(20)));
+    assert_eq!((0..20).step_by(21).size_hint(), (1, Some(1)));
+    assert_eq!((0..20).step_by(5).size_hint(), (4, Some(4)));
+    assert_eq!((20..0).step_by(-5).size_hint(), (4, Some(4)));
+    assert_eq!((20..0).step_by(-6).size_hint(), (4, Some(4)));
+    assert_eq!((20..-5).step_by(1).size_hint(), (0, Some(0)));
+    assert_eq!((20..20).step_by(1).size_hint(), (0, Some(0)));
+    assert_eq!((0..1).step_by(0).size_hint(), (0, None));
+    assert_eq!((i8::MAX..i8::MIN).step_by(i8::MIN).size_hint(), (2, Some(2)));
+    assert_eq!((i16::MIN..i16::MAX).step_by(i16::MAX).size_hint(), (3, Some(3)));
+    assert_eq!((isize::MIN..isize::MAX).step_by(1).size_hint(), (usize::MAX, Some(usize::MAX)));
 }
 
 #[test]
