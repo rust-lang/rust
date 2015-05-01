@@ -899,7 +899,7 @@ fn convert_item(ccx: &CrateCtxt, it: &ast::Item) {
                 if let ast::MethodImplItem(ref sig, _) = ii.node {
                     // if the method specifies a visibility, use that, otherwise
                     // inherit the visibility from the impl (so `foo` in `pub impl
-                    // { fn foo(); }` is public, but private in `priv impl { fn
+                    // { fn foo(); }` is public, but private in `impl { fn
                     // foo(); }`).
                     let method_vis = ii.vis.inherit_from(parent_visibility);
                     Some((sig, ii.id, ii.ident, method_vis, ii.span))
