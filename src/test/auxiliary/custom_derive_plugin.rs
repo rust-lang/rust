@@ -19,7 +19,7 @@ extern crate rustc;
 
 use syntax::ast;
 use syntax::codemap::Span;
-use syntax::ext::base::{Decorator, ExtCtxt};
+use syntax::ext::base::{Decorator, ExtCtxt, Annotatable};
 use syntax::ext::build::AstBuilder;
 use syntax::ext::deriving::generic::{cs_fold, TraitDef, MethodDef, combine_substructure};
 use syntax::ext::deriving::generic::ty::{Literal, LifetimeBounds, Path, borrowed_explicit_self};
@@ -70,5 +70,13 @@ fn expand(cx: &mut ExtCtxt,
         ],
     };
 
-    trait_def.expand(cx, mitem, item, push)
+    trait_def.expand(cx,
+                     mitem,
+                     Annotatable::Item(P(item.clone())),
+                     &mut |i| {
+                        match i {
+                            Annotatable::Item(i) => push(i),
+                            _ => panic!("Not an item")
+                        }
+                     })
 }
