@@ -398,7 +398,8 @@ impl<'a> TraitDef<'a> {
                                              generics)
                     }
                     _ => {
-                        cx.span_err(mitem.span, "`derive` may only be applied to structs and enums");
+                        cx.span_err(mitem.span,
+                                    "`derive` may only be applied to structs and enums");
                         return;
                     }
                 };
@@ -417,7 +418,7 @@ impl<'a> TraitDef<'a> {
                 })))
             }
             _ => {
-                cx.span_err(mitem.span, "`derive` may only be applied to structs and enums");                
+                cx.span_err(mitem.span, "`derive` may only be applied to structs and enums");
             }
         }
     }

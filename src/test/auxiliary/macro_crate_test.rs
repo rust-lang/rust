@@ -10,13 +10,12 @@
 
 // force-host
 
-#![feature(plugin_registrar, quote)]
-#![feature(box_syntax, rustc_private)]
+#![feature(plugin_registrar, quote, rustc_private)]
 
 extern crate syntax;
 extern crate rustc;
 
-use syntax::ast::{self, TokenTree, Item, MetaItem, Method, ImplItem, TraitItem};
+use syntax::ast::{self, TokenTree, Item, MetaItem, ImplItem, TraitItem};
 use syntax::codemap::Span;
 use syntax::ext::base::*;
 use syntax::parse::{self, token};
@@ -25,7 +24,6 @@ use rustc::plugin::Registry;
 
 #[macro_export]
 macro_rules! exported_macro { () => (2) }
-
 macro_rules! unexported_macro { () => (3) }
 
 #[plugin_registrar]
@@ -42,7 +40,8 @@ pub fn plugin_registrar(reg: &mut Registry) {
         MultiModifier(Box::new(expand_into_foo_multi)));
     reg.register_syntax_extension(
         token::intern("duplicate"),
-        MultiDecorator(box expand_duplicate));
+        // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
+        MultiDecorator(Box::new(expand_duplicate)));
 }
 
 fn expand_make_a_1(cx: &mut ExtCtxt, sp: Span, tts: &[TokenTree])
@@ -109,13 +108,13 @@ fn expand_into_foo_multi(cx: &mut ExtCtxt,
 fn expand_duplicate(cx: &mut ExtCtxt,
                     sp: Span,
                     mi: &MetaItem,
-                    it: &Annotatable,
-                    mut push: Box<FnMut(Annotatable)>)
+                    it: Annotatable,
+                    push: &mut FnMut(Annotatable))
 {
     let copy_name = match mi.node {
         ast::MetaItem_::MetaList(_, ref xs) => {
             if let ast::MetaItem_::MetaWord(ref w) = xs[0].node {
-                token::str_to_ident(w.get())
+                token::str_to_ident(&w)
             } else {
                 cx.span_err(mi.span, "Expected word");
                 return;
@@ -136,75 +135,18 @@ fn expand_duplicate(cx: &mut ExtCtxt,
             push(Annotatable::Item(P(new_it)));
         }
         Annotatable::ImplItem(it) => {
-            match it {
-                ImplItem::MethodImplItem(m) => {
-                    let mut new_m = (*m).clone();
-                    new_m.attrs.clear();
-                    replace_method_name(&mut new_m.node, copy_name);
-                    push(Annotatable::ImplItem(ImplItem::MethodImplItem(P(new_m))));
-                }
-                ImplItem::TypeImplItem(t) => {
-                    let mut new_t = (*t).clone();
-                    new_t.attrs.clear();
-                    new_t.ident = copy_name;
-                    push(Annotatable::ImplItem(ImplItem::TypeImplItem(P(new_t))));
-                }
-            }
+            let mut new_it = (*it).clone();
+            new_it.attrs.clear();
+            new_it.ident = copy_name;
+            push(Annotatable::ImplItem(P(new_it)));
         }
-        Annotatable::TraitItem(it) => {
-            match it {
-                TraitItem::RequiredMethod(rm) => {
-                    let mut new_rm = rm.clone();
-                    new_rm.attrs.clear();
-                    new_rm.ident = copy_name;
-                    push(Annotatable::TraitItem(TraitItem::RequiredMethod(new_rm)));
-                }
-                TraitItem::ProvidedMethod(pm) => {
-                    let mut new_pm = (*pm).clone();
-                    new_pm.attrs.clear();
-                    replace_method_name(&mut new_pm.node, copy_name);
-                    push(Annotatable::TraitItem(TraitItem::ProvidedMethod(P(new_pm))));
-                }
-                TraitItem::TypeTraitItem(t) => {
-                    let mut new_t = (*t).clone();
-                    new_t.attrs.clear();
-                    new_t.ty_param.ident = copy_name;
-                    push(Annotatable::TraitItem(TraitItem::TypeTraitItem(P(new_t))));
-                }
-            }
+        Annotatable::TraitItem(tt) => {
+            let mut new_it = (*tt).clone();
+            new_it.attrs.clear();
+            new_it.ident = copy_name;
+            push(Annotatable::TraitItem(P(new_it)));
         }
     }
-
-    fn replace_method_name(m: &mut ast::Method_, i: ast::Ident) {
-        if let &mut ast::Method_::MethDecl(ref mut ident, _, _, _, _, _, _, _) = m {
-            *ident = i
-        }
-    }
-}
-
-fn expand_forged_ident(cx: &mut ExtCtxt, sp: Span, tts: &[TokenTree]) -> Box<MacResult+'static> {
-    use syntax::ext::quote::rt::*;
-
-    if !tts.is_empty() {
-        cx.span_fatal(sp, "forged_ident takes no arguments");
-    }
-
-    // Most of this is modelled after the expansion of the `quote_expr!`
-    // macro ...
-    let parse_sess = cx.parse_sess();
-    let cfg = cx.cfg();
-
-    // ... except this is where we inject a forged identifier,
-    // and deliberately do not call `cx.parse_tts_with_hygiene`
-    // (because we are testing that this will be *rejected*
-    //  by the default parser).
-
-    let expr = {
-        let tt = cx.parse_tts("\x00name_2,ctxt_0\x00".to_string());
-        let mut parser = new_parser_from_tts(parse_sess, cfg, tt);
-        parser.parse_expr()
-    };
-    MacEager::expr(expr)
 }
 
 pub fn foo() {}

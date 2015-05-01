@@ -11,12 +11,15 @@
 // aux-build:macro_crate_test.rs
 // ignore-stage1
 
-#![feature(plugin)]
+#![feature(plugin, custom_attribute)]
+#![plugin(macro_crate_test)]
 
-#[plugin] #[no_link]
+#[macro_use]
+#[no_link]
 extern crate macro_crate_test;
 
-// The duplicate macro will create a copy of the item with the given identifier
+// The duplicate macro will create a copy of the item with the given identifier.
+
 #[duplicate(MyCopy)]
 struct MyStruct {
     number: i32
