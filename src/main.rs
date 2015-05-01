@@ -153,7 +153,7 @@ fn fmt_lines(changes: &mut ChangeSet) {
 
         if newline_count > 1 {
             debug!("track truncate: {} {} {}", f, text.len, newline_count);
-            truncate_todo.push((f, text.len - newline_count + 1))
+            truncate_todo.push((f.to_string(), text.len - newline_count + 1))
         }
 
         for &(l, _, _) in trims.iter() {
@@ -163,12 +163,7 @@ fn fmt_lines(changes: &mut ChangeSet) {
     }
 
     for (f, l) in truncate_todo {
-        // This unsafe block and the ridiculous dance with the cast is because
-        // the borrow checker thinks the first borrow of changes lasts for the
-        // whole function.
-        unsafe {
-            (*(changes as *const ChangeSet as *mut ChangeSet)).get_mut(f).truncate(l);
-        }
+        changes.get_mut(&f).truncate(l);
     }
 }
 
