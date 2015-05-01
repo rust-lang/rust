@@ -38,7 +38,7 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 // OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// ignore-android see #10393 #13206
+// ignore-android: FIXME(#10393) hangs without output
 
 #![feature(libc, scoped)]
 
@@ -50,17 +50,17 @@ use std::ptr::copy;
 use std::thread;
 
 struct Tables {
-    table8: [u8; 1 << 8],
-    table16: [u16; 1 << 16]
+    table8: Box<[u8; 1 << 8]>,
+    table16: Box<[u16; 1 << 16]>,
 }
 
 impl Tables {
     fn new() -> Tables {
-        let mut table8 = [0;1 << 8];
+        let mut table8 = Box::new([0;1 << 8]);
         for (i, v) in table8.iter_mut().enumerate() {
             *v = Tables::computed_cpl8(i as u8);
         }
-        let mut table16 = [0;1 << 16];
+        let mut table16 = Box::new([0;1 << 16]);
         for (i, v) in table16.iter_mut().enumerate() {
             *v = (table8[i & 255] as u16) << 8 |
                  table8[i >> 8]  as u16;
@@ -205,7 +205,7 @@ fn parallel<I: Iterator, F>(iter: I, ref f: F)
 
 fn main() {
     let mut data = Vec::with_capacity(1024 * 1024);
-    io::stdin().read_to_end(&mut data);
+    io::stdin().read_to_end(&mut data).unwrap();
     let tables = &Tables::new();
     parallel(mut_dna_seqs(&mut data), |seq| reverse_complement(seq, tables));
     io::stdout().write_all(&data).unwrap();

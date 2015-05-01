@@ -356,6 +356,7 @@ mod imp {
         use sys_common::thread_local as os;
 
         extern {
+            #[linkage = "extern_weak"]
             static __dso_handle: *mut u8;
             #[linkage = "extern_weak"]
             static __cxa_thread_atexit_impl: *const ();

@@ -23,8 +23,6 @@
 // conditions above to be satisfied, meaning that if the dropck is
 // sound, it should reject this code.
 
-#![feature(unsafe_destructor)]
-
 use std::cell::Cell;
 use id::Id;
 
@@ -91,7 +89,6 @@ struct CheckId<T:HasId> {
 #[allow(non_snake_case)]
 fn CheckId<T:HasId>(t: T) -> CheckId<T> { CheckId{ v: t } }
 
-#[unsafe_destructor]
 impl<T:HasId> Drop for CheckId<T> {
     fn drop(&mut self) {
         assert!(self.v.count() > 0);

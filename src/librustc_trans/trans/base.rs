@@ -125,7 +125,6 @@ pub struct _InsnCtxt {
     _cannot_construct_outside_of_this_module: ()
 }
 
-#[unsafe_destructor]
 impl Drop for _InsnCtxt {
     fn drop(&mut self) {
         TASK_LOCAL_INSN_KEY.with(|slot| {
@@ -166,7 +165,6 @@ impl<'a, 'tcx> StatRecorder<'a, 'tcx> {
     }
 }
 
-#[unsafe_destructor]
 impl<'a, 'tcx> Drop for StatRecorder<'a, 'tcx> {
     fn drop(&mut self) {
         if self.ccx.sess().trans_stats() {
@@ -2184,7 +2182,7 @@ pub fn create_entry_wrapper(ccx: &CrateContext,
         unsafe {
             llvm::LLVMPositionBuilderAtEnd(bld, llbb);
 
-            debuginfo::insert_reference_to_gdb_debug_scripts_section_global(ccx);
+            debuginfo::gdb::insert_reference_to_gdb_debug_scripts_section_global(ccx);
 
             let (start_fn, args) = if use_start_lang_item {
                 let start_def_id = match ccx.tcx().lang_items.require(StartFnLangItem) {

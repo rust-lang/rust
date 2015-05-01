@@ -8,18 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that `#[unsafe_destructor]` attribute is gated by `unsafe_destructor`
-// feature gate.
-//
-// (This test can be removed entirely when we remove the
-// `unsafe_destructor` feature itself.)
+//! Bitrig-specific definitions
 
-struct D<'a>(&'a u32);
+#![unstable(feature = "raw_ext", reason = "recently added API")]
 
-#[unsafe_destructor]
-//~^ ERROR `#[unsafe_destructor]` does nothing anymore
-impl<'a> Drop for D<'a> {
-    fn drop(&mut self) { }
+pub mod raw;
+
+pub mod fs {
+    pub use sys::fs2::MetadataExt;
 }
-
-pub fn main() { }

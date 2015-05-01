@@ -20,6 +20,7 @@
       html_root_url = "http://doc.rust-lang.org/nightly/")]
 
 #![feature(alloc)]
+#![feature(associated_consts)]
 #![feature(collections)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
@@ -477,8 +478,8 @@ impl fmt::Debug for Module {
 bitflags! {
     #[derive(Debug)]
     flags DefModifiers: u8 {
-        const PUBLIC            = 0b0000_0001,
-        const IMPORTABLE        = 0b0000_0010,
+        const PUBLIC     = 1 << 0,
+        const IMPORTABLE = 1 << 1,
     }
 }
 
@@ -524,7 +525,11 @@ impl NameBindings {
                      is_public: bool,
                      sp: Span) {
         // Merges the module with the existing type def or creates a new one.
-        let modifiers = if is_public { PUBLIC } else { DefModifiers::empty() } | IMPORTABLE;
+        let modifiers = if is_public {
+            DefModifiers::PUBLIC
+        } else {
+            DefModifiers::empty()
+        } | DefModifiers::IMPORTABLE;
         let module_ = Rc::new(Module::new(parent_link,
                                           def_id,
                                           kind,
@@ -559,7 +564,11 @@ impl NameBindings {
                        external: bool,
                        is_public: bool,
                        _sp: Span) {
-        let modifiers = if is_public { PUBLIC } else { DefModifiers::empty() } | IMPORTABLE;
+        let modifiers = if is_public {
+            DefModifiers::PUBLIC
+        } else {
+            DefModifiers::empty()
+        } | DefModifiers::IMPORTABLE;
         let type_def = self.type_def.borrow().clone();
         match type_def {
             None => {
@@ -659,7 +668,7 @@ impl NameBindings {
     }
 
     fn defined_in_public_namespace(&self, namespace: Namespace) -> bool {
-        self.defined_in_namespace_with(namespace, PUBLIC)
+        self.defined_in_namespace_with(namespace, DefModifiers::PUBLIC)
     }
 
     fn defined_in_namespace_with(&self, namespace: Namespace, modifiers: DefModifiers) -> bool {
@@ -730,11 +739,11 @@ impl NameBindings {
         match namespace {
             TypeNS  => {
                 let type_def = self.type_def.borrow();
-                type_def.as_ref().unwrap().modifiers.contains(PUBLIC)
+                type_def.as_ref().unwrap().modifiers.contains(DefModifiers::PUBLIC)
             }
             ValueNS => {
                 let value_def = self.value_def.borrow();
-                value_def.as_ref().unwrap().modifiers.contains(PUBLIC)
+                value_def.as_ref().unwrap().modifiers.contains(DefModifiers::PUBLIC)
             }
         }
     }
@@ -921,7 +930,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     fn create_name_bindings_from_module(module: Rc<Module>) -> NameBindings {
         NameBindings {
             type_def: RefCell::new(Some(TypeNsDef {
-                modifiers: IMPORTABLE,
+                modifiers: DefModifiers::IMPORTABLE,
                 module_def: Some(module),
                 type_def: None,
                 type_span: None
@@ -3697,3 +3706,8 @@ pub fn resolve_crate<'a, 'tcx>(session: &'a Session,
                     },
     }
 }
+
+#[cfg(stage0)]
+__build_diagnostic_array! { DIAGNOSTICS }
+#[cfg(not(stage0))]
+__build_diagnostic_array! { librustc_resolve, DIAGNOSTICS }

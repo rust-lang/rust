@@ -69,6 +69,8 @@ use core::usize;
 
 use borrow::{Cow, IntoCow};
 
+use super::range::RangeArgument;
+
 // FIXME- fix places which assume the max vector allowed has memory usize::MAX.
 static MAX_MEMORY_SIZE: usize = isize::MAX as usize;
 
@@ -714,36 +716,61 @@ impl<T> Vec<T> {
         unsafe { other.set_len(0); }
     }
 
-    /// Creates a draining iterator that clears the `Vec` and iterates over
-    /// the removed items from start to end.
+    /// Create a draining iterator that removes the specified range in the vector
+    /// and yields the removed items from start to end. The element range is
+    /// removed even if the iterator is not consumed until the end.
+    ///
+    /// Note: It is unspecified how many elements are removed from the vector,
+    /// if the `Drain` value is leaked.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the starting point is greater than the end point or if
+    /// the end point is greater than the length of the vector.
     ///
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
-    /// let mut v = vec!["a".to_string(), "b".to_string()];
-    /// for s in v.drain() {
-    ///     // s has type String, not &String
-    ///     println!("{}", s);
-    /// }
-    /// assert!(v.is_empty());
+    /// # #![feature(collections_drain, collections_range)]
+    ///
+    /// // Draining using `..` clears the whole vector.
+    /// let mut v = vec![1, 2, 3];
+    /// let u: Vec<_> = v.drain(..).collect();
+    /// assert_eq!(v, &[]);
+    /// assert_eq!(u, &[1, 2, 3]);
     /// ```
-    #[inline]
-    #[unstable(feature = "collections",
-               reason = "matches collection reform specification, waiting for dust to settle")]
-    pub fn drain(&mut self) -> Drain<T> {
+    #[unstable(feature = "collections_drain",
+               reason = "recently added, matches RFC")]
+    pub fn drain<R>(&mut self, range: R) -> Drain<T> where R: RangeArgument<usize> {
+        // Memory safety
+        //
+        // When the Drain is first created, it shortens the length of
+        // the source vector to make sure no uninitalized or moved-from elements
+        // are accessible at all if the Drain's destructor never gets to run.
+        //
+        // Drain will ptr::read out the values to remove.
+        // When finished, remaining tail of the vec is copied back to cover
+        // the hole, and the vector length is restored to the new length.
+        //
+        let len = self.len();
+        let start = *range.start().unwrap_or(&0);
+        let end = *range.end().unwrap_or(&len);
+        assert!(start <= end);
+        assert!(end <= len);
+
         unsafe {
-            let begin = *self.ptr as *const T;
-            let end = if mem::size_of::<T>() == 0 {
-                (*self.ptr as usize + self.len()) as *const T
-            } else {
-                (*self.ptr).offset(self.len() as isize) as *const T
-            };
-            self.set_len(0);
+            // set self.vec length's to start, to be safe in case Drain is leaked
+            self.set_len(start);
+            // Use the borrow in the IterMut to indicate borrowing behavior of the
+            // whole Drain iterator (like &mut T).
+            let range_slice = slice::from_raw_parts_mut(
+                                        self.as_mut_ptr().offset(start as isize),
+                                        end - start);
             Drain {
-                ptr: begin,
-                end: end,
-                marker: PhantomData,
+                tail_start: end,
+                tail_len: len - end,
+                iter: range_slice.iter_mut(),
+                vec: self as *mut _,
             }
         }
     }
@@ -1599,7 +1626,6 @@ impl<'a, T: Clone> Add<&'a [T]> for Vec<T> {
     }
 }
 
-#[unsafe_destructor]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Drop for Vec<T> {
     fn drop(&mut self) {
@@ -1781,7 +1807,6 @@ impl<T> DoubleEndedIterator for IntoIter<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ExactSizeIterator for IntoIter<T> {}
 
-#[unsafe_destructor]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Drop for IntoIter<T> {
     fn drop(&mut self) {
@@ -1795,14 +1820,16 @@ impl<T> Drop for IntoIter<T> {
     }
 }
 
-/// An iterator that drains a vector.
-#[unsafe_no_drop_flag]
-#[unstable(feature = "collections",
-           reason = "recently added as part of collections reform 2")]
-pub struct Drain<'a, T:'a> {
-    ptr: *const T,
-    end: *const T,
-    marker: PhantomData<&'a T>,
+/// A draining iterator for `Vec<T>`.
+#[unstable(feature = "collections_drain", reason = "recently added")]
+pub struct Drain<'a, T: 'a> {
+    /// Index of tail to preserve
+    tail_start: usize,
+    /// Length of tail
+    tail_len: usize,
+    /// Current remaining range to remove
+    iter: slice::IterMut<'a, T>,
+    vec: *mut Vec<T>,
 }
 
 unsafe impl<'a, T: Sync> Sync for Drain<'a, T> {}
@@ -1814,34 +1841,15 @@ impl<'a, T> Iterator for Drain<'a, T> {
 
     #[inline]
     fn next(&mut self) -> Option<T> {
-        unsafe {
-            if self.ptr == self.end {
-                None
-            } else {
-                if mem::size_of::<T>() == 0 {
-                    // purposefully don't use 'ptr.offset' because for
-                    // vectors with 0-size elements this would return the
-                    // same pointer.
-                    self.ptr = mem::transmute(self.ptr as usize + 1);
-
-                    // Use a non-null pointer value
-                    Some(ptr::read(EMPTY as *mut T))
-                } else {
-                    let old = self.ptr;
-                    self.ptr = self.ptr.offset(1);
-
-                    Some(ptr::read(old))
-                }
+        self.iter.next().map(|elt|
+            unsafe {
+                ptr::read(elt as *const _)
             }
-        }
+        )
     }
 
-    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let diff = (self.end as usize) - (self.ptr as usize);
-        let size = mem::size_of::<T>();
-        let exact = diff / (if size == 0 {1} else {size});
-        (exact, Some(exact))
+        self.iter.size_hint()
     }
 }
 
@@ -1849,40 +1857,38 @@ impl<'a, T> Iterator for Drain<'a, T> {
 impl<'a, T> DoubleEndedIterator for Drain<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<T> {
-        unsafe {
-            if self.end == self.ptr {
-                None
-            } else {
-                if mem::size_of::<T>() == 0 {
-                    // See above for why 'ptr.offset' isn't used
-                    self.end = mem::transmute(self.end as usize - 1);
+        self.iter.next_back().map(|elt|
+            unsafe {
+                ptr::read(elt as *const _)
+            }
+        )
+    }
+}
 
-                    // Use a non-null pointer value
-                    Some(ptr::read(EMPTY as *mut T))
-                } else {
-                    self.end = self.end.offset(-1);
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<'a, T> Drop for Drain<'a, T> {
+    fn drop(&mut self) {
+        // exhaust self first
+        while let Some(_) = self.next() { }
 
-                    Some(ptr::read(self.end))
-                }
+        if self.tail_len > 0 {
+            unsafe {
+                let source_vec = &mut *self.vec;
+                // memmove back untouched tail, update to new length
+                let start = source_vec.len();
+                let tail = self.tail_start;
+                let src = source_vec.as_ptr().offset(tail as isize);
+                let dst = source_vec.as_mut_ptr().offset(start as isize);
+                ptr::copy(src, dst, self.tail_len);
+                source_vec.set_len(start + self.tail_len);
             }
         }
     }
 }
 
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> ExactSizeIterator for Drain<'a, T> {}
-
-#[unsafe_destructor]
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T> Drop for Drain<'a, T> {
-    fn drop(&mut self) {
-        // self.ptr == self.end == mem::POST_DROP_USIZE if drop has already been called,
-        // so we can use #[unsafe_no_drop_flag].
-
-        // destroy the remaining elements
-        for _x in self.by_ref() {}
-    }
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 // Conversion from &[T] to &Vec<T>
@@ -1905,7 +1911,6 @@ impl<'a, T> Deref for DerefVec<'a, T> {
 }
 
 // Prevent the inner `Vec<T>` from attempting to deallocate memory.
-#[unsafe_destructor]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Drop for DerefVec<'a, T> {
     fn drop(&mut self) {
@@ -1974,7 +1979,6 @@ struct PartialVecZeroSized<T,U> {
     marker: PhantomData<::core::cell::Cell<(T,U)>>,
 }
 
-#[unsafe_destructor]
 impl<T,U> Drop for PartialVecNonZeroSized<T,U> {
     fn drop(&mut self) {
         unsafe {
@@ -2000,7 +2004,6 @@ impl<T,U> Drop for PartialVecNonZeroSized<T,U> {
     }
 }
 
-#[unsafe_destructor]
 impl<T,U> Drop for PartialVecZeroSized<T,U> {
     fn drop(&mut self) {
         unsafe {

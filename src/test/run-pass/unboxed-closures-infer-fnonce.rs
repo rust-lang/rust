@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-#![feature(unsafe_destructor)]
-
 // Test that we are able to infer a suitable kind for this closure
 // that is just called (`FnOnce`).
 
@@ -18,7 +15,6 @@ use std::mem;
 
 struct DropMe<'a>(&'a mut i32);
 
-#[unsafe_destructor]
 impl<'a> Drop for DropMe<'a> {
     fn drop(&mut self) {
         *self.0 += 1;

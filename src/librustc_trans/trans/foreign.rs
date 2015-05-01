@@ -349,8 +349,8 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         // The outptr can be noalias and nocapture because it's entirely
         // invisible to the program. We also know it's nonnull as well
         // as how many bytes we can dereference
-        attrs.arg(1, llvm::NoAliasAttribute)
-             .arg(1, llvm::NoCaptureAttribute)
+        attrs.arg(1, llvm::Attribute::NoAliasAttribute)
+             .arg(1, llvm::Attribute::NoCaptureAttribute)
              .arg(1, llvm::DereferenceableAttribute(llret_sz));
     };
 

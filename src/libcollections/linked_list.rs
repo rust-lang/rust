@@ -624,7 +624,6 @@ impl<T> LinkedList<T> {
     }
 }
 
-#[unsafe_destructor]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Drop for LinkedList<T> {
     fn drop(&mut self) {

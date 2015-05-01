@@ -18,7 +18,6 @@ use std::fs;
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 
-use util::fs as myfs;
 use session::search_paths::{SearchPaths, PathKind};
 
 #[derive(Copy, Clone)]
@@ -191,7 +190,7 @@ pub fn get_or_default_sysroot() -> PathBuf {
     // Follow symlinks.  If the resolved path is relative, make it absolute.
     fn canonicalize(path: Option<PathBuf>) -> Option<PathBuf> {
         path.and_then(|path| {
-            match myfs::realpath(&path) {
+            match fs::canonicalize(&path) {
                 Ok(canon) => Some(canon),
                 Err(e) => panic!("failed to get realpath: {}", e),
             }

@@ -11,6 +11,7 @@
 use core::iter::*;
 use core::iter::order::*;
 use core::iter::MinMaxResult::*;
+use core::isize;
 use core::usize;
 use core::cmp;
 
@@ -758,6 +759,11 @@ fn test_range() {
     assert_eq!((usize::MAX - 1..usize::MAX).size_hint(), (1, Some(1)));
     assert_eq!((-10..-1).size_hint(), (9, Some(9)));
     assert_eq!((-1..-10).size_hint(), (0, Some(0)));
+
+    assert_eq!((-70..58i8).size_hint(), (128, Some(128)));
+    assert_eq!((-128..127i8).size_hint(), (255, Some(255)));
+    assert_eq!((-2..isize::MAX).size_hint(),
+               (isize::MAX as usize + 2, Some(isize::MAX as usize + 2)));
 }
 
 #[test]

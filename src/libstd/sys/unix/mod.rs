@@ -18,6 +18,16 @@ use libc;
 use num::One;
 use ops::Neg;
 
+#[cfg(target_os = "android")]   pub use os::android as platform;
+#[cfg(target_os = "bitrig")]    pub use os::bitrig as platform;
+#[cfg(target_os = "dragonfly")] pub use os::dragonfly as platform;
+#[cfg(target_os = "freebsd")]   pub use os::freebsd as platform;
+#[cfg(target_os = "ios")]       pub use os::ios as platform;
+#[cfg(target_os = "linux")]     pub use os::linux as platform;
+#[cfg(target_os = "macos")]     pub use os::macos as platform;
+#[cfg(target_os = "nacl")]      pub use os::nacl as platform;
+#[cfg(target_os = "openbsd")]   pub use os::openbsd as platform;
+
 pub mod backtrace;
 pub mod c;
 pub mod condvar;

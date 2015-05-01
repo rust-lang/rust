@@ -1233,7 +1233,20 @@ fn compose_and_run_compiler(config: &Config, props: &TestProps,
         let mut crate_type = if aux_props.no_prefer_dynamic {
             Vec::new()
         } else {
-            vec!("--crate-type=dylib".to_string())
+            // We primarily compile all auxiliary libraries as dynamic libraries
+            // to avoid code size bloat and large binaries as much as possible
+            // for the test suite (otherwise including libstd statically in all
+            // executables takes up quite a bit of space).
+            //
+            // For targets like MUSL, however, there is no support for dynamic
+            // libraries so we just go back to building a normal library. Note,
+            // however, that if the library is built with `force_host` then it's
+            // ok to be a dylib as the host should always support dylibs.
+            if config.target.contains("musl") && !aux_props.force_host {
+                vec!("--crate-type=lib".to_string())
+            } else {
+                vec!("--crate-type=dylib".to_string())
+            }
         };
         crate_type.extend(extra_link_args.clone().into_iter());
         let aux_args =

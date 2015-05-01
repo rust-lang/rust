@@ -12,15 +12,11 @@ CFG_GCCISH_CFLAGS_mipsel-unknown-linux-gnu := -Wall -g -fPIC -mips32 -mabi=32 $(
 CFG_GCCISH_CXXFLAGS_mipsel-unknown-linux-gnu := -fno-rtti $(CXXFLAGS)
 CFG_GCCISH_LINK_FLAGS_mipsel-unknown-linux-gnu := -shared -fPIC -g -mips32
 CFG_GCCISH_DEF_FLAG_mipsel-unknown-linux-gnu := -Wl,--export-dynamic,--dynamic-list=
-CFG_GCCISH_PRE_LIB_FLAGS_mipsel-unknown-linux-gnu := -Wl,-whole-archive
-CFG_GCCISH_POST_LIB_FLAGS_mipsel-unknown-linux-gnu := -Wl,-no-whole-archive
-CFG_DEF_SUFFIX_mipsel-unknown-linux-gnu := .linux.def
 CFG_LLC_FLAGS_mipsel-unknown-linux-gnu :=
 CFG_INSTALL_NAME_mipsel-unknown-linux-gnu =
 CFG_EXE_SUFFIX_mipsel-unknown-linux-gnu :=
 CFG_WINDOWSY_mipsel-unknown-linux-gnu :=
 CFG_UNIXY_mipsel-unknown-linux-gnu := 1
-CFG_PATH_MUNGE_mipsel-unknown-linux-gnu := true
 CFG_LDPATH_mipsel-unknown-linux-gnu :=
 CFG_RUN_mipsel-unknown-linux-gnu=
 CFG_RUN_TARG_mipsel-unknown-linux-gnu=

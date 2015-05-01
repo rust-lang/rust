@@ -103,7 +103,7 @@ Non-doc comments are interpreted as a form of whitespace.
 
 ## Whitespace
 
-Whitespace is any non-empty string containing any the following characters:
+Whitespace is any non-empty string containing only the following characters:
 
 - `U+0020` (space, `' '`)
 - `U+0009` (tab, `'\t'`)
@@ -129,11 +129,6 @@ A literal is an expression consisting of a single token, rather than a sequence
 of tokens, that immediately and directly denotes the value it evaluates to,
 rather than referring to it by name or some other evaluation rule. A literal is
 a form of constant expression, so is evaluated (primarily) at compile time.
-
-The optional suffix is only used for certain numeric literals, but is
-reserved for future extension, that is, the above gives the lexical
-grammar, but a Rust parser will reject everything but the 12 special
-cases mentioned in [Number literals](#number-literals) below.
 
 #### Examples
 
@@ -1897,8 +1892,8 @@ release builds.
 
 There are two kinds of configuration options, one that is either defined or not
 (`#[cfg(foo)]`), and the other that contains a string that can be checked
-against (`#[cfg(bar = "baz")]` (currently only compiler-defined configuration
-options can have the latter form).
+against (`#[cfg(bar = "baz")]`). Currently, only compiler-defined configuration
+options can have the latter form.
 
 ```
 // The function is only included in the build when compiling for OSX

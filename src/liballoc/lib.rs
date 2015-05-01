@@ -73,7 +73,7 @@
 #![feature(allocator)]
 #![feature(custom_attribute)]
 #![feature(fundamental)]
-#![feature(lang_items, unsafe_destructor)]
+#![feature(lang_items)]
 #![feature(box_syntax)]
 #![feature(optin_builtin_traits)]
 #![feature(unboxed_closures)]

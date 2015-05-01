@@ -10,7 +10,7 @@
 
 // pretty-expanded FIXME #23616
 
-#![feature(unsafe_destructor, rustc_private)]
+#![feature(rustc_private)]
 
 extern crate serialize;
 
@@ -22,7 +22,6 @@ struct Foo<T: Encodable> {
     v: T,
 }
 
-#[unsafe_destructor]
 impl<T: Encodable> Drop for Foo<T> {
     fn drop(&mut self) {
         json::encode(&self.v);

@@ -464,9 +464,9 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'tcx>(
                     ty::Predicate::Trait(ty::Binder(ref t_pred)) => {
                         let def_id = t_pred.trait_ref.def_id;
                         match rcx.tcx().lang_items.to_builtin_kind(def_id) {
+                            // Issue 24895: deliberately do not include `BoundCopy` here.
                             Some(ty::BoundSend) |
                             Some(ty::BoundSized) |
-                            Some(ty::BoundCopy) |
                             Some(ty::BoundSync) => false,
                             _ => true,
                         }

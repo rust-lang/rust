@@ -109,11 +109,6 @@ pub fn main() {
         assert_eq!(cttz32(100), 2);
         assert_eq!(cttz64(100), 2);
 
-        assert_eq!(cttz8(-1), 0);
-        assert_eq!(cttz16(-1), 0);
-        assert_eq!(cttz32(-1), 0);
-        assert_eq!(cttz64(-1), 0);
-
         assert_eq!(bswap16(0x0A0B), 0x0B0A);
         assert_eq!(bswap32(0x0ABBCC0D), 0x0DCCBB0A);
         assert_eq!(bswap64(0x0122334455667708), 0x0877665544332201);

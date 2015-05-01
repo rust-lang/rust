@@ -8,10 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-#![allow(unknown_features)]
 #![feature(box_syntax)]
-#![feature(unsafe_destructor)]
 
 use std::cell::Cell;
 
@@ -24,7 +21,6 @@ struct r<'a> {
 
 struct BoxR<'a> { x: r<'a> }
 
-#[unsafe_destructor]
 impl<'a> Drop for r<'a> {
     fn drop(&mut self) {
         self.i.set(self.i.get() + 1)
