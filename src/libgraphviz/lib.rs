@@ -839,8 +839,10 @@ r#"digraph single_cyclic_node {
         let labels = AllNodesLabelled(vec!("{x,y}", "{x}", "{y}", "{}"));
         let r = test_input(LabelledGraph::new("hasse_diagram",
                                               labels,
-                                              vec!(edge(0, 1, ""), edge(0, 2, ""),
-                 edge(1, 3, ""), edge(2, 3, ""))));
+                                              vec!(edge(0, 1, ""),
+                                                   edge(0, 2, ""),
+                                                   edge(1, 3, ""),
+                                                   edge(2, 3, ""))));
         assert_eq!(r.unwrap(),
 r#"digraph hasse_diagram {
     N0[label="{x,y}"];
@@ -873,8 +875,10 @@ r#"digraph hasse_diagram {
 
         let g = LabelledGraphWithEscStrs::new("syntax_tree",
                                               labels,
-                                              vec!(edge(0, 1, "then"), edge(0, 2, "else"),
-                 edge(1, 3, ";"),    edge(2, 3, ";"   )));
+                                              vec!(edge(0, 1, "then"),
+                                                   edge(0, 2, "else"),
+                                                   edge(1, 3, ";"),
+                                                   edge(2, 3, ";"   )));
 
         render(&g, &mut writer).unwrap();
         let mut r = String::new();
