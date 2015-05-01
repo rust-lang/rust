@@ -66,13 +66,14 @@ fn expand(cx: &mut ExtCtxt,
 
 // Mostly copied from syntax::ext::deriving::hash
 /// Defines how the implementation for `trace()` is to be generated
-fn totalsum_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) -> P<ast::Expr> {
+fn totalsum_substructure(cx: &mut ExtCtxt, trait_span: Span,
+                         substr: &Substructure) -> P<ast::Expr> {
     let fields = match *substr.fields {
         Struct(ref fs) | EnumMatching(_, _, ref fs) => fs,
         _ => cx.span_bug(trait_span, "impossible substructure")
     };
 
-    fields.iter().fold(cx.expr_int(trait_span, 0), |acc, ref item| {
+    fields.iter().fold(cx.expr_isize(trait_span, 0), |acc, ref item| {
         if item.attrs.iter().find(|a| a.check_name("ignore")).is_some() {
             acc
         } else {

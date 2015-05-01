@@ -380,7 +380,7 @@ impl<'a> TraitDef<'a> {
     pub fn expand(&self,
                   cx: &mut ExtCtxt,
                   mitem: &ast::MetaItem,
-                  item: &'a     ast::Item,
+                  item: &'a ast::Item,
                   push: &mut FnMut(P<ast::Item>))
     {
         let newitem = match item.node {
@@ -1407,7 +1407,9 @@ impl<'a> TraitDef<'a> {
                              struct_def: &'a StructDef,
                              prefix: &str,
                              mutbl: ast::Mutability)
-                             -> (P<ast::Pat>, Vec<(Span, Option<Ident>, P<Expr>, &'a [ast::Attribute])>) {
+                             -> (P<ast::Pat>, Vec<(Span, Option<Ident>,
+                                                   P<Expr>,
+                                                   &'a [ast::Attribute])>) {
         if struct_def.fields.is_empty() {
             return (cx.pat_enum(self.span, struct_path, vec![]), vec![]);
         }
@@ -1445,7 +1447,8 @@ impl<'a> TraitDef<'a> {
         // struct_type is definitely not Unknown, since struct_def.fields
         // must be nonempty to reach here
         let pattern = if struct_type == Record {
-            let field_pats = subpats.into_iter().zip(ident_expr.iter()).map(|(pat, &(_, id, _, _))| {
+            let field_pats = subpats.into_iter().zip(ident_expr.iter())
+                                    .map(|(pat, &(_, id, _, _))| {
                 // id is guaranteed to be Some
                 codemap::Spanned {
                     span: pat.span,

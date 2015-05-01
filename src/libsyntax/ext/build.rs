@@ -146,7 +146,7 @@ pub trait AstBuilder {
     fn expr_lit(&self, sp: Span, lit: ast::Lit_) -> P<ast::Expr>;
 
     fn expr_usize(&self, span: Span, i: usize) -> P<ast::Expr>;
-    fn expr_int(&self, sp: Span, i: isize) -> P<ast::Expr>;
+    fn expr_isize(&self, sp: Span, i: isize) -> P<ast::Expr>;
     fn expr_u8(&self, sp: Span, u: u8) -> P<ast::Expr>;
     fn expr_u32(&self, sp: Span, u: u32) -> P<ast::Expr>;
     fn expr_bool(&self, sp: Span, value: bool) -> P<ast::Expr>;
@@ -698,7 +698,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     fn expr_usize(&self, span: Span, i: usize) -> P<ast::Expr> {
         self.expr_lit(span, ast::LitInt(i as u64, ast::UnsignedIntLit(ast::TyUs)))
     }
-    fn expr_int(&self, sp: Span, i: isize) -> P<ast::Expr> {
+    fn expr_isize(&self, sp: Span, i: isize) -> P<ast::Expr> {
         self.expr_lit(sp, ast::LitInt(i as u64, ast::SignedIntLit(ast::TyIs,
                                                                   ast::Sign::new(i))))
     }
