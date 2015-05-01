@@ -589,7 +589,7 @@ fn highlight_lines(err: &mut EmitterWriter,
     let display_line_strings = &line_strings[..display_lines];
 
     // Calculate the widest number to format evenly and fix #11715
-    assert!(display_line_infos.len > 0);
+    assert!(display_line_infos.len() > 0);
     let mut max_line_num = display_line_infos[display_line_infos.len() - 1].line_index + 1;
     let mut digits = 0;
     while max_line_num > 0 { max_line_num /= 10; digits += 1; }
