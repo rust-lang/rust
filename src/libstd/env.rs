@@ -27,7 +27,7 @@ use sync::atomic::{AtomicIsize, ATOMIC_ISIZE_INIT, Ordering};
 use sync::{StaticMutex, MUTEX_INIT};
 use sys::os as os_imp;
 
-/// Returns the current working directory as a `Path`.
+/// Returns the current working directory as a `PathBuf`.
 ///
 /// # Errors
 ///
