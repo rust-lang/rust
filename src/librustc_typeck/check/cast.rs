@@ -170,9 +170,10 @@ pub fn check_cast<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>, cast: &CastCheck<'tcx>) {
                 demand::coerce(fcx, e.span, t_1, &e);
             }
         }
-    } else if fcx.type_is_fat_ptr(t_e, span) && !fcx.type_is_fat_ptr(t_1, span) {
+    } else if fcx.type_is_fat_ptr(t_e, span) != fcx.type_is_fat_ptr(t_1, span) {
         fcx.type_error_message(span, |actual| {
-            format!("illegal cast; cast from fat pointer: `{}` as `{}`",
+            format!("illegal cast; cast to or from fat pointer: `{}` as `{}` \
+                     involving incompatible type.",
                     actual, fcx.infcx().ty_to_string(t_1))
         }, t_e, None);
     } else if !(t_e_is_scalar && t_1_is_trivial) {
