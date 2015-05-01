@@ -1557,8 +1557,7 @@ warnings are generated, or otherwise "you used a private item of another module
 and weren't allowed to."
 
 By default, everything in Rust is *private*, with one exception. Enum variants
-in a `pub` enum are also public by default. You are allowed to alter this
-default visibility with the `priv` keyword. When an item is declared as `pub`,
+in a `pub` enum are also public by default. When an item is declared as `pub`,
 it can be thought of as being accessible to the outside world. For example:
 
 ```
@@ -2426,9 +2425,16 @@ Tuples are written by enclosing zero or more comma-separated expressions in
 parentheses. They are used to create [tuple-typed](#tuple-types) values.
 
 ```{.tuple}
-(0,);
 (0.0, 4.5);
 ("a", 4usize, true);
+```
+
+You can disambiguate a single-element tuple from a value in parentheses with a
+comma:
+
+```
+(0,); // single-element tuple
+(0); // zero in parentheses
 ```
 
 ### Unit expressions

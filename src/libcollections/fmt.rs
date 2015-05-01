@@ -398,7 +398,7 @@
 //! longer than this width, then it is truncated down to this many characters and only those are
 //! emitted.
 //!
-//! For integral types, this has no meaning currently.
+//! For integral types, this is ignored.
 //!
 //! For floating-point types, this indicates how many digits after the decimal point should be
 //! printed.
