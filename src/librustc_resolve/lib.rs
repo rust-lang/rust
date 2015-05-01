@@ -2528,8 +2528,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 // If anything ends up here entirely resolved,
                                 // it's an error. If anything ends up here
                                 // partially resolved, that's OK, because it may
-                                // be a `T::CONST` that typeck will resolve to
-                                // an inherent impl.
+                                // be a `T::CONST` that typeck will resolve.
                                 if path_res.depth == 0 {
                                     self.resolve_error(
                                         path.span,
@@ -2537,6 +2536,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                                  token::get_ident(
                                                      path.segments.last().unwrap().identifier)));
                                 } else {
+                                    let const_name = path.segments.last().unwrap()
+                                                         .identifier.name;
+                                    let traits = self.get_traits_containing_item(const_name);
+                                    self.trait_map.insert(pattern.id, traits);
                                     self.record_def(pattern.id, path_res);
                                 }
                             }
