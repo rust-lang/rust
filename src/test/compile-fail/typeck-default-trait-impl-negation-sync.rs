@@ -12,7 +12,10 @@
 
 #![feature(optin_builtin_traits)]
 
-use std::marker::Managed;
+struct Managed;
+impl !Send for Managed {}
+impl !Sync for Managed {}
+
 use std::cell::UnsafeCell;
 
 struct MySync {
@@ -46,5 +49,5 @@ fn main() {
     //~^ ERROR the trait `core::marker::Sync` is not implemented for the type `core::cell::UnsafeCell<u8>`
 
     is_sync::<MyTypeManaged>();
-    //~^ ERROR the trait `core::marker::Sync` is not implemented for the type `core::marker::Managed`
+    //~^ ERROR the trait `core::marker::Sync` is not implemented for the type `Managed`
 }

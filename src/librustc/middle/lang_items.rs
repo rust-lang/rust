@@ -334,7 +334,6 @@ lets_do_this! {
     InvariantLifetimeItem,           "invariant_lifetime",      invariant_lifetime;
 
     NoCopyItem,                      "no_copy_bound",           no_copy_bound;
-    ManagedItem,                     "managed_bound",           managed_bound;
 
     NonZeroItem,                     "non_zero",                non_zero;
 

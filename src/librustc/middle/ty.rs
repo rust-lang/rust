@@ -3603,12 +3603,10 @@ def_type_content_sets! {
         // Things that are owned by the value (second and third nibbles):
         OwnsOwned                           = 0b0000_0000__0000_0001__0000,
         OwnsDtor                            = 0b0000_0000__0000_0010__0000,
-        OwnsManaged /* see [1] below */     = 0b0000_0000__0000_0100__0000,
         OwnsAll                             = 0b0000_0000__1111_1111__0000,
 
         // Things that are reachable by the value in any way (fourth nibble):
         ReachesBorrowed                     = 0b0000_0010__0000_0000__0000,
-        // ReachesManaged /* see [1] below */  = 0b0000_0100__0000_0000__0000,
         ReachesMutable                      = 0b0000_1000__0000_0000__0000,
         ReachesFfiUnsafe                    = 0b0010_0000__0000_0000__0000,
         ReachesAll                          = 0b0011_1111__0000_0000__0000,
@@ -3618,13 +3616,6 @@ def_type_content_sets! {
 
         // Things that prevent values from being considered sized
         Nonsized                            = 0b0000_0000__0000_0000__0001,
-
-        // Bits to set when a managed value is encountered
-        //
-        // [1] Do not set the bits TC::OwnsManaged or
-        //     TC::ReachesManaged directly, instead reference
-        //     TC::Managed to set them both at once.
-        Managed                             = 0b0000_0100__0000_0100__0000,
 
         // All bits
         All                                 = 0b1111_1111__1111_1111__1111
@@ -3638,10 +3629,6 @@ impl TypeContents {
 
     pub fn intersects(&self, tc: TypeContents) -> bool {
         (self.bits & tc.bits) != 0
-    }
-
-    pub fn owns_managed(&self) -> bool {
-        self.intersects(TC::OwnsManaged)
     }
 
     pub fn owns_owned(&self) -> bool {
@@ -3677,12 +3664,6 @@ impl TypeContents {
     /// Includes only those bits that still apply when indirected through a reference (`&`)
     pub fn reference(&self, bits: TypeContents) -> TypeContents {
         bits | (
-            *self & TC::ReachesAll)
-    }
-
-    /// Includes only those bits that still apply when indirected through a managed pointer (`@`)
-    pub fn managed_pointer(&self) -> TypeContents {
-        TC::Managed | (
             *self & TC::ReachesAll)
     }
 
@@ -3930,9 +3911,7 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
 
     fn apply_lang_items(cx: &ctxt, did: ast::DefId, tc: TypeContents)
                         -> TypeContents {
-        if Some(did) == cx.lang_items.managed_bound() {
-            tc | TC::Managed
-        } else if Some(did) == cx.lang_items.unsafe_cell_type() {
+        if Some(did) == cx.lang_items.unsafe_cell_type() {
             tc | TC::InteriorUnsafe
         } else {
             tc
