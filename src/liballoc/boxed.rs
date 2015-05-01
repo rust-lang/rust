@@ -240,6 +240,7 @@ impl<T: ?Sized + Hash> Hash for Box<T> {
 impl Box<Any> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
+    /// Attempt to downcast the box to a concrete type.
     pub fn downcast<T: Any>(self) -> Result<Box<T>, Box<Any>> {
         if self.is::<T>() {
             unsafe {
@@ -257,11 +258,15 @@ impl Box<Any> {
     }
 }
 
-impl Box<Any+Send> {
+impl Box<Any + Send> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn downcast<T: Any>(self) -> Result<Box<T>, Box<Any>> {
-        <Box<Any>>::downcast(self)
+    /// Attempt to downcast the box to a concrete type.
+    pub fn downcast<T: Any>(self) -> Result<Box<T>, Box<Any + Send>> {
+        <Box<Any>>::downcast(self).map_err(|s| unsafe {
+            // reapply the Send marker
+            mem::transmute::<Box<Any>, Box<Any + Send>>(s)
+        })
     }
 }
 
