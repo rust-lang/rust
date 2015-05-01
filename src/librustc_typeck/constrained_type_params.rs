@@ -12,7 +12,6 @@ use middle::subst;
 use middle::ty::{self, Ty};
 
 use std::collections::HashSet;
-use std::rc::Rc;
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum Parameter {
@@ -26,7 +25,7 @@ pub fn parameters_for_type<'tcx>(ty: Ty<'tcx>) -> Vec<Parameter> {
       .collect()
 }
 
-pub fn parameters_for_trait_ref<'tcx>(trait_ref: &Rc<ty::TraitRef<'tcx>>) -> Vec<Parameter> {
+pub fn parameters_for_trait_ref<'tcx>(trait_ref: &ty::TraitRef<'tcx>) -> Vec<Parameter> {
     let mut region_parameters =
         parameters_for_regions_in_substs(&trait_ref.substs);
 
@@ -71,7 +70,7 @@ fn parameters_for_region(region: &ty::Region) -> Option<Parameter> {
 
 pub fn identify_constrained_type_params<'tcx>(_tcx: &ty::ctxt<'tcx>,
                                               predicates: &[ty::Predicate<'tcx>],
-                                              impl_trait_ref: Option<Rc<ty::TraitRef<'tcx>>>,
+                                              impl_trait_ref: Option<ty::TraitRef<'tcx>>,
                                               input_parameters: &mut HashSet<Parameter>)
 {
     loop {

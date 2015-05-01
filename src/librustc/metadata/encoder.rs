@@ -103,7 +103,7 @@ struct entry<T> {
 
 fn encode_trait_ref<'a, 'tcx>(rbml_w: &mut Encoder,
                               ecx: &EncodeContext<'a, 'tcx>,
-                              trait_ref: &ty::TraitRef<'tcx>,
+                              trait_ref: ty::TraitRef<'tcx>,
                               tag: usize) {
     let ty_str_ctxt = &tyencode::ctxt {
         diag: ecx.diag,
@@ -191,7 +191,7 @@ pub fn write_trait_ref<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
         tcx: ecx.tcx,
         abbrevs: &ecx.type_abbrevs
     };
-    tyencode::enc_trait_ref(rbml_w, ty_str_ctxt, trait_ref);
+    tyencode::enc_trait_ref(rbml_w, ty_str_ctxt, *trait_ref);
 }
 
 pub fn write_region(ecx: &EncodeContext,
@@ -974,16 +974,14 @@ fn encode_inherent_implementations(ecx: &EncodeContext,
 fn encode_extension_implementations(ecx: &EncodeContext,
                                     rbml_w: &mut Encoder,
                                     trait_def_id: DefId) {
-    match ecx.tcx.trait_impls.borrow().get(&trait_def_id) {
-        None => {}
-        Some(implementations) => {
-            for &impl_def_id in &*implementations.borrow() {
-                rbml_w.start_tag(tag_items_data_item_extension_impl);
-                encode_def_id(rbml_w, impl_def_id);
-                rbml_w.end_tag();
-            }
-        }
-    }
+    assert!(ast_util::is_local(trait_def_id));
+    let def = ty::lookup_trait_def(ecx.tcx, trait_def_id);
+
+    def.for_each_impl(ecx.tcx, |impl_def_id| {
+        rbml_w.start_tag(tag_items_data_item_extension_impl);
+        encode_def_id(rbml_w, impl_def_id);
+        rbml_w.end_tag();
+    });
 }
 
 fn encode_stability(rbml_w: &mut Encoder, stab_opt: Option<attr::Stability>) {
@@ -1201,7 +1199,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
           encode_unsafety(rbml_w, unsafety);
 
           let trait_ref = ty::impl_id_to_trait_ref(tcx, item.id);
-          encode_trait_ref(rbml_w, ecx, &*trait_ref, tag_item_trait_ref);
+          encode_trait_ref(rbml_w, ecx, trait_ref, tag_item_trait_ref);
           rbml_w.end_tag();
       }
       ast::ItemImpl(unsafety, polarity, _, ref opt_trait, ref ty, ref ast_items) => {
@@ -1246,7 +1244,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         }
         if opt_trait.is_some() {
             let trait_ref = ty::impl_id_to_trait_ref(tcx, item.id);
-            encode_trait_ref(rbml_w, ecx, &*trait_ref, tag_item_trait_ref);
+            encode_trait_ref(rbml_w, ecx, trait_ref, tag_item_trait_ref);
         }
         encode_path(rbml_w, path.clone());
         encode_stability(rbml_w, stab);
@@ -1314,7 +1312,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
                         tag_item_generics);
         encode_predicates(rbml_w, ecx, &ty::lookup_super_predicates(tcx, def_id),
                           tag_item_super_predicates);
-        encode_trait_ref(rbml_w, ecx, &*trait_def.trait_ref, tag_item_trait_ref);
+        encode_trait_ref(rbml_w, ecx, trait_def.trait_ref, tag_item_trait_ref);
         encode_name(rbml_w, item.ident.name);
         encode_attributes(rbml_w, &item.attrs);
         encode_visibility(rbml_w, vis);

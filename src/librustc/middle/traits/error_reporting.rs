@@ -191,7 +191,7 @@ pub fn report_selection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                                         trait_ref.self_ty().user_string(infcx.tcx));
                                 // Check if it has a custom "#[rustc_on_unimplemented]"
                                 // error message, report with that message if it does
-                                let custom_note = report_on_unimplemented(infcx, &*trait_ref.0,
+                                let custom_note = report_on_unimplemented(infcx, &trait_ref.0,
                                                                           obligation.cause.span);
                                 if let Some(s) = custom_note {
                                     infcx.tcx.sess.span_note(obligation.cause.span,

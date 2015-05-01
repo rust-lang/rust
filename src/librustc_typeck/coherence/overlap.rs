@@ -48,59 +48,104 @@ impl<'cx, 'tcx> OverlapChecker<'cx, 'tcx> {
         // check_for_overlapping_impls_of_trait() check, since that
         // check can populate this table further with impls from other
         // crates.
-        let trait_def_ids: Vec<(ast::DefId, Vec<ast::DefId>)> =
-            self.tcx.trait_impls.borrow().iter().map(|(&k, v)| {
-                // FIXME -- it seems like this method actually pushes
-                // duplicate impls onto the list
-                ty::populate_implementations_for_trait_if_necessary(self.tcx, k);
-                (k, v.borrow().clone())
-            }).collect();
+        let trait_defs : Vec<&ty::TraitDef> = {
+            let d = self.tcx.trait_defs.borrow();
+            d.values().map(|&v|v).collect()
+        };
 
-        for &(trait_def_id, ref impls) in &trait_def_ids {
-            self.check_for_overlapping_impls_of_trait(trait_def_id, impls);
+        for trait_def in trait_defs {
+            // FIXME -- it seems like this method actually pushes
+            // duplicate impls onto the list
+            ty::populate_implementations_for_trait_if_necessary(
+                self.tcx,
+                trait_def.trait_ref.def_id);
+            self.check_for_overlapping_impls_of_trait(trait_def);
         }
     }
 
     fn check_for_overlapping_impls_of_trait(&self,
-                                            trait_def_id: ast::DefId,
-                                            trait_impls: &Vec<ast::DefId>)
+                                            trait_def: &'tcx ty::TraitDef<'tcx>)
     {
-        debug!("check_for_overlapping_impls_of_trait(trait_def_id={})",
-               trait_def_id.repr(self.tcx));
+        debug!("check_for_overlapping_impls_of_trait(trait_def={})",
+               trait_def.repr(self.tcx));
 
-        for (i, &impl1_def_id) in trait_impls.iter().enumerate() {
-            if impl1_def_id.krate != ast::LOCAL_CRATE {
-                // we don't need to check impls if both are external;
-                // that's the other crate's job.
-                continue;
-            }
+        // We should already know all impls of this trait, so these
+        // borrows are safe.
+        let blanket_impls = trait_def.blanket_impls.borrow();
+        let nonblanket_impls = trait_def.nonblanket_impls.borrow();
+        let trait_def_id = trait_def.trait_ref.def_id;
 
-            for &impl2_def_id in &trait_impls[(i+1)..] {
+        // Conflicts can only occur between a blanket impl and another impl,
+        // or between 2 non-blanket impls of the same kind.
+
+        for (i, &impl1_def_id) in blanket_impls.iter().enumerate() {
+            for &impl2_def_id in &blanket_impls[(i+1)..] {
                 self.check_if_impls_overlap(trait_def_id,
                                             impl1_def_id,
                                             impl2_def_id);
             }
+
+            for v in nonblanket_impls.values() {
+                for &impl2_def_id in v {
+                    self.check_if_impls_overlap(trait_def_id,
+                                                impl1_def_id,
+                                                impl2_def_id);
+                }
+            }
+        }
+
+        for impl_group in nonblanket_impls.values() {
+            for (i, &impl1_def_id) in impl_group.iter().enumerate() {
+                for &impl2_def_id in &impl_group[(i+1)..] {
+                    self.check_if_impls_overlap(trait_def_id,
+                                                impl1_def_id,
+                                                impl2_def_id);
+                }
+            }
         }
     }
+
+    // We need to coherently pick which impl will be displayed
+    // as causing the error message, and it must be the in the current
+    // crate. Just pick the smaller impl in the file.
+    fn order_impls(&self, impl1_def_id: ast::DefId, impl2_def_id: ast::DefId)
+            -> Option<(ast::DefId, ast::DefId)> {
+        if impl1_def_id.krate != ast::LOCAL_CRATE {
+            if impl2_def_id.krate != ast::LOCAL_CRATE {
+                // we don't need to check impls if both are external;
+                // that's the other crate's job.
+                None
+            } else {
+                Some((impl2_def_id, impl1_def_id))
+            }
+        } else if impl2_def_id.krate != ast::LOCAL_CRATE {
+            Some((impl1_def_id, impl2_def_id))
+        } else if impl1_def_id.node < impl2_def_id.node {
+            Some((impl1_def_id, impl2_def_id))
+        } else {
+            Some((impl2_def_id, impl1_def_id))
+        }
+    }
+
 
     fn check_if_impls_overlap(&self,
                               trait_def_id: ast::DefId,
                               impl1_def_id: ast::DefId,
                               impl2_def_id: ast::DefId)
     {
-        assert_eq!(impl1_def_id.krate, ast::LOCAL_CRATE);
+        if let Some((impl1_def_id, impl2_def_id)) = self.order_impls(
+            impl1_def_id, impl2_def_id)
+        {
+            debug!("check_if_impls_overlap({}, {}, {})",
+                   trait_def_id.repr(self.tcx),
+                   impl1_def_id.repr(self.tcx),
+                   impl2_def_id.repr(self.tcx));
 
-        debug!("check_if_impls_overlap({}, {}, {})",
-               trait_def_id.repr(self.tcx),
-               impl1_def_id.repr(self.tcx),
-               impl2_def_id.repr(self.tcx));
-
-        let infcx = infer::new_infer_ctxt(self.tcx);
-        if !traits::overlapping_impls(&infcx, impl1_def_id, impl2_def_id) {
-            return;
+            let infcx = infer::new_infer_ctxt(self.tcx);
+            if traits::overlapping_impls(&infcx, impl1_def_id, impl2_def_id) {
+                self.report_overlap_error(trait_def_id, impl1_def_id, impl2_def_id);
+            }
         }
-
-        self.report_overlap_error(trait_def_id, impl1_def_id, impl2_def_id);
     }
 
     fn report_overlap_error(&self, trait_def_id: ast::DefId,

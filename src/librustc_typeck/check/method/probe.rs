@@ -61,7 +61,7 @@ struct Candidate<'tcx> {
 enum CandidateKind<'tcx> {
     InherentImplCandidate(/* Impl */ ast::DefId, subst::Substs<'tcx>),
     ObjectCandidate(/* Trait */ ast::DefId, /* method_num */ usize, /* vtable index */ usize),
-    ExtensionImplCandidate(/* Impl */ ast::DefId, Rc<ty::TraitRef<'tcx>>,
+    ExtensionImplCandidate(/* Impl */ ast::DefId, ty::TraitRef<'tcx>,
                            subst::Substs<'tcx>, ItemIndex),
     ClosureCandidate(/* Trait */ ast::DefId, ItemIndex),
     WhereClauseCandidate(ty::PolyTraitRef<'tcx>, ItemIndex),
@@ -624,23 +624,16 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                                                      item: ty::ImplOrTraitItem<'tcx>,
                                                      item_index: usize)
     {
-        ty::populate_implementations_for_trait_if_necessary(self.tcx(),
-                                                            trait_def_id);
+        let trait_def = ty::lookup_trait_def(self.tcx(), trait_def_id);
 
-        let trait_impls = self.tcx().trait_impls.borrow();
-        let impl_def_ids = trait_impls.get(&trait_def_id);
-        let impl_def_ids = match impl_def_ids {
-            None => { return; }
-            Some(impls) => impls,
-        };
-
-        for &impl_def_id in &*impl_def_ids.borrow() {
+        // FIXME(arielb1): can we use for_each_relevant_impl here?
+        trait_def.for_each_impl(self.tcx(), |impl_def_id| {
             debug!("assemble_extension_candidates_for_trait_impl: trait_def_id={} impl_def_id={}",
                    trait_def_id.repr(self.tcx()),
                    impl_def_id.repr(self.tcx()));
 
             if !self.impl_can_possibly_match(impl_def_id) {
-                continue;
+                return;
             }
 
             let (_, impl_substs) = self.impl_ty_and_substs(impl_def_id);
@@ -667,7 +660,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                 item: item.clone(),
                 kind: ExtensionImplCandidate(impl_def_id, impl_trait_ref, impl_substs, item_index)
             });
-        }
+        });
     }
 
     fn impl_can_possibly_match(&self, impl_def_id: ast::DefId) -> bool {

@@ -163,7 +163,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
             enforce_trait_manually_implementable(self.crate_context.tcx,
                                                  item.span,
                                                  trait_ref.def_id);
-            self.add_trait_impl(trait_ref.def_id, impl_did);
+            self.add_trait_impl(trait_ref, impl_did);
         }
 
         // Add the implementation to the mapping from implementation to base
@@ -259,12 +259,12 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
             Rc::new(RefCell::new(vec!(impl_def_id))));
     }
 
-    fn add_trait_impl(&self, base_def_id: DefId, impl_def_id: DefId) {
-        debug!("add_trait_impl: base_def_id={:?} impl_def_id={:?}",
-               base_def_id, impl_def_id);
-        ty::record_trait_implementation(self.crate_context.tcx,
-                                        base_def_id,
-                                        impl_def_id);
+    fn add_trait_impl(&self, impl_trait_ref: ty::TraitRef<'tcx>, impl_def_id: DefId) {
+        debug!("add_trait_impl: impl_trait_ref={:?} impl_def_id={:?}",
+               impl_trait_ref, impl_def_id);
+        let trait_def = ty::lookup_trait_def(self.crate_context.tcx,
+                                             impl_trait_ref.def_id);
+        trait_def.record_impl(self.crate_context.tcx, impl_def_id, impl_trait_ref);
     }
 
     fn get_self_type_for_implementation(&self, impl_did: DefId)
@@ -300,7 +300,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
                                                              item.id);
 
                     self.instantiate_default_methods(local_def(item.id),
-                                                     &*trait_ref,
+                                                     &trait_ref,
                                                      &mut items);
                 }
 
@@ -337,7 +337,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
 
         // Record all the trait items.
         if let Some(trait_ref) = associated_traits {
-            self.add_trait_impl(trait_ref.def_id, impl_def_id);
+            self.add_trait_impl(trait_ref, impl_def_id);
         }
 
         // For any methods that use a default implementation, add them to
@@ -382,18 +382,16 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
         let drop_trait = match tcx.lang_items.drop_trait() {
             Some(id) => id, None => { return }
         };
+        ty::populate_implementations_for_trait_if_necessary(tcx, drop_trait);
+        let drop_trait = ty::lookup_trait_def(tcx, drop_trait);
 
         let impl_items = tcx.impl_items.borrow();
-        let trait_impls = match tcx.trait_impls.borrow().get(&drop_trait).cloned() {
-            None => return, // No types with (new-style) dtors present.
-            Some(found_impls) => found_impls
-        };
 
-        for &impl_did in &*trait_impls.borrow() {
+        drop_trait.for_each_impl(tcx, |impl_did| {
             let items = impl_items.get(&impl_did).unwrap();
             if items.is_empty() {
                 // We'll error out later. For now, just don't ICE.
-                continue;
+                return;
             }
             let method_def_id = items[0];
 
@@ -430,7 +428,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
                     }
                 }
             }
-        }
+        });
     }
 
     /// Ensures that implementations of the built-in trait `Copy` are legal.
@@ -440,30 +438,17 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
             Some(id) => id,
             None => return,
         };
+        ty::populate_implementations_for_trait_if_necessary(tcx, copy_trait);
+        let copy_trait = ty::lookup_trait_def(tcx, copy_trait);
 
-        let trait_impls = match tcx.trait_impls
-                                   .borrow()
-                                   .get(&copy_trait)
-                                   .cloned() {
-            None => {
-                debug!("check_implementations_of_copy(): no types with \
-                        implementations of `Copy` found");
-                return
-            }
-            Some(found_impls) => found_impls
-        };
-
-        // Clone first to avoid a double borrow error.
-        let trait_impls = trait_impls.borrow().clone();
-
-        for &impl_did in &trait_impls {
+        copy_trait.for_each_impl(tcx, |impl_did| {
             debug!("check_implementations_of_copy: impl_did={}",
                    impl_did.repr(tcx));
 
             if impl_did.krate != ast::LOCAL_CRATE {
                 debug!("check_implementations_of_copy(): impl not in this \
                         crate");
-                continue
+                return
             }
 
             let self_type = self.get_self_type_for_implementation(impl_did);
@@ -506,7 +491,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
                                the type has a destructor");
                 }
             }
-        }
+        });
     }
 }
 

@@ -321,8 +321,8 @@ impl<'a,'tcx:'a> Relate<'a,'tcx> for ty::ProjectionTy<'tcx> {
             Err(ty::terr_projection_name_mismatched(
                 expected_found(relation, &a.item_name, &b.item_name)))
         } else {
-            let trait_ref = try!(relation.relate(&*a.trait_ref, &*b.trait_ref));
-            Ok(ty::ProjectionTy { trait_ref: Rc::new(trait_ref), item_name: a.item_name })
+            let trait_ref = try!(relation.relate(&a.trait_ref, &b.trait_ref));
+            Ok(ty::ProjectionTy { trait_ref: trait_ref, item_name: a.item_name })
         }
     }
 }
@@ -652,4 +652,3 @@ pub fn expected_found_bool<T>(a_is_expected: bool,
         ty::expected_found {expected: b, found: a}
     }
 }
-

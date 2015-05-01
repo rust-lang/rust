@@ -33,7 +33,6 @@ use middle::ty_relate::{Relate, RelateResult, TypeRelation};
 use rustc_data_structures::unify::{self, UnificationTable};
 use std::cell::{RefCell};
 use std::fmt;
-use std::rc::Rc;
 use syntax::ast;
 use syntax::codemap;
 use syntax::codemap::Span;
@@ -155,7 +154,7 @@ impl fmt::Display for TypeOrigin {
 #[derive(Clone, Debug)]
 pub enum ValuePairs<'tcx> {
     Types(ty::expected_found<Ty<'tcx>>),
-    TraitRefs(ty::expected_found<Rc<ty::TraitRef<'tcx>>>),
+    TraitRefs(ty::expected_found<ty::TraitRef<'tcx>>),
     PolyTraitRefs(ty::expected_found<ty::PolyTraitRef<'tcx>>),
 }
 
@@ -663,8 +662,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn sub_trait_refs(&self,
                           a_is_expected: bool,
                           origin: TypeOrigin,
-                          a: Rc<ty::TraitRef<'tcx>>,
-                          b: Rc<ty::TraitRef<'tcx>>)
+                          a: ty::TraitRef<'tcx>,
+                          b: ty::TraitRef<'tcx>)
                           -> UnitResult<'tcx>
     {
         debug!("sub_trait_refs({} <: {})",
@@ -675,7 +674,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 origin: origin,
                 values: TraitRefs(expected_found(a_is_expected, a.clone(), b.clone()))
             };
-            self.sub(a_is_expected, trace).relate(&*a, &*b).map(|_| ())
+            self.sub(a_is_expected, trace).relate(&a, &b).map(|_| ())
         })
     }
 
@@ -873,8 +872,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         format!("({})", tstrs.connect(", "))
     }
 
-    pub fn trait_ref_to_string(&self, t: &Rc<ty::TraitRef<'tcx>>) -> String {
-        let t = self.resolve_type_vars_if_possible(&**t);
+    pub fn trait_ref_to_string(&self, t: &ty::TraitRef<'tcx>) -> String {
+        let t = self.resolve_type_vars_if_possible(t);
         t.user_string(self.tcx)
     }
 
