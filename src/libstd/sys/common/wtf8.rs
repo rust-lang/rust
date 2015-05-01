@@ -161,7 +161,7 @@ impl Wtf8Buf {
         Wtf8Buf { bytes: Vec::with_capacity(n) }
     }
 
-    /// Creates a WTF-8 string from an UTF-8 `String`.
+    /// Creates a WTF-8 string from a UTF-8 `String`.
     ///
     /// This takes ownership of the `String` and does not copy.
     ///
@@ -171,7 +171,7 @@ impl Wtf8Buf {
         Wtf8Buf { bytes: string.into_bytes() }
     }
 
-    /// Creates a WTF-8 string from an UTF-8 `&str` slice.
+    /// Creates a WTF-8 string from a UTF-8 `&str` slice.
     ///
     /// This copies the content of the slice.
     ///
@@ -245,7 +245,7 @@ impl Wtf8Buf {
         self.bytes.capacity()
     }
 
-    /// Append an UTF-8 slice at the end of the string.
+    /// Append a UTF-8 slice at the end of the string.
     #[inline]
     pub fn push_str(&mut self, other: &str) {
         self.bytes.push_all(other.as_bytes())
@@ -527,7 +527,7 @@ impl Wtf8 {
     }
 
     /// Lossily converts the string to UTF-8.
-    /// Returns an UTF-8 `&str` slice if the contents are well-formed in UTF-8.
+    /// Returns a UTF-8 `&str` slice if the contents are well-formed in UTF-8.
     ///
     /// Surrogates are replaced with `"\u{FFFD}"` (the replacement character “�”).
     ///
