@@ -525,7 +525,7 @@ pub struct Utf16Encoder<I> {
 }
 
 impl<I> Utf16Encoder<I> {
-    /// Create an UTF-16 encoder from any `char` iterator.
+    /// Create a UTF-16 encoder from any `char` iterator.
     pub fn new(chars: I) -> Utf16Encoder<I> where I: Iterator<Item=char> {
         Utf16Encoder { chars: chars, extra: 0 }
     }

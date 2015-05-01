@@ -80,7 +80,7 @@ Raw pointers are useful for FFI: Rust’s `*const T` and `*mut T` are similar to
 C’s `const T*` and `T*`, respectfully. For more about this use, consult the
 [FFI chapter][ffi].
 
-[ffi]: ffi.md
+[ffi]: ffi.html
 
 # References and raw pointers
 

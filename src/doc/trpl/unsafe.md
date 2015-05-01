@@ -101,7 +101,7 @@ Rust has a feature called ‘`static mut`’ which allows for mutable global sta
 Doing so can cause a data race, and as such is inherently not safe. For more
 details, see the [static][static] section of the book.
 
-[static]: static.html
+[static]: const-and-static.html#static
 
 ## Dereference a raw pointer
 
