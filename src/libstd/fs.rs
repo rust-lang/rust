@@ -643,7 +643,7 @@ impl Permissions {
     /// use std::fs::File;
     ///
     /// # fn foo() -> std::io::Result<()> {
-    /// let mut f = try!(File::create("foo.txt"));
+    /// let f = try!(File::create("foo.txt"));
     /// let metadata = try!(f.metadata());
     /// let mut permissions = metadata.permissions();
     ///
