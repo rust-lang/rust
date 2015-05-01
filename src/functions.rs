@@ -164,7 +164,22 @@ impl<'a> FmtVisitor<'a> {
                     arg_item_strs[0] = format!("self: {}", pprust::ty_to_string(ty));
                 }
                 ast::ExplicitSelf_::SelfValue(_) => {
-                    arg_item_strs[0] = "self".to_owned();
+                    assert!(args.len() >= 1, "&[ast::Arg] shouldn't be empty.");
+
+                    // this hacky solution caused by absence of `Mutability` in `SelfValue`.
+                    let mut_str = {
+                        if let ast::Pat_::PatIdent(ast::BindingMode::BindByValue(mutability), _, _)
+                                = args[0].pat.node {
+                            match mutability {
+                                ast::Mutability::MutMutable => "mut ",
+                                ast::Mutability::MutImmutable => "",
+                            }
+                        } else {
+                            panic!("there is a bug or change in structure of AST, aborting.");
+                        }
+                    };
+
+                    arg_item_strs[0] = format!("{}self", mut_str);
                     min_args = 2;
                 }
                 _ => {}

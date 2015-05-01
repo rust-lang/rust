@@ -39,6 +39,12 @@ impl Foo {
         where F: FnOnce(&mut Resolver) -> T
     {
     }
+
+    fn foo(mut self, mut bar: u32) {
+    }
+
+    fn bar(self, mut bazz: u32) {
+    }
 }
 
 pub fn render<'a, N: Clone+'a, E: Clone+'a, G: Labeller<'a, N, E>+GraphWalk<'a, N, E>, W: Write>
