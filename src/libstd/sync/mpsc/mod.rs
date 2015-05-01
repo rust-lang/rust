@@ -272,6 +272,7 @@ use error;
 use fmt;
 use mem;
 use cell::UnsafeCell;
+use marker::Reflect;
 
 pub use self::select::{Select, Handle};
 use self::select::StartResult;
@@ -955,8 +956,7 @@ impl<T> fmt::Display for SendError<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Send> error::Error for SendError<T> {
-
+impl<T: Send + Reflect> error::Error for SendError<T> {
     fn description(&self) -> &str {
         "sending on a closed channel"
     }
@@ -991,7 +991,7 @@ impl<T> fmt::Display for TrySendError<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Send> error::Error for TrySendError<T> {
+impl<T: Send + Reflect> error::Error for TrySendError<T> {
 
     fn description(&self) -> &str {
         match *self {
