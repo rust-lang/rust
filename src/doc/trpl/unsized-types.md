@@ -38,9 +38,11 @@ impl Foo for &str {
 ```
 
 Meaning, this implementation would only work for [references][ref], and not
-other types of pointers. With this `impl`, all pointers, including (at some
-point, there are some bugs to fix first) user-defined custom smart pointers,
-can use this `impl`.
+other types of pointers. With the `impl for str`, all pointers, including (at
+some point, there are some bugs to fix first) user-defined custom smart
+pointers, can use this `impl`.
+
+[ref]: references-and-borrowing.html
 
 # ?Sized
 
