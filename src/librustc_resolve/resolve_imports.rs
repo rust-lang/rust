@@ -896,8 +896,6 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
 
         match target {
             Some(ref target) if target.shadowable != Shadowable::Always => {
-                use syntax::ast_map::NodeItem;
-
                 let ns_word = match namespace {
                     TypeNS => "type",
                     ValueNS => "value",
@@ -907,12 +905,11 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                            in this module", ns_word,
                                   &token::get_name(name));
                 let use_id = import_resolution.id(namespace);
-                if let NodeItem(item) = self.resolver.ast_map.get(use_id) {
-                    // item is syntax::ast::Item;
-                    span_note!(self.resolver.session, item.span,
-                               "previous import of `{}` here",
-                               token::get_name(name));
-                }
+                let item = self.resolver.ast_map.expect_item(use_id);
+                // item is syntax::ast::Item;
+                span_note!(self.resolver.session, item.span,
+                            "previous import of `{}` here",
+                            token::get_name(name));
             }
             Some(_) | None => {}
         }
