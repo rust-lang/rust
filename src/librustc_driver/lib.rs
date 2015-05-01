@@ -322,13 +322,15 @@ fn parse_input(input: &str) -> String {
 
                                 if funcs.len() > 1 {
                                     while i < funcs.len() - 2 {
-                                        out.push_str(&get_color(Color::Blue, Style::NoStyle, funcs[i]));
+                                        out.push_str(&get_color(Color::Blue, Style::NoStyle,
+                                            funcs[i]));
                                         out.push('.');
                                         i += 1;
                                     }
                                     if i < funcs.len() {
                                         let func_name : Vec<&str> = funcs[i].split('(').collect();
-                                        out.push_str(&get_color(Color::Blue, Style::NoStyle, func_name[0]));
+                                        out.push_str(&get_color(Color::Blue, Style::NoStyle,
+                                            func_name[0]));
                                         i = 1;
 
                                         while i < func_name.len() {
@@ -347,7 +349,6 @@ fn parse_input(input: &str) -> String {
                         }
                     } else {
                         let func_name : Vec<&str> = word.split('(').collect();
-                        
 
                         if func_name.len() > 1 {
                             out.push_str(&get_color(Color::Blue, Style::NoStyle, func_name[0]));
