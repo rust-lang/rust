@@ -4944,7 +4944,6 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
                ty::mk_nil(tcx))
             }
             "needs_drop" => (1, Vec::new(), ccx.tcx.types.bool),
-            "owns_managed" => (1, Vec::new(), ccx.tcx.types.bool),
 
             "type_name" => (1, Vec::new(), ty::mk_str_slice(tcx, tcx.mk_region(ty::ReStatic),
                                                              ast::MutImmutable)),

@@ -43,7 +43,6 @@ unsafe impl Send for .. { }
 
 impl<T> !Send for *const T { }
 impl<T> !Send for *mut T { }
-impl !Send for Managed { }
 
 /// Types with a constant size known at compile-time.
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -212,7 +211,6 @@ unsafe impl Sync for .. { }
 
 impl<T> !Sync for *const T { }
 impl<T> !Sync for *mut T { }
-impl !Sync for Managed { }
 
 /// A type which is considered "not POD", meaning that it is not
 /// implicitly copyable. This is typically embedded in other types to
@@ -222,14 +220,6 @@ impl !Sync for Managed { }
 #[lang="no_copy_bound"]
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct NoCopy;
-
-/// A type which is considered managed by the GC. This is typically
-/// embedded in other types.
-#[unstable(feature = "core",
-           reason = "likely to change with new variance strategy")]
-#[lang="managed_bound"]
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Managed;
 
 macro_rules! impls{
     ($t: ident) => (

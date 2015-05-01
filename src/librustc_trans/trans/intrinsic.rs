@@ -387,10 +387,6 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
 
             C_bool(ccx, bcx.fcx.type_needs_drop(tp_ty))
         }
-        (_, "owns_managed") => {
-            let tp_ty = *substs.types.get(FnSpace, 0);
-            C_bool(ccx, ty::type_contents(ccx.tcx(), tp_ty).owns_managed())
-        }
         (_, "offset") => {
             let ptr = llargs[0];
             let offset = llargs[1];
