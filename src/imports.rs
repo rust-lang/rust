@@ -18,9 +18,27 @@ use syntax::print::pprust;
 
 use {IDEAL_WIDTH, MAX_WIDTH};
 
-// TODO change import lists with one item to a single import
-//      remove empty lists (if they're even possible)
+// TODO remove empty lists (if they're even possible)
 // TODO (some day) remove unused imports, expand globs, compress many single imports into a list import
+
+fn rewrite_single_use_list(path_str: String, vpi: ast::PathListItem, vis: &str) -> String {
+    if let ast::PathListItem_::PathListIdent{ name, .. } = vpi.node {
+        let name_str = token::get_ident(name).to_string();
+        if path_str.len() == 0 {
+            format!("{}use {};", vis, name_str)
+        } else {
+            format!("{}use {}::{};", vis, path_str, name_str)
+        }
+    } else {
+        if path_str.len() != 0 {
+            format!("{}use {};", vis, path_str)
+        } else {
+            // This catches the import: use {self}, which is a compiler error, so we just
+            // leave it alone.
+            format!("{}use {{self}};", vis)
+        }
+    }
+}
 
 impl<'a> FmtVisitor<'a> {
     // Basically just pretty prints a multi-item import.
@@ -29,15 +47,19 @@ impl<'a> FmtVisitor<'a> {
                             path_list: &[ast::PathListItem],
                             visibility: ast::Visibility,
                             vp_span: Span) -> String {
-        // FIXME check indentation
-        let l_loc = self.codemap.lookup_char_pos(vp_span.lo);
-
         let path_str = pprust::path_to_string(&path);
 
         let vis = match visibility {
             ast::Public => "pub ",
             _ => ""
         };
+
+        if path_list.len() == 1 {
+            return rewrite_single_use_list(path_str, path_list[0], vis);
+        }
+
+        // FIXME check indentation
+        let l_loc = self.codemap.lookup_char_pos(vp_span.lo);
 
         // 1 = {
         let mut indent = l_loc.col.0 + path_str.len() + 1;
