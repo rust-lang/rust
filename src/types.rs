@@ -28,12 +28,12 @@ impl<'a> FmtVisitor<'a> {
                     format!("for<{}> {}: {}",
                             bound_lifetimes.iter().map(|l| self.rewrite_lifetime_def(l)).collect::<Vec<_>>().connect(", "),
                             pprust::ty_to_string(bounded_ty),
-                            bounds.iter().map(|b| self.rewrite_ty_bound(b)).collect::<Vec<_>>().connect("+"))
+                            bounds.iter().map(|b| self.rewrite_ty_bound(b)).collect::<Vec<_>>().connect(" + "))
 
                 } else {
                     format!("{}: {}",
                             pprust::ty_to_string(bounded_ty),
-                            bounds.iter().map(|b| self.rewrite_ty_bound(b)).collect::<Vec<_>>().connect("+"))
+                            bounds.iter().map(|b| self.rewrite_ty_bound(b)).collect::<Vec<_>>().connect(" + "))
                 }
             }
             &ast::WherePredicate::RegionPredicate(ast::WhereRegionPredicate{ref lifetime,
@@ -41,7 +41,7 @@ impl<'a> FmtVisitor<'a> {
                                                                             ..}) => {
                 format!("{}: {}",
                         pprust::lifetime_to_string(lifetime),
-                        bounds.iter().map(|l| pprust::lifetime_to_string(l)).collect::<Vec<_>>().connect("+"))
+                        bounds.iter().map(|l| pprust::lifetime_to_string(l)).collect::<Vec<_>>().connect(" + "))
             }
             &ast::WherePredicate::EqPredicate(ast::WhereEqPredicate{ref path, ref ty, ..}) => {
                 format!("{} = {}", pprust::path_to_string(path), pprust::ty_to_string(ty))
@@ -57,7 +57,7 @@ impl<'a> FmtVisitor<'a> {
 
         format!("{}: {}",
                 pprust::lifetime_to_string(&lifetime.lifetime),
-                lifetime.bounds.iter().map(|l| pprust::lifetime_to_string(l)).collect::<Vec<_>>().connect("+"))
+                lifetime.bounds.iter().map(|l| pprust::lifetime_to_string(l)).collect::<Vec<_>>().connect(" + "))
     }
 
     pub fn rewrite_ty_bound(&self, bound: &ast::TyParamBound) -> String
@@ -81,7 +81,7 @@ impl<'a> FmtVisitor<'a> {
         result.push_str(&token::get_ident(ty_param.ident));
         if ty_param.bounds.len() > 0 {
             result.push_str(": ");
-            result.push_str(&ty_param.bounds.iter().map(|b| self.rewrite_ty_bound(b)).collect::<Vec<_>>().connect("+"));
+            result.push_str(&ty_param.bounds.iter().map(|b| self.rewrite_ty_bound(b)).collect::<Vec<_>>().connect(" + "));
         }
         if let Some(ref def) = ty_param.default {
             result.push_str(" = ");
