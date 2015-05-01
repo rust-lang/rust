@@ -30,7 +30,9 @@ use middle::subst;
 use middle::ty::{ImplContainer, TraitContainer};
 use middle::ty::{self, Ty};
 use middle::astencode::vtable_decoder_helpers;
+use util::nodemap::FnvHashMap;
 
+use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::hash::{self, Hash, SipHasher};
 use std::io::prelude::*;
@@ -247,13 +249,13 @@ pub fn item_type<'tcx>(_item_id: ast::DefId, item: rbml::Doc,
 }
 
 fn doc_trait_ref<'tcx>(doc: rbml::Doc, tcx: &ty::ctxt<'tcx>, cdata: Cmd)
-                       -> Rc<ty::TraitRef<'tcx>> {
+                       -> ty::TraitRef<'tcx> {
     parse_trait_ref_data(doc.data, cdata.cnum, doc.start, tcx,
                          |_, did| translate_def_id(cdata, did))
 }
 
 fn item_trait_ref<'tcx>(doc: rbml::Doc, tcx: &ty::ctxt<'tcx>, cdata: Cmd)
-                        -> Rc<ty::TraitRef<'tcx>> {
+                        -> ty::TraitRef<'tcx> {
     let tp = reader::get_doc(doc, tag_item_trait_ref);
     doc_trait_ref(tp, tcx, cdata)
 }
@@ -420,6 +422,9 @@ pub fn get_trait_def<'tcx>(cdata: Cmd,
         generics: generics,
         trait_ref: item_trait_ref(item_doc, tcx, cdata),
         associated_type_names: associated_type_names,
+        nonblanket_impls: RefCell::new(FnvHashMap()),
+        blanket_impls: RefCell::new(vec![]),
+        flags: Cell::new(ty::TraitFlags::NO_TRAIT_FLAGS)
     }
 }
 
@@ -490,7 +495,7 @@ pub fn get_impl_polarity<'tcx>(cdata: Cmd,
 pub fn get_impl_trait<'tcx>(cdata: Cmd,
                             id: ast::NodeId,
                             tcx: &ty::ctxt<'tcx>)
-                            -> Option<Rc<ty::TraitRef<'tcx>>>
+                            -> Option<ty::TraitRef<'tcx>>
 {
     let item_doc = lookup_item(id, cdata.data());
     let fam = item_family(item_doc);

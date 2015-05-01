@@ -23,7 +23,6 @@ use middle::subst;
 use middle::subst::VecPerParamSpace;
 use middle::ty::{self, AsPredicate, Ty};
 
-use std::rc::Rc;
 use std::str;
 use syntax::abi;
 use syntax::ast;
@@ -182,7 +181,7 @@ pub fn parse_bare_fn_ty_data<'tcx, F>(data: &[u8], crate_num: ast::CrateNum, pos
 
 pub fn parse_trait_ref_data<'tcx, F>(data: &[u8], crate_num: ast::CrateNum, pos: usize,
                                      tcx: &ty::ctxt<'tcx>, conv: F)
-                                     -> Rc<ty::TraitRef<'tcx>> where
+                                     -> ty::TraitRef<'tcx> where
     F: FnMut(DefIdSource, ast::DefId) -> ast::DefId,
 {
     debug!("parse_trait_ref_data {}", data_log_string(data, pos));
@@ -434,19 +433,19 @@ fn parse_str(st: &mut PState, term: char) -> String {
 }
 
 fn parse_trait_ref<'a, 'tcx, F>(st: &mut PState<'a, 'tcx>, mut conv: F)
-                                -> Rc<ty::TraitRef<'tcx>> where
+                                -> ty::TraitRef<'tcx> where
     F: FnMut(DefIdSource, ast::DefId) -> ast::DefId,
 {
     parse_trait_ref_(st, &mut conv)
 }
 
 fn parse_trait_ref_<'a, 'tcx, F>(st: &mut PState<'a, 'tcx>, conv: &mut F)
-                              -> Rc<ty::TraitRef<'tcx>> where
+                              -> ty::TraitRef<'tcx> where
     F: FnMut(DefIdSource, ast::DefId) -> ast::DefId,
 {
     let def = parse_def_(st, NominalType, conv);
     let substs = st.tcx.mk_substs(parse_substs_(st, conv));
-    Rc::new(ty::TraitRef {def_id: def, substs: substs})
+    ty::TraitRef {def_id: def, substs: substs}
 }
 
 fn parse_ty<'a, 'tcx, F>(st: &mut PState<'a, 'tcx>, mut conv: F) -> Ty<'tcx> where

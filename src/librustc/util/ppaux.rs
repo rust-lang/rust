@@ -671,7 +671,7 @@ impl<'tcx> Repr<'tcx> for def::Def {
 /// projection bounds, so we just stuff them altogether. But in
 /// reality we should eventually sort things out better.
 type TraitAndProjections<'tcx> =
-    (Rc<ty::TraitRef<'tcx>>, Vec<ty::ProjectionPredicate<'tcx>>);
+    (ty::TraitRef<'tcx>, Vec<ty::ProjectionPredicate<'tcx>>);
 
 impl<'tcx> UserString<'tcx> for TraitAndProjections<'tcx> {
     fn user_string(&self, tcx: &ctxt<'tcx>) -> String {
