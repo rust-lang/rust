@@ -286,19 +286,20 @@ fn get_color(color: Color, style: Style, text: &str) -> String {
 fn parse_input(input: &str) -> String {
     let lines : Vec<&str> = input.split('\n').collect();
     let mut out = String::new();
+    let mut total = lines.len();
 
     for line in lines {
+        if line.starts_with("#") {
+            out.push_str(&get_color(Color::White, Style::NoStyle, line));
+            out.push('\n');
+            continue;
+        }
         let words : Vec<&str> = line.split(' ').collect();
         let mut it = 0;
 
         while it < words.len() {
             let word : &str = words[it];
 
-            if word.starts_with("#") {
-                out.push_str(&get_color(Color::White, Style::NoStyle, word));
-                it += 1;
-                continue;
-            }
             match word {
                 "pub" | "const" | "static" | "crate" | "extern" => {
                     out.push_str(&get_color(Color::Red, Style::NoStyle, word));
@@ -368,7 +369,10 @@ fn parse_input(input: &str) -> String {
                 out.push(' ');
             }
         }
-        out.push('\n');
+        total -= 1;
+        if total > 1 {
+            out.push('\n');
+        }
     }
     out
 }
