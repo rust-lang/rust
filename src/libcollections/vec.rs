@@ -1299,7 +1299,7 @@ pub fn from_elem<T: Clone>(elem: T, n: usize) -> Vec<T> {
 // Common trait implementations for Vec
 ////////////////////////////////////////////////////////////////////////////////
 
-#[unstable(feature = "collections")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T:Clone> Clone for Vec<T> {
     #[cfg(not(test))]
     fn clone(&self) -> Vec<T> { <[T]>::to_vec(&**self) }
@@ -1554,7 +1554,7 @@ impl<'a, T> IntoIterator for &'a mut Vec<T> {
     }
 }
 
-#[unstable(feature = "collections", reason = "waiting on Extend stability")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Extend<T> for Vec<T> {
     #[inline]
     fn extend<I: IntoIterator<Item=T>>(&mut self, iterable: I) {
@@ -1614,8 +1614,7 @@ impl<T: Ord> Ord for Vec<T> {
     }
 }
 
-#[unstable(feature = "collections",
-           reason = "recent addition, needs more experience")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: Clone> Add<&'a [T]> for Vec<T> {
     type Output = Vec<T>;
 
@@ -1694,7 +1693,7 @@ impl<'a> From<&'a str> for Vec<u8> {
 // Clone-on-write
 ////////////////////////////////////////////////////////////////////////////////
 
-#[unstable(feature = "collections")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> FromIterator<T> for Cow<'a, [T]> where T: Clone {
     fn from_iter<I: IntoIterator<Item=T>>(it: I) -> Cow<'a, [T]> {
         Cow::Owned(FromIterator::from_iter(it))

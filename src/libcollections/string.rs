@@ -740,8 +740,7 @@ impl<'a> FromIterator<&'a str> for String {
     }
 }
 
-#[unstable(feature = "collections",
-           reason = "waiting on Extend stabilization")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Extend<char> for String {
     fn extend<I: IntoIterator<Item=char>>(&mut self, iterable: I) {
         let iterator = iterable.into_iter();
@@ -753,8 +752,7 @@ impl Extend<char> for String {
     }
 }
 
-#[unstable(feature = "collections",
-           reason = "waiting on Extend stabilization")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Extend<&'a str> for String {
     fn extend<I: IntoIterator<Item=&'a str>>(&mut self, iterable: I) {
         let iterator = iterable.into_iter();
@@ -869,8 +867,7 @@ impl hash::Hash for String {
     }
 }
 
-#[unstable(feature = "collections",
-           reason = "recent addition, needs more experience")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Add<&'a str> for String {
     type Output = String;
 
@@ -964,11 +961,17 @@ pub fn as_string<'a>(x: &'a str) -> DerefString<'a> {
     DerefString { x: as_vec(x.as_bytes()) }
 }
 
-#[unstable(feature = "collections", reason = "associated error type may change")]
+/// Error returned from `String::from_str`
+#[unstable(feature = "str_parse_error", reason = "may want to be replaced with \
+                                                  Void if it ever exists")]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub struct ParseError(());
+
+#[stable(feature = "rust1", since = "1.0.0")]
 impl FromStr for String {
-    type Err = ();
+    type Err = ParseError;
     #[inline]
-    fn from_str(s: &str) -> Result<String, ()> {
+    fn from_str(s: &str) -> Result<String, ParseError> {
         Ok(String::from_str(s))
     }
 }
