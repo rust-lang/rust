@@ -543,7 +543,7 @@ impl CodeMap {
         }
     }
 
-    pub fn new_filemap(&self, filename: FileName, src: String) -> Rc<FileMap> {
+    pub fn new_filemap(&self, filename: FileName, mut src: String) -> Rc<FileMap> {
         let mut files = self.files.borrow_mut();
         let start_pos = match files.last() {
             None => 0,
@@ -551,13 +551,9 @@ impl CodeMap {
         };
 
         // Remove utf-8 BOM if any.
-        // FIXME #12884: no efficient/safe way to remove from the start of a string
-        // and reuse the allocation.
-        let mut src = if src.starts_with("\u{feff}") {
-            String::from(&src[3..])
-        } else {
-            String::from(&src[..])
-        };
+        if src.starts_with("\u{feff}") {
+            src.drain(..3);
+        }
 
         // Append '\n' in case it's not already there.
         // This is a workaround to prevent CodeMap.lookup_filemap_idx from
