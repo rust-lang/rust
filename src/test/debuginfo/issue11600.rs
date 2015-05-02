@@ -13,7 +13,7 @@
 // ignore-test
 
 fn main() {
-    let args : ~[String] = ::std::os::args();
+    let args : Vec<String> = ::std::os::args();
     ::std::io::println(args[0]);
 }
 
