@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // ignore-android: FIXME (#20004)
+// ignore-musl
 
 #![feature(asm)]
 
