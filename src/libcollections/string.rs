@@ -26,7 +26,8 @@ use rustc_unicode::str as unicode_str;
 use rustc_unicode::str::Utf16Item;
 
 use borrow::{Cow, IntoCow};
-use str::{self, FromStr, Utf8Error};
+use range::RangeArgument;
+use str::{self, FromStr, Utf8Error, Chars};
 use vec::{DerefVec, Vec, as_vec};
 
 /// A growable string stored as a UTF-8 encoded buffer.
@@ -695,6 +696,59 @@ impl String {
     pub fn clear(&mut self) {
         self.vec.clear()
     }
+
+    /// Create a draining iterator that removes the specified range in the string
+    /// and yields the removed chars from start to end. The element range is
+    /// removed even if the iterator is not consumed until the end.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the starting point or end point are not on character boundaries,
+    /// or if they are out of bounds.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(collections_drain)]
+    ///
+    /// let mut s = String::from("α is alpha, β is beta");
+    /// let beta_offset = s.find('β').unwrap_or(s.len());
+    ///
+    /// // Remove the range up until the β from the string
+    /// let t: String = s.drain(..beta_offset).collect();
+    /// assert_eq!(t, "α is alpha, ");
+    /// assert_eq!(s, "β is beta");
+    ///
+    /// // A full range clears the string
+    /// s.drain(..);
+    /// assert_eq!(s, "");
+    /// ```
+    #[unstable(feature = "collections_drain",
+               reason = "recently added, matches RFC")]
+    pub fn drain<R>(&mut self, range: R) -> Drain where R: RangeArgument<usize> {
+        // Memory safety
+        //
+        // The String version of Drain does not have the memory safety issues
+        // of the vector version. The data is just plain bytes.
+        // Because the range removal happens in Drop, if the Drain iterator is leaked,
+        // the removal will not happen.
+        let len = self.len();
+        let start = *range.start().unwrap_or(&0);
+        let end = *range.end().unwrap_or(&len);
+
+        // Take out two simultaneous borrows. The &mut String won't be accessed
+        // until iteration is over, in Drop.
+        let self_ptr = self as *mut _;
+        // slicing does the appropriate bounds checks
+        let chars_iter = self[start..end].chars();
+
+        Drain {
+            start: start,
+            end: end,
+            iter: chars_iter,
+            string: self_ptr,
+        }
+    }
 }
 
 impl FromUtf8Error {
@@ -1073,5 +1127,57 @@ impl fmt::Write for String {
     fn write_char(&mut self, c: char) -> fmt::Result {
         self.push(c);
         Ok(())
+    }
+}
+
+/// A draining iterator for `String`.
+#[unstable(feature = "collections_drain", reason = "recently added")]
+pub struct Drain<'a> {
+    /// Will be used as &'a mut String in the destructor
+    string: *mut String,
+    /// Start of part to remove
+    start: usize,
+    /// End of part to remove
+    end: usize,
+    /// Current remaining range to remove
+    iter: Chars<'a>,
+}
+
+unsafe impl<'a> Sync for Drain<'a> {}
+unsafe impl<'a> Send for Drain<'a> {}
+
+#[unstable(feature = "collections_drain", reason = "recently added")]
+impl<'a> Drop for Drain<'a> {
+    fn drop(&mut self) {
+        unsafe {
+            // Use Vec::drain. "Reaffirm" the bounds checks to avoid
+            // panic code being inserted again.
+            let self_vec = (*self.string).as_mut_vec();
+            if self.start <= self.end && self.end <= self_vec.len() {
+                self_vec.drain(self.start..self.end);
+            }
+        }
+    }
+}
+
+#[unstable(feature = "collections_drain", reason = "recently added")]
+impl<'a> Iterator for Drain<'a> {
+    type Item = char;
+
+    #[inline]
+    fn next(&mut self) -> Option<char> {
+        self.iter.next()
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.iter.size_hint()
+    }
+}
+
+#[unstable(feature = "collections_drain", reason = "recently added")]
+impl<'a> DoubleEndedIterator for Drain<'a> {
+    #[inline]
+    fn next_back(&mut self) -> Option<char> {
+        self.iter.next_back()
     }
 }
