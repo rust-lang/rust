@@ -18,10 +18,12 @@ extern crate syntax;
 extern crate rustc;
 
 use syntax::ast;
+use syntax::attr::AttrMetaMethods;
 use syntax::codemap::Span;
 use syntax::ext::base::{Decorator, ExtCtxt};
 use syntax::ext::build::AstBuilder;
 use syntax::ext::deriving::generic::{cs_fold, TraitDef, MethodDef, combine_substructure};
+use syntax::ext::deriving::generic::{Substructure, Struct, EnumMatching};
 use syntax::ext::deriving::generic::ty::{Literal, LifetimeBounds, Path, borrowed_explicit_self};
 use syntax::parse::token;
 use syntax::ptr::P;
@@ -54,21 +56,32 @@ fn expand(cx: &mut ExtCtxt,
                 args: vec![],
                 ret_ty: Literal(Path::new_local("isize")),
                 attributes: vec![],
-                combine_substructure: combine_substructure(box |cx, span, substr| {
-                    let zero = cx.expr_isize(span, 0);
-                    cs_fold(false,
-                            |cx, span, subexpr, field, _| {
-                                cx.expr_binary(span, ast::BiAdd, subexpr,
-                                    cx.expr_method_call(span, field,
-                                        token::str_to_ident("total_sum"), vec![]))
-                            },
-                            zero,
-                            box |cx, span, _, _| { cx.span_bug(span, "wtf??"); },
-                            cx, span, substr)
-                }),
+                combine_substructure: combine_substructure(Box::new(totalsum_substructure)),
             },
         ],
     };
 
     trait_def.expand(cx, mitem, item, push)
+}
+
+// Mostly copied from syntax::ext::deriving::hash
+/// Defines how the implementation for `trace()` is to be generated
+fn totalsum_substructure(cx: &mut ExtCtxt, trait_span: Span,
+                         substr: &Substructure) -> P<ast::Expr> {
+    let fields = match *substr.fields {
+        Struct(ref fs) | EnumMatching(_, _, ref fs) => fs,
+        _ => cx.span_bug(trait_span, "impossible substructure")
+    };
+
+    fields.iter().fold(cx.expr_isize(trait_span, 0), |acc, ref item| {
+        if item.attrs.iter().find(|a| a.check_name("ignore")).is_some() {
+            acc
+        } else {
+            cx.expr_binary(item.span, ast::BiAdd, acc,
+                           cx.expr_method_call(item.span,
+                                               item.self_.clone(),
+                                               substr.method_ident,
+                                               Vec::new()))
+        }
+    })
 }
