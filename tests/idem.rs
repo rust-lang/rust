@@ -8,12 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(std_misc)]
+
 extern crate rustfmt;
 
 use std::collections::HashMap;
 use std::fs;
 use std::io::Read;
-use std::sync::atomic;
 use rustfmt::*;
 
 // For now, the only supported regression tests are idempotent tests - the input and
@@ -22,52 +23,86 @@ use rustfmt::*;
 #[test]
 fn idempotent_tests() {
     println!("Idempotent tests:");
-    FAILURES.store(0, atomic::Ordering::Relaxed);
 
     // Get all files in the tests/idem directory
     let files = fs::read_dir("tests/idem").unwrap();
+    let files2 = fs::read_dir("tests").unwrap();
+    let files3 = fs::read_dir("src/bin").unwrap();
     // For each file, run rustfmt and collect the output
+
     let mut count = 0;
-    for entry in files {
+    let mut fails = 0;
+    for entry in files.chain(files2).chain(files3) {
         let path = entry.unwrap().path();
         let file_name = path.to_str().unwrap();
+        if !file_name.ends_with(".rs") {
+            continue;
+        }
         println!("Testing '{}'...", file_name);
-        run(vec!["rustfmt".to_owned(), file_name.to_owned()], WriteMode::Return(HANDLE_RESULT));
+        match idempotent_check(vec!["rustfmt".to_owned(), file_name.to_owned()]) {
+            Ok(()) => {},
+            Err(m) => {
+                print_mismatches(m);
+                fails += 1;
+            },
+        }
         count += 1;
     }
-    // And also dogfood ourselves!
+    // And also dogfood rustfmt!
     println!("Testing 'src/lib.rs'...");
-    run(vec!["rustfmt".to_string(), "src/lib.rs".to_string()],
-        WriteMode::Return(HANDLE_RESULT));
+    match idempotent_check(vec!["rustfmt".to_owned(), "src/lib.rs".to_owned()]) {
+        Ok(()) => {},
+        Err(m) => {
+            print_mismatches(m);
+            fails += 1;
+        },
+    }
     count += 1;
 
     // Display results
-    let fails = FAILURES.load(atomic::Ordering::Relaxed);
     println!("Ran {} idempotent tests; {} failures.", count, fails);
     assert!(fails == 0, "{} idempotent tests failed", fails);
 }
 
-// 'global' used by sys_tests and handle_result.
-static FAILURES: atomic::AtomicUsize = atomic::ATOMIC_USIZE_INIT;
+// Compare output to input.
+fn print_mismatches(result: HashMap<String, String>) {
+    for (file_name, fmt_text) in result {
+        println!("Mismatch in {}.", file_name);
+        println!("{}", fmt_text);
+    }
+}
+
 // Ick, just needed to get a &'static to handle_result.
 static HANDLE_RESULT: &'static Fn(HashMap<String, String>) = &handle_result;
 
+pub fn idempotent_check(args: Vec<String>) -> Result<(), HashMap<String, String>> {
+    use std::thread;
+    use std::fs;
+    use std::io::Read;
+    thread::spawn(move || {
+        run(args, WriteMode::Return(HANDLE_RESULT));
+    }).join().map_err(|mut any|
+        any.downcast_mut::<HashMap<String, String>>()
+           .unwrap() // i know it is a hashmap
+           .drain() // i only get a reference :(
+           .collect() // so i need to turn it into an iter and then back
+    )
+}
+
 // Compare output to input.
 fn handle_result(result: HashMap<String, String>) {
-    let mut fails = 0;
+    let mut failures = HashMap::new();
 
-    for file_name in result.keys() {
-        let mut f = fs::File::open(file_name).unwrap();
+    for (file_name, fmt_text) in result {
+        let mut f = fs::File::open(&file_name).unwrap();
         let mut text = String::new();
+        // TODO: speedup by running through bytes iterator
         f.read_to_string(&mut text).unwrap();
-        if result[file_name] != text {
-            fails += 1;
-            println!("Mismatch in {}.", file_name);
-            println!("{}", result[file_name]);
+        if fmt_text != text {
+            failures.insert(file_name, fmt_text);
         }
     }
-
-    if fails > 0 {
-        FAILURES.fetch_add(1, atomic::Ordering::Relaxed);
+    if !failures.is_empty() {
+        panic!(failures);
     }
 }
