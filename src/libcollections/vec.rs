@@ -1777,6 +1777,11 @@ impl<T> Iterator for IntoIter<T> {
         let exact = diff / (if size == 0 {1} else {size});
         (exact, Some(exact))
     }
+
+    #[inline]
+    fn count(self) -> usize {
+        self.size_hint().0
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
