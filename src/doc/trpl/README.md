@@ -190,5 +190,5 @@ fn main() {
 We created an inner scope with an additional set of curly braces. `y` will go out of
 scope before we call `push()`, and so we’re all good.
 
-This concept of ownership isn’t just good for preventing danging pointers, but an
+This concept of ownership isn’t just good for preventing dangling pointers, but an
 entire set of related problems, like iterator invalidation, concurrency, and more.
