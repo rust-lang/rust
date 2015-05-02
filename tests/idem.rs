@@ -39,7 +39,7 @@ fn idempotent_tests() {
             continue;
         }
         println!("Testing '{}'...", file_name);
-        match idempotent_check(vec!["rustfmt".to_owned(), file_name.to_owned()]) {
+        match idempotent_check(file_name.to_owned()) {
             Ok(()) => {},
             Err(m) => {
                 print_mismatches(m);
@@ -50,7 +50,7 @@ fn idempotent_tests() {
     }
     // And also dogfood rustfmt!
     println!("Testing 'src/lib.rs'...");
-    match idempotent_check(vec!["rustfmt".to_owned(), "src/lib.rs".to_owned()]) {
+    match idempotent_check("src/lib.rs".to_owned()) {
         Ok(()) => {},
         Err(m) => {
             print_mismatches(m);
@@ -75,10 +75,11 @@ fn print_mismatches(result: HashMap<String, String>) {
 // Ick, just needed to get a &'static to handle_result.
 static HANDLE_RESULT: &'static Fn(HashMap<String, String>) = &handle_result;
 
-pub fn idempotent_check(args: Vec<String>) -> Result<(), HashMap<String, String>> {
+pub fn idempotent_check(filename: String) -> Result<(), HashMap<String, String>> {
     use std::thread;
     use std::fs;
     use std::io::Read;
+	let args = vec!["rustfmt".to_owned(), filename];
     thread::spawn(move || {
         run(args, WriteMode::Return(HANDLE_RESULT));
     }).join().map_err(|mut any|
