@@ -20,7 +20,6 @@ use core::num;
 use intrinsics;
 use libc::c_int;
 use num::{FpCategory, ParseFloatError};
-use sys_common::FromInner;
 
 pub use core::f64::{RADIX, MANTISSA_DIGITS, DIGITS, EPSILON};
 pub use core::f64::{MIN_EXP, MAX_EXP, MIN_10_EXP};
@@ -85,7 +84,7 @@ impl f64 {
     /// Parses a float as with a given radix
     #[unstable(feature = "float_from_str_radix", reason = "recently moved API")]
     pub fn from_str_radix(s: &str, radix: u32) -> Result<f64, ParseFloatError> {
-        num::Float::from_str_radix(s, radix).map_err(FromInner::from_inner)
+        num::Float::from_str_radix(s, radix)
     }
 
     /// Returns `true` if this value is `NaN` and false otherwise.
