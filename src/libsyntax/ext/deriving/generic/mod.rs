@@ -270,7 +270,7 @@ pub struct Substructure<'a> {
 }
 
 /// Summary of the relevant parts of a struct/enum field.
-pub struct FieldInfo {
+pub struct FieldInfo<'a> {
     pub span: Span,
     /// None for tuple structs/normal enum variants, Some for normal
     /// structs/struct enum variants.
@@ -281,6 +281,8 @@ pub struct FieldInfo {
     /// The expressions corresponding to references to this field in
     /// the other `Self` arguments.
     pub other: Vec<P<Expr>>,
+    /// The attributes on the field
+    pub attrs: &'a [ast::Attribute],
 }
 
 /// Fields for a static method
@@ -293,11 +295,11 @@ pub enum StaticFields {
 
 /// A summary of the possible sets of fields.
 pub enum SubstructureFields<'a> {
-    Struct(Vec<FieldInfo>),
+    Struct(Vec<FieldInfo<'a>>),
     /// Matching variants of the enum: variant index, ast::Variant,
     /// fields: the field name is only non-`None` in the case of a struct
     /// variant.
-    EnumMatching(usize, &'a ast::Variant, Vec<FieldInfo>),
+    EnumMatching(usize, &'a ast::Variant, Vec<FieldInfo<'a>>),
 
     /// Non-matching variants of the enum, but with all state hidden from
     /// the consequent code.  The first component holds `Ident`s for all of
@@ -378,7 +380,7 @@ impl<'a> TraitDef<'a> {
     pub fn expand(&self,
                   cx: &mut ExtCtxt,
                   mitem: &ast::MetaItem,
-                  item: &ast::Item,
+                  item: &'a ast::Item,
                   push: &mut FnMut(P<ast::Item>))
     {
         let newitem = match item.node {
@@ -609,7 +611,7 @@ impl<'a> TraitDef<'a> {
 
     fn expand_struct_def(&self,
                          cx: &mut ExtCtxt,
-                         struct_def: &StructDef,
+                         struct_def: &'a StructDef,
                          type_ident: Ident,
                          generics: &Generics) -> P<ast::Item> {
         let field_tys: Vec<P<ast::Ty>> = struct_def.fields.iter()
@@ -653,7 +655,7 @@ impl<'a> TraitDef<'a> {
 
     fn expand_enum_def(&self,
                        cx: &mut ExtCtxt,
-                       enum_def: &EnumDef,
+                       enum_def: &'a EnumDef,
                        type_attrs: &[ast::Attribute],
                        type_ident: Ident,
                        generics: &Generics) -> P<ast::Item> {
@@ -885,10 +887,10 @@ impl<'a> MethodDef<'a> {
     ///     }
     /// }
     /// ```
-    fn expand_struct_method_body(&self,
+    fn expand_struct_method_body<'b>(&self,
                                  cx: &mut ExtCtxt,
-                                 trait_: &TraitDef,
-                                 struct_def: &StructDef,
+                                 trait_: &TraitDef<'b>,
+                                 struct_def: &'b StructDef,
                                  type_ident: Ident,
                                  self_args: &[P<Expr>],
                                  nonself_args: &[P<Expr>])
@@ -914,18 +916,19 @@ impl<'a> MethodDef<'a> {
         let fields = if !raw_fields.is_empty() {
             let mut raw_fields = raw_fields.into_iter().map(|v| v.into_iter());
             let first_field = raw_fields.next().unwrap();
-            let mut other_fields: Vec<vec::IntoIter<(Span, Option<Ident>, P<Expr>)>>
+            let mut other_fields: Vec<vec::IntoIter<_>>
                 = raw_fields.collect();
-            first_field.map(|(span, opt_id, field)| {
+            first_field.map(|(span, opt_id, field, attrs)| {
                 FieldInfo {
                     span: span,
                     name: opt_id,
                     self_: field,
                     other: other_fields.iter_mut().map(|l| {
                         match l.next().unwrap() {
-                            (_, _, ex) => ex
+                            (_, _, ex, _) => ex
                         }
-                    }).collect()
+                    }).collect(),
+                    attrs: attrs,
                 }
             }).collect()
         } else {
@@ -999,10 +1002,10 @@ impl<'a> MethodDef<'a> {
     /// `PartialEq`, and those subcomputations will hopefully be removed
     /// as their results are unused.  The point of `__self_vi` and
     /// `__arg_1_vi` is for `PartialOrd`; see #15503.)
-    fn expand_enum_method_body(&self,
+    fn expand_enum_method_body<'b>(&self,
                                cx: &mut ExtCtxt,
-                               trait_: &TraitDef,
-                               enum_def: &EnumDef,
+                               trait_: &TraitDef<'b>,
+                               enum_def: &'b EnumDef,
                                type_attrs: &[ast::Attribute],
                                type_ident: Ident,
                                self_args: Vec<P<Expr>>,
@@ -1038,11 +1041,11 @@ impl<'a> MethodDef<'a> {
     ///   }
     /// }
     /// ```
-    fn build_enum_match_tuple(
+    fn build_enum_match_tuple<'b>(
         &self,
         cx: &mut ExtCtxt,
-        trait_: &TraitDef,
-        enum_def: &EnumDef,
+        trait_: &TraitDef<'b>,
+        enum_def: &'b EnumDef,
         type_attrs: &[ast::Attribute],
         type_ident: Ident,
         self_args: Vec<P<Expr>>,
@@ -1125,7 +1128,7 @@ impl<'a> MethodDef<'a> {
                 // arg fields of the variant for the first self pat.
                 let field_tuples = first_self_pat_idents.into_iter().enumerate()
                     // For each arg field of self, pull out its getter expr ...
-                    .map(|(field_index, (sp, opt_ident, self_getter_expr))| {
+                    .map(|(field_index, (sp, opt_ident, self_getter_expr, attrs))| {
                         // ... but FieldInfo also wants getter expr
                         // for matching other arguments of Self type;
                         // so walk across the *other* self_pats_idents
@@ -1133,7 +1136,7 @@ impl<'a> MethodDef<'a> {
                         // of them (using `field_index` tracked above).
                         // That is the heart of the transposition.
                         let others = self_pats_idents.iter().map(|fields| {
-                            let (_, _opt_ident, ref other_getter_expr) =
+                            let (_, _opt_ident, ref other_getter_expr, _) =
                                 fields[field_index];
 
                             // All Self args have same variant, so
@@ -1149,6 +1152,7 @@ impl<'a> MethodDef<'a> {
                                     name: opt_ident,
                                     self_: self_getter_expr,
                                     other: others,
+                                    attrs: attrs,
                         }
                     }).collect::<Vec<FieldInfo>>();
 
@@ -1400,10 +1404,12 @@ impl<'a> TraitDef<'a> {
     fn create_struct_pattern(&self,
                              cx: &mut ExtCtxt,
                              struct_path: ast::Path,
-                             struct_def: &StructDef,
+                             struct_def: &'a StructDef,
                              prefix: &str,
                              mutbl: ast::Mutability)
-                             -> (P<ast::Pat>, Vec<(Span, Option<Ident>, P<Expr>)>) {
+                             -> (P<ast::Pat>, Vec<(Span, Option<Ident>,
+                                                   P<Expr>,
+                                                   &'a [ast::Attribute])>) {
         if struct_def.fields.is_empty() {
             return (cx.pat_enum(self.span, struct_path, vec![]), vec![]);
         }
@@ -1433,7 +1439,7 @@ impl<'a> TraitDef<'a> {
             paths.push(codemap::Spanned{span: sp, node: ident});
             let val = cx.expr(
                 sp, ast::ExprParen(cx.expr_deref(sp, cx.expr_path(cx.path_ident(sp,ident)))));
-            ident_expr.push((sp, opt_id, val));
+            ident_expr.push((sp, opt_id, val, &struct_field.node.attrs[..]));
         }
 
         let subpats = self.create_subpatterns(cx, paths, mutbl);
@@ -1441,7 +1447,8 @@ impl<'a> TraitDef<'a> {
         // struct_type is definitely not Unknown, since struct_def.fields
         // must be nonempty to reach here
         let pattern = if struct_type == Record {
-            let field_pats = subpats.into_iter().zip(ident_expr.iter()).map(|(pat, &(_, id, _))| {
+            let field_pats = subpats.into_iter().zip(ident_expr.iter())
+                                    .map(|(pat, &(_, id, _, _))| {
                 // id is guaranteed to be Some
                 codemap::Spanned {
                     span: pat.span,
@@ -1459,10 +1466,10 @@ impl<'a> TraitDef<'a> {
     fn create_enum_variant_pattern(&self,
                                    cx: &mut ExtCtxt,
                                    enum_ident: ast::Ident,
-                                   variant: &ast::Variant,
+                                   variant: &'a ast::Variant,
                                    prefix: &str,
                                    mutbl: ast::Mutability)
-        -> (P<ast::Pat>, Vec<(Span, Option<Ident>, P<Expr>)>) {
+        -> (P<ast::Pat>, Vec<(Span, Option<Ident>, P<Expr>, &'a [ast::Attribute])>) {
         let variant_ident = variant.node.name;
         let variant_path = cx.path(variant.span, vec![enum_ident, variant_ident]);
         match variant.node.kind {
@@ -1472,7 +1479,7 @@ impl<'a> TraitDef<'a> {
                 }
 
                 let mut paths = Vec::new();
-                let mut ident_expr = Vec::new();
+                let mut ident_expr: Vec<(_, _, _, &'a [ast::Attribute])> = Vec::new();
                 for (i, va) in variant_args.iter().enumerate() {
                     let sp = self.set_expn_info(cx, va.ty.span);
                     let ident = cx.ident_of(&format!("{}_{}", prefix, i));
@@ -1480,7 +1487,7 @@ impl<'a> TraitDef<'a> {
                     paths.push(path1);
                     let expr_path = cx.expr_path(cx.path_ident(sp, ident));
                     let val = cx.expr(sp, ast::ExprParen(cx.expr_deref(sp, expr_path)));
-                    ident_expr.push((sp, None, val));
+                    ident_expr.push((sp, None, val, &[]));
                 }
 
                 let subpats = self.create_subpatterns(cx, paths, mutbl);
