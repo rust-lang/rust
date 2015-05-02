@@ -147,7 +147,7 @@ impl Error for num::ParseIntError {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Error for num::ParseFloatError {
     fn description(&self) -> &str {
-        self.description()
+        self.__description()
     }
 }
 
