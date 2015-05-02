@@ -689,6 +689,9 @@ pub fn noop_fold_interpolated<T: Folder>(nt: token::Nonterminal, fld: &mut T)
         token::NtTraitItem(arm) =>
             token::NtTraitItem(fld.fold_trait_item(arm)
                                .expect_one("expected fold to produce exactly one item")),
+        token::NtGenerics(generics) => token::NtGenerics(fld.fold_generics(generics)),
+        token::NtWhereClause(where_clause) =>
+            token::NtWhereClause(fld.fold_where_clause(where_clause)),
     }
 }
 

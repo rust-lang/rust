@@ -3808,6 +3808,8 @@ impl<'a> Parser<'a> {
     ///                  | ( < lifetimes , typaramseq ( , )? > )
     /// where   typaramseq = ( typaram ) | ( typaram , typaramseq )
     pub fn parse_generics(&mut self) -> PResult<ast::Generics> {
+        maybe_whole!(self, NtGenerics);
+
         if try!(self.eat(&token::Lt) ){
             let lifetime_defs = try!(self.parse_lifetime_defs());
             let mut seen_default = false;
@@ -3928,6 +3930,8 @@ impl<'a> Parser<'a> {
     /// where T : Trait<U, V> + 'b, 'a : 'b
     /// ```
     pub fn parse_where_clause(&mut self) -> PResult<ast::WhereClause> {
+        maybe_whole!(self, NtWhereClause);
+
         let mut where_clause = WhereClause {
             id: ast::DUMMY_NODE_ID,
             predicates: Vec::new(),

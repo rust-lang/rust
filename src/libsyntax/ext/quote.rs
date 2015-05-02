@@ -94,6 +94,18 @@ pub mod rt {
         }
     }
 
+    impl ToTokens for ast::Generics {
+        fn to_tokens(&self, _cx: &ExtCtxt) -> Vec<TokenTree> {
+            vec![ast::TtToken(DUMMY_SP, token::Interpolated(token::NtGenerics(self.clone())))]
+        }
+    }
+
+    impl ToTokens for ast::WhereClause {
+        fn to_tokens(&self, _cx: &ExtCtxt) -> Vec<TokenTree> {
+            vec![ast::TtToken(DUMMY_SP, token::Interpolated(token::NtWhereClause(self.clone())))]
+        }
+    }
+
     impl ToTokens for P<ast::Item> {
         fn to_tokens(&self, _cx: &ExtCtxt) -> Vec<TokenTree> {
             vec![ast::TtToken(self.span, token::Interpolated(token::NtItem(self.clone())))]

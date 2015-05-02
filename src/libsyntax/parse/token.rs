@@ -385,6 +385,8 @@ pub enum Nonterminal {
     NtArm(ast::Arm),
     NtImplItem(P<ast::ImplItem>),
     NtTraitItem(P<ast::TraitItem>),
+    NtGenerics(ast::Generics),
+    NtWhereClause(ast::WhereClause),
 }
 
 impl fmt::Debug for Nonterminal {
@@ -403,6 +405,8 @@ impl fmt::Debug for Nonterminal {
             NtArm(..) => f.pad("NtArm(..)"),
             NtImplItem(..) => f.pad("NtImplItem(..)"),
             NtTraitItem(..) => f.pad("NtTraitItem(..)"),
+            NtGenerics(..) => f.pad("NtGenerics(..)"),
+            NtWhereClause(..) => f.pad("NtWhereClause(..)"),
         }
     }
 }
