@@ -89,6 +89,7 @@ pub mod test;
 
 pub mod driver;
 pub mod pretty;
+pub mod explain;
 
 
 const BUG_REPORT_URL: &'static str =
@@ -262,140 +263,6 @@ pub trait CompilerCalls<'a> {
     fn build_controller(&mut self, &Session) -> CompileController<'a>;
 }
 
-enum Color {
-    Black = 30,
-    Red = 31,
-    Green = 32,
-    Yellow = 33,
-    Blue = 34,
-    Magenta = 35,
-    Cyan = 36,
-    Grey = 37,
-    White = 49
-}
-
-enum Style {
-    NoStyle = 0,
-    Bold = 1
-}
-
-fn get_color(color: Color, style: Style, text: &str) -> String {
-    format!("\x1b[{};1m{}\x1b[0m", color as i32, /*style as i32, */text)
-}
-
-fn parse_input(input: &str) -> String {
-    let lines : Vec<&str> = input.split('\n').collect();
-    let mut out = String::new();
-    let mut total = lines.len();
-
-    for line in lines {
-        if line.starts_with("#") {
-            out.push_str(&get_color(Color::White, Style::NoStyle, line));
-            out.push('\n');
-            continue;
-        }
-        let words : Vec<&str> = line.split(' ').collect();
-        let mut it = 0;
-
-        while it < words.len() {
-            let word : &str = words[it];
-
-            match word {
-                "pub" | "const" | "static" | "crate" | "extern" => {
-                    out.push_str(&get_color(Color::Red, Style::NoStyle, word));
-                }
-                "fn" | "struct" | "mod" | "type" | "enum" | "let" | "match" | "trait" => {
-                    out.push_str(&get_color(Color::Red, Style::NoStyle, word));
-                    out.push_str(&get_color(Color::Red, Style::NoStyle, " "));
-                    it += 1;
-                    if it < words.len() {
-                        out.push_str(&get_color(Color::Blue, Style::NoStyle, words[it]));
-                    }
-                }
-                _ => {
-                    if word.find(' ').is_some() {
-                        let funcs : Vec<&str> = word.split('.').collect();
-
-                        match funcs[funcs.len() - 1].find('(') {
-                            Some(_) => {
-                                let mut i = 0;
-
-                                if funcs.len() > 1 {
-                                    while i < funcs.len() - 2 {
-                                        out.push_str(&get_color(Color::Blue, Style::NoStyle,
-                                            funcs[i]));
-                                        out.push('.');
-                                        i += 1;
-                                    }
-                                    if i < funcs.len() {
-                                        let func_name : Vec<&str> = funcs[i].split('(').collect();
-                                        out.push_str(&get_color(Color::Blue, Style::NoStyle,
-                                            func_name[0]));
-                                        i = 1;
-
-                                        while i < func_name.len() {
-                                            out.push('(');
-                                            out.push_str(func_name[i]);
-                                            i += 1;
-                                        }
-                                    }
-                                } else {
-                                    out.push_str(funcs[0]);
-                                }
-                            }
-                            None => {
-                                out.push_str(word);
-                            }
-                        }
-                    } else {
-                        let func_name : Vec<&str> = word.split('(').collect();
-
-                        if func_name.len() > 1 {
-                            out.push_str(&get_color(Color::Blue, Style::NoStyle, func_name[0]));
-                            let mut i = 1;
-
-                            while i < func_name.len() {
-                                out.push('(');
-                                out.push_str(func_name[i]);
-                                i += 1;
-                            }
-                        } else {
-                            out.push_str(word);
-                        }
-                    }
-                }
-            }
-            it += 1;
-            if it < words.len() {
-                out.push(' ');
-            }
-        }
-        total -= 1;
-        if total > 1 {
-            out.push('\n');
-        }
-    }
-    out
-}
-
-fn beautiful_error_printing(splits: &[&str]) -> String {
-    let mut i = 1;
-    let mut s = String::new();
-
-    while i < splits.len() {
-        s.push_str(splits[i - 1]);
-        //s.push_str(&format!("\x1b[{}m", GREEN));
-        s.push_str(&parse_input(splits[i]));
-        //s.push_str(splits[i]);
-        //s.push_str(&format!("\x1b[{}m", NORMAL));
-        i += 2;
-    }
-    if i - 1 < splits.len() {
-        s.push_str(splits[i - 1])
-    }
-    s
-}
-
 // CompilerCalls instance for a regular rustc build.
 #[derive(Copy, Clone)]
 pub struct RustcDefaultCalls;
@@ -415,7 +282,7 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                         if tmp_print.len() < 2 {
                             print!("{}", tmp_print[0]);
                         } else {
-                            print!("{}", beautiful_error_printing(&tmp_print));
+                            explain::beautiful_error_printing(&tmp_print)
                         }
                     }
                     None => {
