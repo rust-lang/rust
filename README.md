@@ -88,7 +88,7 @@ when making those changes.
 
 The advantage of the tokens approach are that you can operate on non-parsable
 code. I don't care too much about that, it would be nice, but I think being able
-to sophisticated transformations is more important. In the future I hope to
+to perform sophisticated transformations is more important. In the future I hope to
 (optionally) be able to use type information for informing reformatting too. One
 specific case of unparsable code is macros. Using tokens is certainly easier
 here, but I believe it is perfectly solvable with the AST approach. At the limit,
