@@ -637,7 +637,7 @@ impl<'tcx, T:Repr<'tcx>> Repr<'tcx> for OwnedSlice<T> {
     }
 }
 
-// This is necessary to handle types like Option<~[T]>, for which
+// This is necessary to handle types like Option<Vec<T>>, for which
 // autoderef cannot convert the &[T] handler
 impl<'tcx, T:Repr<'tcx>> Repr<'tcx> for Vec<T> {
     fn repr(&self, tcx: &ctxt<'tcx>) -> String {
