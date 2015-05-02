@@ -27,6 +27,7 @@
 
 #![feature(associated_consts)]
 #![feature(collections)]
+#![feature(collections_drain)]
 #![feature(core)]
 #![feature(libc)]
 #![feature(rustc_private)]
