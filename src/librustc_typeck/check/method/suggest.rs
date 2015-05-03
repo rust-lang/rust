@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Give useful errors and suggestions to users when a method can't be
+//! Give useful errors and suggestions to users when an item can't be
 //! found or is otherwise invalid.
 
 use CrateCtxt;
@@ -27,12 +27,13 @@ use syntax::print::pprust;
 use std::cell;
 use std::cmp::Ordering;
 
-use super::{MethodError, CandidateSource, impl_method, trait_method};
+use super::{MethodError, CandidateSource, impl_item, trait_item};
+use super::probe::Mode;
 
 pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                               span: Span,
                               rcvr_ty: Ty<'tcx>,
-                              method_name: ast::Name,
+                              item_name: ast::Name,
                               rcvr_expr: Option<&ast::Expr>,
                               error: MethodError)
 {
@@ -42,28 +43,30 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     }
 
     match error {
-        MethodError::NoMatch(static_sources, out_of_scope_traits) => {
+        MethodError::NoMatch(static_sources, out_of_scope_traits, mode) => {
             let cx = fcx.tcx();
-            let method_ustring = method_name.user_string(cx);
+            let item_ustring = item_name.user_string(cx);
 
             fcx.type_error_message(
                 span,
                 |actual| {
-                    format!("type `{}` does not implement any \
-                             method in scope named `{}`",
-                            actual,
-                            method_ustring)
+                    format!("no {} named `{}` found for type `{}` \
+                             in the current scope",
+                            if mode == Mode::MethodCall { "method" }
+                            else { "associated item" },
+                            item_ustring,
+                            actual)
                 },
                 rcvr_ty,
                 None);
 
-            // If the method has the name of a field, give a help note
+            // If the item has the name of a field, give a help note
             if let (&ty::ty_struct(did, _), Some(_)) = (&rcvr_ty.sty, rcvr_expr) {
                 let fields = ty::lookup_struct_fields(cx, did);
-                if fields.iter().any(|f| f.name == method_name) {
+                if fields.iter().any(|f| f.name == item_name) {
                     cx.sess.span_note(span,
                         &format!("use `(s.{0})(...)` if you meant to call the \
-                                 function stored in the `{0}` field", method_ustring));
+                                 function stored in the `{0}` field", item_ustring));
                 }
             }
 
@@ -72,25 +75,25 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                     span,
                     "found defined static methods, maybe a `self` is missing?");
 
-                report_candidates(fcx, span, method_name, static_sources);
+                report_candidates(fcx, span, item_name, static_sources);
             }
 
-            suggest_traits_to_import(fcx, span, rcvr_ty, method_name,
+            suggest_traits_to_import(fcx, span, rcvr_ty, item_name,
                                      rcvr_expr, out_of_scope_traits)
         }
 
         MethodError::Ambiguity(sources) => {
             span_err!(fcx.sess(), span, E0034,
-                      "multiple applicable methods in scope");
+                      "multiple applicable items in scope");
 
-            report_candidates(fcx, span, method_name, sources);
+            report_candidates(fcx, span, item_name, sources);
         }
 
         MethodError::ClosureAmbiguity(trait_def_id) => {
             let msg = format!("the `{}` method from the `{}` trait cannot be explicitly \
                                invoked on this closure as we have not yet inferred what \
                                kind of closure it is",
-                               method_name.user_string(fcx.tcx()),
+                               item_name.user_string(fcx.tcx()),
                                ty::item_path_str(fcx.tcx(), trait_def_id));
             let msg = if let Some(callee) = rcvr_expr {
                 format!("{}; use overloaded call notation instead (e.g., `{}()`)",
@@ -104,7 +107,7 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
     fn report_candidates(fcx: &FnCtxt,
                          span: Span,
-                         method_name: ast::Name,
+                         item_name: ast::Name,
                          mut sources: Vec<CandidateSource>) {
         sources.sort();
         sources.dedup();
@@ -112,11 +115,11 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         for (idx, source) in sources.iter().enumerate() {
             match *source {
                 CandidateSource::ImplSource(impl_did) => {
-                    // Provide the best span we can. Use the method, if local to crate, else
-                    // the impl, if local to crate (method may be defaulted), else the call site.
-                    let method = impl_method(fcx.tcx(), impl_did, method_name).unwrap();
+                    // Provide the best span we can. Use the item, if local to crate, else
+                    // the impl, if local to crate (item may be defaulted), else the call site.
+                    let item = impl_item(fcx.tcx(), impl_did, item_name).unwrap();
                     let impl_span = fcx.tcx().map.def_id_span(impl_did, span);
-                    let method_span = fcx.tcx().map.def_id_span(method.def_id, impl_span);
+                    let item_span = fcx.tcx().map.def_id_span(item.def_id(), impl_span);
 
                     let impl_ty = check::impl_self_ty(fcx, span, impl_did).ty;
 
@@ -127,16 +130,16 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                                                      trait_ref.def_id)),
                     };
 
-                    span_note!(fcx.sess(), method_span,
+                    span_note!(fcx.sess(), item_span,
                                "candidate #{} is defined in an impl{} for the type `{}`",
                                idx + 1,
                                insertion,
                                impl_ty.user_string(fcx.tcx()));
                 }
                 CandidateSource::TraitSource(trait_did) => {
-                    let (_, method) = trait_method(fcx.tcx(), trait_did, method_name).unwrap();
-                    let method_span = fcx.tcx().map.def_id_span(method.def_id, span);
-                    span_note!(fcx.sess(), method_span,
+                    let (_, item) = trait_item(fcx.tcx(), trait_did, item_name).unwrap();
+                    let item_span = fcx.tcx().map.def_id_span(item.def_id(), span);
+                    span_note!(fcx.sess(), item_span,
                                "candidate #{} is defined in the trait `{}`",
                                idx + 1,
                                ty::item_path_str(fcx.tcx(), trait_did));
@@ -152,19 +155,19 @@ pub type AllTraitsVec = Vec<TraitInfo>;
 fn suggest_traits_to_import<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                       span: Span,
                                       rcvr_ty: Ty<'tcx>,
-                                      method_name: ast::Name,
+                                      item_name: ast::Name,
                                       rcvr_expr: Option<&ast::Expr>,
                                       valid_out_of_scope_traits: Vec<ast::DefId>)
 {
     let tcx = fcx.tcx();
-    let method_ustring = method_name.user_string(tcx);
+    let item_ustring = item_name.user_string(tcx);
 
     if !valid_out_of_scope_traits.is_empty() {
         let mut candidates = valid_out_of_scope_traits;
         candidates.sort();
         candidates.dedup();
         let msg = format!(
-            "methods from traits can only be called if the trait is in scope; \
+            "items from traits can only be used if the trait is in scope; \
              the following {traits_are} implemented but not in scope, \
              perhaps add a `use` for {one_of_them}:",
             traits_are = if candidates.len() == 1 {"trait is"} else {"traits are"},
@@ -185,7 +188,7 @@ fn suggest_traits_to_import<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     let type_is_local = type_derefs_to_local(fcx, span, rcvr_ty, rcvr_expr);
 
     // there's no implemented traits, so lets suggest some traits to
-    // implement, by finding ones that have the method name, and are
+    // implement, by finding ones that have the item name, and are
     // legal to implement.
     let mut candidates = all_traits(fcx.ccx)
         .filter(|info| {
@@ -196,7 +199,7 @@ fn suggest_traits_to_import<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             // implementing a trait would be legal but is rejected
             // here).
             (type_is_local || ast_util::is_local(info.def_id))
-                && trait_method(tcx, info.def_id, method_name).is_some()
+                && trait_item(tcx, info.def_id, item_name).is_some()
         })
         .collect::<Vec<_>>();
 
@@ -209,12 +212,12 @@ fn suggest_traits_to_import<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         // of a type parameter: suggest adding a trait bound rather
         // than implementing.
         let msg = format!(
-            "methods from traits can only be called if the trait is implemented and in scope; \
-             the following {traits_define} a method `{name}`, \
+            "items from traits can only be used if the trait is implemented and in scope; \
+             the following {traits_define} an item `{name}`, \
              perhaps you need to implement {one_of_them}:",
             traits_define = if candidates.len() == 1 {"trait defines"} else {"traits define"},
             one_of_them = if candidates.len() == 1 {"it"} else {"one of them"},
-            name = method_ustring);
+            name = item_ustring);
 
         fcx.sess().fileline_help(span, &msg[..]);
 
