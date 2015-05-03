@@ -13,6 +13,7 @@
 
 use prelude::v1::*;
 
+use fmt;
 use io::{self, Error, ErrorKind};
 use net::{ToSocketAddrs, SocketAddr, IpAddr};
 use sys_common::net2 as net_imp;
@@ -134,6 +135,12 @@ impl AsInner<net_imp::UdpSocket> for UdpSocket {
 
 impl FromInner<net_imp::UdpSocket> for UdpSocket {
     fn from_inner(inner: net_imp::UdpSocket) -> UdpSocket { UdpSocket(inner) }
+}
+
+impl fmt::Debug for UdpSocket {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.0.fmt(f)
+    }
 }
 
 #[cfg(test)]
