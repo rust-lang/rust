@@ -212,8 +212,9 @@ fn test_resize_policy() {
 /// overridden with one of the constructors.
 ///
 /// It is required that the keys implement the `Eq` and `Hash` traits, although
-/// this can frequently be achieved by using `#[derive(Eq, Hash)]`. If you
-/// implement these yourself, it is important that the following property holds:
+/// this can frequently be achieved by using `#[derive(PartialEq, Eq, Hash)]`.
+/// If you implement these yourself, it is important that the following
+/// property holds:
 ///
 /// ```text
 /// k1 == k2 -> hash(k1) == hash(k2)
