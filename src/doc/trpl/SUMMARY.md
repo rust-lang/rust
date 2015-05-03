@@ -64,5 +64,6 @@
     * [Benchmark Tests](benchmark-tests.md)
     * [Box Syntax and Patterns](box-syntax-and-patterns.md)
     * [Slice Patterns](slice-patterns.md)
+    * [Associated Constants](associated-constants.md)
 * [Glossary](glossary.md)
 * [Academic Research](academic-research.md)
