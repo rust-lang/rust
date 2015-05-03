@@ -154,9 +154,10 @@ fn main() {
 }
 ```
 
-This ‘static method’ builds a new `Circle` for us. Note that static methods
-are called with the `Struct::method()` syntax, rather than the `ref.method()`
-syntax.
+This ‘associated function’ builds a new `Circle` for us. Note that associated
+functions are called with the `Struct::function()` syntax, rather than the
+`ref.method()` syntax. Some other langauges call associated functions ‘static
+methods’.
 
 # Builder Pattern
 
