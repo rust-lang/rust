@@ -14,7 +14,7 @@ fn main() {
   let f = 42;
 
   let _g = if f < 5 {
-      f.honk() //~ ERROR does not implement any method in scope named `honk`
+      f.honk() //~ ERROR no method named `honk` found
   }
   else {
       ()

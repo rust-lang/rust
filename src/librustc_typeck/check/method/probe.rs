@@ -136,7 +136,7 @@ pub fn probe<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     let steps = if mode == Mode::MethodCall {
         match create_steps(fcx, span, self_ty) {
             Some(steps) => steps,
-            None => return Err(MethodError::NoMatch(Vec::new(), Vec::new())),
+            None => return Err(MethodError::NoMatch(Vec::new(), Vec::new(), mode)),
         }
     } else {
         vec![CandidateStep {
@@ -866,7 +866,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                     }
                 }
             }).collect(),
-            Some(Err(MethodError::NoMatch(_, others))) => {
+            Some(Err(MethodError::NoMatch(_, others, _))) => {
                 assert!(others.is_empty());
                 vec![]
             }
@@ -877,7 +877,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             None => vec![],
         };
 
-        Err(MethodError::NoMatch(static_candidates, out_of_scope_traits))
+        Err(MethodError::NoMatch(static_candidates, out_of_scope_traits, self.mode))
     }
 
     fn pick_core(&mut self) -> Option<PickResult<'tcx>> {
