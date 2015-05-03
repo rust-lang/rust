@@ -60,6 +60,11 @@ Put this inside:
 name = "hello_world"
 version = "0.0.1"
 authors = [ "Your name <you@example.com>" ]
+
+[[bin]]
+name = "hello_world"
+test = false
+doc = false
 ```
 
 This file is in the [TOML][toml] format. Let’s let it explain itself to you:
