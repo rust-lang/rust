@@ -35,8 +35,8 @@ use super::state::HashState;
 ///
 /// As with the `HashMap` type, a `HashSet` requires that the elements
 /// implement the `Eq` and `Hash` traits. This can frequently be achieved by
-/// using `#[derive(Eq, Hash)]`. If you implement these yourself, it is
-/// important that the following property holds:
+/// using `#[derive(PartialEq, Eq, Hash)]`. If you implement these yourself,
+/// it is important that the following property holds:
 ///
 /// ```text
 /// k1 == k2 -> hash(k1) == hash(k2)
