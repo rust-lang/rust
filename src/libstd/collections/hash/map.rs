@@ -1600,6 +1600,7 @@ impl RandomState {
            reason = "hashing an hash maps may be altered")]
 impl HashState for RandomState {
     type Hasher = SipHasher;
+    #[inline]
     fn hasher(&self) -> SipHasher {
         SipHasher::new_with_keys(self.k0, self.k1)
     }
