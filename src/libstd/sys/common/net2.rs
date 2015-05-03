@@ -281,7 +281,8 @@ impl fmt::Debug for TcpStream {
             res = res.field("peer", &peer);
         }
 
-        res = res.field("inner", &self.inner.as_inner());
+        let name = if cfg!(windows) {"socket"} else {"fd"};
+        res = res.field(name, &self.inner.as_inner());
         res.finish()
     }
 }
@@ -353,7 +354,8 @@ impl fmt::Debug for TcpListener {
             res = res.field("addr", &addr);
         }
 
-        res = res.field("inner", &self.inner.as_inner());
+        let name = if cfg!(windows) {"socket"} else {"fd"};
+        res = res.field(name, &self.inner.as_inner());
         res.finish()
     }
 }
@@ -485,7 +487,8 @@ impl fmt::Debug for UdpSocket {
             res = res.field("addr", &addr);
         }
 
-        res = res.field("inner", &self.inner.as_inner());
+        let name = if cfg!(windows) {"socket"} else {"fd"};
+        res = res.field(name, &self.inner.as_inner());
         res.finish()
     }
 }
