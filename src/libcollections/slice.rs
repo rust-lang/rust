@@ -1004,11 +1004,7 @@ pub trait SliceConcatExt<T: ?Sized, U> {
     /// # Examples
     ///
     /// ```
-    /// let v = vec!["hello", "world"];
-    ///
-    /// let s: String = v.concat();
-    ///
-    /// println!("{}", s); // prints "helloworld"
+    /// assert_eq!(["hello", "world"].concat(), "helloworld");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn concat(&self) -> U;
@@ -1018,11 +1014,7 @@ pub trait SliceConcatExt<T: ?Sized, U> {
     /// # Examples
     ///
     /// ```
-    /// let v = vec!["hello", "world"];
-    ///
-    /// let s: String = v.connect(" ");
-    ///
-    /// println!("{}", s); // prints "hello world"
+    /// assert_eq!(["hello", "world"].connect(" "), "hello world");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn connect(&self, sep: &T) -> U;
