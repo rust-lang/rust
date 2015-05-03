@@ -14,6 +14,7 @@
 use prelude::v1::*;
 use io::prelude::*;
 
+use fmt;
 use io;
 use net::{ToSocketAddrs, SocketAddr, Shutdown};
 use sys_common::net2 as net_imp;
@@ -167,6 +168,12 @@ impl FromInner<net_imp::TcpStream> for TcpStream {
     fn from_inner(inner: net_imp::TcpStream) -> TcpStream { TcpStream(inner) }
 }
 
+impl fmt::Debug for TcpStream {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
 impl TcpListener {
     /// Creates a new `TcpListener` which will be bound to the specified
     /// address.
@@ -236,6 +243,12 @@ impl AsInner<net_imp::TcpListener> for TcpListener {
 impl FromInner<net_imp::TcpListener> for TcpListener {
     fn from_inner(inner: net_imp::TcpListener) -> TcpListener {
         TcpListener(inner)
+    }
+}
+
+impl fmt::Debug for TcpListener {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.0.fmt(f)
     }
 }
 
