@@ -112,7 +112,7 @@ use sys_common::poison::{self, TryLockError, TryLockResult, LockResult};
 /// *guard += 1;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct Mutex<T> {
+pub struct Mutex<T: ?Sized> {
     // Note that this static mutex is in a *box*, not inlined into the struct
     // itself. Once a native mutex has been used once, its address can never
     // change (it can't be moved). This mutex type can be safely moved at any
@@ -124,9 +124,9 @@ pub struct Mutex<T> {
 
 // these are the only places where `T: Send` matters; all other
 // functionality works fine on a single thread.
-unsafe impl<T: Send> Send for Mutex<T> { }
+unsafe impl<T: ?Sized + Send> Send for Mutex<T> { }
 
-unsafe impl<T: Send> Sync for Mutex<T> { }
+unsafe impl<T: ?Sized + Send> Sync for Mutex<T> { }
 
 /// The static mutex type is provided to allow for static allocation of mutexes.
 ///
@@ -164,7 +164,7 @@ pub struct StaticMutex {
 /// `Deref` and `DerefMut` implementations
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct MutexGuard<'a, T: 'a> {
+pub struct MutexGuard<'a, T: ?Sized + 'a> {
     // funny underscores due to how Deref/DerefMut currently work (they
     // disregard field privacy).
     __lock: &'a StaticMutex,
@@ -172,7 +172,7 @@ pub struct MutexGuard<'a, T: 'a> {
     __poison: poison::Guard,
 }
 
-impl<'a, T> !marker::Send for MutexGuard<'a, T> {}
+impl<'a, T: ?Sized> !marker::Send for MutexGuard<'a, T> {}
 
 /// Static initialization of a mutex. This constant can be used to initialize
 /// other mutex constants.
@@ -192,7 +192,9 @@ impl<T> Mutex<T> {
             data: UnsafeCell::new(t),
         }
     }
+}
 
+impl<T: ?Sized> Mutex<T> {
     /// Acquires a mutex, blocking the current task until it is able to do so.
     ///
     /// This function will block the local task until it is available to acquire
@@ -245,7 +247,7 @@ impl<T> Mutex<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> Drop for Mutex<T> {
+impl<T: ?Sized> Drop for Mutex<T> {
     fn drop(&mut self) {
         // This is actually safe b/c we know that there is no further usage of
         // this mutex (it's up to the user to arrange for a mutex to get
@@ -255,12 +257,12 @@ impl<T> Drop for Mutex<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: fmt::Debug + 'static> fmt::Debug for Mutex<T> {
+impl<T: ?Sized + fmt::Debug + 'static> fmt::Debug for Mutex<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.try_lock() {
-            Ok(guard) => write!(f, "Mutex {{ data: {:?} }}", *guard),
+            Ok(guard) => write!(f, "Mutex {{ data: {:?} }}", &*guard),
             Err(TryLockError::Poisoned(err)) => {
-                write!(f, "Mutex {{ data: Poisoned({:?}) }}", **err.get_ref())
+                write!(f, "Mutex {{ data: Poisoned({:?}) }}", &**err.get_ref())
             },
             Err(TryLockError::WouldBlock) => write!(f, "Mutex {{ <locked> }}")
         }
@@ -310,7 +312,7 @@ impl StaticMutex {
     }
 }
 
-impl<'mutex, T> MutexGuard<'mutex, T> {
+impl<'mutex, T: ?Sized> MutexGuard<'mutex, T> {
 
     fn new(lock: &'mutex StaticMutex, data: &'mutex UnsafeCell<T>)
            -> LockResult<MutexGuard<'mutex, T>> {
@@ -325,7 +327,7 @@ impl<'mutex, T> MutexGuard<'mutex, T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'mutex, T> Deref for MutexGuard<'mutex, T> {
+impl<'mutex, T: ?Sized> Deref for MutexGuard<'mutex, T> {
     type Target = T;
 
     fn deref<'a>(&'a self) -> &'a T {
@@ -333,14 +335,14 @@ impl<'mutex, T> Deref for MutexGuard<'mutex, T> {
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'mutex, T> DerefMut for MutexGuard<'mutex, T> {
+impl<'mutex, T: ?Sized> DerefMut for MutexGuard<'mutex, T> {
     fn deref_mut<'a>(&'a mut self) -> &'a mut T {
         unsafe { &mut *self.__data.get() }
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T> Drop for MutexGuard<'a, T> {
+impl<'a, T: ?Sized> Drop for MutexGuard<'a, T> {
     #[inline]
     fn drop(&mut self) {
         unsafe {
@@ -350,11 +352,11 @@ impl<'a, T> Drop for MutexGuard<'a, T> {
     }
 }
 
-pub fn guard_lock<'a, T>(guard: &MutexGuard<'a, T>) -> &'a sys::Mutex {
+pub fn guard_lock<'a, T: ?Sized>(guard: &MutexGuard<'a, T>) -> &'a sys::Mutex {
     &guard.__lock.lock
 }
 
-pub fn guard_poison<'a, T>(guard: &MutexGuard<'a, T>) -> &'a poison::Flag {
+pub fn guard_poison<'a, T: ?Sized>(guard: &MutexGuard<'a, T>) -> &'a poison::Flag {
     &guard.__lock.poison
 }
 
@@ -527,5 +529,17 @@ mod tests {
         }).join();
         let lock = arc.lock().unwrap();
         assert_eq!(*lock, 2);
+    }
+
+    #[test]
+    fn test_mutex_unsized() {
+        let mutex: &Mutex<[i32]> = &Mutex::new([1, 2, 3]);
+        {
+            let b = &mut *mutex.lock().unwrap();
+            b[0] = 4;
+            b[2] = 5;
+        }
+        let comp: &[i32] = &[4, 2, 5];
+        assert_eq!(&*mutex.lock().unwrap(), comp);
     }
 }
