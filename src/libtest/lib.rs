@@ -139,7 +139,7 @@ impl TestDesc {
 }
 
 /// Represents a benchmark function.
-pub trait TDynBenchFn {
+pub trait TDynBenchFn: Send {
     fn run(&self, harness: &mut Bencher);
 }
 
@@ -285,7 +285,7 @@ pub struct TestOpts {
     pub filter: Option<String>,
     pub run_ignored: bool,
     pub run_tests: bool,
-    pub run_benchmarks: bool,
+    pub bench_benchmarks: bool,
     pub logfile: Option<PathBuf>,
     pub nocapture: bool,
     pub color: ColorConfig,
@@ -298,7 +298,7 @@ impl TestOpts {
             filter: None,
             run_ignored: false,
             run_tests: false,
-            run_benchmarks: false,
+            bench_benchmarks: false,
             logfile: None,
             nocapture: false,
             color: AutoColor,
@@ -377,8 +377,8 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
     let logfile = matches.opt_str("logfile");
     let logfile = logfile.map(|s| PathBuf::from(&s));
 
-    let run_benchmarks = matches.opt_present("bench");
-    let run_tests = ! run_benchmarks ||
+    let bench_benchmarks = matches.opt_present("bench");
+    let run_tests = ! bench_benchmarks ||
         matches.opt_present("test");
 
     let mut nocapture = matches.opt_present("nocapture");
@@ -400,7 +400,7 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
         filter: filter,
         run_ignored: run_ignored,
         run_tests: run_tests,
-        run_benchmarks: run_benchmarks,
+        bench_benchmarks: bench_benchmarks,
         logfile: logfile,
         nocapture: nocapture,
         color: color,
@@ -778,7 +778,11 @@ fn run_tests<F>(opts: &TestOpts,
                 mut callback: F) -> io::Result<()> where
     F: FnMut(TestEvent) -> io::Result<()>,
 {
-    let filtered_tests = filter_tests(opts, tests);
+    let mut filtered_tests = filter_tests(opts, tests);
+    if !opts.bench_benchmarks {
+        filtered_tests = convert_benchmarks_to_tests(filtered_tests);
+    }
+
     let filtered_descs = filtered_tests.iter()
                                        .map(|t| t.desc.clone())
                                        .collect();
@@ -824,13 +828,15 @@ fn run_tests<F>(opts: &TestOpts,
         pending -= 1;
     }
 
-    // All benchmarks run at the end, in serial.
-    // (this includes metric fns)
-    for b in filtered_benchs_and_metrics {
-        try!(callback(TeWait(b.desc.clone(), b.testfn.padding())));
-        run_test(opts, !opts.run_benchmarks, b, tx.clone());
-        let (test, result, stdout) = rx.recv().unwrap();
-        try!(callback(TeResult(test, result, stdout)));
+    if opts.bench_benchmarks {
+        // All benchmarks run at the end, in serial.
+        // (this includes metric fns)
+        for b in filtered_benchs_and_metrics {
+            try!(callback(TeWait(b.desc.clone(), b.testfn.padding())));
+            run_test(opts, false, b, tx.clone());
+            let (test, result, stdout) = rx.recv().unwrap();
+            try!(callback(TeResult(test, result, stdout)));
+        }
     }
     Ok(())
 }
@@ -891,6 +897,22 @@ pub fn filter_tests(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> Vec<TestDescA
     filtered.sort_by(|t1, t2| t1.desc.name.as_slice().cmp(t2.desc.name.as_slice()));
 
     filtered
+}
+
+pub fn convert_benchmarks_to_tests(tests: Vec<TestDescAndFn>) -> Vec<TestDescAndFn> {
+    // convert benchmarks to tests, if we're not benchmarking them
+    tests.into_iter().map(|x| {
+        let testfn = match x.testfn {
+            DynBenchFn(bench) => {
+                DynTestFn(Box::new(move || bench::run_once(|b| bench.run(b))))
+            }
+            StaticBenchFn(benchfn) => {
+                DynTestFn(Box::new(move || bench::run_once(|b| benchfn(b))))
+            }
+            f => f
+        };
+        TestDescAndFn { desc: x.desc, testfn: testfn }
+    }).collect()
 }
 
 pub fn run_test(opts: &TestOpts,
@@ -1158,6 +1180,15 @@ pub mod bench {
             ns_iter_summ: ns_iter_summ,
             mb_s: mb_s as usize
         }
+    }
+
+    pub fn run_once<F>(f: F) where F: FnOnce(&mut Bencher) {
+        let mut bs = Bencher {
+            iterations: 0,
+            dur: Duration::nanoseconds(0),
+            bytes: 0
+        };
+        bs.bench_n(1, f);
     }
 }
 
