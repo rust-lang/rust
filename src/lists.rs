@@ -58,18 +58,24 @@ pub fn write_list<'b>(items: &[(String, String)], formatting: &ListFormatting<'b
     };
     let sep_len = formatting.separator.len();
     let total_sep_len = (sep_len + 1) * sep_count;
-
     let total_width = calculate_width(items);
+    let fits_single = total_width + total_sep_len <= formatting.h_width;
 
     // Check if we need to fallback from horizontal listing, if possible.
     if tactic == ListTactic::HorizontalVertical {
         debug!("write_list: total_width: {}, total_sep_len: {}, h_width: {}",
                total_width, total_sep_len, formatting.h_width);
-        if total_width + total_sep_len > formatting.h_width {
-            tactic = ListTactic::Vertical;
+        tactic = if fits_single {
+            ListTactic::Horizontal
         } else {
-            tactic = ListTactic::Horizontal;
-        }
+            ListTactic::Vertical
+        };
+    }
+
+    // Check if we can fit everything on a single line in mixed mode.
+    // The horizontal tactic does not break after v_width columns.
+    if tactic == ListTactic::Mixed && fits_single {
+        tactic = ListTactic::Horizontal;
     }
 
     // Now that we know how we will layout, we can decide for sure if there
