@@ -14,7 +14,7 @@ use syntax::visit;
 
 use utils;
 
-use {MAX_WIDTH, TAB_SPACES, SKIP_ANNOTATION};
+use {IDEAL_WIDTH, MAX_WIDTH, TAB_SPACES, SKIP_ANNOTATION};
 use changes::ChangeSet;
 
 pub struct FmtVisitor<'a> {
@@ -93,7 +93,7 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
                 b: &'v ast::Block,
                 s: Span,
                 _: ast::NodeId) {
-        self.format_missing(s.lo);
+        self.format_missing_with_indent(s.lo);
         self.last_pos = s.lo;
 
         let indent = self.block_indent;
@@ -145,20 +145,24 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
 
         match item.node {
             ast::Item_::ItemUse(ref vp) => {
+                self.format_missing_with_indent(item.span.lo);
                 match vp.node {
                     ast::ViewPath_::ViewPathList(ref path, ref path_list) => {
-                        self.format_missing(item.span.lo);
-                        let new_str = self.rewrite_use_list(path,
-                                                            path_list,
-                                                            item.vis,
-                                                            vp.span);
-                        self.changes.push_str_span(item.span, &new_str);
-                        self.last_pos = item.span.hi;
+                        let block_indent = self.block_indent;
+                        let budget = IDEAL_WIDTH - block_indent;
+                        if let Some(new_str) = self.rewrite_use_list(block_indent,
+                                                                     budget,
+                                                                     path,
+                                                                     path_list,
+                                                                     item.vis) {
+                            self.changes.push_str_span(item.span, &new_str);
+                            self.last_pos = item.span.hi;
+                        }
                     }
                     ast::ViewPath_::ViewPathGlob(_) => {
                         // FIXME convert to list?
                     }
-                    _ => {}
+                    ast::ViewPath_::ViewPathSimple(_,_) => {}
                 }
                 visit::walk_item(self, item);
             }

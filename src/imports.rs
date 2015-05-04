@@ -12,11 +12,8 @@ use visitor::FmtVisitor;
 use lists::{write_list, ListFormatting, SeparatorTactic, ListTactic};
 
 use syntax::ast;
-use syntax::codemap::Span;
 use syntax::parse::token;
 use syntax::print::pprust;
-
-use {IDEAL_WIDTH, MAX_WIDTH};
 
 // TODO change import lists with one item to a single import
 //      remove empty lists (if they're even possible)
@@ -25,13 +22,11 @@ use {IDEAL_WIDTH, MAX_WIDTH};
 impl<'a> FmtVisitor<'a> {
     // Basically just pretty prints a multi-item import.
     pub fn rewrite_use_list(&mut self,
+                            block_indent: usize,
+                            budget: usize, // excluding indentation
                             path: &ast::Path,
                             path_list: &[ast::PathListItem],
-                            visibility: ast::Visibility,
-                            vp_span: Span) -> String {
-        // FIXME check indentation
-        let l_loc = self.codemap.lookup_char_pos(vp_span.lo);
-
+                            visibility: ast::Visibility) -> Option<String> {
         let path_str = pprust::path_to_string(&path);
 
         let vis = match visibility {
@@ -39,31 +34,26 @@ impl<'a> FmtVisitor<'a> {
             _ => ""
         };
 
-        // 1 = {
-        let mut indent = l_loc.col.0 + path_str.len() + 1;
-        if path_str.len() > 0 {
-            // 2 = ::
-            indent += 2;
-        }
+        // 2 = ::
+        let path_separation_w = if path_str.len() > 0 { 2 } else { 0 };
+        // 5 = "use " + {
+        let indent = path_str.len() + 5 + path_separation_w + vis.len();
         // 2 = } + ;
-        let used_width = indent + 2 + vis.len();
-        let budget = if used_width >= IDEAL_WIDTH {
-            if used_width < MAX_WIDTH {
-                MAX_WIDTH - used_width
-            } else {
-                // Give up
-                return String::new();
-            }
+        let used_width = indent + 2;
+
+        let remaining_budget = if used_width >= budget {
+            return None;
         } else {
-            IDEAL_WIDTH - used_width
+            budget - used_width
         };
+
         let fmt = ListFormatting {
             tactic: ListTactic::Mixed,
             separator: ",",
             trailing_separator: SeparatorTactic::Never,
-            indent: indent,
-            h_width: budget,
-            v_width: budget,
+            indent: block_indent + indent,
+            h_width: remaining_budget,
+            v_width: remaining_budget,
         };
 
         // TODO handle any comments inbetween items.
@@ -89,10 +79,10 @@ impl<'a> FmtVisitor<'a> {
                 ast::PathListItem_::PathListMod{ .. } => None,
             }
         })).collect();
-        if path_str.len() == 0 {
+        Some(if path_str.len() == 0 {
             format!("{}use {{{}}};", vis, write_list(&items, &fmt))
         } else {
             format!("{}use {}::{{{}}};", vis, path_str, write_list(&items, &fmt))
-        }
+        })
     }
 }
