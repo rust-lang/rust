@@ -1,4 +1,4 @@
-// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,18 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::cmp::Ordering::{Less,Equal,Greater};
+// aux-build:issue-19163.rs
 
-#[derive(PartialEq, Eq, PartialOrd, Ord)]
-struct A<'a> {
-    x: &'a isize
-}
-pub fn main() {
-    let (a, b) = (A { x: &1 }, A { x: &2 });
+#[macro_use] extern crate issue_19163;
 
-    assert_eq!(a.cmp(&a), Equal);
-    assert_eq!(b.cmp(&b), Equal);
+use std::io::Write;
 
-    assert_eq!(a.cmp(&b), Less);
-    assert_eq!(b.cmp(&a), Greater);
+fn main() {
+    let mut v = vec![];
+    mywrite!(&v, "Hello world");
+ //~^ error: cannot borrow immutable borrowed content as mutable
 }
