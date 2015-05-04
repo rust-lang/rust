@@ -233,7 +233,8 @@ struct ConstantExpr<'a>(&'a ast::Expr);
 
 impl<'a> ConstantExpr<'a> {
     fn eq(self, other: ConstantExpr<'a>, tcx: &ty::ctxt) -> bool {
-        match const_eval::compare_lit_exprs(tcx, self.0, other.0, None) {
+        match const_eval::compare_lit_exprs(tcx, self.0, other.0, None,
+                                            |id| {ty::node_id_item_substs(tcx, id).substs}) {
             Some(result) => result == Ordering::Equal,
             None => panic!("compare_list_exprs: type mismatch"),
         }
