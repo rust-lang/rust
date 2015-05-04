@@ -1,4 +1,4 @@
-// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,18 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::cmp::Ordering::{Less,Equal,Greater};
+#![feature(simd)]
 
-#[derive(PartialEq, Eq, PartialOrd, Ord)]
-struct A<'a> {
-    x: &'a isize
-}
-pub fn main() {
-    let (a, b) = (A { x: &1 }, A { x: &2 });
+#[simd]
+struct T(f64, f64, f64);
 
-    assert_eq!(a.cmp(&a), Equal);
-    assert_eq!(b.cmp(&b), Equal);
+static X: T = T(0.0, 0.0, 0.0);
 
-    assert_eq!(a.cmp(&b), Less);
-    assert_eq!(b.cmp(&a), Greater);
+fn main() {
+    let _ = X;
 }

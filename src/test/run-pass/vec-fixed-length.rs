@@ -11,7 +11,16 @@
 
 use std::mem::size_of;
 
-pub fn main() {
+#[cfg(not(target_pointer_width = "64"))]
+fn test_big_vec() {}
+
+#[cfg(target_pointer_width = "64")]
+fn test_big_vec()
+{
+    assert_eq!(size_of::<[u8; (1 << 32)]>(), (1 << 32));
+}
+
+fn main() {
     let x: [isize; 4] = [1, 2, 3, 4];
     assert_eq!(x[0], 1);
     assert_eq!(x[1], 2);
@@ -19,10 +28,5 @@ pub fn main() {
     assert_eq!(x[3], 4);
 
     assert_eq!(size_of::<[u8; 4]>(), 4);
-
-    // FIXME #10183
-    // FIXME #18069
-    //if cfg!(target_pointer_width = "64") {
-    //    assert_eq!(size_of::<[u8; (1 << 32)]>(), (1 << 32));
-    //}
+    test_big_vec();
 }
