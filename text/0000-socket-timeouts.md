@@ -30,26 +30,29 @@ expose functionality like `set_nodelay`:
 
 ```rust
 impl TcpStream {
-    pub fn set_read_timeout(&self, dur: Duration) -> io::Result<()> { ... }
-    pub fn read_timeout(&self) -> Duration;
+    pub fn set_read_timeout(&self, dur: Option<Duration>) -> io::Result<()> { ... }
+    pub fn read_timeout(&self) -> Option<Duration>;
 
-    pub fn set_write_timeout(&self, dur: Duration) -> io::Result<()> { ... }
-    pub fn write_timeout(&self) -> Duration;
+    pub fn set_write_timeout(&self, dur: Option<Duration>) -> io::Result<()> { ... }
+    pub fn write_timeout(&self) -> Option<Duration>;
 }
 
 impl UdpSocket {
-    pub fn set_read_timeout(&self, dur: Duration) -> io::Result<()> { ... }
-    pub fn read_timeout(&self) -> Duration;
+    pub fn set_read_timeout(&self, dur: Option<Duration>) -> io::Result<()> { ... }
+    pub fn read_timeout(&self) -> Option<Duration>;
 
-    pub fn set_write_timeout(&self, dur: Duration) -> io::Result<()> { ... }
-    pub fn write_timeout(&self) -> Duration;
+    pub fn set_write_timeout(&self, dur: Option<Duration>) -> io::Result<()> { ... }
+    pub fn write_timeout(&self) -> Option<Duration>;
 }
 ```
 
 The setter methods take an amount of time in the form of a `Duration`,
 which is [undergoing stabilization][duration-reform]. They are
-implemented via straightforward calls to `setsockopt`. A `Duration` of
-zero represents *no timeout*.
+implemented via straightforward calls to `setsockopt`. The `Option` is
+used to signify no timeout (for both setting and
+getting). Consequently, `Some(Duration::new(0, 0))` is a possible
+argument; the setter methods will return an IO error of kind
+`InvalidInput` in this case. (See Alternatives for other approaches.)
 
 The corresponding socket options are `SO_RCVTIMEO` and `SO_SNDTIMEO`.
 
@@ -71,19 +74,24 @@ enough in practice to justify a departure from the traditional API.
 
 # Alternatives
 
-## `Option<Duration>`
+## Taking `Duration` directly
 
-It's a bit unfortunate -- and rather un-Rustic -- to special case a
-zero duration as "no timeout".
+Using an `Option<Duration>` introduces a certain amount of complexity
+-- it raises the issue of `Some(Duration::new(0, 0))`, and it's
+slightly more verbose to set a timeout.
 
-An alternative would be to use `Option<Duration>`, and, on
-`Some(Duration::zero())` yield an invalid input error. That would
-force more clarity about intent and help guard against accidental
-disabling of timeouts for arithmetic reasons.
+An alternative would be to take a `Duration` directly, and interpret a
+zero length duration as "no timeout" (which is somewhat traditional in
+C APIs). That would make the API somewhat more familiar, but less
+Rustic, and it becomes somewhat easier to pass in a zero value by
+accident (without thinking about this possibility).
 
-On the other hand, it may have the risk of *introducing* bugs for
-those who expect a different semantics -- though the use of option
-types will likely serve as a sufficient heads-up.
+Note that both styles of API require code that does arithmetic on
+durations to check for zero in advance.
+
+Aside from fitting Rust idioms better, the main proposal also gives a
+somewhat stronger indication of a bug when things go wrong (rather
+than simply failing to time out, for example).
 
 ## Wrapping for compositionality
 
