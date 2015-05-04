@@ -127,7 +127,8 @@ fn fmt_lines(changes: &mut ChangeSet) {
         let mut cur_line = 1;
         let mut newline_count = 0;
         for (c, b) in text.chars() {
-            if c == '\n' { // TOOD test for \r too
+            if c == '\r' { continue; }
+            if c == '\n' {
                 // Check for (and record) trailing whitespace.
                 if let Some(lw) = last_wspace {
                     trims.push((cur_line, lw, b));
