@@ -261,6 +261,7 @@ mod tests {
     use net::*;
     use net::test::{next_test_ip4, next_test_ip6};
     use sync::mpsc::channel;
+    use sys_common::AsInner;
     use thread;
 
     fn each_ip(f: &mut FnMut(SocketAddr)) {
@@ -830,5 +831,28 @@ mod tests {
             rx.recv().unwrap();
             rx.recv().unwrap();
         })
+    }
+
+    #[test]
+    fn debug() {
+        let name = if cfg!(windows) {"socket"} else {"fd"};
+        let socket_addr = next_test_ip4();
+
+        let listener = t!(TcpListener::bind(&socket_addr));
+        let listener_inner = listener.0.socket().as_inner();
+        let compare = format!("TcpListener {{ addr: {:?}, {}: {:?} }}",
+                              socket_addr, name, listener_inner);
+        assert_eq!(format!("{:?}", listener), compare);
+
+        let mut stream = t!(TcpStream::connect(&("localhost",
+                                                 socket_addr.port())));
+        let stream_inner = stream.0.socket().as_inner();
+        let compare = format!("TcpStream {{ addr: {:?}, \
+                              peer: {:?}, {}: {:?} }}",
+                              stream.local_addr().unwrap(),
+                              stream.peer_addr().unwrap(),
+                              name,
+                              stream_inner);
+        assert_eq!(format!("{:?}", stream), compare);
     }
 }
