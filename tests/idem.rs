@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(std_misc)]
 extern crate rustfmt;
 
 use std::collections::HashMap;
 use std::fs;
 use std::io::Read;
+use std::thread;
 use rustfmt::*;
 
 // For now, the only supported regression tests are idempotent tests - the input and
@@ -25,20 +25,19 @@ fn idempotent_tests() {
 
     // Get all files in the tests/idem directory
     let files = fs::read_dir("tests/idem").unwrap();
-    let files2 = fs::read_dir("tests").unwrap();
-    let files3 = fs::read_dir("src/bin").unwrap();
-    // For each file, run rustfmt and collect the output
+    let files = files.chain(fs::read_dir("tests").unwrap());
+    let files = files.chain(fs::read_dir("src/bin").unwrap());
+    // turn a DirEntry into a String that represents the relative path to the file
+    let files = files.map(|e| e.unwrap().path().to_str().unwrap().to_owned());
+    // hack because there's no `IntoIterator` impl for `[T; N]`
+    let files = files.chain(Some("src/lib.rs".to_owned()).into_iter());
 
+    // For each file, run rustfmt and collect the output
     let mut count = 0;
     let mut fails = 0;
-    for entry in files.chain(files2).chain(files3) {
-        let path = entry.unwrap().path();
-        let file_name = path.to_str().unwrap();
-        if !file_name.ends_with(".rs") {
-            continue;
-        }
+    for file_name in files.filter(|f| f.ends_with(".rs")) {
         println!("Testing '{}'...", file_name);
-        match idempotent_check(file_name.to_owned()) {
+        match idempotent_check(file_name) {
             Ok(()) => {},
             Err(m) => {
                 print_mismatches(m);
@@ -47,16 +46,6 @@ fn idempotent_tests() {
         }
         count += 1;
     }
-    // And also dogfood rustfmt!
-    println!("Testing 'src/lib.rs'...");
-    match idempotent_check("src/lib.rs".to_owned()) {
-        Ok(()) => {},
-        Err(m) => {
-            print_mismatches(m);
-            fails += 1;
-        },
-    }
-    count += 1;
 
     // Display results
     println!("Ran {} idempotent tests; {} failures.", count, fails);
@@ -75,17 +64,16 @@ fn print_mismatches(result: HashMap<String, String>) {
 static HANDLE_RESULT: &'static Fn(HashMap<String, String>) = &handle_result;
 
 pub fn idempotent_check(filename: String) -> Result<(), HashMap<String, String>> {
-    use std::thread;
-    use std::fs;
-    use std::io::Read;
     let args = vec!["rustfmt".to_owned(), filename];
+    // this thread is not used for concurrency, but rather to workaround the issue that the passed
+    // function handle needs to have static lifetime. Instead of using a global RefCell, we use
+    // panic to return a result in case of failure. This has the advantage of smoothing the road to
+    // multithreaded rustfmt
     thread::spawn(move || {
         run(args, WriteMode::Return(HANDLE_RESULT));
-    }).join().map_err(|mut any|
-        any.downcast_mut::<HashMap<String, String>>()
-           .unwrap() // i know it is a hashmap
-           .drain() // i only get a reference :(
-           .collect() // so i need to turn it into an iter and then back
+    }).join().map_err(|any|
+        // i know it is a hashmap
+        *any.downcast().unwrap()
     )
 }
 
