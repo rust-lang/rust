@@ -113,10 +113,13 @@ impl Ipv4Addr {
 
     /// Returns true if the address appears to be globally routable.
     ///
-    /// Non-globally-routable networks include the private networks (10.0.0.0/8,
-    /// 172.16.0.0/12 and 192.168.0.0/16), the loopback network (127.0.0.0/8),
-    /// the link-local network (169.254.0.0/16), the broadcast address (255.255.255.255/32) and
-    /// the test networks used for documentation (192.0.2.0/24, 198.51.100.0/24 and 203.0.113.0/24).
+    /// The following return false:
+    ///
+    /// - private address (10.0.0.0/8, 172.16.0.0/12 and 192.168.0.0/16)
+    /// - the loopback address (127.0.0.0/8)
+    /// - the link-local address (169.254.0.0/16)
+    /// - the broadcast address (255.255.255.255/32)
+    /// - test addresses used for documentation (192.0.2.0/24, 198.51.100.0/24 and 203.0.113.0/24)
     pub fn is_global(&self) -> bool {
         !self.is_private() && !self.is_loopback() && !self.is_link_local() &&
         !self.is_broadcast() && !self.is_documentation()
@@ -284,9 +287,11 @@ impl Ipv6Addr {
 
     /// Returns true if the address appears to be globally routable.
     ///
-    /// Non-globally-routable networks include the loopback address; the
-    /// link-local, site-local, and unique local unicast addresses; and the
-    /// interface-, link-, realm-, admin- and site-local multicast addresses.
+    /// The following return false:
+    ///
+    /// - the loopback address
+    /// - link-local, site-local, and unique local unicast addresses
+    /// - interface-, link-, realm-, admin- and site-local multicast addresses
     pub fn is_global(&self) -> bool {
         match self.multicast_scope() {
             Some(Ipv6MulticastScope::Global) => true,
@@ -315,9 +320,12 @@ impl Ipv6Addr {
 
     /// Returns true if the address is a globally routable unicast address.
     ///
-    /// Non-globally-routable unicast addresses include the loopback address,
-    /// the link-local addresses, the deprecated site-local addresses and the
-    /// unique local addresses.
+    /// The following return false:
+    ///
+    /// - the loopback address
+    /// - the link-local addresses
+    /// - the (deprecated) site-local addresses
+    /// - unique local addresses
     pub fn is_unicast_global(&self) -> bool {
         !self.is_multicast()
             && !self.is_loopback() && !self.is_unicast_link_local()
