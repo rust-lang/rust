@@ -1078,7 +1078,7 @@ fn add_local_native_libraries(cmd: &mut Command, sess: &Session) {
     sess.target_filesearch(PathKind::All).for_each_lib_search_path(|path, k| {
         match k {
             PathKind::Framework => { cmd.arg("-F").arg(path); }
-            _ => { cmd.arg("-L").arg(path); }
+            _ => { cmd.arg("-L").arg(&fix_windows_verbatim_for_gcc(path)); }
         }
         FileDoesntMatch
     });
