@@ -28,6 +28,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_lint_pass(box misc::MiscPass as LintPassObject);
     reg.register_lint_pass(box misc::StrToStringPass as LintPassObject);
     reg.register_lint_pass(box misc::TopLevelRefPass as LintPassObject);
+    reg.register_lint_pass(box misc::CmpNan as LintPassObject);
     reg.register_lint_pass(box eq_op::EqOp as LintPassObject);
     reg.register_lint_pass(box bit_mask::BitMask as LintPassObject);
     reg.register_lint_pass(box ptr_arg::PtrArg as LintPassObject);
@@ -39,6 +40,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
                                            misc::TOPLEVEL_REF_ARG, eq_op::EQ_OP,
                                            bit_mask::BAD_BIT_MASK, ptr_arg::PTR_ARG,
                                            needless_bool::NEEDLESS_BOOL,
-                                           approx_const::APPROX_CONSTANT
+                                           approx_const::APPROX_CONSTANT,
+                                           misc::CMP_NAN
                                            ]);
 }
