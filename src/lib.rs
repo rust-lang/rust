@@ -20,6 +20,7 @@ pub mod eq_op;
 pub mod bit_mask;
 pub mod ptr_arg;
 pub mod needless_bool;
+pub mod approx_const;
 
 #[plugin_registrar]
 pub fn plugin_registrar(reg: &mut Registry) {
@@ -31,11 +32,13 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_lint_pass(box bit_mask::BitMask as LintPassObject);
     reg.register_lint_pass(box ptr_arg::PtrArg as LintPassObject);
     reg.register_lint_pass(box needless_bool::NeedlessBool as LintPassObject);
+    reg.register_lint_pass(box approx_const::ApproxConstant as LintPassObject);
     
     reg.register_lint_group("clippy", vec![types::BOX_VEC, types::LINKEDLIST,
                                            misc::SINGLE_MATCH, misc::STR_TO_STRING,
                                            misc::TOPLEVEL_REF_ARG, eq_op::EQ_OP,
                                            bit_mask::BAD_BIT_MASK, ptr_arg::PTR_ARG,
-                                           needless_bool::NEEDLESS_BOOL
+                                           needless_bool::NEEDLESS_BOOL,
+                                           approx_const::APPROX_CONSTANT
                                            ]);
 }
