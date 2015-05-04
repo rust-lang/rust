@@ -208,14 +208,6 @@ impl File {
         OpenOptions::new().write(true).create(true).truncate(true).open(path)
     }
 
-    /// Returns `None`.
-    #[unstable(feature = "file_path",
-               reason = "this abstraction was imposed by this library and was removed")]
-    #[deprecated(since = "1.0.0", reason = "abstraction was removed")]
-    pub fn path(&self) -> Option<&Path> {
-        None
-    }
-
     /// Attempts to sync all OS-internal metadata to disk.
     ///
     /// This function will attempt to ensure that all in-core data reaches the
@@ -574,38 +566,6 @@ impl Metadata {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn permissions(&self) -> Permissions {
         Permissions(self.0.perm())
-    }
-
-    /// Returns the most recent access time for a file.
-    ///
-    /// The return value is in milliseconds since the epoch.
-    #[unstable(feature = "fs_time",
-               reason = "the return type of u64 is not quite appropriate for \
-                         this method and may change if the standard library \
-                         gains a type to represent a moment in time")]
-    #[deprecated(since = "1.1.0",
-                 reason = "use os::platform::fs::MetadataExt extension traits")]
-    pub fn accessed(&self) -> u64 {
-        self.adjust_time(self.0.accessed())
-    }
-
-    /// Returns the most recent modification time for a file.
-    ///
-    /// The return value is in milliseconds since the epoch.
-    #[unstable(feature = "fs_time",
-               reason = "the return type of u64 is not quite appropriate for \
-                         this method and may change if the standard library \
-                         gains a type to represent a moment in time")]
-    #[deprecated(since = "1.1.0",
-                 reason = "use os::platform::fs::MetadataExt extension traits")]
-    pub fn modified(&self) -> u64 {
-        self.adjust_time(self.0.modified())
-    }
-
-    fn adjust_time(&self, val: u64) -> u64 {
-        // FILETIME (what `val` represents) is in 100ns intervals and there are
-        // 10000 intervals in a millisecond.
-        if cfg!(windows) {val / 10000} else {val}
     }
 }
 

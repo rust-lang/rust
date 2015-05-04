@@ -539,16 +539,6 @@ pub fn opt(short_name: &str,
     }
 }
 
-impl Fail {
-    /// Convert a `Fail` enum into an error string.
-    #[unstable(feature = "rustc_private")]
-    #[deprecated(since = "1.0.0",
-                 reason = "use `fmt::Display` (`{}` format specifier)")]
-    pub fn to_err_msg(self) -> String {
-        self.to_string()
-    }
-}
-
 impl fmt::Display for Fail {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
