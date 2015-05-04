@@ -903,10 +903,10 @@ impl<'a> State<'a> {
                 try!(self.print_generics(params));
                 try!(self.end()); // end the inner ibox
 
+                try!(self.print_where_clause(&params.where_clause));
                 try!(space(&mut self.s));
                 try!(self.word_space("="));
                 try!(self.print_type(&**ty));
-                try!(self.print_where_clause(&params.where_clause));
                 try!(word(&mut self.s, ";"));
                 try!(self.end()); // end the outer ibox
             }
