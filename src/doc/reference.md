@@ -2044,12 +2044,12 @@ A complete list of the built-in language items will be added in the future.
 
 ### Inline attributes
 
-The inline attribute is used to suggest to the compiler to perform an inline
-expansion and place a copy of the function or static in the caller rather than
-generating code to call the function or access the static where it is defined.
+The inline attribute suggests that the compiler should place a copy of
+the function or static in the caller, rather than generating code to
+call the function or access the static where it is defined.
 
 The compiler automatically inlines functions based on internal heuristics.
-Incorrectly inlining functions can actually making the program slower, so it
+Incorrectly inlining functions can actually make the program slower, so it
 should be used with care.
 
 Immutable statics are always considered inlineable unless marked with
@@ -2057,8 +2057,8 @@ Immutable statics are always considered inlineable unless marked with
 have the same memory address. In other words, the compiler is free to collapse
 duplicate inlineable statics together.
 
-`#[inline]` and `#[inline(always)]` always causes the function to be serialized
-into crate metadata to allow cross-crate inlining.
+`#[inline]` and `#[inline(always)]` always cause the function to be serialized
+into the crate metadata to allow cross-crate inlining.
 
 There are three different types of inline attributes:
 
