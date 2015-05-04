@@ -9,7 +9,6 @@
 // except according to those terms.
 
 #![feature(std_misc)]
-
 extern crate rustfmt;
 
 use std::collections::HashMap;
@@ -79,7 +78,7 @@ pub fn idempotent_check(filename: String) -> Result<(), HashMap<String, String>>
     use std::thread;
     use std::fs;
     use std::io::Read;
-	let args = vec!["rustfmt".to_owned(), filename];
+    let args = vec!["rustfmt".to_owned(), filename];
     thread::spawn(move || {
         run(args, WriteMode::Return(HANDLE_RESULT));
     }).join().map_err(|mut any|
