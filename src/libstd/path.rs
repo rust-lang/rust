@@ -358,7 +358,7 @@ pub fn is_separator(c: char) -> bool {
     c.is_ascii() && is_sep_byte(c as u8)
 }
 
-/// The primary sperator for the current platform
+/// The primary separator for the current platform
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const MAIN_SEPARATOR: char = platform::MAIN_SEP;
 

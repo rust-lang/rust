@@ -595,7 +595,7 @@ pub enum Pat_ {
 
     /// An associated const named using the qualified path `<T>::CONST` or
     /// `<T as Trait>::CONST`. Associated consts from inherent impls can be
-    /// refered to as simply `T::CONST`, in which case they will end up as
+    /// referred to as simply `T::CONST`, in which case they will end up as
     /// PatEnum, and the resolver will have to sort that out.
     PatQPath(QSelf, Path),
 

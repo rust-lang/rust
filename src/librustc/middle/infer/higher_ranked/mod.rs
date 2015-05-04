@@ -461,7 +461,7 @@ impl<'a,'tcx> InferCtxtExt for InferCtxt<'a,'tcx> {
 
 /// Constructs and returns a substitution that, for a given type
 /// scheme parameterized by `generics`, will replace every generic
-/// parmeter in the type with a skolemized type/region (which one can
+/// parameter in the type with a skolemized type/region (which one can
 /// think of as a "fresh constant", except at the type/region level of
 /// reasoning).
 ///
