@@ -3765,6 +3765,21 @@ pub fn resolve_ty_and_def_ufcs<'a, 'b, 'tcx>(fcx: &FnCtxt<'b, 'tcx>,
 {
     // If fully resolved already, we don't have to do anything.
     if path_res.depth == 0 {
+        // Associated constants can't depend on generic types.
+        if let Some(ty) = opt_self_ty {
+            match path_res.full_def() {
+                def::DefAssociatedConst(..) => {
+                    if ty::type_has_params(ty) || ty::type_has_self(ty) {
+                        fcx.sess().span_err(span,
+                                            "Associated consts cannot depend \
+                                             on type parameters or Self.");
+                        fcx.write_error(node_id);
+                        return None;
+                    }
+                }
+                _ => {}
+            }
+        }
         Some((opt_self_ty, &path.segments, path_res.base_def))
     } else {
         let mut def = path_res.base_def;
@@ -3780,6 +3795,19 @@ pub fn resolve_ty_and_def_ufcs<'a, 'b, 'tcx>(fcx: &FnCtxt<'b, 'tcx>,
         let item_name = item_segment.identifier.name;
         match method::resolve_ufcs(fcx, span, item_name, ty, node_id) {
             Ok((def, lp)) => {
+                // Associated constants can't depend on generic types.
+                match def {
+                    def::DefAssociatedConst(..) => {
+                        if ty::type_has_params(ty) || ty::type_has_self(ty) {
+                            fcx.sess().span_err(span,
+                                                "Associated consts cannot depend \
+                                                 on type parameters or Self.");
+                            fcx.write_error(node_id);
+                            return None;
+                        }
+                    }
+                    _ => {}
+                }
                 // Write back the new resolution.
                 fcx.ccx.tcx.def_map.borrow_mut()
                        .insert(node_id, def::PathResolution {
