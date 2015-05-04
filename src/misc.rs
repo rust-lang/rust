@@ -1,6 +1,7 @@
 use syntax::ptr::P;
 use syntax::ast;
 use syntax::ast::*;
+use syntax::ast_util::is_comparison_binop;
 use syntax::visit::{FnKind};
 use rustc::lint::{Context, LintPass, LintArray, Lint, Level};
 use rustc::middle::ty::{self, expr_ty, ty_str, ty_ptr, ty_rptr};
@@ -107,4 +108,34 @@ impl LintPass for TopLevelRefPass {
             }
         }
     }
+}
+
+declare_lint!(pub CMP_NAN, Allow, "Deny comparisons to std::f32::NAN or std::f64::NAN");
+
+#[derive(Copy,Clone)]
+pub struct CmpNan;
+
+impl LintPass for CmpNan {
+	fn get_lints(&self) -> LintArray {
+        lint_array!(CMP_NAN)
+	}
+	
+	fn check_expr(&mut self, cx: &Context, expr: &Expr) {
+		if let ExprBinary(ref cmp, ref left, ref right) = expr.node {
+			if is_comparison_binop(cmp.node) {
+				if let &ExprPath(_, ref path) = &left.node {
+					check_nan(cx, path, expr.span);
+				}
+				if let &ExprPath(_, ref path) = &right.node {
+					check_nan(cx, path, expr.span);
+				}
+			}
+		}
+	}
+}
+
+fn check_nan(cx: &Context, path: &Path, span: Span) {
+	path.segments.last().map(|seg| if seg.identifier.as_str() == "NAN" {
+		cx.span_lint(CMP_NAN, span, "Doomed comparison with NAN, use std::{f32,f64}::is_nan instead");
+	});
 }
