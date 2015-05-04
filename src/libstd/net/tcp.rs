@@ -14,6 +14,7 @@
 use prelude::v1::*;
 use io::prelude::*;
 
+use fmt;
 use io;
 use net::{ToSocketAddrs, SocketAddr, Shutdown};
 use sys_common::net2 as net_imp;
@@ -167,6 +168,12 @@ impl FromInner<net_imp::TcpStream> for TcpStream {
     fn from_inner(inner: net_imp::TcpStream) -> TcpStream { TcpStream(inner) }
 }
 
+impl fmt::Debug for TcpStream {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
 impl TcpListener {
     /// Creates a new `TcpListener` which will be bound to the specified
     /// address.
@@ -239,6 +246,12 @@ impl FromInner<net_imp::TcpListener> for TcpListener {
     }
 }
 
+impl fmt::Debug for TcpListener {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use prelude::v1::*;
@@ -248,6 +261,7 @@ mod tests {
     use net::*;
     use net::test::{next_test_ip4, next_test_ip6};
     use sync::mpsc::channel;
+    use sys_common::AsInner;
     use thread;
 
     fn each_ip(f: &mut FnMut(SocketAddr)) {
@@ -817,5 +831,28 @@ mod tests {
             rx.recv().unwrap();
             rx.recv().unwrap();
         })
+    }
+
+    #[test]
+    fn debug() {
+        let name = if cfg!(windows) {"socket"} else {"fd"};
+        let socket_addr = next_test_ip4();
+
+        let listener = t!(TcpListener::bind(&socket_addr));
+        let listener_inner = listener.0.socket().as_inner();
+        let compare = format!("TcpListener {{ addr: {:?}, {}: {:?} }}",
+                              socket_addr, name, listener_inner);
+        assert_eq!(format!("{:?}", listener), compare);
+
+        let mut stream = t!(TcpStream::connect(&("localhost",
+                                                 socket_addr.port())));
+        let stream_inner = stream.0.socket().as_inner();
+        let compare = format!("TcpStream {{ addr: {:?}, \
+                              peer: {:?}, {}: {:?} }}",
+                              stream.local_addr().unwrap(),
+                              stream.peer_addr().unwrap(),
+                              name,
+                              stream_inner);
+        assert_eq!(format!("{:?}", stream), compare);
     }
 }
