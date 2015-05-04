@@ -13,18 +13,18 @@ use syntax::codemap::Span;
 use types::match_ty_unwrap;
 
 declare_lint! {
-    pub VEC_PTR_ARG,
+    pub PTR_ARG,
     Allow,
-    "Warn on declaration of a &Vec-typed method argument"
+    "Warn on declaration of a &Vec- or &String-typed method argument"
 }
 
 
 #[derive(Copy,Clone)]
-pub struct VecPtrArg;
+pub struct PtrArg;
 
-impl LintPass for VecPtrArg {
+impl LintPass for PtrArg {
     fn get_lints(&self) -> LintArray {
-        lint_array!(VEC_PTR_ARG)
+        lint_array!(PTR_ARG)
     }
     
     fn check_item(&mut self, cx: &Context, item: &Item) {
@@ -59,7 +59,11 @@ fn check_fn(cx: &Context, decl: &FnDecl) {
 
 fn check_ptr_subtype(cx: &Context, span: Span, ty: &Ty) {
 	if match_ty_unwrap(ty, &["Vec"]).is_some() { 
-		cx.span_lint(VEC_PTR_ARG, span, 
+		cx.span_lint(PTR_ARG, span, 
 			"Writing '&Vec<_>' instead of '&[_]' involves one more reference and cannot be used with non-vec-based slices. Consider changing the type to &[...]");
+	} else { if match_ty_unwrap(ty, &["String"]).is_some() {
+			cx.span_lint(PTR_ARG, span,
+				"Writing '&String' instead of '&str' involves a new Object where a slices will do. Consider changing the type to &str");
+		}
 	}
 }

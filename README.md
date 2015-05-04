@@ -14,6 +14,9 @@ Lints included in this crate:
  - `eq_op`: Warns on equal operands on both sides of a comparison or bitwise combination
  - `bad_bit_mask`: Denies expressions of the form `_ & mask == select` that will only ever return `true` or `false` (because in the example `select` containing bits that `mask` doesn't have)
  - `needless_bool` : Warns on if-statements with plain booleans in the then- and else-clause, e.g. `if p { true } else { false }`
+ - `ptr_arg`: Warns on fn arguments of the type `&Vec<...>` or `&String`, suggesting to use `&[...]` or `&str` instead, respectively
+
+In your code, you may add `#![plugin(clippy)]` to use it (you may also need to include a `#![feature(plugin)]` line)
 
 You can allow/warn/deny the whole set using the `clippy` lint group (`#[allow(clippy)]`, etc)
 
