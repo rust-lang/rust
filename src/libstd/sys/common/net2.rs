@@ -11,6 +11,7 @@
 use prelude::v1::*;
 
 use ffi::{CStr, CString};
+use fmt;
 use io::{self, Error, ErrorKind};
 use libc::{self, c_int, c_char, c_void, socklen_t};
 use mem;
@@ -268,6 +269,24 @@ impl FromInner<Socket> for TcpStream {
     }
 }
 
+impl fmt::Debug for TcpStream {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut res = f.debug_struct("TcpStream");
+
+        if let Ok(addr) = self.socket_addr() {
+            res = res.field("addr", &addr);
+        }
+
+        if let Ok(peer) = self.peer_addr() {
+            res = res.field("peer", &peer);
+        }
+
+        let name = if cfg!(windows) {"socket"} else {"fd"};
+        res = res.field(name, &self.inner.as_inner());
+        res.finish()
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // TCP listeners
 ////////////////////////////////////////////////////////////////////////////////
@@ -324,6 +343,20 @@ impl TcpListener {
 impl FromInner<Socket> for TcpListener {
     fn from_inner(socket: Socket) -> TcpListener {
         TcpListener { inner: socket }
+    }
+}
+
+impl fmt::Debug for TcpListener {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut res = f.debug_struct("TcpListener");
+
+        if let Ok(addr) = self.socket_addr() {
+            res = res.field("addr", &addr);
+        }
+
+        let name = if cfg!(windows) {"socket"} else {"fd"};
+        res = res.field(name, &self.inner.as_inner());
+        res.finish()
     }
 }
 
@@ -443,5 +476,19 @@ impl UdpSocket {
 impl FromInner<Socket> for UdpSocket {
     fn from_inner(socket: Socket) -> UdpSocket {
         UdpSocket { inner: socket }
+    }
+}
+
+impl fmt::Debug for UdpSocket {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut res = f.debug_struct("UdpSocket");
+
+        if let Ok(addr) = self.socket_addr() {
+            res = res.field("addr", &addr);
+        }
+
+        let name = if cfg!(windows) {"socket"} else {"fd"};
+        res = res.field(name, &self.inner.as_inner());
+        res.finish()
     }
 }

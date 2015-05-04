@@ -32,7 +32,7 @@ mod parser;
 
 /// Possible values which can be passed to the `shutdown` method of `TcpStream`
 /// and `UdpSocket`.
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum Shutdown {
     /// Indicates that the reading portion of this stream/socket should be shut
