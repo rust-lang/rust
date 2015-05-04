@@ -1,6 +1,6 @@
 //! Checks for needless boolean results of if-else expressions
 //!
-//! This lint is **deny** by default
+//! This lint is **warn** by default
 
 use rustc::plugin::Registry;
 use rustc::lint::*;
