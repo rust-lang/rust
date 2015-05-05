@@ -41,7 +41,7 @@ use syntax::{ast, ast_util};
 use syntax::parse::token;
 use syntax::ptr::P;
 
-type FnArgMap<'a> = Option<&'a NodeMap<ValueRef>>;
+pub type FnArgMap<'a> = Option<&'a NodeMap<ValueRef>>;
 
 pub fn const_lit(cx: &CrateContext, e: &ast::Expr, lit: &ast::Lit)
     -> ValueRef {
@@ -863,7 +863,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                       _ => break
                   };
               }
-              let def = cx.tcx().def_map.borrow()[callee.id].full_def();
+              let def = cx.tcx().def_map.borrow()[&callee.id].full_def();
               let arg_vals = map_list(args);
               match def {
                   def::DefFn(did, _) | def::DefMethod(did, _) => {
@@ -893,7 +893,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
           ast::ExprMethodCall(_, _, ref args) => {
               let arg_vals = map_list(args);
               let method_call = ty::MethodCall::expr(e.id);
-              let method_did = match cx.tcx().method_map.borrow()[method_call].origin {
+              let method_did = match cx.tcx().method_map.borrow()[&method_call].origin {
                   ty::MethodStatic(did) => did,
                   _ => cx.sess().span_bug(e.span, "expected a const method def")
               };

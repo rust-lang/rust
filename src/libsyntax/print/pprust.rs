@@ -378,17 +378,6 @@ pub fn ident_to_string(id: &ast::Ident) -> String {
     to_string(|s| s.print_ident(*id))
 }
 
-<<<<<<< HEAD
-pub fn fun_to_string(decl: &ast::FnDecl, unsafety: ast::Unsafety, name: ast::Ident,
-                  opt_explicit_self: Option<&ast::ExplicitSelf_>,
-                  generics: &ast::Generics) -> String {
-    to_string(|s| {
-||||||| parent of 61a958e... syntax: parse `const fn` for free functions and inherent methods.
-pub fn fun_to_string(decl: &ast::FnDecl, unsafety: ast::Unsafety, name: ast::Ident,
-                  opt_explicit_self: Option<&ast::ExplicitSelf_>,
-                  generics: &ast::Generics) -> String {
-    $to_string(|s| {
-=======
 pub fn fun_to_string(decl: &ast::FnDecl,
                      unsafety: ast::Unsafety,
                      constness: ast::Constness,
@@ -396,8 +385,7 @@ pub fn fun_to_string(decl: &ast::FnDecl,
                      opt_explicit_self: Option<&ast::ExplicitSelf_>,
                      generics: &ast::Generics)
                      -> String {
-    $to_string(|s| {
->>>>>>> 61a958e... syntax: parse `const fn` for free functions and inherent methods.
+    to_string(|s| {
         try!(s.head(""));
         try!(s.print_fn(decl, unsafety, constness, abi::Rust, Some(name),
                         generics, opt_explicit_self, ast::Inherited));
@@ -2751,7 +2739,7 @@ impl<'a> State<'a> {
                            ast::Constness::NotConst,
                            abi,
                            name,
-                           generics,
+                           &generics,
                            opt_explicit_self,
                            ast::Inherited));
         self.end()

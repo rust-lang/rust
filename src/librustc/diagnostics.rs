@@ -845,5 +845,6 @@ register_diagnostics! {
     E0314, // closure outlives stack frame
     E0315, // cannot invoke closure outside of its lifetime
     E0316, // nested quantification of lifetimes
-    E0370  // discriminant overflow
+    E0370, // discriminant overflow
+    E0378  // method calls limited to constant inherent methods
 }

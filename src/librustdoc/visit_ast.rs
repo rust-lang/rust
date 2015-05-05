@@ -125,7 +125,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     name: ast::Ident, fd: &ast::FnDecl,
                     unsafety: &ast::Unsafety,
                     constness: ast::Constness,
-                    _abi: &abi::Abi,
+                    abi: &abi::Abi,
                     gen: &ast::Generics) -> Function {
         debug!("Visiting fn");
         Function {
@@ -294,7 +294,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 om.enums.push(self.visit_enum_def(item, name, ed, gen)),
             ast::ItemStruct(ref sd, ref gen) =>
                 om.structs.push(self.visit_struct_def(item, name, &**sd, gen)),
-            ast::ItemFn(ref fd, unsafety, constness, ref abi, ref gen, _) =>
+            ast::ItemFn(ref fd, ref unsafety, constness, ref abi, ref gen, _) =>
                 om.fns.push(self.visit_fn(item, name, &**fd, unsafety,
                                           constness, abi, gen)),
             ast::ItemTy(ref ty, ref gen) => {

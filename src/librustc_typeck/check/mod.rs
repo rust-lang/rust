@@ -830,11 +830,15 @@ pub fn check_item_body<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx ast::Item) {
                     check_const(ccx, trait_item.span, &*expr, trait_item.id)
                 }
                 ast::MethodTraitItem(ref sig, Some(ref body)) => {
+                    check_trait_fn_not_const(ccx, trait_item.span, sig.constness);
+
                     check_method_body(ccx, &trait_def.generics, sig, body,
                                       trait_item.id, trait_item.span);
                 }
+                ast::MethodTraitItem(ref sig, None) => {
+                    check_trait_fn_not_const(ccx, trait_item.span, sig.constness);
+                }
                 ast::ConstTraitItem(_, None) |
-                ast::MethodTraitItem(_, None) |
                 ast::TypeTraitItem(..) => {
                     // Nothing to do.
                 }
@@ -842,6 +846,20 @@ pub fn check_item_body<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx ast::Item) {
         }
       }
       _ => {/* nothing to do */ }
+    }
+}
+
+fn check_trait_fn_not_const<'a,'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
+                                     span: Span,
+                                     constness: ast::Constness)
+{
+    match constness {
+        ast::Constness::NotConst => {
+            // good
+        }
+        ast::Constness::Const => {
+            span_err!(ccx.tcx.sess, span, E0379, "trait fns cannot be declared const");
+        }
     }
 }
 
@@ -966,7 +984,9 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                     }
                 }
             }
-            ast::MethodImplItem(_, ref body) => {
+            ast::MethodImplItem(ref sig, ref body) => {
+                check_trait_fn_not_const(ccx, impl_item.span, sig.constness);
+
                 let impl_method_def_id = local_def(impl_item.id);
                 let impl_item_ty = ty::impl_or_trait_item(ccx.tcx,
                                                           impl_method_def_id);

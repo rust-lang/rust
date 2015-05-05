@@ -117,7 +117,7 @@ static mut STATIC14: SafeStruct = SafeStruct {
 //~^ ERROR mutable statics are not allowed to have destructors
     field1: SafeEnum::Variant1,
     field2: SafeEnum::Variant4("str".to_string())
-//~^ ERROR static contains unimplemented expression type
+//~^ ERROR method calls in statics are limited to constant inherent methods
 };
 
 static STATIC15: &'static [Box<MyOwned>] = &[

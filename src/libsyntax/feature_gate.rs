@@ -155,6 +155,9 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Status)] = &[
     // Allows the definition of associated constants in `trait` or `impl`
     // blocks.
     ("associated_consts", "1.0.0", Active),
+
+    // Allows the definition of `const fn` functions.
+    ("const_fn", "1.2.0", Active),
 ];
 // (changing above list without updating src/doc/reference.md makes @cmr sad)
 
@@ -640,6 +643,19 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                 block: &'v ast::Block,
                 span: Span,
                 _node_id: NodeId) {
+        // check for const fn declarations
+        match fn_kind {
+            visit::FkItemFn(_, _, _, ast::Constness::Const, _, _) => {
+                self.gate_feature("const_fn", span, "const fn is unstable");
+            }
+            _ => {
+                // stability of const fn methods are covered in
+                // visit_trait_item and visit_impl_item below; this is
+                // because default methods don't pass through this
+                // point.
+            }
+        }
+
         match fn_kind {
             visit::FkItemFn(_, _, _, _, abi, _) if abi == Abi::RustIntrinsic => {
                 self.gate_feature("intrinsics",
@@ -664,6 +680,11 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                                   ti.span,
                                   "associated constants are experimental")
             }
+            ast::MethodTraitItem(ref sig, _) => {
+                if sig.constness == ast::Constness::Const {
+                    self.gate_feature("const_fn", ti.span, "const fn is unstable");
+                }
+            }
             _ => {}
         }
         visit::walk_trait_item(self, ti);
@@ -675,6 +696,11 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                 self.gate_feature("associated_consts",
                                   ii.span,
                                   "associated constants are experimental")
+            }
+            ast::MethodImplItem(ref sig, _) => {
+                if sig.constness == ast::Constness::Const {
+                    self.gate_feature("const_fn", ii.span, "const fn is unstable");
+                }
             }
             _ => {}
         }

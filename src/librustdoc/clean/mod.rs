@@ -1352,7 +1352,10 @@ impl<'tcx> Clean<Item> for ty::Method<'tcx> {
                 generics: generics,
                 self_: self_,
                 decl: decl,
-                abi: self.fty.abi
+                abi: self.fty.abi,
+
+                // trait methods canot (currently, at least) be const
+                constness: ast::Constness::NotConst,
             })
         } else {
             TyMethodItem(TyMethod {
@@ -1360,7 +1363,7 @@ impl<'tcx> Clean<Item> for ty::Method<'tcx> {
                 generics: generics,
                 self_: self_,
                 decl: decl,
-                abi: self.fty.abi
+                abi: self.fty.abi,
             })
         };
 
