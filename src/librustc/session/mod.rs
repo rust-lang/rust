@@ -46,8 +46,9 @@ pub struct Session {
     pub entry_type: Cell<Option<config::EntryFnType>>,
     pub plugin_registrar_fn: Cell<Option<ast::NodeId>>,
     pub default_sysroot: Option<PathBuf>,
-    // The name of the root source file of the crate, in the local file system. The path is always
-    // expected to be absolute. `None` means that there is no source file.
+    // The name of the root source file of the crate, in the local file system.
+    // The path is always expected to be absolute. `None` means that there is no
+    // source file.
     pub local_crate_source_file: Option<PathBuf>,
     pub working_dir: PathBuf,
     pub lint_store: RefCell<lint::LintStore>,

@@ -147,6 +147,7 @@ pub mod util {
     pub mod nodemap;
     pub mod lev_distance;
     pub mod num;
+    pub mod fs;
 }
 
 pub mod lib {

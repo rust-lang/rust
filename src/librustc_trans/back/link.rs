@@ -26,13 +26,14 @@ use middle::ty::{self, Ty};
 use util::common::time;
 use util::ppaux;
 use util::sha2::{Digest, Sha256};
+use util::fs::fix_windows_verbatim_for_gcc;
 use rustc_back::tempdir::TempDir;
 
 use std::ffi::OsString;
 use std::fs::{self, PathExt};
 use std::io::{self, Read, Write};
 use std::mem;
-use std::path::{self, Path, PathBuf};
+use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::str;
 use flate;
@@ -1332,30 +1333,4 @@ fn add_upstream_native_libraries(cmd: &mut Command, sess: &Session) {
             }
         }
     }
-}
-
-// Unfortunately, on windows, gcc cannot accept paths of the form `\\?\C:\...`
-// (a verbatim path). This form of path is generally pretty rare, but the
-// implementation of `fs::canonicalize` currently generates paths of this form,
-// meaning that we're going to be passing quite a few of these down to gcc.
-//
-// For now we just strip the "verbatim prefix" of `\\?\` from the path. This
-// will probably lose information in some cases, but there's not a whole lot
-// more we can do with a buggy gcc...
-fn fix_windows_verbatim_for_gcc(p: &Path) -> PathBuf {
-    if !cfg!(windows) {
-        return p.to_path_buf()
-    }
-    let mut components = p.components();
-    let prefix = match components.next() {
-        Some(path::Component::Prefix(p)) => p,
-        _ => return p.to_path_buf(),
-    };
-    let disk = match prefix.kind() {
-        path::Prefix::VerbatimDisk(disk) => disk,
-        _ => return p.to_path_buf(),
-    };
-    let mut base = OsString::from(format!("{}:", disk as char));
-    base.push(components.as_path());
-    PathBuf::from(base)
 }
