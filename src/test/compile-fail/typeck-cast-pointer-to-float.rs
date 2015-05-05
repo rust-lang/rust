@@ -11,5 +11,5 @@
 fn main() {
     let x : i16 = 22;
     ((&x) as *const i16) as f32;
-    //~^ ERROR illegal cast; cast through an integer first: `*const i16` as `f32`
+    //~^ ERROR illegal cast; cast through a usize first: `*const i16` as `f32`
 }

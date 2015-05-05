@@ -9,9 +9,6 @@
 // except according to those terms.
 
 // Make sure casts between thin-pointer <-> fat pointer obey RFC401
-
-pub trait Trait {}
-
 fn main() {
     let a: &[i32] = &[1, 2, 3];
     let b: Box<[i32]> = Box::new([1, 2, 3]);

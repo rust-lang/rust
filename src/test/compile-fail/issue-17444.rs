@@ -14,5 +14,5 @@ enum Test {
 
 fn main() {
     let _x = Test::Foo as *const isize;
-    //~^ ERROR illegal cast; cast through an integer first: `Test` as `*const isize`
+    //~^ ERROR illegal cast; cast through a usize first: `Test` as `*const isize`
 }
