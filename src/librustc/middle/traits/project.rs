@@ -408,7 +408,10 @@ fn opt_normalize_projection_type<'a,'b,'tcx>(
 }
 
 /// in various error cases, we just set ty_err and return an obligation
-/// that, when fulfilled, will lead to an error
+/// that, when fulfilled, will lead to an error.
+///
+/// FIXME: the ty_err created here can enter the obligation we create,
+/// leading to error messages involving ty_err.
 fn normalize_to_error<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
                                projection_ty: ty::ProjectionTy<'tcx>,
                                cause: ObligationCause<'tcx>,
