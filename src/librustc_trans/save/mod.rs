@@ -15,16 +15,22 @@ use std::env;
 use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 
-use syntax::{ast, attr, visit};
+use syntax::{attr, visit};
+use syntax::ast::{self, NodeId, DefId};
+use syntax::parse::token::keywords;
 use syntax::codemap::*;
+
+use self::span_utils::SpanUtils;
 
 mod span_utils;
 mod recorder;
 
 mod dump_csv;
 
-pub struct SaveContext<'l> {
+pub struct SaveContext<'l, 'tcx: 'l> {
     sess: &'l Session,
+    analysis: &'l ty::CrateAnalysis<'tcx>,
+    span_utils: SpanUtils<'l>,
 }
 
 pub struct CrateData {
@@ -32,10 +38,27 @@ pub struct CrateData {
     pub number: u32,
 }
 
-impl<'l> SaveContext<'l> {
-    pub fn new<'ll>(sess: &'ll Session) -> SaveContext<'ll> {
+pub enum Data {
+    FunctionData(FunctionData),
+}
+
+pub struct FunctionData {
+    pub id: NodeId,
+    pub qualname: String,
+    pub declaration: Option<DefId>,
+    pub span: Span,
+    pub scope: NodeId,
+}
+
+impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
+    pub fn new(sess: &'l Session,
+               analysis: &'l ty::CrateAnalysis<'tcx>,
+               span_utils: SpanUtils<'l>)
+               -> SaveContext<'l, 'tcx> {
         SaveContext {
-            sess: sess
+            sess: sess,
+            analysis: analysis,
+            span_utils: span_utils,
         }
     }
 
@@ -48,6 +71,30 @@ impl<'l> SaveContext<'l> {
         });
 
         result
+    }
+
+    pub fn get_item_data(&self, item: &ast::Item) -> Data {
+        match item.node {
+            ast::Item_::ItemFn(..) => {
+                let qualname = format!("::{}", self.analysis.ty_cx.map.path_to_string(item.id));
+                let sub_span = self.span_utils.sub_span_after_keyword(item.span, keywords::Fn);
+
+                Data::FunctionData(FunctionData {
+                    id: item.id,
+                    qualname: qualname,
+                    declaration: None,
+                    span: sub_span.unwrap(),
+                    scope: self.analysis.ty_cx.map.get_parent(item.id),
+                })
+            }
+            _ => {
+                unimplemented!();
+            }
+        }
+    }
+
+    pub fn get_data_for_id(&self, id: &NodeId) -> Data {
+        unimplemented!();        
     }
 }
 
