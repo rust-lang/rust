@@ -434,7 +434,7 @@ pub mod builtin {
 
     /// Parse the current given file as an expression.
     ///
-    /// This is generally a bad idea, because it's going to behave unhygenically.
+    /// This is generally a bad idea, because it's going to behave unhygienically.
     ///
     /// # Examples
     ///

@@ -212,8 +212,9 @@ fn test_resize_policy() {
 /// overridden with one of the constructors.
 ///
 /// It is required that the keys implement the `Eq` and `Hash` traits, although
-/// this can frequently be achieved by using `#[derive(Eq, Hash)]`. If you
-/// implement these yourself, it is important that the following property holds:
+/// this can frequently be achieved by using `#[derive(PartialEq, Eq, Hash)]`.
+/// If you implement these yourself, it is important that the following
+/// property holds:
 ///
 /// ```text
 /// k1 == k2 -> hash(k1) == hash(k2)
@@ -250,26 +251,26 @@ fn test_resize_policy() {
 /// book_reviews.insert("The Adventures of Sherlock Holmes", "Eye lyked it alot.");
 ///
 /// // check for a specific one.
-/// if !book_reviews.contains_key(&("Les Misérables")) {
+/// if !book_reviews.contains_key("Les Misérables") {
 ///     println!("We've got {} reviews, but Les Misérables ain't one.",
 ///              book_reviews.len());
 /// }
 ///
 /// // oops, this review has a lot of spelling mistakes, let's delete it.
-/// book_reviews.remove(&("The Adventures of Sherlock Holmes"));
+/// book_reviews.remove("The Adventures of Sherlock Holmes");
 ///
 /// // look up the values associated with some keys.
 /// let to_find = ["Pride and Prejudice", "Alice's Adventure in Wonderland"];
-/// for book in to_find.iter() {
+/// for book in &to_find {
 ///     match book_reviews.get(book) {
-///         Some(review) => println!("{}: {}", *book, *review),
-///         None => println!("{} is unreviewed.", *book)
+///         Some(review) => println!("{}: {}", book, review),
+///         None => println!("{} is unreviewed.", book)
 ///     }
 /// }
 ///
 /// // iterate over everything.
-/// for (book, review) in book_reviews.iter() {
-///     println!("{}: \"{}\"", *book, *review);
+/// for (book, review) in &book_reviews {
+///     println!("{}: \"{}\"", book, review);
 /// }
 /// ```
 ///
@@ -300,7 +301,7 @@ fn test_resize_policy() {
 /// vikings.insert(Viking::new("Harald", "Iceland"), 12);
 ///
 /// // Use derived implementation to print the status of the vikings.
-/// for (viking, health) in vikings.iter() {
+/// for (viking, health) in &vikings {
 ///     println!("{:?} has {} hp", viking, health);
 /// }
 /// ```
