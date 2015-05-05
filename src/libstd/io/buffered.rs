@@ -15,6 +15,7 @@
 use prelude::v1::*;
 use io::prelude::*;
 
+use marker::Reflect;
 use cmp;
 use error;
 use fmt;
@@ -325,7 +326,7 @@ impl<W> From<IntoInnerError<W>> for Error {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<W: Send + fmt::Debug> error::Error for IntoInnerError<W> {
+impl<W: Reflect + Send + fmt::Debug> error::Error for IntoInnerError<W> {
     fn description(&self) -> &str {
         error::Error::description(self.error())
     }
