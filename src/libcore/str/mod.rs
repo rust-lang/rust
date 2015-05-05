@@ -421,7 +421,7 @@ macro_rules! derive_pattern_clone {
 /// wrapping an private internal one that makes use of the `Pattern` API.
 ///
 /// For all patterns `P: Pattern<'a>` the following items will be
-/// generated (generics ommitted):
+/// generated (generics omitted):
 ///
 /// struct $forward_iterator($internal_iterator);
 /// struct $reverse_iterator($internal_iterator);

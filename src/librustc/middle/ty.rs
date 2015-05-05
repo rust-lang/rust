@@ -1908,7 +1908,7 @@ pub enum Predicate<'tcx> {
 }
 
 impl<'tcx> Predicate<'tcx> {
-    /// Performs a substituion suitable for going from a
+    /// Performs a substitution suitable for going from a
     /// poly-trait-ref to supertraits that must hold if that
     /// poly-trait-ref holds. This is slightly different from a normal
     /// substitution in terms of what happens with bound regions.  See
