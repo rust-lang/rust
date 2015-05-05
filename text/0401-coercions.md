@@ -319,20 +319,19 @@ descriptions are equivalent.
 Casting is indicated by the `as` keyword. A cast `e as U` is valid if one of the
 following holds:
 
-* `e` has type `T` and `T` coerces to `U`; *coercion-cast*
-* `e` has type `*T`, `U` is `*U_0`, and either `U_0: Sized` or
-   unsize_kind(`T`) = unsize_kind(`U_0`); *ptr-ptr-cast*
-* `e` has type `*T` and `U` is a numeric type, while `T: Sized`; *ptr-addr-cast*
-* `e` has type `usize` and `U` is `*U_0`, while `U_0: Sized`; *addr-ptr-cast*
-* `e` has type `T` and `T` and `U` are any numeric types; *numeric-cast*
-* `e` is a C-like enum and `U` is an integer type or `bool`; *enum-cast*
-* `e` has type `bool` and `U` is an integer; *bool-cast*
-* `e` has type `u8` and `U` is `char`; *u8-char-cast*
-* `e` has type `&.[T; n]` and `U` is `*T`, and `e` is a mutable
-  reference if `U` is. *array-ptr-cast*
-* `e` is a function pointer type and `U` has type `*T`,
-  while `T: Sized`; *fptr-ptr-cast*
-* `e` is a function pointer type and `U` is an integer; *fptr-addr-cast*
+ * `e` has type `T` and `T` coerces to `U`; *coercion-cast*
+ * `e` has type `*T`, `U` is `*U_0`, and either `U_0: Sized` or
+    unsize_kind(`T`) = unsize_kind(`U_0`); *ptr-ptr-cast*
+ * `e` has type `*T` and `U` is a numeric type, while `T: Sized`; *ptr-addr-cast*
+ * `e` is an integer and `U` is `*U_0`, while `U_0: Sized`; *addr-ptr-cast*
+ * `e` has type `T` and `T` and `U` are any numeric types; *numeric-cast*
+ * `e` is a C-like enum and `U` is an integer type; *enum-cast*
+ * `e` has type `bool` or `char` and `U` is an integer; *prim-int-cast*
+ * `e` has type `u8` and `U` is `char`; *u8-char-cast*
+ * `e` has type `&[T; n]` and `U` is `*const T`; *array-ptr-cast*
+ * `e` is a function pointer type and `U` has type `*T`,
+   while `T: Sized`; *fptr-ptr-cast*
+ * `e` is a function pointer type and `U` is an integer; *fptr-addr-cast*
 
 where `&.T` and `*T` are references of either mutability,
 and where unsize_kind(`T`) is the kind of the unsize info
