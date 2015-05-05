@@ -713,7 +713,7 @@ impl str {
     /// is skipped if empty.
     ///
     /// This method can be used for string data that is _terminated_,
-    /// rather than _seperated_ by a pattern.
+    /// rather than _separated_ by a pattern.
     ///
     /// # Iterator behavior
     ///
@@ -760,7 +760,7 @@ impl str {
     /// skipped if empty.
     ///
     /// This method can be used for string data that is _terminated_,
-    /// rather than _seperated_ by a pattern.
+    /// rather than _separated_ by a pattern.
     ///
     /// # Iterator behavior
     ///

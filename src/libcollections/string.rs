@@ -757,7 +757,7 @@ impl FromUtf8Error {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_bytes(self) -> Vec<u8> { self.bytes }
 
-    /// Accesss the underlying UTF8-error that was the cause of this error.
+    /// Access the underlying UTF8-error that was the cause of this error.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn utf8_error(&self) -> Utf8Error { self.error }
 }

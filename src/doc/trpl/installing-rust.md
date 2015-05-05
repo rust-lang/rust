@@ -6,16 +6,16 @@ or a Mac, all you need to do is this (note that you don't need to type in the
 `$`s, they just indicate the start of each command):
 
 ```bash
-$ curl -sf -L https://static.rust-lang.org/rustup.sh | sudo sh
+$ curl -sf -L https://static.rust-lang.org/rustup.sh | sh
 ```
 
 If you're concerned about the [potential insecurity][insecurity] of using `curl
-| sudo sh`, please keep reading and see our disclaimer below. And feel free to
+| sh`, please keep reading and see our disclaimer below. And feel free to
 use a two-step version of the installation and examine our installation script:
 
 ```bash
 $ curl -f -L https://static.rust-lang.org/rustup.sh -O
-$ sudo sh rustup.sh
+$ sh rustup.sh
 ```
 
 [insecurity]: http://curlpipesh.tumblr.com
@@ -40,13 +40,11 @@ If you used the Windows installer, just re-run the `.msi` and it will give you
 an uninstall option.
 
 Some people, and somewhat rightfully so, get very upset when we tell you to
-`curl | sudo sh`. Basically, when you do this, you are trusting that the good
+`curl | sh`. Basically, when you do this, you are trusting that the good
 people who maintain Rust aren't going to hack your computer and do bad things.
 That's a good instinct! If you're one of those people, please check out the
 documentation on [building Rust from Source][from source], or [the official
-binary downloads][install page]. And we promise that this method will not be
-the way to install Rust forever: it's just the easiest way to keep people
-updated while Rust is in its alpha state.
+binary downloads][install page].
 
 [from source]: https://github.com/rust-lang/rust#building-from-source
 [install page]: http://www.rust-lang.org/install.html
