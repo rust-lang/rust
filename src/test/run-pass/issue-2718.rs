@@ -170,7 +170,7 @@ pub mod pipes {
             unsafe {
                 if self.p != None {
                     let self_p: &mut Option<*const packet<T>> =
-                        mem::transmute(&self.p);
+                        mem::transmute(&mut self.p);
                     let p = replace(self_p, None);
                     sender_terminate(p.unwrap())
                 }
@@ -199,7 +199,7 @@ pub mod pipes {
             unsafe {
                 if self.p != None {
                     let self_p: &mut Option<*const packet<T>> =
-                        mem::transmute(&self.p);
+                        mem::transmute(&mut self.p);
                     let p = replace(self_p, None);
                     receiver_terminate(p.unwrap())
                 }
