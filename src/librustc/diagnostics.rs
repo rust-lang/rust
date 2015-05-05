@@ -801,7 +801,6 @@ struct Foo<T: 'static> {
 
 register_diagnostics! {
     E0011,
-    E0012,
     E0014,
     E0016,
     E0017,

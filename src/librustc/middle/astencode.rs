@@ -23,6 +23,7 @@ use metadata::tydecode;
 use metadata::tydecode::{DefIdSource, NominalType, TypeWithId, TypeParameter};
 use metadata::tydecode::{RegionParameter, ClosureSource};
 use metadata::tyencode;
+use middle::cast;
 use middle::check_const::ConstQualif;
 use middle::mem_categorization::Typer;
 use middle::privacy::{AllPublic, LastMod};
@@ -688,6 +689,10 @@ pub fn encode_closure_kind(ebml_w: &mut Encoder, kind: ty::ClosureKind) {
     kind.encode(ebml_w).unwrap();
 }
 
+pub fn encode_cast_kind(ebml_w: &mut Encoder, kind: cast::CastKind) {
+    kind.encode(ebml_w).unwrap();
+}
+
 pub trait vtable_decoder_helpers<'tcx> {
     fn read_vec_per_param_space<T, F>(&mut self, f: F) -> VecPerParamSpace<T> where
         F: FnMut(&mut Self) -> T;
@@ -1248,6 +1253,13 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
         })
     }
 
+    if let Some(cast_kind) = tcx.cast_kinds.borrow().get(&id) {
+        rbml_w.tag(c::tag_table_cast_kinds, |rbml_w| {
+            rbml_w.id(id);
+            encode_cast_kind(rbml_w, *cast_kind)
+        })
+    }
+
     for &qualif in tcx.const_qualif_map.borrow().get(&id).iter() {
         rbml_w.tag(c::tag_table_const_qualif, |rbml_w| {
             rbml_w.id(id);
@@ -1289,6 +1301,8 @@ trait rbml_decoder_decoder_helpers<'tcx> {
                            -> subst::Substs<'tcx>;
     fn read_auto_adjustment<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
                                     -> ty::AutoAdjustment<'tcx>;
+    fn read_cast_kind<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
+                                 -> cast::CastKind;
     fn read_closure_kind<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
                                  -> ty::ClosureKind;
     fn read_closure_ty<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
@@ -1641,6 +1655,12 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
         }).unwrap()
     }
 
+    fn read_cast_kind<'b, 'c>(&mut self, _dcx: &DecodeContext<'b, 'c, 'tcx>)
+                              -> cast::CastKind
+    {
+        Decodable::decode(self).unwrap()
+    }
+
     fn read_closure_kind<'b, 'c>(&mut self, _dcx: &DecodeContext<'b, 'c, 'tcx>)
                                  -> ty::ClosureKind
     {
@@ -1800,6 +1820,11 @@ fn decode_side_tables(dcx: &DecodeContext,
                             val_dsr.read_closure_kind(dcx);
                         dcx.tcx.closure_kinds.borrow_mut().insert(ast_util::local_def(id),
                                                                   closure_kind);
+                    }
+                    c::tag_table_cast_kinds => {
+                        let cast_kind =
+                            val_dsr.read_cast_kind(dcx);
+                        dcx.tcx.cast_kinds.borrow_mut().insert(id, cast_kind);
                     }
                     c::tag_table_const_qualif => {
                         let qualif: ConstQualif = Decodable::decode(val_dsr).unwrap();

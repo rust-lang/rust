@@ -1002,7 +1002,7 @@ fn cast_const<'tcx>(tcx: &ty::ctxt<'tcx>, val: const_val, ty: Ty) -> CastResult 
     macro_rules! convert_val {
         ($intermediate_ty:ty, $const_type:ident, $target_ty:ty) => {
             match val {
-                const_bool(b) => Ok($const_type(b as $intermediate_ty as $target_ty)),
+                const_bool(b) => Ok($const_type(b as u64 as $intermediate_ty as $target_ty)),
                 const_uint(u) => Ok($const_type(u as $intermediate_ty as $target_ty)),
                 const_int(i) => Ok($const_type(i as $intermediate_ty as $target_ty)),
                 const_float(f) => Ok($const_type(f as $intermediate_ty as $target_ty)),

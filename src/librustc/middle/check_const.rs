@@ -24,6 +24,7 @@
 // - It's not possible to take the address of a static item with unsafe interior. This is enforced
 // by borrowck::gather_loans
 
+use middle::cast::{CastKind};
 use middle::const_eval;
 use middle::def;
 use middle::expr_use_visitor as euv;
@@ -32,11 +33,10 @@ use middle::mem_categorization as mc;
 use middle::traits;
 use middle::ty::{self, Ty};
 use util::nodemap::NodeMap;
-use util::ppaux;
+use util::ppaux::Repr;
 
 use syntax::ast;
 use syntax::codemap::Span;
-use syntax::print::pprust;
 use syntax::visit::{self, Visitor};
 
 use std::collections::hash_map::Entry;
@@ -197,7 +197,7 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
 
 impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
     fn visit_item(&mut self, i: &ast::Item) {
-        debug!("visit_item(item={})", pprust::item_to_string(i));
+        debug!("visit_item(item={})", i.repr(self.tcx));
         match i.node {
             ast::ItemStatic(_, ast::MutImmutable, ref expr) => {
                 self.check_static_type(&**expr);
@@ -440,26 +440,17 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
             }
         }
         ast::ExprCast(ref from, _) => {
-            let toty = ty::expr_ty(v.tcx, e);
-            let fromty = ty::expr_ty(v.tcx, &**from);
-            let is_legal_cast =
-                ty::type_is_numeric(toty) ||
-                ty::type_is_unsafe_ptr(toty) ||
-                (ty::type_is_bare_fn(toty) && ty::type_is_bare_fn_item(fromty));
-            if !is_legal_cast {
-                v.add_qualif(ConstQualif::NOT_CONST);
-                if v.mode != Mode::Var {
-                    span_err!(v.tcx.sess, e.span, E0012,
-                              "can not cast to `{}` in {}s",
-                              ppaux::ty_to_string(v.tcx, toty), v.msg());
+            debug!("Checking const cast(id={})", from.id);
+            match v.tcx.cast_kinds.borrow().get(&from.id) {
+                None => v.tcx.sess.span_bug(e.span, "no kind for cast"),
+                Some(&CastKind::PtrAddrCast) | Some(&CastKind::FPtrAddrCast) => {
+                    v.add_qualif(ConstQualif::NOT_CONST);
+                    if v.mode != Mode::Var {
+                        span_err!(v.tcx.sess, e.span, E0018,
+                                  "can not cast a pointer to an integer in {}s", v.msg());
+                    }
                 }
-            }
-            if ty::type_is_unsafe_ptr(fromty) && ty::type_is_numeric(toty) {
-                v.add_qualif(ConstQualif::NOT_CONST);
-                if v.mode != Mode::Var {
-                    span_err!(v.tcx.sess, e.span, E0018,
-                              "can not cast a pointer to an integer in {}s", v.msg());
-                }
+                _ => {}
             }
         }
         ast::ExprPath(..) => {
