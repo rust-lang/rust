@@ -15,18 +15,8 @@ struct X {
 
 fn main() {
     let x = X { a: [0] };
-    let _f = &x.a as *mut u8;
-    //~^ ERROR mismatched types
-    //~| expected `*mut u8`
-    //~| found `&[u8; 1]`
-    //~| expected u8
-    //~| found array of 1 elements
+    let _f = &x.a as *mut u8; //~ ERROR illegal cast
 
     let local: [u8; 1] = [0];
-    let _v = &local as *mut u8;
-    //~^ ERROR mismatched types
-    //~| expected `*mut u8`
-    //~| found `&[u8; 1]`
-    //~| expected u8,
-    //~| found array of 1 elements
+    let _v = &local as *mut u8; //~ ERROR illegal cast
 }

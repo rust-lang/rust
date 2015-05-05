@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Inches(i32);
-
 fn main() {
-    Inches as f32; //~ ERROR illegal cast; cast through a usize first
+    const X: u32 = main as u32; //~ ERROR E0018
+    const Y: u32 = 0;
+    const Z: u32 = &Y as *const u32 as u32; //~ ERROR E0018
 }
