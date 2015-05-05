@@ -66,7 +66,7 @@ pub fn current_dir() -> io::Result<PathBuf> {
 /// println!("Successfully changed working directory to {}!", root.display());
 /// ```
 #[stable(feature = "env", since = "1.0.0")]
-pub fn set_current_dir<P: AsRef<Path> + ?Sized>(p: &P) -> io::Result<()> {
+pub fn set_current_dir<P: AsRef<Path>>(p: P) -> io::Result<()> {
     os_imp::chdir(p.as_ref())
 }
 
@@ -175,7 +175,7 @@ impl Iterator for VarsOs {
 /// }
 /// ```
 #[stable(feature = "env", since = "1.0.0")]
-pub fn var<K: ?Sized>(key: &K) -> Result<String, VarError> where K: AsRef<OsStr> {
+pub fn var<K: AsRef<OsStr>>(key: K) -> Result<String, VarError> {
     match var_os(key) {
         Some(s) => s.into_string().map_err(VarError::NotUnicode),
         None => Err(VarError::NotPresent)
@@ -197,7 +197,7 @@ pub fn var<K: ?Sized>(key: &K) -> Result<String, VarError> where K: AsRef<OsStr>
 /// }
 /// ```
 #[stable(feature = "env", since = "1.0.0")]
-pub fn var_os<K: ?Sized>(key: &K) -> Option<OsString> where K: AsRef<OsStr> {
+pub fn var_os<K: AsRef<OsStr>>(key: K) -> Option<OsString> {
     let _g = ENV_LOCK.lock();
     os_imp::getenv(key.as_ref())
 }
@@ -253,9 +253,7 @@ impl Error for VarError {
 /// assert_eq!(env::var(key), Ok("VALUE".to_string()));
 /// ```
 #[stable(feature = "env", since = "1.0.0")]
-pub fn set_var<K: ?Sized, V: ?Sized>(k: &K, v: &V)
-    where K: AsRef<OsStr>, V: AsRef<OsStr>
-{
+pub fn set_var<K: AsRef<OsStr>, V: AsRef<OsStr>>(k: K, v: V) {
     let _g = ENV_LOCK.lock();
     os_imp::setenv(k.as_ref(), v.as_ref())
 }
@@ -275,7 +273,7 @@ pub fn set_var<K: ?Sized, V: ?Sized>(k: &K, v: &V)
 /// assert!(env::var(key).is_err());
 /// ```
 #[stable(feature = "env", since = "1.0.0")]
-pub fn remove_var<K: ?Sized>(k: &K) where K: AsRef<OsStr> {
+pub fn remove_var<K: AsRef<OsStr>>(k: K) {
     let _g = ENV_LOCK.lock();
     os_imp::unsetenv(k.as_ref())
 }
