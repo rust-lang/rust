@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(catch_panic)]
+
 extern crate rustfmt;
 
 use std::collections::HashMap;
@@ -69,9 +71,9 @@ pub fn idempotent_check(filename: String) -> Result<(), HashMap<String, String>>
     // function handle needs to have static lifetime. Instead of using a global RefCell, we use
     // panic to return a result in case of failure. This has the advantage of smoothing the road to
     // multithreaded rustfmt
-    thread::spawn(move || {
+    thread::catch_panic(move || {
         run(args, WriteMode::Return(HANDLE_RESULT));
-    }).join().map_err(|any|
+    }).map_err(|any|
         // i know it is a hashmap
         *any.downcast().unwrap()
     )
