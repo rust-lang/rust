@@ -55,7 +55,7 @@ use util::ppaux;
 
 
 pub struct DumpCsvVisitor<'l, 'tcx: 'l> {
-    save_ctxt: SaveContext<'l>,
+    save_ctxt: SaveContext<'l, 'tcx>,
     sess: &'l Session,
     analysis: &'l ty::CrateAnalysis<'tcx>,
 
@@ -74,7 +74,10 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
                output_file: Box<File>) -> DumpCsvVisitor<'l, 'tcx> {
         DumpCsvVisitor {
             sess: sess,
-            save_ctxt: SaveContext { sess: sess },
+            save_ctxt: SaveContext::new(sess, analysis, SpanUtils {
+                sess: sess,
+                err_count: Cell::new(0)
+            }),
             analysis: analysis,
             collected_paths: vec![],
             collecting: false,
