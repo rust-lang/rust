@@ -15,10 +15,12 @@ use std::env;
 use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 
-use syntax::{attr, visit};
+use syntax::{attr};
 use syntax::ast::{self, NodeId, DefId};
-use syntax::parse::token::keywords;
+use syntax::ast_util;
 use syntax::codemap::*;
+use syntax::parse::token::keywords;
+use syntax::visit::{self, Visitor};
 
 use self::span_utils::SpanUtils;
 
@@ -94,7 +96,57 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
     }
 
     pub fn get_data_for_id(&self, id: &NodeId) -> Data {
+        // TODO
         unimplemented!();        
+    }
+}
+
+// An AST visitor for collecting paths from patterns.
+struct PathCollector {
+    // TODO bool -> ast::mutable
+    // TODO recorder -> var kind new enum
+    // The Row field identifies the kind of formal variable.
+    collected_paths: Vec<(NodeId, ast::Path, bool, recorder::Row)>,
+}
+
+impl PathCollector {
+    fn new() -> PathCollector {
+        PathCollector {
+            collected_paths: vec![],
+        }
+    }
+}
+
+impl<'v> Visitor<'v> for PathCollector {
+    fn visit_pat(&mut self, p: &ast::Pat) {
+        match p.node {
+            ast::PatStruct(ref path, _, _) => {
+                self.collected_paths.push((p.id, path.clone(), false, recorder::StructRef));
+            }
+            ast::PatEnum(ref path, _) |
+            ast::PatQPath(_, ref path) => {
+                self.collected_paths.push((p.id, path.clone(), false, recorder::VarRef));
+            }
+            ast::PatIdent(bm, ref path1, _) => {
+                let immut = match bm {
+                    // Even if the ref is mut, you can't change the ref, only
+                    // the data pointed at, so showing the initialising expression
+                    // is still worthwhile.
+                    ast::BindByRef(_) => true,
+                    ast::BindByValue(mt) => {
+                        match mt {
+                            ast::MutMutable => false,
+                            ast::MutImmutable => true,
+                        }
+                    }
+                };
+                // collect path for either visit_local or visit_arm
+                let path = ast_util::ident_to_path(path1.span,path1.node);
+                self.collected_paths.push((p.id, path, immut, recorder::VarRef));
+            }
+            _ => {}
+        }
+        visit::walk_pat(self, p);
     }
 }
 

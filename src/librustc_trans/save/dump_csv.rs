@@ -27,7 +27,8 @@
 //! the format of the output away from extracting it from the compiler.
 //! DumpCsvVisitor walks the AST and processes it.
 
-use super::{escape, generated_code, recorder, SaveContext};
+
+use super::{escape, generated_code, recorder, SaveContext, PathCollector};
 
 use session::Session;
 
@@ -59,9 +60,6 @@ pub struct DumpCsvVisitor<'l, 'tcx: 'l> {
     sess: &'l Session,
     analysis: &'l ty::CrateAnalysis<'tcx>,
 
-    collected_paths: Vec<(NodeId, ast::Path, bool, recorder::Row)>,
-    collecting: bool,
-
     span: SpanUtils<'l>,
     fmt: FmtStrs<'l>,
 
@@ -79,8 +77,6 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
                 err_count: Cell::new(0)
             }),
             analysis: analysis,
-            collected_paths: vec![],
-            collecting: false,
             span: SpanUtils {
                 sess: sess,
                 err_count: Cell::new(0)
@@ -281,12 +277,11 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
 
     fn process_formals(&mut self, formals: &Vec<ast::Arg>, qualname: &str) {
         for arg in formals {
-            assert!(self.collected_paths.is_empty() && !self.collecting);
-            self.collecting = true;
-            self.visit_pat(&*arg.pat);
-            self.collecting = false;
+            self.visit_pat(&arg.pat);
+            let mut collector = PathCollector::new();
+            collector.visit_pat(&arg.pat);
             let span_utils = self.span.clone();
-            for &(id, ref p, _, _) in &self.collected_paths {
+            for &(id, ref p, _, _) in &collector.collected_paths {
                 let typ =
                     ppaux::ty_to_string(
                         &self.analysis.ty_cx,
@@ -300,7 +295,6 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
                                     &path_to_string(p),
                                     &typ[..]);
             }
-            self.collected_paths.clear();
         }
     }
 
@@ -1026,7 +1020,6 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
 
         match p.node {
             ast::PatStruct(ref path, ref fields, _) => {
-                self.collected_paths.push((p.id, path.clone(), false, recorder::StructRef));
                 visit::walk_path(self, path);
 
                 let def = self.analysis.ty_cx.def_map.borrow().get(&p.id).unwrap().full_def();
@@ -1061,32 +1054,6 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
                         }
                         self.visit_pat(&*field.pat);
                     }
-                }
-            }
-            ast::PatEnum(ref path, _) |
-            ast::PatQPath(_, ref path) => {
-                self.collected_paths.push((p.id, path.clone(), false, recorder::VarRef));
-                visit::walk_pat(self, p);
-            }
-            ast::PatIdent(bm, ref path1, ref optional_subpattern) => {
-                let immut = match bm {
-                    // Even if the ref is mut, you can't change the ref, only
-                    // the data pointed at, so showing the initialising expression
-                    // is still worthwhile.
-                    ast::BindByRef(_) => true,
-                    ast::BindByValue(mt) => {
-                        match mt {
-                            ast::MutMutable => false,
-                            ast::MutImmutable => true,
-                        }
-                    }
-                };
-                // collect path for either visit_local or visit_arm
-                let path = ast_util::ident_to_path(path1.span,path1.node);
-                self.collected_paths.push((p.id, path, immut, recorder::VarRef));
-                match *optional_subpattern {
-                    None => {}
-                    Some(ref subpattern) => self.visit_pat(&**subpattern)
                 }
             }
             _ => visit::walk_pat(self, p)
@@ -1421,23 +1388,20 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
 
     fn visit_pat(&mut self, p: &ast::Pat) {
         self.process_pat(p);
-        if !self.collecting {
-            self.collected_paths.clear();
-        }
     }
 
     fn visit_arm(&mut self, arm: &ast::Arm) {
-        assert!(self.collected_paths.is_empty() && !self.collecting);
-        self.collecting = true;
+        let mut collector = PathCollector::new();
         for pattern in &arm.pats {
             // collect paths from the arm's patterns
-            self.visit_pat(&**pattern);
+            collector.visit_pat(&pattern);
+            self.visit_pat(&pattern);
         }
 
         // This is to get around borrow checking, because we need mut self to call process_path.
         let mut paths_to_process = vec![];
         // process collected paths
-        for &(id, ref p, ref immut, ref_kind) in &self.collected_paths {
+        for &(id, ref p, ref immut, ref_kind) in &collector.collected_paths {
             let def_map = self.analysis.ty_cx.def_map.borrow();
             if !def_map.contains_key(&id) {
                 self.sess.span_bug(p.span,
@@ -1475,8 +1439,6 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
         for &(id, ref path, ref_kind) in &paths_to_process {
             self.process_path(id, path.span, path, ref_kind);
         }
-        self.collecting = false;
-        self.collected_paths.clear();
         visit::walk_expr_opt(self, &arm.guard);
         self.visit_expr(&*arm.body);
     }
@@ -1496,14 +1458,13 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
 
         // The local could declare multiple new vars, we must walk the
         // pattern and collect them all.
-        assert!(self.collected_paths.is_empty() && !self.collecting);
-        self.collecting = true;
-        self.visit_pat(&*l.pat);
-        self.collecting = false;
+        let mut collector = PathCollector::new();
+        collector.visit_pat(&l.pat);
+        self.visit_pat(&l.pat);
 
         let value = self.span.snippet(l.span);
 
-        for &(id, ref p, ref immut, _) in &self.collected_paths {
+        for &(id, ref p, ref immut, _) in &collector.collected_paths {
             let value = if *immut { value.to_string() } else { "<mutable>".to_string() };
             let types = self.analysis.ty_cx.node_types();
             let typ = ppaux::ty_to_string(&self.analysis.ty_cx, *types.get(&id).unwrap());
@@ -1518,7 +1479,6 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
                                   &value[..],
                                   &typ[..]);
         }
-        self.collected_paths.clear();
 
         // Just walk the initialiser and type (don't want to walk the pattern again).
         visit::walk_ty_opt(self, &l.ty);
