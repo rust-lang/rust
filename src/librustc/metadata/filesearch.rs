@@ -19,6 +19,7 @@ use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 
 use session::search_paths::{SearchPaths, PathKind};
+use util::fs as rustcfs;
 
 #[derive(Copy, Clone)]
 pub enum FileMatch {
@@ -191,7 +192,10 @@ pub fn get_or_default_sysroot() -> PathBuf {
     fn canonicalize(path: Option<PathBuf>) -> Option<PathBuf> {
         path.and_then(|path| {
             match fs::canonicalize(&path) {
-                Ok(canon) => Some(canon),
+                // See comments on this target function, but the gist is that
+                // gcc chokes on verbatim paths which fs::canonicalize generates
+                // so we try to avoid those kinds of paths.
+                Ok(canon) => Some(rustcfs::fix_windows_verbatim_for_gcc(&canon)),
                 Err(e) => panic!("failed to get realpath: {}", e),
             }
         })
