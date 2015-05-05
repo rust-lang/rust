@@ -1451,8 +1451,8 @@ impl BitSet {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn iter(&self) -> bit_set::Iter {
-        SetIter {set: self, next_idx: 0}
+    pub fn iter<'a>(&'a self) -> bit_set::Iter<'a> {
+        SetIter(BlockIter::from_blocks(self.bit_vec.blocks()))
     }
 
     /// Iterator over each u32 stored in `self` union `other`.
@@ -1477,13 +1477,11 @@ impl BitSet {
     pub fn union<'a>(&'a self, other: &'a BitSet) -> Union<'a> {
         fn or(w1: u32, w2: u32) -> u32 { w1 | w2 }
 
-        Union(TwoBitPositions {
-            set: self,
-            other: other,
+        Union(BlockIter::from_blocks(TwoBitPositions {
+            set: self.bit_vec.blocks(),
+            other: other.bit_vec.blocks(),
             merge: or,
-            current_word: 0,
-            next_idx: 0
-        })
+        }))
     }
 
     /// Iterator over each usize stored in `self` intersect `other`.
@@ -1508,13 +1506,12 @@ impl BitSet {
     pub fn intersection<'a>(&'a self, other: &'a BitSet) -> Intersection<'a> {
         fn bitand(w1: u32, w2: u32) -> u32 { w1 & w2 }
         let min = cmp::min(self.bit_vec.len(), other.bit_vec.len());
-        Intersection(TwoBitPositions {
-            set: self,
-            other: other,
+
+        Intersection(BlockIter::from_blocks(TwoBitPositions {
+            set: self.bit_vec.blocks(),
+            other: other.bit_vec.blocks(),
             merge: bitand,
-            current_word: 0,
-            next_idx: 0
-        }.take(min))
+        }).take(min))
     }
 
     /// Iterator over each usize stored in the `self` setminus `other`.
@@ -1546,13 +1543,11 @@ impl BitSet {
     pub fn difference<'a>(&'a self, other: &'a BitSet) -> Difference<'a> {
         fn diff(w1: u32, w2: u32) -> u32 { w1 & !w2 }
 
-        Difference(TwoBitPositions {
-            set: self,
-            other: other,
+        Difference(BlockIter::from_blocks(TwoBitPositions {
+            set: self.bit_vec.blocks(),
+            other: other.bit_vec.blocks(),
             merge: diff,
-            current_word: 0,
-            next_idx: 0
-        })
+        }))
     }
 
     /// Iterator over each u32 stored in the symmetric difference of `self` and `other`.
@@ -1578,13 +1573,11 @@ impl BitSet {
     pub fn symmetric_difference<'a>(&'a self, other: &'a BitSet) -> SymmetricDifference<'a> {
         fn bitxor(w1: u32, w2: u32) -> u32 { w1 ^ w2 }
 
-        SymmetricDifference(TwoBitPositions {
-            set: self,
-            other: other,
+        SymmetricDifference(BlockIter::from_blocks(TwoBitPositions {
+            set: self.bit_vec.blocks(),
+            other: other.bit_vec.blocks(),
             merge: bitxor,
-            current_word: 0,
-            next_idx: 0
-        })
+        }))
     }
 
     /// Unions in-place with the specified other bit vector.
@@ -1808,96 +1801,105 @@ impl hash::Hash for BitSet {
     }
 }
 
-/// An iterator for `BitSet`.
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct SetIter<'a> {
-    set: &'a BitSet,
-    next_idx: usize
+struct BlockIter<T> where
+    T: Iterator<Item=u32> {
+    head: u32,
+    head_offset: usize,
+    tail: T
+}
+impl<'a, T> BlockIter<T> where
+    T: Iterator<Item=u32> {
+    fn from_blocks(mut blocks: T) -> BlockIter<T> {
+        let h = blocks.next().unwrap_or(0);
+        BlockIter {tail: blocks, head: h, head_offset: 0}
+    }
 }
 
 /// An iterator combining two `BitSet` iterators.
 #[derive(Clone)]
 struct TwoBitPositions<'a> {
-    set: &'a BitSet,
-    other: &'a BitSet,
+    set: Blocks<'a>,
+    other: Blocks<'a>,
     merge: fn(u32, u32) -> u32,
-    current_word: u32,
-    next_idx: usize
 }
 
+/// An iterator for `BitSet`.
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct Union<'a>(TwoBitPositions<'a>);
+pub struct SetIter<'a>(BlockIter<Blocks<'a>>);
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct Intersection<'a>(Take<TwoBitPositions<'a>>);
+pub struct Union<'a>(BlockIter<TwoBitPositions<'a>>);
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct Difference<'a>(TwoBitPositions<'a>);
+pub struct Intersection<'a>(Take<BlockIter<TwoBitPositions<'a>>>);
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct SymmetricDifference<'a>(TwoBitPositions<'a>);
+pub struct Difference<'a>(BlockIter<TwoBitPositions<'a>>);
+#[derive(Clone)]
+#[stable(feature = "rust1", since = "1.0.0")]
+pub struct SymmetricDifference<'a>(BlockIter<TwoBitPositions<'a>>);
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> Iterator for SetIter<'a> {
+impl<'a, T> Iterator for BlockIter<T> where T: Iterator<Item=u32> {
     type Item = usize;
 
     fn next(&mut self) -> Option<usize> {
-        while self.next_idx < self.set.bit_vec.len() {
-            let idx = self.next_idx;
-            self.next_idx += 1;
-
-            if self.set.contains(&idx) {
-                return Some(idx);
+        while self.head == 0 {
+            match self.tail.next() {
+                Some(w) => self.head = w,
+                _ => return None
             }
+            self.head_offset += u32::BITS;
         }
 
-        return None;
+        let t = self.head & !self.head + 1;
+        // remove the least significant bit
+        self.head &= self.head - 1;
+        // return index of lsb
+        Some(self.head_offset + (u32::count_ones(t-1) as usize))
     }
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        (0, Some(self.set.bit_vec.len() - self.next_idx))
+        match self.tail.size_hint() {
+            (_, Some(h)) => (0, Some(1 + h * (u32::BITS as usize))),
+            _ => (0, None)
+        }
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Iterator for TwoBitPositions<'a> {
-    type Item = usize;
+    type Item = u32;
 
-    fn next(&mut self) -> Option<usize> {
-        while self.next_idx < self.set.bit_vec.len() ||
-              self.next_idx < self.other.bit_vec.len() {
-            let bit_idx = self.next_idx % u32::BITS;
-            if bit_idx == 0 {
-                let s_bit_vec = &self.set.bit_vec;
-                let o_bit_vec = &self.other.bit_vec;
-                // Merging the two words is a bit of an awkward dance since
-                // one BitVec might be longer than the other
-                let word_idx = self.next_idx / u32::BITS;
-                let w1 = if word_idx < s_bit_vec.storage.len() {
-                             s_bit_vec.storage[word_idx]
-                         } else { 0 };
-                let w2 = if word_idx < o_bit_vec.storage.len() {
-                             o_bit_vec.storage[word_idx]
-                         } else { 0 };
-                self.current_word = (self.merge)(w1, w2);
-            }
-
-            self.next_idx += 1;
-            if self.current_word & (1 << bit_idx) != 0 {
-                return Some(self.next_idx - 1);
-            }
+    fn next(&mut self) -> Option<u32> {
+        match (self.set.next(), self.other.next()) {
+            (Some(a), Some(b)) => Some((self.merge)(a, b)),
+            (Some(a), None) => Some((self.merge)(a, 0)),
+            (None, Some(b)) => Some((self.merge)(0, b)),
+            _ => return None
         }
-        return None;
     }
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let cap = cmp::max(self.set.bit_vec.len(), self.other.bit_vec.len());
-        (0, Some(cap - self.next_idx))
+        let (a, al) = self.set.size_hint();
+        let (b, bl) = self.set.size_hint();
+
+        assert_eq!(a, b);
+        (a, cmp::max(al, bl))
     }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<'a> Iterator for SetIter<'a> {
+    type Item = usize;
+
+    #[inline] fn next(&mut self) -> Option<usize> { self.0.next() }
+    #[inline] fn size_hint(&self) -> (usize, Option<usize>) { self.0.size_hint() }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
