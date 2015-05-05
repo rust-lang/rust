@@ -138,11 +138,11 @@ impl Metadata {
     pub fn rdev(&self) -> raw::dev_t { self.0.raw().st_rdev as raw::dev_t }
     pub fn size(&self) -> raw::off_t { self.0.raw().st_size as raw::off_t }
     pub fn atime(&self) -> raw::time_t { self.0.raw().st_atime }
-    pub fn atime_nsec(&self) -> c_long { self.0.raw().st_atime }
+    pub fn atime_nsec(&self) -> c_long { self.0.raw().st_atime_nsec as c_long }
     pub fn mtime(&self) -> raw::time_t { self.0.raw().st_mtime }
-    pub fn mtime_nsec(&self) -> c_long { self.0.raw().st_mtime }
+    pub fn mtime_nsec(&self) -> c_long { self.0.raw().st_mtime_nsec as c_long }
     pub fn ctime(&self) -> raw::time_t { self.0.raw().st_ctime }
-    pub fn ctime_nsec(&self) -> c_long { self.0.raw().st_ctime }
+    pub fn ctime_nsec(&self) -> c_long { self.0.raw().st_ctime_nsec as c_long }
 
     pub fn blksize(&self) -> raw::blksize_t {
         self.0.raw().st_blksize as raw::blksize_t
