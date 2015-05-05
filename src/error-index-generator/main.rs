@@ -57,7 +57,15 @@ r##"<!DOCTYPE html>
 <html>
 <head>
 <title>Rust Compiler Error Index</title>
+<meta charset="utf-8">
+<!-- Include rust.css after main.css so its rules take priority. -->
+<link rel="stylesheet" type="text/css" href="main.css"/>
 <link rel="stylesheet" type="text/css" href="rust.css"/>
+<style>
+.error-undescribed {{
+    display: none;
+}}
+</style>
 </head>
 <body>
 "##
@@ -79,7 +87,7 @@ r##"<!DOCTYPE html>
 
         // Error title (with self-link).
         try!(write!(&mut output_file,
-            "<h2 id=\"{0}\"><a href=\"#{0}\">{0}</a></h2>\n",
+            "<h2 id=\"{0}\" class=\"section-header\"><a href=\"#{0}\">{0}</a></h2>\n",
             err_code
         ));
 
