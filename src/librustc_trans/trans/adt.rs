@@ -795,43 +795,40 @@ pub fn trans_switch<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }
 }
 
-
+pub fn is_discr_signed<'tcx>(r: &Repr<'tcx>) -> bool {
+    match *r {
+        CEnum(ity, _, _) => ity.is_signed(),
+        General(ity, _, _) => ity.is_signed(),
+        Univariant(..) => false,
+        RawNullablePointer { .. } => false,
+        StructWrappedNullablePointer { .. } => false,
+    }
+}
 
 /// Obtain the actual discriminant of a value.
 pub fn trans_get_discr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, r: &Repr<'tcx>,
                                    scrutinee: ValueRef, cast_to: Option<Type>)
     -> ValueRef {
-    let signed;
-    let val;
     debug!("trans_get_discr r: {:?}", r);
-    match *r {
-        CEnum(ity, min, max) => {
-            val = load_discr(bcx, ity, scrutinee, min, max);
-            signed = ity.is_signed();
-        }
+    let val = match *r {
+        CEnum(ity, min, max) => load_discr(bcx, ity, scrutinee, min, max),
         General(ity, ref cases, _) => {
             let ptr = GEPi(bcx, scrutinee, &[0, 0]);
-            val = load_discr(bcx, ity, ptr, 0, (cases.len() - 1) as Disr);
-            signed = ity.is_signed();
+            load_discr(bcx, ity, ptr, 0, (cases.len() - 1) as Disr)
         }
-        Univariant(..) => {
-            val = C_u8(bcx.ccx(), 0);
-            signed = false;
-        }
+        Univariant(..) => C_u8(bcx.ccx(), 0),
         RawNullablePointer { nndiscr, nnty, .. } =>  {
             let cmp = if nndiscr == 0 { IntEQ } else { IntNE };
             let llptrty = type_of::sizing_type_of(bcx.ccx(), nnty);
-            val = ICmp(bcx, cmp, Load(bcx, scrutinee), C_null(llptrty), DebugLoc::None);
-            signed = false;
+            ICmp(bcx, cmp, Load(bcx, scrutinee), C_null(llptrty), DebugLoc::None)
         }
         StructWrappedNullablePointer { nndiscr, ref discrfield, .. } => {
-            val = struct_wrapped_nullable_bitdiscr(bcx, nndiscr, discrfield, scrutinee);
-            signed = false;
+            struct_wrapped_nullable_bitdiscr(bcx, nndiscr, discrfield, scrutinee)
         }
-    }
+    };
     match cast_to {
         None => val,
-        Some(llty) => if signed { SExt(bcx, val, llty) } else { ZExt(bcx, val, llty) }
+        Some(llty) => if is_discr_signed(r) { SExt(bcx, val, llty) } else { ZExt(bcx, val, llty) }
     }
 }
 
