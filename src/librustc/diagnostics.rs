@@ -37,7 +37,7 @@ An example of an empty type is `enum Empty { }`.
 E0003: r##"
 Not-a-Number (NaN) values cannot be compared for equality and hence can never
 match the input to a match expression. To match against NaN values, you should
-instead use the `is_nan` method in a guard, as in: x if x.is_nan() => ...
+instead use the `is_nan` method in a guard, as in: `x if x.is_nan() => ...`
 "##,
 
 E0004: r##"
