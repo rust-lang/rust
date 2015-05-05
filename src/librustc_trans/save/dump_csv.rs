@@ -27,7 +27,7 @@
 //! the format of the output away from extracting it from the compiler.
 //! DumpCsvVisitor walks the AST and processes it.
 
-use super::{escape, generated_code, recorder};
+use super::{escape, generated_code, recorder, SaveContext};
 
 use session::Session;
 
@@ -55,6 +55,7 @@ use util::ppaux;
 
 
 pub struct DumpCsvVisitor<'l, 'tcx: 'l> {
+    save_ctxt: SaveContext<'l>,
     sess: &'l Session,
     analysis: &'l ty::CrateAnalysis<'tcx>,
 
@@ -68,20 +69,12 @@ pub struct DumpCsvVisitor<'l, 'tcx: 'l> {
 }
 
 impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
-    fn nest<F>(&mut self, scope_id: NodeId, f: F) where
-        F: FnOnce(&mut DumpCsvVisitor<'l, 'tcx>),
-    {
-        let parent_scope = self.cur_scope;
-        self.cur_scope = scope_id;
-        f(self);
-        self.cur_scope = parent_scope;
-    }
-
     pub fn new(sess: &'l Session,
                analysis: &'l ty::CrateAnalysis<'tcx>,
                output_file: Box<File>) -> DumpCsvVisitor<'l, 'tcx> {
         DumpCsvVisitor {
             sess: sess,
+            save_ctxt: SaveContext { sess: sess },
             analysis: analysis,
             collected_paths: vec![],
             collecting: false,
@@ -101,14 +94,23 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
         }
     }
 
+    fn nest<F>(&mut self, scope_id: NodeId, f: F) where
+        F: FnOnce(&mut DumpCsvVisitor<'l, 'tcx>),
+    {
+        let parent_scope = self.cur_scope;
+        self.cur_scope = scope_id;
+        f(self);
+        self.cur_scope = parent_scope;
+    }
+
     pub fn dump_crate_info(&mut self, name: &str, krate: &ast::Crate) {
-        // the current crate
+        // The current crate.
         self.fmt.crate_str(krate.span, name);
 
-        // dump info about all the external crates referenced from this crate
-        self.sess.cstore.iter_crate_data(|n, cmd| {
-            self.fmt.external_crate_str(krate.span, &cmd.name, n);
-        });
+        // Dump info about all the external crates referenced from this crate.
+        for c in &self.save_ctxt.get_external_crates() {
+            self.fmt.external_crate_str(krate.span, &c.name, c.number);            
+        }
         self.fmt.recorder.record("end_external_crates\n");
     }
 
