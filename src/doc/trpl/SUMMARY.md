@@ -5,6 +5,7 @@
     * [Hello, world!](hello-world.md)
     * [Hello, Cargo!](hello-cargo.md)
 * [Learn Rust](learn-rust.md)
+    * [Guessing Game](guessing-game.md)
 * [Effective Rust](effective-rust.md)
     * [The Stack and the Heap](the-stack-and-the-heap.md)
     * [Testing](testing.md)
