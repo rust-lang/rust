@@ -210,15 +210,13 @@ impl BitVec {
         assert_eq!(self.len(), other.len());
         // This could theoretically be a `debug_assert!`.
         assert_eq!(self.storage.len(), other.storage.len());
-        let mut changed = false;
+        let mut changed_bits = 0;
         for (a, b) in self.blocks_mut().zip(other.blocks()) {
             let w = op(*a, b);
-            if *a != w {
-                changed = true;
-                *a = w;
-            }
+            changed_bits |= *a ^ w;
+            *a = w;
         }
-        changed
+        changed_bits != 0
     }
 
     /// Iterator over mutable refs to  the underlying blocks of data.
