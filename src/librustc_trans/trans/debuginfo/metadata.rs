@@ -151,7 +151,7 @@ impl<'tcx> TypeMap<'tcx> {
         // mut reference (&mut)   -> {&mut :pointee-uid:}
         // ptr (*)                -> {* :pointee-uid:}
         // mut ptr (*mut)         -> {*mut :pointee-uid:}
-        // unique ptr (Box)       -> {Box :pointee-uid:}
+        // unique ptr (box)       -> {box :pointee-uid:}
         // @-ptr (@)              -> {@ :pointee-uid:}
         // sized vec ([T; x])     -> {[:size:] :element-uid:}
         // unsized vec ([T])      -> {[] :element-uid:}
@@ -200,7 +200,7 @@ impl<'tcx> TypeMap<'tcx> {
                 }
             },
             ty::ty_uniq(inner_type) => {
-                unique_type_id.push_str("Box ");
+                unique_type_id.push_str("box ");
                 let inner_type_id = self.get_unique_type_id_of_type(cx, inner_type);
                 let inner_type_id = self.get_unique_type_id_as_string(inner_type_id);
                 unique_type_id.push_str(&inner_type_id[..]);
