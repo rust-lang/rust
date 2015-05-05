@@ -9,5 +9,5 @@
 // except according to those terms.
 
 fn main() {
-    0 as &std::any::Any; //~ ERROR cast to fat pointer: `i32` as `&core::any::Any`
+    0 as &std::any::Any; //~ ERROR non-scalar cast
 }

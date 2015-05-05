@@ -29,6 +29,7 @@ use trans::declare;
 use trans::monomorphize;
 use trans::type_::Type;
 use trans::type_of;
+use middle::cast::{CastTy,IntTy};
 use middle::subst::Substs;
 use middle::ty::{self, Ty};
 use util::ppaux::{Repr, ty_to_string};
@@ -616,53 +617,62 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
               }
           }
           ast::ExprCast(ref base, _) => {
-            let llty = type_of::type_of(cx, ety);
-            let (v, basety) = const_expr(cx, &**base, param_substs);
-            if expr::cast_is_noop(basety, ety) {
+            let t_1 = ety;
+            let llty = type_of::type_of(cx, t_1);
+            let (v, t_e) = const_expr(cx, &**base, param_substs);
+            debug!("trans_const_cast({} as {})", t_e.repr(cx.tcx()), t_1.repr(cx.tcx()));
+            if expr::cast_is_noop(cx.tcx(), base, t_e, t_1) {
                 return v;
             }
-            match (expr::cast_type_kind(cx.tcx(), basety),
-                   expr::cast_type_kind(cx.tcx(), ety)) {
-
-              (expr::cast_integral, expr::cast_integral) => {
-                let s = ty::type_is_signed(basety) as Bool;
+            if type_is_fat_ptr(cx.tcx(), t_e) {
+                // Fat pointer casts.
+                let t_1_inner = ty::deref(t_1, true).expect("cast to non-pointer").ty;
+                let ptr_ty = type_of::in_memory_type_of(cx, t_1_inner).ptr_to();
+                let addr = ptrcast(const_get_elt(cx, v, &[abi::FAT_PTR_ADDR as u32]),
+                                   ptr_ty);
+                if type_is_fat_ptr(cx.tcx(), t_1) {
+                    let info = const_get_elt(cx, v, &[abi::FAT_PTR_EXTRA as u32]);
+                    return C_struct(cx, &[addr, info], false)
+                } else {
+                    return addr;
+                }
+            }
+            match (CastTy::recognize(cx.tcx(), t_e).expect("bad input type for cast"),
+                   CastTy::recognize(cx.tcx(), t_1).expect("bad output type for cast")) {
+              (CastTy::Int(IntTy::CEnum), CastTy::Int(_)) => {
+                let repr = adt::represent_type(cx, t_e);
+                let discr = adt::const_get_discrim(cx, &*repr, v);
+                let iv = C_integral(cx.int_type(), discr, false);
+                let s = adt::is_discr_signed(&*repr) as Bool;
+                llvm::LLVMConstIntCast(iv, llty.to_ref(), s)
+              }
+              (CastTy::Int(_), CastTy::Int(_)) => {
+                let s = ty::type_is_signed(t_e) as Bool;
                 llvm::LLVMConstIntCast(v, llty.to_ref(), s)
               }
-              (expr::cast_integral, expr::cast_float) => {
-                if ty::type_is_signed(basety) {
+              (CastTy::Int(_), CastTy::Float) => {
+                if ty::type_is_signed(t_e) {
                     llvm::LLVMConstSIToFP(v, llty.to_ref())
                 } else {
                     llvm::LLVMConstUIToFP(v, llty.to_ref())
                 }
               }
-              (expr::cast_float, expr::cast_float) => {
+              (CastTy::Float, CastTy::Float) => {
                 llvm::LLVMConstFPCast(v, llty.to_ref())
               }
-              (expr::cast_float, expr::cast_integral) => {
-                if ty::type_is_signed(ety) { llvm::LLVMConstFPToSI(v, llty.to_ref()) }
+              (CastTy::Float, CastTy::Int(_)) => {
+                if ty::type_is_signed(t_1) { llvm::LLVMConstFPToSI(v, llty.to_ref()) }
                 else { llvm::LLVMConstFPToUI(v, llty.to_ref()) }
               }
-              (expr::cast_enum, expr::cast_integral) => {
-                let repr = adt::represent_type(cx, basety);
-                let discr = adt::const_get_discrim(cx, &*repr, v);
-                let iv = C_integral(cx.int_type(), discr, false);
-                let ety_cast = expr::cast_type_kind(cx.tcx(), ety);
-                match ety_cast {
-                    expr::cast_integral => {
-                        let s = ty::type_is_signed(ety) as Bool;
-                        llvm::LLVMConstIntCast(iv, llty.to_ref(), s)
-                    }
-                    _ => cx.sess().bug("enum cast destination is not \
-                                        integral")
-                }
-              }
-              (expr::cast_pointer, expr::cast_pointer) => {
+              (CastTy::Ptr(_), CastTy::Ptr(_)) | (CastTy::FPtr, CastTy::Ptr(_))
+                    | (CastTy::RPtr(_), CastTy::Ptr(_)) => {
                 ptrcast(v, llty)
               }
-              (expr::cast_integral, expr::cast_pointer) => {
+              (CastTy::FPtr, CastTy::FPtr) => ptrcast(v, llty), // isn't this a coercion?
+              (CastTy::Int(_), CastTy::Ptr(_)) => {
                 llvm::LLVMConstIntToPtr(v, llty.to_ref())
               }
-              (expr::cast_pointer, expr::cast_integral) => {
+              (CastTy::Ptr(_), CastTy::Int(_)) | (CastTy::FPtr, CastTy::Int(_)) => {
                 llvm::LLVMConstPtrToInt(v, llty.to_ref())
               }
               _ => {

@@ -48,7 +48,6 @@
 
 #![allow(non_camel_case_types)]
 
-pub use self::cast_kind::*;
 pub use self::Dest::*;
 use self::lazy_binop_ty::*;
 
@@ -73,6 +72,7 @@ use trans::meth;
 use trans::monomorphize;
 use trans::tvec;
 use trans::type_of;
+use middle::cast::{CastKind, CastTy};
 use middle::ty::{struct_fields, tup_fields};
 use middle::ty::{AdjustDerefRef, AdjustReifyFnPointer, AdjustUnsafeFnPointer};
 use middle::ty::{self, Ty};
@@ -1981,177 +1981,143 @@ fn trans_overloaded_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     bcx
 }
 
-fn int_cast(bcx: Block,
-            lldsttype: Type,
-            llsrctype: Type,
-            llsrc: ValueRef,
-            signed: bool)
-            -> ValueRef {
-    let _icx = push_ctxt("int_cast");
-    let srcsz = llsrctype.int_width();
-    let dstsz = lldsttype.int_width();
-    return if dstsz == srcsz {
-        BitCast(bcx, llsrc, lldsttype)
-    } else if srcsz > dstsz {
-        TruncOrBitCast(bcx, llsrc, lldsttype)
-    } else if signed {
-        SExtOrBitCast(bcx, llsrc, lldsttype)
-    } else {
-        ZExtOrBitCast(bcx, llsrc, lldsttype)
+pub fn cast_is_noop<'tcx>(tcx: &ty::ctxt<'tcx>,
+                          expr: &ast::Expr,
+                          t_in: Ty<'tcx>,
+                          t_out: Ty<'tcx>)
+                          -> bool {
+    if let Some(&CastKind::CoercionCast) = tcx.cast_kinds.borrow().get(&expr.id) {
+        return true;
     }
-}
 
-fn float_cast(bcx: Block,
-              lldsttype: Type,
-              llsrctype: Type,
-              llsrc: ValueRef)
-              -> ValueRef {
-    let _icx = push_ctxt("float_cast");
-    let srcsz = llsrctype.float_width();
-    let dstsz = lldsttype.float_width();
-    return if dstsz > srcsz {
-        FPExt(bcx, llsrc, lldsttype)
-    } else if srcsz > dstsz {
-        FPTrunc(bcx, llsrc, lldsttype)
-    } else { llsrc };
-}
-
-#[derive(Copy, Clone, PartialEq, Debug)]
-pub enum cast_kind {
-    cast_pointer,
-    cast_fat_ptr,
-    cast_integral,
-    cast_float,
-    cast_enum,
-    cast_other,
-}
-
-pub fn cast_type_kind<'tcx>(tcx: &ty::ctxt<'tcx>, t: Ty<'tcx>) -> cast_kind {
-    match t.sty {
-        ty::ty_char        => cast_integral,
-        ty::ty_float(..)   => cast_float,
-        ty::ty_rptr(_, mt) | ty::ty_ptr(mt) => {
-            if type_is_sized(tcx, mt.ty) {
-                cast_pointer
-            } else {
-                cast_fat_ptr
-            }
-        }
-        ty::ty_bare_fn(..) => cast_pointer,
-        ty::ty_int(..)     => cast_integral,
-        ty::ty_uint(..)    => cast_integral,
-        ty::ty_bool        => cast_integral,
-        ty::ty_enum(..)    => cast_enum,
-        _                  => cast_other
-    }
-}
-
-pub fn cast_is_noop<'tcx>(t_in: Ty<'tcx>, t_out: Ty<'tcx>) -> bool {
     match (ty::deref(t_in, true), ty::deref(t_out, true)) {
         (Some(ty::mt{ ty: t_in, .. }), Some(ty::mt{ ty: t_out, .. })) => {
             t_in == t_out
         }
-        _ => false
+        _ => {
+            // This condition isn't redundant with the check for CoercionCast:
+            // different types can be substituted into the same type, and
+            // == equality can be overconservative if there are regions.
+            t_in == t_out
+        }
     }
 }
 
 fn trans_imm_cast<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                               expr: &ast::Expr,
                               id: ast::NodeId)
-                              -> DatumBlock<'blk, 'tcx, Expr> {
+                              -> DatumBlock<'blk, 'tcx, Expr>
+{
+    use middle::cast::CastTy::*;
+    use middle::cast::IntTy::*;
+
+    fn int_cast(bcx: Block,
+                lldsttype: Type,
+                llsrctype: Type,
+                llsrc: ValueRef,
+                signed: bool)
+                -> ValueRef
+    {
+        let _icx = push_ctxt("int_cast");
+        let srcsz = llsrctype.int_width();
+        let dstsz = lldsttype.int_width();
+        return if dstsz == srcsz {
+            BitCast(bcx, llsrc, lldsttype)
+        } else if srcsz > dstsz {
+            TruncOrBitCast(bcx, llsrc, lldsttype)
+        } else if signed {
+            SExtOrBitCast(bcx, llsrc, lldsttype)
+        } else {
+            ZExtOrBitCast(bcx, llsrc, lldsttype)
+        }
+    }
+
+    fn float_cast(bcx: Block,
+                  lldsttype: Type,
+                  llsrctype: Type,
+                  llsrc: ValueRef)
+                  -> ValueRef
+    {
+        let _icx = push_ctxt("float_cast");
+        let srcsz = llsrctype.float_width();
+        let dstsz = lldsttype.float_width();
+        return if dstsz > srcsz {
+            FPExt(bcx, llsrc, lldsttype)
+        } else if srcsz > dstsz {
+            FPTrunc(bcx, llsrc, lldsttype)
+        } else { llsrc };
+    }
+
     let _icx = push_ctxt("trans_cast");
     let mut bcx = bcx;
     let ccx = bcx.ccx();
 
     let t_in = expr_ty_adjusted(bcx, expr);
     let t_out = node_id_type(bcx, id);
-    let k_in = cast_type_kind(bcx.tcx(), t_in);
-    let k_out = cast_type_kind(bcx.tcx(), t_out);
-    let s_in = k_in == cast_integral && ty::type_is_signed(t_in);
-    let ll_t_in = type_of::arg_type_of(ccx, t_in);
-    let ll_t_out = type_of::arg_type_of(ccx, t_out);
 
+    debug!("trans_cast({} as {})", t_in.repr(bcx.tcx()), t_out.repr(bcx.tcx()));
+    let mut ll_t_in = type_of::arg_type_of(ccx, t_in);
+    let ll_t_out = type_of::arg_type_of(ccx, t_out);
     // Convert the value to be cast into a ValueRef, either by-ref or
     // by-value as appropriate given its type:
     let mut datum = unpack_datum!(bcx, trans(bcx, expr));
 
     let datum_ty = monomorphize_type(bcx, datum.ty);
-    if cast_is_noop(datum_ty, t_out) {
+
+    if cast_is_noop(bcx.tcx(), expr, datum_ty, t_out) {
         datum.ty = t_out;
         return DatumBlock::new(bcx, datum);
     }
 
-    let newval = match (k_in, k_out) {
-        (cast_integral, cast_integral) => {
-            let llexpr = datum.to_llscalarish(bcx);
-            int_cast(bcx, ll_t_out, ll_t_in, llexpr, s_in)
+    if type_is_fat_ptr(bcx.tcx(), t_in) {
+        assert!(datum.kind.is_by_ref());
+        if type_is_fat_ptr(bcx.tcx(), t_out) {
+            return DatumBlock::new(bcx, Datum::new(
+                PointerCast(bcx, datum.val, ll_t_out.ptr_to()),
+                t_out,
+                Rvalue::new(ByRef)
+            )).to_expr_datumblock();
+        } else {
+            // Return the address
+            return immediate_rvalue_bcx(bcx,
+                                        Load(bcx, get_dataptr(bcx, datum.val)),
+                                        t_out).to_expr_datumblock();
         }
-        (cast_float, cast_float) => {
-            let llexpr = datum.to_llscalarish(bcx);
-            float_cast(bcx, ll_t_out, ll_t_in, llexpr)
-        }
-        (cast_integral, cast_float) => {
-            let llexpr = datum.to_llscalarish(bcx);
-            if s_in {
-                SIToFP(bcx, llexpr, ll_t_out)
-            } else { UIToFP(bcx, llexpr, ll_t_out) }
-        }
-        (cast_float, cast_integral) => {
-            let llexpr = datum.to_llscalarish(bcx);
-            if ty::type_is_signed(t_out) {
-                FPToSI(bcx, llexpr, ll_t_out)
-            } else { FPToUI(bcx, llexpr, ll_t_out) }
-        }
-        (cast_integral, cast_pointer) => {
-            let llexpr = datum.to_llscalarish(bcx);
-            IntToPtr(bcx, llexpr, ll_t_out)
-        }
-        (cast_pointer, cast_integral) => {
-            let llexpr = datum.to_llscalarish(bcx);
-            PtrToInt(bcx, llexpr, ll_t_out)
-        }
-        (cast_fat_ptr, cast_integral) => {
-            let data_ptr = Load(bcx, get_dataptr(bcx, datum.val));
-            PtrToInt(bcx, data_ptr, ll_t_out)
-        }
-        (cast_pointer, cast_pointer) => {
-            let llexpr = datum.to_llscalarish(bcx);
-            PointerCast(bcx, llexpr, ll_t_out)
-        }
-        (cast_fat_ptr, cast_pointer) => {
-            let data_ptr = Load(bcx, get_dataptr(bcx, datum.val));
-            PointerCast(bcx, data_ptr, ll_t_out)
-        }
-        (cast_enum, cast_integral) |
-        (cast_enum, cast_float) => {
-            let mut bcx = bcx;
-            let repr = adt::represent_type(ccx, t_in);
-            let datum = unpack_datum!(
-                bcx, datum.to_lvalue_datum(bcx, "trans_imm_cast", expr.id));
-            let llexpr_ptr = datum.to_llref();
-            let lldiscrim_a =
-                adt::trans_get_discr(bcx, &*repr, llexpr_ptr, Some(Type::i64(ccx)));
-            match k_out {
-                cast_integral => int_cast(bcx, ll_t_out,
-                                          val_ty(lldiscrim_a),
-                                          lldiscrim_a, true),
-                cast_float => SIToFP(bcx, lldiscrim_a, ll_t_out),
-                _ => {
-                    ccx.sess().bug(&format!("translating unsupported cast: \
-                                            {} ({:?}) -> {} ({:?})",
-                                            t_in.repr(bcx.tcx()),
-                                            k_in,
-                                            t_out.repr(bcx.tcx()),
-                                            k_out))
-                }
-            }
-        }
-        _ => ccx.sess().bug(&format!("translating unsupported cast: \
-                                    {} ({:?}) -> {} ({:?})",
-                                    t_in.repr(bcx.tcx()),
-                                    k_in,
-                                    t_out.repr(bcx.tcx()),
-                                    k_out))
+    }
+
+    let r_t_in = CastTy::recognize(bcx.tcx(), t_in).expect("bad input type for cast");
+    let r_t_out = CastTy::recognize(bcx.tcx(), t_out).expect("bad output type for cast");
+
+    let (llexpr, signed) = if let Int(CEnum) = r_t_in {
+        let repr = adt::represent_type(ccx, t_in);
+        let datum = unpack_datum!(
+            bcx, datum.to_lvalue_datum(bcx, "trans_imm_cast", expr.id));
+        let llexpr_ptr = datum.to_llref();
+        let discr = adt::trans_get_discr(bcx, &*repr, llexpr_ptr, Some(Type::i64(ccx)));
+        ll_t_in = val_ty(discr);
+        (discr, adt::is_discr_signed(&*repr))
+    } else {
+        (datum.to_llscalarish(bcx), ty::type_is_signed(t_in))
+    };
+
+    let newval = match (r_t_in, r_t_out) {
+        (Ptr(_), Ptr(_)) | (FPtr, Ptr(_)) | (RPtr(_), Ptr(_)) => PointerCast(bcx, llexpr, ll_t_out),
+        (Ptr(_), Int(_)) | (FPtr, Int(_)) => PtrToInt(bcx, llexpr, ll_t_out),
+        (Int(_), Ptr(_)) => IntToPtr(bcx, llexpr, ll_t_out),
+
+        (Int(_), Int(_)) => int_cast(bcx, ll_t_out, ll_t_in, llexpr, signed),
+        (Float, Float) => float_cast(bcx, ll_t_out, ll_t_in, llexpr),
+        (Int(_), Float) if signed => SIToFP(bcx, llexpr, ll_t_out),
+        (Int(_), Float) => UIToFP(bcx, llexpr, ll_t_out),
+        (Float, Int(I)) => FPToSI(bcx, llexpr, ll_t_out),
+        (Float, Int(_)) => FPToUI(bcx, llexpr, ll_t_out),
+
+        _ => ccx.sess().span_bug(expr.span,
+                                  &format!("translating unsupported cast: \
+                                            {} -> {}",
+                                           t_in.repr(bcx.tcx()),
+                                           t_out.repr(bcx.tcx()))
+                                 )
     };
     return immediate_rvalue_bcx(bcx, newval, t_out).to_expr_datumblock();
 }

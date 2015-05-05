@@ -1581,13 +1581,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                                  span)
     }
 
-    pub fn type_is_fat_ptr(&self, ty: Ty<'tcx>, span: Span) -> bool {
-        if let Some(mt) = ty::deref(ty, true) {
-            return !self.type_is_known_to_be_sized(mt.ty, span);
-        }
-        false
-    }
-
     pub fn register_builtin_bound(&self,
                                   ty: Ty<'tcx>,
                                   builtin_bound: ty::BuiltinBound,
@@ -1810,11 +1803,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn check_casts(&self) {
         let mut deferred_cast_checks = self.inh.deferred_cast_checks.borrow_mut();
-        for check in deferred_cast_checks.iter() {
-            cast::check_cast(self, check);
+        for cast in deferred_cast_checks.drain(..) {
+            cast.check(self);
         }
-
-        deferred_cast_checks.clear();
     }
 
     fn select_all_obligations_and_apply_defaults(&self) {

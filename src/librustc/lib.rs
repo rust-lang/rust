@@ -94,6 +94,7 @@ pub mod back {
 pub mod middle {
     pub mod astconv_util;
     pub mod astencode;
+    pub mod cast;
     pub mod cfg;
     pub mod check_const;
     pub mod check_static_recursion;
