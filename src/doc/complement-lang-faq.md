@@ -109,7 +109,7 @@ This does mean that indexed access to a Unicode codepoint inside a `str` value i
 * Most "character oriented" operations on text only work under very restricted language assumptions sets such as "ASCII-range codepoints only". Outside ASCII-range, you tend to have to use a complex (non-constant-time) algorithm for determining linguistic-unit (glyph, word, paragraph) boundaries anyways. We recommend using an "honest" linguistically-aware, Unicode-approved algorithm.
 * The `char` type is UCS4. If you honestly need to do a codepoint-at-a-time algorithm, it's trivial to write a `type wstr = [char]`, and unpack a `str` into it in a single pass, then work with the `wstr`. In other words: the fact that the language is not "decoding to UCS4 by default" shouldn't stop you from decoding (or re-encoding any other way) if you need to work with that encoding.
 
-## Why are strings, vectors etc. built-in types rather than (say) special kinds of trait/impl?
+## Why are `str`s, slices, arrays etc. built-in types rather than (say) special kinds of trait/impl?
 
 In each case there is one or more operator, literal constructor, overloaded use or integration with a built-in control structure that makes us think it would be awkward to phrase the type in terms of more-general type constructors. Same as, say, with numbers! But this is partly an aesthetic call, and we'd be willing to look at a worked-out proposal for eliminating or rephrasing these special cases.
 
