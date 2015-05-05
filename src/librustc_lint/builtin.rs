@@ -1324,7 +1324,7 @@ impl LintPass for UnsafeCode {
     fn check_fn(&mut self, cx: &Context, fk: visit::FnKind, _: &ast::FnDecl,
                 _: &ast::Block, span: Span, _: ast::NodeId) {
         match fk {
-            visit::FkItemFn(_, _, ast::Unsafety::Unsafe, _, _) =>
+            visit::FkItemFn(_, _, ast::Unsafety::Unsafe, _, _, _) =>
                 cx.span_lint(UNSAFE_CODE, span, "declaration of an `unsafe` function"),
 
             visit::FkMethod(_, sig, _) => {

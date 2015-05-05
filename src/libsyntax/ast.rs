@@ -1215,6 +1215,7 @@ pub struct TypeField {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct MethodSig {
     pub unsafety: Unsafety,
+    pub constness: Constness,
     pub abi: Abi,
     pub decl: P<FnDecl>,
     pub generics: Generics,
@@ -1549,7 +1550,6 @@ pub enum ExplicitSelf_ {
 pub type ExplicitSelf = Spanned<ExplicitSelf_>;
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-             Constness,
 pub struct Mod {
     /// A span from the first token past `{` to the last token until `}`.
     /// For `mod foo;`, the inner span ranges from the first token

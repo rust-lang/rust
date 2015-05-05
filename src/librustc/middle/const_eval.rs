@@ -25,7 +25,7 @@ use util::ppaux::Repr;
 
 use syntax::ast::{self, Expr};
 use syntax::ast_map::blocks::FnLikeNode;
-use syntax::ast_util::{self, PostExpansionMethod};
+use syntax::ast_util;
 use syntax::codemap::Span;
 use syntax::feature_gate;
 use syntax::parse::token::InternedString;
@@ -216,7 +216,7 @@ fn inline_const_fn_from_external_crate(tcx: &ty::ctxt, def_id: ast::DefId)
     let fn_id = match csearch::maybe_get_item_ast(tcx, def_id,
         box |a, b, c, d| astencode::decode_inlined_item(a, b, c, d)) {
         csearch::FoundAst::Found(&ast::IIItem(ref item)) => Some(item.id),
-        csearch::FoundAst::Found(&ast::IIImplItem(_, ast::MethodImplItem(ref m))) => Some(m.id),
+        csearch::FoundAst::Found(&ast::IIImplItem(_, ref item)) => Some(item.id),
         _ => None
     };
     tcx.extern_const_fns.borrow_mut().insert(def_id,
@@ -224,9 +224,9 @@ fn inline_const_fn_from_external_crate(tcx: &ty::ctxt, def_id: ast::DefId)
     fn_id
 }
 
-pub fn lookup_const_fn_by_id<'a>(tcx: &'a ty::ctxt, def_id: ast::DefId)
-                                 -> Option<FnLikeNode<'a>> {
-
+pub fn lookup_const_fn_by_id<'tcx>(tcx: &ty::ctxt<'tcx>, def_id: ast::DefId)
+                                   -> Option<FnLikeNode<'tcx>>
+{
     let fn_id = if !ast_util::is_local(def_id) {
         if let Some(fn_id) = inline_const_fn_from_external_crate(tcx, def_id) {
             fn_id
@@ -243,11 +243,11 @@ pub fn lookup_const_fn_by_id<'a>(tcx: &'a ty::ctxt, def_id: ast::DefId)
     };
 
     match fn_like.kind() {
-        visit::FkItemFn(_, _, _, ast::Constness::Const, _) => {
+        visit::FkItemFn(_, _, _, ast::Constness::Const, _, _) => {
             Some(fn_like)
         }
-        visit::FkMethod(_, _, m) => {
-            if m.pe_constness() == ast::Constness::Const {
+        visit::FkMethod(_, m, _) => {
+            if m.constness == ast::Constness::Const {
                 Some(fn_like)
             } else {
                 None

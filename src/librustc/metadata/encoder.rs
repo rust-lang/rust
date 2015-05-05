@@ -879,12 +879,11 @@ fn encode_info_for_method<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
             let any_types = !scheme.generics.types.is_empty();
             let needs_inline = any_types || is_default_impl ||
                                attr::requests_inline(&impl_item.attrs);
-            let constness = ast_method.pe_constness();
-            if needs_inline || constness == ast::Constness::Const {
+            if needs_inline || sig.constness == ast::Constness::Const {
                 encode_inlined_item(ecx, rbml_w, IIImplItemRef(local_def(parent_id),
                                                                impl_item));
             }
-            encode_constness(rbml_w, constness);
+            encode_constness(rbml_w, sig.constness);
             if !any_types {
                 encode_symbol(ecx, rbml_w, m.def_id.node);
             }

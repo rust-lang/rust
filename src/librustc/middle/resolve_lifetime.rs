@@ -447,7 +447,7 @@ impl<'a> LifetimeContext<'a> {
                    fb: &'b ast::Block,
                    _span: Span) {
         match fk {
-            visit::FkItemFn(_, generics, _, _, _) => {
+            visit::FkItemFn(_, generics, _, _, _, _) => {
                 visit::walk_fn_decl(self, fd);
                 self.visit_generics(generics);
             }

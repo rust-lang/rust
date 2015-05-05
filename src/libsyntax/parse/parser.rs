@@ -1160,7 +1160,8 @@ impl<'a> Parser<'a> {
                 let TyParam {ident, bounds, default, ..} = try!(p.parse_ty_param());
                 try!(p.expect(&token::Semi));
                 (ident, TypeTraitItem(bounds, default))
-            } else if try!(p.eat_keyword(keywords::Const)) {
+            } else if p.is_const_item() {
+                try!(p.expect_keyword(keywords::Const));
                 let ident = try!(p.parse_ident());
                 try!(p.expect(&token::Colon));
                 let ty = try!(p.parse_ty_sum());
@@ -1175,13 +1176,7 @@ impl<'a> Parser<'a> {
                 };
                 (ident, ConstTraitItem(ty, default))
             } else {
-                let unsafety = try!(p.parse_unsafety());
-                let abi = if try!(p.eat_keyword(keywords::Extern)) {
-                    try!(p.parse_opt_abi()).unwrap_or(abi::C)
-                } else {
-                    abi::Rust
-                };
-                try!(p.expect_keyword(keywords::Fn));
+                let (constness, unsafety, abi) = try!(p.parse_fn_front_matter());
 
                 let ident = try!(p.parse_ident());
                 let mut generics = try!(p.parse_generics());
@@ -1196,7 +1191,7 @@ impl<'a> Parser<'a> {
                 generics.where_clause = try!(p.parse_where_clause());
                 let sig = ast::MethodSig {
                     unsafety: unsafety,
-                    constness: ast::Constness::NotConst;
+                    constness: constness,
                     decl: d,
                     generics: generics,
                     abi: abi,
@@ -4372,6 +4367,36 @@ impl<'a> Parser<'a> {
         Ok((ident, ItemFn(decl, unsafety, constness, abi, generics, body), Some(inner_attrs)))
     }
 
+    /// true if we are looking at `const ID`, false for things like `const fn` etc
+    pub fn is_const_item(&mut self) -> bool {
+        self.token.is_keyword(keywords::Const) &&
+            !self.look_ahead(1, |t| t.is_keyword(keywords::Fn))
+    }
+
+    /// parses all the "front matter" for a `fn` declaration, up to
+    /// and including the `fn` keyword:
+    ///
+    /// - `const fn`
+    /// - `unsafe fn`
+    /// - `extern fn`
+    /// - etc
+    pub fn parse_fn_front_matter(&mut self) -> PResult<(ast::Constness, ast::Unsafety, abi::Abi)> {
+        let is_const_fn = try!(self.eat_keyword(keywords::Const));
+        let (constness, unsafety, abi) = if is_const_fn {
+            (Constness::Const, Unsafety::Normal, abi::Rust)
+        } else {
+            let unsafety = try!(self.parse_unsafety());
+            let abi = if try!(self.eat_keyword(keywords::Extern)) {
+                try!(self.parse_opt_abi()).unwrap_or(abi::C)
+            } else {
+                abi::Rust
+            };
+            (Constness::NotConst, unsafety, abi)
+        };
+        try!(self.expect_keyword(keywords::Fn));
+        Ok((constness, unsafety, abi))
+    }
+
     /// Parse an impl item.
     pub fn parse_impl_item(&mut self) -> PResult<P<ImplItem>> {
         maybe_whole!(no_clone self, NtImplItem);
@@ -4385,7 +4410,8 @@ impl<'a> Parser<'a> {
             let typ = try!(self.parse_ty_sum());
             try!(self.expect(&token::Semi));
             (name, TypeImplItem(typ))
-        } else if try!(self.eat_keyword(keywords::Const)) {
+        } else if self.is_const_item() {
+            try!(self.expect_keyword(keywords::Const));
             let name = try!(self.parse_ident());
             try!(self.expect(&token::Colon));
             let typ = try!(self.parse_ty_sum());
@@ -4450,19 +4476,7 @@ impl<'a> Parser<'a> {
             }
             Ok((token::special_idents::invalid, vec![], ast::MacImplItem(m)))
         } else {
-            let is_const_fn = !is_trait_impl && self.eat_keyword(keywords::Const);
-            let (constness, unsafety, abi) = if is_const_fn {
-                (Constness::Const, Unsafety::Normal, abi::Rust)
-            } else {
-                let unsafety = try!(self.parse_unsafety());
-                let abi = if try!(self.eat_keyword(keywords::Extern)) {
-                    try!(self.parse_opt_abi()).unwrap_or(abi::C)
-                } else {
-                    abi::Rust
-                };
-                (Constness::NotConst, unsafety, abi)
-            };
-            try!(self.expect_keyword(keywords::Fn));
+            let (constness, unsafety, abi) = try!(self.parse_fn_front_matter());
             let ident = try!(self.parse_ident());
             let mut generics = try!(self.parse_generics());
             let (explicit_self, decl) = try!(self.parse_fn_decl_with_self(|p| {
@@ -4475,7 +4489,7 @@ impl<'a> Parser<'a> {
                 abi: abi,
                 explicit_self: explicit_self,
                 unsafety: unsafety,
-                constness: constness;
+                constness: constness,
                 decl: decl
              }, body)))
         }
@@ -5301,9 +5315,9 @@ impl<'a> Parser<'a> {
         if try!(self.eat_keyword(keywords::Const) ){
             if self.check_keyword(keywords::Fn) {
                 // CONST FUNCTION ITEM
-                self.bump();
+                try!(self.bump());
                 let (ident, item_, extra_attrs) =
-                    self.parse_item_fn(Unsafety::Normal, Constness::Const, abi::Rust);
+                    try!(self.parse_item_fn(Unsafety::Normal, Constness::Const, abi::Rust));
                 let last_span = self.last_span;
                 let item = self.mk_item(lo,
                                         last_span.hi,
@@ -5311,7 +5325,7 @@ impl<'a> Parser<'a> {
                                         item_,
                                         visibility,
                                         maybe_append(attrs, extra_attrs));
-                return Ok(item);
+                return Ok(Some(item));
             }
 
             // CONST ITEM

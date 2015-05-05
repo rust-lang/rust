@@ -605,7 +605,7 @@ pub fn walk_fn<'v, V: Visitor<'v>>(visitor: &mut V,
     walk_fn_decl(visitor, function_declaration);
 
     match function_kind {
-        FkItemFn(_, generics, _, _, _) => {
+        FkItemFn(_, generics, _, _, _, _) => {
             visitor.visit_generics(generics);
         }
         FkMethod(_, sig, _) => {

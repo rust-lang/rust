@@ -189,7 +189,7 @@ impl<'a> FnLikeNode<'a> {
 
     pub fn kind(self) -> visit::FnKind<'a> {
         let item = |p: ItemFnParts<'a>| -> visit::FnKind<'a> {
-            visit::FkItemFn(p.ident, p.generics, p.unsafety, p.abi, p.constness, p.vis)
+            visit::FkItemFn(p.ident, p.generics, p.unsafety, p.constness, p.abi, p.vis)
         };
         let closure = |_: ClosureParts| {
             visit::FkFnBlock
@@ -213,13 +213,12 @@ impl<'a> FnLikeNode<'a> {
     {
         match self.node {
             ast_map::NodeItem(i) => match i.node {
-                ast::ItemFn(ref decl, unsafety, constness, ref abi, ref generics, ref block) =>
+                ast::ItemFn(ref decl, unsafety, constness, abi, ref generics, ref block) =>
                     item_fn(ItemFnParts {
                         id: i.id,
                         ident: i.ident,
                         decl: &**decl,
                         unsafety: unsafety,
-                        constness: constness,
                         body: &**block,
                         generics: generics,
                         abi: abi,

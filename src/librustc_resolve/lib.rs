@@ -245,7 +245,7 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Resolver<'a, 'tcx> {
                 _: Span,
                 node_id: NodeId) {
         let rib_kind = match function_kind {
-            visit::FkItemFn(_, generics, _, _, _) => {
+            visit::FkItemFn(_, generics, _, _, _, _) => {
                 self.visit_generics(generics);
                 ItemRibKind
             }

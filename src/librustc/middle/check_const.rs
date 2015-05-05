@@ -36,7 +36,6 @@ use util::nodemap::NodeMap;
 use util::ppaux::Repr;
 
 use syntax::ast;
-use syntax::ast_util::PostExpansionMethod;
 use syntax::codemap::Span;
 use syntax::visit::{self, Visitor};
 
@@ -149,16 +148,16 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
             Entry::Occupied(entry) => return *entry.get(),
             Entry::Vacant(entry) => {
                 // Prevent infinite recursion on re-entry.
-                entry.insert(PURE_CONST);
+                entry.insert(ConstQualif::empty());
             }
         }
 
         let mode = match fk {
-            visit::FkItemFn(_, _, _, ast::Constness::Const, _) => {
+            visit::FkItemFn(_, _, _, ast::Constness::Const, _, _) => {
                 Mode::ConstFn
             }
-            visit::FkMethod(_, _, m) => {
-                if m.pe_constness() == ast::Constness::Const {
+            visit::FkMethod(_, m, _) => {
+                if m.constness == ast::Constness::Const {
                     Mode::ConstFn
                 } else {
                     Mode::Var
@@ -189,7 +188,7 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
 
         // Keep only bits that aren't affected by function body (NON_ZERO_SIZED),
         // and bits that don't change semantics, just optimizations (PREFER_IN_PLACE).
-        let qualif = qualif & (NON_ZERO_SIZED | PREFER_IN_PLACE);
+        let qualif = qualif & (ConstQualif::NON_ZERO_SIZED | ConstQualif::PREFER_IN_PLACE);
 
         self.tcx.const_qualif_map.borrow_mut().insert(fn_id, qualif);
         qualif
@@ -210,7 +209,7 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
             self.add_qualif(qualif);
 
             if ty::type_contents(self.tcx, ret_ty).interior_unsafe() {
-                self.add_qualif(MUTABLE_MEM);
+                self.add_qualif(ConstQualif::MUTABLE_MEM);
             }
 
             true
@@ -366,7 +365,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
                                                        macro in const?!")
                 }
             };
-            self.add_qualif(NOT_CONST);
+            self.add_qualif(ConstQualif::NOT_CONST);
             if self.mode != Mode::Var {
                 span_err!(self.tcx.sess, span, E0016,
                           "blocks in {}s are limited to items and \
@@ -602,7 +601,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
                 }
                 Some(def::DefLocal(_)) if v.mode == Mode::ConstFn => {
                     // Sadly, we can't determine whether the types are zero-sized.
-                    v.add_qualif(NOT_CONST | NON_ZERO_SIZED);
+                    v.add_qualif(ConstQualif::NOT_CONST | ConstQualif::NON_ZERO_SIZED);
                 }
                 def => {
                     v.add_qualif(ConstQualif::NOT_CONST);
@@ -651,20 +650,8 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
                 }
             }
         }
-        ast::ExprBlock(ref block) => {
-            // Check all statements in the block
-            let mut block_span_err = |span| {
-                v.add_qualif(ConstQualif::NOT_CONST);
-                if v.mode != Mode::Var {
-                    span_err!(v.tcx.sess, e.span, E0015,
-                              "function calls in {}s are limited to \
-                               constant functions, \
-                               struct and enum constructors", v.msg());
-                }
-            }
-        }
         ast::ExprMethodCall(..) => {
-            let method_did = match v.tcx.method_map.borrow()[method_call].origin {
+            let method_did = match v.tcx.method_map.borrow()[&method_call].origin {
                 ty::MethodStatic(did) => Some(did),
                 _ => None
             };
@@ -673,9 +660,9 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
                 None => false
             };
             if !is_const {
-                v.add_qualif(NOT_CONST);
+                v.add_qualif(ConstQualif::NOT_CONST);
                 if v.mode != Mode::Var {
-                    span_err!(v.tcx.sess, e.span, E0021,
+                    span_err!(v.tcx.sess, e.span, E0378,
                               "method calls in {}s are limited to \
                                constant inherent methods", v.msg());
                 }

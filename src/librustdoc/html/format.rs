@@ -37,7 +37,7 @@ pub struct VisSpace(pub Option<ast::Visibility>);
 pub struct UnsafetySpace(pub ast::Unsafety);
 /// Similarly to VisSpace, this structure is used to render a function constness
 /// with a space after it.
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct ConstnessSpace(pub ast::Constness);
 /// Wrapper struct for properly emitting a method declaration.
 pub struct Method<'a>(pub &'a clean::SelfTy, pub &'a clean::FnDecl);

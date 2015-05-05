@@ -1125,10 +1125,9 @@ pub fn noop_fold_method_sig<T: Folder>(sig: MethodSig, folder: &mut T) -> Method
         abi: sig.abi,
         explicit_self: folder.fold_explicit_self(sig.explicit_self),
         unsafety: sig.unsafety,
+        constness: sig.constness,
         decl: folder.fold_fn_decl(sig.decl)
     }
-                     constness,
-                         constness,
 }
 
 pub fn noop_fold_pat<T: Folder>(p: P<Pat>, folder: &mut T) -> P<Pat> {
