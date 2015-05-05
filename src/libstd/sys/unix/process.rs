@@ -18,9 +18,9 @@ use fmt;
 use io::{self, Error, ErrorKind};
 use libc::{self, pid_t, c_void, c_int, gid_t, uid_t};
 use ptr;
-use sys::pipe2::AnonPipe;
+use sys::pipe::AnonPipe;
 use sys::{self, c, cvt, cvt_r};
-use sys::fs2::{File, OpenOptions};
+use sys::fs::{File, OpenOptions};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Command
@@ -141,7 +141,7 @@ impl Process {
 
         let (envp, _a, _b) = make_envp(cfg.env.as_ref());
         let (argv, _a) = make_argv(&cfg.program, &cfg.args);
-        let (input, output) = try!(sys::pipe2::anon_pipe());
+        let (input, output) = try!(sys::pipe::anon_pipe());
 
         let pid = unsafe {
             match libc::fork() {

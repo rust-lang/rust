@@ -23,7 +23,7 @@ use fmt;
 use ffi::OsString;
 use io::{self, Error, ErrorKind, SeekFrom, Seek, Read, Write};
 use path::{Path, PathBuf};
-use sys::fs2 as fs_imp;
+use sys::fs as fs_imp;
 use sys_common::{AsInnerMut, FromInner, AsInner};
 use vec::Vec;
 
