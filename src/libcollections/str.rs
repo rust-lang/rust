@@ -83,7 +83,9 @@ pub use core::str::pattern;
 Section: Creating a string
 */
 
-impl<S: AsRef<str>> SliceConcatExt<str, String> for [S] {
+impl<S: AsRef<str>> SliceConcatExt<str> for [S] {
+    type Output = String;
+
     fn concat(&self) -> String {
         if self.is_empty() {
             return String::new();
