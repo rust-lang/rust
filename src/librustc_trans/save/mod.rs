@@ -23,6 +23,34 @@ mod recorder;
 
 mod dump_csv;
 
+pub struct SaveContext<'l> {
+    sess: &'l Session,
+}
+
+pub struct CrateData {
+    pub name: String,
+    pub number: u32,
+}
+
+impl<'l> SaveContext<'l> {
+    pub fn new<'ll>(sess: &'ll Session) -> SaveContext<'ll> {
+        SaveContext {
+            sess: sess
+        }
+    }
+
+    // List external crates used by the current crate.
+    pub fn get_external_crates(&self) -> Vec<CrateData> {
+        let mut result = Vec::new();
+
+        self.sess.cstore.iter_crate_data(|n, cmd| {
+            result.push(CrateData { name: cmd.name.clone(), number: n });
+        });
+
+        result
+    }
+}
+
 #[allow(deprecated)]
 pub fn process_crate(sess: &Session,
                      krate: &ast::Crate,
