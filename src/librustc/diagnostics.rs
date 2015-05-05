@@ -37,7 +37,7 @@ An example of an empty type is `enum Empty { }`.
 E0003: r##"
 Not-a-Number (NaN) values cannot be compared for equality and hence can never
 match the input to a match expression. To match against NaN values, you should
-instead use the `is_nan` method in a guard, as in: x if x.is_nan() => ...
+instead use the `is_nan` method in a guard, as in: `x if x.is_nan() => ...`
 "##,
 
 E0004: r##"
@@ -71,7 +71,7 @@ failure.
 E0007: r##"
 This error indicates that the bindings in a match arm would require a value to
 be moved into more than one location, thus violating unique ownership. Code like
-the following is invalid as it requires the entire Option<String> to be moved
+the following is invalid as it requires the entire `Option<String>` to be moved
 into a variable called `op_string` while simultaneously requiring the inner
 String to be moved into a variable called `s`.
 
@@ -99,10 +99,10 @@ match Some("hi".to_string()) {
 }
 ```
 
-The variable `s` has type String, and its use in the guard is as a variable of
-type String. The guard code effectively executes in a separate scope to the body
-of the arm, so the value would be moved into this anonymous scope and therefore
-become unavailable in the body of the arm. Although this example seems
+The variable `s` has type `String`, and its use in the guard is as a variable of
+type `String`. The guard code effectively executes in a separate scope to the
+body of the arm, so the value would be moved into this anonymous scope and
+therefore become unavailable in the body of the arm. Although this example seems
 innocuous, the problem is most clear when considering functions that take their
 argument by value.
 
@@ -140,7 +140,8 @@ match x {
 ```
 
 You have two solutions:
-1. Bind the pattern's values the same way:
+
+Solution #1: Bind the pattern's values the same way.
 
 ```
 struct X { x: (), }
@@ -153,8 +154,9 @@ match x {
 }
 ```
 
-2. Implement the `Copy` trait for the X structure (however, please
-keep in mind that the first solution should be preferred!):
+Solution #2: Implement the `Copy` trait for the `X` structure.
+
+However, please keep in mind that the first solution should be preferred.
 
 ```
 #[derive(Clone, Copy)]
@@ -258,11 +260,13 @@ functions via FFI or marked as unsafe, is potentially dangerous and disallowed
 by safety checks. As such, those safety checks can be temporarily relaxed by
 wrapping the unsafe instructions inside an `unsafe` block. For instance:
 
+```
 unsafe fn f() { return; }
 
 fn main() {
     unsafe { f(); }
 }
+```
 
 See also http://doc.rust-lang.org/book/unsafe.html
 "##,
@@ -313,8 +317,8 @@ it around as usual.
 
 E0162: r##"
 An if-let pattern attempts to match the pattern, and enters the body if the
-match was succesful. If the match is irrefutable (when it cannot fail to match),
-use a regular `let`-binding instead. For instance:
+match was successful. If the match is irrefutable (when it cannot fail to
+match), use a regular `let`-binding instead. For instance:
 
 ```
 struct Irrefutable(i32);
@@ -334,8 +338,8 @@ foo(x);
 
 E0165: r##"
 A while-let pattern attempts to match the pattern, and enters the body if the
-match was succesful. If the match is irrefutable (when it cannot fail to match),
-use a regular `let`-binding inside a `loop` instead. For instance:
+match was successful. If the match is irrefutable (when it cannot fail to
+match), use a regular `let`-binding inside a `loop` instead. For instance:
 
 ```
 struct Irrefutable(i32);
@@ -374,7 +378,7 @@ match m {
 ```
 
 If you don't qualify the names, the code will bind new variables named "GET" and
-"POST" instead. This behavior is likely not what you want, so rustc warns when
+"POST" instead. This behavior is likely not what you want, so `rustc` warns when
 that happens.
 
 Qualified names are good practice, and most code works well with them. But if
@@ -403,16 +407,16 @@ const Y: u32 = X;
 "##,
 
 E0267: r##"
-This error indicates the use of loop keyword (break or continue) inside a
-closure but outside of any loop. Break and continue can be used as normal
-inside closures as long as they are also contained within a loop. To halt the
-execution of a closure you should instead use a return statement.
+This error indicates the use of a loop keyword (`break` or `continue`) inside a
+closure but outside of any loop. Break and continue can be used as normal inside
+closures as long as they are also contained within a loop. To halt the execution
+of a closure you should instead use a return statement.
 "##,
 
 E0268: r##"
-This error indicates the use of loop keyword (break or continue) outside of a
-loop. Without a loop to break out of or continue in, no sensible action can be
-taken.
+This error indicates the use of a loop keyword (`break` or `continue`) outside
+of a loop. Without a loop to break out of or continue in, no sensible action can
+be taken.
 "##,
 
 E0296: r##"
@@ -507,7 +511,7 @@ match Some("hi".to_string()) {
 }
 ```
 
-The `op_string_ref` binding has type &Option<&String> in both cases.
+The `op_string_ref` binding has type `&Option<&String>` in both cases.
 
 See also https://github.com/rust-lang/rust/issues/14587
 "##,
