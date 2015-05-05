@@ -844,6 +844,8 @@ pub fn symlink_metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
 
 /// Rename a file or directory to a new name.
 ///
+/// This will not work if the new name is on a different mount point.
+///
 /// # Errors
 ///
 /// This function will return an error if the provided `from` doesn't exist, if
