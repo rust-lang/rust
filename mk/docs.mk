@@ -77,7 +77,7 @@ ERR_IDX_GEN = $(RPATH_VAR2_T_$(CFG_BUILD)_H_$(CFG_BUILD)) $(ERR_IDX_GEN_EXE)
 
 D := $(S)src/doc
 
-DOC_TARGETS := trpl style
+DOC_TARGETS := trpl style error-index
 COMPILER_DOC_TARGETS :=
 DOC_L10N_TARGETS :=
 
