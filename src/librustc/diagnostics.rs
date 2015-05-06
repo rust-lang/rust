@@ -307,18 +307,20 @@ a compile-time constant.
 
 E0308: r##"
 This error occurs when the compiler was unable to infer the concrete type of a
-variable. This error can occur for several cases, the most common of which is
-that there is a mismatch in the expected type that the compiler inferred, and
-the actual type that the user defined a variable as.
+variable. This error can occur for several cases, the most common of which is a
+mismatch in the expected type that the compiler inferred for a variable's
+initializing expression, and the actual type explicitly assigned to the
+variable.
 
-let a: char = 7;    // An integral type can't be contained in a character, so
-                    // there is a mismatch.
+For example:
 
-let b: u32 = 7;     // Either use the right type...
-let c = 7;          // ...or let the compiler infer it.
-
-let d: char = c;    // This also causes a mismatch because c is some sort
-                    // of number whereas d is definitely a character.
+let x: i32 = "I am not a number!";
+//     ~~~   ~~~~~~~~~~~~~~~~~~~~
+//      |             |
+//      |    initializing expression;
+//      |    compiler infers type `&str`
+//      |
+//    type `i32` assigned to variable `x`
 "##,
 
 E0309: r##"
