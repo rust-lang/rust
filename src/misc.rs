@@ -193,7 +193,7 @@ impl LintPass for Precedence {
 
 fn is_arith_expr(expr : &Expr) -> bool {
 	match expr.node {
-		ExprBinary(Spanned { node: op, ..}, _, _) => is_arith_op(lop),
+		ExprBinary(Spanned { node: op, ..}, _, _) => is_arith_op(op),
 		_ => false
 	}
 }
