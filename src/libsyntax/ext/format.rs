@@ -441,7 +441,7 @@ impl<'a, 'b> Context<'a, 'b> {
         }
     }
 
-    fn static_array(ecx: &mut ExtCtxt,
+    fn const_array(ecx: &mut ExtCtxt,
                     name: &str,
                     piece_ty: P<ast::Ty>,
                     pieces: Vec<P<ast::Expr>>)
@@ -452,7 +452,7 @@ impl<'a, 'b> Context<'a, 'b> {
             Some(ecx.lifetime(sp, special_idents::static_lifetime.name)),
             ast::MutImmutable);
         let slice = ecx.expr_vec_slice(sp, pieces);
-        let st = ast::ItemStatic(ty, ast::MutImmutable, slice);
+        let st = ast::ItemConst(ty, slice);
 
         let name = ecx.ident_of(name);
         let item = ecx.item(sp, name, vec![], st);
@@ -480,7 +480,7 @@ impl<'a, 'b> Context<'a, 'b> {
                 self.ecx.ty_ident(self.fmtsp, self.ecx.ident_of("str")),
                 Some(static_lifetime),
                 ast::MutImmutable);
-        let pieces = Context::static_array(self.ecx,
+        let pieces = Context::const_array(self.ecx,
                                            "__STATIC_FMTSTR",
                                            piece_ty,
                                            self.str_pieces);
@@ -572,7 +572,7 @@ impl<'a, 'b> Context<'a, 'b> {
             let piece_ty = self.ecx.ty_path(self.ecx.path_global(
                     self.macsp,
                     Context::rtpath(self.ecx, "Argument")));
-            let fmt = Context::static_array(self.ecx,
+            let fmt = Context::const_array(self.ecx,
                                             "__STATIC_FMTARGS",
                                             piece_ty,
                                             self.pieces);
