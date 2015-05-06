@@ -183,20 +183,18 @@ impl LintPass for Precedence {
 	
 	fn check_expr(&mut self, cx: &Context, expr: &Expr) {
 		if let ExprBinary(Spanned { node: op, ..}, ref left, ref right) = expr.node {
-			if is_bit_op(op) {
-				if let ExprBinary(Spanned { node: lop, ..}, _, _) = left.node {
-					if is_arith_op(lop) {
-						cx.span_lint(PRECEDENCE, expr.span, "Operator precedence can trip the unwary. Please consider adding parenthesis to the subexpression to make the meaning more clear.");
-					}
-				} else {
-					if let ExprBinary(Spanned { node: rop, ..}, _, _) = right.node {
-						if is_arith_op(rop) {
-							cx.span_lint(PRECEDENCE, expr.span, "Operator precedence can trip the unwary. Please consider adding parenthesis to the subexpression to make the meaning more clear.");
-						}
-					}
-				}
+			if is_bit_op(op) && (is_arith_expr(left) || is_arith_expr(right)) {
+				cx.span_lint(PRECEDENCE, expr.span, 
+					"Operator precedence can trip the unwary. Consider adding parenthesis to the subexpression.");
 			}
 		}
+	}
+}
+
+fn is_arith_expr(expr : &Expr) -> bool {
+	match expr.node {
+		ExprBinary(Spanned { node: op, ..}, _, _) => is_arith_op(op),
+		_ => false
 	}
 }
 
