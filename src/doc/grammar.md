@@ -612,30 +612,6 @@ assignment_expr : expr '=' expr ;
 compound_assignment_expr : expr [ arith_op | bitwise_op ] '=' expr ;
 ```
 
-#### Operator precedence
-
-The precedence of Rust binary operators is ordered as follows, going from
-strong to weak:
-
-```text
-* / %
-as
-+ -
-<< >>
-&
-^
-|
-< > <= >=
-== !=
-&&
-||
-=
-```
-
-Operators at the same precedence level are evaluated left-to-right. [Unary
-operators](#unary-operator-expressions) have the same precedence level and it
-is stronger than any of the binary operators'.
-
 ### Grouped expressions
 
 ```antlr
