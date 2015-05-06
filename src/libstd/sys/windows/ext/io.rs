@@ -33,8 +33,7 @@ pub trait AsRawHandle {
 }
 
 /// Construct I/O objects from raw handles.
-#[unstable(feature = "from_raw_os",
-           reason = "recent addition to the std::os::windows::io module")]
+#[stable(feature = "from_raw_os", since = "1.1.0")]
 pub trait FromRawHandle {
     /// Constructs a new I/O object from the specified raw handle.
     ///
@@ -47,6 +46,7 @@ pub trait FromRawHandle {
     /// descriptor they are wrapping. Usage of this function could
     /// accidentally allow violating this contract which can cause memory
     /// unsafety in code that relies on it being true.
+    #[stable(feature = "from_raw_os", since = "1.1.0")]
     unsafe fn from_raw_handle(handle: RawHandle) -> Self;
 }
 
@@ -57,7 +57,7 @@ impl AsRawHandle for fs::File {
     }
 }
 
-#[unstable(feature = "from_raw_os", reason = "trait is unstable")]
+#[stable(feature = "from_raw_os", since = "1.1.0")]
 impl FromRawHandle for fs::File {
     unsafe fn from_raw_handle(handle: RawHandle) -> fs::File {
         let handle = handle as ::libc::HANDLE;
@@ -74,7 +74,7 @@ pub trait AsRawSocket {
 }
 
 /// Create I/O objects from raw sockets.
-#[unstable(feature = "from_raw_os", reason = "recent addition to module")]
+#[stable(feature = "from_raw_os", since = "1.1.0")]
 pub trait FromRawSocket {
     /// Creates a new I/O object from the given raw socket.
     ///
@@ -86,6 +86,7 @@ pub trait FromRawSocket {
     /// descriptor they are wrapping. Usage of this function could
     /// accidentally allow violating this contract which can cause memory
     /// unsafety in code that relies on it being true.
+    #[stable(feature = "from_raw_os", since = "1.1.0")]
     unsafe fn from_raw_socket(sock: RawSocket) -> Self;
 }
 
@@ -108,21 +109,21 @@ impl AsRawSocket for net::UdpSocket {
     }
 }
 
-#[unstable(feature = "from_raw_os", reason = "trait is unstable")]
+#[stable(feature = "from_raw_os", since = "1.1.0")]
 impl FromRawSocket for net::TcpStream {
     unsafe fn from_raw_socket(sock: RawSocket) -> net::TcpStream {
         let sock = sys::net::Socket::from_inner(sock);
         net::TcpStream::from_inner(net2::TcpStream::from_inner(sock))
     }
 }
-#[unstable(feature = "from_raw_os", reason = "trait is unstable")]
+#[stable(feature = "from_raw_os", since = "1.1.0")]
 impl FromRawSocket for net::TcpListener {
     unsafe fn from_raw_socket(sock: RawSocket) -> net::TcpListener {
         let sock = sys::net::Socket::from_inner(sock);
         net::TcpListener::from_inner(net2::TcpListener::from_inner(sock))
     }
 }
-#[unstable(feature = "from_raw_os", reason = "trait is unstable")]
+#[stable(feature = "from_raw_os", since = "1.1.0")]
 impl FromRawSocket for net::UdpSocket {
     unsafe fn from_raw_socket(sock: RawSocket) -> net::UdpSocket {
         let sock = sys::net::Socket::from_inner(sock);
