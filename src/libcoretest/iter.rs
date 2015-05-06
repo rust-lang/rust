@@ -101,6 +101,42 @@ fn test_iterator_chain() {
 }
 
 #[test]
+fn test_iterator_chain_nth() {
+    let xs = [0, 1, 2, 3, 4, 5];
+    let ys = [30, 40, 50, 60];
+    let zs = [];
+    let expected = [0, 1, 2, 3, 4, 5, 30, 40, 50, 60];
+    for (i, x) in expected.iter().enumerate() {
+        assert_eq!(Some(x), xs.iter().chain(ys.iter()).nth(i));
+    }
+    assert_eq!(zs.iter().chain(xs.iter()).nth(0), Some(&0));
+
+    let mut it = xs.iter().chain(zs.iter());
+    assert_eq!(it.nth(5), Some(&5));
+    assert_eq!(it.next(), None);
+}
+
+#[test]
+fn test_iterator_chain_last() {
+    let xs = [0, 1, 2, 3, 4, 5];
+    let ys = [30, 40, 50, 60];
+    let zs = [];
+    assert_eq!(xs.iter().chain(ys.iter()).last(), Some(&60));
+    assert_eq!(zs.iter().chain(ys.iter()).last(), Some(&60));
+    assert_eq!(ys.iter().chain(zs.iter()).last(), Some(&60));
+    assert_eq!(zs.iter().chain(zs.iter()).last(), None);
+}
+
+#[test]
+fn test_iterator_chain_count() {
+    let xs = [0, 1, 2, 3, 4, 5];
+    let ys = [30, 40, 50, 60];
+    let zs = [];
+    assert_eq!(xs.iter().chain(ys.iter()).count(), 10);
+    assert_eq!(zs.iter().chain(ys.iter()).count(), 4);
+}
+
+#[test]
 fn test_filter_map() {
     let it = (0..).step_by(1).take(10)
         .filter_map(|x| if x % 2 == 0 { Some(x*x) } else { None });
@@ -114,6 +150,34 @@ fn test_iterator_enumerate() {
     for (i, &x) in it {
         assert_eq!(i, x);
     }
+}
+
+#[test]
+fn test_iterator_enumerate_nth() {
+    let xs = [0, 1, 2, 3, 4, 5];
+    for (i, &x) in xs.iter().enumerate() {
+        assert_eq!(i, x);
+    }
+
+    let mut it = xs.iter().enumerate();
+    while let Some((i, &x)) = it.nth(0) {
+        assert_eq!(i, x);
+    }
+
+    let mut it = xs.iter().enumerate();
+    while let Some((i, &x)) = it.nth(1) {
+        assert_eq!(i, x);
+    }
+
+    let (i, &x) = xs.iter().enumerate().nth(3).unwrap();
+    assert_eq!(i, x);
+    assert_eq!(i, 3);
+}
+
+#[test]
+fn test_iterator_enumerate_count() {
+    let xs = [0, 1, 2, 3, 4, 5];
+    assert_eq!(xs.iter().count(), 6);
 }
 
 #[test]
@@ -146,6 +210,59 @@ fn test_iterator_peekable() {
     assert_eq!(it.len(), 0);
     assert!(it.next().is_none());
     assert_eq!(it.len(), 0);
+}
+
+#[test]
+fn test_iterator_peekable_count() {
+    let xs = [0, 1, 2, 3, 4, 5];
+    let ys = [10];
+    let zs: [i32; 0] = [];
+
+    assert_eq!(xs.iter().peekable().count(), 6);
+
+    let mut it = xs.iter().peekable();
+    assert_eq!(it.peek(), Some(&&0));
+    assert_eq!(it.count(), 6);
+
+    assert_eq!(ys.iter().peekable().count(), 1);
+
+    let mut it = ys.iter().peekable();
+    assert_eq!(it.peek(), Some(&&10));
+    assert_eq!(it.count(), 1);
+
+    assert_eq!(zs.iter().peekable().count(), 0);
+
+    let mut it = zs.iter().peekable();
+    assert_eq!(it.peek(), None);
+
+}
+
+#[test]
+fn test_iterator_peekable_nth() {
+    let xs = [0, 1, 2, 3, 4, 5];
+    let mut it = xs.iter().peekable();
+
+    assert_eq!(it.peek(), Some(&&0));
+    assert_eq!(it.nth(0), Some(&0));
+    assert_eq!(it.peek(), Some(&&1));
+    assert_eq!(it.nth(1), Some(&2));
+    assert_eq!(it.peek(), Some(&&3));
+    assert_eq!(it.nth(2), Some(&5));
+    assert_eq!(it.next(), None);
+}
+
+#[test]
+fn test_iterator_peekable_last() {
+    let xs = [0, 1, 2, 3, 4, 5];
+    let ys = [0];
+
+    let mut it = xs.iter().peekable();
+    assert_eq!(it.peek(), Some(&&0));
+    assert_eq!(it.last(), Some(&5));
+
+    let mut it = ys.iter().peekable();
+    assert_eq!(it.peek(), Some(&&0));
+    assert_eq!(it.last(), Some(&0));
 }
 
 #[test]
@@ -190,6 +307,49 @@ fn test_iterator_skip() {
 }
 
 #[test]
+fn test_iterator_skip_nth() {
+    let xs = [0, 1, 2, 3, 5, 13, 15, 16, 17, 19, 20, 30];
+
+    let mut it = xs.iter().skip(0);
+    assert_eq!(it.nth(0), Some(&0));
+    assert_eq!(it.nth(1), Some(&2));
+
+    let mut it = xs.iter().skip(5);
+    assert_eq!(it.nth(0), Some(&13));
+    assert_eq!(it.nth(1), Some(&16));
+
+    let mut it = xs.iter().skip(12);
+    assert_eq!(it.nth(0), None);
+
+}
+
+#[test]
+fn test_iterator_skip_count() {
+    let xs = [0, 1, 2, 3, 5, 13, 15, 16, 17, 19, 20, 30];
+
+    assert_eq!(xs.iter().skip(0).count(), 12);
+    assert_eq!(xs.iter().skip(1).count(), 11);
+    assert_eq!(xs.iter().skip(11).count(), 1);
+    assert_eq!(xs.iter().skip(12).count(), 0);
+    assert_eq!(xs.iter().skip(13).count(), 0);
+}
+
+#[test]
+fn test_iterator_skip_last() {
+    let xs = [0, 1, 2, 3, 5, 13, 15, 16, 17, 19, 20, 30];
+
+    assert_eq!(xs.iter().skip(0).last(), Some(&30));
+    assert_eq!(xs.iter().skip(1).last(), Some(&30));
+    assert_eq!(xs.iter().skip(11).last(), Some(&30));
+    assert_eq!(xs.iter().skip(12).last(), None);
+    assert_eq!(xs.iter().skip(13).last(), None);
+
+    let mut it = xs.iter().skip(5);
+    assert_eq!(it.next(), Some(&13));
+    assert_eq!(it.last(), Some(&30));
+}
+
+#[test]
 fn test_iterator_take() {
     let xs = [0, 1, 2, 3, 5, 13, 15, 16, 17, 19];
     let ys = [0, 1, 2, 3, 5];
@@ -203,6 +363,30 @@ fn test_iterator_take() {
     }
     assert_eq!(i, ys.len());
     assert_eq!(it.len(), 0);
+}
+
+#[test]
+fn test_iterator_take_nth() {
+    let xs = [0, 1, 2, 4, 5];
+    let mut it = xs.iter();
+    {
+        let mut take = it.by_ref().take(3);
+        let mut i = 0;
+        while let Some(&x) = take.nth(0) {
+            assert_eq!(x, i);
+            i += 1;
+        }
+    }
+    assert_eq!(it.nth(1), Some(&5));
+    assert_eq!(it.nth(0), None);
+
+    let xs = [0, 1, 2, 3, 4];
+    let mut it = xs.iter().take(7);
+    let mut i = 1;
+    while let Some(&x) = it.nth(1) {
+        assert_eq!(x, i);
+        i += 2;
+    }
 }
 
 #[test]
@@ -879,6 +1063,37 @@ fn test_fuse() {
     assert_eq!(it.len(), 0);
     assert_eq!(it.next(), None);
     assert_eq!(it.len(), 0);
+}
+
+#[test]
+fn test_fuse_nth() {
+    let xs = [0, 1, 2];
+    let mut it = xs.iter();
+
+    assert_eq!(it.len(), 3);
+    assert_eq!(it.nth(2), Some(&2));
+    assert_eq!(it.len(), 0);
+    assert_eq!(it.nth(2), None);
+    assert_eq!(it.len(), 0);
+}
+
+#[test]
+fn test_fuse_last() {
+    let xs = [0, 1, 2];
+    let it = xs.iter();
+
+    assert_eq!(it.len(), 3);
+    assert_eq!(it.last(), Some(&2));
+}
+
+#[test]
+fn test_fuse_count() {
+    let xs = [0, 1, 2];
+    let it = xs.iter();
+
+    assert_eq!(it.len(), 3);
+    assert_eq!(it.count(), 3);
+    // Can't check len now because count consumes.
 }
 
 #[bench]
