@@ -19,7 +19,7 @@ use ext::build::AstBuilder;
 use attr;
 use attr::AttrMetaMethods;
 use codemap;
-use codemap::{Span, Spanned, ExpnInfo, NameAndSpan, MacroBang, MacroAttribute};
+use codemap::{Span, Spanned, ExpnInfo, NameAndSpan, MacroBang, MacroAttribute, CompilerExpansion};
 use ext::base::*;
 use feature_gate::{self, Features};
 use fold;
@@ -34,6 +34,18 @@ use visit::Visitor;
 use std_inject;
 
 pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
+    fn push_compiler_expansion(fld: &mut MacroExpander, span: Span, expansion_desc: &str) {
+        fld.cx.bt_push(ExpnInfo {
+            call_site: span,
+            callee: NameAndSpan {
+                name: expansion_desc.to_string(),
+                format: CompilerExpansion,
+                allow_internal_unstable: true,
+                span: None,
+            },
+        });
+    }
+
     e.and_then(|ast::Expr {id, node, span}| match node {
         // expr_mac should really be expr_ext or something; it's the
         // entry-point for all syntax extensions.
@@ -77,6 +89,8 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
             //     }
             //   }
 
+            push_compiler_expansion(fld, span, "while let expansion");
+
             // `<pat> => <body>`
             let pat_arm = {
                 let body_expr = fld.cx.expr_block(body);
@@ -98,7 +112,9 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
             // `[opt_ident]: loop { ... }`
             let loop_block = fld.cx.block_expr(match_expr);
             let (loop_block, opt_ident) = expand_loop_block(loop_block, opt_ident, fld);
-            fld.cx.expr(span, ast::ExprLoop(loop_block, opt_ident))
+            let result = fld.cx.expr(span, ast::ExprLoop(loop_block, opt_ident));
+            fld.cx.bt_pop();
+            result
         }
 
         // Desugar ExprIfLet
@@ -111,6 +127,8 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
             //     [_ if <elseopt_if_cond> => <elseopt_if_body>,]
             //     _ => [<elseopt> | ()]
             //   }
+
+            push_compiler_expansion(fld, span, "if let expansion");
 
             // `<pat> => <body>`
             let pat_arm = {
@@ -173,13 +191,16 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
                                                 ast::MatchSource::IfLetDesugar {
                                                     contains_else_clause: contains_else_clause,
                                                 }));
-            fld.fold_expr(match_expr)
+            let result = fld.fold_expr(match_expr);
+            fld.cx.bt_pop();
+            result
         }
 
         // Desugar support for ExprIfLet in the ExprIf else position
         ast::ExprIf(cond, blk, elseopt) => {
             let elseopt = elseopt.map(|els| els.and_then(|els| match els.node {
                 ast::ExprIfLet(..) => {
+                    push_compiler_expansion(fld, span, "if let expansion");
                     // wrap the if-let expr in a block
                     let span = els.span;
                     let blk = P(ast::Block {
@@ -189,7 +210,9 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
                         rules: ast::DefaultBlock,
                         span: span
                     });
-                    fld.cx.expr_block(blk)
+                    let result = fld.cx.expr_block(blk);
+                    fld.cx.bt_pop();
+                    result
                 }
                 _ => P(els)
             }));
@@ -221,6 +244,10 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
             //     result
             //   }
 
+            push_compiler_expansion(fld, span, "for loop expansion");
+
+            let span = fld.new_span(span);
+
             // expand <head>
             let head = fld.fold_expr(head);
 
@@ -235,10 +262,11 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
                 rename_fld.fold_ident(ident)
             };
 
-            let pat_span = pat.span;
-            // `:;std::option::Option::Some(<pat>) => <body>`
+            let pat_span = fld.new_span(pat.span);
+            // `::std::option::Option::Some(<pat>) => <body>`
             let pat_arm = {
                 let body_expr = fld.cx.expr_block(body);
+                let pat = noop_fold_pat(pat, fld);
                 let some_pat = fld.cx.pat_some(pat_span, pat);
 
                 fld.cx.arm(pat_span, vec![some_pat], body_expr)
@@ -304,20 +332,25 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
 
             // `{ let result = ...; result }`
             let result_ident = token::gensym_ident("result");
-            fld.cx.expr_block(
+            let result = fld.cx.expr_block(
                 fld.cx.block_all(
                     span,
                     vec![fld.cx.stmt_let(span, false, result_ident, match_expr)],
-                    Some(fld.cx.expr_ident(span, result_ident))))
+                    Some(fld.cx.expr_ident(span, result_ident))));
+            fld.cx.bt_pop();
+            result
         }
 
         ast::ExprClosure(capture_clause, fn_decl, block) => {
+            push_compiler_expansion(fld, span, "closure expansion");
             let (rewritten_fn_decl, rewritten_block)
                 = expand_and_rename_fn_decl_and_block(fn_decl, block, fld);
             let new_node = ast::ExprClosure(capture_clause,
                                             rewritten_fn_decl,
                                             rewritten_block);
-            P(ast::Expr{id:id, node: new_node, span: fld.new_span(span)})
+            let result = P(ast::Expr{id:id, node: new_node, span: fld.new_span(span)});
+            fld.cx.bt_pop();
+            result
         }
 
         _ => {
