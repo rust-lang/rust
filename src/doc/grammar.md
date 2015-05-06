@@ -419,7 +419,7 @@ vis : "pub" ;
 ```
 ### Re-exporting and Visibility
 
-**FIXME:** grammar?
+See [Use declarations](#use-declarations).
 
 ## Attributes
 
