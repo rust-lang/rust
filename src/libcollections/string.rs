@@ -1058,6 +1058,14 @@ impl AsRef<str> for String {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+impl AsRef<[u8]> for String {
+    #[inline]
+    fn as_ref(&self) -> &[u8] {
+        self.as_bytes()
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> From<&'a str> for String {
     #[cfg(not(test))]
     #[inline]
