@@ -41,7 +41,7 @@ pub fn on_panic(obj: &(Any+Send), file: &'static str, line: u32) {
         Some(mut stderr) => {
             // FIXME: what to do when the thread printing panics?
             let _ = writeln!(stderr,
-                             "{}:{}: thread '{}' panicked at '{}'\n",
+                             "{}:{}: thread '{}' panicked at '{}'",
                              file, line, name, msg);
             if backtrace::log_enabled() {
                 let _ = backtrace::write(&mut *stderr);
