@@ -171,14 +171,16 @@ impl<T: ?Sized> RwLock<T> {
         RwLockReadGuard::new(&*self.inner, &self.data)
     }
 
-    /// Attempts to acquire this lock with shared read access.
+    /// Attempts to acquire this rwlock with shared read access.
     ///
-    /// This function will never block and will return immediately if `read`
-    /// would otherwise succeed. Returns `Some` of an RAII guard which will
-    /// release the shared access of this thread when dropped, or `None` if the
-    /// access could not be granted. This method does not provide any
-    /// guarantees with respect to the ordering of whether contentious readers
-    /// or writers will acquire the lock first.
+    /// If the access could not be granted at this time, then `Err` is returned.
+    /// Otherwise, an RAII guard is returned which will release the shared access
+    /// when it is dropped.
+    ///
+    /// This function does not block.
+    ///
+    /// This function does not provide any guarantees with respect to the ordering
+    /// of whether contentious readers or writers will acquire the lock first.
     ///
     /// # Failure
     ///
@@ -219,9 +221,14 @@ impl<T: ?Sized> RwLock<T> {
 
     /// Attempts to lock this rwlock with exclusive write access.
     ///
-    /// This function does not ever block, and it will return `None` if a call
-    /// to `write` would otherwise block. If successful, an RAII guard is
-    /// returned.
+    /// If the lock could not be acquired at this time, then `Err` is returned.
+    /// Otherwise, an RAII guard is returned which will release the lock when
+    /// it is dropped.
+    ///
+    /// This function does not block.
+    ///
+    /// This function does not provide any guarantees with respect to the ordering
+    /// of whether contentious readers or writers will acquire the lock first.
     ///
     /// # Failure
     ///
@@ -232,7 +239,7 @@ impl<T: ?Sized> RwLock<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn try_write(&self) -> TryLockResult<RwLockWriteGuard<T>> {
-        if unsafe { self.inner.lock.try_read() } {
+        if unsafe { self.inner.lock.try_write() } {
             Ok(try!(RwLockWriteGuard::new(&*self.inner, &self.data)))
         } else {
             Err(TryLockError::WouldBlock)
@@ -413,7 +420,7 @@ mod tests {
     use rand::{self, Rng};
     use sync::mpsc::channel;
     use thread;
-    use sync::{Arc, RwLock, StaticRwLock, RW_LOCK_INIT};
+    use sync::{Arc, RwLock, StaticRwLock, TryLockError, RW_LOCK_INIT};
 
     #[test]
     fn smoke() {
@@ -576,5 +583,22 @@ mod tests {
         }
         let comp: &[i32] = &[4, 2, 5];
         assert_eq!(&*rw.read().unwrap(), comp);
+    }
+
+    #[test]
+    fn test_rwlock_try_write() {
+        use mem::drop;
+
+        let lock = RwLock::new(0isize);
+        let read_guard = lock.read().unwrap();
+
+        let write_result = lock.try_write();
+        match write_result {
+            Err(TryLockError::WouldBlock) => (),
+            Ok(_) => assert!(false, "try_write should not succeed while read_guard is in scope"),
+            Err(_) => assert!(false, "unexpected error"),
+        }
+
+        drop(read_guard);
     }
 }
