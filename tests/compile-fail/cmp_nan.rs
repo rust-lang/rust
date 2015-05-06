@@ -2,6 +2,7 @@
 #![plugin(clippy)]
 
 #[deny(cmp_nan)]
+#[allow(float_cmp)]
 fn main() {
 	let x = 5f32;
 	x == std::f32::NAN; //~ERROR

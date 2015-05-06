@@ -16,6 +16,15 @@ Lints included in this crate:
  - `needless_bool` : Warns on if-statements with plain booleans in the then- and else-clause, e.g. `if p { true } else { false }`
  - `ptr_arg`: Warns on fn arguments of the type `&Vec<...>` or `&String`, suggesting to use `&[...]` or `&str` instead, respectively
  - `approx_constant`: Warns if the approximate of a known float constant (in `std::f64::consts` or `std::f32::consts`) is found and suggests to use the constant
+ - `cmp_nan`: Denies comparisons to NAN (which will always return false, which is probably not intended)
+ - `float_cmp`: Warns on `==` or `!=` comparisons of floaty typed values. As floating-point operations usually involve rounding errors, it is always better to check for approximate equality within some small bounds
+
+To use, add the following lines to your Cargo.toml:
+
+```
+[dev-dependencies.rust-clippy]
+git = "https://github.com/Manishearth/rust-clippy"
+```
 
 In your code, you may add `#![plugin(clippy)]` to use it (you may also need to include a `#![feature(plugin)]` line)
 
