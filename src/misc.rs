@@ -5,7 +5,7 @@ use syntax::ast_util::{is_comparison_binop, binop_to_string};
 use syntax::visit::{FnKind};
 use rustc::lint::{Context, LintPass, LintArray, Lint, Level};
 use rustc::middle::ty::{self, expr_ty, ty_str, ty_ptr, ty_rptr, ty_float};
-use syntax::codemap::Span;
+use syntax::codemap::{Span, Spanned};
 
 
 use types::span_note_and_lint;
@@ -168,4 +168,48 @@ impl LintPass for FloatCmp {
 
 fn is_float(cx: &Context, expr: &Expr) -> bool {
 	if let ty_float(_) = walk_ty(expr_ty(cx.tcx, expr)).sty { true } else { false }
+}
+
+declare_lint!(pub PRECEDENCE, Warn,
+			  "Warn on mixing bit ops with integer arithmetic without parenthesis");
+			  
+#[derive(Copy,Clone)]
+pub struct Precedence;
+
+impl LintPass for Precedence {
+	fn get_lints(&self) -> LintArray {
+        lint_array!(PRECEDENCE)
+	}
+	
+	fn check_expr(&mut self, cx: &Context, expr: &Expr) {
+		if let ExprBinary(Spanned { node: op, ..}, ref left, ref right) = expr.node {
+			if is_bit_op(op) {
+				if let ExprBinary(Spanned { node: lop, ..}, _, _) = left.node {
+					if is_arith_op(lop) {
+						cx.span_lint(PRECEDENCE, expr.span, "Operator precedence can trip the unwary. Please consider adding parenthesis to the subexpression to make the meaning more clear.");
+					}
+				} else {
+					if let ExprBinary(Spanned { node: rop, ..}, _, _) = right.node {
+						if is_arith_op(rop) {
+							cx.span_lint(PRECEDENCE, expr.span, "Operator precedence can trip the unwary. Please consider adding parenthesis to the subexpression to make the meaning more clear.");
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+fn is_bit_op(op : BinOp_) -> bool {
+	match op {
+		BiBitXor | BiBitAnd | BiBitOr | BiShl | BiShr => true,
+		_ => false
+	}
+}
+
+fn is_arith_op(op : BinOp_) -> bool {
+	match op {
+		BiAdd | BiSub | BiMul | BiDiv | BiRem => true,
+		_ => false
+	}
 }

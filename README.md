@@ -18,6 +18,7 @@ Lints included in this crate:
  - `approx_constant`: Warns if the approximate of a known float constant (in `std::f64::consts` or `std::f32::consts`) is found and suggests to use the constant
  - `cmp_nan`: Denies comparisons to NAN (which will always return false, which is probably not intended)
  - `float_cmp`: Warns on `==` or `!=` comparisons of floaty typed values. As floating-point operations usually involve rounding errors, it is always better to check for approximate equality within some small bounds
+ - `precedence`: Warns on expressions where precedence may trip up the unwary reader of the source and suggests adding parenthesis, e.g. `x << 2 + y` will be parsed as `x << (2 + y)`
 
 To use, add the following lines to your Cargo.toml:
 
