@@ -105,11 +105,17 @@ fn check_exact<F, T>(mut f: F, v: T, vstr: &str, expected: &[u8], expectedk: i16
         bytes::copy_memory(&expected[..i], &mut expected_);
         let mut expectedk_ = expectedk;
         if expected[i] >= b'5' {
-            // if this returns true, expected_[..i] is all `9`s and being rounded up.
-            // we should always return `100..00` (`i` digits) instead, since that's
-            // what we can came up with `i` digits anyway. `round_up` assumes that
-            // the adjustment to the length is done by caller, which we simply ignore.
-            if let Some(_) = round_up(&mut expected_, i) { expectedk_ += 1; }
+            // check if this is a rounding-to-even case.
+            // we avoid rounding ...x5000... (with infinite zeroes) to ...(x+1) when x is even.
+            if !(i+1 < expected.len() && expected[i-1] & 1 == 0 &&
+                                         expected[i] == b'5' &&
+                                         expected[i+1] == b' ') {
+                // if this returns true, expected_[..i] is all `9`s and being rounded up.
+                // we should always return `100..00` (`i` digits) instead, since that's
+                // what we can came up with `i` digits anyway. `round_up` assumes that
+                // the adjustment to the length is done by caller, which we simply ignore.
+                if let Some(_) = round_up(&mut expected_, i) { expectedk_ += 1; }
+            }
         }
 
         try_exact!(f(&decoded) => &mut buf, &expected_[..i], expectedk_;
@@ -243,6 +249,7 @@ pub fn f32_exact_sanity_test<F>(mut f: F)
     let minf32 = f32::ldexp(1.0, -149);
 
     check_exact!(f(0.1f32)            => b"100000001490116119384765625             ", 0);
+    check_exact!(f(0.5f32)            => b"5                                       ", 0);
     check_exact!(f(1.0f32/3.0)        => b"3333333432674407958984375               ", 0);
     check_exact!(f(3.141592f32)       => b"31415920257568359375                    ", 1);
     check_exact!(f(3.141592e17f32)    => b"314159196796878848                      ", 18);
@@ -348,6 +355,7 @@ pub fn f64_exact_sanity_test<F>(mut f: F)
 
     check_exact!(f(0.1f64)            => b"1000000000000000055511151231257827021181", 0);
     check_exact!(f(0.45f64)           => b"4500000000000000111022302462515654042363", 0);
+    check_exact!(f(0.5f64)            => b"5                                       ", 0);
     check_exact!(f(0.95f64)           => b"9499999999999999555910790149937383830547", 0);
     check_exact!(f(100.0f64)          => b"1                                       ", 3);
     check_exact!(f(999.5f64)          => b"9995000000000000000000000000000000000000", 3);
@@ -1031,6 +1039,11 @@ pub fn to_exact_fixed_str_test<F>(mut f_: F)
     assert_eq!(to_string(f, 999.5, Minus,  2, false), "999.50");
     assert_eq!(to_string(f, 999.5, Minus,  3, false), "999.500");
     assert_eq!(to_string(f, 999.5, Minus, 30, false), "999.500000000000000000000000000000");
+
+    assert_eq!(to_string(f, 0.5, Minus, 0, false), "1");
+    assert_eq!(to_string(f, 0.5, Minus, 1, false), "0.5");
+    assert_eq!(to_string(f, 0.5, Minus, 2, false), "0.50");
+    assert_eq!(to_string(f, 0.5, Minus, 3, false), "0.500");
 
     assert_eq!(to_string(f, 0.95, Minus,  0, false), "1");
     assert_eq!(to_string(f, 0.95, Minus,  1, false), "0.9"); // because it really is less than 0.95
