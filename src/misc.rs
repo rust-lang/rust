@@ -1,13 +1,21 @@
 use syntax::ptr::P;
 use syntax::ast;
 use syntax::ast::*;
-use syntax::ast_util::is_comparison_binop;
+use syntax::ast_util::{is_comparison_binop, binop_to_string};
 use syntax::visit::{FnKind};
 use rustc::lint::{Context, LintPass, LintArray, Lint, Level};
-use rustc::middle::ty::{self, expr_ty, ty_str, ty_ptr, ty_rptr};
+use rustc::middle::ty::{self, expr_ty, ty_str, ty_ptr, ty_rptr, ty_float};
 use syntax::codemap::Span;
 
+
 use types::span_note_and_lint;
+
+fn walk_ty<'t>(ty: ty::Ty<'t>) -> ty::Ty<'t> {
+	match ty.sty {
+		ty_ptr(ref tm) | ty_rptr(_, ref tm) => walk_ty(tm.ty),
+		_ => ty
+	}
+}
 
 /// Handles uncategorized lints
 /// Currently handles linting of if-let-able matches
@@ -71,13 +79,6 @@ impl LintPass for StrToStringPass {
         }
 
         fn is_str(cx: &Context, expr: &ast::Expr) -> bool {
-            fn walk_ty<'t>(ty: ty::Ty<'t>) -> ty::Ty<'t> {
-                //println!("{}: -> {}", depth, ty);
-                match ty.sty {
-                    ty_ptr(ref tm) | ty_rptr(_, ref tm) => walk_ty(tm.ty),
-                    _ => ty
-                }
-            }
             match walk_ty(expr_ty(cx.tcx, expr)).sty {
                 ty_str => true,
                 _ => false
@@ -110,7 +111,7 @@ impl LintPass for TopLevelRefPass {
     }
 }
 
-declare_lint!(pub CMP_NAN, Allow, "Deny comparisons to std::f32::NAN or std::f64::NAN");
+declare_lint!(pub CMP_NAN, Deny, "Deny comparisons to std::f32::NAN or std::f64::NAN");
 
 #[derive(Copy,Clone)]
 pub struct CmpNan;
@@ -138,4 +139,33 @@ fn check_nan(cx: &Context, path: &Path, span: Span) {
 	path.segments.last().map(|seg| if seg.identifier.as_str() == "NAN" {
 		cx.span_lint(CMP_NAN, span, "Doomed comparison with NAN, use std::{f32,f64}::is_nan instead");
 	});
+}
+
+declare_lint!(pub FLOAT_CMP, Warn,
+			  "Warn on ==/!= comparison of floaty values");
+			  
+#[derive(Copy,Clone)]
+pub struct FloatCmp;
+
+impl LintPass for FloatCmp {
+	fn get_lints(&self) -> LintArray {
+        lint_array!(FLOAT_CMP)
+	}
+	
+	fn check_expr(&mut self, cx: &Context, expr: &Expr) {
+		if let ExprBinary(ref cmp, ref left, ref right) = expr.node {
+			let op = cmp.node;
+			if (op == BiEq || op == BiNe) && (is_float(cx, left) || is_float(cx, right)) {
+				let map = cx.sess().codemap();
+				cx.span_lint(FLOAT_CMP, expr.span, &format!(
+					"{}-Comparison of f32 or f64 detected. You may want to change this to 'abs({} - {}) < epsilon' for some suitable value of epsilon",
+					binop_to_string(op), &*map.span_to_snippet(left.span).unwrap_or("..".to_string()), 
+					&*map.span_to_snippet(right.span).unwrap_or("..".to_string())));
+			}
+		}
+	}
+}
+
+fn is_float(cx: &Context, expr: &Expr) -> bool {
+	if let ty_float(_) = walk_ty(expr_ty(cx.tcx, expr)).sty { true } else { false }
 }

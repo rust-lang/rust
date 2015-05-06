@@ -34,6 +34,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_lint_pass(box ptr_arg::PtrArg as LintPassObject);
     reg.register_lint_pass(box needless_bool::NeedlessBool as LintPassObject);
     reg.register_lint_pass(box approx_const::ApproxConstant as LintPassObject);
+    reg.register_lint_pass(box misc::FloatCmp as LintPassObject);
     
     reg.register_lint_group("clippy", vec![types::BOX_VEC, types::LINKEDLIST,
                                            misc::SINGLE_MATCH, misc::STR_TO_STRING,
@@ -41,6 +42,6 @@ pub fn plugin_registrar(reg: &mut Registry) {
                                            bit_mask::BAD_BIT_MASK, ptr_arg::PTR_ARG,
                                            needless_bool::NEEDLESS_BOOL,
                                            approx_const::APPROX_CONSTANT,
-                                           misc::CMP_NAN
+                                           misc::CMP_NAN, misc::FLOAT_CMP,
                                            ]);
 }
