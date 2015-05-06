@@ -307,7 +307,11 @@ pub fn format_exact(d: &Decoded, buf: &mut [u8], limit: i16) -> (/*#digits*/ usi
     }
 
     // rounding up if we stop in the middle of digits
-    if mant >= *scale.mul_small(5) {
+    // if the following digits are exactly 5000..., check the prior digit and try to
+    // round to even (i.e. avoid rounding up when the prior digit is even).
+    let order = mant.cmp(scale.mul_small(5));
+    if order == Ordering::Greater || (order == Ordering::Equal &&
+                                      (len == 0 || buf[len-1] & 1 == 1)) {
         // if rounding up changes the length, the exponent should also change.
         // but we've been requested a fixed number of digits, so do not alter the buffer...
         if let Some(c) = round_up(buf, len) {
