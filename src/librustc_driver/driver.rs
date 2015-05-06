@@ -444,7 +444,8 @@ pub fn phase_2_configure_and_expand(sess: &Session,
         }
     });
 
-    let Registry { syntax_exts, lint_passes, lint_groups, llvm_passes, .. } = registry;
+    let Registry { syntax_exts, lint_passes, lint_groups,
+                   llvm_passes, attributes, .. } = registry;
 
     {
         let mut ls = sess.lint_store.borrow_mut();
@@ -457,6 +458,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
         }
 
         *sess.plugin_llvm_passes.borrow_mut() = llvm_passes;
+        *sess.plugin_attributes.borrow_mut() = attributes.clone();
     }
 
     // Lint plugins are registered; now we can process command line flags.
@@ -511,7 +513,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
         let features =
             syntax::feature_gate::check_crate(sess.codemap(),
                                               &sess.parse_sess.span_diagnostic,
-                                              &krate);
+                                              &krate, &attributes);
         *sess.features.borrow_mut() = features;
         sess.abort_if_errors();
     });
@@ -541,7 +543,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
         let features =
             syntax::feature_gate::check_crate(sess.codemap(),
                                               &sess.parse_sess.span_diagnostic,
-                                              &krate);
+                                              &krate, &attributes);
         *sess.features.borrow_mut() = features;
         sess.abort_if_errors();
     });
