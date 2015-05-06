@@ -463,7 +463,15 @@ expr_stmt : expr ';' ;
 
 ## Expressions
 
-**FIXME:** grammar?
+```antlr
+expr : literal | path | tuple_expr | unit_expr | struct_expr
+     | block_expr | method_call_expr | field_expr | array_expr
+     | idx_expr | range_expr | unop_expr | binop_expr
+     | paren_expr | call_expr | lambda_expr | while_expr
+     | loop_expr | break_expr | continue_expr | for_expr
+     | if_expr | match_expr | if_let_expr | while_let_expr
+     | return_expr ;
+```
 
 #### Lvalues, rvalues and temporaries
 
@@ -475,19 +483,23 @@ expr_stmt : expr ';' ;
 
 ### Literal expressions
 
-**FIXME:** grammar?
+See [Literals](#literals).
 
 ### Path expressions
 
-**FIXME:** grammar?
+See [Paths](#paths).
 
 ### Tuple expressions
 
-**FIXME:** grammar?
+```antlr
+tuple_expr : '(' [ expr [ ',' expr ] * | expr ',' ] ? ')' ;
+```
 
 ### Unit expressions
 
-**FIXME:** grammar?
+```antlr
+unit_expr : "()" ;
+```
 
 ### Structure expressions
 
@@ -545,41 +557,60 @@ range_expr : expr ".." expr |
 
 ### Unary operator expressions
 
-**FIXME:** grammar?
+```antlr
+unop_expr : unop expr ;
+unop : '-' | '*' | '!' ;
+```
 
 ### Binary operator expressions
 
 ```antlr
-binop_expr : expr binop expr ;
+binop_expr : expr binop expr | type_cast_expr
+           | assignment_expr | compound_assignment_expr ;
+binop : arith_op | bitwise_op | lazy_bool_op | comp_op
 ```
 
 #### Arithmetic operators
 
-**FIXME:** grammar?
+```antlr
+arith_op : '+' | '-' | '*' | '/' | '%' ;
+```
 
 #### Bitwise operators
 
-**FIXME:** grammar?
+```antlr
+bitwise_op : '&' | '|' | '^' | "<<" | ">>" ;
+```
 
 #### Lazy boolean operators
 
-**FIXME:** grammar?
+```antlr
+lazy_bool_op : "&&" | "||" ;
+```
 
 #### Comparison operators
 
-**FIXME:** grammar?
+```antlr
+comp_op : "==" | "!=" | '<' | '>' | "<=" | ">=" ;
+```
 
 #### Type cast expressions
 
-**FIXME:** grammar?
+```antlr
+type_cast_expr : value "as" type ;
+```
 
 #### Assignment expressions
 
-**FIXME:** grammar?
+```antlr
+assignment_expr : expr '=' expr ;
+```
 
 #### Compound assignment expressions
 
-**FIXME:** grammar?
+```antlr
+compound_assignment_expr : expr [ arith_op | bitwise_op ] '=' expr ;
+```
 
 #### Operator precedence
 
