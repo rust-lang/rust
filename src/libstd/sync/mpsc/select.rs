@@ -58,7 +58,7 @@
 
 use core::prelude::*;
 
-use core::cell::Cell;
+use core::cell::{Cell, UnsafeCell};
 use core::marker;
 use core::mem;
 use core::ptr;
@@ -70,9 +70,13 @@ use sync::mpsc::blocking::{self, SignalToken};
 /// The "receiver set" of the select interface. This structure is used to manage
 /// a set of receivers which are being selected over.
 pub struct Select {
+    inner: UnsafeCell<SelectInner>,
+    next_id: Cell<usize>,
+}
+
+struct SelectInner {
     head: *mut Handle<'static, ()>,
     tail: *mut Handle<'static, ()>,
-    next_id: Cell<usize>,
 }
 
 impl !marker::Send for Select {}
@@ -84,7 +88,7 @@ pub struct Handle<'rx, T:Send+'rx> {
     /// The ID of this handle, used to compare against the return value of
     /// `Select::wait()`
     id: usize,
-    selector: &'rx Select,
+    selector: *mut SelectInner,
     next: *mut Handle<'static, ()>,
     prev: *mut Handle<'static, ()>,
     added: bool,
@@ -127,8 +131,10 @@ impl Select {
     /// ```
     pub fn new() -> Select {
         Select {
-            head: ptr::null_mut(),
-            tail: ptr::null_mut(),
+            inner: UnsafeCell::new(SelectInner {
+                head: ptr::null_mut(),
+                tail: ptr::null_mut(),
+            }),
             next_id: Cell::new(1),
         }
     }
@@ -141,7 +147,7 @@ impl Select {
         self.next_id.set(id + 1);
         Handle {
             id: id,
-            selector: self,
+            selector: self.inner.get(),
             next: ptr::null_mut(),
             prev: ptr::null_mut(),
             added: false,
@@ -250,7 +256,7 @@ impl Select {
         }
     }
 
-    fn iter(&self) -> Packets { Packets { cur: self.head } }
+    fn iter(&self) -> Packets { Packets { cur: unsafe { &*self.inner.get() }.head } }
 }
 
 impl<'rx, T: Send> Handle<'rx, T> {
@@ -271,7 +277,7 @@ impl<'rx, T: Send> Handle<'rx, T> {
     /// while it is added to the `Select` set.
     pub unsafe fn add(&mut self) {
         if self.added { return }
-        let selector: &mut Select = mem::transmute(&*self.selector);
+        let selector = &mut *self.selector;
         let me: *mut Handle<'static, ()> = mem::transmute(&*self);
 
         if selector.head.is_null() {
@@ -292,7 +298,7 @@ impl<'rx, T: Send> Handle<'rx, T> {
     pub unsafe fn remove(&mut self) {
         if !self.added { return }
 
-        let selector: &mut Select = mem::transmute(&*self.selector);
+        let selector = &mut *self.selector;
         let me: *mut Handle<'static, ()> = mem::transmute(&*self);
 
         if self.prev.is_null() {
@@ -317,8 +323,10 @@ impl<'rx, T: Send> Handle<'rx, T> {
 
 impl Drop for Select {
     fn drop(&mut self) {
-        assert!(self.head.is_null());
-        assert!(self.tail.is_null());
+        unsafe {
+            assert!((&*self.inner.get()).head.is_null());
+            assert!((&*self.inner.get()).tail.is_null());
+        }
     }
 }
 
