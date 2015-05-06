@@ -171,14 +171,16 @@ impl<T: ?Sized> RwLock<T> {
         RwLockReadGuard::new(&*self.inner, &self.data)
     }
 
-    /// Attempts to acquire this lock with shared read access.
+    /// Attempts to acquire this rwlock with shared read access.
     ///
-    /// This function will never block and will return immediately if `read`
-    /// would otherwise succeed. Returns `Some` of an RAII guard which will
-    /// release the shared access of this thread when dropped, or `None` if the
-    /// access could not be granted. This method does not provide any
-    /// guarantees with respect to the ordering of whether contentious readers
-    /// or writers will acquire the lock first.
+    /// If the access could not be granted at this time, then `Err` is returned.
+    /// Otherwise, an RAII guard is returned which will release the shared access
+    /// when it is dropped.
+    ///
+    /// This function does not block.
+    ///
+    /// This function does not provide any guarantees with respect to the ordering
+    /// of whether contentious readers or writers will acquire the lock first.
     ///
     /// # Failure
     ///
@@ -219,9 +221,14 @@ impl<T: ?Sized> RwLock<T> {
 
     /// Attempts to lock this rwlock with exclusive write access.
     ///
-    /// This function does not ever block, and it will return `None` if a call
-    /// to `write` would otherwise block. If successful, an RAII guard is
-    /// returned.
+    /// If the lock could not be acquired at this time, then `Err` is returned.
+    /// Otherwise, an RAII guard is returned which will release the lock when
+    /// it is dropped.
+    ///
+    /// This function does not block.
+    ///
+    /// This function does not provide any guarantees with respect to the ordering
+    /// of whether contentious readers or writers will acquire the lock first.
     ///
     /// # Failure
     ///
