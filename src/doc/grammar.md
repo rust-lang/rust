@@ -304,7 +304,7 @@ transcriber : '(' transcriber * ')' | '[' transcriber * ']'
 ## Items
 
 ```antlr
-item : mod_item | fn_item | type_item | struct_item | enum_item
+item : vis ? mod_item | fn_item | type_item | struct_item | enum_item
      | const_item | static_item | trait_item | impl_item | extern_block ;
 ```
 
@@ -335,8 +335,8 @@ crate_name: ident | ( ident "as" ident )
 ##### Use declarations
 
 ```antlr
-use_decl : "pub" ? "use" [ path "as" ident
-                          | path_glob ] ;
+use_decl : vis ? "use" [ path "as" ident
+                        | path_glob ] ;
 
 path_glob : ident [ "::" [ path_glob
                           | '*' ] ] ?
@@ -414,8 +414,9 @@ extern_block : [ foreign_fn ] * ;
 
 ## Visibility and Privacy
 
-**FIXME:** grammar?
-
+```antlr
+vis : "pub" ;
+```
 ### Re-exporting and Visibility
 
 **FIXME:** grammar?
