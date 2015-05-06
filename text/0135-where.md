@@ -49,7 +49,7 @@ overcome with the `where` syntax:
 
 - **It does not work well with associated types.** This is because
   there is no space to specify the value of an associated type. Other
-  languages use `where` clauses (or something analagous) for this
+  languages use `where` clauses (or something analogous) for this
   purpose.
   
 - **It's just plain hard to read.** Experience has shown that as the
@@ -251,7 +251,7 @@ It is unclear exactly what form associated types will have in Rust,
 but it is [well documented][comparison] that our current design, in
 which type parameters decorate traits, does not scale particularly
 well. (For curious readers, there are [several][part1] [blog][part2]
-[posts][pnkfelix] exporing the design space of associated types with
+[posts][pnkfelix] exploring the design space of associated types with
 respect to Rust in particular.)
 
 The high-level summary of associated types is that we can replace
