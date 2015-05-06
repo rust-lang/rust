@@ -235,7 +235,9 @@ pub enum MacroFormat {
     /// e.g. #[derive(...)] <item>
     MacroAttribute,
     /// e.g. `format!()`
-    MacroBang
+    MacroBang,
+    /// Expansion performed by the compiler (libsyntax::expand).
+    CompilerExpansion,
 }
 
 #[derive(Clone, Hash, Debug)]
