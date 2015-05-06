@@ -685,6 +685,79 @@ impl<T> Option<T> {
         mem::replace(self, None)
     }
 
+    /// Puts a value into the option, returning a reference to it.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let mut x = None;
+    /// {
+    ///     let y: &mut i32 = x.put(5);
+    ///     assert_eq!(*y, 5);
+    ///     *y = 10;
+    /// }
+    /// assert_eq!(x, Some(10));
+    /// ```
+    #[inline]
+    #[unstable(feature = "rust1", since = "1.0.0")]
+    pub fn put(&mut self, val: T) -> &mut T {
+        *self = Some(val);
+        self.as_mut().unwrap()
+    }
+
+    /// Puts a value into the option if it is empty, returning a reference to
+    /// the contents of the option.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let mut x = None;
+    /// {
+    ///     let y: &mut i32 = x.or_put(5);
+    ///     assert_eq!(*y, 5);
+    ///     *y = 10;
+    /// }
+    /// {
+    ///     let z: &mut i32 = x.or_put(15);
+    ///     assert_eq!(*z, 10);
+    ///     *z = 20;
+    /// }
+    /// assert_eq!(x, Some(20));
+    /// ```
+    #[inline]
+    #[unstable(feature = "rust1", since = "1.0.0")]
+    pub fn or_put(&mut self, val: T) -> &mut T {
+        self.or_else_put(|| val)
+    }
+
+    /// Puts a value computed from a closure into the option if it is empty,
+    /// returning a reference to the contents of the option.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let mut x = None;
+    /// {
+    ///     let y: &mut i32 = x.or_else_put(|| 5);
+    ///     assert_eq!(*y, 5);
+    ///     *y = 10;
+    /// }
+    /// {
+    ///     let z: &mut i32 = x.or_else_put(|| 15);
+    ///     assert_eq!(*z, 10);
+    ///     *z = 20;
+    /// }
+    /// assert_eq!(x, Some(20));
+    /// ```
+    #[inline]
+    #[unstable(feature = "rust1", since = "1.0.0")]
+    pub fn or_else_put<F: FnOnce() -> T>(&mut self, f: F) -> &mut T {
+        match *self {
+            Some(ref mut inner) => inner,
+            None => self.put(f()),
+        }
+    }
+
     /// Converts from `Option<T>` to `&[T]` (without copying)
     #[inline]
     #[unstable(feature = "as_slice", since = "unsure of the utility here")]
