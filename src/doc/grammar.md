@@ -434,26 +434,19 @@ meta_seq : meta_item [ ',' meta_seq ] ? ;
 
 ## Statements
 
-**FIXME:** grammar?
+```antlr
+stmt : decl_stmt | expr_stmt ;
+```
 
 ### Declaration statements
 
-**FIXME:** grammar?
-
-A _declaration statement_ is one that introduces one or more *names* into the
-enclosing statement block. The declared names may denote new variables or new
-items.
+```antlr
+decl_stmt : item | let_decl ;
+```
 
 #### Item declarations
 
-**FIXME:** grammar?
-
-An _item declaration statement_ has a syntactic form identical to an
-[item](#items) declaration within a module. Declaring an item &mdash; a
-function, enumeration, structure, type, static, trait, implementation or module
-&mdash; locally within a statement block is simply a way of restricting its
-scope to a narrow region containing all of its uses; it is otherwise identical
-in meaning to declaring the item outside the statement block.
+See [Items](#items).
 
 #### Variable declarations
 
@@ -464,7 +457,9 @@ init : [ '=' ] expr ;
 
 ### Expression statements
 
-**FIXME:** grammar?
+```antlr
+expr_stmt : expr ';' ;
+```
 
 ## Expressions
 
