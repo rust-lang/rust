@@ -117,23 +117,71 @@ pub enum MethodMatchedData {
 /// obligation is for `int`. In that case, we drop the impl out of the
 /// list.  But the other cases are considered *candidates*.
 ///
-/// Candidates can either be definitive or ambiguous. An ambiguous
-/// candidate is one that might match or might not, depending on how
-/// type variables wind up being resolved. This only occurs during inference.
+/// For selection to succeed, there must be exactly one matching
+/// candidate. If the obligation is fully known, this is guaranteed
+/// by coherence. However, if the obligation contains type parameters
+/// or variables, there may be multiple such impls.
 ///
-/// For selection to succeed, there must be exactly one non-ambiguous
-/// candidate.  Usually, it is not possible to have more than one
-/// definitive candidate, due to the coherence rules. However, there is
-/// one case where it could occur: if there is a blanket impl for a
-/// trait (that is, an impl applied to all T), and a type parameter
-/// with a where clause. In that case, we can have a candidate from the
-/// where clause and a second candidate from the impl. This is not a
-/// problem because coherence guarantees us that the impl which would
-/// be used to satisfy the where clause is the same one that we see
-/// now. To resolve this issue, therefore, we ignore impls if we find a
-/// matching where clause. Part of the reason for this is that where
-/// clauses can give additional information (like, the types of output
-/// parameters) that would have to be inferred from the impl.
+/// It is not a real problem if multiple matching impls exist because
+/// of type variables - it just means the obligation isn't sufficiently
+/// elaborated. In that case we report an ambiguity, and the caller can
+/// try again after more type information has been gathered or report a
+/// "type annotations required" error.
+///
+/// However, with type parameters, this can be a real problem - type
+/// parameters don't unify with regular types, but they *can* unify
+/// with variables from blanket impls, and (unless we know its bounds
+/// will always be satisfied) picking the blanket impl will be wrong
+/// for at least *some* substitutions. To make this concrete, if we have
+///
+///    trait AsDebug { type Out : fmt::Debug; fn debug(self) -> Self::Out; }
+///    impl<T: fmt::Debug> AsDebug for T {
+///        type Out = T;
+///        fn debug(self) -> fmt::Debug { self }
+///    }
+///    fn foo<T: AsDebug>(t: T) { println!("{:?}", <T as AsDebug>::debug(t)); }
+///
+/// we can't just use the impl to resolve the <T as AsDebug> obligation
+/// - a type from another crate (that doesn't implement fmt::Debug) could
+/// implement AsDebug.
+///
+/// Because where-clauses match the type exactly, multiple clauses can
+/// only match if there are unresolved variables, and we can mostly just
+/// report this ambiguity in that case. This is still a problem - we can't
+/// *do anything* with ambiguities that involve only regions. This is issue
+/// #21974.
+///
+/// If a single where-clause matches and there are no inference
+/// variables left, then it definitely matches and we can just select
+/// it.
+///
+/// In fact, we even select the where-clause when the obligation contains
+/// inference variables. The can lead to inference making "leaps of logic",
+/// for example in this situation:
+///
+///    pub trait Foo<T> { fn foo(&self) -> T; }
+///    impl<T> Foo<()> for T { fn foo(&self) { } }
+///    impl Foo<bool> for bool { fn foo(&self) -> bool { *self } }
+///
+///    pub fn foo<T>(t: T) where T: Foo<bool> {
+///       println!("{:?}", <T as Foo<_>>::foo(&t));
+///    }
+///    fn main() { foo(false); }
+///
+/// Here the obligation <T as Foo<$0>> can be matched by both the blanket
+/// impl and the where-clause. We select the where-clause and unify $0=bool,
+/// so the program prints "false". However, if the where-clause is omitted,
+/// the blanket impl is selected, we unify $0=(), and the program prints
+/// "()".
+///
+/// Exactly the same issues apply to projection and object candidates, except
+/// that we can have both a projection candidate and a where-clause candidate
+/// for the same obligation. In that case either would do (except that
+/// different "leaps of logic" would occur if inference variables are
+/// present), and we just pick the projection. This is, for example,
+/// required for associated types to work in default impls, as the bounds
+/// are visible both as projection bounds and as where-clauses from the
+/// parameter environment.
 #[derive(PartialEq,Eq,Debug,Clone)]
 enum SelectionCandidate<'tcx> {
     PhantomFnCandidate,
@@ -1350,63 +1398,51 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// Returns true if `candidate_i` should be dropped in favor of
     /// `candidate_j`.  Generally speaking we will drop duplicate
     /// candidates and prefer where-clause candidates.
+    /// Returns true if `victim` should be dropped in favor of
+    /// `other`.  Generally speaking we will drop duplicate
+    /// candidates and prefer where-clause candidates.
+    ///
+    /// See the comment for "SelectionCandidate" for more details.
     fn candidate_should_be_dropped_in_favor_of<'o>(&mut self,
-                                                   candidate_i: &SelectionCandidate<'tcx>,
-                                                   candidate_j: &SelectionCandidate<'tcx>)
+                                                   victim: &SelectionCandidate<'tcx>,
+                                                   other: &SelectionCandidate<'tcx>)
                                                    -> bool
     {
-        if candidate_i == candidate_j {
+        if victim == other {
             return true;
         }
 
-        match (candidate_i, candidate_j) {
-            (&ImplCandidate(..), &ParamCandidate(..)) |
-            (&ClosureCandidate(..), &ParamCandidate(..)) |
-            (&FnPointerCandidate(..), &ParamCandidate(..)) |
-            (&BuiltinObjectCandidate(..), &ParamCandidate(_)) |
-            (&BuiltinCandidate(..), &ParamCandidate(..)) => {
-                // We basically prefer always prefer to use a
-                // where-clause over another option. Where clauses
-                // impose the burden of finding the exact match onto
-                // the caller. Using an impl in preference of a where
-                // clause can also lead us to "overspecialize", as in
-                // #18453.
-                true
-            }
-            (&ImplCandidate(..), &ObjectCandidate(..)) => {
-                // This means that we are matching an object of type
-                // `Trait` against the trait `Trait`. In that case, we
-                // always prefer to use the object vtable over the
-                // impl. Like a where clause, the impl may or may not
-                // be the one that is used by the object (because the
-                // impl may have additional where-clauses that the
-                // object's source might not meet) -- if it is, using
-                // the vtable is fine. If it is not, using the vtable
-                // is good. A win win!
-                true
-            }
-            (&DefaultImplCandidate(_), _) => {
-                // Prefer other candidates over default implementations.
-                self.tcx().sess.bug(
-                    "default implementations shouldn't be recorded \
-                     when there are other valid candidates");
-            }
-            (&ProjectionCandidate, &ParamCandidate(_)) => {
-                // FIXME(#20297) -- this gives where clauses precedent
-                // over projections. Really these are just two means
-                // of deducing information (one based on the where
-                // clauses on the trait definition; one based on those
-                // on the enclosing scope), and it'd be better to
-                // integrate them more intelligently. But for now this
-                // seems ok. If we DON'T give where clauses
-                // precedence, we run into trouble in default methods,
-                // where both the projection bounds for `Self::A` and
-                // the where clauses are in scope.
-                true
-            }
-            _ => {
-                false
-            }
+        match other {
+            &ObjectCandidate(..) |
+            &ParamCandidate(_) | &ProjectionCandidate => match victim {
+                &DefaultImplCandidate(..) => {
+                    self.tcx().sess.bug(
+                        "default implementations shouldn't be recorded \
+                         when there are other valid candidates");
+                }
+                &PhantomFnCandidate => {
+                    self.tcx().sess.bug("PhantomFn didn't short-circuit selection");
+                }
+                &ImplCandidate(..) |
+                &ClosureCandidate(..) |
+                &FnPointerCandidate(..) |
+                &BuiltinObjectCandidate(..) |
+                &DefaultImplObjectCandidate(..) |
+                &BuiltinCandidate(..) => {
+                    // We have a where-clause so don't go around looking
+                    // for impls.
+                    true
+                }
+                &ObjectCandidate(..) |
+                &ProjectionCandidate => {
+                    // Arbitrarily give param candidates priority
+                    // over projection and object candidates.
+                    true
+                },
+                &ParamCandidate(..) => false,
+                &ErrorCandidate => false // propagate errors
+            },
+            _ => false
         }
     }
 
