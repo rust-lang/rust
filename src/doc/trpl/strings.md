@@ -73,13 +73,13 @@ individual bytes, or as codepoints:
 let hachiko = "忠犬ハチ公";
 
 for b in hachiko.as_bytes() {
-print!("{}, ", b);
+    print!("{}, ", b);
 }
 
 println!("");
 
 for c in hachiko.chars() {
-print!("{}, ", c);
+    print!("{}, ", c);
 }
 
 println!("");
