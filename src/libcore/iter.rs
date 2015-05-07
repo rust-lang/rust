@@ -137,7 +137,7 @@ pub trait Iterator {
     ///
     /// ```
     /// let a = [1, 2, 3, 4, 5];
-    /// assert!(a.iter().last().unwrap() == &5);
+    /// assert_eq!(a.iter().last().unwrap(), &5);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -155,8 +155,8 @@ pub trait Iterator {
     /// ```
     /// let a = [1, 2, 3, 4, 5];
     /// let mut it = a.iter();
-    /// assert!(it.nth(2).unwrap() == &3);
-    /// assert!(it.nth(2) == None);
+    /// assert_eq!(it.nth(2).unwrap(), &3);
+    /// assert_eq!(it.nth(2), None);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -545,8 +545,8 @@ pub trait Iterator {
     /// let mut it = 0..10;
     /// // sum the first five values
     /// let partial_sum = it.by_ref().take(5).fold(0, |a, b| a + b);
-    /// assert!(partial_sum == 10);
-    /// assert!(it.next() == Some(5));
+    /// assert_eq!(partial_sum, 10);
+    /// assert_eq!(it.next(), Some(5));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn by_ref(&mut self) -> &mut Self where Self: Sized { self }
@@ -608,7 +608,7 @@ pub trait Iterator {
     ///
     /// ```
     /// let a = [1, 2, 3, 4, 5];
-    /// assert!(a.iter().fold(0, |acc, &item| acc + item) == 15);
+    /// assert_eq!(a.iter().fold(0, |acc, &item| acc + item), 15);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -773,7 +773,7 @@ pub trait Iterator {
     ///
     /// ```
     /// let a = [1, 2, 3, 4, 5];
-    /// assert!(a.iter().max().unwrap() == &5);
+    /// assert_eq!(a.iter().max().unwrap(), &5);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -796,7 +796,7 @@ pub trait Iterator {
     ///
     /// ```
     /// let a = [1, 2, 3, 4, 5];
-    /// assert!(a.iter().min().unwrap() == &1);
+    /// assert_eq!(a.iter().min().unwrap(), &1);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -834,13 +834,13 @@ pub trait Iterator {
     /// assert_eq!(a.iter().min_max(), NoElements);
     ///
     /// let a = [1];
-    /// assert!(a.iter().min_max() == OneElement(&1));
+    /// assert_eq!(a.iter().min_max(), OneElement(&1));
     ///
     /// let a = [1, 2, 3, 4, 5];
-    /// assert!(a.iter().min_max() == MinMax(&1, &5));
+    /// assert_eq!(a.iter().min_max(), MinMax(&1, &5));
     ///
     /// let a = [1, 1, 1, 1];
-    /// assert!(a.iter().min_max() == MinMax(&1, &1));
+    /// assert_eq!(a.iter().min_max(), MinMax(&1, &1));
     /// ```
     #[unstable(feature = "core", reason = "return type may change")]
     fn min_max(mut self) -> MinMaxResult<Self::Item> where Self: Sized, Self::Item: Ord
@@ -1058,7 +1058,7 @@ pub trait Iterator {
     ///
     /// let a = [1, 2, 3, 4, 5];
     /// let mut it = a.iter().cloned();
-    /// assert!(it.sum::<i32>() == 15);
+    /// assert_eq!(it.sum::<i32>(), 15);
     /// ```
     #[unstable(feature="core")]
     fn sum<S=<Self as Iterator>::Item>(self) -> S where
@@ -1078,9 +1078,9 @@ pub trait Iterator {
     /// fn factorial(n: u32) -> u32 {
     ///     (1..).take_while(|&i| i <= n).product()
     /// }
-    /// assert!(factorial(0) == 1);
-    /// assert!(factorial(1) == 1);
-    /// assert!(factorial(5) == 120);
+    /// assert_eq!(factorial(0), 1);
+    /// assert_eq!(factorial(1), 1);
+    /// assert_eq!(factorial(5), 120);
     /// ```
     #[unstable(feature="core")]
     fn product<P=<Self as Iterator>::Item>(self) -> P where
