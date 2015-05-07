@@ -86,7 +86,7 @@ fn main() {
         .ok()
         .expect("Failed to read line");
 
-    println!("You guessed: {}", input);
+    println!("You guessed: {}", guess);
 }
 ```
 
@@ -302,12 +302,12 @@ project.
 There’s just one line of this first example left:
 
 ```rust,ignore
-    println!("You guessed: {}", input);
+    println!("You guessed: {}", guess);
 }
 ```
 
 This prints out the string we saved our input in. The `{}`s are a placeholder,
-and so we pass it `input` as an argument. If we had multiple `{}`s, we would
+and so we pass it `guess` as an argument. If we had multiple `{}`s, we would
 pass multiple arguments:
 
 ```rust
