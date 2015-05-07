@@ -39,7 +39,7 @@ representation as a primitive. This allows using Rust `enum`s in FFI where C
 `enum`s are also used, for most use cases. The attribute can also be applied
 to `struct`s to get the same layout as a C struct would.
 
-[repr]: reference.html#miscellaneous-attributes
+[repr]: reference.html#ffi-attributes
 
 ## There is no GC
 
