@@ -371,12 +371,14 @@ Now, without changing any of our code, let’s build our project:
 ```bash
 $ cargo build
     Updating registry `https://github.com/rust-lang/crates.io-index`
- Downloading rand v0.3.0
+ Downloading rand v0.3.8
  Downloading libc v0.1.6
    Compiling libc v0.1.6
-   Compiling rand v0.3.0
+   Compiling rand v0.3.8
    Compiling guessing_game v0.1.0 (file:///home/you/projects/guessing_game)
 ```
+
+(You may see different versions, of course.)
 
 Lots of new output! Now that we have an external dependency, Cargo fetches the
 latest versions of everything from the registry, which is a copy of data from
@@ -407,11 +409,11 @@ $ cargo build
    Compiling guessing_game v0.1.0 (file:///home/you/projects/guessing_game)
 ```
 
-Let's pretend that we told Cargo we wanted the latest version of `rand` (using `*`) 
-for a bit. It would have fetched `v0.3.8` (at the time this was written). 
-But what happens when next week, version `v0.3.9` comes out, with an important 
-bugfix? While getting bugfixes is important, what if `0.3.9` contains a regression 
-that breaks our code?
+So, we told Cargo we wanted any `0.3.x` version of `rand`, and so it fetched the latest
+version at the time this was written, `v0.3.8`. But what happens when next
+week, version `v0.3.9` comes out, with an important bugfix? While getting
+bugfixes is important, what if `0.3.9` contains a regression that breaks our
+code?
 
 The answer to this problem is the `Cargo.lock` file you’ll now find in your
 project directory. When you build your project for the first time, Cargo
@@ -419,7 +421,7 @@ figures out all of the versions that fit your criteria, and then writes them
 to the `Cargo.lock` file. When you build your project in the future, Cargo
 will see that the `Cargo.lock` file exists, and then use that specific version
 rather than do all the work of figuring out versions again. This lets you
-have a repeatable build automatically. In other words, we’ll stay at `0.3.0`
+have a repeatable build automatically. In other words, we’ll stay at `0.3.8`
 until we explicitly upgrade, and so will anyone who we share our code with,
 thanks to the lock file.
 
@@ -439,8 +441,7 @@ projects which are assembled out of a number of sub-packages.
 [doccargo]: http://doc.crates.io
 [doccratesio]: http://doc.crates.io/crates-io.html
 
-Let’s get on to actually _using_ `rand`. Keep the version as `0.3.0` for this 
-project. Here’s our next step:
+Let’s get on to actually _using_ `rand`. Here’s our next step:
 
 ```rust,ignore
 extern crate rand;
