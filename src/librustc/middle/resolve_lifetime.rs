@@ -374,7 +374,7 @@ fn extract_labels<'v, 'a>(ctxt: &mut LifetimeContext<'a>, b: &'v ast::Block) {
         fn visit_expr(&mut self, ex: &'v ast::Expr) {
             if let Some(label) = expression_label(ex) {
                 for &(prior, prior_span) in &self.labels_in_fn[..] {
-                    // FIXME (#24278): non-hygienic comparision
+                    // FIXME (#24278): non-hygienic comparison
                     if label.name == prior.name {
                         signal_shadowing_problem(self.sess,
                                                  label.name,
@@ -420,7 +420,7 @@ fn extract_labels<'v, 'a>(ctxt: &mut LifetimeContext<'a>, b: &'v ast::Block) {
                 EarlyScope(_, lifetimes, s) |
                 LateScope(lifetimes, s) => {
                     for lifetime_def in lifetimes {
-                        // FIXME (#24278): non-hygienic comparision
+                        // FIXME (#24278): non-hygienic comparison
                         if label.name == lifetime_def.lifetime.name {
                             signal_shadowing_problem(
                                 sess,
@@ -677,7 +677,7 @@ impl<'a> LifetimeContext<'a> {
                                         lifetime: &ast::Lifetime)
     {
         for &(label, label_span) in &self.labels_in_fn {
-            // FIXME (#24278): non-hygienic comparision
+            // FIXME (#24278): non-hygienic comparison
             if lifetime.name == label.name {
                 signal_shadowing_problem(self.sess,
                                          lifetime.name,

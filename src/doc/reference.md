@@ -1867,13 +1867,12 @@ macro scope.
   lower to the target's SIMD instructions, if any; the `simd` feature gate
   is necessary to use this attribute.
 - `static_assert` - on statics whose type is `bool`, terminates compilation
-  with an error if it is not initialized to `true`.
-- `unsafe_destructor` - allow implementations of the "drop" language item
-  where the type it is implemented for does not implement the "send" language
-  item; the `unsafe_destructor` feature gate is needed to use this attribute
+  with an error if it is not initialized to `true`. To use this, the `static_assert`
+  feature gate must be enabled.
 - `unsafe_no_drop_flag` - on structs, remove the flag that prevents
   destructors from being run twice. Destructors might be run multiple times on
-  the same object with this attribute.
+  the same object with this attribute. To use this, the `unsafe_no_drop_flag` feature
+  gate must be enabled.
 - `doc` - Doc comments such as `/// foo` are equivalent to `#[doc = "foo"]`.
 - `rustc_on_unimplemented` - Write a custom note to be shown along with the error
    when the trait is found to be unimplemented on a type.
