@@ -19,6 +19,21 @@ methods that do not have default implementations), as well as any required
 trait items like associated types or constants.
 "##,
 
+E0054: r##"
+It is not allowed to cast to a bool. If you are trying to cast a numeric type
+to a bool, you can compare it with zero instead:
+
+```
+let x = 5;
+
+// Ok
+let x_is_nonzero = x != 0;
+
+// Not allowed, won't compile
+let x_is_nonzero = x as bool;
+```
+"##,
+
 E0081: r##"
 Enum discriminants are used to differentiate enum variants stored in memory.
 This error indicates that the same value was used for two or more variants,
@@ -116,7 +131,6 @@ register_diagnostics! {
     E0049,
     E0050,
     E0053,
-    E0054,
     E0055,
     E0057,
     E0059,
