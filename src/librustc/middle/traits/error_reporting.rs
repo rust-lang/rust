@@ -56,7 +56,12 @@ pub fn report_projection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
 {
     let predicate =
         infcx.resolve_type_vars_if_possible(&obligation.predicate);
-    if !predicate.references_error() {
+    // The ty_err created by normalize_to_error can end up being unified
+    // into all obligations: for example, if our obligation is something
+    // like `$X = <() as Foo<$X>>::Out` and () does not implement Foo<_>,
+    // then $X will be unified with ty_err, but the error still needs to be
+    // reported.
+    if !infcx.tcx.sess.has_errors() || !predicate.references_error() {
         span_err!(infcx.tcx.sess, obligation.cause.span, E0271,
                 "type mismatch resolving `{}`: {}",
                 predicate.user_string(infcx.tcx),
@@ -183,7 +188,8 @@ pub fn report_selection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                             let trait_predicate =
                                 infcx.resolve_type_vars_if_possible(trait_predicate);
 
-                            if !trait_predicate.references_error() {
+                            if !infcx.tcx.sess.has_errors() ||
+                               !trait_predicate.references_error() {
                                 let trait_ref = trait_predicate.to_poly_trait_ref();
                                 span_err!(infcx.tcx.sess, obligation.cause.span, E0277,
                                         "the trait `{}` is not implemented for the type `{}`",
