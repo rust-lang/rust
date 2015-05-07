@@ -630,6 +630,141 @@ fn test_bit_vec_extend() {
                                  0b01001001, 0b10010010, 0b10111101]));
 }
 
+#[test]
+fn test_bit_vec_append() {
+    // Append to BitVec that holds a multiple of u32::BITS bits
+    let mut a = BitVec::from_bytes(&[0b10100000, 0b00010010, 0b10010010, 0b00110011]);
+    let mut b = BitVec::new();
+    b.push(false);
+    b.push(true);
+    b.push(true);
+
+    a.append(&mut b);
+
+    assert_eq!(a.len(), 35);
+    assert_eq!(b.len(), 0);
+    assert!(b.capacity() >= 3);
+
+    assert!(a.eq_vec(&[true, false, true, false, false, false, false, false,
+                       false, false, false, true, false, false, true, false,
+                       true, false, false, true, false, false, true, false,
+                       false, false, true, true, false, false, true, true,
+                       false, true, true]));
+
+    // Append to arbitrary BitVec
+    let mut a = BitVec::new();
+    a.push(true);
+    a.push(false);
+
+    let mut b = BitVec::from_bytes(&[0b10100000, 0b00010010, 0b10010010, 0b00110011, 0b10010101]);
+
+    a.append(&mut b);
+
+    assert_eq!(a.len(), 42);
+    assert_eq!(b.len(), 0);
+    assert!(b.capacity() >= 40);
+
+    assert!(a.eq_vec(&[true, false, true, false, true, false, false, false,
+                       false, false, false, false, false, true, false, false,
+                       true, false, true, false, false, true, false, false,
+                       true, false, false, false, true, true, false, false,
+                       true, true, true, false, false, true, false, true,
+                       false, true]));
+
+    // Append to empty BitVec
+    let mut a = BitVec::new();
+    let mut b = BitVec::from_bytes(&[0b10100000, 0b00010010, 0b10010010, 0b00110011, 0b10010101]);
+
+    a.append(&mut b);
+
+    assert_eq!(a.len(), 40);
+    assert_eq!(b.len(), 0);
+    assert!(b.capacity() >= 40);
+
+    assert!(a.eq_vec(&[true, false, true, false, false, false, false, false,
+                       false, false, false, true, false, false, true, false,
+                       true, false, false, true, false, false, true, false,
+                       false, false, true, true, false, false, true, true,
+                       true, false, false, true, false, true, false, true]));
+
+    // Append empty BitVec
+    let mut a = BitVec::from_bytes(&[0b10100000, 0b00010010, 0b10010010, 0b00110011, 0b10010101]);
+    let mut b = BitVec::new();
+
+    a.append(&mut b);
+
+    assert_eq!(a.len(), 40);
+    assert_eq!(b.len(), 0);
+
+    assert!(a.eq_vec(&[true, false, true, false, false, false, false, false,
+                       false, false, false, true, false, false, true, false,
+                       true, false, false, true, false, false, true, false,
+                       false, false, true, true, false, false, true, true,
+                       true, false, false, true, false, true, false, true]));
+}
+
+#[test]
+fn test_bit_vec_split_off() {
+    // Split at 0
+    let mut a = BitVec::new();
+    a.push(true);
+    a.push(false);
+    a.push(false);
+    a.push(true);
+
+    let b = a.split_off(0);
+
+    assert_eq!(a.len(), 0);
+    assert_eq!(b.len(), 4);
+
+    assert!(b.eq_vec(&[true, false, false, true]));
+
+    // Split at last bit
+    a.truncate(0);
+    a.push(true);
+    a.push(false);
+    a.push(false);
+    a.push(true);
+
+    let b = a.split_off(4);
+
+    assert_eq!(a.len(), 4);
+    assert_eq!(b.len(), 0);
+
+    assert!(a.eq_vec(&[true, false, false, true]));
+
+    // Split at block boundary
+    let mut a = BitVec::from_bytes(&[0b10100000, 0b00010010, 0b10010010, 0b00110011, 0b11110011]);
+
+    let b = a.split_off(32);
+
+    assert_eq!(a.len(), 32);
+    assert_eq!(b.len(), 8);
+
+    assert!(a.eq_vec(&[true, false, true, false, false, false, false, false,
+                       false, false, false, true, false, false, true, false,
+                       true, false, false, true, false, false, true, false,
+                       false, false, true, true, false, false, true, true]));
+    assert!(b.eq_vec(&[true, true, true, true, false, false, true, true]));
+
+    // Don't split at block boundary
+    let mut a = BitVec::from_bytes(&[0b10100000, 0b00010010, 0b10010010, 0b00110011,
+                                     0b01101011, 0b10101101]);
+
+    let b = a.split_off(13);
+
+    assert_eq!(a.len(), 13);
+    assert_eq!(b.len(), 35);
+
+    assert!(a.eq_vec(&[true, false, true, false, false, false, false, false,
+                       false, false, false, true, false]));
+    assert!(b.eq_vec(&[false, true, false, true, false, false, true, false,
+                       false, true, false, false, false, true, true, false,
+                       false, true, true, false, true, true, false, true,
+                       false, true, true,  true, false, true, false, true,
+                       true, false, true]));
+}
+
 mod bench {
     use std::collections::BitVec;
     use std::u32;
