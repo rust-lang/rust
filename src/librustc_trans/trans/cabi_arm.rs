@@ -131,7 +131,7 @@ fn ty_size(ty: Type, align_fn: TyAlignFn) -> usize {
 
 fn classify_ret_ty(ccx: &CrateContext, ty: Type, align_fn: TyAlignFn) -> ArgType {
     if is_reg_ty(ty) {
-        let attr = if ty == Type::i1(ccx) { Some(Attribute::ZExtAttribute) } else { None };
+        let attr = if ty == Type::i1(ccx) { Some(Attribute::ZExt) } else { None };
         return ArgType::direct(ty, None, None, attr);
     }
     let size = ty_size(ty, align_fn);
@@ -145,12 +145,12 @@ fn classify_ret_ty(ccx: &CrateContext, ty: Type, align_fn: TyAlignFn) -> ArgType
         };
         return ArgType::direct(ty, Some(llty), None, None);
     }
-    ArgType::indirect(ty, Some(Attribute::StructRetAttribute))
+    ArgType::indirect(ty, Some(Attribute::StructRet))
 }
 
 fn classify_arg_ty(ccx: &CrateContext, ty: Type, align_fn: TyAlignFn) -> ArgType {
     if is_reg_ty(ty) {
-        let attr = if ty == Type::i1(ccx) { Some(Attribute::ZExtAttribute) } else { None };
+        let attr = if ty == Type::i1(ccx) { Some(Attribute::ZExt) } else { None };
         return ArgType::direct(ty, None, None, attr);
     }
     let align = align_fn(ty);
