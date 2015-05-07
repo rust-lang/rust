@@ -602,6 +602,8 @@ pub trait Iterator {
     /// Performs a fold operation over the entire iterator, returning the
     /// eventual state at the end of the iteration.
     ///
+    /// This operation is sometimes called 'reduce' or 'inject'.
+    ///
     /// # Examples
     ///
     /// ```
