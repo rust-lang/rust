@@ -31,18 +31,18 @@ expose functionality like `set_nodelay`:
 ```rust
 impl TcpStream {
     pub fn set_read_timeout(&self, dur: Option<Duration>) -> io::Result<()> { ... }
-    pub fn read_timeout(&self) -> Option<Duration>;
+    pub fn read_timeout(&self) -> io::Result<Option<Duration>>;
 
     pub fn set_write_timeout(&self, dur: Option<Duration>) -> io::Result<()> { ... }
-    pub fn write_timeout(&self) -> Option<Duration>;
+    pub fn write_timeout(&self) -> io::Result<Option<Duration>>;
 }
 
 impl UdpSocket {
     pub fn set_read_timeout(&self, dur: Option<Duration>) -> io::Result<()> { ... }
-    pub fn read_timeout(&self) -> Option<Duration>;
+    pub fn read_timeout(&self) -> io::Result<Option<Duration>>;
 
     pub fn set_write_timeout(&self, dur: Option<Duration>) -> io::Result<()> { ... }
-    pub fn write_timeout(&self) -> Option<Duration>;
+    pub fn write_timeout(&self) -> io::Result<Option<Duration>>;
 }
 ```
 
@@ -92,6 +92,25 @@ durations to check for zero in advance.
 Aside from fitting Rust idioms better, the main proposal also gives a
 somewhat stronger indication of a bug when things go wrong (rather
 than simply failing to time out, for example).
+
+## Combining with nonblocking support
+
+Another possibility would be to provide a single method that can
+choose between blocking indefinitely, blocking with a timeout, and
+nonblocking mode:
+
+```rust
+enum BlockingMode {
+    Nonblocking,
+    Blocking,
+    Timeout(Duration)
+}
+```
+
+This `enum` makes clear that it doesn't make sense to have both a
+timeout and put the socket in nonblocking mode. On the other hand, it
+would relinquish the one-to-one correspondence between Rust
+configuration APIs and underlying socket options.
 
 ## Wrapping for compositionality
 
