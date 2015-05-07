@@ -816,7 +816,7 @@
             return "\u2212"; // "\u2212" is '−' minus sign
         }
     }
-    
+
     $("#toggle-all-docs").on("click", function() {
         var toggle = $("#toggle-all-docs");
         if (toggle.hasClass("will-expand")) {
