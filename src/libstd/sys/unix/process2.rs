@@ -328,7 +328,7 @@ impl Process {
         }) {
             Ok(0) => None,
             Ok(n) if n == self.pid => Some(translate_status(status)),
-            Ok(n) => panic!("unkown pid: {}", n),
+            Ok(n) => panic!("unknown pid: {}", n),
             Err(e) => panic!("unknown waitpid error: {}", e),
         }
     }

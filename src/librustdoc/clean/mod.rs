@@ -944,7 +944,7 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics<'tcx>,
         // a Sized bound, removing the bounds as we find them.
         //
         // Note that associated types also have a sized bound by default, but we
-        // don't actually konw the set of associated types right here so that's
+        // don't actually know the set of associated types right here so that's
         // handled in cleaning associated types
         let mut sized_params = HashSet::new();
         where_predicates.retain(|pred| {
