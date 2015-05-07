@@ -116,7 +116,7 @@ fn main() {
 }
 ```
 
-[struct]: structs.html
+[structs]: structs.html
 
 As you can see, `struct`s can also have lifetimes. In a similar way to functions,
 
