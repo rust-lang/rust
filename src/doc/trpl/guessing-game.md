@@ -352,7 +352,7 @@ add these few lines at the bottom:
 ```toml
 [dependencies]
 
-rand="0.3.0"
+rand="*"
 ```
 
 The `[dependencies]` section of `Cargo.toml` is like the `[package]` section:
