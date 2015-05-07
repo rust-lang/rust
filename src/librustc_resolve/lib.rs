@@ -2688,18 +2688,21 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                    check_ribs: bool)
                                    -> AssocItemResolveResult
     {
+        let max_assoc_types;
+
         match maybe_qself {
-            Some(&ast::QSelf { position: 0, .. }) =>
-                return TypecheckRequired,
-            _ => {}
+            Some(qself) => {
+                if qself.position == 0 {
+                    return TypecheckRequired;
+                }
+                max_assoc_types = path.segments.len() - qself.position;
+                // Make sure the trait is valid.
+                let _ = self.resolve_trait_reference(id, path, max_assoc_types);
+            }
+            None => {
+                max_assoc_types = path.segments.len();
+            }
         }
-        let max_assoc_types = if let Some(qself) = maybe_qself {
-            // Make sure the trait is valid.
-            let _ = self.resolve_trait_reference(id, path, 1);
-            path.segments.len() - qself.position
-        } else {
-            path.segments.len()
-        };
 
         let mut resolution = self.with_no_errors(|this| {
             this.resolve_path(id, path, 0, namespace, check_ribs)
