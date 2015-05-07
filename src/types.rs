@@ -58,7 +58,7 @@ impl LintPass for TypePass {
             use std::vec::Vec;
         }
         match_ty_unwrap(ty, &["std", "boxed", "Box"]).and_then(|t| t.first())
-          .map(|t| match_ty_unwrap(&**t, &["std", "vec", "Vec"]))
+          .and_then(|t| match_ty_unwrap(&**t, &["std", "vec", "Vec"]))
           .map(|_| {
             span_note_and_lint(cx, BOX_VEC, ty.span,
                               "You seem to be trying to use Box<Vec<T>>. Did you mean to use Vec<T>?",
