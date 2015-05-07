@@ -844,7 +844,7 @@ then
     CFG_OSX_GCC_VERSION=$("$CFG_GCC" --version 2>&1 | grep "Apple LLVM version")
     if [ $? -eq 0 ]
     then
-        step_msg "on OS X 10.9, forcing use of clang"
+        step_msg "on OS X >=10.9, forcing use of clang"
         CFG_ENABLE_CLANG=1
     else
         if [ $("$CFG_GCC" --version 2>&1 | grep -c ' 4\.[0-6]') -ne 0 ]; then
