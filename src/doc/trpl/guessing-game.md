@@ -302,7 +302,7 @@ project.
 There’s just one line of this first example left:
 
 ```rust,ignore
-    println!("You guessed: {}", input);
+    println!("You guessed: {}", guess);
 }
 ```
 
