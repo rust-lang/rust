@@ -12,6 +12,13 @@
 
 register_long_diagnostics! {
 
+E0046: r##"
+When trying to make some type implement a trait `Foo`, you must, at minimum,
+provide implementations for all of `Foo`'s required methods (meaning the
+methods that do not have default implementations), as well as any required
+trait items like associated types or constants.
+"##,
+
 E0081: r##"
 Enum discriminants are used to differentiate enum variants stored in memory.
 This error indicates that the same value was used for two or more variants,
@@ -106,7 +113,6 @@ register_diagnostics! {
     E0040, // explicit use of destructor method
     E0044,
     E0045,
-    E0046,
     E0049,
     E0050,
     E0053,
