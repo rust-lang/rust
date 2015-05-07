@@ -142,14 +142,16 @@ fn fetch_int_literal(cx: &Context, lit : &Expr) -> Option<u64> {
 			} else { Option::None }
 		},
 		&ExprPath(_, _) => {
-			let def_map = cx.tcx.def_map.borrow();
-			let path_res_op = def_map.get(&lit.id);
-			path_res_op.as_ref().and_then(|x| {
-				if let &DefConst(def_id) = &x.base_def {
-					lookup_const_by_id(cx.tcx, def_id, Option::None).and_then(|l| fetch_int_literal(cx, l))
-				} else { Option::None }
-			})
-		},
+                // Important to let the borrow expire before the const lookup to avoid double
+                // borrowing.
+                let def_map = cx.tcx.def_map.borrow();
+                match def_map.get(&lit.id) {
+                    Some(&PathResolution { base_def: DefConst(def_id), ..}) => Some(def_id),
+                    _ => None
+                }
+            }
+            .and_then(|def_id| lookup_const_by_id(cx.tcx, def_id, Option::None))
+            .and_then(|l| fetch_int_literal(cx, l)),
 		_ => Option::None
 	}
 }
