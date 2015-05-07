@@ -37,7 +37,7 @@
 //! }
 //! ```
 //!
-//! This will print `Cons(1, Box(Cons(2, Box(Nil))))`.
+//! This will print `Cons(1, Cons(2, Nil))`.
 //!
 //! Recursive structures must be boxed, because if the definition of `Cons` looked like this:
 //!
