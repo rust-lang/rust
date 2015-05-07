@@ -121,7 +121,7 @@ impl<R> fmt::Debug for BufReader<R> where R: fmt::Debug {
     }
 }
 
-#[unstable(feature = "buf_seek", reason = "recently added")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<R: Seek> Seek for BufReader<R> {
     /// Seek to an offset, in bytes, in the underlying reader.
     ///
@@ -285,8 +285,8 @@ impl<W: Write> fmt::Debug for BufWriter<W> where W: fmt::Debug {
     }
 }
 
-#[unstable(feature = "buf_seek", reason = "recently added")]
-impl<W: Write+Seek> Seek for BufWriter<W> {
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<W: Write + Seek> Seek for BufWriter<W> {
     /// Seek to the offset, in bytes, in the underlying writer.
     ///
     /// Seeking always writes out the internal buffer before seeking.
@@ -436,15 +436,19 @@ impl<W: Read + Write> Read for InternalBufWriter<W> {
 /// infrequent calls to `read` and `write` on the underlying `Read+Write`.
 ///
 /// The output buffer will be written out when this stream is dropped.
-#[stable(feature = "rust1", since = "1.0.0")]
+#[unstable(feature = "buf_stream",
+           reason = "unsure about semantics of buffering two directions, \
+                     leading to issues like #17136")]
 pub struct BufStream<S: Write> {
     inner: BufReader<InternalBufWriter<S>>
 }
 
+#[unstable(feature = "buf_stream",
+           reason = "unsure about semantics of buffering two directions, \
+                     leading to issues like #17136")]
 impl<S: Read + Write> BufStream<S> {
     /// Creates a new buffered stream with explicitly listed capacities for the
     /// reader/writer buffer.
-    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with_capacities(reader_cap: usize, writer_cap: usize, inner: S)
                            -> BufStream<S> {
         let writer = BufWriter::with_capacity(writer_cap, inner);
@@ -455,13 +459,11 @@ impl<S: Read + Write> BufStream<S> {
 
     /// Creates a new buffered stream with the default reader/writer buffer
     /// capacities.
-    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(inner: S) -> BufStream<S> {
         BufStream::with_capacities(DEFAULT_BUF_SIZE, DEFAULT_BUF_SIZE, inner)
     }
 
     /// Gets a reference to the underlying stream.
-    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get_ref(&self) -> &S {
         let InternalBufWriter(ref w) = self.inner.inner;
         w.get_ref()
@@ -473,7 +475,6 @@ impl<S: Read + Write> BufStream<S> {
     ///
     /// It is inadvisable to read directly from or write directly to the
     /// underlying stream.
-    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get_mut(&mut self) -> &mut S {
         let InternalBufWriter(ref mut w) = self.inner.inner;
         w.get_mut()
@@ -483,7 +484,6 @@ impl<S: Read + Write> BufStream<S> {
     ///
     /// The internal write buffer is written out before returning the stream.
     /// Any leftover data in the read buffer is lost.
-    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_inner(self) -> Result<S, IntoInnerError<BufStream<S>>> {
         let BufReader { inner: InternalBufWriter(w), buf, pos, cap } = self.inner;
         w.into_inner().map_err(|IntoInnerError(w, e)| {
@@ -494,20 +494,26 @@ impl<S: Read + Write> BufStream<S> {
     }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
+#[unstable(feature = "buf_stream",
+           reason = "unsure about semantics of buffering two directions, \
+                     leading to issues like #17136")]
 impl<S: Read + Write> BufRead for BufStream<S> {
     fn fill_buf(&mut self) -> io::Result<&[u8]> { self.inner.fill_buf() }
     fn consume(&mut self, amt: usize) { self.inner.consume(amt) }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
+#[unstable(feature = "buf_stream",
+           reason = "unsure about semantics of buffering two directions, \
+                     leading to issues like #17136")]
 impl<S: Read + Write> Read for BufStream<S> {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         self.inner.read(buf)
     }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
+#[unstable(feature = "buf_stream",
+           reason = "unsure about semantics of buffering two directions, \
+                     leading to issues like #17136")]
 impl<S: Read + Write> Write for BufStream<S> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         self.inner.inner.get_mut().write(buf)
@@ -517,7 +523,9 @@ impl<S: Read + Write> Write for BufStream<S> {
     }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
+#[unstable(feature = "buf_stream",
+           reason = "unsure about semantics of buffering two directions, \
+                     leading to issues like #17136")]
 impl<S: Write> fmt::Debug for BufStream<S> where S: fmt::Debug {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         let reader = &self.inner;

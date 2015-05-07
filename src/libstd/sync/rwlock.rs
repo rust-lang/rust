@@ -230,7 +230,7 @@ impl<T> RwLock<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn try_write(&self) -> TryLockResult<RwLockWriteGuard<T>> {
-        if unsafe { self.inner.lock.try_read() } {
+        if unsafe { self.inner.lock.try_write() } {
             Ok(try!(RwLockWriteGuard::new(&*self.inner, &self.data)))
         } else {
             Err(TryLockError::WouldBlock)
@@ -413,7 +413,7 @@ mod tests {
     use rand::{self, Rng};
     use sync::mpsc::channel;
     use thread;
-    use sync::{Arc, RwLock, StaticRwLock, RW_LOCK_INIT};
+    use sync::{Arc, RwLock, StaticRwLock, TryLockError, RW_LOCK_INIT};
 
     #[test]
     fn smoke() {
@@ -564,5 +564,22 @@ mod tests {
         }).join();
         let lock = arc.read().unwrap();
         assert_eq!(*lock, 2);
+    }
+
+    #[test]
+    fn test_rwlock_try_write() {
+        use mem::drop;
+
+        let lock = RwLock::new(0isize);
+        let read_guard = lock.read().unwrap();
+
+        let write_result = lock.try_write();
+        match write_result {
+            Err(TryLockError::WouldBlock) => (),
+            Ok(_) => assert!(false, "try_write should not succeed while read_guard is in scope"),
+            Err(_) => assert!(false, "unexpected error"),
+        }
+
+        drop(read_guard);
     }
 }
