@@ -82,11 +82,11 @@ fn main() {
 
     let mut guess = String::new();
 
-    let input = io::stdin().read_line(&mut guess)
+    io::stdin().read_line(&mut guess)
         .ok()
         .expect("Failed to read line");
 
-    println!("You guessed: {}", input);
+    println!("You guessed: {}", guess);
 }
 ```
 
@@ -302,12 +302,12 @@ project.
 There’s just one line of this first example left:
 
 ```rust,ignore
-    println!("You guessed: {}", input);
+    println!("You guessed: {}", guess);
 }
 ```
 
 This prints out the string we saved our input in. The `{}`s are a placeholder,
-and so we pass it `input` as an argument. If we had multiple `{}`s, we would
+and so we pass it `guess` as an argument. If we had multiple `{}`s, we would
 pass multiple arguments:
 
 ```rust
@@ -410,11 +410,11 @@ $ cargo build
    Compiling guessing_game v0.1.0 (file:///home/you/projects/guessing_game)
 ```
 
-So, we told Cargo we wanted any version of `rand`, and so it fetched the
-latest version at the time this was written, `v0.3.8`. But what happens
-when next week, version `v0.4.0` comes out, which changes something with
-`rand`, and it includes a breaking change? After all, a `v0.y.z` version
-in SemVer can change every release.
+So, we told Cargo we wanted any version of `rand`, and so it fetched the latest
+version at the time this was written, `v0.3.8`. But what happens when next
+week, version `v0.3.9` comes out, with an important bugfix? While getting
+bugfixes is important, what if `0.3.9` contains a regression that breaks our
+code?
 
 The answer to this problem is the `Cargo.lock` file you’ll now find in your
 project directory. When you build your project for the first time, Cargo
@@ -422,12 +422,17 @@ figures out all of the versions that fit your criteria, and then writes them
 to the `Cargo.lock` file. When you build your project in the future, Cargo
 will see that the `Cargo.lock` file exists, and then use that specific version
 rather than do all the work of figuring out versions again. This lets you
-have a repeatable build automatically.
+have a repeatable build automatically. In other words, we’ll stay at `0.3.8`
+until we explicitly upgrade, and so will anyone who we share our code with,
+thanks to the lock file.
 
-What about when we _do_ want to use `v0.4.0`? Cargo has another command,
+What about when we _do_ want to use `v0.3.9`? Cargo has another command,
 `update`, which says ‘ignore the lock, figure out all the latest versions that
 fit what we’ve specified. If that works, write those versions out to the lock
-file’.
+file’. But, by default, Cargo will only look for versions larger than `0.3.0`
+and smaller than `0.4.0`. If we want to move to `0.4.x`, we’d have to update
+the `Cargo.toml` directly. When we do, the next time we `cargo build`, Cargo
+will update the index and re-evaluate our `rand` requirements.
 
 There’s a lot more to say about [Cargo][doccargo] and [its
 ecosystem][doccratesio], but for now, that’s all we need to know. Cargo makes
@@ -843,7 +848,7 @@ fn main() {
             Ordering::Less    => println!("Too small!"),
             Ordering::Greater => println!("Too big!"),
             Ordering::Equal   => {
-                println!("You win!"),
+                println!("You win!");
                 break;
             }
         }
@@ -959,8 +964,6 @@ fn main() {
     println!("Guess the number!");
 
     let secret_number = rand::thread_rng().gen_range(1, 101);
-
-    println!("The secret number is: {}", secret_number);
 
     loop {
         println!("Please input your guess.");

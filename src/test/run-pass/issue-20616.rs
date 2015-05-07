@@ -32,7 +32,7 @@ type TypeF<T> = Box<T>;
 // type argument with trailing comma
 type TypeG<T> = Box<T,>;
 
-// trailing comma on liftime defs
+// trailing comma on lifetime defs
 type TypeH<'a,> = &'a ();
 
 // trailing comma on type argument
