@@ -290,7 +290,7 @@ pub fn maybe_report_ambiguity<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                     {
                         span_err!(infcx.tcx.sess, obligation.cause.span, E0282,
                                 "unable to infer enough type information about `{}`; \
-                                 type annotations required",
+                                 type annotations or generic parameter binding required",
                                 self_ty.user_string(infcx.tcx));
                     } else {
                         span_err!(infcx.tcx.sess, obligation.cause.span, E0283,
