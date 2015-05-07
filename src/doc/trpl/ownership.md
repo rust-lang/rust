@@ -123,7 +123,7 @@ let v2 = v;
 
 The first line creates some data for the vector on the [stack][sh], `v`. The
 vector’s data, however, is stored on the [heap][sh], and so it contains a
-pointer to that data. When we move `v` to `v2`, it creates a copy of that data,
+pointer to that data. When we move `v` to `v2`, it creates a copy of that pointer,
 for `v2`. Which would mean two pointers to the contents of the vector on the
 heap. That would be a problem: it would violate Rust’s safety guarantees by
 introducing a data race. Therefore, Rust forbids using `v` after we’ve done the
