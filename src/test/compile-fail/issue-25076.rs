@@ -8,6 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+struct S;
+
+trait InOut<T> { type Out; }
+
+fn do_fold<B, F: InOut<B, Out=B>>(init: B, f: F) {}
+
+fn bot<T>() -> T { loop {} }
+
 fn main() {
-    "".chars().fold(|_, _| (), ()); //~ ERROR is not implemented for the type `()`
+    do_fold(bot(), ()); //~ ERROR is not implemented for the type `()`
 }
