@@ -581,7 +581,7 @@ pre.rust { position: relative; }
 
 .collapse-toggle > .inner {
     display: inline-block;
-    width: 1ch;
+    width: 1.2ch;
     text-align: center;
 }
 
