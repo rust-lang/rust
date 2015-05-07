@@ -82,7 +82,7 @@ fn main() {
 
     let mut guess = String::new();
 
-    let input = io::stdin().read_line(&mut guess)
+    io::stdin().read_line(&mut guess)
         .ok()
         .expect("Failed to read line");
 
