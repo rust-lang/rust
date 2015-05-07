@@ -14,7 +14,7 @@
 use CrateCtxt;
 
 use astconv::AstConv;
-use check::{self, FnCtxt};
+use check::{self, CheckEnv, FnCtxt};
 use middle::ty::{self, Ty};
 use middle::def;
 use metadata::{csearch, cstore, decoder};
@@ -29,7 +29,8 @@ use std::cmp::Ordering;
 
 use super::{MethodError, CandidateSource, impl_method, trait_method};
 
-pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
+pub fn report_error<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
+                              fcx: &FnCtxt<'a, 'tcx>,
                               span: Span,
                               rcvr_ty: Ty<'tcx>,
                               method_name: ast::Name,
@@ -72,10 +73,10 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                     span,
                     "found defined static methods, maybe a `self` is missing?");
 
-                report_candidates(fcx, span, method_name, static_sources);
+                report_candidates(check_env, fcx, span, method_name, static_sources);
             }
 
-            suggest_traits_to_import(fcx, span, rcvr_ty, method_name,
+            suggest_traits_to_import(check_env, fcx, span, rcvr_ty, method_name,
                                      rcvr_expr, out_of_scope_traits)
         }
 
@@ -83,7 +84,7 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             span_err!(fcx.sess(), span, E0034,
                       "multiple applicable methods in scope");
 
-            report_candidates(fcx, span, method_name, sources);
+            report_candidates(check_env, fcx, span, method_name, sources);
         }
 
         MethodError::ClosureAmbiguity(trait_def_id) => {
@@ -102,10 +103,12 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         }
     }
 
-    fn report_candidates(fcx: &FnCtxt,
-                         span: Span,
-                         method_name: ast::Name,
-                         mut sources: Vec<CandidateSource>) {
+    fn report_candidates<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
+                                   fcx: &FnCtxt<'a, 'tcx>,
+                                   span: Span,
+                                   method_name: ast::Name,
+                                   mut sources: Vec<CandidateSource>)
+    {
         sources.sort();
         sources.dedup();
 
@@ -118,7 +121,7 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                     let impl_span = fcx.tcx().map.def_id_span(impl_did, span);
                     let method_span = fcx.tcx().map.def_id_span(method.def_id, impl_span);
 
-                    let impl_ty = check::impl_self_ty(fcx, span, impl_did).ty;
+                    let impl_ty = check::impl_self_ty(check_env, fcx, span, impl_did).ty;
 
                     let insertion = match ty::impl_trait_ref(fcx.tcx(), impl_did) {
                         None => format!(""),
@@ -149,7 +152,8 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
 pub type AllTraitsVec = Vec<TraitInfo>;
 
-fn suggest_traits_to_import<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
+fn suggest_traits_to_import<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
+                                      fcx: &FnCtxt<'a, 'tcx>,
                                       span: Span,
                                       rcvr_ty: Ty<'tcx>,
                                       method_name: ast::Name,
@@ -182,7 +186,7 @@ fn suggest_traits_to_import<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         return
     }
 
-    let type_is_local = type_derefs_to_local(fcx, span, rcvr_ty, rcvr_expr);
+    let type_is_local = type_derefs_to_local(check_env, fcx, span, rcvr_ty, rcvr_expr);
 
     // there's no implemented traits, so lets suggest some traits to
     // implement, by finding ones that have the method name, and are
@@ -229,7 +233,8 @@ fn suggest_traits_to_import<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
 /// Checks whether there is a local type somewhere in the chain of
 /// autoderefs of `rcvr_ty`.
-fn type_derefs_to_local<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
+fn type_derefs_to_local<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
+                                  fcx: &FnCtxt<'a, 'tcx>,
                                   span: Span,
                                   rcvr_ty: Ty<'tcx>,
                                   rcvr_expr: Option<&ast::Expr>) -> bool {
@@ -252,10 +257,10 @@ fn type_derefs_to_local<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     // This occurs for UFCS desugaring of `T::method`, where there is no
     // receiver expression for the method call, and thus no autoderef.
     if rcvr_expr.is_none() {
-        return is_local(fcx.resolve_type_vars_if_possible(rcvr_ty));
+        return is_local(fcx.resolve_type_vars_if_possible(check_env, rcvr_ty));
     }
 
-    check::autoderef(fcx, span, rcvr_ty, None,
+    check::autoderef(check_env, fcx, span, rcvr_ty, None,
                      check::UnresolvedTypeAction::Ignore, check::NoPreference,
                      |ty, _| {
         if is_local(ty) {

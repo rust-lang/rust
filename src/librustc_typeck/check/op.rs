@@ -41,12 +41,14 @@ pub fn check_binop_assign<'a,'tcx>(check_env: &mut CheckEnv<'tcx>,
     check_expr_with_lvalue_pref(check_env, fcx, lhs_expr, PreferMutLvalue);
     check_expr(check_env, fcx, rhs_expr);
 
-    let lhs_ty = structurally_resolved_type(fcx, lhs_expr.span, fcx.expr_ty(lhs_expr));
-    let rhs_ty = structurally_resolved_type(fcx, rhs_expr.span, fcx.expr_ty(rhs_expr));
+    let expr_ty = fcx.expr_ty(check_env, lhs_expr);
+    let lhs_ty = structurally_resolved_type(check_env, fcx, lhs_expr.span, expr_ty);
+    let expr_ty = fcx.expr_ty(check_env, rhs_expr);
+    let rhs_ty = structurally_resolved_type(check_env, fcx, rhs_expr.span, expr_ty);
 
     if is_builtin_binop(fcx.tcx(), lhs_ty, rhs_ty, op) {
         enforce_builtin_binop_types(fcx, lhs_expr, lhs_ty, rhs_expr, rhs_ty, op);
-        fcx.write_nil(expr.id);
+        fcx.write_nil(check_env, expr.id);
     } else {
         // error types are considered "builtin"
         assert!(!ty::type_is_error(lhs_ty) || !ty::type_is_error(rhs_ty));
@@ -55,7 +57,7 @@ pub fn check_binop_assign<'a,'tcx>(check_env: &mut CheckEnv<'tcx>,
                   ast_util::binop_to_string(op.node),
                   lhs_ty.user_string(fcx.tcx()),
                   rhs_ty.user_string(fcx.tcx()));
-        fcx.write_error(expr.id);
+        fcx.write_error(check_env, expr.id);
     }
 
     let tcx = fcx.tcx();
@@ -63,7 +65,7 @@ pub fn check_binop_assign<'a,'tcx>(check_env: &mut CheckEnv<'tcx>,
         span_err!(tcx.sess, lhs_expr.span, E0067, "illegal left-hand side expression");
     }
 
-    fcx.require_expr_have_sized_type(lhs_expr, traits::AssignmentLhsSized);
+    fcx.require_expr_have_sized_type(check_env, lhs_expr, traits::AssignmentLhsSized);
 }
 
 /// Check a potentially overloaded binary operator.
@@ -84,7 +86,7 @@ pub fn check_binop<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
            rhs_expr.repr(tcx));
 
     check_expr(check_env, fcx, lhs_expr);
-    let lhs_ty = fcx.resolve_type_vars_if_possible(fcx.expr_ty(lhs_expr));
+    let lhs_ty = fcx.resolve_type_vars_if_possible(check_env, fcx.expr_ty(check_env, lhs_expr));
 
     // Annoyingly, SIMD ops don't fit into the PartialEq/PartialOrd
     // traits, because their return type is not bool. Perhaps this
@@ -92,9 +94,9 @@ pub fn check_binop<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
     // different path that bypassess all traits.
     if ty::type_is_simd(fcx.tcx(), lhs_ty) {
         check_expr_coercable_to_type(check_env, fcx, rhs_expr, lhs_ty);
-        let rhs_ty = fcx.resolve_type_vars_if_possible(fcx.expr_ty(lhs_expr));
+        let rhs_ty = fcx.resolve_type_vars_if_possible(check_env, fcx.expr_ty(check_env, lhs_expr));
         let return_ty = enforce_builtin_binop_types(fcx, lhs_expr, lhs_ty, rhs_expr, rhs_ty, op);
-        fcx.write_ty(expr.id, return_ty);
+        fcx.write_ty(check_env, expr.id, return_ty);
         return;
     }
 
@@ -103,7 +105,7 @@ pub fn check_binop<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
             // && and || are a simple case.
             demand::suptype(fcx, lhs_expr.span, ty::mk_bool(tcx), lhs_ty);
             check_expr_coercable_to_type(check_env, fcx, rhs_expr, ty::mk_bool(tcx));
-            fcx.write_ty(expr.id, ty::mk_bool(tcx));
+            fcx.write_ty(check_env, expr.id, ty::mk_bool(tcx));
         }
         _ => {
             // Otherwise, we always treat operators as if they are
@@ -124,7 +126,7 @@ pub fn check_binop<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
             // deduce that the result type should be `u32`, even
             // though we don't know yet what type 2 has and hence
             // can't pin this down to a specific impl.
-            let rhs_ty = fcx.resolve_type_vars_if_possible(rhs_ty);
+            let rhs_ty = fcx.resolve_type_vars_if_possible(check_env, rhs_ty);
             if
                 !ty::type_is_ty_var(lhs_ty) &&
                 !ty::type_is_ty_var(rhs_ty) &&
@@ -135,7 +137,7 @@ pub fn check_binop<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
                 demand::suptype(fcx, expr.span, builtin_return_ty, return_ty);
             }
 
-            fcx.write_ty(expr.id, return_ty);
+            fcx.write_ty(check_env, expr.id, return_ty);
         }
     }
 }
@@ -227,7 +229,8 @@ fn check_overloaded_binop<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
     // particularly for things like `String + &String`.
     let rhs_ty_var = fcx.infcx().next_ty_var();
 
-    let return_ty = match lookup_op_method(fcx, expr, lhs_ty, vec![rhs_ty_var],
+    let return_ty = match lookup_op_method(check_env, fcx,
+                                           expr, lhs_ty, vec![rhs_ty_var],
                                            token::intern(name), trait_def_id,
                                            lhs_expr) {
         Ok(return_ty) => return_ty,
@@ -249,7 +252,8 @@ fn check_overloaded_binop<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
     (rhs_ty_var, return_ty)
 }
 
-pub fn check_user_unop<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
+pub fn check_user_unop<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
+                                 fcx: &FnCtxt<'a, 'tcx>,
                                  op_str: &str,
                                  mname: &str,
                                  trait_did: Option<ast::DefId>,
@@ -260,7 +264,8 @@ pub fn check_user_unop<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                  -> Ty<'tcx>
 {
     assert!(ast_util::is_by_value_unop(op));
-    match lookup_op_method(fcx, ex, operand_ty, vec![],
+    match lookup_op_method(check_env, fcx,
+                           ex, operand_ty, vec![],
                            token::intern(mname), trait_did,
                            operand_expr) {
         Ok(t) => t,
@@ -299,7 +304,8 @@ fn name_and_trait_def_id(fcx: &FnCtxt, op: ast::BinOp) -> (&'static str, Option<
     }
 }
 
-fn lookup_op_method<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
+fn lookup_op_method<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
+                              fcx: &'a FnCtxt<'a, 'tcx>,
                               expr: &'tcx ast::Expr,
                               lhs_ty: Ty<'tcx>,
                               other_tys: Vec<Ty<'tcx>>,
@@ -317,7 +323,8 @@ fn lookup_op_method<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
 
     let method = match trait_did {
         Some(trait_did) => {
-            method::lookup_in_trait_adjusted(fcx,
+            method::lookup_in_trait_adjusted(check_env,
+                                             fcx,
                                              expr.span,
                                              Some(lhs_expr),
                                              opname,

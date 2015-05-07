@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-use check::{coercion, FnCtxt};
+use super::{coercion, CheckEnv, FnCtxt};
 use middle::ty::{self, Ty};
 use middle::infer;
 
@@ -54,17 +54,18 @@ pub fn eqtype<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>, sp: Span,
 }
 
 // Checks that the type of `expr` can be coerced to `expected`.
-pub fn coerce<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
+pub fn coerce<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
+                        fcx: &FnCtxt<'a, 'tcx>,
                         sp: Span,
                         expected: Ty<'tcx>,
                         expr: &ast::Expr) {
-    let expr_ty = fcx.expr_ty(expr);
+    let expr_ty = fcx.expr_ty(check_env, expr);
     debug!("demand::coerce(expected = {}, expr_ty = {})",
            expected.repr(fcx.ccx.tcx),
            expr_ty.repr(fcx.ccx.tcx));
-    let expr_ty = fcx.resolve_type_vars_if_possible(expr_ty);
-    let expected = fcx.resolve_type_vars_if_possible(expected);
-    match coercion::mk_assignty(fcx, expr, expr_ty, expected) {
+    let expr_ty = fcx.resolve_type_vars_if_possible(check_env, expr_ty);
+    let expected = fcx.resolve_type_vars_if_possible(check_env, expected);
+    match coercion::mk_assignty(check_env, fcx, expr, expr_ty, expected) {
       Ok(()) => { /* ok */ }
       Err(ref err) => {
         fcx.report_mismatched_types(sp, expected, expr_ty, err);

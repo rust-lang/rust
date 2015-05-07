@@ -17,7 +17,7 @@ use middle::privacy::{AllPublic, LastMod};
 use middle::subst::Substs;
 use middle::ty::{self, Ty};
 use super::{check_expr, check_expr_has_type, check_expr_with_expectation};
-use super::{check_expr_coercable_to_type, demand, CheckEnv, FnCtxt, Expectation};
+use super::{check_expr_coercable_to_type, demand, CheckEnv, FnCtxt, FnCtxtTyper, Expectation};
 use super::{instantiate_path, resolve_ty_and_def_ufcs, structurally_resolved_type};
 use require_same_types;
 use util::nodemap::FnvHashMap;
@@ -46,18 +46,19 @@ pub fn check_pat<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
 
     match pat.node {
         ast::PatWild(_) => {
-            fcx.write_ty(pat.id, expected);
+            fcx.write_ty(check_env, pat.id, expected);
         }
         ast::PatLit(ref lt) => {
             check_expr(check_env, fcx, &**lt);
-            let expr_ty = fcx.expr_ty(&**lt);
+            let expr_ty = fcx.expr_ty(check_env, &**lt);
 
             // Byte string patterns behave the same way as array patterns
             // They can denote both statically and dynamically sized byte arrays
             let mut pat_ty = expr_ty;
             if let ast::ExprLit(ref lt) = lt.node {
                 if let ast::LitBinary(_) = lt.node {
-                    let expected_ty = structurally_resolved_type(fcx, pat.span, expected);
+                    let expected_ty = structurally_resolved_type(check_env, fcx,
+                                                                 pat.span, expected);
                     if let ty::ty_rptr(_, mt) = expected_ty.sty {
                         if let ty::ty_vec(_, None) = mt.ty.sty {
                             pat_ty = ty::mk_slice(tcx, tcx.mk_region(ty::ReStatic),
@@ -67,7 +68,7 @@ pub fn check_pat<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
                 }
             }
 
-            fcx.write_ty(pat.id, pat_ty);
+            fcx.write_ty(check_env, pat.id, pat_ty);
 
             // somewhat surprising: in this case, the subtyping
             // relation goes the opposite way as the other
@@ -87,8 +88,8 @@ pub fn check_pat<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
             check_expr(check_env, fcx, &**begin);
             check_expr(check_env, fcx, &**end);
 
-            let lhs_ty = fcx.expr_ty(&**begin);
-            let rhs_ty = fcx.expr_ty(&**end);
+            let lhs_ty = fcx.expr_ty(check_env, &**begin);
+            let rhs_ty = fcx.expr_ty(check_env, &**end);
 
             let lhs_eq_rhs =
                 require_same_types(
@@ -116,7 +117,7 @@ pub fn check_pat<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
                           "only char and numeric types are allowed in range");
             }
 
-            fcx.write_ty(pat.id, lhs_ty);
+            fcx.write_ty(check_env, pat.id, lhs_ty);
 
             // subtyping doesn't matter here, as the value is some kind of scalar
             demand::eqtype(fcx, pat.span, expected, lhs_ty);
@@ -125,10 +126,13 @@ pub fn check_pat<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
             let const_did = tcx.def_map.borrow().get(&pat.id).unwrap().def_id();
             let const_scheme = ty::lookup_item_type(tcx, const_did);
             assert!(const_scheme.generics.is_empty());
-            let const_ty = pcx.fcx.instantiate_type_scheme(pat.span,
-                                                           &Substs::empty(),
-                                                           &const_scheme.ty);
-            fcx.write_ty(pat.id, const_ty);
+            let const_ty = {
+                let typer = FnCtxtTyper::new(check_env, fcx);
+                typer.instantiate_type_scheme(pat.span,
+                                                             &Substs::empty(),
+                                                             &const_scheme.ty)
+            };
+            fcx.write_ty(check_env, pat.id, const_ty);
 
             // FIXME(#20489) -- we should limit the types here to scalars or something!
 
@@ -162,7 +166,7 @@ pub fn check_pat<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
                 }
             }
 
-            fcx.write_ty(pat.id, typ);
+            fcx.write_ty(check_env, pat.id, typ);
 
             // if there are multiple arms, make sure they all agree on
             // what the type of the binding `x` ought to be
@@ -185,7 +189,10 @@ pub fn check_pat<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
             check_pat_enum(check_env, pcx, pat, path, subpats, expected);
         }
         ast::PatQPath(ref qself, ref path) => {
-            let self_ty = fcx.to_ty(&qself.ty);
+            let self_ty = {
+                let typer = FnCtxtTyper::new(check_env, fcx);
+                typer.to_ty(&qself.ty)
+            };
             let path_res = if let Some(&d) = tcx.def_map.borrow().get(&pat.id) {
                 d
             } else if qself.position == 0 {
@@ -200,18 +207,18 @@ pub fn check_pat<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
                                   &format!("unbound path {}", pat.repr(tcx)))
             };
             if let Some((opt_ty, segments, def)) =
-                    resolve_ty_and_def_ufcs(fcx, path_res, Some(self_ty),
+                    resolve_ty_and_def_ufcs(check_env, fcx, path_res, Some(self_ty),
                                             path, pat.span, pat.id) {
                 if check_assoc_item_is_const(pcx, def, pat.span) {
                     let scheme = ty::lookup_item_type(tcx, def.def_id());
                     let predicates = ty::lookup_predicates(tcx, def.def_id());
-                    instantiate_path(fcx, segments,
+                    instantiate_path(check_env, fcx, segments,
                                      scheme, &predicates,
                                      opt_ty, def, pat.span, pat.id);
-                    let const_ty = fcx.node_ty(pat.id);
+                    let const_ty = fcx.node_ty(check_env, pat.id);
                     demand::suptype(fcx, pat.span, expected, const_ty);
                 } else {
-                    fcx.write_error(pat.id)
+                    fcx.write_error(check_env, pat.id)
                 }
             }
         }
@@ -223,7 +230,7 @@ pub fn check_pat<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
                 (0..elements.len()).map(|_| fcx.infcx().next_ty_var())
                                         .collect();
             let pat_ty = ty::mk_tup(tcx, element_tys.clone());
-            fcx.write_ty(pat.id, pat_ty);
+            fcx.write_ty(check_env, pat.id, pat_ty);
             demand::eqtype(fcx, pat.span, expected, pat_ty);
             for (element_pat, element_ty) in elements.iter().zip(element_tys.into_iter()) {
                 check_pat(check_env, pcx, &**element_pat, element_ty);
@@ -238,10 +245,10 @@ pub fn check_pat<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
                 // think any errors can be introduced by using
                 // `demand::eqtype`.
                 demand::eqtype(fcx, pat.span, expected, uniq_ty);
-                fcx.write_ty(pat.id, uniq_ty);
+                fcx.write_ty(check_env, pat.id, uniq_ty);
                 check_pat(check_env, pcx, &**inner, inner_ty);
             } else {
-                fcx.write_error(pat.id);
+                fcx.write_error(check_env, pat.id);
                 check_pat(check_env, pcx, &**inner, tcx.types.err);
             }
         }
@@ -257,15 +264,15 @@ pub fn check_pat<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
                 // `eqtype` turns out to be equally general. See (*)
                 // below for details.
                 demand::eqtype(fcx, pat.span, expected, rptr_ty);
-                fcx.write_ty(pat.id, rptr_ty);
+                fcx.write_ty(check_env, pat.id, rptr_ty);
                 check_pat(check_env, pcx, &**inner, inner_ty);
             } else {
-                fcx.write_error(pat.id);
+                fcx.write_error(check_env, pat.id);
                 check_pat(check_env, pcx, &**inner, tcx.types.err);
             }
         }
         ast::PatVec(ref before, ref slice, ref after) => {
-            let expected_ty = structurally_resolved_type(fcx, pat.span, expected);
+            let expected_ty = structurally_resolved_type(check_env, fcx, pat.span, expected);
             let inner_ty = fcx.infcx().next_ty_var();
             let pat_ty = match expected_ty.sty {
                 ty::ty_vec(_, Some(size)) => ty::mk_vec(tcx, inner_ty, Some({
@@ -285,7 +292,7 @@ pub fn check_pat<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
                 }
             };
 
-            fcx.write_ty(pat.id, pat_ty);
+            fcx.write_ty(check_env, pat.id, pat_ty);
 
             // `demand::subtype` would be good enough, but using
             // `eqtype` turns out to be equally general. See (*)
@@ -419,7 +426,7 @@ pub fn check_match<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
     let discrim_ty;
     if contains_ref_bindings {
         check_expr(check_env, fcx, discrim);
-        discrim_ty = fcx.expr_ty(discrim);
+        discrim_ty = fcx.expr_ty(check_env, discrim);
     } else {
         // ...but otherwise we want to use any supertype of the
         // discriminant. This is sort of a workaround, see note (*) in
@@ -463,7 +470,7 @@ pub fn check_match<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
             }
             _ => {
                 check_expr_with_expectation(check_env, fcx, &*arm.body, expected);
-                fcx.node_ty(arm.body.id)
+                fcx.node_ty(check_env, arm.body.id)
             }
         };
 
@@ -499,7 +506,7 @@ pub fn check_match<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
         }
     });
 
-    fcx.write_ty(expr.id, result_ty);
+    fcx.write_ty(check_env, expr.id, result_ty);
 }
 
 pub struct pat_ctxt<'a, 'tcx: 'a> {
@@ -520,7 +527,7 @@ fn check_pat_struct<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
             let name = pprust::path_to_string(path);
             span_err!(tcx.sess, pat.span, E0168,
                 "use of trait `{}` in a struct pattern", name);
-            fcx.write_error(pat.id);
+            fcx.write_error(check_env, pat.id);
 
             for field in fields {
                 check_pat(check_env, pcx, &*field.node.pat, tcx.types.err);
@@ -539,7 +546,7 @@ fn check_pat_struct<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
                     let name = pprust::path_to_string(path);
                     span_err!(tcx.sess, pat.span, E0163,
                         "`{}` does not name a struct or a struct variant", name);
-                    fcx.write_error(pat.id);
+                    fcx.write_error(check_env, pat.id);
 
                     for field in fields {
                         check_pat(check_env, pcx, &*field.node.pat, tcx.types.err);
@@ -550,7 +557,8 @@ fn check_pat_struct<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
         }
     };
 
-    instantiate_path(pcx.fcx,
+    instantiate_path(check_env,
+                     pcx.fcx,
                      &path.segments,
                      ty::lookup_item_type(tcx, enum_def_id),
                      &ty::lookup_predicates(tcx, enum_def_id),
@@ -559,7 +567,7 @@ fn check_pat_struct<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
                      pat.span,
                      pat.id);
 
-    let pat_ty = fcx.node_ty(pat.id);
+    let pat_ty = fcx.node_ty(check_env, pat.id);
     demand::eqtype(fcx, pat.span, expected, pat_ty);
 
     let item_substs = fcx
@@ -586,7 +594,7 @@ fn check_pat_enum<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
 
     let path_res = *tcx.def_map.borrow().get(&pat.id).unwrap();
 
-    let (opt_ty, segments, def) = match resolve_ty_and_def_ufcs(fcx, path_res,
+    let (opt_ty, segments, def) = match resolve_ty_and_def_ufcs(check_env, fcx, path_res,
                                                                 None, path,
                                                                 pat.span, pat.id) {
         Some(resolution) => resolution,
@@ -598,7 +606,7 @@ fn check_pat_enum<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
     // Items that were partially resolved before should have been resolved to
     // associated constants (i.e. not methods).
     if path_res.depth != 0 && !check_assoc_item_is_const(pcx, def, pat.span) {
-        fcx.write_error(pat.id);
+        fcx.write_error(check_env, pat.id);
         return;
     }
 
@@ -616,7 +624,7 @@ fn check_pat_enum<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
     } else {
         ctor_scheme
     };
-    instantiate_path(pcx.fcx, segments,
+    instantiate_path(check_env, pcx.fcx, segments,
                      path_scheme, &ctor_predicates,
                      opt_ty, def, pat.span, pat.id);
 
@@ -624,30 +632,32 @@ fn check_pat_enum<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
     // associated const, and we should quit now, since the rest of this
     // function uses checks specific to structs and enums.
     if path_res.depth != 0 {
-        let pat_ty = fcx.node_ty(pat.id);
+        let pat_ty = fcx.node_ty(check_env, pat.id);
         demand::suptype(fcx, pat.span, expected, pat_ty);
         return;
     }
 
-    let pat_ty = fcx.node_ty(pat.id);
+    let pat_ty = fcx.node_ty(check_env, pat.id);
     demand::eqtype(fcx, pat.span, expected, pat_ty);
 
 
-    let real_path_ty = fcx.node_ty(pat.id);
+    let real_path_ty = fcx.node_ty(check_env, pat.id);
     let (arg_tys, kind_name): (Vec<_>, &'static str) = match real_path_ty.sty {
         ty::ty_enum(enum_def_id, expected_substs)
             if def == def::DefVariant(enum_def_id, def.def_id(), false) =>
         {
             let variant = ty::enum_variant_with_id(tcx, enum_def_id, def.def_id());
+            let typer = FnCtxtTyper::new(check_env, fcx);
             (variant.args.iter()
-                         .map(|t| fcx.instantiate_type_scheme(pat.span, expected_substs, t))
+                         .map(|t| typer.instantiate_type_scheme(pat.span, expected_substs, t))
                          .collect(),
              "variant")
         }
         ty::ty_struct(struct_def_id, expected_substs) => {
             let struct_fields = ty::struct_fields(tcx, struct_def_id, expected_substs);
+            let typer = FnCtxtTyper::new(check_env, fcx);
             (struct_fields.iter()
-                          .map(|field| fcx.instantiate_type_scheme(pat.span,
+                          .map(|field| typer.instantiate_type_scheme(pat.span,
                                                                    expected_substs,
                                                                    &field.mt.ty))
                           .collect(),
@@ -657,7 +667,7 @@ fn check_pat_enum<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
             let name = pprust::path_to_string(path);
             span_err!(tcx.sess, pat.span, E0164,
                 "`{}` does not name a non-struct variant or a tuple struct", name);
-            fcx.write_error(pat.id);
+            fcx.write_error(check_env, pat.id);
 
             if let Some(subpats) = subpats {
                 for pat in subpats {
@@ -743,7 +753,10 @@ fn check_struct_pat_fields<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
             }
         };
 
-        let field_type = pcx.fcx.normalize_associated_types_in(span, &field_type);
+        let field_type = {
+            let typer = FnCtxtTyper::new(check_env, pcx.fcx);
+            typer.normalize_associated_types_in(span, &field_type)
+        };
 
         check_pat(check_env, pcx, &*field.pat, field_type);
     }

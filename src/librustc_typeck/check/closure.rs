@@ -10,7 +10,7 @@
 
 //! Code for type-checking closure expressions.
 
-use super::{check_fn, CheckEnv, Expectation, FnCtxt};
+use super::{check_fn, CheckEnv, Expectation, FnCtxt, FnCtxtTyper};
 
 use astconv;
 use middle::region;
@@ -56,19 +56,22 @@ fn check_closure<'a,'tcx>(check_env: &mut CheckEnv<'tcx>,
            opt_kind,
            expected_sig.repr(fcx.tcx()));
 
-    let mut fn_ty = astconv::ty_of_closure(
-        fcx,
-        ast::Unsafety::Normal,
-        decl,
-        abi::RustCall,
-        expected_sig);
+    let mut fn_ty = {
+        let typer = FnCtxtTyper::new(check_env, fcx);
+        astconv::ty_of_closure(
+            &typer,
+            ast::Unsafety::Normal,
+            decl,
+            abi::RustCall,
+            expected_sig)
+    };
 
     let closure_type = ty::mk_closure(fcx.ccx.tcx,
                                       expr_def_id,
                                       fcx.ccx.tcx.mk_substs(
                                         fcx.inh.param_env.free_substs.clone()));
 
-    fcx.write_ty(expr.id, closure_type);
+    fcx.write_ty(check_env, expr.id, closure_type);
 
     let fn_sig =
         ty::liberate_late_bound_regions(fcx.tcx(),

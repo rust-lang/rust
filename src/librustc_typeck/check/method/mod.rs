@@ -11,9 +11,11 @@
 //! Method lookup: the secret sauce of Rust. See `README.md`.
 
 use astconv::AstConv;
-use check::FnCtxt;
-use check::vtable;
-use check::vtable::select_new_fcx_obligations;
+use super::CheckEnv;
+use super::FnCtxt;
+use super::FnCtxtTyper;
+use super::vtable;
+use super::vtable::select_new_fcx_obligations;
 use middle::def;
 use middle::privacy::{AllPublic, DependsOn, LastPrivate, LastMod};
 use middle::subst;
@@ -61,7 +63,8 @@ pub enum CandidateSource {
 type ItemIndex = usize; // just for doc purposes
 
 /// Determines whether the type `self_ty` supports a method name `method_name` or not.
-pub fn exists<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
+pub fn exists<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
+                        fcx: &FnCtxt<'a, 'tcx>,
                         span: Span,
                         method_name: ast::Name,
                         self_ty: Ty<'tcx>,
@@ -69,7 +72,7 @@ pub fn exists<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                         -> bool
 {
     let mode = probe::Mode::MethodCall;
-    match probe::probe(fcx, span, mode, method_name, self_ty, call_expr_id) {
+    match probe::probe(check_env, fcx, span, mode, method_name, self_ty, call_expr_id) {
         Ok(..) => true,
         Err(NoMatch(..)) => false,
         Err(Ambiguity(..)) => true,
@@ -91,7 +94,8 @@ pub fn exists<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 /// * `self_ty`:               the (unadjusted) type of the self expression (`foo`)
 /// * `supplied_method_types`: the explicit method type parameters, if any (`T1..Tn`)
 /// * `self_expr`:             the self expression (`foo`)
-pub fn lookup<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
+pub fn lookup<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
+                        fcx: &FnCtxt<'a, 'tcx>,
                         span: Span,
                         method_name: ast::Name,
                         self_ty: Ty<'tcx>,
@@ -108,11 +112,19 @@ pub fn lookup<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
     let mode = probe::Mode::MethodCall;
     let self_ty = fcx.infcx().resolve_type_vars_if_possible(&self_ty);
-    let pick = try!(probe::probe(fcx, span, mode, method_name, self_ty, call_expr.id));
-    Ok(confirm::confirm(fcx, span, self_expr, call_expr, self_ty, pick, supplied_method_types))
+    let pick = try!(probe::probe(check_env, fcx, span, mode, method_name, self_ty, call_expr.id));
+    Ok(confirm::confirm(check_env,
+                        fcx,
+                        span,
+                        self_expr,
+                        call_expr,
+                        self_ty,
+                        pick,
+                        supplied_method_types))
 }
 
-pub fn lookup_in_trait<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
+pub fn lookup_in_trait<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
+                                 fcx: &FnCtxt<'a, 'tcx>,
                                  span: Span,
                                  self_expr: Option<&ast::Expr>,
                                  m_name: ast::Name,
@@ -121,7 +133,7 @@ pub fn lookup_in_trait<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                  opt_input_types: Option<Vec<Ty<'tcx>>>)
                                  -> Option<MethodCallee<'tcx>>
 {
-    lookup_in_trait_adjusted(fcx, span, self_expr, m_name, trait_def_id,
+    lookup_in_trait_adjusted(check_env, fcx, span, self_expr, m_name, trait_def_id,
                              0, false, self_ty, opt_input_types)
 }
 
@@ -134,7 +146,8 @@ pub fn lookup_in_trait<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 /// method-lookup code. In particular, autoderef on index is basically identical to autoderef with
 /// normal probes, except that the test also looks for built-in indexing. Also, the second half of
 /// this method is basically the same as confirmation.
-pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
+pub fn lookup_in_trait_adjusted<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
+                                          fcx: &FnCtxt<'a, 'tcx>,
                                           span: Span,
                                           self_expr: Option<&ast::Expr>,
                                           m_name: ast::Name,
@@ -179,7 +192,8 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                               poly_trait_ref.as_predicate());
 
     // Now we want to know if this can be matched
-    let mut selcx = traits::SelectionContext::new(fcx.infcx(), fcx);
+    let typer = FnCtxtTyper::new(check_env, fcx);
+    let mut selcx = traits::SelectionContext::new(fcx.infcx(), &typer);
     if !selcx.evaluate_obligation(&obligation) {
         debug!("--> Cannot match obligation");
         return None; // Cannot be matched, no such method resolution is possible.
@@ -204,7 +218,7 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     let fn_sig = fcx.infcx().replace_late_bound_regions_with_fresh_var(span,
                                                                        infer::FnCall,
                                                                        &method_ty.fty.sig).0;
-    let fn_sig = fcx.instantiate_type_scheme(span, trait_ref.substs, &fn_sig);
+    let fn_sig = typer.instantiate_type_scheme(span, trait_ref.substs, &fn_sig);
     let transformed_self_ty = fn_sig.inputs[0];
     let fty = ty::mk_bare_fn(tcx, None, tcx.mk_bare_fn(ty::BareFnTy {
         sig: ty::Binder(fn_sig),
@@ -224,7 +238,7 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     //
     // Note that as the method comes from a trait, it should not have
     // any late-bound regions appearing in its bounds.
-    let method_bounds = fcx.instantiate_bounds(span, trait_ref.substs, &method_ty.predicates);
+    let method_bounds = typer.instantiate_bounds(span, trait_ref.substs, &method_ty.predicates);
     assert!(!method_bounds.has_escaping_regions());
     fcx.add_obligations_for_parameters(
         traits::ObligationCause::misc(span, fcx.body_id),
@@ -233,7 +247,7 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     // FIXME(#18653) -- Try to resolve obligations, giving us more
     // typing information, which can sometimes be needed to avoid
     // pathological region inference failures.
-    vtable::select_new_fcx_obligations(fcx);
+    vtable::select_new_fcx_obligations(check_env, fcx);
 
     // Insert any adjustments needed (always an autoref of some mutability).
     match self_expr {
@@ -303,7 +317,8 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     Some(callee)
 }
 
-pub fn resolve_ufcs<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
+pub fn resolve_ufcs<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
+                              fcx: &FnCtxt<'a, 'tcx>,
                               span: Span,
                               method_name: ast::Name,
                               self_ty: Ty<'tcx>,
@@ -311,7 +326,7 @@ pub fn resolve_ufcs<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                               -> Result<(def::Def, LastPrivate), MethodError>
 {
     let mode = probe::Mode::Path;
-    let pick = try!(probe::probe(fcx, span, mode, method_name, self_ty, expr_id));
+    let pick = try!(probe::probe(check_env, fcx, span, mode, method_name, self_ty, expr_id));
     let def_id = pick.item.def_id();
     let mut lp = LastMod(AllPublic);
     let provenance = match pick.kind {

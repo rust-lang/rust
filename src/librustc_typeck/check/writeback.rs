@@ -14,7 +14,7 @@
 use self::ResolveReason::*;
 
 use astconv::AstConv;
-use check::FnCtxt;
+use super::{CheckEnv, FnCtxt};
 use middle::pat_util;
 use middle::ty::{self, Ty, MethodCall, MethodCallee};
 use middle::ty_fold::{TypeFolder,TypeFoldable};
@@ -35,20 +35,22 @@ use syntax::visit::Visitor;
 ///////////////////////////////////////////////////////////////////////////
 // Entry point functions
 
-pub fn resolve_type_vars_in_expr(fcx: &FnCtxt, e: &ast::Expr) {
+pub fn resolve_type_vars_in_expr<'a, 'ctx>(check_env: &mut CheckEnv<'ctx>,
+                                           fcx: &FnCtxt<'a, 'ctx>, e: &ast::Expr) {
     assert_eq!(fcx.writeback_errors.get(), false);
-    let mut wbcx = WritebackCx::new(fcx);
+    let mut wbcx = WritebackCx::new(check_env, fcx);
     wbcx.visit_expr(e);
     wbcx.visit_upvar_borrow_map();
     wbcx.visit_closures();
     wbcx.visit_object_cast_map();
 }
 
-pub fn resolve_type_vars_in_fn(fcx: &FnCtxt,
-                               decl: &ast::FnDecl,
-                               blk: &ast::Block) {
+pub fn resolve_type_vars_in_fn<'a, 'ctx>(check_env: &mut CheckEnv<'ctx>,
+                                         fcx: &FnCtxt<'a, 'ctx>,
+                                         decl: &ast::FnDecl,
+                                         blk: &ast::Block) {
     assert_eq!(fcx.writeback_errors.get(), false);
-    let mut wbcx = WritebackCx::new(fcx);
+    let mut wbcx = WritebackCx::new(check_env, fcx);
     wbcx.visit_block(blk);
     for arg in &decl.inputs {
         wbcx.visit_node_id(ResolvingPattern(arg.pat.span), arg.id);
@@ -74,12 +76,15 @@ pub fn resolve_type_vars_in_fn(fcx: &FnCtxt,
 // do elsewhere.
 
 struct WritebackCx<'cx, 'tcx: 'cx> {
+    check_env: &'cx mut CheckEnv<'tcx>,
     fcx: &'cx FnCtxt<'cx, 'tcx>,
 }
 
 impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
-    fn new(fcx: &'cx FnCtxt<'cx, 'tcx>) -> WritebackCx<'cx, 'tcx> {
-        WritebackCx { fcx: fcx }
+    fn new(check_env: &'cx mut CheckEnv<'tcx>,
+           fcx: &'cx FnCtxt<'cx, 'tcx>) -> WritebackCx<'cx, 'tcx>
+    {
+        WritebackCx { check_env: check_env, fcx: fcx }
     }
 
     fn tcx(&self) -> &'cx ty::ctxt<'tcx> {
@@ -92,10 +97,10 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     // operating on scalars, we clear the overload.
     fn fix_scalar_binary_expr(&mut self, e: &ast::Expr) {
         if let ast::ExprBinary(ref op, ref lhs, ref rhs) = e.node {
-            let lhs_ty = self.fcx.node_ty(lhs.id);
+            let lhs_ty = self.fcx.node_ty(self.check_env, lhs.id);
             let lhs_ty = self.fcx.infcx().resolve_type_vars_if_possible(&lhs_ty);
 
-            let rhs_ty = self.fcx.node_ty(rhs.id);
+            let rhs_ty = self.fcx.node_ty(self.check_env, rhs.id);
             let rhs_ty = self.fcx.infcx().resolve_type_vars_if_possible(&rhs_ty);
 
             if ty::type_is_scalar(lhs_ty) && ty::type_is_scalar(rhs_ty) {
@@ -265,7 +270,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         self.visit_adjustments(reason, id);
 
         // Resolve the type of the node with id `id`
-        let n_ty = self.fcx.node_ty(id);
+        let n_ty = self.fcx.node_ty(self.check_env, id);
         let n_ty = self.resolve(&n_ty, reason);
         write_ty_to_tcx(self.tcx(), id, n_ty);
         debug!("Node {} has type {}", id, n_ty.repr(self.tcx()));

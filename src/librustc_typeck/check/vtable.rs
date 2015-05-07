@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use super::{CheckEnv, FnCtxt};
+use super::{CheckEnv, FnCtxt, FnCtxtTyper};
 use middle::traits::{self, ObjectSafetyViolation, MethodViolationCode};
 use middle::traits::{Obligation, ObligationCause};
 use middle::traits::report_fulfillment_errors;
@@ -134,24 +134,27 @@ pub fn register_object_cast_obligations<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     object_trait_ref
 }
 
-pub fn select_all_fcx_obligations_and_apply_defaults(fcx: &FnCtxt) {
+pub fn select_all_fcx_obligations_and_apply_defaults<'a, 'ctx>(check_env: &mut CheckEnv<'ctx>,
+                                                               fcx: &FnCtxt<'a, 'ctx>) {
     debug!("select_all_fcx_obligations_and_apply_defaults");
 
-    select_fcx_obligations_where_possible(fcx);
-    fcx.default_type_parameters();
-    select_fcx_obligations_where_possible(fcx);
+    select_fcx_obligations_where_possible(check_env, fcx);
+    fcx.default_type_parameters(check_env);
+    select_fcx_obligations_where_possible(check_env, fcx);
 }
 
-pub fn select_all_fcx_obligations_or_error(check_env: &mut CheckEnv, fcx: &FnCtxt) {
+pub fn select_all_fcx_obligations_or_error<'a, 'ctx>(check_env: &mut CheckEnv<'ctx>,
+                                                     fcx: &FnCtxt<'a, 'ctx>) {
     debug!("select_all_fcx_obligations_or_error");
 
     // upvar inference should have ensured that all deferred call
     // resolutions are handled by now.
     assert!(check_env.deferred_call_resolutions.is_empty());
 
-    select_all_fcx_obligations_and_apply_defaults(fcx);
+    select_all_fcx_obligations_and_apply_defaults(check_env, fcx);
     let mut fulfillment_cx = fcx.inh.fulfillment_cx.borrow_mut();
-    let r = fulfillment_cx.select_all_or_error(fcx.infcx(), fcx);
+    let typer = FnCtxtTyper::new(check_env, fcx);
+    let r = fulfillment_cx.select_all_or_error(fcx.infcx(), &typer);
     match r {
         Ok(()) => { }
         Err(errors) => { report_fulfillment_errors(fcx.infcx(), &errors); }
@@ -159,12 +162,14 @@ pub fn select_all_fcx_obligations_or_error(check_env: &mut CheckEnv, fcx: &FnCtx
 }
 
 /// Select as many obligations as we can at present.
-pub fn select_fcx_obligations_where_possible(fcx: &FnCtxt)
+pub fn select_fcx_obligations_where_possible<'a, 'ctx>(check_env: &CheckEnv<'ctx>,
+                                                       fcx: &FnCtxt<'a, 'ctx>)
 {
+    let typer = FnCtxtTyper::new(check_env, fcx);
     match
         fcx.inh.fulfillment_cx
         .borrow_mut()
-        .select_where_possible(fcx.infcx(), fcx)
+        .select_where_possible(fcx.infcx(), &typer)
     {
         Ok(()) => { }
         Err(errors) => { report_fulfillment_errors(fcx.infcx(), &errors); }
@@ -174,11 +179,14 @@ pub fn select_fcx_obligations_where_possible(fcx: &FnCtxt)
 /// Try to select any fcx obligation that we haven't tried yet, in an effort to improve inference.
 /// You could just call `select_fcx_obligations_where_possible` except that it leads to repeated
 /// work.
-pub fn select_new_fcx_obligations(fcx: &FnCtxt) {
+pub fn select_new_fcx_obligations<'a, 'ctx>(check_env: &CheckEnv<'ctx>,
+                                            fcx: &FnCtxt<'a, 'ctx>)
+{
+    let typer = FnCtxtTyper::new(check_env, fcx);
     match
         fcx.inh.fulfillment_cx
         .borrow_mut()
-        .select_new_obligations(fcx.infcx(), fcx)
+        .select_new_obligations(fcx.infcx(), &typer)
     {
         Ok(()) => { }
         Err(errors) => { report_fulfillment_errors(fcx.infcx(), &errors); }

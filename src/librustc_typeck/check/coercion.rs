@@ -60,8 +60,8 @@
 //! sort of a minor point so I've opted to leave it for later---after all
 //! we may want to adjust precisely when coercions occur.
 
-use check::{autoderef, FnCtxt, NoPreference, PreferMutLvalue, UnresolvedTypeAction};
-use check::vtable;
+use super::{autoderef, CheckEnv, FnCtxt, NoPreference, PreferMutLvalue, UnresolvedTypeAction};
+use super::vtable;
 
 use middle::infer::{self, Coercion};
 use middle::subst;
@@ -110,6 +110,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
     }
 
     fn coerce(&self,
+              check_env: &mut CheckEnv<'tcx>,
               expr_a: &ast::Expr,
               a: Ty<'tcx>,
               b: Ty<'tcx>)
@@ -139,7 +140,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
             ty::ty_rptr(_, mt_b) => {
                 return self.unpack_actual_value(a, |a| {
-                    self.coerce_borrowed_pointer(expr_a, a, b, mt_b.mutbl)
+                    self.coerce_borrowed_pointer(check_env, expr_a, a, b, mt_b.mutbl)
                 });
             }
 
@@ -171,6 +172,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
     /// To match `A` with `B`, autoderef will be performed,
     /// calling `deref`/`deref_mut` where necessary.
     fn coerce_borrowed_pointer(&self,
+                               check_env: &mut CheckEnv<'tcx>,
                                expr_a: &ast::Expr,
                                a: Ty<'tcx>,
                                b: Ty<'tcx>,
@@ -203,7 +205,8 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             ast::MutImmutable => NoPreference
         };
         let mut first_error = None;
-        let (_, autoderefs, success) = autoderef(self.fcx,
+        let (_, autoderefs, success) = autoderef(check_env,
+                                                 self.fcx,
                                                  expr_a.span,
                                                  a,
                                                  Some(expr_a),
@@ -490,7 +493,8 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
     }
 }
 
-pub fn mk_assignty<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
+pub fn mk_assignty<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
+                             fcx: &FnCtxt<'a, 'tcx>,
                              expr: &ast::Expr,
                              a: Ty<'tcx>,
                              b: Ty<'tcx>)
@@ -503,7 +507,7 @@ pub fn mk_assignty<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 origin: infer::ExprAssignable(expr.span),
                 unsizing_obligation: Cell::new(None)
             };
-            Ok((try!(coerce.coerce(expr, a, b)),
+            Ok((try!(coerce.coerce(check_env, expr, a, b)),
                 coerce.unsizing_obligation.get()))
         })
     }));

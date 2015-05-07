@@ -19,6 +19,7 @@ use super::err_args;
 use super::Expectation;
 use super::expected_types_for_fn_args;
 use super::FnCtxt;
+use super::FnCtxtTyper;
 use super::LvaluePreference;
 use super::method;
 use super::structurally_resolved_type;
@@ -76,18 +77,19 @@ pub fn check_call<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
                             expected: Expectation<'tcx>)
 {
     check_expr(check_env, fcx, callee_expr);
-    let original_callee_ty = fcx.expr_ty(callee_expr);
+    let original_callee_ty = fcx.expr_ty(check_env, callee_expr);
     let (callee_ty, _, result) =
-        autoderef(fcx,
+        autoderef(check_env,
+                  fcx,
                   callee_expr.span,
                   original_callee_ty,
                   Some(callee_expr),
                   UnresolvedTypeAction::Error,
                   LvaluePreference::NoPreference,
-                  |adj_ty, idx| {
-                      try_overloaded_call_step(check_env,
-                                               fcx, call_expr, callee_expr, adj_ty, idx)
-                  });
+                  |adj_ty, idx| Some((adj_ty, idx)));
+    let result = result.and_then( |(adj_ty, idx)| {
+        try_overloaded_call_step(check_env, fcx, call_expr, callee_expr, adj_ty, idx)
+    });
 
     match result {
         None => {
@@ -131,7 +133,7 @@ fn try_overloaded_call_step<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
            autoderefs);
 
     // If the callee is a bare function or a closure, then we're all set.
-    match structurally_resolved_type(fcx, callee_expr.span, adjusted_ty).sty {
+    match structurally_resolved_type(check_env, fcx, callee_expr.span, adjusted_ty).sty {
         ty::ty_bare_fn(..) => {
             fcx.write_autoderef_adjustment(callee_expr.id, autoderefs);
             return Some(CallStep::Builtin);
@@ -143,13 +145,20 @@ fn try_overloaded_call_step<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
             // Check whether this is a call to a closure where we
             // haven't yet decided on whether the closure is fn vs
             // fnmut vs fnonce. If so, we have to defer further processing.
-            if fcx.closure_kind(def_id).is_none() {
-                let closure_ty =
-                    fcx.closure_type(def_id, substs);
-                let fn_sig =
-                    fcx.infcx().replace_late_bound_regions_with_fresh_var(call_expr.span,
-                                                                          infer::FnCall,
-                                                                          &closure_ty.sig).0;
+            let fn_sig = {
+                let typer = FnCtxtTyper::new(check_env, fcx);
+                match typer.closure_kind(def_id) {
+                    Some(_) => None,
+                    None => Some({
+                        let closure_ty =
+                            typer.closure_type(def_id, substs);
+                        fcx.infcx().replace_late_bound_regions_with_fresh_var(call_expr.span,
+                                                                              infer::FnCall,
+                                                                              &closure_ty.sig).0
+                    })
+                }
+            };
+            if let Some(fn_sig) = fn_sig {
                 check_env.record_deferred_call_resolution(def_id, Box::new(CallResolution {
                     call_expr: call_expr,
                     callee_expr: callee_expr,
@@ -177,11 +186,12 @@ fn try_overloaded_call_step<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
         _ => {}
     }
 
-    try_overloaded_call_traits(fcx, call_expr, callee_expr, adjusted_ty, autoderefs)
+    try_overloaded_call_traits(check_env, fcx, call_expr, callee_expr, adjusted_ty, autoderefs)
         .map(|method_callee| CallStep::Overloaded(method_callee))
 }
 
-fn try_overloaded_call_traits<'a,'tcx>(fcx: &FnCtxt<'a, 'tcx>,
+fn try_overloaded_call_traits<'a,'tcx>(check_env: &mut CheckEnv<'tcx>,
+                                       fcx: &FnCtxt<'a, 'tcx>,
                                        call_expr: &ast::Expr,
                                        callee_expr: &ast::Expr,
                                        adjusted_ty: Ty<'tcx>,
@@ -199,7 +209,8 @@ fn try_overloaded_call_traits<'a,'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             None => continue,
         };
 
-        match method::lookup_in_trait_adjusted(fcx,
+        match method::lookup_in_trait_adjusted(check_env,
+                                               fcx,
                                                call_expr.span,
                                                Some(&*callee_expr),
                                                method_name,
@@ -258,11 +269,14 @@ fn confirm_builtin_call<'a,'tcx>(check_env: &mut CheckEnv<'tcx>,
         fcx.infcx().replace_late_bound_regions_with_fresh_var(call_expr.span,
                                                               infer::FnCall,
                                                               fn_sig).0;
-    let fn_sig =
-        fcx.normalize_associated_types_in(call_expr.span, &fn_sig);
+    let fn_sig = {
+        let typer = FnCtxtTyper::new(check_env, fcx);
+        typer.normalize_associated_types_in(call_expr.span, &fn_sig)
+    };
 
     // Call the generic checker.
-    let expected_arg_tys = expected_types_for_fn_args(fcx,
+    let expected_arg_tys = expected_types_for_fn_args(check_env,
+                                                      fcx,
                                                       call_expr.span,
                                                       expected,
                                                       fn_sig.output,
@@ -276,7 +290,7 @@ fn confirm_builtin_call<'a,'tcx>(check_env: &mut CheckEnv<'tcx>,
                          fn_sig.variadic,
                          TupleArgumentsFlag::DontTupleArguments);
 
-    write_call(fcx, call_expr, fn_sig.output);
+    write_call(check_env, fcx, call_expr, fn_sig.output);
 }
 
 fn confirm_deferred_closure_call<'a,'tcx>(check_env: &mut CheckEnv<'tcx>,
@@ -292,7 +306,8 @@ fn confirm_deferred_closure_call<'a,'tcx>(check_env: &mut CheckEnv<'tcx>,
     // type.
 
     let expected_arg_tys =
-        expected_types_for_fn_args(fcx,
+        expected_types_for_fn_args(check_env,
+                                   fcx,
                                    call_expr.span,
                                    expected,
                                    fn_sig.output.clone(),
@@ -307,7 +322,7 @@ fn confirm_deferred_closure_call<'a,'tcx>(check_env: &mut CheckEnv<'tcx>,
                          fn_sig.variadic,
                          TupleArgumentsFlag::TupleArguments);
 
-    write_call(fcx, call_expr, fn_sig.output);
+    write_call(check_env, fcx, call_expr, fn_sig.output);
 }
 
 fn confirm_overloaded_call<'a,'tcx>(check_env: &mut CheckEnv<'tcx>,
@@ -327,7 +342,7 @@ fn confirm_overloaded_call<'a,'tcx>(check_env: &mut CheckEnv<'tcx>,
                                     arg_exprs,
                                     TupleArgumentsFlag::TupleArguments,
                                     expected);
-    write_call(fcx, call_expr, output_type);
+    write_call(check_env, fcx, call_expr, output_type);
 
     write_overloaded_call_method_map(fcx, call_expr, method_callee);
 }
@@ -362,16 +377,19 @@ impl<'tcx> Repr<'tcx> for CallResolution<'tcx> {
 }
 
 impl<'tcx> DeferredCallResolution<'tcx> for CallResolution<'tcx> {
-    fn resolve<'a>(&mut self, fcx: &FnCtxt<'a,'tcx>) {
+    fn resolve<'a>(&mut self, check_env: &mut CheckEnv<'tcx>, fcx: &FnCtxt<'a,'tcx>) {
         debug!("DeferredCallResolution::resolve() {}",
                self.repr(fcx.tcx()));
 
         // we should not be invoked until the closure kind has been
         // determined by upvar inference
-        assert!(fcx.closure_kind(self.closure_def_id).is_some());
+        {
+            let typer = FnCtxtTyper::new(check_env, fcx);
+            assert!(typer.closure_kind(self.closure_def_id).is_some());
+        }
 
         // We may now know enough to figure out fn vs fnmut etc.
-        match try_overloaded_call_traits(fcx, self.call_expr, self.callee_expr,
+        match try_overloaded_call_traits(check_env, fcx, self.call_expr, self.callee_expr,
                                          self.adjusted_ty, self.autoderefs) {
             Some(method_callee) => {
                 // One problem is that when we get here, we are going

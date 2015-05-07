@@ -11,6 +11,7 @@
 //! Code for type-checking cast expressions.
 
 use super::coercion;
+use super::CheckEnv;
 use super::demand;
 use super::FnCtxt;
 use super::structurally_resolved_type;
@@ -43,7 +44,8 @@ impl<'tcx> CastCheck<'tcx> {
     }
 }
 
-pub fn check_cast<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>, cast: &CastCheck<'tcx>) {
+pub fn check_cast<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
+                            fcx: &FnCtxt<'a, 'tcx>, cast: &CastCheck<'tcx>) {
     fn cast_through_integer_err<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                           span: Span,
                                           t_1: Ty<'tcx>,
@@ -58,12 +60,12 @@ pub fn check_cast<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>, cast: &CastCheck<'tcx>) {
 
     let span = cast.span;
     let e = &cast.expr;
-    let t_e = structurally_resolved_type(fcx, span, cast.expr_ty);
-    let t_1 = structurally_resolved_type(fcx, span, cast.cast_ty);
+    let t_e = structurally_resolved_type(check_env, fcx, span, cast.expr_ty);
+    let t_1 = structurally_resolved_type(check_env, fcx, span, cast.cast_ty);
 
     // Check for trivial casts.
     if !ty::type_has_ty_infer(t_1) {
-        if let Ok(()) = coercion::mk_assignty(fcx, e, t_e, t_1) {
+        if let Ok(()) = coercion::mk_assignty(check_env, fcx, e, t_e, t_1) {
             if ty::type_is_numeric(t_1) && ty::type_is_numeric(t_e) {
                 fcx.tcx().sess.add_lint(lint::builtin::TRIVIAL_NUMERIC_CASTS,
                                         e.id,
@@ -104,7 +106,7 @@ pub fn check_cast<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>, cast: &CastCheck<'tcx>) {
     let t_1_is_trivial = t_1_is_scalar && !t_1_is_char && !t_1_is_bare_fn;
 
     if t_e_is_bare_fn_item && t_1_is_bare_fn {
-        demand::coerce(fcx, e.span, t_1, &e);
+        demand::coerce(check_env, fcx, e.span, t_1, &e);
     } else if t_1_is_char {
         let t_e = fcx.infcx().shallow_resolve(t_e);
         if t_e.sty != ty::ty_uint(ast::TyU8) {
@@ -167,7 +169,7 @@ pub fn check_cast<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>, cast: &CastCheck<'tcx>) {
                 /* this case is allowed */
             }
             _ => {
-                demand::coerce(fcx, e.span, t_1, &e);
+                demand::coerce(check_env, fcx, e.span, t_1, &e);
             }
         }
     } else if fcx.type_is_fat_ptr(t_e, span) != fcx.type_is_fat_ptr(t_1, span) {
