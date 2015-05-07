@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use check::FnCtxt;
+use super::{CheckEnv, FnCtxt};
 use middle::traits::{self, ObjectSafetyViolation, MethodViolationCode};
 use middle::traits::{Obligation, ObligationCause};
 use middle::traits::report_fulfillment_errors;
@@ -142,12 +142,12 @@ pub fn select_all_fcx_obligations_and_apply_defaults(fcx: &FnCtxt) {
     select_fcx_obligations_where_possible(fcx);
 }
 
-pub fn select_all_fcx_obligations_or_error(fcx: &FnCtxt) {
+pub fn select_all_fcx_obligations_or_error(check_env: &mut CheckEnv, fcx: &FnCtxt) {
     debug!("select_all_fcx_obligations_or_error");
 
     // upvar inference should have ensured that all deferred call
     // resolutions are handled by now.
-    assert!(fcx.inh.deferred_call_resolutions.borrow().is_empty());
+    assert!(check_env.deferred_call_resolutions.is_empty());
 
     select_all_fcx_obligations_and_apply_defaults(fcx);
     let mut fulfillment_cx = fcx.inh.fulfillment_cx.borrow_mut();

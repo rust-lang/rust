@@ -83,9 +83,10 @@
 //! contents.
 
 use astconv::AstConv;
-use check::dropck;
-use check::FnCtxt;
-use check::vtable;
+use super::dropck;
+use super::CheckEnv;
+use super::FnCtxt;
+use super::vtable;
 use middle::free_region::FreeRegionMap;
 use middle::implicator;
 use middle::mem_categorization as mc;
@@ -113,8 +114,8 @@ macro_rules! ignore_err {
 ///////////////////////////////////////////////////////////////////////////
 // PUBLIC ENTRY POINTS
 
-pub fn regionck_expr(fcx: &FnCtxt, e: &ast::Expr) {
-    let mut rcx = Rcx::new(fcx, RepeatingScope(e.id), e.id, Subject(e.id));
+pub fn regionck_expr<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>, fcx: &FnCtxt<'a, 'tcx>, e: &ast::Expr) {
+    let mut rcx = Rcx::new(check_env, fcx, RepeatingScope(e.id), e.id, Subject(e.id));
     if fcx.err_count_since_creation() == 0 {
         // regionck assumes typeck succeeded
         rcx.visit_expr(e);
@@ -123,21 +124,22 @@ pub fn regionck_expr(fcx: &FnCtxt, e: &ast::Expr) {
     rcx.resolve_regions_and_report_errors();
 }
 
-pub fn regionck_item(fcx: &FnCtxt, item: &ast::Item) {
-    let mut rcx = Rcx::new(fcx, RepeatingScope(item.id), item.id, Subject(item.id));
+pub fn regionck_item<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>, fcx: &FnCtxt<'a, 'tcx>, item: &ast::Item) {
+    let mut rcx = Rcx::new(check_env, fcx, RepeatingScope(item.id), item.id, Subject(item.id));
     let tcx = fcx.tcx();
     rcx.free_region_map.relate_free_regions_from_predicates(tcx, &fcx.inh.param_env.caller_bounds);
     rcx.visit_region_obligations(item.id);
     rcx.resolve_regions_and_report_errors();
 }
 
-pub fn regionck_fn(fcx: &FnCtxt,
-                   fn_id: ast::NodeId,
-                   fn_span: Span,
-                   decl: &ast::FnDecl,
-                   blk: &ast::Block) {
+pub fn regionck_fn<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
+                             fcx: &FnCtxt<'a, 'tcx>,
+                             fn_id: ast::NodeId,
+                             fn_span: Span,
+                             decl: &ast::FnDecl,
+                             blk: &ast::Block) {
     debug!("regionck_fn(id={})", fn_id);
-    let mut rcx = Rcx::new(fcx, RepeatingScope(blk.id), blk.id, Subject(fn_id));
+    let mut rcx = Rcx::new(check_env, fcx, RepeatingScope(blk.id), blk.id, Subject(fn_id));
 
     if fcx.err_count_since_creation() == 0 {
         // regionck assumes typeck succeeded
@@ -157,10 +159,11 @@ pub fn regionck_fn(fcx: &FnCtxt,
 
 /// Checks that the types in `component_tys` are well-formed. This will add constraints into the
 /// region graph. Does *not* run `resolve_regions_and_report_errors` and so forth.
-pub fn regionck_ensure_component_tys_wf<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
+pub fn regionck_ensure_component_tys_wf<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
+                                                  fcx: &FnCtxt<'a, 'tcx>,
                                                   span: Span,
                                                   component_tys: &[Ty<'tcx>]) {
-    let mut rcx = Rcx::new(fcx, RepeatingScope(0), 0, SubjectNode::None);
+    let mut rcx = Rcx::new(check_env, fcx, RepeatingScope(0), 0, SubjectNode::None);
     for &component_ty in component_tys {
         // Check that each type outlives the empty region. Since the
         // empty region is a subregion of all others, this can't fail
@@ -175,6 +178,8 @@ pub fn regionck_ensure_component_tys_wf<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 // INTERNALS
 
 pub struct Rcx<'a, 'tcx: 'a> {
+    check_env: &'a mut CheckEnv<'tcx>,
+
     fcx: &'a FnCtxt<'a, 'tcx>,
 
     region_bound_pairs: Vec<(ty::Region, GenericKind<'tcx>)>,
@@ -195,13 +200,109 @@ pub struct Rcx<'a, 'tcx: 'a> {
 pub struct RepeatingScope(ast::NodeId);
 pub enum SubjectNode { Subject(ast::NodeId), None }
 
+/// Try to resolve the type for the given node, returning t_err if an error results.  Note that
+/// we never care about the details of the error, the same error will be detected and reported
+/// in the writeback phase.
+///
+/// Note one important point: we do not attempt to resolve *region variables* here.  This is
+/// because regionck is essentially adding constraints to those region variables and so may yet
+/// influence how they are resolved.
+///
+/// Consider this silly example:
+///
+/// ```
+/// fn borrow(x: &int) -> &int {x}
+/// fn foo(x: @int) -> int {  // block: B
+///     let b = borrow(x);    // region: <R0>
+///     *b
+/// }
+/// ```
+///
+/// Here, the region of `b` will be `<R0>`.  `<R0>` is constrained to be some subregion of the
+/// block B and some superregion of the call.  If we forced it now, we'd choose the smaller
+/// region (the call).  But that would make the *b illegal.  Since we don't resolve, the type
+/// of b will be `&<R0>.int` and then `*b` will require that `<R0>` be bigger than the let and
+/// the `*b` expression, so we will effectively resolve `<R0>` to be the block B.
+fn resolve_type<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>, unresolved_ty: Ty<'tcx>) -> Ty<'tcx> {
+    fcx.infcx().resolve_type_vars_if_possible(&unresolved_ty)
+}
+
+/// This method populates the region map's `free_region_map`. It walks over the transformed
+/// argument and return types for each function just before we check the body of that function,
+/// looking for types where you have a borrowed pointer to other borrowed data (e.g., `&'a &'b
+/// [usize]`.  We do not allow references to outlive the things they point at, so we can assume
+/// that `'a <= 'b`. This holds for both the argument and return types, basically because, on
+/// the caller side, the caller is responsible for checking that the type of every expression
+/// (including the actual values for the arguments, as well as the return type of the fn call)
+/// is well-formed.
+///
+/// Tests: `src/test/compile-fail/regions-free-region-ordering-*.rs`
+fn relate_free_regions<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
+                                 tcx: &ty::ctxt<'tcx>,
+                                 free_region_map: &mut FreeRegionMap,
+                                 region_bound_pairs: &mut Vec<(ty::Region, GenericKind<'tcx>)>,
+                                 fn_sig_tys: &[Ty<'tcx>],
+                                 body_id: ast::NodeId,
+                                 span: Span) {
+    debug!("relate_free_regions >>");
+
+    for &ty in fn_sig_tys {
+        let ty = resolve_type(fcx, ty);
+        debug!("relate_free_regions(t={})", ty.repr(tcx));
+        let body_scope = CodeExtent::from_node_id(body_id);
+        let body_scope = ty::ReScope(body_scope);
+        let implications = implicator::implications(fcx.infcx(), fcx, body_id,
+                                                    ty, body_scope, span);
+
+        // Record any relations between free regions that we observe into the free-region-map.
+        free_region_map.relate_free_regions_from_implications(tcx, &implications);
+
+        // But also record other relationships, such as `T:'x`,
+        // that don't go into the free-region-map but which we use
+        // here.
+        for implication in implications {
+            debug!("implication: {}", implication.repr(tcx));
+            match implication {
+                implicator::Implication::RegionSubRegion(_,
+                                                         ty::ReFree(free_a),
+                                                         ty::ReInfer(ty::ReVar(vid_b))) => {
+                    fcx.inh.infcx.add_given(free_a, vid_b);
+                }
+                implicator::Implication::RegionSubGeneric(_, r_a, ref generic_b) => {
+                    debug!("RegionSubGeneric: {} <= {}",
+                           r_a.repr(tcx), generic_b.repr(tcx));
+
+                    region_bound_pairs.push((r_a, generic_b.clone()));
+                }
+                implicator::Implication::RegionSubRegion(..) |
+                implicator::Implication::RegionSubClosure(..) |
+                implicator::Implication::Predicate(..) => {
+                    // In principle, we could record (and take
+                    // advantage of) every relationship here, but
+                    // we are also free not to -- it simply means
+                    // strictly less that we can successfully type
+                    // check. (It may also be that we should
+                    // revise our inference system to be more
+                    // general and to make use of *every*
+                    // relationship that arises here, but
+                    // presently we do not.)
+                }
+            }
+        }
+    }
+
+    debug!("<< relate_free_regions");
+}
+
 impl<'a, 'tcx> Rcx<'a, 'tcx> {
-    pub fn new(fcx: &'a FnCtxt<'a, 'tcx>,
+    fn new(check_env: &'a mut CheckEnv<'tcx>,
+               fcx: &'a FnCtxt<'a, 'tcx>,
                initial_repeating_scope: RepeatingScope,
                initial_body_id: ast::NodeId,
                subject: SubjectNode) -> Rcx<'a, 'tcx> {
         let RepeatingScope(initial_repeating_scope) = initial_repeating_scope;
-        Rcx { fcx: fcx,
+        Rcx { check_env: check_env,
+              fcx: fcx,
               repeating_scope: initial_repeating_scope,
               body_id: initial_body_id,
               subject: subject,
@@ -222,47 +323,20 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
         mem::replace(&mut self.repeating_scope, scope)
     }
 
-    /// Try to resolve the type for the given node, returning t_err if an error results.  Note that
-    /// we never care about the details of the error, the same error will be detected and reported
-    /// in the writeback phase.
-    ///
-    /// Note one important point: we do not attempt to resolve *region variables* here.  This is
-    /// because regionck is essentially adding constraints to those region variables and so may yet
-    /// influence how they are resolved.
-    ///
-    /// Consider this silly example:
-    ///
-    /// ```
-    /// fn borrow(x: &int) -> &int {x}
-    /// fn foo(x: @int) -> int {  // block: B
-    ///     let b = borrow(x);    // region: <R0>
-    ///     *b
-    /// }
-    /// ```
-    ///
-    /// Here, the region of `b` will be `<R0>`.  `<R0>` is constrained to be some subregion of the
-    /// block B and some superregion of the call.  If we forced it now, we'd choose the smaller
-    /// region (the call).  But that would make the *b illegal.  Since we don't resolve, the type
-    /// of b will be `&<R0>.int` and then `*b` will require that `<R0>` be bigger than the let and
-    /// the `*b` expression, so we will effectively resolve `<R0>` to be the block B.
-    pub fn resolve_type(&self, unresolved_ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.fcx.infcx().resolve_type_vars_if_possible(&unresolved_ty)
-    }
-
     /// Try to resolve the type for the given node.
     fn resolve_node_type(&self, id: ast::NodeId) -> Ty<'tcx> {
         let t = self.fcx.node_ty(id);
-        self.resolve_type(t)
+        resolve_type(self.fcx, t)
     }
 
     fn resolve_method_type(&self, method_call: MethodCall) -> Option<Ty<'tcx>> {
         let method_ty = self.fcx.inh.method_map.borrow()
                             .get(&method_call).map(|method| method.ty);
-        method_ty.map(|method_ty| self.resolve_type(method_ty))
+        method_ty.map(|method_ty| resolve_type(self.fcx, method_ty))
     }
 
     /// Try to resolve the type for the given node.
-    pub fn resolve_expr_type_adjusted(&mut self, expr: &ast::Expr) -> Ty<'tcx> {
+    fn resolve_expr_type_adjusted(&mut self, expr: &ast::Expr) -> Ty<'tcx> {
         let ty_unadjusted = self.resolve_node_type(expr.id);
         if ty::type_is_error(ty_unadjusted) {
             ty_unadjusted
@@ -280,22 +354,26 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
                      body: &ast::Block,
                      span: Span)
     {
+
         // When we enter a function, we can derive
         debug!("visit_fn_body(id={})", id);
 
-        let fn_sig_map = self.fcx.inh.fn_sig_map.borrow();
-        let fn_sig = match fn_sig_map.get(&id) {
-            Some(f) => f,
+        let old_region_bounds_pairs_len = self.region_bound_pairs.len();
+
+        let old_body_id = self.set_body_id(body.id);
+
+        match self.check_env.fn_sig_map.get(&id) {
+            Some(fn_sig) => {
+                relate_free_regions(self.fcx, self.tcx(),
+                                    &mut self.free_region_map, &mut self.region_bound_pairs,
+                                    &fn_sig[..], body.id, span);
+            },
             None => {
                 self.tcx().sess.bug(
                     &format!("No fn-sig entry for id={}", id));
             }
         };
 
-        let old_region_bounds_pairs_len = self.region_bound_pairs.len();
-
-        let old_body_id = self.set_body_id(body.id);
-        self.relate_free_regions(&fn_sig[..], body.id, span);
         link_fn_args(self, CodeExtent::from_node_id(body.id), &fn_decl.inputs[..]);
         self.visit_block(body);
         self.visit_region_obligations(body.id);
@@ -312,7 +390,7 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
         // region checking can introduce new pending obligations
         // which, when processed, might generate new region
         // obligations. So make sure we process those.
-        vtable::select_all_fcx_obligations_or_error(self.fcx);
+        vtable::select_all_fcx_obligations_or_error(self.check_env, self.fcx);
 
         // Make a copy of the region obligations vec because we'll need
         // to be able to borrow the fulfillment-cx below when projecting.
@@ -324,7 +402,7 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
         for r_o in &region_obligations {
             debug!("visit_region_obligations: r_o={}",
                    r_o.repr(self.tcx()));
-            let sup_type = self.resolve_type(r_o.sup_type);
+            let sup_type = resolve_type(self.fcx, r_o.sup_type);
             let origin = infer::RelateParamBound(r_o.cause.span, sup_type);
             type_must_outlive(self, origin, sup_type, r_o.sub_region);
         }
@@ -332,71 +410,6 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
         // Processing the region obligations should not cause the list to grow further:
         assert_eq!(region_obligations.len(),
                    self.fcx.inh.fulfillment_cx.borrow().region_obligations(node_id).len());
-    }
-
-    /// This method populates the region map's `free_region_map`. It walks over the transformed
-    /// argument and return types for each function just before we check the body of that function,
-    /// looking for types where you have a borrowed pointer to other borrowed data (e.g., `&'a &'b
-    /// [usize]`.  We do not allow references to outlive the things they point at, so we can assume
-    /// that `'a <= 'b`. This holds for both the argument and return types, basically because, on
-    /// the caller side, the caller is responsible for checking that the type of every expression
-    /// (including the actual values for the arguments, as well as the return type of the fn call)
-    /// is well-formed.
-    ///
-    /// Tests: `src/test/compile-fail/regions-free-region-ordering-*.rs`
-    fn relate_free_regions(&mut self,
-                           fn_sig_tys: &[Ty<'tcx>],
-                           body_id: ast::NodeId,
-                           span: Span) {
-        debug!("relate_free_regions >>");
-        let tcx = self.tcx();
-
-        for &ty in fn_sig_tys {
-            let ty = self.resolve_type(ty);
-            debug!("relate_free_regions(t={})", ty.repr(tcx));
-            let body_scope = CodeExtent::from_node_id(body_id);
-            let body_scope = ty::ReScope(body_scope);
-            let implications = implicator::implications(self.fcx.infcx(), self.fcx, body_id,
-                                                        ty, body_scope, span);
-
-            // Record any relations between free regions that we observe into the free-region-map.
-            self.free_region_map.relate_free_regions_from_implications(tcx, &implications);
-
-            // But also record other relationships, such as `T:'x`,
-            // that don't go into the free-region-map but which we use
-            // here.
-            for implication in implications {
-                debug!("implication: {}", implication.repr(tcx));
-                match implication {
-                    implicator::Implication::RegionSubRegion(_,
-                                                             ty::ReFree(free_a),
-                                                             ty::ReInfer(ty::ReVar(vid_b))) => {
-                        self.fcx.inh.infcx.add_given(free_a, vid_b);
-                    }
-                    implicator::Implication::RegionSubGeneric(_, r_a, ref generic_b) => {
-                        debug!("RegionSubGeneric: {} <= {}",
-                               r_a.repr(tcx), generic_b.repr(tcx));
-
-                        self.region_bound_pairs.push((r_a, generic_b.clone()));
-                    }
-                    implicator::Implication::RegionSubRegion(..) |
-                    implicator::Implication::RegionSubClosure(..) |
-                    implicator::Implication::Predicate(..) => {
-                        // In principle, we could record (and take
-                        // advantage of) every relationship here, but
-                        // we are also free not to -- it simply means
-                        // strictly less that we can successfully type
-                        // check. (It may also be that we should
-                        // revise our inference system to be more
-                        // general and to make use of *every*
-                        // relationship that arises here, but
-                        // presently we do not.)
-                    }
-                }
-            }
-        }
-
-        debug!("<< relate_free_regions");
     }
 
     fn resolve_regions_and_report_errors(&self) {
@@ -965,7 +978,7 @@ fn check_safety_of_rvalue_destructor_if_necessary<'a, 'tcx>(rcx: &mut Rcx<'a, 't
         mc::cat_rvalue(region) => {
             match region {
                 ty::ReScope(rvalue_scope) => {
-                    let typ = rcx.resolve_type(cmt.ty);
+                    let typ = resolve_type(rcx.fcx, cmt.ty);
                     dropck::check_safety_of_destructor_if_necessary(rcx,
                                                                     typ,
                                                                     span,

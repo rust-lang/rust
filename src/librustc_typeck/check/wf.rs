@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use astconv::AstConv;
-use check::{FnCtxt, Inherited, blank_fn_ctxt, vtable, regionck};
+use super::{CheckEnv, FnCtxt, Inherited, blank_fn_ctxt, vtable, regionck};
 use constrained_type_params::{identify_constrained_type_params, Parameter};
 use CrateCtxt;
 use middle::region;
@@ -135,7 +135,8 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
     }
 
     fn with_fcx<F>(&mut self, item: &ast::Item, mut f: F) where
-        F: for<'fcx> FnMut(&mut CheckTypeWellFormedVisitor<'ccx, 'tcx>, &FnCtxt<'fcx, 'tcx>),
+        F: for<'fcx> FnMut(&mut CheckTypeWellFormedVisitor<'ccx, 'tcx>,
+                           &mut CheckEnv<'tcx>, &FnCtxt<'fcx, 'tcx>),
     {
         let ccx = self.ccx;
         let item_def_id = local_def(item.id);
@@ -148,18 +149,19 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                                                 &type_scheme.generics,
                                                 &type_predicates,
                                                 item.id);
+        let mut check_env = CheckEnv::new();
         let inh = Inherited::new(ccx.tcx, param_env);
         let fcx = blank_fn_ctxt(ccx, &inh, ty::FnConverging(type_scheme.ty), item.id);
-        f(self, &fcx);
-        vtable::select_all_fcx_obligations_or_error(&fcx);
-        regionck::regionck_item(&fcx, item);
+        f(self, &mut check_env, &fcx);
+        vtable::select_all_fcx_obligations_or_error(&mut check_env, &fcx);
+        regionck::regionck_item(&mut check_env, &fcx, item);
     }
 
     /// In a type definition, we check that to ensure that the types of the fields are well-formed.
     fn check_type_defn<F>(&mut self, item: &ast::Item, mut lookup_fields: F) where
         F: for<'fcx> FnMut(&FnCtxt<'fcx, 'tcx>) -> Vec<AdtVariant<'tcx>>,
     {
-        self.with_fcx(item, |this, fcx| {
+        self.with_fcx(item, |this, check_env, fcx| {
             let variants = lookup_fields(fcx);
             let mut bounds_checker = BoundsChecker::new(fcx,
                                                         item.span,
@@ -190,14 +192,14 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                 variants.iter().flat_map(|v| v.fields.iter().map(|f| f.ty)).collect();
 
             regionck::regionck_ensure_component_tys_wf(
-                fcx, item.span, &field_tys);
+                check_env, fcx, item.span, &field_tys);
         });
     }
 
     fn check_item_type(&mut self,
                        item: &ast::Item)
     {
-        self.with_fcx(item, |this, fcx| {
+        self.with_fcx(item, |this, _, fcx| {
             let mut bounds_checker = BoundsChecker::new(fcx,
                                                         item.span,
                                                         item.id,
@@ -216,7 +218,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
     fn check_impl(&mut self,
                   item: &ast::Item)
     {
-        self.with_fcx(item, |this, fcx| {
+        self.with_fcx(item, |this, _, fcx| {
             let mut bounds_checker = BoundsChecker::new(fcx,
                                                         item.span,
                                                         item.id,

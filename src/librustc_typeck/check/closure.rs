@@ -10,7 +10,7 @@
 
 //! Code for type-checking closure expressions.
 
-use super::{check_fn, Expectation, FnCtxt};
+use super::{check_fn, CheckEnv, Expectation, FnCtxt};
 
 use astconv;
 use middle::region;
@@ -22,7 +22,8 @@ use syntax::ast;
 use syntax::ast_util;
 use util::ppaux::Repr;
 
-pub fn check_expr_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
+pub fn check_expr_closure<'a,'tcx>(check_env: &mut CheckEnv<'tcx>,
+                                   fcx: &FnCtxt<'a,'tcx>,
                                    expr: &ast::Expr,
                                    _capture: ast::CaptureClause,
                                    decl: &'tcx ast::FnDecl,
@@ -39,10 +40,11 @@ pub fn check_expr_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
         Some(ty) => deduce_expectations_from_expected_type(fcx, ty),
         None => (None, None)
     };
-    check_closure(fcx, expr, expected_kind, decl, body, expected_sig)
+    check_closure(check_env, fcx, expr, expected_kind, decl, body, expected_sig)
 }
 
-fn check_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
+fn check_closure<'a,'tcx>(check_env: &mut CheckEnv<'tcx>,
+                          fcx: &FnCtxt<'a,'tcx>,
                           expr: &ast::Expr,
                           opt_kind: Option<ty::ClosureKind>,
                           decl: &'tcx ast::FnDecl,
@@ -73,7 +75,8 @@ fn check_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
                                         region::DestructionScopeData::new(body.id),
                                         &fn_ty.sig);
 
-    check_fn(fcx.ccx,
+    check_fn(check_env,
+             fcx.ccx,
              ast::Unsafety::Normal,
              expr.id,
              &fn_sig,

@@ -14,6 +14,7 @@ use super::{
     check_expr,
     check_expr_coercable_to_type,
     check_expr_with_lvalue_pref,
+    CheckEnv,
     demand,
     method,
     FnCtxt,
@@ -28,7 +29,8 @@ use syntax::parse::token;
 use util::ppaux::{Repr, UserString};
 
 /// Check a `a <op>= b`
-pub fn check_binop_assign<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
+pub fn check_binop_assign<'a,'tcx>(check_env: &mut CheckEnv<'tcx>,
+                                   fcx: &FnCtxt<'a,'tcx>,
                                    expr: &'tcx ast::Expr,
                                    op: ast::BinOp,
                                    lhs_expr: &'tcx ast::Expr,
@@ -36,8 +38,8 @@ pub fn check_binop_assign<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
 {
     let tcx = fcx.ccx.tcx;
 
-    check_expr_with_lvalue_pref(fcx, lhs_expr, PreferMutLvalue);
-    check_expr(fcx, rhs_expr);
+    check_expr_with_lvalue_pref(check_env, fcx, lhs_expr, PreferMutLvalue);
+    check_expr(check_env, fcx, rhs_expr);
 
     let lhs_ty = structurally_resolved_type(fcx, lhs_expr.span, fcx.expr_ty(lhs_expr));
     let rhs_ty = structurally_resolved_type(fcx, rhs_expr.span, fcx.expr_ty(rhs_expr));
@@ -65,7 +67,8 @@ pub fn check_binop_assign<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
 }
 
 /// Check a potentially overloaded binary operator.
-pub fn check_binop<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
+pub fn check_binop<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
+                             fcx: &FnCtxt<'a, 'tcx>,
                              expr: &'tcx ast::Expr,
                              op: ast::BinOp,
                              lhs_expr: &'tcx ast::Expr,
@@ -80,7 +83,7 @@ pub fn check_binop<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
            lhs_expr.repr(tcx),
            rhs_expr.repr(tcx));
 
-    check_expr(fcx, lhs_expr);
+    check_expr(check_env, fcx, lhs_expr);
     let lhs_ty = fcx.resolve_type_vars_if_possible(fcx.expr_ty(lhs_expr));
 
     // Annoyingly, SIMD ops don't fit into the PartialEq/PartialOrd
@@ -88,7 +91,7 @@ pub fn check_binop<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     // should change, but for now if LHS is SIMD we go down a
     // different path that bypassess all traits.
     if ty::type_is_simd(fcx.tcx(), lhs_ty) {
-        check_expr_coercable_to_type(fcx, rhs_expr, lhs_ty);
+        check_expr_coercable_to_type(check_env, fcx, rhs_expr, lhs_ty);
         let rhs_ty = fcx.resolve_type_vars_if_possible(fcx.expr_ty(lhs_expr));
         let return_ty = enforce_builtin_binop_types(fcx, lhs_expr, lhs_ty, rhs_expr, rhs_ty, op);
         fcx.write_ty(expr.id, return_ty);
@@ -99,7 +102,7 @@ pub fn check_binop<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         BinOpCategory::Shortcircuit => {
             // && and || are a simple case.
             demand::suptype(fcx, lhs_expr.span, ty::mk_bool(tcx), lhs_ty);
-            check_expr_coercable_to_type(fcx, rhs_expr, ty::mk_bool(tcx));
+            check_expr_coercable_to_type(check_env, fcx, rhs_expr, ty::mk_bool(tcx));
             fcx.write_ty(expr.id, ty::mk_bool(tcx));
         }
         _ => {
@@ -107,7 +110,7 @@ pub fn check_binop<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             // overloaded. This is the way to be most flexible w/r/t
             // types that get inferred.
             let (rhs_ty, return_ty) =
-                check_overloaded_binop(fcx, expr, lhs_expr, lhs_ty, rhs_expr, op);
+                check_overloaded_binop(check_env, fcx, expr, lhs_expr, lhs_ty, rhs_expr, op);
 
             // Supply type inference hints if relevant. Probably these
             // hints should be enforced during select as part of the
@@ -201,7 +204,8 @@ fn enforce_builtin_binop_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     }
 }
 
-fn check_overloaded_binop<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
+fn check_overloaded_binop<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
+                                    fcx: &FnCtxt<'a, 'tcx>,
                                     expr: &'tcx ast::Expr,
                                     lhs_expr: &'tcx ast::Expr,
                                     lhs_ty: Ty<'tcx>,
@@ -240,7 +244,7 @@ fn check_overloaded_binop<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     };
 
     // see `NB` above
-    check_expr_coercable_to_type(fcx, rhs_expr, rhs_ty_var);
+    check_expr_coercable_to_type(check_env, fcx, rhs_expr, rhs_ty_var);
 
     (rhs_ty_var, return_ty)
 }

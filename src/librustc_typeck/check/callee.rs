@@ -12,6 +12,7 @@ use super::autoderef;
 use super::check_argument_types;
 use super::check_expr;
 use super::check_method_argument_types;
+use super::CheckEnv;
 use super::demand;
 use super::DeferredCallResolution;
 use super::err_args;
@@ -67,13 +68,14 @@ pub fn check_legal_trait_for_method_call(ccx: &CrateCtxt, span: Span, trait_id: 
     }
 }
 
-pub fn check_call<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
+pub fn check_call<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
+                            fcx: &FnCtxt<'a, 'tcx>,
                             call_expr: &'tcx ast::Expr,
                             callee_expr: &'tcx ast::Expr,
                             arg_exprs: &'tcx [P<ast::Expr>],
                             expected: Expectation<'tcx>)
 {
-    check_expr(fcx, callee_expr);
+    check_expr(check_env, fcx, callee_expr);
     let original_callee_ty = fcx.expr_ty(callee_expr);
     let (callee_ty, _, result) =
         autoderef(fcx,
@@ -83,25 +85,27 @@ pub fn check_call<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                   UnresolvedTypeAction::Error,
                   LvaluePreference::NoPreference,
                   |adj_ty, idx| {
-                      try_overloaded_call_step(fcx, call_expr, callee_expr, adj_ty, idx)
+                      try_overloaded_call_step(check_env,
+                                               fcx, call_expr, callee_expr, adj_ty, idx)
                   });
 
     match result {
         None => {
             // this will report an error since original_callee_ty is not a fn
-            confirm_builtin_call(fcx, call_expr, original_callee_ty, arg_exprs, expected);
+            confirm_builtin_call(check_env,
+                                 fcx, call_expr, original_callee_ty, arg_exprs, expected);
         }
 
         Some(CallStep::Builtin) => {
-            confirm_builtin_call(fcx, call_expr, callee_ty, arg_exprs, expected);
+            confirm_builtin_call(check_env, fcx, call_expr, callee_ty, arg_exprs, expected);
         }
 
         Some(CallStep::DeferredClosure(fn_sig)) => {
-            confirm_deferred_closure_call(fcx, call_expr, arg_exprs, expected, fn_sig);
+            confirm_deferred_closure_call(check_env, fcx, call_expr, arg_exprs, expected, fn_sig);
         }
 
         Some(CallStep::Overloaded(method_callee)) => {
-            confirm_overloaded_call(fcx, call_expr, callee_expr,
+            confirm_overloaded_call(check_env, fcx, call_expr, callee_expr,
                                     arg_exprs, expected, method_callee);
         }
     }
@@ -113,7 +117,8 @@ enum CallStep<'tcx> {
     Overloaded(ty::MethodCallee<'tcx>)
 }
 
-fn try_overloaded_call_step<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
+fn try_overloaded_call_step<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
+                                      fcx: &FnCtxt<'a, 'tcx>,
                                       call_expr: &'tcx ast::Expr,
                                       callee_expr: &'tcx ast::Expr,
                                       adjusted_ty: Ty<'tcx>,
@@ -145,7 +150,7 @@ fn try_overloaded_call_step<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                     fcx.infcx().replace_late_bound_regions_with_fresh_var(call_expr.span,
                                                                           infer::FnCall,
                                                                           &closure_ty.sig).0;
-                fcx.record_deferred_call_resolution(def_id, Box::new(CallResolution {
+                check_env.record_deferred_call_resolution(def_id, Box::new(CallResolution {
                     call_expr: call_expr,
                     callee_expr: callee_expr,
                     adjusted_ty: adjusted_ty,
@@ -213,7 +218,8 @@ fn try_overloaded_call_traits<'a,'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     None
 }
 
-fn confirm_builtin_call<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
+fn confirm_builtin_call<'a,'tcx>(check_env: &mut CheckEnv<'tcx>,
+                                 fcx: &FnCtxt<'a,'tcx>,
                                  call_expr: &ast::Expr,
                                  callee_ty: Ty<'tcx>,
                                  arg_exprs: &'tcx [P<ast::Expr>],
@@ -261,7 +267,8 @@ fn confirm_builtin_call<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
                                                       expected,
                                                       fn_sig.output,
                                                       &fn_sig.inputs);
-    check_argument_types(fcx,
+    check_argument_types(check_env,
+                         fcx,
                          call_expr.span,
                          &fn_sig.inputs,
                          &expected_arg_tys[..],
@@ -272,7 +279,8 @@ fn confirm_builtin_call<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
     write_call(fcx, call_expr, fn_sig.output);
 }
 
-fn confirm_deferred_closure_call<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
+fn confirm_deferred_closure_call<'a,'tcx>(check_env: &mut CheckEnv<'tcx>,
+                                          fcx: &FnCtxt<'a,'tcx>,
                                           call_expr: &ast::Expr,
                                           arg_exprs: &'tcx [P<ast::Expr>],
                                           expected: Expectation<'tcx>,
@@ -290,7 +298,8 @@ fn confirm_deferred_closure_call<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
                                    fn_sig.output.clone(),
                                    &*fn_sig.inputs);
 
-    check_argument_types(fcx,
+    check_argument_types(check_env,
+                         fcx,
                          call_expr.span,
                          &*fn_sig.inputs,
                          &*expected_arg_tys,
@@ -301,7 +310,8 @@ fn confirm_deferred_closure_call<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
     write_call(fcx, call_expr, fn_sig.output);
 }
 
-fn confirm_overloaded_call<'a,'tcx>(fcx: &FnCtxt<'a, 'tcx>,
+fn confirm_overloaded_call<'a,'tcx>(check_env: &mut CheckEnv<'tcx>,
+                                    fcx: &FnCtxt<'a, 'tcx>,
                                     call_expr: &ast::Expr,
                                     callee_expr: &'tcx ast::Expr,
                                     arg_exprs: &'tcx [P<ast::Expr>],
@@ -309,7 +319,8 @@ fn confirm_overloaded_call<'a,'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                     method_callee: ty::MethodCallee<'tcx>)
 {
     let output_type =
-        check_method_argument_types(fcx,
+        check_method_argument_types(check_env,
+                                    fcx,
                                     call_expr.span,
                                     method_callee.ty,
                                     callee_expr,
