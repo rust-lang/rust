@@ -24,7 +24,7 @@ pub fn target() -> Target {
         target_pointer_width: "64".to_string(),
         arch: "x86_64".to_string(),
         target_os: "windows".to_string(),
-        target_abi: "msvc".to_string(),
+        target_env: "msvc".to_string(),
         options: base,
     }
 }

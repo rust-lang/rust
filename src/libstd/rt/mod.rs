@@ -39,17 +39,10 @@ mod macros;
 
 // These should be refactored/moved/made private over time
 pub mod util;
+pub mod unwind;
 pub mod args;
 
-#[cfg(not(all(target_os = "windows", target_abi = "msvc")))]
-pub mod unwind;
-#[cfg(all(target_os = "windows", target_abi = "msvc"))]
-#[path = "unwind_msvc.rs"]
-pub mod unwind;
-
 mod at_exit_imp;
-
-#[cfg(not(all(target_os = "windows", target_abi = "msvc")))]
 mod libunwind;
 
 /// The default error code of the rust runtime if the main thread panics instead

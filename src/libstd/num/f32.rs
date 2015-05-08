@@ -31,10 +31,7 @@ pub use core::f32::consts;
 #[allow(dead_code)]
 mod cmath {
     use libc::{c_float, c_int};
-    #[cfg(windows)]
-    use libc::c_double;
 
-    #[link_name = "m"]
     extern {
         pub fn acosf(n: c_float) -> c_float;
         pub fn asinf(n: c_float) -> c_float;
@@ -59,35 +56,28 @@ mod cmath {
         pub fn tanhf(n: c_float) -> c_float;
         pub fn tgammaf(n: c_float) -> c_float;
 
-        #[cfg(unix)]
+        #[cfg_attr(all(windows, target_env = "msvc"), link_name = "__lgammaf_r")]
         pub fn lgammaf_r(n: c_float, sign: &mut c_int) -> c_float;
-        #[cfg(unix)]
+        #[cfg_attr(all(windows, target_env = "msvc"), link_name = "_hypotf")]
         pub fn hypotf(x: c_float, y: c_float) -> c_float;
-        #[cfg(unix)]
+
+        #[cfg(any(unix, all(windows, not(target_env = "msvc"))))]
         pub fn frexpf(n: c_float, value: &mut c_int) -> c_float;
-        #[cfg(unix)]
+        #[cfg(any(unix, all(windows, not(target_env = "msvc"))))]
         pub fn ldexpf(x: c_float, n: c_int) -> c_float;
-
-        #[cfg(windows)]
-        #[link_name="__lgammaf_r"]
-        pub fn lgammaf_r(n: c_float, sign: &mut c_int) -> c_float;
-
-        #[cfg(windows)]
-        #[link_name="_hypotf"]
-        pub fn hypotf(x: c_float, y: c_float) -> c_float;
-
-        #[cfg(windows)]
-        fn frexp(n: c_double, value: &mut c_int) -> c_double;
-
-        #[cfg(windows)]
-        fn ldexp(x: c_double, n: c_int) -> c_double;
     }
 
-    #[cfg(windows)]
-    pub unsafe fn ldexpf(x: c_float, n: c_int) -> c_float { return ldexp(x as c_double, n) as c_float; }
+    #[cfg(all(windows, target_env = "msvc"))]
+    pub unsafe fn ldexpf(x: c_float, n: c_int) -> c_float {
+        f64::ldexp(x as f64, n as isize) as c_float
+    }
 
-    #[cfg(windows)]
-    pub unsafe fn frexpf(x: c_float, value: &mut c_int) -> c_float { return frexp(x as c_double, value) as c_float; }
+    #[cfg(all(windows, target_env = "msvc"))]
+    pub unsafe fn frexpf(x: c_float, value: &mut c_int) -> c_float {
+        let (a, b) = f64::frexp(x as f64);
+        *value = b as c_int;
+        a as c_float
+    }
 }
 
 #[cfg(not(test))]

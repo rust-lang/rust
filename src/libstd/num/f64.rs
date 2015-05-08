@@ -68,17 +68,10 @@ mod cmath {
         pub fn y1(n: c_double) -> c_double;
         pub fn yn(i: c_int, n: c_double) -> c_double;
 
-        #[cfg(unix)]
-        pub fn lgamma_r(n: c_double, sign: &mut c_int) -> c_double;
-        #[cfg(windows)]
-        #[link_name="__lgamma_r"]
+        #[cfg_attr(all(windows, target_env = "msvc"), link_name = "__lgamma_r")]
         pub fn lgamma_r(n: c_double, sign: &mut c_int) -> c_double;
 
-        #[cfg(unix)]
-        pub fn hypot(x: c_double, y: c_double) -> c_double;
-
-        #[cfg(windows)]
-        #[link_name="_hypot"]
+        #[cfg_attr(all(windows, target_env = "msvc"), link_name = "_hypot")]
         pub fn hypot(x: c_double, y: c_double) -> c_double;
     }
 }

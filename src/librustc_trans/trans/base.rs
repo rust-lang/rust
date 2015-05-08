@@ -1907,16 +1907,6 @@ pub fn update_linkage(ccx: &CrateContext,
                       llval: ValueRef,
                       id: Option<ast::NodeId>,
                       llval_origin: ValueOrigin) {
-
-    // TODO: This should be conditionaly set based on whether we're producing a
-    //       dynamic library or not to follow the conventions on Windows. (ricky26)
-
-    if ccx.sess().target.target.options.is_like_msvc {
-        llvm::SetDLLStorageClass(llval, llvm::DLLExportStorageClass);
-        llvm::SetLinkage(llval, llvm::ExternalLinkage);
-        return;
-    }
-
     match llval_origin {
         InlinedCopy => {
             // `llval` is a translation of an item defined in a separate
@@ -2181,7 +2171,7 @@ pub fn create_entry_wrapper(ccx: &CrateContext,
         // FIXME: #16581: Marking a symbol in the executable with `dllexport`
         // linkage forces MinGW's linker to output a `.reloc` section for ASLR
         if ccx.sess().target.target.options.is_like_windows {
-            llvm::SetDLLStorageClass(llfn, llvm::DLLExportStorageClass);
+            unsafe { llvm::LLVMRustSetDLLExportStorageClass(llfn) }
         }
 
         let llbb = unsafe {
