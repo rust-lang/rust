@@ -36,12 +36,14 @@ let x_is_nonzero = x as bool;
 
 E0062: r##"
 This error indicates that during an attempt to build a struct or struct-like
-enum variant, one of the fields was specified more than once.
+enum variant, one of the fields was specified more than once. Each field should
+be specified exactly one time.
 "##,
 
 E0063: r##"
 This error indicates that during an attempt to build a struct or struct-like
-enum variant, one of the fields was not provided.
+enum variant, one of the fields was not provided. Each field should be specified
+exactly once.
 "##,
 
 E0081: r##"
