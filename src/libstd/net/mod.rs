@@ -15,7 +15,7 @@
 use prelude::v1::*;
 
 use io::{self, Error, ErrorKind};
-use sys_common::net2 as net_imp;
+use sys_common::net as net_imp;
 
 pub use self::ip::{IpAddr, Ipv4Addr, Ipv6Addr, Ipv6MulticastScope};
 pub use self::addr::{SocketAddr, SocketAddrV4, SocketAddrV6, ToSocketAddrs};

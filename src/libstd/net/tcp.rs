@@ -17,7 +17,7 @@ use io::prelude::*;
 use fmt;
 use io;
 use net::{ToSocketAddrs, SocketAddr, Shutdown};
-use sys_common::net2 as net_imp;
+use sys_common::net as net_imp;
 use sys_common::{AsInner, FromInner};
 
 /// A structure which represents a TCP stream between a local socket and a
