@@ -189,7 +189,7 @@ impl<'cx, 'tcx, 'v> Visitor<'v> for WritebackCx<'cx, 'tcx> {
             return;
         }
 
-        let var_ty = self.fcx.local_ty(l.span, l.id);
+        let var_ty = self.fcx.local_ty(self.check_env, l.span, l.id);
         let var_ty = self.resolve(&var_ty, ResolvingLocal(l.span));
         write_ty_to_tcx(self.tcx(), l.id, var_ty);
         visit::walk_local(self, l);

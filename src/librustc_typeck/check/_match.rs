@@ -142,7 +142,7 @@ pub fn check_pat<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
             demand::suptype(fcx, pat.span, expected, const_ty);
         }
         ast::PatIdent(bm, ref path, ref sub) if pat_is_binding(&tcx.def_map, pat) => {
-            let typ = fcx.local_ty(pat.span, pat.id);
+            let typ = fcx.local_ty(check_env, pat.span, pat.id);
             match bm {
                 ast::BindByRef(mutbl) => {
                     // if the binding is like
@@ -172,7 +172,7 @@ pub fn check_pat<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
             // what the type of the binding `x` ought to be
             let canon_id = *pcx.map.get(&path.node).unwrap();
             if canon_id != pat.id {
-                let ct = fcx.local_ty(pat.span, canon_id);
+                let ct = fcx.local_ty(check_env, pat.span, canon_id);
                 demand::eqtype(fcx, pat.span, ct, typ);
             }
 

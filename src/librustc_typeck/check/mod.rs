@@ -154,7 +154,6 @@ mod op;
 /// share the inherited fields.
 pub struct Inherited<'a, 'tcx: 'a> {
     infcx: infer::InferCtxt<'a, 'tcx>,
-    locals: RefCell<NodeMap<Ty<'tcx>>>,
     param_env: ty::ParameterEnvironment<'a, 'tcx>,
 
     // Temporary tables:
@@ -171,6 +170,8 @@ pub struct Inherited<'a, 'tcx: 'a> {
 }
 
 pub struct CheckEnv<'tcx> {
+    locals: NodeMap<Ty<'tcx>>,
+
     // Temporary tables:
     node_types: NodeMap<Ty<'tcx>>,
 
@@ -534,7 +535,6 @@ impl<'a, 'tcx> Inherited<'a, 'tcx> {
            -> Inherited<'a, 'tcx> {
         Inherited {
             infcx: infer::new_infer_ctxt(tcx),
-            locals: RefCell::new(NodeMap()),
             param_env: param_env,
             item_substs: RefCell::new(NodeMap()),
             adjustments: RefCell::new(NodeMap()),
@@ -567,6 +567,7 @@ impl<'a, 'tcx> Inherited<'a, 'tcx> {
 impl<'tcx> CheckEnv<'tcx> {
     fn new() -> Self {
         CheckEnv {
+            locals: NodeMap(),
             node_types: NodeMap(),
             fn_sig_map: NodeMap(),
             deferred_call_resolutions: DefIdMap(),
@@ -732,12 +733,12 @@ impl<'a, 'tcx> GatherLocalsVisitor<'a, 'tcx> {
             None => {
                 // infer the variable's type
                 let var_ty = self.fcx.infcx().next_ty_var();
-                self.fcx.inh.locals.borrow_mut().insert(nid, var_ty);
+                self.check_env.locals.insert(nid, var_ty);
                 var_ty
             }
             Some(typ) => {
                 // take type that the user specified
-                self.fcx.inh.locals.borrow_mut().insert(nid, typ);
+                self.check_env.locals.insert(nid, typ);
                 typ
             }
         }
@@ -755,7 +756,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
         debug!("Local variable {} is assigned type {}",
                self.fcx.pat_to_string(&*local.pat),
                self.fcx.infcx().ty_to_string(
-                   self.fcx.inh.locals.borrow().get(&local.id).unwrap().clone()));
+                   self.check_env.locals.get(&local.id).unwrap().clone()));
         visit::walk_local(self, local);
     }
 
@@ -771,7 +772,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
                 debug!("Pattern binding {} is assigned to {} with type {}",
                        token::get_ident(path1.node),
                        self.fcx.infcx().ty_to_string(
-                           self.fcx.inh.locals.borrow().get(&p.id).unwrap().clone()),
+                           self.check_env.locals.get(&p.id).unwrap().clone()),
                        var_ty.repr(self.fcx.tcx()));
             }
         }
@@ -1512,8 +1513,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         format!("{:?}", self_ptr)
     }
 
-    pub fn local_ty(&self, span: Span, nid: ast::NodeId) -> Ty<'tcx> {
-        match self.inh.locals.borrow().get(&nid) {
+    pub fn local_ty(&self,
+                    check_env: &mut CheckEnv<'tcx>,
+                    span: Span,
+                    nid: ast::NodeId) -> Ty<'tcx> {
+        match check_env.locals.get(&nid) {
             Some(&t) => t,
             None => {
                 self.tcx().sess.span_err(
@@ -3324,7 +3328,8 @@ fn check_expr_with_unifier<'a, 'tcx, F>(check_env: &mut CheckEnv<'tcx>,
           if let Some((opt_ty, segments, def)) =
                   resolve_ty_and_def_ufcs(check_env, fcx, path_res, opt_self_ty, path,
                                           expr.span, expr.id) {
-              let (scheme, predicates) = type_scheme_and_predicates_for_def(fcx,
+              let (scheme, predicates) = type_scheme_and_predicates_for_def(check_env,
+                                                                            fcx,
                                                                             expr.span,
                                                                             def);
               instantiate_path(check_env,
@@ -3956,7 +3961,7 @@ fn check_decl_initializer<'a,'tcx>(check_env: &mut CheckEnv<'tcx>,
 {
     let ref_bindings = fcx.tcx().pat_contains_ref_binding(&local.pat);
 
-    let local_ty = fcx.local_ty(init.span, local.id);
+    let local_ty = fcx.local_ty(check_env, init.span, local.id);
     if !ref_bindings {
         check_expr_coercable_to_type(check_env, fcx, init, local_ty)
     } else {
@@ -3978,7 +3983,7 @@ fn check_decl_local<'a,'tcx>(check_env: &mut CheckEnv<'tcx>,
                              fcx: &FnCtxt<'a,'tcx>, local: &'tcx ast::Local)  {
     let tcx = fcx.ccx.tcx;
 
-    let t = fcx.local_ty(local.span, local.id);
+    let t = fcx.local_ty(check_env, local.span, local.id);
     fcx.write_ty(check_env, local.id, t);
 
     if let Some(ref init) = local.init {
@@ -4380,13 +4385,14 @@ pub fn check_enum_variants<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
 }
 
 // Returns the type parameter count and the type for the given definition.
-fn type_scheme_and_predicates_for_def<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
+fn type_scheme_and_predicates_for_def<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
+                                                fcx: &FnCtxt<'a, 'tcx>,
                                                 sp: Span,
                                                 defn: def::Def)
                                                 -> (TypeScheme<'tcx>, GenericPredicates<'tcx>) {
     match defn {
         def::DefLocal(nid) | def::DefUpvar(nid, _) => {
-            let typ = fcx.local_ty(sp, nid);
+            let typ = fcx.local_ty(check_env, sp, nid);
             (ty::TypeScheme { generics: ty::Generics::empty(), ty: typ },
              ty::GenericPredicates::empty())
         }
