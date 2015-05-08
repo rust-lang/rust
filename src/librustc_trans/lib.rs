@@ -74,6 +74,7 @@ pub mod back {
     pub use rustc_back::x86;
     pub use rustc_back::x86_64;
 
+    pub mod linker;
     pub mod link;
     pub mod lto;
     pub mod write;
