@@ -358,11 +358,10 @@ rand="0.3.0"
 The `[dependencies]` section of `Cargo.toml` is like the `[package]` section:
 everything that follows it is part of it, until the next section starts.
 Cargo uses the dependencies section to know what dependencies on external
-crates you have, and what versions you require. In this case, we’ve used `*`,
-which means that we’ll use the latest version of `rand`. Cargo understands
-[Semantic Versioning][semver], which is a standard for writing version
-numbers. If we wanted a specific version or range of versions, we could be
-more specific here. [Cargo’s documentation][cargodoc] contains more details.
+crates you have, and what versions you require. In this case, we’ve used version `0.3.0`.
+Cargo understands [Semantic Versioning][semver], which is a standard for writing version
+numbers. If we wanted to use the latest version we could use `*` or we could use a range 
+of versions. [Cargo’s documentation][cargodoc] contains more details.
 
 [semver]: http://semver.org
 [cargodoc]: http://doc.crates.io/crates-io.html
@@ -410,7 +409,7 @@ $ cargo build
    Compiling guessing_game v0.1.0 (file:///home/you/projects/guessing_game)
 ```
 
-So, we told Cargo we wanted any version of `rand`, and so it fetched the latest
+So, we told Cargo we wanted any `0.3.x` version of `rand`, and so it fetched the latest
 version at the time this was written, `v0.3.8`. But what happens when next
 week, version `v0.3.9` comes out, with an important bugfix? While getting
 bugfixes is important, what if `0.3.9` contains a regression that breaks our
