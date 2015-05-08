@@ -160,7 +160,6 @@ pub struct Inherited<'a, 'tcx: 'a> {
     item_substs: RefCell<NodeMap<ty::ItemSubsts<'tcx>>>,
     adjustments: RefCell<NodeMap<ty::AutoAdjustment<'tcx>>>,
     upvar_capture_map: RefCell<ty::UpvarCaptureMap>,
-    closure_tys: RefCell<DefIdMap<ty::ClosureTy<'tcx>>>,
     closure_kinds: RefCell<DefIdMap<ty::ClosureKind>>,
 
     // Tracks trait obligations incurred during this function body.
@@ -173,6 +172,7 @@ pub struct CheckEnv<'tcx> {
     // Temporary tables:
     node_types: NodeMap<Ty<'tcx>>,
     method_map: FnvHashMap<MethodCall, MethodCallee<'tcx>>,
+    closure_tys: DefIdMap<ty::ClosureTy<'tcx>>,
 
     // A mapping from each fn's id to its signature, with all bound
     // regions replaced with free ones. Unlike the other tables, this
@@ -514,7 +514,7 @@ impl<'a, 'tcx> ty::ClosureTyper<'tcx> for FnCtxtTyper<'a, 'tcx> {
                     substs: &subst::Substs<'tcx>)
                     -> ty::ClosureTy<'tcx>
     {
-        self.fcx.inh.closure_tys.borrow().get(&def_id).unwrap().subst(self.fcx.tcx(), substs)
+        self.check_env.closure_tys.get(&def_id).unwrap().subst(self.fcx.tcx(), substs)
     }
 
     fn closure_upvars(&self,
@@ -536,7 +536,6 @@ impl<'a, 'tcx> Inherited<'a, 'tcx> {
             item_substs: RefCell::new(NodeMap()),
             adjustments: RefCell::new(NodeMap()),
             upvar_capture_map: RefCell::new(FnvHashMap()),
-            closure_tys: RefCell::new(DefIdMap()),
             closure_kinds: RefCell::new(DefIdMap()),
             fulfillment_cx: RefCell::new(traits::FulfillmentContext::new()),
         }
@@ -565,6 +564,7 @@ impl<'tcx> CheckEnv<'tcx> {
             locals: NodeMap(),
             node_types: NodeMap(),
             method_map: FnvHashMap(),
+            closure_tys: DefIdMap(),
             fn_sig_map: NodeMap(),
             deferred_call_resolutions: DefIdMap(),
             deferred_cast_checks: Vec::new(),

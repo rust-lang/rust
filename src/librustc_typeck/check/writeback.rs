@@ -232,7 +232,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             return
         }
 
-        for (def_id, closure_ty) in &*self.fcx.inh.closure_tys.borrow() {
+        for (def_id, closure_ty) in &self.check_env.closure_tys {
             let closure_ty = self.resolve(closure_ty, ResolvingClosure(*def_id));
             self.fcx.tcx().closure_tys.borrow_mut().insert(*def_id, closure_ty);
         }

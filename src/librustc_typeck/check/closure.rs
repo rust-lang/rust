@@ -97,7 +97,7 @@ fn check_closure<'a,'tcx>(check_env: &mut CheckEnv<'tcx>,
            fn_ty.sig.repr(fcx.tcx()),
            opt_kind);
 
-    fcx.inh.closure_tys.borrow_mut().insert(expr_def_id, fn_ty);
+    check_env.closure_tys.insert(expr_def_id, fn_ty);
     match opt_kind {
         Some(kind) => { fcx.inh.closure_kinds.borrow_mut().insert(expr_def_id, kind); }
         None => { }
