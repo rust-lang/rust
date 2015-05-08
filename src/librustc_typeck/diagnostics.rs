@@ -12,6 +12,28 @@
 
 register_long_diagnostics! {
 
+E0046: r##"
+When trying to make some type implement a trait `Foo`, you must, at minimum,
+provide implementations for all of `Foo`'s required methods (meaning the
+methods that do not have default implementations), as well as any required
+trait items like associated types or constants.
+"##,
+
+E0054: r##"
+It is not allowed to cast to a bool. If you are trying to cast a numeric type
+to a bool, you can compare it with zero instead:
+
+```
+let x = 5;
+
+// Ok
+let x_is_nonzero = x != 0;
+
+// Not allowed, won't compile
+let x_is_nonzero = x as bool;
+```
+"##,
+
 E0081: r##"
 Enum discriminants are used to differentiate enum variants stored in memory.
 This error indicates that the same value was used for two or more variants,
@@ -106,11 +128,9 @@ register_diagnostics! {
     E0040, // explicit use of destructor method
     E0044,
     E0045,
-    E0046,
     E0049,
     E0050,
     E0053,
-    E0054,
     E0055,
     E0057,
     E0059,
