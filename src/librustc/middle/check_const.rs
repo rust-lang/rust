@@ -251,9 +251,13 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
                 b: &'v ast::Block,
                 s: Span,
                 fn_id: ast::NodeId) {
-        assert!(self.mode == Mode::Var);
-        self.with_euv(Some(fn_id), |euv| euv.walk_fn(fd, b));
-        visit::walk_fn(self, fk, fd, b, s);
+        let (old_mode, old_qualif) = (self.mode, self.qualif);
+        self.mode = Mode::Var;
+        self.qualif = ConstQualif::empty();
+		self.with_euv(Some(fn_id), |euv| euv.walk_fn(fd, b));
+		visit::walk_fn(self, fk, fd, b, s);
+		self.mode = old_mode;
+		self.qualif = old_qualif;
     }
 
     fn visit_pat(&mut self, p: &ast::Pat) {
@@ -275,7 +279,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
 
         let node_ty = ty::node_id_to_type(self.tcx, ex.id);
         check_expr(self, ex, node_ty);
-
+	
         // Special-case some expressions to avoid certain flags bubbling up.
         match ex.node {
             ast::ExprCall(ref callee, ref args) => {
