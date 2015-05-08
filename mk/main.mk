@@ -195,6 +195,7 @@ ifndef CFG_DISABLE_VALGRIND_RPASS
   $(info cfg: valgrind-rpass command set to $(CFG_VALGRIND))
   CFG_VALGRIND_RPASS :=$(CFG_VALGRIND)
 else
+  $(info cfg: disabling valgrind run-pass tests)
   CFG_VALGRIND_RPASS :=
 endif
 
