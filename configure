@@ -104,8 +104,8 @@ probe() {
         T=$(command -v $P 2>&1)
         if [ $? -eq 0 ]
         then
-            VER0=$($P --version 2>/dev/null | head -1 \
-                |  sed -e 's/[^0-9]*\([vV]\?[0-9.]\+[^ ]*\).*/\1/' )
+            VER0=$($P --version 2>/dev/null \
+                |  grep -o '[vV]\?[0-9][0-9.][a-z0-9.-]*' | head -1 )
             if [ $? -eq 0 -a "x${VER0}" != "x" ]
             then
               VER="($VER0)"
