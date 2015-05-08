@@ -38,7 +38,7 @@ fn test00() {
 
     let mut i: isize = 0;
 
-    // Create and spawn tasks...
+    // Create and spawn threads...
     let mut results = Vec::new();
     while i < number_of_tasks {
         let tx = tx.clone();
@@ -51,7 +51,7 @@ fn test00() {
         i = i + 1;
     }
 
-    // Read from spawned tasks...
+    // Read from spawned threads...
     let mut sum = 0;
     for _r in &results {
         i = 0;
@@ -62,12 +62,12 @@ fn test00() {
         }
     }
 
-    // Join spawned tasks...
+    // Join spawned threads...
     for r in results { r.join(); }
 
     println!("Completed: Final number is: ");
     println!("{}", sum);
-    // assert (sum == (((number_of_tasks * (number_of_tasks - 1)) / 2) *
+    // assert (sum == (((number_of_threads * (number_of_threads - 1)) / 2) *
     //       number_of_messages));
     assert_eq!(sum, 480);
 }

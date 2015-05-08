@@ -17,7 +17,7 @@ use std::env;
 
 fn main() {
     error!("whatever");
-    // 101 is the code the runtime uses on task panic and the value
+    // 101 is the code the runtime uses on thread panic and the value
     // compiletest expects run-fail tests to return.
     env::set_exit_status(101);
 }

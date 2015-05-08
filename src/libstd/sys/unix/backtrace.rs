@@ -22,7 +22,7 @@
 ///   getting both accurate backtraces and accurate symbols across platforms.
 ///   This route was not chosen in favor of the next option, however.
 ///
-/// * We're already using libgcc_s for exceptions in rust (triggering task
+/// * We're already using libgcc_s for exceptions in rust (triggering thread
 ///   unwinding and running destructors on the stack), and it turns out that it
 ///   conveniently comes with a function that also gives us a backtrace. All of
 ///   these functions look like _Unwind_*, but it's not quite the full
@@ -116,7 +116,7 @@ pub fn write(w: &mut Write) -> io::Result<()> {
 
     // while it doesn't requires lock for work as everything is
     // local, it still displays much nicer backtraces when a
-    // couple of tasks panic simultaneously
+    // couple of threads panic simultaneously
     static LOCK: StaticMutex = MUTEX_INIT;
     let _g = LOCK.lock();
 

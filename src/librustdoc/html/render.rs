@@ -17,10 +17,10 @@
 //!
 //! The rendering process is largely driven by the `Context` and `Cache`
 //! structures. The cache is pre-populated by crawling the crate in question,
-//! and then it is shared among the various rendering tasks. The cache is meant
+//! and then it is shared among the various rendering threads. The cache is meant
 //! to be a fairly large structure not implementing `Clone` (because it's shared
-//! among tasks). The context, however, should be a lightweight structure. This
-//! is cloned per-task and contains information about what is currently being
+//! among threads). The context, however, should be a lightweight structure. This
+//! is cloned per-thread and contains information about what is currently being
 //! rendered.
 //!
 //! In order to speed up rendering (mostly because of markdown rendering), the
@@ -30,7 +30,7 @@
 //!
 //! In addition to rendering the crate itself, this module is also responsible
 //! for creating the corresponding search index and source file renderings.
-//! These tasks are not parallelized (they haven't been a bottleneck yet), and
+//! These threads are not parallelized (they haven't been a bottleneck yet), and
 //! both occur before the crate is rendered.
 pub use self::ExternalLocation::*;
 
@@ -154,7 +154,7 @@ impl Impl {
 /// This structure purposefully does not implement `Clone` because it's intended
 /// to be a fairly large and expensive structure to clone. Instead this adheres
 /// to `Send` so it may be stored in a `Arc` instance and shared among the various
-/// rendering tasks.
+/// rendering threads.
 #[derive(Default)]
 pub struct Cache {
     /// Mapping of typaram ids to the name of the type parameter. This is used
@@ -688,7 +688,7 @@ fn write(dst: PathBuf, contents: &[u8]) -> io::Result<()> {
     try!(File::create(&dst)).write_all(contents)
 }
 
-/// Makes a directory on the filesystem, failing the task if an error occurs and
+/// Makes a directory on the filesystem, failing the thread if an error occurs and
 /// skipping if the directory already exists.
 fn mkdir(path: &Path) -> io::Result<()> {
     if !path.exists() {

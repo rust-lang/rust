@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// calling pin_task and that's having weird side-effects.
+// calling pin_thread and that's having weird side-effects.
 
 // pretty-expanded FIXME #23616
 

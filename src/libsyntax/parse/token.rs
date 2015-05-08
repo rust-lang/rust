@@ -601,7 +601,7 @@ pub type IdentInterner = StrInterner;
 
 // if an interner exists in TLS, return it. Otherwise, prepare a
 // fresh one.
-// FIXME(eddyb) #8726 This should probably use a task-local reference.
+// FIXME(eddyb) #8726 This should probably use a thread-local reference.
 pub fn get_ident_interner() -> Rc<IdentInterner> {
     thread_local!(static KEY: Rc<::parse::token::IdentInterner> = {
         Rc::new(mk_fresh_ident_interner())
@@ -615,14 +615,14 @@ pub fn reset_ident_interner() {
     interner.reset(mk_fresh_ident_interner());
 }
 
-/// Represents a string stored in the task-local interner. Because the
-/// interner lives for the life of the task, this can be safely treated as an
-/// immortal string, as long as it never crosses between tasks.
+/// Represents a string stored in the thread-local interner. Because the
+/// interner lives for the life of the thread, this can be safely treated as an
+/// immortal string, as long as it never crosses between threads.
 ///
 /// FIXME(pcwalton): You must be careful about what you do in the destructors
 /// of objects stored in TLS, because they may run after the interner is
 /// destroyed. In particular, they must not access string contents. This can
-/// be fixed in the future by just leaking all strings until task death
+/// be fixed in the future by just leaking all strings until thread death
 /// somehow.
 #[derive(Clone, PartialEq, Hash, PartialOrd, Eq, Ord)]
 pub struct InternedString {
@@ -697,14 +697,14 @@ impl Encodable for InternedString {
     }
 }
 
-/// Returns the string contents of a name, using the task-local interner.
+/// Returns the string contents of a name, using the thread-local interner.
 #[inline]
 pub fn get_name(name: ast::Name) -> InternedString {
     let interner = get_ident_interner();
     InternedString::new_from_rc_str(interner.get(name))
 }
 
-/// Returns the string contents of an identifier, using the task-local
+/// Returns the string contents of an identifier, using the thread-local
 /// interner.
 #[inline]
 pub fn get_ident(ident: ast::Ident) -> InternedString {
@@ -712,7 +712,7 @@ pub fn get_ident(ident: ast::Ident) -> InternedString {
 }
 
 /// Interns and returns the string contents of an identifier, using the
-/// task-local interner.
+/// thread-local interner.
 #[inline]
 pub fn intern_and_get_ident(s: &str) -> InternedString {
     get_name(intern(s))

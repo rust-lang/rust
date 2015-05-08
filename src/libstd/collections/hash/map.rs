@@ -205,7 +205,7 @@ fn test_resize_policy() {
 /// A hash map implementation which uses linear probing with Robin
 /// Hood bucket stealing.
 ///
-/// The hashes are all keyed by the task-local random number generator
+/// The hashes are all keyed by the thread-local random number generator
 /// on creation by default. This means that the ordering of the keys is
 /// randomized, but makes the tables more resistant to
 /// denial-of-service attacks (Hash DoS). This behaviour can be

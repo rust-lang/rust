@@ -226,7 +226,7 @@ pub fn run_tests(config: &Config) {
         }
 
         // android debug-info test uses remote debugger
-        // so, we test 1 task at once.
+        // so, we test 1 thread at once.
         // also trying to isolate problems with adb_run_wrapper.sh ilooping
         env::set_var("RUST_TEST_THREADS","1");
     }
@@ -234,7 +234,7 @@ pub fn run_tests(config: &Config) {
     match config.mode {
         DebugInfoLldb => {
             // Some older versions of LLDB seem to have problems with multiple
-            // instances running in parallel, so only run one test task at a
+            // instances running in parallel, so only run one test thread at a
             // time.
             env::set_var("RUST_TEST_THREADS", "1");
         }
