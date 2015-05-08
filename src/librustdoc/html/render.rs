@@ -1862,6 +1862,17 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         try!(write!(w, "</div>"));
     }
 
+    if !consts.is_empty() {
+        try!(write!(w, "
+            <h2 id='associated-const'>Associated Constants</h2>
+            <div class='methods'>
+        "));
+        for t in &consts {
+            try!(trait_item(w, *t));
+        }
+        try!(write!(w, "</div>"));
+    }
+
     // Output the documentation for each function individually
     if !required.is_empty() {
         try!(write!(w, "
