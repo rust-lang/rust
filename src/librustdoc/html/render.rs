@@ -905,6 +905,8 @@ impl DocFolder for Cache {
         // Index this method for searching later on
         if let Some(ref s) = item.name {
             let (parent, is_method) = match item.inner {
+                clean::AssociatedTypeItem(..) |
+                clean::AssociatedConstItem(..) |
                 clean::TyMethodItem(..) |
                 clean::StructFieldItem(..) |
                 clean::VariantItem(..) => {
