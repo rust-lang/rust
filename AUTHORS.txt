@@ -518,6 +518,7 @@ Luke Francl <look@recursion.org>
 Luke Metz <luke.metz@students.olin.edu>
 Luke Steensen <luke.steensen@gmail.com>
 Luqman Aden <me@luqman.ca>
+Łukasz Niemier <lukasz@niemier.pl>
 Magnus Auvinen <magnus.auvinen@gmail.com>
 Mahmut Bulut <mahmutbulut0@gmail.com>
 Makoto Nakashima <makoto.nksm+github@gmail.com>
@@ -997,5 +998,4 @@ xales <xales@naveria.com>
 zofrex <zofrex@gmail.com>
 zslayton <zack.slayton@gmail.com>
 zzmp <zmp@umich.edu>
-Łukasz Niemier <lukasz@niemier.pl>
 克雷 <geekcraik@users.noreply.github.com>

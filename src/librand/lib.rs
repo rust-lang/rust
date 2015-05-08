@@ -26,7 +26,8 @@
        html_playground_url = "http://play.rust-lang.org/")]
 #![no_std]
 #![staged_api]
-#![unstable(feature = "rand")]
+#![unstable(feature = "rand",
+            reason = "use `rand` from crates.io")]
 #![feature(core)]
 #![feature(no_std)]
 #![feature(staged_api)]
