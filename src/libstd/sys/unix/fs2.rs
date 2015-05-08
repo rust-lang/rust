@@ -69,9 +69,11 @@ impl FileAttr {
         FilePermissions { mode: (self.stat.st_mode as mode_t) & 0o777 }
     }
 
+    #[allow(dead_code)]
     pub fn accessed(&self) -> u64 {
         self.mktime(self.stat.st_atime as u64, self.stat.st_atime_nsec as u64)
     }
+    #[allow(dead_code)]
     pub fn modified(&self) -> u64 {
         self.mktime(self.stat.st_mtime as u64, self.stat.st_mtime_nsec as u64)
     }
@@ -83,6 +85,7 @@ impl FileAttr {
     pub fn raw(&self) -> &raw::stat { &self.stat }
 
     // times are in milliseconds (currently)
+    #[allow(dead_code)]
     fn mktime(&self, secs: u64, nsecs: u64) -> u64 {
         secs * 1000 + nsecs / 1000000
     }
