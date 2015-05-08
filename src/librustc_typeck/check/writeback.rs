@@ -42,7 +42,6 @@ pub fn resolve_type_vars_in_expr<'a, 'ctx>(check_env: &mut CheckEnv<'ctx>,
     wbcx.visit_expr(e);
     wbcx.visit_upvar_borrow_map();
     wbcx.visit_closures();
-    wbcx.visit_object_cast_map();
 }
 
 pub fn resolve_type_vars_in_fn<'a, 'ctx>(check_env: &mut CheckEnv<'ctx>,
@@ -64,7 +63,6 @@ pub fn resolve_type_vars_in_fn<'a, 'ctx>(check_env: &mut CheckEnv<'ctx>,
     }
     wbcx.visit_upvar_borrow_map();
     wbcx.visit_closures();
-    wbcx.visit_object_cast_map();
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -241,27 +239,6 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 
         for (def_id, &closure_kind) in &*self.fcx.inh.closure_kinds.borrow() {
             self.fcx.tcx().closure_kinds.borrow_mut().insert(*def_id, closure_kind);
-        }
-    }
-
-    fn visit_object_cast_map(&self) {
-        if self.fcx.writeback_errors.get() {
-            return
-        }
-
-        for (&node_id, trait_ref) in self.fcx
-                                            .inh
-                                            .object_cast_map
-                                            .borrow()
-                                            .iter()
-        {
-            let span = ty::expr_span(self.tcx(), node_id);
-            let reason = ResolvingExpr(span);
-            let closure_ty = self.resolve(trait_ref, reason);
-            self.tcx()
-                .object_cast_map
-                .borrow_mut()
-                .insert(node_id, closure_ty);
         }
     }
 
