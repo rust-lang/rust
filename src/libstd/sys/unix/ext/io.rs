@@ -16,7 +16,7 @@ use fs;
 use net;
 use os::raw;
 use sys;
-use sys_common::{net2, AsInner, FromInner};
+use sys_common::{self, AsInner, FromInner};
 
 /// Raw file descriptors.
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -68,7 +68,7 @@ impl AsRawFd for fs::File {
 #[stable(feature = "from_raw_os", since = "1.1.0")]
 impl FromRawFd for fs::File {
     unsafe fn from_raw_fd(fd: RawFd) -> fs::File {
-        fs::File::from_inner(sys::fs2::File::from_inner(fd))
+        fs::File::from_inner(sys::fs::File::from_inner(fd))
     }
 }
 
@@ -89,20 +89,20 @@ impl AsRawFd for net::UdpSocket {
 impl FromRawFd for net::TcpStream {
     unsafe fn from_raw_fd(fd: RawFd) -> net::TcpStream {
         let socket = sys::net::Socket::from_inner(fd);
-        net::TcpStream::from_inner(net2::TcpStream::from_inner(socket))
+        net::TcpStream::from_inner(sys_common::net::TcpStream::from_inner(socket))
     }
 }
 #[stable(feature = "from_raw_os", since = "1.1.0")]
 impl FromRawFd for net::TcpListener {
     unsafe fn from_raw_fd(fd: RawFd) -> net::TcpListener {
         let socket = sys::net::Socket::from_inner(fd);
-        net::TcpListener::from_inner(net2::TcpListener::from_inner(socket))
+        net::TcpListener::from_inner(sys_common::net::TcpListener::from_inner(socket))
     }
 }
 #[stable(feature = "from_raw_os", since = "1.1.0")]
 impl FromRawFd for net::UdpSocket {
     unsafe fn from_raw_fd(fd: RawFd) -> net::UdpSocket {
         let socket = sys::net::Socket::from_inner(fd);
-        net::UdpSocket::from_inner(net2::UdpSocket::from_inner(socket))
+        net::UdpSocket::from_inner(sys_common::net::UdpSocket::from_inner(socket))
     }
 }

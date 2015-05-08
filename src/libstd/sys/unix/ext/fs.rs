@@ -102,7 +102,7 @@ impl OpenOptionsExt for OpenOptions {
 }
 
 #[unstable(feature = "metadata_ext", reason = "recently added API")]
-pub struct Metadata(sys::fs2::FileAttr);
+pub struct Metadata(sys::fs::FileAttr);
 
 #[unstable(feature = "metadata_ext", reason = "recently added API")]
 pub trait MetadataExt {
@@ -111,7 +111,7 @@ pub trait MetadataExt {
 
 impl MetadataExt for fs::Metadata {
     fn as_raw(&self) -> &Metadata {
-        let inner: &sys::fs2::FileAttr = self.as_inner();
+        let inner: &sys::fs::FileAttr = self.as_inner();
         unsafe { mem::transmute(inner) }
     }
 }
@@ -187,7 +187,7 @@ impl DirEntryExt for fs::DirEntry {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn symlink<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> io::Result<()>
 {
-    sys::fs2::symlink(src.as_ref(), dst.as_ref())
+    sys::fs::symlink(src.as_ref(), dst.as_ref())
 }
 
 #[unstable(feature = "dir_builder", reason = "recently added API")]

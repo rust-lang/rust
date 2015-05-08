@@ -13,7 +13,7 @@
 use fs;
 use os::windows::raw;
 use net;
-use sys_common::{net2, AsInner, FromInner};
+use sys_common::{self, AsInner, FromInner};
 use sys;
 
 /// Raw HANDLEs.
@@ -61,7 +61,7 @@ impl AsRawHandle for fs::File {
 impl FromRawHandle for fs::File {
     unsafe fn from_raw_handle(handle: RawHandle) -> fs::File {
         let handle = handle as ::libc::HANDLE;
-        fs::File::from_inner(sys::fs2::File::from_inner(handle))
+        fs::File::from_inner(sys::fs::File::from_inner(handle))
     }
 }
 
@@ -113,20 +113,20 @@ impl AsRawSocket for net::UdpSocket {
 impl FromRawSocket for net::TcpStream {
     unsafe fn from_raw_socket(sock: RawSocket) -> net::TcpStream {
         let sock = sys::net::Socket::from_inner(sock);
-        net::TcpStream::from_inner(net2::TcpStream::from_inner(sock))
+        net::TcpStream::from_inner(sys_common::net::TcpStream::from_inner(sock))
     }
 }
 #[stable(feature = "from_raw_os", since = "1.1.0")]
 impl FromRawSocket for net::TcpListener {
     unsafe fn from_raw_socket(sock: RawSocket) -> net::TcpListener {
         let sock = sys::net::Socket::from_inner(sock);
-        net::TcpListener::from_inner(net2::TcpListener::from_inner(sock))
+        net::TcpListener::from_inner(sys_common::net::TcpListener::from_inner(sock))
     }
 }
 #[stable(feature = "from_raw_os", since = "1.1.0")]
 impl FromRawSocket for net::UdpSocket {
     unsafe fn from_raw_socket(sock: RawSocket) -> net::UdpSocket {
         let sock = sys::net::Socket::from_inner(sock);
-        net::UdpSocket::from_inner(net2::UdpSocket::from_inner(sock))
+        net::UdpSocket::from_inner(sys_common::net::UdpSocket::from_inner(sock))
     }
 }
