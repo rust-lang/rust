@@ -129,8 +129,8 @@ pub fn check_pat<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
             let const_ty = {
                 let typer = FnCtxtTyper::new(check_env, fcx);
                 typer.instantiate_type_scheme(pat.span,
-                                                             &Substs::empty(),
-                                                             &const_scheme.ty)
+                                              &Substs::empty(),
+                                              &const_scheme.ty)
             };
             fcx.write_ty(check_env, pat.id, const_ty);
 
