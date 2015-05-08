@@ -22,5 +22,5 @@ fn main() {
 }
 
 fn startfn() {
-    assert!("Ensure that the child task runs by panicking".is_empty());
+    assert!("Ensure that the child thread runs by panicking".is_empty());
 }
