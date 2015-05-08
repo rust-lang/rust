@@ -59,6 +59,7 @@ mod freebsd_base;
 mod linux_base;
 mod openbsd_base;
 mod windows_base;
+mod windows_msvc_base;
 
 /// Everything `rustc` knows about how to compile for a specific target.
 ///
