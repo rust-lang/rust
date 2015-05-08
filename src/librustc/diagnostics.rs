@@ -271,6 +271,12 @@ fn main() {
 See also http://doc.rust-lang.org/book/unsafe.html
 "##,
 
+E0137: r##"
+This error indicates that the compiler found multiple functions with the
+#[main] attribute. This is an error because there must be a unique entry point
+into a Rust program.
+"##,
+
 E0152: r##"
 Lang items are already implemented in the standard library. Unless you are
 writing a free-standing application (e.g. a kernel), you do not need to provide
@@ -800,7 +806,6 @@ register_diagnostics! {
     E0134,
     E0135,
     E0136,
-    E0137,
     E0138,
     E0139,
     E0261, // use of undeclared lifetime name
