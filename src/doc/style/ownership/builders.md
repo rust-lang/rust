@@ -115,7 +115,7 @@ Sometimes builders must transfer ownership when constructing the final type
 `T`, meaning that the terminal methods must take `self` rather than `&self`:
 
 ```rust
-// A simplified excerpt from std::thread::ThreadBuilder
+// A simplified excerpt from std::thread::Builder
 
 impl ThreadBuilder {
     /// Name the thread-to-be. Currently the name is used for identification
