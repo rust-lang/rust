@@ -396,19 +396,24 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'tcx>(
             }
         };
 
-        let opt_type_did = match typ.sty {
-            ty::ty_struct(struct_did, _) => Some(struct_did),
-            ty::ty_enum(enum_did, _) => Some(enum_did),
-            _ => None,
+        let dtor_kind = match typ.sty {
+            ty::ty_enum(def_id, _) |
+            ty::ty_struct(def_id, _) => {
+                match destructor_for_type.get(&def_id) {
+                    Some(def_id) => DtorKind::KnownDropMethod(*def_id),
+                    None => DtorKind::PureRecur,
+                }
+            }
+            ty::ty_trait(ref ty_trait) => {
+                DtorKind::Unknown(ty_trait.bounds.clone())
+            }
+            _ => DtorKind::PureRecur,
         };
 
-        let opt_dtor =
-            opt_type_did.and_then(|did| destructor_for_type.get(&did));
-
         debug!("iterate_over_potentially_unsafe_regions_in_type \
-                {}typ: {} scope: {:?} opt_dtor: {:?} xref: {}",
+                {}typ: {} scope: {:?} xref: {}",
                (0..depth).map(|_| ' ').collect::<String>(),
-               typ.repr(rcx.tcx()), scope, opt_dtor, xref_depth);
+               typ.repr(rcx.tcx()), scope, xref_depth);
 
         // If `typ` has a destructor, then we must ensure that all
         // borrowed data reachable via `typ` must outlive the parent
@@ -439,102 +444,7 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'tcx>(
         // simply skip the `type_must_outlive` call entirely (but
         // resume the recursive checking of the type-substructure).
 
-        let has_dtor_of_interest;
-
-        if let Some(&dtor_method_did) = opt_dtor {
-            let impl_did = ty::impl_of_method(rcx.tcx(), dtor_method_did)
-                .unwrap_or_else(|| {
-                    rcx.tcx().sess.span_bug(
-                        span, "no Drop impl found for drop method")
-                });
-
-            let dtor_typescheme = ty::lookup_item_type(rcx.tcx(), impl_did);
-            let dtor_generics = dtor_typescheme.generics;
-
-            let mut has_pred_of_interest = false;
-
-            let mut seen_items = Vec::new();
-            let mut items_to_inspect = vec![impl_did];
-            'items: while let Some(item_def_id) = items_to_inspect.pop() {
-                if seen_items.contains(&item_def_id) {
-                    continue;
-                }
-
-                for pred in ty::lookup_predicates(rcx.tcx(), item_def_id).predicates {
-                    let result = match pred {
-                        ty::Predicate::Equate(..) |
-                        ty::Predicate::RegionOutlives(..) |
-                        ty::Predicate::TypeOutlives(..) |
-                        ty::Predicate::Projection(..) => {
-                            // For now, assume all these where-clauses
-                            // may give drop implementation capabilty
-                            // to access borrowed data.
-                            true
-                        }
-
-                        ty::Predicate::Trait(ty::Binder(ref t_pred)) => {
-                            let def_id = t_pred.trait_ref.def_id;
-                            if ty::trait_items(rcx.tcx(), def_id).len() != 0 {
-                                // If trait has items, assume it adds
-                                // capability to access borrowed data.
-                                true
-                            } else {
-                                // Trait without items is itself
-                                // uninteresting from POV of dropck.
-                                //
-                                // However, may have parent w/ items;
-                                // so schedule checking of predicates,
-                                items_to_inspect.push(def_id);
-                                // and say "no capability found" for now.
-                                false
-                            }
-                        }
-                    };
-
-                    if result {
-                        has_pred_of_interest = true;
-                        debug!("typ: {} has interesting dtor due to generic preds, e.g. {}",
-                               typ.repr(rcx.tcx()), pred.repr(rcx.tcx()));
-                        break 'items;
-                    }
-                }
-
-                seen_items.push(item_def_id);
-            }
-
-            // In `impl<'a> Drop ...`, we automatically assume
-            // `'a` is meaningful and thus represents a bound
-            // through which we could reach borrowed data.
-            //
-            // FIXME (pnkfelix): In the future it would be good to
-            // extend the language to allow the user to express,
-            // in the impl signature, that a lifetime is not
-            // actually used (something like `where 'a: ?Live`).
-            let has_region_param_of_interest =
-                dtor_generics.has_region_params(subst::TypeSpace);
-
-            has_dtor_of_interest =
-                has_region_param_of_interest ||
-                has_pred_of_interest;
-
-            if has_dtor_of_interest {
-                debug!("typ: {} has interesting dtor, due to \
-                        region params: {} or pred: {}",
-                       typ.repr(rcx.tcx()),
-                       has_region_param_of_interest,
-                       has_pred_of_interest);
-            } else {
-                debug!("typ: {} has dtor, but it is uninteresting",
-                       typ.repr(rcx.tcx()));
-            }
-
-        } else {
-            debug!("typ: {} has no dtor, and thus is uninteresting",
-                   typ.repr(rcx.tcx()));
-            has_dtor_of_interest = false;
-        }
-
-        if has_dtor_of_interest {
+        if has_dtor_of_interest(rcx.tcx(), dtor_kind, typ, span) {
             // If `typ` has a destructor, then we must ensure that all
             // borrowed data reachable via `typ` must outlive the
             // parent of `scope`. (It does not suffice for it to
@@ -620,7 +530,7 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'tcx>(
 
                 ty::ty_rptr(..) | ty::ty_ptr(_) | ty::ty_bare_fn(..) => {
                     // Don't recurse, since references, pointers,
-                    // boxes, and bare functions don't own instances
+                    // and bare functions don't own instances
                     // of the types appearing within them.
                     walker.skip_current_subtree();
                 }
@@ -638,4 +548,141 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'tcx>(
     }
 
     return Ok(());
+}
+
+enum DtorKind<'tcx> {
+    // Type has an associated drop method with this def id
+    KnownDropMethod(ast::DefId),
+
+    // Type has no destructor (or its dtor is known to be pure
+    // with respect to lifetimes), though its *substructure*
+    // may carry a destructor.
+    PureRecur,
+
+    // Type may have impure destructor that is unknown;
+    // e.g. `Box<Trait+'a>`
+    Unknown(ty::ExistentialBounds<'tcx>),
+}
+
+fn has_dtor_of_interest<'tcx>(tcx: &ty::ctxt<'tcx>,
+                              dtor_kind: DtorKind,
+                              typ: ty::Ty<'tcx>,
+                              span: Span) -> bool {
+    let has_dtor_of_interest: bool;
+
+    match dtor_kind {
+        DtorKind::PureRecur => {
+            has_dtor_of_interest = false;
+            debug!("typ: {} has no dtor, and thus is uninteresting",
+                   typ.repr(tcx));
+        }
+        DtorKind::Unknown(bounds) => {
+            match bounds.region_bound {
+                ty::ReStatic => {
+                    debug!("trait: {} has 'static bound, and thus is uninteresting",
+                           typ.repr(tcx));
+                    has_dtor_of_interest = false;
+                }
+                ty::ReEmpty => {
+                    debug!("trait: {} has empty region bound, and thus is uninteresting",
+                           typ.repr(tcx));
+                    has_dtor_of_interest = false;
+                }
+                r => {
+                    debug!("trait: {} has non-static bound: {}; assumed interesting",
+                           typ.repr(tcx), r.repr(tcx));
+                    has_dtor_of_interest = true;
+                }
+            }
+        }
+        DtorKind::KnownDropMethod(dtor_method_did) => {
+            let impl_did = ty::impl_of_method(tcx, dtor_method_did)
+                .unwrap_or_else(|| {
+                    tcx.sess.span_bug(
+                        span, "no Drop impl found for drop method")
+                });
+
+            let dtor_typescheme = ty::lookup_item_type(tcx, impl_did);
+            let dtor_generics = dtor_typescheme.generics;
+
+            let mut has_pred_of_interest = false;
+
+            let mut seen_items = Vec::new();
+            let mut items_to_inspect = vec![impl_did];
+            'items: while let Some(item_def_id) = items_to_inspect.pop() {
+                if seen_items.contains(&item_def_id) {
+                    continue;
+                }
+
+                for pred in ty::lookup_predicates(tcx, item_def_id).predicates {
+                    let result = match pred {
+                        ty::Predicate::Equate(..) |
+                        ty::Predicate::RegionOutlives(..) |
+                        ty::Predicate::TypeOutlives(..) |
+                        ty::Predicate::Projection(..) => {
+                            // For now, assume all these where-clauses
+                            // may give drop implementation capabilty
+                            // to access borrowed data.
+                            true
+                        }
+
+                        ty::Predicate::Trait(ty::Binder(ref t_pred)) => {
+                            let def_id = t_pred.trait_ref.def_id;
+                            if ty::trait_items(tcx, def_id).len() != 0 {
+                                // If trait has items, assume it adds
+                                // capability to access borrowed data.
+                                true
+                            } else {
+                                // Trait without items is itself
+                                // uninteresting from POV of dropck.
+                                //
+                                // However, may have parent w/ items;
+                                // so schedule checking of predicates,
+                                items_to_inspect.push(def_id);
+                                // and say "no capability found" for now.
+                                false
+                            }
+                        }
+                    };
+
+                    if result {
+                        has_pred_of_interest = true;
+                        debug!("typ: {} has interesting dtor due to generic preds, e.g. {}",
+                               typ.repr(tcx), pred.repr(tcx));
+                        break 'items;
+                    }
+                }
+
+                seen_items.push(item_def_id);
+            }
+
+            // In `impl<'a> Drop ...`, we automatically assume
+            // `'a` is meaningful and thus represents a bound
+            // through which we could reach borrowed data.
+            //
+            // FIXME (pnkfelix): In the future it would be good to
+            // extend the language to allow the user to express,
+            // in the impl signature, that a lifetime is not
+            // actually used (something like `where 'a: ?Live`).
+            let has_region_param_of_interest =
+                dtor_generics.has_region_params(subst::TypeSpace);
+
+            has_dtor_of_interest =
+                has_region_param_of_interest ||
+                has_pred_of_interest;
+
+            if has_dtor_of_interest {
+                debug!("typ: {} has interesting dtor, due to \
+                        region params: {} or pred: {}",
+                       typ.repr(tcx),
+                       has_region_param_of_interest,
+                       has_pred_of_interest);
+            } else {
+                debug!("typ: {} has dtor, but it is uninteresting",
+                       typ.repr(tcx));
+            }
+        }
+    }
+
+    return has_dtor_of_interest;
 }
