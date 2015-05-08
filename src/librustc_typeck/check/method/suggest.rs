@@ -262,7 +262,7 @@ fn type_derefs_to_local<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
 
     check::autoderef(check_env, fcx, span, rcvr_ty, None,
                      check::UnresolvedTypeAction::Ignore, check::NoPreference,
-                     |ty, _| {
+                     |_, ty, _| {
         if is_local(ty) {
             Some(())
         } else {

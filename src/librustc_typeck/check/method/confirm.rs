@@ -27,7 +27,6 @@ use std::iter::repeat;
 use util::ppaux::Repr;
 
 struct ConfirmContext<'a, 'tcx:'a> {
-    check_env: &'a mut CheckEnv<'tcx>,
     fcx: &'a FnCtxt<'a, 'tcx>,
     span: Span,
     self_expr: &'tcx ast::Expr,
@@ -63,20 +62,18 @@ pub fn confirm<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
            pick.repr(fcx.tcx()),
            supplied_method_types.repr(fcx.tcx()));
 
-    let mut confirm_cx = ConfirmContext::new(check_env, fcx, span, self_expr, call_expr);
-    confirm_cx.confirm(unadjusted_self_ty, pick, supplied_method_types)
+    let mut confirm_cx = ConfirmContext::new(fcx, span, self_expr, call_expr);
+    confirm_cx.confirm(check_env, unadjusted_self_ty, pick, supplied_method_types)
 }
 
 impl<'a,'tcx> ConfirmContext<'a,'tcx> {
-    fn new(check_env: &'a mut CheckEnv<'tcx>,
-           fcx: &'a FnCtxt<'a, 'tcx>,
+    fn new(fcx: &'a FnCtxt<'a, 'tcx>,
            span: Span,
            self_expr: &'tcx ast::Expr,
            call_expr: &'tcx ast::Expr)
            -> ConfirmContext<'a, 'tcx>
     {
         ConfirmContext {
-            check_env: check_env,
             fcx: fcx,
             span: span,
             self_expr: self_expr,
@@ -85,20 +82,21 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
     }
 
     fn confirm(&mut self,
+               check_env: &mut CheckEnv<'tcx>,
                unadjusted_self_ty: Ty<'tcx>,
                pick: probe::Pick<'tcx>,
                supplied_method_types: Vec<Ty<'tcx>>)
                -> MethodCallee<'tcx>
     {
         // Adjust the self expression the user provided and obtain the adjusted type.
-        let self_ty = self.adjust_self_ty(unadjusted_self_ty, &pick);
+        let self_ty = self.adjust_self_ty(check_env, unadjusted_self_ty, &pick);
 
         // Make sure nobody calls `drop()` explicitly.
         self.enforce_illegal_method_limitations(&pick);
 
         // Create substitutions for the method's type parameters.
         let (rcvr_substs, method_origin) =
-            self.fresh_receiver_substs(self_ty, &pick);
+            self.fresh_receiver_substs(check_env, self_ty, &pick);
         let (method_types, method_regions) =
             self.instantiate_method_substs(&pick, supplied_method_types);
         let all_substs = rcvr_substs.with_method(method_types, method_regions);
@@ -107,7 +105,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
         // Create the final signature for the method, replacing late-bound regions.
         let InstantiatedMethodSig {
             method_sig, all_substs, method_predicates
-        } = self.instantiate_method_sig(&pick, all_substs);
+        } = self.instantiate_method_sig(check_env, &pick, all_substs);
         let method_self_ty = method_sig.inputs[0];
 
         // Unify the (adjusted) self type with what the method expects.
@@ -132,7 +130,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
         // If this is an `&mut self` method, bias the receiver
         // expression towards mutability (this will switch
         // e.g. `Deref` to `DerefMut` in overloaded derefs and so on).
-        self.fixup_derefs_on_method_receiver_if_necessary(&callee);
+        self.fixup_derefs_on_method_receiver_if_necessary(check_env, &callee);
 
         callee
     }
@@ -141,6 +139,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
     // ADJUSTMENTS
 
     fn adjust_self_ty(&mut self,
+                      check_env: &mut CheckEnv<'tcx>,
                       unadjusted_self_ty: Ty<'tcx>,
                       pick: &probe::Pick<'tcx>)
                       -> Ty<'tcx>
@@ -162,14 +161,14 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
 
         // Commit the autoderefs by calling `autoderef again, but this
         // time writing the results into the various tables.
-        let (autoderefd_ty, n, result) = check::autoderef(self.check_env,
+        let (autoderefd_ty, n, result) = check::autoderef(check_env,
                                                           self.fcx,
                                                           self.span,
                                                           unadjusted_self_ty,
                                                           Some(self.self_expr),
                                                           UnresolvedTypeAction::Error,
                                                           NoPreference,
-                                                          |_, n| {
+                                                          |_, _, n| {
             if n == pick.autoderefs {
                 Some(())
             } else {
@@ -204,6 +203,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
     /// Note that this substitution may include late-bound regions from the impl level. If so,
     /// these are instantiated later in the `instantiate_method_sig` routine.
     fn fresh_receiver_substs(&mut self,
+                             check_env: &mut CheckEnv<'tcx>,
                              self_ty: Ty<'tcx>,
                              pick: &probe::Pick<'tcx>)
                              -> (subst::Substs<'tcx>, MethodOrigin<'tcx>)
@@ -213,13 +213,13 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                 assert!(ty::impl_trait_ref(self.tcx(), impl_def_id).is_none(),
                         "impl {:?} is not an inherent impl", impl_def_id);
                 let impl_polytype =
-                    check::impl_self_ty(self.check_env, self.fcx, self.span, impl_def_id);
+                    check::impl_self_ty(check_env, self.fcx, self.span, impl_def_id);
 
                 (impl_polytype.substs, MethodStatic(pick.item.def_id()))
             }
 
             probe::ObjectPick(trait_def_id, method_num, vtable_index) => {
-                self.extract_trait_ref(self_ty, |this, object_ty, data| {
+                self.extract_trait_ref(check_env, self_ty, |this, object_ty, data| {
                     // The object data has no entry for the Self
                     // Type. For the purposes of this method call, we
                     // substitute the object type itself. This
@@ -262,8 +262,8 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                 // parameters from the trait ([$A,$B]), not those from
                 // the impl ([$A,$B,$C]) not the receiver type ([$C]).
                 let impl_polytype =
-                    check::impl_self_ty(self.check_env, self.fcx, self.span, impl_def_id);
-                let typer = FnCtxtTyper::new(self.check_env, self.fcx);
+                    check::impl_self_ty(check_env, self.fcx, self.span, impl_def_id);
+                let typer = FnCtxtTyper::new(check_env, self.fcx);
                 let impl_trait_ref =
                     typer.instantiate_type_scheme(
                         self.span,
@@ -308,7 +308,11 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
         }
     }
 
-    fn extract_trait_ref<R, F>(&mut self, self_ty: Ty<'tcx>, mut closure: F) -> R where
+    fn extract_trait_ref<R, F>(&mut self,
+                               check_env: &mut CheckEnv<'tcx>,
+                               self_ty: Ty<'tcx>,
+                               mut closure: F
+                              ) -> R where
         F: FnMut(&mut ConfirmContext<'a, 'tcx>, Ty<'tcx>, &ty::TyTrait<'tcx>) -> R,
     {
         // If we specified that this is an object method, then the
@@ -316,21 +320,22 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
         // yield an object-type (e.g., `&Object` or `Box<Object>`
         // etc).
 
-        let (_, _, result) = check::autoderef(self.check_env,
+        let (_, _, result) = check::autoderef(check_env,
                                               self.fcx,
                                               self.span,
                                               self_ty,
                                               None,
                                               UnresolvedTypeAction::Error,
                                               NoPreference,
-                                              |ty, _| {
+                                              |_, ty, _| {
             match ty.sty {
-                ty::ty_trait(ref data) => Some((ty, data)),
+                ty::ty_trait(ref data) => Some(closure(self, ty, &**data)),
                 _ => None,
             }
         });
+
         match result {
-            Some((ty, data)) => closure(self, ty, &**data),
+            Some(r) => r,
             None => {
                 self.tcx().sess.span_bug(
                     self.span,
@@ -401,6 +406,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
     //
 
     fn instantiate_method_sig(&mut self,
+                              check_env: &mut CheckEnv<'tcx>,
                               pick: &probe::Pick<'tcx>,
                               all_substs: subst::Substs<'tcx>)
                               -> InstantiatedMethodSig<'tcx>
@@ -414,7 +420,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
         // be no late-bound regions appearing here.
         let method_predicates = pick.item.as_opt_method().unwrap()
                                     .predicates.instantiate(self.tcx(), &all_substs);
-        let typer = FnCtxtTyper::new(self.check_env, self.fcx);
+        let typer = FnCtxtTyper::new(check_env, self.fcx);
         let method_predicates = typer.normalize_associated_types_in(self.span,
                                                                     &method_predicates);
 
@@ -432,7 +438,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
         debug!("late-bound lifetimes from method instantiated, method_sig={}",
                method_sig.repr(self.tcx()));
 
-        let typer = FnCtxtTyper::new(self.check_env, self.fcx);
+        let typer = FnCtxtTyper::new(check_env, self.fcx);
         let method_sig = typer.instantiate_type_scheme(self.span, &all_substs, &method_sig);
         debug!("type scheme substituted, method_sig={}",
                method_sig.repr(self.tcx()));
@@ -469,6 +475,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
     /// auto-derefs, indices, etc from `Deref` and `Index` into `DerefMut` and `IndexMut`
     /// respectively.
     fn fixup_derefs_on_method_receiver_if_necessary(&mut self,
+                                                    check_env: &mut CheckEnv<'tcx>,
                                                     method_callee: &MethodCallee) {
         let sig = match method_callee.ty.sty {
             ty::ty_bare_fn(_, ref f) => f.sig.clone(),
@@ -517,15 +524,15 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                    i, expr.repr(self.tcx()), autoderef_count);
 
             if autoderef_count > 0 {
-                let expr_ty = self.fcx.expr_ty(self.check_env, expr);
-                check::autoderef(self.check_env,
+                let expr_ty = self.fcx.expr_ty(check_env, expr);
+                check::autoderef(check_env,
                                  self.fcx,
                                  expr.span,
                                  expr_ty,
                                  Some(expr),
                                  UnresolvedTypeAction::Error,
                                  PreferMutLvalue,
-                                 |_, autoderefs| {
+                                 |_, _, autoderefs| {
                                      if autoderefs == autoderef_count + 1 {
                                          Some(())
                                      } else {
@@ -577,17 +584,17 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                         let (adjusted_base_ty, unsize) = if let Some(target) = unsize {
                             (target, true)
                         } else {
-                            (self.fcx.adjust_expr_ty(self.check_env, base_expr,
+                            (self.fcx.adjust_expr_ty(check_env, base_expr,
                                 Some(&ty::AdjustDerefRef(ty::AutoDerefRef {
                                     autoderefs: autoderefs,
                                     autoref: None,
                                     unsize: None
                                 }))), false)
                         };
-                        let index_expr_ty = self.fcx.expr_ty(self.check_env, &**index_expr);
+                        let index_expr_ty = self.fcx.expr_ty(check_env, &**index_expr);
 
                         let result = check::try_index_step(
-                            self.check_env,
+                            check_env,
                             self.fcx,
                             MethodCall::expr(expr.id),
                             expr,
@@ -601,7 +608,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                         if let Some((input_ty, return_ty)) = result {
                             demand::suptype(self.fcx, index_expr.span, input_ty, index_expr_ty);
 
-                            let expr_ty = self.fcx.expr_ty(self.check_env, &*expr);
+                            let expr_ty = self.fcx.expr_ty(check_env, &*expr);
                             demand::suptype(self.fcx, expr.span, expr_ty, return_ty);
                         }
                     }
@@ -609,10 +616,10 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                         // if this is an overloaded deref, then re-evaluate with
                         // a preference for mut
                         let method_call = MethodCall::expr(expr.id);
-                        let expr_ty = self.fcx.expr_ty(self.check_env, &**base_expr);
+                        let expr_ty = self.fcx.expr_ty(check_env, &**base_expr);
                         if self.fcx.inh.method_map.borrow().contains_key(&method_call) {
                             check::try_overloaded_deref(
-                                self.check_env,
+                                check_env,
                                 self.fcx,
                                 expr.span,
                                 Some(method_call),

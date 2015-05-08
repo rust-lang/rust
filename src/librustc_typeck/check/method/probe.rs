@@ -195,7 +195,7 @@ fn create_steps<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
                                                        None,
                                                        UnresolvedTypeAction::Error,
                                                        NoPreference,
-                                                       |t, d| {
+                                                       |_, t, d| {
         steps.push(CandidateStep {
             self_ty: t,
             autoderefs: d,

@@ -86,10 +86,9 @@ pub fn check_call<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
                   Some(callee_expr),
                   UnresolvedTypeAction::Error,
                   LvaluePreference::NoPreference,
-                  |adj_ty, idx| Some((adj_ty, idx)));
-    let result = result.and_then( |(adj_ty, idx)| {
-        try_overloaded_call_step(check_env, fcx, call_expr, callee_expr, adj_ty, idx)
-    });
+                  |check_env, adj_ty, idx| {
+                      try_overloaded_call_step(check_env, fcx, call_expr, callee_expr, adj_ty, idx)
+                  });
 
     match result {
         None => {

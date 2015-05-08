@@ -1912,7 +1912,7 @@ pub fn autoderef<'a, 'tcx, T, F>(check_env: &mut CheckEnv<'tcx>,
                                  mut lvalue_pref: LvaluePreference,
                                  mut should_stop: F)
                                  -> (Ty<'tcx>, usize, Option<T>)
-    where F: FnMut(Ty<'tcx>, usize) -> Option<T>,
+    where F: FnMut(&mut CheckEnv<'tcx>, Ty<'tcx>, usize) -> Option<T>,
 {
     debug!("autoderef(base_ty={}, opt_expr={}, lvalue_pref={:?})",
            base_ty.repr(fcx.tcx()),
@@ -1938,7 +1938,7 @@ pub fn autoderef<'a, 'tcx, T, F>(check_env: &mut CheckEnv<'tcx>,
             }
         };
 
-        match should_stop(resolved_t, autoderefs) {
+        match should_stop(check_env, resolved_t, autoderefs) {
             Some(x) => return (resolved_t, autoderefs, Some(x)),
             None => {}
         }
@@ -2060,10 +2060,9 @@ fn lookup_indexing<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
                                                Some(base_expr),
                                                UnresolvedTypeAction::Error,
                                                lvalue_pref,
-                                               |adj_ty, idx| Some((adj_ty, idx)));
-    let final_mt = final_mt.and_then( |(adj_ty, idx)| {
+                                               |check_env, adj_ty, idx| {
         try_index_step(check_env, fcx, MethodCall::expr(expr.id), expr, base_expr,
-                           adj_ty, idx, false, lvalue_pref, idx_ty)
+                       adj_ty, idx, false, lvalue_pref, idx_ty)
     });
 
     if final_mt.is_some() {
@@ -2743,25 +2742,24 @@ fn check_expr_with_unifier<'a, 'tcx, F>(check_env: &mut CheckEnv<'tcx>,
         let expr_ty = fcx.expr_ty(check_env, base);
         let expr_t = structurally_resolved_type(check_env, fcx, expr.span, expr_ty);
         // FIXME(eddyb) #12808 Integrate privacy into this auto-deref loop.
-        let (_, autoderefs, result) = autoderef(check_env, fcx,
-                                                expr.span,
-                                                expr_t,
-                                                Some(base),
-                                                UnresolvedTypeAction::Error,
-                                                lvalue_pref,
-                                                |base_t, _| {
+        let (_, autoderefs, field_ty) = autoderef(check_env, fcx,
+                                                  expr.span,
+                                                  expr_t,
+                                                  Some(base),
+                                                  UnresolvedTypeAction::Error,
+                                                  lvalue_pref,
+                                                  |check_env, base_t, _| {
                 match base_t.sty {
                     ty::ty_struct(base_id, substs) => {
                         debug!("struct named {}", ppaux::ty_to_string(tcx, base_t));
-                        Some((base_id, substs, ty::lookup_struct_fields(tcx, base_id)))
+                        let fields = ty::lookup_struct_fields(tcx, base_id);
+                        fcx.lookup_field_ty(check_env,
+                                            expr.span, base_id, &fields[..],
+                                            field.node.name, &(*substs))
                     }
                     _ => None
                 }
             });
-        let field_ty = result.and_then( |(base_id, substs, fields)|
-            fcx.lookup_field_ty(check_env,
-                                expr.span, base_id, &fields[..],
-                                field.node.name, &(*substs)));
         match field_ty {
             Some(field_ty) => {
                 fcx.write_ty(check_env, expr.id, field_ty);
@@ -2848,32 +2846,33 @@ fn check_expr_with_unifier<'a, 'tcx, F>(check_env: &mut CheckEnv<'tcx>,
         let expr_t = structurally_resolved_type(check_env, fcx, expr.span, expr_ty);
         let mut tuple_like = false;
         // FIXME(eddyb) #12808 Integrate privacy into this auto-deref loop.
-        let (_, autoderefs, base_t) = autoderef(check_env, fcx,
-                                                expr.span,
+        let (_, autoderefs, field_ty) = autoderef(check_env, fcx,
+                                                  expr.span,
                                                   expr_t,
                                                   Some(base),
                                                   UnresolvedTypeAction::Error,
                                                   lvalue_pref,
-                                                  |base_t, _| Some(base_t));
-        let field_ty = base_t.and_then( |base_t| match base_t.sty {
-            ty::ty_struct(base_id, substs ) => {
-                tuple_like = ty::is_tuple_struct(tcx, base_id);
-                if tuple_like {
-                    debug!("tuple struct named {}", ppaux::ty_to_string(tcx, base_t));
-                    let fields = ty::lookup_struct_fields(tcx, base_id);
-                    fcx.lookup_tup_field_ty(check_env,
-                                            expr.span, base_id, &fields[..],
-                                            idx.node, &(*substs))
-                } else {
-                    None
+                                                  |check_env, base_t, _| {
+                match base_t.sty {
+                    ty::ty_struct(base_id, substs) => {
+                        tuple_like = ty::is_tuple_struct(tcx, base_id);
+                        if tuple_like {
+                            debug!("tuple struct named {}", ppaux::ty_to_string(tcx, base_t));
+                            let fields = ty::lookup_struct_fields(tcx, base_id);
+                            fcx.lookup_tup_field_ty(check_env,
+                                                    expr.span, base_id, &fields[..],
+                                                    idx.node, &(*substs))
+                        } else {
+                            None
+                        }
+                    }
+                    ty::ty_tup(ref v) => {
+                        tuple_like = true;
+                        if idx.node < v.len() { Some(v[idx.node]) } else { None }
+                    }
+                    _ => None
                 }
-            }
-            ty::ty_tup(ref v) => {
-                tuple_like = true;
-                if idx.node < v.len() { Some(v[idx.node]) } else { None }
-            }
-            _ => None
-        } );
+            });
         match field_ty {
             Some(field_ty) => {
                 fcx.write_ty(check_env, expr.id, field_ty);

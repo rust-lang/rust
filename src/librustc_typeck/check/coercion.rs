@@ -212,7 +212,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                                                  Some(expr_a),
                                                  UnresolvedTypeAction::Ignore,
                                                  lvalue_pref,
-                                                 |inner_ty, autoderef| {
+                                                 |_, inner_ty, autoderef| {
             if autoderef == 0 {
                 // Don't let this pass, otherwise it would cause
                 // &T to autoref to &&T.
