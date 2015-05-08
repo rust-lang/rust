@@ -3,7 +3,7 @@
 This guide is one of three presenting Rust’s ownership system. This is one of
 Rust’s most unique and compelling features, with which Rust developers should
 become quite acquainted. Ownership is how Rust achieves its largest goal,
-memory safety. The there are a few distinct concepts, each with its own
+memory safety. There are a few distinct concepts, each with its own
 chapter:
 
 * ownership, which you’re reading now.
@@ -59,6 +59,7 @@ deterministically, at the end of the scope.
 
 [vect]: ../std/vec/struct.Vec.html
 [heap]: the-stack-and-the-heap.html
+[bindings]: variable-bindings.html
 
 # Move semantics
 
@@ -122,7 +123,7 @@ let v2 = v;
 
 The first line creates some data for the vector on the [stack][sh], `v`. The
 vector’s data, however, is stored on the [heap][sh], and so it contains a
-pointer to that data. When we move `v` to `v2`, it creates a copy of that data,
+pointer to that data. When we move `v` to `v2`, it creates a copy of that pointer,
 for `v2`. Which would mean two pointers to the contents of the vector on the
 heap. That would be a problem: it would violate Rust’s safety guarantees by
 introducing a data race. Therefore, Rust forbids using `v` after we’ve done the
