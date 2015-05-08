@@ -343,7 +343,7 @@ fn lookup_op_method<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
 
             // HACK(eddyb) Fully qualified path to work around a resolve bug.
             let method_call = ::middle::ty::MethodCall::expr(expr.id);
-            fcx.inh.method_map.borrow_mut().insert(method_call, method);
+            check_env.method_map.insert(method_call, method);
 
             // extract return type for method; all late bound regions
             // should have been instantiated by now

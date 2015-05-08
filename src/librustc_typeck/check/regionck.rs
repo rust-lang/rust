@@ -299,10 +299,10 @@ fn relate_free_regions<'a, 'tcx>(check_env: &CheckEnv<'tcx>,
 
 impl<'a, 'tcx> Rcx<'a, 'tcx> {
     fn new(check_env: &'a mut CheckEnv<'tcx>,
-               fcx: &'a FnCtxt<'a, 'tcx>,
-               initial_repeating_scope: RepeatingScope,
-               initial_body_id: ast::NodeId,
-               subject: SubjectNode) -> Rcx<'a, 'tcx> {
+           fcx: &'a FnCtxt<'a, 'tcx>,
+           initial_repeating_scope: RepeatingScope,
+           initial_body_id: ast::NodeId,
+           subject: SubjectNode) -> Rcx<'a, 'tcx>{
         let RepeatingScope(initial_repeating_scope) = initial_repeating_scope;
         Rcx { check_env: check_env,
               fcx: fcx,
@@ -333,7 +333,7 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
     }
 
     fn resolve_method_type(&self, method_call: MethodCall) -> Option<Ty<'tcx>> {
-        let method_ty = self.fcx.inh.method_map.borrow()
+        let method_ty = self.check_env.method_map
                             .get(&method_call).map(|method| method.ty);
         method_ty.map(|method_ty| resolve_type(self.fcx, method_ty))
     }
@@ -530,7 +530,7 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
                       expr_ty, ty::ReScope(CodeExtent::from_node_id(expr.id)));
 
     let method_call = MethodCall::expr(expr.id);
-    let has_method_map = rcx.fcx.inh.method_map.borrow().contains_key(&method_call);
+    let has_method_map = rcx.check_env.method_map.contains_key(&method_call);
 
     // Check any autoderefs or autorefs that appear.
     if let Some(adjustment) = rcx.fcx.inh.adjustments.borrow().get(&expr.id) {
@@ -678,12 +678,13 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
         ast::ExprUnary(ast::UnDeref, ref base) => {
             // For *a, the lifetime of a must enclose the deref
             let method_call = MethodCall::expr(expr.id);
-            let base_ty = match rcx.fcx.inh.method_map.borrow().get(&method_call) {
-                Some(method) => {
+            let method_ty = rcx.check_env.method_map.get(&method_call).map( |method| method.ty );
+            let base_ty = match method_ty {
+                Some(method_ty) => {
                     constrain_call(rcx, expr, Some(&**base),
                                    None::<ast::Expr>.iter(), true);
                     let fn_ret = // late-bound regions in overloaded method calls are instantiated
-                        ty::no_late_bound_regions(rcx.tcx(), &ty::ty_fn_ret(method.ty)).unwrap();
+                        ty::no_late_bound_regions(rcx.tcx(), &ty::ty_fn_ret(method_ty)).unwrap();
                     fn_ret.unwrap()
                 }
                 None => rcx.resolve_node_type(base.id)
@@ -906,7 +907,7 @@ fn constrain_autoderefs<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
         let method_call = MethodCall::autoderef(deref_expr.id, i as u32);
         debug!("constrain_autoderefs: method_call={:?} (of {:?} total)", method_call, derefs);
 
-        derefd_ty = match rcx.fcx.inh.method_map.borrow().get(&method_call) {
+        let result = match rcx.check_env.method_map.get(&method_call) {
             Some(method) => {
                 debug!("constrain_autoderefs: #{} is overloaded, method={}",
                        i, method.repr(rcx.tcx()));
@@ -930,30 +931,30 @@ fn constrain_autoderefs<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
                 debug!("constrain_autoderefs: receiver r={:?} m={:?}",
                        r.repr(rcx.tcx()), m);
 
-                {
-                    let typer = FnCtxtTyper::new(rcx.check_env, rcx.fcx);
-                    let mc = mc::MemCategorizationContext::new(&typer);
-                    let self_cmt = ignore_err!(mc.cat_expr_autoderefd(deref_expr, i));
-                    debug!("constrain_autoderefs: self_cmt={:?}",
-                           self_cmt.repr(rcx.tcx()));
-                    link_region(rcx, deref_expr.span, r,
-                                ty::BorrowKind::from_mutbl(m), self_cmt);
-                }
-
-                // Specialized version of constrain_call.
-                type_must_outlive(rcx, infer::CallRcvr(deref_expr.span),
-                                  self_ty, r_deref_expr);
-                match fn_sig.output {
-                    ty::FnConverging(return_type) => {
-                        type_must_outlive(rcx, infer::CallReturn(deref_expr.span),
-                                          return_type, r_deref_expr);
-                        return_type
-                    }
-                    ty::FnDiverging => unreachable!()
-                }
+                let typer = FnCtxtTyper::new(rcx.check_env, rcx.fcx);
+                let mc = mc::MemCategorizationContext::new(&typer);
+                let self_cmt = ignore_err!(mc.cat_expr_autoderefd(deref_expr, i));
+                debug!("constrain_autoderefs: self_cmt={:?}",
+                       self_cmt.repr(rcx.tcx()));
+                link_region(rcx, deref_expr.span, r,
+                            ty::BorrowKind::from_mutbl(m), self_cmt);
+                Some((fn_sig, self_ty))
             }
-            None => derefd_ty
+            None => None
         };
+        if let Some((fn_sig, self_ty)) = result {
+            // Specialized version of constrain_call.
+            type_must_outlive(rcx, infer::CallRcvr(deref_expr.span),
+                              self_ty, r_deref_expr);
+            derefd_ty = match fn_sig.output {
+                ty::FnConverging(return_type) => {
+                    type_must_outlive(rcx, infer::CallReturn(deref_expr.span),
+                                      return_type, r_deref_expr);
+                    return_type
+                }
+                ty::FnDiverging => unreachable!()
+            };
+        }
 
         if let ty::ty_rptr(r_ptr, _) =  derefd_ty.sty {
             mk_subregion_due_to_dereference(rcx, deref_expr.span,

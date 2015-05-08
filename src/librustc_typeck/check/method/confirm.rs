@@ -617,7 +617,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                         // a preference for mut
                         let method_call = MethodCall::expr(expr.id);
                         let expr_ty = self.fcx.expr_ty(check_env, &**base_expr);
-                        if self.fcx.inh.method_map.borrow().contains_key(&method_call) {
+                        if check_env.method_map.contains_key(&method_call) {
                             check::try_overloaded_deref(
                                 check_env,
                                 self.fcx,

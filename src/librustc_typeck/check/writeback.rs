@@ -104,7 +104,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             let rhs_ty = self.fcx.infcx().resolve_type_vars_if_possible(&rhs_ty);
 
             if ty::type_is_scalar(lhs_ty) && ty::type_is_scalar(rhs_ty) {
-                self.fcx.inh.method_map.borrow_mut().remove(&MethodCall::expr(e.id));
+                self.check_env.method_map.remove(&MethodCall::expr(e.id));
 
                 // weird but true: the by-ref binops put an
                 // adjustment on the lhs but not the rhs; the
@@ -265,7 +265,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         }
     }
 
-    fn visit_node_id(&self, reason: ResolveReason, id: ast::NodeId) {
+    fn visit_node_id(&mut self, reason: ResolveReason, id: ast::NodeId) {
         // Resolve any borrowings for the node with id `id`
         self.visit_adjustments(reason, id);
 
@@ -282,7 +282,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         });
     }
 
-    fn visit_adjustments(&self, reason: ResolveReason, id: ast::NodeId) {
+    fn visit_adjustments(&mut self, reason: ResolveReason, id: ast::NodeId) {
         match self.fcx.inh.adjustments.borrow_mut().remove(&id) {
             None => {
                 debug!("No adjustments for node {}", id);
@@ -316,11 +316,11 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         }
     }
 
-    fn visit_method_map_entry(&self,
+    fn visit_method_map_entry(&mut self,
                               reason: ResolveReason,
                               method_call: MethodCall) {
         // Resolve any method map entry
-        match self.fcx.inh.method_map.borrow_mut().remove(&method_call) {
+        match self.check_env.method_map.remove(&method_call) {
             Some(method) => {
                 debug!("writeback::resolve_method_map_entry(call={:?}, entry={})",
                        method_call,

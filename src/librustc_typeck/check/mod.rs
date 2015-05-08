@@ -98,7 +98,7 @@ use middle::ty::{FnSig, GenericPredicates, TypeScheme};
 use middle::ty::{Disr, ParamTy, ParameterEnvironment};
 use middle::ty::{self, HasProjectionTypes, RegionEscape, ToPolyTraitRef, Ty};
 use middle::ty::liberate_late_bound_regions;
-use middle::ty::{MethodCall, MethodCallee, MethodMap, ObjectCastMap};
+use middle::ty::{MethodCall, MethodCallee, ObjectCastMap};
 use middle::ty_fold::{TypeFolder, TypeFoldable};
 use rscope::RegionScope;
 use session::Session;
@@ -159,7 +159,6 @@ pub struct Inherited<'a, 'tcx: 'a> {
     // Temporary tables:
     item_substs: RefCell<NodeMap<ty::ItemSubsts<'tcx>>>,
     adjustments: RefCell<NodeMap<ty::AutoAdjustment<'tcx>>>,
-    method_map: MethodMap<'tcx>,
     upvar_capture_map: RefCell<ty::UpvarCaptureMap>,
     closure_tys: RefCell<DefIdMap<ty::ClosureTy<'tcx>>>,
     closure_kinds: RefCell<DefIdMap<ty::ClosureKind>>,
@@ -174,6 +173,7 @@ pub struct CheckEnv<'tcx> {
 
     // Temporary tables:
     node_types: NodeMap<Ty<'tcx>>,
+    method_map: FnvHashMap<MethodCall, MethodCallee<'tcx>>,
 
     // A mapping from each fn's id to its signature, with all bound
     // regions replaced with free ones. Unlike the other tables, this
@@ -472,25 +472,23 @@ impl<'a, 'tcx> mc::Typer<'tcx> for FnCtxtTyper<'a, 'tcx> {
     }
     fn node_method_ty(&self, method_call: ty::MethodCall)
                       -> Option<Ty<'tcx>> {
-        self.fcx.inh.method_map.borrow()
-                               .get(&method_call)
-                               .map(|method| method.ty)
-                               .map(|ty| self.fcx
-                                             .infcx()
-                                             .resolve_type_vars_if_possible(&ty))
+        self.check_env.method_map.get(&method_call)
+                                 .map(|method| method.ty)
+                                 .map(|ty| self.fcx
+                                               .infcx()
+                                               .resolve_type_vars_if_possible(&ty))
     }
     fn node_method_origin(&self, method_call: ty::MethodCall)
                           -> Option<ty::MethodOrigin<'tcx>>
     {
-        self.fcx.inh.method_map.borrow()
-                               .get(&method_call)
-                               .map(|method| method.origin.clone())
+        self.check_env.method_map.get(&method_call)
+                                 .map(|method| method.origin.clone())
     }
     fn adjustments(&self) -> &RefCell<NodeMap<ty::AutoAdjustment<'tcx>>> {
         &self.fcx.inh.adjustments
     }
     fn is_method_call(&self, id: ast::NodeId) -> bool {
-        self.fcx.inh.method_map.borrow().contains_key(&ty::MethodCall::expr(id))
+        self.check_env.method_map.contains_key(&ty::MethodCall::expr(id))
     }
     fn temporary_scope(&self, rvalue_id: ast::NodeId) -> Option<CodeExtent> {
         self.fcx.param_env().temporary_scope(rvalue_id)
@@ -538,7 +536,6 @@ impl<'a, 'tcx> Inherited<'a, 'tcx> {
             param_env: param_env,
             item_substs: RefCell::new(NodeMap()),
             adjustments: RefCell::new(NodeMap()),
-            method_map: RefCell::new(FnvHashMap()),
             object_cast_map: RefCell::new(NodeMap()),
             upvar_capture_map: RefCell::new(FnvHashMap()),
             closure_tys: RefCell::new(DefIdMap()),
@@ -569,6 +566,7 @@ impl<'tcx> CheckEnv<'tcx> {
         CheckEnv {
             locals: NodeMap(),
             node_types: NodeMap(),
+            method_map: FnvHashMap(),
             fn_sig_map: NodeMap(),
             deferred_call_resolutions: DefIdMap(),
             deferred_cast_checks: Vec::new(),
@@ -1695,9 +1693,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                       expr.id,
                       raw_ty,
                       adjustment,
-                      |method_call| self.inh.method_map.borrow()
-                                                       .get(&method_call)
-                                                       .map(|method| resolve_ty(method.ty)))
+                      |method_call| check_env.method_map.get(&method_call)
+                                                        .map(|method| resolve_ty(method.ty)))
     }
 
     pub fn node_ty(&self, check_env: &CheckEnv<'tcx>, id: ast::NodeId) -> Ty<'tcx> {
@@ -2015,13 +2012,14 @@ fn try_overloaded_deref<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
         (method, _) => method
     };
 
-    make_overloaded_lvalue_return_type(fcx, method_call, method)
+    make_overloaded_lvalue_return_type(check_env, fcx, method_call, method)
 }
 
 /// For the overloaded lvalue expressions (`*x`, `x[3]`), the trait returns a type of `&T`, but the
 /// actual type we assign to the *expression* is `T`. So this function just peels off the return
 /// type by one layer to yield `T`. It also inserts the `method-callee` into the method map.
-fn make_overloaded_lvalue_return_type<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
+fn make_overloaded_lvalue_return_type<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
+                                                fcx: &FnCtxt<'a, 'tcx>,
                                                 method_call: Option<MethodCall>,
                                                 method: Option<MethodCallee<'tcx>>)
                                                 -> Option<ty::mt<'tcx>>
@@ -2034,7 +2032,7 @@ fn make_overloaded_lvalue_return_type<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             let ret_ty = ty::no_late_bound_regions(fcx.tcx(), &ret_ty).unwrap().unwrap();
 
             if let Some(method_call) = method_call {
-                fcx.inh.method_map.borrow_mut().insert(method_call, method);
+                check_env.method_map.insert(method_call, method);
             }
 
             // method returns &T, but the type as visible to user is T, so deref
@@ -2163,7 +2161,7 @@ fn try_index_step<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
     // If some lookup succeeded, install method in table
     method.and_then(|method| {
         debug!("try_index_step: success, using overloaded indexing");
-        make_overloaded_lvalue_return_type(fcx, Some(method_call), Some(method)).
+        make_overloaded_lvalue_return_type(check_env, fcx, Some(method_call), Some(method)).
             map(|ret| (input_ty, ret.ty))
     })
 }
@@ -2665,7 +2663,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(check_env: &mut CheckEnv<'tcx>,
             Ok(method) => {
                 let method_ty = method.ty;
                 let method_call = MethodCall::expr(expr.id);
-                fcx.inh.method_map.borrow_mut().insert(method_call, method);
+                check_env.method_map.insert(method_call, method);
                 method_ty
             }
             Err(error) => {

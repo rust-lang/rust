@@ -343,14 +343,16 @@ fn confirm_overloaded_call<'a,'tcx>(check_env: &mut CheckEnv<'tcx>,
                                     expected);
     write_call(check_env, fcx, call_expr, output_type);
 
-    write_overloaded_call_method_map(fcx, call_expr, method_callee);
+    write_overloaded_call_method_map(check_env, fcx, call_expr, method_callee);
 }
 
-fn write_overloaded_call_method_map<'a,'tcx>(fcx: &FnCtxt<'a, 'tcx>,
+// FIXME: Figure out if we still need `FnCtxt` here.
+fn write_overloaded_call_method_map<'a,'tcx>(check_env: &mut CheckEnv<'tcx>,
+                                             _: &FnCtxt<'a, 'tcx>,
                                              call_expr: &ast::Expr,
                                              method_callee: ty::MethodCallee<'tcx>) {
     let method_call = ty::MethodCall::expr(call_expr.id);
-    fcx.inh.method_map.borrow_mut().insert(method_call, method_callee);
+    check_env.method_map.insert(method_call, method_callee);
 }
 
 struct CallResolution<'tcx> {
@@ -418,7 +420,7 @@ impl<'tcx> DeferredCallResolution<'tcx> for CallResolution<'tcx> {
                                method_sig.output.unwrap_or(nilty),
                                self.fn_sig.output.unwrap_or(nilty));
 
-                write_overloaded_call_method_map(fcx, self.call_expr, method_callee);
+                write_overloaded_call_method_map(check_env, fcx, self.call_expr, method_callee);
             }
             None => {
                 fcx.tcx().sess.span_bug(
