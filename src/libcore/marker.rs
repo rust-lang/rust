@@ -313,7 +313,7 @@ macro_rules! impls{
 /// mismatches by enforcing types in the method implementations:
 ///
 /// ```
-/// # trait ResType { fn foo(&self); };
+/// # trait ResType { fn foo(&self); }
 /// # struct ParamType;
 /// # mod foreign_lib {
 /// # pub fn new(_: usize) -> *mut () { 42 as *mut () }
