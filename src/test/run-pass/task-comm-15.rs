@@ -24,7 +24,7 @@ fn start(tx: &Sender<isize>, i0: isize) {
 }
 
 pub fn main() {
-    // Spawn a task that sends us back messages. The parent task
+    // Spawn a thread that sends us back messages. The parent thread
     // is likely to terminate before the child completes, so from
     // the child's point of view the receiver may die. We should
     // drop messages on the floor in this case, and not crash!

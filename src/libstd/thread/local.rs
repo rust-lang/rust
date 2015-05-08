@@ -32,7 +32,7 @@ pub mod __impl {
 /// primary method is the `with` method.
 ///
 /// The `with` method yields a reference to the contained value which cannot be
-/// sent across tasks or escape the given closure.
+/// sent across threads or escape the given closure.
 ///
 /// # Initialization and Destruction
 ///

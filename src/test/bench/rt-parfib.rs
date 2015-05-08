@@ -13,7 +13,7 @@ use std::env;
 use std::thread;
 
 // A simple implementation of parfib. One subtree is found in a new
-// task and communicated over a oneshot pipe, the other is found
+// thread and communicated over a oneshot pipe, the other is found
 // locally. There is no sequential-mode threshold.
 
 fn parfib(n: u64) -> u64 {

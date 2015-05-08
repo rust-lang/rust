@@ -590,7 +590,7 @@ fn begin_unwind_inner(msg: Box<Any + Send>,
 /// This is an unsafe and experimental API which allows for an arbitrary
 /// callback to be invoked when a thread panics. This callback is invoked on both
 /// the initial unwinding and a double unwinding if one occurs. Additionally,
-/// the local `Task` will be in place for the duration of the callback, and
+/// the local `Thread` will be in place for the duration of the callback, and
 /// the callback must ensure that it remains in place once the callback returns.
 ///
 /// Only a limited number of callbacks can be registered, and this function

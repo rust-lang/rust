@@ -229,7 +229,7 @@ impl Select {
             // woken us up (although the wakeup is guaranteed to fail).
             //
             // This situation happens in the window of where a sender invokes
-            // increment(), sees -1, and then decides to wake up the task. After
+            // increment(), sees -1, and then decides to wake up the thread. After
             // all this is done, the sending thread will set `selecting` to
             // `false`. Until this is done, we cannot return. If we were to
             // return, then a sender could wake up a receiver which has gone
