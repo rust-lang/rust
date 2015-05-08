@@ -252,9 +252,9 @@ impl<'tcx> Expectation<'tcx> {
 }
 
 #[derive(Copy, Clone)]
-pub struct UnsafetyState {
-    pub def: ast::NodeId,
-    pub unsafety: ast::Unsafety,
+struct UnsafetyState {
+    def: ast::NodeId,
+    unsafety: ast::Unsafety,
     from_fn: bool
 }
 
@@ -263,7 +263,7 @@ impl UnsafetyState {
         UnsafetyState { def: def, unsafety: unsafety, from_fn: true }
     }
 
-    pub fn recurse(&mut self, blk: &ast::Block) -> UnsafetyState {
+    pub fn recurse(&self, blk: &ast::Block) -> UnsafetyState {
         match self.unsafety {
             // If this unsafe, then if the outer function was already marked as
             // unsafe we shouldn't attribute the unsafe'ness to the block. This
@@ -300,7 +300,7 @@ pub struct FnCtxt<'a, 'tcx: 'a> {
 
     ret_ty: ty::FnOutput<'tcx>,
 
-    ps: RefCell<UnsafetyState>,
+    ps: Cell<UnsafetyState>,
 
     inh: &'a Inherited<'a, 'tcx>,
 
@@ -606,7 +606,7 @@ pub fn blank_fn_ctxt<'a, 'tcx>(ccx: &'a CrateCtxt<'a, 'tcx>,
         writeback_errors: Cell::new(false),
         err_count_on_creation: ccx.tcx.sess.err_count(),
         ret_ty: rty,
-        ps: RefCell::new(UnsafetyState::function(ast::Unsafety::Normal, 0)),
+        ps: Cell::new(UnsafetyState::function(ast::Unsafety::Normal, 0)),
         inh: inh,
         ccx: ccx
     }
@@ -838,7 +838,7 @@ fn check_fn<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
         writeback_errors: Cell::new(false),
         err_count_on_creation: err_count_on_creation,
         ret_ty: ret_ty,
-        ps: RefCell::new(UnsafetyState::function(unsafety, unsafety_id)),
+        ps: Cell::new(UnsafetyState::function(unsafety, unsafety_id)),
         inh: inherited,
         ccx: ccx
     };
@@ -4066,9 +4066,10 @@ fn check_block_with_expected<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
                                        blk: &'tcx ast::Block,
                                        expected: Expectation<'tcx>) {
     let prev = {
-        let mut fcx_ps = fcx.ps.borrow_mut();
+        let fcx_ps = fcx.ps.get();
         let unsafety_state = fcx_ps.recurse(blk);
-        replace(&mut *fcx_ps, unsafety_state)
+        fcx.ps.set(unsafety_state);
+        fcx_ps
     };
 
     let mut warned = false;
@@ -4139,7 +4140,7 @@ fn check_block_with_expected<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
         }
     };
 
-    *fcx.ps.borrow_mut() = prev;
+    fcx.ps.set(prev);
 }
 
 /// Checks a constant appearing in a type. At the moment this is just the
