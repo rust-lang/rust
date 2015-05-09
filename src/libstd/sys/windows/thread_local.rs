@@ -32,7 +32,7 @@ pub type Dtor = unsafe extern fn(*mut u8);
 // somewhere to run arbitrary code on thread termination. With this in place
 // we'll be able to run anything we like, including all TLS destructors!
 //
-// To accomplish this feat, we perform a number of tasks, all contained
+// To accomplish this feat, we perform a number of threads, all contained
 // within this module:
 //
 // * All TLS destructors are tracked by *us*, not the windows runtime. This

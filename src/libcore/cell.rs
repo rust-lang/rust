@@ -24,7 +24,8 @@
 //! claim temporary, exclusive, mutable access to the inner value. Borrows for `RefCell<T>`s are
 //! tracked 'at runtime', unlike Rust's native reference types which are entirely tracked
 //! statically, at compile time. Because `RefCell<T>` borrows are dynamic it is possible to attempt
-//! to borrow a value that is already mutably borrowed; when this happens it results in task panic.
+//! to borrow a value that is already mutably borrowed; when this happens it results in thread
+//! panic.
 //!
 //! # When to choose interior mutability
 //!
@@ -100,7 +101,7 @@
 //!         // Recursive call to return the just-cached value.
 //!         // Note that if we had not let the previous borrow
 //!         // of the cache fall out of scope then the subsequent
-//!         // recursive borrow would cause a dynamic task panic.
+//!         // recursive borrow would cause a dynamic thread panic.
 //!         // This is the major hazard of using `RefCell`.
 //!         self.minimum_spanning_tree()
 //!     }

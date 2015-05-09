@@ -374,7 +374,7 @@ mod tests {
             txs.push(tx);
 
             thread::spawn(move|| {
-                // wait until all the tasks are ready to go.
+                // wait until all the threads are ready to go.
                 rx.recv().unwrap();
 
                 // deschedule to attempt to interleave things as much
@@ -394,7 +394,7 @@ mod tests {
             });
         }
 
-        // start all the tasks
+        // start all the threads
         for tx in &txs {
             tx.send(()).unwrap();
         }

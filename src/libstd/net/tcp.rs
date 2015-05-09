@@ -444,7 +444,7 @@ mod tests {
             let _t = thread::spawn(move|| {
                 let acceptor = acceptor;
                 for (i, stream) in acceptor.incoming().enumerate().take(MAX) {
-                    // Start another task to handle the connection
+                    // Start another thread to handle the connection
                     let _t = thread::spawn(move|| {
                         let mut stream = t!(stream);
                         let mut buf = [0];
@@ -478,7 +478,7 @@ mod tests {
 
             let _t = thread::spawn(move|| {
                 for stream in acceptor.incoming().take(MAX) {
-                    // Start another task to handle the connection
+                    // Start another thread to handle the connection
                     let _t = thread::spawn(move|| {
                         let mut stream = t!(stream);
                         let mut buf = [0];
@@ -738,7 +738,7 @@ mod tests {
                 assert_eq!(t!(s2.read(&mut [0])), 0);
                 tx.send(()).unwrap();
             });
-            // this should wake up the child task
+            // this should wake up the child thread
             t!(s.shutdown(Shutdown::Read));
 
             // this test will never finish if the child doesn't wake up
@@ -752,7 +752,7 @@ mod tests {
         each_ip(&mut |addr| {
             let accept = t!(TcpListener::bind(&addr));
 
-            // Enqueue a task to write to a socket
+            // Enqueue a thread to write to a socket
             let (tx, rx) = channel();
             let (txdone, rxdone) = channel();
             let txdone2 = txdone.clone();
