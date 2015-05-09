@@ -107,7 +107,7 @@
 //!
 //! let (tx, rx) = sync_channel::<i32>(0);
 //! thread::spawn(move|| {
-//!     // This will wait for the parent task to start receiving
+//!     // This will wait for the parent thread to start receiving
 //!     tx.send(53).unwrap();
 //! });
 //! rx.recv().unwrap();
@@ -253,7 +253,7 @@
 // blocking. The implementation is essentially the entire blocking procedure
 // followed by an increment as soon as its woken up. The cancellation procedure
 // involves an increment and swapping out of to_wake to acquire ownership of the
-// task to unblock.
+// thread to unblock.
 //
 // Sadly this current implementation requires multiple allocations, so I have
 // seen the throughput of select() be much worse than it should be. I do not
@@ -289,7 +289,7 @@ mod mpsc_queue;
 mod spsc_queue;
 
 /// The receiving-half of Rust's channel type. This half can only be owned by
-/// one task
+/// one thread
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Receiver<T> {
     inner: UnsafeCell<Flavor<T>>,
@@ -316,7 +316,7 @@ pub struct IntoIter<T> {
 }
 
 /// The sending-half of Rust's asynchronous channel type. This half can only be
-/// owned by one task, but it can be cloned to send to other tasks.
+/// owned by one thread, but it can be cloned to send to other threads.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Sender<T> {
     inner: UnsafeCell<Flavor<T>>,
@@ -327,7 +327,7 @@ pub struct Sender<T> {
 unsafe impl<T: Send> Send for Sender<T> { }
 
 /// The sending-half of Rust's synchronous channel type. This half can only be
-/// owned by one task, but it can be cloned to send to other tasks.
+/// owned by one thread, but it can be cloned to send to other threads.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct SyncSender<T> {
     inner: Arc<UnsafeCell<sync::Packet<T>>>,
@@ -421,7 +421,7 @@ impl<T> UnsafeFlavor<T> for Receiver<T> {
 /// Creates a new asynchronous channel, returning the sender/receiver halves.
 ///
 /// All data sent on the sender will become available on the receiver, and no
-/// send will block the calling task (this channel has an "infinite buffer").
+/// send will block the calling thread (this channel has an "infinite buffer").
 ///
 /// # Examples
 ///
@@ -1596,7 +1596,7 @@ mod tests {
             drop(rx);  // destroy a shared
             tx2.send(()).unwrap();
         });
-        // make sure the other task has gone to sleep
+        // make sure the other thread has gone to sleep
         for _ in 0..5000 { thread::yield_now(); }
 
         // upgrade to a shared chan and send a message
@@ -1604,7 +1604,7 @@ mod tests {
         drop(tx);
         t.send(()).unwrap();
 
-        // wait for the child task to exit before we exit
+        // wait for the child thread to exit before we exit
         rx2.recv().unwrap();
     }
 }
@@ -2060,7 +2060,7 @@ mod sync_tests {
             drop(rx);  // destroy a shared
             tx2.send(()).unwrap();
         });
-        // make sure the other task has gone to sleep
+        // make sure the other thread has gone to sleep
         for _ in 0..5000 { thread::yield_now(); }
 
         // upgrade to a shared chan and send a message
@@ -2068,7 +2068,7 @@ mod sync_tests {
         drop(tx);
         t.send(()).unwrap();
 
-        // wait for the child task to exit before we exit
+        // wait for the child thread to exit before we exit
         rx2.recv().unwrap();
     }
 

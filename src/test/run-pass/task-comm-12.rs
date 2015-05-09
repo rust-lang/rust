@@ -22,14 +22,14 @@ fn test00() {
         start(i)
     });
 
-    // Sleep long enough for the task to finish.
+    // Sleep long enough for the thread to finish.
     let mut i = 0_usize;
     while i < 10000 {
         thread::yield_now();
         i += 1;
     }
 
-    // Try joining tasks that have already finished.
+    // Try joining threads that have already finished.
     result.join();
 
     println!("Joined task.");

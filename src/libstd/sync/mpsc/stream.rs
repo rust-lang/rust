@@ -181,7 +181,7 @@ impl<T> Packet<T> {
             data => return data,
         }
 
-        // Welp, our channel has no data. Deschedule the current task and
+        // Welp, our channel has no data. Deschedule the current thread and
         // initiate the blocking protocol.
         let (wait_token, signal_token) = blocking::tokens();
         if self.decrement(signal_token).is_ok() {
@@ -385,7 +385,7 @@ impl<T> Packet<T> {
         }
     }
 
-    // Removes a previous task from being blocked in this port
+    // Removes a previous thread from being blocked in this port
     pub fn abort_selection(&mut self,
                            was_upgrade: bool) -> Result<bool, Receiver<T>> {
         // If we're aborting selection after upgrading from a oneshot, then
@@ -414,7 +414,7 @@ impl<T> Packet<T> {
         let prev = self.bump(steals + 1);
 
         // If we were previously disconnected, then we know for sure that there
-        // is no task in to_wake, so just keep going
+        // is no thread in to_wake, so just keep going
         let has_data = if prev == DISCONNECTED {
             assert_eq!(self.to_wake.load(Ordering::SeqCst), 0);
             true // there is data, that data is that we're disconnected
@@ -428,7 +428,7 @@ impl<T> Packet<T> {
             //
             // If the previous count was positive then we're in a tougher
             // situation. A possible race is that a sender just incremented
-            // through -1 (meaning it's going to try to wake a task up), but it
+            // through -1 (meaning it's going to try to wake a thread up), but it
             // hasn't yet read the to_wake. In order to prevent a future recv()
             // from waking up too early (this sender picking up the plastered
             // over to_wake), we spin loop here waiting for to_wake to be 0.

@@ -25,7 +25,7 @@ use sys_common::rwlock as sys;
 /// typically allows for read-only access (shared access).
 ///
 /// The type parameter `T` represents the data that this lock protects. It is
-/// required that `T` satisfies `Send` to be shared across tasks and `Sync` to
+/// required that `T` satisfies `Send` to be shared across threads and `Sync` to
 /// allow concurrent access through readers. The RAII guards returned from the
 /// locking methods implement `Deref` (and `DerefMut` for the `write` methods)
 /// to allow access to the contained of the lock.

@@ -644,6 +644,10 @@ impl BitVec {
     /// Splits the `BitVec` into two at the given bit,
     /// retaining the first half in-place and returning the second one.
     ///
+    /// # Panics
+    ///
+    /// Panics if `at` is out of bounds.
+    ///
     /// # Examples
     ///
     /// ```
