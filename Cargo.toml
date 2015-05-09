@@ -1,6 +1,6 @@
 [package]
 name = "clippy"
-version = "0.0.2"
+version = "0.0.3"
 authors = [
 	"Manish Goregaokar <manishsmail@gmail.com>",
 	"Andre Bogus <bogusandre@gmail.com>"
@@ -13,7 +13,7 @@ keywords = ["clippy", "lint", "plugin"]
 
 [lib]
 name = "clippy"
-crate_type = ["dylib"]
+plugin = true
 
 [dev-dependencies]
 compiletest_rs = "*"
