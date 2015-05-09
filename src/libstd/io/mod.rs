@@ -80,7 +80,7 @@ fn append_to_string<F>(buf: &mut String, f: F) -> Result<usize>
         let ret = f(g.s);
         if str::from_utf8(&g.s[g.len..]).is_err() {
             ret.and_then(|_| {
-                Err(Error::new(ErrorKind::InvalidInput,
+                Err(Error::new(ErrorKind::InvalidData,
                                "stream did not contain valid UTF-8"))
             })
         } else {

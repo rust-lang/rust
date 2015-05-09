@@ -170,5 +170,5 @@ impl Output {
 }
 
 fn invalid_encoding() -> io::Error {
-    io::Error::new(io::ErrorKind::InvalidInput, "text was not valid unicode")
+    io::Error::new(io::ErrorKind::InvalidData, "text was not valid unicode")
 }
