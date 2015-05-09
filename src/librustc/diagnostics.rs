@@ -419,6 +419,142 @@ of a loop. Without a loop to break out of or continue in, no sensible action can
 be taken.
 "##,
 
+E0271: r##"
+This is because of a type mismatch between the associated type of some
+trait (e.g. T::Bar, where T implements trait Quux { type Bar; })
+and another type U that is required to be equal to T::Bar, but is not.
+Examples follow.
+
+Here is a basic example:
+
+```
+trait Trait { type AssociatedType; }
+fn foo<T>(t: T) where T: Trait<AssociatedType=u32> {
+    println!("in foo");
+}
+impl Trait for i8 { type AssociatedType = &'static str; }
+foo(3_i8);
+```
+
+Here is that same example again, with some explanatory comments:
+
+```
+trait Trait { type AssociatedType; }
+
+fn foo<T>(t: T) where T: Trait<AssociatedType=u32> {
+//                    ~~~~~~~~ ~~~~~~~~~~~~~~~~~~
+//                        |            |
+//         This says `foo` can         |
+//           only be used with         |
+//              some type that         |
+//         implements `Trait`.         |
+//                                     |
+//                             This says not only must
+//                             `T` be an impl of `Trait`
+//                             but also that the impl
+//                             must assign the type `u32`
+//                             to the associated type.
+    println!("in foo");
+}
+
+impl Trait for i8 { type AssociatedType = &'static str; }
+~~~~~~~~~~~~~~~~~   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//      |                             |
+// `i8` does have                     |
+// implementation                     |
+// of `Trait`...                      |
+//                     ... but it is an implementation
+//                     that assigns `&'static str` to
+//                     the associated type.
+
+foo(3_i8);
+// Here, we invoke `foo` with an `i8`, which does not satisfy
+// the constraint `<i8 as Trait>::AssociatedType=32`, and
+// therefore the type-checker complains with this error code.
+```
+
+Here is a more subtle instance of the same problem, that can
+arise with for-loops in Rust:
+
+```
+let vs: Vec<i32> = vec![1, 2, 3, 4];
+for v in &vs {
+    match v {
+        1 => {}
+        _ => {}
+    }
+}
+```
+
+The above fails because of an analogous type mismatch,
+though may be harder to see. Again, here are some
+explanatory comments for the same example:
+
+```
+{
+    let vs = vec![1, 2, 3, 4];
+
+    // `for`-loops use a protocol based on the `Iterator`
+    // trait. Each item yielded in a `for` loop has the
+    // type `Iterator::Item` -- that is,I `Item` is the
+    // associated type of the concrete iterator impl.
+    for v in &vs {
+//      ~    ~~~
+//      |     |
+//      |    We borrow `vs`, iterating over a sequence of
+//      |    *references* of type `&Elem` (where `Elem` is
+//      |    vector's element type). Thus, the associated
+//      |    type `Item` must be a reference `&`-type ...
+//      |
+//  ... and `v` has the type `Iterator::Item`, as dictated by
+//  the `for`-loop protocol ...
+
+        match v {
+            1 => {}
+//          ~
+//          |
+// ... but *here*, `v` is forced to have some integral type;
+// only types like `u8`,`i8`,`u16`,`i16`, et cetera can
+// match the pattern `1` ...
+
+            _ => {}
+        }
+
+// ... therefore, the compiler complains, because it sees
+// an attempt to solve the equations
+// `some integral-type` = type-of-`v`
+//                      = `Iterator::Item`
+//                      = `&Elem` (i.e. `some reference type`)
+//
+// which cannot possibly all be true.
+
+    }
+}
+```
+
+To avoid those issues, you have to make the types match correctly.
+So we can fix the previous examples like this:
+
+```
+// Basic Example:
+trait Trait { type AssociatedType; }
+fn foo<T>(t: T) where T: Trait<AssociatedType = &'static str> {
+    println!("in foo");
+}
+impl Trait for i8 { type AssociatedType = &'static str; }
+foo(3_i8);
+
+// For-Loop Example:
+let vs = vec![1, 2, 3, 4];
+for v in &vs {
+    match v {
+        &1 => {}
+        _ => {}
+    }
+}
+```
+"##,
+
 E0282: r##"
 This error indicates that type inference did not result in one unique possible
 type, and extra information is required. In most cases this can be provided
@@ -674,7 +810,6 @@ register_diagnostics! {
     E0266, // expected item
     E0269, // not all control paths return a value
     E0270, // computation may converge in a function marked as diverging
-    E0271, // type mismatch resolving
     E0272, // rustc_on_unimplemented attribute refers to non-existent type parameter
     E0273, // rustc_on_unimplemented must have named format arguments
     E0274, // rustc_on_unimplemented must have a value
