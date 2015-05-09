@@ -55,7 +55,7 @@ pub struct Guard {
 
 /// A type of error which can be returned whenever a lock is acquired.
 ///
-/// Both Mutexes and RwLocks are poisoned whenever a task fails while the lock
+/// Both Mutexes and RwLocks are poisoned whenever a thread fails while the lock
 /// is held. The precise semantics for when a lock is poisoned is documented on
 /// each lock, but once a lock is poisoned then all future acquisitions will
 /// return this error.
@@ -68,7 +68,7 @@ pub struct PoisonError<T> {
 /// `try_lock` method.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum TryLockError<T> {
-    /// The lock could not be acquired because another task failed while holding
+    /// The lock could not be acquired because another thread failed while holding
     /// the lock.
     #[stable(feature = "rust1", since = "1.0.0")]
     Poisoned(PoisonError<T>),

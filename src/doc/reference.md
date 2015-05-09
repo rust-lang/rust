@@ -3635,7 +3635,7 @@ that have since been removed):
 * ML Kit, Cyclone: region based memory management
 * Haskell (GHC): typeclasses, type families
 * Newsqueak, Alef, Limbo: channels, concurrency
-* Erlang: message passing, task failure, ~~linked task failure~~,
+* Erlang: message passing, thread failure, ~~linked thread failure~~,
   ~~lightweight concurrency~~
 * Swift: optional bindings
 * Scheme: hygienic macros

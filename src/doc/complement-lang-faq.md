@@ -62,15 +62,15 @@ Data values in the language can only be constructed through a fixed set of initi
 * There is no global inter-crate namespace; all name management occurs within a crate.
  * Using another crate binds the root of _its_ namespace into the user's namespace.
 
-## Why is panic unwinding non-recoverable within a task? Why not try to "catch exceptions"?
+## Why is panic unwinding non-recoverable within a thread? Why not try to "catch exceptions"?
 
-In short, because too few guarantees could be made about the dynamic environment of the catch block, as well as invariants holding in the unwound heap, to be able to safely resume; we believe that other methods of signalling and logging errors are more appropriate, with tasks playing the role of a "hard" isolation boundary between separate heaps.
+In short, because too few guarantees could be made about the dynamic environment of the catch block, as well as invariants holding in the unwound heap, to be able to safely resume; we believe that other methods of signalling and logging errors are more appropriate, with threads playing the role of a "hard" isolation boundary between separate heaps.
 
 Rust provides, instead, three predictable and well-defined options for handling any combination of the three main categories of "catch" logic:
 
 * Failure _logging_ is done by the integrated logging subsystem.
-* _Recovery_ after a panic is done by trapping a task panic from _outside_
-  the task, where other tasks are known to be unaffected.
+* _Recovery_ after a panic is done by trapping a thread panic from _outside_
+  the thread, where other threads are known to be unaffected.
 * _Cleanup_ of resources is done by RAII-style objects with destructors.
 
 Cleanup through RAII-style destructors is more likely to work than in catch blocks anyways, since it will be better tested (part of the non-error control paths, so executed all the time).
@@ -91,8 +91,8 @@ We don't know if there's an obvious, easy, efficient, stock-textbook way of supp
 
 There's a lot of debate on this topic; it's easy to find a proponent of default-sync or default-async communication, and there are good reasons for either. Our choice rests on the following arguments:
 
-* Part of the point of isolating tasks is to decouple tasks from one another, such that assumptions in one task do not cause undue constraints (or bugs, if violated!) in another. Temporal coupling is as real as any other kind; async-by-default relaxes the default case to only _causal_ coupling.
-* Default-async supports buffering and batching communication, reducing the frequency and severity of task-switching and inter-task / inter-domain synchronization.
+* Part of the point of isolating threads is to decouple threads from one another, such that assumptions in one thread do not cause undue constraints (or bugs, if violated!) in another. Temporal coupling is as real as any other kind; async-by-default relaxes the default case to only _causal_ coupling.
+* Default-async supports buffering and batching communication, reducing the frequency and severity of thread-switching and inter-thread / inter-domain synchronization.
 * Default-async with transmittable channels is the lowest-level building block on which more-complex synchronization topologies and strategies can be built; it is not clear to us that the majority of cases fit the 2-party full-synchronization pattern rather than some more complex multi-party or multi-stage scenario. We did not want to force all programs to pay for wiring the former assumption into all communications.
 
 ## Why are channels half-duplex (one-way)?

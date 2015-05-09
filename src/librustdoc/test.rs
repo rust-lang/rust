@@ -180,9 +180,9 @@ fn runtest(test: &str, cratename: &str, libs: SearchPaths,
     // an explicit handle into rustc to collect output messages, but we also
     // want to catch the error message that rustc prints when it fails.
     //
-    // We take our task-local stderr (likely set by the test runner) and replace
+    // We take our thread-local stderr (likely set by the test runner) and replace
     // it with a sink that is also passed to rustc itself. When this function
-    // returns the output of the sink is copied onto the output of our own task.
+    // returns the output of the sink is copied onto the output of our own thread.
     //
     // The basic idea is to not use a default_handler() for rustc, and then also
     // not print things by default to the actual stderr.

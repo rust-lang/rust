@@ -457,8 +457,8 @@ static EXIT_STATUS: AtomicIsize = ATOMIC_ISIZE_INIT;
 
 /// Sets the process exit code
 ///
-/// Sets the exit code returned by the process if all supervised tasks
-/// terminate successfully (without panicking). If the current root task panics
+/// Sets the exit code returned by the process if all supervised threads
+/// terminate successfully (without panicking). If the current root thread panics
 /// and is supervised by the scheduler then any user-specified exit status is
 /// ignored and the process exits with the default panic status.
 ///

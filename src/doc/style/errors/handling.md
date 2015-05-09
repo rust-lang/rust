@@ -1,7 +1,7 @@
 % Handling errors
 
-### Use task isolation to cope with failure. [FIXME]
+### Use thread isolation to cope with failure. [FIXME]
 
-> **[FIXME]** Explain how to isolate tasks and detect task failure for recovery.
+> **[FIXME]** Explain how to isolate threads and detect thread failure for recovery.
 
 ### Consuming `Result` [FIXME]

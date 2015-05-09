@@ -11,13 +11,13 @@
 //! Rust stack-limit management
 //!
 //! Currently Rust uses a segmented-stack-like scheme in order to detect stack
-//! overflow for rust tasks. In this scheme, the prologue of all functions are
+//! overflow for rust threads. In this scheme, the prologue of all functions are
 //! preceded with a check to see whether the current stack limits are being
 //! exceeded.
 //!
 //! This module provides the functionality necessary in order to manage these
 //! stack limits (which are stored in platform-specific locations). The
-//! functions here are used at the borders of the task lifetime in order to
+//! functions here are used at the borders of the thread lifetime in order to
 //! manage these limits.
 //!
 //! This function is an unstable module because this scheme for stack overflow
