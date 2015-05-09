@@ -21,6 +21,7 @@ use self::pattern::{Searcher, ReverseSearcher, DoubleEndedSearcher};
 use char::CharExt;
 use clone::Clone;
 use cmp::{self, Eq};
+use convert::AsRef;
 use default::Default;
 use fmt;
 use iter::ExactSizeIterator;
@@ -1840,6 +1841,14 @@ impl StrExt for str {
 
     #[inline]
     fn parse<T: FromStr>(&self) -> Result<T, T::Err> { FromStr::from_str(self) }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl AsRef<[u8]> for str {
+    #[inline]
+    fn as_ref(&self) -> &[u8] {
+        self.as_bytes()
+    }
 }
 
 /// Pluck a code point out of a UTF-8-like byte slice and return the
