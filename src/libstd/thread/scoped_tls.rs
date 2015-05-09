@@ -60,7 +60,7 @@ pub mod __impl {
 #[unstable(feature = "scoped_tls",
            reason = "scoped TLS has yet to have wide enough use to fully consider \
                      stabilizing its interface")]
-pub struct ScopedKey<T> { #[doc(hidden)] pub inner: __impl::KeyInner<T> }
+pub struct ScopedKey<T: ?Sized> { #[doc(hidden)] pub inner: __impl::KeyInner<*const T> }
 
 /// Declare a new scoped thread local storage key.
 ///
@@ -123,7 +123,7 @@ macro_rules! __scoped_thread_local_inner {
         const _INIT: __Key<$t> = __Key {
             inner: ::std::thread::__scoped::KeyInner {
                 inner: ::std::thread::__scoped::OS_INIT,
-                marker: ::std::marker::PhantomData::<::std::cell::Cell<$t>>,
+                marker: ::std::marker::PhantomData::<::std::cell::UnsafeCell<*const $t>>,
             }
         };
 
@@ -134,7 +134,7 @@ macro_rules! __scoped_thread_local_inner {
 #[unstable(feature = "scoped_tls",
            reason = "scoped TLS has yet to have wide enough use to fully consider \
                      stabilizing its interface")]
-impl<T> ScopedKey<T> {
+impl<T: ?Sized> ScopedKey<T> {
     /// Inserts a value into this scoped thread local storage slot for a
     /// duration of a closure.
     ///
@@ -167,19 +167,20 @@ impl<T> ScopedKey<T> {
     pub fn set<R, F>(&'static self, t: &T, cb: F) -> R where
         F: FnOnce() -> R,
     {
-        struct Reset<'a, T: 'a> {
-            key: &'a __impl::KeyInner<T>,
-            val: *mut T,
+        struct Reset<'a, T: 'a + ?Sized> {
+            key: &'a __impl::KeyInner<*const T>,
+            val: *mut *const T,
         }
-                impl<'a, T> Drop for Reset<'a, T> {
+        impl<'a, T: ?Sized> Drop for Reset<'a, T> {
             fn drop(&mut self) {
                 unsafe { self.key.set(self.val) }
             }
         }
 
+        let mut pt = t as *const _;
         let prev = unsafe {
             let prev = self.inner.get();
-            self.inner.set(t as *const T as *mut T);
+            self.inner.set(&mut pt);
             prev
         };
 
@@ -213,7 +214,7 @@ impl<T> ScopedKey<T> {
             let ptr = self.inner.get();
             assert!(!ptr.is_null(), "cannot access a scoped thread local \
                                      variable without calling `set` first");
-            cb(&*ptr)
+            cb(&**ptr)
         }
     }
 
@@ -252,13 +253,13 @@ mod imp {
           target_arch = "aarch64"))]
 mod imp {
     use marker;
-    use std::cell::Cell;
+    use std::cell::UnsafeCell;
     use sys_common::thread_local::StaticKey as OsStaticKey;
 
     #[doc(hidden)]
     pub struct KeyInner<T> {
         pub inner: OsStaticKey,
-        pub marker: marker::PhantomData<Cell<T>>,
+        pub marker: marker::PhantomData<UnsafeCell<T>>,
     }
 
     unsafe impl<T> ::marker::Sync for KeyInner<T> { }
