@@ -543,7 +543,7 @@ pub fn mk_assignty<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
 
     if let Some(adjustment) = adjustment {
         debug!("Success, coerced with {}", adjustment.repr(fcx.tcx()));
-        fcx.write_adjustment(expr.id, adjustment);
+        fcx.write_adjustment(check_env, expr.id, adjustment);
     }
     Ok(())
 }

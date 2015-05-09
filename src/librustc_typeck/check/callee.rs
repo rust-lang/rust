@@ -135,7 +135,7 @@ fn try_overloaded_call_step<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
     // If the callee is a bare function or a closure, then we're all set.
     match structurally_resolved_type(check_env, fcx, callee_expr.span, adjusted_ty).sty {
         ty::ty_bare_fn(..) => {
-            fcx.write_autoderef_adjustment(callee_expr.id, autoderefs);
+            fcx.write_autoderef_adjustment(check_env, callee_expr.id, autoderefs);
             return Some(CallStep::Builtin);
         }
 

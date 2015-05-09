@@ -347,7 +347,7 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
         } else {
             let tcx = self.fcx.tcx();
             ty::adjust_ty(tcx, expr.span, expr.id, ty_unadjusted,
-                          self.fcx.inh.adjustments.borrow().get(&expr.id),
+                          self.check_env.tt.adjustments.get(&expr.id),
                           |method_call| self.resolve_method_type(method_call))
         }
     }
@@ -532,14 +532,17 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
     let has_method_map = rcx.check_env.tt.method_map.contains_key(&method_call);
 
     // Check any autoderefs or autorefs that appear.
-    if let Some(adjustment) = rcx.fcx.inh.adjustments.borrow().get(&expr.id) {
+    let adjustment = {
+        rcx.check_env.tt.adjustments.get(&expr.id).map( |&adj| adj )
+    };
+    if let Some(adjustment) = adjustment {
         debug!("adjustment={:?}", adjustment);
-        match *adjustment {
-            ty::AdjustDerefRef(ty::AutoDerefRef {autoderefs, ref autoref, ..}) => {
+        match adjustment {
+            ty::AdjustDerefRef(ty::AutoDerefRef {autoderefs, autoref, ..}) => {
                 let expr_ty = rcx.resolve_node_type(expr.id);
                 constrain_autoderefs(rcx, expr, autoderefs, expr_ty);
-                if let Some(ref autoref) = *autoref {
-                    link_autoref(rcx, expr, autoderefs, autoref);
+                if let Some(autoref) = autoref {
+                    link_autoref(rcx, expr, autoderefs, &autoref);
 
                     // Require that the resulting region encompasses
                     // the current node.
@@ -1041,7 +1044,7 @@ fn type_of_node_must_outlive<'a, 'tcx>(
     // report errors later on in the writeback phase.
     let ty0 = rcx.resolve_node_type(id);
     let ty = ty::adjust_ty(tcx, origin.span(), id, ty0,
-                           rcx.fcx.inh.adjustments.borrow().get(&id),
+                           rcx.check_env.tt.adjustments.get(&id),
                            |method_call| rcx.resolve_method_type(method_call));
     debug!("constrain_regions_in_type_of_node(\
             ty={}, ty0={}, id={}, minimum_lifetime={:?})",

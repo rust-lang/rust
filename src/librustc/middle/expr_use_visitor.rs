@@ -787,7 +787,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
     // process.
     fn walk_adjustment(&mut self, expr: &ast::Expr) {
         let typer = self.typer;
-        if let Some(adjustment) = typer.adjustments().borrow().get(&expr.id) {
+        typer.adjustments( |adjustments| if let Some(adjustment) = adjustments.get(&expr.id) {
             match *adjustment {
                 ty::AdjustReifyFnPointer |
                 ty::AdjustUnsafeFnPointer => {
@@ -802,7 +802,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                     self.walk_autoderefref(expr, adj);
                 }
             }
-        }
+        })
     }
 
     /// Autoderefs for overloaded Deref calls in fact reference their receiver. That is, if we have
@@ -1283,10 +1283,11 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
     }
 }
 
-fn copy_or_move<'tcx>(typer: &mc::Typer<'tcx>,
-                      cmt: &mc::cmt<'tcx>,
-                      move_reason: MoveReason)
-                      -> ConsumeMode
+fn copy_or_move<'tcx,T>(typer: &T,
+                        cmt: &mc::cmt<'tcx>,
+                        move_reason: MoveReason)
+                        -> ConsumeMode
+    where T: mc::Typer<'tcx>
 {
     if typer.type_moves_by_default(cmt.span, cmt.ty) {
         Move(move_reason)

@@ -6127,10 +6127,11 @@ pub struct ClosureUpvar<'tcx> {
 }
 
 // Returns a list of `ClosureUpvar`s for each upvar.
-pub fn closure_upvars<'tcx>(typer: &mc::Typer<'tcx>,
-                            closure_id: ast::DefId,
-                            substs: &Substs<'tcx>)
-                            -> Option<Vec<ClosureUpvar<'tcx>>>
+pub fn closure_upvars<'tcx,T>(typer: &T,
+                              closure_id: ast::DefId,
+                              substs: &Substs<'tcx>)
+                              -> Option<Vec<ClosureUpvar<'tcx>>>
+    where T: mc::Typer<'tcx>
 {
     // Presently an unboxed closure type cannot "escape" out of a
     // function, so we will only encounter ones that originated in the
@@ -6831,8 +6832,9 @@ impl<'a,'tcx> mc::Typer<'tcx> for ParameterEnvironment<'a,'tcx> {
         self.tcx.method_map.borrow().get(&method_call).map(|method| method.origin.clone())
     }
 
-    fn adjustments(&self) -> &RefCell<NodeMap<ty::AutoAdjustment<'tcx>>> {
-        &self.tcx.adjustments
+    fn adjustments<F, T>(&self, closure: F) -> T
+        where F: FnOnce(&NodeMap<ty::AutoAdjustment<'tcx>>) -> T {
+        closure(&self.tcx.adjustments.borrow())
     }
 
     fn is_method_call(&self, id: ast::NodeId) -> bool {

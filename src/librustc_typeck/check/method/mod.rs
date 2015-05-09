@@ -273,7 +273,7 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
                 ty::ByValueExplicitSelfCategory => {
                     // Trait method is fn(self), no transformation needed.
                     assert!(!unsize);
-                    fcx.write_autoderef_adjustment(self_expr.id, autoderefs);
+                    fcx.write_autoderef_adjustment(check_env, self_expr.id, autoderefs);
                 }
 
                 ty::ByReferenceExplicitSelfCategory(..) => {
@@ -281,7 +281,7 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
                     // autoref. Pull the region etc out of the type of first argument.
                     match transformed_self_ty.sty {
                         ty::ty_rptr(region, ty::mt { mutbl, ty: _ }) => {
-                            fcx.write_adjustment(self_expr.id,
+                            fcx.write_adjustment(check_env, self_expr.id,
                                 ty::AdjustDerefRef(ty::AutoDerefRef {
                                     autoderefs: autoderefs,
                                     autoref: Some(ty::AutoPtr(region, mutbl)),

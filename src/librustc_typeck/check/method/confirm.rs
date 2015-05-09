@@ -179,7 +179,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
         assert_eq!(result, Some(()));
 
         // Write out the final adjustment.
-        self.fcx.write_adjustment(self.self_expr.id,
+        self.fcx.write_adjustment(check_env, self.self_expr.id,
                                   ty::AdjustDerefRef(ty::AutoDerefRef {
             autoderefs: pick.autoderefs,
             autoref: autoref,
@@ -513,11 +513,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
         // Fix up autoderefs and derefs.
         for (i, &expr) in exprs.iter().rev().enumerate() {
             // Count autoderefs.
-            let autoderef_count = match self.fcx
-                                            .inh
-                                            .adjustments
-                                            .borrow()
-                                            .get(&expr.id) {
+            let autoderef_count = match check_env.tt.adjustments.get(&expr.id) {
                 Some(&ty::AdjustDerefRef(ref adj)) => adj.autoderefs,
                 Some(_) | None => 0,
             };
@@ -555,7 +551,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                         // expects. This is annoying and horrible. We
                         // ought to recode this routine so it doesn't
                         // (ab)use the normal type checking paths.
-                        let adj = self.fcx.inh.adjustments.borrow().get(&base_expr.id).cloned();
+                        let adj = check_env.tt.adjustments.get(&base_expr.id).cloned();
                         let (autoderefs, unsize) = match adj {
                             Some(ty::AdjustDerefRef(adr)) => match adr.autoref {
                                 None => {

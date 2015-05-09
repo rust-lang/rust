@@ -109,7 +109,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 // adjustment for rhs is kind of baked into the
                 // system.
                 if !ast_util::is_by_value_binop(op.node) {
-                    self.fcx.inh.adjustments.borrow_mut().remove(&lhs.id);
+                    self.check_env.tt.adjustments.remove(&lhs.id);
                 }
             }
         }
@@ -260,7 +260,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     }
 
     fn visit_adjustments(&mut self, reason: ResolveReason, id: ast::NodeId) {
-        match self.fcx.inh.adjustments.borrow_mut().remove(&id) {
+        match self.check_env.tt.adjustments.remove(&id) {
             None => {
                 debug!("No adjustments for node {}", id);
             }

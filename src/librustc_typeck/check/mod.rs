@@ -158,7 +158,6 @@ pub struct Inherited<'a, 'tcx: 'a> {
 
     // Temporary tables:
     item_substs: RefCell<NodeMap<ty::ItemSubsts<'tcx>>>,
-    adjustments: RefCell<NodeMap<ty::AutoAdjustment<'tcx>>>,
     upvar_capture_map: RefCell<ty::UpvarCaptureMap>,
     closure_kinds: RefCell<DefIdMap<ty::ClosureKind>>,
 }
@@ -168,6 +167,7 @@ type MethodMap<'tcx> = FnvHashMap<MethodCall, MethodCallee<'tcx>>;
 /// Temporary tables
 struct CheckEnvTables<'tcx> {
     node_types: NodeMap<Ty<'tcx>>,
+    adjustments: NodeMap<ty::AutoAdjustment<'tcx>>,
     method_map: MethodMap<'tcx>,
     closure_tys: DefIdMap<ty::ClosureTy<'tcx>>,
 }
@@ -505,7 +505,7 @@ impl<'a, 'tcx> mc::Typer<'tcx> for FnCtxtTyper<'a, 'tcx> {
     }
     fn expr_ty_adjusted(&self, expr: &ast::Expr) -> McResult<Ty<'tcx>> {
         let ty = self.adjust_expr_ty(expr,
-                                     self.fcx.inh.adjustments.borrow().get(&expr.id));
+                                     self.tt.adjustments.get(&expr.id));
         self.fcx.resolve_type_vars_or_error(&ty)
     }
     fn type_moves_by_default(&self, span: Span, ty: Ty<'tcx>) -> bool {
@@ -526,8 +526,9 @@ impl<'a, 'tcx> mc::Typer<'tcx> for FnCtxtTyper<'a, 'tcx> {
         self.tt.method_map.get(&method_call)
                           .map(|method| method.origin.clone())
     }
-    fn adjustments(&self) -> &RefCell<NodeMap<ty::AutoAdjustment<'tcx>>> {
-        &self.fcx.inh.adjustments
+    fn adjustments<F, T>(&self, closure: F) -> T
+        where F: FnOnce(&NodeMap<ty::AutoAdjustment<'tcx>>) -> T {
+        closure(&self.tt.adjustments)
     }
     fn is_method_call(&self, id: ast::NodeId) -> bool {
         self.tt.method_map.contains_key(&ty::MethodCall::expr(id))
@@ -577,7 +578,6 @@ impl<'a, 'tcx> Inherited<'a, 'tcx> {
             infcx: infer::new_infer_ctxt(tcx),
             param_env: param_env,
             item_substs: RefCell::new(NodeMap()),
-            adjustments: RefCell::new(NodeMap()),
             upvar_capture_map: RefCell::new(FnvHashMap()),
             closure_kinds: RefCell::new(DefIdMap()),
         }
@@ -606,6 +606,7 @@ impl<'tcx> CheckEnv<'tcx> {
             locals: NodeMap(),
             tt: CheckEnvTables {
                 node_types: NodeMap(),
+                adjustments: NodeMap(),
                 method_map: FnvHashMap(),
                 closure_tys: DefIdMap(),
             },
@@ -1616,9 +1617,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     fn write_autoderef_adjustment(&self,
+                                  check_env: &mut CheckEnv<'tcx>,
                                   node_id: ast::NodeId,
                                   derefs: usize) {
         self.write_adjustment(
+            check_env,
             node_id,
             ty::AdjustDerefRef(ty::AutoDerefRef {
                 autoderefs: derefs,
@@ -1629,6 +1632,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     fn write_adjustment(&self,
+                        check_env: &mut CheckEnv<'tcx>,
                         node_id: ast::NodeId,
                         adj: ty::AutoAdjustment<'tcx>) {
         debug!("write_adjustment(node_id={}, adj={})", node_id, adj.repr(self.tcx()));
@@ -1637,7 +1641,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         }
 
-        self.inh.adjustments.borrow_mut().insert(node_id, adj);
+        check_env.tt.adjustments.insert(node_id, adj);
     }
 
     fn write_nil(&self, check_env: &mut CheckEnv<'tcx>, node_id: ast::NodeId) {
@@ -2154,7 +2158,7 @@ fn try_index_step<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
             debug!("try_index_step: success, using built-in indexing");
             // If we had `[T; N]`, we should've caught it before unsizing to `[T]`.
             assert!(!unsize);
-            fcx.write_autoderef_adjustment(base_expr.id, autoderefs);
+            fcx.write_autoderef_adjustment(check_env, base_expr.id, autoderefs);
             return Some((tcx.types.usize, ty));
         }
         _ => {}
@@ -2803,7 +2807,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(check_env: &mut CheckEnv<'tcx>,
         match field_ty {
             Some(field_ty) => {
                 fcx.write_ty(check_env, expr.id, field_ty);
-                fcx.write_autoderef_adjustment(base.id, autoderefs);
+                fcx.write_autoderef_adjustment(check_env, base.id, autoderefs);
                 return;
             }
             None => {}
@@ -2916,7 +2920,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(check_env: &mut CheckEnv<'tcx>,
         match field_ty {
             Some(field_ty) => {
                 fcx.write_ty(check_env, expr.id, field_ty);
-                fcx.write_autoderef_adjustment(base.id, autoderefs);
+                fcx.write_autoderef_adjustment(check_env, base.id, autoderefs);
                 return;
             }
             None => {}
