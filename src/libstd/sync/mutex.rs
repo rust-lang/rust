@@ -30,7 +30,7 @@ use sys_common::poison::{self, TryLockError, TryLockResult, LockResult};
 ///
 /// The mutexes in this module implement a strategy called "poisoning" where a
 /// mutex is considered poisoned whenever a thread panics while holding the
-/// lock. Once a mutex is poisoned, all other tasks are unable to access the
+/// lock. Once a mutex is poisoned, all other threads are unable to access the
 /// data by default as it is likely tainted (some invariant is not being
 /// upheld).
 ///
@@ -56,7 +56,7 @@ use sys_common::poison::{self, TryLockError, TryLockResult, LockResult};
 /// // Spawn a few threads to increment a shared variable (non-atomically), and
 /// // let the main thread know once all increments are done.
 /// //
-/// // Here we're using an Arc to share memory among tasks, and the data inside
+/// // Here we're using an Arc to share memory among threads, and the data inside
 /// // the Arc is protected with a mutex.
 /// let data = Arc::new(Mutex::new(0));
 ///
@@ -69,7 +69,7 @@ use sys_common::poison::{self, TryLockError, TryLockResult, LockResult};
 ///         // which can access the shared state when the lock is held.
 ///         //
 ///         // We unwrap() the return value to assert that we are not expecting
-///         // tasks to ever fail while holding the lock.
+///         // threads to ever fail while holding the lock.
 ///         let mut data = data.lock().unwrap();
 ///         *data += 1;
 ///         if *data == N {
@@ -195,10 +195,10 @@ impl<T> Mutex<T> {
 }
 
 impl<T: ?Sized> Mutex<T> {
-    /// Acquires a mutex, blocking the current task until it is able to do so.
+    /// Acquires a mutex, blocking the current thread until it is able to do so.
     ///
-    /// This function will block the local task until it is available to acquire
-    /// the mutex. Upon returning, the task is the only task with the mutex
+    /// This function will block the local thread until it is available to acquire
+    /// the mutex. Upon returning, the thread is the only thread with the mutex
     /// held. An RAII guard is returned to allow scoped unlock of the lock. When
     /// the guard goes out of scope, the mutex will be unlocked.
     ///

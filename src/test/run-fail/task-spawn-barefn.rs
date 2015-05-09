@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:Ensure that the child task runs by panicking
+// error-pattern:Ensure that the child thread runs by panicking
 
 use std::thread;
 
 fn main() {
-    // the purpose of this test is to make sure that task::spawn()
+    // the purpose of this test is to make sure that thread::spawn()
     // works when provided with a bare function:
     let r = thread::spawn(startfn).join();
     if r.is_err() {
@@ -22,5 +22,5 @@ fn main() {
 }
 
 fn startfn() {
-    assert!("Ensure that the child task runs by panicking".is_empty());
+    assert!("Ensure that the child thread runs by panicking".is_empty());
 }

@@ -40,7 +40,7 @@ fn count(n: libc::uintptr_t) -> libc::uintptr_t {
 }
 
 pub fn main() {
-    // Make sure we're on a task with small Rust stacks (main currently
+    // Make sure we're on a thread with small Rust stacks (main currently
     // has a large stack)
     thread::spawn(move|| {
         let result = count(1000);

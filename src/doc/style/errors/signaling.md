@@ -11,13 +11,13 @@ Errors fall into one of three categories:
 The basic principle of the convention is that:
 
 * Catastrophic errors and programming errors (bugs) can and should only be
-recovered at a *coarse grain*, i.e. a task boundary.
+recovered at a *coarse grain*, i.e. a thread boundary.
 * Obstructions preventing an operation should be reported at a maximally *fine
 grain* -- to the immediate invoker of the operation.
 
 ## Catastrophic errors
 
-An error is _catastrophic_ if there is no meaningful way for the current task to
+An error is _catastrophic_ if there is no meaningful way for the current thread to
 continue after the error occurs.
 
 Catastrophic errors are _extremely_ rare, especially outside of `libstd`.
@@ -28,7 +28,7 @@ Catastrophic errors are _extremely_ rare, especially outside of `libstd`.
 
 For errors like stack overflow, Rust currently aborts the process, but
 could in principle panic, which (in the best case) would allow
-reporting and recovery from a supervisory task.
+reporting and recovery from a supervisory thread.
 
 ## Contract violations
 
@@ -44,7 +44,7 @@ existing borrows have been relinquished.
 
 A contract violation is always a bug, and for bugs we follow the Erlang
 philosophy of "let it crash": we assume that software *will* have bugs, and we
-design coarse-grained task boundaries to report, and perhaps recover, from these
+design coarse-grained thread boundaries to report, and perhaps recover, from these
 bugs.
 
 ### Contract design

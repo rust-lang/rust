@@ -146,7 +146,7 @@ pub trait TDynBenchFn: Send {
 // A function that runs a test. If the function returns successfully,
 // the test succeeds; if the function panics then the test fails. We
 // may need to come up with a more clever definition of test in order
-// to support isolation of tests into tasks.
+// to support isolation of tests into threads.
 pub enum TestFn {
     StaticTestFn(fn()),
     StaticBenchFn(fn(&mut Bencher)),

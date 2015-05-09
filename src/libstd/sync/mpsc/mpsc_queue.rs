@@ -28,7 +28,7 @@
 //! A mostly lock-free multi-producer, single consumer queue.
 //!
 //! This module contains an implementation of a concurrent MPSC queue. This
-//! queue can be used to share data between tasks, and is also used as the
+//! queue can be used to share data between threads, and is also used as the
 //! building block of channels in rust.
 //!
 //! Note that the current implementation of this queue has a caveat of the `pop`
