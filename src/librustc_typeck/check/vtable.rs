@@ -77,7 +77,8 @@ pub fn check_object_safety<'tcx>(tcx: &ty::ctxt<'tcx>,
     }
 }
 
-pub fn register_object_cast_obligations<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
+pub fn register_object_cast_obligations<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
+                                                  fcx: &FnCtxt<'a, 'tcx>,
                                                   span: Span,
                                                   object_trait: &ty::TyTrait<'tcx>,
                                                   referent_ty: Ty<'tcx>)
@@ -85,6 +86,7 @@ pub fn register_object_cast_obligations<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 {
     // We can only make objects from sized types.
     fcx.register_builtin_bound(
+        check_env,
         referent_ty,
         ty::BoundSized,
         traits::ObligationCause::new(span, fcx.body_id, traits::ObjectSized));
@@ -109,7 +111,7 @@ pub fn register_object_cast_obligations<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         object_trait.principal_trait_ref_with_self_ty(fcx.tcx(), referent_ty);
     let object_obligation =
         Obligation::new(cause.clone(), object_trait_ref.as_predicate());
-    fcx.register_predicate(object_obligation);
+    fcx.register_predicate(check_env, object_obligation);
 
     // Create additional obligations for all the various builtin
     // bounds attached to the object cast. (In other words, if the
@@ -117,6 +119,7 @@ pub fn register_object_cast_obligations<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     // for the Send check.)
     for builtin_bound in &object_trait.bounds.builtin_bounds {
         fcx.register_builtin_bound(
+            check_env,
             referent_ty,
             builtin_bound,
             cause.clone());
@@ -128,7 +131,7 @@ pub fn register_object_cast_obligations<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     for projection_bound in &projection_bounds {
         let projection_obligation =
             Obligation::new(cause.clone(), projection_bound.as_predicate());
-        fcx.register_predicate(projection_obligation);
+        fcx.register_predicate(check_env, projection_obligation);
     }
 
     object_trait_ref
@@ -152,9 +155,8 @@ pub fn select_all_fcx_obligations_or_error<'a, 'ctx>(check_env: &mut CheckEnv<'c
     assert!(check_env.deferred_call_resolutions.is_empty());
 
     select_all_fcx_obligations_and_apply_defaults(check_env, fcx);
-    let mut fulfillment_cx = fcx.inh.fulfillment_cx.borrow_mut();
-    let typer = FnCtxtTyper::new(check_env, fcx);
-    let r = fulfillment_cx.select_all_or_error(fcx.infcx(), &typer);
+    let typer = FnCtxtTyper::new(&check_env.tt, fcx);
+    let r = check_env.fulfillment_cx.select_all_or_error(fcx.infcx(), &typer);
     match r {
         Ok(()) => { }
         Err(errors) => { report_fulfillment_errors(fcx.infcx(), &errors); }
@@ -162,13 +164,12 @@ pub fn select_all_fcx_obligations_or_error<'a, 'ctx>(check_env: &mut CheckEnv<'c
 }
 
 /// Select as many obligations as we can at present.
-pub fn select_fcx_obligations_where_possible<'a, 'ctx>(check_env: &CheckEnv<'ctx>,
+pub fn select_fcx_obligations_where_possible<'a, 'ctx>(check_env: &mut CheckEnv<'ctx>,
                                                        fcx: &FnCtxt<'a, 'ctx>)
 {
-    let typer = FnCtxtTyper::new(check_env, fcx);
+    let typer = FnCtxtTyper::new(&check_env.tt, fcx);
     match
-        fcx.inh.fulfillment_cx
-        .borrow_mut()
+        check_env.fulfillment_cx
         .select_where_possible(fcx.infcx(), &typer)
     {
         Ok(()) => { }
@@ -179,13 +180,12 @@ pub fn select_fcx_obligations_where_possible<'a, 'ctx>(check_env: &CheckEnv<'ctx
 /// Try to select any fcx obligation that we haven't tried yet, in an effort to improve inference.
 /// You could just call `select_fcx_obligations_where_possible` except that it leads to repeated
 /// work.
-pub fn select_new_fcx_obligations<'a, 'ctx>(check_env: &CheckEnv<'ctx>,
+pub fn select_new_fcx_obligations<'a, 'ctx>(check_env: &mut CheckEnv<'ctx>,
                                             fcx: &FnCtxt<'a, 'ctx>)
 {
-    let typer = FnCtxtTyper::new(check_env, fcx);
+    let typer = FnCtxtTyper::new(&check_env.tt, fcx);
     match
-        fcx.inh.fulfillment_cx
-        .borrow_mut()
+        check_env.fulfillment_cx
         .select_new_obligations(fcx.infcx(), &typer)
     {
         Ok(()) => { }

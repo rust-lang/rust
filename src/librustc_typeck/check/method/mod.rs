@@ -14,6 +14,7 @@ use astconv::AstConv;
 use super::CheckEnv;
 use super::FnCtxt;
 use super::FnCtxtTyper;
+use super::FnCtxtJoined;
 use super::vtable;
 use super::vtable::select_new_fcx_obligations;
 use middle::def;
@@ -191,12 +192,14 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
                                               fcx.body_id,
                                               poly_trait_ref.as_predicate());
 
-    // Now we want to know if this can be matched
-    let typer = FnCtxtTyper::new(check_env, fcx);
-    let mut selcx = traits::SelectionContext::new(fcx.infcx(), &typer);
-    if !selcx.evaluate_obligation(&obligation) {
-        debug!("--> Cannot match obligation");
-        return None; // Cannot be matched, no such method resolution is possible.
+    {
+        // Now we want to know if this can be matched
+        let typer = FnCtxtTyper::new(&check_env.tt, fcx);
+        let mut selcx = traits::SelectionContext::new(fcx.infcx(), &typer);
+        if !selcx.evaluate_obligation(&obligation) {
+            debug!("--> Cannot match obligation");
+            return None; // Cannot be matched, no such method resolution is possible.
+        }
     }
 
     // Trait must have a method named `m_name` and it should not have
@@ -218,7 +221,10 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
     let fn_sig = fcx.infcx().replace_late_bound_regions_with_fresh_var(span,
                                                                        infer::FnCall,
                                                                        &method_ty.fty.sig).0;
-    let fn_sig = typer.instantiate_type_scheme(span, trait_ref.substs, &fn_sig);
+    let fn_sig = {
+        let mut joined = FnCtxtJoined::new(check_env, fcx);
+        joined.instantiate_type_scheme(span, trait_ref.substs, &fn_sig)
+    };
     let transformed_self_ty = fn_sig.inputs[0];
     let fty = ty::mk_bare_fn(tcx, None, tcx.mk_bare_fn(ty::BareFnTy {
         sig: ty::Binder(fn_sig),
@@ -238,9 +244,13 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
     //
     // Note that as the method comes from a trait, it should not have
     // any late-bound regions appearing in its bounds.
-    let method_bounds = typer.instantiate_bounds(span, trait_ref.substs, &method_ty.predicates);
+    let method_bounds = {
+        let mut joined = FnCtxtJoined::new(check_env, fcx);
+        joined.instantiate_bounds(span, trait_ref.substs, &method_ty.predicates)
+    };
     assert!(!method_bounds.has_escaping_regions());
     fcx.add_obligations_for_parameters(
+        check_env,
         traits::ObligationCause::misc(span, fcx.body_id),
         &method_bounds);
 

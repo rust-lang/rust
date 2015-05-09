@@ -14,7 +14,7 @@ use super::{CandidateSource,ImplSource,TraitSource};
 use super::suggest;
 
 use check;
-use check::{CheckEnv, FnCtxt, FnCtxtTyper, NoPreference, UnresolvedTypeAction};
+use check::{CheckEnv, FnCtxt, FnCtxtTyper, FnCtxtJoined, NoPreference, UnresolvedTypeAction};
 use middle::fast_reject;
 use middle::subst;
 use middle::subst::Subst;
@@ -411,8 +411,8 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         }
 
         let (impl_ty, impl_substs) = self.impl_ty_and_substs(impl_def_id);
-        let typer = FnCtxtTyper::new(check_env, self.fcx);
-        let impl_ty = typer.instantiate_type_scheme(self.span, &impl_substs, &impl_ty);
+        let mut joined = FnCtxtJoined::new(check_env, self.fcx);
+        let impl_ty = joined.instantiate_type_scheme(self.span, &impl_substs, &impl_ty);
 
         // Determine the receiver type that the method itself expects.
         let xform_self_ty =
@@ -1055,7 +1055,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             match probe.kind {
                 InherentImplCandidate(impl_def_id, ref substs) |
                 ExtensionImplCandidate(impl_def_id, _, ref substs, _) => {
-                    let typer = FnCtxtTyper::new(check_env, self.fcx);
+                    let typer = FnCtxtTyper::new(&check_env.tt, self.fcx);
                     let selcx = &mut traits::SelectionContext::new(self.infcx(), &typer);
                     let cause = traits::ObligationCause::misc(self.span, self.fcx.body_id);
 

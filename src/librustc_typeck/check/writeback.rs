@@ -95,14 +95,14 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     // operating on scalars, we clear the overload.
     fn fix_scalar_binary_expr(&mut self, e: &ast::Expr) {
         if let ast::ExprBinary(ref op, ref lhs, ref rhs) = e.node {
-            let lhs_ty = self.fcx.node_ty(self.check_env, lhs.id);
+            let lhs_ty = self.fcx.node_ty(&self.check_env.tt.node_types, lhs.id);
             let lhs_ty = self.fcx.infcx().resolve_type_vars_if_possible(&lhs_ty);
 
-            let rhs_ty = self.fcx.node_ty(self.check_env, rhs.id);
+            let rhs_ty = self.fcx.node_ty(&self.check_env.tt.node_types, rhs.id);
             let rhs_ty = self.fcx.infcx().resolve_type_vars_if_possible(&rhs_ty);
 
             if ty::type_is_scalar(lhs_ty) && ty::type_is_scalar(rhs_ty) {
-                self.check_env.method_map.remove(&MethodCall::expr(e.id));
+                self.check_env.tt.method_map.remove(&MethodCall::expr(e.id));
 
                 // weird but true: the by-ref binops put an
                 // adjustment on the lhs but not the rhs; the
@@ -232,7 +232,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             return
         }
 
-        for (def_id, closure_ty) in &self.check_env.closure_tys {
+        for (def_id, closure_ty) in &self.check_env.tt.closure_tys {
             let closure_ty = self.resolve(closure_ty, ResolvingClosure(*def_id));
             self.fcx.tcx().closure_tys.borrow_mut().insert(*def_id, closure_ty);
         }
@@ -247,7 +247,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         self.visit_adjustments(reason, id);
 
         // Resolve the type of the node with id `id`
-        let n_ty = self.fcx.node_ty(self.check_env, id);
+        let n_ty = self.fcx.node_ty(&self.check_env.tt.node_types, id);
         let n_ty = self.resolve(&n_ty, reason);
         write_ty_to_tcx(self.tcx(), id, n_ty);
         debug!("Node {} has type {}", id, n_ty.repr(self.tcx()));
@@ -297,7 +297,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                               reason: ResolveReason,
                               method_call: MethodCall) {
         // Resolve any method map entry
-        match self.check_env.method_map.remove(&method_call) {
+        match self.check_env.tt.method_map.remove(&method_call) {
             Some(method) => {
                 debug!("writeback::resolve_method_map_entry(call={:?}, entry={})",
                        method_call,

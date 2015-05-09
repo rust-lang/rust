@@ -59,7 +59,7 @@ pub fn coerce<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
                         sp: Span,
                         expected: Ty<'tcx>,
                         expr: &ast::Expr) {
-    let expr_ty = fcx.expr_ty(check_env, expr);
+    let expr_ty = fcx.expr_ty(&check_env.tt.node_types, expr);
     debug!("demand::coerce(expected = {}, expr_ty = {})",
            expected.repr(fcx.ccx.tcx),
            expr_ty.repr(fcx.ccx.tcx));

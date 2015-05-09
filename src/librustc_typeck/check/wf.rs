@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use astconv::AstConv;
-use super::{CheckEnv, FnCtxt, FnCtxtTyper, Inherited, blank_fn_ctxt, vtable, regionck};
+use super::{CheckEnv, FnCtxt, FnCtxtTyper, FnCtxtJoined, Inherited, blank_fn_ctxt, vtable, regionck};
 use constrained_type_params::{identify_constrained_type_params, Parameter};
 use CrateCtxt;
 use middle::region;
@@ -181,6 +181,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                     if !variant.fields.is_empty() {
                         for field in variant.fields.init() {
                             fcx.register_builtin_bound(
+                                bounds_checker.check_env,
                                 field.ty,
                                 ty::BoundSized,
                                 traits::ObligationCause::new(field.span,
@@ -211,10 +212,12 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
             debug!("check_item_type at bounds_checker.scope: {:?}", bounds_checker.scope);
 
             let type_scheme = ty::lookup_item_type(fcx.tcx(), local_def(item.id));
-            let typer = FnCtxtTyper::new(check_env, fcx);
-            let item_ty = typer.instantiate_type_scheme(item.span,
-                                                        &fcx.inh.param_env.free_substs,
-                                                        &type_scheme.ty);
+            let item_ty = {
+                let mut joined = FnCtxtJoined::new(bounds_checker.check_env, fcx);
+                joined.instantiate_type_scheme(item.span,
+                                               &fcx.inh.param_env.free_substs,
+                                               &type_scheme.ty)
+            };
 
             bounds_checker.check_traits_in_ty(item_ty);
         });
@@ -235,10 +238,12 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
             // that is, with all type parameters converted from bound
             // to free.
             let self_ty = ty::node_id_to_type(fcx.tcx(), item.id);
-            let typer = FnCtxtTyper::new(check_env, fcx);
-            let self_ty = typer.instantiate_type_scheme(item.span,
-                                                        &fcx.inh.param_env.free_substs,
-                                                        &self_ty);
+            let self_ty = {
+                let mut joined = FnCtxtJoined::new(bounds_checker.check_env, fcx);
+                joined.instantiate_type_scheme(item.span,
+                                               &fcx.inh.param_env.free_substs,
+                                               &self_ty)
+            };
 
             bounds_checker.check_traits_in_ty(self_ty);
 
@@ -249,9 +254,12 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                 Some(t) => { t }
             };
 
-            let trait_ref = typer.instantiate_type_scheme(item.span,
-                                                          &fcx.inh.param_env.free_substs,
-                                                          &trait_ref);
+            let trait_ref = {
+                let mut joined = FnCtxtJoined::new(bounds_checker.check_env, fcx);
+                joined.instantiate_type_scheme(item.span,
+                                               &fcx.inh.param_env.free_substs,
+                                               &trait_ref)
+            };
 
             // We are stricter on the trait-ref in an impl than the
             // self-type.  In particular, we enforce region
@@ -274,14 +282,16 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
             let predicates = ty::lookup_super_predicates(fcx.tcx(), poly_trait_ref.def_id());
             let predicates = predicates.instantiate_supertrait(fcx.tcx(), &poly_trait_ref);
             let predicates = {
+                let typer = FnCtxtTyper::new(&bounds_checker.check_env.tt, fcx);
                 let selcx = &mut traits::SelectionContext::new(fcx.infcx(), &typer);
                 traits::normalize(selcx, cause.clone(), &predicates)
             };
             for predicate in predicates.value.predicates {
-                fcx.register_predicate(traits::Obligation::new(cause.clone(), predicate));
+                fcx.register_predicate(bounds_checker.check_env,
+                                       traits::Obligation::new(cause.clone(), predicate));
             }
             for obligation in predicates.obligations {
-                fcx.register_predicate(obligation);
+                fcx.register_predicate(bounds_checker.check_env, obligation);
             }
         });
     }
@@ -480,7 +490,7 @@ impl<'ccx, 'tcx, 'v> Visitor<'v> for CheckTypeWellFormedVisitor<'ccx, 'tcx> {
 }
 
 pub struct BoundsChecker<'cx,'tcx:'cx> {
-    check_env: &'cx CheckEnv<'tcx>,
+    check_env: &'cx mut CheckEnv<'tcx>,
     fcx: &'cx FnCtxt<'cx,'tcx>,
     span: Span,
 
@@ -494,7 +504,7 @@ pub struct BoundsChecker<'cx,'tcx:'cx> {
 }
 
 impl<'cx,'tcx> BoundsChecker<'cx,'tcx> {
-    pub fn new(check_env: &'cx CheckEnv<'tcx>,
+    pub fn new(check_env: &'cx mut CheckEnv<'tcx>,
                fcx: &'cx FnCtxt<'cx,'tcx>,
                span: Span,
                scope: ast::NodeId,
@@ -517,12 +527,15 @@ impl<'cx,'tcx> BoundsChecker<'cx,'tcx> {
     pub fn check_trait_ref(&mut self, trait_ref: &ty::TraitRef<'tcx>) {
         let trait_predicates = ty::lookup_predicates(self.fcx.tcx(), trait_ref.def_id);
 
-        let typer = FnCtxtTyper::new(self.check_env, self.fcx);
-        let bounds = typer.instantiate_bounds(self.span,
-                                              trait_ref.substs,
-                                              &trait_predicates);
+        let bounds = {
+            let mut joined = FnCtxtJoined::new(self.check_env, self.fcx);
+            joined.instantiate_bounds(self.span,
+                                      trait_ref.substs,
+                                      &trait_predicates)
+        };
 
         self.fcx.add_obligations_for_parameters(
+            self.check_env,
             traits::ObligationCause::new(
                 self.span,
                 self.fcx.body_id,
@@ -586,12 +599,15 @@ impl<'cx,'tcx> TypeFolder<'tcx> for BoundsChecker<'cx,'tcx> {
             ty::ty_struct(type_id, substs) |
             ty::ty_enum(type_id, substs) => {
                 let type_predicates = ty::lookup_predicates(self.fcx.tcx(), type_id);
-                let typer = FnCtxtTyper::new(self.check_env, self.fcx);
-                let bounds = typer.instantiate_bounds(self.span, substs,
-                                                      &type_predicates);
+                let bounds = {
+                    let mut joined = FnCtxtJoined::new(self.check_env, self.fcx);
+                    joined.instantiate_bounds(self.span, substs,
+                                              &type_predicates)
+                };
 
                 if self.binding_count == 0 {
                     self.fcx.add_obligations_for_parameters(
+                        self.check_env,
                         traits::ObligationCause::new(self.span,
                                                      self.fcx.body_id,
                                                      traits::ItemObligation(type_id)),
@@ -621,6 +637,7 @@ impl<'cx,'tcx> TypeFolder<'tcx> for BoundsChecker<'cx,'tcx> {
                     // that will require an RFC. -nmatsakis)
                     let bounds = filter_to_trait_obligations(bounds);
                     self.fcx.add_obligations_for_parameters(
+                        self.check_env,
                         traits::ObligationCause::new(self.span,
                                                      self.fcx.body_id,
                                                      traits::ItemObligation(type_id)),
@@ -659,8 +676,8 @@ fn struct_variant<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
         .iter()
         .map(|field| {
             let field_ty = ty::node_id_to_type(fcx.tcx(), field.node.id);
-            let typer = FnCtxtTyper::new(check_env, fcx);
-            let field_ty = typer.instantiate_type_scheme(field.span,
+            let mut joined = FnCtxtJoined::new(check_env, fcx);
+            let field_ty = joined.instantiate_type_scheme(field.span,
                                                          &fcx.inh.param_env.free_substs,
                                                          &field_ty);
             AdtField { ty: field_ty, span: field.span }
@@ -687,9 +704,9 @@ fn enum_variants<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
                     AdtVariant {
                         fields: args.iter().enumerate().map(|(index, arg)| {
                             let arg_ty = arg_tys[index];
-                            let typer = FnCtxtTyper::new(check_env, fcx);
+                            let mut joined = FnCtxtJoined::new(check_env, fcx);
                             let arg_ty =
-                                typer.instantiate_type_scheme(variant.span,
+                                joined.instantiate_type_scheme(variant.span,
                                                               &fcx.inh.param_env.free_substs,
                                                               &arg_ty);
                             AdtField {

@@ -182,7 +182,7 @@ impl<'a,'tcx> AdjustBorrowDelegate<'a,'tcx> {
     fn tcx(&self) -> &'a ty::ctxt<'tcx> {
         self.fcx.tcx()
     }
-    fn adjust_upvar_borrow_kind_for_consume(&self,
+    fn adjust_upvar_borrow_kind_for_consume(&mut self,
                                             cmt: mc::cmt<'tcx>,
                                             mode: euv::ConsumeMode)
     {
@@ -270,7 +270,7 @@ impl<'a,'tcx> AdjustBorrowDelegate<'a,'tcx> {
         }
     }
 
-    fn adjust_upvar_borrow_kind_for_unique(&self, cmt: mc::cmt<'tcx>) {
+    fn adjust_upvar_borrow_kind_for_unique(&mut self, cmt: mc::cmt<'tcx>) {
         debug!("adjust_upvar_borrow_kind_for_unique(cmt={})",
                cmt.repr(self.tcx()));
 
@@ -301,7 +301,7 @@ impl<'a,'tcx> AdjustBorrowDelegate<'a,'tcx> {
         }
     }
 
-    fn try_adjust_upvar_deref(&self,
+    fn try_adjust_upvar_deref(&mut self,
                               note: &mc::Note,
                               borrow_kind: ty::BorrowKind)
                               -> bool
@@ -348,7 +348,7 @@ impl<'a,'tcx> AdjustBorrowDelegate<'a,'tcx> {
     /// basically follows a lattice of `imm < unique-imm < mut`, moving from left to right as needed
     /// (but never right to left). Here the argument `mutbl` is the borrow_kind that is required by
     /// some particular use.
-    fn adjust_upvar_borrow_kind(&self,
+    fn adjust_upvar_borrow_kind(&mut self,
                                 upvar_id: ty::UpvarId,
                                 upvar_capture: &mut ty::UpvarCapture,
                                 kind: ty::BorrowKind) {
@@ -378,7 +378,7 @@ impl<'a,'tcx> AdjustBorrowDelegate<'a,'tcx> {
         }
     }
 
-    fn adjust_closure_kind(&self,
+    fn adjust_closure_kind(&mut self,
                            closure_id: ast::NodeId,
                            new_kind: ty::ClosureKind) {
         debug!("adjust_closure_kind(closure_id={}, new_kind={:?})",
@@ -439,7 +439,7 @@ impl<'a,'tcx> AdjustBorrowKind<'a,'tcx> {
                 fcx: self.fcx,
                 closures_with_inferred_kinds: self.closures_with_inferred_kinds,
             };
-            let typer = FnCtxtTyper::new(self.check_env, self.fcx);
+            let typer = FnCtxtTyper::new(&self.check_env.tt, self.fcx);
             let mut euv = euv::ExprUseVisitor::new(&mut delegate, &typer);
             euv.walk_fn(decl, body);
         }

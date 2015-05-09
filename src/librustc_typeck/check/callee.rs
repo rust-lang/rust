@@ -20,6 +20,7 @@ use super::Expectation;
 use super::expected_types_for_fn_args;
 use super::FnCtxt;
 use super::FnCtxtTyper;
+use super::FnCtxtJoined;
 use super::LvaluePreference;
 use super::method;
 use super::structurally_resolved_type;
@@ -77,7 +78,7 @@ pub fn check_call<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
                             expected: Expectation<'tcx>)
 {
     check_expr(check_env, fcx, callee_expr);
-    let original_callee_ty = fcx.expr_ty(check_env, callee_expr);
+    let original_callee_ty = fcx.expr_ty(&check_env.tt.node_types, callee_expr);
     let (callee_ty, _, result) =
         autoderef(check_env,
                   fcx,
@@ -145,7 +146,7 @@ fn try_overloaded_call_step<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
             // haven't yet decided on whether the closure is fn vs
             // fnmut vs fnonce. If so, we have to defer further processing.
             let fn_sig = {
-                let typer = FnCtxtTyper::new(check_env, fcx);
+                let typer = FnCtxtTyper::new(&check_env.tt, fcx);
                 match typer.closure_kind(def_id) {
                     Some(_) => None,
                     None => Some({
@@ -269,8 +270,8 @@ fn confirm_builtin_call<'a,'tcx>(check_env: &mut CheckEnv<'tcx>,
                                                               infer::FnCall,
                                                               fn_sig).0;
     let fn_sig = {
-        let typer = FnCtxtTyper::new(check_env, fcx);
-        typer.normalize_associated_types_in(call_expr.span, &fn_sig)
+        let mut joined = FnCtxtJoined::new(check_env, fcx);
+        joined.normalize_associated_types_in(call_expr.span, &fn_sig)
     };
 
     // Call the generic checker.
@@ -352,7 +353,7 @@ fn write_overloaded_call_method_map<'a,'tcx>(check_env: &mut CheckEnv<'tcx>,
                                              call_expr: &ast::Expr,
                                              method_callee: ty::MethodCallee<'tcx>) {
     let method_call = ty::MethodCall::expr(call_expr.id);
-    check_env.method_map.insert(method_call, method_callee);
+    check_env.tt.method_map.insert(method_call, method_callee);
 }
 
 struct CallResolution<'tcx> {
@@ -385,7 +386,7 @@ impl<'tcx> DeferredCallResolution<'tcx> for CallResolution<'tcx> {
         // we should not be invoked until the closure kind has been
         // determined by upvar inference
         {
-            let typer = FnCtxtTyper::new(check_env, fcx);
+            let typer = FnCtxtTyper::new(&check_env.tt, fcx);
             assert!(typer.closure_kind(self.closure_def_id).is_some());
         }
 

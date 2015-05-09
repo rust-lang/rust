@@ -41,9 +41,9 @@ pub fn check_binop_assign<'a,'tcx>(check_env: &mut CheckEnv<'tcx>,
     check_expr_with_lvalue_pref(check_env, fcx, lhs_expr, PreferMutLvalue);
     check_expr(check_env, fcx, rhs_expr);
 
-    let expr_ty = fcx.expr_ty(check_env, lhs_expr);
+    let expr_ty = fcx.expr_ty(&check_env.tt.node_types, lhs_expr);
     let lhs_ty = structurally_resolved_type(check_env, fcx, lhs_expr.span, expr_ty);
-    let expr_ty = fcx.expr_ty(check_env, rhs_expr);
+    let expr_ty = fcx.expr_ty(&check_env.tt.node_types, rhs_expr);
     let rhs_ty = structurally_resolved_type(check_env, fcx, rhs_expr.span, expr_ty);
 
     if is_builtin_binop(fcx.tcx(), lhs_ty, rhs_ty, op) {
@@ -86,7 +86,8 @@ pub fn check_binop<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
            rhs_expr.repr(tcx));
 
     check_expr(check_env, fcx, lhs_expr);
-    let lhs_ty = fcx.resolve_type_vars_if_possible(check_env, fcx.expr_ty(check_env, lhs_expr));
+    let expr_ty = fcx.expr_ty(&check_env.tt.node_types, lhs_expr);
+    let lhs_ty = fcx.resolve_type_vars_if_possible(check_env, expr_ty);
 
     // Annoyingly, SIMD ops don't fit into the PartialEq/PartialOrd
     // traits, because their return type is not bool. Perhaps this
@@ -94,7 +95,8 @@ pub fn check_binop<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
     // different path that bypassess all traits.
     if ty::type_is_simd(fcx.tcx(), lhs_ty) {
         check_expr_coercable_to_type(check_env, fcx, rhs_expr, lhs_ty);
-        let rhs_ty = fcx.resolve_type_vars_if_possible(check_env, fcx.expr_ty(check_env, lhs_expr));
+        let expr_ty = fcx.expr_ty(&check_env.tt.node_types, lhs_expr);
+        let rhs_ty = fcx.resolve_type_vars_if_possible(check_env, expr_ty);
         let return_ty = enforce_builtin_binop_types(fcx, lhs_expr, lhs_ty, rhs_expr, rhs_ty, op);
         fcx.write_ty(check_env, expr.id, return_ty);
         return;
@@ -343,7 +345,7 @@ fn lookup_op_method<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
 
             // HACK(eddyb) Fully qualified path to work around a resolve bug.
             let method_call = ::middle::ty::MethodCall::expr(expr.id);
-            check_env.method_map.insert(method_call, method);
+            check_env.tt.method_map.insert(method_call, method);
 
             // extract return type for method; all late bound regions
             // should have been instantiated by now

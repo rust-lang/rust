@@ -87,6 +87,7 @@ use super::dropck;
 use super::CheckEnv;
 use super::FnCtxt;
 use super::FnCtxtTyper;
+use super::FnCtxtJoined;
 use super::vtable;
 use middle::free_region::FreeRegionMap;
 use middle::implicator;
@@ -253,7 +254,7 @@ fn relate_free_regions<'a, 'tcx>(check_env: &CheckEnv<'tcx>,
         debug!("relate_free_regions(t={})", ty.repr(tcx));
         let body_scope = CodeExtent::from_node_id(body_id);
         let body_scope = ty::ReScope(body_scope);
-        let typer = FnCtxtTyper::new(check_env, fcx);
+        let typer = FnCtxtTyper::new(&check_env.tt, fcx);
         let implications = implicator::implications(fcx.infcx(), &typer, body_id,
                                                     ty, body_scope, span);
 
@@ -328,12 +329,12 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
 
     /// Try to resolve the type for the given node.
     fn resolve_node_type(&self, id: ast::NodeId) -> Ty<'tcx> {
-        let t = self.fcx.node_ty(self.check_env, id);
+        let t = self.fcx.node_ty(&self.check_env.tt.node_types, id);
         resolve_type(self.fcx, t)
     }
 
     fn resolve_method_type(&self, method_call: MethodCall) -> Option<Ty<'tcx>> {
-        let method_ty = self.check_env.method_map
+        let method_ty = self.check_env.tt.method_map
                             .get(&method_call).map(|method| method.ty);
         method_ty.map(|method_ty| resolve_type(self.fcx, method_ty))
     }
@@ -398,9 +399,7 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
         // Make a copy of the region obligations vec because we'll need
         // to be able to borrow the fulfillment-cx below when projecting.
         let region_obligations =
-            self.fcx.inh.fulfillment_cx.borrow()
-                                       .region_obligations(node_id)
-                                       .to_vec();
+            self.check_env.fulfillment_cx.region_obligations(node_id).to_vec();
 
         for r_o in &region_obligations {
             debug!("visit_region_obligations: r_o={}",
@@ -412,7 +411,7 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
 
         // Processing the region obligations should not cause the list to grow further:
         assert_eq!(region_obligations.len(),
-                   self.fcx.inh.fulfillment_cx.borrow().region_obligations(node_id).len());
+                   self.check_env.fulfillment_cx.region_obligations(node_id).len());
     }
 
     fn resolve_regions_and_report_errors(&self) {
@@ -530,7 +529,7 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
                       expr_ty, ty::ReScope(CodeExtent::from_node_id(expr.id)));
 
     let method_call = MethodCall::expr(expr.id);
-    let has_method_map = rcx.check_env.method_map.contains_key(&method_call);
+    let has_method_map = rcx.check_env.tt.method_map.contains_key(&method_call);
 
     // Check any autoderefs or autorefs that appear.
     if let Some(adjustment) = rcx.fcx.inh.adjustments.borrow().get(&expr.id) {
@@ -567,7 +566,7 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
         // If necessary, constrain destructors in the unadjusted form of this
         // expression.
         let cmt_result = {
-            let typer = FnCtxtTyper::new(rcx.check_env, rcx.fcx);
+            let typer = FnCtxtTyper::new(&rcx.check_env.tt, rcx.fcx);
             let mc = mc::MemCategorizationContext::new(&typer);
             mc.cat_expr_unadjusted(expr)
         };
@@ -587,7 +586,7 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
     // If necessary, constrain destructors in this expression. This will be
     // the adjusted form if there is an adjustment.
     let cmt_result = {
-        let typer = FnCtxtTyper::new(rcx.check_env, rcx.fcx);
+        let typer = FnCtxtTyper::new(&rcx.check_env.tt, rcx.fcx);
         let mc = mc::MemCategorizationContext::new(&typer);
         mc.cat_expr(expr)
     };
@@ -678,7 +677,7 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
         ast::ExprUnary(ast::UnDeref, ref base) => {
             // For *a, the lifetime of a must enclose the deref
             let method_call = MethodCall::expr(expr.id);
-            let method_ty = rcx.check_env.method_map.get(&method_call).map( |method| method.ty );
+            let method_ty = rcx.check_env.tt.method_map.get(&method_call).map( |method| method.ty );
             let base_ty = match method_ty {
                 Some(method_ty) => {
                     constrain_call(rcx, expr, Some(&**base),
@@ -907,7 +906,7 @@ fn constrain_autoderefs<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
         let method_call = MethodCall::autoderef(deref_expr.id, i as u32);
         debug!("constrain_autoderefs: method_call={:?} (of {:?} total)", method_call, derefs);
 
-        let result = match rcx.check_env.method_map.get(&method_call) {
+        let result = match rcx.check_env.tt.method_map.get(&method_call) {
             Some(method) => {
                 debug!("constrain_autoderefs: #{} is overloaded, method={}",
                        i, method.repr(rcx.tcx()));
@@ -931,7 +930,7 @@ fn constrain_autoderefs<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
                 debug!("constrain_autoderefs: receiver r={:?} m={:?}",
                        r.repr(rcx.tcx()), m);
 
-                let typer = FnCtxtTyper::new(rcx.check_env, rcx.fcx);
+                let typer = FnCtxtTyper::new(&rcx.check_env.tt, rcx.fcx);
                 let mc = mc::MemCategorizationContext::new(&typer);
                 let self_cmt = ignore_err!(mc.cat_expr_autoderefd(deref_expr, i));
                 debug!("constrain_autoderefs: self_cmt={:?}",
@@ -1058,7 +1057,7 @@ fn link_addr_of(rcx: &mut Rcx, expr: &ast::Expr,
     debug!("link_addr_of(expr={}, base={})", expr.repr(rcx.tcx()), base.repr(rcx.tcx()));
 
     let cmt = {
-        let typer = FnCtxtTyper::new(rcx.check_env, rcx.fcx);
+        let typer = FnCtxtTyper::new(&rcx.check_env.tt, rcx.fcx);
         let mc = mc::MemCategorizationContext::new(&typer);
         ignore_err!(mc.cat_expr(base))
     };
@@ -1077,7 +1076,7 @@ fn link_local(rcx: &Rcx, local: &ast::Local) {
         None => { return; }
         Some(ref expr) => &**expr,
     };
-    let typer = FnCtxtTyper::new(rcx.check_env, rcx.fcx);
+    let typer = FnCtxtTyper::new(&rcx.check_env.tt, rcx.fcx);
     let mc = mc::MemCategorizationContext::new(&typer);
     let discr_cmt = ignore_err!(mc.cat_expr(init_expr));
     link_pattern(rcx, mc, discr_cmt, &*local.pat);
@@ -1088,7 +1087,7 @@ fn link_local(rcx: &Rcx, local: &ast::Local) {
 /// linked to the lifetime of its guarantor (if any).
 fn link_match(rcx: &Rcx, discr: &ast::Expr, arms: &[ast::Arm]) {
     debug!("regionck::for_match()");
-    let typer = FnCtxtTyper::new(rcx.check_env, rcx.fcx);
+    let typer = FnCtxtTyper::new(&rcx.check_env.tt, rcx.fcx);
     let mc = mc::MemCategorizationContext::new(&typer);
     let discr_cmt = ignore_err!(mc.cat_expr(discr));
     debug!("discr_cmt={}", discr_cmt.repr(rcx.tcx()));
@@ -1104,10 +1103,10 @@ fn link_match(rcx: &Rcx, discr: &ast::Expr, arms: &[ast::Arm]) {
 /// linked to the lifetime of its guarantor (if any).
 fn link_fn_args(rcx: &Rcx, body_scope: CodeExtent, args: &[ast::Arg]) {
     debug!("regionck::link_fn_args(body_scope={:?})", body_scope);
-    let typer = FnCtxtTyper::new(rcx.check_env, rcx.fcx);
+    let typer = FnCtxtTyper::new(&rcx.check_env.tt, rcx.fcx);
     let mc = mc::MemCategorizationContext::new(&typer);
     for arg in args {
-        let arg_ty = rcx.fcx.node_ty(rcx.check_env, arg.id);
+        let arg_ty = rcx.fcx.node_ty(&rcx.check_env.tt.node_types, arg.id);
         let re_scope = ty::ReScope(body_scope);
         let arg_cmt = mc.cat_rvalue(arg.id, arg.ty.span, re_scope, arg_ty);
         debug!("arg_ty={} arg_cmt={}",
@@ -1159,7 +1158,7 @@ fn link_autoref(rcx: &Rcx,
                 autoref: &ty::AutoRef)
 {
     debug!("link_autoref(autoref={:?})", autoref);
-    let typer = FnCtxtTyper::new(rcx.check_env, rcx.fcx);
+    let typer = FnCtxtTyper::new(&rcx.check_env.tt, rcx.fcx);
     let mc = mc::MemCategorizationContext::new(&typer);
     let expr_cmt = ignore_err!(mc.cat_expr_autoderefd(expr, autoderefs));
     debug!("expr_cmt={}", expr_cmt.repr(rcx.tcx()));
@@ -1185,7 +1184,7 @@ fn link_by_ref(rcx: &Rcx,
     let tcx = rcx.tcx();
     debug!("link_by_ref(expr={}, callee_scope={:?})",
            expr.repr(tcx), callee_scope);
-    let typer = FnCtxtTyper::new(rcx.check_env, rcx.fcx);
+    let typer = FnCtxtTyper::new(&rcx.check_env.tt, rcx.fcx);
     let mc = mc::MemCategorizationContext::new(&typer);
     let expr_cmt = ignore_err!(mc.cat_expr(expr));
     let borrow_region = ty::ReScope(callee_scope);
@@ -1433,7 +1432,7 @@ pub fn type_must_outlive<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
            region.repr(rcx.tcx()));
 
     let implications = {
-        let typer = FnCtxtTyper::new(rcx.check_env, rcx.fcx);
+        let typer = FnCtxtTyper::new(&rcx.check_env.tt, rcx.fcx);
         implicator::implications(rcx.fcx.infcx(), &typer, rcx.body_id,
                                  ty, region, origin.span())
     };
@@ -1462,7 +1461,7 @@ pub fn type_must_outlive<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
                                                          rcx.body_id,
                                                          traits::ItemObligation(def_id));
                 let obligation = traits::Obligation::new(cause, predicate);
-                rcx.fcx.register_predicate(obligation);
+                rcx.fcx.register_predicate(rcx.check_env, obligation);
             }
         }
     }
@@ -1477,7 +1476,7 @@ fn closure_must_outlive<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
            region.repr(rcx.tcx()), def_id.repr(rcx.tcx()), substs.repr(rcx.tcx()));
 
     let upvars = {
-        let typer = FnCtxtTyper::new(rcx.check_env, rcx.fcx);
+        let typer = FnCtxtTyper::new(&rcx.check_env.tt, rcx.fcx);
         typer.closure_upvars(def_id, substs).unwrap()
     };
     for upvar in upvars {
@@ -1488,7 +1487,7 @@ fn closure_must_outlive<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
     }
 }
 
-fn generic_must_outlive<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
+fn generic_must_outlive<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
                                   origin: infer::SubregionOrigin<'tcx>,
                                   region: ty::Region,
                                   generic: &GenericKind<'tcx>) {
@@ -1545,7 +1544,7 @@ fn generic_must_outlive<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
                                          param_bounds);
 }
 
-fn projection_bounds<'a,'tcx>(rcx: &Rcx<'a, 'tcx>,
+fn projection_bounds<'a,'tcx>(rcx: &mut Rcx<'a, 'tcx>,
                               span: Span,
                               projection_ty: &ty::ProjectionTy<'tcx>)
                               -> Vec<ty::Region>
@@ -1583,8 +1582,8 @@ fn projection_bounds<'a,'tcx>(rcx: &Rcx<'a, 'tcx>,
                    outlives.repr(tcx));
 
             // apply the substitutions (and normalize any projected types)
-            let typer = FnCtxtTyper::new(rcx.check_env, fcx);
-            let outlives = typer.instantiate_type_scheme(span,
+            let mut joined = FnCtxtJoined::new(rcx.check_env, fcx);
+            let outlives = joined.instantiate_type_scheme(span,
                                                          projection_ty.trait_ref.substs,
                                                          &outlives);
 

@@ -10,7 +10,7 @@
 
 use super::probe;
 
-use check::{self, CheckEnv, FnCtxt, FnCtxtTyper, NoPreference, PreferMutLvalue, callee, demand};
+use check::{self, CheckEnv, FnCtxt, FnCtxtTyper, FnCtxtJoined, NoPreference, PreferMutLvalue, callee, demand};
 use check::UnresolvedTypeAction;
 use middle::mem_categorization::Typer;
 use middle::subst::{self};
@@ -112,7 +112,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
         self.unify_receivers(self_ty, method_self_ty);
 
         // Add any trait/regions obligations specified on the method's type parameters.
-        self.add_obligations(&pick, &all_substs, &method_predicates);
+        self.add_obligations(check_env, &pick, &all_substs, &method_predicates);
 
         // Create the final `MethodCallee`.
         let method_ty = pick.item.as_opt_method().unwrap();
@@ -263,9 +263,9 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                 // the impl ([$A,$B,$C]) not the receiver type ([$C]).
                 let impl_polytype =
                     check::impl_self_ty(check_env, self.fcx, self.span, impl_def_id);
-                let typer = FnCtxtTyper::new(check_env, self.fcx);
+                let mut joined = FnCtxtJoined::new(check_env, self.fcx);
                 let impl_trait_ref =
-                    typer.instantiate_type_scheme(
+                    joined.instantiate_type_scheme(
                         self.span,
                         &impl_polytype.substs,
                         &ty::impl_trait_ref(self.tcx(), impl_def_id).unwrap());
@@ -420,9 +420,9 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
         // be no late-bound regions appearing here.
         let method_predicates = pick.item.as_opt_method().unwrap()
                                     .predicates.instantiate(self.tcx(), &all_substs);
-        let typer = FnCtxtTyper::new(check_env, self.fcx);
-        let method_predicates = typer.normalize_associated_types_in(self.span,
-                                                                    &method_predicates);
+        let mut joined = FnCtxtJoined::new(check_env, self.fcx);
+        let method_predicates = joined.normalize_associated_types_in(self.span,
+                                                                     &method_predicates);
 
         debug!("method_predicates after subst = {}",
                method_predicates.repr(self.tcx()));
@@ -438,8 +438,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
         debug!("late-bound lifetimes from method instantiated, method_sig={}",
                method_sig.repr(self.tcx()));
 
-        let typer = FnCtxtTyper::new(check_env, self.fcx);
-        let method_sig = typer.instantiate_type_scheme(self.span, &all_substs, &method_sig);
+        let method_sig = joined.instantiate_type_scheme(self.span, &all_substs, &method_sig);
         debug!("type scheme substituted, method_sig={}",
                method_sig.repr(self.tcx()));
 
@@ -451,6 +450,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
     }
 
     fn add_obligations(&mut self,
+                       check_env: &mut CheckEnv<'tcx>,
                        pick: &probe::Pick<'tcx>,
                        all_substs: &subst::Substs<'tcx>,
                        method_predicates: &ty::InstantiatedPredicates<'tcx>) {
@@ -460,10 +460,12 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                method_predicates.repr(self.tcx()));
 
         self.fcx.add_obligations_for_parameters(
+            check_env,
             traits::ObligationCause::misc(self.span, self.fcx.body_id),
             method_predicates);
 
         self.fcx.add_default_region_param_bounds(
+            check_env,
             all_substs,
             self.call_expr);
     }
@@ -524,7 +526,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                    i, expr.repr(self.tcx()), autoderef_count);
 
             if autoderef_count > 0 {
-                let expr_ty = self.fcx.expr_ty(check_env, expr);
+                let expr_ty = self.fcx.expr_ty(&check_env.tt.node_types, expr);
                 check::autoderef(check_env,
                                  self.fcx,
                                  expr.span,
@@ -584,14 +586,15 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                         let (adjusted_base_ty, unsize) = if let Some(target) = unsize {
                             (target, true)
                         } else {
-                            (self.fcx.adjust_expr_ty(check_env, base_expr,
+                            let typer = FnCtxtTyper::new(&check_env.tt, self.fcx);
+                            (typer.adjust_expr_ty(base_expr,
                                 Some(&ty::AdjustDerefRef(ty::AutoDerefRef {
                                     autoderefs: autoderefs,
                                     autoref: None,
                                     unsize: None
                                 }))), false)
                         };
-                        let index_expr_ty = self.fcx.expr_ty(check_env, &**index_expr);
+                        let index_expr_ty = self.fcx.expr_ty(&check_env.tt.node_types, &**index_expr);
 
                         let result = check::try_index_step(
                             check_env,
@@ -608,7 +611,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                         if let Some((input_ty, return_ty)) = result {
                             demand::suptype(self.fcx, index_expr.span, input_ty, index_expr_ty);
 
-                            let expr_ty = self.fcx.expr_ty(check_env, &*expr);
+                            let expr_ty = self.fcx.expr_ty(&check_env.tt.node_types, &*expr);
                             demand::suptype(self.fcx, expr.span, expr_ty, return_ty);
                         }
                     }
@@ -616,8 +619,8 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                         // if this is an overloaded deref, then re-evaluate with
                         // a preference for mut
                         let method_call = MethodCall::expr(expr.id);
-                        let expr_ty = self.fcx.expr_ty(check_env, &**base_expr);
-                        if check_env.method_map.contains_key(&method_call) {
+                        let expr_ty = self.fcx.expr_ty(&check_env.tt.node_types, &**base_expr);
+                        if check_env.tt.method_map.contains_key(&method_call) {
                             check::try_overloaded_deref(
                                 check_env,
                                 self.fcx,

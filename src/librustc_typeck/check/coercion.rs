@@ -522,7 +522,8 @@ pub fn mk_assignty<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
 
                 // If the type is `Foo+'a`, ensures that the type
                 // being cast to `Foo+'a` implements `Foo`:
-                vtable::register_object_cast_obligations(fcx,
+                vtable::register_object_cast_obligations(check_env,
+                                                         fcx,
                                                          expr.span,
                                                          ty_trait,
                                                          source);
@@ -534,7 +535,8 @@ pub fn mk_assignty<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
                     body_id: fcx.body_id,
                     code: traits::ObjectCastObligation(source)
                 };
-                fcx.register_region_obligation(source, ty_trait.bounds.region_bound, cause);
+                fcx.register_region_obligation(check_env,
+                                               source, ty_trait.bounds.region_bound, cause);
             }
         }
     }
