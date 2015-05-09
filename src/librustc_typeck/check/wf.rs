@@ -9,7 +9,8 @@
 // except according to those terms.
 
 use astconv::AstConv;
-use super::{CheckEnv, FnCtxt, FnCtxtTyper, FnCtxtJoined, Inherited, blank_fn_ctxt, vtable, regionck};
+use super::{CheckEnv, FnCtxt, FnCtxtTyper, FnCtxtJoined, Inherited, blank_fn_ctxt, vtable,
+            regionck};
 use constrained_type_params::{identify_constrained_type_params, Parameter};
 use CrateCtxt;
 use middle::region;

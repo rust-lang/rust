@@ -1392,7 +1392,8 @@ fn base_def_to_ty<'tcx>(this: &mut AstConv<'tcx>,
             ty::mk_self_type(this.tcx())
         }
         def::DefAssociatedTy(trait_did, _) => {
-            check_path_args(this.tcx(), &base_segments[..base_segments.len()-2], NO_TPS | NO_REGIONS);
+            check_path_args(this.tcx(),
+                            &base_segments[..base_segments.len()-2], NO_TPS | NO_REGIONS);
             qpath_to_ty(this,
                         rscope,
                         span,
@@ -1578,7 +1579,8 @@ pub fn ast_ty_to_ty<'tcx>(this: &mut AstConv<'tcx>,
             ty
         }
         ast::TyFixedLengthVec(ref ty, ref e) => {
-            match const_eval::eval_const_expr_partial(this.tcx(), &**e, Some(this.tcx().types.usize)) {
+            match const_eval::eval_const_expr_partial(this.tcx(), &**e,
+                                                      Some(this.tcx().types.usize)) {
                 Ok(r) => {
                     match r {
                         const_eval::const_int(i) => {

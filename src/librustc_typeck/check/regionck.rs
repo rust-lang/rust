@@ -116,7 +116,8 @@ macro_rules! ignore_err {
 ///////////////////////////////////////////////////////////////////////////
 // PUBLIC ENTRY POINTS
 
-pub fn regionck_expr<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>, fcx: &FnCtxt<'a, 'tcx>, e: &ast::Expr) {
+pub fn regionck_expr<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
+                               fcx: &FnCtxt<'a, 'tcx>, e: &ast::Expr) {
     let mut rcx = Rcx::new(check_env, fcx, RepeatingScope(e.id), e.id, Subject(e.id));
     if fcx.err_count_since_creation() == 0 {
         // regionck assumes typeck succeeded
@@ -126,7 +127,8 @@ pub fn regionck_expr<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>, fcx: &FnCtxt<'a, 
     rcx.resolve_regions_and_report_errors();
 }
 
-pub fn regionck_item<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>, fcx: &FnCtxt<'a, 'tcx>, item: &ast::Item) {
+pub fn regionck_item<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
+                               fcx: &FnCtxt<'a, 'tcx>, item: &ast::Item) {
     let mut rcx = Rcx::new(check_env, fcx, RepeatingScope(item.id), item.id, Subject(item.id));
     let tcx = fcx.tcx();
     rcx.free_region_map.relate_free_regions_from_predicates(tcx, &fcx.inh.param_env.caller_bounds);

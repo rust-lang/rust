@@ -10,7 +10,8 @@
 
 use super::probe;
 
-use check::{self, CheckEnv, FnCtxt, FnCtxtTyper, FnCtxtJoined, NoPreference, PreferMutLvalue, callee, demand};
+use check::{self, CheckEnv, FnCtxt, FnCtxtTyper, FnCtxtJoined, NoPreference, PreferMutLvalue,
+            callee, demand};
 use check::UnresolvedTypeAction;
 use middle::mem_categorization::Typer;
 use middle::subst::{self};
@@ -590,7 +591,8 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                                     unsize: None
                                 }))), false)
                         };
-                        let index_expr_ty = self.fcx.expr_ty(&check_env.tt.node_types, &**index_expr);
+                        let index_expr_ty = self.fcx.expr_ty(&check_env.tt.node_types,
+                                                             &**index_expr);
 
                         let result = check::try_index_step(
                             check_env,

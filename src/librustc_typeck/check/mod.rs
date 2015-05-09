@@ -839,7 +839,8 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
         match t.node {
             ast::TyFixedLengthVec(ref ty, ref count_expr) => {
                 self.visit_ty(&**ty);
-                check_expr_with_hint(self.check_env, self.fcx, &**count_expr, self.fcx.tcx().types.usize);
+                check_expr_with_hint(self.check_env, self.fcx, &**count_expr,
+                                     self.fcx.tcx().types.usize);
             }
             _ => visit::walk_ty(self, t)
         }
@@ -2520,7 +2521,8 @@ fn check_expr_has_type<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
                                  expected: Ty<'tcx>) {
     check_expr_with_unifier(
         check_env, fcx, expr, ExpectHasType(expected), NoPreference,
-        |check_env| demand::suptype(fcx, expr.span, expected, fcx.expr_ty(&check_env.tt.node_types, expr)));
+        |check_env| demand::suptype(fcx, expr.span, expected,
+                                    fcx.expr_ty(&check_env.tt.node_types, expr)));
 }
 
 fn check_expr_coercable_to_type<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,

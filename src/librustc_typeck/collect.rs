@@ -1180,7 +1180,8 @@ fn ensure_super_predicates_step(ccx: &CrateCtxt,
 
         // Convert any explicit superbounds in the where clause,
         // e.g. `trait Foo where Self : Bar`:
-        let superbounds2 = generics.get_type_parameter_bounds(&mut ccx.icx(scope), item.span, item.id);
+        let superbounds2 = generics.get_type_parameter_bounds(&mut ccx.icx(scope), item.span,
+                                                              item.id);
 
         // Combine the two lists to form the complete set of superbounds:
         let superbounds = superbounds1.into_iter().chain(superbounds2.into_iter()).collect();
