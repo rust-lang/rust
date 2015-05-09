@@ -312,6 +312,7 @@ println!("{}", y);
 
 We get this error:
 
+```text
 error: `x` does not live long enough
     y = &x;
          ^
