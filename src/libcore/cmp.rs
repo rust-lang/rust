@@ -41,7 +41,7 @@ use option::Option::{self, Some, None};
 /// PartialEq only requires the `eq` method to be implemented; `ne` is defined in terms of it by
 /// default. Any manual implementation of `ne` *must* respect the rule that `eq` is a strict
 /// inverse of `ne`; that is, `!(a == b)` if and only if `a != b`.
-#[lang="eq"]
+#[lang = "eq"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait PartialEq<Rhs: ?Sized = Self> {
     /// This method tests for `self` and `other` values to be equal, and is used by `==`.
@@ -222,7 +222,7 @@ impl PartialOrd for Ordering {
 /// However it remains possible to implement the others separately for types which do not have a
 /// total order. For example, for floating point numbers, `NaN < 0 == false` and `NaN >= 0 ==
 /// false` (cf. IEEE 754-2008 section 5.11).
-#[lang="ord"]
+#[lang = "ord"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
     /// This method returns an ordering between `self` and `other` values if one exists.
