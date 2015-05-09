@@ -393,9 +393,9 @@ impl<'a, 'tcx> FnCtxtJoined<'a, 'tcx> {
     /// Note that function is only intended to be used with types (notably, not fns). This is
     /// because it doesn't do any instantiation of late-bound regions.
     fn instantiate_type(&mut self,
-                            span: Span,
-                            def_id: ast::DefId)
-                            -> TypeAndSubsts<'tcx>
+                        span: Span,
+                        def_id: ast::DefId)
+                        -> TypeAndSubsts<'tcx>
     {
         let type_scheme =
             ty::lookup_item_type(self.tcx(), def_id);
@@ -1616,8 +1616,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     fn write_autoderef_adjustment(&self,
-                                      node_id: ast::NodeId,
-                                      derefs: usize) {
+                                  node_id: ast::NodeId,
+                                  derefs: usize) {
         self.write_adjustment(
             node_id,
             ty::AdjustDerefRef(ty::AutoDerefRef {
@@ -1629,8 +1629,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     fn write_adjustment(&self,
-                            node_id: ast::NodeId,
-                            adj: ty::AutoAdjustment<'tcx>) {
+                        node_id: ast::NodeId,
+                        adj: ty::AutoAdjustment<'tcx>) {
         debug!("write_adjustment(node_id={}, adj={})", node_id, adj.repr(self.tcx()));
 
         if adj.is_identity() {
@@ -1648,11 +1648,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     fn require_type_meets(&self,
-                              check_env: &mut CheckEnv<'tcx>,
-                              ty: Ty<'tcx>,
-                              span: Span,
-                              code: traits::ObligationCauseCode<'tcx>,
-                              bound: ty::BuiltinBound)
+                          check_env: &mut CheckEnv<'tcx>,
+                          ty: Ty<'tcx>,
+                          span: Span,
+                          code: traits::ObligationCauseCode<'tcx>,
+                          bound: ty::BuiltinBound)
     {
         self.register_builtin_bound(
             check_env,
@@ -1662,27 +1662,27 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     fn require_type_is_sized(&self,
-                                 check_env: &mut CheckEnv<'tcx>,
-                                 ty: Ty<'tcx>,
-                                 span: Span,
-                                 code: traits::ObligationCauseCode<'tcx>)
+                             check_env: &mut CheckEnv<'tcx>,
+                             ty: Ty<'tcx>,
+                             span: Span,
+                             code: traits::ObligationCauseCode<'tcx>)
     {
         self.require_type_meets(check_env, ty, span, code, ty::BoundSized);
     }
 
     fn require_expr_have_sized_type(&self,
-                                        check_env: &mut CheckEnv<'tcx>,
-                                        expr: &ast::Expr,
-                                        code: traits::ObligationCauseCode<'tcx>)
+                                    check_env: &mut CheckEnv<'tcx>,
+                                    expr: &ast::Expr,
+                                    code: traits::ObligationCauseCode<'tcx>)
     {
         let expr_ty = self.expr_ty(&check_env.tt.node_types, expr);
         self.require_type_is_sized(check_env, expr_ty, expr.span, code);
     }
 
     fn type_is_known_to_be_sized(&self,
-                                     ty: Ty<'tcx>,
-                                     span: Span)
-                                     -> bool
+                                 ty: Ty<'tcx>,
+                                 span: Span)
+                                 -> bool
     {
         traits::type_known_to_meet_builtin_bound(self.infcx(),
                                                  self.param_env(),
@@ -1699,18 +1699,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     fn register_builtin_bound(&self,
-                                  check_env: &mut CheckEnv<'tcx>,
-                                  ty: Ty<'tcx>,
-                                  builtin_bound: ty::BuiltinBound,
-                                  cause: traits::ObligationCause<'tcx>)
+                              check_env: &mut CheckEnv<'tcx>,
+                              ty: Ty<'tcx>,
+                              builtin_bound: ty::BuiltinBound,
+                              cause: traits::ObligationCause<'tcx>)
     {
         check_env.fulfillment_cx
             .register_builtin_bound(self.infcx(), ty, builtin_bound, cause);
     }
 
     fn register_predicate(&self,
-                              check_env: &mut CheckEnv<'tcx>,
-                              obligation: traits::PredicateObligation<'tcx>)
+                          check_env: &mut CheckEnv<'tcx>,
+                          obligation: traits::PredicateObligation<'tcx>)
     {
         debug!("register_predicate({})",
                obligation.repr(self.tcx()));
@@ -1761,64 +1761,64 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     fn mk_subty(&self,
-                    a_is_expected: bool,
-                    origin: infer::TypeOrigin,
-                    sub: Ty<'tcx>,
-                    sup: Ty<'tcx>)
-                    -> Result<(), ty::type_err<'tcx>> {
+                a_is_expected: bool,
+                origin: infer::TypeOrigin,
+                sub: Ty<'tcx>,
+                sup: Ty<'tcx>)
+                -> Result<(), ty::type_err<'tcx>> {
         infer::mk_subty(self.infcx(), a_is_expected, origin, sub, sup)
     }
 
     fn mk_eqty(&self,
-                   a_is_expected: bool,
-                   origin: infer::TypeOrigin,
-                   sub: Ty<'tcx>,
-                   sup: Ty<'tcx>)
-                   -> Result<(), ty::type_err<'tcx>> {
+               a_is_expected: bool,
+               origin: infer::TypeOrigin,
+               sub: Ty<'tcx>,
+               sup: Ty<'tcx>)
+               -> Result<(), ty::type_err<'tcx>> {
         infer::mk_eqty(self.infcx(), a_is_expected, origin, sub, sup)
     }
 
     fn mk_subr(&self,
-                   origin: infer::SubregionOrigin<'tcx>,
-                   sub: ty::Region,
-                   sup: ty::Region) {
+               origin: infer::SubregionOrigin<'tcx>,
+               sub: ty::Region,
+               sup: ty::Region) {
         infer::mk_subr(self.infcx(), origin, sub, sup)
     }
 
     fn type_error_message<M>(&self,
-                                 sp: Span,
-                                 mk_msg: M,
-                                 actual_ty: Ty<'tcx>,
-                                 err: Option<&ty::type_err<'tcx>>) where
+                             sp: Span,
+                             mk_msg: M,
+                             actual_ty: Ty<'tcx>,
+                             err: Option<&ty::type_err<'tcx>>) where
         M: FnOnce(String) -> String,
     {
         self.infcx().type_error_message(sp, mk_msg, actual_ty, err);
     }
 
     fn report_mismatched_types(&self,
-                                   sp: Span,
-                                   e: Ty<'tcx>,
-                                   a: Ty<'tcx>,
-                                   err: &ty::type_err<'tcx>) {
+                               sp: Span,
+                               e: Ty<'tcx>,
+                               a: Ty<'tcx>,
+                               err: &ty::type_err<'tcx>) {
         self.infcx().report_mismatched_types(sp, e, a, err)
     }
 
     /// Registers an obligation for checking later, during regionck, that the type `ty` must
     /// outlive the region `r`.
     fn register_region_obligation(&self,
-                                      check_env: &mut CheckEnv<'tcx>,
-                                      ty: Ty<'tcx>,
-                                      region: ty::Region,
-                                      cause: traits::ObligationCause<'tcx>)
+                                  check_env: &mut CheckEnv<'tcx>,
+                                  ty: Ty<'tcx>,
+                                  region: ty::Region,
+                                  cause: traits::ObligationCause<'tcx>)
     {
         check_env.fulfillment_cx
                  .register_region_obligation(self.infcx(), ty, region, cause);
     }
 
     fn add_default_region_param_bounds(&self,
-                                           check_env: &mut CheckEnv<'tcx>,
-                                           substs: &Substs<'tcx>,
-                                           expr: &ast::Expr)
+                                       check_env: &mut CheckEnv<'tcx>,
+                                       substs: &Substs<'tcx>,
+                                       expr: &ast::Expr)
     {
         for &ty in substs.types.iter() {
             let default_bound = ty::ReScope(CodeExtent::from_node_id(expr.id));
@@ -1847,9 +1847,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Then we will create a fresh region variable `'$0` and a fresh type variable `$1` for `'a`
     /// and `T`. This routine will add a region obligation `$1:'$0` and register it locally.
     fn add_obligations_for_parameters(&self,
-                                          check_env: &mut CheckEnv<'tcx>,
-                                          cause: traits::ObligationCause<'tcx>,
-                                          predicates: &ty::InstantiatedPredicates<'tcx>)
+                                      check_env: &mut CheckEnv<'tcx>,
+                                      cause: traits::ObligationCause<'tcx>,
+                                      predicates: &ty::InstantiatedPredicates<'tcx>)
     {
         assert!(!predicates.has_escaping_regions());
 
@@ -1866,13 +1866,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     // Only for fields! Returns <none> for methods>
     // Indifferent to privacy flags
     fn lookup_field_ty(&self,
-                           check_env: &mut CheckEnv<'tcx>,
-                           span: Span,
-                           class_id: ast::DefId,
-                           items: &[ty::field_ty],
-                           fieldname: ast::Name,
-                           substs: &subst::Substs<'tcx>)
-                           -> Option<Ty<'tcx>>
+                       check_env: &mut CheckEnv<'tcx>,
+                       span: Span,
+                       class_id: ast::DefId,
+                       items: &[ty::field_ty],
+                       fieldname: ast::Name,
+                       substs: &subst::Substs<'tcx>)
+                       -> Option<Ty<'tcx>>
     {
         let o_field = items.iter().find(|f| f.name == fieldname);
         o_field.map(|f| ty::lookup_field_type(self.tcx(), class_id, f.id, substs))
@@ -1883,13 +1883,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     fn lookup_tup_field_ty(&self,
-                               check_env: &mut CheckEnv<'tcx>,
-                               span: Span,
-                               class_id: ast::DefId,
-                               items: &[ty::field_ty],
-                               idx: usize,
-                               substs: &subst::Substs<'tcx>)
-                               -> Option<Ty<'tcx>>
+                           check_env: &mut CheckEnv<'tcx>,
+                           span: Span,
+                           class_id: ast::DefId,
+                           items: &[ty::field_ty],
+                           idx: usize,
+                           substs: &subst::Substs<'tcx>)
+                           -> Option<Ty<'tcx>>
     {
         let o_field = if idx < items.len() { Some(&items[idx]) } else { None };
         o_field.map(|f| ty::lookup_field_type(self.tcx(), class_id, f.id, substs))
@@ -1943,14 +1943,14 @@ pub enum UnresolvedTypeAction {
 /// Note: this method does not modify the adjustments table. The caller is responsible for
 /// inserting an AutoAdjustment record into the `fcx` using one of the suitable methods.
 fn autoderef<'a, 'tcx, T, F>(check_env: &mut CheckEnv<'tcx>,
-                                 fcx: &FnCtxt<'a, 'tcx>,
-                                 sp: Span,
-                                 base_ty: Ty<'tcx>,
-                                 opt_expr: Option<&ast::Expr>,
-                                 unresolved_type_action: UnresolvedTypeAction,
-                                 mut lvalue_pref: LvaluePreference,
-                                 mut should_stop: F)
-                                 -> (Ty<'tcx>, usize, Option<T>)
+                             fcx: &FnCtxt<'a, 'tcx>,
+                             sp: Span,
+                             base_ty: Ty<'tcx>,
+                             opt_expr: Option<&ast::Expr>,
+                             unresolved_type_action: UnresolvedTypeAction,
+                             mut lvalue_pref: LvaluePreference,
+                             mut should_stop: F)
+                             -> (Ty<'tcx>, usize, Option<T>)
     where F: FnMut(&mut CheckEnv<'tcx>, Ty<'tcx>, usize) -> Option<T>,
 {
     debug!("autoderef(base_ty={}, opt_expr={}, lvalue_pref={:?})",
@@ -4233,9 +4233,9 @@ fn check_const_with_ty<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
 /// the question of whether a type can be instantiated. See the definition of
 /// `check_instantiable`.
 fn check_representable(tcx: &ty::ctxt,
-                           sp: Span,
-                           item_id: ast::NodeId,
-                           designation: &str) -> bool {
+                       sp: Span,
+                       item_id: ast::NodeId,
+                       designation: &str) -> bool {
     let rty = ty::node_id_to_type(tcx, item_id);
 
     // Check that it is possible to represent this type. This call identifies
@@ -4268,9 +4268,9 @@ fn check_representable(tcx: &ty::ctxt,
 ///
 /// is representable, but not instantiable.
 fn check_instantiable(tcx: &ty::ctxt,
-                          sp: Span,
-                          item_id: ast::NodeId)
-                          -> bool {
+                      sp: Span,
+                      item_id: ast::NodeId)
+                      -> bool {
     let item_ty = ty::node_id_to_type(tcx, item_id);
     if !ty::is_instantiable(tcx, item_ty) {
         span_err!(tcx.sess, sp, E0073,
@@ -4314,9 +4314,9 @@ fn check_simd(tcx: &ty::ctxt, sp: Span, id: ast::NodeId) {
 }
 
 fn check_enum_variants<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
-                                    sp: Span,
-                                    vs: &'tcx [P<ast::Variant>],
-                                    id: ast::NodeId) {
+                                sp: Span,
+                                vs: &'tcx [P<ast::Variant>],
+                                id: ast::NodeId) {
 
     fn disr_in_range(ccx: &CrateCtxt,
                      ty: attr::IntType,
@@ -4462,14 +4462,14 @@ fn type_scheme_and_predicates_for_def<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
 // Instantiates the given path, which must refer to an item with the given
 // number of type parameters and type.
 fn instantiate_path<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
-                                  fcx: &FnCtxt<'a, 'tcx>,
-                                  segments: &[ast::PathSegment],
-                                  type_scheme: TypeScheme<'tcx>,
-                                  type_predicates: &ty::GenericPredicates<'tcx>,
-                                  opt_self_ty: Option<Ty<'tcx>>,
-                                  def: def::Def,
-                                  span: Span,
-                                  node_id: ast::NodeId) {
+                              fcx: &FnCtxt<'a, 'tcx>,
+                              segments: &[ast::PathSegment],
+                              type_scheme: TypeScheme<'tcx>,
+                              type_predicates: &ty::GenericPredicates<'tcx>,
+                              opt_self_ty: Option<Ty<'tcx>>,
+                              def: def::Def,
+                              span: Span,
+                              node_id: ast::NodeId) {
     debug!("instantiate_path(path={:?}, def={}, node_id={}, type_scheme={})",
            segments,
            def.repr(fcx.tcx()),
@@ -4999,10 +4999,10 @@ fn structurally_resolve_type_or_else<'a, 'tcx, F>(check_env: &mut CheckEnv<'tcx>
 // Resolves `typ` by a single level if `typ` is a type variable.  If no
 // resolution is possible, then an error is reported.
 fn structurally_resolved_type<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
-                                            fcx: &FnCtxt<'a, 'tcx>,
-                                            sp: Span,
-                                            ty: Ty<'tcx>)
-                                            -> Ty<'tcx>
+                                        fcx: &FnCtxt<'a, 'tcx>,
+                                        sp: Span,
+                                        ty: Ty<'tcx>)
+                                        -> Ty<'tcx>
 {
     structurally_resolve_type_or_else(check_env, fcx, sp, ty, || {
         fcx.tcx().types.err
@@ -5031,9 +5031,9 @@ fn may_break(cx: &ty::ctxt, id: ast::NodeId, b: &ast::Block) -> bool {
 }
 
 fn check_bounds_are_used<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
-                                       span: Span,
-                                       tps: &OwnedSlice<ast::TyParam>,
-                                       ty: Ty<'tcx>) {
+                                   span: Span,
+                                   tps: &OwnedSlice<ast::TyParam>,
+                                   ty: Ty<'tcx>) {
     debug!("check_bounds_are_used(n_tps={}, ty={})",
            tps.len(), ppaux::ty_to_string(ccx.tcx, ty));
 
