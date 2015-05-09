@@ -188,7 +188,7 @@ impl<'cx, 'tcx, 'v> Visitor<'v> for WritebackCx<'cx, 'tcx> {
         }
 
         let var_ty = self.fcx.local_ty(self.check_env, l.span, l.id);
-        let var_ty = self.resolve(&var_ty, ResolvingLocal(l.span));
+        let var_ty = resolve(self.fcx, &var_ty, ResolvingLocal(l.span));
         write_ty_to_tcx(self.tcx(), l.id, var_ty);
         visit::walk_local(self, l);
     }
@@ -215,7 +215,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 ty::UpvarCapture::ByValue => ty::UpvarCapture::ByValue,
                 ty::UpvarCapture::ByRef(ref upvar_borrow) => {
                     let r = upvar_borrow.region;
-                    let r = self.resolve(&r, ResolvingUpvar(*upvar_id));
+                    let r = resolve(self.fcx, &r, ResolvingUpvar(*upvar_id));
                     ty::UpvarCapture::ByRef(
                         ty::UpvarBorrow { kind: upvar_borrow.kind, region: r })
                 }
@@ -233,7 +233,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         }
 
         for (def_id, closure_ty) in &self.check_env.tt.closure_tys {
-            let closure_ty = self.resolve(closure_ty, ResolvingClosure(*def_id));
+            let closure_ty = resolve(self.fcx, closure_ty, ResolvingClosure(*def_id));
             self.fcx.tcx().closure_tys.borrow_mut().insert(*def_id, closure_ty);
         }
 
@@ -248,14 +248,14 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 
         // Resolve the type of the node with id `id`
         let n_ty = self.fcx.node_ty(&self.check_env.tt.node_types, id);
-        let n_ty = self.resolve(&n_ty, reason);
+        let n_ty = resolve(self.fcx, &n_ty, reason);
         write_ty_to_tcx(self.tcx(), id, n_ty);
         debug!("Node {} has type {}", id, n_ty.repr(self.tcx()));
 
         // Resolve any substitutions
-        self.fcx.opt_node_ty_substs(id, |item_substs| {
+        self.fcx.opt_node_ty_substs(&self.check_env.tt, id, |item_substs| {
             write_substs_to_tcx(self.tcx(), id,
-                                self.resolve(item_substs, reason));
+                                resolve(self.fcx, item_substs, reason));
         });
     }
 
@@ -281,8 +281,8 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 
                         ty::AdjustDerefRef(ty::AutoDerefRef {
                             autoderefs: adj.autoderefs,
-                            autoref: self.resolve(&adj.autoref, reason),
-                            unsize: self.resolve(&adj.unsize, reason),
+                            autoref: resolve(self.fcx, &adj.autoref, reason),
+                            unsize: resolve(self.fcx, &adj.unsize, reason),
                         })
                     }
                 };
@@ -303,9 +303,9 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                        method_call,
                        method.repr(self.tcx()));
                 let new_method = MethodCallee {
-                    origin: self.resolve(&method.origin, reason),
-                    ty: self.resolve(&method.ty, reason),
-                    substs: self.resolve(&method.substs, reason),
+                    origin: resolve(self.fcx, &method.origin, reason),
+                    ty: resolve(self.fcx, &method.ty, reason),
+                    substs: resolve(self.fcx, &method.substs, reason),
                 };
 
                 self.tcx().method_map.borrow_mut().insert(
@@ -316,9 +316,12 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         }
     }
 
-    fn resolve<T:TypeFoldable<'tcx>>(&self, t: &T, reason: ResolveReason) -> T {
-        t.fold_with(&mut Resolver::new(self.fcx, reason))
-    }
+}
+
+fn resolve<'a, 'tcx, T:TypeFoldable<'tcx>>(fcx: &FnCtxt<'a, 'tcx>,
+                                           t: &T, reason: ResolveReason) -> T
+{
+    t.fold_with(&mut Resolver::new(fcx, reason))
 }
 
 ///////////////////////////////////////////////////////////////////////////

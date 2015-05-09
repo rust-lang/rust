@@ -110,7 +110,7 @@ use util::ppaux::{self, Repr};
 use util::nodemap::{DefIdMap, FnvHashMap, NodeMap};
 use util::lev_distance::lev_distance;
 
-use std::cell::{Cell, Ref, RefCell};
+use std::cell::{Cell, RefCell};
 use std::mem::replace;
 use std::iter::repeat;
 use std::slice;
@@ -157,7 +157,6 @@ pub struct Inherited<'a, 'tcx: 'a> {
     param_env: ty::ParameterEnvironment<'a, 'tcx>,
 
     // Temporary tables:
-    item_substs: RefCell<NodeMap<ty::ItemSubsts<'tcx>>>,
     upvar_capture_map: RefCell<ty::UpvarCaptureMap>,
     closure_kinds: RefCell<DefIdMap<ty::ClosureKind>>,
 }
@@ -167,6 +166,7 @@ type MethodMap<'tcx> = FnvHashMap<MethodCall, MethodCallee<'tcx>>;
 /// Temporary tables
 struct CheckEnvTables<'tcx> {
     node_types: NodeMap<Ty<'tcx>>,
+    item_substs: NodeMap<ty::ItemSubsts<'tcx>>,
     adjustments: NodeMap<ty::AutoAdjustment<'tcx>>,
     method_map: MethodMap<'tcx>,
     closure_tys: DefIdMap<ty::ClosureTy<'tcx>>,
@@ -577,7 +577,6 @@ impl<'a, 'tcx> Inherited<'a, 'tcx> {
         Inherited {
             infcx: infer::new_infer_ctxt(tcx),
             param_env: param_env,
-            item_substs: RefCell::new(NodeMap()),
             upvar_capture_map: RefCell::new(FnvHashMap()),
             closure_kinds: RefCell::new(DefIdMap()),
         }
@@ -606,6 +605,7 @@ impl<'tcx> CheckEnv<'tcx> {
             locals: NodeMap(),
             tt: CheckEnvTables {
                 node_types: NodeMap(),
+                item_substs: NodeMap(),
                 adjustments: NodeMap(),
                 method_map: FnvHashMap(),
                 closure_tys: DefIdMap(),
@@ -1605,14 +1605,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         check_env.tt.node_types.insert(node_id, ty);
     }
 
-    fn write_substs(&self, node_id: ast::NodeId, substs: ty::ItemSubsts<'tcx>) {
+    fn write_substs(&self,
+                    check_env: &mut CheckEnv<'tcx>,
+                    node_id: ast::NodeId,
+                    substs: ty::ItemSubsts<'tcx>)
+    {
         if !substs.substs.is_noop() {
             debug!("write_substs({}, {}) in fcx {}",
                    node_id,
                    substs.repr(self.tcx()),
                    self.tag());
 
-            self.inh.item_substs.borrow_mut().insert(node_id, substs);
+            check_env.tt.item_substs.insert(node_id, substs);
         }
     }
 
@@ -1749,16 +1753,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    fn item_substs(&self) -> Ref<NodeMap<ty::ItemSubsts<'tcx>>> {
-        self.inh.item_substs.borrow()
+    fn item_substs<'b>(&'b self,
+                       check_env: &'b CheckEnv<'tcx>) -> &'b NodeMap<ty::ItemSubsts<'tcx>> {
+        &check_env.tt.item_substs
     }
 
     fn opt_node_ty_substs<F>(&self,
-                                 id: ast::NodeId,
-                                 f: F) where
+                             tt: &CheckEnvTables<'tcx>,
+                             id: ast::NodeId,
+                             f: F) where
         F: FnOnce(&ty::ItemSubsts<'tcx>),
     {
-        match self.inh.item_substs.borrow().get(&id) {
+        match tt.item_substs.get(&id) {
             Some(s) => { f(s) }
             None => { }
         }
@@ -1810,17 +1816,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Registers an obligation for checking later, during regionck, that the type `ty` must
     /// outlive the region `r`.
     fn register_region_obligation(&self,
-                                  check_env: &mut CheckEnv<'tcx>,
+                                  fulfillment_cx: &mut traits::FulfillmentContext<'tcx>,
                                   ty: Ty<'tcx>,
                                   region: ty::Region,
                                   cause: traits::ObligationCause<'tcx>)
     {
-        check_env.fulfillment_cx
-                 .register_region_obligation(self.infcx(), ty, region, cause);
+        fulfillment_cx.register_region_obligation(self.infcx(), ty, region, cause);
     }
 
     fn add_default_region_param_bounds(&self,
-                                       check_env: &mut CheckEnv<'tcx>,
+                                       fulfillment_cx: &mut traits::FulfillmentContext<'tcx>,
                                        substs: &Substs<'tcx>,
                                        expr: &ast::Expr)
     {
@@ -1828,7 +1833,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let default_bound = ty::ReScope(CodeExtent::from_node_id(expr.id));
             let cause = traits::ObligationCause::new(expr.span, self.body_id,
                                                      traits::MiscObligation);
-            self.register_region_obligation(check_env, ty, default_bound, cause);
+            self.register_region_obligation(fulfillment_cx, ty, default_bound, cause);
         }
     }
 
@@ -3910,8 +3915,9 @@ fn constrain_path_type_parameters<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
                                             fcx: &FnCtxt<'a, 'tcx>,
                                             expr: &ast::Expr)
 {
-    fcx.opt_node_ty_substs(expr.id, |item_substs| {
-        fcx.add_default_region_param_bounds(check_env, &item_substs.substs, expr);
+    let CheckEnv { ref tt, ref mut fulfillment_cx, .. } = *check_env;
+    fcx.opt_node_ty_substs(tt, expr.id, |item_substs| {
+        fcx.add_default_region_param_bounds(fulfillment_cx, &item_substs.substs, expr);
     });
 }
 
@@ -4733,7 +4739,7 @@ fn instantiate_path<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
     }
 
     fcx.write_ty(check_env, node_id, ty_substituted);
-    fcx.write_substs(node_id, ty::ItemSubsts { substs: substs });
+    fcx.write_substs(check_env, node_id, ty::ItemSubsts { substs: substs });
     return;
 
     /// Finds the parameters that the user provided and adds them to `substs`. If too many

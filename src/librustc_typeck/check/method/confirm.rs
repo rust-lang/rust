@@ -465,7 +465,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
             method_predicates);
 
         self.fcx.add_default_region_param_bounds(
-            check_env,
+            &mut check_env.fulfillment_cx,
             all_substs,
             self.call_expr);
     }

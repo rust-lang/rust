@@ -571,7 +571,7 @@ fn check_pat_struct<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
     demand::eqtype(fcx, pat.span, expected, pat_ty);
 
     let item_substs = fcx
-        .item_substs()
+        .item_substs(check_env)
         .get(&pat.id)
         .map(|substs| substs.substs.clone())
         .unwrap_or_else(|| Substs::empty());

@@ -535,7 +535,7 @@ pub fn mk_assignty<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
                     body_id: fcx.body_id,
                     code: traits::ObjectCastObligation(source)
                 };
-                fcx.register_region_obligation(check_env,
+                fcx.register_region_obligation(&mut check_env.fulfillment_cx,
                                                source, ty_trait.bounds.region_bound, cause);
             }
         }
