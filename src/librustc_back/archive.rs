@@ -306,6 +306,21 @@ impl<'a> ArchiveBuilder<'a> {
             if filename.contains(".SYMDEF") { continue }
             if skip(filename) { continue }
 
+            // Archives on unix systems typically do not have slashes in
+            // filenames as the `ar` utility generally only uses the last
+            // component of a path for the filename list in the archive. On
+            // Windows, however, archives assembled with `lib.exe` will preserve
+            // the full path to the file that was placed in the archive,
+            // including path separators.
+            //
+            // The code below is munging paths so it'll go wrong pretty quickly
+            // if there's some unexpected slashes in the filename, so here we
+            // just chop off everything but the filename component. Note that
+            // this can cause duplicate filenames, but that's also handled below
+            // as well.
+            let filename = Path::new(filename).file_name().unwrap()
+                                              .to_str().unwrap();
+
             // An archive can contain files of the same name multiple times, so
             // we need to be sure to not have them overwrite one another when we
             // extract them. Consequently we need to find a truly unique file
