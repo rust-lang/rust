@@ -67,7 +67,7 @@
 // lldb-check:[...]$5 = Void
 
 // lldb-command:print some_str
-// lldb-check:[...]$6 = Some(&str { data_ptr: [...], length: 3 })
+// lldb-check:[...]$6 = Some("abc")
 
 // lldb-command:print none_str
 // lldb-check:[...]$7 = None
