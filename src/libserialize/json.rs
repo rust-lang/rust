@@ -3011,9 +3011,9 @@ mod tests {
         let v: i64 = super::decode("9223372036854775807").unwrap();
         assert_eq!(v, i64::MAX);
 
-        let res: DecodeResult<i64> = super::decode("765.25252");
+        let res: DecodeResult<i64> = super::decode("765.25");
         assert_eq!(res, Err(ExpectedError("Integer".to_string(),
-                                          "765.25252".to_string())));
+                                          "765.25".to_string())));
     }
 
     #[test]
