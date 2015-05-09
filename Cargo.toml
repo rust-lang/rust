@@ -10,5 +10,5 @@ authors = [
 name = "clippy"
 crate_type = ["dylib"]
 
-[dev-dependencies.compiletest]
-git = "https://github.com/laumann/compiletest-rs.git"
+[dev-dependencies]
+compiletest_rs = "*"
