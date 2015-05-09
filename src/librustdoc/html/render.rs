@@ -1643,7 +1643,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
             clean::ExternCrateItem(ref name, ref src) => {
                 match *src {
                     Some(ref src) => {
-                        try!(write!(w, "<tr><td><code>{}extern crate \"{}\" as {};",
+                        try!(write!(w, "<tr><td><code>{}extern crate {} as {};",
                                     VisSpace(myitem.visibility),
                                     src,
                                     name))
