@@ -80,7 +80,6 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use alloc::boxed::Box;
-use core::convert::AsRef;
 use core::clone::Clone;
 use core::cmp::Ordering::{self, Greater, Less};
 use core::cmp::{self, Ord, PartialEq};
@@ -1024,25 +1023,25 @@ pub trait SliceConcatExt<T: ?Sized> {
     fn connect(&self, sep: &T) -> Self::Output;
 }
 
-impl<T: Clone, V: AsRef<[T]>> SliceConcatExt<T> for [V] {
+impl<T: Clone, V: Borrow<[T]>> SliceConcatExt<T> for [V] {
     type Output = Vec<T>;
 
     fn concat(&self) -> Vec<T> {
-        let size = self.iter().fold(0, |acc, v| acc + v.as_ref().len());
+        let size = self.iter().fold(0, |acc, v| acc + v.borrow().len());
         let mut result = Vec::with_capacity(size);
         for v in self {
-            result.push_all(v.as_ref())
+            result.push_all(v.borrow())
         }
         result
     }
 
     fn connect(&self, sep: &T) -> Vec<T> {
-        let size = self.iter().fold(0, |acc, v| acc + v.as_ref().len());
+        let size = self.iter().fold(0, |acc, v| acc + v.borrow().len());
         let mut result = Vec::with_capacity(size + self.len());
         let mut first = true;
         for v in self {
             if first { first = false } else { result.push(sep.clone()) }
-            result.push_all(v.as_ref())
+            result.push_all(v.borrow())
         }
         result
     }
