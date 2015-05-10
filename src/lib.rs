@@ -21,6 +21,7 @@ pub mod bit_mask;
 pub mod ptr_arg;
 pub mod needless_bool;
 pub mod approx_const;
+pub mod eta_reduction;
 
 #[plugin_registrar]
 pub fn plugin_registrar(reg: &mut Registry) {
@@ -36,6 +37,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_lint_pass(box approx_const::ApproxConstant as LintPassObject);
     reg.register_lint_pass(box misc::FloatCmp as LintPassObject);
     reg.register_lint_pass(box misc::Precedence as LintPassObject);
+    reg.register_lint_pass(box eta_reduction::EtaPass as LintPassObject);
     
     reg.register_lint_group("clippy", vec![types::BOX_VEC, types::LINKEDLIST,
                                            misc::SINGLE_MATCH, misc::STR_TO_STRING,
@@ -45,5 +47,6 @@ pub fn plugin_registrar(reg: &mut Registry) {
                                            approx_const::APPROX_CONSTANT,
                                            misc::CMP_NAN, misc::FLOAT_CMP,
                                            misc::PRECEDENCE,
+                                           eta_reduction::REDUNDANT_CLOSURE,
                                            ]);
 }
