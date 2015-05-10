@@ -23,7 +23,7 @@ name as an existing primitive type, and is therefore invalid.
 See the Types section of the reference for more information about the primitive
 types:
 
-http://doc.rust-lang.org/nightly/reference.html#types
+http://doc.rust-lang.org/reference.html#types
 "##
 
 }
