@@ -46,6 +46,23 @@ enum variant, one of the fields was not provided. Each field should be specified
 exactly once.
 "##,
 
+E0067: r##"
+The left-hand side of an assignment operator must be an lvalue expression. An
+lvalue expression represents a memory location and includes item paths (ie,
+namespaced variables), dereferences, indexing expressions, and field references.
+
+```
+use std::collections::LinkedList;
+
+// Good
+let mut list = LinkedList::new();
+
+
+// Bad: assignment to non-lvalue expression
+LinkedList::new() += 1;
+```
+"##,
+
 E0081: r##"
 Enum discriminants are used to differentiate enum variants stored in memory.
 This error indicates that the same value was used for two or more variants,
@@ -149,7 +166,6 @@ register_diagnostics! {
     E0060,
     E0061,
     E0066,
-    E0067,
     E0068,
     E0069,
     E0070,
