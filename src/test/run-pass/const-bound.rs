@@ -20,7 +20,7 @@ struct F { field: isize }
 pub fn main() {
     /*foo(1);
     foo("hi".to_string());
-    foo(~[1, 2, 3]);
+    foo(vec![1, 2, 3]);
     foo(F{field: 42});
     foo((1, 2));
     foo(@1);*/

@@ -323,7 +323,7 @@ fn ty_is_local_constructor<'tcx>(tcx: &ty::ctxt<'tcx>,
             def_id.krate == ast::LOCAL_CRATE
         }
 
-        ty::ty_uniq(_) => { // treat ~T like Box<T>
+        ty::ty_uniq(_) => { // Box<T>
             let krate = tcx.lang_items.owned_box().map(|d| d.krate);
             krate == Some(ast::LOCAL_CRATE)
         }
