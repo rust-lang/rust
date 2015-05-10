@@ -653,9 +653,10 @@ There are several kinds of item:
 * [`use` declarations](#use-declarations)
 * [modules](#modules)
 * [functions](#functions)
-* [type definitions](#type-definitions)
+* [type aliases](#type-aliases)
 * [structures](#structures)
 * [enumerations](#enumerations)
+* [constant items](#constant-items)
 * [static items](#static-items)
 * [traits](#traits)
 * [implementations](#implementations)
@@ -672,16 +673,16 @@ which sub-item declarations may appear.
 
 ### Type Parameters
 
-All items except modules may be *parameterized* by type. Type parameters are
-given as a comma-separated list of identifiers enclosed in angle brackets
-(`<...>`), after the name of the item and before its definition. The type
-parameters of an item are considered "part of the name", not part of the type
-of the item. A referencing [path](#paths) must (in principle) provide type
-arguments as a list of comma-separated types enclosed within angle brackets, in
-order to refer to the type-parameterized item. In practice, the type-inference
-system can usually infer such argument types from context. There are no
-general type-parametric types, only type-parametric items. That is, Rust has
-no notion of type abstraction: there are no first-class "forall" types.
+All items except modules, constants and statics may be *parameterized* by type.
+Type parameters are given as a comma-separated list of identifiers enclosed in
+angle brackets (`<...>`), after the name of the item and before its definition.
+The type parameters of an item are considered "part of the name", not part of
+the type of the item. A referencing [path](#paths) must (in principle) provide
+type arguments as a list of comma-separated types enclosed within angle
+brackets, in order to refer to the type-parameterized item. In practice, the
+type-inference system can usually infer such argument types from context. There
+are no general type-parametric types, only type-parametric items. That is, Rust
+has no notion of type abstraction: there are no first-class "forall" types.
 
 ### Modules
 
@@ -743,7 +744,7 @@ mod thread {
 }
 ```
 
-##### Extern crate declarations
+#### Extern crate declarations
 
 An _`extern crate` declaration_ specifies a dependency on an external crate.
 The external crate is then bound into the declaring scope as the `ident`
@@ -767,7 +768,7 @@ extern crate std; // equivalent to: extern crate std as std;
 extern crate std as ruststd; // linking to 'std' under another name
 ```
 
-##### Use declarations
+#### Use declarations
 
 A _use declaration_ creates one or more local name bindings synonymous with
 some other [path](#paths). Usually a `use` declaration is used to shorten the
