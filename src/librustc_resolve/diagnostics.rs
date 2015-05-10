@@ -67,6 +67,40 @@ extern crate_a as other_name;
 ```
 "##,
 
+E0260: r##"
+The name for an item declaration conflicts with an external crate's name.
+
+For instance,
+```
+extern abc;
+
+struct abc;
+```
+
+There are two possible solutions:
+
+Solution #1: Rename the item.
+
+```
+extern abc;
+
+struct xyz;
+```
+
+Solution #2: Import the crate with a different name.
+
+```
+extern abc as xyz;
+
+struct abc;
+```
+
+See the Declaration Statements section of the reference for more information
+about what constitutes an Item declaration and what does not:
+
+http://doc.rust-lang.org/reference.html#statements
+"##,
+
 E0317: r##"
 User-defined types or type parameters cannot shadow the primitive types.
 This error indicates you tried to define a type, struct or enum with the same
@@ -91,7 +125,6 @@ register_diagnostics! {
     E0256, // import conflicts with type in this module
     E0257, // inherent implementations are only allowed on types defined in the current module
     E0258, // import conflicts with existing submodule
-    E0260, // name conflicts with an external crate that has been imported into this module
     E0364, // item is private
     E0365  // item is private
 }
