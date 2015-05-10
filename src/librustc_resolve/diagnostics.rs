@@ -15,6 +15,38 @@
 // In vim you can `:set tw=80` and use `gq` to wrap paragraphs. Use `:set tw=0` to disable.
 register_long_diagnostics! {
 
+E0154: r##"
+Imports (`use` statements) are not allowed after non-item statements, such as
+variable declarations and expression statements.
+
+Wrong example:
+```
+fn f() {
+    // Variable declaration before import
+    let x = 0;
+    use std::io::Read;
+    ...
+}
+```
+
+The solution is to declare the imports at the top of the block, function, or
+file.
+
+Here is the previous example again, with the correct order:
+```
+fn f() {
+    use std::io::Read;
+    let x = 0;
+    ...
+}
+```
+
+See the Declaration Statements section of the reference for more information
+about what constitutes an Item declaration and what does not:
+
+http://doc.rust-lang.org/reference.html#statements
+"##,
+
 E0317: r##"
 User-defined types or type parameters cannot shadow the primitive types.
 This error indicates you tried to define a type, struct or enum with the same
@@ -29,7 +61,6 @@ http://doc.rust-lang.org/reference.html#types
 }
 
 register_diagnostics! {
-    E0154,
     E0157,
     E0153,
     E0251, // a named type or value has already been imported in this module
