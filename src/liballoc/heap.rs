@@ -95,7 +95,7 @@ pub const EMPTY: *mut () = 0x1 as *mut ();
 
 /// The allocator for unique pointers.
 #[cfg(not(test))]
-#[lang="exchange_malloc"]
+#[lang = "exchange_malloc"]
 #[inline]
 unsafe fn exchange_malloc(size: usize, align: usize) -> *mut u8 {
     if size == 0 {
@@ -108,7 +108,7 @@ unsafe fn exchange_malloc(size: usize, align: usize) -> *mut u8 {
 }
 
 #[cfg(not(test))]
-#[lang="exchange_free"]
+#[lang = "exchange_free"]
 #[inline]
 unsafe fn exchange_free(ptr: *mut u8, old_size: usize, align: usize) {
     deallocate(ptr, old_size, align);

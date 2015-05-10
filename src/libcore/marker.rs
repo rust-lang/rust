@@ -33,7 +33,7 @@ use hash::Hasher;
 
 /// Types able to be transferred across thread boundaries.
 #[stable(feature = "rust1", since = "1.0.0")]
-#[lang="send"]
+#[lang = "send"]
 #[rustc_on_unimplemented = "`{Self}` cannot be sent between threads safely"]
 pub unsafe trait Send {
     // empty.
@@ -46,7 +46,7 @@ impl<T> !Send for *mut T { }
 
 /// Types with a constant size known at compile-time.
 #[stable(feature = "rust1", since = "1.0.0")]
-#[lang="sized"]
+#[lang = "sized"]
 #[rustc_on_unimplemented = "`{Self}` does not have a constant size known at compile-time"]
 #[fundamental] // for Default, for example, which requires that `[T]: !Default` be evaluatable
 pub trait Sized {
@@ -154,7 +154,7 @@ pub trait Sized {
 /// then it might be prudent to not implement `Copy`. This is because removing `Copy` is a breaking
 /// change: that second example would fail to compile if we made `Foo` non-`Copy`.
 #[stable(feature = "rust1", since = "1.0.0")]
-#[lang="copy"]
+#[lang = "copy"]
 pub trait Copy : Clone {
     // Empty.
 }
@@ -201,7 +201,7 @@ pub trait Copy : Clone {
 /// reference; not doing this is undefined behaviour (for example,
 /// `transmute`-ing from `&T` to `&mut T` is illegal).
 #[stable(feature = "rust1", since = "1.0.0")]
-#[lang="sync"]
+#[lang = "sync"]
 #[rustc_on_unimplemented = "`{Self}` cannot be shared between threads safely"]
 pub unsafe trait Sync {
     // Empty
@@ -217,7 +217,7 @@ impl<T> !Sync for *mut T { }
 /// ensure that they are never copied, even if they lack a destructor.
 #[unstable(feature = "core",
            reason = "likely to change with new variance strategy")]
-#[lang="no_copy_bound"]
+#[lang = "no_copy_bound"]
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct NoCopy;
 
@@ -359,7 +359,7 @@ macro_rules! impls{
 /// better to use a reference type, like `PhantomData<&'a T>`
 /// (ideally) or `PhantomData<*const T>` (if no lifetime applies), so
 /// as not to indicate ownership.
-#[lang="phantom_data"]
+#[lang = "phantom_data"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct PhantomData<T:?Sized>;
 
