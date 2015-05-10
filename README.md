@@ -25,7 +25,7 @@ To use, add the following lines to your Cargo.toml:
 
 ```
 [dev-dependencies]
-rust-clippy = "*"
+clippy = "*"
 ```
 
 In your code, you may add `#![plugin(clippy)]` to use it (you may also need to include a `#![feature(plugin)]` line)
