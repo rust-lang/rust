@@ -150,6 +150,114 @@ attribute. Such a function must have the following type signature:
 ```
 fn(isize, *const *const u8) -> isize
 ```
+"##,
+
+E0184: r##"
+Explicitly implementing both Drop and Copy for a type is currently disallowed.
+This feature can make some sense in theory, but the current implementation is
+incorrect and can lead to memory unsafety (see issue #20126), so it has been
+disabled for now.
+"##,
+
+E0204: r##"
+An attempt to implement the `Copy` trait for a struct failed because one of the
+fields does not implement `Copy`. To fix this, you must implement `Copy` for the
+mentioned field. Note that this may not be possible, as in the example of
+
+```
+struct Foo {
+    foo : Vec<u32>,
+}
+
+impl Copy for Foo { }
+```
+
+This fails because `Vec<T>` does not implement `Copy` for any `T`.
+
+Here's another example that will fail:
+
+```
+#[derive(Copy)]
+struct Foo<'a> {
+    ty: &'a mut bool,
+}
+```
+
+This fails because `&mut T` is not `Copy`, even when `T` is `Copy` (as opposed
+to `&T`, which is).
+"##,
+
+E0205: r##"
+An attempt to implement the `Copy` trait for an enum failed because one of the
+variants does not implement `Copy`. To fix this, you must implement `Copy` for
+the mentioned variant. Note that this may not be possible, as in the example of
+
+```
+enum Foo {
+    Bar(Vec<u32>),
+    Baz,
+}
+
+impl Copy for Foo { }
+```
+
+This fails because `Vec<T>` does not implement `Copy` for any `T`.
+
+Here's another example that will fail:
+
+```
+#[derive(Copy)]
+enum Foo<'a> {
+    Bar(&'a mut bool),
+    Baz
+}
+```
+
+This fails because `&mut T` is not `Copy`, even when `T` is `Copy` (as opposed
+to `&T`, which is).
+"##,
+
+E0206: r##"
+You can only implement `Copy` for a struct or enum. For example, both of the
+following examples will fail, because neither `i32` nor `&'static mut Bar` is
+a struct or enum:
+
+```
+type Foo = i32;
+impl Copy for Foo { } // error
+
+#[derive(Copy, Clone)]
+struct Bar;
+impl Copy for &'static mut Bar { } // error
+```
+"##,
+
+E0243: r##"
+This error indicates that not enough type parameters were found in a type or
+trait.
+
+For example, the `Foo` struct below is defined to be generic in `T`, but the
+type parameter is missing in the definition of `Bar`:
+
+```
+struct Foo<T> { x: T }
+
+struct Bar { x: Foo }
+```
+"##,
+
+E0244: r##"
+This error indicates that too many type parameters were found in a type or
+trait.
+
+For example, the `Foo` struct below has no type parameters, but is supplied
+with two in the definition of `Bar`:
+
+```
+struct Foo { x: bool }
+
+struct Bar<S, T> { x: Foo<S, T> }
+```
 "##
 
 }
@@ -232,7 +340,6 @@ register_diagnostics! {
     E0178,
     E0182,
     E0183,
-    E0184,
     E0185,
     E0186,
     E0187, // can't infer the kind of the closure
@@ -254,12 +361,6 @@ register_diagnostics! {
     E0202, // associated items are not allowed in inherent impls
     E0203, // type parameter has more than one relaxed default bound,
            // and only one is supported
-    E0204, // trait `Copy` may not be implemented for this type; field
-           // does not implement `Copy`
-    E0205, // trait `Copy` may not be implemented for this type; variant
-           // does not implement `copy`
-    E0206, // trait `Copy` may not be implemented for this type; type is
-           // not a structure or enumeration
     E0207, // type parameter is not constrained by the impl trait, self type, or predicate
     E0208,
     E0209, // builtin traits can only be implemented on structs or enums
@@ -296,8 +397,6 @@ register_diagnostics! {
     E0240,
     E0241,
     E0242, // internal error looking up a definition
-    E0243, // wrong number of type arguments
-    E0244, // wrong number of type arguments
     E0245, // not a trait
     E0246, // illegal recursive type
     E0247, // found module name used as a type
