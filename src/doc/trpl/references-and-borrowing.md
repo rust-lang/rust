@@ -6,7 +6,7 @@ become quite acquainted. Ownership is how Rust achieves its largest goal,
 memory safety. There are a few distinct concepts, each with its own
 chapter:
 
-* [ownership][ownership], ownership, the key concept
+* [ownership][ownership], the key concept
 * borrowing, which you’re reading now
 * [lifetimes][lifetimes], an advanced concept of borrowing
 
