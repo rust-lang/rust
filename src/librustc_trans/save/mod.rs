@@ -19,8 +19,10 @@ use syntax::{attr};
 use syntax::ast::{self, NodeId, DefId};
 use syntax::ast_util;
 use syntax::codemap::*;
-use syntax::parse::token::keywords;
+use syntax::parse::token::{self, get_ident, keywords};
 use syntax::visit::{self, Visitor};
+use syntax::print::pprust::ty_to_string;
+
 
 use self::span_utils::SpanUtils;
 
@@ -40,16 +42,30 @@ pub struct CrateData {
     pub number: u32,
 }
 
+// Data for any entity in the Rust language. The actual data contained varied
+// with the kind of entity being queried. See the nested structs for details.
 pub enum Data {
     FunctionData(FunctionData),
+    VariableData(VariableData),
 }
 
 pub struct FunctionData {
     pub id: NodeId,
+    pub name: String,
     pub qualname: String,
     pub declaration: Option<DefId>,
     pub span: Span,
     pub scope: NodeId,
+}
+
+pub struct VariableData {
+    pub id: NodeId,
+    pub name: String,
+    pub qualname: String,
+    pub span: Span,
+    pub scope: NodeId,
+    pub value: String,
+    pub type_value: String,
 }
 
 impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
@@ -78,35 +94,71 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
     pub fn get_item_data(&self, item: &ast::Item) -> Data {
         match item.node {
             ast::Item_::ItemFn(..) => {
-                let qualname = format!("::{}", self.analysis.ty_cx.map.path_to_string(item.id));
+                let name = self.analysis.ty_cx.map.path_to_string(item.id);
+                let qualname = format!("::{}", name);
                 let sub_span = self.span_utils.sub_span_after_keyword(item.span, keywords::Fn);
 
                 Data::FunctionData(FunctionData {
                     id: item.id,
+                    name: name,
                     qualname: qualname,
                     declaration: None,
                     span: sub_span.unwrap(),
                     scope: self.analysis.ty_cx.map.get_parent(item.id),
                 })
             }
+            ast::ItemStatic(ref typ, mt, ref expr) => {
+                let qualname = format!("::{}", self.analysis.ty_cx.map.path_to_string(item.id));
+
+                // If the variable is immutable, save the initialising expression.
+                let value = match mt {
+                    ast::MutMutable => String::from_str("<mutable>"),
+                    ast::MutImmutable => self.span_utils.snippet(expr.span),
+                };
+
+                let sub_span = self.span_utils.sub_span_after_keyword(item.span, keywords::Static);
+
+                Data::VariableData(VariableData {
+                    id: item.id,
+                    name: get_ident(item.ident).to_string(),
+                    qualname: qualname,
+                    span: sub_span.unwrap(),
+                    scope: self.analysis.ty_cx.map.get_parent(item.id),
+                    value: value,
+                    type_value: ty_to_string(&typ),
+                })
+            }
+            ast::ItemConst(ref typ, ref expr) => {
+                let qualname = format!("::{}", self.analysis.ty_cx.map.path_to_string(item.id));
+                let sub_span = self.span_utils.sub_span_after_keyword(item.span, keywords::Const);
+
+                Data::VariableData(VariableData {
+                    id: item.id,
+                    name: get_ident(item.ident).to_string(),
+                    qualname: qualname,
+                    span: sub_span.unwrap(),
+                    scope: self.analysis.ty_cx.map.get_parent(item.id),
+                    value: self.span_utils.snippet(expr.span),
+                    type_value: ty_to_string(&typ),
+                })
+            }
             _ => {
+                // FIXME
                 unimplemented!();
             }
         }
     }
 
-    pub fn get_data_for_id(&self, id: &NodeId) -> Data {
-        // TODO
-        unimplemented!();        
+    pub fn get_data_for_id(&self, _id: &NodeId) -> Data {
+        // FIXME
+        unimplemented!();
     }
 }
 
 // An AST visitor for collecting paths from patterns.
 struct PathCollector {
-    // TODO bool -> ast::mutable
-    // TODO recorder -> var kind new enum
-    // The Row field identifies the kind of formal variable.
-    collected_paths: Vec<(NodeId, ast::Path, bool, recorder::Row)>,
+    // The Row field identifies the kind of pattern.
+    collected_paths: Vec<(NodeId, ast::Path, ast::Mutability, recorder::Row)>,
 }
 
 impl PathCollector {
@@ -119,29 +171,35 @@ impl PathCollector {
 
 impl<'v> Visitor<'v> for PathCollector {
     fn visit_pat(&mut self, p: &ast::Pat) {
+        if generated_code(p.span) {
+            return;
+        }
+
         match p.node {
             ast::PatStruct(ref path, _, _) => {
-                self.collected_paths.push((p.id, path.clone(), false, recorder::StructRef));
+                self.collected_paths.push((p.id,
+                                           path.clone(),
+                                           ast::MutMutable,
+                                           recorder::StructRef));
             }
             ast::PatEnum(ref path, _) |
             ast::PatQPath(_, ref path) => {
-                self.collected_paths.push((p.id, path.clone(), false, recorder::VarRef));
+                self.collected_paths.push((p.id, path.clone(), ast::MutMutable, recorder::VarRef));
             }
             ast::PatIdent(bm, ref path1, _) => {
+                debug!("PathCollector, visit ident in pat {}: {:?} {:?}",
+                       token::get_ident(path1.node),
+                       p.span,
+                       path1.span);
                 let immut = match bm {
                     // Even if the ref is mut, you can't change the ref, only
                     // the data pointed at, so showing the initialising expression
                     // is still worthwhile.
-                    ast::BindByRef(_) => true,
-                    ast::BindByValue(mt) => {
-                        match mt {
-                            ast::MutMutable => false,
-                            ast::MutImmutable => true,
-                        }
-                    }
+                    ast::BindByRef(_) => ast::MutImmutable,
+                    ast::BindByValue(mt) => mt,
                 };
                 // collect path for either visit_local or visit_arm
-                let path = ast_util::ident_to_path(path1.span,path1.node);
+                let path = ast_util::ident_to_path(path1.span, path1.node);
                 self.collected_paths.push((p.id, path, immut, recorder::VarRef));
             }
             _ => {}
