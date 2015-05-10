@@ -260,6 +260,38 @@ struct Foo { x: bool }
 
 struct Bar<S, T> { x: Foo<S, T> }
 ```
+"##,
+
+E0249: r##"
+This error indicates a constant expression for the array length was found, but
+it was not an integer (signed or unsigned) expression.
+
+Some examples of code that produces this error are:
+
+```
+const A: [u32; "hello"] = []; // error
+const B: [u32; true] = []; // error
+const C: [u32; 0.0] = []; // error
+"##,
+
+E0250: r##"
+This means there was an error while evaluating the expression for the length of
+a fixed-size array type.
+
+Some examples of code that produces this error are:
+
+```
+// divide by zero in the length expression
+const A: [u32; 1/0] = [];
+
+// Rust currently will not evaluate the function `foo` at compile time
+fn foo() -> usize { 12 }
+const B: [u32; foo()] = [];
+
+// it is an error to try to add `u8` and `f64`
+use std::{f64, u8};
+const C: [u32; u8::MAX + f64::EPSILON] = [];
+```
 "##
 
 }
@@ -403,8 +435,6 @@ register_diagnostics! {
     E0246, // illegal recursive type
     E0247, // found module name used as a type
     E0248, // found value name used as a type
-    E0249, // expected constant expr for array length
-    E0250, // expected constant expr for array length
     E0318, // can't create default impls for traits outside their crates
     E0319, // trait impls for defaulted traits allowed just for structs/enums
     E0320, // recursive overflow during dropck
