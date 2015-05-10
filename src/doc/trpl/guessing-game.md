@@ -273,7 +273,7 @@ information’. Why throw it away? Well, for a basic program, we just want to
 print a generic error, as basically any issue means we can’t continue. The
 [`ok()` method][ok] returns a value which has another method defined on it:
 `expect()`. The [`expect()` method][expect] takes a value it’s called on, and
-if it isn’t a successful one, [`panic!`][panic]s with a message you passed you
+if it isn’t a successful one, [`panic!`][panic]s with a message you
 passed it. A `panic!` like this will cause our program to crash, displaying
 the message.
 
