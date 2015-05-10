@@ -1052,6 +1052,7 @@ impl<T: fmt::Display + ?Sized> ToString for T {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl AsRef<str> for String {
+    #[inline]
     fn as_ref(&self) -> &str {
         self
     }
