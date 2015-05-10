@@ -37,7 +37,7 @@ fn test<'a,T,U:Copy>(_: &'a isize) {
     assert_copy::<&'static mut isize>(); //~ ERROR `core::marker::Copy` is not implemented
     assert_copy::<&'a mut isize>();  //~ ERROR `core::marker::Copy` is not implemented
 
-    // ~ pointers are not ok
+    // owned pointers are not ok
     assert_copy::<Box<isize>>();   //~ ERROR `core::marker::Copy` is not implemented
     assert_copy::<String>();   //~ ERROR `core::marker::Copy` is not implemented
     assert_copy::<Vec<isize> >(); //~ ERROR `core::marker::Copy` is not implemented

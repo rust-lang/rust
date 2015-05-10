@@ -230,8 +230,8 @@ impl<'a> SpanUtils<'a> {
     // Reparse span and return an owned vector of sub spans of the first limit
     // identifier tokens in the given nesting level.
     // example with Foo<Bar<T,V>, Bar<T,V>>
-    // Nesting = 0: all idents outside of brackets: ~[Foo]
-    // Nesting = 1: idents within one level of brackets: ~[Bar, Bar]
+    // Nesting = 0: all idents outside of brackets: Vec<Foo>
+    // Nesting = 1: idents within one level of brackets: Vec<Bar, Bar>
     pub fn spans_with_brackets(&self, span: Span, nesting: isize, limit: isize) -> Vec<Span> {
         let mut result: Vec<Span> = vec!();
 
@@ -352,7 +352,7 @@ impl<'a> SpanUtils<'a> {
             return vec!();
         }
         // Type params are nested within one level of brackets:
-        // i.e. we want ~[A, B] from Foo<A, B<T,U>>
+        // i.e. we want Vec<A, B> from Foo<A, B<T,U>>
         self.spans_with_brackets(span, 1, number)
     }
 

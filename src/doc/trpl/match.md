@@ -50,7 +50,7 @@ side of a `let` binding or directly where an expression is used:
 ```rust
 let x = 5;
 
-let numer = match x {
+let number = match x {
     1 => "one",
     2 => "two",
     3 => "three",

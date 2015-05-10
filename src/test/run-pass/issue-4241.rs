@@ -22,8 +22,8 @@ use std::io::{ReaderUtil,WriterUtil};
 enum Result {
   Nil,
   Int(isize),
-  Data(~[u8]),
-  List(~[Result]),
+  Data(Vec<u8>),
+  List(Vec<Result>),
   Error(String),
   Status(String)
 }
@@ -35,7 +35,7 @@ fn parse_data(len: usize, io: @io::Reader) -> Result {
       assert_eq!(bytes.len(), len);
       Data(bytes)
   } else {
-      Data(~[])
+      Data(vec![])
   };
   assert_eq!(io.read_char(), '\r');
   assert_eq!(io.read_char(), '\n');
@@ -43,7 +43,7 @@ fn parse_data(len: usize, io: @io::Reader) -> Result {
 }
 
 fn parse_list(len: usize, io: @io::Reader) -> Result {
-    let mut list: ~[Result] = ~[];
+    let mut list: Vec<Result> = vec![];
     for _ in 0..len {
         let v = match io.read_char() {
             '$' => parse_bulk(io),
@@ -72,7 +72,7 @@ fn parse_multi(io: @io::Reader) -> Result {
     match from_str::<isize>(chop(io.read_line())) {
     None => panic!(),
     Some(-1) => Nil,
-    Some(0) => List(~[]),
+    Some(0) => List(vec![]),
     Some(len) if len >= 0 => parse_list(len as usize, io),
     Some(_) => panic!()
     }
@@ -96,7 +96,7 @@ fn parse_response(io: @io::Reader) -> Result {
     }
 }
 
-fn cmd_to_string(cmd: ~[String]) -> String {
+fn cmd_to_string(cmd: Vec<String>) -> String {
   let mut res = "*".to_string();
   res.push_str(cmd.len().to_string());
   res.push_str("\r\n");
@@ -107,7 +107,7 @@ fn cmd_to_string(cmd: ~[String]) -> String {
   res
 }
 
-fn query(cmd: ~[String], sb: TcpSocketBuf) -> Result {
+fn query(cmd: Vec<String>, sb: TcpSocketBuf) -> Result {
   let cmd = cmd_to_string(cmd);
   //println!("{}", cmd);
   sb.write_str(cmd);
@@ -115,7 +115,7 @@ fn query(cmd: ~[String], sb: TcpSocketBuf) -> Result {
   res
 }
 
-fn query2(cmd: ~[String]) -> Result {
+fn query2(cmd: Vec<String>) -> Result {
   let _cmd = cmd_to_string(cmd);
     io::with_str_reader("$3\r\nXXX\r\n".to_string())(|sb| {
     let res = parse_response(@sb as @io::Reader);
