@@ -24,8 +24,8 @@ Lints included in this crate:
 To use, add the following lines to your Cargo.toml:
 
 ```
-[dev-dependencies.rust-clippy]
-git = "https://github.com/Manishearth/rust-clippy"
+[dev-dependencies]
+rust-clippy = "*"
 ```
 
 In your code, you may add `#![plugin(clippy)]` to use it (you may also need to include a `#![feature(plugin)]` line)
