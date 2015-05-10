@@ -155,8 +155,10 @@ fn(isize, *const *const u8) -> isize
 E0184: r##"
 Explicitly implementing both Drop and Copy for a type is currently disallowed.
 This feature can make some sense in theory, but the current implementation is
-incorrect and can lead to memory unsafety (see issue #20126), so it has been
-disabled for now.
+incorrect and can lead to memory unsafety (see [issue #20126][iss20126]), so
+it has been disabled for now.
+
+[iss20126]: https://github.com/rust-lang/rust/issues/20126
 "##,
 
 E0204: r##"
