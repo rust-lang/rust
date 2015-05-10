@@ -735,6 +735,7 @@ Rob Arnold <robarnold@cs.cmu.edu>
 Rob Hoelz <rob@hoelz.ro>
 Robert Buonpastore <robert.buonpastore@gmail.com>
 Robert Clipsham <robert@octarineparrot.com>
+Robert Foss <dev@robertfoss.se>
 Robert Gawdzik <rgawdzik@hotmail.com>
 Robert Irelan <rirelan@gmail.com>
 Robert Knight <robertknight@gmail.com>
