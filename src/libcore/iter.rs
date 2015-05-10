@@ -82,7 +82,7 @@ fn _assert_is_object_safe(_: &Iterator<Item=()>) {}
 /// is returned. A concrete Iterator implementation may choose to behave however
 /// it wishes, either by returning `None` infinitely, or by doing something
 /// else.
-#[lang="iterator"]
+#[lang = "iterator"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented = "`{Self}` is not an iterator; maybe try calling \
                             `.iter()` or a similar method"]

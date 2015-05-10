@@ -238,7 +238,7 @@ pub mod eabi {
             -> uw::_Unwind_Reason_Code;
     }
 
-    #[lang="eh_personality"]
+    #[lang = "eh_personality"]
     #[no_mangle] // referenced from rust_try.ll
     #[allow(private_no_mangle_fns)]
     extern fn rust_eh_personality(
@@ -292,7 +292,7 @@ pub mod eabi {
             -> uw::_Unwind_Reason_Code;
     }
 
-    #[lang="eh_personality"]
+    #[lang = "eh_personality"]
     #[no_mangle] // referenced from rust_try.ll
     pub extern "C" fn rust_eh_personality(
         version: c_int,
@@ -345,7 +345,7 @@ pub mod eabi {
             -> uw::_Unwind_Reason_Code;
     }
 
-    #[lang="eh_personality"]
+    #[lang = "eh_personality"]
     #[no_mangle] // referenced from rust_try.ll
     #[allow(private_no_mangle_fns)]
     extern "C" fn rust_eh_personality(
@@ -432,7 +432,7 @@ pub mod eabi {
         ) -> EXCEPTION_DISPOSITION;
     }
 
-    #[lang="eh_personality"]
+    #[lang = "eh_personality"]
     #[no_mangle] // referenced from rust_try.ll
     #[allow(private_no_mangle_fns)]
     extern "C" fn rust_eh_personality(
