@@ -10,9 +10,21 @@
 
 // pretty-expanded FIXME #25180
 
-const x: &'static Fn() = &|| println!("ICE here");
+const empty: &'static Fn() = &|| println!("ICE here");
 
-fn main() {
-    x()
+const one_argument: &'static Fn(u32) = &|y| println("{}", y);
+
+const plus_21: &'static Fn(u32) -> u32 = |y| y + 21;
+
+const multi_and_local: &'static Fn(u32, u32) -> u32 = |x, y| {
+    let tmp = x + y;
+    tmp * 2;
+};
+
+pub fn main() {
+    empty();
+    one_argument(42);
+    assert!(plus_21(21) == 42);
+    assert!(multi_and_local(1, 2) == 6);
 }
 
