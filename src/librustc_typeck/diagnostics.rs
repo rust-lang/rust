@@ -218,9 +218,9 @@ differs from the behavior for `&T`, which is `Copy` when `T` is `Copy`).
 "##,
 
 E0206: r##"
-You can only implement `Copy` for a struct or enum. For example, both of the
-following examples will fail, because neither `i32` nor `&'static mut Bar` is
-a struct or enum:
+You can only implement `Copy` for a struct or enum. Both of the following
+examples will fail, because neither `i32` (primitive type) nor `&'static Bar`
+(reference to `Bar`) is a struct or enum:
 
 ```
 type Foo = i32;
@@ -228,7 +228,7 @@ impl Copy for Foo { } // error
 
 #[derive(Copy, Clone)]
 struct Bar;
-impl Copy for &'static mut Bar { } // error
+impl Copy for &'static Bar { } // error
 ```
 "##,
 
