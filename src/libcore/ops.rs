@@ -91,7 +91,7 @@ use fmt;
 ///     let _x = HasDrop;
 /// }
 /// ```
-#[lang="drop"]
+#[lang = "drop"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Drop {
     /// The `drop` method, called when the value goes out of scope.
@@ -181,7 +181,7 @@ macro_rules! forward_ref_binop {
 ///     Foo + Foo;
 /// }
 /// ```
-#[lang="add"]
+#[lang = "add"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Add<RHS=Self> {
     /// The resulting type after applying the `+` operator
@@ -235,7 +235,7 @@ add_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
 ///     Foo - Foo;
 /// }
 /// ```
-#[lang="sub"]
+#[lang = "sub"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Sub<RHS=Self> {
     /// The resulting type after applying the `-` operator
@@ -289,7 +289,7 @@ sub_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
 ///     Foo * Foo;
 /// }
 /// ```
-#[lang="mul"]
+#[lang = "mul"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Mul<RHS=Self> {
     /// The resulting type after applying the `*` operator
@@ -343,7 +343,7 @@ mul_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
 ///     Foo / Foo;
 /// }
 /// ```
-#[lang="div"]
+#[lang = "div"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Div<RHS=Self> {
     /// The resulting type after applying the `/` operator
@@ -397,7 +397,7 @@ div_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
 ///     Foo % Foo;
 /// }
 /// ```
-#[lang="rem"]
+#[lang = "rem"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Rem<RHS=Self> {
     /// The resulting type after applying the `%` operator
@@ -470,7 +470,7 @@ rem_float_impl! { f64, fmod }
 ///     -Foo;
 /// }
 /// ```
-#[lang="neg"]
+#[lang = "neg"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Neg {
     /// The resulting type after applying the `-` operator
@@ -541,7 +541,7 @@ neg_impl_numeric! { isize i8 i16 i32 i64 f32 f64 }
 ///     !Foo;
 /// }
 /// ```
-#[lang="not"]
+#[lang = "not"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Not {
     /// The resulting type after applying the `!` operator
@@ -595,7 +595,7 @@ not_impl! { bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
 ///     Foo & Foo;
 /// }
 /// ```
-#[lang="bitand"]
+#[lang = "bitand"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait BitAnd<RHS=Self> {
     /// The resulting type after applying the `&` operator
@@ -649,7 +649,7 @@ bitand_impl! { bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
 ///     Foo | Foo;
 /// }
 /// ```
-#[lang="bitor"]
+#[lang = "bitor"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait BitOr<RHS=Self> {
     /// The resulting type after applying the `|` operator
@@ -703,7 +703,7 @@ bitor_impl! { bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
 ///     Foo ^ Foo;
 /// }
 /// ```
-#[lang="bitxor"]
+#[lang = "bitxor"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait BitXor<RHS=Self> {
     /// The resulting type after applying the `^` operator
@@ -757,7 +757,7 @@ bitxor_impl! { bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
 ///     Foo << Foo;
 /// }
 /// ```
-#[lang="shl"]
+#[lang = "shl"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Shl<RHS> {
     /// The resulting type after applying the `<<` operator
@@ -829,7 +829,7 @@ shl_impl_all! { u8 u16 u32 u64 usize i8 i16 i32 i64 isize }
 ///     Foo >> Foo;
 /// }
 /// ```
-#[lang="shr"]
+#[lang = "shr"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Shr<RHS> {
     /// The resulting type after applying the `>>` operator
@@ -902,7 +902,7 @@ shr_impl_all! { u8 u16 u32 u64 usize i8 i16 i32 i64 isize }
 ///     Foo[Bar];
 /// }
 /// ```
-#[lang="index"]
+#[lang = "index"]
 #[rustc_on_unimplemented = "the type `{Self}` cannot be indexed by `{Idx}`"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Index<Idx: ?Sized> {
@@ -949,7 +949,7 @@ pub trait Index<Idx: ?Sized> {
 ///     &mut Foo[Bar];
 /// }
 /// ```
-#[lang="index_mut"]
+#[lang = "index_mut"]
 #[rustc_on_unimplemented = "the type `{Self}` cannot be mutably indexed by `{Idx}`"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait IndexMut<Idx: ?Sized>: Index<Idx> {
@@ -960,7 +960,7 @@ pub trait IndexMut<Idx: ?Sized>: Index<Idx> {
 
 /// An unbounded range.
 #[derive(Copy, Clone, PartialEq, Eq)]
-#[lang="range_full"]
+#[lang = "range_full"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RangeFull;
 
@@ -973,7 +973,7 @@ impl fmt::Debug for RangeFull {
 
 /// A (half-open) range which is bounded at both ends.
 #[derive(Clone, PartialEq, Eq)]
-#[lang="range"]
+#[lang = "range"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Range<Idx> {
     /// The lower bound of the range (inclusive).
@@ -993,7 +993,7 @@ impl<Idx: fmt::Debug> fmt::Debug for Range<Idx> {
 
 /// A range which is only bounded below.
 #[derive(Clone, PartialEq, Eq)]
-#[lang="range_from"]
+#[lang = "range_from"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RangeFrom<Idx> {
     /// The lower bound of the range (inclusive).
@@ -1010,7 +1010,7 @@ impl<Idx: fmt::Debug> fmt::Debug for RangeFrom<Idx> {
 
 /// A range which is only bounded above.
 #[derive(Copy, Clone, PartialEq, Eq)]
-#[lang="range_to"]
+#[lang = "range_to"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RangeTo<Idx> {
     /// The upper bound of the range (exclusive).
@@ -1053,7 +1053,7 @@ impl<Idx: fmt::Debug> fmt::Debug for RangeTo<Idx> {
 ///     assert_eq!('a', *x);
 /// }
 /// ```
-#[lang="deref"]
+#[lang = "deref"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Deref {
     /// The resulting type after dereferencing
@@ -1114,7 +1114,7 @@ impl<'a, T: ?Sized> Deref for &'a mut T {
 ///     assert_eq!('b', *x);
 /// }
 /// ```
-#[lang="deref_mut"]
+#[lang = "deref_mut"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait DerefMut: Deref {
     /// The method called to mutably dereference a value
@@ -1128,7 +1128,7 @@ impl<'a, T: ?Sized> DerefMut for &'a mut T {
 }
 
 /// A version of the call operator that takes an immutable receiver.
-#[lang="fn"]
+#[lang = "fn"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_paren_sugar]
 #[fundamental] // so that regex can rely that `&str: !FnMut`
@@ -1138,7 +1138,7 @@ pub trait Fn<Args> : FnMut<Args> {
 }
 
 /// A version of the call operator that takes a mutable receiver.
-#[lang="fn_mut"]
+#[lang = "fn_mut"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_paren_sugar]
 #[fundamental] // so that regex can rely that `&str: !FnMut`
@@ -1148,7 +1148,7 @@ pub trait FnMut<Args> : FnOnce<Args> {
 }
 
 /// A version of the call operator that takes a by-value receiver.
-#[lang="fn_once"]
+#[lang = "fn_once"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_paren_sugar]
 #[fundamental] // so that regex can rely that `&str: !FnMut`

@@ -214,7 +214,7 @@ we can use the `unwrap()` method:
 io::stdin().read_line(&mut buffer).unwrap();
 ```
 
-`unwrap()` will `panic!` if the `Option` is `None`. This basically says "Give
+`unwrap()` will `panic!` if the `Result` is `Err`. This basically says "Give
 me the value, and if something goes wrong, just crash." This is less reliable
 than matching the error and attempting to recover, but is also significantly
 shorter. Sometimes, just crashing is appropriate.

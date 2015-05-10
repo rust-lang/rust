@@ -131,7 +131,9 @@ prints a [string][strings] to the screen.
     let mut guess = String::new();
 ```
 
-Now we’re getting interesting! There’s a lot going on in this little line. The first thing to notice is that this is a [let statement][let], which is used to create ‘variable bindings’. They take this form:
+Now we’re getting interesting! There’s a lot going on in this little line.
+The first thing to notice is that this is a [let statement][let], which is
+used to create ‘variable bindings’. They take this form:
 
 ```rust,ignore
 let foo = bar;
@@ -171,7 +173,7 @@ bound to: `String::new()`.
 
 [string]: ../std/string/struct.String.html
 
-The `::new()` syntax is uses `::` because this is an ‘associated function’ of
+The `::new()` syntax uses `::` because this is an ‘associated function’ of
 a particular type. That is to say, it’s associated with `String` itself,
 rather than a particular instance of a `String`. Some languages call this a
 ‘static method’.
