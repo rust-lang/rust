@@ -169,7 +169,7 @@ struct Point {
     y: Cell<i32>,
 }
 
-let mut point = Point { x: 5, y: Cell::new(6) };
+let point = Point { x: 5, y: Cell::new(6) };
 
 point.y.set(7);
 
