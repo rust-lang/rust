@@ -34,6 +34,18 @@ let x_is_nonzero = x as bool;
 ```
 "##,
 
+E0062: r##"
+This error indicates that during an attempt to build a struct or struct-like
+enum variant, one of the fields was specified more than once. Each field should
+be specified exactly one time.
+"##,
+
+E0063: r##"
+This error indicates that during an attempt to build a struct or struct-like
+enum variant, one of the fields was not provided. Each field should be specified
+exactly once.
+"##,
+
 E0081: r##"
 Enum discriminants are used to differentiate enum variants stored in memory.
 This error indicates that the same value was used for two or more variants,
@@ -136,8 +148,6 @@ register_diagnostics! {
     E0059,
     E0060,
     E0061,
-    E0062,
-    E0063,
     E0066,
     E0067,
     E0068,
