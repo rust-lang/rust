@@ -10,6 +10,24 @@
 
 #![allow(non_snake_case)]
 
+// Error messages for EXXXX errors.
+// Each message should start and end with a new line, and be wrapped to 80 characters.
+// In vim you can `:set tw=80` and use `gq` to wrap paragraphs. Use `:set tw=0` to disable.
+register_long_diagnostics! {
+
+E0317: r##"
+User-defined types or type parameters cannot shadow the primitive types.
+This error indicates you tried to define a type, struct or enum with the same
+name as an existing primitive type, and is therefore invalid.
+
+See the Types section of the reference for more information about the primitive
+types:
+
+http://doc.rust-lang.org/nightly/reference.html#types
+"##
+
+}
+
 register_diagnostics! {
     E0154,
     E0157,
@@ -24,7 +42,6 @@ register_diagnostics! {
     E0258, // import conflicts with existing submodule
     E0259, // an extern crate has already been imported into this module
     E0260, // name conflicts with an external crate that has been imported into this module
-    E0317, // user-defined types or type parameters cannot shadow the primitive types
     E0364, // item is private
     E0365  // item is private
 }
