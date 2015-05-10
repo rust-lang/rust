@@ -136,6 +136,20 @@ construct an instance of the following type using only safe code:
 ```
 enum Empty {}
 ```
+"##,
+
+E0131: r##"
+It is not possible to define `main` with type parameters, or even with function
+parameters. When `main` is present, it must take no arguments and return `()`.
+"##,
+
+E0132: r##"
+It is not possible to declare type parameters on a function that has the `start`
+attribute. Such a function must have the following type signature:
+
+```
+fn(isize, *const *const u8) -> isize
+```
 "##
 
 }
@@ -205,8 +219,6 @@ register_diagnostics! {
     E0128,
     E0129,
     E0130,
-    E0131,
-    E0132,
     E0141,
     E0159,
     E0163,
