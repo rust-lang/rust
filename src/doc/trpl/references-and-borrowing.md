@@ -312,6 +312,7 @@ println!("{}", y);
 
 We get this error:
 
+```text
 error: `x` does not live long enough
     y = &x;
          ^
@@ -347,6 +348,7 @@ println!("{}", y);
 
 We get this error:
 
+```text
 error: `x` does not live long enough
 y = &x;
      ^
@@ -366,3 +368,4 @@ statement 1 at 3:14
     
     println!("{}", y);
 }
+```
