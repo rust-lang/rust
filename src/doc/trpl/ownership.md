@@ -174,7 +174,7 @@ fn foo(v: Vec<i32>) -> Vec<i32> {
 }
 ```
 
-This would get very tedius. It gets worse the more things we want to take ownership of:
+This would get very tedious. It gets worse the more things we want to take ownership of:
 
 ```rust
 fn foo(v1: Vec<i32>, v2: Vec<i32>) -> (Vec<i32>, Vec<i32>, i32) {
