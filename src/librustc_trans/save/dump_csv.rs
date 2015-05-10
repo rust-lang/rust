@@ -89,7 +89,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
                                 sess: sess,
                                 err_count: Cell::new(0)
                             }),
-            cur_scope: 0            
+            cur_scope: 0
         }
     }
 
@@ -108,7 +108,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
 
         // Dump info about all the external crates referenced from this crate.
         for c in &self.save_ctxt.get_external_crates() {
-            self.fmt.external_crate_str(krate.span, &c.name, c.number);            
+            self.fmt.external_crate_str(krate.span, &c.name, c.number);
         }
         self.fmt.recorder.record("end_external_crates\n");
     }
@@ -496,58 +496,52 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
                   decl: &ast::FnDecl,
                   ty_params: &ast::Generics,
                   body: &ast::Block) {
-        let qualname = format!("::{}", self.analysis.ty_cx.map.path_to_string(item.id));
+        let fn_data = self.save_ctxt.get_item_data(item);
+        if let super::Data::FunctionData(fn_data) = fn_data {
+            self.fmt.fn_str(item.span,
+                            Some(fn_data.span),
+                            fn_data.id,
+                            &fn_data.qualname,
+                            fn_data.scope);
 
-        let sub_span = self.span.sub_span_after_keyword(item.span, keywords::Fn);
-        self.fmt.fn_str(item.span,
-                        sub_span,
-                        item.id,
-                        &qualname[..],
-                        self.cur_scope);
 
-        self.process_formals(&decl.inputs, &qualname[..]);
+            self.process_formals(&decl.inputs, &fn_data.qualname);
+            self.process_generic_params(ty_params, item.span, &fn_data.qualname, item.id);
+        } else {
+            unreachable!();
+        }
 
-        // walk arg and return types
         for arg in &decl.inputs {
-            self.visit_ty(&*arg.ty);
+            self.visit_ty(&arg.ty);
         }
 
         if let ast::Return(ref ret_ty) = decl.output {
-            self.visit_ty(&**ret_ty);
+            self.visit_ty(&ret_ty);
         }
 
-        // walk the body
-        self.nest(item.id, |v| v.visit_block(&*body));
-
-        self.process_generic_params(ty_params, item.span, &qualname[..], item.id);
+        self.nest(item.id, |v| v.visit_block(&body));
     }
 
-    fn process_static(&mut self,
-                      item: &ast::Item,
-                      typ: &ast::Ty,
-                      mt: ast::Mutability,
-                      expr: &ast::Expr)
+    fn process_static_or_const_item(&mut self,
+                                    item: &ast::Item,
+                                    typ: &ast::Ty,
+                                    expr: &ast::Expr)
     {
-        let qualname = format!("::{}", self.analysis.ty_cx.map.path_to_string(item.id));
+        let var_data = self.save_ctxt.get_item_data(item);
+        if let super::Data::VariableData(var_data) = var_data {
+            self.fmt.static_str(item.span,
+                                Some(var_data.span),
+                                var_data.id,
+                                &var_data.name,
+                                &var_data.qualname,
+                                &var_data.value,
+                                &var_data.type_value,
+                                var_data.scope);
+        } else {
+            unreachable!();
+        }
 
-        // If the variable is immutable, save the initialising expression.
-        let (value, keyword) = match mt {
-            ast::MutMutable => (String::from_str("<mutable>"), keywords::Mut),
-            ast::MutImmutable => (self.span.snippet(expr.span), keywords::Static),
-        };
-
-        let sub_span = self.span.sub_span_after_keyword(item.span, keyword);
-        self.fmt.static_str(item.span,
-                            sub_span,
-                            item.id,
-                            &get_ident(item.ident),
-                            &qualname[..],
-                            &value[..],
-                            &ty_to_string(&*typ),
-                            self.cur_scope);
-
-        // walk type and init value
-        self.visit_ty(&*typ);
+        self.visit_ty(&typ);
         self.visit_expr(expr);
     }
 
@@ -562,12 +556,13 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
 
         let sub_span = self.span.sub_span_after_keyword(span,
                                                         keywords::Const);
+
         self.fmt.static_str(span,
                             sub_span,
                             id,
                             &get_ident((*ident).clone()),
                             &qualname[..],
-                            "",
+                            &self.span.snippet(expr.span),
                             &ty_to_string(&*typ),
                             self.cur_scope);
 
@@ -1174,10 +1169,10 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
             }
             ast::ItemFn(ref decl, _, _, ref ty_params, ref body) =>
                 self.process_fn(item, &**decl, ty_params, &**body),
-            ast::ItemStatic(ref typ, mt, ref expr) =>
-                self.process_static(item, &**typ, mt, &**expr),
+            ast::ItemStatic(ref typ, _, ref expr) =>
+                self.process_static_or_const_item(item, typ, expr),
             ast::ItemConst(ref typ, ref expr) =>
-                self.process_const(item.id, &item.ident, item.span, &*typ, &*expr),
+                self.process_static_or_const_item(item, &typ, &expr),
             ast::ItemStruct(ref def, ref ty_params) => self.process_struct(item, &**def, ty_params),
             ast::ItemEnum(ref def, ref ty_params) => self.process_enum(item, def, ty_params),
             ast::ItemImpl(_, _,
@@ -1378,7 +1373,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
             },
             _ => {
                 visit::walk_expr(self, ex)
-            },
+            }
         }
     }
 
@@ -1401,7 +1396,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
         // This is to get around borrow checking, because we need mut self to call process_path.
         let mut paths_to_process = vec![];
         // process collected paths
-        for &(id, ref p, ref immut, ref_kind) in &collector.collected_paths {
+        for &(id, ref p, immut, ref_kind) in &collector.collected_paths {
             let def_map = self.analysis.ty_cx.def_map.borrow();
             if !def_map.contains_key(&id) {
                 self.sess.span_bug(p.span,
@@ -1411,7 +1406,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
             let def = def_map.get(&id).unwrap().full_def();
             match def {
                 def::DefLocal(id)  => {
-                    let value = if *immut {
+                    let value = if immut == ast::MutImmutable {
                         self.span.snippet(p.span).to_string()
                     } else {
                         "<mutable>".to_string()
@@ -1464,8 +1459,12 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
 
         let value = self.span.snippet(l.span);
 
-        for &(id, ref p, ref immut, _) in &collector.collected_paths {
-            let value = if *immut { value.to_string() } else { "<mutable>".to_string() };
+        for &(id, ref p, immut, _) in &collector.collected_paths {
+            let value = if immut == ast::MutImmutable {
+                value.to_string()
+            } else {
+                "<mutable>".to_string()
+            };
             let types = self.analysis.ty_cx.node_types();
             let typ = ppaux::ty_to_string(&self.analysis.ty_cx, *types.get(&id).unwrap());
             // Get the span only for the name of the variable (I hope the path
