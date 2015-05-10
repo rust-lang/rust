@@ -57,8 +57,12 @@ function populate_rust_search() {
 
     // #18540, use a single token
 
+    var a = document.createElement("a");
+    a.href = "http://doc.rust-lang.org/core/?search=" + encodeURIComponent(lt);
+    a.textContent = lt;
     var search = document.getElementById('core-search');
-    search.innerHTML = "<a href=\"http://doc.rust-lang.org/core/?search=" + lt + "\">" + lt + "</a>";
+    search.innerHTML = "";
+    search.appendChild(a);
 }
 populate_site_search();
 populate_rust_search();

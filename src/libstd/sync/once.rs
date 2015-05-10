@@ -59,7 +59,11 @@ impl Once {
     /// routine is currently running.
     ///
     /// When this function returns, it is guaranteed that some initialization
-    /// has run and completed (it may not be the closure specified).
+    /// has run and completed (it may not be the closure specified). It is also
+    /// guaranteed that any memory writes performed by the executed closure can
+    /// be reliably observed by other tasks at this point (there is a
+    /// happens-before relation between the closure and code executing after the
+    /// return).
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn call_once<F>(&'static self, f: F) where F: FnOnce() {
         // Optimize common path: load is much cheaper than fetch_add.
