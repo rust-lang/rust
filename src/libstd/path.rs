@@ -1241,6 +1241,14 @@ impl Path {
     ///
     /// Path::new("foo.txt");
     /// ```
+    ///
+    /// You can create `Path`s from `String`s, or even other `Path`s:
+    ///
+    /// ```
+    /// let s = String::from("bar.txt");
+    /// let p = Path::new(&s);
+    /// Path::new(&p);
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new<S: AsRef<OsStr> + ?Sized>(s: &S) -> &Path {
         unsafe { mem::transmute(s.as_ref()) }

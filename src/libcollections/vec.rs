@@ -116,11 +116,7 @@ static MAX_MEMORY_SIZE: usize = isize::MAX as usize;
 /// stack.push(2);
 /// stack.push(3);
 ///
-/// loop {
-///     let top = match stack.pop() {
-///         None => break, // empty
-///         Some(x) => x,
-///     };
+/// while let Some(top) = stack.pop() {
 ///     // Prints 3, 2, 1
 ///     println!("{}", top);
 /// }
@@ -1907,6 +1903,22 @@ impl<'a, T> Drop for DerefVec<'a, T> {
 }
 
 /// Converts a slice to a wrapper type providing a `&Vec<T>` reference.
+///
+/// # Examples
+///
+/// ```
+/// # #![feature(collections)]
+/// use std::vec::as_vec;
+///
+/// // Let's pretend we have a function that requires `&Vec<i32>`
+/// fn vec_consumer(s: &Vec<i32>) {
+///     assert_eq!(s, &[1, 2, 3]);
+/// }
+///
+/// // Provide a `&Vec<i32>` from a `&[i32]` without allocating
+/// let values = [1, 2, 3];
+/// vec_consumer(&as_vec(&values));
+/// ```
 #[unstable(feature = "collections")]
 pub fn as_vec<'a, T>(x: &'a [T]) -> DerefVec<'a, T> {
     unsafe {
