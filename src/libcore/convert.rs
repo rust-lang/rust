@@ -173,6 +173,7 @@ impl<T> AsMut<[T]> for [T] {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl AsRef<str> for str {
+    #[inline]
     fn as_ref(&self) -> &str {
         self
     }
