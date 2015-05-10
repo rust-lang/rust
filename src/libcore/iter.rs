@@ -124,7 +124,7 @@ pub trait Iterator {
     ///
     /// ```
     /// let a = [1, 2, 3, 4, 5];
-    /// assert!(a.iter().last().unwrap() == &5);
+    /// assert_eq!(a.iter().last(), Some(&5));
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -142,8 +142,8 @@ pub trait Iterator {
     /// ```
     /// let a = [1, 2, 3, 4, 5];
     /// let mut it = a.iter();
-    /// assert!(it.nth(2).unwrap() == &3);
-    /// assert!(it.nth(2) == None);
+    /// assert_eq!(it.nth(2), Some(&3));
+    /// assert_eq!(it.nth(2), None);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -165,8 +165,8 @@ pub trait Iterator {
     /// let a = [0];
     /// let b = [1];
     /// let mut it = a.iter().chain(b.iter());
-    /// assert_eq!(it.next().unwrap(), &0);
-    /// assert_eq!(it.next().unwrap(), &1);
+    /// assert_eq!(it.next(), Some(&0));
+    /// assert_eq!(it.next(), Some(&1));
     /// assert!(it.next().is_none());
     /// ```
     #[inline]
@@ -188,7 +188,7 @@ pub trait Iterator {
     /// let a = [0];
     /// let b = [1];
     /// let mut it = a.iter().zip(b.iter());
-    /// assert_eq!(it.next().unwrap(), (&0, &1));
+    /// assert_eq!(it.next(), Some((&0, &1)));
     /// assert!(it.next().is_none());
     /// ```
     ///
@@ -221,8 +221,8 @@ pub trait Iterator {
     /// ```
     /// let a = [1, 2];
     /// let mut it = a.iter().map(|&x| 2 * x);
-    /// assert_eq!(it.next().unwrap(), 2);
-    /// assert_eq!(it.next().unwrap(), 4);
+    /// assert_eq!(it.next(), Some(2));
+    /// assert_eq!(it.next(), Some(4));
     /// assert!(it.next().is_none());
     /// ```
     #[inline]
@@ -242,7 +242,7 @@ pub trait Iterator {
     /// ```
     /// let a = [1, 2];
     /// let mut it = a.iter().filter(|&x| *x > 1);
-    /// assert_eq!(it.next().unwrap(), &2);
+    /// assert_eq!(it.next(), Some(&2));
     /// assert!(it.next().is_none());
     /// ```
     #[inline]
@@ -262,7 +262,7 @@ pub trait Iterator {
     /// ```
     /// let a = [1, 2];
     /// let mut it = a.iter().filter_map(|&x| if x > 1 {Some(2 * x)} else {None});
-    /// assert_eq!(it.next().unwrap(), 4);
+    /// assert_eq!(it.next(), Some(4));
     /// assert!(it.next().is_none());
     /// ```
     #[inline]
@@ -286,8 +286,8 @@ pub trait Iterator {
     /// ```
     /// let a = [100, 200];
     /// let mut it = a.iter().enumerate();
-    /// assert_eq!(it.next().unwrap(), (0, &100));
-    /// assert_eq!(it.next().unwrap(), (1, &200));
+    /// assert_eq!(it.next(), Some((0, &100)));
+    /// assert_eq!(it.next(), Some((1, &200)));
     /// assert!(it.next().is_none());
     /// ```
     #[inline]
@@ -329,9 +329,9 @@ pub trait Iterator {
     /// ```
     /// let a = [1, 2, 3, 4, 5];
     /// let mut it = a.iter().skip_while(|&a| *a < 3);
-    /// assert_eq!(it.next().unwrap(), &3);
-    /// assert_eq!(it.next().unwrap(), &4);
-    /// assert_eq!(it.next().unwrap(), &5);
+    /// assert_eq!(it.next(), Some(&3));
+    /// assert_eq!(it.next(), Some(&4));
+    /// assert_eq!(it.next(), Some(&5));
     /// assert!(it.next().is_none());
     /// ```
     #[inline]
@@ -351,8 +351,8 @@ pub trait Iterator {
     /// ```
     /// let a = [1, 2, 3, 4, 5];
     /// let mut it = a.iter().take_while(|&a| *a < 3);
-    /// assert_eq!(it.next().unwrap(), &1);
-    /// assert_eq!(it.next().unwrap(), &2);
+    /// assert_eq!(it.next(), Some(&1));
+    /// assert_eq!(it.next(), Some(&2));
     /// assert!(it.next().is_none());
     /// ```
     #[inline]
@@ -371,8 +371,8 @@ pub trait Iterator {
     /// ```
     /// let a = [1, 2, 3, 4, 5];
     /// let mut it = a.iter().skip(3);
-    /// assert_eq!(it.next().unwrap(), &4);
-    /// assert_eq!(it.next().unwrap(), &5);
+    /// assert_eq!(it.next(), Some(&4));
+    /// assert_eq!(it.next(), Some(&5));
     /// assert!(it.next().is_none());
     /// ```
     #[inline]
@@ -389,9 +389,9 @@ pub trait Iterator {
     /// ```
     /// let a = [1, 2, 3, 4, 5];
     /// let mut it = a.iter().take(3);
-    /// assert_eq!(it.next().unwrap(), &1);
-    /// assert_eq!(it.next().unwrap(), &2);
-    /// assert_eq!(it.next().unwrap(), &3);
+    /// assert_eq!(it.next(), Some(&1));
+    /// assert_eq!(it.next(), Some(&2));
+    /// assert_eq!(it.next(), Some(&3));
     /// assert!(it.next().is_none());
     /// ```
     #[inline]
@@ -413,11 +413,11 @@ pub trait Iterator {
     ///   *fac = *fac * x;
     ///   Some(*fac)
     /// });
-    /// assert_eq!(it.next().unwrap(), 1);
-    /// assert_eq!(it.next().unwrap(), 2);
-    /// assert_eq!(it.next().unwrap(), 6);
-    /// assert_eq!(it.next().unwrap(), 24);
-    /// assert_eq!(it.next().unwrap(), 120);
+    /// assert_eq!(it.next(), Some(1));
+    /// assert_eq!(it.next(), Some(2));
+    /// assert_eq!(it.next(), Some(6));
+    /// assert_eq!(it.next(), Some(24));
+    /// assert_eq!(it.next(), Some(120));
     /// assert!(it.next().is_none());
     /// ```
     #[inline]
@@ -654,7 +654,7 @@ pub trait Iterator {
     /// ```
     /// let a = [1, 2, 3, 4, 5];
     /// let mut it = a.iter();
-    /// assert_eq!(it.find(|&x| *x == 3).unwrap(), &3);
+    /// assert_eq!(it.find(|&x| *x == 3), Some(&3));
     /// assert_eq!(it.collect::<Vec<_>>(), [&4, &5]);
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -677,7 +677,7 @@ pub trait Iterator {
     /// ```
     /// let a = [1, 2, 3, 4, 5];
     /// let mut it = a.iter();
-    /// assert_eq!(it.position(|x| *x == 3).unwrap(), 2);
+    /// assert_eq!(it.position(|x| *x == 3), Some(2));
     /// assert_eq!(it.collect::<Vec<_>>(), [&4, &5]);
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -706,7 +706,7 @@ pub trait Iterator {
     /// ```
     /// let a = [1, 2, 2, 4, 5];
     /// let mut it = a.iter();
-    /// assert_eq!(it.rposition(|x| *x == 2).unwrap(), 2);
+    /// assert_eq!(it.rposition(|x| *x == 2), Some(2));
     /// assert_eq!(it.collect::<Vec<_>>(), [&1, &2]);
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -734,7 +734,7 @@ pub trait Iterator {
     ///
     /// ```
     /// let a = [1, 2, 3, 4, 5];
-    /// assert!(a.iter().max().unwrap() == &5);
+    /// assert_eq!(a.iter().max(), Some(&5));
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -757,7 +757,7 @@ pub trait Iterator {
     ///
     /// ```
     /// let a = [1, 2, 3, 4, 5];
-    /// assert!(a.iter().min().unwrap() == &1);
+    /// assert_eq!(a.iter().min(), Some(&1));
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -986,9 +986,9 @@ pub trait Iterator {
     /// ```
     /// let a = [1, 2];
     /// let mut it = a.iter().cycle();
-    /// assert_eq!(it.next().unwrap(), &1);
-    /// assert_eq!(it.next().unwrap(), &2);
-    /// assert_eq!(it.next().unwrap(), &1);
+    /// assert_eq!(it.next(), Some(&1));
+    /// assert_eq!(it.next(), Some(&2));
+    /// assert_eq!(it.next(), Some(&1));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
