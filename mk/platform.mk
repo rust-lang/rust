@@ -112,6 +112,14 @@ CFG_RLIB_GLOB=lib$(1)-*.rlib
 
 include $(wildcard $(CFG_SRC_DIR)mk/cfg/*.mk)
 
+define ADD_INSTALLED_OBJECTS
+  INSTALLED_OBJECTS_$(1) += $$(call CFG_STATIC_LIB_NAME_$(1),morestack) \
+                            $$(call CFG_STATIC_LIB_NAME_$(1),compiler-rt)
+endef
+
+$(foreach target,$(CFG_TARGET), \
+  $(eval $(call ADD_INSTALLED_OBJECTS,$(target))))
+
 # The -Qunused-arguments sidesteps spurious warnings from clang
 define FILTER_FLAGS
   ifeq ($$(CFG_USING_CLANG),1)

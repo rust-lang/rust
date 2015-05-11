@@ -140,7 +140,7 @@ prepare-target-$(2)-host-$(3)-$(1)-$(4): prepare-maybe-clean-$(4) \
           $$(if $$(findstring $(2),$$(CFG_HOST)), \
             $$(foreach crate,$$(HOST_CRATES), \
               $$(call PREPARE_LIB,$$(call CFG_LIB_GLOB_$(2),$$(crate)))),) \
-	  $$(foreach object,$$(INSTALLED_OBJECTS) $$(INSTALLED_OBJECTS_$(2)),\
+	  $$(foreach object,$$(INSTALLED_OBJECTS_$(2)),\
 	    $$(call PREPARE_LIB,$$(object))),),),)
 endef
 

@@ -125,9 +125,6 @@ ONLY_RLIB_rustc_bitflags := 1
 # Documented-by-default crates
 DOC_CRATES := std alloc collections core libc rustc_unicode
 
-# Installed objects/libraries by default
-INSTALLED_OBJECTS := libmorestack.a libcompiler-rt.a
-
 ################################################################################
 # You should not need to edit below this line
 ################################################################################
