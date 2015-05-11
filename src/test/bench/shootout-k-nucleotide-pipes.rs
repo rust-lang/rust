@@ -11,7 +11,7 @@
 // ignore-android: FIXME(#10393)
 // ignore-pretty very bad with line comments
 
-// multi tasking k-nucleotide
+// multi threading k-nucleotide
 
 #![allow(bad_style)]
 

@@ -477,7 +477,7 @@ impl LangString {
 
 /// By default this markdown renderer generates anchors for each header in the
 /// rendered document. The anchor name is the contents of the header separated
-/// by hyphens, and a task-local map is used to disambiguate among duplicate
+/// by hyphens, and a thread-local map is used to disambiguate among duplicate
 /// headers (numbers are appended).
 ///
 /// This method will reset the local table for these headers. This is typically

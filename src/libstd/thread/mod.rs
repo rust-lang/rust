@@ -883,8 +883,8 @@ mod test {
 
     #[test]
     fn test_child_doesnt_ref_parent() {
-        // If the child refcounts the parent task, this will stack overflow when
-        // climbing the task tree to dereference each ancestor. (See #1789)
+        // If the child refcounts the parent thread, this will stack overflow when
+        // climbing the thread tree to dereference each ancestor. (See #1789)
         // (well, it would if the constant were 8000+ - I lowered it to be more
         // valgrind-friendly. try this at home, instead..!)
         const GENERATIONS: u32 = 16;
@@ -993,6 +993,6 @@ mod test {
         thread::sleep_ms(2);
     }
 
-    // NOTE: the corresponding test for stderr is in run-pass/task-stderr, due
+    // NOTE: the corresponding test for stderr is in run-pass/thread-stderr, due
     // to the test harness apparently interfering with stderr configuration.
 }

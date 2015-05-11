@@ -77,7 +77,7 @@
 //!
 //! The `cs_...` functions ("combine substructure) are designed to
 //! make life easier by providing some pre-made recipes for common
-//! tasks; mostly calling the function being derived on all the
+//! threads; mostly calling the function being derived on all the
 //! arguments and then combining them back together in some way (or
 //! letting the user chose that). They are not meant to be the only
 //! way to handle the structures that this code creates.

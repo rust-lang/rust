@@ -52,20 +52,20 @@
 //!         spinlock_clone.store(0, Ordering::SeqCst);
 //!     });
 //!
-//!     // Wait for the other task to release the lock
+//!     // Wait for the other thread to release the lock
 //!     while spinlock.load(Ordering::SeqCst) != 0 {}
 //! }
 //! ```
 //!
-//! Keep a global count of live tasks:
+//! Keep a global count of live threads:
 //!
 //! ```
 //! use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
 //!
-//! static GLOBAL_TASK_COUNT: AtomicUsize = ATOMIC_USIZE_INIT;
+//! static GLOBAL_THREAD_COUNT: AtomicUsize = ATOMIC_USIZE_INIT;
 //!
-//! let old_task_count = GLOBAL_TASK_COUNT.fetch_add(1, Ordering::SeqCst);
-//! println!("live tasks: {}", old_task_count + 1);
+//! let old_thread_count = GLOBAL_THREAD_COUNT.fetch_add(1, Ordering::SeqCst);
+//! println!("live threads: {}", old_thread_count + 1);
 //! ```
 
 #![stable(feature = "rust1", since = "1.0.0")]

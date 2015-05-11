@@ -767,8 +767,8 @@ bound := path | lifetime
 
 ### Boxes
 
-## Tasks
+## Threads
 
-### Communication between tasks
+### Communication between threads
 
-### Task lifecycle
+### Thread lifecycle

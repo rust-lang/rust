@@ -16,7 +16,7 @@ use std::thread;
 pub fn main() {
     let (tx, rx) = channel();
 
-    // Spawn 10 tasks each sending us back one isize.
+    // Spawn 10 threads each sending us back one isize.
     let mut i = 10;
     while (i > 0) {
         println!("{}", i);
@@ -25,7 +25,7 @@ pub fn main() {
         i = i - 1;
     }
 
-    // Spawned tasks are likely killed before they get a chance to send
+    // Spawned threads are likely killed before they get a chance to send
     // anything back, so we deadlock here.
 
     i = 10;
