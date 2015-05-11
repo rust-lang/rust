@@ -30,16 +30,11 @@ pub struct ArchiveConfig<'a> {
     pub lib_search_paths: Vec<PathBuf>,
     pub slib_prefix: String,
     pub slib_suffix: String,
-    pub maybe_ar_prog: Option<String>
+    pub ar_prog: String
 }
 
 pub struct Archive<'a> {
-    handler: &'a ErrorHandler,
-    dst: PathBuf,
-    lib_search_paths: Vec<PathBuf>,
-    slib_prefix: String,
-    slib_suffix: String,
-    maybe_ar_prog: Option<String>
+    config: ArchiveConfig<'a>,
 }
 
 /// Helper for adding many files to an archive with a single invocation of
@@ -53,47 +48,10 @@ pub struct ArchiveBuilder<'a> {
     should_update_symbols: bool,
 }
 
-fn run_ar(handler: &ErrorHandler, maybe_ar_prog: &Option<String>,
-          args: &str, cwd: Option<&Path>,
-          paths: &[&Path]) -> Output {
-    let ar = match *maybe_ar_prog {
-        Some(ref ar) => &ar[..],
-        None => "ar"
-    };
-    let mut cmd = Command::new(ar);
-
-    cmd.arg(args).args(paths).stdout(Stdio::piped()).stderr(Stdio::piped());
-    debug!("{:?}", cmd);
-
-    match cwd {
-        Some(p) => {
-            cmd.current_dir(p);
-            debug!("inside {:?}", p.display());
-        }
-        None => {}
-    }
-
-    match cmd.spawn() {
-        Ok(prog) => {
-            let o = prog.wait_with_output().unwrap();
-            if !o.status.success() {
-                handler.err(&format!("{:?} failed with: {}", cmd, o.status));
-                handler.note(&format!("stdout ---\n{}",
-                                  str::from_utf8(&o.stdout).unwrap()));
-                handler.note(&format!("stderr ---\n{}",
-                                  str::from_utf8(&o.stderr).unwrap())
-                             );
-                handler.abort_if_errors();
-            }
-            o
-        },
-        Err(e) => {
-            handler.err(&format!("could not exec `{}`: {}", &ar[..],
-                             e));
-            handler.abort_if_errors();
-            panic!("rustc::back::archive::run_ar() should not reach this point");
-        }
-    }
+enum Action<'a> {
+    Remove(&'a Path),
+    AddObjects(&'a [&'a PathBuf], bool),
+    UpdateSymbols,
 }
 
 pub fn find_library(name: &str, osprefix: &str, ossuffix: &str,
@@ -120,42 +78,88 @@ pub fn find_library(name: &str, osprefix: &str, ossuffix: &str,
 
 impl<'a> Archive<'a> {
     fn new(config: ArchiveConfig<'a>) -> Archive<'a> {
-        let ArchiveConfig { handler, dst, lib_search_paths, slib_prefix, slib_suffix,
-            maybe_ar_prog } = config;
-        Archive {
-            handler: handler,
-            dst: dst,
-            lib_search_paths: lib_search_paths,
-            slib_prefix: slib_prefix,
-            slib_suffix: slib_suffix,
-            maybe_ar_prog: maybe_ar_prog
-        }
+        Archive { config: config }
     }
 
     /// Opens an existing static archive
     pub fn open(config: ArchiveConfig<'a>) -> Archive<'a> {
         let archive = Archive::new(config);
-        assert!(archive.dst.exists());
+        assert!(archive.config.dst.exists());
         archive
     }
 
     /// Removes a file from this archive
     pub fn remove_file(&mut self, file: &str) {
-        run_ar(self.handler, &self.maybe_ar_prog, "d", None, &[&self.dst, &Path::new(file)]);
+        self.run(None, Action::Remove(Path::new(file)));
     }
 
     /// Lists all files in an archive
     pub fn files(&self) -> Vec<String> {
-        let output = run_ar(self.handler, &self.maybe_ar_prog, "t", None, &[&self.dst]);
-        let output = str::from_utf8(&output.stdout).unwrap();
-        // use lines_any because windows delimits output with `\r\n` instead of
-        // just `\n`
-        output.lines_any().map(|s| s.to_string()).collect()
+        let archive = match ArchiveRO::open(&self.config.dst) {
+            Some(ar) => ar,
+            None => return Vec::new(),
+        };
+        let ret = archive.iter().filter_map(|child| child.name())
+                         .map(|name| name.to_string())
+                         .collect();
+        return ret;
     }
 
     /// Creates an `ArchiveBuilder` for adding files to this archive.
     pub fn extend(self) -> ArchiveBuilder<'a> {
         ArchiveBuilder::new(self)
+    }
+
+    fn run(&self, cwd: Option<&Path>, action: Action) -> Output {
+        let abs_dst = env::current_dir().unwrap().join(&self.config.dst);
+        let ar = &self.config.ar_prog;
+        let mut cmd = Command::new(ar);
+        cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
+        self.prepare_ar_action(&mut cmd, &abs_dst, action);
+        info!("{:?}", cmd);
+
+        if let Some(p) = cwd {
+            cmd.current_dir(p);
+            info!("inside {:?}", p.display());
+        }
+
+        let handler = &self.config.handler;
+        match cmd.spawn() {
+            Ok(prog) => {
+                let o = prog.wait_with_output().unwrap();
+                if !o.status.success() {
+                    handler.err(&format!("{:?} failed with: {}", cmd, o.status));
+                    handler.note(&format!("stdout ---\n{}",
+                                          str::from_utf8(&o.stdout).unwrap()));
+                    handler.note(&format!("stderr ---\n{}",
+                                          str::from_utf8(&o.stderr).unwrap()));
+                    handler.abort_if_errors();
+                }
+                o
+            },
+            Err(e) => {
+                handler.err(&format!("could not exec `{}`: {}",
+                                     self.config.ar_prog, e));
+                handler.abort_if_errors();
+                panic!("rustc::back::archive::run() should not reach this point");
+            }
+        }
+    }
+
+    fn prepare_ar_action(&self, cmd: &mut Command, dst: &Path, action: Action) {
+        match action {
+            Action::Remove(file) => {
+                cmd.arg("d").arg(dst).arg(file);
+            }
+            Action::AddObjects(objs, update_symbols) => {
+                cmd.arg(if update_symbols {"crus"} else {"cruS"})
+                   .arg(dst)
+                   .args(objs);
+            }
+            Action::UpdateSymbols => {
+                cmd.arg("s").arg(dst);
+            }
+        }
     }
 }
 
@@ -179,10 +183,10 @@ impl<'a> ArchiveBuilder<'a> {
     /// search in the relevant locations for a library named `name`.
     pub fn add_native_library(&mut self, name: &str) -> io::Result<()> {
         let location = find_library(name,
-                                    &self.archive.slib_prefix,
-                                    &self.archive.slib_suffix,
-                                    &self.archive.lib_search_paths,
-                                    self.archive.handler);
+                                    &self.archive.config.slib_prefix,
+                                    &self.archive.config.slib_suffix,
+                                    &self.archive.config.lib_search_paths,
+                                    self.archive.config.handler);
         self.add_archive(&location, name, |_| false)
     }
 
@@ -229,17 +233,13 @@ impl<'a> ArchiveBuilder<'a> {
     pub fn build(self) -> Archive<'a> {
         // Get an absolute path to the destination, so `ar` will work even
         // though we run it from `self.work_dir`.
-        let abs_dst = env::current_dir().unwrap().join(&self.archive.dst);
-        assert!(!abs_dst.is_relative());
-        let mut args = vec![&*abs_dst];
-        let mut total_len = abs_dst.to_string_lossy().len();
+        let mut objects = Vec::new();
+        let mut total_len = self.archive.config.dst.to_string_lossy().len();
 
         if self.members.is_empty() {
-            // OSX `ar` does not allow using `r` with no members, but it does
-            // allow running `ar s file.a` to update symbols only.
             if self.should_update_symbols {
-                run_ar(self.archive.handler, &self.archive.maybe_ar_prog,
-                       "s", Some(self.work_dir.path()), &args[..]);
+                self.archive.run(Some(self.work_dir.path()),
+                                 Action::UpdateSymbols);
             }
             return self.archive;
         }
@@ -257,24 +257,22 @@ impl<'a> ArchiveBuilder<'a> {
             // string, not an array of strings.)
             if total_len + len + 1 > ARG_LENGTH_LIMIT {
                 // Add the archive members seen so far, without updating the
-                // symbol table (`S`).
-                run_ar(self.archive.handler, &self.archive.maybe_ar_prog,
-                       "cruS", Some(self.work_dir.path()), &args[..]);
+                // symbol table.
+                self.archive.run(Some(self.work_dir.path()),
+                                 Action::AddObjects(&objects, false));
 
-                args.clear();
-                args.push(&abs_dst);
-                total_len = abs_dst.to_string_lossy().len();
+                objects.clear();
+                total_len = self.archive.config.dst.to_string_lossy().len();
             }
 
-            args.push(member_name);
+            objects.push(member_name);
             total_len += len + 1;
         }
 
         // Add the remaining archive members, and update the symbol table if
         // necessary.
-        let flags = if self.should_update_symbols { "crus" } else { "cruS" };
-        run_ar(self.archive.handler, &self.archive.maybe_ar_prog,
-               flags, Some(self.work_dir.path()), &args[..]);
+        self.archive.run(Some(self.work_dir.path()),
+                         Action::AddObjects(&objects, self.should_update_symbols));
 
         self.archive
     }
@@ -305,6 +303,8 @@ impl<'a> ArchiveBuilder<'a> {
             };
             if filename.contains(".SYMDEF") { continue }
             if skip(filename) { continue }
+            let filename = Path::new(filename).file_name().unwrap()
+                                              .to_str().unwrap();
 
             // An archive can contain files of the same name multiple times, so
             // we need to be sure to not have them overwrite one another when we
