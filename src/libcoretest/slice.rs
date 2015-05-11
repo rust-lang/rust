@@ -33,6 +33,3 @@ fn binary_search_not_found() {
     let b = [1, 2, 4, 5, 6, 8];
     assert!(b.binary_search_by(|v| v.cmp(&9)) == Err(6));
 }
-
-#[test]
-}
