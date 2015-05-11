@@ -3066,12 +3066,15 @@ block will execute, otherwise flow proceeds to the first `else` block that follo
 
 ```
 let dish = ("Ham", "Eggs");
-if let ("Bacon", b) = dish { // will not execute because let is refuted
-  println!("Bacon is served with {}", b);
+
+// this body will be skipped because the pattern is refuted
+if let ("Bacon", b) = dish {
+    println!("Bacon is served with {}", b);
 }
 
-if let ("Ham", b) = dish { // will execute
-  println!("Ham is served with {}", b);
+// this body will execute
+if let ("Ham", b) = dish {
+    println!("Ham is served with {}", b);
 }
 ```
 
