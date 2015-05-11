@@ -90,10 +90,6 @@ ifneq ($(findstring linux,$(CFG_OSTYPE)),)
   endif
 endif
 
-# These flags will cause the compiler to produce a .d file
-# next to the .o file that lists header deps.
-CFG_DEPEND_FLAGS = -MMD -MP -MT $(1) -MF $(1:%.o=%.d)
-
 AR := ar
 
 define SET_FROM_CFG
@@ -159,7 +155,6 @@ define CFG_MAKE_TOOLCHAIN
   CFG_COMPILE_C_$(1) = $$(CC_$(1)) \
         $$(CFG_GCCISH_CFLAGS) \
         $$(CFG_GCCISH_CFLAGS_$(1)) \
-        $$(CFG_DEPEND_FLAGS) \
         -c -o $$(1) $$(2)
   CFG_LINK_C_$(1) = $$(CC_$(1)) \
         $$(CFG_GCCISH_LINK_FLAGS) -o $$(1) \
@@ -171,7 +166,6 @@ define CFG_MAKE_TOOLCHAIN
         $$(CFG_GCCISH_CXXFLAGS) \
         $$(CFG_GCCISH_CFLAGS_$(1)) \
         $$(CFG_GCCISH_CXXFLAGS_$(1)) \
-        $$(CFG_DEPEND_FLAGS) \
         -c -o $$(1) $$(2)
   CFG_LINK_CXX_$(1) = $$(CXX_$(1)) \
         $$(CFG_GCCISH_LINK_FLAGS) -o $$(1) \
@@ -190,7 +184,7 @@ define CFG_MAKE_TOOLCHAIN
 
   # We're using llvm-mc as our assembler because it supports
   # .cfi pseudo-ops on mac
-  CFG_ASSEMBLE_$(1)=$$(CPP_$(1)) -E $$(CFG_DEPEND_FLAGS) $$(2) | \
+  CFG_ASSEMBLE_$(1)=$$(CPP_$(1)) -E $$(2) | \
                     $$(LLVM_MC_$$(CFG_BUILD)) \
                     -assemble \
                     -relocation-model=$$(LLVM_MC_RELOCATION_MODEL) \
@@ -202,7 +196,7 @@ define CFG_MAKE_TOOLCHAIN
   # For the ARM, AARCH64, MIPS and POWER crosses, use the toolchain assembler
   # FIXME: We should be able to use the LLVM assembler
   CFG_ASSEMBLE_$(1)=$$(CC_$(1)) $$(CFG_GCCISH_CFLAGS_$(1)) \
-                   $$(CFG_DEPEND_FLAGS) $$(2) -c -o $$(1)
+                   $$(2) -c -o $$(1)
 
   endif
 

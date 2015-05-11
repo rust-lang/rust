@@ -85,10 +85,6 @@ CFG_INFO := $(info cfg: version $(CFG_VERSION))
 # More configuration
 ######################################################################
 
-# We track all of the object files we might build so that we can find
-# and include all of the .d files in one fell swoop.
-ALL_OBJ_FILES :=
-
 MKFILE_DEPS := config.stamp $(call rwildcard,$(CFG_SRC_DIR)mk/,*)
 MKFILES_FOR_TARBALL:=$(MKFILE_DEPS)
 ifneq ($(NO_MKFILE_DEPS),)
