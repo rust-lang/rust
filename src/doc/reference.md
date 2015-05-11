@@ -3064,6 +3064,17 @@ of a condition expression it expects a refutable let statement. If the value of 
 expression on the right hand side of the let statement matches the pattern, the corresponding
 block will execute, otherwise flow proceeds to the first `else` block that follows.
 
+```
+let dish = ("Ham", "Eggs");
+if let ("Bacon", b) = dish { // will not execute because let is refuted
+  println!("Bacon is served with {}", b);
+}
+
+if let ("Ham", b) = dish { // will execute
+  println!("Ham is served with {}", b);
+}
+```
+
 ### While let loops
 
 A `while let` loop is semantically identical to a `while` loop but in place of a
