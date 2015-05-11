@@ -1083,14 +1083,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         debug!("assemble_candidates_from_caller_bounds({})",
                stack.obligation.repr(self.tcx()));
 
-        let caller_trait_refs: Vec<_> =
-            self.param_env().caller_bounds.iter()
-            .filter_map(|o| o.to_opt_poly_trait_ref())
-            .collect();
-
         let all_bounds =
-            util::transitive_bounds(
-                self.tcx(), &caller_trait_refs[..]);
+            self.param_env().caller_bounds
+                            .iter()
+                            .filter_map(|o| o.to_opt_poly_trait_ref());
 
         let matching_bounds =
             all_bounds.filter(
