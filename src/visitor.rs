@@ -85,7 +85,7 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
         self.last_pos = b.span.hi;
     }
 
-    // Note that this only gets called for function defintions. Required methods
+    // Note that this only gets called for function definitions. Required methods
     // on traits do not get handled here.
     fn visit_fn(&mut self,
                 fk: visit::FnKind<'v>,
