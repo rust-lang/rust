@@ -402,7 +402,7 @@ impl RustcDefaultCalls {
                 &Input::File(ref ifile) => {
                     let path = &(*ifile);
                     let mut v = Vec::new();
-                    metadata::loader::list_file_metadata(sess.target.target.options.is_like_osx,
+                    metadata::loader::list_file_metadata(&sess.target.target,
                                                          path,
                                                          &mut v).unwrap();
                     println!("{}", String::from_utf8(v).unwrap());
