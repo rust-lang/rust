@@ -1002,7 +1002,7 @@ pub trait SliceConcatExt<T: ?Sized> {
     /// The resulting type after concatenation
     type Output;
 
-    /// Flattens a slice of `T` into a single value `U`.
+    /// Flattens a slice of `T` into a single value `Self::Output`.
     ///
     /// # Examples
     ///
@@ -1012,7 +1012,8 @@ pub trait SliceConcatExt<T: ?Sized> {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn concat(&self) -> Self::Output;
 
-    /// Flattens a slice of `T` into a single value `U`, placing a given separator between each.
+    /// Flattens a slice of `T` into a single value `Self::Output`, placing a given separator
+    /// between each.
     ///
     /// # Examples
     ///
