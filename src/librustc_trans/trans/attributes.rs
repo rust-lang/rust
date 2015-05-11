@@ -196,7 +196,7 @@ pub fn from_fn_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_type: ty::Ty<'tcx
             // The `noalias` attribute on the return value is useful to a
             // function ptr caller.
             match ret_ty.sty {
-                // `~` pointer return values never alias because ownership
+                // `Box` pointer return values never alias because ownership
                 // is transferred
                 ty::ty_uniq(it) if common::type_is_sized(ccx.tcx(), it) => {
                     attrs.ret(llvm::Attribute::NoAlias);
@@ -239,7 +239,7 @@ pub fn from_fn_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_type: ty::Ty<'tcx
                 attrs.arg(idx, llvm::Attribute::ZExt);
             }
 
-            // `~` pointer parameters never alias because ownership is transferred
+            // `Box` pointer parameters never alias because ownership is transferred
             ty::ty_uniq(inner) => {
                 let llsz = machine::llsize_of_real(ccx, type_of::type_of(ccx, inner));
 

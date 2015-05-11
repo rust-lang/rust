@@ -1692,7 +1692,7 @@ mod tests {
     // induced by visit.  Each of these arrays contains a list of indexes,
     // interpreted as the varrefs in the varref traversal that this binding
     // should match.  So, for instance, in a program with two bindings and
-    // three varrefs, the array ~[~[1,2],~[0]] would indicate that the first
+    // three varrefs, the array [[1, 2], [0]] would indicate that the first
     // binding should match the second two varrefs, and the second binding
     // should match the first varref.
     //

@@ -1125,7 +1125,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                         // that case we can adjust the length of the
                         // original vec accordingly, but we'd have to
                         // make trans do the right thing, and it would
-                        // only work for `~` vectors. It seems simpler
+                        // only work for `Box<[T]>`s. It seems simpler
                         // to just require that people call
                         // `vec.pop()` or `vec.unshift()`.
                         let slice_bk = ty::BorrowKind::from_mutbl(slice_mutbl);
