@@ -19,6 +19,12 @@ LLVM_DEPS_INC=$(call rwildcard,$(CFG_LLVM_SRC_DIR)include,*cpp *hpp)
 LLVM_DEPS=$(LLVM_DEPS_SRC) $(LLVM_DEPS_INC)
 endif
 
+ifdef CFG_DISABLE_OPTIMIZE_LLVM
+LLVM_BUILD_CONFIG_MODE := Debug
+else
+LLVM_BUILD_CONFIG_MODE := Release
+endif
+
 define DEF_LLVM_RULES
 
 # If CFG_LLVM_ROOT is defined then we don't build LLVM ourselves
@@ -26,10 +32,30 @@ ifeq ($(CFG_LLVM_ROOT),)
 
 LLVM_STAMP_$(1) = $$(CFG_LLVM_BUILD_DIR_$(1))/llvm-auto-clean-stamp
 
+ifeq ($$(findstring msvc,$(1)),msvc)
+
+$$(LLVM_CONFIG_$(1)): $$(LLVM_DEPS) $$(LLVM_STAMP_$(1))
+	@$$(call E, cmake: llvm)
+	$$(Q)$$(CFG_CMAKE) --build $$(CFG_LLVM_BUILD_DIR_$(1)) \
+		--config $$(LLVM_BUILD_CONFIG_MODE)
+	$$(Q)touch $$(LLVM_CONFIG_$(1))
+
+clean-llvm$(1):
+
+else
+
 $$(LLVM_CONFIG_$(1)): $$(LLVM_DEPS) $$(LLVM_STAMP_$(1))
 	@$$(call E, make: llvm)
 	$$(Q)$$(MAKE) -C $$(CFG_LLVM_BUILD_DIR_$(1)) $$(CFG_LLVM_BUILD_ENV_$(1)) ONLY_TOOLS="$$(LLVM_TOOLS)"
 	$$(Q)touch $$(LLVM_CONFIG_$(1))
+
+clean-llvm$(1):
+	$$(Q)$$(MAKE) -C $$(CFG_LLVM_BUILD_DIR_$(1)) clean
+
+endif
+
+else
+clean-llvm$(1):
 endif
 
 # This is used to independently force an LLVM clean rebuild

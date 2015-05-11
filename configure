@@ -1348,7 +1348,39 @@ do
         done
     fi
 
-    if [ ${do_reconfigure} -ne 0 ]
+    use_cmake=0
+    case "$t" in
+        (*-msvc)
+        use_cmake=1
+        ;;
+    esac
+
+    if [ ${do_reconfigure} -ne 0 ] && [ ${use_cmake} -ne 0 ]
+    then
+        msg "configuring LLVM for $t with cmake"
+
+        CMAKE_ARGS="-DLLVM_INCLUDE_TESTS=OFF"
+        if [ ! -z "$CFG_DISABLE_OPTIMIZE_LLVM" ]; then
+            CMAKE_ARGS="$CMAKE_ARGS -DCMAKE_BUILD_TYPE=Debug"
+        else
+            CMAKE_ARGS="$CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release"
+        fi
+        if [ -z "$CFG_ENABLE_LLVM_ASSERTIONS" ]
+        then
+            CMAKE_ARGS="$CMAKE_ARGS -DLLVM_ENABLE_ASSERTIONS=OFF"
+        else
+            CMAKE_ARGS="$CMAKE_ARGS -DLLVM_ENABLE_ASSERTIONS=ON"
+        fi
+
+        msg "configuring LLVM with:"
+        msg "$CMAKE_ARGS"
+        (cd $LLVM_BUILD_DIR && "$CFG_CMAKE" $CFG_LLVM_SRC_DIR \
+                                            -G "Visual Studio 12 2013 Win64" \
+                                            $CMAKE_ARGS)
+        need_ok "LLVM cmake configure failed"
+    fi
+
+    if [ ${do_reconfigure} -ne 0 ] && [ ${use_cmake} -eq 0 ]
     then
         # LLVM's configure doesn't recognize the new Windows triples yet
         gnu_t=$(to_gnu_triple $t)
