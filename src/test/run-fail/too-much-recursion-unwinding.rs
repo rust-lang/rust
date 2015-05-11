@@ -11,7 +11,7 @@
 // ignore-test leaks
 // error-pattern:ran out of stack
 
-// Test that the task panicks after hitting the recursion limit
+// Test that the thread panicks after hitting the recursion limit
 // during unwinding
 
 fn recurse() {

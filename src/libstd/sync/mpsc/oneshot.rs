@@ -23,7 +23,7 @@
 /// # Implementation
 ///
 /// Oneshots are implemented around one atomic usize variable. This variable
-/// indicates both the state of the port/chan but also contains any tasks
+/// indicates both the state of the port/chan but also contains any threads
 /// blocked on the port. All atomic operations happen on this one word.
 ///
 /// In order to upgrade a oneshot channel, an upgrade is considered a disconnect
@@ -55,7 +55,7 @@ const DISCONNECTED: usize = 2;   // channel is disconnected OR upgraded
 // whoever changed the state.
 
 pub struct Packet<T> {
-    // Internal state of the chan/port pair (stores the blocked task as well)
+    // Internal state of the chan/port pair (stores the blocked thread as well)
     state: AtomicUsize,
     // One-shot data slot location
     data: Option<T>,
@@ -139,7 +139,7 @@ impl<T> Packet<T> {
     }
 
     pub fn recv(&mut self) -> Result<T, Failure<T>> {
-        // Attempt to not block the task (it's a little expensive). If it looks
+        // Attempt to not block the thread (it's a little expensive). If it looks
         // like we're not empty, then immediately go through to `try_recv`.
         if self.state.load(Ordering::SeqCst) == EMPTY {
             let (wait_token, signal_token) = blocking::tokens();
@@ -317,8 +317,8 @@ impl<T> Packet<T> {
         }
     }
 
-    // Remove a previous selecting task from this port. This ensures that the
-    // blocked task will no longer be visible to any other threads.
+    // Remove a previous selecting thread from this port. This ensures that the
+    // blocked thread will no longer be visible to any other threads.
     //
     // The return value indicates whether there's data on this port.
     pub fn abort_selection(&mut self) -> Result<bool, Receiver<T>> {
@@ -329,7 +329,7 @@ impl<T> Packet<T> {
             s @ DATA |
             s @ DISCONNECTED => s,
 
-            // If we've got a blocked task, then use an atomic to gain ownership
+            // If we've got a blocked thread, then use an atomic to gain ownership
             // of it (may fail)
             ptr => self.state.compare_and_swap(ptr, EMPTY, Ordering::SeqCst)
         };
@@ -338,7 +338,7 @@ impl<T> Packet<T> {
         // about it.
         match state {
             EMPTY => unreachable!(),
-            // our task used for select was stolen
+            // our thread used for select was stolen
             DATA => Ok(true),
 
             // If the other end has hung up, then we have complete ownership

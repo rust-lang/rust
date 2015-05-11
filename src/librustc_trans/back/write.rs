@@ -86,8 +86,8 @@ struct Diagnostic {
 }
 
 // We use an Arc instead of just returning a list of diagnostics from the
-// child task because we need to make sure that the messages are seen even
-// if the child task panics (for example, when `fatal` is called).
+// child thread because we need to make sure that the messages are seen even
+// if the child thread panics (for example, when `fatal` is called).
 #[derive(Clone)]
 struct SharedEmitter {
     buffer: Arc<Mutex<Vec<Diagnostic>>>,
@@ -637,7 +637,7 @@ pub fn run_passes(sess: &Session,
     metadata_config.set_flags(sess, trans);
 
 
-    // Populate a buffer with a list of codegen tasks.  Items are processed in
+    // Populate a buffer with a list of codegen threads.  Items are processed in
     // LIFO order, just because it's a tiny bit simpler that way.  (The order
     // doesn't actually matter.)
     let mut work_items = Vec::with_capacity(1 + trans.modules.len());

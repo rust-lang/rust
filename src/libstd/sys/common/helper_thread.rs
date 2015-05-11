@@ -87,7 +87,7 @@ impl<M: Send> Helper<M> {
     /// This function will check to see if the thread has been initialized, and
     /// if it has it returns quickly. If initialization has not happened yet,
     /// the closure `f` will be run (inside of the initialization lock) and
-    /// passed to the helper thread in a separate task.
+    /// passed to the helper thread in a separate thread.
     ///
     /// This function is safe to be called many times.
     pub fn boot<T, F>(&'static self, f: F, helper: fn(helper_signal::signal, Receiver<M>, T)) where

@@ -5,7 +5,7 @@ they enclose.  Accessor methods often have variants to access the data
 by value, by reference, and by mutable reference.
 
 In general, the `get` family of methods is used to access contained
-data without any risk of task failure; they return `Option` as
+data without any risk of thread failure; they return `Option` as
 appropriate. This name is chosen rather than names like `find` or
 `lookup` because it is appropriate for a wider range of container types.
 

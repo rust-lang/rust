@@ -26,14 +26,14 @@
 //! There can only be one owner of a `Box`, and the owner can decide to mutate
 //! the contents, which live on the heap.
 //!
-//! This type can be sent among tasks efficiently as the size of a `Box` value
+//! This type can be sent among threads efficiently as the size of a `Box` value
 //! is the same as that of a pointer. Tree-like data structures are often built
 //! with boxes because each node often has only one owner, the parent.
 //!
 //! ## Reference counted pointers
 //!
 //! The [`Rc`](rc/index.html) type is a non-threadsafe reference-counted pointer
-//! type intended for sharing memory within a task. An `Rc` pointer wraps a
+//! type intended for sharing memory within a thread. An `Rc` pointer wraps a
 //! type, `T`, and only allows access to `&T`, a shared reference.
 //!
 //! This type is useful when inherited mutability (such as using `Box`) is too

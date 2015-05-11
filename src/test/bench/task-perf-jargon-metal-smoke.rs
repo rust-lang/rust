@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test performance of a task "spawn ladder", in which children task have
-// many ancestor taskgroups, but with only a few such groups alive at a time.
-// Each child task has to enlist as a descendant in each of its ancestor
+// Test performance of a thread "spawn ladder", in which children thread have
+// many ancestor threadgroups, but with only a few such groups alive at a time.
+// Each child thread has to enlist as a descendant in each of its ancestor
 // groups, but that shouldn't have to happen for already-dead groups.
 //
 // The filename is a song reference; google it in quotes.
@@ -23,7 +23,7 @@ use std::thread;
 
 fn child_generation(gens_left: usize, tx: Sender<()>) {
     // This used to be O(n^2) in the number of generations that ever existed.
-    // With this code, only as many generations are alive at a time as tasks
+    // With this code, only as many generations are alive at a time as threads
     // alive at a time,
     thread::spawn(move|| {
         if gens_left & 1 == 1 {
