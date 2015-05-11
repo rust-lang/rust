@@ -1,6 +1,8 @@
 Version 1.0.0 (May 2015)
 ========================
 
+* ~1500 changes, numerous bugfixes
+
 Highlights
 ----------
 

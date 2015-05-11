@@ -338,6 +338,7 @@ Hajime Morrita <omo@dodgson.org>
 Hanno Braun <mail@hannobraun.de>
 Harry Marr <harry.marr@gmail.com>
 Heather <heather@cynede.net>
+Heejong Ahn <heejongahn@gmail.com
 Henrik Schopmans <h.schopmans@googlemail.com>
 Herman J. Radtke III <herman@hermanradtke.com>
 HeroesGrave <heroesgrave@gmail.com>
@@ -506,6 +507,7 @@ Kevin Walter <kevin.walter.private@googlemail.com>
 Kevin Yap <me@kevinyap.ca>
 Kiet Tran <ktt3ja@gmail.com>
 Kim Røen <kim@pam.no>
+KokaKiwi <kokakiwi+rust@kokakiwi.net>
 Kostas Karachalios <vrinek@me.com>
 Kyeongwoon Lee <kyeongwoon.lee@samsung.com>
 Lai Jiangshan <laijs@cn.fujitsu.com>
@@ -625,7 +627,7 @@ Nathan Stoddard <nstodda@purdue.edu>
 Nathan Typanski <ntypanski@gmail.com>
 Nathan Wilson <wilnathan@gmail.com>
 Nathan Zadoks <nathan@nathan7.eu>
-Nathaniel Herman <nherman@college.harvard.edu>
+Nathaniel Herman <nherman@post.harvard.edu>
 Nathaniel Theis <nttheis@gmail.com>
 Neil Pankey <npankey@gmail.com>
 Nelson Chen <crazysim@gmail.com>
@@ -658,6 +660,7 @@ Or Neeman <oneeman@gmail.com>
 Oren Hazi <oren.hazi@gmail.com>
 Orpheus Lummis <o@orpheuslummis.com>
 Orphée Lafond-Lummis <o@orftz.com>
+Ožbolt Menegatti <ozbolt.menegatti@gmail.com>
 P1start <rewi-github@whanau.org>
 Pablo Brasero <pablo@pablobm.com>
 Palmer Cox <p@lmercox.com>
@@ -701,6 +704,7 @@ Piotr Zolnierek <pz@anixe.pl>
 Poga Po <poga.bahamut@gmail.com>
 Potpourri <pot_pourri@mail.ru>
 Prudhvi Krishna Surapaneni <me@prudhvi.net>
+Przemek Wesołek <jest@go.art.pl>
 Pyfisch <pyfisch@gmail.com>
 Pyry Kontio <pyry.kontio@drasa.eu>
 Q.P.Liu <qpliu@yahoo.com>
