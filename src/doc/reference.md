@@ -653,9 +653,10 @@ There are several kinds of item:
 * [`use` declarations](#use-declarations)
 * [modules](#modules)
 * [functions](#functions)
-* [type definitions](#type-definitions)
+* [type aliases](#type-aliases)
 * [structures](#structures)
 * [enumerations](#enumerations)
+* [constant items](#constant-items)
 * [static items](#static-items)
 * [traits](#traits)
 * [implementations](#implementations)
@@ -672,16 +673,16 @@ which sub-item declarations may appear.
 
 ### Type Parameters
 
-All items except modules may be *parameterized* by type. Type parameters are
-given as a comma-separated list of identifiers enclosed in angle brackets
-(`<...>`), after the name of the item and before its definition. The type
-parameters of an item are considered "part of the name", not part of the type
-of the item. A referencing [path](#paths) must (in principle) provide type
-arguments as a list of comma-separated types enclosed within angle brackets, in
-order to refer to the type-parameterized item. In practice, the type-inference
-system can usually infer such argument types from context. There are no
-general type-parametric types, only type-parametric items. That is, Rust has
-no notion of type abstraction: there are no first-class "forall" types.
+All items except modules, constants and statics may be *parameterized* by type.
+Type parameters are given as a comma-separated list of identifiers enclosed in
+angle brackets (`<...>`), after the name of the item and before its definition.
+The type parameters of an item are considered "part of the name", not part of
+the type of the item. A referencing [path](#paths) must (in principle) provide
+type arguments as a list of comma-separated types enclosed within angle
+brackets, in order to refer to the type-parameterized item. In practice, the
+type-inference system can usually infer such argument types from context. There
+are no general type-parametric types, only type-parametric items. That is, Rust
+has no notion of type abstraction: there are no first-class "forall" types.
 
 ### Modules
 
@@ -743,7 +744,7 @@ mod thread {
 }
 ```
 
-##### Extern crate declarations
+#### Extern crate declarations
 
 An _`extern crate` declaration_ specifies a dependency on an external crate.
 The external crate is then bound into the declaring scope as the `ident`
@@ -767,7 +768,7 @@ extern crate std; // equivalent to: extern crate std as std;
 extern crate std as ruststd; // linking to 'std' under another name
 ```
 
-##### Use declarations
+#### Use declarations
 
 A _use declaration_ creates one or more local name bindings synonymous with
 some other [path](#paths). Usually a `use` declaration is used to shorten the
@@ -842,7 +843,7 @@ module declarations should be at the crate root if direct usage of the declared
 modules within `use` items is desired. It is also possible to use `self` and
 `super` at the beginning of a `use` item to refer to the current and direct
 parent modules respectively. All rules regarding accessing declared modules in
-`use` declarations applies to both module declarations and `extern crate`
+`use` declarations apply to both module declarations and `extern crate`
 declarations.
 
 An example of what will and will not work for `use` items:
@@ -2564,12 +2565,19 @@ array is mutable, the resulting [lvalue](#lvalues,-rvalues-and-temporaries) can
 be assigned to.
 
 Indices are zero-based, and may be of any integral type. Vector access is
-bounds-checked at run-time. When the check fails, it will put the thread in a
-_panicked state_.
+bounds-checked at compile-time for constant arrays being accessed with a constant index value.
+Otherwise a check will be performed at run-time that will put the thread in a _panicked state_ if it fails.
 
 ```{should-fail}
 ([1, 2, 3, 4])[0];
-(["a", "b"])[10]; // panics
+
+let x = (["a", "b"])[10]; // compiler error: const index-expr is out of bounds
+
+let n = 10;
+let y = (["a", "b"])[n]; // panics
+
+let arr = ["a", "b"];
+arr[10]; // panics
 ```
 
 ### Range expressions
@@ -3063,6 +3071,20 @@ An `if let` expression is semantically identical to an `if` expression but in pl
 of a condition expression it expects a refutable let statement. If the value of the
 expression on the right hand side of the let statement matches the pattern, the corresponding
 block will execute, otherwise flow proceeds to the first `else` block that follows.
+
+```
+let dish = ("Ham", "Eggs");
+
+// this body will be skipped because the pattern is refuted
+if let ("Bacon", b) = dish {
+    println!("Bacon is served with {}", b);
+}
+
+// this body will execute
+if let ("Ham", b) = dish {
+    println!("Ham is served with {}", b);
+}
+```
 
 ### While let loops
 
