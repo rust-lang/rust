@@ -19,7 +19,7 @@ E0154: r##"
 Imports (`use` statements) are not allowed after non-item statements, such as
 variable declarations and expression statements.
 
-Wrong example:
+Here is an example that demonstrates the error:
 ```
 fn f() {
     // Variable declaration before import
@@ -104,7 +104,7 @@ http://doc.rust-lang.org/reference.html#statements
 E0317: r##"
 User-defined types or type parameters cannot shadow the primitive types.
 This error indicates you tried to define a type, struct or enum with the same
-name as an existing primitive type, and is therefore invalid.
+name as an existing primitive type.
 
 See the Types section of the reference for more information about the primitive
 types:
