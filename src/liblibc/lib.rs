@@ -150,6 +150,12 @@ extern {}
 #[link(name = "c", kind = "static")]
 extern {}
 
+#[cfg(all(windows, target_env = "msvc"))]
+#[link(name = "kernel32")]
+#[link(name = "shell32")]
+#[link(name = "msvcrt")]
+extern {}
+
 // libnacl provides functions that require a trip through the IRT to work.
 // ie: _exit, mmap, nanosleep, etc. Anything that would otherwise require a trip
 // to the kernel.
