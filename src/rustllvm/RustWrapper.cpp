@@ -837,9 +837,10 @@ LLVMRustArchiveChildData(Archive::Child *child, size_t *size) {
 }
 
 extern "C" void
-LLVMRustSetDLLExportStorageClass(LLVMValueRef Value) {
+LLVMRustSetDLLStorageClass(LLVMValueRef Value,
+                           GlobalValue::DLLStorageClassTypes Class) {
     GlobalValue *V = unwrap<GlobalValue>(Value);
-    V->setDLLStorageClass(GlobalValue::DLLExportStorageClass);
+    V->setDLLStorageClass(Class);
 }
 
 // Note that the two following functions look quite similar to the
