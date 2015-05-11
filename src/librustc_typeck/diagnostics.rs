@@ -19,6 +19,51 @@ methods that do not have default implementations), as well as any required
 trait items like associated types or constants.
 "##,
 
+E0049: r##"
+This error indicates that an attempted implementation of a trait method
+has the wrong number of type parameters.
+
+For example, the trait below has a method `foo` with a type parameter `T`,
+but the implementation of `foo` for the type `Bar` is missing this parameter:
+
+```
+trait Foo {
+    fn foo<T: Default>(T) -> Self;
+}
+
+struct Bar;
+
+// error: method `foo` has 0 type parameters but its trait declaration has 1
+// type parameter
+impl Foo for Bar {
+    fn foo(x: bool) -> Self { Bar }
+}
+```
+"##,
+
+E0050: r##"
+This error indicates that an attempted implementation of a trait method
+has the wrong number of function parameters.
+
+For example, the trait below has a method `foo` with two function parameters
+(`&self` and `u8`), but the implementation of `foo` for the type `Bar` omits
+the `u8` parameter:
+
+```
+trait Foo {
+    fn foo(&self, u8) -> bool;
+}
+
+struct Bar;
+
+// error: method `foo` has 1 parameter but the declaration in trait `Foo::foo`
+// has 2
+impl Foo for Bar {
+    fn foo(&self) -> bool { true }
+}
+```
+"##,
+
 E0054: r##"
 It is not allowed to cast to a bool. If you are trying to cast a numeric type
 to a bool, you can compare it with zero instead:
@@ -61,6 +106,22 @@ let mut list = LinkedList::new();
 // Bad: assignment to non-lvalue expression
 LinkedList::new() += 1;
 ```
+"##,
+
+E0069: r##"
+This error means that the compiler found a function whose body contains a
+`return;` statement but whose return type is not `()`. For example:
+
+```
+// error
+fn foo() -> u8 {
+    return;
+}
+```
+
+When you omit the value from a `return` expression (that is, when you use
+`return;` instead of `return x;`), the value `()` gets returned. So `return;`
+is always incorrect for a function whose return type is not `()`.
 "##,
 
 E0081: r##"
@@ -138,6 +199,110 @@ enum Empty {}
 ```
 "##,
 
+E0106: r##"
+This error indicates that a lifetime is missing from a type. If it is an error
+inside a function signature, the problem may be with failing to adhere to the
+lifetime elision rules (see below).
+
+Here are some simple examples of where you'll run into this error:
+
+```
+struct Foo { x: &bool }        // error
+struct Foo<'a> { x: &'a bool } // correct
+
+enum Bar { A(u8), B(&bool), }        // error
+enum Bar<'a> { A(u8), B(&'a bool), } // correct
+
+type MyStr = &str;        // error
+type MyStr<'a> = &'a str; //correct
+
+```
+
+Lifetime elision is a special, limited kind of inference for lifetimes in
+function signatures which allows you to leave out lifetimes in certain cases.
+For example, the lifetimes on parameter in the following function signatures
+have been left out, but they still compile successfully:
+
+```
+fn foo(x: &str) { }
+
+fn bar(x: &str, y: &str) { }
+
+fn baz(x: &str) -> &str { x }
+```
+
+To explain the lifetime elision rules, we need to first discuss some background.
+The lifetime elision rules consider each lifetime in a function signature,
+whether it's elided or not, to be in a certain position, either *input
+position*, for function parameters, or *output position*, for the return type.
+For example, the function:
+
+```
+fn hello<'a>(name: &'a str) -> (&'static str, &str) {
+    ("hello", name)
+}
+```
+
+has a signature with one lifetime in input position and two lifetimes in output
+position.
+
+The lifetime elision rules require that any function signature with an elided
+output lifetime must either have
+
+ - exactly one input lifetime
+ - or, multiple input lifetimes, but the function must also be a method with a
+   `&self` or `&mut self` receiver
+
+In the first case, the output lifetime is inferred to be the same as the unique
+input lifetime. In the second case, the lifetime is instead inferred to be the
+same as the lifetime on `&self` or `&mut self`.
+
+Here are some examples of elision errors:
+
+```
+// error, no input lifetimes
+fn foo() -> &str { ... }
+
+// error, `x` and `y` have distinct lifetimes inferred
+fn bar(x: &str, y: &str) -> &str { ... }
+
+// error, `y`'s lifetime is inferred to be distinct from `x`'s
+fn baz<'a>(x: &'a str, y: &str) -> &str { ... }
+```
+"##,
+
+E0107: r##"
+This error means that an incorrect number of lifetime parameters were provided
+for a type (like a struct or enum) or trait.
+
+Some basic examples include:
+
+```
+struct Foo<'a>(&'a str);
+enum Bar { A, B, C }
+
+struct Baz<'a> {
+    foo: Foo,     // error: expected 1, found 0
+    bar: Bar<'a>, // error: expected 0, found 1
+}
+```
+
+Here's an example that is currently an error, but may work in a future version
+of Rust:
+
+```
+struct Foo<'a>(&'a str);
+
+trait Quux { }
+impl Quux for Foo { } // error: expected 1, found 0
+```
+
+Lifetime elision in implementation headers was part of the lifetime elision
+RFC. It is, however, [currently unimplemented][iss15872].
+
+[iss15872]: https://github.com/rust-lang/rust/issues/15872
+"##,
+
 E0131: r##"
 It is not possible to define `main` with type parameters, or even with function
 parameters. When `main` is present, it must take no arguments and return `()`.
@@ -150,6 +315,20 @@ attribute. Such a function must have the following type signature:
 ```
 fn(isize, *const *const u8) -> isize
 ```
+"##,
+
+E0166: r##"
+This error means that the compiler found a return expression in a function
+marked as diverging. A function diverges if it has `!` in the place of the
+return type in its signature. For example:
+
+```
+fn foo() -> ! { return; } // error
+```
+
+For a function that diverges, every control path in the function must end
+with a call to `panic!()` or another diverging function. Attempting to return
+from a diverging function is an error.
 "##,
 
 E0184: r##"
@@ -313,8 +492,6 @@ register_diagnostics! {
     E0040, // explicit use of destructor method
     E0044, // foreign items may not have type parameters
     E0045, // variadic function must have C calling convention
-    E0049,
-    E0050,
     E0053,
     E0055, // method has an incompatible type for trait
     E0057, // method has an incompatible type for trait
@@ -323,7 +500,6 @@ register_diagnostics! {
     E0061,
     E0066,
     E0068,
-    E0069,
     E0070,
     E0071,
     E0072,
@@ -346,8 +522,6 @@ register_diagnostics! {
     E0102,
     E0103,
     E0104,
-    E0106,
-    E0107,
     E0116,
     E0117,
     E0118,
@@ -365,7 +539,6 @@ register_diagnostics! {
     E0159,
     E0163,
     E0164,
-    E0166,
     E0167,
     E0168,
     E0172,
