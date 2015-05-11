@@ -15,9 +15,28 @@ use syntax::ast;
 use syntax::parse::token;
 use syntax::print::pprust;
 
-// TODO change import lists with one item to a single import
-//      remove empty lists (if they're even possible)
+
+// TODO remove empty lists (if they're even possible)
 // TODO (some day) remove unused imports, expand globs, compress many single imports into a list import
+
+fn rewrite_single_use_list(path_str: String, vpi: ast::PathListItem, vis: &str) -> String {
+    if let ast::PathListItem_::PathListIdent{ name, .. } = vpi.node {
+        let name_str = token::get_ident(name).to_string();
+        if path_str.len() == 0 {
+            format!("{}use {};", vis, name_str)
+        } else {
+            format!("{}use {}::{};", vis, path_str, name_str)
+        }
+    } else {
+        if path_str.len() != 0 {
+            format!("{}use {};", vis, path_str)
+        } else {
+            // This catches the import: use {self}, which is a compiler error, so we just
+            // leave it alone.
+            format!("{}use {{self}};", vis)
+        }
+    }
+}
 
 impl<'a> FmtVisitor<'a> {
     // Basically just pretty prints a multi-item import.
@@ -35,10 +54,15 @@ impl<'a> FmtVisitor<'a> {
             _ => ""
         };
 
+        if path_list.len() == 1 {
+            return rewrite_single_use_list(path_str, path_list[0], vis);
+        }
+
         // 2 = ::
         let path_separation_w = if path_str.len() > 0 { 2 } else { 0 };
         // 5 = "use " + {
         let indent = path_str.len() + 5 + path_separation_w + vis.len();
+
         // 2 = } + ;
         let used_width = indent + 2;
 
