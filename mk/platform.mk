@@ -164,6 +164,7 @@ FIND_COMPILER = $(word 1,$(1:ccache=))
 define CFG_MAKE_TOOLCHAIN
   # Prepend the tools with their prefix if cross compiling
   ifneq ($(CFG_BUILD),$(1))
+    ifneq ($$(findstring msvc,$(1)),msvc)
        CC_$(1)=$(CROSS_PREFIX_$(1))$(CC_$(1))
        CXX_$(1)=$(CROSS_PREFIX_$(1))$(CXX_$(1))
        CPP_$(1)=$(CROSS_PREFIX_$(1))$(CPP_$(1))
@@ -173,6 +174,7 @@ define CFG_MAKE_TOOLCHAIN
            -C ar=$$(call FIND_COMPILER,$$(AR_$(1))) $(RUSTC_CROSS_FLAGS_$(1))
 
        RUSTC_FLAGS_$(1)=$$(RUSTC_CROSS_FLAGS_$(1)) $(RUSTC_FLAGS_$(1))
+    endif
   endif
 
   CFG_COMPILE_C_$(1) = $$(CC_$(1)) \
