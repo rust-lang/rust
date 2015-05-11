@@ -1199,7 +1199,7 @@ impl Into<OsString> for PathBuf {
 /// absolute, and so on. More details about the overall approach can be found in
 /// the module documentation.
 ///
-/// This is an *unsized* type, meaning that it must always be used with behind a
+/// This is an *unsized* type, meaning that it must always be used behind a
 /// pointer like `&` or `Box`.
 ///
 /// # Examples
