@@ -2371,7 +2371,7 @@ pub struct ParameterEnvironment<'a, 'tcx:'a> {
 
     /// Obligations that the caller must satisfy. This is basically
     /// the set of bounds on the in-scope type parameters, translated
-    /// into Obligations.
+    /// into Obligations, and elaborated and normalized.
     pub caller_bounds: Vec<ty::Predicate<'tcx>>,
 
     /// Caches the results of trait selection. This cache is used
