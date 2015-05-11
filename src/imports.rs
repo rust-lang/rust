@@ -23,10 +23,11 @@ impl<'a> FmtVisitor<'a> {
     // Basically just pretty prints a multi-item import.
     pub fn rewrite_use_list(&mut self,
                             block_indent: usize,
-                            budget: usize, // excluding indentation
+                            one_line_budget: usize, // excluding indentation
+                            multi_line_budget: usize,
                             path: &ast::Path,
                             path_list: &[ast::PathListItem],
-                            visibility: ast::Visibility) -> Option<String> {
+                            visibility: ast::Visibility) -> String {
         let path_str = pprust::path_to_string(&path);
 
         let vis = match visibility {
@@ -41,10 +42,16 @@ impl<'a> FmtVisitor<'a> {
         // 2 = } + ;
         let used_width = indent + 2;
 
-        let remaining_budget = if used_width >= budget {
-            return None;
+        // Break as early as possible when we've blown our budget.
+        let remaining_line_budget = if used_width > one_line_budget {
+            0
         } else {
-            budget - used_width
+            one_line_budget - used_width
+        };
+        let remaining_multi_budget = if used_width > multi_line_budget {
+            0
+        } else {
+            multi_line_budget - used_width
         };
 
         let fmt = ListFormatting {
@@ -52,8 +59,8 @@ impl<'a> FmtVisitor<'a> {
             separator: ",",
             trailing_separator: SeparatorTactic::Never,
             indent: block_indent + indent,
-            h_width: remaining_budget,
-            v_width: remaining_budget,
+            h_width: remaining_line_budget,
+            v_width: remaining_multi_budget,
         };
 
         // TODO handle any comments inbetween items.
@@ -79,10 +86,10 @@ impl<'a> FmtVisitor<'a> {
                 ast::PathListItem_::PathListMod{ .. } => None,
             }
         })).collect();
-        Some(if path_str.len() == 0 {
+        if path_str.len() == 0 {
             format!("{}use {{{}}};", vis, write_list(&items, &fmt))
         } else {
             format!("{}use {}::{{{}}};", vis, path_str, write_list(&items, &fmt))
-        })
+        }
     }
 }

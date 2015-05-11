@@ -149,15 +149,16 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
                 match vp.node {
                     ast::ViewPath_::ViewPathList(ref path, ref path_list) => {
                         let block_indent = self.block_indent;
-                        let budget = IDEAL_WIDTH - block_indent;
-                        if let Some(new_str) = self.rewrite_use_list(block_indent,
-                                                                     budget,
-                                                                     path,
-                                                                     path_list,
-                                                                     item.vis) {
-                            self.changes.push_str_span(item.span, &new_str);
-                            self.last_pos = item.span.hi;
-                        }
+                        let one_line_budget = MAX_WIDTH - block_indent;
+                        let multi_line_budget = IDEAL_WIDTH - block_indent;
+                        let new_str = self.rewrite_use_list(block_indent,
+                                                            one_line_budget,
+                                                            multi_line_budget,
+                                                            path,
+                                                            path_list,
+                                                            item.vis);
+                        self.changes.push_str_span(item.span, &new_str);
+                        self.last_pos = item.span.hi;
                     }
                     ast::ViewPath_::ViewPathGlob(_) => {
                         // FIXME convert to list?
