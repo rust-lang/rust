@@ -59,6 +59,7 @@ const LEEWAY: usize = 5;
 const MAX_WIDTH: usize = 100;
 const MIN_STRING: usize = 10;
 const TAB_SPACES: usize = 4;
+const NEWLINE_STYLE: NewlineStyle = NewlineStyle::Unix;
 const FN_BRACE_STYLE: BraceStyle = BraceStyle::SameLineWhere;
 const FN_RETURN_INDENT: ReturnIndent = ReturnIndent::WithArgs;
 // When we get scoped annotations, we should have rustfmt::skip.
@@ -73,6 +74,12 @@ pub enum WriteMode {
     Display,
     // Return the result as a mapping from filenames to StringBuffers.
     Return(&'static Fn(HashMap<String, String>)),
+}
+
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+enum NewlineStyle {
+    Windows, // \r\n
+    Unix, // \n
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
@@ -120,7 +127,8 @@ fn fmt_lines(changes: &mut ChangeSet) {
         let mut cur_line = 1;
         let mut newline_count = 0;
         for (c, b) in text.chars() {
-            if c == '\n' { // TOOD test for \r too
+            if c == '\r' { continue; }
+            if c == '\n' {
                 // Check for (and record) trailing whitespace.
                 if let Some(lw) = last_wspace {
                     trims.push((cur_line, lw, b));
