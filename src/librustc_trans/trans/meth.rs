@@ -101,7 +101,7 @@ pub fn trans_impl(ccx: &CrateContext,
     }
 }
 
-pub fn trans_method_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+pub fn trans_method_callee<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
                                        method_call: MethodCall,
                                        self_expr: Option<&ast::Expr>,
                                        arg_cleanup_scope: cleanup::ScopeId)
@@ -320,7 +320,7 @@ fn method_with_name(ccx: &CrateContext, impl_id: ast::DefId, name: ast::Name)
     meth_did.def_id()
 }
 
-fn trans_monomorphized_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+fn trans_monomorphized_callee<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
                                           method_call: MethodCall,
                                           trait_id: ast::DefId,
                                           n_method: usize,
@@ -402,7 +402,7 @@ fn trans_monomorphized_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
  /// In that case, the vector we want is: `[X, M1, M2, M3]`.  Therefore, what we do now is to slice
  /// off the method type parameters and append them to the type parameters from the type that the
  /// receiver is mapped to.
-fn combine_impl_and_methods_tps<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+fn combine_impl_and_methods_tps<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
                                             node: ExprOrMethodCall,
                                             rcvr_substs: subst::Substs<'tcx>)
                                             -> subst::Substs<'tcx>
@@ -433,7 +433,7 @@ fn combine_impl_and_methods_tps<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 /// In this case, we must pull the fn pointer out of the vtable that is packaged up with the
 /// object. Objects are represented as a pair, so we first evaluate the self expression and then
 /// extract the self data and vtable out of the pair.
-fn trans_trait_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+fn trans_trait_callee<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
                                   method_ty: Ty<'tcx>,
                                   vtable_index: usize,
                                   self_expr: &ast::Expr,
@@ -470,7 +470,7 @@ fn trans_trait_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
 /// Same as `trans_trait_callee()` above, except that it is given a by-ref pointer to the object
 /// pair.
-pub fn trans_trait_callee_from_llval<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+pub fn trans_trait_callee_from_llval<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
                                                  callee_ty: Ty<'tcx>,
                                                  vtable_index: usize,
                                                  llpair: ValueRef)

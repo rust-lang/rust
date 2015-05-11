@@ -535,7 +535,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     }
 }
 
-fn declare_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+fn declare_local<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
                              variable_name: ast::Name,
                              variable_type: Ty<'tcx>,
                              scope_metadata: DIScope,
@@ -586,7 +586,7 @@ fn declare_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                     metadata,
                     address_operations.as_ptr(),
                     address_operations.len() as c_uint,
-                    bcx.llbb);
+                    bcx.bl.llbb);
 
                 llvm::LLVMSetInstDebugLocation(trans::build::B(bcx).llbuilder, instr);
             }

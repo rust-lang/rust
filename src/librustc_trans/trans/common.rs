@@ -417,7 +417,7 @@ pub struct FunctionContext<'a, 'tcx: 'a> {
     pub span: Option<Span>,
 
     // The arena that blocks are allocated from.
-    pub block_arena: &'a TypedArena<BlockS<'a, 'tcx>>,
+    pub block_arena: &'a TypedArena<BlockS>,
 
     // This function's enclosing crate context.
     pub ccx: &'a CrateContext<'a, 'tcx>,
@@ -469,60 +469,61 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
         self.llreturn.get().unwrap()
     }
 
-    pub fn get_ret_slot(&self, bcx: Block<'a, 'tcx>,
+    pub fn get_ret_slot(&mut self, bcx: &'a BlockS,
                         output: ty::FnOutput<'tcx>,
                         name: &str) -> ValueRef {
         if self.needs_ret_allocas {
-            base::alloca_no_lifetime(bcx, match output {
-                ty::FnConverging(output_type) => type_of::type_of(bcx.ccx(), output_type),
-                ty::FnDiverging => Type::void(bcx.ccx())
+            base::alloca_no_lifetime(&mut bcx.with(self), match output {
+                ty::FnConverging(output_type) => type_of::type_of(bcx.with(self).ccx(),
+                                                                  output_type),
+                ty::FnDiverging => Type::void(bcx.with(self).ccx())
             }, name)
         } else {
             self.llretslotptr.get().unwrap()
         }
     }
 
-    pub fn new_block(&'a self,
+    pub fn new_block(&mut self,
                      is_lpad: bool,
                      name: &str,
                      opt_node_id: Option<ast::NodeId>)
-                     -> Block<'a, 'tcx> {
+                     -> &'a mut BlockS {
         unsafe {
             let name = CString::new(name).unwrap();
             let llbb = llvm::LLVMAppendBasicBlockInContext(self.ccx.llcx(),
                                                            self.llfn,
                                                            name.as_ptr());
-            BlockS::new(llbb, is_lpad, opt_node_id, self)
+            BlockS::new(llbb, is_lpad, opt_node_id).alloc(self)
         }
     }
 
-    pub fn new_id_block(&'a self,
+    pub fn new_id_block(&mut self,
                         name: &str,
                         node_id: ast::NodeId)
-                        -> Block<'a, 'tcx> {
+                        -> &'a mut BlockS {
         self.new_block(false, name, Some(node_id))
     }
 
-    pub fn new_temp_block(&'a self,
+    pub fn new_temp_block(&mut self,
                           name: &str)
-                          -> Block<'a, 'tcx> {
+                          -> &'a mut BlockS {
         self.new_block(false, name, None)
     }
 
-    pub fn join_blocks(&'a self,
+    pub fn join_blocks(&mut self,
                        id: ast::NodeId,
-                       in_cxs: &[Block<'a, 'tcx>])
-                       -> Block<'a, 'tcx> {
+                       in_cxs: &[&'a BlockS])
+                       -> &'a BlockS {
         let out = self.new_id_block("join", id);
         let mut reachable = false;
         for bcx in in_cxs {
             if !bcx.unreachable.get() {
-                build::Br(*bcx, out.llbb, DebugLoc::None);
+                build::Br(&mut bcx.with(self), out.llbb, DebugLoc::None);
                 reachable = true;
             }
         }
         if !reachable {
-            build::Unreachable(out);
+            build::Unreachable(&mut out.with(self));
         }
         return out;
     }
@@ -547,7 +548,7 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
 // code.  Each basic block we generate is attached to a function, typically
 // with many basic blocks per function.  All the basic blocks attached to a
 // function are organized as a directed graph.
-pub struct BlockS<'blk, 'tcx: 'blk> {
+pub struct BlockS {
     // The BasicBlockRef returned from a call to
     // llvm::LLVMAppendBasicBlock(llfn, name), which adds a basic
     // block to the function pointed to by llfn.  We insert
@@ -563,28 +564,49 @@ pub struct BlockS<'blk, 'tcx: 'blk> {
     // AST node-id associated with this block, if any. Used for
     // debugging purposes only.
     pub opt_node_id: Option<ast::NodeId>,
-
-    // The function context for the function to which this block is
-    // attached.
-    pub fcx: &'blk FunctionContext<'blk, 'tcx>,
 }
 
-pub type Block<'blk, 'tcx> = &'blk BlockS<'blk, 'tcx>;
-
-impl<'blk, 'tcx> BlockS<'blk, 'tcx> {
+impl BlockS {
     pub fn new(llbb: BasicBlockRef,
                is_lpad: bool,
-               opt_node_id: Option<ast::NodeId>,
-               fcx: &'blk FunctionContext<'blk, 'tcx>)
-               -> Block<'blk, 'tcx> {
-        fcx.block_arena.alloc(BlockS {
+               opt_node_id: Option<ast::NodeId>)
+               -> BlockS {
+        BlockS {
             llbb: llbb,
             terminated: Cell::new(false),
             unreachable: Cell::new(false),
             is_lpad: is_lpad,
             opt_node_id: opt_node_id,
-            fcx: fcx
-        })
+        }
+    }
+
+    pub fn alloc<'r, 'blk, 'tcx>(self, fcx: &mut FunctionContext<'blk, 'tcx>) -> &'blk mut BlockS {
+        fcx.block_arena.alloc(self)
+    }
+
+    pub fn with<'r, 'blk, 'tcx>(&'blk self,
+                            fcx: &'r mut FunctionContext<'blk, 'tcx>)
+                            -> Block<'r, 'blk, 'tcx> {
+        Block::new(self, fcx)
+    }
+}
+
+pub struct Block<'r, 'blk: 'r, 'tcx: 'blk> {
+    pub bl: &'blk BlockS,
+
+    // The function context for the function to which this block is
+    // attached.
+    pub fcx: &'r mut FunctionContext<'blk, 'tcx>,
+}
+
+impl<'r, 'blk, 'tcx> Block<'r, 'blk, 'tcx> {
+    pub fn new(bl: &'blk BlockS,
+               fcx: &'r mut FunctionContext<'blk, 'tcx>)
+               -> Block<'r, 'blk, 'tcx> {
+        Block {
+            bl: bl,
+            fcx: fcx,
+        }
     }
 
     pub fn ccx(&self) -> &'blk CrateContext<'blk, 'tcx> {
@@ -642,7 +664,7 @@ impl<'blk, 'tcx> BlockS<'blk, 'tcx> {
     }
 }
 
-impl<'blk, 'tcx> mc::Typer<'tcx> for BlockS<'blk, 'tcx> {
+impl<'r, 'blk, 'tcx> mc::Typer<'tcx> for Block<'r, 'blk, 'tcx> {
     fn node_ty(&self, id: ast::NodeId) -> mc::McResult<Ty<'tcx>> {
         Ok(node_id_type(self, id))
     }
@@ -690,7 +712,7 @@ impl<'blk, 'tcx> mc::Typer<'tcx> for BlockS<'blk, 'tcx> {
     }
 }
 
-impl<'blk, 'tcx> ty::ClosureTyper<'tcx> for BlockS<'blk, 'tcx> {
+impl<'r, 'blk, 'tcx> ty::ClosureTyper<'tcx> for Block<'r, 'blk, 'tcx> {
     fn param_env<'a>(&'a self) -> &'a ty::ParameterEnvironment<'a, 'tcx> {
         &self.fcx.param_env
     }
@@ -722,13 +744,13 @@ impl<'blk, 'tcx> ty::ClosureTyper<'tcx> for BlockS<'blk, 'tcx> {
     }
 }
 
-pub struct Result<'blk, 'tcx: 'blk> {
-    pub bcx: Block<'blk, 'tcx>,
+pub struct Result<'blk> {
+    pub bcx: &'blk BlockS,
     pub val: ValueRef
 }
 
-impl<'b, 'tcx> Result<'b, 'tcx> {
-    pub fn new(bcx: Block<'b, 'tcx>, val: ValueRef) -> Result<'b, 'tcx> {
+impl<'b> Result<'b> {
+    pub fn new(bcx: &'b BlockS, val: ValueRef) -> Result<'b> {
         Result {
             bcx: bcx,
             val: val,
@@ -976,21 +998,21 @@ pub fn is_null(val: ValueRef) -> bool {
     }
 }
 
-pub fn monomorphize_type<'blk, 'tcx>(bcx: &BlockS<'blk, 'tcx>, t: Ty<'tcx>) -> Ty<'tcx> {
+pub fn monomorphize_type<'r, 'blk, 'tcx>(bcx: &Block<'r, 'blk, 'tcx>, t: Ty<'tcx>) -> Ty<'tcx> {
     bcx.fcx.monomorphize(&t)
 }
 
-pub fn node_id_type<'blk, 'tcx>(bcx: &BlockS<'blk, 'tcx>, id: ast::NodeId) -> Ty<'tcx> {
+pub fn node_id_type<'r, 'blk, 'tcx>(bcx: &Block<'r, 'blk, 'tcx>, id: ast::NodeId) -> Ty<'tcx> {
     let tcx = bcx.tcx();
     let t = ty::node_id_to_type(tcx, id);
     monomorphize_type(bcx, t)
 }
 
-pub fn expr_ty<'blk, 'tcx>(bcx: &BlockS<'blk, 'tcx>, ex: &ast::Expr) -> Ty<'tcx> {
+pub fn expr_ty<'r, 'blk, 'tcx>(bcx: &Block<'r, 'blk, 'tcx>, ex: &ast::Expr) -> Ty<'tcx> {
     node_id_type(bcx, ex.id)
 }
 
-pub fn expr_ty_adjusted<'blk, 'tcx>(bcx: &BlockS<'blk, 'tcx>, ex: &ast::Expr) -> Ty<'tcx> {
+pub fn expr_ty_adjusted<'r, 'blk, 'tcx>(bcx: &Block<'r, 'blk, 'tcx>, ex: &ast::Expr) -> Ty<'tcx> {
     monomorphize_type(bcx, ty::expr_ty_adjusted(bcx.tcx(), ex))
 }
 
@@ -1233,7 +1255,7 @@ pub fn node_id_substs<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                          &substs.erase_regions())
 }
 
-pub fn langcall(bcx: Block,
+pub fn langcall(bcx: &mut Block,
                 span: Option<Span>,
                 msg: &str,
                 li: LangItem)

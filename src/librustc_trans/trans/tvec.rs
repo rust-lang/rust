@@ -47,10 +47,10 @@ impl<'tcx> VecTypes<'tcx> {
     }
 }
 
-pub fn trans_fixed_vstore<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+pub fn trans_fixed_vstore<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
                                       expr: &ast::Expr,
                                       dest: expr::Dest)
-                                      -> Block<'blk, 'tcx> {
+                                      -> &'blk BlockS {
     //!
     //
     // [...] allocates a fixed-size array and moves it around "by value".
@@ -77,7 +77,7 @@ pub fn trans_fixed_vstore<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 /// &[...] allocates memory on the stack and writes the values into it, returning the vector (the
 /// caller must make the reference).  "..." is similar except that the memory can be statically
 /// allocated and we return a reference (strings are always by-ref).
-pub fn trans_slice_vec<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+pub fn trans_slice_vec<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
                                    slice_expr: &ast::Expr,
                                    content_expr: &ast::Expr)
                                    -> DatumBlock<'blk, 'tcx, Expr> {
@@ -134,11 +134,11 @@ pub fn trans_slice_vec<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
 /// Literal strings translate to slices into static memory.  This is different from
 /// trans_slice_vstore() above because it doesn't need to copy the content anywhere.
-pub fn trans_lit_str<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+pub fn trans_lit_str<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
                                  lit_expr: &ast::Expr,
                                  str_lit: InternedString,
                                  dest: Dest)
-                                 -> Block<'blk, 'tcx> {
+                                 -> &'blk BlockS {
     debug!("trans_lit_str(lit_expr={}, dest={})",
            bcx.expr_to_string(lit_expr),
            dest.to_string(bcx.ccx()));
@@ -157,12 +157,12 @@ pub fn trans_lit_str<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }
 }
 
-fn write_content<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+fn write_content<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
                              vt: &VecTypes<'tcx>,
                              vstore_expr: &ast::Expr,
                              content_expr: &ast::Expr,
                              dest: Dest)
-                             -> Block<'blk, 'tcx> {
+                             -> &'blk BlockS {
     let _icx = push_ctxt("tvec::write_content");
     let fcx = bcx.fcx;
     let mut bcx = bcx;
@@ -251,13 +251,13 @@ fn write_content<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }
 }
 
-fn vec_types_from_expr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, vec_expr: &ast::Expr)
+fn vec_types_from_expr<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>, vec_expr: &ast::Expr)
                                    -> VecTypes<'tcx> {
     let vec_ty = node_id_type(bcx, vec_expr.id);
     vec_types(bcx, ty::sequence_element_type(bcx.tcx(), vec_ty))
 }
 
-fn vec_types<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, unit_ty: Ty<'tcx>)
+fn vec_types<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>, unit_ty: Ty<'tcx>)
                          -> VecTypes<'tcx> {
     VecTypes {
         unit_ty: unit_ty,
@@ -265,7 +265,7 @@ fn vec_types<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, unit_ty: Ty<'tcx>)
     }
 }
 
-fn elements_required(bcx: Block, content_expr: &ast::Expr) -> usize {
+fn elements_required(bcx: &mut Block, content_expr: &ast::Expr) -> usize {
     //! Figure out the number of elements we need to store this content
 
     match content_expr.node {
@@ -289,7 +289,7 @@ fn elements_required(bcx: Block, content_expr: &ast::Expr) -> usize {
 
 /// Converts a fixed-length vector into the slice pair. The vector should be stored in `llval`
 /// which should be by ref.
-pub fn get_fixed_base_and_len(bcx: Block,
+pub fn get_fixed_base_and_len(bcx: &mut Block,
                               llval: ValueRef,
                               vec_length: usize)
                               -> (ValueRef, ValueRef) {
@@ -303,7 +303,7 @@ pub fn get_fixed_base_and_len(bcx: Block,
 /// Converts a vector into the slice pair.  The vector should be stored in `llval` which should be
 /// by-reference.  If you have a datum, you would probably prefer to call
 /// `Datum::get_base_and_len()` which will handle any conversions for you.
-pub fn get_base_and_len<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+pub fn get_base_and_len<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
                                     llval: ValueRef,
                                     vec_ty: Ty<'tcx>)
                                     -> (ValueRef, ValueRef) {
@@ -330,13 +330,13 @@ pub fn get_base_and_len<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }
 }
 
-fn iter_vec_loop<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
-                                data_ptr: ValueRef,
-                                vt: &VecTypes<'tcx>,
-                                count: ValueRef,
-                                f: F)
-                                -> Block<'blk, 'tcx> where
-    F: FnOnce(Block<'blk, 'tcx>, ValueRef, Ty<'tcx>) -> Block<'blk, 'tcx>,
+fn iter_vec_loop<'r, 'blk, 'tcx, F>(bcx: &'r mut Block<'r, 'blk, 'tcx>,
+                                    data_ptr: ValueRef,
+                                    vt: &VecTypes<'tcx>,
+                                    count: ValueRef,
+                                    f: F)
+                                    -> &'r mut Block<'r, 'blk, 'tcx> where
+    F: FnOnce(&'r mut Block<'r, 'blk, 'tcx>, ValueRef, Ty<'tcx>) -> &'r mut Block<'r, 'blk, 'tcx>,
 {
     let _icx = push_ctxt("tvec::iter_vec_loop");
 
@@ -370,13 +370,13 @@ fn iter_vec_loop<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
     next_bcx
 }
 
-pub fn iter_vec_raw<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
-                                   data_ptr: ValueRef,
-                                   unit_ty: Ty<'tcx>,
-                                   len: ValueRef,
-                                   f: F)
-                                   -> Block<'blk, 'tcx> where
-    F: FnOnce(Block<'blk, 'tcx>, ValueRef, Ty<'tcx>) -> Block<'blk, 'tcx>,
+pub fn iter_vec_raw<'r, 'blk, 'tcx, F>(bcx: &mut Block<'r, 'blk, 'tcx>,
+                                       data_ptr: ValueRef,
+                                       unit_ty: Ty<'tcx>,
+                                       len: ValueRef,
+                                       f: F)
+                                       -> &'blk BlockS where
+    F: FnOnce(&mut Block<'r, 'blk, 'tcx>, ValueRef, Ty<'tcx>) -> &'blk BlockS,
 {
     let _icx = push_ctxt("tvec::iter_vec_raw");
     let fcx = bcx.fcx;

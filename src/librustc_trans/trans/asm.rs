@@ -25,8 +25,8 @@ use std::ffi::CString;
 use libc::{c_uint, c_char};
 
 // Take an inline assembly expression and splat it out via LLVM
-pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
-                                    -> Block<'blk, 'tcx> {
+pub fn trans_inline_asm<'r, 'blk, 'tcx>(bcx: &'r mut Block<'r, 'blk, 'tcx>, ia: &ast::InlineAsm)
+                                        -> &'r mut Block<'r, 'blk, 'tcx> {
     let fcx = bcx.fcx;
     let mut bcx = bcx;
     let mut constraints = Vec::new();
@@ -38,7 +38,9 @@ pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
     let mut ext_constraints = Vec::new();
 
     // Prepare the output operands
-    let outputs = ia.outputs.iter().enumerate().map(|(i, &(ref c, ref out, is_rw))| {
+    let mut outputs = Vec::new();
+
+    for (i, &(ref c, ref out, is_rw)) in ia.outputs.iter().enumerate() {
         constraints.push((*c).clone());
 
         let out_datum = unpack_datum!(bcx, expr::trans(bcx, &**out));
@@ -54,23 +56,24 @@ pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
             }));
             ext_constraints.push(i.to_string());
         }
-        val
+        outputs.push(val);
 
-    }).collect::<Vec<_>>();
+    }
 
     // Now the input operands
-    let mut inputs = ia.inputs.iter().map(|&(ref c, ref input)| {
+    let mut inputs = Vec::new();
+    for &(ref c, ref input) in &ia.inputs {
         constraints.push((*c).clone());
 
         let in_datum = unpack_datum!(bcx, expr::trans(bcx, &**input));
-        unpack_result!(bcx, {
+        inputs.push(unpack_result!(bcx, {
             callee::trans_arg_datum(bcx,
                                     expr_ty(bcx, &**input),
                                     in_datum,
                                     cleanup::CustomScope(temp_scope),
                                     callee::DontAutorefArg)
-        })
-    }).collect::<Vec<_>>();
+        }));
+    }
     inputs.push_all(&ext_inputs[..]);
 
     // no failure occurred preparing operands, no need to cleanup
