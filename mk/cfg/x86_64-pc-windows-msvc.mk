@@ -39,3 +39,9 @@ endif
 ifdef CFG_MSVC_LINK
 export PATH := $(CFG_MSVC_ROOT)/VC/bin/amd64:$(PATH)
 endif
+
+# There are more comments about this available in the target specification for
+# Windows MSVC in the compiler, but the gist of it is that we use `llvm-ar.exe`
+# instead of `lib.exe` for assembling archives, so we need to inject this custom
+# dependency here.
+NATIVE_TOOL_DEPS_core_T_x86_64-pc-windows-msvc += llvm-ar.exe

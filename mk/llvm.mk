@@ -58,6 +58,8 @@ else
 clean-llvm$(1):
 endif
 
+$$(LLVM_AR_$(1)): $$(LLVM_CONFIG_$(1))
+
 # This is used to independently force an LLVM clean rebuild
 # when we changed something not otherwise captured by builtin
 # dependencies. In these cases, commit a change that touches

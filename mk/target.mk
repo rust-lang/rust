@@ -37,7 +37,9 @@ CRATE_FULLDEPS_$(1)_T_$(2)_H_$(3)_$(4) := \
 		$$(foreach dep,$$(NATIVE_DEPS_$(4)), \
 		  $$(RT_OUTPUT_DIR_$(2))/$$(call CFG_STATIC_LIB_NAME_$(2),$$(dep))) \
 		$$(foreach dep,$$(NATIVE_DEPS_$(4)_T_$(2)), \
-		  $$(RT_OUTPUT_DIR_$(2))/$$(dep))
+		  $$(RT_OUTPUT_DIR_$(2))/$$(dep)) \
+		$$(foreach dep,$$(NATIVE_TOOL_DEPS_$(4)_T_$(2)), \
+		  $$(TBIN$(1)_T_$(3)_H_$(3))/$$(dep))
 endef
 
 $(foreach host,$(CFG_HOST), \
@@ -147,6 +149,11 @@ $$(TLIB$(1)_T_$(2)_H_$(3))/:
 
 $$(TLIB$(1)_T_$(2)_H_$(3))/%: $$(RT_OUTPUT_DIR_$(2))/% \
 	    | $$(TLIB$(1)_T_$(2)_H_$(3))/ $$(SNAPSHOT_RUSTC_POST_CLEANUP)
+	@$$(call E, cp: $$@)
+	$$(Q)cp $$< $$@
+
+$$(TBIN$(1)_T_$(2)_H_$(3))/%: $$(CFG_LLVM_INST_DIR_$(2))/bin/% \
+	    | $$(TBIN$(1)_T_$(2)_H_$(3))/ $$(SNAPSHOT_RUSTC_POST_CLEANUP)
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 endef
