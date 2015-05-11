@@ -253,7 +253,7 @@ The two values of the boolean type are written `true` and `false`.
 ### Symbols
 
 ```antlr
-symbol : "::" "->"
+symbol : "::" | "->"
        | '#' | '[' | ']' | '(' | ')' | '{' | '}'
        | ',' | ';' ;
 ```
@@ -304,7 +304,7 @@ transcriber : '(' transcriber * ')' | '[' transcriber * ']'
 ## Items
 
 ```antlr
-item : mod_item | fn_item | type_item | struct_item | enum_item
+item : vis ? mod_item | fn_item | type_item | struct_item | enum_item
      | const_item | static_item | trait_item | impl_item | extern_block ;
 ```
 
@@ -322,7 +322,7 @@ mod : [ view_item | item ] * ;
 #### View items
 
 ```antlr
-view_item : extern_crate_decl | use_decl ;
+view_item : extern_crate_decl | use_decl ';' ;
 ```
 
 ##### Extern crate declarations
@@ -335,14 +335,14 @@ crate_name: ident | ( ident "as" ident )
 ##### Use declarations
 
 ```antlr
-use_decl : "pub" ? "use" [ path "as" ident
-                          | path_glob ] ;
+use_decl : vis ? "use" [ path "as" ident
+                        | path_glob ] ;
 
 path_glob : ident [ "::" [ path_glob
                           | '*' ] ] ?
           | '{' path_item [ ',' path_item ] * '}' ;
 
-path_item : ident | "mod" ;
+path_item : ident | "self" ;
 ```
 
 ### Functions
@@ -414,16 +414,17 @@ extern_block : [ foreign_fn ] * ;
 
 ## Visibility and Privacy
 
-**FIXME:** grammar?
-
+```antlr
+vis : "pub" ;
+```
 ### Re-exporting and Visibility
 
-**FIXME:** grammar?
+See [Use declarations](#use-declarations).
 
 ## Attributes
 
 ```antlr
-attribute : "#!" ? '[' meta_item ']' ;
+attribute : '#' '!' ? '[' meta_item ']' ;
 meta_item : ident [ '=' literal
                   | '(' meta_seq ')' ] ? ;
 meta_seq : meta_item [ ',' meta_seq ] ? ;
@@ -433,26 +434,19 @@ meta_seq : meta_item [ ',' meta_seq ] ? ;
 
 ## Statements
 
-**FIXME:** grammar?
+```antlr
+stmt : decl_stmt | expr_stmt ;
+```
 
 ### Declaration statements
 
-**FIXME:** grammar?
-
-A _declaration statement_ is one that introduces one or more *names* into the
-enclosing statement block. The declared names may denote new variables or new
-items.
+```antlr
+decl_stmt : item | let_decl ;
+```
 
 #### Item declarations
 
-**FIXME:** grammar?
-
-An _item declaration statement_ has a syntactic form identical to an
-[item](#items) declaration within a module. Declaring an item &mdash; a
-function, enumeration, structure, type, static, trait, implementation or module
-&mdash; locally within a statement block is simply a way of restricting its
-scope to a narrow region containing all of its uses; it is otherwise identical
-in meaning to declaring the item outside the statement block.
+See [Items](#items).
 
 #### Variable declarations
 
@@ -463,11 +457,21 @@ init : [ '=' ] expr ;
 
 ### Expression statements
 
-**FIXME:** grammar?
+```antlr
+expr_stmt : expr ';' ;
+```
 
 ## Expressions
 
-**FIXME:** grammar?
+```antlr
+expr : literal | path | tuple_expr | unit_expr | struct_expr
+     | block_expr | method_call_expr | field_expr | array_expr
+     | idx_expr | range_expr | unop_expr | binop_expr
+     | paren_expr | call_expr | lambda_expr | while_expr
+     | loop_expr | break_expr | continue_expr | for_expr
+     | if_expr | match_expr | if_let_expr | while_let_expr
+     | return_expr ;
+```
 
 #### Lvalues, rvalues and temporaries
 
@@ -479,19 +483,23 @@ init : [ '=' ] expr ;
 
 ### Literal expressions
 
-**FIXME:** grammar?
+See [Literals](#literals).
 
 ### Path expressions
 
-**FIXME:** grammar?
+See [Paths](#paths).
 
 ### Tuple expressions
 
-**FIXME:** grammar?
+```antlr
+tuple_expr : '(' [ expr [ ',' expr ] * | expr ',' ] ? ')' ;
+```
 
 ### Unit expressions
 
-**FIXME:** grammar?
+```antlr
+unit_expr : "()" ;
+```
 
 ### Structure expressions
 
@@ -507,8 +515,7 @@ struct_expr : expr_path '{' ident ':' expr
 ### Block expressions
 
 ```antlr
-block_expr : '{' [ view_item ] *
-                 [ stmt ';' | item ] *
+block_expr : '{' [ stmt ';' | item ] *
                  [ expr ] '}' ;
 ```
 
@@ -529,7 +536,7 @@ field_expr : expr '.' ident ;
 ```antlr
 array_expr : '[' "mut" ? array_elems? ']' ;
 
-array_elems : [expr [',' expr]*] | [expr ',' ".." expr] ;
+array_elems : [expr [',' expr]*] | [expr ';' expr] ;
 ```
 
 ### Index expressions
@@ -549,65 +556,60 @@ range_expr : expr ".." expr |
 
 ### Unary operator expressions
 
-**FIXME:** grammar?
+```antlr
+unop_expr : unop expr ;
+unop : '-' | '*' | '!' ;
+```
 
 ### Binary operator expressions
 
 ```antlr
-binop_expr : expr binop expr ;
+binop_expr : expr binop expr | type_cast_expr
+           | assignment_expr | compound_assignment_expr ;
+binop : arith_op | bitwise_op | lazy_bool_op | comp_op
 ```
 
 #### Arithmetic operators
 
-**FIXME:** grammar?
+```antlr
+arith_op : '+' | '-' | '*' | '/' | '%' ;
+```
 
 #### Bitwise operators
 
-**FIXME:** grammar?
+```antlr
+bitwise_op : '&' | '|' | '^' | "<<" | ">>" ;
+```
 
 #### Lazy boolean operators
 
-**FIXME:** grammar?
+```antlr
+lazy_bool_op : "&&" | "||" ;
+```
 
 #### Comparison operators
 
-**FIXME:** grammar?
+```antlr
+comp_op : "==" | "!=" | '<' | '>' | "<=" | ">=" ;
+```
 
 #### Type cast expressions
 
-**FIXME:** grammar?
+```antlr
+type_cast_expr : value "as" type ;
+```
 
 #### Assignment expressions
 
-**FIXME:** grammar?
+```antlr
+assignment_expr : expr '=' expr ;
+```
 
 #### Compound assignment expressions
 
-**FIXME:** grammar?
-
-#### Operator precedence
-
-The precedence of Rust binary operators is ordered as follows, going from
-strong to weak:
-
-```text
-* / %
-as
-+ -
-<< >>
-&
-^
-|
-< > <= >=
-== !=
-&&
-||
-=
+```antlr
+compound_assignment_expr : expr [ arith_op | bitwise_op ] '=' expr ;
 ```
-
-Operators at the same precedence level are evaluated left-to-right. [Unary
-operators](#unary-operator-expressions) have the same precedence level and it
-is stronger than any of the binary operators'.
 
 ### Grouped expressions
 

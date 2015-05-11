@@ -85,6 +85,8 @@ pub struct LocalKey<T> {
 }
 
 /// Declare a new thread local storage key of type `std::thread::LocalKey`.
+///
+/// See [LocalKey documentation](thread/struct.LocalKey.html) for more information.
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow_internal_unstable]
