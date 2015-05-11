@@ -526,8 +526,7 @@ impl<'a> Context<'a> {
 
         for (lib, kind) in m {
             info!("{} reading metadata from: {}", flavor, lib.display());
-            let metadata = match get_metadata_section(self.target.options.is_like_osx,
-                                                      &lib) {
+            let metadata = match get_metadata_section(self.target, &lib) {
                 Ok(blob) => {
                     if self.crate_matches(blob.as_slice(), &lib) {
                         blob
@@ -715,17 +714,19 @@ impl ArchiveMetadata {
 }
 
 // Just a small wrapper to time how long reading metadata takes.
-fn get_metadata_section(is_osx: bool, filename: &Path) -> Result<MetadataBlob, String> {
+fn get_metadata_section(target: &Target, filename: &Path)
+                        -> Result<MetadataBlob, String> {
     let mut ret = None;
     let dur = Duration::span(|| {
-        ret = Some(get_metadata_section_imp(is_osx, filename));
+        ret = Some(get_metadata_section_imp(target, filename));
     });
     info!("reading {:?} => {}ms", filename.file_name().unwrap(),
           dur.num_milliseconds());
     return ret.unwrap();;
 }
 
-fn get_metadata_section_imp(is_osx: bool, filename: &Path) -> Result<MetadataBlob, String> {
+fn get_metadata_section_imp(target: &Target, filename: &Path)
+                            -> Result<MetadataBlob, String> {
     if !filename.exists() {
         return Err(format!("no such file: '{}'", filename.display()));
     }
@@ -769,7 +770,7 @@ fn get_metadata_section_imp(is_osx: bool, filename: &Path) -> Result<MetadataBlo
                                              name_len as usize).to_vec();
             let name = String::from_utf8(name).unwrap();
             debug!("get_metadata_section: name {}", name);
-            if read_meta_section_name(is_osx) == name {
+            if read_meta_section_name(target) == name {
                 let cbuf = llvm::LLVMGetSectionContents(si.llsi);
                 let csz = llvm::LLVMGetSectionSize(si.llsi) as usize;
                 let cvbuf: *const u8 = cbuf as *const u8;
@@ -799,26 +800,41 @@ fn get_metadata_section_imp(is_osx: bool, filename: &Path) -> Result<MetadataBlo
     }
 }
 
-pub fn meta_section_name(is_osx: bool) -> &'static str {
-    if is_osx {
+pub fn meta_section_name(target: &Target) -> &'static str {
+    if target.options.is_like_osx {
         "__DATA,__note.rustc"
+    } else if target.options.is_like_msvc {
+        // When using link.exe it was seen that the section name `.note.rustc`
+        // was getting shortened to `.note.ru`, and according to the PE and COFF
+        // specification:
+        //
+        // > Executable images do not use a string table and do not support
+        // > section names longer than 8 characters
+        //
+        // https://msdn.microsoft.com/en-us/library/windows/hardware/gg463119.aspx
+        //
+        // As a result, we choose a slightly shorter name! As to why
+        // `.note.rustc` works on MinGW, that's another good question...
+        ".rustc"
     } else {
         ".note.rustc"
     }
 }
 
-pub fn read_meta_section_name(is_osx: bool) -> &'static str {
-    if is_osx {
+pub fn read_meta_section_name(target: &Target) -> &'static str {
+    if target.options.is_like_osx {
         "__note.rustc"
+    } else if target.options.is_like_msvc {
+        ".rustc"
     } else {
         ".note.rustc"
     }
 }
 
 // A diagnostic function for dumping crate metadata to an output stream
-pub fn list_file_metadata(is_osx: bool, path: &Path,
+pub fn list_file_metadata(target: &Target, path: &Path,
                           out: &mut io::Write) -> io::Result<()> {
-    match get_metadata_section(is_osx, path) {
+    match get_metadata_section(target, path) {
         Ok(bytes) => decoder::list_crate_metadata(bytes.as_slice(), out),
         Err(msg) => {
             write!(out, "{}\n", msg)
