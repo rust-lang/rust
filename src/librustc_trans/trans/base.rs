@@ -670,7 +670,8 @@ pub fn trans_external_path<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                     ccx.sess().bug("unexpected intrinsic in trans_external_path")
                 }
                 _ => {
-                    let llfn = foreign::register_foreign_item_fn(ccx, fn_ty.abi, t, &name[..]);
+                    let llfn = foreign::register_foreign_item_fn(ccx, fn_ty.abi,
+                                                                 t, &name);
                     let attrs = csearch::get_item_attrs(&ccx.sess().cstore, did);
                     attributes::from_fn_attrs(ccx, &attrs, llfn);
                     llfn
