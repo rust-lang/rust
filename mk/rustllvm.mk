@@ -18,27 +18,41 @@ define DEF_RUSTLLVM_TARGETS
 # to find the llvm includes (probably because we're not actually installing
 # llvm, but using it straight out of the build directory)
 ifdef CFG_WINDOWSY_$(1)
-LLVM_EXTRA_INCDIRS_$(1)= -iquote $(S)src/llvm/include \
-                         -iquote $$(CFG_LLVM_BUILD_DIR_$(1))/include
+LLVM_EXTRA_INCDIRS_$(1)= $$(call CFG_CC_INCLUDE_$(1),$(S)src/llvm/include) \
+                         $$(call CFG_CC_INCLUDE_$(1),\
+			   $$(CFG_LLVM_BUILD_DIR_$(1))/include)
 endif
 
 RUSTLLVM_OBJS_CS_$(1) := $$(addprefix rustllvm/, \
 	ExecutionEngineWrapper.cpp RustWrapper.cpp PassWrapper.cpp)
 
 RUSTLLVM_INCS_$(1) = $$(LLVM_EXTRA_INCDIRS_$(1)) \
-                     -iquote $$(LLVM_INCDIR_$(1)) \
-                     -iquote $$(S)src/rustllvm/include
+                     $$(call CFG_CC_INCLUDE_$(1),$$(LLVM_INCDIR_$(1))) \
+                     $$(call CFG_CC_INCLUDE_$(1),$$(S)src/rustllvm/include)
 RUSTLLVM_OBJS_OBJS_$(1) := $$(RUSTLLVM_OBJS_CS_$(1):rustllvm/%.cpp=$(1)/rustllvm/%.o)
-ALL_OBJ_FILES += $$(RUSTLLVM_OBJS_OBJS_$(1))
+
+# Note that we appease `cl.exe` and its need for some sort of exception
+# handling flag with the `EHsc` argument here as well.
+ifeq ($$(findstring msvc,$(1)),msvc)
+EXTRA_RUSTLLVM_CXXFLAGS_$(1) := //EHsc
+endif
 
 $$(RT_OUTPUT_DIR_$(1))/$$(call CFG_STATIC_LIB_NAME_$(1),rustllvm): \
 	    $$(RUSTLLVM_OBJS_OBJS_$(1))
 	@$$(call E, link: $$@)
-	$$(Q)$$(AR_$(1)) rcs $$@ $$(RUSTLLVM_OBJS_OBJS_$(1))
+	$$(Q)$$(call CFG_CREATE_ARCHIVE_$(1),$$@) $$^
 
+# On MSVC we need to double-escape arguments that llvm-config printed which
+# start with a '/'. The shell we're running in will auto-translate the argument
+# `/foo` to `C:/msys64/foo` but we really want it to be passed through as `/foo`
+# so the argument passed to our shell must be `//foo`.
 $(1)/rustllvm/%.o: $(S)src/rustllvm/%.cpp $$(MKFILE_DEPS) $$(LLVM_CONFIG_$(1))
 	@$$(call E, compile: $$@)
-	$$(Q)$$(call CFG_COMPILE_CXX_$(1), $$@, $$(LLVM_CXXFLAGS_$(1)) $$(RUSTLLVM_INCS_$(1))) $$<
+	$$(Q)$$(call CFG_COMPILE_CXX_$(1), $$@,) \
+		$$(subst  /,//,$$(LLVM_CXXFLAGS_$(1))) \
+		$$(EXTRA_RUSTLLVM_CXXFLAGS_$(1)) \
+		$$(RUSTLLVM_INCS_$(1)) \
+		$$<
 endef
 
 # Instantiate template for all stages
