@@ -53,8 +53,8 @@ has been imported into the current module.
 
 Wrong example:
 ```
-extern a;
-extern crate_a as a;
+extern crate a;
+extern crate crate_a as a;
 ```
 
 The solution is to choose a different name that doesn't conflict with any
@@ -62,8 +62,8 @@ external crate imported into the current module.
 
 Correct example:
 ```
-extern a;
-extern crate_a as other_name;
+extern crate a;
+extern crate crate_a as other_name;
 ```
 "##,
 
@@ -72,7 +72,7 @@ The name for an item declaration conflicts with an external crate's name.
 
 For instance,
 ```
-extern abc;
+extern crate abc;
 
 struct abc;
 ```
@@ -82,7 +82,7 @@ There are two possible solutions:
 Solution #1: Rename the item.
 
 ```
-extern abc;
+extern crate abc;
 
 struct xyz;
 ```
@@ -90,7 +90,7 @@ struct xyz;
 Solution #2: Import the crate with a different name.
 
 ```
-extern abc as xyz;
+extern crate abc as xyz;
 
 struct abc;
 ```
