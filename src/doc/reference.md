@@ -842,7 +842,7 @@ module declarations should be at the crate root if direct usage of the declared
 modules within `use` items is desired. It is also possible to use `self` and
 `super` at the beginning of a `use` item to refer to the current and direct
 parent modules respectively. All rules regarding accessing declared modules in
-`use` declarations applies to both module declarations and `extern crate`
+`use` declarations apply to both module declarations and `extern crate`
 declarations.
 
 An example of what will and will not work for `use` items:
@@ -2564,12 +2564,19 @@ array is mutable, the resulting [lvalue](#lvalues,-rvalues-and-temporaries) can
 be assigned to.
 
 Indices are zero-based, and may be of any integral type. Vector access is
-bounds-checked at run-time. When the check fails, it will put the thread in a
-_panicked state_.
+bounds-checked at compile-time for constant arrays being accessed with a constant index value.
+Otherwise a check will be performed at run-time that will put the thread in a _panicked state_ if it fails.
 
 ```{should-fail}
 ([1, 2, 3, 4])[0];
-(["a", "b"])[10]; // panics
+
+let x = (["a", "b"])[10]; // compiler error: const index-expr is out of bounds
+
+let n = 10;
+let y = (["a", "b"])[n]; // panics
+
+let arr = ["a", "b"];
+arr[10]; // panics
 ```
 
 ### Range expressions
