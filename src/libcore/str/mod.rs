@@ -44,8 +44,11 @@ pub trait FromStr {
     #[stable(feature = "rust1", since = "1.0.0")]
     type Err;
 
-    /// Parses a string `s` to return an optional value of this type. If the
-    /// string is ill-formatted, the None is returned.
+    /// Parses a string `s` to return a value of this type.
+    ///
+    /// If parsing succeeds, return the value inside `Ok`, otherwise
+    /// when the string is ill-formatted return an error specific to the
+    /// inside `Err`. The error type is specific to implementation of the trait.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn from_str(s: &str) -> Result<Self, Self::Err>;
 }
