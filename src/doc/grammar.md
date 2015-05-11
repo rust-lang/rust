@@ -253,7 +253,7 @@ The two values of the boolean type are written `true` and `false`.
 ### Symbols
 
 ```antlr
-symbol : "::" "->"
+symbol : "::" | "->"
        | '#' | '[' | ']' | '(' | ')' | '{' | '}'
        | ',' | ';' ;
 ```
@@ -342,7 +342,7 @@ path_glob : ident [ "::" [ path_glob
                           | '*' ] ] ?
           | '{' path_item [ ',' path_item ] * '}' ;
 
-path_item : ident | "mod" ;
+path_item : ident | "self" ;
 ```
 
 ### Functions
@@ -424,7 +424,7 @@ See [Use declarations](#use-declarations).
 ## Attributes
 
 ```antlr
-attribute : "#!" ? '[' meta_item ']' ;
+attribute : '#' '!' ? '[' meta_item ']' ;
 meta_item : ident [ '=' literal
                   | '(' meta_seq ')' ] ? ;
 meta_seq : meta_item [ ',' meta_seq ] ? ;
@@ -515,8 +515,7 @@ struct_expr : expr_path '{' ident ':' expr
 ### Block expressions
 
 ```antlr
-block_expr : '{' [ view_item ] *
-                 [ stmt ';' | item ] *
+block_expr : '{' [ stmt ';' | item ] *
                  [ expr ] '}' ;
 ```
 
@@ -537,7 +536,7 @@ field_expr : expr '.' ident ;
 ```antlr
 array_expr : '[' "mut" ? array_elems? ']' ;
 
-array_elems : [expr [',' expr]*] | [expr ',' ".." expr] ;
+array_elems : [expr [',' expr]*] | [expr ';' expr] ;
 ```
 
 ### Index expressions
