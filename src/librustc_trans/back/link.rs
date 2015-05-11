@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use super::archive::{Archive, ArchiveBuilder, ArchiveConfig, METADATA_FILENAME};
-use super::linker::{Linker, GnuLinker};
+use super::linker::{Linker, GnuLinker, MsvcLinker};
 use super::rpath::RPathConfig;
 use super::rpath;
 use super::svh::Svh;
@@ -805,8 +805,12 @@ fn link_natively(sess: &Session, trans: &CrateTranslation, dylib: bool,
     }
 
     {
-        let mut linker = GnuLinker { cmd: &mut cmd, sess: &sess };
-        link_args(&mut linker, sess, dylib, tmpdir.path(),
+        let mut linker = if sess.target.target.options.is_like_msvc {
+            Box::new(MsvcLinker { cmd: &mut cmd, sess: &sess }) as Box<Linker>
+        } else {
+            Box::new(GnuLinker { cmd: &mut cmd, sess: &sess }) as Box<Linker>
+        };
+        link_args(&mut *linker, sess, dylib, tmpdir.path(),
                   trans, obj_filename, out_filename);
         if !sess.target.target.options.no_compiler_rt {
             linker.link_staticlib("compiler-rt");
@@ -874,9 +878,8 @@ fn link_args(cmd: &mut Linker,
     let t = &sess.target.target;
 
     cmd.include_path(&fix_windows_verbatim_for_gcc(&lib_path));
-
-    cmd.output_filename(out_filename);
     cmd.add_object(obj_filename);
+    cmd.output_filename(out_filename);
 
     // Stack growth requires statically linking a __morestack function. Note
     // that this is listed *before* all other libraries. Due to the usage of the
