@@ -1314,7 +1314,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
                 // `impl [... for] Private` is never visible.
                 let self_contains_private;
                 // impl [... for] Public<...>, but not `impl [... for]
-                // ~[Public]` or `(Public,)` etc.
+                // Vec<Public>` or `(Public,)` etc.
                 let self_is_public_path;
 
                 // check the properties of the Self type:

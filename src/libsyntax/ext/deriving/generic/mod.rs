@@ -896,8 +896,8 @@ impl<'a> MethodDef<'a> {
                                  nonself_args: &[P<Expr>])
         -> P<Expr> {
 
-        let mut raw_fields = Vec::new(); // ~[[fields of self],
-                                 // [fields of next Self arg], [etc]]
+        let mut raw_fields = Vec::new(); // Vec<[fields of self],
+                                 // [fields of next Self arg], [etc]>
         let mut patterns = Vec::new();
         for i in 0..self_args.len() {
             let struct_path= cx.path(DUMMY_SP, vec!( type_ident ));

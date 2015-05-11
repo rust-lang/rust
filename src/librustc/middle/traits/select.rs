@@ -2441,10 +2441,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// `match_impl()`. For example, if `impl_def_id` is declared
     /// as:
     ///
-    ///    impl<T:Copy> Foo for ~T { ... }
+    ///    impl<T:Copy> Foo for Box<T> { ... }
     ///
-    /// and `obligation_self_ty` is `int`, we'd back an `Err(_)`
-    /// result. But if `obligation_self_ty` were `~int`, we'd get
+    /// and `obligation_self_ty` is `int`, we'd get back an `Err(_)`
+    /// result. But if `obligation_self_ty` were `Box<int>`, we'd get
     /// back `Ok(T=int)`.
     fn match_inherent_impl(&mut self,
                            impl_def_id: ast::DefId,
