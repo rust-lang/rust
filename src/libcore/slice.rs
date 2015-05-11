@@ -665,10 +665,14 @@ macro_rules! iterator {
             #[inline]
             fn next(&mut self) -> Option<$elem> {
                 // could be implemented with slices, but this avoids bounds checks
-                unsafe {
-                    if self.ptr == self.end {
-                        None
-                    } else {
+                if self.ptr == self.end {
+                    None
+                } else {
+                    unsafe {
+                        if mem::size_of::<T>() != 0 {
+                            ::intrinsics::assume(!self.ptr.is_null());
+                            ::intrinsics::assume(!self.end.is_null());
+                        }
                         let old = self.ptr;
                         self.ptr = slice_offset!(self.ptr, 1);
                         Some(slice_ref!(old))
@@ -706,11 +710,15 @@ macro_rules! iterator {
             #[inline]
             fn next_back(&mut self) -> Option<$elem> {
                 // could be implemented with slices, but this avoids bounds checks
-                unsafe {
-                    if self.end == self.ptr {
-                        None
-                    } else {
+                if self.end == self.ptr {
+                    None
+                } else {
+                    unsafe {
                         self.end = slice_offset!(self.end, -1);
+                        if mem::size_of::<T>() != 0 {
+                            ::intrinsics::assume(!self.ptr.is_null());
+                            ::intrinsics::assume(!self.end.is_null());
+                        }
                         Some(slice_ref!(self.end))
                     }
                 }
