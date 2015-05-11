@@ -111,11 +111,6 @@ $$(RT_OUTPUT_DIR_$(1))/$$(NATIVE_$(2)_$(1)): $$(OBJS_$(2)_$(1))
 	@$$(call E, link: $$@)
 	$$(Q)$$(AR_$(1)) rcs $$@ $$^
 
-ifeq ($$(findstring windows,$(1)),windows)
-$$(RT_OUTPUT_DIR_$(1))/lib$(2).a: $$(RT_OUTPUT_DIR_$(1))/$$(NATIVE_$(2)_$(1))
-	$$(Q)cp $$^ $$@
-endif
-
 endef
 
 $(foreach target,$(CFG_TARGET), \
@@ -227,7 +222,7 @@ COMPRT_DEPS := $(wildcard \
               $(S)src/compiler-rt/*/*/*/*)
 endif
 
-COMPRT_NAME_$(1) := libcompiler-rt.a
+COMPRT_NAME_$(1) := $$(call CFG_STATIC_LIB_NAME_$(1),compiler-rt)
 COMPRT_LIB_$(1) := $$(RT_OUTPUT_DIR_$(1))/$$(COMPRT_NAME_$(1))
 COMPRT_BUILD_DIR_$(1) := $$(RT_OUTPUT_DIR_$(1))/compiler-rt
 
