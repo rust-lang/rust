@@ -21,7 +21,7 @@ fn foos(_: &[&Foo]) {}
 fn foog<T>(_: &[T], _: &[T]) {}
 
 fn bar(_: [Box<Foo>; 2]) {}
-fn bars(_: &[Box<Foo>]) {}
+fn bars(_: &[Box<Foo+'static>]) {}
 
 fn main() {
     let x: [&Foo; 2] = [&1, &2];
@@ -45,11 +45,11 @@ fn main() {
     bar(x);
     bar([Box::new(1), Box::new(2)]);
 
-    let x: &[Box<Foo>] = &[Box::new(1), Box::new(2)];
+    let x: &[Box<Foo+'static>] = &[Box::new(1), Box::new(2)];
     bars(x);
     bars(&[Box::new(1), Box::new(2)]);
 
-    let x: &[Box<Foo>] = &[Box::new(1), Box::new(2)];
+    let x: &[Box<Foo+'static>] = &[Box::new(1), Box::new(2)];
     foog(x, &[Box::new(1)]);
 
     struct T<'a> {
