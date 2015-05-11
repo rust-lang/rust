@@ -546,6 +546,7 @@ fn link_rlib<'a>(sess: &'a Session,
                  trans: Option<&CrateTranslation>, // None == no metadata/bytecode
                  obj_filename: &Path,
                  out_filename: &Path) -> ArchiveBuilder<'a> {
+    info!("preparing rlib from {:?} to {:?}", obj_filename, out_filename);
     let handler = &sess.diagnostic().handler;
     let config = ArchiveConfig {
         handler: handler,
@@ -560,9 +561,7 @@ fn link_rlib<'a>(sess: &'a Session,
 
     for &(ref l, kind) in &*sess.cstore.get_used_libraries().borrow() {
         match kind {
-            cstore::NativeStatic => {
-                ab.add_native_library(&l[..]).unwrap();
-            }
+            cstore::NativeStatic => ab.add_native_library(&l).unwrap(),
             cstore::NativeFramework | cstore::NativeUnknown => {}
         }
     }
@@ -613,10 +612,8 @@ fn link_rlib<'a>(sess: &'a Session,
             }) {
                 Ok(..) => {}
                 Err(e) => {
-                    sess.err(&format!("failed to write {}: {}",
-                                     metadata.display(),
-                                     e));
-                    sess.abort_if_errors();
+                    sess.fatal(&format!("failed to write {}: {}",
+                                        metadata.display(), e));
                 }
             }
             ab.add_file(&metadata).unwrap();
@@ -658,9 +655,8 @@ fn link_rlib<'a>(sess: &'a Session,
                                                     &bc_data_deflated) {
                     Ok(()) => {}
                     Err(e) => {
-                        sess.err(&format!("failed to write compressed bytecode: \
-                                          {}", e));
-                        sess.abort_if_errors()
+                        sess.fatal(&format!("failed to write compressed \
+                                             bytecode: {}", e));
                     }
                 };
 
@@ -794,6 +790,8 @@ fn link_staticlib(sess: &Session, obj_filename: &Path, out_filename: &Path) {
 // links to all upstream files as well.
 fn link_natively(sess: &Session, trans: &CrateTranslation, dylib: bool,
                  obj_filename: &Path, out_filename: &Path) {
+    info!("preparing dylib? ({}) from {:?} to {:?}", dylib, obj_filename,
+          out_filename);
     let tmpdir = TempDir::new("rustc").ok().expect("needs a temp dir");
 
     // The invocations of cc share some flags across platforms
@@ -827,7 +825,7 @@ fn link_natively(sess: &Session, trans: &CrateTranslation, dylib: bool,
     sess.abort_if_errors();
 
     // Invoke the system linker
-    debug!("{:?}", &cmd);
+    info!("{:?}", &cmd);
     let prog = time(sess.time_passes(), "running linker", (), |()| cmd.output());
     match prog {
         Ok(prog) => {
@@ -841,14 +839,11 @@ fn link_natively(sess: &Session, trans: &CrateTranslation, dylib: bool,
                 sess.note(str::from_utf8(&output[..]).unwrap());
                 sess.abort_if_errors();
             }
-            debug!("linker stderr:\n{}", String::from_utf8(prog.stderr).unwrap());
-            debug!("linker stdout:\n{}", String::from_utf8(prog.stdout).unwrap());
+            info!("linker stderr:\n{}", String::from_utf8(prog.stderr).unwrap());
+            info!("linker stdout:\n{}", String::from_utf8(prog.stdout).unwrap());
         },
         Err(e) => {
-            sess.err(&format!("could not exec the linker `{}`: {}",
-                             pname,
-                             e));
-            sess.abort_if_errors();
+            sess.fatal(&format!("could not exec the linker `{}`: {}", pname, e));
         }
     }
 
@@ -858,10 +853,7 @@ fn link_natively(sess: &Session, trans: &CrateTranslation, dylib: bool,
     if sess.target.target.options.is_like_osx && sess.opts.debuginfo != NoDebugInfo {
         match Command::new("dsymutil").arg(out_filename).output() {
             Ok(..) => {}
-            Err(e) => {
-                sess.err(&format!("failed to run dsymutil: {}", e));
-                sess.abort_if_errors();
-            }
+            Err(e) => sess.fatal(&format!("failed to run dsymutil: {}", e)),
         }
     }
 }
@@ -1157,11 +1149,9 @@ fn add_upstream_rust_crates(cmd: &mut Linker, sess: &Session,
                 match fs::copy(&cratepath, &dst) {
                     Ok(..) => {}
                     Err(e) => {
-                        sess.err(&format!("failed to copy {} to {}: {}",
-                                         cratepath.display(),
-                                         dst.display(),
-                                         e));
-                        sess.abort_if_errors();
+                        sess.fatal(&format!("failed to copy {} to {}: {}",
+                                            cratepath.display(),
+                                            dst.display(), e));
                     }
                 }
                 // Fix up permissions of the copy, as fs::copy() preserves
@@ -1174,10 +1164,8 @@ fn add_upstream_rust_crates(cmd: &mut Linker, sess: &Session,
                 }) {
                     Ok(..) => {}
                     Err(e) => {
-                        sess.err(&format!("failed to chmod {} when preparing \
-                                          for LTO: {}", dst.display(),
-                                         e));
-                        sess.abort_if_errors();
+                        sess.fatal(&format!("failed to chmod {} when preparing \
+                                             for LTO: {}", dst.display(), e));
                     }
                 }
                 let handler = &sess.diagnostic().handler;
