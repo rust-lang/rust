@@ -1796,6 +1796,89 @@ impl BitSet {
         self.other_op(other, |w1, w2| w1 ^ w2);
     }
 
+    /// Moves all elements from `other` into `Self`, leaving `other` empty.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(collections, bit_set_append_split_off)]
+    /// use std::collections::{BitVec, BitSet};
+    ///
+    /// let mut a = BitSet::new();
+    /// a.insert(2);
+    /// a.insert(6);
+    ///
+    /// let mut b = BitSet::new();
+    /// b.insert(1);
+    /// b.insert(3);
+    /// b.insert(6);
+    ///
+    /// a.append(&mut b);
+    ///
+    /// assert_eq!(a.len(), 4);
+    /// assert_eq!(b.len(), 0);
+    /// assert_eq!(a, BitSet::from_bit_vec(BitVec::from_bytes(&[0b01110010])));
+    /// ```
+    #[unstable(feature = "bit_set_append_split_off",
+               reason = "recently added as part of collections reform 2")]
+    pub fn append(&mut self, other: &mut Self) {
+        self.union_with(other);
+        other.clear();
+    }
+
+    /// Splits the `BitSet` into two at the given key including the key.
+    /// Retains the first part in-place while returning the second part.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(collections, bit_set_append_split_off)]
+    /// use std::collections::{BitSet, BitVec};
+    /// let mut a = BitSet::new();
+    /// a.insert(2);
+    /// a.insert(6);
+    /// a.insert(1);
+    /// a.insert(3);
+    ///
+    /// let b = a.split_off(3);
+    ///
+    /// assert_eq!(a.len(), 2);
+    /// assert_eq!(b.len(), 2);
+    /// assert_eq!(a, BitSet::from_bit_vec(BitVec::from_bytes(&[0b01100000])));
+    /// assert_eq!(b, BitSet::from_bit_vec(BitVec::from_bytes(&[0b00010010])));
+    /// ```
+    #[unstable(feature = "bit_set_append_split_off",
+               reason = "recently added as part of collections reform 2")]
+    pub fn split_off(&mut self, at: usize) -> Self {
+        let mut other = BitSet::new();
+
+        if at == 0 {
+            swap(self, &mut other);
+            return other;
+        } else if at >= self.bit_vec.len() {
+            return other;
+        }
+
+        // Calculate block and bit at which to split
+        let w = at / u32::BITS;
+        let b = at % u32::BITS;
+
+        // Pad `other` with `w` zero blocks,
+        // append `self`'s blocks in the range from `w` to the end to `other`
+        other.bit_vec.storage.extend(repeat(0u32).take(w)
+                                     .chain(self.bit_vec.storage[w..].iter().cloned()));
+        other.bit_vec.nbits = self.bit_vec.nbits;
+
+        if b > 0 {
+            other.bit_vec.storage[w] &= !0 << b;
+        }
+
+        // Sets `bit_vec.len()` and fixes the last block as well
+        self.bit_vec.truncate(at);
+
+        other
+    }
+
     /// Returns the number of set bits in this set.
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
