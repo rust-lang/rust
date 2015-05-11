@@ -81,8 +81,8 @@ $$(RT_OUTPUT_DIR_$(1))/%.o: $(S)src/rt/%.c $$(MKFILE_DEPS)
 	@mkdir -p $$(@D)
 	@$$(call E, compile: $$@)
 	$$(Q)$$(call CFG_COMPILE_C_$(1), $$@, \
-		-I $$(S)src/rt/hoedown/src \
-		-I $$(S)src/rt \
+		$$(call CFG_CC_INCLUDE_$(1),$$(S)src/rt/hoedown/src) \
+		$$(call CFG_CC_INCLUDE_$(1),$$(S)src/rt) \
                  $$(RUNTIME_CFLAGS_$(1))) $$<
 
 $$(RT_OUTPUT_DIR_$(1))/%.o: $(S)src/rt/%.S $$(MKFILE_DEPS) \
@@ -109,7 +109,7 @@ OBJS_$(2)_$(1) := $$(OBJS_$(2)_$(1):.S=.o)
 NATIVE_$(2)_$(1) := $$(call CFG_STATIC_LIB_NAME_$(1),$(2))
 $$(RT_OUTPUT_DIR_$(1))/$$(NATIVE_$(2)_$(1)): $$(OBJS_$(2)_$(1))
 	@$$(call E, link: $$@)
-	$$(Q)$$(AR_$(1)) rcs $$@ $$^
+	$$(Q)$$(call CFG_CREATE_ARCHIVE_$(1),$$@) $$^
 
 endef
 
