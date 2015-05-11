@@ -365,6 +365,12 @@ pub fn get_cc_prog(sess: &Session) -> String {
     }
 }
 
+pub fn get_ar_prog(sess: &Session) -> String {
+    sess.opts.cg.ar.clone().unwrap_or_else(|| {
+        sess.target.target.options.ar.clone()
+    })
+}
+
 pub fn remove(sess: &Session, path: &Path) {
     match fs::remove_file(path) {
         Ok(..) => {}
@@ -547,7 +553,7 @@ fn link_rlib<'a>(sess: &'a Session,
         lib_search_paths: archive_search_paths(sess),
         slib_prefix: sess.target.target.options.staticlib_prefix.clone(),
         slib_suffix: sess.target.target.options.staticlib_suffix.clone(),
-        maybe_ar_prog: sess.opts.cg.ar.clone()
+        ar_prog: get_ar_prog(sess),
     };
     let mut ab = ArchiveBuilder::create(config);
     ab.add_file(obj_filename).unwrap();
@@ -1181,7 +1187,7 @@ fn add_upstream_rust_crates(cmd: &mut Linker, sess: &Session,
                     lib_search_paths: archive_search_paths(sess),
                     slib_prefix: sess.target.target.options.staticlib_prefix.clone(),
                     slib_suffix: sess.target.target.options.staticlib_suffix.clone(),
-                    maybe_ar_prog: sess.opts.cg.ar.clone()
+                    ar_prog: get_ar_prog(sess),
                 };
                 let mut archive = Archive::open(config);
                 archive.remove_file(&format!("{}.o", name));

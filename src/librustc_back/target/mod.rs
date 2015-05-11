@@ -93,6 +93,8 @@ pub struct Target {
 pub struct TargetOptions {
     /// Linker to invoke. Defaults to "cc".
     pub linker: String,
+    /// Archive utility to use when managing archives. Defaults to "ar".
+    pub ar: String,
     /// Linker arguments that are unconditionally passed *before* any
     /// user-defined libraries.
     pub pre_link_args: Vec<String>,
@@ -154,22 +156,24 @@ pub struct TargetOptions {
     pub linker_is_gnu: bool,
     /// Whether the linker support rpaths or not. Defaults to false.
     pub has_rpath: bool,
-    /// Whether to disable linking to compiler-rt. Defaults to false, as LLVM will emit references
-    /// to the functions that compiler-rt provides.
+    /// Whether to disable linking to compiler-rt. Defaults to false, as LLVM
+    /// will emit references to the functions that compiler-rt provides.
     pub no_compiler_rt: bool,
-    /// Dynamically linked executables can be compiled as position independent if the default
-    /// relocation model of position independent code is not changed. This is a requirement to take
-    /// advantage of ASLR, as otherwise the functions in the executable are not randomized and can
-    /// be used during an exploit of a vulnerability in any code.
+    /// Dynamically linked executables can be compiled as position independent
+    /// if the default relocation model of position independent code is not
+    /// changed. This is a requirement to take advantage of ASLR, as otherwise
+    /// the functions in the executable are not randomized and can be used
+    /// during an exploit of a vulnerability in any code.
     pub position_independent_executables: bool,
 }
 
 impl Default for TargetOptions {
-    /// Create a set of "sane defaults" for any target. This is still incomplete, and if used for
-    /// compilation, will certainly not work.
+    /// Create a set of "sane defaults" for any target. This is still
+    /// incomplete, and if used for compilation, will certainly not work.
     fn default() -> TargetOptions {
         TargetOptions {
             linker: "cc".to_string(),
+            ar: "ar".to_string(),
             pre_link_args: Vec::new(),
             post_link_args: Vec::new(),
             cpu: "generic".to_string(),
