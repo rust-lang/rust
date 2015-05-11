@@ -728,29 +728,29 @@ macro_rules! iterator {
 }
 
 macro_rules! make_slice {
-    ($t: ty => $result: ty: $start: expr, $end: expr) => {{
-        let diff = ($end as usize).wrapping_sub($start as usize);
-        let len = if mem::size_of::<T>() == 0 {
-            diff
+    ($start: expr, $end: expr) => {{
+        let start = $start;
+        let diff = ($end as usize).wrapping_sub(start as usize);
+        if size_from_ptr(start) == 0 {
+            // use a non-null pointer value
+            unsafe { from_raw_parts(1 as *const _, diff) }
         } else {
-            diff / mem::size_of::<$t>()
-        };
-        unsafe {
-            from_raw_parts($start, len)
+            let len = diff / size_from_ptr(start);
+            unsafe { from_raw_parts(start, len) }
         }
     }}
 }
 
 macro_rules! make_mut_slice {
-    ($t: ty => $result: ty: $start: expr, $end: expr) => {{
-        let diff = ($end as usize).wrapping_sub($start as usize);
-        let len = if mem::size_of::<T>() == 0 {
-            diff
+    ($start: expr, $end: expr) => {{
+        let start = $start;
+        let diff = ($end as usize).wrapping_sub(start as usize);
+        if size_from_ptr(start) == 0 {
+            // use a non-null pointer value
+            unsafe { from_raw_parts_mut(1 as *mut _, diff) }
         } else {
-            diff / mem::size_of::<$t>()
-        };
-        unsafe {
-            from_raw_parts_mut($start, len)
+            let len = diff / size_from_ptr(start);
+            unsafe { from_raw_parts_mut(start, len) }
         }
     }}
 }
@@ -773,7 +773,7 @@ impl<'a, T> Iter<'a, T> {
     /// iterator can continue to be used while this exists.
     #[unstable(feature = "core")]
     pub fn as_slice(&self) -> &'a [T] {
-        make_slice!(T => &'a [T]: self.ptr, self.end)
+        make_slice!(self.ptr, self.end)
     }
 
     // Helper function for Iter::nth
@@ -841,12 +841,12 @@ impl<'a, T> IterMut<'a, T> {
     /// restricted lifetimes that do not consume the iterator.
     #[unstable(feature = "core")]
     pub fn into_slice(self) -> &'a mut [T] {
-        make_mut_slice!(T => &'a mut [T]: self.ptr, self.end)
+        make_mut_slice!(self.ptr, self.end)
     }
 
     // Helper function for IterMut::nth
     fn iter_nth(&mut self, n: usize) -> Option<&'a mut T> {
-        match make_mut_slice!(T => &'a mut [T]: self.ptr, self.end).get_mut(n) {
+        match make_mut_slice!(self.ptr, self.end).get_mut(n) {
             Some(elem_ref) => unsafe {
                 self.ptr = slice_offset!(self.ptr, (n as isize).wrapping_add(1));
                 Some(slice_ref!(elem_ref))
