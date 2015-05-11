@@ -367,7 +367,7 @@ impl<V> VecMap<V> {
             // Move all elements to other
             swap(self, &mut other);
             return other
-        } else if at > self.v.len() {
+        } else if at >= self.v.len() {
             // No elements to copy
             return other;
         }
