@@ -6,6 +6,7 @@
     * [Hello, Cargo!](hello-cargo.md)
 * [Learn Rust](learn-rust.md)
     * [Guessing Game](guessing-game.md)
+    * [Dining Philosophers](dining-philosophers.md)
 * [Effective Rust](effective-rust.md)
     * [The Stack and the Heap](the-stack-and-the-heap.md)
     * [Testing](testing.md)
