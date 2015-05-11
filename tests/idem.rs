@@ -8,12 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(catch_panic)]
+
 extern crate rustfmt;
 
 use std::collections::HashMap;
 use std::fs;
 use std::io::Read;
-use std::sync::atomic;
+use std::thread;
 use rustfmt::*;
 
 // For now, the only supported regression tests are idempotent tests - the input and
@@ -22,52 +24,75 @@ use rustfmt::*;
 #[test]
 fn idempotent_tests() {
     println!("Idempotent tests:");
-    FAILURES.store(0, atomic::Ordering::Relaxed);
 
     // Get all files in the tests/idem directory
     let files = fs::read_dir("tests/idem").unwrap();
+    let files = files.chain(fs::read_dir("tests").unwrap());
+    let files = files.chain(fs::read_dir("src/bin").unwrap());
+    // turn a DirEntry into a String that represents the relative path to the file
+    let files = files.map(|e| e.unwrap().path().to_str().unwrap().to_owned());
+    // hack because there's no `IntoIterator` impl for `[T; N]`
+    let files = files.chain(Some("src/lib.rs".to_owned()).into_iter());
+
     // For each file, run rustfmt and collect the output
     let mut count = 0;
-    for entry in files {
-        let path = entry.unwrap().path();
-        let file_name = path.to_str().unwrap();
+    let mut fails = 0;
+    for file_name in files.filter(|f| f.ends_with(".rs")) {
         println!("Testing '{}'...", file_name);
-        run(vec!["rustfmt".to_owned(), file_name.to_owned()], WriteMode::Return(HANDLE_RESULT));
+        match idempotent_check(file_name) {
+            Ok(()) => {},
+            Err(m) => {
+                print_mismatches(m);
+                fails += 1;
+            },
+        }
         count += 1;
     }
-    // And also dogfood ourselves!
-    println!("Testing 'src/lib.rs'...");
-    run(vec!["rustfmt".to_string(), "src/lib.rs".to_string()],
-        WriteMode::Return(HANDLE_RESULT));
-    count += 1;
 
     // Display results
-    let fails = FAILURES.load(atomic::Ordering::Relaxed);
     println!("Ran {} idempotent tests; {} failures.", count, fails);
     assert!(fails == 0, "{} idempotent tests failed", fails);
 }
 
-// 'global' used by sys_tests and handle_result.
-static FAILURES: atomic::AtomicUsize = atomic::ATOMIC_USIZE_INIT;
+// Compare output to input.
+fn print_mismatches(result: HashMap<String, String>) {
+    for (file_name, fmt_text) in result {
+        println!("Mismatch in {}.", file_name);
+        println!("{}", fmt_text);
+    }
+}
+
 // Ick, just needed to get a &'static to handle_result.
 static HANDLE_RESULT: &'static Fn(HashMap<String, String>) = &handle_result;
 
+pub fn idempotent_check(filename: String) -> Result<(), HashMap<String, String>> {
+    let args = vec!["rustfmt".to_owned(), filename];
+    // this thread is not used for concurrency, but rather to workaround the issue that the passed
+    // function handle needs to have static lifetime. Instead of using a global RefCell, we use
+    // panic to return a result in case of failure. This has the advantage of smoothing the road to
+    // multithreaded rustfmt
+    thread::catch_panic(move || {
+        run(args, WriteMode::Return(HANDLE_RESULT));
+    }).map_err(|any|
+        // i know it is a hashmap
+        *any.downcast().unwrap()
+    )
+}
+
 // Compare output to input.
 fn handle_result(result: HashMap<String, String>) {
-    let mut fails = 0;
+    let mut failures = HashMap::new();
 
-    for file_name in result.keys() {
-        let mut f = fs::File::open(file_name).unwrap();
+    for (file_name, fmt_text) in result {
+        let mut f = fs::File::open(&file_name).unwrap();
         let mut text = String::new();
+        // TODO: speedup by running through bytes iterator
         f.read_to_string(&mut text).unwrap();
-        if result[file_name] != text {
-            fails += 1;
-            println!("Mismatch in {}.", file_name);
-            println!("{}", result[file_name]);
+        if fmt_text != text {
+            failures.insert(file_name, fmt_text);
         }
     }
-
-    if fails > 0 {
-        FAILURES.fetch_add(1, atomic::Ordering::Relaxed);
+    if !failures.is_empty() {
+        panic!(failures);
     }
 }
