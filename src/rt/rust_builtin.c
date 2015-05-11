@@ -14,7 +14,8 @@
 #include <assert.h>
 #include <stdlib.h>
 
-#if !defined(__WIN32__)
+
+#if !defined(_WIN32)
 #include <dirent.h>
 #include <pthread.h>
 #include <signal.h>
@@ -40,7 +41,9 @@
 
 /* Foreign builtins. */
 //include valgrind.h after stdint.h so that uintptr_t is defined for msys2 w64
+#ifndef _WIN32
 #include "valgrind/valgrind.h"
+#endif
 
 #ifndef _WIN32
 char*
@@ -84,12 +87,7 @@ rust_dirent_t_size() {
 }
 #endif
 
-uintptr_t
-rust_running_on_valgrind() {
-    return RUNNING_ON_VALGRIND;
-}
-
-#if defined(__WIN32__)
+#if defined(_WIN32)
 int
 get_num_cpus() {
     SYSTEM_INFO sysinfo;
@@ -136,14 +134,13 @@ rust_get_num_cpus() {
     return get_num_cpus();
 }
 
-unsigned int
-rust_valgrind_stack_register(void *start, void *end) {
-  return VALGRIND_STACK_REGISTER(start, end);
-}
-
-void
-rust_valgrind_stack_deregister(unsigned int id) {
-  VALGRIND_STACK_DEREGISTER(id);
+uintptr_t
+rust_running_on_valgrind() {
+#ifdef _WIN32
+    return 0;
+#else
+    return RUNNING_ON_VALGRIND;
+#endif
 }
 
 #if defined(__DragonFly__)
