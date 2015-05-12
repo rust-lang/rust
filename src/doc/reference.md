@@ -31,22 +31,26 @@ You may also be interested in the [grammar].
 
 ## Unicode productions
 
-A few productions in Rust's grammar permit Unicode code points outside the ASCII
-range. We define these productions in terms of character properties specified
-in the Unicode standard, rather than in terms of ASCII-range code points. The
-section [Special Unicode Productions](#special-unicode-productions) lists these
-productions.
+A few productions in Rust's grammar permit Unicode code points outside the
+ASCII range. We define these productions in terms of character properties
+specified in the Unicode standard, rather than in terms of ASCII-range code
+points. The grammar has a [Special Unicode Productions][unicodeproductions]
+section that lists these productions.
+
+[unicodeproductions]: grammar.html#special-unicode-productions
 
 ## String table productions
 
 Some rules in the grammar &mdash; notably [unary
 operators](#unary-operator-expressions), [binary
-operators](#binary-operator-expressions), and [keywords](#keywords) &mdash; are
+operators](#binary-operator-expressions), and [keywords][keywords] &mdash; are
 given in a simplified form: as a listing of a table of unquoted, printable
 whitespace-separated strings. These cases form a subset of the rules regarding
 the [token](#tokens) rule, and are assumed to be the result of a
 lexical-analysis phase feeding the parser, driven by a DFA, operating over the
 disjunction of all such string table entries.
+
+[keywords]: grammar.html#keywords
 
 When such a string enclosed in double-quotes (`"`) occurs inside the grammar,
 it is an implicit reference to a single member of such a string table
@@ -75,7 +79,7 @@ An identifier is any nonempty Unicode[^non_ascii_idents] string of the following
 - The first character has property `XID_start`
 - The remaining characters have property `XID_continue`
 
-that does _not_ occur in the set of [keywords](#keywords).
+that does _not_ occur in the set of [keywords][keywords].
 
 > **Note**: `XID_start` and `XID_continue` as character properties cover the
 > character ranges used to form the more familiar C and Java language-family
@@ -401,7 +405,7 @@ Symbols are a general class of printable [token](#tokens) that play structural
 roles in a variety of grammar productions. They are catalogued here for
 completeness as the set of remaining miscellaneous printable tokens that do not
 otherwise appear as [unary operators](#unary-operator-expressions), [binary
-operators](#binary-operator-expressions), or [keywords](#keywords).
+operators](#binary-operator-expressions), or [keywords][keywords].
 
 
 ## Paths
@@ -547,7 +551,7 @@ _name_ s that occur in its body. At the "current layer", they all must repeat
 the same number of times, so ` ( $( $i:ident ),* ; $( $j:ident ),* ) => ( $(
 ($i,$j) ),* )` is valid if given the argument `(a,b,c ; d,e,f)`, but not
 `(a,b,c ; d,e)`. The repetition walks through the choices at that layer in
-lockstep, so the former input transcribes to `( (a,d), (b,e), (c,f) )`.
+lockstep, so the former input transcribes to `(a,d), (b,e), (c,f)`.
 
 Nested repetitions are allowed.
 
@@ -611,7 +615,7 @@ module needs its own source file: [module definitions](#modules) can be nested
 within one file.
 
 Each source file contains a sequence of zero or more `item` definitions, and
-may optionally begin with any number of [attributes](#Items and attributes)
+may optionally begin with any number of [attributes](#items-and-attributes)
 that apply to the containing module, most of which influence the behavior of
 the compiler. The anonymous crate module can have additional attributes that
 apply to the crate as a whole.
@@ -653,7 +657,7 @@ There are several kinds of item:
 * [`use` declarations](#use-declarations)
 * [modules](#modules)
 * [functions](#functions)
-* [type aliases](#type-aliases)
+* [type definitions](grammar.html#type-definitions)
 * [structures](#structures)
 * [enumerations](#enumerations)
 * [constant items](#constant-items)
@@ -773,7 +777,7 @@ extern crate std as ruststd; // linking to 'std' under another name
 A _use declaration_ creates one or more local name bindings synonymous with
 some other [path](#paths). Usually a `use` declaration is used to shorten the
 path required to refer to a module item. These declarations may appear at the
-top of [modules](#modules) and [blocks](#blocks).
+top of [modules](#modules) and [blocks](grammar.html#block-expressions).
 
 > **Note**: Unlike in many languages,
 > `use` declarations in Rust do *not* declare linkage dependency with external crates.
@@ -1144,9 +1148,7 @@ let px: i32 = match p { Point(x, _) => x };
 ```
 
 A _unit-like struct_ is a structure without any fields, defined by leaving off
-the list of fields entirely. Such types will have a single value, just like
-the [unit value `()`](#unit-and-boolean-literals) of the unit type. For
-example:
+the list of fields entirely. Such types will have a single value. For example:
 
 ```
 struct Cookie;
@@ -2436,11 +2438,6 @@ comma:
 (0); // zero in parentheses
 ```
 
-### Unit expressions
-
-The expression `()` denotes the _unit value_, the only value of the type with
-the same name.
-
 ### Structure expressions
 
 There are several forms of structure expressions. A _structure expression_
@@ -3281,7 +3278,7 @@ constructor or `struct` field may refer, directly or indirectly, to the
 enclosing `enum` or `struct` type itself. Such recursion has restrictions:
 
 * Recursive types must include a nominal type in the recursion
-  (not mere [type definitions](#type-definitions),
+  (not mere [type definitions](grammar.html#type-definitions),
    or other structural types such as [arrays](#array,-and-slice-types) or [tuples](#tuple-types)).
 * A recursive `enum` item must have at least one non-recursive constructor
   (in order to give the recursion a basis case).

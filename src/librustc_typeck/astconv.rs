@@ -1603,7 +1603,8 @@ pub fn ast_ty_to_ty<'tcx>(this: &AstConv<'tcx>,
                                         Some(i as usize)),
                         _ => {
                             span_err!(tcx.sess, ast_ty.span, E0249,
-                                      "expected constant expr for array length");
+                                      "expected constant integer expression \
+                                       for array length");
                             this.tcx().types.err
                         }
                     }

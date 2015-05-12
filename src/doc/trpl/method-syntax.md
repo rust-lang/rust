@@ -127,12 +127,12 @@ fn grow(&self) -> Circle {
 We just say we’re returning a `Circle`. With this method, we can grow a new
 circle to any arbitrary size.
 
-# Static methods
+# Associated functions
 
-You can also define static methods that do not take a `self` parameter. Here’s a
-pattern that’s very common in Rust code:
+You can also define associated functions that do not take a `self` parameter.
+Here’s a pattern that’s very common in Rust code:
 
-```
+```rust
 struct Circle {
     x: f64,
     y: f64,
