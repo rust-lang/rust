@@ -1685,7 +1685,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::ty_err => ok_if(Vec::new()),
 
             ty::ty_infer(ty::FreshTy(_))
-            | ty::ty_infer(ty::FreshIntTy(_)) => {
+            | ty::ty_infer(ty::FreshIntTy(_))
+            | ty::ty_infer(ty::FreshFloatTy(_)) => {
                 self.tcx().sess.bug(
                     &format!(
                         "asked to assemble builtin bounds of unexpected type: {}",
@@ -1747,7 +1748,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::ty_projection(..) |
             ty::ty_infer(ty::TyVar(_)) |
             ty::ty_infer(ty::FreshTy(_)) |
-            ty::ty_infer(ty::FreshIntTy(_)) => {
+            ty::ty_infer(ty::FreshIntTy(_)) |
+            ty::ty_infer(ty::FreshFloatTy(_)) => {
                 self.tcx().sess.bug(
                     &format!(
                         "asked to assemble constituent types of unexpected type: {}",

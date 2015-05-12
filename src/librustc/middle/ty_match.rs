@@ -67,7 +67,8 @@ impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Match<'a, 'tcx> {
 
         match (&a.sty, &b.sty) {
             (_, &ty::ty_infer(ty::FreshTy(_))) |
-            (_, &ty::ty_infer(ty::FreshIntTy(_))) => {
+            (_, &ty::ty_infer(ty::FreshIntTy(_))) |
+            (_, &ty::ty_infer(ty::FreshFloatTy(_))) => {
                 Ok(a)
             }
 

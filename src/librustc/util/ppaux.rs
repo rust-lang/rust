@@ -349,7 +349,8 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
             ty::FloatVar(ref vid) if print_var_ids => vid.repr(cx),
             ty::TyVar(_) | ty::IntVar(_) | ty::FloatVar(_) => format!("_"),
             ty::FreshTy(v) => format!("FreshTy({})", v),
-            ty::FreshIntTy(v) => format!("FreshIntTy({})", v)
+            ty::FreshIntTy(v) => format!("FreshIntTy({})", v),
+            ty::FreshFloatTy(v) => format!("FreshFloatTy({})", v)
         }
     }
 
