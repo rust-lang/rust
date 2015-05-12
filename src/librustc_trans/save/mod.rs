@@ -80,8 +80,8 @@ struct DxrVisitor<'l, 'tcx: 'l> {
 }
 
 impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
-    fn nest<F>(&mut self, scope_id: NodeId, f: F) where
-        F: FnOnce(&mut DxrVisitor<'l, 'tcx>),
+    fn nest<F>(&mut self, scope_id: NodeId, f: F)
+        where F: FnOnce(&mut DxrVisitor<'l, 'tcx>)
     {
         let parent_scope = self.cur_scope;
         self.cur_scope = scope_id;
@@ -287,9 +287,11 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
         }
     }
 
-    fn process_method(&mut self, sig: &ast::MethodSig,
+    fn process_method(&mut self,
+                      sig: &ast::MethodSig,
                       body: Option<&ast::Block>,
-                      id: ast::NodeId, name: ast::Name,
+                      id: ast::NodeId,
+                      name: ast::Name,
                       span: Span) {
         if generated_code(span) {
             return;
@@ -408,8 +410,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                                     id);
     }
 
-    fn process_trait_ref(&mut self,
-                         trait_ref: &ast::TraitRef) {
+    fn process_trait_ref(&mut self, trait_ref: &ast::TraitRef) {
         match self.lookup_type_ref(trait_ref.ref_id) {
             Some(id) => {
                 let sub_span = self.span.sub_span_for_type_name(trait_ref.path.span);
@@ -455,7 +456,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
 
     // Dump generic params bindings, then visit_generics
     fn process_generic_params(&mut self,
-                              generics:&ast::Generics,
+                              generics: &ast::Generics,
                               full_span: Span,
                               prefix: &str,
                               id: NodeId) {
@@ -515,8 +516,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                       item: &ast::Item,
                       typ: &ast::Ty,
                       mt: ast::Mutability,
-                      expr: &ast::Expr)
-    {
+                      expr: &ast::Expr) {
         let qualname = format!("::{}", self.analysis.ty_cx.map.path_to_string(item.id));
 
         // If the variable is immutable, save the initialising expression.
@@ -545,8 +545,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                      ident: &ast::Ident,
                      span: Span,
                      typ: &ast::Ty,
-                     expr: &ast::Expr)
-    {
+                     expr: &ast::Expr) {
         let qualname = format!("::{}", self.analysis.ty_cx.map.path_to_string(id));
 
         let sub_span = self.span.sub_span_after_keyword(span,
@@ -762,7 +761,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
     }
 
     fn process_mod(&mut self,
-                   item: &ast::Item,  // The module in question, represented as an item.
+                   item: &ast::Item, // The module in question, represented as an item.
                    m: &ast::Mod) {
         let qualname = format!("::{}", self.analysis.ty_cx.map.path_to_string(item.id));
 
@@ -945,9 +944,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
         visit::walk_expr_opt(self, base)
     }
 
-    fn process_method_call(&mut self,
-                           ex: &ast::Expr,
-                           args: &Vec<P<ast::Expr>>) {
+    fn process_method_call(&mut self, ex: &ast::Expr, args: &Vec<P<ast::Expr>>) {
         let method_map = self.analysis.ty_cx.method_map.borrow();
         let method_callee = method_map.get(&ty::MethodCall::expr(ex.id)).unwrap();
         let (def_id, decl_id) = match method_callee.origin {
@@ -1002,7 +999,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
         visit::walk_exprs(self, &args[..]);
     }
 
-    fn process_pat(&mut self, p:&ast::Pat) {
+    fn process_pat(&mut self, p: &ast::Pat) {
         if generated_code(p.span) {
             return
         }

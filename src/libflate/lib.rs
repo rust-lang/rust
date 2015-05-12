@@ -30,7 +30,9 @@
 #![feature(unique)]
 #![cfg_attr(test, feature(rustc_private, rand, collections))]
 
-#[cfg(test)] #[macro_use] extern crate log;
+#[cfg(test)]
+#[macro_use]
+extern crate log;
 
 extern crate libc;
 
@@ -123,7 +125,7 @@ pub fn deflate_bytes_zlib(bytes: &[u8]) -> Bytes {
     deflate_bytes_internal(bytes, LZ_NORM | TDEFL_WRITE_ZLIB_HEADER)
 }
 
-fn inflate_bytes_internal(bytes: &[u8], flags: c_int) -> Result<Bytes,Error> {
+fn inflate_bytes_internal(bytes: &[u8], flags: c_int) -> Result<Bytes, Error> {
     unsafe {
         let mut outsz: size_t = 0;
         let res = tinfl_decompress_mem_to_heap(bytes.as_ptr() as *const _,
@@ -142,12 +144,12 @@ fn inflate_bytes_internal(bytes: &[u8], flags: c_int) -> Result<Bytes,Error> {
 }
 
 /// Decompress a buffer, without parsing any sort of header on the input.
-pub fn inflate_bytes(bytes: &[u8]) -> Result<Bytes,Error> {
+pub fn inflate_bytes(bytes: &[u8]) -> Result<Bytes, Error> {
     inflate_bytes_internal(bytes, 0)
 }
 
 /// Decompress a buffer that starts with a zlib header.
-pub fn inflate_bytes_zlib(bytes: &[u8]) -> Result<Bytes,Error> {
+pub fn inflate_bytes_zlib(bytes: &[u8]) -> Result<Bytes, Error> {
     inflate_bytes_internal(bytes, TINFL_FLAG_PARSE_ZLIB_HEADER)
 }
 

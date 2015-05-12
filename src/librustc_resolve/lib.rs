@@ -26,9 +26,13 @@
 #![feature(rustc_private)]
 #![feature(staged_api)]
 
-#[macro_use] extern crate log;
-#[macro_use] extern crate syntax;
-#[macro_use] #[no_link] extern crate rustc_bitflags;
+#[macro_use]
+extern crate log;
+#[macro_use]
+extern crate syntax;
+#[macro_use]
+#[no_link]
+extern crate rustc_bitflags;
 
 extern crate rustc;
 
@@ -69,7 +73,8 @@ use syntax::ast::{ExprLoop, ExprWhile, ExprMethodCall};
 use syntax::ast::{ExprPath, ExprStruct, FnDecl};
 use syntax::ast::{ForeignItemFn, ForeignItemStatic, Generics};
 use syntax::ast::{Ident, ImplItem, Item, ItemConst, ItemEnum, ItemExternCrate};
-use syntax::ast::{ItemFn, ItemForeignMod, ItemImpl, ItemMac, ItemMod, ItemStatic, ItemDefaultImpl};
+use syntax::ast::{ItemFn, ItemForeignMod, ItemImpl, ItemMac, ItemMod,
+                  ItemStatic, ItemDefaultImpl};
 use syntax::ast::{ItemStruct, ItemTrait, ItemTy, ItemUse};
 use syntax::ast::{Local, MethodImplItem, Name, NodeId};
 use syntax::ast::{Pat, PatEnum, PatIdent, PatLit, PatQPath};
@@ -195,9 +200,7 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Resolver<'a, 'tcx> {
     fn visit_generics(&mut self, generics: &Generics) {
         self.resolve_generics(generics);
     }
-    fn visit_poly_trait_ref(&mut self,
-                            tref: &ast::PolyTraitRef,
-                            m: &ast::TraitBoundModifier) {
+    fn visit_poly_trait_ref(&mut self, tref: &ast::PolyTraitRef, m: &ast::TraitBoundModifier) {
         match self.resolve_trait_reference(tref.trait_ref.ref_id, &tref.trait_ref.path, 0) {
             Ok(def) => self.record_def(tref.trait_ref.ref_id, def),
             Err(_) => { /* error already reported */ }
@@ -530,11 +533,7 @@ impl NameBindings {
         } else {
             DefModifiers::empty()
         } | DefModifiers::IMPORTABLE;
-        let module_ = Rc::new(Module::new(parent_link,
-                                          def_id,
-                                          kind,
-                                          external,
-                                          is_public));
+        let module_ = Rc::new(Module::new(parent_link, def_id, kind, external, is_public));
         let type_def = self.type_def.borrow().clone();
         match type_def {
             None => {
@@ -852,7 +851,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     fn new(session: &'a Session,
            ast_map: &'a ast_map::Map<'tcx>,
            crate_span: Span,
-           make_glob_map: MakeGlobMap) -> Resolver<'a, 'tcx> {
+           make_glob_map: MakeGlobMap)
+           -> Resolver<'a, 'tcx> {
         let graph_root = NameBindings::new();
 
         graph_root.define_module(NoParentLink,
@@ -975,9 +975,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                      span: Span,
                                      name_search_type: NameSearchType,
                                      lp: LastPrivate)
-                                -> ResolveResult<(Rc<Module>, LastPrivate)> {
-        fn search_parent_externals(needle: Name, module: &Rc<Module>)
-                                -> Option<Rc<Module>> {
+                                     -> ResolveResult<(Rc<Module>, LastPrivate)> {
+        fn search_parent_externals(needle: Name, module: &Rc<Module>) -> Option<Rc<Module>> {
             match module.external_module_children.borrow().get(&needle) {
                 Some(_) => Some(module.clone()),
                 None => match module.parent_link {
@@ -1198,7 +1197,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                      module_: Rc<Module>,
                                      name: Name,
                                      namespace: Namespace)
-                                    -> ResolveResult<(Target, bool)> {
+                                     -> ResolveResult<(Target, bool)> {
         debug!("(resolving item in lexical scope) resolving `{}` in \
                 namespace {:?} in `{}`",
                token::get_name(name),
@@ -1329,7 +1328,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     fn resolve_module_in_lexical_scope(&mut self,
                                        module_: Rc<Module>,
                                        name: Name)
-                                -> ResolveResult<Rc<Module>> {
+                                       -> ResolveResult<Rc<Module>> {
         // If this module is an anonymous module, resolve the item in the
         // lexical scope. Otherwise, resolve the item from the crate root.
         let resolve_result = self.resolve_item_in_lexical_scope(module_, name, TypeNS);
@@ -1370,8 +1369,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     }
 
     /// Returns the nearest normal module parent of the given module.
-    fn get_nearest_normal_module_parent(&mut self, module_: Rc<Module>)
-                                            -> Option<Rc<Module>> {
+    fn get_nearest_normal_module_parent(&mut self, module_: Rc<Module>) -> Option<Rc<Module>> {
         let mut module_ = module_;
         loop {
             match module_.parent_link.clone() {
@@ -1393,8 +1391,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     /// Returns the nearest normal module parent of the given module, or the
     /// module itself if it is a normal module.
-    fn get_nearest_normal_module_parent_or_self(&mut self, module_: Rc<Module>)
-                                                -> Rc<Module> {
+    fn get_nearest_normal_module_parent_or_self(&mut self, module_: Rc<Module>) -> Rc<Module> {
         match module_.kind.get() {
             NormalModuleKind => return module_,
             TraitModuleKind |
@@ -1415,7 +1412,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     fn resolve_module_prefix(&mut self,
                              module_: Rc<Module>,
                              module_path: &[Name])
-                                 -> ResolveResult<ModulePrefixResult> {
+                             -> ResolveResult<ModulePrefixResult> {
         // Start at the current module if we see `self` or `super`, or at the
         // top of the crate otherwise.
         let mut containing_module;
@@ -1608,8 +1605,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     // generate a fake "implementation scope" containing all the
     // implementations thus found, for compatibility with old resolve pass.
 
-    fn with_scope<F>(&mut self, name: Option<Name>, f: F) where
-        F: FnOnce(&mut Resolver),
+    fn with_scope<F>(&mut self, name: Option<Name>, f: F)
+        where F: FnOnce(&mut Resolver)
     {
         let orig_module = self.current_module.clone();
 
@@ -1651,11 +1648,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     /// Wraps the given definition in the appropriate number of `DefUpvar`
     /// wrappers.
-    fn upvarify(&self,
-                ribs: &[Rib],
-                def_like: DefLike,
-                span: Span)
-                -> Option<DefLike> {
+    fn upvarify(&self, ribs: &[Rib], def_like: DefLike, span: Span) -> Option<DefLike> {
         let mut def = match def_like {
             DlDef(def) => def,
             _ => return Some(def_like)
@@ -1742,11 +1735,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     /// Searches the current set of local scopes and
     /// applies translations for closures.
-    fn search_ribs(&self,
-                   ribs: &[Rib],
-                   name: Name,
-                   span: Span)
-                   -> Option<DefLike> {
+    fn search_ribs(&self, ribs: &[Rib], name: Name, span: Span) -> Option<DefLike> {
         // FIXME #4950: Try caching?
 
         for (i, rib) in ribs.iter().enumerate().rev() {
@@ -1915,8 +1904,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
     }
 
-    fn with_type_parameter_rib<F>(&mut self, type_parameters: TypeParameters, f: F) where
-        F: FnOnce(&mut Resolver),
+    fn with_type_parameter_rib<F>(&mut self, type_parameters: TypeParameters, f: F)
+        where F: FnOnce(&mut Resolver)
     {
         match type_parameters {
             HasTypeParameters(generics, space, rib_kind) => {
@@ -1959,16 +1948,16 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
     }
 
-    fn with_label_rib<F>(&mut self, f: F) where
-        F: FnOnce(&mut Resolver),
+    fn with_label_rib<F>(&mut self, f: F)
+        where F: FnOnce(&mut Resolver)
     {
         self.label_ribs.push(Rib::new(NormalRibKind));
         f(self);
         self.label_ribs.pop();
     }
 
-    fn with_constant_rib<F>(&mut self, f: F) where
-        F: FnOnce(&mut Resolver),
+    fn with_constant_rib<F>(&mut self, f: F)
+        where F: FnOnce(&mut Resolver)
     {
         self.value_ribs.push(Rib::new(ConstantItemRibKind));
         self.type_ribs.push(Rib::new(ConstantItemRibKind));
@@ -1977,10 +1966,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         self.value_ribs.pop();
     }
 
-    fn resolve_function(&mut self,
-                        rib_kind: RibKind,
-                        declaration: &FnDecl,
-                        block: &Block) {
+    fn resolve_function(&mut self, rib_kind: RibKind, declaration: &FnDecl, block: &Block) {
         // Create a value rib for the function.
         self.value_ribs.push(Rib::new(rib_kind));
 
@@ -2069,10 +2055,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         result
     }
 
-    fn with_optional_trait_ref<T, F>(&mut self,
-                                     opt_trait_ref: Option<&TraitRef>,
-                                     f: F)
-                                     -> T
+    fn with_optional_trait_ref<T, F>(&mut self, opt_trait_ref: Option<&TraitRef>, f: F) -> T
         where F: FnOnce(&mut Resolver, Option<DefId>) -> T
     {
         let mut new_val = None;
@@ -2203,7 +2186,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     // user and one 'x' came from the macro.
     fn binding_mode_map(&mut self, pat: &Pat) -> BindingMap {
         let mut result = HashMap::new();
-        pat_bindings(&self.def_map, pat, |binding_mode, _id, sp, path1| {
+        pat_bindings(&self.def_map,
+                     pat,
+                     |binding_mode, _id, sp, path1| {
             let name = mtwt::resolve(path1.node);
             result.insert(name, BindingInfo {
                 span: sp,
@@ -2380,7 +2365,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                        // pattern that binds them
                        bindings_list: &mut HashMap<Name, NodeId>) {
         let pat_id = pattern.id;
-        walk_pat(pattern, |pattern| {
+        walk_pat(pattern,
+                 |pattern| {
             match pattern.node {
                 PatIdent(binding_mode, ref path1, _) => {
 
@@ -2618,7 +2604,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         });
     }
 
-    fn resolve_bare_identifier_pattern(&mut self, name: Name, span: Span)
+    fn resolve_bare_identifier_pattern(&mut self,
+                                       name: Name,
+                                       span: Span)
                                        -> BareIdentifierPatternResolution {
         let module = self.current_module.clone();
         match self.resolve_item_in_lexical_scope(module,
@@ -2686,8 +2674,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                    path: &Path,
                                    namespace: Namespace,
                                    check_ribs: bool)
-                                   -> AssocItemResolveResult
-    {
+                                   -> AssocItemResolveResult {
         match maybe_qself {
             Some(&ast::QSelf { position: 0, .. }) =>
                 return TypecheckRequired,
@@ -2729,7 +2716,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     path: &Path,
                     path_depth: usize,
                     namespace: Namespace,
-                    check_ribs: bool) -> Option<PathResolution> {
+                    check_ribs: bool)
+                    -> Option<PathResolution> {
         let span = path.span;
         let segments = &path.segments[..path.segments.len()-path_depth];
 
@@ -2928,7 +2916,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                    span: Span,
                                    segments: &[ast::PathSegment],
                                    namespace: Namespace)
-                                       -> Option<(Def, LastPrivate)> {
+                                   -> Option<(Def, LastPrivate)> {
         let module_path = segments.init().iter()
                                          .map(|ps| ps.identifier.name)
                                          .collect::<Vec<_>>();
@@ -3015,7 +3003,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     fn resolve_item_by_name_in_lexical_scope(&mut self,
                                              name: Name,
                                              namespace: Namespace)
-                                            -> Option<(Def, LastPrivate)> {
+                                             -> Option<(Def, LastPrivate)> {
         // Check the items.
         let module = self.current_module.clone();
         match self.resolve_item_in_lexical_scope(module,
@@ -3058,8 +3046,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
     }
 
-    fn with_no_errors<T, F>(&mut self, f: F) -> T where
-        F: FnOnce(&mut Resolver) -> T,
+    fn with_no_errors<T, F>(&mut self, f: F) -> T
+        where F: FnOnce(&mut Resolver) -> T
     {
         self.emit_errors = false;
         let rs = f(self);
@@ -3074,8 +3062,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     }
 
     fn find_fallback_in_self_type(&mut self, name: Name) -> FallbackSuggestion {
-        fn extract_path_and_node_id(t: &Ty, allow: FallbackChecks)
-                                                    -> Option<(Path, NodeId, FallbackChecks)> {
+        fn extract_path_and_node_id(t: &Ty,
+                                    allow: FallbackChecks)
+                                    -> Option<(Path, NodeId, FallbackChecks)> {
             match t.node {
                 TyPath(None, ref path) => Some((path.clone(), t.id, allow)),
                 TyPtr(ref mut_ty) => extract_path_and_node_id(&*mut_ty.ty, OnlyTraitAndStatics),
@@ -3087,8 +3076,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
         }
 
-        fn get_module(this: &mut Resolver, span: Span, name_path: &[ast::Name])
-                            -> Option<Rc<Module>> {
+        fn get_module(this: &mut Resolver,
+                      span: Span,
+                      name_path: &[ast::Name])
+                      -> Option<Rc<Module>> {
             let root = this.current_module.clone();
             let last_name = name_path.last().unwrap();
 
@@ -3190,8 +3181,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         NoSuggestion
     }
 
-    fn find_best_match_for_name(&mut self, name: &str, max_distance: usize)
-                                -> Option<String> {
+    fn find_best_match_for_name(&mut self, name: &str, max_distance: usize) -> Option<String> {
         let this = &mut *self;
 
         let mut maybes: Vec<token::InternedString> = Vec::new();
@@ -3459,9 +3449,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         debug!("(getting traits containing item) looking for '{}'",
                token::get_name(name));
 
-        fn add_trait_info(found_traits: &mut Vec<DefId>,
-                          trait_def_id: DefId,
-                          name: Name) {
+        fn add_trait_info(found_traits: &mut Vec<DefId>, trait_def_id: DefId, name: Name) {
             debug!("(adding trait info) found trait {}:{} for method '{}'",
                 trait_def_id.krate,
                 trait_def_id.node,
@@ -3548,9 +3536,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     }
 
     fn enforce_default_binding_mode(&mut self,
-                                        pat: &Pat,
-                                        pat_binding_mode: BindingMode,
-                                        descr: &str) {
+                                    pat: &Pat,
+                                    pat_binding_mode: BindingMode,
+                                    descr: &str) {
         match pat_binding_mode {
             BindByValue(_) => {}
             BindByRef(..) => {
