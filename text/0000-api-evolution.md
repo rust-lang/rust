@@ -66,9 +66,10 @@ changes are major.**
 
 ### Principles of the policy
 
-The basic design of the policy is that **minor changes should require at most a
-few local *annotations* to the code you are developing, and in principle no
-changes to your dependencies.**
+The basic design of the policy is that **the same code should be able to run
+against different minor revisions**. Furthermore, minor changes should require
+at most a few local *annotations* to the code you are developing, and in
+principle no changes to your dependencies.
 
 In more detail:
 
@@ -118,16 +119,26 @@ The RFC covers many, but not all breaking changes that are major; it covers
 
 ### Crates
 
-#### Major change: introducing `#[feature]` for the first time.
+#### Major change: going from stable to nightly
 
-Changing a crate from working on stable Rust to *requiring* a nightly is
-considered a breaking change. Crate authors should consider using Cargo
-"features" for their crate to make such use opt-in.
+Changing a crate from working on stable Rust to *requiring* a nightly
+is considered a breaking change. That includes using `#[feature]`
+directly, or using a dependency that does so. Crate authors should
+consider using Cargo "features" for their crate to make such use
+opt-in.
 
-#### Minor change: adding/removing crate dependencies.
+#### Minor change: altering the use of Cargo features
 
-The author is not aware of any possible breakage in altering dependencies (which
-is essentially private anyway).
+Cargo packages can provide
+[opt-in features](http://doc.crates.io/manifest.html#the-[features]-section),
+which enable `#[cfg]` options. When a common dependency is compiled, it is done
+so with the *union* of all features opted into by any packages using the
+dependency. That means that adding or removing a feature could technically break
+other, unrelated code.
+
+However, such breakage always represents a bug: packages are supposed to support
+any combination of features, and if another client of the package depends on a
+given feature, that client should specify the opt-in themselves.
 
 ### Modules
 
@@ -140,7 +151,7 @@ to prevent the breakage from affecting dependencies.
 
 Of course, much of the effect of renaming/moving/removing can be achieved by
 instead using deprecation and `pub use`, and the standard library should not be
-afraid to do so!In the long run, we should consider hiding at least some old
+afraid to do so! In the long run, we should consider hiding at least some old
 deprecated items from the docs, and could even consider putting out a major
 version solely as a kind of "garbage collection" for long-deprecated APIs.
 
@@ -489,7 +500,9 @@ struct Foo<T = u8>(pub T);
 ```
 
 because existing uses of `Foo` are shorthand for `Foo<u8>` which yields the
-identical field type.
+identical field type. (Note: this is not actually true today, since
+[default type parameters](https://github.com/rust-lang/rfcs/pull/213) are not
+fully implemented. But this is the intended semantics.)
 
 On the other hand, the following is not permitted:
 
@@ -687,6 +700,13 @@ use some_module::{* without Foo};
 
 This is especially useful for the case where multiple modules being glob
 imported happen to export items with the same name.
+
+**Default type parameters**
+
+Some of the minor changes for moving to more generic code depends on an
+interplay between defaulted type paramters and type inference, which has been
+[accepted as an RFC](https://github.com/rust-lang/rfcs/pull/213) but not yet
+implemented.
 
 **"Extensible" enums**
 
