@@ -176,7 +176,7 @@ for a full example, the core of which is reproduced here:
 
 ```ignore
 declare_lint!(TEST_LINT, Warn,
-              "Warn about items named 'lintme'")
+              "Warn about items named 'lintme'");
 
 struct Pass;
 
