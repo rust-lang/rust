@@ -123,6 +123,7 @@ macro_rules! wrapping_impl {
         impl Not for Wrapping<$t> {
             type Output = Wrapping<$t>;
 
+            #[inline(always)]
             fn not(self) -> Wrapping<$t> {
                 Wrapping(!self.0)
             }

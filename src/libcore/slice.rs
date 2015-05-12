@@ -631,14 +631,32 @@ fn size_from_ptr<T>(_: *const T) -> usize {
 }
 
 
-// Use macro to be generic over const/mut
-macro_rules! slice_offset {
+// Use macros to be generic over const/mut
+//
+// They require non-negative `$by` because otherwise the expression
+// `(ptr as usize + $by)` would interpret `-1` as `usize::MAX` (and
+// thus trigger a panic when overflow checks are on).
+
+// Use this to do `$ptr + $by`, where `$by` is non-negative.
+macro_rules! slice_add_offset {
     ($ptr:expr, $by:expr) => {{
         let ptr = $ptr;
         if size_from_ptr(ptr) == 0 {
             transmute(ptr as usize + $by)
         } else {
             ptr.offset($by)
+        }
+    }};
+}
+
+// Use this to do `$ptr - $by`, where `$by` is non-negative.
+macro_rules! slice_sub_offset {
+    ($ptr:expr, $by:expr) => {{
+        let ptr = $ptr;
+        if size_from_ptr(ptr) == 0 {
+            transmute(ptr as usize - $by)
+        } else {
+            ptr.offset(-$by)
         }
     }};
 }
@@ -672,7 +690,7 @@ macro_rules! iterator {
                         None
                     } else {
                         let old = self.ptr;
-                        self.ptr = slice_offset!(self.ptr, 1);
+                        self.ptr = slice_add_offset!(self.ptr, 1);
                         Some(slice_ref!(old))
                     }
                 }
@@ -714,7 +732,7 @@ macro_rules! iterator {
                     if self.end == self.ptr {
                         None
                     } else {
-                        self.end = slice_offset!(self.end, -1);
+                        self.end = slice_sub_offset!(self.end, 1);
                         Some(slice_ref!(self.end))
                     }
                 }
@@ -762,46 +780,6 @@ pub struct Iter<'a, T: 'a> {
 unsafe impl<'a, T: Sync> Sync for Iter<'a, T> {}
 unsafe impl<'a, T: Sync> Send for Iter<'a, T> {}
 
-#[unstable(feature = "core")]
-impl<'a, T> ops::Index<ops::Range<usize>> for Iter<'a, T> {
-    type Output = [T];
-
-    #[inline]
-    fn index(&self, index: ops::Range<usize>) -> &[T] {
-        self.as_slice().index(index)
-    }
-}
-
-#[unstable(feature = "core")]
-impl<'a, T> ops::Index<ops::RangeTo<usize>> for Iter<'a, T> {
-    type Output = [T];
-
-    #[inline]
-    fn index(&self, index: ops::RangeTo<usize>) -> &[T] {
-        self.as_slice().index(index)
-    }
-}
-
-#[unstable(feature = "core")]
-impl<'a, T> ops::Index<ops::RangeFrom<usize>> for Iter<'a, T> {
-    type Output = [T];
-
-    #[inline]
-    fn index(&self, index: ops::RangeFrom<usize>) -> &[T] {
-        self.as_slice().index(index)
-    }
-}
-
-#[unstable(feature = "core")]
-impl<'a, T> ops::Index<RangeFull> for Iter<'a, T> {
-    type Output = [T];
-
-    #[inline]
-    fn index(&self, _index: RangeFull) -> &[T] {
-        self.as_slice()
-    }
-}
-
 impl<'a, T> Iter<'a, T> {
     /// View the underlying data as a subslice of the original data.
     ///
@@ -816,7 +794,7 @@ impl<'a, T> Iter<'a, T> {
     fn iter_nth(&mut self, n: usize) -> Option<&'a T> {
         match self.as_slice().get(n) {
             Some(elem_ref) => unsafe {
-                self.ptr = slice_offset!(elem_ref as *const _, 1);
+                self.ptr = slice_add_offset!(elem_ref as *const _, 1);
                 Some(slice_ref!(elem_ref))
             },
             None => {
@@ -873,76 +851,6 @@ pub struct IterMut<'a, T: 'a> {
 unsafe impl<'a, T: Sync> Sync for IterMut<'a, T> {}
 unsafe impl<'a, T: Send> Send for IterMut<'a, T> {}
 
-#[unstable(feature = "core")]
-impl<'a, T> ops::Index<ops::Range<usize>> for IterMut<'a, T> {
-    type Output = [T];
-
-    #[inline]
-    fn index(&self, index: ops::Range<usize>) -> &[T] {
-        self.index(RangeFull).index(index)
-    }
-}
-#[unstable(feature = "core")]
-impl<'a, T> ops::Index<ops::RangeTo<usize>> for IterMut<'a, T> {
-    type Output = [T];
-
-    #[inline]
-    fn index(&self, index: ops::RangeTo<usize>) -> &[T] {
-        self.index(RangeFull).index(index)
-    }
-}
-#[unstable(feature = "core")]
-impl<'a, T> ops::Index<ops::RangeFrom<usize>> for IterMut<'a, T> {
-    type Output = [T];
-
-    #[inline]
-    fn index(&self, index: ops::RangeFrom<usize>) -> &[T] {
-        self.index(RangeFull).index(index)
-    }
-}
-#[unstable(feature = "core")]
-impl<'a, T> ops::Index<RangeFull> for IterMut<'a, T> {
-    type Output = [T];
-
-    #[inline]
-    fn index(&self, _index: RangeFull) -> &[T] {
-        make_slice!(T => &[T]: self.ptr, self.end)
-    }
-}
-
-#[unstable(feature = "core")]
-impl<'a, T> ops::IndexMut<ops::Range<usize>> for IterMut<'a, T> {
-    #[inline]
-    fn index_mut(&mut self, index: ops::Range<usize>) -> &mut [T] {
-        self.index_mut(RangeFull).index_mut(index)
-    }
-}
-#[unstable(feature = "core")]
-impl<'a, T> ops::IndexMut<ops::RangeTo<usize>> for IterMut<'a, T> {
-
-    #[inline]
-    fn index_mut(&mut self, index: ops::RangeTo<usize>) -> &mut [T] {
-        self.index_mut(RangeFull).index_mut(index)
-    }
-}
-#[unstable(feature = "core")]
-impl<'a, T> ops::IndexMut<ops::RangeFrom<usize>> for IterMut<'a, T> {
-
-    #[inline]
-    fn index_mut(&mut self, index: ops::RangeFrom<usize>) -> &mut [T] {
-        self.index_mut(RangeFull).index_mut(index)
-    }
-}
-#[unstable(feature = "core")]
-impl<'a, T> ops::IndexMut<RangeFull> for IterMut<'a, T> {
-
-    #[inline]
-    fn index_mut(&mut self, _index: RangeFull) -> &mut [T] {
-        make_mut_slice!(T => &mut [T]: self.ptr, self.end)
-    }
-}
-
-
 impl<'a, T> IterMut<'a, T> {
     /// View the underlying data as a subslice of the original data.
     ///
@@ -959,7 +867,7 @@ impl<'a, T> IterMut<'a, T> {
     fn iter_nth(&mut self, n: usize) -> Option<&'a mut T> {
         match make_mut_slice!(T => &'a mut [T]: self.ptr, self.end).get_mut(n) {
             Some(elem_ref) => unsafe {
-                self.ptr = slice_offset!(elem_ref as *mut _, 1);
+                self.ptr = slice_add_offset!(elem_ref as *mut _, 1);
                 Some(slice_ref!(elem_ref))
             },
             None => {

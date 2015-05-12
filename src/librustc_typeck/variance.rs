@@ -654,7 +654,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ConstraintContext<'a, 'tcx> {
             ast::ItemTrait(..) => {
                 let trait_def = ty::lookup_trait_def(tcx, did);
                 self.add_constraints_from_trait_ref(&trait_def.generics,
-                                                    &trait_def.trait_ref,
+                                                    trait_def.trait_ref,
                                                     self.invariant);
             }
 
@@ -844,7 +844,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
 
     fn add_constraints_from_trait_ref(&mut self,
                                       generics: &ty::Generics<'tcx>,
-                                      trait_ref: &ty::TraitRef<'tcx>,
+                                      trait_ref: ty::TraitRef<'tcx>,
                                       variance: VarianceTermPtr<'a>) {
         debug!("add_constraints_from_trait_ref: trait_ref={} variance={:?}",
                trait_ref.repr(self.tcx()),
@@ -946,7 +946,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 self.add_constraints_from_region(generics, data.bounds.region_bound, contra);
 
                 // Ignore the SelfSpace, it is erased.
-                self.add_constraints_from_trait_ref(generics, &*poly_trait_ref.0, variance);
+                self.add_constraints_from_trait_ref(generics, poly_trait_ref.0, variance);
 
                 let projections = data.projection_bounds_with_self_ty(self.tcx(),
                                                                       self.tcx().types.err);

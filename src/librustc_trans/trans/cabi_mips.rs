@@ -88,10 +88,10 @@ fn ty_size(ty: Type) -> usize {
 
 fn classify_ret_ty(ccx: &CrateContext, ty: Type) -> ArgType {
     if is_reg_ty(ty) {
-        let attr = if ty == Type::i1(ccx) { Some(Attribute::ZExtAttribute) } else { None };
+        let attr = if ty == Type::i1(ccx) { Some(Attribute::ZExt) } else { None };
         ArgType::direct(ty, None, None, attr)
     } else {
-        ArgType::indirect(ty, Some(Attribute::StructRetAttribute))
+        ArgType::indirect(ty, Some(Attribute::StructRet))
     }
 }
 
@@ -105,7 +105,7 @@ fn classify_arg_ty(ccx: &CrateContext, ty: Type, offset: &mut usize) -> ArgType 
     *offset += align_up_to(size, align * 8) / 8;
 
     if is_reg_ty(ty) {
-        let attr = if ty == Type::i1(ccx) { Some(Attribute::ZExtAttribute) } else { None };
+        let attr = if ty == Type::i1(ccx) { Some(Attribute::ZExt) } else { None };
         ArgType::direct(ty, None, None, attr)
     } else {
         ArgType::direct(

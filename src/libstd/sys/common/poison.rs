@@ -10,6 +10,7 @@
 
 use prelude::v1::*;
 
+use marker::Reflect;
 use cell::UnsafeCell;
 use error::{Error};
 use fmt;
@@ -54,7 +55,7 @@ pub struct Guard {
 
 /// A type of error which can be returned whenever a lock is acquired.
 ///
-/// Both Mutexes and RwLocks are poisoned whenever a task fails while the lock
+/// Both Mutexes and RwLocks are poisoned whenever a thread fails while the lock
 /// is held. The precise semantics for when a lock is poisoned is documented on
 /// each lock, but once a lock is poisoned then all future acquisitions will
 /// return this error.
@@ -67,7 +68,7 @@ pub struct PoisonError<T> {
 /// `try_lock` method.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum TryLockError<T> {
-    /// The lock could not be acquired because another task failed while holding
+    /// The lock could not be acquired because another thread failed while holding
     /// the lock.
     #[stable(feature = "rust1", since = "1.0.0")]
     Poisoned(PoisonError<T>),
@@ -109,7 +110,7 @@ impl<T> fmt::Display for PoisonError<T> {
     }
 }
 
-impl<T: Send> Error for PoisonError<T> {
+impl<T: Send + Reflect> Error for PoisonError<T> {
     fn description(&self) -> &str {
         "poisoned lock: another task failed inside"
     }
@@ -155,13 +156,13 @@ impl<T> fmt::Debug for TryLockError<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Send> fmt::Display for TryLockError<T> {
+impl<T: Send + Reflect> fmt::Display for TryLockError<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.description().fmt(f)
     }
 }
 
-impl<T: Send> Error for TryLockError<T> {
+impl<T: Send + Reflect> Error for TryLockError<T> {
     fn description(&self) -> &str {
         match *self {
             TryLockError::Poisoned(ref p) => p.description(),

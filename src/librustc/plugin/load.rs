@@ -131,7 +131,7 @@ impl<'a> PluginLoader<'a> {
 
             // Intentionally leak the dynamic library. We can't ever unload it
             // since the library can make things that will live arbitrarily long
-            // (e.g. an @-box cycle or a task).
+            // (e.g. an @-box cycle or a thread).
             mem::forget(lib);
 
             registrar

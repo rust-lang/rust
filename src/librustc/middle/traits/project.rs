@@ -25,7 +25,6 @@ use middle::subst::{Subst, Substs};
 use middle::ty::{self, AsPredicate, ReferencesError, RegionEscape,
                  HasProjectionTypes, ToPolyTraitRef, Ty};
 use middle::ty_fold::{self, TypeFoldable, TypeFolder};
-use std::rc::Rc;
 use syntax::ast;
 use syntax::parse::token;
 use util::common::FN_OUTPUT_NAME;
@@ -409,7 +408,10 @@ fn opt_normalize_projection_type<'a,'b,'tcx>(
 }
 
 /// in various error cases, we just set ty_err and return an obligation
-/// that, when fulfilled, will lead to an error
+/// that, when fulfilled, will lead to an error.
+///
+/// FIXME: the ty_err created here can enter the obligation we create,
+/// leading to error messages involving ty_err.
 fn normalize_to_error<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
                                projection_ty: ty::ProjectionTy<'tcx>,
                                cause: ObligationCause<'tcx>,
@@ -525,7 +527,7 @@ fn project_type<'cx,'tcx>(
 fn assemble_candidates_from_param_env<'cx,'tcx>(
     selcx: &mut SelectionContext<'cx,'tcx>,
     obligation: &ProjectionTyObligation<'tcx>,
-    obligation_trait_ref: &Rc<ty::TraitRef<'tcx>>,
+    obligation_trait_ref: &ty::TraitRef<'tcx>,
     candidate_set: &mut ProjectionTyCandidateSet<'tcx>)
 {
     let env_predicates = selcx.param_env().caller_bounds.clone();
@@ -546,7 +548,7 @@ fn assemble_candidates_from_param_env<'cx,'tcx>(
 fn assemble_candidates_from_trait_def<'cx,'tcx>(
     selcx: &mut SelectionContext<'cx,'tcx>,
     obligation: &ProjectionTyObligation<'tcx>,
-    obligation_trait_ref: &Rc<ty::TraitRef<'tcx>>,
+    obligation_trait_ref: &ty::TraitRef<'tcx>,
     candidate_set: &mut ProjectionTyCandidateSet<'tcx>)
 {
     // Check whether the self-type is itself a projection.
@@ -571,7 +573,7 @@ fn assemble_candidates_from_trait_def<'cx,'tcx>(
 fn assemble_candidates_from_predicates<'cx,'tcx>(
     selcx: &mut SelectionContext<'cx,'tcx>,
     obligation: &ProjectionTyObligation<'tcx>,
-    obligation_trait_ref: &Rc<ty::TraitRef<'tcx>>,
+    obligation_trait_ref: &ty::TraitRef<'tcx>,
     candidate_set: &mut ProjectionTyCandidateSet<'tcx>,
     env_predicates: Vec<ty::Predicate<'tcx>>)
 {
@@ -614,7 +616,7 @@ fn assemble_candidates_from_predicates<'cx,'tcx>(
 fn assemble_candidates_from_object_type<'cx,'tcx>(
     selcx: &mut SelectionContext<'cx,'tcx>,
     obligation:  &ProjectionTyObligation<'tcx>,
-    obligation_trait_ref: &Rc<ty::TraitRef<'tcx>>,
+    obligation_trait_ref: &ty::TraitRef<'tcx>,
     candidate_set: &mut ProjectionTyCandidateSet<'tcx>,
     object_ty: Ty<'tcx>)
 {
@@ -641,7 +643,7 @@ fn assemble_candidates_from_object_type<'cx,'tcx>(
 fn assemble_candidates_from_impls<'cx,'tcx>(
     selcx: &mut SelectionContext<'cx,'tcx>,
     obligation: &ProjectionTyObligation<'tcx>,
-    obligation_trait_ref: &Rc<ty::TraitRef<'tcx>>,
+    obligation_trait_ref: &ty::TraitRef<'tcx>,
     candidate_set: &mut ProjectionTyCandidateSet<'tcx>)
     -> Result<(), SelectionError<'tcx>>
 {

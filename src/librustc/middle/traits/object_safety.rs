@@ -57,20 +57,18 @@ pub fn is_object_safe<'tcx>(tcx: &ty::ctxt<'tcx>,
                             -> bool
 {
     // Because we query yes/no results frequently, we keep a cache:
-    let cached_result =
-        tcx.object_safety_cache.borrow().get(&trait_def_id).cloned();
+    let def = ty::lookup_trait_def(tcx, trait_def_id);
 
-    let result =
-        cached_result.unwrap_or_else(|| {
-            let result = object_safety_violations(tcx, trait_def_id).is_empty();
+    let result = def.object_safety().unwrap_or_else(|| {
+        let result = object_safety_violations(tcx, trait_def_id).is_empty();
 
-            // Record just a yes/no result in the cache; this is what is
-            // queried most frequently. Note that this may overwrite a
-            // previous result, but always with the same thing.
-            tcx.object_safety_cache.borrow_mut().insert(trait_def_id, result);
+        // Record just a yes/no result in the cache; this is what is
+        // queried most frequently. Note that this may overwrite a
+        // previous result, but always with the same thing.
+        def.set_object_safety(result);
 
-            result
-        });
+        result
+    });
 
     debug!("is_object_safe({}) = {}", trait_def_id.repr(tcx), result);
 

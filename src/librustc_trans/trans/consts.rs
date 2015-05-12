@@ -186,7 +186,7 @@ fn get_const_val(ccx: &CrateContext,
                  ref_expr: &ast::Expr) -> ValueRef {
     let expr = get_const_expr(ccx, def_id, ref_expr);
     let empty_substs = ccx.tcx().mk_substs(Substs::trans_empty());
-    get_const_expr_as_global(ccx, expr, check_const::ConstQualif::PURE_CONST, empty_substs)
+    get_const_expr_as_global(ccx, expr, check_const::ConstQualif::empty(), empty_substs)
 }
 
 pub fn get_const_expr_as_global<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,

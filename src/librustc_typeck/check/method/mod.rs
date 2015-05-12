@@ -170,7 +170,7 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
     // Construct a trait-reference `self_ty : Trait<input_tys>`
     let substs = subst::Substs::new_trait(input_types, Vec::new(), self_ty);
-    let trait_ref = Rc::new(ty::TraitRef::new(trait_def_id, fcx.tcx().mk_substs(substs)));
+    let trait_ref = ty::TraitRef::new(trait_def_id, fcx.tcx().mk_substs(substs));
 
     // Construct an obligation
     let poly_trait_ref = trait_ref.to_poly_trait_ref();

@@ -214,7 +214,7 @@ we can use the `unwrap()` method:
 io::stdin().read_line(&mut buffer).unwrap();
 ```
 
-`unwrap()` will `panic!` if the `Option` is `None`. This basically says "Give
+`unwrap()` will `panic!` if the `Result` is `Err`. This basically says "Give
 me the value, and if something goes wrong, just crash." This is less reliable
 than matching the error and attempting to recover, but is also significantly
 shorter. Sometimes, just crashing is appropriate.
@@ -252,7 +252,7 @@ struct Info {
 }
 
 fn write_info(info: &Info) -> io::Result<()> {
-    let mut file = File::open("my_best_friends.txt").unwrap();
+    let mut file = File::create("my_best_friends.txt").unwrap();
 
     if let Err(e) = writeln!(&mut file, "name: {}", info.name) {
         return Err(e)
@@ -282,7 +282,7 @@ struct Info {
 }
 
 fn write_info(info: &Info) -> io::Result<()> {
-    let mut file = try!(File::open("my_best_friends.txt"));
+    let mut file = try!(File::create("my_best_friends.txt"));
 
     try!(writeln!(&mut file, "name: {}", info.name));
     try!(writeln!(&mut file, "age: {}", info.age));

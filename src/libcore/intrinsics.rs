@@ -232,10 +232,6 @@ extern "rust-intrinsic" {
     pub fn uninit<T>() -> T;
 
     /// Moves a value out of scope without running drop glue.
-    ///
-    /// `forget` is unsafe because the caller is responsible for
-    /// ensuring the argument is deallocated already.
-    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn forget<T>(_: T) -> ();
 
     /// Unsafely transforms a value of one type into a value of another type.
@@ -266,9 +262,6 @@ extern "rust-intrinsic" {
     /// If the actual type neither requires drop glue nor implements
     /// `Copy`, then may return `true` or `false`.
     pub fn needs_drop<T>() -> bool;
-
-    /// Returns `true` if a type is managed (will be allocated on the local heap)
-    pub fn owns_managed<T>() -> bool;
 
     /// Calculates the offset from a pointer.
     ///

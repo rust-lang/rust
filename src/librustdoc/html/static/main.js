@@ -806,22 +806,35 @@
         window.location = $('.srclink').attr('href');
     }
 
+    function labelForToggleButton(sectionIsCollapsed) {
+        if (sectionIsCollapsed) {
+            // button will expand the section
+            return "+";
+        } else {
+            // button will collapse the section
+            // note that this text is also set in the HTML template in render.rs
+            return "\u2212"; // "\u2212" is '−' minus sign
+        }
+    }
+
     $("#toggle-all-docs").on("click", function() {
         var toggle = $("#toggle-all-docs");
-        if (toggle.html() == "[&minus;]") {
-            toggle.html("[&plus;]");
-            toggle.attr("title", "expand all docs");
-            $(".docblock").hide();
-            $(".toggle-label").show();
-            $(".toggle-wrapper").addClass("collapsed");
-            $(".collapse-toggle").children(".inner").html("&plus;");
-        } else {
-            toggle.html("[&minus;]");
+        if (toggle.hasClass("will-expand")) {
+            toggle.removeClass("will-expand");
+            toggle.children(".inner").text(labelForToggleButton(false));
             toggle.attr("title", "collapse all docs");
             $(".docblock").show();
             $(".toggle-label").hide();
             $(".toggle-wrapper").removeClass("collapsed");
-            $(".collapse-toggle").children(".inner").html("&minus;");
+            $(".collapse-toggle").children(".inner").text(labelForToggleButton(false));
+        } else {
+            toggle.addClass("will-expand");
+            toggle.children(".inner").text(labelForToggleButton(true));
+            toggle.attr("title", "expand all docs");
+            $(".docblock").hide();
+            $(".toggle-label").show();
+            $(".toggle-wrapper").addClass("collapsed");
+            $(".collapse-toggle").children(".inner").text(labelForToggleButton(true));
         }
     });
 
@@ -835,12 +848,12 @@
             if (relatedDoc.is(":visible")) {
                 relatedDoc.slideUp({duration:'fast', easing:'linear'});
                 toggle.parent(".toggle-wrapper").addClass("collapsed");
-                toggle.children(".inner").html("&plus;");
+                toggle.children(".inner").text(labelForToggleButton(true));
                 toggle.children(".toggle-label").fadeIn();
             } else {
                 relatedDoc.slideDown({duration:'fast', easing:'linear'});
                 toggle.parent(".toggle-wrapper").removeClass("collapsed");
-                toggle.children(".inner").html("&minus;");
+                toggle.children(".inner").text(labelForToggleButton(false));
                 toggle.children(".toggle-label").hide();
             }
         }
@@ -848,7 +861,8 @@
 
     $(function() {
         var toggle = $("<a/>", {'href': 'javascript:void(0)', 'class': 'collapse-toggle'})
-            .html("[<span class='inner'>&minus;</span>]");
+            .html("[<span class='inner'></span>]");
+        toggle.children(".inner").text(labelForToggleButton(false));
 
         $(".method").each(function() {
             if ($(this).next().is(".docblock") ||

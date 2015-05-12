@@ -85,7 +85,7 @@ safety, and the mechanism by which Rust guarantees it, the
 > You may have one or the other of these two kinds of borrows, but not both at
 > the same time:
 > 
-> * 0 to N references (`&T`) to a resource.
+> * one or more references (`&T`) to a resource.
 > * exactly one mutable reference (`&mut T`)
 
 [ownership]: ownership.html

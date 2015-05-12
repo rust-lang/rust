@@ -60,8 +60,8 @@ mod arch {
 #[cfg(any(target_arch = "mips",
           target_arch = "mipsel"))]
 mod arch {
-    use super::{dev_t, mode_t};
-    use os::raw::c_long;
+    use super::mode_t;
+    use os::raw::{c_long, c_ulong};
     use os::unix::raw::{gid_t, uid_t};
 
     pub type blkcnt_t = i32;

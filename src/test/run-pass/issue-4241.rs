@@ -28,7 +28,7 @@ enum Result {
   Status(String)
 }
 
-priv fn parse_data(len: usize, io: @io::Reader) -> Result {
+fn parse_data(len: usize, io: @io::Reader) -> Result {
   let res =
       if (len > 0) {
       let bytes = io.read_bytes(len as usize);
@@ -42,7 +42,7 @@ priv fn parse_data(len: usize, io: @io::Reader) -> Result {
   return res;
 }
 
-priv fn parse_list(len: usize, io: @io::Reader) -> Result {
+fn parse_list(len: usize, io: @io::Reader) -> Result {
     let mut list: ~[Result] = ~[];
     for _ in 0..len {
         let v = match io.read_char() {
@@ -55,11 +55,11 @@ priv fn parse_list(len: usize, io: @io::Reader) -> Result {
     return List(list);
 }
 
-priv fn chop(s: String) -> String {
+fn chop(s: String) -> String {
   s.slice(0, s.len() - 1).to_string()
 }
 
-priv fn parse_bulk(io: @io::Reader) -> Result {
+fn parse_bulk(io: @io::Reader) -> Result {
     match from_str::<isize>(chop(io.read_line())) {
     None => panic!(),
     Some(-1) => Nil,
@@ -68,7 +68,7 @@ priv fn parse_bulk(io: @io::Reader) -> Result {
     }
 }
 
-priv fn parse_multi(io: @io::Reader) -> Result {
+fn parse_multi(io: @io::Reader) -> Result {
     match from_str::<isize>(chop(io.read_line())) {
     None => panic!(),
     Some(-1) => Nil,
@@ -78,14 +78,14 @@ priv fn parse_multi(io: @io::Reader) -> Result {
     }
 }
 
-priv fn parse_int(io: @io::Reader) -> Result {
+fn parse_int(io: @io::Reader) -> Result {
     match from_str::<isize>(chop(io.read_line())) {
     None => panic!(),
     Some(i) => Int(i)
     }
 }
 
-priv fn parse_response(io: @io::Reader) -> Result {
+fn parse_response(io: @io::Reader) -> Result {
     match io.read_char() {
     '$' => parse_bulk(io),
     '*' => parse_multi(io),
@@ -96,7 +96,7 @@ priv fn parse_response(io: @io::Reader) -> Result {
     }
 }
 
-priv fn cmd_to_string(cmd: ~[String]) -> String {
+fn cmd_to_string(cmd: ~[String]) -> String {
   let mut res = "*".to_string();
   res.push_str(cmd.len().to_string());
   res.push_str("\r\n");

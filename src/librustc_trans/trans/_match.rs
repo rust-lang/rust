@@ -210,6 +210,7 @@ use trans::consts;
 use trans::datum::*;
 use trans::debuginfo::{self, DebugLoc, ToDebugLoc};
 use trans::expr::{self, Dest};
+use trans::monomorphize;
 use trans::tvec;
 use trans::type_of;
 use middle::ty::{self, Ty};
@@ -1076,9 +1077,39 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     let adt_vals = if any_irrefutable_adt_pat(bcx.tcx(), m, col) {
         let repr = adt::represent_type(bcx.ccx(), left_ty);
         let arg_count = adt::num_args(&*repr, 0);
-        let field_vals: Vec<ValueRef> = (0..arg_count).map(|ix|
-            adt::trans_field_ptr(bcx, &*repr, val, 0, ix)
+        let (arg_count, struct_val) = if type_is_sized(bcx.tcx(), left_ty) {
+            (arg_count, val)
+        } else {
+            // For an unsized ADT (i.e. DST struct), we need to treat
+            // the last field specially: instead of simply passing a
+            // ValueRef pointing to that field, as with all the others,
+            // we skip it and instead construct a 'fat ptr' below.
+            (arg_count - 1, Load(bcx, expr::get_dataptr(bcx, val)))
+        };
+        let mut field_vals: Vec<ValueRef> = (0..arg_count).map(|ix|
+            adt::trans_field_ptr(bcx, &*repr, struct_val, 0, ix)
         ).collect();
+
+        match left_ty.sty {
+            ty::ty_struct(def_id, substs) if !type_is_sized(bcx.tcx(), left_ty) => {
+                // The last field is technically unsized but
+                // since we can only ever match that field behind
+                // a reference we construct a fat ptr here.
+                let fields = ty::lookup_struct_fields(bcx.tcx(), def_id);
+                let unsized_ty = fields.iter().last().map(|field| {
+                    let fty = ty::lookup_field_type(bcx.tcx(), def_id, field.id, substs);
+                    monomorphize::normalize_associated_type(bcx.tcx(), &fty)
+                }).unwrap();
+                let llty = type_of::type_of(bcx.ccx(), unsized_ty);
+                let scratch = alloca_no_lifetime(bcx, llty, "__struct_field_fat_ptr");
+                let data = adt::trans_field_ptr(bcx, &*repr, struct_val, 0, arg_count);
+                let len = Load(bcx, expr::get_len(bcx, val));
+                Store(bcx, data, expr::get_dataptr(bcx, scratch));
+                Store(bcx, len, expr::get_len(bcx, scratch));
+                field_vals.push(scratch);
+            }
+            _ => {}
+        }
         Some(field_vals)
     } else if any_uniq_pat(m, col) || any_region_pat(m, col) {
         Some(vec!(Load(bcx, val)))

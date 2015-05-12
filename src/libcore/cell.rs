@@ -24,7 +24,8 @@
 //! claim temporary, exclusive, mutable access to the inner value. Borrows for `RefCell<T>`s are
 //! tracked 'at runtime', unlike Rust's native reference types which are entirely tracked
 //! statically, at compile time. Because `RefCell<T>` borrows are dynamic it is possible to attempt
-//! to borrow a value that is already mutably borrowed; when this happens it results in task panic.
+//! to borrow a value that is already mutably borrowed; when this happens it results in thread
+//! panic.
 //!
 //! # When to choose interior mutability
 //!
@@ -100,7 +101,7 @@
 //!         // Recursive call to return the just-cached value.
 //!         // Note that if we had not let the previous borrow
 //!         // of the cache fall out of scope then the subsequent
-//!         // recursive borrow would cause a dynamic task panic.
+//!         // recursive borrow would cause a dynamic thread panic.
 //!         // This is the major hazard of using `RefCell`.
 //!         self.minimum_spanning_tree()
 //!     }
@@ -144,7 +145,7 @@
 use clone::Clone;
 use cmp::PartialEq;
 use default::Default;
-use marker::{Copy, Send, Sync};
+use marker::{Copy, Send, Sync, Sized};
 use ops::{Deref, DerefMut, Drop};
 use option::Option;
 use option::Option::{None, Some};
@@ -266,9 +267,9 @@ impl<T:PartialEq + Copy> PartialEq for Cell<T> {
 ///
 /// See the [module-level documentation](index.html) for more.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct RefCell<T> {
-    value: UnsafeCell<T>,
+pub struct RefCell<T: ?Sized> {
     borrow: Cell<BorrowFlag>,
+    value: UnsafeCell<T>,
 }
 
 /// An enumeration of values returned from the `state` method on a `RefCell<T>`.
@@ -328,7 +329,9 @@ impl<T> RefCell<T> {
         debug_assert!(self.borrow.get() == UNUSED);
         unsafe { self.value.into_inner() }
     }
+}
 
+impl<T: ?Sized> RefCell<T> {
     /// Query the current state of this `RefCell`
     ///
     /// The returned value can be dispatched on to determine if a call to
@@ -449,7 +452,7 @@ impl<T> RefCell<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-unsafe impl<T> Send for RefCell<T> where T: Send {}
+unsafe impl<T: ?Sized> Send for RefCell<T> where T: Send {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Clone> Clone for RefCell<T> {
@@ -469,7 +472,7 @@ impl<T:Default> Default for RefCell<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: PartialEq> PartialEq for RefCell<T> {
+impl<T: ?Sized + PartialEq> PartialEq for RefCell<T> {
     #[inline]
     fn eq(&self, other: &RefCell<T>) -> bool {
         *self.borrow() == *other.borrow()
@@ -519,7 +522,7 @@ impl<'b> Clone for BorrowRef<'b> {
 ///
 /// See the [module-level documentation](index.html) for more.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct Ref<'b, T:'b> {
+pub struct Ref<'b, T: ?Sized + 'b> {
     // FIXME #12808: strange name to try to avoid interfering with
     // field accesses of the contained type via Deref
     _value: &'b T,
@@ -527,7 +530,7 @@ pub struct Ref<'b, T:'b> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'b, T> Deref for Ref<'b, T> {
+impl<'b, T: ?Sized> Deref for Ref<'b, T> {
     type Target = T;
 
     #[inline]
@@ -582,7 +585,7 @@ impl<'b> BorrowRefMut<'b> {
 ///
 /// See the [module-level documentation](index.html) for more.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct RefMut<'b, T:'b> {
+pub struct RefMut<'b, T: ?Sized + 'b> {
     // FIXME #12808: strange name to try to avoid interfering with
     // field accesses of the contained type via Deref
     _value: &'b mut T,
@@ -590,7 +593,7 @@ pub struct RefMut<'b, T:'b> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'b, T> Deref for RefMut<'b, T> {
+impl<'b, T: ?Sized> Deref for RefMut<'b, T> {
     type Target = T;
 
     #[inline]
@@ -600,7 +603,7 @@ impl<'b, T> Deref for RefMut<'b, T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'b, T> DerefMut for RefMut<'b, T> {
+impl<'b, T: ?Sized> DerefMut for RefMut<'b, T> {
     #[inline]
     fn deref_mut<'a>(&'a mut self) -> &'a mut T {
         self._value
@@ -631,9 +634,9 @@ impl<'b, T> DerefMut for RefMut<'b, T> {
 ///
 /// **NOTE:** `UnsafeCell<T>`'s fields are public to allow static initializers. It is not
 /// recommended to access its fields directly, `get` should be used instead.
-#[lang="unsafe_cell"]
+#[lang = "unsafe_cell"]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct UnsafeCell<T> {
+pub struct UnsafeCell<T: ?Sized> {
     /// Wrapped value
     ///
     /// This field should not be accessed directly, it is made public for static
@@ -642,7 +645,7 @@ pub struct UnsafeCell<T> {
     pub value: T,
 }
 
-impl<T> !Sync for UnsafeCell<T> {}
+impl<T: ?Sized> !Sync for UnsafeCell<T> {}
 
 impl<T> UnsafeCell<T> {
     /// Constructs a new instance of `UnsafeCell` which will wrap the specified
@@ -664,25 +667,6 @@ impl<T> UnsafeCell<T> {
         UnsafeCell { value: value }
     }
 
-    /// Gets a mutable pointer to the wrapped value.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::cell::UnsafeCell;
-    ///
-    /// let uc = UnsafeCell::new(5);
-    ///
-    /// let five = uc.get();
-    /// ```
-    #[inline]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn get(&self) -> *mut T {
-        // FIXME(#23542) Replace with type ascription.
-        #![allow(trivial_casts)]
-        &self.value as *const T as *mut T
-    }
-
     /// Unwraps the value.
     ///
     /// # Unsafety
@@ -702,4 +686,26 @@ impl<T> UnsafeCell<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub unsafe fn into_inner(self) -> T { self.value }
+}
+
+impl<T: ?Sized> UnsafeCell<T> {
+    /// Gets a mutable pointer to the wrapped value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::cell::UnsafeCell;
+    ///
+    /// let uc = UnsafeCell::new(5);
+    ///
+    /// let five = uc.get();
+    /// ```
+    #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn get(&self) -> *mut T {
+        // FIXME(#23542) Replace with type ascription.
+        #![allow(trivial_casts)]
+        &self.value as *const T as *mut T
+    }
+
 }

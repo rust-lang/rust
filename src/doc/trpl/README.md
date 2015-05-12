@@ -40,6 +40,11 @@ want to dive in with a project, or ‘Syntax and Semantics’ if you prefer to
 start small, and learn a single concept thoroughly before moving onto the next.
 Copious cross-linking connects these parts together.
 
+### Contributing
+
+The source files from which this book is generated can be found on Github:
+[github.com/rust-lang/rust/tree/master/src/doc/trpl](https://github.com/rust-lang/rust/tree/master/src/doc/trpl)
+
 ## A brief introduction to Rust
 
 Is Rust a language you might be interested in? Let’s examine a few small code
@@ -190,5 +195,5 @@ fn main() {
 We created an inner scope with an additional set of curly braces. `y` will go out of
 scope before we call `push()`, and so we’re all good.
 
-This concept of ownership isn’t just good for preventing danging pointers, but an
+This concept of ownership isn’t just good for preventing dangling pointers, but an
 entire set of related problems, like iterator invalidation, concurrency, and more.

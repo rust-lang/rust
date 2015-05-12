@@ -29,6 +29,8 @@ mod u16;
 mod u32;
 mod u64;
 
+mod flt2dec;
+
 /// Helper function for testing numeric operations
 pub fn test_num<T>(ten: T, two: T) where
     T: PartialEq

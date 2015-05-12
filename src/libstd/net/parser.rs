@@ -61,7 +61,7 @@ impl<'a> Parser<'a> {
     }
 
     // Return result of first successful parser
-    fn read_or<T>(&mut self, parsers: &mut [Box<FnMut(&mut Parser) -> Option<T>>])
+    fn read_or<T>(&mut self, parsers: &mut [Box<FnMut(&mut Parser) -> Option<T> + 'static>])
                -> Option<T> {
         for pf in parsers.iter_mut() {
             match self.read_atomically(|p: &mut Parser| pf(p)) {
@@ -291,7 +291,7 @@ impl<'a> Parser<'a> {
     }
 }
 
-#[unstable(feature = "ip_addr", reason = "recent addition")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl FromStr for IpAddr {
     type Err = AddrParseError;
     fn from_str(s: &str) -> Result<IpAddr, AddrParseError> {

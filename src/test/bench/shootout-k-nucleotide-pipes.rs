@@ -11,7 +11,7 @@
 // ignore-android: FIXME(#10393) hangs without output
 // ignore-pretty very bad with line comments
 
-// multi tasking k-nucleotide
+// multi threading k-nucleotide
 
 use std::ascii::AsciiExt;
 use std::cmp::Ordering::{self, Less, Greater, Equal};

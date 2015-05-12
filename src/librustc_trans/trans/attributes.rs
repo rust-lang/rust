@@ -39,13 +39,13 @@ pub fn split_stack(val: ValueRef, set: bool) {
 pub fn inline(val: ValueRef, inline: InlineAttr) {
     use self::InlineAttr::*;
     match inline {
-        Hint   => llvm::SetFunctionAttribute(val, llvm::Attribute::InlineHintAttribute),
-        Always => llvm::SetFunctionAttribute(val, llvm::Attribute::AlwaysInlineAttribute),
-        Never  => llvm::SetFunctionAttribute(val, llvm::Attribute::NoInlineAttribute),
+        Hint   => llvm::SetFunctionAttribute(val, llvm::Attribute::InlineHint),
+        Always => llvm::SetFunctionAttribute(val, llvm::Attribute::AlwaysInline),
+        Never  => llvm::SetFunctionAttribute(val, llvm::Attribute::NoInline),
         None   => {
-            let attr = llvm::Attribute::InlineHintAttribute |
-                       llvm::Attribute::AlwaysInlineAttribute |
-                       llvm::Attribute::NoInlineAttribute;
+            let attr = llvm::Attribute::InlineHint |
+                       llvm::Attribute::AlwaysInline |
+                       llvm::Attribute::NoInline;
             unsafe {
                 llvm::LLVMRemoveFunctionAttr(val, attr.bits() as c_ulonglong)
             }
@@ -57,12 +57,12 @@ pub fn inline(val: ValueRef, inline: InlineAttr) {
 #[inline]
 pub fn emit_uwtable(val: ValueRef, emit: bool) {
     if emit {
-        llvm::SetFunctionAttribute(val, llvm::Attribute::UWTableAttribute);
+        llvm::SetFunctionAttribute(val, llvm::Attribute::UWTable);
     } else {
         unsafe {
             llvm::LLVMRemoveFunctionAttr(
                 val,
-                llvm::Attribute::UWTableAttribute.bits() as c_ulonglong,
+                llvm::Attribute::UWTable.bits() as c_ulonglong,
             );
         }
     }
@@ -76,11 +76,11 @@ pub fn unwind(val: ValueRef, can_unwind: bool) {
         unsafe {
             llvm::LLVMRemoveFunctionAttr(
                 val,
-                llvm::Attribute::NoUnwindAttribute.bits() as c_ulonglong,
+                llvm::Attribute::NoUnwind.bits() as c_ulonglong,
             );
         }
     } else {
-        llvm::SetFunctionAttribute(val, llvm::Attribute::NoUnwindAttribute);
+        llvm::SetFunctionAttribute(val, llvm::Attribute::NoUnwind);
     }
 }
 
@@ -89,12 +89,12 @@ pub fn unwind(val: ValueRef, can_unwind: bool) {
 #[allow(dead_code)] // possibly useful function
 pub fn set_optimize_for_size(val: ValueRef, optimize: bool) {
     if optimize {
-        llvm::SetFunctionAttribute(val, llvm::Attribute::OptimizeForSizeAttribute);
+        llvm::SetFunctionAttribute(val, llvm::Attribute::OptimizeForSize);
     } else {
         unsafe {
             llvm::LLVMRemoveFunctionAttr(
                 val,
-                llvm::Attribute::OptimizeForSizeAttribute.bits() as c_ulonglong,
+                llvm::Attribute::OptimizeForSize.bits() as c_ulonglong,
             );
         }
     }
@@ -116,7 +116,7 @@ pub fn from_fn_attrs(ccx: &CrateContext, attrs: &[ast::Attribute], llfn: ValueRe
                                                llvm::ColdAttribute as u64)
             }
         } else if attr.check_name("allocator") {
-            llvm::Attribute::NoAliasAttribute.apply_llfn(llvm::ReturnIndex as c_uint, llfn);
+            llvm::Attribute::NoAlias.apply_llfn(llvm::ReturnIndex as c_uint, llfn);
         }
     }
 }
@@ -185,9 +185,9 @@ pub fn from_fn_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_type: ty::Ty<'tcx
             // The outptr can be noalias and nocapture because it's entirely
             // invisible to the program. We also know it's nonnull as well
             // as how many bytes we can dereference
-            attrs.arg(1, llvm::Attribute::StructRetAttribute)
-                 .arg(1, llvm::Attribute::NoAliasAttribute)
-                 .arg(1, llvm::Attribute::NoCaptureAttribute)
+            attrs.arg(1, llvm::Attribute::StructRet)
+                 .arg(1, llvm::Attribute::NoAlias)
+                 .arg(1, llvm::Attribute::NoCapture)
                  .arg(1, llvm::DereferenceableAttribute(llret_sz));
 
             // Add one more since there's an outptr
@@ -199,7 +199,7 @@ pub fn from_fn_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_type: ty::Ty<'tcx
                 // `~` pointer return values never alias because ownership
                 // is transferred
                 ty::ty_uniq(it) if common::type_is_sized(ccx.tcx(), it) => {
-                    attrs.ret(llvm::Attribute::NoAliasAttribute);
+                    attrs.ret(llvm::Attribute::NoAlias);
                 }
                 _ => {}
             }
@@ -216,7 +216,7 @@ pub fn from_fn_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_type: ty::Ty<'tcx
             }
 
             if let ty::ty_bool = ret_ty.sty {
-                attrs.ret(llvm::Attribute::ZExtAttribute);
+                attrs.ret(llvm::Attribute::ZExt);
             }
         }
     }
@@ -230,20 +230,20 @@ pub fn from_fn_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_type: ty::Ty<'tcx
                 // For non-immediate arguments the callee gets its own copy of
                 // the value on the stack, so there are no aliases. It's also
                 // program-invisible so can't possibly capture
-                attrs.arg(idx, llvm::Attribute::NoAliasAttribute)
-                     .arg(idx, llvm::Attribute::NoCaptureAttribute)
+                attrs.arg(idx, llvm::Attribute::NoAlias)
+                     .arg(idx, llvm::Attribute::NoCapture)
                      .arg(idx, llvm::DereferenceableAttribute(llarg_sz));
             }
 
             ty::ty_bool => {
-                attrs.arg(idx, llvm::Attribute::ZExtAttribute);
+                attrs.arg(idx, llvm::Attribute::ZExt);
             }
 
             // `~` pointer parameters never alias because ownership is transferred
             ty::ty_uniq(inner) => {
                 let llsz = machine::llsize_of_real(ccx, type_of::type_of(ccx, inner));
 
-                attrs.arg(idx, llvm::Attribute::NoAliasAttribute)
+                attrs.arg(idx, llvm::Attribute::NoAlias)
                      .arg(idx, llvm::DereferenceableAttribute(llsz));
             }
 
@@ -256,15 +256,15 @@ pub fn from_fn_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_type: ty::Ty<'tcx
                                   !ty::type_contents(ccx.tcx(), mt.ty).interior_unsafe() => {
 
                 let llsz = machine::llsize_of_real(ccx, type_of::type_of(ccx, mt.ty));
-                attrs.arg(idx, llvm::Attribute::NoAliasAttribute)
+                attrs.arg(idx, llvm::Attribute::NoAlias)
                      .arg(idx, llvm::DereferenceableAttribute(llsz));
 
                 if mt.mutbl == ast::MutImmutable {
-                    attrs.arg(idx, llvm::Attribute::ReadOnlyAttribute);
+                    attrs.arg(idx, llvm::Attribute::ReadOnly);
                 }
 
                 if let ReLateBound(_, BrAnon(_)) = *b {
-                    attrs.arg(idx, llvm::Attribute::NoCaptureAttribute);
+                    attrs.arg(idx, llvm::Attribute::NoCapture);
                 }
             }
 
@@ -272,7 +272,7 @@ pub fn from_fn_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_type: ty::Ty<'tcx
             // reference to escape this function (returned or stored beyond the call by a closure).
             ty::ty_rptr(&ReLateBound(_, BrAnon(_)), mt) => {
                 let llsz = machine::llsize_of_real(ccx, type_of::type_of(ccx, mt.ty));
-                attrs.arg(idx, llvm::Attribute::NoCaptureAttribute)
+                attrs.arg(idx, llvm::Attribute::NoCapture)
                      .arg(idx, llvm::DereferenceableAttribute(llsz));
             }
 

@@ -15,13 +15,13 @@
 //!
 //! # Examples
 //!
-//! Explicitly creating a `Vec<T>` with `new()`:
+//! You can explicitly create a `Vec<T>` with `new()`:
 //!
 //! ```
 //! let xs: Vec<i32> = Vec::new();
 //! ```
 //!
-//! Using the `vec!` macro:
+//! ...or by using the `vec!` macro:
 //!
 //! ```
 //! let ys: Vec<i32> = vec![];
@@ -29,7 +29,7 @@
 //! let zs = vec![1i32, 2, 3, 4, 5];
 //! ```
 //!
-//! Push:
+//! You can `push` values onto the end of a vector (which will grow the vector as needed):
 //!
 //! ```
 //! let mut xs = vec![1i32, 2];
@@ -37,12 +37,20 @@
 //! xs.push(3);
 //! ```
 //!
-//! And pop:
+//! Popping values works in much the same way:
 //!
 //! ```
 //! let mut xs = vec![1i32, 2];
 //!
 //! let two = xs.pop();
+//! ```
+//!
+//! Vectors also support indexing (through the `Index` and `IndexMut` traits):
+//!
+//! ```
+//! let mut xs = vec![1i32, 2, 3];
+//! let three = xs[2];
+//! xs[1] = xs[1] + 5;
 //! ```
 
 #![stable(feature = "rust1", since = "1.0.0")]
@@ -59,7 +67,7 @@ use core::intrinsics::assume;
 use core::iter::{repeat, FromIterator};
 use core::marker::PhantomData;
 use core::mem;
-use core::ops::{Index, IndexMut, Deref, Add};
+use core::ops::{Index, IndexMut, Deref};
 use core::ops;
 use core::ptr;
 use core::ptr::Unique;
@@ -639,7 +647,7 @@ impl<T> Vec<T> {
             // zero-size types consume no memory, so we can't rely on the
             // address space running out
             self.len = self.len.checked_add(1).expect("length overflow");
-            unsafe { mem::forget(value); }
+            mem::forget(value);
             return
         }
 
@@ -986,7 +994,7 @@ impl<T> Vec<T> {
                 num_u: 0,
                 marker: PhantomData,
             };
-            unsafe { mem::forget(vec); }
+            mem::forget(vec);
 
             while pv.num_t != 0 {
                 unsafe {
@@ -1299,7 +1307,7 @@ pub fn from_elem<T: Clone>(elem: T, n: usize) -> Vec<T> {
 // Common trait implementations for Vec
 ////////////////////////////////////////////////////////////////////////////////
 
-#[unstable(feature = "collections")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T:Clone> Clone for Vec<T> {
     #[cfg(not(test))]
     fn clone(&self) -> Vec<T> { <[T]>::to_vec(&**self) }
@@ -1554,7 +1562,7 @@ impl<'a, T> IntoIterator for &'a mut Vec<T> {
     }
 }
 
-#[unstable(feature = "collections", reason = "waiting on Extend stability")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Extend<T> for Vec<T> {
     #[inline]
     fn extend<I: IntoIterator<Item=T>>(&mut self, iterable: I) {
@@ -1611,18 +1619,6 @@ impl<T: Ord> Ord for Vec<T> {
     #[inline]
     fn cmp(&self, other: &Vec<T>) -> Ordering {
         Ord::cmp(&**self, &**other)
-    }
-}
-
-#[unstable(feature = "collections",
-           reason = "recent addition, needs more experience")]
-impl<'a, T: Clone> Add<&'a [T]> for Vec<T> {
-    type Output = Vec<T>;
-
-    #[inline]
-    fn add(mut self, rhs: &[T]) -> Vec<T> {
-        self.push_all(rhs);
-        self
     }
 }
 
@@ -1694,7 +1690,7 @@ impl<'a> From<&'a str> for Vec<u8> {
 // Clone-on-write
 ////////////////////////////////////////////////////////////////////////////////
 
-#[unstable(feature = "collections")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> FromIterator<T> for Cow<'a, [T]> where T: Clone {
     fn from_iter<I: IntoIterator<Item=T>>(it: I) -> Cow<'a, [T]> {
         Cow::Owned(FromIterator::from_iter(it))
@@ -1777,6 +1773,11 @@ impl<T> Iterator for IntoIter<T> {
         let size = mem::size_of::<T>();
         let exact = diff / (if size == 0 {1} else {size});
         (exact, Some(exact))
+    }
+
+    #[inline]
+    fn count(self) -> usize {
+        self.size_hint().0
     }
 }
 

@@ -10,6 +10,119 @@
 
 #![allow(non_snake_case)]
 
+register_long_diagnostics! {
+
+E0046: r##"
+When trying to make some type implement a trait `Foo`, you must, at minimum,
+provide implementations for all of `Foo`'s required methods (meaning the
+methods that do not have default implementations), as well as any required
+trait items like associated types or constants.
+"##,
+
+E0054: r##"
+It is not allowed to cast to a bool. If you are trying to cast a numeric type
+to a bool, you can compare it with zero instead:
+
+```
+let x = 5;
+
+// Ok
+let x_is_nonzero = x != 0;
+
+// Not allowed, won't compile
+let x_is_nonzero = x as bool;
+```
+"##,
+
+E0062: r##"
+This error indicates that during an attempt to build a struct or struct-like
+enum variant, one of the fields was specified more than once. Each field should
+be specified exactly one time.
+"##,
+
+E0063: r##"
+This error indicates that during an attempt to build a struct or struct-like
+enum variant, one of the fields was not provided. Each field should be specified
+exactly once.
+"##,
+
+E0081: r##"
+Enum discriminants are used to differentiate enum variants stored in memory.
+This error indicates that the same value was used for two or more variants,
+making them impossible to tell apart.
+
+```
+// Good.
+enum Enum {
+    P,
+    X = 3,
+    Y = 5
+}
+
+// Bad.
+enum Enum {
+    P = 3,
+    X = 3,
+    Y = 5
+}
+```
+
+Note that variants without a manually specified discriminant are numbered from
+top to bottom starting from 0, so clashes can occur with seemingly unrelated
+variants.
+
+```
+enum Bad {
+    X,
+    Y = 0
+}
+```
+
+Here `X` will have already been assigned the discriminant 0 by the time `Y` is
+encountered, so a conflict occurs.
+"##,
+
+E0082: r##"
+The default type for enum discriminants is `isize`, but it can be adjusted by
+adding the `repr` attribute to the enum declaration. This error indicates that
+an integer literal given as a discriminant is not a member of the discriminant
+type. For example:
+
+```
+#[repr(u8)]
+enum Thing {
+    A = 1024,
+    B = 5
+}
+```
+
+Here, 1024 lies outside the valid range for `u8`, so the discriminant for `A` is
+invalid. You may want to change representation types to fix this, or else change
+invalid discriminant values so that they fit within the existing type.
+
+Note also that without a representation manually defined, the compiler will
+optimize by using the smallest integer type possible.
+"##,
+
+E0083: r##"
+At present, it's not possible to define a custom representation for an enum with
+a single variant. As a workaround you can add a `Dummy` variant.
+
+See: https://github.com/rust-lang/rust/issues/10292
+"##,
+
+E0084: r##"
+It is impossible to define an integer type to be used to represent zero-variant
+enum values because there are no zero-variant enum values. There is no way to
+construct an instance of the following type using only safe code:
+
+```
+enum Empty {}
+```
+"##
+
+}
+
 register_diagnostics! {
     E0023,
     E0024,
@@ -27,18 +140,14 @@ register_diagnostics! {
     E0040, // explicit use of destructor method
     E0044,
     E0045,
-    E0046,
     E0049,
     E0050,
     E0053,
-    E0054,
     E0055,
     E0057,
     E0059,
     E0060,
     E0061,
-    E0062,
-    E0063,
     E0066,
     E0067,
     E0068,
@@ -51,10 +160,6 @@ register_diagnostics! {
     E0075,
     E0076,
     E0077,
-    E0081,
-    E0082,
-    E0083,
-    E0084,
     E0085,
     E0086,
     E0087,

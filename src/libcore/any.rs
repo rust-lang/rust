@@ -97,9 +97,7 @@ pub trait Any: Reflect + 'static {
     fn get_type_id(&self) -> TypeId;
 }
 
-impl<T> Any for T
-    where T: Reflect + 'static
-{
+impl<T: Reflect + 'static> Any for T {
     fn get_type_id(&self) -> TypeId { TypeId::of::<T>() }
 }
 
@@ -222,7 +220,7 @@ impl TypeId {
     /// Returns the `TypeId` of the type this generic function has been
     /// instantiated with
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn of<T: ?Sized + Any>() -> TypeId {
+    pub fn of<T: ?Sized + Reflect + 'static>() -> TypeId {
         TypeId {
             t: unsafe { intrinsics::type_id::<T>() },
         }

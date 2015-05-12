@@ -69,30 +69,27 @@ impl Mutex {
     }
 }
 
-// FIXME: remove the box, because box happens twice now, once at the common layer and once here.
-// Box is necessary here, because mutex may not change address after it is intialised on some
-// platforms. Regular Mutex above handles this by offloading intialisation to the OS on first lock.
-// Sadly, as far as reentrant mutexes go, this scheme is not quite portable and we must initialise
-// when we create the mutex, in the `new`.
-pub struct ReentrantMutex { inner: Box<UnsafeCell<ffi::pthread_mutex_t>> }
+pub struct ReentrantMutex { inner: UnsafeCell<ffi::pthread_mutex_t> }
 
 unsafe impl Send for ReentrantMutex {}
 unsafe impl Sync for ReentrantMutex {}
 
 impl ReentrantMutex {
-    pub unsafe fn new() -> ReentrantMutex {
-        let mutex = ReentrantMutex { inner: box mem::uninitialized() };
+    pub unsafe fn uninitialized() -> ReentrantMutex {
+        ReentrantMutex { inner: mem::uninitialized() }
+    }
+
+    pub unsafe fn init(&mut self) {
         let mut attr: ffi::pthread_mutexattr_t = mem::uninitialized();
         let result = ffi::pthread_mutexattr_init(&mut attr as *mut _);
         debug_assert_eq!(result, 0);
         let result = ffi::pthread_mutexattr_settype(&mut attr as *mut _,
                                                     ffi::PTHREAD_MUTEX_RECURSIVE);
         debug_assert_eq!(result, 0);
-        let result = ffi::pthread_mutex_init(mutex.inner.get(), &attr as *const _);
+        let result = ffi::pthread_mutex_init(self.inner.get(), &attr as *const _);
         debug_assert_eq!(result, 0);
         let result = ffi::pthread_mutexattr_destroy(&mut attr as *mut _);
         debug_assert_eq!(result, 0);
-        mutex
     }
 
     pub unsafe fn lock(&self) {

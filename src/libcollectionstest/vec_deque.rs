@@ -885,3 +885,12 @@ fn test_append() {
     assert_eq!(b.iter().cloned().collect::<Vec<_>>(), [1, 2, 3, 4, 5, 6]);
     assert_eq!(a.iter().cloned().collect::<Vec<_>>(), []);
 }
+
+#[test]
+fn test_retain() {
+    let mut buf = VecDeque::new();
+    buf.extend(1..5);
+    buf.retain(|&x| x % 2 == 0);
+    let v: Vec<_> = buf.into_iter().collect();
+    assert_eq!(&v[..], &[2, 4]);
+}

@@ -31,10 +31,10 @@ pub fn compute_abi_info(ccx: &CrateContext,
             2 => ArgType::direct(rty, Some(Type::i16(ccx)), None, None),
             4 => ArgType::direct(rty, Some(Type::i32(ccx)), None, None),
             8 => ArgType::direct(rty, Some(Type::i64(ccx)), None, None),
-            _ => ArgType::indirect(rty, Some(Attribute::StructRetAttribute))
+            _ => ArgType::indirect(rty, Some(Attribute::StructRet))
         };
     } else {
-        let attr = if rty == Type::i1(ccx) { Some(Attribute::ZExtAttribute) } else { None };
+        let attr = if rty == Type::i1(ccx) { Some(Attribute::ZExt) } else { None };
         ret_ty = ArgType::direct(rty, None, None, attr);
     }
 
@@ -46,11 +46,11 @@ pub fn compute_abi_info(ccx: &CrateContext,
                     2 => ArgType::direct(rty, Some(Type::i16(ccx)), None, None),
                     4 => ArgType::direct(rty, Some(Type::i32(ccx)), None, None),
                     8 => ArgType::direct(rty, Some(Type::i64(ccx)), None, None),
-                    _ => ArgType::indirect(t, Some(Attribute::ByValAttribute))
+                    _ => ArgType::indirect(t, Some(Attribute::ByVal))
                 }
             }
             _ => {
-                let attr = if t == Type::i1(ccx) { Some(Attribute::ZExtAttribute) } else { None };
+                let attr = if t == Type::i1(ccx) { Some(Attribute::ZExt) } else { None };
                 ArgType::direct(t, None, None, attr)
             }
         };

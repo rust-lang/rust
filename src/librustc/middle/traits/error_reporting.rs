@@ -56,7 +56,12 @@ pub fn report_projection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
 {
     let predicate =
         infcx.resolve_type_vars_if_possible(&obligation.predicate);
-    if !predicate.references_error() {
+    // The ty_err created by normalize_to_error can end up being unified
+    // into all obligations: for example, if our obligation is something
+    // like `$X = <() as Foo<$X>>::Out` and () does not implement Foo<_>,
+    // then $X will be unified with ty_err, but the error still needs to be
+    // reported.
+    if !infcx.tcx.sess.has_errors() || !predicate.references_error() {
         span_err!(infcx.tcx.sess, obligation.cause.span, E0271,
                 "type mismatch resolving `{}`: {}",
                 predicate.user_string(infcx.tcx),
@@ -183,7 +188,8 @@ pub fn report_selection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                             let trait_predicate =
                                 infcx.resolve_type_vars_if_possible(trait_predicate);
 
-                            if !trait_predicate.references_error() {
+                            if !infcx.tcx.sess.has_errors() ||
+                               !trait_predicate.references_error() {
                                 let trait_ref = trait_predicate.to_poly_trait_ref();
                                 span_err!(infcx.tcx.sess, obligation.cause.span, E0277,
                                         "the trait `{}` is not implemented for the type `{}`",
@@ -191,7 +197,7 @@ pub fn report_selection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                                         trait_ref.self_ty().user_string(infcx.tcx));
                                 // Check if it has a custom "#[rustc_on_unimplemented]"
                                 // error message, report with that message if it does
-                                let custom_note = report_on_unimplemented(infcx, &*trait_ref.0,
+                                let custom_note = report_on_unimplemented(infcx, &trait_ref.0,
                                                                           obligation.cause.span);
                                 if let Some(s) = custom_note {
                                     infcx.tcx.sess.span_note(obligation.cause.span,
@@ -290,7 +296,7 @@ pub fn maybe_report_ambiguity<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                     {
                         span_err!(infcx.tcx.sess, obligation.cause.span, E0282,
                                 "unable to infer enough type information about `{}`; \
-                                 type annotations required",
+                                 type annotations or generic parameter binding required",
                                 self_ty.user_string(infcx.tcx));
                     } else {
                         span_err!(infcx.tcx.sess, obligation.cause.span, E0283,

@@ -10,7 +10,7 @@
 
 use sync::{Mutex, Condvar};
 
-/// A barrier enables multiple tasks to synchronize the beginning
+/// A barrier enables multiple threads to synchronize the beginning
 /// of some computation.
 ///
 /// ```
@@ -128,7 +128,7 @@ mod tests {
             });
         }
 
-        // At this point, all spawned tasks should be blocked,
+        // At this point, all spawned threads should be blocked,
         // so we shouldn't get anything from the port
         assert!(match rx.try_recv() {
             Err(TryRecvError::Empty) => true,

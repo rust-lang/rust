@@ -45,8 +45,6 @@ use std::collections::hash_map::Entry;
 bitflags! {
     #[derive(RustcEncodable, RustcDecodable)]
     flags ConstQualif: u8 {
-        // Const rvalue which can be placed behind a reference.
-        const PURE_CONST         = 0,
         // Inner mutability (can not be placed behind a reference) or behind
         // &mut in a non-global expression. Can be copied from static memory.
         const MUTABLE_MEM        = 1 << 0,
@@ -104,7 +102,7 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
     {
         let (old_mode, old_qualif) = (self.mode, self.qualif);
         self.mode = mode;
-        self.qualif = ConstQualif::PURE_CONST;
+        self.qualif = ConstQualif::empty();
         let r = f(self);
         self.mode = old_mode;
         self.qualif = old_qualif;
@@ -128,7 +126,7 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
             Entry::Occupied(entry) => return *entry.get(),
             Entry::Vacant(entry) => {
                 // Prevent infinite recursion on re-entry.
-                entry.insert(ConstQualif::PURE_CONST);
+                entry.insert(ConstQualif::empty());
             }
         }
         self.with_mode(mode, |this| {
@@ -273,7 +271,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
 
     fn visit_expr(&mut self, ex: &ast::Expr) {
         let mut outer = self.qualif;
-        self.qualif = ConstQualif::PURE_CONST;
+        self.qualif = ConstQualif::empty();
 
         let node_ty = ty::node_id_to_type(self.tcx, ex.id);
         check_expr(self, ex, node_ty);

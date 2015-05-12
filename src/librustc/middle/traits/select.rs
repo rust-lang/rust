@@ -89,7 +89,7 @@ struct TraitObligationStack<'prev, 'tcx: 'prev> {
 
 #[derive(Clone)]
 pub struct SelectionCache<'tcx> {
-    hashmap: RefCell<FnvHashMap<Rc<ty::TraitRef<'tcx>>,
+    hashmap: RefCell<FnvHashMap<ty::TraitRef<'tcx>,
                                 SelectionResult<'tcx, SelectionCandidate<'tcx>>>>,
 }
 
@@ -988,7 +988,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn match_projection(&mut self,
                         obligation: &TraitObligation<'tcx>,
                         trait_bound: ty::PolyTraitRef<'tcx>,
-                        skol_trait_ref: Rc<ty::TraitRef<'tcx>>,
+                        skol_trait_ref: ty::TraitRef<'tcx>,
                         skol_map: &infer::SkolemizationMap,
                         snapshot: &infer::CombinedSnapshot)
                         -> bool
@@ -1153,18 +1153,19 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     {
         debug!("assemble_candidates_from_impls(obligation={})", obligation.repr(self.tcx()));
 
-        let def_id = obligation.predicate.def_id();
-        let all_impls = self.all_impls(def_id);
-        for &impl_def_id in &all_impls {
-            self.infcx.probe(|snapshot| {
-                match self.match_impl(impl_def_id, obligation, snapshot) {
-                    Ok(_) => {
+        let def = ty::lookup_trait_def(self.tcx(), obligation.predicate.def_id());
+
+        def.for_each_relevant_impl(
+            self.tcx(),
+            obligation.predicate.0.trait_ref.self_ty(),
+            |impl_def_id| {
+                self.infcx.probe(|snapshot| {
+                    if let Ok(_) = self.match_impl(impl_def_id, obligation, snapshot) {
                         candidates.vec.push(ImplCandidate(impl_def_id));
                     }
-                    Err(()) => { }
-                }
-            });
-        }
+                });
+            }
+        );
 
         Ok(())
     }
@@ -2324,7 +2325,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // Before we create the substitutions and everything, first
         // consider a "quick reject". This avoids creating more types
         // and so forth that we need to.
-        if self.fast_reject_trait_refs(obligation, &*impl_trait_ref) {
+        if self.fast_reject_trait_refs(obligation, &impl_trait_ref) {
             return Err(());
         }
 
@@ -2526,16 +2527,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             obligation: obligation,
             fresh_trait_ref: fresh_trait_ref,
             previous: previous_stack,
-        }
-    }
-
-    /// Returns set of all impls for a given trait.
-    fn all_impls(&self, trait_def_id: ast::DefId) -> Vec<ast::DefId> {
-        ty::populate_implementations_for_trait_if_necessary(self.tcx(), trait_def_id);
-
-        match self.tcx().trait_impls.borrow().get(&trait_def_id) {
-            None => Vec::new(),
-            Some(impls) => impls.borrow().clone(),
         }
     }
 
