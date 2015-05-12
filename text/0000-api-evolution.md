@@ -302,8 +302,17 @@ arise at all often in downstream code, it would be advisable to explore a
 different choice of names. More guidelines for the standard library are given
 later on.
 
-Finally, if the new item would change the trait from object safe to non-object
-safe, it is considered a major change.
+There are two circumstances when adding a defaulted item is still a major change:
+
+* The new item would change the trait from object safe to non-object safe.
+* The trait has a defaulted associated type and the item being added is a
+  defaulted function/method. In this case, existing impls that override the
+  associated type will break, since the function/method default will not
+  apply. (See
+  [the associated item RFC](https://github.com/rust-lang/rfcs/blob/master/text/0195-associated-items.md#defaults)).
+* Adding a default to an existing associated type is likewise a major change if
+  the trait has defaulted methods, since it will invalidate use of those
+  defaults for the methods in existing trait impls.
 
 #### Minor change: adding a defaulted type parameter.
 
