@@ -481,6 +481,13 @@ const B: [u32; foo()] = [];
 use std::{f64, u8};
 const C: [u32; u8::MAX + f64::EPSILON] = [];
 ```
+"##,
+
+E0322: r##"
+The `Sized` trait is a special trait built-in to the compiler for types with a
+constant size known at compile-time. This trait is automatically implemented
+for types as needed by the compiler, and it is currently disallowed to
+explicitly implement it for a type.
 "##
 
 }
@@ -621,7 +628,6 @@ register_diagnostics! {
     E0319, // trait impls for defaulted traits allowed just for structs/enums
     E0320, // recursive overflow during dropck
     E0321, // extended coherence rules for defaulted traits violated
-    E0322, // cannot implement Sized explicitly
     E0323, // implemented an associated const when another trait item expected
     E0324, // implemented a method when another trait item expected
     E0325, // implemented an associated type when another trait item expected
