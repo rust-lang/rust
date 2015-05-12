@@ -5,15 +5,14 @@ to jump to any particular section.
 
 # Getting Started
 
-If you haven't seen Rust at all yet, the first thing you should read is the [30
-minute intro](intro.html). It will give you an overview of the basic ideas of Rust
-at a high level.
+If you haven't seen Rust at all yet, the first thing you should read is the
+introduction to [The Rust Programming Language](book/index.html). It'll give
+you a good idea of what Rust is like.
 
-Once you know you really want to learn Rust, the next step is reading [The
-Rust Programming Language](book/index.html). It is a lengthy explanation of
-Rust, its syntax, and its concepts. Upon completing the book, you'll be an
-intermediate Rust developer, and will have a good grasp of the fundamental
-ideas behind Rust.
+The book provides a lengthy explanation of Rust, its syntax, and its
+concepts. Upon completing the book, you'll be an intermediate Rust
+developer, and will have a good grasp of the fundamental ideas behind
+Rust.
 
 [Rust By Example][rbe] was originally a community resource, but was then
 donated to the Rust project. As the name implies, it teaches you Rust through a
