@@ -15,7 +15,7 @@ let x = true;
 let y: bool = false;
 ```
 
-A common use of booleans is in [`if` statements][if].
+A common use of booleans is in [`if` conditionals][if].
 
 [if]: if.html
 
