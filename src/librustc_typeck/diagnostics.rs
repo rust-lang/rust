@@ -186,7 +186,7 @@ struct Foo<'a> {
 ```
 
 This fails because `&mut T` is not `Copy`, even when `T` is `Copy` (this
-differs from the behavior for `&T`, which is `Copy` when `T` is `Copy`).
+differs from the behavior for `&T`, which is always `Copy`).
 "##,
 
 E0205: r##"
@@ -216,7 +216,7 @@ enum Foo<'a> {
 ```
 
 This fails because `&mut T` is not `Copy`, even when `T` is `Copy` (this
-differs from the behavior for `&T`, which is `Copy` when `T` is `Copy`).
+differs from the behavior for `&T`, which is always `Copy`).
 "##,
 
 E0206: r##"
