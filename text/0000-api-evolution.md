@@ -176,11 +176,11 @@ There are two reasons this is considered a minor change by this RFC:
    implemented. The details are left to a future RFC, however.
 
 2. Even if that change were made, though, there is still the case where two glob
-   imports conflict without any explicit definition "covering" them. This is
-   permitted to produce an error under the principles of this RFC because the
-   glob imports could have been written as more explicit (expanded) `use`
-   statements. It is also plausible to do this expansion automatically for a
-   crate's dependencies, to prevent breakage in the first place.
+   imports conflict with each other, without any explicit definition "covering"
+   them. This is permitted to produce an error under the principles of this RFC
+   because the glob imports could have been written as more explicit (expanded)
+   `use` statements. It is also plausible to do this expansion automatically for
+   a crate's dependencies, to prevent breakage in the first place.
 
 ### Structs
 
