@@ -33,19 +33,9 @@ use hash::Hasher;
 
 /// Types able to be transferred across thread boundaries.
 #[stable(feature = "rust1", since = "1.0.0")]
-#[lang="send"]
+#[lang = "send"]
 #[rustc_on_unimplemented = "`{Self}` cannot be sent between threads safely"]
-#[cfg(not(stage0))]
 pub unsafe trait Send {
-    // empty.
-}
-
-/// Types able to be transferred across thread boundaries.
-#[stable(feature = "rust1", since = "1.0.0")]
-#[lang="send"]
-#[rustc_on_unimplemented = "`{Self}` cannot be sent between threads safely"]
-#[cfg(stage0)]
-pub unsafe trait Send : MarkerTrait {
     // empty.
 }
 
@@ -53,25 +43,13 @@ unsafe impl Send for .. { }
 
 impl<T> !Send for *const T { }
 impl<T> !Send for *mut T { }
-impl !Send for Managed { }
 
 /// Types with a constant size known at compile-time.
 #[stable(feature = "rust1", since = "1.0.0")]
-#[lang="sized"]
+#[lang = "sized"]
 #[rustc_on_unimplemented = "`{Self}` does not have a constant size known at compile-time"]
 #[fundamental] // for Default, for example, which requires that `[T]: !Default` be evaluatable
-#[cfg(not(stage0))]
 pub trait Sized {
-    // Empty.
-}
-
-/// Types with a constant size known at compile-time.
-#[stable(feature = "rust1", since = "1.0.0")]
-#[lang="sized"]
-#[rustc_on_unimplemented = "`{Self}` does not have a constant size known at compile-time"]
-#[fundamental] // for Default, for example, which requires that `[T]: !Default` be evaluatable
-#[cfg(stage0)]
-pub trait Sized : MarkerTrait {
     // Empty.
 }
 
@@ -176,7 +154,7 @@ pub trait Sized : MarkerTrait {
 /// then it might be prudent to not implement `Copy`. This is because removing `Copy` is a breaking
 /// change: that second example would fail to compile if we made `Foo` non-`Copy`.
 #[stable(feature = "rust1", since = "1.0.0")]
-#[lang="copy"]
+#[lang = "copy"]
 pub trait Copy : Clone {
     // Empty.
 }
@@ -222,20 +200,10 @@ pub trait Copy : Clone {
 /// wrapper around the value(s) which can be mutated when behind a `&`
 /// reference; not doing this is undefined behaviour (for example,
 /// `transmute`-ing from `&T` to `&mut T` is illegal).
-#[cfg(not(stage0))]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[lang="sync"]
+#[lang = "sync"]
 #[rustc_on_unimplemented = "`{Self}` cannot be shared between threads safely"]
 pub unsafe trait Sync {
-    // Empty
-}
-
-/// dox
-#[cfg(stage0)]
-#[stable(feature = "rust1", since = "1.0.0")]
-#[lang="sync"]
-#[rustc_on_unimplemented = "`{Self}` cannot be shared between threads safely"]
-pub unsafe trait Sync : MarkerTrait {
     // Empty
 }
 
@@ -243,24 +211,15 @@ unsafe impl Sync for .. { }
 
 impl<T> !Sync for *const T { }
 impl<T> !Sync for *mut T { }
-impl !Sync for Managed { }
 
 /// A type which is considered "not POD", meaning that it is not
 /// implicitly copyable. This is typically embedded in other types to
 /// ensure that they are never copied, even if they lack a destructor.
 #[unstable(feature = "core",
            reason = "likely to change with new variance strategy")]
-#[lang="no_copy_bound"]
+#[lang = "no_copy_bound"]
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct NoCopy;
-
-/// A type which is considered managed by the GC. This is typically
-/// embedded in other types.
-#[unstable(feature = "core",
-           reason = "likely to change with new variance strategy")]
-#[lang="managed_bound"]
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Managed;
 
 macro_rules! impls{
     ($t: ident) => (
@@ -299,20 +258,6 @@ macro_rules! impls{
             }
         }
         )
-}
-
-/// dox
-#[stable(feature = "rust1", since = "1.0.0")]
-#[cfg(stage0)]
-pub trait MarkerTrait : PhantomFn<Self,Self> { }
-
-#[cfg(stage0)]
-impl<T: ?Sized> MarkerTrait for T {}
-
-/// dox
-#[lang="phantom_fn"]
-#[cfg(stage0)]
-pub trait PhantomFn<A:?Sized,R:?Sized=()> {
 }
 
 /// `PhantomData<T>` allows you to describe that a type acts as if it stores a value of type `T`,
@@ -368,7 +313,7 @@ pub trait PhantomFn<A:?Sized,R:?Sized=()> {
 /// mismatches by enforcing types in the method implementations:
 ///
 /// ```
-/// # trait ResType { fn foo(&self); };
+/// # trait ResType { fn foo(&self); }
 /// # struct ParamType;
 /// # mod foreign_lib {
 /// # pub fn new(_: usize) -> *mut () { 42 as *mut () }
@@ -414,7 +359,7 @@ pub trait PhantomFn<A:?Sized,R:?Sized=()> {
 /// better to use a reference type, like `PhantomData<&'a T>`
 /// (ideally) or `PhantomData<*const T>` (if no lifetime applies), so
 /// as not to indicate ownership.
-#[lang="phantom_data"]
+#[lang = "phantom_data"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct PhantomData<T:?Sized>;
 
@@ -461,14 +406,8 @@ mod impls {
 #[rustc_reflect_like]
 #[unstable(feature = "core", reason = "requires RFC and more experience")]
 #[allow(deprecated)]
-#[cfg(not(stage0))]
+#[rustc_on_unimplemented = "`{Self}` does not implement `Any`; \
+                            ensure all type parameters are bounded by `Any`"]
 pub trait Reflect {}
 
-/// dox
-#[rustc_reflect_like]
-#[unstable(feature = "core", reason = "requires RFC and more experience")]
-#[cfg(stage0)]
-pub trait Reflect: MarkerTrait {}
-
 impl Reflect for .. { }
-

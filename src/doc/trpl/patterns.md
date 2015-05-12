@@ -70,8 +70,7 @@ This prints `something else`
 
 # Bindings
 
-If you’re matching multiple things, via a `|` or a `...`, you can bind
-the value to a name with `@`:
+You can bind values to names with `@`:
 
 ```rust
 let x = 1;
@@ -82,7 +81,36 @@ match x {
 }
 ```
 
-This prints `got a range element 1`.
+This prints `got a range element 1`. This is useful when you want to
+do a complicated match of part of a data structure:
+
+```rust
+#[derive(Debug)]
+struct Person {
+    name: Option<String>,
+}
+
+let name = "Steve".to_string();
+let mut x: Option<Person> = Some(Person { name: Some(name) });
+match x {
+    Some(Person { name: ref a @ Some(_), .. }) => println!("{:?}", a),
+    _ => {}
+}
+```
+
+This prints `Some("Steve")`: We’ve bound the inner `name` to `a`.
+
+If you use `@` with `|`, you need to make sure the name is bound in each part
+of the pattern:
+
+```rust
+let x = 5;
+
+match x {
+    e @ 1 ... 5 | e @ 8 ... 10 => println!("got a range element {}", e),
+    _ => println!("anything"),
+}
+```
 
 # Ignoring variants
 

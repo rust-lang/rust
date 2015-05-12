@@ -176,7 +176,7 @@ Slices have type `&[T]`. We’ll talk about that `T` when we cover
 
 [generics]: generics.html
 
-You can find more documentation for `slices`s [in the standard library
+You can find more documentation for slices [in the standard library
 documentation][slice].
 
 [slice]: ../std/primitive.slice.html
@@ -247,6 +247,14 @@ or “breaks up” the tuple, and assigns the bits to three bindings.
 [let]: variable-bindings.html
 
 This pattern is very powerful, and we’ll see it repeated more later.
+
+You can disambiguate a single-element tuple from a value in parentheses with a
+comma:
+
+```
+(0,); // single-element tuple
+(0); // zero in parentheses
+```
 
 ## Tuple Indexing
 

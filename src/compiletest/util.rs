@@ -60,6 +60,10 @@ pub fn get_arch(triple: &str) -> &'static str {
     panic!("Cannot determine Architecture from triple");
 }
 
+pub fn get_env(triple: &str) -> Option<&str> {
+    triple.split('-').nth(3)
+}
+
 pub fn make_new_path(path: &str) -> String {
     assert!(cfg!(windows));
     // Windows just uses PATH as the library search path, so we have to

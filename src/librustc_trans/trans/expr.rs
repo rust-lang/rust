@@ -86,7 +86,6 @@ use syntax::ptr::P;
 use syntax::parse::token;
 use std::iter::repeat;
 use std::mem;
-use std::rc::Rc;
 
 // Destinations
 
@@ -126,8 +125,11 @@ pub fn trans_into<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }
 
     let qualif = *bcx.tcx().const_qualif_map.borrow().get(&expr.id).unwrap();
-    if !qualif.intersects(check_const::NOT_CONST | check_const::NEEDS_DROP) {
-        if !qualif.intersects(check_const::PREFER_IN_PLACE) {
+    if !qualif.intersects(
+        check_const::ConstQualif::NOT_CONST |
+        check_const::ConstQualif::NEEDS_DROP
+    ) {
+        if !qualif.intersects(check_const::ConstQualif::PREFER_IN_PLACE) {
             if let SaveIn(lldest) = dest {
                 let global = consts::get_const_expr_as_global(bcx.ccx(), expr, qualif,
                                                             bcx.fcx.param_substs);
@@ -209,12 +211,15 @@ pub fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let mut bcx = bcx;
     let fcx = bcx.fcx;
     let qualif = *bcx.tcx().const_qualif_map.borrow().get(&expr.id).unwrap();
-    let adjusted_global = !qualif.intersects(check_const::NON_STATIC_BORROWS);
-    let global = if !qualif.intersects(check_const::NOT_CONST | check_const::NEEDS_DROP) {
+    let adjusted_global = !qualif.intersects(check_const::ConstQualif::NON_STATIC_BORROWS);
+    let global = if !qualif.intersects(
+        check_const::ConstQualif::NOT_CONST |
+        check_const::ConstQualif::NEEDS_DROP
+    ) {
         let global = consts::get_const_expr_as_global(bcx.ccx(), expr, qualif,
                                                       bcx.fcx.param_substs);
 
-        if qualif.intersects(check_const::HAS_STATIC_BORROWS) {
+        if qualif.intersects(check_const::ConstQualif::HAS_STATIC_BORROWS) {
             // Is borrowed as 'static, must return lvalue.
 
             // Cast pointer to global, because constants have different types.
@@ -314,8 +319,8 @@ pub fn unsized_info<'ccx, 'tcx>(ccx: &CrateContext<'ccx, 'tcx>,
             // Note that we preserve binding levels here:
             let substs = principal.0.substs.with_self_ty(source).erase_regions();
             let substs = ccx.tcx().mk_substs(substs);
-            let trait_ref = ty::Binder(Rc::new(ty::TraitRef { def_id: principal.def_id(),
-                                                               substs: substs }));
+            let trait_ref = ty::Binder(ty::TraitRef { def_id: principal.def_id(),
+                                                      substs: substs });
             consts::ptrcast(meth::get_vtable(ccx, trait_ref, param_substs),
                             Type::vtable_ptr(ccx))
         }

@@ -44,6 +44,9 @@ pub struct Wrapping<T>(#[stable(feature = "rust1", since = "1.0.0")] pub T);
 #[unstable(feature = "core", reason = "may be removed or relocated")]
 pub mod wrapping;
 
+#[unstable(feature = "core", reason = "internal routines only exposed for testing")]
+pub mod flt2dec;
+
 /// Types that have a "zero" value.
 ///
 /// This trait is intended for use in conjunction with `Add`, as an identity:
@@ -113,12 +116,14 @@ macro_rules! int_impl {
      $mul_with_overflow:path) => {
         /// Returns the smallest value that can be represented by this integer type.
         #[stable(feature = "rust1", since = "1.0.0")]
+        #[inline]
         pub fn min_value() -> $T {
             (-1 as $T) << ($BITS - 1)
         }
 
         /// Returns the largest value that can be represented by this integer type.
         #[stable(feature = "rust1", since = "1.0.0")]
+        #[inline]
         pub fn max_value() -> $T {
             let min = $T::min_value(); !min
         }
@@ -745,7 +750,20 @@ macro_rules! uint_impl {
         #[stable(feature = "rust1", since = "1.0.0")]
         #[inline]
         pub fn trailing_zeros(self) -> u32 {
-            unsafe { $cttz(self as $ActualT) as u32 }
+            // As of LLVM 3.6 the codegen for the zero-safe cttz8 intrinsic
+            // emits two conditional moves on x86_64. By promoting the value to
+            // u16 and setting bit 8, we get better code without any conditional
+            // operations.
+            // FIXME: There's a LLVM patch (http://reviews.llvm.org/D9284)
+            // pending, remove this workaround once LLVM generates better code
+            // for cttz8.
+            unsafe {
+                if $BITS == 8 {
+                    intrinsics::cttz16(self as u16 | 0x100) as u32
+                } else {
+                    $cttz(self as $ActualT) as u32
+                }
+            }
         }
 
         /// Shifts the bits to the left by a specified amount, `n`,
@@ -1509,7 +1527,11 @@ impl fmt::Display for ParseIntError {
 
 /// An error which can be returned when parsing a float.
 #[derive(Debug, Clone, PartialEq)]
-pub struct ParseFloatError { pub kind: FloatErrorKind }
+#[stable(feature = "rust1", since = "1.0.0")]
+pub struct ParseFloatError {
+    #[doc(hidden)]
+    pub __kind: FloatErrorKind
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum FloatErrorKind {
@@ -1518,9 +1540,9 @@ pub enum FloatErrorKind {
 }
 
 impl ParseFloatError {
-    #[unstable(feature = "core", reason = "available through Error trait")]
-    pub fn description(&self) -> &str {
-        match self.kind {
+    #[doc(hidden)]
+    pub fn __description(&self) -> &str {
+        match self.__kind {
             FloatErrorKind::Empty => "cannot parse float from empty string",
             FloatErrorKind::Invalid => "invalid float literal",
         }
@@ -1530,6 +1552,6 @@ impl ParseFloatError {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for ParseFloatError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.description().fmt(f)
+        self.__description().fmt(f)
     }
 }

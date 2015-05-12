@@ -367,7 +367,7 @@ impl<V> VecMap<V> {
             // Move all elements to other
             swap(self, &mut other);
             return other
-        } else if at > self.v.len() {
+        } else if at >= self.v.len() {
             // No elements to copy
             return other;
         }
@@ -418,7 +418,7 @@ impl<V> VecMap<V> {
         }
         let filter: fn((usize, Option<V>)) -> Option<(usize, V)> = filter; // coerce to fn ptr
 
-        Drain { iter: self.v.drain().enumerate().filter_map(filter) }
+        Drain { iter: self.v.drain(..).enumerate().filter_map(filter) }
     }
 
     /// Returns the number of elements in the map.

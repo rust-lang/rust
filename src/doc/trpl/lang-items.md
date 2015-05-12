@@ -7,7 +7,7 @@
 The `rustc` compiler has certain pluggable operations, that is,
 functionality that isn't hard-coded into the language, but is
 implemented in libraries, with a special marker to tell the compiler
-it exists. The marker is the attribute `#[lang="..."]` and there are
+it exists. The marker is the attribute `#[lang = "..."]` and there are
 various different values of `...`, i.e. various different 'lang
 items'.
 
@@ -28,7 +28,7 @@ extern {
 #[lang = "owned_box"]
 pub struct Box<T>(*mut T);
 
-#[lang="exchange_malloc"]
+#[lang = "exchange_malloc"]
 unsafe fn allocate(size: usize, _align: usize) -> *mut u8 {
     let p = libc::malloc(size as libc::size_t) as *mut u8;
 
@@ -39,7 +39,7 @@ unsafe fn allocate(size: usize, _align: usize) -> *mut u8 {
 
     p
 }
-#[lang="exchange_free"]
+#[lang = "exchange_free"]
 unsafe fn deallocate(ptr: *mut u8, _size: usize, _align: usize) {
     libc::free(ptr as *mut libc::c_void)
 }

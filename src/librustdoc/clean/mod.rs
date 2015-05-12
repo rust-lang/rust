@@ -361,6 +361,7 @@ pub enum ItemEnum {
     ForeignStaticItem(Static),
     MacroItem(Macro),
     PrimitiveItem(PrimitiveType),
+    AssociatedConstItem(Type, Option<String>),
     AssociatedTypeItem(Vec<TyParamBound>, Option<Type>),
     DefaultImplItem(DefaultImpl),
 }
@@ -896,7 +897,7 @@ impl<'tcx> Clean<Type> for ty::ProjectionTy<'tcx> {
     }
 }
 
-// maybe use a Generic enum and use ~[Generic]?
+// maybe use a Generic enum and use Vec<Generic>?
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Debug)]
 pub struct Generics {
     pub lifetimes: Vec<Lifetime>,
@@ -943,7 +944,7 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics<'tcx>,
         // a Sized bound, removing the bounds as we find them.
         //
         // Note that associated types also have a sized bound by default, but we
-        // don't actually konw the set of associated types right here so that's
+        // don't actually know the set of associated types right here so that's
         // handled in cleaning associated types
         let mut sized_params = HashSet::new();
         where_predicates.retain(|pred| {
@@ -1235,6 +1236,11 @@ impl Clean<PolyTrait> for ast::PolyTraitRef {
 impl Clean<Item> for ast::TraitItem {
     fn clean(&self, cx: &DocContext) -> Item {
         let inner = match self.node {
+            ast::ConstTraitItem(ref ty, ref default) => {
+                AssociatedConstItem(ty.clean(cx),
+                                    default.as_ref().map(|expr|
+                                                         expr.span.to_src(cx)))
+            }
             ast::MethodTraitItem(ref sig, Some(_)) => {
                 MethodItem(sig.clean(cx))
             }
@@ -1260,6 +1266,12 @@ impl Clean<Item> for ast::TraitItem {
 impl Clean<Item> for ast::ImplItem {
     fn clean(&self, cx: &DocContext) -> Item {
         let inner = match self.node {
+            ast::ConstImplItem(ref ty, ref expr) => {
+                ConstantItem(Constant{
+                    type_: ty.clean(cx),
+                    expr: expr.span.to_src(cx),
+                })
+            }
             ast::MethodImplItem(ref sig, _) => {
                 MethodItem(sig.clean(cx))
             }
@@ -1363,6 +1375,7 @@ impl<'tcx> Clean<Item> for ty::Method<'tcx> {
 impl<'tcx> Clean<Item> for ty::ImplOrTraitItem<'tcx> {
     fn clean(&self, cx: &DocContext) -> Item {
         match *self {
+            ty::ConstTraitItem(ref cti) => cti.clean(cx),
             ty::MethodTraitItem(ref mti) => mti.clean(cx),
             ty::TypeTraitItem(ref tti) => tti.clean(cx),
         }
@@ -2509,6 +2522,8 @@ fn name_from_pat(p: &ast::Pat) -> String {
         PatWild(PatWildMulti) => "..".to_string(),
         PatIdent(_, ref p, _) => token::get_ident(p.node).to_string(),
         PatEnum(ref p, _) => path_to_string(p),
+        PatQPath(..) => panic!("tried to get argument name from PatQPath, \
+                                which is not allowed in function arguments"),
         PatStruct(ref name, ref fields, etc) => {
             format!("{} {{ {}{} }}", path_to_string(name),
                 fields.iter().map(|&Spanned { node: ref fp, .. }|
@@ -2668,6 +2683,20 @@ impl Clean<Stability> for attr::Stability {
                                                                     |istr| istr.to_string()),
             reason: self.reason.as_ref().map_or("".to_string(),
                                                 |interned| interned.to_string()),
+        }
+    }
+}
+
+impl<'tcx> Clean<Item> for ty::AssociatedConst<'tcx> {
+    fn clean(&self, cx: &DocContext) -> Item {
+        Item {
+            source: DUMMY_SP.clean(cx),
+            name: Some(self.name.clean(cx)),
+            attrs: Vec::new(),
+            inner: AssociatedConstItem(self.ty.clean(cx), None),
+            visibility: None,
+            def_id: self.def_id,
+            stability: None,
         }
     }
 }

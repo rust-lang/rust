@@ -283,7 +283,6 @@ mod arch {
     }
 }
 
-#[repr(C)]
 struct Cleanup {
     handle: libc::HANDLE,
     SymCleanup: SymCleanupFn,

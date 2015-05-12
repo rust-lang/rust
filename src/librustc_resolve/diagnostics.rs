@@ -28,5 +28,3 @@ register_diagnostics! {
     E0364, // item is private
     E0365  // item is private
 }
-
-__build_diagnostic_array! { DIAGNOSTICS }

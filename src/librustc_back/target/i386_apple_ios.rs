@@ -23,6 +23,7 @@ pub fn target() -> Target {
         target_pointer_width: "32".to_string(),
         arch: "x86".to_string(),
         target_os: "ios".to_string(),
+        target_env: "".to_string(),
         options: opts(Arch::I386)
     }
 }

@@ -89,6 +89,7 @@ use core::hash;
 use core::iter::RandomAccessIterator;
 use core::iter::{Chain, Enumerate, Repeat, Skip, Take, repeat, Cloned};
 use core::iter::{self, FromIterator};
+use core::mem::swap;
 use core::ops::Index;
 use core::slice;
 use core::{u8, u32, usize};
@@ -210,15 +211,13 @@ impl BitVec {
         assert_eq!(self.len(), other.len());
         // This could theoretically be a `debug_assert!`.
         assert_eq!(self.storage.len(), other.storage.len());
-        let mut changed = false;
+        let mut changed_bits = 0;
         for (a, b) in self.blocks_mut().zip(other.blocks()) {
             let w = op(*a, b);
-            if *a != w {
-                changed = true;
-                *a = w;
-            }
+            changed_bits |= *a ^ w;
+            *a = w;
         }
-        changed
+        changed_bits != 0
     }
 
     /// Iterator over mutable refs to  the underlying blocks of data.
@@ -602,6 +601,110 @@ impl BitVec {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter(&self) -> Iter {
         Iter { bit_vec: self, next_idx: 0, end_idx: self.nbits }
+    }
+
+    /// Moves all bits from `other` into `Self`, leaving `other` empty.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(collections, bit_vec_append_split_off)]
+    /// use std::collections::BitVec;
+    ///
+    /// let mut a = BitVec::from_bytes(&[0b10000000]);
+    /// let mut b = BitVec::from_bytes(&[0b01100001]);
+    ///
+    /// a.append(&mut b);
+    ///
+    /// assert_eq!(a.len(), 16);
+    /// assert_eq!(b.len(), 0);
+    /// assert!(a.eq_vec(&[true, false, false, false, false, false, false, false,
+    ///                    false, true, true, false, false, false, false, true]));
+    /// ```
+    #[unstable(feature = "bit_vec_append_split_off",
+               reason = "recently added as part of collections reform 2")]
+    pub fn append(&mut self, other: &mut Self) {
+        let b = self.len() % u32::BITS;
+
+        self.nbits += other.len();
+        other.nbits = 0;
+
+        if b == 0 {
+            self.storage.append(&mut other.storage);
+        } else {
+            self.storage.reserve(other.storage.len());
+
+            for block in other.storage.drain(..) {
+                *(self.storage.last_mut().unwrap()) |= block << b;
+                self.storage.push(block >> (u32::BITS - b));
+            }
+        }
+    }
+
+    /// Splits the `BitVec` into two at the given bit,
+    /// retaining the first half in-place and returning the second one.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `at` is out of bounds.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(collections, bit_vec_append_split_off)]
+    /// use std::collections::BitVec;
+    /// let mut a = BitVec::new();
+    /// a.push(true);
+    /// a.push(false);
+    /// a.push(false);
+    /// a.push(true);
+    ///
+    /// let b = a.split_off(2);
+    ///
+    /// assert_eq!(a.len(), 2);
+    /// assert_eq!(b.len(), 2);
+    /// assert!(a.eq_vec(&[true, false]));
+    /// assert!(b.eq_vec(&[false, true]));
+    /// ```
+    #[unstable(feature = "bit_vec_append_split_off",
+               reason = "recently added as part of collections reform 2")]
+    pub fn split_off(&mut self, at: usize) -> Self {
+        assert!(at <= self.len(), "`at` out of bounds");
+
+        let mut other = BitVec::new();
+
+        if at == 0 {
+            swap(self, &mut other);
+            return other;
+        } else if at == self.len() {
+            return other;
+        }
+
+        let w = at / u32::BITS;
+        let b = at % u32::BITS;
+        other.nbits = self.nbits - at;
+        self.nbits = at;
+        if b == 0 {
+            // Split at block boundary
+            other.storage = self.storage.split_off(w);
+        } else {
+            other.storage.reserve(self.storage.len() - w);
+
+            {
+                let mut iter = self.storage[w..].iter();
+                let mut last = *iter.next().unwrap();
+                for &cur in iter {
+                    other.storage.push((last >> b) | (cur << (u32::BITS - b)));
+                    last = cur;
+                }
+                other.storage.push(last >> b);
+            }
+
+            self.storage.truncate(w+1);
+            self.fix_last_block();
+        }
+
+        other
     }
 
     /// Returns `true` if all bits are 0.
@@ -1434,7 +1537,7 @@ impl BitSet {
         bit_vec.nbits = trunc_len * u32::BITS;
     }
 
-    /// Iterator over each u32 stored in the `BitSet`.
+    /// Iterator over each usize stored in the `BitSet`.
     ///
     /// # Examples
     ///
@@ -1455,7 +1558,7 @@ impl BitSet {
         SetIter {set: self, next_idx: 0}
     }
 
-    /// Iterator over each u32 stored in `self` union `other`.
+    /// Iterator over each usize stored in `self` union `other`.
     /// See [union_with](#method.union_with) for an efficient in-place version.
     ///
     /// # Examples
@@ -1555,7 +1658,7 @@ impl BitSet {
         })
     }
 
-    /// Iterator over each u32 stored in the symmetric difference of `self` and `other`.
+    /// Iterator over each usize stored in the symmetric difference of `self` and `other`.
     /// See [symmetric_difference_with](#method.symmetric_difference_with) for
     /// an efficient in-place version.
     ///
@@ -1691,6 +1794,89 @@ impl BitSet {
     #[inline]
     pub fn symmetric_difference_with(&mut self, other: &BitSet) {
         self.other_op(other, |w1, w2| w1 ^ w2);
+    }
+
+    /// Moves all elements from `other` into `Self`, leaving `other` empty.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(collections, bit_set_append_split_off)]
+    /// use std::collections::{BitVec, BitSet};
+    ///
+    /// let mut a = BitSet::new();
+    /// a.insert(2);
+    /// a.insert(6);
+    ///
+    /// let mut b = BitSet::new();
+    /// b.insert(1);
+    /// b.insert(3);
+    /// b.insert(6);
+    ///
+    /// a.append(&mut b);
+    ///
+    /// assert_eq!(a.len(), 4);
+    /// assert_eq!(b.len(), 0);
+    /// assert_eq!(a, BitSet::from_bit_vec(BitVec::from_bytes(&[0b01110010])));
+    /// ```
+    #[unstable(feature = "bit_set_append_split_off",
+               reason = "recently added as part of collections reform 2")]
+    pub fn append(&mut self, other: &mut Self) {
+        self.union_with(other);
+        other.clear();
+    }
+
+    /// Splits the `BitSet` into two at the given key including the key.
+    /// Retains the first part in-place while returning the second part.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(collections, bit_set_append_split_off)]
+    /// use std::collections::{BitSet, BitVec};
+    /// let mut a = BitSet::new();
+    /// a.insert(2);
+    /// a.insert(6);
+    /// a.insert(1);
+    /// a.insert(3);
+    ///
+    /// let b = a.split_off(3);
+    ///
+    /// assert_eq!(a.len(), 2);
+    /// assert_eq!(b.len(), 2);
+    /// assert_eq!(a, BitSet::from_bit_vec(BitVec::from_bytes(&[0b01100000])));
+    /// assert_eq!(b, BitSet::from_bit_vec(BitVec::from_bytes(&[0b00010010])));
+    /// ```
+    #[unstable(feature = "bit_set_append_split_off",
+               reason = "recently added as part of collections reform 2")]
+    pub fn split_off(&mut self, at: usize) -> Self {
+        let mut other = BitSet::new();
+
+        if at == 0 {
+            swap(self, &mut other);
+            return other;
+        } else if at >= self.bit_vec.len() {
+            return other;
+        }
+
+        // Calculate block and bit at which to split
+        let w = at / u32::BITS;
+        let b = at % u32::BITS;
+
+        // Pad `other` with `w` zero blocks,
+        // append `self`'s blocks in the range from `w` to the end to `other`
+        other.bit_vec.storage.extend(repeat(0u32).take(w)
+                                     .chain(self.bit_vec.storage[w..].iter().cloned()));
+        other.bit_vec.nbits = self.bit_vec.nbits;
+
+        if b > 0 {
+            other.bit_vec.storage[w] &= !0 << b;
+        }
+
+        // Sets `bit_vec.len()` and fixes the last block as well
+        self.bit_vec.truncate(at);
+
+        other
     }
 
     /// Returns the number of set bits in this set.

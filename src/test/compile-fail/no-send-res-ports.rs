@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(unsafe_destructor)]
-
 use std::thread;
 use std::rc::Rc;
 
@@ -22,8 +20,7 @@ fn main() {
       _x: Port<()>,
     }
 
-    #[unsafe_destructor]
-    impl Drop for foo {
+        impl Drop for foo {
         fn drop(&mut self) {}
     }
 

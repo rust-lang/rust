@@ -66,6 +66,8 @@ pub struct ScopedKey<T> { #[doc(hidden)] pub inner: __impl::KeyInner<T> }
 ///
 /// This macro declares a `static` item on which methods are used to get and
 /// set the value stored within.
+///
+/// See [ScopedKey documentation](thread/struct.ScopedKey.html) for more information.
 #[macro_export]
 #[allow_internal_unstable]
 macro_rules! scoped_thread_local {
@@ -171,8 +173,7 @@ impl<T> ScopedKey<T> {
             key: &'a __impl::KeyInner<T>,
             val: *mut T,
         }
-        #[unsafe_destructor]
-        impl<'a, T> Drop for Reset<'a, T> {
+                impl<'a, T> Drop for Reset<'a, T> {
             fn drop(&mut self) {
                 unsafe { self.key.set(self.val) }
             }

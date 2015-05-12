@@ -9,8 +9,9 @@
 // except according to those terms.
 
 // aux-build:linkage-visibility.rs
-// ignore-android: FIXME(#10379)
+// ignore-android: FIXME(#10356)
 // ignore-windows: std::dynamic_lib does not work on Windows well
+// ignore-musl
 
 #![feature(std_misc)]
 

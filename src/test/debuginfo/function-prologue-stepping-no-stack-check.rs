@@ -246,7 +246,7 @@
 // lldb-check:[...]$31 = 45
 // lldb-command:continue
 
-#![allow(unused_variables)]
+#![allow(dead_code, unused_assignments, unused_variables)]
 #![omit_gdb_pretty_printer_section]
 
 #[no_stack_check]

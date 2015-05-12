@@ -58,7 +58,7 @@ pub enum CandidateSource {
     TraitSource(/* trait id */ ast::DefId),
 }
 
-type MethodIndex = usize; // just for doc purposes
+type ItemIndex = usize; // just for doc purposes
 
 /// Determines whether the type `self_ty` supports a method name `method_name` or not.
 pub fn exists<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
@@ -170,7 +170,7 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
     // Construct a trait-reference `self_ty : Trait<input_tys>`
     let substs = subst::Substs::new_trait(input_types, Vec::new(), self_ty);
-    let trait_ref = Rc::new(ty::TraitRef::new(trait_def_id, fcx.tcx().mk_substs(substs)));
+    let trait_ref = ty::TraitRef::new(trait_def_id, fcx.tcx().mk_substs(substs));
 
     // Construct an obligation
     let poly_trait_ref = trait_ref.to_poly_trait_ref();
@@ -312,18 +312,25 @@ pub fn resolve_ufcs<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 {
     let mode = probe::Mode::Path;
     let pick = try!(probe::probe(fcx, span, mode, method_name, self_ty, expr_id));
-    let def_id = pick.method_ty.def_id;
+    let def_id = pick.item.def_id();
     let mut lp = LastMod(AllPublic);
     let provenance = match pick.kind {
         probe::InherentImplPick(impl_def_id) => {
-            if pick.method_ty.vis != ast::Public {
+            if pick.item.vis() != ast::Public {
                 lp = LastMod(DependsOn(def_id));
             }
             def::FromImpl(impl_def_id)
         }
-        _ => def::FromTrait(pick.method_ty.container.id())
+        _ => def::FromTrait(pick.item.container().id())
     };
-    Ok((def::DefMethod(def_id, provenance), lp))
+    let def_result = match pick.item {
+        ImplOrTraitItem::MethodTraitItem(..) => def::DefMethod(def_id, provenance),
+        ImplOrTraitItem::ConstTraitItem(..) => def::DefAssociatedConst(def_id, provenance),
+        ImplOrTraitItem::TypeTraitItem(..) => {
+            fcx.tcx().sess.span_bug(span, "resolve_ufcs: probe picked associated type");
+        }
+    };
+    Ok((def_result, lp))
 }
 
 

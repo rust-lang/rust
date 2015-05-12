@@ -8,8 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(bit_set_append_split_off)]
+#![feature(bit_vec_append_split_off)]
 #![feature(box_syntax)]
 #![feature(collections)]
+#![feature(collections_drain)]
 #![feature(core)]
 #![feature(hash)]
 #![feature(rand)]
@@ -17,10 +20,10 @@
 #![feature(test)]
 #![feature(unboxed_closures)]
 #![feature(unicode)]
-#![feature(unsafe_destructor)]
 #![feature(into_cow)]
 #![feature(step_by)]
 #![cfg_attr(test, feature(str_char))]
+#![cfg_attr(test, feature(vec_deque_retain))]
 
 #[macro_use] extern crate log;
 

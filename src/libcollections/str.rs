@@ -59,7 +59,6 @@ use core::str::pattern::Pattern;
 use core::str::pattern::{Searcher, ReverseSearcher, DoubleEndedSearcher};
 use rustc_unicode::str::{UnicodeStr, Utf16Encoder};
 
-use core::convert::AsRef;
 use vec_deque::VecDeque;
 use borrow::{Borrow, ToOwned};
 use string::String;
@@ -83,18 +82,20 @@ pub use core::str::pattern;
 Section: Creating a string
 */
 
-impl<S: AsRef<str>> SliceConcatExt<str, String> for [S] {
+impl<S: Borrow<str>> SliceConcatExt<str> for [S] {
+    type Output = String;
+
     fn concat(&self) -> String {
         if self.is_empty() {
             return String::new();
         }
 
         // `len` calculation may overflow but push_str will check boundaries
-        let len = self.iter().map(|s| s.as_ref().len()).sum();
+        let len = self.iter().map(|s| s.borrow().len()).sum();
         let mut result = String::with_capacity(len);
 
         for s in self {
-            result.push_str(s.as_ref())
+            result.push_str(s.borrow())
         }
 
         result
@@ -113,7 +114,7 @@ impl<S: AsRef<str>> SliceConcatExt<str, String> for [S] {
         // this is wrong without the guarantee that `self` is non-empty
         // `len` calculation may overflow but push_str but will check boundaries
         let len = sep.len() * (self.len() - 1)
-            + self.iter().map(|s| s.as_ref().len()).sum::<usize>();
+            + self.iter().map(|s| s.borrow().len()).sum::<usize>();
         let mut result = String::with_capacity(len);
         let mut first = true;
 
@@ -123,7 +124,7 @@ impl<S: AsRef<str>> SliceConcatExt<str, String> for [S] {
             } else {
                 result.push_str(sep);
             }
-            result.push_str(s.as_ref());
+            result.push_str(s.borrow());
         }
         result
     }
@@ -713,7 +714,7 @@ impl str {
     /// is skipped if empty.
     ///
     /// This method can be used for string data that is _terminated_,
-    /// rather than _seperated_ by a pattern.
+    /// rather than _separated_ by a pattern.
     ///
     /// # Iterator behavior
     ///
@@ -760,7 +761,7 @@ impl str {
     /// skipped if empty.
     ///
     /// This method can be used for string data that is _terminated_,
-    /// rather than _seperated_ by a pattern.
+    /// rather than _separated_ by a pattern.
     ///
     /// # Iterator behavior
     ///

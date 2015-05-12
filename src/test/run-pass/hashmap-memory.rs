@@ -68,7 +68,7 @@ mod map_reduce {
     pub fn map_reduce(inputs: Vec<String>) {
         let (tx, rx) = channel();
 
-        // This task becomes the master control task. It spawns others
+        // This thread becomes the master control thread. It spawns others
         // to do the rest.
 
         let mut reducers: HashMap<String, isize>;

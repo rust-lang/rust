@@ -19,9 +19,9 @@ use sys::mutex as sys;
 
 /// A re-entrant mutual exclusion
 ///
-/// This mutex will block *other* threads waiting for the lock to become available. The thread
-/// which has already locked the mutex can lock it multiple times without blocking, preventing a
-/// common source of deadlocks.
+/// This mutex will block *other* threads waiting for the lock to become
+/// available. The thread which has already locked the mutex can lock it
+/// multiple times without blocking, preventing a common source of deadlocks.
 pub struct ReentrantMutex<T> {
     inner: Box<sys::ReentrantMutex>,
     poison: poison::Flag,
@@ -51,10 +51,14 @@ impl<'a, T> !marker::Send for ReentrantMutexGuard<'a, T> {}
 impl<T> ReentrantMutex<T> {
     /// Creates a new reentrant mutex in an unlocked state.
     pub fn new(t: T) -> ReentrantMutex<T> {
-        ReentrantMutex {
-            inner: box unsafe { sys::ReentrantMutex::new() },
-            poison: poison::FLAG_INIT,
-            data: t,
+        unsafe {
+            let mut mutex = ReentrantMutex {
+                inner: box sys::ReentrantMutex::uninitialized(),
+                poison: poison::FLAG_INIT,
+                data: t,
+            };
+            mutex.inner.init();
+            return mutex
         }
     }
 
@@ -96,7 +100,6 @@ impl<T> ReentrantMutex<T> {
     }
 }
 
-#[unsafe_destructor]
 impl<T> Drop for ReentrantMutex<T> {
     fn drop(&mut self) {
         // This is actually safe b/c we know that there is no further usage of
@@ -138,7 +141,6 @@ impl<'mutex, T> Deref for ReentrantMutexGuard<'mutex, T> {
     }
 }
 
-#[unsafe_destructor]
 impl<'a, T> Drop for ReentrantMutexGuard<'a, T> {
     #[inline]
     fn drop(&mut self) {

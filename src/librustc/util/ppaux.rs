@@ -637,7 +637,7 @@ impl<'tcx, T:Repr<'tcx>> Repr<'tcx> for OwnedSlice<T> {
     }
 }
 
-// This is necessary to handle types like Option<~[T]>, for which
+// This is necessary to handle types like Option<Vec<T>>, for which
 // autoderef cannot convert the &[T] handler
 impl<'tcx, T:Repr<'tcx>> Repr<'tcx> for Vec<T> {
     fn repr(&self, tcx: &ctxt<'tcx>) -> String {
@@ -671,7 +671,7 @@ impl<'tcx> Repr<'tcx> for def::Def {
 /// projection bounds, so we just stuff them altogether. But in
 /// reality we should eventually sort things out better.
 type TraitAndProjections<'tcx> =
-    (Rc<ty::TraitRef<'tcx>>, Vec<ty::ProjectionPredicate<'tcx>>);
+    (ty::TraitRef<'tcx>, Vec<ty::ProjectionPredicate<'tcx>>);
 
 impl<'tcx> UserString<'tcx> for TraitAndProjections<'tcx> {
     fn user_string(&self, tcx: &ctxt<'tcx>) -> String {
@@ -830,6 +830,7 @@ impl<'tcx> Repr<'tcx> for ty::TraitDef<'tcx> {
 impl<'tcx> Repr<'tcx> for ast::TraitItem {
     fn repr(&self, _tcx: &ctxt) -> String {
         let kind = match self.node {
+            ast::ConstTraitItem(..) => "ConstTraitItem",
             ast::MethodTraitItem(..) => "MethodTraitItem",
             ast::TypeTraitItem(..) => "TypeTraitItem",
         };
@@ -1054,9 +1055,39 @@ impl<'tcx> Repr<'tcx> for ty::Variance {
     }
 }
 
+impl<'tcx> Repr<'tcx> for ty::ImplOrTraitItem<'tcx> {
+    fn repr(&self, tcx: &ctxt<'tcx>) -> String {
+        format!("ImplOrTraitItem({})",
+                match *self {
+                    ty::ImplOrTraitItem::MethodTraitItem(ref i) => i.repr(tcx),
+                    ty::ImplOrTraitItem::ConstTraitItem(ref i) => i.repr(tcx),
+                    ty::ImplOrTraitItem::TypeTraitItem(ref i) => i.repr(tcx),
+                })
+    }
+}
+
+impl<'tcx> Repr<'tcx> for ty::AssociatedConst<'tcx> {
+    fn repr(&self, tcx: &ctxt<'tcx>) -> String {
+        format!("AssociatedConst(name: {}, ty: {}, vis: {}, def_id: {})",
+                self.name.repr(tcx),
+                self.ty.repr(tcx),
+                self.vis.repr(tcx),
+                self.def_id.repr(tcx))
+    }
+}
+
+impl<'tcx> Repr<'tcx> for ty::AssociatedType {
+    fn repr(&self, tcx: &ctxt<'tcx>) -> String {
+        format!("AssociatedType(name: {}, vis: {}, def_id: {})",
+                self.name.repr(tcx),
+                self.vis.repr(tcx),
+                self.def_id.repr(tcx))
+    }
+}
+
 impl<'tcx> Repr<'tcx> for ty::Method<'tcx> {
     fn repr(&self, tcx: &ctxt<'tcx>) -> String {
-        format!("method(name: {}, generics: {}, predicates: {}, fty: {}, \
+        format!("Method(name: {}, generics: {}, predicates: {}, fty: {}, \
                  explicit_self: {}, vis: {}, def_id: {})",
                 self.name.repr(tcx),
                 self.generics.repr(tcx),

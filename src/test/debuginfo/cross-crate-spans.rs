@@ -10,7 +10,6 @@
 
 #![omit_gdb_pretty_printer_section]
 
-// ignore-android: FIXME(#10381)
 // min-lldb-version: 310
 
 // aux-build:cross_crate_spans.rs
@@ -21,7 +20,7 @@ extern crate cross_crate_spans;
 
 // === GDB TESTS ===================================================================================
 
-// gdb-command:break cross_crate_spans.rs:21
+// gdb-command:break cross_crate_spans.rs:23
 // gdb-command:run
 
 // gdb-command:print result
@@ -44,7 +43,7 @@ extern crate cross_crate_spans;
 
 // === LLDB TESTS ==================================================================================
 
-// lldb-command:b cross_crate_spans.rs:21
+// lldb-command:b cross_crate_spans.rs:23
 // lldb-command:run
 
 // lldb-command:print result

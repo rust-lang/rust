@@ -202,6 +202,7 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
             }
             def::DefStatic(..) |
             def::DefConst(..) |
+            def::DefAssociatedConst(..) |
             def::DefLocal(..) |
             def::DefUpvar(..) => {
                 datum_callee(bcx, ref_expr)
@@ -451,7 +452,7 @@ pub fn trans_fn_ref_with_substs<'a, 'tcx>(
 
                     // Compute the first substitution
                     let first_subst =
-                        ty::make_substs_for_receiver_types(tcx, &*trait_ref, &*method)
+                        ty::make_substs_for_receiver_types(tcx, &trait_ref, &*method)
                         .erase_regions();
 
                     // And compose them
@@ -465,9 +466,9 @@ pub fn trans_fn_ref_with_substs<'a, 'tcx>(
 
                     (true, source_id, new_substs)
                 }
-                ty::TypeTraitItem(_) => {
+                _ => {
                     tcx.sess.bug("trans_fn_ref_with_vtables() tried \
-                                  to translate an associated type?!")
+                                  to translate a non-method?!")
                 }
             }
         }

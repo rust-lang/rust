@@ -1,8 +1,9 @@
 % Vectors
 
 A ‘vector’ is a dynamic or ‘growable’ array, implemented as the standard
-library type [`Vec<T>`][vec]. That `<T>` is a [generic][generic], meaning we
-can have vectors of any type. Vectors always allocate their data on the heap.
+library type [`Vec<T>`][vec]. The `T` means that we can have vectors
+of any type (see the chapter on [generics][generic] for more).
+Vectors always allocate their data on the heap.
 You can create them with the `vec!` macro:
 
 ```rust

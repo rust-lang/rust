@@ -31,7 +31,7 @@
 //!
 //! # Examples
 //!
-//! Sharing some immutable data between tasks:
+//! Sharing some immutable data between threads:
 //!
 //! ```no_run
 //! use std::sync::Arc;
@@ -48,7 +48,7 @@
 //! }
 //! ```
 //!
-//! Sharing mutable data safely between tasks with a `Mutex`:
+//! Sharing mutable data safely between threads with a `Mutex`:
 //!
 //! ```no_run
 //! use std::sync::{Arc, Mutex};
@@ -89,9 +89,9 @@ use heap::deallocate;
 ///
 /// # Examples
 ///
-/// In this example, a large vector of floats is shared between several tasks.
+/// In this example, a large vector of floats is shared between several threads.
 /// With simple pipes, without `Arc`, a copy would have to be made for each
-/// task.
+/// thread.
 ///
 /// When you clone an `Arc<T>`, it will create another pointer to the data and
 /// increase the reference counter.
@@ -355,7 +355,6 @@ impl<T: Clone> Arc<T> {
     }
 }
 
-#[unsafe_destructor]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Drop for Arc<T> {
     /// Drops the `Arc<T>`.
@@ -489,7 +488,6 @@ impl<T> Clone for Weak<T> {
     }
 }
 
-#[unsafe_destructor]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Drop for Weak<T> {
     /// Drops the `Weak<T>`.

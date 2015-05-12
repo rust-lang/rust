@@ -45,6 +45,7 @@ use middle::check_const;
 use middle::const_eval;
 use middle::def::{self, DefMap, ExportMap};
 use middle::dependency_format;
+use middle::fast_reject;
 use middle::free_region::FreeRegionMap;
 use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem, FnOnceTraitLangItem};
 use middle::mem_categorization as mc;
@@ -80,7 +81,7 @@ use std::vec::IntoIter;
 use collections::enum_set::{EnumSet, CLike};
 use std::collections::{HashMap, HashSet};
 use syntax::abi;
-use syntax::ast::{CrateNum, DefId, ItemTrait, LOCAL_CRATE};
+use syntax::ast::{CrateNum, DefId, ItemImpl, ItemTrait, LOCAL_CRATE};
 use syntax::ast::{MutImmutable, MutMutable, Name, NamedField, NodeId};
 use syntax::ast::{StmtExpr, StmtSemi, StructField, UnnamedField, Visibility};
 use syntax::ast_util::{self, is_local, lit_is_str, local_def};
@@ -133,6 +134,7 @@ impl ImplOrTraitItemContainer {
 
 #[derive(Clone, Debug)]
 pub enum ImplOrTraitItem<'tcx> {
+    ConstTraitItem(Rc<AssociatedConst<'tcx>>),
     MethodTraitItem(Rc<Method<'tcx>>),
     TypeTraitItem(Rc<AssociatedType>),
 }
@@ -140,6 +142,9 @@ pub enum ImplOrTraitItem<'tcx> {
 impl<'tcx> ImplOrTraitItem<'tcx> {
     fn id(&self) -> ImplOrTraitItemId {
         match *self {
+            ConstTraitItem(ref associated_const) => {
+                ConstTraitItemId(associated_const.def_id)
+            }
             MethodTraitItem(ref method) => MethodTraitItemId(method.def_id),
             TypeTraitItem(ref associated_type) => {
                 TypeTraitItemId(associated_type.def_id)
@@ -149,6 +154,7 @@ impl<'tcx> ImplOrTraitItem<'tcx> {
 
     pub fn def_id(&self) -> ast::DefId {
         match *self {
+            ConstTraitItem(ref associated_const) => associated_const.def_id,
             MethodTraitItem(ref method) => method.def_id,
             TypeTraitItem(ref associated_type) => associated_type.def_id,
         }
@@ -156,13 +162,23 @@ impl<'tcx> ImplOrTraitItem<'tcx> {
 
     pub fn name(&self) -> ast::Name {
         match *self {
+            ConstTraitItem(ref associated_const) => associated_const.name,
             MethodTraitItem(ref method) => method.name,
             TypeTraitItem(ref associated_type) => associated_type.name,
         }
     }
 
+    pub fn vis(&self) -> ast::Visibility {
+        match *self {
+            ConstTraitItem(ref associated_const) => associated_const.vis,
+            MethodTraitItem(ref method) => method.vis,
+            TypeTraitItem(ref associated_type) => associated_type.vis,
+        }
+    }
+
     pub fn container(&self) -> ImplOrTraitItemContainer {
         match *self {
+            ConstTraitItem(ref associated_const) => associated_const.container,
             MethodTraitItem(ref method) => method.container,
             TypeTraitItem(ref associated_type) => associated_type.container,
         }
@@ -171,13 +187,14 @@ impl<'tcx> ImplOrTraitItem<'tcx> {
     pub fn as_opt_method(&self) -> Option<Rc<Method<'tcx>>> {
         match *self {
             MethodTraitItem(ref m) => Some((*m).clone()),
-            TypeTraitItem(_) => None
+            _ => None,
         }
     }
 }
 
 #[derive(Clone, Copy, Debug)]
 pub enum ImplOrTraitItemId {
+    ConstTraitItemId(ast::DefId),
     MethodTraitItemId(ast::DefId),
     TypeTraitItemId(ast::DefId),
 }
@@ -185,6 +202,7 @@ pub enum ImplOrTraitItemId {
 impl ImplOrTraitItemId {
     pub fn def_id(&self) -> ast::DefId {
         match *self {
+            ConstTraitItemId(def_id) => def_id,
             MethodTraitItemId(def_id) => def_id,
             TypeTraitItemId(def_id) => def_id,
         }
@@ -236,6 +254,16 @@ impl<'tcx> Method<'tcx> {
             ImplContainer(id) => id,
         }
     }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct AssociatedConst<'tcx> {
+    pub name: ast::Name,
+    pub ty: Ty<'tcx>,
+    pub vis: ast::Visibility,
+    pub def_id: ast::DefId,
+    pub container: ImplOrTraitItemContainer,
+    pub default: Option<ast::DefId>,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -406,7 +434,7 @@ pub struct MethodParam<'tcx> {
     // be a supertrait of what the user actually typed. Note that it
     // never contains bound regions; those regions should have been
     // instantiated with fresh variables at this point.
-    pub trait_ref: Rc<ty::TraitRef<'tcx>>,
+    pub trait_ref: ty::TraitRef<'tcx>,
 
     // index of usize in the list of trait items. Note that this is NOT
     // the index into the vtable, because the list of trait items
@@ -424,7 +452,7 @@ pub struct MethodParam<'tcx> {
 #[derive(Clone, Debug)]
 pub struct MethodObject<'tcx> {
     // the (super)trait containing the method to be invoked
-    pub trait_ref: Rc<ty::TraitRef<'tcx>>,
+    pub trait_ref: TraitRef<'tcx>,
 
     // the actual base trait id of the object
     pub object_trait_id: ast::DefId,
@@ -561,10 +589,14 @@ pub struct TransmuteRestriction<'tcx> {
 
 /// Internal storage
 pub struct CtxtArenas<'tcx> {
+    // internings
     type_: TypedArena<TyS<'tcx>>,
     substs: TypedArena<Substs<'tcx>>,
     bare_fn: TypedArena<BareFnTy<'tcx>>,
     region: TypedArena<Region>,
+
+    // references
+    trait_defs: TypedArena<TraitDef<'tcx>>
 }
 
 impl<'tcx> CtxtArenas<'tcx> {
@@ -574,6 +606,8 @@ impl<'tcx> CtxtArenas<'tcx> {
             substs: TypedArena::new(),
             bare_fn: TypedArena::new(),
             region: TypedArena::new(),
+
+            trait_defs: TypedArena::new()
         }
     }
 }
@@ -651,10 +685,10 @@ pub struct ctxt<'tcx> {
     /// A cache for the trait_items() routine
     pub trait_items_cache: RefCell<DefIdMap<Rc<Vec<ImplOrTraitItem<'tcx>>>>>,
 
-    pub impl_trait_cache: RefCell<DefIdMap<Option<Rc<ty::TraitRef<'tcx>>>>>,
+    pub impl_trait_cache: RefCell<DefIdMap<Option<TraitRef<'tcx>>>>,
 
-    pub impl_trait_refs: RefCell<NodeMap<Rc<TraitRef<'tcx>>>>,
-    pub trait_defs: RefCell<DefIdMap<Rc<TraitDef<'tcx>>>>,
+    pub impl_trait_refs: RefCell<NodeMap<TraitRef<'tcx>>>,
+    pub trait_defs: RefCell<DefIdMap<&'tcx TraitDef<'tcx>>>,
 
     /// Maps from the def-id of an item (trait/struct/enum/fn) to its
     /// associated predicates.
@@ -704,12 +738,6 @@ pub struct ctxt<'tcx> {
     /// A method will be in this list if and only if it is a destructor.
     pub destructors: RefCell<DefIdSet>,
 
-    /// Maps a trait onto a list of impls of that trait.
-    pub trait_impls: RefCell<DefIdMap<Rc<RefCell<Vec<ast::DefId>>>>>,
-
-    /// A set of traits that have a default impl
-    traits_with_default_impls: RefCell<DefIdMap<()>>,
-
     /// Maps a DefId of a type to a list of its inherent impls.
     /// Contains implementations of methods that are inherent to a type.
     /// Methods in these implementations don't need to be exported.
@@ -733,12 +761,8 @@ pub struct ctxt<'tcx> {
     /// The set of external nominal types whose implementations have been read.
     /// This is used for lazy resolution of methods.
     pub populated_external_types: RefCell<DefIdSet>,
-
-    /// The set of external traits whose implementations have been read. This
-    /// is used for lazy resolution of traits.
-    pub populated_external_traits: RefCell<DefIdSet>,
-
-    /// The set of external primitive inherent implementations that have been read.
+    /// The set of external primitive types whose implementations have been read.
+    /// FIXME(arielb1): why is this separate from populated_external_types?
     pub populated_external_primitive_impls: RefCell<DefIdSet>,
 
     /// Borrows
@@ -792,9 +816,6 @@ pub struct ctxt<'tcx> {
     /// results are dependent on the parameter environment.
     pub type_impls_sized_cache: RefCell<HashMap<Ty<'tcx>,bool>>,
 
-    /// Caches whether traits are object safe
-    pub object_safety_cache: RefCell<DefIdMap<bool>>,
-
     /// Maps Expr NodeId's to their constant qualification.
     pub const_qualif_map: RefCell<NodeMap<check_const::ConstQualif>>,
 }
@@ -803,6 +824,13 @@ impl<'tcx> ctxt<'tcx> {
     pub fn node_types(&self) -> Ref<NodeMap<Ty<'tcx>>> { self.node_types.borrow() }
     pub fn node_type_insert(&self, id: NodeId, ty: Ty<'tcx>) {
         self.node_types.borrow_mut().insert(id, ty);
+    }
+
+    pub fn intern_trait_def(&self, def: TraitDef<'tcx>) -> &'tcx TraitDef<'tcx> {
+        let did = def.trait_ref.def_id;
+        let interned = self.arenas.trait_defs.alloc(def);
+        self.trait_defs.borrow_mut().insert(did, interned);
+        interned
     }
 
     pub fn store_free_region_map(&self, id: NodeId, map: FreeRegionMap) {
@@ -821,16 +849,17 @@ impl<'tcx> ctxt<'tcx> {
 // recursing over the type itself.
 bitflags! {
     flags TypeFlags: u32 {
-        const NO_TYPE_FLAGS       = 0b0,
-        const HAS_PARAMS          = 0b1,
-        const HAS_SELF            = 0b10,
-        const HAS_TY_INFER        = 0b100,
-        const HAS_RE_INFER        = 0b1000,
-        const HAS_RE_LATE_BOUND   = 0b10000,
-        const HAS_REGIONS         = 0b100000,
-        const HAS_TY_ERR          = 0b1000000,
-        const HAS_PROJECTION      = 0b10000000,
-        const NEEDS_SUBST   = HAS_PARAMS.bits | HAS_SELF.bits | HAS_REGIONS.bits,
+        const HAS_PARAMS        = 1 << 0,
+        const HAS_SELF          = 1 << 1,
+        const HAS_TY_INFER      = 1 << 2,
+        const HAS_RE_INFER      = 1 << 3,
+        const HAS_RE_LATE_BOUND = 1 << 4,
+        const HAS_REGIONS       = 1 << 5,
+        const HAS_TY_ERR        = 1 << 6,
+        const HAS_PROJECTION    = 1 << 7,
+        const NEEDS_SUBST       = TypeFlags::HAS_PARAMS.bits |
+                                  TypeFlags::HAS_SELF.bits |
+                                  TypeFlags::HAS_REGIONS.bits,
     }
 }
 
@@ -863,8 +892,8 @@ macro_rules! sty_debug_print {
                         ty::ty_err => /* unimportant */ continue,
                         $(ty::$variant(..) => &mut $variant,)*
                     };
-                    let region = t.flags.intersects(ty::HAS_RE_INFER);
-                    let ty = t.flags.intersects(ty::HAS_TY_INFER);
+                    let region = t.flags.intersects(ty::TypeFlags::HAS_RE_INFER);
+                    let ty = t.flags.intersects(ty::TypeFlags::HAS_TY_INFER);
 
                     variant.total += 1;
                     total.total += 1;
@@ -924,6 +953,7 @@ impl fmt::Debug for TypeFlags {
 }
 
 impl<'tcx> PartialEq for TyS<'tcx> {
+    #[inline]
     fn eq(&self, other: &TyS<'tcx>) -> bool {
         // (self as *const _) == (other as *const _)
         (self as *const TyS<'tcx>) == (other as *const TyS<'tcx>)
@@ -966,23 +996,23 @@ impl<'tcx> Borrow<sty<'tcx>> for InternedTy<'tcx> {
 }
 
 pub fn type_has_params(ty: Ty) -> bool {
-    ty.flags.intersects(HAS_PARAMS)
+    ty.flags.intersects(TypeFlags::HAS_PARAMS)
 }
 pub fn type_has_self(ty: Ty) -> bool {
-    ty.flags.intersects(HAS_SELF)
+    ty.flags.intersects(TypeFlags::HAS_SELF)
 }
 pub fn type_has_ty_infer(ty: Ty) -> bool {
-    ty.flags.intersects(HAS_TY_INFER)
+    ty.flags.intersects(TypeFlags::HAS_TY_INFER)
 }
 pub fn type_needs_infer(ty: Ty) -> bool {
-    ty.flags.intersects(HAS_TY_INFER | HAS_RE_INFER)
+    ty.flags.intersects(TypeFlags::HAS_TY_INFER | TypeFlags::HAS_RE_INFER)
 }
 pub fn type_has_projection(ty: Ty) -> bool {
-    ty.flags.intersects(HAS_PROJECTION)
+    ty.flags.intersects(TypeFlags::HAS_PROJECTION)
 }
 
 pub fn type_has_late_bound_regions(ty: Ty) -> bool {
-    ty.flags.intersects(HAS_RE_LATE_BOUND)
+    ty.flags.intersects(TypeFlags::HAS_RE_LATE_BOUND)
 }
 
 /// An "escaping region" is a bound region whose binder is not part of `t`.
@@ -1385,10 +1415,10 @@ impl<'tcx> TyTrait<'tcx> {
         // otherwise the escaping regions would be captured by the binder
         assert!(!self_ty.has_escaping_regions());
 
-        ty::Binder(Rc::new(ty::TraitRef {
+        ty::Binder(TraitRef {
             def_id: self.principal.0.def_id,
             substs: tcx.mk_substs(self.principal.0.substs.with_self_ty(self_ty)),
-        }))
+        })
     }
 
     pub fn projection_bounds_with_self_ty(&self,
@@ -1403,9 +1433,8 @@ impl<'tcx> TyTrait<'tcx> {
             .map(|in_poly_projection_predicate| {
                 let in_projection_ty = &in_poly_projection_predicate.0.projection_ty;
                 let substs = tcx.mk_substs(in_projection_ty.trait_ref.substs.with_self_ty(self_ty));
-                let trait_ref =
-                    Rc::new(ty::TraitRef::new(in_projection_ty.trait_ref.def_id,
-                                              substs));
+                let trait_ref = ty::TraitRef::new(in_projection_ty.trait_ref.def_id,
+                                              substs);
                 let projection_ty = ty::ProjectionTy {
                     trait_ref: trait_ref,
                     item_name: in_projection_ty.item_name
@@ -1434,13 +1463,13 @@ impl<'tcx> TyTrait<'tcx> {
 /// Note that a `TraitRef` introduces a level of region binding, to
 /// account for higher-ranked trait bounds like `T : for<'a> Foo<&'a
 /// U>` or higher-ranked object types.
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct TraitRef<'tcx> {
     pub def_id: DefId,
     pub substs: &'tcx Substs<'tcx>,
 }
 
-pub type PolyTraitRef<'tcx> = Binder<Rc<TraitRef<'tcx>>>;
+pub type PolyTraitRef<'tcx> = Binder<TraitRef<'tcx>>;
 
 impl<'tcx> PolyTraitRef<'tcx> {
     pub fn self_ty(&self) -> Ty<'tcx> {
@@ -1878,7 +1907,7 @@ pub enum Predicate<'tcx> {
 }
 
 impl<'tcx> Predicate<'tcx> {
-    /// Performs a substituion suitable for going from a
+    /// Performs a substitution suitable for going from a
     /// poly-trait-ref to supertraits that must hold if that
     /// poly-trait-ref holds. This is slightly different from a normal
     /// substitution in terms of what happens with bound regions.  See
@@ -1966,7 +1995,7 @@ impl<'tcx> Predicate<'tcx> {
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct TraitPredicate<'tcx> {
-    pub trait_ref: Rc<TraitRef<'tcx>>
+    pub trait_ref: TraitRef<'tcx>
 }
 pub type PolyTraitPredicate<'tcx> = ty::Binder<TraitPredicate<'tcx>>;
 
@@ -2035,7 +2064,7 @@ impl<'tcx> PolyProjectionPredicate<'tcx> {
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct ProjectionTy<'tcx> {
     /// The trait reference `T as Trait<..>`.
-    pub trait_ref: Rc<ty::TraitRef<'tcx>>,
+    pub trait_ref: ty::TraitRef<'tcx>,
 
     /// The name `N` of the associated type.
     pub item_name: ast::Name,
@@ -2051,7 +2080,7 @@ pub trait ToPolyTraitRef<'tcx> {
     fn to_poly_trait_ref(&self) -> PolyTraitRef<'tcx>;
 }
 
-impl<'tcx> ToPolyTraitRef<'tcx> for Rc<TraitRef<'tcx>> {
+impl<'tcx> ToPolyTraitRef<'tcx> for TraitRef<'tcx> {
     fn to_poly_trait_ref(&self) -> PolyTraitRef<'tcx> {
         assert!(!self.has_escaping_regions());
         ty::Binder(self.clone())
@@ -2079,7 +2108,7 @@ pub trait AsPredicate<'tcx> {
     fn as_predicate(&self) -> Predicate<'tcx>;
 }
 
-impl<'tcx> AsPredicate<'tcx> for Rc<TraitRef<'tcx>> {
+impl<'tcx> AsPredicate<'tcx> for TraitRef<'tcx> {
     fn as_predicate(&self) -> Predicate<'tcx> {
         // we're about to add a binder, so let's check that we don't
         // accidentally capture anything, or else that might be some
@@ -2291,6 +2320,16 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
         match cx.map.find(id) {
             Some(ast_map::NodeImplItem(ref impl_item)) => {
                 match impl_item.node {
+                    ast::ConstImplItem(_, _) => {
+                        let def_id = ast_util::local_def(id);
+                        let scheme = lookup_item_type(cx, def_id);
+                        let predicates = lookup_predicates(cx, def_id);
+                        construct_parameter_environment(cx,
+                                                        impl_item.span,
+                                                        &scheme.generics,
+                                                        &predicates,
+                                                        id)
+                    }
                     ast::MethodImplItem(_, ref body) => {
                         let method_def_id = ast_util::local_def(id);
                         match ty::impl_or_trait_item(cx, method_def_id) {
@@ -2304,11 +2343,10 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                                     method_bounds,
                                     body.id)
                             }
-                            TypeTraitItem(_) => {
+                            _ => {
                                 cx.sess
                                   .bug("ParameterEnvironment::for_item(): \
-                                        can't create a parameter environment \
-                                        for type trait items")
+                                        got non-method item from impl method?!")
                             }
                         }
                     }
@@ -2322,6 +2360,25 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
             }
             Some(ast_map::NodeTraitItem(trait_item)) => {
                 match trait_item.node {
+                    ast::ConstTraitItem(_, ref default) => {
+                        match *default {
+                            Some(_) => {
+                                let def_id = ast_util::local_def(id);
+                                let scheme = lookup_item_type(cx, def_id);
+                                let predicates = lookup_predicates(cx, def_id);
+                                construct_parameter_environment(cx,
+                                                                trait_item.span,
+                                                                &scheme.generics,
+                                                                &predicates,
+                                                                id)
+                            }
+                            None => {
+                                cx.sess.bug("ParameterEnvironment::from_item(): \
+                                             can't create a parameter environment \
+                                             for const trait items without defaults")
+                            }
+                        }
+                    }
                     ast::MethodTraitItem(_, None) => {
                         cx.sess.span_bug(trait_item.span,
                                          "ParameterEnvironment::for_item():
@@ -2342,11 +2399,11 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                                     method_bounds,
                                     body.id)
                             }
-                            TypeTraitItem(_) => {
+                            _ => {
                                 cx.sess
                                   .bug("ParameterEnvironment::for_item(): \
-                                        can't create a parameter environment \
-                                        for type trait items")
+                                        got non-method item from provided \
+                                        method?!")
                             }
                         }
                     }
@@ -2431,6 +2488,16 @@ pub struct TypeScheme<'tcx> {
     pub ty: Ty<'tcx>,
 }
 
+bitflags! {
+    flags TraitFlags: u32 {
+        const NO_TRAIT_FLAGS        = 0,
+        const HAS_DEFAULT_IMPL      = 1 << 0,
+        const IS_OBJECT_SAFE        = 1 << 1,
+        const OBJECT_SAFETY_VALID   = 1 << 2,
+        const IMPLS_VALID           = 1 << 3,
+    }
+}
+
 /// As `TypeScheme` but for a trait ref.
 pub struct TraitDef<'tcx> {
     pub unsafety: ast::Unsafety,
@@ -2448,11 +2515,117 @@ pub struct TraitDef<'tcx> {
     /// implements the trait.
     pub generics: Generics<'tcx>,
 
-    pub trait_ref: Rc<ty::TraitRef<'tcx>>,
+    pub trait_ref: TraitRef<'tcx>,
 
     /// A list of the associated types defined in this trait. Useful
     /// for resolving `X::Foo` type markers.
     pub associated_type_names: Vec<ast::Name>,
+
+    // Impls of this trait. To allow for quicker lookup, the impls are indexed
+    // by a simplified version of their Self type: impls with a simplifiable
+    // Self are stored in nonblanket_impls keyed by it, while all other impls
+    // are stored in blanket_impls.
+
+    /// Impls of the trait.
+    pub nonblanket_impls: RefCell<
+        FnvHashMap<fast_reject::SimplifiedType, Vec<DefId>>
+    >,
+
+    /// Blanket impls associated with the trait.
+    pub blanket_impls: RefCell<Vec<DefId>>,
+
+    /// Various flags
+    pub flags: Cell<TraitFlags>
+}
+
+impl<'tcx> TraitDef<'tcx> {
+    // returns None if not yet calculated
+    pub fn object_safety(&self) -> Option<bool> {
+        if self.flags.get().intersects(TraitFlags::OBJECT_SAFETY_VALID) {
+            Some(self.flags.get().intersects(TraitFlags::IS_OBJECT_SAFE))
+        } else {
+            None
+        }
+    }
+
+    pub fn set_object_safety(&self, is_safe: bool) {
+        assert!(self.object_safety().map(|cs| cs == is_safe).unwrap_or(true));
+        self.flags.set(
+            self.flags.get() | if is_safe {
+                TraitFlags::OBJECT_SAFETY_VALID | TraitFlags::IS_OBJECT_SAFE
+            } else {
+                TraitFlags::OBJECT_SAFETY_VALID
+            }
+        );
+    }
+
+    /// Records a trait-to-implementation mapping.
+    pub fn record_impl(&self,
+                       tcx: &ctxt<'tcx>,
+                       impl_def_id: DefId,
+                       impl_trait_ref: TraitRef<'tcx>) {
+        // We don't want to borrow_mut after we already populated all impls,
+        // so check if an impl is present with an immutable borrow first.
+
+        if let Some(sty) = fast_reject::simplify_type(tcx,
+                                                      impl_trait_ref.self_ty(), false) {
+            if let Some(is) = self.nonblanket_impls.borrow().get(&sty) {
+                if is.contains(&impl_def_id) {
+                    return // duplicate - skip
+                }
+            }
+
+            self.nonblanket_impls.borrow_mut().entry(sty).or_insert(vec![]).push(impl_def_id)
+        } else {
+            if self.blanket_impls.borrow().contains(&impl_def_id) {
+                return // duplicate - skip
+            }
+            self.blanket_impls.borrow_mut().push(impl_def_id)
+        }
+    }
+
+
+    pub fn for_each_impl<F: FnMut(DefId)>(&self, tcx: &ctxt<'tcx>, mut f: F)  {
+        ty::populate_implementations_for_trait_if_necessary(tcx, self.trait_ref.def_id);
+
+        for &impl_def_id in self.blanket_impls.borrow().iter() {
+            f(impl_def_id);
+        }
+
+        for v in self.nonblanket_impls.borrow().values() {
+            for &impl_def_id in v {
+                f(impl_def_id);
+            }
+        }
+    }
+
+    pub fn for_each_relevant_impl<F: FnMut(DefId)>(&self,
+                                                   tcx: &ctxt<'tcx>,
+                                                   self_ty: Ty<'tcx>,
+                                                   mut f: F)
+    {
+        ty::populate_implementations_for_trait_if_necessary(tcx, self.trait_ref.def_id);
+
+        for &impl_def_id in self.blanket_impls.borrow().iter() {
+            f(impl_def_id);
+        }
+
+        if let Some(simp) = fast_reject::simplify_type(tcx, self_ty, false) {
+            if let Some(impls) = self.nonblanket_impls.borrow().get(&simp) {
+                for &impl_def_id in impls {
+                    f(impl_def_id);
+                }
+                return; // we don't need to process the other non-blanket impls
+            }
+        }
+
+        for v in self.nonblanket_impls.borrow().values() {
+            for &impl_def_id in v {
+                f(impl_def_id);
+            }
+        }
+    }
+
 }
 
 /// Records the substitutions used to translate the polytype for an
@@ -2612,14 +2785,11 @@ pub fn mk_ctxt<'tcx>(s: Session,
         struct_fields: RefCell::new(DefIdMap()),
         destructor_for_type: RefCell::new(DefIdMap()),
         destructors: RefCell::new(DefIdSet()),
-        trait_impls: RefCell::new(DefIdMap()),
-        traits_with_default_impls: RefCell::new(DefIdMap()),
         inherent_impls: RefCell::new(DefIdMap()),
         impl_items: RefCell::new(DefIdMap()),
         used_unsafe: RefCell::new(NodeSet()),
         used_mut_nodes: RefCell::new(NodeSet()),
         populated_external_types: RefCell::new(DefIdSet()),
-        populated_external_traits: RefCell::new(DefIdSet()),
         populated_external_primitive_impls: RefCell::new(DefIdSet()),
         upvar_capture_map: RefCell::new(FnvHashMap()),
         extern_const_statics: RefCell::new(DefIdMap()),
@@ -2636,7 +2806,6 @@ pub fn mk_ctxt<'tcx>(s: Session,
         repr_hint_cache: RefCell::new(DefIdMap()),
         type_impls_copy_cache: RefCell::new(HashMap::new()),
         type_impls_sized_cache: RefCell::new(HashMap::new()),
-        object_safety_cache: RefCell::new(DefIdMap()),
         const_qualif_map: RefCell::new(NodeMap()),
    }
 }
@@ -2755,7 +2924,7 @@ struct FlagComputation {
 
 impl FlagComputation {
     fn new() -> FlagComputation {
-        FlagComputation { flags: NO_TYPE_FLAGS, depth: 0 }
+        FlagComputation { flags: TypeFlags::empty(), depth: 0 }
     }
 
     fn for_sty(st: &sty) -> FlagComputation {
@@ -2800,20 +2969,20 @@ impl FlagComputation {
 
             // You might think that we could just return ty_err for
             // any type containing ty_err as a component, and get
-            // rid of the HAS_TY_ERR flag -- likewise for ty_bot (with
+            // rid of the TypeFlags::HAS_TY_ERR flag -- likewise for ty_bot (with
             // the exception of function types that return bot).
             // But doing so caused sporadic memory corruption, and
             // neither I (tjc) nor nmatsakis could figure out why,
             // so we're doing it this way.
             &ty_err => {
-                self.add_flags(HAS_TY_ERR)
+                self.add_flags(TypeFlags::HAS_TY_ERR)
             }
 
             &ty_param(ref p) => {
                 if p.space == subst::SelfSpace {
-                    self.add_flags(HAS_SELF);
+                    self.add_flags(TypeFlags::HAS_SELF);
                 } else {
-                    self.add_flags(HAS_PARAMS);
+                    self.add_flags(TypeFlags::HAS_PARAMS);
                 }
             }
 
@@ -2822,7 +2991,7 @@ impl FlagComputation {
             }
 
             &ty_infer(_) => {
-                self.add_flags(HAS_TY_INFER)
+                self.add_flags(TypeFlags::HAS_TY_INFER)
             }
 
             &ty_enum(_, substs) | &ty_struct(_, substs) => {
@@ -2830,7 +2999,7 @@ impl FlagComputation {
             }
 
             &ty_projection(ref data) => {
-                self.add_flags(HAS_PROJECTION);
+                self.add_flags(TypeFlags::HAS_PROJECTION);
                 self.add_projection_ty(data);
             }
 
@@ -2894,11 +3063,11 @@ impl FlagComputation {
     }
 
     fn add_region(&mut self, r: Region) {
-        self.add_flags(HAS_REGIONS);
+        self.add_flags(TypeFlags::HAS_REGIONS);
         match r {
-            ty::ReInfer(_) => { self.add_flags(HAS_RE_INFER); }
+            ty::ReInfer(_) => { self.add_flags(TypeFlags::HAS_RE_INFER); }
             ty::ReLateBound(debruijn, _) => {
-                self.add_flags(HAS_RE_LATE_BOUND);
+                self.add_flags(TypeFlags::HAS_RE_LATE_BOUND);
                 self.add_depth(debruijn.depth);
             }
             _ => { }
@@ -3075,7 +3244,7 @@ pub fn sort_bounds_list(bounds: &mut [ty::PolyProjectionPredicate]) {
 }
 
 pub fn mk_projection<'tcx>(cx: &ctxt<'tcx>,
-                           trait_ref: Rc<ty::TraitRef<'tcx>>,
+                           trait_ref: TraitRef<'tcx>,
                            item_name: ast::Name)
                            -> Ty<'tcx> {
     // take a copy of substs so that we own the vectors inside
@@ -3252,11 +3421,11 @@ pub fn type_is_nil(ty: Ty) -> bool {
 }
 
 pub fn type_is_error(ty: Ty) -> bool {
-    ty.flags.intersects(HAS_TY_ERR)
+    ty.flags.intersects(TypeFlags::HAS_TY_ERR)
 }
 
 pub fn type_needs_subst(ty: Ty) -> bool {
-    ty.flags.intersects(NEEDS_SUBST)
+    ty.flags.intersects(TypeFlags::NEEDS_SUBST)
 }
 
 pub fn trait_ref_contains_error(tref: &ty::TraitRef) -> bool {
@@ -3433,12 +3602,10 @@ def_type_content_sets! {
         // Things that are owned by the value (second and third nibbles):
         OwnsOwned                           = 0b0000_0000__0000_0001__0000,
         OwnsDtor                            = 0b0000_0000__0000_0010__0000,
-        OwnsManaged /* see [1] below */     = 0b0000_0000__0000_0100__0000,
         OwnsAll                             = 0b0000_0000__1111_1111__0000,
 
         // Things that are reachable by the value in any way (fourth nibble):
         ReachesBorrowed                     = 0b0000_0010__0000_0000__0000,
-        // ReachesManaged /* see [1] below */  = 0b0000_0100__0000_0000__0000,
         ReachesMutable                      = 0b0000_1000__0000_0000__0000,
         ReachesFfiUnsafe                    = 0b0010_0000__0000_0000__0000,
         ReachesAll                          = 0b0011_1111__0000_0000__0000,
@@ -3448,13 +3615,6 @@ def_type_content_sets! {
 
         // Things that prevent values from being considered sized
         Nonsized                            = 0b0000_0000__0000_0000__0001,
-
-        // Bits to set when a managed value is encountered
-        //
-        // [1] Do not set the bits TC::OwnsManaged or
-        //     TC::ReachesManaged directly, instead reference
-        //     TC::Managed to set them both at once.
-        Managed                             = 0b0000_0100__0000_0100__0000,
 
         // All bits
         All                                 = 0b1111_1111__1111_1111__1111
@@ -3468,10 +3628,6 @@ impl TypeContents {
 
     pub fn intersects(&self, tc: TypeContents) -> bool {
         (self.bits & tc.bits) != 0
-    }
-
-    pub fn owns_managed(&self) -> bool {
-        self.intersects(TC::OwnsManaged)
     }
 
     pub fn owns_owned(&self) -> bool {
@@ -3507,12 +3663,6 @@ impl TypeContents {
     /// Includes only those bits that still apply when indirected through a reference (`&`)
     pub fn reference(&self, bits: TypeContents) -> TypeContents {
         bits | (
-            *self & TC::ReachesAll)
-    }
-
-    /// Includes only those bits that still apply when indirected through a managed pointer (`@`)
-    pub fn managed_pointer(&self) -> TypeContents {
-        TC::Managed | (
             *self & TC::ReachesAll)
     }
 
@@ -3760,9 +3910,7 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
 
     fn apply_lang_items(cx: &ctxt, did: ast::DefId, tc: TypeContents)
                         -> TypeContents {
-        if Some(did) == cx.lang_items.managed_bound() {
-            tc | TC::Managed
-        } else if Some(did) == cx.lang_items.unsafe_cell_type() {
+        if Some(did) == cx.lang_items.unsafe_cell_type() {
             tc | TC::InteriorUnsafe
         } else {
             tc
@@ -4341,9 +4489,9 @@ pub fn named_element_ty<'tcx>(cx: &ctxt<'tcx>,
 }
 
 pub fn impl_id_to_trait_ref<'tcx>(cx: &ctxt<'tcx>, id: ast::NodeId)
-                                  -> Rc<ty::TraitRef<'tcx>> {
+                                  -> ty::TraitRef<'tcx> {
     match cx.impl_trait_refs.borrow().get(&id) {
-        Some(ty) => ty.clone(),
+        Some(ty) => *ty,
         None => cx.sess.bug(
             &format!("impl_id_to_trait_ref: no trait ref for impl `{}`",
                     cx.map.node_to_string(id)))
@@ -4482,7 +4630,7 @@ pub fn expr_ty_opt<'tcx>(cx: &ctxt<'tcx>, expr: &ast::Expr) -> Option<Ty<'tcx>> 
 /// require serializing and deserializing the type and, although that's not
 /// hard to do, I just hate that code so much I didn't want to touch it
 /// unless it was to fix it properly, which seemed a distraction from the
-/// task at hand! -nmatsakis
+/// thread at hand! -nmatsakis
 pub fn expr_ty_adjusted<'tcx>(cx: &ctxt<'tcx>, expr: &ast::Expr) -> Ty<'tcx> {
     adjust_ty(cx, expr.span, expr.id, expr_ty(cx, expr),
               cx.adjustments.borrow().get(&expr.id),
@@ -4719,7 +4867,8 @@ pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
                 def::DefUpvar(..) |
                 def::DefLocal(..) => LvalueExpr,
 
-                def::DefConst(..) => RvalueDatumExpr,
+                def::DefConst(..) |
+                def::DefAssociatedConst(..) => RvalueDatumExpr,
 
                 def => {
                     tcx.sess.span_bug(
@@ -5070,10 +5219,10 @@ pub fn provided_trait_methods<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)
                 if let ast::MethodTraitItem(_, Some(_)) = ti.node {
                     match impl_or_trait_item(cx, ast_util::local_def(ti.id)) {
                         MethodTraitItem(m) => Some(m),
-                        TypeTraitItem(_) => {
+                        _ => {
                             cx.sess.bug("provided_trait_methods(): \
-                                         associated type found from \
-                                         looking up ProvidedMethod?!")
+                                         non-method item found from \
+                                         looking up provided method?!")
                         }
                     }
                 } else {
@@ -5085,6 +5234,52 @@ pub fn provided_trait_methods<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)
         }
     } else {
         csearch::get_provided_trait_methods(cx, id)
+    }
+}
+
+pub fn associated_consts<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)
+                               -> Vec<Rc<AssociatedConst<'tcx>>> {
+    if is_local(id) {
+        match cx.map.expect_item(id.node).node {
+            ItemTrait(_, _, _, ref tis) => {
+                tis.iter().filter_map(|ti| {
+                    if let ast::ConstTraitItem(_, _) = ti.node {
+                        match impl_or_trait_item(cx, ast_util::local_def(ti.id)) {
+                            ConstTraitItem(ac) => Some(ac),
+                            _ => {
+                                cx.sess.bug("associated_consts(): \
+                                             non-const item found from \
+                                             looking up a constant?!")
+                            }
+                        }
+                    } else {
+                        None
+                    }
+                }).collect()
+            }
+            ItemImpl(_, _, _, _, _, ref iis) => {
+                iis.iter().filter_map(|ii| {
+                    if let ast::ConstImplItem(_, _) = ii.node {
+                        match impl_or_trait_item(cx, ast_util::local_def(ii.id)) {
+                            ConstTraitItem(ac) => Some(ac),
+                            _ => {
+                                cx.sess.bug("associated_consts(): \
+                                             non-const item found from \
+                                             looking up a constant?!")
+                            }
+                        }
+                    } else {
+                        None
+                    }
+                }).collect()
+            }
+            _ => {
+                cx.sess.bug(&format!("associated_consts: `{:?}` is not a trait \
+                                      or impl", id))
+            }
+        }
+    } else {
+        csearch::get_associated_consts(cx, id)
     }
 }
 
@@ -5174,7 +5369,7 @@ pub fn is_associated_type(cx: &ctxt, id: ast::DefId) -> bool {
                 Some(ref item) => {
                     match **item {
                         TypeTraitItem(_) => true,
-                        MethodTraitItem(_) => false,
+                        _ => false,
                     }
                 }
                 None => false,
@@ -5209,7 +5404,7 @@ pub fn trait_item_def_ids(cx: &ctxt, id: ast::DefId)
 }
 
 pub fn impl_trait_ref<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)
-                            -> Option<Rc<TraitRef<'tcx>>> {
+                            -> Option<TraitRef<'tcx>> {
     memoized(&cx.impl_trait_cache, id, |id: ast::DefId| {
         if id.krate == ast::LOCAL_CRATE {
             debug!("(impl_trait_ref) searching for trait impl {:?}", id);
@@ -5628,8 +5823,10 @@ fn compute_enum_variants<'tcx>(cx: &ctxt<'tcx>,
                     Ok(const_eval::const_int(val)) => current_disr_val = val as Disr,
                     Ok(const_eval::const_uint(val)) => current_disr_val = val as Disr,
                     Ok(_) => {
+                        let sign_desc = if repr_type.is_signed() { "signed" } else { "unsigned" };
                         span_err!(cx.sess, e.span, E0079,
-                                  "expected signed integer constant");
+                                  "expected {} integer constant",
+                                  sign_desc);
                         current_disr_val = attempt_fresh_value();
                     }
                     Err(ref err) => {
@@ -5715,10 +5912,10 @@ pub fn lookup_item_type<'tcx>(cx: &ctxt<'tcx>,
 
 /// Given the did of a trait, returns its canonical trait ref.
 pub fn lookup_trait_def<'tcx>(cx: &ctxt<'tcx>, did: ast::DefId)
-                              -> Rc<TraitDef<'tcx>> {
+                              -> &'tcx TraitDef<'tcx> {
     memoized(&cx.trait_defs, did, |did: DefId| {
         assert!(did.krate != ast::LOCAL_CRATE);
-        Rc::new(csearch::get_trait_def(cx, did))
+        cx.arenas.trait_defs.alloc(csearch::get_trait_def(cx, did))
     })
 }
 
@@ -6107,50 +6304,36 @@ pub fn item_variances(tcx: &ctxt, item_id: ast::DefId) -> Rc<ItemVariances> {
 
 pub fn trait_has_default_impl(tcx: &ctxt, trait_def_id: DefId) -> bool {
     populate_implementations_for_trait_if_necessary(tcx, trait_def_id);
-    tcx.traits_with_default_impls.borrow().contains_key(&trait_def_id)
+
+    let def = lookup_trait_def(tcx, trait_def_id);
+    def.flags.get().intersects(TraitFlags::HAS_DEFAULT_IMPL)
 }
 
 /// Records a trait-to-implementation mapping.
 pub fn record_trait_has_default_impl(tcx: &ctxt, trait_def_id: DefId) {
-    // We're using the latest implementation found as the reference one.
-    // Duplicated implementations are caught and reported in the coherence
-    // step.
-    tcx.traits_with_default_impls.borrow_mut().insert(trait_def_id, ());
-}
-
-/// Records a trait-to-implementation mapping.
-pub fn record_trait_implementation(tcx: &ctxt,
-                                   trait_def_id: DefId,
-                                   impl_def_id: DefId) {
-
-    match tcx.trait_impls.borrow().get(&trait_def_id) {
-        Some(impls_for_trait) => {
-            impls_for_trait.borrow_mut().push(impl_def_id);
-            return;
-        }
-        None => {}
-    }
-
-    tcx.trait_impls.borrow_mut().insert(trait_def_id, Rc::new(RefCell::new(vec!(impl_def_id))));
+    let def = lookup_trait_def(tcx, trait_def_id);
+    def.flags.set(def.flags.get() | TraitFlags::HAS_DEFAULT_IMPL)
 }
 
 /// Load primitive inherent implementations if necessary
-pub fn populate_implementations_for_primitive_if_necessary(tcx: &ctxt, lang_def_id: ast::DefId) {
-    if lang_def_id.krate == LOCAL_CRATE {
-        return
-    }
-    if tcx.populated_external_primitive_impls.borrow().contains(&lang_def_id) {
+pub fn populate_implementations_for_primitive_if_necessary(tcx: &ctxt,
+                                                           primitive_def_id: ast::DefId) {
+    if primitive_def_id.krate == LOCAL_CRATE {
         return
     }
 
-    debug!("populate_implementations_for_primitive_if_necessary: searching for {:?}", lang_def_id);
+    if tcx.populated_external_primitive_impls.borrow().contains(&primitive_def_id) {
+        return
+    }
 
-    let impl_items = csearch::get_impl_items(&tcx.sess.cstore, lang_def_id);
+    debug!("populate_implementations_for_primitive_if_necessary: searching for {:?}",
+           primitive_def_id);
+
+    let impl_items = csearch::get_impl_items(&tcx.sess.cstore, primitive_def_id);
 
     // Store the implementation info.
-    tcx.impl_items.borrow_mut().insert(lang_def_id, impl_items);
-
-    tcx.populated_external_primitive_impls.borrow_mut().insert(lang_def_id);
+    tcx.impl_items.borrow_mut().insert(primitive_def_id, impl_items);
+    tcx.populated_external_primitive_impls.borrow_mut().insert(primitive_def_id);
 }
 
 /// Populates the type context with all the implementations for the given type
@@ -6160,6 +6343,7 @@ pub fn populate_implementations_for_type_if_necessary(tcx: &ctxt,
     if type_id.krate == LOCAL_CRATE {
         return
     }
+
     if tcx.populated_external_types.borrow().contains(&type_id) {
         return
     }
@@ -6170,10 +6354,12 @@ pub fn populate_implementations_for_type_if_necessary(tcx: &ctxt,
     csearch::each_implementation_for_type(&tcx.sess.cstore, type_id, |impl_def_id| {
         let impl_items = csearch::get_impl_items(&tcx.sess.cstore, impl_def_id);
 
-        // Record the trait->implementation mappings, if applicable.
-        let associated_traits = csearch::get_impl_trait(tcx, impl_def_id);
-        if let Some(ref trait_ref) = associated_traits {
-            record_trait_implementation(tcx, trait_ref.def_id, impl_def_id);
+        // Record the implementation, if needed
+        if let Some(trait_ref) = csearch::get_impl_trait(tcx, impl_def_id) {
+            let trait_def = lookup_trait_def(tcx, trait_ref.def_id);
+            trait_def.record_impl(tcx, impl_def_id, trait_ref);
+        } else {
+            inherent_impls.push(impl_def_id);
         }
 
         // For any methods that use a default implementation, add them to
@@ -6188,17 +6374,12 @@ pub fn populate_implementations_for_type_if_necessary(tcx: &ctxt,
                            .insert(method_def_id, source);
                     }
                 }
-                TypeTraitItem(_) => {}
+                _ => {}
             }
         }
 
         // Store the implementation info.
         tcx.impl_items.borrow_mut().insert(impl_def_id, impl_items);
-
-        // If this is an inherent implementation, record it.
-        if associated_traits.is_none() {
-            inherent_impls.push(impl_def_id);
-        }
     });
 
     tcx.inherent_impls.borrow_mut().insert(type_id, Rc::new(inherent_impls));
@@ -6214,7 +6395,8 @@ pub fn populate_implementations_for_trait_if_necessary(
         return
     }
 
-    if tcx.populated_external_traits.borrow().contains(&trait_id) {
+    let def = lookup_trait_def(tcx, trait_id);
+    if def.flags.get().intersects(TraitFlags::IMPLS_VALID) {
         return
     }
 
@@ -6224,9 +6406,9 @@ pub fn populate_implementations_for_trait_if_necessary(
 
     csearch::each_implementation_for_trait(&tcx.sess.cstore, trait_id, |implementation_def_id| {
         let impl_items = csearch::get_impl_items(&tcx.sess.cstore, implementation_def_id);
-
+        let trait_ref = impl_trait_ref(tcx, implementation_def_id).unwrap();
         // Record the trait->implementation mapping.
-        record_trait_implementation(tcx, trait_id, implementation_def_id);
+        def.record_impl(tcx, implementation_def_id, trait_ref);
 
         // For any methods that use a default implementation, add them to
         // the map. This is a bit unfortunate.
@@ -6240,7 +6422,7 @@ pub fn populate_implementations_for_trait_if_necessary(
                             .insert(method_def_id, source);
                     }
                 }
-                TypeTraitItem(_) => {}
+                _ => {}
             }
         }
 
@@ -6248,7 +6430,7 @@ pub fn populate_implementations_for_trait_if_necessary(
         tcx.impl_items.borrow_mut().insert(implementation_def_id, impl_items);
     });
 
-    tcx.populated_external_traits.borrow_mut().insert(trait_id);
+    def.flags.set(def.flags.get() | TraitFlags::IMPLS_VALID);
 }
 
 /// Given the def_id of an impl, return the def_id of the trait it implements.

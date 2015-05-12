@@ -23,7 +23,6 @@ use middle::infer;
 use middle::infer::InferCtxt;
 use syntax::ast;
 use syntax::codemap::Span;
-use std::rc::Rc;
 use std::iter::repeat;
 use util::ppaux::Repr;
 
@@ -109,10 +108,11 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
         self.add_obligations(&pick, &all_substs, &method_predicates);
 
         // Create the final `MethodCallee`.
+        let method_ty = pick.item.as_opt_method().unwrap();
         let fty = ty::mk_bare_fn(self.tcx(), None, self.tcx().mk_bare_fn(ty::BareFnTy {
             sig: ty::Binder(method_sig),
-            unsafety: pick.method_ty.fty.unsafety,
-            abi: pick.method_ty.fty.abi.clone(),
+            unsafety: method_ty.fty.unsafety,
+            abi: method_ty.fty.abi.clone(),
         }));
         let callee = MethodCallee {
             origin: method_origin,
@@ -204,7 +204,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                         "impl {:?} is not an inherent impl", impl_def_id);
                 let impl_polytype = check::impl_self_ty(self.fcx, self.span, impl_def_id);
 
-                (impl_polytype.substs, MethodStatic(pick.method_ty.def_id))
+                (impl_polytype.substs, MethodStatic(pick.item.def_id()))
             }
 
             probe::ObjectPick(trait_def_id, method_num, vtable_index) => {
@@ -275,7 +275,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                                                                  self.infcx().next_ty_var());
 
                 let trait_ref =
-                    Rc::new(ty::TraitRef::new(trait_def_id, self.tcx().mk_substs(substs.clone())));
+                    ty::TraitRef::new(trait_def_id, self.tcx().mk_substs(substs.clone()));
                 let origin = MethodTypeParam(MethodParam { trait_ref: trait_ref,
                                                            method_num: method_num,
                                                            impl_def_id: None });
@@ -336,7 +336,8 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
         // If they were not explicitly supplied, just construct fresh
         // variables.
         let num_supplied_types = supplied_method_types.len();
-        let num_method_types = pick.method_ty.generics.types.len(subst::FnSpace);
+        let num_method_types = pick.item.as_opt_method().unwrap()
+                                   .generics.types.len(subst::FnSpace);
         let method_types = {
             if num_supplied_types == 0 {
                 self.fcx.infcx().next_ty_vars(num_method_types)
@@ -360,7 +361,8 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
         let method_regions =
             self.fcx.infcx().region_vars_for_defs(
                 self.span,
-                pick.method_ty.generics.regions.get_slice(subst::FnSpace));
+                pick.item.as_opt_method().unwrap()
+                    .generics.regions.get_slice(subst::FnSpace));
 
         (method_types, method_regions)
     }
@@ -397,7 +399,8 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
         // Instantiate the bounds on the method with the
         // type/early-bound-regions substitutions performed. There can
         // be no late-bound regions appearing here.
-        let method_predicates = pick.method_ty.predicates.instantiate(self.tcx(), &all_substs);
+        let method_predicates = pick.item.as_opt_method().unwrap()
+                                    .predicates.instantiate(self.tcx(), &all_substs);
         let method_predicates = self.fcx.normalize_associated_types_in(self.span,
                                                                        &method_predicates);
 
@@ -410,7 +413,8 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
         // NB: Instantiate late-bound regions first so that
         // `instantiate_type_scheme` can normalize associated types that
         // may reference those regions.
-        let method_sig = self.replace_late_bound_regions_with_fresh_var(&pick.method_ty.fty.sig);
+        let method_sig = self.replace_late_bound_regions_with_fresh_var(
+            &pick.item.as_opt_method().unwrap().fty.sig);
         debug!("late-bound lifetimes from method instantiated, method_sig={}",
                method_sig.repr(self.tcx()));
 
@@ -616,7 +620,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
 
     fn enforce_illegal_method_limitations(&self, pick: &probe::Pick) {
         // Disallow calls to the method `drop` defined in the `Drop` trait.
-        match pick.method_ty.container {
+        match pick.item.container() {
             ty::TraitContainer(trait_def_id) => {
                 callee::check_legal_trait_for_method_call(self.fcx.ccx, self.span, trait_def_id)
             }
@@ -625,7 +629,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                 // potential calls to it will wind up in the other
                 // arm. But just to be sure, check that the method id
                 // does not appear in the list of destructors.
-                assert!(!self.tcx().destructors.borrow().contains(&pick.method_ty.def_id));
+                assert!(!self.tcx().destructors.borrow().contains(&pick.item.def_id()));
             }
         }
     }

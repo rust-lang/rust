@@ -30,7 +30,9 @@ use middle::subst;
 use middle::ty::{ImplContainer, TraitContainer};
 use middle::ty::{self, Ty};
 use middle::astencode::vtable_decoder_helpers;
+use util::nodemap::FnvHashMap;
 
+use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::hash::{self, Hash, SipHasher};
 use std::io::prelude::*;
@@ -247,13 +249,13 @@ pub fn item_type<'tcx>(_item_id: ast::DefId, item: rbml::Doc,
 }
 
 fn doc_trait_ref<'tcx>(doc: rbml::Doc, tcx: &ty::ctxt<'tcx>, cdata: Cmd)
-                       -> Rc<ty::TraitRef<'tcx>> {
+                       -> ty::TraitRef<'tcx> {
     parse_trait_ref_data(doc.data, cdata.cnum, doc.start, tcx,
                          |_, did| translate_def_id(cdata, did))
 }
 
 fn item_trait_ref<'tcx>(doc: rbml::Doc, tcx: &ty::ctxt<'tcx>, cdata: Cmd)
-                        -> Rc<ty::TraitRef<'tcx>> {
+                        -> ty::TraitRef<'tcx> {
     let tp = reader::get_doc(doc, tag_item_trait_ref);
     doc_trait_ref(tp, tcx, cdata)
 }
@@ -305,7 +307,25 @@ fn item_to_def_like(item: rbml::Doc, did: ast::DefId, cnum: ast::CrateNum)
     -> DefLike {
     let fam = item_family(item);
     match fam {
-        Constant  => DlDef(def::DefConst(did)),
+        Constant  => {
+            // Check whether we have an associated const item.
+            if item_sort(item) == Some('C') {
+                // Check whether the associated const is from a trait or impl.
+                // See the comment for methods below.
+                let provenance = if reader::maybe_get_doc(
+                      item, tag_item_trait_parent_sort).is_some() {
+                    def::FromTrait(item_reqd_and_translated_parent_item(cnum,
+                                                                        item))
+                } else {
+                    def::FromImpl(item_reqd_and_translated_parent_item(cnum,
+                                                                       item))
+                };
+                DlDef(def::DefAssociatedConst(did, provenance))
+            } else {
+                // Regular const item.
+                DlDef(def::DefConst(did))
+            }
+        }
         ImmStatic => DlDef(def::DefStatic(did, false)),
         MutStatic => DlDef(def::DefStatic(did, true)),
         Struct    => DlDef(def::DefStruct(did)),
@@ -402,6 +422,9 @@ pub fn get_trait_def<'tcx>(cdata: Cmd,
         generics: generics,
         trait_ref: item_trait_ref(item_doc, tcx, cdata),
         associated_type_names: associated_type_names,
+        nonblanket_impls: RefCell::new(FnvHashMap()),
+        blanket_impls: RefCell::new(vec![]),
+        flags: Cell::new(ty::TraitFlags::NO_TRAIT_FLAGS)
     }
 }
 
@@ -472,7 +495,7 @@ pub fn get_impl_polarity<'tcx>(cdata: Cmd,
 pub fn get_impl_trait<'tcx>(cdata: Cmd,
                             id: ast::NodeId,
                             tcx: &ty::ctxt<'tcx>)
-                            -> Option<Rc<ty::TraitRef<'tcx>>>
+                            -> Option<ty::TraitRef<'tcx>>
 {
     let item_doc = lookup_item(id, cdata.data());
     let fam = item_family(item_doc);
@@ -826,6 +849,7 @@ pub fn get_impl_items(cdata: Cmd, impl_id: ast::NodeId)
                         tag_item_impl_item, |doc| {
         let def_id = item_def_id(doc, cdata);
         match item_sort(doc) {
+            Some('C') => impl_items.push(ty::ConstTraitItemId(def_id)),
             Some('r') | Some('p') => {
                 impl_items.push(ty::MethodTraitItemId(def_id))
             }
@@ -877,6 +901,18 @@ pub fn get_impl_or_trait_item<'tcx>(intr: Rc<IdentInterner>,
     let vis = item_visibility(method_doc);
 
     match item_sort(method_doc) {
+        Some('C') => {
+            let ty = doc_type(method_doc, tcx, cdata);
+            let default = get_provided_source(method_doc, cdata);
+            ty::ConstTraitItem(Rc::new(ty::AssociatedConst {
+                name: name,
+                ty: ty,
+                vis: vis,
+                def_id: def_id,
+                container: container,
+                default: default,
+            }))
+        }
         Some('r') | Some('p') => {
             let generics = doc_generics(method_doc, tcx, cdata, tag_method_ty_generics);
             let predicates = doc_predicates(method_doc, tcx, cdata, tag_method_ty_generics);
@@ -914,6 +950,7 @@ pub fn get_trait_item_def_ids(cdata: Cmd, id: ast::NodeId)
     reader::tagged_docs(item, tag_item_trait_item, |mth| {
         let def_id = item_def_id(mth, cdata);
         match item_sort(mth) {
+            Some('C') => result.push(ty::ConstTraitItemId(def_id)),
             Some('r') | Some('p') => {
                 result.push(ty::MethodTraitItemId(def_id));
             }
@@ -951,15 +988,42 @@ pub fn get_provided_trait_methods<'tcx>(intr: Rc<IdentInterner>,
                                                     cdata,
                                                     did.node,
                                                     tcx);
-            match trait_item {
-                ty::MethodTraitItem(ref method) => {
-                    result.push((*method).clone())
-                }
-                ty::TypeTraitItem(_) => {}
+            if let ty::MethodTraitItem(ref method) = trait_item {
+                result.push((*method).clone())
             }
         }
         true
     });
+
+    return result;
+}
+
+pub fn get_associated_consts<'tcx>(intr: Rc<IdentInterner>,
+                                   cdata: Cmd,
+                                   id: ast::NodeId,
+                                   tcx: &ty::ctxt<'tcx>)
+                                   -> Vec<Rc<ty::AssociatedConst<'tcx>>> {
+    let data = cdata.data();
+    let item = lookup_item(id, data);
+    let mut result = Vec::new();
+
+    for &tag in &[tag_item_trait_item, tag_item_impl_item] {
+        reader::tagged_docs(item, tag, |ac_id| {
+            let did = item_def_id(ac_id, cdata);
+            let ac_doc = lookup_item(did.node, data);
+
+            if item_sort(ac_doc) == Some('C') {
+                let trait_item = get_impl_or_trait_item(intr.clone(),
+                                                        cdata,
+                                                        did.node,
+                                                        tcx);
+                if let ty::ConstTraitItem(ref ac) = trait_item {
+                    result.push((*ac).clone())
+                }
+            }
+            true
+        });
+    }
 
     return result;
 }

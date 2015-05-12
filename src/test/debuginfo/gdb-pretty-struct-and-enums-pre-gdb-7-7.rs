@@ -37,6 +37,8 @@
 // gdb-command: print c_style_enum3
 // gdb-check:$5 = CStyleEnumVar3
 
+#![allow(dead_code, unused_variables)]
+
 struct RegularStruct {
     the_first_field: isize,
     the_second_field: f64,

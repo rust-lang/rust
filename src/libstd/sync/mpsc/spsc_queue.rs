@@ -30,7 +30,7 @@
 //! A single-producer single-consumer concurrent queue
 //!
 //! This module contains the implementation of an SPSC queue which can be used
-//! concurrently between two tasks. This data structure is safe to use and
+//! concurrently between two threads. This data structure is safe to use and
 //! enforces the semantics that there is one pusher and one popper.
 
 #![unstable(feature = "std_misc")]
@@ -226,7 +226,6 @@ impl<T> Queue<T> {
     }
 }
 
-#[unsafe_destructor]
 impl<T> Drop for Queue<T> {
     fn drop(&mut self) {
         unsafe {

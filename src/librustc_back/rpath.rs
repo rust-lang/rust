@@ -10,8 +10,8 @@
 
 use std::collections::HashSet;
 use std::env;
-use std::io;
 use std::path::{Path, PathBuf};
+use std::fs;
 use syntax::ast;
 
 pub struct RPathConfig<'a> {
@@ -20,7 +20,6 @@ pub struct RPathConfig<'a> {
     pub is_like_osx: bool,
     pub has_rpath: bool,
     pub get_install_prefix_lib_path: &'a mut FnMut() -> PathBuf,
-    pub realpath: &'a mut FnMut(&Path) -> io::Result<PathBuf>,
 }
 
 pub fn get_rpath_flags(config: &mut RPathConfig) -> Vec<String> {
@@ -95,11 +94,11 @@ fn get_rpath_relative_to_output(config: &mut RPathConfig, lib: &Path) -> String 
     };
 
     let cwd = env::current_dir().unwrap();
-    let mut lib = (config.realpath)(&cwd.join(lib)).unwrap();
+    let mut lib = fs::canonicalize(&cwd.join(lib)).unwrap_or(cwd.join(lib));
     lib.pop();
     let mut output = cwd.join(&config.out_filename);
     output.pop();
-    let output = (config.realpath)(&output).unwrap();
+    let output = fs::canonicalize(&output).unwrap_or(output);
     let relative = path_relative_from(&lib, &output)
         .expect(&format!("couldn't create relative path from {:?} to {:?}", output, lib));
     // FIXME (#9639): This needs to handle non-utf8 paths
@@ -231,7 +230,6 @@ mod tests {
                 is_like_osx: true,
                 out_filename: PathBuf::from("bin/rustc"),
                 get_install_prefix_lib_path: &mut || panic!(),
-                realpath: &mut |p| Ok(p.to_path_buf()),
             };
             let res = get_rpath_relative_to_output(config,
                                                    Path::new("lib/libstd.so"));
@@ -243,7 +241,6 @@ mod tests {
                 get_install_prefix_lib_path: &mut || panic!(),
                 has_rpath: true,
                 is_like_osx: false,
-                realpath: &mut |p| Ok(p.to_path_buf()),
             };
             let res = get_rpath_relative_to_output(config,
                                                    Path::new("lib/libstd.so"));

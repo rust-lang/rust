@@ -26,6 +26,7 @@ use middle::ty::{self, Ty};
 use util::common::time;
 use util::ppaux;
 use util::sha2::{Digest, Sha256};
+use util::fs::fix_windows_verbatim_for_gcc;
 use rustc_back::tempdir::TempDir;
 
 use std::ffi::OsString;
@@ -288,7 +289,7 @@ pub fn mangle<PI: Iterator<Item=PathElem>>(path: PI,
     // when using unix's linker. Perhaps one day when we just use a linker from LLVM
     // we won't need to do this name mangling. The problem with name mangling is
     // that it seriously limits the available characters. For example we can't
-    // have things like &T or ~[T] in symbol names when one would theoretically
+    // have things like &T in symbol names when one would theoretically
     // want them for things like impls of traits on that type.
     //
     // To be able to work on all platforms and get *some* reasonable output, we
@@ -794,13 +795,21 @@ fn link_natively(sess: &Session, trans: &CrateTranslation, dylib: bool,
     let pname = get_cc_prog(sess);
     let mut cmd = Command::new(&pname[..]);
 
+    let root = sess.target_filesearch(PathKind::Native).get_lib_path();
     cmd.args(&sess.target.target.options.pre_link_args);
+    for obj in &sess.target.target.options.pre_link_objects {
+        cmd.arg(root.join(obj));
+    }
+
     link_args(&mut cmd, sess, dylib, tmpdir.path(),
               trans, obj_filename, out_filename);
-    cmd.args(&sess.target.target.options.post_link_args);
     if !sess.target.target.options.no_compiler_rt {
         cmd.arg("-lcompiler-rt");
     }
+    for obj in &sess.target.target.options.post_link_objects {
+        cmd.arg(root.join(obj));
+    }
+    cmd.args(&sess.target.target.options.post_link_args);
 
     if sess.opts.debugging_opts.print_link_args {
         println!("{:?}", &cmd);
@@ -864,7 +873,7 @@ fn link_args(cmd: &mut Command,
     // target descriptor
     let t = &sess.target.target;
 
-    cmd.arg("-L").arg(&lib_path);
+    cmd.arg("-L").arg(&fix_windows_verbatim_for_gcc(&lib_path));
 
     cmd.arg("-o").arg(out_filename).arg(obj_filename);
 
@@ -916,8 +925,9 @@ fn link_args(cmd: &mut Command,
         // stripped away as much as it could. This has not been seen to impact
         // link times negatively.
         //
-        // -dead_strip can't be part of the pre_link_args because it's also used for partial
-        // linking when using multiple codegen units (-r). So we insert it here.
+        // -dead_strip can't be part of the pre_link_args because it's also used
+        // for partial linking when using multiple codegen units (-r). So we
+        // insert it here.
         cmd.arg("-Wl,-dead_strip");
     }
 
@@ -1043,7 +1053,6 @@ fn link_args(cmd: &mut Command,
             has_rpath: sess.target.target.options.has_rpath,
             is_like_osx: sess.target.target.options.is_like_osx,
             get_install_prefix_lib_path: &mut get_install_prefix_lib_path,
-            realpath: &mut ::util::fs::realpath
         };
         cmd.args(&rpath::get_rpath_flags(&mut rpath_config));
     }
@@ -1070,7 +1079,7 @@ fn add_local_native_libraries(cmd: &mut Command, sess: &Session) {
     sess.target_filesearch(PathKind::All).for_each_lib_search_path(|path, k| {
         match k {
             PathKind::Framework => { cmd.arg("-F").arg(path); }
-            _ => { cmd.arg("-L").arg(path); }
+            _ => { cmd.arg("-L").arg(&fix_windows_verbatim_for_gcc(path)); }
         }
         FileDoesntMatch
     });
@@ -1258,7 +1267,7 @@ fn add_upstream_rust_crates(cmd: &mut Command, sess: &Session,
                 }
             });
         } else {
-            cmd.arg(cratepath);
+            cmd.arg(&fix_windows_verbatim_for_gcc(cratepath));
         }
     }
 
@@ -1271,7 +1280,7 @@ fn add_upstream_rust_crates(cmd: &mut Command, sess: &Session,
         // Just need to tell the linker about where the library lives and
         // what its name is
         if let Some(dir) = cratepath.parent() {
-            cmd.arg("-L").arg(dir);
+            cmd.arg("-L").arg(&fix_windows_verbatim_for_gcc(dir));
         }
         let filestem = cratepath.file_stem().unwrap().to_str().unwrap();
         cmd.arg(&format!("-l{}", unlib(&sess.target, filestem)));

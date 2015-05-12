@@ -31,22 +31,26 @@ You may also be interested in the [grammar].
 
 ## Unicode productions
 
-A few productions in Rust's grammar permit Unicode code points outside the ASCII
-range. We define these productions in terms of character properties specified
-in the Unicode standard, rather than in terms of ASCII-range code points. The
-section [Special Unicode Productions](#special-unicode-productions) lists these
-productions.
+A few productions in Rust's grammar permit Unicode code points outside the
+ASCII range. We define these productions in terms of character properties
+specified in the Unicode standard, rather than in terms of ASCII-range code
+points. The grammar has a [Special Unicode Productions][unicodeproductions]
+section that lists these productions.
+
+[unicodeproductions]: grammar.html#special-unicode-productions
 
 ## String table productions
 
 Some rules in the grammar &mdash; notably [unary
 operators](#unary-operator-expressions), [binary
-operators](#binary-operator-expressions), and [keywords](#keywords) &mdash; are
+operators](#binary-operator-expressions), and [keywords][keywords] &mdash; are
 given in a simplified form: as a listing of a table of unquoted, printable
 whitespace-separated strings. These cases form a subset of the rules regarding
 the [token](#tokens) rule, and are assumed to be the result of a
 lexical-analysis phase feeding the parser, driven by a DFA, operating over the
 disjunction of all such string table entries.
+
+[keywords]: grammar.html#keywords
 
 When such a string enclosed in double-quotes (`"`) occurs inside the grammar,
 it is an implicit reference to a single member of such a string table
@@ -75,7 +79,7 @@ An identifier is any nonempty Unicode[^non_ascii_idents] string of the following
 - The first character has property `XID_start`
 - The remaining characters have property `XID_continue`
 
-that does _not_ occur in the set of [keywords](#keywords).
+that does _not_ occur in the set of [keywords][keywords].
 
 > **Note**: `XID_start` and `XID_continue` as character properties cover the
 > character ranges used to form the more familiar C and Java language-family
@@ -84,7 +88,7 @@ that does _not_ occur in the set of [keywords](#keywords).
 ## Comments
 
 Comments in Rust code follow the general C++ style of line (`//`) and
-block-comment (`/* ... */`) forms. Nested block comments are supported.
+block (`/* ... */`) comment forms. Nested block comments are supported.
 
 Line comments beginning with exactly _three_ slashes (`///`), and block
 comments beginning with exactly one repeated asterisk in the block-open
@@ -103,7 +107,7 @@ Non-doc comments are interpreted as a form of whitespace.
 
 ## Whitespace
 
-Whitespace is any non-empty string containing any the following characters:
+Whitespace is any non-empty string containing only the following characters:
 
 - `U+0020` (space, `' '`)
 - `U+0009` (tab, `'\t'`)
@@ -129,11 +133,6 @@ A literal is an expression consisting of a single token, rather than a sequence
 of tokens, that immediately and directly denotes the value it evaluates to,
 rather than referring to it by name or some other evaluation rule. A literal is
 a form of constant expression, so is evaluated (primarily) at compile time.
-
-The optional suffix is only used for certain numeric literals, but is
-reserved for future extension, that is, the above gives the lexical
-grammar, but a Rust parser will reject everything but the 12 special
-cases mentioned in [Number literals](#number-literals) below.
 
 #### Examples
 
@@ -192,13 +191,13 @@ which must be _escaped_ by a preceding `U+005C` character (`\`).
 
 A _string literal_ is a sequence of any Unicode characters enclosed within two
 `U+0022` (double-quote) characters, with the exception of `U+0022` itself,
-which must be _escaped_ by a preceding `U+005C` character (`\`), or a _raw
-string literal_.
+which must be _escaped_ by a preceding `U+005C` character (`\`).
 
-A multi-line string literal may be defined by terminating each line with a
-`U+005C` character (`\`) immediately before the newline. This causes the
-`U+005C` character, the newline, and all whitespace at the beginning of the
-next line to be ignored.
+Line-break characters are allowed in string literals. Normally they represent
+themselves (i.e. no translation), but as a special exception, when a `U+005C`
+character (`\`) occurs immediately before the newline, the `U+005C` character,
+the newline, and all whitespace at the beginning of the next line are ignored.
+Thus `a` and `b` are equal:
 
 ```rust
 let a = "foobar";
@@ -366,10 +365,18 @@ A _floating-point literal_ has one of two forms:
   optionally followed by another decimal literal, with an optional _exponent_.
 * A single _decimal literal_ followed by an _exponent_.
 
-By default, a floating-point literal has a generic type, and, like integer
-literals, the type must be uniquely determined from the context. There are two valid
+Like integer literals, a floating-point literal may be followed by a
+suffix, so long as the pre-suffix part does not end with `U+002E` (`.`).
+The suffix forcibly sets the type of the literal. There are two valid
 _floating-point suffixes_, `f32` and `f64` (the 32-bit and 64-bit floating point
 types), which explicitly determine the type of the literal.
+
+The type of an _unsuffixed_ floating-point literal is determined by type
+inference. If a floating-point type can be _uniquely_ determined from the
+surrounding program context, the unsuffixed floating-point literal has that type.
+If the program context underconstrains the type, it defaults to double-precision `f64`;
+if the program context overconstrains the type, it is considered a static type
+error.
 
 Examples of floating-point literals of various forms:
 
@@ -398,7 +405,7 @@ Symbols are a general class of printable [token](#tokens) that play structural
 roles in a variety of grammar productions. They are catalogued here for
 completeness as the set of remaining miscellaneous printable tokens that do not
 otherwise appear as [unary operators](#unary-operator-expressions), [binary
-operators](#binary-operator-expressions), or [keywords](#keywords).
+operators](#binary-operator-expressions), or [keywords][keywords].
 
 
 ## Paths
@@ -544,7 +551,7 @@ _name_ s that occur in its body. At the "current layer", they all must repeat
 the same number of times, so ` ( $( $i:ident ),* ; $( $j:ident ),* ) => ( $(
 ($i,$j) ),* )` is valid if given the argument `(a,b,c ; d,e,f)`, but not
 `(a,b,c ; d,e)`. The repetition walks through the choices at that layer in
-lockstep, so the former input transcribes to `( (a,d), (b,e), (c,f) )`.
+lockstep, so the former input transcribes to `(a,d), (b,e), (c,f)`.
 
 Nested repetitions are allowed.
 
@@ -608,7 +615,7 @@ module needs its own source file: [module definitions](#modules) can be nested
 within one file.
 
 Each source file contains a sequence of zero or more `item` definitions, and
-may optionally begin with any number of [attributes](#Items and attributes)
+may optionally begin with any number of [attributes](#items-and-attributes)
 that apply to the containing module, most of which influence the behavior of
 the compiler. The anonymous crate module can have additional attributes that
 apply to the crate as a whole.
@@ -650,9 +657,10 @@ There are several kinds of item:
 * [`use` declarations](#use-declarations)
 * [modules](#modules)
 * [functions](#functions)
-* [type definitions](#type-definitions)
+* [type definitions](grammar.html#type-definitions)
 * [structures](#structures)
 * [enumerations](#enumerations)
+* [constant items](#constant-items)
 * [static items](#static-items)
 * [traits](#traits)
 * [implementations](#implementations)
@@ -669,16 +677,16 @@ which sub-item declarations may appear.
 
 ### Type Parameters
 
-All items except modules may be *parameterized* by type. Type parameters are
-given as a comma-separated list of identifiers enclosed in angle brackets
-(`<...>`), after the name of the item and before its definition. The type
-parameters of an item are considered "part of the name", not part of the type
-of the item. A referencing [path](#paths) must (in principle) provide type
-arguments as a list of comma-separated types enclosed within angle brackets, in
-order to refer to the type-parameterized item. In practice, the type-inference
-system can usually infer such argument types from context. There are no
-general type-parametric types, only type-parametric items. That is, Rust has
-no notion of type abstraction: there are no first-class "forall" types.
+All items except modules, constants and statics may be *parameterized* by type.
+Type parameters are given as a comma-separated list of identifiers enclosed in
+angle brackets (`<...>`), after the name of the item and before its definition.
+The type parameters of an item are considered "part of the name", not part of
+the type of the item. A referencing [path](#paths) must (in principle) provide
+type arguments as a list of comma-separated types enclosed within angle
+brackets, in order to refer to the type-parameterized item. In practice, the
+type-inference system can usually infer such argument types from context. There
+are no general type-parametric types, only type-parametric items. That is, Rust
+has no notion of type abstraction: there are no first-class "forall" types.
 
 ### Modules
 
@@ -740,7 +748,7 @@ mod thread {
 }
 ```
 
-##### Extern crate declarations
+#### Extern crate declarations
 
 An _`extern crate` declaration_ specifies a dependency on an external crate.
 The external crate is then bound into the declaring scope as the `ident`
@@ -749,11 +757,10 @@ provided in the `extern_crate_decl`.
 The external crate is resolved to a specific `soname` at compile time, and a
 runtime linkage requirement to that `soname` is passed to the linker for
 loading at runtime. The `soname` is resolved at compile time by scanning the
-compiler's library path and matching the optional `crateid` provided as a
-string literal against the `crateid` attributes that were declared on the
-external crate when it was compiled. If no `crateid` is provided, a default
-`name` attribute is assumed, equal to the `ident` given in the
-`extern_crate_decl`.
+compiler's library path and matching the optional `crateid` provided against
+the `crateid` attributes that were declared on the external crate when it was
+compiled. If no `crateid` is provided, a default `name` attribute is assumed,
+equal to the `ident` given in the `extern_crate_decl`.
 
 Three examples of `extern crate` declarations:
 
@@ -765,12 +772,12 @@ extern crate std; // equivalent to: extern crate std as std;
 extern crate std as ruststd; // linking to 'std' under another name
 ```
 
-##### Use declarations
+#### Use declarations
 
 A _use declaration_ creates one or more local name bindings synonymous with
 some other [path](#paths). Usually a `use` declaration is used to shorten the
 path required to refer to a module item. These declarations may appear at the
-top of [modules](#modules) and [blocks](#blocks).
+top of [modules](#modules) and [blocks](grammar.html#block-expressions).
 
 > **Note**: Unlike in many languages,
 > `use` declarations in Rust do *not* declare linkage dependency with external crates.
@@ -840,7 +847,7 @@ module declarations should be at the crate root if direct usage of the declared
 modules within `use` items is desired. It is also possible to use `self` and
 `super` at the beginning of a `use` item to refer to the current and direct
 parent modules respectively. All rules regarding accessing declared modules in
-`use` declarations applies to both module declarations and `extern crate`
+`use` declarations apply to both module declarations and `extern crate`
 declarations.
 
 An example of what will and will not work for `use` items:
@@ -1141,9 +1148,7 @@ let px: i32 = match p { Point(x, _) => x };
 ```
 
 A _unit-like struct_ is a structure without any fields, defined by leaving off
-the list of fields entirely. Such types will have a single value, just like
-the [unit value `()`](#unit-and-boolean-literals) of the unit type. For
-example:
+the list of fields entirely. Such types will have a single value. For example:
 
 ```
 struct Cookie;
@@ -1554,8 +1559,7 @@ warnings are generated, or otherwise "you used a private item of another module
 and weren't allowed to."
 
 By default, everything in Rust is *private*, with one exception. Enum variants
-in a `pub` enum are also public by default. You are allowed to alter this
-default visibility with the `priv` keyword. When an item is declared as `pub`,
+in a `pub` enum are also public by default. When an item is declared as `pub`,
 it can be thought of as being accessible to the outside world. For example:
 
 ```
@@ -1865,13 +1869,12 @@ macro scope.
   lower to the target's SIMD instructions, if any; the `simd` feature gate
   is necessary to use this attribute.
 - `static_assert` - on statics whose type is `bool`, terminates compilation
-  with an error if it is not initialized to `true`.
-- `unsafe_destructor` - allow implementations of the "drop" language item
-  where the type it is implemented for does not implement the "send" language
-  item; the `unsafe_destructor` feature gate is needed to use this attribute
+  with an error if it is not initialized to `true`. To use this, the `static_assert`
+  feature gate must be enabled.
 - `unsafe_no_drop_flag` - on structs, remove the flag that prevents
   destructors from being run twice. Destructors might be run multiple times on
-  the same object with this attribute.
+  the same object with this attribute. To use this, the `unsafe_no_drop_flag` feature
+  gate must be enabled.
 - `doc` - Doc comments such as `/// foo` are equivalent to `#[doc = "foo"]`.
 - `rustc_on_unimplemented` - Write a custom note to be shown along with the error
    when the trait is found to be unimplemented on a type.
@@ -1889,8 +1892,8 @@ release builds.
 
 There are two kinds of configuration options, one that is either defined or not
 (`#[cfg(foo)]`), and the other that contains a string that can be checked
-against (`#[cfg(bar = "baz")]` (currently only compiler-defined configuration
-options can have the latter form).
+against (`#[cfg(bar = "baz")]`). Currently, only compiler-defined configuration
+options can have the latter form.
 
 ```
 // The function is only included in the build when compiling for OSX
@@ -2028,7 +2031,7 @@ makes it possible to declare these operations. For example, the `str` module
 in the Rust standard library defines the string equality function:
 
 ```{.ignore}
-#[lang="str_eq"]
+#[lang = "str_eq"]
 pub fn eq_slice(a: &str, b: &str) -> bool {
     // details elided
 }
@@ -2042,12 +2045,12 @@ A complete list of the built-in language items will be added in the future.
 
 ### Inline attributes
 
-The inline attribute is used to suggest to the compiler to perform an inline
-expansion and place a copy of the function or static in the caller rather than
-generating code to call the function or access the static where it is defined.
+The inline attribute suggests that the compiler should place a copy of
+the function or static in the caller, rather than generating code to
+call the function or access the static where it is defined.
 
 The compiler automatically inlines functions based on internal heuristics.
-Incorrectly inlining functions can actually making the program slower, so it
+Incorrectly inlining functions can actually make the program slower, so it
 should be used with care.
 
 Immutable statics are always considered inlineable unless marked with
@@ -2055,8 +2058,8 @@ Immutable statics are always considered inlineable unless marked with
 have the same memory address. In other words, the compiler is free to collapse
 duplicate inlineable statics together.
 
-`#[inline]` and `#[inline(always)]` always causes the function to be serialized
-into crate metadata to allow cross-crate inlining.
+`#[inline]` and `#[inline(always)]` always cause the function to be serialized
+into the crate metadata to allow cross-crate inlining.
 
 There are three different types of inline attributes:
 
@@ -2127,7 +2130,10 @@ The currently implemented features of the reference compiler are:
           semantics are likely to change, so this macro usage must be opted
           into.
 
-* `associated_types` - Allows type aliases in traits. Experimental.
+* `associated_consts` - Allows constants to be defined in `impl` and `trait`
+                        blocks, so that they can be associated with a type or
+                        trait in a similar manner to methods and associated
+                        types.
 
 * `box_patterns` - Allows `box` patterns, the exact semantics of which
                    is subject to change.
@@ -2420,15 +2426,17 @@ Tuples are written by enclosing zero or more comma-separated expressions in
 parentheses. They are used to create [tuple-typed](#tuple-types) values.
 
 ```{.tuple}
-(0,);
 (0.0, 4.5);
 ("a", 4usize, true);
 ```
 
-### Unit expressions
+You can disambiguate a single-element tuple from a value in parentheses with a
+comma:
 
-The expression `()` denotes the _unit value_, the only value of the type with
-the same name.
+```
+(0,); // single-element tuple
+(0); // zero in parentheses
+```
 
 ### Structure expressions
 
@@ -2554,12 +2562,19 @@ array is mutable, the resulting [lvalue](#lvalues,-rvalues-and-temporaries) can
 be assigned to.
 
 Indices are zero-based, and may be of any integral type. Vector access is
-bounds-checked at run-time. When the check fails, it will put the thread in a
-_panicked state_.
+bounds-checked at compile-time for constant arrays being accessed with a constant index value.
+Otherwise a check will be performed at run-time that will put the thread in a _panicked state_ if it fails.
 
 ```{should-fail}
 ([1, 2, 3, 4])[0];
-(["a", "b"])[10]; // panics
+
+let x = (["a", "b"])[10]; // compiler error: const index-expr is out of bounds
+
+let n = 10;
+let y = (["a", "b"])[n]; // panics
+
+let arr = ["a", "b"];
+arr[10]; // panics
 ```
 
 ### Range expressions
@@ -3054,6 +3069,20 @@ of a condition expression it expects a refutable let statement. If the value of 
 expression on the right hand side of the let statement matches the pattern, the corresponding
 block will execute, otherwise flow proceeds to the first `else` block that follows.
 
+```
+let dish = ("Ham", "Eggs");
+
+// this body will be skipped because the pattern is refuted
+if let ("Bacon", b) = dish {
+    println!("Bacon is served with {}", b);
+}
+
+// this body will execute
+if let ("Ham", b) = dish {
+    println!("Ham is served with {}", b);
+}
+```
+
 ### While let loops
 
 A `while let` loop is semantically identical to a `while` loop but in place of a
@@ -3249,7 +3278,7 @@ constructor or `struct` field may refer, directly or indirectly, to the
 enclosing `enum` or `struct` type itself. Such recursion has restrictions:
 
 * Recursive types must include a nominal type in the recursion
-  (not mere [type definitions](#type-definitions),
+  (not mere [type definitions](grammar.html#type-definitions),
    or other structural types such as [arrays](#array,-and-slice-types) or [tuples](#tuple-types)).
 * A recursive `enum` item must have at least one non-recursive constructor
   (in order to give the recursion a basis case).
@@ -3625,7 +3654,7 @@ that have since been removed):
 * ML Kit, Cyclone: region based memory management
 * Haskell (GHC): typeclasses, type families
 * Newsqueak, Alef, Limbo: channels, concurrency
-* Erlang: message passing, task failure, ~~linked task failure~~,
+* Erlang: message passing, thread failure, ~~linked thread failure~~,
   ~~lightweight concurrency~~
 * Swift: optional bindings
 * Scheme: hygienic macros

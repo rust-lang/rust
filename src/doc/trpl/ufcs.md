@@ -89,7 +89,7 @@ not, and so we need to pass an explicit `&b`.
 The form of UFCS we just talked about:
 
 ```rust,ignore
-Type::method(args);
+Trait::method(args);
 ```
 
 Is a short-hand. There’s an expanded form of this that’s needed in some

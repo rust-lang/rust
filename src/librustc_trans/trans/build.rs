@@ -12,7 +12,7 @@
 #![allow(non_snake_case)]
 
 use llvm;
-use llvm::{CallConv, AtomicBinOp, AtomicOrdering, AsmDialect, AttrBuilder};
+use llvm::{CallConv, AtomicBinOp, AtomicOrdering, SynchronizationScope, AsmDialect, AttrBuilder};
 use llvm::{Opcode, IntPredicate, RealPredicate};
 use llvm::{ValueRef, BasicBlockRef};
 use trans::common::*;
@@ -965,9 +965,9 @@ pub fn CallWithConv(cx: Block,
     B(cx).call_with_conv(fn_, args, conv, attributes)
 }
 
-pub fn AtomicFence(cx: Block, order: AtomicOrdering) {
+pub fn AtomicFence(cx: Block, order: AtomicOrdering, scope: SynchronizationScope) {
     if cx.unreachable.get() { return; }
-    B(cx).atomic_fence(order)
+    B(cx).atomic_fence(order, scope)
 }
 
 pub fn Select(cx: Block, if_: ValueRef, then: ValueRef, else_: ValueRef) -> ValueRef {

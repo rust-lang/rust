@@ -252,7 +252,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
             // trait reference. Instead, this is done at the impl site.
             // Arguably this is wrong and we should treat the trait-reference
             // the same way as we treat the self-type.
-            bounds_checker.check_trait_ref(&*trait_ref);
+            bounds_checker.check_trait_ref(&trait_ref);
 
             let cause =
                 traits::ObligationCause::new(

@@ -8,7 +8,7 @@ go out of scope.
 
 ### Destructors should not fail. [FIXME: needs RFC]
 
-Destructors are executed on task failure, and in that context a failing
+Destructors are executed on thread failure, and in that context a failing
 destructor causes the program to abort.
 
 Instead of failing in a destructor, provide a separate method for checking for

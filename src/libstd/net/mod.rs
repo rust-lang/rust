@@ -8,17 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Networking primitives for TCP/UDP communication
-//!
-//! > **NOTE**: This module is very much a work in progress and is under active
-//! > development.
+//! Networking primitives for TCP/UDP communication.
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use prelude::v1::*;
 
 use io::{self, Error, ErrorKind};
-use sys_common::net2 as net_imp;
+use sys_common::net as net_imp;
 
 pub use self::ip::{IpAddr, Ipv4Addr, Ipv6Addr, Ipv6MulticastScope};
 pub use self::addr::{SocketAddr, SocketAddrV4, SocketAddrV6, ToSocketAddrs};
@@ -35,7 +32,7 @@ mod parser;
 
 /// Possible values which can be passed to the `shutdown` method of `TcpStream`
 /// and `UdpSocket`.
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum Shutdown {
     /// Indicates that the reading portion of this stream/socket should be shut

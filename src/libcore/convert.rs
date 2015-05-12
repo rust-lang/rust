@@ -83,10 +83,8 @@ pub trait Into<T>: Sized {
 /// `String` implements `From<&str>`:
 ///
 /// ```
-/// let s = "hello";
 /// let string = "hello".to_string();
-///
-/// let other_string: String = From::from(s);
+/// let other_string = String::from("hello");
 ///
 /// assert_eq!(string, other_string);
 /// ```
@@ -175,6 +173,7 @@ impl<T> AsMut<[T]> for [T] {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl AsRef<str> for str {
+    #[inline]
     fn as_ref(&self) -> &str {
         self
     }

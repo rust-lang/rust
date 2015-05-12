@@ -70,7 +70,7 @@ define PREPARE_MAN
 	$(Q)$(PREPARE_MAN_CMD) $(PREPARE_SOURCE_MAN_DIR)/$(1) $(PREPARE_DEST_MAN_DIR)/$(1)
 endef
 
-PREPARE_TOOLS = $(filter-out compiletest rustbook, $(TOOLS))
+PREPARE_TOOLS = $(filter-out compiletest rustbook error-index-generator, $(TOOLS))
 
 
 # $(1) is tool
@@ -140,8 +140,8 @@ prepare-target-$(2)-host-$(3)-$(1)-$(4): prepare-maybe-clean-$(4) \
           $$(if $$(findstring $(2),$$(CFG_HOST)), \
             $$(foreach crate,$$(HOST_CRATES), \
               $$(call PREPARE_LIB,$$(call CFG_LIB_GLOB_$(2),$$(crate)))),) \
-          $$(call PREPARE_LIB,libmorestack.a) \
-          $$(call PREPARE_LIB,libcompiler-rt.a),),),)
+	  $$(foreach object,$$(INSTALLED_OBJECTS) $$(INSTALLED_OBJECTS_$(2)),\
+	    $$(call PREPARE_LIB,$$(object))),),),)
 endef
 
 define INSTALL_GDB_DEBUGGER_SCRIPTS_COMMANDS

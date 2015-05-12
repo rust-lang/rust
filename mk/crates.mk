@@ -58,7 +58,7 @@ RUSTC_CRATES := rustc rustc_typeck rustc_borrowck rustc_resolve rustc_driver \
                 rustc_data_structures
 HOST_CRATES := syntax $(RUSTC_CRATES) rustdoc fmt_macros
 CRATES := $(TARGET_CRATES) $(HOST_CRATES)
-TOOLS := compiletest rustdoc rustc rustbook
+TOOLS := compiletest rustdoc rustc rustbook error-index-generator
 
 DEPS_core :=
 DEPS_libc := core
@@ -107,10 +107,12 @@ TOOL_DEPS_compiletest := test getopts
 TOOL_DEPS_rustdoc := rustdoc
 TOOL_DEPS_rustc := rustc_driver
 TOOL_DEPS_rustbook := std rustdoc
+TOOL_DEPS_error-index-generator := rustdoc syntax serialize
 TOOL_SOURCE_compiletest := $(S)src/compiletest/compiletest.rs
 TOOL_SOURCE_rustdoc := $(S)src/driver/driver.rs
 TOOL_SOURCE_rustc := $(S)src/driver/driver.rs
 TOOL_SOURCE_rustbook := $(S)src/rustbook/main.rs
+TOOL_SOURCE_error-index-generator := $(S)src/error-index-generator/main.rs
 
 ONLY_RLIB_core := 1
 ONLY_RLIB_libc := 1
@@ -122,6 +124,9 @@ ONLY_RLIB_rustc_bitflags := 1
 
 # Documented-by-default crates
 DOC_CRATES := std alloc collections core libc rustc_unicode
+
+# Installed objects/libraries by default
+INSTALLED_OBJECTS := libmorestack.a libcompiler-rt.a
 
 ################################################################################
 # You should not need to edit below this line

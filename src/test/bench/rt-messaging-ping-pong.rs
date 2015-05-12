@@ -21,14 +21,14 @@ use std::sync::mpsc::channel;
 use std::env;
 use std::thread;
 
-// This is a simple bench that creates M pairs of tasks. These
-// tasks ping-pong back and forth over a pair of streams. This is a
+// This is a simple bench that creates M pairs of threads. These
+// threads ping-pong back and forth over a pair of streams. This is a
 // canonical message-passing benchmark as it heavily strains message
 // passing and almost nothing else.
 
 fn ping_pong_bench(n: usize, m: usize) {
 
-    // Create pairs of tasks that pingpong back and forth.
+    // Create pairs of threads that pingpong back and forth.
     fn run_pair(n: usize) {
         // Create a channel: A->B
         let (atx, arx) = channel();

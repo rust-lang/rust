@@ -125,7 +125,6 @@ pub struct _InsnCtxt {
     _cannot_construct_outside_of_this_module: ()
 }
 
-#[unsafe_destructor]
 impl Drop for _InsnCtxt {
     fn drop(&mut self) {
         TASK_LOCAL_INSN_KEY.with(|slot| {
@@ -166,7 +165,6 @@ impl<'a, 'tcx> StatRecorder<'a, 'tcx> {
     }
 }
 
-#[unsafe_destructor]
 impl<'a, 'tcx> Drop for StatRecorder<'a, 'tcx> {
     fn drop(&mut self) {
         if self.ccx.sess().trans_stats() {
@@ -471,8 +469,11 @@ pub fn iter_structural_ty<'blk, 'tcx, F>(cx: Block<'blk, 'tcx>,
 
           match adt::trans_switch(cx, &*repr, av) {
               (_match::Single, None) => {
-                  cx = iter_variant(cx, &*repr, av, &*(*variants)[0],
-                                    substs, &mut f);
+                  if n_variants != 0 {
+                      assert!(n_variants == 1);
+                      cx = iter_variant(cx, &*repr, av, &*(*variants)[0],
+                                        substs, &mut f);
+                  }
               }
               (_match::Switch, Some(lldiscrim_a)) => {
                   cx = f(cx, lldiscrim_a, cx.tcx().types.isize);
@@ -1078,25 +1079,17 @@ fn build_cfg(tcx: &ty::ctxt, id: ast::NodeId) -> (ast::NodeId, Option<cfg::CFG>)
         Some(ast_map::NodeTraitItem(trait_item)) => {
             match trait_item.node {
                 ast::MethodTraitItem(_, Some(ref body)) => body,
-                ast::MethodTraitItem(_, None) => {
-                    tcx.sess.bug("unexpected variant: required trait method \
-                                  in has_nested_returns")
-                }
-                ast::TypeTraitItem(..) => {
-                    tcx.sess.bug("unexpected variant: associated type trait item in \
-                                  has_nested_returns")
+                _ => {
+                    tcx.sess.bug("unexpected variant: trait item other than a \
+                                  provided method in has_nested_returns")
                 }
             }
         }
         Some(ast_map::NodeImplItem(impl_item)) => {
             match impl_item.node {
                 ast::MethodImplItem(_, ref body) => body,
-                ast::TypeImplItem(_) => {
-                    tcx.sess.bug("unexpected variant: associated type impl item in \
-                                  has_nested_returns")
-                }
-                ast::MacImplItem(_) => {
-                    tcx.sess.bug("unexpected variant: unexpanded macro impl item in \
+                _ => {
+                    tcx.sess.bug("unexpected variant: non-method impl item in \
                                   has_nested_returns")
                 }
             }
@@ -2189,7 +2182,7 @@ pub fn create_entry_wrapper(ccx: &CrateContext,
         unsafe {
             llvm::LLVMPositionBuilderAtEnd(bld, llbb);
 
-            debuginfo::insert_reference_to_gdb_debug_scripts_section_global(ccx);
+            debuginfo::gdb::insert_reference_to_gdb_debug_scripts_section_global(ccx);
 
             let (start_fn, args) = if use_start_lang_item {
                 let start_def_id = match ccx.tcx().lang_items.require(StartFnLangItem) {
@@ -2363,12 +2356,13 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
         ast_map::NodeTraitItem(trait_item) => {
             debug!("get_item_val(): processing a NodeTraitItem");
             match trait_item.node {
-                ast::MethodTraitItem(_, None) | ast::TypeTraitItem(..) => {
-                    ccx.sess().span_bug(trait_item.span,
-                        "unexpected variant: required trait method in get_item_val()");
-                }
                 ast::MethodTraitItem(_, Some(_)) => {
                     register_method(ccx, id, &trait_item.attrs, trait_item.span)
+                }
+                _ => {
+                    ccx.sess().span_bug(trait_item.span,
+                        "unexpected variant: trait item other than a provided \
+                         method in get_item_val()");
                 }
             }
         }
@@ -2378,13 +2372,10 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
                 ast::MethodImplItem(..) => {
                     register_method(ccx, id, &impl_item.attrs, impl_item.span)
                 }
-                ast::TypeImplItem(_) => {
+                _ => {
                     ccx.sess().span_bug(impl_item.span,
-                        "unexpected variant: associated type in get_item_val()")
-                }
-                ast::MacImplItem(_) => {
-                    ccx.sess().span_bug(impl_item.span,
-                        "unexpected variant: unexpanded macro in get_item_val()")
+                        "unexpected variant: non-method impl item in \
+                         get_item_val()");
                 }
             }
         }

@@ -12,6 +12,7 @@
 
 #![allow(unused_mut)]
 #![feature(collections)]
+#![feature(collections_drain)]
 
 extern crate collections;
 
@@ -20,6 +21,7 @@ use collections::{BitSet, BitVec};
 use collections::{BTreeMap, BTreeSet};
 use collections::EnumSet;
 use collections::LinkedList;
+use collections::String;
 use collections::Vec;
 use collections::VecDeque;
 use collections::VecMap;
@@ -96,5 +98,7 @@ fn main() {
 
     all_sync_send!(VecMap::<usize>::new(), iter, iter_mut, drain, into_iter, keys, values);
 
-    all_sync_send!(Vec::<usize>::new(), into_iter, drain);
+    all_sync_send!(Vec::<usize>::new(), into_iter);
+    is_sync_send!(Vec::<usize>::new(), drain(..));
+    is_sync_send!(String::new(), drain(..));
 }

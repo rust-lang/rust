@@ -8,14 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::cell::RefCell;
-
 trait Trait {}
 
 pub fn main() {
     let x: Vec<Trait + Sized> = Vec::new();
     //~^ ERROR the trait `core::marker::Sized` is not implemented
     //~^^ ERROR the trait `core::marker::Sized` is not implemented
-    let x: Vec<Box<RefCell<Trait + Sized>>> = Vec::new();
-    //~^ ERROR the trait `core::marker::Sized` is not implemented
 }

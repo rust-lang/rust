@@ -91,8 +91,8 @@ impl<T> Packet<T> {
     }
 
     // This function is used at the creation of a shared packet to inherit a
-    // previously blocked task. This is done to prevent spurious wakeups of
-    // tasks in select().
+    // previously blocked thread. This is done to prevent spurious wakeups of
+    // threads in select().
     //
     // This can only be called at channel-creation time
     pub fn inherit_blocker(&mut self,
@@ -424,7 +424,7 @@ impl<T> Packet<T> {
         }
     }
 
-    // Cancels a previous task waiting on this port, returning whether there's
+    // Cancels a previous thread waiting on this port, returning whether there's
     // data on the port.
     //
     // This is similar to the stream implementation (hence fewer comments), but
@@ -473,7 +473,6 @@ impl<T> Packet<T> {
     }
 }
 
-#[unsafe_destructor]
 impl<T> Drop for Packet<T> {
     fn drop(&mut self) {
         // Note that this load is not only an assert for correctness about

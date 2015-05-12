@@ -20,7 +20,6 @@ use super::util;
 use middle::subst::{Subst, Substs, TypeSpace};
 use middle::ty::{self, ToPolyTraitRef, Ty};
 use middle::infer::{self, InferCtxt};
-use std::rc::Rc;
 use syntax::ast;
 use syntax::codemap::{DUMMY_SP, Span};
 use util::ppaux::Repr;
@@ -139,7 +138,7 @@ type SubstsFn = for<'a,'tcx> fn(infcx: &InferCtxt<'a, 'tcx>,
 fn impl_trait_ref_and_oblig<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
                                      impl_def_id: ast::DefId,
                                      substs_fn: SubstsFn)
-                                     -> (Rc<ty::TraitRef<'tcx>>,
+                                     -> (ty::TraitRef<'tcx>,
                                          Vec<PredicateObligation<'tcx>>)
 {
     let impl_substs =
@@ -324,7 +323,7 @@ fn ty_is_local_constructor<'tcx>(tcx: &ty::ctxt<'tcx>,
             def_id.krate == ast::LOCAL_CRATE
         }
 
-        ty::ty_uniq(_) => { // treat ~T like Box<T>
+        ty::ty_uniq(_) => { // Box<T>
             let krate = tcx.lang_items.owned_box().map(|d| d.krate);
             krate == Some(ast::LOCAL_CRATE)
         }
@@ -341,5 +340,3 @@ fn ty_is_local_constructor<'tcx>(tcx: &ty::ctxt<'tcx>,
         }
     }
 }
-
-

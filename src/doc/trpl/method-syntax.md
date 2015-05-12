@@ -127,12 +127,12 @@ fn grow(&self) -> Circle {
 We just say we’re returning a `Circle`. With this method, we can grow a new
 circle to any arbitrary size.
 
-# Static methods
+# Associated functions
 
-You can also define methods that do not take a `self` parameter. Here’s a
-pattern that’s very common in Rust code:
+You can also define associated functions that do not take a `self` parameter.
+Here’s a pattern that’s very common in Rust code:
 
-```
+```rust
 struct Circle {
     x: f64,
     y: f64,
@@ -154,9 +154,10 @@ fn main() {
 }
 ```
 
-This ‘static method’ builds a new `Circle` for us. Note that static methods
-are called with the `Struct::method()` syntax, rather than the `ref.method()`
-syntax.
+This ‘associated function’ builds a new `Circle` for us. Note that associated
+functions are called with the `Struct::function()` syntax, rather than the
+`ref.method()` syntax. Some other langauges call associated functions ‘static
+methods’.
 
 # Builder Pattern
 
@@ -187,7 +188,7 @@ struct CircleBuilder {
 
 impl CircleBuilder {
     fn new() -> CircleBuilder {
-        CircleBuilder { x: 0.0, y: 0.0, radius: 0.0, }
+        CircleBuilder { x: 0.0, y: 0.0, radius: 1.0, }
     }
 
     fn x(&mut self, coordinate: f64) -> &mut CircleBuilder {

@@ -11,8 +11,6 @@
 #![crate_name="issue_2526"]
 #![crate_type = "lib"]
 
-#![feature(unsafe_destructor)]
-
 use std::marker;
 
 struct arc_destruct<T: Sync> {
@@ -20,7 +18,6 @@ struct arc_destruct<T: Sync> {
     _marker: marker::PhantomData<T>
 }
 
-#[unsafe_destructor]
 impl<T: Sync> Drop for arc_destruct<T> {
     fn drop(&mut self) {}
 }

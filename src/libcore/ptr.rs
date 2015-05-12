@@ -106,27 +106,10 @@ use cmp::Ordering::{self, Less, Equal, Greater};
 // FIXME #19649: intrinsic docs don't render, so these have no docs :(
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg(not(stage0))]
 pub use intrinsics::copy_nonoverlapping;
 
-/// dox
-#[cfg(stage0)]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize) {
-    intrinsics::copy_nonoverlapping(dst, src, count)
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-#[cfg(not(stage0))]
 pub use intrinsics::copy;
-
-/// dox
-#[cfg(stage0)]
-#[stable(feature = "rust1", since = "1.0.0")]
-pub unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
-    intrinsics::copy(dst, src, count)
-}
-
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use intrinsics::write_bytes;
@@ -301,9 +284,10 @@ impl<T: ?Sized> *const T {
     ///
     /// # Safety
     ///
-    /// The offset must be in-bounds of the object, or one-byte-past-the-end.
-    /// Otherwise `offset` invokes Undefined Behaviour, regardless of whether
-    /// the pointer is used.
+    /// Both the starting and resulting pointer must be either in bounds or one
+    /// byte past the end of an allocated object. If either pointer is out of
+    /// bounds or arithmetic overflow occurs then
+    /// any further use of the returned value will result in undefined behavior.
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub unsafe fn offset(self, count: isize) -> *const T where T: Sized {

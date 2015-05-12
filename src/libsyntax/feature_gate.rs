@@ -93,10 +93,6 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Status)] = &[
 
     ("fundamental", "1.0.0", Active),
 
-    // Deprecate after snapshot
-    // SNAP 5520801
-    ("unsafe_destructor", "1.0.0", Active),
-
     // A temporary feature gate used to enable parser extensions needed
     // to bootstrap fix for #5723.
     ("issue_5723_bootstrap", "1.0.0", Accepted),
@@ -155,6 +151,10 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Status)] = &[
 
     // Allows use of unary negate on unsigned integers, e.g. -e for e: u8
     ("negate_unsigned", "1.0.0", Active),
+
+    // Allows the definition of associated constants in `trait` or `impl`
+    // blocks.
+    ("associated_consts", "1.0.0", Active),
 ];
 // (changing above list without updating src/doc/reference.md makes @cmr sad)
 
@@ -205,8 +205,6 @@ pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType)] = &[
     ("link_args", Normal),
     ("macro_escape", Normal),
 
-    ("unsafe_destructor", Gated("unsafe_destructor",
-                                "`#[unsafe_destructor]` does nothing anymore")),
     ("staged_api", Gated("staged_api",
                          "staged_api is for use by rustc only")),
     ("plugin", Gated("plugin",
@@ -658,6 +656,30 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
             _ => {}
         }
         visit::walk_fn(self, fn_kind, fn_decl, block, span);
+    }
+
+    fn visit_trait_item(&mut self, ti: &'v ast::TraitItem) {
+        match ti.node {
+            ast::ConstTraitItem(..) => {
+                self.gate_feature("associated_consts",
+                                  ti.span,
+                                  "associated constants are experimental")
+            }
+            _ => {}
+        }
+        visit::walk_trait_item(self, ti);
+    }
+
+    fn visit_impl_item(&mut self, ii: &'v ast::ImplItem) {
+        match ii.node {
+            ast::ConstImplItem(..) => {
+                self.gate_feature("associated_consts",
+                                  ii.span,
+                                  "associated constants are experimental")
+            }
+            _ => {}
+        }
+        visit::walk_impl_item(self, ii);
     }
 }
 
