@@ -581,7 +581,7 @@ register_diagnostics! {
     E0231, // only named substitution parameters are allowed
     E0232, // this attribute must have a value
     E0233,
-    E0234, // `for` loop expression has type which does not implement the `Iterator` trait
+    E0234,
     E0235, // structure constructor specifies a structure of type but
     E0236, // no lang item for range syntax
     E0237, // no lang item for range syntax
