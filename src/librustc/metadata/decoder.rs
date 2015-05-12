@@ -1344,16 +1344,6 @@ fn reverse_translate_def_id(cdata: Cmd, did: ast::DefId) -> Option<ast::DefId> {
     None
 }
 
-pub fn each_impl<F>(cdata: Cmd, mut callback: F) where
-    F: FnMut(ast::DefId),
-{
-    let impls_doc = reader::get_doc(rbml::Doc::new(cdata.data()), tag_impls);
-    let _ = reader::tagged_docs(impls_doc, tag_impls_impl, |impl_doc| {
-        callback(item_def_id(impl_doc, cdata));
-        true
-    });
-}
-
 pub fn each_inherent_implementation_for_type<F>(cdata: Cmd,
                                                 id: ast::NodeId,
                                                 mut callback: F)

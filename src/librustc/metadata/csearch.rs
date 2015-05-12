@@ -304,15 +304,6 @@ pub fn get_native_libraries(cstore: &cstore::CStore, crate_num: ast::CrateNum)
     decoder::get_native_libraries(&*cdata)
 }
 
-pub fn each_impl<F>(cstore: &cstore::CStore,
-                    crate_num: ast::CrateNum,
-                    callback: F) where
-    F: FnMut(ast::DefId),
-{
-    let cdata = cstore.get_crate_data(crate_num);
-    decoder::each_impl(&*cdata, callback)
-}
-
 pub fn each_inherent_implementation_for_type<F>(cstore: &cstore::CStore,
                                                 def_id: ast::DefId,
                                                 callback: F) where

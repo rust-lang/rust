@@ -16,13 +16,10 @@
 // mappings. That mapping code resides here.
 
 
-use metadata::csearch::{each_impl, get_impl_trait};
-use metadata::csearch;
 use middle::subst::{self, Subst};
 use middle::ty::RegionEscape;
 use middle::ty::{ImplContainer, ImplOrTraitItemId, ConstTraitItemId};
-use middle::ty::{MethodTraitItemId, TypeTraitItemId};
-use middle::ty::{ParameterEnvironment, lookup_item_type};
+use middle::ty::{MethodTraitItemId, TypeTraitItemId, ParameterEnvironment};
 use middle::ty::{Ty, ty_bool, ty_char, ty_enum, ty_err};
 use middle::ty::{ty_param, TypeScheme, ty_ptr};
 use middle::ty::{ty_rptr, ty_struct, ty_trait, ty_tup};
@@ -33,7 +30,6 @@ use middle::ty;
 use CrateCtxt;
 use middle::infer::InferCtxt;
 use middle::infer::new_infer_ctxt;
-use std::collections::HashSet;
 use std::cell::RefCell;
 use std::rc::Rc;
 use syntax::ast::{Crate, DefId};
@@ -129,11 +125,6 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
             tcx_inherent_impls.insert((*k).clone(),
                                       Rc::new((*v.borrow()).clone()));
         }
-
-        // Bring in external crates. It's fine for this to happen after the
-        // coherence checks, because we ensure by construction that no errors
-        // can happen at link time.
-        self.add_external_crates();
 
         // Populate the table of destructors. It might seem a bit strange to
         // do this here, but it's actually the most convenient place, since
@@ -267,11 +258,6 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
         trait_def.record_impl(self.crate_context.tcx, impl_def_id, impl_trait_ref);
     }
 
-    fn get_self_type_for_implementation(&self, impl_did: DefId)
-                                        -> TypeScheme<'tcx> {
-        self.crate_context.tcx.tcache.borrow().get(&impl_did).unwrap().clone()
-    }
-
     // Converts an implementation in the AST to a vector of items.
     fn create_impl_from_item(&self, item: &Item) -> Vec<ImplOrTraitItemId> {
         match item.node {
@@ -313,66 +299,6 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
         }
     }
 
-    // External crate handling
-
-    fn add_external_impl(&self,
-                         impls_seen: &mut HashSet<DefId>,
-                         impl_def_id: DefId) {
-        let tcx = self.crate_context.tcx;
-        let impl_items = csearch::get_impl_items(&tcx.sess.cstore,
-                                                 impl_def_id);
-
-        // Make sure we don't visit the same implementation multiple times.
-        if !impls_seen.insert(impl_def_id) {
-            // Skip this one.
-            return
-        }
-        // Good. Continue.
-
-        let _ = lookup_item_type(tcx, impl_def_id);
-        let associated_traits = get_impl_trait(tcx, impl_def_id);
-
-        // Do a sanity check.
-        assert!(associated_traits.is_some());
-
-        // Record all the trait items.
-        if let Some(trait_ref) = associated_traits {
-            self.add_trait_impl(trait_ref, impl_def_id);
-        }
-
-        // For any methods that use a default implementation, add them to
-        // the map. This is a bit unfortunate.
-        for item_def_id in &impl_items {
-            let impl_item = ty::impl_or_trait_item(tcx, item_def_id.def_id());
-            match impl_item {
-                ty::MethodTraitItem(ref method) => {
-                    if let Some(source) = method.provided_source {
-                        tcx.provided_method_sources
-                           .borrow_mut()
-                           .insert(item_def_id.def_id(), source);
-                    }
-                }
-                _ => {}
-            }
-        }
-
-        tcx.impl_items.borrow_mut().insert(impl_def_id, impl_items);
-    }
-
-    // Adds implementations and traits from external crates to the coherence
-    // info.
-    fn add_external_crates(&self) {
-        let mut impls_seen = HashSet::new();
-
-        let crate_store = &self.crate_context.tcx.sess.cstore;
-        crate_store.iter_crate_data(|crate_number, _crate_metadata| {
-            each_impl(crate_store, crate_number, |def_id| {
-                assert_eq!(crate_number, def_id.krate);
-                self.add_external_impl(&mut impls_seen, def_id)
-            })
-        })
-    }
-
     //
     // Destructors
     //
@@ -395,7 +321,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
             }
             let method_def_id = items[0];
 
-            let self_type = self.get_self_type_for_implementation(impl_did);
+            let self_type = ty::lookup_item_type(tcx, impl_did);
             match self_type.ty.sty {
                 ty::ty_enum(type_def_id, _) |
                 ty::ty_struct(type_def_id, _) |
@@ -451,7 +377,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
                 return
             }
 
-            let self_type = self.get_self_type_for_implementation(impl_did);
+            let self_type = ty::lookup_item_type(tcx, impl_did);
             debug!("check_implementations_of_copy: self_type={} (bound)",
                    self_type.repr(tcx));
 
