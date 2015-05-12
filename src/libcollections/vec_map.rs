@@ -745,12 +745,12 @@ impl<V: Ord> Ord for VecMap<V> {
 
 impl_set_fmt! {
     VecMap,
-    Debug    => vec_map_fmt_debug,
-    Display  => vec_map_fmt_display,
-    Octal    => vec_map_fmt_octal,
-    Binary   => vec_map_fmt_binary,
-    LowerHex => vec_map_fmt_lower_hex,
-    UpperHex => vec_map_fmt_upper_hex
+    Debug    => map_fmt_debug,
+    Display  => map_fmt_display,
+    Octal    => map_fmt_octal,
+    Binary   => map_fmt_binary,
+    LowerHex => map_fmt_lower_hex,
+    UpperHex => map_fmt_upper_hex
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
