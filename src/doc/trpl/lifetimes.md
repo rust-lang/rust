@@ -41,7 +41,7 @@ With that in mind, let’s learn about lifetimes.
 # Lifetimes
 
 Lending out a reference to a resource that someone else owns can be
-complicated, however. For example, imagine this set of operations:
+complicated. For example, imagine this set of operations:
 
 - I acquire a handle to some kind of resource.
 - I lend you a reference to the resource.
