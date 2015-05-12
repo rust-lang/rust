@@ -169,18 +169,14 @@ fn bar() { ... }
 The problem here is that glob imports currently do not allow any of their
 imports to be shadowed by an explicitly-defined item.
 
-There are two reasons this is considered a minor change by this RFC:
+This is considered a minor change because under the principles of this RFC: the
+glob imports could have been written as more explicit (expanded) `use`
+statements. It is also plausible to do this expansion automatically for a
+crate's dependencies, to prevent breakage in the first place.
 
-1. The RFC also suggests permitting shadowing of a glob import by any explicit
-   item. This has been the intended semantics of globs, but has not been
-   implemented. The details are left to a future RFC, however.
-
-2. Even if that change were made, though, there is still the case where two glob
-   imports conflict with each other, without any explicit definition "covering"
-   them. This is permitted to produce an error under the principles of this RFC
-   because the glob imports could have been written as more explicit (expanded)
-   `use` statements. It is also plausible to do this expansion automatically for
-   a crate's dependencies, to prevent breakage in the first place.
+(This RFC also suggests permitting shadowing of a glob import by any explicit
+item. This has been the intended semantics of globs, but has not been
+implemented. The details are left to a future RFC, however.)
 
 ### Structs
 
@@ -197,7 +193,7 @@ write, which can break code irreparably.
 This change retains the ability to use struct literals, but it breaks existing
 uses of such literals; it likewise breaks exhaustive matches against the struct.
 
-#### Minor change: adding or removing private fields when at least one already exists.
+#### Minor change: adding or removing private fields when at least one already exists (before and after the change).
 
 No existing code could be relying on struct literals for the struct, nor on
 exhaustively matching its contents, and client code will likewise be oblivious
