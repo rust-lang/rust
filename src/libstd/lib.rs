@@ -13,11 +13,12 @@
 //! The Rust Standard Library provides the essential runtime
 //! functionality for building portable Rust software.
 //!
-//! It is linked to all Rust crates by default as though they
-//! contained a crate-level `extern crate std` crate import. Therefore
-//! the standard library can be accessed in `use` statements through
-//! the path `std`, as in `use std::thread`, or in expressions through
-//! the absolute path `::std`, as in `::std::thread::sleep_ms(100)`.
+//! The rust standard library is available to all rust crates by
+//! default, just as if contained an `extern crate std` import at the
+//! crate root. Therefore the standard library can be accessed in
+//! `use` statements through the path `std`, as in `use std::thread`,
+//! or in expressions through the absolute path `::std`, as in
+//! `::std::thread::sleep_ms(100)`.
 //!
 //! Furthermore, the standard library defines [The Rust
 //! Prelude](prelude/index.html), a small collection of items, mostly
@@ -58,7 +59,7 @@
 //! macro, and for converting from strings use the
 //! [`FromStr`](str/trait.FromStr.html) trait.
 //!
-//! Data may be shared by placing it a reference-counted box, the
+//! Data may be shared by placing it in a reference-counted box or the
 //! [`Rc`][rc/index.html] type, and if further contained in a [`Cell`
 //! or `RefCell`](cell/index.html), may be mutated as well as shared.
 //! Likewise, in a concurrent setting it is common to pair an
@@ -79,12 +80,12 @@
 //! [TCP](net/struct.TcpStream.html),
 //! [UDP](net/struct.UdpSocket.html), are defined in the
 //! [`io`](io/index.html), [`fs`](fs/index.html), and
-//! [`net`](net/index.html) modulesu.
+//! [`net`](net/index.html) modules.
 //!
 //! The [`thread`](thread/index.html) module contains Rust's threading
-//! abstractions.  [`sync`](sync/index.html) contains further,
-//! primitive, shared memory types, including
-//! [`atomic`](sync/atomic/index.html), and
+//! abstractions. [`sync`](sync/index.html) contains further
+//! primitive shared memory types, including
+//! [`atomic`](sync/atomic/index.html) and
 //! [`mpsc`](sync/mpsc/index.html), which contains the channel types
 //! for message passing.
 
