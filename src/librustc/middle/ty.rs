@@ -2564,9 +2564,11 @@ impl<'tcx> TraitDef<'tcx> {
                        tcx: &ctxt<'tcx>,
                        impl_def_id: DefId,
                        impl_trait_ref: TraitRef<'tcx>) {
+        debug!("TraitDef::record_impl for {}, from {}",
+               self.repr(tcx), impl_trait_ref.repr(tcx));
+
         // We don't want to borrow_mut after we already populated all impls,
         // so check if an impl is present with an immutable borrow first.
-
         if let Some(sty) = fast_reject::simplify_type(tcx,
                                                       impl_trait_ref.self_ty(), false) {
             if let Some(is) = self.nonblanket_impls.borrow().get(&sty) {
@@ -6366,17 +6368,17 @@ pub fn populate_inherent_implementations_for_type_if_necessary(tcx: &ctxt,
 
 /// Populates the type context with all the implementations for the given
 /// trait if necessary.
-pub fn populate_implementations_for_trait_if_necessary(
-        tcx: &ctxt,
-        trait_id: ast::DefId) {
+pub fn populate_implementations_for_trait_if_necessary(tcx: &ctxt, trait_id: ast::DefId) {
     if trait_id.krate == LOCAL_CRATE {
         return
     }
 
     let def = lookup_trait_def(tcx, trait_id);
     if def.flags.get().intersects(TraitFlags::IMPLS_VALID) {
-        return
+        return;
     }
+
+    debug!("populate_implementations_for_trait_if_necessary: searching for {}", def.repr(tcx));
 
     if csearch::is_defaulted_trait(&tcx.sess.cstore, trait_id) {
         record_trait_has_default_impl(tcx, trait_id);

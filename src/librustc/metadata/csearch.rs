@@ -324,11 +324,12 @@ pub fn each_inherent_implementation_for_type<F>(cstore: &cstore::CStore,
 
 pub fn each_implementation_for_trait<F>(cstore: &cstore::CStore,
                                         def_id: ast::DefId,
-                                        callback: F) where
+                                        mut callback: F) where
     F: FnMut(ast::DefId),
 {
-    let cdata = cstore.get_crate_data(def_id.krate);
-    decoder::each_implementation_for_trait(&*cdata, def_id.node, callback)
+    cstore.iter_crate_data(|_, cdata| {
+        decoder::each_implementation_for_trait(cdata, def_id, &mut callback)
+    })
 }
 
 /// If the given def ID describes an item belonging to a trait (either a
