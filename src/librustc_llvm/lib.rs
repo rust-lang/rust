@@ -1771,7 +1771,7 @@ extern {
                          Dialect: c_uint)
                          -> ValueRef;
 
-    pub static LLVMRustDebugMetadataVersion: u32;
+    pub fn LLVMRustDebugMetadataVersion() -> u32;
 
     pub fn LLVMRustAddModuleFlag(M: ModuleRef,
                                  name: *const c_char,

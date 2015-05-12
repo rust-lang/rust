@@ -233,7 +233,9 @@ DIT unwrapDI(LLVMMetadataRef ref) {
     return DIT(ref ? unwrap<MDNode>(ref) : NULL);
 }
 
-extern "C" const uint32_t LLVMRustDebugMetadataVersion = DEBUG_METADATA_VERSION;
+extern "C" const uint32_t LLVMRustDebugMetadataVersion() {
+    return DEBUG_METADATA_VERSION;
+}
 
 extern "C" void LLVMRustAddModuleFlag(LLVMModuleRef M,
                                       const char *name,
