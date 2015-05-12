@@ -121,11 +121,11 @@ The RFC covers many, but not all breaking changes that are major; it covers
 
 #### Major change: going from stable to nightly
 
-Changing a crate from working on stable Rust to *requiring* a nightly
-is considered a breaking change. That includes using `#[feature]`
-directly, or using a dependency that does so. Crate authors should
-consider using Cargo "features" for their crate to make such use
-opt-in.
+Changing a crate from working on stable Rust to *requiring* a nightly is
+considered a breaking change. That includes using `#[feature]` directly, or
+using a dependency that does so. Crate authors should consider using Cargo
+["features"](http://doc.crates.io/manifest.html#the-[features]-section) for
+their crate to make such use opt-in.
 
 #### Minor change: altering the use of Cargo features
 
