@@ -1124,19 +1124,14 @@ impl<T: Debug> Debug for [T] {
     }
 }
 
-macro_rules! fmt_dst {
+macro_rules! fmt_slice {
     ($($Trait:ident => $fmt_char:expr),*) => {
         $(
             impl<T: $Trait> $Trait for [T] {
                 fn fmt(&self, f: &mut Formatter) -> Result {
                     try!(write!(f, "["));
-                    let mut is_first = true;
-                    for x in self.iter() {
-                        if is_first {
-                            is_first = false;
-                        } else {
-                            try!(write!(f, ", "));
-                        }
+                    for (i, x) in self.iter().enumerate() {
+                        if i != 0 { try!(write!(f, ", ")); }
                         try!(write!(f, $fmt_char, *x));
                     }
                     write!(f, "]")
@@ -1146,7 +1141,7 @@ macro_rules! fmt_dst {
     }
 }
 
-fmt_dst! {
+fmt_slice! {
     Display => "{}",
     Octal => "{:o}",
     Binary => "{:b}",
