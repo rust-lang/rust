@@ -23,7 +23,7 @@ series of small examples.
 # Community & Getting Help
 
 If you need help with something, or just want to talk about Rust with others,
-there's a few places you can do that:
+there are a few places you can do that:
 
 The Rust IRC channels on [irc.mozilla.org](http://irc.mozilla.org/) are the
 fastest way to get help.
@@ -58,7 +58,7 @@ the language in as much detail as possible is in [the reference](reference.html)
 
 # Tools
 
-Rust's still a young language, so there isn't a ton of tooling yet, but the
+Rust is still a young language, so there isn't a ton of tooling yet, but the
 tools we have are really nice.
 
 [Cargo](http://crates.io) is Rust's package manager, and its website contains
@@ -68,16 +68,21 @@ lots of good documentation.
 
 # FAQs
 
-There are questions that are asked quite often, and so we've made FAQs for them:
+There are questions that are asked quite often, so we've made FAQs for them:
 
 * [Language Design FAQ](complement-design-faq.html)
 * [Language FAQ](complement-lang-faq.html)
 * [Project FAQ](complement-project-faq.html)
 * [How to submit a bug report](https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.md#bug-reports)
 
-# The standard library
+# The Standard Library
 
 We have [API documentation for the entire standard
 library](std/index.html). There's a list of crates on the left with more
 specific sections, or you can use the search bar at the top to search for
 something if you know its name.
+
+# The Error Index
+
+If you encounter an error while compiling your code you may be able to look it
+up in the [Rust Compiler Error Index](error-index.html).
