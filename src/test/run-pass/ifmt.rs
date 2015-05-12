@@ -181,8 +181,6 @@ pub fn main() {
     // test that trailing commas are acceptable
     format!("{}", "test",);
     format!("{foo}", foo="test",);
-
-    test_collections();
 }
 
 // Basic test to make sure that we can invoke the `write!` macro with an
@@ -249,95 +247,3 @@ fn test_order() {
                "1 2 4 5 3 6".to_string());
 }
 
-fn test_collections() {
-    use std::collections::{LinkedList, VecDeque, BTreeSet, BTreeMap};
-
-    let u32_array = [10u32, 20, 64, 255, 0xffffffff];
-    t!(format!("{}", u32_array), "[10, 20, 64, 255, 4294967295]");
-    t!(format!("{:?}", u32_array), "[10, 20, 64, 255, 4294967295]");
-    t!(format!("{:o}", u32_array), "[12, 24, 100, 377, 37777777777]");
-    t!(format!("{:b}", u32_array),
-       "[1010, 10100, 1000000, 11111111, 11111111111111111111111111111111]");
-    t!(format!("{:x}", u32_array), "[a, 14, 40, ff, ffffffff]");
-    t!(format!("{:X}", u32_array), "[A, 14, 40, FF, FFFFFFFF]");
-
-    let f32_array = [10f32, 20.0 , 64.0, 255.0];
-    t!(format!("{}", f32_array), "[10, 20, 64, 255]");
-    t!(format!("{:?}", f32_array), "[10, 20, 64, 255]");
-    t!(format!("{:e}", f32_array), "[1e1, 2e1, 6.4e1, 2.55e2]");
-    t!(format!("{:E}", f32_array), "[1E1, 2E1, 6.4E1, 2.55E2]");
-
-    let u32_vec = vec![10u32, 20, 64, 255, 0xffffffff];
-    t!(format!("{}", u32_vec), "[10, 20, 64, 255, 4294967295]");
-    t!(format!("{:?}", u32_vec), "[10, 20, 64, 255, 4294967295]");
-    t!(format!("{:o}", u32_vec), "[12, 24, 100, 377, 37777777777]");
-    t!(format!("{:b}", u32_vec),
-       "[1010, 10100, 1000000, 11111111, 11111111111111111111111111111111]");
-    t!(format!("{:x}", u32_vec), "[a, 14, 40, ff, ffffffff]");
-    t!(format!("{:X}", u32_vec), "[A, 14, 40, FF, FFFFFFFF]");
-
-    let f32_vec = vec![10f32, 20.0 , 64.0, 255.0];
-    t!(format!("{}", f32_vec), "[10, 20, 64, 255]");
-    t!(format!("{:?}", f32_vec), "[10, 20, 64, 255]");
-    t!(format!("{:e}", f32_vec), "[1e1, 2e1, 6.4e1, 2.55e2]");
-    t!(format!("{:E}", f32_vec), "[1E1, 2E1, 6.4E1, 2.55E2]");
-
-    let u32_dlist:LinkedList<_> = u32_vec.into_iter().collect();
-    t!(format!("{}", u32_dlist), "[10, 20, 64, 255, 4294967295]");
-    t!(format!("{:?}", u32_dlist), "[10, 20, 64, 255, 4294967295]");
-    t!(format!("{:o}", u32_dlist), "[12, 24, 100, 377, 37777777777]");
-    t!(format!("{:b}", u32_dlist),
-       "[1010, 10100, 1000000, 11111111, 11111111111111111111111111111111]");
-    t!(format!("{:x}", u32_dlist), "[a, 14, 40, ff, ffffffff]");
-    t!(format!("{:X}", u32_dlist), "[A, 14, 40, FF, FFFFFFFF]");
-
-    let f32_dlist:LinkedList<_> = f32_vec.into_iter().collect();
-    t!(format!("{}", f32_dlist), "[10, 20, 64, 255]");
-    t!(format!("{:?}", f32_dlist), "[10, 20, 64, 255]");
-    t!(format!("{:e}", f32_dlist), "[1e1, 2e1, 6.4e1, 2.55e2]");
-    t!(format!("{:E}", f32_dlist), "[1E1, 2E1, 6.4E1, 2.55E2]");
-
-    let u32_ring_buf:VecDeque<_> = u32_dlist.into_iter().collect();
-    t!(format!("{}", u32_ring_buf), "[10, 20, 64, 255, 4294967295]");
-    t!(format!("{:?}", u32_ring_buf), "[10, 20, 64, 255, 4294967295]");
-    t!(format!("{:o}", u32_ring_buf), "[12, 24, 100, 377, 37777777777]");
-    t!(format!("{:b}", u32_ring_buf),
-       "[1010, 10100, 1000000, 11111111, 11111111111111111111111111111111]");
-    t!(format!("{:x}", u32_ring_buf), "[a, 14, 40, ff, ffffffff]");
-    t!(format!("{:X}", u32_ring_buf), "[A, 14, 40, FF, FFFFFFFF]");
-
-    let f32_ring_buf:VecDeque<_> = f32_dlist.into_iter().collect();
-    t!(format!("{}", f32_ring_buf), "[10, 20, 64, 255]");
-    t!(format!("{:?}", f32_ring_buf), "[10, 20, 64, 255]");
-    t!(format!("{:e}", f32_ring_buf), "[1e1, 2e1, 6.4e1, 2.55e2]");
-    t!(format!("{:E}", f32_ring_buf), "[1E1, 2E1, 6.4E1, 2.55E2]");
-
-    let u32_btree_set:BTreeSet<_> = u32_ring_buf.into_iter().collect();
-    t!(format!("{}", u32_btree_set), "{10, 20, 64, 255, 4294967295}");
-    t!(format!("{:?}", u32_btree_set), "{10, 20, 64, 255, 4294967295}");
-    t!(format!("{:o}", u32_btree_set), "{12, 24, 100, 377, 37777777777}");
-    t!(format!("{:b}", u32_btree_set),
-       "{1010, 10100, 1000000, 11111111, 11111111111111111111111111111111}");
-    t!(format!("{:x}", u32_btree_set), "{a, 14, 40, ff, ffffffff}");
-    t!(format!("{:X}", u32_btree_set), "{A, 14, 40, FF, FFFFFFFF}");
-
-    let mut u32_btree_map:BTreeMap<u32, u32> = BTreeMap::new();
-    for x in u32_btree_set.iter() {
-        u32_btree_map.insert(*x, *x);
-    };
-
-    t!(format!("{}", u32_btree_map),
-       "{10: 10, 20: 20, 64: 64, 255: 255, 4294967295: 4294967295}");
-    t!(format!("{:?}", u32_btree_map),
-       "{10: 10, 20: 20, 64: 64, \
-       255: 255, 4294967295: 4294967295}");
-    t!(format!("{:o}", u32_btree_map),
-       "{12: 12, 24: 24, 100: 100, 377: 377, 37777777777: 37777777777}");
-    t!(format!("{:b}", u32_btree_map),
-       "{1010: 1010, 10100: 10100, 1000000: 1000000, 11111111: 11111111, \
-       11111111111111111111111111111111: 11111111111111111111111111111111}");
-    t!(format!("{:x}", u32_btree_map),
-       "{a: a, 14: 14, 40: 40, ff: ff, ffffffff: ffffffff}");
-    t!(format!("{:X}", u32_btree_map),
-       "{A: A, 14: 14, 40: 40, FF: FF, FFFFFFFF: FFFFFFFF}");
-}
