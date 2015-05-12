@@ -167,7 +167,7 @@ fn bar() { ... }
 ```
 
 The problem here is that glob imports currently do not allow any of their
-imports to be shadowed by an explicitly-define item.
+imports to be shadowed by an explicitly-defined item.
 
 There are two reasons this is considered a minor change by this RFC:
 
