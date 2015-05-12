@@ -292,7 +292,7 @@ pub fn get_dataptr(bcx: &mut Block, fat_ptr: ValueRef) -> ValueRef {
 
 pub fn copy_fat_ptr(bcx: &mut Block, src_ptr: ValueRef, dst_ptr: ValueRef) {
     let sp = get_dataptr(bcx, src_ptr);
-    let ld = Load(bcx, sp); 
+    let ld = Load(bcx, sp);
     let dp = get_dataptr(bcx, dst_ptr);
     Store(bcx, ld, dp);
     let sl = get_len(bcx, src_ptr);
@@ -558,9 +558,10 @@ fn trans_unadjusted<'r, 'blk, 'tcx>(&mut Block { bl, ref mut fcx }: &mut Block<'
     }
 }
 
-fn trans_datum_unadjusted<'r, 'blk, 'tcx>(&mut Block { bl, ref mut fcx }: &mut Block<'r, 'blk, 'tcx>,
-                                          expr: &ast::Expr)
-                                          -> DatumBlock<'blk, 'tcx, Expr> {
+fn trans_datum_unadjusted<'r, 'blk, 'tcx>
+                         (&mut Block { bl, ref mut fcx }: &mut Block<'r, 'blk, 'tcx>,
+                          expr: &ast::Expr)
+                          -> DatumBlock<'blk, 'tcx, Expr> {
     let mut bcx = &mut bl.with(fcx);
     let _icx = push_ctxt("trans_datum_unadjusted");
 
@@ -857,9 +858,10 @@ fn trans_def<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
     }
 }
 
-fn trans_rvalue_stmt_unadjusted<'r, 'blk, 'tcx>(&mut Block { bl, ref mut fcx }: &mut Block<'r, 'blk, 'tcx>,
-                                                expr: &ast::Expr)
-                                                -> &'blk BlockS {
+fn trans_rvalue_stmt_unadjusted<'r, 'blk, 'tcx>
+                               (&mut Block { bl, ref mut fcx }: &mut Block<'r, 'blk, 'tcx>,
+                                expr: &ast::Expr)
+                                -> &'blk BlockS {
     let mut bcx = &mut bl.with(fcx);
     let _icx = push_ctxt("trans_rvalue_stmt");
 
@@ -959,10 +961,11 @@ fn trans_rvalue_stmt_unadjusted<'r, 'blk, 'tcx>(&mut Block { bl, ref mut fcx }: 
     }
 }
 
-fn trans_rvalue_dps_unadjusted<'r, 'blk, 'tcx>(&mut Block { bl, ref mut fcx }: &mut Block<'r, 'blk, 'tcx>,
-                                               expr: &ast::Expr,
-                                               dest: Dest)
-                                               -> &'blk BlockS {
+fn trans_rvalue_dps_unadjusted<'r, 'blk, 'tcx>
+                              (&mut Block { bl, ref mut fcx }: &mut Block<'r, 'blk, 'tcx>,
+                               expr: &ast::Expr,
+                               dest: Dest)
+                               -> &'blk BlockS {
     let _icx = push_ctxt("trans_rvalue_dps_unadjusted");
     let mut bcx = &mut bl.with(fcx);
     let tcx = bcx.tcx();
@@ -1473,7 +1476,8 @@ pub fn trans_adt<'a, 'r, 'blk, 'tcx>(&mut Block { bl, ref mut fcx }: &mut Block<
                 let base_datum = unpack_datum!(bcx, trans_to_lvalue(bcx, &*base.expr, "base"));
                 for &(i, t) in &base.fields {
                     let datum = base_datum.get_element(
-                            bcx, t, |bcx, srcval| adt::trans_field_ptr(bcx, &*repr, srcval, discr, i));
+                            bcx, t,
+                            |bcx, srcval| adt::trans_field_ptr(bcx, &*repr, srcval, discr, i));
                     assert!(type_is_sized(bcx.tcx(), datum.ty));
                     let dest = adt::trans_field_ptr(bcx, &*repr, addr, discr, i);
                     bcx.bl = datum.store_to(bcx, dest);
@@ -1895,12 +1899,13 @@ fn trans_overloaded_op<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
                              dest)
 }
 
-fn trans_overloaded_call<'a, 'r, 'blk, 'tcx>(&mut Block { bl, ref mut fcx }: &mut Block<'r, 'blk, 'tcx>,
-                                             expr: &ast::Expr,
-                                             callee: &'a ast::Expr,
-                                             args: &'a [P<ast::Expr>],
-                                             dest: Option<Dest>)
-                                             -> &'blk BlockS {
+fn trans_overloaded_call<'a, 'r, 'blk, 'tcx>
+                        (&mut Block { bl, ref mut fcx }: &mut Block<'r, 'blk, 'tcx>,
+                         expr: &ast::Expr,
+                         callee: &'a ast::Expr,
+                         args: &'a [P<ast::Expr>],
+                         dest: Option<Dest>)
+                         -> &'blk BlockS {
     let mut bcx = &mut bl.with(fcx);
     let method_call = MethodCall::expr(expr.id);
     let method_type = bcx.tcx()
@@ -2344,7 +2349,9 @@ enum OverflowOpViaInputCheck { Shl, Shr, }
 enum OverflowOpViaIntrinsic { Add, Sub, Mul, }
 
 impl OverflowOpViaIntrinsic {
-    fn to_intrinsic<'r, 'blk, 'tcx>(&self, bcx: &mut Block<'r, 'blk, 'tcx>, lhs_ty: Ty) -> ValueRef {
+    fn to_intrinsic<'r, 'blk, 'tcx>(&self,
+                                    bcx: &mut Block<'r, 'blk, 'tcx>,
+                                    lhs_ty: Ty) -> ValueRef {
         let name = self.to_intrinsic_name(bcx.tcx(), lhs_ty);
         bcx.ccx().get_intrinsic(&name)
     }
@@ -2527,11 +2534,12 @@ fn shift_mask_rhs<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
     And(bcx, rhs, C_integral(rhs_llty, mask, false), debug_loc)
 }
 
-fn with_overflow_check<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>, oop: OverflowOp, info: NodeIdAndSpan,
-                                       lhs_t: Ty<'tcx>, lhs: ValueRef,
-                                       rhs: ValueRef,
-                                       binop_debug_loc: DebugLoc)
-                                       -> (&'blk BlockS, ValueRef) {
+fn with_overflow_check<'r, 'blk, 'tcx>
+                      (bcx: &mut Block<'r, 'blk, 'tcx>, oop: OverflowOp, info: NodeIdAndSpan,
+                       lhs_t: Ty<'tcx>, lhs: ValueRef,
+                       rhs: ValueRef,
+                       binop_debug_loc: DebugLoc)
+                       -> (&'blk BlockS, ValueRef) {
     if bcx.bl.unreachable.get() { return (bcx.bl, _Undef(lhs)); }
     if bcx.ccx().check_overflow() {
 

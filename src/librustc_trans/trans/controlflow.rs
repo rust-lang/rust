@@ -261,7 +261,8 @@ pub fn trans_while<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
     let Result {bcx: cond_bcx_out, val: cond_val} =
         expr::trans(&mut cond_bcx_in.with(bcx.fcx), cond).to_llbool(bcx.fcx);
 
-    CondBr(&mut cond_bcx_out.with(bcx.fcx), cond_val, body_bcx_in.llbb, cleanup_llbb, cond.debug_loc());
+    CondBr(&mut cond_bcx_out.with(bcx.fcx), cond_val,
+           body_bcx_in.llbb, cleanup_llbb, cond.debug_loc());
 
     // loop body:
     let body_bcx_out = trans_block(&mut body_bcx_in.with(bcx.fcx), body, expr::Ignore);

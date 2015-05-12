@@ -823,7 +823,8 @@ pub fn load_ty<'r, 'blk, 'tcx>(cx: &mut Block<'r, 'blk, 'tcx>,
 
 /// Helper for storing values in memory. Does the necessary conversion if the in-memory type
 /// differs from the type used for SSA values.
-pub fn store_ty<'r, 'blk, 'tcx>(cx: &mut Block<'r, 'blk, 'tcx>, v: ValueRef, dst: ValueRef, t: Ty<'tcx>) {
+pub fn store_ty<'r, 'blk, 'tcx>(cx: &mut Block<'r, 'blk, 'tcx>,
+                                v: ValueRef, dst: ValueRef, t: Ty<'tcx>) {
     if cx.bl.unreachable.get() {
         return;
     }
@@ -854,7 +855,8 @@ pub fn from_arg_ty(bcx: &mut Block, val: ValueRef, ty: Ty) -> ValueRef {
     }
 }
 
-pub fn to_arg_ty_ptr<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>, ptr: ValueRef, ty: Ty<'tcx>) -> ValueRef {
+pub fn to_arg_ty_ptr<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
+                                     ptr: ValueRef, ty: Ty<'tcx>) -> ValueRef {
     if type_is_immediate(bcx.ccx(), ty) && type_of::type_of(bcx.ccx(), ty).is_aggregate() {
         // We want to pass small aggregates as immediate values, but using an aggregate LLVM type
         // for this leads to bad optimizations, so its arg type is an appropriately sized integer
@@ -965,14 +967,16 @@ pub fn memcpy_ty<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
     }
 }
 
-pub fn drop_done_fill_mem<'r, 'blk, 'tcx>(cx: &mut Block<'r, 'blk, 'tcx>, llptr: ValueRef, t: Ty<'tcx>) {
+pub fn drop_done_fill_mem<'r, 'blk, 'tcx>(cx: &mut Block<'r, 'blk, 'tcx>,
+                                          llptr: ValueRef, t: Ty<'tcx>) {
     if cx.bl.unreachable.get() { return; }
     let _icx = push_ctxt("drop_done_fill_mem");
     let bcx = cx;
     memfill(&B(bcx), llptr, t, adt::DTOR_DONE);
 }
 
-pub fn init_zero_mem<'r, 'blk, 'tcx>(cx: &mut Block<'r, 'blk, 'tcx>, llptr: ValueRef, t: Ty<'tcx>) {
+pub fn init_zero_mem<'r, 'blk, 'tcx>(cx: &mut Block<'r, 'blk, 'tcx>,
+                                     llptr: ValueRef, t: Ty<'tcx>) {
     if cx.bl.unreachable.get() { return; }
     let _icx = push_ctxt("init_zero_mem");
     let bcx = cx;
@@ -1005,7 +1009,8 @@ fn memfill<'a, 'tcx>(b: &Builder<'a, 'tcx>, llptr: ValueRef, ty: Ty<'tcx>, byte:
     b.call(llintrinsicfn, &[llptr, llzeroval, size, align, volatile], None);
 }
 
-pub fn alloc_ty<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>, t: Ty<'tcx>, name: &str) -> ValueRef {
+pub fn alloc_ty<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
+                                t: Ty<'tcx>, name: &str) -> ValueRef {
     let _icx = push_ctxt("alloc_ty");
     let ccx = bcx.ccx();
     let ty = type_of::type_of(ccx, t);

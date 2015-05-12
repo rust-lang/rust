@@ -992,11 +992,12 @@ fn compile_guard<'a, 'p, 'r, 'blk, 'tcx>(&mut Block { bl, ref mut fcx }: &mut Bl
     })
 }
 
-fn compile_submatch<'a, 'p, 'r, 'blk, 'tcx>(&mut Block { bl, ref mut fcx }: &mut Block<'r, 'blk, 'tcx>,
-                                            m: &[Match<'a, 'p, 'blk, 'tcx>],
-                                            vals: &[ValueRef],
-                                            chk: &FailureHandler,
-                                            has_genuine_default: bool) {
+fn compile_submatch<'a, 'p, 'r, 'blk, 'tcx>
+                   (&mut Block { bl, ref mut fcx }: &mut Block<'r, 'blk, 'tcx>,
+                    m: &[Match<'a, 'p, 'blk, 'tcx>],
+                    vals: &[ValueRef],
+                    chk: &FailureHandler,
+                    has_genuine_default: bool) {
     let mut bcx = &mut bl.with(fcx);
     debug!("compile_submatch(bcx={}, m={}, vals={})",
            bcx.to_str(),
@@ -1058,13 +1059,14 @@ fn compile_submatch<'a, 'p, 'r, 'blk, 'tcx>(&mut Block { bl, ref mut fcx }: &mut
     }
 }
 
-fn compile_submatch_continue<'a, 'p, 'r, 'blk, 'tcx>(&mut Block { bl, ref mut fcx }: &mut Block<'r, 'blk, 'tcx>,
-                                                     m: &[Match<'a, 'p, 'blk, 'tcx>],
-                                                     vals: &[ValueRef],
-                                                     chk: &FailureHandler,
-                                                     col: usize,
-                                                     val: ValueRef,
-                                                     has_genuine_default: bool) {
+fn compile_submatch_continue<'a, 'p, 'r, 'blk, 'tcx>
+                            (&mut Block { bl, ref mut fcx }: &mut Block<'r, 'blk, 'tcx>,
+                             m: &[Match<'a, 'p, 'blk, 'tcx>],
+                             vals: &[ValueRef],
+                             chk: &FailureHandler,
+                             col: usize,
+                             val: ValueRef,
+                             has_genuine_default: bool) {
     let mut bcx = &mut bl.with(fcx);
     let tcx = bcx.tcx();
     let dm = &tcx.def_map;

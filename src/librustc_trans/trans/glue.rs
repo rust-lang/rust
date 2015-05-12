@@ -274,13 +274,14 @@ fn get_drop_glue_core<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     llfn
 }
 
-fn trans_struct_drop_flag<'r, 'blk, 'tcx>(&mut Block { bl, ref mut fcx }: &mut Block<'r, 'blk, 'tcx>,
-                                          t: Ty<'tcx>,
-                                          v0: ValueRef,
-                                          dtor_did: ast::DefId,
-                                          class_did: ast::DefId,
-                                          substs: &subst::Substs<'tcx>)
-                                          -> &'blk BlockS {
+fn trans_struct_drop_flag<'r, 'blk, 'tcx>
+                         (&mut Block { bl, ref mut fcx }: &mut Block<'r, 'blk, 'tcx>,
+                          t: Ty<'tcx>,
+                          v0: ValueRef,
+                          dtor_did: ast::DefId,
+                          class_did: ast::DefId,
+                          substs: &subst::Substs<'tcx>)
+                          -> &'blk BlockS {
     let mut bcx = &mut bl.with(fcx);
     let repr = adt::represent_type(bcx.ccx(), t);
     let struct_data = if type_is_sized(bcx.tcx(), t) {
@@ -389,7 +390,8 @@ fn trans_struct_drop<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
     bcx.fcx.pop_and_trans_custom_cleanup_scope(bl, contents_scope)
 }
 
-fn size_and_align_of_dst<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>, t: Ty<'tcx>, info: ValueRef)
+fn size_and_align_of_dst<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
+                                         t: Ty<'tcx>, info: ValueRef)
                                          -> (ValueRef, ValueRef) {
     debug!("calculate size of DST: {}; with lost info: {}",
            bcx.ty_to_string(t), bcx.val_to_string(info));

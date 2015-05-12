@@ -147,15 +147,16 @@ pub fn check_intrinsics(ccx: &CrateContext) {
 /// Remember to add all intrinsics here, in librustc_typeck/check/mod.rs,
 /// and in libcore/intrinsics.rs; if you need access to any llvm intrinsics,
 /// add them to librustc_trans/trans/context.rs
-pub fn trans_intrinsic_call<'a, 'r, 'blk, 'tcx>(&mut Block { bl, ref mut fcx }: &mut Block<'r, 'blk, 'tcx>,
-                                                node: ast::NodeId,
-                                                callee_ty: Ty<'tcx>,
-                                                cleanup_scope: cleanup::CustomScopeIndex,
-                                                args: callee::CallArgs<'a, 'tcx>,
-                                                dest: expr::Dest,
-                                                substs: subst::Substs<'tcx>,
-                                                call_info: NodeIdAndSpan)
-                                                -> Result<'blk> {
+pub fn trans_intrinsic_call<'a, 'r, 'blk, 'tcx>
+                           (&mut Block { bl, ref mut fcx }: &mut Block<'r, 'blk, 'tcx>,
+                            node: ast::NodeId,
+                            callee_ty: Ty<'tcx>,
+                            cleanup_scope: cleanup::CustomScopeIndex,
+                            args: callee::CallArgs<'a, 'tcx>,
+                            dest: expr::Dest,
+                            substs: subst::Substs<'tcx>,
+                            call_info: NodeIdAndSpan)
+                            -> Result<'blk> {
     let mut bcx = &mut bl.with(fcx);
     let ccx = bcx.fcx.ccx;
     let tcx = bcx.tcx();

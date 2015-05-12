@@ -1007,8 +1007,9 @@ pub fn trans_field_ptr<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>, r: &Repr
     }
 }
 
-pub fn struct_field_ptr<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>, st: &Struct<'tcx>, val: ValueRef,
-                                        ix: usize, needs_cast: bool) -> ValueRef {
+pub fn struct_field_ptr<'r, 'blk, 'tcx>
+                       (bcx: &mut Block<'r, 'blk, 'tcx>, st: &Struct<'tcx>, val: ValueRef,
+                        ix: usize, needs_cast: bool) -> ValueRef {
     let val = if needs_cast {
         let ccx = bcx.ccx();
         let fields = st.fields.iter().map(|&ty| type_of::type_of(ccx, ty)).collect::<Vec<_>>();
@@ -1021,11 +1022,12 @@ pub fn struct_field_ptr<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>, st: &St
     GEPi(bcx, val, &[0, ix])
 }
 
-pub fn fold_variants<'r, 'blk, 'tcx, F>(bcx: &mut Block<'r, 'blk, 'tcx>,
-                                        r: &Repr<'tcx>,
-                                        value: ValueRef,
-                                        mut f: F)
-                                        -> &'blk BlockS where
+pub fn fold_variants<'r, 'blk, 'tcx, F>
+                    (bcx: &mut Block<'r, 'blk, 'tcx>,
+                     r: &Repr<'tcx>,
+                     value: ValueRef,
+                     mut f: F)
+                     -> &'blk BlockS where
     F: for<'a> FnMut(&mut Block<'a, 'blk, 'tcx>, &Struct<'tcx>, ValueRef) -> &'blk BlockS,
 {
     match *r {
@@ -1051,8 +1053,9 @@ pub fn fold_variants<'r, 'blk, 'tcx, F>(bcx: &mut Block<'r, 'blk, 'tcx>,
                 let fields = case.fields.iter().map(|&ty|
                     type_of::type_of(bcx.ccx(), ty)).collect::<Vec<_>>();
                 let real_ty = Type::struct_(ccx, &fields[..], case.packed);
-                let variant_value = PointerCast(&mut variant_cx.with(bcx.fcx), value, real_ty.ptr_to());
-                
+                let variant_value = PointerCast(&mut variant_cx.with(bcx.fcx),
+                                                value, real_ty.ptr_to());
+
                 let mut bcx = &mut variant_cx.with(bcx.fcx);
                 let variant_cx = f(bcx, case, variant_value);
                 Br(&mut variant_cx.with(bcx.fcx), bcx_next.llbb, DebugLoc::None);
@@ -1065,9 +1068,10 @@ pub fn fold_variants<'r, 'blk, 'tcx, F>(bcx: &mut Block<'r, 'blk, 'tcx>,
 }
 
 /// Access the struct drop flag, if present.
-pub fn trans_drop_flag_ptr<'r, 'blk, 'tcx>(&mut Block { bl, ref mut fcx }: &mut Block<'r, 'blk, 'tcx>,
-                                           r: &Repr<'tcx>, val: ValueRef)
-                                           -> datum::DatumBlock<'blk, 'tcx, datum::Expr>
+pub fn trans_drop_flag_ptr<'r, 'blk, 'tcx>
+                          (&mut Block { bl, ref mut fcx }: &mut Block<'r, 'blk, 'tcx>,
+                           r: &Repr<'tcx>, val: ValueRef)
+                           -> datum::DatumBlock<'blk, 'tcx, datum::Expr>
 {
     //let Block { bl, ref mut fcx } = *bcx;
     let mut bcx = &mut bl.with(fcx);
