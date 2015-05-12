@@ -350,6 +350,24 @@ it has been disabled for now.
 [iss20126]: https://github.com/rust-lang/rust/issues/20126
 "##,
 
+E0201: r##"
+It is an error to define a method--a trait method or an inherent method--more
+than once.
+
+For example,
+
+```
+struct Foo(u8);
+
+impl Foo {
+    fn bar() {}
+
+    // error: duplicate method
+    fn bar(&self) -> bool { self.0 > 5 }
+}
+```
+"##,
+
 E0204: r##"
 An attempt to implement the `Copy` trait for a struct failed because one of the
 fields does not implement `Copy`. To fix this, you must implement `Copy` for the
@@ -580,7 +598,6 @@ register_diagnostics! {
     E0198, // negative implementations are not unsafe
     E0199, // implementing trait is not unsafe
     E0200, // trait requires an `unsafe impl` declaration
-    E0201, // duplicate method in trait impl
     E0202, // associated items are not allowed in inherent impls
     E0203, // type parameter has more than one relaxed default bound,
            // and only one is supported
