@@ -230,31 +230,7 @@ type MyStr<'a> = &'a str; //correct
 
 Lifetime elision is a special, limited kind of inference for lifetimes in
 function signatures which allows you to leave out lifetimes in certain cases.
-For example, the lifetimes on parameter in the following function signatures
-have been left out, but they still compile successfully:
-
-```
-fn foo(x: &str) { }
-
-fn bar(x: &str, y: &str) { }
-
-fn baz(x: &str) -> &str { x }
-```
-
-To explain the lifetime elision rules, we need to first discuss some background.
-The lifetime elision rules consider each lifetime in a function signature,
-whether it's elided or not, to be in a certain position, either *input
-position*, for function parameters, or *output position*, for the return type.
-For example, the function:
-
-```
-fn hello<'a>(name: &'a str) -> (&'static str, &str) {
-    ("hello", name)
-}
-```
-
-has a signature with one lifetime in input position and two lifetimes in output
-position.
+For more background on lifetime elision see [the book][book-le].
 
 The lifetime elision rules require that any function signature with an elided
 output lifetime must either have
@@ -279,6 +255,8 @@ fn bar(x: &str, y: &str) -> &str { ... }
 // error, `y`'s lifetime is inferred to be distinct from `x`'s
 fn baz<'a>(x: &'a str, y: &str) -> &str { ... }
 ```
+
+[book-le]: http://doc.rust-lang.org/nightly/book/lifetimes.html#lifetime-elision
 "##,
 
 E0107: r##"
