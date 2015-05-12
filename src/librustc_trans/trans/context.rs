@@ -75,6 +75,7 @@ pub struct SharedCrateContext<'tcx> {
 
     available_monomorphizations: RefCell<FnvHashSet<String>>,
     available_drop_glues: RefCell<FnvHashMap<DropGlueKind<'tcx>, String>>,
+    use_dll_storage_attrs: bool,
 }
 
 /// The local portion of a `CrateContext`.  There is one `LocalCrateContext`
@@ -251,6 +252,51 @@ impl<'tcx> SharedCrateContext<'tcx> {
             create_context_and_module(&tcx.sess, "metadata")
         };
 
+        // An interesting part of Windows which MSVC forces our hand on (and
+        // apparently MinGW didn't) is the usage of `dllimport` and `dllexport`
+        // attributes in LLVM IR as well as native dependencies (in C these
+        // correspond to `__declspec(dllimport)`).
+        //
+        // Whenever a dynamic library is built by MSVC it must have its public
+        // interface specified by functions tagged with `dllexport` or otherwise
+        // they're not available to be linked against. This poses a few problems
+        // for the compiler, some of which are somewhat fundamental, but we use
+        // the `use_dll_storage_attrs` variable below to attach the `dllexport`
+        // attribute to all LLVM functions that are reachable (e.g. they're
+        // already tagged with external linkage). This is suboptimal for a few
+        // reasons:
+        //
+        // * If an object file will never be included in a dynamic library,
+        //   there's no need to attach the dllexport attribute. Most object
+        //   files in Rust are not destined to become part of a dll as binaries
+        //   are statically linked by default.
+        // * If the compiler is emitting both an rlib and a dylib, the same
+        //   source object file is currently used but with MSVC this may be less
+        //   feasible. The compiler may be able to get around this, but it may
+        //   involve some invasive changes to deal with this.
+        //
+        // The flipside of this situation is that whenever you link to a dll and
+        // you import a function from it, the import should be tagged with
+        // `dllimport`. At this time, however, the compiler does not emit
+        // `dllimport` for any declarations other than constants (where it is
+        // required), which is again suboptimal for even more reasons!
+        //
+        // * Calling a function imported from another dll without using
+        //   `dllimport` causes the linker/compiler to have extra overhead (one
+        //   `jmp` instruction on x86) when calling the function.
+        // * The same object file may be used in different circumstances, so a
+        //   function may be imported from a dll if the object is linked into a
+        //   dll, but it may be just linked against if linked into an rlib.
+        // * The compiler has no knowledge about whether native functions should
+        //   be tagged dllimport or not.
+        //
+        // For now the compiler takes the perf hit (I do not have any numbers to
+        // this effect) by marking very little as `dllimport` and praying the
+        // linker will take care of everything. Fixing this problem will likely
+        // require adding a few attributes to Rust itself (feature gated at the
+        // start) and then strongly recommending static linkage on MSVC!
+        let use_dll_storage_attrs = tcx.sess.target.target.options.is_like_msvc;
+
         let mut shared_ccx = SharedCrateContext {
             local_ccxs: Vec::with_capacity(local_count),
             metadata_llmod: metadata_llmod,
@@ -277,6 +323,7 @@ impl<'tcx> SharedCrateContext<'tcx> {
             check_drop_flag_for_sanity: check_drop_flag_for_sanity,
             available_monomorphizations: RefCell::new(FnvHashSet()),
             available_drop_glues: RefCell::new(FnvHashMap()),
+            use_dll_storage_attrs: use_dll_storage_attrs,
         };
 
         for i in 0..local_count {
@@ -364,6 +411,10 @@ impl<'tcx> SharedCrateContext<'tcx> {
 
     pub fn stats<'a>(&'a self) -> &'a Stats {
         &self.stats
+    }
+
+    pub fn use_dll_storage_attrs(&self) -> bool {
+        self.use_dll_storage_attrs
     }
 }
 
@@ -732,6 +783,10 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         // guarded on whether the dropflag is one of its (two) valid
         // values.
         self.shared.check_drop_flag_for_sanity
+    }
+
+    pub fn use_dll_storage_attrs(&self) -> bool {
+        self.shared.use_dll_storage_attrs()
     }
 }
 
