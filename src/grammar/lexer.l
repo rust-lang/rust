@@ -311,7 +311,7 @@ r/#             {
 <str>\x22                { BEGIN(suffix); return LIT_STR; }
 
 <str><<EOF>>                { return -1; }
-<str>\\[n\nrt\\\x27\x220]   { yymore(); }
+<str>\\[n\nr\rt\\\x27\x220] { yymore(); }
 <str>\\x[0-9a-fA-F]{2}      { yymore(); }
 <str>\\u\{[0-9a-fA-F]?{6}\} { yymore(); }
 <str>\\[^n\nrt\\\x27\x220]  { return -1; }
