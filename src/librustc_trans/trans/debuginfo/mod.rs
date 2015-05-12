@@ -193,7 +193,7 @@ pub fn finalize(cx: &CrateContext) {
         // Prevent bitcode readers from deleting the debug info.
         let ptr = "Debug Info Version\0".as_ptr();
         llvm::LLVMRustAddModuleFlag(cx.llmod(), ptr as *const _,
-                                    llvm::LLVMRustDebugMetadataVersion);
+                                    llvm::LLVMRustDebugMetadataVersion());
     };
 }
 
