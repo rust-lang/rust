@@ -1895,6 +1895,7 @@ impl<'a, 'b, 'c, 'tcx, 'v> Visitor<'v> for ImplVisitor<'a, 'b, 'c, 'tcx> {
                     def_id.krate != ast::LOCAL_CRATE {
                 self.rbml_w.start_tag(tag_impls_impl);
                 encode_def_id(self.rbml_w, local_def(item.id));
+                self.rbml_w.wr_tagged_u64(tag_impls_impl_trait_def_id, def_to_u64(def_id));
                 self.rbml_w.end_tag();
             }
         }

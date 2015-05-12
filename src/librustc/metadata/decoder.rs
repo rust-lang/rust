@@ -1328,6 +1328,22 @@ pub fn translate_def_id(cdata: Cmd, did: ast::DefId) -> ast::DefId {
     }
 }
 
+// Translate a DefId from the current compilation environment to a DefId
+// for an external crate.
+fn reverse_translate_def_id(cdata: Cmd, did: ast::DefId) -> Option<ast::DefId> {
+    if did.krate == cdata.cnum {
+        return Some(ast::DefId { krate: ast::LOCAL_CRATE, node: did.node });
+    }
+
+    for (&local, &global) in &cdata.cnum_map {
+        if global == did.krate {
+            return Some(ast::DefId { krate: local, node: did.node });
+        }
+    }
+
+    None
+}
+
 pub fn each_impl<F>(cdata: Cmd, mut callback: F) where
     F: FnMut(ast::DefId),
 {
@@ -1355,19 +1371,35 @@ pub fn each_inherent_implementation_for_type<F>(cdata: Cmd,
 }
 
 pub fn each_implementation_for_trait<F>(cdata: Cmd,
-                                        id: ast::NodeId,
+                                        def_id: ast::DefId,
                                         mut callback: F) where
     F: FnMut(ast::DefId),
 {
-    let item_doc = lookup_item(id, cdata.data());
+    if cdata.cnum == def_id.krate {
+        let item_doc = lookup_item(def_id.node, cdata.data());
+        let _ = reader::tagged_docs(item_doc,
+                                    tag_items_data_item_extension_impl,
+                                    |impl_doc| {
+            callback(item_def_id(impl_doc, cdata));
+            true
+        });
+        return;
+    }
 
-    let _ = reader::tagged_docs(item_doc,
-                                tag_items_data_item_extension_impl,
-                                |impl_doc| {
-        let implementation_def_id = item_def_id(impl_doc, cdata);
-        callback(implementation_def_id);
-        true
-    });
+    // Do a reverse lookup beforehand to avoid touching the crate_num
+    // hash map in the loop below.
+    if let Some(crate_local_did) = reverse_translate_def_id(cdata, def_id) {
+        let def_id_u64 = def_to_u64(crate_local_did);
+
+        let impls_doc = reader::get_doc(rbml::Doc::new(cdata.data()), tag_impls);
+        let _ = reader::tagged_docs(impls_doc, tag_impls_impl, |impl_doc| {
+            let impl_trait = reader::get_doc(impl_doc, tag_impls_impl_trait_def_id);
+            if reader::doc_as_u64(impl_trait) == def_id_u64 {
+                callback(item_def_id(impl_doc, cdata));
+            }
+            true
+        });
+    }
 }
 
 pub fn get_trait_of_item(cdata: Cmd, id: ast::NodeId, tcx: &ty::ctxt)
