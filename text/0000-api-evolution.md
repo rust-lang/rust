@@ -540,7 +540,7 @@ types as before.
 All of the changes mentioned below are considered major changes in the context
 of trait methods, since they can break implementors.
 
-#### Major change: adding new arguments.
+#### Major change: adding/removing arguments.
 
 At the moment, Rust does not provide defaulted arguments, so any change in arity
 is a breaking change.
