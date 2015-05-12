@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // aux-build:two_macros.rs
-// ignore-stage1
 
 extern crate two_macros;
 
