@@ -177,3 +177,22 @@ println!("length is {} inches", integer_length);
 As you can see here, you can extract the inner integer type through a
 destructuring `let`, just as with regular tuples. In this case, the
 `let Inches(integer_length)` assigns `10` to `integer_length`.
+
+# Unit-like structs
+
+You can define a struct with no members at all:
+
+```rust
+struct Electron;
+```
+
+Such a struct is called ‘unit-like’ because it resembles the empty
+tuple, `()`, sometimes called ‘unit’. Like a tuple struct, it defines a
+new type.
+
+This is rarely useful on its own (although sometimes it can serve as a
+marker type), but in combination with other features, it can become
+useful. For instance, a library may ask you to create a structure that
+implements a certain [trait][trait] to handle events. If you don’t have
+any data you need to store in the structure, you can just create a
+unit-like struct.
