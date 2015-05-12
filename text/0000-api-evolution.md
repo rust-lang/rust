@@ -627,6 +627,10 @@ signature).
 Lints are considered advisory, and changes that cause downstream code to receive
 additional lint warnings/errors are still considered "minor" changes.
 
+Making this work well in practice will likely require some infrastructure work
+along the lines of
+[this RFC issue](https://github.com/rust-lang/rfcs/issues/1029)
+
 ## Mitigation for minor changes
 
 ### The Crater tool
