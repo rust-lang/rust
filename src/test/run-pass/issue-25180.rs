@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// pretty-expanded FIXME #25180
+#![feature(std_misc)]
 
 const EMPTY: &'static Fn() = &|| ();
 
