@@ -426,12 +426,12 @@ x;
 x::y::z;
 ```
 
-Path components are usually [identifiers](#identifiers), but the trailing
-component of a path may be an angle-bracket-enclosed list of type arguments. In
-[expression](#expressions) context, the type argument list is given after a
-final (`::`) namespace qualifier in order to disambiguate it from a relational
-expression involving the less-than symbol (`<`). In type expression context,
-the final namespace qualifier is omitted.
+Path components are usually [identifiers](#identifiers), but they may
+also include angle-bracket-enclosed lists of type arguments. In
+[expression](#expressions) context, the type argument list is given
+after a `::` namespace qualifier in order to disambiguate it from a
+relational expression involving the less-than symbol (`<`). In type
+expression context, the final namespace qualifier is omitted.
 
 Two examples of paths with type arguments:
 
@@ -497,8 +497,9 @@ names, and invoked through a consistent syntax: `some_extension!(...)`.
 
 Users of `rustc` can define new syntax extensions in two ways:
 
-* [Compiler plugins][plugin] can include arbitrary
-  Rust code that manipulates syntax trees at compile time.
+* [Compiler plugins][plugin] can include arbitrary Rust code that
+  manipulates syntax trees at compile time. Note that the interface
+  for compiler plugins is considered highly unstable.
 
 * [Macros](book/macros.html) define new syntax in a higher-level,
   declarative way.
@@ -560,13 +561,17 @@ Nested repetitions are allowed.
 The parser used by the macro system is reasonably powerful, but the parsing of
 Rust syntax is restricted in two ways:
 
-1. The parser will always parse as much as possible. If it attempts to match
-   `$i:expr [ , ]` against `8 [ , ]`, it will attempt to parse `i` as an array
-   index operation and fail. Adding a separator can solve this problem.
+1. Macro definitions are required to include suitable separators after parsing
+   expressions and other bits of the Rust grammar. This implies that
+   a macro definition like `$i:expr [ , ]` is not legal, because `[` could be part
+   of an expression. A macro definition like `$i:expr,` or `$i:expr;` would be legal,
+   however, because `,` and `;` are legal separators. See [RFC 550] for more information.
 2. The parser must have eliminated all ambiguity by the time it reaches a `$`
    _name_ `:` _designator_. This requirement most often affects name-designator
    pairs when they occur at the beginning of, or immediately after, a `$(...)*`;
    requiring a distinctive token in front can solve the problem.
+
+[RFC 550]: https://github.com/rust-lang/rfcs/blob/master/text/0550-macro-future-proofing.md
 
 # Crates and source files
 
@@ -686,7 +691,8 @@ type arguments as a list of comma-separated types enclosed within angle
 brackets, in order to refer to the type-parameterized item. In practice, the
 type-inference system can usually infer such argument types from context. There
 are no general type-parametric types, only type-parametric items. That is, Rust
-has no notion of type abstraction: there are no first-class "forall" types.
+has no notion of type abstraction: there are no higher-ranked (or "forall") types
+abstracted over other types, though higher-ranked types do exist for lifetimes.
 
 ### Modules
 
@@ -732,6 +738,7 @@ mod vec;
 
 mod thread {
     // Load the `local_data` module from `thread/local_data.rs`
+    // or `thread/local_data/mod.rs`.
     mod local_data;
 }
 ```
@@ -1004,7 +1011,8 @@ the guarantee that these issues are never caused by safe code.
 * `&mut` and `&` follow LLVM’s scoped [noalias] model, except if the `&T`
   contains an `UnsafeCell<U>`. Unsafe code must not violate these aliasing
   guarantees.
-* Mutating an immutable value/reference without `UnsafeCell<U>`
+* Mutating non-mutable data (that is, data reached through a shared reference or
+  data owned by a `let` binding), unless that data is contained within an `UnsafeCell<U>`.
 * Invoking undefined behavior via compiler intrinsics:
   * Indexing outside of the bounds of an object with `std::ptr::offset`
     (`offset` intrinsic), with
@@ -1034,9 +1042,13 @@ be undesired.
 * Exiting without calling destructors
 * Sending signals
 * Accessing/modifying the file system
-* Unsigned integer overflow (well-defined as wrapping)
-* Signed integer overflow (well-defined as two’s complement representation
-  wrapping)
+* Integer overflow
+  - Overflow is considered "unexpected" behavior and is always user-error,
+    unless the `wrapping` primitives are used. In non-optimized builds, the compiler
+    will insert debug checks that panic on overflow, but in optimized builds overflow
+    instead results in wrapped values. See [RFC 560] for the rationale and more details.
+
+[RFC 560]: https://github.com/rust-lang/rfcs/blob/master/text/0560-integer-overflow.md
 
 #### Diverging functions
 
@@ -1310,11 +1322,26 @@ type of the value is not required to ascribe to `Sync`.
 
 ### Traits
 
-A _trait_ describes a set of method types.
+A _trait_ describes an abstract interface that types can
+implement. This interface consists of associated items, which come in
+three varieties:
 
-Traits can include default implementations of methods, written in terms of some
-unknown [`self` type](#self-types); the `self` type may either be completely
-unspecified, or constrained by some other trait.
+- functions
+- constants
+- types
+
+Associated functions whose first parameter is named `self` are called
+methods and may be invoked using `.` notation (e.g., `x.foo()`).
+
+All traits define an implicit type parameter `Self` that refers to
+"the type that is implementing this interface". Traits may also
+contain additional type parameters. These type parameters (including
+`Self`) may be constrained by other traits and so forth as usual.
+
+Trait bounds on `Self` are considered "supertraits". These are
+required to be acyclic.  Supertraits are somewhat different from other
+constraints in that they affect what methods are available in the
+vtable when the trait is used as a [trait object](#trait-objects).
 
 Traits are implemented for specific types through separate
 [implementations](#implementations).
@@ -1359,15 +1386,18 @@ fn draw_twice<T: Shape>(surface: Surface, sh: T) {
 }
 ```
 
-Traits also define an [trait object](#trait-objects) with the same name as the
-trait. Values of this type are created by [casting](#type-cast-expressions)
-pointer values (pointing to a type for which an implementation of the given
-trait is in scope) to pointers to the trait name, used as a type.
+Traits also define an [trait object](#trait-objects) with the same
+name as the trait. Values of this type are created by coercing from a
+pointer of some specific type to a pointer of trait type. For example,
+`&T` could be coerced to `&Shape` if `T: Shape` holds (and similarly
+for `Box<T>`). This coercion can either be implicit or
+[explicit](#type-cast-expressions). Here is an example of an explicit
+coercion:
 
 ```
-# trait Shape { fn dummy(&self) { } }
-# impl Shape for i32 { }
-# let mycircle = 0i32;
+trait Shape { }
+impl Shape for i32 { }
+let mycircle = 0i32;
 let myshape: Box<Shape> = Box::new(mycircle) as Box<Shape>;
 ```
 
@@ -2041,7 +2071,8 @@ The name `str_eq` has a special meaning to the Rust compiler, and the presence
 of this definition means that it will use this definition when generating calls
 to the string equality function.
 
-A complete list of the built-in language items will be added in the future.
+The set of language items is currently considered unstable. A complete
+list of the built-in language items will be added in the future.
 
 ### Inline attributes
 
@@ -2052,11 +2083,6 @@ call the function or access the static where it is defined.
 The compiler automatically inlines functions based on internal heuristics.
 Incorrectly inlining functions can actually make the program slower, so it
 should be used with care.
-
-Immutable statics are always considered inlineable unless marked with
-`#[inline(never)]`. It is undefined whether two different inlineable statics
-have the same memory address. In other words, the compiler is free to collapse
-duplicate inlineable statics together.
 
 `#[inline]` and `#[inline(always)]` always cause the function to be serialized
 into the crate metadata to allow cross-crate inlining.
@@ -2259,10 +2285,6 @@ The currently implemented features of the reference compiler are:
 * `unboxed_closures` - Rust's new closure design, which is currently a work in
                        progress feature with many known bugs.
 
-* `unsafe_destructor` - Allows use of the `#[unsafe_destructor]` attribute,
-                        which is considered wildly unsafe and will be
-                        obsoleted by language improvements.
-
 * `unsafe_no_drop_flag` - Allows use of the `#[unsafe_no_drop_flag]` attribute,
                           which removes hidden flag added to a type that
                           implements the `Drop` trait. The design for the
@@ -2382,18 +2404,54 @@ expressions](#index-expressions) (`expr[expr]`), and [field
 references](#field-expressions) (`expr.f`). All other expressions are rvalues.
 
 The left operand of an [assignment](#assignment-expressions) or
-[compound-assignment](#compound-assignment-expressions) expression is an lvalue
-context, as is the single operand of a unary
-[borrow](#unary-operator-expressions). All other expression contexts are
-rvalue contexts.
+[compound-assignment](#compound-assignment-expressions) expression is
+an lvalue context, as is the single operand of a unary
+[borrow](#unary-operator-expressions). The discriminant or subject of
+a [match expression](#match-expressions) may be an lvalue context, if
+ref bindings are made, but is otherwise an rvalue context. All other
+expression contexts are rvalue contexts.
 
 When an lvalue is evaluated in an _lvalue context_, it denotes a memory
 location; when evaluated in an _rvalue context_, it denotes the value held _in_
 that memory location.
 
-When an rvalue is used in an lvalue context, a temporary un-named lvalue is
-created and used instead. A temporary's lifetime equals the largest lifetime
-of any reference that points to it.
+##### Temporary lifetimes
+
+When an rvalue is used in an lvalue context, a temporary un-named
+lvalue is created and used instead. The lifetime of temporary values
+is typically the innermost enclosing statement; the tail expression of
+a block is considered part of the statement that encloses the block.
+
+When a temporary rvalue is being created that is assigned into a `let`
+declaration, however, the temporary is created with the lifetime of
+the enclosing block instead, as using the enclosing statement (the
+`let` declaration) would be a guaranteed error (since a pointer to the
+temporary would be stored into a variable, but the temporary would be
+freed before the variable could be used). The compiler uses simple
+syntactic rules to decide which values are being assigned into a `let`
+binding, and therefore deserve a longer temporary lifetime.
+
+Here are some examples:
+
+- `let x = foo(&temp())`. The expression `temp()` is an rvalue. As it
+  is being borrowed, a temporary is created which will be freed after
+  the innermost enclosing statement (the `let` declaration, in this case).
+- `let x = temp().foo()`. This is the same as the previous example,
+  except that the value of `temp()` is being borrowed via autoref on a
+  method-call. Here we are assuming that `foo()` is an `&self` method
+  defined in some trait, say `Foo`. In other words, the expression
+  `temp().foo()` is equivalent to `Foo::foo(&temp())`.
+- `let x = &temp()`. Here, the same temporary is being assigned into
+  `x`, rather than being passed as a parameter, and hence the
+  temporary's lifetime is considered to be the enclosing block.
+- `let x = SomeStruct { foo: &temp() }`. As in the previous case, the
+  temporary is assigned into a struct which is then assigned into a
+  binding, and hence it is given the lifetime of the enclosing block.
+- `let x = [ &temp() ]`. As in the previous case, the
+  temporary is assigned into an array which is then assigned into a
+  binding, and hence it is given the lifetime of the enclosing block.
+- `let ref x = temp()`. In this case, the temporary is created using a ref binding,
+  but the result is the same: the lifetime is extended to the enclosing block.
 
 #### Moved and copied types
 
@@ -2535,8 +2593,10 @@ A field access is an [lvalue](#lvalues,-rvalues-and-temporaries) referring to
 the value of that field. When the type providing the field inherits mutability,
 it can be [assigned](#assignment-expressions) to.
 
-Also, if the type of the expression to the left of the dot is a pointer, it is
-automatically dereferenced to make the field access possible.
+Also, if the type of the expression to the left of the dot is a
+pointer, it is automatically dereferenced as many times as necessary
+to make the field access possible. In cases of ambiguity, we prefer
+fewer autoderefs to more.
 
 ### Array expressions
 
@@ -2577,6 +2637,11 @@ let arr = ["a", "b"];
 arr[10]; // panics
 ```
 
+Also, if the type of the expression to the left of the brackets is a
+pointer, it is automatically dereferenced as many times as necessary
+to make the indexing possible. In cases of ambiguity, we prefer fewer
+autoderefs to more.
+
 ### Range expressions
 
 The `..` operator will construct an object of one of the `std::ops::Range` variants.
@@ -2599,7 +2664,7 @@ assert_eq!(x,y);
 
 ### Unary operator expressions
 
-Rust defines three unary operators. They are all written as prefix operators,
+Rust defines the following unary operators. They are all written as prefix operators,
 before the expression they apply to.
 
 * `-`
@@ -2613,11 +2678,20 @@ before the expression they apply to.
     implemented by the type and required for an outer expression that will or
     could mutate the dereference), and produces the result of dereferencing the
     `&` or `&mut` borrowed pointer returned from the overload method.
-
 * `!`
   : Logical negation. On the boolean type, this flips between `true` and
     `false`. On integer types, this inverts the individual bits in the
     two's complement representation of the value.
+* `&` and `&mut`
+  : Borrowing. When applied to an lvalue, these operators produce a
+    reference (pointer) to the lvalue. The lvalue is also placed into
+    a borrowed state for the duration of the reference. For a shared
+    borrow (`&`), this implies that the lvalue may not be mutated, but
+    it may be read or shared again. For a mutable borrow (`&mut`), the
+    lvalue may not be accessed in any way until the borrow expires.
+    If the `&` or `&mut` operators are applied to an rvalue, a
+    temporary value is created; the lifetime of this temporary value
+    is defined by [syntactic rules](#temporary-lifetimes).
 
 ### Binary operator expressions
 
@@ -2726,6 +2800,13 @@ fn avg(v: &[f64]) -> f64 {
   return sum / sz;
 }
 ```
+
+Some of the conversions which can be done through the `as` operator
+can also be done implicitly at various points in the program, such as
+argument passing and assignment to a `let` binding with an explicit
+type. Implicit conversions are limited to "harmless" conversions that
+do not lose information and which have minimal or no risk of
+surprising side-effects on the dynamic execution semantics.
 
 #### Assignment expressions
 
@@ -3348,6 +3429,22 @@ let bo: Binop = add;
 x = bo(5,7);
 ```
 
+#### Function types for specific items
+
+Internally to the compiler, there are also function types that are specific to a particular
+function item. In the following snippet, for example, the internal types of the functions
+`foo` and `bar` are different, despite the fact that they have the same signature:
+
+```
+fn foo() { }
+fn bar() { }
+```
+
+The types of `foo` and `bar` can both be implicitly coerced to the fn
+pointer type `fn()`. There is currently no syntax for unique fn types,
+though the compiler will emit a type like `fn() {foo}` in error
+messages to indicate "the unique fn type for the function `foo`".
+
 ### Closure types
 
 A [lambda expression](#lambda-expressions) produces a closure value with
@@ -3432,8 +3529,9 @@ has type `Vec<A>`, a vector with element type `A`.
 
 ### Self types
 
-The special type `self` has a meaning within methods inside an impl item. It
-refers to the type of the implicit `self` argument. For example, in:
+The special type `Self` has a meaning within traits and impls. In a trait definition, it refers
+to an implicit type parameter representing the "implementing" type. In an impl,
+it is an alias for the implementing type. For example, in:
 
 ```
 trait Printable {
@@ -3447,8 +3545,9 @@ impl Printable for String {
 }
 ```
 
-`self` refers to the value of type `String` that is the receiver for a call to
-the method `make_string`.
+The notation `&self` is a shorthand for `self: &Self`. In this case,
+in the impl, `Self` refers to the value of type `String` that is the
+receiver for a call to the method `make_string`.
 
 # Special traits
 
