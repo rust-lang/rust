@@ -85,6 +85,7 @@
 use astconv::AstConv;
 use check::dropck;
 use check::FnCtxt;
+use middle::free_region::FreeRegionMap;
 use middle::implicator;
 use middle::mem_categorization as mc;
 use middle::region::CodeExtent;

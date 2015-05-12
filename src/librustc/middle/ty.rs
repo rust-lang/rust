@@ -4420,7 +4420,7 @@ pub fn deref<'tcx>(ty: Ty<'tcx>, explicit: bool) -> Option<mt<'tcx>> {
 pub fn type_content<'tcx>(ty: Ty<'tcx>) -> Ty<'tcx> {
     match ty.sty {
         ty_uniq(ty) => ty,
-        ty_rptr(_, mt) |ty_ptr(mt) => mt.ty,
+        ty_rptr(_, mt) | ty_ptr(mt) => mt.ty,
         _ => ty
     }
 }

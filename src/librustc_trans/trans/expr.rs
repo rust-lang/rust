@@ -487,11 +487,11 @@ fn coerce_unsized<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             let trait_substs = Substs::erased(VecPerParamSpace::new(vec![target.ty],
                                                                     vec![source.ty],
                                                                     Vec::new()));
-            let trait_ref = ty::Binder(Rc::new(ty::TraitRef {
+            let trait_ref = ty::Binder(ty::TraitRef {
                 def_id: langcall(bcx, Some(span), "coercion",
                                  CoerceUnsizedTraitLangItem),
                 substs: bcx.tcx().mk_substs(trait_substs)
-            }));
+            });
 
             let kind = match fulfill_obligation(bcx.ccx(), span, trait_ref) {
                 traits::VtableImpl(traits::VtableImplData { impl_def_id, .. }) => {

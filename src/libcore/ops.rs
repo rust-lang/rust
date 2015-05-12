@@ -1220,24 +1220,33 @@ pub trait CoerceUnsized<T> {
     // Empty.
 }
 
+// &mut T -> &mut U
 #[cfg(not(stage0))] // SNAP c64d671
 impl<'a, T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<&'a mut U> for &'a mut T {}
+// &mut T -> &U
 #[cfg(not(stage0))] // SNAP c64d671
 impl<'a, 'b: 'a, T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<&'a U> for &'b mut T {}
+// &mut T -> *mut U
 #[cfg(not(stage0))] // SNAP c64d671
 impl<'a, T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<*mut U> for &'a mut T {}
+// &mut T -> *const U
 #[cfg(not(stage0))] // SNAP c64d671
 impl<'a, T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for &'a mut T {}
 
+// &T -> &U
 #[cfg(not(stage0))] // SNAP c64d671
 impl<'a, 'b: 'a, T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<&'a U> for &'b T {}
+// &T -> *const U
 #[cfg(not(stage0))] // SNAP c64d671
 impl<'a, T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for &'a T {}
 
+// *mut T -> *mut U
 #[cfg(not(stage0))] // SNAP c64d671
 impl<T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<*mut U> for *mut T {}
+// *mut T -> *const U
 #[cfg(not(stage0))] // SNAP c64d671
 impl<T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for *mut T {}
 
+// *const T -> *const U
 #[cfg(not(stage0))] // SNAP c64d671
 impl<T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for *const T {}

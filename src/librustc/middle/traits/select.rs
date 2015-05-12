@@ -1369,7 +1369,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn assemble_candidates_for_unsizing(&mut self,
                                         obligation: &TraitObligation<'tcx>,
                                         candidates: &mut SelectionCandidateSet<'tcx>) {
-        // TODO is it Ok to skip the binder here?
+        // It is ok to skip past the higher-ranked binders here because the `match`
+        // below does not consider regions at all.
         let source = self.infcx.shallow_resolve(*obligation.self_ty().skip_binder());
         let target = self.infcx.shallow_resolve(obligation.predicate.0.input_types()[0]);
 
@@ -1494,7 +1495,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 &ClosureCandidate(..) |
                 &FnPointerCandidate(..) |
                 &BuiltinObjectCandidate(..) |
-                &&BuiltinUnsizeCandidate(..) |
+                &BuiltinUnsizeCandidate(..) |
                 &DefaultImplObjectCandidate(..) |
                 &BuiltinCandidate(..) => {
                     // We have a where-clause so don't go around looking
@@ -2498,7 +2499,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     ty::lookup_field_type_unsubstituted(tcx, def_id, f.id)
                 }).collect::<Vec<_>>();
 
-                // The last field of the structure has to exist and be a
+                // FIXME(#25351) The last field of the structure has to exist and be a
                 // type parameter (for now, to avoid tracking edge cases).
                 let i = if let Some(&ty::ty_param(p)) = fields.last().map(|ty| &ty.sty) {
                     assert!(p.space == TypeSpace);

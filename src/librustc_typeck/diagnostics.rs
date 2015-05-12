@@ -452,13 +452,13 @@ register_diagnostics! {
     E0369, // binary operation `<op>` cannot be applied to types
     E0371, // impl Trait for Trait is illegal
     E0372, // impl Trait for Trait where Trait is not object safe
-    E0373, // the trait `CoerceUnsized` may only be implemented for a coercion
-           // between structures with the same definition
     E0374, // the trait `CoerceUnsized` may only be implemented for a coercion
            // between structures with one field being coerced, none found
     E0375, // the trait `CoerceUnsized` may only be implemented for a coercion
            // between structures with one field being coerced, but multiple
            // fields need coercions
-    E0376  // the trait `CoerceUnsized` may only be implemented for a coercion
+    E0376, // the trait `CoerceUnsized` may only be implemented for a coercion
            // between structures
+    E0377  // the trait `CoerceUnsized` may only be implemented for a coercion
+           // between structures with the same definition
 }

@@ -16,8 +16,8 @@ fn main() {
     let a: &[i32] = &[1, 2, 3];
     let b: Box<[i32]> = Box::new([1, 2, 3]);
 
-    a as usize; //~ ERROR illegal cast
-    b as usize; //~ ERROR illegal cast
+    a as usize; //~ ERROR non-scalar cast
+    b as usize; //~ ERROR non-scalar cast
 
     let a: usize = 42;
     a as *const [i32]; //~ ERROR cast to fat pointer: `usize` as `*const [i32]`

@@ -1058,6 +1058,7 @@ impl MetadataCreationResult {
     }
 }
 
+#[derive(Debug)]
 enum MemberOffset {
     FixedMemberOffset { bytes: usize },
     // For ComputedMemberOffset, the offset is read from the llvm type definition.
@@ -1066,6 +1067,7 @@ enum MemberOffset {
 
 // Description of a type member, which can either be a regular field (as in
 // structs or tuples) or an enum variant.
+#[derive(Debug)]
 struct MemberDescription {
     name: String,
     llvm_type: Type,
@@ -1163,13 +1165,13 @@ fn prepare_struct_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                      span: Span)
                                      -> RecursiveTypeDescription<'tcx> {
     let struct_name = compute_debuginfo_type_name(cx, struct_type, false);
-    let struct_llvm_type = type_of::type_of(cx, struct_type);
+    let struct_llvm_type = type_of::in_memory_type_of(cx, struct_type);
 
     let (containing_scope, _) = get_namespace_and_span_for_item(cx, def_id);
 
     let struct_metadata_stub = create_struct_stub(cx,
                                                   struct_llvm_type,
-                                                  &struct_name[..],
+                                                  &struct_name,
                                                   unique_type_id,
                                                   containing_scope);
 
@@ -1299,7 +1301,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                         set_members_of_composite_type(cx,
                                                       variant_type_metadata,
                                                       variant_llvm_type,
-                                                      &member_descriptions[..]);
+                                                      &member_descriptions);
                         MemberDescription {
                             name: "".to_string(),
                             llvm_type: variant_llvm_type,

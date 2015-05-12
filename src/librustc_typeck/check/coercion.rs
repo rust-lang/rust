@@ -285,14 +285,19 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
         // Create an obligation for `Source: CoerceUnsized<Target>`.
         let cause = ObligationCause::misc(self.origin.span(), self.fcx.body_id);
-        queue.push_back(predicate_for_trait_def(self.tcx(), cause, coerce_unsized_did,
-                                                0, source, vec![target]));
+        queue.push_back(predicate_for_trait_def(self.tcx(),
+                                                cause,
+                                                coerce_unsized_did,
+                                                0,
+                                                source,
+                                                vec![target]));
 
         // Keep resolving `CoerceUnsized` and `Unsize` predicates to avoid
         // emitting a coercion in cases like `Foo<$1>` -> `Foo<$2>`, where
         // inference might unify those two inner type variables later.
         let traits = [coerce_unsized_did, unsize_did];
         while let Some(obligation) = queue.pop_front() {
+            debug!("coerce_unsized resolve step: {}", obligation.repr(self.tcx()));
             let trait_ref =  match obligation.predicate {
                 ty::Predicate::Trait(ref tr) if traits.contains(&tr.def_id()) => {
                     tr.clone()
@@ -305,6 +310,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             match selcx.select(&obligation.with(trait_ref)) {
                 // Uncertain or unimplemented.
                 Ok(None) | Err(traits::Unimplemented) => {
+                    debug!("coerce_unsized: early return - can't prove obligation");
                     return Err(ty::terr_mismatch);
                 }
 
