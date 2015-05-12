@@ -290,7 +290,7 @@ either trait.
 
 According to the basic principles of this RFC, such a change is minor: it is
 always possible to annotate the call `t.foo()` to be more explicit *in advance*
-using UFCS: `<Trait2>::foo(t)`. This kind of annotation could be done
+using UFCS: `Trait2::foo(t)`. This kind of annotation could be done
 automatically for code in dependencies (see
 [Elaborated source](#elaborated-source)). And it would also be possible to
 mitigate this problem by allowing
