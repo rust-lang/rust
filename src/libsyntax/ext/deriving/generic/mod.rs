@@ -380,22 +380,22 @@ impl<'a> TraitDef<'a> {
     pub fn expand(&self,
                   cx: &mut ExtCtxt,
                   mitem: &ast::MetaItem,
-                  item: Annotatable,
+                  item: &'a Annotatable,
                   push: &mut FnMut(Annotatable))
     {
-        match item {
-            Annotatable::Item(item) => {
+        match *item {
+            Annotatable::Item(ref item) => {
                 let newitem = match item.node {
                     ast::ItemStruct(ref struct_def, ref generics) => {
                         self.expand_struct_def(cx,
-                                               &**struct_def,
+                                               &struct_def,
                                                item.ident,
                                                generics)
                     }
                     ast::ItemEnum(ref enum_def, ref generics) => {
                         self.expand_enum_def(cx,
                                              enum_def,
-                                             &item.attrs[..],
+                                             &item.attrs,
                                              item.ident,
                                              generics)
                     }

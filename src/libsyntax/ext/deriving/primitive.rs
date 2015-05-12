@@ -67,7 +67,7 @@ pub fn expand_deriving_from_primitive(cx: &mut ExtCtxt,
         associated_types: Vec::new(),
     };
 
-    trait_def.expand(cx, mitem, item, push)
+    trait_def.expand(cx, mitem, &item, push)
 }
 
 fn cs_from(name: &str, cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) -> P<Expr> {

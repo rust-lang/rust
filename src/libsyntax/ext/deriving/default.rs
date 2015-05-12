@@ -46,7 +46,7 @@ pub fn expand_deriving_default(cx: &mut ExtCtxt,
         ),
         associated_types: Vec::new(),
     };
-    trait_def.expand(cx, mitem, item, push)
+    trait_def.expand(cx, mitem, &item, push)
 }
 
 fn default_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) -> P<Expr> {
