@@ -1930,8 +1930,7 @@ pub fn create_local_var_metadata(bcx: &mut Block, local: &ast::Local) {
     let def_map = &cx.tcx().def_map;
     pat_util::pat_bindings(def_map, &*local.pat, |_, node_id, span, var_ident| {
         let (ty, v) = {
-            let locals = bcx.fcx.lllocals.borrow();
-            let datum = match locals.get(&node_id) {
+            let datum = match bcx.fcx.lllocals.get(&node_id) {
                 Some(datum) => datum,
                 None => {
                     bcx.sess().span_bug(span,
@@ -2110,8 +2109,7 @@ pub fn create_argument_metadata(bcx: &mut Block, arg: &ast::Arg) {
                          .fn_metadata;
     pat_util::pat_bindings(def_map, &*arg.pat, |_, node_id, span, var_ident| {
         let (ty, v) = {
-            let locals = bcx.fcx.lllocals.borrow();
-            let datum = match locals.get(&node_id) {
+            let datum = match bcx.fcx.lllocals.get(&node_id) {
                 Some(v) => v,
                 None => {
                     bcx.sess().span_bug(span,

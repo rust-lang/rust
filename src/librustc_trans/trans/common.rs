@@ -373,15 +373,15 @@ pub struct FunctionContext<'a, 'tcx: 'a> {
     // immediate, this points to an alloca in the function. Otherwise, it's a
     // pointer to the hidden first parameter of the function. After function
     // construction, this should always be Some.
-    pub llretslotptr: Cell<Option<ValueRef>>,
+    pub llretslotptr: Option<ValueRef>,
 
     // These pub elements: "hoisted basic blocks" containing
     // administrative activities that have to happen in only one place in
     // the function, due to LLVM's quirks.
     // A marker for the place where we want to insert the function's static
     // allocas, so that LLVM will coalesce them into a single alloca call.
-    pub alloca_insert_pt: Cell<Option<ValueRef>>,
-    pub llreturn: Cell<Option<BasicBlockRef>>,
+    pub alloca_insert_pt: Option<ValueRef>,
+    pub llreturn: Option<BasicBlockRef>,
 
     // If the function has any nested return's, including something like:
     // fn foo() -> Option<Foo> { Some(Foo { x: return None }) }, then
@@ -390,7 +390,7 @@ pub struct FunctionContext<'a, 'tcx: 'a> {
 
     // The a value alloca'd for calls to upcalls.rust_personality. Used when
     // outputting the resume instruction.
-    pub personality: Cell<Option<ValueRef>>,
+    pub personality: Option<ValueRef>,
 
     // True if the caller expects this fn to use the out pointer to
     // return. Either way, your code should write into the slot llretslotptr
@@ -399,10 +399,10 @@ pub struct FunctionContext<'a, 'tcx: 'a> {
 
     // Maps the DefId's for local variables to the allocas created for
     // them in llallocas.
-    pub lllocals: RefCell<NodeMap<LvalueDatum<'tcx>>>,
+    pub lllocals: NodeMap<LvalueDatum<'tcx>>,
 
     // Same as above, but for closure upvars
-    pub llupvars: RefCell<NodeMap<ValueRef>>,
+    pub llupvars: NodeMap<ValueRef>,
 
     // The NodeId of the function, or -1 if it doesn't correspond to
     // a user-defined function.
@@ -426,7 +426,7 @@ pub struct FunctionContext<'a, 'tcx: 'a> {
     pub debug_context: debuginfo::FunctionDebugContext,
 
     // Cleanup scopes.
-    pub scopes: RefCell<Vec<cleanup::CleanupScope<'a, 'tcx>>>,
+    pub scopes: Vec<cleanup::CleanupScope<'a, 'tcx>>,
 
     pub cfg: Option<cfg::CFG>,
 }
@@ -456,21 +456,20 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
     pub fn cleanup(&mut self) {
         unsafe {
             llvm::LLVMInstructionEraseFromParent(self.alloca_insert_pt
-                                                     .get()
                                                      .unwrap());
         }
     }
 
     pub fn get_llreturn(&mut self) -> BasicBlockRef {
-        if self.llreturn.get().is_none() {
+        if self.llreturn.is_none() {
 
-            self.llreturn.set(Some(unsafe {
+            self.llreturn = Some(unsafe {
                 llvm::LLVMAppendBasicBlockInContext(self.ccx.llcx(), self.llfn,
                                                     "return\0".as_ptr() as *const _)
-            }))
+            });
         }
 
-        self.llreturn.get().unwrap()
+        self.llreturn.unwrap()
     }
 
     pub fn get_ret_slot(&mut self, bcx: &'a BlockS,
@@ -484,7 +483,7 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
             };
             base::alloca_no_lifetime(&mut bcx.with(self), ty, name)
         } else {
-            self.llretslotptr.get().unwrap()
+            self.llretslotptr.unwrap()
         }
     }
 

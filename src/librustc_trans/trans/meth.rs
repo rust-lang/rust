@@ -650,7 +650,7 @@ pub fn trans_object_shim<'a, 'tcx>(
     assert!(!fcx.needs_ret_allocas);
 
     let dest =
-        fcx.llretslotptr.get().map(
+        fcx.llretslotptr.map(
             |_| expr::SaveIn(fcx.get_ret_slot(bcx, sig.output, "ret_slot")));
 
     let method_offset_in_vtable =

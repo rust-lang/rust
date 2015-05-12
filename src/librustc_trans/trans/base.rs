@@ -86,7 +86,7 @@ use util::nodemap::NodeMap;
 use arena::TypedArena;
 use libc::c_uint;
 use std::ffi::{CStr, CString};
-use std::cell::{Cell, RefCell};
+use std::cell::{RefCell};
 use std::collections::HashSet;
 use std::mem;
 use std::str;
@@ -1048,7 +1048,7 @@ pub fn make_return_slot_pointer<'a, 'tcx>(fcx: &mut FunctionContext<'a, 'tcx>,
             let outptr = get_param(fcx.llfn, 0);
 
             let b = fcx.ccx.builder();
-            b.position_before(fcx.alloca_insert_pt.get().unwrap());
+            b.position_before(fcx.alloca_insert_pt.unwrap());
             b.store(outptr, slot);
         }
 
@@ -1216,22 +1216,22 @@ pub fn new_fn_ctxt<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
     let mut fcx = FunctionContext {
           llfn: llfndecl,
           llenv: None,
-          llretslotptr: Cell::new(None),
+          llretslotptr: None,
           param_env: ty::empty_parameter_environment(ccx.tcx()),
-          alloca_insert_pt: Cell::new(None),
-          llreturn: Cell::new(None),
+          alloca_insert_pt: None,
+          llreturn: None,
           needs_ret_allocas: nested_returns,
-          personality: Cell::new(None),
+          personality: None,
           caller_expects_out_pointer: uses_outptr,
-          lllocals: RefCell::new(NodeMap()),
-          llupvars: RefCell::new(NodeMap()),
+          lllocals: NodeMap(),
+          llupvars: NodeMap(),
           id: id,
           param_substs: param_substs,
           span: sp,
           block_arena: block_arena,
           ccx: ccx,
           debug_context: debug_context,
-          scopes: RefCell::new(Vec::new()),
+          scopes: Vec::new(),
           cfg: cfg
     };
 
@@ -1256,7 +1256,7 @@ pub fn init_function<'r, 'a, 'tcx>(fcx: &'r mut FunctionContext<'a, 'tcx>,
         Load(&mut entry_bcx.with(fcx), C_null(Type::i8p(fcx.ccx)));
         llvm::LLVMGetFirstInstruction(entry_bcx.llbb)
     };
-    fcx.alloca_insert_pt.set(Some(pt));
+    fcx.alloca_insert_pt = Some(pt);
 
     if let ty::FnConverging(output_type) = output {
         // This shouldn't need to recompute the return type,
@@ -1270,7 +1270,7 @@ pub fn init_function<'r, 'a, 'tcx>(fcx: &'r mut FunctionContext<'a, 'tcx>,
                 // have been instructed to skip it for immediate return
                 // values.
                 let p = make_return_slot_pointer(fcx, substd_output_type);
-                fcx.llretslotptr.set(Some(p));
+                fcx.llretslotptr =  Some(p);
             }
         }
     }
@@ -1416,7 +1416,7 @@ pub fn finish_fn<'r, 'blk, 'tcx>(fcx: &mut FunctionContext<'blk, 'tcx>,
                                  ret_debug_loc: DebugLoc) {
     let _icx = push_ctxt("finish_fn");
 
-    let ret_cx = match fcx.llreturn.get() {
+    let ret_cx = match fcx.llreturn {
         Some(llreturn) => {
             if !last_bcx.terminated.get() {
                 Br(&mut last_bcx.with(fcx), llreturn, DebugLoc::None);
@@ -1440,16 +1440,16 @@ pub fn build_return_block<'r, 'blk, 'tcx>(fcx: &'r mut FunctionContext<'blk, 'tc
                                           ret_cx: &'blk BlockS,
                                           retty: ty::FnOutput<'tcx>,
                                           ret_debug_location: DebugLoc) {
-    if fcx.llretslotptr.get().is_none() ||
+    if fcx.llretslotptr.is_none() ||
        (!fcx.needs_ret_allocas && fcx.caller_expects_out_pointer) {
         return RetVoid(&mut ret_cx.with(fcx), ret_debug_location);
     }
 
     let retslot = if fcx.needs_ret_allocas {
-        let p = fcx.llretslotptr.get().unwrap();
+        let p = fcx.llretslotptr.unwrap();
         Load(&mut ret_cx.with(fcx), p)
     } else {
-        fcx.llretslotptr.get().unwrap()
+        fcx.llretslotptr.unwrap()
     };
     let retptr = Value(retslot);
     match retptr.get_dominating_store(&mut ret_cx.with(fcx)) {
@@ -1588,7 +1588,7 @@ pub fn trans_closure<'a, 'b, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     // emitting should be enabled.
     debuginfo::start_emitting_source_locations(&mut fcx);
 
-    let dest = match fcx.llretslotptr.get() {
+    let dest = match fcx.llretslotptr {
         Some(_) => expr::SaveIn(fcx.get_ret_slot(bcx, ty::FnConverging(block_ty), "iret_slot")),
         None => {
             assert!(type_is_zero_size(&mut bcx.with(fcx).ccx(), block_ty));
@@ -1604,13 +1604,13 @@ pub fn trans_closure<'a, 'b, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     match dest {
         expr::SaveIn(slot) if fcx.needs_ret_allocas => {
-            let p = fcx.llretslotptr.get().unwrap();
+            let p = fcx.llretslotptr.unwrap();
             Store(&mut bcx.with(fcx), slot, p);
         }
         _ => {}
     }
 
-    match fcx.llreturn.get() {
+    match fcx.llreturn {
         Some(_) => {
             let b = fcx.return_exit_block();
             Br(&mut bcx.with(fcx), b, DebugLoc::None);
@@ -1626,7 +1626,7 @@ pub fn trans_closure<'a, 'b, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     // Put return block after all other blocks.
     // This somewhat improves single-stepping experience in debugger.
     unsafe {
-        let llreturn = fcx.llreturn.get();
+        let llreturn = fcx.llreturn;
         if let Some(llreturn) = llreturn {
             llvm::LLVMMoveBasicBlockAfter(llreturn, bcx.llbb);
         }

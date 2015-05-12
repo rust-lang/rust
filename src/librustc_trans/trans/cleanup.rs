@@ -261,7 +261,6 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
 
         // Just copy the debuginfo source location from the enclosing scope
         let debug_loc = self.scopes
-                            .borrow()
                             .last()
                             .unwrap()
                             .debug_loc;
@@ -275,7 +274,6 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
 
         // Just copy the debuginfo source location from the enclosing scope
         let debug_loc = self.scopes
-                            .borrow()
                             .last()
                             .map(|opt_scope| opt_scope.debug_loc)
                             .unwrap_or(DebugLoc::None);
@@ -347,7 +345,7 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
 
     /// Returns the id of the top-most loop scope
     fn top_loop_scope(&self) -> ast::NodeId {
-        for scope in self.scopes.borrow().iter().rev() {
+        for scope in self.scopes.iter().rev() {
             if let LoopScopeKind(id, _) = scope.kind {
                 return id;
             }
@@ -543,7 +541,7 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
         debug!("schedule_clean_in_ast_scope(cleanup_scope={})",
                cleanup_scope);
 
-        for scope in self.scopes.borrow_mut().iter_mut().rev() {
+        for scope in self.scopes.iter_mut().rev() {
             if scope.kind.is_ast_with_id(cleanup_scope) {
                 scope.cleanups.push(cleanup);
                 scope.clear_cached_exits();
@@ -568,15 +566,14 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
 
         assert!(self.is_valid_custom_scope(custom_scope));
 
-        let mut scopes = self.scopes.borrow_mut();
-        let scope = &mut (*scopes)[custom_scope.index];
+        let scope = &mut (*self.scopes)[custom_scope.index];
         scope.cleanups.push(cleanup);
         scope.clear_cached_exits();
     }
 
     /// Returns true if there are pending cleanups that should execute on panic.
     fn needs_invoke(&self) -> bool {
-        self.scopes.borrow().iter().rev().any(|s| s.needs_invoke())
+        self.scopes.iter().rev().any(|s| s.needs_invoke())
     }
 
     /// Returns a basic block to branch to in the event of a panic. This block will run the panic
@@ -616,7 +613,7 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
 impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
     /// Returns the id of the current top-most AST scope, if any.
     fn top_ast_scope(&self) -> Option<ast::NodeId> {
-        for scope in self.scopes.borrow().iter().rev() {
+        for scope in self.scopes.iter().rev() {
             match scope.kind {
                 CustomScopeKind | LoopScopeKind(..) => {}
                 AstScopeKind(i) => {
@@ -628,18 +625,17 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
     }
 
     fn top_nonempty_cleanup_scope(&self) -> Option<usize> {
-        self.scopes.borrow().iter().rev().position(|s| !s.cleanups.is_empty())
+        self.scopes.iter().rev().position(|s| !s.cleanups.is_empty())
     }
 
     fn is_valid_to_pop_custom_scope(&self, custom_scope: CustomScopeIndex) -> bool {
         self.is_valid_custom_scope(custom_scope) &&
-            custom_scope.index == self.scopes.borrow().len() - 1
+            custom_scope.index == self.scopes.len() - 1
     }
 
     fn is_valid_custom_scope(&self, custom_scope: CustomScopeIndex) -> bool {
-        let scopes = self.scopes.borrow();
-        custom_scope.index < scopes.len() &&
-            (*scopes)[custom_scope.index].kind.is_temp()
+        custom_scope.index < self.scopes.len() &&
+            (*self.scopes)[custom_scope.index].kind.is_temp()
     }
 
     /// Generates the cleanups for `scope` into `bcx`
@@ -657,11 +653,11 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
     }
 
     fn scopes_len(&self) -> usize {
-        self.scopes.borrow().len()
+        self.scopes.len()
     }
 
     fn push_scope(&mut self, scope: CleanupScope<'blk, 'tcx>) {
-        self.scopes.borrow_mut().push(scope)
+        self.scopes.push(scope)
     }
 
     fn pop_scope(&mut self) -> CleanupScope<'blk, 'tcx> {
@@ -669,11 +665,11 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
                self.top_scope(|s| s.block_name("")),
                self.scopes_len() - 1);
 
-        self.scopes.borrow_mut().pop().unwrap()
+        self.scopes.pop().unwrap()
     }
 
     fn top_scope<R, F>(&self, f: F) -> R where F: FnOnce(&CleanupScope<'blk, 'tcx>) -> R {
-        f(self.scopes.borrow().last().unwrap())
+        f(self.scopes.last().unwrap())
     }
 
     /// Used when the caller wishes to jump to an early exit, such as a return, break, continue, or
@@ -722,7 +718,7 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
                     UnwindExit => {
                         // Generate a block that will `Resume`.
                         let prev_bcx = self.new_block(true, "resume", None);
-                        let personality = self.personality.get().expect(
+                        let personality = self.personality.expect(
                             "create_landing_pad() should have set this");
                         let ld = build::Load(&mut prev_bcx.with(self), personality);
                         build::Resume(&mut prev_bcx.with(self), ld);
@@ -848,8 +844,7 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
 
         // Check if a landing pad block exists; if not, create one.
         {
-            let scopes = self.scopes.borrow();
-            let last_scope = scopes.last().unwrap();
+            let last_scope = self.scopes.last().unwrap();
             match last_scope.cached_landing_pad.get() {
                 Some(llbb) => { return llbb; }
                 None => {
@@ -903,13 +898,13 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
 
         // We store the retval in a function-central alloca, so that calls to
         // Resume can find it.
-        match self.personality.get() {
+        match self.personality {
             Some(addr) => {
                 build::Store(&mut pad_bcx.with(self), llretval, addr);
             }
             None => {
                 let addr = base::alloca(&mut pad_bcx.with(self), common::val_ty(llretval), "");
-                self.personality.set(Some(addr));
+                self.personality = Some(addr);
                 build::Store(&mut pad_bcx.with(self), llretval, addr);
             }
         }

@@ -155,7 +155,7 @@ pub fn trans_into<'r, 'blk, 'tcx>(&mut Block { bl, ref mut fcx }: &mut Block<'r,
                             // inside the current AST scope.
                             // These should record no cleanups anyways, `const`
                             // can't have destructors.
-                            let scopes = mem::replace(&mut *bcx.fcx.scopes.borrow_mut(),
+                            let scopes = mem::replace(&mut bcx.fcx.scopes,
                                                       vec![]);
                             // Lock emitted debug locations to the location of
                             // the constant reference expression.
@@ -165,7 +165,7 @@ pub fn trans_into<'r, 'blk, 'tcx>(&mut Block { bl, ref mut fcx }: &mut Block<'r,
                                                                               |fcx| {
                                 trans_into(&mut bl.with(fcx), const_expr, dest)
                             });
-                            let scopes = mem::replace(&mut *bcx.fcx.scopes.borrow_mut(),
+                            let scopes = mem::replace(&mut bcx.fcx.scopes,
                                                       scopes);
                             assert!(scopes.is_empty());
                             return bcx.bl;
@@ -1232,7 +1232,7 @@ pub fn trans_local_var<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
         def::DefUpvar(nid, _) => {
             // Can't move upvars, so this is never a ZeroMemLastUse.
             let local_ty = node_id_type(bcx, nid);
-            match bcx.fcx.llupvars.borrow().get(&nid) {
+            match bcx.fcx.llupvars.get(&nid) {
                 Some(&val) => Datum::new(val, local_ty, Lvalue),
                 None => {
                     bcx.sess().bug(&format!(
@@ -1242,7 +1242,7 @@ pub fn trans_local_var<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
             }
         }
         def::DefLocal(nid) => {
-            let datum = match bcx.fcx.lllocals.borrow().get(&nid) {
+            let datum = match bcx.fcx.lllocals.get(&nid) {
                 Some(&v) => v,
                 None => {
                     bcx.sess().bug(&format!(

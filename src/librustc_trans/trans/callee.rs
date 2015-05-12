@@ -366,7 +366,7 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
         .collect();
     assert!(!fcx.needs_ret_allocas);
 
-    let dest = fcx.llretslotptr.get().map(|_|
+    let dest = fcx.llretslotptr.map(|_|
         expr::SaveIn(fcx.get_ret_slot(bcx, sig.output, "ret_slot"))
     );
 
@@ -823,7 +823,7 @@ pub fn trans_call_inner<'a, 'r, 'blk, 'tcx, F>
                          llself.is_some(),
                          abi);
 
-        fcx.scopes.borrow_mut().last_mut().unwrap().drop_non_lifetime_clean();
+        fcx.scopes.last_mut().unwrap().drop_non_lifetime_clean();
 
         // Invoke the actual rust fn and update bcx/llresult.
         let (llret, b) = base::invoke(&mut bcx.with(fcx),
@@ -863,7 +863,7 @@ pub fn trans_call_inner<'a, 'r, 'blk, 'tcx, F>
                          cleanup::CustomScope(arg_cleanup_scope),
                          false,
                          abi);
-        fcx.scopes.borrow_mut().last_mut().unwrap().drop_non_lifetime_clean();
+        fcx.scopes.last_mut().unwrap().drop_non_lifetime_clean();
 
         bcx = foreign::trans_native_call(&mut bcx.with(fcx),
                                          callee_ty,

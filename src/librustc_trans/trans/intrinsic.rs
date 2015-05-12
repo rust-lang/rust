@@ -249,7 +249,7 @@ pub fn trans_intrinsic_call<'a, 'r, 'blk, 'tcx>(&mut Block { bl, ref mut fcx }: 
                     dest
                 };
 
-                bcx.fcx.scopes.borrow_mut().last_mut().unwrap().drop_non_lifetime_clean();
+                bcx.fcx.scopes.last_mut().unwrap().drop_non_lifetime_clean();
                 bcx.fcx.pop_and_trans_custom_cleanup_scope(bcx.bl, cleanup_scope);
 
                 return match dest {
@@ -275,7 +275,7 @@ pub fn trans_intrinsic_call<'a, 'r, 'blk, 'tcx>(&mut Block { bl, ref mut fcx }: 
                                 false,
                                 RustIntrinsic);
 
-    bcx.fcx.scopes.borrow_mut().last_mut().unwrap().drop_non_lifetime_clean();
+    bcx.fcx.scopes.last_mut().unwrap().drop_non_lifetime_clean();
 
     let call_debug_location = DebugLoc::At(call_info.id, call_info.span);
 

@@ -82,7 +82,7 @@ fn load_closure_environment<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
             }
         };
         let def_id = freevar.def.def_id();
-        bcx.fcx.llupvars.borrow_mut().insert(def_id.node, upvar_ptr);
+        bcx.fcx.llupvars.insert(def_id.node, upvar_ptr);
 
         if kind == ty::FnOnceClosureKind && !captured_by_ref {
             let ty = node_id_type(bcx, def_id.node);
@@ -434,7 +434,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
                  .collect();
 
     let dest =
-        bcx.fcx.llretslotptr.get().map(
+        bcx.fcx.llretslotptr.map(
                 |_| expr::SaveIn(bcx.fcx.get_ret_slot(bcx.bl, sig.output, "ret_slot")));
 
     let callee_data = TraitItem(MethodData { llfn: llreffn,

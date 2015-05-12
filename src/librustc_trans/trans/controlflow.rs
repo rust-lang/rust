@@ -368,7 +368,7 @@ pub fn trans_ret<'r, 'blk, 'tcx>(&mut Block { bl, ref mut fcx }: &mut Block<'r, 
     }
 
     let mut bcx = &mut bl.with(fcx);
-    let dest = match (bcx.fcx.llretslotptr.get(), retval_expr) {
+    let dest = match (bcx.fcx.llretslotptr, retval_expr) {
         (Some(_), Some(retval_expr)) => {
             let ret_ty = expr_ty_adjusted(bcx, &*retval_expr);
             expr::SaveIn(bcx.fcx.get_ret_slot(bcx.bl, ty::FnConverging(ret_ty), "ret_slot"))
@@ -379,7 +379,7 @@ pub fn trans_ret<'r, 'blk, 'tcx>(&mut Block { bl, ref mut fcx }: &mut Block<'r, 
         bcx.bl = expr::trans_into(bcx, &*x, dest);
         match dest {
             expr::SaveIn(slot) if bcx.fcx.needs_ret_allocas => {
-                let p = bcx.fcx.llretslotptr.get().unwrap();
+                let p = bcx.fcx.llretslotptr.unwrap();
                 Store(bcx, slot, p);
             }
             _ => {}

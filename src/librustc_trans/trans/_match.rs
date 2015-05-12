@@ -934,7 +934,7 @@ fn insert_lllocals<'r, 'blk, 'tcx>(&mut Block { bl, ref mut fcx }: &mut Block<'r
         }
 
         debug!("binding {} to {}", binding_info.id, bcx.val_to_string(llval));
-        bcx.fcx.lllocals.borrow_mut().insert(binding_info.id, datum);
+        bcx.fcx.lllocals.insert(binding_info.id, datum);
         debuginfo::create_match_binding_metadata(bcx, ident.name, binding_info);
     }
     bcx.bl
@@ -969,7 +969,7 @@ fn compile_guard<'a, 'p, 'r, 'blk, 'tcx>(&mut Block { bl, ref mut fcx }: &mut Bl
     }
 
     for (_, &binding_info) in &data.bindings_map {
-        bcx.fcx.lllocals.borrow_mut().remove(&binding_info.id);
+        bcx.fcx.lllocals.remove(&binding_info.id);
     }
 
     let not = Not(bcx, val, guard_expr.debug_loc());
@@ -1659,7 +1659,7 @@ pub fn store_arg<'r, 'blk, 'tcx>(&mut Block { bl, ref mut fcx }: &mut Block<'r, 
                 // already put it in a temporary alloca and gave it up, unless
                 // we emit extra-debug-info, which requires local allocas :(.
                 let arg_val = arg.add_clean(bcx.fcx, arg_scope);
-                bcx.fcx.lllocals.borrow_mut()
+                bcx.fcx.lllocals
                    .insert(pat.id, Datum::new(arg_val, arg_ty, Lvalue));
                 bcx.bl
             } else {
@@ -1703,7 +1703,7 @@ fn mk_binding_alloca<'r, 'blk, 'tcx, A, F>(bcx: &mut Block<'r, 'blk, 'tcx>,
     // Now that memory is initialized and has cleanup scheduled,
     // create the datum and insert into the local variable map.
     let datum = Datum::new(llval, var_ty, Lvalue);
-    bcx.fcx.lllocals.borrow_mut().insert(p_id, datum);
+    bcx.fcx.lllocals.insert(p_id, datum);
     bcx.bl
 }
 
