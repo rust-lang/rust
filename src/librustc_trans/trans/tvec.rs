@@ -47,7 +47,7 @@ impl<'tcx> VecTypes<'tcx> {
     }
 }
 
-pub fn trans_fixed_vstore<'r, 'blk, 'tcx>(bcx: &'r mut Block<'r, 'blk, 'tcx>,
+pub fn trans_fixed_vstore<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
                                           expr: &ast::Expr,
                                           dest: expr::Dest)
                                           -> &'blk BlockS {
@@ -77,11 +77,11 @@ pub fn trans_fixed_vstore<'r, 'blk, 'tcx>(bcx: &'r mut Block<'r, 'blk, 'tcx>,
 /// &[...] allocates memory on the stack and writes the values into it, returning the vector (the
 /// caller must make the reference).  "..." is similar except that the memory can be statically
 /// allocated and we return a reference (strings are always by-ref).
-pub fn trans_slice_vec<'r, 'blk, 'tcx>(bcx: &'r mut Block<'r, 'blk, 'tcx>,
+pub fn trans_slice_vec<'r, 'blk, 'tcx>(&mut Block { bl, ref mut fcx }: &mut Block<'r, 'blk, 'tcx>,
                                        slice_expr: &ast::Expr,
                                        content_expr: &ast::Expr)
                                        -> DatumBlock<'blk, 'tcx, Expr> {
-    let mut bcx = bcx;
+    let mut bcx = &mut bl.with(fcx);
     let ccx = bcx.fcx.ccx;
 
     debug!("trans_slice_vec(slice_expr={})",
@@ -93,10 +93,10 @@ pub fn trans_slice_vec<'r, 'blk, 'tcx>(bcx: &'r mut Block<'r, 'blk, 'tcx>,
     if let ast::ExprLit(ref lit) = content_expr.node {
         if let ast::LitStr(ref s, _) = lit.node {
             let scratch = rvalue_scratch_datum(bcx, vec_ty, "");
-            bcx = &mut trans_lit_str(bcx,
-                                     content_expr,
-                                     s.clone(),
-                                     SaveIn(scratch.val)).with(bcx.fcx);
+            bcx.bl = trans_lit_str(bcx,
+                                   content_expr,
+                                   s.clone(),
+                                   SaveIn(scratch.val));
             return DatumBlock::new(bcx.bl, scratch.to_expr_datum());
         }
     }
@@ -124,8 +124,9 @@ pub fn trans_slice_vec<'r, 'blk, 'tcx>(bcx: &'r mut Block<'r, 'blk, 'tcx>,
         // Generate the content into the backing array.
         // llfixed has type *[T x N], but we want the type *T,
         // so use GEP to convert
-        bcx = &mut write_content(bcx, &vt, slice_expr, content_expr,
-                                 SaveIn(GEPi(bcx, llfixed, &[0, 0]))).with(bcx.fcx);
+        let fp = GEPi(bcx, llfixed, &[0, 0]);
+        bcx.bl = write_content(bcx, &vt, slice_expr, content_expr,
+                               SaveIn(fp));
     };
 
     immediate_rvalue_bcx(bcx, llfixed, vec_ty).to_expr_datumblock()
@@ -149,21 +150,23 @@ pub fn trans_lit_str<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
             let llbytes = C_uint(bcx.ccx(), bytes);
             let llcstr = C_cstr(bcx.ccx(), str_lit, false);
             let llcstr = consts::ptrcast(llcstr, Type::i8p(bcx.ccx()));
-            Store(bcx, llcstr, GEPi(bcx, lldest, &[0, abi::FAT_PTR_ADDR]));
-            Store(bcx, llbytes, GEPi(bcx, lldest, &[0, abi::FAT_PTR_EXTRA]));
+            let fpa = GEPi(bcx, lldest, &[0, abi::FAT_PTR_ADDR]);
+            Store(bcx, llcstr, fpa);
+            let fpe = GEPi(bcx, lldest, &[0, abi::FAT_PTR_EXTRA]);
+            Store(bcx, llbytes, fpe);
             bcx.bl
         }
     }
 }
 
-fn write_content<'r, 'blk, 'tcx>(bcx: &'r mut Block<'r, 'blk, 'tcx>,
+fn write_content<'r, 'blk, 'tcx>(&mut Block { bl, ref mut fcx }: &mut Block<'r, 'blk, 'tcx>,
                                  vt: &VecTypes<'tcx>,
                                  vstore_expr: &ast::Expr,
                                  content_expr: &ast::Expr,
                                  dest: Dest)
                                  -> &'blk BlockS {
     let _icx = push_ctxt("tvec::write_content");
-    let mut bcx = bcx;
+    let mut bcx = &mut bl.with(fcx);
 
     debug!("write_content(vt={}, dest={}, vstore_expr={})",
            vt.to_string(bcx.ccx()),
@@ -199,7 +202,7 @@ fn write_content<'r, 'blk, 'tcx>(bcx: &'r mut Block<'r, 'blk, 'tcx>,
             match dest {
                 Ignore => {
                     for element in elements {
-                        bcx = &mut expr::trans_into(bcx, &**element, Ignore).with(bcx.fcx);
+                        bcx.bl = expr::trans_into(bcx, &**element, Ignore);
                     }
                 }
 
@@ -209,8 +212,8 @@ fn write_content<'r, 'blk, 'tcx>(bcx: &'r mut Block<'r, 'blk, 'tcx>,
                         let lleltptr = GEPi(bcx, lldest, &[i]);
                         debug!("writing index {} with lleltptr={}",
                                i, bcx.val_to_string(lleltptr));
-                        bcx = &mut expr::trans_into(bcx, &**element,
-                                                    SaveIn(lleltptr)).with(bcx.fcx);
+                        bcx.bl = expr::trans_into(bcx, &**element,
+                                                    SaveIn(lleltptr));
                         let scope = cleanup::CustomScope(temp_scope);
                         bcx.fcx.schedule_lifetime_end(scope, lleltptr);
                         bcx.fcx.schedule_drop_mem(scope, lleltptr, vt.unit_ty);
@@ -231,8 +234,9 @@ fn write_content<'r, 'blk, 'tcx>(bcx: &'r mut Block<'r, 'blk, 'tcx>,
                         1 => expr::trans_into(bcx, &**element, SaveIn(lldest)),
                         count => {
                             let elem = unpack_datum!(bcx, expr::trans(bcx, &**element));
+                            let ty = C_uint(bcx.ccx(), count);
                             let bcx = iter_vec_loop(bcx, lldest, vt,
-                                                    C_uint(bcx.ccx(), count),
+                                                    ty,
                                                     |set_bcx, lleltptr, _| {
                                                         elem.shallow_copy(set_bcx, lleltptr)
                                                     });
@@ -252,7 +256,8 @@ fn write_content<'r, 'blk, 'tcx>(bcx: &'r mut Block<'r, 'blk, 'tcx>,
 fn vec_types_from_expr<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>, vec_expr: &ast::Expr)
                                        -> VecTypes<'tcx> {
     let vec_ty = node_id_type(bcx, vec_expr.id);
-    vec_types(bcx, ty::sequence_element_type(bcx.tcx(), vec_ty))
+    let ty = ty::sequence_element_type(bcx.tcx(), vec_ty);
+    vec_types(bcx, ty)
 }
 
 fn vec_types<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>, unit_ty: Ty<'tcx>)
@@ -310,8 +315,10 @@ pub fn get_base_and_len<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
     match vec_ty.sty {
         ty::ty_vec(_, Some(n)) => get_fixed_base_and_len(bcx, llval, n),
         ty::ty_vec(_, None) | ty::ty_str => {
-            let base = Load(bcx, expr::get_dataptr(bcx, llval));
-            let len = Load(bcx, expr::get_len(bcx, llval));
+            let dp = expr::get_dataptr(bcx, llval);
+            let base = Load(bcx, dp);
+            let dl = expr::get_len(bcx, llval);
+            let len = Load(bcx, dl);
             (base, len)
         }
 
@@ -328,27 +335,31 @@ pub fn get_base_and_len<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
     }
 }
 
-fn iter_vec_loop<'r, 'blk, 'tcx, F>(bcx: &'r mut Block<'r, 'blk, 'tcx>,
-                                    data_ptr: ValueRef,
-                                    vt: &VecTypes<'tcx>,
-                                    count: ValueRef,
-                                    f: F)
-                                    -> &'blk BlockS where
-    F: FnOnce(&'r mut Block<'r, 'blk, 'tcx>, ValueRef, Ty<'tcx>) -> &'blk BlockS
+fn iter_vec_loop<'r, 'blk, 'tcx, F>
+                (&mut Block { bl, ref mut fcx }: &mut Block<'r, 'blk, 'tcx>,
+                 data_ptr: ValueRef,
+                 vt: &VecTypes<'tcx>,
+                 count: ValueRef,
+                 f: F)
+                 -> &'blk BlockS where
+    F: for<'a> FnOnce(&mut Block<'a, 'blk, 'tcx>, ValueRef, Ty<'tcx>) -> &'blk BlockS
 {
     let _icx = push_ctxt("tvec::iter_vec_loop");
 
-    if bcx.bl.unreachable.get() {
-        return bcx.bl;
+    if bl.unreachable.get() {
+        return bl;
     }
 
-    let loop_bcx = bcx.fcx.new_temp_block("expr_repeat");
-    let next_bcx = bcx.fcx.new_temp_block("expr_repeat: next");
+    let loop_bcx = fcx.new_temp_block("expr_repeat");
+    let next_bcx = fcx.new_temp_block("expr_repeat: next");
 
+    let mut bcx = &mut bl.with(fcx);
     Br(bcx, loop_bcx.llbb, DebugLoc::None);
 
-    let loop_counter = Phi(&mut loop_bcx.with(bcx.fcx), bcx.ccx().int_type(),
-                           &[C_uint(bcx.ccx(), 0 as usize)], &[bcx.bl.llbb]);
+    let ty = bcx.ccx().int_type();
+    let v = [C_uint(bcx.ccx(), 0 as usize)];
+    let bb = [bcx.bl.llbb];
+    let loop_counter = Phi(&mut loop_bcx.with(bcx.fcx), ty, &v, &bb);
 
     let bcx = &mut loop_bcx.with(bcx.fcx);
 
@@ -358,7 +369,8 @@ fn iter_vec_loop<'r, 'blk, 'tcx, F>(bcx: &'r mut Block<'r, 'blk, 'tcx>,
         InBoundsGEP(bcx, data_ptr, &[loop_counter])
     };
     let bcx = &mut f(bcx, lleltptr, vt.unit_ty).with(bcx.fcx);
-    let plusone = Add(bcx, loop_counter, C_uint(bcx.ccx(), 1usize), DebugLoc::None);
+    let one = C_uint(bcx.ccx(), 1usize);
+    let plusone = Add(bcx, loop_counter, one, DebugLoc::None);
     AddIncomingToPhi(loop_counter, plusone, bcx.bl.llbb);
 
     let cond_val = ICmp(bcx, llvm::IntULT, plusone, count, DebugLoc::None);
@@ -367,16 +379,18 @@ fn iter_vec_loop<'r, 'blk, 'tcx, F>(bcx: &'r mut Block<'r, 'blk, 'tcx>,
     next_bcx
 }
 
-pub fn iter_vec_raw<'r, 'blk, 'tcx, F>(bcx: &'r mut Block<'r, 'blk, 'tcx>,
-                                       data_ptr: ValueRef,
-                                       unit_ty: Ty<'tcx>,
-                                       len: ValueRef,
-                                       f: F)
-                                       -> &'blk BlockS where
-    F: FnOnce(&mut Block<'r, 'blk, 'tcx>, ValueRef, Ty<'tcx>) -> &'blk BlockS,
+pub fn iter_vec_raw<'r, 'blk, 'tcx, F>
+                   (&mut Block { bl, ref mut fcx }: &mut Block<'r, 'blk, 'tcx>,
+                    data_ptr: ValueRef,
+                    unit_ty: Ty<'tcx>,
+                    len: ValueRef,
+                    f: F)
+                    -> &'blk BlockS where
+    F: for<'a> FnOnce(&mut Block<'a, 'blk, 'tcx>, ValueRef, Ty<'tcx>) -> &'blk BlockS,
 {
     let _icx = push_ctxt("tvec::iter_vec_raw");
 
+    let mut bcx = &mut bl.with(fcx);
     let vt = vec_types(bcx, unit_ty);
 
     if llsize_of_alloc(bcx.ccx(), vt.llunit_ty) == 0 {
@@ -399,8 +413,9 @@ pub fn iter_vec_raw<'r, 'blk, 'tcx, F>(bcx: &'r mut Block<'r, 'blk, 'tcx>,
         CondBr(&mut header_bcx.with(bcx.fcx), not_yet_at_end,
                body_bcx.llbb, next_bcx.llbb, DebugLoc::None);
         let body_bcx = f(&mut body_bcx.with(bcx.fcx), data_ptr, unit_ty);
+        let one = [C_int(bcx.ccx(), 1)];
         AddIncomingToPhi(data_ptr, InBoundsGEP(&mut body_bcx.with(bcx.fcx), data_ptr,
-                                               &[C_int(bcx.ccx(), 1)]),
+                                               &one),
                          body_bcx.llbb);
         Br(&mut body_bcx.with(bcx.fcx), header_bcx.llbb, DebugLoc::None);
         next_bcx

@@ -256,7 +256,7 @@ fn require_alloc_fn<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
 // The following malloc_raw_dyn* functions allocate a box to contain
 // a given type, but with a potentially dynamic size.
 
-pub fn malloc_raw_dyn<'r, 'blk, 'tcx>(bcx: &'r mut Block<'r, 'blk, 'tcx>,
+pub fn malloc_raw_dyn<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
                                   llty_ptr: Type,
                                   info_ty: Ty<'tcx>,
                                   size: ValueRef,
@@ -266,8 +266,9 @@ pub fn malloc_raw_dyn<'r, 'blk, 'tcx>(bcx: &'r mut Block<'r, 'blk, 'tcx>,
     let _icx = push_ctxt("malloc_raw_exchange");
 
     // Allocate space:
+    let a = require_alloc_fn(bcx, info_ty, ExchangeMallocFnLangItem);
     let r = callee::trans_lang_call(bcx,
-        require_alloc_fn(bcx, info_ty, ExchangeMallocFnLangItem),
+        a,
         &[size, align],
         None,
         debug_loc);
@@ -327,16 +328,20 @@ pub fn compare_scalar_types<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
             }
         }
         ty::ty_bare_fn(..) | ty::ty_bool | ty::ty_uint(_) | ty::ty_char => {
-            ICmp(bcx, bin_op_to_icmp_predicate(bcx.ccx(), op, false), lhs, rhs, debug_loc)
+            let p = bin_op_to_icmp_predicate(bcx.ccx(), op, false);
+            ICmp(bcx, p, lhs, rhs, debug_loc)
         }
         ty::ty_ptr(mt) if common::type_is_sized(bcx.tcx(), mt.ty) => {
-            ICmp(bcx, bin_op_to_icmp_predicate(bcx.ccx(), op, false), lhs, rhs, debug_loc)
+            let p = bin_op_to_icmp_predicate(bcx.ccx(), op, false);
+            ICmp(bcx, p, lhs, rhs, debug_loc)
         }
         ty::ty_int(_) => {
-            ICmp(bcx, bin_op_to_icmp_predicate(bcx.ccx(), op, true), lhs, rhs, debug_loc)
+            let p = bin_op_to_icmp_predicate(bcx.ccx(), op, true);
+            ICmp(bcx, p, lhs, rhs, debug_loc)
         }
         ty::ty_float(_) => {
-            FCmp(bcx, bin_op_to_fcmp_predicate(bcx.ccx(), op), lhs, rhs, debug_loc)
+            let p = bin_op_to_fcmp_predicate(bcx.ccx(), op);
+            FCmp(bcx, p, lhs, rhs, debug_loc)
         }
         // Should never get here, because t is scalar.
         _ => bcx.sess().bug("non-scalar type passed to compare_scalar_types")
@@ -369,36 +374,40 @@ pub fn compare_simd_types<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
     // to get the correctly sized type. This will compile to a single instruction
     // once the IR is converted to assembly if the SIMD instruction is supported
     // by the target architecture.
-    SExt(bcx, ICmp(bcx, cmp, lhs, rhs, debug_loc), val_ty(lhs))
+    let c = ICmp(bcx, cmp, lhs, rhs, debug_loc);
+    SExt(bcx, c, val_ty(lhs))
 }
 
 // Iterates through the elements of a structural type.
-pub fn iter_structural_ty<'r, 'blk, 'tcx, F>(cx: &'r mut Block<'r, 'blk, 'tcx>,
-                                             av: ValueRef,
-                                             t: Ty<'tcx>,
-                                             mut f: F)
-                                             -> &'blk BlockS where
-    F: FnMut(&mut Block<'r, 'blk, 'tcx>, ValueRef, Ty<'tcx>) -> &'blk BlockS,
+pub fn iter_structural_ty<'r, 'blk, 'tcx, F>
+                         (&mut Block { mut bl, ref mut fcx }: &mut Block<'r, 'blk, 'tcx>,
+                          av: ValueRef,
+                          t: Ty<'tcx>,
+                          mut f: F)
+                          -> &'blk BlockS where
+    F: for <'a> FnMut(&mut Block<'a, 'blk, 'tcx>, ValueRef, Ty<'tcx>) -> &'blk BlockS,
 {
     let _icx = push_ctxt("iter_structural_ty");
-    let bl;
+    let mut cx = &mut bl.with(fcx);
 
-    fn iter_variant<'r, 'blk, 'tcx, F>(cx: &'r mut Block<'r, 'blk, 'tcx>,
-                                       repr: &adt::Repr<'tcx>,
-                                       av: ValueRef,
-                                       variant: &ty::VariantInfo<'tcx>,
-                                       substs: &Substs<'tcx>,
-                                       f: &mut F)
-                                       -> &'blk BlockS where
-        F: FnMut(&mut Block<'r, 'blk, 'tcx>, ValueRef, Ty<'tcx>) -> &'blk BlockS,
+    fn iter_variant<'r, 'blk, 'tcx, F>
+                   (&mut Block { bl, ref mut fcx }: &mut Block<'r, 'blk, 'tcx>,
+                    repr: &adt::Repr<'tcx>,
+                    av: ValueRef,
+                    variant: &ty::VariantInfo<'tcx>,
+                    substs: &Substs<'tcx>,
+                    f: &mut F)
+                    -> &'blk BlockS where
+        F: for <'a> FnMut(&mut Block<'a, 'blk, 'tcx>, ValueRef, Ty<'tcx>) -> &'blk BlockS,
     {
         let _icx = push_ctxt("iter_variant");
+        let mut cx = &mut bl.with(fcx);
         let tcx = cx.tcx();
-        let mut cx = cx;
 
         for (i, &arg) in variant.args.iter().enumerate() {
             let arg = monomorphize::apply_param_substs(tcx, substs, &arg);
-            cx = &mut f(cx, adt::trans_field_ptr(cx, repr, av, variant.disr_val, i), arg).with(cx.fcx);
+            let p = adt::trans_field_ptr(cx, repr, av, variant.disr_val, i);
+            cx.bl = f(cx, p, arg);
         }
         return cx.bl;
     }
@@ -411,7 +420,6 @@ pub fn iter_structural_ty<'r, 'blk, 'tcx, F>(cx: &'r mut Block<'r, 'blk, 'tcx>,
         (Load(cx, data), Some(Load(cx, info)))
     };
 
-    let mut cx = cx;
     match t.sty {
       ty::ty_struct(..) => {
           let repr = adt::represent_type(cx.ccx(), t);
@@ -424,8 +432,10 @@ pub fn iter_structural_ty<'r, 'blk, 'tcx, F>(cx: &'r mut Block<'r, 'blk, 'tcx>,
                       llfld_a
                   } else {
                       let scratch = datum::rvalue_scratch_datum(cx, field_ty, "__fat_ptr_iter");
-                      Store(cx, llfld_a, GEPi(cx, scratch.val, &[0, abi::FAT_PTR_ADDR]));
-                      Store(cx, info.unwrap(), GEPi(cx, scratch.val, &[0, abi::FAT_PTR_EXTRA]));
+                      let v = GEPi(cx, scratch.val, &[0, abi::FAT_PTR_ADDR]);
+                      Store(cx, llfld_a, v);
+                      let v = GEPi(cx, scratch.val, &[0, abi::FAT_PTR_EXTRA]);
+                      Store(cx, info.unwrap(), v);
                       scratch.val
                   };
                   bl = f(cx, val, field_ty);
@@ -455,13 +465,12 @@ pub fn iter_structural_ty<'r, 'blk, 'tcx, F>(cx: &'r mut Block<'r, 'blk, 'tcx>,
           for (i, arg) in args.iter().enumerate() {
               let llfld_a = adt::trans_field_ptr(cx, &*repr, data_ptr, 0, i);
               let bl = f(cx, llfld_a, *arg);
-              cx = &mut bl.with(cx.fcx);
+              cx.bl = bl;
           }
           bl = cx.bl;
       }
       ty::ty_enum(tid, substs) => {
-          let fcx = cx.fcx;
-          let ccx = fcx.ccx;
+          let ccx = cx.fcx.ccx;
 
           let repr = adt::represent_type(ccx, t);
           let variants = ty::enum_variants(ccx.tcx(), tid);
@@ -479,16 +488,17 @@ pub fn iter_structural_ty<'r, 'blk, 'tcx, F>(cx: &'r mut Block<'r, 'blk, 'tcx>,
                   }
               }
               (_match::Switch, Some(lldiscrim_a)) => {
-                  cx = &mut f(cx, lldiscrim_a, cx.tcx().types.isize).with(cx.fcx);
-                  let unr_cx = fcx.new_temp_block("enum-iter-unr");
-                  Unreachable(&mut unr_cx.with(fcx));
+                  let s = cx.tcx().types.isize;
+                  cx.bl = f(cx, lldiscrim_a, s);
+                  let unr_cx = cx.fcx.new_temp_block("enum-iter-unr");
+                  Unreachable(&mut unr_cx.with(cx.fcx));
                   let llswitch = Switch(cx, lldiscrim_a, unr_cx.llbb,
                                         n_variants);
-                  let next_cx = fcx.new_temp_block("enum-iter-next");
+                  let next_cx = cx.fcx.new_temp_block("enum-iter-next");
 
                   for variant in &(*variants) {
                       let variant_cx =
-                          fcx.new_temp_block(
+                          cx.fcx.new_temp_block(
                               &format!("enum-iter-variant-{}",
                                       &variant.disr_val.to_string())
                               );
@@ -500,13 +510,13 @@ pub fn iter_structural_ty<'r, 'blk, 'tcx, F>(cx: &'r mut Block<'r, 'blk, 'tcx>,
                                                   in iter_structural_ty")
                       }
                       let variant_cx =
-                          iter_variant(&mut variant_cx.with(fcx),
+                          iter_variant(&mut variant_cx.with(cx.fcx),
                                        &*repr,
                                        data_ptr,
                                        &**variant,
                                        substs,
                                        &mut f);
-                      Br(&mut variant_cx.with(fcx), next_cx.llbb, DebugLoc::None);
+                      Br(&mut variant_cx.with(cx.fcx), next_cx.llbb, DebugLoc::None);
                   }
                   bl = next_cx;
               }
@@ -527,26 +537,27 @@ pub fn cast_shift_expr_rhs(cx: &mut Block,
                            lhs: ValueRef,
                            rhs: ValueRef)
                            -> ValueRef {
-    cast_shift_rhs(op, lhs, rhs,
-                   |a,b| Trunc(cx, a, b),
-                   |a,b| ZExt(cx, a, b))
+    cast_shift_rhs(cx, op, lhs, rhs,
+                   |cx,a,b| Trunc(cx, a, b),
+                   |cx,a,b| ZExt(cx, a, b))
 }
 
 pub fn cast_shift_const_rhs(op: ast::BinOp_,
                             lhs: ValueRef, rhs: ValueRef) -> ValueRef {
-    cast_shift_rhs(op, lhs, rhs,
-                   |a, b| unsafe { llvm::LLVMConstTrunc(a, b.to_ref()) },
-                   |a, b| unsafe { llvm::LLVMConstZExt(a, b.to_ref()) })
+    cast_shift_rhs((), op, lhs, rhs,
+                   |_, a, b| unsafe { llvm::LLVMConstTrunc(a, b.to_ref()) },
+                   |_, a, b| unsafe { llvm::LLVMConstZExt(a, b.to_ref()) })
 }
 
-fn cast_shift_rhs<F, G>(op: ast::BinOp_,
-                        lhs: ValueRef,
-                        rhs: ValueRef,
-                        trunc: F,
-                        zext: G)
-                        -> ValueRef where
-    F: FnOnce(ValueRef, Type) -> ValueRef,
-    G: FnOnce(ValueRef, Type) -> ValueRef,
+fn cast_shift_rhs<T, F, G>(t: T,
+                           op: ast::BinOp_,
+                           lhs: ValueRef,
+                           rhs: ValueRef,
+                           trunc: F,
+                           zext: G)
+                           -> ValueRef where
+    F: FnOnce(T, ValueRef, Type) -> ValueRef,
+    G: FnOnce(T, ValueRef, Type) -> ValueRef,
 {
     // Shifts may have any size int on the rhs
     if ast_util::is_shift_binop(op) {
@@ -557,11 +568,11 @@ fn cast_shift_rhs<F, G>(op: ast::BinOp_,
         let rhs_sz = rhs_llty.int_width();
         let lhs_sz = lhs_llty.int_width();
         if lhs_sz < rhs_sz {
-            trunc(rhs, lhs_llty)
+            trunc(t, rhs, lhs_llty)
         } else if lhs_sz > rhs_sz {
             // FIXME (#1877: If shifting by negative
             // values becomes not undefined then this is wrong.
-            zext(rhs, lhs_llty)
+            zext(t, rhs, lhs_llty)
         } else {
             rhs
         }
@@ -590,7 +601,7 @@ pub fn llty_and_min_for_signed_ty<'r, 'blk, 'tcx>(cx: &mut Block<'r, 'blk, 'tcx>
 }
 
 pub fn fail_if_zero_or_overflows<'r, 'blk, 'tcx>(
-                                cx: &'r mut Block<'r, 'blk, 'tcx>,
+                                cx: &mut Block<'r, 'blk, 'tcx>,
                                 call_info: NodeIdAndSpan,
                                 divrem: ast::BinOp,
                                 lhs: ValueRef,
@@ -618,9 +629,10 @@ pub fn fail_if_zero_or_overflows<'r, 'blk, 'tcx>(
         ty::ty_struct(_, _) if type_is_simd(cx.tcx(), rhs_t) => {
             let mut res = C_bool(cx.ccx(), false);
             for i in 0 .. simd_size(cx.tcx(), rhs_t) {
-                res = Or(cx, res,
-                         IsNull(cx,
-                                ExtractElement(cx, rhs, C_int(cx.ccx(), i as i64))), debug_loc);
+                let ty = C_int(cx.ccx(), i as i64);
+                let ee = ExtractElement(cx, rhs, ty);
+                let is_null = IsNull(cx, ee);
+                res = Or(cx, res, is_null, debug_loc);
             }
             (res, false)
         }
@@ -816,7 +828,9 @@ pub fn store_ty<'r, 'blk, 'tcx>(cx: &mut Block<'r, 'blk, 'tcx>, v: ValueRef, dst
         return;
     }
 
-    let store = Store(cx, to_arg_ty(cx, v, t), to_arg_ty_ptr(cx, dst, t));
+    let a1 = to_arg_ty(cx, v, t);
+    let a2 = to_arg_ty_ptr(cx, dst, t);
+    let store = Store(cx, a1, a2);
     unsafe {
         llvm::LLVMSetAlignment(store, type_of::align_of(cx.ccx(), t));
     }
@@ -824,7 +838,8 @@ pub fn store_ty<'r, 'blk, 'tcx>(cx: &mut Block<'r, 'blk, 'tcx>, v: ValueRef, dst
 
 pub fn to_arg_ty(bcx: &mut Block, val: ValueRef, ty: Ty) -> ValueRef {
     if ty::type_is_bool(ty) {
-        ZExt(bcx, val, Type::i8(bcx.ccx()))
+        let ty = Type::i8(bcx.ccx());
+        ZExt(bcx, val, ty)
     } else {
         val
     }
@@ -832,7 +847,8 @@ pub fn to_arg_ty(bcx: &mut Block, val: ValueRef, ty: Ty) -> ValueRef {
 
 pub fn from_arg_ty(bcx: &mut Block, val: ValueRef, ty: Ty) -> ValueRef {
     if ty::type_is_bool(ty) {
-        Trunc(bcx, val, Type::i1(bcx.ccx()))
+        let ty = Type::i1(bcx.ccx());
+        Trunc(bcx, val, ty)
     } else {
         val
     }
@@ -843,13 +859,14 @@ pub fn to_arg_ty_ptr<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>, ptr: Value
         // We want to pass small aggregates as immediate values, but using an aggregate LLVM type
         // for this leads to bad optimizations, so its arg type is an appropriately sized integer
         // and we have to convert it
-        BitCast(bcx, ptr, type_of::arg_type_of(bcx.ccx(), ty).ptr_to())
+        let ty = type_of::arg_type_of(bcx.ccx(), ty);
+        BitCast(bcx, ptr, ty.ptr_to())
     } else {
         ptr
     }
 }
 
-pub fn init_local<'r, 'blk, 'tcx>(bcx: &'r mut Block<'r, 'blk, 'tcx>, local: &ast::Local)
+pub fn init_local<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>, local: &ast::Local)
                               -> &'blk BlockS {
     debug!("init_local(bcx={}, local.id={})", bcx.to_str(), local.id);
     let _indenter = indenter();
@@ -864,23 +881,22 @@ pub fn raw_block<'r, 'blk, 'tcx>(fcx: &mut FunctionContext<'blk, 'tcx>,
     common::BlockS::new(llbb, is_lpad, None).alloc(fcx)
 }
 
-pub fn with_cond<'r, 'blk, 'tcx, F>(bcx: &'r mut Block<'r, 'blk, 'tcx>,
+pub fn with_cond<'r, 'blk, 'tcx, F>(&mut Block { bl, ref mut fcx }: &mut Block<'r, 'blk, 'tcx>,
                                     val: ValueRef,
                                     f: F)
                                     -> &'blk BlockS where
-    F: FnOnce(&'r mut Block<'r, 'blk, 'tcx>) -> &'blk BlockS
+    F: for<'a> FnOnce(&'a mut Block<'a, 'blk, 'tcx>) -> &'blk BlockS
 {
     let _icx = push_ctxt("with_cond");
 
-    if bcx.bl.unreachable.get() ||
+    if bl.unreachable.get() ||
             (common::is_const(val) && common::const_to_uint(val) == 0) {
-        return bcx.bl;
+        return bl;
     }
 
-    let fcx = bcx.fcx;
     let next_cx = fcx.new_temp_block("next");
     let cond_cx = fcx.new_temp_block("cond");
-    CondBr(bcx, val, cond_cx.llbb, next_cx.llbb, DebugLoc::None);
+    CondBr(&mut bl.with(fcx), val, cond_cx.llbb, next_cx.llbb, DebugLoc::None);
     let after_cx = f(&mut cond_cx.with(fcx));
     if !after_cx.terminated.get() {
         Br(&mut after_cx.with(fcx), next_cx.llbb, DebugLoc::None);
@@ -944,7 +960,8 @@ pub fn memcpy_ty<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
         let llalign = type_of::align_of(ccx, t);
         call_memcpy(bcx, dst, src, llsz, llalign as u32);
     } else {
-        store_ty(bcx, load_ty(bcx, src, t), dst, t);
+        let ty = load_ty(bcx, src, t);
+        store_ty(bcx, ty, dst, t);
     }
 }
 
@@ -1015,7 +1032,7 @@ pub fn alloca_no_lifetime(cx: &mut Block, ty: Type, name: &str) -> ValueRef {
 }
 
 // Creates the alloca slot which holds the pointer to the slot for the final return value
-pub fn make_return_slot_pointer<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
+pub fn make_return_slot_pointer<'a, 'tcx>(fcx: &mut FunctionContext<'a, 'tcx>,
                                           output_type: Ty<'tcx>) -> ValueRef {
     let lloutputtype = type_of::type_of(fcx.ccx, output_type);
 
@@ -1235,10 +1252,11 @@ pub fn init_function<'r, 'a, 'tcx>(fcx: &'r mut FunctionContext<'a, 'tcx>,
 
     // Use a dummy instruction as the insertion point for all allocas.
     // This is later removed in FunctionContext::cleanup.
-    fcx.alloca_insert_pt.set(Some(unsafe {
+    let pt = unsafe {
         Load(&mut entry_bcx.with(fcx), C_null(Type::i8p(fcx.ccx)));
         llvm::LLVMGetFirstInstruction(entry_bcx.llbb)
-    }));
+    };
+    fcx.alloca_insert_pt.set(Some(pt));
 
     if let ty::FnConverging(output_type) = output {
         // This shouldn't need to recompute the return type,
@@ -1251,7 +1269,8 @@ pub fn init_function<'r, 'a, 'tcx>(fcx: &'r mut FunctionContext<'a, 'tcx>,
                 // Otherwise, we normally allocate the llretslotptr, unless we
                 // have been instructed to skip it for immediate return
                 // values.
-                fcx.llretslotptr.set(Some(make_return_slot_pointer(fcx, substd_output_type)));
+                let p = make_return_slot_pointer(fcx, substd_output_type);
+                fcx.llretslotptr.set(Some(p));
             }
         }
     }
@@ -1266,7 +1285,7 @@ pub fn init_function<'r, 'a, 'tcx>(fcx: &'r mut FunctionContext<'a, 'tcx>,
 //  - new_fn_ctxt
 //  - trans_args
 
-pub fn arg_kind<'a, 'tcx>(cx: &FunctionContext<'a, 'tcx>, t: Ty<'tcx>)
+pub fn arg_kind<'a, 'tcx>(cx: &mut FunctionContext<'a, 'tcx>, t: Ty<'tcx>)
                           -> datum::Rvalue {
     use trans::datum::{ByRef, ByValue};
 
@@ -1281,7 +1300,7 @@ pub type RvalueDatum<'tcx> = datum::Datum<'tcx, datum::Rvalue>;
 // create_datums_for_fn_args: creates rvalue datums for each of the
 // incoming function arguments. These will later be stored into
 // appropriate lvalue datums.
-pub fn create_datums_for_fn_args<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
+pub fn create_datums_for_fn_args<'a, 'tcx>(fcx: &mut FunctionContext<'a, 'tcx>,
                                            arg_tys: &[Ty<'tcx>])
                                            -> Vec<RvalueDatum<'tcx>> {
     let _icx = push_ctxt("create_datums_for_fn_args");
@@ -1300,7 +1319,7 @@ pub fn create_datums_for_fn_args<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
 ///
 /// FIXME(pcwalton): Reduce the amount of code bloat this is responsible for.
 fn create_datums_for_fn_args_under_call_abi<'r, 'blk, 'tcx>(
-        bcx: &'r mut Block<'r, 'blk, 'tcx>,
+        &mut Block {bl, ref mut fcx}: &mut Block<'r, 'blk, 'tcx>,
         arg_scope: cleanup::CustomScopeIndex,
         arg_tys: &[Ty<'tcx>])
         -> Vec<RvalueDatum<'tcx>> {
@@ -1308,8 +1327,8 @@ fn create_datums_for_fn_args_under_call_abi<'r, 'blk, 'tcx>(
     for (i, &arg_ty) in arg_tys.iter().enumerate() {
         if i < arg_tys.len() - 1 {
             // Regular argument.
-            let llarg = get_param(bcx.fcx.llfn, bcx.fcx.arg_pos(i) as c_uint);
-            result.push(datum::Datum::new(llarg, arg_ty, arg_kind(bcx.fcx,
+            let llarg = get_param(fcx.llfn, fcx.arg_pos(i) as c_uint);
+            result.push(datum::Datum::new(llarg, arg_ty, arg_kind(fcx,
                                                                   arg_ty)));
             continue
         }
@@ -1318,6 +1337,7 @@ fn create_datums_for_fn_args_under_call_abi<'r, 'blk, 'tcx>(
         match arg_ty.sty {
             ty::ty_tup(ref tupled_arg_tys) => {
                 let tuple_args_scope_id = cleanup::CustomScope(arg_scope);
+                let mut bcx = &mut bl.with(fcx);
                 let tuple =
                     unpack_datum!(bcx,
                                   datum::lvalue_scratch_datum(bcx,
@@ -1328,6 +1348,7 @@ fn create_datums_for_fn_args_under_call_abi<'r, 'blk, 'tcx>(
                                                               |(),
                                                                mut bcx,
                                                                llval| {
+                        let mut bl = bcx.bl;
                         for (j, &tupled_arg_ty) in
                                     tupled_arg_tys.iter().enumerate() {
                             let llarg =
@@ -1338,9 +1359,9 @@ fn create_datums_for_fn_args_under_call_abi<'r, 'blk, 'tcx>(
                                 llarg,
                                 tupled_arg_ty,
                                 arg_kind(bcx.fcx, tupled_arg_ty));
-                            bcx = &mut datum.store_to(bcx, lldest).with(bcx.fcx);
+                            bl = datum.store_to(&mut bl.with(bcx.fcx), lldest);
                         }
-                        bcx.bl
+                        bl
                     }));
                 let tuple = unpack_datum!(bcx,
                                           tuple.to_expr_datum()
@@ -1349,7 +1370,7 @@ fn create_datums_for_fn_args_under_call_abi<'r, 'blk, 'tcx>(
                 result.push(tuple);
             }
             _ => {
-                bcx.tcx().sess.bug("last argument of a function with \
+                fcx.tcx().sess.bug("last argument of a function with \
                                     `rust-call` ABI isn't a tuple?!")
             }
         };
@@ -1359,7 +1380,7 @@ fn create_datums_for_fn_args_under_call_abi<'r, 'blk, 'tcx>(
     result
 }
 
-fn copy_args_to_allocas<'r, 'blk, 'tcx>(bcx: &'r mut Block<'r, 'blk, 'tcx>,
+fn copy_args_to_allocas<'r, 'blk, 'tcx>(&mut Block { bl, ref mut fcx }: &mut Block<'r, 'blk, 'tcx>,
                                         arg_scope: cleanup::CustomScopeIndex,
                                         args: &[ast::Arg],
                                         arg_datums: Vec<RvalueDatum<'tcx>>)
@@ -1367,7 +1388,7 @@ fn copy_args_to_allocas<'r, 'blk, 'tcx>(bcx: &'r mut Block<'r, 'blk, 'tcx>,
     debug!("copy_args_to_allocas");
 
     let _icx = push_ctxt("copy_args_to_allocas");
-    let mut bcx = bcx;
+    let mut bcx = &mut bl.with(fcx);
 
     let arg_scope_id = cleanup::CustomScope(arg_scope);
 
@@ -1380,7 +1401,7 @@ fn copy_args_to_allocas<'r, 'blk, 'tcx>(bcx: &'r mut Block<'r, 'blk, 'tcx>,
         // This alloca should be optimized away by LLVM's mem-to-reg pass in
         // the event it's not truly needed.
 
-        bcx = &mut _match::store_arg(bcx, &*args[i].pat, arg_datum, arg_scope_id).with(bcx.fcx);
+        bcx.bl = _match::store_arg(bcx, &*args[i].pat, arg_datum, arg_scope_id);
         debuginfo::create_argument_metadata(bcx, &args[i]);
     }
 
@@ -1389,7 +1410,7 @@ fn copy_args_to_allocas<'r, 'blk, 'tcx>(bcx: &'r mut Block<'r, 'blk, 'tcx>,
 
 // Ties up the llstaticallocas -> llloadenv -> lltop edges,
 // and builds the return block.
-pub fn finish_fn<'r, 'blk, 'tcx>(fcx: &'r mut FunctionContext<'blk, 'tcx>,
+pub fn finish_fn<'r, 'blk, 'tcx>(fcx: &mut FunctionContext<'blk, 'tcx>,
                                  last_bcx: &'blk BlockS,
                                  retty: ty::FnOutput<'tcx>,
                                  ret_debug_loc: DebugLoc) {
@@ -1425,7 +1446,8 @@ pub fn build_return_block<'r, 'blk, 'tcx>(fcx: &'r mut FunctionContext<'blk, 'tc
     }
 
     let retslot = if fcx.needs_ret_allocas {
-        Load(&mut ret_cx.with(fcx), fcx.llretslotptr.get().unwrap())
+        let p = fcx.llretslotptr.get().unwrap();
+        Load(&mut ret_cx.with(fcx), p)
     } else {
         fcx.llretslotptr.get().unwrap()
     };
@@ -1463,8 +1485,8 @@ pub fn build_return_block<'r, 'blk, 'tcx>(fcx: &'r mut FunctionContext<'blk, 'tc
                     memcpy_ty(&mut ret_cx.with(fcx), get_param(fcx.llfn, 0), retslot, retty);
                     RetVoid(&mut ret_cx.with(fcx), ret_debug_location)
                 } else {
-                    Ret(&mut ret_cx.with(fcx), load_ty(&mut ret_cx.with(fcx), retslot, retty),
-                        ret_debug_location)
+                    let ty = load_ty(&mut ret_cx.with(fcx), retslot, retty);
+                    Ret(&mut ret_cx.with(fcx), ty, ret_debug_location)
                 }
             }
             ty::FnDiverging => {
@@ -1504,16 +1526,17 @@ pub fn trans_closure<'a, 'b, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         closure::ClosureEnv::NotClosure => false,
     };
 
-    let (arena, fcx): (TypedArena<_>, &mut FunctionContext);
+    let (arena, mut fcx): (TypedArena<_>, FunctionContext);
     arena = TypedArena::new();
-    fcx = &mut new_fn_ctxt(ccx,
-                           llfndecl,
-                           fn_ast_id,
-                           has_env,
-                           output_type,
-                           param_substs,
-                           Some(body.span),
-                           &arena);
+    fcx = new_fn_ctxt(ccx,
+                      llfndecl,
+                      fn_ast_id,
+                      has_env,
+                      output_type,
+                      param_substs,
+                      Some(body.span),
+                      &arena);
+    let mut fcx = &mut fcx;
     let mut bcx = init_function(fcx, false, output_type);
 
     // cleanup scope for the incoming arguments
@@ -1563,7 +1586,7 @@ pub fn trans_closure<'a, 'b, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     // Up until here, IR instructions for this function have explicitly not been annotated with
     // source code location, so we don't step into call setup code. From here on, source location
     // emitting should be enabled.
-    debuginfo::start_emitting_source_locations(&fcx);
+    debuginfo::start_emitting_source_locations(&mut fcx);
 
     let dest = match fcx.llretslotptr.get() {
         Some(_) => expr::SaveIn(fcx.get_ret_slot(bcx, ty::FnConverging(block_ty), "iret_slot")),
@@ -1581,14 +1604,16 @@ pub fn trans_closure<'a, 'b, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     match dest {
         expr::SaveIn(slot) if fcx.needs_ret_allocas => {
-            Store(&mut bcx.with(fcx), slot, fcx.llretslotptr.get().unwrap());
+            let p = fcx.llretslotptr.get().unwrap();
+            Store(&mut bcx.with(fcx), slot, p);
         }
         _ => {}
     }
 
     match fcx.llreturn.get() {
         Some(_) => {
-            Br(&mut bcx.with(fcx), fcx.return_exit_block(), DebugLoc::None);
+            let b = fcx.return_exit_block();
+            Br(&mut bcx.with(fcx), b, DebugLoc::None);
             fcx.pop_custom_cleanup_scope(arg_scope);
         }
         None => {
@@ -1649,14 +1674,15 @@ pub fn trans_enum_variant<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         llfndecl);
 }
 
-pub fn trans_named_tuple_constructor<'r, 'blk, 'tcx>(bcx: &'r mut Block<'r, 'blk, 'tcx>,
-                                                 ctor_ty: Ty<'tcx>,
-                                                 disr: ty::Disr,
-                                                 args: callee::CallArgs,
-                                                 dest: expr::Dest,
-                                                 debug_loc: DebugLoc)
-                                                 -> Result<'blk> {
-
+pub fn trans_named_tuple_constructor<'r, 'blk, 'tcx>(
+        &mut Block { bl, ref mut fcx }: &mut Block<'r, 'blk, 'tcx>,
+        ctor_ty: Ty<'tcx>,
+        disr: ty::Disr,
+        args: callee::CallArgs,
+        dest: expr::Dest,
+        debug_loc: DebugLoc)
+        -> Result<'blk> {
+    let mut bcx = &mut bl.with(fcx);
     let ccx = bcx.fcx.ccx;
     let tcx = ccx.tcx();
 
@@ -1687,13 +1713,13 @@ pub fn trans_named_tuple_constructor<'r, 'blk, 'tcx>(bcx: &'r mut Block<'r, 'blk
         match args {
             callee::ArgExprs(exprs) => {
                 let fields = exprs.iter().map(|x| &**x).enumerate().collect::<Vec<_>>();
-                bcx = &mut expr::trans_adt(bcx,
-                                           result_ty,
-                                           disr,
-                                           &fields[..],
-                                           None,
-                                           expr::SaveIn(llresult),
-                                           debug_loc).with(bcx.fcx);
+                bcx.bl = expr::trans_adt(bcx,
+                                         result_ty,
+                                         disr,
+                                         &fields[..],
+                                         None,
+                                         expr::SaveIn(llresult),
+                                         debug_loc);
             }
             _ => ccx.sess().bug("expected expr as arguments for variant/struct tuple constructor")
         }
@@ -1748,10 +1774,11 @@ fn trans_enum_variant_or_tuple_like_struct<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx
                     ty_to_string(ccx.tcx(), ctor_ty)))
     };
 
-    let (arena, fcx): (TypedArena<_>, &mut FunctionContext);
+    let (arena, mut fcx): (TypedArena<_>, FunctionContext);
     arena = TypedArena::new();
-    fcx = &mut new_fn_ctxt(ccx, llfndecl, ctor_id, false, result_ty,
-                           param_substs, None, &arena);
+    fcx = new_fn_ctxt(ccx, llfndecl, ctor_id, false, result_ty,
+                      param_substs, None, &arena);
+    let mut fcx = &mut fcx;
     let bcx = init_function(fcx, false, result_ty);
 
     assert!(!fcx.needs_ret_allocas);

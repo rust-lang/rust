@@ -25,14 +25,14 @@ use std::ffi::CString;
 use libc::{c_uint, c_char};
 
 // Take an inline assembly expression and splat it out via LLVM
-pub fn trans_inline_asm<'r, 'blk, 'tcx>(bcx: &'r mut Block<'r, 'blk, 'tcx>, ia: &ast::InlineAsm)
+pub fn trans_inline_asm<'r, 'blk, 'tcx>(&mut Block { bl, ref mut fcx }: &mut Block<'r, 'blk, 'tcx>,
+                                        ia: &ast::InlineAsm)
                                         -> &'blk BlockS {
-    let fcx = bcx.fcx;
-    let mut bcx = bcx;
+    let mut bcx = &mut bl.with(fcx);
     let mut constraints = Vec::new();
     let mut output_types = Vec::new();
 
-    let temp_scope = fcx.push_custom_cleanup_scope();
+    let temp_scope = bcx.fcx.push_custom_cleanup_scope();
 
     let mut ext_inputs = Vec::new();
     let mut ext_constraints = Vec::new();
@@ -48,11 +48,12 @@ pub fn trans_inline_asm<'r, 'blk, 'tcx>(bcx: &'r mut Block<'r, 'blk, 'tcx>, ia: 
         let val = out_datum.val;
         if is_rw {
             ext_inputs.push(unpack_result!(bcx, {
+                let expr_ty = expr_ty(bcx, &**out);
                 callee::trans_arg_datum(bcx,
-                                       expr_ty(bcx, &**out),
-                                       out_datum,
-                                       cleanup::CustomScope(temp_scope),
-                                       callee::DontAutorefArg)
+                                        expr_ty,
+                                        out_datum,
+                                        cleanup::CustomScope(temp_scope),
+                                        callee::DontAutorefArg)
             }));
             ext_constraints.push(i.to_string());
         }
@@ -67,8 +68,9 @@ pub fn trans_inline_asm<'r, 'blk, 'tcx>(bcx: &'r mut Block<'r, 'blk, 'tcx>, ia: 
 
         let in_datum = unpack_datum!(bcx, expr::trans(bcx, &**input));
         inputs.push(unpack_result!(bcx, {
+            let expr_ty = expr_ty(bcx, &**input);
             callee::trans_arg_datum(bcx,
-                                    expr_ty(bcx, &**input),
+                                    expr_ty,
                                     in_datum,
                                     cleanup::CustomScope(temp_scope),
                                     callee::DontAutorefArg)
@@ -77,7 +79,7 @@ pub fn trans_inline_asm<'r, 'blk, 'tcx>(bcx: &'r mut Block<'r, 'blk, 'tcx>, ia: 
     inputs.push_all(&ext_inputs[..]);
 
     // no failure occurred preparing operands, no need to cleanup
-    fcx.pop_custom_cleanup_scope(temp_scope);
+    bcx.fcx.pop_custom_cleanup_scope(temp_scope);
 
     let clobbers = ia.clobbers.iter()
                               .map(|s| format!("~{{{}}}", &s));

@@ -319,7 +319,8 @@ pub fn trans_native_call<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
         } else {
             if ty::type_is_bool(passed_arg_tys[i]) {
                 let val = LoadRangeAssert(bcx, llarg_rust, 0, 2, llvm::False);
-                Trunc(bcx, val, Type::i1(bcx.ccx()))
+                let ty = Type::i1(bcx.ccx());
+                Trunc(bcx, val, ty)
             } else {
                 Load(bcx, llarg_rust)
             }

@@ -131,6 +131,7 @@ use trans::glue;
 use middle::region;
 use trans::type_::Type;
 use middle::ty::{self, Ty};
+use std::cell::Cell;
 use std::fmt;
 use syntax::ast;
 use util::ppaux::Repr;
@@ -151,7 +152,7 @@ pub struct CleanupScope<'blk, 'tcx: 'blk> {
     debug_loc: DebugLoc,
 
     cached_early_exits: Vec<CachedEarlyExit>,
-    cached_landing_pad: Option<BasicBlockRef>,
+    cached_landing_pad: Cell<Option<BasicBlockRef>>,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -203,7 +204,7 @@ pub trait Cleanup<'tcx> {
     fn clean_on_unwind(&self) -> bool;
     fn is_lifetime_end(&self) -> bool;
     fn trans<'r,'blk>(&self,
-                      bcx: &'r mut Block<'r, 'blk, 'tcx>,
+                      bcx: &mut Block<'r, 'blk, 'tcx>,
                       debug_loc: DebugLoc)
                       -> &'blk BlockS;
 }
@@ -723,8 +724,8 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
                         let prev_bcx = self.new_block(true, "resume", None);
                         let personality = self.personality.get().expect(
                             "create_landing_pad() should have set this");
-                        build::Resume(&mut prev_bcx.with(self),
-                                      build::Load(&mut prev_bcx.with(self), personality));
+                        let ld = build::Load(&mut prev_bcx.with(self), personality);
+                        build::Resume(&mut prev_bcx.with(self), ld);
                         prev_llbb = prev_bcx.llbb;
                         break;
                     }
@@ -847,14 +848,14 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
 
         // Check if a landing pad block exists; if not, create one.
         {
-            let mut scopes = self.scopes.borrow_mut();
-            let last_scope = scopes.last_mut().unwrap();
-            match last_scope.cached_landing_pad {
+            let scopes = self.scopes.borrow();
+            let last_scope = scopes.last().unwrap();
+            match last_scope.cached_landing_pad.get() {
                 Some(llbb) => { return llbb; }
                 None => {
                     let name = last_scope.block_name("unwind");
                     pad_bcx = self.new_block(true, &name[..], None);
-                    last_scope.cached_landing_pad = Some(pad_bcx.llbb);
+                    last_scope.cached_landing_pad.set(Some(pad_bcx.llbb));
                 }
             }
         }
@@ -930,13 +931,13 @@ impl<'blk, 'tcx> CleanupScope<'blk, 'tcx> {
             debug_loc: debug_loc,
             cleanups: vec!(),
             cached_early_exits: vec!(),
-            cached_landing_pad: None,
+            cached_landing_pad: Cell::new(None),
         }
     }
 
     fn clear_cached_exits(&mut self) {
         self.cached_early_exits = vec!();
-        self.cached_landing_pad = None;
+        self.cached_landing_pad.set(None);
     }
 
     fn cached_early_exit(&self,
@@ -958,7 +959,7 @@ impl<'blk, 'tcx> CleanupScope<'blk, 'tcx> {
     /// True if this scope has cleanups that need unwinding
     fn needs_invoke(&self) -> bool {
 
-        self.cached_landing_pad.is_some() ||
+        self.cached_landing_pad.get().is_some() ||
             self.cleanups.iter().any(|c| c.must_unwind())
     }
 
@@ -1045,7 +1046,7 @@ impl<'tcx> Cleanup<'tcx> for DropValue<'tcx> {
     }
 
     fn trans<'r, 'blk>(&self,
-                       bcx: &'r mut Block<'r, 'blk, 'tcx>,
+                       bcx: &mut Block<'r, 'blk, 'tcx>,
                        debug_loc: DebugLoc)
                        -> &'blk BlockS {
         let skip_dtor = self.skip_dtor;
@@ -1092,7 +1093,7 @@ impl<'tcx> Cleanup<'tcx> for FreeValue<'tcx> {
     }
 
     fn trans<'r, 'blk>(&self,
-                       bcx: &'r mut Block<'r, 'blk, 'tcx>,
+                       bcx: &mut Block<'r, 'blk, 'tcx>,
                        debug_loc: DebugLoc)
                        -> &'blk BlockS {
         match self.heap {
@@ -1128,7 +1129,7 @@ impl<'tcx> Cleanup<'tcx> for FreeSlice {
     }
 
     fn trans<'r, 'blk>(&self,
-                       bcx: &'r mut Block<'r, 'blk, 'tcx>,
+                       bcx: &mut Block<'r, 'blk, 'tcx>,
                        debug_loc: DebugLoc)
                        -> &'blk BlockS {
         match self.heap {
@@ -1162,7 +1163,7 @@ impl<'tcx> Cleanup<'tcx> for LifetimeEnd {
     }
 
     fn trans<'r, 'blk>(&self,
-                       bcx: &'r mut Block<'r, 'blk, 'tcx>,
+                       bcx: &mut Block<'r, 'blk, 'tcx>,
                        debug_loc: DebugLoc)
                        -> &'blk BlockS {
         debug_loc.apply(bcx.fcx);

@@ -12,7 +12,7 @@ macro_rules! unpack_datum {
     ($bcx: ident, $inp: expr) => (
         {
             let db = $inp;
-            $bcx = &mut db.bcx.with($bcx.fcx);
+            $bcx.bl = db.bcx;
             db.datum
         }
     )
@@ -22,7 +22,7 @@ macro_rules! unpack_result {
     ($bcx: ident, $inp: expr) => (
         {
             let db = $inp;
-            $bcx = &mut db.bcx.with($bcx.fcx);
+            $bcx.bl = db.bcx;
             db.val
         }
     )

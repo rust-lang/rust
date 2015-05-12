@@ -613,7 +613,7 @@ pub enum DebugLoc {
 }
 
 impl DebugLoc {
-    pub fn apply(&self, fcx: &FunctionContext) {
+    pub fn apply(&self, fcx: &mut FunctionContext) {
         match *self {
             DebugLoc::At(node_id, span) => {
                 source_loc::set_source_location(fcx, node_id, span);

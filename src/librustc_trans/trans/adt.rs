@@ -819,7 +819,8 @@ pub fn trans_get_discr<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>, r: &Repr
         RawNullablePointer { nndiscr, nnty, .. } =>  {
             let cmp = if nndiscr == 0 { IntEQ } else { IntNE };
             let llptrty = type_of::sizing_type_of(bcx.ccx(), nnty);
-            val = ICmp(bcx, cmp, Load(bcx, scrutinee), C_null(llptrty), DebugLoc::None);
+            let op = Load(bcx, scrutinee);
+            val = ICmp(bcx, cmp, op, C_null(llptrty), DebugLoc::None);
             signed = false;
         }
         StructWrappedNullablePointer { nndiscr, ref discrfield, .. } => {
@@ -898,23 +899,27 @@ pub fn trans_set_discr<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>, r: &Repr
     match *r {
         CEnum(ity, min, max) => {
             assert_discr_in_range(ity, min, max, discr);
-            Store(bcx, C_integral(ll_inttype(bcx.ccx(), ity), discr as u64, true),
+            let ty = ll_inttype(bcx.ccx(), ity);
+            Store(bcx, C_integral(ty, discr as u64, true),
                   val);
         }
         General(ity, ref cases, dtor) => {
             if dtor_active(dtor) {
                 let ptr = trans_field_ptr(bcx, r, val, discr,
                                           cases[discr as usize].fields.len() - 2);
-                Store(bcx, C_u8(bcx.ccx(), DTOR_NEEDED as usize), ptr);
+                let v = C_u8(bcx.ccx(), DTOR_NEEDED as usize);
+                Store(bcx, v, ptr);
             }
-            Store(bcx, C_integral(ll_inttype(bcx.ccx(), ity), discr as u64, true),
-                  GEPi(bcx, val, &[0, 0]));
+            let ty = ll_inttype(bcx.ccx(), ity);
+            let p = GEPi(bcx, val, &[0, 0]);
+            Store(bcx, C_integral(ty, discr as u64, true), p);
         }
         Univariant(ref st, dtor) => {
             assert_eq!(discr, 0);
             if dtor_active(dtor) {
-                Store(bcx, C_u8(bcx.ccx(), DTOR_NEEDED as usize),
-                    GEPi(bcx, val, &[0, st.fields.len() - 1]));
+                let v = C_u8(bcx.ccx(), DTOR_NEEDED as usize);
+                let p = GEPi(bcx, val, &[0, st.fields.len() - 1]);
+                Store(bcx, v, p);
             }
         }
         RawNullablePointer { nndiscr, nnty, ..} => {
@@ -1021,24 +1026,23 @@ pub fn fold_variants<'r, 'blk, 'tcx, F>(bcx: &mut Block<'r, 'blk, 'tcx>,
                                         value: ValueRef,
                                         mut f: F)
                                         -> &'blk BlockS where
-    F: FnMut(&mut Block<'r, 'blk, 'tcx>, &Struct<'tcx>, ValueRef) -> &'blk BlockS,
+    F: for<'a> FnMut(&mut Block<'a, 'blk, 'tcx>, &Struct<'tcx>, ValueRef) -> &'blk BlockS,
 {
-    let fcx = bcx.fcx;
     match *r {
         Univariant(ref st, _) => {
             f(bcx, st, value)
         }
         General(ity, ref cases, _) => {
             let ccx = bcx.ccx();
-            let unr_cx = fcx.new_temp_block("enum-variant-iter-unr");
-            Unreachable(&mut unr_cx.with(fcx));
+            let unr_cx = bcx.fcx.new_temp_block("enum-variant-iter-unr");
+            Unreachable(&mut unr_cx.with(bcx.fcx));
 
             let discr_val = trans_get_discr(bcx, r, value, None);
             let llswitch = Switch(bcx, discr_val, unr_cx.llbb, cases.len());
-            let bcx_next = fcx.new_temp_block("enum-variant-iter-next");
+            let bcx_next = bcx.fcx.new_temp_block("enum-variant-iter-next");
 
             for (discr, case) in cases.iter().enumerate() {
-                let variant_cx = fcx.new_temp_block(
+                let variant_cx = bcx.fcx.new_temp_block(
                     &format!("enum-variant-iter-{}", &discr.to_string())
                 );
                 let rhs_val = C_integral(ll_inttype(ccx, ity), discr as u64, true);
@@ -1047,10 +1051,11 @@ pub fn fold_variants<'r, 'blk, 'tcx, F>(bcx: &mut Block<'r, 'blk, 'tcx>,
                 let fields = case.fields.iter().map(|&ty|
                     type_of::type_of(bcx.ccx(), ty)).collect::<Vec<_>>();
                 let real_ty = Type::struct_(ccx, &fields[..], case.packed);
-                let variant_value = PointerCast(&mut variant_cx.with(fcx), value, real_ty.ptr_to());
-
-                let variant_cx = f(&mut variant_cx.with(fcx), case, variant_value);
-                Br(&mut variant_cx.with(fcx), bcx_next.llbb, DebugLoc::None);
+                let variant_value = PointerCast(&mut variant_cx.with(bcx.fcx), value, real_ty.ptr_to());
+                
+                let mut bcx = &mut variant_cx.with(bcx.fcx);
+                let variant_cx = f(bcx, case, variant_value);
+                Br(&mut variant_cx.with(bcx.fcx), bcx_next.llbb, DebugLoc::None);
             }
 
             bcx_next
@@ -1060,9 +1065,12 @@ pub fn fold_variants<'r, 'blk, 'tcx, F>(bcx: &mut Block<'r, 'blk, 'tcx>,
 }
 
 /// Access the struct drop flag, if present.
-pub fn trans_drop_flag_ptr<'r, 'blk, 'tcx>(bcx: &'r mut Block<'r, 'blk, 'tcx>, r: &Repr<'tcx>, val: ValueRef)
+pub fn trans_drop_flag_ptr<'r, 'blk, 'tcx>(&mut Block { bl, ref mut fcx }: &mut Block<'r, 'blk, 'tcx>,
+                                           r: &Repr<'tcx>, val: ValueRef)
                                            -> datum::DatumBlock<'blk, 'tcx, datum::Expr>
 {
+    //let Block { bl, ref mut fcx } = *bcx;
+    let mut bcx = &mut bl.with(fcx);
     let tcx = bcx.tcx();
     let ptr_ty = ty::mk_imm_ptr(bcx.tcx(), tcx.dtor_type());
     match *r {
@@ -1071,8 +1079,7 @@ pub fn trans_drop_flag_ptr<'r, 'blk, 'tcx>(bcx: &'r mut Block<'r, 'blk, 'tcx>, r
             datum::immediate_rvalue_bcx(bcx, flag_ptr, ptr_ty).to_expr_datumblock()
         }
         General(_, _, dtor) if dtor_active(dtor) => {
-            let fcx = bcx.fcx;
-            let custom_cleanup_scope = fcx.push_custom_cleanup_scope();
+            let custom_cleanup_scope = bcx.fcx.push_custom_cleanup_scope();
             let scratch = unpack_datum!(bcx, datum::lvalue_scratch_datum(
                 bcx, tcx.dtor_type(), "drop_flag",
                 cleanup::CustomScope(custom_cleanup_scope), (), |_, bcx, _| bcx.bl
@@ -1083,7 +1090,7 @@ pub fn trans_drop_flag_ptr<'r, 'blk, 'tcx>(bcx: &'r mut Block<'r, 'blk, 'tcx>, r
                     .store_to(variant_cx, scratch.val)
             });
             let expr_datum = scratch.to_expr_datum();
-            fcx.pop_custom_cleanup_scope(custom_cleanup_scope);
+            bcx.fcx.pop_custom_cleanup_scope(custom_cleanup_scope);
             datum::DatumBlock::new(bl, expr_datum)
         }
         _ => bcx.ccx().sess().bug("tried to get drop flag of non-droppable type")

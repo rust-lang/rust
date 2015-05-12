@@ -52,7 +52,8 @@ fn load_closure_environment<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
         let datum = rvalue_scratch_datum(bcx,
                                          self_type,
                                          "closure_env");
-        store_ty(bcx, bcx.fcx.llenv.unwrap(), datum.val, self_type);
+        let e = bcx.fcx.llenv.unwrap();
+        store_ty(bcx, e, datum.val, self_type);
         datum.val
     } else {
         bcx.fcx.llenv.unwrap()
@@ -84,9 +85,10 @@ fn load_closure_environment<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
         bcx.fcx.llupvars.borrow_mut().insert(def_id.node, upvar_ptr);
 
         if kind == ty::FnOnceClosureKind && !captured_by_ref {
+            let ty = node_id_type(bcx, def_id.node);
             bcx.fcx.schedule_drop_mem(arg_scope_id,
                                       upvar_ptr,
-                                      node_id_type(bcx, def_id.node))
+                                      ty)
         }
 
         if let Some(env_pointer_alloca) = env_pointer_alloca {
@@ -186,7 +188,7 @@ pub enum Dest<'r, 'a: 'r, 'tcx: 'a> {
     Ignore(&'a CrateContext<'a, 'tcx>)
 }
 
-pub fn trans_closure_expr<'r, 'a, 'tcx>(dest: Dest<'r, 'a, 'tcx>,
+pub fn trans_closure_expr<'r, 'a, 'tcx>(mut dest: Dest<'r, 'a, 'tcx>,
                                         decl: &ast::FnDecl,
                                         body: &ast::Block,
                                         id: ast::NodeId,
@@ -194,7 +196,7 @@ pub fn trans_closure_expr<'r, 'a, 'tcx>(dest: Dest<'r, 'a, 'tcx>,
                                         -> Option<&'a BlockS>
 {
     let ccx = match dest {
-        Dest::SaveIn(bcx, _) => bcx.ccx(),
+        Dest::SaveIn(ref mut bcx, _) => bcx.ccx(),
         Dest::Ignore(ccx) => ccx
     };
     let tcx = ccx.tcx();
@@ -235,13 +237,14 @@ pub fn trans_closure_expr<'r, 'a, 'tcx>(dest: Dest<'r, 'a, 'tcx>,
     // Don't hoist this to the top of the function. It's perfectly legitimate
     // to have a zero-size closure (in which case dest will be `Ignore`) and
     // we must still generate the closure body.
-    let (mut bcx, dest_addr) = match dest {
+    let (&mut Block { bl, ref mut fcx }, dest_addr) = match dest {
         Dest::SaveIn(bcx, p) => (bcx, p),
         Dest::Ignore(_) => {
             debug!("trans_closure() ignoring result");
             return None;
         }
     };
+    let mut bcx = &mut bl.with(fcx);
 
     let repr = adt::represent_type(ccx, node_id_type(bcx, id));
 
@@ -253,7 +256,7 @@ pub fn trans_closure_expr<'r, 'a, 'tcx>(dest: Dest<'r, 'a, 'tcx>,
                                      closure_expr_id: id };
         match tcx.upvar_capture(upvar_id).unwrap() {
             ty::UpvarCapture::ByValue => {
-                bcx = &mut datum.store_to(bcx, upvar_slot_dest).with(bcx.fcx);
+                bcx.bl = datum.store_to(bcx, upvar_slot_dest);
             }
             ty::UpvarCapture::ByRef(..) => {
                 Store(bcx, datum.to_llref(), upvar_slot_dest);
@@ -392,7 +395,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
         });
 
     let sig = ty::erase_late_bound_regions(tcx, &llonce_bare_fn_ty.sig);
-    let (block_arena, fcx): (TypedArena<_>, FunctionContext);
+    let (block_arena, mut fcx): (TypedArena<_>, FunctionContext);
     block_arena = TypedArena::new();
     fcx = new_fn_ctxt(ccx,
                       lloncefn,
@@ -432,17 +435,17 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
 
     let dest =
         bcx.fcx.llretslotptr.get().map(
-                |_| expr::SaveIn(fcx.get_ret_slot(bcx.bl, sig.output, "ret_slot")));
+                |_| expr::SaveIn(bcx.fcx.get_ret_slot(bcx.bl, sig.output, "ret_slot")));
 
     let callee_data = TraitItem(MethodData { llfn: llreffn,
                                              llself: env_datum.val });
 
-    bcx = &mut callee::trans_call_inner(bcx,
-                                        DebugLoc::None,
-                                        llref_fn_ty,
-                                        |bcx, _| Callee { bcx: bcx.bl, data: callee_data },
-                                        ArgVals(&llargs),
-                                        dest).bcx.with(bcx.fcx);
+    bcx.bl = callee::trans_call_inner(bcx,
+                                      DebugLoc::None,
+                                      llref_fn_ty,
+                                      |bcx, _| Callee { bcx: bcx.bl, data: callee_data },
+                                      ArgVals(&llargs),
+                                      dest).bcx;
 
     bcx.fcx.pop_custom_cleanup_scope(self_scope);
 

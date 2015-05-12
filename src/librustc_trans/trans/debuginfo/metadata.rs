@@ -901,7 +901,7 @@ pub fn file_metadata(cx: &CrateContext, full_path: &str) -> DIFile {
 }
 
 /// Finds the scope metadata node for the given AST node.
-pub fn scope_metadata(fcx: &FunctionContext,
+pub fn scope_metadata(fcx: &mut FunctionContext,
                       node_id: ast::NodeId,
                       error_reporting_span: Span)
                -> DIScope {
@@ -1928,30 +1928,31 @@ pub fn create_local_var_metadata(bcx: &mut Block, local: &ast::Local) {
 
     let cx = bcx.ccx();
     let def_map = &cx.tcx().def_map;
-    let locals = bcx.fcx.lllocals.borrow();
-
     pat_util::pat_bindings(def_map, &*local.pat, |_, node_id, span, var_ident| {
-        let datum = match locals.get(&node_id) {
-            Some(datum) => datum,
-            None => {
-                bcx.sess().span_bug(span,
-                    &format!("no entry in lllocals table for {}",
-                            node_id));
+        let (ty, v) = {
+            let locals = bcx.fcx.lllocals.borrow();
+            let datum = match locals.get(&node_id) {
+                Some(datum) => datum,
+                None => {
+                    bcx.sess().span_bug(span,
+                        &format!("no entry in lllocals table for {}",
+                                node_id));
+                }
+            };
+            if unsafe { llvm::LLVMIsAAllocaInst(datum.val) } == ptr::null_mut() {
+                cx.sess().span_bug(span, "debuginfo::create_local_var_metadata() - \
+                                          Referenced variable location is not an alloca!");
             }
+            (datum.ty, datum.val)
         };
-
-        if unsafe { llvm::LLVMIsAAllocaInst(datum.val) } == ptr::null_mut() {
-            cx.sess().span_bug(span, "debuginfo::create_local_var_metadata() - \
-                                      Referenced variable location is not an alloca!");
-        }
 
         let scope_metadata = scope_metadata(bcx.fcx, node_id, span);
 
         declare_local(bcx,
                       var_ident.node.name,
-                      datum.ty,
+                      ty,
                       scope_metadata,
-                      VariableAccess::DirectVariable { alloca: datum.val },
+                      VariableAccess::DirectVariable { alloca: v },
                       VariableKind::LocalVariable,
                       span);
     })
@@ -2107,22 +2108,24 @@ pub fn create_argument_metadata(bcx: &mut Block, arg: &ast::Arg) {
                          .debug_context
                          .get_ref(bcx.ccx(), arg.pat.span)
                          .fn_metadata;
-    let locals = bcx.fcx.lllocals.borrow();
-
     pat_util::pat_bindings(def_map, &*arg.pat, |_, node_id, span, var_ident| {
-        let datum = match locals.get(&node_id) {
-            Some(v) => v,
-            None => {
-                bcx.sess().span_bug(span,
-                    &format!("no entry in lllocals table for {}",
-                            node_id));
-            }
-        };
+        let (ty, v) = {
+            let locals = bcx.fcx.lllocals.borrow();
+            let datum = match locals.get(&node_id) {
+                Some(v) => v,
+                None => {
+                    bcx.sess().span_bug(span,
+                        &format!("no entry in lllocals table for {}",
+                                node_id));
+                }
+            };
 
-        if unsafe { llvm::LLVMIsAAllocaInst(datum.val) } == ptr::null_mut() {
-            bcx.sess().span_bug(span, "debuginfo::create_argument_metadata() - \
-                                       Referenced variable location is not an alloca!");
-        }
+            if unsafe { llvm::LLVMIsAAllocaInst(datum.val) } == ptr::null_mut() {
+                bcx.sess().span_bug(span, "debuginfo::create_argument_metadata() - \
+                                           Referenced variable location is not an alloca!");
+            }
+            (datum.ty, datum.val)
+        };
 
         let argument_index = {
             let counter = &bcx
@@ -2137,9 +2140,9 @@ pub fn create_argument_metadata(bcx: &mut Block, arg: &ast::Arg) {
 
         declare_local(bcx,
                       var_ident.node.name,
-                      datum.ty,
+                      ty,
                       scope_metadata,
-                      VariableAccess::DirectVariable { alloca: datum.val },
+                      VariableAccess::DirectVariable { alloca: v },
                       VariableKind::ArgumentVariable(argument_index),
                       span);
     })

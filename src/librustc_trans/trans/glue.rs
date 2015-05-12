@@ -46,7 +46,7 @@ use arena::TypedArena;
 use libc::c_uint;
 use syntax::ast;
 
-pub fn trans_exchange_free_dyn<'r, 'blk, 'tcx>(cx: &'r mut Block<'r, 'blk, 'tcx>,
+pub fn trans_exchange_free_dyn<'r, 'blk, 'tcx>(cx: &mut Block<'r, 'blk, 'tcx>,
                                                v: ValueRef,
                                                size: ValueRef,
                                                align: ValueRef,
@@ -54,27 +54,23 @@ pub fn trans_exchange_free_dyn<'r, 'blk, 'tcx>(cx: &'r mut Block<'r, 'blk, 'tcx>
                                                -> &'blk BlockS {
     let _icx = push_ctxt("trans_exchange_free");
     let ccx = cx.ccx();
-    callee::trans_lang_call(cx,
-        langcall(cx, None, "", ExchangeFreeFnLangItem),
-        &[PointerCast(cx, v, Type::i8p(ccx)), size, align],
-        Some(expr::Ignore),
-        debug_loc).bcx
+    let lc = langcall(cx, None, "", ExchangeFreeFnLangItem);
+    let pc = [PointerCast(cx, v, Type::i8p(ccx)), size, align];
+    callee::trans_lang_call(cx, lc, &pc, Some(expr::Ignore), debug_loc).bcx
 }
 
-pub fn trans_exchange_free<'r, 'blk, 'tcx>(cx: &'r mut Block<'r, 'blk, 'tcx>,
+pub fn trans_exchange_free<'r, 'blk, 'tcx>(cx: &mut Block<'r, 'blk, 'tcx>,
                                            v: ValueRef,
                                            size: u64,
                                            align: u32,
                                            debug_loc: DebugLoc)
                                            -> &'blk BlockS {
-    trans_exchange_free_dyn(cx,
-                            v,
-                            C_uint(cx.ccx(), size),
-                            C_uint(cx.ccx(), align),
-                            debug_loc)
+    let s = C_uint(cx.ccx(), size);
+    let a = C_uint(cx.ccx(), align);
+    trans_exchange_free_dyn(cx, v, s, a, debug_loc)
 }
 
-pub fn trans_exchange_free_ty<'r, 'blk, 'tcx>(bcx: &'r mut Block<'r, 'blk, 'tcx>,
+pub fn trans_exchange_free_ty<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
                                               ptr: ValueRef,
                                               content_ty: Ty<'tcx>,
                                               debug_loc: DebugLoc)
@@ -170,7 +166,8 @@ pub fn drop_ty_immediate<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
                                          skip_dtor: bool)
                                          -> &'blk BlockS {
     let _icx = push_ctxt("drop_ty_immediate");
-    let vp = alloca(bcx, type_of(bcx.ccx(), t), "");
+    let ty = type_of(bcx.ccx(), t);
+    let vp = alloca(bcx, ty, "");
     store_ty(bcx, v, vp, t);
     drop_ty_core(bcx, vp, t, debug_loc, skip_dtor)
 }
@@ -250,11 +247,12 @@ fn get_drop_glue_core<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let _s = StatRecorder::new(ccx, format!("drop {}", ty_to_short_str(ccx.tcx(), t)));
 
     let empty_substs = ccx.tcx().mk_substs(Substs::trans_empty());
-    let (arena, fcx): (TypedArena<_>, &mut FunctionContext);
+    let (arena, mut fcx): (TypedArena<_>, FunctionContext);
     arena = TypedArena::new();
-    fcx = &mut new_fn_ctxt(ccx, llfn, ast::DUMMY_NODE_ID, false,
-                           ty::FnConverging(ty::mk_nil(ccx.tcx())),
-                           empty_substs, None, &arena);
+    fcx = new_fn_ctxt(ccx, llfn, ast::DUMMY_NODE_ID, false,
+                      ty::FnConverging(ty::mk_nil(ccx.tcx())),
+                      empty_substs, None, &arena);
+    let mut fcx = &mut fcx;
 
     let bcx = init_function(fcx, false, ty::FnConverging(ty::mk_nil(ccx.tcx())));
 
@@ -276,13 +274,14 @@ fn get_drop_glue_core<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     llfn
 }
 
-fn trans_struct_drop_flag<'r, 'blk, 'tcx>(bcx: &'r mut Block<'r, 'blk, 'tcx>,
+fn trans_struct_drop_flag<'r, 'blk, 'tcx>(&mut Block { bl, ref mut fcx }: &mut Block<'r, 'blk, 'tcx>,
                                           t: Ty<'tcx>,
                                           v0: ValueRef,
                                           dtor_did: ast::DefId,
                                           class_did: ast::DefId,
                                           substs: &subst::Substs<'tcx>)
                                           -> &'blk BlockS {
+    let mut bcx = &mut bl.with(fcx);
     let repr = adt::represent_type(bcx.ccx(), t);
     let struct_data = if type_is_sized(bcx.tcx(), t) {
         v0
@@ -291,24 +290,23 @@ fn trans_struct_drop_flag<'r, 'blk, 'tcx>(bcx: &'r mut Block<'r, 'blk, 'tcx>,
         Load(bcx, llval)
     };
     let drop_flag = unpack_datum!(bcx, adt::trans_drop_flag_ptr(bcx, &*repr, struct_data));
-    let loaded = load_ty(bcx, drop_flag.val, bcx.tcx().dtor_type());
-    let drop_flag_llty = type_of(bcx.fcx.ccx, bcx.tcx().dtor_type());
+    let dty = bcx.tcx().dtor_type();
+    let loaded = load_ty(bcx, drop_flag.val, dty);
+    let drop_flag_llty = type_of(bcx.fcx.ccx, dty);
     let init_val = C_integral(drop_flag_llty, adt::DTOR_NEEDED as u64, false);
 
-    let bcx = if !bcx.ccx().check_drop_flag_for_sanity() {
-        bcx
-    } else {
+    if bcx.ccx().check_drop_flag_for_sanity() {
         let drop_flag_llty = type_of(bcx.fcx.ccx, bcx.tcx().dtor_type());
         let done_val = C_integral(drop_flag_llty, adt::DTOR_DONE as u64, false);
         let not_init = ICmp(bcx, llvm::IntNE, loaded, init_val, DebugLoc::None);
         let not_done = ICmp(bcx, llvm::IntNE, loaded, done_val, DebugLoc::None);
         let drop_flag_neither_initialized_nor_cleared =
             And(bcx, not_init, not_done, DebugLoc::None);
-        &mut with_cond(bcx, drop_flag_neither_initialized_nor_cleared, |cx| {
+        bcx.bl = with_cond(bcx, drop_flag_neither_initialized_nor_cleared, |cx| {
             let llfn = cx.ccx().get_intrinsic(&("llvm.debugtrap"));
             Call(cx, llfn, &[], None, DebugLoc::None);
             cx.bl
-        }).with(bcx.fcx)
+        });
     };
 
     let drop_flag_dtor_needed = ICmp(bcx, llvm::IntEQ, loaded, init_val, DebugLoc::None);
@@ -421,20 +419,15 @@ fn size_and_align_of_dst<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>, t: Ty<
 
             // Return the sum of sizes and max of aligns.
             let size = Add(bcx, sized_size, unsized_size, DebugLoc::None);
-            let align = Select(bcx,
-                               ICmp(bcx,
-                                    llvm::IntULT,
-                                    sized_align,
-                                    unsized_align,
-                                    DebugLoc::None),
-                               sized_align,
-                               unsized_align);
+            let cmp = ICmp(bcx, llvm::IntULT, sized_align, unsized_align, DebugLoc::None);
+            let align = Select(bcx, cmp, sized_align, unsized_align);
             (size, align)
         }
         ty::ty_trait(..) => {
             // info points to the vtable and the second entry in the vtable is the
             // dynamic size of the object.
-            let info = PointerCast(bcx, info, Type::int(bcx.ccx()).ptr_to());
+            let ty = Type::int(bcx.ccx());
+            let info = PointerCast(bcx, info, ty.ptr_to());
             let size_ptr = GEPi(bcx, info, &[1]);
             let align_ptr = GEPi(bcx, info, &[2]);
             (Load(bcx, size_ptr), Load(bcx, align_ptr))
@@ -446,7 +439,8 @@ fn size_and_align_of_dst<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>, t: Ty<
             let llunit_ty = sizing_type_of(bcx.ccx(), unit_ty);
             let unit_align = llalign_of_min(bcx.ccx(), llunit_ty);
             let unit_size = llsize_of_alloc(bcx.ccx(), llunit_ty);
-            (Mul(bcx, info, C_uint(bcx.ccx(), unit_size), DebugLoc::None),
+            let ty = C_uint(bcx.ccx(), unit_size);
+            (Mul(bcx, info, ty, DebugLoc::None),
              C_uint(bcx.ccx(), unit_align))
         }
         _ => bcx.sess().bug(&format!("Unexpected unsized type, found {}",
@@ -454,7 +448,9 @@ fn size_and_align_of_dst<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>, t: Ty<
     }
 }
 
-fn make_drop_glue<'r, 'blk, 'tcx>(bcx: &'r mut Block<'r, 'blk, 'tcx>, v0: ValueRef, g: DropGlueKind<'tcx>)
+fn make_drop_glue<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
+                                  v0: ValueRef,
+                                  g: DropGlueKind<'tcx>)
                                   -> &'blk BlockS {
     let t = g.ty();
     let skip_dtor = match g { DropGlueKind::Ty(_) => false, DropGlueKind::TyContents(_) => true };
@@ -478,7 +474,8 @@ fn make_drop_glue<'r, 'blk, 'tcx>(bcx: &'r mut Block<'r, 'blk, 'tcx>, v0: ValueR
             if !type_is_sized(bcx.tcx(), content_ty) {
                 let llval = GEPi(bcx, v0, &[0, abi::FAT_PTR_ADDR]);
                 let llbox = Load(bcx, llval);
-                let llbox_as_usize = PtrToInt(bcx, llbox, Type::int(bcx.ccx()));
+                let ty = Type::int(bcx.ccx());
+                let llbox_as_usize = PtrToInt(bcx, llbox, ty);
                 let drop_flag_not_dropped_already =
                     ICmp(bcx, llvm::IntNE, llbox_as_usize, dropped_pattern, DebugLoc::None);
                 with_cond(bcx, drop_flag_not_dropped_already, |bcx| {
@@ -488,10 +485,11 @@ fn make_drop_glue<'r, 'blk, 'tcx>(bcx: &'r mut Block<'r, 'blk, 'tcx>, v0: ValueR
                     let (llsize, llalign) = size_and_align_of_dst(bcx, content_ty, info);
 
                     // `Box<ZeroSizeType>` does not allocate.
+                    let ty = C_uint(bcx.ccx(), 0u64);
                     let needs_free = ICmp(bcx,
                                           llvm::IntNE,
                                           llsize,
-                                          C_uint(bcx.ccx(), 0u64),
+                                          ty,
                                           DebugLoc::None);
                     with_cond(bcx, needs_free, |bcx| {
                         trans_exchange_free_dyn(bcx, llbox, llsize, llalign, DebugLoc::None)
@@ -544,11 +542,15 @@ fn make_drop_glue<'r, 'blk, 'tcx>(bcx: &'r mut Block<'r, 'blk, 'tcx>, v0: ValueR
             // okay with always calling the Drop impl, if any.
             assert!(!skip_dtor);
             let data_ptr = GEPi(bcx, v0, &[0, abi::FAT_PTR_ADDR]);
-            let vtable_ptr = Load(bcx, GEPi(bcx, v0, &[0, abi::FAT_PTR_EXTRA]));
+            let fpe = GEPi(bcx, v0, &[0, abi::FAT_PTR_EXTRA]);
+            let vtable_ptr = Load(bcx, fpe);
             let dtor = Load(bcx, vtable_ptr);
+            let dp = Load(bcx, data_ptr);
+            let ty = Type::i8p(bcx.ccx());
+            let pc = &[PointerCast(bcx, dp, ty)];
             Call(bcx,
                  dtor,
-                 &[PointerCast(bcx, Load(bcx, data_ptr), Type::i8p(bcx.ccx()))],
+                 pc,
                  None,
                  DebugLoc::None);
             bcx.bl

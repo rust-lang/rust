@@ -432,6 +432,10 @@ pub struct FunctionContext<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
+    pub fn tcx(&self) -> &'a ty::ctxt<'tcx> {
+        self.ccx.tcx()
+    }
+
     pub fn arg_pos(&self, arg: usize) -> usize {
         let arg = self.env_arg_pos() + arg;
         if self.llenv.is_some() {
@@ -449,7 +453,7 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
         }
     }
 
-    pub fn cleanup(&self) {
+    pub fn cleanup(&mut self) {
         unsafe {
             llvm::LLVMInstructionEraseFromParent(self.alloca_insert_pt
                                                      .get()
@@ -457,7 +461,7 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
         }
     }
 
-    pub fn get_llreturn(&self) -> BasicBlockRef {
+    pub fn get_llreturn(&mut self) -> BasicBlockRef {
         if self.llreturn.get().is_none() {
 
             self.llreturn.set(Some(unsafe {
@@ -473,17 +477,18 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
                         output: ty::FnOutput<'tcx>,
                         name: &str) -> ValueRef {
         if self.needs_ret_allocas {
-            base::alloca_no_lifetime(&mut bcx.with(self), match output {
+            let ty = match output {
                 ty::FnConverging(output_type) => type_of::type_of(bcx.with(self).ccx(),
                                                                   output_type),
                 ty::FnDiverging => Type::void(bcx.with(self).ccx())
-            }, name)
+            };
+            base::alloca_no_lifetime(&mut bcx.with(self), ty, name)
         } else {
             self.llretslotptr.get().unwrap()
         }
     }
 
-    pub fn new_block(&mut self,
+    pub fn new_block(&self,
                      is_lpad: bool,
                      name: &str,
                      opt_node_id: Option<ast::NodeId>)
@@ -580,7 +585,7 @@ impl BlockS {
         }
     }
 
-    pub fn alloc<'r, 'blk, 'tcx>(self, fcx: &mut FunctionContext<'blk, 'tcx>) -> &'blk mut BlockS {
+    pub fn alloc<'r, 'blk, 'tcx>(self, fcx: &FunctionContext<'blk, 'tcx>) -> &'blk mut BlockS {
         fcx.block_arena.alloc(self)
     }
 
@@ -655,7 +660,7 @@ impl<'r, 'blk, 'tcx> Block<'r, 'blk, 'tcx> {
         format!("[block {:p}]", self)
     }
 
-    pub fn monomorphize<T>(&self, value: &T) -> T
+    pub fn monomorphize<T>(&mut self, value: &T) -> T
         where T : TypeFoldable<'tcx> + Repr<'tcx> + HasProjectionTypes + Clone
     {
         monomorphize::apply_param_substs(self.tcx(),

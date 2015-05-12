@@ -553,7 +553,7 @@ pub fn Alloca(cx: &mut Block, ty: Type, name: &str) -> ValueRef {
     }
 }
 
-pub fn AllocaFcx(fcx: &FunctionContext, ty: Type, name: &str) -> ValueRef {
+pub fn AllocaFcx(fcx: &mut FunctionContext, ty: Type, name: &str) -> ValueRef {
     let b = fcx.ccx.builder();
     b.position_before(fcx.alloca_insert_pt.get().unwrap());
     DebugLoc::None.apply(fcx);
