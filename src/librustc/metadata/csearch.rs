@@ -304,31 +304,23 @@ pub fn get_native_libraries(cstore: &cstore::CStore, crate_num: ast::CrateNum)
     decoder::get_native_libraries(&*cdata)
 }
 
-pub fn each_impl<F>(cstore: &cstore::CStore,
-                    crate_num: ast::CrateNum,
-                    callback: F) where
-    F: FnMut(ast::DefId),
-{
-    let cdata = cstore.get_crate_data(crate_num);
-    decoder::each_impl(&*cdata, callback)
-}
-
-pub fn each_implementation_for_type<F>(cstore: &cstore::CStore,
-                                       def_id: ast::DefId,
-                                       callback: F) where
+pub fn each_inherent_implementation_for_type<F>(cstore: &cstore::CStore,
+                                                def_id: ast::DefId,
+                                                callback: F) where
     F: FnMut(ast::DefId),
 {
     let cdata = cstore.get_crate_data(def_id.krate);
-    decoder::each_implementation_for_type(&*cdata, def_id.node, callback)
+    decoder::each_inherent_implementation_for_type(&*cdata, def_id.node, callback)
 }
 
 pub fn each_implementation_for_trait<F>(cstore: &cstore::CStore,
                                         def_id: ast::DefId,
-                                        callback: F) where
+                                        mut callback: F) where
     F: FnMut(ast::DefId),
 {
-    let cdata = cstore.get_crate_data(def_id.krate);
-    decoder::each_implementation_for_trait(&*cdata, def_id.node, callback)
+    cstore.iter_crate_data(|_, cdata| {
+        decoder::each_implementation_for_trait(cdata, def_id, &mut callback)
+    })
 }
 
 /// If the given def ID describes an item belonging to a trait (either a
