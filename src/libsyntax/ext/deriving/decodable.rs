@@ -87,7 +87,7 @@ fn expand_deriving_decodable_imp(cx: &mut ExtCtxt,
         associated_types: Vec::new(),
     };
 
-    trait_def.expand(cx, mitem, item, push)
+    trait_def.expand(cx, mitem, &item, push)
 }
 
 fn decodable_substructure(cx: &mut ExtCtxt, trait_span: Span,

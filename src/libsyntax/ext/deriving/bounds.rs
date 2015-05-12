@@ -45,5 +45,5 @@ pub fn expand_deriving_copy(cx: &mut ExtCtxt,
         associated_types: Vec::new(),
     };
 
-    trait_def.expand(cx, mitem, item, push);
+    trait_def.expand(cx, mitem, &item, push);
 }

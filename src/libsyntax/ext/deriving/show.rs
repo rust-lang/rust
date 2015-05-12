@@ -49,7 +49,7 @@ pub fn expand_deriving_show(cx: &mut ExtCtxt,
         ],
         associated_types: Vec::new(),
     };
-    trait_def.expand(cx, mitem, item, push)
+    trait_def.expand(cx, mitem, &item, push)
 }
 
 /// We use the debug builders to do the heavy lifting here

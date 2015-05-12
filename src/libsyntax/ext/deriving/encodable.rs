@@ -163,7 +163,7 @@ fn expand_deriving_encodable_imp(cx: &mut ExtCtxt,
         associated_types: Vec::new(),
     };
 
-    trait_def.expand(cx, mitem, item, push)
+    trait_def.expand(cx, mitem, &item, push)
 }
 
 fn encodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
