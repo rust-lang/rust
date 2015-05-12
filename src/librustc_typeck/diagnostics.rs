@@ -91,6 +91,16 @@ enum variant, one of the fields was not provided. Each field should be specified
 exactly once.
 "##,
 
+E0066: r##"
+Box placement expressions (like C++'s "placement new") do not support any
+place expression except the exchange heap (i.e. `std::boxed::HEAP`).
+Furthermore, the syntax is changing to use `in` instead of `box`. See [RFC
+470][rfc470] and [RFC 809][rfc809] for more details.
+
+[rfc470]: https://github.com/rust-lang/rfcs/pull/470
+[rfc809]: https://github.com/rust-lang/rfcs/pull/809
+"##,
+
 E0067: r##"
 The left-hand side of an assignment operator must be an lvalue expression. An
 lvalue expression represents a memory location and includes item paths (ie,
@@ -498,7 +508,6 @@ register_diagnostics! {
     E0059,
     E0060,
     E0061,
-    E0066,
     E0068,
     E0070,
     E0071,

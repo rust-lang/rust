@@ -3033,8 +3033,8 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
           let mut checked = false;
           opt_place.as_ref().map(|place| match place.node {
               ast::ExprPath(None, ref path) => {
-                  // FIXME(pcwalton): For now we hardcode the two permissible
-                  // places: the exchange heap and the managed heap.
+                  // FIXME(pcwalton): For now we hardcode the only permissible
+                  // place: the exchange heap.
                   let definition = lookup_full_def(tcx, path.span, place.id);
                   let def_id = definition.def_id();
                   let referent_ty = fcx.expr_ty(&**subexpr);
@@ -3048,7 +3048,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
 
           if !checked {
               span_err!(tcx.sess, expr.span, E0066,
-                  "only the managed heap and exchange heap are currently supported");
+                  "only the exchange heap is currently supported");
               fcx.write_ty(id, tcx.types.err);
           }
       }
