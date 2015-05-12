@@ -547,7 +547,7 @@ _name_ s that occur in its body. At the "current layer", they all must repeat
 the same number of times, so ` ( $( $i:ident ),* ; $( $j:ident ),* ) => ( $(
 ($i,$j) ),* )` is valid if given the argument `(a,b,c ; d,e,f)`, but not
 `(a,b,c ; d,e)`. The repetition walks through the choices at that layer in
-lockstep, so the former input transcribes to `( (a,d), (b,e), (c,f) )`.
+lockstep, so the former input transcribes to `(a,d), (b,e), (c,f)`.
 
 Nested repetitions are allowed.
 
