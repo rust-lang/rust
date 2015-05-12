@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,13 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![crate_name="a#0.1"]
-#![crate_type = "lib"]
+struct S;
 
-trait to_strz {
-    fn to_strz() -> String;
-}
+trait InOut<T> { type Out; }
 
-impl to_strz for String {
-    fn to_strz() -> String { self.clone() }
+fn do_fold<B, F: InOut<B, Out=B>>(init: B, f: F) {}
+
+fn bot<T>() -> T { loop {} }
+
+fn main() {
+    do_fold(bot(), ()); //~ ERROR is not implemented for the type `()`
 }

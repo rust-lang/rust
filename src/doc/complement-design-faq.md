@@ -39,7 +39,7 @@ representation as a primitive. This allows using Rust `enum`s in FFI where C
 `enum`s are also used, for most use cases. The attribute can also be applied
 to `struct`s to get the same layout as a C struct would.
 
-[repr]: reference.html#miscellaneous-attributes
+[repr]: reference.html#ffi-attributes
 
 ## There is no GC
 
@@ -96,7 +96,7 @@ code should need to run is a stack.
 possibility is covered by the `match`, adding further variants to the `enum`
 in the future will prompt a compilation failure, rather than runtime panic.
 Second, it makes cost explicit. In general, the only safe way to have a
-non-exhaustive match would be to panic the task if nothing is matched, though
+non-exhaustive match would be to panic the thread if nothing is matched, though
 it could fall through if the type of the `match` expression is `()`. This sort
 of hidden cost and special casing is against the language's philosophy. It's
 easy to ignore certain cases by using the `_` wildcard:

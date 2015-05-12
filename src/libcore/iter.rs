@@ -82,7 +82,7 @@ fn _assert_is_object_safe(_: &Iterator<Item=()>) {}
 /// is returned. A concrete Iterator implementation may choose to behave however
 /// it wishes, either by returning `None` infinitely, or by doing something
 /// else.
-#[lang="iterator"]
+#[lang = "iterator"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented = "`{Self}` is not an iterator; maybe try calling \
                             `.iter()` or a similar method"]
@@ -137,7 +137,7 @@ pub trait Iterator {
     ///
     /// ```
     /// let a = [1, 2, 3, 4, 5];
-    /// assert!(a.iter().last().unwrap() == &5);
+    /// assert_eq!(a.iter().last(), Some(&5));
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -155,8 +155,8 @@ pub trait Iterator {
     /// ```
     /// let a = [1, 2, 3, 4, 5];
     /// let mut it = a.iter();
-    /// assert!(it.nth(2).unwrap() == &3);
-    /// assert!(it.nth(2) == None);
+    /// assert_eq!(it.nth(2), Some(&3));
+    /// assert_eq!(it.nth(2), None);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -178,8 +178,8 @@ pub trait Iterator {
     /// let a = [0];
     /// let b = [1];
     /// let mut it = a.iter().chain(b.iter());
-    /// assert_eq!(it.next().unwrap(), &0);
-    /// assert_eq!(it.next().unwrap(), &1);
+    /// assert_eq!(it.next(), Some(&0));
+    /// assert_eq!(it.next(), Some(&1));
     /// assert!(it.next().is_none());
     /// ```
     #[inline]
@@ -201,7 +201,7 @@ pub trait Iterator {
     /// let a = [0];
     /// let b = [1];
     /// let mut it = a.iter().zip(b.iter());
-    /// assert_eq!(it.next().unwrap(), (&0, &1));
+    /// assert_eq!(it.next(), Some((&0, &1)));
     /// assert!(it.next().is_none());
     /// ```
     ///
@@ -234,8 +234,8 @@ pub trait Iterator {
     /// ```
     /// let a = [1, 2];
     /// let mut it = a.iter().map(|&x| 2 * x);
-    /// assert_eq!(it.next().unwrap(), 2);
-    /// assert_eq!(it.next().unwrap(), 4);
+    /// assert_eq!(it.next(), Some(2));
+    /// assert_eq!(it.next(), Some(4));
     /// assert!(it.next().is_none());
     /// ```
     #[inline]
@@ -255,7 +255,7 @@ pub trait Iterator {
     /// ```
     /// let a = [1, 2];
     /// let mut it = a.iter().filter(|&x| *x > 1);
-    /// assert_eq!(it.next().unwrap(), &2);
+    /// assert_eq!(it.next(), Some(&2));
     /// assert!(it.next().is_none());
     /// ```
     #[inline]
@@ -275,7 +275,7 @@ pub trait Iterator {
     /// ```
     /// let a = [1, 2];
     /// let mut it = a.iter().filter_map(|&x| if x > 1 {Some(2 * x)} else {None});
-    /// assert_eq!(it.next().unwrap(), 4);
+    /// assert_eq!(it.next(), Some(4));
     /// assert!(it.next().is_none());
     /// ```
     #[inline]
@@ -310,8 +310,8 @@ pub trait Iterator {
     /// ```
     /// let a = [100, 200];
     /// let mut it = a.iter().enumerate();
-    /// assert_eq!(it.next().unwrap(), (0, &100));
-    /// assert_eq!(it.next().unwrap(), (1, &200));
+    /// assert_eq!(it.next(), Some((0, &100)));
+    /// assert_eq!(it.next(), Some((1, &200)));
     /// assert!(it.next().is_none());
     /// ```
     #[inline]
@@ -353,9 +353,9 @@ pub trait Iterator {
     /// ```
     /// let a = [1, 2, 3, 4, 5];
     /// let mut it = a.iter().skip_while(|&a| *a < 3);
-    /// assert_eq!(it.next().unwrap(), &3);
-    /// assert_eq!(it.next().unwrap(), &4);
-    /// assert_eq!(it.next().unwrap(), &5);
+    /// assert_eq!(it.next(), Some(&3));
+    /// assert_eq!(it.next(), Some(&4));
+    /// assert_eq!(it.next(), Some(&5));
     /// assert!(it.next().is_none());
     /// ```
     #[inline]
@@ -375,8 +375,8 @@ pub trait Iterator {
     /// ```
     /// let a = [1, 2, 3, 4, 5];
     /// let mut it = a.iter().take_while(|&a| *a < 3);
-    /// assert_eq!(it.next().unwrap(), &1);
-    /// assert_eq!(it.next().unwrap(), &2);
+    /// assert_eq!(it.next(), Some(&1));
+    /// assert_eq!(it.next(), Some(&2));
     /// assert!(it.next().is_none());
     /// ```
     #[inline]
@@ -395,8 +395,8 @@ pub trait Iterator {
     /// ```
     /// let a = [1, 2, 3, 4, 5];
     /// let mut it = a.iter().skip(3);
-    /// assert_eq!(it.next().unwrap(), &4);
-    /// assert_eq!(it.next().unwrap(), &5);
+    /// assert_eq!(it.next(), Some(&4));
+    /// assert_eq!(it.next(), Some(&5));
     /// assert!(it.next().is_none());
     /// ```
     #[inline]
@@ -413,9 +413,9 @@ pub trait Iterator {
     /// ```
     /// let a = [1, 2, 3, 4, 5];
     /// let mut it = a.iter().take(3);
-    /// assert_eq!(it.next().unwrap(), &1);
-    /// assert_eq!(it.next().unwrap(), &2);
-    /// assert_eq!(it.next().unwrap(), &3);
+    /// assert_eq!(it.next(), Some(&1));
+    /// assert_eq!(it.next(), Some(&2));
+    /// assert_eq!(it.next(), Some(&3));
     /// assert!(it.next().is_none());
     /// ```
     #[inline]
@@ -437,11 +437,11 @@ pub trait Iterator {
     ///   *fac = *fac * x;
     ///   Some(*fac)
     /// });
-    /// assert_eq!(it.next().unwrap(), 1);
-    /// assert_eq!(it.next().unwrap(), 2);
-    /// assert_eq!(it.next().unwrap(), 6);
-    /// assert_eq!(it.next().unwrap(), 24);
-    /// assert_eq!(it.next().unwrap(), 120);
+    /// assert_eq!(it.next(), Some(1));
+    /// assert_eq!(it.next(), Some(2));
+    /// assert_eq!(it.next(), Some(6));
+    /// assert_eq!(it.next(), Some(24));
+    /// assert_eq!(it.next(), Some(120));
     /// assert!(it.next().is_none());
     /// ```
     #[inline]
@@ -545,8 +545,8 @@ pub trait Iterator {
     /// let mut it = 0..10;
     /// // sum the first five values
     /// let partial_sum = it.by_ref().take(5).fold(0, |a, b| a + b);
-    /// assert!(partial_sum == 10);
-    /// assert!(it.next() == Some(5));
+    /// assert_eq!(partial_sum, 10);
+    /// assert_eq!(it.next(), Some(5));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn by_ref(&mut self) -> &mut Self where Self: Sized { self }
@@ -602,11 +602,13 @@ pub trait Iterator {
     /// Performs a fold operation over the entire iterator, returning the
     /// eventual state at the end of the iteration.
     ///
+    /// This operation is sometimes called 'reduce' or 'inject'.
+    ///
     /// # Examples
     ///
     /// ```
     /// let a = [1, 2, 3, 4, 5];
-    /// assert!(a.iter().fold(0, |acc, &item| acc + item) == 15);
+    /// assert_eq!(a.iter().fold(0, |acc, &item| acc + item), 15);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -678,7 +680,7 @@ pub trait Iterator {
     /// ```
     /// let a = [1, 2, 3, 4, 5];
     /// let mut it = a.iter();
-    /// assert_eq!(it.find(|&x| *x == 3).unwrap(), &3);
+    /// assert_eq!(it.find(|&x| *x == 3), Some(&3));
     /// assert_eq!(it.collect::<Vec<_>>(), [&4, &5]);
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -713,7 +715,7 @@ pub trait Iterator {
     /// ```
     /// let a = [1, 2, 3, 4, 5];
     /// let mut it = a.iter();
-    /// assert_eq!(it.position(|x| *x == 3).unwrap(), 2);
+    /// assert_eq!(it.position(|x| *x == 3), Some(2));
     /// assert_eq!(it.collect::<Vec<_>>(), [&4, &5]);
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -741,7 +743,7 @@ pub trait Iterator {
     /// ```
     /// let a = [1, 2, 2, 4, 5];
     /// let mut it = a.iter();
-    /// assert_eq!(it.rposition(|x| *x == 2).unwrap(), 2);
+    /// assert_eq!(it.rposition(|x| *x == 2), Some(2));
     /// assert_eq!(it.collect::<Vec<_>>(), [&1, &2]);
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -771,7 +773,7 @@ pub trait Iterator {
     ///
     /// ```
     /// let a = [1, 2, 3, 4, 5];
-    /// assert!(a.iter().max().unwrap() == &5);
+    /// assert_eq!(a.iter().max(), Some(&5));
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -794,7 +796,7 @@ pub trait Iterator {
     ///
     /// ```
     /// let a = [1, 2, 3, 4, 5];
-    /// assert!(a.iter().min().unwrap() == &1);
+    /// assert_eq!(a.iter().min(), Some(&1));
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -832,13 +834,13 @@ pub trait Iterator {
     /// assert_eq!(a.iter().min_max(), NoElements);
     ///
     /// let a = [1];
-    /// assert!(a.iter().min_max() == OneElement(&1));
+    /// assert_eq!(a.iter().min_max(), OneElement(&1));
     ///
     /// let a = [1, 2, 3, 4, 5];
-    /// assert!(a.iter().min_max() == MinMax(&1, &5));
+    /// assert_eq!(a.iter().min_max(), MinMax(&1, &5));
     ///
     /// let a = [1, 1, 1, 1];
-    /// assert!(a.iter().min_max() == MinMax(&1, &1));
+    /// assert_eq!(a.iter().min_max(), MinMax(&1, &1));
     /// ```
     #[unstable(feature = "core", reason = "return type may change")]
     fn min_max(mut self) -> MinMaxResult<Self::Item> where Self: Sized, Self::Item: Ord
@@ -1023,9 +1025,9 @@ pub trait Iterator {
     /// ```
     /// let a = [1, 2];
     /// let mut it = a.iter().cycle();
-    /// assert_eq!(it.next().unwrap(), &1);
-    /// assert_eq!(it.next().unwrap(), &2);
-    /// assert_eq!(it.next().unwrap(), &1);
+    /// assert_eq!(it.next(), Some(&1));
+    /// assert_eq!(it.next(), Some(&2));
+    /// assert_eq!(it.next(), Some(&1));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -1056,7 +1058,7 @@ pub trait Iterator {
     ///
     /// let a = [1, 2, 3, 4, 5];
     /// let mut it = a.iter().cloned();
-    /// assert!(it.sum::<i32>() == 15);
+    /// assert_eq!(it.sum::<i32>(), 15);
     /// ```
     #[unstable(feature="core")]
     fn sum<S=<Self as Iterator>::Item>(self) -> S where
@@ -1076,9 +1078,9 @@ pub trait Iterator {
     /// fn factorial(n: u32) -> u32 {
     ///     (1..).take_while(|&i| i <= n).product()
     /// }
-    /// assert!(factorial(0) == 1);
-    /// assert!(factorial(1) == 1);
-    /// assert!(factorial(5) == 120);
+    /// assert_eq!(factorial(0), 1);
+    /// assert_eq!(factorial(1), 1);
+    /// assert_eq!(factorial(5), 120);
     /// ```
     #[unstable(feature="core")]
     fn product<P=<Self as Iterator>::Item>(self) -> P where

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // ignore-test
-// error-pattern: task '<main>' has overflowed its stack
+// error-pattern: thread '<main>' has overflowed its stack
 
 struct R {
     b: isize,

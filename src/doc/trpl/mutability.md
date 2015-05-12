@@ -78,14 +78,14 @@ When we call `clone()`, the `Arc<T>` needs to update the reference count. Yet
 we’ve not used any `mut`s here, `x` is an immutable binding, and we didn’t take
 `&mut 5` or anything. So what gives?
 
-To this, we have to go back to the core of Rust’s guiding philosophy, memory
-safety, and the mechanism by which Rust guarantees it, the
+To understand this, we have to go back to the core of Rust’s guiding
+philosophy, memory safety, and the mechanism by which Rust guarantees it, the
 [ownership][ownership] system, and more specifically, [borrowing][borrowing]:
 
 > You may have one or the other of these two kinds of borrows, but not both at
 > the same time:
 > 
-> * 0 to N references (`&T`) to a resource.
+> * one or more references (`&T`) to a resource.
 > * exactly one mutable reference (`&mut T`)
 
 [ownership]: ownership.html
@@ -169,7 +169,7 @@ struct Point {
     y: Cell<i32>,
 }
 
-let mut point = Point { x: 5, y: Cell::new(6) };
+let point = Point { x: 5, y: Cell::new(6) };
 
 point.y.set(7);
 

@@ -44,6 +44,9 @@ pub struct Wrapping<T>(#[stable(feature = "rust1", since = "1.0.0")] pub T);
 #[unstable(feature = "core", reason = "may be removed or relocated")]
 pub mod wrapping;
 
+#[unstable(feature = "core", reason = "internal routines only exposed for testing")]
+pub mod flt2dec;
+
 /// Types that have a "zero" value.
 ///
 /// This trait is intended for use in conjunction with `Add`, as an identity:

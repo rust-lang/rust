@@ -58,7 +58,7 @@ pub trait ExitStatusExt {
 impl ExitStatusExt for process::ExitStatus {
     fn signal(&self) -> Option<i32> {
         match *self.as_inner() {
-            sys::process2::ExitStatus::Signal(s) => Some(s),
+            sys::process::ExitStatus::Signal(s) => Some(s),
             _ => None
         }
     }

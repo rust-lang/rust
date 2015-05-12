@@ -618,7 +618,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                                namespace_name,
                                name_bindings.def_for_namespace(namespace));
                         self.check_for_conflicting_import(
-                            &import_resolution.target_for_namespace(namespace),
+                            &import_resolution,
                             directive.span,
                             target,
                             namespace);
@@ -755,7 +755,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                             // Continue.
                         }
                         Some(ref value_target) => {
-                            self.check_for_conflicting_import(&dest_import_resolution.value_target,
+                            self.check_for_conflicting_import(&dest_import_resolution,
                                                               import_directive.span,
                                                               *ident,
                                                               ValueNS);
@@ -767,7 +767,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                             // Continue.
                         }
                         Some(ref type_target) => {
-                            self.check_for_conflicting_import(&dest_import_resolution.type_target,
+                            self.check_for_conflicting_import(&dest_import_resolution,
                                                               import_directive.span,
                                                               *ident,
                                                               TypeNS);
@@ -887,24 +887,31 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
 
     /// Checks that imported names and items don't have the same name.
     fn check_for_conflicting_import(&mut self,
-                                    target: &Option<Target>,
+                                    import_resolution: &ImportResolution,
                                     import_span: Span,
                                     name: Name,
                                     namespace: Namespace) {
+        let target = import_resolution.target_for_namespace(namespace);
         debug!("check_for_conflicting_import: {}; target exists: {}",
                &token::get_name(name),
                target.is_some());
 
-        match *target {
+        match target {
             Some(ref target) if target.shadowable != Shadowable::Always => {
-                let msg = format!("a {} named `{}` has already been imported \
-                                   in this module",
-                                  match namespace {
-                                    TypeNS => "type",
-                                    ValueNS => "value",
-                                  },
+                let ns_word = match namespace {
+                    TypeNS => "type",
+                    ValueNS => "value",
+                };
+                span_err!(self.resolver.session, import_span, E0252,
+                          "a {} named `{}` has already been imported \
+                           in this module", ns_word,
                                   &token::get_name(name));
-                span_err!(self.resolver.session, import_span, E0252, "{}", &msg[..]);
+                let use_id = import_resolution.id(namespace);
+                let item = self.resolver.ast_map.expect_item(use_id);
+                // item is syntax::ast::Item;
+                span_note!(self.resolver.session, item.span,
+                            "previous import of `{}` here",
+                            token::get_name(name));
             }
             Some(_) | None => {}
         }

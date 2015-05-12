@@ -77,7 +77,7 @@
 //!
 //! The `cs_...` functions ("combine substructure) are designed to
 //! make life easier by providing some pre-made recipes for common
-//! tasks; mostly calling the function being derived on all the
+//! threads; mostly calling the function being derived on all the
 //! arguments and then combining them back together in some way (or
 //! letting the user chose that). They are not meant to be the only
 //! way to handle the structures that this code creates.
@@ -896,8 +896,8 @@ impl<'a> MethodDef<'a> {
                                  nonself_args: &[P<Expr>])
         -> P<Expr> {
 
-        let mut raw_fields = Vec::new(); // ~[[fields of self],
-                                 // [fields of next Self arg], [etc]]
+        let mut raw_fields = Vec::new(); // Vec<[fields of self],
+                                 // [fields of next Self arg], [etc]>
         let mut patterns = Vec::new();
         for i in 0..self_args.len() {
             let struct_path= cx.path(DUMMY_SP, vec!( type_ident ));

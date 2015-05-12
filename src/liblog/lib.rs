@@ -228,7 +228,7 @@ thread_local! {
     }
 }
 
-/// A trait used to represent an interface to a task-local logger. Each task
+/// A trait used to represent an interface to a thread-local logger. Each thread
 /// can have its own custom logger which can respond to logging messages
 /// however it likes.
 pub trait Logger {
@@ -324,7 +324,7 @@ pub fn log(level: u32, loc: &'static LogLocation, args: fmt::Arguments) {
 #[inline(always)]
 pub fn log_level() -> u32 { unsafe { LOG_LEVEL } }
 
-/// Replaces the task-local logger with the specified logger, returning the old
+/// Replaces the thread-local logger with the specified logger, returning the old
 /// logger.
 pub fn set_logger(logger: Box<Logger + Send>) -> Option<Box<Logger + Send>> {
     let mut l = Some(logger);

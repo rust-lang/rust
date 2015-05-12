@@ -1199,7 +1199,7 @@ impl Into<OsString> for PathBuf {
 /// absolute, and so on. More details about the overall approach can be found in
 /// the module documentation.
 ///
-/// This is an *unsized* type, meaning that it must always be used with behind a
+/// This is an *unsized* type, meaning that it must always be used behind a
 /// pointer like `&` or `Box`.
 ///
 /// # Examples
@@ -1449,6 +1449,8 @@ impl Path {
 
     /// Determines whether `base` is a prefix of `self`.
     ///
+    /// Only considers whole path components to match.
+    ///
     /// # Examples
     ///
     /// ```
@@ -1457,6 +1459,8 @@ impl Path {
     /// let path = Path::new("/etc/passwd");
     ///
     /// assert!(path.starts_with("/etc"));
+    ///
+    /// assert!(!path.starts_with("/e"));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn starts_with<P: AsRef<Path>>(&self, base: P) -> bool {
@@ -1464,6 +1468,8 @@ impl Path {
     }
 
     /// Determines whether `child` is a suffix of `self`.
+    ///
+    /// Only considers whole path components to match.
     ///
     /// # Examples
     ///

@@ -872,11 +872,8 @@ pub fn collect_crate_types(session: &Session,
                     None
                 }
                 _ => {
-                    session.add_lint(lint::builtin::UNKNOWN_CRATE_TYPES,
-                                     ast::CRATE_NODE_ID,
-                                     a.span,
-                                     "`crate_type` requires a \
-                                      value".to_string());
+                    session.span_err(a.span, "`crate_type` requires a value");
+                    session.note("for example: `#![crate_type=\"lib\"]`");
                     None
                 }
             }

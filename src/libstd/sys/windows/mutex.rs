@@ -59,16 +59,18 @@ impl Mutex {
     }
 }
 
-pub struct ReentrantMutex { inner: Box<UnsafeCell<ffi::CRITICAL_SECTION>> }
+pub struct ReentrantMutex { inner: UnsafeCell<ffi::CRITICAL_SECTION> }
 
 unsafe impl Send for ReentrantMutex {}
 unsafe impl Sync for ReentrantMutex {}
 
 impl ReentrantMutex {
-    pub unsafe fn new() -> ReentrantMutex {
-        let mutex = ReentrantMutex { inner: box mem::uninitialized() };
-        ffi::InitializeCriticalSection(mutex.inner.get());
-        mutex
+    pub unsafe fn uninitialized() -> ReentrantMutex {
+        mem::uninitialized()
+    }
+
+    pub unsafe fn init(&mut self) {
+        ffi::InitializeCriticalSection(self.inner.get());
     }
 
     pub unsafe fn lock(&self) {

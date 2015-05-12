@@ -16,10 +16,10 @@
 
 #![unstable(feature = "std_misc")]
 
-/// The entry point for panic of Rust tasks.
+/// The entry point for panic of Rust threads.
 ///
-/// This macro is used to inject panic into a Rust task, causing the task to
-/// unwind and panic entirely. Each task's panic can be reaped as the
+/// This macro is used to inject panic into a Rust thread, causing the thread to
+/// unwind and panic entirely. Each thread's panic can be reaped as the
 /// `Box<Any>` type, and the single-argument form of the `panic!` macro will be
 /// the value which is transmitted.
 ///
@@ -38,10 +38,10 @@
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow_internal_unstable]
-/// The entry point for panic of Rust tasks.
+/// The entry point for panic of Rust threads.
 ///
-/// This macro is used to inject panic into a Rust task, causing the task to
-/// unwind and panic entirely. Each task's panic can be reaped as the
+/// This macro is used to inject panic into a Rust thread, causing the thread to
+/// unwind and panic entirely. Each thread's panic can be reaped as the
 /// `Box<Any>` type, and the single-argument form of the `panic!` macro will be
 /// the value which is transmitted.
 ///
@@ -143,17 +143,17 @@ macro_rules! try {
 /// use std::sync::mpsc;
 ///
 /// // two placeholder functions for now
-/// fn long_running_task() {}
+/// fn long_running_thread() {}
 /// fn calculate_the_answer() -> u32 { 42 }
 ///
 /// let (tx1, rx1) = mpsc::channel();
 /// let (tx2, rx2) = mpsc::channel();
 ///
-/// thread::spawn(move|| { long_running_task(); tx1.send(()).unwrap(); });
+/// thread::spawn(move|| { long_running_thread(); tx1.send(()).unwrap(); });
 /// thread::spawn(move|| { tx2.send(calculate_the_answer()).unwrap(); });
 ///
 /// select! {
-///     _ = rx1.recv() => println!("the long running task finished first"),
+///     _ = rx1.recv() => println!("the long running thread finished first"),
 ///     answer = rx2.recv() => {
 ///         println!("the answer was: {}", answer.unwrap());
 ///     }

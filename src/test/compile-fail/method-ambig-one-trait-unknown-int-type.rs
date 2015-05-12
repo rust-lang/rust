@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -31,7 +31,8 @@ impl foo for Vec<isize> {
 
 fn m1() {
     // we couldn't infer the type of the vector just based on calling foo()...
-    let mut x = Vec::new(); //~ ERROR type annotations required
+    let mut x = Vec::new();
+    //~^ ERROR type annotations or generic parameter binding required
     x.foo();
 }
 

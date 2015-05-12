@@ -9,6 +9,5 @@
 // except according to those terms.
 
 fn main() {
-    "".chars().fold(|_, _| (), ());
-    //~^ ERROR cannot determine a type for this expression: unconstrained type
+    "".chars().fold(|_, _| (), ()); //~ ERROR is not implemented for the type `()`
 }

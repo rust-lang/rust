@@ -125,7 +125,7 @@ impl MetadataExt for Metadata {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn symlink_file<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q)
                                                     -> io::Result<()> {
-    sys::fs2::symlink_inner(src.as_ref(), dst.as_ref(), false)
+    sys::fs::symlink_inner(src.as_ref(), dst.as_ref(), false)
 }
 
 /// Creates a new directory symlink on the filesystem.
@@ -146,5 +146,5 @@ pub fn symlink_file<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q)
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn symlink_dir<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q)
                                                    -> io::Result<()> {
-    sys::fs2::symlink_inner(src.as_ref(), dst.as_ref(), true)
+    sys::fs::symlink_inner(src.as_ref(), dst.as_ref(), true)
 }

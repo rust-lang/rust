@@ -1332,7 +1332,7 @@ pub fn ast_ty_arg_to_ty<'tcx>(this: &mut AstConv<'tcx>,
 }
 
 // Check the base def in a PathResolution and convert it to a Ty. If there are
-// associated types in the PathResolution, these will need to be seperately
+// associated types in the PathResolution, these will need to be separately
 // resolved.
 fn base_def_to_ty<'tcx>(this: &mut AstConv<'tcx>,
                         rscope: &RegionScope,
@@ -1595,7 +1595,8 @@ pub fn ast_ty_to_ty<'tcx>(this: &mut AstConv<'tcx>,
                         },
                         _ => {
                             span_err!(this.tcx().sess, ast_ty.span, E0249,
-                                      "expected constant expr for array length");
+                                      "expected constant integer expression \
+                                       for array length");
                             this.tcx().types.err
                         }
                     }

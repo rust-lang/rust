@@ -82,11 +82,11 @@ fn main() {
 
     let mut guess = String::new();
 
-    let input = io::stdin().read_line(&mut guess)
+    io::stdin().read_line(&mut guess)
         .ok()
         .expect("Failed to read line");
 
-    println!("You guessed: {}", input);
+    println!("You guessed: {}", guess);
 }
 ```
 
@@ -131,7 +131,9 @@ prints a [string][strings] to the screen.
     let mut guess = String::new();
 ```
 
-Now we’re getting interesting! There’s a lot going on in this little line. The first thing to notice is that this is a [let statement][let], which is used to create ‘variable bindings’. They take this form:
+Now we’re getting interesting! There’s a lot going on in this little line.
+The first thing to notice is that this is a [let statement][let], which is
+used to create ‘variable bindings’. They take this form:
 
 ```rust,ignore
 let foo = bar;
@@ -171,7 +173,7 @@ bound to: `String::new()`.
 
 [string]: ../std/string/struct.String.html
 
-The `::new()` syntax is uses `::` because this is an ‘associated function’ of
+The `::new()` syntax uses `::` because this is an ‘associated function’ of
 a particular type. That is to say, it’s associated with `String` itself,
 rather than a particular instance of a `String`. Some languages call this a
 ‘static method’.
@@ -271,7 +273,7 @@ information’. Why throw it away? Well, for a basic program, we just want to
 print a generic error, as basically any issue means we can’t continue. The
 [`ok()` method][ok] returns a value which has another method defined on it:
 `expect()`. The [`expect()` method][expect] takes a value it’s called on, and
-if it isn’t a successful one, [`panic!`][panic]s with a message you passed you
+if it isn’t a successful one, [`panic!`][panic]s with a message you
 passed it. A `panic!` like this will cause our program to crash, displaying
 the message.
 
@@ -302,12 +304,12 @@ project.
 There’s just one line of this first example left:
 
 ```rust,ignore
-    println!("You guessed: {}", input);
+    println!("You guessed: {}", guess);
 }
 ```
 
 This prints out the string we saved our input in. The `{}`s are a placeholder,
-and so we pass it `input` as an argument. If we had multiple `{}`s, we would
+and so we pass it `guess` as an argument. If we had multiple `{}`s, we would
 pass multiple arguments:
 
 ```rust
@@ -358,11 +360,10 @@ rand="0.3.0"
 The `[dependencies]` section of `Cargo.toml` is like the `[package]` section:
 everything that follows it is part of it, until the next section starts.
 Cargo uses the dependencies section to know what dependencies on external
-crates you have, and what versions you require. In this case, we’ve used `*`,
-which means that we’ll use the latest version of `rand`. Cargo understands
-[Semantic Versioning][semver], which is a standard for writing version
-numbers. If we wanted a specific version or range of versions, we could be
-more specific here. [Cargo’s documentation][cargodoc] contains more details.
+crates you have, and what versions you require. In this case, we’ve used version `0.3.0`.
+Cargo understands [Semantic Versioning][semver], which is a standard for writing version
+numbers. If we wanted to use the latest version we could use `*` or we could use a range 
+of versions. [Cargo’s documentation][cargodoc] contains more details.
 
 [semver]: http://semver.org
 [cargodoc]: http://doc.crates.io/crates-io.html
@@ -410,11 +411,11 @@ $ cargo build
    Compiling guessing_game v0.1.0 (file:///home/you/projects/guessing_game)
 ```
 
-So, we told Cargo we wanted any version of `rand`, and so it fetched the
-latest version at the time this was written, `v0.3.8`. But what happens
-when next week, version `v0.4.0` comes out, which changes something with
-`rand`, and it includes a breaking change? After all, a `v0.y.z` version
-in SemVer can change every release.
+So, we told Cargo we wanted any `0.3.x` version of `rand`, and so it fetched the latest
+version at the time this was written, `v0.3.8`. But what happens when next
+week, version `v0.3.9` comes out, with an important bugfix? While getting
+bugfixes is important, what if `0.3.9` contains a regression that breaks our
+code?
 
 The answer to this problem is the `Cargo.lock` file you’ll now find in your
 project directory. When you build your project for the first time, Cargo
@@ -422,12 +423,17 @@ figures out all of the versions that fit your criteria, and then writes them
 to the `Cargo.lock` file. When you build your project in the future, Cargo
 will see that the `Cargo.lock` file exists, and then use that specific version
 rather than do all the work of figuring out versions again. This lets you
-have a repeatable build automatically.
+have a repeatable build automatically. In other words, we’ll stay at `0.3.8`
+until we explicitly upgrade, and so will anyone who we share our code with,
+thanks to the lock file.
 
-What about when we _do_ want to use `v0.4.0`? Cargo has another command,
+What about when we _do_ want to use `v0.3.9`? Cargo has another command,
 `update`, which says ‘ignore the lock, figure out all the latest versions that
 fit what we’ve specified. If that works, write those versions out to the lock
-file’.
+file’. But, by default, Cargo will only look for versions larger than `0.3.0`
+and smaller than `0.4.0`. If we want to move to `0.4.x`, we’d have to update
+the `Cargo.toml` directly. When we do, the next time we `cargo build`, Cargo
+will update the index and re-evaluate our `rand` requirements.
 
 There’s a lot more to say about [Cargo][doccargo] and [its
 ecosystem][doccratesio], but for now, that’s all we need to know. Cargo makes
@@ -707,7 +713,7 @@ variety of numbers, we need to give Rust a hint as to the exact type of number
 we want. Hence, `let guess: u32`. The colon (`:`) after `guess` tells Rust
 we’re going to annotate its type. `u32` is an unsigned, thirty-two bit
 integer. Rust has [a number of built-in number types][number], but we’ve
-chosen `u32`. It’s a good default choice for a small positive numer.
+chosen `u32`. It’s a good default choice for a small positive number.
 
 [parse]: ../std/primitive.str.html#method.parse
 [number]: primitive-types.html#numeric-types
@@ -843,7 +849,7 @@ fn main() {
             Ordering::Less    => println!("Too small!"),
             Ordering::Greater => println!("Too big!"),
             Ordering::Equal   => {
-                println!("You win!"),
+                println!("You win!");
                 break;
             }
         }
@@ -916,7 +922,7 @@ failure. Each contains more information: the successful parsed integer, or an
 error type. In this case, we `match` on `Ok(num)`, which sets the inner value
 of the `Ok` to the name `num`, and then we just return it on the right-hand
 side. In the `Err` case, we don’t care what kind of error it is, so we just
-use `_` intead of a name. This ignores the error, and `continue` causes us
+use `_` instead of a name. This ignores the error, and `continue` causes us
 to go to the next iteration of the `loop`.
 
 Now we should be good! Let’s try:
@@ -959,8 +965,6 @@ fn main() {
     println!("Guess the number!");
 
     let secret_number = rand::thread_rng().gen_range(1, 101);
-
-    println!("The secret number is: {}", secret_number);
 
     loop {
         println!("Please input your guess.");

@@ -271,6 +271,12 @@ fn main() {
 See also http://doc.rust-lang.org/book/unsafe.html
 "##,
 
+E0137: r##"
+This error indicates that the compiler found multiple functions with the
+#[main] attribute. This is an error because there must be a unique entry point
+into a Rust program.
+"##,
+
 E0152: r##"
 Lang items are already implemented in the standard library. Unless you are
 writing a free-standing application (e.g. a kernel), you do not need to provide
@@ -419,6 +425,210 @@ of a loop. Without a loop to break out of or continue in, no sensible action can
 be taken.
 "##,
 
+E0271: r##"
+This is because of a type mismatch between the associated type of some
+trait (e.g. T::Bar, where T implements trait Quux { type Bar; })
+and another type U that is required to be equal to T::Bar, but is not.
+Examples follow.
+
+Here is a basic example:
+
+```
+trait Trait { type AssociatedType; }
+fn foo<T>(t: T) where T: Trait<AssociatedType=u32> {
+    println!("in foo");
+}
+impl Trait for i8 { type AssociatedType = &'static str; }
+foo(3_i8);
+```
+
+Here is that same example again, with some explanatory comments:
+
+```
+trait Trait { type AssociatedType; }
+
+fn foo<T>(t: T) where T: Trait<AssociatedType=u32> {
+//                    ~~~~~~~~ ~~~~~~~~~~~~~~~~~~
+//                        |            |
+//         This says `foo` can         |
+//           only be used with         |
+//              some type that         |
+//         implements `Trait`.         |
+//                                     |
+//                             This says not only must
+//                             `T` be an impl of `Trait`
+//                             but also that the impl
+//                             must assign the type `u32`
+//                             to the associated type.
+    println!("in foo");
+}
+
+impl Trait for i8 { type AssociatedType = &'static str; }
+~~~~~~~~~~~~~~~~~   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//      |                             |
+// `i8` does have                     |
+// implementation                     |
+// of `Trait`...                      |
+//                     ... but it is an implementation
+//                     that assigns `&'static str` to
+//                     the associated type.
+
+foo(3_i8);
+// Here, we invoke `foo` with an `i8`, which does not satisfy
+// the constraint `<i8 as Trait>::AssociatedType=32`, and
+// therefore the type-checker complains with this error code.
+```
+
+Here is a more subtle instance of the same problem, that can
+arise with for-loops in Rust:
+
+```
+let vs: Vec<i32> = vec![1, 2, 3, 4];
+for v in &vs {
+    match v {
+        1 => {}
+        _ => {}
+    }
+}
+```
+
+The above fails because of an analogous type mismatch,
+though may be harder to see. Again, here are some
+explanatory comments for the same example:
+
+```
+{
+    let vs = vec![1, 2, 3, 4];
+
+    // `for`-loops use a protocol based on the `Iterator`
+    // trait. Each item yielded in a `for` loop has the
+    // type `Iterator::Item` -- that is,I `Item` is the
+    // associated type of the concrete iterator impl.
+    for v in &vs {
+//      ~    ~~~
+//      |     |
+//      |    We borrow `vs`, iterating over a sequence of
+//      |    *references* of type `&Elem` (where `Elem` is
+//      |    vector's element type). Thus, the associated
+//      |    type `Item` must be a reference `&`-type ...
+//      |
+//  ... and `v` has the type `Iterator::Item`, as dictated by
+//  the `for`-loop protocol ...
+
+        match v {
+            1 => {}
+//          ~
+//          |
+// ... but *here*, `v` is forced to have some integral type;
+// only types like `u8`,`i8`,`u16`,`i16`, et cetera can
+// match the pattern `1` ...
+
+            _ => {}
+        }
+
+// ... therefore, the compiler complains, because it sees
+// an attempt to solve the equations
+// `some integral-type` = type-of-`v`
+//                      = `Iterator::Item`
+//                      = `&Elem` (i.e. `some reference type`)
+//
+// which cannot possibly all be true.
+
+    }
+}
+```
+
+To avoid those issues, you have to make the types match correctly.
+So we can fix the previous examples like this:
+
+```
+// Basic Example:
+trait Trait { type AssociatedType; }
+fn foo<T>(t: T) where T: Trait<AssociatedType = &'static str> {
+    println!("in foo");
+}
+impl Trait for i8 { type AssociatedType = &'static str; }
+foo(3_i8);
+
+// For-Loop Example:
+let vs = vec![1, 2, 3, 4];
+for v in &vs {
+    match v {
+        &1 => {}
+        _ => {}
+    }
+}
+```
+"##,
+
+E0282: r##"
+This error indicates that type inference did not result in one unique possible
+type, and extra information is required. In most cases this can be provided
+by adding a type annotation. Sometimes you need to specify a generic type
+parameter manually.
+
+A common example is the `collect` method on `Iterator`. It has a generic type
+parameter with a `FromIterator` bound, which for a `char` iterator is
+implemented by `Vec` and `String` among others. Consider the following snippet
+that reverses the characters of a string:
+
+```
+let x = "hello".chars().rev().collect();
+```
+
+In this case, the compiler cannot infer what the type of `x` should be:
+`Vec<char>` and `String` are both suitable candidates. To specify which type to
+use, you can use a type annotation on `x`:
+
+```
+let x: Vec<char> = "hello".chars().rev().collect();
+```
+
+It is not necessary to annotate the full type. Once the ambiguity is resolved,
+the compiler can infer the rest:
+
+```
+let x: Vec<_> = "hello".chars().rev().collect();
+```
+
+Another way to provide the compiler with enough information, is to specify the
+generic type parameter:
+
+```
+let x = "hello".chars().rev().collect::<Vec<char>>();
+```
+
+Again, you need not specify the full type if the compiler can infer it:
+
+```
+let x = "hello".chars().rev().collect::<Vec<_>>();
+```
+
+Apart from a method or function with a generic type parameter, this error can
+occur when a type parameter of a struct or trait cannot be inferred. In that
+case it is not always possible to use a type annotation, because all candidates
+have the same return type. For instance:
+
+```
+struct Foo<T> {
+    // Some fields omitted.
+}
+
+impl<T> Foo<T> {
+    fn bar() -> i32 {
+        0
+    }
+
+    fn baz() {
+        let number = Foo::bar();
+    }
+}
+```
+
+This will fail because the compiler does not know which instance of `Foo` to
+call `bar` on. Change `Foo::bar()` to `Foo::<T>::bar()` to resolve the error.
+"##,
+
 E0296: r##"
 This error indicates that the given recursion limit could not be parsed. Ensure
 that the value provided is a positive integer between quotes, like so:
@@ -524,9 +734,70 @@ number cannot be negative.
 E0307: r##"
 The length of an array is part of its type. For this reason, this length must be
 a compile-time constant.
+"##,
+
+E0308: r##"
+This error occurs when the compiler was unable to infer the concrete type of a
+variable. This error can occur for several cases, the most common of which is a
+mismatch in the expected type that the compiler inferred for a variable's
+initializing expression, and the actual type explicitly assigned to the
+variable.
+
+For example:
+
+```
+let x: i32 = "I am not a number!";
+//     ~~~   ~~~~~~~~~~~~~~~~~~~~
+//      |             |
+//      |    initializing expression;
+//      |    compiler infers type `&str`
+//      |
+//    type `i32` assigned to variable `x`
+```
+"##,
+
+E0309: r##"
+Types in type definitions have lifetimes associated with them that represent
+how long the data stored within them is guaranteed to be live. This lifetime
+must be as long as the data needs to be alive, and missing the constraint that
+denotes this will cause this error.
+
+```
+// This won't compile because T is not constrained, meaning the data
+// stored in it is not guaranteed to last as long as the reference
+struct Foo<'a, T> {
+    foo: &'a T
+}
+
+// This will compile, because it has the constraint on the type parameter
+struct Foo<'a, T: 'a> {
+    foo: &'a T
+}
+```
+"##,
+
+E0310: r##"
+Types in type definitions have lifetimes associated with them that represent
+how long the data stored within them is guaranteed to be live. This lifetime
+must be as long as the data needs to be alive, and missing the constraint that
+denotes this will cause this error.
+
+```
+// This won't compile because T is not constrained to the static lifetime
+// the reference needs
+struct Foo<T> {
+    foo: &'static T
+}
+
+// This will compile, because it has the constraint on the type parameter
+struct Foo<T: 'static> {
+    foo: &'static T
+}
+```
 "##
 
 }
+
 
 register_diagnostics! {
     E0011,
@@ -541,7 +812,6 @@ register_diagnostics! {
     E0134,
     E0135,
     E0136,
-    E0137,
     E0138,
     E0139,
     E0261, // use of undeclared lifetime name
@@ -551,7 +821,6 @@ register_diagnostics! {
     E0266, // expected item
     E0269, // not all control paths return a value
     E0270, // computation may converge in a function marked as diverging
-    E0271, // type mismatch resolving
     E0272, // rustc_on_unimplemented attribute refers to non-existent type parameter
     E0273, // rustc_on_unimplemented must have named format arguments
     E0274, // rustc_on_unimplemented must have a value
@@ -562,7 +831,6 @@ register_diagnostics! {
     E0279, // requirement is not satisfied
     E0280, // requirement is not satisfied
     E0281, // type implements trait but other trait is required
-    E0282, // unable to infer enough type information about
     E0283, // cannot resolve type
     E0284, // cannot resolve type
     E0285, // overflow evaluation builtin bounds
@@ -571,9 +839,6 @@ register_diagnostics! {
     E0300, // unexpanded macro
     E0304, // expected signed integer constant
     E0305, // expected constant
-    E0308,
-    E0309, // thing may not live long enough
-    E0310, // thing may not live long enough
     E0311, // thing may not live long enough
     E0312, // lifetime of reference outlives lifetime of borrowed content
     E0313, // lifetime of borrowed pointer outlives lifetime of captured variable

@@ -146,7 +146,7 @@ pub trait TDynBenchFn: Send {
 // A function that runs a test. If the function returns successfully,
 // the test succeeds; if the function panics then the test fails. We
 // may need to come up with a more clever definition of test in order
-// to support isolation of tests into tasks.
+// to support isolation of tests into threads.
 pub enum TestFn {
     StaticTestFn(fn()),
     StaticBenchFn(fn(&mut Bencher)),
@@ -259,8 +259,8 @@ pub fn test_main(args: &[String], tests: Vec<TestDescAndFn> ) {
 // This will panic (intentionally) when fed any dynamic tests, because
 // it is copying the static values out into a dynamic vector and cannot
 // copy dynamic values. It is doing this because from this point on
-// a ~[TestDescAndFn] is used in order to effect ownership-transfer
-// semantics into parallel test runners, which in turn requires a ~[]
+// a Vec<TestDescAndFn> is used in order to effect ownership-transfer
+// semantics into parallel test runners, which in turn requires a Vec<>
 // rather than a &[].
 pub fn test_main_static(args: env::Args, tests: &[TestDescAndFn]) {
     let args = args.collect::<Vec<_>>();

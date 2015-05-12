@@ -2572,7 +2572,7 @@ fn check_expr_with_lvalue_pref<'a,'tcx>(check_env: &mut CheckEnv<'tcx>,
 }
 
 // determine the `self` type, using fresh variables for all variables
-// declared on the impl declaration e.g., `impl<A,B> for ~[(A,B)]`
+// declared on the impl declaration e.g., `impl<A,B> for Vec<(A,B)>`
 // would return ($0, $1) where $0 and $1 are freshly instantiated type
 // variables.
 fn impl_self_ty<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
