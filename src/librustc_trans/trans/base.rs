@@ -237,6 +237,9 @@ pub fn get_extern_const<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, did: ast::DefId,
             llvm::set_thread_local(c, true);
         }
     }
+    if ccx.use_dll_storage_attrs() {
+        llvm::SetDLLStorageClass(c, llvm::DLLImportStorageClass);
+    }
     ccx.externs().borrow_mut().insert(name.to_string(), c);
     return c;
 }
@@ -1940,11 +1943,17 @@ pub fn update_linkage(ccx: &CrateContext,
     match id {
         Some(id) if ccx.reachable().contains(&id) => {
             llvm::SetLinkage(llval, llvm::ExternalLinkage);
+            if ccx.use_dll_storage_attrs() {
+                llvm::SetDLLStorageClass(llval, llvm::DLLExportStorageClass);
+            }
         },
         _ => {
             // `id` does not refer to an item in `ccx.reachable`.
             if ccx.sess().opts.cg.codegen_units > 1 {
                 llvm::SetLinkage(llval, llvm::ExternalLinkage);
+                if ccx.use_dll_storage_attrs() {
+                    llvm::SetDLLStorageClass(llval, llvm::DLLExportStorageClass);
+                }
             } else {
                 llvm::SetLinkage(llval, llvm::InternalLinkage);
             }
@@ -2103,9 +2112,15 @@ fn finish_register_fn(ccx: &CrateContext, sym: String, node_id: ast::NodeId,
     if ccx.tcx().lang_items.stack_exhausted() == Some(def) {
         attributes::split_stack(llfn, false);
         llvm::SetLinkage(llfn, llvm::ExternalLinkage);
+        if ccx.use_dll_storage_attrs() {
+            llvm::SetDLLStorageClass(llfn, llvm::DLLExportStorageClass);
+        }
     }
     if ccx.tcx().lang_items.eh_personality() == Some(def) {
         llvm::SetLinkage(llfn, llvm::ExternalLinkage);
+        if ccx.use_dll_storage_attrs() {
+            llvm::SetDLLStorageClass(llfn, llvm::DLLExportStorageClass);
+        }
     }
 }
 
@@ -2172,7 +2187,7 @@ pub fn create_entry_wrapper(ccx: &CrateContext,
         // FIXME: #16581: Marking a symbol in the executable with `dllexport`
         // linkage forces MinGW's linker to output a `.reloc` section for ASLR
         if ccx.sess().target.target.options.is_like_windows {
-            unsafe { llvm::LLVMRustSetDLLExportStorageClass(llfn) }
+            llvm::SetDLLStorageClass(llfn, llvm::DLLExportStorageClass);
         }
 
         let llbb = unsafe {
@@ -2589,6 +2604,7 @@ fn internalize_symbols(cx: &SharedCrateContext, reachable: &HashSet<String>) {
                 if !declared.contains(&name) &&
                    !reachable.contains(str::from_utf8(&name).unwrap()) {
                     llvm::SetLinkage(val, llvm::InternalLinkage);
+                    llvm::SetDLLStorageClass(val, llvm::DefaultStorageClass);
                 }
             }
         }
