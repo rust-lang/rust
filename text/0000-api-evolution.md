@@ -78,13 +78,13 @@ In more detail:
   to disambiguate are not automatically "major" changes. (But in such cases, one
   must evaluate how widespread these "minor" changes are).
 
-* In principle, it should be possible to produce a version of the code for any
-  dependencies that *will not break* when upgrading to a new minor
-  revision. This goes hand-in-hand with the above bullet; as we will see, it's
-  possible to save a fully "elaborated" version of upstream code that does not
-  require any disambiguation. The "in principle" refers to the fact that getting
-  there may require some additional tooling or language support, which this RFC
-  outlines.
+* In principle, it should be possible to produce a version of dependency code
+  that *will not break* when upgrading other dependencies, or Rust itself, to a
+  new minor revision. This goes hand-in-hand with the above bullet; as we will
+  see, it's possible to save a fully "elaborated" version of upstream code that
+  does not require any disambiguation. The "in principle" refers to the fact
+  that getting there may require some additional tooling or language support,
+  which this RFC outlines.
 
 That means that any breakage in a minor release must be very "shallow": it must
 always be possible to locally fix the problem through some kind of
