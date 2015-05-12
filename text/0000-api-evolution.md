@@ -255,7 +255,7 @@ explicit struct for the variant up front.
 Adding any item without a default will immediately break all trait implementations.
 
 It's possible that in the future we will allow some kind of
-"[sealing](#sealed-traits)" to say that a trait can only be used as a bound, not
+"[sealing](#thoughts-on-possible-language-changes-unofficial)" to say that a trait can only be used as a bound, not
 to provide new implementations; such a trait *would* allow arbitrary items to be
 added.
 
