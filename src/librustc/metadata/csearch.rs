@@ -313,13 +313,13 @@ pub fn each_impl<F>(cstore: &cstore::CStore,
     decoder::each_impl(&*cdata, callback)
 }
 
-pub fn each_implementation_for_type<F>(cstore: &cstore::CStore,
-                                       def_id: ast::DefId,
-                                       callback: F) where
+pub fn each_inherent_implementation_for_type<F>(cstore: &cstore::CStore,
+                                                def_id: ast::DefId,
+                                                callback: F) where
     F: FnMut(ast::DefId),
 {
     let cdata = cstore.get_crate_data(def_id.krate);
-    decoder::each_implementation_for_type(&*cdata, def_id.node, callback)
+    decoder::each_inherent_implementation_for_type(&*cdata, def_id.node, callback)
 }
 
 pub fn each_implementation_for_trait<F>(cstore: &cstore::CStore,

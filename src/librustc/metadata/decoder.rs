@@ -1338,17 +1338,18 @@ pub fn each_impl<F>(cdata: Cmd, mut callback: F) where
     });
 }
 
-pub fn each_implementation_for_type<F>(cdata: Cmd,
-                                       id: ast::NodeId,
-                                       mut callback: F)
+pub fn each_inherent_implementation_for_type<F>(cdata: Cmd,
+                                                id: ast::NodeId,
+                                                mut callback: F)
     where F: FnMut(ast::DefId),
 {
     let item_doc = lookup_item(id, cdata.data());
     reader::tagged_docs(item_doc,
                         tag_items_data_item_inherent_impl,
                         |impl_doc| {
-        let implementation_def_id = item_def_id(impl_doc, cdata);
-        callback(implementation_def_id);
+        if reader::maybe_get_doc(impl_doc, tag_item_trait_ref).is_none() {
+            callback(item_def_id(impl_doc, cdata));
+        }
         true
     });
 }
