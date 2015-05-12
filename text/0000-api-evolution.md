@@ -562,9 +562,12 @@ fn foo<T, U>(...) { ... }
 will break any calls like `foo::<u8>`. However, such explicit calls are rare
 enough (and can usually be written in other ways) that this breakage is
 considered minor. (However, one should take into account how likely it is that
-the function in question is being called with explicit type arguments).
+the function in question is being called with explicit type arguments).  This
+RFC also suggests adding a `...` notation to explicit parameter lists to keep
+them open-ended (see suggested language changes).
 
-Such changes are an important ingredient of abstracting to use generics, as described next.
+Such changes are an important ingredient of abstracting to use generics, as
+described next.
 
 #### Minor change: generalizing to generics.
 
@@ -706,6 +709,11 @@ use some_module::{* without Foo};
 This is especially useful for the case where multiple modules being glob
 imported happen to export items with the same name.
 
+Another possibility would be to not make it an error for two glob imports to
+bring the same name into scope, but to generate the error only at the point that
+the imported name was actually *used*. Then collisions could be resolved simply
+by adding a single explicit, shadowing import.
+
 **Default type parameters**
 
 Some of the minor changes for moving to more generic code depends on an
@@ -733,6 +741,15 @@ Also known as "optional arguments" -- an
 [oft-requested](https://github.com/rust-lang/rfcs/issues/323) feature. Allowing
 arguments to a function to be optional makes it possible to add new arguments
 after the fact without a major version bump.
+
+**Open-ended explicit type paramters**
+
+One hazard is that with today's explicit type parameter syntax, you must always
+specify *all* type parameters: `foo::<T, U>(x, y)`. That means that adding a new
+type parameter to `foo` can break code, even if a default is provided.
+
+This could be easily addressed by adding a notation like `...` to leave
+additional parameters unspecified: `foo::<T, ...>(x, y)`.
 
 # Drawbacks and Alternatives
 
