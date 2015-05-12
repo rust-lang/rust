@@ -733,7 +733,7 @@ know the concrete type of the value returned from the function -- here, `MyNode`
 ## Scoping of `trait` and `impl` items
 
 Associated types are frequently referred to in the signatures of a trait's
-methods and associated functions, and it is natural and convneient to refer to
+methods and associated functions, and it is natural and convenient to refer to
 them directly.
 
 In other words, writing this:
@@ -1076,7 +1076,7 @@ coherence property above, there can be at most one.
 
 On the other hand, even if there is only one applicable `impl`, type inference
 is *not* allowed to infer the input type parameters from it. This restriction
-makes it possible to ensure *crate concatentation*: adding another crate may add
+makes it possible to ensure *crate concatenation*: adding another crate may add
 `impl`s for a given trait, and if type inference depended on the absence of such
 `impl`s, importing a crate could break existing code.
 
