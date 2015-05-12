@@ -10,9 +10,9 @@
 
 // pretty-expanded FIXME #25180
 
-const EMPTY: &'static Fn() = &|| println!("ICE here");
+const EMPTY: &'static Fn() = &|| ();
 
-const ONE_ARGUMENT: &'static Fn(u32) = &|y| println!("{}", y);
+const ONE_ARGUMENT: &'static Fn(u32) = &|y| assert!(y == 42);
 
 const PLUS_21: &'static (Fn(u32) -> u32) = &|y| y + 21;
 
