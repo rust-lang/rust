@@ -47,10 +47,10 @@ impl<'tcx> VecTypes<'tcx> {
     }
 }
 
-pub fn trans_fixed_vstore<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
-                                      expr: &ast::Expr,
-                                      dest: expr::Dest)
-                                      -> &'blk BlockS {
+pub fn trans_fixed_vstore<'r, 'blk, 'tcx>(bcx: &'r mut Block<'r, 'blk, 'tcx>,
+                                          expr: &ast::Expr,
+                                          dest: expr::Dest)
+                                          -> &'blk BlockS {
     //!
     //
     // [...] allocates a fixed-size array and moves it around "by value".
@@ -77,13 +77,12 @@ pub fn trans_fixed_vstore<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
 /// &[...] allocates memory on the stack and writes the values into it, returning the vector (the
 /// caller must make the reference).  "..." is similar except that the memory can be statically
 /// allocated and we return a reference (strings are always by-ref).
-pub fn trans_slice_vec<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
-                                   slice_expr: &ast::Expr,
-                                   content_expr: &ast::Expr)
-                                   -> DatumBlock<'blk, 'tcx, Expr> {
-    let fcx = bcx.fcx;
-    let ccx = fcx.ccx;
+pub fn trans_slice_vec<'r, 'blk, 'tcx>(bcx: &'r mut Block<'r, 'blk, 'tcx>,
+                                       slice_expr: &ast::Expr,
+                                       content_expr: &ast::Expr)
+                                       -> DatumBlock<'blk, 'tcx, Expr> {
     let mut bcx = bcx;
+    let ccx = bcx.fcx.ccx;
 
     debug!("trans_slice_vec(slice_expr={})",
            bcx.expr_to_string(slice_expr));
@@ -94,11 +93,11 @@ pub fn trans_slice_vec<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
     if let ast::ExprLit(ref lit) = content_expr.node {
         if let ast::LitStr(ref s, _) = lit.node {
             let scratch = rvalue_scratch_datum(bcx, vec_ty, "");
-            bcx = trans_lit_str(bcx,
-                                content_expr,
-                                s.clone(),
-                                SaveIn(scratch.val));
-            return DatumBlock::new(bcx, scratch.to_expr_datum());
+            bcx = &mut trans_lit_str(bcx,
+                                     content_expr,
+                                     s.clone(),
+                                     SaveIn(scratch.val)).with(bcx.fcx);
+            return DatumBlock::new(bcx.bl, scratch.to_expr_datum());
         }
     }
 
@@ -119,14 +118,14 @@ pub fn trans_slice_vec<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
     if count > 0 {
         // Arrange for the backing array to be cleaned up.
         let cleanup_scope = cleanup::temporary_scope(bcx.tcx(), content_expr.id);
-        fcx.schedule_lifetime_end(cleanup_scope, llfixed);
-        fcx.schedule_drop_mem(cleanup_scope, llfixed, fixed_ty);
+        bcx.fcx.schedule_lifetime_end(cleanup_scope, llfixed);
+        bcx.fcx.schedule_drop_mem(cleanup_scope, llfixed, fixed_ty);
 
         // Generate the content into the backing array.
         // llfixed has type *[T x N], but we want the type *T,
         // so use GEP to convert
-        bcx = write_content(bcx, &vt, slice_expr, content_expr,
-                            SaveIn(GEPi(bcx, llfixed, &[0, 0])));
+        bcx = &mut write_content(bcx, &vt, slice_expr, content_expr,
+                                 SaveIn(GEPi(bcx, llfixed, &[0, 0]))).with(bcx.fcx);
     };
 
     immediate_rvalue_bcx(bcx, llfixed, vec_ty).to_expr_datumblock()
@@ -135,16 +134,16 @@ pub fn trans_slice_vec<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
 /// Literal strings translate to slices into static memory.  This is different from
 /// trans_slice_vstore() above because it doesn't need to copy the content anywhere.
 pub fn trans_lit_str<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
-                                 lit_expr: &ast::Expr,
-                                 str_lit: InternedString,
-                                 dest: Dest)
-                                 -> &'blk BlockS {
+                                     lit_expr: &ast::Expr,
+                                     str_lit: InternedString,
+                                     dest: Dest)
+                                     -> &'blk BlockS {
     debug!("trans_lit_str(lit_expr={}, dest={})",
            bcx.expr_to_string(lit_expr),
            dest.to_string(bcx.ccx()));
 
     match dest {
-        Ignore => bcx,
+        Ignore => bcx.bl,
         SaveIn(lldest) => {
             let bytes = str_lit.len();
             let llbytes = C_uint(bcx.ccx(), bytes);
@@ -152,19 +151,18 @@ pub fn trans_lit_str<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
             let llcstr = consts::ptrcast(llcstr, Type::i8p(bcx.ccx()));
             Store(bcx, llcstr, GEPi(bcx, lldest, &[0, abi::FAT_PTR_ADDR]));
             Store(bcx, llbytes, GEPi(bcx, lldest, &[0, abi::FAT_PTR_EXTRA]));
-            bcx
+            bcx.bl
         }
     }
 }
 
-fn write_content<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
-                             vt: &VecTypes<'tcx>,
-                             vstore_expr: &ast::Expr,
-                             content_expr: &ast::Expr,
-                             dest: Dest)
-                             -> &'blk BlockS {
+fn write_content<'r, 'blk, 'tcx>(bcx: &'r mut Block<'r, 'blk, 'tcx>,
+                                 vt: &VecTypes<'tcx>,
+                                 vstore_expr: &ast::Expr,
+                                 content_expr: &ast::Expr,
+                                 dest: Dest)
+                                 -> &'blk BlockS {
     let _icx = push_ctxt("tvec::write_content");
-    let fcx = bcx.fcx;
     let mut bcx = bcx;
 
     debug!("write_content(vt={}, dest={}, vstore_expr={})",
@@ -177,7 +175,7 @@ fn write_content<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
             match lit.node {
                 ast::LitStr(ref s, _) => {
                     match dest {
-                        Ignore => return bcx,
+                        Ignore => return bcx.bl,
                         SaveIn(lldest) => {
                             let bytes = s.len();
                             let llbytes = C_uint(bcx.ccx(), bytes);
@@ -187,7 +185,7 @@ fn write_content<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
                                               llcstr,
                                               llbytes,
                                               1);
-                            return bcx;
+                            return bcx.bl;
                         }
                     }
                 }
@@ -201,26 +199,26 @@ fn write_content<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
             match dest {
                 Ignore => {
                     for element in elements {
-                        bcx = expr::trans_into(bcx, &**element, Ignore);
+                        bcx = &mut expr::trans_into(bcx, &**element, Ignore).with(bcx.fcx);
                     }
                 }
 
                 SaveIn(lldest) => {
-                    let temp_scope = fcx.push_custom_cleanup_scope();
+                    let temp_scope = bcx.fcx.push_custom_cleanup_scope();
                     for (i, element) in elements.iter().enumerate() {
                         let lleltptr = GEPi(bcx, lldest, &[i]);
                         debug!("writing index {} with lleltptr={}",
                                i, bcx.val_to_string(lleltptr));
-                        bcx = expr::trans_into(bcx, &**element,
-                                               SaveIn(lleltptr));
+                        bcx = &mut expr::trans_into(bcx, &**element,
+                                                    SaveIn(lleltptr)).with(bcx.fcx);
                         let scope = cleanup::CustomScope(temp_scope);
-                        fcx.schedule_lifetime_end(scope, lleltptr);
-                        fcx.schedule_drop_mem(scope, lleltptr, vt.unit_ty);
+                        bcx.fcx.schedule_lifetime_end(scope, lleltptr);
+                        bcx.fcx.schedule_drop_mem(scope, lleltptr, vt.unit_ty);
                     }
-                    fcx.pop_custom_cleanup_scope(temp_scope);
+                    bcx.fcx.pop_custom_cleanup_scope(temp_scope);
                 }
             }
-            return bcx;
+            return bcx.bl;
         }
         ast::ExprRepeat(ref element, ref count_expr) => {
             match dest {
@@ -252,13 +250,13 @@ fn write_content<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
 }
 
 fn vec_types_from_expr<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>, vec_expr: &ast::Expr)
-                                   -> VecTypes<'tcx> {
+                                       -> VecTypes<'tcx> {
     let vec_ty = node_id_type(bcx, vec_expr.id);
     vec_types(bcx, ty::sequence_element_type(bcx.tcx(), vec_ty))
 }
 
 fn vec_types<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>, unit_ty: Ty<'tcx>)
-                         -> VecTypes<'tcx> {
+                             -> VecTypes<'tcx> {
     VecTypes {
         unit_ty: unit_ty,
         llunit_ty: type_of::type_of(bcx.ccx(), unit_ty)
@@ -304,9 +302,9 @@ pub fn get_fixed_base_and_len(bcx: &mut Block,
 /// by-reference.  If you have a datum, you would probably prefer to call
 /// `Datum::get_base_and_len()` which will handle any conversions for you.
 pub fn get_base_and_len<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
-                                    llval: ValueRef,
-                                    vec_ty: Ty<'tcx>)
-                                    -> (ValueRef, ValueRef) {
+                                        llval: ValueRef,
+                                        vec_ty: Ty<'tcx>)
+                                        -> (ValueRef, ValueRef) {
     let ccx = bcx.ccx();
 
     match vec_ty.sty {
@@ -335,34 +333,33 @@ fn iter_vec_loop<'r, 'blk, 'tcx, F>(bcx: &'r mut Block<'r, 'blk, 'tcx>,
                                     vt: &VecTypes<'tcx>,
                                     count: ValueRef,
                                     f: F)
-                                    -> &'r mut Block<'r, 'blk, 'tcx> where
-    F: FnOnce(&'r mut Block<'r, 'blk, 'tcx>, ValueRef, Ty<'tcx>) -> &'r mut Block<'r, 'blk, 'tcx>,
+                                    -> &'blk BlockS where
+    F: FnOnce(&'r mut Block<'r, 'blk, 'tcx>, ValueRef, Ty<'tcx>) -> &'blk BlockS
 {
     let _icx = push_ctxt("tvec::iter_vec_loop");
 
-    if bcx.unreachable.get() {
-        return bcx;
+    if bcx.bl.unreachable.get() {
+        return bcx.bl;
     }
 
-    let fcx = bcx.fcx;
-    let loop_bcx = fcx.new_temp_block("expr_repeat");
-    let next_bcx = fcx.new_temp_block("expr_repeat: next");
+    let loop_bcx = bcx.fcx.new_temp_block("expr_repeat");
+    let next_bcx = bcx.fcx.new_temp_block("expr_repeat: next");
 
     Br(bcx, loop_bcx.llbb, DebugLoc::None);
 
-    let loop_counter = Phi(loop_bcx, bcx.ccx().int_type(),
-                           &[C_uint(bcx.ccx(), 0 as usize)], &[bcx.llbb]);
+    let loop_counter = Phi(&mut loop_bcx.with(bcx.fcx), bcx.ccx().int_type(),
+                           &[C_uint(bcx.ccx(), 0 as usize)], &[bcx.bl.llbb]);
 
-    let bcx = loop_bcx;
+    let bcx = &mut loop_bcx.with(bcx.fcx);
 
     let lleltptr = if llsize_of_alloc(bcx.ccx(), vt.llunit_ty) == 0 {
         data_ptr
     } else {
         InBoundsGEP(bcx, data_ptr, &[loop_counter])
     };
-    let bcx = f(bcx, lleltptr, vt.unit_ty);
+    let bcx = &mut f(bcx, lleltptr, vt.unit_ty).with(bcx.fcx);
     let plusone = Add(bcx, loop_counter, C_uint(bcx.ccx(), 1usize), DebugLoc::None);
-    AddIncomingToPhi(loop_counter, plusone, bcx.llbb);
+    AddIncomingToPhi(loop_counter, plusone, bcx.bl.llbb);
 
     let cond_val = ICmp(bcx, llvm::IntULT, plusone, count, DebugLoc::None);
     CondBr(bcx, cond_val, loop_bcx.llbb, next_bcx.llbb, DebugLoc::None);
@@ -370,7 +367,7 @@ fn iter_vec_loop<'r, 'blk, 'tcx, F>(bcx: &'r mut Block<'r, 'blk, 'tcx>,
     next_bcx
 }
 
-pub fn iter_vec_raw<'r, 'blk, 'tcx, F>(bcx: &mut Block<'r, 'blk, 'tcx>,
+pub fn iter_vec_raw<'r, 'blk, 'tcx, F>(bcx: &'r mut Block<'r, 'blk, 'tcx>,
                                        data_ptr: ValueRef,
                                        unit_ty: Ty<'tcx>,
                                        len: ValueRef,
@@ -379,7 +376,6 @@ pub fn iter_vec_raw<'r, 'blk, 'tcx, F>(bcx: &mut Block<'r, 'blk, 'tcx>,
     F: FnOnce(&mut Block<'r, 'blk, 'tcx>, ValueRef, Ty<'tcx>) -> &'blk BlockS,
 {
     let _icx = push_ctxt("tvec::iter_vec_raw");
-    let fcx = bcx.fcx;
 
     let vt = vec_types(bcx, unit_ty);
 
@@ -391,20 +387,22 @@ pub fn iter_vec_raw<'r, 'blk, 'tcx, F>(bcx: &mut Block<'r, 'blk, 'tcx>,
         let data_end_ptr = InBoundsGEP(bcx, data_ptr, &[len]);
 
         // Now perform the iteration.
-        let header_bcx = fcx.new_temp_block("iter_vec_loop_header");
+        let header_bcx = bcx.fcx.new_temp_block("iter_vec_loop_header");
         Br(bcx, header_bcx.llbb, DebugLoc::None);
         let data_ptr =
-            Phi(header_bcx, val_ty(data_ptr), &[data_ptr], &[bcx.llbb]);
+            Phi(&mut header_bcx.with(bcx.fcx), val_ty(data_ptr), &[data_ptr], &[bcx.bl.llbb]);
         let not_yet_at_end =
-            ICmp(header_bcx, llvm::IntULT, data_ptr, data_end_ptr, DebugLoc::None);
-        let body_bcx = fcx.new_temp_block("iter_vec_loop_body");
-        let next_bcx = fcx.new_temp_block("iter_vec_next");
-        CondBr(header_bcx, not_yet_at_end, body_bcx.llbb, next_bcx.llbb, DebugLoc::None);
-        let body_bcx = f(body_bcx, data_ptr, unit_ty);
-        AddIncomingToPhi(data_ptr, InBoundsGEP(body_bcx, data_ptr,
+            ICmp(&mut header_bcx.with(bcx.fcx),
+                 llvm::IntULT, data_ptr, data_end_ptr, DebugLoc::None);
+        let body_bcx = bcx.fcx.new_temp_block("iter_vec_loop_body");
+        let next_bcx = bcx.fcx.new_temp_block("iter_vec_next");
+        CondBr(&mut header_bcx.with(bcx.fcx), not_yet_at_end,
+               body_bcx.llbb, next_bcx.llbb, DebugLoc::None);
+        let body_bcx = f(&mut body_bcx.with(bcx.fcx), data_ptr, unit_ty);
+        AddIncomingToPhi(data_ptr, InBoundsGEP(&mut body_bcx.with(bcx.fcx), data_ptr,
                                                &[C_int(bcx.ccx(), 1)]),
                          body_bcx.llbb);
-        Br(body_bcx, header_bcx.llbb, DebugLoc::None);
+        Br(&mut body_bcx.with(bcx.fcx), header_bcx.llbb, DebugLoc::None);
         next_bcx
     }
 }

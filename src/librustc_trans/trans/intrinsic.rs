@@ -147,7 +147,7 @@ pub fn check_intrinsics(ccx: &CrateContext) {
 /// Remember to add all intrinsics here, in librustc_typeck/check/mod.rs,
 /// and in libcore/intrinsics.rs; if you need access to any llvm intrinsics,
 /// add them to librustc_trans/trans/context.rs
-pub fn trans_intrinsic_call<'a, 'r, 'blk, 'tcx>(mut bcx: &mut Block<'r, 'blk, 'tcx>,
+pub fn trans_intrinsic_call<'a, 'r, 'blk, 'tcx>(bcx: &'r mut Block<'r, 'blk, 'tcx>,
                                                 node: ast::NodeId,
                                                 callee_ty: Ty<'tcx>,
                                                 cleanup_scope: cleanup::CustomScopeIndex,
@@ -156,8 +156,7 @@ pub fn trans_intrinsic_call<'a, 'r, 'blk, 'tcx>(mut bcx: &mut Block<'r, 'blk, 't
                                                 substs: subst::Substs<'tcx>,
                                                 call_info: NodeIdAndSpan)
                                                 -> Result<'blk> {
-    let fcx = bcx.fcx;
-    let ccx = fcx.ccx;
+    let ccx = bcx.fcx.ccx;
     let tcx = bcx.tcx();
 
     let _icx = push_ctxt("trans_intrinsic_call");
@@ -245,16 +244,16 @@ pub fn trans_intrinsic_call<'a, 'r, 'blk, 'tcx>(mut bcx: &mut Block<'r, 'blk, 't
                         expr::SaveIn(d) => expr::SaveIn(PointerCast(bcx, d, llintype.ptr_to())),
                         expr::Ignore => expr::Ignore
                     };
-                    bcx = expr::trans_into(bcx, &*arg_exprs[0], dest);
+                    bcx = &mut expr::trans_into(bcx, &*arg_exprs[0], dest).with(bcx.fcx);
                     dest
                 };
 
-                fcx.scopes.borrow_mut().last_mut().unwrap().drop_non_lifetime_clean();
-                fcx.pop_and_trans_custom_cleanup_scope(bcx, cleanup_scope);
+                bcx.fcx.scopes.borrow_mut().last_mut().unwrap().drop_non_lifetime_clean();
+                bcx.fcx.pop_and_trans_custom_cleanup_scope(bcx.bl, cleanup_scope);
 
                 return match dest {
-                    expr::SaveIn(d) => Result::new(bcx, d),
-                    expr::Ignore => Result::new(bcx, C_undef(llret_ty.ptr_to()))
+                    expr::SaveIn(d) => Result::new(bcx.bl, d),
+                    expr::Ignore => Result::new(bcx.bl, C_undef(llret_ty.ptr_to()))
                 };
 
             }
@@ -267,15 +266,15 @@ pub fn trans_intrinsic_call<'a, 'r, 'blk, 'tcx>(mut bcx: &mut Block<'r, 'blk, 't
 
     // Push the arguments.
     let mut llargs = Vec::new();
-    bcx = callee::trans_args(bcx,
-                             args,
-                             callee_ty,
-                             &mut llargs,
-                             cleanup::CustomScope(cleanup_scope),
-                             false,
-                             RustIntrinsic);
+    bcx = &mut callee::trans_args(bcx,
+                                  args,
+                                  callee_ty,
+                                  &mut llargs,
+                                  cleanup::CustomScope(cleanup_scope),
+                                  false,
+                                  RustIntrinsic).with(bcx.fcx);
 
-    fcx.scopes.borrow_mut().last_mut().unwrap().drop_non_lifetime_clean();
+    bcx.fcx.scopes.borrow_mut().last_mut().unwrap().drop_non_lifetime_clean();
 
     let call_debug_location = DebugLoc::At(call_info.id, call_info.span);
 
@@ -283,13 +282,13 @@ pub fn trans_intrinsic_call<'a, 'r, 'blk, 'tcx>(mut bcx: &mut Block<'r, 'blk, 't
     if &name[..] == "abort" {
         let llfn = ccx.get_intrinsic(&("llvm.trap"));
         Call(bcx, llfn, &[], None, call_debug_location);
-        fcx.pop_and_trans_custom_cleanup_scope(bcx, cleanup_scope);
+        bcx.fcx.pop_and_trans_custom_cleanup_scope(bcx.bl, cleanup_scope);
         Unreachable(bcx);
-        return Result::new(bcx, C_undef(Type::nil(ccx).ptr_to()));
+        return Result::new(bcx.bl, C_undef(Type::nil(ccx).ptr_to()));
     } else if &name[..] == "unreachable" {
-        fcx.pop_and_trans_custom_cleanup_scope(bcx, cleanup_scope);
+        bcx.fcx.pop_and_trans_custom_cleanup_scope(bcx.bl, cleanup_scope);
         Unreachable(bcx);
-        return Result::new(bcx, C_nil(ccx));
+        return Result::new(bcx.bl, C_nil(ccx));
     }
 
     let ret_ty = match ret_ty {
@@ -348,7 +347,7 @@ pub fn trans_intrinsic_call<'a, 'r, 'blk, 'tcx>(mut bcx: &mut Block<'r, 'blk, 't
                 ty: tp_ty,
                 kind: Rvalue::new(mode)
             };
-            bcx = src.store_to(bcx, llargs[0]);
+            bcx = &mut src.store_to(bcx, llargs[0]).with(bcx.fcx);
             C_nil(ccx)
         }
         (_, "type_name") => {
@@ -685,13 +684,13 @@ pub fn trans_intrinsic_call<'a, 'r, 'blk, 'tcx>(mut bcx: &mut Block<'r, 'blk, 't
         (_, "overflowing_mul") => Mul(bcx, llargs[0], llargs[1], call_debug_location),
 
         (_, "return_address") => {
-            if !fcx.caller_expects_out_pointer {
+            if !bcx.fcx.caller_expects_out_pointer {
                 tcx.sess.span_err(call_info.span,
                                   "invalid use of `return_address` intrinsic: function \
                                    does not use out pointer");
                 C_null(Type::i8p(ccx))
             } else {
-                PointerCast(bcx, llvm::get_param(fcx.llfn, 0), Type::i8p(ccx))
+                PointerCast(bcx, llvm::get_param(bcx.fcx.llfn, 0), Type::i8p(ccx))
             }
         }
 
@@ -813,25 +812,25 @@ pub fn trans_intrinsic_call<'a, 'r, 'blk, 'tcx>(mut bcx: &mut Block<'r, 'blk, 't
     // If we made a temporary stack slot, let's clean it up
     match dest {
         expr::Ignore => {
-            bcx = glue::drop_ty(bcx, llresult, ret_ty, call_debug_location);
+            bcx = &mut glue::drop_ty(bcx, llresult, ret_ty, call_debug_location).with(bcx.fcx);
         }
         expr::SaveIn(_) => {}
     }
 
-    fcx.pop_and_trans_custom_cleanup_scope(bcx, cleanup_scope);
+    bcx.fcx.pop_and_trans_custom_cleanup_scope(bcx.bl, cleanup_scope);
 
-    Result::new(bcx, llresult)
+    Result::new(bcx.bl, llresult)
 }
 
 fn copy_intrinsic<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
-                              allow_overlap: bool,
-                              volatile: bool,
-                              tp_ty: Ty<'tcx>,
-                              dst: ValueRef,
-                              src: ValueRef,
-                              count: ValueRef,
-                              call_debug_location: DebugLoc)
-                              -> ValueRef {
+                                  allow_overlap: bool,
+                                  volatile: bool,
+                                  tp_ty: Ty<'tcx>,
+                                  dst: ValueRef,
+                                  src: ValueRef,
+                                  count: ValueRef,
+                                  call_debug_location: DebugLoc)
+                                  -> ValueRef {
     let ccx = bcx.ccx();
     let lltp_ty = type_of::type_of(ccx, tp_ty);
     let align = C_i32(ccx, type_of::align_of(ccx, tp_ty) as i32);
@@ -867,13 +866,13 @@ fn copy_intrinsic<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
 }
 
 fn memset_intrinsic<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
-                                volatile: bool,
-                                tp_ty: Ty<'tcx>,
-                                dst: ValueRef,
-                                val: ValueRef,
-                                count: ValueRef,
-                                call_debug_location: DebugLoc)
-                                -> ValueRef {
+                                    volatile: bool,
+                                    tp_ty: Ty<'tcx>,
+                                    dst: ValueRef,
+                                    val: ValueRef,
+                                    count: ValueRef,
+                                    call_debug_location: DebugLoc)
+                                    -> ValueRef {
     let ccx = bcx.ccx();
     let lltp_ty = type_of::type_of(ccx, tp_ty);
     let align = C_i32(ccx, type_of::align_of(ccx, tp_ty) as i32);
@@ -909,12 +908,12 @@ fn count_zeros_intrinsic(bcx: &mut Block,
 }
 
 fn with_overflow_intrinsic<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
-                                       name: &'static str,
-                                       t: Ty<'tcx>,
-                                       a: ValueRef,
-                                       b: ValueRef,
-                                       call_debug_location: DebugLoc)
-                                       -> ValueRef {
+                                           name: &'static str,
+                                           t: Ty<'tcx>,
+                                           a: ValueRef,
+                                           b: ValueRef,
+                                           call_debug_location: DebugLoc)
+                                           -> ValueRef {
     let llfn = bcx.ccx().get_intrinsic(&name);
 
     // Convert `i1` to a `bool`, and write it to the out parameter

@@ -135,7 +135,7 @@ pub struct Struct<'tcx> {
 /// these, for places in trans where the `Ty` isn't directly
 /// available.
 pub fn represent_node<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
-                                  node: ast::NodeId) -> Rc<Repr<'tcx>> {
+                                      node: ast::NodeId) -> Rc<Repr<'tcx>> {
     represent_type(bcx.ccx(), node_id_type(bcx, node))
 }
 
@@ -779,8 +779,8 @@ fn struct_llfields<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, st: &Struct<'tcx>,
 ///
 /// This should ideally be less tightly tied to `_match`.
 pub fn trans_switch<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
-                                r: &Repr<'tcx>, scrutinee: ValueRef)
-                                -> (_match::BranchKind, Option<ValueRef>) {
+                                    r: &Repr<'tcx>, scrutinee: ValueRef)
+                                    -> (_match::BranchKind, Option<ValueRef>) {
     match *r {
         CEnum(..) | General(..) |
         RawNullablePointer { .. } | StructWrappedNullablePointer { .. } => {
@@ -797,7 +797,7 @@ pub fn trans_switch<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
 
 /// Obtain the actual discriminant of a value.
 pub fn trans_get_discr<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>, r: &Repr<'tcx>,
-                                   scrutinee: ValueRef, cast_to: Option<Type>)
+                                       scrutinee: ValueRef, cast_to: Option<Type>)
     -> ValueRef {
     let signed;
     let val;
@@ -870,7 +870,7 @@ fn load_discr(bcx: &mut Block, ity: IntType, ptr: ValueRef, min: Disr, max: Disr
 ///
 /// This should ideally be less tightly tied to `_match`.
 pub fn trans_case<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>, r: &Repr, discr: Disr)
-                              -> _match::OptResult<'blk> {
+                                  -> _match::OptResult<'blk> {
     match *r {
         CEnum(ity, _, _) => {
             _match::SingleResult(Result::new(bcx.bl, C_integral(ll_inttype(bcx.ccx(), ity),
@@ -894,7 +894,7 @@ pub fn trans_case<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>, r: &Repr, dis
 /// Set the discriminant for a new value of the given case of the given
 /// representation.
 pub fn trans_set_discr<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>, r: &Repr<'tcx>,
-                                   val: ValueRef, discr: Disr) {
+                                       val: ValueRef, discr: Disr) {
     match *r {
         CEnum(ity, min, max) => {
             assert_discr_in_range(ity, min, max, discr);
@@ -964,7 +964,7 @@ pub fn num_args(r: &Repr, discr: Disr) -> usize {
 
 /// Access a field, at a point when the value's case is known.
 pub fn trans_field_ptr<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>, r: &Repr<'tcx>,
-                                   val: ValueRef, discr: Disr, ix: usize) -> ValueRef {
+                                       val: ValueRef, discr: Disr, ix: usize) -> ValueRef {
     // Note: if this ever needs to generate conditionals (e.g., if we
     // decide to do some kind of cdr-coding-like non-unique repr
     // someday), it will need to return a possibly-new bcx as well.
@@ -1003,7 +1003,7 @@ pub fn trans_field_ptr<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>, r: &Repr
 }
 
 pub fn struct_field_ptr<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>, st: &Struct<'tcx>, val: ValueRef,
-                                    ix: usize, needs_cast: bool) -> ValueRef {
+                                        ix: usize, needs_cast: bool) -> ValueRef {
     let val = if needs_cast {
         let ccx = bcx.ccx();
         let fields = st.fields.iter().map(|&ty| type_of::type_of(ccx, ty)).collect::<Vec<_>>();
@@ -1061,7 +1061,7 @@ pub fn fold_variants<'r, 'blk, 'tcx, F>(bcx: &mut Block<'r, 'blk, 'tcx>,
 
 /// Access the struct drop flag, if present.
 pub fn trans_drop_flag_ptr<'r, 'blk, 'tcx>(bcx: &'r mut Block<'r, 'blk, 'tcx>, r: &Repr<'tcx>, val: ValueRef)
-                                       -> datum::DatumBlock<'blk, 'tcx, datum::Expr>
+                                           -> datum::DatumBlock<'blk, 'tcx, datum::Expr>
 {
     let tcx = bcx.tcx();
     let ptr_ty = ty::mk_imm_ptr(bcx.tcx(), tcx.dtor_type());

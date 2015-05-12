@@ -256,7 +256,7 @@ fn require_alloc_fn<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
 // The following malloc_raw_dyn* functions allocate a box to contain
 // a given type, but with a potentially dynamic size.
 
-pub fn malloc_raw_dyn<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
+pub fn malloc_raw_dyn<'r, 'blk, 'tcx>(bcx: &'r mut Block<'r, 'blk, 'tcx>,
                                   llty_ptr: Type,
                                   info_ty: Ty<'tcx>,
                                   size: ValueRef,
@@ -849,7 +849,7 @@ pub fn to_arg_ty_ptr<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>, ptr: Value
     }
 }
 
-pub fn init_local<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>, local: &ast::Local)
+pub fn init_local<'r, 'blk, 'tcx>(bcx: &'r mut Block<'r, 'blk, 'tcx>, local: &ast::Local)
                               -> &'blk BlockS {
     debug!("init_local(bcx={}, local.id={})", bcx.to_str(), local.id);
     let _indenter = indenter();
@@ -1300,7 +1300,7 @@ pub fn create_datums_for_fn_args<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
 ///
 /// FIXME(pcwalton): Reduce the amount of code bloat this is responsible for.
 fn create_datums_for_fn_args_under_call_abi<'r, 'blk, 'tcx>(
-        mut bcx: &'r mut Block<'r, 'blk, 'tcx>,
+        bcx: &'r mut Block<'r, 'blk, 'tcx>,
         arg_scope: cleanup::CustomScopeIndex,
         arg_tys: &[Ty<'tcx>])
         -> Vec<RvalueDatum<'tcx>> {
@@ -1649,7 +1649,7 @@ pub fn trans_enum_variant<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         llfndecl);
 }
 
-pub fn trans_named_tuple_constructor<'r, 'blk, 'tcx>(mut bcx: &'r mut Block<'r, 'blk, 'tcx>,
+pub fn trans_named_tuple_constructor<'r, 'blk, 'tcx>(bcx: &'r mut Block<'r, 'blk, 'tcx>,
                                                  ctor_ty: Ty<'tcx>,
                                                  disr: ty::Disr,
                                                  args: callee::CallArgs,
@@ -2084,7 +2084,7 @@ pub fn register_fn_llvmty(ccx: &CrateContext,
                           sp: Span,
                           sym: String,
                           node_id: ast::NodeId,
-                      cc: llvm::CallConv,
+                          cc: llvm::CallConv,
                           llfty: Type) -> ValueRef {
     debug!("register_fn_llvmty id={} sym={}", node_id, sym);
 

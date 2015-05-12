@@ -73,7 +73,7 @@ pub fn trans_stmt<'r, 'blk, 'tcx>(cx: &'r mut Block<'r, 'blk, 'tcx>,
     bcx.fcx.pop_and_trans_ast_cleanup_scope(bcx.bl, ast_util::stmt_id(s))
 }
 
-pub fn trans_stmt_semi<'r, 'blk, 'tcx>(cx: &mut Block<'r, 'blk, 'tcx>, e: &ast::Expr)
+pub fn trans_stmt_semi<'r, 'blk, 'tcx>(cx: &'r mut Block<'r, 'blk, 'tcx>, e: &ast::Expr)
                                        -> &'blk BlockS {
     let _icx = push_ctxt("trans_stmt_semi");
 
@@ -393,7 +393,7 @@ pub fn trans_ret<'r, 'blk, 'tcx>(bcx: &'r mut Block<'r, 'blk, 'tcx>,
     bcx.bl
 }
 
-pub fn trans_fail<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
+pub fn trans_fail<'r, 'blk, 'tcx>(bcx: &'r mut Block<'r, 'blk, 'tcx>,
                                   call_info: NodeIdAndSpan,
                                   fail_str: InternedString)
                                   -> &'blk BlockS {
@@ -422,7 +422,7 @@ pub fn trans_fail<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
     bl
 }
 
-pub fn trans_fail_bounds_check<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
+pub fn trans_fail_bounds_check<'r, 'blk, 'tcx>(bcx: &'r mut Block<'r, 'blk, 'tcx>,
                                                call_info: NodeIdAndSpan,
                                                index: ValueRef,
                                                len: ValueRef)

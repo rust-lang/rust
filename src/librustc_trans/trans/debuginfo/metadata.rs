@@ -902,8 +902,8 @@ pub fn file_metadata(cx: &CrateContext, full_path: &str) -> DIFile {
 
 /// Finds the scope metadata node for the given AST node.
 pub fn scope_metadata(fcx: &FunctionContext,
-                  node_id: ast::NodeId,
-                  error_reporting_span: Span)
+                      node_id: ast::NodeId,
+                      error_reporting_span: Span)
                -> DIScope {
     let scope_map = &fcx.debug_context
                         .get_ref(fcx.ccx, error_reporting_span)
@@ -1961,11 +1961,11 @@ pub fn create_local_var_metadata(bcx: &mut Block, local: &ast::Local) {
 ///
 /// Adds the created metadata nodes directly to the crate's IR.
 pub fn create_captured_var_metadata<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
-                                                node_id: ast::NodeId,
-                                                env_pointer: ValueRef,
-                                                env_index: usize,
-                                                captured_by_ref: bool,
-                                                span: Span) {
+                                                    node_id: ast::NodeId,
+                                                    env_pointer: ValueRef,
+                                                    env_index: usize,
+                                                    captured_by_ref: bool,
+                                                    span: Span) {
     if bcx.bl.unreachable.get() ||
        fn_should_be_ignored(bcx.fcx) ||
        bcx.sess().opts.debuginfo != FullDebugInfo {
@@ -2050,8 +2050,8 @@ pub fn create_captured_var_metadata<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 't
 ///
 /// Adds the created metadata nodes directly to the crate's IR.
 pub fn create_match_binding_metadata<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
-                                                 variable_name: ast::Name,
-                                                 binding: BindingInfo<'tcx>) {
+                                                     variable_name: ast::Name,
+                                                     binding: BindingInfo<'tcx>) {
     if bcx.bl.unreachable.get() ||
        fn_should_be_ignored(bcx.fcx) ||
        bcx.sess().opts.debuginfo != FullDebugInfo {

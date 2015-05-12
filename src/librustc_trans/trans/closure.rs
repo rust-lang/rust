@@ -36,9 +36,9 @@ use syntax::ast_util;
 
 
 fn load_closure_environment<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
-                                        arg_scope_id: ScopeId,
-                                        freevars: &[ty::Freevar])
-                                        -> &'blk BlockS
+                                            arg_scope_id: ScopeId,
+                                            freevars: &[ty::Freevar])
+                                            -> &'blk BlockS
 {
     let _icx = push_ctxt("closure::load_closure_environment");
 

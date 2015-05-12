@@ -536,12 +536,12 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 }
 
 fn declare_local<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
-                             variable_name: ast::Name,
-                             variable_type: Ty<'tcx>,
-                             scope_metadata: DIScope,
-                             variable_access: VariableAccess,
-                             variable_kind: VariableKind,
-                             span: Span) {
+                                 variable_name: ast::Name,
+                                 variable_type: Ty<'tcx>,
+                                 scope_metadata: DIScope,
+                                 variable_access: VariableAccess,
+                                 variable_kind: VariableKind,
+                                 span: Span) {
     let cx: &CrateContext = bcx.ccx();
 
     let filename = span_start(cx, span).file.name.clone();

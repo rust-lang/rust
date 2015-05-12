@@ -223,13 +223,13 @@ pub fn register_foreign_item_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 ///   functions passed_arg_tys will include the Rust type of all
 ///   the arguments including the ones not specified in the fn's signature.
 pub fn trans_native_call<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
-                                     callee_ty: Ty<'tcx>,
-                                     llfn: ValueRef,
-                                     llretptr: ValueRef,
-                                     llargs_rust: &[ValueRef],
-                                     passed_arg_tys: Vec<Ty<'tcx>>,
-                                     call_debug_loc: DebugLoc)
-                                     -> &'blk BlockS
+                                         callee_ty: Ty<'tcx>,
+                                         llfn: ValueRef,
+                                         llretptr: ValueRef,
+                                         llargs_rust: &[ValueRef],
+                                         passed_arg_tys: Vec<Ty<'tcx>>,
+                                         call_debug_loc: DebugLoc)
+                                         -> &'blk BlockS
 {
     let ccx = bcx.ccx();
     let tcx = bcx.tcx();
@@ -435,7 +435,7 @@ pub fn trans_native_call<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
         }
     }
 
-    return bcx;
+    return bcx.bl;
 }
 
 // feature gate SIMD types in FFI, since I (huonw) am not sure the

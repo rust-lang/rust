@@ -26,7 +26,7 @@ use libc::{c_uint, c_char};
 
 // Take an inline assembly expression and splat it out via LLVM
 pub fn trans_inline_asm<'r, 'blk, 'tcx>(bcx: &'r mut Block<'r, 'blk, 'tcx>, ia: &ast::InlineAsm)
-                                        -> &'r mut Block<'r, 'blk, 'tcx> {
+                                        -> &'blk BlockS {
     let fcx = bcx.fcx;
     let mut bcx = bcx;
     let mut constraints = Vec::new();
@@ -147,7 +147,6 @@ pub fn trans_inline_asm<'r, 'blk, 'tcx>(bcx: &'r mut Block<'r, 'blk, 'tcx>, ia: 
             llvm::LLVMMDNodeInContext(bcx.ccx().llcx(), &val, 1));
     }
 
-    return bcx;
-
+    return bcx.bl;
 }
 

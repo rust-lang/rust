@@ -186,9 +186,9 @@ pub fn immediate_rvalue<'tcx>(val: ValueRef, ty: Ty<'tcx>) -> Datum<'tcx, Rvalue
 }
 
 pub fn immediate_rvalue_bcx<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
-                                        val: ValueRef,
-                                        ty: Ty<'tcx>)
-                                        -> DatumBlock<'blk, 'tcx, Rvalue> {
+                                            val: ValueRef,
+                                            ty: Ty<'tcx>)
+                                            -> DatumBlock<'blk, 'tcx, Rvalue> {
     DatumBlock::new(bcx.bl, immediate_rvalue(val, ty))
 }
 
@@ -222,9 +222,9 @@ pub fn lvalue_scratch_datum<'r, 'blk, 'tcx, A, F>(bcx: &'r mut Block<'r, 'blk, '
 /// temporaries that may not get initialized if a certain arm is not taken, so we must zero them.
 /// You must arrange any cleanups etc yourself!
 pub fn rvalue_scratch_datum<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
-                                        ty: Ty<'tcx>,
-                                        name: &str)
-                                        -> Datum<'tcx, Rvalue> {
+                                            ty: Ty<'tcx>,
+                                            name: &str)
+                                            -> Datum<'tcx, Rvalue> {
     let llty = type_of::type_of(bcx.ccx(), ty);
     let scratch = alloca(bcx, llty, name);
     Datum::new(scratch, ty, Rvalue::new(ByRef))
@@ -260,10 +260,10 @@ pub trait KindOps {
     /// Take appropriate action after the value in `datum` has been
     /// stored to a new location.
     fn post_store<'r, 'blk, 'tcx>(&self,
-                              bcx: &mut Block<'r, 'blk, 'tcx>,
-                              val: ValueRef,
-                              ty: Ty<'tcx>)
-                              -> &'blk BlockS;
+                                  bcx: &mut Block<'r, 'blk, 'tcx>,
+                                  val: ValueRef,
+                                  ty: Ty<'tcx>)
+                                  -> &'blk BlockS;
 
     /// True if this mode is a reference mode, meaning that the datum's
     /// val field is a pointer to the actual value
@@ -276,10 +276,10 @@ pub trait KindOps {
 
 impl KindOps for Rvalue {
     fn post_store<'r, 'blk, 'tcx>(&self,
-                              bcx: &mut Block<'r, 'blk, 'tcx>,
-                              _val: ValueRef,
-                              _ty: Ty<'tcx>)
-                              -> &'blk BlockS {
+                                  bcx: &mut Block<'r, 'blk, 'tcx>,
+                                  _val: ValueRef,
+                                  _ty: Ty<'tcx>)
+                                  -> &'blk BlockS {
         // No cleanup is scheduled for an rvalue, so we don't have
         // to do anything after a move to cancel or duplicate it.
         if self.is_by_ref() {
@@ -301,10 +301,10 @@ impl KindOps for Lvalue {
     /// If an lvalue is moved, we must zero out the memory in which it resides so as to cancel
     /// cleanup. If an @T lvalue is copied, we must increment the reference count.
     fn post_store<'r, 'blk, 'tcx>(&self,
-                              bcx: &mut Block<'r, 'blk, 'tcx>,
-                              val: ValueRef,
-                              ty: Ty<'tcx>)
-                              -> &'blk BlockS {
+                                  bcx: &mut Block<'r, 'blk, 'tcx>,
+                                  val: ValueRef,
+                                  ty: Ty<'tcx>)
+                                  -> &'blk BlockS {
         let _icx = push_ctxt("<Lvalue as KindOps>::post_store");
         if bcx.fcx.type_needs_drop(ty) {
             // cancel cleanup of affine values by drop-filling the memory
@@ -326,10 +326,10 @@ impl KindOps for Lvalue {
 
 impl KindOps for Expr {
     fn post_store<'r, 'blk, 'tcx>(&self,
-                              bcx: &mut Block<'r, 'blk, 'tcx>,
-                              val: ValueRef,
-                              ty: Ty<'tcx>)
-                              -> &'blk BlockS {
+                                  bcx: &mut Block<'r, 'blk, 'tcx>,
+                                  val: ValueRef,
+                                  ty: Ty<'tcx>)
+                                  -> &'blk BlockS {
         match *self {
             LvalueExpr => Lvalue.post_store(bcx, val, ty),
             RvalueExpr(ref r) => r.post_store(bcx, val, ty),

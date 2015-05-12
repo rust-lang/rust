@@ -203,7 +203,7 @@ pub trait Cleanup<'tcx> {
     fn clean_on_unwind(&self) -> bool;
     fn is_lifetime_end(&self) -> bool;
     fn trans<'r,'blk>(&self,
-                      bcx: &mut Block<'r, 'blk, 'tcx>,
+                      bcx: &'r mut Block<'r, 'blk, 'tcx>,
                       debug_loc: DebugLoc)
                       -> &'blk BlockS;
 }
@@ -1045,7 +1045,7 @@ impl<'tcx> Cleanup<'tcx> for DropValue<'tcx> {
     }
 
     fn trans<'r, 'blk>(&self,
-                       bcx: &mut Block<'r, 'blk, 'tcx>,
+                       bcx: &'r mut Block<'r, 'blk, 'tcx>,
                        debug_loc: DebugLoc)
                        -> &'blk BlockS {
         let skip_dtor = self.skip_dtor;
@@ -1092,7 +1092,7 @@ impl<'tcx> Cleanup<'tcx> for FreeValue<'tcx> {
     }
 
     fn trans<'r, 'blk>(&self,
-                       bcx: &mut Block<'r, 'blk, 'tcx>,
+                       bcx: &'r mut Block<'r, 'blk, 'tcx>,
                        debug_loc: DebugLoc)
                        -> &'blk BlockS {
         match self.heap {
@@ -1128,7 +1128,7 @@ impl<'tcx> Cleanup<'tcx> for FreeSlice {
     }
 
     fn trans<'r, 'blk>(&self,
-                       bcx: &mut Block<'r, 'blk, 'tcx>,
+                       bcx: &'r mut Block<'r, 'blk, 'tcx>,
                        debug_loc: DebugLoc)
                        -> &'blk BlockS {
         match self.heap {
@@ -1162,7 +1162,7 @@ impl<'tcx> Cleanup<'tcx> for LifetimeEnd {
     }
 
     fn trans<'r, 'blk>(&self,
-                       bcx: &mut Block<'r, 'blk, 'tcx>,
+                       bcx: &'r mut Block<'r, 'blk, 'tcx>,
                        debug_loc: DebugLoc)
                        -> &'blk BlockS {
         debug_loc.apply(bcx.fcx);

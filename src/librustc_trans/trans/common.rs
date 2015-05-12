@@ -585,8 +585,8 @@ impl BlockS {
     }
 
     pub fn with<'r, 'blk, 'tcx>(&'blk self,
-                            fcx: &'r mut FunctionContext<'blk, 'tcx>)
-                            -> Block<'r, 'blk, 'tcx> {
+                                fcx: &'r mut FunctionContext<'blk, 'tcx>)
+                                -> Block<'r, 'blk, 'tcx> {
         Block::new(self, fcx)
     }
 }
@@ -930,7 +930,7 @@ pub fn C_bytes_in_context(llcx: ContextRef, bytes: &[u8]) -> ValueRef {
 }
 
 pub fn const_get_elt(cx: &CrateContext, v: ValueRef, us: &[c_uint])
-              -> ValueRef {
+                     -> ValueRef {
     unsafe {
         let r = llvm::LLVMConstExtractValue(v, us.as_ptr(), us.len() as c_uint);
 
@@ -1231,9 +1231,9 @@ pub enum ExprOrMethodCall {
 }
 
 pub fn node_id_substs<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                            node: ExprOrMethodCall,
-                            param_substs: &subst::Substs<'tcx>)
-                            -> subst::Substs<'tcx> {
+                                node: ExprOrMethodCall,
+                                param_substs: &subst::Substs<'tcx>)
+                                -> subst::Substs<'tcx> {
     let tcx = ccx.tcx();
 
     let substs = match node {
