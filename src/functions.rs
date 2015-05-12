@@ -28,15 +28,79 @@ impl<'a> FmtVisitor<'a> {
                       unsafety: &ast::Unsafety,
                       abi: &abi::Abi,
                       vis: ast::Visibility,
-                      next_span: Span) // next_span is a nasty hack, its a loose upper
-                                       // bound on any comments after the where clause.
+                      span_end: BytePos)
+        -> String
+    {
+        let newline_brace = self.newline_for_brace(&generics.where_clause);
+
+        let mut result = self.rewrite_fn_base(indent,
+                                              ident,
+                                              fd,
+                                              explicit_self,
+                                              generics,
+                                              unsafety,
+                                              abi,
+                                              vis,
+                                              span_end,
+                                              newline_brace);
+
+        // Prepare for the function body by possibly adding a newline and indent.
+        // FIXME we'll miss anything between the end of the signature and the start
+        // of the body, but we need more spans from the compiler to solve this.
+        if newline_brace {
+            result.push('\n');
+            result.push_str(&make_indent(indent));
+        } else {
+            result.push(' ');
+        }
+
+        result
+    }
+
+    pub fn rewrite_required_fn(&mut self,
+                               indent: usize,
+                               ident: ast::Ident,
+                               sig: &ast::MethodSig,
+                               span: Span)
+        -> String
+    {
+        // Drop semicolon or it will be interpreted as comment
+        let span_end = span.hi - BytePos(1);
+
+        let mut result = self.rewrite_fn_base(indent,
+                                              ident,
+                                              &sig.decl,
+                                              Some(&sig.explicit_self),
+                                              &sig.generics,
+                                              &sig.unsafety,
+                                              &sig.abi,
+                                              ast::Visibility::Inherited,
+                                              span_end,
+                                              false);
+
+        // Re-attach semicolon
+        result.push(';');
+
+        result
+    }
+
+    fn rewrite_fn_base(&mut self,
+                       indent: usize,
+                       ident: ast::Ident,
+                       fd: &ast::FnDecl,
+                       explicit_self: Option<&ast::ExplicitSelf>,
+                       generics: &ast::Generics,
+                       unsafety: &ast::Unsafety,
+                       abi: &abi::Abi,
+                       vis: ast::Visibility,
+                       span_end: BytePos,
+                       newline_brace: bool)
         -> String
     {
         // FIXME we'll lose any comments in between parts of the function decl, but anyone
         // who comments there probably deserves what they get.
 
         let where_clause = &generics.where_clause;
-        let newline_brace = self.newline_for_brace(where_clause);
 
         let mut result = String::with_capacity(1024);
         // Vis unsafety abi.
@@ -104,7 +168,7 @@ impl<'a> FmtVisitor<'a> {
             // Comment between return type and the end of the decl.
             let snippet_lo = fd.output.span().hi;
             if where_clause.predicates.len() == 0 {
-                let snippet_hi = next_span.lo;
+                let snippet_hi = span_end;
                 let snippet = self.snippet(codemap::mk_sp(snippet_lo, snippet_hi));
                 let snippet = snippet.trim();
                 if snippet.len() > 0 {
@@ -119,17 +183,7 @@ impl<'a> FmtVisitor<'a> {
         }
 
         // Where clause.
-        result.push_str(&self.rewrite_where_clause(where_clause, indent, next_span));
-
-        // Prepare for the function body by possibly adding a newline and indent.
-        // FIXME we'll miss anything between the end of the signature and the start
-        // of the body, but we need more spans from the compiler to solve this.
-        if newline_brace {
-            result.push('\n');
-            result.push_str(&make_indent(self.block_indent));
-        } else {
-            result.push(' ');
-        }
+        result.push_str(&self.rewrite_where_clause(where_clause, indent, span_end));
 
         result
     }
@@ -396,7 +450,7 @@ impl<'a> FmtVisitor<'a> {
     fn rewrite_where_clause(&self,
                             where_clause: &ast::WhereClause,
                             indent: usize,
-                            next_span: Span)
+                            span_end: BytePos)
         -> String
     {
         let mut result = String::new();
@@ -414,7 +468,8 @@ impl<'a> FmtVisitor<'a> {
                                                    "{",
                                                    |pred| span_for_where_pred(pred).lo,
                                                    |pred| span_for_where_pred(pred).hi,
-                                                   next_span.lo);
+                                                   span_end);
+
         let where_strs: Vec<_> = where_clause.predicates.iter()
                                                         .map(|p| (self.rewrite_pred(p)))
                                                         .zip(comments.into_iter())

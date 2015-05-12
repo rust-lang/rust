@@ -107,7 +107,7 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
                                              unsafety,
                                              abi,
                                              vis,
-                                             b.span);
+                                             b.span.lo);
                 self.changes.push_str_span(s, &new_fn);
             }
             visit::FkMethod(ident, ref sig, vis) => {
@@ -119,7 +119,7 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
                                              &sig.unsafety,
                                              &sig.abi,
                                              vis.unwrap_or(ast::Visibility::Inherited),
-                                             b.span);
+                                             b.span.lo);
                 self.changes.push_str_span(s, &new_fn);
             }
             visit::FkFnBlock(..) => {}
@@ -190,6 +190,21 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
         if self.visit_attrs(&ti.attrs) {
             return;
         }
+
+        if let ast::TraitItem_::MethodTraitItem(ref sig, None) = ti.node {
+            self.format_missing_with_indent(ti.span.lo);
+
+            let indent = self.block_indent;
+            let new_fn = self.rewrite_required_fn(indent,
+                                                  ti.ident,
+                                                  sig,
+                                                  ti.span);
+
+            self.changes.push_str_span(ti.span, &new_fn);
+            self.last_pos = ti.span.hi;
+        }
+        // TODO format trait types
+
         visit::walk_trait_item(self, ti)
     }
 
