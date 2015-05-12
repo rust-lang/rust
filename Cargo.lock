@@ -2,8 +2,14 @@
 name = "rustfmt"
 version = "0.0.1"
 dependencies = [
+ "diff 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "strings 0.0.1 (git+https://github.com/nrc/strings.rs.git)",
 ]
+
+[[package]]
+name = "diff"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "strings"
