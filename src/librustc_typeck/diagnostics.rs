@@ -28,7 +28,7 @@ but the implementation of `foo` for the type `Bar` is missing this parameter:
 
 ```
 trait Foo {
-    fn foo<T: Default>(T) -> Self;
+    fn foo<T: Default>(x: T) -> Self;
 }
 
 struct Bar;
@@ -51,7 +51,7 @@ the `u8` parameter:
 
 ```
 trait Foo {
-    fn foo(&self, u8) -> bool;
+    fn foo(&self, x: u8) -> bool;
 }
 
 struct Bar;
@@ -336,9 +336,9 @@ return type in its signature. For example:
 fn foo() -> ! { return; } // error
 ```
 
-For a function that diverges, every control path in the function must end
-with a call to `panic!()` or another diverging function. Attempting to return
-from a diverging function is an error.
+For a function that diverges, every control path in the function must never
+return, for example with a `loop` that never breaks or a call to another
+diverging function (such as `panic!()`).
 "##,
 
 E0184: r##"
