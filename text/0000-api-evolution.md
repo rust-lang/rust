@@ -652,7 +652,8 @@ Crater before being committed.
 
 One line of defense against a "minor" change causing significant breakage is the
 nightly release channel: we can get feedback about breakage long before it makes
-even into a beta release.
+even into a beta release. And of course the beta cycle itself provides another
+line of defense.
 
 ### Elaborated source
 
