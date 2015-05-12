@@ -377,7 +377,7 @@ pub fn predicate_for_trait_def<'tcx>(
     let trait_ref = ty::TraitRef {
         def_id: trait_def_id,
         substs: tcx.mk_substs(Substs::new_trait(ty_params, vec![], param_ty))
-    });
+    };
     predicate_for_trait_ref(cause, trait_ref, recursion_depth)
 }
 

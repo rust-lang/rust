@@ -29,6 +29,7 @@ use middle::ty::{ty_str, ty_vec, ty_float, ty_infer, ty_int};
 use middle::ty::{ty_uint, ty_closure, ty_uniq, ty_bare_fn};
 use middle::ty::ty_projection;
 use middle::ty;
+use middle::free_region::FreeRegionMap;
 use CrateCtxt;
 use middle::infer::{self, InferCtxt, new_infer_ctxt};
 use std::cell::RefCell;
@@ -439,32 +440,19 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
             }
         };
 
-        let trait_impls = match tcx.trait_impls
-                                   .borrow()
-                                   .get(&coerce_unsized_trait)
-                                   .cloned() {
-            None => {
-                debug!("check_implementations_of_coerce_unsized(): no types \
-                        with implementations of `CoerceUnsized` found");
-                return
-            }
-            Some(found_impls) => found_impls
-        };
+        let trait_def = ty::lookup_trait_def(tcx, coerce_unsized_trait);
 
-        // Clone first to avoid a double borrow error.
-        let trait_impls = trait_impls.borrow().clone();
-
-        for &impl_did in &trait_impls {
+        trait_def.for_each_impl(tcx, |impl_did| {
             debug!("check_implementations_of_coerce_unsized: impl_did={}",
                    impl_did.repr(tcx));
 
             if impl_did.krate != ast::LOCAL_CRATE {
                 debug!("check_implementations_of_coerce_unsized(): impl not \
                         in this crate");
-                continue
+                return;
             }
 
-            let source = self.get_self_type_for_implementation(impl_did).ty;
+            let source = ty::lookup_item_type(tcx, impl_did).ty;
             let trait_ref = ty::impl_id_to_trait_ref(self.crate_context.tcx,
                                                      impl_did.node);
             let target = *trait_ref.substs.types.get(subst::TypeSpace, 0);
@@ -507,12 +495,12 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
                     if def_id_a != def_id_b {
                         let source_path = ty::item_path_str(tcx, def_id_a);
                         let target_path = ty::item_path_str(tcx, def_id_b);
-                        span_err!(tcx.sess, span, E0373,
+                        span_err!(tcx.sess, span, E0377,
                                   "the trait `CoerceUnsized` may only be implemented \
                                    for a coercion between structures with the same \
                                    definition; expected {}, found {}",
                                   source_path, target_path);
-                        continue;
+                        return;
                     }
 
                     let origin = infer::Misc(span);
@@ -532,7 +520,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
                                   "the trait `CoerceUnsized` may only be implemented \
                                    for a coercion between structures with one field \
                                    being coerced, none found");
-                        continue;
+                        return;
                     } else if diff_fields.len() > 1 {
                         span_err!(tcx.sess, span, E0375,
                                   "the trait `CoerceUnsized` may only be implemented \
@@ -549,7 +537,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
                                                 a.repr(tcx),
                                                 b.repr(tcx))
                                    }).collect::<Vec<_>>().connect(", "));
-                        continue;
+                        return;
                     }
 
                     let (i, a, b) = diff_fields[0];
@@ -561,7 +549,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
                     span_err!(tcx.sess, span, E0376,
                               "the trait `CoerceUnsized` may only be implemented \
                                for a coercion between structures");
-                    continue;
+                    return;
                 }
             };
 
@@ -578,14 +566,15 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
                 traits::report_fulfillment_errors(&infcx, &errors);
             }
 
-            // Finally, resolve all regions. This catches wily misuses of lifetime
-            // parameters.
-            infcx.resolve_regions_and_report_errors(impl_did.node);
+            // Finally, resolve all regions.
+            let mut free_regions = FreeRegionMap::new();
+            free_regions.relate_free_regions_from_predicates(tcx, &param_env.caller_bounds);
+            infcx.resolve_regions_and_report_errors(&free_regions, impl_did.node);
 
             if let Some(kind) = kind {
                 tcx.custom_coerce_unsized_kinds.borrow_mut().insert(impl_did, kind);
             }
-        }
+        });
     }
 }
 

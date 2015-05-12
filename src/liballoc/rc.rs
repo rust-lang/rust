@@ -460,7 +460,6 @@ impl<T: ?Sized> Deref for Rc<T> {
 }
 
 #[cfg(stage0)] // SNAP c64d671
-#[unsafe_destructor]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Drop for Rc<T> {
     /// Drops the `Rc<T>`.
@@ -512,7 +511,6 @@ impl<T> Drop for Rc<T> {
 }
 
 #[cfg(not(stage0))] // SNAP c64d671
-#[unsafe_destructor]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Drop for Rc<T> {
     /// Drops the `Rc<T>`.
@@ -933,7 +931,6 @@ impl<T: ?Sized> Weak<T> {
 }
 
 #[cfg(stage0)] // SNAP c64d671
-#[unsafe_destructor]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Drop for Weak<T> {
     /// Drops the `Weak<T>`.
@@ -979,7 +976,6 @@ impl<T> Drop for Weak<T> {
 }
 
 #[cfg(not(stage0))] // SNAP c64d671
-#[unsafe_destructor]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Drop for Weak<T> {
     /// Drops the `Weak<T>`.

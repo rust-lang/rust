@@ -323,7 +323,7 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
                     return;
                 }
                 if Some(trait_def_id) == self.tcx.lang_items.unsize_trait() {
-                    span_err!(self.tcx.sess, item.span, E0323,
+                    span_err!(self.tcx.sess, item.span, E0328,
                               "explicit impls for the `Unsize` trait are not permitted");
                     return;
                 }
