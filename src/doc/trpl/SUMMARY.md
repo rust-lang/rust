@@ -43,7 +43,6 @@
     * [Universal Function Call Syntax](ufcs.md)
     * [Crates and Modules](crates-and-modules.md)
     * [`const` and `static`](const-and-static.md)
-    * [Tuple Structs](tuple-structs.md)
     * [Attributes](attributes.md)
     * [`type` aliases](type-aliases.md)
     * [Casting between types](casting-between-types.md)
