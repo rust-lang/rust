@@ -111,6 +111,7 @@ impl SipHasher {
         state
     }
 
+    #[inline]
     fn reset(&mut self) {
         self.length = 0;
         self.v0 = self.k0 ^ 0x736f6d6570736575;
@@ -120,6 +121,7 @@ impl SipHasher {
         self.ntail = 0;
     }
 
+    #[inline]
     fn write(&mut self, msg: &[u8]) {
         let length = msg.len();
         self.length += length;
@@ -173,6 +175,7 @@ impl Hasher for SipHasher {
         self.write(msg)
     }
 
+    #[inline]
     fn finish(&self) -> u64 {
         let mut v0 = self.v0;
         let mut v1 = self.v1;

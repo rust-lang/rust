@@ -23,7 +23,7 @@ If `T` is such a data structure, consider introducing a `T` _builder_:
 4. The builder should provide one or more "_terminal_" methods for actually building a `T`.
 
 The builder pattern is especially appropriate when building a `T` involves side
-effects, such as spawning a task or launching a process.
+effects, such as spawning a thread or launching a process.
 
 In Rust, there are two variants of the builder pattern, differing in the
 treatment of ownership, as described below.
@@ -115,24 +115,24 @@ Sometimes builders must transfer ownership when constructing the final type
 `T`, meaning that the terminal methods must take `self` rather than `&self`:
 
 ```rust
-// A simplified excerpt from std::task::TaskBuilder
+// A simplified excerpt from std::thread::Builder
 
-impl TaskBuilder {
-    /// Name the task-to-be. Currently the name is used for identification
+impl ThreadBuilder {
+    /// Name the thread-to-be. Currently the name is used for identification
     /// only in failure messages.
-    pub fn named(mut self, name: String) -> TaskBuilder {
+    pub fn named(mut self, name: String) -> ThreadBuilder {
         self.name = Some(name);
         self
     }
 
-    /// Redirect task-local stdout.
-    pub fn stdout(mut self, stdout: Box<Writer + Send>) -> TaskBuilder {
+    /// Redirect thread-local stdout.
+    pub fn stdout(mut self, stdout: Box<Writer + Send>) -> ThreadBuilder {
         self.stdout = Some(stdout);
         //   ^~~~~~ this is owned and cannot be cloned/re-used
         self
     }
 
-    /// Creates and executes a new child task.
+    /// Creates and executes a new child thread.
     pub fn spawn(self, f: proc():Send) {
         // consume self
         ...
@@ -141,7 +141,7 @@ impl TaskBuilder {
 ```
 
 Here, the `stdout` configuration involves passing ownership of a `Writer`,
-which must be transferred to the task upon construction (in `spawn`).
+which must be transferred to the thread upon construction (in `spawn`).
 
 When the terminal methods of the builder require ownership, there is a basic tradeoff:
 
@@ -158,17 +158,17 @@ builder methods for a consuming builder should take and returned an owned
 
 ```rust
 // One-liners
-TaskBuilder::new().named("my_task").spawn(proc() { ... });
+ThreadBuilder::new().named("my_thread").spawn(proc() { ... });
 
 // Complex configuration
-let mut task = TaskBuilder::new();
-task = task.named("my_task_2"); // must re-assign to retain ownership
+let mut thread = ThreadBuilder::new();
+thread = thread.named("my_thread_2"); // must re-assign to retain ownership
 
 if reroute {
-    task = task.stdout(mywriter);
+    thread = thread.stdout(mywriter);
 }
 
-task.spawn(proc() { ... });
+thread.spawn(proc() { ... });
 ```
 
 One-liners work as before, because ownership is threaded through each of the

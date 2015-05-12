@@ -406,19 +406,19 @@ pub fn compute_abi_info(ccx: &CrateContext,
                                 None)
             }
         } else {
-            let attr = if ty == Type::i1(ccx) { Some(Attribute::ZExtAttribute) } else { None };
+            let attr = if ty == Type::i1(ccx) { Some(Attribute::ZExt) } else { None };
             ArgType::direct(ty, None, None, attr)
         }
     }
 
     let mut arg_tys = Vec::new();
     for t in atys {
-        let ty = x86_64_ty(ccx, *t, |cls| cls.is_pass_byval(), Attribute::ByValAttribute);
+        let ty = x86_64_ty(ccx, *t, |cls| cls.is_pass_byval(), Attribute::ByVal);
         arg_tys.push(ty);
     }
 
     let ret_ty = if ret_def {
-        x86_64_ty(ccx, rty, |cls| cls.is_ret_bysret(), Attribute::StructRetAttribute)
+        x86_64_ty(ccx, rty, |cls| cls.is_ret_bysret(), Attribute::StructRet)
     } else {
         ArgType::direct(Type::void(ccx), None, None, None)
     };

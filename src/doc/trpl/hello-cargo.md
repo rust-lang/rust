@@ -5,7 +5,7 @@ projects. Cargo is currently in a pre-1.0 state, and so it is still a work in
 progress. However, it is already good enough to use for many Rust projects, and
 so it is assumed that Rust projects will use Cargo from the beginning.
 
-[cratesio]: https://doc.crates.io
+[cratesio]: http://doc.crates.io
 
 Cargo manages three things: building your code, downloading the dependencies
 your code needs, and building those dependencies. At first, your

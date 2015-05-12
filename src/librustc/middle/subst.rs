@@ -273,7 +273,6 @@ impl<T> VecPerParamSpace<T> {
 
     /// `t` is the type space.
     /// `s` is the self space.
-    /// `a` is the assoc space.
     /// `f` is the fn space.
     pub fn new(t: Vec<T>, s: Vec<T>, f: Vec<T>) -> VecPerParamSpace<T> {
         let type_limit = t.len();

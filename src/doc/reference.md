@@ -130,11 +130,6 @@ of tokens, that immediately and directly denotes the value it evaluates to,
 rather than referring to it by name or some other evaluation rule. A literal is
 a form of constant expression, so is evaluated (primarily) at compile time.
 
-The optional suffix is only used for certain numeric literals, but is
-reserved for future extension, that is, the above gives the lexical
-grammar, but a Rust parser will reject everything but the 12 special
-cases mentioned in [Number literals](#number-literals) below.
-
 #### Examples
 
 ##### Characters and strings
@@ -757,11 +752,10 @@ provided in the `extern_crate_decl`.
 The external crate is resolved to a specific `soname` at compile time, and a
 runtime linkage requirement to that `soname` is passed to the linker for
 loading at runtime. The `soname` is resolved at compile time by scanning the
-compiler's library path and matching the optional `crateid` provided as a
-string literal against the `crateid` attributes that were declared on the
-external crate when it was compiled. If no `crateid` is provided, a default
-`name` attribute is assumed, equal to the `ident` given in the
-`extern_crate_decl`.
+compiler's library path and matching the optional `crateid` provided against
+the `crateid` attributes that were declared on the external crate when it was
+compiled. If no `crateid` is provided, a default `name` attribute is assumed,
+equal to the `ident` given in the `extern_crate_decl`.
 
 Three examples of `extern crate` declarations:
 
@@ -1562,8 +1556,7 @@ warnings are generated, or otherwise "you used a private item of another module
 and weren't allowed to."
 
 By default, everything in Rust is *private*, with one exception. Enum variants
-in a `pub` enum are also public by default. You are allowed to alter this
-default visibility with the `priv` keyword. When an item is declared as `pub`,
+in a `pub` enum are also public by default. When an item is declared as `pub`,
 it can be thought of as being accessible to the outside world. For example:
 
 ```
@@ -1873,13 +1866,12 @@ macro scope.
   lower to the target's SIMD instructions, if any; the `simd` feature gate
   is necessary to use this attribute.
 - `static_assert` - on statics whose type is `bool`, terminates compilation
-  with an error if it is not initialized to `true`.
-- `unsafe_destructor` - allow implementations of the "drop" language item
-  where the type it is implemented for does not implement the "send" language
-  item; the `unsafe_destructor` feature gate is needed to use this attribute
+  with an error if it is not initialized to `true`. To use this, the `static_assert`
+  feature gate must be enabled.
 - `unsafe_no_drop_flag` - on structs, remove the flag that prevents
   destructors from being run twice. Destructors might be run multiple times on
-  the same object with this attribute.
+  the same object with this attribute. To use this, the `unsafe_no_drop_flag` feature
+  gate must be enabled.
 - `doc` - Doc comments such as `/// foo` are equivalent to `#[doc = "foo"]`.
 - `rustc_on_unimplemented` - Write a custom note to be shown along with the error
    when the trait is found to be unimplemented on a type.
@@ -2036,7 +2028,7 @@ makes it possible to declare these operations. For example, the `str` module
 in the Rust standard library defines the string equality function:
 
 ```{.ignore}
-#[lang="str_eq"]
+#[lang = "str_eq"]
 pub fn eq_slice(a: &str, b: &str) -> bool {
     // details elided
 }
@@ -2050,12 +2042,12 @@ A complete list of the built-in language items will be added in the future.
 
 ### Inline attributes
 
-The inline attribute is used to suggest to the compiler to perform an inline
-expansion and place a copy of the function or static in the caller rather than
-generating code to call the function or access the static where it is defined.
+The inline attribute suggests that the compiler should place a copy of
+the function or static in the caller, rather than generating code to
+call the function or access the static where it is defined.
 
 The compiler automatically inlines functions based on internal heuristics.
-Incorrectly inlining functions can actually making the program slower, so it
+Incorrectly inlining functions can actually make the program slower, so it
 should be used with care.
 
 Immutable statics are always considered inlineable unless marked with
@@ -2063,8 +2055,8 @@ Immutable statics are always considered inlineable unless marked with
 have the same memory address. In other words, the compiler is free to collapse
 duplicate inlineable statics together.
 
-`#[inline]` and `#[inline(always)]` always causes the function to be serialized
-into crate metadata to allow cross-crate inlining.
+`#[inline]` and `#[inline(always)]` always cause the function to be serialized
+into the crate metadata to allow cross-crate inlining.
 
 There are three different types of inline attributes:
 
@@ -2431,9 +2423,16 @@ Tuples are written by enclosing zero or more comma-separated expressions in
 parentheses. They are used to create [tuple-typed](#tuple-types) values.
 
 ```{.tuple}
-(0,);
 (0.0, 4.5);
 ("a", 4usize, true);
+```
+
+You can disambiguate a single-element tuple from a value in parentheses with a
+comma:
+
+```
+(0,); // single-element tuple
+(0); // zero in parentheses
 ```
 
 ### Unit expressions
@@ -3636,7 +3635,7 @@ that have since been removed):
 * ML Kit, Cyclone: region based memory management
 * Haskell (GHC): typeclasses, type families
 * Newsqueak, Alef, Limbo: channels, concurrency
-* Erlang: message passing, task failure, ~~linked task failure~~,
+* Erlang: message passing, thread failure, ~~linked thread failure~~,
   ~~lightweight concurrency~~
 * Swift: optional bindings
 * Scheme: hygienic macros

@@ -32,7 +32,7 @@ impl Handle {
 
     pub fn into_raw(self) -> HANDLE {
         let ret = self.0;
-        unsafe { mem::forget(self) }
+        mem::forget(self);
         return ret;
     }
 

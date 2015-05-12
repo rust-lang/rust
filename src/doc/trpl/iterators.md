@@ -42,7 +42,7 @@ loop is just a handy way to write this `loop`/`match`/`break` construct.
 `for` loops aren't the only thing that uses iterators, however. Writing your
 own iterator involves implementing the `Iterator` trait. While doing that is
 outside of the scope of this guide, Rust provides a number of useful iterators
-to accomplish various tasks. Before we talk about those, we should talk about a
+to accomplish various threads. Before we talk about those, we should talk about a
 Rust anti-pattern. And that's using ranges like this.
 
 Yes, we just talked about how ranges are cool. But ranges are also very
@@ -235,7 +235,7 @@ Ranges are one of two basic iterators that you'll see. The other is `iter()`.
 in turn:
 
 ```rust
-let nums = [1, 2, 3];
+let nums = vec![1, 2, 3];
 
 for num in nums.iter() {
    println!("{}", num);
@@ -243,18 +243,7 @@ for num in nums.iter() {
 ```
 
 These two basic iterators should serve you well. There are some more
-advanced iterators, including ones that are infinite. Like using range syntax
-and `step_by`:
-
-```rust
-# #![feature(step_by)]
-(1..).step_by(5);
-```
-
-This iterator counts up from one, adding five each time. It will give
-you a new integer every time, forever (well, technically, until it reaches the
-maximum number representable by an `i32`). But since iterators are lazy,
-that's okay! You probably don't want to use `collect()` on it, though...
+advanced iterators, including ones that are infinite.
 
 That's enough about iterators. Iterator adapters are the last concept
 we need to talk about with regards to iterators. Let's get to it!

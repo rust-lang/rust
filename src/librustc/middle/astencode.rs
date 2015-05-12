@@ -41,7 +41,6 @@ use syntax;
 use std::cell::Cell;
 use std::io::SeekFrom;
 use std::io::prelude::*;
-use std::rc::Rc;
 use std::fmt::Debug;
 
 use rbml::reader;
@@ -890,7 +889,7 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
                     this.emit_enum_variant("MethodTypeParam", 2, 1, |this| {
                         this.emit_struct("MethodParam", 2, |this| {
                             try!(this.emit_struct_field("trait_ref", 0, |this| {
-                                Ok(this.emit_trait_ref(ecx, &*p.trait_ref))
+                                Ok(this.emit_trait_ref(ecx, &p.trait_ref))
                             }));
                             try!(this.emit_struct_field("method_num", 0, |this| {
                                 this.emit_uint(p.method_num)
@@ -914,7 +913,7 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
                     this.emit_enum_variant("MethodTraitObject", 3, 1, |this| {
                         this.emit_struct("MethodObject", 2, |this| {
                             try!(this.emit_struct_field("trait_ref", 0, |this| {
-                                Ok(this.emit_trait_ref(ecx, &*o.trait_ref))
+                                Ok(this.emit_trait_ref(ecx, &o.trait_ref))
                             }));
                             try!(this.emit_struct_field("object_trait_id", 0, |this| {
                                 Ok(this.emit_def_id(o.object_trait_id))
@@ -1208,7 +1207,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
     if let Some(trait_ref) = tcx.object_cast_map.borrow().get(&id) {
         rbml_w.tag(c::tag_table_object_cast_map, |rbml_w| {
             rbml_w.id(id);
-            rbml_w.emit_trait_ref(ecx, &*trait_ref.0);
+            rbml_w.emit_trait_ref(ecx, &trait_ref.0);
         })
     }
 
@@ -1275,7 +1274,7 @@ trait rbml_decoder_decoder_helpers<'tcx> {
     fn read_ty<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>) -> Ty<'tcx>;
     fn read_tys<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>) -> Vec<Ty<'tcx>>;
     fn read_trait_ref<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
-                              -> Rc<ty::TraitRef<'tcx>>;
+                              -> ty::TraitRef<'tcx>;
     fn read_poly_trait_ref<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
                                    -> ty::PolyTraitRef<'tcx>;
     fn read_type_param_def<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
@@ -1469,7 +1468,7 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
     }
 
     fn read_trait_ref<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
-                              -> Rc<ty::TraitRef<'tcx>> {
+                              -> ty::TraitRef<'tcx> {
         self.read_opaque(|this, doc| {
             let ty = tydecode::parse_trait_ref_data(
                 doc.data,

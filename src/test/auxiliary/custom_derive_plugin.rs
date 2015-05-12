@@ -55,7 +55,7 @@ fn expand(cx: &mut ExtCtxt,
                 ret_ty: Literal(Path::new_local("isize")),
                 attributes: vec![],
                 combine_substructure: combine_substructure(box |cx, span, substr| {
-                    let zero = cx.expr_int(span, 0);
+                    let zero = cx.expr_isize(span, 0);
                     cs_fold(false,
                             |cx, span, subexpr, field, _| {
                                 cx.expr_binary(span, ast::BiAdd, subexpr,

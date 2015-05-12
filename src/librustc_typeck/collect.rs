@@ -83,7 +83,7 @@ use util::ppaux;
 use util::ppaux::{Repr,UserString};
 use write_ty_to_tcx;
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::collections::HashSet;
 use std::rc::Rc;
 
@@ -309,7 +309,7 @@ impl<'a,'tcx> CrateCtxt<'a,'tcx> {
 
     /// Loads the trait def for a given trait, returning ErrorReported if a cycle arises.
     fn get_trait_def(&self, trait_id: ast::DefId)
-                     -> Rc<ty::TraitDef<'tcx>>
+                     -> &'tcx ty::TraitDef<'tcx>
     {
         let tcx = self.tcx;
 
@@ -361,7 +361,7 @@ impl<'a, 'tcx> AstConv<'tcx> for ItemCtxt<'a, 'tcx> {
     }
 
     fn get_trait_def(&self, span: Span, id: ast::DefId)
-                     -> Result<Rc<ty::TraitDef<'tcx>>, ErrorReported>
+                     -> Result<&'tcx ty::TraitDef<'tcx>, ErrorReported>
     {
         self.ccx.cycle_check(span, AstConvRequest::GetTraitDef(id), || {
             Ok(self.ccx.get_trait_def(id))
@@ -415,7 +415,7 @@ impl<'a, 'tcx> AstConv<'tcx> for ItemCtxt<'a, 'tcx> {
 
     fn projected_ty(&self,
                     _span: Span,
-                    trait_ref: Rc<ty::TraitRef<'tcx>>,
+                    trait_ref: ty::TraitRef<'tcx>,
                     item_name: ast::Name)
                     -> Ty<'tcx>
     {
@@ -899,7 +899,7 @@ fn convert_item(ccx: &CrateCtxt, it: &ast::Item) {
                 if let ast::MethodImplItem(ref sig, _) = ii.node {
                     // if the method specifies a visibility, use that, otherwise
                     // inherit the visibility from the impl (so `foo` in `pub impl
-                    // { fn foo(); }` is public, but private in `priv impl { fn
+                    // { fn foo(); }` is public, but private in `impl { fn
                     // foo(); }`).
                     let method_vis = ii.vis.inherit_from(parent_visibility);
                     Some((sig, ii.id, ii.ident, method_vis, ii.span))
@@ -1210,7 +1210,7 @@ fn ensure_super_predicates_step(ccx: &CrateCtxt,
 
 fn trait_def_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                it: &ast::Item)
-                               -> Rc<ty::TraitDef<'tcx>>
+                               -> &'tcx ty::TraitDef<'tcx>
 {
     let def_id = local_def(it.id);
     let tcx = ccx.tcx;
@@ -1246,22 +1246,23 @@ fn trait_def_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         }
     }).collect();
 
-    let trait_ref = Rc::new(ty::TraitRef {
+    let trait_ref = ty::TraitRef {
         def_id: def_id,
         substs: substs,
-    });
+    };
 
-    let trait_def = Rc::new(ty::TraitDef {
+    let trait_def = ty::TraitDef {
         paren_sugar: paren_sugar,
         unsafety: unsafety,
         generics: ty_generics,
         trait_ref: trait_ref,
         associated_type_names: associated_type_names,
-    });
+        nonblanket_impls: RefCell::new(FnvHashMap()),
+        blanket_impls: RefCell::new(vec![]),
+        flags: Cell::new(ty::TraitFlags::NO_TRAIT_FLAGS)
+    };
 
-    tcx.trait_defs.borrow_mut().insert(def_id, trait_def.clone());
-
-    return trait_def;
+    return tcx.intern_trait_def(trait_def);
 
     fn mk_trait_substs<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                  generics: &ast::Generics)
@@ -1357,7 +1358,7 @@ fn convert_trait_predicates<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, it: &ast::Item)
     let assoc_predicates = predicates_for_associated_types(ccx,
                                                            generics,
                                                            &trait_predicates,
-                                                           &trait_def.trait_ref,
+                                                           trait_def.trait_ref,
                                                            items);
     trait_predicates.predicates.extend(TypeSpace, assoc_predicates.into_iter());
 
@@ -1369,7 +1370,7 @@ fn convert_trait_predicates<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, it: &ast::Item)
     fn predicates_for_associated_types<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                                  ast_generics: &ast::Generics,
                                                  trait_predicates: &ty::GenericPredicates<'tcx>,
-                                                 self_trait_ref: &Rc<ty::TraitRef<'tcx>>,
+                                                 self_trait_ref: ty::TraitRef<'tcx>,
                                                  trait_items: &[P<ast::TraitItem>])
                                                  -> Vec<ty::Predicate<'tcx>>
     {
@@ -1382,7 +1383,7 @@ fn convert_trait_predicates<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, it: &ast::Item)
             };
 
             let assoc_ty = ty::mk_projection(ccx.tcx,
-                                             self_trait_ref.clone(),
+                                             self_trait_ref,
                                              trait_item.ident.name);
 
             let bounds = compute_bounds(&ccx.icx(&(ast_generics, trait_predicates)),

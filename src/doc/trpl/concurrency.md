@@ -6,7 +6,7 @@ and more cores, yet many programmers aren't prepared to fully utilize them.
 
 Rust's memory safety features also apply to its concurrency story too. Even
 concurrent Rust programs must be memory safe, having no data races. Rust's type
-system is up to the task, and gives you powerful ways to reason about
+system is up to the thread, and gives you powerful ways to reason about
 concurrent code at compile time.
 
 Before we talk about the concurrency features that come with Rust, it's important
@@ -116,7 +116,7 @@ use std::thread;
 fn main() {
     let mut data = vec![1u32, 2, 3];
 
-    for i in 0..2 {
+    for i in 0..3 {
         thread::spawn(move || {
             data[i] += 1;
         });
@@ -154,7 +154,7 @@ use std::sync::Mutex;
 fn main() {
     let mut data = Mutex::new(vec![1u32, 2, 3]);
 
-    for i in 0..2 {
+    for i in 0..3 {
         let data = data.lock().unwrap();
         thread::spawn(move || {
             data[i] += 1;
@@ -196,7 +196,7 @@ use std::thread;
 fn main() {
     let data = Arc::new(Mutex::new(vec![1u32, 2, 3]));
 
-    for i in 0..2 {
+    for i in 0..3 {
         let data = data.clone();
         thread::spawn(move || {
             let mut data = data.lock().unwrap();
@@ -217,7 +217,7 @@ thread more closely:
 # use std::thread;
 # fn main() {
 #     let data = Arc::new(Mutex::new(vec![1u32, 2, 3]));
-#     for i in 0..2 {
+#     for i in 0..3 {
 #         let data = data.clone();
 thread::spawn(move || {
     let mut data = data.lock().unwrap();

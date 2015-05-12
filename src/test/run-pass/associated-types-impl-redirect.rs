@@ -14,8 +14,6 @@
 // for `ByRef`. The right answer was to consider the result ambiguous
 // until more type information was available.
 
-// ignore-pretty -- FIXME(#17362)
-
 #![feature(lang_items, unboxed_closures)]
 #![no_implicit_prelude]
 

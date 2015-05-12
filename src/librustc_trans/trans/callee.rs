@@ -452,7 +452,7 @@ pub fn trans_fn_ref_with_substs<'a, 'tcx>(
 
                     // Compute the first substitution
                     let first_subst =
-                        ty::make_substs_for_receiver_types(tcx, &*trait_ref, &*method)
+                        ty::make_substs_for_receiver_types(tcx, &trait_ref, &*method)
                         .erase_regions();
 
                     // And compose them

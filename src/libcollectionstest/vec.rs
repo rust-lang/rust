@@ -542,6 +542,11 @@ fn test_split_off() {
     assert_eq!(vec2, [5, 6]);
 }
 
+#[test]
+fn test_into_iter_count() {
+    assert_eq!(vec![1, 2, 3].into_iter().count(), 3);
+}
+
 #[bench]
 fn bench_new(b: &mut Bencher) {
     b.iter(|| {

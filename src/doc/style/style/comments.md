@@ -5,7 +5,7 @@
 Use line comments:
 
 ``` rust
-// Wait for the main task to return, and set the process error code
+// Wait for the main thread to return, and set the process error code
 // appropriately.
 ```
 
@@ -13,7 +13,7 @@ Instead of:
 
 ``` rust
 /*
- * Wait for the main task to return, and set the process error code
+ * Wait for the main thread to return, and set the process error code
  * appropriately.
  */
 ```
@@ -55,7 +55,7 @@ For example:
 /// Sets up a default runtime configuration, given compiler-supplied arguments.
 ///
 /// This function will block until the entire pool of M:N schedulers has
-/// exited. This function also requires a local task to be available.
+/// exited. This function also requires a local thread to be available.
 ///
 /// # Arguments
 ///
@@ -64,7 +64,7 @@ For example:
 /// * `main` - The initial procedure to run inside of the M:N scheduling pool.
 ///            Once this procedure exits, the scheduling pool will begin to shut
 ///            down. The entire pool (and this function) will only return once
-///            all child tasks have finished executing.
+///            all child threads have finished executing.
 ///
 /// # Return value
 ///

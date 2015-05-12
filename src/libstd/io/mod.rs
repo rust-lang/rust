@@ -236,7 +236,7 @@ pub trait Read {
 
     /// Transforms this `Read` instance to an `Iterator` over `char`s.
     ///
-    /// This adaptor will attempt to interpret this reader as an UTF-8 encoded
+    /// This adaptor will attempt to interpret this reader as a UTF-8 encoded
     /// sequence of characters. The returned iterator will return `None` once
     /// EOF is reached for this reader. Otherwise each element yielded will be a
     /// `Result<char, E>` where `E` may contain information about what I/O error

@@ -21,6 +21,7 @@ use self::pattern::{Searcher, ReverseSearcher, DoubleEndedSearcher};
 use char::CharExt;
 use clone::Clone;
 use cmp::{self, Eq};
+use convert::AsRef;
 use default::Default;
 use fmt;
 use iter::ExactSizeIterator;
@@ -136,6 +137,7 @@ pub fn from_utf8(v: &[u8]) -> Result<&str, Utf8Error> {
 
 /// Converts a slice of bytes to a string slice without checking
 /// that the string contains valid UTF-8.
+#[inline(always)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn from_utf8_unchecked<'a>(v: &'a [u8]) -> &'a str {
     mem::transmute(v)
@@ -420,7 +422,7 @@ macro_rules! derive_pattern_clone {
 /// wrapping an private internal one that makes use of the `Pattern` API.
 ///
 /// For all patterns `P: Pattern<'a>` the following items will be
-/// generated (generics ommitted):
+/// generated (generics omitted):
 ///
 /// struct $forward_iterator($internal_iterator);
 /// struct $reverse_iterator($internal_iterator);
@@ -1183,7 +1185,7 @@ fn eq_slice_(a: &str, b: &str) -> bool {
 /// Bytewise slice equality
 /// NOTE: This function is (ab)used in rustc::middle::trans::_match
 /// to compare &[u8] byte slices that are not necessarily valid UTF-8.
-#[lang="str_eq"]
+#[lang = "str_eq"]
 #[inline]
 fn eq_slice(a: &str, b: &str) -> bool {
     eq_slice_(a, b)
@@ -1839,6 +1841,14 @@ impl StrExt for str {
 
     #[inline]
     fn parse<T: FromStr>(&self) -> Result<T, T::Err> { FromStr::from_str(self) }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl AsRef<[u8]> for str {
+    #[inline]
+    fn as_ref(&self) -> &[u8] {
+        self.as_bytes()
+    }
 }
 
 /// Pluck a code point out of a UTF-8-like byte slice and return the

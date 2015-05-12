@@ -15,7 +15,7 @@ use prelude::v1::*;
 pub mod backtrace;
 pub mod condvar;
 pub mod mutex;
-pub mod net2;
+pub mod net;
 pub mod poison;
 pub mod remutex;
 pub mod rwlock;

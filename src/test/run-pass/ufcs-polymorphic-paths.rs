@@ -17,9 +17,6 @@ use std::default::Default;
 use std::iter::FromIterator;
 use std::ops::Add;
 use std::option::IntoIter as OptionIter;
-// FIXME the glob std::prelude::*; import of Vec is missing non-static inherent
-// methods.
-use std::vec::Vec;
 
 pub struct XorShiftRng;
 use XorShiftRng as DummyRng;
@@ -81,11 +78,10 @@ tests! {
     Vec::map_in_place, fn(Vec<u8>, fn(u8) -> i8) -> Vec<i8>, (vec![b'f', b'o', b'o'], u8_as_i8);
     Vec::map_in_place::<i8, fn(u8) -> i8>, fn(Vec<u8>, fn(u8) -> i8) -> Vec<i8>,
         (vec![b'f', b'o', b'o'], u8_as_i8);
-    // FIXME these break with "type parameter might not appear here pointing at `<u8>`.
-    // Vec::<u8>::map_in_place: fn(Vec<u8>, fn(u8) -> i8) -> Vec<i8>
-    //    , (vec![b'f', b'o', b'o'], u8_as_i8);
-    // Vec::<u8>::map_in_place::<i8, fn(u8) -> i8>: fn(Vec<u8>, fn(u8) -> i8) -> Vec<i8>
-    //    , (vec![b'f', b'o', b'o'], u8_as_i8);
+    Vec::<u8>::map_in_place, fn(Vec<u8>, fn(u8) -> i8) -> Vec<i8>
+        , (vec![b'f', b'o', b'o'], u8_as_i8);
+    Vec::<u8>::map_in_place::<i8, fn(u8) -> i8>, fn(Vec<u8>, fn(u8) -> i8) -> Vec<i8>
+        , (vec![b'f', b'o', b'o'], u8_as_i8);
 
     // Trait static methods.
     bool::size, fn() -> usize, ();

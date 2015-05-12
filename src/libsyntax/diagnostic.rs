@@ -522,7 +522,7 @@ fn highlight_suggestion(err: &mut EmitterWriter,
                         suggestion: &str)
                         -> io::Result<()>
 {
-    let lines = cm.span_to_lines(sp);
+    let lines = cm.span_to_lines(sp).unwrap();
     assert!(!lines.lines.is_empty());
 
     // To build up the result, we want to take the snippet from the first
@@ -567,9 +567,17 @@ fn highlight_lines(err: &mut EmitterWriter,
                    cm: &codemap::CodeMap,
                    sp: Span,
                    lvl: Level,
-                   lines: codemap::FileLines)
+                   lines: codemap::FileLinesResult)
                    -> io::Result<()>
 {
+    let lines = match lines {
+        Ok(lines) => lines,
+        Err(_) => {
+            try!(write!(&mut err.dst, "(internal compiler error: unprintable span)\n"));
+            return Ok(());
+        }
+    };
+
     let fm = &*lines.file;
 
     let line_strings: Option<Vec<&str>> =
@@ -690,8 +698,16 @@ fn end_highlight_lines(w: &mut EmitterWriter,
                           cm: &codemap::CodeMap,
                           sp: Span,
                           lvl: Level,
-                          lines: codemap::FileLines)
+                          lines: codemap::FileLinesResult)
                           -> io::Result<()> {
+    let lines = match lines {
+        Ok(lines) => lines,
+        Err(_) => {
+            try!(write!(&mut w.dst, "(internal compiler error: unprintable span)\n"));
+            return Ok(());
+        }
+    };
+
     let fm = &*lines.file;
 
     let lines = &lines.lines[..];

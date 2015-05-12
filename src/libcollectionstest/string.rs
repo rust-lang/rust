@@ -348,6 +348,23 @@ fn test_from_iterator() {
     assert_eq!(s, d);
 }
 
+#[test]
+fn test_drain() {
+    let mut s = String::from("αβγ");
+    assert_eq!(s.drain(2..4).collect::<String>(), "β");
+    assert_eq!(s, "αγ");
+
+    let mut t = String::from("abcd");
+    t.drain(..0);
+    assert_eq!(t, "abcd");
+    t.drain(..1);
+    assert_eq!(t, "bcd");
+    t.drain(3..);
+    assert_eq!(t, "bcd");
+    t.drain(..);
+    assert_eq!(t, "");
+}
+
 #[bench]
 fn bench_with_capacity(b: &mut Bencher) {
     b.iter(|| {

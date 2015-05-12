@@ -543,7 +543,7 @@ impl CodeMap {
         }
     }
 
-    pub fn new_filemap(&self, filename: FileName, src: String) -> Rc<FileMap> {
+    pub fn new_filemap(&self, filename: FileName, mut src: String) -> Rc<FileMap> {
         let mut files = self.files.borrow_mut();
         let start_pos = match files.last() {
             None => 0,
@@ -551,13 +551,9 @@ impl CodeMap {
         };
 
         // Remove utf-8 BOM if any.
-        // FIXME #12884: no efficient/safe way to remove from the start of a string
-        // and reuse the allocation.
-        let mut src = if src.starts_with("\u{feff}") {
-            String::from(&src[3..])
-        } else {
-            String::from(&src[..])
-        };
+        if src.starts_with("\u{feff}") {
+            src.drain(..3);
+        }
 
         // Append '\n' in case it's not already there.
         // This is a workaround to prevent CodeMap.lookup_filemap_idx from
@@ -667,9 +663,22 @@ impl CodeMap {
         self.lookup_char_pos(sp.lo).file.name.to_string()
     }
 
-    pub fn span_to_lines(&self, sp: Span) -> FileLines {
+    pub fn span_to_lines(&self, sp: Span) -> FileLinesResult {
+        if sp.lo > sp.hi {
+            return Err(SpanLinesError::IllFormedSpan(sp));
+        }
+
         let lo = self.lookup_char_pos(sp.lo);
         let hi = self.lookup_char_pos(sp.hi);
+
+        if lo.file.start_pos != hi.file.start_pos {
+            return Err(SpanLinesError::DistinctSources(DistinctSources {
+                begin: (lo.file.name.clone(), lo.file.start_pos),
+                end: (hi.file.name.clone(), hi.file.start_pos),
+            }));
+        }
+        assert!(hi.line >= lo.line);
+
         let mut lines = Vec::with_capacity(hi.line - lo.line + 1);
 
         // The span starts partway through the first line,
@@ -693,7 +702,7 @@ impl CodeMap {
                               start_col: start_col,
                               end_col: hi.col });
 
-        FileLines {file: lo.file, lines: lines}
+        Ok(FileLines {file: lo.file, lines: lines})
     }
 
     pub fn span_to_snippet(&self, sp: Span) -> Result<String, SpanSnippetError> {
@@ -918,8 +927,16 @@ impl CodeMap {
 }
 
 // _____________________________________________________________________________
-// SpanSnippetError, DistinctSources, MalformedCodemapPositions
+// SpanLinesError, SpanSnippetError, DistinctSources, MalformedCodemapPositions
 //
+
+pub type FileLinesResult = Result<FileLines, SpanLinesError>;
+
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub enum SpanLinesError {
+    IllFormedSpan(Span),
+    DistinctSources(DistinctSources),
+}
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum SpanSnippetError {
@@ -1086,7 +1103,7 @@ mod tests {
         // Test span_to_lines for a span ending at the end of filemap
         let cm = init_code_map();
         let span = Span {lo: BytePos(12), hi: BytePos(23), expn_id: NO_EXPANSION};
-        let file_lines = cm.span_to_lines(span);
+        let file_lines = cm.span_to_lines(span).unwrap();
 
         assert_eq!(file_lines.file.name, "blork.rs");
         assert_eq!(file_lines.lines.len(), 1);
@@ -1131,7 +1148,7 @@ mod tests {
         assert_eq!(&cm.span_to_snippet(span).unwrap(), "BB\nCCC\nDDDDD");
 
         // check that span_to_lines gives us the complete result with the lines/cols we expected
-        let lines = cm.span_to_lines(span);
+        let lines = cm.span_to_lines(span).unwrap();
         let expected = vec![
             LineInfo { line_index: 1, start_col: CharPos(4), end_col: CharPos(6) },
             LineInfo { line_index: 2, start_col: CharPos(0), end_col: CharPos(3) },

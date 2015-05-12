@@ -31,10 +31,12 @@ use super::state::HashState;
 // to get rid of it properly.
 
 /// An implementation of a hash set using the underlying representation of a
-/// HashMap where the value is (). As with the `HashMap` type, a `HashSet`
-/// requires that the elements implement the `Eq` and `Hash` traits. This can
-/// frequently be achieved by using `#[derive(Eq, Hash)]`. If you implement
-/// these yourself, it is important that the following property holds:
+/// HashMap where the value is ().
+///
+/// As with the `HashMap` type, a `HashSet` requires that the elements
+/// implement the `Eq` and `Hash` traits. This can frequently be achieved by
+/// using `#[derive(PartialEq, Eq, Hash)]`. If you implement these yourself,
+/// it is important that the following property holds:
 ///
 /// ```text
 /// k1 == k2 -> hash(k1) == hash(k2)
@@ -64,17 +66,17 @@ use super::state::HashState;
 /// books.insert("The Great Gatsby");
 ///
 /// // Check for a specific one.
-/// if !books.contains(&("The Winds of Winter")) {
+/// if !books.contains("The Winds of Winter") {
 ///     println!("We have {} books, but The Winds of Winter ain't one.",
 ///              books.len());
 /// }
 ///
 /// // Remove a book.
-/// books.remove(&"The Odyssey");
+/// books.remove("The Odyssey");
 ///
 /// // Iterate over everything.
-/// for book in books.iter() {
-///     println!("{}", *book);
+/// for book in &books {
+///     println!("{}", book);
 /// }
 /// ```
 ///
@@ -98,7 +100,7 @@ use super::state::HashState;
 /// vikings.insert(Viking { name: "Harald", power: 8 });
 ///
 /// // Use derived implementation to print the vikings.
-/// for x in vikings.iter() {
+/// for x in &vikings {
 ///     println!("{:?}", x);
 /// }
 /// ```

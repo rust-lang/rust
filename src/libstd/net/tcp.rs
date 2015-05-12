@@ -14,9 +14,10 @@
 use prelude::v1::*;
 use io::prelude::*;
 
+use fmt;
 use io;
 use net::{ToSocketAddrs, SocketAddr, Shutdown};
-use sys_common::net2 as net_imp;
+use sys_common::net as net_imp;
 use sys_common::{AsInner, FromInner};
 
 /// A structure which represents a TCP stream between a local socket and a
@@ -167,6 +168,12 @@ impl FromInner<net_imp::TcpStream> for TcpStream {
     fn from_inner(inner: net_imp::TcpStream) -> TcpStream { TcpStream(inner) }
 }
 
+impl fmt::Debug for TcpStream {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
 impl TcpListener {
     /// Creates a new `TcpListener` which will be bound to the specified
     /// address.
@@ -239,6 +246,12 @@ impl FromInner<net_imp::TcpListener> for TcpListener {
     }
 }
 
+impl fmt::Debug for TcpListener {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use prelude::v1::*;
@@ -248,6 +261,7 @@ mod tests {
     use net::*;
     use net::test::{next_test_ip4, next_test_ip6};
     use sync::mpsc::channel;
+    use sys_common::AsInner;
     use thread;
 
     fn each_ip(f: &mut FnMut(SocketAddr)) {
@@ -430,7 +444,7 @@ mod tests {
             let _t = thread::spawn(move|| {
                 let acceptor = acceptor;
                 for (i, stream) in acceptor.incoming().enumerate().take(MAX) {
-                    // Start another task to handle the connection
+                    // Start another thread to handle the connection
                     let _t = thread::spawn(move|| {
                         let mut stream = t!(stream);
                         let mut buf = [0];
@@ -464,7 +478,7 @@ mod tests {
 
             let _t = thread::spawn(move|| {
                 for stream in acceptor.incoming().take(MAX) {
-                    // Start another task to handle the connection
+                    // Start another thread to handle the connection
                     let _t = thread::spawn(move|| {
                         let mut stream = t!(stream);
                         let mut buf = [0];
@@ -724,7 +738,7 @@ mod tests {
                 assert_eq!(t!(s2.read(&mut [0])), 0);
                 tx.send(()).unwrap();
             });
-            // this should wake up the child task
+            // this should wake up the child thread
             t!(s.shutdown(Shutdown::Read));
 
             // this test will never finish if the child doesn't wake up
@@ -738,7 +752,7 @@ mod tests {
         each_ip(&mut |addr| {
             let accept = t!(TcpListener::bind(&addr));
 
-            // Enqueue a task to write to a socket
+            // Enqueue a thread to write to a socket
             let (tx, rx) = channel();
             let (txdone, rxdone) = channel();
             let txdone2 = txdone.clone();
@@ -817,5 +831,28 @@ mod tests {
             rx.recv().unwrap();
             rx.recv().unwrap();
         })
+    }
+
+    #[test]
+    fn debug() {
+        let name = if cfg!(windows) {"socket"} else {"fd"};
+        let socket_addr = next_test_ip4();
+
+        let listener = t!(TcpListener::bind(&socket_addr));
+        let listener_inner = listener.0.socket().as_inner();
+        let compare = format!("TcpListener {{ addr: {:?}, {}: {:?} }}",
+                              socket_addr, name, listener_inner);
+        assert_eq!(format!("{:?}", listener), compare);
+
+        let mut stream = t!(TcpStream::connect(&("localhost",
+                                                 socket_addr.port())));
+        let stream_inner = stream.0.socket().as_inner();
+        let compare = format!("TcpStream {{ addr: {:?}, \
+                              peer: {:?}, {}: {:?} }}",
+                              stream.local_addr().unwrap(),
+                              stream.peer_addr().unwrap(),
+                              name,
+                              stream_inner);
+        assert_eq!(format!("{:?}", stream), compare);
     }
 }

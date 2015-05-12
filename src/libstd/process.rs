@@ -21,11 +21,11 @@ use fmt;
 use io::{self, Error, ErrorKind};
 use path;
 use sync::mpsc::{channel, Receiver};
-use sys::pipe2::{self, AnonPipe};
-use sys::process2::Command as CommandImp;
-use sys::process2::Process as ProcessImp;
-use sys::process2::ExitStatus as ExitStatusImp;
-use sys::process2::Stdio as StdioImp2;
+use sys::pipe::{self, AnonPipe};
+use sys::process::Command as CommandImp;
+use sys::process::Process as ProcessImp;
+use sys::process::ExitStatus as ExitStatusImp;
+use sys::process::Stdio as StdioImp2;
 use sys_common::{AsInner, AsInnerMut};
 use thread;
 
@@ -334,7 +334,7 @@ fn setup_io(io: &StdioImp, readable: bool)
         Null => (StdioImp2::None, None),
         Inherit => (StdioImp2::Inherit, None),
         Piped => {
-            let (reader, writer) = try!(pipe2::anon_pipe());
+            let (reader, writer) = try!(pipe::anon_pipe());
             if readable {
                 (StdioImp2::Piped(reader), Some(writer))
             } else {

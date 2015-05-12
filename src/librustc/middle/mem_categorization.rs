@@ -850,9 +850,10 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
         // Compute maximum lifetime of this rvalue. This is 'static if
         // we can promote to a constant, otherwise equal to enclosing temp
         // lifetime.
-        let re = match qualif & check_const::ConstQualif::NON_STATIC_BORROWS {
-            check_const::ConstQualif::PURE_CONST => ty::ReStatic,
-            _ => self.temporary_scope(id),
+        let re = if qualif.intersects(check_const::ConstQualif::NON_STATIC_BORROWS) {
+            self.temporary_scope(id)
+        } else {
+            ty::ReStatic
         };
         let ret = self.cat_rvalue(id, span, re, expr_ty);
         debug!("cat_rvalue_node ret {}", ret.repr(self.tcx()));

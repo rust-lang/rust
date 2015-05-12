@@ -73,7 +73,11 @@ pub fn string_to_stmt(source_str : String) -> P<ast::Stmt> {
 /// Parse a string, return a pat. Uses "irrefutable"... which doesn't
 /// (currently) affect parsing.
 pub fn string_to_pat(source_str: String) -> P<ast::Pat> {
-    string_to_parser(&new_parse_sess(), source_str).parse_pat()
+    // Binding `sess` and `parser` works around dropck-injected
+    // region-inference issues; see #25212, #22323, #22321.
+    let sess = new_parse_sess();
+    let mut parser = string_to_parser(&sess, source_str);
+    parser.parse_pat()
 }
 
 /// Convert a vector of strings to a vector of ast::Ident's
