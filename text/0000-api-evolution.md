@@ -306,6 +306,9 @@ arise at all often in downstream code, it would be advisable to explore a
 different choice of names. More guidelines for the standard library are given
 later on.
 
+Finally, if the new item would change the trait from object safe to non-object
+safe, it is considered a major change.
+
 #### Minor change: adding a defaulted type parameter.
 
 As with "[Signatures in type definitions](#signatures-in-type-definitions)",
