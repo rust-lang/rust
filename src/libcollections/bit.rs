@@ -1537,7 +1537,7 @@ impl BitSet {
         bit_vec.nbits = trunc_len * u32::BITS;
     }
 
-    /// Iterator over each u32 stored in the `BitSet`.
+    /// Iterator over each usize stored in the `BitSet`.
     ///
     /// # Examples
     ///
@@ -1558,7 +1558,7 @@ impl BitSet {
         SetIter {set: self, next_idx: 0}
     }
 
-    /// Iterator over each u32 stored in `self` union `other`.
+    /// Iterator over each usize stored in `self` union `other`.
     /// See [union_with](#method.union_with) for an efficient in-place version.
     ///
     /// # Examples
@@ -1658,7 +1658,7 @@ impl BitSet {
         })
     }
 
-    /// Iterator over each u32 stored in the symmetric difference of `self` and `other`.
+    /// Iterator over each usize stored in the symmetric difference of `self` and `other`.
     /// See [symmetric_difference_with](#method.symmetric_difference_with) for
     /// an efficient in-place version.
     ///
