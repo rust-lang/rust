@@ -5722,6 +5722,9 @@ pub mod funcs {
                 pub fn tcgetpgrp(fd: c_int) -> pid_t;
                 pub fn ttyname(fd: c_int) -> *mut c_char;
                 pub fn unlink(c: *const c_char) -> c_int;
+                pub fn wait(status: *const c_int) -> pid_t;
+                pub fn waitpid(pid: pid_t, status: *const c_int, options: c_int)
+                               -> pid_t;
                 pub fn write(fd: c_int, buf: *const c_void, count: size_t)
                              -> ssize_t;
                 pub fn pread(fd: c_int, buf: *mut c_void, count: size_t,
@@ -5773,6 +5776,9 @@ pub mod funcs {
                 pub fn sysconf(name: c_int) -> c_long;
                 pub fn ttyname(fd: c_int) -> *mut c_char;
                 pub fn unlink(c: *const c_char) -> c_int;
+                pub fn wait(status: *const c_int) -> pid_t;
+                pub fn waitpid(pid: pid_t, status: *const c_int, options: c_int)
+                               -> pid_t;
                 pub fn write(fd: c_int, buf: *const c_void, count: size_t)
                              -> ssize_t;
                 pub fn pread(fd: c_int, buf: *mut c_void, count: size_t,
