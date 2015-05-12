@@ -16,7 +16,7 @@ use prelude::v1::*;
 use fmt;
 use io::{self, Error, ErrorKind};
 use net::{ToSocketAddrs, SocketAddr, IpAddr};
-use sys_common::net2 as net_imp;
+use sys_common::net as net_imp;
 use sys_common::{AsInner, FromInner};
 
 /// A User Datagram Protocol socket.

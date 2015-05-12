@@ -506,23 +506,6 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
         self.schedule_clean(cleanup_scope, drop as CleanupObj);
     }
 
-    /// Schedules a call to `free(val)`. Note that this is a shallow operation.
-    fn schedule_free_slice(&mut self,
-                           cleanup_scope: ScopeId,
-                           val: ValueRef,
-                           size: ValueRef,
-                           align: ValueRef,
-                           heap: Heap) {
-        let drop = box FreeSlice { ptr: val, size: size, align: align, heap: heap };
-
-        debug!("schedule_free_slice({:?}, val={}, heap={:?})",
-               cleanup_scope,
-               self.ccx.tn().val_to_string(val),
-               heap);
-
-        self.schedule_clean(cleanup_scope, drop as CleanupObj);
-    }
-
     fn schedule_clean(&mut self,
                       cleanup_scope: ScopeId,
                       cleanup: CleanupObj<'tcx>) {
@@ -1103,43 +1086,6 @@ impl<'tcx> Cleanup<'tcx> for FreeValue<'tcx> {
 }
 
 #[derive(Copy, Clone)]
-pub struct FreeSlice {
-    ptr: ValueRef,
-    size: ValueRef,
-    align: ValueRef,
-    heap: Heap,
-}
-
-impl<'tcx> Cleanup<'tcx> for FreeSlice {
-    fn must_unwind(&self) -> bool {
-        true
-    }
-
-    fn clean_on_unwind(&self) -> bool {
-        true
-    }
-
-    fn is_lifetime_end(&self) -> bool {
-        false
-    }
-
-    fn trans<'r, 'blk>(&self,
-                       bcx: &mut Block<'r, 'blk, 'tcx>,
-                       debug_loc: DebugLoc)
-                       -> &'blk BlockS {
-        match self.heap {
-            HeapExchange => {
-                glue::trans_exchange_free_dyn(bcx,
-                                              self.ptr,
-                                              self.size,
-                                              self.align,
-                                              debug_loc)
-            }
-        }
-    }
-}
-
-#[derive(Copy, Clone)]
 pub struct LifetimeEnd {
     ptr: ValueRef,
 }
@@ -1249,12 +1195,6 @@ pub trait CleanupMethods<'blk, 'tcx> {
                            val: ValueRef,
                            heap: Heap,
                            content_ty: Ty<'tcx>);
-    fn schedule_free_slice(&mut self,
-                           cleanup_scope: ScopeId,
-                           val: ValueRef,
-                           size: ValueRef,
-                           align: ValueRef,
-                           heap: Heap);
     fn schedule_clean(&mut self,
                       cleanup_scope: ScopeId,
                       cleanup: CleanupObj<'tcx>);

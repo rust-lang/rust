@@ -732,7 +732,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
     /// let p: Point;
     /// p.x = 22; // ok, even though `p` is uninitialized
     ///
-    /// let p: ~Point;
+    /// let p: Box<Point>;
     /// (*p).x = 22; // not ok, p is uninitialized, can't deref
     /// ```
     fn check_if_assigned_path_is_moved(&self,

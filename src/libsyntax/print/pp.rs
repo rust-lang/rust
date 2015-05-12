@@ -312,7 +312,7 @@ impl<'a> Printer<'a> {
         self.token[self.right] = t;
     }
     pub fn pretty_print(&mut self, token: Token) -> io::Result<()> {
-        debug!("pp ~[{},{}]", self.left, self.right);
+        debug!("pp Vec<{},{}>", self.left, self.right);
         match token {
           Token::Eof => {
             if !self.scan_stack_empty {
@@ -329,7 +329,7 @@ impl<'a> Printer<'a> {
                 self.left = 0;
                 self.right = 0;
             } else { self.advance_right(); }
-            debug!("pp Begin({})/buffer ~[{},{}]",
+            debug!("pp Begin({})/buffer Vec<{},{}>",
                    b.offset, self.left, self.right);
             self.token[self.right] = token;
             self.size[self.right] = -self.right_total;
@@ -339,10 +339,10 @@ impl<'a> Printer<'a> {
           }
           Token::End => {
             if self.scan_stack_empty {
-                debug!("pp End/print ~[{},{}]", self.left, self.right);
+                debug!("pp End/print Vec<{},{}>", self.left, self.right);
                 self.print(token, 0)
             } else {
-                debug!("pp End/buffer ~[{},{}]", self.left, self.right);
+                debug!("pp End/buffer Vec<{},{}>", self.left, self.right);
                 self.advance_right();
                 self.token[self.right] = token;
                 self.size[self.right] = -1;
@@ -358,7 +358,7 @@ impl<'a> Printer<'a> {
                 self.left = 0;
                 self.right = 0;
             } else { self.advance_right(); }
-            debug!("pp Break({})/buffer ~[{},{}]",
+            debug!("pp Break({})/buffer Vec<{},{}>",
                    b.offset, self.left, self.right);
             self.check_stack(0);
             let right = self.right;
@@ -370,11 +370,11 @@ impl<'a> Printer<'a> {
           }
           Token::String(s, len) => {
             if self.scan_stack_empty {
-                debug!("pp String('{}')/print ~[{},{}]",
+                debug!("pp String('{}')/print Vec<{},{}>",
                        s, self.left, self.right);
                 self.print(Token::String(s, len), len)
             } else {
-                debug!("pp String('{}')/buffer ~[{},{}]",
+                debug!("pp String('{}')/buffer Vec<{},{}>",
                        s, self.left, self.right);
                 self.advance_right();
                 self.token[self.right] = Token::String(s, len);
@@ -386,7 +386,7 @@ impl<'a> Printer<'a> {
         }
     }
     pub fn check_stream(&mut self) -> io::Result<()> {
-        debug!("check_stream ~[{}, {}] with left_total={}, right_total={}",
+        debug!("check_stream Vec<{}, {}> with left_total={}, right_total={}",
                self.left, self.right, self.left_total, self.right_total);
         if self.right_total - self.left_total > self.space {
             debug!("scan window is {}, longer than space on line ({})",
@@ -446,7 +446,7 @@ impl<'a> Printer<'a> {
         assert!((self.right != self.left));
     }
     pub fn advance_left(&mut self) -> io::Result<()> {
-        debug!("advance_left ~[{},{}], sizeof({})={}", self.left, self.right,
+        debug!("advance_left Vec<{},{}>, sizeof({})={}", self.left, self.right,
                self.left, self.size[self.left]);
 
         let mut left_size = self.size[self.left];

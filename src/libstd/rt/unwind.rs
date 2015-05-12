@@ -238,7 +238,7 @@ pub mod eabi {
             -> uw::_Unwind_Reason_Code;
     }
 
-    #[lang="eh_personality"]
+    #[lang = "eh_personality"]
     #[no_mangle] // referenced from rust_try.ll
     #[allow(private_no_mangle_fns)]
     extern fn rust_eh_personality(
@@ -292,7 +292,7 @@ pub mod eabi {
             -> uw::_Unwind_Reason_Code;
     }
 
-    #[lang="eh_personality"]
+    #[lang = "eh_personality"]
     #[no_mangle] // referenced from rust_try.ll
     pub extern "C" fn rust_eh_personality(
         version: c_int,
@@ -345,7 +345,7 @@ pub mod eabi {
             -> uw::_Unwind_Reason_Code;
     }
 
-    #[lang="eh_personality"]
+    #[lang = "eh_personality"]
     #[no_mangle] // referenced from rust_try.ll
     #[allow(private_no_mangle_fns)]
     extern "C" fn rust_eh_personality(
@@ -432,7 +432,7 @@ pub mod eabi {
         ) -> EXCEPTION_DISPOSITION;
     }
 
-    #[lang="eh_personality"]
+    #[lang = "eh_personality"]
     #[no_mangle] // referenced from rust_try.ll
     #[allow(private_no_mangle_fns)]
     extern "C" fn rust_eh_personality(
@@ -590,7 +590,7 @@ fn begin_unwind_inner(msg: Box<Any + Send>,
 /// This is an unsafe and experimental API which allows for an arbitrary
 /// callback to be invoked when a thread panics. This callback is invoked on both
 /// the initial unwinding and a double unwinding if one occurs. Additionally,
-/// the local `Task` will be in place for the duration of the callback, and
+/// the local `Thread` will be in place for the duration of the callback, and
 /// the callback must ensure that it remains in place once the callback returns.
 ///
 /// Only a limited number of callbacks can be registered, and this function

@@ -32,7 +32,7 @@ pub mod __impl {
 /// primary method is the `with` method.
 ///
 /// The `with` method yields a reference to the contained value which cannot be
-/// sent across tasks or escape the given closure.
+/// sent across threads or escape the given closure.
 ///
 /// # Initialization and Destruction
 ///
@@ -85,6 +85,8 @@ pub struct LocalKey<T> {
 }
 
 /// Declare a new thread local storage key of type `std::thread::LocalKey`.
+///
+/// See [LocalKey documentation](thread/struct.LocalKey.html) for more information.
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow_internal_unstable]

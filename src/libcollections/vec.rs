@@ -67,7 +67,7 @@ use core::intrinsics::assume;
 use core::iter::{repeat, FromIterator};
 use core::marker::PhantomData;
 use core::mem;
-use core::ops::{Index, IndexMut, Deref, Add};
+use core::ops::{Index, IndexMut, Deref};
 use core::ops;
 use core::ptr;
 use core::ptr::Unique;
@@ -647,7 +647,7 @@ impl<T> Vec<T> {
             // zero-size types consume no memory, so we can't rely on the
             // address space running out
             self.len = self.len.checked_add(1).expect("length overflow");
-            unsafe { mem::forget(value); }
+            mem::forget(value);
             return
         }
 
@@ -994,7 +994,7 @@ impl<T> Vec<T> {
                 num_u: 0,
                 marker: PhantomData,
             };
-            unsafe { mem::forget(vec); }
+            mem::forget(vec);
 
             while pv.num_t != 0 {
                 unsafe {
@@ -1619,17 +1619,6 @@ impl<T: Ord> Ord for Vec<T> {
     #[inline]
     fn cmp(&self, other: &Vec<T>) -> Ordering {
         Ord::cmp(&**self, &**other)
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T: Clone> Add<&'a [T]> for Vec<T> {
-    type Output = Vec<T>;
-
-    #[inline]
-    fn add(mut self, rhs: &[T]) -> Vec<T> {
-        self.push_all(rhs);
-        self
     }
 }
 

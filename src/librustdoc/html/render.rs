@@ -17,10 +17,10 @@
 //!
 //! The rendering process is largely driven by the `Context` and `Cache`
 //! structures. The cache is pre-populated by crawling the crate in question,
-//! and then it is shared among the various rendering tasks. The cache is meant
+//! and then it is shared among the various rendering threads. The cache is meant
 //! to be a fairly large structure not implementing `Clone` (because it's shared
-//! among tasks). The context, however, should be a lightweight structure. This
-//! is cloned per-task and contains information about what is currently being
+//! among threads). The context, however, should be a lightweight structure. This
+//! is cloned per-thread and contains information about what is currently being
 //! rendered.
 //!
 //! In order to speed up rendering (mostly because of markdown rendering), the
@@ -30,7 +30,7 @@
 //!
 //! In addition to rendering the crate itself, this module is also responsible
 //! for creating the corresponding search index and source file renderings.
-//! These tasks are not parallelized (they haven't been a bottleneck yet), and
+//! These threads are not parallelized (they haven't been a bottleneck yet), and
 //! both occur before the crate is rendered.
 pub use self::ExternalLocation::*;
 
@@ -154,7 +154,7 @@ impl Impl {
 /// This structure purposefully does not implement `Clone` because it's intended
 /// to be a fairly large and expensive structure to clone. Instead this adheres
 /// to `Send` so it may be stored in a `Arc` instance and shared among the various
-/// rendering tasks.
+/// rendering threads.
 #[derive(Default)]
 pub struct Cache {
     /// Mapping of typaram ids to the name of the type parameter. This is used
@@ -688,7 +688,7 @@ fn write(dst: PathBuf, contents: &[u8]) -> io::Result<()> {
     try!(File::create(&dst)).write_all(contents)
 }
 
-/// Makes a directory on the filesystem, failing the task if an error occurs and
+/// Makes a directory on the filesystem, failing the thread if an error occurs and
 /// skipping if the directory already exists.
 fn mkdir(path: &Path) -> io::Result<()> {
     if !path.exists() {
@@ -905,6 +905,8 @@ impl DocFolder for Cache {
         // Index this method for searching later on
         if let Some(ref s) = item.name {
             let (parent, is_method) = match item.inner {
+                clean::AssociatedTypeItem(..) |
+                clean::AssociatedConstItem(..) |
                 clean::TyMethodItem(..) |
                 clean::StructFieldItem(..) |
                 clean::VariantItem(..) => {
@@ -1460,7 +1462,9 @@ impl<'a> fmt::Display for Item<'a> {
         try!(write!(fmt, "<span class='out-of-band'>"));
         try!(write!(fmt,
         r##"<span id='render-detail'>
-            <a id="toggle-all-docs" href="#" title="collapse all docs">[&minus;]</a>
+            <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
+                [<span class='inner'>&#x2212;</span>]
+            </a>
         </span>"##));
 
         // Write `src` tag
@@ -1641,7 +1645,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
             clean::ExternCrateItem(ref name, ref src) => {
                 match *src {
                     Some(ref src) => {
-                        try!(write!(w, "<tr><td><code>{}extern crate \"{}\" as {};",
+                        try!(write!(w, "<tr><td><code>{}extern crate {} as {};",
                                     VisSpace(myitem.visibility),
                                     src,
                                     name))
@@ -1855,6 +1859,17 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
             <div class='methods'>
         "));
         for t in &types {
+            try!(trait_item(w, *t));
+        }
+        try!(write!(w, "</div>"));
+    }
+
+    if !consts.is_empty() {
+        try!(write!(w, "
+            <h2 id='associated-const'>Associated Constants</h2>
+            <div class='methods'>
+        "));
+        for t in &consts {
             try!(trait_item(w, *t));
         }
         try!(write!(w, "</div>"));

@@ -13,6 +13,7 @@
 pub trait Foo {
     // @has assoc_consts/trait.Foo.html '//*[@class="rust trait"]' \
     //      'const FOO: usize;'
+    // @has - '//*[@id="associatedconstant.FOO"]' 'const FOO'
     const FOO: usize;
 }
 

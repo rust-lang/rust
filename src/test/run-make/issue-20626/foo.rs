@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,20 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test struct inheritance on structs from another crate.
-#![feature(struct_inherit)]
+fn identity(a: &u32) -> &u32 { a }
 
-pub virtual struct S1 {
-    pub f1: isize,
+fn print_foo(f: &fn(&u32) -> &u32, x: &u32) {
+    print!("{}", (*f)(x));
 }
 
-pub struct S2 : S1 {
-    pub f2: isize,
-}
+fn main() {
+    let x = &4;
+    let f: fn(&u32) -> &u32 = identity;
 
-pub fn test_s2(s2: S2) {
-    assert!(s2.f1 == 115);
-    assert!(s2.f2 == 113);
+    // Didn't print 4 on optimized builds
+    print_foo(&f, x);
 }
-
-pub static glob_s: S2 = S2 { f1: 32, f2: -45 };

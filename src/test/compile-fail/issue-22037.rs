@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,13 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![crate_name="c#0.1"]
-#![crate_type = "lib"]
+trait A {
+    type Output;
+    fn a(&self) -> <Self as A>::X;
+//~^ ERROR: use of undeclared associated type `A::X`
+}
 
-extern crate a;
+impl A for u32 {
+    type Output = u32;
+    fn a(&self) -> u32 {
+        0
+    }
+}
 
-use a::to_strz;
-
-impl to_strz for bool {
-    fn to_strz() -> String { fmt!("%b", self) }
+fn main() {
+    let a: u32 = 0;
+    let b: u32 = a.a();
 }

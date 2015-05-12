@@ -55,13 +55,13 @@ impl Once {
     /// will be executed if this is the first time `call_once` has been called,
     /// and otherwise the routine will *not* be invoked.
     ///
-    /// This method will block the calling task if another initialization
+    /// This method will block the calling thread if another initialization
     /// routine is currently running.
     ///
     /// When this function returns, it is guaranteed that some initialization
     /// has run and completed (it may not be the closure specified). It is also
     /// guaranteed that any memory writes performed by the executed closure can
-    /// be reliably observed by other tasks at this point (there is a
+    /// be reliably observed by other threads at this point (there is a
     /// happens-before relation between the closure and code executing after the
     /// return).
     #[stable(feature = "rust1", since = "1.0.0")]

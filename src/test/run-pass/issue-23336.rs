@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,8 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![crate_name="crateresolve3#0.1"]
+pub trait Data { fn doit(&self) {} }
+impl<T> Data for T {}
+pub trait UnaryLogic { type D: Data; }
+impl UnaryLogic for () { type D = i32; }
 
-#![crate_type = "lib"]
+pub fn crashes<T: UnaryLogic>(t: T::D) {
+    t.doit();
+}
 
-pub fn f() -> isize { 10 }
+fn main() { crashes::<()>(0); }

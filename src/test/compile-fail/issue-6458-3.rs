@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -12,5 +12,5 @@ use std::mem;
 
 fn main() {
     mem::transmute(0);
-    //~^ ERROR type annotations required
+    //~^ ERROR type annotations or generic parameter binding required
 }

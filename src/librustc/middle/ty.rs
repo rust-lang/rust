@@ -4630,7 +4630,7 @@ pub fn expr_ty_opt<'tcx>(cx: &ctxt<'tcx>, expr: &ast::Expr) -> Option<Ty<'tcx>> 
 /// require serializing and deserializing the type and, although that's not
 /// hard to do, I just hate that code so much I didn't want to touch it
 /// unless it was to fix it properly, which seemed a distraction from the
-/// task at hand! -nmatsakis
+/// thread at hand! -nmatsakis
 pub fn expr_ty_adjusted<'tcx>(cx: &ctxt<'tcx>, expr: &ast::Expr) -> Ty<'tcx> {
     adjust_ty(cx, expr.span, expr.id, expr_ty(cx, expr),
               cx.adjustments.borrow().get(&expr.id),

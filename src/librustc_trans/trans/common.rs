@@ -147,7 +147,7 @@ pub fn type_is_fat_ptr<'tcx>(cx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
 }
 
 // Some things don't need cleanups during unwinding because the
-// task can free them all at once later. Currently only things
+// thread can free them all at once later. Currently only things
 // that only contain scalars and shared boxes can avoid unwind
 // cleanups.
 pub fn type_needs_unwind_cleanup<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {

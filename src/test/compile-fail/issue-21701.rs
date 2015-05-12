@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,11 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:crateresolve4a-1.rs
-// aux-build:crateresolve4a-2.rs
-#![crate_name="crateresolve4b#0.1"]
-#![crate_type = "lib"]
+fn foo<U>(t: U) {
+    let y = t();
+//~^ ERROR: expected function, found `U`
+}
 
-extern crate "crateresolve4a#0.2" as crateresolve4a;
+struct Bar;
 
-pub fn f() -> isize { crateresolve4a::g() }
+pub fn some_func() {
+    let f = Bar();
+//~^ ERROR: expected function, found `Bar`
+}
+
+fn main() {
+    foo(|| { 1 });
+}

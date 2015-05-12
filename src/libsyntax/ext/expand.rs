@@ -986,9 +986,10 @@ fn expand_pat(p: P<ast::Pat>, fld: &mut MacroExpander) -> P<ast::Pat> {
                     let fm = fresh_mark();
                     let marked_before = mark_tts(&tts[..], fm);
                     let mac_span = fld.cx.original_span();
-                    let expanded = match expander.expand(fld.cx,
-                                        mac_span,
-                                        &marked_before[..]).make_pat() {
+                    let pat = expander.expand(fld.cx,
+                                              mac_span,
+                                              &marked_before[..]).make_pat();
+                    let expanded = match pat {
                         Some(e) => e,
                         None => {
                             fld.cx.span_err(
@@ -1691,7 +1692,7 @@ mod tests {
     // induced by visit.  Each of these arrays contains a list of indexes,
     // interpreted as the varrefs in the varref traversal that this binding
     // should match.  So, for instance, in a program with two bindings and
-    // three varrefs, the array ~[~[1,2],~[0]] would indicate that the first
+    // three varrefs, the array [[1, 2], [0]] would indicate that the first
     // binding should match the second two varrefs, and the second binding
     // should match the first varref.
     //

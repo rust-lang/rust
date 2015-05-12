@@ -142,26 +142,24 @@ impl<'tcx> TypeMap<'tcx> {
     fn get_unique_type_id_of_type<'a>(&mut self, cx: &CrateContext<'a, 'tcx>,
                                       type_: Ty<'tcx>) -> UniqueTypeId {
 
-        // basic type           -> {:name of the type:}
-        // tuple                -> {tuple_(:param-uid:)*}
-        // struct               -> {struct_:svh: / :node-id:_<(:param-uid:),*> }
-        // enum                 -> {enum_:svh: / :node-id:_<(:param-uid:),*> }
-        // enum variant         -> {variant_:variant-name:_:enum-uid:}
-        // reference (&)        -> {& :pointee-uid:}
-        // mut reference (&mut) -> {&mut :pointee-uid:}
-        // ptr (*)              -> {* :pointee-uid:}
-        // mut ptr (*mut)       -> {*mut :pointee-uid:}
-        // unique ptr (~)       -> {~ :pointee-uid:}
-        // @-ptr (@)            -> {@ :pointee-uid:}
-        // sized vec ([T; x])   -> {[:size:] :element-uid:}
-        // unsized vec ([T])    -> {[] :element-uid:}
-        // trait (T)            -> {trait_:svh: / :node-id:_<(:param-uid:),*> }
-        // closure              -> {<unsafe_> <once_> :store-sigil: |(:param-uid:),* <,_...>| -> \
+        // basic type             -> {:name of the type:}
+        // tuple                  -> {tuple_(:param-uid:)*}
+        // struct                 -> {struct_:svh: / :node-id:_<(:param-uid:),*> }
+        // enum                   -> {enum_:svh: / :node-id:_<(:param-uid:),*> }
+        // enum variant           -> {variant_:variant-name:_:enum-uid:}
+        // reference (&)          -> {& :pointee-uid:}
+        // mut reference (&mut)   -> {&mut :pointee-uid:}
+        // ptr (*)                -> {* :pointee-uid:}
+        // mut ptr (*mut)         -> {*mut :pointee-uid:}
+        // unique ptr (box)       -> {box :pointee-uid:}
+        // @-ptr (@)              -> {@ :pointee-uid:}
+        // sized vec ([T; x])     -> {[:size:] :element-uid:}
+        // unsized vec ([T])      -> {[] :element-uid:}
+        // trait (T)              -> {trait_:svh: / :node-id:_<(:param-uid:),*> }
+        // closure                -> {<unsafe_> <once_> :store-sigil: |(:param-uid:),* <,_...>| -> \
         //                             :return-type-uid: : (:bounds:)*}
-        // function             -> {<unsafe_> <abi_> fn( (:param-uid:)* <,_...> ) -> \
+        // function               -> {<unsafe_> <abi_> fn( (:param-uid:)* <,_...> ) -> \
         //                             :return-type-uid:}
-        // unique vec box (~[]) -> {HEAP_VEC_BOX<:pointee-uid:>}
-        // gc box               -> {GC_BOX<:pointee-uid:>}
 
         match self.type_to_unique_id.get(&type_).cloned() {
             Some(unique_type_id) => return unique_type_id,
@@ -202,7 +200,7 @@ impl<'tcx> TypeMap<'tcx> {
                 }
             },
             ty::ty_uniq(inner_type) => {
-                unique_type_id.push('~');
+                unique_type_id.push_str("box ");
                 let inner_type_id = self.get_unique_type_id_of_type(cx, inner_type);
                 let inner_type_id = self.get_unique_type_id_as_string(inner_type_id);
                 unique_type_id.push_str(&inner_type_id[..]);

@@ -176,7 +176,7 @@ Slices have type `&[T]`. We’ll talk about that `T` when we cover
 
 [generics]: generics.html
 
-You can find more documentation for `slices`s [in the standard library
+You can find more documentation for slices [in the standard library
 documentation][slice].
 
 [slice]: ../std/primitive.slice.html

@@ -178,8 +178,8 @@
 //! further that for whatever reason I specifically supply the value of
 //! `String` for the type parameter `T`:
 //!
-//!     let mut vector = ~["string", ...];
-//!     convertAll::<int, String>(v);
+//!     let mut vector = vec!["string", ...];
+//!     convertAll::<int, String>(vector);
 //!
 //! Is this legal? To put another way, can we apply the `impl` for
 //! `Object` to the type `String`? The answer is yes, but to see why

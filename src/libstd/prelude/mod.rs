@@ -19,7 +19,7 @@
 //! ```
 //!
 //! This means that the contents of std can be accessed from any context
-//! with the `std::` path prefix, as in `use std::vec`, `use std::task::spawn`,
+//! with the `std::` path prefix, as in `use std::vec`, `use std::thread::spawn`,
 //! etc.
 //!
 //! Additionally, `std` contains a `prelude` module that reexports many of the

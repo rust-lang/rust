@@ -15,5 +15,5 @@
 pub mod raw;
 
 pub mod fs {
-    pub use sys::fs2::MetadataExt;
+    pub use sys::fs::MetadataExt;
 }
