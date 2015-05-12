@@ -26,12 +26,12 @@ use middle::ty::{ty_uniq, ty_trait, ty_int, ty_uint, ty_infer};
 use middle::ty;
 use middle::ty_fold::TypeFoldable;
 
+use rustc_ast_map as ast_map;
 use std::collections::HashMap;
 use std::collections::hash_state::HashState;
 use std::hash::Hash;
 use std::rc::Rc;
 use syntax::abi;
-use syntax::ast_map;
 use syntax::codemap::{Span, Pos};
 use syntax::parse::token;
 use syntax::print::pprust;

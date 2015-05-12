@@ -48,9 +48,10 @@ extern crate getopts;
 extern crate graphviz;
 extern crate libc;
 extern crate rustc;
+extern crate rustc_ast_map;
 extern crate rustc_back;
-extern crate serialize;
 extern crate rustc_llvm as llvm;
+extern crate serialize;
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;

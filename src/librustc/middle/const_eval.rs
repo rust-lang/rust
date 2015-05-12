@@ -23,12 +23,13 @@ use middle::astconv_util::ast_ty_to_prim_ty;
 use util::num::ToPrimitive;
 use util::ppaux::Repr;
 
+use rustc_ast_map as ast_map;
 use syntax::ast::{self, Expr};
 use syntax::codemap::Span;
 use syntax::feature_gate;
 use syntax::parse::token::InternedString;
 use syntax::ptr::P;
-use syntax::{ast_map, ast_util, codemap};
+use syntax::{ast_util, codemap};
 
 use std::borrow::{Cow, IntoCow};
 use std::num::wrapping::OverflowingOps;

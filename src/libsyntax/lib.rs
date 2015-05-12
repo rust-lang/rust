@@ -35,7 +35,6 @@
 #![feature(str_char)]
 #![feature(unicode)]
 
-extern crate arena;
 extern crate fmt_macros;
 extern crate serialize;
 extern crate term;
@@ -82,7 +81,6 @@ pub mod syntax {
 
 pub mod abi;
 pub mod ast;
-pub mod ast_map;
 pub mod ast_util;
 pub mod attr;
 pub mod codemap;

@@ -21,10 +21,10 @@ use middle::privacy;
 use session::config;
 use util::nodemap::NodeSet;
 
+use rustc_ast_map as ast_map;
 use std::collections::HashSet;
 use syntax::abi;
 use syntax::ast;
-use syntax::ast_map;
 use syntax::ast_util::is_local;
 use syntax::attr;
 use syntax::visit::Visitor;

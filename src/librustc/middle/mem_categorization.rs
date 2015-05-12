@@ -80,9 +80,9 @@ use middle::ty::{self, Ty};
 use util::nodemap::NodeMap;
 use util::ppaux::{Repr, UserString};
 
+use rustc_ast_map as ast_map;
 use syntax::ast::{MutImmutable, MutMutable};
 use syntax::ast;
-use syntax::ast_map;
 use syntax::codemap::Span;
 use syntax::print::pprust;
 use syntax::parse::token;

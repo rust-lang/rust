@@ -31,13 +31,13 @@ use middle::subst::Substs;
 
 use std::cmp;
 use libc::c_uint;
+use rustc_ast_map as ast_map;
 use syntax::abi::{Cdecl, Aapcs, C, Win64, Abi};
 use syntax::abi::{RustIntrinsic, Rust, RustCall, Stdcall, Fastcall, System};
 use syntax::codemap::Span;
 use syntax::parse::token::{InternedString, special_idents};
 use syntax::parse::token;
-use syntax::ast;
-use syntax::{attr, ast_map};
+use syntax::{ast, attr};
 use syntax::print::pprust;
 use util::ppaux::Repr;
 

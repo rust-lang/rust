@@ -37,9 +37,9 @@ use std::env;
 use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 
+use rustc_ast_map::NodeItem;
 use syntax::ast_util;
 use syntax::ast::{self, NodeId, DefId};
-use syntax::ast_map::NodeItem;
 use syntax::attr;
 use syntax::codemap::*;
 use syntax::parse::token::{self, get_ident, keywords};

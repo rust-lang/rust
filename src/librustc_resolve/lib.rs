@@ -31,6 +31,7 @@
 #[macro_use] #[no_link] extern crate rustc_bitflags;
 
 extern crate rustc;
+extern crate rustc_ast_map;
 
 use self::PatternBindingMode::*;
 use self::Namespace::*;
@@ -61,6 +62,7 @@ use rustc::middle::subst::{ParamSpace, FnSpace, TypeSpace};
 use rustc::middle::ty::{Freevar, FreevarMap, TraitMap, GlobMap};
 use rustc::util::nodemap::{NodeMap, NodeSet, DefIdSet, FnvHashMap};
 use rustc::util::lev_distance::lev_distance;
+use rustc_ast_map as ast_map;
 
 use syntax::ast::{Arm, BindByRef, BindByValue, BindingMode, Block};
 use syntax::ast::{ConstImplItem, Crate, CrateNum};
@@ -80,7 +82,6 @@ use syntax::ast::{TyPath, TyPtr};
 use syntax::ast::{TyRptr, TyStr, TyUs, TyU8, TyU16, TyU32, TyU64, TyUint};
 use syntax::ast::TypeImplItem;
 use syntax::ast;
-use syntax::ast_map;
 use syntax::ast_util::{local_def, walk_pat};
 use syntax::attr::AttrMetaMethods;
 use syntax::ext::mtwt;

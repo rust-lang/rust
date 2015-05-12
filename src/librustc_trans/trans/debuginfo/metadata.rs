@@ -37,13 +37,14 @@ use util::ppaux;
 use util::common::path2cstr;
 
 use libc::{c_uint, c_longlong};
+use rustc_ast_map as ast_map;
 use std::ffi::CString;
 use std::path::Path;
 use std::ptr;
 use std::rc::Rc;
 use syntax::util::interner::Interner;
 use syntax::codemap::Span;
-use syntax::{ast, codemap, ast_util, ast_map};
+use syntax::{ast, codemap, ast_util};
 use syntax::parse::token::{self, special_idents};
 
 

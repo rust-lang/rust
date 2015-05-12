@@ -56,9 +56,9 @@ use middle::ty::MethodCall;
 use util::ppaux::Repr;
 use util::ppaux::ty_to_string;
 
+use rustc_ast_map as ast_map;
 use syntax::abi as synabi;
 use syntax::ast;
-use syntax::ast_map;
 use syntax::ptr::P;
 
 #[derive(Copy, Clone)]

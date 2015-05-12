@@ -44,6 +44,7 @@
 extern crate syntax;
 #[macro_use]
 extern crate rustc;
+extern crate rustc_ast_map;
 #[macro_use]
 extern crate log;
 

@@ -31,13 +31,13 @@ use super::Compilation;
 
 use serialize::json;
 
+use rustc_ast_map as ast_map;
 use std::env;
 use std::ffi::OsString;
 use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use syntax::ast;
-use syntax::ast_map;
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
 use syntax::diagnostics;

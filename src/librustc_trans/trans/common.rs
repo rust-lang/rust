@@ -45,12 +45,12 @@ use util::nodemap::{FnvHashMap, NodeMap};
 
 use arena::TypedArena;
 use libc::{c_uint, c_char};
+use rustc_ast_map::{PathElem, PathName};
 use std::ffi::CString;
 use std::cell::{Cell, RefCell};
 use std::result::Result as StdResult;
 use std::vec::Vec;
 use syntax::ast;
-use syntax::ast_map::{PathElem, PathName};
 use syntax::codemap::{DUMMY_SP, Span};
 use syntax::parse::token::InternedString;
 use syntax::parse::token;
