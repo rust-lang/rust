@@ -212,9 +212,9 @@ see why consumers matter.
 As we've said before, an iterator is something that we can call the
 `.next()` method on repeatedly, and it gives us a sequence of things.
 Because you need to call the method, this means that iterators
-are *lazy* and don't need to generate all of the values upfront.
-This code, for example, does not actually generate the numbers
-`1-100`, and just creates a value that represents the sequence:
+can be *lazy* and not generate all of the values upfront. This code,
+for example, does not actually generate the numbers `1-100`, instead
+creating a value that merely represents the sequence:
 
 ```rust
 let nums = 1..100;
@@ -235,7 +235,7 @@ Ranges are one of two basic iterators that you'll see. The other is `iter()`.
 in turn:
 
 ```rust
-let nums = [1, 2, 3];
+let nums = vec![1, 2, 3];
 
 for num in nums.iter() {
    println!("{}", num);
@@ -243,18 +243,7 @@ for num in nums.iter() {
 ```
 
 These two basic iterators should serve you well. There are some more
-advanced iterators, including ones that are infinite. Like using range syntax
-and `step_by`:
-
-```rust
-# #![feature(step_by)]
-(1..).step_by(5);
-```
-
-This iterator counts up from one, adding five each time. It will give
-you a new integer every time, forever (well, technically, until it reaches the
-maximum number representable by an `i32`). But since iterators are lazy,
-that's okay! You probably don't want to use `collect()` on it, though...
+advanced iterators, including ones that are infinite.
 
 That's enough about iterators. Iterator adapters are the last concept
 we need to talk about with regards to iterators. Let's get to it!

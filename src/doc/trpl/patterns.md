@@ -21,6 +21,8 @@ match x {
 }
 ```
 
+This prints `one`.
+
 # Multiple patterns
 
 You can match multiple patterns with `|`:
@@ -35,6 +37,8 @@ match x {
 }
 ```
 
+This prints `one or two`.
+
 # Ranges
 
 You can match a range of values with `...`:
@@ -48,18 +52,62 @@ match x {
 }
 ```
 
-Ranges are mostly used with integers and single characters.
+This prints `one through five`.
+
+Ranges are mostly used with integers and `char`s:
+
+```rust
+let x = '💅';
+
+match x {
+    'a' ... 'j' => println!("early letter"),
+    'k' ... 'z' => println!("late letter"),
+    _ => println!("something else"),
+}
+```
+
+This prints `something else`
 
 # Bindings
 
-If you’re matching multiple things, via a `|` or a `...`, you can bind
-the value to a name with `@`:
+You can bind values to names with `@`:
 
 ```rust
 let x = 1;
 
 match x {
     e @ 1 ... 5 => println!("got a range element {}", e),
+    _ => println!("anything"),
+}
+```
+
+This prints `got a range element 1`. This is useful when you want to
+do a complicated match of part of a data structure:
+
+```rust
+#[derive(Debug)]
+struct Person {
+    name: Option<String>,
+}
+
+let name = "Steve".to_string();
+let mut x: Option<Person> = Some(Person { name: Some(name) });
+match x {
+    Some(Person { name: ref a @ Some(_), .. }) => println!("{:?}", a),
+    _ => {}
+}
+```
+
+This prints `Some("Steve")`: We’ve bound the inner `name` to `a`.
+
+If you use `@` with `|`, you need to make sure the name is bound in each part
+of the pattern:
+
+```rust
+let x = 5;
+
+match x {
+    e @ 1 ... 5 | e @ 8 ... 10 => println!("got a range element {}", e),
     _ => println!("anything"),
 }
 ```
@@ -83,6 +131,8 @@ match x {
 }
 ```
 
+This prints `Got an int!`.
+
 # Guards
 
 You can introduce ‘match guards’ with `if`:
@@ -102,6 +152,8 @@ match x {
 }
 ```
 
+This prints `Got an int!`
+
 # ref and ref mut
 
 If you want to get a [reference][ref], use the `ref` keyword:
@@ -113,6 +165,8 @@ match x {
     ref r => println!("Got a reference to {}", r),
 }
 ```
+
+This prints `Got a reference to 5`.
 
 [ref]: references-and-borrowing.html
 
@@ -130,7 +184,7 @@ match x {
 
 # Destructuring
 
-If you have a compound data type, like a `struct`, you can destructure it
+If you have a compound data type, like a [`struct`][struct], you can destructure it
 inside of a pattern:
 
 ```rust
@@ -145,6 +199,8 @@ match origin {
     Point { x: x, y: y } => println!("({},{})", x, y),
 }
 ```
+
+[struct]: structs.html
 
 If we only care about some of the values, we don’t have to give them all names:
 
@@ -161,6 +217,8 @@ match origin {
 }
 ```
 
+This prints `x is 0`.
+
 You can do this kind of match on any member, not just the first:
 
 ```rust
@@ -176,6 +234,8 @@ match origin {
 }
 ```
 
+This prints `y is 0`.
+
 This ‘destructuring’ behavior works on any compound data type, like
 [tuples][tuples] or [enums][enums].
 
@@ -187,10 +247,10 @@ This ‘destructuring’ behavior works on any compound data type, like
 Whew! That’s a lot of different ways to match things, and they can all be
 mixed and matched, depending on what you’re doing:
 
-```{rust,ignore}
+```rust,ignore
 match x {
     Foo { x: Some(ref name), y: None } => ...
 }
 ```
 
-Patterns are very powerful.  Make good use of them.
+Patterns are very powerful. Make good use of them.

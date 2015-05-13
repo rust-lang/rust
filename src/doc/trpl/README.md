@@ -8,7 +8,7 @@ good at: embedding in other languages, programs with specific space and time
 requirements, and writing low-level code, like device drivers and operating
 systems. It improves on current languages targeting this space by having a
 number of compile-time safety checks that produce no runtime overhead, while
-eliminating all data races. Rust also aims to achieve ‘zero-cost abstrations’
+eliminating all data races. Rust also aims to achieve ‘zero-cost abstractions’
 even though some of these abstractions feel like those of a high-level
 language. Even then, Rust still allows precise control like a low-level
 language would.
@@ -24,6 +24,7 @@ is the first. After this:
 * [Syntax and Semantics][ss] - Each bit of Rust, broken down into small chunks.
 * [Nightly Rust][nr] - Cutting-edge features that aren’t in stable builds yet.
 * [Glossary][gl] - A reference of terms used in the book.
+* [Academic Research][ar] - Literature that influenced Rust.
 
 [gs]: getting-started.html
 [lr]: learn-rust.html
@@ -31,12 +32,18 @@ is the first. After this:
 [ss]: syntax-and-semantics.html
 [nr]: nightly-rust.html
 [gl]: glossary.html
+[ar]: academic-research.html
 
 After reading this introduction, you’ll want to dive into either ‘Learn Rust’
 or ‘Syntax and Semantics’, depending on your preference: ‘Learn Rust’ if you
 want to dive in with a project, or ‘Syntax and Semantics’ if you prefer to
 start small, and learn a single concept thoroughly before moving onto the next.
 Copious cross-linking connects these parts together.
+
+### Contributing
+
+The source files from which this book is generated can be found on Github:
+[github.com/rust-lang/rust/tree/master/src/doc/trpl](https://github.com/rust-lang/rust/tree/master/src/doc/trpl)
 
 ## A brief introduction to Rust
 
@@ -125,7 +132,7 @@ vector. When we try to compile this program, we get an error:
 
 ```text
 error: cannot borrow `x` as mutable because it is also borrowed as immutable
-    x.push(4);
+    x.push("foo");
     ^
 note: previous borrow of `x` occurs here; the immutable borrow prevents
 subsequent moves or mutable borrows of `x` until the borrow ends
@@ -165,7 +172,7 @@ fn main() {
 
 Rust has [move semantics][move] by default, so if we want to make a copy of some
 data, we call the `clone()` method. In this example, `y` is no longer a reference
-to the vector stored in `x`, but a copy of its first element, `"hello"`. Now
+to the vector stored in `x`, but a copy of its first element, `"Hello"`. Now
 that we don’t have a reference, our `push()` works just fine.
 
 [move]: move-semantics.html
@@ -188,5 +195,5 @@ fn main() {
 We created an inner scope with an additional set of curly braces. `y` will go out of
 scope before we call `push()`, and so we’re all good.
 
-This concept of ownership isn’t just good for preventing danging pointers, but an
+This concept of ownership isn’t just good for preventing dangling pointers, but an
 entire set of related problems, like iterator invalidation, concurrency, and more.
