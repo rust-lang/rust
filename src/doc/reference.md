@@ -1405,6 +1405,11 @@ implementations for every method, but it must specify the type `E`. Here's
 an implementation of `Container` for the standard library type `Vec`:
 
 ```
+# trait Container {
+#     type E;
+#     fn empty() -> Self;
+#     fn insert(&mut self, Self::E);
+# }
 impl<T> Container for Vec<T> {
     type E = T;
     fn empty() -> Vec<T> { Vec::new() }
