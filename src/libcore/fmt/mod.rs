@@ -1142,7 +1142,6 @@ macro_rules! fmt_slice {
 }
 
 fmt_slice! {
-    Display => "{}",
     Octal => "{:o}",
     Binary => "{:b}",
     UpperHex => "{:X}",

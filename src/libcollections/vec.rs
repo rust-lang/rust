@@ -1657,7 +1657,6 @@ impl<T: fmt::Debug> fmt::Debug for Vec<T> {
 
 impl_seq_fmt! {
     Vec,
-    Display  => seq_fmt_display,
     Octal    => seq_fmt_octal,
     Binary   => seq_fmt_binary,
     LowerHex => seq_fmt_lower_hex,

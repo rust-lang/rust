@@ -23,17 +23,6 @@ pub fn seq_fmt_debug<I: Iterator>(s: I, f: &mut Formatter) -> fmt::Result
     Result::Ok(())
 }
 
-pub fn seq_fmt_display<I: Iterator>(s: I, f: &mut Formatter) -> fmt::Result
-    where I::Item: fmt::Display
-{
-    for (i, e) in s.enumerate() {
-        if i != 0 { try!(write!(f, ", ")); }
-        try!(write!(f, "{}", e));
-    }
-
-    Result::Ok(())
-}
-
 pub fn seq_fmt_octal<I: Iterator>(s: I, f: &mut Formatter) -> fmt::Result
     where I::Item: fmt::Octal
 {
@@ -107,18 +96,6 @@ pub fn map_fmt_debug<K, V, I: Iterator<Item=(K, V)>>(s: I, f: &mut Formatter) ->
     for (i, (k, v)) in s.enumerate() {
         if i != 0 { try!(write!(f, ", ")); }
         try!(write!(f, "{:?}: {:?}", k, v));
-    }
-
-    Result::Ok(())
-}
-
-pub fn map_fmt_display<K, V, I: Iterator<Item=(K, V)>>(s: I, f: &mut Formatter) -> fmt::Result
-    where K: fmt::Display,
-          V: fmt::Display
-{
-    for (i, (k, v)) in s.enumerate() {
-        if i != 0 { try!(write!(f, ", ")); }
-        try!(write!(f, "{}: {}", k, v));
     }
 
     Result::Ok(())

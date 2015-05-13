@@ -924,7 +924,6 @@ impl<A: fmt::Debug> fmt::Debug for LinkedList<A> {
 
 impl_seq_fmt! {
     LinkedList,
-    Display  => seq_fmt_display,
     Octal    => seq_fmt_octal,
     Binary   => seq_fmt_binary,
     LowerHex => seq_fmt_lower_hex,

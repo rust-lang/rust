@@ -98,7 +98,7 @@ macro_rules! array_impls {
                 }
             }
 
-            fmt_array! { $N, Debug, Display, Octal, Binary, UpperHex, LowerHex, UpperExp, LowerExp }
+            fmt_array! { $N, Debug, Octal, Binary, UpperHex, LowerHex, UpperExp, LowerExp }
 
             #[stable(feature = "rust1", since = "1.0.0")]
             impl<'a, T> IntoIterator for &'a [T; $N] {

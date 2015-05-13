@@ -18,7 +18,6 @@ fn test_format() {
     assert_eq!(s, "Hello, world!");
 
     let u32_array = [10u32, 20, 64, 255, 0xffffffff];
-    t!(format!("{}", u32_array), "[10, 20, 64, 255, 4294967295]");
     t!(format!("{:?}", u32_array), "[10, 20, 64, 255, 4294967295]");
     t!(format!("{:o}", u32_array), "[12, 24, 100, 377, 37777777777]");
     t!(format!("{:b}", u32_array),
@@ -27,13 +26,11 @@ fn test_format() {
     t!(format!("{:X}", u32_array), "[A, 14, 40, FF, FFFFFFFF]");
 
     let f32_array = [10f32, 20.0 , 64.0, 255.0];
-    t!(format!("{}", f32_array), "[10, 20, 64, 255]");
     t!(format!("{:?}", f32_array), "[10, 20, 64, 255]");
     t!(format!("{:e}", f32_array), "[1e1, 2e1, 6.4e1, 2.55e2]");
     t!(format!("{:E}", f32_array), "[1E1, 2E1, 6.4E1, 2.55E2]");
 
     let u32_vec = vec![10u32, 20, 64, 255, 0xffffffff];
-    t!(format!("{}", u32_vec), "[10, 20, 64, 255, 4294967295]");
     t!(format!("{:?}", u32_vec), "[10, 20, 64, 255, 4294967295]");
     t!(format!("{:o}", u32_vec), "[12, 24, 100, 377, 37777777777]");
     t!(format!("{:b}", u32_vec),
@@ -42,13 +39,11 @@ fn test_format() {
     t!(format!("{:X}", u32_vec), "[A, 14, 40, FF, FFFFFFFF]");
 
     let f32_vec = vec![10f32, 20.0 , 64.0, 255.0];
-    t!(format!("{}", f32_vec), "[10, 20, 64, 255]");
     t!(format!("{:?}", f32_vec), "[10, 20, 64, 255]");
     t!(format!("{:e}", f32_vec), "[1e1, 2e1, 6.4e1, 2.55e2]");
     t!(format!("{:E}", f32_vec), "[1E1, 2E1, 6.4E1, 2.55E2]");
 
     let u32_dlist: LinkedList<_> = u32_vec.into_iter().collect();
-    t!(format!("{}", u32_dlist), "[10, 20, 64, 255, 4294967295]");
     t!(format!("{:?}", u32_dlist), "[10, 20, 64, 255, 4294967295]");
     t!(format!("{:o}", u32_dlist), "[12, 24, 100, 377, 37777777777]");
     t!(format!("{:b}", u32_dlist),
@@ -57,13 +52,11 @@ fn test_format() {
     t!(format!("{:X}", u32_dlist), "[A, 14, 40, FF, FFFFFFFF]");
 
     let f32_dlist: LinkedList<_> = f32_vec.into_iter().collect();
-    t!(format!("{}", f32_dlist), "[10, 20, 64, 255]");
     t!(format!("{:?}", f32_dlist), "[10, 20, 64, 255]");
     t!(format!("{:e}", f32_dlist), "[1e1, 2e1, 6.4e1, 2.55e2]");
     t!(format!("{:E}", f32_dlist), "[1E1, 2E1, 6.4E1, 2.55E2]");
 
     let u32_ring_buf: VecDeque<_> = u32_dlist.into_iter().collect();
-    t!(format!("{}", u32_ring_buf), "[10, 20, 64, 255, 4294967295]");
     t!(format!("{:?}", u32_ring_buf), "[10, 20, 64, 255, 4294967295]");
     t!(format!("{:o}", u32_ring_buf), "[12, 24, 100, 377, 37777777777]");
     t!(format!("{:b}", u32_ring_buf),
@@ -72,13 +65,11 @@ fn test_format() {
     t!(format!("{:X}", u32_ring_buf), "[A, 14, 40, FF, FFFFFFFF]");
 
     let f32_ring_buf: VecDeque<_> = f32_dlist.into_iter().collect();
-    t!(format!("{}", f32_ring_buf), "[10, 20, 64, 255]");
     t!(format!("{:?}", f32_ring_buf), "[10, 20, 64, 255]");
     t!(format!("{:e}", f32_ring_buf), "[1e1, 2e1, 6.4e1, 2.55e2]");
     t!(format!("{:E}", f32_ring_buf), "[1E1, 2E1, 6.4E1, 2.55E2]");
 
     let u32_btree_set: BTreeSet<_> = u32_ring_buf.into_iter().collect();
-    t!(format!("{}", u32_btree_set), "{10, 20, 64, 255, 4294967295}");
     t!(format!("{:?}", u32_btree_set), "{10, 20, 64, 255, 4294967295}");
     t!(format!("{:o}", u32_btree_set), "{12, 24, 100, 377, 37777777777}");
     t!(format!("{:b}", u32_btree_set),
@@ -91,8 +82,6 @@ fn test_format() {
         u32_btree_map.insert(*x, *x);
     };
 
-    t!(format!("{}", u32_btree_map),
-       "{10: 10, 20: 20, 64: 64, 255: 255, 4294967295: 4294967295}");
     t!(format!("{:?}", u32_btree_map),
        "{10: 10, 20: 20, 64: 64, \
        255: 255, 4294967295: 4294967295}");

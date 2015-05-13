@@ -746,7 +746,6 @@ impl<V: Ord> Ord for VecMap<V> {
 impl_set_fmt! {
     VecMap,
     Debug    => map_fmt_debug,
-    Display  => map_fmt_display,
     Octal    => map_fmt_octal,
     Binary   => map_fmt_binary,
     LowerHex => map_fmt_lower_hex,

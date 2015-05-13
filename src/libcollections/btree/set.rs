@@ -630,7 +630,6 @@ impl<T: Debug> Debug for BTreeSet<T> {
 
 impl_set_fmt! {
     BTreeSet,
-    Display  => seq_fmt_display,
     Octal    => seq_fmt_octal,
     Binary   => seq_fmt_binary,
     LowerHex => seq_fmt_lower_hex,

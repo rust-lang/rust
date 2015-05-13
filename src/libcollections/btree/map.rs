@@ -933,7 +933,6 @@ impl<K: Debug, V: Debug> Debug for BTreeMap<K, V> {
 
 impl_map_fmt! {
     BTreeMap,
-    Display  => map_fmt_display,
     Octal    => map_fmt_octal,
     Binary   => map_fmt_binary,
     LowerHex => map_fmt_lower_hex,
