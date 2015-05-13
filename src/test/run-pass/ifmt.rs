@@ -246,4 +246,3 @@ fn test_order() {
                        foo(), foo(), foo(), a=foo(), b=foo(), c=foo()),
                "1 2 4 5 3 6".to_string());
 }
-
