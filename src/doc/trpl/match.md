@@ -61,3 +61,40 @@ let number = match x {
 ```
 
 Sometimes it’s a nice way of converting something from one type to another.
+
+# Matching on enums
+
+Another important use of the `match` keyword is to process the possible
+variants of an enum:
+
+```rust
+enum Message {
+    Quit,
+    ChangeColor(i32, i32, i32),
+    Move { x: i32, y: i32 },
+    Write(String),
+}
+
+fn quit() { /* ... */ }
+fn change_color(r: i32, g: i32, b: i32) { /* ... */ }
+fn move_cursor(x: i32, y: i32) { /* ... */ }
+
+fn process_message(msg: Message) {
+    match msg {
+        Message::Quit => quit(),
+        Message::ChangeColor(r, g, b) => change_color(r, g, b),
+        Message::Move { x: x, y: y } => move_cursor(x, y),
+        Message::Write(s) => println!("{}", s),
+    };
+}
+```
+
+Again, the Rust compiler checks exhaustiveness, so it demands that you
+have a match arm for every variant of the enum. If you leave one off, it
+will give you a compile-time error unless you use `_`.
+
+Unlike the previous uses of `match`, you can’t use the normal `if`
+statement to do this. You can use the [`if let`][if-let] statement,
+which can be seen as an abbreviated form of `match`.
+
+[if-let][if-let.html]

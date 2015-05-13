@@ -1,62 +1,62 @@
 % Enums
 
-Rust has a ‘sum type’, an `enum`. Enums are an incredibly useful feature of
-Rust, and are used throughout the standard library. An `enum` is a type which
-relates a set of alternates to a specific name. For example, below we define
-`Character` to be either a `Digit` or something else.
+An `enum` in Rust is a type that represents data that could be one of
+several possible variants:
 
 ```rust
-enum Character {
-    Digit(i32),
-    Other,
+enum Message {
+    Quit,
+    ChangeColor(i32, i32, i32),
+    Move { x: i32, y: i32 },
+    Write(String),
 }
 ```
 
-Most types are allowed as the variant components of an `enum`. Here are some
-examples:
+Each variant can optionally have data associated with it. The syntax for
+defining variants resembles the syntaxes used to define structs: you can
+have variants with no data (like unit-like structs), variants with named
+data, and variants with unnamed data (like tuple structs). Unlike
+separate struct definitions, however, an `enum` is a single type. A
+value of the enum can match any of the variants. For this reason, an
+enum is sometimes called a ‘sum type’: the set of possible values of the
+enum is the sum of the sets of possible values for each variant.
 
-```rust
-struct Empty;
-struct Color(i32, i32, i32);
-struct Length(i32);
-struct Stats { Health: i32, Mana: i32, Attack: i32, Defense: i32 }
-struct HeightDatabase(Vec<i32>);
-```
-
-You see that, depending on its type, an `enum` variant may or may not hold data.
-In `Character`, for instance, `Digit` gives a meaningful name for an `i32`
-value, where `Other` is only a name. However, the fact that they represent
-distinct categories of `Character` is a very useful property.
-
-The variants of an `enum` by default are not comparable with equality operators
-(`==`, `!=`), have no ordering (`<`, `>=`, etc.), and do not support other
-binary operations such as `*` and `+`. As such, the following code is invalid
-for the example `Character` type:
-
-```rust,ignore
-// These assignments both succeed
-let ten  = Character::Digit(10);
-let four = Character::Digit(4);
-
-// Error: `*` is not implemented for type `Character`
-let forty = ten * four;
-
-// Error: `<=` is not implemented for type `Character`
-let four_is_smaller = four <= ten;
-
-// Error: `==` is not implemented for type `Character`
-let four_equals_ten = four == ten;
-```
-
-We use the `::` syntax to use the name of each variant: They’re scoped by the name
+We use the `::` syntax to use the name of each variant: they’re scoped by the name
 of the `enum` itself. This allows both of these to work:
 
-```rust,ignore
-Character::Digit(10);
-Hand::Digit;
+```rust
+# enum Message {
+#     Move { x: i32, y: i32 },
+# }
+let x: Message = Message::Move { x: 3, y: 4 };
+
+enum BoardGameTurn {
+    Move { squares: i32 },
+    Pass,
+}
+
+let y: BoardGameTurn = BoardGameTurn::Move { squares: 1 };
 ```
 
-Both variants are named `Digit`, but since they’re scoped to the `enum` name,
+Both variants are named `Move`, but since they’re scoped to the name of
+the enum, they can both be used without conflict.
+
+A value of an enum type contains information about which variant it is,
+in addition to any data associated with that variant. This is sometimes
+referred to as a ‘tagged union’, since the data includes a ‘tag’
+indicating what type it is. The compiler uses this information to
+enforce that you’re accessing the data in the enum safely. For instance,
+you can’t simply try to destructure a value as if it were one of the
+possible variants:
+
+```rust,ignore
+fn process_color_change(msg: Message) {
+    let Message::ChangeColor(r, g, b) = msg; // compile-time error
+}
+```
+
+Both variants are named `Digit`, but since they’re scoped to the `enum` name
+there's no ambiguity.
 
 Not supporting these operations may seem rather limiting, but it’s a limitation
 which we can overcome. There are two ways: by implementing equality ourselves,
@@ -65,4 +65,4 @@ learn in the next section. We don’t know enough about Rust to implement
 equality yet, but we’ll find out in the [`traits`][traits] section.
 
 [match]: match.html
-[traits]: traits.html
+[if-let]: if-let.html
