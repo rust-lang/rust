@@ -905,6 +905,8 @@ impl DocFolder for Cache {
         // Index this method for searching later on
         if let Some(ref s) = item.name {
             let (parent, is_method) = match item.inner {
+                clean::AssociatedTypeItem(..) |
+                clean::AssociatedConstItem(..) |
                 clean::TyMethodItem(..) |
                 clean::StructFieldItem(..) |
                 clean::VariantItem(..) => {
@@ -1857,6 +1859,17 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
             <div class='methods'>
         "));
         for t in &types {
+            try!(trait_item(w, *t));
+        }
+        try!(write!(w, "</div>"));
+    }
+
+    if !consts.is_empty() {
+        try!(write!(w, "
+            <h2 id='associated-const'>Associated Constants</h2>
+            <div class='methods'>
+        "));
+        for t in &consts {
             try!(trait_item(w, *t));
         }
         try!(write!(w, "</div>"));

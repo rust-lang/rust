@@ -24,6 +24,11 @@ use marker::Sized;
 
 /// A cheap, reference-to-reference conversion.
 ///
+/// `AsRef` is very similar to, but different than, `Borrow`. See
+/// [the book][book] for more.
+///
+/// [book]: ../../book/borrow-and-asref.html
+///
 /// # Examples
 ///
 /// Both `String` and `&str` implement `AsRef<str>`:
@@ -173,6 +178,7 @@ impl<T> AsMut<[T]> for [T] {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl AsRef<str> for str {
+    #[inline]
     fn as_ref(&self) -> &str {
         self
     }

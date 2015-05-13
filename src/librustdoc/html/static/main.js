@@ -34,7 +34,8 @@
                      "macro",
                      "primitive",
                      "associatedtype",
-                     "constant"];
+                     "constant",
+                     "associatedconstant"];
 
     $('.js-only').removeClass('js-only');
 

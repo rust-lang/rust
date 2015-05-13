@@ -6,7 +6,7 @@ become quite acquainted. Ownership is how Rust achieves its largest goal,
 memory safety. There are a few distinct concepts, each with its own
 chapter:
 
-* [ownership][ownership], ownership, the key concept
+* [ownership][ownership], the key concept
 * borrowing, which you’re reading now
 * [lifetimes][lifetimes], an advanced concept of borrowing
 
@@ -312,6 +312,7 @@ println!("{}", y);
 
 We get this error:
 
+```text
 error: `x` does not live long enough
     y = &x;
          ^
@@ -334,3 +335,37 @@ In other words, `y` is only valid for the scope where `x` exists. As soon as
 `x` goes away, it becomes invalid to refer to it. As such, the error says that
 the borrow ‘doesn’t live long enough’ because it’s not valid for the right
 amount of time.
+
+The same problem occurs when the reference is declared _before_ the variable it refers to:
+
+```rust,ignore
+let y: &i32;
+let x = 5;
+y = &x;
+
+println!("{}", y);
+```
+
+We get this error:
+
+```text
+error: `x` does not live long enough
+y = &x;
+     ^
+note: reference must be valid for the block suffix following statement 0 at
+2:16...
+    let y: &i32;
+    let x = 5;
+    y = &x;
+    
+    println!("{}", y);
+}
+
+note: ...but borrowed value is only valid for the block suffix following
+statement 1 at 3:14
+    let x = 5;
+    y = &x;
+    
+    println!("{}", y);
+}
+```

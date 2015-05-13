@@ -7,20 +7,21 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+#![feature(no_std)]
+#![no_std]
 
-#![feature(associated_consts)]
+// This tests that conflicting imports shows both `use` lines
+// when reporting the error.
 
-pub trait Foo {
-    // @has assoc_consts/trait.Foo.html '//*[@class="rust trait"]' \
-    //      'const FOO: usize;'
-    // @has - '//*[@id="associatedconstant.FOO"]' 'const FOO'
-    const FOO: usize;
+mod sub1 {
+    fn foo() {} // implementation 1
 }
 
-pub struct Bar;
-
-impl Bar {
-    // @has assoc_consts/struct.Bar.html '//*[@id="assoc_const.BAR"]' \
-    //      'const BAR: usize = 3'
-    pub const BAR: usize = 3;
+mod sub2 {
+    fn foo() {} // implementation 2
 }
+
+use sub1::foo; //~ NOTE previous import of `foo` here
+use sub2::foo; //~ ERROR a value named `foo` has already been imported in this module [E0252]
+
+fn main() {}

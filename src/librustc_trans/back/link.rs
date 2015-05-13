@@ -289,7 +289,7 @@ pub fn mangle<PI: Iterator<Item=PathElem>>(path: PI,
     // when using unix's linker. Perhaps one day when we just use a linker from LLVM
     // we won't need to do this name mangling. The problem with name mangling is
     // that it seriously limits the available characters. For example we can't
-    // have things like &T or ~[T] in symbol names when one would theoretically
+    // have things like &T in symbol names when one would theoretically
     // want them for things like impls of traits on that type.
     //
     // To be able to work on all platforms and get *some* reasonable output, we
