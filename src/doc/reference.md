@@ -1346,6 +1346,8 @@ vtable when the trait is used as a [trait object](#trait-objects).
 Traits are implemented for specific types through separate
 [implementations](#implementations).
 
+Consider the following trait:
+
 ```
 # type Surface = i32;
 # type BoundingBox = i32;
@@ -1360,6 +1362,20 @@ This defines a trait with two methods. All values that have
 `draw` and `bounding_box` methods called, using `value.bounding_box()`
 [syntax](#method-call-expressions).
 
+Traits can include default implementations of methods, as in:
+
+```
+trait Foo {
+    fn bar(&self);
+
+    fn baz(&self) { println!("We called baz."); }
+}
+```
+
+Here the `baz` method has a default implementation, so types that implement
+`Foo` need only implement `bar`. It is also possible for implementing types
+to override a method that has a default implementation.
+
 Type parameters can be specified for a trait to make it generic. These appear
 after the trait name, using the same syntax used in [generic
 functions](#generic-functions).
@@ -1369,6 +1385,30 @@ trait Seq<T> {
    fn len(&self) -> u32;
    fn elt_at(&self, n: u32) -> T;
    fn iter<F>(&self, F) where F: Fn(T);
+}
+```
+
+It is also possible to define associated types for a trait. Consider the
+following example of a `Container` trait. Notice how the type is available
+for use in the method signatures:
+
+```
+trait Container {
+    type E;
+    fn empty() -> Self;
+    fn insert(&mut self, Self::E);
+}
+```
+
+In order for a type to implement this trait, it must not only provide
+implementations for every method, but it must specify the type `E`. Here's
+an implementation of `Container` for the standard library type `Vec`:
+
+```
+impl<T> Container for Vec<T> {
+    type E = T;
+    fn empty() -> Vec<T> { Vec::new() }
+    fn insert(&mut self, x: T) { self.push(x); }
 }
 ```
 
