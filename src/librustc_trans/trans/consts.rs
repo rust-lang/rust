@@ -34,10 +34,25 @@ use middle::ty::{self, Ty};
 use util::ppaux::{Repr, ty_to_string};
 
 use std::iter::repeat;
-use libc::c_uint;
 use syntax::{ast, ast_util};
 use syntax::parse::token;
 use syntax::ptr::P;
+
+fn const_val(cx: &CrateContext, _: &ast::Expr, val: const_eval::const_val) -> ValueRef {
+    match val {
+        const_eval::const_int(i) => C_i64(cx, i), // this might be wrong
+        const_eval::const_uint(u) => C_u64(cx, u), // this too
+        const_eval::const_float(f) => C_floating(&f.to_string(), Type::f64(cx)),
+        const_eval::const_str(s) => C_str_slice(cx, s),
+        const_eval::const_binary(data) => addr_of(cx, C_bytes(cx, &data[..]), "binary"),
+        const_eval::const_bool(b) => C_bool(cx, b),
+        // split matches from const_expr_unadjusted into functions
+        const_eval::Struct(_) => unimplemented!(),
+        const_eval::Tuple(_) => unimplemented!(),
+        const_eval::Array(..) => unimplemented!(),
+        const_eval::Repeat(..) => unimplemented!(),
+    }
+}
 
 pub fn const_lit(cx: &CrateContext, e: &ast::Expr, lit: &ast::Lit)
     -> ValueRef {
@@ -565,56 +580,16 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
               })
           }
 
-          ast::ExprIndex(ref base, ref index) => {
-              let (bv, bt) = const_expr(cx, &**base, param_substs);
-              let iv = match const_eval::eval_const_expr_partial(cx.tcx(), &**index, None) {
-                  Ok(const_eval::const_int(i)) => i as u64,
-                  Ok(const_eval::const_uint(u)) => u,
-                  _ => cx.sess().span_bug(index.span,
-                                          "index is not an integer-constant expression")
-              };
-              let (arr, len) = match bt.sty {
-                  ty::ty_vec(_, Some(u)) => (bv, C_uint(cx, u)),
-                  ty::ty_vec(_, None) | ty::ty_str => {
-                      let e1 = const_get_elt(cx, bv, &[0]);
-                      (const_deref_ptr(cx, e1), const_get_elt(cx, bv, &[1]))
-                  }
-                  ty::ty_rptr(_, mt) => match mt.ty.sty {
-                      ty::ty_vec(_, Some(u)) => {
-                          (const_deref_ptr(cx, bv), C_uint(cx, u))
-                      },
-                      _ => cx.sess().span_bug(base.span,
-                                              &format!("index-expr base must be a vector \
-                                                       or string type, found {}",
-                                                      ty_to_string(cx.tcx(), bt)))
-                  },
-                  _ => cx.sess().span_bug(base.span,
-                                          &format!("index-expr base must be a vector \
-                                                   or string type, found {}",
-                                                  ty_to_string(cx.tcx(), bt)))
-              };
+          ast::ExprIndex(..) => {
+            match const_eval::eval_const_expr_partial(cx.tcx(), &e, None) {
+                Ok(val) => const_val(cx, &e, val),
+                Err(err) => cx.sess().span_bug(
+                    e.span,
+                    &format!("constant indexing failed: {}", err),
+                ),
+            }
+          },
 
-              let len = llvm::LLVMConstIntGetZExtValue(len) as u64;
-              let len = match bt.sty {
-                  ty::ty_uniq(ty) | ty::ty_rptr(_, ty::mt{ty, ..}) => match ty.sty {
-                      ty::ty_str => {
-                          assert!(len > 0);
-                          len - 1
-                      }
-                      _ => len
-                  },
-                  _ => len
-              };
-              if iv >= len {
-                  // FIXME #3170: report this earlier on in the const-eval
-                  // pass. Reporting here is a bit late.
-                  cx.sess().span_err(e.span,
-                                     "const index-expr is out of bounds");
-                  C_undef(type_of::type_of(cx, bt).element_type())
-              } else {
-                  const_get_elt(cx, arr, &[iv as c_uint])
-              }
-          }
           ast::ExprCast(ref base, _) => {
             let llty = type_of::type_of(cx, ety);
             let (v, basety) = const_expr(cx, &**base, param_substs);

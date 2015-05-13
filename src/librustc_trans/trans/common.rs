@@ -788,6 +788,10 @@ pub fn C_u64(ccx: &CrateContext, i: u64) -> ValueRef {
     C_integral(Type::i64(ccx), i, false)
 }
 
+pub fn C_i64(ccx: &CrateContext, i: i64) -> ValueRef {
+    C_integral(Type::i64(ccx), i as u64, true)
+}
+
 pub fn C_int<I: AsI64>(ccx: &CrateContext, i: I) -> ValueRef {
     let v = i.as_i64();
 

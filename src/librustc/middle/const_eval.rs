@@ -207,7 +207,9 @@ pub enum const_val {
     const_binary(Rc<Vec<u8>>),
     const_bool(bool),
     Struct(ast::NodeId),
-    Tuple(ast::NodeId)
+    Tuple(ast::NodeId),
+    Array(ast::NodeId, u64),
+    Repeat(ast::NodeId, u64),
 }
 
 pub fn const_expr_to_pat(tcx: &ty::ctxt, expr: &Expr, span: Span) -> P<ast::Pat> {
@@ -294,11 +296,15 @@ pub enum ErrKind {
     NegateOnBinary,
     NegateOnStruct,
     NegateOnTuple,
+    NegateOnArray,
+    NegateOnRepeat,
     NotOnFloat,
     NotOnString,
     NotOnBinary,
     NotOnStruct,
     NotOnTuple,
+    NotOnArray,
+    NotOnRepeat,
 
     NegateWithOverflow(i64),
     AddiWithOverflow(i64, i64),
@@ -318,6 +324,12 @@ pub enum ErrKind {
     ExpectedConstTuple,
     ExpectedConstStruct,
     TupleIndexOutOfBounds,
+    IndexedNonVec,
+    IndexNotNatural,
+    IndexNotInt,
+    IndexOutOfBounds,
+    RepeatCountNotNatural,
+    RepeatCountNotInt,
 
     MiscBinaryOp,
     MiscCatchAll,
@@ -339,11 +351,15 @@ impl ConstEvalErr {
             NegateOnBinary => "negate on binary literal".into_cow(),
             NegateOnStruct => "negate on struct".into_cow(),
             NegateOnTuple => "negate on tuple".into_cow(),
+            NegateOnArray => "negate on array".into_cow(),
+            NegateOnRepeat => "negate on repeat".into_cow(),
             NotOnFloat => "not on float or string".into_cow(),
             NotOnString => "not on float or string".into_cow(),
             NotOnBinary => "not on binary literal".into_cow(),
             NotOnStruct => "not on struct".into_cow(),
             NotOnTuple => "not on tuple".into_cow(),
+            NotOnArray => "not on array".into_cow(),
+            NotOnRepeat => "not on repeat".into_cow(),
 
             NegateWithOverflow(..) => "attempted to negate with overflow".into_cow(),
             AddiWithOverflow(..) => "attempted to add with overflow".into_cow(),
@@ -363,6 +379,12 @@ impl ConstEvalErr {
             ExpectedConstTuple => "expected constant tuple".into_cow(),
             ExpectedConstStruct => "expected constant struct".into_cow(),
             TupleIndexOutOfBounds => "tuple index out of bounds".into_cow(),
+            IndexedNonVec => "indexing is only supported for arrays".into_cow(),
+            IndexNotNatural => "indices must be a natural number".into_cow(),
+            IndexNotInt => "indices must be integers".into_cow(),
+            IndexOutOfBounds => "array index out of bounds".into_cow(),
+            RepeatCountNotNatural => "repeat count must be a natural number".into_cow(),
+            RepeatCountNotInt => "repeat count must be integers".into_cow(),
 
             MiscBinaryOp => "bad operands for binary".into_cow(),
             MiscCatchAll => "unsupported constant expr".into_cow(),
@@ -672,6 +694,8 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
           const_binary(_) => signal!(e, NegateOnBinary),
           const_val::Tuple(_) => signal!(e, NegateOnTuple),
           const_val::Struct(..) => signal!(e, NegateOnStruct),
+          const_val::Array(..) => signal!(e, NegateOnArray),
+          const_val::Repeat(..) => signal!(e, NegateOnRepeat),
         }
       }
       ast::ExprUnary(ast::UnNot, ref inner) => {
@@ -684,6 +708,8 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
           const_binary(_) => signal!(e, NotOnBinary),
           const_val::Tuple(_) => signal!(e, NotOnTuple),
           const_val::Struct(..) => signal!(e, NotOnStruct),
+          const_val::Array(..) => signal!(e, NotOnArray),
+          const_val::Repeat(..) => signal!(e, NotOnRepeat),
         }
       }
       ast::ExprBinary(op, ref a, ref b) => {
@@ -873,6 +899,42 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
       ast::ExprTup(_) => {
         const_val::Tuple(e.id)
       }
+      ast::ExprIndex(ref arr, ref idx) => {
+        let arr = try!(eval_const_expr_partial(tcx, arr, None));
+        let idx = try!(eval_const_expr_partial(tcx, idx, None));
+        let idx = match idx {
+            const_int(i) if i >= 0 => i as u64,
+            const_int(_) => signal!(e, IndexNotNatural),
+            const_uint(i) => i,
+            _ => signal!(e, IndexNotInt),
+        };
+        match arr {
+            const_val::Array(_, n) if idx >= n => signal!(e, IndexOutOfBounds),
+            const_val::Array(v, _) => if let ast::ExprVec(ref v) = tcx.map.expect_expr(v).node {
+                try!(eval_const_expr_partial(tcx, &*v[idx as usize], None))
+            } else {
+                unreachable!()
+            },
+            const_val::Repeat(_, n) if idx >= n => signal!(e, IndexOutOfBounds),
+            const_val::Repeat(elem, _) => try!(eval_const_expr_partial(
+                tcx,
+                &*tcx.map.expect_expr(elem),
+                None,
+             )),
+            _ => signal!(e, IndexedNonVec),
+        }
+      }
+      ast::ExprAddrOf(ref muta, ref path) => unimplemented!(),
+      ast::ExprVec(ref v) => const_val::Array(e.id, v.len() as u64),
+      ast::ExprRepeat(_, ref n) => const_val::Repeat(
+        e.id,
+        match try!(eval_const_expr_partial(tcx, &**n, None)) {
+            const_int(i) if i >= 0 => i as u64,
+            const_int(_) => signal!(e, RepeatCountNotNatural),
+            const_uint(i) => i,
+            _ => signal!(e, RepeatCountNotInt),
+        },
+      ),
       ast::ExprStruct(..) => {
         const_val::Struct(e.id)
       }
