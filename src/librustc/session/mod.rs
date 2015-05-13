@@ -64,7 +64,9 @@ pub struct Session {
     /// operations such as auto-dereference and monomorphization.
     pub recursion_limit: Cell<usize>,
 
-    pub can_print_warnings: bool
+    pub can_print_warnings: bool,
+
+    next_node_id: Cell<ast::NodeId>
 }
 
 impl Session {
@@ -213,10 +215,17 @@ impl Session {
         lints.insert(id, vec!((lint_id, sp, msg)));
     }
     pub fn next_node_id(&self) -> ast::NodeId {
-        self.parse_sess.next_node_id()
+        self.reserve_node_ids(1)
     }
     pub fn reserve_node_ids(&self, count: ast::NodeId) -> ast::NodeId {
-        self.parse_sess.reserve_node_ids(count)
+        let id = self.next_node_id.get();
+
+        match id.checked_add(count) {
+            Some(next) => self.next_node_id.set(next),
+            None => self.bug("Input too large, ran out of node ids!")
+        }
+
+        id
     }
     pub fn diagnostic<'a>(&'a self) -> &'a diagnostic::SpanHandler {
         &self.parse_sess.span_diagnostic
@@ -421,7 +430,8 @@ pub fn build_session_(sopts: config::Options,
         delayed_span_bug: RefCell::new(None),
         features: RefCell::new(feature_gate::Features::new()),
         recursion_limit: Cell::new(64),
-        can_print_warnings: can_print_warnings
+        can_print_warnings: can_print_warnings,
+        next_node_id: Cell::new(1)
     };
 
     sess
