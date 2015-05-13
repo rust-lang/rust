@@ -11,6 +11,7 @@
 #![feature(catch_panic)]
 
 extern crate rustfmt;
+extern crate diff;
 
 use std::collections::HashMap;
 use std::fs;
@@ -89,10 +90,41 @@ fn handle_result(result: HashMap<String, String>) {
         // TODO: speedup by running through bytes iterator
         f.read_to_string(&mut text).unwrap();
         if fmt_text != text {
+            show_diff(&file_name, &fmt_text, &text);
             failures.insert(file_name, fmt_text);
         }
     }
     if !failures.is_empty() {
         panic!(failures);
+    }
+}
+
+
+fn show_diff(file_name: &str, expected: &str, actual: &str) {
+    let mut line_number = 1;
+    let mut prev_both = true;
+
+    for result in diff::lines(expected, actual) {
+        match result {
+            diff::Result::Left(str) => {
+                if prev_both {
+                    println!("Mismatch @ {}:{}", file_name, line_number);
+                }
+                println!("-{}⏎", str);
+                prev_both = false;
+            }
+            diff::Result::Right(str) => {
+                if prev_both {
+                    println!("Mismatch @ {}:{}", file_name, line_number);
+                }
+                println!("+{}⏎", str);
+                prev_both = false;
+                line_number += 1;
+            }
+            diff::Result::Both(..) => {
+                line_number += 1;
+                prev_both = true;
+            }
+        }
     }
 }

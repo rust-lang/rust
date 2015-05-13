@@ -11,3 +11,6 @@ license = "Apache-2.0/MIT"
 [dependencies.strings]
 strings = "0.0.1"
 git = "https://github.com/nrc/strings.rs.git"
+
+[dev-dependencies]
+diff = "0.1.0"
