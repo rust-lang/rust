@@ -107,7 +107,7 @@ println!("v[0] is: {}", v[0]);
 ```
 
 Same error: ‘use of moved value’. When we transfer ownership to something else,
-we say that we’ve ‘moved’ the thing we refer to. You don’t need any sort of
+we say that we’ve ‘moved’ the thing we refer to. You don’t need some sort of
 special annotation here, it’s the default thing that Rust does.
 
 ## The details
