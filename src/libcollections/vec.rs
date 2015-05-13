@@ -18,39 +18,41 @@
 //! You can explicitly create a `Vec<T>` with `new()`:
 //!
 //! ```
-//! let xs: Vec<i32> = Vec::new();
+//! let v: Vec<i32> = Vec::new();
 //! ```
 //!
 //! ...or by using the `vec!` macro:
 //!
 //! ```
-//! let ys: Vec<i32> = vec![];
+//! let v: Vec<i32> = vec![];
 //!
-//! let zs = vec![1i32, 2, 3, 4, 5];
+//! let v = vec![1, 2, 3, 4, 5];
+//!
+//! let v = vec![0; 10]; // ten zeroes
 //! ```
 //!
 //! You can `push` values onto the end of a vector (which will grow the vector as needed):
 //!
 //! ```
-//! let mut xs = vec![1i32, 2];
+//! let mut v = vec![1, 2];
 //!
-//! xs.push(3);
+//! v.push(3);
 //! ```
 //!
 //! Popping values works in much the same way:
 //!
 //! ```
-//! let mut xs = vec![1i32, 2];
+//! let mut v = vec![1, 2];
 //!
-//! let two = xs.pop();
+//! let two = v.pop();
 //! ```
 //!
 //! Vectors also support indexing (through the `Index` and `IndexMut` traits):
 //!
 //! ```
-//! let mut xs = vec![1i32, 2, 3];
-//! let three = xs[2];
-//! xs[1] = xs[1] + 5;
+//! let mut v = vec![1, 2, 3];
+//! let three = v[2];
+//! v[1] = v[1] + 5;
 //! ```
 
 #![stable(feature = "rust1", since = "1.0.0")]
