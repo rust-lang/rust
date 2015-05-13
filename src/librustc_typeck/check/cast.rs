@@ -60,28 +60,29 @@ pub fn check_cast<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>, cast: &CastCheck<'tcx>) {
     let e = &cast.expr;
     let t_e = structurally_resolved_type(fcx, span, cast.expr_ty);
     let t_1 = structurally_resolved_type(fcx, span, cast.cast_ty);
+    let tcx = fcx.tcx();
 
     // Check for trivial casts.
     if !ty::type_has_ty_infer(t_1) {
         if let Ok(()) = coercion::mk_assignty(fcx, e, t_e, t_1) {
             if ty::type_is_numeric(t_1) && ty::type_is_numeric(t_e) {
-                fcx.tcx().sess.add_lint(lint::builtin::TRIVIAL_NUMERIC_CASTS,
-                                        e.id,
-                                        span,
-                                        format!("trivial numeric cast: `{}` as `{}`. Cast can be \
-                                                 replaced by coercion, this might require type \
-                                                 ascription or a temporary variable",
-                                                fcx.infcx().ty_to_string(t_e),
-                                                fcx.infcx().ty_to_string(t_1)));
+                tcx.sess.add_lint(lint::builtin::TRIVIAL_NUMERIC_CASTS,
+                                  e.id,
+                                  span,
+                                  format!("trivial numeric cast: `{}` as `{}`. Cast can be \
+                                           replaced by coercion, this might require type \
+                                           ascription or a temporary variable",
+                                          fcx.infcx().ty_to_string(t_e),
+                                          fcx.infcx().ty_to_string(t_1)));
             } else {
-                fcx.tcx().sess.add_lint(lint::builtin::TRIVIAL_CASTS,
-                                        e.id,
-                                        span,
-                                        format!("trivial cast: `{}` as `{}`. Cast can be \
-                                                 replaced by coercion, this might require type \
-                                                 ascription or a temporary variable",
-                                                fcx.infcx().ty_to_string(t_e),
-                                                fcx.infcx().ty_to_string(t_1)));
+                tcx.sess.add_lint(lint::builtin::TRIVIAL_CASTS,
+                                  e.id,
+                                  span,
+                                  format!("trivial cast: `{}` as `{}`. Cast can be \
+                                           replaced by coercion, this might require type \
+                                           ascription or a temporary variable",
+                                          fcx.infcx().ty_to_string(t_e),
+                                          fcx.infcx().ty_to_string(t_1)));
             }
             return;
         }
@@ -91,14 +92,15 @@ pub fn check_cast<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>, cast: &CastCheck<'tcx>) {
     let t_e_is_scalar = ty::type_is_scalar(t_e);
     let t_e_is_integral = ty::type_is_integral(t_e);
     let t_e_is_float = ty::type_is_floating_point(t_e);
-    let t_e_is_c_enum = ty::type_is_c_like_enum(fcx.tcx(), t_e);
+    let t_e_is_c_enum = ty::type_is_c_like_enum(tcx, t_e);
 
     let t_1_is_scalar = ty::type_is_scalar(t_1);
     let t_1_is_integral = ty::type_is_integral(t_1);
     let t_1_is_char = ty::type_is_char(t_1);
     let t_1_is_bare_fn = ty::type_is_bare_fn(t_1);
     let t_1_is_float = ty::type_is_floating_point(t_1);
-    let t_1_is_c_enum = ty::type_is_c_like_enum(fcx.tcx(), t_1);
+    let t_1_is_c_enum = ty::type_is_c_like_enum(tcx, t_1);
+    let t1_is_fat_ptr = fcx.type_is_fat_ptr(t_1, span);
 
     // casts to scalars other than `char` and `bare fn` are trivial
     let t_1_is_trivial = t_1_is_scalar && !t_1_is_char && !t_1_is_bare_fn;
@@ -113,7 +115,7 @@ pub fn check_cast<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>, cast: &CastCheck<'tcx>) {
             }, t_e, None);
         }
     } else if t_1.sty == ty::ty_bool {
-        span_err!(fcx.tcx().sess, span, E0054,
+        span_err!(tcx.sess, span, E0054,
                   "cannot cast as `bool`, compare with zero instead");
     } else if t_e_is_float && (t_1_is_scalar || t_1_is_c_enum) &&
         !(t_1_is_integral || t_1_is_float) {
@@ -170,18 +172,20 @@ pub fn check_cast<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>, cast: &CastCheck<'tcx>) {
                 demand::coerce(fcx, e.span, t_1, &e);
             }
         }
-    } else if fcx.type_is_fat_ptr(t_e, span) != fcx.type_is_fat_ptr(t_1, span) {
-        fcx.type_error_message(span, |actual| {
-            format!("illegal cast; cast to or from fat pointer: `{}` as `{}` \
-                     involving incompatible type.",
-                    actual, fcx.infcx().ty_to_string(t_1))
-        }, t_e, None);
+    } else if t1_is_fat_ptr {
+        // FIXME This should be allowed where the lefthandside is also a fat
+        // pointer and is the same kind of fat pointer, i.e., array to array,
+        // trait object to trait object. That is a bit looser than the current
+        // rquirement that they are pointers to the same type.
+        if !(fcx.type_is_fat_ptr(t_e, span) &&
+             ty::deref(t_1, true).unwrap().ty == ty::deref(t_e, true).unwrap().ty) {
+            fcx.type_error_message(span, |actual| {
+                format!("cast to fat pointer: `{}` as `{}`",
+                        actual,
+                        fcx.infcx().ty_to_string(t_1))
+            }, t_e, None);
+        }
     } else if !(t_e_is_scalar && t_1_is_trivial) {
-        /*
-        If more type combinations should be supported than are
-        supported here, then file an enhancement issue and
-        record the issue number in this comment.
-        */
         fcx.type_error_message(span, |actual| {
             format!("non-scalar cast: `{}` as `{}`",
                     actual,

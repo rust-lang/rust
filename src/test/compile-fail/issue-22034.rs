@@ -14,6 +14,7 @@ fn main() {
     let ptr: *mut () = 0 as *mut _;
     let _: &mut Fn() = unsafe {
         &mut *(ptr as *mut Fn())
-        //~^ ERROR illegal cast
+        //~^ ERROR the trait `core::ops::Fn<()>` is not implemented
+        //~| ERROR the trait `core::ops::FnOnce<()>` is not implemented
     };
 }

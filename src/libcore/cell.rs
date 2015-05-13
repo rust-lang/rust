@@ -707,5 +707,4 @@ impl<T: ?Sized> UnsafeCell<T> {
         #![allow(trivial_casts)]
         &self.value as *const T as *mut T
     }
-
 }

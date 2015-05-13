@@ -404,6 +404,12 @@ pub enum AutoRef<'tcx> {
     AutoUnsafe(ast::Mutability),
 }
 
+#[derive(Clone, Copy, RustcEncodable, RustcDecodable, Debug)]
+pub enum CustomCoerceUnsized {
+    /// Records the index of the field being coerced.
+    Struct(usize)
+}
+
 #[derive(Clone, Copy, RustcEncodable, RustcDecodable, PartialEq, PartialOrd, Debug)]
 pub struct param_index {
     pub space: subst::ParamSpace,
@@ -818,6 +824,9 @@ pub struct ctxt<'tcx> {
 
     /// Maps Expr NodeId's to their constant qualification.
     pub const_qualif_map: RefCell<NodeMap<check_const::ConstQualif>>,
+
+    /// Caches CoerceUnsized kinds for impls on custom types.
+    pub custom_coerce_unsized_kinds: RefCell<DefIdMap<CustomCoerceUnsized>>,
 }
 
 impl<'tcx> ctxt<'tcx> {
@@ -2809,6 +2818,7 @@ pub fn mk_ctxt<'tcx>(s: Session,
         type_impls_copy_cache: RefCell::new(HashMap::new()),
         type_impls_sized_cache: RefCell::new(HashMap::new()),
         const_qualif_map: RefCell::new(NodeMap()),
+        custom_coerce_unsized_kinds: RefCell::new(DefIdMap()),
    }
 }
 
@@ -4410,7 +4420,7 @@ pub fn deref<'tcx>(ty: Ty<'tcx>, explicit: bool) -> Option<mt<'tcx>> {
 pub fn type_content<'tcx>(ty: Ty<'tcx>) -> Ty<'tcx> {
     match ty.sty {
         ty_uniq(ty) => ty,
-        ty_rptr(_, mt) |ty_ptr(mt) => mt.ty,
+        ty_rptr(_, mt) | ty_ptr(mt) => mt.ty,
         _ => ty
     }
 }
@@ -5351,6 +5361,26 @@ pub fn trait_impl_polarity<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)
      }
 }
 
+pub fn custom_coerce_unsized_kind<'tcx>(cx: &ctxt<'tcx>, did: ast::DefId)
+                                        -> CustomCoerceUnsized {
+    memoized(&cx.custom_coerce_unsized_kinds, did, |did: DefId| {
+        let (kind, src) = if did.krate != ast::LOCAL_CRATE {
+            (csearch::get_custom_coerce_unsized_kind(cx, did), "external")
+        } else {
+            (None, "local")
+        };
+
+        match kind {
+            Some(kind) => kind,
+            None => {
+                cx.sess.bug(&format!("custom_coerce_unsized_kind: \
+                                      {} impl `{}` is missing its kind",
+                                     src, item_path_str(cx, did)));
+            }
+        }
+    })
+}
+
 pub fn impl_or_trait_item<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)
                                 -> ImplOrTraitItem<'tcx> {
     lookup_locally_or_in_crate_store("impl_or_trait_items",
@@ -5576,8 +5606,7 @@ impl DtorKind {
     }
 }
 
-/* If struct_id names a struct with a dtor, return Some(the dtor's id).
-   Otherwise return none. */
+/* If struct_id names a struct with a dtor. */
 pub fn ty_dtor(cx: &ctxt, struct_id: DefId) -> DtorKind {
     match cx.destructor_for_type.borrow().get(&struct_id) {
         Some(&method_def_id) => {
@@ -6013,19 +6042,27 @@ pub fn lookup_repr_hints(tcx: &ctxt, did: DefId) -> Rc<Vec<attr::ReprAttr>> {
 }
 
 // Look up a field ID, whether or not it's local
+pub fn lookup_field_type_unsubstituted<'tcx>(tcx: &ctxt<'tcx>,
+                                             struct_id: DefId,
+                                             id: DefId)
+                                             -> Ty<'tcx> {
+    if id.krate == ast::LOCAL_CRATE {
+        node_id_to_type(tcx, id.node)
+    } else {
+        let mut tcache = tcx.tcache.borrow_mut();
+        tcache.entry(id).or_insert_with(|| csearch::get_field_type(tcx, struct_id, id)).ty
+    }
+}
+
+
+// Look up a field ID, whether or not it's local
 // Takes a list of type substs in case the struct is generic
 pub fn lookup_field_type<'tcx>(tcx: &ctxt<'tcx>,
                                struct_id: DefId,
                                id: DefId,
                                substs: &Substs<'tcx>)
                                -> Ty<'tcx> {
-    let ty = if id.krate == ast::LOCAL_CRATE {
-        node_id_to_type(tcx, id.node)
-    } else {
-        let mut tcache = tcx.tcache.borrow_mut();
-        tcache.entry(id).or_insert_with(|| csearch::get_field_type(tcx, struct_id, id)).ty
-    };
-    ty.subst(tcx, substs)
+    lookup_field_type_unsubstituted(tcx, struct_id, id).subst(tcx, substs)
 }
 
 // Look up the list of field names and IDs for a given struct.

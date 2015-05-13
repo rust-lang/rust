@@ -86,6 +86,22 @@ pub fn size_of<T>() -> usize {
     unsafe { intrinsics::size_of::<T>() }
 }
 
+/// Returns the size of the type that `val` points to in bytes.
+///
+/// # Examples
+///
+/// ```
+/// use std::mem;
+///
+/// assert_eq!(4, mem::size_of_val(&5i32));
+/// ```
+#[cfg(not(stage0))]
+#[inline]
+#[stable(feature = "rust1", since = "1.0.0")]
+pub fn size_of_val<T: ?Sized>(val: &T) -> usize {
+    unsafe { intrinsics::size_of_val(val) }
+}
+
 /// Returns the size of the type that `_val` points to in bytes.
 ///
 /// # Examples
@@ -95,6 +111,7 @@ pub fn size_of<T>() -> usize {
 ///
 /// assert_eq!(4, mem::size_of_val(&5i32));
 /// ```
+#[cfg(stage0)]
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn size_of_val<T>(_val: &T) -> usize {
@@ -118,6 +135,22 @@ pub fn min_align_of<T>() -> usize {
     unsafe { intrinsics::min_align_of::<T>() }
 }
 
+/// Returns the ABI-required minimum alignment of the type of the value that `val` points to
+///
+/// # Examples
+///
+/// ```
+/// use std::mem;
+///
+/// assert_eq!(4, mem::min_align_of_val(&5i32));
+/// ```
+#[cfg(not(stage0))]
+#[inline]
+#[stable(feature = "rust1", since = "1.0.0")]
+pub fn min_align_of_val<T: ?Sized>(val: &T) -> usize {
+    unsafe { intrinsics::min_align_of_val(val) }
+}
+
 /// Returns the ABI-required minimum alignment of the type of the value that `_val` points to
 ///
 /// # Examples
@@ -127,6 +160,7 @@ pub fn min_align_of<T>() -> usize {
 ///
 /// assert_eq!(4, mem::min_align_of_val(&5i32));
 /// ```
+#[cfg(stage0)]
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn min_align_of_val<T>(_val: &T) -> usize {

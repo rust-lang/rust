@@ -141,7 +141,8 @@ pub fn represent_node<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
 /// Decides how to represent a given type.
 pub fn represent_type<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
-                                t: Ty<'tcx>) -> Rc<Repr<'tcx>> {
+                                t: Ty<'tcx>)
+                                -> Rc<Repr<'tcx>> {
     debug!("Representing: {}", ty_to_string(cx.tcx(), t));
     match cx.adt_reprs().borrow().get(&t) {
         Some(repr) => return repr.clone(),
@@ -216,7 +217,9 @@ fn represent_type_uncached<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             }).collect::<Vec<_>>();
             let packed = ty::lookup_packed(cx.tcx(), def_id);
             let dtor = ty::ty_dtor(cx.tcx(), def_id).has_drop_flag();
-            if dtor { ftys.push(cx.tcx().dtor_type()); }
+            if dtor {
+                ftys.push(cx.tcx().dtor_type());
+            }
 
             Univariant(mk_struct(cx, &ftys[..], packed, t), dtor_to_init_u8(dtor))
         }
@@ -517,8 +520,7 @@ fn mk_struct<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                        -> Struct<'tcx> {
     let sized = tys.iter().all(|&ty| type_is_sized(cx.tcx(), ty));
     let lltys : Vec<Type> = if sized {
-        tys.iter()
-           .map(|&ty| type_of::sizing_type_of(cx, ty)).collect()
+        tys.iter().map(|&ty| type_of::sizing_type_of(cx, ty)).collect()
     } else {
         tys.iter().filter(|&ty| type_is_sized(cx.tcx(), *ty))
            .map(|&ty| type_of::sizing_type_of(cx, ty)).collect()
@@ -1060,7 +1062,9 @@ pub fn fold_variants<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
 }
 
 /// Access the struct drop flag, if present.
-pub fn trans_drop_flag_ptr<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>, r: &Repr<'tcx>, val: ValueRef)
+pub fn trans_drop_flag_ptr<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
+                                       r: &Repr<'tcx>,
+                                       val: ValueRef)
                                        -> datum::DatumBlock<'blk, 'tcx, datum::Expr>
 {
     let tcx = bcx.tcx();
