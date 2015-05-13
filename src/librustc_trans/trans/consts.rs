@@ -38,6 +38,22 @@ use syntax::{ast, ast_util};
 use syntax::parse::token;
 use syntax::ptr::P;
 
+fn const_val(cx: &CrateContext, _: &ast::Expr, val: const_eval::const_val) -> ValueRef {
+    match val {
+        const_eval::const_int(i) => C_i64(cx, i), // this might be wrong
+        const_eval::const_uint(u) => C_u64(cx, u), // this too
+        const_eval::const_float(f) => C_floating(&f.to_string(), Type::f64(cx)),
+        const_eval::const_str(s) => C_str_slice(cx, s),
+        const_eval::const_binary(data) => addr_of(cx, C_bytes(cx, &data[..]), "binary"),
+        const_eval::const_bool(b) => C_bool(cx, b),
+        // split matches from const_expr_unadjusted into functions
+        const_eval::Struct(_) => unimplemented!(),
+        const_eval::Tuple(_) => unimplemented!(),
+        const_eval::Array(..) => unimplemented!(),
+        const_eval::Repeat(..) => unimplemented!(),
+    }
+}
+
 pub fn const_lit(cx: &CrateContext, e: &ast::Expr, lit: &ast::Lit)
     -> ValueRef {
     let _icx = push_ctxt("trans_lit");
@@ -563,6 +579,21 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                   adt::const_get_field(cx, &*brepr, bv, discr, idx.node)
               })
           }
+
+          ast::ExprIndex(..) => {
+            let err = match const_eval::eval_const_expr_partial(cx.tcx(), &e, None) {
+                Ok(val) => return const_val(cx, &e, val),
+                Err(err) => err,
+            }
+            // might be a slice
+            let (bv, bt) = const_expr(cx, &**base, param_substs);
+            // WIP
+            cx.sess().span_bug(
+                e.span,
+                &format!("constant indexing failed: {}", err.description()),
+            )
+            }
+          },
 
           ast::ExprCast(ref base, _) => {
             let llty = type_of::type_of(cx, ety);

@@ -208,8 +208,8 @@ pub enum const_val {
     const_bool(bool),
     Struct(ast::NodeId),
     Tuple(ast::NodeId),
-    Array(Vec<P<Expr>>),
-    Repeat(P<Expr>, u64),
+    Array(ast::NodeId, u64),
+    Repeat(ast::NodeId, u64),
 }
 
 pub fn const_expr_to_pat(tcx: &ty::ctxt, expr: &Expr, span: Span) -> P<ast::Pat> {
@@ -694,7 +694,7 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
           const_binary(_) => signal!(e, NegateOnBinary),
           const_val::Tuple(_) => signal!(e, NegateOnTuple),
           const_val::Struct(..) => signal!(e, NegateOnStruct),
-          const_val::Array(_) => signal!(e, NegateOnArray),
+          const_val::Array(..) => signal!(e, NegateOnArray),
           const_val::Repeat(..) => signal!(e, NegateOnRepeat),
         }
       }
@@ -708,7 +708,7 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
           const_binary(_) => signal!(e, NotOnBinary),
           const_val::Tuple(_) => signal!(e, NotOnTuple),
           const_val::Struct(..) => signal!(e, NotOnStruct),
-          const_val::Array(_) => signal!(e, NotOnArray),
+          const_val::Array(..) => signal!(e, NotOnArray),
           const_val::Repeat(..) => signal!(e, NotOnRepeat),
         }
       }
@@ -909,16 +909,24 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
             _ => signal!(e, IndexNotInt),
         };
         match arr {
-            const_val::Array(ref v) if idx as usize >= v.len() => signal!(e, IndexOutOfBounds),
-            const_val::Array(v) => try!(eval_const_expr_partial(tcx, &*v[idx as usize], None)),
+            const_val::Array(_, n) if idx >= n => signal!(e, IndexOutOfBounds),
+            const_val::Array(v, _) => if let ast::ExprVec(ref v) = tcx.map.expect_expr(v).node {
+                try!(eval_const_expr_partial(tcx, &*v[idx as usize], None))
+            } else {
+                unreachable!()
+            },
             const_val::Repeat(_, n) if idx >= n => signal!(e, IndexOutOfBounds),
-            const_val::Repeat(elem, _) => try!(eval_const_expr_partial(tcx, &*elem, None)),
+            const_val::Repeat(elem, _) => try!(eval_const_expr_partial(
+                tcx,
+                &*tcx.map.expect_expr(elem),
+                None,
+             )),
             _ => signal!(e, IndexedNonVec),
         }
       }
-      ast::ExprVec(ref arr) => const_val::Array(arr.clone()), // FIXME: eval elements?
-      ast::ExprRepeat(ref elem, ref n) => const_val::Repeat(
-        elem.clone(),
+      ast::ExprVec(ref v) => const_val::Array(e.id, v.len() as u64),
+      ast::ExprRepeat(_, ref n) => const_val::Repeat(
+        e.id,
         match try!(eval_const_expr_partial(tcx, &**n, None)) {
             const_int(i) if i >= 0 => i as u64,
             const_int(_) => signal!(e, RepeatCountNotNatural),

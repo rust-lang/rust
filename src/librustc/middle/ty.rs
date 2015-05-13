@@ -6199,7 +6199,7 @@ pub fn eval_repeat_count(tcx: &ctxt, count_expr: &ast::Expr) -> usize {
                 const_eval::const_binary(_) => "binary array",
                 const_eval::Struct(..) => "struct",
                 const_eval::Tuple(_) => "tuple",
-                const_eval::Array(_) => "array",
+                const_eval::Array(..) => "array",
                 const_eval::Repeat(..) => "repeat",
             };
             span_err!(tcx.sess, count_expr.span, E0306,
