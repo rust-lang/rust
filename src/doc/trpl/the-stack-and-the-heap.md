@@ -266,7 +266,7 @@ Rust programs use [jemalloc][jemalloc] for this purpose.
 Anyway, back to our example. Since this memory is on the heap, it can stay
 alive longer than the function which allocates the box. In this case, however,
 it doesn’t.[^moving] When the function is over, we need to free the stack frame
-for `main()`. `Box<T>`, though, has a trick up its sleve: [Drop][drop]. The
+for `main()`. `Box<T>`, though, has a trick up its sleeve: [Drop][drop]. The
 implementation of `Drop` for `Box` deallocates the memory that was allocated
 when it was created. Great! So when `x` goes away, it first frees the memory
 allocated on the heap:
