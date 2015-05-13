@@ -167,13 +167,15 @@ fn parse_version(header: &[u8]) -> Result<Version, ParseError> {
     }
 }
 
-let version = parse_version(&[1, 2, 3, 4]);
-match version {
-    Ok(v) => {
-        println!("working with version: {:?}", v);
-    }
-    Err(e) => {
-        println!("error parsing header: {:?}", e);
+fn main() {
+    let version = parse_version(&[1, 2, 3, 4]);
+    match version {
+        Ok(v) => {
+            println!("working with version: {:?}", v);
+        }
+        Err(e) => {
+            println!("error parsing header: {:?}", e);
+        }
     }
 }
 ```
