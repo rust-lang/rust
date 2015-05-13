@@ -231,7 +231,7 @@ impl Session {
         &self.parse_sess.span_diagnostic
     }
     pub fn codemap<'a>(&'a self) -> &'a codemap::CodeMap {
-        &self.parse_sess.span_diagnostic.cm
+        self.parse_sess.codemap()
     }
     // This exists to help with refactoring to eliminate impossible
     // cases later on
