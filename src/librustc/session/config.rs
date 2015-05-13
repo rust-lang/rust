@@ -852,7 +852,7 @@ pub fn parse_cfgspecs(cfgspecs: Vec<String> ) -> ast::CrateConfig {
         parse::parse_meta_from_source_str("cfgspec".to_string(),
                                           s.to_string(),
                                           Vec::new(),
-                                          &parse::new_parse_sess())
+                                          &parse::ParseSess::new())
     }).collect::<ast::CrateConfig>()
 }
 

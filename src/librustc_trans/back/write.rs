@@ -21,7 +21,7 @@ use util::common::time;
 use util::common::path2cstr;
 use syntax::codemap;
 use syntax::diagnostic;
-use syntax::diagnostic::{Emitter, Handler, Level, mk_handler};
+use syntax::diagnostic::{Emitter, Handler, Level};
 
 use std::ffi::{CStr, CString};
 use std::fs;
@@ -928,7 +928,7 @@ fn run_work_multithreaded(sess: &Session,
         futures.push(rx);
 
         thread::Builder::new().name(format!("codegen-{}", i)).spawn(move || {
-            let diag_handler = mk_handler(true, box diag_emitter);
+            let diag_handler = Handler::with_emitter(true, box diag_emitter);
 
             // Must construct cgcx inside the proc because it has non-Send
             // fields.

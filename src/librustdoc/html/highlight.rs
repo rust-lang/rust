@@ -24,7 +24,7 @@ use syntax::parse;
 /// Highlights some source code, returning the HTML output.
 pub fn highlight(src: &str, class: Option<&str>, id: Option<&str>) -> String {
     debug!("highlighting: ================\n{}\n==============", src);
-    let sess = parse::new_parse_sess();
+    let sess = parse::ParseSess::new();
     let fm = parse::string_to_filemap(&sess,
                                       src.to_string(),
                                       "<stdin>".to_string());

@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use ast;
-use parse::new_parse_sess;
 use parse::{ParseSess,string_to_filemap,filemap_to_tts};
 use parse::new_parser_from_source_str;
 use parse::parser::Parser;
@@ -19,7 +18,7 @@ use str::char_at;
 
 /// Map a string to tts, using a made-up filename:
 pub fn string_to_tts(source_str: String) -> Vec<ast::TokenTree> {
-    let ps = new_parse_sess();
+    let ps = ParseSess::new();
     filemap_to_tts(&ps,
                    string_to_filemap(&ps, source_str, "bogofile".to_string()))
 }
@@ -35,7 +34,7 @@ pub fn string_to_parser<'a>(ps: &'a ParseSess, source_str: String) -> Parser<'a>
 fn with_error_checking_parse<T, F>(s: String, f: F) -> T where
     F: FnOnce(&mut Parser) -> T,
 {
-    let ps = new_parse_sess();
+    let ps = ParseSess::new();
     let mut p = string_to_parser(&ps, s);
     let x = f(&mut p);
     p.abort_if_errors();
@@ -75,7 +74,7 @@ pub fn string_to_stmt(source_str : String) -> P<ast::Stmt> {
 pub fn string_to_pat(source_str: String) -> P<ast::Pat> {
     // Binding `sess` and `parser` works around dropck-injected
     // region-inference issues; see #25212, #22323, #22321.
-    let sess = new_parse_sess();
+    let sess = ParseSess::new();
     let mut parser = string_to_parser(&sess, source_str);
     parser.parse_pat()
 }
