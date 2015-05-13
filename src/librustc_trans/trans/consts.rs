@@ -581,17 +581,12 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
           }
 
           ast::ExprIndex(..) => {
-            let err = match const_eval::eval_const_expr_partial(cx.tcx(), &e, None) {
-                Ok(val) => return const_val(cx, &e, val),
-                Err(err) => err,
-            }
-            // might be a slice
-            let (bv, bt) = const_expr(cx, &**base, param_substs);
-            // WIP
-            cx.sess().span_bug(
-                e.span,
-                &format!("constant indexing failed: {}", err.description()),
-            )
+            match const_eval::eval_const_expr_partial(cx.tcx(), &e, None) {
+                Ok(val) => const_val(cx, &e, val),
+                Err(err) => cx.sess().span_bug(
+                    e.span,
+                    &format!("constant indexing failed: {}", err),
+                ),
             }
           },
 

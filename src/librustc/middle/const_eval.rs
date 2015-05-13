@@ -924,6 +924,7 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
             _ => signal!(e, IndexedNonVec),
         }
       }
+      ast::ExprAddrOf(ref muta, ref path) => unimplemented!(),
       ast::ExprVec(ref v) => const_val::Array(e.id, v.len() as u64),
       ast::ExprRepeat(_, ref n) => const_val::Repeat(
         e.id,
