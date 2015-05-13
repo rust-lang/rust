@@ -8,19 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(associated_consts)]
-
-pub trait Foo {
-    // @has assoc_consts/trait.Foo.html '//*[@class="rust trait"]' \
-    //      'const FOO: usize;'
-    // @has - '//*[@id="associatedconstant.FOO"]' 'const FOO'
-    const FOO: usize;
+trait Foo {
+  fn answer(self);
 }
 
-pub struct Bar;
+struct NoData<T>;
+//~^ ERROR: parameter `T` is never used
 
-impl Bar {
-    // @has assoc_consts/struct.Bar.html '//*[@id="assoc_const.BAR"]' \
-    //      'const BAR: usize = 3'
-    pub const BAR: usize = 3;
+impl<T> Foo for T where NoData<T>: Foo {
+//~^ ERROR: overflow evaluating the requirement
+  fn answer(self) {
+    let val: NoData<T> = NoData;
+  }
 }
+
+fn main() {}

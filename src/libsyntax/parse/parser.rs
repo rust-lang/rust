@@ -109,15 +109,6 @@ pub enum PathParsingMode {
     LifetimeAndTypesWithColons,
 }
 
-/// How to parse a qualified path, whether to allow trailing parameters.
-#[derive(Copy, Clone, PartialEq)]
-pub enum QPathParsingMode {
-    /// No trailing parameters, e.g. `<T as Trait>::Item`
-    NoParameters,
-    /// Optional parameters, e.g. `<T as Trait>::item::<'a, U>`
-    MaybeParameters,
-}
-
 /// How to parse a bound, whether to allow bound modifiers such as `?`.
 #[derive(Copy, Clone, PartialEq)]
 pub enum BoundParsingMode {
@@ -1359,7 +1350,7 @@ impl<'a> Parser<'a> {
         } else if try!(self.eat_lt()) {
 
             let (qself, path) =
-                 try!(self.parse_qualified_path(QPathParsingMode::NoParameters));
+                 try!(self.parse_qualified_path(NoTypesAllowed));
 
             TyPath(Some(qself), path)
         } else if self.check(&token::ModSep) ||
@@ -1578,7 +1569,7 @@ impl<'a> Parser<'a> {
 
     // QUALIFIED PATH `<TYPE [as TRAIT_REF]>::IDENT[::<PARAMS>]`
     // Assumes that the leading `<` has been parsed already.
-    pub fn parse_qualified_path(&mut self, mode: QPathParsingMode)
+    pub fn parse_qualified_path(&mut self, mode: PathParsingMode)
                                 -> PResult<(QSelf, ast::Path)> {
         let self_type = try!(self.parse_ty_sum());
         let mut path = if try!(self.eat_keyword(keywords::As)) {
@@ -1599,29 +1590,18 @@ impl<'a> Parser<'a> {
         try!(self.expect(&token::Gt));
         try!(self.expect(&token::ModSep));
 
-        let item_name = try!(self.parse_ident());
-        let parameters = match mode {
-            QPathParsingMode::NoParameters => ast::PathParameters::none(),
-            QPathParsingMode::MaybeParameters => {
-                if try!(self.eat(&token::ModSep)) {
-                    try!(self.expect_lt());
-                    // Consumed `item::<`, go look for types
-                    let (lifetimes, types, bindings) =
-                        try!(self.parse_generic_values_after_lt());
-                    ast::AngleBracketedParameters(ast::AngleBracketedParameterData {
-                        lifetimes: lifetimes,
-                        types: OwnedSlice::from_vec(types),
-                        bindings: OwnedSlice::from_vec(bindings),
-                    })
-                } else {
-                    ast::PathParameters::none()
-                }
+        let segments = match mode {
+            LifetimeAndTypesWithoutColons => {
+                try!(self.parse_path_segments_without_colons())
+            }
+            LifetimeAndTypesWithColons => {
+                try!(self.parse_path_segments_with_colons())
+            }
+            NoTypesAllowed => {
+                try!(self.parse_path_segments_without_types())
             }
         };
-        path.segments.push(ast::PathSegment {
-            identifier: item_name,
-            parameters: parameters
-        });
+        path.segments.extend(segments);
 
         if path.segments.len() == 1 {
             path.span.lo = self.last_span.lo;
@@ -2096,7 +2076,7 @@ impl<'a> Parser<'a> {
                 if try!(self.eat_lt()){
 
                     let (qself, path) =
-                        try!(self.parse_qualified_path(QPathParsingMode::MaybeParameters));
+                        try!(self.parse_qualified_path(LifetimeAndTypesWithColons));
 
                     return Ok(self.mk_expr(lo, hi, ExprPath(Some(qself), path)));
                 }
@@ -3176,7 +3156,7 @@ impl<'a> Parser<'a> {
             let (qself, path) = if try!(self.eat_lt()) {
                 // Parse a qualified path
                 let (qself, path) =
-                    try!(self.parse_qualified_path(QPathParsingMode::NoParameters));
+                    try!(self.parse_qualified_path(NoTypesAllowed));
                 (Some(qself), path)
             } else {
                 // Parse an unqualified path
@@ -3270,7 +3250,7 @@ impl<'a> Parser<'a> {
                     let (qself, path) = if try!(self.eat_lt()) {
                         // Parse a qualified path
                         let (qself, path) =
-                            try!(self.parse_qualified_path(QPathParsingMode::NoParameters));
+                            try!(self.parse_qualified_path(NoTypesAllowed));
                         (Some(qself), path)
                     } else {
                         // Parse an unqualified path

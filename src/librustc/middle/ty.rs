@@ -2564,9 +2564,11 @@ impl<'tcx> TraitDef<'tcx> {
                        tcx: &ctxt<'tcx>,
                        impl_def_id: DefId,
                        impl_trait_ref: TraitRef<'tcx>) {
+        debug!("TraitDef::record_impl for {}, from {}",
+               self.repr(tcx), impl_trait_ref.repr(tcx));
+
         // We don't want to borrow_mut after we already populated all impls,
         // so check if an impl is present with an immutable borrow first.
-
         if let Some(sty) = fast_reject::simplify_type(tcx,
                                                       impl_trait_ref.self_ty(), false) {
             if let Some(is) = self.nonblanket_impls.borrow().get(&sty) {
@@ -6336,10 +6338,10 @@ pub fn populate_implementations_for_primitive_if_necessary(tcx: &ctxt,
     tcx.populated_external_primitive_impls.borrow_mut().insert(primitive_def_id);
 }
 
-/// Populates the type context with all the implementations for the given type
-/// if necessary.
-pub fn populate_implementations_for_type_if_necessary(tcx: &ctxt,
-                                                      type_id: ast::DefId) {
+/// Populates the type context with all the inherent implementations for
+/// the given type if necessary.
+pub fn populate_inherent_implementations_for_type_if_necessary(tcx: &ctxt,
+                                                               type_id: ast::DefId) {
     if type_id.krate == LOCAL_CRATE {
         return
     }
@@ -6348,37 +6350,15 @@ pub fn populate_implementations_for_type_if_necessary(tcx: &ctxt,
         return
     }
 
-    debug!("populate_implementations_for_type_if_necessary: searching for {:?}", type_id);
+    debug!("populate_inherent_implementations_for_type_if_necessary: searching for {:?}", type_id);
 
     let mut inherent_impls = Vec::new();
-    csearch::each_implementation_for_type(&tcx.sess.cstore, type_id, |impl_def_id| {
-        let impl_items = csearch::get_impl_items(&tcx.sess.cstore, impl_def_id);
-
-        // Record the implementation, if needed
-        if let Some(trait_ref) = csearch::get_impl_trait(tcx, impl_def_id) {
-            let trait_def = lookup_trait_def(tcx, trait_ref.def_id);
-            trait_def.record_impl(tcx, impl_def_id, trait_ref);
-        } else {
-            inherent_impls.push(impl_def_id);
-        }
-
-        // For any methods that use a default implementation, add them to
-        // the map. This is a bit unfortunate.
-        for impl_item_def_id in &impl_items {
-            let method_def_id = impl_item_def_id.def_id();
-            match impl_or_trait_item(tcx, method_def_id) {
-                MethodTraitItem(method) => {
-                    if let Some(source) = method.provided_source {
-                        tcx.provided_method_sources
-                           .borrow_mut()
-                           .insert(method_def_id, source);
-                    }
-                }
-                _ => {}
-            }
-        }
+    csearch::each_inherent_implementation_for_type(&tcx.sess.cstore, type_id, |impl_def_id| {
+        // Record the implementation.
+        inherent_impls.push(impl_def_id);
 
         // Store the implementation info.
+        let impl_items = csearch::get_impl_items(&tcx.sess.cstore, impl_def_id);
         tcx.impl_items.borrow_mut().insert(impl_def_id, impl_items);
     });
 
@@ -6388,17 +6368,17 @@ pub fn populate_implementations_for_type_if_necessary(tcx: &ctxt,
 
 /// Populates the type context with all the implementations for the given
 /// trait if necessary.
-pub fn populate_implementations_for_trait_if_necessary(
-        tcx: &ctxt,
-        trait_id: ast::DefId) {
+pub fn populate_implementations_for_trait_if_necessary(tcx: &ctxt, trait_id: ast::DefId) {
     if trait_id.krate == LOCAL_CRATE {
         return
     }
 
     let def = lookup_trait_def(tcx, trait_id);
     if def.flags.get().intersects(TraitFlags::IMPLS_VALID) {
-        return
+        return;
     }
+
+    debug!("populate_implementations_for_trait_if_necessary: searching for {}", def.repr(tcx));
 
     if csearch::is_defaulted_trait(&tcx.sess.cstore, trait_id) {
         record_trait_has_default_impl(tcx, trait_id);

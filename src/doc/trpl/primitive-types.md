@@ -15,7 +15,7 @@ let x = true;
 let y: bool = false;
 ```
 
-A common use of booleans is in [`if` statements][if].
+A common use of booleans is in [`if` conditionals][if].
 
 [if]: if.html
 
@@ -176,7 +176,7 @@ Slices have type `&[T]`. We’ll talk about that `T` when we cover
 
 [generics]: generics.html
 
-You can find more documentation for `slices`s [in the standard library
+You can find more documentation for slices [in the standard library
 documentation][slice].
 
 [slice]: ../std/primitive.slice.html

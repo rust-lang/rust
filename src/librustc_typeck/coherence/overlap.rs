@@ -48,14 +48,9 @@ impl<'cx, 'tcx> OverlapChecker<'cx, 'tcx> {
         // check_for_overlapping_impls_of_trait() check, since that
         // check can populate this table further with impls from other
         // crates.
-        let trait_defs : Vec<&ty::TraitDef> = {
-            let d = self.tcx.trait_defs.borrow();
-            d.values().map(|&v|v).collect()
-        };
+        let trait_defs: Vec<_> = self.tcx.trait_defs.borrow().values().cloned().collect();
 
         for trait_def in trait_defs {
-            // FIXME -- it seems like this method actually pushes
-            // duplicate impls onto the list
             ty::populate_implementations_for_trait_if_necessary(
                 self.tcx,
                 trait_def.trait_ref.def_id);

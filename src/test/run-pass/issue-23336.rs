@@ -8,19 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(associated_consts)]
+pub trait Data { fn doit(&self) {} }
+impl<T> Data for T {}
+pub trait UnaryLogic { type D: Data; }
+impl UnaryLogic for () { type D = i32; }
 
-pub trait Foo {
-    // @has assoc_consts/trait.Foo.html '//*[@class="rust trait"]' \
-    //      'const FOO: usize;'
-    // @has - '//*[@id="associatedconstant.FOO"]' 'const FOO'
-    const FOO: usize;
+pub fn crashes<T: UnaryLogic>(t: T::D) {
+    t.doit();
 }
 
-pub struct Bar;
-
-impl Bar {
-    // @has assoc_consts/struct.Bar.html '//*[@id="assoc_const.BAR"]' \
-    //      'const BAR: usize = 3'
-    pub const BAR: usize = 3;
-}
+fn main() { crashes::<()>(0); }

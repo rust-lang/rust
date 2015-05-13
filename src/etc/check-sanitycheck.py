@@ -13,7 +13,6 @@
 import os
 import sys
 import functools
-import resource
 
 STATUS = 0
 
@@ -37,6 +36,7 @@ def only_on(platforms):
 
 @only_on(('linux', 'darwin', 'freebsd', 'openbsd'))
 def check_rlimit_core():
+    import resource
     soft, hard = resource.getrlimit(resource.RLIMIT_CORE)
     if soft > 0:
         error_unless_permitted('ALLOW_NONZERO_RLIMIT_CORE', """\

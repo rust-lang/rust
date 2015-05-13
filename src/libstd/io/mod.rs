@@ -844,7 +844,7 @@ impl fmt::Display for CharsError {
 /// An iterator over the contents of an instance of `BufRead` split on a
 /// particular byte.
 ///
-/// See `BufReadExt::split` for more information.
+/// See `BufRead::split` for more information.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Split<B> {
     buf: B,
@@ -873,7 +873,7 @@ impl<B: BufRead> Iterator for Split<B> {
 /// An iterator over the lines of an instance of `BufRead` split on a newline
 /// byte.
 ///
-/// See `BufReadExt::lines` for more information.
+/// See `BufRead::lines` for more information.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Lines<B> {
     buf: B,

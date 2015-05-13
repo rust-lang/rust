@@ -387,6 +387,67 @@ fn test_bit_vec_clone() {
     assert!(b.contains(&1000));
 }
 
+#[test]
+fn test_bit_set_append() {
+    let mut a = BitSet::new();
+    a.insert(2);
+    a.insert(6);
+
+    let mut b = BitSet::new();
+    b.insert(1);
+    b.insert(3);
+    b.insert(6);
+
+    a.append(&mut b);
+
+    assert_eq!(a.len(), 4);
+    assert_eq!(b.len(), 0);
+    assert!(b.capacity() >= 6);
+
+    assert_eq!(a, BitSet::from_bit_vec(BitVec::from_bytes(&[0b01110010])));
+}
+
+#[test]
+fn test_bit_set_split_off() {
+    // Split at 0
+    let mut a = BitSet::from_bit_vec(BitVec::from_bytes(&[0b10100000, 0b00010010, 0b10010010,
+                                                          0b00110011, 0b01101011, 0b10101101]));
+
+    let b = a.split_off(0);
+
+    assert_eq!(a.len(), 0);
+    assert_eq!(b.len(), 21);
+
+    assert_eq!(b, BitSet::from_bit_vec(BitVec::from_bytes(&[0b10100000, 0b00010010, 0b10010010,
+                                                            0b00110011, 0b01101011, 0b10101101])));
+
+    // Split behind last element
+    let mut a = BitSet::from_bit_vec(BitVec::from_bytes(&[0b10100000, 0b00010010, 0b10010010,
+                                                          0b00110011, 0b01101011, 0b10101101]));
+
+    let b = a.split_off(50);
+
+    assert_eq!(a.len(), 21);
+    assert_eq!(b.len(), 0);
+
+    assert_eq!(a, BitSet::from_bit_vec(BitVec::from_bytes(&[0b10100000, 0b00010010, 0b10010010,
+                                                            0b00110011, 0b01101011, 0b10101101])));
+
+    // Split at arbitrary element
+    let mut a = BitSet::from_bit_vec(BitVec::from_bytes(&[0b10100000, 0b00010010, 0b10010010,
+                                                          0b00110011, 0b01101011, 0b10101101]));
+
+    let b = a.split_off(34);
+
+    assert_eq!(a.len(), 12);
+    assert_eq!(b.len(), 9);
+
+    assert_eq!(a, BitSet::from_bit_vec(BitVec::from_bytes(&[0b10100000, 0b00010010, 0b10010010,
+                                                            0b00110011, 0b01000000])));
+    assert_eq!(b, BitSet::from_bit_vec(BitVec::from_bytes(&[0, 0, 0, 0,
+                                                            0b00101011, 0b10101101])));
+}
+
 mod bench {
     use std::collections::{BitSet, BitVec};
     use std::__rand::{Rng, thread_rng, ThreadRng};

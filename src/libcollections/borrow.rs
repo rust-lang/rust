@@ -37,6 +37,11 @@ use self::Cow::*;
 /// trait: if `T: Borrow<U>`, then `&U` can be borrowed from `&T`.  A given
 /// type can be borrowed as multiple different types. In particular, `Vec<T>:
 /// Borrow<Vec<T>>` and `Vec<T>: Borrow<[T]>`.
+///
+/// `Borrow` is very similar to, but different than, `AsRef`. See
+/// [the book][book] for more.
+///
+/// [book]: ../../book/borrow-and-asref.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Borrow<Borrowed: ?Sized> {
     /// Immutably borrows from an owned value.

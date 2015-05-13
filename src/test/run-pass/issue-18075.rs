@@ -8,19 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(associated_consts)]
+// exec-env:RUST_LOG=rustc::middle=debug
 
-pub trait Foo {
-    // @has assoc_consts/trait.Foo.html '//*[@class="rust trait"]' \
-    //      'const FOO: usize;'
-    // @has - '//*[@id="associatedconstant.FOO"]' 'const FOO'
-    const FOO: usize;
-}
-
-pub struct Bar;
-
-impl Bar {
-    // @has assoc_consts/struct.Bar.html '//*[@id="assoc_const.BAR"]' \
-    //      'const BAR: usize = 3'
-    pub const BAR: usize = 3;
+fn main() {
+    let b = 1isize;
+    println!("{}", b);
 }
