@@ -45,6 +45,7 @@ endif
 # instead of `lib.exe` for assembling archives, so we need to inject this custom
 # dependency here.
 NATIVE_TOOL_DEPS_core_T_x86_64-pc-windows-msvc += llvm-ar.exe
+INSTALLED_BINS_x86_64-pc-windows-msvc += llvm-ar.exe
 
 # When working with MSVC on windows, each DLL needs to explicitly declare its
 # interface to the outside world through some means. The options for doing so

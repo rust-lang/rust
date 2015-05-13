@@ -144,9 +144,11 @@ dist/$$(PKG_NAME)-$(1).tar.gz: dist-install-dir-$(1) prepare-overlay-$(1)
 	@$(call E, build: $$@)
 # Copy essential gcc components into installer
 ifdef CFG_WINDOWSY_$(1)
+ifeq ($$(findstring gnu,$(1)),gnu)
 	$$(Q)rm -Rf tmp/dist/win-rust-gcc-$(1)
 	$$(Q)$$(CFG_PYTHON) $$(S)src/etc/make-win-dist.py tmp/dist/$$(PKG_NAME)-$(1)-image tmp/dist/win-rust-gcc-$(1) $(1)
 	$$(Q)cp -r $$(S)src/etc/third-party tmp/dist/$$(PKG_NAME)-$(1)-image/share/doc/
+endif
 endif
 	$$(Q)$$(S)src/rust-installer/gen-installer.sh \
 		--product-name=Rust \
@@ -213,7 +215,14 @@ endif
 dist-install-dirs: $(foreach host,$(CFG_HOST),dist-install-dir-$(host))
 
 ifdef CFG_WINDOWSY_$(CFG_BUILD)
-MAYBE_MINGW_TARBALLS=$(foreach host,$(CFG_HOST),dist/$(MINGW_PKG_NAME)-$(host).tar.gz)
+define BUILD_MINGW_TARBALL
+ifeq ($$(findstring gnu,$(1)),gnu)
+MAYBE_MINGW_TARBALLS += dist/$(MINGW_PKG_NAME)-$(1).tar.gz
+endif
+endef
+
+$(foreach host,$(CFG_HOST),\
+  $(eval $(call BUILD_MINGW_TARBALL,$(host))))
 endif
 
 ifeq ($(CFG_DISABLE_DOCS),)
