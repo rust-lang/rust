@@ -643,11 +643,8 @@ impl LintPass for UnusedAttributes {
 
         let plugin_attributes = cx.sess().plugin_attributes.borrow_mut();
         for &(ref name, ty) in plugin_attributes.iter() {
-            match ty {
-                AttributeType::Whitelisted if attr.check_name(&*name) => {
-                    break;
-                },
-                _ => ()
+            if ty == AttributeType::Whitelisted && attr.check_name(&*name) {
+                break;
             }
         }
 

@@ -389,6 +389,8 @@ impl<'a> Context<'a> {
         for &(ref n, ref ty) in self.plugin_attributes.iter() {
             if &*n == name {
                 // Plugins can't gate attributes, so we don't check for it
+                // unlike the code above; we only use this loop to
+                // short-circuit to avoid the checks below
                 debug!("check_attribute: {:?} is registered by a plugin, {:?}", name, ty);
                 return;
             }
@@ -403,7 +405,10 @@ impl<'a> Context<'a> {
                               "attributes of the form `#[derive_*]` are reserved \
                                for the compiler");
         } else {
-            // Only do the custom attribute lint post-expansion
+            // Only run the custom attribute lint during regular
+            // feature gate checking. Macro gating runs
+            // before the plugin attributes are registered
+            // so we skip this then
             if !is_macro {
                 self.gate_feature("custom_attribute", attr.span,
                            &format!("The attribute `{}` is currently \
