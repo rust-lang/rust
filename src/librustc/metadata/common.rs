@@ -189,6 +189,7 @@ pub const tag_item_impl_vtables: usize = 0x7e;
 
 pub const tag_impls: usize = 0x109; // top-level only
 pub const tag_impls_impl: usize = 0x7f;
+pub const tag_impls_impl_trait_def_id: usize = 0x8d;
 
 pub const tag_items_data_item_inherent_impl: usize = 0x80;
 pub const tag_items_data_item_extension_impl: usize = 0x81;

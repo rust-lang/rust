@@ -5,7 +5,7 @@ Rust’s most unique and compelling features, with which Rust developers should
 become quite acquainted. Ownership is how Rust achieves its largest goal,
 memory safety. There are a few distinct concepts, each with its own chapter:
 
-* [ownership][ownership], ownership, the key concept
+* [ownership][ownership], the key concept
 * [borrowing][borrowing], and their associated feature ‘references’
 * lifetimes, which you’re reading now
 
@@ -41,7 +41,7 @@ With that in mind, let’s learn about lifetimes.
 # Lifetimes
 
 Lending out a reference to a resource that someone else owns can be
-complicated, however. For example, imagine this set of operations:
+complicated. For example, imagine this set of operations:
 
 - I acquire a handle to some kind of resource.
 - I lend you a reference to the resource.

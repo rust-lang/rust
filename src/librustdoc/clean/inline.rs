@@ -221,7 +221,7 @@ fn build_type(cx: &DocContext, tcx: &ty::ctxt, did: ast::DefId) -> clean::ItemEn
 
 pub fn build_impls(cx: &DocContext, tcx: &ty::ctxt,
                    did: ast::DefId) -> Vec<clean::Item> {
-    ty::populate_implementations_for_type_if_necessary(tcx, did);
+    ty::populate_inherent_implementations_for_type_if_necessary(tcx, did);
     let mut impls = Vec::new();
 
     match tcx.inherent_impls.borrow().get(&did) {
