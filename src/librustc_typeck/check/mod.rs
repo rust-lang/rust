@@ -528,6 +528,9 @@ fn check_bare_fn<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             upvar::closure_analyze_fn(&fcx, fn_id, decl, body);
             fcx.select_all_obligations_or_error();
             fcx.check_casts();
+
+            fcx.select_all_obligations_or_error(); // Casts can introduce new obligations.
+
             regionck::regionck_fn(&fcx, fn_id, fn_span, decl, body);
             writeback::resolve_type_vars_in_fn(&fcx, decl, body);
         }

@@ -56,7 +56,8 @@ fn main()
 
     let _ = 42usize as *const [u8]; //~ ERROR illegal cast
     let _ = v as *const [u8]; //~ ERROR illegal cast
-    let _ = fat_v as *const Foo; //~ ERROR illegal cast
+    let _ = fat_v as *const Foo;
+    //~^ ERROR `core::marker::Sized` is not implemented for the type `[u8]`
     let _ = foo as *const str; //~ ERROR illegal cast
     let _ = foo as *mut str; //~ ERROR illegal cast
     let _ = main as *mut str; //~ ERROR illegal cast
