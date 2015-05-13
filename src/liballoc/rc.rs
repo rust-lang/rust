@@ -159,7 +159,7 @@ use core::cmp::{PartialEq, PartialOrd, Eq, Ord, Ordering};
 use core::default::Default;
 use core::fmt;
 use core::hash::{Hasher, Hash};
-use core::marker;
+use core::marker::{self, Sized};
 use core::mem::{self, min_align_of, size_of, forget};
 use core::nonzero::NonZero;
 use core::ops::{Deref, Drop};
@@ -170,17 +170,36 @@ use core::result::Result;
 use core::result::Result::{Ok, Err};
 use core::intrinsics::assume;
 
+#[cfg(not(stage0))]
+use core::intrinsics::drop_in_place;
+#[cfg(not(stage0))]
+use core::marker::Unsize;
+#[cfg(not(stage0))]
+use core::mem::{min_align_of_val, size_of_val};
+#[cfg(not(stage0))]
+use core::ops::CoerceUnsized;
+
 use heap::deallocate;
 
+#[cfg(stage0)]
 struct RcBox<T> {
-    value: T,
     strong: Cell<usize>,
-    weak: Cell<usize>
+    weak: Cell<usize>,
+    value: T,
 }
+
+#[cfg(not(stage0))]
+struct RcBox<T: ?Sized> {
+    strong: Cell<usize>,
+    weak: Cell<usize>,
+    value: T,
+}
+
 
 /// A reference-counted pointer type over an immutable value.
 ///
 /// See the [module level documentation](./index.html) for more details.
+#[cfg(stage0)]
 #[unsafe_no_drop_flag]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Rc<T> {
@@ -188,10 +207,29 @@ pub struct Rc<T> {
     // accesses of the contained type via Deref
     _ptr: NonZero<*mut RcBox<T>>,
 }
+#[cfg(not(stage0))]
+#[unsafe_no_drop_flag]
+#[stable(feature = "rust1", since = "1.0.0")]
+pub struct Rc<T: ?Sized> {
+    // FIXME #12808: strange names to try to avoid interfering with field
+    // accesses of the contained type via Deref
+    _ptr: NonZero<*mut RcBox<T>>,
+}
 
+#[cfg(stage0)]
 impl<T> !marker::Send for Rc<T> {}
 
+#[cfg(not(stage0))]
+impl<T: ?Sized> !marker::Send for Rc<T> {}
+
+#[cfg(stage0)]
 impl<T> !marker::Sync for Rc<T> {}
+
+#[cfg(not(stage0))]
+impl<T: ?Sized> !marker::Sync for Rc<T> {}
+
+#[cfg(not(stage0))]
+impl<T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<Rc<U>> for Rc<T> {}
 
 impl<T> Rc<T> {
     /// Constructs a new `Rc<T>`.
@@ -212,14 +250,39 @@ impl<T> Rc<T> {
                 // the allocation while the strong destructor is running, even
                 // if the weak pointer is stored inside the strong one.
                 _ptr: NonZero::new(boxed::into_raw(box RcBox {
-                    value: value,
                     strong: Cell::new(1),
-                    weak: Cell::new(1)
+                    weak: Cell::new(1),
+                    value: value
                 })),
             }
         }
     }
+}
 
+#[cfg(not(stage0))]
+impl<T: ?Sized> Rc<T> {
+    /// Downgrades the `Rc<T>` to a `Weak<T>` reference.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(alloc)]
+    /// use std::rc::Rc;
+    ///
+    /// let five = Rc::new(5);
+    ///
+    /// let weak_five = five.downgrade();
+    /// ```
+    #[unstable(feature = "alloc",
+               reason = "Weak pointers may not belong in this module")]
+    pub fn downgrade(&self) -> Weak<T> {
+        self.inc_weak();
+        Weak { _ptr: self._ptr }
+    }
+}
+
+#[cfg(stage0)]
+impl<T> Rc<T> {
     /// Downgrades the `Rc<T>` to a `Weak<T>` reference.
     ///
     /// # Examples
@@ -241,14 +304,24 @@ impl<T> Rc<T> {
 }
 
 /// Get the number of weak references to this value.
+#[cfg(stage0)]
 #[inline]
 #[unstable(feature = "alloc")]
 pub fn weak_count<T>(this: &Rc<T>) -> usize { this.weak() - 1 }
+#[cfg(not(stage0))]
+#[inline]
+#[unstable(feature = "alloc")]
+pub fn weak_count<T: ?Sized>(this: &Rc<T>) -> usize { this.weak() - 1 }
 
 /// Get the number of strong references to this value.
+#[cfg(stage0)]
 #[inline]
 #[unstable(feature = "alloc")]
 pub fn strong_count<T>(this: &Rc<T>) -> usize { this.strong() }
+#[cfg(not(stage0))]
+#[inline]
+#[unstable(feature = "alloc")]
+pub fn strong_count<T: ?Sized>(this: &Rc<T>) -> usize { this.strong() }
 
 /// Returns true if there are no other `Rc` or `Weak<T>` values that share the
 /// same inner value.
@@ -365,6 +438,7 @@ impl<T: Clone> Rc<T> {
     }
 }
 
+#[cfg(stage0)]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Deref for Rc<T> {
     type Target = T;
@@ -374,7 +448,18 @@ impl<T> Deref for Rc<T> {
         &self.inner().value
     }
 }
+#[cfg(not(stage0))]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: ?Sized> Deref for Rc<T> {
+    type Target = T;
 
+    #[inline(always)]
+    fn deref(&self) -> &T {
+        &self.inner().value
+    }
+}
+
+#[cfg(stage0)]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Drop for Rc<T> {
     /// Drops the `Rc<T>`.
@@ -425,8 +510,88 @@ impl<T> Drop for Rc<T> {
     }
 }
 
+#[cfg(not(stage0))]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: ?Sized> Drop for Rc<T> {
+    /// Drops the `Rc<T>`.
+    ///
+    /// This will decrement the strong reference count. If the strong reference
+    /// count becomes zero and the only other references are `Weak<T>` ones,
+    /// `drop`s the inner value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(alloc)]
+    /// use std::rc::Rc;
+    ///
+    /// {
+    ///     let five = Rc::new(5);
+    ///
+    ///     // stuff
+    ///
+    ///     drop(five); // explicit drop
+    /// }
+    /// {
+    ///     let five = Rc::new(5);
+    ///
+    ///     // stuff
+    ///
+    /// } // implicit drop
+    /// ```
+    fn drop(&mut self) {
+        unsafe {
+            let ptr = *self._ptr;
+            if !(*(&ptr as *const _ as *const *const ())).is_null() &&
+               ptr as usize != mem::POST_DROP_USIZE {
+                self.dec_strong();
+                if self.strong() == 0 {
+                    // destroy the contained object
+                    drop_in_place(&mut (*ptr).value);
+
+                    // remove the implicit "strong weak" pointer now that we've
+                    // destroyed the contents.
+                    self.dec_weak();
+
+                    if self.weak() == 0 {
+                        deallocate(ptr as *mut u8,
+                                   size_of_val(&*ptr),
+                                   min_align_of_val(&*ptr))
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[cfg(stage0)]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Clone for Rc<T> {
+
+    /// Makes a clone of the `Rc<T>`.
+    ///
+    /// When you clone an `Rc<T>`, it will create another pointer to the data and
+    /// increase the strong reference counter.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(alloc)]
+    /// use std::rc::Rc;
+    ///
+    /// let five = Rc::new(5);
+    ///
+    /// five.clone();
+    /// ```
+    #[inline]
+    fn clone(&self) -> Rc<T> {
+        self.inc_strong();
+        Rc { _ptr: self._ptr }
+    }
+}
+#[cfg(not(stage0))]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: ?Sized> Clone for Rc<T> {
 
     /// Makes a clone of the `Rc<T>`.
     ///
@@ -610,23 +775,46 @@ impl<T: Ord> Ord for Rc<T> {
     fn cmp(&self, other: &Rc<T>) -> Ordering { (**self).cmp(&**other) }
 }
 
-// FIXME (#18248) Make `T` `Sized?`
+#[cfg(stage0)]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Hash> Hash for Rc<T> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         (**self).hash(state);
     }
 }
+#[cfg(not(stage0))]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: ?Sized+Hash> Hash for Rc<T> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        (**self).hash(state);
+    }
+}
 
+#[cfg(stage0)]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: fmt::Display> fmt::Display for Rc<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Display::fmt(&**self, f)
     }
 }
+#[cfg(not(stage0))]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: ?Sized+fmt::Display> fmt::Display for Rc<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Display::fmt(&**self, f)
+    }
+}
 
+#[cfg(stage0)]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: fmt::Debug> fmt::Debug for Rc<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Debug::fmt(&**self, f)
+    }
+}
+#[cfg(not(stage0))]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: ?Sized+fmt::Debug> fmt::Debug for Rc<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Debug::fmt(&**self, f)
     }
@@ -645,6 +833,7 @@ impl<T> fmt::Pointer for Rc<T> {
 /// dropped.
 ///
 /// See the [module level documentation](./index.html) for more.
+#[cfg(stage0)]
 #[unsafe_no_drop_flag]
 #[unstable(feature = "alloc",
            reason = "Weak pointers may not belong in this module.")]
@@ -653,12 +842,28 @@ pub struct Weak<T> {
     // field accesses of the contained type via Deref
     _ptr: NonZero<*mut RcBox<T>>,
 }
+#[cfg(not(stage0))]
+#[unsafe_no_drop_flag]
+#[unstable(feature = "alloc",
+           reason = "Weak pointers may not belong in this module.")]
+pub struct Weak<T: ?Sized> {
+    // FIXME #12808: strange names to try to avoid interfering with
+    // field accesses of the contained type via Deref
+    _ptr: NonZero<*mut RcBox<T>>,
+}
 
+#[cfg(stage0)]
 impl<T> !marker::Send for Weak<T> {}
+#[cfg(not(stage0))]
+impl<T: ?Sized> !marker::Send for Weak<T> {}
 
+#[cfg(stage0)]
 impl<T> !marker::Sync for Weak<T> {}
+#[cfg(not(stage0))]
+impl<T: ?Sized> !marker::Sync for Weak<T> {}
 
 
+#[cfg(stage0)]
 #[unstable(feature = "alloc",
            reason = "Weak pointers may not belong in this module.")]
 impl<T> Weak<T> {
@@ -691,7 +896,41 @@ impl<T> Weak<T> {
         }
     }
 }
+#[cfg(not(stage0))]
+#[unstable(feature = "alloc",
+           reason = "Weak pointers may not belong in this module.")]
+impl<T: ?Sized> Weak<T> {
 
+    /// Upgrades a weak reference to a strong reference.
+    ///
+    /// Upgrades the `Weak<T>` reference to an `Rc<T>`, if possible.
+    ///
+    /// Returns `None` if there were no strong references and the data was
+    /// destroyed.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(alloc)]
+    /// use std::rc::Rc;
+    ///
+    /// let five = Rc::new(5);
+    ///
+    /// let weak_five = five.downgrade();
+    ///
+    /// let strong_five: Option<Rc<_>> = weak_five.upgrade();
+    /// ```
+    pub fn upgrade(&self) -> Option<Rc<T>> {
+        if self.strong() == 0 {
+            None
+        } else {
+            self.inc_strong();
+            Some(Rc { _ptr: self._ptr })
+        }
+    }
+}
+
+#[cfg(stage0)]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Drop for Weak<T> {
     /// Drops the `Weak<T>`.
@@ -736,6 +975,53 @@ impl<T> Drop for Weak<T> {
     }
 }
 
+#[cfg(not(stage0))]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: ?Sized> Drop for Weak<T> {
+    /// Drops the `Weak<T>`.
+    ///
+    /// This will decrement the weak reference count.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(alloc)]
+    /// use std::rc::Rc;
+    ///
+    /// {
+    ///     let five = Rc::new(5);
+    ///     let weak_five = five.downgrade();
+    ///
+    ///     // stuff
+    ///
+    ///     drop(weak_five); // explicit drop
+    /// }
+    /// {
+    ///     let five = Rc::new(5);
+    ///     let weak_five = five.downgrade();
+    ///
+    ///     // stuff
+    ///
+    /// } // implicit drop
+    /// ```
+    fn drop(&mut self) {
+        unsafe {
+            let ptr = *self._ptr;
+            if !(*(&ptr as *const _ as *const *const ())).is_null() &&
+               ptr as usize != mem::POST_DROP_USIZE {
+                self.dec_weak();
+                // the weak count starts at 1, and will only go to zero if all
+                // the strong pointers have disappeared.
+                if self.weak() == 0 {
+                    deallocate(ptr as *mut u8, size_of_val(&*ptr),
+                               min_align_of_val(&*ptr))
+                }
+            }
+        }
+    }
+}
+
+#[cfg(stage0)]
 #[unstable(feature = "alloc",
            reason = "Weak pointers may not belong in this module.")]
 impl<T> Clone for Weak<T> {
@@ -760,14 +1046,48 @@ impl<T> Clone for Weak<T> {
         Weak { _ptr: self._ptr }
     }
 }
+#[cfg(not(stage0))]
+#[unstable(feature = "alloc",
+           reason = "Weak pointers may not belong in this module.")]
+impl<T: ?Sized> Clone for Weak<T> {
 
+    /// Makes a clone of the `Weak<T>`.
+    ///
+    /// This increases the weak reference count.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(alloc)]
+    /// use std::rc::Rc;
+    ///
+    /// let weak_five = Rc::new(5).downgrade();
+    ///
+    /// weak_five.clone();
+    /// ```
+    #[inline]
+    fn clone(&self) -> Weak<T> {
+        self.inc_weak();
+        Weak { _ptr: self._ptr }
+    }
+}
+
+#[cfg(stage0)]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: fmt::Debug> fmt::Debug for Weak<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "(Weak)")
     }
 }
+#[cfg(not(stage0))]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: ?Sized+fmt::Debug> fmt::Debug for Weak<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "(Weak)")
+    }
+}
 
+#[cfg(stage0)]
 #[doc(hidden)]
 trait RcBoxPtr<T> {
     fn inner(&self) -> &RcBox<T>;
@@ -790,7 +1110,31 @@ trait RcBoxPtr<T> {
     #[inline]
     fn dec_weak(&self) { self.inner().weak.set(self.weak() - 1); }
 }
+#[cfg(not(stage0))]
+#[doc(hidden)]
+trait RcBoxPtr<T: ?Sized> {
+    fn inner(&self) -> &RcBox<T>;
 
+    #[inline]
+    fn strong(&self) -> usize { self.inner().strong.get() }
+
+    #[inline]
+    fn inc_strong(&self) { self.inner().strong.set(self.strong() + 1); }
+
+    #[inline]
+    fn dec_strong(&self) { self.inner().strong.set(self.strong() - 1); }
+
+    #[inline]
+    fn weak(&self) -> usize { self.inner().weak.get() }
+
+    #[inline]
+    fn inc_weak(&self) { self.inner().weak.set(self.weak() + 1); }
+
+    #[inline]
+    fn dec_weak(&self) { self.inner().weak.set(self.weak() - 1); }
+}
+
+#[cfg(stage0)]
 impl<T> RcBoxPtr<T> for Rc<T> {
     #[inline(always)]
     fn inner(&self) -> &RcBox<T> {
@@ -799,12 +1143,27 @@ impl<T> RcBoxPtr<T> for Rc<T> {
             // the contract anyway.
             // This allows the null check to be elided in the destructor if we
             // manipulated the reference count in the same function.
-            assume(!self._ptr.is_null());
+            assume(!(*(&self._ptr as *const _ as *const *const ())).is_null());
+            &(**self._ptr)
+        }
+    }
+}
+#[cfg(not(stage0))]
+impl<T: ?Sized> RcBoxPtr<T> for Rc<T> {
+    #[inline(always)]
+    fn inner(&self) -> &RcBox<T> {
+        unsafe {
+            // Safe to assume this here, as if it weren't true, we'd be breaking
+            // the contract anyway.
+            // This allows the null check to be elided in the destructor if we
+            // manipulated the reference count in the same function.
+            assume(!(*(&self._ptr as *const _ as *const *const ())).is_null());
             &(**self._ptr)
         }
     }
 }
 
+#[cfg(stage0)]
 impl<T> RcBoxPtr<T> for Weak<T> {
     #[inline(always)]
     fn inner(&self) -> &RcBox<T> {
@@ -813,7 +1172,21 @@ impl<T> RcBoxPtr<T> for Weak<T> {
             // the contract anyway.
             // This allows the null check to be elided in the destructor if we
             // manipulated the reference count in the same function.
-            assume(!self._ptr.is_null());
+            assume(!(*(&self._ptr as *const _ as *const *const ())).is_null());
+            &(**self._ptr)
+        }
+    }
+}
+#[cfg(not(stage0))]
+impl<T: ?Sized> RcBoxPtr<T> for Weak<T> {
+    #[inline(always)]
+    fn inner(&self) -> &RcBox<T> {
+        unsafe {
+            // Safe to assume this here, as if it weren't true, we'd be breaking
+            // the contract anyway.
+            // This allows the null check to be elided in the destructor if we
+            // manipulated the reference count in the same function.
+            assume(!(*(&self._ptr as *const _ as *const *const ())).is_null());
             &(**self._ptr)
         }
     }

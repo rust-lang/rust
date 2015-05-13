@@ -259,3 +259,5 @@ pub const tag_codemap_filemap: usize = 0xa2;
 pub const tag_item_super_predicates: usize = 0xa3;
 
 pub const tag_defaulted_trait: usize = 0xa4;
+
+pub const tag_impl_coerce_unsized_kind: usize = 0xa5;

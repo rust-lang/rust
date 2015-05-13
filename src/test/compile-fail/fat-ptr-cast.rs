@@ -15,17 +15,13 @@ pub trait Trait {}
 fn main() {
     let a: &[i32] = &[1, 2, 3];
     let b: Box<[i32]> = Box::new([1, 2, 3]);
-    let p = a as *const [i32];
-    let q = a.as_ptr();
 
-    a as usize; //~ ERROR illegal cast
-    b as usize; //~ ERROR illegal cast
-    p as usize; //~ ERROR illegal cast
+    a as usize; //~ ERROR non-scalar cast
+    b as usize; //~ ERROR non-scalar cast
 
-    // #22955
-    q as *const [i32]; //~ ERROR illegal cast
+    let a: usize = 42;
+    a as *const [i32]; //~ ERROR cast to fat pointer: `usize` as `*const [i32]`
 
-    // #21397
-    let t: *mut (Trait + 'static) = 0 as *mut _; //~ ERROR illegal cast
-    let mut fail: *const str = 0 as *const str; //~ ERROR illegal cast
+    let a: *const u8 = &42;
+    a as *const [u8]; //~ ERROR cast to fat pointer: `*const u8` as `*const [u8]`
 }

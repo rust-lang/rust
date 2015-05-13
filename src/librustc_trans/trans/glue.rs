@@ -278,18 +278,14 @@ fn get_drop_glue_core<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
 fn trans_struct_drop_flag<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                       t: Ty<'tcx>,
-                                      v0: ValueRef,
+                                      struct_data: ValueRef,
                                       dtor_did: ast::DefId,
                                       class_did: ast::DefId,
                                       substs: &subst::Substs<'tcx>)
                                       -> Block<'blk, 'tcx> {
+    assert!(type_is_sized(bcx.tcx(), t), "Precondition: caller must ensure t is sized");
+
     let repr = adt::represent_type(bcx.ccx(), t);
-    let struct_data = if type_is_sized(bcx.tcx(), t) {
-        v0
-    } else {
-        let llval = GEPi(bcx, v0, &[0, abi::FAT_PTR_ADDR]);
-        Load(bcx, llval)
-    };
     let drop_flag = unpack_datum!(bcx, adt::trans_drop_flag_ptr(bcx, &*repr, struct_data));
     let loaded = load_ty(bcx, drop_flag.val, bcx.tcx().dtor_type());
     let drop_flag_llty = type_of(bcx.fcx.ccx, bcx.tcx().dtor_type());
@@ -313,9 +309,8 @@ fn trans_struct_drop_flag<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
 
     let drop_flag_dtor_needed = ICmp(bcx, llvm::IntEQ, loaded, init_val, DebugLoc::None);
     with_cond(bcx, drop_flag_dtor_needed, |cx| {
-        trans_struct_drop(cx, t, v0, dtor_did, class_did, substs)
+        trans_struct_drop(cx, t, struct_data, dtor_did, class_did, substs)
     })
-
 }
 
 pub fn get_res_dtor<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
@@ -392,8 +387,8 @@ fn trans_struct_drop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     bcx.fcx.pop_and_trans_custom_cleanup_scope(bcx, contents_scope)
 }
 
-fn size_and_align_of_dst<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, info: ValueRef)
-                                     -> (ValueRef, ValueRef) {
+pub fn size_and_align_of_dst<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, info: ValueRef)
+                                         -> (ValueRef, ValueRef) {
     debug!("calculate size of DST: {}; with lost info: {}",
            bcx.ty_to_string(t), bcx.val_to_string(info));
     if type_is_sized(bcx.tcx(), t) {

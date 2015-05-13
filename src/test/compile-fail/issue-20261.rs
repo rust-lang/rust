@@ -12,6 +12,5 @@ fn main() {
     for (ref i,) in [].iter() { //~ ERROR: type mismatch resolving
         i.clone();
         //~^ ERROR: the type of this value must be known in this context
-        //~| ERROR: reached the recursion limit while auto-dereferencing
     }
 }

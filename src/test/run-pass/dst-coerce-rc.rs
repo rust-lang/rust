@@ -8,6 +8,32 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Test a very simple custom DST coercion.
+
+#![feature(core)]
+
+use std::rc::Rc;
+
+trait Baz {
+    fn get(&self) -> i32;
+}
+
+impl Baz for i32 {
+    fn get(&self) -> i32 {
+        *self
+    }
+}
+
 fn main() {
-    0 as &std::any::Any; //~ ERROR cast to fat pointer: `i32` as `&core::any::Any`
+    let a: Rc<[i32; 3]> = Rc::new([1, 2, 3]);
+    let b: Rc<[i32]> = a;
+    assert_eq!(b[0], 1);
+    assert_eq!(b[1], 2);
+    assert_eq!(b[2], 3);
+
+    let a: Rc<i32> = Rc::new(42);
+    let b: Rc<Baz> = a.clone();
+    assert_eq!(b.get(), 42);
+
+    let _c = b.clone();
 }

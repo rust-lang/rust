@@ -309,7 +309,6 @@ register_diagnostics! {
     E0034, // multiple applicable methods in scope
     E0035, // does not take type parameters
     E0036, // incorrect number of type parameters given for this method
-    E0038, // cannot convert to a trait object because trait is not object-safe
     E0040, // explicit use of destructor method
     E0044, // foreign items may not have type parameters
     E0045, // variadic function must have C calling convention
@@ -445,10 +444,20 @@ register_diagnostics! {
     E0325, // implemented an associated type when another trait item expected
     E0326, // associated const implemented with different type from trait
     E0327, // referred to method instead of constant in match pattern
+    E0328, // cannot implement Unsize explicitly
     E0366, // dropck forbid specialization to concrete type or region
     E0367, // dropck forbid specialization to predicate not in struct/enum
     E0368, // binary operation `<op>=` cannot be applied to types
     E0369, // binary operation `<op>` cannot be applied to types
     E0371, // impl Trait for Trait is illegal
-    E0372  // impl Trait for Trait where Trait is not object safe
+    E0372, // impl Trait for Trait where Trait is not object safe
+    E0374, // the trait `CoerceUnsized` may only be implemented for a coercion
+           // between structures with one field being coerced, none found
+    E0375, // the trait `CoerceUnsized` may only be implemented for a coercion
+           // between structures with one field being coerced, but multiple
+           // fields need coercions
+    E0376, // the trait `CoerceUnsized` may only be implemented for a coercion
+           // between structures
+    E0377  // the trait `CoerceUnsized` may only be implemented for a coercion
+           // between structures with the same definition
 }

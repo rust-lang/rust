@@ -53,6 +53,14 @@ pub trait Sized {
     // Empty.
 }
 
+/// Types that can be "unsized" to a dynamically sized type.
+#[unstable(feature = "core")]
+#[cfg(not(stage0))]
+#[lang="unsize"]
+pub trait Unsize<T> {
+    // Empty.
+}
+
 /// Types that can be copied by simply copying bits (i.e. `memcpy`).
 ///
 /// By default, variable bindings have 'move semantics.' In other
