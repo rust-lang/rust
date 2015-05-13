@@ -301,7 +301,7 @@ fn ignored_span(cx: &TestCtxt, sp: Span) -> Span {
             allow_internal_unstable: true,
         }
     };
-    let expn_id = cx.sess.span_diagnostic.cm.record_expansion(info);
+    let expn_id = cx.sess.codemap().record_expansion(info);
     let mut sp = sp;
     sp.expn_id = expn_id;
     return sp;

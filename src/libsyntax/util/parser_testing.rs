@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use ast;
-use parse::{ParseSess,string_to_filemap,filemap_to_tts};
+use parse::{ParseSess,filemap_to_tts};
 use parse::new_parser_from_source_str;
 use parse::parser::Parser;
 use parse::token;
@@ -19,8 +19,7 @@ use str::char_at;
 /// Map a string to tts, using a made-up filename:
 pub fn string_to_tts(source_str: String) -> Vec<ast::TokenTree> {
     let ps = ParseSess::new();
-    filemap_to_tts(&ps,
-                   string_to_filemap(&ps, source_str, "bogofile".to_string()))
+    filemap_to_tts(&ps, ps.codemap().new_filemap("bogofile".to_string(), source_str))
 }
 
 /// Map string to parser (via tts)

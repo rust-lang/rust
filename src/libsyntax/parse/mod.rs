@@ -58,6 +58,10 @@ impl ParseSess {
             included_mod_stack: RefCell::new(vec![])
         }
     }
+
+    pub fn codemap(&self) -> &CodeMap {
+        &self.span_diagnostic.cm
+    }
 }
 
 // a bunch of utility functions of the form parse_<thing>_from_<source>
@@ -170,7 +174,7 @@ pub fn new_parser_from_source_str<'a>(sess: &'a ParseSess,
                                       name: String,
                                       source: String)
                                       -> Parser<'a> {
-    filemap_to_parser(sess, string_to_filemap(sess, source, name), cfg)
+    filemap_to_parser(sess, sess.codemap().new_filemap(name, source), cfg)
 }
 
 /// Create a new parser, handling errors as appropriate
@@ -234,21 +238,13 @@ pub fn file_to_filemap(sess: &ParseSess, path: &Path, spanopt: Option<Span>)
     };
     match str::from_utf8(&bytes[..]).ok() {
         Some(s) => {
-            string_to_filemap(sess, s.to_string(),
-                              path.to_str().unwrap().to_string())
+            sess.codemap().new_filemap(path.to_str().unwrap().to_string(), s.to_string())
         }
         None => {
             err(&format!("{:?} is not UTF-8 encoded", path.display()));
             unreachable!();
         }
     }
-}
-
-/// Given a session and a string, add the string to
-/// the session's codemap and return the new filemap
-pub fn string_to_filemap(sess: &ParseSess, source: String, path: String)
-                         -> Rc<FileMap> {
-    sess.span_diagnostic.cm.new_filemap(path, source)
 }
 
 /// Given a filemap, produce a sequence of token-trees
@@ -1104,7 +1100,7 @@ mod tests {
 
         let span = tts.iter().rev().next().unwrap().get_span();
 
-        match sess.span_diagnostic.cm.span_to_snippet(span) {
+        match sess.codemap().span_to_snippet(span) {
             Ok(s) => assert_eq!(&s[..], "{ body }"),
             Err(_) => panic!("could not get snippet"),
         }
