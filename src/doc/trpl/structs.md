@@ -117,3 +117,82 @@ ones, and it will copy the values you don’t specify:
 let origin = Point3d { x: 0, y: 0, z: 0 };
 let point = Point3d { z: 1, x: 2, .. origin };
 ```
+
+# Tuple structs
+
+Rust has another data type that’s like a hybrid between a [tuple][tuple] and a
+struct, called a ‘tuple struct’. Tuple structs have a name, but
+their fields don’t:
+
+```rust
+struct Color(i32, i32, i32);
+struct Point(i32, i32, i32);
+```
+
+[tuple]: primitive-types.html#tuples
+
+These two will not be equal, even if they have the same values:
+
+```rust
+# struct Color(i32, i32, i32);
+# struct Point(i32, i32, i32);
+let black = Color(0, 0, 0);
+let origin = Point(0, 0, 0);
+```
+
+It is almost always better to use a struct than a tuple struct. We would write
+`Color` and `Point` like this instead:
+
+```rust
+struct Color {
+    red: i32,
+    blue: i32,
+    green: i32,
+}
+
+struct Point {
+    x: i32,
+    y: i32,
+    z: i32,
+}
+```
+
+Now, we have actual names, rather than positions. Good names are important,
+and with a struct, we have actual names.
+
+There _is_ one case when a tuple struct is very useful, though, and that’s a
+tuple struct with only one element. We call this the ‘newtype’ pattern, because
+it allows you to create a new type, distinct from that of its contained value
+and expressing its own semantic meaning:
+
+```rust
+struct Inches(i32);
+
+let length = Inches(10);
+
+let Inches(integer_length) = length;
+println!("length is {} inches", integer_length);
+```
+
+As you can see here, you can extract the inner integer type through a
+destructuring `let`, just as with regular tuples. In this case, the
+`let Inches(integer_length)` assigns `10` to `integer_length`.
+
+# Unit-like structs
+
+You can define a struct with no members at all:
+
+```rust
+struct Electron;
+```
+
+Such a struct is called ‘unit-like’ because it resembles the empty
+tuple, `()`, sometimes called ‘unit’. Like a tuple struct, it defines a
+new type.
+
+This is rarely useful on its own (although sometimes it can serve as a
+marker type), but in combination with other features, it can become
+useful. For instance, a library may ask you to create a structure that
+implements a certain [trait][trait] to handle events. If you don’t have
+any data you need to store in the structure, you can just create a
+unit-like struct.
