@@ -14,7 +14,7 @@
 use self::ResolveReason::*;
 
 use astconv::AstConv;
-use check::FnCtxt;
+use super::{CheckEnv, FnCtxt};
 use middle::pat_util;
 use middle::ty::{self, Ty, MethodCall, MethodCallee};
 use middle::ty_fold::{TypeFolder,TypeFoldable};
@@ -35,20 +35,21 @@ use syntax::visit::Visitor;
 ///////////////////////////////////////////////////////////////////////////
 // Entry point functions
 
-pub fn resolve_type_vars_in_expr(fcx: &FnCtxt, e: &ast::Expr) {
+pub fn resolve_type_vars_in_expr<'a, 'ctx>(check_env: &mut CheckEnv<'ctx>,
+                                           fcx: &FnCtxt<'a, 'ctx>, e: &ast::Expr) {
     assert_eq!(fcx.writeback_errors.get(), false);
-    let mut wbcx = WritebackCx::new(fcx);
+    let mut wbcx = WritebackCx::new(check_env, fcx);
     wbcx.visit_expr(e);
     wbcx.visit_upvar_borrow_map();
     wbcx.visit_closures();
-    wbcx.visit_object_cast_map();
 }
 
-pub fn resolve_type_vars_in_fn(fcx: &FnCtxt,
-                               decl: &ast::FnDecl,
-                               blk: &ast::Block) {
+pub fn resolve_type_vars_in_fn<'a, 'ctx>(check_env: &mut CheckEnv<'ctx>,
+                                         fcx: &FnCtxt<'a, 'ctx>,
+                                         decl: &ast::FnDecl,
+                                         blk: &ast::Block) {
     assert_eq!(fcx.writeback_errors.get(), false);
-    let mut wbcx = WritebackCx::new(fcx);
+    let mut wbcx = WritebackCx::new(check_env, fcx);
     wbcx.visit_block(blk);
     for arg in &decl.inputs {
         wbcx.visit_node_id(ResolvingPattern(arg.pat.span), arg.id);
@@ -62,7 +63,6 @@ pub fn resolve_type_vars_in_fn(fcx: &FnCtxt,
     }
     wbcx.visit_upvar_borrow_map();
     wbcx.visit_closures();
-    wbcx.visit_object_cast_map();
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -74,12 +74,15 @@ pub fn resolve_type_vars_in_fn(fcx: &FnCtxt,
 // do elsewhere.
 
 struct WritebackCx<'cx, 'tcx: 'cx> {
+    check_env: &'cx mut CheckEnv<'tcx>,
     fcx: &'cx FnCtxt<'cx, 'tcx>,
 }
 
 impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
-    fn new(fcx: &'cx FnCtxt<'cx, 'tcx>) -> WritebackCx<'cx, 'tcx> {
-        WritebackCx { fcx: fcx }
+    fn new(check_env: &'cx mut CheckEnv<'tcx>,
+           fcx: &'cx FnCtxt<'cx, 'tcx>) -> WritebackCx<'cx, 'tcx>
+    {
+        WritebackCx { check_env: check_env, fcx: fcx }
     }
 
     fn tcx(&self) -> &'cx ty::ctxt<'tcx> {
@@ -92,21 +95,21 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     // operating on scalars, we clear the overload.
     fn fix_scalar_binary_expr(&mut self, e: &ast::Expr) {
         if let ast::ExprBinary(ref op, ref lhs, ref rhs) = e.node {
-            let lhs_ty = self.fcx.node_ty(lhs.id);
+            let lhs_ty = self.fcx.node_ty(&self.check_env.tt.node_types, lhs.id);
             let lhs_ty = self.fcx.infcx().resolve_type_vars_if_possible(&lhs_ty);
 
-            let rhs_ty = self.fcx.node_ty(rhs.id);
+            let rhs_ty = self.fcx.node_ty(&self.check_env.tt.node_types, rhs.id);
             let rhs_ty = self.fcx.infcx().resolve_type_vars_if_possible(&rhs_ty);
 
             if ty::type_is_scalar(lhs_ty) && ty::type_is_scalar(rhs_ty) {
-                self.fcx.inh.method_map.borrow_mut().remove(&MethodCall::expr(e.id));
+                self.check_env.tt.method_map.remove(&MethodCall::expr(e.id));
 
                 // weird but true: the by-ref binops put an
                 // adjustment on the lhs but not the rhs; the
                 // adjustment for rhs is kind of baked into the
                 // system.
                 if !ast_util::is_by_value_binop(op.node) {
-                    self.fcx.inh.adjustments.borrow_mut().remove(&lhs.id);
+                    self.check_env.tt.adjustments.remove(&lhs.id);
                 }
             }
         }
@@ -184,8 +187,8 @@ impl<'cx, 'tcx, 'v> Visitor<'v> for WritebackCx<'cx, 'tcx> {
             return;
         }
 
-        let var_ty = self.fcx.local_ty(l.span, l.id);
-        let var_ty = self.resolve(&var_ty, ResolvingLocal(l.span));
+        let var_ty = self.fcx.local_ty(self.check_env, l.span, l.id);
+        let var_ty = resolve(self.fcx, &var_ty, ResolvingLocal(l.span));
         write_ty_to_tcx(self.tcx(), l.id, var_ty);
         visit::walk_local(self, l);
     }
@@ -212,7 +215,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 ty::UpvarCapture::ByValue => ty::UpvarCapture::ByValue,
                 ty::UpvarCapture::ByRef(ref upvar_borrow) => {
                     let r = upvar_borrow.region;
-                    let r = self.resolve(&r, ResolvingUpvar(*upvar_id));
+                    let r = resolve(self.fcx, &r, ResolvingUpvar(*upvar_id));
                     ty::UpvarCapture::ByRef(
                         ty::UpvarBorrow { kind: upvar_borrow.kind, region: r })
                 }
@@ -229,8 +232,8 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             return
         }
 
-        for (def_id, closure_ty) in &*self.fcx.inh.closure_tys.borrow() {
-            let closure_ty = self.resolve(closure_ty, ResolvingClosure(*def_id));
+        for (def_id, closure_ty) in &self.check_env.tt.closure_tys {
+            let closure_ty = resolve(self.fcx, closure_ty, ResolvingClosure(*def_id));
             self.fcx.tcx().closure_tys.borrow_mut().insert(*def_id, closure_ty);
         }
 
@@ -239,46 +242,25 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         }
     }
 
-    fn visit_object_cast_map(&self) {
-        if self.fcx.writeback_errors.get() {
-            return
-        }
-
-        for (&node_id, trait_ref) in self.fcx
-                                            .inh
-                                            .object_cast_map
-                                            .borrow()
-                                            .iter()
-        {
-            let span = ty::expr_span(self.tcx(), node_id);
-            let reason = ResolvingExpr(span);
-            let closure_ty = self.resolve(trait_ref, reason);
-            self.tcx()
-                .object_cast_map
-                .borrow_mut()
-                .insert(node_id, closure_ty);
-        }
-    }
-
-    fn visit_node_id(&self, reason: ResolveReason, id: ast::NodeId) {
+    fn visit_node_id(&mut self, reason: ResolveReason, id: ast::NodeId) {
         // Resolve any borrowings for the node with id `id`
         self.visit_adjustments(reason, id);
 
         // Resolve the type of the node with id `id`
-        let n_ty = self.fcx.node_ty(id);
-        let n_ty = self.resolve(&n_ty, reason);
+        let n_ty = self.fcx.node_ty(&self.check_env.tt.node_types, id);
+        let n_ty = resolve(self.fcx, &n_ty, reason);
         write_ty_to_tcx(self.tcx(), id, n_ty);
         debug!("Node {} has type {}", id, n_ty.repr(self.tcx()));
 
         // Resolve any substitutions
-        self.fcx.opt_node_ty_substs(id, |item_substs| {
+        self.fcx.opt_node_ty_substs(&self.check_env.tt, id, |item_substs| {
             write_substs_to_tcx(self.tcx(), id,
-                                self.resolve(item_substs, reason));
+                                resolve(self.fcx, item_substs, reason));
         });
     }
 
-    fn visit_adjustments(&self, reason: ResolveReason, id: ast::NodeId) {
-        match self.fcx.inh.adjustments.borrow_mut().remove(&id) {
+    fn visit_adjustments(&mut self, reason: ResolveReason, id: ast::NodeId) {
+        match self.check_env.tt.adjustments.remove(&id) {
             None => {
                 debug!("No adjustments for node {}", id);
             }
@@ -299,8 +281,8 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 
                         ty::AdjustDerefRef(ty::AutoDerefRef {
                             autoderefs: adj.autoderefs,
-                            autoref: self.resolve(&adj.autoref, reason),
-                            unsize: self.resolve(&adj.unsize, reason),
+                            autoref: resolve(self.fcx, &adj.autoref, reason),
+                            unsize: resolve(self.fcx, &adj.unsize, reason),
                         })
                     }
                 };
@@ -311,19 +293,19 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         }
     }
 
-    fn visit_method_map_entry(&self,
+    fn visit_method_map_entry(&mut self,
                               reason: ResolveReason,
                               method_call: MethodCall) {
         // Resolve any method map entry
-        match self.fcx.inh.method_map.borrow_mut().remove(&method_call) {
+        match self.check_env.tt.method_map.remove(&method_call) {
             Some(method) => {
                 debug!("writeback::resolve_method_map_entry(call={:?}, entry={})",
                        method_call,
                        method.repr(self.tcx()));
                 let new_method = MethodCallee {
-                    origin: self.resolve(&method.origin, reason),
-                    ty: self.resolve(&method.ty, reason),
-                    substs: self.resolve(&method.substs, reason),
+                    origin: resolve(self.fcx, &method.origin, reason),
+                    ty: resolve(self.fcx, &method.ty, reason),
+                    substs: resolve(self.fcx, &method.substs, reason),
                 };
 
                 self.tcx().method_map.borrow_mut().insert(
@@ -334,9 +316,12 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         }
     }
 
-    fn resolve<T:TypeFoldable<'tcx>>(&self, t: &T, reason: ResolveReason) -> T {
-        t.fold_with(&mut Resolver::new(self.fcx, reason))
-    }
+}
+
+fn resolve<'a, 'tcx, T:TypeFoldable<'tcx>>(fcx: &FnCtxt<'a, 'tcx>,
+                                           t: &T, reason: ResolveReason) -> T
+{
+    t.fold_with(&mut Resolver::new(fcx, reason))
 }
 
 ///////////////////////////////////////////////////////////////////////////

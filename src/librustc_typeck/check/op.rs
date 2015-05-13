@@ -14,6 +14,7 @@ use super::{
     check_expr,
     check_expr_coercable_to_type,
     check_expr_with_lvalue_pref,
+    CheckEnv,
     demand,
     method,
     FnCtxt,
@@ -28,7 +29,8 @@ use syntax::parse::token;
 use util::ppaux::{Repr, UserString};
 
 /// Check a `a <op>= b`
-pub fn check_binop_assign<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
+pub fn check_binop_assign<'a,'tcx>(check_env: &mut CheckEnv<'tcx>,
+                                   fcx: &FnCtxt<'a,'tcx>,
                                    expr: &'tcx ast::Expr,
                                    op: ast::BinOp,
                                    lhs_expr: &'tcx ast::Expr,
@@ -36,15 +38,17 @@ pub fn check_binop_assign<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
 {
     let tcx = fcx.ccx.tcx;
 
-    check_expr_with_lvalue_pref(fcx, lhs_expr, PreferMutLvalue);
-    check_expr(fcx, rhs_expr);
+    check_expr_with_lvalue_pref(check_env, fcx, lhs_expr, PreferMutLvalue);
+    check_expr(check_env, fcx, rhs_expr);
 
-    let lhs_ty = structurally_resolved_type(fcx, lhs_expr.span, fcx.expr_ty(lhs_expr));
-    let rhs_ty = structurally_resolved_type(fcx, rhs_expr.span, fcx.expr_ty(rhs_expr));
+    let expr_ty = fcx.expr_ty(&check_env.tt.node_types, lhs_expr);
+    let lhs_ty = structurally_resolved_type(check_env, fcx, lhs_expr.span, expr_ty);
+    let expr_ty = fcx.expr_ty(&check_env.tt.node_types, rhs_expr);
+    let rhs_ty = structurally_resolved_type(check_env, fcx, rhs_expr.span, expr_ty);
 
     if is_builtin_binop(fcx.tcx(), lhs_ty, rhs_ty, op) {
         enforce_builtin_binop_types(fcx, lhs_expr, lhs_ty, rhs_expr, rhs_ty, op);
-        fcx.write_nil(expr.id);
+        fcx.write_nil(check_env, expr.id);
     } else {
         // error types are considered "builtin"
         assert!(!ty::type_is_error(lhs_ty) || !ty::type_is_error(rhs_ty));
@@ -53,7 +57,7 @@ pub fn check_binop_assign<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
                   ast_util::binop_to_string(op.node),
                   lhs_ty.user_string(fcx.tcx()),
                   rhs_ty.user_string(fcx.tcx()));
-        fcx.write_error(expr.id);
+        fcx.write_error(check_env, expr.id);
     }
 
     let tcx = fcx.tcx();
@@ -61,11 +65,12 @@ pub fn check_binop_assign<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
         span_err!(tcx.sess, lhs_expr.span, E0067, "illegal left-hand side expression");
     }
 
-    fcx.require_expr_have_sized_type(lhs_expr, traits::AssignmentLhsSized);
+    fcx.require_expr_have_sized_type(check_env, lhs_expr, traits::AssignmentLhsSized);
 }
 
 /// Check a potentially overloaded binary operator.
-pub fn check_binop<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
+pub fn check_binop<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
+                             fcx: &FnCtxt<'a, 'tcx>,
                              expr: &'tcx ast::Expr,
                              op: ast::BinOp,
                              lhs_expr: &'tcx ast::Expr,
@@ -80,18 +85,20 @@ pub fn check_binop<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
            lhs_expr.repr(tcx),
            rhs_expr.repr(tcx));
 
-    check_expr(fcx, lhs_expr);
-    let lhs_ty = fcx.resolve_type_vars_if_possible(fcx.expr_ty(lhs_expr));
+    check_expr(check_env, fcx, lhs_expr);
+    let expr_ty = fcx.expr_ty(&check_env.tt.node_types, lhs_expr);
+    let lhs_ty = fcx.resolve_type_vars_if_possible(check_env, expr_ty);
 
     // Annoyingly, SIMD ops don't fit into the PartialEq/PartialOrd
     // traits, because their return type is not bool. Perhaps this
     // should change, but for now if LHS is SIMD we go down a
     // different path that bypassess all traits.
     if ty::type_is_simd(fcx.tcx(), lhs_ty) {
-        check_expr_coercable_to_type(fcx, rhs_expr, lhs_ty);
-        let rhs_ty = fcx.resolve_type_vars_if_possible(fcx.expr_ty(lhs_expr));
+        check_expr_coercable_to_type(check_env, fcx, rhs_expr, lhs_ty);
+        let expr_ty = fcx.expr_ty(&check_env.tt.node_types, lhs_expr);
+        let rhs_ty = fcx.resolve_type_vars_if_possible(check_env, expr_ty);
         let return_ty = enforce_builtin_binop_types(fcx, lhs_expr, lhs_ty, rhs_expr, rhs_ty, op);
-        fcx.write_ty(expr.id, return_ty);
+        fcx.write_ty(check_env, expr.id, return_ty);
         return;
     }
 
@@ -99,15 +106,15 @@ pub fn check_binop<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         BinOpCategory::Shortcircuit => {
             // && and || are a simple case.
             demand::suptype(fcx, lhs_expr.span, ty::mk_bool(tcx), lhs_ty);
-            check_expr_coercable_to_type(fcx, rhs_expr, ty::mk_bool(tcx));
-            fcx.write_ty(expr.id, ty::mk_bool(tcx));
+            check_expr_coercable_to_type(check_env, fcx, rhs_expr, ty::mk_bool(tcx));
+            fcx.write_ty(check_env, expr.id, ty::mk_bool(tcx));
         }
         _ => {
             // Otherwise, we always treat operators as if they are
             // overloaded. This is the way to be most flexible w/r/t
             // types that get inferred.
             let (rhs_ty, return_ty) =
-                check_overloaded_binop(fcx, expr, lhs_expr, lhs_ty, rhs_expr, op);
+                check_overloaded_binop(check_env, fcx, expr, lhs_expr, lhs_ty, rhs_expr, op);
 
             // Supply type inference hints if relevant. Probably these
             // hints should be enforced during select as part of the
@@ -121,7 +128,7 @@ pub fn check_binop<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             // deduce that the result type should be `u32`, even
             // though we don't know yet what type 2 has and hence
             // can't pin this down to a specific impl.
-            let rhs_ty = fcx.resolve_type_vars_if_possible(rhs_ty);
+            let rhs_ty = fcx.resolve_type_vars_if_possible(check_env, rhs_ty);
             if
                 !ty::type_is_ty_var(lhs_ty) &&
                 !ty::type_is_ty_var(rhs_ty) &&
@@ -132,7 +139,7 @@ pub fn check_binop<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 demand::suptype(fcx, expr.span, builtin_return_ty, return_ty);
             }
 
-            fcx.write_ty(expr.id, return_ty);
+            fcx.write_ty(check_env, expr.id, return_ty);
         }
     }
 }
@@ -201,7 +208,8 @@ fn enforce_builtin_binop_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     }
 }
 
-fn check_overloaded_binop<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
+fn check_overloaded_binop<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
+                                    fcx: &FnCtxt<'a, 'tcx>,
                                     expr: &'tcx ast::Expr,
                                     lhs_expr: &'tcx ast::Expr,
                                     lhs_ty: Ty<'tcx>,
@@ -223,7 +231,8 @@ fn check_overloaded_binop<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     // particularly for things like `String + &String`.
     let rhs_ty_var = fcx.infcx().next_ty_var();
 
-    let return_ty = match lookup_op_method(fcx, expr, lhs_ty, vec![rhs_ty_var],
+    let return_ty = match lookup_op_method(check_env, fcx,
+                                           expr, lhs_ty, vec![rhs_ty_var],
                                            token::intern(name), trait_def_id,
                                            lhs_expr) {
         Ok(return_ty) => return_ty,
@@ -240,12 +249,13 @@ fn check_overloaded_binop<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     };
 
     // see `NB` above
-    check_expr_coercable_to_type(fcx, rhs_expr, rhs_ty_var);
+    check_expr_coercable_to_type(check_env, fcx, rhs_expr, rhs_ty_var);
 
     (rhs_ty_var, return_ty)
 }
 
-pub fn check_user_unop<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
+pub fn check_user_unop<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
+                                 fcx: &FnCtxt<'a, 'tcx>,
                                  op_str: &str,
                                  mname: &str,
                                  trait_did: Option<ast::DefId>,
@@ -256,7 +266,8 @@ pub fn check_user_unop<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                  -> Ty<'tcx>
 {
     assert!(ast_util::is_by_value_unop(op));
-    match lookup_op_method(fcx, ex, operand_ty, vec![],
+    match lookup_op_method(check_env, fcx,
+                           ex, operand_ty, vec![],
                            token::intern(mname), trait_did,
                            operand_expr) {
         Ok(t) => t,
@@ -295,7 +306,8 @@ fn name_and_trait_def_id(fcx: &FnCtxt, op: ast::BinOp) -> (&'static str, Option<
     }
 }
 
-fn lookup_op_method<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
+fn lookup_op_method<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
+                              fcx: &'a FnCtxt<'a, 'tcx>,
                               expr: &'tcx ast::Expr,
                               lhs_ty: Ty<'tcx>,
                               other_tys: Vec<Ty<'tcx>>,
@@ -313,7 +325,8 @@ fn lookup_op_method<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
 
     let method = match trait_did {
         Some(trait_did) => {
-            method::lookup_in_trait_adjusted(fcx,
+            method::lookup_in_trait_adjusted(check_env,
+                                             fcx,
                                              expr.span,
                                              Some(lhs_expr),
                                              opname,
@@ -332,7 +345,7 @@ fn lookup_op_method<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
 
             // HACK(eddyb) Fully qualified path to work around a resolve bug.
             let method_call = ::middle::ty::MethodCall::expr(expr.id);
-            fcx.inh.method_map.borrow_mut().insert(method_call, method);
+            check_env.tt.method_map.insert(method_call, method);
 
             // extract return type for method; all late bound regions
             // should have been instantiated by now

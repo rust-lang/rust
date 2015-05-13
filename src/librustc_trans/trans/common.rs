@@ -669,8 +669,9 @@ impl<'blk, 'tcx> mc::Typer<'tcx> for BlockS<'blk, 'tcx> {
             .map(|method| method.origin.clone())
     }
 
-    fn adjustments<'a>(&'a self) -> &'a RefCell<NodeMap<ty::AutoAdjustment<'tcx>>> {
-        &self.tcx().adjustments
+    fn adjustments<F, T>(&self, closure: F) -> T
+        where F: FnOnce(&NodeMap<ty::AutoAdjustment<'tcx>>) -> T {
+        closure(&self.tcx().adjustments.borrow())
     }
 
     fn is_method_call(&self, id: ast::NodeId) -> bool {

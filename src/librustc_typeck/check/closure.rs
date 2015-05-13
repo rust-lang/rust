@@ -10,7 +10,7 @@
 
 //! Code for type-checking closure expressions.
 
-use super::{check_fn, Expectation, FnCtxt};
+use super::{check_fn, CheckEnv, Expectation, FnCtxt, FnCtxtJoined};
 
 use astconv;
 use middle::region;
@@ -22,7 +22,8 @@ use syntax::ast;
 use syntax::ast_util;
 use util::ppaux::Repr;
 
-pub fn check_expr_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
+pub fn check_expr_closure<'a,'tcx>(check_env: &mut CheckEnv<'tcx>,
+                                   fcx: &FnCtxt<'a,'tcx>,
                                    expr: &ast::Expr,
                                    _capture: ast::CaptureClause,
                                    decl: &'tcx ast::FnDecl,
@@ -36,13 +37,14 @@ pub fn check_expr_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
     // closure sooner rather than later, so first examine the expected
     // type, and see if can glean a closure kind from there.
     let (expected_sig,expected_kind) = match expected.to_option(fcx) {
-        Some(ty) => deduce_expectations_from_expected_type(fcx, ty),
+        Some(ty) => deduce_expectations_from_expected_type(check_env, fcx, ty),
         None => (None, None)
     };
-    check_closure(fcx, expr, expected_kind, decl, body, expected_sig)
+    check_closure(check_env, fcx, expr, expected_kind, decl, body, expected_sig)
 }
 
-fn check_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
+fn check_closure<'a,'tcx>(check_env: &mut CheckEnv<'tcx>,
+                          fcx: &FnCtxt<'a,'tcx>,
                           expr: &ast::Expr,
                           opt_kind: Option<ty::ClosureKind>,
                           decl: &'tcx ast::FnDecl,
@@ -54,26 +56,30 @@ fn check_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
            opt_kind,
            expected_sig.repr(fcx.tcx()));
 
-    let mut fn_ty = astconv::ty_of_closure(
-        fcx,
-        ast::Unsafety::Normal,
-        decl,
-        abi::RustCall,
-        expected_sig);
+    let mut fn_ty = {
+        let mut joined = FnCtxtJoined::new(check_env, fcx);
+        astconv::ty_of_closure(
+            &mut joined,
+            ast::Unsafety::Normal,
+            decl,
+            abi::RustCall,
+            expected_sig)
+    };
 
     let closure_type = ty::mk_closure(fcx.ccx.tcx,
                                       expr_def_id,
                                       fcx.ccx.tcx.mk_substs(
                                         fcx.inh.param_env.free_substs.clone()));
 
-    fcx.write_ty(expr.id, closure_type);
+    fcx.write_ty(check_env, expr.id, closure_type);
 
     let fn_sig =
         ty::liberate_late_bound_regions(fcx.tcx(),
                                         region::DestructionScopeData::new(body.id),
                                         &fn_ty.sig);
 
-    check_fn(fcx.ccx,
+    check_fn(check_env,
+             fcx.ccx,
              ast::Unsafety::Normal,
              expr.id,
              &fn_sig,
@@ -91,7 +97,7 @@ fn check_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
            fn_ty.sig.repr(fcx.tcx()),
            opt_kind);
 
-    fcx.inh.closure_tys.borrow_mut().insert(expr_def_id, fn_ty);
+    check_env.tt.closure_tys.insert(expr_def_id, fn_ty);
     match opt_kind {
         Some(kind) => { fcx.inh.closure_kinds.borrow_mut().insert(expr_def_id, kind); }
         None => { }
@@ -99,6 +105,7 @@ fn check_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
 }
 
 fn deduce_expectations_from_expected_type<'a,'tcx>(
+    check_env: &mut CheckEnv<'tcx>,
     fcx: &FnCtxt<'a,'tcx>,
     expected_ty: Ty<'tcx>)
     -> (Option<ty::FnSig<'tcx>>,Option<ty::ClosureKind>)
@@ -117,7 +124,7 @@ fn deduce_expectations_from_expected_type<'a,'tcx>(
             (sig, kind)
         }
         ty::ty_infer(ty::TyVar(vid)) => {
-            deduce_expectations_from_obligations(fcx, vid)
+            deduce_expectations_from_obligations(check_env, fcx, vid)
         }
         _ => {
             (None, None)
@@ -126,15 +133,15 @@ fn deduce_expectations_from_expected_type<'a,'tcx>(
 }
 
 fn deduce_expectations_from_obligations<'a,'tcx>(
+    check_env: &mut CheckEnv<'tcx>,
     fcx: &FnCtxt<'a,'tcx>,
     expected_vid: ty::TyVid)
     -> (Option<ty::FnSig<'tcx>>, Option<ty::ClosureKind>)
 {
-    let fulfillment_cx = fcx.inh.fulfillment_cx.borrow();
     // Here `expected_ty` is known to be a type inference variable.
 
     let expected_sig =
-        fulfillment_cx
+        check_env.fulfillment_cx
         .pending_obligations()
         .iter()
         .filter_map(|obligation| {
@@ -161,7 +168,7 @@ fn deduce_expectations_from_obligations<'a,'tcx>(
     // like `F : Fn<A>`. Note that due to subtyping we could encounter
     // many viable options, so pick the most restrictive.
     let expected_kind =
-        fulfillment_cx
+        check_env.fulfillment_cx
         .pending_obligations()
         .iter()
         .filter_map(|obligation| {

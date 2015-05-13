@@ -14,7 +14,7 @@ use super::{CandidateSource,ImplSource,TraitSource};
 use super::suggest;
 
 use check;
-use check::{FnCtxt, NoPreference, UnresolvedTypeAction};
+use check::{CheckEnv, FnCtxt, FnCtxtTyper, FnCtxtJoined, NoPreference, UnresolvedTypeAction};
 use middle::fast_reject;
 use middle::subst;
 use middle::subst::Subst;
@@ -113,7 +113,8 @@ pub enum Mode {
     Path
 }
 
-pub fn probe<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
+pub fn probe<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
+                       fcx: &FnCtxt<'a, 'tcx>,
                        span: Span,
                        mode: Mode,
                        item_name: ast::Name,
@@ -134,7 +135,7 @@ pub fn probe<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     // think cause spurious errors. Really though this part should
     // take place in the `fcx.infcx().probe` below.
     let steps = if mode == Mode::MethodCall {
-        match create_steps(fcx, span, self_ty) {
+        match create_steps(check_env, fcx, span, self_ty) {
             Some(steps) => steps,
             None => return Err(MethodError::NoMatch(Vec::new(), Vec::new())),
         }
@@ -174,25 +175,27 @@ pub fn probe<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                              item_name,
                                              steps,
                                              opt_simplified_steps);
-        probe_cx.assemble_inherent_candidates();
+        probe_cx.assemble_inherent_candidates(check_env);
         try!(probe_cx.assemble_extension_candidates_for_traits_in_scope(scope_expr_id));
-        probe_cx.pick()
+        probe_cx.pick(check_env)
     })
 }
 
-fn create_steps<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
+fn create_steps<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
+                          fcx: &FnCtxt<'a, 'tcx>,
                           span: Span,
                           self_ty: Ty<'tcx>)
                           -> Option<Vec<CandidateStep<'tcx>>> {
     let mut steps = Vec::new();
 
-    let (final_ty, dereferences, _) = check::autoderef(fcx,
+    let (final_ty, dereferences, _) = check::autoderef(check_env,
+                                                       fcx,
                                                        span,
                                                        self_ty,
                                                        None,
                                                        UnresolvedTypeAction::Error,
                                                        NoPreference,
-                                                       |t, d| {
+                                                       |_, t, d| {
         steps.push(CandidateStep {
             self_ty: t,
             autoderefs: d,
@@ -258,30 +261,31 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
     ///////////////////////////////////////////////////////////////////////////
     // CANDIDATE ASSEMBLY
 
-    fn assemble_inherent_candidates(&mut self) {
+    fn assemble_inherent_candidates(&mut self, check_env: &mut CheckEnv<'tcx>) {
         let steps = self.steps.clone();
         for step in &*steps {
-            self.assemble_probe(step.self_ty);
+            self.assemble_probe(check_env, step.self_ty);
         }
     }
 
-    fn assemble_probe(&mut self, self_ty: Ty<'tcx>) {
+    fn assemble_probe(&mut self, check_env: &mut CheckEnv<'tcx>, self_ty: Ty<'tcx>) {
         debug!("assemble_probe: self_ty={}",
                self_ty.repr(self.tcx()));
 
         match self_ty.sty {
             ty::ty_trait(box ref data) => {
                 self.assemble_inherent_candidates_from_object(self_ty, data);
-                self.assemble_inherent_impl_candidates_for_type(data.principal_def_id());
+                self.assemble_inherent_impl_candidates_for_type(check_env,
+                                                                data.principal_def_id());
             }
             ty::ty_enum(did, _) |
             ty::ty_struct(did, _) |
             ty::ty_closure(did, _) => {
-                self.assemble_inherent_impl_candidates_for_type(did);
+                self.assemble_inherent_impl_candidates_for_type(check_env, did);
             }
             ty::ty_uniq(_) => {
                 if let Some(box_did) = self.tcx().lang_items.owned_box() {
-                    self.assemble_inherent_impl_candidates_for_type(box_did);
+                    self.assemble_inherent_impl_candidates_for_type(check_env, box_did);
                 }
             }
             ty::ty_param(p) => {
@@ -289,98 +293,107 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             }
             ty::ty_char => {
                 let lang_def_id = self.tcx().lang_items.char_impl();
-                self.assemble_inherent_impl_for_primitive(lang_def_id);
+                self.assemble_inherent_impl_for_primitive(check_env, lang_def_id);
             }
             ty::ty_str => {
                 let lang_def_id = self.tcx().lang_items.str_impl();
-                self.assemble_inherent_impl_for_primitive(lang_def_id);
+                self.assemble_inherent_impl_for_primitive(check_env, lang_def_id);
             }
             ty::ty_vec(_, None) => {
                 let lang_def_id = self.tcx().lang_items.slice_impl();
-                self.assemble_inherent_impl_for_primitive(lang_def_id);
+                self.assemble_inherent_impl_for_primitive(check_env, lang_def_id);
             }
             ty::ty_ptr(ty::mt { ty: _, mutbl: ast::MutImmutable }) => {
                 let lang_def_id = self.tcx().lang_items.const_ptr_impl();
-                self.assemble_inherent_impl_for_primitive(lang_def_id);
+                self.assemble_inherent_impl_for_primitive(check_env, lang_def_id);
             }
             ty::ty_ptr(ty::mt { ty: _, mutbl: ast::MutMutable }) => {
                 let lang_def_id = self.tcx().lang_items.mut_ptr_impl();
-                self.assemble_inherent_impl_for_primitive(lang_def_id);
+                self.assemble_inherent_impl_for_primitive(check_env, lang_def_id);
             }
             ty::ty_int(ast::TyI8) => {
                 let lang_def_id = self.tcx().lang_items.i8_impl();
-                self.assemble_inherent_impl_for_primitive(lang_def_id);
+                self.assemble_inherent_impl_for_primitive(check_env, lang_def_id);
             }
             ty::ty_int(ast::TyI16) => {
                 let lang_def_id = self.tcx().lang_items.i16_impl();
-                self.assemble_inherent_impl_for_primitive(lang_def_id);
+                self.assemble_inherent_impl_for_primitive(check_env, lang_def_id);
             }
             ty::ty_int(ast::TyI32) => {
                 let lang_def_id = self.tcx().lang_items.i32_impl();
-                self.assemble_inherent_impl_for_primitive(lang_def_id);
+                self.assemble_inherent_impl_for_primitive(check_env, lang_def_id);
             }
             ty::ty_int(ast::TyI64) => {
                 let lang_def_id = self.tcx().lang_items.i64_impl();
-                self.assemble_inherent_impl_for_primitive(lang_def_id);
+                self.assemble_inherent_impl_for_primitive(check_env, lang_def_id);
             }
             ty::ty_int(ast::TyIs) => {
                 let lang_def_id = self.tcx().lang_items.isize_impl();
-                self.assemble_inherent_impl_for_primitive(lang_def_id);
+                self.assemble_inherent_impl_for_primitive(check_env, lang_def_id);
             }
             ty::ty_uint(ast::TyU8) => {
                 let lang_def_id = self.tcx().lang_items.u8_impl();
-                self.assemble_inherent_impl_for_primitive(lang_def_id);
+                self.assemble_inherent_impl_for_primitive(check_env, lang_def_id);
             }
             ty::ty_uint(ast::TyU16) => {
                 let lang_def_id = self.tcx().lang_items.u16_impl();
-                self.assemble_inherent_impl_for_primitive(lang_def_id);
+                self.assemble_inherent_impl_for_primitive(check_env, lang_def_id);
             }
             ty::ty_uint(ast::TyU32) => {
                 let lang_def_id = self.tcx().lang_items.u32_impl();
-                self.assemble_inherent_impl_for_primitive(lang_def_id);
+                self.assemble_inherent_impl_for_primitive(check_env, lang_def_id);
             }
             ty::ty_uint(ast::TyU64) => {
                 let lang_def_id = self.tcx().lang_items.u64_impl();
-                self.assemble_inherent_impl_for_primitive(lang_def_id);
+                self.assemble_inherent_impl_for_primitive(check_env, lang_def_id);
             }
             ty::ty_uint(ast::TyUs) => {
                 let lang_def_id = self.tcx().lang_items.usize_impl();
-                self.assemble_inherent_impl_for_primitive(lang_def_id);
+                self.assemble_inherent_impl_for_primitive(check_env, lang_def_id);
             }
             ty::ty_float(ast::TyF32) => {
                 let lang_def_id = self.tcx().lang_items.f32_impl();
-                self.assemble_inherent_impl_for_primitive(lang_def_id);
+                self.assemble_inherent_impl_for_primitive(check_env, lang_def_id);
             }
             ty::ty_float(ast::TyF64) => {
                 let lang_def_id = self.tcx().lang_items.f64_impl();
-                self.assemble_inherent_impl_for_primitive(lang_def_id);
+                self.assemble_inherent_impl_for_primitive(check_env, lang_def_id);
             }
             _ => {
             }
         }
     }
 
-    fn assemble_inherent_impl_for_primitive(&mut self, lang_def_id: Option<ast::DefId>) {
+    fn assemble_inherent_impl_for_primitive(&mut self,
+                                            check_env: &mut CheckEnv<'tcx>,
+                                            lang_def_id: Option<ast::DefId>)
+    {
         if let Some(impl_def_id) = lang_def_id {
             ty::populate_implementations_for_primitive_if_necessary(self.tcx(), impl_def_id);
 
-            self.assemble_inherent_impl_probe(impl_def_id);
+            self.assemble_inherent_impl_probe(check_env, impl_def_id);
         }
     }
 
-    fn assemble_inherent_impl_candidates_for_type(&mut self, def_id: ast::DefId) {
+    fn assemble_inherent_impl_candidates_for_type(&mut self,
+                                                  check_env: &mut CheckEnv<'tcx>,
+                                                  def_id: ast::DefId)
+    {
         // Read the inherent implementation candidates for this type from the
         // metadata if necessary.
         ty::populate_inherent_implementations_for_type_if_necessary(self.tcx(), def_id);
 
         if let Some(impl_infos) = self.tcx().inherent_impls.borrow().get(&def_id) {
             for &impl_def_id in &***impl_infos {
-                self.assemble_inherent_impl_probe(impl_def_id);
+                self.assemble_inherent_impl_probe(check_env, impl_def_id);
             }
         }
     }
 
-    fn assemble_inherent_impl_probe(&mut self, impl_def_id: ast::DefId) {
+    fn assemble_inherent_impl_probe(&mut self,
+                                    check_env: &mut CheckEnv<'tcx>,
+                                    impl_def_id: ast::DefId)
+    {
         if !self.impl_dups.insert(impl_def_id) {
             return; // already visited
         }
@@ -398,7 +411,8 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         }
 
         let (impl_ty, impl_substs) = self.impl_ty_and_substs(impl_def_id);
-        let impl_ty = self.fcx.instantiate_type_scheme(self.span, &impl_substs, &impl_ty);
+        let mut joined = FnCtxtJoined::new(check_env, self.fcx);
+        let impl_ty = joined.instantiate_type_scheme(self.span, &impl_substs, &impl_ty);
 
         // Determine the receiver type that the method itself expects.
         let xform_self_ty =
@@ -835,8 +849,8 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
     ///////////////////////////////////////////////////////////////////////////
     // THE ACTUAL SEARCH
 
-    fn pick(mut self) -> PickResult<'tcx> {
-        match self.pick_core() {
+    fn pick(mut self, check_env: &mut CheckEnv<'tcx>) -> PickResult<'tcx> {
+        match self.pick_core(check_env) {
             Some(r) => return r,
             None => {}
         }
@@ -851,7 +865,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
 
         try!(self.assemble_extension_candidates_for_all_traits());
 
-        let out_of_scope_traits = match self.pick_core() {
+        let out_of_scope_traits = match self.pick_core(check_env) {
             Some(Ok(p)) => vec![p.item.container().id()],
             Some(Err(MethodError::Ambiguity(v))) => v.into_iter().map(|source| {
                 match source {
@@ -880,29 +894,33 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         Err(MethodError::NoMatch(static_candidates, out_of_scope_traits))
     }
 
-    fn pick_core(&mut self) -> Option<PickResult<'tcx>> {
+    fn pick_core(&mut self, check_env: &mut CheckEnv<'tcx>) -> Option<PickResult<'tcx>> {
         let steps = self.steps.clone();
 
         // find the first step that works
-        steps.iter().filter_map(|step| self.pick_step(step)).next()
+        steps.iter().filter_map(|step| self.pick_step(check_env, step)).next()
     }
 
-    fn pick_step(&mut self, step: &CandidateStep<'tcx>) -> Option<PickResult<'tcx>> {
+    fn pick_step(&mut self,
+                 check_env: &mut CheckEnv<'tcx>,
+                 step: &CandidateStep<'tcx>) -> Option<PickResult<'tcx>>
+    {
         debug!("pick_step: step={}", step.repr(self.tcx()));
 
         if ty::type_is_error(step.self_ty) {
             return None;
         }
 
-        match self.pick_by_value_method(step) {
+        match self.pick_by_value_method(check_env, step) {
             Some(result) => return Some(result),
             None => {}
         }
 
-        self.pick_autorefd_method(step)
+        self.pick_autorefd_method(check_env, step)
     }
 
     fn pick_by_value_method(&mut self,
+                            check_env: &mut CheckEnv<'tcx>,
                             step: &CandidateStep<'tcx>)
                             -> Option<PickResult<'tcx>>
     {
@@ -920,7 +938,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             return None;
         }
 
-        self.pick_method(step.self_ty).map(|r| r.map(|mut pick| {
+        self.pick_method(check_env, step.self_ty).map(|r| r.map(|mut pick| {
             pick.autoderefs = step.autoderefs;
 
             // Insert a `&*` or `&mut *` if this is a reference type:
@@ -934,6 +952,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
     }
 
     fn pick_autorefd_method(&mut self,
+                            check_env: &mut CheckEnv<'tcx>,
                             step: &CandidateStep<'tcx>)
                             -> Option<PickResult<'tcx>>
     {
@@ -949,7 +968,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                 ty: step.self_ty,
                 mutbl: m
             });
-            self.pick_method(autoref_ty).map(|r| r.map(|mut pick| {
+            self.pick_method(check_env, autoref_ty).map(|r| r.map(|mut pick| {
                 pick.autoderefs = step.autoderefs;
                 pick.autoref = Some(m);
                 pick.unsize = if step.unsize {
@@ -962,11 +981,14 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         }).nth(0)
     }
 
-    fn pick_method(&mut self, self_ty: Ty<'tcx>) -> Option<PickResult<'tcx>> {
+    fn pick_method(&mut self,
+                   check_env: &mut CheckEnv<'tcx>,
+                   self_ty: Ty<'tcx>) -> Option<PickResult<'tcx>>
+    {
         debug!("pick_method(self_ty={})", self.infcx().ty_to_string(self_ty));
 
         debug!("searching inherent candidates");
-        match self.consider_candidates(self_ty, &self.inherent_candidates) {
+        match self.consider_candidates(check_env, self_ty, &self.inherent_candidates) {
             None => {}
             Some(pick) => {
                 return Some(pick);
@@ -974,16 +996,17 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         }
 
         debug!("searching extension candidates");
-        self.consider_candidates(self_ty, &self.extension_candidates)
+        self.consider_candidates(check_env, self_ty, &self.extension_candidates)
     }
 
     fn consider_candidates(&self,
+                           check_env: &mut CheckEnv<'tcx>,
                            self_ty: Ty<'tcx>,
                            probes: &[Candidate<'tcx>])
                            -> Option<PickResult<'tcx>> {
         let mut applicable_candidates: Vec<_> =
             probes.iter()
-                  .filter(|&probe| self.consider_probe(self_ty, probe))
+                  .filter(|&probe| self.consider_probe(check_env, self_ty, probe))
                   .collect();
 
         debug!("applicable_candidates: {}", applicable_candidates.repr(self.tcx()));
@@ -1006,7 +1029,11 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         })
     }
 
-    fn consider_probe(&self, self_ty: Ty<'tcx>, probe: &Candidate<'tcx>) -> bool {
+    fn consider_probe(&self,
+                      check_env: &mut CheckEnv<'tcx>,
+                      self_ty: Ty<'tcx>,
+                      probe: &Candidate<'tcx>) -> bool
+    {
         debug!("consider_probe: self_ty={} probe={}",
                self_ty.repr(self.tcx()),
                probe.repr(self.tcx()));
@@ -1028,7 +1055,8 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             match probe.kind {
                 InherentImplCandidate(impl_def_id, ref substs) |
                 ExtensionImplCandidate(impl_def_id, _, ref substs, _) => {
-                    let selcx = &mut traits::SelectionContext::new(self.infcx(), self.fcx);
+                    let typer = FnCtxtTyper::new(&check_env.tt, self.fcx);
+                    let selcx = &mut traits::SelectionContext::new(self.infcx(), &typer);
                     let cause = traits::ObligationCause::misc(self.span, self.fcx.body_id);
 
                     // Check whether the impl imposes obligations we have to worry about.

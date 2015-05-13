@@ -87,7 +87,6 @@ use syntax::codemap::Span;
 use syntax::print::pprust;
 use syntax::parse::token;
 
-use std::cell::RefCell;
 use std::rc::Rc;
 
 #[derive(Clone, PartialEq, Debug)]
@@ -292,7 +291,8 @@ pub trait Typer<'tcx> : ty::ClosureTyper<'tcx> {
     fn node_method_ty(&self, method_call: ty::MethodCall) -> Option<Ty<'tcx>>;
     fn node_method_origin(&self, method_call: ty::MethodCall)
                           -> Option<ty::MethodOrigin<'tcx>>;
-    fn adjustments<'a>(&'a self) -> &'a RefCell<NodeMap<ty::AutoAdjustment<'tcx>>>;
+    fn adjustments<F, T>(&self, closure: F) -> T
+        where F: FnOnce(&NodeMap<ty::AutoAdjustment<'tcx>>) -> T;
     fn is_method_call(&self, id: ast::NodeId) -> bool;
     fn temporary_scope(&self, rvalue_id: ast::NodeId) -> Option<region::CodeExtent>;
     fn upvar_capture(&self, upvar_id: ty::UpvarId) -> Option<ty::UpvarCapture>;
@@ -409,9 +409,10 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
 
     fn expr_ty_adjusted(&self, expr: &ast::Expr) -> McResult<Ty<'tcx>> {
         let unadjusted_ty = try!(self.expr_ty(expr));
-        Ok(ty::adjust_ty(self.tcx(), expr.span, expr.id, unadjusted_ty,
-                         self.typer.adjustments().borrow().get(&expr.id),
-                         |method_call| self.typer.node_method_ty(method_call)))
+        self.typer.adjustments( |adjustments|
+            Ok(ty::adjust_ty(self.tcx(), expr.span, expr.id, unadjusted_ty,
+                             adjustments.get(&expr.id),
+                             |method_call| self.typer.node_method_ty(method_call))))
     }
 
     fn node_ty(&self, id: ast::NodeId) -> McResult<Ty<'tcx>> {
@@ -443,7 +444,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
     }
 
     pub fn cat_expr(&self, expr: &ast::Expr) -> McResult<cmt<'tcx>> {
-        match self.typer.adjustments().borrow().get(&expr.id) {
+        self.typer.adjustments( |adjustments| match adjustments.get(&expr.id) {
             None => {
                 // No adjustments.
                 self.cat_expr_unadjusted(expr)
@@ -470,7 +471,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                     }
                 }
             }
-        }
+        } )
     }
 
     pub fn cat_expr_autoderefd(&self,

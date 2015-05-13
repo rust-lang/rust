@@ -40,7 +40,7 @@
 //! then mean that all later passes would have to check for these figments
 //! and report an error, and it just seems like more mess in the end.)
 
-use super::FnCtxt;
+use super::{CheckEnv, FnCtxt, FnCtxtTyper};
 
 use middle::expr_use_visitor as euv;
 use middle::mem_categorization as mc;
@@ -56,20 +56,21 @@ use util::ppaux::Repr;
 ///////////////////////////////////////////////////////////////////////////
 // PUBLIC ENTRY POINTS
 
-pub fn closure_analyze_fn(fcx: &FnCtxt,
-                          _id: ast::NodeId,
-                          _decl: &ast::FnDecl,
-                          body: &ast::Block)
+pub fn closure_analyze_fn<'a,'tcx>(check_env: &mut CheckEnv<'tcx>,
+                                   fcx: &FnCtxt<'a,'tcx>,
+                                   _id: ast::NodeId,
+                                   _decl: &ast::FnDecl,
+                                   body: &ast::Block)
 {
     let mut seed = SeedBorrowKind::new(fcx);
     seed.visit_block(body);
     let closures_with_inferred_kinds = seed.closures_with_inferred_kinds;
 
-    let mut adjust = AdjustBorrowKind::new(fcx, &closures_with_inferred_kinds);
+    let mut adjust = AdjustBorrowKind::new(check_env, fcx, &closures_with_inferred_kinds);
     adjust.visit_block(body);
 
     // it's our job to process these.
-    assert!(fcx.inh.deferred_call_resolutions.borrow().is_empty());
+    assert!(adjust.check_env.deferred_call_resolutions.is_empty());
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -167,81 +168,21 @@ impl<'a,'tcx> SeedBorrowKind<'a,'tcx> {
 // ADJUST BORROW KIND
 
 struct AdjustBorrowKind<'a,'tcx:'a> {
+    check_env: &'a mut CheckEnv<'tcx>,
     fcx: &'a FnCtxt<'a,'tcx>,
     closures_with_inferred_kinds: &'a HashSet<ast::NodeId>,
 }
 
-impl<'a,'tcx> AdjustBorrowKind<'a,'tcx> {
-    fn new(fcx: &'a FnCtxt<'a,'tcx>,
-           closures_with_inferred_kinds: &'a HashSet<ast::NodeId>)
-           -> AdjustBorrowKind<'a,'tcx> {
-        AdjustBorrowKind { fcx: fcx, closures_with_inferred_kinds: closures_with_inferred_kinds }
-    }
+struct AdjustBorrowDelegate<'a,'tcx:'a> {
+    fcx: &'a FnCtxt<'a,'tcx>,
+    closures_with_inferred_kinds: &'a HashSet<ast::NodeId>,
+}
 
+impl<'a,'tcx> AdjustBorrowDelegate<'a,'tcx> {
     fn tcx(&self) -> &'a ty::ctxt<'tcx> {
         self.fcx.tcx()
     }
-
-    fn analyze_closure(&mut self, id: ast::NodeId, decl: &ast::FnDecl, body: &ast::Block) {
-        /*!
-         * Analysis starting point.
-         */
-
-        self.visit_block(body);
-
-        debug!("analyzing closure `{}` with fn body id `{}`", id, body.id);
-
-        let mut euv = euv::ExprUseVisitor::new(self, self.fcx);
-        euv.walk_fn(decl, body);
-
-        // If we had not yet settled on a closure kind for this closure,
-        // then we should have by now. Process and remove any deferred resolutions.
-        //
-        // Interesting fact: all calls to this closure must come
-        // *after* its definition.  Initially, I thought that some
-        // kind of fixed-point iteration would be required, due to the
-        // possibility of twisted examples like this one:
-        //
-        // ```rust
-        // let mut closure0 = None;
-        // let vec = vec!(1, 2, 3);
-        //
-        // loop {
-        //     {
-        //         let closure1 = || {
-        //             match closure0.take() {
-        //                 Some(c) => {
-        //                     return c(); // (*) call to `closure0` before it is defined
-        //                 }
-        //                 None => { }
-        //             }
-        //         };
-        //         closure1();
-        //     }
-        //
-        //     closure0 = || vec;
-        // }
-        // ```
-        //
-        // However, this turns out to be wrong. Examples like this
-        // fail to compile because the type of the variable `c` above
-        // is an inference variable.  And in fact since closure types
-        // cannot be written, there is no way to make this example
-        // work without a boxed closure. This implies that we can't
-        // have two closures that recursively call one another without
-        // some form of boxing (and hence explicit writing of a
-        // closure kind) involved. Huzzah. -nmatsakis
-        let closure_def_id = ast_util::local_def(id);
-        if self.closures_with_inferred_kinds.contains(&id) {
-            let mut deferred_call_resolutions =
-                self.fcx.remove_deferred_call_resolutions(closure_def_id);
-            for deferred_call_resolution in deferred_call_resolutions.iter_mut() {
-                deferred_call_resolution.resolve(self.fcx);
-            }
-        }
-    }
-
-    fn adjust_upvar_borrow_kind_for_consume(&self,
+    fn adjust_upvar_borrow_kind_for_consume(&mut self,
                                             cmt: mc::cmt<'tcx>,
                                             mode: euv::ConsumeMode)
     {
@@ -329,7 +270,7 @@ impl<'a,'tcx> AdjustBorrowKind<'a,'tcx> {
         }
     }
 
-    fn adjust_upvar_borrow_kind_for_unique(&self, cmt: mc::cmt<'tcx>) {
+    fn adjust_upvar_borrow_kind_for_unique(&mut self, cmt: mc::cmt<'tcx>) {
         debug!("adjust_upvar_borrow_kind_for_unique(cmt={})",
                cmt.repr(self.tcx()));
 
@@ -360,7 +301,7 @@ impl<'a,'tcx> AdjustBorrowKind<'a,'tcx> {
         }
     }
 
-    fn try_adjust_upvar_deref(&self,
+    fn try_adjust_upvar_deref(&mut self,
                               note: &mc::Note,
                               borrow_kind: ty::BorrowKind)
                               -> bool
@@ -402,11 +343,12 @@ impl<'a,'tcx> AdjustBorrowKind<'a,'tcx> {
         }
     }
 
+
     /// We infer the borrow_kind with which to borrow upvars in a stack closure. The borrow_kind
     /// basically follows a lattice of `imm < unique-imm < mut`, moving from left to right as needed
     /// (but never right to left). Here the argument `mutbl` is the borrow_kind that is required by
     /// some particular use.
-    fn adjust_upvar_borrow_kind(&self,
+    fn adjust_upvar_borrow_kind(&mut self,
                                 upvar_id: ty::UpvarId,
                                 upvar_capture: &mut ty::UpvarCapture,
                                 kind: ty::BorrowKind) {
@@ -436,7 +378,7 @@ impl<'a,'tcx> AdjustBorrowKind<'a,'tcx> {
         }
     }
 
-    fn adjust_closure_kind(&self,
+    fn adjust_closure_kind(&mut self,
                            closure_id: ast::NodeId,
                            new_kind: ty::ClosureKind) {
         debug!("adjust_closure_kind(closure_id={}, new_kind={:?})",
@@ -471,6 +413,85 @@ impl<'a,'tcx> AdjustBorrowKind<'a,'tcx> {
     }
 }
 
+impl<'a,'tcx> AdjustBorrowKind<'a,'tcx> {
+    fn new(check_env: &'a mut CheckEnv<'tcx>,
+           fcx: &'a FnCtxt<'a,'tcx>,
+           closures_with_inferred_kinds: &'a HashSet<ast::NodeId>)
+           -> AdjustBorrowKind<'a,'tcx> {
+        AdjustBorrowKind {
+            check_env: check_env,
+            fcx: fcx,
+            closures_with_inferred_kinds: closures_with_inferred_kinds,
+        }
+    }
+
+    fn analyze_closure(&mut self, id: ast::NodeId, decl: &ast::FnDecl, body: &ast::Block) {
+        /*!
+         * Analysis starting point.
+         */
+
+        self.visit_block(body);
+
+        debug!("analyzing closure `{}` with fn body id `{}`", id, body.id);
+
+        {
+            let mut delegate = AdjustBorrowDelegate {
+                fcx: self.fcx,
+                closures_with_inferred_kinds: self.closures_with_inferred_kinds,
+            };
+            let typer = FnCtxtTyper::new(&self.check_env.tt, self.fcx);
+            let mut euv = euv::ExprUseVisitor::new(&mut delegate, &typer);
+            euv.walk_fn(decl, body);
+        }
+
+        // If we had not yet settled on a closure kind for this closure,
+        // then we should have by now. Process and remove any deferred resolutions.
+        //
+        // Interesting fact: all calls to this closure must come
+        // *after* its definition.  Initially, I thought that some
+        // kind of fixed-point iteration would be required, due to the
+        // possibility of twisted examples like this one:
+        //
+        // ```rust
+        // let mut closure0 = None;
+        // let vec = vec!(1, 2, 3);
+        //
+        // loop {
+        //     {
+        //         let closure1 = || {
+        //             match closure0.take() {
+        //                 Some(c) => {
+        //                     return c(); // (*) call to `closure0` before it is defined
+        //                 }
+        //                 None => { }
+        //             }
+        //         };
+        //         closure1();
+        //     }
+        //
+        //     closure0 = || vec;
+        // }
+        // ```
+        //
+        // However, this turns out to be wrong. Examples like this
+        // fail to compile because the type of the variable `c` above
+        // is an inference variable.  And in fact since closure types
+        // cannot be written, there is no way to make this example
+        // work without a boxed closure. This implies that we can't
+        // have two closures that recursively call one another without
+        // some form of boxing (and hence explicit writing of a
+        // closure kind) involved. Huzzah. -nmatsakis
+        let closure_def_id = ast_util::local_def(id);
+        if self.closures_with_inferred_kinds.contains(&id) {
+            let mut deferred_call_resolutions =
+                self.check_env.remove_deferred_call_resolutions(closure_def_id);
+            for deferred_call_resolution in &mut deferred_call_resolutions {
+                deferred_call_resolution.resolve(self.check_env, self.fcx);
+            }
+        }
+    }
+}
+
 impl<'a, 'tcx, 'v> Visitor<'v> for AdjustBorrowKind<'a, 'tcx> {
     fn visit_fn(&mut self,
                 fn_kind: visit::FnKind<'v>,
@@ -491,7 +512,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for AdjustBorrowKind<'a, 'tcx> {
     }
 }
 
-impl<'a,'tcx> euv::Delegate<'tcx> for AdjustBorrowKind<'a,'tcx> {
+impl<'a,'tcx> euv::Delegate<'tcx> for AdjustBorrowDelegate<'a,'tcx> {
     fn consume(&mut self,
                _consume_id: ast::NodeId,
                _consume_span: Span,

@@ -60,8 +60,8 @@
 //! sort of a minor point so I've opted to leave it for later---after all
 //! we may want to adjust precisely when coercions occur.
 
-use check::{autoderef, FnCtxt, NoPreference, PreferMutLvalue, UnresolvedTypeAction};
-use check::vtable;
+use super::{autoderef, CheckEnv, FnCtxt, NoPreference, PreferMutLvalue, UnresolvedTypeAction};
+use super::vtable;
 
 use middle::infer::{self, Coercion};
 use middle::subst;
@@ -110,6 +110,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
     }
 
     fn coerce(&self,
+              check_env: &mut CheckEnv<'tcx>,
               expr_a: &ast::Expr,
               a: Ty<'tcx>,
               b: Ty<'tcx>)
@@ -139,7 +140,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
             ty::ty_rptr(_, mt_b) => {
                 return self.unpack_actual_value(a, |a| {
-                    self.coerce_borrowed_pointer(expr_a, a, b, mt_b.mutbl)
+                    self.coerce_borrowed_pointer(check_env, expr_a, a, b, mt_b.mutbl)
                 });
             }
 
@@ -171,6 +172,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
     /// To match `A` with `B`, autoderef will be performed,
     /// calling `deref`/`deref_mut` where necessary.
     fn coerce_borrowed_pointer(&self,
+                               check_env: &mut CheckEnv<'tcx>,
                                expr_a: &ast::Expr,
                                a: Ty<'tcx>,
                                b: Ty<'tcx>,
@@ -203,13 +205,14 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             ast::MutImmutable => NoPreference
         };
         let mut first_error = None;
-        let (_, autoderefs, success) = autoderef(self.fcx,
+        let (_, autoderefs, success) = autoderef(check_env,
+                                                 self.fcx,
                                                  expr_a.span,
                                                  a,
                                                  Some(expr_a),
                                                  UnresolvedTypeAction::Ignore,
                                                  lvalue_pref,
-                                                 |inner_ty, autoderef| {
+                                                 |_, inner_ty, autoderef| {
             if autoderef == 0 {
                 // Don't let this pass, otherwise it would cause
                 // &T to autoref to &&T.
@@ -490,7 +493,8 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
     }
 }
 
-pub fn mk_assignty<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
+pub fn mk_assignty<'a, 'tcx>(check_env: &mut CheckEnv<'tcx>,
+                             fcx: &FnCtxt<'a, 'tcx>,
                              expr: &ast::Expr,
                              a: Ty<'tcx>,
                              b: Ty<'tcx>)
@@ -503,7 +507,7 @@ pub fn mk_assignty<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 origin: infer::ExprAssignable(expr.span),
                 unsizing_obligation: Cell::new(None)
             };
-            Ok((try!(coerce.coerce(expr, a, b)),
+            Ok((try!(coerce.coerce(check_env, expr, a, b)),
                 coerce.unsizing_obligation.get()))
         })
     }));
@@ -518,7 +522,8 @@ pub fn mk_assignty<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
                 // If the type is `Foo+'a`, ensures that the type
                 // being cast to `Foo+'a` implements `Foo`:
-                vtable::register_object_cast_obligations(fcx,
+                vtable::register_object_cast_obligations(check_env,
+                                                         fcx,
                                                          expr.span,
                                                          ty_trait,
                                                          source);
@@ -530,14 +535,15 @@ pub fn mk_assignty<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                     body_id: fcx.body_id,
                     code: traits::ObjectCastObligation(source)
                 };
-                fcx.register_region_obligation(source, ty_trait.bounds.region_bound, cause);
+                fcx.register_region_obligation(&mut check_env.fulfillment_cx,
+                                               source, ty_trait.bounds.region_bound, cause);
             }
         }
     }
 
     if let Some(adjustment) = adjustment {
         debug!("Success, coerced with {}", adjustment.repr(fcx.tcx()));
-        fcx.write_adjustment(expr.id, adjustment);
+        fcx.write_adjustment(check_env, expr.id, adjustment);
     }
     Ok(())
 }
