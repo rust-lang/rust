@@ -1369,9 +1369,28 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn assemble_candidates_for_unsizing(&mut self,
                                         obligation: &TraitObligation<'tcx>,
                                         candidates: &mut SelectionCandidateSet<'tcx>) {
-        // It is ok to skip past the higher-ranked binders here because the `match`
-        // below does not consider regions at all.
-        let source = self.infcx.shallow_resolve(*obligation.self_ty().skip_binder());
+        // We currently never consider higher-ranked obligations e.g.
+        // `for<'a> &'a T: Unsize<Trait+'a>` to be implemented. This is not
+        // because they are a priori invalid, and we could potentially add support
+        // for them later, it's just that there isn't really a strong need for it.
+        // A `T: Unsize<U>` obligation is always used as part of a `T: CoerceUnsize<U>`
+        // impl, and those are generally applied to concrete types.
+        //
+        // That said, one might try to write a fn with a where clause like
+        //     for<'a> Foo<'a, T>: Unsize<Foo<'a, Trait>>
+        // where the `'a` is kind of orthogonal to the relevant part of the `Unsize`.
+        // Still, you'd be more likely to write that where clause as
+        //     T: Trait
+        // so it seems ok if we (conservatively) fail to accept that `Unsize`
+        // obligation above. Should be possible to extend this in the future.
+        let self_ty = match ty::no_late_bound_regions(self.tcx(), &obligation.self_ty()) {
+            Some(t) => t,
+            None => {
+                // Don't add any candidates if there are bound regions.
+                return;
+            }
+        };
+        let source = self.infcx.shallow_resolve(self_ty);
         let target = self.infcx.shallow_resolve(obligation.predicate.0.input_types()[0]);
 
         debug!("assemble_candidates_for_unsizing(source={}, target={})",
@@ -2403,8 +2422,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                                   SelectionError<'tcx>> {
         let tcx = self.tcx();
 
-        // TODO is this skip_binder Ok?
-        let source = self.infcx.shallow_resolve(*obligation.self_ty().skip_binder());
+        // assemble_candidates_for_unsizing should ensure there are no late bound
+        // regions here. See the comment there for more details.
+        let source = self.infcx.shallow_resolve(
+            ty::no_late_bound_regions(tcx, &obligation.self_ty()).unwrap());
         let target = self.infcx.shallow_resolve(obligation.predicate.0.input_types()[0]);
 
         debug!("confirm_builtin_unsize_candidate(source={}, target={})",
