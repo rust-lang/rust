@@ -20,6 +20,7 @@ Imports (`use` statements) are not allowed after non-item statements, such as
 variable declarations and expression statements.
 
 Here is an example that demonstrates the error:
+
 ```
 fn f() {
     // Variable declaration before import
@@ -33,6 +34,7 @@ The solution is to declare the imports at the top of the block, function, or
 file.
 
 Here is the previous example again, with the correct order:
+
 ```
 fn f() {
     use std::io::Read;
@@ -52,6 +54,7 @@ The name chosen for an external crate conflicts with another external crate that
 has been imported into the current module.
 
 Wrong example:
+
 ```
 extern crate a;
 extern crate crate_a as a;
@@ -61,6 +64,7 @@ The solution is to choose a different name that doesn't conflict with any
 external crate imported into the current module.
 
 Correct example:
+
 ```
 extern crate a;
 extern crate crate_a as other_name;
@@ -71,6 +75,7 @@ E0260: r##"
 The name for an item declaration conflicts with an external crate's name.
 
 For instance,
+
 ```
 extern crate abc;
 
