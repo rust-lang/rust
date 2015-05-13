@@ -3510,13 +3510,21 @@ more of the closure traits:
 
 ### Trait objects
 
-Every trait item (see [traits](#traits)) defines a type with the same name as
-the trait. This type is called the _trait object_ of the trait. Trait objects
-permit "late binding" of methods, dispatched using _virtual method tables_
-("vtables"). Whereas most calls to trait methods are "early bound" (statically
-resolved) to specific implementations at compile time, a call to a method on an
-trait objects is only resolved to a vtable entry at compile time. The actual
-implementation for each vtable entry can vary on an object-by-object basis.
+In Rust, a type like `&SomeTrait` or `Box<SomeTrait>` is called a _trait object_.
+Each instance of a trait object includes:
+
+ - a pointer to an instance of a type `T` that implements `SomeTrait`
+ - a _virtual method table_, often just called a _vtable_, which contains, for
+   each method of `SomeTrait` that `T` implements, a pointer to `T`'s
+   implementation (i.e. a function pointer).
+
+The purpose of trait objects is to permit "late binding" of methods. A call to
+a method on a trait object is only resolved to a vtable entry at compile time.
+The actual implementation for each vtable entry can vary on an object-by-object
+basis.
+
+Note that for a trait object to be instantiated, the trait must be
+_object-safe_. Object safety rules are defined in [RFC 255][rfc255].
 
 Given a pointer-typed expression `E` of type `&T` or `Box<T>`, where `T`
 implements trait `R`, casting `E` to the corresponding pointer type `&R` or
