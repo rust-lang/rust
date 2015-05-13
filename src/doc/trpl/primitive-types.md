@@ -15,7 +15,7 @@ let x = true;
 let y: bool = false;
 ```
 
-A common use of booleans is in [`if` statements][if].
+A common use of booleans is in [`if` conditionals][if].
 
 [if]: if.html
 
@@ -62,14 +62,14 @@ let y = 1.0; // y has type f64
 Here’s a list of the different numeric types, with links to their documentation
 in the standard library:
 
+* [i8](../std/primitive.i8.html)
 * [i16](../std/primitive.i16.html)
 * [i32](../std/primitive.i32.html)
 * [i64](../std/primitive.i64.html)
-* [i8](../std/primitive.i8.html)
+* [u8](../std/primitive.u8.html)
 * [u16](../std/primitive.u16.html)
 * [u32](../std/primitive.u32.html)
 * [u64](../std/primitive.u64.html)
-* [u8](../std/primitive.u8.html)
 * [isize](../std/primitive.isize.html)
 * [usize](../std/primitive.usize.html)
 * [f32](../std/primitive.f32.html)
@@ -82,12 +82,12 @@ Let’s go over them by category:
 Integer types come in two varieties: signed and unsigned. To understand the
 difference, let’s consider a number with four bits of size. A signed, four-bit
 number would let you store numbers from `-8` to `+7`. Signed numbers use
-‘two’s compliment representation’. An unsigned four bit number, since it does
+“two’s complement representation”. An unsigned four bit number, since it does
 not need to store negatives, can store values from `0` to `+15`.
 
 Unsigned types use a `u` for their category, and signed types use `i`. The `i`
 is for ‘integer’. So `u8` is an eight-bit unsigned number, and `i8` is an
-eight-bit signed number. 
+eight-bit signed number.
 
 ## Fixed size types
 
@@ -103,7 +103,7 @@ and unsigned varieties. This makes for two types: `isize` and `usize`.
 
 ## Floating-point types
 
-Rust also two floating point types: `f32` and `f64`. These correspond to 
+Rust also has two floating point types: `f32` and `f64`. These correspond to
 IEEE-754 single and double precision numbers.
 
 # Arrays
@@ -168,6 +168,7 @@ like arrays:
 ```rust
 let a = [0, 1, 2, 3, 4];
 let middle = &a[1..4]; // A slice of a: just the elements 1, 2, and 3
+let complete = &a[..]; // A slice containing all of the elements in a
 ```
 
 Slices have type `&[T]`. We’ll talk about that `T` when we cover
@@ -175,7 +176,7 @@ Slices have type `&[T]`. We’ll talk about that `T` when we cover
 
 [generics]: generics.html
 
-You can find more documentation for `slices`s [in the standard library
+You can find more documentation for slices [in the standard library
 documentation][slice].
 
 [slice]: ../std/primitive.slice.html
@@ -216,6 +217,18 @@ In systems programming languages, strings are a bit more complex than in other
 languages. For now, just read `&str` as a *string slice*, and we’ll learn more
 soon.
 
+You can assign one tuple into another, if they have the same contained types
+and [arity]. Tuples have the same arity when they have the same length.
+
+[arity]: glossary.html#arity
+
+```rust
+let mut x = (1, 2); // x: (i32, i32)
+let y = (2, 3); // y: (i32, i32)
+
+x = y;
+```
+
 You can access the fields in a tuple through a *destructuring let*. Here’s
 an example:
 
@@ -228,26 +241,38 @@ println!("x is {}", x);
 Remember [before][let] when I said the left-hand side of a `let` statement was more
 powerful than just assigning a binding? Here we are. We can put a pattern on
 the left-hand side of the `let`, and if it matches up to the right-hand side,
-we can assign multiple bindings at once. In this case, `let` "destructures,"
-or "breaks up," the tuple, and assigns the bits to three bindings.
+we can assign multiple bindings at once. In this case, `let` “destructures”
+or “breaks up” the tuple, and assigns the bits to three bindings.
 
 [let]: variable-bindings.html
 
 This pattern is very powerful, and we’ll see it repeated more later.
 
-There are also a few things you can do with a tuple as a whole, without
-destructuring. You can assign one tuple into another, if they have the same
-contained types and [arity]. Tuples have the same arity when they have the same
-length.
+You can disambiguate a single-element tuple from a value in parentheses with a
+comma:
 
-[arity]: glossary.html#arity
+```
+(0,); // single-element tuple
+(0); // zero in parentheses
+```
+
+## Tuple Indexing
+
+You can also access fields of a tuple with indexing syntax:
+
 
 ```rust
-let mut x = (1, 2); // x: (i32, i32)
-let y = (2, 3); // y: (i32, i32)
+let tuple = (1, 2, 3);
 
-x = y;
+let x = tuple.0;
+let y = tuple.1;
+let z = tuple.2;
+
+println!("x is {}", x);
 ```
+
+Like array indexing, it starts at zero, but unlike array indexing, it uses a
+`.`, rather than `[]`s.
 
 You can find more documentation for tuples [in the standard library
 documentation][tuple].

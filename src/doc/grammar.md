@@ -5,8 +5,7 @@
 This document is the primary reference for the Rust programming language grammar. It
 provides only one kind of material:
 
-  - Chapters that formally define the language grammar and, for each
-    construct.
+  - Chapters that formally define the language grammar.
 
 This document does not serve as an introduction to the language. Background
 familiarity with the language is assumed. A separate [guide] is available to
@@ -97,12 +96,16 @@ explicit codepoint lists. [^inputformat]
 ## Special Unicode Productions
 
 The following productions in the Rust grammar are defined in terms of Unicode
-properties: `ident`, `non_null`, `non_star`, `non_eol`, `non_slash_or_star`,
-`non_single_quote` and `non_double_quote`.
+properties: `ident`, `non_null`, `non_eol`, `non_single_quote` and
+`non_double_quote`.
 
 ### Identifiers
 
-The `ident` production is any nonempty Unicode string of the following form:
+The `ident` production is any nonempty Unicode[^non_ascii_idents] string of
+the following form:
+
+[^non_ascii_idents]: Non-ASCII characters in identifiers are currently feature
+  gated. This is expected to improve soon.
 
 - The first character has property `XID_start`
 - The remaining characters have property `XID_continue`
@@ -119,8 +122,6 @@ Some productions are defined by exclusion of particular Unicode characters:
 
 - `non_null` is any single Unicode character aside from `U+0000` (null)
 - `non_eol` is `non_null` restricted to exclude `U+000A` (`'\n'`)
-- `non_star` is `non_null` restricted to exclude `U+002A` (`*`)
-- `non_slash_or_star` is `non_null` restricted to exclude `U+002F` (`/`) and `U+002A` (`*`)
 - `non_single_quote` is `non_null` restricted to exclude `U+0027`  (`'`)
 - `non_double_quote` is `non_null` restricted to exclude `U+0022` (`"`)
 
@@ -153,19 +154,19 @@ token : simple_token | ident | literal | symbol | whitespace token ;
 
 <p id="keyword-table-marker"></p>
 
-|          |          |          |          |        |
-|----------|----------|----------|----------|--------|
-| abstract | alignof  | as       | become   | box    |
-| break    | const    | continue | crate    | do     |
-| else     | enum     | extern   | false    | final  |
-| fn       | for      | if       | impl     | in     |
-| let      | loop     | match    | mod      | move   |
-| mut      | offsetof | once     | override | priv   |
-| proc     | pub      | pure     | ref      | return |
-| sizeof   | static   | self     | struct   | super  |
-| true     | trait    | type     | typeof   | unsafe |
-| unsized  | use      | virtual  | where    | while  |
-| yield    |          |          |          |        |
+|          |          |          |          |         |
+|----------|----------|----------|----------|---------|
+| abstract | alignof  | as       | become   | box     |
+| break    | const    | continue | crate    | do      |
+| else     | enum     | extern   | false    | final   |
+| fn       | for      | if       | impl     | in      |
+| let      | loop     | macro    | match    | mod     |
+| move     | mut      | offsetof | override | priv    |
+| proc     | pub      | pure     | ref      | return  |
+| Self     | self     | sizeof   | static   | struct  |
+| super    | trait    | true     | type     | typeof  |
+| unsafe   | unsized  | use      | virtual  | where   |
+| while    | yield    |          |          |         |
 
 
 Each of these keywords has special meaning in its grammar, and all of them are
@@ -175,8 +176,14 @@ excluded from the `ident` rule.
 
 ```antlr
 lit_suffix : ident;
-literal : [ string_lit | char_lit | byte_string_lit | byte_lit | num_lit ] lit_suffix ?;
+literal : [ string_lit | char_lit | byte_string_lit | byte_lit | num_lit | bool_lit ] lit_suffix ?;
 ```
+
+The optional `lit_suffix` production is only used for certain numeric literals,
+but is reserved for future extension. That is, the above gives the lexical
+grammar, but a Rust parser will reject everything but the 12 special cases
+mentioned in [Number literals](reference.html#number-literals) in the
+reference.
 
 #### Character and string literals
 
@@ -237,14 +244,16 @@ dec_lit : [ dec_digit | '_' ] + ;
 
 #### Boolean literals
 
-**FIXME:** write grammar
+```antlr
+bool_lit : [ "true" | "false" ] ;
+```
 
 The two values of the boolean type are written `true` and `false`.
 
 ### Symbols
 
 ```antlr
-symbol : "::" "->"
+symbol : "::" | "->"
        | '#' | '[' | ']' | '(' | ')' | '{' | '}'
        | ',' | ';' ;
 ```
@@ -295,8 +304,8 @@ transcriber : '(' transcriber * ')' | '[' transcriber * ']'
 ## Items
 
 ```antlr
-item : mod_item | fn_item | type_item | struct_item | enum_item
-     | static_item | trait_item | impl_item | extern_block ;
+item : vis ? mod_item | fn_item | type_item | struct_item | enum_item
+     | const_item | static_item | trait_item | impl_item | extern_block ;
 ```
 
 ### Type Parameters
@@ -313,27 +322,27 @@ mod : [ view_item | item ] * ;
 #### View items
 
 ```antlr
-view_item : extern_crate_decl | use_decl ;
+view_item : extern_crate_decl | use_decl ';' ;
 ```
 
 ##### Extern crate declarations
 
 ```antlr
 extern_crate_decl : "extern" "crate" crate_name
-crate_name: ident | ( string_lit as ident )
+crate_name: ident | ( ident "as" ident )
 ```
 
 ##### Use declarations
 
 ```antlr
-use_decl : "pub" ? "use" [ path "as" ident
-                          | path_glob ] ;
+use_decl : vis ? "use" [ path "as" ident
+                        | path_glob ] ;
 
 path_glob : ident [ "::" [ path_glob
                           | '*' ] ] ?
           | '{' path_item [ ',' path_item ] * '}' ;
 
-path_item : ident | "mod" ;
+path_item : ident | "self" ;
 ```
 
 ### Functions
@@ -365,6 +374,10 @@ path_item : ident | "mod" ;
 **FIXME:** grammar?
 
 ### Structures
+
+**FIXME:** grammar?
+
+### Enumerations
 
 **FIXME:** grammar?
 
@@ -401,16 +414,17 @@ extern_block : [ foreign_fn ] * ;
 
 ## Visibility and Privacy
 
-**FIXME:** grammar?
-
+```antlr
+vis : "pub" ;
+```
 ### Re-exporting and Visibility
 
-**FIXME:** grammar?
+See [Use declarations](#use-declarations).
 
 ## Attributes
 
 ```antlr
-attribute : "#!" ? '[' meta_item ']' ;
+attribute : '#' '!' ? '[' meta_item ']' ;
 meta_item : ident [ '=' literal
                   | '(' meta_seq ')' ] ? ;
 meta_seq : meta_item [ ',' meta_seq ] ? ;
@@ -420,28 +434,21 @@ meta_seq : meta_item [ ',' meta_seq ] ? ;
 
 ## Statements
 
-**FIXME:** grammar?
+```antlr
+stmt : decl_stmt | expr_stmt ;
+```
 
 ### Declaration statements
 
-**FIXME:** grammar?
-
-A _declaration statement_ is one that introduces one or more *names* into the
-enclosing statement block. The declared names may denote new slots or new
-items.
+```antlr
+decl_stmt : item | let_decl ;
+```
 
 #### Item declarations
 
-**FIXME:** grammar?
+See [Items](#items).
 
-An _item declaration statement_ has a syntactic form identical to an
-[item](#items) declaration within a module. Declaring an item &mdash; a
-function, enumeration, structure, type, static, trait, implementation or module
-&mdash; locally within a statement block is simply a way of restricting its
-scope to a narrow region containing all of its uses; it is otherwise identical
-in meaning to declaring the item outside the statement block.
-
-#### Slot declarations
+#### Variable declarations
 
 ```antlr
 let_decl : "let" pat [':' type ] ? [ init ] ? ';' ;
@@ -450,11 +457,21 @@ init : [ '=' ] expr ;
 
 ### Expression statements
 
-**FIXME:** grammar?
+```antlr
+expr_stmt : expr ';' ;
+```
 
 ## Expressions
 
-**FIXME:** grammar?
+```antlr
+expr : literal | path | tuple_expr | unit_expr | struct_expr
+     | block_expr | method_call_expr | field_expr | array_expr
+     | idx_expr | range_expr | unop_expr | binop_expr
+     | paren_expr | call_expr | lambda_expr | while_expr
+     | loop_expr | break_expr | continue_expr | for_expr
+     | if_expr | match_expr | if_let_expr | while_let_expr
+     | return_expr ;
+```
 
 #### Lvalues, rvalues and temporaries
 
@@ -466,19 +483,23 @@ init : [ '=' ] expr ;
 
 ### Literal expressions
 
-**FIXME:** grammar?
+See [Literals](#literals).
 
 ### Path expressions
 
-**FIXME:** grammar?
+See [Paths](#paths).
 
 ### Tuple expressions
 
-**FIXME:** grammar?
+```antlr
+tuple_expr : '(' [ expr [ ',' expr ] * | expr ',' ] ? ')' ;
+```
 
 ### Unit expressions
 
-**FIXME:** grammar?
+```antlr
+unit_expr : "()" ;
+```
 
 ### Structure expressions
 
@@ -494,8 +515,7 @@ struct_expr : expr_path '{' ident ':' expr
 ### Block expressions
 
 ```antlr
-block_expr : '{' [ view_item ] *
-                 [ stmt ';' | item ] *
+block_expr : '{' [ stmt ';' | item ] *
                  [ expr ] '}' ;
 ```
 
@@ -516,7 +536,7 @@ field_expr : expr '.' ident ;
 ```antlr
 array_expr : '[' "mut" ? array_elems? ']' ;
 
-array_elems : [expr [',' expr]*] | [expr ',' ".." expr] ;
+array_elems : [expr [',' expr]*] | [expr ';' expr] ;
 ```
 
 ### Index expressions
@@ -525,67 +545,71 @@ array_elems : [expr [',' expr]*] | [expr ',' ".." expr] ;
 idx_expr : expr '[' expr ']' ;
 ```
 
+### Range expressions
+
+```antlr
+range_expr : expr ".." expr |
+             expr ".." |
+             ".." expr |
+             ".." ;
+```
+
 ### Unary operator expressions
 
-**FIXME:** grammar?
+```antlr
+unop_expr : unop expr ;
+unop : '-' | '*' | '!' ;
+```
 
 ### Binary operator expressions
 
 ```antlr
-binop_expr : expr binop expr ;
+binop_expr : expr binop expr | type_cast_expr
+           | assignment_expr | compound_assignment_expr ;
+binop : arith_op | bitwise_op | lazy_bool_op | comp_op
 ```
 
 #### Arithmetic operators
 
-**FIXME:** grammar?
+```antlr
+arith_op : '+' | '-' | '*' | '/' | '%' ;
+```
 
 #### Bitwise operators
 
-**FIXME:** grammar?
+```antlr
+bitwise_op : '&' | '|' | '^' | "<<" | ">>" ;
+```
 
 #### Lazy boolean operators
 
-**FIXME:** grammar?
+```antlr
+lazy_bool_op : "&&" | "||" ;
+```
 
 #### Comparison operators
 
-**FIXME:** grammar?
+```antlr
+comp_op : "==" | "!=" | '<' | '>' | "<=" | ">=" ;
+```
 
 #### Type cast expressions
 
-**FIXME:** grammar?
+```antlr
+type_cast_expr : value "as" type ;
+```
 
 #### Assignment expressions
 
-**FIXME:** grammar?
+```antlr
+assignment_expr : expr '=' expr ;
+```
 
 #### Compound assignment expressions
 
-**FIXME:** grammar?
-
-#### Operator precedence
-
-The precedence of Rust binary operators is ordered as follows, going from
-strong to weak:
-
-```text
-* / %
-as
-+ -
-<< >>
-&
-^
-|
-< > <= >=
-== !=
-&&
-||
-=
+```antlr
+compound_assignment_expr : expr [ arith_op | bitwise_op ] '=' expr ;
 ```
-
-Operators at the same precedence level are evaluated left-to-right. [Unary
-operators](#unary-operator-expressions) have the same precedence level and it
-is stronger than any of the binary operators'.
 
 ### Grouped expressions
 
@@ -611,7 +635,7 @@ lambda_expr : '|' ident_list '|' expr ;
 ### While loops
 
 ```antlr
-while_expr : "while" no_struct_literal_expr '{' block '}' ;
+while_expr : [ lifetime ':' ] "while" no_struct_literal_expr '{' block '}' ;
 ```
 
 ### Infinite loops
@@ -635,7 +659,7 @@ continue_expr : "continue" [ lifetime ];
 ### For expressions
 
 ```antlr
-for_expr : "for" pat "in" no_struct_literal_expr '{' block '}' ;
+for_expr : [ lifetime ':' ] "for" pat "in" no_struct_literal_expr '{' block '}' ;
 ```
 
 ### If expressions
@@ -763,7 +787,7 @@ bound := path | lifetime
 
 ### Memory ownership
 
-### Memory slots
+### Variables
 
 ### Boxes
 

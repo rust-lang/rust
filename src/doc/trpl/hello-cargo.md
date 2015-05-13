@@ -5,7 +5,7 @@ projects. Cargo is currently in a pre-1.0 state, and so it is still a work in
 progress. However, it is already good enough to use for many Rust projects, and
 so it is assumed that Rust projects will use Cargo from the beginning.
 
-[cratesio]: https://doc.crates.io
+[cratesio]: http://doc.crates.io
 
 Cargo manages three things: building your code, downloading the dependencies
 your code needs, and building those dependencies. At first, your
@@ -31,6 +31,13 @@ do that part first:
 $ mkdir src
 $ mv main.rs src/main.rs
 ```
+
+Note that since we're creating an executable, we used `main.rs`. If we
+want to make a library instead, we should use `lib.rs`.
+Custom file locations for the entry point can be specified
+with a [`[[lib]]` or `[[bin]]`][crates-custom] key in the TOML file described below.
+
+[crates-custom]: http://doc.crates.io/manifest.html#configuring-a-target
 
 Cargo expects your source files to live inside a `src` directory. That leaves
 the top level for other things, like READMEs, license information, and anything
@@ -89,7 +96,7 @@ we hadn’t changed the source file, and so it just ran the binary. If we had
 made a modification, we would have seen it do both:
 
 ```bash
-$ cargo build
+$ cargo run
    Compiling hello_world v0.0.1 (file:///home/yourname/projects/hello_world)
      Running `target/debug/hello_world`
 Hello, world!

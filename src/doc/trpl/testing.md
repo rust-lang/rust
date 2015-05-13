@@ -219,10 +219,10 @@ fn it_works() {
 This is a very common use of `assert_eq!`: call some function with
 some known arguments and compare it to the expected output.
 
-# The `test` module
+# The `tests` module
 
 There is one way in which our existing example is not idiomatic: it's
-missing the test module. The idiomatic way of writing our example
+missing the `tests` module. The idiomatic way of writing our example
 looks like this:
 
 ```{rust,ignore}
@@ -231,7 +231,7 @@ pub fn add_two(a: i32) -> i32 {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::add_two;
 
     #[test]
@@ -241,7 +241,7 @@ mod test {
 }
 ```
 
-There's a few changes here. The first is the introduction of a `mod test` with
+There's a few changes here. The first is the introduction of a `mod tests` with
 a `cfg` attribute. The module allows us to group all of our tests together, and
 to also define helper functions if needed, that don't become a part of the rest
 of our crate. The `cfg` attribute only compiles our test code if we're
@@ -260,7 +260,7 @@ pub fn add_two(a: i32) -> i32 {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
 
     #[test]
@@ -279,7 +279,7 @@ $ cargo test
      Running target/adder-91b3e234d4ed382a
 
 running 1 test
-test test::it_works ... ok
+test tests::it_works ... ok
 
 test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured
 
@@ -292,7 +292,7 @@ test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured
 
 It works!
 
-The current convention is to use the `test` module to hold your "unit-style"
+The current convention is to use the `tests` module to hold your "unit-style"
 tests. Anything that just tests one small bit of functionality makes sense to
 go here. But what about "integration-style" tests instead? For that, we have
 the `tests` directory
@@ -325,7 +325,7 @@ $ cargo test
      Running target/adder-91b3e234d4ed382a
 
 running 1 test
-test test::it_works ... ok
+test tests::it_works ... ok
 
 test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured
 
@@ -346,7 +346,7 @@ test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured
 Now we have three sections: our previous test is also run, as well as our new
 one.
 
-That's all there is to the `tests` directory. The `test` module isn't needed
+That's all there is to the `tests` directory. The `tests` module isn't needed
 here, since the whole thing is focused on tests.
 
 Let's finally check out that third section: documentation tests.
@@ -382,7 +382,7 @@ pub fn add_two(a: i32) -> i32 {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
 
     #[test]
@@ -405,7 +405,7 @@ $ cargo test
      Running target/adder-91b3e234d4ed382a
 
 running 1 test
-test test::it_works ... ok
+test tests::it_works ... ok
 
 test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured
 

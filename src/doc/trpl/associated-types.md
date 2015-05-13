@@ -1,8 +1,8 @@
 % Associated Types
 
-Associated types are a powerful part of Rust's type system. They're related to
-the idea of a 'type family', in other words, grouping multiple types together. That
-description is a bit abstract, so let's dive right into an example. If you want
+Associated types are a powerful part of Rust’s type system. They’re related to
+the idea of a ‘type family’, in other words, grouping multiple types together. That
+description is a bit abstract, so let’s dive right into an example. If you want
 to write a `Graph` trait, you have two types to be generic over: the node type
 and the edge type. So you might write a trait, `Graph<N, E>`, that looks like
 this:
@@ -48,11 +48,11 @@ fn distance<G: Graph>(graph: &G, start: &G::N, end: &G::N) -> uint { ... }
 
 No need to deal with the `E`dge type here!
 
-Let's go over all this in more detail.
+Let’s go over all this in more detail.
 
 ## Defining associated types
 
-Let's build that `Graph` trait. Here's the definition:
+Let’s build that `Graph` trait. Here’s the definition:
 
 ```rust
 trait Graph {
@@ -86,7 +86,7 @@ trait Graph {
 ## Implementing associated types
 
 Just like any trait, traits that use associated types use the `impl` keyword to
-provide implementations. Here's a simple implementation of Graph:
+provide implementations. Here’s a simple implementation of Graph:
 
 ```rust
 # trait Graph {
@@ -118,13 +118,13 @@ impl Graph for MyGraph {
 This silly implementation always returns `true` and an empty `Vec<Edge>`, but it
 gives you an idea of how to implement this kind of thing. We first need three
 `struct`s, one for the graph, one for the node, and one for the edge. If it made
-more sense to use a different type, that would work as well, we're just going to
+more sense to use a different type, that would work as well, we’re just going to
 use `struct`s for all three here.
 
 Next is the `impl` line, which is just like implementing any other trait.
 
 From here, we use `=` to define our associated types. The name the trait uses
-goes on the left of the `=`, and the concrete type we're `impl`ementing this
+goes on the left of the `=`, and the concrete type we’re `impl`ementing this
 for goes on the right. Finally, we use the concrete types in our function
 declarations.
 

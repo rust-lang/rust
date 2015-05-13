@@ -20,18 +20,18 @@ panic. A *failure* is an error that can be recovered from in some way. A
 *panic* is an error that cannot be recovered from.
 
 What do we mean by "recover"? Well, in most cases, the possibility of an error
-is expected. For example, consider the `from_str` function:
+is expected. For example, consider the `parse` function:
 
-```{rust,ignore}
-from_str("5");
+```ignore
+"5".parse();
 ```
 
-This function takes a string argument and converts it into another type. But
-because it's a string, you can't be sure that the conversion actually works.
-For example, what should this convert to?
+This method converts a string into another type. But because it's a string, you
+can't be sure that the conversion actually works. For example, what should this
+convert to?
 
-```{rust,ignore}
-from_str("hello5world");
+```ignore
+"hello5world".parse();
 ```
 
 This won't work. So we know that this function will only work properly for some
@@ -40,7 +40,8 @@ inputs. It's expected behavior. We call this kind of error a *failure*.
 On the other hand, sometimes, there are errors that are unexpected, or which
 we cannot recover from. A classic example is an `assert!`:
 
-```{rust,ignore}
+```rust
+# let x = 5;
 assert!(x == 5);
 ```
 
@@ -119,17 +120,19 @@ Rust calls these sorts of errors *panics*.
 # Handling errors with `Option` and `Result`
 
 The simplest way to indicate that a function may fail is to use the `Option<T>`
-type. Remember our `from_str()` example? Here's its type signature:
+type. For example, the `find` method on strings attempts to find a pattern
+in a string, and returns an `Option`:
 
-```{rust,ignore}
-pub fn from_str<A: FromStr>(s: &str) -> Option<A>
+```rust
+let s = "foo";
+
+assert_eq!(s.find('f'), Some(0));
+assert_eq!(s.find('z'), None);
 ```
 
-`from_str()` returns an `Option<A>`. If the conversion succeeds, it will return
-`Some(value)`, and if it fails, it will return `None`.
 
 This is appropriate for the simplest of cases, but doesn't give us a lot of
-information in the failure case. What if we wanted to know _why_ the conversion
+information in the failure case. What if we wanted to know _why_ the function
 failed? For this, we can use the `Result<T, E>` type. It looks like this:
 
 ```rust
@@ -201,7 +204,7 @@ Because these kinds of situations are relatively rare, use panics sparingly.
 
 In certain circumstances, even though a function may fail, we may want to treat
 it as a panic instead. For example, `io::stdin().read_line(&mut buffer)` returns
-an `Result<usize>`, when there is an error reading the line. This allows us to
+a `Result<usize>`, when there is an error reading the line. This allows us to
 handle and possibly recover from error.
 
 If we don't want to handle this error, and would rather just abort the program,
@@ -211,7 +214,7 @@ we can use the `unwrap()` method:
 io::stdin().read_line(&mut buffer).unwrap();
 ```
 
-`unwrap()` will `panic!` if the `Option` is `None`. This basically says "Give
+`unwrap()` will `panic!` if the `Result` is `Err`. This basically says "Give
 me the value, and if something goes wrong, just crash." This is less reliable
 than matching the error and attempting to recover, but is also significantly
 shorter. Sometimes, just crashing is appropriate.
@@ -249,7 +252,7 @@ struct Info {
 }
 
 fn write_info(info: &Info) -> io::Result<()> {
-    let mut file = File::open("my_best_friends.txt").unwrap();
+    let mut file = File::create("my_best_friends.txt").unwrap();
 
     if let Err(e) = writeln!(&mut file, "name: {}", info.name) {
         return Err(e)
@@ -279,7 +282,7 @@ struct Info {
 }
 
 fn write_info(info: &Info) -> io::Result<()> {
-    let mut file = try!(File::open("my_best_friends.txt"));
+    let mut file = try!(File::create("my_best_friends.txt"));
 
     try!(writeln!(&mut file, "name: {}", info.name));
     try!(writeln!(&mut file, "age: {}", info.age));
@@ -297,5 +300,5 @@ It's worth noting that you can only use `try!` from a function that returns a
 `Result`, which means that you cannot use `try!` inside of `main()`, because
 `main()` doesn't return anything.
 
-`try!` makes use of [`From<Error>`](../std/convert/trait.From.hml) to determine
+`try!` makes use of [`From<Error>`](../std/convert/trait.From.html) to determine
 what to return in the error case.
