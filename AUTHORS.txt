@@ -736,6 +736,7 @@ Rob Hoelz <rob@hoelz.ro>
 Robert Buonpastore <robert.buonpastore@gmail.com>
 Robert Clipsham <robert@octarineparrot.com>
 Robert Gawdzik <rgawdzik@hotmail.com>
+Robert Foss <dev@robertfoss.se>
 Robert Irelan <rirelan@gmail.com>
 Robert Knight <robertknight@gmail.com>
 Robert Millar <robert.millar@cantab.net>
