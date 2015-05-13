@@ -338,9 +338,8 @@ impl<'tcx> CastCheck<'tcx> {
                 // To allow unsafe pointers to work correctly, we
                 // need to special-case obtaining an unsafe pointer
                 // from a region pointer to a vector.
-                // TODO: explain comment.
 
-                 // this will report a type mismatch if needed
+                // this will report a type mismatch if needed
                 demand::eqtype(fcx, self.span, ety, m_1.ty);
                 return Ok(CastKind::ArrayPtrCast);
             }
