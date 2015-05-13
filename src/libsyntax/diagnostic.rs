@@ -122,6 +122,12 @@ pub struct SpanHandler {
 }
 
 impl SpanHandler {
+    pub fn new(handler: Handler, cm: codemap::CodeMap) -> SpanHandler {
+        SpanHandler {
+            handler: handler,
+            cm: cm,
+        }
+    }
     pub fn span_fatal(&self, sp: Span, msg: &str) -> FatalError {
         self.handler.emit(Some((&self.cm, sp)), msg, Fatal);
         return FatalError;
@@ -187,6 +193,19 @@ pub struct Handler {
 }
 
 impl Handler {
+    pub fn new(color_config: ColorConfig,
+               registry: Option<diagnostics::registry::Registry>,
+               can_emit_warnings: bool) -> Handler {
+        let emitter = Box::new(EmitterWriter::stderr(color_config, registry));
+        Handler::with_emitter(can_emit_warnings, emitter)
+    }
+    pub fn with_emitter(can_emit_warnings: bool, e: Box<Emitter + Send>) -> Handler {
+        Handler {
+            err_count: Cell::new(0),
+            emit: RefCell::new(e),
+            can_emit_warnings: can_emit_warnings
+        }
+    }
     pub fn fatal(&self, msg: &str) -> ! {
         self.emit.borrow_mut().emit(None, msg, None, Fatal);
         panic!(FatalError);
@@ -251,27 +270,6 @@ impl Handler {
                        sp: RenderSpan, msg: &str, lvl: Level) {
         if lvl == Warning && !self.can_emit_warnings { return }
         self.emit.borrow_mut().custom_emit(cm, sp, msg, lvl);
-    }
-}
-
-pub fn mk_span_handler(handler: Handler, cm: codemap::CodeMap) -> SpanHandler {
-    SpanHandler {
-        handler: handler,
-        cm: cm,
-    }
-}
-
-pub fn default_handler(color_config: ColorConfig,
-                       registry: Option<diagnostics::registry::Registry>,
-                       can_emit_warnings: bool) -> Handler {
-    mk_handler(can_emit_warnings, Box::new(EmitterWriter::stderr(color_config, registry)))
-}
-
-pub fn mk_handler(can_emit_warnings: bool, e: Box<Emitter + Send>) -> Handler {
-    Handler {
-        err_count: Cell::new(0),
-        emit: RefCell::new(e),
-        can_emit_warnings: can_emit_warnings
     }
 }
 

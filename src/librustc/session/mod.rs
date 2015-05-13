@@ -368,9 +368,9 @@ pub fn build_session(sopts: config::Options,
 
     let codemap = codemap::CodeMap::new();
     let diagnostic_handler =
-        diagnostic::default_handler(sopts.color, Some(registry), can_print_warnings);
+        diagnostic::Handler::new(sopts.color, Some(registry), can_print_warnings);
     let span_diagnostic_handler =
-        diagnostic::mk_span_handler(diagnostic_handler, codemap);
+        diagnostic::SpanHandler::new(diagnostic_handler, codemap);
 
     build_session_(sopts, local_crate_source_file, span_diagnostic_handler)
 }
@@ -387,7 +387,7 @@ pub fn build_session_(sopts: config::Options,
     }
     };
     let target_cfg = config::build_target_config(&sopts, &span_diagnostic);
-    let p_s = parse::new_parse_sess_special_handler(span_diagnostic);
+    let p_s = parse::ParseSess::with_span_handler(span_diagnostic);
     let default_sysroot = match sopts.maybe_sysroot {
         Some(_) => None,
         None => Some(filesearch::get_or_default_sysroot())

@@ -12,7 +12,7 @@
 
 use ast;
 use codemap::{Span, CodeMap, FileMap};
-use diagnostic::{SpanHandler, mk_span_handler, default_handler, Auto, FatalError};
+use diagnostic::{SpanHandler, Handler, Auto, FatalError};
 use parse::attr::ParserAttr;
 use parse::parser::Parser;
 use ptr::P;
@@ -46,17 +46,17 @@ pub struct ParseSess {
     included_mod_stack: RefCell<Vec<PathBuf>>,
 }
 
-pub fn new_parse_sess() -> ParseSess {
-    ParseSess {
-        span_diagnostic: mk_span_handler(default_handler(Auto, None, true), CodeMap::new()),
-        included_mod_stack: RefCell::new(Vec::new()),
+impl ParseSess {
+    pub fn new() -> ParseSess {
+        let handler = SpanHandler::new(Handler::new(Auto, None, true), CodeMap::new());
+        ParseSess::with_span_handler(handler)
     }
-}
 
-pub fn new_parse_sess_special_handler(sh: SpanHandler) -> ParseSess {
-    ParseSess {
-        span_diagnostic: sh,
-        included_mod_stack: RefCell::new(Vec::new()),
+    pub fn with_span_handler(sh: SpanHandler) -> ParseSess {
+        ParseSess {
+            span_diagnostic: sh,
+            included_mod_stack: RefCell::new(vec![])
+        }
     }
 }
 
@@ -886,7 +886,7 @@ mod tests {
     }
 
     #[test] fn parse_ident_pat () {
-        let sess = new_parse_sess();
+        let sess = ParseSess::new();
         let mut parser = string_to_parser(&sess, "b".to_string());
         assert!(panictry!(parser.parse_pat_nopanic())
                 == P(ast::Pat{
@@ -1067,7 +1067,7 @@ mod tests {
     }
 
     #[test] fn crlf_doc_comments() {
-        let sess = new_parse_sess();
+        let sess = ParseSess::new();
 
         let name = "<source>".to_string();
         let source = "/// doc comment\r\nfn foo() {}".to_string();
@@ -1090,7 +1090,7 @@ mod tests {
 
     #[test]
     fn ttdelim_span() {
-        let sess = parse::new_parse_sess();
+        let sess = ParseSess::new();
         let expr = parse::parse_expr_from_source_str("foo".to_string(),
             "foo!( fn main() { body } )".to_string(), vec![], &sess);
 

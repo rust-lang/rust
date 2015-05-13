@@ -65,9 +65,9 @@ pub fn run(input: &str,
     };
 
     let codemap = CodeMap::new();
-    let diagnostic_handler = diagnostic::default_handler(diagnostic::Auto, None, true);
+    let diagnostic_handler = diagnostic::Handler::new(diagnostic::Auto, None, true);
     let span_diagnostic_handler =
-    diagnostic::mk_span_handler(diagnostic_handler, codemap);
+    diagnostic::SpanHandler::new(diagnostic_handler, codemap);
 
     let sess = session::build_session_(sessopts,
                                       Some(input_path.clone()),
@@ -184,7 +184,7 @@ fn runtest(test: &str, cratename: &str, libs: SearchPaths,
     // it with a sink that is also passed to rustc itself. When this function
     // returns the output of the sink is copied onto the output of our own thread.
     //
-    // The basic idea is to not use a default_handler() for rustc, and then also
+    // The basic idea is to not use a default Handler for rustc, and then also
     // not print things by default to the actual stderr.
     struct Sink(Arc<Mutex<Vec<u8>>>);
     impl Write for Sink {
@@ -206,9 +206,9 @@ fn runtest(test: &str, cratename: &str, libs: SearchPaths,
 
     // Compile the code
     let codemap = CodeMap::new();
-    let diagnostic_handler = diagnostic::mk_handler(true, box emitter);
+    let diagnostic_handler = diagnostic::Handler::with_emitter(true, box emitter);
     let span_diagnostic_handler =
-        diagnostic::mk_span_handler(diagnostic_handler, codemap);
+        diagnostic::SpanHandler::new(diagnostic_handler, codemap);
 
     let sess = session::build_session_(sessopts,
                                        None,
