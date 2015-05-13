@@ -137,7 +137,7 @@ impl<'a> Registry<'a> {
     }
 
 
-    /// Register an attribute with an attribute type
+    /// Register an attribute with an attribute type.
     ///
     /// Registered attributes will bypass the `custom_attribute` feature gate.
     /// `Whitelisted` attributes will additionally not trigger the `unused_attribute`
