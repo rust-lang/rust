@@ -406,7 +406,7 @@ impl<'a> StringReader<'a> {
 
                     // line comments starting with "///" or "//!" are doc-comments
                     let doc_comment = self.curr_is('/') || self.curr_is('!');
-                    let start_bpos = self.pos - BytePos(3);
+                    let start_bpos = self.last_pos - BytePos(2);
 
                     while !self.is_eof() {
                         match self.curr.unwrap() {
@@ -415,9 +415,9 @@ impl<'a> StringReader<'a> {
                                 if self.nextch_is('\n') {
                                     // CRLF
                                     break
-                                } else {
+                                } else if doc_comment {
                                     self.err_span_(self.last_pos, self.pos,
-                                                   "bare CR not allowed in comment");
+                                                   "bare CR not allowed in doc-comment");
                                 }
                             }
                             _ => ()
