@@ -12,33 +12,36 @@
 //!
 //! The Rust Standard Library provides the essential runtime
 //! functionality for building portable Rust software.
-//! It is linked to all Rust crates by default.
 //!
-//! ## Intrinsic types and operations
+//! The rust standard library is available to all rust crates by
+//! default, just as if contained an `extern crate std` import at the
+//! crate root. Therefore the standard library can be accessed in
+//! `use` statements through the path `std`, as in `use std::thread`,
+//! or in expressions through the absolute path `::std`, as in
+//! `::std::thread::sleep_ms(100)`.
 //!
-//! The [`ptr`](ptr/index.html) and [`mem`](mem/index.html)
-//! modules deal with unsafe pointers and memory manipulation.
-//! [`marker`](marker/index.html) defines the special built-in traits,
-//! and [`raw`](raw/index.html) the runtime representation of Rust types.
-//! These are some of the lowest-level building blocks in Rust.
+//! Furthermore, the standard library defines [The Rust
+//! Prelude](prelude/index.html), a small collection of items, mostly
+//! traits, that are imported into and available in every module.
 //!
-//! ## Math on primitive types and math traits
+//! ## What is in the standard library
 //!
-//! Although basic operations on primitive types are implemented
-//! directly by the compiler, the standard library additionally
-//! defines many common operations through traits defined in
-//! mod [`num`](num/index.html).
+//! The standard library is minimal, a set of battle-tested
+//! core types and shared abstractions for the [broader Rust
+//! ecosystem][https://crates.io] to build on.
 //!
-//! ## Pervasive types
+//! The [primitive types](#primitives), though not defined in the
+//! standard library, are documented here, as are the predefined
+//! [macros](#macros).
 //!
-//! The [`option`](option/index.html) and [`result`](result/index.html)
-//! modules define optional and error-handling types, `Option` and `Result`.
-//! [`iter`](iter/index.html) defines Rust's iterator protocol
-//! along with a wide variety of iterators.
-//! [`Cell` and `RefCell`](cell/index.html) are for creating types that
-//! manage their own mutability.
+//! ## Containers and collections
 //!
-//! ## Vectors, slices and strings
+//! The [`option`](option/index.html) and
+//! [`result`](result/index.html) modules define optional and
+//! error-handling types, `Option` and `Result`. The
+//! [`iter`](iter/index.html) module defines Rust's iterator trait,
+//! [`Iterater`](iter/trait.Iterator.html), which works with the `for`
+//! loop to access collections.
 //!
 //! The common container type, `Vec`, a growable vector backed by an array,
 //! lives in the [`vec`](vec/index.html) module. Contiguous, unsized regions
@@ -56,42 +59,36 @@
 //! macro, and for converting from strings use the
 //! [`FromStr`](str/trait.FromStr.html) trait.
 //!
-//! ## Platform abstractions
+//! Data may be shared by placing it in a reference-counted box or the
+//! [`Rc`][rc/index.html] type, and if further contained in a [`Cell`
+//! or `RefCell`](cell/index.html), may be mutated as well as shared.
+//! Likewise, in a concurrent setting it is common to pair an
+//! atomically-reference-counted box, [`Arc`](sync/struct.Arc.html),
+//! with a [`Mutex`](sync/struct.Mutex.html) to get the same effect.
+//!
+//! The [`collections`](collections/index.html) module defines maps,
+//! sets, linked lists and other typical collection types, including
+//! the common [`HashMap`](collections/struct.HashMap.html).
+//!
+//! ## Platform abstractions and I/O
 //!
 //! Besides basic data types, the standard library is largely concerned
 //! with abstracting over differences in common platforms, most notably
-//! Windows and Unix derivatives. The [`os`](os/index.html) module
-//! provides a number of basic functions for interacting with the
-//! operating environment, including program arguments, environment
-//! variables, and directory navigation. The [`path`](path/index.html)
-//! module encapsulates the platform-specific rules for dealing
-//! with file paths.
+//! Windows and Unix derivatives.
 //!
-//! `std` also includes the [`ffi`](ffi/index.html) module for interoperating
-//! with the C language.
+//! Common types of I/O, including [files](fs/struct.File.html),
+//! [TCP](net/struct.TcpStream.html),
+//! [UDP](net/struct.UdpSocket.html), are defined in the
+//! [`io`](io/index.html), [`fs`](fs/index.html), and
+//! [`net`](net/index.html) modules.
 //!
-//! ## Concurrency, I/O, and the runtime
-//!
-//! The [`thread`](thread/index.html) module contains Rust's threading abstractions.
-//! [`sync`](sync/index.html) contains further, primitive, shared memory types,
-//! including [`atomic`](sync/atomic/index.html), and [`mpsc`](sync/mpsc/index.html),
-//! which contains the channel types for message passing.
-//!
-//! Common types of I/O, including files, TCP, UDP, pipes, Unix domain sockets, and
-//! process spawning, are defined in the [`io`](io/index.html) module.
-//!
-//! Rust's I/O and concurrency depends on a small runtime interface
-//! that lives, along with its support code, in mod [`rt`](rt/index.html).
-//! While a notable part of the standard library's architecture, this
-//! module is not intended for public use.
-//!
-//! ## The Rust prelude and macros
-//!
-//! Finally, the [`prelude`](prelude/index.html) defines a
-//! common set of traits, types, and functions that are made available
-//! to all code by default. [`macros`](macros/index.html) contains
-//! all the standard macros, such as `assert!`, `panic!`, `println!`,
-//! and `format!`, also available to all Rust code.
+//! The [`thread`](thread/index.html) module contains Rust's threading
+//! abstractions. [`sync`](sync/index.html) contains further
+//! primitive shared memory types, including
+//! [`atomic`](sync/atomic/index.html) and
+//! [`mpsc`](sync/mpsc/index.html), which contains the channel types
+//! for message passing.
+
 // Do not remove on snapshot creation. Needed for bootstrap. (Issue #22364)
 #![cfg_attr(stage0, feature(custom_attribute))]
 #![crate_name = "std"]

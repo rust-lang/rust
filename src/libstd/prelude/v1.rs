@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! The first version of the prelude of the standard library.
+//! The first version of the prelude of The Rust Standard Library.
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
