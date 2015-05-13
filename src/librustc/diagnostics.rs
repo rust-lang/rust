@@ -427,8 +427,8 @@ be taken.
 
 E0271: r##"
 This is because of a type mismatch between the associated type of some
-trait (e.g. T::Bar, where T implements trait Quux { type Bar; })
-and another type U that is required to be equal to T::Bar, but is not.
+trait (e.g. `T::Bar`, where `T` implements `trait Quux { type Bar; }`)
+and another type `U` that is required to be equal to `T::Bar`, but is not.
 Examples follow.
 
 Here is a basic example:
