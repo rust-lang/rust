@@ -309,7 +309,6 @@ register_diagnostics! {
     E0034, // multiple applicable methods in scope
     E0035, // does not take type parameters
     E0036, // incorrect number of type parameters given for this method
-    E0038, // cannot convert to a trait object because trait is not object-safe
     E0040, // explicit use of destructor method
     E0044, // foreign items may not have type parameters
     E0045, // variadic function must have C calling convention

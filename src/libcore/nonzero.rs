@@ -12,7 +12,7 @@
 
 use marker::Sized;
 use ops::Deref;
-#[cfg(not(stage0))] // SNAP c64d671
+#[cfg(not(stage0))]
 use ops::CoerceUnsized;
 
 /// Unsafe trait to indicate what types are usable with the NonZero struct
@@ -57,5 +57,5 @@ impl<T: Zeroable> Deref for NonZero<T> {
     }
 }
 
-#[cfg(not(stage0))] // SNAP c64d671
+#[cfg(not(stage0))]
 impl<T: Zeroable+CoerceUnsized<U>, U: Zeroable> CoerceUnsized<NonZero<U>> for NonZero<T> {}

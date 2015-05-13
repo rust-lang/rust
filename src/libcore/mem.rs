@@ -95,7 +95,7 @@ pub fn size_of<T>() -> usize {
 ///
 /// assert_eq!(4, mem::size_of_val(&5i32));
 /// ```
-#[cfg(not(stage0))] // SNAP c64d671
+#[cfg(not(stage0))]
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn size_of_val<T: ?Sized>(val: &T) -> usize {
@@ -111,7 +111,7 @@ pub fn size_of_val<T: ?Sized>(val: &T) -> usize {
 ///
 /// assert_eq!(4, mem::size_of_val(&5i32));
 /// ```
-#[cfg(stage0)] // SNAP c64d671
+#[cfg(stage0)]
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn size_of_val<T>(_val: &T) -> usize {
@@ -144,7 +144,7 @@ pub fn min_align_of<T>() -> usize {
 ///
 /// assert_eq!(4, mem::min_align_of_val(&5i32));
 /// ```
-#[cfg(not(stage0))] // SNAP c64d671
+#[cfg(not(stage0))]
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn min_align_of_val<T: ?Sized>(val: &T) -> usize {
@@ -160,7 +160,7 @@ pub fn min_align_of_val<T: ?Sized>(val: &T) -> usize {
 ///
 /// assert_eq!(4, mem::min_align_of_val(&5i32));
 /// ```
-#[cfg(stage0)] // SNAP c64d671
+#[cfg(stage0)]
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn min_align_of_val<T>(_val: &T) -> usize {

@@ -228,7 +228,7 @@ impl<T> !marker::Sync for Rc<T> {}
 #[cfg(not(stage0))]
 impl<T: ?Sized> !marker::Sync for Rc<T> {}
 
-#[cfg(not(stage0))] // SNAP c64d671
+#[cfg(not(stage0))]
 impl<T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<Rc<U>> for Rc<T> {}
 
 impl<T> Rc<T> {
@@ -459,7 +459,7 @@ impl<T: ?Sized> Deref for Rc<T> {
     }
 }
 
-#[cfg(stage0)] // SNAP c64d671
+#[cfg(stage0)]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Drop for Rc<T> {
     /// Drops the `Rc<T>`.
@@ -510,7 +510,7 @@ impl<T> Drop for Rc<T> {
     }
 }
 
-#[cfg(not(stage0))] // SNAP c64d671
+#[cfg(not(stage0))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Drop for Rc<T> {
     /// Drops the `Rc<T>`.
@@ -930,7 +930,7 @@ impl<T: ?Sized> Weak<T> {
     }
 }
 
-#[cfg(stage0)] // SNAP c64d671
+#[cfg(stage0)]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Drop for Weak<T> {
     /// Drops the `Weak<T>`.
@@ -975,7 +975,7 @@ impl<T> Drop for Weak<T> {
     }
 }
 
-#[cfg(not(stage0))] // SNAP c64d671
+#[cfg(not(stage0))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Drop for Weak<T> {
     /// Drops the `Weak<T>`.

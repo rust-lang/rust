@@ -62,9 +62,9 @@ use core::ops::{Deref, DerefMut};
 use core::ptr::{Unique};
 use core::raw::{TraitObject};
 
-#[cfg(not(stage0))] // SNAP c64d671
+#[cfg(not(stage0))]
 use core::marker::Unsize;
-#[cfg(not(stage0))] // SNAP c64d671
+#[cfg(not(stage0))]
 use core::ops::CoerceUnsized;
 
 /// A value that represents the heap. This is the default place that the `box`
@@ -396,5 +396,5 @@ impl<'a,A,R> FnOnce<A> for Box<FnBox<A,Output=R>+Send+'a> {
     }
 }
 
-#[cfg(not(stage0))] // SNAP c64d671
+#[cfg(not(stage0))]
 impl<T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<Box<U>> for Box<T> {}
