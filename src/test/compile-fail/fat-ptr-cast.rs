@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+trait Trait {}
+
 // Make sure casts between thin-pointer <-> fat pointer obey RFC401
 fn main() {
     let a: &[i32] = &[1, 2, 3];
@@ -17,7 +19,7 @@ fn main() {
 
     a as usize; //~ ERROR illegal cast
     b as usize; //~ ERROR non-scalar cast
-    p as usize; //~ ERROR illegal cast
+    p as usize; //~ ERROR illegal cast; cast through a raw pointer
 
     // #22955
     q as *const [i32]; //~ ERROR illegal cast

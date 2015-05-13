@@ -85,7 +85,9 @@ fn main()
     assert_eq!(w as usize, lsz);
 
     // ptr-ptr-cast (fat->thin)
-    let u: *const [u8] = unsafe{&*p};    assert_eq!(u as *const u8, p as *const u8);
+    let u: *const [u8] = unsafe{&*p};
+    assert_eq!(u as *const u8, p as *const u8);
+    assert_eq!(u as *const u16, p as *const u16);
 
     // ptr-ptr-cast (both vk=Length)
     let mut l : [u8; 2] = [0,1];

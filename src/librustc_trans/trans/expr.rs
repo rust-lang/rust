@@ -2048,9 +2048,8 @@ fn trans_imm_cast<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         } else { llsrc };
     }
 
-    let _icx = push_ctxt("trans_cast");
-    let mut bcx = bcx;
-    let ccx = bcx.ccx();
+    let _icx = push_ctxt("trans_cast"); let mut bcx = bcx; let ccx =
+    bcx.ccx();
 
     let t_in = expr_ty_adjusted(bcx, expr);
     let t_out = node_id_type(bcx, id);
@@ -2080,7 +2079,9 @@ fn trans_imm_cast<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         } else {
             // Return the address
             return immediate_rvalue_bcx(bcx,
-                                        Load(bcx, get_dataptr(bcx, datum.val)),
+                                        PointerCast(bcx,
+                                                    Load(bcx, get_dataptr(bcx, datum.val)),
+                                                    ll_t_out),
                                         t_out).to_expr_datumblock();
         }
     }
