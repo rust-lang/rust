@@ -19,7 +19,6 @@ use ptr::P;
 use str::char_at;
 
 use std::cell::RefCell;
-use std::fs::File;
 use std::io::Read;
 use std::iter;
 use std::path::{Path, PathBuf};
@@ -220,17 +219,18 @@ pub fn new_parser_from_tts<'a>(sess: &'a ParseSess,
 
 /// Given a session and a path and an optional span (for error reporting),
 /// add the path to the session's codemap and return the new filemap.
-pub fn file_to_filemap(sess: &ParseSess, path: &Path, spanopt: Option<Span>)
-                       -> Rc<FileMap> {
-    let mut contents = String::new();
-    if let Err(e) = File::open(path).and_then(|mut f| f.read_to_string(&mut contents)) {
-        let msg = format!("couldn't read {:?}: {}", path.display(), e);
-        match spanopt {
-            Some(sp) => panic!(sess.span_diagnostic.span_fatal(sp, &msg)),
-            None => sess.span_diagnostic.handler().fatal(&msg)
+fn file_to_filemap(sess: &ParseSess, path: &Path, spanopt: Option<Span>)
+                   -> Rc<FileMap> {
+    match sess.codemap().load_file(path) {
+        Ok(filemap) => filemap,
+        Err(e) => {
+            let msg = format!("couldn't read {:?}: {}", path.display(), e);
+            match spanopt {
+                Some(sp) => panic!(sess.span_diagnostic.span_fatal(sp, &msg)),
+                None => sess.span_diagnostic.handler().fatal(&msg)
+            }
         }
     }
-    sess.codemap().new_filemap(path.to_str().unwrap().to_string(), contents)
 }
 
 /// Given a filemap, produce a sequence of token-trees
