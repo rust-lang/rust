@@ -181,7 +181,7 @@ match version {
 This function makes use of an enum, `ParseError`, to enumerate the various
 errors that can occur.
 
-The [`Debug`](../core/fmt/trait.Debug.html) trait is what let's us print the enum value using the `{:?}` format operation.
+The [`Debug`](../std/fmt/trait.Debug.html) trait is what lets us print the enum value using the `{:?}` format operation.
 
 # Non-recoverable errors with `panic!`
 
