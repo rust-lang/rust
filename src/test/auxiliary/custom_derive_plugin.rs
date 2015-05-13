@@ -19,7 +19,7 @@ extern crate rustc;
 
 use syntax::ast;
 use syntax::codemap::Span;
-use syntax::ext::base::{Decorator, ExtCtxt};
+use syntax::ext::base::{MultiDecorator, ExtCtxt, Annotatable};
 use syntax::ext::build::AstBuilder;
 use syntax::ext::deriving::generic::{cs_fold, TraitDef, MethodDef, combine_substructure};
 use syntax::ext::deriving::generic::ty::{Literal, LifetimeBounds, Path, borrowed_explicit_self};
@@ -31,14 +31,14 @@ use rustc::plugin::Registry;
 pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_syntax_extension(
         token::intern("derive_TotalSum"),
-        Decorator(box expand));
+        MultiDecorator(box expand));
 }
 
 fn expand(cx: &mut ExtCtxt,
           span: Span,
           mitem: &ast::MetaItem,
-          item: &ast::Item,
-          push: &mut FnMut(P<ast::Item>)) {
+          item: Annotatable,
+          push: &mut FnMut(Annotatable)) {
     let trait_def = TraitDef {
         span: span,
         attributes: vec![],
@@ -70,5 +70,5 @@ fn expand(cx: &mut ExtCtxt,
         ],
     };
 
-    trait_def.expand(cx, mitem, item, push)
+    trait_def.expand(cx, mitem, &item, push)
 }
