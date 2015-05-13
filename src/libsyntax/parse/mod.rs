@@ -221,30 +221,16 @@ pub fn new_parser_from_tts<'a>(sess: &'a ParseSess,
 /// Given a session and a path and an optional span (for error reporting),
 /// add the path to the session's codemap and return the new filemap.
 pub fn file_to_filemap(sess: &ParseSess, path: &Path, spanopt: Option<Span>)
-    -> Rc<FileMap> {
-    let err = |msg: &str| {
+                       -> Rc<FileMap> {
+    let mut contents = String::new();
+    if let Err(e) = File::open(path).and_then(|mut f| f.read_to_string(&mut contents)) {
+        let msg = format!("couldn't read {:?}: {}", path.display(), e);
         match spanopt {
-            Some(sp) => panic!(sess.span_diagnostic.span_fatal(sp, msg)),
-            None => sess.span_diagnostic.handler().fatal(msg),
-        }
-    };
-    let mut bytes = Vec::new();
-    match File::open(path).and_then(|mut f| f.read_to_end(&mut bytes)) {
-        Ok(..) => {}
-        Err(e) => {
-            err(&format!("couldn't read {:?}: {}", path.display(), e));
-            unreachable!();
-        }
-    };
-    match str::from_utf8(&bytes[..]).ok() {
-        Some(s) => {
-            sess.codemap().new_filemap(path.to_str().unwrap().to_string(), s.to_string())
-        }
-        None => {
-            err(&format!("{:?} is not UTF-8 encoded", path.display()));
-            unreachable!();
+            Some(sp) => panic!(sess.span_diagnostic.span_fatal(sp, &msg)),
+            None => sess.span_diagnostic.handler().fatal(&msg)
         }
     }
+    sess.codemap().new_filemap(path.to_str().unwrap().to_string(), contents)
 }
 
 /// Given a filemap, produce a sequence of token-trees
