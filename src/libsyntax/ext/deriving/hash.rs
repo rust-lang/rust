@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast::{MetaItem, Item, Expr, MutMutable};
+use ast::{MetaItem, Expr, MutMutable};
 use codemap::Span;
-use ext::base::ExtCtxt;
+use ext::base::{ExtCtxt, Annotatable};
 use ext::build::AstBuilder;
 use ext::deriving::generic::*;
 use ext::deriving::generic::ty::*;
@@ -19,8 +19,8 @@ use ptr::P;
 pub fn expand_deriving_hash(cx: &mut ExtCtxt,
                             span: Span,
                             mitem: &MetaItem,
-                            item: &Item,
-                            push: &mut FnMut(P<Item>))
+                            item: Annotatable,
+                            push: &mut FnMut(Annotatable))
 {
 
     let path = Path::new_(pathvec_std!(cx, core::hash::Hash), None,
@@ -52,7 +52,7 @@ pub fn expand_deriving_hash(cx: &mut ExtCtxt,
         associated_types: Vec::new(),
     };
 
-    hash_trait_def.expand(cx, mitem, item, push);
+    hash_trait_def.expand(cx, mitem, &item, push);
 }
 
 fn hash_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) -> P<Expr> {

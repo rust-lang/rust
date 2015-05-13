@@ -11,9 +11,9 @@
 //! The compiler code necessary for `#[derive(Decodable)]`. See encodable.rs for more.
 
 use ast;
-use ast::{MetaItem, Item, Expr, MutMutable};
+use ast::{MetaItem, Expr, MutMutable};
 use codemap::Span;
-use ext::base::ExtCtxt;
+use ext::base::{ExtCtxt, Annotatable};
 use ext::build::AstBuilder;
 use ext::deriving::generic::*;
 use ext::deriving::generic::ty::*;
@@ -24,8 +24,8 @@ use ptr::P;
 pub fn expand_deriving_rustc_decodable(cx: &mut ExtCtxt,
                                        span: Span,
                                        mitem: &MetaItem,
-                                       item: &Item,
-                                       push: &mut FnMut(P<Item>))
+                                       item: Annotatable,
+                                       push: &mut FnMut(Annotatable))
 {
     expand_deriving_decodable_imp(cx, span, mitem, item, push, "rustc_serialize")
 }
@@ -33,8 +33,8 @@ pub fn expand_deriving_rustc_decodable(cx: &mut ExtCtxt,
 pub fn expand_deriving_decodable(cx: &mut ExtCtxt,
                                  span: Span,
                                  mitem: &MetaItem,
-                                 item: &Item,
-                                 push: &mut FnMut(P<Item>))
+                                 item: Annotatable,
+                                 push: &mut FnMut(Annotatable))
 {
     expand_deriving_decodable_imp(cx, span, mitem, item, push, "serialize")
 }
@@ -42,8 +42,8 @@ pub fn expand_deriving_decodable(cx: &mut ExtCtxt,
 fn expand_deriving_decodable_imp(cx: &mut ExtCtxt,
                                  span: Span,
                                  mitem: &MetaItem,
-                                 item: &Item,
-                                 push: &mut FnMut(P<Item>),
+                                 item: Annotatable,
+                                 push: &mut FnMut(Annotatable),
                                  krate: &'static str)
 {
     if !cx.use_std {
@@ -87,7 +87,7 @@ fn expand_deriving_decodable_imp(cx: &mut ExtCtxt,
         associated_types: Vec::new(),
     };
 
-    trait_def.expand(cx, mitem, item, push)
+    trait_def.expand(cx, mitem, &item, push)
 }
 
 fn decodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
