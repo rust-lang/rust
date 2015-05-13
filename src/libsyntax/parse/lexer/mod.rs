@@ -1565,4 +1565,13 @@ mod tests {
         assert_eq!(lexer.next_token().tok, token::Literal(token::Char(token::intern("a")), None));
     }
 
+    #[test] fn crlf_comments() {
+        let sh = mk_sh();
+        let mut lexer = setup(&sh, "// test\r\n/// test\r\n".to_string());
+        let comment = lexer.next_token();
+        assert_eq!(comment.tok, token::Comment);
+        assert_eq!(comment.sp, ::codemap::mk_sp(BytePos(0), BytePos(7)));
+        assert_eq!(lexer.next_token().tok, token::Whitespace);
+        assert_eq!(lexer.next_token().tok, token::DocComment(token::intern("/// test")));
+    }
 }
