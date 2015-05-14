@@ -383,17 +383,8 @@ pub fn phase_2_configure_and_expand(sess: &Session,
                                     -> Option<ast::Crate> {
     let time_passes = sess.time_passes();
 
-    *sess.crate_types.borrow_mut() =
-        collect_crate_types(sess, &krate.attrs);
-    *sess.crate_metadata.borrow_mut() =
-        collect_crate_metadata(sess, &krate.attrs);
-
-    time(time_passes, "recursion limit", (), |_| {
-        middle::recursion_limit::update_recursion_limit(sess, &krate);
-    });
-
-    // strip before expansion to allow macros to depend on
-    // configuration variables e.g/ in
+    // strip before anything else because crate metadata may use #[cfg_attr]
+    // and so macros can depend on configuration variables, such as
     //
     //   #[macro_use] #[cfg(foo)]
     //   mod bar { macro_rules! baz!(() => {{}}) }
@@ -402,6 +393,15 @@ pub fn phase_2_configure_and_expand(sess: &Session,
 
     krate = time(time_passes, "configuration 1", krate, |krate|
                  syntax::config::strip_unconfigured_items(sess.diagnostic(), krate));
+
+    *sess.crate_types.borrow_mut() =
+        collect_crate_types(sess, &krate.attrs);
+    *sess.crate_metadata.borrow_mut() =
+        collect_crate_metadata(sess, &krate.attrs);
+
+    time(time_passes, "recursion limit", (), |_| {
+        middle::recursion_limit::update_recursion_limit(sess, &krate);
+    });
 
     time(time_passes, "gated macro checking", (), |_| {
         let features =
