@@ -152,7 +152,7 @@ impl<'a> Archive<'a> {
                 cmd.arg("d").arg(dst).arg(file);
             }
             Action::AddObjects(objs, update_symbols) => {
-                cmd.arg(if update_symbols {"crus"} else {"cruS"})
+                cmd.arg(if update_symbols {"crs"} else {"crS"})
                    .arg(dst)
                    .args(objs);
             }
