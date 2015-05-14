@@ -9,7 +9,6 @@
 // except according to those terms.
 
 //aux-build:macro_export_inner_module.rs
-//ignore-stage1
 
 #[macro_use] #[no_link]
 extern crate macro_export_inner_module;
