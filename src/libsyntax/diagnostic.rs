@@ -506,7 +506,7 @@ fn emit(dst: &mut EmitterWriter, cm: &codemap::CodeMap, rsp: RenderSpan,
             match dst.registry.as_ref().and_then(|registry| registry.find_description(code)) {
                 Some(_) => {
                     try!(print_diagnostic(dst, &ss[..], Help,
-                                          &format!("pass `--explain {}` to see a detailed \
+                                          &format!("run `rustc --explain {}` to see a detailed \
                                                    explanation", code), None));
                 }
                 None => ()
