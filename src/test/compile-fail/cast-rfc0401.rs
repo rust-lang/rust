@@ -65,6 +65,10 @@ fn main()
     let _ = &f as *const f64; //~ ERROR illegal cast
     let _ = fat_v as usize; //~ ERROR through a raw pointer first
 
+    let a : *const str = "hello";
+    let _ = a as *const Foo;
+    //~^ ERROR `core::marker::Sized` is not implemented for the type `str`
+
     // check no error cascade
     let _ = main.f as *const u32; //~ ERROR attempted access of field
 

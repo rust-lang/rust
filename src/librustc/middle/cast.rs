@@ -15,7 +15,7 @@ use middle::ty::{self, Ty};
 
 use syntax::ast;
 
-
+/// Types that are represented as ints.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum IntTy {
     U(ast::UintTy),
@@ -28,10 +28,16 @@ pub enum IntTy {
 // Valid types for the result of a non-coercion cast
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum CastTy<'tcx> {
+    /// Various types that are represented as ints and handled mostly
+    /// in the same way, merged for easier matching.
     Int(IntTy),
+    /// Floating-Point types
     Float,
-    FPtr,
+    /// Function Pointers
+    FnPtr,
+    /// Raw pointers
     Ptr(&'tcx ty::mt<'tcx>),
+    /// References
     RPtr(&'tcx ty::mt<'tcx>),
 }
 
@@ -47,13 +53,13 @@ pub enum CastKind {
     PrimIntCast,
     U8CharCast,
     ArrayPtrCast,
-    FPtrPtrCast,
-    FPtrAddrCast
+    FnPtrPtrCast,
+    FnPtrAddrCast
 }
 
 impl<'tcx> CastTy<'tcx> {
-    pub fn recognize(tcx: &ty::ctxt<'tcx>, t: Ty<'tcx>)
-                     -> Option<CastTy<'tcx>> {
+    pub fn from_ty(tcx: &ty::ctxt<'tcx>, t: Ty<'tcx>)
+                   -> Option<CastTy<'tcx>> {
         match t.sty {
             ty::ty_bool => Some(CastTy::Int(IntTy::Bool)),
             ty::ty_char => Some(CastTy::Int(IntTy::Char)),
@@ -64,7 +70,7 @@ impl<'tcx> CastTy<'tcx> {
                 tcx, t) => Some(CastTy::Int(IntTy::CEnum)),
             ty::ty_ptr(ref mt) => Some(CastTy::Ptr(mt)),
             ty::ty_rptr(_, ref mt) => Some(CastTy::RPtr(mt)),
-            ty::ty_bare_fn(..) => Some(CastTy::FPtr),
+            ty::ty_bare_fn(..) => Some(CastTy::FnPtr),
             _ => None,
         }
     }

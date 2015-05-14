@@ -443,11 +443,11 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
             debug!("Checking const cast(id={})", from.id);
             match v.tcx.cast_kinds.borrow().get(&from.id) {
                 None => v.tcx.sess.span_bug(e.span, "no kind for cast"),
-                Some(&CastKind::PtrAddrCast) | Some(&CastKind::FPtrAddrCast) => {
+                Some(&CastKind::PtrAddrCast) | Some(&CastKind::FnPtrAddrCast) => {
                     v.add_qualif(ConstQualif::NOT_CONST);
                     if v.mode != Mode::Var {
                         span_err!(v.tcx.sess, e.span, E0018,
-                                  "can not cast a pointer to an integer in {}s", v.msg());
+                                  "can't cast a pointer to an integer in {}s", v.msg());
                     }
                 }
                 _ => {}

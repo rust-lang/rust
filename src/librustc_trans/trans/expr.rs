@@ -2086,8 +2086,8 @@ fn trans_imm_cast<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         }
     }
 
-    let r_t_in = CastTy::recognize(bcx.tcx(), t_in).expect("bad input type for cast");
-    let r_t_out = CastTy::recognize(bcx.tcx(), t_out).expect("bad output type for cast");
+    let r_t_in = CastTy::from_ty(bcx.tcx(), t_in).expect("bad input type for cast");
+    let r_t_out = CastTy::from_ty(bcx.tcx(), t_out).expect("bad output type for cast");
 
     let (llexpr, signed) = if let Int(CEnum) = r_t_in {
         let repr = adt::represent_type(ccx, t_in);
@@ -2102,8 +2102,10 @@ fn trans_imm_cast<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     };
 
     let newval = match (r_t_in, r_t_out) {
-        (Ptr(_), Ptr(_)) | (FPtr, Ptr(_)) | (RPtr(_), Ptr(_)) => PointerCast(bcx, llexpr, ll_t_out),
-        (Ptr(_), Int(_)) | (FPtr, Int(_)) => PtrToInt(bcx, llexpr, ll_t_out),
+        (Ptr(_), Ptr(_)) | (FnPtr, Ptr(_)) | (RPtr(_), Ptr(_)) => {
+            PointerCast(bcx, llexpr, ll_t_out)
+        }
+        (Ptr(_), Int(_)) | (FnPtr, Int(_)) => PtrToInt(bcx, llexpr, ll_t_out),
         (Int(_), Ptr(_)) => IntToPtr(bcx, llexpr, ll_t_out),
 
         (Int(_), Int(_)) => int_cast(bcx, ll_t_out, ll_t_in, llexpr, signed),

@@ -617,41 +617,41 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
               }
           }
           ast::ExprCast(ref base, _) => {
-            let t_1 = ety;
-            let llty = type_of::type_of(cx, t_1);
-            let (v, t_e) = const_expr(cx, &**base, param_substs);
-            debug!("trans_const_cast({} as {})", t_e.repr(cx.tcx()), t_1.repr(cx.tcx()));
-            if expr::cast_is_noop(cx.tcx(), base, t_e, t_1) {
+            let t_cast = ety;
+            let llty = type_of::type_of(cx, t_cast);
+            let (v, t_expr) = const_expr(cx, &**base, param_substs);
+            debug!("trans_const_cast({} as {})", t_expr.repr(cx.tcx()), t_cast.repr(cx.tcx()));
+            if expr::cast_is_noop(cx.tcx(), base, t_expr, t_cast) {
                 return v;
             }
-            if type_is_fat_ptr(cx.tcx(), t_e) {
+            if type_is_fat_ptr(cx.tcx(), t_expr) {
                 // Fat pointer casts.
-                let t_1_inner = ty::deref(t_1, true).expect("cast to non-pointer").ty;
-                let ptr_ty = type_of::in_memory_type_of(cx, t_1_inner).ptr_to();
+                let t_cast_inner = ty::deref(t_cast, true).expect("cast to non-pointer").ty;
+                let ptr_ty = type_of::in_memory_type_of(cx, t_cast_inner).ptr_to();
                 let addr = ptrcast(const_get_elt(cx, v, &[abi::FAT_PTR_ADDR as u32]),
                                    ptr_ty);
-                if type_is_fat_ptr(cx.tcx(), t_1) {
+                if type_is_fat_ptr(cx.tcx(), t_cast) {
                     let info = const_get_elt(cx, v, &[abi::FAT_PTR_EXTRA as u32]);
                     return C_struct(cx, &[addr, info], false)
                 } else {
                     return addr;
                 }
             }
-            match (CastTy::recognize(cx.tcx(), t_e).expect("bad input type for cast"),
-                   CastTy::recognize(cx.tcx(), t_1).expect("bad output type for cast")) {
+            match (CastTy::from_ty(cx.tcx(), t_expr).expect("bad input type for cast"),
+                   CastTy::from_ty(cx.tcx(), t_cast).expect("bad output type for cast")) {
               (CastTy::Int(IntTy::CEnum), CastTy::Int(_)) => {
-                let repr = adt::represent_type(cx, t_e);
+                let repr = adt::represent_type(cx, t_expr);
                 let discr = adt::const_get_discrim(cx, &*repr, v);
                 let iv = C_integral(cx.int_type(), discr, false);
                 let s = adt::is_discr_signed(&*repr) as Bool;
                 llvm::LLVMConstIntCast(iv, llty.to_ref(), s)
               }
               (CastTy::Int(_), CastTy::Int(_)) => {
-                let s = ty::type_is_signed(t_e) as Bool;
+                let s = ty::type_is_signed(t_expr) as Bool;
                 llvm::LLVMConstIntCast(v, llty.to_ref(), s)
               }
               (CastTy::Int(_), CastTy::Float) => {
-                if ty::type_is_signed(t_e) {
+                if ty::type_is_signed(t_expr) {
                     llvm::LLVMConstSIToFP(v, llty.to_ref())
                 } else {
                     llvm::LLVMConstUIToFP(v, llty.to_ref())
@@ -661,18 +661,18 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 llvm::LLVMConstFPCast(v, llty.to_ref())
               }
               (CastTy::Float, CastTy::Int(_)) => {
-                if ty::type_is_signed(t_1) { llvm::LLVMConstFPToSI(v, llty.to_ref()) }
+                if ty::type_is_signed(t_expr) { llvm::LLVMConstFPToSI(v, llty.to_ref()) }
                 else { llvm::LLVMConstFPToUI(v, llty.to_ref()) }
               }
-              (CastTy::Ptr(_), CastTy::Ptr(_)) | (CastTy::FPtr, CastTy::Ptr(_))
+              (CastTy::Ptr(_), CastTy::Ptr(_)) | (CastTy::FnPtr, CastTy::Ptr(_))
                     | (CastTy::RPtr(_), CastTy::Ptr(_)) => {
                 ptrcast(v, llty)
               }
-              (CastTy::FPtr, CastTy::FPtr) => ptrcast(v, llty), // isn't this a coercion?
+              (CastTy::FnPtr, CastTy::FnPtr) => ptrcast(v, llty), // isn't this a coercion?
               (CastTy::Int(_), CastTy::Ptr(_)) => {
                 llvm::LLVMConstIntToPtr(v, llty.to_ref())
               }
-              (CastTy::Ptr(_), CastTy::Int(_)) | (CastTy::FPtr, CastTy::Int(_)) => {
+              (CastTy::Ptr(_), CastTy::Int(_)) | (CastTy::FnPtr, CastTy::Int(_)) => {
                 llvm::LLVMConstPtrToInt(v, llty.to_ref())
               }
               _ => {
