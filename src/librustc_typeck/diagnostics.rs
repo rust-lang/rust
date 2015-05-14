@@ -65,9 +65,8 @@ impl Foo for Bar {
 "##,
 
 E0053: r##"
-In a trait method implementation, the function signature must match exactly.
-This error indicates a mutability mismatch between a trait method signature
-and the signature of the implementation.
+For any given method of a trait, the mutabilities of the parameters must match
+between the trait definition and the implementation.
 
 Here's an example where the mutability of the `self` parameter is wrong:
 
@@ -130,13 +129,13 @@ exactly once.
 "##,
 
 E0066: r##"
-Box placement expressions (like C++'s "placement new") do not support any
+Box placement expressions (like C++'s "placement new") do not yet support any
 place expression except the exchange heap (i.e. `std::boxed::HEAP`).
-Furthermore, the syntax is changing to use `in` instead of `box`. See [RFC
-470][rfc470] and [RFC 809][rfc809] for more details.
+Furthermore, the syntax is changing to use `in` instead of `box`. See [RFC 470]
+and [RFC 809] for more details.
 
-[rfc470]: https://github.com/rust-lang/rfcs/pull/470
-[rfc809]: https://github.com/rust-lang/rfcs/pull/809
+[RFC 470]: https://github.com/rust-lang/rfcs/pull/470
+[RFC 809]: https://github.com/rust-lang/rfcs/pull/809
 "##,
 
 E0067: r##"
