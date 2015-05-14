@@ -100,12 +100,12 @@ module.
 An example of this error:
 
 ```
-use foo::FOO; // error, do `use foo::FOO as BAR` instead
+use bar::foo; // error, do `use bar::foo as baz` instead
 
-fn FOO() {}
+fn foo() {}
 
-mod foo {
-    pub const FOO: bool = true;
+mod bar {
+     pub fn foo() {}
 }
 
 fn main() {}
@@ -121,7 +121,7 @@ An example of this error:
 ```
 use foo::Bar; // error
 
-struct Bar;
+type Bar = u32;
 
 mod foo {
     pub mod Bar { }
