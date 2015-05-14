@@ -24,7 +24,7 @@ Lints included in this crate:
 To use, add the following lines to your Cargo.toml:
 
 ```
-[dev-dependencies]
+[dependencies]
 clippy = "*"
 ```
 
