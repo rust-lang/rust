@@ -22,5 +22,5 @@ impl<A> vec_monad<A> for Vec<A> {
 }
 fn main() {
     ["hi"].bind(|x| [x] );
-    //~^ ERROR type `[&str; 1]` does not implement any method in scope named `bind`
+    //~^ ERROR no method named `bind` found for type `[&str; 1]` in the current scope
 }

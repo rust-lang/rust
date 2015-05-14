@@ -16,12 +16,10 @@ use middle::def;
 use middle::privacy::{AllPublic, DependsOn, LastPrivate, LastMod};
 use middle::subst;
 use middle::traits;
-use middle::ty::*;
-use middle::ty;
+use middle::ty::{self, AsPredicate, ToPolyTraitRef};
 use middle::infer;
 use util::ppaux::Repr;
 
-use std::rc::Rc;
 use syntax::ast::DefId;
 use syntax::ast;
 use syntax::codemap::Span;
@@ -39,7 +37,7 @@ pub enum MethodError {
     // Did not find an applicable method, but we did find various
     // static methods that may apply, as well as a list of
     // not-in-scope traits which may work.
-    NoMatch(Vec<CandidateSource>, Vec<ast::DefId>),
+    NoMatch(Vec<CandidateSource>, Vec<ast::DefId>, probe::Mode),
 
     // Multiple methods might apply.
     Ambiguity(Vec<CandidateSource>),
@@ -62,7 +60,7 @@ type ItemIndex = usize; // just for doc purposes
 pub fn exists<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                         span: Span,
                         method_name: ast::Name,
-                        self_ty: Ty<'tcx>,
+                        self_ty: ty::Ty<'tcx>,
                         call_expr_id: ast::NodeId)
                         -> bool
 {
@@ -92,11 +90,11 @@ pub fn exists<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 pub fn lookup<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                         span: Span,
                         method_name: ast::Name,
-                        self_ty: Ty<'tcx>,
-                        supplied_method_types: Vec<Ty<'tcx>>,
+                        self_ty: ty::Ty<'tcx>,
+                        supplied_method_types: Vec<ty::Ty<'tcx>>,
                         call_expr: &'tcx ast::Expr,
                         self_expr: &'tcx ast::Expr)
-                        -> Result<MethodCallee<'tcx>, MethodError>
+                        -> Result<ty::MethodCallee<'tcx>, MethodError>
 {
     debug!("lookup(method_name={}, self_ty={}, call_expr={}, self_expr={})",
            method_name.repr(fcx.tcx()),
@@ -115,9 +113,9 @@ pub fn lookup_in_trait<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                  self_expr: Option<&ast::Expr>,
                                  m_name: ast::Name,
                                  trait_def_id: DefId,
-                                 self_ty: Ty<'tcx>,
-                                 opt_input_types: Option<Vec<Ty<'tcx>>>)
-                                 -> Option<MethodCallee<'tcx>>
+                                 self_ty: ty::Ty<'tcx>,
+                                 opt_input_types: Option<Vec<ty::Ty<'tcx>>>)
+                                 -> Option<ty::MethodCallee<'tcx>>
 {
     lookup_in_trait_adjusted(fcx, span, self_expr, m_name, trait_def_id,
                              0, false, self_ty, opt_input_types)
@@ -139,9 +137,9 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                           trait_def_id: DefId,
                                           autoderefs: usize,
                                           unsize: bool,
-                                          self_ty: Ty<'tcx>,
-                                          opt_input_types: Option<Vec<Ty<'tcx>>>)
-                                          -> Option<MethodCallee<'tcx>>
+                                          self_ty: ty::Ty<'tcx>,
+                                          opt_input_types: Option<Vec<ty::Ty<'tcx>>>)
+                                          -> Option<ty::MethodCallee<'tcx>>
 {
     debug!("lookup_in_trait_adjusted(self_ty={}, self_expr={}, m_name={}, trait_def_id={})",
            self_ty.repr(fcx.tcx()),
@@ -186,7 +184,9 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     // Trait must have a method named `m_name` and it should not have
     // type parameters or early-bound regions.
     let tcx = fcx.tcx();
-    let (method_num, method_ty) = trait_method(tcx, trait_def_id, m_name).unwrap();
+    let (method_num, method_ty) = trait_item(tcx, trait_def_id, m_name)
+            .and_then(|(idx, item)| item.as_opt_method().map(|m| (idx, m)))
+            .unwrap();
     assert_eq!(method_ty.generics.types.len(subst::FnSpace), 0);
     assert_eq!(method_ty.generics.regions.len(subst::FnSpace), 0);
 
@@ -288,10 +288,10 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         }
     }
 
-    let callee = MethodCallee {
-        origin: MethodTypeParam(MethodParam{trait_ref: trait_ref.clone(),
-                                            method_num: method_num,
-                                            impl_def_id: None}),
+    let callee = ty::MethodCallee {
+        origin: ty::MethodTypeParam(ty::MethodParam{trait_ref: trait_ref.clone(),
+                                                    method_num: method_num,
+                                                    impl_def_id: None}),
         ty: fty,
         substs: trait_ref.substs.clone()
     };
@@ -304,7 +304,7 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 pub fn resolve_ufcs<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                               span: Span,
                               method_name: ast::Name,
-                              self_ty: Ty<'tcx>,
+                              self_ty: ty::Ty<'tcx>,
                               expr_id: ast::NodeId)
                               -> Result<(def::Def, LastPrivate), MethodError>
 {
@@ -322,9 +322,9 @@ pub fn resolve_ufcs<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         _ => def::FromTrait(pick.item.container().id())
     };
     let def_result = match pick.item {
-        ImplOrTraitItem::MethodTraitItem(..) => def::DefMethod(def_id, provenance),
-        ImplOrTraitItem::ConstTraitItem(..) => def::DefAssociatedConst(def_id, provenance),
-        ImplOrTraitItem::TypeTraitItem(..) => {
+        ty::ImplOrTraitItem::MethodTraitItem(..) => def::DefMethod(def_id, provenance),
+        ty::ImplOrTraitItem::ConstTraitItem(..) => def::DefAssociatedConst(def_id, provenance),
+        ty::ImplOrTraitItem::TypeTraitItem(..) => {
             fcx.tcx().sess.span_bug(span, "resolve_ufcs: probe picked associated type");
         }
     };
@@ -332,31 +332,30 @@ pub fn resolve_ufcs<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 }
 
 
-/// Find method with name `method_name` defined in `trait_def_id` and return it, along with its
-/// index (or `None`, if no such method).
-fn trait_method<'tcx>(tcx: &ty::ctxt<'tcx>,
-                      trait_def_id: ast::DefId,
-                      method_name: ast::Name)
-                      -> Option<(usize, Rc<ty::Method<'tcx>>)>
+/// Find item with name `item_name` defined in `trait_def_id` and return it, along with its
+/// index (or `None`, if no such item).
+fn trait_item<'tcx>(tcx: &ty::ctxt<'tcx>,
+                    trait_def_id: ast::DefId,
+                    item_name: ast::Name)
+                    -> Option<(usize, ty::ImplOrTraitItem<'tcx>)>
 {
     let trait_items = ty::trait_items(tcx, trait_def_id);
     trait_items
         .iter()
         .enumerate()
-        .find(|&(_, ref item)| item.name() == method_name)
-        .and_then(|(idx, item)| item.as_opt_method().map(|m| (idx, m)))
+        .find(|&(_, ref item)| item.name() == item_name)
+        .map(|(num, item)| (num, (*item).clone()))
 }
 
-fn impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
-                     impl_def_id: ast::DefId,
-                     method_name: ast::Name)
-                     -> Option<Rc<ty::Method<'tcx>>>
+fn impl_item<'tcx>(tcx: &ty::ctxt<'tcx>,
+                   impl_def_id: ast::DefId,
+                   item_name: ast::Name)
+                   -> Option<ty::ImplOrTraitItem<'tcx>>
 {
     let impl_items = tcx.impl_items.borrow();
     let impl_items = impl_items.get(&impl_def_id).unwrap();
     impl_items
         .iter()
         .map(|&did| ty::impl_or_trait_item(tcx, did.def_id()))
-        .find(|m| m.name() == method_name)
-        .and_then(|item| item.as_opt_method())
+        .find(|m| m.name() == item_name)
 }

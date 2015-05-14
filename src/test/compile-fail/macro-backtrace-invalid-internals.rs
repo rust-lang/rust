@@ -12,7 +12,7 @@
 
 macro_rules! fake_method_stmt { //~ NOTE in expansion of
      () => {
-          1.fake() //~ ERROR does not implement any method
+          1.fake() //~ ERROR no method named `fake` found
      }
 }
 
@@ -30,7 +30,7 @@ macro_rules! fake_anon_field_stmt { //~ NOTE in expansion of
 
 macro_rules! fake_method_expr { //~ NOTE in expansion of
      () => {
-          1.fake() //~ ERROR does not implement any method
+          1.fake() //~ ERROR no method named `fake` found
      }
 }
 
