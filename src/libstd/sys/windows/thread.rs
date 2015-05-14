@@ -80,15 +80,7 @@ impl Thread {
 
     pub fn sleep(dur: Duration) {
         unsafe {
-            if dur < Duration::zero() {
-                return Thread::yield_now()
-            }
-            let ms = dur.num_milliseconds();
-            // if we have a fractional number of milliseconds then add an extra
-            // millisecond to sleep for
-            let extra = dur - Duration::milliseconds(ms);
-            let ms = ms + if extra.is_zero() {0} else {1};
-            c::Sleep(ms as DWORD);
+            c::Sleep(super::dur2timeout(dur))
         }
     }
 }

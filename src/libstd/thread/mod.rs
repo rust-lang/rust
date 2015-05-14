@@ -482,7 +482,23 @@ pub fn catch_panic<F, R>(f: F) -> Result<R>
 /// spurious wakeup.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn sleep_ms(ms: u32) {
-    imp::Thread::sleep(Duration::milliseconds(ms as i64))
+    sleep(Duration::from_millis(ms as u64))
+}
+
+/// Puts the current thread to sleep for the specified amount of time.
+///
+/// The thread may sleep longer than the duration specified due to scheduling
+/// specifics or platform-dependent functionality.
+///
+/// # Platform behavior
+///
+/// On Unix platforms this function will not return early due to a
+/// signal being received or a spurious wakeup. Platforms which do not support
+/// nanosecond precision for sleeping will have `dur` rounded up to the nearest
+/// granularity of time they can sleep for.
+#[unstable(feature = "thread_sleep", reason = "waiting on Duration")]
+pub fn sleep(dur: Duration) {
+    imp::Thread::sleep(dur)
 }
 
 /// Blocks unless or until the current thread's token is made available (may wake spuriously).
@@ -508,18 +524,38 @@ pub fn park() {
 /// the specified duration has been reached (may wake spuriously).
 ///
 /// The semantics of this function are equivalent to `park()` except that the
-/// thread will be blocked for roughly no longer than *duration*. This method
+/// thread will be blocked for roughly no longer than *ms*. This method
 /// should not be used for precise timing due to anomalies such as
 /// preemption or platform differences that may not cause the maximum
-/// amount of time waited to be precisely *duration* long.
+/// amount of time waited to be precisely *ms* long.
 ///
 /// See the module doc for more detail.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn park_timeout_ms(ms: u32) {
+    park_timeout(Duration::from_millis(ms as u64))
+}
+
+/// Blocks unless or until the current thread's token is made available or
+/// the specified duration has been reached (may wake spuriously).
+///
+/// The semantics of this function are equivalent to `park()` except that the
+/// thread will be blocked for roughly no longer than *dur*. This method
+/// should not be used for precise timing due to anomalies such as
+/// preemption or platform differences that may not cause the maximum
+/// amount of time waited to be precisely *dur* long.
+///
+/// See the module doc for more detail.
+///
+/// # Platform behavior
+///
+/// Platforms which do not support nanosecond precision for sleeping will have
+/// `dur` rounded up to the nearest granularity of time they can sleep for.
+#[unstable(feature = "park_timeout", reason = "waiting on Duration")]
+pub fn park_timeout(dur: Duration) {
     let thread = current();
     let mut guard = thread.inner.lock.lock().unwrap();
     if !*guard {
-        let (g, _) = thread.inner.cvar.wait_timeout_ms(guard, ms).unwrap();
+        let (g, _) = thread.inner.cvar.wait_timeout(guard, dur).unwrap();
         guard = g;
     }
     *guard = false;

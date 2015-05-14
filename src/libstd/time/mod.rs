@@ -10,17 +10,8 @@
 
 //! Temporal quantification.
 
-#![unstable(feature = "std_misc")]
-
-use sys::time::SteadyTime;
+#![unstable(feature = "time")]
 
 pub use self::duration::Duration;
 
-pub mod duration;
-
-/// Returns the current value of a high-resolution performance counter
-/// in nanoseconds since an unspecified epoch.
-// NB: this is intentionally not public, this is not ready to stabilize its api.
-fn precise_time_ns() -> u64 {
-    SteadyTime::now().ns()
-}
+mod duration;
