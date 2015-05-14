@@ -27,7 +27,7 @@ Check out the generated `Cargo.toml`:
 [package]
 
 name = "guessing_game"
-version = "0.0.1"
+version = "0.1.0"
 authors = ["Your Name <you@example.com>"]
 ```
 
@@ -46,7 +46,7 @@ Let’s try compiling what Cargo gave us:
 
 ```{bash}
 $ cargo build
-   Compiling guessing_game v0.0.1 (file:///home/you/projects/guessing_game)
+   Compiling guessing_game v0.1.0 (file:///home/you/projects/guessing_game)
 ```
 
 Excellent! Open up your `src/main.rs` again. We’ll be writing all of
@@ -58,7 +58,7 @@ Try it out:
 
 ```bash
 $ cargo run
-   Compiling guessing_game v0.0.1 (file:///home/you/projects/guessing_game)
+   Compiling guessing_game v0.1.0 (file:///home/you/projects/guessing_game)
      Running `target/debug/guessing_game`
 Hello, world!
 ```
@@ -727,7 +727,7 @@ Let’s try our program out!
 
 ```bash
 $ cargo run
-   Compiling guessing_game v0.0.1 (file:///home/you/projects/guessing_game)
+   Compiling guessing_game v0.1.0 (file:///home/you/projects/guessing_game)
      Running `target/guessing_game`
 Guess the number!
 The secret number is: 58
@@ -792,7 +792,7 @@ and quit. Observe:
 
 ```bash
 $ cargo run
-   Compiling guessing_game v0.0.1 (file:///home/you/projects/guessing_game)
+   Compiling guessing_game v0.1.0 (file:///home/you/projects/guessing_game)
      Running `target/guessing_game`
 Guess the number!
 The secret number is: 59
@@ -929,7 +929,7 @@ Now we should be good! Let’s try:
 
 ```bash
 $ cargo run
-   Compiling guessing_game v0.0.1 (file:///home/you/projects/guessing_game)
+   Compiling guessing_game v0.1.0 (file:///home/you/projects/guessing_game)
      Running `target/guessing_game`
 Guess the number!
 The secret number is: 61
