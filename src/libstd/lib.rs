@@ -28,7 +28,7 @@
 //!
 //! The standard library is minimal, a set of battle-tested
 //! core types and shared abstractions for the [broader Rust
-//! ecosystem][https://crates.io] to build on.
+//! ecosystem](https://crates.io) to build on.
 //!
 //! The [primitive types](#primitives), though not defined in the
 //! standard library, are documented here, as are the predefined
