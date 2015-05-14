@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // aux-build:macro_crate_test.rs
-// ignore-stage1
 
 #![plugin(macro_crate_test)]
 //~^ ERROR compiler plugins are experimental and possibly buggy

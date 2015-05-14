@@ -11,7 +11,6 @@
 // Test that macro reexports item are gated by `macro_reexport` feature gate.
 
 // aux-build:macro_reexport_1.rs
-// ignore-stage1
 
 #![crate_type = "dylib"]
 
