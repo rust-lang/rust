@@ -406,6 +406,11 @@ impl<'a> StringReader<'a> {
 
                     // line comments starting with "///" or "//!" are doc-comments
                     let doc_comment = self.curr_is('/') || self.curr_is('!');
+                    let start_bpos = if doc_comment {
+                        self.pos - BytePos(3)
+                    } else {
+                        self.last_pos - BytePos(2)
+                    };
 
                     while !self.is_eof() {
                         match self.curr.unwrap() {
@@ -425,7 +430,6 @@ impl<'a> StringReader<'a> {
                     }
 
                     return if doc_comment {
-                        let start_bpos = self.pos - BytePos(3);
                         self.with_str_from(start_bpos, |string| {
                             // comments with only more "/"s are not doc comments
                             let tok = if is_doc_comment(string) {
@@ -440,7 +444,6 @@ impl<'a> StringReader<'a> {
                             })
                         })
                     } else {
-                        let start_bpos = self.last_pos - BytePos(2);
                         Some(TokenAndSpan {
                             tok: token::Comment,
                             sp: codemap::mk_sp(start_bpos, self.last_pos)
