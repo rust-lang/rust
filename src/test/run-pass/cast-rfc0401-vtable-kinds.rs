@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Check that you can cast between different pointers to trait objects
+// whose vtable have the same kind (both lengths, or both trait pointers).
+
 trait Foo<T> {
     fn foo(&self, _: T) -> u32 { 42 }
 }
