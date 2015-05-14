@@ -73,6 +73,9 @@ a name is all we need. We choose the [`String`][string] type for the name,
 rather than `&str`. Generally speaking, working with a type which owns its
 data is easier than working with one that uses references.
 
+[struct]: structs.html
+[string]: strings.html
+
 Let’s continue:
 
 ```rust
