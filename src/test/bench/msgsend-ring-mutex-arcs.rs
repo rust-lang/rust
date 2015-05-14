@@ -17,7 +17,7 @@
 
 // no-pretty-expanded FIXME #15189
 
-#![feature(std_misc)]
+#![feature(duration, duration_span, std_misc)]
 
 use std::env;
 use std::sync::{Arc, Future, Mutex, Condvar};
@@ -107,9 +107,9 @@ fn main() {
 
     // all done, report stats.
     let num_msgs = num_tasks * msg_per_task;
-    let rate = (num_msgs as f64) / (dur.num_milliseconds() as f64);
+    let rate = (num_msgs as f64) / (dur.secs() as f64);
 
-    println!("Sent {} messages in {} ms", num_msgs, dur.num_milliseconds());
-    println!("  {} messages / second", rate / 1000.0);
-    println!("  {} μs / message", 1000000. / rate / 1000.0);
+    println!("Sent {} messages in {}", num_msgs, dur);
+    println!("  {} messages / second", rate);
+    println!("  {} μs / message", 1000000. / rate);
 }
