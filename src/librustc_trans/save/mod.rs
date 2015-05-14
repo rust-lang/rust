@@ -111,12 +111,12 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 let qualname = format!("::{}", self.analysis.ty_cx.map.path_to_string(item.id));
 
                 // If the variable is immutable, save the initialising expression.
-                let value = match mt {
-                    ast::MutMutable => String::from_str("<mutable>"),
-                    ast::MutImmutable => self.span_utils.snippet(expr.span),
+                let (value, keyword) = match mt {
+                    ast::MutMutable => (String::from_str("<mutable>"), keywords::Mut),
+                    ast::MutImmutable => (self.span_utils.snippet(expr.span), keywords::Static),
                 };
 
-                let sub_span = self.span_utils.sub_span_after_keyword(item.span, keywords::Static);
+                let sub_span = self.span_utils.sub_span_after_keyword(item.span, keyword);
 
                 Data::VariableData(VariableData {
                     id: item.id,

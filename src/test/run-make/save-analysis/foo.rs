@@ -352,3 +352,15 @@ impl Iterator for nofields {
         panic!()
     }
 }
+
+trait Pattern<'a> {
+    type Searcher;
+}
+
+struct CharEqPattern;
+
+impl<'a> Pattern<'a> for CharEqPattern {
+    type Searcher = CharEqPattern;
+}
+
+struct CharSearcher<'a>(<CharEqPattern as Pattern<'a>>::Searcher);
