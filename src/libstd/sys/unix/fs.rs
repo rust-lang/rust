@@ -362,7 +362,7 @@ impl DirBuilder {
 
 fn cstr(path: &Path) -> io::Result<CString> {
     path.as_os_str().to_cstring().ok_or(
-        io::Error::new(io::ErrorKind::InvalidInput, "path contained a null"))
+        io::Error::new(io::ErrorKind::InvalidParam, "path contained a null"))
 }
 
 impl FromInner<c_int> for File {

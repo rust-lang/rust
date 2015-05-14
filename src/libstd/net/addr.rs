@@ -433,7 +433,7 @@ impl ToSocketAddrs for str {
             ($e:expr, $msg:expr) => (
                 match $e {
                     Some(r) => r,
-                    None => return Err(io::Error::new(io::ErrorKind::InvalidInput,
+                    None => return Err(io::Error::new(io::ErrorKind::InvalidParam,
                                                       $msg)),
                 }
             )

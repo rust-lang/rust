@@ -56,7 +56,7 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
         libc::WSAECONNABORTED => ErrorKind::ConnectionAborted,
         libc::WSAECONNREFUSED => ErrorKind::ConnectionRefused,
         libc::WSAECONNRESET => ErrorKind::ConnectionReset,
-        libc::WSAEINVAL => ErrorKind::InvalidInput,
+        libc::WSAEINVAL => ErrorKind::InvalidParam,
         libc::WSAENOTCONN => ErrorKind::NotConnected,
         libc::WSAEWOULDBLOCK => ErrorKind::WouldBlock,
 
