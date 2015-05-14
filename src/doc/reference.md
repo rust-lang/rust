@@ -3529,7 +3529,9 @@ The actual implementation for each vtable entry can vary on an object-by-object
 basis.
 
 Note that for a trait object to be instantiated, the trait must be
-_object-safe_. Object safety rules are defined in [RFC 255][rfc255].
+_object-safe_. Object safety rules are defined in [RFC 255].
+
+[RFC 255]: https://github.com/rust-lang/rfcs/blob/master/text/0255-object-safety.md
 
 Given a pointer-typed expression `E` of type `&T` or `Box<T>`, where `T`
 implements trait `R`, casting `E` to the corresponding pointer type `&R` or
