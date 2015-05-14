@@ -64,6 +64,44 @@ impl Foo for Bar {
 ```
 "##,
 
+E0053: r##"
+In a trait method implementation, the function signature must match exactly.
+This error indicates a mutability mismatch between a trait method signature
+and the signature of the implementation.
+
+Here's an example where the mutability of the `self` parameter is wrong:
+
+```
+trait Foo { fn foo(&self); }
+
+struct Bar;
+
+impl Foo for Bar {
+    // error, the signature should be `fn foo(&self)` instead
+    fn foo(&mut self) { }
+}
+
+fn main() {}
+```
+
+Here's another example, this time for a non-`self` parameter:
+
+```
+trait Foo { fn foo(x: &mut bool) -> bool; }
+
+struct Bar;
+
+impl Foo for Bar {
+    // error, the type of `x` should be `&mut bool` instead
+    fn foo(x: &bool) -> bool { *x }
+}
+
+fn main() {}
+```
+
+
+"##,
+
 E0054: r##"
 It is not allowed to cast to a bool. If you are trying to cast a numeric type
 to a bool, you can compare it with zero instead:
@@ -483,6 +521,48 @@ The `Sized` trait is a special trait built-in to the compiler for types with a
 constant size known at compile-time. This trait is automatically implemented
 for types as needed by the compiler, and it is currently disallowed to
 explicitly implement it for a type.
+"##,
+
+E0368: r##"
+This error indicates that a binary assignment operator like `+=` or `^=` was
+applied to the wrong types.
+
+A couple examples of this are as follows:
+
+```
+let mut x: u16 = 5;
+x ^= true; // error, `^=` cannot be applied to types `u16` and `bool`
+x += ();   // error, `+=` cannot be applied to types `u16` and `()`
+```
+
+Another problem you might be facing is this: suppose you've overloaded the `+`
+operator for some type `Foo` by implementing the `std::ops::Add` trait for
+`Foo`, but you find that using `+=` does not work, as in this example:
+
+```
+use std::ops::Add;
+
+struct Foo(u32);
+
+impl Add for Foo {
+    type Output = Foo;
+
+    fn add(self, rhs: Foo) -> Foo {
+        Foo(self.0 + rhs.0)
+    }
+}
+
+fn main() {
+    let mut x: Foo = Foo(5);
+    x += Foo(7); // error, `+= cannot be applied to types `Foo` and `Foo`
+}
+```
+
+This is because the binary assignment operators currently do not work off of
+traits, so it is not possible to overload them. See [RFC 953] for a proposal
+to change this.
+
+[RFC 953]: https://github.com/rust-lang/rfcs/pull/953
 "##
 
 }
@@ -503,7 +583,6 @@ register_diagnostics! {
     E0040, // explicit use of destructor method
     E0044, // foreign items may not have type parameters
     E0045, // variadic function must have C calling convention
-    E0053,
     E0055, // method has an incompatible type for trait
     E0057, // method has an incompatible type for trait
     E0059,
@@ -629,7 +708,6 @@ register_diagnostics! {
     E0328, // cannot implement Unsize explicitly
     E0366, // dropck forbid specialization to concrete type or region
     E0367, // dropck forbid specialization to predicate not in struct/enum
-    E0368, // binary operation `<op>=` cannot be applied to types
     E0369, // binary operation `<op>` cannot be applied to types
     E0371, // impl Trait for Trait is illegal
     E0372, // impl Trait for Trait where Trait is not object safe
