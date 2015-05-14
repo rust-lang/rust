@@ -49,6 +49,88 @@ about what constitutes an Item declaration and what does not:
 http://doc.rust-lang.org/reference.html#statements
 "##,
 
+E0251: r##"
+Two items of the same name cannot be imported without rebinding one of the
+items under a new local name.
+
+An example of this error:
+
+```
+use foo::baz;
+use bar::*; // error, do `use foo::baz as quux` instead on the previous line
+
+fn main() {}
+
+mod foo {
+    pub struct baz;
+}
+
+mod bar {
+    pub mod baz {}
+}
+```
+"##,
+
+E0252: r##"
+Two items of the same name cannot be imported without rebinding one of the
+items under a new local name.
+
+An example of this error:
+
+```
+use foo::baz;
+use bar::baz; // error, do `use bar::baz as quux` instead
+
+fn main() {}
+
+mod foo {
+    pub struct baz;
+}
+
+mod bar {
+    pub mod baz {}
+}
+```
+"##,
+
+E0255: r##"
+You can't import a value whose name is the same as another value defined in the
+module.
+
+An example of this error:
+
+```
+use bar::foo; // error, do `use bar::foo as baz` instead
+
+fn foo() {}
+
+mod bar {
+     pub fn foo() {}
+}
+
+fn main() {}
+```
+"##,
+
+E0256: r##"
+You can't import a type or module when the name of the item being imported is
+the same as another type or submodule defined in the module.
+
+An example of this error:
+
+```
+use foo::Bar; // error
+
+type Bar = u32;
+
+mod foo {
+    pub mod Bar { }
+}
+
+fn main() {}
+```
+"##,
+
 E0259: r##"
 The name chosen for an external crate conflicts with another external crate that
 has been imported into the current module.
@@ -122,14 +204,10 @@ http://doc.rust-lang.org/reference.html#types
 register_diagnostics! {
     E0157,
     E0153,
-    E0251, // a named type or value has already been imported in this module
-    E0252, // a named type or value has already been imported in this module
     E0253, // not directly importable
     E0254, // import conflicts with imported crate in this module
-    E0255, // import conflicts with value in this module
-    E0256, // import conflicts with type in this module
-    E0257, // inherent implementations are only allowed on types defined in the current module
-    E0258, // import conflicts with existing submodule
+    E0257,
+    E0258,
     E0364, // item is private
     E0365  // item is private
 }
