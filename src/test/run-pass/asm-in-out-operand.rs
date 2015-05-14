@@ -8,14 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 #![feature(asm)]
 
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 unsafe fn next_power_of_2(n: u32) -> u32 {
     let mut tmp = n;
     asm!("dec $0" : "+rm"(tmp) :: "cc");
-    let mut shift = 1_usize;
+    let mut shift = 1_u32;
     while shift <= 16 {
         asm!(
             "shr %cl, $2
