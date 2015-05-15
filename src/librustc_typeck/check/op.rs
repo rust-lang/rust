@@ -18,9 +18,7 @@ use super::{
     method,
     FnCtxt,
     PreferMutLvalue,
-    structurally_resolved_type,
 };
-use middle::traits;
 use middle::ty::{self, Ty};
 use syntax::ast;
 use syntax::ast_util;
@@ -35,32 +33,38 @@ pub fn check_binop_assign<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
 {
     let tcx = fcx.ccx.tcx;
 
+    debug!("check_binop_assign(expr.id={}, expr={:?}, op={:?}, lhs_expr={:?}, rhs_expr={:?})",
+           expr.id,
+           expr,
+           op,
+           lhs_expr,
+           rhs_expr);
+
     check_expr_with_lvalue_pref(fcx, lhs_expr, PreferMutLvalue);
-    check_expr(fcx, rhs_expr);
+    let lhs_ty = fcx.resolve_type_vars_if_possible(fcx.expr_ty(lhs_expr));
 
-    let lhs_ty = structurally_resolved_type(fcx, lhs_expr.span, fcx.expr_ty(lhs_expr));
-    let rhs_ty = structurally_resolved_type(fcx, rhs_expr.span, fcx.expr_ty(rhs_expr));
+    let (rhs_ty, return_ty) =
+        check_overloaded_binop(fcx, expr, lhs_expr, lhs_ty, rhs_expr, op, true);
 
-    if is_builtin_binop(fcx.tcx(), lhs_ty, rhs_ty, op) {
+    let rhs_ty = fcx.resolve_type_vars_if_possible(rhs_ty);
+    if
+        !ty::type_is_ty_var(lhs_ty) &&
+        !ty::type_is_ty_var(rhs_ty) &&
+        is_builtin_binop(fcx.tcx(), lhs_ty, rhs_ty, op)
+    {
         enforce_builtin_binop_types(fcx, lhs_expr, lhs_ty, rhs_expr, rhs_ty, op);
         fcx.write_nil(expr.id);
     } else {
-        // error types are considered "builtin"
-        assert!(!ty::type_is_error(lhs_ty) || !ty::type_is_error(rhs_ty));
-        span_err!(tcx.sess, lhs_expr.span, E0368,
-                  "binary assignment operation `{}=` cannot be applied to types `{}` and `{}`",
-                  ast_util::binop_to_string(op.node),
-                  lhs_ty,
-                  rhs_ty);
-        fcx.write_error(expr.id);
+        fcx.write_ty(expr.id, return_ty);
     }
 
-    let tcx = fcx.tcx();
-    if !ty::expr_is_lval(tcx, lhs_expr) {
+    if !ty::expr_is_lval(tcx, lhs_expr) || match lhs_expr.node {
+        // XXX(japaric) allow mutation via proxies `y.row_mut(0) += x`
+        ast::ExprCall(..) | ast::ExprMethodCall(..) => true,
+        _ => false,
+    } {
         span_err!(tcx.sess, lhs_expr.span, E0067, "illegal left-hand side expression");
     }
-
-    fcx.require_expr_have_sized_type(lhs_expr, traits::AssignmentLhsSized);
 }
 
 /// Check a potentially overloaded binary operator.
@@ -106,7 +110,7 @@ pub fn check_binop<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             // overloaded. This is the way to be most flexible w/r/t
             // types that get inferred.
             let (rhs_ty, return_ty) =
-                check_overloaded_binop(fcx, expr, lhs_expr, lhs_ty, rhs_expr, op);
+                check_overloaded_binop(fcx, expr, lhs_expr, lhs_ty, rhs_expr, op, false);
 
             // Supply type inference hints if relevant. Probably these
             // hints should be enforced during select as part of the
@@ -205,14 +209,16 @@ fn check_overloaded_binop<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                     lhs_expr: &'tcx ast::Expr,
                                     lhs_ty: Ty<'tcx>,
                                     rhs_expr: &'tcx ast::Expr,
-                                    op: ast::BinOp)
+                                    op: ast::BinOp,
+                                    assign: bool)
                                     -> (Ty<'tcx>, Ty<'tcx>)
 {
-    debug!("check_overloaded_binop(expr.id={}, lhs_ty={:?})",
+    debug!("check_overloaded_binop(expr.id={}, lhs_ty={:?}, assign={})",
            expr.id,
-           lhs_ty);
+           lhs_ty,
+           assign);
 
-    let (name, trait_def_id) = name_and_trait_def_id(fcx, op);
+    let (name, trait_def_id) = name_and_trait_def_id(fcx, op, assign);
 
     // NB: As we have not yet type-checked the RHS, we don't have the
     // type at hand. Make a variable to represent it. The whole reason
@@ -229,10 +235,17 @@ fn check_overloaded_binop<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         Err(()) => {
             // error types are considered "builtin"
             if !ty::type_is_error(lhs_ty) {
-                span_err!(fcx.tcx().sess, lhs_expr.span, E0369,
-                          "binary operation `{}` cannot be applied to type `{}`",
-                          ast_util::binop_to_string(op.node),
-                          lhs_ty);
+                if assign {
+                    span_err!(fcx.tcx().sess, lhs_expr.span, E0369,
+                              "binary assignment operation `{}=` cannot be applied to type `{}`",
+                              ast_util::binop_to_string(op.node),
+                              lhs_ty);
+                } else {
+                    span_err!(fcx.tcx().sess, lhs_expr.span, E0369,
+                              "binary operation `{}` cannot be applied to type `{}`",
+                              ast_util::binop_to_string(op.node),
+                              lhs_ty);
+                }
             }
             fcx.tcx().types.err
         }
@@ -269,27 +282,52 @@ pub fn check_user_unop<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     }
 }
 
-fn name_and_trait_def_id(fcx: &FnCtxt, op: ast::BinOp) -> (&'static str, Option<ast::DefId>) {
+fn name_and_trait_def_id(fcx: &FnCtxt,
+                         op: ast::BinOp,
+                         assign: bool)
+                         -> (&'static str, Option<ast::DefId>) {
     let lang = &fcx.tcx().lang_items;
-    match op.node {
-        ast::BiAdd => ("add", lang.add_trait()),
-        ast::BiSub => ("sub", lang.sub_trait()),
-        ast::BiMul => ("mul", lang.mul_trait()),
-        ast::BiDiv => ("div", lang.div_trait()),
-        ast::BiRem => ("rem", lang.rem_trait()),
-        ast::BiBitXor => ("bitxor", lang.bitxor_trait()),
-        ast::BiBitAnd => ("bitand", lang.bitand_trait()),
-        ast::BiBitOr => ("bitor", lang.bitor_trait()),
-        ast::BiShl => ("shl", lang.shl_trait()),
-        ast::BiShr => ("shr", lang.shr_trait()),
-        ast::BiLt => ("lt", lang.ord_trait()),
-        ast::BiLe => ("le", lang.ord_trait()),
-        ast::BiGe => ("ge", lang.ord_trait()),
-        ast::BiGt => ("gt", lang.ord_trait()),
-        ast::BiEq => ("eq", lang.eq_trait()),
-        ast::BiNe => ("ne", lang.eq_trait()),
-        ast::BiAnd | ast::BiOr => {
-            fcx.tcx().sess.span_bug(op.span, "&& and || are not overloadable")
+
+    if assign {
+        match op.node {
+            ast::BiAdd => ("add_assign", lang.add_assign_trait()),
+            ast::BiSub => ("sub_assign", lang.sub_assign_trait()),
+            ast::BiMul => ("mul_assign", lang.mul_assign_trait()),
+            ast::BiDiv => ("div_assign", lang.div_assign_trait()),
+            ast::BiRem => ("rem_assign", lang.rem_assign_trait()),
+            ast::BiBitXor => ("bitxor_assign", lang.bitxor_assign_trait()),
+            ast::BiBitAnd => ("bitand_assign", lang.bitand_assign_trait()),
+            ast::BiBitOr => ("bitor_assign", lang.bitor_assign_trait()),
+            ast::BiShl => ("shl_assign", lang.shl_assign_trait()),
+            ast::BiShr => ("shr_assign", lang.shr_assign_trait()),
+            ast::BiLt | ast::BiLe | ast::BiGe | ast::BiGt | ast::BiEq | ast::BiNe | ast::BiAnd |
+                ast::BiOr => {
+                fcx.tcx().sess.span_bug(
+                    op.span,
+                    &format!("{} is not overloadable", ast_util::binop_to_string(op.node)))
+            }
+        }
+    } else {
+        match op.node {
+            ast::BiAdd => ("add", lang.add_trait()),
+            ast::BiSub => ("sub", lang.sub_trait()),
+            ast::BiMul => ("mul", lang.mul_trait()),
+            ast::BiDiv => ("div", lang.div_trait()),
+            ast::BiRem => ("rem", lang.rem_trait()),
+            ast::BiBitXor => ("bitxor", lang.bitxor_trait()),
+            ast::BiBitAnd => ("bitand", lang.bitand_trait()),
+            ast::BiBitOr => ("bitor", lang.bitor_trait()),
+            ast::BiShl => ("shl", lang.shl_trait()),
+            ast::BiShr => ("shr", lang.shr_trait()),
+            ast::BiLt => ("lt", lang.ord_trait()),
+            ast::BiLe => ("le", lang.ord_trait()),
+            ast::BiGe => ("ge", lang.ord_trait()),
+            ast::BiGt => ("gt", lang.ord_trait()),
+            ast::BiEq => ("eq", lang.eq_trait()),
+            ast::BiNe => ("ne", lang.eq_trait()),
+            ast::BiAnd | ast::BiOr => {
+                fcx.tcx().sess.span_bug(op.span, "&& and || are not overloadable")
+            }
         }
     }
 }

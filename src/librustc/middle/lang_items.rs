@@ -288,6 +288,17 @@ lets_do_this! {
     RangeToStructLangItem,           "range_to",                range_to_struct;
     RangeFullStructLangItem,         "range_full",              range_full_struct;
 
+    AddAssignTraitLangItem,          "add_assign",              add_assign_trait;
+    BitAndAssignTraitLangItem,       "bitand_assign",           bitand_assign_trait;
+    BitOrAssignTraitLangItem,        "bitor_assign",            bitor_assign_trait;
+    BitXorAssignTraitLangItem,       "bitxor_assign",           bitxor_assign_trait;
+    DivAssignTraitLangItem,          "div_assign",              div_assign_trait;
+    MulAssignTraitLangItem,          "mul_assign",              mul_assign_trait;
+    RemAssignTraitLangItem,          "rem_assign",              rem_assign_trait;
+    ShlAssignTraitLangItem,          "shl_assign",              shl_assign_trait;
+    ShrAssignTraitLangItem,          "shr_assign",              shr_assign_trait;
+    SubAssignTraitLangItem,          "sub_assign",              sub_assign_trait;
+
     UnsafeCellTypeLangItem,          "unsafe_cell",             unsafe_cell_type;
 
     DerefTraitLangItem,              "deref",                   deref_trait;
