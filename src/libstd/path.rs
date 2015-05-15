@@ -1485,7 +1485,7 @@ impl Path {
         iter_after(self.components().rev(), child.as_ref().components().rev()).is_some()
     }
 
-    /// Extracts the stem (non-extension) portion of `self.file()`.
+    /// Extracts the stem (non-extension) portion of `self.file_name()`.
     ///
     /// The stem is:
     ///
@@ -1508,7 +1508,7 @@ impl Path {
         self.file_name().map(split_file_at_dot).and_then(|(before, after)| before.or(after))
     }
 
-    /// Extracts the extension of `self.file()`, if possible.
+    /// Extracts the extension of `self.file_name()`, if possible.
     ///
     /// The extension is:
     ///
