@@ -1127,6 +1127,7 @@ impl<'a, I: Iterator + ?Sized> Iterator for &'a mut I {
     type Item = I::Item;
     fn next(&mut self) -> Option<I::Item> { (**self).next() }
     fn size_hint(&self) -> (usize, Option<usize>) { (**self).size_hint() }
+    fn nth(&mut self, n: usize) -> Option<I::Item> { (**self).nth(n) }
 }
 
 /// Conversion from an `Iterator`
