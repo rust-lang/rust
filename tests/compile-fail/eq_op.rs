@@ -6,6 +6,7 @@ fn id<X>(x: X) -> X {
 }
 
 #[deny(eq_op)]
+#[allow(identity_op)]
 fn main() {
 	// simple values and comparisons
 	1 == 1; //~ERROR

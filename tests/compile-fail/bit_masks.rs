@@ -5,7 +5,7 @@ const THREE_BITS : i64 = 7;
 const EVEN_MORE_REDIRECTION : i64 = THREE_BITS;
 
 #[deny(bad_bit_mask)]
-#[allow(ineffective_bit_mask)]
+#[allow(ineffective_bit_mask, identity_op)]
 fn main() {
 	let x = 5;
 	
