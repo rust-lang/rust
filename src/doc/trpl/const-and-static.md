@@ -31,8 +31,6 @@ static N: i32 = 5;
 
 Unlike [`let`][let] bindings, you must annotate the type of a `static`.
 
-[let]: variable-bindings.html
-
 Statics live for the entire lifetime of a program, and therefore any
 reference stored in a constant has a [`’static` lifetime][lifetimes]:
 
