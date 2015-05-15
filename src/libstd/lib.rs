@@ -60,7 +60,7 @@
 //! [`FromStr`](str/trait.FromStr.html) trait.
 //!
 //! Data may be shared by placing it in a reference-counted box or the
-//! [`Rc`][rc/index.html] type, and if further contained in a [`Cell`
+//! [`Rc`](rc/index.html) type, and if further contained in a [`Cell`
 //! or `RefCell`](cell/index.html), may be mutated as well as shared.
 //! Likewise, in a concurrent setting it is common to pair an
 //! atomically-reference-counted box, [`Arc`](sync/struct.Arc.html),
