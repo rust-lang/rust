@@ -40,7 +40,7 @@
 //! [`result`](result/index.html) modules define optional and
 //! error-handling types, `Option` and `Result`. The
 //! [`iter`](iter/index.html) module defines Rust's iterator trait,
-//! [`Iterater`](iter/trait.Iterator.html), which works with the `for`
+//! [`Iterator`](iter/trait.Iterator.html), which works with the `for`
 //! loop to access collections.
 //!
 //! The common container type, `Vec`, a growable vector backed by an array,
