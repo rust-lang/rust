@@ -364,6 +364,76 @@ it has been disabled for now.
 [iss20126]: https://github.com/rust-lang/rust/issues/20126
 "##,
 
+E0197: r##"
+Inherent implementations (one that do not implement a trait but provide
+methods associated with a type) are always safe because they are not
+implementing an unsafe trait. Removing the `unsafe` keyword from the inherent
+implementation will resolve this error.
+
+```
+struct Foo;
+
+// this will cause this error
+unsafe impl Foo { }
+// converting it to this will fix it
+impl Foo { }
+```
+
+"##,
+
+E0198: r##"
+A negative implementation is one that excludes a type from implementing a
+particular trait. Not being able to use a trait is always a safe operation,
+so negative implementations are always safe and never need to be marked as
+unsafe.
+
+```
+struct Foo;
+
+// unsafe is unnecessary
+unsafe impl !Clone for Foo { }
+// this will compile
+impl !Clone for Foo { }
+```
+
+"##,
+
+E0199: r##"
+Safe traits should not have unsafe implementations, therefore marking an
+implementation for a safe trait unsafe will cause a compiler error. Removing the
+unsafe marker on the trait noted in the error will resolve this problem.
+
+```
+struct Foo;
+
+trait Bar { }
+
+// this won't compile because Bar is safe
+unsafe impl Bar for Foo { }
+// this will compile
+impl Bar for Foo { }
+```
+
+"##,
+
+E0200: r##"
+Unsafe traits must have unsafe implementations. This error occurs when an
+implementation for an unsafe trait isn't marked as unsafe. This may be resolved
+by marking the unsafe implementation as unsafe.
+
+```
+struct Foo;
+
+unsafe trait Bar { }
+
+// this won't compile because Bar is unsafe and impl isn't unsafe
+impl Bar for Foo { }
+// this will compile
+unsafe impl Bar for Foo { }
+```
+
+"##,
+
 E0201: r##"
 It is an error to define a method--a trait method or an inherent method--more
 than once.
@@ -648,10 +718,6 @@ register_diagnostics! {
     E0194,
     E0195, // lifetime parameters or bounds on method do not match the trait declaration
     E0196, // cannot determine a type for this closure
-    E0197, // inherent impls cannot be declared as unsafe
-    E0198, // negative implementations are not unsafe
-    E0199, // implementing trait is not unsafe
-    E0200, // trait requires an `unsafe impl` declaration
     E0202, // associated items are not allowed in inherent impls
     E0203, // type parameter has more than one relaxed default bound,
            // and only one is supported
