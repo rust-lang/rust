@@ -367,7 +367,7 @@ it has been disabled for now.
 E0197: r##"
 Inherent implementations (one that do not implement a trait but provide
 methods associated with a type) are always safe because they are not
-implementing an unsafe trait. Removing the unsafe keyword from the inherent
+implementing an unsafe trait. Removing the `unsafe` keyword from the inherent
 implementation will resolve this error.
 
 ```
