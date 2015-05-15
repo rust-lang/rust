@@ -230,14 +230,14 @@ impl<'a> SpanUtils<'a> {
     // Reparse span and return an owned vector of sub spans of the first limit
     // identifier tokens in the given nesting level.
     // example with Foo<Bar<T,V>, Bar<T,V>>
-    // Nesting = 0: all idents outside of brackets: Vec<Foo>
-    // Nesting = 1: idents within one level of brackets: Vec<Bar, Bar>
+    // Nesting = 0: all idents outside of brackets: [Foo]
+    // Nesting = 1: idents within one level of brackets: [Bar, Bar]
     pub fn spans_with_brackets(&self, span: Span, nesting: isize, limit: isize) -> Vec<Span> {
         let mut result: Vec<Span> = vec!();
 
         let mut toks = self.retokenise_span(span);
         // We keep track of how many brackets we're nested in
-        let mut bracket_count = 0;
+        let mut bracket_count: isize = 0;
         let mut found_ufcs_sep = false;
         loop {
             let ts = toks.real_token();
@@ -255,19 +255,26 @@ impl<'a> SpanUtils<'a> {
             }
             bracket_count += match ts.tok {
                 token::Lt => 1,
-                token::Gt => {
-                    // Ignore the `>::` in `<Type as Trait>::AssocTy`.
-                    if !found_ufcs_sep && bracket_count == 0 {
-                        found_ufcs_sep = true;
-                        0
-                    } else {
-                        -1
-                    }
-                }
+                token::Gt => -1,
                 token::BinOp(token::Shl) => 2,
                 token::BinOp(token::Shr) => -2,
                 _ => 0
             };
+
+            // Ignore the `>::` in `<Type as Trait>::AssocTy`.
+
+            // The root cause of this hack is that the AST representation of
+            // qpaths is horrible. It treats <A as B>::C as a path with two
+            // segments, B and C and notes that there is also a self type A at
+            // position 0. Because we don't have spans for individual idents,
+            // only the whole path, we have to iterate over the tokens in the
+            // path, trying to pull out the non-nested idents (e.g., avoiding 'a
+            // in `<A as B<'a>>::C`). So we end up with a span for `B>::C` from
+            // the start of the first ident to the end of the path.
+            if !found_ufcs_sep && bracket_count == -1 {
+                found_ufcs_sep = true;
+                bracket_count += 1;
+            }
             if ts.tok.is_ident() && bracket_count == nesting {
                 result.push(self.make_sub_span(span, Some(ts.sp)).unwrap());
             }
@@ -335,7 +342,7 @@ impl<'a> SpanUtils<'a> {
     }
 
 
-    // Returns a list of the spans of idents in a patch.
+    // Returns a list of the spans of idents in a path.
     // E.g., For foo::bar<x,t>::baz, we return [foo, bar, baz] (well, their spans)
     pub fn spans_for_path_segments(&self, path: &ast::Path) -> Vec<Span> {
         if generated_code(path.span) {
