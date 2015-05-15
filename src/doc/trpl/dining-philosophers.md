@@ -396,7 +396,7 @@ let handles: Vec<_> = philosophers.into_iter().map(|p| {
 }).collect();
 ```
 
-While this is only five lines, they’re a dense four. Let’s break it down.
+While this is only five lines, they’re a dense five. Let’s break it down.
 
 ```rust,ignore
 let handles: Vec<_> = 
