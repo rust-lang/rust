@@ -35,7 +35,7 @@ let y = &mut x;
 
 `y` is an immutable binding to a mutable reference, which means that you can’t
 bind `y` to something else (`y = &mut z`), but you can mutate the thing that’s
-bound to `y`. (`*y = 5`) A subtle distinction.
+bound to `y` (`*y = 5`). A subtle distinction.
 
 Of course, if you need both:
 
