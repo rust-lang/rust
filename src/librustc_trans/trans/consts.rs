@@ -660,9 +660,11 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
               (CastTy::Float, CastTy::Float) => {
                 llvm::LLVMConstFPCast(v, llty.to_ref())
               }
+              (CastTy::Float, CastTy::Int(IntTy::I)) => {
+                llvm::LLVMConstFPToSI(v, llty.to_ref())
+              }
               (CastTy::Float, CastTy::Int(_)) => {
-                if ty::type_is_signed(t_expr) { llvm::LLVMConstFPToSI(v, llty.to_ref()) }
-                else { llvm::LLVMConstFPToUI(v, llty.to_ref()) }
+                llvm::LLVMConstFPToUI(v, llty.to_ref())
               }
               (CastTy::Ptr(_), CastTy::Ptr(_)) | (CastTy::FnPtr, CastTy::Ptr(_))
                     | (CastTy::RPtr(_), CastTy::Ptr(_)) => {
