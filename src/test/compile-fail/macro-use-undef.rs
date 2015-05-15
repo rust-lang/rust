@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // aux-build:two_macros.rs
-// ignore-stage1
 
 #[macro_use(macro_two, no_way)] //~ ERROR imported macro not found
 extern crate two_macros;

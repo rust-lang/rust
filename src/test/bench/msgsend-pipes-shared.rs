@@ -18,7 +18,7 @@
 // different scalability characteristics compared to the select
 // version.
 
-#![feature(std_misc)]
+#![feature(duration, duration_span)]
 
 use std::sync::mpsc::{channel, Sender, Receiver};
 use std::env;
@@ -88,9 +88,9 @@ fn run(args: &[String]) {
     });
     let result = result.unwrap();
     print!("Count is {}\n", result);
-    print!("Test took {} ms\n", dur.num_milliseconds());
-    let thruput = ((size / workers * workers) as f64) / (dur.num_milliseconds() as f64);
-    print!("Throughput={} per sec\n", thruput / 1000.0);
+    print!("Test took {}\n", dur);
+    let thruput = ((size / workers * workers) as f64) / (dur.secs() as f64);
+    print!("Throughput={} per sec\n", thruput);
     assert_eq!(result, num_bytes * size);
 }
 

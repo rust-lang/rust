@@ -720,8 +720,7 @@ fn get_metadata_section(is_osx: bool, filename: &Path) -> Result<MetadataBlob, S
     let dur = Duration::span(|| {
         ret = Some(get_metadata_section_imp(is_osx, filename));
     });
-    info!("reading {:?} => {}ms", filename.file_name().unwrap(),
-          dur.num_milliseconds());
+    info!("reading {:?} => {}", filename.file_name().unwrap(), dur);
     return ret.unwrap();;
 }
 

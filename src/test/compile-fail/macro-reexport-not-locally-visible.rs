@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // aux-build:macro_reexport_1.rs
-// ignore-stage1
 
 #![feature(macro_reexport)]
 

@@ -18,7 +18,7 @@
 
 */
 
-#![feature(std_misc, rustc_private)]
+#![feature(duration, duration_span, rustc_private)]
 
 extern crate getopts;
 

@@ -12,5 +12,5 @@
 
 fn main() {
     box ( () ) 0;
-    //~^ ERROR: only the managed heap and exchange heap are currently supported
+    //~^ ERROR: only the exchange heap is currently supported
 }

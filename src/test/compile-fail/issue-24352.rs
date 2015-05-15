@@ -8,10 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// tests the good error message, not "missing module Foo" or something else unexpected
-
-struct Foo;
-
 fn main() {
-    Foo::bar(); //~ ERROR no associated item named `bar` found for type `Foo` in the current scope
+    1.0f64 - 1.0;
+    1.0f64 - 1 //~ ERROR: is not implemented
+    //~^ ERROR: is not implemented
 }

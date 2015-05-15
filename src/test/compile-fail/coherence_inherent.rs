@@ -38,7 +38,7 @@ mod NoImport {
     use Lib::TheStruct;
 
     fn call_the_fn(s: &TheStruct) {
-        s.the_fn(); //~ ERROR does not implement any method in scope named `the_fn`
+        s.the_fn(); //~ ERROR no method named `the_fn` found
     }
 }
 

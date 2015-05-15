@@ -450,7 +450,7 @@ which blocks execution until the thread has completed execution. This ensures
 that the threads complete their work before the program exits.
 
 If you run this program, you’ll see that the philosophers eat out of order!
-We have mult-threading!
+We have multi-threading!
 
 ```text
 Gilles Deleuze is eating.

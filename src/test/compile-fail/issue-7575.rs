@@ -71,15 +71,15 @@ impl ManyImplTrait for Myisize {}
 
 fn no_param_bound(u: usize, m: Myisize) -> usize {
     u.f8(42) + u.f9(342) + m.fff(42)
-            //~^ ERROR type `usize` does not implement any method in scope named `f9`
+            //~^ ERROR no method named `f9` found for type `usize` in the current scope
             //~^^ NOTE found defined static methods, maybe a `self` is missing?
-            //~^^^ ERROR type `Myisize` does not implement any method in scope named `fff`
+            //~^^^ ERROR no method named `fff` found for type `Myisize` in the current scope
             //~^^^^ NOTE found defined static methods, maybe a `self` is missing?
 }
 
 fn param_bound<T: ManyImplTrait>(t: T) -> bool {
     t.is_str()
-    //~^ ERROR type `T` does not implement any method in scope named `is_str`
+    //~^ ERROR no method named `is_str` found for type `T` in the current scope
     //~^^ NOTE found defined static methods, maybe a `self` is missing?
 }
 

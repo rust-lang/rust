@@ -8,10 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// tests the good error message, not "missing module Foo" or something else unexpected
+use std::ops::Add;
 
-struct Foo;
+trait Scalar {}
+impl Scalar for f64 {}
+
+struct Bob;
+
+impl<RHS: Scalar> Add <RHS> for Bob {
+  type Output = Bob;
+  fn add(self, rhs : RHS) -> Bob {}
+}
 
 fn main() {
-    Foo::bar(); //~ ERROR no associated item named `bar` found for type `Foo` in the current scope
+  let b = Bob + 3.5;
+  b + 3 //~ ERROR: is not implemented
+  //~^ ERROR: is not implemented
+  //~^^ ERROR: is not implemented
+  //~^^^ ERROR: mismatched types
 }

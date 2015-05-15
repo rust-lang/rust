@@ -41,6 +41,6 @@ fn foo(i:isize) -> foo {
 
 fn main() {
     let x = foo(10);
-    let _y = x.clone(); //~ ERROR does not implement any method in scope
+    let _y = x.clone(); //~ ERROR no method named `clone` found
     println!("{:?}", x);
 }
