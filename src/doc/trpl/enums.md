@@ -55,9 +55,6 @@ fn process_color_change(msg: Message) {
 }
 ```
 
-Both variants are named `Digit`, but since they’re scoped to the `enum` name
-there's no ambiguity.
-
 Not supporting these operations may seem rather limiting, but it’s a limitation
 which we can overcome. There are two ways: by implementing equality ourselves,
 or by pattern matching variants with [`match`][match] expressions, which you’ll
