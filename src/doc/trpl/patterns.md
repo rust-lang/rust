@@ -66,7 +66,7 @@ match x {
 }
 ```
 
-This prints `something else`
+This prints `something else`.
 
 # Bindings
 
@@ -152,7 +152,7 @@ match x {
 }
 ```
 
-This prints `Got an int!`
+This prints `Got an int!`.
 
 # ref and ref mut
 
