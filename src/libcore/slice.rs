@@ -124,6 +124,43 @@ pub trait SliceExt {
     fn clone_from_slice(&mut self, &[Self::Item]) -> usize where Self::Item: Clone;
 }
 
+// Use macros to be generic over const/mut
+#[cfg(stage0)]
+macro_rules! slice_offset {
+    ($ptr:expr, $by:expr) => {{
+        let ptr = $ptr;
+        if size_from_ptr(ptr) == 0 {
+            transmute((ptr as isize).wrapping_add($by))
+        } else {
+            ptr.offset($by)
+        }
+    }};
+}
+
+#[cfg(not(stage0))]
+macro_rules! slice_offset {
+    ($ptr:expr, $by:expr) => {{
+        let ptr = $ptr;
+        if size_from_ptr(ptr) == 0 {
+            ::intrinsics::arith_offset(ptr as *mut i8, $by) as *mut _
+        } else {
+            ptr.offset($by)
+        }
+    }};
+}
+
+macro_rules! slice_ref {
+    ($ptr:expr) => {{
+        let ptr = $ptr;
+        if size_from_ptr(ptr) == 0 {
+            // Use a non-null pointer value
+            &mut *(1 as *mut _)
+        } else {
+            transmute(ptr)
+        }
+    }};
+}
+
 #[unstable(feature = "core")]
 impl<T> SliceExt for [T] {
     type Item = T;
@@ -136,16 +173,18 @@ impl<T> SliceExt for [T] {
     #[inline]
     fn iter<'a>(&'a self) -> Iter<'a, T> {
         unsafe {
-            let p = self.as_ptr();
-            assume(!p.is_null());
-            if mem::size_of::<T>() == 0 {
-                Iter {ptr: p,
-                      end: ((p as usize).wrapping_add(self.len())) as *const T,
-                      _marker: marker::PhantomData}
+            let p = if mem::size_of::<T>() == 0 {
+                1 as *const _
             } else {
-                Iter {ptr: p,
-                      end: p.offset(self.len() as isize),
-                      _marker: marker::PhantomData}
+                let p = self.as_ptr();
+                assume(!p.is_null());
+                p
+            };
+
+            Iter {
+                ptr: p,
+                end: slice_offset!(p, self.len() as isize),
+                _marker: marker::PhantomData
             }
         }
     }
@@ -273,16 +312,18 @@ impl<T> SliceExt for [T] {
     #[inline]
     fn iter_mut<'a>(&'a mut self) -> IterMut<'a, T> {
         unsafe {
-            let p = self.as_mut_ptr();
-            assume(!p.is_null());
-            if mem::size_of::<T>() == 0 {
-                IterMut {ptr: p,
-                         end: ((p as usize).wrapping_add(self.len())) as *mut T,
-                         _marker: marker::PhantomData}
+            let p = if mem::size_of::<T>() == 0 {
+                1 as *mut _
             } else {
-                IterMut {ptr: p,
-                         end: p.offset(self.len() as isize),
-                         _marker: marker::PhantomData}
+                let p = self.as_mut_ptr();
+                assume(!p.is_null());
+                p
+            };
+
+            IterMut {
+                ptr: p,
+                end: slice_offset!(p, self.len() as isize),
+                _marker: marker::PhantomData
             }
         }
     }
@@ -630,31 +671,6 @@ fn size_from_ptr<T>(_: *const T) -> usize {
     mem::size_of::<T>()
 }
 
-
-// Use macros to be generic over const/mut
-macro_rules! slice_offset {
-    ($ptr:expr, $by:expr) => {{
-        let ptr = $ptr;
-        if size_from_ptr(ptr) == 0 {
-            transmute((ptr as isize).wrapping_add($by))
-        } else {
-            ptr.offset($by)
-        }
-    }};
-}
-
-macro_rules! slice_ref {
-    ($ptr:expr) => {{
-        let ptr = $ptr;
-        if size_from_ptr(ptr) == 0 {
-            // Use a non-null pointer value
-            &mut *(1 as *mut _)
-        } else {
-            transmute(ptr)
-        }
-    }};
-}
-
 // The shared definition of the `Iter` and `IterMut` iterators
 macro_rules! iterator {
     (struct $name:ident -> $ptr:ty, $elem:ty) => {
@@ -781,7 +797,7 @@ impl<'a, T> Iter<'a, T> {
         match self.as_slice().get(n) {
             Some(elem_ref) => unsafe {
                 self.ptr = slice_offset!(self.ptr, (n as isize).wrapping_add(1));
-                Some(slice_ref!(elem_ref))
+                Some(elem_ref)
             },
             None => {
                 self.ptr = self.end;
@@ -849,7 +865,7 @@ impl<'a, T> IterMut<'a, T> {
         match make_mut_slice!(self.ptr, self.end).get_mut(n) {
             Some(elem_ref) => unsafe {
                 self.ptr = slice_offset!(self.ptr, (n as isize).wrapping_add(1));
-                Some(slice_ref!(elem_ref))
+                Some(elem_ref)
             },
             None => {
                 self.ptr = self.end;
