@@ -196,3 +196,5 @@ useful. For instance, a library may ask you to create a structure that
 implements a certain [trait][trait] to handle events. If you don’t have
 any data you need to store in the structure, you can just create a
 unit-like struct.
+
+[trait]: traits.html

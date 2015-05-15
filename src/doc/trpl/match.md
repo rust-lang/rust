@@ -97,4 +97,4 @@ Unlike the previous uses of `match`, you can’t use the normal `if`
 statement to do this. You can use the [`if let`][if-let] statement,
 which can be seen as an abbreviated form of `match`.
 
-[if-let][if-let.html]
+[if-let]: if-let.html

@@ -6,7 +6,7 @@ and more cores, yet many programmers aren't prepared to fully utilize them.
 
 Rust's memory safety features also apply to its concurrency story too. Even
 concurrent Rust programs must be memory safe, having no data races. Rust's type
-system is up to the thread, and gives you powerful ways to reason about
+system is up to the task, and gives you powerful ways to reason about
 concurrent code at compile time.
 
 Before we talk about the concurrency features that come with Rust, it's important
