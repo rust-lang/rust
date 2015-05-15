@@ -42,13 +42,16 @@ pub struct CrateData {
     pub number: u32,
 }
 
-// Data for any entity in the Rust language. The actual data contained varied
-// with the kind of entity being queried. See the nested structs for details.
+/// Data for any entity in the Rust language. The actual data contained varied
+/// with the kind of entity being queried. See the nested structs for details.
 pub enum Data {
+    /// Data for all kinds of functions and methods.
     FunctionData(FunctionData),
+    /// Data for local and global variables (consts and statics).
     VariableData(VariableData),
 }
 
+/// Data for all kinds of functions and methods.
 pub struct FunctionData {
     pub id: NodeId,
     pub name: String,
@@ -58,6 +61,7 @@ pub struct FunctionData {
     pub scope: NodeId,
 }
 
+/// Data for local and global variables (consts and statics).
 pub struct VariableData {
     pub id: NodeId,
     pub name: String,
