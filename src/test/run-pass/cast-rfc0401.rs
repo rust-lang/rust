@@ -75,7 +75,6 @@ fn main()
     assert_eq!(9.223372036854775e18f64 as i64, 0x7ffffffffffffc00i64);
     assert_eq!(-9.223372036854776e18f64 as i64, 0x8000000000000000u64 as i64);
 
-
     // addr-ptr-cast/ptr-addr-cast (thin ptr)
     let p: *const [u8; 1] = lsz as *const [u8; 1];
     assert_eq!(p as usize, lsz);
