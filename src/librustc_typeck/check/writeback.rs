@@ -88,24 +88,55 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     // we observe that something like `a+b` is (known to be)
     // operating on scalars, we clear the overload.
     fn fix_scalar_binary_expr(&mut self, e: &ast::Expr) {
-        if let ast::ExprBinary(ref op, ref lhs, ref rhs) = e.node {
-            let lhs_ty = self.fcx.node_ty(lhs.id);
-            let lhs_ty = self.fcx.infcx().resolve_type_vars_if_possible(&lhs_ty);
+        match e.node {
+            ast::ExprBinary(ref op, ref lhs, ref rhs) |
+                ast::ExprAssignOp(ref op, ref lhs, ref rhs) => {
+                let lhs_ty = self.fcx.node_ty(lhs.id);
+                let lhs_ty = self.fcx.infcx().resolve_type_vars_if_possible(&lhs_ty);
 
-            let rhs_ty = self.fcx.node_ty(rhs.id);
-            let rhs_ty = self.fcx.infcx().resolve_type_vars_if_possible(&rhs_ty);
+                let rhs_ty = self.fcx.node_ty(rhs.id);
+                let rhs_ty = self.fcx.infcx().resolve_type_vars_if_possible(&rhs_ty);
 
-            if ty::type_is_scalar(lhs_ty) && ty::type_is_scalar(rhs_ty) {
-                self.fcx.inh.method_map.borrow_mut().remove(&MethodCall::expr(e.id));
+                if ty::type_is_scalar(lhs_ty) && ty::type_is_scalar(rhs_ty) {
+                    self.fcx.inh.method_map.borrow_mut().remove(&MethodCall::expr(e.id));
 
-                // weird but true: the by-ref binops put an
-                // adjustment on the lhs but not the rhs; the
-                // adjustment for rhs is kind of baked into the
-                // system.
-                if !ast_util::is_by_value_binop(op.node) {
-                    self.fcx.inh.adjustments.borrow_mut().remove(&lhs.id);
+                    // weird but true: the by-ref binops put an
+                    // adjustment on the lhs but not the rhs; the
+                    // adjustment for rhs is kind of baked into the
+                    // system.
+                    match e.node {
+                        ast::ExprBinary(..) => {
+                            if !ast_util::is_by_value_binop(op.node) {
+                                self.fcx.inh.adjustments.borrow_mut().remove(&lhs.id);
+                            }
+                        },
+                        ast::ExprAssignOp(..) => {
+                            self.fcx.inh.adjustments.borrow_mut().remove(&lhs.id);
+                        },
+                        _ => {},
+                    }
+                } else {
+                    match e.node {
+                        ast::ExprAssignOp(..) if !ty::type_is_error(self.fcx.expr_ty(e)) => {
+                            let tcx = self.tcx();
+
+                            if !tcx.sess.features.borrow().augmented_assignments {
+                                tcx.sess.span_err(
+                                    e.span,
+                                    "overloaded augmented assignments are not stable");
+                                fileline_help!(
+                                    tcx.sess,
+                                    e.span,
+                                    "add `#![feature(augmented_assignments)]` to the crate \
+                                     features to enable"
+                                )
+                            }
+                        },
+                        _ => {},
+                    }
                 }
-            }
+            },
+            _ => {},
         }
     }
 }
