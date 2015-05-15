@@ -563,13 +563,22 @@ macro_rules! int_impl {
             acc
         }
 
-        /// Computes the absolute value of `self`. `Int::min_value()` will be
-        /// returned if the number is `Int::min_value()`.
+        /// Computes the absolute value of `self`.
+        ///
+        /// # Overflow behavior
+        ///
+        /// The absolute value of `i32::min_value()` cannot be represented as an
+        /// `i32`, and attempting to calculate it will cause an overflow. This
+        /// means that code in debug mode will trigger a panic on this case and
+        /// optimized code will return `i32::min_value()` without a panic.
         #[stable(feature = "rust1", since = "1.0.0")]
         #[inline]
         pub fn abs(self) -> $T {
             if self.is_negative() {
-                self.wrapping_neg()
+                // Note that the #[inline] above means that the overflow
+                // semantics of this negation depend on the crate we're being
+                // inlined into.
+                -self
             } else {
                 self
             }
