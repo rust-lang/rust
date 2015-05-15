@@ -5,6 +5,7 @@ const THREE_BITS : i64 = 7;
 const EVEN_MORE_REDIRECTION : i64 = THREE_BITS;
 
 #[deny(bad_bit_mask)]
+#[allow(ineffective_bit_mask)]
 fn main() {
 	let x = 5;
 	
@@ -34,4 +35,18 @@ fn main() {
 	1 < 2 | x; //~ERROR
 	2 == 3 | x; //~ERROR
 	1 == x & 2; //~ERROR
+	
+	x | 1 > 2; // no error, because we allowed ineffective bit masks
+	ineffective();
+}
+
+#[deny(ineffective_bit_mask)]
+#[allow(bad_bit_mask)]
+fn ineffective() {
+	let x = 5;
+	
+	x | 1 > 2; //~ERROR
+	x | 1 < 3; //~ERROR
+	x | 1 <= 3; //~ERROR
+	x | 1 >= 2; //~ERROR
 }
