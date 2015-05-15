@@ -57,25 +57,20 @@ impl Condvar {
     // https://github.com/llvm-mirror/libcxx/blob/release_35/src/condition_variable.cpp#L46
     // https://github.com/llvm-mirror/libcxx/blob/release_35/include/__mutex_base#L367
     pub unsafe fn wait_timeout(&self, mutex: &Mutex, dur: Duration) -> bool {
-        if dur <= Duration::zero() {
-            return false;
-        }
-
-        // First, figure out what time it currently is, in both system and stable time.
-        // pthread_cond_timedwait uses system time, but we want to report timeout based on stable
-        // time.
+        // First, figure out what time it currently is, in both system and
+        // stable time.  pthread_cond_timedwait uses system time, but we want to
+        // report timeout based on stable time.
         let mut sys_now = libc::timeval { tv_sec: 0, tv_usec: 0 };
         let stable_now = time::SteadyTime::now();
         let r = ffi::gettimeofday(&mut sys_now, ptr::null_mut());
         debug_assert_eq!(r, 0);
 
-        let seconds = dur.num_seconds() as libc::time_t;
+        let seconds = dur.secs() as libc::time_t;
         let timeout = match sys_now.tv_sec.checked_add(seconds) {
             Some(sec) => {
                 libc::timespec {
                     tv_sec: sec,
-                    tv_nsec: (dur - Duration::seconds(dur.num_seconds()))
-                        .num_nanoseconds().unwrap() as libc::c_long,
+                    tv_nsec: dur.extra_nanos() as libc::c_long,
                 }
             }
             None => {
@@ -87,11 +82,12 @@ impl Condvar {
         };
 
         // And wait!
-        let r = ffi::pthread_cond_timedwait(self.inner.get(), mutex::raw(mutex), &timeout);
+        let r = ffi::pthread_cond_timedwait(self.inner.get(), mutex::raw(mutex),
+                                            &timeout);
         debug_assert!(r == libc::ETIMEDOUT || r == 0);
 
-        // ETIMEDOUT is not a totally reliable method of determining timeout due to clock shifts,
-        // so do the check ourselves
+        // ETIMEDOUT is not a totally reliable method of determining timeout due
+        // to clock shifts, so do the check ourselves
         &time::SteadyTime::now() - &stable_now < dur
     }
 

@@ -10,7 +10,7 @@
 
 // Microbenchmark for the smallintmap library
 
-#![feature(collections, std_misc)]
+#![feature(collections, duration, duration_span)]
 
 use std::collections::VecMap;
 use std::env;
@@ -40,8 +40,8 @@ fn main() {
     let max = args[1].parse::<usize>().unwrap();
     let rep = args[2].parse::<usize>().unwrap();
 
-    let mut checkf = Duration::seconds(0);
-    let mut appendf = Duration::seconds(0);
+    let mut checkf = Duration::new(0, 0);
+    let mut appendf = Duration::new(0, 0);
 
     for _ in 0..rep {
         let mut map = VecMap::new();
@@ -55,7 +55,7 @@ fn main() {
     let maxf = max as f64;
 
     println!("insert(): {} seconds\n", checkf);
-    println!("        : {} op/ms\n", maxf / checkf.num_milliseconds() as f64);
+    println!("        : {} op/s\n", maxf / checkf.secs() as f64);
     println!("get()   : {} seconds\n", appendf);
-    println!("        : {} op/ms\n", maxf / appendf.num_milliseconds() as f64);
+    println!("        : {} op/s\n", maxf / appendf.secs() as f64);
 }

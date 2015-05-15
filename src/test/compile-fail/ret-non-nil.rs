@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: `return;` in function returning non-nil
+// error-pattern: `return;` in a function whose return type is not `()`
 
 fn f() { return; }
 
