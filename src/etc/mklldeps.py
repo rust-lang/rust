@@ -1,4 +1,4 @@
-# Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
+# Copyright 2013-2015-2014 The Rust Project Developers. See the COPYRIGHT
 # file at the top-level directory of this distribution and at
 # http://rust-lang.org/COPYRIGHT.
 #
@@ -19,7 +19,7 @@ components = [i for i in components if i]  # ignore extra whitespaces
 enable_static = sys.argv[3]
 llconfig = sys.argv[4]
 
-f.write("""// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+f.write("""// Copyright 2013-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
