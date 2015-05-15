@@ -183,6 +183,12 @@ impl Subcommand for Build {
             tgt = PathBuf::from(&env::args().nth(3).unwrap());
         }
 
+        // `_book` directory may already exist from previous runs. Check and
+        // delete it if it exists.
+        for entry in try!(fs::read_dir(&cwd)) {
+            let path = try!(entry).path();
+            if path == tgt { try!(fs::remove_dir_all(&tgt)) }
+        }
         try!(fs::create_dir(&tgt));
 
         try!(File::create(&tgt.join("rust-book.css")).and_then(|mut f| {

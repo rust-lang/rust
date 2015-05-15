@@ -30,6 +30,8 @@
 #![feature(box_syntax)]
 #![feature(collections)]
 #![feature(core)]
+#![feature(duration)]
+#![feature(duration_span)]
 #![feature(fs_canonicalize)]
 #![feature(hash)]
 #![feature(into_cow)]

@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // aux-build:macro_crate_test.rs
-// ignore-stage1
 // ignore-cross-compile
 //
 // macro_crate_test will not compile on a cross-compiled target because

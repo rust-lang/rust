@@ -42,6 +42,10 @@ fn main() {
     });
     // Trait impl
     assert!(match Bar::Var1 {
+        Foo::THEBAR => true,
+        _ => false,
+    });
+    assert!(match Bar::Var1 {
         <Foo>::THEBAR => true,
         _ => false,
     });

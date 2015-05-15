@@ -1346,6 +1346,8 @@ vtable when the trait is used as a [trait object](#trait-objects).
 Traits are implemented for specific types through separate
 [implementations](#implementations).
 
+Consider the following trait:
+
 ```
 # type Surface = i32;
 # type BoundingBox = i32;
@@ -1360,6 +1362,20 @@ This defines a trait with two methods. All values that have
 `draw` and `bounding_box` methods called, using `value.bounding_box()`
 [syntax](#method-call-expressions).
 
+Traits can include default implementations of methods, as in:
+
+```
+trait Foo {
+    fn bar(&self);
+
+    fn baz(&self) { println!("We called baz."); }
+}
+```
+
+Here the `baz` method has a default implementation, so types that implement
+`Foo` need only implement `bar`. It is also possible for implementing types
+to override a method that has a default implementation.
+
 Type parameters can be specified for a trait to make it generic. These appear
 after the trait name, using the same syntax used in [generic
 functions](#generic-functions).
@@ -1369,6 +1385,35 @@ trait Seq<T> {
    fn len(&self) -> u32;
    fn elt_at(&self, n: u32) -> T;
    fn iter<F>(&self, F) where F: Fn(T);
+}
+```
+
+It is also possible to define associated types for a trait. Consider the
+following example of a `Container` trait. Notice how the type is available
+for use in the method signatures:
+
+```
+trait Container {
+    type E;
+    fn empty() -> Self;
+    fn insert(&mut self, Self::E);
+}
+```
+
+In order for a type to implement this trait, it must not only provide
+implementations for every method, but it must specify the type `E`. Here's
+an implementation of `Container` for the standard library type `Vec`:
+
+```
+# trait Container {
+#     type E;
+#     fn empty() -> Self;
+#     fn insert(&mut self, Self::E);
+# }
+impl<T> Container for Vec<T> {
+    type E = T;
+    fn empty() -> Vec<T> { Vec::new() }
+    fn insert(&mut self, x: T) { self.push(x); }
 }
 ```
 
@@ -3470,13 +3515,23 @@ more of the closure traits:
 
 ### Trait objects
 
-Every trait item (see [traits](#traits)) defines a type with the same name as
-the trait. This type is called the _trait object_ of the trait. Trait objects
-permit "late binding" of methods, dispatched using _virtual method tables_
-("vtables"). Whereas most calls to trait methods are "early bound" (statically
-resolved) to specific implementations at compile time, a call to a method on an
-trait objects is only resolved to a vtable entry at compile time. The actual
-implementation for each vtable entry can vary on an object-by-object basis.
+In Rust, a type like `&SomeTrait` or `Box<SomeTrait>` is called a _trait object_.
+Each instance of a trait object includes:
+
+ - a pointer to an instance of a type `T` that implements `SomeTrait`
+ - a _virtual method table_, often just called a _vtable_, which contains, for
+   each method of `SomeTrait` that `T` implements, a pointer to `T`'s
+   implementation (i.e. a function pointer).
+
+The purpose of trait objects is to permit "late binding" of methods. A call to
+a method on a trait object is only resolved to a vtable entry at compile time.
+The actual implementation for each vtable entry can vary on an object-by-object
+basis.
+
+Note that for a trait object to be instantiated, the trait must be
+_object-safe_. Object safety rules are defined in [RFC 255].
+
+[RFC 255]: https://github.com/rust-lang/rfcs/blob/master/text/0255-object-safety.md
 
 Given a pointer-typed expression `E` of type `&T` or `Box<T>`, where `T`
 implements trait `R`, casting `E` to the corresponding pointer type `&R` or

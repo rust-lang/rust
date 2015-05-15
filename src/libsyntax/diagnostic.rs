@@ -506,7 +506,7 @@ fn emit(dst: &mut EmitterWriter, cm: &codemap::CodeMap, rsp: RenderSpan,
             match dst.registry.as_ref().and_then(|registry| registry.find_description(code)) {
                 Some(_) => {
                     try!(print_diagnostic(dst, &ss[..], Help,
-                                          &format!("pass `--explain {}` to see a detailed \
+                                          &format!("run `rustc --explain {}` to see a detailed \
                                                    explanation", code), None));
                 }
                 None => ()
@@ -770,12 +770,15 @@ fn print_macro_backtrace(w: &mut EmitterWriter,
                                                |span| cm.span_to_string(span));
                 let (pre, post) = match ei.callee.format {
                     codemap::MacroAttribute => ("#[", "]"),
-                    codemap::MacroBang => ("", "!")
+                    codemap::MacroBang => ("", "!"),
+                    codemap::CompilerExpansion => ("", ""),
                 };
                 try!(print_diagnostic(w, &ss, Note,
-                                      &format!("in expansion of {}{}{}", pre,
-                                              ei.callee.name,
-                                              post), None));
+                                      &format!("in expansion of {}{}{}",
+                                               pre,
+                                               ei.callee.name,
+                                               post),
+                                      None));
                 let ss = cm.span_to_string(ei.call_site);
                 try!(print_diagnostic(w, &ss, Note, "expansion site", None));
                 Ok(Some(ei.call_site))

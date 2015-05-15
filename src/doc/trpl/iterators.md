@@ -42,7 +42,7 @@ loop is just a handy way to write this `loop`/`match`/`break` construct.
 `for` loops aren't the only thing that uses iterators, however. Writing your
 own iterator involves implementing the `Iterator` trait. While doing that is
 outside of the scope of this guide, Rust provides a number of useful iterators
-to accomplish various threads. Before we talk about those, we should talk about a
+to accomplish various tasks. Before we talk about those, we should talk about a
 Rust anti-pattern. And that's using ranges like this.
 
 Yes, we just talked about how ranges are cool. But ranges are also very

@@ -8,10 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// tests the good error message, not "missing module Foo" or something else unexpected
+// Test that we get an expansion stack for `for` loops.
 
-struct Foo;
+// error-pattern:in expansion of for loop expansion
 
 fn main() {
-    Foo::bar(); //~ ERROR no associated item named `bar` found for type `Foo` in the current scope
+    for t in &foo {
+    }
 }

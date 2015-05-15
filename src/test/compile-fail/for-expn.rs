@@ -8,10 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// tests the good error message, not "missing module Foo" or something else unexpected
-
-struct Foo;
+// Test that an error on a sub-expresson in a for loop has the correct span.
 
 fn main() {
-    Foo::bar(); //~ ERROR no associated item named `bar` found for type `Foo` in the current scope
+    // Odd formatting to make sure we get the right span.
+    for t in &
+      foo //~ ERROR unresolved name `foo`
+    {
+    }
 }

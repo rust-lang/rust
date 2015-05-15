@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // aux-build:macro_crate_nonterminal.rs
-// ignore-stage1
 
 mod foo {
     #[macro_use]

@@ -1697,11 +1697,8 @@ pub enum InferTy {
     /// unbound type variable. This is convenient for caching etc. See
     /// `middle::infer::freshen` for more details.
     FreshTy(u32),
-
-    // FIXME -- once integral fallback is impl'd, we should remove
-    // this type. It's only needed to prevent spurious errors for
-    // integers whose type winds up never being constrained.
     FreshIntTy(u32),
+    FreshFloatTy(u32)
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Debug, Copy)]
@@ -1773,6 +1770,7 @@ impl fmt::Debug for InferTy {
             FloatVar(ref v) => v.fmt(f),
             FreshTy(v) => write!(f, "FreshTy({:?})", v),
             FreshIntTy(v) => write!(f, "FreshIntTy({:?})", v),
+            FreshFloatTy(v) => write!(f, "FreshFloatTy({:?})", v)
         }
     }
 }
@@ -3775,7 +3773,7 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
             }
 
             // Scalar and unique types are sendable, and durable
-            ty_infer(ty::FreshIntTy(_)) |
+            ty_infer(ty::FreshIntTy(_)) | ty_infer(ty::FreshFloatTy(_)) |
             ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
             ty_bare_fn(..) | ty::ty_char => {
                 TC::None
@@ -4325,6 +4323,7 @@ pub fn type_is_fresh(ty: Ty) -> bool {
     match ty.sty {
       ty_infer(FreshTy(_)) => true,
       ty_infer(FreshIntTy(_)) => true,
+      ty_infer(FreshFloatTy(_)) => true,
       _ => false
     }
 }
@@ -5026,6 +5025,7 @@ pub fn ty_sort_string<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> String {
         ty_infer(FloatVar(_)) => "floating-point variable".to_string(),
         ty_infer(FreshTy(_)) => "skolemized type".to_string(),
         ty_infer(FreshIntTy(_)) => "skolemized integral type".to_string(),
+        ty_infer(FreshFloatTy(_)) => "skolemized floating-point type".to_string(),
         ty_projection(_) => "associated type".to_string(),
         ty_param(ref p) => {
             if p.space == subst::SelfSpace {

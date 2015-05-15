@@ -520,12 +520,12 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
         let qualname = format!("::{}", self.analysis.ty_cx.map.path_to_string(item.id));
 
         // If the variable is immutable, save the initialising expression.
-        let value = match mt {
-            ast::MutMutable => String::from_str("<mutable>"),
-            ast::MutImmutable => self.span.snippet(expr.span),
+        let (value, keyword) = match mt {
+            ast::MutMutable => (String::from_str("<mutable>"), keywords::Mut),
+            ast::MutImmutable => (self.span.snippet(expr.span), keywords::Static),
         };
 
-        let sub_span = self.span.sub_span_after_keyword(item.span, keywords::Static);
+        let sub_span = self.span.sub_span_after_keyword(item.span, keyword);
         self.fmt.static_str(item.span,
                             sub_span,
                             item.id,

@@ -8,10 +8,23 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// tests the good error message, not "missing module Foo" or something else unexpected
+trait Stringify {
+    fn to_string(&self) -> String;
+}
 
-struct Foo;
+impl Stringify for u32 {
+    fn to_string(&self) -> String { format!("u32: {}", *self) }
+}
+
+impl Stringify for f32 {
+    fn to_string(&self) -> String { format!("f32: {}", *self) }
+}
+
+fn print<T: Stringify>(x: T) -> String {
+    x.to_string()
+}
 
 fn main() {
-    Foo::bar(); //~ ERROR no associated item named `bar` found for type `Foo` in the current scope
+    assert_eq!(&print(5), "u32: 5");
+    assert_eq!(&print(5.0), "f32: 5");
 }
