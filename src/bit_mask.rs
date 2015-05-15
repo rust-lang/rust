@@ -32,12 +32,18 @@ declare_lint! {
     "Deny the use of incompatible bit masks in comparisons, e.g. '(a & 1) == 2'"
 }
 
+declare_lint! {
+	pub INEFFECTIVE_BIT_MASK,
+	Warn,
+	"Warn on the use of an ineffective bit mask in comparisons, e.g. '(a & 1) > 2'"
+}
+
 #[derive(Copy,Clone)]
 pub struct BitMask;
 
 impl LintPass for BitMask {
     fn get_lints(&self) -> LintArray {
-        lint_array!(BAD_BIT_MASK)
+        lint_array!(BAD_BIT_MASK, INEFFECTIVE_BIT_MASK)
     }
     
     fn check_expr(&mut self, cx: &Context, e: &Expr) {
@@ -102,31 +108,47 @@ fn check_bit_mask(cx: &Context, bit_op: BinOp_, cmp_op: BinOp_, mask_value: u64,
 		},
 		BiLt | BiGe => match bit_op {
 			BiBitAnd => if mask_value < cmp_value {
-				cx.span_lint(BAD_BIT_MASK, *span, &format!("incompatible bit mask: _ & {} will always be lower than {}", mask_value,
-					cmp_value));
+				cx.span_lint(BAD_BIT_MASK, *span, &format!(
+					"incompatible bit mask: _ & {} will always be lower than {}", 
+					mask_value, cmp_value));
 			} else { 
 				if mask_value == 0 {
 					cx.span_lint(BAD_BIT_MASK, *span, &format!("&-masking with zero"));
 				}
 			},
 			BiBitOr => if mask_value >= cmp_value {
-				cx.span_lint(BAD_BIT_MASK, *span, &format!("incompatible bit mask: _ | {} will never be lower than {}", mask_value,
-					cmp_value));
+				cx.span_lint(BAD_BIT_MASK, *span, &format!(
+					"incompatible bit mask: _ | {} will never be lower than {}", 
+					mask_value, cmp_value));
+			} else {
+				if mask_value < cmp_value {
+					cx.span_lint(INEFFECTIVE_BIT_MASK, *span, &format!(
+						"ineffective bit mask: x | {} compared to {} is the same as x compared directly", 
+						mask_value, cmp_value)); 
+				}
 			},
 			_ => ()
 		},
 		BiLe | BiGt => match bit_op {
 			BiBitAnd => if mask_value <= cmp_value {
-				cx.span_lint(BAD_BIT_MASK, *span, &format!("incompatible bit mask: _ & {} will never be higher than {}", mask_value,
-					cmp_value));
+				cx.span_lint(BAD_BIT_MASK, *span, &format!(
+					"incompatible bit mask: _ & {} will never be higher than {}", 
+					mask_value, cmp_value));
 			} else { 
 				if mask_value == 0 {
 					cx.span_lint(BAD_BIT_MASK, *span, &format!("&-masking with zero"));
 				}
 			},
 			BiBitOr => if mask_value > cmp_value {
-				cx.span_lint(BAD_BIT_MASK, *span, &format!("incompatible bit mask: _ | {} will always be higher than {}", mask_value,
-					cmp_value));				
+				cx.span_lint(BAD_BIT_MASK, *span, &format!(
+					"incompatible bit mask: _ | {} will always be higher than {}", 
+					mask_value, cmp_value));				
+			} else {
+				if mask_value < cmp_value {
+					cx.span_lint(INEFFECTIVE_BIT_MASK, *span, &format!(
+						"ineffective bit mask: x | {} compared to {} is the same as x compared directly", 
+						mask_value, cmp_value)); 
+				}
 			},
 			_ => ()
 		},
