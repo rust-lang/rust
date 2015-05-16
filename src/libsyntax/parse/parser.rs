@@ -5267,11 +5267,7 @@ impl<'a> Parser<'a> {
                 return Ok(Some(try!(self.parse_item_foreign_mod(lo, opt_abi, visibility, attrs))));
             }
 
-            let span = self.span;
-            let token_str = self.this_token_to_string();
-            return Err(self.span_fatal(span,
-                            &format!("expected `{}` or `fn`, found `{}`", "{",
-                                    token_str)))
+            try!(self.expect_one_of(&[], &[]));
         }
 
         if try!(self.eat_keyword_noexpect(keywords::Virtual) ){
