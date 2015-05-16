@@ -418,6 +418,11 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
             let offset = llargs[1];
             InBoundsGEP(bcx, ptr, &[offset])
         }
+        (_, "arith_offset") => {
+            let ptr = llargs[0];
+            let offset = llargs[1];
+            GEP(bcx, ptr, &[offset])
+        }
 
         (_, "copy_nonoverlapping") => {
             copy_intrinsic(bcx,
