@@ -217,7 +217,7 @@ end
 
 Hello.process
 
-puts "done!”
+puts "done!"
 ```
 
 Before we can run this, we need to install the `ffi` gem:
