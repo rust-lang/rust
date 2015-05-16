@@ -23,8 +23,8 @@ $ sh rustup.sh
 If you're on Windows, please download either the [32-bit installer][win32] or
 the [64-bit installer][win64] and run it.
 
-[win32]: https://static.rust-lang.org/dist/rust-1.0.0-beta-i686-pc-windows-gnu.msi
-[win64]: https://static.rust-lang.org/dist/rust-1.0.0-beta-x86_64-pc-windows-gnu.msi
+[win32]: https://static.rust-lang.org/dist/rust-1.0.0-i686-pc-windows-gnu.msi
+[win64]: https://static.rust-lang.org/dist/rust-1.0.0-x86_64-pc-windows-gnu.msi
 
 ## Uninstalling
 
