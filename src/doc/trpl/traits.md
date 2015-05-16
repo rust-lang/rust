@@ -208,7 +208,7 @@ let result = f.write("whatever".as_bytes());
 
 This will compile without error.
 
-This means that even if someone does something bad like add methods to `int`,
+This means that even if someone does something bad like add methods to `i32`,
 it won’t affect you, unless you `use` that trait.
 
 There’s one more restriction on implementing traits. Either the trait or the
