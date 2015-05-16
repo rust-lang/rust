@@ -8,7 +8,7 @@ Aaron Raimist <aaron@aaronraimist.com>
 Aaron Todd <github@opprobrio.us>
 Aaron Turon <aturon@mozilla.com>
 Aaron Weiss <aaronweiss74@gmail.com>
-Abhishek Chanda <abhishek@cloudscaling.com>
+Abhishek Chanda <abhishek.becs@gmail.com>
 Adam Bozanich <adam.boz@gmail.com>
 Adam Jacob <adam@opscode.com>
 Adam Roben <adam@roben.org>
