@@ -2,7 +2,7 @@
 // ignore-tidy-cr (repeated again because of tidy bug)
 // license is ignored because tidy can't handle the CRLF here properly.
 
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //

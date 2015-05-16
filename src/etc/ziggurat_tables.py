@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+# Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 # file at the top-level directory of this distribution and at
 # http://rust-lang.org/COPYRIGHT.
 #
@@ -105,7 +105,7 @@ def render_table(name, values):
 
 
 with open('ziggurat_tables.rs', 'w') as f:
-    f.write('''// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+    f.write('''// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
