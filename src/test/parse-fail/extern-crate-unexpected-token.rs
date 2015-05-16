@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,9 +8,4 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z parse-only
-
-// Verifies that the expected token errors for `extern crate` are
-// raised
-
-extern "C" mod foo; //~ERROR expected one of `fn` or `{`, found `mod`
+extern crte foo; //~ ERROR expected one of `crate`, `fn`, or `{`, found `crte`
