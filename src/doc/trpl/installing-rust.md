@@ -74,7 +74,7 @@ $ rustc --version
 You should see the version number, commit hash, commit date and build date:
 
 ```bash
-rustc 1.0.0-beta (9854143cb 2015-04-02) (built 2015-04-02)
+rustc 1.0.0 (a59de37e9 2015-05-13) (built 2015-05-14)
 ```
 
 If you did, Rust has been installed successfully! Congrats!
