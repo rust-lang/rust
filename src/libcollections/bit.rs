@@ -1451,7 +1451,7 @@ impl BitSet {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn iter<'a>(&'a self) -> bit_set::Iter<'a> {
+    pub fn iter(&self) -> bit_set::Iter {
         SetIter(BlockIter::from_blocks(self.bit_vec.blocks()))
     }
 
@@ -1803,14 +1803,13 @@ impl hash::Hash for BitSet {
 
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
-struct BlockIter<T> where
-    T: Iterator<Item=u32> {
+struct BlockIter<T> where T: Iterator<Item=u32> {
     head: u32,
     head_offset: usize,
-    tail: T
+    tail: T,
 }
-impl<'a, T> BlockIter<T> where
-    T: Iterator<Item=u32> {
+
+impl<'a, T> BlockIter<T> where T: Iterator<Item=u32> {
     fn from_blocks(mut blocks: T) -> BlockIter<T> {
         let h = blocks.next().unwrap_or(0);
         BlockIter {tail: blocks, head: h, head_offset: 0}
@@ -1850,16 +1849,20 @@ impl<'a, T> Iterator for BlockIter<T> where T: Iterator<Item=u32> {
         while self.head == 0 {
             match self.tail.next() {
                 Some(w) => self.head = w,
-                _ => return None
+                None => return None
             }
             self.head_offset += u32::BITS;
         }
 
-        let t = self.head & !self.head + 1;
-        // remove the least significant bit
+        // from the current block, isolate the
+        // LSB and subtract 1, producing k:
+        // a block with a number of set bits
+        // equal to the index of the LSB
+        let k = (self.head & (!self.head + 1)) - 1;
+        // update block, removing the LSB
         self.head &= self.head - 1;
-        // return index of lsb
-        Some(self.head_offset + (u32::count_ones(t-1) as usize))
+        // return offset + (index of LSB)
+        Some(self.head_offset + (u32::count_ones(k) as usize))
     }
 
     #[inline]
@@ -1886,11 +1889,15 @@ impl<'a> Iterator for TwoBitPositions<'a> {
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let (a, al) = self.set.size_hint();
-        let (b, bl) = self.set.size_hint();
+        let (a, au) = self.set.size_hint();
+        let (b, bu) = self.other.size_hint();
 
-        assert_eq!(a, b);
-        (a, cmp::max(al, bl))
+        let upper = match (au, bu) {
+            (Some(au), Some(bu)) => Some(cmp::max(au, bu)),
+            _ => None
+        };
+
+        (cmp::max(a, b), upper)
     }
 }
 
