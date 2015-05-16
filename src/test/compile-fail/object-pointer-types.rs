@@ -19,19 +19,19 @@ trait Foo {
 fn borrowed_receiver(x: &Foo) {
     x.borrowed();
     x.borrowed_mut(); // See [1]
-    x.owned(); //~ ERROR does not implement any method
+    x.owned(); //~ ERROR no method named `owned` found
 }
 
 fn borrowed_mut_receiver(x: &mut Foo) {
     x.borrowed();
     x.borrowed_mut();
-    x.owned(); //~ ERROR does not implement any method
+    x.owned(); //~ ERROR no method named `owned` found
 }
 
 fn owned_receiver(x: Box<Foo>) {
     x.borrowed();
     x.borrowed_mut(); // See [1]
-    x.managed();  //~ ERROR does not implement any method
+    x.managed();  //~ ERROR no method named `managed` found
     x.owned();
 }
 

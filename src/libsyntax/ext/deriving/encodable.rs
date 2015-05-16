@@ -88,9 +88,9 @@
 //! }
 //! ```
 
-use ast::{MetaItem, Item, Expr, ExprRet, MutMutable};
+use ast::{MetaItem, Expr, ExprRet, MutMutable};
 use codemap::Span;
-use ext::base::ExtCtxt;
+use ext::base::{ExtCtxt,Annotatable};
 use ext::build::AstBuilder;
 use ext::deriving::generic::*;
 use ext::deriving::generic::ty::*;
@@ -100,8 +100,8 @@ use ptr::P;
 pub fn expand_deriving_rustc_encodable(cx: &mut ExtCtxt,
                                        span: Span,
                                        mitem: &MetaItem,
-                                       item: &Item,
-                                       push: &mut FnMut(P<Item>))
+                                       item: Annotatable,
+                                       push: &mut FnMut(Annotatable))
 {
     expand_deriving_encodable_imp(cx, span, mitem, item, push, "rustc_serialize")
 }
@@ -109,8 +109,8 @@ pub fn expand_deriving_rustc_encodable(cx: &mut ExtCtxt,
 pub fn expand_deriving_encodable(cx: &mut ExtCtxt,
                                  span: Span,
                                  mitem: &MetaItem,
-                                 item: &Item,
-                                 push: &mut FnMut(P<Item>))
+                                 item: Annotatable,
+                                 push: &mut FnMut(Annotatable))
 {
     expand_deriving_encodable_imp(cx, span, mitem, item, push, "serialize")
 }
@@ -118,8 +118,8 @@ pub fn expand_deriving_encodable(cx: &mut ExtCtxt,
 fn expand_deriving_encodable_imp(cx: &mut ExtCtxt,
                                  span: Span,
                                  mitem: &MetaItem,
-                                 item: &Item,
-                                 push: &mut FnMut(P<Item>),
+                                 item: Annotatable,
+                                 push: &mut FnMut(Annotatable),
                                  krate: &'static str)
 {
     if !cx.use_std {
@@ -163,7 +163,7 @@ fn expand_deriving_encodable_imp(cx: &mut ExtCtxt,
         associated_types: Vec::new(),
     };
 
-    trait_def.expand(cx, mitem, item, push)
+    trait_def.expand(cx, mitem, &item, push)
 }
 
 fn encodable_substructure(cx: &mut ExtCtxt, trait_span: Span,

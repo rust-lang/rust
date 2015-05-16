@@ -10,7 +10,7 @@
 
 // pretty-expanded FIXME #23616
 
-#![feature(std_misc, alloc)]
+#![feature(std_misc, alloc, static_condvar)]
 
 use std::sync;
 

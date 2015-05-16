@@ -13,14 +13,13 @@
 //! FIXME (#2810): hygiene. Search for "__" strings (in other files too). We also assume "extra" is
 //! the standard library, and "std" is the core library.
 
-use ast::{Item, MetaItem, MetaWord};
+use ast::{MetaItem, MetaWord};
 use attr::AttrMetaMethods;
-use ext::base::{ExtCtxt, SyntaxEnv, Decorator, ItemDecorator, Modifier};
+use ext::base::{ExtCtxt, SyntaxEnv, MultiDecorator, MultiItemDecorator, MultiModifier, Annotatable};
 use ext::build::AstBuilder;
 use feature_gate;
 use codemap::Span;
 use parse::token::{intern, intern_and_get_ident};
-use ptr::P;
 
 macro_rules! pathvec {
     ($($x:ident)::+) => (
@@ -78,42 +77,48 @@ pub mod ord;
 pub mod generic;
 
 fn expand_derive(cx: &mut ExtCtxt,
-                 _: Span,
+                 span: Span,
                  mitem: &MetaItem,
-                 item: P<Item>) -> P<Item> {
-    item.map(|mut item| {
-        if mitem.value_str().is_some() {
-            cx.span_err(mitem.span, "unexpected value in `derive`");
-        }
-
-        let traits = mitem.meta_item_list().unwrap_or(&[]);
-        if traits.is_empty() {
-            cx.span_warn(mitem.span, "empty trait list in `derive`");
-        }
-
-        for titem in traits.iter().rev() {
-            let tname = match titem.node {
-                MetaWord(ref tname) => tname,
-                _ => {
-                    cx.span_err(titem.span, "malformed `derive` entry");
-                    continue;
-                }
-            };
-
-            if !(is_builtin_trait(tname) || cx.ecfg.enable_custom_derive()) {
-                feature_gate::emit_feature_err(&cx.parse_sess.span_diagnostic,
-                                               "custom_derive",
-                                               titem.span,
-                                               feature_gate::EXPLAIN_CUSTOM_DERIVE);
-                continue;
+                 annotatable: Annotatable)
+                 -> Annotatable {
+    annotatable.map_item_or(|item| {
+        item.map(|mut item| {
+            if mitem.value_str().is_some() {
+                cx.span_err(mitem.span, "unexpected value in `derive`");
             }
 
-            // #[derive(Foo, Bar)] expands to #[derive_Foo] #[derive_Bar]
-            item.attrs.push(cx.attribute(titem.span, cx.meta_word(titem.span,
-                intern_and_get_ident(&format!("derive_{}", tname)))));
-        }
+            let traits = mitem.meta_item_list().unwrap_or(&[]);
+            if traits.is_empty() {
+                cx.span_warn(mitem.span, "empty trait list in `derive`");
+            }
 
-        item
+            for titem in traits.iter().rev() {
+                let tname = match titem.node {
+                    MetaWord(ref tname) => tname,
+                    _ => {
+                        cx.span_err(titem.span, "malformed `derive` entry");
+                        continue;
+                    }
+                };
+
+                if !(is_builtin_trait(tname) || cx.ecfg.enable_custom_derive()) {
+                    feature_gate::emit_feature_err(&cx.parse_sess.span_diagnostic,
+                                                   "custom_derive",
+                                                   titem.span,
+                                                   feature_gate::EXPLAIN_CUSTOM_DERIVE);
+                    continue;
+                }
+
+                // #[derive(Foo, Bar)] expands to #[derive_Foo] #[derive_Bar]
+                item.attrs.push(cx.attribute(titem.span, cx.meta_word(titem.span,
+                    intern_and_get_ident(&format!("derive_{}", tname)))));
+            }
+
+            item
+        })
+    }, |a| {
+        cx.span_err(span, "`derive` can only be applied to items");
+        a
     })
 }
 
@@ -124,24 +129,24 @@ macro_rules! derive_traits {
             $({
                 struct DeriveExtension;
 
-                impl ItemDecorator for DeriveExtension {
+                impl MultiItemDecorator for DeriveExtension {
                     fn expand(&self,
                               ecx: &mut ExtCtxt,
                               sp: Span,
                               mitem: &MetaItem,
-                              item: &Item,
-                              push: &mut FnMut(P<Item>)) {
+                              annotatable: Annotatable,
+                              push: &mut FnMut(Annotatable)) {
                         warn_if_deprecated(ecx, sp, $name);
-                        $func(ecx, sp, mitem, item, push);
+                        $func(ecx, sp, mitem, annotatable, push);
                     }
                 }
 
                 env.insert(intern(concat!("derive_", $name)),
-                           Decorator(Box::new(DeriveExtension)));
+                           MultiDecorator(Box::new(DeriveExtension)));
             })+
 
             env.insert(intern("derive"),
-                       Modifier(Box::new(expand_derive)));
+                       MultiModifier(Box::new(expand_derive)));
         }
 
         fn is_builtin_trait(name: &str) -> bool {

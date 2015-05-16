@@ -243,6 +243,17 @@ impl Error for VarError {
 /// Sets the environment variable `k` to the value `v` for the currently running
 /// process.
 ///
+/// Note that while concurrent access to environment variables is safe in Rust,
+/// some platforms only expose inherently unsafe non-threadsafe APIs for
+/// inspecting the environment. As a result extra care needs to be taken when
+/// auditing calls to unsafe external FFI functions to ensure that any external
+/// environment accesses are properly synchronized with accesses in Rust.
+///
+/// Discussion of this unsafety on Unix may be found in:
+///
+///  - [Austin Group Bugzilla](http://austingroupbugs.net/view.php?id=188)
+///  - [GNU C library Bugzilla](https://sourceware.org/bugzilla/show_bug.cgi?id=15607#c2)
+///
 /// # Examples
 ///
 /// ```
@@ -259,6 +270,17 @@ pub fn set_var<K: AsRef<OsStr>, V: AsRef<OsStr>>(k: K, v: V) {
 }
 
 /// Removes an environment variable from the environment of the currently running process.
+///
+/// Note that while concurrent access to environment variables is safe in Rust,
+/// some platforms only expose inherently unsafe non-threadsafe APIs for
+/// inspecting the environment. As a result extra care needs to be taken when
+/// auditing calls to unsafe external FFI functions to ensure that any external
+/// environment accesses are properly synchronized with accesses in Rust.
+///
+/// Discussion of this unsafety on Unix may be found in:
+///
+///  - [Austin Group Bugzilla](http://austingroupbugs.net/view.php?id=188)
+///  - [GNU C library Bugzilla](https://sourceware.org/bugzilla/show_bug.cgi?id=15607#c2)
 ///
 /// # Examples
 ///

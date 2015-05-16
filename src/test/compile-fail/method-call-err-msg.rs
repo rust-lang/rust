@@ -25,6 +25,6 @@ fn main() {
 
     let y = Foo;
     y.zero()
-     .take()    //~ ERROR type `Foo` does not implement any method in scope named `take`
+     .take()    //~ ERROR no method named `take` found for type `Foo` in the current scope
      .one(0);
 }

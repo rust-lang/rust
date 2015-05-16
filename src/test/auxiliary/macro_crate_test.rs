@@ -10,23 +10,20 @@
 
 // force-host
 
-#![feature(plugin_registrar, quote)]
-#![feature(box_syntax, rustc_private)]
+#![feature(plugin_registrar, quote, rustc_private)]
 
 extern crate syntax;
 extern crate rustc;
 
-use syntax::ast::{self, TokenTree, Item, MetaItem};
+use syntax::ast::{self, TokenTree, Item, MetaItem, ImplItem, TraitItem};
 use syntax::codemap::Span;
 use syntax::ext::base::*;
-use syntax::parse::token;
-use syntax::parse;
+use syntax::parse::{self, token};
 use syntax::ptr::P;
 use rustc::plugin::Registry;
 
 #[macro_export]
 macro_rules! exported_macro { () => (2) }
-
 macro_rules! unexported_macro { () => (3) }
 
 #[plugin_registrar]
@@ -41,6 +38,10 @@ pub fn plugin_registrar(reg: &mut Registry) {
         token::intern("into_multi_foo"),
         // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
         MultiModifier(Box::new(expand_into_foo_multi)));
+    reg.register_syntax_extension(
+        token::intern("duplicate"),
+        // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
+        MultiDecorator(Box::new(expand_duplicate)));
 }
 
 fn expand_make_a_1(cx: &mut ExtCtxt, sp: Span, tts: &[TokenTree])
@@ -99,6 +100,51 @@ fn expand_into_foo_multi(cx: &mut ExtCtxt,
                     _ => unreachable!("trait parsed to something other than trait")
                 }
             })
+        }
+    }
+}
+
+// Create a duplicate of the annotatable, based on the MetaItem
+fn expand_duplicate(cx: &mut ExtCtxt,
+                    sp: Span,
+                    mi: &MetaItem,
+                    it: Annotatable,
+                    push: &mut FnMut(Annotatable))
+{
+    let copy_name = match mi.node {
+        ast::MetaItem_::MetaList(_, ref xs) => {
+            if let ast::MetaItem_::MetaWord(ref w) = xs[0].node {
+                token::str_to_ident(&w)
+            } else {
+                cx.span_err(mi.span, "Expected word");
+                return;
+            }
+        }
+        _ => {
+            cx.span_err(mi.span, "Expected list");
+            return;
+        }
+    };
+
+    // Duplicate the item but replace its ident by the MetaItem
+    match it.clone() {
+        Annotatable::Item(it) => {
+            let mut new_it = (*it).clone();
+            new_it.attrs.clear();
+            new_it.ident = copy_name;
+            push(Annotatable::Item(P(new_it)));
+        }
+        Annotatable::ImplItem(it) => {
+            let mut new_it = (*it).clone();
+            new_it.attrs.clear();
+            new_it.ident = copy_name;
+            push(Annotatable::ImplItem(P(new_it)));
+        }
+        Annotatable::TraitItem(tt) => {
+            let mut new_it = (*tt).clone();
+            new_it.attrs.clear();
+            new_it.ident = copy_name;
+            push(Annotatable::TraitItem(P(new_it)));
         }
     }
 }

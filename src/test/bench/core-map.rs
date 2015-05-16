@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(std_misc, rand)]
+#![feature(std_misc, rand, duration, duration_span)]
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::env;

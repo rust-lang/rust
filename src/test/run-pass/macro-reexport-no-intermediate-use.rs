@@ -10,7 +10,6 @@
 
 // aux-build:macro_reexport_1.rs
 // aux-build:macro_reexport_2_no_use.rs
-// ignore-stage1
 
 #[macro_use] #[no_link]
 extern crate macro_reexport_2_no_use;

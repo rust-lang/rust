@@ -129,14 +129,9 @@ impl Thread {
     }
 
     pub fn sleep(dur: Duration) {
-        if dur < Duration::zero() {
-            return Thread::yield_now()
-        }
-        let seconds = dur.num_seconds();
-        let ns = dur - Duration::seconds(seconds);
         let mut ts = libc::timespec {
-            tv_sec: seconds as libc::time_t,
-            tv_nsec: ns.num_nanoseconds().unwrap() as libc::c_long,
+            tv_sec: dur.secs() as libc::time_t,
+            tv_nsec: dur.extra_nanos() as libc::c_long,
         };
 
         // If we're awoken with a signal then the return value will be -1 and

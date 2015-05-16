@@ -27,7 +27,7 @@ Check out the generated `Cargo.toml`:
 [package]
 
 name = "guessing_game"
-version = "0.0.1"
+version = "0.1.0"
 authors = ["Your Name <you@example.com>"]
 ```
 
@@ -46,7 +46,7 @@ Let’s try compiling what Cargo gave us:
 
 ```{bash}
 $ cargo build
-   Compiling guessing_game v0.0.1 (file:///home/you/projects/guessing_game)
+   Compiling guessing_game v0.1.0 (file:///home/you/projects/guessing_game)
 ```
 
 Excellent! Open up your `src/main.rs` again. We’ll be writing all of
@@ -58,7 +58,7 @@ Try it out:
 
 ```bash
 $ cargo run
-   Compiling guessing_game v0.0.1 (file:///home/you/projects/guessing_game)
+   Compiling guessing_game v0.1.0 (file:///home/you/projects/guessing_game)
      Running `target/debug/guessing_game`
 Hello, world!
 ```
@@ -213,12 +213,12 @@ The next part will use this handle to get input from the user:
 ```
 
 Here, we call the [`read_line()`][read_line] method on our handle.
-[Method][method]s are like associated functions, but are only available on a
+[Methods][method] are like associated functions, but are only available on a
 particular instance of a type, rather than the type itself. We’re also passing
 one argument to `read_line()`: `&mut guess`.
 
 [read_line]: ../std/io/struct.Stdin.html#method.read_line
-[method]: methods.html
+[method]: method-syntax.html
 
 Remember how we bound `guess` above? We said it was mutable. However,
 `read_line` doesn’t take a `String` as an argument: it takes a `&mut String`.
@@ -727,7 +727,7 @@ Let’s try our program out!
 
 ```bash
 $ cargo run
-   Compiling guessing_game v0.0.1 (file:///home/you/projects/guessing_game)
+   Compiling guessing_game v0.1.0 (file:///home/you/projects/guessing_game)
      Running `target/guessing_game`
 Guess the number!
 The secret number is: 58
@@ -792,7 +792,7 @@ and quit. Observe:
 
 ```bash
 $ cargo run
-   Compiling guessing_game v0.0.1 (file:///home/you/projects/guessing_game)
+   Compiling guessing_game v0.1.0 (file:///home/you/projects/guessing_game)
      Running `target/guessing_game`
 Guess the number!
 The secret number is: 59
@@ -929,7 +929,7 @@ Now we should be good! Let’s try:
 
 ```bash
 $ cargo run
-   Compiling guessing_game v0.0.1 (file:///home/you/projects/guessing_game)
+   Compiling guessing_game v0.1.0 (file:///home/you/projects/guessing_game)
      Running `target/guessing_game`
 Guess the number!
 The secret number is: 61

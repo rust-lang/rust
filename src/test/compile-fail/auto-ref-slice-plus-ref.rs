@@ -15,11 +15,11 @@ fn main() {
     // vectors to slices then automatically create a self reference.
 
     let mut a = vec!(0);
-    a.test_mut(); //~ ERROR does not implement any method in scope named `test_mut`
-    a.test(); //~ ERROR does not implement any method in scope named `test`
+    a.test_mut(); //~ ERROR no method named `test_mut` found
+    a.test(); //~ ERROR no method named `test` found
 
-    ([1]).test(); //~ ERROR does not implement any method in scope named `test`
-    (&[1]).test(); //~ ERROR does not implement any method in scope named `test`
+    ([1]).test(); //~ ERROR no method named `test` found
+    (&[1]).test(); //~ ERROR no method named `test` found
 }
 
 trait MyIter {

@@ -9,43 +9,52 @@
 // except according to those terms.
 
 #![ crate_name = "test" ]
-#![allow(unstable)]
-#![feature(box_syntax, rustc_private, core, zero_one)]
+#![feature(box_syntax)]
+#![feature(rustc_private)]
+
 
 extern crate graphviz;
 // A simple rust project
 
+extern crate krate2;
+extern crate krate2 as krate3;
 extern crate flate as myflate;
 
+use graphviz::RenderOption;
 use std::collections::{HashMap,HashSet};
 use std::cell::RefCell;
+use std::io::Write;
 
 
 use sub::sub2 as msalias;
 use sub::sub2;
 use sub::sub2::nested_struct as sub_struct;
-use std::num::One;
 
 use std::mem::size_of;
+
+use std::char::from_u32;
 
 static uni: &'static str = "Les Miséééééééérables";
 static yy: usize = 25;
 
-static bob: Option<&'static [isize]> = None;
+static bob: Option<graphviz::RenderOption> = None;
 
 // buglink test - see issue #1337.
 
 fn test_alias<I: Iterator>(i: Option<<I as Iterator>::Item>) {
-    let s = sub_struct{ field2: 45, };
+    let s = sub_struct{ field2: 45u32, };
 
     // import tests
-    fn foo(x: &One) {}
+    fn foo(x: &Write) {}
+    let _: Option<_> = from_u32(45);
 
-    let x = 42;
+    let x = 42usize;
 
+    krate2::hello();
+    krate3::hello();
     myflate::deflate_bytes(&[]);
 
-    let x = (3, 4);
+    let x = (3isize, 4usize);
     let y = x.1;
 }
 
@@ -55,15 +64,21 @@ fn test_tup_struct(x: TupStruct) -> isize {
     x.1
 }
 
+fn println(s: &str) {
+    std::io::stdout().write_all(s.as_bytes());
+}
+
 mod sub {
     pub mod sub2 {
+        use std::io::Write;
         pub mod sub3 {
+            use std::io::Write;
             pub fn hello() {
-                println!("hello from module 3");
+                ::println("hello from module 3");
             }
         }
         pub fn hello() {
-            println!("hello from a module");
+            ::println("hello from a module");
         }
 
         pub struct nested_struct {
@@ -93,14 +108,14 @@ struct some_fields {
 type SF = some_fields;
 
 trait SuperTrait {
-    fn dummy(&self) { }
+    fn qux(&self) { panic!(); }
 }
 
 trait SomeTrait: SuperTrait {
     fn Method(&self, x: u32) -> u32;
 
     fn prov(&self, x: u32) -> u32 {
-        println!("{}", &x.to_string());
+        println(&x.to_string());
         42
     }
     fn provided_method(&self) -> u32 {
@@ -116,7 +131,7 @@ trait SubTrait: SomeTrait {
 
 impl SomeTrait for some_fields {
     fn Method(&self, x: u32) -> u32 {
-        println!("{}", &x.to_string());
+        println(&x.to_string());
         self.field1
     }
 }
@@ -128,7 +143,7 @@ impl SubTrait for some_fields {}
 
 impl some_fields {
     fn stat(x: u32) -> u32 {
-        println!("{}", &x.to_string());
+        println(&x.to_string());
         42
     }
     fn stat2(x: &some_fields) -> u32 {
@@ -136,6 +151,7 @@ impl some_fields {
     }
 
     fn align_to<T>(&mut self) {
+
     }
 
     fn test(&mut self) {
@@ -188,20 +204,18 @@ enum SomeStructEnum {
 
 fn matchSomeEnum(val: SomeEnum) {
     match val {
-        SomeEnum::Ints(int1, int2) => { println!("{}", &(int1+int2).to_string()); }
-        SomeEnum::Floats(float1, float2) => { println!("{}", &(float2*float1).to_string()); }
-        SomeEnum::Strings(_, _, s3) => { println!("{}", s3); }
-        SomeEnum::MyTypes(mt1, mt2) => {
-            println!("{}", &(mt1.field1 - mt2.field1).to_string());
-        }
+        SomeEnum::Ints(int1, int2) => { println(&(int1+int2).to_string()); }
+        SomeEnum::Floats(float1, float2) => { println(&(float2*float1).to_string()); }
+        SomeEnum::Strings(_, _, s3) => { println(s3); }
+        SomeEnum::MyTypes(mt1, mt2) => { println(&(mt1.field1 - mt2.field1).to_string()); }
     }
 }
 
 fn matchSomeStructEnum(se: SomeStructEnum) {
     match se {
-        SomeStructEnum::EnumStruct{a:a, ..} => println!("{}", &a.to_string()),
-        SomeStructEnum::EnumStruct2{f1:f1, f2:f_2} => println!("{}", &f_2.field1.to_string()),
-        SomeStructEnum::EnumStruct3{f1, ..} => println!("{}", &f1.field1.to_string()),
+        SomeStructEnum::EnumStruct{a:a, ..} => println(&a.to_string()),
+        SomeStructEnum::EnumStruct2{f1:f1, f2:f_2} => println(&f_2.field1.to_string()),
+        SomeStructEnum::EnumStruct3{f1, ..} => println(&f1.field1.to_string()),
     }
 }
 
@@ -209,9 +223,9 @@ fn matchSomeStructEnum(se: SomeStructEnum) {
 fn matchSomeStructEnum2(se: SomeStructEnum) {
     use SomeStructEnum::*;
     match se {
-        EnumStruct{a: ref aaa, ..} => println!("{}", &aaa.to_string()),
-        EnumStruct2{f1, f2: f2} => println!("{}", &f1.field1.to_string()),
-        EnumStruct3{f1, f3: SomeEnum::Ints(_, _), f2} => println!("{}", &f1.field1.to_string()),
+        EnumStruct{a: ref aaa, ..} => println(&aaa.to_string()),
+        EnumStruct2{f1, f2: f2} => println(&f1.field1.to_string()),
+        EnumStruct3{f1, f3: SomeEnum::Ints(_, _), f2} => println(&f1.field1.to_string()),
         _ => {},
     }
 }
@@ -219,30 +233,29 @@ fn matchSomeStructEnum2(se: SomeStructEnum) {
 fn matchSomeOtherEnum(val: SomeOtherEnum) {
     use SomeOtherEnum::{SomeConst2, SomeConst3};
     match val {
-        SomeOtherEnum::SomeConst1 => { println!("I'm const1."); }
-        SomeConst2 | SomeConst3 => { println!("I'm const2 or const3."); }
+        SomeOtherEnum::SomeConst1 => { println("I'm const1."); }
+        SomeConst2 | SomeConst3 => { println("I'm const2 or const3."); }
     }
 }
 
 fn hello<X: SomeTrait>((z, a) : (u32, String), ex: X) {
     SameDir2::hello(43);
 
-    println!("{}", &yy.to_string());
+    println(&yy.to_string());
     let (x, y): (u32, u32) = (5, 3);
-    println!("{}", &x.to_string());
-    println!("{}", &z.to_string());
+    println(&x.to_string());
+    println(&z.to_string());
     let x: u32 = x;
-    println!("{}", &x.to_string());
+    println(&x.to_string());
     let x = "hello";
-    println!("{}", x);
+    println(x);
 
     let x = 32.0f32;
     let _ = (x + ((x * x) + 1.0).sqrt()).ln();
 
-    // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
-    let s: Box<SomeTrait> = Box::new(some_fields {field1: 43});
+    let s: Box<SomeTrait> = box some_fields {field1: 43};
     let s2: Box<some_fields> =  box some_fields {field1: 43};
-    let s3: Box<_> = box nofields;
+    let s3 = box nofields;
 
     s.Method(43);
     s3.Method(43);
@@ -253,8 +266,6 @@ fn hello<X: SomeTrait>((z, a) : (u32, String), ex: X) {
     let y: u32 = 56;
     // static method on struct
     let r = some_fields::stat(y);
-    // trait static method, calls override
-    let r = SubTrait::stat2(&*s2);
     // trait static method, calls default
     let r = SubTrait::stat2(&*s3);
 
@@ -277,7 +288,7 @@ pub struct blah {
 }
 
 fn main() { // foo
-    let s: Box<_> = box some_fields {field1: 43};
+    let s = box some_fields {field1: 43};
     hello((43, "a".to_string()), *s);
     sub::sub2::hello();
     sub2::sub3::hello();
@@ -306,7 +317,7 @@ fn main() { // foo
     let s3: some_fields = some_fields{ field1: 55};
     let s4: msalias::nested_struct = sub::sub2::nested_struct{ field2: 55};
     let s4: msalias::nested_struct = sub2::nested_struct{ field2: 55};
-    println!("{}", &s2.field1.to_string());
+    println(&s2.field1.to_string());
     let s5: MyType = box some_fields{ field1: 55};
     let s = SameDir::SameStruct{name: "Bob".to_string()};
     let s = SubDir::SubStruct{name:"Bob".to_string()};
@@ -316,9 +327,18 @@ fn main() { // foo
     matchSomeEnum(s7);
     let s8: SomeOtherEnum = SomeOtherEnum::SomeConst2;
     matchSomeOtherEnum(s8);
-    let s9: SomeStructEnum =
-        SomeStructEnum::EnumStruct2{f1: box some_fields{field1:10}, f2: box s2};
+    let s9: SomeStructEnum = SomeStructEnum::EnumStruct2{ f1: box some_fields{ field1:10 },
+                                                          f2: box s2 };
     matchSomeStructEnum(s9);
+
+    for x in &vec![1, 2, 3] {
+        let _y = x;
+    }
+
+    let s7: SomeEnum = SomeEnum::Strings("one", "two", "three");
+    if let SomeEnum::Strings(..) = s7 {
+        println!("hello!");
+    }
 }
 
 impl Iterator for nofields {
@@ -332,3 +352,15 @@ impl Iterator for nofields {
         panic!()
     }
 }
+
+trait Pattern<'a> {
+    type Searcher;
+}
+
+struct CharEqPattern;
+
+impl<'a> Pattern<'a> for CharEqPattern {
+    type Searcher = CharEqPattern;
+}
+
+struct CharSearcher<'a>(<CharEqPattern as Pattern<'a>>::Searcher);

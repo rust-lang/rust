@@ -167,7 +167,7 @@ macro_rules! try {
     })
 }
 
-/// Use the `format!` syntax to write data into a buffer of type `&mut Writer`.
+/// Use the `format!` syntax to write data into a buffer of type `&mut Write`.
 /// See `std::fmt` for more information.
 ///
 /// # Examples

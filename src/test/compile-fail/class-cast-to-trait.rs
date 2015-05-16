@@ -60,5 +60,5 @@ fn cat(in_x : usize, in_y : isize, in_name: String) -> cat {
 
 fn main() {
   let nyan: Box<noisy> = box cat(0, 2, "nyan".to_string()) as Box<noisy>;
-  nyan.eat(); //~ ERROR does not implement any method in scope named `eat`
+  nyan.eat(); //~ ERROR no method named `eat` found
 }

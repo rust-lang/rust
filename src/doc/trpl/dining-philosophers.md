@@ -73,6 +73,9 @@ a name is all we need. We choose the [`String`][string] type for the name,
 rather than `&str`. Generally speaking, working with a type which owns its
 data is easier than working with one that uses references.
 
+[struct]: structs.html
+[string]: strings.html
+
 Let’s continue:
 
 ```rust
@@ -393,7 +396,7 @@ let handles: Vec<_> = philosophers.into_iter().map(|p| {
 }).collect();
 ```
 
-While this is only five lines, they’re a dense four. Let’s break it down.
+While this is only five lines, they’re a dense five. Let’s break it down.
 
 ```rust,ignore
 let handles: Vec<_> = 
@@ -450,7 +453,7 @@ which blocks execution until the thread has completed execution. This ensures
 that the threads complete their work before the program exits.
 
 If you run this program, you’ll see that the philosophers eat out of order!
-We have mult-threading!
+We have multi-threading!
 
 ```text
 Gilles Deleuze is eating.

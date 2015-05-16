@@ -10,7 +10,7 @@
 
 // Microbenchmarks for various functions in std and extra
 
-#![feature(rand, collections, std_misc)]
+#![feature(rand, collections, std_misc, duration, duration_span)]
 
 use std::iter::repeat;
 use std::mem::swap;
@@ -52,7 +52,7 @@ fn maybe_run_test<F>(argv: &[String], name: String, test: F) where F: FnOnce() {
 
     let dur = Duration::span(test);
 
-    println!("{}:\t\t{} ms", name, dur.num_milliseconds());
+    println!("{}:\t\t{}", name, dur);
 }
 
 fn shift_push() {

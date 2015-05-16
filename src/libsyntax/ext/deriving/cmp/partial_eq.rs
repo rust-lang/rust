@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast::{MetaItem, Item, Expr, self};
+use ast::{MetaItem, Expr, self};
 use codemap::Span;
-use ext::base::ExtCtxt;
+use ext::base::{ExtCtxt, Annotatable};
 use ext::build::AstBuilder;
 use ext::deriving::generic::*;
 use ext::deriving::generic::ty::*;
@@ -20,8 +20,8 @@ use ptr::P;
 pub fn expand_deriving_partial_eq(cx: &mut ExtCtxt,
                                   span: Span,
                                   mitem: &MetaItem,
-                                  item: &Item,
-                                  push: &mut FnMut(P<Item>))
+                                  item: Annotatable,
+                                  push: &mut FnMut(Annotatable))
 {
     // structures are equal if all fields are equal, and non equal, if
     // any fields are not equal or if the enum variants are different
@@ -90,5 +90,5 @@ pub fn expand_deriving_partial_eq(cx: &mut ExtCtxt,
         ),
         associated_types: Vec::new(),
     };
-    trait_def.expand(cx, mitem, item, push)
+    trait_def.expand(cx, mitem, &item, push)
 }

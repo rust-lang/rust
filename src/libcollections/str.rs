@@ -396,6 +396,7 @@ macro_rules! utf8_acc_cont_byte {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Borrow<str> for String {
+    #[inline]
     fn borrow(&self) -> &str { &self[..] }
 }
 

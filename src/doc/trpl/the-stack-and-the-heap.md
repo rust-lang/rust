@@ -80,7 +80,7 @@ This memory is kind of like a giant array: addresses start at zero and go
 up to the final number. So here’s a diagram of our first stack frame:
 
 | Address | Name | Value |
-+---------+------+-------+
+|---------|------|-------|
 | 0       | x    | 42    |
 
 We’ve got `x` located at address `0`, with the value `42`.
@@ -88,7 +88,7 @@ We’ve got `x` located at address `0`, with the value `42`.
 When `foo()` is called, a new stack frame is allocated:
 
 | Address | Name | Value |
-+---------+------+-------+
+|---------|------|-------|
 | 2       | z    | 100   |
 | 1       | y    | 5     |
 | 0       | x    | 42    |
@@ -107,7 +107,7 @@ value being stored.
 After `foo()` is over, its frame is deallocated:
 
 | Address | Name | Value |
-+---------+------+-------+
+|---------|------|-------|
 | 0       | x    | 42    |
 
 And then, after `main()`, even this last value goes away. Easy!
@@ -142,13 +142,13 @@ fn main() {
 Okay, first, we call `main()`:
 
 | Address | Name | Value |
-+---------+------+-------+
+|---------|------|-------|
 | 0       | x    | 42    |
 
 Next up, `main()` calls `foo()`:
 
 | Address | Name | Value |
-+---------+------+-------+
+|---------|------|-------|
 | 3       | c    | 1     |
 | 2       | b    | 100   |
 | 1       | a    | 5     |
@@ -157,7 +157,7 @@ Next up, `main()` calls `foo()`:
 And then `foo()` calls `bar()`:
 
 | Address | Name | Value |
-+---------+------+-------+
+|---------|------|-------|
 | 4       | i    | 6     |
 | 3       | c    | 1     |
 | 2       | b    | 100   |
@@ -170,7 +170,7 @@ After `bar()` is over, its frame is deallocated, leaving just `foo()` and
 `main()`:
 
 | Address | Name | Value |
-+---------+------+-------+
+|---------|------|-------|
 | 3       | c    | 1     |
 | 2       | b    | 100   |
 | 1       | a    | 5     |
@@ -179,7 +179,7 @@ After `bar()` is over, its frame is deallocated, leaving just `foo()` and
 And then `foo()` ends, leaving just `main()`
 
 | Address | Name | Value |
-+---------+------+-------+
+|---------|------|-------|
 | 0       | x    | 42    |
 
 And then we’re done. Getting the hang of it? It’s like piling up dishes: you
@@ -206,7 +206,7 @@ fn main() {
 Here’s what happens in memory when `main()` is called:
 
 | Address | Name | Value  |
-+---------+------+--------+
+|---------|------|--------|
 | 1       | y    | 42     |
 | 0       | x    | ?????? |
 
@@ -218,7 +218,7 @@ it allocates some memory for the heap, and puts `5` there. The memory now looks
 like this:
 
 | Address         | Name | Value          |
-+-----------------+------+----------------+
+|-----------------|------|----------------|
 | 2<sup>30</sup>  |      | 5              |
 | ...             | ...  | ...            |
 | 1               | y    | 42             |
@@ -243,7 +243,7 @@ layout of a program which has been running for a while now:
 
 
 | Address              | Name | Value                |
-+----------------------+------+----------------------+
+|----------------------|------|----------------------|
 | 2<sup>30</sup>       |      | 5                    |
 | (2<sup>30</sup>) - 1 |      |                      |
 | (2<sup>30</sup>) - 2 |      |                      |
@@ -266,13 +266,13 @@ Rust programs use [jemalloc][jemalloc] for this purpose.
 Anyway, back to our example. Since this memory is on the heap, it can stay
 alive longer than the function which allocates the box. In this case, however,
 it doesn’t.[^moving] When the function is over, we need to free the stack frame
-for `main()`. `Box<T>`, though, has a trick up its sleve: [Drop][drop]. The
+for `main()`. `Box<T>`, though, has a trick up its sleeve: [Drop][drop]. The
 implementation of `Drop` for `Box` deallocates the memory that was allocated
 when it was created. Great! So when `x` goes away, it first frees the memory
 allocated on the heap:
 
 | Address | Name | Value  |
-+---------+------+--------+
+|---------|------|--------|
 | 1       | y    | 42     |
 | 0       | x    | ?????? |
 
@@ -305,7 +305,7 @@ fn main() {
 When we enter `main()`, memory looks like this:
 
 | Address | Name | Value |
-+---------+------+-------+
+|---------|------|-------|
 | 1       | y    | 0     |
 | 0       | x    | 5     |
 
@@ -315,7 +315,7 @@ memory location that `x` lives at, which in this case is `0`.
 What about when we call `foo()`, passing `y` as an argument?
 
 | Address | Name | Value |
-+---------+------+-------+
+|---------|------|-------|
 | 3       | z    | 42    |
 | 2       | i    | 0     |
 | 1       | y    | 0     |
@@ -367,7 +367,7 @@ fn main() {
 First, we call `main()`:
 
 | Address         | Name | Value          |
-+-----------------+------+----------------+
+|-----------------|------|----------------|
 | 2<sup>30</sup>  |      | 20             |
 | ...             | ...  | ...            |
 | 2               | j    | 0              |
@@ -380,7 +380,7 @@ value pointing there.
 Next, at the end of `main()`, `foo()` gets called:
 
 | Address         | Name | Value          |
-+-----------------+------+----------------+
+|-----------------|------|----------------|
 | 2<sup>30</sup>  |      | 20             |
 | ...             | ...  | ...            |
 | 5               | z    | 4              |
@@ -397,7 +397,7 @@ since `j` points at `h`.
 Next, `foo()` calls `baz()`, passing `z`:
 
 | Address         | Name | Value          |
-+-----------------+------+----------------+
+|-----------------|------|----------------|
 | 2<sup>30</sup>  |      | 20             |
 | ...             | ...  | ...            |
 | 7               | g    | 100            |
@@ -413,7 +413,7 @@ We’ve allocated memory for `f` and `g`. `baz()` is very short, so when it’s
 over, we get rid of its stack frame:
 
 | Address         | Name | Value          |
-+-----------------+------+----------------+
+|-----------------|------|----------------|
 | 2<sup>30</sup>  |      | 20             |
 | ...             | ...  | ...            |
 | 5               | z    | 4              |
@@ -426,11 +426,11 @@ over, we get rid of its stack frame:
 Next, `foo()` calls `bar()` with `x` and `z`:
 
 | Address              | Name | Value                |
-+----------------------+------+----------------------+
+|----------------------|------|----------------------|
 |  2<sup>30</sup>      |      | 20                   |
 | (2<sup>30</sup>) - 1 |      | 5                    |
 | ...                  | ...  | ...                  |
-| 10                   | e    | 4                    |
+| 10                   | e    | 9                    |
 | 9                    | d    | (2<sup>30</sup>) - 1 |
 | 8                    | c    | 5                    |
 | 7                    | b    | 4                    |
@@ -449,13 +449,13 @@ case, we set up the variables as usual.
 At the end of `bar()`, it calls `baz()`:
 
 | Address              | Name | Value                |
-+----------------------+------+----------------------+
+|----------------------|------|----------------------|
 |  2<sup>30</sup>      |      | 20                   |
 | (2<sup>30</sup>) - 1 |      | 5                    |
 | ...                  | ...  | ...                  |
 | 12                   | g    | 100                  |
 | 11                   | f    | 4                    |
-| 10                   | e    | 4                    |
+| 10                   | e    | 9                    |
 | 9                    | d    | (2<sup>30</sup>) - 1 |
 | 8                    | c    | 5                    |
 | 7                    | b    | 4                    |
@@ -473,11 +473,11 @@ far.
 After `baz()` is over, we get rid of `f` and `g`:
 
 | Address              | Name | Value                |
-+----------------------+------+----------------------+
+|----------------------|------|----------------------|
 |  2<sup>30</sup>      |      | 20                   |
 | (2<sup>30</sup>) - 1 |      | 5                    |
 | ...                  | ...  | ...                  |
-| 10                   | e    | 4                    |
+| 10                   | e    | 9                    |
 | 9                    | d    | (2<sup>30</sup>) - 1 |
 | 8                    | c    | 5                    |
 | 7                    | b    | 4                    |
@@ -493,7 +493,7 @@ Next, we return from `bar()`. `d` in this case is a `Box<T>`, so it also frees
 what it points to: (2<sup>30</sup>) - 1.
 
 | Address         | Name | Value          |
-+-----------------+------+----------------+
+|-----------------|------|----------------|
 |  2<sup>30</sup> |      | 20             |
 | ...             | ...  | ...            |
 | 5               | z    | 4              |
@@ -506,7 +506,7 @@ what it points to: (2<sup>30</sup>) - 1.
 And after that, `foo()` returns:
 
 | Address         | Name | Value          |
-+-----------------+------+----------------+
+|-----------------|------|----------------|
 |  2<sup>30</sup> |      | 20             |
 | ...             | ...  | ...            |
 | 2               | j    | 0              |

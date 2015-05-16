@@ -44,19 +44,24 @@ pub fn time<T, U, F>(do_it: bool, what: &str, u: U, f: F) -> T where
         r
     });
 
-    let mut u = Some(u);
     let mut rv = None;
     let dur = {
         let ref mut rvp = rv;
 
         Duration::span(move || {
-            *rvp = Some(f(u.take().unwrap()))
+            *rvp = Some(f(u))
         })
     };
     let rv = rv.unwrap();
 
-    println!("{}time: {}.{:03} \t{}", repeat("  ").take(old).collect::<String>(),
-             dur.num_seconds(), dur.num_milliseconds() % 1000, what);
+    // Hack up our own formatting for the duration to make it easier for scripts
+    // to parse (always use the same number of decimal places and the same unit).
+    const NANOS_PER_SEC: f64 = 1_000_000_000.0;
+    let secs = dur.secs() as f64;
+    let secs = secs + dur.extra_nanos() as f64 / NANOS_PER_SEC;
+    println!("{}time: {:.3} \t{}", repeat("  ").take(old).collect::<String>(),
+             secs, what);
+
     DEPTH.with(|slot| slot.set(old));
 
     rv

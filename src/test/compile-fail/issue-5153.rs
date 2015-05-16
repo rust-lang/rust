@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: type `&Foo` does not implement any method in scope named `foo`
-
 trait Foo {
     fn foo(self: Box<Self>);
 }
@@ -20,4 +18,5 @@ impl Foo for isize {
 
 fn main() {
     (&5 as &Foo).foo();
+    //~^ ERROR: no method named `foo` found for type `&Foo` in the current scope
 }
