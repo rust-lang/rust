@@ -116,7 +116,13 @@ impl<'a, T: ?Sized> BorrowMut<T> for &'a mut T {
     fn borrow_mut(&mut self) -> &mut T { &mut **self }
 }
 
+#[cfg(stage0)]
 impl<T> Borrow<T> for rc::Rc<T> {
+    fn borrow(&self) -> &T { &**self }
+}
+
+#[cfg(not(stage0))]
+impl<T: ?Sized> Borrow<T> for rc::Rc<T> {
     fn borrow(&self) -> &T { &**self }
 }
 

@@ -634,7 +634,18 @@ impl<T: Default> Default for Rc<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(stage0)]
 impl<T: PartialEq> PartialEq for Rc<T> {
+    #[inline(always)]
+    fn eq(&self, other: &Rc<T>) -> bool { **self == **other }
+
+    #[inline(always)]
+    fn ne(&self, other: &Rc<T>) -> bool { **self != **other }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(not(stage0))]
+impl<T: ?Sized + PartialEq> PartialEq for Rc<T> {
     /// Equality for two `Rc<T>`s.
     ///
     /// Two `Rc<T>`s are equal if their inner value are equal.
@@ -669,10 +680,35 @@ impl<T: PartialEq> PartialEq for Rc<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(stage0)]
 impl<T: Eq> Eq for Rc<T> {}
+#[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(not(stage0))]
+impl<T: ?Sized + Eq> Eq for Rc<T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(stage0)]
 impl<T: PartialOrd> PartialOrd for Rc<T> {
+    #[inline(always)]
+    fn partial_cmp(&self, other: &Rc<T>) -> Option<Ordering> {
+        (**self).partial_cmp(&**other)
+    }
+
+    #[inline(always)]
+    fn lt(&self, other: &Rc<T>) -> bool { **self < **other }
+
+    #[inline(always)]
+    fn le(&self, other: &Rc<T>) -> bool { **self <= **other }
+
+    #[inline(always)]
+    fn gt(&self, other: &Rc<T>) -> bool { **self > **other }
+
+    #[inline(always)]
+    fn ge(&self, other: &Rc<T>) -> bool { **self >= **other }
+}
+#[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(not(stage0))]
+impl<T: ?Sized + PartialOrd> PartialOrd for Rc<T> {
     /// Partial comparison for two `Rc<T>`s.
     ///
     /// The two are compared by calling `partial_cmp()` on their inner values.
@@ -757,7 +793,14 @@ impl<T: PartialOrd> PartialOrd for Rc<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(stage0)]
 impl<T: Ord> Ord for Rc<T> {
+    #[inline]
+    fn cmp(&self, other: &Rc<T>) -> Ordering { (**self).cmp(&**other) }
+}
+#[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(not(stage0))]
+impl<T: ?Sized + Ord> Ord for Rc<T> {
     /// Comparison for two `Rc<T>`s.
     ///
     /// The two are compared by calling `cmp()` on their inner values.
@@ -1399,4 +1442,9 @@ mod tests {
         assert_eq!(format!("{:?}", foo), "75");
     }
 
+    #[test]
+    fn test_unsized() {
+        let foo: Rc<[i32]> = Rc::new([1, 2, 3]);
+        assert_eq!(foo, foo.clone());
+    }
 }
