@@ -11,7 +11,6 @@
 trait MyTrait {
     const C: bool;
     //~^ associated constants are experimental
-    //~| add #![feature(associated_consts)] to the crate attributes to enable
 }
 
 struct Foo;
@@ -19,5 +18,4 @@ struct Foo;
 impl Foo {
     const C: bool = true;
     //~^ associated constants are experimental
-    //~| add #![feature(associated_consts)] to the crate attributes to enable
 }
