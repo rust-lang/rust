@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: is not UTF-8
+// error-pattern: did not contain valid UTF-8
 
 fn foo() {
     include!("not-utf8.bin")
