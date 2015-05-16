@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn foo(_: Self) {
-    //~^ ERROR use of `Self` outside of an impl or Trait
+    //~^ ERROR use of `Self` outside of an impl or trait
 }
 
 fn main() {}
