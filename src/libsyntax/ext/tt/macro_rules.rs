@@ -325,42 +325,55 @@ fn check_matcher<'a, I>(cx: &mut ExtCtxt, matcher: I, follow: &Token)
         last = match *token {
             TtToken(sp, MatchNt(ref name, ref frag_spec, _, _)) => {
                 // ii. If T is a simple NT, look ahead to the next token T' in
-                // M.
-                let next_token = match tokens.peek() {
-                    // If T' closes a complex NT, replace T' with F
-                    Some(&&TtToken(_, CloseDelim(_))) => follow.clone(),
-                    Some(&&TtToken(_, ref tok)) => tok.clone(),
-                    Some(&&TtSequence(sp, _)) => {
-                        cx.span_err(sp,
-                                    &format!("`${0}:{1}` is followed by a \
-                                              sequence repetition, which is not \
-                                              allowed for `{1}` fragments",
-                                             name.as_str(), frag_spec.as_str())
+                // M. If T' is in the set FOLLOW(NT), continue. Else; reject.
+                if can_be_followed_by_any(frag_spec.as_str()) {
+                    continue
+                } else {
+                    let next_token = match tokens.peek() {
+                        // If T' closes a complex NT, replace T' with F
+                        Some(&&TtToken(_, CloseDelim(_))) => follow.clone(),
+                        Some(&&TtToken(_, ref tok)) => tok.clone(),
+                        Some(&&TtSequence(sp, _)) => {
+                            // Be conservative around sequences: to be
+                            // more specific, we would need to
+                            // consider FIRST sets, but also the
+                            // possibility that the sequence occurred
+                            // zero times (in which case we need to
+                            // look at the token that follows the
+                            // sequence, which may itself a sequence,
+                            // and so on).
+                            cx.span_err(sp,
+                                        &format!("`${0}:{1}` is followed by a \
+                                                  sequence repetition, which is not \
+                                                  allowed for `{1}` fragments",
+                                                 name.as_str(), frag_spec.as_str())
                                         );
-                        Eof
-                    },
-                    // die next iteration
-                    Some(&&TtDelimited(_, ref delim)) => delim.close_token(),
-                    // else, we're at the end of the macro or sequence
-                    None => follow.clone()
-                };
+                            Eof
+                        },
+                        // die next iteration
+                        Some(&&TtDelimited(_, ref delim)) => delim.close_token(),
+                        // else, we're at the end of the macro or sequence
+                        None => follow.clone()
+                    };
 
-                let tok = if let TtToken(_, ref tok) = *token { tok } else { unreachable!() };
-                // If T' is in the set FOLLOW(NT), continue. Else, reject.
-                match (&next_token, is_in_follow(cx, &next_token, frag_spec.as_str())) {
-                    (_, Err(msg)) => {
-                        cx.span_err(sp, &msg);
-                        continue
+                    let tok = if let TtToken(_, ref tok) = *token { tok } else { unreachable!() };
+
+                    // If T' is in the set FOLLOW(NT), continue. Else, reject.
+                    match (&next_token, is_in_follow(cx, &next_token, frag_spec.as_str())) {
+                        (_, Err(msg)) => {
+                            cx.span_err(sp, &msg);
+                            continue
+                        }
+                        (&Eof, _) => return Some((sp, tok.clone())),
+                        (_, Ok(true)) => continue,
+                        (next, Ok(false)) => {
+                            cx.span_err(sp, &format!("`${0}:{1}` is followed by `{2}`, which \
+                                                      is not allowed for `{1}` fragments",
+                                                     name.as_str(), frag_spec.as_str(),
+                                                     token_to_string(next)));
+                            continue
+                        },
                     }
-                    (&Eof, _) => return Some((sp, tok.clone())),
-                    (_, Ok(true)) => continue,
-                    (next, Ok(false)) => {
-                        cx.span_err(sp, &format!("`${0}:{1}` is followed by `{2}`, which \
-                                                  is not allowed for `{1}` fragments",
-                                                 name.as_str(), frag_spec.as_str(),
-                                                 token_to_string(next)));
-                        continue
-                    },
                 }
             },
             TtSequence(sp, ref seq) => {
@@ -427,8 +440,39 @@ fn check_matcher<'a, I>(cx: &mut ExtCtxt, matcher: I, follow: &Token)
     last
 }
 
+/// True if a fragment of type `frag` can be followed by any sort of
+/// token.  We use this (among other things) as a useful approximation
+/// for when `frag` can be followed by a repetition like `$(...)*` or
+/// `$(...)+`. In general, these can be a bit tricky to reason about,
+/// so we adopt a conservative position that says that any fragment
+/// specifier which consumes at most one token tree can be followed by
+/// a fragment specifier (indeed, these fragments can be followed by
+/// ANYTHING without fear of future compatibility hazards).
+fn can_be_followed_by_any(frag: &str) -> bool {
+    match frag {
+        "item" |  // always terminated by `}` or `;`
+        "block" | // exactly one token tree
+        "ident" | // exactly one token tree
+        "meta" |  // exactly one token tree
+        "tt" =>    // exactly one token tree
+            true,
+
+        _ =>
+            false,
+    }
+}
+
+/// True if `frag` can legally be followed by the token `tok`. For
+/// fragments that can consume an unbounded numbe of tokens, `tok`
+/// must be within a well-defined follow set. This is intended to
+/// guarantee future compatibility: for example, without this rule, if
+/// we expanded `expr` to include a new binary operator, we might
+/// break macros that were relying on that binary operator as a
+/// separator.
 fn is_in_follow(_: &ExtCtxt, tok: &Token, frag: &str) -> Result<bool, String> {
     if let &CloseDelim(_) = tok {
+        // closing a token tree can never be matched by any fragment;
+        // iow, we always require that `(` and `)` match, etc.
         Ok(true)
     } else {
         match frag {
