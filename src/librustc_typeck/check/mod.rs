@@ -5009,7 +5009,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
             "type_name" => (1, Vec::new(), ty::mk_str_slice(tcx, tcx.mk_region(ty::ReStatic),
                                                              ast::MutImmutable)),
             "type_id" => (1, Vec::new(), ccx.tcx.types.u64),
-            "offset" => {
+            "offset" | "arith_offset" => {
               (1,
                vec!(
                   ty::mk_ptr(tcx, ty::mt {

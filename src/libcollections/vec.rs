@@ -66,6 +66,8 @@ use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{self, Hash};
 use core::intrinsics::assume;
+#[cfg(not(stage0))]
+use core::intrinsics::arith_offset;
 use core::iter::{repeat, FromIterator};
 use core::marker::PhantomData;
 use core::mem;
@@ -1527,6 +1529,7 @@ impl<T> IntoIterator for Vec<T> {
     /// }
     /// ```
     #[inline]
+    #[cfg(stage0)]
     fn into_iter(self) -> IntoIter<T> {
         unsafe {
             let ptr = *self.ptr;
@@ -1535,6 +1538,24 @@ impl<T> IntoIterator for Vec<T> {
             let begin = ptr as *const T;
             let end = if mem::size_of::<T>() == 0 {
                 (ptr as usize + self.len()) as *const T
+            } else {
+                ptr.offset(self.len() as isize) as *const T
+            };
+            mem::forget(self);
+            IntoIter { allocation: ptr, cap: cap, ptr: begin, end: end }
+        }
+    }
+
+    #[inline]
+    #[cfg(not(stage0))]
+    fn into_iter(self) -> IntoIter<T> {
+        unsafe {
+            let ptr = *self.ptr;
+            assume(!ptr.is_null());
+            let cap = self.cap;
+            let begin = ptr as *const T;
+            let end = if mem::size_of::<T>() == 0 {
+                arith_offset(ptr as *const i8, self.len() as isize) as *const T
             } else {
                 ptr.offset(self.len() as isize) as *const T
             };
@@ -1746,6 +1767,7 @@ impl<T> Iterator for IntoIter<T> {
     type Item = T;
 
     #[inline]
+    #[cfg(stage0)]
     fn next(&mut self) -> Option<T> {
         unsafe {
             if self.ptr == self.end {
@@ -1756,6 +1778,31 @@ impl<T> Iterator for IntoIter<T> {
                     // vectors with 0-size elements this would return the
                     // same pointer.
                     self.ptr = mem::transmute(self.ptr as usize + 1);
+
+                    // Use a non-null pointer value
+                    Some(ptr::read(EMPTY as *mut T))
+                } else {
+                    let old = self.ptr;
+                    self.ptr = self.ptr.offset(1);
+
+                    Some(ptr::read(old))
+                }
+            }
+        }
+    }
+
+    #[inline]
+    #[cfg(not(stage0))]
+    fn next(&mut self) -> Option<T> {
+        unsafe {
+            if self.ptr == self.end {
+                None
+            } else {
+                if mem::size_of::<T>() == 0 {
+                    // purposefully don't use 'ptr.offset' because for
+                    // vectors with 0-size elements this would return the
+                    // same pointer.
+                    self.ptr = arith_offset(self.ptr as *const i8, 1) as *const T;
 
                     // Use a non-null pointer value
                     Some(ptr::read(EMPTY as *mut T))
@@ -1786,6 +1833,7 @@ impl<T> Iterator for IntoIter<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> DoubleEndedIterator for IntoIter<T> {
     #[inline]
+    #[cfg(stage0)]
     fn next_back(&mut self) -> Option<T> {
         unsafe {
             if self.end == self.ptr {
@@ -1794,6 +1842,28 @@ impl<T> DoubleEndedIterator for IntoIter<T> {
                 if mem::size_of::<T>() == 0 {
                     // See above for why 'ptr.offset' isn't used
                     self.end = mem::transmute(self.end as usize - 1);
+
+                    // Use a non-null pointer value
+                    Some(ptr::read(EMPTY as *mut T))
+                } else {
+                    self.end = self.end.offset(-1);
+
+                    Some(ptr::read(mem::transmute(self.end)))
+                }
+            }
+        }
+    }
+
+    #[inline]
+    #[cfg(not(stage0))]
+    fn next_back(&mut self) -> Option<T> {
+        unsafe {
+            if self.end == self.ptr {
+                None
+            } else {
+                if mem::size_of::<T>() == 0 {
+                    // See above for why 'ptr.offset' isn't used
+                    self.end = arith_offset(self.end as *const i8, -1) as *const T;
 
                     // Use a non-null pointer value
                     Some(ptr::read(EMPTY as *mut T))
