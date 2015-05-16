@@ -2367,7 +2367,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             maybe_qself.is_none() &&
                             path.segments[0].identifier.name == self_type_name;
                         let msg = if is_invalid_self_type_name {
-                            "use of Self outside of an impl".to_string()
+                            "use of `Self` outside of an impl or trait".to_string()
                         } else {
                             format!("use of undeclared {} `{}`",
                                 kind, path_names_to_string(path, 0))
