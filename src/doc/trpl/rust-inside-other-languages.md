@@ -104,7 +104,7 @@ fn process() {
     let handles: Vec<_> = (0..10).map(|_| {
         thread::spawn(|| {
             let mut _x = 0;
-            for _ in (0..5_000_001) {
+            for _ in (0..5_000_000) {
                 _x += 1
             }
         })
