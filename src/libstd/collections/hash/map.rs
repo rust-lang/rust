@@ -1222,7 +1222,7 @@ impl<K, V, S> Debug for HashMap<K, V, S>
     where K: Eq + Hash + Debug, V: Debug, S: HashState
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.iter().fold(f.debug_map(), |b, (k, v)| b.entry(k, v)).finish()
+        f.debug_map().entries(self.iter()).finish()
     }
 }
 

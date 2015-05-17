@@ -73,7 +73,7 @@ pub fn debug_struct_new<'a, 'b>(fmt: &'a mut fmt::Formatter<'b>, name: &str)
 impl<'a, 'b: 'a> DebugStruct<'a, 'b> {
     /// Adds a new field to the generated struct output.
     #[unstable(feature = "debug_builders", reason = "method was just created")]
-    pub fn field(mut self, name: &str, value: &fmt::Debug) -> DebugStruct<'a, 'b> {
+    pub fn field(&mut self, name: &str, value: &fmt::Debug) -> &mut DebugStruct<'a, 'b> {
         self.result = self.result.and_then(|_| {
             let prefix = if self.has_fields {
                 ","
@@ -96,7 +96,7 @@ impl<'a, 'b: 'a> DebugStruct<'a, 'b> {
     /// Consumes the `DebugStruct`, finishing output and returning any error
     /// encountered.
     #[unstable(feature = "debug_builders", reason = "method was just created")]
-    pub fn finish(mut self) -> fmt::Result {
+    pub fn finish(&mut self) -> fmt::Result {
         if self.has_fields {
             self.result = self.result.and_then(|_| {
                 if self.is_pretty() {
@@ -136,7 +136,7 @@ pub fn debug_tuple_new<'a, 'b>(fmt: &'a mut fmt::Formatter<'b>, name: &str) -> D
 impl<'a, 'b: 'a> DebugTuple<'a, 'b> {
     /// Adds a new field to the generated tuple struct output.
     #[unstable(feature = "debug_builders", reason = "method was just created")]
-    pub fn field(mut self, value: &fmt::Debug) -> DebugTuple<'a, 'b> {
+    pub fn field(&mut self, value: &fmt::Debug) -> &mut DebugTuple<'a, 'b> {
         self.result = self.result.and_then(|_| {
             let (prefix, space) = if self.has_fields {
                 (",", " ")
@@ -159,7 +159,7 @@ impl<'a, 'b: 'a> DebugTuple<'a, 'b> {
     /// Consumes the `DebugTuple`, finishing output and returning any error
     /// encountered.
     #[unstable(feature = "debug_builders", reason = "method was just created")]
-    pub fn finish(mut self) -> fmt::Result {
+    pub fn finish(&mut self) -> fmt::Result {
         if self.has_fields {
             self.result = self.result.and_then(|_| {
                 if self.is_pretty() {
@@ -231,15 +231,25 @@ pub fn debug_set_new<'a, 'b>(fmt: &'a mut fmt::Formatter<'b>) -> DebugSet<'a, 'b
 impl<'a, 'b: 'a> DebugSet<'a, 'b> {
     /// Adds a new entry to the set output.
     #[unstable(feature = "debug_builders", reason = "method was just created")]
-    pub fn entry(mut self, entry: &fmt::Debug) -> DebugSet<'a, 'b> {
+    pub fn entry(&mut self, entry: &fmt::Debug) -> &mut DebugSet<'a, 'b> {
         self.inner.entry(entry);
+        self
+    }
+
+    /// Adds the contents of an iterator of entries to the set output.
+    #[unstable(feature = "debug_builders", reason = "method was just created")]
+    pub fn entries<D, I>(&mut self, entries: I) -> &mut DebugSet<'a, 'b>
+            where D: fmt::Debug, I: IntoIterator<Item=D> {
+        for entry in entries {
+            self.entry(&entry);
+        }
         self
     }
 
     /// Consumes the `DebugSet`, finishing output and returning any error
     /// encountered.
     #[unstable(feature = "debug_builders", reason = "method was just created")]
-    pub fn finish(mut self) -> fmt::Result {
+    pub fn finish(&mut self) -> fmt::Result {
         self.inner.finish();
         self.inner.result.and_then(|_| self.inner.fmt.write_str("}"))
     }
@@ -265,17 +275,27 @@ pub fn debug_list_new<'a, 'b>(fmt: &'a mut fmt::Formatter<'b>) -> DebugList<'a, 
 }
 
 impl<'a, 'b: 'a> DebugList<'a, 'b> {
-    /// Adds a new entry to the set output.
+    /// Adds a new entry to the list output.
     #[unstable(feature = "debug_builders", reason = "method was just created")]
-    pub fn entry(mut self, entry: &fmt::Debug) -> DebugList<'a, 'b> {
+    pub fn entry(&mut self, entry: &fmt::Debug) -> &mut DebugList<'a, 'b> {
         self.inner.entry(entry);
+        self
+    }
+
+    /// Adds the contents of an iterator of entries to the list output.
+    #[unstable(feature = "debug_builders", reason = "method was just created")]
+    pub fn entries<D, I>(&mut self, entries: I) -> &mut DebugList<'a, 'b>
+            where D: fmt::Debug, I: IntoIterator<Item=D> {
+        for entry in entries {
+            self.entry(&entry);
+        }
         self
     }
 
     /// Consumes the `DebugSet`, finishing output and returning any error
     /// encountered.
     #[unstable(feature = "debug_builders", reason = "method was just created")]
-    pub fn finish(mut self) -> fmt::Result {
+    pub fn finish(&mut self) -> fmt::Result {
         self.inner.finish();
         self.inner.result.and_then(|_| self.inner.fmt.write_str("]"))
     }
@@ -303,7 +323,7 @@ pub fn debug_map_new<'a, 'b>(fmt: &'a mut fmt::Formatter<'b>) -> DebugMap<'a, 'b
 impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     /// Adds a new entry to the map output.
     #[unstable(feature = "debug_builders", reason = "method was just created")]
-    pub fn entry(mut self, key: &fmt::Debug, value: &fmt::Debug) -> DebugMap<'a, 'b> {
+    pub fn entry(&mut self, key: &fmt::Debug, value: &fmt::Debug) -> &mut DebugMap<'a, 'b> {
         self.result = self.result.and_then(|_| {
             if self.is_pretty() {
                 let mut writer = PadAdapter::new(self.fmt);
@@ -319,10 +339,20 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
         self
     }
 
+    /// Adds the contents of an iterator of entries to the map output.
+    #[unstable(feature = "debug_builders", reason = "method was just created")]
+    pub fn entries<K, V, I>(&mut self, entries: I) -> &mut DebugMap<'a, 'b>
+            where K: fmt::Debug, V: fmt::Debug, I: IntoIterator<Item=(K, V)> {
+        for (k, v) in entries {
+            self.entry(&k, &v);
+        }
+        self
+    }
+
     /// Consumes the `DebugMap`, finishing output and returning any error
     /// encountered.
     #[unstable(feature = "debug_builders", reason = "method was just created")]
-    pub fn finish(self) -> fmt::Result {
+    pub fn finish(&mut self) -> fmt::Result {
         let prefix = if self.is_pretty() && self.has_fields { "\n" } else { "" };
         self.result.and_then(|_| write!(self.fmt, "{}}}", prefix))
     }
