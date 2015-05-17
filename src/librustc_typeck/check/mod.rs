@@ -3153,26 +3153,10 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                                            Some(&**oprnd), oprnd_t, lvalue_pref) {
                             Some(mt) => mt.ty,
                             None => {
-                                let is_newtype = match oprnd_t.sty {
-                                    ty::ty_struct(did, substs) => {
-                                        let fields = ty::struct_fields(fcx.tcx(), did, substs);
-                                        fields.len() == 1
-                                        && fields[0].name ==
-                                        token::special_idents::unnamed_field.name
-                                    }
-                                    _ => false
-                                };
-                                if is_newtype {
-                                    // This is an obsolete struct deref
-                                    span_err!(tcx.sess, expr.span, E0068,
-                                        "single-field tuple-structs can \
-                                         no longer be dereferenced");
-                                } else {
-                                    fcx.type_error_message(expr.span, |actual| {
-                                        format!("type `{}` cannot be \
-                                                dereferenced", actual)
-                                    }, oprnd_t, None);
-                                }
+                                fcx.type_error_message(expr.span, |actual| {
+                                    format!("type `{}` cannot be \
+                                            dereferenced", actual)
+                                }, oprnd_t, None);
                                 tcx.types.err
                             }
                         }
