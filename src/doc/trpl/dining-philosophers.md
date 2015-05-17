@@ -320,7 +320,7 @@ from the standard library, and so we need to `use` it.
 We now print out two messages, with a `sleep_ms()` in the middle. This will
 simulate the time it takes a philosopher to eat.
 
-If you run this program, You should see each philosopher eat in turn:
+If you run this program, you should see each philosopher eat in turn:
 
 ```text
 Baruch Spinoza is eating.
@@ -480,7 +480,7 @@ struct Table {
 }
 ```
 
-This `Table` has an vector of `Mutex`es. A mutex is a way to control
+This `Table` has a vector of `Mutex`es. A mutex is a way to control
 concurrency: only one thread can access the contents at once. This is exactly
 the property we need with our forks. We use an empty tuple, `()`, inside the
 mutex, since we’re not actually going to use the value, just hold onto it.
