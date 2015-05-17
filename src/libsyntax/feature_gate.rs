@@ -258,7 +258,6 @@ pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType)] = &[
     ("no_builtins", Whitelisted),
     ("no_mangle", Whitelisted),
     ("no_stack_check", Whitelisted),
-    ("packed", Whitelisted),
     ("static_assert", Gated("static_assert",
                             "`#[static_assert]` is an experimental feature, and has a poor API")),
     ("no_debug", Whitelisted),
