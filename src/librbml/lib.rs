@@ -397,12 +397,10 @@ pub mod reader {
         }
     }
 
-    pub fn docs<F>(d: Doc, mut it: F) -> bool where
-        F: FnMut(usize, Doc) -> bool,
-    {
-        DocsIterator { d: d }.all(|(value, doc)| {
-            it(value, doc)
-        })
+    pub fn docs<'a>(d: Doc<'a>) -> DocsIterator<'a> {
+        DocsIterator {
+            d: d
+        }
     }
 
     pub struct DocsIterator<'a> {
