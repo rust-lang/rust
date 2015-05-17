@@ -787,7 +787,7 @@ impl<'a> Formatter<'a> {
     ///
     /// impl fmt::Debug for Foo {
     ///     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-    ///         self.0.iter().fold(fmt.debug_list(), |b, e| b.entry(e)).finish()
+    ///         fnt.debug_list().entries(self.0.iter()).finish()
     ///     }
     /// }
     ///
@@ -813,7 +813,7 @@ impl<'a> Formatter<'a> {
     ///
     /// impl fmt::Debug for Foo {
     ///     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-    ///         self.0.iter().fold(fmt.debug_set(), |b, e| b.entry(e)).finish()
+    ///         fmt.debug_set().entries(self.0.iter()).finish()
     ///     }
     /// }
     ///
@@ -839,7 +839,7 @@ impl<'a> Formatter<'a> {
     ///
     /// impl fmt::Debug for Foo {
     ///     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-    ///         self.0.iter().fold(fmt.debug_map(), |b, &(ref k, ref v)| b.entry(k, v)).finish()
+    ///         fmt.debug_map().entries(self.0.iter()).finish()
     ///     }
     /// }
     ///
@@ -1120,7 +1120,7 @@ tuple! { T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Debug> Debug for [T] {
     fn fmt(&self, f: &mut Formatter) -> Result {
-        self.iter().fold(f.debug_list(), |b, e| b.entry(e)).finish()
+        f.debug_list().entries(self.iter()).finish()
     }
 }
 
