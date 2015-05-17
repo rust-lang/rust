@@ -79,19 +79,23 @@ number comes from 2<sup>30</sup>, the number of bytes in a gigabyte.
 This memory is kind of like a giant array: addresses start at zero and go
 up to the final number. So here’s a diagram of our first stack frame:
 
+```
 | Address | Name | Value |
 |---------|------|-------|
 | 0       | x    | 42    |
+```
 
 We’ve got `x` located at address `0`, with the value `42`.
 
 When `foo()` is called, a new stack frame is allocated:
 
+```
 | Address | Name | Value |
 |---------|------|-------|
 | 2       | z    | 100   |
 | 1       | y    | 5     |
 | 0       | x    | 42    |
+```
 
 Because `0` was taken by the first frame, `1` and `2` are used for `foo()`’s
 stack frame. It grows upward, the more functions we call.
@@ -106,9 +110,11 @@ value being stored.
 
 After `foo()` is over, its frame is deallocated:
 
+```
 | Address | Name | Value |
 |---------|------|-------|
 | 0       | x    | 42    |
+```
 
 And then, after `main()`, even this last value goes away. Easy!
 
@@ -141,21 +147,26 @@ fn main() {
 
 Okay, first, we call `main()`:
 
+```
 | Address | Name | Value |
 |---------|------|-------|
 | 0       | x    | 42    |
+```
 
 Next up, `main()` calls `foo()`:
 
+```
 | Address | Name | Value |
 |---------|------|-------|
 | 3       | c    | 1     |
 | 2       | b    | 100   |
 | 1       | a    | 5     |
 | 0       | x    | 42    |
+```
 
 And then `foo()` calls `bar()`:
 
+```
 | Address | Name | Value |
 |---------|------|-------|
 | 4       | i    | 6     |
@@ -163,24 +174,29 @@ And then `foo()` calls `bar()`:
 | 2       | b    | 100   |
 | 1       | a    | 5     |
 | 0       | x    | 42    |
+```
 
 Whew! Our stack is growing tall.
 
 After `bar()` is over, its frame is deallocated, leaving just `foo()` and
 `main()`:
 
+```
 | Address | Name | Value |
 |---------|------|-------|
 | 3       | c    | 1     |
 | 2       | b    | 100   |
 | 1       | a    | 5     |
 | 0       | x    | 42    |
+```
 
 And then `foo()` ends, leaving just `main()`
 
+```
 | Address | Name | Value |
 |---------|------|-------|
 | 0       | x    | 42    |
+```
 
 And then we’re done. Getting the hang of it? It’s like piling up dishes: you
 add to the top, you take away from the top.
@@ -205,10 +221,12 @@ fn main() {
 
 Here’s what happens in memory when `main()` is called:
 
+```
 | Address | Name | Value  |
 |---------|------|--------|
 | 1       | y    | 42     |
 | 0       | x    | ?????? |
+```
 
 We allocate space for two variables on the stack. `y` is `42`, as it always has
 been, but what about `x`? Well, `x` is a `Box<i32>`, and boxes allocate memory
@@ -217,12 +235,14 @@ on the heap. The actual value of the box is a structure which has a pointer to
 it allocates some memory for the heap, and puts `5` there. The memory now looks
 like this:
 
+```
 | Address         | Name | Value          |
 |-----------------|------|----------------|
 | 2<sup>30</sup>  |      | 5              |
 | ...             | ...  | ...            |
 | 1               | y    | 42             |
 | 0               | x    | 2<sup>30</sup> |
+```
 
 We have 2<sup>30</sup> in our hypothetical computer with 1GB of RAM. And since
 our stack grows from zero, the easiest place to allocate memory is from the
@@ -241,7 +261,7 @@ example of this later in the book, but because the heap can be allocated and
 freed in any order, it can end up with ‘holes’. Here’s a diagram of the memory
 layout of a program which has been running for a while now:
 
-
+```
 | Address              | Name | Value                |
 |----------------------|------|----------------------|
 | 2<sup>30</sup>       |      | 5                    |
@@ -253,6 +273,7 @@ layout of a program which has been running for a while now:
 | 2                    | y    | 42                   |
 | 1                    | y    | 42                   |
 | 0                    | x    | 2<sup>30</sup>       |
+```
 
 In this case, we’ve allocated four things on the heap, but deallocated two of
 them. There’s a gap between 2<sup>30</sup> and (2<sup>30</sup>) - 3 which isn’t
@@ -271,10 +292,12 @@ implementation of `Drop` for `Box` deallocates the memory that was allocated
 when it was created. Great! So when `x` goes away, it first frees the memory
 allocated on the heap:
 
+```
 | Address | Name | Value  |
 |---------|------|--------|
 | 1       | y    | 42     |
 | 0       | x    | ?????? |
+```
 
 [drop]: drop.html
 [moving]: We can make the memory live longer by transferring ownership,
@@ -304,22 +327,26 @@ fn main() {
 
 When we enter `main()`, memory looks like this:
 
+```
 | Address | Name | Value |
 |---------|------|-------|
 | 1       | y    | 0     |
 | 0       | x    | 5     |
+```
 
 `x` is a plain old `5`, and `y` is a reference to `x`. So its value is the
 memory location that `x` lives at, which in this case is `0`.
 
 What about when we call `foo()`, passing `y` as an argument?
 
+```
 | Address | Name | Value |
 |---------|------|-------|
 | 3       | z    | 42    |
 | 2       | i    | 0     |
 | 1       | y    | 0     |
 | 0       | x    | 5     |
+```
 
 Stack frames aren’t just for local bindings, they’re for arguments too. So in
 this case, we need to have both `i`, our argument, and `z`, our local variable
@@ -366,6 +393,7 @@ fn main() {
 
 First, we call `main()`:
 
+```
 | Address         | Name | Value          |
 |-----------------|------|----------------|
 | 2<sup>30</sup>  |      | 20             |
@@ -373,12 +401,14 @@ First, we call `main()`:
 | 2               | j    | 0              |
 | 1               | i    | 2<sup>30</sup> |
 | 0               | h    | 3              |
+```
 
 We allocate memory for `j`, `i`, and `h`. `i` is on the heap, and so has a
 value pointing there.
 
 Next, at the end of `main()`, `foo()` gets called:
 
+```
 | Address         | Name | Value          |
 |-----------------|------|----------------|
 | 2<sup>30</sup>  |      | 20             |
@@ -389,6 +419,7 @@ Next, at the end of `main()`, `foo()` gets called:
 | 2               | j    | 0              |
 | 1               | i    | 2<sup>30</sup> |
 | 0               | h    | 3              |
+```
 
 Space gets allocated for `x`, `y`, and `z`. The argument `x` has the same value
 as `j`, since that’s what we passed it in. It’s a pointer to the `0` address,
@@ -396,6 +427,7 @@ since `j` points at `h`.
 
 Next, `foo()` calls `baz()`, passing `z`:
 
+```
 | Address         | Name | Value          |
 |-----------------|------|----------------|
 | 2<sup>30</sup>  |      | 20             |
@@ -408,10 +440,12 @@ Next, `foo()` calls `baz()`, passing `z`:
 | 2               | j    | 0              |
 | 1               | i    | 2<sup>30</sup> |
 | 0               | h    | 3              |
+```
 
 We’ve allocated memory for `f` and `g`. `baz()` is very short, so when it’s
 over, we get rid of its stack frame:
 
+```
 | Address         | Name | Value          |
 |-----------------|------|----------------|
 | 2<sup>30</sup>  |      | 20             |
@@ -422,9 +456,11 @@ over, we get rid of its stack frame:
 | 2               | j    | 0              |
 | 1               | i    | 2<sup>30</sup> |
 | 0               | h    | 3              |
+```
 
 Next, `foo()` calls `bar()` with `x` and `z`:
 
+```
 | Address              | Name | Value                |
 |----------------------|------|----------------------|
 |  2<sup>30</sup>      |      | 20                   |
@@ -441,6 +477,7 @@ Next, `foo()` calls `bar()` with `x` and `z`:
 | 2                    | j    | 0                    |
 | 1                    | i    | 2<sup>30</sup>       |
 | 0                    | h    | 3                    |
+```
 
 We end up allocating another value on the heap, and so we have to subtract one
 from 2<sup>30</sup>. It’s easier to just write that than `1,073,741,823`. In any
@@ -448,6 +485,7 @@ case, we set up the variables as usual.
 
 At the end of `bar()`, it calls `baz()`:
 
+```
 | Address              | Name | Value                |
 |----------------------|------|----------------------|
 |  2<sup>30</sup>      |      | 20                   |
@@ -466,12 +504,14 @@ At the end of `bar()`, it calls `baz()`:
 | 2                    | j    | 0                    |
 | 1                    | i    | 2<sup>30</sup>       |
 | 0                    | h    | 3                    |
+```
 
 With this, we’re at our deepest point! Whew! Congrats for following along this
 far.
 
 After `baz()` is over, we get rid of `f` and `g`:
 
+```
 | Address              | Name | Value                |
 |----------------------|------|----------------------|
 |  2<sup>30</sup>      |      | 20                   |
@@ -488,10 +528,12 @@ After `baz()` is over, we get rid of `f` and `g`:
 | 2                    | j    | 0                    |
 | 1                    | i    | 2<sup>30</sup>       |
 | 0                    | h    | 3                    |
+``
 
 Next, we return from `bar()`. `d` in this case is a `Box<T>`, so it also frees
 what it points to: (2<sup>30</sup>) - 1.
 
+```
 | Address         | Name | Value          |
 |-----------------|------|----------------|
 |  2<sup>30</sup> |      | 20             |
@@ -502,9 +544,11 @@ what it points to: (2<sup>30</sup>) - 1.
 | 2               | j    | 0              |
 | 1               | i    | 2<sup>30</sup> |
 | 0               | h    | 3              |
+```
 
 And after that, `foo()` returns:
 
+```
 | Address         | Name | Value          |
 |-----------------|------|----------------|
 |  2<sup>30</sup> |      | 20             |
@@ -512,6 +556,7 @@ And after that, `foo()` returns:
 | 2               | j    | 0              |
 | 1               | i    | 2<sup>30</sup> |
 | 0               | h    | 3              |
+```
 
 And then, finally, `main()`, which cleans the rest up. When `i` is `Drop`ped,
 it will clean up the last of the heap too.
