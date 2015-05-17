@@ -37,6 +37,7 @@ pub fn expand_deriving_partial_ord(cx: &mut ExtCtxt,
                 args: vec!(borrowed_self()),
                 ret_ty: Literal(path_local!(bool)),
                 attributes: attrs,
+                is_unsafe: false,
                 combine_substructure: combine_substructure(Box::new(|cx, span, substr| {
                     cs_op($op, $equal, cx, span, substr)
                 }))
@@ -60,6 +61,7 @@ pub fn expand_deriving_partial_ord(cx: &mut ExtCtxt,
         args: vec![borrowed_self()],
         ret_ty: ret_ty,
         attributes: attrs,
+        is_unsafe: false,
         combine_substructure: combine_substructure(Box::new(|cx, span, substr| {
             cs_partial_cmp(cx, span, substr)
         }))

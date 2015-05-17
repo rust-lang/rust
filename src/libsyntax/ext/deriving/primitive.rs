@@ -44,6 +44,7 @@ pub fn expand_deriving_from_primitive(cx: &mut ExtCtxt,
                                            true)),
                 // #[inline] liable to cause code-bloat
                 attributes: attrs.clone(),
+                is_unsafe: false,
                 combine_substructure: combine_substructure(Box::new(|c, s, sub| {
                     cs_from("i64", c, s, sub)
                 })),
@@ -59,6 +60,7 @@ pub fn expand_deriving_from_primitive(cx: &mut ExtCtxt,
                                            true)),
                 // #[inline] liable to cause code-bloat
                 attributes: attrs,
+                is_unsafe: false,
                 combine_substructure: combine_substructure(Box::new(|c, s, sub| {
                     cs_from("u64", c, s, sub)
                 })),
