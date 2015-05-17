@@ -287,11 +287,9 @@ fn main() {
     let options = config::basic_options();
     let session = session::build_session(options, None,
                                          syntax::diagnostics::registry::Registry::new(&[]));
-    let filemap = parse::string_to_filemap(&session.parse_sess,
-                                           code,
-                                           String::from_str("<n/a>"));
+    let filemap = session.parse_sess.codemap().new_filemap(String::from_str("<n/a>"), code);
     let mut lexer = lexer::StringReader::new(session.diagnostic(), filemap);
-    let ref cm = lexer.span_diagnostic.cm;
+    let cm = session.codemap();
 
     // ANTLR
     let mut token_file = File::open(&Path::new(&args.next().unwrap())).unwrap();

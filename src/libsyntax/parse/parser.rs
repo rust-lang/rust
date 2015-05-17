@@ -79,7 +79,6 @@ use parse::PResult;
 use diagnostic::FatalError;
 
 use std::collections::HashSet;
-use std::fs;
 use std::io::prelude::*;
 use std::mem;
 use std::path::{Path, PathBuf};
@@ -4840,8 +4839,7 @@ impl<'a> Parser<'a> {
                     outer_attrs: &[ast::Attribute],
                     id_sp: Span)
                     -> PResult<(ast::Item_, Vec<ast::Attribute> )> {
-        let mut prefix = PathBuf::from(&self.sess.span_diagnostic.cm
-                                            .span_to_filename(self.span));
+        let mut prefix = PathBuf::from(&self.sess.codemap().span_to_filename(self.span));
         prefix.pop();
         let mut dir_path = prefix;
         for part in &self.mod_path_stack {
@@ -4857,8 +4855,8 @@ impl<'a> Parser<'a> {
                 let secondary_path_str = format!("{}/mod.rs", mod_name);
                 let default_path = dir_path.join(&default_path_str[..]);
                 let secondary_path = dir_path.join(&secondary_path_str[..]);
-                let default_exists = fs::metadata(&default_path).is_ok();
-                let secondary_exists = fs::metadata(&secondary_path).is_ok();
+                let default_exists = self.sess.codemap().file_exists(&default_path);
+                let secondary_exists = self.sess.codemap().file_exists(&secondary_path);
 
                 if !self.owns_directory {
                     self.span_err(id_sp,

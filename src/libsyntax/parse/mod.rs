@@ -12,14 +12,13 @@
 
 use ast;
 use codemap::{Span, CodeMap, FileMap};
-use diagnostic::{SpanHandler, mk_span_handler, default_handler, Auto, FatalError};
+use diagnostic::{SpanHandler, Handler, Auto, FatalError};
 use parse::attr::ParserAttr;
 use parse::parser::Parser;
 use ptr::P;
 use str::char_at;
 
-use std::cell::{Cell, RefCell};
-use std::fs::File;
+use std::cell::RefCell;
 use std::io::Read;
 use std::iter;
 use std::path::{Path, PathBuf};
@@ -44,38 +43,23 @@ pub struct ParseSess {
     pub span_diagnostic: SpanHandler, // better be the same as the one in the reader!
     /// Used to determine and report recursive mod inclusions
     included_mod_stack: RefCell<Vec<PathBuf>>,
-    pub node_id: Cell<ast::NodeId>,
-}
-
-pub fn new_parse_sess() -> ParseSess {
-    ParseSess {
-        span_diagnostic: mk_span_handler(default_handler(Auto, None, true), CodeMap::new()),
-        included_mod_stack: RefCell::new(Vec::new()),
-        node_id: Cell::new(1),
-    }
-}
-
-pub fn new_parse_sess_special_handler(sh: SpanHandler) -> ParseSess {
-    ParseSess {
-        span_diagnostic: sh,
-        included_mod_stack: RefCell::new(Vec::new()),
-        node_id: Cell::new(1),
-    }
 }
 
 impl ParseSess {
-    pub fn next_node_id(&self) -> ast::NodeId {
-        self.reserve_node_ids(1)
+    pub fn new() -> ParseSess {
+        let handler = SpanHandler::new(Handler::new(Auto, None, true), CodeMap::new());
+        ParseSess::with_span_handler(handler)
     }
-    pub fn reserve_node_ids(&self, count: ast::NodeId) -> ast::NodeId {
-        let v = self.node_id.get();
 
-        match v.checked_add(count) {
-            Some(next) => { self.node_id.set(next); }
-            None => panic!("Input too large, ran out of node ids!")
+    pub fn with_span_handler(sh: SpanHandler) -> ParseSess {
+        ParseSess {
+            span_diagnostic: sh,
+            included_mod_stack: RefCell::new(vec![])
         }
+    }
 
-        v
+    pub fn codemap(&self) -> &CodeMap {
+        &self.span_diagnostic.cm
     }
 }
 
@@ -189,7 +173,7 @@ pub fn new_parser_from_source_str<'a>(sess: &'a ParseSess,
                                       name: String,
                                       source: String)
                                       -> Parser<'a> {
-    filemap_to_parser(sess, string_to_filemap(sess, source, name), cfg)
+    filemap_to_parser(sess, sess.codemap().new_filemap(name, source), cfg)
 }
 
 /// Create a new parser, handling errors as appropriate
@@ -235,39 +219,18 @@ pub fn new_parser_from_tts<'a>(sess: &'a ParseSess,
 
 /// Given a session and a path and an optional span (for error reporting),
 /// add the path to the session's codemap and return the new filemap.
-pub fn file_to_filemap(sess: &ParseSess, path: &Path, spanopt: Option<Span>)
-    -> Rc<FileMap> {
-    let err = |msg: &str| {
-        match spanopt {
-            Some(sp) => panic!(sess.span_diagnostic.span_fatal(sp, msg)),
-            None => sess.span_diagnostic.handler().fatal(msg),
-        }
-    };
-    let mut bytes = Vec::new();
-    match File::open(path).and_then(|mut f| f.read_to_end(&mut bytes)) {
-        Ok(..) => {}
+fn file_to_filemap(sess: &ParseSess, path: &Path, spanopt: Option<Span>)
+                   -> Rc<FileMap> {
+    match sess.codemap().load_file(path) {
+        Ok(filemap) => filemap,
         Err(e) => {
-            err(&format!("couldn't read {:?}: {}", path.display(), e));
-            unreachable!();
-        }
-    };
-    match str::from_utf8(&bytes[..]).ok() {
-        Some(s) => {
-            string_to_filemap(sess, s.to_string(),
-                              path.to_str().unwrap().to_string())
-        }
-        None => {
-            err(&format!("{:?} is not UTF-8 encoded", path.display()));
-            unreachable!();
+            let msg = format!("couldn't read {:?}: {}", path.display(), e);
+            match spanopt {
+                Some(sp) => panic!(sess.span_diagnostic.span_fatal(sp, &msg)),
+                None => sess.span_diagnostic.handler().fatal(&msg)
+            }
         }
     }
-}
-
-/// Given a session and a string, add the string to
-/// the session's codemap and return the new filemap
-pub fn string_to_filemap(sess: &ParseSess, source: String, path: String)
-                         -> Rc<FileMap> {
-    sess.span_diagnostic.cm.new_filemap(path, source)
 }
 
 /// Given a filemap, produce a sequence of token-trees
@@ -905,7 +868,7 @@ mod tests {
     }
 
     #[test] fn parse_ident_pat () {
-        let sess = new_parse_sess();
+        let sess = ParseSess::new();
         let mut parser = string_to_parser(&sess, "b".to_string());
         assert!(panictry!(parser.parse_pat_nopanic())
                 == P(ast::Pat{
@@ -1086,7 +1049,7 @@ mod tests {
     }
 
     #[test] fn crlf_doc_comments() {
-        let sess = new_parse_sess();
+        let sess = ParseSess::new();
 
         let name = "<source>".to_string();
         let source = "/// doc comment\r\nfn foo() {}".to_string();
@@ -1109,7 +1072,7 @@ mod tests {
 
     #[test]
     fn ttdelim_span() {
-        let sess = parse::new_parse_sess();
+        let sess = ParseSess::new();
         let expr = parse::parse_expr_from_source_str("foo".to_string(),
             "foo!( fn main() { body } )".to_string(), vec![], &sess);
 
@@ -1123,7 +1086,7 @@ mod tests {
 
         let span = tts.iter().rev().next().unwrap().get_span();
 
-        match sess.span_diagnostic.cm.span_to_snippet(span) {
+        match sess.codemap().span_to_snippet(span) {
             Ok(s) => assert_eq!(&s[..], "{ body }"),
             Err(_) => panic!("could not get snippet"),
         }

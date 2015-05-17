@@ -1412,8 +1412,8 @@ mod tests {
     fn mk_sh() -> diagnostic::SpanHandler {
         // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
         let emitter = diagnostic::EmitterWriter::new(Box::new(io::sink()), None);
-        let handler = diagnostic::mk_handler(true, Box::new(emitter));
-        diagnostic::mk_span_handler(handler, CodeMap::new())
+        let handler = diagnostic::Handler::with_emitter(true, Box::new(emitter));
+        diagnostic::SpanHandler::new(handler, CodeMap::new())
     }
 
     // open a string reader for the given string
