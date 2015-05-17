@@ -3401,6 +3401,11 @@ pub mod consts {
             pub const RUSAGE_SELF: c_int = 0;
             pub const RUSAGE_CHILDREN: c_int = -1;
             pub const RUSAGE_THREAD: c_int = 1;
+
+            pub const RTLD_LAZY : c_int = 1;
+            pub const RTLD_NOW : c_int = 2;
+            pub const RTLD_GLOBAL : c_int = 256;
+            pub const RTLD_LOCAL : c_int = 0;
         }
         #[cfg(target_os = "nacl")]
         pub mod posix01 {
@@ -3496,6 +3501,11 @@ pub mod consts {
             pub const RUSAGE_SELF: c_int = 0;
             pub const RUSAGE_CHILDREN: c_int = -1;
             pub const RUSAGE_THREAD: c_int = 1;
+
+            pub const RTLD_LAZY : c_int = 1;
+            pub const RTLD_NOW : c_int = 2;
+            pub const RTLD_GLOBAL : c_int = 256;
+            pub const RTLD_LOCAL : c_int = 0;
         }
         pub mod posix08 {
         }
@@ -4145,6 +4155,11 @@ pub mod consts {
             pub const RUSAGE_SELF: c_int = 0;
             pub const RUSAGE_CHILDREN: c_int = -1;
             pub const RUSAGE_THREAD: c_int = 1;
+
+            pub const RTLD_LAZY : c_int = 1;
+            pub const RTLD_NOW : c_int = 2;
+            pub const RTLD_GLOBAL : c_int = 256;
+            pub const RTLD_LOCAL : c_int = 0;
         }
         pub mod posix08 {
         }
@@ -4582,6 +4597,11 @@ pub mod consts {
             pub const RUSAGE_SELF: c_int = 0;
             pub const RUSAGE_CHILDREN: c_int = -1;
             pub const RUSAGE_THREAD: c_int = 1;
+
+            pub const RTLD_LAZY : c_int = 1;
+            pub const RTLD_NOW : c_int = 2;
+            pub const RTLD_GLOBAL : c_int = 256;
+            pub const RTLD_LOCAL : c_int = 0;
         }
         pub mod posix08 {
         }
@@ -5011,6 +5031,11 @@ pub mod consts {
             pub const RUSAGE_SELF: c_int = 0;
             pub const RUSAGE_CHILDREN: c_int = -1;
             pub const RUSAGE_THREAD: c_int = 1;
+
+            pub const RTLD_LAZY : c_int = 1;
+            pub const RTLD_NOW : c_int = 2;
+            pub const RTLD_GLOBAL : c_int = 256;
+            pub const RTLD_LOCAL : c_int = 0;
         }
         pub mod posix08 {
         }
