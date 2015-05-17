@@ -46,6 +46,10 @@ def make_win_dist(rust_root, gcc_root, target_triple):
             lib_path.extend(val.lstrip(' =').split(';'))
 
     target_tools = ["gcc.exe", "ld.exe", "ar.exe", "dlltool.exe", "windres.exe"]
+    if target_triple.startswith("i686-"):
+        target_tools.append("i686-w64-mingw32-gcc.exe")
+    else:
+        target_tools.append("x86_64-w64-mingw32-gcc.exe")
 
     rustc_dlls = ["libstdc++-6.dll"]
     if target_triple.startswith("i686-"):
