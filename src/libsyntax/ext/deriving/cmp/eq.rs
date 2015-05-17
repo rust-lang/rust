@@ -59,6 +59,7 @@ pub fn expand_deriving_eq(cx: &mut ExtCtxt,
                 args: vec!(),
                 ret_ty: nil_ty(),
                 attributes: attrs,
+                is_unsafe: false,
                 combine_substructure: combine_substructure(Box::new(|a, b, c| {
                     cs_total_eq_assert(a, b, c)
                 }))
