@@ -192,8 +192,8 @@ Here’s the error:
 ```text
 error: type `std::fs::File` does not implement any method in scope named `write`
 
-let result = f.write(b"whatever");
-               ^~~~~~~~~~~~~~~~~~
+let result = f.write("whatever".as_bytes());
+               ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ```
 
 We need to `use` the `Write` trait first:
