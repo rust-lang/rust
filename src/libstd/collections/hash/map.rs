@@ -539,7 +539,7 @@ impl<K, V, S> HashMap<K, V, S>
 {
     /// Creates an empty hashmap which will use the given hasher to hash keys.
     ///
-    /// The creates map has the default initial capacity.
+    /// The created map has the default initial capacity.
     ///
     /// # Examples
     ///
