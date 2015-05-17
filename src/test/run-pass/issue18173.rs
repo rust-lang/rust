@@ -8,14 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait MyTrait {
-    const C: bool;
-    //~^ associated constants are experimental
+trait Foo {
+    type T;
 }
 
-struct Foo;
+// should be able to use a trait with an associated type without specifying it as an argument
+trait Bar<F: Foo> {
+    fn bar(foo: &F);
+}
 
-impl Foo {
-    const C: bool = true;
-    //~^ associated constants are experimental
+pub fn main() {
 }

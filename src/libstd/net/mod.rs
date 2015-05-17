@@ -19,7 +19,7 @@ use sys_common::net as net_imp;
 
 pub use self::ip::{IpAddr, Ipv4Addr, Ipv6Addr, Ipv6MulticastScope};
 pub use self::addr::{SocketAddr, SocketAddrV4, SocketAddrV6, ToSocketAddrs};
-pub use self::tcp::{TcpStream, TcpListener};
+pub use self::tcp::{TcpStream, TcpListener, Incoming};
 pub use self::udp::UdpSocket;
 pub use self::parser::AddrParseError;
 

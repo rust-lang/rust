@@ -23,8 +23,8 @@ $ sh rustup.sh
 If you're on Windows, please download either the [32-bit installer][win32] or
 the [64-bit installer][win64] and run it.
 
-[win32]: https://static.rust-lang.org/dist/rust-1.0.0-beta-i686-pc-windows-gnu.msi
-[win64]: https://static.rust-lang.org/dist/rust-1.0.0-beta-x86_64-pc-windows-gnu.msi
+[win32]: https://static.rust-lang.org/dist/rust-1.0.0-i686-pc-windows-gnu.msi
+[win64]: https://static.rust-lang.org/dist/rust-1.0.0-x86_64-pc-windows-gnu.msi
 
 ## Uninstalling
 
@@ -74,7 +74,7 @@ $ rustc --version
 You should see the version number, commit hash, commit date and build date:
 
 ```bash
-rustc 1.0.0-beta (9854143cb 2015-04-02) (built 2015-04-02)
+rustc 1.0.0 (a59de37e9 2015-05-13) (built 2015-05-14)
 ```
 
 If you did, Rust has been installed successfully! Congrats!
