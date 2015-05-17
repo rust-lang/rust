@@ -16,11 +16,11 @@ Rust has two main types of strings: `&str` and `String`. Let’s talk about
 `&'static str`:
 
 ```rust
-let string = "Hello there."; // string: &'static str
+let greeting = "Hello there."; // greeting: &'static str
 ```
 
 This string is statically allocated, meaning that it’s saved inside our
-compiled program, and exists for the entire duration it runs. The `string`
+compiled program, and exists for the entire duration it runs. The `greeting`
 binding is a reference to this statically allocated string. String slices
 have a fixed size, and cannot be mutated.
 
