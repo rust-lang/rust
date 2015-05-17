@@ -40,6 +40,7 @@ pub fn expand_deriving_ord(cx: &mut ExtCtxt,
                 args: vec!(borrowed_self()),
                 ret_ty: Literal(path_std!(cx, core::cmp::Ordering)),
                 attributes: attrs,
+                is_unsafe: false,
                 combine_substructure: combine_substructure(Box::new(|a, b, c| {
                     cs_cmp(a, b, c)
                 })),

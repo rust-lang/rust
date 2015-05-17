@@ -253,6 +253,9 @@ pub struct MethodDef<'a> {
 
     pub attributes: Vec<ast::Attribute>,
 
+    // Is it an `unsafe fn`?
+    pub is_unsafe: bool,
+
     pub combine_substructure: RefCell<CombineSubstructureFunc<'a>>,
 }
 
@@ -859,6 +862,12 @@ impl<'a> MethodDef<'a> {
         let fn_decl = cx.fn_decl(args, ret_type);
         let body_block = cx.block_expr(body);
 
+        let unsafety = if self.is_unsafe {
+            ast::Unsafety::Unsafe
+        } else {
+            ast::Unsafety::Normal
+        };
+
         // Create the method.
         P(ast::ImplItem {
             id: ast::DUMMY_NODE_ID,
@@ -870,7 +879,7 @@ impl<'a> MethodDef<'a> {
                 generics: fn_generics,
                 abi: abi,
                 explicit_self: explicit_self,
-                unsafety: ast::Unsafety::Normal,
+                unsafety: unsafety,
                 decl: fn_decl
             }, body_block)
         })
