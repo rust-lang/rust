@@ -1866,7 +1866,7 @@ impl FakeExtCtxt for parse::ParseSess {
 
 #[cfg(test)]
 fn mk_ctxt() -> parse::ParseSess {
-    parse::new_parse_sess()
+    parse::ParseSess::new()
 }
 
 #[cfg(test)]

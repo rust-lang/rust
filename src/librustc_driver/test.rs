@@ -105,9 +105,9 @@ fn test_env<F>(source_string: &str,
     let codemap =
         CodeMap::new();
     let diagnostic_handler =
-        diagnostic::mk_handler(true, emitter);
+        diagnostic::Handler::with_emitter(true, emitter);
     let span_diagnostic_handler =
-        diagnostic::mk_span_handler(diagnostic_handler, codemap);
+        diagnostic::SpanHandler::new(diagnostic_handler, codemap);
 
     let sess = session::build_session_(options, None, span_diagnostic_handler);
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));

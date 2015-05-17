@@ -24,10 +24,8 @@ use syntax::parse;
 /// Highlights some source code, returning the HTML output.
 pub fn highlight(src: &str, class: Option<&str>, id: Option<&str>) -> String {
     debug!("highlighting: ================\n{}\n==============", src);
-    let sess = parse::new_parse_sess();
-    let fm = parse::string_to_filemap(&sess,
-                                      src.to_string(),
-                                      "<stdin>".to_string());
+    let sess = parse::ParseSess::new();
+    let fm = sess.codemap().new_filemap("<stdin>".to_string(), src.to_string());
 
     let mut out = Vec::new();
     doit(&sess,
@@ -62,7 +60,7 @@ fn doit(sess: &parse::ParseSess, mut lexer: lexer::StringReader,
     loop {
         let next = lexer.next_token();
 
-        let snip = |sp| sess.span_diagnostic.cm.span_to_snippet(sp).unwrap();
+        let snip = |sp| sess.codemap().span_to_snippet(sp).unwrap();
 
         if next.tok == token::Eof { break }
 
@@ -178,7 +176,7 @@ fn doit(sess: &parse::ParseSess, mut lexer: lexer::StringReader,
 
         // as mentioned above, use the original source code instead of
         // stringifying this token
-        let snip = sess.span_diagnostic.cm.span_to_snippet(next.sp).unwrap();
+        let snip = sess.codemap().span_to_snippet(next.sp).unwrap();
         if klass == "" {
             try!(write!(out, "{}", Escape(&snip)));
         } else {

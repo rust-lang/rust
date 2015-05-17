@@ -21,9 +21,11 @@ pub use self::MacroFormat::*;
 
 use std::cell::RefCell;
 use std::ops::{Add, Sub};
+use std::path::Path;
 use std::rc::Rc;
 
-use std::fmt;
+use std::{fmt, fs};
+use std::io::{self, Read};
 
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 
@@ -527,6 +529,29 @@ impl FileMap {
     }
 }
 
+/// An abstraction over the fs operations used by the Parser.
+pub trait FileLoader {
+    /// Query the existence of a file.
+    fn file_exists(&self, path: &Path) -> bool;
+
+    /// Read the contents of an UTF-8 file into memory.
+    fn read_file(&self, path: &Path) -> io::Result<String>;
+}
+
+/// A FileLoader that uses std::fs to load real files.
+pub struct RealFileLoader;
+
+impl FileLoader for RealFileLoader {
+    fn file_exists(&self, path: &Path) -> bool {
+        fs::metadata(path).is_ok()
+    }
+
+    fn read_file(&self, path: &Path) -> io::Result<String> {
+        let mut src = String::new();
+        try!(try!(fs::File::open(path)).read_to_string(&mut src));
+        Ok(src)
+    }
+}
 
 // _____________________________________________________________________________
 // CodeMap
@@ -534,7 +559,8 @@ impl FileMap {
 
 pub struct CodeMap {
     pub files: RefCell<Vec<Rc<FileMap>>>,
-    expansions: RefCell<Vec<ExpnInfo>>
+    expansions: RefCell<Vec<ExpnInfo>>,
+    file_loader: Box<FileLoader>
 }
 
 impl CodeMap {
@@ -542,7 +568,25 @@ impl CodeMap {
         CodeMap {
             files: RefCell::new(Vec::new()),
             expansions: RefCell::new(Vec::new()),
+            file_loader: Box::new(RealFileLoader)
         }
+    }
+
+    pub fn with_file_loader(file_loader: Box<FileLoader>) -> CodeMap {
+        CodeMap {
+            files: RefCell::new(Vec::new()),
+            expansions: RefCell::new(Vec::new()),
+            file_loader: file_loader
+        }
+    }
+
+    pub fn file_exists(&self, path: &Path) -> bool {
+        self.file_loader.file_exists(path)
+    }
+
+    pub fn load_file(&self, path: &Path) -> io::Result<Rc<FileMap>> {
+        let src = try!(self.file_loader.read_file(path));
+        Ok(self.new_filemap(path.to_str().unwrap().to_string(), src))
     }
 
     pub fn new_filemap(&self, filename: FileName, mut src: String) -> Rc<FileMap> {
