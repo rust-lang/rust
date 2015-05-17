@@ -1,4 +1,4 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -34,7 +34,7 @@ use std::borrow::{Cow, IntoCow};
 use std::num::wrapping::OverflowingOps;
 use std::cmp::Ordering;
 use std::collections::hash_map::Entry::Vacant;
-use std::{i8, i16, i32, i64};
+use std::{i8, i16, i32, i64, u8, u16, u32, u64};
 use std::rc::Rc;
 
 fn lookup_const<'a>(tcx: &'a ty::ctxt, e: &Expr) -> Option<&'a Expr> {
@@ -461,6 +461,16 @@ pub fn const_uint_checked_neg<'a>(
     Ok(const_uint((!a).wrapping_add(1)))
 }
 
+fn const_uint_not(a: u64, opt_ety: Option<UintTy>) -> const_val {
+    let mask = match opt_ety {
+        Some(UintTy::U8) => u8::MAX as u64,
+        Some(UintTy::U16) => u16::MAX as u64,
+        Some(UintTy::U32) => u32::MAX as u64,
+        None | Some(UintTy::U64) => u64::MAX,
+    };
+    const_uint(!a & mask)
+}
+
 macro_rules! overflow_checking_body {
     ($a:ident, $b:ident, $ety:ident, $overflowing_op:ident,
      lhs: $to_8_lhs:ident $to_16_lhs:ident $to_32_lhs:ident,
@@ -677,7 +687,7 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
       ast::ExprUnary(ast::UnNot, ref inner) => {
         match try!(eval_const_expr_partial(tcx, &**inner, ety)) {
           const_int(i) => const_int(!i),
-          const_uint(i) => const_uint(!i),
+          const_uint(i) => const_uint_not(i, expr_uint_type),
           const_bool(b) => const_bool(!b),
           const_str(_) => signal!(e, NotOnString),
           const_float(_) => signal!(e, NotOnFloat),
