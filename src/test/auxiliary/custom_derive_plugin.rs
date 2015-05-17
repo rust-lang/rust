@@ -54,6 +54,7 @@ fn expand(cx: &mut ExtCtxt,
                 args: vec![],
                 ret_ty: Literal(Path::new_local("isize")),
                 attributes: vec![],
+                is_unsafe: false,
                 combine_substructure: combine_substructure(box |cx, span, substr| {
                     let zero = cx.expr_isize(span, 0);
                     cs_fold(false,

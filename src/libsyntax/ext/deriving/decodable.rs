@@ -79,6 +79,7 @@ fn expand_deriving_decodable_imp(cx: &mut ExtCtxt,
                     true
                 )),
                 attributes: Vec::new(),
+                is_unsafe: false,
                 combine_substructure: combine_substructure(Box::new(|a, b, c| {
                     decodable_substructure(a, b, c, krate)
                 })),
