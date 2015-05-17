@@ -57,3 +57,8 @@ pub fn render<'a,
      -> io::Result<()> {
     render_opts(g, w, &[])
 }
+
+fn main() {
+    let _ = function(move || 5);
+    let _ = move || 42;
+}
