@@ -2,7 +2,7 @@
 
 Rust also has a `while` loop. It looks like this:
 
-```{rust}
+```rust
 let mut x = 5; // mut x: i32
 let mut done = false; // mut done: bool
 

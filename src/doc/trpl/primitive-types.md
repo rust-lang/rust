@@ -251,7 +251,7 @@ This pattern is very powerful, and we’ll see it repeated more later.
 You can disambiguate a single-element tuple from a value in parentheses with a
 comma:
 
-```
+```rust
 (0,); // single-element tuple
 (0); // zero in parentheses
 ```
@@ -283,7 +283,7 @@ documentation][tuple].
 
 Functions also have a type! They look like this:
 
-```
+```rust
 fn foo(x: i32) -> i32 { x }
 
 let x: fn(i32) -> i32 = foo;

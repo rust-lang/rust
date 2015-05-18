@@ -38,7 +38,7 @@ println!("{}", s);
 
 `String`s will coerce into `&str` with an `&`:
 
-```
+```rust
 fn takes_slice(slice: &str) {
     println!("Got: {}", slice);
 }
