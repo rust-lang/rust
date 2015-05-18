@@ -41,8 +41,8 @@ pub fn on_panic(obj: &(Any+Send), file: &'static str, line: u32) {
         Some(mut stderr) => {
             // FIXME: what to do when the thread printing panics?
             let _ = writeln!(stderr,
-                             "thread '{}' panicked at '{}', {}:{}\n",
-                             name, msg, file, line);
+                             "{}:{}: thread '{}' panicked at '{}'",
+                             file, line, name, msg);
             if backtrace::log_enabled() {
                 let _ = backtrace::write(&mut *stderr);
             }
@@ -52,8 +52,8 @@ pub fn on_panic(obj: &(Any+Send), file: &'static str, line: u32) {
             });
         }
         None => {
-            let _ = writeln!(&mut err, "thread '{}' panicked at '{}', {}:{}",
-                             name, msg, file, line);
+            let _ = writeln!(&mut err, "{}:{}: thread '{}' panicked at '{}'",
+                             file, line, name, msg);
             if backtrace::log_enabled() {
                 let _ = backtrace::write(&mut err);
             }
