@@ -89,7 +89,7 @@ So, now we know how to call a method, such as `foo.bar()`. But what about our
 original example, `foo.bar().baz()`? This is called ‘method chaining’, and we
 can do it by returning `self`.
 
-```
+```rust
 struct Circle {
     x: f64,
     y: f64,
@@ -117,7 +117,7 @@ fn main() {
 
 Check the return type:
 
-```
+```rust
 # struct Circle;
 # impl Circle {
 fn grow(&self) -> Circle {
@@ -167,7 +167,7 @@ and `y` attributes will be `0.0`, and the `radius` will be `1.0`. Rust doesn’t
 have method overloading, named arguments, or variable arguments. We employ
 the builder pattern instead. It looks like this:
 
-```
+```rust
 struct Circle {
     x: f64,
     y: f64,

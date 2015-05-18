@@ -75,7 +75,7 @@ above.
 To define each of our modules, we use the `mod` keyword. Let’s make our
 `src/lib.rs` look like this:
 
-```
+```rust
 mod english {
     mod greetings {
     }

@@ -59,7 +59,7 @@ place!
 Rust's standard library provides a library for threads, which allow you to
 run Rust code in parallel. Here's a basic example of using `std::thread`:
 
-```
+```rust
 use std::thread;
 
 fn main() {
@@ -73,7 +73,7 @@ The `thread::spawn()` method accepts a closure, which is executed in a
 new thread. It returns a handle to the thread, that can be used to
 wait for the child thread to finish and extract its result:
 
-```
+```rust
 use std::thread;
 
 fn main() {
@@ -189,7 +189,7 @@ guard across thread boundaries, which gives us our error.
 
 We can use `Arc<T>` to fix this. Here's the working version:
 
-```
+```rust
 use std::sync::{Arc, Mutex};
 use std::thread;
 
@@ -248,7 +248,7 @@ threads with each other. Let's talk about one of them: channels.
 Here's a version of our code that uses channels for synchronization, rather
 than waiting for a specific time:
 
-```
+```rust
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::sync::mpsc;
@@ -281,7 +281,7 @@ a simple `()` down the channel, and then wait for ten of them to come back.
 While this channel is just sending a generic signal, we can send any data that
 is `Send` over the channel!
 
-```
+```rust
 use std::thread;
 use std::sync::mpsc;
 
@@ -311,7 +311,7 @@ the answer, and then it `send()`s us the answer over the channel.
 A `panic!` will crash the currently executing thread. You can use Rust's
 threads as a simple isolation mechanism:
 
-```
+```rust
 use std::thread;
 
 let result = thread::spawn(move || {

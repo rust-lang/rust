@@ -5,7 +5,7 @@ Also it is not possible in stable Rust to destructure a `Box` in a match
 pattern. The unstable `box` keyword can be used to both create and destructure
 a `Box`. An example usage would be:
 
-```
+```rust
 #![feature(box_syntax, box_patterns)]
 
 fn main() {

@@ -252,7 +252,7 @@ Writing functions with only a few generic types and a small number of trait
 bounds isn’t too bad, but as the number increases, the syntax gets increasingly
 awkward:
 
-```
+```rust
 use std::fmt::Debug;
 
 fn foo<T: Clone, K: Clone + Debug>(x: T, y: K) {
@@ -267,7 +267,7 @@ far right. The bounds are getting in the way.
 
 Rust has a solution, and it’s called a ‘`where` clause’:
 
-```
+```rust
 use std::fmt::Debug;
 
 fn foo<T: Clone, K: Clone + Debug>(x: T, y: K) {
@@ -293,7 +293,7 @@ All you need to do is leave off the bounds when defining your type parameters,
 and then add `where` after the parameter list. For longer lists, whitespace can
 be added:
 
-```
+```rust
 use std::fmt::Debug;
 
 fn bar<T, K>(x: T, y: K)
@@ -310,7 +310,7 @@ This flexibility can add clarity in complex situations.
 
 `where` is also more powerful than the simpler syntax. For example:
 
-```
+```rust
 trait ConvertTo<Output> {
     fn convert(&self) -> Output;
 }
