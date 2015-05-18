@@ -23,6 +23,7 @@ pub mod needless_bool;
 pub mod approx_const;
 pub mod eta_reduction;
 pub mod identity_op;
+pub mod mut_mut;
 
 #[plugin_registrar]
 pub fn plugin_registrar(reg: &mut Registry) {
@@ -40,6 +41,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_lint_pass(box misc::Precedence as LintPassObject);
     reg.register_lint_pass(box eta_reduction::EtaPass as LintPassObject);
     reg.register_lint_pass(box identity_op::IdentityOp as LintPassObject);
+    reg.register_lint_pass(box mut_mut::MutMut as LintPassObject);
     
     reg.register_lint_group("clippy", vec![types::BOX_VEC, types::LINKEDLIST,
                                            misc::SINGLE_MATCH, misc::STR_TO_STRING,
@@ -53,5 +55,6 @@ pub fn plugin_registrar(reg: &mut Registry) {
                                            misc::PRECEDENCE,
                                            eta_reduction::REDUNDANT_CLOSURE,
                                            identity_op::IDENTITY_OP,
+                                           mut_mut::MUT_MUT,
                                            ]);
 }

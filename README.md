@@ -22,6 +22,7 @@ Lints included in this crate:
  - `precedence`: Warns on expressions where precedence may trip up the unwary reader of the source and suggests adding parenthesis, e.g. `x << 2 + y` will be parsed as `x << (2 + y)`
  - `redundant_closure`: Warns on usage of eta-reducible closures like `|a| foo(a)` (which can be written as just `foo`)
  - `identity_op`: Warns on identity operations like `x + 0` or `y / 1` (which can be reduced to `x` and `y`, respectively)
+ - `mut_mut`: Warns on `&mut &mut` which is either a copy'n'paste error, or shows a fundamental misunderstanding of references
 
 To use, add the following lines to your Cargo.toml:
 
