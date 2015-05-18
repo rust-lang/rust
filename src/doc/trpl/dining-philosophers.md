@@ -7,20 +7,20 @@ called ‘the dining philosophers’. It was originally conceived by Dijkstra in
 [paper]: http://www.usingcsp.com/cspbook.pdf
 
 > In ancient times, a wealthy philanthropist endowed a College to accommodate
-> five eminent philosophers. Each philosopher had a room in which he could
-> engage in his professional activity of thinking; there was also a common
+> five eminent philosophers. Each philosopher had a room in which she could
+> engage in her professional activity of thinking; there was also a common
 > dining room, furnished with a circular table, surrounded by five chairs, each
 > labelled by the name of the philosopher who was to sit in it. They sat
 > anticlockwise around the table. To the left of each philosopher there was
 > laid a golden fork, and in the centre stood a large bowl of spaghetti, which
-> was constantly replenished. A philosopher was expected to spend most of his
-> time thinking; but when he felt hungry, he went to the dining room, sat down
-> in his own chair, picked up his own fork on his left, and plunged it into the
+> was constantly replenished. A philosopher was expected to spend most of her
+> time thinking; but when she felt hungry, she went to the dining room, sat down
+> in her own chair, picked up her own fork on her left, and plunged it into the
 > spaghetti. But such is the tangled nature of spaghetti that a second fork is
 > required to carry it to the mouth. The philosopher therefore had also to pick
-> up the fork on his right. When he was finished he would put down both his
-> forks, get up from his chair, and continue thinking. Of course, a fork can be
-> used by only one philosopher at a time. If the other philosopher wants it, he
+> up the fork on her right. When she was finished she would put down both her
+> forks, get up from her chair, and continue thinking. Of course, a fork can be
+> used by only one philosopher at a time. If the other philosopher wants it, she
 > just has to wait until the fork is available again.
 
 This classic problem shows off a few different elements of concurrency. The
