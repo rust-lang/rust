@@ -23,7 +23,7 @@ Language
 * Digits of binary and octal literals are [lexed more eagerly][lex] to
   improve error messages and macro behavior. For example, `0b1234` is
   now lexed as `0b1234` instead of two tokens, `0b1` and `234`.
-* Trait bounds [are always invariant][inv], eleminating the need for
+* Trait bounds [are always invariant][inv], eliminating the need for
   the `PhantomFn` and `MarkerTrait` lang items, which have been
   removed.
 * ["-" is no longer a valid character in crate names][cr], the `extern crate
