@@ -1,14 +1,14 @@
-rust-clippy
-===========
+#rust-clippy
+[![Build Status](https://travis-ci.org/Manishearth/rust-clippy.svg?branch=master)](https://travis-ci.org/Manishearth/rust-clippy)
 
 A collection of lints that give helpful tips to newbies and catch oversights.
 
-
+##Lints
 Lints included in this crate:
 
  - `single_match`: Warns when a match statement with a single nontrivial arm (i.e, where the other arm is `_ => {}`) is used, and recommends `if let` instead.
  - `box_vec`: Warns on usage of `Box<Vec<T>>`
- - `dlist`: Warns on usage of `DList`
+ - `linkedlist`: Warns on usage of `LinkedList`
  - `str_to_string`: Warns on usage of `str::to_string()`
  - `toplevel_ref_arg`: Warns when a function argument is declared `ref` (i.e. `fn foo(ref x: u8)`, but not `fn foo((ref x, ref y): (u8, u8))`)
  - `eq_op`: Warns on equal operands on both sides of a comparison or bitwise combination
@@ -31,10 +31,50 @@ To use, add the following lines to your Cargo.toml:
 clippy = "*"
 ```
 
-In your code, you may add `#![plugin(clippy)]` to use it (you may also need to include a `#![feature(plugin)]` line)
-
-You can allow/warn/deny the whole set using the `clippy` lint group (`#[allow(clippy)]`, etc)
-
 More to come, please [file an issue](https://github.com/Manishearth/rust-clippy/issues) if you have ideas!
 
+##Usage
+Add in your `Cargo.toml`:
+```toml
+[dependencies.clippy]
+git = "https://github.com/Manishearth/rust-clippy"
+```
+
+Sample `main.rs`:
+```rust
+#![feature(plugin)]
+
+#![plugin(clippy)]
+// OPTIONS GO HERE
+
+fn main(){
+    let x = Some(1u8);
+    match x {
+        Some(y) => println!("{:?}", y),
+        _ => ()
+    }
+}
+```
+
+Produce this warning:
+```
+src/main.rs:8:5: 11:6 warning: You seem to be trying to use match for destructuring a single type. Did you mean to use `if let`?, #[warn(single_match)] on by default
+src/main.rs:8     match x {
+src/main.rs:9         Some(y) => println!("{:?}", y),
+src/main.rs:10         _ => ()
+src/main.rs:11     }
+src/main.rs:8:5: 11:6 note: Try if let Some(y) = x { ... }
+src/main.rs:8     match x {
+src/main.rs:9         Some(y) => println!("{:?}", y),
+src/main.rs:10         _ => ()
+src/main.rs:11     }
+```
+
+You can add `OPTIONS` to `allow`/`warn`/`deny`:
+- the whole set using the `clippy` lint group (`#[deny(clippy)]`, etc)
+- only some lints (`#[deny(single_match, box_vec)]`, etc)
+
+*`deny` produces error instead of warnings*
+
+##License
 Licensed under [MPL](https://www.mozilla.org/MPL/2.0/). If you're having issues with the license, let me know and I'll try to change it to something more permissive.
