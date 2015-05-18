@@ -97,6 +97,11 @@ body {
     color: #000000;
 }
 
+.chapter li a.active {
+    text-decoration: underline;
+    font-weight: bold;
+}
+
 #toggle-nav {
     height: 20px;
     width:  30px;
