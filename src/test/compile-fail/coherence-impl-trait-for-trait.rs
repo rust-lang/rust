@@ -15,14 +15,14 @@ trait Foo { fn dummy(&self) { } }
 trait Bar: Foo { }
 trait Baz: Bar { }
 
-// Subtraits of Baz are not legal:
+// Supertraits of Baz are not legal:
 impl Foo for Baz { }   //~ ERROR E0371
 impl Bar for Baz { }   //~ ERROR E0371
 impl Baz for Baz { }   //~ ERROR E0371
 
 // But other random traits are:
 trait Other { }
-impl Other for Baz { } // OK, Bar not a subtrait of Baz
+impl Other for Baz { } // OK, Other not a supertrait of Baz
 
 // If the trait is not object-safe, we give a more tailored message
 // because we're such schnuckels:

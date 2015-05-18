@@ -170,6 +170,63 @@ Since `return;` is just like `return ();`, there is a mismatch between the
 function's return type and the value being returned.
 "##,
 
+E0072: r##"
+When defining a recursive struct or enum, any use of the type being defined
+from inside the definition must occur behind a pointer (like `Box` or `&`).
+This is because structs and enums must have a well-defined size, and without
+the pointer the size of the type would need to be unbounded.
+
+Consider the following erroneous definition of a type for a list of bytes:
+
+```
+// error, illegal recursive struct type
+struct ListNode {
+    head: u8,
+    tail: Option<ListNode>,
+}
+```
+
+This type cannot have a well-defined size, because it needs to be arbitrarily
+large (since we would be able to nest `ListNode`s to any depth). Specifically,
+
+```
+size of ListNode = 1 byte for head
+                 + 1 byte for the discriminant of the Option
+                 + size of ListNode
+```
+
+One way to fix this is by wrapping `ListNode` in a `Box`, like so:
+
+```
+struct ListNode {
+    head: u8,
+    tail: Option<Box<ListNode>>,
+}
+```
+
+This works because `Box` is a pointer, so its size is well-known.
+"##,
+
+E0073: r##"
+You cannot define a struct (or enum) `Foo` that requires an instance of `Foo`
+in order to make a new `Foo` value. This is because there would be no way a
+first instance of `Foo` could be made to initialize another instance!
+
+Here's an example of a struct that has this problem:
+
+```
+struct Foo { x: Box<Foo> } // error
+```
+
+One fix is to use `Option`, like so:
+
+```
+struct Foo { x: Option<Box<Foo>> }
+```
+
+Now it's possible to create at least one instance of `Foo`: `Foo { x: None }`.
+"##,
+
 E0081: r##"
 Enum discriminants are used to differentiate enum variants stored in memory.
 This error indicates that the same value was used for two or more variants,
@@ -327,6 +384,19 @@ RFC. It is, however, [currently unimplemented][iss15872].
 [iss15872]: https://github.com/rust-lang/rust/issues/15872
 "##,
 
+E0121: r##"
+In order to be consistent with Rust's lack of global type inference, type
+placeholders are disallowed by design in item signatures.
+
+Examples of this error include:
+
+```
+fn foo() -> _ { 5 } // error, explicitly write out the return type instead
+
+static BAR: _ = "test"; // error, explicitly write out the type instead
+```
+"##,
+
 E0131: r##"
 It is not possible to define `main` with type parameters, or even with function
 parameters. When `main` is present, it must take no arguments and return `()`.
@@ -353,6 +423,28 @@ fn foo() -> ! { return; } // error
 For a function that diverges, every control path in the function must never
 return, for example with a `loop` that never breaks or a call to another
 diverging function (such as `panic!()`).
+"##,
+
+E0178: r##"
+In types, the `+` type operator has low precedence, so it is often necessary
+to use parentheses.
+
+For example:
+
+```
+trait Foo {}
+
+struct Bar<'a> {
+    w: &'a Foo + Copy,   // error, use &'a (Foo + Copy)
+    x: &'a Foo + 'a,     // error, use &'a (Foo + 'a)
+    y: &'a mut Foo + 'a, // error, use &'a mut (Foo + 'a)
+    z: fn() -> Foo + 'a, // error, use fn() -> (Foo + 'a)
+}
+```
+
+More details can be found in [RFC 438].
+
+[RFC 438]: https://github.com/rust-lang/rfcs/pull/438
 "##,
 
 E0184: r##"
@@ -632,6 +724,35 @@ traits, so it is not possible to overload them. See [RFC 953] for a proposal
 to change this.
 
 [RFC 953]: https://github.com/rust-lang/rfcs/pull/953
+"##,
+
+E0371: r##"
+When `Trait2` is a subtrait of `Trait1` (for example, when `Trait2` has a
+definition like `trait Trait2: Trait1 { ... }`), it is not allowed to implement
+`Trait1` for `Trait2`. This is because `Trait2` already implements `Trait1` by
+definition, so it is not useful to do this.
+
+Example:
+
+```
+trait Foo { fn foo(&self) { } }
+trait Bar: Foo { }
+trait Baz: Bar { }
+
+impl Bar for Baz { } // error, `Baz` implements `Bar` by definition
+impl Foo for Baz { } // error, `Baz` implements `Bar` which implements `Foo`
+impl Baz for Baz { } // error, `Baz` (trivially) implements `Baz`
+impl Baz for Bar { } // Note: This is OK
+```
+"##,
+
+E0372: r##"
+Trying to implement a trait for a trait object (as in `impl Trait1 for
+Trait2 { ... }`) does not work if the trait is not object-safe. Please see the
+[RFC 255] for more details on object safety rules.
+
+[RFC 255]:https://github.com/rust-lang/rfcs/blob/master/text/0255-object-\
+safety.md
 "##
 
 }
@@ -660,8 +781,6 @@ register_diagnostics! {
     E0068,
     E0070,
     E0071,
-    E0072,
-    E0073,
     E0074,
     E0075,
     E0076,
@@ -685,7 +804,6 @@ register_diagnostics! {
     E0118,
     E0119,
     E0120,
-    E0121,
     E0122,
     E0123,
     E0124,
@@ -702,7 +820,6 @@ register_diagnostics! {
     E0172,
     E0173, // manual implementations of unboxed closure traits are experimental
     E0174, // explicit use of unboxed closure methods are experimental
-    E0178,
     E0182,
     E0183,
     E0185,
@@ -774,8 +891,6 @@ register_diagnostics! {
     E0366, // dropck forbid specialization to concrete type or region
     E0367, // dropck forbid specialization to predicate not in struct/enum
     E0369, // binary operation `<op>` cannot be applied to types
-    E0371, // impl Trait for Trait is illegal
-    E0372, // impl Trait for Trait where Trait is not object safe
     E0374, // the trait `CoerceUnsized` may only be implemented for a coercion
            // between structures with one field being coerced, none found
     E0375, // the trait `CoerceUnsized` may only be implemented for a coercion
