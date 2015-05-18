@@ -93,8 +93,7 @@ impl<'a, 'b: 'a> DebugStruct<'a, 'b> {
         self
     }
 
-    /// Consumes the `DebugStruct`, finishing output and returning any error
-    /// encountered.
+    /// Finishes output and returns any error encountered.
     #[unstable(feature = "debug_builders", reason = "method was just created")]
     pub fn finish(&mut self) -> fmt::Result {
         if self.has_fields {
@@ -156,8 +155,7 @@ impl<'a, 'b: 'a> DebugTuple<'a, 'b> {
         self
     }
 
-    /// Consumes the `DebugTuple`, finishing output and returning any error
-    /// encountered.
+    /// Finishes output and returns any error encountered.
     #[unstable(feature = "debug_builders", reason = "method was just created")]
     pub fn finish(&mut self) -> fmt::Result {
         if self.has_fields {
@@ -246,8 +244,7 @@ impl<'a, 'b: 'a> DebugSet<'a, 'b> {
         self
     }
 
-    /// Consumes the `DebugSet`, finishing output and returning any error
-    /// encountered.
+    /// Finishes output and returns any error encountered.
     #[unstable(feature = "debug_builders", reason = "method was just created")]
     pub fn finish(&mut self) -> fmt::Result {
         self.inner.finish();
@@ -292,8 +289,7 @@ impl<'a, 'b: 'a> DebugList<'a, 'b> {
         self
     }
 
-    /// Consumes the `DebugSet`, finishing output and returning any error
-    /// encountered.
+    /// Finishes output and returns any error encountered.
     #[unstable(feature = "debug_builders", reason = "method was just created")]
     pub fn finish(&mut self) -> fmt::Result {
         self.inner.finish();
@@ -349,8 +345,7 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
         self
     }
 
-    /// Consumes the `DebugMap`, finishing output and returning any error
-    /// encountered.
+    /// Finishes output and returns any error encountered.
     #[unstable(feature = "debug_builders", reason = "method was just created")]
     pub fn finish(&mut self) -> fmt::Result {
         let prefix = if self.is_pretty() && self.has_fields { "\n" } else { "" };
