@@ -111,7 +111,7 @@ fn parse_token_list(file: &str) -> HashMap<String, token::Token> {
             "LIT_BINARY_RAW"    => token::Literal(token::BinaryRaw(Name(0), 0), None),
             "QUESTION"          => token::Question,
             "SHEBANG"           => token::Shebang(Name(0)),
-            _                   => panic!("Bad token str `{}`", val),
+            _                   => continue,
         };
 
         res.insert(num.to_string(), tok);
