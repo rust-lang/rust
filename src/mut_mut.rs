@@ -26,14 +26,11 @@ impl LintPass for MutMut {
 		unwrap_addr(expr).map(|e| {
 			if unwrap_addr(e).is_some() {
 				cx.span_lint(MUT_MUT, expr.span, 
-					"We're not sure what this means, so if you know, please tell us.")
+					"Generally you want to avoid &mut &mut _ if possible.")
 			} else {
-				match expr_ty(cx.tcx, e).sty {
-					ty_ptr(mt{ty: _, mutbl: MutMutable}) |
-					ty_rptr(_, mt{ty: _, mutbl: MutMutable}) => 
-						cx.span_lint(MUT_MUT, expr.span,
-							"This expression mutably borrows a mutable reference. Consider direct reborrowing"),
-					_ => ()
+				if let ty_rptr(_, mt{ty: _, mutbl: MutMutable}) = expr_ty(cx.tcx, e).sty {
+					cx.span_lint(MUT_MUT, expr.span,
+						"This expression mutably borrows a mutable reference. Consider reborrowing")
 				}
 			}
 		});
@@ -42,7 +39,7 @@ impl LintPass for MutMut {
 	fn check_ty(&mut self, cx: &Context, ty: &Ty) {
 		if unwrap_mut(ty).and_then(unwrap_mut).is_some() {
 			cx.span_lint(MUT_MUT, ty.span, 
-				"We're not sure what this means, so if you know, please tell us.")
+				"Generally you want to avoid &mut &mut _ if possible.")
 		}
 	}
 }
