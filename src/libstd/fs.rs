@@ -1177,8 +1177,9 @@ impl Iterator for WalkDir {
 
 /// Utility methods for paths.
 #[unstable(feature = "path_ext",
-           reason = "the precise set of methods exposed on this trait may \
-                     change and some methods may be removed")]
+           reason = "The precise set of methods exposed on this trait may \
+                     change and some methods may be removed.  For stable code, \
+                     see the std::fs::metadata function.")]
 pub trait PathExt {
     /// Gets information on the file, directory, etc at this path.
     ///
