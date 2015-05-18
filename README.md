@@ -45,7 +45,7 @@ Sample `main.rs`:
 #![feature(plugin)]
 
 #![plugin(clippy)]
-// OPTIONS GO HERE
+
 
 fn main(){
     let x = Some(1u8);
@@ -70,9 +70,10 @@ src/main.rs:10         _ => ()
 src/main.rs:11     }
 ```
 
-You can add `OPTIONS` to `allow`/`warn`/`deny`:
-- the whole set using the `clippy` lint group (`#[deny(clippy)]`, etc)
-- only some lints (`#[deny(single_match, box_vec)]`, etc)
+You can add options  to `allow`/`warn`/`deny`:
+- the whole set using the `clippy` lint group (`#![deny(clippy)]`, etc)
+- only some lints (`#![deny(single_match, box_vec)]`, etc)
+- `allow`/`warn`/`deny` can be limited to a single function or module using `#[allow(...)]`, etc
 
 *`deny` produces error instead of warnings*
 
