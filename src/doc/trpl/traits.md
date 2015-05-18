@@ -183,7 +183,8 @@ won’t have its methods:
 
 ```rust,ignore
 let mut f = std::fs::File::open("foo.txt").ok().expect("Couldn’t open foo.txt");
-let result = f.write("whatever".as_bytes());
+let buf = b"whatever"; // byte string literal. buf: &[u8; 8]
+let result = f.write(buf);
 # result.unwrap(); // ignore the error
 ```
 
@@ -191,9 +192,8 @@ Here’s the error:
 
 ```text
 error: type `std::fs::File` does not implement any method in scope named `write`
-
-let result = f.write("whatever".as_bytes());
-               ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
+let result = f.write(buf);
+               ^~~~~~~~~~
 ```
 
 We need to `use` the `Write` trait first:
@@ -202,7 +202,8 @@ We need to `use` the `Write` trait first:
 use std::io::Write;
 
 let mut f = std::fs::File::open("foo.txt").ok().expect("Couldn’t open foo.txt");
-let result = f.write("whatever".as_bytes());
+let buf = b"whatever";
+let result = f.write(buf);
 # result.unwrap(); // ignore the error
 ```
 
