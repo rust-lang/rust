@@ -289,16 +289,16 @@ item_const
 ;
 
 item_macro
-: path_expr '!' maybe_ident parens_delimited_token_trees ';'
-| path_expr '!' maybe_ident braces_delimited_token_trees
-| path_expr '!' maybe_ident brackets_delimited_token_trees ';'
+: path_expr '!' maybe_ident parens_delimited_token_trees ';'  { $$ = mk_node("ItemMacro", 3, $1, $3, $4); }
+| path_expr '!' maybe_ident braces_delimited_token_trees      { $$ = mk_node("ItemMacro", 3, $1, $3, $4); }
+| path_expr '!' maybe_ident brackets_delimited_token_trees ';'{ $$ = mk_node("ItemMacro", 3, $1, $3, $4); }
 ;
 
 view_item
 : use_item
 | extern_fn_item
 | EXTERN CRATE ident ';'                      { $$ = mk_node("ViewItemExternCrate", 1, $3); }
-| EXTERN CRATE str AS ident ';'               { $$ = mk_node("ViewItemExternCrate", 2, $3, $5); }
+| EXTERN CRATE ident AS ident ';'             { $$ = mk_node("ViewItemExternCrate", 2, $3, $5); }
 ;
 
 extern_fn_item
@@ -312,8 +312,11 @@ use_item
 view_path
 : path_no_types_allowed                                    { $$ = mk_node("ViewPathSimple", 1, $1); }
 | path_no_types_allowed MOD_SEP '{'                '}'     { $$ = mk_node("ViewPathList", 2, $1, mk_atom("ViewPathListEmpty")); }
+|                       MOD_SEP '{'                '}'     { $$ = mk_node("ViewPathList", 1, mk_atom("ViewPathListEmpty")); }
 | path_no_types_allowed MOD_SEP '{' idents_or_self '}'     { $$ = mk_node("ViewPathList", 2, $1, $4); }
+|                       MOD_SEP '{' idents_or_self '}'     { $$ = mk_node("ViewPathList", 1, $3); }
 | path_no_types_allowed MOD_SEP '{' idents_or_self ',' '}' { $$ = mk_node("ViewPathList", 2, $1, $4); }
+|                       MOD_SEP '{' idents_or_self ',' '}' { $$ = mk_node("ViewPathList", 1, $3); }
 | path_no_types_allowed MOD_SEP '*'                        { $$ = mk_node("ViewPathGlob", 1, $1); }
 |                               '{'                '}'     { $$ = mk_atom("ViewPathListEmpty"); }
 |                               '{' idents_or_self '}'     { $$ = mk_node("ViewPathList", 1, $2); }
@@ -333,7 +336,7 @@ block_item
 ;
 
 maybe_ty_ascription
-: ':' ty { $$ = $2; }
+: ':' ty_sum { $$ = $2; }
 | %empty { $$ = mk_none(); }
 ;
 
@@ -511,7 +514,7 @@ trait_item
 ;
 
 trait_const
-: maybe_outer_attrs CONST ident maybe_const_default ';' { $$ = mk_node("ConstTraitItem", 3, $1, $3, $4); }
+: maybe_outer_attrs CONST ident maybe_ty_ascription maybe_const_default ';' { $$ = mk_node("ConstTraitItem", 4, $1, $3, $4, $5); }
 ;
 
 maybe_const_default
@@ -590,11 +593,11 @@ item_impl
 {
   $$ = mk_node("ItemImpl", 6, $1, $3, 5, $6, $9, $10);
 }
-| maybe_unsafe IMPL generic_params trait_ref FOR ty maybe_where_clause '{' maybe_inner_attrs maybe_impl_items '}'
+| maybe_unsafe IMPL generic_params trait_ref FOR ty_sum maybe_where_clause '{' maybe_inner_attrs maybe_impl_items '}'
 {
   $$ = mk_node("ItemImpl", 6, $3, $4, $6, $7, $9, $10);
 }
-| maybe_unsafe IMPL generic_params '!' trait_ref FOR ty maybe_where_clause '{' maybe_inner_attrs maybe_impl_items '}'
+| maybe_unsafe IMPL generic_params '!' trait_ref FOR ty_sum maybe_where_clause '{' maybe_inner_attrs maybe_impl_items '}'
 {
   $$ = mk_node("ItemImplNeg", 7, $1, $3, $5, $7, $8, $10, $11);
 }
@@ -620,7 +623,7 @@ impl_items
 
 impl_item
 : impl_method
-| item_macro
+| attrs_and_vis item_macro { $$ = mk_node("ImplMacroItem", 2, $1, $2); }
 | impl_const
 | impl_type
 ;
@@ -698,7 +701,7 @@ params
 ;
 
 param
-: pat ':' ty   { $$ = mk_node("Arg", 2, $1, $3); }
+: pat ':' ty_sum   { $$ = mk_node("Arg", 2, $1, $3); }
 ;
 
 inferrable_params
@@ -909,6 +912,11 @@ pat
 |              ident '@' pat                      { $$ = mk_node("PatIdent", 3, mk_node("BindByValue", 1, mk_atom("MutImmutable")), $1, $3); }
 | binding_mode ident '@' pat                      { $$ = mk_node("PatIdent", 3, $1, $2, $4); }
 | BOX pat                                         { $$ = mk_node("PatUniq", 1, $2); }
+| '<' ty_sum maybe_as_trait_ref '>' MOD_SEP ident { $$ = mk_node("PatQualifiedPath", 3, $2, $3, $6); }
+| SHL ty_sum maybe_as_trait_ref '>' MOD_SEP ident maybe_as_trait_ref '>' MOD_SEP ident
+{
+  $$ = mk_node("PatQualifiedPath", 3, mk_node("PatQualifiedPath", 3, $2, $3, $6), $7, $10);
+}
 ;
 
 pats_or
@@ -981,11 +989,11 @@ pat_vec_elts
 ty
 : ty_prim
 | ty_closure
-| '<' ty_sum AS trait_ref '>' MOD_SEP ident                                { $$ = mk_node("TyQualifiedPath", 3, $2, $4, $7); }
-| SHL ty_sum AS trait_ref '>' MOD_SEP ident AS trait_ref '>' MOD_SEP ident { $$ = mk_node("TyQualifiedPath", 3, mk_node("TyQualifiedPath", 3, $2, $4, $7), $9, $12); }
-| '(' ty_sums ')'                                                          { $$ = mk_node("TyTup", 1, $2); }
-| '(' ty_sums ',' ')'                                                      { $$ = mk_node("TyTup", 1, $2); }
-| '(' ')'                                                                  { $$ = mk_atom("TyNil"); }
+| '<' ty_sum maybe_as_trait_ref '>' MOD_SEP ident                                      { $$ = mk_node("TyQualifiedPath", 3, $2, $3, $6); }
+| SHL ty_sum maybe_as_trait_ref '>' MOD_SEP ident maybe_as_trait_ref '>' MOD_SEP ident { $$ = mk_node("TyQualifiedPath", 3, mk_node("TyQualifiedPath", 3, $2, $3, $6), $7, $10); }
+| '(' ty_sums ')'                                                                      { $$ = mk_node("TyTup", 1, $2); }
+| '(' ty_sums ',' ')'                                                                  { $$ = mk_node("TyTup", 1, $2); }
+| '(' ')'                                                                              { $$ = mk_atom("TyNil"); }
 ;
 
 ty_prim
@@ -1551,11 +1559,7 @@ nonblock_prefix_expr
 ;
 
 expr_qualified_path
-: '<' ty_sum maybe_as_trait_ref '>' MOD_SEP ident
-{
-  $$ = mk_node("ExprQualifiedPath", 3, $2, $3, $6);
-}
-| '<' ty_sum maybe_as_trait_ref '>' MOD_SEP ident generic_args
+: '<' ty_sum maybe_as_trait_ref '>' MOD_SEP ident maybe_qpath_params
 {
   $$ = mk_node("ExprQualifiedPath", 4, $2, $3, $6, $7);
 }
@@ -1575,6 +1579,11 @@ expr_qualified_path
 {
   $$ = mk_node("ExprQualifiedPath", 4, mk_node("ExprQualifiedPath", 4, $2, $3, $6, $7), $8, $11, $12);
 }
+
+maybe_qpath_params
+: MOD_SEP generic_args { $$ = $2; }
+| %empty               { $$ = mk_none(); }
+;
 
 maybe_as_trait_ref
 : AS trait_ref { $$ = $2; }
@@ -1666,8 +1675,10 @@ block_expr
 
 full_block_expr
 : block_expr
-| full_block_expr '.' path_generic_args_with_colons { $$ = mk_node("ExprField", 2, $1, $3); }
-| full_block_expr '.' LIT_INTEGER                   { $$ = mk_node("ExprTupleIndex", 1, $1); }
+| full_block_expr '.' path_generic_args_with_colons %prec IDENT         { $$ = mk_node("ExprField", 2, $1, $3); }
+| full_block_expr '.' path_generic_args_with_colons '[' maybe_expr ']'  { $$ = mk_node("ExprIndex", 3, $1, $3, $5); }
+| full_block_expr '.' path_generic_args_with_colons '(' maybe_exprs ')' { $$ = mk_node("ExprCall", 3, $1, $3, $5); }
+| full_block_expr '.' LIT_INTEGER                                       { $$ = mk_node("ExprTupleIndex", 1, $1); }
 ;
 
 expr_match
