@@ -296,6 +296,8 @@ pub fn token_to_string(tok: &Token) -> String {
             token::NtStmt(ref e)        => stmt_to_string(&**e),
             token::NtPat(ref e)         => pat_to_string(&**e),
             token::NtIdent(ref e, _)    => ident_to_string(&**e),
+            token::NtLifetime(ref e)    =>
+                lifetime_to_string(&ast_util::name_to_dummy_lifetime(e.name)),
             token::NtTT(ref e)          => tt_to_string(&**e),
             token::NtArm(ref e)         => arm_to_string(&*e),
             token::NtImplItem(ref e)    => impl_item_to_string(&**e),

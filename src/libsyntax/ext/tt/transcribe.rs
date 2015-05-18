@@ -15,7 +15,7 @@ use codemap::{Span, DUMMY_SP};
 use diagnostic::SpanHandler;
 use ext::tt::macro_parser::{NamedMatch, MatchedSeq, MatchedNonterminal};
 use parse::token::{Eof, DocComment, Interpolated, MatchNt, SubstNt};
-use parse::token::{Token, NtIdent, SpecialMacroVar};
+use parse::token::{Token, NtIdent, NtLifetime, SpecialMacroVar};
 use parse::token;
 use parse::lexer::TokenAndSpan;
 
@@ -297,6 +297,11 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
                             MatchedNonterminal(NtIdent(ref sn, b)) => {
                                 r.cur_span = sp;
                                 r.cur_tok = token::Ident(**sn, b);
+                                return ret_val;
+                            }
+                            MatchedNonterminal(NtLifetime(ref sn)) => {
+                                r.cur_span = sp;
+                                r.cur_tok = token::Lifetime(**sn);
                                 return ret_val;
                             }
                             MatchedNonterminal(ref other_whole_nt) => {

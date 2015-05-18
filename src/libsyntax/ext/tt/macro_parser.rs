@@ -540,6 +540,14 @@ pub fn parse_nt(p: &mut Parser, sp: Span, name: &str) -> Nonterminal {
                              &token_str[..])))
         }
       },
+      "life" => match p.token {
+        token::Lifetime(sn) => { panictry!(p.bump()); token::NtLifetime(Box::new(sn)) }
+        _ => {
+            let token_str = pprust::token_to_string(&p.token);
+            panic!(p.fatal(&format!("expected life, found {}",
+                             &token_str[..])))
+        }
+      },
       "path" => {
         token::NtPath(Box::new(panictry!(p.parse_path(LifetimeAndTypesWithoutColons))))
       }
@@ -547,7 +555,7 @@ pub fn parse_nt(p: &mut Parser, sp: Span, name: &str) -> Nonterminal {
       _ => {
           panic!(p.span_fatal_help(sp,
                             &format!("invalid fragment specifier `{}`", name),
-                            "valid fragment specifiers are `ident`, `block`, \
+                            "valid fragment specifiers are `ident`, `life`, `block`, \
                              `stmt`, `expr`, `pat`, `ty`, `path`, `meta`, `tt` \
                              and `item`"))
       }

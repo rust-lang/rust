@@ -505,8 +505,8 @@ fn is_in_follow(_: &ExtCtxt, tok: &Token, frag: &str) -> Result<bool, String> {
                     _ => Ok(false)
                 }
             },
-            "ident" => {
-                // being a single token, idents are harmless
+            "ident" | "life" => {
+                // being a single token, idents and lives are harmless
                 Ok(true)
             },
             "meta" | "tt" => {

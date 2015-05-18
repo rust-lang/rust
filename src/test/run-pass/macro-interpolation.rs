@@ -10,8 +10,10 @@
 
 
 macro_rules! overly_complicated {
-    ($fnname:ident, $arg:ident, $ty:ty, $body:block, $val:expr, $pat:pat, $res:path) =>
+    ($fnname:ident, $arg:ident, $ty:ty, $body:block, $val:expr, $pat:pat, $res:path,
+      $label:life) =>
     ({
+        $label: loop { break $label; }
         fn $fnname($arg: $ty) -> Option<$ty> $body
         match $fnname($val) {
           Some($pat) => {
@@ -25,6 +27,6 @@ macro_rules! overly_complicated {
 
 pub fn main() {
     assert!(overly_complicated!(f, x, Option<usize>, { return Some(x); },
-                               Some(8), Some(y), y) == 8)
+                               Some(8), Some(y), y, 'test) == 8)
 
 }

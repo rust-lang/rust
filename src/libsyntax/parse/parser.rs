@@ -537,6 +537,9 @@ impl<'a> Parser<'a> {
             token::Interpolated(token::NtIdent(..)) => {
                 self.bug("ident interpolation not converted to real token");
             }
+            token::Interpolated(token::NtLifetime(..)) => {
+                self.bug("life interpolation not converted to real token");
+            }
             _ => {
                 let token_str = self.this_token_to_string();
                 Err(self.fatal(&format!("expected ident, found `{}`",

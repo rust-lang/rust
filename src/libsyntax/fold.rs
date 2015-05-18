@@ -679,6 +679,8 @@ pub fn noop_fold_interpolated<T: Folder>(nt: token::Nonterminal, fld: &mut T)
         token::NtTy(ty) => token::NtTy(fld.fold_ty(ty)),
         token::NtIdent(id, is_mod_name) =>
             token::NtIdent(Box::new(fld.fold_ident(*id)), is_mod_name),
+        token::NtLifetime(id) => token::NtLifetime(Box::new(
+            fld.fold_lifetime(ast_util::name_to_dummy_lifetime(id.name)).name.ident())),
         token::NtMeta(meta_item) => token::NtMeta(fld.fold_meta_item(meta_item)),
         token::NtPath(path) => token::NtPath(Box::new(fld.fold_path(*path))),
         token::NtTT(tt) => token::NtTT(P(fld.fold_tt(&*tt))),
