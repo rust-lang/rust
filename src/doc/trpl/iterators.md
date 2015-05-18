@@ -116,7 +116,7 @@ A *consumer* operates on an iterator, returning some kind of value or values.
 The most common consumer is `collect()`. This code doesn't quite compile,
 but it shows the intention:
 
-```{rust,ignore}
+```rust,ignore
 let one_to_one_hundred = (1..101).collect();
 ```
 
@@ -253,7 +253,7 @@ we need to talk about with regards to iterators. Let's get to it!
 *Iterator adapters* take an iterator and modify it somehow, producing
 a new iterator. The simplest one is called `map`:
 
-```{rust,ignore}
+```rust,ignore
 (1..100).map(|x| x + 1);
 ```
 
@@ -272,7 +272,7 @@ warning: unused result which must be used: iterator adaptors are lazy and
 Laziness strikes again! That closure will never execute. This example
 doesn't print any numbers:
 
-```{rust,ignore}
+```rust,ignore
 (1..100).map(|x| println!("{}", x));
 ```
 

@@ -34,7 +34,7 @@ because the syntax may still change in the future.
 In many languages with pointers, you'd return a pointer from a function
 so as to avoid copying a large data structure. For example:
 
-```{rust}
+```rust
 struct BigStruct {
     one: i32,
     two: i32,
