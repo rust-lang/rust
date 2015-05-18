@@ -68,8 +68,8 @@ fn main() {
 }
 ```
 
-Here, we make a [`struct`][struct] to represent a philosopher. For now,
-a name is all we need. We choose the [`String`][string] type for the name,
+Here, we make a `[struct][struct]` to represent a philosopher. For now,
+a name is all we need. We choose the `[String][string]` type for the name,
 rather than `&str`. Generally speaking, working with a type which owns its
 data is easier than working with one that uses references.
 
@@ -149,7 +149,7 @@ look at `main()` again:
 # struct Philosopher {
 #     name: String,
 # }
-# 
+#
 # impl Philosopher {
 #     fn new(name: &str) -> Philosopher {
 #         Philosopher {
@@ -157,7 +157,7 @@ look at `main()` again:
 #         }
 #     }
 # }
-# 
+#
 fn main() {
     let p1 = Philosopher::new("Baruch Spinoza");
     let p2 = Philosopher::new("Gilles Deleuze");
@@ -195,15 +195,15 @@ a method, and then loop through all the philosophers, calling it:
 ```rust
 struct Philosopher {
     name: String,
-}   
+}
 
-impl Philosopher { 
+impl Philosopher {
     fn new(name: &str) -> Philosopher {
         Philosopher {
             name: name.to_string(),
         }
     }
-    
+
     fn eat(&self) {
         println!("{} is done eating.", self.name);
     }
@@ -265,15 +265,15 @@ use std::thread;
 
 struct Philosopher {
     name: String,
-}   
+}
 
-impl Philosopher { 
+impl Philosopher {
     fn new(name: &str) -> Philosopher {
         Philosopher {
             name: name.to_string(),
         }
     }
-    
+
     fn eat(&self) {
         println!("{} is eating.", self.name);
 
@@ -346,9 +346,9 @@ use std::thread;
 
 struct Philosopher {
     name: String,
-}   
+}
 
-impl Philosopher { 
+impl Philosopher {
     fn new(name: &str) -> Philosopher {
         Philosopher {
             name: name.to_string(),
@@ -399,7 +399,7 @@ let handles: Vec<_> = philosophers.into_iter().map(|p| {
 While this is only five lines, they’re a dense five. Let’s break it down.
 
 ```rust,ignore
-let handles: Vec<_> = 
+let handles: Vec<_> =
 ```
 
 We introduce a new binding, called `handles`. We’ve given it this name because
