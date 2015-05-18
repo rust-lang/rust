@@ -51,7 +51,7 @@ kind of borrowed value. Slices are an area where this is especially true: you
 can have both an `&[T]` or a `&mut [T]`. If we wanted to accept both of these
 types, `Borrow` is up for it:
 
-```
+```rust
 use std::borrow::Borrow;
 use std::fmt::Display;
 

@@ -195,7 +195,7 @@ parameter can be added to the `should_panic` attribute. The test harness will
 make sure that the failure message contains the provided text. A safer version
 of the example above would be:
 
-```
+```rust
 #[test]
 #[should_panic(expected = "assertion failed")]
 fn it_works() {

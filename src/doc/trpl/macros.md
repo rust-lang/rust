@@ -698,6 +698,7 @@ assert_eq!(5, 3 + 2);
 assert!(5 < 3);
 assert_eq!(5, 3);
 ```
+
 ## try!
 
 `try!` is used for error handling. It takes something that can return a
