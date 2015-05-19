@@ -429,7 +429,7 @@ impl char {
     ///
     /// [1]: ftp://ftp.unicode.org/Public/UNIDATA/UnicodeData.txt
     ///
-    /// [`SpecialCasing`.txt`]: ftp://ftp.unicode.org/Public/UNIDATA/SpecialCasing.txt
+    /// [`SpecialCasing.txt`]: ftp://ftp.unicode.org/Public/UNIDATA/SpecialCasing.txt
     ///
     /// [2]: http://www.unicode.org/versions/Unicode4.0.0/ch03.pdf#G33992
     #[stable(feature = "rust1", since = "1.0.0")]
