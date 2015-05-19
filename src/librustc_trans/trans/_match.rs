@@ -214,7 +214,7 @@ use trans::monomorphize;
 use trans::tvec;
 use trans::type_of;
 use middle::ty::{self, Ty};
-use session::config::{NoDebugInfo, FullDebugInfo};
+use session::config::NoDebugInfo;
 use util::common::indenter;
 use util::nodemap::FnvHashMap;
 use util::ppaux::{Repr, vec_map_to_string};
@@ -1624,21 +1624,9 @@ pub fn store_arg<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         Some(ident) => {
             // Generate nicer LLVM for the common case of fn a pattern
             // like `x: T`
-            let arg_ty = node_id_type(bcx, pat.id);
-            if type_of::arg_is_indirect(bcx.ccx(), arg_ty)
-                && bcx.sess().opts.debuginfo != FullDebugInfo {
-                // Don't copy an indirect argument to an alloca, the caller
-                // already put it in a temporary alloca and gave it up, unless
-                // we emit extra-debug-info, which requires local allocas :(.
-                let arg_val = arg.add_clean(bcx.fcx, arg_scope);
-                bcx.fcx.lllocals.borrow_mut()
-                   .insert(pat.id, Datum::new(arg_val, arg_ty, Lvalue));
-                bcx
-            } else {
-                mk_binding_alloca(
-                    bcx, pat.id, ident.name, arg_scope, arg,
-                    |arg, bcx, llval, _| arg.store_to(bcx, llval))
-            }
+            mk_binding_alloca(
+                bcx, pat.id, ident.name, arg_scope, arg,
+                |arg, bcx, llval, _| arg.store_to(bcx, llval))
         }
 
         None => {

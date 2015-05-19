@@ -103,7 +103,7 @@
 pub use self::Expr::*;
 pub use self::RvalueMode::*;
 
-use llvm::ValueRef;
+use llvm::{self, ValueRef};
 use trans::base::*;
 use trans::build::Load;
 use trans::common::*;
@@ -282,7 +282,10 @@ impl KindOps for Rvalue {
                               -> Block<'blk, 'tcx> {
         // No cleanup is scheduled for an rvalue, so we don't have
         // to do anything after a move to cancel or duplicate it.
-        if self.is_by_ref() {
+        // If this datum is backed by an alloca, we want to let LLVM know that
+        // the slot dies here so stack coloring can be applied to reuse the
+        // stack space for something else.
+        if unsafe { self.is_by_ref() && !llvm::LLVMIsAAllocaInst(_val).is_null() } {
             call_lifetime_end(bcx, _val);
         }
         bcx
