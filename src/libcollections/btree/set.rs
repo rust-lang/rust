@@ -115,7 +115,6 @@ impl<T> BTreeSet<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(core)]
     /// use std::collections::BTreeSet;
     ///
     /// let set: BTreeSet<usize> = [1, 2, 3, 4].iter().cloned().collect();
@@ -124,7 +123,7 @@ impl<T> BTreeSet<T> {
     ///     println!("{}", x);
     /// }
     ///
-    /// let v: Vec<usize> = set.iter().cloned().collect();
+    /// let v: Vec<_> = set.iter().cloned().collect();
     /// assert_eq!(v, [1, 2, 3, 4]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -171,7 +170,6 @@ impl<T: Ord> BTreeSet<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(core)]
     /// use std::collections::BTreeSet;
     ///
     /// let mut a = BTreeSet::new();
@@ -182,7 +180,7 @@ impl<T: Ord> BTreeSet<T> {
     /// b.insert(2);
     /// b.insert(3);
     ///
-    /// let diff: Vec<usize> = a.difference(&b).cloned().collect();
+    /// let diff: Vec<_> = a.difference(&b).cloned().collect();
     /// assert_eq!(diff, [1]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -195,7 +193,6 @@ impl<T: Ord> BTreeSet<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(core)]
     /// use std::collections::BTreeSet;
     ///
     /// let mut a = BTreeSet::new();
@@ -206,7 +203,7 @@ impl<T: Ord> BTreeSet<T> {
     /// b.insert(2);
     /// b.insert(3);
     ///
-    /// let sym_diff: Vec<usize> = a.symmetric_difference(&b).cloned().collect();
+    /// let sym_diff: Vec<_> = a.symmetric_difference(&b).cloned().collect();
     /// assert_eq!(sym_diff, [1, 3]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -220,7 +217,6 @@ impl<T: Ord> BTreeSet<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(core)]
     /// use std::collections::BTreeSet;
     ///
     /// let mut a = BTreeSet::new();
@@ -231,7 +227,7 @@ impl<T: Ord> BTreeSet<T> {
     /// b.insert(2);
     /// b.insert(3);
     ///
-    /// let intersection: Vec<usize> = a.intersection(&b).cloned().collect();
+    /// let intersection: Vec<_> = a.intersection(&b).cloned().collect();
     /// assert_eq!(intersection, [2]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -245,7 +241,6 @@ impl<T: Ord> BTreeSet<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(core)]
     /// use std::collections::BTreeSet;
     ///
     /// let mut a = BTreeSet::new();
@@ -254,7 +249,7 @@ impl<T: Ord> BTreeSet<T> {
     /// let mut b = BTreeSet::new();
     /// b.insert(2);
     ///
-    /// let union: Vec<usize> = a.union(&b).cloned().collect();
+    /// let union: Vec<_> = a.union(&b).cloned().collect();
     /// assert_eq!(union, [1, 2]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -318,7 +313,6 @@ impl<T: Ord> BTreeSet<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(core)]
     /// use std::collections::BTreeSet;
     ///
     /// let set: BTreeSet<_> = [1, 2, 3].iter().cloned().collect();
@@ -336,7 +330,6 @@ impl<T: Ord> BTreeSet<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(core)]
     /// use std::collections::BTreeSet;
     ///
     /// let a: BTreeSet<_> = [1, 2, 3].iter().cloned().collect();
@@ -358,7 +351,6 @@ impl<T: Ord> BTreeSet<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(core)]
     /// use std::collections::BTreeSet;
     ///
     /// let sup: BTreeSet<_> = [1, 2, 3].iter().cloned().collect();
@@ -401,7 +393,6 @@ impl<T: Ord> BTreeSet<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(core)]
     /// use std::collections::BTreeSet;
     ///
     /// let sub: BTreeSet<_> = [1, 2].iter().cloned().collect();
@@ -483,12 +474,11 @@ impl<T> IntoIterator for BTreeSet<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(core)]
     /// use std::collections::BTreeSet;
     ///
     /// let set: BTreeSet<usize> = [1, 2, 3, 4].iter().cloned().collect();
     ///
-    /// let v: Vec<usize> = set.into_iter().collect();
+    /// let v: Vec<_> = set.into_iter().collect();
     /// assert_eq!(v, [1, 2, 3, 4]);
     /// ```
     fn into_iter(self) -> IntoIter<T> {

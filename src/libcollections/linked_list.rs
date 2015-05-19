@@ -230,7 +230,6 @@ impl<T> LinkedList<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
     /// use std::collections::LinkedList;
     ///
     /// let mut a = LinkedList::new();
@@ -473,7 +472,6 @@ impl<T> LinkedList<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
     /// use std::collections::LinkedList;
     ///
     /// let mut dl = LinkedList::new();
@@ -521,7 +519,6 @@ impl<T> LinkedList<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
     /// use std::collections::LinkedList;
     ///
     /// let mut d = LinkedList::new();
@@ -540,7 +537,6 @@ impl<T> LinkedList<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
     /// use std::collections::LinkedList;
     ///
     /// let mut d = LinkedList::new();
@@ -566,7 +562,6 @@ impl<T> LinkedList<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
     /// use std::collections::LinkedList;
     ///
     /// let mut d = LinkedList::new();
