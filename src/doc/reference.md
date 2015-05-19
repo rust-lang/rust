@@ -779,6 +779,11 @@ extern crate std; // equivalent to: extern crate std as std;
 extern crate std as ruststd; // linking to 'std' under another name
 ```
 
+> **Note**: These declarations are generally order agnostic, as Rust
+> dependencies between crates will be handled for you.
+> However, if you link to native libraries which depend on native libraries
+> linked in other crates, the order may become important.
+
 #### Use declarations
 
 A _use declaration_ creates one or more local name bindings synonymous with
