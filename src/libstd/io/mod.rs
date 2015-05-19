@@ -506,11 +506,14 @@ fn read_until<R: BufRead + ?Sized>(r: &mut R, delim: u8, buf: &mut Vec<u8>)
     }
 }
 
-/// A Buffer is a type of reader which has some form of internal buffering to
+/// A `BufRead` is a type of reader which has some form of internal buffering to
 /// allow certain kinds of reading operations to be more optimized than others.
 ///
 /// This type extends the `Read` trait with a few methods that are not
 /// possible to reasonably implement with purely a read interface.
+///
+/// You can use the [`BufReader` wrapper type](struct.BufReader.html) to turn any
+/// reader into a buffered reader.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait BufRead: Read {
     /// Fills the internal buffer of this object, returning the buffer contents.
