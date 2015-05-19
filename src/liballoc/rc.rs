@@ -32,7 +32,7 @@
 //! and have the `Owner` remain allocated as long as any `Gadget` points at it.
 //!
 //! ```rust
-//! # #![feature(alloc, collections)]
+//! # #![feature(alloc)]
 //! use std::rc::Rc;
 //!
 //! struct Owner {
@@ -49,7 +49,7 @@
 //! fn main() {
 //!     // Create a reference counted Owner.
 //!     let gadget_owner : Rc<Owner> = Rc::new(
-//!             Owner { name: String::from_str("Gadget Man") }
+//!             Owner { name: String::from("Gadget Man") }
 //!     );
 //!
 //!     // Create Gadgets belonging to gadget_owner. To increment the reference
