@@ -1096,6 +1096,12 @@ Trait2 { ... }`) does not work if the trait is not object-safe. Please see the
 [RFC 255] for more details on object safety rules.
 
 [RFC 255]: https://github.com/rust-lang/rfcs/pull/255
+"##,
+
+E0380: r##"
+Default impls are only allowed for traits with no methods or associated items.
+For more information see the [opt-in builtin traits RFC](https://github.com/rust
+-lang/rfcs/blob/master/text/0019-opt-in-builtin-traits.md).
 "##
 
 }
@@ -1229,5 +1235,11 @@ register_diagnostics! {
            // between structures
     E0377, // the trait `CoerceUnsized` may only be implemented for a coercion
            // between structures with the same definition
-    E0379  // trait fns cannot be const
+    E0379,  // trait fns cannot be const
+    E0390, // only a single inherent implementation marked with
+           // `#[lang = \"{}\"]` is allowed for the `{}` primitive
+    E0391, // unsupported cyclic reference between types/traits detected
+    E0392, // parameter `{}` is never used
+    E0393  // the type parameter `{}` must be explicitly specified in an object
+           // type because its default value `{}` references the type `Self`"
 }
