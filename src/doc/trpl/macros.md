@@ -683,9 +683,9 @@ let v = vec![0; 100];
 
 ## assert! and assert_eq!
 
-These two macros are used in tests. `assert!` takes a boolean, and `assert_eq!`
-takes two values and compares them. Truth passes, success `panic!`s. Like
-this:
+These two macros are used in tests. `assert!` takes a boolean. `assert_eq!`
+takes two values and checks them for equality. `true` passes, `false` `panic!`s.
+Like this:
 
 ```rust,no_run
 // A-ok!
