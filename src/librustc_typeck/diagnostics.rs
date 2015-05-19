@@ -684,6 +684,25 @@ for types as needed by the compiler, and it is currently disallowed to
 explicitly implement it for a type.
 "##,
 
+E0326: r##"
+The types of any associated constants in a trait implementation must match the
+types in the trait definition. This error indicates that there was a mismatch.
+
+Here's an example of this error:
+
+```
+trait Foo {
+    const BAR: bool;
+}
+
+struct Bar;
+
+impl Foo for Bar {
+    const BAR: u32 = 5; // error, expected bool, found u32
+}
+```
+"##,
+
 E0368: r##"
 This error indicates that a binary assignment operator like `+=` or `^=` was
 applied to the wrong types.
@@ -885,7 +904,6 @@ register_diagnostics! {
     E0323, // implemented an associated const when another trait item expected
     E0324, // implemented a method when another trait item expected
     E0325, // implemented an associated type when another trait item expected
-    E0326, // associated const implemented with different type from trait
     E0327, // referred to method instead of constant in match pattern
     E0328, // cannot implement Unsize explicitly
     E0366, // dropck forbid specialization to concrete type or region
