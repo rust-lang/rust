@@ -977,11 +977,11 @@ register_diagnostics! {
     E0185,
     E0186,
     E0187, // can't infer the kind of the closure
-    E0188, // types differ in mutability
-    E0189, // can only cast a boxed pointer to a boxed object
-    E0190, // can only cast a &-pointer to an &-object
+    E0188, // can not cast a immutable reference to a mutable pointer
+    E0189, // deprecated: can only cast a boxed pointer to a boxed object
+    E0190, // deprecated: can only cast a &-pointer to an &-object
     E0191, // value of the associated type must be specified
-    E0192, // negative imples are allowed just for `Send` and `Sync`
+    E0192, // negative impls are allowed just for `Send` and `Sync`
     E0193, // cannot bound type where clause bounds may only be attached to types
            // involving type parameters
     E0194,

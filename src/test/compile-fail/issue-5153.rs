@@ -17,6 +17,6 @@ impl Foo for isize {
 }
 
 fn main() {
-    (&5 as &Foo).foo();
+    (&5isize as &Foo).foo();
     //~^ ERROR: no method named `foo` found for type `&Foo` in the current scope
 }

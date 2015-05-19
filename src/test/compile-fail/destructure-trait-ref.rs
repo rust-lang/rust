@@ -28,29 +28,29 @@ fn main() {
     // if n > m, it's a type mismatch error.
 
     // n < m
-    let &x = &(&1 as &T);
-    let &x = &&(&1 as &T);
-    let &&x = &&(&1 as &T);
+    let &x = &(&1isize as &T);
+    let &x = &&(&1isize as &T);
+    let &&x = &&(&1isize as &T);
 
     // n == m
-    let &x = &1 as &T;      //~ ERROR type `&T` cannot be dereferenced
-    let &&x = &(&1 as &T);  //~ ERROR type `&T` cannot be dereferenced
-    let box x = box 1 as Box<T>; //~ ERROR the trait `core::marker::Sized` is not implemented
+    let &x = &1isize as &T;      //~ ERROR type `&T` cannot be dereferenced
+    let &&x = &(&1isize as &T);  //~ ERROR type `&T` cannot be dereferenced
+    let box x = box 1isize as Box<T>; //~ ERROR the trait `core::marker::Sized` is not implemented
 
     // n > m
-    let &&x = &1 as &T;
+    let &&x = &1isize as &T;
     //~^ ERROR mismatched types
     //~| expected `T`
     //~| found `&_`
     //~| expected trait T
     //~| found &-ptr
-    let &&&x = &(&1 as &T);
+    let &&&x = &(&1isize as &T);
     //~^ ERROR mismatched types
     //~| expected `T`
     //~| found `&_`
     //~| expected trait T
     //~| found &-ptr
-    let box box x = box 1 as Box<T>;
+    let box box x = box 1isize as Box<T>;
     //~^ ERROR mismatched types
     //~| expected `T`
     //~| found `Box<_>`

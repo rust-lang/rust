@@ -919,12 +919,6 @@ pub fn const_get_elt(cx: &CrateContext, v: ValueRef, us: &[c_uint])
     }
 }
 
-pub fn is_const(v: ValueRef) -> bool {
-    unsafe {
-        llvm::LLVMIsConstant(v) == True
-    }
-}
-
 pub fn const_to_int(v: ValueRef) -> i64 {
     unsafe {
         llvm::LLVMConstIntGetSExtValue(v)

@@ -148,6 +148,7 @@ enum_from_u32! {
         tag_table_capture_modes = 0x67,
         tag_table_object_cast_map = 0x68,
         tag_table_const_qualif = 0x69,
+        tag_table_cast_kinds = 0x6a,
     }
 }
 

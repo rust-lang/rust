@@ -28,7 +28,7 @@ fn main() {
     let mut x1 = X { y: [0, 0] };
 
     // This is still an error since we don't allow casts from &mut [T; n] to *mut T.
-    let p1: *mut u8 = &mut x1.y as *mut _;  //~ ERROR mismatched types
+    let p1: *mut u8 = &mut x1.y as *mut _;  //~ ERROR illegal cast
     let t1: *mut [u8; 2] = &mut x1.y as *mut _;
     let h1: *mut [u8; 2] = &mut x1.y as *mut [u8; 2];
 }

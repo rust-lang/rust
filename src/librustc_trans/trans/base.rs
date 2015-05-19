@@ -869,8 +869,7 @@ pub fn with_cond<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
 {
     let _icx = push_ctxt("with_cond");
 
-    if bcx.unreachable.get() ||
-            (common::is_const(val) && common::const_to_uint(val) == 0) {
+    if bcx.unreachable.get() || common::const_to_opt_uint(val) == Some(0) {
         return bcx;
     }
 

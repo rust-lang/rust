@@ -77,7 +77,7 @@ This API is completely unstable and subject to change.
 
 #![feature(box_patterns)]
 #![feature(box_syntax)]
-#![feature(collections)]
+#![feature(collections, collections_drain)]
 #![feature(core)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
