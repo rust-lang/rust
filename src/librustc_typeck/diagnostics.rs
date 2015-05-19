@@ -65,40 +65,27 @@ impl Foo for Bar {
 "##,
 
 E0053: r##"
-For any given method of a trait, the mutabilities of the parameters must match
-between the trait definition and the implementation.
+The parameters of any trait method must match between a trait implementation
+and the trait definition.
 
-Here's an example where the mutability of the `self` parameter is wrong:
+Here are a couple examples of this error:
 
 ```
-trait Foo { fn foo(&self); }
+trait Foo {
+    fn foo(x: u16);
+    fn bar(&self);
+}
 
 struct Bar;
 
 impl Foo for Bar {
-    // error, the signature should be `fn foo(&self)` instead
+    // error, expected u16, found i16
+    fn foo(x: i16) { }
+
+    // error, values differ in mutability
     fn foo(&mut self) { }
 }
-
-fn main() {}
 ```
-
-Here's another example, this time for a non-`self` parameter:
-
-```
-trait Foo { fn foo(x: &mut bool) -> bool; }
-
-struct Bar;
-
-impl Foo for Bar {
-    // error, the type of `x` should be `&mut bool` instead
-    fn foo(x: &bool) -> bool { *x }
-}
-
-fn main() {}
-```
-
-
 "##,
 
 E0054: r##"
