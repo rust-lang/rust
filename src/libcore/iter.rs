@@ -3114,7 +3114,7 @@ pub mod order {
     }
 
     /// Returns `a` < `b` lexicographically (Using partial order, `PartialOrd`)
-    pub fn lt<R: Iterator, L: Iterator>(mut a: L, mut b: R) -> bool where
+    pub fn lt<L: Iterator, R: Iterator>(mut a: L, mut b: R) -> bool where
         L::Item: PartialOrd<R::Item>,
     {
         loop {
