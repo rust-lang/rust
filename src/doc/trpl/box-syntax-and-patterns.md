@@ -5,7 +5,7 @@ Also it is not possible in stable Rust to destructure a `Box` in a match
 pattern. The unstable `box` keyword can be used to both create and destructure
 a `Box`. An example usage would be:
 
-```
+```rust
 #![feature(box_syntax, box_patterns)]
 
 fn main() {
@@ -34,7 +34,7 @@ because the syntax may still change in the future.
 In many languages with pointers, you'd return a pointer from a function
 so as to avoid copying a large data structure. For example:
 
-```{rust}
+```rust
 struct BigStruct {
     one: i32,
     two: i32,

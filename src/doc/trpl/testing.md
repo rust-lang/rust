@@ -195,7 +195,7 @@ parameter can be added to the `should_panic` attribute. The test harness will
 make sure that the failure message contains the provided text. A safer version
 of the example above would be:
 
-```
+```rust
 #[test]
 #[should_panic(expected = "assertion failed")]
 fn it_works() {
@@ -205,7 +205,7 @@ fn it_works() {
 
 That's all there is to the basics! Let's write one 'real' test:
 
-```{rust,ignore}
+```rust,ignore
 pub fn add_two(a: i32) -> i32 {
     a + 2
 }
@@ -225,7 +225,7 @@ There is one way in which our existing example is not idiomatic: it's
 missing the `tests` module. The idiomatic way of writing our example
 looks like this:
 
-```{rust,ignore}
+```rust,ignore
 pub fn add_two(a: i32) -> i32 {
     a + 2
 }
@@ -253,7 +253,7 @@ we need to bring our test function into scope. This can be annoying if you have
 a large module, and so this is a common use of the `glob` feature. Let's change
 our `src/lib.rs` to make use of it:
 
-```{rust,ignore}
+```rust,ignore
 
 pub fn add_two(a: i32) -> i32 {
     a + 2
@@ -302,7 +302,7 @@ the `tests` directory
 To write an integration test, let's make a `tests` directory, and
 put a `tests/lib.rs` file inside, with this as its contents:
 
-```{rust,ignore}
+```rust,ignore
 extern crate adder;
 
 #[test]
@@ -359,7 +359,7 @@ documentation has been written. To this end, Rust supports automatically
 running examples in your documentation. Here's a fleshed-out `src/lib.rs`
 with examples:
 
-```{rust,ignore}
+```rust,ignore
 //! The `adder` crate provides functions that add numbers to other numbers.
 //!
 //! # Examples

@@ -110,7 +110,7 @@ Generic functions are most useful with ‘trait bounds’, which we’ll cover i
 
 You can store a generic type in a `struct` as well:
 
-```
+```rust
 struct Point<T> {
     x: T,
     y: T,

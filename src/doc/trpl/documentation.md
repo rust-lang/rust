@@ -42,7 +42,7 @@ Documentation comments are written in Markdown.
 Rust keeps track of these comments, and uses them when generating
 documentation. This is important when documenting things like enums:
 
-```
+```rust
 /// The `Option` type. See [the module level documentation](../) for more.
 enum Option<T> {
     /// No value
@@ -80,7 +80,7 @@ thing after that last comment.
 
 Anyway, let's cover each part of this comment in detail:
 
-```
+```rust
 /// Constructs a new `Rc<T>`.
 # fn foo() {}
 ```
@@ -88,7 +88,7 @@ Anyway, let's cover each part of this comment in detail:
 The first line of a documentation comment should be a short summary of its
 functionality. One sentence. Just the basics. High level.
 
-```
+```rust
 ///
 /// Other details about constructing `Rc<T>`s, maybe describing complicated
 /// semantics, maybe additional options, all kinds of stuff.
@@ -101,7 +101,7 @@ we could have added more explanation in a new paragraph.
 
 #### Special sections
 
-```
+```rust
 /// # Examples
 # fn foo() {}
 ```
@@ -110,7 +110,7 @@ Next, are special sections. These are indicated with a header, `#`. There
 are three kinds of headers that are commonly used. They aren't special syntax,
 just convention, for now.
 
-```
+```rust
 /// # Panics
 # fn foo() {}
 ```
@@ -120,7 +120,7 @@ usually indicated by panics, which kill the whole current thread at the very
 least. If your function has a non-trivial contract like this, that is
 detected/enforced by panics, documenting it is very important.
 
-```
+```rust
 /// # Failures
 # fn foo() {}
 ```
@@ -130,7 +130,7 @@ conditions under which it returns `Err(E)` is a nice thing to do. This is
 slightly less important than `Panics`, because failure is encoded into the type
 system, but it's still a good thing to do.
 
-```
+```rust
 /// # Safety
 # fn foo() {}
 ```
@@ -138,7 +138,7 @@ system, but it's still a good thing to do.
 If your function is `unsafe`, you should explain which invariants the caller is
 responsible for upholding.
 
-```
+```rust
 /// # Examples
 ///
 /// ```
@@ -154,7 +154,7 @@ method, and your users will love you for it. These examples go inside of
 code block annotations, which we'll talk about in a moment, and can have
 more than one section:
 
-```
+```rust
 /// # Examples
 ///
 /// Simple `&str` patterns:
@@ -179,7 +179,7 @@ Let's discuss the details of these code blocks.
 
 To write some Rust code in a comment, use the triple graves:
 
-```
+```rust
 /// ```
 /// println!("Hello, world");
 /// ```
@@ -188,7 +188,7 @@ To write some Rust code in a comment, use the triple graves:
 
 If you want something that's not Rust code, you can add an annotation:
 
-```
+```rust
 /// ```c
 /// printf("Hello, world\n");
 /// ```
@@ -208,7 +208,7 @@ generate the documentation.
 
 Let's discuss our sample example documentation:
 
-```
+```rust
 /// ```
 /// println!("Hello, world");
 /// ```
@@ -219,7 +219,7 @@ You'll notice that you don't need a `fn main()` or anything here. `rustdoc` will
 automatically add a main() wrapper around your code, and in the right place.
 For example:
 
-```
+```rust
 /// ```
 /// use std::rc::Rc;
 ///
@@ -230,7 +230,7 @@ For example:
 
 This will end up testing:
 
-```
+```rust
 fn main() {
     use std::rc::Rc;
     let five = Rc::new(5);
@@ -259,7 +259,7 @@ with `///` we've been talking about? The raw text:
 
 looks different than the output:
 
-```
+```rust
 /// Some documentation.
 # fn foo() {}
 ```
@@ -274,7 +274,7 @@ it makes the example more clear. You can use this technique to explain
 longer examples in detail, while still preserving the testability of your
 documentation. For example, this code:
 
-```
+```rust
 let x = 5;
 let y = 6;
 println!("{}", x + y);
@@ -284,7 +284,7 @@ Here's an explanation, rendered:
 
 First, we set `x` to five:
 
-```
+```rust
 let x = 5;
 # let y = 6;
 # println!("{}", x + y);
@@ -292,7 +292,7 @@ let x = 5;
 
 Next, we set `y` to six:
 
-```
+```rust
 # let x = 5;
 let y = 6;
 # println!("{}", x + y);
@@ -300,7 +300,7 @@ let y = 6;
 
 Finally, we print the sum of `x` and `y`:
 
-```
+```rust
 # let x = 5;
 # let y = 6;
 println!("{}", x + y);
@@ -340,7 +340,7 @@ explanation.
 
 Here’s an example of documenting a macro:
 
-```
+```rust
 /// Panic with a given message unless an expression evaluates to true.
 ///
 /// # Examples
@@ -388,7 +388,7 @@ but with a binary, there’s nothing to link to.
 There are a few more annotations that are useful to help `rustdoc` do the right
 thing when testing your code:
 
-```
+```rust
 /// ```ignore
 /// fn foo() {
 /// ```
@@ -400,7 +400,7 @@ what you want, as it's the most generic. Instead, consider annotating it
 with `text` if it's not code, or using `#`s to get a working example that
 only shows the part you care about.
 
-```
+```rust
 /// ```should_panic
 /// assert!(false);
 /// ```
@@ -410,7 +410,7 @@ only shows the part you care about.
 `should_panic` tells `rustdoc` that the code should compile correctly, but
 not actually pass as a test.
 
-```
+```rust
 /// ```no_run
 /// loop {
 ///     println!("Hello, world");
@@ -427,7 +427,7 @@ which you would want to make sure compile, but might run in an infinite loop!
 
 Rust has another kind of doc comment, `//!`. This comment doesn't document the next item, but the enclosing item. In other words:
 
-```
+```rust
 mod foo {
     //! This is documentation for the `foo` module.
     //!
@@ -440,7 +440,7 @@ mod foo {
 This is where you'll see `//!` used most often: for module documentation. If
 you have a module in `foo.rs`, you'll often open its code and see this:
 
-```
+```rust
 //! A module for using `foo`s.
 //!
 //! The `foo` module contains a lot of useful functionality blah blah blah
@@ -461,7 +461,7 @@ are written in Markdown, they're often `.md` files.
 When you write documentation in Markdown files, you don't need to prefix
 the documentation with comments. For example:
 
-```
+```rust
 /// # Examples
 ///
 /// ```
@@ -499,7 +499,7 @@ This `%` line needs to be the very first line of the file.
 
 At a deeper level, documentation comments are sugar for documentation attributes:
 
-```
+```rust
 /// this
 # fn foo() {}
 
@@ -509,7 +509,7 @@ At a deeper level, documentation comments are sugar for documentation attributes
 
 are the same, as are these:
 
-```
+```rust
 //! this
 
 #![doc="/// this"]
@@ -546,7 +546,7 @@ pub use foo::bar;
 You can control a few aspects of the HTML that `rustdoc` generates through the
 `#![doc]` version of the attribute:
 
-```
+```rust
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/")];
