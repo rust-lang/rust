@@ -394,7 +394,9 @@ impl<T: ?Sized> Drop for Arc<T> {
         // it's run more than once)
         let ptr = *self._ptr;
         // if ptr.is_null() { return }
-        if ptr as usize == 0 || ptr as usize == mem::POST_DROP_USIZE { return }
+        if ptr as *mut u8 as usize == 0 || ptr as *mut u8 as usize == mem::POST_DROP_USIZE {
+            return
+        }
 
         // Because `fetch_sub` is already atomic, we do not need to synchronize
         // with other threads unless we are going to delete the object. This
@@ -524,7 +526,9 @@ impl<T: ?Sized> Drop for Weak<T> {
         let ptr = *self._ptr;
 
         // see comments above for why this check is here
-        if ptr as usize == 0 || ptr as usize == mem::POST_DROP_USIZE { return }
+        if ptr as *mut u8 as usize == 0 || ptr as *mut u8 as usize == mem::POST_DROP_USIZE {
+            return
+        }
 
         // If we find out that we were the last weak pointer, then its time to
         // deallocate the data entirely. See the discussion in Arc::drop() about
