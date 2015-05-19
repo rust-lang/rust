@@ -917,7 +917,7 @@ impl<A: Clone> Clone for LinkedList<A> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A: fmt::Debug> fmt::Debug for LinkedList<A> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.iter().fold(f.debug_list(), |b, e| b.entry(e)).finish()
+        f.debug_list().entries(self.iter()).finish()
     }
 }
 
