@@ -979,10 +979,10 @@ const C: [u32; 0.0] = []; // error
 "##,
 
 E0250: r##"
-This means there was an error while evaluating the expression for the length of
-a fixed-size array type.
+There was an error while evaluating the expression for the length of a fixed-
+size array type.
 
-Some examples of code that produces this error are:
+Some examples of this error are:
 
 ```
 // divide by zero in the length expression
@@ -1032,9 +1032,7 @@ impl Foo for Bar {
 
 E0368: r##"
 This error indicates that a binary assignment operator like `+=` or `^=` was
-applied to the wrong types.
-
-A couple examples of this are as follows:
+applied to the wrong types. For example:
 
 ```
 let mut x: u16 = 5;
@@ -1097,8 +1095,7 @@ Trying to implement a trait for a trait object (as in `impl Trait1 for
 Trait2 { ... }`) does not work if the trait is not object-safe. Please see the
 [RFC 255] for more details on object safety rules.
 
-[RFC 255]:https://github.com/rust-lang/rfcs/blob/master/text/0255-object-\
-safety.md
+[RFC 255]: https://github.com/rust-lang/rfcs/pull/255
 "##
 
 }
