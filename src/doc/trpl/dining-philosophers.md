@@ -18,7 +18,7 @@ called ‘the dining philosophers’. It was originally conceived by Dijkstra in
 > in his own chair, picked up his own fork on his left, and plunged it into the
 > spaghetti. But such is the tangled nature of spaghetti that a second fork is
 > required to carry it to the mouth. The philosopher therefore had also to pick
-> up the fork on his right. When we was finished he would put down both his
+> up the fork on his right. When he was finished he would put down both his
 > forks, get up from his chair, and continue thinking. Of course, a fork can be
 > used by only one philosopher at a time. If the other philosopher wants it, he
 > just has to wait until the fork is available again.

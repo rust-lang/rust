@@ -47,11 +47,11 @@ This is because the standard library has `impl Borrow<str> for String`.
 
 For most types, when you want to take an owned or borrowed type, a `&T` is
 enough. But one area where `Borrow` is effective is when there’s more than one
-kind of borrowed value. Slices are an area where this is especially true: you
-can have both an `&[T]` or a `&mut [T]`. If we wanted to accept both of these
-types, `Borrow` is up for it:
+kind of borrowed value. This is especially true of references and slices: you
+can have both an `&T` or a `&mut T`. If we wanted to accept both of these types,
+`Borrow` is up for it:
 
-```
+```rust
 use std::borrow::Borrow;
 use std::fmt::Display;
 

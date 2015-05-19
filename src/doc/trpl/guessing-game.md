@@ -151,7 +151,7 @@ take a name on the left hand side, it actually accepts a
 ‘[pattern][patterns]’. We’ll use patterns more later. It’s easy enough
 to use for now:
 
-```
+```rust
 let foo = 5; // immutable.
 let mut bar = 5; // mutable
 ```

@@ -12,6 +12,164 @@
 
 register_long_diagnostics! {
 
+E0023: r##"
+A pattern used to match against an enum variant must provide a sub-pattern for
+each field of the enum variant. This error indicates that a pattern attempted to
+extract an incorrect number of fields from a variant.
+
+```
+enum Fruit {
+    Apple(String, String)
+    Pear(u32)
+}
+```
+
+Here the `Apple` variant has two fields, and should be matched against like so:
+
+```
+// Correct.
+match x {
+    Apple(a, b) => ...
+}
+```
+
+Matching with the wrong number of fields has no sensible interpretation:
+
+```
+// Incorrect.
+match x {
+    Apple(a) => ...,
+    Apple(a, b, c) => ...
+}
+```
+
+Check how many fields the enum was declared with and ensure that your pattern
+uses the same number.
+"##,
+
+E0024: r##"
+This error indicates that a pattern attempted to extract the fields of an enum
+variant with no fields. Here's a tiny example of this error:
+
+```
+// This enum has two variants.
+enum Number {
+    // This variant has no fields.
+    Zero,
+    // This variant has one field.
+    One(u32)
+}
+
+// Assuming x is a Number we can pattern match on its contents.
+match x {
+    Zero(inside) => ...,
+    One(inside) => ...
+}
+```
+
+The pattern match `Zero(inside)` is incorrect because the `Zero` variant
+contains no fields, yet the `inside` name attempts to bind the first field of
+the enum.
+"##,
+
+E0025: r##"
+Each field of a struct can only be bound once in a pattern. Each occurrence of a
+field name binds the value of that field, so to fix this error you will have to
+remove or alter the duplicate uses of the field name. Perhaps you misspelt
+another field name?
+"##,
+
+E0026: r##"
+This error indicates that a struct pattern attempted to extract a non-existant
+field from a struct. Struct fields are identified by the name used before the
+colon `:` so struct patterns should resemble the declaration of the struct type
+being matched.
+
+```
+// Correct matching.
+struct Thing {
+    x: u32,
+    y: u32
+}
+
+let thing = Thing { x: 1, y: 2 };
+match thing {
+    Thing { x: xfield, y: yfield } => ...
+}
+```
+
+If you are using shorthand field patterns but want to refer to the struct field
+by a different name, you should rename it explicitly.
+
+```
+// Change this:
+match thing {
+    Thing { x, z } => ...
+}
+
+// To this:
+match thing {
+    Thing { x, y: z } => ...
+}
+```
+"##,
+
+E0027: r##"
+This error indicates that a pattern for a struct fails to specify a sub-pattern
+for every one of the struct's fields. Ensure that each field from the struct's
+definition is mentioned in the pattern, or use `..` to ignore unwanted fields.
+
+For example:
+
+```
+struct Dog {
+    name: String,
+    age: u32
+}
+
+let d = Dog { name: "Rusty".to_string(), age: 8 };
+
+// This is incorrect.
+match d {
+    Dog { age: x } => ...
+}
+
+// This is correct (explicit).
+match d {
+    Dog { name: n, age: x } => ...
+}
+
+// This is also correct (ignore unused fields).
+match d {
+    Dog { age: x, .. } => ...
+}
+```
+"##,
+
+E0033: r##"
+This error indicates that a pointer to a trait type cannot be implicitly
+dereferenced by a pattern. Every trait defines a type, but because the
+size of trait implementors isn't fixed, this type has no compile-time size.
+Therefore, all accesses to trait types must be through pointers. If you
+encounter this error you should try to avoid dereferencing the pointer.
+
+```
+let trait_obj: &SomeTrait = ...;
+
+// This tries to implicitly dereference to create an unsized local variable.
+let &invalid = trait_obj;
+
+// You can call methods without binding to the value being pointed at.
+trait_obj.method_one();
+trait_obj.method_two();
+```
+
+You can read more about trait objects in the Trait Object section of the
+Reference:
+
+http://doc.rust-lang.org/reference.html#trait-objects
+"##,
+
 E0046: r##"
 When trying to make some type implement a trait `Foo`, you must, at minimum,
 provide implementations for all of `Foo`'s required methods (meaning the
@@ -758,15 +916,9 @@ safety.md
 }
 
 register_diagnostics! {
-    E0023,
-    E0024,
-    E0025,
-    E0026,
-    E0027,
     E0029,
     E0030,
     E0031,
-    E0033,
     E0034, // multiple applicable methods in scope
     E0035, // does not take type parameters
     E0036, // incorrect number of type parameters given for this method

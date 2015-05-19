@@ -20,7 +20,7 @@ default shim for the C `main` function with your own.
 The function marked `#[start]` is passed the command line parameters
 in the same format as C:
 
-```
+```rust
 #![feature(lang_items, start, no_std, libc)]
 #![no_std]
 
