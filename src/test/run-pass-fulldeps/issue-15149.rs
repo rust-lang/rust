@@ -64,6 +64,10 @@ fn test() {
                     str::from_utf8(&child_output.stdout).unwrap(),
                     str::from_utf8(&child_output.stderr).unwrap()));
 
-    fs::remove_dir_all(&child_dir).unwrap();
-
+    let res = fs::remove_dir_all(&child_dir);
+    if res.is_err() {
+        // On Windows deleting just executed mytest.exe can fail because it's still locked
+        std::thread::sleep_ms(1000);
+        fs::remove_dir_all(&child_dir).unwrap();
+    }
 }
