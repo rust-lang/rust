@@ -1,7 +1,7 @@
-- Feature Name: socket_timeouts
+- Feature Name: `socket_timeouts`
 - Start Date: 2015-04-08
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#1047](https://github.com/rust-lang/rfcs/pull/1047)
+- Rust Issue: [rust-lang/rust#25619](https://github.com/rust-lang/rust/issues/25619)
 
 # Summary
 
