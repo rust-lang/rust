@@ -75,7 +75,7 @@ above.
 To define each of our modules, we use the `mod` keyword. Let’s make our
 `src/lib.rs` look like this:
 
-```
+```rust
 mod english {
     mod greetings {
     }
@@ -126,7 +126,7 @@ ways.
 
 Instead of declaring a module like this:
 
-```{rust,ignore}
+```rust,ignore
 mod english {
     // contents of our module go here
 }
@@ -134,7 +134,7 @@ mod english {
 
 We can instead declare our module like this:
 
-```{rust,ignore}
+```rust,ignore
 mod english;
 ```
 
@@ -173,7 +173,7 @@ $ tree .
 
 `src/lib.rs` is our crate root, and looks like this:
 
-```{rust,ignore}
+```rust,ignore
 mod english;
 mod japanese;
 ```
@@ -184,7 +184,7 @@ on our preference. In this case, because our modules have sub-modules, we’ve
 chosen the second. Both `src/english/mod.rs` and `src/japanese/mod.rs` look
 like this:
 
-```{rust,ignore}
+```rust,ignore
 mod greetings;
 mod farewells;
 ```
@@ -297,7 +297,7 @@ public, and so private is the default. To make things public, you use the `pub`
 keyword. Let’s focus on the `english` module first, so let’s reduce our `src/main.rs`
 to just this:
 
-```{rust,ignore}
+```rust,ignore
 extern crate phrases;
 
 fn main() {
@@ -308,21 +308,21 @@ fn main() {
 
 In our `src/lib.rs`, let’s add `pub` to the `english` module declaration:
 
-```{rust,ignore}
+```rust,ignore
 pub mod english;
 mod japanese;
 ```
 
 And in our `src/english/mod.rs`, let’s make both `pub`:
 
-```{rust,ignore}
+```rust,ignore
 pub mod greetings;
 pub mod farewells;
 ```
 
 In our `src/english/greetings.rs`, let’s add `pub` to our `fn` declaration:
 
-```{rust,ignore}
+```rust,ignore
 pub fn hello() -> String {
     "Hello!".to_string()
 }
@@ -330,7 +330,7 @@ pub fn hello() -> String {
 
 And also in `src/english/farewells.rs`:
 
-```{rust,ignore}
+```rust,ignore
 pub fn goodbye() -> String {
     "Goodbye.".to_string()
 }
@@ -365,7 +365,7 @@ refer to them with shorter names. Let’s talk about `use`.
 Rust has a `use` keyword, which allows us to import names into our local scope.
 Let’s change our `src/main.rs` to look like this:
 
-```{rust,ignore}
+```rust,ignore
 extern crate phrases;
 
 use phrases::english::greetings;
@@ -382,7 +382,7 @@ the functions by a much shorter name. By convention, when importing functions, i
 considered best practice to import the module, rather than the function directly. In
 other words, you _can_ do this:
 
-```{rust,ignore}
+```rust,ignore
 extern crate phrases;
 
 use phrases::english::greetings::hello;
@@ -400,7 +400,7 @@ becomes a problem. If we have conflicting names, Rust will give a compilation
 error. For example, if we made the `japanese` functions public, and tried to do
 this:
 
-```{rust,ignore}
+```rust,ignore
 extern crate phrases;
 
 use phrases::english::greetings::hello;
@@ -426,14 +426,14 @@ Could not compile `phrases`.
 If we’re importing multiple names from the same module, we don’t have to type it out
 twice. Instead of this:
 
-```{rust,ignore}
+```rust,ignore
 use phrases::english::greetings;
 use phrases::english::farewells;
 ```
 
 We can use this shortcut:
 
-```{rust,ignore}
+```rust,ignore
 use phrases::english::{greetings, farewells};
 ```
 
@@ -445,7 +445,7 @@ interface that may not directly map to your internal code organization.
 
 Let’s look at an example. Modify your `src/main.rs` to read like this:
 
-```{rust,ignore}
+```rust,ignore
 extern crate phrases;
 
 use phrases::english::{greetings,farewells};
@@ -462,14 +462,14 @@ fn main() {
 
 Then, modify your `src/lib.rs` to make the `japanese` mod public:
 
-```{rust,ignore}
+```rust,ignore
 pub mod english;
 pub mod japanese;
 ```
 
 Next, make the two functions public, first in `src/japanese/greetings.rs`:
 
-```{rust,ignore}
+```rust,ignore
 pub fn hello() -> String {
     "こんにちは".to_string()
 }
@@ -477,7 +477,7 @@ pub fn hello() -> String {
 
 And then in `src/japanese/farewells.rs`:
 
-```{rust,ignore}
+```rust,ignore
 pub fn goodbye() -> String {
     "さようなら".to_string()
 }
@@ -485,7 +485,7 @@ pub fn goodbye() -> String {
 
 Finally, modify your `src/japanese/mod.rs` to read like this:
 
-```{rust,ignore}
+```rust,ignore
 pub use self::greetings::hello;
 pub use self::farewells::goodbye;
 
