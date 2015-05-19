@@ -529,7 +529,6 @@ impl<T> [T] {
     /// found; the fourth could match any position in `[1,4]`.
     ///
     /// ```rust
-    /// # #![feature(core)]
     /// let s = [0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55];
     ///
     /// let seek = 13;
@@ -865,7 +864,6 @@ impl<T> [T] {
     /// found; the fourth could match any position in `[1,4]`.
     ///
     /// ```rust
-    /// # #![feature(core)]
     /// let s = [0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55];
     ///
     /// assert_eq!(s.binary_search(&13),  Ok(9));
