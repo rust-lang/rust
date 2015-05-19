@@ -206,7 +206,7 @@ impl LintPass for TypeLimits {
                                 let (min, max) = int_ty_range(int_type);
                                 let negative = self.negated_expr_id == e.id;
 
-                                if (negative && v > (min.abs() as u64)) ||
+                                if (negative && v > min.wrapping_neg() as u64) ||
                                    (!negative && v > (max.abs() as u64)) {
                                     cx.span_lint(OVERFLOWING_LITERALS, e.span,
                                                  &*format!("literal out of range for {:?}", t));

@@ -41,6 +41,7 @@ use session::Session;
 use lint;
 use metadata::csearch;
 use middle;
+use middle::cast;
 use middle::check_const;
 use middle::const_eval;
 use middle::def::{self, DefMap, ExportMap};
@@ -286,15 +287,6 @@ pub struct field_ty {
     pub id: DefId,
     pub vis: ast::Visibility,
     pub origin: ast::DefId,  // The DefId of the struct in which the field is declared.
-}
-
-// Contains information needed to resolve types and (in the future) look up
-// the types of AST nodes.
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
-pub struct creader_cache_key {
-    pub cnum: CrateNum,
-    pub pos: usize,
-    pub len: usize
 }
 
 #[derive(Clone, PartialEq, RustcDecodable, RustcEncodable)]
@@ -562,6 +554,15 @@ pub enum vtable_origin<'tcx> {
 // expr to the associated trait ref.
 pub type ObjectCastMap<'tcx> = RefCell<NodeMap<ty::PolyTraitRef<'tcx>>>;
 
+// Contains information needed to resolve types and (in the future) look up
+// the types of AST nodes.
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+pub struct creader_cache_key {
+    pub cnum: CrateNum,
+    pub pos: usize,
+    pub len: usize
+}
+
 /// A restriction that certain types must be the same size. The use of
 /// `transmute` gives rise to these restrictions. These generally
 /// cannot be checked until trans; therefore, each call to `transmute`
@@ -827,6 +828,10 @@ pub struct ctxt<'tcx> {
 
     /// Caches CoerceUnsized kinds for impls on custom types.
     pub custom_coerce_unsized_kinds: RefCell<DefIdMap<CustomCoerceUnsized>>,
+
+    /// Maps a cast expression to its kind. This is keyed on the
+    /// *from* expression of the cast, not the cast itself.
+    pub cast_kinds: RefCell<NodeMap<cast::CastKind>>,
 }
 
 impl<'tcx> ctxt<'tcx> {
@@ -2817,6 +2822,7 @@ pub fn mk_ctxt<'tcx>(s: Session,
         type_impls_sized_cache: RefCell::new(HashMap::new()),
         const_qualif_map: RefCell::new(NodeMap()),
         custom_coerce_unsized_kinds: RefCell::new(DefIdMap()),
+        cast_kinds: RefCell::new(NodeMap()),
    }
 }
 

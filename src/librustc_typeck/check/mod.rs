@@ -528,6 +528,9 @@ fn check_bare_fn<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             upvar::closure_analyze_fn(&fcx, fn_id, decl, body);
             fcx.select_all_obligations_or_error();
             fcx.check_casts();
+
+            fcx.select_all_obligations_or_error(); // Casts can introduce new obligations.
+
             regionck::regionck_fn(&fcx, fn_id, fn_span, decl, body);
             writeback::resolve_type_vars_in_fn(&fcx, decl, body);
         }
@@ -1112,20 +1115,20 @@ fn report_cast_to_unsized_type<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                          span: Span,
                                          t_span: Span,
                                          e_span: Span,
-                                         t_1: Ty<'tcx>,
-                                         t_e: Ty<'tcx>,
+                                         t_cast: Ty<'tcx>,
+                                         t_expr: Ty<'tcx>,
                                          id: ast::NodeId) {
-    let tstr = fcx.infcx().ty_to_string(t_1);
+    let tstr = fcx.infcx().ty_to_string(t_cast);
     fcx.type_error_message(span, |actual| {
         format!("cast to unsized type: `{}` as `{}`", actual, tstr)
-    }, t_e, None);
-    match t_e.sty {
+    }, t_expr, None);
+    match t_expr.sty {
         ty::ty_rptr(_, ty::mt { mutbl: mt, .. }) => {
             let mtstr = match mt {
                 ast::MutMutable => "mut ",
                 ast::MutImmutable => ""
             };
-            if ty::type_is_trait(t_1) {
+            if ty::type_is_trait(t_cast) {
                 match fcx.tcx().sess.codemap().span_to_snippet(t_span) {
                     Ok(s) => {
                         fcx.tcx().sess.span_suggestion(t_span,
@@ -1581,13 +1584,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                                  span)
     }
 
-    pub fn type_is_fat_ptr(&self, ty: Ty<'tcx>, span: Span) -> bool {
-        if let Some(mt) = ty::deref(ty, true) {
-            return !self.type_is_known_to_be_sized(mt.ty, span);
-        }
-        false
-    }
-
     pub fn register_builtin_bound(&self,
                                   ty: Ty<'tcx>,
                                   builtin_bound: ty::BuiltinBound,
@@ -1810,11 +1806,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn check_casts(&self) {
         let mut deferred_cast_checks = self.inh.deferred_cast_checks.borrow_mut();
-        for check in deferred_cast_checks.iter() {
-            cast::check_cast(self, check);
+        for cast in deferred_cast_checks.drain(..) {
+            cast.check(self);
         }
-
-        deferred_cast_checks.clear();
     }
 
     fn select_all_obligations_and_apply_defaults(&self) {
@@ -3410,24 +3404,24 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
 
         // Find the type of `e`. Supply hints based on the type we are casting to,
         // if appropriate.
-        let t_1 = fcx.to_ty(t);
-        let t_1 = structurally_resolved_type(fcx, expr.span, t_1);
-        check_expr_with_expectation(fcx, e, ExpectCastableToType(t_1));
-        let t_e = fcx.expr_ty(e);
+        let t_cast = fcx.to_ty(t);
+        let t_cast = structurally_resolved_type(fcx, expr.span, t_cast);
+        check_expr_with_expectation(fcx, e, ExpectCastableToType(t_cast));
+        let t_expr = fcx.expr_ty(e);
 
         // Eagerly check for some obvious errors.
-        if ty::type_is_error(t_e) {
+        if ty::type_is_error(t_expr) {
             fcx.write_error(id);
-        } else if !fcx.type_is_known_to_be_sized(t_1, expr.span) {
-            report_cast_to_unsized_type(fcx, expr.span, t.span, e.span, t_1, t_e, id);
+        } else if !fcx.type_is_known_to_be_sized(t_cast, expr.span) {
+            report_cast_to_unsized_type(fcx, expr.span, t.span, e.span, t_cast, t_expr, id);
         } else {
             // Write a type for the whole expression, assuming everything is going
             // to work out Ok.
-            fcx.write_ty(id, t_1);
+            fcx.write_ty(id, t_cast);
 
             // Defer other checks until we're done type checking.
             let mut deferred_cast_checks = fcx.inh.deferred_cast_checks.borrow_mut();
-            let cast_check = cast::CastCheck::new((**e).clone(), t_e, t_1, expr.span);
+            let cast_check = cast::CastCheck::new((**e).clone(), t_expr, t_cast, expr.span);
             deferred_cast_checks.push(cast_check);
         }
       }

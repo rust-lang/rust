@@ -181,7 +181,6 @@ pub fn main() {
 
   println!("{:?}", true as isize);
   println!("{:?}", true as usize);
-  println!("{:?}", true as *const libc::FILE);
   println!("{:?}", true as i8);
   println!("{:?}", true as i16);
   println!("{:?}", true as i32);
@@ -190,8 +189,6 @@ pub fn main() {
   println!("{:?}", true as u16);
   println!("{:?}", true as u32);
   println!("{:?}", true as u64);
-  println!("{:?}", true as f32);
-  println!("{:?}", true as f64);
 
   println!("{:?}", 1f32 as isize);
   println!("{:?}", 1f32 as usize);

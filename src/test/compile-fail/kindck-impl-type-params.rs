@@ -28,7 +28,6 @@ fn f<T>(val: T) {
     let a = &t as &Gettable<T>;
     //~^ ERROR the trait `core::marker::Send` is not implemented
     //~^^ ERROR the trait `core::marker::Copy` is not implemented
-    //~^^^ ERROR the parameter type `T` may not live long enough
 }
 
 fn g<T>(val: T) {
