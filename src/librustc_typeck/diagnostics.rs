@@ -443,6 +443,48 @@ it has been disabled for now.
 [iss20126]: https://github.com/rust-lang/rust/issues/20126
 "##,
 
+E0185: r##"
+An associated function for a trait was defined to be static, but an
+implementation of the trait declared the same function to be a method (i.e. to
+take a `self` parameter).
+
+Here's an example of this error:
+
+```
+trait Foo {
+    fn foo();
+}
+
+struct Bar;
+
+impl Foo for Bar {
+    // error, method `foo` has a `&self` declaration in the impl, but not in
+    // the trait
+    fn foo(&self) {}
+}
+"##,
+
+E0186: r##"
+An associated function for a trait was defined to be a method (i.e. to take a
+`self` parameter), but an implementation of the trait declared the same function
+to be static.
+
+Here's an example of this error:
+
+```
+trait Foo {
+    fn foo(&self);
+}
+
+struct Bar;
+
+impl Foo for Bar {
+    // error, method `foo` has a `&self` declaration in the trait, but not in
+    // the impl
+    fn foo() {}
+}
+"##,
+
 E0197: r##"
 Inherent implementations (one that do not implement a trait but provide
 methods associated with a type) are always safe because they are not
@@ -828,8 +870,6 @@ register_diagnostics! {
     E0174, // explicit use of unboxed closure methods are experimental
     E0182,
     E0183,
-    E0185,
-    E0186,
     E0187, // can't infer the kind of the closure
     E0188, // types differ in mutability
     E0189, // can only cast a boxed pointer to a boxed object
