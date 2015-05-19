@@ -787,7 +787,7 @@ impl<'a> Formatter<'a> {
     ///
     /// impl fmt::Debug for Foo {
     ///     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-    ///         fnt.debug_list().entries(self.0.iter()).finish()
+    ///         fmt.debug_list().entries(self.0.iter()).finish()
     ///     }
     /// }
     ///
@@ -839,7 +839,7 @@ impl<'a> Formatter<'a> {
     ///
     /// impl fmt::Debug for Foo {
     ///     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-    ///         fmt.debug_map().entries(self.0.iter()).finish()
+    ///         fmt.debug_map().entries(self.0.iter().map(|&(ref k, ref v)| (k, v))).finish()
     ///     }
     /// }
     ///
