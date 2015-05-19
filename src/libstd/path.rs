@@ -1237,7 +1237,7 @@ impl Path {
     /// # Examples
     ///
     /// ```
-    /// use std::path::Path;
+    /// # use std::path::Path;
     ///
     /// Path::new("foo.txt");
     /// ```
@@ -1245,7 +1245,7 @@ impl Path {
     /// You can create `Path`s from `String`s, or even other `Path`s:
     ///
     /// ```
-    /// use std::path::Path;
+    /// # use std::path::Path;
     ///
     /// let string = String::from("foo.txt");
     /// let from_string = Path::new(&string);
@@ -1262,7 +1262,7 @@ impl Path {
     /// # Examples
     ///
     /// ```
-    /// use std::path::Path;
+    /// # use std::path::Path;
     ///
     /// let os_str = Path::new("foo.txt").as_os_str();
     /// assert_eq!(os_str, std::ffi::OsStr::new("foo.txt"));
@@ -1279,7 +1279,7 @@ impl Path {
     /// # Examples
     ///
     /// ```
-    /// use std::path::Path;
+    /// # use std::path::Path;
     ///
     /// let path_str = Path::new("foo.txt").to_str();
     //// assert_eq!(path_str, Some("foo.txt"));
@@ -1296,7 +1296,7 @@ impl Path {
     /// # Examples
     ///
     /// ```
-    /// use std::path::Path;
+    /// # use std::path::Path;
     ///
     /// let path_str = Path::new("foo.txt").to_string_lossy();
     /// assert_eq!(path_str, "foo.txt");
@@ -1311,7 +1311,7 @@ impl Path {
     /// # Examples
     ///
     /// ```
-    /// use std::path::Path;
+    /// # use std::path::Path;
     ///
     /// let path_buf = Path::new("foo.txt").to_path_buf();
     /// assert_eq!(path_buf, std::path::PathBuf::from("foo.txt"));
@@ -1333,7 +1333,7 @@ impl Path {
     /// # Examples
     ///
     /// ```
-    /// use std::path::Path;
+    /// # use std::path::Path;
     ///
     /// assert!(!Path::new("foo.txt").is_absolute());
     /// ```
@@ -1348,7 +1348,7 @@ impl Path {
     /// # Examples
     ///
     /// ```
-    /// use std::path::Path;
+    /// # use std::path::Path;
     ///
     /// assert!(Path::new("foo.txt").is_relative());
     /// ```
@@ -1379,7 +1379,7 @@ impl Path {
     /// # Examples
     ///
     /// ```
-    /// use std::path::Path;
+    /// # use std::path::Path;
     ///
     /// assert!(Path::new("/etc/passwd").has_root());
     /// ```
@@ -1395,7 +1395,7 @@ impl Path {
     /// # Examples
     ///
     /// ```
-    /// use std::path::Path;
+    /// # use std::path::Path;
     ///
     /// let path = Path::new("/foo/bar");
     /// let parent = path.parent().unwrap();
@@ -1425,7 +1425,7 @@ impl Path {
     /// # Examples
     ///
     /// ```
-    /// use std::path::Path;
+    /// # use std::path::Path;
     /// use std::ffi::OsStr;
     ///
     /// let path = Path::new("foo.txt");
@@ -1458,7 +1458,7 @@ impl Path {
     /// # Examples
     ///
     /// ```
-    /// use std::path::Path;
+    /// # use std::path::Path;
     ///
     /// let path = Path::new("/etc/passwd");
     ///
@@ -1478,7 +1478,7 @@ impl Path {
     /// # Examples
     ///
     /// ```
-    /// use std::path::Path;
+    /// # use std::path::Path;
     ///
     /// let path = Path::new("/etc/passwd");
     ///
@@ -1501,7 +1501,7 @@ impl Path {
     /// # Examples
     ///
     /// ```
-    /// use std::path::Path;
+    /// # use std::path::Path;
     ///
     /// let path = Path::new("foo.rs");
     ///
@@ -1524,7 +1524,7 @@ impl Path {
     /// # Examples
     ///
     /// ```
-    /// use std::path::Path;
+    /// # use std::path::Path;
     ///
     /// let path = Path::new("foo.rs");
     ///
@@ -1542,7 +1542,7 @@ impl Path {
     /// # Examples
     ///
     /// ```
-    /// use std::path::{Path, PathBuf};
+    /// # use std::path::{Path, PathBuf};
     ///
     /// assert_eq!(Path::new("/etc").join("passwd"), PathBuf::from("/etc/passwd"));
     /// ```
@@ -1560,7 +1560,7 @@ impl Path {
     /// # Examples
     ///
     /// ```
-    /// use std::path::{Path, PathBuf};
+    /// # use std::path::{Path, PathBuf};
     ///
     /// let path = Path::new("/tmp/foo.txt");
     /// assert_eq!(path.with_file_name("bar.txt"), PathBuf::from("/tmp/bar.txt"));
@@ -1579,7 +1579,7 @@ impl Path {
     /// # Examples
     ///
     /// ```
-    /// use std::path::{Path, PathBuf};
+    /// # use std::path::{Path, PathBuf};
     ///
     /// let path = Path::new("foo.rs");
     /// assert_eq!(path.with_extension("txt"), PathBuf::from("foo.txt"));
@@ -1596,7 +1596,7 @@ impl Path {
     /// # Examples
     ///
     /// ```
-    /// use std::path::{Path, Component};
+    /// # use std::path::{Path, Component};
     /// use std::ffi::OsStr;
     ///
     /// let mut components = Path::new("/tmp/foo.txt").components();
@@ -1623,7 +1623,7 @@ impl Path {
     /// # Examples
     ///
     /// ```
-    /// use std::path::{self, Path};
+    /// # use std::path::{self, Path};
     /// use std::ffi::OsStr;
     ///
     /// let mut it = Path::new("/tmp/foo.txt").iter();
@@ -1643,7 +1643,7 @@ impl Path {
     /// # Examples
     ///
     /// ```
-    /// use std::path::Path;
+    /// # use std::path::Path;
     ///
     /// let path = Path::new("/tmp/foo.rs");
     ///
