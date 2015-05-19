@@ -348,7 +348,7 @@ nav.sub {
 .content .impl-items .docblock, .content .impl-items .stability {
     margin-left: 40px;
 }
-.content .impl-items .method, .content .impl-items .type {
+.content .impl-items .method, .content .impl-items > .type {
     margin-left: 20px;
 }
 
