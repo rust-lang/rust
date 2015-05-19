@@ -16,33 +16,37 @@ using namespace llvm;
 using namespace llvm::sys;
 using namespace llvm::object;
 
+// libmorestack is not used on Windows
+#ifndef _WIN32
+extern "C" void __morestack(void);
+
+static void* morestack_addr() {
+    return reinterpret_cast<void*>(__morestack);
+}
+#endif
+
 class RustJITMemoryManager : public SectionMemoryManager
 {
     typedef SectionMemoryManager Base;
 
-    const void *morestack;
-
     public:
 
-    RustJITMemoryManager(const void *morestack_ptr)
-        : morestack(morestack_ptr)
-        {}
+    RustJITMemoryManager() {}
 
     uint64_t getSymbolAddress(const std::string &Name) override
     {
+#ifndef _WIN32
         if (Name == "__morestack" || Name == "___morestack")
-            return reinterpret_cast<uint64_t>(morestack);
+            return reinterpret_cast<uint64_t>(__morestack);
+        if (Name == "__morestack_addr" || Name == "___morestack_addr")
+            return reinterpret_cast<uint64_t>(morestack_addr);
+#endif
 
         return Base::getSymbolAddress(Name);
     }
 };
 
 DEFINE_SIMPLE_CONVERSION_FUNCTIONS(RustJITMemoryManager, LLVMRustJITMemoryManagerRef)
-
-extern "C" LLVMRustJITMemoryManagerRef LLVMRustCreateJITMemoryManager(void *morestack)
-{
-    return wrap(new RustJITMemoryManager(morestack));
-}
 
 extern "C" LLVMBool LLVMRustLoadDynamicLibrary(const char *path)
 {
@@ -60,6 +64,13 @@ extern "C" LLVMBool LLVMRustLoadDynamicLibrary(const char *path)
 extern "C" void LLVMExecutionEngineAddModule(
     LLVMExecutionEngineRef eeref, LLVMModuleRef mref)
 {
+#ifdef _WIN32
+    // On Windows, MCJIT must generate ELF objects
+    std::string target = getProcessTriple();
+    target += "-elf";
+    target = Triple::normalize(target);
+    unwrap(mref)->setTargetTriple(target);
+#endif
     LLVMAddModule(eeref, mref);
 }
 
@@ -74,13 +85,20 @@ extern "C" LLVMBool LLVMExecutionEngineRemoveModule(
     return ee->removeModule(m);
 }
 
-extern "C" LLVMExecutionEngineRef LLVMBuildExecutionEngine(
-    LLVMModuleRef mod, LLVMRustJITMemoryManagerRef mref)
+extern "C" LLVMExecutionEngineRef LLVMBuildExecutionEngine(LLVMModuleRef mod)
 {
     // These are necessary for code generation to work properly.
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();
     InitializeNativeTargetAsmParser();
+
+#ifdef _WIN32
+    // On Windows, MCJIT must generate ELF objects
+    std::string target = getProcessTriple();
+    target += "-elf";
+    target = Triple::normalize(target);
+    unwrap(mod)->setTargetTriple(target);
+#endif
 
     std::string error_str;
     TargetOptions options;
@@ -88,13 +106,15 @@ extern "C" LLVMExecutionEngineRef LLVMBuildExecutionEngine(
     options.JITEmitDebugInfo = true;
     options.NoFramePointerElim = true;
 
+    RustJITMemoryManager *mm = new RustJITMemoryManager;
+
     ExecutionEngine *ee =
     #if LLVM_VERSION_MINOR >= 6
         EngineBuilder(std::unique_ptr<Module>(unwrap(mod)))
-            .setMCJITMemoryManager(std::unique_ptr<RustJITMemoryManager>(unwrap(mref)))
+            .setMCJITMemoryManager(std::unique_ptr<RustJITMemoryManager>(mm))
     #else
         EngineBuilder(unwrap(mod))
-            .setMCJITMemoryManager(unwrap(mref))
+            .setMCJITMemoryManager(mm)
     #endif
             .setEngineKind(EngineKind::JIT)
             .setErrorStr(&error_str)

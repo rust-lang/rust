@@ -468,9 +468,6 @@ pub type BuilderRef = *mut Builder_opaque;
 pub enum ExecutionEngine_opaque {}
 pub type ExecutionEngineRef = *mut ExecutionEngine_opaque;
 #[allow(missing_copy_implementations)]
-pub enum RustJITMemoryManager_opaque {}
-pub type RustJITMemoryManagerRef = *mut RustJITMemoryManager_opaque;
-#[allow(missing_copy_implementations)]
 pub enum MemoryBuffer_opaque {}
 pub type MemoryBufferRef = *mut MemoryBuffer_opaque;
 #[allow(missing_copy_implementations)]
@@ -1080,10 +1077,7 @@ extern {
     pub fn LLVMDisposeBuilder(Builder: BuilderRef);
 
     /* Execution engine */
-    pub fn LLVMRustCreateJITMemoryManager(morestack: *const ())
-                                          -> RustJITMemoryManagerRef;
-    pub fn LLVMBuildExecutionEngine(Mod: ModuleRef,
-                                    MM: RustJITMemoryManagerRef) -> ExecutionEngineRef;
+    pub fn LLVMBuildExecutionEngine(Mod: ModuleRef) -> ExecutionEngineRef;
     pub fn LLVMDisposeExecutionEngine(EE: ExecutionEngineRef);
     pub fn LLVMExecutionEngineFinalizeObject(EE: ExecutionEngineRef);
     pub fn LLVMRustLoadDynamicLibrary(path: *const c_char) -> Bool;
