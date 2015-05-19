@@ -730,8 +730,9 @@ fn trans_field<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
             let info = Load(bcx, get_len(bcx, base_datum.val));
             Store(bcx, info, get_len(bcx, scratch.val));
 
-            DatumBlock::new(bcx, scratch.to_expr_datum())
-
+            // Always generate an lvalue datum, because this pointer doesn't own
+            // the data and cleanup is scheduled elsewhere.
+            DatumBlock::new(bcx, Datum::new(scratch.val, scratch.ty, LvalueExpr))
         }
     })
 
