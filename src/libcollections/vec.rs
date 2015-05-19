@@ -91,7 +91,6 @@ static MAX_MEMORY_SIZE: usize = isize::MAX as usize;
 /// # Examples
 ///
 /// ```
-/// # #![feature(collections)]
 /// let mut vec = Vec::new();
 /// vec.push(1);
 /// vec.push(2);
@@ -105,9 +104,9 @@ static MAX_MEMORY_SIZE: usize = isize::MAX as usize;
 /// vec[0] = 7;
 /// assert_eq!(vec[0], 7);
 ///
-/// vec.push_all(&[1, 2, 3]);
+/// vec.extend([1, 2, 3].iter().cloned());
 ///
-/// for x in vec.iter() {
+/// for x in &vec {
 ///     println!("{}", x);
 /// }
 /// assert_eq!(vec, [7, 1, 2, 3]);
@@ -369,9 +368,8 @@ impl<T> Vec<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
     /// let mut vec = Vec::with_capacity(10);
-    /// vec.push_all(&[1, 2, 3]);
+    /// vec.extend([1, 2, 3].iter().cloned());
     /// assert_eq!(vec.capacity(), 10);
     /// vec.shrink_to_fit();
     /// assert!(vec.capacity() >= 3);
@@ -425,7 +423,6 @@ impl<T> Vec<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
     /// let mut vec = vec![1, 2, 3, 4];
     /// vec.truncate(2);
     /// assert_eq!(vec, [1, 2]);
@@ -555,7 +552,6 @@ impl<T> Vec<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
     /// let mut v = vec![1, 2, 3];
     /// assert_eq!(v.remove(1), 2);
     /// assert_eq!(v, [1, 3]);
@@ -743,7 +739,7 @@ impl<T> Vec<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections_drain, collections_range)]
+    /// # #![feature(collections_drain)]
     ///
     /// // Draining using `..` clears the whole vector.
     /// let mut v = vec![1, 2, 3];
