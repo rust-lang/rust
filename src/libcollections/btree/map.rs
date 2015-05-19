@@ -926,7 +926,7 @@ impl<K: Ord, V: Ord> Ord for BTreeMap<K, V> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K: Debug, V: Debug> Debug for BTreeMap<K, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.iter().fold(f.debug_map(), |b, (k, v)| b.entry(k, v)).finish()
+        f.debug_map().entries(self.iter()).finish()
     }
 }
 
