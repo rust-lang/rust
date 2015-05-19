@@ -23,7 +23,7 @@ Language
 * Digits of binary and octal literals are [lexed more eagerly][lex] to
   improve error messages and macro behavior. For example, `0b1234` is
   now lexed as `0b1234` instead of two tokens, `0b1` and `234`.
-* Trait bounds [are always invariant][inv], eleminating the need for
+* Trait bounds [are always invariant][inv], eliminating the need for
   the `PhantomFn` and `MarkerTrait` lang items, which have been
   removed.
 * ["-" is no longer a valid character in crate names][cr], the `extern crate
@@ -162,7 +162,7 @@ Misc
 
 
 Version 1.0.0-alpha.2 (February 2015)
--------------------------------------
+=====================================
 
 * ~1300 changes, numerous bugfixes
 
@@ -260,8 +260,9 @@ Version 1.0.0-alpha.2 (February 2015)
 [ufcs-rfc]: https://github.com/rust-lang/rfcs/blob/master/text/0132-ufcs.md
 [un]: https://github.com/rust-lang/rust/pull/22256
 
+
 Version 1.0.0-alpha (January 2015)
-----------------------------------
+==================================
 
   * ~2400 changes, numerous bugfixes
 
@@ -446,8 +447,9 @@ Version 1.0.0-alpha (January 2015)
 [trpl]: http://doc.rust-lang.org/book/index.html
 [rbe]: http://rustbyexample.com/
 
+
 Version 0.12.0 (October 2014)
------------------------------
+=============================
 
   * ~1900 changes, numerous bugfixes
 
@@ -568,8 +570,9 @@ Version 0.12.0 (October 2014)
     * Official Rust binaries on Linux are more compatible with older
       kernels and distributions, built on CentOS 5.10.
 
+
 Version 0.11.0 (July 2014)
--------------------------
+==========================
 
   * ~1700 changes, numerous bugfixes
 
@@ -700,8 +703,9 @@ Version 0.11.0 (July 2014)
     * Error message related to non-exhaustive match expressions have been
       greatly improved.
 
+
 Version 0.10 (April 2014)
--------------------------
+=========================
 
   * ~1500 changes, numerous bugfixes
 
@@ -866,8 +870,9 @@ Version 0.10 (April 2014)
       * search works across crates that have been rendered to the same output
         directory.
 
+
 Version 0.9 (January 2014)
---------------------------
+==========================
 
    * ~1800 changes, numerous bugfixes
 
@@ -1031,8 +1036,9 @@ Version 0.9 (January 2014)
       * `rustc` adds a `--dep-info` flag for communicating dependencies to
         build tools.
 
+
 Version 0.8 (September 2013)
---------------------------
+============================
 
    * ~2200 changes, numerous bugfixes
 
@@ -1186,8 +1192,9 @@ Version 0.8 (September 2013)
       * A new documentation backend, rustdoc_ng, is available for use. It is
         still invoked through the normal `rustdoc` command.
 
+
 Version 0.7 (July 2013)
------------------------
+=======================
 
    * ~2000 changes, numerous bugfixes
 
@@ -1302,8 +1309,9 @@ Version 0.7 (July 2013)
       * Various improvements to rustdoc.
       * Improvements to rustpkg (see the detailed release notes).
 
+
 Version 0.6 (April 2013)
-------------------------
+========================
 
    * ~2100 changes, numerous bugfixes
 
@@ -1404,8 +1412,9 @@ Version 0.6 (April 2013)
       * Rust code may be embedded in foreign code under limited circumstances
       * Inline assembler supported by new asm!() syntax extension.
 
+
 Version 0.5 (December 2012)
----------------------------
+===========================
 
    * ~900 changes, numerous bugfixes
 
@@ -1460,8 +1469,9 @@ Version 0.5 (December 2012)
       * Added a preliminary REPL, `rusti`
       * License changed from MIT to dual MIT/APL2
 
+
 Version 0.4 (October 2012)
---------------------------
+==========================
 
    * ~2000 changes, numerous bugfixes
 
@@ -1515,8 +1525,9 @@ Version 0.4 (October 2012)
         Rust-based (visitor) code
       * All hash functions and tables converted to secure, randomized SipHash
 
+
 Version 0.3  (July 2012)
-------------------------
+========================
 
    * ~1900 changes, numerous bugfixes
 
@@ -1573,8 +1584,9 @@ Version 0.3  (July 2012)
    * Tool improvements
       * Cargo automatically resolves dependencies
 
+
 Version 0.2  (March 2012)
--------------------------
+=========================
 
    * >1500 changes, numerous bugfixes
 
@@ -1613,8 +1625,9 @@ Version 0.2  (March 2012)
       * Merged per-platform std::{os*, fs*} to core::{libc, os}
       * Extensive cleanup, regularization in libstd, libcore
 
+
 Version 0.1  (January 20, 2012)
--------------------------------
+===============================
 
    * Most language features work, including:
       * Unique pointers, unique closures, move semantics
