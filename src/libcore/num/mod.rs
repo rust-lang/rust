@@ -132,15 +132,11 @@ macro_rules! int_impl {
         ///
         /// Leading and trailing whitespace represent an error.
         ///
-        /// # Arguments
+        /// # Examples
         ///
-        /// * src - A string slice
-        /// * radix - The base to use. Must lie in the range [2 .. 36]
-        ///
-        /// # Return value
-        ///
-        /// `Err(ParseIntError)` if the string did not represent a valid number.
-        /// Otherwise, `Ok(n)` where `n` is the integer represented by `src`.
+        /// ```
+        /// assert_eq!(u32::from_str_radix("A", 16), Some(10));
+        /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[allow(deprecated)]
         pub fn from_str_radix(src: &str, radix: u32) -> Result<$T, ParseIntError> {
