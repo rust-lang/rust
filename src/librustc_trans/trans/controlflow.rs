@@ -166,31 +166,24 @@ pub fn trans_if<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let cond_val = unpack_result!(bcx, expr::trans(bcx, cond).to_llbool());
 
     // Drop branches that are known to be impossible
-    if is_const(cond_val) && !is_undef(cond_val) {
-        if const_to_uint(cond_val) == 1 {
-            match els {
-                Some(elexpr) => {
-                    let mut trans = TransItemVisitor { ccx: bcx.fcx.ccx };
-                    trans.visit_expr(&*elexpr);
-                }
-                None => {}
-            }
+    if let Some(cv) = const_to_opt_uint(cond_val) {
+        if cv == 1 {
             // if true { .. } [else { .. }]
             bcx = trans_block(bcx, &*thn, dest);
             trans::debuginfo::clear_source_location(bcx.fcx);
+
+            if let Some(elexpr) = els {
+                let mut trans = TransItemVisitor { ccx: bcx.fcx.ccx };
+                trans.visit_expr(&*elexpr);
+            }
         } else {
-            let mut trans = TransItemVisitor { ccx: bcx.fcx.ccx } ;
+            // if false { .. } [else { .. }]
+            let mut trans = TransItemVisitor { ccx: bcx.fcx.ccx };
             trans.visit_block(&*thn);
 
-            match els {
-                // if false { .. } else { .. }
-                Some(elexpr) => {
-                    bcx = expr::trans_into(bcx, &*elexpr, dest);
-                    trans::debuginfo::clear_source_location(bcx.fcx);
-                }
-
-                // if false { .. }
-                None => { }
+            if let Some(elexpr) = els {
+                bcx = expr::trans_into(bcx, &*elexpr, dest);
+                trans::debuginfo::clear_source_location(bcx.fcx);
             }
         }
 
