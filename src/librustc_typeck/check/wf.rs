@@ -124,10 +124,9 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                 reject_non_type_param_bounds(ccx.tcx, item.span, &trait_predicates);
                 if ty::trait_has_default_impl(ccx.tcx, local_def(item.id)) {
                     if !items.is_empty() {
-                        ccx.tcx.sess.span_err(
-                            item.span,
-                            "traits with default impls (`e.g. unsafe impl Trait for ..`) must \
-                            have no methods or associated items")
+                        span_err!(ccx.tcx.sess, item.span, E0380,
+                                  "traits with default impls (`e.g. unsafe impl \
+                                  Trait for ..`) must have no methods or associated items")
                     }
                 }
             }
@@ -353,10 +352,8 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                          span: Span,
                          param_name: ast::Name)
     {
-        self.tcx().sess.span_err(
-            span,
-            &format!("parameter `{}` is never used",
-                     param_name.user_string(self.tcx())));
+        span_err!(self.tcx().sess, span, E0392,
+            "parameter `{}` is never used", param_name.user_string(self.tcx()));
 
         let suggested_marker_id = self.tcx().lang_items.phantom_data();
         match suggested_marker_id {
