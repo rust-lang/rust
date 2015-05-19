@@ -16,7 +16,7 @@ this is just convention.)
 
 There’s an alternate form of `vec!` for repeating an initial value:
 
-```
+```rust
 let v = vec![0; 10]; // ten zeroes
 ```
 
