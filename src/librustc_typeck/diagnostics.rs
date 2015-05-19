@@ -573,6 +573,14 @@ impl Foo {
 ```
 "##,
 
+E0202: r##"
+Inherent associated types were part of [RFC 195] but are not yet implemented.
+See [the tracking issue][iss8995] for the status of this implementation.
+
+[RFC 195]: https://github.com/rust-lang/rfcs/pull/195
+[iss8995]: https://github.com/rust-lang/rust/issues/8995
+"##,
+
 E0204: r##"
 An attempt to implement the `Copy` trait for a struct failed because one of the
 fields does not implement `Copy`. To fix this, you must implement `Copy` for the
@@ -881,7 +889,6 @@ register_diagnostics! {
     E0194,
     E0195, // lifetime parameters or bounds on method do not match the trait declaration
     E0196, // cannot determine a type for this closure
-    E0202, // associated items are not allowed in inherent impls
     E0203, // type parameter has more than one relaxed default bound,
            // and only one is supported
     E0207, // type parameter is not constrained by the impl trait, self type, or predicate
