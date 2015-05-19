@@ -261,6 +261,37 @@ let x_is_nonzero = x as bool;
 ```
 "##,
 
+E0055: r##"
+During a method call, a value is automatically dereferenced as many times as
+needed to make the value's type match the method's receiver. The catch is that
+the compiler will only attempt to dereference a number of times up to the
+recursion limit (which can be set via the `recursion_limit` attribute).
+
+For a somewhat artificial example:
+
+```
+#![recursion_limit="2"]
+
+struct Foo;
+
+impl Foo {
+    fn foo(&self) {}
+}
+
+fn main() {
+    let foo = Foo;
+    let ref_foo = &&Foo;
+
+    // error, reached the recursion limit while auto-dereferencing &&Foo
+    ref_foo.foo();
+}
+```
+
+One fix may be to increase the recursion limit. Note that it is possible to
+create an infinite recursion of dereferencing, in which case the only fix is to
+somehow break the recursion.
+"##,
+
 E0062: r##"
 This error indicates that during an attempt to build a struct or struct-like
 enum variant, one of the fields was specified more than once. Each field should
@@ -511,6 +542,31 @@ enum Empty {}
 ```
 "##,
 
+E0089: r##"
+Not enough type parameters were supplied for a function. For example:
+
+```
+fn foo<T, U>() {}
+
+fn main() {
+    foo::<f64>(); // error, expected 2 parameters, found 1 parameter
+}
+```
+
+Note that if a function takes multiple type parameters but you want the compiler
+to infer some of them, you can use type placeholders:
+
+```
+fn foo<T, U>(x: T) {}
+
+fn main() {
+    let x: bool = true;
+    foo::<f64>(x);    // error, expected 2 parameters, found 1 parameter
+    foo::<_, f64>(x); // same as `foo::<bool, f64>(x)`
+}
+```
+"##,
+
 E0106: r##"
 This error indicates that a lifetime is missing from a type. If it is an error
 inside a function signature, the problem may be with failing to adhere to the
@@ -705,6 +761,12 @@ impl Foo for Bar {
     // the impl
     fn foo() {}
 }
+"##,
+
+E0192: r##"
+Negative impls are only allowed for traits with default impls. For more
+information see the [opt-in builtin traits RFC](https://github.com/rust-lang/
+rfcs/blob/master/text/0019-opt-in-builtin-traits.md).
 "##,
 
 E0197: r##"
@@ -936,6 +998,12 @@ const C: [u32; u8::MAX + f64::EPSILON] = [];
 ```
 "##,
 
+E0318: r##"
+Default impls for a trait must be located in the same crate where the trait was
+defined. For more information see the [opt-in builtin traits RFC](https://github
+.com/rust-lang/rfcs/blob/master/text/0019-opt-in-builtin-traits.md).
+"##,
+
 E0322: r##"
 The `Sized` trait is a special trait built-in to the compiler for types with a
 constant size known at compile-time. This trait is automatically implemented
@@ -1045,7 +1113,6 @@ register_diagnostics! {
     E0040, // explicit use of destructor method
     E0044, // foreign items may not have type parameters
     E0045, // variadic function must have C calling convention
-    E0055, // method has an incompatible type for trait
     E0057, // method has an incompatible type for trait
     E0059,
     E0060,
@@ -1060,7 +1127,6 @@ register_diagnostics! {
     E0086,
     E0087,
     E0088,
-    E0089,
     E0090,
     E0091,
     E0092,
@@ -1098,7 +1164,6 @@ register_diagnostics! {
     E0189, // deprecated: can only cast a boxed pointer to a boxed object
     E0190, // deprecated: can only cast a &-pointer to an &-object
     E0191, // value of the associated type must be specified
-    E0192, // negative impls are allowed just for `Send` and `Sync`
     E0193, // cannot bound type where clause bounds may only be attached to types
            // involving type parameters
     E0194,
@@ -1146,7 +1211,6 @@ register_diagnostics! {
     E0246, // illegal recursive type
     E0247, // found module name used as a type
     E0248, // found value name used as a type
-    E0318, // can't create default impls for traits outside their crates
     E0319, // trait impls for defaulted traits allowed just for structs/enums
     E0320, // recursive overflow during dropck
     E0321, // extended coherence rules for defaulted traits violated
