@@ -219,7 +219,7 @@ to it.
 ## Lifetime Elision
 
 Rust supports powerful local type inference in function bodies, but it’s
-forbidden in item signatures to allow reasoning about the types just based in
+forbidden in item signatures to allow reasoning about the types based on
 the item signature alone. However, for ergonomic reasons a very restricted
 secondary inference algorithm called “lifetime elision” applies in function
 signatures. It infers only based on the signature components themselves and not
