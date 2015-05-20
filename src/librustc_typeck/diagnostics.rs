@@ -139,20 +139,36 @@ and [RFC 809] for more details.
 "##,
 
 E0067: r##"
-The left-hand side of an assignment operator must be an lvalue expression. An
-lvalue expression represents a memory location and includes item paths (ie,
-namespaced variables), dereferences, indexing expressions, and field
-references.
+The left-hand side of a compound assignment expression must be an lvalue
+expression. An lvalue expression represents a memory location and includes
+item paths (ie, namespaced variables), dereferences, indexing expressions,
+and field references.
 
+Let's start with some bad examples:
 ```
 use std::collections::LinkedList;
 
-// Good
-let mut list = LinkedList::new();
-
-
 // Bad: assignment to non-lvalue expression
 LinkedList::new() += 1;
+
+// ...
+
+fn some_func(i: &mut i32) {
+    i += 12; // Error : '+=' operation cannot be applied on a reference !
+}
+
+And now some good examples:
+```
+let mut i : i32 = 0;
+
+i += 12; // Good !
+
+// ...
+
+fn some_func(i: &mut i32) {
+    *i += 12; // Good !
+}
+
 ```
 "##,
 
