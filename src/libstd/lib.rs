@@ -109,7 +109,6 @@
 #![feature(box_syntax)]
 #![feature(collections)]
 #![feature(core)]
-#![feature(debug_builders)]
 #![feature(into_cow)]
 #![feature(lang_items)]
 #![feature(libc)]

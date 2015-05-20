@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(core, debug_builders)]
+#![feature(core)]
 
 pub trait DeclaredTrait {
     type Type;
