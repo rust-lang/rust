@@ -74,17 +74,6 @@
 //! `&foo()` or `match foo() { ref x => ... }`, where the user is
 //! implicitly requesting a temporary.
 //!
-//! Somewhat surprisingly, not all lvalue expressions yield lvalue datums
-//! when trans'd. Ultimately the reason for this is to micro-optimize
-//! the resulting LLVM. For example, consider the following code:
-//!
-//!     fn foo() -> Box<int> { ... }
-//!     let x = *foo();
-//!
-//! The expression `*foo()` is an lvalue, but if you invoke `expr::trans`,
-//! it will return an rvalue datum. See `deref_once` in expr.rs for
-//! more details.
-//!
 //! ### Rvalues in detail
 //!
 //! Rvalues datums are values with no cleanup scheduled. One must be
