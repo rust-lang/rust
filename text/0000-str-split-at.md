@@ -83,6 +83,8 @@ Implementing `split_at_mut` is not relevant for `str` at this time.
 
 # Drawbacks
 
+* `split_at` panics on 1) index out of bounds 2) index not on character
+  boundary.
 * Possible name confusion with other `str` methods like `.split()`
 * According to our developing API evolution and semver guidelines this is a
   breaking change but a (very) minor change. Adding methods is something we
