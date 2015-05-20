@@ -23,6 +23,8 @@ Lints included in this crate:
  - `redundant_closure`: Warns on usage of eta-reducible closures like `|a| foo(a)` (which can be written as just `foo`)
  - `identity_op`: Warns on identity operations like `x + 0` or `y / 1` (which can be reduced to `x` and `y`, respectively)
  - `mut_mut`: Warns on `&mut &mut` which is either a copy'n'paste error, or shows a fundamental misunderstanding of references
+ - `len_zero`: Warns on `_.len() == 0` and suggests using `_.is_empty()` (or similar comparisons with `>` or `!=`)
+ - `len_without_is_empty`: Warns on traits or impls that have a `.len()` but no `.is_empty()` method
 
 To use, add the following lines to your Cargo.toml:
 
