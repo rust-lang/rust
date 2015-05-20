@@ -2248,16 +2248,20 @@ fn deref_once<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     let r = match datum.ty.sty {
         ty::ty_uniq(content_ty) => {
+            // Make sure we have an lvalue datum here to get the
+            // proper cleanups scheduled
+            let datum = unpack_datum!(
+                bcx, datum.to_lvalue_datum(bcx, "deref", expr.id));
+
             if type_is_sized(bcx.tcx(), content_ty) {
-                deref_owned_pointer(bcx, expr, datum, content_ty)
+                let ptr = load_ty(bcx, datum.val, datum.ty);
+                DatumBlock::new(bcx, Datum::new(ptr, content_ty, LvalueExpr))
             } else {
                 // A fat pointer and a DST lvalue have the same representation
                 // just different types. Since there is no temporary for `*e`
                 // here (because it is unsized), we cannot emulate the sized
                 // object code path for running drop glue and free. Instead,
                 // we schedule cleanup for `e`, turning it into an lvalue.
-                let datum = unpack_datum!(
-                    bcx, datum.to_lvalue_datum(bcx, "deref", expr.id));
 
                 let datum = Datum::new(datum.val, content_ty, LvalueExpr);
                 DatumBlock::new(bcx, datum)
@@ -2294,53 +2298,6 @@ fn deref_once<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
            expr.id, method_call, r.datum.to_string(ccx));
 
     return r;
-
-    /// We microoptimize derefs of owned pointers a bit here. Basically, the idea is to make the
-    /// deref of an rvalue result in an rvalue. This helps to avoid intermediate stack slots in the
-    /// resulting LLVM. The idea here is that, if the `Box<T>` pointer is an rvalue, then we can
-    /// schedule a *shallow* free of the `Box<T>` pointer, and then return a ByRef rvalue into the
-    /// pointer. Because the free is shallow, it is legit to return an rvalue, because we know that
-    /// the contents are not yet scheduled to be freed. The language rules ensure that the contents
-    /// will be used (or moved) before the free occurs.
-    fn deref_owned_pointer<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                       expr: &ast::Expr,
-                                       datum: Datum<'tcx, Expr>,
-                                       content_ty: Ty<'tcx>)
-                                       -> DatumBlock<'blk, 'tcx, Expr> {
-        match datum.kind {
-            RvalueExpr(Rvalue { mode: ByRef }) => {
-                let scope = cleanup::temporary_scope(bcx.tcx(), expr.id);
-                let ptr = Load(bcx, datum.val);
-                if !type_is_zero_size(bcx.ccx(), content_ty) {
-                    bcx.fcx.schedule_free_value(scope, ptr, cleanup::HeapExchange, content_ty);
-                }
-            }
-            RvalueExpr(Rvalue { mode: ByValue }) => {
-                let scope = cleanup::temporary_scope(bcx.tcx(), expr.id);
-                if !type_is_zero_size(bcx.ccx(), content_ty) {
-                    bcx.fcx.schedule_free_value(scope, datum.val, cleanup::HeapExchange,
-                                                content_ty);
-                }
-            }
-            LvalueExpr => { }
-        }
-
-        // If we had an rvalue in, we produce an rvalue out.
-        let (llptr, kind) = match datum.kind {
-            LvalueExpr => {
-                (Load(bcx, datum.val), LvalueExpr)
-            }
-            RvalueExpr(Rvalue { mode: ByRef }) => {
-                (Load(bcx, datum.val), RvalueExpr(Rvalue::new(ByRef)))
-            }
-            RvalueExpr(Rvalue { mode: ByValue }) => {
-                (datum.val, RvalueExpr(Rvalue::new(ByRef)))
-            }
-        };
-
-        let datum = Datum { ty: content_ty, val: llptr, kind: kind };
-        DatumBlock { bcx: bcx, datum: datum }
-    }
 }
 
 #[derive(Debug)]
