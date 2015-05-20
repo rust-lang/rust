@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(box_syntax)]
-#![feature(box_patterns)]
 #![feature(rustc_private)]
 #![feature(collections)]
 #![feature(str_char)]
@@ -224,7 +222,7 @@ impl<'a> CompilerCalls<'a> for RustFmtCalls {
         let write_mode = self.write_mode;
         let mut control = driver::CompileController::basic();
         control.after_parse.stop = Compilation::Stop;
-        control.after_parse.callback = box move |state| {
+        control.after_parse.callback = Box::new(move |state| {
             let krate = state.krate.unwrap();
             let codemap = state.session.codemap();
             let mut changes = fmt_ast(krate, codemap);
@@ -244,7 +242,7 @@ impl<'a> CompilerCalls<'a> for RustFmtCalls {
                     }
                 }
             }
-        };
+        });
 
         control
     }
