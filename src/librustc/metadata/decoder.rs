@@ -275,25 +275,18 @@ fn enum_variant_ids(item: rbml::Doc, cdata: Cmd) -> Vec<ast::DefId> {
 
 fn item_path(item_doc: rbml::Doc) -> Vec<ast_map::PathElem> {
     let path_doc = reader::get_doc(item_doc, tag_path);
-
-    let len_doc = reader::get_doc(path_doc, tag_path_len);
-    let len = reader::doc_as_u32(len_doc) as usize;
-
-    let mut result = Vec::with_capacity(len);
-    reader::docs(path_doc, |tag, elt_doc| {
+    reader::docs(path_doc).filter_map(|(tag, elt_doc)| {
         if tag == tag_path_elem_mod {
             let s = elt_doc.as_str_slice();
-            result.push(ast_map::PathMod(token::intern(s)));
+            Some(ast_map::PathMod(token::intern(s)))
         } else if tag == tag_path_elem_name {
             let s = elt_doc.as_str_slice();
-            result.push(ast_map::PathName(token::intern(s)));
+            Some(ast_map::PathName(token::intern(s)))
         } else {
             // ignore tag_path_len element
+            None
         }
-        true
-    });
-
-    result
+    }).collect()
 }
 
 fn item_name(intr: &IdentInterner, item: rbml::Doc) -> ast::Name {

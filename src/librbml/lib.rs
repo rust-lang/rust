@@ -397,20 +397,43 @@ pub mod reader {
         }
     }
 
-    pub fn docs<F>(d: Doc, mut it: F) -> bool where
-        F: FnMut(usize, Doc) -> bool,
-    {
-        let mut pos = d.start;
-        while pos < d.end {
-            let elt_tag = try_or!(tag_at(d.data, pos), false);
-            let elt_size = try_or!(tag_len_at(d.data, elt_tag), false);
-            pos = elt_size.next + elt_size.val;
-            let doc = Doc { data: d.data, start: elt_size.next, end: pos };
-            if !it(elt_tag.val, doc) {
-                return false;
-            }
+    pub fn docs<'a>(d: Doc<'a>) -> DocsIterator<'a> {
+        DocsIterator {
+            d: d
         }
-        return true;
+    }
+
+    pub struct DocsIterator<'a> {
+        d: Doc<'a>,
+    }
+
+    impl<'a> Iterator for DocsIterator<'a> {
+        type Item = (usize, Doc<'a>);
+
+        fn next(&mut self) -> Option<(usize, Doc<'a>)> {
+            if self.d.start >= self.d.end {
+                return None;
+            }
+
+            let elt_tag = try_or!(tag_at(self.d.data, self.d.start), {
+                self.d.start = self.d.end;
+                None
+            });
+            let elt_size = try_or!(tag_len_at(self.d.data, elt_tag), {
+                self.d.start = self.d.end;
+                None
+            });
+
+            let end = elt_size.next + elt_size.val;
+            let doc = Doc {
+                data: self.d.data,
+                start: elt_size.next,
+                end: end,
+            };
+
+            self.d.start = end;
+            return Some((elt_tag.val, doc));
+        }
     }
 
     pub fn tagged_docs<F>(d: Doc, tg: usize, mut it: F) -> bool where

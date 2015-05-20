@@ -1726,7 +1726,7 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
 fn decode_side_tables(dcx: &DecodeContext,
                       ast_doc: rbml::Doc) {
     let tbl_doc = ast_doc.get(c::tag_table as usize);
-    reader::docs(tbl_doc, |tag, entry_doc| {
+    for (tag, entry_doc) in reader::docs(tbl_doc) {
         let mut entry_dsr = reader::Decoder::new(entry_doc);
         let id0: ast::NodeId = Decodable::decode(&mut entry_dsr).unwrap();
         let id = dcx.tr_id(id0);
@@ -1840,8 +1840,7 @@ fn decode_side_tables(dcx: &DecodeContext,
         }
 
         debug!(">< Side table doc loaded");
-        true
-    });
+    }
 }
 
 // ______________________________________________________________________
