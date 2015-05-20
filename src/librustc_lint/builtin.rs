@@ -2203,7 +2203,11 @@ impl LintPass for UnstableFeatures {
     }
     fn check_attribute(&mut self, ctx: &Context, attr: &ast::Attribute) {
         if attr::contains_name(&[attr.node.value.clone()], "feature") {
-            ctx.span_lint(UNSTABLE_FEATURES, attr.span, "unstable feature");
+            if let Some(items) = attr.node.value.meta_item_list() {
+                for item in items {
+                    ctx.span_lint(UNSTABLE_FEATURES, item.span, "unstable feature");
+                }
+            }
         }
     }
 }
