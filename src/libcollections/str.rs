@@ -1841,8 +1841,12 @@ impl str {
     ///
     /// # Examples
     ///
+    /// ```
+    /// #![feature(collections)]
+    ///
     /// let s = "HELLO";
     /// assert_eq!(s.to_lowercase(), "hello");
+    /// ```
     #[unstable(feature = "collections")]
     pub fn to_lowercase(&self) -> String {
         let mut s = String::with_capacity(self.len());
@@ -1854,8 +1858,12 @@ impl str {
     ///
     /// # Examples
     ///
+    /// ```
+    /// #![feature(collections)]
+    ///
     /// let s = "hello";
     /// assert_eq!(s.to_uppercase(), "HELLO");
+    /// ```
     #[unstable(feature = "collections")]
     pub fn to_uppercase(&self) -> String {
         let mut s = String::with_capacity(self.len());
