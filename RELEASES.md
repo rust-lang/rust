@@ -19,7 +19,7 @@ Language
 
 * Several [restrictions have been added to trait coherence][coh] in
   order to make it easier for upstream authors to change traits
-  without breaking downsteam code.
+  without breaking downstream code.
 * Digits of binary and octal literals are [lexed more eagerly][lex] to
   improve error messages and macro behavior. For example, `0b1234` is
   now lexed as `0b1234` instead of two tokens, `0b1` and `234`.
@@ -169,10 +169,10 @@ Version 1.0.0-alpha.2 (February 2015)
 * Highlights
 
     * The various I/O modules were [overhauled][io-rfc] to reduce
-      unncessary abstractions and provide better interoperation with
+      unnecessary abstractions and provide better interoperation with
       the underlying platform. The old `io` module remains temporarily
       at `std::old_io`.
-    * The standard library now [partipates in feature gating][feat],
+    * The standard library now [participates in feature gating][feat],
       so use of unstable libraries now requires a `#![feature(...)]`
       attribute. The impact of this change is [described on the
       forum][feat-forum]. [RFC][feat-rfc].
@@ -385,7 +385,7 @@ Version 1.0.0-alpha (January 2015)
       syscall when available.
     * The 'serialize' crate has been renamed 'rustc-serialize' and
       moved out of the distribution to Cargo. Although it is widely
-      used now, it is expected to be superceded in the near future.
+      used now, it is expected to be superseded in the near future.
     * The `Show` formatter, typically implemented with
       `#[derive(Show)]` is [now requested with the `{:?}`
       specifier][show] and is intended for use by all types, for uses
