@@ -5,14 +5,14 @@ struct One;
 
 #[deny(len_without_is_empty)]
 impl One {
-	fn len(self: &Self) -> isize { //~ERROR
+	fn len(self: &Self) -> isize { //~ERROR Item 'One' has a '.len()' method
 		1
 	}
 }
 
 #[deny(len_without_is_empty)]
 trait TraitsToo {
-	fn len(self: &Self) -> isize; //~ERROR
+	fn len(self: &Self) -> isize; //~ERROR Trait 'TraitsToo' has a '.len()' method,
 }
 
 impl TraitsToo for One {
@@ -39,18 +39,18 @@ impl HasIsEmpty {
 #[deny(len_zero)]
 fn main() {
 	let x = [1, 2];
-	if x.len() == 0 { //~ERROR
+	if x.len() == 0 { //~ERROR Consider replacing the len comparison
 		println!("This should not happen!");
 	}
 	
 	let y = One;
 	// false positives here
-	if y.len()  == 0 { //~ERROR
+	if y.len()  == 0 { //~ERROR Consider replacing the len comparison
 		println!("This should not happen either!");
 	}
 	
 	let z : &TraitsToo = &y;
-	if z.len() > 0 { //~ERROR
+	if z.len() > 0 { //~ERROR Consider replacing the len comparison
 		println!("Nor should this!");
 	}
 }
