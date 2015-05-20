@@ -20,7 +20,6 @@
 #![feature(std_misc)]
 #![feature(libc)]
 #![feature(hash)]
-#![feature(debug_builders)]
 #![feature(unique)]
 #![feature(step_by)]
 #![feature(slice_patterns)]
