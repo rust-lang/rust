@@ -1842,6 +1842,8 @@ impl str {
     /// # Examples
     ///
     /// ```
+    /// #![feature(collections)]
+    ///
     /// let s = "HELLO";
     /// assert_eq!(s.to_lowercase(), "hello");
     /// ```
@@ -1857,6 +1859,8 @@ impl str {
     /// # Examples
     ///
     /// ```
+    /// #![feature(collections)]
+    ///
     /// let s = "hello";
     /// assert_eq!(s.to_uppercase(), "HELLO");
     /// ```
