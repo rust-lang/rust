@@ -15,7 +15,7 @@ use cmp;
 use hash::{Hash, Hasher};
 use iter::{Iterator, ExactSizeIterator};
 use marker::{Copy, Send, Sync, Sized, self};
-use mem::{min_align_of, size_of};
+use mem::{align_of, size_of};
 use mem;
 use num::wrapping::OverflowingOps;
 use ops::{Deref, DerefMut, Drop};
@@ -553,9 +553,9 @@ fn calculate_allocation(hash_size: usize, hash_align: usize,
                                                               vals_align);
     let (end_of_vals, oflo2) = vals_offset.overflowing_add(vals_size);
 
-    let min_align = cmp::max(hash_align, cmp::max(keys_align, vals_align));
+    let align = cmp::max(hash_align, cmp::max(keys_align, vals_align));
 
-    (min_align, hash_offset, end_of_vals, oflo || oflo2)
+    (align, hash_offset, end_of_vals, oflo || oflo2)
 }
 
 #[test]
@@ -597,9 +597,9 @@ impl<K, V> RawTable<K, V> {
         // factored out into a different function.
         let (malloc_alignment, hash_offset, size, oflo) =
             calculate_allocation(
-                hashes_size, min_align_of::<u64>(),
-                keys_size,   min_align_of::< K >(),
-                vals_size,   min_align_of::< V >());
+                hashes_size, align_of::<u64>(),
+                keys_size,   align_of::< K >(),
+                vals_size,   align_of::< V >());
 
         assert!(!oflo, "capacity overflow");
 
@@ -630,8 +630,8 @@ impl<K, V> RawTable<K, V> {
         let buffer = *self.hashes as *mut u8;
         let (keys_offset, vals_offset, oflo) =
             calculate_offsets(hashes_size,
-                              keys_size, min_align_of::<K>(),
-                              min_align_of::<V>());
+                              keys_size, align_of::<K>(),
+                              align_of::<V>());
         debug_assert!(!oflo, "capacity overflow");
         unsafe {
             RawBucket {
@@ -1005,9 +1005,9 @@ impl<K, V> Drop for RawTable<K, V> {
         let keys_size = self.capacity * size_of::<K>();
         let vals_size = self.capacity * size_of::<V>();
         let (align, _, size, oflo) =
-            calculate_allocation(hashes_size, min_align_of::<u64>(),
-                                 keys_size, min_align_of::<K>(),
-                                 vals_size, min_align_of::<V>());
+            calculate_allocation(hashes_size, align_of::<u64>(),
+                                 keys_size, align_of::<K>(),
+                                 vals_size, align_of::<V>());
 
         debug_assert!(!oflo, "should be impossible");
 

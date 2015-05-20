@@ -155,6 +155,7 @@ pub fn size_of_val<T: ?Sized>(val: &T) -> usize {
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[deprecated(reason = "use `align_of` instead", since = "1.1.0")]
 pub fn min_align_of<T>() -> usize {
     unsafe { intrinsics::min_align_of::<T>() }
 }
@@ -170,14 +171,14 @@ pub fn min_align_of<T>() -> usize {
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[deprecated(reason = "use `align_of_val` instead", since = "1.1.0")]
 pub fn min_align_of_val<T: ?Sized>(val: &T) -> usize {
     unsafe { intrinsics::min_align_of_val(val) }
 }
 
 /// Returns the alignment in memory for a type.
 ///
-/// This function will return the alignment, in bytes, of a type in memory. If the alignment
-/// returned is adhered to, then the type is guaranteed to function properly.
+/// This is the alignment used for struct fields. It may be smaller than the preferred alignment.
 ///
 /// # Examples
 ///
@@ -189,17 +190,10 @@ pub fn min_align_of_val<T: ?Sized>(val: &T) -> usize {
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn align_of<T>() -> usize {
-    // We use the preferred alignment as the default alignment for a type. This
-    // appears to be what clang migrated towards as well:
-    //
-    // http://lists.cs.uiuc.edu/pipermail/cfe-commits/Week-of-Mon-20110725/044411.html
-    unsafe { intrinsics::pref_align_of::<T>() }
+    unsafe { intrinsics::min_align_of::<T>() }
 }
 
-/// Returns the alignment of the type of the value that `_val` points to.
-///
-/// This is similar to `align_of`, but function will properly handle types such as trait objects
-/// (in the future), returning the alignment for an arbitrary value at runtime.
+/// Returns the ABI-required minimum alignment of the type of the value that `val` points to
 ///
 /// # Examples
 ///
@@ -210,8 +204,8 @@ pub fn align_of<T>() -> usize {
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn align_of_val<T>(_val: &T) -> usize {
-    align_of::<T>()
+pub fn align_of_val<T: ?Sized>(val: &T) -> usize {
+    unsafe { intrinsics::min_align_of_val(val) }
 }
 
 /// Creates a value initialized to zero.
