@@ -37,7 +37,10 @@ CRATE_FULLDEPS_$(1)_T_$(2)_H_$(3)_$(4) := \
 		$$(foreach dep,$$(NATIVE_DEPS_$(4)), \
 		  $$(RT_OUTPUT_DIR_$(2))/$$(call CFG_STATIC_LIB_NAME_$(2),$$(dep))) \
 		$$(foreach dep,$$(NATIVE_DEPS_$(4)_T_$(2)), \
-		  $$(RT_OUTPUT_DIR_$(2))/$$(dep))
+		  $$(RT_OUTPUT_DIR_$(2))/$$(dep)) \
+		$$(foreach dep,$$(NATIVE_TOOL_DEPS_$(4)_T_$(2)), \
+		  $$(TBIN$(1)_T_$(3)_H_$(3))/$$(dep)) \
+		$$(CUSTOM_DEPS_$(4)_T_$(2))
 endef
 
 $(foreach host,$(CFG_HOST), \
@@ -83,13 +86,14 @@ $$(TLIB$(1)_T_$(2)_H_$(3))/stamp.$(4): \
 	    $$(dir $$@)$$(call CFG_LIB_GLOB_$(2),$(4)))
 	$$(call REMOVE_ALL_OLD_GLOB_MATCHES, \
 	    $$(dir $$@)$$(call CFG_RLIB_GLOB,$(4)))
-	$(Q)CFG_LLVM_LINKAGE_FILE=$$(LLVM_LINKAGE_PATH_$(3)) \
+	$(Q)CFG_LLVM_LINKAGE_FILE=$$(LLVM_LINKAGE_PATH_$(2)) \
 	    $$(subst @,,$$(STAGE$(1)_T_$(2)_H_$(3))) \
 		$$(RUST_LIB_FLAGS_ST$(1)) \
 		-L "$$(RT_OUTPUT_DIR_$(2))" \
 		$$(LLVM_LIBDIR_RUSTFLAGS_$(2)) \
 		$$(LLVM_STDCPP_RUSTFLAGS_$(2)) \
 		$$(RUSTFLAGS_$(4)) \
+		$$(RUSTFLAGS_$(4)_T_$(2)) \
 		--out-dir $$(@D) \
 		-C extra-filename=-$$(CFG_FILENAME_EXTRA) \
 		$$<
@@ -147,6 +151,11 @@ $$(TLIB$(1)_T_$(2)_H_$(3))/:
 
 $$(TLIB$(1)_T_$(2)_H_$(3))/%: $$(RT_OUTPUT_DIR_$(2))/% \
 	    | $$(TLIB$(1)_T_$(2)_H_$(3))/ $$(SNAPSHOT_RUSTC_POST_CLEANUP)
+	@$$(call E, cp: $$@)
+	$$(Q)cp $$< $$@
+
+$$(TBIN$(1)_T_$(2)_H_$(3))/%: $$(CFG_LLVM_INST_DIR_$(2))/bin/% \
+	    | $$(TBIN$(1)_T_$(2)_H_$(3))/ $$(SNAPSHOT_RUSTC_POST_CLEANUP)
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 endef

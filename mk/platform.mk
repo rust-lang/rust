@@ -90,10 +90,6 @@ ifneq ($(findstring linux,$(CFG_OSTYPE)),)
   endif
 endif
 
-# These flags will cause the compiler to produce a .d file
-# next to the .o file that lists header deps.
-CFG_DEPEND_FLAGS = -MMD -MP -MT $(1) -MF $(1:%.o=%.d)
-
 AR := ar
 
 define SET_FROM_CFG
@@ -116,6 +112,14 @@ CFG_RLIB_GLOB=lib$(1)-*.rlib
 
 include $(wildcard $(CFG_SRC_DIR)mk/cfg/*.mk)
 
+define ADD_INSTALLED_OBJECTS
+  INSTALLED_OBJECTS_$(1) += $$(call CFG_STATIC_LIB_NAME_$(1),morestack) \
+                            $$(call CFG_STATIC_LIB_NAME_$(1),compiler-rt)
+endef
+
+$(foreach target,$(CFG_TARGET), \
+  $(eval $(call ADD_INSTALLED_OBJECTS,$(target))))
+
 # The -Qunused-arguments sidesteps spurious warnings from clang
 define FILTER_FLAGS
   ifeq ($$(CFG_USING_CLANG),1)
@@ -128,6 +132,21 @@ endef
 
 $(foreach target,$(CFG_TARGET), \
   $(eval $(call FILTER_FLAGS,$(target))))
+
+# Configure various macros to pass gcc or cl.exe style arguments
+define CC_MACROS
+  CFG_CC_INCLUDE_$(1)=-I $$(1)
+  ifeq ($$(findstring msvc,$(1)),msvc)
+    CFG_CC_OUTPUT_$(1)=-Fo:$$(1)
+    CFG_CREATE_ARCHIVE_$(1)=$$(AR_$(1)) -OUT:$$(1)
+  else
+    CFG_CC_OUTPUT_$(1)=-o $$(1)
+    CFG_CREATE_ARCHIVE_$(1)=$$(AR_$(1)) crus $$(1)
+  endif
+endef
+
+$(foreach target,$(CFG_TARGET), \
+  $(eval $(call CC_MACROS,$(target))))
 
 
 ifeq ($(CFG_CCACHE_CPP2),1)
@@ -145,21 +164,23 @@ FIND_COMPILER = $(word 1,$(1:ccache=))
 define CFG_MAKE_TOOLCHAIN
   # Prepend the tools with their prefix if cross compiling
   ifneq ($(CFG_BUILD),$(1))
+    ifneq ($$(findstring msvc,$(1)),msvc)
        CC_$(1)=$(CROSS_PREFIX_$(1))$(CC_$(1))
        CXX_$(1)=$(CROSS_PREFIX_$(1))$(CXX_$(1))
        CPP_$(1)=$(CROSS_PREFIX_$(1))$(CPP_$(1))
        AR_$(1)=$(CROSS_PREFIX_$(1))$(AR_$(1))
-       RUSTC_CROSS_FLAGS_$(1)=-C linker=$$(call FIND_COMPILER,$$(CC_$(1))) \
+       LINK_$(1)=$(CROSS_PREFIX_$(1))$(LINK_$(1))
+       RUSTC_CROSS_FLAGS_$(1)=-C linker=$$(call FIND_COMPILER,$$(LINK_$(1))) \
            -C ar=$$(call FIND_COMPILER,$$(AR_$(1))) $(RUSTC_CROSS_FLAGS_$(1))
 
        RUSTC_FLAGS_$(1)=$$(RUSTC_CROSS_FLAGS_$(1)) $(RUSTC_FLAGS_$(1))
+    endif
   endif
 
   CFG_COMPILE_C_$(1) = $$(CC_$(1)) \
         $$(CFG_GCCISH_CFLAGS) \
         $$(CFG_GCCISH_CFLAGS_$(1)) \
-        $$(CFG_DEPEND_FLAGS) \
-        -c -o $$(1) $$(2)
+        -c $$(call CFG_CC_OUTPUT_$(1),$$(1)) $$(2)
   CFG_LINK_C_$(1) = $$(CC_$(1)) \
         $$(CFG_GCCISH_LINK_FLAGS) -o $$(1) \
         $$(CFG_GCCISH_LINK_FLAGS_$(1)) \
@@ -170,8 +191,7 @@ define CFG_MAKE_TOOLCHAIN
         $$(CFG_GCCISH_CXXFLAGS) \
         $$(CFG_GCCISH_CFLAGS_$(1)) \
         $$(CFG_GCCISH_CXXFLAGS_$(1)) \
-        $$(CFG_DEPEND_FLAGS) \
-        -c -o $$(1) $$(2)
+        -c $$(call CFG_CC_OUTPUT_$(1),$$(1)) $$(2)
   CFG_LINK_CXX_$(1) = $$(CXX_$(1)) \
         $$(CFG_GCCISH_LINK_FLAGS) -o $$(1) \
         $$(CFG_GCCISH_LINK_FLAGS_$(1)) \
@@ -189,7 +209,7 @@ define CFG_MAKE_TOOLCHAIN
 
   # We're using llvm-mc as our assembler because it supports
   # .cfi pseudo-ops on mac
-  CFG_ASSEMBLE_$(1)=$$(CPP_$(1)) -E $$(CFG_DEPEND_FLAGS) $$(2) | \
+  CFG_ASSEMBLE_$(1)=$$(CPP_$(1)) -E $$(2) | \
                     $$(LLVM_MC_$$(CFG_BUILD)) \
                     -assemble \
                     -relocation-model=$$(LLVM_MC_RELOCATION_MODEL) \
@@ -201,7 +221,7 @@ define CFG_MAKE_TOOLCHAIN
   # For the ARM, AARCH64, MIPS and POWER crosses, use the toolchain assembler
   # FIXME: We should be able to use the LLVM assembler
   CFG_ASSEMBLE_$(1)=$$(CC_$(1)) $$(CFG_GCCISH_CFLAGS_$(1)) \
-                   $$(CFG_DEPEND_FLAGS) $$(2) -c -o $$(1)
+                   $$(2) -c -o $$(1)
 
   endif
 

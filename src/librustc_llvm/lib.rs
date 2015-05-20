@@ -55,6 +55,7 @@ pub use self::CallConv::*;
 pub use self::Visibility::*;
 pub use self::DiagnosticSeverity::*;
 pub use self::Linkage::*;
+pub use self::DLLStorageClassTypes::*;
 
 use std::ffi::CString;
 use std::cell::RefCell;
@@ -121,6 +122,15 @@ pub enum DiagnosticSeverity {
     Warning,
     Remark,
     Note,
+}
+
+
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub enum DLLStorageClassTypes {
+    DefaultStorageClass = 0,
+    DLLImportStorageClass = 1,
+    DLLExportStorageClass = 2,
 }
 
 bitflags! {
@@ -1761,7 +1771,7 @@ extern {
                          Dialect: c_uint)
                          -> ValueRef;
 
-    pub static LLVMRustDebugMetadataVersion: u32;
+    pub fn LLVMRustDebugMetadataVersion() -> u32;
 
     pub fn LLVMRustAddModuleFlag(M: ModuleRef,
                                  name: *const c_char,
@@ -2075,7 +2085,8 @@ extern {
     pub fn LLVMRustArchiveIteratorFree(AIR: ArchiveIteratorRef);
     pub fn LLVMRustDestroyArchive(AR: ArchiveRef);
 
-    pub fn LLVMRustSetDLLExportStorageClass(V: ValueRef);
+    pub fn LLVMRustSetDLLStorageClass(V: ValueRef,
+                                      C: DLLStorageClassTypes);
 
     pub fn LLVMRustGetSectionName(SI: SectionIteratorRef,
                                   data: *mut *const c_char) -> c_int;
@@ -2122,6 +2133,12 @@ pub fn SetFunctionCallConv(fn_: ValueRef, cc: CallConv) {
 pub fn SetLinkage(global: ValueRef, link: Linkage) {
     unsafe {
         LLVMSetLinkage(global, link as c_uint);
+    }
+}
+
+pub fn SetDLLStorageClass(global: ValueRef, class: DLLStorageClassTypes) {
+    unsafe {
+        LLVMRustSetDLLStorageClass(global, class);
     }
 }
 
