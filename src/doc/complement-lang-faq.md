@@ -5,8 +5,8 @@
 There aren't many large programs yet. The Rust [compiler][rustc], 60,000+ lines at the time of writing, is written in Rust. As the oldest body of Rust code it has gone through many iterations of the language, and some parts are nicer to look at than others. It may not be the best code to learn from, but [borrowck] and [resolve] were written recently.
 
 [rustc]: https://github.com/rust-lang/rust/tree/master/src/librustc
-[resolve]: https://github.com/rust-lang/rust/blob/master/src/librustc/middle/resolve.rs
-[borrowck]: https://github.com/rust-lang/rust/blob/master/src/librustc/middle/borrowck/
+[resolve]: https://github.com/rust-lang/rust/tree/master/src/librustc_resolve
+[borrowck]: https://github.com/rust-lang/rust/tree/master/src/librustc_borrowck/borrowck
 
 A research browser engine called [Servo][servo], currently 30,000+ lines across more than a dozen crates, will be exercising a lot of Rust's distinctive type-system and concurrency features, and integrating many native libraries.
 
@@ -20,8 +20,8 @@ Some examples that demonstrate different aspects of the language:
 * The standard library's [json] module. Enums and pattern matching
 
 [sprocketnes]: https://github.com/pcwalton/sprocketnes
-[hash]: https://github.com/rust-lang/rust/blob/master/src/libstd/hash/mod.rs
-[HashMap]: https://github.com/rust-lang/rust/blob/master/src/libcollections/hashmap.rs
+[hash]: https://github.com/rust-lang/rust/tree/master/src/libcore/hash
+[HashMap]: https://github.com/rust-lang/rust/tree/master/src/libstd/collections/hash
 [json]: https://github.com/rust-lang/rust/blob/master/src/libserialize/json.rs
 
 You may also be interested in browsing [trending Rust repositories][github-rust] on GitHub.

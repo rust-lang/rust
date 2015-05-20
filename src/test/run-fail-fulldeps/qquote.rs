@@ -22,7 +22,7 @@ use syntax::parse;
 use syntax::print::pprust;
 
 fn main() {
-    let ps = syntax::parse::new_parse_sess();
+    let ps = syntax::parse::ParseSess::new();
     let mut cx = syntax::ext::base::ExtCtxt::new(
         &ps, vec![],
         syntax::ext::expand::ExpansionConfig::default("qquote".to_string()));

@@ -193,6 +193,13 @@ extern "rust-intrinsic" {
     pub fn min_align_of<T>() -> usize;
     pub fn pref_align_of<T>() -> usize;
 
+    #[cfg(not(stage0))]
+    pub fn size_of_val<T: ?Sized>(_: &T) -> usize;
+    #[cfg(not(stage0))]
+    pub fn min_align_of_val<T: ?Sized>(_: &T) -> usize;
+    #[cfg(not(stage0))]
+    pub fn drop_in_place<T: ?Sized>(_: *mut T);
+
     /// Gets a static string slice containing the name of a type.
     pub fn type_name<T: ?Sized>() -> &'static str;
 
@@ -275,6 +282,20 @@ extern "rust-intrinsic" {
     /// bounds or arithmetic overflow occurs then any further use of the
     /// returned value will result in undefined behavior.
     pub fn offset<T>(dst: *const T, offset: isize) -> *const T;
+
+    /// Calculates the offset from a pointer, potentially wrapping.
+    ///
+    /// This is implemented as an intrinsic to avoid converting to and from an
+    /// integer, since the conversion inhibits certain optimizations.
+    ///
+    /// # Safety
+    ///
+    /// Unlike the `offset` intrinsic, this intrinsic does not restrict the
+    /// resulting pointer to point into or one byte past the end of an allocated
+    /// object, and it wraps with two's complement arithmetic. The resulting
+    /// value is not necessarily valid to be used to actually access memory.
+    #[cfg(not(stage0))]
+    pub fn arith_offset<T>(dst: *const T, offset: isize) -> *const T;
 
     /// Copies `count * size_of<T>` bytes from `src` to `dst`. The source
     /// and destination may *not* overlap.

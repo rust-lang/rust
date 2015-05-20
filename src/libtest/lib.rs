@@ -31,7 +31,7 @@
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
-       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
+       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/nightly/")]
 
 #![feature(asm)]
@@ -43,6 +43,8 @@
 #![feature(std_misc)]
 #![feature(libc)]
 #![feature(set_stdio)]
+#![feature(duration)]
+#![feature(duration_span)]
 
 extern crate getopts;
 extern crate serialize;
@@ -1069,7 +1071,7 @@ impl Bencher {
     }
 
     pub fn ns_elapsed(&mut self) -> u64 {
-        self.dur.num_nanoseconds().unwrap() as u64
+        self.dur.secs() * 1_000_000_000 + (self.dur.extra_nanos() as u64)
     }
 
     pub fn ns_per_iter(&mut self) -> u64 {
@@ -1105,7 +1107,7 @@ impl Bencher {
         // (i.e. larger error bars).
         if n == 0 { n = 1; }
 
-        let mut total_run = Duration::nanoseconds(0);
+        let mut total_run = Duration::new(0, 0);
         let samples : &mut [f64] = &mut [0.0_f64; 50];
         loop {
             let mut summ = None;
@@ -1134,7 +1136,7 @@ impl Bencher {
 
             // If we've run for 100ms and seem to have converged to a
             // stable median.
-            if loop_run.num_milliseconds() > 100 &&
+            if loop_run > Duration::from_millis(100) &&
                 summ.median_abs_dev_pct < 1.0 &&
                 summ.median - summ5.median < summ5.median_abs_dev {
                 return summ5;
@@ -1142,7 +1144,7 @@ impl Bencher {
 
             total_run = total_run + loop_run;
             // Longest we ever run for is 3s.
-            if total_run.num_seconds() > 3 {
+            if total_run > Duration::from_secs(3) {
                 return summ5;
             }
 
@@ -1166,7 +1168,7 @@ pub mod bench {
     pub fn benchmark<F>(f: F) -> BenchSamples where F: FnMut(&mut Bencher) {
         let mut bs = Bencher {
             iterations: 0,
-            dur: Duration::nanoseconds(0),
+            dur: Duration::new(0, 0),
             bytes: 0
         };
 
@@ -1185,7 +1187,7 @@ pub mod bench {
     pub fn run_once<F>(f: F) where F: FnOnce(&mut Bencher) {
         let mut bs = Bencher {
             iterations: 0,
-            dur: Duration::nanoseconds(0),
+            dur: Duration::new(0, 0),
             bytes: 0
         };
         bs.bench_n(1, f);

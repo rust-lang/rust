@@ -64,7 +64,7 @@
 #![staged_api]
 #![crate_type = "rlib"]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
-       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
+       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/nightly/")]
 #![doc(test(no_crate_inject))]
 
@@ -112,7 +112,14 @@ pub mod boxed;
 mod boxed { pub use std::boxed::{Box, HEAP}; }
 #[cfg(test)]
 mod boxed_test;
+#[cfg(not(stage0))]
 pub mod arc;
+#[cfg(stage0)]
+mod arc_stage0;
+#[cfg(stage0)]
+pub mod arc {
+    pub use arc_stage0::*;
+}
 pub mod rc;
 
 /// Common out-of-memory routine

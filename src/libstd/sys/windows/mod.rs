@@ -20,6 +20,7 @@ use libc;
 use num::Zero;
 use os::windows::ffi::{OsStrExt, OsStringExt};
 use path::PathBuf;
+use time::Duration;
 
 pub mod backtrace;
 pub mod c;
@@ -149,6 +150,27 @@ fn cvt<I: PartialEq + Zero>(i: I) -> io::Result<I> {
     } else {
         Ok(i)
     }
+}
+
+fn dur2timeout(dur: Duration) -> libc::DWORD {
+    // Note that a duration is a (u64, u32) (seconds, nanoseconds) pair, and the
+    // timeouts in windows APIs are typically u32 milliseconds. To translate, we
+    // have two pieces to take care of:
+    //
+    // * Nanosecond precision is rounded up
+    // * Greater than u32::MAX milliseconds (50 days) is rounded up to INFINITE
+    //   (never time out).
+    dur.secs().checked_mul(1000).and_then(|ms| {
+        ms.checked_add((dur.extra_nanos() as u64) / 1_000_000)
+    }).and_then(|ms| {
+        ms.checked_add(if dur.extra_nanos() % 1_000_000 > 0 {1} else {0})
+    }).map(|ms| {
+        if ms > <libc::DWORD>::max_value() as u64 {
+            libc::INFINITE
+        } else {
+            ms as libc::DWORD
+        }
+    }).unwrap_or(libc::INFINITE)
 }
 
 fn ms_to_filetime(ms: u64) -> libc::FILETIME {

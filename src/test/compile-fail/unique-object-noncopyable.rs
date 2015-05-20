@@ -31,5 +31,5 @@ impl Foo for Bar {
 fn main() {
     let x = box Bar { x: 10 };
     let y: Box<Foo> = x as Box<Foo>;
-    let _z = y.clone(); //~ ERROR does not implement any method in scope
+    let _z = y.clone(); //~ ERROR no method named `clone` found
 }

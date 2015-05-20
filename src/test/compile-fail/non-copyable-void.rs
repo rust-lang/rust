@@ -15,6 +15,6 @@ fn main() {
     let y : *const libc::c_void = x as *const libc::c_void;
     unsafe {
         let _z = (*y).clone();
-        //~^ ERROR does not implement any method in scope
+        //~^ ERROR no method named `clone` found
     }
 }

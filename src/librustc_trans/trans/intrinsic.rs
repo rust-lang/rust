@@ -327,9 +327,30 @@ pub fn trans_intrinsic_call<'a, 'r, 'blk, 'tcx>
             let lltp_ty = type_of::type_of(ccx, tp_ty);
             C_uint(ccx, machine::llsize_of_alloc(ccx, lltp_ty))
         }
+        (_, "size_of_val") => {
+            let tp_ty = *substs.types.get(FnSpace, 0);
+            if !type_is_sized(tcx, tp_ty) {
+                let info = Load(bcx, expr::get_len(bcx, llargs[0]));
+                let (llsize, _) = glue::size_and_align_of_dst(bcx, tp_ty, info);
+                llsize
+            } else {
+                let lltp_ty = type_of::type_of(ccx, tp_ty);
+                C_uint(ccx, machine::llsize_of_alloc(ccx, lltp_ty))
+            }
+        }
         (_, "min_align_of") => {
             let tp_ty = *substs.types.get(FnSpace, 0);
             C_uint(ccx, type_of::align_of(ccx, tp_ty))
+        }
+        (_, "min_align_of_val") => {
+            let tp_ty = *substs.types.get(FnSpace, 0);
+            if !type_is_sized(tcx, tp_ty) {
+                let info = Load(bcx, expr::get_len(bcx, llargs[0]));
+                let (_, llalign) = glue::size_and_align_of_dst(bcx, tp_ty, info);
+                llalign
+            } else {
+                C_uint(ccx, type_of::align_of(ccx, tp_ty))
+            }
         }
         (_, "pref_align_of") => {
             let tp_ty = *substs.types.get(FnSpace, 0);
@@ -350,6 +371,11 @@ pub fn trans_intrinsic_call<'a, 'r, 'blk, 'tcx>
                 kind: Rvalue::new(mode)
             };
             bcx.bl = src.store_to(bcx, llargs[0]);
+            C_nil(ccx)
+        }
+        (_, "drop_in_place") => {
+            let tp_ty = *substs.types.get(FnSpace, 0);
+            glue::drop_ty(bcx, llargs[0], tp_ty, call_debug_location);
             C_nil(ccx)
         }
         (_, "type_name") => {
@@ -392,6 +418,11 @@ pub fn trans_intrinsic_call<'a, 'r, 'blk, 'tcx>
             let ptr = llargs[0];
             let offset = llargs[1];
             InBoundsGEP(bcx, ptr, &[offset])
+        }
+        (_, "arith_offset") => {
+            let ptr = llargs[0];
+            let offset = llargs[1];
+            GEP(bcx, ptr, &[offset])
         }
 
         (_, "copy_nonoverlapping") => {

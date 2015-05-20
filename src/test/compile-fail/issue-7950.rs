@@ -13,5 +13,5 @@
 struct Foo;
 
 fn main() {
-    Foo::bar(); //~ ERROR type `Foo` does not implement any method in scope named `bar`
+    Foo::bar(); //~ ERROR no associated item named `bar` found for type `Foo` in the current scope
 }

@@ -42,7 +42,7 @@ loop is just a handy way to write this `loop`/`match`/`break` construct.
 `for` loops aren't the only thing that uses iterators, however. Writing your
 own iterator involves implementing the `Iterator` trait. While doing that is
 outside of the scope of this guide, Rust provides a number of useful iterators
-to accomplish various threads. Before we talk about those, we should talk about a
+to accomplish various tasks. Before we talk about those, we should talk about a
 Rust anti-pattern. And that's using ranges like this.
 
 Yes, we just talked about how ranges are cool. But ranges are also very
@@ -116,7 +116,7 @@ A *consumer* operates on an iterator, returning some kind of value or values.
 The most common consumer is `collect()`. This code doesn't quite compile,
 but it shows the intention:
 
-```{rust,ignore}
+```rust,ignore
 let one_to_one_hundred = (1..101).collect();
 ```
 
@@ -212,9 +212,9 @@ see why consumers matter.
 As we've said before, an iterator is something that we can call the
 `.next()` method on repeatedly, and it gives us a sequence of things.
 Because you need to call the method, this means that iterators
-are *lazy* and don't need to generate all of the values upfront.
-This code, for example, does not actually generate the numbers
-`1-100`, and just creates a value that represents the sequence:
+can be *lazy* and not generate all of the values upfront. This code,
+for example, does not actually generate the numbers `1-100`, instead
+creating a value that merely represents the sequence:
 
 ```rust
 let nums = 1..100;
@@ -253,7 +253,7 @@ we need to talk about with regards to iterators. Let's get to it!
 *Iterator adapters* take an iterator and modify it somehow, producing
 a new iterator. The simplest one is called `map`:
 
-```{rust,ignore}
+```rust,ignore
 (1..100).map(|x| x + 1);
 ```
 
@@ -272,7 +272,7 @@ warning: unused result which must be used: iterator adaptors are lazy and
 Laziness strikes again! That closure will never execute. This example
 doesn't print any numbers:
 
-```{rust,ignore}
+```rust,ignore
 (1..100).map(|x| println!("{}", x));
 ```
 

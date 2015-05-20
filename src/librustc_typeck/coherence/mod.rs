@@ -16,13 +16,12 @@
 // mappings. That mapping code resides here.
 
 
-use metadata::csearch::{each_impl, get_impl_trait};
-use metadata::csearch;
+use middle::lang_items::UnsizeTraitLangItem;
 use middle::subst::{self, Subst};
+use middle::traits;
 use middle::ty::RegionEscape;
 use middle::ty::{ImplContainer, ImplOrTraitItemId, ConstTraitItemId};
-use middle::ty::{MethodTraitItemId, TypeTraitItemId};
-use middle::ty::{ParameterEnvironment, lookup_item_type};
+use middle::ty::{MethodTraitItemId, TypeTraitItemId, ParameterEnvironment};
 use middle::ty::{Ty, ty_bool, ty_char, ty_enum, ty_err};
 use middle::ty::{ty_param, TypeScheme, ty_ptr};
 use middle::ty::{ty_rptr, ty_struct, ty_trait, ty_tup};
@@ -30,10 +29,9 @@ use middle::ty::{ty_str, ty_vec, ty_float, ty_infer, ty_int};
 use middle::ty::{ty_uint, ty_closure, ty_uniq, ty_bare_fn};
 use middle::ty::ty_projection;
 use middle::ty;
+use middle::free_region::FreeRegionMap;
 use CrateCtxt;
-use middle::infer::InferCtxt;
-use middle::infer::new_infer_ctxt;
-use std::collections::HashSet;
+use middle::infer::{self, InferCtxt, new_infer_ctxt};
 use std::cell::RefCell;
 use std::rc::Rc;
 use syntax::ast::{Crate, DefId};
@@ -130,11 +128,6 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
                                       Rc::new((*v.borrow()).clone()));
         }
 
-        // Bring in external crates. It's fine for this to happen after the
-        // coherence checks, because we ensure by construction that no errors
-        // can happen at link time.
-        self.add_external_crates();
-
         // Populate the table of destructors. It might seem a bit strange to
         // do this here, but it's actually the most convenient place, since
         // the coherence tables contain the trait -> type mappings.
@@ -142,6 +135,10 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
 
         // Check to make sure implementations of `Copy` are legal.
         self.check_implementations_of_copy();
+
+        // Check to make sure implementations of `CoerceUnsized` are legal
+        // and collect the necessary information from them.
+        self.check_implementations_of_coerce_unsized();
     }
 
     fn check_implementation(&self, item: &Item, opt_trait: Option<&TraitRef>) {
@@ -267,11 +264,6 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
         trait_def.record_impl(self.crate_context.tcx, impl_def_id, impl_trait_ref);
     }
 
-    fn get_self_type_for_implementation(&self, impl_did: DefId)
-                                        -> TypeScheme<'tcx> {
-        self.crate_context.tcx.tcache.borrow().get(&impl_did).unwrap().clone()
-    }
-
     // Converts an implementation in the AST to a vector of items.
     fn create_impl_from_item(&self, item: &Item) -> Vec<ImplOrTraitItemId> {
         match item.node {
@@ -313,66 +305,6 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
         }
     }
 
-    // External crate handling
-
-    fn add_external_impl(&self,
-                         impls_seen: &mut HashSet<DefId>,
-                         impl_def_id: DefId) {
-        let tcx = self.crate_context.tcx;
-        let impl_items = csearch::get_impl_items(&tcx.sess.cstore,
-                                                 impl_def_id);
-
-        // Make sure we don't visit the same implementation multiple times.
-        if !impls_seen.insert(impl_def_id) {
-            // Skip this one.
-            return
-        }
-        // Good. Continue.
-
-        let _ = lookup_item_type(tcx, impl_def_id);
-        let associated_traits = get_impl_trait(tcx, impl_def_id);
-
-        // Do a sanity check.
-        assert!(associated_traits.is_some());
-
-        // Record all the trait items.
-        if let Some(trait_ref) = associated_traits {
-            self.add_trait_impl(trait_ref, impl_def_id);
-        }
-
-        // For any methods that use a default implementation, add them to
-        // the map. This is a bit unfortunate.
-        for item_def_id in &impl_items {
-            let impl_item = ty::impl_or_trait_item(tcx, item_def_id.def_id());
-            match impl_item {
-                ty::MethodTraitItem(ref method) => {
-                    if let Some(source) = method.provided_source {
-                        tcx.provided_method_sources
-                           .borrow_mut()
-                           .insert(item_def_id.def_id(), source);
-                    }
-                }
-                _ => {}
-            }
-        }
-
-        tcx.impl_items.borrow_mut().insert(impl_def_id, impl_items);
-    }
-
-    // Adds implementations and traits from external crates to the coherence
-    // info.
-    fn add_external_crates(&self) {
-        let mut impls_seen = HashSet::new();
-
-        let crate_store = &self.crate_context.tcx.sess.cstore;
-        crate_store.iter_crate_data(|crate_number, _crate_metadata| {
-            each_impl(crate_store, crate_number, |def_id| {
-                assert_eq!(crate_number, def_id.krate);
-                self.add_external_impl(&mut impls_seen, def_id)
-            })
-        })
-    }
-
     //
     // Destructors
     //
@@ -395,7 +327,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
             }
             let method_def_id = items[0];
 
-            let self_type = self.get_self_type_for_implementation(impl_did);
+            let self_type = ty::lookup_item_type(tcx, impl_did);
             match self_type.ty.sty {
                 ty::ty_enum(type_def_id, _) |
                 ty::ty_struct(type_def_id, _) |
@@ -451,7 +383,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
                 return
             }
 
-            let self_type = self.get_self_type_for_implementation(impl_did);
+            let self_type = ty::lookup_item_type(tcx, impl_did);
             debug!("check_implementations_of_copy: self_type={} (bound)",
                    self_type.repr(tcx));
 
@@ -490,6 +422,157 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
                               "the trait `Copy` may not be implemented for this type; \
                                the type has a destructor");
                 }
+            }
+        });
+    }
+
+    /// Process implementations of the built-in trait `CoerceUnsized`.
+    fn check_implementations_of_coerce_unsized(&self) {
+        let tcx = self.crate_context.tcx;
+        let coerce_unsized_trait = match tcx.lang_items.coerce_unsized_trait() {
+            Some(id) => id,
+            None => return,
+        };
+        let unsize_trait = match tcx.lang_items.require(UnsizeTraitLangItem) {
+            Ok(id) => id,
+            Err(err) => {
+                tcx.sess.fatal(&format!("`CoerceUnsized` implementation {}", err));
+            }
+        };
+
+        let trait_def = ty::lookup_trait_def(tcx, coerce_unsized_trait);
+
+        trait_def.for_each_impl(tcx, |impl_did| {
+            debug!("check_implementations_of_coerce_unsized: impl_did={}",
+                   impl_did.repr(tcx));
+
+            if impl_did.krate != ast::LOCAL_CRATE {
+                debug!("check_implementations_of_coerce_unsized(): impl not \
+                        in this crate");
+                return;
+            }
+
+            let source = ty::lookup_item_type(tcx, impl_did).ty;
+            let trait_ref = ty::impl_id_to_trait_ref(self.crate_context.tcx,
+                                                     impl_did.node);
+            let target = *trait_ref.substs.types.get(subst::TypeSpace, 0);
+            debug!("check_implementations_of_coerce_unsized: {} -> {} (bound)",
+                   source.repr(tcx), target.repr(tcx));
+
+            let span = tcx.map.span(impl_did.node);
+            let param_env = ParameterEnvironment::for_item(tcx, impl_did.node);
+            let source = source.subst(tcx, &param_env.free_substs);
+            let target = target.subst(tcx, &param_env.free_substs);
+            assert!(!source.has_escaping_regions());
+
+            debug!("check_implementations_of_coerce_unsized: {} -> {} (free)",
+                   source.repr(tcx), target.repr(tcx));
+
+            let infcx = new_infer_ctxt(tcx);
+
+            let check_mutbl = |mt_a: ty::mt<'tcx>, mt_b: ty::mt<'tcx>,
+                               mk_ptr: &Fn(Ty<'tcx>) -> Ty<'tcx>| {
+                if (mt_a.mutbl, mt_b.mutbl) == (ast::MutImmutable, ast::MutMutable) {
+                    infcx.report_mismatched_types(span, mk_ptr(mt_b.ty),
+                                                  target, &ty::terr_mutability);
+                }
+                (mt_a.ty, mt_b.ty, unsize_trait, None)
+            };
+            let (source, target, trait_def_id, kind) = match (&source.sty, &target.sty) {
+                (&ty::ty_uniq(a), &ty::ty_uniq(b)) => (a, b, unsize_trait, None),
+
+                (&ty::ty_rptr(r_a, mt_a), &ty::ty_rptr(r_b, mt_b)) => {
+                    infer::mk_subr(&infcx, infer::RelateObjectBound(span), *r_b, *r_a);
+                    check_mutbl(mt_a, mt_b, &|ty| ty::mk_imm_rptr(tcx, r_b, ty))
+                }
+
+                (&ty::ty_rptr(_, mt_a), &ty::ty_ptr(mt_b)) |
+                (&ty::ty_ptr(mt_a), &ty::ty_ptr(mt_b)) => {
+                    check_mutbl(mt_a, mt_b, &|ty| ty::mk_imm_ptr(tcx, ty))
+                }
+
+                (&ty::ty_struct(def_id_a, substs_a), &ty::ty_struct(def_id_b, substs_b)) => {
+                    if def_id_a != def_id_b {
+                        let source_path = ty::item_path_str(tcx, def_id_a);
+                        let target_path = ty::item_path_str(tcx, def_id_b);
+                        span_err!(tcx.sess, span, E0377,
+                                  "the trait `CoerceUnsized` may only be implemented \
+                                   for a coercion between structures with the same \
+                                   definition; expected {}, found {}",
+                                  source_path, target_path);
+                        return;
+                    }
+
+                    let origin = infer::Misc(span);
+                    let fields = ty::lookup_struct_fields(tcx, def_id_a);
+                    let diff_fields = fields.iter().enumerate().filter_map(|(i, f)| {
+                        let ty = ty::lookup_field_type_unsubstituted(tcx, def_id_a, f.id);
+                        let (a, b) = (ty.subst(tcx, substs_a), ty.subst(tcx, substs_b));
+                        if infcx.sub_types(false, origin, b, a).is_ok() {
+                            None
+                        } else {
+                            Some((i, a, b))
+                        }
+                    }).collect::<Vec<_>>();
+
+                    if diff_fields.is_empty() {
+                        span_err!(tcx.sess, span, E0374,
+                                  "the trait `CoerceUnsized` may only be implemented \
+                                   for a coercion between structures with one field \
+                                   being coerced, none found");
+                        return;
+                    } else if diff_fields.len() > 1 {
+                        span_err!(tcx.sess, span, E0375,
+                                  "the trait `CoerceUnsized` may only be implemented \
+                                   for a coercion between structures with one field \
+                                   being coerced, but {} fields need coercions: {}",
+                                   diff_fields.len(), diff_fields.iter().map(|&(i, a, b)| {
+                                        let name = fields[i].name;
+                                        format!("{} ({} to {})",
+                                                if name == token::special_names::unnamed_field {
+                                                    i.to_string()
+                                                } else {
+                                                    token::get_name(name).to_string()
+                                                },
+                                                a.repr(tcx),
+                                                b.repr(tcx))
+                                   }).collect::<Vec<_>>().connect(", "));
+                        return;
+                    }
+
+                    let (i, a, b) = diff_fields[0];
+                    let kind = ty::CustomCoerceUnsized::Struct(i);
+                    (a, b, coerce_unsized_trait, Some(kind))
+                }
+
+                _ => {
+                    span_err!(tcx.sess, span, E0376,
+                              "the trait `CoerceUnsized` may only be implemented \
+                               for a coercion between structures");
+                    return;
+                }
+            };
+
+            let mut fulfill_cx = traits::FulfillmentContext::new();
+
+            // Register an obligation for `A: Trait<B>`.
+            let cause = traits::ObligationCause::misc(span, impl_did.node);
+            let predicate = traits::predicate_for_trait_def(tcx, cause, trait_def_id,
+                                                            0, source, vec![target]);
+            fulfill_cx.register_predicate_obligation(&infcx, predicate);
+
+            // Check that all transitive obligations are satisfied.
+            if let Err(errors) = fulfill_cx.select_all_or_error(&infcx, &param_env) {
+                traits::report_fulfillment_errors(&infcx, &errors);
+            }
+
+            // Finally, resolve all regions.
+            let mut free_regions = FreeRegionMap::new();
+            free_regions.relate_free_regions_from_predicates(tcx, &param_env.caller_bounds);
+            infcx.resolve_regions_and_report_errors(&free_regions, impl_did.node);
+
+            if let Some(kind) = kind {
+                tcx.custom_coerce_unsized_kinds.borrow_mut().insert(impl_did, kind);
             }
         });
     }

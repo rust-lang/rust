@@ -482,6 +482,7 @@ extern "system" {
                                dwMilliseconds: libc::DWORD) -> libc::DWORD;
     pub fn SwitchToThread() -> libc::BOOL;
     pub fn Sleep(dwMilliseconds: libc::DWORD);
+    pub fn GetProcessId(handle: libc::HANDLE) -> libc::DWORD;
 }
 
 #[link(name = "userenv")]

@@ -12,7 +12,7 @@ trait Trait {
     fn outer(self) {
         fn inner(_: Self) {
             //~^ ERROR can't use type parameters from outer function
-            //~^^ ERROR use of undeclared type name `Self`
+            //~^^ ERROR use of `Self` outside of an impl or trait
         }
     }
 }

@@ -1,9 +1,11 @@
 # The Rust Programming Language
 
-This is a compiler for Rust, including standard libraries, tools and
-documentation. Rust is a systems programming language that is fast,
-memory safe and multithreaded, but does not employ a garbage collector
-or otherwise impose significant runtime overhead.
+Rust is a systems programming language that is fast, memory safe and
+multithreaded, but does not employ a garbage collector or otherwise
+impose significant runtime overhead.
+
+This repo contains the code for `rustc`, the Rust compiler, as well
+as standard libraries, tools and documentation for Rust.
 
 ## Quick Start
 
@@ -87,9 +89,11 @@ fetch snapshots, and an OS that can execute the available snapshot binaries.
 
 Snapshot binaries are currently built and tested on several platforms:
 
-* Windows (7, 8, Server 2008 R2), x86 and x86-64 (64-bit support added in Rust 0.12.0)
-* Linux (2.6.18 or later, various distributions), x86 and x86-64
-* OSX 10.7 (Lion) or greater, x86 and x86-64
+| Platform \ Architecture        | x86 | x86_64 |
+|--------------------------------|-----|--------|
+| Windows (7, 8, Server 2008 R2) | ✓   | ✓      |
+| Linux (2.6.18 or later)        | ✓   | ✓      |
+| OSX (10.7 Lion or later)       | ✓   | ✓      |
 
 You may find that other platforms work, but these are our officially
 supported build environments that are most likely to work.

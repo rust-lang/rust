@@ -24,7 +24,7 @@ pub mod b {
         use b::B;
 
         fn foo(b: &B) {
-            b.foo(); //~ ERROR: does not implement any method in scope named
+            b.foo(); //~ ERROR: no method named `foo` found
         }
     }
 

@@ -91,8 +91,8 @@ fn encode_impl_type_basename(rbml_w: &mut Encoder, name: ast::Name) {
     rbml_w.wr_tagged_str(tag_item_impl_type_basename, &token::get_name(name));
 }
 
-pub fn encode_def_id(rbml_w: &mut Encoder, id: DefId) {
-    rbml_w.wr_tagged_str(tag_def_id, &def_to_string(id));
+fn encode_def_id(rbml_w: &mut Encoder, id: DefId) {
+    rbml_w.wr_tagged_u64(tag_def_id, def_to_u64(id));
 }
 
 #[derive(Clone)]
@@ -120,6 +120,10 @@ fn encode_trait_ref<'a, 'tcx>(rbml_w: &mut Encoder,
 // Item info table encoding
 fn encode_family(rbml_w: &mut Encoder, c: char) {
     rbml_w.wr_tagged_u8(tag_items_data_item_family, c as u8);
+}
+
+pub fn def_to_u64(did: DefId) -> u64 {
+    (did.krate as u64) << 32 | (did.node as u64)
 }
 
 pub fn def_to_string(did: DefId) -> String {
@@ -153,9 +157,9 @@ fn encode_bounds_and_type<'a, 'tcx>(rbml_w: &mut Encoder,
 }
 
 fn encode_variant_id(rbml_w: &mut Encoder, vid: DefId) {
-    let s = def_to_string(vid);
-    rbml_w.wr_tagged_str(tag_items_data_item_variant, &s[..]);
-    rbml_w.wr_tagged_str(tag_mod_child, &s[..]);
+    let id = def_to_u64(vid);
+    rbml_w.wr_tagged_u64(tag_items_data_item_variant, id);
+    rbml_w.wr_tagged_u64(tag_mod_child, id);
 }
 
 pub fn write_closure_type<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
@@ -260,7 +264,7 @@ fn encode_disr_val(_: &EncodeContext,
 }
 
 fn encode_parent_item(rbml_w: &mut Encoder, id: DefId) {
-    rbml_w.wr_tagged_str(tag_items_data_parent_item, &def_to_string(id));
+    rbml_w.wr_tagged_u64(tag_items_data_parent_item, def_to_u64(id));
 }
 
 fn encode_struct_fields(rbml_w: &mut Encoder,
@@ -275,7 +279,7 @@ fn encode_struct_fields(rbml_w: &mut Encoder,
         }
         encode_struct_field_family(rbml_w, f.vis);
         encode_def_id(rbml_w, f.id);
-        rbml_w.wr_tagged_str(tag_item_field_origin, &def_to_string(origin));
+        rbml_w.wr_tagged_u64(tag_item_field_origin, def_to_u64(origin));
         rbml_w.end_tag();
     }
 }
@@ -358,8 +362,8 @@ fn encode_reexported_static_method(rbml_w: &mut Encoder,
     debug!("(encode reexported static method) {}::{}",
             exp.name, token::get_name(method_name));
     rbml_w.start_tag(tag_items_data_item_reexport);
-    rbml_w.wr_tagged_str(tag_items_data_item_reexport_def_id,
-                         &def_to_string(method_def_id));
+    rbml_w.wr_tagged_u64(tag_items_data_item_reexport_def_id,
+                         def_to_u64(method_def_id));
     rbml_w.wr_tagged_str(tag_items_data_item_reexport_name,
                          &format!("{}::{}", exp.name,
                                             token::get_name(method_name)));
@@ -495,8 +499,8 @@ fn encode_reexports(ecx: &EncodeContext,
                        exp.def_id.node,
                        id);
                 rbml_w.start_tag(tag_items_data_item_reexport);
-                rbml_w.wr_tagged_str(tag_items_data_item_reexport_def_id,
-                                     &def_to_string(exp.def_id));
+                rbml_w.wr_tagged_u64(tag_items_data_item_reexport_def_id,
+                                     def_to_u64(exp.def_id));
                 rbml_w.wr_tagged_str(tag_items_data_item_reexport_name,
                                      exp.name.as_str());
                 rbml_w.end_tag();
@@ -526,12 +530,12 @@ fn encode_info_for_mod(ecx: &EncodeContext,
 
     // Encode info about all the module children.
     for item in &md.items {
-        rbml_w.wr_tagged_str(tag_mod_child,
-                             &def_to_string(local_def(item.id)));
+        rbml_w.wr_tagged_u64(tag_mod_child,
+                             def_to_u64(local_def(item.id)));
 
         each_auxiliary_node_id(&**item, |auxiliary_node_id| {
-            rbml_w.wr_tagged_str(tag_mod_child,
-                                 &def_to_string(local_def(auxiliary_node_id)));
+            rbml_w.wr_tagged_u64(tag_mod_child,
+                                 def_to_u64(local_def(auxiliary_node_id)));
             true
         });
 
@@ -541,8 +545,7 @@ fn encode_info_for_mod(ecx: &EncodeContext,
                    token::get_ident(ident),
                    did, ecx.tcx.map.node_to_string(did));
 
-            rbml_w.wr_tagged_str(tag_mod_impl,
-                                 &def_to_string(local_def(did)));
+            rbml_w.wr_tagged_u64(tag_mod_impl, def_to_u64(local_def(did)));
         }
     }
 
@@ -619,8 +622,7 @@ fn encode_parent_sort(rbml_w: &mut Encoder, sort: char) {
 fn encode_provided_source(rbml_w: &mut Encoder,
                           source_opt: Option<DefId>) {
     if let Some(source) = source_opt {
-        rbml_w.wr_tagged_str(tag_item_method_provided_source,
-                             &def_to_string(source));
+        rbml_w.wr_tagged_u64(tag_item_method_provided_source, def_to_u64(source));
     }
 }
 
@@ -725,8 +727,8 @@ fn encode_generics<'a, 'tcx>(rbml_w: &mut Encoder,
         encode_name(rbml_w, param.name);
         rbml_w.end_tag();
 
-        rbml_w.wr_tagged_str(tag_region_param_def_def_id,
-                             &def_to_string(param.def_id));
+        rbml_w.wr_tagged_u64(tag_region_param_def_def_id,
+                             def_to_u64(param.def_id));
 
         rbml_w.wr_tagged_u64(tag_region_param_def_space,
                              param.space.to_uint() as u64);
@@ -1089,8 +1091,8 @@ fn encode_info_for_item(ecx: &EncodeContext,
 
         // Encode all the items in this module.
         for foreign_item in &fm.items {
-            rbml_w.wr_tagged_str(tag_mod_child,
-                                 &def_to_string(local_def(foreign_item.id)));
+            rbml_w.wr_tagged_u64(tag_mod_child,
+                                 def_to_u64(local_def(foreign_item.id)));
         }
         encode_visibility(rbml_w, vis);
         encode_stability(rbml_w, stab);
@@ -1217,6 +1219,16 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_attributes(rbml_w, &item.attrs);
         encode_unsafety(rbml_w, unsafety);
         encode_polarity(rbml_w, polarity);
+
+        match tcx.custom_coerce_unsized_kinds.borrow().get(&local_def(item.id)) {
+            Some(&kind) => {
+                rbml_w.start_tag(tag_impl_coerce_unsized_kind);
+                kind.encode(rbml_w);
+                rbml_w.end_tag();
+            }
+            None => {}
+        }
+
         match ty.node {
             ast::TyPath(None, ref path) if path.segments.len() == 1 => {
                 let name = path.segments.last().unwrap().identifier.name;
@@ -1335,8 +1347,8 @@ fn encode_info_for_item(ecx: &EncodeContext,
             }
             rbml_w.end_tag();
 
-            rbml_w.wr_tagged_str(tag_mod_child,
-                                 &def_to_string(method_def_id.def_id()));
+            rbml_w.wr_tagged_u64(tag_mod_child,
+                                 def_to_u64(method_def_id.def_id()));
         }
         encode_path(rbml_w, path.clone());
 
@@ -1893,6 +1905,7 @@ impl<'a, 'b, 'c, 'tcx, 'v> Visitor<'v> for ImplVisitor<'a, 'b, 'c, 'tcx> {
                     def_id.krate != ast::LOCAL_CRATE {
                 self.rbml_w.start_tag(tag_impls_impl);
                 encode_def_id(self.rbml_w, local_def(item.id));
+                self.rbml_w.wr_tagged_u64(tag_impls_impl_trait_def_id, def_to_u64(def_id));
                 self.rbml_w.end_tag();
             }
         }
@@ -1932,12 +1945,12 @@ fn encode_misc_info(ecx: &EncodeContext,
     rbml_w.start_tag(tag_misc_info);
     rbml_w.start_tag(tag_misc_info_crate_items);
     for item in &krate.module.items {
-        rbml_w.wr_tagged_str(tag_mod_child,
-                             &def_to_string(local_def(item.id)));
+        rbml_w.wr_tagged_u64(tag_mod_child,
+                             def_to_u64(local_def(item.id)));
 
         each_auxiliary_node_id(&**item, |auxiliary_node_id| {
-            rbml_w.wr_tagged_str(tag_mod_child,
-                                 &def_to_string(local_def(auxiliary_node_id)));
+            rbml_w.wr_tagged_u64(tag_mod_child,
+                                 def_to_u64(local_def(auxiliary_node_id)));
             true
         });
     }

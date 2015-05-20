@@ -15,7 +15,7 @@ let x = true;
 let y: bool = false;
 ```
 
-A common use of booleans is in [`if` statements][if].
+A common use of booleans is in [`if` conditionals][if].
 
 [if]: if.html
 
@@ -82,7 +82,7 @@ Let’s go over them by category:
 Integer types come in two varieties: signed and unsigned. To understand the
 difference, let’s consider a number with four bits of size. A signed, four-bit
 number would let you store numbers from `-8` to `+7`. Signed numbers use
-“two’s compliment representation”. An unsigned four bit number, since it does
+“two’s complement representation”. An unsigned four bit number, since it does
 not need to store negatives, can store values from `0` to `+15`.
 
 Unsigned types use a `u` for their category, and signed types use `i`. The `i`
@@ -251,7 +251,7 @@ This pattern is very powerful, and we’ll see it repeated more later.
 You can disambiguate a single-element tuple from a value in parentheses with a
 comma:
 
-```
+```rust
 (0,); // single-element tuple
 (0); // zero in parentheses
 ```
@@ -283,7 +283,7 @@ documentation][tuple].
 
 Functions also have a type! They look like this:
 
-```
+```rust
 fn foo(x: i32) -> i32 { x }
 
 let x: fn(i32) -> i32 = foo;

@@ -41,6 +41,7 @@ use session::Session;
 use lint;
 use metadata::csearch;
 use middle;
+use middle::cast;
 use middle::check_const;
 use middle::const_eval;
 use middle::def::{self, DefMap, ExportMap};
@@ -288,15 +289,6 @@ pub struct field_ty {
     pub origin: ast::DefId,  // The DefId of the struct in which the field is declared.
 }
 
-// Contains information needed to resolve types and (in the future) look up
-// the types of AST nodes.
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
-pub struct creader_cache_key {
-    pub cnum: CrateNum,
-    pub pos: usize,
-    pub len: usize
-}
-
 #[derive(Clone, PartialEq, RustcDecodable, RustcEncodable)]
 pub struct ItemVariances {
     pub types: VecPerParamSpace<Variance>,
@@ -402,6 +394,12 @@ pub enum AutoRef<'tcx> {
     /// Convert from T to *T.
     /// Value to thin pointer.
     AutoUnsafe(ast::Mutability),
+}
+
+#[derive(Clone, Copy, RustcEncodable, RustcDecodable, Debug)]
+pub enum CustomCoerceUnsized {
+    /// Records the index of the field being coerced.
+    Struct(usize)
 }
 
 #[derive(Clone, Copy, RustcEncodable, RustcDecodable, PartialEq, PartialOrd, Debug)]
@@ -555,6 +553,15 @@ pub enum vtable_origin<'tcx> {
 // For every explicit cast into an object type, maps from the cast
 // expr to the associated trait ref.
 pub type ObjectCastMap<'tcx> = RefCell<NodeMap<ty::PolyTraitRef<'tcx>>>;
+
+// Contains information needed to resolve types and (in the future) look up
+// the types of AST nodes.
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+pub struct creader_cache_key {
+    pub cnum: CrateNum,
+    pub pos: usize,
+    pub len: usize
+}
 
 /// A restriction that certain types must be the same size. The use of
 /// `transmute` gives rise to these restrictions. These generally
@@ -818,6 +825,13 @@ pub struct ctxt<'tcx> {
 
     /// Maps Expr NodeId's to their constant qualification.
     pub const_qualif_map: RefCell<NodeMap<check_const::ConstQualif>>,
+
+    /// Caches CoerceUnsized kinds for impls on custom types.
+    pub custom_coerce_unsized_kinds: RefCell<DefIdMap<CustomCoerceUnsized>>,
+
+    /// Maps a cast expression to its kind. This is keyed on the
+    /// *from* expression of the cast, not the cast itself.
+    pub cast_kinds: RefCell<NodeMap<cast::CastKind>>,
 }
 
 impl<'tcx> ctxt<'tcx> {
@@ -1688,11 +1702,8 @@ pub enum InferTy {
     /// unbound type variable. This is convenient for caching etc. See
     /// `middle::infer::freshen` for more details.
     FreshTy(u32),
-
-    // FIXME -- once integral fallback is impl'd, we should remove
-    // this type. It's only needed to prevent spurious errors for
-    // integers whose type winds up never being constrained.
     FreshIntTy(u32),
+    FreshFloatTy(u32)
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Debug, Copy)]
@@ -1764,6 +1775,7 @@ impl fmt::Debug for InferTy {
             FloatVar(ref v) => v.fmt(f),
             FreshTy(v) => write!(f, "FreshTy({:?})", v),
             FreshIntTy(v) => write!(f, "FreshIntTy({:?})", v),
+            FreshFloatTy(v) => write!(f, "FreshFloatTy({:?})", v)
         }
     }
 }
@@ -2564,9 +2576,11 @@ impl<'tcx> TraitDef<'tcx> {
                        tcx: &ctxt<'tcx>,
                        impl_def_id: DefId,
                        impl_trait_ref: TraitRef<'tcx>) {
+        debug!("TraitDef::record_impl for {}, from {}",
+               self.repr(tcx), impl_trait_ref.repr(tcx));
+
         // We don't want to borrow_mut after we already populated all impls,
         // so check if an impl is present with an immutable borrow first.
-
         if let Some(sty) = fast_reject::simplify_type(tcx,
                                                       impl_trait_ref.self_ty(), false) {
             if let Some(is) = self.nonblanket_impls.borrow().get(&sty) {
@@ -2807,6 +2821,8 @@ pub fn mk_ctxt<'tcx>(s: Session,
         type_impls_copy_cache: RefCell::new(HashMap::new()),
         type_impls_sized_cache: RefCell::new(HashMap::new()),
         const_qualif_map: RefCell::new(NodeMap()),
+        custom_coerce_unsized_kinds: RefCell::new(DefIdMap()),
+        cast_kinds: RefCell::new(NodeMap()),
    }
 }
 
@@ -3763,7 +3779,7 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
             }
 
             // Scalar and unique types are sendable, and durable
-            ty_infer(ty::FreshIntTy(_)) |
+            ty_infer(ty::FreshIntTy(_)) | ty_infer(ty::FreshFloatTy(_)) |
             ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
             ty_bare_fn(..) | ty::ty_char => {
                 TC::None
@@ -4313,6 +4329,7 @@ pub fn type_is_fresh(ty: Ty) -> bool {
     match ty.sty {
       ty_infer(FreshTy(_)) => true,
       ty_infer(FreshIntTy(_)) => true,
+      ty_infer(FreshFloatTy(_)) => true,
       _ => false
     }
 }
@@ -4408,7 +4425,7 @@ pub fn deref<'tcx>(ty: Ty<'tcx>, explicit: bool) -> Option<mt<'tcx>> {
 pub fn type_content<'tcx>(ty: Ty<'tcx>) -> Ty<'tcx> {
     match ty.sty {
         ty_uniq(ty) => ty,
-        ty_rptr(_, mt) |ty_ptr(mt) => mt.ty,
+        ty_rptr(_, mt) | ty_ptr(mt) => mt.ty,
         _ => ty
     }
 }
@@ -5014,6 +5031,7 @@ pub fn ty_sort_string<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> String {
         ty_infer(FloatVar(_)) => "floating-point variable".to_string(),
         ty_infer(FreshTy(_)) => "skolemized type".to_string(),
         ty_infer(FreshIntTy(_)) => "skolemized integral type".to_string(),
+        ty_infer(FreshFloatTy(_)) => "skolemized floating-point type".to_string(),
         ty_projection(_) => "associated type".to_string(),
         ty_param(ref p) => {
             if p.space == subst::SelfSpace {
@@ -5349,6 +5367,26 @@ pub fn trait_impl_polarity<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)
      }
 }
 
+pub fn custom_coerce_unsized_kind<'tcx>(cx: &ctxt<'tcx>, did: ast::DefId)
+                                        -> CustomCoerceUnsized {
+    memoized(&cx.custom_coerce_unsized_kinds, did, |did: DefId| {
+        let (kind, src) = if did.krate != ast::LOCAL_CRATE {
+            (csearch::get_custom_coerce_unsized_kind(cx, did), "external")
+        } else {
+            (None, "local")
+        };
+
+        match kind {
+            Some(kind) => kind,
+            None => {
+                cx.sess.bug(&format!("custom_coerce_unsized_kind: \
+                                      {} impl `{}` is missing its kind",
+                                     src, item_path_str(cx, did)));
+            }
+        }
+    })
+}
+
 pub fn impl_or_trait_item<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)
                                 -> ImplOrTraitItem<'tcx> {
     lookup_locally_or_in_crate_store("impl_or_trait_items",
@@ -5574,8 +5612,7 @@ impl DtorKind {
     }
 }
 
-/* If struct_id names a struct with a dtor, return Some(the dtor's id).
-   Otherwise return none. */
+/* If struct_id names a struct with a dtor. */
 pub fn ty_dtor(cx: &ctxt, struct_id: DefId) -> DtorKind {
     match cx.destructor_for_type.borrow().get(&struct_id) {
         Some(&method_def_id) => {
@@ -6011,19 +6048,27 @@ pub fn lookup_repr_hints(tcx: &ctxt, did: DefId) -> Rc<Vec<attr::ReprAttr>> {
 }
 
 // Look up a field ID, whether or not it's local
+pub fn lookup_field_type_unsubstituted<'tcx>(tcx: &ctxt<'tcx>,
+                                             struct_id: DefId,
+                                             id: DefId)
+                                             -> Ty<'tcx> {
+    if id.krate == ast::LOCAL_CRATE {
+        node_id_to_type(tcx, id.node)
+    } else {
+        let mut tcache = tcx.tcache.borrow_mut();
+        tcache.entry(id).or_insert_with(|| csearch::get_field_type(tcx, struct_id, id)).ty
+    }
+}
+
+
+// Look up a field ID, whether or not it's local
 // Takes a list of type substs in case the struct is generic
 pub fn lookup_field_type<'tcx>(tcx: &ctxt<'tcx>,
                                struct_id: DefId,
                                id: DefId,
                                substs: &Substs<'tcx>)
                                -> Ty<'tcx> {
-    let ty = if id.krate == ast::LOCAL_CRATE {
-        node_id_to_type(tcx, id.node)
-    } else {
-        let mut tcache = tcx.tcache.borrow_mut();
-        tcache.entry(id).or_insert_with(|| csearch::get_field_type(tcx, struct_id, id)).ty
-    };
-    ty.subst(tcx, substs)
+    lookup_field_type_unsubstituted(tcx, struct_id, id).subst(tcx, substs)
 }
 
 // Look up the list of field names and IDs for a given struct.
@@ -6336,10 +6381,10 @@ pub fn populate_implementations_for_primitive_if_necessary(tcx: &ctxt,
     tcx.populated_external_primitive_impls.borrow_mut().insert(primitive_def_id);
 }
 
-/// Populates the type context with all the implementations for the given type
-/// if necessary.
-pub fn populate_implementations_for_type_if_necessary(tcx: &ctxt,
-                                                      type_id: ast::DefId) {
+/// Populates the type context with all the inherent implementations for
+/// the given type if necessary.
+pub fn populate_inherent_implementations_for_type_if_necessary(tcx: &ctxt,
+                                                               type_id: ast::DefId) {
     if type_id.krate == LOCAL_CRATE {
         return
     }
@@ -6348,37 +6393,15 @@ pub fn populate_implementations_for_type_if_necessary(tcx: &ctxt,
         return
     }
 
-    debug!("populate_implementations_for_type_if_necessary: searching for {:?}", type_id);
+    debug!("populate_inherent_implementations_for_type_if_necessary: searching for {:?}", type_id);
 
     let mut inherent_impls = Vec::new();
-    csearch::each_implementation_for_type(&tcx.sess.cstore, type_id, |impl_def_id| {
-        let impl_items = csearch::get_impl_items(&tcx.sess.cstore, impl_def_id);
-
-        // Record the implementation, if needed
-        if let Some(trait_ref) = csearch::get_impl_trait(tcx, impl_def_id) {
-            let trait_def = lookup_trait_def(tcx, trait_ref.def_id);
-            trait_def.record_impl(tcx, impl_def_id, trait_ref);
-        } else {
-            inherent_impls.push(impl_def_id);
-        }
-
-        // For any methods that use a default implementation, add them to
-        // the map. This is a bit unfortunate.
-        for impl_item_def_id in &impl_items {
-            let method_def_id = impl_item_def_id.def_id();
-            match impl_or_trait_item(tcx, method_def_id) {
-                MethodTraitItem(method) => {
-                    if let Some(source) = method.provided_source {
-                        tcx.provided_method_sources
-                           .borrow_mut()
-                           .insert(method_def_id, source);
-                    }
-                }
-                _ => {}
-            }
-        }
+    csearch::each_inherent_implementation_for_type(&tcx.sess.cstore, type_id, |impl_def_id| {
+        // Record the implementation.
+        inherent_impls.push(impl_def_id);
 
         // Store the implementation info.
+        let impl_items = csearch::get_impl_items(&tcx.sess.cstore, impl_def_id);
         tcx.impl_items.borrow_mut().insert(impl_def_id, impl_items);
     });
 
@@ -6388,17 +6411,17 @@ pub fn populate_implementations_for_type_if_necessary(tcx: &ctxt,
 
 /// Populates the type context with all the implementations for the given
 /// trait if necessary.
-pub fn populate_implementations_for_trait_if_necessary(
-        tcx: &ctxt,
-        trait_id: ast::DefId) {
+pub fn populate_implementations_for_trait_if_necessary(tcx: &ctxt, trait_id: ast::DefId) {
     if trait_id.krate == LOCAL_CRATE {
         return
     }
 
     let def = lookup_trait_def(tcx, trait_id);
     if def.flags.get().intersects(TraitFlags::IMPLS_VALID) {
-        return
+        return;
     }
+
+    debug!("populate_implementations_for_trait_if_necessary: searching for {}", def.repr(tcx));
 
     if csearch::is_defaulted_trait(&tcx.sess.cstore, trait_id) {
         record_trait_has_default_impl(tcx, trait_id);

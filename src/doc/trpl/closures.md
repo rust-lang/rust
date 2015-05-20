@@ -54,9 +54,9 @@ The second is that the syntax is similar, but a bit different. I’ve added spac
 here to make them look a little closer:
 
 ```rust
-fn  plus_one_v1   (x: i32 ) -> i32 { x + 1 }
-let plus_one_v2 = |x: i32 | -> i32 { x + 1 };
-let plus_one_v3 = |x: i32 |          x + 1  ;
+fn  plus_one_v1   (x: i32) -> i32 { x + 1 }
+let plus_one_v2 = |x: i32| -> i32 { x + 1 };
+let plus_one_v3 = |x: i32|          x + 1  ;
 ```
 
 Small differences, but they’re similar in ways.
@@ -136,7 +136,7 @@ This gives us:
 note: `nums` moved into closure environment here because it has type
   `[closure(()) -> collections::vec::Vec<i32>]`, which is non-copyable
 let takes_nums = || nums;
-                    ^~~~~~~
+                 ^~~~~~~
 ```
 
 `Vec<T>` has ownership over its contents, and therefore, when we refer to it
@@ -352,8 +352,8 @@ error: the trait `core::marker::Sized` is not implemented for the type
 factory() -> (Fn(i32) -> Vec<i32>) {
              ^~~~~~~~~~~~~~~~~~~~~
 note: `core::ops::Fn(i32) -> collections::vec::Vec<i32>` does not have a constant size known at compile-time
-fa ctory() -> (Fn(i32) -> Vec<i32>) {
-              ^~~~~~~~~~~~~~~~~~~~~
+factory() -> (Fn(i32) -> Vec<i32>) {
+             ^~~~~~~~~~~~~~~~~~~~~
 
 ```
 

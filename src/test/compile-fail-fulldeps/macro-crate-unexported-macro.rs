@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // aux-build:macro_crate_test.rs
-// ignore-stage1
 
 #[macro_use] #[no_link]
 extern crate macro_crate_test;

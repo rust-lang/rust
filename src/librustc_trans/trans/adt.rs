@@ -141,7 +141,8 @@ pub fn represent_node<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
 
 /// Decides how to represent a given type.
 pub fn represent_type<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
-                                t: Ty<'tcx>) -> Rc<Repr<'tcx>> {
+                                t: Ty<'tcx>)
+                                -> Rc<Repr<'tcx>> {
     debug!("Representing: {}", ty_to_string(cx.tcx(), t));
     match cx.adt_reprs().borrow().get(&t) {
         Some(repr) => return repr.clone(),
@@ -216,7 +217,9 @@ fn represent_type_uncached<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             }).collect::<Vec<_>>();
             let packed = ty::lookup_packed(cx.tcx(), def_id);
             let dtor = ty::ty_dtor(cx.tcx(), def_id).has_drop_flag();
-            if dtor { ftys.push(cx.tcx().dtor_type()); }
+            if dtor {
+                ftys.push(cx.tcx().dtor_type());
+            }
 
             Univariant(mk_struct(cx, &ftys[..], packed, t), dtor_to_init_u8(dtor))
         }
@@ -517,8 +520,7 @@ fn mk_struct<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                        -> Struct<'tcx> {
     let sized = tys.iter().all(|&ty| type_is_sized(cx.tcx(), ty));
     let lltys : Vec<Type> = if sized {
-        tys.iter()
-           .map(|&ty| type_of::sizing_type_of(cx, ty)).collect()
+        tys.iter().map(|&ty| type_of::sizing_type_of(cx, ty)).collect()
     } else {
         tys.iter().filter(|&ty| type_is_sized(cx.tcx(), *ty))
            .map(|&ty| type_of::sizing_type_of(cx, ty)).collect()
@@ -793,44 +795,41 @@ pub fn trans_switch<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
     }
 }
 
-
+pub fn is_discr_signed<'tcx>(r: &Repr<'tcx>) -> bool {
+    match *r {
+        CEnum(ity, _, _) => ity.is_signed(),
+        General(ity, _, _) => ity.is_signed(),
+        Univariant(..) => false,
+        RawNullablePointer { .. } => false,
+        StructWrappedNullablePointer { .. } => false,
+    }
+}
 
 /// Obtain the actual discriminant of a value.
 pub fn trans_get_discr<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>, r: &Repr<'tcx>,
                                        scrutinee: ValueRef, cast_to: Option<Type>)
     -> ValueRef {
-    let signed;
-    let val;
     debug!("trans_get_discr r: {:?}", r);
-    match *r {
-        CEnum(ity, min, max) => {
-            val = load_discr(bcx, ity, scrutinee, min, max);
-            signed = ity.is_signed();
-        }
+    let val = match *r {
+        CEnum(ity, min, max) => load_discr(bcx, ity, scrutinee, min, max),
         General(ity, ref cases, _) => {
             let ptr = GEPi(bcx, scrutinee, &[0, 0]);
-            val = load_discr(bcx, ity, ptr, 0, (cases.len() - 1) as Disr);
-            signed = ity.is_signed();
+            load_discr(bcx, ity, ptr, 0, (cases.len() - 1) as Disr)
         }
-        Univariant(..) => {
-            val = C_u8(bcx.ccx(), 0);
-            signed = false;
-        }
+        Univariant(..) => C_u8(bcx.ccx(), 0),
         RawNullablePointer { nndiscr, nnty, .. } =>  {
             let cmp = if nndiscr == 0 { IntEQ } else { IntNE };
             let llptrty = type_of::sizing_type_of(bcx.ccx(), nnty);
             let op = Load(bcx, scrutinee);
-            val = ICmp(bcx, cmp, op, C_null(llptrty), DebugLoc::None);
-            signed = false;
+            ICmp(bcx, cmp, op, C_null(llptrty), DebugLoc::None)
         }
         StructWrappedNullablePointer { nndiscr, ref discrfield, .. } => {
-            val = struct_wrapped_nullable_bitdiscr(bcx, nndiscr, discrfield, scrutinee);
-            signed = false;
+            struct_wrapped_nullable_bitdiscr(bcx, nndiscr, discrfield, scrutinee)
         }
-    }
+    };
     match cast_to {
         None => val,
-        Some(llty) => if signed { SExt(bcx, val, llty) } else { ZExt(bcx, val, llty) }
+        Some(llty) => if is_discr_signed(r) { SExt(bcx, val, llty) } else { ZExt(bcx, val, llty) }
     }
 }
 
@@ -1070,7 +1069,8 @@ pub fn fold_variants<'r, 'blk, 'tcx, F>
 /// Access the struct drop flag, if present.
 pub fn trans_drop_flag_ptr<'r, 'blk, 'tcx>
                           (&mut Block { bl, ref mut fcx }: &mut Block<'r, 'blk, 'tcx>,
-                           r: &Repr<'tcx>, val: ValueRef)
+                           r: &Repr<'tcx>,
+                           val: ValueRef)
                            -> datum::DatumBlock<'blk, 'tcx, datum::Expr>
 {
     //let Block { bl, ref mut fcx } = *bcx;

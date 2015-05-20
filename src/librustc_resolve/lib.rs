@@ -16,7 +16,7 @@
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
-      html_favicon_url = "http://www.rust-lang.org/favicon.ico",
+      html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
       html_root_url = "http://doc.rust-lang.org/nightly/")]
 
 #![feature(alloc)]
@@ -2361,8 +2361,18 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             "type name"
                         };
 
-                        let msg = format!("use of undeclared {} `{}`", kind,
-                                          path_names_to_string(path, 0));
+                        let self_type_name = special_idents::type_self.name;
+                        let is_invalid_self_type_name =
+                            path.segments.len() > 0 &&
+                            maybe_qself.is_none() &&
+                            path.segments[0].identifier.name == self_type_name;
+                        let msg = if is_invalid_self_type_name {
+                            "use of `Self` outside of an impl or trait".to_string()
+                        } else {
+                            format!("use of undeclared {} `{}`",
+                                kind, path_names_to_string(path, 0))
+                        };
+
                         self.resolve_error(ty.span, &msg[..]);
                     }
                 }
@@ -2528,8 +2538,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 // If anything ends up here entirely resolved,
                                 // it's an error. If anything ends up here
                                 // partially resolved, that's OK, because it may
-                                // be a `T::CONST` that typeck will resolve to
-                                // an inherent impl.
+                                // be a `T::CONST` that typeck will resolve.
                                 if path_res.depth == 0 {
                                     self.resolve_error(
                                         path.span,
@@ -2537,6 +2546,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                                  token::get_ident(
                                                      path.segments.last().unwrap().identifier)));
                                 } else {
+                                    let const_name = path.segments.last().unwrap()
+                                                         .identifier.name;
+                                    let traits = self.get_traits_containing_item(const_name);
+                                    self.trait_map.insert(pattern.id, traits);
                                     self.record_def(pattern.id, path_res);
                                 }
                             }
@@ -2688,18 +2701,21 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                    check_ribs: bool)
                                    -> AssocItemResolveResult
     {
+        let max_assoc_types;
+
         match maybe_qself {
-            Some(&ast::QSelf { position: 0, .. }) =>
-                return TypecheckRequired,
-            _ => {}
+            Some(qself) => {
+                if qself.position == 0 {
+                    return TypecheckRequired;
+                }
+                max_assoc_types = path.segments.len() - qself.position;
+                // Make sure the trait is valid.
+                let _ = self.resolve_trait_reference(id, path, max_assoc_types);
+            }
+            None => {
+                max_assoc_types = path.segments.len();
+            }
         }
-        let max_assoc_types = if let Some(qself) = maybe_qself {
-            // Make sure the trait is valid.
-            let _ = self.resolve_trait_reference(id, path, 1);
-            path.segments.len() - qself.position
-        } else {
-            path.segments.len()
-        };
 
         let mut resolution = self.with_no_errors(|this| {
             this.resolve_path(id, path, 0, namespace, check_ribs)

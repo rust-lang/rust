@@ -81,7 +81,7 @@ vectors as pointers to memory. Rust's vectors are guaranteed to be a contiguous 
 length is number of elements currently contained, and the capacity is the total size in elements of
 the allocated memory. The length is less than or equal to the capacity.
 
-```
+```rust
 # #![feature(libc)]
 # extern crate libc;
 # use libc::{c_int, size_t};
@@ -106,7 +106,7 @@ required capacity to hold the compressed output. The vector can then be passed t
 `snappy_compress` function as an output parameter. An output parameter is also passed to retrieve
 the true length after compression for setting the length.
 
-```
+```rust
 # #![feature(libc)]
 # extern crate libc;
 # use libc::{size_t, c_int};
@@ -133,7 +133,7 @@ pub fn compress(src: &[u8]) -> Vec<u8> {
 Decompression is similar, because snappy stores the uncompressed size as part of the compression
 format and `snappy_uncompressed_length` will retrieve the exact buffer size required.
 
-```
+```rust
 # #![feature(libc)]
 # extern crate libc;
 # use libc::{size_t, c_int};
@@ -375,7 +375,7 @@ the compiler that the unsafety does not leak out of the block.
 Unsafe functions, on the other hand, advertise it to the world. An unsafe function is written like
 this:
 
-```
+```rust
 unsafe fn kaboom(ptr: *const i32) -> i32 { *ptr }
 ```
 
@@ -439,7 +439,7 @@ Most foreign code exposes a C ABI, and Rust uses the platform's C calling conven
 calling foreign functions. Some foreign functions, most notably the Windows API, use other calling
 conventions. Rust provides a way to tell the compiler which convention to use:
 
-```
+```rust
 # #![feature(libc)]
 extern crate libc;
 
@@ -516,7 +516,7 @@ function pointer using the C ABI.
 You may wish to compile Rust code in a way so that it can be called from C. This is
 fairly easy, but requires a few things:
 
-```
+```rust
 #[no_mangle]
 pub extern fn hello_rust() -> *const u8 {
     "Hello, world!\0".as_ptr()

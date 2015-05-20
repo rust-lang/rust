@@ -273,8 +273,8 @@ See also http://doc.rust-lang.org/book/unsafe.html
 
 E0137: r##"
 This error indicates that the compiler found multiple functions with the
-#[main] attribute. This is an error because there must be a unique entry point
-into a Rust program.
+`#[main]` attribute. This is an error because there must be a unique entry
+point into a Rust program.
 "##,
 
 E0152: r##"
@@ -427,8 +427,8 @@ be taken.
 
 E0271: r##"
 This is because of a type mismatch between the associated type of some
-trait (e.g. T::Bar, where T implements trait Quux { type Bar; })
-and another type U that is required to be equal to T::Bar, but is not.
+trait (e.g. `T::Bar`, where `T` implements `trait Quux { type Bar; }`)
+and another type `U` that is required to be equal to `T::Bar`, but is not.
 Examples follow.
 
 Here is a basic example:
@@ -801,12 +801,12 @@ struct Foo<T: 'static> {
 
 register_diagnostics! {
     E0011,
-    E0012,
     E0014,
     E0016,
     E0017,
     E0019,
     E0022,
+    E0038,
     E0109,
     E0110,
     E0134,

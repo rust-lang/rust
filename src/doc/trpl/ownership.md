@@ -6,7 +6,7 @@ become quite acquainted. Ownership is how Rust achieves its largest goal,
 memory safety. There are a few distinct concepts, each with its own
 chapter:
 
-* ownership, which you’re reading now.
+* ownership, which you’re reading now
 * [borrowing][borrowing], and their associated feature ‘references’
 * [lifetimes][lifetimes], an advanced concept of borrowing
 
@@ -23,7 +23,7 @@ Before we get to the details, two important notes about the ownership system.
 Rust has a focus on safety and speed. It accomplishes these goals through many
 ‘zero-cost abstractions’, which means that in Rust, abstractions cost as little
 as possible in order to make them work. The ownership system is a prime example
-of a zero cost abstraction. All of the analysis we’ll talk about in this guide
+of a zero-cost abstraction. All of the analysis we’ll talk about in this guide
 is _done at compile time_. You do not pay any run-time cost for any of these
 features.
 
@@ -41,7 +41,7 @@ With that in mind, let’s learn about ownership.
 
 # Ownership
 
-[`Variable bindings`][bindings] have a property in Rust: they ‘have ownership’
+[Variable bindings][bindings] have a property in Rust: they ‘have ownership’
 of what they’re bound to. This means that when a binding goes out of scope, the
 resource that they’re bound to are freed. For example:
 
@@ -106,7 +106,7 @@ take(v);
 println!("v[0] is: {}", v[0]);
 ```
 
-Same error: “use of moved value.” When we transfer ownership to something else,
+Same error: ‘use of moved value’. When we transfer ownership to something else,
 we say that we’ve ‘moved’ the thing we refer to. You don’t need some sort of
 special annotation here, it’s the default thing that Rust does.
 
@@ -121,19 +121,19 @@ let v = vec![1, 2, 3];
 let v2 = v;
 ```
 
-The first line creates some data for the vector on the [stack][sh], `v`. The
-vector’s data, however, is stored on the [heap][sh], and so it contains a
-pointer to that data. When we move `v` to `v2`, it creates a copy of that pointer,
-for `v2`. Which would mean two pointers to the contents of the vector on the
-heap. That would be a problem: it would violate Rust’s safety guarantees by
-introducing a data race. Therefore, Rust forbids using `v` after we’ve done the
-move.
+The first line allocates memory for the vector object, `v`, and for the data it
+contains. The vector object is stored on the [stack][sh] and contains a pointer
+to the content (`[1, 2, 3]`) stored on the [heap][sh]. When we move `v` to `v2`,
+it creates a copy of that pointer, for `v2`. Which means that there would be two
+pointers to the content of the vector on the heap. It would violate Rust’s
+safety guarantees by introducing a data race. Therefore, Rust forbids using `v`
+after we’ve done the move.
 
 [sh]: the-stack-and-the-heap.html
 
 It’s also important to note that optimizations may remove the actual copy of
-the bytes, depending on circumstances. So it may not be as inefficient as it
-initially seems.
+the bytes on the stack, depending on circumstances. So it may not be as
+inefficient as it initially seems.
 
 ## `Copy` types
 

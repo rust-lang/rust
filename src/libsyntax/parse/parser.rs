@@ -79,7 +79,6 @@ use parse::PResult;
 use diagnostic::FatalError;
 
 use std::collections::HashSet;
-use std::fs;
 use std::io::prelude::*;
 use std::mem;
 use std::path::{Path, PathBuf};
@@ -107,15 +106,6 @@ pub enum PathParsingMode {
     /// A path with a lifetime and type parameters with double colons before
     /// the type parameters; e.g. `foo::bar::<'a>::Baz::<T>`
     LifetimeAndTypesWithColons,
-}
-
-/// How to parse a qualified path, whether to allow trailing parameters.
-#[derive(Copy, Clone, PartialEq)]
-pub enum QPathParsingMode {
-    /// No trailing parameters, e.g. `<T as Trait>::Item`
-    NoParameters,
-    /// Optional parameters, e.g. `<T as Trait>::item::<'a, U>`
-    MaybeParameters,
 }
 
 /// How to parse a bound, whether to allow bound modifiers such as `?`.
@@ -1359,7 +1349,7 @@ impl<'a> Parser<'a> {
         } else if try!(self.eat_lt()) {
 
             let (qself, path) =
-                 try!(self.parse_qualified_path(QPathParsingMode::NoParameters));
+                 try!(self.parse_qualified_path(NoTypesAllowed));
 
             TyPath(Some(qself), path)
         } else if self.check(&token::ModSep) ||
@@ -1578,7 +1568,7 @@ impl<'a> Parser<'a> {
 
     // QUALIFIED PATH `<TYPE [as TRAIT_REF]>::IDENT[::<PARAMS>]`
     // Assumes that the leading `<` has been parsed already.
-    pub fn parse_qualified_path(&mut self, mode: QPathParsingMode)
+    pub fn parse_qualified_path(&mut self, mode: PathParsingMode)
                                 -> PResult<(QSelf, ast::Path)> {
         let self_type = try!(self.parse_ty_sum());
         let mut path = if try!(self.eat_keyword(keywords::As)) {
@@ -1599,29 +1589,18 @@ impl<'a> Parser<'a> {
         try!(self.expect(&token::Gt));
         try!(self.expect(&token::ModSep));
 
-        let item_name = try!(self.parse_ident());
-        let parameters = match mode {
-            QPathParsingMode::NoParameters => ast::PathParameters::none(),
-            QPathParsingMode::MaybeParameters => {
-                if try!(self.eat(&token::ModSep)) {
-                    try!(self.expect_lt());
-                    // Consumed `item::<`, go look for types
-                    let (lifetimes, types, bindings) =
-                        try!(self.parse_generic_values_after_lt());
-                    ast::AngleBracketedParameters(ast::AngleBracketedParameterData {
-                        lifetimes: lifetimes,
-                        types: OwnedSlice::from_vec(types),
-                        bindings: OwnedSlice::from_vec(bindings),
-                    })
-                } else {
-                    ast::PathParameters::none()
-                }
+        let segments = match mode {
+            LifetimeAndTypesWithoutColons => {
+                try!(self.parse_path_segments_without_colons())
+            }
+            LifetimeAndTypesWithColons => {
+                try!(self.parse_path_segments_with_colons())
+            }
+            NoTypesAllowed => {
+                try!(self.parse_path_segments_without_types())
             }
         };
-        path.segments.push(ast::PathSegment {
-            identifier: item_name,
-            parameters: parameters
-        });
+        path.segments.extend(segments);
 
         if path.segments.len() == 1 {
             path.span.lo = self.last_span.lo;
@@ -2046,7 +2025,8 @@ impl<'a> Parser<'a> {
                 return self.parse_block_expr(lo, DefaultBlock);
             },
             token::BinOp(token::Or) |  token::OrOr => {
-                return self.parse_lambda_expr(CaptureByRef);
+                let lo = self.span.lo;
+                return self.parse_lambda_expr(lo, CaptureByRef);
             },
             token::Ident(id @ ast::Ident {
                             name: token::SELF_KEYWORD_NAME,
@@ -2096,12 +2076,13 @@ impl<'a> Parser<'a> {
                 if try!(self.eat_lt()){
 
                     let (qself, path) =
-                        try!(self.parse_qualified_path(QPathParsingMode::MaybeParameters));
+                        try!(self.parse_qualified_path(LifetimeAndTypesWithColons));
 
                     return Ok(self.mk_expr(lo, hi, ExprPath(Some(qself), path)));
                 }
                 if try!(self.eat_keyword(keywords::Move) ){
-                    return self.parse_lambda_expr(CaptureByValue);
+                    let lo = self.last_span.lo;
+                    return self.parse_lambda_expr(lo, CaptureByValue);
                 }
                 if try!(self.eat_keyword(keywords::If)) {
                     return self.parse_if_expr();
@@ -2860,10 +2841,9 @@ impl<'a> Parser<'a> {
     }
 
     // `|args| expr`
-    pub fn parse_lambda_expr(&mut self, capture_clause: CaptureClause)
+    pub fn parse_lambda_expr(&mut self, lo: BytePos, capture_clause: CaptureClause)
                              -> PResult<P<Expr>>
     {
-        let lo = self.span.lo;
         let decl = try!(self.parse_fn_block_decl());
         let body = match decl.output {
             DefaultReturn(_) => {
@@ -3176,7 +3156,7 @@ impl<'a> Parser<'a> {
             let (qself, path) = if try!(self.eat_lt()) {
                 // Parse a qualified path
                 let (qself, path) =
-                    try!(self.parse_qualified_path(QPathParsingMode::NoParameters));
+                    try!(self.parse_qualified_path(NoTypesAllowed));
                 (Some(qself), path)
             } else {
                 // Parse an unqualified path
@@ -3270,7 +3250,7 @@ impl<'a> Parser<'a> {
                     let (qself, path) = if try!(self.eat_lt()) {
                         // Parse a qualified path
                         let (qself, path) =
-                            try!(self.parse_qualified_path(QPathParsingMode::NoParameters));
+                            try!(self.parse_qualified_path(NoTypesAllowed));
                         (Some(qself), path)
                     } else {
                         // Parse an unqualified path
@@ -3828,6 +3808,8 @@ impl<'a> Parser<'a> {
     ///                  | ( < lifetimes , typaramseq ( , )? > )
     /// where   typaramseq = ( typaram ) | ( typaram , typaramseq )
     pub fn parse_generics(&mut self) -> PResult<ast::Generics> {
+        maybe_whole!(self, NtGenerics);
+
         if try!(self.eat(&token::Lt) ){
             let lifetime_defs = try!(self.parse_lifetime_defs());
             let mut seen_default = false;
@@ -3948,6 +3930,8 @@ impl<'a> Parser<'a> {
     /// where T : Trait<U, V> + 'b, 'a : 'b
     /// ```
     pub fn parse_where_clause(&mut self) -> PResult<ast::WhereClause> {
+        maybe_whole!(self, NtWhereClause);
+
         let mut where_clause = WhereClause {
             id: ast::DUMMY_NODE_ID,
             predicates: Vec::new(),
@@ -4855,8 +4839,7 @@ impl<'a> Parser<'a> {
                     outer_attrs: &[ast::Attribute],
                     id_sp: Span)
                     -> PResult<(ast::Item_, Vec<ast::Attribute> )> {
-        let mut prefix = PathBuf::from(&self.sess.span_diagnostic.cm
-                                            .span_to_filename(self.span));
+        let mut prefix = PathBuf::from(&self.sess.codemap().span_to_filename(self.span));
         prefix.pop();
         let mut dir_path = prefix;
         for part in &self.mod_path_stack {
@@ -4872,8 +4855,8 @@ impl<'a> Parser<'a> {
                 let secondary_path_str = format!("{}/mod.rs", mod_name);
                 let default_path = dir_path.join(&default_path_str[..]);
                 let secondary_path = dir_path.join(&secondary_path_str[..]);
-                let default_exists = fs::metadata(&default_path).is_ok();
-                let secondary_exists = fs::metadata(&secondary_path).is_ok();
+                let default_exists = self.sess.codemap().file_exists(&default_path);
+                let secondary_exists = self.sess.codemap().file_exists(&secondary_path);
 
                 if !self.owns_directory {
                     self.span_err(id_sp,
@@ -5282,11 +5265,7 @@ impl<'a> Parser<'a> {
                 return Ok(Some(try!(self.parse_item_foreign_mod(lo, opt_abi, visibility, attrs))));
             }
 
-            let span = self.span;
-            let token_str = self.this_token_to_string();
-            return Err(self.span_fatal(span,
-                            &format!("expected `{}` or `fn`, found `{}`", "{",
-                                    token_str)))
+            try!(self.expect_one_of(&[], &[]));
         }
 
         if try!(self.eat_keyword_noexpect(keywords::Virtual) ){

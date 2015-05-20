@@ -53,8 +53,7 @@ use vec::Vec;
 ///     fn my_printer(s: *const libc::c_char);
 /// }
 ///
-/// let to_print = &b"Hello, world!"[..];
-/// let c_to_print = CString::new(to_print).unwrap();
+/// let c_to_print = CString::new("Hello, world!").unwrap();
 /// unsafe {
 ///     my_printer(c_to_print.as_ptr());
 /// }

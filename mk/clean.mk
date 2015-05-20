@@ -118,16 +118,3 @@ $(foreach host, $(CFG_HOST), \
  $(eval $(foreach target, $(CFG_TARGET), \
   $(eval $(foreach stage, 0 1 2 3, \
    $(eval $(call CLEAN_TARGET_STAGE_N,$(stage),$(target),$(host))))))))
-
-define DEF_CLEAN_LLVM_HOST
-ifeq ($(CFG_LLVM_ROOT),)
-clean-llvm$(1):
-	$$(Q)$$(MAKE) -C $$(CFG_LLVM_BUILD_DIR_$(1)) clean
-else
-clean-llvm$(1): ;
-
-endif
-endef
-
-$(foreach host, $(CFG_HOST), \
- $(eval $(call DEF_CLEAN_LLVM_HOST,$(host))))

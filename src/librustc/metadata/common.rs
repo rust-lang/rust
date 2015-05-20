@@ -148,6 +148,7 @@ enum_from_u32! {
         tag_table_capture_modes = 0x67,
         tag_table_object_cast_map = 0x68,
         tag_table_const_qualif = 0x69,
+        tag_table_cast_kinds = 0x6a,
     }
 }
 
@@ -189,6 +190,7 @@ pub const tag_item_impl_vtables: usize = 0x7e;
 
 pub const tag_impls: usize = 0x109; // top-level only
 pub const tag_impls_impl: usize = 0x7f;
+pub const tag_impls_impl_trait_def_id: usize = 0x8d;
 
 pub const tag_items_data_item_inherent_impl: usize = 0x80;
 pub const tag_items_data_item_extension_impl: usize = 0x81;
@@ -258,3 +260,5 @@ pub const tag_codemap_filemap: usize = 0xa2;
 pub const tag_item_super_predicates: usize = 0xa3;
 
 pub const tag_defaulted_trait: usize = 0xa4;
+
+pub const tag_impl_coerce_unsized_kind: usize = 0xa5;

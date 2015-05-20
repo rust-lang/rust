@@ -10,7 +10,7 @@ context, but wished to be able to `transmute` between types, and
 perform efficient pointer arithmetic, one would import those functions
 via a declaration like
 
-```
+```rust
 # #![feature(intrinsics)]
 # fn main() {}
 

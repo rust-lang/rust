@@ -146,7 +146,7 @@ expression, although its value is not particularly useful. Unlike other
 languages where an assignment evaluates to the assigned value (e.g. `5` in the
 previous example), in Rust the value of an assignment is an empty tuple `()`:
 
-```
+```rust
 let mut y = 5;
 
 let x = (y = 6);  // x has the value `()`, not `6`
@@ -204,7 +204,7 @@ time.
 Rust has some special syntax for ‘diverging functions’, which are functions that
 do not return:
 
-```
+```rust
 fn diverges() -> ! {
     panic!("This function never returns!");
 }

@@ -11,5 +11,5 @@
 #![feature(unboxed_closures)]
 
 fn main() {
-    "".homura()(); //~ ERROR does not implement any method
+    "".homura()(); //~ ERROR no method named `homura` found
 }

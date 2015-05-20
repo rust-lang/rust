@@ -64,7 +64,9 @@ pub struct Session {
     /// operations such as auto-dereference and monomorphization.
     pub recursion_limit: Cell<usize>,
 
-    pub can_print_warnings: bool
+    pub can_print_warnings: bool,
+
+    next_node_id: Cell<ast::NodeId>
 }
 
 impl Session {
@@ -213,16 +215,23 @@ impl Session {
         lints.insert(id, vec!((lint_id, sp, msg)));
     }
     pub fn next_node_id(&self) -> ast::NodeId {
-        self.parse_sess.next_node_id()
+        self.reserve_node_ids(1)
     }
     pub fn reserve_node_ids(&self, count: ast::NodeId) -> ast::NodeId {
-        self.parse_sess.reserve_node_ids(count)
+        let id = self.next_node_id.get();
+
+        match id.checked_add(count) {
+            Some(next) => self.next_node_id.set(next),
+            None => self.bug("Input too large, ran out of node ids!")
+        }
+
+        id
     }
     pub fn diagnostic<'a>(&'a self) -> &'a diagnostic::SpanHandler {
         &self.parse_sess.span_diagnostic
     }
     pub fn codemap<'a>(&'a self) -> &'a codemap::CodeMap {
-        &self.parse_sess.span_diagnostic.cm
+        self.parse_sess.codemap()
     }
     // This exists to help with refactoring to eliminate impossible
     // cases later on
@@ -359,9 +368,9 @@ pub fn build_session(sopts: config::Options,
 
     let codemap = codemap::CodeMap::new();
     let diagnostic_handler =
-        diagnostic::default_handler(sopts.color, Some(registry), can_print_warnings);
+        diagnostic::Handler::new(sopts.color, Some(registry), can_print_warnings);
     let span_diagnostic_handler =
-        diagnostic::mk_span_handler(diagnostic_handler, codemap);
+        diagnostic::SpanHandler::new(diagnostic_handler, codemap);
 
     build_session_(sopts, local_crate_source_file, span_diagnostic_handler)
 }
@@ -378,7 +387,7 @@ pub fn build_session_(sopts: config::Options,
     }
     };
     let target_cfg = config::build_target_config(&sopts, &span_diagnostic);
-    let p_s = parse::new_parse_sess_special_handler(span_diagnostic);
+    let p_s = parse::ParseSess::with_span_handler(span_diagnostic);
     let default_sysroot = match sopts.maybe_sysroot {
         Some(_) => None,
         None => Some(filesearch::get_or_default_sysroot())
@@ -421,7 +430,8 @@ pub fn build_session_(sopts: config::Options,
         delayed_span_bug: RefCell::new(None),
         features: RefCell::new(feature_gate::Features::new()),
         recursion_limit: Cell::new(64),
-        can_print_warnings: can_print_warnings
+        can_print_warnings: can_print_warnings,
+        next_node_id: Cell::new(1)
     };
 
     sess

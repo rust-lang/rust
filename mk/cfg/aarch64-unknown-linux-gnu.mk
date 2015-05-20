@@ -1,6 +1,7 @@
 # aarch64-unknown-linux-gnu configuration
 CROSS_PREFIX_aarch64-unknown-linux-gnu=aarch64-linux-gnu-
 CC_aarch64-unknown-linux-gnu=gcc
+LINK_aarch64-unknown-linux-gnu=gcc
 CXX_aarch64-unknown-linux-gnu=g++
 CPP_aarch64-unknown-linux-gnu=gcc -E
 AR_aarch64-unknown-linux-gnu=ar

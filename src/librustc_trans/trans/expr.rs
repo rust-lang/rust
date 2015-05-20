@@ -48,7 +48,6 @@
 
 #![allow(non_camel_case_types)]
 
-pub use self::cast_kind::*;
 pub use self::Dest::*;
 use self::lazy_binop_ty::*;
 
@@ -56,8 +55,10 @@ use back::abi;
 use llvm::{self, ValueRef};
 use middle::check_const;
 use middle::def;
+use middle::lang_items::CoerceUnsizedTraitLangItem;
 use middle::mem_categorization::Typer;
-use middle::subst::{self, Substs};
+use middle::subst::{Substs, VecPerParamSpace};
+use middle::traits;
 use trans::{_match, adt, asm, base, callee, closure, consts, controlflow};
 use trans::base::*;
 use trans::build::*;
@@ -71,6 +72,7 @@ use trans::meth;
 use trans::monomorphize;
 use trans::tvec;
 use trans::type_of;
+use middle::cast::{CastKind, CastTy};
 use middle::ty::{struct_fields, tup_fields};
 use middle::ty::{AdjustDerefRef, AdjustReifyFnPointer, AdjustUnsafeFnPointer};
 use middle::ty::{self, Ty};
@@ -311,7 +313,7 @@ pub fn unsized_info<'ccx, 'tcx>(ccx: &CrateContext<'ccx, 'tcx>,
                                 source: Ty<'tcx>,
                                 target: Ty<'tcx>,
                                 old_info: Option<ValueRef>,
-                                param_substs: &'tcx subst::Substs<'tcx>)
+                                param_substs: &'tcx Substs<'tcx>)
                                 -> ValueRef {
     let (source, target) = ty::struct_lockstep_tails(ccx.tcx(), source, target);
     match (&source.sty, &target.sty) {
@@ -397,87 +399,168 @@ fn apply_adjustments<'r, 'blk, 'tcx>(&mut Block { bl, ref mut fcx }: &mut Block<
             // (You might think there is a more elegant way to do this than a
             // skip_reborrows bool, but then you remember that the borrow checker exists).
             if skip_reborrows == 0 && adj.autoref.is_some() {
-                let ad = apply_autoref(bcx, expr, datum);
-                datum = unpack_datum!(bcx, ad);
+                if !type_is_sized(bcx.tcx(), datum.ty) {
+                    // Arrange cleanup
+                    let rfp = datum.to_lvalue_datum(bcx, "ref_fat_ptr", expr.id);
+                    let lval = unpack_datum!(bcx, rfp);
+                    let rfp = ref_fat_ptr(bcx, lval);
+                    datum = unpack_datum!(bcx, rfp);
+                } else {
+                    let ar = auto_ref(bcx, datum, expr);
+                    datum = unpack_datum!(bcx, ar);
+                }
             }
 
             if let Some(target) = adj.unsize {
-                let m = bcx.monomorphize(&target);
-                let up = unsize_pointer(bcx, datum, m);
-                datum = unpack_datum!(bcx, up);
+                // We do not arrange cleanup ourselves; if we already are an
+                // L-value, then cleanup will have already been scheduled (and
+                // the `datum.to_rvalue_datum` call below will emit code to zero
+                // the drop flag when moving out of the L-value). If we are an
+                // R-value, then we do not need to schedule cleanup.
+                let rvd = datum.to_rvalue_datum(bcx, "__coerce_source");
+                let source_datum = unpack_datum!(bcx, rvd);
+
+                let target = bcx.monomorphize(&target);
+                let llty = type_of::type_of(bcx.ccx(), target);
+
+                // HACK(eddyb) get around issues with lifetime intrinsics.
+                let scratch = alloca_no_lifetime(bcx, llty, "__coerce_target");
+                let target_datum = Datum::new(scratch, target,
+                                              Rvalue::new(ByRef));
+                bcx = coerce_unsized(bcx, expr.span, source_datum, target_datum);
+                datum = Datum::new(scratch, target,
+                                   RvalueExpr(Rvalue::new(ByRef)));
             }
         }
     }
     debug!("after adjustments, datum={}", datum.to_string(bcx.ccx()));
-    return DatumBlock::new(bcx.bl, datum);
+    DatumBlock::new(bcx.bl, datum)
+    DatumBlock::new(bcx, datum)
+}
 
-    fn apply_autoref<'r, 'blk, 'tcx>(&mut Block { bl, ref mut fcx }: &mut Block<'r, 'blk, 'tcx>,
-                                     expr: &ast::Expr,
-                                     datum: Datum<'tcx, Expr>)
-                                     -> DatumBlock<'blk, 'tcx, Expr> {
-        let mut bcx = &mut bl.with(fcx);
+fn coerce_unsized<'blk, 'tcx>(&mut Block { bl, ref mut fcx }: &mut Block<'r, 'blk, 'tcx>,
+                              span: codemap::Span,
+                              source: Datum<'tcx, Rvalue>,
+                              target: Datum<'tcx, Rvalue>)
+                              -> &'blk BlockS {
+    let mut bcx = &mut bl.with(fcx);
+    debug!("coerce_unsized({} -> {})",
+           source.to_string(bcx.ccx()),
+           target.to_string(bcx.ccx()));
 
-        if !type_is_sized(bcx.tcx(), datum.ty) {
-            // Arrange cleanup
-            let lval = unpack_datum!(bcx,
-                datum.to_lvalue_datum(bcx, "ref_fat_ptr", expr.id));
-            ref_fat_ptr(bcx, lval)
-        } else {
-            auto_ref(bcx, datum, expr)
+    match (&source.ty.sty, &target.ty.sty) {
+        (&ty::ty_uniq(a), &ty::ty_uniq(b)) |
+        (&ty::ty_rptr(_, ty::mt { ty: a, .. }), &ty::ty_rptr(_, ty::mt { ty: b, .. })) |
+        (&ty::ty_rptr(_, ty::mt { ty: a, .. }), &ty::ty_ptr(ty::mt { ty: b, .. })) |
+        (&ty::ty_ptr(ty::mt { ty: a, .. }), &ty::ty_ptr(ty::mt { ty: b, .. })) => {
+            let (inner_source, inner_target) = (a, b);
+
+            let (base, old_info) = if !type_is_sized(bcx.tcx(), inner_source) {
+                // Normally, the source is a thin pointer and we are
+                // adding extra info to make a fat pointer. The exception
+                // is when we are upcasting an existing object fat pointer
+                // to use a different vtable. In that case, we want to
+                // load out the original data pointer so we can repackage
+                // it.
+                let dp = get_dataptr(bcx, datum.val);
+                let dl = get_len(bcx, datum.val);
+                (Load(bcx, dp),
+                 Some(Load(bcx, dl)))
+            } else {
+                let val = if source.kind.is_by_ref() {
+                    load_ty(bcx, source.val, source.ty)
+                } else {
+                    source.val
+                };
+                (val, None)
+            };
+
+            let info = unsized_info(bcx.ccx(), inner_source, inner_target,
+                                    old_info, bcx.fcx.param_substs);
+
+            // Compute the base pointer. This doesn't change the pointer value,
+            // but merely its type.
+            let ptr_ty = type_of::in_memory_type_of(bcx.ccx(), inner_target).ptr_to();
+            let base = PointerCast(bcx, base, ptr_ty);
+
+            let dp = get_dataptr(bcx, target.val);
+            Store(bcx, base, dp);
+            let l = get_len(bcx, target.val);
+            Store(bcx, info, l);
         }
+
+        // This can be extended to enums and tuples in the future.
+        // (&ty::ty_enum(def_id_a, _), &ty::ty_enum(def_id_b, _)) |
+        (&ty::ty_struct(def_id_a, _), &ty::ty_struct(def_id_b, _)) => {
+            assert_eq!(def_id_a, def_id_b);
+
+            // The target is already by-ref because it's to be written to.
+            let source = unpack_datum!(bcx, source.to_ref_datum(bcx));
+            assert!(target.kind.is_by_ref());
+
+            let trait_substs = Substs::erased(VecPerParamSpace::new(vec![target.ty],
+                                                                    vec![source.ty],
+                                                                    Vec::new()));
+            let trait_ref = ty::Binder(ty::TraitRef {
+                def_id: langcall(bcx, Some(span), "coercion",
+                                 CoerceUnsizedTraitLangItem),
+                substs: bcx.tcx().mk_substs(trait_substs)
+            });
+
+            let kind = match fulfill_obligation(bcx.ccx(), span, trait_ref) {
+                traits::VtableImpl(traits::VtableImplData { impl_def_id, .. }) => {
+                    ty::custom_coerce_unsized_kind(bcx.tcx(), impl_def_id)
+                }
+                vtable => {
+                    bcx.sess().span_bug(span, &format!("invalid CoerceUnsized vtable: {}",
+                                                       vtable.repr(bcx.tcx())));
+                }
+            };
+
+            let repr_source = adt::represent_type(bcx.ccx(), source.ty);
+            let src_fields = match &*repr_source {
+                &adt::Repr::Univariant(ref s, _) => &s.fields,
+                _ => bcx.sess().span_bug(span,
+                                         &format!("Non univariant struct? (repr_source: {:?})",
+                                                  repr_source)),
+            };
+            let repr_target = adt::represent_type(bcx.ccx(), target.ty);
+            let target_fields = match &*repr_target {
+                &adt::Repr::Univariant(ref s, _) => &s.fields,
+                _ => bcx.sess().span_bug(span,
+                                         &format!("Non univariant struct? (repr_target: {:?})",
+                                                  repr_target)),
+            };
+
+            let coerce_index = match kind {
+                ty::CustomCoerceUnsized::Struct(i) => i
+            };
+            assert!(coerce_index < src_fields.len() && src_fields.len() == target_fields.len());
+
+            let iter = src_fields.iter().zip(target_fields.iter()).enumerate();
+            for (i, (src_ty, target_ty)) in iter {
+                let ll_source = adt::trans_field_ptr(bcx, &repr_source, source.val, 0, i);
+                let ll_target = adt::trans_field_ptr(bcx, &repr_target, target.val, 0, i);
+
+                // If this is the field we need to coerce, recurse on it.
+                if i == coerce_index {
+                    coerce_unsized(bcx, span,
+                                   Datum::new(ll_source, src_ty,
+                                              Rvalue::new(ByRef)),
+                                   Datum::new(ll_target, target_ty,
+                                              Rvalue::new(ByRef)));
+                } else {
+                    // Otherwise, simply copy the data from the source.
+                    assert_eq!(src_ty, target_ty);
+                    memcpy_ty(bcx, ll_target, ll_source, src_ty);
+                }
+            }
+        }
+        _ => bcx.sess().bug(&format!("coerce_unsized: invalid coercion {} -> {}",
+                                     source.ty.repr(bcx.tcx()),
+                                     target.ty.repr(bcx.tcx())))
     }
-
-    fn unsize_pointer<'r, 'blk, 'tcx>(&mut Block { bl, ref mut fcx }: &mut Block<'r, 'blk, 'tcx>,
-                                      datum: Datum<'tcx, Expr>,
-                                      target: Ty<'tcx>)
-                                      -> DatumBlock<'blk, 'tcx, Expr> {
-        let mut bcx = &mut bl.with(fcx);
-        let unsized_ty = ty::deref(target, true)
-            .expect("expr::unsize got non-pointer target type").ty;
-        debug!("unsize_lvalue(unsized_ty={})", unsized_ty.repr(bcx.tcx()));
-
-        // We do not arrange cleanup ourselves; if we already are an
-        // L-value, then cleanup will have already been scheduled (and
-        // the `datum.to_rvalue_datum` call below will emit code to zero
-        // the drop flag when moving out of the L-value). If we are an
-        // R-value, then we do not need to schedule cleanup.
-        let datum = unpack_datum!(bcx, datum.to_rvalue_datum(bcx, "__unsize_ref"));
-
-        let pointee_ty = ty::deref(datum.ty, true)
-            .expect("expr::unsize got non-pointer datum type").ty;
-        let (base, old_info) = if !type_is_sized(bcx.tcx(), pointee_ty) {
-            // Normally, the source is a thin pointer and we are
-            // adding extra info to make a fat pointer. The exception
-            // is when we are upcasting an existing object fat pointer
-            // to use a different vtable. In that case, we want to
-            // load out the original data pointer so we can repackage
-            // it.
-            let dp = get_dataptr(bcx, datum.val);
-            let dl = get_len(bcx, datum.val);
-            (Load(bcx, dp),
-             Some(Load(bcx, dl)))
-        } else {
-            (datum.val, None)
-        };
-
-        let info = unsized_info(bcx.ccx(), pointee_ty, unsized_ty,
-                                old_info, bcx.fcx.param_substs);
-
-        // Compute the base pointer. This doesn't change the pointer value,
-        // but merely its type.
-        let ptr_ty = type_of::in_memory_type_of(bcx.ccx(), unsized_ty).ptr_to();
-        let base = PointerCast(bcx, base, ptr_ty);
-
-        let llty = type_of::type_of(bcx.ccx(), target);
-        // HACK(eddyb) get around issues with lifetime intrinsics.
-        let scratch = alloca_no_lifetime(bcx, llty, "__fat_ptr");
-        let dp = get_dataptr(bcx, scratch);
-        Store(bcx, base, dp);
-        let dl = get_len(bcx, scratch);
-        Store(bcx, info, dl);
-
-        DatumBlock::new(bcx.bl, Datum::new(scratch, target, RvalueExpr(Rvalue::new(ByRef))))
-    }
+    bcx.bl
 }
 
 /// Translates an expression in "lvalue" mode -- meaning that it returns a reference to the memory
@@ -1201,7 +1284,7 @@ fn trans_def_dps_unadjusted<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
 pub fn trans_def_fn_unadjusted<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                          ref_expr: &ast::Expr,
                                          def: def::Def,
-                                         param_substs: &'tcx subst::Substs<'tcx>)
+                                         param_substs: &'tcx Substs<'tcx>)
                                          -> Datum<'tcx, Rvalue> {
     let _icx = push_ctxt("trans_def_datum_unadjusted");
 
@@ -1933,76 +2016,25 @@ fn trans_overloaded_call<'a, 'r, 'blk, 'tcx>
     bcx.bl
 }
 
-fn int_cast(bcx: &mut Block,
-            lldsttype: Type,
-            llsrctype: Type,
-            llsrc: ValueRef,
-            signed: bool)
-            -> ValueRef {
-    let _icx = push_ctxt("int_cast");
-    let srcsz = llsrctype.int_width();
-    let dstsz = lldsttype.int_width();
-    return if dstsz == srcsz {
-        BitCast(bcx, llsrc, lldsttype)
-    } else if srcsz > dstsz {
-        TruncOrBitCast(bcx, llsrc, lldsttype)
-    } else if signed {
-        SExtOrBitCast(bcx, llsrc, lldsttype)
-    } else {
-        ZExtOrBitCast(bcx, llsrc, lldsttype)
+pub fn cast_is_noop<'tcx>(tcx: &ty::ctxt<'tcx>,
+                          expr: &ast::Expr,
+                          t_in: Ty<'tcx>,
+                          t_out: Ty<'tcx>)
+                          -> bool {
+    if let Some(&CastKind::CoercionCast) = tcx.cast_kinds.borrow().get(&expr.id) {
+        return true;
     }
-}
 
-fn float_cast(bcx: &mut Block,
-              lldsttype: Type,
-              llsrctype: Type,
-              llsrc: ValueRef)
-              -> ValueRef {
-    let _icx = push_ctxt("float_cast");
-    let srcsz = llsrctype.float_width();
-    let dstsz = lldsttype.float_width();
-    return if dstsz > srcsz {
-        FPExt(bcx, llsrc, lldsttype)
-    } else if srcsz > dstsz {
-        FPTrunc(bcx, llsrc, lldsttype)
-    } else { llsrc };
-}
-
-#[derive(Copy, Clone, PartialEq, Debug)]
-pub enum cast_kind {
-    cast_pointer,
-    cast_integral,
-    cast_float,
-    cast_enum,
-    cast_other,
-}
-
-pub fn cast_type_kind<'tcx>(tcx: &ty::ctxt<'tcx>, t: Ty<'tcx>) -> cast_kind {
-    match t.sty {
-        ty::ty_char        => cast_integral,
-        ty::ty_float(..)   => cast_float,
-        ty::ty_rptr(_, mt) | ty::ty_ptr(mt) => {
-            if type_is_sized(tcx, mt.ty) {
-                cast_pointer
-            } else {
-                cast_other
-            }
-        }
-        ty::ty_bare_fn(..) => cast_pointer,
-        ty::ty_int(..)     => cast_integral,
-        ty::ty_uint(..)    => cast_integral,
-        ty::ty_bool        => cast_integral,
-        ty::ty_enum(..)    => cast_enum,
-        _                  => cast_other
-    }
-}
-
-pub fn cast_is_noop<'tcx>(t_in: Ty<'tcx>, t_out: Ty<'tcx>) -> bool {
     match (ty::deref(t_in, true), ty::deref(t_out, true)) {
         (Some(ty::mt{ ty: t_in, .. }), Some(ty::mt{ ty: t_out, .. })) => {
             t_in == t_out
         }
-        _ => false
+        _ => {
+            // This condition isn't redundant with the check for CoercionCast:
+            // different types can be substituted into the same type, and
+            // == equality can be overconservative if there are regions.
+            t_in == t_out
+        }
     }
 }
 
@@ -2010,92 +2042,124 @@ fn trans_imm_cast<'r, 'blk, 'tcx>(&mut Block { bl, ref mut fcx }: &mut Block<'r,
                                   expr: &ast::Expr,
                                   id: ast::NodeId)
                                   -> DatumBlock<'blk, 'tcx, Expr> {
+{
+    use middle::cast::CastTy::*;
+    use middle::cast::IntTy::*;
+
+
+    fn int_cast(bcx: &mut Block,
+                lldsttype: Type,
+                llsrctype: Type,
+                llsrc: ValueRef,
+                signed: bool)
+                -> ValueRef
+    {
+        let _icx = push_ctxt("int_cast");
+        let srcsz = llsrctype.int_width();
+        let dstsz = lldsttype.int_width();
+        return if dstsz == srcsz {
+            BitCast(bcx, llsrc, lldsttype)
+        } else if srcsz > dstsz {
+            TruncOrBitCast(bcx, llsrc, lldsttype)
+        } else if signed {
+            SExtOrBitCast(bcx, llsrc, lldsttype)
+        } else {
+            ZExtOrBitCast(bcx, llsrc, lldsttype)
+        }
+    }
+
+    fn float_cast(bcx: &mut Block,
+                  lldsttype: Type,
+                  llsrctype: Type,
+                  llsrc: ValueRef)
+                  -> ValueRef
+    {
+        let _icx = push_ctxt("float_cast");
+        let srcsz = llsrctype.float_width();
+        let dstsz = lldsttype.float_width();
+        return if dstsz > srcsz {
+            FPExt(bcx, llsrc, lldsttype)
+        } else if srcsz > dstsz {
+            FPTrunc(bcx, llsrc, lldsttype)
+        } else { llsrc };
+    }
+
     let _icx = push_ctxt("trans_cast");
     let mut bcx = &mut bl.with(fcx);
     let ccx = bcx.ccx();
 
     let t_in = expr_ty_adjusted(bcx, expr);
     let t_out = node_id_type(bcx, id);
-    let k_in = cast_type_kind(bcx.tcx(), t_in);
-    let k_out = cast_type_kind(bcx.tcx(), t_out);
-    let s_in = k_in == cast_integral && ty::type_is_signed(t_in);
-    let ll_t_in = type_of::arg_type_of(ccx, t_in);
-    let ll_t_out = type_of::arg_type_of(ccx, t_out);
 
+    debug!("trans_cast({} as {})", t_in.repr(bcx.tcx()), t_out.repr(bcx.tcx()));
+    let mut ll_t_in = type_of::arg_type_of(ccx, t_in);
+    let ll_t_out = type_of::arg_type_of(ccx, t_out);
     // Convert the value to be cast into a ValueRef, either by-ref or
     // by-value as appropriate given its type:
     let mut datum = unpack_datum!(bcx, trans(bcx, expr));
 
     let datum_ty = monomorphize_type(bcx, datum.ty);
-    if cast_is_noop(datum_ty, t_out) {
+
+    if cast_is_noop(bcx.tcx(), expr, datum_ty, t_out) {
         datum.ty = t_out;
         return DatumBlock::new(bcx.bl, datum);
     }
 
-    let newval = match (k_in, k_out) {
-        (cast_integral, cast_integral) => {
-            let llexpr = datum.to_llscalarish(bcx);
-            int_cast(bcx, ll_t_out, ll_t_in, llexpr, s_in)
+    if type_is_fat_ptr(bcx.tcx(), t_in) {
+        assert!(datum.kind.is_by_ref());
+        if type_is_fat_ptr(bcx.tcx(), t_out) {
+            let pc = PointerCast(bcx, datum.val, ll_t_out.ptr_to());
+            return DatumBlock::new(bcx, Datum::new(
+                pc,
+                t_out,
+                Rvalue::new(ByRef)
+            )).to_expr_datumblock();
+        } else {
+            // Return the address
+            let dp = get_dataptr(bcx, datum.val);
+            let ld = Load(bcx, dp);
+            let pc = PointerCast(bcx, ld, ll_t_out);
+            return immediate_rvalue_bcx(bcx,
+                                        pc,
+                                        t_out).to_expr_datumblock();
         }
-        (cast_float, cast_float) => {
-            let llexpr = datum.to_llscalarish(bcx);
-            float_cast(bcx, ll_t_out, ll_t_in, llexpr)
-        }
-        (cast_integral, cast_float) => {
-            let llexpr = datum.to_llscalarish(bcx);
-            if s_in {
-                SIToFP(bcx, llexpr, ll_t_out)
-            } else { UIToFP(bcx, llexpr, ll_t_out) }
-        }
-        (cast_float, cast_integral) => {
-            let llexpr = datum.to_llscalarish(bcx);
-            if ty::type_is_signed(t_out) {
-                FPToSI(bcx, llexpr, ll_t_out)
-            } else { FPToUI(bcx, llexpr, ll_t_out) }
-        }
-        (cast_integral, cast_pointer) => {
-            let llexpr = datum.to_llscalarish(bcx);
-            IntToPtr(bcx, llexpr, ll_t_out)
-        }
-        (cast_pointer, cast_integral) => {
-            let llexpr = datum.to_llscalarish(bcx);
-            PtrToInt(bcx, llexpr, ll_t_out)
-        }
-        (cast_pointer, cast_pointer) => {
-            let llexpr = datum.to_llscalarish(bcx);
+    }
+
+    let r_t_in = CastTy::from_ty(bcx.tcx(), t_in).expect("bad input type for cast");
+    let r_t_out = CastTy::from_ty(bcx.tcx(), t_out).expect("bad output type for cast");
+
+    let (llexpr, signed) = if let Int(CEnum) = r_t_in {
+        let repr = adt::represent_type(ccx, t_in);
+        let datum = unpack_datum!(
+            bcx, datum.to_lvalue_datum(bcx, "trans_imm_cast", expr.id));
+        let llexpr_ptr = datum.to_llref();
+        let discr = adt::trans_get_discr(bcx, &*repr, llexpr_ptr, Some(Type::i64(ccx)));
+        ll_t_in = val_ty(discr);
+        (discr, adt::is_discr_signed(&*repr))
+    } else {
+        (datum.to_llscalarish(bcx), ty::type_is_signed(t_in))
+    };
+
+    let newval = match (r_t_in, r_t_out) {
+        (Ptr(_), Ptr(_)) | (FnPtr, Ptr(_)) | (RPtr(_), Ptr(_)) => {
             PointerCast(bcx, llexpr, ll_t_out)
         }
-        (cast_enum, cast_integral) |
-        (cast_enum, cast_float) => {
-            let Block { bl, ref mut fcx } = *bcx;
-            let mut bcx = &mut bl.with(fcx);
-            let repr = adt::represent_type(ccx, t_in);
-            let datum = unpack_datum!(
-                bcx, datum.to_lvalue_datum(bcx, "trans_imm_cast", expr.id));
-            let llexpr_ptr = datum.to_llref();
-            let lldiscrim_a =
-                adt::trans_get_discr(bcx, &*repr, llexpr_ptr, Some(Type::i64(ccx)));
-            match k_out {
-                cast_integral => int_cast(bcx, ll_t_out,
-                                          val_ty(lldiscrim_a),
-                                          lldiscrim_a, true),
-                cast_float => SIToFP(bcx, lldiscrim_a, ll_t_out),
-                _ => {
-                    ccx.sess().bug(&format!("translating unsupported cast: \
-                                            {} ({:?}) -> {} ({:?})",
-                                            t_in.repr(bcx.tcx()),
-                                            k_in,
-                                            t_out.repr(bcx.tcx()),
-                                            k_out))
-                }
-            }
-        }
-        _ => ccx.sess().bug(&format!("translating unsupported cast: \
-                                    {} ({:?}) -> {} ({:?})",
-                                    t_in.repr(bcx.tcx()),
-                                    k_in,
-                                    t_out.repr(bcx.tcx()),
-                                    k_out))
+        (Ptr(_), Int(_)) | (FnPtr, Int(_)) => PtrToInt(bcx, llexpr, ll_t_out),
+        (Int(_), Ptr(_)) => IntToPtr(bcx, llexpr, ll_t_out),
+
+        (Int(_), Int(_)) => int_cast(bcx, ll_t_out, ll_t_in, llexpr, signed),
+        (Float, Float) => float_cast(bcx, ll_t_out, ll_t_in, llexpr),
+        (Int(_), Float) if signed => SIToFP(bcx, llexpr, ll_t_out),
+        (Int(_), Float) => UIToFP(bcx, llexpr, ll_t_out),
+        (Float, Int(I)) => FPToSI(bcx, llexpr, ll_t_out),
+        (Float, Int(_)) => FPToUI(bcx, llexpr, ll_t_out),
+
+        _ => ccx.sess().span_bug(expr.span,
+                                  &format!("translating unsupported cast: \
+                                            {} -> {}",
+                                           t_in.repr(bcx.tcx()),
+                                           t_out.repr(bcx.tcx()))
+                                 )
     };
     return immediate_rvalue_bcx(bcx, newval, t_out).to_expr_datumblock();
 }

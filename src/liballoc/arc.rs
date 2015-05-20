@@ -77,11 +77,12 @@ use core::atomic;
 use core::atomic::Ordering::{Relaxed, Release, Acquire, SeqCst};
 use core::fmt;
 use core::cmp::Ordering;
-use core::mem::{min_align_of, size_of};
+use core::mem::{min_align_of_val, size_of_val};
+use core::intrinsics::drop_in_place;
 use core::mem;
 use core::nonzero::NonZero;
-use core::ops::Deref;
-use core::ptr;
+use core::ops::{Deref, CoerceUnsized};
+use core::marker::Unsize;
 use core::hash::{Hash, Hasher};
 use heap::deallocate;
 
@@ -118,15 +119,16 @@ use heap::deallocate;
 /// ```
 #[unsafe_no_drop_flag]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct Arc<T> {
+pub struct Arc<T: ?Sized> {
     // FIXME #12808: strange name to try to avoid interfering with
     // field accesses of the contained type via Deref
     _ptr: NonZero<*mut ArcInner<T>>,
 }
 
-unsafe impl<T: Sync + Send> Send for Arc<T> { }
-unsafe impl<T: Sync + Send> Sync for Arc<T> { }
+unsafe impl<T: ?Sized + Sync + Send> Send for Arc<T> { }
+unsafe impl<T: ?Sized + Sync + Send> Sync for Arc<T> { }
 
+impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Arc<U>> for Arc<T> {}
 
 /// A weak pointer to an `Arc`.
 ///
@@ -135,30 +137,30 @@ unsafe impl<T: Sync + Send> Sync for Arc<T> { }
 #[unsafe_no_drop_flag]
 #[unstable(feature = "alloc",
            reason = "Weak pointers may not belong in this module.")]
-pub struct Weak<T> {
+pub struct Weak<T: ?Sized> {
     // FIXME #12808: strange name to try to avoid interfering with
     // field accesses of the contained type via Deref
     _ptr: NonZero<*mut ArcInner<T>>,
 }
 
-unsafe impl<T: Sync + Send> Send for Weak<T> { }
-unsafe impl<T: Sync + Send> Sync for Weak<T> { }
+unsafe impl<T: ?Sized + Sync + Send> Send for Weak<T> { }
+unsafe impl<T: ?Sized + Sync + Send> Sync for Weak<T> { }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: fmt::Debug> fmt::Debug for Weak<T> {
+impl<T: ?Sized + fmt::Debug> fmt::Debug for Weak<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "(Weak)")
     }
 }
 
-struct ArcInner<T> {
+struct ArcInner<T: ?Sized> {
     strong: atomic::AtomicUsize,
     weak: atomic::AtomicUsize,
     data: T,
 }
 
-unsafe impl<T: Sync + Send> Send for ArcInner<T> {}
-unsafe impl<T: Sync + Send> Sync for ArcInner<T> {}
+unsafe impl<T: ?Sized + Sync + Send> Send for ArcInner<T> {}
+unsafe impl<T: ?Sized + Sync + Send> Sync for ArcInner<T> {}
 
 impl<T> Arc<T> {
     /// Constructs a new `Arc<T>`.
@@ -182,7 +184,9 @@ impl<T> Arc<T> {
         };
         Arc { _ptr: unsafe { NonZero::new(mem::transmute(x)) } }
     }
+}
 
+impl<T: ?Sized> Arc<T> {
     /// Downgrades the `Arc<T>` to a `Weak<T>` reference.
     ///
     /// # Examples
@@ -204,7 +208,7 @@ impl<T> Arc<T> {
     }
 }
 
-impl<T> Arc<T> {
+impl<T: ?Sized> Arc<T> {
     #[inline]
     fn inner(&self) -> &ArcInner<T> {
         // This unsafety is ok because while this arc is alive we're guaranteed
@@ -222,11 +226,11 @@ impl<T> Arc<T> {
 
         // Destroy the data at this time, even though we may not free the box
         // allocation itself (there may still be weak pointers lying around).
-        drop(ptr::read(&self.inner().data));
+        drop_in_place(&mut (*ptr).data);
 
         if self.inner().weak.fetch_sub(1, Release) == 1 {
             atomic::fence(Acquire);
-            deallocate(ptr as *mut u8, size_of::<ArcInner<T>>(), min_align_of::<ArcInner<T>>())
+            deallocate(ptr as *mut u8, size_of_val(&*ptr), min_align_of_val(&*ptr))
         }
     }
 }
@@ -234,12 +238,12 @@ impl<T> Arc<T> {
 /// Get the number of weak references to this value.
 #[inline]
 #[unstable(feature = "alloc")]
-pub fn weak_count<T>(this: &Arc<T>) -> usize { this.inner().weak.load(SeqCst) - 1 }
+pub fn weak_count<T: ?Sized>(this: &Arc<T>) -> usize { this.inner().weak.load(SeqCst) - 1 }
 
 /// Get the number of strong references to this value.
 #[inline]
 #[unstable(feature = "alloc")]
-pub fn strong_count<T>(this: &Arc<T>) -> usize { this.inner().strong.load(SeqCst) }
+pub fn strong_count<T: ?Sized>(this: &Arc<T>) -> usize { this.inner().strong.load(SeqCst) }
 
 
 /// Returns a mutable reference to the contained value if the `Arc<T>` is unique.
@@ -264,7 +268,7 @@ pub fn strong_count<T>(this: &Arc<T>) -> usize { this.inner().strong.load(SeqCst
 /// ```
 #[inline]
 #[unstable(feature = "alloc")]
-pub fn get_mut<T>(this: &mut Arc<T>) -> Option<&mut T> {
+pub fn get_mut<T: ?Sized>(this: &mut Arc<T>) -> Option<&mut T> {
     if strong_count(this) == 1 && weak_count(this) == 0 {
         // This unsafety is ok because we're guaranteed that the pointer
         // returned is the *only* pointer that will ever be returned to T. Our
@@ -279,7 +283,7 @@ pub fn get_mut<T>(this: &mut Arc<T>) -> Option<&mut T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> Clone for Arc<T> {
+impl<T: ?Sized> Clone for Arc<T> {
     /// Makes a clone of the `Arc<T>`.
     ///
     /// This increases the strong reference count.
@@ -313,7 +317,7 @@ impl<T> Clone for Arc<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> Deref for Arc<T> {
+impl<T: ?Sized> Deref for Arc<T> {
     type Target = T;
 
     #[inline]
@@ -356,7 +360,7 @@ impl<T: Clone> Arc<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> Drop for Arc<T> {
+impl<T: ?Sized> Drop for Arc<T> {
     /// Drops the `Arc<T>`.
     ///
     /// This will decrement the strong reference count. If the strong reference
@@ -390,7 +394,9 @@ impl<T> Drop for Arc<T> {
         // it's run more than once)
         let ptr = *self._ptr;
         // if ptr.is_null() { return }
-        if ptr.is_null() || ptr as usize == mem::POST_DROP_USIZE { return }
+        if ptr as *mut u8 as usize == 0 || ptr as *mut u8 as usize == mem::POST_DROP_USIZE {
+            return
+        }
 
         // Because `fetch_sub` is already atomic, we do not need to synchronize
         // with other threads unless we are going to delete the object. This
@@ -424,7 +430,7 @@ impl<T> Drop for Arc<T> {
 
 #[unstable(feature = "alloc",
            reason = "Weak pointers may not belong in this module.")]
-impl<T> Weak<T> {
+impl<T: ?Sized> Weak<T> {
     /// Upgrades a weak reference to a strong reference.
     ///
     /// Upgrades the `Weak<T>` reference to an `Arc<T>`, if possible.
@@ -465,7 +471,7 @@ impl<T> Weak<T> {
 
 #[unstable(feature = "alloc",
            reason = "Weak pointers may not belong in this module.")]
-impl<T> Clone for Weak<T> {
+impl<T: ?Sized> Clone for Weak<T> {
     /// Makes a clone of the `Weak<T>`.
     ///
     /// This increases the weak reference count.
@@ -489,7 +495,7 @@ impl<T> Clone for Weak<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> Drop for Weak<T> {
+impl<T: ?Sized> Drop for Weak<T> {
     /// Drops the `Weak<T>`.
     ///
     /// This will decrement the weak reference count.
@@ -520,21 +526,24 @@ impl<T> Drop for Weak<T> {
         let ptr = *self._ptr;
 
         // see comments above for why this check is here
-        if ptr.is_null() || ptr as usize == mem::POST_DROP_USIZE { return }
+        if ptr as *mut u8 as usize == 0 || ptr as *mut u8 as usize == mem::POST_DROP_USIZE {
+            return
+        }
 
         // If we find out that we were the last weak pointer, then its time to
         // deallocate the data entirely. See the discussion in Arc::drop() about
         // the memory orderings
         if self.inner().weak.fetch_sub(1, Release) == 1 {
             atomic::fence(Acquire);
-            unsafe { deallocate(ptr as *mut u8, size_of::<ArcInner<T>>(),
-                                min_align_of::<ArcInner<T>>()) }
+            unsafe { deallocate(ptr as *mut u8,
+                                size_of_val(&*ptr),
+                                min_align_of_val(&*ptr)) }
         }
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: PartialEq> PartialEq for Arc<T> {
+impl<T: ?Sized + PartialEq> PartialEq for Arc<T> {
     /// Equality for two `Arc<T>`s.
     ///
     /// Two `Arc<T>`s are equal if their inner value are equal.
@@ -566,7 +575,7 @@ impl<T: PartialEq> PartialEq for Arc<T> {
     fn ne(&self, other: &Arc<T>) -> bool { *(*self) != *(*other) }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: PartialOrd> PartialOrd for Arc<T> {
+impl<T: ?Sized + PartialOrd> PartialOrd for Arc<T> {
     /// Partial comparison for two `Arc<T>`s.
     ///
     /// The two are compared by calling `partial_cmp()` on their inner values.
@@ -645,21 +654,21 @@ impl<T: PartialOrd> PartialOrd for Arc<T> {
     fn ge(&self, other: &Arc<T>) -> bool { *(*self) >= *(*other) }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Ord> Ord for Arc<T> {
+impl<T: ?Sized + Ord> Ord for Arc<T> {
     fn cmp(&self, other: &Arc<T>) -> Ordering { (**self).cmp(&**other) }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Eq> Eq for Arc<T> {}
+impl<T: ?Sized + Eq> Eq for Arc<T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: fmt::Display> fmt::Display for Arc<T> {
+impl<T: ?Sized + fmt::Display> fmt::Display for Arc<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Display::fmt(&**self, f)
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: fmt::Debug> fmt::Debug for Arc<T> {
+impl<T: ?Sized + fmt::Debug> fmt::Debug for Arc<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Debug::fmt(&**self, f)
     }
@@ -679,7 +688,7 @@ impl<T: Default> Default for Arc<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Hash> Hash for Arc<T> {
+impl<T: ?Sized + Hash> Hash for Arc<T> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         (**self).hash(state)
     }
@@ -906,4 +915,13 @@ mod tests {
     // Make sure deriving works with Arc<T>
     #[derive(Eq, Ord, PartialEq, PartialOrd, Clone, Debug, Default)]
     struct Foo { inner: Arc<i32> }
+
+    #[test]
+    fn test_unsized() {
+        let x: Arc<[i32]> = Arc::new([1, 2, 3]);
+        assert_eq!(format!("{:?}", x), "[1, 2, 3]");
+        let y = x.clone().downgrade();
+        drop(x);
+        assert!(y.upgrade().is_none());
+    }
 }

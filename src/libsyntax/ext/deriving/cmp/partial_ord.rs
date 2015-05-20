@@ -11,9 +11,9 @@
 pub use self::OrderingOp::*;
 
 use ast;
-use ast::{MetaItem, Item, Expr};
+use ast::{MetaItem, Expr};
 use codemap::Span;
-use ext::base::ExtCtxt;
+use ext::base::{ExtCtxt, Annotatable};
 use ext::build::AstBuilder;
 use ext::deriving::generic::*;
 use ext::deriving::generic::ty::*;
@@ -23,8 +23,8 @@ use ptr::P;
 pub fn expand_deriving_partial_ord(cx: &mut ExtCtxt,
                                    span: Span,
                                    mitem: &MetaItem,
-                                   item: &Item,
-                                   push: &mut FnMut(P<Item>))
+                                   item: Annotatable,
+                                   push: &mut FnMut(Annotatable))
 {
     macro_rules! md {
         ($name:expr, $op:expr, $equal:expr) => { {
@@ -37,6 +37,7 @@ pub fn expand_deriving_partial_ord(cx: &mut ExtCtxt,
                 args: vec!(borrowed_self()),
                 ret_ty: Literal(path_local!(bool)),
                 attributes: attrs,
+                is_unsafe: false,
                 combine_substructure: combine_substructure(Box::new(|cx, span, substr| {
                     cs_op($op, $equal, cx, span, substr)
                 }))
@@ -60,6 +61,7 @@ pub fn expand_deriving_partial_ord(cx: &mut ExtCtxt,
         args: vec![borrowed_self()],
         ret_ty: ret_ty,
         attributes: attrs,
+        is_unsafe: false,
         combine_substructure: combine_substructure(Box::new(|cx, span, substr| {
             cs_partial_cmp(cx, span, substr)
         }))
@@ -80,7 +82,7 @@ pub fn expand_deriving_partial_ord(cx: &mut ExtCtxt,
         ],
         associated_types: Vec::new(),
     };
-    trait_def.expand(cx, mitem, item, push)
+    trait_def.expand(cx, mitem, &item, push)
 }
 
 #[derive(Copy, Clone)]

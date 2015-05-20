@@ -19,6 +19,8 @@ pub use self::TraversalItem::*;
 use core::prelude::*;
 
 use core::cmp::Ordering::{Greater, Less, Equal};
+#[cfg(not(stage0))]
+use core::intrinsics::arith_offset;
 use core::iter::Zip;
 use core::marker::PhantomData;
 use core::ops::{Deref, DerefMut, Index, IndexMut};
@@ -205,6 +207,7 @@ impl<T> RawItems<T> {
         RawItems::from_parts(slice.as_ptr(), slice.len())
     }
 
+    #[cfg(stage0)]
     unsafe fn from_parts(ptr: *const T, len: usize) -> RawItems<T> {
         if mem::size_of::<T>() == 0 {
             RawItems {
@@ -219,6 +222,22 @@ impl<T> RawItems<T> {
         }
     }
 
+    #[cfg(not(stage0))]
+    unsafe fn from_parts(ptr: *const T, len: usize) -> RawItems<T> {
+        if mem::size_of::<T>() == 0 {
+            RawItems {
+                head: ptr,
+                tail: arith_offset(ptr as *const i8, len as isize) as *const T,
+            }
+        } else {
+            RawItems {
+                head: ptr,
+                tail: ptr.offset(len as isize),
+            }
+        }
+    }
+
+    #[cfg(stage0)]
     unsafe fn push(&mut self, val: T) {
         ptr::write(self.tail as *mut T, val);
 
@@ -228,11 +247,23 @@ impl<T> RawItems<T> {
             self.tail = self.tail.offset(1);
         }
     }
+
+    #[cfg(not(stage0))]
+    unsafe fn push(&mut self, val: T) {
+        ptr::write(self.tail as *mut T, val);
+
+        if mem::size_of::<T>() == 0 {
+            self.tail = arith_offset(self.tail as *const i8, 1) as *const T;
+        } else {
+            self.tail = self.tail.offset(1);
+        }
+    }
 }
 
 impl<T> Iterator for RawItems<T> {
     type Item = T;
 
+    #[cfg(stage0)]
     fn next(&mut self) -> Option<T> {
         if self.head == self.tail {
             None
@@ -250,9 +281,29 @@ impl<T> Iterator for RawItems<T> {
             }
         }
     }
+
+    #[cfg(not(stage0))]
+    fn next(&mut self) -> Option<T> {
+        if self.head == self.tail {
+            None
+        } else {
+            unsafe {
+                let ret = Some(ptr::read(self.head));
+
+                if mem::size_of::<T>() == 0 {
+                    self.head = arith_offset(self.head as *const i8, 1) as *const T;
+                } else {
+                    self.head = self.head.offset(1);
+                }
+
+                ret
+            }
+        }
+    }
 }
 
 impl<T> DoubleEndedIterator for RawItems<T> {
+    #[cfg(stage0)]
     fn next_back(&mut self) -> Option<T> {
         if self.head == self.tail {
             None
@@ -260,6 +311,23 @@ impl<T> DoubleEndedIterator for RawItems<T> {
             unsafe {
                 if mem::size_of::<T>() == 0 {
                     self.tail = (self.tail as usize - 1) as *const T;
+                } else {
+                    self.tail = self.tail.offset(-1);
+                }
+
+                Some(ptr::read(self.tail))
+            }
+        }
+    }
+
+    #[cfg(not(stage0))]
+    fn next_back(&mut self) -> Option<T> {
+        if self.head == self.tail {
+            None
+        } else {
+            unsafe {
+                if mem::size_of::<T>() == 0 {
+                    self.tail = arith_offset(self.tail as *const i8, -1) as *const T;
                 } else {
                     self.tail = self.tail.offset(-1);
                 }

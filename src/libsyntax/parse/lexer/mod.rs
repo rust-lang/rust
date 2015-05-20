@@ -403,45 +403,51 @@ impl<'a> StringReader<'a> {
                 Some('/') => {
                     self.bump();
                     self.bump();
+
                     // line comments starting with "///" or "//!" are doc-comments
-                    if self.curr_is('/') || self.curr_is('!') {
-                        let start_bpos = self.pos - BytePos(3);
-                        while !self.is_eof() {
-                            match self.curr.unwrap() {
-                                '\n' => break,
-                                '\r' => {
-                                    if self.nextch_is('\n') {
-                                        // CRLF
-                                        break
-                                    } else {
-                                        self.err_span_(self.last_pos, self.pos,
-                                                       "bare CR not allowed in doc-comment");
-                                    }
+                    let doc_comment = self.curr_is('/') || self.curr_is('!');
+                    let start_bpos = if doc_comment {
+                        self.pos - BytePos(3)
+                    } else {
+                        self.last_pos - BytePos(2)
+                    };
+
+                    while !self.is_eof() {
+                        match self.curr.unwrap() {
+                            '\n' => break,
+                            '\r' => {
+                                if self.nextch_is('\n') {
+                                    // CRLF
+                                    break
+                                } else if doc_comment {
+                                    self.err_span_(self.last_pos, self.pos,
+                                                   "bare CR not allowed in doc-comment");
                                 }
-                                _ => ()
                             }
-                            self.bump();
+                            _ => ()
                         }
-                        return self.with_str_from(start_bpos, |string| {
-                            // but comments with only more "/"s are not
+                        self.bump();
+                    }
+
+                    return if doc_comment {
+                        self.with_str_from(start_bpos, |string| {
+                            // comments with only more "/"s are not doc comments
                             let tok = if is_doc_comment(string) {
                                 token::DocComment(token::intern(string))
                             } else {
                                 token::Comment
                             };
 
-                            return Some(TokenAndSpan{
+                            Some(TokenAndSpan {
                                 tok: tok,
                                 sp: codemap::mk_sp(start_bpos, self.last_pos)
-                            });
-                        });
+                            })
+                        })
                     } else {
-                        let start_bpos = self.last_pos - BytePos(2);
-                        while !self.curr_is('\n') && !self.is_eof() { self.bump(); }
-                        return Some(TokenAndSpan {
+                        Some(TokenAndSpan {
                             tok: token::Comment,
                             sp: codemap::mk_sp(start_bpos, self.last_pos)
-                        });
+                        })
                     }
                 }
                 Some('*') => {
@@ -1406,8 +1412,8 @@ mod tests {
     fn mk_sh() -> diagnostic::SpanHandler {
         // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
         let emitter = diagnostic::EmitterWriter::new(Box::new(io::sink()), None);
-        let handler = diagnostic::mk_handler(true, Box::new(emitter));
-        diagnostic::mk_span_handler(handler, CodeMap::new())
+        let handler = diagnostic::Handler::with_emitter(true, Box::new(emitter));
+        diagnostic::SpanHandler::new(handler, CodeMap::new())
     }
 
     // open a string reader for the given string
@@ -1563,4 +1569,13 @@ mod tests {
         assert_eq!(lexer.next_token().tok, token::Literal(token::Char(token::intern("a")), None));
     }
 
+    #[test] fn crlf_comments() {
+        let sh = mk_sh();
+        let mut lexer = setup(&sh, "// test\r\n/// test\r\n".to_string());
+        let comment = lexer.next_token();
+        assert_eq!(comment.tok, token::Comment);
+        assert_eq!(comment.sp, ::codemap::mk_sp(BytePos(0), BytePos(7)));
+        assert_eq!(lexer.next_token().tok, token::Whitespace);
+        assert_eq!(lexer.next_token().tok, token::DocComment(token::intern("/// test")));
+    }
 }

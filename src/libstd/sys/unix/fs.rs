@@ -408,12 +408,13 @@ impl fmt::Debug for File {
         }
 
         let fd = self.0.raw();
-        let mut b = f.debug_struct("File").field("fd", &fd);
+        let mut b = f.debug_struct("File");
+        b.field("fd", &fd);
         if let Some(path) = get_path(fd) {
-            b = b.field("path", &path);
+            b.field("path", &path);
         }
         if let Some((read, write)) = get_mode(fd) {
-            b = b.field("read", &read).field("write", &write);
+            b.field("read", &read).field("write", &write);
         }
         b.finish()
     }

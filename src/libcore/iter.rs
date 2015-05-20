@@ -1370,7 +1370,7 @@ impl<T: Clone> MinMaxResult<T> {
 }
 
 /// An iterator that clones the elements of an underlying iterator
-#[unstable(feature = "core", reason = "recent addition")]
+#[stable(feature = "iter_cloned", since = "1.1.0")]
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 #[derive(Clone)]
 pub struct Cloned<I> {
@@ -3114,7 +3114,7 @@ pub mod order {
     }
 
     /// Returns `a` < `b` lexicographically (Using partial order, `PartialOrd`)
-    pub fn lt<R: Iterator, L: Iterator>(mut a: L, mut b: R) -> bool where
+    pub fn lt<L: Iterator, R: Iterator>(mut a: L, mut b: R) -> bool where
         L::Item: PartialOrd<R::Item>,
     {
         loop {

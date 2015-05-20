@@ -193,6 +193,12 @@ impl Process {
         Ok(())
     }
 
+    pub fn id(&self) -> u32 {
+        unsafe {
+            c::GetProcessId(self.handle.raw()) as u32
+        }
+    }
+
     pub fn wait(&self) -> io::Result<ExitStatus> {
         use libc::{STILL_ACTIVE, INFINITE, WAIT_OBJECT_0};
         use libc::{GetExitCodeProcess, WaitForSingleObject};

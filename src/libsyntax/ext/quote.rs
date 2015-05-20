@@ -28,8 +28,7 @@ pub mod rt {
     use ast;
     use codemap::Spanned;
     use ext::base::ExtCtxt;
-    use parse::token;
-    use parse;
+    use parse::{self, token, classify};
     use ptr::P;
     use std::rc::Rc;
 
@@ -94,6 +93,18 @@ pub mod rt {
         }
     }
 
+    impl ToTokens for ast::Generics {
+        fn to_tokens(&self, _cx: &ExtCtxt) -> Vec<TokenTree> {
+            vec![ast::TtToken(DUMMY_SP, token::Interpolated(token::NtGenerics(self.clone())))]
+        }
+    }
+
+    impl ToTokens for ast::WhereClause {
+        fn to_tokens(&self, _cx: &ExtCtxt) -> Vec<TokenTree> {
+            vec![ast::TtToken(DUMMY_SP, token::Interpolated(token::NtWhereClause(self.clone())))]
+        }
+    }
+
     impl ToTokens for P<ast::Item> {
         fn to_tokens(&self, _cx: &ExtCtxt) -> Vec<TokenTree> {
             vec![ast::TtToken(self.span, token::Interpolated(token::NtItem(self.clone())))]
@@ -114,7 +125,16 @@ pub mod rt {
 
     impl ToTokens for P<ast::Stmt> {
         fn to_tokens(&self, _cx: &ExtCtxt) -> Vec<TokenTree> {
-            vec![ast::TtToken(self.span, token::Interpolated(token::NtStmt(self.clone())))]
+            let mut tts = vec![
+                ast::TtToken(self.span, token::Interpolated(token::NtStmt(self.clone())))
+            ];
+
+            // Some statements require a trailing semicolon.
+            if classify::stmt_ends_with_semi(&self.node) {
+                tts.push(ast::TtToken(self.span, token::Semi));
+            }
+
+            tts
         }
     }
 

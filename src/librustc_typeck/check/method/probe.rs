@@ -136,7 +136,7 @@ pub fn probe<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     let steps = if mode == Mode::MethodCall {
         match create_steps(fcx, span, self_ty) {
             Some(steps) => steps,
-            None => return Err(MethodError::NoMatch(Vec::new(), Vec::new())),
+            None => return Err(MethodError::NoMatch(Vec::new(), Vec::new(), mode)),
         }
     } else {
         vec![CandidateStep {
@@ -371,7 +371,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
     fn assemble_inherent_impl_candidates_for_type(&mut self, def_id: ast::DefId) {
         // Read the inherent implementation candidates for this type from the
         // metadata if necessary.
-        ty::populate_implementations_for_type_if_necessary(self.tcx(), def_id);
+        ty::populate_inherent_implementations_for_type_if_necessary(self.tcx(), def_id);
 
         if let Some(impl_infos) = self.tcx().inherent_impls.borrow().get(&def_id) {
             for &impl_def_id in &***impl_infos {
@@ -866,7 +866,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                     }
                 }
             }).collect(),
-            Some(Err(MethodError::NoMatch(_, others))) => {
+            Some(Err(MethodError::NoMatch(_, others, _))) => {
                 assert!(others.is_empty());
                 vec![]
             }
@@ -877,7 +877,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             None => vec![],
         };
 
-        Err(MethodError::NoMatch(static_candidates, out_of_scope_traits))
+        Err(MethodError::NoMatch(static_candidates, out_of_scope_traits, self.mode))
     }
 
     fn pick_core(&mut self) -> Option<PickResult<'tcx>> {

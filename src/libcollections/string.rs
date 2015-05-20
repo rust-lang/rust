@@ -433,7 +433,7 @@ impl String {
     ///
     /// ```
     /// let mut s = String::new();
-    /// s.reserve(10);
+    /// s.reserve_exact(10);
     /// assert!(s.capacity() >= 10);
     /// ```
     #[inline]

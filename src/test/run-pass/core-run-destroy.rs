@@ -16,7 +16,7 @@
 // instead of in std.
 
 #![reexport_test_harness_main = "test_main"]
-#![feature(libc, std_misc)]
+#![feature(libc, std_misc, duration)]
 
 extern crate libc;
 
