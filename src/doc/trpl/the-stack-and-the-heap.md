@@ -265,7 +265,7 @@ Rust programs use [jemalloc][jemalloc] for this purpose.
 
 Anyway, back to our example. Since this memory is on the heap, it can stay
 alive longer than the function which allocates the box. In this case, however,
-it doesn’t.[^moving] When the function is over, we need to free the stack frame
+it doesn’t[^1]. When the function is over, we need to free the stack frame
 for `main()`. `Box<T>`, though, has a trick up its sleeve: [Drop][drop]. The
 implementation of `Drop` for `Box` deallocates the memory that was allocated
 when it was created. Great! So when `x` goes away, it first frees the memory
@@ -277,9 +277,9 @@ allocated on the heap:
 | 0       | x    | ?????? |
 
 [drop]: drop.html
-[moving]: We can make the memory live longer by transferring ownership,
-          sometimes called ‘moving out of the box’. More complex examples will
-          be covered later.
+[^1]: We can make the memory live longer by transferring ownership,
+      sometimes called ‘moving out of the box’. More complex examples will
+      be covered later.
 
 
 And then the stack frame goes away, freeing all of our memory.
