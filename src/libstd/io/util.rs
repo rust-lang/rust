@@ -16,11 +16,12 @@ use io::{self, Read, Write, ErrorKind, BufRead};
 
 /// Copies the entire contents of a reader into a writer.
 ///
-/// This function will continuously read data from `r` and then write it into
-/// `w` in a streaming fashion until `r` returns EOF.
+/// This function will continuously read data from `reader` and then
+/// write it into `writer` in a streaming fashion until `reader`
+/// returns EOF.
 ///
-/// On success the total number of bytes that were copied from `r` to `w` is
-/// returned.
+/// On success, the total number of bytes that were copied from
+/// `reader` to `writer` is returned.
 ///
 /// # Errors
 ///
@@ -28,17 +29,17 @@ use io::{self, Read, Write, ErrorKind, BufRead};
 /// `write` returns an error. All instances of `ErrorKind::Interrupted` are
 /// handled by this function and the underlying operation is retried.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn copy<R: Read, W: Write>(r: &mut R, w: &mut W) -> io::Result<u64> {
+pub fn copy<R: Read, W: Write>(reader: &mut R, writer: &mut W) -> io::Result<u64> {
     let mut buf = [0; super::DEFAULT_BUF_SIZE];
     let mut written = 0;
     loop {
-        let len = match r.read(&mut buf) {
+        let len = match reader.read(&mut buf) {
             Ok(0) => return Ok(written),
             Ok(len) => len,
             Err(ref e) if e.kind() == ErrorKind::Interrupted => continue,
             Err(e) => return Err(e),
         };
-        try!(w.write_all(&buf[..len]));
+        try!(writer.write_all(&buf[..len]));
         written += len as u64;
     }
 }
