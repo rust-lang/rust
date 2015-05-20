@@ -25,10 +25,12 @@ use std::ffi::CString;
 use libc::{c_uint, c_char};
 
 // Take an inline assembly expression and splat it out via LLVM
-pub fn trans_inline_asm<'r, 'blk, 'tcx>(&mut Block { bl, ref mut fcx }: &mut Block<'r, 'blk, 'tcx>,
-                                        ia: &ast::InlineAsm)
-                                        -> &'blk BlockS {
-    let mut bcx = &mut bl.with(fcx);
+pub fn trans_inline_asm<'r, 'blk, 'tcx>
+                       (&mut BlockContext { bl, ref mut fcx }: &mut BlockContext<'r, 'blk, 'tcx>,
+                        ia: &ast::InlineAsm)
+                        -> &'blk Block
+{
+    let mut bcx = &mut bl.with_fcx(fcx);
     let mut constraints = Vec::new();
     let mut output_types = Vec::new();
 

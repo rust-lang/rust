@@ -137,7 +137,7 @@ pub struct Datum<'tcx, K> {
 }
 
 pub struct DatumBlock<'blk, 'tcx: 'blk, K> {
-    pub bcx: &'blk BlockS,
+    pub bcx: &'blk Block,
     pub datum: Datum<'tcx, K>,
 }
 
@@ -185,7 +185,7 @@ pub fn immediate_rvalue<'tcx>(val: ValueRef, ty: Ty<'tcx>) -> Datum<'tcx, Rvalue
     return Datum::new(val, ty, Rvalue::new(ByValue));
 }
 
-pub fn immediate_rvalue_bcx<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
+pub fn immediate_rvalue_bcx<'r, 'blk, 'tcx>(bcx: &mut BlockContext<'r, 'blk, 'tcx>,
                                             val: ValueRef,
                                             ty: Ty<'tcx>)
                                             -> DatumBlock<'blk, 'tcx, Rvalue> {
@@ -196,14 +196,14 @@ pub fn immediate_rvalue_bcx<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
 /// Allocates temporary space on the stack using alloca() and returns a by-ref Datum pointing to
 /// it. The memory will be dropped upon exit from `scope`. The callback `populate` should
 /// initialize the memory.
-pub fn lvalue_scratch_datum<'r, 'blk, 'tcx, A, F>(bcx: &mut Block<'r, 'blk, 'tcx>,
+pub fn lvalue_scratch_datum<'r, 'blk, 'tcx, A, F>(bcx: &mut BlockContext<'r, 'blk, 'tcx>,
                                                   ty: Ty<'tcx>,
                                                   name: &str,
                                                   scope: cleanup::ScopeId,
                                                   arg: A,
                                                   populate: F)
                                                   -> DatumBlock<'blk, 'tcx, Lvalue> where
-    F: FnOnce(A, &mut Block<'r, 'blk, 'tcx>, ValueRef) -> &'blk BlockS
+    F: FnOnce(A, &mut BlockContext<'r, 'blk, 'tcx>, ValueRef) -> &'blk Block
 {
     let llty = type_of::type_of(bcx.ccx(), ty);
     let scratch = alloca(bcx, llty, name);
@@ -221,7 +221,7 @@ pub fn lvalue_scratch_datum<'r, 'blk, 'tcx, A, F>(bcx: &mut Block<'r, 'blk, 'tcx
 /// necessary, but in the case of automatic rooting in match statements it is possible to have
 /// temporaries that may not get initialized if a certain arm is not taken, so we must zero them.
 /// You must arrange any cleanups etc yourself!
-pub fn rvalue_scratch_datum<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
+pub fn rvalue_scratch_datum<'r, 'blk, 'tcx>(bcx: &mut BlockContext<'r, 'blk, 'tcx>,
                                             ty: Ty<'tcx>,
                                             name: &str)
                                             -> Datum<'tcx, Rvalue> {
@@ -260,10 +260,10 @@ pub trait KindOps {
     /// Take appropriate action after the value in `datum` has been
     /// stored to a new location.
     fn post_store<'r, 'blk, 'tcx>(&self,
-                                  bcx: &mut Block<'r, 'blk, 'tcx>,
+                                  bcx: &mut BlockContext<'r, 'blk, 'tcx>,
                                   val: ValueRef,
                                   ty: Ty<'tcx>)
-                                  -> &'blk BlockS;
+                                  -> &'blk Block;
 
     /// True if this mode is a reference mode, meaning that the datum's
     /// val field is a pointer to the actual value
@@ -276,10 +276,10 @@ pub trait KindOps {
 
 impl KindOps for Rvalue {
     fn post_store<'r, 'blk, 'tcx>(&self,
-                                  bcx: &mut Block<'r, 'blk, 'tcx>,
+                                  bcx: &mut BlockContext<'r, 'blk, 'tcx>,
                                   _val: ValueRef,
                                   _ty: Ty<'tcx>)
-                                  -> &'blk BlockS {
+                                  -> &'blk Block {
         // No cleanup is scheduled for an rvalue, so we don't have
         // to do anything after a move to cancel or duplicate it.
         if self.is_by_ref() {
@@ -301,10 +301,10 @@ impl KindOps for Lvalue {
     /// If an lvalue is moved, we must zero out the memory in which it resides so as to cancel
     /// cleanup. If an @T lvalue is copied, we must increment the reference count.
     fn post_store<'r, 'blk, 'tcx>(&self,
-                                  bcx: &mut Block<'r, 'blk, 'tcx>,
+                                  bcx: &mut BlockContext<'r, 'blk, 'tcx>,
                                   val: ValueRef,
                                   ty: Ty<'tcx>)
-                                  -> &'blk BlockS {
+                                  -> &'blk Block {
         let _icx = push_ctxt("<Lvalue as KindOps>::post_store");
         if bcx.fcx.type_needs_drop(ty) {
             // cancel cleanup of affine values by drop-filling the memory
@@ -326,10 +326,10 @@ impl KindOps for Lvalue {
 
 impl KindOps for Expr {
     fn post_store<'r, 'blk, 'tcx>(&self,
-                                  bcx: &mut Block<'r, 'blk, 'tcx>,
+                                  bcx: &mut BlockContext<'r, 'blk, 'tcx>,
                                   val: ValueRef,
                                   ty: Ty<'tcx>)
-                                  -> &'blk BlockS {
+                                  -> &'blk Block {
         match *self {
             LvalueExpr => Lvalue.post_store(bcx, val, ty),
             RvalueExpr(ref r) => r.post_store(bcx, val, ty),
@@ -363,7 +363,7 @@ impl<'tcx> Datum<'tcx, Rvalue> {
     /// Returns an lvalue datum (that is, a by ref datum with cleanup scheduled). If `self` is not
     /// already an lvalue, cleanup will be scheduled in the temporary scope for `expr_id`.
     pub fn to_lvalue_datum_in_scope<'r, 'blk>(self,
-                                              bcx: &mut Block<'r, 'blk, 'tcx>,
+                                              bcx: &mut BlockContext<'r, 'blk, 'tcx>,
                                               name: &str,
                                               scope: cleanup::ScopeId)
                                               -> DatumBlock<'blk, 'tcx, Lvalue> {
@@ -381,7 +381,7 @@ impl<'tcx> Datum<'tcx, Rvalue> {
         }
     }
 
-    pub fn to_ref_datum<'r, 'blk>(self, bcx: &mut Block<'r, 'blk, 'tcx>)
+    pub fn to_ref_datum<'r, 'blk>(self, bcx: &mut BlockContext<'r, 'blk, 'tcx>)
                                   -> DatumBlock<'blk, 'tcx, Rvalue> {
         let mut bcx = bcx;
         match self.kind.mode {
@@ -394,7 +394,7 @@ impl<'tcx> Datum<'tcx, Rvalue> {
         }
     }
 
-    pub fn to_appropriate_datum<'r, 'blk>(self, bcx: &mut Block<'r, 'blk, 'tcx>)
+    pub fn to_appropriate_datum<'r, 'blk>(self, bcx: &mut BlockContext<'r, 'blk, 'tcx>)
                                           -> DatumBlock<'blk, 'tcx, Rvalue> {
         match self.appropriate_rvalue_mode(bcx.ccx()) {
             ByRef => {
@@ -434,17 +434,17 @@ impl<'tcx> Datum<'tcx, Expr> {
 
     /// Asserts that this datum *is* an lvalue and returns it.
     #[allow(dead_code)] // potentially useful
-    pub fn assert_lvalue(self, bcx: &mut Block) -> Datum<'tcx, Lvalue> {
+    pub fn assert_lvalue(self, bcx: &mut BlockContext) -> Datum<'tcx, Lvalue> {
         self.match_kind((),
             |_, d| d,
             |_, _| bcx.sess().bug("assert_lvalue given rvalue"))
     }
 
     pub fn store_to_dest<'r, 'blk>(self,
-                                   bcx: &mut Block<'r, 'blk, 'tcx>,
+                                   bcx: &mut BlockContext<'r, 'blk, 'tcx>,
                                    dest: expr::Dest,
                                    expr_id: ast::NodeId)
-                                   -> &'blk BlockS {
+                                   -> &'blk Block {
         match dest {
             expr::Ignore => {
                 self.add_clean_if_rvalue(bcx, expr_id);
@@ -459,7 +459,7 @@ impl<'tcx> Datum<'tcx, Expr> {
     /// Arranges cleanup for `self` if it is an rvalue. Use when you are done working with a value
     /// that may need drop.
     pub fn add_clean_if_rvalue<'r, 'blk>(self,
-                                         bcx: &mut Block<'r, 'blk, 'tcx>,
+                                         bcx: &mut BlockContext<'r, 'blk, 'tcx>,
                                          expr_id: ast::NodeId) {
         self.match_kind((),
             |_, _| { /* Nothing to do, cleanup already arranged */ },
@@ -470,7 +470,7 @@ impl<'tcx> Datum<'tcx, Expr> {
     }
 
     pub fn to_lvalue_datum<'r, 'blk>(self,
-                                     bcx: &mut Block<'r, 'blk, 'tcx>,
+                                     bcx: &mut BlockContext<'r, 'blk, 'tcx>,
                                      name: &str,
                                      expr_id: ast::NodeId)
                                      -> DatumBlock<'blk, 'tcx, Lvalue> {
@@ -486,7 +486,7 @@ impl<'tcx> Datum<'tcx, Expr> {
 
     /// Ensures that we have an rvalue datum (that is, a datum with no cleanup scheduled).
     pub fn to_rvalue_datum<'r, 'blk>(self,
-                                     bcx: &mut Block<'r, 'blk, 'tcx>,
+                                     bcx: &mut BlockContext<'r, 'blk, 'tcx>,
                                      name: &'static str)
                                      -> DatumBlock<'blk, 'tcx, Rvalue> {
         self.match_kind(bcx,
@@ -526,10 +526,10 @@ impl<'tcx> Datum<'tcx, Lvalue> {
     // datum may also be unsized _without the size information_. It is the
     // callers responsibility to package the result in some way to make a valid
     // datum in that case (e.g., by making a fat pointer or opened pair).
-    pub fn get_element<'r, 'blk, F>(&self, bcx: &mut Block<'r, 'blk, 'tcx>, ty: Ty<'tcx>,
+    pub fn get_element<'r, 'blk, F>(&self, bcx: &mut BlockContext<'r, 'blk, 'tcx>, ty: Ty<'tcx>,
                                     gep: F)
                                     -> Datum<'tcx, Lvalue> where
-        F: for<'a> FnOnce(&mut Block<'a, 'blk, 'tcx>, ValueRef) -> ValueRef,
+        F: for<'a> FnOnce(&mut BlockContext<'a, 'blk, 'tcx>, ValueRef) -> ValueRef,
     {
         let val = if type_is_sized(bcx.tcx(), self.ty) {
             gep(bcx, self.val)
@@ -545,7 +545,7 @@ impl<'tcx> Datum<'tcx, Lvalue> {
         }
     }
 
-    pub fn get_vec_base_and_len<'r, 'blk>(&self, bcx: &mut Block<'r, 'blk, 'tcx>)
+    pub fn get_vec_base_and_len<'r, 'blk>(&self, bcx: &mut BlockContext<'r, 'blk, 'tcx>)
                                           -> (ValueRef, ValueRef) {
         //! Converts a vector into the slice pair.
 
@@ -568,9 +568,9 @@ impl<'tcx, K: KindOps + fmt::Debug> Datum<'tcx, K> {
     /// datum. This method consumes the datum, since it would be incorrect to go on using the datum
     /// if the value represented is affine (and hence the value is moved).
     pub fn store_to<'r, 'blk>(self,
-                              bcx: &mut Block<'r, 'blk, 'tcx>,
+                              bcx: &mut BlockContext<'r, 'blk, 'tcx>,
                               dst: ValueRef)
-                              -> &'blk BlockS {
+                              -> &'blk Block {
         self.shallow_copy_raw(bcx, dst);
 
         self.kind.post_store(bcx, self.val, self.ty)
@@ -585,9 +585,9 @@ impl<'tcx, K: KindOps + fmt::Debug> Datum<'tcx, K> {
     /// longer need the source value) or `shallow_copy` (if you wish the source value to remain
     /// valid).
     fn shallow_copy_raw<'r, 'blk>(&self,
-                                  bcx: &mut Block<'r, 'blk, 'tcx>,
+                                  bcx: &mut BlockContext<'r, 'blk, 'tcx>,
                                   dst: ValueRef)
-                                  -> &'blk BlockS {
+                                  -> &'blk Block {
         let _icx = push_ctxt("copy_to_no_check");
 
         if type_is_zero_size(bcx.ccx(), self.ty) {
@@ -607,9 +607,9 @@ impl<'tcx, K: KindOps + fmt::Debug> Datum<'tcx, K> {
     /// a valid value. Therefore, it does not consume `self` and, also, cannot be applied to affine
     /// values (since they must never be duplicated).
     pub fn shallow_copy<'r, 'blk>(&self,
-                                  bcx: &mut Block<'r, 'blk, 'tcx>,
+                                  bcx: &mut BlockContext<'r, 'blk, 'tcx>,
                                   dst: ValueRef)
-                                  -> &'blk BlockS {
+                                  -> &'blk Block {
         /*!
          * Copies the value into a new location. This function always
          * preserves the existing datum as a valid value. Therefore,
@@ -641,7 +641,7 @@ impl<'tcx, K: KindOps + fmt::Debug> Datum<'tcx, K> {
     /// responsibility to cleanup the value). For this to work, the value must be something
     /// scalar-ish (like an int or a pointer) which (1) does not require drop glue and (2) is
     /// naturally passed around by value, and not by reference.
-    pub fn to_llscalarish<'r, 'blk>(self, bcx: &mut Block<'r, 'blk, 'tcx>) -> ValueRef {
+    pub fn to_llscalarish<'r, 'blk>(self, bcx: &mut BlockContext<'r, 'blk, 'tcx>) -> ValueRef {
         assert!(!bcx.fcx.type_needs_drop(self.ty));
         assert!(self.appropriate_rvalue_mode(bcx.ccx()) == ByValue);
         if self.kind.is_by_ref() {
@@ -651,14 +651,14 @@ impl<'tcx, K: KindOps + fmt::Debug> Datum<'tcx, K> {
         }
     }
 
-    pub fn to_llbool<'r, 'blk>(self, bcx: &mut Block<'r, 'blk, 'tcx>) -> ValueRef {
+    pub fn to_llbool<'r, 'blk>(self, bcx: &mut BlockContext<'r, 'blk, 'tcx>) -> ValueRef {
         assert!(ty::type_is_bool(self.ty));
         self.to_llscalarish(bcx)
     }
 }
 
 impl<'blk, 'tcx, K> DatumBlock<'blk, 'tcx, K> {
-    pub fn new(bcx: &'blk BlockS, datum: Datum<'tcx, K>)
+    pub fn new(bcx: &'blk Block, datum: Datum<'tcx, K>)
                -> DatumBlock<'blk, 'tcx, K> {
         DatumBlock { bcx: bcx, datum: datum }
     }
@@ -674,13 +674,13 @@ impl<'blk, 'tcx> DatumBlock<'blk, 'tcx, Expr> {
     pub fn store_to_dest<'r>(self,
                              fcx: &mut FunctionContext<'blk, 'tcx>,
                              dest: expr::Dest,
-                             expr_id: ast::NodeId) -> &'blk BlockS {
+                             expr_id: ast::NodeId) -> &'blk Block {
         let DatumBlock { bcx, datum } = self;
-        datum.store_to_dest(&mut bcx.with(fcx), dest, expr_id)
+        datum.store_to_dest(&mut bcx.with_fcx(fcx), dest, expr_id)
     }
 
     pub fn to_llbool(self, fcx: &mut FunctionContext<'blk, 'tcx>) -> Result<'blk> {
         let DatumBlock { datum, bcx } = self;
-        Result::new(bcx, datum.to_llbool(&mut bcx.with(fcx)))
+        Result::new(bcx, datum.to_llbool(&mut bcx.with_fcx(fcx)))
     }
 }

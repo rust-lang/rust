@@ -148,16 +148,16 @@ pub fn check_intrinsics(ccx: &CrateContext) {
 /// and in libcore/intrinsics.rs; if you need access to any llvm intrinsics,
 /// add them to librustc_trans/trans/context.rs
 pub fn trans_intrinsic_call<'a, 'r, 'blk, 'tcx>
-                           (&mut Block { bl, ref mut fcx }: &mut Block<'r, 'blk, 'tcx>,
-                            node: ast::NodeId,
-                            callee_ty: Ty<'tcx>,
-                            cleanup_scope: cleanup::CustomScopeIndex,
-                            args: callee::CallArgs<'a, 'tcx>,
-                            dest: expr::Dest,
-                            substs: subst::Substs<'tcx>,
-                            call_info: NodeIdAndSpan)
-                            -> Result<'blk> {
-    let mut bcx = &mut bl.with(fcx);
+        (&mut BlockContext { bl, ref mut fcx }: &mut BlockContext<'r, 'blk, 'tcx>,
+         node: ast::NodeId,
+         callee_ty: Ty<'tcx>,
+         cleanup_scope: cleanup::CustomScopeIndex,
+         args: callee::CallArgs<'a, 'tcx>,
+         dest: expr::Dest,
+         substs: subst::Substs<'tcx>,
+         call_info: NodeIdAndSpan)
+         -> Result<'blk> {
+    let mut bcx = &mut bl.with_fcx(fcx);
     let ccx = bcx.fcx.ccx;
     let tcx = bcx.tcx();
 
@@ -858,7 +858,7 @@ pub fn trans_intrinsic_call<'a, 'r, 'blk, 'tcx>
     Result::new(bcx.bl, llresult)
 }
 
-fn copy_intrinsic<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
+fn copy_intrinsic<'r, 'blk, 'tcx>(bcx: &mut BlockContext<'r, 'blk, 'tcx>,
                                   allow_overlap: bool,
                                   volatile: bool,
                                   tp_ty: Ty<'tcx>,
@@ -903,7 +903,7 @@ fn copy_intrinsic<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
          call_debug_location)
 }
 
-fn memset_intrinsic<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
+fn memset_intrinsic<'r, 'blk, 'tcx>(bcx: &mut BlockContext<'r, 'blk, 'tcx>,
                                     volatile: bool,
                                     tp_ty: Ty<'tcx>,
                                     dst: ValueRef,
@@ -937,7 +937,7 @@ fn memset_intrinsic<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
          call_debug_location)
 }
 
-fn count_zeros_intrinsic(bcx: &mut Block,
+fn count_zeros_intrinsic(bcx: &mut BlockContext,
                          name: &'static str,
                          val: ValueRef,
                          call_debug_location: DebugLoc)
@@ -947,7 +947,7 @@ fn count_zeros_intrinsic(bcx: &mut Block,
     Call(bcx, llfn, &[val, y], None, call_debug_location)
 }
 
-fn with_overflow_intrinsic<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
+fn with_overflow_intrinsic<'r, 'blk, 'tcx>(bcx: &mut BlockContext<'r, 'blk, 'tcx>,
                                            name: &'static str,
                                            t: Ty<'tcx>,
                                            a: ValueRef,

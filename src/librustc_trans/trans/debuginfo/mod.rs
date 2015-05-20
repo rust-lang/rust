@@ -26,7 +26,7 @@ use llvm::{ModuleRef, ContextRef, ValueRef};
 use llvm::debuginfo::{DIFile, DIType, DIScope, DIBuilderRef, DISubprogram, DIArray,
                       DIDescriptor, FlagPrototyped};
 use middle::subst::{self, Substs};
-use trans::common::{NodeIdAndSpan, CrateContext, FunctionContext, Block};
+use trans::common::{NodeIdAndSpan, CrateContext, FunctionContext, BlockContext};
 use trans;
 use trans::monomorphize;
 use middle::ty::{self, Ty, ClosureTyper};
@@ -535,7 +535,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     }
 }
 
-fn declare_local<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
+fn declare_local<'r, 'blk, 'tcx>(bcx: &mut BlockContext<'r, 'blk, 'tcx>,
                                  variable_name: ast::Name,
                                  variable_type: Ty<'tcx>,
                                  scope_metadata: DIScope,

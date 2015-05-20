@@ -273,9 +273,9 @@ impl<'a, 'tcx> Opt<'a, 'tcx> {
     }
 
     fn trans<'r, 'blk>(&self,
-                       &mut Block { bl, ref mut fcx }: &mut Block<'r, 'blk, 'tcx>)
+                       &mut BlockContext { bl, ref mut fcx }: &mut BlockContext<'r, 'blk, 'tcx>)
                        -> OptResult<'blk> {
-        let mut bcx = &mut bl.with(fcx);
+        let mut bcx = &mut bl.with_fcx(fcx);
         let _icx = push_ctxt("match::trans_opt");
         let ccx = bcx.ccx();
         match *self {
@@ -355,7 +355,7 @@ pub struct BindingInfo<'tcx> {
 type BindingsMap<'tcx> = FnvHashMap<ast::Ident, BindingInfo<'tcx>>;
 
 struct ArmData<'p, 'blk, 'tcx: 'blk> {
-    bodycx: &'blk BlockS,
+    bodycx: &'blk Block,
     arm: &'p ast::Arm,
     bindings_map: BindingsMap<'tcx>
 }
@@ -394,7 +394,7 @@ fn has_nested_bindings(m: &[Match], col: usize) -> bool {
     return false;
 }
 
-fn expand_nested_bindings<'a, 'p, 'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
+fn expand_nested_bindings<'a, 'p, 'r, 'blk, 'tcx>(bcx: &mut BlockContext<'r, 'blk, 'tcx>,
                                                   m: &[Match<'a, 'p, 'blk, 'tcx>],
                                                   col: usize,
                                                   val: ValueRef)
@@ -430,7 +430,7 @@ fn expand_nested_bindings<'a, 'p, 'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx
     }).collect()
 }
 
-fn enter_match<'a, 'b, 'p, 'r, 'blk, 'tcx, F>(bcx: &mut Block<'r, 'blk, 'tcx>,
+fn enter_match<'a, 'b, 'p, 'r, 'blk, 'tcx, F>(bcx: &mut BlockContext<'r, 'blk, 'tcx>,
                                               dm: &DefMap,
                                               m: &[Match<'a, 'p, 'blk, 'tcx>],
                                               col: usize,
@@ -476,7 +476,7 @@ fn enter_match<'a, 'b, 'p, 'r, 'blk, 'tcx, F>(bcx: &mut Block<'r, 'blk, 'tcx>,
     }).collect()
 }
 
-fn enter_default<'a, 'p, 'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
+fn enter_default<'a, 'p, 'r, 'blk, 'tcx>(bcx: &mut BlockContext<'r, 'blk, 'tcx>,
                                          dm: &DefMap,
                                          m: &[Match<'a, 'p, 'blk, 'tcx>],
                                          col: usize,
@@ -530,7 +530,7 @@ fn enter_default<'a, 'p, 'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
 /// Also, most of the enter_() family functions have been unified with
 /// the check_match specialization step.
 fn enter_opt<'a, 'p, 'r, 'blk, 'tcx>(
-             bcx: &mut Block<'r, 'blk, 'tcx>,
+             bcx: &mut BlockContext<'r, 'blk, 'tcx>,
              _: ast::NodeId,
              dm: &DefMap,
              m: &[Match<'a, 'p, 'blk, 'tcx>],
@@ -576,7 +576,7 @@ fn enter_opt<'a, 'p, 'r, 'blk, 'tcx>(
 // Returns the options in one column of matches. An option is something that
 // needs to be conditionally matched at runtime; for example, the discriminant
 // on a set of enum variants or a literal.
-fn get_branches<'a, 'p, 'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
+fn get_branches<'a, 'p, 'r, 'blk, 'tcx>(bcx: &mut BlockContext<'r, 'blk, 'tcx>,
                                         m: &[Match<'a, 'p, 'blk, 'tcx>],
                                         col: usize)
                                         -> Vec<Opt<'p, 'tcx>> {
@@ -634,10 +634,10 @@ fn get_branches<'a, 'p, 'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
 
 struct ExtractedBlock<'blk> {
     vals: Vec<ValueRef>,
-    bcx: &'blk BlockS
+    bcx: &'blk Block
 }
 
-fn extract_variant_args<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
+fn extract_variant_args<'r, 'blk, 'tcx>(bcx: &mut BlockContext<'r, 'blk, 'tcx>,
                                         repr: &adt::Repr<'tcx>,
                                         disr_val: ty::Disr,
                                         val: ValueRef)
@@ -656,7 +656,7 @@ fn match_datum<'tcx>(val: ValueRef, left_ty: Ty<'tcx>) -> Datum<'tcx, Lvalue> {
     Datum::new(val, left_ty, Lvalue)
 }
 
-fn bind_subslice_pat(bcx: &mut Block,
+fn bind_subslice_pat(bcx: &mut BlockContext,
                      pat_id: ast::NodeId,
                      val: ValueRef,
                      offset_left: usize,
@@ -682,7 +682,7 @@ fn bind_subslice_pat(bcx: &mut Block,
     scratch.val
 }
 
-fn extract_vec_elems<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
+fn extract_vec_elems<'r, 'blk, 'tcx>(bcx: &mut BlockContext<'r, 'blk, 'tcx>,
                                      left_ty: Ty<'tcx>,
                                      before: usize,
                                      after: usize,
@@ -765,7 +765,7 @@ impl FailureHandler {
         !self.is_fallible()
     }
 
-    fn handle_fail(&self, bcx: &mut Block) {
+    fn handle_fail(&self, bcx: &mut BlockContext) {
         match *self {
             Infallible =>
                 panic!("attempted to panic in a non-panicking panic handler!"),
@@ -815,13 +815,13 @@ fn pick_column_to_specialize(def_map: &DefMap, m: &[Match]) -> Option<usize> {
 }
 
 // Compiles a comparison between two things.
-fn compare_values<'r, 'blk, 'tcx>(cx: &mut Block<'r, 'blk, 'tcx>,
+fn compare_values<'r, 'blk, 'tcx>(cx: &mut BlockContext<'r, 'blk, 'tcx>,
                                   lhs: ValueRef,
                                   rhs: ValueRef,
                                   rhs_t: Ty<'tcx>,
                                   debug_loc: DebugLoc)
                                   -> Result<'blk> {
-    fn compare_str<'r, 'blk, 'tcx>(cx: &mut Block<'r, 'blk, 'tcx>,
+    fn compare_str<'r, 'blk, 'tcx>(cx: &mut BlockContext<'r, 'blk, 'tcx>,
                                    lhs: ValueRef,
                                    rhs: ValueRef,
                                    rhs_t: Ty<'tcx>,
@@ -839,8 +839,8 @@ fn compare_values<'r, 'blk, 'tcx>(cx: &mut Block<'r, 'blk, 'tcx>,
         memcpy_ty(cx, lhs_arg, lhs, t);
         memcpy_ty(cx, rhs_arg, rhs, t);
         let res = callee::trans_lang_call(cx, did, &[lhs_arg, rhs_arg], None, debug_loc);
-        call_lifetime_end(&mut res.bcx.with(cx.fcx), lhs_arg);
-        call_lifetime_end(&mut res.bcx.with(cx.fcx), rhs_arg);
+        call_lifetime_end(&mut res.bcx.with_fcx(cx.fcx), lhs_arg);
+        call_lifetime_end(&mut res.bcx.with_fcx(cx.fcx), rhs_arg);
 
         res
     }
@@ -899,11 +899,12 @@ fn compare_values<'r, 'blk, 'tcx>(cx: &mut Block<'r, 'blk, 'tcx>,
 }
 
 /// For each binding in `data.bindings_map`, adds an appropriate entry into the `fcx.lllocals` map
-fn insert_lllocals<'r, 'blk, 'tcx>(&mut Block { bl, ref mut fcx }: &mut Block<'r, 'blk, 'tcx>,
-                                   bindings_map: &BindingsMap<'tcx>,
-                                   cs: Option<cleanup::ScopeId>)
-                                   -> &'blk BlockS {
-    let mut bcx = &mut bl.with(fcx);
+fn insert_lllocals<'r, 'blk, 'tcx>
+                  (&mut BlockContext { bl, ref mut fcx }: &mut BlockContext<'r, 'blk, 'tcx>,
+                   bindings_map: &BindingsMap<'tcx>,
+                   cs: Option<cleanup::ScopeId>)
+                   -> &'blk Block {
+    let mut bcx = &mut bl.with_fcx(fcx);
     for (&ident, &binding_info) in bindings_map {
         let llval = match binding_info.trmode {
             // By value mut binding for a copy type: load from the ptr
@@ -940,15 +941,16 @@ fn insert_lllocals<'r, 'blk, 'tcx>(&mut Block { bl, ref mut fcx }: &mut Block<'r
     bcx.bl
 }
 
-fn compile_guard<'a, 'p, 'r, 'blk, 'tcx>(&mut Block { bl, ref mut fcx }: &mut Block<'r, 'blk, 'tcx>,
-                                         guard_expr: &ast::Expr,
-                                         data: &ArmData<'p, 'blk, 'tcx>,
-                                         m: &[Match<'a, 'p, 'blk, 'tcx>],
-                                         vals: &[ValueRef],
-                                         chk: &FailureHandler,
-                                         has_genuine_default: bool)
-                                         -> &'blk BlockS {
-    let mut bcx = &mut bl.with(fcx);
+fn compile_guard<'a, 'p, 'r, 'blk, 'tcx>
+                (&mut BlockContext { bl, ref mut fcx }: &mut BlockContext<'r, 'blk, 'tcx>,
+                 guard_expr: &ast::Expr,
+                 data: &ArmData<'p, 'blk, 'tcx>,
+                 m: &[Match<'a, 'p, 'blk, 'tcx>],
+                 vals: &[ValueRef],
+                 chk: &FailureHandler,
+                 has_genuine_default: bool)
+                 -> &'blk Block {
+    let mut bcx = &mut bl.with_fcx(fcx);
 
     debug!("compile_guard(bcx={}, guard_expr={}, m={}, vals={})",
            bcx.to_str(),
@@ -957,7 +959,7 @@ fn compile_guard<'a, 'p, 'r, 'blk, 'tcx>(&mut Block { bl, ref mut fcx }: &mut Bl
            vec_map_to_string(vals, |v| bcx.val_to_string(*v)));
     let _indenter = indenter();
 
-    let mut bcx = &mut insert_lllocals(bcx, &data.bindings_map, None).with(bcx.fcx);
+    let mut bcx = &mut insert_lllocals(bcx, &data.bindings_map, None).with_fcx(bcx.fcx);
 
     let val = unpack_datum!(bcx, expr::trans(bcx, guard_expr));
     let val = val.to_llbool(bcx);
@@ -993,12 +995,12 @@ fn compile_guard<'a, 'p, 'r, 'blk, 'tcx>(&mut Block { bl, ref mut fcx }: &mut Bl
 }
 
 fn compile_submatch<'a, 'p, 'r, 'blk, 'tcx>
-                   (&mut Block { bl, ref mut fcx }: &mut Block<'r, 'blk, 'tcx>,
+                   (&mut BlockContext { bl, ref mut fcx }: &mut BlockContext<'r, 'blk, 'tcx>,
                     m: &[Match<'a, 'p, 'blk, 'tcx>],
                     vals: &[ValueRef],
                     chk: &FailureHandler,
                     has_genuine_default: bool) {
-    let mut bcx = &mut bl.with(fcx);
+    let mut bcx = &mut bl.with_fcx(fcx);
     debug!("compile_submatch(bcx={}, m={}, vals={})",
            bcx.to_str(),
            m.repr(bcx.tcx()),
@@ -1060,14 +1062,15 @@ fn compile_submatch<'a, 'p, 'r, 'blk, 'tcx>
 }
 
 fn compile_submatch_continue<'a, 'p, 'r, 'blk, 'tcx>
-                            (&mut Block { bl, ref mut fcx }: &mut Block<'r, 'blk, 'tcx>,
-                             m: &[Match<'a, 'p, 'blk, 'tcx>],
-                             vals: &[ValueRef],
-                             chk: &FailureHandler,
-                             col: usize,
-                             val: ValueRef,
-                             has_genuine_default: bool) {
-    let mut bcx = &mut bl.with(fcx);
+        (&mut BlockContext { bl, ref mut fcx }: &mut BlockContext<'r, 'blk, 'tcx>,
+         m: &[Match<'a, 'p, 'blk, 'tcx>],
+         vals: &[ValueRef],
+         chk: &FailureHandler,
+         col: usize,
+         val: ValueRef,
+         has_genuine_default: bool)
+{
+    let mut bcx = &mut bl.with_fcx(fcx);
     let tcx = bcx.tcx();
     let dm = &tcx.def_map;
 
@@ -1204,7 +1207,7 @@ fn compile_submatch_continue<'a, 'p, 'r, 'blk, 'tcx>
         C_int(ccx, 0) // Placeholder for when not using a switch
     };
 
-    let defaults = enter_default(&mut else_cx.with(bcx.fcx), dm, m, col, val);
+    let defaults = enter_default(&mut else_cx.with_fcx(bcx.fcx), dm, m, col, val);
     let exhaustive = chk.is_infallible() && defaults.is_empty();
     let len = opts.len();
 
@@ -1244,20 +1247,21 @@ fn compile_submatch_continue<'a, 'p, 'r, 'blk, 'tcx>
                     let Result { bcx: after_cx, val: matches } = {
                         match opt.trans(bcx) {
                             SingleResult(Result { bcx: bl, val }) => {
-                                compare_values(&mut bl.with(bcx.fcx), test_val, val, t, debug_loc)
+                                compare_values(&mut bl.with_fcx(bcx.fcx),
+                                                                test_val, val, t, debug_loc)
                             }
                             RangeResult(Result { val: vbegin, .. },
                                         Result { bcx: bl, val: vend }) => {
-                                let llge = compare_scalar_types(&mut bl.with(bcx.fcx),
+                                let llge = compare_scalar_types(&mut bl.with_fcx(bcx.fcx),
                                                                 test_val, vbegin,
                                                                 t, ast::BiGe, debug_loc);
-                                let llle = compare_scalar_types(&mut bl.with(bcx.fcx),
+                                let llle = compare_scalar_types(&mut bl.with_fcx(bcx.fcx),
                                                                 test_val, vend,
                                                                 t, ast::BiLe, debug_loc);
                                 Result::new(bcx.bl, And(bcx, llge, llle, DebugLoc::None))
                             }
                             LowerBound(Result { bcx: bl, val }) => {
-                                Result::new(bcx.bl, compare_scalar_types(&mut bl.with(bcx.fcx),
+                                Result::new(bcx.bl, compare_scalar_types(&mut bl.with_fcx(bcx.fcx),
                                                                          test_val,
                                                                          val, t, ast::BiGe,
                                                                          debug_loc))
@@ -1275,7 +1279,7 @@ fn compile_submatch_continue<'a, 'p, 'r, 'blk, 'tcx>
                     if i + 1 < len && (guarded || multi_pats || kind == CompareSliceLength) {
                         branch_chk = Some(JumpToBasicBlock(bcx.bl.llbb));
                     }
-                    CondBr(&mut after_cx.with(bcx.fcx), matches, opt_cx.llbb, bcx.bl.llbb,
+                    CondBr(&mut after_cx.with_fcx(bcx.fcx), matches, opt_cx.llbb, bcx.bl.llbb,
                            debug_loc);
                 }
                 _ => ()
@@ -1289,19 +1293,19 @@ fn compile_submatch_continue<'a, 'p, 'r, 'blk, 'tcx>
         match *opt {
             Variant(disr_val, ref repr, _, _) => {
                 let ExtractedBlock {vals: argvals, bcx: new_bcx} =
-                    extract_variant_args(&mut opt_cx.with(bcx.fcx), &**repr, disr_val, val);
+                    extract_variant_args(&mut opt_cx.with_fcx(bcx.fcx), &**repr, disr_val, val);
                 size = argvals.len();
                 unpacked = argvals;
                 opt_cx = new_bcx;
             }
             SliceLengthEqual(len, _) => {
-                let args = extract_vec_elems(&mut opt_cx.with(bcx.fcx), left_ty, len, 0, val);
+                let args = extract_vec_elems(&mut opt_cx.with_fcx(bcx.fcx), left_ty, len, 0, val);
                 size = args.vals.len();
                 unpacked = args.vals.clone();
                 opt_cx = args.bcx;
             }
             SliceLengthGreaterOrEqual(before, after, _) => {
-                let args = extract_vec_elems(&mut opt_cx.with(bcx.fcx),
+                let args = extract_vec_elems(&mut opt_cx.with_fcx(bcx.fcx),
                                              left_ty, before, after, val);
                 size = args.vals.len();
                 unpacked = args.vals.clone();
@@ -1309,10 +1313,10 @@ fn compile_submatch_continue<'a, 'p, 'r, 'blk, 'tcx>
             }
             ConstantValue(..) | ConstantRange(..) => ()
         }
-        let opt_ms = enter_opt(&mut opt_cx.with(bcx.fcx), pat_id, dm, m, opt, col, size, val);
+        let opt_ms = enter_opt(&mut opt_cx.with_fcx(bcx.fcx), pat_id, dm, m, opt, col, size, val);
         let mut opt_vals = unpacked;
         opt_vals.push_all(&vals_left[..]);
-        compile_submatch(&mut opt_cx.with(bcx.fcx),
+        compile_submatch(&mut opt_cx.with_fcx(bcx.fcx),
                          &opt_ms[..],
                          &opt_vals[..],
                          branch_chk.as_ref().unwrap_or(chk),
@@ -1329,10 +1333,10 @@ fn compile_submatch_continue<'a, 'p, 'r, 'blk, 'tcx>
             // condition explicitly rather than (eventually) falling back to
             // the last default arm.
             &JumpToBasicBlock(_) if defaults.len() == 1 && has_genuine_default => {
-                chk.handle_fail(&mut else_cx.with(bcx.fcx));
+                chk.handle_fail(&mut else_cx.with_fcx(bcx.fcx));
             }
             _ => {
-                compile_submatch(&mut else_cx.with(bcx.fcx),
+                compile_submatch(&mut else_cx.with_fcx(bcx.fcx),
                                  &defaults[..],
                                  &vals_left[..],
                                  chk,
@@ -1342,18 +1346,18 @@ fn compile_submatch_continue<'a, 'p, 'r, 'blk, 'tcx>
     }
 }
 
-pub fn trans_match<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
+pub fn trans_match<'r, 'blk, 'tcx>(bcx: &mut BlockContext<'r, 'blk, 'tcx>,
                                    match_expr: &ast::Expr,
                                    discr_expr: &ast::Expr,
                                    arms: &[ast::Arm],
                                    dest: Dest)
-                                   -> &'blk BlockS {
+                                   -> &'blk Block {
     let _icx = push_ctxt("match::trans_match");
     trans_match_inner(bcx, match_expr.id, discr_expr, arms, dest)
 }
 
 /// Checks whether the binding in `discr` is assigned to anywhere in the expression `body`
-fn is_discr_reassigned(bcx: &mut Block, discr: &ast::Expr, body: &ast::Expr) -> bool {
+fn is_discr_reassigned(bcx: &mut BlockContext, discr: &ast::Expr, body: &ast::Expr) -> bool {
     let (vid, field) = match discr.node {
         ast::ExprPath(..) => match bcx.def(discr.id) {
             def::DefLocal(vid) | def::DefUpvar(vid, _) => (vid, None),
@@ -1424,7 +1428,7 @@ impl<'tcx> euv::Delegate<'tcx> for ReassignmentChecker {
     }
 }
 
-fn create_bindings_map<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>, pat: &ast::Pat,
+fn create_bindings_map<'r, 'blk, 'tcx>(bcx: &mut BlockContext<'r, 'blk, 'tcx>, pat: &ast::Pat,
                                        discr: &ast::Expr, body: &ast::Expr)
                                        -> BindingsMap<'tcx> {
     // Create the bindings map, which is a mapping from each binding name
@@ -1486,13 +1490,15 @@ fn create_bindings_map<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>, pat: &as
     return bindings_map;
 }
 
-fn trans_match_inner<'r, 'blk, 'tcx>(&mut Block { bl, ref mut fcx }: &mut Block<'r, 'blk, 'tcx>,
-                                     match_id: ast::NodeId,
-                                     discr_expr: &ast::Expr,
-                                     arms: &[ast::Arm],
-                                     dest: Dest) -> &'blk BlockS {
+fn trans_match_inner<'r, 'blk, 'tcx>
+                    (&mut BlockContext { bl, ref mut fcx }: &mut BlockContext<'r, 'blk, 'tcx>,
+                     match_id: ast::NodeId,
+                     discr_expr: &ast::Expr,
+                     arms: &[ast::Arm],
+                     dest: Dest) -> &'blk Block
+{
     let _icx = push_ctxt("match::trans_match_inner");
-    let mut bcx = &mut bl.with(fcx);
+    let mut bcx = &mut bl.with_fcx(fcx);
     let tcx = bcx.tcx();
 
     let discr_datum = unpack_datum!(bcx, expr::trans_to_lvalue(bcx, discr_expr,
@@ -1553,7 +1559,7 @@ fn trans_match_inner<'r, 'blk, 'tcx>(&mut Block { bl, ref mut fcx }: &mut Block<
 
     let mut arm_cxs = Vec::new();
     for arm_data in &arm_datas {
-        let bcx = &mut arm_data.bodycx.with(bcx.fcx);
+        let bcx = &mut arm_data.bodycx.with_fcx(bcx.fcx);
 
         // insert bindings into the lllocals map and add cleanups
         let cs = bcx.fcx.push_custom_cleanup_scope();
@@ -1568,17 +1574,18 @@ fn trans_match_inner<'r, 'blk, 'tcx>(&mut Block { bl, ref mut fcx }: &mut Block<
 
 /// Generates code for a local variable declaration like `let <pat>;` or `let <pat> =
 /// <opt_init_expr>`.
-pub fn store_local<'r, 'blk, 'tcx>(&mut Block { bl, ref mut fcx }: &mut Block<'r, 'blk, 'tcx>,
-                                   local: &ast::Local)
-                                   -> &'blk BlockS {
+pub fn store_local<'r, 'blk, 'tcx>
+                  (&mut BlockContext { bl, ref mut fcx }: &mut BlockContext<'r, 'blk, 'tcx>,
+                   local: &ast::Local)
+                   -> &'blk Block {
     let _icx = push_ctxt("match::store_local");
-    let mut bcx = &mut bl.with(fcx);
+    let mut bcx = &mut bl.with_fcx(fcx);
     let tcx = bcx.tcx();
     let pat = &*local.pat;
 
-    fn create_dummy_locals<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
+    fn create_dummy_locals<'r, 'blk, 'tcx>(bcx: &mut BlockContext<'r, 'blk, 'tcx>,
                                            pat: &ast::Pat)
-                                           -> &'blk BlockS {
+                                           -> &'blk Block {
         let _icx = push_ctxt("create_dummy_locals");
         // create dummy memory for the variables if we have no
         // value to store into them immediately
@@ -1587,7 +1594,7 @@ pub fn store_local<'r, 'blk, 'tcx>(&mut Block { bl, ref mut fcx }: &mut Block<'r
         pat_bindings(&tcx.def_map, pat, |_, p_id, _, path1| {
             let scope = cleanup::var_scope(tcx, p_id);
             bl = mk_binding_alloca(
-                &mut bl.with(bcx.fcx), p_id, path1.node.name, scope, (),
+                &mut bl.with_fcx(bcx.fcx), p_id, path1.node.name, scope, (),
                 |(), bcx, llval, ty| { drop_done_fill_mem(bcx, llval, ty); bcx.bl });
         });
         bl
@@ -1642,13 +1649,14 @@ pub fn store_local<'r, 'blk, 'tcx>(&mut Block { bl, ref mut fcx }: &mut Block<'r
 /// - `llval` is a pointer to the argument value (in other words,
 ///   if the argument type is `T`, then `llval` is a `T*`). In some
 ///   cases, this code may zero out the memory `llval` points at.
-pub fn store_arg<'r, 'blk, 'tcx>(&mut Block { bl, ref mut fcx }: &mut Block<'r, 'blk, 'tcx>,
-                                 pat: &ast::Pat,
-                                 arg: Datum<'tcx, Rvalue>,
-                                 arg_scope: cleanup::ScopeId)
-                                 -> &'blk BlockS {
+pub fn store_arg<'r, 'blk, 'tcx>
+                (&mut BlockContext { bl, ref mut fcx }: &mut BlockContext<'r, 'blk, 'tcx>,
+                 pat: &ast::Pat,
+                 arg: Datum<'tcx, Rvalue>,
+                 arg_scope: cleanup::ScopeId)
+                 -> &'blk Block {
     let _icx = push_ctxt("match::store_arg");
-    let mut bcx = &mut bl.with(fcx);
+    let mut bcx = &mut bl.with_fcx(fcx);
 
     match simple_identifier(&*pat) {
         Some(ident) => {
@@ -1681,14 +1689,14 @@ pub fn store_arg<'r, 'blk, 'tcx>(&mut Block { bl, ref mut fcx }: &mut Block<'r, 
     }
 }
 
-fn mk_binding_alloca<'r, 'blk, 'tcx, A, F>(bcx: &mut Block<'r, 'blk, 'tcx>,
+fn mk_binding_alloca<'r, 'blk, 'tcx, A, F>(bcx: &mut BlockContext<'r, 'blk, 'tcx>,
                                            p_id: ast::NodeId,
                                            name: ast::Name,
                                            cleanup_scope: cleanup::ScopeId,
                                            arg: A,
                                            populate: F)
-                                           -> &'blk BlockS where
-    F: FnOnce(A, &mut Block<'r, 'blk, 'tcx>, ValueRef, Ty<'tcx>) -> &'blk BlockS,
+                                           -> &'blk Block where
+    F: FnOnce(A, &mut BlockContext<'r, 'blk, 'tcx>, ValueRef, Ty<'tcx>) -> &'blk Block,
 {
     let var_ty = node_id_type(bcx, p_id);
 
@@ -1698,7 +1706,7 @@ fn mk_binding_alloca<'r, 'blk, 'tcx, A, F>(bcx: &mut Block<'r, 'blk, 'tcx>,
 
     // Subtle: be sure that we *populate* the memory *before*
     // we schedule the cleanup.
-    let bcx = &mut populate(arg, bcx, llval, var_ty).with(bcx.fcx);
+    let bcx = &mut populate(arg, bcx, llval, var_ty).with_fcx(bcx.fcx);
     bcx.fcx.schedule_lifetime_end(cleanup_scope, llval);
     bcx.fcx.schedule_drop_mem(cleanup_scope, llval, var_ty);
 
@@ -1721,12 +1729,14 @@ fn mk_binding_alloca<'r, 'blk, 'tcx, A, F>(bcx: &mut Block<'r, 'blk, 'tcx>,
 /// - bcx: starting basic block context
 /// - pat: the irrefutable pattern being matched.
 /// - val: the value being matched -- must be an lvalue (by ref, with cleanup)
-fn bind_irrefutable_pat<'r, 'blk, 'tcx>(&mut Block { bl, ref mut fcx }: &mut Block<'r, 'blk, 'tcx>,
-                                        pat: &ast::Pat,
-                                        val: ValueRef,
-                                        cleanup_scope: cleanup::ScopeId)
-                                        -> &'blk BlockS {
-    let mut bcx = &mut bl.with(fcx);
+fn bind_irrefutable_pat<'r, 'blk, 'tcx>
+                       (&mut BlockContext { bl, ref mut fcx }: &mut BlockContext<'r, 'blk, 'tcx>,
+                        pat: &ast::Pat,
+                        val: ValueRef,
+                        cleanup_scope: cleanup::ScopeId)
+                        -> &'blk Block
+{
+    let mut bcx = &mut bl.with_fcx(fcx);
     debug!("bind_irrefutable_pat(bcx={}, pat={})",
            bcx.to_str(),
            pat.repr(bcx.tcx()));
@@ -1865,7 +1875,7 @@ fn bind_irrefutable_pat<'r, 'blk, 'tcx>(&mut Block { bl, ref mut fcx }: &mut Blo
                 .chain(after.iter())
                 .zip(extracted.vals.into_iter())
                 .fold(bcx.bl, |bl, (inner, elem)|
-                    bind_irrefutable_pat(&mut bl.with(bcx.fcx), &**inner, elem, cleanup_scope)
+                    bind_irrefutable_pat(&mut bl.with_fcx(bcx.fcx), &**inner, elem, cleanup_scope)
                 );
         }
         ast::PatMac(..) => {

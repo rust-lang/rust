@@ -46,12 +46,12 @@ use arena::TypedArena;
 use libc::c_uint;
 use syntax::ast;
 
-pub fn trans_exchange_free_dyn<'r, 'blk, 'tcx>(cx: &mut Block<'r, 'blk, 'tcx>,
+pub fn trans_exchange_free_dyn<'r, 'blk, 'tcx>(cx: &mut BlockContext<'r, 'blk, 'tcx>,
                                                v: ValueRef,
                                                size: ValueRef,
                                                align: ValueRef,
                                                debug_loc: DebugLoc)
-                                               -> &'blk BlockS {
+                                               -> &'blk Block {
     let _icx = push_ctxt("trans_exchange_free");
     let ccx = cx.ccx();
     let lc = langcall(cx, None, "", ExchangeFreeFnLangItem);
@@ -59,22 +59,22 @@ pub fn trans_exchange_free_dyn<'r, 'blk, 'tcx>(cx: &mut Block<'r, 'blk, 'tcx>,
     callee::trans_lang_call(cx, lc, &pc, Some(expr::Ignore), debug_loc).bcx
 }
 
-pub fn trans_exchange_free<'r, 'blk, 'tcx>(cx: &mut Block<'r, 'blk, 'tcx>,
+pub fn trans_exchange_free<'r, 'blk, 'tcx>(cx: &mut BlockContext<'r, 'blk, 'tcx>,
                                            v: ValueRef,
                                            size: u64,
                                            align: u32,
                                            debug_loc: DebugLoc)
-                                           -> &'blk BlockS {
+                                           -> &'blk Block {
     let s = C_uint(cx.ccx(), size);
     let a = C_uint(cx.ccx(), align);
     trans_exchange_free_dyn(cx, v, s, a, debug_loc)
 }
 
-pub fn trans_exchange_free_ty<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
+pub fn trans_exchange_free_ty<'r, 'blk, 'tcx>(bcx: &mut BlockContext<'r, 'blk, 'tcx>,
                                               ptr: ValueRef,
                                               content_ty: Ty<'tcx>,
                                               debug_loc: DebugLoc)
-                                              -> &'blk BlockS {
+                                              -> &'blk Block {
     assert!(type_is_sized(bcx.ccx().tcx(), content_ty));
     let sizing_type = sizing_type_of(bcx.ccx(), content_ty);
     let content_size = llsize_of_alloc(bcx.ccx(), sizing_type);
@@ -124,18 +124,18 @@ pub fn get_drop_glue_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     }
 }
 
-pub fn drop_ty<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
+pub fn drop_ty<'r, 'blk, 'tcx>(bcx: &mut BlockContext<'r, 'blk, 'tcx>,
                                v: ValueRef,
                                t: Ty<'tcx>,
-                               debug_loc: DebugLoc) -> &'blk BlockS {
+                               debug_loc: DebugLoc) -> &'blk Block {
     drop_ty_core(bcx, v, t, debug_loc, false)
 }
 
-pub fn drop_ty_core<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
+pub fn drop_ty_core<'r, 'blk, 'tcx>(bcx: &mut BlockContext<'r, 'blk, 'tcx>,
                                     v: ValueRef,
                                     t: Ty<'tcx>,
                                     debug_loc: DebugLoc,
-                                    skip_dtor: bool) -> &'blk BlockS {
+                                    skip_dtor: bool) -> &'blk Block {
     // NB: v is an *alias* of type t here, not a direct value.
     debug!("drop_ty_core(t={}, skip_dtor={})", t.repr(bcx.tcx()), skip_dtor);
     let _icx = push_ctxt("drop_ty");
@@ -159,12 +159,12 @@ pub fn drop_ty_core<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
     bcx.bl
 }
 
-pub fn drop_ty_immediate<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
+pub fn drop_ty_immediate<'r, 'blk, 'tcx>(bcx: &mut BlockContext<'r, 'blk, 'tcx>,
                                          v: ValueRef,
                                          t: Ty<'tcx>,
                                          debug_loc: DebugLoc,
                                          skip_dtor: bool)
-                                         -> &'blk BlockS {
+                                         -> &'blk Block {
     let _icx = push_ctxt("drop_ty_immediate");
     let ty = type_of(bcx.ccx(), t);
     let vp = alloca(bcx, ty, "");
@@ -268,21 +268,21 @@ fn get_drop_glue_core<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     // type, so we don't need to explicitly cast the function parameter.
 
     let llrawptr0 = get_param(llfn, fcx.arg_pos(0) as c_uint);
-    let bcx = make_drop_glue(&mut bcx.with(fcx), llrawptr0, g);
+    let bcx = make_drop_glue(&mut bcx.with_fcx(fcx), llrawptr0, g);
     finish_fn(fcx, bcx, ty::FnConverging(ty::mk_nil(ccx.tcx())), DebugLoc::None);
 
     llfn
 }
 
 fn trans_struct_drop_flag<'r, 'blk, 'tcx>
-                         (&mut Block { bl, ref mut fcx }: &mut Block<'r, 'blk, 'tcx>,
+                         (&mut BlockContext { bl, ref mut fcx }: &mut BlockContext<'r, 'blk, 'tcx>,
                           t: Ty<'tcx>,
                           struct_data: ValueRef,
                           dtor_did: ast::DefId,
                           class_did: ast::DefId,
                           substs: &subst::Substs<'tcx>)
-                          -> &'blk BlockS {
-    let mut bcx = &mut bl.with(fcx);
+                          -> &'blk Block {
+    let mut bcx = &mut bl.with_fcx(fcx);
     assert!(type_is_sized(bcx.tcx(), t), "Precondition: caller must ensure t is sized");
 
     let repr = adt::represent_type(bcx.ccx(), t);
@@ -346,13 +346,13 @@ pub fn get_res_dtor<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     }
 }
 
-fn trans_struct_drop<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
+fn trans_struct_drop<'r, 'blk, 'tcx>(bcx: &mut BlockContext<'r, 'blk, 'tcx>,
                                      t: Ty<'tcx>,
                                      v0: ValueRef,
                                      dtor_did: ast::DefId,
                                      class_did: ast::DefId,
                                      substs: &subst::Substs<'tcx>)
-                                     -> &'blk BlockS
+                                     -> &'blk Block
 {
     debug!("trans_struct_drop t: {}", bcx.ty_to_string(t));
 
@@ -386,7 +386,7 @@ fn trans_struct_drop<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
     bcx.fcx.pop_and_trans_custom_cleanup_scope(bl, contents_scope)
 }
 
-pub fn size_and_align_of_dst<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
+pub fn size_and_align_of_dst<'r, 'blk, 'tcx>(bcx: &mut BlockContext<'r, 'blk, 'tcx>,
                                              t: Ty<'tcx>, info: ValueRef)
                                              -> (ValueRef, ValueRef) {
     debug!("calculate size of DST: {}; with lost info: {}",
@@ -446,10 +446,10 @@ pub fn size_and_align_of_dst<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
     }
 }
 
-fn make_drop_glue<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
+fn make_drop_glue<'r, 'blk, 'tcx>(bcx: &mut BlockContext<'r, 'blk, 'tcx>,
                                   v0: ValueRef,
                                   g: DropGlueKind<'tcx>)
-                                  -> &'blk BlockS {
+                                  -> &'blk Block {
     let t = g.ty();
     let skip_dtor = match g { DropGlueKind::Ty(_) => false, DropGlueKind::TyContents(_) => true };
     // NB: v0 is an *alias* of type t here, not a direct value.
@@ -477,7 +477,7 @@ fn make_drop_glue<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
                 let drop_flag_not_dropped_already =
                     ICmp(bcx, llvm::IntNE, llbox_as_usize, dropped_pattern, DebugLoc::None);
                 with_cond(bcx, drop_flag_not_dropped_already, |bcx| {
-                    let bcx = &mut drop_ty(bcx, v0, content_ty, DebugLoc::None).with(bcx.fcx);
+                    let bcx = &mut drop_ty(bcx, v0, content_ty, DebugLoc::None).with_fcx(bcx.fcx);
                     let info = GEPi(bcx, v0, &[0, abi::FAT_PTR_EXTRA]);
                     let info = Load(bcx, info);
                     let (llsize, llalign) = size_and_align_of_dst(bcx, content_ty, info);
@@ -500,7 +500,8 @@ fn make_drop_glue<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
                 let drop_flag_not_dropped_already =
                     ICmp(bcx, llvm::IntNE, llbox_as_usize, dropped_pattern, DebugLoc::None);
                 with_cond(bcx, drop_flag_not_dropped_already, |bcx| {
-                    let bcx = &mut drop_ty(bcx, llbox, content_ty, DebugLoc::None).with(bcx.fcx);
+                    let bcx = &mut drop_ty(bcx,
+                                           llbox, content_ty, DebugLoc::None).with_fcx(bcx.fcx);
                     trans_exchange_free_ty(bcx, llbox, content_ty, DebugLoc::None)
                 })
             }

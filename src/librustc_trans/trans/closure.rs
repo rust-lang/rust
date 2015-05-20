@@ -35,10 +35,10 @@ use syntax::ast;
 use syntax::ast_util;
 
 
-fn load_closure_environment<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
+fn load_closure_environment<'r, 'blk, 'tcx>(bcx: &mut BlockContext<'r, 'blk, 'tcx>,
                                             arg_scope_id: ScopeId,
                                             freevars: &[ty::Freevar])
-                                            -> &'blk BlockS
+                                            -> &'blk Block
 {
     let _icx = push_ctxt("closure::load_closure_environment");
 
@@ -111,8 +111,8 @@ pub enum ClosureEnv<'a> {
 }
 
 impl<'a> ClosureEnv<'a> {
-    pub fn load<'r,'blk,'tcx>(self, bcx: &mut Block<'r, 'blk, 'tcx>, arg_scope: ScopeId)
-                              -> &'blk BlockS
+    pub fn load<'r,'blk,'tcx>(self, bcx: &mut BlockContext<'r, 'blk, 'tcx>, arg_scope: ScopeId)
+                              -> &'blk Block
     {
         match self {
             ClosureEnv::NotClosure => bcx.bl,
@@ -184,7 +184,7 @@ pub fn get_or_create_declaration_if_closure<'a, 'tcx>(ccx: &CrateContext<'a, 'tc
 }
 
 pub enum Dest<'r, 'a: 'r, 'tcx: 'a> {
-    SaveIn(&'r mut Block<'r, 'a, 'tcx>, ValueRef),
+    SaveIn(&'r mut BlockContext<'r, 'a, 'tcx>, ValueRef),
     Ignore(&'a CrateContext<'a, 'tcx>)
 }
 
@@ -193,7 +193,7 @@ pub fn trans_closure_expr<'r, 'a, 'tcx>(mut dest: Dest<'r, 'a, 'tcx>,
                                         body: &ast::Block,
                                         id: ast::NodeId,
                                         param_substs: &'tcx Substs<'tcx>)
-                                        -> Option<&'a BlockS>
+                                        -> Option<&'a Block>
 {
     let ccx = match dest {
         Dest::SaveIn(ref mut bcx, _) => bcx.ccx(),
@@ -237,14 +237,14 @@ pub fn trans_closure_expr<'r, 'a, 'tcx>(mut dest: Dest<'r, 'a, 'tcx>,
     // Don't hoist this to the top of the function. It's perfectly legitimate
     // to have a zero-size closure (in which case dest will be `Ignore`) and
     // we must still generate the closure body.
-    let (&mut Block { bl, ref mut fcx }, dest_addr) = match dest {
+    let (&mut BlockContext { bl, ref mut fcx }, dest_addr) = match dest {
         Dest::SaveIn(bcx, p) => (bcx, p),
         Dest::Ignore(_) => {
             debug!("trans_closure() ignoring result");
             return None;
         }
     };
-    let mut bcx = &mut bl.with(fcx);
+    let mut bcx = &mut bl.with_fcx(fcx);
 
     let repr = adt::represent_type(ccx, node_id_type(bcx, id));
 
@@ -405,7 +405,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
                       substs,
                       None,
                       &block_arena);
-    let mut bcx = &mut init_function(&mut fcx, false, sig.output).with(&mut fcx);
+    let mut bcx = &mut init_function(&mut fcx, false, sig.output).with_fcx(&mut fcx);
 
     // the first argument (`self`) will be the (by value) closure env.
     let self_scope = bcx.fcx.push_custom_cleanup_scope();

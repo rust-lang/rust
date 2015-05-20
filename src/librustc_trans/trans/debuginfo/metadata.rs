@@ -27,7 +27,7 @@ use metadata::csearch;
 use middle::pat_util;
 use middle::subst::{self, Substs};
 use trans::{type_of, adt, machine, monomorphize};
-use trans::common::{self, CrateContext, FunctionContext, NormalizingClosureTyper, Block};
+use trans::common::{self, CrateContext, FunctionContext, NormalizingClosureTyper, BlockContext};
 use trans::_match::{BindingInfo, TrByCopy, TrByMove, TrByRef};
 use trans::type_::Type;
 use middle::ty::{self, Ty, ClosureTyper};
@@ -1919,7 +1919,7 @@ pub fn create_global_var_metadata(cx: &CrateContext,
 /// This function assumes that there's a datum for each pattern component of the
 /// local in `bcx.fcx.lllocals`.
 /// Adds the created metadata nodes directly to the crate's IR.
-pub fn create_local_var_metadata(bcx: &mut Block, local: &ast::Local) {
+pub fn create_local_var_metadata(bcx: &mut BlockContext, local: &ast::Local) {
     if bcx.bl.unreachable.get() ||
        fn_should_be_ignored(bcx.fcx) ||
        bcx.sess().opts.debuginfo != FullDebugInfo  {
@@ -1960,7 +1960,7 @@ pub fn create_local_var_metadata(bcx: &mut Block, local: &ast::Local) {
 /// Creates debug information for a variable captured in a closure.
 ///
 /// Adds the created metadata nodes directly to the crate's IR.
-pub fn create_captured_var_metadata<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
+pub fn create_captured_var_metadata<'r, 'blk, 'tcx>(bcx: &mut BlockContext<'r, 'blk, 'tcx>,
                                                     node_id: ast::NodeId,
                                                     env_pointer: ValueRef,
                                                     env_index: usize,
@@ -2049,7 +2049,7 @@ pub fn create_captured_var_metadata<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 't
 /// match-statement arm.
 ///
 /// Adds the created metadata nodes directly to the crate's IR.
-pub fn create_match_binding_metadata<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
+pub fn create_match_binding_metadata<'r, 'blk, 'tcx>(bcx: &mut BlockContext<'r, 'blk, 'tcx>,
                                                      variable_name: ast::Name,
                                                      binding: BindingInfo<'tcx>) {
     if bcx.bl.unreachable.get() ||
@@ -2094,7 +2094,7 @@ pub fn create_match_binding_metadata<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, '
 /// This function assumes that there's a datum for each pattern component of the
 /// argument in `bcx.fcx.lllocals`.
 /// Adds the created metadata nodes directly to the crate's IR.
-pub fn create_argument_metadata(bcx: &mut Block, arg: &ast::Arg) {
+pub fn create_argument_metadata(bcx: &mut BlockContext, arg: &ast::Arg) {
     if bcx.bl.unreachable.get() ||
        fn_should_be_ignored(bcx.fcx) ||
        bcx.sess().opts.debuginfo != FullDebugInfo {
