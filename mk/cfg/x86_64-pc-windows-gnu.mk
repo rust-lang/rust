@@ -1,6 +1,7 @@
 # x86_64-pc-windows-gnu configuration
 CROSS_PREFIX_x86_64-pc-windows-gnu=x86_64-w64-mingw32-
 CC_x86_64-pc-windows-gnu=gcc
+LINK_x86_64-pc-windows-gnu=gcc
 CXX_x86_64-pc-windows-gnu=g++
 CPP_x86_64-pc-windows-gnu=gcc -E
 AR_x86_64-pc-windows-gnu=ar

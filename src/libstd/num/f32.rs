@@ -32,7 +32,6 @@ pub use core::f32::consts;
 mod cmath {
     use libc::{c_float, c_int};
 
-    #[link_name = "m"]
     extern {
         pub fn acosf(n: c_float) -> c_float;
         pub fn asinf(n: c_float) -> c_float;
@@ -44,13 +43,10 @@ mod cmath {
         pub fn erfcf(n: c_float) -> c_float;
         pub fn expm1f(n: c_float) -> c_float;
         pub fn fdimf(a: c_float, b: c_float) -> c_float;
-        pub fn frexpf(n: c_float, value: &mut c_int) -> c_float;
         pub fn fmaxf(a: c_float, b: c_float) -> c_float;
         pub fn fminf(a: c_float, b: c_float) -> c_float;
         pub fn fmodf(a: c_float, b: c_float) -> c_float;
         pub fn nextafterf(x: c_float, y: c_float) -> c_float;
-        pub fn hypotf(x: c_float, y: c_float) -> c_float;
-        pub fn ldexpf(x: c_float, n: c_int) -> c_float;
         pub fn logbf(n: c_float) -> c_float;
         pub fn log1pf(n: c_float) -> c_float;
         pub fn ilogbf(n: c_float) -> c_int;
@@ -60,12 +56,27 @@ mod cmath {
         pub fn tanhf(n: c_float) -> c_float;
         pub fn tgammaf(n: c_float) -> c_float;
 
-        #[cfg(unix)]
+        #[cfg_attr(all(windows, target_env = "msvc"), link_name = "__lgammaf_r")]
         pub fn lgammaf_r(n: c_float, sign: &mut c_int) -> c_float;
+        #[cfg_attr(all(windows, target_env = "msvc"), link_name = "_hypotf")]
+        pub fn hypotf(x: c_float, y: c_float) -> c_float;
 
-        #[cfg(windows)]
-        #[link_name="__lgammaf_r"]
-        pub fn lgammaf_r(n: c_float, sign: &mut c_int) -> c_float;
+        #[cfg(any(unix, all(windows, not(target_env = "msvc"))))]
+        pub fn frexpf(n: c_float, value: &mut c_int) -> c_float;
+        #[cfg(any(unix, all(windows, not(target_env = "msvc"))))]
+        pub fn ldexpf(x: c_float, n: c_int) -> c_float;
+    }
+
+    #[cfg(all(windows, target_env = "msvc"))]
+    pub unsafe fn ldexpf(x: c_float, n: c_int) -> c_float {
+        f64::ldexp(x as f64, n as isize) as c_float
+    }
+
+    #[cfg(all(windows, target_env = "msvc"))]
+    pub unsafe fn frexpf(x: c_float, value: &mut c_int) -> c_float {
+        let (a, b) = f64::frexp(x as f64);
+        *value = b as c_int;
+        a as c_float
     }
 }
 

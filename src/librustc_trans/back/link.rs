@@ -9,9 +9,9 @@
 // except according to those terms.
 
 use super::archive::{Archive, ArchiveBuilder, ArchiveConfig, METADATA_FILENAME};
-use super::archive;
-use super::rpath;
+use super::linker::{Linker, GnuLinker, MsvcLinker};
 use super::rpath::RPathConfig;
+use super::rpath;
 use super::svh::Svh;
 use session::config;
 use session::config::NoDebugInfo;
@@ -29,7 +29,6 @@ use util::sha2::{Digest, Sha256};
 use util::fs::fix_windows_verbatim_for_gcc;
 use rustc_back::tempdir::TempDir;
 
-use std::ffi::OsString;
 use std::fs::{self, PathExt};
 use std::io::{self, Read, Write};
 use std::mem;
@@ -366,6 +365,12 @@ pub fn get_cc_prog(sess: &Session) -> String {
     }
 }
 
+pub fn get_ar_prog(sess: &Session) -> String {
+    sess.opts.cg.ar.clone().unwrap_or_else(|| {
+        sess.target.target.options.ar.clone()
+    })
+}
+
 pub fn remove(sess: &Session, path: &Path) {
     match fs::remove_file(path) {
         Ok(..) => {}
@@ -541,6 +546,7 @@ fn link_rlib<'a>(sess: &'a Session,
                  trans: Option<&CrateTranslation>, // None == no metadata/bytecode
                  obj_filename: &Path,
                  out_filename: &Path) -> ArchiveBuilder<'a> {
+    info!("preparing rlib from {:?} to {:?}", obj_filename, out_filename);
     let handler = &sess.diagnostic().handler;
     let config = ArchiveConfig {
         handler: handler,
@@ -548,16 +554,14 @@ fn link_rlib<'a>(sess: &'a Session,
         lib_search_paths: archive_search_paths(sess),
         slib_prefix: sess.target.target.options.staticlib_prefix.clone(),
         slib_suffix: sess.target.target.options.staticlib_suffix.clone(),
-        maybe_ar_prog: sess.opts.cg.ar.clone()
+        ar_prog: get_ar_prog(sess),
     };
     let mut ab = ArchiveBuilder::create(config);
     ab.add_file(obj_filename).unwrap();
 
     for &(ref l, kind) in &*sess.cstore.get_used_libraries().borrow() {
         match kind {
-            cstore::NativeStatic => {
-                ab.add_native_library(&l[..]).unwrap();
-            }
+            cstore::NativeStatic => ab.add_native_library(&l).unwrap(),
             cstore::NativeFramework | cstore::NativeUnknown => {}
         }
     }
@@ -608,10 +612,8 @@ fn link_rlib<'a>(sess: &'a Session,
             }) {
                 Ok(..) => {}
                 Err(e) => {
-                    sess.err(&format!("failed to write {}: {}",
-                                     metadata.display(),
-                                     e));
-                    sess.abort_if_errors();
+                    sess.fatal(&format!("failed to write {}: {}",
+                                        metadata.display(), e));
                 }
             }
             ab.add_file(&metadata).unwrap();
@@ -653,9 +655,8 @@ fn link_rlib<'a>(sess: &'a Session,
                                                     &bc_data_deflated) {
                     Ok(()) => {}
                     Err(e) => {
-                        sess.err(&format!("failed to write compressed bytecode: \
-                                          {}", e));
-                        sess.abort_if_errors()
+                        sess.fatal(&format!("failed to write compressed \
+                                             bytecode: {}", e));
                     }
                 };
 
@@ -789,6 +790,8 @@ fn link_staticlib(sess: &Session, obj_filename: &Path, out_filename: &Path) {
 // links to all upstream files as well.
 fn link_natively(sess: &Session, trans: &CrateTranslation, dylib: bool,
                  obj_filename: &Path, out_filename: &Path) {
+    info!("preparing dylib? ({}) from {:?} to {:?}", dylib, obj_filename,
+          out_filename);
     let tmpdir = TempDir::new("rustc").ok().expect("needs a temp dir");
 
     // The invocations of cc share some flags across platforms
@@ -801,10 +804,17 @@ fn link_natively(sess: &Session, trans: &CrateTranslation, dylib: bool,
         cmd.arg(root.join(obj));
     }
 
-    link_args(&mut cmd, sess, dylib, tmpdir.path(),
-              trans, obj_filename, out_filename);
-    if !sess.target.target.options.no_compiler_rt {
-        cmd.arg("-lcompiler-rt");
+    {
+        let mut linker = if sess.target.target.options.is_like_msvc {
+            Box::new(MsvcLinker { cmd: &mut cmd, sess: &sess }) as Box<Linker>
+        } else {
+            Box::new(GnuLinker { cmd: &mut cmd, sess: &sess }) as Box<Linker>
+        };
+        link_args(&mut *linker, sess, dylib, tmpdir.path(),
+                  trans, obj_filename, out_filename);
+        if !sess.target.target.options.no_compiler_rt {
+            linker.link_staticlib("compiler-rt");
+        }
     }
     for obj in &sess.target.target.options.post_link_objects {
         cmd.arg(root.join(obj));
@@ -819,7 +829,7 @@ fn link_natively(sess: &Session, trans: &CrateTranslation, dylib: bool,
     sess.abort_if_errors();
 
     // Invoke the system linker
-    debug!("{:?}", &cmd);
+    info!("{:?}", &cmd);
     let prog = time(sess.time_passes(), "running linker", (), |()| cmd.output());
     match prog {
         Ok(prog) => {
@@ -833,14 +843,11 @@ fn link_natively(sess: &Session, trans: &CrateTranslation, dylib: bool,
                 sess.note(str::from_utf8(&output[..]).unwrap());
                 sess.abort_if_errors();
             }
-            debug!("linker stderr:\n{}", String::from_utf8(prog.stderr).unwrap());
-            debug!("linker stdout:\n{}", String::from_utf8(prog.stdout).unwrap());
+            info!("linker stderr:\n{}", String::from_utf8(prog.stderr).unwrap());
+            info!("linker stdout:\n{}", String::from_utf8(prog.stdout).unwrap());
         },
         Err(e) => {
-            sess.err(&format!("could not exec the linker `{}`: {}",
-                             pname,
-                             e));
-            sess.abort_if_errors();
+            sess.fatal(&format!("could not exec the linker `{}`: {}", pname, e));
         }
     }
 
@@ -850,15 +857,12 @@ fn link_natively(sess: &Session, trans: &CrateTranslation, dylib: bool,
     if sess.target.target.options.is_like_osx && sess.opts.debuginfo != NoDebugInfo {
         match Command::new("dsymutil").arg(out_filename).output() {
             Ok(..) => {}
-            Err(e) => {
-                sess.err(&format!("failed to run dsymutil: {}", e));
-                sess.abort_if_errors();
-            }
+            Err(e) => sess.fatal(&format!("failed to run dsymutil: {}", e)),
         }
     }
 }
 
-fn link_args(cmd: &mut Command,
+fn link_args(cmd: &mut Linker,
              sess: &Session,
              dylib: bool,
              tmpdir: &Path,
@@ -873,10 +877,9 @@ fn link_args(cmd: &mut Command,
     // target descriptor
     let t = &sess.target.target;
 
-    cmd.arg("-L").arg(&fix_windows_verbatim_for_gcc(&lib_path));
-
-    cmd.arg("-o").arg(out_filename).arg(obj_filename);
-
+    cmd.include_path(&fix_windows_verbatim_for_gcc(&lib_path));
+    cmd.add_object(obj_filename);
+    cmd.output_filename(out_filename);
 
     // Stack growth requires statically linking a __morestack function. Note
     // that this is listed *before* all other libraries. Due to the usage of the
@@ -895,89 +898,44 @@ fn link_args(cmd: &mut Command,
     // will include the __morestack symbol 100% of the time, always resolving
     // references to it even if the object above didn't use it.
     if t.options.morestack {
-        if t.options.is_like_osx {
-            let morestack = lib_path.join("libmorestack.a");
-
-            let mut v = OsString::from("-Wl,-force_load,");
-            v.push(&morestack);
-            cmd.arg(&v);
-        } else {
-            cmd.args(&["-Wl,--whole-archive", "-lmorestack", "-Wl,--no-whole-archive"]);
-        }
+        cmd.link_whole_staticlib("morestack", &[lib_path]);
     }
 
     // When linking a dynamic library, we put the metadata into a section of the
     // executable. This metadata is in a separate object file from the main
     // object file, so we link that in here.
     if dylib {
-        cmd.arg(&obj_filename.with_extension("metadata.o"));
+        cmd.add_object(&obj_filename.with_extension("metadata.o"));
     }
 
-    if t.options.is_like_osx {
-        // The dead_strip option to the linker specifies that functions and data
-        // unreachable by the entry point will be removed. This is quite useful
-        // with Rust's compilation model of compiling libraries at a time into
-        // one object file. For example, this brings hello world from 1.7MB to
-        // 458K.
-        //
-        // Note that this is done for both executables and dynamic libraries. We
-        // won't get much benefit from dylibs because LLVM will have already
-        // stripped away as much as it could. This has not been seen to impact
-        // link times negatively.
-        //
-        // -dead_strip can't be part of the pre_link_args because it's also used
-        // for partial linking when using multiple codegen units (-r). So we
-        // insert it here.
-        cmd.arg("-Wl,-dead_strip");
-    }
-
-    // If we're building a dylib, we don't use --gc-sections because LLVM has
-    // already done the best it can do, and we also don't want to eliminate the
-    // metadata. If we're building an executable, however, --gc-sections drops
-    // the size of hello world from 1.8MB to 597K, a 67% reduction.
-    if !dylib && !t.options.is_like_osx {
-        cmd.arg("-Wl,--gc-sections");
-    }
+    // Try to strip as much out of the generated object by removing unused
+    // sections if possible. See more comments in linker.rs
+    cmd.gc_sections(dylib);
 
     let used_link_args = sess.cstore.get_used_link_args().borrow();
 
-    if t.options.position_independent_executables {
+    if !dylib && t.options.position_independent_executables {
         let empty_vec = Vec::new();
         let empty_str = String::new();
         let args = sess.opts.cg.link_args.as_ref().unwrap_or(&empty_vec);
         let mut args = args.iter().chain(used_link_args.iter());
-        if !dylib
-            && (t.options.relocation_model == "pic"
-                || *sess.opts.cg.relocation_model.as_ref()
-                   .unwrap_or(&empty_str) == "pic")
+        let relocation_model = sess.opts.cg.relocation_model.as_ref()
+                                   .unwrap_or(&empty_str);
+        if (t.options.relocation_model == "pic" || *relocation_model == "pic")
             && !args.any(|x| *x == "-static") {
-            cmd.arg("-pie");
+            cmd.position_independent_executable();
         }
     }
 
-    if t.options.linker_is_gnu {
-        // GNU-style linkers support optimization with -O. GNU ld doesn't need a
-        // numeric argument, but other linkers do.
-        if sess.opts.optimize == config::Default ||
-           sess.opts.optimize == config::Aggressive {
-            cmd.arg("-Wl,-O1");
-        }
-    }
+    // Pass optimization flags down to the linker.
+    cmd.optimize();
 
     // We want to prevent the compiler from accidentally leaking in any system
     // libraries, so we explicitly ask gcc to not link to any libraries by
     // default. Note that this does not happen for windows because windows pulls
     // in some large number of libraries and I couldn't quite figure out which
     // subset we wanted.
-    if !t.options.is_like_windows {
-        cmd.arg("-nodefaultlibs");
-    }
-
-    // Mark all dynamic libraries and executables as compatible with ASLR
-    // FIXME #17098: ASLR breaks gdb
-    if t.options.is_like_windows && sess.opts.debuginfo == NoDebugInfo {
-        // cmd.arg("-Wl,--dynamicbase");
-    }
+    cmd.no_default_libraries();
 
     // Take careful note of the ordering of the arguments we pass to the linker
     // here. Linkers will assume that things on the left depend on things to the
@@ -1019,18 +977,7 @@ fn link_args(cmd: &mut Command,
     // # Telling the linker what we're doing
 
     if dylib {
-        // On mac we need to tell the linker to let this library be rpathed
-        if sess.target.target.options.is_like_osx {
-            cmd.args(&["-dynamiclib", "-Wl,-dylib"]);
-
-            if sess.opts.cg.rpath {
-                let mut v = OsString::from("-Wl,-install_name,@rpath/");
-                v.push(out_filename.file_name().unwrap());
-                cmd.arg(&v);
-            }
-        } else {
-            cmd.arg("-shared");
-        }
+        cmd.build_dylib(out_filename);
     }
 
     // FIXME (#2397): At some point we want to rpath our guesses as to
@@ -1059,9 +1006,10 @@ fn link_args(cmd: &mut Command,
 
     // Finally add all the linker arguments provided on the command line along
     // with any #[link_args] attributes found inside the crate
-    let empty = Vec::new();
-    cmd.args(&sess.opts.cg.link_args.as_ref().unwrap_or(&empty));
-    cmd.args(&used_link_args[..]);
+    if let Some(ref args) = sess.opts.cg.link_args {
+        cmd.args(args);
+    }
+    cmd.args(&used_link_args);
 }
 
 // # Native library linking
@@ -1075,20 +1023,14 @@ fn link_args(cmd: &mut Command,
 // Also note that the native libraries linked here are only the ones located
 // in the current crate. Upstream crates with native library dependencies
 // may have their native library pulled in above.
-fn add_local_native_libraries(cmd: &mut Command, sess: &Session) {
+fn add_local_native_libraries(cmd: &mut Linker, sess: &Session) {
     sess.target_filesearch(PathKind::All).for_each_lib_search_path(|path, k| {
         match k {
-            PathKind::Framework => { cmd.arg("-F").arg(path); }
-            _ => { cmd.arg("-L").arg(&fix_windows_verbatim_for_gcc(path)); }
+            PathKind::Framework => { cmd.framework_path(path); }
+            _ => { cmd.include_path(&fix_windows_verbatim_for_gcc(path)); }
         }
         FileDoesntMatch
     });
-
-    // Some platforms take hints about whether a library is static or dynamic.
-    // For those that support this, we ensure we pass the option if the library
-    // was flagged "static" (most defaults are dynamic) to ensure that if
-    // libfoo.a and libfoo.so both exist that the right one is chosen.
-    let takes_hints = !sess.target.target.options.is_like_osx;
 
     let libs = sess.cstore.get_used_libraries();
     let libs = libs.borrow();
@@ -1100,46 +1042,29 @@ fn add_local_native_libraries(cmd: &mut Command, sess: &Session) {
         kind != cstore::NativeStatic
     });
 
-    // Platforms that take hints generally also support the --whole-archive
-    // flag. We need to pass this flag when linking static native libraries to
-    // ensure the entire library is included.
-    //
-    // For more details see #15460, but the gist is that the linker will strip
-    // away any unused objects in the archive if we don't otherwise explicitly
-    // reference them. This can occur for libraries which are just providing
-    // bindings, libraries with generic functions, etc.
-    if takes_hints {
-        cmd.arg("-Wl,--whole-archive").arg("-Wl,-Bstatic");
-    }
+    // Some platforms take hints about whether a library is static or dynamic.
+    // For those that support this, we ensure we pass the option if the library
+    // was flagged "static" (most defaults are dynamic) to ensure that if
+    // libfoo.a and libfoo.so both exist that the right one is chosen.
+    cmd.hint_static();
+
     let search_path = archive_search_paths(sess);
     for l in staticlibs {
-        if takes_hints {
-            cmd.arg(&format!("-l{}", l));
-        } else {
-            // -force_load is the OSX equivalent of --whole-archive, but it
-            // involves passing the full path to the library to link.
-            let lib = archive::find_library(&l[..],
-                                            &sess.target.target.options.staticlib_prefix,
-                                            &sess.target.target.options.staticlib_suffix,
-                                            &search_path[..],
-                                            &sess.diagnostic().handler);
-            let mut v = OsString::from("-Wl,-force_load,");
-            v.push(&lib);
-            cmd.arg(&v);
-        }
+        // Here we explicitly ask that the entire archive is included into the
+        // result artifact. For more details see #15460, but the gist is that
+        // the linker will strip away any unused objects in the archive if we
+        // don't otherwise explicitly reference them. This can occur for
+        // libraries which are just providing bindings, libraries with generic
+        // functions, etc.
+        cmd.link_whole_staticlib(l, &search_path);
     }
-    if takes_hints {
-        cmd.arg("-Wl,--no-whole-archive").arg("-Wl,-Bdynamic");
-    }
+
+    cmd.hint_dynamic();
 
     for &(ref l, kind) in others {
         match kind {
-            cstore::NativeUnknown => {
-                cmd.arg(&format!("-l{}", l));
-            }
-            cstore::NativeFramework => {
-                cmd.arg("-framework").arg(&l[..]);
-            }
+            cstore::NativeUnknown => cmd.link_dylib(l),
+            cstore::NativeFramework => cmd.link_framework(l),
             cstore::NativeStatic => unreachable!(),
         }
     }
@@ -1150,7 +1075,7 @@ fn add_local_native_libraries(cmd: &mut Command, sess: &Session) {
 // Rust crates are not considered at all when creating an rlib output. All
 // dependencies will be linked when producing the final output (instead of
 // the intermediate rlib version)
-fn add_upstream_rust_crates(cmd: &mut Command, sess: &Session,
+fn add_upstream_rust_crates(cmd: &mut Linker, sess: &Session,
                             dylib: bool, tmpdir: &Path,
                             trans: &CrateTranslation) {
     // All of the heavy lifting has previously been accomplished by the
@@ -1201,7 +1126,7 @@ fn add_upstream_rust_crates(cmd: &mut Command, sess: &Session,
     }
 
     // Adds the static "rlib" versions of all crates to the command line.
-    fn add_static_crate(cmd: &mut Command, sess: &Session, tmpdir: &Path,
+    fn add_static_crate(cmd: &mut Linker, sess: &Session, tmpdir: &Path,
                         cratepath: &Path) {
         // When performing LTO on an executable output, all of the
         // bytecode from the upstream libraries has already been
@@ -1227,11 +1152,9 @@ fn add_upstream_rust_crates(cmd: &mut Command, sess: &Session,
                 match fs::copy(&cratepath, &dst) {
                     Ok(..) => {}
                     Err(e) => {
-                        sess.err(&format!("failed to copy {} to {}: {}",
-                                         cratepath.display(),
-                                         dst.display(),
-                                         e));
-                        sess.abort_if_errors();
+                        sess.fatal(&format!("failed to copy {} to {}: {}",
+                                            cratepath.display(),
+                                            dst.display(), e));
                     }
                 }
                 // Fix up permissions of the copy, as fs::copy() preserves
@@ -1244,10 +1167,8 @@ fn add_upstream_rust_crates(cmd: &mut Command, sess: &Session,
                 }) {
                     Ok(..) => {}
                     Err(e) => {
-                        sess.err(&format!("failed to chmod {} when preparing \
-                                          for LTO: {}", dst.display(),
-                                         e));
-                        sess.abort_if_errors();
+                        sess.fatal(&format!("failed to chmod {} when preparing \
+                                             for LTO: {}", dst.display(), e));
                     }
                 }
                 let handler = &sess.diagnostic().handler;
@@ -1257,22 +1178,22 @@ fn add_upstream_rust_crates(cmd: &mut Command, sess: &Session,
                     lib_search_paths: archive_search_paths(sess),
                     slib_prefix: sess.target.target.options.staticlib_prefix.clone(),
                     slib_suffix: sess.target.target.options.staticlib_suffix.clone(),
-                    maybe_ar_prog: sess.opts.cg.ar.clone()
+                    ar_prog: get_ar_prog(sess),
                 };
                 let mut archive = Archive::open(config);
                 archive.remove_file(&format!("{}.o", name));
                 let files = archive.files();
                 if files.iter().any(|s| s.ends_with(".o")) {
-                    cmd.arg(&dst);
+                    cmd.link_rlib(&dst);
                 }
             });
         } else {
-            cmd.arg(&fix_windows_verbatim_for_gcc(cratepath));
+            cmd.link_rlib(&fix_windows_verbatim_for_gcc(cratepath));
         }
     }
 
     // Same thing as above, but for dynamic crates instead of static crates.
-    fn add_dynamic_crate(cmd: &mut Command, sess: &Session, cratepath: &Path) {
+    fn add_dynamic_crate(cmd: &mut Linker, sess: &Session, cratepath: &Path) {
         // If we're performing LTO, then it should have been previously required
         // that all upstream rust dependencies were available in an rlib format.
         assert!(!sess.lto());
@@ -1280,10 +1201,10 @@ fn add_upstream_rust_crates(cmd: &mut Command, sess: &Session,
         // Just need to tell the linker about where the library lives and
         // what its name is
         if let Some(dir) = cratepath.parent() {
-            cmd.arg("-L").arg(&fix_windows_verbatim_for_gcc(dir));
+            cmd.include_path(&fix_windows_verbatim_for_gcc(dir));
         }
         let filestem = cratepath.file_stem().unwrap().to_str().unwrap();
-        cmd.arg(&format!("-l{}", unlib(&sess.target, filestem)));
+        cmd.link_dylib(&unlib(&sess.target, filestem));
     }
 }
 
@@ -1305,7 +1226,7 @@ fn add_upstream_rust_crates(cmd: &mut Command, sess: &Session,
 // generic function calls a native function, then the generic function must
 // be instantiated in the target crate, meaning that the native symbol must
 // also be resolved in the target crate.
-fn add_upstream_native_libraries(cmd: &mut Command, sess: &Session) {
+fn add_upstream_native_libraries(cmd: &mut Linker, sess: &Session) {
     // Be sure to use a topological sorting of crates because there may be
     // interdependencies between native libraries. When passing -nodefaultlibs,
     // for example, almost all native libraries depend on libc, so we have to
@@ -1320,13 +1241,8 @@ fn add_upstream_native_libraries(cmd: &mut Command, sess: &Session) {
         let libs = csearch::get_native_libraries(&sess.cstore, cnum);
         for &(kind, ref lib) in &libs {
             match kind {
-                cstore::NativeUnknown => {
-                    cmd.arg(&format!("-l{}", *lib));
-                }
-                cstore::NativeFramework => {
-                    cmd.arg("-framework");
-                    cmd.arg(&lib[..]);
-                }
+                cstore::NativeUnknown => cmd.link_dylib(lib),
+                cstore::NativeFramework => cmd.link_framework(lib),
                 cstore::NativeStatic => {
                     sess.bug("statics shouldn't be propagated");
                 }

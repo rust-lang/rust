@@ -9,14 +9,14 @@
 // except according to those terms.
 //! Declare various LLVM values.
 //!
-//! Prefer using functions and methods from this module rather than calling LLVM functions
-//! directly. These functions do some additional work to ensure we do the right thing given
-//! the preconceptions of trans.
+//! Prefer using functions and methods from this module rather than calling LLVM
+//! functions directly. These functions do some additional work to ensure we do
+//! the right thing given the preconceptions of trans.
 //!
 //! Some useful guidelines:
 //!
-//! * Use declare_* family of methods if you are declaring, but are not interested in defining the
-//! ValueRef they return.
+//! * Use declare_* family of methods if you are declaring, but are not
+//!   interested in defining the ValueRef they return.
 //! * Use define_* family of methods when you might be defining the ValueRef.
 //! * When in doubt, define.
 use llvm::{self, ValueRef};
@@ -37,8 +37,8 @@ use libc::c_uint;
 
 /// Declare a global value.
 ///
-/// If there’s a value with the same name already declared, the function will return its ValueRef
-/// instead.
+/// If there’s a value with the same name already declared, the function will
+/// return its ValueRef instead.
 pub fn declare_global(ccx: &CrateContext, name: &str, ty: Type) -> llvm::ValueRef {
     debug!("declare_global(name={:?})", name);
     let namebuf = CString::new(name).unwrap_or_else(|_|{
@@ -54,10 +54,10 @@ pub fn declare_global(ccx: &CrateContext, name: &str, ty: Type) -> llvm::ValueRe
 ///
 /// For rust functions use `declare_rust_fn` instead.
 ///
-/// If there’s a value with the same name already declared, the function will update the
-/// declaration and return existing ValueRef instead.
-pub fn declare_fn(ccx: &CrateContext, name: &str, callconv: llvm::CallConv, ty: Type,
-                  output: ty::FnOutput) -> ValueRef {
+/// If there’s a value with the same name already declared, the function will
+/// update the declaration and return existing ValueRef instead.
+pub fn declare_fn(ccx: &CrateContext, name: &str, callconv: llvm::CallConv,
+                  ty: Type, output: ty::FnOutput) -> ValueRef {
     debug!("declare_fn(name={:?})", name);
     let namebuf = CString::new(name).unwrap_or_else(|_|{
         ccx.sess().bug(&format!("name {:?} contains an interior null byte", name))
@@ -67,7 +67,8 @@ pub fn declare_fn(ccx: &CrateContext, name: &str, callconv: llvm::CallConv, ty: 
     };
 
     llvm::SetFunctionCallConv(llfn, callconv);
-    // Function addresses in Rust are never significant, allowing functions to be merged.
+    // Function addresses in Rust are never significant, allowing functions to
+    // be merged.
     llvm::SetUnnamedAddr(llfn, true);
 
     if output == ty::FnDiverging {
@@ -88,23 +89,25 @@ pub fn declare_fn(ccx: &CrateContext, name: &str, callconv: llvm::CallConv, ty: 
 
 /// Declare a C ABI function.
 ///
-/// Only use this for foreign function ABIs and glue. For Rust functions use `declare_rust_fn`
-/// instead.
+/// Only use this for foreign function ABIs and glue. For Rust functions use
+/// `declare_rust_fn` instead.
 ///
-/// If there’s a value with the same name already declared, the function will update the
-/// declaration and return existing ValueRef instead.
-pub fn declare_cfn(ccx: &CrateContext, name: &str, fn_type: Type, output: ty::Ty) -> ValueRef {
+/// If there’s a value with the same name already declared, the function will
+/// update the declaration and return existing ValueRef instead.
+pub fn declare_cfn(ccx: &CrateContext, name: &str, fn_type: Type,
+                   output: ty::Ty) -> ValueRef {
     declare_fn(ccx, name, llvm::CCallConv, fn_type, ty::FnConverging(output))
 }
 
 
 /// Declare a Rust function.
 ///
-/// If there’s a value with the same name already declared, the function will update the
-/// declaration and return existing ValueRef instead.
+/// If there’s a value with the same name already declared, the function will
+/// update the declaration and return existing ValueRef instead.
 pub fn declare_rust_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, name: &str,
                                  fn_type: ty::Ty<'tcx>) -> ValueRef {
-    debug!("declare_rust_fn(name={:?}, fn_type={})", name, fn_type.repr(ccx.tcx()));
+    debug!("declare_rust_fn(name={:?}, fn_type={})", name,
+           fn_type.repr(ccx.tcx()));
     let fn_type = monomorphize::normalize_associated_type(ccx.tcx(), &fn_type);
     debug!("declare_rust_fn (after normalised associated types) fn_type={}",
            fn_type.repr(ccx.tcx()));
@@ -131,7 +134,8 @@ pub fn declare_rust_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, name: &str,
     let llfty = type_of::type_of_rust_fn(ccx, env, &sig, abi);
     debug!("declare_rust_fn llfty={}", ccx.tn().type_to_string(llfty));
 
-    // it is ok to directly access sig.0.output because we erased all late-bound-regions above
+    // it is ok to directly access sig.0.output because we erased all
+    // late-bound-regions above
     let llfn = declare_fn(ccx, name, llvm::CCallConv, llfty, sig.0.output);
     attributes::from_fn_type(ccx, fn_type).apply_llfn(llfn);
     llfn
@@ -140,8 +144,8 @@ pub fn declare_rust_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, name: &str,
 
 /// Declare a Rust function with internal linkage.
 ///
-/// If there’s a value with the same name already declared, the function will update the
-/// declaration and return existing ValueRef instead.
+/// If there’s a value with the same name already declared, the function will
+/// update the declaration and return existing ValueRef instead.
 pub fn declare_internal_rust_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, name: &str,
                                           fn_type: ty::Ty<'tcx>) -> ValueRef {
     let llfn = declare_rust_fn(ccx, name, fn_type);
@@ -152,10 +156,10 @@ pub fn declare_internal_rust_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, name: &s
 
 /// Declare a global with an intention to define it.
 ///
-/// Use this function when you intend to define a global. This function will return None if the
-/// name already has a definition associated with it. In that case an error should be reported to
-/// the user, because it usually happens due to user’s fault (e.g. misuse of #[no_mangle] or
-/// #[export_name] attributes).
+/// Use this function when you intend to define a global. This function will
+/// return None if the name already has a definition associated with it. In that
+/// case an error should be reported to the user, because it usually happens due
+/// to user’s fault (e.g. misuse of #[no_mangle] or #[export_name] attributes).
 pub fn define_global(ccx: &CrateContext, name: &str, ty: Type) -> Option<ValueRef> {
     if get_defined_value(ccx, name).is_some() {
         None
@@ -169,10 +173,10 @@ pub fn define_global(ccx: &CrateContext, name: &str, ty: Type) -> Option<ValueRe
 ///
 /// For rust functions use `define_rust_fn` instead.
 ///
-/// Use this function when you intend to define a function. This function will return None if the
-/// name already has a definition associated with it. In that case an error should be reported to
-/// the user, because it usually happens due to user’s fault (e.g. misuse of #[no_mangle] or
-/// #[export_name] attributes).
+/// Use this function when you intend to define a function. This function will
+/// return None if the name already has a definition associated with it. In that
+/// case an error should be reported to the user, because it usually happens due
+/// to user’s fault (e.g. misuse of #[no_mangle] or #[export_name] attributes).
 pub fn define_fn(ccx: &CrateContext, name: &str, callconv: llvm::CallConv, fn_type: Type,
                  output: ty::FnOutput) -> Option<ValueRef> {
     if get_defined_value(ccx, name).is_some() {
@@ -185,13 +189,13 @@ pub fn define_fn(ccx: &CrateContext, name: &str, callconv: llvm::CallConv, fn_ty
 
 /// Declare a C ABI function with an intention to define it.
 ///
-/// Use this function when you intend to define a function. This function will return None if the
-/// name already has a definition associated with it. In that case an error should be reported to
-/// the user, because it usually happens due to user’s fault (e.g. misuse of #[no_mangle] or
-/// #[export_name] attributes).
+/// Use this function when you intend to define a function. This function will
+/// return None if the name already has a definition associated with it. In that
+/// case an error should be reported to the user, because it usually happens due
+/// to user’s fault (e.g. misuse of #[no_mangle] or #[export_name] attributes).
 ///
-/// Only use this for foreign function ABIs and glue. For Rust functions use `declare_rust_fn`
-/// instead.
+/// Only use this for foreign function ABIs and glue. For Rust functions use
+/// `declare_rust_fn` instead.
 pub fn define_cfn(ccx: &CrateContext, name: &str, fn_type: Type,
                   output: ty::Ty) -> Option<ValueRef> {
     if get_defined_value(ccx, name).is_some() {
@@ -204,10 +208,10 @@ pub fn define_cfn(ccx: &CrateContext, name: &str, fn_type: Type,
 
 /// Declare a Rust function with an intention to define it.
 ///
-/// Use this function when you intend to define a function. This function will return None if the
-/// name already has a definition associated with it. In that case an error should be reported to
-/// the user, because it usually happens due to user’s fault (e.g. misuse of #[no_mangle] or
-/// #[export_name] attributes).
+/// Use this function when you intend to define a function. This function will
+/// return None if the name already has a definition associated with it. In that
+/// case an error should be reported to the user, because it usually happens due
+/// to user’s fault (e.g. misuse of #[no_mangle] or #[export_name] attributes).
 pub fn define_rust_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, name: &str,
                                 fn_type: ty::Ty<'tcx>) -> Option<ValueRef> {
     if get_defined_value(ccx, name).is_some() {
@@ -220,10 +224,10 @@ pub fn define_rust_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, name: &str,
 
 /// Declare a Rust function with an intention to define it.
 ///
-/// Use this function when you intend to define a function. This function will return None if the
-/// name already has a definition associated with it. In that case an error should be reported to
-/// the user, because it usually happens due to user’s fault (e.g. misuse of #[no_mangle] or
-/// #[export_name] attributes).
+/// Use this function when you intend to define a function. This function will
+/// return None if the name already has a definition associated with it. In that
+/// case an error should be reported to the user, because it usually happens due
+/// to user’s fault (e.g. misuse of #[no_mangle] or #[export_name] attributes).
 pub fn define_internal_rust_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, name: &str,
                                          fn_type: ty::Ty<'tcx>) -> Option<ValueRef> {
     if get_defined_value(ccx, name).is_some() {
@@ -250,8 +254,8 @@ fn get_defined_value(ccx: &CrateContext, name: &str) -> Option<ValueRef> {
             (llvm::LLVMIsDeclaration(val) != 0,
              linkage == llvm::AvailableExternallyLinkage as c_uint)
         };
-        debug!("get_defined_value: found {:?} value (declaration: {}, aext_link: {})", name,
-               declaration, aext_link);
+        debug!("get_defined_value: found {:?} value (declaration: {}, \
+                aext_link: {})", name, declaration, aext_link);
         if !declaration || aext_link {
             Some(val)
         } else {

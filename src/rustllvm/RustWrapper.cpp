@@ -233,7 +233,9 @@ DIT unwrapDI(LLVMMetadataRef ref) {
     return DIT(ref ? unwrap<MDNode>(ref) : NULL);
 }
 
-extern "C" const uint32_t LLVMRustDebugMetadataVersion = DEBUG_METADATA_VERSION;
+extern "C" const uint32_t LLVMRustDebugMetadataVersion() {
+    return DEBUG_METADATA_VERSION;
+}
 
 extern "C" void LLVMRustAddModuleFlag(LLVMModuleRef M,
                                       const char *name,
@@ -837,9 +839,10 @@ LLVMRustArchiveChildData(Archive::Child *child, size_t *size) {
 }
 
 extern "C" void
-LLVMRustSetDLLExportStorageClass(LLVMValueRef Value) {
+LLVMRustSetDLLStorageClass(LLVMValueRef Value,
+                           GlobalValue::DLLStorageClassTypes Class) {
     GlobalValue *V = unwrap<GlobalValue>(Value);
-    V->setDLLStorageClass(GlobalValue::DLLExportStorageClass);
+    V->setDLLStorageClass(Class);
 }
 
 // Note that the two following functions look quite similar to the

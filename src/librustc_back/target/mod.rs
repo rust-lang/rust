@@ -59,6 +59,7 @@ mod freebsd_base;
 mod linux_base;
 mod openbsd_base;
 mod windows_base;
+mod windows_msvc_base;
 
 /// Everything `rustc` knows about how to compile for a specific target.
 ///
@@ -92,6 +93,8 @@ pub struct Target {
 pub struct TargetOptions {
     /// Linker to invoke. Defaults to "cc".
     pub linker: String,
+    /// Archive utility to use when managing archives. Defaults to "ar".
+    pub ar: String,
     /// Linker arguments that are unconditionally passed *before* any
     /// user-defined libraries.
     pub pre_link_args: Vec<String>,
@@ -145,6 +148,7 @@ pub struct TargetOptions {
     /// only really used for figuring out how to find libraries, since Windows uses its own
     /// library naming convention. Defaults to false.
     pub is_like_windows: bool,
+    pub is_like_msvc: bool,
     /// Whether the target toolchain is like Android's. Only useful for compiling against Android.
     /// Defaults to false.
     pub is_like_android: bool,
@@ -152,22 +156,24 @@ pub struct TargetOptions {
     pub linker_is_gnu: bool,
     /// Whether the linker support rpaths or not. Defaults to false.
     pub has_rpath: bool,
-    /// Whether to disable linking to compiler-rt. Defaults to false, as LLVM will emit references
-    /// to the functions that compiler-rt provides.
+    /// Whether to disable linking to compiler-rt. Defaults to false, as LLVM
+    /// will emit references to the functions that compiler-rt provides.
     pub no_compiler_rt: bool,
-    /// Dynamically linked executables can be compiled as position independent if the default
-    /// relocation model of position independent code is not changed. This is a requirement to take
-    /// advantage of ASLR, as otherwise the functions in the executable are not randomized and can
-    /// be used during an exploit of a vulnerability in any code.
+    /// Dynamically linked executables can be compiled as position independent
+    /// if the default relocation model of position independent code is not
+    /// changed. This is a requirement to take advantage of ASLR, as otherwise
+    /// the functions in the executable are not randomized and can be used
+    /// during an exploit of a vulnerability in any code.
     pub position_independent_executables: bool,
 }
 
 impl Default for TargetOptions {
-    /// Create a set of "sane defaults" for any target. This is still incomplete, and if used for
-    /// compilation, will certainly not work.
+    /// Create a set of "sane defaults" for any target. This is still
+    /// incomplete, and if used for compilation, will certainly not work.
     fn default() -> TargetOptions {
         TargetOptions {
             linker: "cc".to_string(),
+            ar: "ar".to_string(),
             pre_link_args: Vec::new(),
             post_link_args: Vec::new(),
             cpu: "generic".to_string(),
@@ -188,6 +194,7 @@ impl Default for TargetOptions {
             is_like_osx: false,
             is_like_windows: false,
             is_like_android: false,
+            is_like_msvc: false,
             linker_is_gnu: false,
             has_rpath: false,
             no_compiler_rt: false,
@@ -371,7 +378,9 @@ impl Target {
             armv7s_apple_ios,
 
             x86_64_pc_windows_gnu,
-            i686_pc_windows_gnu
+            i686_pc_windows_gnu,
+
+            x86_64_pc_windows_msvc
         );
 
 
