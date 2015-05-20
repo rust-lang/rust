@@ -1,46 +1,41 @@
 % Dining Philosophers
 
 For our second project, let’s look at a classic concurrency problem. It’s
-called ‘the dining philosophers’. It was originally conceived by Dijkstra in
-1965, but we’ll use the version from [this paper][paper] by Tony Hoare in 1985.
+called ‘the dining philosophers’. It was originally conceived by Edsger
+W. Dijkstra in 1965, and has been used as an example of the use of concurrency
+primitives in many influential works since then.
 
-[paper]: http://www.usingcsp.com/cspbook.pdf
-
-> In ancient times, a wealthy philanthropist endowed a College to accommodate
-> five eminent philosophers. Each philosopher had a room in which she could
-> engage in her professional activity of thinking; there was also a common
-> dining room, furnished with a circular table, surrounded by five chairs, each
-> labelled by the name of the philosopher who was to sit in it. They sat
-> anticlockwise around the table. To the left of each philosopher there was
-> laid a golden fork, and in the centre stood a large bowl of spaghetti, which
-> was constantly replenished. A philosopher was expected to spend most of her
-> time thinking; but when she felt hungry, she went to the dining room, sat down
-> in her own chair, picked up her own fork on her left, and plunged it into the
-> spaghetti. But such is the tangled nature of spaghetti that a second fork is
-> required to carry it to the mouth. The philosopher therefore had also to pick
-> up the fork on her right. When she was finished she would put down both her
-> forks, get up from her chair, and continue thinking. Of course, a fork can be
-> used by only one philosopher at a time. If the other philosopher wants it, she
-> just has to wait until the fork is available again.
+There are five professors of philosophy at a university. As philosophers, they
+spend most of their time in their offices thinking and writing; but
+occasionally, they need to come out for food. There is a round table in the
+common room between their offices, and they each have a designated seat at it;
+the university ensures that there is always a fresh bowl of rice at each seat,
+so that they may come out and dine whenever they please. However, due to
+budgetary constraints, the university has only been able to afford five
+chopsticks for the five professors; in order to ensure that everyone can eat,
+the chopsticks are arranged between the places at the table, so each professor
+can pick up the two adjacent chopstics and begin eating. When each is done
+eating, she puts down her chopsticks in the original locations, and returns to
+her studies.
 
 This classic problem shows off a few different elements of concurrency. The
 reason is that it's actually slightly tricky to implement: a simple
 implementation can deadlock. For example, let's consider a simple algorithm
 that would solve this problem:
 
-1. A philosopher picks up the fork on their left.
-2. They then pick up the fork on their right.
-3. They eat.
-4. They return the forks.
+1. A philosopher picks up the chopstick on her left.
+2. She then picks up the chopstick on her right.
+3. She eats.
+4. She returns the chopsticks.
 
 Now, let’s imagine this sequence of events:
 
-1. Philosopher 1 begins the algorithm, picking up the fork on their left.
-2. Philosopher 2 begins the algorithm, picking up the fork on their left.
-3. Philosopher 3 begins the algorithm, picking up the fork on their left.
-4. Philosopher 4 begins the algorithm, picking up the fork on their left.
-5. Philosopher 5 begins the algorithm, picking up the fork on their left.
-6. ... ? All the forks are taken, but nobody can eat!
+1. Plato begins the algorithm, picking up the chopstick on his left.
+2. Hypatia begins the algorithm, picking up the chopstick on her left.
+3. Laozi begins the algorithm, picking up the chopstick on his left.
+4. Simone begins the algorithm, picking up the chopstick on her left.
+5. Audre begins the algorithm, picking up the chopstick on her left.
+6. ... ? All the chopsticks are taken, but nobody can eat!
 
 There are different ways to solve this problem. We’ll get to our solution in
 the tutorial itself. For now, let’s get started modelling the problem itself.
@@ -60,11 +55,11 @@ impl Philosopher {
 }
 
 fn main() {
-    let p1 = Philosopher::new("Baruch Spinoza");
-    let p2 = Philosopher::new("Gilles Deleuze");
-    let p3 = Philosopher::new("Karl Marx");
-    let p4 = Philosopher::new("Friedrich Nietzsche");
-    let p5 = Philosopher::new("Michel Foucault");
+    let p1 = Philosopher::new("Plato");
+    let p2 = Philosopher::new("Hypatia");
+    let p3 = Philosopher::new("Laozi");
+    let p4 = Philosopher::new("Simone");
+    let p5 = Philosopher::new("Audre");
 }
 ```
 
@@ -159,11 +154,11 @@ look at `main()` again:
 # }
 # 
 fn main() {
-    let p1 = Philosopher::new("Baruch Spinoza");
-    let p2 = Philosopher::new("Gilles Deleuze");
-    let p3 = Philosopher::new("Karl Marx");
-    let p4 = Philosopher::new("Friedrich Nietzsche");
-    let p5 = Philosopher::new("Michel Foucault");
+    let p1 = Philosopher::new("Plato");
+    let p2 = Philosopher::new("Hypatia");
+    let p3 = Philosopher::new("Laozi");
+    let p4 = Philosopher::new("Simone");
+    let p5 = Philosopher::new("Audre");
 }
 ```
 
@@ -176,11 +171,11 @@ that `new()` function, it would look like this:
 #     name: String,
 # }
 fn main() {
-    let p1 = Philosopher { name: "Baruch Spinoza".to_string() };
-    let p2 = Philosopher { name: "Gilles Deleuze".to_string() };
-    let p3 = Philosopher { name: "Karl Marx".to_string() };
-    let p4 = Philosopher { name: "Friedrich Nietzche".to_string() };
-    let p5 = Philosopher { name: "Michel Foucault".to_string() };
+    let p1 = Philosopher { name: "Plato".to_string() };
+    let p2 = Philosopher { name: "Hypatia".to_string() };
+    let p3 = Philosopher { name: "Laozi".to_string() };
+    let p4 = Philosopher { name: "Simone".to_string() };
+    let p5 = Philosopher { name: "Audre".to_string() };
 }
 ```
 
@@ -211,11 +206,11 @@ impl Philosopher {
 
 fn main() {
     let philosophers = vec![
-        Philosopher::new("Baruch Spinoza"),
-        Philosopher::new("Gilles Deleuze"),
-        Philosopher::new("Karl Marx"),
-        Philosopher::new("Friedrich Nietzsche"),
-        Philosopher::new("Michel Foucault"),
+        Philosopher::new("Plato"),
+        Philosopher::new("Hypatia"),
+        Philosopher::new("Laozi"),
+        Philosopher::new("Simone"),
+        Philosopher::new("Audre"),
     ];
 
     for p in &philosophers {
@@ -243,15 +238,15 @@ fn eat(&self) {
 In Rust, methods take an explicit `self` parameter. That’s why `eat()` is a
 method, but `new` is an associated function: `new()` has no `self`. For our
 first version of `eat()`, we just print out the name of the philosopher, and
-mention they’re done eating. Running this program should give you the following
-output:
+mention that they’re done eating. Running this program should give you the
+following output:
 
 ```text
-Baruch Spinoza is done eating.
-Gilles Deleuze is done eating.
-Karl Marx is done eating.
-Friedrich Nietzsche is done eating.
-Michel Foucault is done eating.
+Plato is done eating.
+Hypatia is done eating.
+Laozi is done eating.
+Simone is done eating.
+Audre is done eating.
 ```
 
 Easy enough, they’re all done! We haven’t actually implemented the real problem
@@ -285,11 +280,11 @@ impl Philosopher {
 
 fn main() {
     let philosophers = vec![
-        Philosopher::new("Baruch Spinoza"),
-        Philosopher::new("Gilles Deleuze"),
-        Philosopher::new("Karl Marx"),
-        Philosopher::new("Friedrich Nietzsche"),
-        Philosopher::new("Michel Foucault"),
+        Philosopher::new("Plato"),
+        Philosopher::new("Hypatia"),
+        Philosopher::new("Laozi"),
+        Philosopher::new("Simone"),
+        Philosopher::new("Audre"),
     ];
 
     for p in &philosophers {
@@ -323,16 +318,16 @@ simulate the time it takes a philosopher to eat.
 If you run this program, you should see each philosopher eat in turn:
 
 ```text
-Baruch Spinoza is eating.
-Baruch Spinoza is done eating.
-Gilles Deleuze is eating.
-Gilles Deleuze is done eating.
-Karl Marx is eating.
-Karl Marx is done eating.
-Friedrich Nietzsche is eating.
-Friedrich Nietzsche is done eating.
-Michel Foucault is eating.
-Michel Foucault is done eating.
+Plato is eating.
+Plato is done eating.
+Hypatia is eating.
+Hypatia is done eating.
+Laozi is eating.
+Laozi is done eating.
+Simone is eating.
+Simone is done eating.
+Audre is eating.
+Audre is done eating.
 ```
 
 Excellent! We’re getting there. There’s just one problem: we aren’t actually
@@ -366,11 +361,11 @@ impl Philosopher {
 
 fn main() {
     let philosophers = vec![
-        Philosopher::new("Baruch Spinoza"),
-        Philosopher::new("Gilles Deleuze"),
-        Philosopher::new("Karl Marx"),
-        Philosopher::new("Friedrich Nietzsche"),
-        Philosopher::new("Michel Foucault"),
+        Philosopher::new("Plato"),
+        Philosopher::new("Hypatia"),
+        Philosopher::new("Laozi"),
+        Philosopher::new("Simone"),
+        Philosopher::new("Audre"),
     ];
 
     let handles: Vec<_> = philosophers.into_iter().map(|p| {
@@ -456,19 +451,19 @@ If you run this program, you’ll see that the philosophers eat out of order!
 We have multi-threading!
 
 ```text
-Gilles Deleuze is eating.
-Gilles Deleuze is done eating.
-Friedrich Nietzsche is eating.
-Friedrich Nietzsche is done eating.
-Michel Foucault is eating.
-Baruch Spinoza is eating.
-Baruch Spinoza is done eating.
-Karl Marx is eating.
-Karl Marx is done eating.
-Michel Foucault is done eating.
+Hypatia is eating.
+Hypatia is done eating.
+Simone is eating.
+Simone is done eating.
+Audre is eating.
+Plato is eating.
+Plato is done eating.
+Laozi is eating.
+Laozi is done eating.
+Audre is done eating.
 ```
 
-But what about the forks? We haven’t modeled them at all yet.
+But what about the chopsticks? We haven’t modeled them at all yet.
 
 To do that, let’s make a new `struct`:
 
@@ -476,13 +471,13 @@ To do that, let’s make a new `struct`:
 use std::sync::Mutex;
 
 struct Table {
-    forks: Vec<Mutex<()>>,
+    chopsticks: Vec<Mutex<()>>,
 }
 ```
 
 This `Table` has a vector of `Mutex`es. A mutex is a way to control
 concurrency: only one thread can access the contents at once. This is exactly
-the property we need with our forks. We use an empty tuple, `()`, inside the
+the property we need with our chopsticks. We use an empty tuple, `()`, inside the
 mutex, since we’re not actually going to use the value, just hold onto it.
 
 Let’s modify the program to use the `Table`:
@@ -507,8 +502,8 @@ impl Philosopher {
     }
 
     fn eat(&self, table: &Table) {
-        let _left = table.forks[self.left].lock().unwrap();
-        let _right = table.forks[self.right].lock().unwrap();
+        let _left = table.chopsticks[self.left].lock().unwrap();
+        let _right = table.chopsticks[self.right].lock().unwrap();
 
         println!("{} is eating.", self.name);
 
@@ -519,11 +514,11 @@ impl Philosopher {
 }
 
 struct Table {
-    forks: Vec<Mutex<()>>,
+    chopsticks: Vec<Mutex<()>>,
 }
 
 fn main() {
-    let table = Arc::new(Table { forks: vec![
+    let table = Arc::new(Table { chopsticks: vec![
         Mutex::new(()),
         Mutex::new(()),
         Mutex::new(()),
@@ -532,11 +527,11 @@ fn main() {
     ]});
 
     let philosophers = vec![
-        Philosopher::new("Baruch Spinoza", 0, 1),
-        Philosopher::new("Gilles Deleuze", 1, 2),
-        Philosopher::new("Karl Marx", 2, 3),
-        Philosopher::new("Friedrich Nietzsche", 3, 4),
-        Philosopher::new("Michel Foucault", 0, 4),
+        Philosopher::new("Plato", 0, 1),
+        Philosopher::new("Hypatia", 1, 2),
+        Philosopher::new("Laozi", 2, 3),
+        Philosopher::new("Simone", 3, 4),
+        Philosopher::new("Audre", 0, 4),
     ];
 
     let handles: Vec<_> = philosophers.into_iter().map(|p| {
@@ -572,9 +567,9 @@ struct Philosopher {
 ```
 
 We need to add two more fields to our `Philosopher`. Each philosopher is going
-to have two forks: the one on their left, and the one on their right.
+to have two chopsticks: the one on their left, and the one on their right.
 We’ll use the `usize` type to indicate them, as it’s the type that you index
-vectors with. These two values will be the indexes into the `forks` our `Table`
+vectors with. These two values will be the indexes into the `chopsticks` our `Table`
 has.
 
 ```rust,ignore
@@ -592,8 +587,8 @@ We now need to construct those `left` and `right` values, so we add them to
 
 ```rust,ignore
 fn eat(&self, table: &Table) {
-    let _left = table.forks[self.left].lock().unwrap();
-    let _right = table.forks[self.right].lock().unwrap();
+    let _left = table.chopsticks[self.left].lock().unwrap();
+    let _right = table.chopsticks[self.right].lock().unwrap();
 
     println!("{} is eating.", self.name);
 
@@ -604,8 +599,8 @@ fn eat(&self, table: &Table) {
 ```
 
 We have two new lines. We’ve also added an argument, `table`. We access the
-`Table`’s list of forks, and then use `self.left` and `self.right` to access
-the fork at that particular index. That gives us access to the `Mutex` at that
+`Table`’s list of chopsticks, and then use `self.left` and `self.right` to access
+the chopstick at that particular index. That gives us access to the `Mutex` at that
 index, and we call `lock()` on it. If the mutex is currently being accessed by
 someone else, we’ll block until it becomes available.
 
@@ -626,7 +621,7 @@ What about releasing the lock? Well, that will happen when `_left` and
 `_right` go out of scope, automatically.
 
 ```rust,ignore
-    let table = Arc::new(Table { forks: vec![
+    let table = Arc::new(Table { chopsticks: vec![
         Mutex::new(()),
         Mutex::new(()),
         Mutex::new(()),
@@ -643,11 +638,11 @@ count will go up, and when each thread ends, it will go back down.
 
 ```rust,ignore
 let philosophers = vec![
-    Philosopher::new("Baruch Spinoza", 0, 1),
-    Philosopher::new("Gilles Deleuze", 1, 2),
-    Philosopher::new("Karl Marx", 2, 3),
-    Philosopher::new("Friedrich Nietzsche", 3, 4),
-    Philosopher::new("Michel Foucault", 0, 4),
+    Philosopher::new("Plato", 0, 1),
+    Philosopher::new("Hypatia", 1, 2),
+    Philosopher::new("Laozi", 2, 3),
+    Philosopher::new("Simone", 3, 4),
+    Philosopher::new("Audre", 0, 4),
 ];
 ```
 
@@ -678,16 +673,16 @@ With this, our program works! Only two philosophers can eat at any one time,
 and so you’ll get some output like this:
 
 ```text
-Gilles Deleuze is eating.
-Friedrich Nietzsche is eating.
-Friedrich Nietzsche is done eating.
-Gilles Deleuze is done eating.
-Baruch Spinoza is eating.
-Karl Marx is eating.
-Baruch Spinoza is done eating.
-Michel Foucault is eating.
-Karl Marx is done eating.
-Michel Foucault is done eating.
+Hypatia is eating.
+Simone is eating.
+Simone is done eating.
+Hypatia is done eating.
+Plato is eating.
+Laozi is eating.
+Plato is done eating.
+Audre is eating.
+Laozi is done eating.
+Audre is done eating.
 ```
 
 Congrats! You’ve implemented a classic concurrency problem in Rust.
