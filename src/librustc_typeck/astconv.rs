@@ -1395,7 +1395,11 @@ fn base_def_to_ty<'tcx>(this: &AstConv<'tcx>,
             // Self in impl (we know the concrete type).
             check_path_args(tcx, base_segments, NO_TPS | NO_REGIONS);
             if let Some(&ty) = tcx.ast_ty_to_ty_cache.borrow().get(&self_ty_id) {
-                ty
+                if let Some(free_substs) = this.get_free_substs() {
+                    ty.subst(tcx, free_substs)
+                } else {
+                    ty
+                }
             } else {
                 tcx.sess.span_bug(span, "self type has not been fully resolved")
             }
