@@ -427,7 +427,7 @@ fn apply_adjustments<'r, 'blk, 'tcx>(&mut Block { bl, ref mut fcx }: &mut Block<
                 let scratch = alloca_no_lifetime(bcx, llty, "__coerce_target");
                 let target_datum = Datum::new(scratch, target,
                                               Rvalue::new(ByRef));
-                bcx = coerce_unsized(bcx, expr.span, source_datum, target_datum);
+                bcx.bl = coerce_unsized(bcx, expr.span, source_datum, target_datum);
                 datum = Datum::new(scratch, target,
                                    RvalueExpr(Rvalue::new(ByRef)));
             }
@@ -435,14 +435,13 @@ fn apply_adjustments<'r, 'blk, 'tcx>(&mut Block { bl, ref mut fcx }: &mut Block<
     }
     debug!("after adjustments, datum={}", datum.to_string(bcx.ccx()));
     DatumBlock::new(bcx.bl, datum)
-    DatumBlock::new(bcx, datum)
 }
 
-fn coerce_unsized<'blk, 'tcx>(&mut Block { bl, ref mut fcx }: &mut Block<'r, 'blk, 'tcx>,
-                              span: codemap::Span,
-                              source: Datum<'tcx, Rvalue>,
-                              target: Datum<'tcx, Rvalue>)
-                              -> &'blk BlockS {
+fn coerce_unsized<'r, 'blk, 'tcx>(&mut Block { bl, ref mut fcx }: &mut Block<'r, 'blk, 'tcx>,
+                                  span: codemap::Span,
+                                  source: Datum<'tcx, Rvalue>,
+                                  target: Datum<'tcx, Rvalue>)
+                                  -> &'blk BlockS {
     let mut bcx = &mut bl.with(fcx);
     debug!("coerce_unsized({} -> {})",
            source.to_string(bcx.ccx()),
@@ -462,8 +461,8 @@ fn coerce_unsized<'blk, 'tcx>(&mut Block { bl, ref mut fcx }: &mut Block<'r, 'bl
                 // to use a different vtable. In that case, we want to
                 // load out the original data pointer so we can repackage
                 // it.
-                let dp = get_dataptr(bcx, datum.val);
-                let dl = get_len(bcx, datum.val);
+                let dp = get_dataptr(bcx, source.val);
+                let dl = get_len(bcx, source.val);
                 (Load(bcx, dp),
                  Some(Load(bcx, dl)))
             } else {
@@ -2041,7 +2040,7 @@ pub fn cast_is_noop<'tcx>(tcx: &ty::ctxt<'tcx>,
 fn trans_imm_cast<'r, 'blk, 'tcx>(&mut Block { bl, ref mut fcx }: &mut Block<'r, 'blk, 'tcx>,
                                   expr: &ast::Expr,
                                   id: ast::NodeId)
-                                  -> DatumBlock<'blk, 'tcx, Expr> {
+                                  -> DatumBlock<'blk, 'tcx, Expr>
 {
     use middle::cast::CastTy::*;
     use middle::cast::IntTy::*;
@@ -2109,7 +2108,7 @@ fn trans_imm_cast<'r, 'blk, 'tcx>(&mut Block { bl, ref mut fcx }: &mut Block<'r,
         assert!(datum.kind.is_by_ref());
         if type_is_fat_ptr(bcx.tcx(), t_out) {
             let pc = PointerCast(bcx, datum.val, ll_t_out.ptr_to());
-            return DatumBlock::new(bcx, Datum::new(
+            return DatumBlock::new(bcx.bl, Datum::new(
                 pc,
                 t_out,
                 Rvalue::new(ByRef)

@@ -386,9 +386,9 @@ fn trans_struct_drop<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
     bcx.fcx.pop_and_trans_custom_cleanup_scope(bl, contents_scope)
 }
 
-fn size_and_align_of_dst<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
-                                         t: Ty<'tcx>, info: ValueRef)
-                                         -> (ValueRef, ValueRef) {
+pub fn size_and_align_of_dst<'r, 'blk, 'tcx>(bcx: &mut Block<'r, 'blk, 'tcx>,
+                                             t: Ty<'tcx>, info: ValueRef)
+                                             -> (ValueRef, ValueRef) {
     debug!("calculate size of DST: {}; with lost info: {}",
            bcx.ty_to_string(t), bcx.val_to_string(info));
     if type_is_sized(bcx.tcx(), t) {

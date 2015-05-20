@@ -330,7 +330,8 @@ pub fn trans_intrinsic_call<'a, 'r, 'blk, 'tcx>
         (_, "size_of_val") => {
             let tp_ty = *substs.types.get(FnSpace, 0);
             if !type_is_sized(tcx, tp_ty) {
-                let info = Load(bcx, expr::get_len(bcx, llargs[0]));
+                let l = expr::get_len(bcx, llargs[0]);
+                let info = Load(bcx, l);
                 let (llsize, _) = glue::size_and_align_of_dst(bcx, tp_ty, info);
                 llsize
             } else {
@@ -345,7 +346,8 @@ pub fn trans_intrinsic_call<'a, 'r, 'blk, 'tcx>
         (_, "min_align_of_val") => {
             let tp_ty = *substs.types.get(FnSpace, 0);
             if !type_is_sized(tcx, tp_ty) {
-                let info = Load(bcx, expr::get_len(bcx, llargs[0]));
+                let l = expr::get_len(bcx, llargs[0]);
+                let info = Load(bcx, l);
                 let (_, llalign) = glue::size_and_align_of_dst(bcx, tp_ty, info);
                 llalign
             } else {

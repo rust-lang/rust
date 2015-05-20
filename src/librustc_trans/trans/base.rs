@@ -895,7 +895,7 @@ pub fn with_cond<'r, 'blk, 'tcx, F>(&mut Block { bl, ref mut fcx }: &mut Block<'
 {
     let _icx = push_ctxt("with_cond");
 
-    if bcx.unreachable.get() || common::const_to_opt_uint(val) == Some(0) {
+    if bl.unreachable.get() || common::const_to_opt_uint(val) == Some(0) {
         return bl;
     }
 
