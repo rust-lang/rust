@@ -135,7 +135,7 @@ macro_rules! int_impl {
         /// # Examples
         ///
         /// ```
-        /// assert_eq!(u32::from_str_radix("A", 16), Some(10));
+        /// assert_eq!(u32::from_str_radix("A", 16), Ok(10));
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[allow(deprecated)]
