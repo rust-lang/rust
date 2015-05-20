@@ -5699,7 +5699,12 @@ pub mod funcs {
                 pub fn getgroups(ngroups_max: c_int, groups: *mut gid_t)
                                  -> c_int;
                 pub fn getlogin() -> *mut c_char;
+                #[cfg(not(target_os = "linux"))]
                 pub fn getopt(argc: c_int, argv: *const *const c_char,
+                              optstr: *const c_char) -> c_int;
+                // GNU getopt(3) modifies its arguments despite the prototype.
+                #[cfg(target_os = "linux")]
+                pub fn getopt(argc: c_int, argv: *mut *mut c_char,
                               optstr: *const c_char) -> c_int;
                 pub fn getpgrp() -> pid_t;
                 pub fn getpid() -> pid_t;
