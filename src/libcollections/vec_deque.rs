@@ -247,7 +247,6 @@ impl<T> VecDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
     /// use std::collections::VecDeque;
     ///
     /// let mut buf = VecDeque::new();
@@ -275,7 +274,6 @@ impl<T> VecDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
     /// use std::collections::VecDeque;
     ///
     /// let buf: VecDeque<i32> = VecDeque::with_capacity(10);
@@ -299,7 +297,6 @@ impl<T> VecDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
     /// use std::collections::VecDeque;
     ///
     /// let mut buf: VecDeque<i32> = vec![1].into_iter().collect();
@@ -321,7 +318,6 @@ impl<T> VecDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
     /// use std::collections::VecDeque;
     ///
     /// let mut buf: VecDeque<i32> = vec![1].into_iter().collect();
@@ -508,7 +504,6 @@ impl<T> VecDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(core)]
     /// use std::collections::VecDeque;
     ///
     /// let mut buf = VecDeque::new();
@@ -533,7 +528,6 @@ impl<T> VecDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(core)]
     /// use std::collections::VecDeque;
     ///
     /// let mut buf = VecDeque::new();

@@ -1291,14 +1291,13 @@ impl<K, V> BTreeMap<K, V> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(core)]
     /// use std::collections::BTreeMap;
     ///
     /// let mut a = BTreeMap::new();
     /// a.insert(1, "a");
     /// a.insert(2, "b");
     ///
-    /// let keys: Vec<usize> = a.keys().cloned().collect();
+    /// let keys: Vec<_> = a.keys().cloned().collect();
     /// assert_eq!(keys, [1, 2]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -1314,7 +1313,6 @@ impl<K, V> BTreeMap<K, V> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(core)]
     /// use std::collections::BTreeMap;
     ///
     /// let mut a = BTreeMap::new();
@@ -1555,7 +1553,6 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
     /// use std::collections::BTreeMap;
     ///
     /// let mut count: BTreeMap<&str, usize> = BTreeMap::new();
