@@ -476,9 +476,9 @@ which syntactic form it matches.
 
 There are additional rules regarding the next token after a metavariable:
 
-* `expr` variables must be followed by one of: `=> , ;`
-* `ty` and `path` variables must be followed by one of: `=> , : = > as`
-* `pat` variables must be followed by one of: `=> , =`
+* `expr` variables may only be followed by one of: `=> , ;`
+* `ty` and `path` variables may only be followed by one of: `=> , : = > as`
+* `pat` variables may only be followed by one of: `=> , =`
 * Other variables may be followed by any token.
 
 These rules provide some flexibility for Rust’s syntax to evolve without
