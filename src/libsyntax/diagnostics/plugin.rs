@@ -10,6 +10,7 @@
 
 use std::cell::RefCell;
 use std::collections::BTreeMap;
+use std::error::Error;
 
 use ast;
 use ast::{Ident, Name, TokenTree};
@@ -163,7 +164,17 @@ pub fn expand_build_diagnostic_array<'cx>(ecx: &'cx mut ExtCtxt,
         // FIXME (25364, 25592): used to ensure error code uniqueness
         // here, but the approach employed was too brittle. Need to
         // put such a check back in (e.g. in `make tidy`).
-        output_metadata(&*ecx, crate_name, &*diagnostics).ok().expect("metadata output error");
+        match output_metadata(&*ecx, crate_name, &*diagnostics) {
+            Ok(()) => {}
+            Err(error) => {
+                ecx.span_err(span, &format!("metadata output error {}", error.description()));
+                let mut error: &Error = &*error;
+                while let Some(cause) = error.cause() {
+                    error = cause;
+                    ecx.span_err(span, &format!("caused by error {}", error.description()));
+                }
+            }
+        }
     });
 
     // Construct the output expression.
