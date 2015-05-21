@@ -123,7 +123,7 @@ let world = "world!".to_string();
 let hello_world = hello + &world;
 ```
 
-This is because `&String` can automatically coerece to a `&str`. This is a
+This is because `&String` can automatically coerce to a `&str`. This is a
 feature called ‘[`Deref` coercions][dc]’.
 
 [dc]: deref-coercions.html
