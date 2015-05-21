@@ -255,35 +255,51 @@ should or should not be introduced in this fashion.
 We use the term *"opt-in changes"* to refer to changes that would be
 breaking changes, but are not because of the opt-in mechanism.
 
-#### Rust version attribute
+#### Rust version option
 
-The specific proposal is an attribute `#![rust_version="X.Y"]` that
-can be attached to the crate; the version `X.Y` in this attribute is
-called the crate's "declared version". Every build of the Rust
-compiler will also have a version number built into it reflecting the
-current release.
+The specific proposal is to introduce a command-line option
+`--rust-version=X.Y[.Z]` that instructs the Rust compiler to expect
+source code from older versions of Rust. This option could also be
+specified in a `Cargo.toml` file in a `rust-version` property.  The
+version applies to the crate currently being compiled and is called
+the crate's "supplied version". Every build of the Rust compiler will
+also have a version number built into it reflecting the current
+release; if the command-line option is not supplied, the compiler
+defaults to this builtin version.
 
-When a `#[rust_version="X.Y"]` attribute is encountered, the compiler
-will endeavor to produce the semantics of Rust "as it was" during
-version `X.Y`. RFCs that propose opt-in changes should discuss how the
-older behavior can be supported in the compiler, but this is expected
-to be straightforward: if supporting older behavior is hard to do, it
-may indicate that the opt-in change is too complex and should not be
-accepted.
+The supplied version is used by the compiler to produce the semantics
+of Rust "as it was" during version `X.Y`. RFCs that propose opt-in
+changes should discuss how the older behavior can be supported in the
+compiler, but this is expected to be straightforward: if supporting
+older behavior is hard to do, it may indicate that the opt-in change
+is too complex and should not be accepted.
 
-If the crate declares a version `X.Y` that is *newer* than the
-compiler itself, the compiler should simply issue a warning and
-proceed as if the crate had declared the compiler's version (i.e., the
-newer version the compiler knows about).
+Note that the supplied version may affect the parser configuration
+used when parsing the initial crate, since it can affect the keywords
+recognized by the tokenizer and perhaps other minor details in the
+syntax. However, because the version is supplied on the command line,
+this configuration is known before parsing begins.
 
-Note that if the changes introducing by the Rust version `X.Y` affect
-parsing, implementing these semantics may require some limited amount
-of feedback between the parser and the tokenizer, or else a limited
-"pre-parse" to scan the set of crate attributes and extract the
-version. For example, if version `X.Y` adds new keywords, the
-tokenizer will likely need to be configured appropriately with the
-proper set of keywords. For this reason, it may make sense to require
-that the `#![rust_version]` attribute appear *first* on the crate.
+#### Defaults and extreme cases
+
+If no version is supplied on the `rustc` command line, `rustc` will
+default to the maximal version it recognizes. If the user supplies a
+version `X.Y` that is *newer* than the compiler itself, the compiler
+should simply issue a warning and proceed as if the user had supplied
+the compiler's version (i.e., the newest version the compiler knows
+about).
+
+Cargo will always invoke `rustc` with a supplied version. If there is
+no version in the `Cargo.toml` file, then `1.0.0` is assumed. Whenever
+a new project is created with `cargo new`, the new `Cargo.toml` will
+include the most recent Rust version number by default.
+
+Note that the defaults for `rustc` and `cargo` differ. `rustc` prefers
+the most recent verison of Rust by default, whereas `cargo` prefers
+the oldest. The reason is that we expect running `rustc` in a
+standalone fashion to be used primarily when experimenting with small
+scripts and one-offs, and the user is most likely to want "current
+Rust" in that scenario.
 
 #### When opt-in changes are appropriate
 
@@ -346,6 +362,14 @@ section on *unresolved questions*.
 ## Notes on phasing
 
 # Alternatives
+
+**Use an attribute rather than command-line option.** Earlier versions
+of this RFC used a `#[rust_version]` attribute to specify the Rust
+version rather than a command-line parameter. This was changed to use
+a command-line parameter because it (a) exposes the version int he
+Cargo metadata, (b) is analogous to the approach used by most other
+languages, and (c) simplifies the implementation, since the parser
+does not need to be reconfigured midparse.
 
 **Rather than supporting opt-in changes, one might consider simply
 issuing a new major release for every such change.** Put simply,
