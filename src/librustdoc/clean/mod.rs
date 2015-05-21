@@ -343,7 +343,7 @@ pub enum ItemEnum {
     EnumItem(Enum),
     FunctionItem(Function),
     ModuleItem(Module),
-    TypedefItem(Typedef),
+    TypedefItem(Typedef, bool /* is associated type */),
     StaticItem(Static),
     ConstantItem(Constant),
     TraitItem(Trait),
@@ -1282,7 +1282,7 @@ impl Clean<Item> for ast::ImplItem {
                     type_params: Vec::new(),
                     where_predicates: Vec::new()
                 },
-            }),
+            }, true),
             ast::MacImplItem(_) => {
                 MacroItem(Macro {
                     source: self.span.to_src(cx),
@@ -2078,7 +2078,7 @@ impl Clean<Item> for doctree::Typedef {
             inner: TypedefItem(Typedef {
                 type_: self.ty.clean(cx),
                 generics: self.gen.clean(cx),
-            }),
+            }, false),
         }
     }
 }
@@ -2248,7 +2248,7 @@ fn build_deref_target_impls(cx: &DocContext,
 
     for item in items {
         let target = match item.inner {
-            TypedefItem(ref t) => &t.type_,
+            TypedefItem(ref t, true) => &t.type_,
             _ => continue,
         };
         let primitive = match *target {
