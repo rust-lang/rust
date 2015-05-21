@@ -277,9 +277,9 @@ allocated on the heap:
 | 0       | x    | ?????? |
 
 [drop]: drop.html
-[moving]: We can make the memory live longer by transferring ownership,
-          sometimes called ‘moving out of the box’. More complex examples will
-          be covered later.
+[^moving]: We can make the memory live longer by transferring ownership,
+           sometimes called ‘moving out of the box’. More complex examples will
+           be covered later.
 
 
 And then the stack frame goes away, freeing all of our memory.
