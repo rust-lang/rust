@@ -44,6 +44,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_lint_pass(box identity_op::IdentityOp as LintPassObject);
     reg.register_lint_pass(box mut_mut::MutMut as LintPassObject);
     reg.register_lint_pass(box len_zero::LenZero as LintPassObject);
+    reg.register_lint_pass(box misc::CmpOwned as LintPassObject);
     
     reg.register_lint_group("clippy", vec![types::BOX_VEC, types::LINKEDLIST,
                                            misc::SINGLE_MATCH, misc::STR_TO_STRING,
@@ -54,7 +55,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
                                            needless_bool::NEEDLESS_BOOL,
                                            approx_const::APPROX_CONSTANT,
                                            misc::CMP_NAN, misc::FLOAT_CMP,
-                                           misc::PRECEDENCE,
+                                           misc::PRECEDENCE, misc::CMP_OWNED,
                                            eta_reduction::REDUNDANT_CLOSURE,
                                            identity_op::IDENTITY_OP,
                                            mut_mut::MUT_MUT,

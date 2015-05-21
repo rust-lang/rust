@@ -211,3 +211,52 @@ fn is_arith_op(op : BinOp_) -> bool {
 		_ => false
 	}
 }
+
+declare_lint!(pub CMP_OWNED, Warn,
+			  "Warn on creating an owned string just for comparison");
+			  
+#[derive(Copy,Clone)]
+pub struct CmpOwned;
+
+impl LintPass for CmpOwned {
+	fn get_lints(&self) -> LintArray {
+        lint_array!(CMP_OWNED)
+	}
+	
+	fn check_expr(&mut self, cx: &Context, expr: &Expr) {
+		if let ExprBinary(ref cmp, ref left, ref right) = expr.node {
+			if is_comparison_binop(cmp.node) {
+				check_to_owned(cx, left, right.span);
+				check_to_owned(cx, right, left.span)
+			}
+		}
+	}
+}
+
+fn check_to_owned(cx: &Context, expr: &Expr, other_span: Span) {
+	match &expr.node {
+		&ExprMethodCall(Spanned{node: ref ident, ..}, _, _) => {
+			let name = ident.as_str();
+			if name == "to_string" || name == "to_owned" {
+				cx.span_lint(CMP_OWNED, expr.span, &format!(
+					"this creates an owned instance just for comparison.
+					Consider using {}.as_slice() to compare without allocation",
+					cx.sess().codemap().span_to_snippet(other_span).unwrap_or(
+						"..".to_string())))
+			}
+		},
+		&ExprCall(ref path, _) => {
+			if let &ExprPath(None, ref path) = &path.node {
+				if path.segments.iter().zip(["String", "from_str"].iter()).all(
+						|(seg, name)| &seg.identifier.as_str() == name) {
+					cx.span_lint(CMP_OWNED, expr.span, &format!(
+					"this creates an owned instance just for comparison.
+					Consider using {}.as_slice() to compare without allocation",
+					cx.sess().codemap().span_to_snippet(other_span).unwrap_or(
+						"..".to_string())))
+				}
+			}
+		},
+		_ => ()
+	}
+}
