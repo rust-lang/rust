@@ -1,6 +1,13 @@
-% Link args
+% Advanced Linking
 
-There is one other way to tell rustc how to customize linking, and that is via
+The common cases of linking with Rust have been covered earlier in this book,
+but supporting the range of linking possibilities made available by other
+languages is important for Rust to achieve seamless interaction with native
+libraries.
+
+# Link args
+
+There is one other way to tell `rustc` how to customize linking, and that is via
 the `link_args` attribute. This attribute is applied to `extern` blocks and
 specifies raw flags which need to get passed to the linker when producing an
 artifact. An example usage would be:
@@ -14,9 +21,9 @@ extern {}
 ```
 
 Note that this feature is currently hidden behind the `feature(link_args)` gate
-because this is not a sanctioned way of performing linking. Right now rustc
+because this is not a sanctioned way of performing linking. Right now `rustc`
 shells out to the system linker, so it makes sense to provide extra command line
-arguments, but this will not always be the case. In the future rustc may use
+arguments, but this will not always be the case. In the future `rustc` may use
 LLVM directly to link native libraries, in which case `link_args` will have no
 meaning.
 
