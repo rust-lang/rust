@@ -67,6 +67,7 @@
 #![feature(on_unimplemented)]
 #![feature(simd)]
 #![feature(staged_api)]
+#![feature(associated_consts)]
 #![feature(unboxed_closures)]
 #![feature(rustc_attrs)]
 #![feature(optin_builtin_traits)]

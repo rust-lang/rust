@@ -202,7 +202,7 @@ mod tests {
     #[test]
     fn test_pow() {
         fn naive_pow<T: Mul<Output=T> + One + Copy>(base: T, exp: usize) -> T {
-            let one: T = T::one();
+            let one: T = T::ONE;
             (0..exp).fold(one, |acc, _| acc * base)
         }
         macro_rules! assert_pow {

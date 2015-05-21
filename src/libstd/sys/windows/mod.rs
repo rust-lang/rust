@@ -145,7 +145,7 @@ pub fn truncate_utf16_at_nul<'a>(v: &'a [u16]) -> &'a [u16] {
 }
 
 fn cvt<I: PartialEq + Zero>(i: I) -> io::Result<I> {
-    if i == I::zero() {
+    if i == I::ZERO {
         Err(io::Error::last_os_error())
     } else {
         Ok(i)
