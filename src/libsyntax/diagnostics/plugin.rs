@@ -10,11 +10,12 @@
 
 use std::cell::RefCell;
 use std::collections::BTreeMap;
+use std::error::Error;
 
 use ast;
 use ast::{Ident, Name, TokenTree};
 use codemap::Span;
-use diagnostics::metadata::{check_uniqueness, output_metadata, Duplicate};
+use diagnostics::metadata::{output_metadata};
 use ext::base::{ExtCtxt, MacEager, MacResult};
 use ext::build::AstBuilder;
 use parse::token;
@@ -158,20 +159,22 @@ pub fn expand_build_diagnostic_array<'cx>(ecx: &'cx mut ExtCtxt,
         _ => unreachable!()
     };
 
-    // Check uniqueness of errors and output metadata.
+    // Output metadata.
     with_registered_diagnostics(|diagnostics| {
-        match check_uniqueness(crate_name, &*diagnostics) {
-            Ok(Duplicate(err, location)) => {
-                ecx.span_err(span, &format!(
-                    "error {} from `{}' also found in `{}'",
-                    err, crate_name, location
-                ));
-            },
-            Ok(_) => (),
-            Err(e) => panic!("{}", e.description())
+        // FIXME (25364, 25592): used to ensure error code uniqueness
+        // here, but the approach employed was too brittle. Need to
+        // put such a check back in (e.g. in `make tidy`).
+        match output_metadata(&*ecx, crate_name, &*diagnostics) {
+            Ok(()) => {}
+            Err(error) => {
+                ecx.span_err(span, &format!("metadata output error {}", error.description()));
+                let mut error: &Error = &*error;
+                while let Some(cause) = error.cause() {
+                    error = cause;
+                    ecx.span_err(span, &format!("caused by error {}", error.description()));
+                }
+            }
         }
-
-        output_metadata(&*ecx, crate_name, &*diagnostics).ok().expect("metadata output error");
     });
 
     // Construct the output expression.
