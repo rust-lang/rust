@@ -898,7 +898,7 @@ pub fn copy<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<u64> {
     let from = from.as_ref();
     let to = to.as_ref();
     if !from.is_file() {
-        return Err(Error::new(ErrorKind::InvalidInput,
+        return Err(Error::new(ErrorKind::InvalidParam,
                               "the source path is not an existing file"))
     }
 

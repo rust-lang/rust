@@ -448,7 +448,7 @@ impl Child {
         // newer process that happens to have the same (re-used) id
         if self.status.is_some() {
             return Err(Error::new(
-                ErrorKind::InvalidInput,
+                ErrorKind::InvalidParam,
                 "invalid argument: can't kill an exited process",
             ))
         }

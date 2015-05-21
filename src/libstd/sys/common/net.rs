@@ -76,7 +76,7 @@ fn sockaddr_to_addr(storage: &libc::sockaddr_storage,
             })))
         }
         _ => {
-            Err(Error::new(ErrorKind::InvalidInput, "invalid argument"))
+            Err(Error::new(ErrorKind::InvalidParam, "invalid argument"))
         }
     }
 }

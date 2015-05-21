@@ -94,6 +94,9 @@ pub enum ErrorKind {
     WouldBlock,
     /// A parameter was incorrect.
     #[stable(feature = "rust1", since = "1.0.0")]
+    InvalidParam,
+    /// Invalid data were encountered in an I/O operation.
+    #[stable(feature = "rust1", since = "1.0.0")]
     InvalidInput,
     /// The I/O operation's timeout expired, causing it to be canceled.
     #[stable(feature = "rust1", since = "1.0.0")]

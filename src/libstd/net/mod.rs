@@ -77,7 +77,7 @@ fn each_addr<A: ToSocketAddrs, F, T>(addr: A, mut f: F) -> io::Result<T>
         }
     }
     Err(last_err.unwrap_or_else(|| {
-        Error::new(ErrorKind::InvalidInput,
+        Error::new(ErrorKind::InvalidParam,
                    "could not resolve to any addresses")
     }))
 }

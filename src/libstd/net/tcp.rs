@@ -292,7 +292,7 @@ mod tests {
         match TcpStream::connect("0.0.0.0:1") {
             Ok(..) => panic!(),
             Err(e) => assert!(e.kind() == ErrorKind::ConnectionRefused ||
-                              e.kind() == ErrorKind::InvalidInput ||
+                              e.kind() == ErrorKind::InvalidParam ||
                               e.kind() == ErrorKind::AddrInUse ||
                               e.kind() == ErrorKind::AddrNotAvailable,
                               "bad error: {} {:?}", e, e.kind()),

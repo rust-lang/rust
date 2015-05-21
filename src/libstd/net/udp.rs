@@ -75,7 +75,7 @@ impl UdpSocket {
                                      -> io::Result<usize> {
         match try!(addr.to_socket_addrs()).next() {
             Some(addr) => self.0.send_to(buf, &addr),
-            None => Err(Error::new(ErrorKind::InvalidInput,
+            None => Err(Error::new(ErrorKind::InvalidParam,
                                    "no addresses to send data to")),
         }
     }
