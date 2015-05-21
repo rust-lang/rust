@@ -282,8 +282,8 @@ be specified exactly one time.
 
 E0063: r##"
 This error indicates that during an attempt to build a struct or struct-like
-enum variant, one of the fields was not provided. Each field should be specified
-exactly once.
+enum variant, one of the fields was not provided. Each field should be
+specified exactly once.
 "##,
 
 E0066: r##"
@@ -297,19 +297,36 @@ and [RFC 809] for more details.
 "##,
 
 E0067: r##"
-The left-hand side of an assignment operator must be an lvalue expression. An
-lvalue expression represents a memory location and includes item paths (ie,
-namespaced variables), dereferences, indexing expressions, and field references.
+The left-hand side of a compound assignment expression must be an lvalue
+expression. An lvalue expression represents a memory location and includes
+item paths (ie, namespaced variables), dereferences, indexing expressions,
+and field references.
 
+Let's start with some bad examples:
 ```
 use std::collections::LinkedList;
 
-// Good
-let mut list = LinkedList::new();
-
-
 // Bad: assignment to non-lvalue expression
 LinkedList::new() += 1;
+
+// ...
+
+fn some_func(i: &mut i32) {
+    i += 12; // Error : '+=' operation cannot be applied on a reference !
+}
+
+And now some good examples:
+```
+let mut i : i32 = 0;
+
+i += 12; // Good !
+
+// ...
+
+fn some_func(i: &mut i32) {
+    *i += 12; // Good !
+}
+
 ```
 "##,
 
@@ -326,6 +343,53 @@ fn foo() -> u8 {
 
 Since `return;` is just like `return ();`, there is a mismatch between the
 function's return type and the value being returned.
+"##,
+
+E0070: r##"
+The left-hand side of an assignment operator must be an lvalue expression. An
+lvalue expression represents a memory location and can be a variable (with
+optional namespacing), a dereference, an indexing expression or a field
+reference.
+
+More details can be found here:
+https://doc.rust-lang.org/reference.html#lvalues,-rvalues-and-temporaries
+
+Now, we can go further. Here are some bad examples:
+```
+struct SomeStruct {
+    x: i32,
+    y: i32
+}
+const SOME_CONST : i32 = 12;
+
+fn some_other_func() {}
+
+fn some_function() {
+    SOME_CONST = 14; // error : a constant value cannot be changed!
+    1 = 3; // error : 1 isn't a valid lvalue!
+    some_other_func() = 4; // error : we can't assign value to a function!
+    SomeStruct.x = 12; // error : SomeStruct a structure name but it is used
+                       // like a variable!
+}
+```
+
+And now let's give good examples:
+
+```
+struct SomeStruct {
+    x: i32,
+    y: i32
+}
+let mut s = SomeStruct {x: 0, y: 0};
+
+s.x = 3; // that's good !
+
+// ...
+
+fn some_func(x: &mut i32) {
+    *x = 12; // that's good !
+}
+```
 "##,
 
 E0072: r##"
@@ -931,7 +995,6 @@ register_diagnostics! {
     E0060,
     E0061,
     E0068,
-    E0070,
     E0071,
     E0074,
     E0075,
