@@ -549,7 +549,7 @@ You can control a few aspects of the HTML that `rustdoc` generates through the
 ```rust
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
-       html_root_url = "http://doc.rust-lang.org/")];
+       html_root_url = "http://doc.rust-lang.org/")]
 ```
 
 This sets a few different options, with a logo, favicon, and a root URL.
