@@ -1362,9 +1362,9 @@ pub trait Float {
 }
 
 macro_rules! from_str_float_impl {
-    ($T:ident) => {
+    ($t:ty) => {
         #[stable(feature = "rust1", since = "1.0.0")]
-        impl FromStr for $T {
+        impl FromStr for $t {
             type Err = ParseFloatError;
 
             /// Converts a string in base 10 to a float.
@@ -1405,10 +1405,10 @@ from_str_float_impl!(f32);
 from_str_float_impl!(f64);
 
 macro_rules! from_str_radix_int_impl {
-    ($($T:ident)*) => {$(
+    ($($t:ty)*) => {$(
         #[stable(feature = "rust1", since = "1.0.0")]
         #[allow(deprecated)]
-        impl FromStr for $T {
+        impl FromStr for $t {
             type Err = ParseIntError;
             fn from_str(src: &str) -> Result<Self, ParseIntError> {
                 from_str_radix(src, 10)
@@ -1428,7 +1428,7 @@ trait FromStrRadixHelper: PartialOrd + Copy {
 }
 
 macro_rules! doit {
-    ($($t:ident)*) => ($(impl FromStrRadixHelper for $t {
+    ($($t:ty)*) => ($(impl FromStrRadixHelper for $t {
         fn min_value() -> Self { Self::min_value() }
         fn from_u32(u: u32) -> Self { u as Self }
         fn checked_mul(&self, other: u32) -> Option<Self> {
