@@ -144,7 +144,7 @@
 //!     // At the end of the method, gadget_owner, gadget1 and gadget2 get
 //!     // destroyed. There are now no strong (`Rc<T>`) references to the gadgets.
 //!     // Once they get destroyed, the Gadgets get destroyed. This zeroes the
-//!     // reference count on Gadget Man, so he gets destroyed as well.
+//!     // reference count on Gadget Man, they get destroyed as well.
 //! }
 //! ```
 
