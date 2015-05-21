@@ -294,6 +294,105 @@ fn test_extend_ref() {
     assert_eq!(a[&3], "three");
 }
 
+#[test]
+fn test_append() {
+    let mut a = BTreeMap::new();
+    a.insert(1, "a");
+    a.insert(2, "b");
+    a.insert(3, "c");
+
+    let mut b = BTreeMap::new();
+    b.insert(3, "d");  // Overwrite element from a
+    b.insert(4, "e");
+    b.insert(5, "f");
+
+    a.append(&mut b);
+
+    assert_eq!(a.len(), 5);
+    assert_eq!(b.len(), 0);
+
+    assert_eq!(a[&1], "a");
+    assert_eq!(a[&2], "b");
+    assert_eq!(a[&3], "d");
+    assert_eq!(a[&4], "e");
+    assert_eq!(a[&5], "f");
+}
+
+#[test]
+fn test_split_off() {
+    // Split empty map
+    let mut a: BTreeMap<usize, usize> = BTreeMap::new();
+
+    let b = a.split_off(&2);
+
+    assert_eq!(a.len(), 0);
+    assert_eq!(b.len(), 0);
+
+    // Split before first element
+    let mut a = BTreeMap::new();
+    a.insert(4, "a");
+    a.insert(5, "b");
+    a.insert(6, "c");
+
+    let b = a.split_off(&2);
+
+    assert_eq!(a.len(), 0);
+    assert_eq!(b.len(), 3);
+
+    assert_eq!(b[&4], "a");
+    assert_eq!(b[&5], "b");
+    assert_eq!(b[&6], "c");
+
+    // Split at first element
+    let mut a = BTreeMap::new();
+    a.insert(4, "a");
+    a.insert(5, "b");
+    a.insert(6, "c");
+
+    let b = a.split_off(&4);
+
+    assert_eq!(a.len(), 0);
+    assert_eq!(b.len(), 3);
+
+    assert_eq!(b[&4], "a");
+    assert_eq!(b[&5], "b");
+    assert_eq!(b[&6], "c");
+
+    // Split behind last element
+    let mut a = BTreeMap::new();
+    a.insert(1, "a");
+    a.insert(2, "b");
+    a.insert(3, "c");
+
+    let b = a.split_off(&4);
+
+    assert_eq!(a.len(), 3);
+    assert_eq!(b.len(), 0);
+
+    assert_eq!(a[&1], "a");
+    assert_eq!(a[&2], "b");
+    assert_eq!(a[&3], "c");
+
+    // Split at arbitrary position
+    let mut a = BTreeMap::new();
+    a.insert(1, "a");
+    a.insert(2, "b");
+    a.insert(3, "c");
+    a.insert(4, "d");
+    a.insert(5, "e");
+
+    let b = a.split_off(&3);
+
+    assert_eq!(a.len(), 2);
+    assert_eq!(b.len(), 3);
+
+    assert_eq!(a[&1], "a");
+    assert_eq!(a[&2], "b");
+    assert_eq!(b[&3], "c");
+    assert_eq!(b[&4], "d");
+    assert_eq!(b[&5], "e");
+}
+
 mod bench {
     use std::collections::BTreeMap;
     use std::__rand::{Rng, thread_rng};

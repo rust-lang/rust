@@ -212,3 +212,102 @@ fn test_extend_ref() {
     assert!(a.contains(&5));
     assert!(a.contains(&6));
 }
+
+#[test]
+fn test_append() {
+    let mut a = BTreeSet::new();
+    a.insert(1);
+    a.insert(2);
+    a.insert(3);
+
+    let mut b = BTreeSet::new();
+    b.insert(3);
+    b.insert(4);
+    b.insert(5);
+
+    a.append(&mut b);
+
+    assert_eq!(a.len(), 5);
+    assert_eq!(b.len(), 0);
+
+    assert_eq!(a.contains(&1), true);
+    assert_eq!(a.contains(&2), true);
+    assert_eq!(a.contains(&3), true);
+    assert_eq!(a.contains(&4), true);
+    assert_eq!(a.contains(&5), true);
+}
+
+#[test]
+fn test_split_off() {
+    // Split empty set
+    let mut a: BTreeSet<usize> = BTreeMap::new();
+
+    let b = a.split_off(2);
+
+    assert_eq!(a.len(), 0);
+    assert_eq!(b.len(), 0);
+
+    // Split before first element
+    let mut a = BTreeSet::new();
+    a.insert(4);
+    a.insert(5);
+    a.insert(6);
+
+    let b = a.split_off(2);
+
+    assert_eq!(a.len(), 0);
+    assert_eq!(b.len(), 3);
+
+    assert!(b.contains(&4));
+    assert!(b.contains(&5));
+    assert!(b.contains(&6));
+
+    // Split at first element
+    let mut a = BTreeSet::new();
+    a.insert(4);
+    a.insert(5);
+    a.insert(6);
+
+    let b = a.split_off(4);
+
+    assert_eq!(a.len(), 0);
+    assert_eq!(b.len(), 3);
+
+    assert_eq!(b.contains(&4));
+    assert_eq!(b.contains(&5));
+    assert_eq!(b.contains(&6));
+
+    // Split behind last element
+    let mut a = BTreeSet::new();
+    a.insert(1);
+    a.insert(2);
+    a.insert(3);
+
+    let b = a.split_off(4);
+
+    assert_eq!(a.len(), 3);
+    assert_eq!(b.len(), 0);
+
+    assert_eq!(a.contains(&1));
+    assert_eq!(a.contains(&2));
+    assert_eq!(a.contains(&3));
+
+    // Split at arbitrary position
+    let mut a = BTreeSet::new();
+    a.insert(1);
+    a.insert(2);
+    a.insert(3);
+    a.insert(4);
+    a.insert(5);
+
+    let b = a.split_off(3);
+
+    assert_eq!(a.len(), 2);
+    assert_eq!(b.len(), 3);
+
+    assert_eq!(a.contains(&1));
+    assert_eq!(a.contains(&2));
+    assert_eq!(b.contains(&3));
+    assert_eq!(b.contains(&4));
+    assert_eq!(b.contains(&5));
+}

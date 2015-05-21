@@ -557,6 +557,15 @@ impl<K: Ord, V> Node<K, V> {
             (index, false) => GoDown(Handle { node: node, index: index, marker: PhantomData }),
         }
     }
+
+    /// Searches for the first key greater than or equal to `key`.
+    pub fn greater_or_equal<Q: ?Sized, NodeRef: Deref<Target=Node<K, V>>>(node: NodeRef, key: &Q)
+                  -> SearchResult<NodeRef> where K: Borrow<Q>, Q: Ord {
+        match node.as_slices_internal().greater_or_equal_linear(key) {
+            (index, true) => Found(Handle { node: node, index: index, marker: PhantomData }),
+            (index, false) => GoDown(Handle { node: node, index: index, marker: PhantomData }),
+        }
+    }
 }
 
 // Public interface
@@ -1609,3 +1618,18 @@ macro_rules! node_slice_impl {
 
 node_slice_impl!(NodeSlice, Traversal, as_slices_internal, index, iter);
 node_slice_impl!(MutNodeSlice, MutTraversal, as_slices_internal_mut, index_mut, iter_mut);
+
+impl<'a, K: Ord + 'a, V: 'a> NodeSlice<'a, K, V> {
+    /// Performs linear search in a slice to find the first element greater than
+    /// or equal to `key`.
+    fn greater_or_equal_linear<Q: ?Sized>(&self, key: &Q) -> (usize, bool)
+            where K: Borrow<Q>, Q: Ord  {
+        for (i, k) in self.keys.iter().enumerate() {
+            match key.cmp(k.borrow()) {
+                Greater => {}
+                Less | Equal => return (i, true),
+            }
+        }
+        (self.keys.len(), false)
+    }
+}

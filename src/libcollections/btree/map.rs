@@ -348,7 +348,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
 
         loop {
             let result = stack.with(move |pusher, node| {
-                // Same basic logic as found in `find`, but with PartialSearchStack mediating the
+                // Same basic logic as found in `get`, but with PartialSearchStack mediating the
                 // actual nodes for us
                 match Node::search(node, &key) {
                     Found(mut handle) => {
@@ -438,14 +438,14 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn remove<Q: ?Sized>(&mut self, key: &Q) -> Option<V> where K: Borrow<Q>, Q: Ord {
-        // See `swap` for a more thorough description of the stuff going on in here
+        // See `insert` for a more thorough description of the stuff going on in here
         let mut stack = stack::PartialSearchStack::new(self);
         loop {
             let result = stack.with(move |pusher, node| {
                 match Node::search(node, key) {
                     Found(handle) => {
                         // Perfect match. Terminate the stack here, and remove the entry
-                        Finished(Some(pusher.seal(handle).remove()))
+                        Finished(Some(pusher.seal(handle).remove().1))
                     },
                     GoDown(handle) => {
                         // We need to keep searching, try to go down the next edge
@@ -461,6 +461,131 @@ impl<K: Ord, V> BTreeMap<K, V> {
                 Finished(ret) => return ret,
                 Continue(new_stack) => stack = new_stack
             }
+        }
+    }
+
+    /// Moves all elements from `other` into `Self`, leaving `other` empty.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(btree_append_split_off)]
+    /// use std::collections::BTreeMap;
+    ///
+    /// let mut a = BTreeMap::new();
+    /// a.insert(1, "a");
+    /// a.insert(2, "b");
+    /// a.insert(3, "c");
+    ///
+    /// let mut b = BTreeMap::new();
+    /// b.insert(3, "d");
+    /// b.insert(4, "e");
+    /// b.insert(5, "f");
+    ///
+    /// a.append(&mut b);
+    ///
+    /// assert_eq!(a.len(), 5);
+    /// assert_eq!(b.len(), 0);
+    ///
+    /// assert_eq!(a[&1], "a");
+    /// assert_eq!(a[&2], "b");
+    /// assert_eq!(a[&3], "d");
+    /// assert_eq!(a[&4], "e");
+    /// assert_eq!(a[&5], "f");
+    /// ```
+    #[unstable(feature = "append",
+               reason = "recently added as part of collections reform 2")]
+    pub fn append(&mut self, other: &mut Self) {
+        let b = other.b;
+        for (key, value) in mem::replace(other, BTreeMap::with_b(b)) {
+            self.insert(key, value);
+        }
+    }
+
+    /// Splits the map into two at the given key,
+    /// retaining the first half in-place and returning the second one.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(btree_append_split_off)]
+    /// use std::collections::BTreeMap;
+    ///
+    /// a.insert(1, "a");
+    /// a.insert(2, "b");
+    /// a.insert(3, "c");
+    /// a.insert(4, "d");
+    /// a.insert(5, "e");
+    ///
+    /// let b = a.split_off(3);
+    ///
+    /// assert_eq!(a.len(), 2);
+    /// assert_eq!(b.len(), 3);
+    ///
+    /// assert_eq!(a[&1], "a");
+    /// assert_eq!(a[&2], "b");
+    /// assert_eq!(b[&3], "c");
+    /// assert_eq!(b[&4], "d");
+    /// assert_eq!(b[&5], "e");
+    /// ```
+    #[unstable(feature = "split_off",
+               reason = "recently added as part of collections reform 2")]
+    pub fn split_off<Q: ?Sized>(&mut self, at: &Q) -> Self where K: Borrow<Q>, Q: Ord {
+        let mut other = BTreeMap::new();
+
+        if self.len() == 0 {
+            return other;
+        }
+
+        // FIXME(RFC #811) We can't check for `at` pointing before the
+        // first element and then swap `self` and `other`, because
+        // `self` will still be borrowed immutably.
+        // `unwrap` won't panic because `self.len()` > 0.
+        let should_swap = at <= self.keys().next().unwrap().borrow();
+
+        // Does `at` point before the first element?
+        if should_swap {
+            mem::swap(self, &mut other);
+            return other;
+        }
+        // Does `at` point behind the last element?
+        // `unwrap` won't panic because `self.len()` > 0.
+        else if at > self.keys().rev().next().unwrap().borrow() {
+            return other;
+        }
+
+        let mut remove_greater_or_equal = || {
+            let mut stack = stack::PartialSearchStack::new(self);
+            loop {
+                let result = stack.with(move |pusher, node| {
+                    match Node::greater_or_equal(node, at) {
+                        Found(handle) => {
+                            // Found a matching key. Terminate the stack here, and remove the entry
+                            Finished(Some(pusher.seal(handle).remove()))
+                        },
+                        GoDown(handle) => {
+                            // We need to keep searching, try to go down the next edge
+                            match handle.force() {
+                                // We're at a leaf; no matching key found
+                                Leaf(_) => Finished(None),
+                                Internal(internal_handle) => Continue(pusher.push(internal_handle))
+                            }
+                        }
+                    }
+                });
+                match result {
+                    Finished(ret) => return ret,
+                    Continue(new_stack) => stack = new_stack
+                }
+            }
+        };
+
+        // Remove and move all elements greater than or equal to at
+        loop {
+            match remove_greater_or_equal() {
+                Some((key, value)) => other.insert(key, value),
+                None => return other,
+            };
         }
     }
 }
@@ -693,16 +818,16 @@ mod stack {
     impl<'a, K, V> SearchStack<'a, K, V, handle::KV, handle::Leaf> {
         /// Removes the key and value in the top element of the stack, then handles underflows as
         /// described in BTree's pop function.
-        fn remove_leaf(mut self) -> V {
+        fn remove_leaf(mut self) -> (K, V) {
             self.map.length -= 1;
 
             // Remove the key-value pair from the leaf that this search stack points to.
             // Then, note if the leaf is underfull, and promptly forget the leaf and its ptr
             // to avoid ownership issues.
-            let (value, mut underflow) = unsafe {
-                let (_, value) = self.top.from_raw_mut().remove_as_leaf();
+            let (key, value, mut underflow) = unsafe {
+                let (key, value) = self.top.from_raw_mut().remove_as_leaf();
                 let underflow = self.top.from_raw().node().is_underfull();
-                (value, underflow)
+                (key, value, underflow)
             };
 
             loop {
@@ -717,7 +842,7 @@ mod stack {
                             self.map.depth -= 1;
                             self.map.root.hoist_lone_child();
                         }
-                        return value;
+                        return (key, value);
                     }
                     Some(mut handle) => {
                         if underflow {
@@ -728,7 +853,7 @@ mod stack {
                             }
                         } else {
                             // All done!
-                            return value;
+                            return (key, value);
                         }
                     }
                 }
@@ -739,7 +864,7 @@ mod stack {
     impl<'a, K, V> SearchStack<'a, K, V, handle::KV, handle::LeafOrInternal> {
         /// Removes the key and value in the top element of the stack, then handles underflows as
         /// described in BTree's pop function.
-        pub fn remove(self) -> V {
+        pub fn remove(self) -> (K, V) {
             // Ensure that the search stack goes to a leaf. This is necessary to perform deletion
             // in a BTree. Note that this may put the tree in an inconsistent state (further
             // described in into_leaf's comments), but this is immediately fixed by the
@@ -1220,7 +1345,7 @@ impl<'a, K: Ord, V> OccupiedEntry<'a, K, V> {
     /// Takes the value of the entry out of the map, and returns it.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn remove(self) -> V {
-        self.stack.remove()
+        self.stack.remove().1
     }
 }
 

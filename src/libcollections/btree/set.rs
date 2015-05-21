@@ -453,6 +453,74 @@ impl<T: Ord> BTreeSet<T> {
     pub fn remove<Q: ?Sized>(&mut self, value: &Q) -> bool where T: Borrow<Q>, Q: Ord {
         self.map.remove(value).is_some()
     }
+
+    /// Moves all elements from `other` into `Self`, leaving `other` empty.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(btree_append_split_off)]
+    /// use std::collections::BTreeMap;
+    ///
+    /// let mut a = BTreeSet::new();
+    /// a.insert(1);
+    /// a.insert(2);
+    /// a.insert(3);
+    ///
+    /// let mut b = BTreeSet::new();
+    /// b.insert(3);
+    /// b.insert(4);
+    /// b.insert(5);
+    ///
+    /// a.append(&mut b);
+    ///
+    /// assert_eq!(a.len(), 5);
+    /// assert_eq!(b.len(), 0);
+    ///
+    /// assert!(a.contains(&1));
+    /// assert!(a.contains(&2));
+    /// assert!(a.contains(&3));
+    /// assert!(a.contains(&4));
+    /// assert!(a.contains(&5));
+    /// ```
+    #[unstable(feature = "btree_append_split_off",
+               reason = "recently added as part of collections reform 2")]
+    pub fn append(&mut self, other: &mut Self) {
+        self.map.append(&mut other.map);
+    }
+
+    /// Splits the set into two at the given key,
+    /// retaining the first half in-place and returning the second one.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(btree_append_split_off)]
+    /// use std::collections::BTreeMap;
+    ///
+    /// a.insert(1)
+    /// a.insert(2)
+    /// a.insert(3)
+    /// a.insert(4)
+    /// a.insert(5)
+    ///
+    /// let b = a.split_off(3);
+    ///
+    /// assert_eq!(a.len(), 2);
+    /// assert_eq!(b.len(), 3);
+    ///
+    /// assert!(a.contains(&1));
+    /// assert!(a.contains(&2));
+    /// assert!(b.contains(&3));
+    /// assert!(b.contains(&4));
+    /// assert!(b.contains(&5));
+    /// ```
+    #[unstable(feature = "btree_append_split_off",
+               reason = "recently added as part of collections reform 2")]
+    pub fn split_off<Q: ?Sized>(&mut self, at: &Q) -> Self
+        where T: Borrow<Q>, Q: Ord {
+        BTreeSet { map: self.map.split_off(at) }
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
