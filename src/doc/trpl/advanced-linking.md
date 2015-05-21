@@ -1,4 +1,11 @@
-% Link args
+% Advanced Linking
+
+The common cases of linking with Rust have been covered earlier in this book,
+but supporting the range of linking possibilities made available by other
+languages is important for Rust to achieve seamless interaction with native
+libraries.
+
+# Link args
 
 There is one other way to tell rustc how to customize linking, and that is via
 the `link_args` attribute. This attribute is applied to `extern` blocks and

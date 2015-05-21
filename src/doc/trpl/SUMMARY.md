@@ -63,7 +63,7 @@
     * [No stdlib](no-stdlib.md)
     * [Intrinsics](intrinsics.md)
     * [Lang items](lang-items.md)
-    * [Link args](link-args.md)
+    * [Advanced linking](advanced-linking.md)
     * [Benchmark Tests](benchmark-tests.md)
     * [Box Syntax and Patterns](box-syntax-and-patterns.md)
     * [Slice Patterns](slice-patterns.md)
