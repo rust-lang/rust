@@ -150,8 +150,8 @@ of those times. As the error explains, while we made our binding mutable, we
 still cannot call `push`. This is because we already have a reference to an
 element of the vector, `y`. Mutating something while another reference exists
 is dangerous, because we may invalidate the reference. In this specific case,
-when we create the vector, we may have only allocated space for three elements.
-Adding a fourth would mean allocating a new chunk of memory for all those elements,
+when we create the vector, we may have only allocated space for two elements.
+Adding a third would mean allocating a new chunk of memory for all those elements,
 copying the old values over, and updating the internal pointer to that memory.
 That all works just fine. The problem is that `y` wouldn’t get updated, and so
 we’d have a ‘dangling pointer’. That’s bad. Any use of `y` would be an error in
