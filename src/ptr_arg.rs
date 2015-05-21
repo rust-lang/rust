@@ -18,7 +18,6 @@ declare_lint! {
     "Warn on declaration of a &Vec- or &String-typed method argument"
 }
 
-
 #[derive(Copy,Clone)]
 pub struct PtrArg;
 
@@ -58,12 +57,13 @@ fn check_fn(cx: &Context, decl: &FnDecl) {
 }
 
 fn check_ptr_subtype(cx: &Context, span: Span, ty: &Ty) {
-	if match_ty_unwrap(ty, &["Vec"]).is_some() { 
-		cx.span_lint(PTR_ARG, span, 
-			"Writing '&Vec<_>' instead of '&[_]' involves one more reference and cannot be used with non-vec-based slices. Consider changing the type to &[...]");
-	} else { if match_ty_unwrap(ty, &["String"]).is_some() {
-			cx.span_lint(PTR_ARG, span,
-				"Writing '&String' instead of '&str' involves a new Object where a slices will do. Consider changing the type to &str");
-		}
-	}
+	match_ty_unwrap(ty, &["Vec"]).map(|_| { 
+		cx.span_lint(PTR_ARG, span, "Writing '&Vec<_>' instead of '&[_]' \
+			involves one more reference and cannot be used with non-vec-based \
+			slices. Consider changing the type to &[...]")
+	}).unwrap_or_else(|| match_ty_unwrap(ty, &["String"]).map(|_| {
+		cx.span_lint(PTR_ARG, span,
+			"Writing '&String' instead of '&str' involves a new Object \
+			where a slices will do. Consider changing the type to &str")
+	}).unwrap_or(()));
 }

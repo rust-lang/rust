@@ -49,13 +49,11 @@ impl LintPass for BitMask {
     fn check_expr(&mut self, cx: &Context, e: &Expr) {
         if let ExprBinary(ref cmp, ref left, ref right) = e.node {
 			if is_comparison_binop(cmp.node) {
-				let cmp_opt = fetch_int_literal(cx, right);
-				if cmp_opt.is_some() {
-					check_compare(cx, left, cmp.node, cmp_opt.unwrap(), &e.span);
-				} else {
-					fetch_int_literal(cx, left).map(|cmp_val| 
-						check_compare(cx, right, invert_cmp(cmp.node), cmp_val, &e.span));
-				}
+				fetch_int_literal(cx, right).map(|cmp_opt| 
+					check_compare(cx, left, cmp.node, cmp_opt, &e.span))
+					.unwrap_or_else(|| fetch_int_literal(cx, left).map(|cmp_val| 
+						check_compare(cx, right, invert_cmp(cmp.node), cmp_val,
+						 &e.span)).unwrap_or(()))
 			}
 		}
     }
