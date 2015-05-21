@@ -235,9 +235,10 @@ impl LintPass for CmpOwned {
 
 fn check_to_owned(cx: &Context, expr: &Expr, other_span: Span) {
 	match &expr.node {
-		&ExprMethodCall(Spanned{node: ref ident, ..}, _, _) => {
+		&ExprMethodCall(Spanned{node: ref ident, ..}, _, ref args) => {
 			let name = ident.as_str();
-			if name == "to_string" || name == "to_owned" {
+			if name == "to_string" || 
+			   name == "to_owned" && is_str_arg(cx, args) {
 				cx.span_lint(CMP_OWNED, expr.span, &format!(
 					"this creates an owned instance just for comparison. \
 					Consider using {}.as_slice() to compare without allocation",
@@ -259,4 +260,9 @@ fn check_to_owned(cx: &Context, expr: &Expr, other_span: Span) {
 		},
 		_ => ()
 	}
+}
+
+fn is_str_arg(cx: &Context, args: &[P<Expr>]) -> bool {
+	args.len() == 1 && if let ty_str = 
+		walk_ty(expr_ty(cx.tcx, &*args[0])).sty { true } else { false }
 }
