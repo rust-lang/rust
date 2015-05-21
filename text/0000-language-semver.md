@@ -17,10 +17,10 @@ This RFC has two main goals:
 With the release of 1.0, we need to establish clear policy on what
 precisely constitutes a "minor" vs "major" change to the Rust language
 itself (as opposed to libraries, which are covered by [RFC 1105]).
-**This RFC proposes limiting breaking changes to changes with
-soundness implications**: this includes both bug fixes in the compiler
-itself, as well as changes to the type system or RFCs that are
-necessary to close flaws uncovered later.
+**This RFC proposes that breaking changes are only permitted within a
+minor release if they are fix to restore soundness**: this includes
+both bug fixes in the compiler itself, as well as changes to the type
+system or RFCs that are necessary to close flaws uncovered later.
 
 However, simply landing all breaking changes immediately could be very
 disruptive to the ecosystem. Therefore, **the RFC also proposes
@@ -60,8 +60,8 @@ safe.
 
 ### Soundness changes
 
-When compiler bugs or soundness problems are encountered in the
-language itself (as opposed to in a library), clearly they ought to be
+When compiler or type-system bugs are encountered in the language
+itself (as opposed to in a library), clearly they ought to be
 fixed. However, it is important to fix them in such a way as to
 minimize the impact on the ecosystem.
 
@@ -75,14 +75,18 @@ problem, which helps those people who are affected to migrate their
 code. A description of the problem should also appear in the relevant
 subteam report.
 
-In cases where the impact seems larger, the following steps can be
-taken to ease the transition:
+In cases where the impact seems larger, any effort to ease the
+transition is sure to be welcome. The following are suggestions for
+possible steps we could take (not all of which will be applicable to
+all scenarios):
 
-1. Identify important crates (such as those with many dependencies)
+1. Identify important crates (such as those with many dependants)
    and work with the crate author to correct the code as quickly as
    possible, ideally before the fix even lands.
 2. Work hard to ensure that the error message identifies the problem
    clearly and suggests the appropriate solution.
+   - If we develop a rustfix tool, in some cases we may be able to
+     extend that tool to perform the fix automatically.
 3. Provide an annotation that allows for a scoped "opt out" of the
    newer rules, as described below. While the change is still
    breaking, this at least makes it easy for crates to update and get
@@ -94,11 +98,18 @@ taken to ease the transition:
    circulate. This gives people more time to update their crates.
    However, this option may frequently not be available, because the
    source of a compilation error is often hard to pin down with
-    precision.
+   precision.
    
 Some of the factors that should be taken into consideration when
 deciding whether and how to minimize the impact of a fix:
 
+- How important is the change?
+  - Soundness holes that can be easily exploited or which impact
+    running code are obviously much more concerning than minor corner
+    cases. There is somewhat in tension with the other factors: if
+    there is, for example, a widely deployed vulnerability, fixing
+    that vulnerability is important, but it will also cause a larger
+    disruption.
 - How many crates on `crates.io` are affected?
   - This is a general proxy for the overall impact (since of course
     there will always be private crates that are not part of
@@ -114,14 +125,43 @@ deciding whether and how to minimize the impact of a fix:
   - The more cryptic the error, the more frustrating it is when
     compilation fails.
     
+#### What is a "compiler bug" or "soundness change"?
+
+In the absence of a formal spec, it is hard to define precisely what
+constitutes a "compiler bug" or "soundness change" (see also the
+section below on underspecified parts of the language). The obvious
+cases are soundness violations in a rather strict sense:
+
+- Cases where the user is able to produce Undefined Behavior (UB)
+  purely from safe code.
+- Cases where the user is able to produce UB using standard library
+  APIs or other unsafe code that "should work".
+    
+However, there are other kinds of type-system inconsistencies that
+might be worth fixing, even if they cannot lead directly to UB.  Bugs
+in the coherence system that permit uncontrolled overlap between impls
+are one example. Another example might be inference failures that
+cause code to compile which should not (because ambiguities
+exist). Finally, there is a list below of areas of the language which
+are generally considered underspecified.
+
+We expect that there will be cases that fall on a grey line betwen bug
+and expected behavior, and discussion will be needed to determine
+where it falls. The recent conflict between `Rc` and scoped threads is
+an example of such a discusison: it was clear that both APIs could not
+be legal, but not clear which one was at fault. The results of these
+discussions will feed into the Rust spec as it is developed.
+    
 #### Opting out
 
 In some cases, it may be useful to permit users to opt out of new type
 rules. The intention is that this "opt out" is used as a temporary
-crutch to make it easy to get the code up and running. Depending on
-the severity of the soundness fix, the "opt out" may be permanently
-available, or it could be removed in a later release. In either case,
-use of the "opt out" API would trigger the deprecation lint.
+crutch to make it easy to get the code up and running. Typically this
+opt out will thus be removed in a later release. But in some cases,
+particularly those cases where the severity of the problem is
+relatively small, it could be an option to leave the "opt out"
+mechanism in place permanently. In either case, use of the "opt out"
+API would trigger the deprecation lint.
 
 #### Changes that alter dynamic semantics versus typing rules
 
@@ -177,8 +217,6 @@ Known areas where change is expected include the following:
 - The treatment of hygiene in macros is uneven (see [#22462], [#24278]). In some cases,
   changes here may be backwards compatible, or may be more appropriate only with explicit opt-in
   (or perhaps an alternate macro system altogether).
-- The layout of data structures is expected to change over time unless they are annotated
-  with a `#[repr(C)]` attribute.
 - Lints will evolve over time (both the lints that are enabled and the
   precise cases that lints catch). We expect to introduce a
   [means to limit the effect of these changes on dependencies][#1029].
@@ -193,11 +231,18 @@ Known areas where change is expected include the following:
   literals. In some cases, type inferences changes may be better
   handled via explicit opt-in.
 
-(Although it is not directly covered by this RFC, it's worth noting in
+There are other kinds of changes that can be made in a minor version
+that may break unsafe code but which are not considered breaking
+changes, because the unsafe code is relying on things known to be
+intentionally unspecified. One obvious example is the layout of data
+structures, which is considered undefined unless they have a
+`#[repr(C)]` attribute.
+
+Although it is not directly covered by this RFC, it's worth noting in
 passing that some of the CLI flags to the compiler may change in the
 future as well. The `-Z` flags are of course explicitly unstable, but
 some of the `-C`, rustdoc, and linker-specific flags are expected to
-evolve over time.)
+evolve over time.
 
 ### Opt-in changes
 
