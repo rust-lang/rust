@@ -120,11 +120,10 @@ pub trait Unsize<T> {
 /// ```
 ///
 /// The `PointList` `struct` cannot implement `Copy`, because `Vec<T>` is not `Copy`. If we
-/// attempt to derive a `Copy` implementation, we'll get an error.
+/// attempt to derive a `Copy` implementation, we'll get an error:
 ///
 /// ```text
-/// error: the trait `Copy` may not be implemented for this type; field `points` does not implement
-/// `Copy`
+/// the trait `Copy` may not be implemented for this type; field `points` does not implement `Copy`
 /// ```
 ///
 /// ## How can I implement `Copy`?
