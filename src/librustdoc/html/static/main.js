@@ -36,6 +36,9 @@
                      "constant",
                      "associatedconstant"];
 
+    // used for special search precedence
+    var TY_PRIMITIVE = itemTypes.indexOf("primitive");
+
     $('.js-only').removeClass('js-only');
 
     function getQueryStringParams() {
@@ -322,6 +325,10 @@
                 b = bbb.index;
                 if (a !== b) { return a - b; }
 
+                // special precedence for primitive pages
+                if ((aaa.item.ty === TY_PRIMITIVE) && (bbb.item.ty !== TY_PRIMITIVE)) {
+                    return -1;
+                }
 
                 // sort by description (no description goes later)
                 a = (aaa.item.desc === '');
