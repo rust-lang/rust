@@ -2997,7 +2997,7 @@ impl<'a> State<'a> {
 
         match constness {
             ast::Constness::NotConst => {}
-            ast::Constness::Const => try!(self.word_nbsp("unsafe"))
+            ast::Constness::Const => try!(self.word_nbsp("const"))
         }
 
         if abi != abi::Rust {
