@@ -1,5 +1,6 @@
 # x86_64-unknown-linux-gnu configuration
 CC_x86_64-unknown-linux-gnu=$(CC)
+LINK_x86_64-unknown-linux-gnu=cc
 CXX_x86_64-unknown-linux-gnu=$(CXX)
 CPP_x86_64-unknown-linux-gnu=$(CPP)
 AR_x86_64-unknown-linux-gnu=$(AR)
