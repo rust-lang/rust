@@ -123,7 +123,7 @@ dist-install-dir-$(1): PREPARE_BIN_CMD=$(DEFAULT_PREPARE_BIN_CMD)
 dist-install-dir-$(1): PREPARE_LIB_CMD=$(DEFAULT_PREPARE_LIB_CMD)
 dist-install-dir-$(1): PREPARE_MAN_CMD=$(DEFAULT_PREPARE_MAN_CMD)
 dist-install-dir-$(1): PREPARE_CLEAN=true
-dist-install-dir-$(1): prepare-base-dir-$(1) docs compiler-docs
+dist-install-dir-$(1): prepare-base-dir-$(1) docs
 	$$(Q)mkdir -p $$(PREPARE_DEST_DIR)/share/doc/rust
 	$$(Q)$$(PREPARE_MAN_CMD) $$(S)COPYRIGHT $$(PREPARE_DEST_DIR)/share/doc/rust
 	$$(Q)$$(PREPARE_MAN_CMD) $$(S)LICENSE-APACHE $$(PREPARE_DEST_DIR)/share/doc/rust
@@ -163,7 +163,7 @@ endif
 		--legacy-manifest-dirs=rustlib,cargo
 	$$(Q)rm -R tmp/dist/$$(PKG_NAME)-$(1)-image
 
-dist-doc-install-dir-$(1): docs compiler-docs
+dist-doc-install-dir-$(1): docs
 	$$(Q)mkdir -p tmp/dist/$$(DOC_PKG_NAME)-$(1)-image/share/doc/rust
 	$$(Q)cp -r doc tmp/dist/$$(DOC_PKG_NAME)-$(1)-image/share/doc/rust/html
 
@@ -251,7 +251,7 @@ distcheck-tar-bins: dist-tar-bins
 
 # Just copy the docs to a folder under dist with the appropriate name
 # for uploading to S3
-dist-docs: docs compiler-docs
+dist-docs: docs
 	$(Q) rm -Rf dist/doc
 	$(Q) mkdir -p dist/doc/
 	$(Q) cp -r doc dist/doc/$(CFG_PACKAGE_VERS)
