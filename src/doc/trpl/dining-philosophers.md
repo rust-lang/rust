@@ -2,26 +2,28 @@
 
 For our second project, let’s look at a classic concurrency problem. It’s
 called ‘the dining philosophers’. It was originally conceived by Dijkstra in
-1965, but we’ll use the version from [this paper][paper] by Tony Hoare in 1985.
+1965, but we’ll use a lightly adapted version from [this paper][paper] by Tony
+Hoare in 1985.
 
 [paper]: http://www.usingcsp.com/cspbook.pdf
 
 > In ancient times, a wealthy philanthropist endowed a College to accommodate
-> five eminent philosophers. Each philosopher had a room in which she could
-> engage in her professional activity of thinking; there was also a common
+> five eminent philosophers. Each philosopher had a room in which they could
+> engage in their professional activity of thinking; there was also a common
 > dining room, furnished with a circular table, surrounded by five chairs, each
 > labelled by the name of the philosopher who was to sit in it. They sat
 > anticlockwise around the table. To the left of each philosopher there was
 > laid a golden fork, and in the centre stood a large bowl of spaghetti, which
-> was constantly replenished. A philosopher was expected to spend most of her
-> time thinking; but when she felt hungry, she went to the dining room, sat down
-> in her own chair, picked up her own fork on her left, and plunged it into the
-> spaghetti. But such is the tangled nature of spaghetti that a second fork is
-> required to carry it to the mouth. The philosopher therefore had also to pick
-> up the fork on her right. When she was finished she would put down both her
-> forks, get up from her chair, and continue thinking. Of course, a fork can be
-> used by only one philosopher at a time. If the other philosopher wants it, she
-> just has to wait until the fork is available again.
+> was constantly replenished. A philosopher was expected to spend most of
+> their time thinking; but when they felt hungry, they went to the dining
+> room, sat down in their own chair, picked up their own fork on their left,
+> and plunged it into the spaghetti. But such is the tangled nature of
+> spaghetti that a second fork is required to carry it to the mouth. The
+> philosopher therefore had also to pick up the fork on their right. When
+> they were finished they would put down both their forks, get up from their
+> chair, and continue thinking. Of course, a fork can be used by only one
+> philosopher at a time. If the other philosopher wants it, they just have
+> to wait until the fork is available again.
 
 This classic problem shows off a few different elements of concurrency. The
 reason is that it's actually slightly tricky to implement: a simple
@@ -60,10 +62,10 @@ impl Philosopher {
 }
 
 fn main() {
-    let p1 = Philosopher::new("Baruch Spinoza");
+    let p1 = Philosopher::new("Judith Butler");
     let p2 = Philosopher::new("Gilles Deleuze");
     let p3 = Philosopher::new("Karl Marx");
-    let p4 = Philosopher::new("Friedrich Nietzsche");
+    let p4 = Philosopher::new("Emma Goldman");
     let p5 = Philosopher::new("Michel Foucault");
 }
 ```
@@ -159,10 +161,10 @@ look at `main()` again:
 # }
 # 
 fn main() {
-    let p1 = Philosopher::new("Baruch Spinoza");
+    let p1 = Philosopher::new("Judith Butler");
     let p2 = Philosopher::new("Gilles Deleuze");
     let p3 = Philosopher::new("Karl Marx");
-    let p4 = Philosopher::new("Friedrich Nietzsche");
+    let p4 = Philosopher::new("Emma Goldman");
     let p5 = Philosopher::new("Michel Foucault");
 }
 ```
@@ -176,10 +178,10 @@ that `new()` function, it would look like this:
 #     name: String,
 # }
 fn main() {
-    let p1 = Philosopher { name: "Baruch Spinoza".to_string() };
+    let p1 = Philosopher { name: "Judith Butler".to_string() };
     let p2 = Philosopher { name: "Gilles Deleuze".to_string() };
     let p3 = Philosopher { name: "Karl Marx".to_string() };
-    let p4 = Philosopher { name: "Friedrich Nietzche".to_string() };
+    let p4 = Philosopher { name: "Emma Goldman".to_string() };
     let p5 = Philosopher { name: "Michel Foucault".to_string() };
 }
 ```
@@ -211,10 +213,10 @@ impl Philosopher {
 
 fn main() {
     let philosophers = vec![
-        Philosopher::new("Baruch Spinoza"),
+        Philosopher::new("Judith Butler"),
         Philosopher::new("Gilles Deleuze"),
         Philosopher::new("Karl Marx"),
-        Philosopher::new("Friedrich Nietzsche"),
+        Philosopher::new("Emma Goldman"),
         Philosopher::new("Michel Foucault"),
     ];
 
@@ -247,10 +249,10 @@ mention they’re done eating. Running this program should give you the followin
 output:
 
 ```text
-Baruch Spinoza is done eating.
+Judith Butler is done eating.
 Gilles Deleuze is done eating.
 Karl Marx is done eating.
-Friedrich Nietzsche is done eating.
+Emma Goldman is done eating.
 Michel Foucault is done eating.
 ```
 
@@ -285,10 +287,10 @@ impl Philosopher {
 
 fn main() {
     let philosophers = vec![
-        Philosopher::new("Baruch Spinoza"),
+        Philosopher::new("Judith Butler"),
         Philosopher::new("Gilles Deleuze"),
         Philosopher::new("Karl Marx"),
-        Philosopher::new("Friedrich Nietzsche"),
+        Philosopher::new("Emma Goldman"),
         Philosopher::new("Michel Foucault"),
     ];
 
@@ -323,14 +325,14 @@ simulate the time it takes a philosopher to eat.
 If you run this program, you should see each philosopher eat in turn:
 
 ```text
-Baruch Spinoza is eating.
-Baruch Spinoza is done eating.
+Judith Butler is eating.
+Judith Butler is done eating.
 Gilles Deleuze is eating.
 Gilles Deleuze is done eating.
 Karl Marx is eating.
 Karl Marx is done eating.
-Friedrich Nietzsche is eating.
-Friedrich Nietzsche is done eating.
+Emma Goldman is eating.
+Emma Goldman is done eating.
 Michel Foucault is eating.
 Michel Foucault is done eating.
 ```
@@ -366,10 +368,10 @@ impl Philosopher {
 
 fn main() {
     let philosophers = vec![
-        Philosopher::new("Baruch Spinoza"),
+        Philosopher::new("Judith Butler"),
         Philosopher::new("Gilles Deleuze"),
         Philosopher::new("Karl Marx"),
-        Philosopher::new("Friedrich Nietzsche"),
+        Philosopher::new("Emma Goldman"),
         Philosopher::new("Michel Foucault"),
     ];
 
@@ -458,11 +460,11 @@ We have multi-threading!
 ```text
 Gilles Deleuze is eating.
 Gilles Deleuze is done eating.
-Friedrich Nietzsche is eating.
-Friedrich Nietzsche is done eating.
+Emma Goldman is eating.
+Emma Goldman is done eating.
 Michel Foucault is eating.
-Baruch Spinoza is eating.
-Baruch Spinoza is done eating.
+Judith Butler is eating.
+Judith Butler is done eating.
 Karl Marx is eating.
 Karl Marx is done eating.
 Michel Foucault is done eating.
@@ -532,10 +534,10 @@ fn main() {
     ]});
 
     let philosophers = vec![
-        Philosopher::new("Baruch Spinoza", 0, 1),
+        Philosopher::new("Judith Butler", 0, 1),
         Philosopher::new("Gilles Deleuze", 1, 2),
         Philosopher::new("Karl Marx", 2, 3),
-        Philosopher::new("Friedrich Nietzsche", 3, 4),
+        Philosopher::new("Emma Goldman", 3, 4),
         Philosopher::new("Michel Foucault", 0, 4),
     ];
 
@@ -643,10 +645,10 @@ count will go up, and when each thread ends, it will go back down.
 
 ```rust,ignore
 let philosophers = vec![
-    Philosopher::new("Baruch Spinoza", 0, 1),
+    Philosopher::new("Judith Butler", 0, 1),
     Philosopher::new("Gilles Deleuze", 1, 2),
     Philosopher::new("Karl Marx", 2, 3),
-    Philosopher::new("Friedrich Nietzsche", 3, 4),
+    Philosopher::new("Emma Goldman", 3, 4),
     Philosopher::new("Michel Foucault", 0, 4),
 ];
 ```
@@ -679,12 +681,12 @@ and so you’ll get some output like this:
 
 ```text
 Gilles Deleuze is eating.
-Friedrich Nietzsche is eating.
-Friedrich Nietzsche is done eating.
+Emma Goldman is eating.
+Emma Goldman is done eating.
 Gilles Deleuze is done eating.
-Baruch Spinoza is eating.
+Judith Butler is eating.
 Karl Marx is eating.
-Baruch Spinoza is done eating.
+Judith Butler is done eating.
 Michel Foucault is eating.
 Karl Marx is done eating.
 Michel Foucault is done eating.
