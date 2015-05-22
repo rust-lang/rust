@@ -17,66 +17,64 @@ impl LintPass for IdentityOp {
     fn get_lints(&self) -> LintArray {
         lint_array!(IDENTITY_OP)
     }
-    
+
     fn check_expr(&mut self, cx: &Context, e: &Expr) {
-		if let ExprBinary(ref cmp, ref left, ref right) = e.node {
-			match cmp.node {
-				BiAdd | BiBitOr | BiBitXor => {
-					check(cx, left, 0, e.span, right.span);
-					check(cx, right, 0, e.span, left.span);
-				},
-				BiShl | BiShr | BiSub => 
-					check(cx, right, 0, e.span, left.span),
-				BiMul => {
-					check(cx, left, 1, e.span, right.span);
-					check(cx, right, 1, e.span, left.span);
-				},
-				BiDiv =>
-					check(cx, right, 1, e.span, left.span),
-				BiBitAnd => {
-					check(cx, left, -1, e.span, right.span);
-					check(cx, right, -1, e.span, left.span);
-				},
-				_ => ()
-			}
-		}
+        if let ExprBinary(ref cmp, ref left, ref right) = e.node {
+            match cmp.node {
+                BiAdd | BiBitOr | BiBitXor => {
+                    check(cx, left, 0, e.span, right.span);
+                    check(cx, right, 0, e.span, left.span);
+                },
+                BiShl | BiShr | BiSub => 
+                    check(cx, right, 0, e.span, left.span),
+                BiMul => {
+                    check(cx, left, 1, e.span, right.span);
+                    check(cx, right, 1, e.span, left.span);
+                },
+                BiDiv =>
+                    check(cx, right, 1, e.span, left.span),
+                BiBitAnd => {
+                    check(cx, left, -1, e.span, right.span);
+                    check(cx, right, -1, e.span, left.span);
+                },
+                _ => ()
+            }
+        }
     }
 }
 
 
 fn check(cx: &Context, e: &Expr, m: i8, span: Span, arg: Span) {
-	if have_lit(cx, e, m) {
-		let map = cx.sess().codemap();
-		cx.span_lint(IDENTITY_OP, span, &format!(
-			"The operation is ineffective. Consider reducing it to '{}'", 
-			&*map.span_to_snippet(arg).unwrap_or("..".to_string())));
-	}
+    if have_lit(cx, e, m) {
+        let map = cx.sess().codemap();
+        cx.span_lint(IDENTITY_OP, span, &format!(
+            "The operation is ineffective. Consider reducing it to '{}'", 
+            &*map.span_to_snippet(arg).unwrap_or("..".to_string())));
+    }
 }
 
 fn have_lit(cx: &Context, e : &Expr, m: i8) -> bool {
-	match &e.node {
-		&ExprUnary(UnNeg, ref litexp) => have_lit(cx, litexp, -m), 
-		&ExprLit(ref lit) => {
-			match (&lit.node, m) {
-				(&LitInt(0, _), 0) => true,
-				(&LitInt(1, SignedIntLit(_, Plus)), 1) => true,
-				(&LitInt(1, UnsuffixedIntLit(Plus)), 1) => true,
-				(&LitInt(1, SignedIntLit(_, Minus)), -1) => true,
-				(&LitInt(1, UnsuffixedIntLit(Minus)), -1) => true,
-				_ => false
-			}
-		},
-		&ExprParen(ref p) => have_lit(cx, p, m),
-		&ExprPath(_, _) => {
-                match cx.tcx.def_map.borrow().get(&e.id) {
-                    Some(&PathResolution { base_def: DefConst(def_id), ..}) => 
-						match lookup_const_by_id(cx.tcx, def_id, Option::None) {
-							Some(l) => have_lit(cx, l, m),
-							None => false
-						},
-                    _ => false
-                }
+    match &e.node {
+        &ExprUnary(UnNeg, ref litexp) => have_lit(cx, litexp, -m), 
+        &ExprLit(ref lit) => {
+            match (&lit.node, m) {
+                (&LitInt(0, _), 0) => true,
+                (&LitInt(1, SignedIntLit(_, Plus)), 1) => true,
+                (&LitInt(1, UnsuffixedIntLit(Plus)), 1) => true,
+                (&LitInt(1, SignedIntLit(_, Minus)), -1) => true,
+                (&LitInt(1, UnsuffixedIntLit(Minus)), -1) => true,
+                _ => false
             }
-		_ => false
-	}
+        },
+        &ExprParen(ref p) => have_lit(cx, p, m),
+        &ExprPath(_, _) => { 
+            match cx.tcx.def_map.borrow().get(&e.id) {
+                Some(&PathResolution { base_def: DefConst(id), ..}) => 
+                        lookup_const_by_id(cx.tcx, id, Option::None)
+                        .map_or(false, |l| have_lit(cx, l, m)),
+                _ => false
+            }
+        },
+        _ => false
+    }
 }
