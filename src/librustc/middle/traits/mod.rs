@@ -114,14 +114,17 @@ pub enum ObligationCauseCode<'tcx> {
     StructInitializerSized,    // S { ... } must be Sized
     VariableType(ast::NodeId), // Type of each variable must be Sized
     ReturnType,                // Return type must be Sized
+    ArgumentType,              // Argument type must be Sized
+    VecElemSized,              // Array element must be Sized
+    TupleElemSized,            // Tuple element must be Sized
+    FieldSized,                // Types of fields (other than the last)
+                               //     in a struct must be sized.
     RepeatVec,                 // [T,..n] --> T must be Copy
 
     // Captures of variable the given id by a closure (span is the
     // span of the closure)
     ClosureCapture(ast::NodeId, Span, ty::BuiltinBound),
 
-    // Types of fields (other than the last) in a struct must be sized.
-    FieldSized,
 
     // static items must have `Sync` type
     SharedStatic,
