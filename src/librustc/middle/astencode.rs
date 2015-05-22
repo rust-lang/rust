@@ -233,8 +233,6 @@ impl<'a, 'b, 'tcx> DecodeContext<'a, 'b, 'tcx> {
     /// codemap as a side-effect of creating the crate_metadata's
     /// `codemap_import_info`.
     pub fn tr_span(&self, span: Span) -> Span {
-        let imported_filemaps = &self.cdata.codemap_import_info[..];
-
         let span = if span.lo > span.hi {
             // Currently macro expansion sometimes produces invalid Span values
             // where lo > hi. In order not to crash the compiler when trying to
@@ -248,16 +246,18 @@ impl<'a, 'b, 'tcx> DecodeContext<'a, 'b, 'tcx> {
             span
         };
 
-        let filemap_index = {
+        let imported_filemaps = self.cdata.imported_filemaps(self.tcx.sess.codemap());
+        let filemap = {
             // Optimize for the case that most spans within a translated item
             // originate from the same filemap.
             let last_filemap_index = self.last_filemap_index.get();
+            let last_filemap = &imported_filemaps[last_filemap_index];
 
-            if span.lo >= imported_filemaps[last_filemap_index].original_start_pos &&
-               span.lo <= imported_filemaps[last_filemap_index].original_end_pos &&
-               span.hi >= imported_filemaps[last_filemap_index].original_start_pos &&
-               span.hi <= imported_filemaps[last_filemap_index].original_end_pos {
-                last_filemap_index
+            if span.lo >= last_filemap.original_start_pos &&
+               span.lo <= last_filemap.original_end_pos &&
+               span.hi >= last_filemap.original_start_pos &&
+               span.hi <= last_filemap.original_end_pos {
+                last_filemap
             } else {
                 let mut a = 0;
                 let mut b = imported_filemaps.len();
@@ -272,14 +272,14 @@ impl<'a, 'b, 'tcx> DecodeContext<'a, 'b, 'tcx> {
                 }
 
                 self.last_filemap_index.set(a);
-                a
+                &imported_filemaps[a]
             }
         };
 
-        let lo = (span.lo - imported_filemaps[filemap_index].original_start_pos) +
-                  imported_filemaps[filemap_index].translated_filemap.start_pos;
-        let hi = (span.hi - imported_filemaps[filemap_index].original_start_pos) +
-                  imported_filemaps[filemap_index].translated_filemap.start_pos;
+        let lo = (span.lo - filemap.original_start_pos) +
+                  filemap.translated_filemap.start_pos;
+        let hi = (span.hi - filemap.original_start_pos) +
+                  filemap.translated_filemap.start_pos;
 
         codemap::mk_sp(lo, hi)
     }
