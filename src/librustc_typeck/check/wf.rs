@@ -94,13 +94,13 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                 }
             }
             ast::ItemFn(..) => {
-                self.check_item_type(item);
+                self.check_item_type(item.span, item.id);
             }
             ast::ItemStatic(..) => {
-                self.check_item_type(item);
+                self.check_item_type(item.span, item.id);
             }
             ast::ItemConst(..) => {
-                self.check_item_type(item);
+                self.check_item_type(item.span, item.id);
             }
             ast::ItemStruct(ref struct_def, ref ast_generics) => {
                 self.check_type_defn(item, |fcx| {
@@ -133,32 +133,32 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
         }
     }
 
-    fn with_fcx<F>(&mut self, item: &ast::Item, mut f: F) where
+    fn with_fcx<F>(&mut self, span: Span, id: ast::NodeId, mut f: F) where
         F: for<'fcx> FnMut(&mut CheckTypeWellFormedVisitor<'ccx, 'tcx>, &FnCtxt<'fcx, 'tcx>),
     {
         let ccx = self.ccx;
-        let item_def_id = local_def(item.id);
+        let item_def_id = local_def(id);
         let type_scheme = ty::lookup_item_type(ccx.tcx, item_def_id);
         let type_predicates = ty::lookup_predicates(ccx.tcx, item_def_id);
-        reject_non_type_param_bounds(ccx.tcx, item.span, &type_predicates);
+        reject_non_type_param_bounds(ccx.tcx, span, &type_predicates);
         let param_env =
             ty::construct_parameter_environment(ccx.tcx,
-                                                item.span,
+                                                span,
                                                 &type_scheme.generics,
                                                 &type_predicates,
-                                                item.id);
+                                                id);
         let inh = Inherited::new(ccx.tcx, param_env);
-        let fcx = blank_fn_ctxt(ccx, &inh, ty::FnConverging(type_scheme.ty), item.id);
+        let fcx = blank_fn_ctxt(ccx, &inh, ty::FnConverging(type_scheme.ty), id);
         f(self, &fcx);
         fcx.select_all_obligations_or_error();
-        regionck::regionck_item(&fcx, item);
+        regionck::regionck_item(&fcx, id);
     }
 
     /// In a type definition, we check that to ensure that the types of the fields are well-formed.
     fn check_type_defn<F>(&mut self, item: &ast::Item, mut lookup_fields: F) where
         F: for<'fcx> FnMut(&FnCtxt<'fcx, 'tcx>) -> Vec<AdtVariant<'tcx>>,
     {
-        self.with_fcx(item, |this, fcx| {
+        self.with_fcx(item.span, item.id, |this, fcx| {
             let variants = lookup_fields(fcx);
             let mut bounds_checker = BoundsChecker::new(fcx,
                                                         item.span,
@@ -193,18 +193,17 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
         });
     }
 
-    fn check_item_type(&mut self,
-                       item: &ast::Item)
+    fn check_item_type(&mut self, span: Span, id: ast::NodeId)
     {
-        self.with_fcx(item, |this, fcx| {
+        self.with_fcx(span, id, |this, fcx| {
             let mut bounds_checker = BoundsChecker::new(fcx,
-                                                        item.span,
-                                                        item.id,
+                                                        span,
+                                                        id,
                                                         Some(&mut this.cache));
             debug!("check_item_type at bounds_checker.scope: {:?}", bounds_checker.scope);
 
-            let type_scheme = ty::lookup_item_type(fcx.tcx(), local_def(item.id));
-            let item_ty = fcx.instantiate_type_scheme(item.span,
+            let type_scheme = ty::lookup_item_type(fcx.tcx(), local_def(id));
+            let item_ty = fcx.instantiate_type_scheme(span,
                                                       &fcx.inh.param_env.free_substs,
                                                       &type_scheme.ty);
 
@@ -215,7 +214,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
     fn check_impl(&mut self,
                   item: &ast::Item)
     {
-        self.with_fcx(item, |this, fcx| {
+        self.with_fcx(item.span, item.id, |this, fcx| {
             let mut bounds_checker = BoundsChecker::new(fcx,
                                                         item.span,
                                                         item.id,
@@ -426,9 +425,14 @@ fn reject_shadowing_type_parameters<'tcx>(tcx: &ty::ctxt<'tcx>,
 }
 
 impl<'ccx, 'tcx, 'v> Visitor<'v> for CheckTypeWellFormedVisitor<'ccx, 'tcx> {
-    fn visit_item(&mut self, i: &ast::Item) {
+    fn visit_item(&mut self, i: &'v ast::Item) {
         self.check_item_well_formed(i);
         visit::walk_item(self, i);
+    }
+
+    fn visit_foreign_item(&mut self, item: &'v ast::ForeignItem) {
+        self.check_item_type(item.span, item.id);
+        visit::walk_foreign_item(self, item);
     }
 
     fn visit_fn(&mut self,

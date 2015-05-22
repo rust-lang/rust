@@ -122,11 +122,11 @@ pub fn regionck_expr(fcx: &FnCtxt, e: &ast::Expr) {
     rcx.resolve_regions_and_report_errors();
 }
 
-pub fn regionck_item(fcx: &FnCtxt, item: &ast::Item) {
-    let mut rcx = Rcx::new(fcx, RepeatingScope(item.id), item.id, Subject(item.id));
+pub fn regionck_item(fcx: &FnCtxt, id: ast::NodeId) {
+    let mut rcx = Rcx::new(fcx, RepeatingScope(id), id, Subject(id));
     let tcx = fcx.tcx();
     rcx.free_region_map.relate_free_regions_from_predicates(tcx, &fcx.inh.param_env.caller_bounds);
-    rcx.visit_region_obligations(item.id);
+    rcx.visit_region_obligations(id);
     rcx.resolve_regions_and_report_errors();
 }
 
