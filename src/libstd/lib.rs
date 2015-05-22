@@ -26,7 +26,7 @@
 //!
 //! ## What is in the standard library
 //!
-//! The standard library is minimal, a set of battle-tested
+//! The standard library is a set of minimal, battle-tested
 //! core types and shared abstractions for the [broader Rust
 //! ecosystem](https://crates.io) to build on.
 //!
