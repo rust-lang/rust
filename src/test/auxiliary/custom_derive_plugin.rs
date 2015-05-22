@@ -37,7 +37,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
 fn expand(cx: &mut ExtCtxt,
           span: Span,
           mitem: &ast::MetaItem,
-          item: Annotatable,
+          item: &Annotatable,
           push: &mut FnMut(Annotatable)) {
     let trait_def = TraitDef {
         span: span,
@@ -71,5 +71,5 @@ fn expand(cx: &mut ExtCtxt,
         ],
     };
 
-    trait_def.expand(cx, mitem, &item, push)
+    trait_def.expand(cx, mitem, item, push)
 }

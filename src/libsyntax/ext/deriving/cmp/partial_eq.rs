@@ -20,7 +20,7 @@ use ptr::P;
 pub fn expand_deriving_partial_eq(cx: &mut ExtCtxt,
                                   span: Span,
                                   mitem: &MetaItem,
-                                  item: Annotatable,
+                                  item: &Annotatable,
                                   push: &mut FnMut(Annotatable))
 {
     // structures are equal if all fields are equal, and non equal, if
@@ -91,5 +91,5 @@ pub fn expand_deriving_partial_eq(cx: &mut ExtCtxt,
         ),
         associated_types: Vec::new(),
     };
-    trait_def.expand(cx, mitem, &item, push)
+    trait_def.expand(cx, mitem, item, push)
 }
