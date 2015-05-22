@@ -13,7 +13,6 @@
 #![allow(dead_code)]
 #![allow(non_camel_case_types)]
 
-pub use self::select::fd_set;
 pub use self::signal::{sigaction, siginfo, sigset_t};
 pub use self::signal::{SA_ONSTACK, SA_RESTART, SA_RESETHAND, SA_NOCLDSTOP};
 pub use self::signal::{SA_NODEFER, SA_NOCLDWAIT, SA_SIGINFO, SIGCHLD};
@@ -26,45 +25,21 @@ use libc;
           target_os = "dragonfly",
           target_os = "bitrig",
           target_os = "openbsd"))]
-mod consts {
-    use libc;
-    pub const FIONBIO: libc::c_ulong = 0x8004667e;
-    pub const FIOCLEX: libc::c_ulong = 0x20006601;
-    pub const FIONCLEX: libc::c_ulong = 0x20006602;
-}
+pub const FIOCLEX: libc::c_ulong = 0x20006601;
+
 #[cfg(any(all(target_os = "linux",
               any(target_arch = "x86",
                   target_arch = "x86_64",
                   target_arch = "arm",
                   target_arch = "aarch64")),
           target_os = "android"))]
-mod consts {
-    use libc;
-    pub const FIONBIO: libc::c_ulong = 0x5421;
-    pub const FIOCLEX: libc::c_ulong = 0x5451;
-    pub const FIONCLEX: libc::c_ulong = 0x5450;
-}
+pub const FIOCLEX: libc::c_ulong = 0x5451;
+
 #[cfg(all(target_os = "linux",
           any(target_arch = "mips",
               target_arch = "mipsel",
               target_arch = "powerpc")))]
-mod consts {
-    use libc;
-    pub const FIONBIO: libc::c_ulong = 0x667e;
-    pub const FIOCLEX: libc::c_ulong = 0x6601;
-    pub const FIONCLEX: libc::c_ulong = 0x6600;
-}
-pub use self::consts::*;
-
-#[cfg(any(target_os = "macos",
-          target_os = "ios",
-          target_os = "freebsd",
-          target_os = "dragonfly",
-          target_os = "bitrig",
-          target_os = "openbsd"))]
-pub const MSG_DONTWAIT: libc::c_int = 0x80;
-#[cfg(any(target_os = "linux", target_os = "android"))]
-pub const MSG_DONTWAIT: libc::c_int = 0x40;
+pub const FIOCLEX: libc::c_ulong = 0x6601;
 
 pub const WNOHANG: libc::c_int = 1;
 
@@ -123,13 +98,6 @@ pub struct passwd {
 }
 
 extern {
-    pub fn gettimeofday(timeval: *mut libc::timeval,
-                        tzp: *mut libc::c_void) -> libc::c_int;
-    pub fn select(nfds: libc::c_int,
-                  readfds: *mut fd_set,
-                  writefds: *mut fd_set,
-                  errorfds: *mut fd_set,
-                  timeout: *mut libc::timeval) -> libc::c_int;
     pub fn getsockopt(sockfd: libc::c_int,
                       level: libc::c_int,
                       optname: libc::c_int,
@@ -163,44 +131,6 @@ extern {
                      ptr: *const libc::c_void) -> libc::c_int;
     pub fn realpath(pathname: *const libc::c_char, resolved: *mut libc::c_char)
                     -> *mut libc::c_char;
-}
-
-#[cfg(any(target_os = "macos", target_os = "ios"))]
-mod select {
-    pub const FD_SETSIZE: usize = 1024;
-
-    #[repr(C)]
-    pub struct fd_set {
-        fds_bits: [i32; (FD_SETSIZE / 32)]
-    }
-
-    pub fn fd_set(set: &mut fd_set, fd: i32) {
-        set.fds_bits[(fd / 32) as usize] |= 1 << ((fd % 32) as usize);
-    }
-}
-
-#[cfg(any(target_os = "android",
-          target_os = "freebsd",
-          target_os = "dragonfly",
-          target_os = "bitrig",
-          target_os = "openbsd",
-          target_os = "linux"))]
-mod select {
-    use usize;
-    use libc;
-
-    pub const FD_SETSIZE: usize = 1024;
-
-    #[repr(C)]
-    pub struct fd_set {
-        // FIXME: shouldn't this be a c_ulong?
-        fds_bits: [libc::uintptr_t; (FD_SETSIZE / usize::BITS)]
-    }
-
-    pub fn fd_set(set: &mut fd_set, fd: i32) {
-        let fd = fd as usize;
-        set.fds_bits[fd / usize::BITS] |= 1 << (fd % usize::BITS);
-    }
 }
 
 #[cfg(any(all(target_os = "linux",
