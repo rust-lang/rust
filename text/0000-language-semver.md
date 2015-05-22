@@ -17,10 +17,12 @@ This RFC has two main goals:
 With the release of 1.0, we need to establish clear policy on what
 precisely constitutes a "minor" vs "major" change to the Rust language
 itself (as opposed to libraries, which are covered by [RFC 1105]).
-**This RFC proposes that breaking changes are only permitted within a
-minor release if they are fix to restore soundness**: this includes
-both bug fixes in the compiler itself, as well as changes to the type
-system or RFCs that are necessary to close flaws uncovered later.
+**This RFC proposes that minor releases may only contain breaking
+changes that fix compiler bugs or other type-system
+issues**. Primarily, this means soundness issues where "innocent" code
+can cause undefined behavior (in the technical sense), but it also
+covers cases like compiler bugs and tightening up the semantics of
+"underspecified" parts of the language (more details below).
 
 However, simply landing all breaking changes immediately could be very
 disruptive to the ecosystem. Therefore, **the RFC also proposes
@@ -53,7 +55,7 @@ considering in separate RFCs.
 
 # Detailed design
 
-The detailed design is broken into two major section: how to address
+The detailed design is broken into two major sections: how to address
 soundness changes, and how to address other, opt-in style changes. We
 do not discuss non-breaking changes here, since obviously those are
 safe.
@@ -145,8 +147,8 @@ cause code to compile which should not (because ambiguities
 exist). Finally, there is a list below of areas of the language which
 are generally considered underspecified.
 
-We expect that there will be cases that fall on a grey line betwen bug
-and expected behavior, and discussion will be needed to determine
+We expect that there will be cases that fall on a grey line between
+bug and expected behavior, and discussion will be needed to determine
 where it falls. The recent conflict between `Rc` and scoped threads is
 an example of such a discusison: it was clear that both APIs could not
 be legal, but not clear which one was at fault. The results of these
@@ -214,9 +216,10 @@ Known areas where change is expected include the following:
 - Memory allocation in unsafe code is currently unstable. We expect to
   be defining safe interfaces as part of the work on supporting
   tracing garbage collectors (see [#415]).
-- The treatment of hygiene in macros is uneven (see [#22462], [#24278]). In some cases,
-  changes here may be backwards compatible, or may be more appropriate only with explicit opt-in
-  (or perhaps an alternate macro system altogether).
+- The treatment of hygiene in macros is uneven (see [#22462],
+  [#24278]). In some cases, changes here may be backwards compatible,
+  or may be more appropriate only with explicit opt-in (or perhaps an
+  alternate macro system altogether, such as [this proposal][macro]).
 - Lints will evolve over time (both the lints that are enabled and the
   precise cases that lints catch). We expect to introduce a
   [means to limit the effect of these changes on dependencies][#1029].
@@ -242,7 +245,7 @@ Although it is not directly covered by this RFC, it's worth noting in
 passing that some of the CLI flags to the compiler may change in the
 future as well. The `-Z` flags are of course explicitly unstable, but
 some of the `-C`, rustdoc, and linker-specific flags are expected to
-evolve over time.
+evolve over time (see e.g. [#24451]).
 
 ### Opt-in changes
 
@@ -271,8 +274,8 @@ The supplied version is used by the compiler to produce the semantics
 of Rust "as it was" during version `X.Y`. RFCs that propose opt-in
 changes should discuss how the older behavior can be supported in the
 compiler, but this is expected to be straightforward: if supporting
-older behavior is hard to do, it may indicate that the opt-in change
-is too complex and should not be accepted.
+older behavior is hard to do, this may be an indication that the
+opt-in change is too complex and should not be accepted.
 
 Note that the supplied version may affect the parser configuration
 used when parsing the initial crate, since it can affect the keywords
@@ -290,9 +293,16 @@ the compiler's version (i.e., the newest version the compiler knows
 about).
 
 Cargo will always invoke `rustc` with a supplied version. If there is
-no version in the `Cargo.toml` file, then `1.0.0` is assumed. Whenever
-a new project is created with `cargo new`, the new `Cargo.toml` will
-include the most recent Rust version number by default.
+no version in the `Cargo.toml` file, then `1.0.0` is assumed. (It may
+be a good idea to issue a warning in this case as well.)
+
+Whenever a new project is created with `cargo new`, the new
+`Cargo.toml` will include the most recent Rust version number by
+default. (Since Cargo and rustc are not, at least today, necessarily
+released on the same schedule, we'll have to pick some sensible
+definition of the "most recent" Rust version number; one option is to
+query the `rustc` executable in scope. Another is to synchronize the
+release schedules and use the "built-in" notion.)
 
 Note that the defaults for `rustc` and `cargo` differ. `rustc` prefers
 the most recent verison of Rust by default, whereas `cargo` prefers
@@ -341,6 +351,12 @@ accept an "opt-in" change:
     program are particularly unlikely to be accepted.
 - What changes are needed to get code compiling again? Are those
   changes obvious from the error message?
+
+Another important criterion is the implementation complexity. In
+particular, how easy will it be to maintain both the older behavior
+and the newer behavior? It is important to consider not just the
+complexity today, but possible complexity in the future as the
+compiler changes.
 
 # Drawbacks
 
@@ -481,7 +497,7 @@ introduce an attribute in advance we will not have this problem.
 
 [RFC 1105]: https://github.com/rust-lang/rfcs/pull/1105
 [RFC 320]: https://github.com/rust-lang/rfcs/pull/320
-[#774]: https://github.com/rust-lang/rfcs/issues/744
+[#744]: https://github.com/rust-lang/rfcs/issues/744
 [#14875]: https://github.com/rust-lang/rust/issues/14875
 [#16135]: https://github.com/rust-lang/rust/issues/16135
 [#19733]: https://github.com/rust-lang/rust/issues/19733
@@ -492,3 +508,5 @@ introduce an attribute in advance we will not have this problem.
 [#24278]: https://github.com/rust-lang/rust/issues/24278
 [#1029]: https://github.com/rust-lang/rfcs/issues/1029
 [RFC 560]: https://github.com/rust-lang/rfcs/pull/560
+[macro]: https://internals.rust-lang.org/t/pre-rfc-macro-improvements/2088
+[#24451]: https://github.com/rust-lang/rust/pull/24451
