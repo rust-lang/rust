@@ -14,13 +14,13 @@ pub trait Foo {
     const MIN: i32;
 
     fn get_min() -> i32 {
-        Self::MIN //~ Associated consts cannot depend on type parameters or Self.
+        Self::MIN //~ ERROR E0329
     }
 }
 
 fn get_min<T: Foo>() -> i32 {
-    T::MIN; //~ Associated consts cannot depend on type parameters or Self.
-    <T as Foo>::MIN //~ Associated consts cannot depend on type parameters or Self.
+    T::MIN; //~ ERROR E0329
+    <T as Foo>::MIN //~ ERROR E0329
 }
 
 fn main() {}

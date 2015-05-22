@@ -3773,9 +3773,9 @@ pub fn resolve_ty_and_def_ufcs<'a, 'b, 'tcx>(fcx: &FnCtxt<'b, 'tcx>,
         match def {
             def::DefAssociatedConst(..) => {
                 if ty::type_has_params(ty) || ty::type_has_self(ty) {
-                    fcx.sess().span_err(span,
-                                        "Associated consts cannot depend \
-                                         on type parameters or Self.");
+                    span_err!(fcx.sess(), span, E0329,
+                              "Associated consts cannot depend \
+                               on type parameters or Self.");
                     fcx.write_error(node_id);
                     return true;
                 }
