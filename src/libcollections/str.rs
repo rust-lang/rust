@@ -1110,9 +1110,8 @@ impl str {
     /// such as leaving a combining character as the first code point of the
     /// string.
     ///
-    /// Due to the design of UTF-8, this operation is `O(end)`. See `slice`,
-    /// `slice_to` and `slice_from` for `O(1)` variants that use byte indices
-    /// rather than code point indices.
+    /// Due to the design of UTF-8, this operation is `O(end)`. Use slicing
+    /// syntax if you want to use byte indices rather than codepoint indices.
     ///
     /// # Panics
     ///
