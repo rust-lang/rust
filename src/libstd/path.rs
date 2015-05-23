@@ -1623,11 +1623,11 @@ impl Path {
     /// # Examples
     ///
     /// ```
-    /// use std::path::Path;
+    /// use std::path::{self, Path};
     /// use std::ffi::OsStr;
     ///
     /// let mut it = Path::new("/tmp/foo.txt").iter();
-    /// assert_eq!(it.next(), Some(OsStr::new("/")));
+    /// assert_eq!(it.next(), Some(OsStr::new(&path::MAIN_SEPARATOR.to_string())));
     /// assert_eq!(it.next(), Some(OsStr::new("tmp")));
     /// assert_eq!(it.next(), Some(OsStr::new("foo.txt")));
     /// assert_eq!(it.next(), None)
