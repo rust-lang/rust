@@ -20,7 +20,7 @@ use ptr::P;
 pub fn expand_deriving_default(cx: &mut ExtCtxt,
                                span: Span,
                                mitem: &MetaItem,
-                               item: Annotatable,
+                               item: &Annotatable,
                                push: &mut FnMut(Annotatable))
 {
     let inline = cx.meta_word(span, InternedString::new("inline"));
@@ -47,7 +47,7 @@ pub fn expand_deriving_default(cx: &mut ExtCtxt,
         ),
         associated_types: Vec::new(),
     };
-    trait_def.expand(cx, mitem, &item, push)
+    trait_def.expand(cx, mitem, item, push)
 }
 
 fn default_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) -> P<Expr> {

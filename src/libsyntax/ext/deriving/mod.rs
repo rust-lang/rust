@@ -134,7 +134,7 @@ macro_rules! derive_traits {
                               ecx: &mut ExtCtxt,
                               sp: Span,
                               mitem: &MetaItem,
-                              annotatable: Annotatable,
+                              annotatable: &Annotatable,
                               push: &mut FnMut(Annotatable)) {
                         warn_if_deprecated(ecx, sp, $name);
                         $func(ecx, sp, mitem, annotatable, push);

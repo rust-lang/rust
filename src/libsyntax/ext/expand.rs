@@ -1212,7 +1212,7 @@ fn expand_decorators(a: Annotatable,
                     dec.expand(fld.cx,
                                attr.span,
                                &attr.node.value,
-                               a.clone(),
+                               &a,
                                &mut |ann| items.push(ann));
                     decorator_items.extend(items.into_iter()
                         .flat_map(|ann| expand_annotatable(ann, fld).into_iter()));

@@ -17,7 +17,7 @@ use ext::deriving::generic::ty::*;
 pub fn expand_deriving_unsafe_bound(cx: &mut ExtCtxt,
                                     span: Span,
                                     _: &MetaItem,
-                                    _: Annotatable,
+                                    _: &Annotatable,
                                     _: &mut FnMut(Annotatable))
 {
     cx.span_err(span, "this unsafe trait should be implemented explicitly");
@@ -26,7 +26,7 @@ pub fn expand_deriving_unsafe_bound(cx: &mut ExtCtxt,
 pub fn expand_deriving_copy(cx: &mut ExtCtxt,
                             span: Span,
                             mitem: &MetaItem,
-                            item: Annotatable,
+                            item: &Annotatable,
                             push: &mut FnMut(Annotatable))
 {
     let path = Path::new(vec![
@@ -45,5 +45,5 @@ pub fn expand_deriving_copy(cx: &mut ExtCtxt,
         associated_types: Vec::new(),
     };
 
-    trait_def.expand(cx, mitem, &item, push);
+    trait_def.expand(cx, mitem, item, push);
 }
