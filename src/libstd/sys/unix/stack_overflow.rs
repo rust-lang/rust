@@ -44,11 +44,12 @@ mod imp {
     use mem;
     use ptr;
     use intrinsics;
-    use self::signal::{siginfo, sigaction, SIGBUS, SIG_DFL,
-                       SA_SIGINFO, SA_ONSTACK, sigaltstack,
-                       SIGSTKSZ};
+    use sys::c::{siginfo, sigaction, SIGBUS, SIG_DFL,
+                 SA_SIGINFO, SA_ONSTACK, sigaltstack,
+                 SIGSTKSZ, sighandler_t, raise};
     use libc;
     use libc::funcs::posix88::mman::{mmap, munmap};
+    use libc::funcs::posix01::signal::signal;
     use libc::consts::os::posix88::{SIGSEGV,
                                     PROT_READ,
                                     PROT_WRITE,
@@ -120,7 +121,7 @@ mod imp {
 
     pub unsafe fn make_handler() -> Handler {
         let alt_stack = mmap(ptr::null_mut(),
-                             signal::SIGSTKSZ,
+                             SIGSTKSZ,
                              PROT_READ | PROT_WRITE,
                              MAP_PRIVATE | MAP_ANON,
                              -1,
@@ -142,138 +143,6 @@ mod imp {
 
     pub unsafe fn drop_handler(handler: &mut Handler) {
         munmap(handler._data, SIGSTKSZ);
-    }
-
-    pub type sighandler_t = *mut libc::c_void;
-
-    #[cfg(any(all(target_os = "linux", target_arch = "x86"), // may not match
-              all(target_os = "linux", target_arch = "x86_64"),
-              all(target_os = "linux", target_arch = "arm"), // may not match
-              all(target_os = "linux", target_arch = "aarch64"),
-              all(target_os = "linux", target_arch = "mips"), // may not match
-              all(target_os = "linux", target_arch = "mipsel"), // may not match
-              all(target_os = "linux", target_arch = "powerpc"), // may not match
-              target_os = "android"))] // may not match
-    mod signal {
-        use libc;
-        pub use super::sighandler_t;
-
-        pub static SA_ONSTACK: libc::c_int = 0x08000000;
-        pub static SA_SIGINFO: libc::c_int = 0x00000004;
-        pub static SIGBUS: libc::c_int = 7;
-
-        pub static SIGSTKSZ: libc::size_t = 8192;
-
-        pub const SIG_DFL: sighandler_t = 0 as sighandler_t;
-
-        // This definition is not as accurate as it could be, {si_addr} is
-        // actually a giant union. Currently we're only interested in that field,
-        // however.
-        #[repr(C)]
-        pub struct siginfo {
-            si_signo: libc::c_int,
-            si_errno: libc::c_int,
-            si_code: libc::c_int,
-            pub si_addr: *mut libc::c_void
-        }
-
-        #[repr(C)]
-        pub struct sigaction {
-            pub sa_sigaction: sighandler_t,
-            pub sa_mask: sigset_t,
-            pub sa_flags: libc::c_int,
-            sa_restorer: *mut libc::c_void,
-        }
-
-        #[cfg(target_pointer_width = "32")]
-        #[repr(C)]
-        pub struct sigset_t {
-            __val: [libc::c_ulong; 32],
-        }
-        #[cfg(target_pointer_width = "64")]
-        #[repr(C)]
-        pub struct sigset_t {
-            __val: [libc::c_ulong; 16],
-        }
-
-        #[repr(C)]
-        pub struct sigaltstack {
-            pub ss_sp: *mut libc::c_void,
-            pub ss_flags: libc::c_int,
-            pub ss_size: libc::size_t
-        }
-
-    }
-
-    #[cfg(any(target_os = "macos",
-              target_os = "bitrig",
-              target_os = "openbsd"))]
-    mod signal {
-        use libc;
-        pub use super::sighandler_t;
-
-        pub const SA_ONSTACK: libc::c_int = 0x0001;
-        pub const SA_SIGINFO: libc::c_int = 0x0040;
-        pub const SIGBUS: libc::c_int = 10;
-
-        #[cfg(target_os = "macos")]
-        pub const SIGSTKSZ: libc::size_t = 131072;
-        #[cfg(any(target_os = "bitrig", target_os = "openbsd"))]
-        pub const SIGSTKSZ: libc::size_t = 40960;
-
-        pub const SIG_DFL: sighandler_t = 0 as sighandler_t;
-
-        pub type sigset_t = u32;
-
-        // This structure has more fields, but we're not all that interested in
-        // them.
-        #[cfg(target_os = "macos")]
-        #[repr(C)]
-        pub struct siginfo {
-            pub si_signo: libc::c_int,
-            pub si_errno: libc::c_int,
-            pub si_code: libc::c_int,
-            pub pid: libc::pid_t,
-            pub uid: libc::uid_t,
-            pub status: libc::c_int,
-            pub si_addr: *mut libc::c_void
-        }
-
-        #[cfg(any(target_os = "bitrig", target_os = "openbsd"))]
-        #[repr(C)]
-        pub struct siginfo {
-            pub si_signo: libc::c_int,
-            pub si_code: libc::c_int,
-            pub si_errno: libc::c_int,
-            //union
-            pub si_addr: *mut libc::c_void
-        }
-
-        #[repr(C)]
-        pub struct sigaltstack {
-            pub ss_sp: *mut libc::c_void,
-            pub ss_size: libc::size_t,
-            pub ss_flags: libc::c_int
-        }
-
-        #[repr(C)]
-        pub struct sigaction {
-            pub sa_sigaction: sighandler_t,
-            pub sa_mask: sigset_t,
-            pub sa_flags: libc::c_int,
-        }
-    }
-
-    extern {
-        pub fn signal(signum: libc::c_int, handler: sighandler_t) -> sighandler_t;
-        pub fn raise(signum: libc::c_int) -> libc::c_int;
-
-        pub fn sigaction(signum: libc::c_int,
-                         act: *const sigaction,
-                         oldact: *mut sigaction) -> libc::c_int;
-
-        pub fn sigaltstack(ss: *const sigaltstack,
-                           oss: *mut sigaltstack) -> libc::c_int;
     }
 }
 
