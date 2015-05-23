@@ -2003,6 +2003,10 @@ arbitrarily complex configurations through nesting.
 
 The following configurations must be defined by the implementation:
 
+* `debug_assertions`. Enabled by default when compiling without optimizations.
+  This can be used to enable extra debugging code in development but not in
+  production.  For example, it controls the behavior of the standard library's
+  `debug_assert!` macro.
 * `target_arch = "..."`. Target CPU architecture, such as `"x86"`, `"x86_64"`
   `"mips"`, `"powerpc"`, `"arm"`, or `"aarch64"`.
 * `target_endian = "..."`. Endianness of the target CPU, either `"little"` or
