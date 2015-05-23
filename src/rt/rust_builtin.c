@@ -59,7 +59,7 @@ rust_list_dir_val(struct dirent* entry_ptr) {
 
 int
 rust_dir_get_mode(struct dirent* entry_ptr) {
-#if defined(_DIRENT_HAVE_D_TYPE)
+#if defined(_DIRENT_HAVE_D_TYPE) || defined(__APPLE__)
     switch (entry_ptr->d_type) {
         case DT_BLK: return S_IFBLK;
         case DT_CHR: return S_IFCHR;
@@ -67,6 +67,7 @@ rust_dir_get_mode(struct dirent* entry_ptr) {
         case DT_LNK: return S_IFLNK;
         case DT_REG: return S_IFREG;
         case DT_SOCK: return S_IFSOCK;
+        case DT_DIR: return S_IFDIR;
     }
 #endif
     return -1;
