@@ -258,7 +258,7 @@ mod platform {
 /// Path prefixes (Windows only).
 ///
 /// Windows uses a variety of path styles, including references to drive
-/// volumes (like `C:`), network shared (like `\\server\share`) and
+/// volumes (like `C:`), network shared folders (like `\\server\share`) and
 /// others. In addition, some path prefixes are "verbatim", in which case
 /// `/` is *not* treated as a separator and essentially no normalization is
 /// performed.
@@ -312,7 +312,7 @@ impl<'a> Prefix<'a> {
 
     }
 
-    /// Determines if the prefix is verbatim, i.e. begins `\\?\`.
+    /// Determines if the prefix is verbatim, i.e. begins with `\\?\`.
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_verbatim(&self) -> bool {
