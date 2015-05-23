@@ -93,7 +93,7 @@ pub trait Write {
         self.write_str(unsafe { mem::transmute(&utf_8[..bytes_written]) })
     }
 
-    /// Glue for usage of the `write!` macro with implementers of this trait.
+    /// Glue for usage of the `write!` macro with implementors of this trait.
     ///
     /// This method should generally not be invoked manually, but rather through
     /// the `write!` macro itself.
