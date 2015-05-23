@@ -13,7 +13,6 @@
 
 (function() {
     "use strict";
-    var resizeTimeout, interval;
 
     // This mapping table should match the discriminants of
     // `rustdoc::html::item_type::ItemType` type in Rust.
@@ -36,6 +35,9 @@
                      "associatedtype",
                      "constant",
                      "associatedconstant"];
+
+    // used for special search precedence
+    var TY_PRIMITIVE = itemTypes.indexOf("primitive");
 
     $('.js-only').removeClass('js-only');
 
@@ -64,7 +66,7 @@
             if ($('#' + from).length === 0) {
                 return;
             }
-            if (ev === null) $('#' + from)[0].scrollIntoView();
+            if (ev === null) { $('#' + from)[0].scrollIntoView(); };
             $('.line-numbers span').removeClass('line-highlighted');
             for (i = from; i <= to; ++i) {
                 $('#' + i).addClass('line-highlighted');
@@ -74,7 +76,7 @@
     highlightSourceLines(null);
     $(window).on('hashchange', highlightSourceLines);
 
-    $(document).on('keyup', function(e) {
+    $(document).on('keyup', function handleKeyboardShortcut(e) {
         if (document.activeElement.tagName === 'INPUT') {
             return;
         }
@@ -133,29 +135,28 @@
         return function(s1, s2) {
             if (s1 === s2) {
                 return 0;
-            } else {
-                var s1_len = s1.length, s2_len = s2.length;
-                if (s1_len && s2_len) {
-                    var i1 = 0, i2 = 0, a, b, c, c2, row = row2;
-                    while (i1 < s1_len)
-                        row[i1] = ++i1;
-                    while (i2 < s2_len) {
-                        c2 = s2.charCodeAt(i2);
-                        a = i2;
-                        ++i2;
-                        b = i2;
-                        for (i1 = 0; i1 < s1_len; ++i1) {
-                            c = a + (s1.charCodeAt(i1) !== c2 ? 1 : 0);
-                            a = row[i1];
-                            b = b < a ? (b < c ? b + 1 : c) : (a < c ? a + 1 : c);
-                            row[i1] = b;
-                        }
-                    }
-                    return b;
-                } else {
-                    return s1_len + s2_len;
-                }
             }
+            var s1_len = s1.length, s2_len = s2.length;
+            if (s1_len && s2_len) {
+                var i1 = 0, i2 = 0, a, b, c, c2, row = row2;
+                while (i1 < s1_len) {
+                    row[i1] = ++i1;
+                }
+                while (i2 < s2_len) {
+                    c2 = s2.charCodeAt(i2);
+                    a = i2;
+                    ++i2;
+                    b = i2;
+                    for (i1 = 0; i1 < s1_len; ++i1) {
+                        c = a + (s1.charCodeAt(i1) !== c2 ? 1 : 0);
+                        a = row[i1];
+                        b = b < a ? (b < c ? b + 1 : c) : (a < c ? a + 1 : c);
+                        row[i1] = b;
+                    }
+                }
+                return b;
+            }
+            return s1_len + s2_len;
         };
     })();
 
@@ -187,7 +188,7 @@
                 results = [],
                 split = valLower.split("::");
 
-            //remove empty keywords
+            // remove empty keywords
             for (var j = 0; j < split.length; ++j) {
                 split[j].toLowerCase();
                 if (split[j] === "") {
@@ -286,58 +287,63 @@
                 return [];
             }
 
-            results.sort(function(aaa, bbb) {
+            results.sort(function sortResults(aaa, bbb) {
                 var a, b;
 
                 // Sort by non levenshtein results and then levenshtein results by the distance
                 // (less changes required to match means higher rankings)
                 a = (aaa.lev);
                 b = (bbb.lev);
-                if (a !== b) return a - b;
+                if (a !== b) { return a - b; }
 
                 // sort by crate (non-current crate goes later)
                 a = (aaa.item.crate !== window.currentCrate);
                 b = (bbb.item.crate !== window.currentCrate);
-                if (a !== b) return a - b;
+                if (a !== b) { return a - b; }
 
                 // sort by exact match (mismatch goes later)
                 a = (aaa.word !== valLower);
                 b = (bbb.word !== valLower);
-                if (a !== b) return a - b;
+                if (a !== b) { return a - b; }
 
                 // sort by item name length (longer goes later)
                 a = aaa.word.length;
                 b = bbb.word.length;
-                if (a !== b) return a - b;
+                if (a !== b) { return a - b; }
 
                 // sort by item name (lexicographically larger goes later)
                 a = aaa.word;
                 b = bbb.word;
-                if (a !== b) return (a > b ? +1 : -1);
+                if (a !== b) { return (a > b ? +1 : -1); }
 
                 // sort by index of keyword in item name (no literal occurrence goes later)
                 a = (aaa.index < 0);
                 b = (bbb.index < 0);
-                if (a !== b) return a - b;
+                if (a !== b) { return a - b; }
                 // (later literal occurrence, if any, goes later)
                 a = aaa.index;
                 b = bbb.index;
-                if (a !== b) return a - b;
+                if (a !== b) { return a - b; }
+
+                // special precedence for primitive pages
+                if ((aaa.item.ty === TY_PRIMITIVE) && (bbb.item.ty !== TY_PRIMITIVE)) {
+                    return -1;
+                }
 
                 // sort by description (no description goes later)
                 a = (aaa.item.desc === '');
                 b = (bbb.item.desc === '');
-                if (a !== b) return a - b;
+                if (a !== b) { return a - b; }
 
                 // sort by type (later occurrence in `itemTypes` goes later)
                 a = aaa.item.ty;
                 b = bbb.item.ty;
-                if (a !== b) return a - b;
+                if (a !== b) { return a - b; }
 
                 // sort by path (lexicographically larger goes later)
                 a = aaa.item.path;
                 b = bbb.item.path;
-                if (a !== b) return (a > b ? +1 : -1);
+                if (a !== b) { return (a > b ? +1 : -1); }
 
                 // que sera, sera
                 return 0;
@@ -388,7 +394,7 @@
          * @return {[boolean]}       [Whether the result is valid or not]
          */
         function validateResult(name, path, keys, parent) {
-            for (var i=0; i < keys.length; ++i) {
+            for (var i = 0; i < keys.length; ++i) {
                 // each check is for validation so we negate the conditions and invalidate
                 if (!(
                     // check for an exact name match
@@ -423,7 +429,7 @@
                 raw: raw,
                 query: query,
                 type: type,
-                id: query + type,
+                id: query + type
             };
         }
 
@@ -432,7 +438,7 @@
 
             $results.on('click', function() {
                 var dst = $(this).find('a')[0];
-                if (window.location.pathname == dst.pathname) {
+                if (window.location.pathname === dst.pathname) {
                     $('#search').addClass('hidden');
                     $('#main').removeClass('hidden');
                     document.location.href = dst.href;
@@ -595,7 +601,7 @@
 
         function itemTypeFromName(typename) {
             for (var i = 0; i < itemTypes.length; ++i) {
-                if (itemTypes[i] === typename) return i;
+                if (itemTypes[i] === typename) { return i; }
             }
             return -1;
         }
@@ -604,7 +610,7 @@
             searchIndex = [];
             var searchWords = [];
             for (var crate in rawSearchIndex) {
-                if (!rawSearchIndex.hasOwnProperty(crate)) { continue }
+                if (!rawSearchIndex.hasOwnProperty(crate)) { continue; }
 
                 // an array of [(Number) item type,
                 //              (String) name,
@@ -690,32 +696,31 @@
         }
 
         function plainSummaryLine(markdown) {
-            var str = markdown.replace(/\n/g, ' ')
-            str = str.replace(/'/g, "\'")
-            str = str.replace(/^#+? (.+?)/, "$1")
-            str = str.replace(/\[(.*?)\]\(.*?\)/g, "$1")
-            str = str.replace(/\[(.*?)\]\[.*?\]/g, "$1")
-            return str;
+            markdown.replace(/\n/g, ' ')
+            .replace(/'/g, "\'")
+            .replace(/^#+? (.+?)/, "$1")
+            .replace(/\[(.*?)\]\(.*?\)/g, "$1")
+            .replace(/\[(.*?)\]\[.*?\]/g, "$1");
         }
 
         index = buildIndex(rawSearchIndex);
         startSearch();
 
         // Draw a convenient sidebar of known crates if we have a listing
-        if (rootPath == '../') {
+        if (rootPath === '../') {
             var sidebar = $('.sidebar');
             var div = $('<div>').attr('class', 'block crate');
             div.append($('<h2>').text('Crates'));
 
             var crates = [];
             for (var crate in rawSearchIndex) {
-                if (!rawSearchIndex.hasOwnProperty(crate)) { continue }
+                if (!rawSearchIndex.hasOwnProperty(crate)) { continue; }
                 crates.push(crate);
             }
             crates.sort();
             for (var i = 0; i < crates.length; ++i) {
                 var klass = 'crate';
-                if (crates[i] == window.currentCrate) {
+                if (crates[i] === window.currentCrate) {
                     klass += ' current';
                 }
                 if (rawSearchIndex[crates[i]].items[0]) {
@@ -738,7 +743,7 @@
 
         function block(shortty, longty) {
             var filtered = items[shortty];
-            if (!filtered) return;
+            if (!filtered) { return; }
 
             var div = $('<div>').attr('class', 'block ' + shortty);
             div.append($('<h2>').text(longty));
@@ -749,7 +754,7 @@
                 var desc = item[1]; // can be null
 
                 var klass = shortty;
-                if (name === current.name && shortty == current.ty) {
+                if (name === current.name && shortty === current.ty) {
                     klass += ' current';
                 }
                 var path;
@@ -779,7 +784,7 @@
         var list = $('#implementors-list');
         var libs = Object.getOwnPropertyNames(imp);
         for (var i = 0; i < libs.length; ++i) {
-            if (libs[i] == currentCrate) continue;
+            if (libs[i] === currentCrate) { continue; }
             var structs = imp[libs[i]];
             for (var j = 0; j < structs.length; ++j) {
                 var code = $('<code>').append(structs[j]);
@@ -811,11 +816,10 @@
         if (sectionIsCollapsed) {
             // button will expand the section
             return "+";
-        } else {
-            // button will collapse the section
-            // note that this text is also set in the HTML template in render.rs
-            return "\u2212"; // "\u2212" is '−' minus sign
         }
+        // button will collapse the section
+        // note that this text is also set in the HTML template in render.rs
+        return "\u2212"; // "\u2212" is '−' minus sign
     }
 
     $("#toggle-all-docs").on("click", function() {
@@ -847,12 +851,12 @@
         }
         if (relatedDoc.is(".docblock")) {
             if (relatedDoc.is(":visible")) {
-                relatedDoc.slideUp({duration:'fast', easing:'linear'});
+                relatedDoc.slideUp({duration: 'fast', easing: 'linear'});
                 toggle.parent(".toggle-wrapper").addClass("collapsed");
                 toggle.children(".inner").text(labelForToggleButton(true));
                 toggle.children(".toggle-label").fadeIn();
             } else {
-                relatedDoc.slideDown({duration:'fast', easing:'linear'});
+                relatedDoc.slideDown({duration: 'fast', easing: 'linear'});
                 toggle.parent(".toggle-wrapper").removeClass("collapsed");
                 toggle.children(".inner").text(labelForToggleButton(false));
                 toggle.children(".toggle-label").hide();
@@ -877,7 +881,7 @@
                 $('<span/>', {'class': 'toggle-label'})
                     .css('display', 'none')
                     .html('&nbsp;Expand&nbsp;description'));
-        var wrapper =  $("<div class='toggle-wrapper'>").append(mainToggle);
+        var wrapper = $("<div class='toggle-wrapper'>").append(mainToggle);
         $("#main > .docblock").before(wrapper);
     });
 
@@ -894,7 +898,7 @@
         }
 
         return function(ev) {
-            var cur_id = parseInt(ev.target.id);
+            var cur_id = parseInt(ev.target.id, 10);
 
             if (ev.shiftKey && prev_id) {
                 if (prev_id > cur_id) {
