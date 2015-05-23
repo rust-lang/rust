@@ -719,7 +719,6 @@ impl<'a> Formatter<'a> {
     /// # Examples
     ///
     /// ```rust
-    /// # #![feature(debug_builders, core)]
     /// use std::fmt;
     ///
     /// struct Foo {
@@ -739,7 +738,7 @@ impl<'a> Formatter<'a> {
     /// // prints "Foo { bar: 10, baz: "Hello World" }"
     /// println!("{:?}", Foo { bar: 10, baz: "Hello World".to_string() });
     /// ```
-    #[unstable(feature = "debug_builders", reason = "method was just created")]
+    #[stable(feature = "debug_builders", since = "1.2.0")]
     #[inline]
     pub fn debug_struct<'b>(&'b mut self, name: &str) -> DebugStruct<'b, 'a> {
         builders::debug_struct_new(self, name)
@@ -751,7 +750,6 @@ impl<'a> Formatter<'a> {
     /// # Examples
     ///
     /// ```rust
-    /// # #![feature(debug_builders, core)]
     /// use std::fmt;
     ///
     /// struct Foo(i32, String);
@@ -768,7 +766,7 @@ impl<'a> Formatter<'a> {
     /// // prints "Foo(10, "Hello World")"
     /// println!("{:?}", Foo(10, "Hello World".to_string()));
     /// ```
-    #[unstable(feature = "debug_builders", reason = "method was just created")]
+    #[stable(feature = "debug_builders", since = "1.2.0")]
     #[inline]
     pub fn debug_tuple<'b>(&'b mut self, name: &str) -> DebugTuple<'b, 'a> {
         builders::debug_tuple_new(self, name)
@@ -780,7 +778,6 @@ impl<'a> Formatter<'a> {
     /// # Examples
     ///
     /// ```rust
-    /// # #![feature(debug_builders, core)]
     /// use std::fmt;
     ///
     /// struct Foo(Vec<i32>);
@@ -794,7 +791,7 @@ impl<'a> Formatter<'a> {
     /// // prints "[10, 11]"
     /// println!("{:?}", Foo(vec![10, 11]));
     /// ```
-    #[unstable(feature = "debug_builders", reason = "method was just created")]
+    #[stable(feature = "debug_builders", since = "1.2.0")]
     #[inline]
     pub fn debug_list<'b>(&'b mut self) -> DebugList<'b, 'a> {
         builders::debug_list_new(self)
@@ -806,7 +803,6 @@ impl<'a> Formatter<'a> {
     /// # Examples
     ///
     /// ```rust
-    /// # #![feature(debug_builders, core)]
     /// use std::fmt;
     ///
     /// struct Foo(Vec<i32>);
@@ -820,7 +816,7 @@ impl<'a> Formatter<'a> {
     /// // prints "{10, 11}"
     /// println!("{:?}", Foo(vec![10, 11]));
     /// ```
-    #[unstable(feature = "debug_builders", reason = "method was just created")]
+    #[stable(feature = "debug_builders", since = "1.2.0")]
     #[inline]
     pub fn debug_set<'b>(&'b mut self) -> DebugSet<'b, 'a> {
         builders::debug_set_new(self)
@@ -832,7 +828,6 @@ impl<'a> Formatter<'a> {
     /// # Examples
     ///
     /// ```rust
-    /// # #![feature(debug_builders, core)]
     /// use std::fmt;
     ///
     /// struct Foo(Vec<(String, i32)>);
@@ -846,7 +841,7 @@ impl<'a> Formatter<'a> {
     /// // prints "{"A": 10, "B": 11}"
     /// println!("{:?}", Foo(vec![("A".to_string(), 10), ("B".to_string(), 11)]));
     /// ```
-    #[unstable(feature = "debug_builders", reason = "method was just created")]
+    #[stable(feature = "debug_builders", since = "1.2.0")]
     #[inline]
     pub fn debug_map<'b>(&'b mut self) -> DebugMap<'b, 'a> {
         builders::debug_map_new(self)
