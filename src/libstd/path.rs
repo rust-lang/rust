@@ -319,7 +319,7 @@ impl<'a> Prefix<'a> {
         use self::Prefix::*;
         match *self {
             Verbatim(_) | VerbatimDisk(_) | VerbatimUNC(_, _) => true,
-            _ => false
+            _ => false,
         }
     }
 
