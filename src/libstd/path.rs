@@ -1247,9 +1247,10 @@ impl Path {
     /// ```
     /// use std::path::Path;
     ///
-    /// let s = String::from("bar.txt");
-    /// let p = Path::new(&s);
-    /// Path::new(&p);
+    /// let string = String::from("foo.txt");
+    /// let from_string = Path::new(&string);
+    /// let from_path = Path::new(&from_string);
+    /// assert_eq!(from_string, from_path);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new<S: AsRef<OsStr> + ?Sized>(s: &S) -> &Path {
@@ -1264,6 +1265,7 @@ impl Path {
     /// use std::path::Path;
     ///
     /// let os_str = Path::new("foo.txt").as_os_str();
+    /// assert_eq!(os_str, std::ffi::OsStr::new("foo.txt"));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn as_os_str(&self) -> &OsStr {
@@ -1280,6 +1282,7 @@ impl Path {
     /// use std::path::Path;
     ///
     /// let path_str = Path::new("foo.txt").to_str();
+    //// assert_eq!(path_str, Some("foo.txt"));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn to_str(&self) -> Option<&str> {
@@ -1296,6 +1299,7 @@ impl Path {
     /// use std::path::Path;
     ///
     /// let path_str = Path::new("foo.txt").to_string_lossy();
+    /// assert_eq!(path_str, "foo.txt");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn to_string_lossy(&self) -> Cow<str> {
@@ -1309,7 +1313,8 @@ impl Path {
     /// ```
     /// use std::path::Path;
     ///
-    /// let path_str = Path::new("foo.txt").to_path_buf();
+    /// let path_buf = Path::new("foo.txt").to_path_buf();
+    /// assert_eq!(path_buf, std::path::PathBuf::from("foo.txt"));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn to_path_buf(&self) -> PathBuf {
@@ -1330,7 +1335,7 @@ impl Path {
     /// ```
     /// use std::path::Path;
     ///
-    /// assert_eq!(false, Path::new("foo.txt").is_absolute());
+    /// assert!(!Path::new("foo.txt").is_absolute());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_absolute(&self) -> bool {
@@ -1393,14 +1398,12 @@ impl Path {
     /// use std::path::Path;
     ///
     /// let path = Path::new("/foo/bar");
-    /// let foo = path.parent().unwrap();
+    /// let parent = path.parent().unwrap();
+    /// assert_eq!(parent, Path::new("/foo"));
     ///
-    /// assert!(foo == Path::new("/foo"));
-    ///
-    /// let root = foo.parent().unwrap();
-    ///
-    /// assert!(root == Path::new("/"));
-    /// assert!(root.parent() == None);
+    /// let grand_parent = parent.parent().unwrap();
+    /// assert_eq!(grand_parent, Path::new("/"));
+    /// assert_eq!(grand_parent.parent(), None);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn parent(&self) -> Option<&Path> {
@@ -1416,18 +1419,19 @@ impl Path {
 
     /// The final component of the path, if it is a normal file.
     ///
-    /// If the path terminates in `.`, `..`, or consists solely or a root of
+    /// If the path terminates in `.`, `..`, or consists solely of a root of
     /// prefix, `file_name` will return `None`.
     ///
     /// # Examples
     ///
     /// ```
     /// use std::path::Path;
+    /// use std::ffi::OsStr;
     ///
-    /// let path = Path::new("hello_world.rs");
-    /// let filename = "hello_world.rs";
+    /// let path = Path::new("foo.txt");
+    /// let os_str = OsStr::new("foo.txt");
     ///
-    /// assert_eq!(filename, path.file_name().unwrap());
+    /// assert_eq!(Some(os_str), path.file_name());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn file_name(&self) -> Option<&OsStr> {
@@ -1538,11 +1542,9 @@ impl Path {
     /// # Examples
     ///
     /// ```
-    /// use std::path::Path;
+    /// use std::path::{Path, PathBuf};
     ///
-    /// let path = Path::new("/tmp");
-    ///
-    /// let new_path = path.join("foo");
+    /// assert_eq!(Path::new("/etc").join("passwd"), PathBuf::from("/etc/passwd"));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn join<P: AsRef<Path>>(&self, path: P) -> PathBuf {
@@ -1558,11 +1560,10 @@ impl Path {
     /// # Examples
     ///
     /// ```
-    /// use std::path::Path;
+    /// use std::path::{Path, PathBuf};
     ///
-    /// let path = Path::new("/tmp/foo.rs");
-    ///
-    /// let new_path = path.with_file_name("bar.rs");
+    /// let path = Path::new("/tmp/foo.txt");
+    /// assert_eq!(path.with_file_name("bar.txt"), PathBuf::from("/tmp/bar.txt"));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with_file_name<S: AsRef<OsStr>>(&self, file_name: S) -> PathBuf {
@@ -1580,10 +1581,8 @@ impl Path {
     /// ```
     /// use std::path::{Path, PathBuf};
     ///
-    /// let path = Path::new("/tmp/foo.rs");
-    ///
-    /// let new_path = path.with_extension("txt");
-    /// assert_eq!(new_path, PathBuf::from("/tmp/foo.txt"));
+    /// let path = Path::new("foo.rs");
+    /// assert_eq!(path.with_extension("txt"), PathBuf::from("foo.txt"));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with_extension<S: AsRef<OsStr>>(&self, extension: S) -> PathBuf {
@@ -1597,13 +1596,15 @@ impl Path {
     /// # Examples
     ///
     /// ```
-    /// use std::path::Path;
+    /// use std::path::{Path, Component};
+    /// use std::ffi::OsStr;
     ///
-    /// let path = Path::new("/tmp/foo.rs");
+    /// let mut components = Path::new("/tmp/foo.txt").components();
     ///
-    /// for component in path.components() {
-    ///     println!("{:?}", component);
-    /// }
+    /// assert_eq!(components.next(), Some(Component::RootDir));
+    /// assert_eq!(components.next(), Some(Component::Normal(OsStr::new("tmp"))));
+    /// assert_eq!(components.next(), Some(Component::Normal(OsStr::new("foo.txt"))));
+    /// assert_eq!(components.next(), None)
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn components(&self) -> Components {
@@ -1623,12 +1624,13 @@ impl Path {
     ///
     /// ```
     /// use std::path::Path;
+    /// use std::ffi::OsStr;
     ///
-    /// let path = Path::new("/tmp/foo.rs");
-    ///
-    /// for component in path.iter() {
-    ///     println!("{:?}", component);
-    /// }
+    /// let mut it = Path::new("/tmp/foo.txt").iter();
+    /// assert_eq!(it.next(), Some(OsStr::new("/")));
+    /// assert_eq!(it.next(), Some(OsStr::new("tmp")));
+    /// assert_eq!(it.next(), Some(OsStr::new("foo.txt")));
+    /// assert_eq!(it.next(), None)
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter(&self) -> Iter {
