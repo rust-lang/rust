@@ -16,7 +16,7 @@ If `T` is such a data structure, consider introducing a `T` _builder_:
    value. When possible, choose a better name: e.g. `Command` is the builder for
    `Process`.
 2. The builder constructor should take as parameters only the data _required_ to
-   to make a `T`.
+   make a `T`.
 3. The builder should offer a suite of convenient methods for configuration,
    including setting up compound inputs (like slices) incrementally.
    These methods should return `self` to allow chaining.
