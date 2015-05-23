@@ -846,7 +846,7 @@ pub fn trans_call_inner<'a, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
 
         let mut llargs = Vec::new();
         let arg_tys = match args {
-            ArgExprs(a) => a.iter().map(|x| common::expr_ty(bcx, &**x)).collect(),
+            ArgExprs(a) => a.iter().map(|x| common::expr_ty_adjusted(bcx, &**x)).collect(),
             _ => panic!("expected arg exprs.")
         };
         bcx = trans_args(bcx,
