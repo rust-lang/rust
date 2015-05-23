@@ -47,23 +47,22 @@ impl LintPass for PtrArg {
 
 fn check_fn(cx: &Context, decl: &FnDecl) {
 	for arg in &decl.inputs {
-		let ty = &arg.ty;
-		match ty.node {
-			TyPtr(ref pty) => check_ptr_subtype(cx, ty.span, &pty.ty),
-			TyRptr(_, ref rpty) => check_ptr_subtype(cx, ty.span, &rpty.ty),
+		match &arg.ty.node {
+			&TyPtr(ref p) | &TyRptr(_, ref p) => 
+				check_ptr_subtype(cx, arg.ty.span, &p.ty),
 			_ => ()
 		}
 	}
 }
 
 fn check_ptr_subtype(cx: &Context, span: Span, ty: &Ty) {
-	match_ty_unwrap(ty, &["Vec"]).map(|_| { 
-		cx.span_lint(PTR_ARG, span, "Writing '&Vec<_>' instead of '&[_]' \
-			involves one more reference and cannot be used with non-vec-based \
-			slices. Consider changing the type to &[...]")
-	}).unwrap_or_else(|| match_ty_unwrap(ty, &["String"]).map(|_| {
+	match_ty_unwrap(ty, &["Vec"]).map_or_else(|| match_ty_unwrap(ty, 
+			&["String"]).map_or((), |_| {
 		cx.span_lint(PTR_ARG, span,
 			"Writing '&String' instead of '&str' involves a new Object \
 			where a slices will do. Consider changing the type to &str")
-	}).unwrap_or(()));
+	}), |_| cx.span_lint(PTR_ARG, span, "Writing '&Vec<_>' instead of \
+			'&[_]' involves one more reference and cannot be used with \
+			non-vec-based slices. Consider changing the type to &[...]")
+	)
 }

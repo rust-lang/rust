@@ -23,7 +23,7 @@ impl LintPass for MutMut {
 			}
 		}
 		
-		unwrap_addr(expr).map(|e| {
+		unwrap_addr(expr).map_or((), |e| {
 			unwrap_addr(e).map(|_| {
 				cx.span_lint(MUT_MUT, expr.span, 
 					"Generally you want to avoid &mut &mut _ if possible.")
@@ -35,13 +35,12 @@ impl LintPass for MutMut {
 						Consider reborrowing")
 				}
 			})
-		}).unwrap_or(())
+		})
 	}
 	
 	fn check_ty(&mut self, cx: &Context, ty: &Ty) {
-		unwrap_mut(ty).and_then(unwrap_mut).map(|_| cx.span_lint(MUT_MUT, 
-			ty.span, "Generally you want to avoid &mut &mut _ if possible.")).
-			unwrap_or(())
+		unwrap_mut(ty).and_then(unwrap_mut).map_or((), |_| cx.span_lint(MUT_MUT, 
+			ty.span, "Generally you want to avoid &mut &mut _ if possible."))
 	}
 }
 
