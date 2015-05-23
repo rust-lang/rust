@@ -2982,10 +2982,10 @@ impl<'o,'tcx> TraitObligationStackList<'o,'tcx> {
     }
 }
 
-impl<'o,'tcx> Iterator for TraitObligationStackList<'o,'tcx>{
-    type Item = &'o TraitObligationStack<'o,'tcx>;
+impl<'o, 'tcx: 'o> Iterator for TraitObligationStackList<'o, 'tcx> {
+    type Item = &'o TraitObligationStack<'o, 'tcx>;
 
-    fn next(&mut self) -> Option<&'o TraitObligationStack<'o,'tcx>> {
+    fn next(&mut self) -> Option<&'o TraitObligationStack<'o, 'tcx>> {
         match self.head {
             Some(o) => {
                 *self = o.previous;
@@ -2996,7 +2996,7 @@ impl<'o,'tcx> Iterator for TraitObligationStackList<'o,'tcx>{
     }
 }
 
-impl<'o,'tcx> Repr<'tcx> for TraitObligationStack<'o,'tcx> {
+impl<'o, 'tcx> Repr<'tcx> for TraitObligationStack<'o, 'tcx> {
     fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
         format!("TraitObligationStack({})",
                 self.obligation.repr(tcx))

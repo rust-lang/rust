@@ -907,7 +907,7 @@ impl<'a, T> Iterator for Iter<'a, T> {
 }
 
 #[stable(feature = "receiver_into_iter", since = "1.1.0")]
-impl<'a, T> IntoIterator for &'a Receiver<T> {
+impl<'a, T: 'a> IntoIterator for &'a Receiver<T> {
     type Item = T;
     type IntoIter = Iter<'a, T>;
 

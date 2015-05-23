@@ -800,7 +800,7 @@ impl<T> IntoIterator for VecMap<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T> IntoIterator for &'a VecMap<T> {
+impl<'a, T: 'a> IntoIterator for &'a VecMap<T> {
     type Item = (usize, &'a T);
     type IntoIter = Iter<'a, T>;
 
@@ -810,7 +810,7 @@ impl<'a, T> IntoIterator for &'a VecMap<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T> IntoIterator for &'a mut VecMap<T> {
+impl<'a, T: 'a> IntoIterator for &'a mut VecMap<T> {
     type Item = (usize, &'a mut T);
     type IntoIter = IterMut<'a, T>;
 

@@ -94,7 +94,7 @@ macro_rules! array_impls {
             }
 
             #[stable(feature = "rust1", since = "1.0.0")]
-            impl<'a, T> IntoIterator for &'a [T; $N] {
+            impl<'a, T: 'a> IntoIterator for &'a [T; $N] {
                 type Item = &'a T;
                 type IntoIter = Iter<'a, T>;
 
@@ -104,7 +104,7 @@ macro_rules! array_impls {
             }
 
             #[stable(feature = "rust1", since = "1.0.0")]
-            impl<'a, T> IntoIterator for &'a mut [T; $N] {
+            impl<'a, T: 'a> IntoIterator for &'a mut [T; $N] {
                 type Item = &'a mut T;
                 type IntoIter = IterMut<'a, T>;
 

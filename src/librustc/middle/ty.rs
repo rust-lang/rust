@@ -2328,7 +2328,16 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
         }
     }
 
-    pub fn for_item(cx: &'a ctxt<'tcx>, id: NodeId) -> ParameterEnvironment<'a, 'tcx> {
+    pub fn for_item(cx: &'a ctxt<'tcx>, id: NodeId)
+                    -> ParameterEnvironment<'a, 'tcx>
+    {
+        // TODO: use Self after a snapshot (or remove this comment)
+        ParameterEnvironment::for_item_inner(cx, id, construct_parameter_environment)
+    }
+
+    pub fn for_item_inner<T, F>(cx: &'a ctxt<'tcx>, id: NodeId, f: F) -> T
+        where F: FnOnce(&'a ctxt<'tcx>, Span, &Generics<'tcx>,
+                        &GenericPredicates<'tcx>, NodeId) -> T {
         match cx.map.find(id) {
             Some(ast_map::NodeImplItem(ref impl_item)) => {
                 match impl_item.node {
@@ -2336,30 +2345,18 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                         let def_id = ast_util::local_def(id);
                         let scheme = lookup_item_type(cx, def_id);
                         let predicates = lookup_predicates(cx, def_id);
-                        construct_parameter_environment(cx,
-                                                        impl_item.span,
-                                                        &scheme.generics,
-                                                        &predicates,
-                                                        id)
+                        f(cx, impl_item.span, &scheme.generics, &predicates, id)
                     }
                     ast::MethodImplItem(_, ref body) => {
                         let method_def_id = ast_util::local_def(id);
                         match ty::impl_or_trait_item(cx, method_def_id) {
-                            MethodTraitItem(ref method_ty) => {
-                                let method_generics = &method_ty.generics;
-                                let method_bounds = &method_ty.predicates;
-                                construct_parameter_environment(
-                                    cx,
-                                    impl_item.span,
-                                    method_generics,
-                                    method_bounds,
-                                    body.id)
-                            }
-                            _ => {
-                                cx.sess
-                                  .bug("ParameterEnvironment::for_item(): \
-                                        got non-method item from impl method?!")
-                            }
+                            MethodTraitItem(ref method_ty) => f(cx,
+                                                                impl_item.span,
+                                                                &method_ty.generics,
+                                                                &method_ty.predicates,
+                                                                body.id),
+                            _ => cx.sess.bug("ParameterEnvironment::for_item(): \
+                                              got non-method item from impl method?!")
                         }
                     }
                     ast::TypeImplItem(_) => {
@@ -2378,11 +2375,7 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                                 let def_id = ast_util::local_def(id);
                                 let scheme = lookup_item_type(cx, def_id);
                                 let predicates = lookup_predicates(cx, def_id);
-                                construct_parameter_environment(cx,
-                                                                trait_item.span,
-                                                                &scheme.generics,
-                                                                &predicates,
-                                                                id)
+                                f(cx, trait_item.span, &scheme.generics, &predicates, id)
                             }
                             None => {
                                 cx.sess.bug("ParameterEnvironment::from_item(): \
@@ -2401,22 +2394,14 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                     ast::MethodTraitItem(_, Some(ref body)) => {
                         let method_def_id = ast_util::local_def(id);
                         match ty::impl_or_trait_item(cx, method_def_id) {
-                            MethodTraitItem(ref method_ty) => {
-                                let method_generics = &method_ty.generics;
-                                let method_bounds = &method_ty.predicates;
-                                construct_parameter_environment(
-                                    cx,
-                                    trait_item.span,
-                                    method_generics,
-                                    method_bounds,
-                                    body.id)
-                            }
-                            _ => {
-                                cx.sess
-                                  .bug("ParameterEnvironment::for_item(): \
-                                        got non-method item from provided \
-                                        method?!")
-                            }
+                            MethodTraitItem(ref method_ty) => f(cx,
+                                                                trait_item.span,
+                                                                &method_ty.generics,
+                                                                &method_ty.predicates,
+                                                                body.id),
+                            _ => cx.sess.bug("ParameterEnvironment::for_item(): \
+                                              got non-method item from provided \
+                                              method?!")
                         }
                     }
                     ast::TypeTraitItem(..) => {
@@ -2434,11 +2419,7 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                         let fn_scheme = lookup_item_type(cx, fn_def_id);
                         let fn_predicates = lookup_predicates(cx, fn_def_id);
 
-                        construct_parameter_environment(cx,
-                                                        item.span,
-                                                        &fn_scheme.generics,
-                                                        &fn_predicates,
-                                                        body.id)
+                        f(cx, item.span, &fn_scheme.generics, &fn_predicates, body.id)
                     }
                     ast::ItemEnum(..) |
                     ast::ItemStruct(..) |
@@ -2448,11 +2429,7 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                         let def_id = ast_util::local_def(id);
                         let scheme = lookup_item_type(cx, def_id);
                         let predicates = lookup_predicates(cx, def_id);
-                        construct_parameter_environment(cx,
-                                                        item.span,
-                                                        &scheme.generics,
-                                                        &predicates,
-                                                        id)
+                        f(cx, item.span, &scheme.generics, &predicates, id)
                     }
                     _ => {
                         cx.sess.span_bug(item.span,
@@ -2464,7 +2441,14 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
             }
             Some(ast_map::NodeExpr(..)) => {
                 // This is a convenience to allow closures to work.
-                ParameterEnvironment::for_item(cx, cx.map.get_parent(id))
+                ParameterEnvironment::for_item_inner(cx, cx.map.get_parent(id), f)
+            }
+            Some(ast_map::NodeForeignItem(ref item)) => {
+                let def_id = ast_util::local_def(id);
+                let scheme = lookup_item_type(cx, def_id);
+                let predicates = lookup_predicates(cx, def_id);
+
+                f(cx, item.span, &scheme.generics, &predicates, id)
             }
             _ => {
                 cx.sess.bug(&format!("ParameterEnvironment::from_item(): \

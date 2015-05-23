@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(associated_consts)]
+
 // Check that we catch attempts to create non-well-formed types
 
 trait Tr {}
@@ -39,3 +41,16 @@ fn b7() -> &'static (u32,[u8],u32)
 {} //~^ ERROR the trait `core::marker::Sized` is not implemented
 
 fn main() {}
+
+trait TrBogus {
+    type T = &'static [[u32]];
+    //^^ Associated type defaults don't work yet
+
+    const X1: &'static [[u16]];
+    //~^ ERROR the trait `core::marker::Sized` is not implemented
+}
+
+impl<T: Tr> Iterator for S<T> {
+    type Item = ([u8], T);
+    //~^ ERROR the trait `core::marker::Sized` is not implemented
+}
