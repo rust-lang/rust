@@ -122,7 +122,7 @@ impl MetadataExt for Metadata {
 /// # Ok(())
 /// # }
 /// ```
-#[stable(feature = "rust1", since = "1.0.0")]
+#[stable(feature = "symlink", since = "1.1.0")]
 pub fn symlink_file<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q)
                                                     -> io::Result<()> {
     sys::fs::symlink_inner(src.as_ref(), dst.as_ref(), false)
@@ -143,7 +143,7 @@ pub fn symlink_file<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q)
 /// # Ok(())
 /// # }
 /// ```
-#[stable(feature = "rust1", since = "1.0.0")]
+#[stable(feature = "symlink", since = "1.1.0")]
 pub fn symlink_dir<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q)
                                                    -> io::Result<()> {
     sys::fs::symlink_inner(src.as_ref(), dst.as_ref(), true)
