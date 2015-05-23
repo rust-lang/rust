@@ -11,7 +11,8 @@
 //! A growable list type with heap-allocated contents, written `Vec<T>` but
 //! pronounced 'vector.'
 //!
-//! Vectors have `O(1)` indexing, push (to the end) and pop (from the end).
+//! Vectors have `O(1)` indexing, amortized `O(1)` push (to the end) and
+//! `O(1)` pop (from the end).
 //!
 //! # Examples
 //!
