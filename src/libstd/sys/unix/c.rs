@@ -8,14 +8,24 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! C definitions used by libnative that don't belong in liblibc
+//! C definitions used by std::sys that don't belong in liblibc
+
+// These are definitions sufficient for the users in this directory.
+// This is not a general-purpose binding to this functionality, and in
+// some cases (notably the definition of siginfo_t), we intentionally
+// have incomplete bindings so that we don't need to fight with unions.
+//
+// Note that these types need to match the definitions from the platform
+// libc (currently glibc on Linux), not the kernel definitions / the
+// syscall interface.  This has a few weirdnesses, like glibc's sigset_t
+// being 1024 bits on all platforms. If you're adding a new GNU/Linux
+// port, check glibc's sysdeps/unix/sysv/linux, not the kernel headers.
 
 #![allow(dead_code)]
 #![allow(non_camel_case_types)]
 
-pub use self::signal::{sigaction, siginfo, sigset_t};
-pub use self::signal::{SA_ONSTACK, SA_RESTART, SA_RESETHAND, SA_NOCLDSTOP};
-pub use self::signal::{SA_NODEFER, SA_NOCLDWAIT, SA_SIGINFO, SIGCHLD};
+pub use self::signal_os::{sigaction, siginfo, sigset_t, sigaltstack};
+pub use self::signal_os::{SA_ONSTACK, SA_SIGINFO, SIGBUS, SIGSTKSZ};
 
 use libc;
 
@@ -97,6 +107,12 @@ pub struct passwd {
     pub pw_shell: *mut libc::c_char,
 }
 
+// This is really a function pointer (or a union of multiple function
+// pointers), except for constants like SIG_DFL.
+pub type sighandler_t = *mut libc::c_void;
+
+pub const SIG_DFL: sighandler_t = 0 as sighandler_t;
+
 extern {
     pub fn getsockopt(sockfd: libc::c_int,
                       level: libc::c_int,
@@ -109,12 +125,15 @@ extern {
     pub fn waitpid(pid: libc::pid_t, status: *mut libc::c_int,
                    options: libc::c_int) -> libc::pid_t;
 
+    pub fn raise(signum: libc::c_int) -> libc::c_int;
+
     pub fn sigaction(signum: libc::c_int,
                      act: *const sigaction,
                      oldact: *mut sigaction) -> libc::c_int;
 
-    pub fn sigaddset(set: *mut sigset_t, signum: libc::c_int) -> libc::c_int;
-    pub fn sigdelset(set: *mut sigset_t, signum: libc::c_int) -> libc::c_int;
+    pub fn sigaltstack(ss: *const sigaltstack,
+                       oss: *mut sigaltstack) -> libc::c_int;
+
     pub fn sigemptyset(set: *mut sigset_t) -> libc::c_int;
 
     #[cfg(not(target_os = "ios"))]
@@ -133,123 +152,174 @@ extern {
                     -> *mut libc::c_char;
 }
 
-#[cfg(any(all(target_os = "linux",
-              any(target_arch = "x86",
-                  target_arch = "x86_64",
-                  target_arch = "arm",
-                  target_arch = "aarch64")),
+#[cfg(any(target_os = "linux",
           target_os = "android"))]
-mod signal {
+mod signal_os {
+    pub use self::arch::{SA_ONSTACK, SA_SIGINFO, SIGBUS,
+                         sigaction, sigaltstack};
     use libc;
 
-    pub const SA_NOCLDSTOP: libc::c_ulong = 0x00000001;
-    pub const SA_NOCLDWAIT: libc::c_ulong = 0x00000002;
-    pub const SA_NODEFER: libc::c_ulong = 0x40000000;
-    pub const SA_ONSTACK: libc::c_ulong = 0x08000000;
-    pub const SA_RESETHAND: libc::c_ulong = 0x80000000;
-    pub const SA_RESTART: libc::c_ulong = 0x10000000;
-    pub const SA_SIGINFO: libc::c_ulong = 0x00000004;
-    pub const SIGCHLD: libc::c_int = 17;
+    #[cfg(any(target_arch = "x86",
+              target_arch = "x86_64",
+              target_arch = "arm",
+              target_arch = "mips",
+              target_arch = "mipsel"))]
+    pub const SIGSTKSZ: libc::size_t = 8192;
 
-    // This definition is not as accurate as it could be, {pid, uid, status} is
-    // actually a giant union. Currently we're only interested in these fields,
-    // however.
+    // This is smaller on musl and Android, but no harm in being generous.
+    #[cfg(any(target_arch = "aarch64",
+              target_arch = "powerpc"))]
+    pub const SIGSTKSZ: libc::size_t = 16384;
+
+    // This definition is intentionally a subset of the C structure: the
+    // fields after si_code are actually a giant union. We're only
+    // interested in si_addr for this module, though.
     #[repr(C)]
     pub struct siginfo {
-        si_signo: libc::c_int,
-        si_errno: libc::c_int,
-        si_code: libc::c_int,
-        pub pid: libc::pid_t,
-        pub uid: libc::uid_t,
-        pub status: libc::c_int,
+        _signo: libc::c_int,
+        _errno: libc::c_int,
+        _code: libc::c_int,
+        // This structure will need extra padding here for MIPS64.
+        pub si_addr: *mut libc::c_void
     }
 
+    #[cfg(all(target_os = "linux", target_pointer_width = "32"))]
     #[repr(C)]
-    pub struct sigaction {
-        pub sa_handler: extern fn(libc::c_int),
-        pub sa_mask: sigset_t,
-        pub sa_flags: libc::c_ulong,
-        sa_restorer: *mut libc::c_void,
-    }
-
-    unsafe impl ::marker::Send for sigaction { }
-    unsafe impl ::marker::Sync for sigaction { }
-
-    #[repr(C)]
-    #[cfg(target_pointer_width = "32")]
     pub struct sigset_t {
         __val: [libc::c_ulong; 32],
     }
 
+    #[cfg(all(target_os = "linux", target_pointer_width = "64"))]
     #[repr(C)]
-    #[cfg(target_pointer_width = "64")]
     pub struct sigset_t {
         __val: [libc::c_ulong; 16],
     }
-}
 
-#[cfg(all(target_os = "linux",
-          any(target_arch = "mips",
-              target_arch = "mipsel",
-              target_arch = "powerpc")))]
-mod signal {
-    use libc;
+    // Android for MIPS has a 128-bit sigset_t, but we don't currently
+    // support it. Android for AArch64 technically has a structure of a
+    // single ulong.
+    #[cfg(target_os = "android")]
+    pub type sigset_t = libc::c_ulong;
 
-    pub const SA_NOCLDSTOP: libc::c_ulong = 0x00000001;
-    pub const SA_NOCLDWAIT: libc::c_ulong = 0x00010000;
-    pub const SA_NODEFER: libc::c_ulong = 0x40000000;
-    pub const SA_ONSTACK: libc::c_ulong = 0x08000000;
-    pub const SA_RESETHAND: libc::c_ulong = 0x80000000;
-    pub const SA_RESTART: libc::c_ulong = 0x10000000;
-    pub const SA_SIGINFO: libc::c_ulong = 0x00000008;
-    pub const SIGCHLD: libc::c_int = 18;
+    #[cfg(any(target_arch = "x86",
+              target_arch = "x86_64",
+              target_arch = "powerpc",
+              target_arch = "arm",
+              target_arch = "aarch64"))]
+    mod arch {
+        use libc;
+        use super::super::sighandler_t;
+        use super::sigset_t;
 
-    // This definition is not as accurate as it could be, {pid, uid, status} is
-    // actually a giant union. Currently we're only interested in these fields,
-    // however.
-    #[repr(C)]
-    pub struct siginfo {
-        si_signo: libc::c_int,
-        si_code: libc::c_int,
-        si_errno: libc::c_int,
-        pub pid: libc::pid_t,
-        pub uid: libc::uid_t,
-        pub status: libc::c_int,
+        pub const SA_ONSTACK: libc::c_ulong = 0x08000000;
+        pub const SA_SIGINFO: libc::c_ulong = 0x00000004;
+
+        pub const SIGBUS: libc::c_int = 7;
+
+        #[cfg(target_os = "linux")]
+        #[repr(C)]
+        pub struct sigaction {
+            pub sa_sigaction: sighandler_t,
+            pub sa_mask: sigset_t,
+            pub sa_flags: libc::c_ulong,
+            _restorer: *mut libc::c_void,
+        }
+
+        #[cfg(all(target_os = "android", target_pointer_width = "32"))]
+        #[repr(C)]
+        pub struct sigaction {
+            pub sa_sigaction: sighandler_t,
+            pub sa_flags: libc::c_ulong,
+            _restorer: *mut libc::c_void,
+            pub sa_mask: sigset_t,
+        }
+
+        #[cfg(all(target_os = "android", target_pointer_width = "64"))]
+        #[repr(C)]
+        pub struct sigaction {
+            pub sa_flags: libc::c_uint,
+            pub sa_sigaction: sighandler_t,
+            pub sa_mask: sigset_t,
+            _restorer: *mut libc::c_void,
+        }
+
+        #[repr(C)]
+        pub struct sigaltstack {
+            pub ss_sp: *mut libc::c_void,
+            pub ss_flags: libc::c_int,
+            pub ss_size: libc::size_t
+        }
     }
 
-    #[repr(C)]
-    pub struct sigaction {
-        pub sa_flags: libc::c_uint,
-        pub sa_handler: extern fn(libc::c_int),
-        pub sa_mask: sigset_t,
-        sa_restorer: *mut libc::c_void,
-        sa_resv: [libc::c_int; 1],
-    }
+    #[cfg(any(target_arch = "mips",
+              target_arch = "mipsel"))]
+    mod arch {
+        use libc;
+        use super::super::sighandler_t;
+        use super::sigset_t;
 
-    unsafe impl ::marker::Send for sigaction { }
-    unsafe impl ::marker::Sync for sigaction { }
+        pub const SA_ONSTACK: libc::c_ulong = 0x08000000;
+        pub const SA_SIGINFO: libc::c_ulong = 0x00000008;
 
-    #[repr(C)]
-    pub struct sigset_t {
-        __val: [libc::c_ulong; 32],
+        pub const SIGBUS: libc::c_int = 10;
+
+        #[cfg(all(target_os = "linux", not(target_env = "musl")))]
+        #[repr(C)]
+        pub struct sigaction {
+            pub sa_flags: libc::c_uint,
+            pub sa_sigaction: sighandler_t,
+            pub sa_mask: sigset_t,
+            _restorer: *mut libc::c_void,
+            _resv: [libc::c_int; 1],
+        }
+
+        #[cfg(target_env = "musl")]
+        #[repr(C)]
+        pub struct sigaction {
+            pub sa_sigaction: sighandler_t,
+            pub sa_mask: sigset_t,
+            pub sa_flags: libc::c_ulong,
+            _restorer: *mut libc::c_void,
+        }
+
+        #[cfg(target_os = "android")]
+        #[repr(C)]
+        pub struct sigaction {
+            pub sa_flags: libc::c_uint,
+            pub sa_sigaction: sighandler_t,
+            pub sa_mask: sigset_t,
+        }
+
+        #[repr(C)]
+        pub struct sigaltstack {
+            pub ss_sp: *mut libc::c_void,
+            pub ss_size: libc::size_t,
+            pub ss_flags: libc::c_int,
+        }
     }
 }
 
 #[cfg(any(target_os = "macos",
           target_os = "ios",
           target_os = "freebsd",
-          target_os = "dragonfly"))]
-mod signal {
+          target_os = "dragonfly",
+          target_os = "bitrig",
+          target_os = "openbsd"))]
+mod signal_os {
     use libc;
+    use super::sighandler_t;
 
     pub const SA_ONSTACK: libc::c_int = 0x0001;
-    pub const SA_RESTART: libc::c_int = 0x0002;
-    pub const SA_RESETHAND: libc::c_int = 0x0004;
-    pub const SA_NOCLDSTOP: libc::c_int = 0x0008;
-    pub const SA_NODEFER: libc::c_int = 0x0010;
-    pub const SA_NOCLDWAIT: libc::c_int = 0x0020;
     pub const SA_SIGINFO: libc::c_int = 0x0040;
-    pub const SIGCHLD: libc::c_int = 20;
+
+    pub const SIGBUS: libc::c_int = 10;
+
+    #[cfg(any(target_os = "macos", target_os = "ios"))]
+    pub const SIGSTKSZ: libc::size_t = 131072;
+    // FreeBSD's is actually arch-dependent, but never more than 40960.
+    // No harm in being generous.
+    #[cfg(not(any(target_os = "macos", target_os = "ios")))]
+    pub const SIGSTKSZ: libc::size_t = 40960;
 
     #[cfg(any(target_os = "macos",
               target_os = "ios"))]
@@ -259,61 +329,53 @@ mod signal {
     pub struct sigset_t {
         bits: [u32; 4],
     }
-
-    // This structure has more fields, but we're not all that interested in
-    // them.
-    #[repr(C)]
-    pub struct siginfo {
-        pub si_signo: libc::c_int,
-        pub si_errno: libc::c_int,
-        pub si_code: libc::c_int,
-        pub pid: libc::pid_t,
-        pub uid: libc::uid_t,
-        pub status: libc::c_int,
-    }
-
-    #[repr(C)]
-    pub struct sigaction {
-        pub sa_handler: extern fn(libc::c_int),
-        pub sa_flags: libc::c_int,
-        pub sa_mask: sigset_t,
-    }
-}
-
-#[cfg(any(target_os = "bitrig", target_os = "openbsd"))]
-mod signal {
-    use libc;
-
-    pub const SA_ONSTACK: libc::c_int = 0x0001;
-    pub const SA_RESTART: libc::c_int = 0x0002;
-    pub const SA_RESETHAND: libc::c_int = 0x0004;
-    pub const SA_NOCLDSTOP: libc::c_int = 0x0008;
-    pub const SA_NODEFER: libc::c_int = 0x0010;
-    pub const SA_NOCLDWAIT: libc::c_int = 0x0020;
-    pub const SA_SIGINFO: libc::c_int = 0x0040;
-    pub const SIGCHLD: libc::c_int = 20;
-
+    #[cfg(any(target_os = "bitrig", target_os = "openbsd"))]
     pub type sigset_t = libc::c_uint;
 
     // This structure has more fields, but we're not all that interested in
     // them.
+    #[cfg(any(target_os = "macos", target_os = "ios",
+              target_os = "freebsd", target_os = "dragonfly"))]
+    #[repr(C)]
+    pub struct siginfo {
+        pub _signo: libc::c_int,
+        pub _errno: libc::c_int,
+        pub _code: libc::c_int,
+        pub _pid: libc::pid_t,
+        pub _uid: libc::uid_t,
+        pub _status: libc::c_int,
+        pub si_addr: *mut libc::c_void
+    }
+    #[cfg(any(target_os = "bitrig", target_os = "openbsd"))]
     #[repr(C)]
     pub struct siginfo {
         pub si_signo: libc::c_int,
         pub si_code: libc::c_int,
         pub si_errno: libc::c_int,
-        // FIXME: Bitrig has a crazy union here in the siginfo, I think this
-        // layout will still work tho.  The status might be off by the size of
-        // a clock_t by my reading, but we can fix this later.
-        pub pid: libc::pid_t,
-        pub uid: libc::uid_t,
-        pub status: libc::c_int,
+        pub si_addr: *mut libc::c_void
+    }
+
+    #[cfg(any(target_os = "macos", target_os = "ios",
+              target_os = "bitrig", target_os = "openbsd"))]
+    #[repr(C)]
+    pub struct sigaction {
+        pub sa_sigaction: sighandler_t,
+        pub sa_mask: sigset_t,
+        pub sa_flags: libc::c_int,
+    }
+
+    #[cfg(any(target_os = "freebsd", target_os = "dragonfly"))]
+    #[repr(C)]
+    pub struct sigaction {
+        pub sa_sigaction: sighandler_t,
+        pub sa_flags: libc::c_int,
+        pub sa_mask: sigset_t,
     }
 
     #[repr(C)]
-    pub struct sigaction {
-        pub sa_handler: extern fn(libc::c_int),
-        pub sa_mask: sigset_t,
-        pub sa_flags: libc::c_int,
+    pub struct sigaltstack {
+        pub ss_sp: *mut libc::c_void,
+        pub ss_size: libc::size_t,
+        pub ss_flags: libc::c_int,
     }
 }
