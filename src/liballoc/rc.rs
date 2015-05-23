@@ -159,7 +159,9 @@ use core::cmp::{PartialEq, PartialOrd, Eq, Ord, Ordering};
 use core::default::Default;
 use core::fmt;
 use core::hash::{Hasher, Hash};
-use core::marker::{self, Sized};
+use core::marker;
+#[cfg(not(stage0))]
+use core::marker::Sized;
 use core::mem::{self, min_align_of, size_of, forget};
 use core::nonzero::NonZero;
 use core::ops::{Deref, Drop};
