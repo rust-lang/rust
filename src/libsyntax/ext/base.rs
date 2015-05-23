@@ -154,18 +154,18 @@ pub trait MultiItemDecorator {
               ecx: &mut ExtCtxt,
               sp: Span,
               meta_item: &ast::MetaItem,
-              item: Annotatable,
+              item: &Annotatable,
               push: &mut FnMut(Annotatable));
 }
 
 impl<F> MultiItemDecorator for F
-    where F : Fn(&mut ExtCtxt, Span, &ast::MetaItem, Annotatable, &mut FnMut(Annotatable))
+    where F : Fn(&mut ExtCtxt, Span, &ast::MetaItem, &Annotatable, &mut FnMut(Annotatable))
 {
     fn expand(&self,
               ecx: &mut ExtCtxt,
               sp: Span,
               meta_item: &ast::MetaItem,
-              item: Annotatable,
+              item: &Annotatable,
               push: &mut FnMut(Annotatable)) {
         (*self)(ecx, sp, meta_item, item, push)
     }
