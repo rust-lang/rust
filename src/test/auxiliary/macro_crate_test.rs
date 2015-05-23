@@ -108,7 +108,7 @@ fn expand_into_foo_multi(cx: &mut ExtCtxt,
 fn expand_duplicate(cx: &mut ExtCtxt,
                     sp: Span,
                     mi: &MetaItem,
-                    it: Annotatable,
+                    it: &Annotatable,
                     push: &mut FnMut(Annotatable))
 {
     let copy_name = match mi.node {
