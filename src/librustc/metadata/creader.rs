@@ -21,6 +21,7 @@ use metadata::decoder;
 use metadata::loader;
 use metadata::loader::CratePaths;
 
+use std::cell::RefCell;
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::fs;
@@ -376,14 +377,13 @@ impl<'a> CrateReader<'a> {
         let loader::Library { dylib, rlib, metadata } = lib;
 
         let cnum_map = self.resolve_crate_deps(root, metadata.as_slice(), span);
-        let codemap_import_info = import_codemap(self.sess.codemap(), &metadata);
 
         let cmeta = Rc::new( cstore::crate_metadata {
             name: name.to_string(),
             data: metadata,
             cnum_map: cnum_map,
             cnum: cnum,
-            codemap_import_info: codemap_import_info,
+            codemap_import_info: RefCell::new(vec![]),
             span: span,
         });
 
@@ -616,9 +616,9 @@ impl<'a> CrateReader<'a> {
 /// file they represent, just information about length, line breaks, and
 /// multibyte characters. This information is enough to generate valid debuginfo
 /// for items inlined from other crates.
-fn import_codemap(local_codemap: &codemap::CodeMap,
-                  metadata: &MetadataBlob)
-                  -> Vec<cstore::ImportedFileMap> {
+pub fn import_codemap(local_codemap: &codemap::CodeMap,
+                      metadata: &MetadataBlob)
+                      -> Vec<cstore::ImportedFileMap> {
     let external_codemap = decoder::get_imported_filemaps(metadata.as_slice());
 
     let imported_filemaps = external_codemap.into_iter().map(|filemap_to_import| {
