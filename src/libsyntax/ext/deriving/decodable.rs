@@ -24,7 +24,7 @@ use ptr::P;
 pub fn expand_deriving_rustc_decodable(cx: &mut ExtCtxt,
                                        span: Span,
                                        mitem: &MetaItem,
-                                       item: Annotatable,
+                                       item: &Annotatable,
                                        push: &mut FnMut(Annotatable))
 {
     expand_deriving_decodable_imp(cx, span, mitem, item, push, "rustc_serialize")
@@ -33,7 +33,7 @@ pub fn expand_deriving_rustc_decodable(cx: &mut ExtCtxt,
 pub fn expand_deriving_decodable(cx: &mut ExtCtxt,
                                  span: Span,
                                  mitem: &MetaItem,
-                                 item: Annotatable,
+                                 item: &Annotatable,
                                  push: &mut FnMut(Annotatable))
 {
     expand_deriving_decodable_imp(cx, span, mitem, item, push, "serialize")
@@ -42,7 +42,7 @@ pub fn expand_deriving_decodable(cx: &mut ExtCtxt,
 fn expand_deriving_decodable_imp(cx: &mut ExtCtxt,
                                  span: Span,
                                  mitem: &MetaItem,
-                                 item: Annotatable,
+                                 item: &Annotatable,
                                  push: &mut FnMut(Annotatable),
                                  krate: &'static str)
 {
@@ -88,7 +88,7 @@ fn expand_deriving_decodable_imp(cx: &mut ExtCtxt,
         associated_types: Vec::new(),
     };
 
-    trait_def.expand(cx, mitem, &item, push)
+    trait_def.expand(cx, mitem, item, push)
 }
 
 fn decodable_substructure(cx: &mut ExtCtxt, trait_span: Span,

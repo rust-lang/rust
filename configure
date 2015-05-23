@@ -1,7 +1,7 @@
 #!/bin/sh
 
 msg() {
-    echo "configure: $1"
+    echo "configure: $*"
 }
 
 step_msg() {
@@ -33,8 +33,8 @@ need_ok() {
 
 need_cmd() {
     if command -v $1 >/dev/null 2>&1
-    then msg "found program $1"
-    else err "need program $1"
+    then msg "found program '$1'"
+    else err "program '$1' is missing, please install it"
     fi
 }
 
@@ -986,7 +986,7 @@ then
             | cut -d ' ' -f 2)
 
         case $CFG_CLANG_VERSION in
-            (3.2* | 3.3* | 3.4* | 3.5* | 3.6*)
+            (3.2* | 3.3* | 3.4* | 3.5* | 3.6* | 3.7*)
             step_msg "found ok version of CLANG: $CFG_CLANG_VERSION"
             if [ -z "$CC" ]
             then
