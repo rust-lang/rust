@@ -17,11 +17,8 @@ fn main() {
     let in_file = Path::new("src/default.toml");
 
     let manifest_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
-    let profile = env::var("PROFILE").unwrap();
     let mut out_file = PathBuf::new();
     out_file.push(manifest_dir);
-    out_file.push("target");
-    out_file.push(profile);
     out_file.push("default.toml");
 
     std::fs::copy(in_file, out_file).unwrap();

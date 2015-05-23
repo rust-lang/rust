@@ -24,12 +24,16 @@ extern crate getopts;
 extern crate rustc;
 extern crate rustc_driver;
 extern crate syntax;
+extern crate rustc_serialize;
 
 extern crate strings;
 
 use rustc::session::Session;
-use rustc::session::config::{self, Input};
+use rustc::session::config as rustc_config;
+use rustc::session::config::Input;
 use rustc_driver::{driver, CompilerCalls, Compilation};
+
+use rustc_serialize::{Decodable, Decoder};
 
 use syntax::ast;
 use syntax::codemap::CodeMap;
@@ -42,6 +46,8 @@ use std::collections::HashMap;
 use changes::ChangeSet;
 use visitor::FmtVisitor;
 
+#[macro_use]
+mod config;
 mod changes;
 mod visitor;
 mod functions;
@@ -52,16 +58,11 @@ mod types;
 mod expr;
 mod imports;
 
-const IDEAL_WIDTH: usize = 80;
-const LEEWAY: usize = 5;
-const MAX_WIDTH: usize = 100;
 const MIN_STRING: usize = 10;
-const TAB_SPACES: usize = 4;
-const NEWLINE_STYLE: NewlineStyle = NewlineStyle::Unix;
-const FN_BRACE_STYLE: BraceStyle = BraceStyle::SameLineWhere;
-const FN_RETURN_INDENT: ReturnIndent = ReturnIndent::WithArgs;
 // When we get scoped annotations, we should have rustfmt::skip.
 const SKIP_ANNOTATION: &'static str = "rustfmt_skip";
+
+static mut CONFIG: Option<config::Config> = None;
 
 #[derive(Copy, Clone)]
 pub enum WriteMode {
@@ -75,13 +76,24 @@ pub enum WriteMode {
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
-enum NewlineStyle {
+pub enum NewlineStyle {
     Windows, // \r\n
     Unix, // \n
 }
 
+impl Decodable for NewlineStyle {
+    fn decode<D: Decoder>(d: &mut D) -> Result<Self, D::Error> {
+        let s = try!(d.read_str());
+        match &*s {
+            "Windows" => Ok(NewlineStyle::Windows),
+            "Unix" => Ok(NewlineStyle::Unix),
+            _ => Err(d.error("Bad variant")),
+        }
+    }
+}
+
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
-enum BraceStyle {
+pub enum BraceStyle {
     AlwaysNextLine,
     PreferSameLine,
     // Prefer same line except where there is a where clause, in which case force
@@ -89,13 +101,37 @@ enum BraceStyle {
     SameLineWhere,
 }
 
+impl Decodable for BraceStyle {
+    fn decode<D: Decoder>(d: &mut D) -> Result<Self, D::Error> {
+        let s = try!(d.read_str());
+        match &*s {
+            "AlwaysNextLine" => Ok(BraceStyle::AlwaysNextLine),
+            "PreferSameLine" => Ok(BraceStyle::PreferSameLine),
+            "SameLineWhere" => Ok(BraceStyle::SameLineWhere),
+            _ => Err(d.error("Bad variant")),
+        }
+    }
+}
+
 // How to indent a function's return type.
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
-enum ReturnIndent {
+pub enum ReturnIndent {
     // Aligned with the arguments
     WithArgs,
     // Aligned with the where clause
     WithWhereClause,
+}
+
+// TODO could use a macro for all these Decodable impls.
+impl Decodable for ReturnIndent {
+    fn decode<D: Decoder>(d: &mut D) -> Result<Self, D::Error> {
+        let s = try!(d.read_str());
+        match &*s {
+            "WithArgs" => Ok(ReturnIndent::WithArgs),
+            "WithWhereClause" => Ok(ReturnIndent::WithWhereClause),
+            _ => Err(d.error("Bad variant")),
+        }
+    }
 }
 
 // Formatting which depends on the AST.
@@ -133,10 +169,10 @@ fn fmt_lines(changes: &mut ChangeSet) {
                     line_len -= b - lw;
                 }
                 // Check for any line width errors we couldn't correct.
-                if line_len > MAX_WIDTH {
+                if line_len > config!(max_width) {
                     // TODO store the error rather than reporting immediately.
                     println!("Rustfmt couldn't fix (sorry). {}:{}: line longer than {} characters",
-                             f, cur_line, MAX_WIDTH);
+                             f, cur_line, config!(max_width));
                 }
                 line_len = 0;
                 cur_line += 1;
@@ -200,7 +236,7 @@ impl<'a> CompilerCalls<'a> for RustFmtCalls {
 
     fn no_input(&mut self,
                 _: &getopts::Matches,
-                _: &config::Options,
+                _: &rustc_config::Options,
                 _: &Option<PathBuf>,
                 _: &Option<PathBuf>,
                 _: &diagnostics::registry::Registry)
@@ -248,7 +284,14 @@ impl<'a> CompilerCalls<'a> for RustFmtCalls {
     }
 }
 
-pub fn run(args: Vec<String>, write_mode: WriteMode) {
+// args are the arguments passed on the command line, generally passed through
+// to the compiler.
+// write_mode determines what happens to the result of running rustfmt, see
+// WriteMode.
+// default_config is a string of toml data to be used to configure rustfmt.
+pub fn run(args: Vec<String>, write_mode: WriteMode, default_config: &str) {
+    config::set_config(default_config);
+
     let mut call_ctxt = RustFmtCalls { input_path: None, write_mode: write_mode };
     rustc_driver::run_compiler(&args, &mut call_ctxt);
 }

@@ -20,7 +20,6 @@ use std::fmt;
 use std::fs::File;
 use std::io::{Write, stdout};
 use WriteMode;
-use NEWLINE_STYLE;
 use NewlineStyle;
 
 // This is basically a wrapper around a bunch of Ropes which makes it convenient
@@ -157,7 +156,7 @@ impl<'a> ChangeSet<'a> {
             -> Result<(), ::std::io::Error>
             where T: Write,
         {
-            match NEWLINE_STYLE {
+            match config!(newline_style) {
                 NewlineStyle::Unix => write!(writer, "{}", text),
                 NewlineStyle::Windows => {
                     for (c, _) in text.chars() {

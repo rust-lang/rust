@@ -58,7 +58,6 @@ fn idempotent_tests() {
 // Compare output to input.
 fn print_mismatches(result: HashMap<String, String>) {
     for (file_name, fmt_text) in result {
-        println!("Mismatch in {}.", file_name);
         println!("{}", fmt_text);
     }
 }
@@ -68,14 +67,16 @@ static HANDLE_RESULT: &'static Fn(HashMap<String, String>) = &handle_result;
 
 pub fn idempotent_check(filename: String) -> Result<(), HashMap<String, String>> {
     let args = vec!["rustfmt".to_owned(), filename];
+    let mut def_config_file = fs::File::open("default.toml").unwrap();
+    let mut def_config = String::new();
+    def_config_file.read_to_string(&mut def_config).unwrap();
     // this thread is not used for concurrency, but rather to workaround the issue that the passed
     // function handle needs to have static lifetime. Instead of using a global RefCell, we use
     // panic to return a result in case of failure. This has the advantage of smoothing the road to
     // multithreaded rustfmt
     thread::catch_panic(move || {
-        run(args, WriteMode::Return(HANDLE_RESULT));
+        run(args, WriteMode::Return(HANDLE_RESULT), &def_config);
     }).map_err(|any|
-        // i know it is a hashmap
         *any.downcast().unwrap()
     )
 }
@@ -90,8 +91,8 @@ fn handle_result(result: HashMap<String, String>) {
         // TODO: speedup by running through bytes iterator
         f.read_to_string(&mut text).unwrap();
         if fmt_text != text {
-            show_diff(&file_name, &fmt_text, &text);
-            failures.insert(file_name, fmt_text);
+            let diff_str = make_diff(&file_name, &fmt_text, &text);
+            failures.insert(file_name, diff_str);
         }
     }
     if !failures.is_empty() {
@@ -100,24 +101,25 @@ fn handle_result(result: HashMap<String, String>) {
 }
 
 
-fn show_diff(file_name: &str, expected: &str, actual: &str) {
+fn make_diff(file_name: &str, expected: &str, actual: &str) -> String {
     let mut line_number = 1;
     let mut prev_both = true;
+    let mut text = String::new();
 
     for result in diff::lines(expected, actual) {
         match result {
             diff::Result::Left(str) => {
                 if prev_both {
-                    println!("Mismatch @ {}:{}", file_name, line_number);
+                    text.push_str(&format!("Mismatch @ {}:{}\n", file_name, line_number));
                 }
-                println!("-{}⏎", str);
+                text.push_str(&format!("-{}⏎\n", str));
                 prev_both = false;
             }
             diff::Result::Right(str) => {
                 if prev_both {
-                    println!("Mismatch @ {}:{}", file_name, line_number);
+                    text.push_str(&format!("Mismatch @ {}:{}\n", file_name, line_number));
                 }
-                println!("+{}⏎", str);
+                text.push_str(&format!("+{}⏎\n", str));
                 prev_both = false;
                 line_number += 1;
             }
@@ -127,4 +129,6 @@ fn show_diff(file_name: &str, expected: &str, actual: &str) {
             }
         }
     }
+
+    text
 }

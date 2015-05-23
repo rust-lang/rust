@@ -15,7 +15,7 @@ use lists::{write_list, ListFormatting, SeparatorTactic, ListTactic};
 use syntax::{ast, ptr};
 use syntax::codemap::{Span, Pos};
 
-use {MAX_WIDTH, MIN_STRING};
+use MIN_STRING;
 
 impl<'a> FmtVisitor<'a> {
     // TODO NEEDS TESTS
@@ -26,7 +26,7 @@ impl<'a> FmtVisitor<'a> {
         // strings, or if the string is too long for the line.
         let l_loc = self.codemap.lookup_char_pos(span.lo);
         let r_loc = self.codemap.lookup_char_pos(span.hi);
-        if l_loc.line == r_loc.line && r_loc.col.to_usize() <= MAX_WIDTH {
+        if l_loc.line == r_loc.line && r_loc.col.to_usize() <= config!(max_width) {
             return self.snippet(span);
         }
 

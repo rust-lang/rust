@@ -8,8 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use {ReturnIndent, MAX_WIDTH, BraceStyle,
-     IDEAL_WIDTH, LEEWAY, FN_BRACE_STYLE, FN_RETURN_INDENT};
+use {ReturnIndent, BraceStyle};
 use utils::make_indent;
 use lists::{write_list, ListFormatting, SeparatorTactic, ListTactic};
 use visitor::FmtVisitor;
@@ -149,8 +148,8 @@ impl<'a> FmtVisitor<'a> {
             // If we've already gone multi-line, or the return type would push
             // over the max width, then put the return type on a new line.
             if result.contains("\n") ||
-               result.len() + indent + ret_str.len() > MAX_WIDTH {
-                let indent = match FN_RETURN_INDENT {
+               result.len() + indent + ret_str.len() > config!(max_width) {
+                let indent = match config!(fn_return_indent) {
                     ReturnIndent::WithWhereClause => indent + 4,
                     // TODO we might want to check that using the arg indent doesn't
                     // blow our budget, and if it does, then fallback to the where
@@ -344,15 +343,15 @@ impl<'a> FmtVisitor<'a> {
             if !newline_brace {
                 used_space += 2;
             }
-            let one_line_budget = if used_space > MAX_WIDTH {
+            let one_line_budget = if used_space > config!(max_width) {
                 0
             } else {
-                MAX_WIDTH - used_space
+                config!(max_width) - used_space
             };
 
             // 2 = `()`
             let used_space = indent + result.len() + 2;
-            let max_space = IDEAL_WIDTH + LEEWAY;
+            let max_space = config!(ideal_width) + config!(leeway);
             debug!("compute_budgets_for_args: used_space: {}, max_space: {}",
                    used_space, max_space);
             if used_space < max_space {
@@ -368,7 +367,7 @@ impl<'a> FmtVisitor<'a> {
             result.push_str(&make_indent(indent + 4));
             // 6 = new indent + `()`
             let used_space = indent + 6;
-            let max_space = IDEAL_WIDTH + LEEWAY;
+            let max_space = config!(ideal_width) + config!(leeway);
             if used_space > max_space {
                 // Whoops! bankrupt.
                 // TODO take evasive action, perhaps kill the indent or something.
@@ -382,7 +381,7 @@ impl<'a> FmtVisitor<'a> {
     }
 
     fn newline_for_brace(&self, where_clause: &ast::WhereClause) -> bool {
-        match FN_BRACE_STYLE {
+        match config!(fn_brace_style) {
             BraceStyle::AlwaysNextLine => true,
             BraceStyle::SameLineWhere if where_clause.predicates.len() > 0 => true,
             _ => false,
@@ -399,7 +398,7 @@ impl<'a> FmtVisitor<'a> {
             return result;
         }
 
-        let budget = MAX_WIDTH - indent - 2;
+        let budget = config!(max_width) - indent - 2;
         // TODO might need to insert a newline if the generics are really long
         result.push('<');
 
@@ -475,7 +474,7 @@ impl<'a> FmtVisitor<'a> {
                                                         .zip(comments.into_iter())
                                                         .collect();
 
-        let budget = IDEAL_WIDTH + LEEWAY - indent - 10;
+        let budget = config!(ideal_width) + config!(leeway) - indent - 10;
         let fmt = ListFormatting {
             tactic: ListTactic::Vertical,
             separator: ",",

@@ -14,7 +14,7 @@ use syntax::visit;
 
 use utils;
 
-use {IDEAL_WIDTH, MAX_WIDTH, TAB_SPACES, SKIP_ANNOTATION};
+use SKIP_ANNOTATION;
 use changes::ChangeSet;
 
 pub struct FmtVisitor<'a> {
@@ -32,7 +32,7 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
                self.codemap.lookup_char_pos(ex.span.hi));
         self.format_missing(ex.span.lo);
         let offset = self.changes.cur_offset_span(ex.span);
-        let new_str = self.rewrite_expr(ex, MAX_WIDTH - offset, offset);
+        let new_str = self.rewrite_expr(ex, config!(max_width) - offset, offset);
         self.changes.push_str_span(ex.span, &new_str);
         self.last_pos = ex.span.hi;
     }
@@ -65,7 +65,7 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
 
         self.changes.push_str_span(b.span, "{");
         self.last_pos = self.last_pos + BytePos(1);
-        self.block_indent += TAB_SPACES;
+        self.block_indent += config!(tab_spaces);
 
         for stmt in &b.stmts {
             self.visit_stmt(&stmt)
@@ -78,7 +78,7 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
             None => {}
         }
 
-        self.block_indent -= TAB_SPACES;
+        self.block_indent -= config!(tab_spaces);
         // TODO we should compress any newlines here to just one
         self.format_missing_with_indent(b.span.hi - BytePos(1));
         self.changes.push_str_span(b.span, "}");
@@ -149,8 +149,8 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
                 match vp.node {
                     ast::ViewPath_::ViewPathList(ref path, ref path_list) => {
                         let block_indent = self.block_indent;
-                        let one_line_budget = MAX_WIDTH - block_indent;
-                        let multi_line_budget = IDEAL_WIDTH - block_indent;
+                        let one_line_budget = config!(max_width) - block_indent;
+                        let multi_line_budget = config!(ideal_width) - block_indent;
                         let new_str = self.rewrite_use_list(block_indent,
                                                             one_line_budget,
                                                             multi_line_budget,
@@ -170,9 +170,9 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
             ast::Item_::ItemImpl(..) |
             ast::Item_::ItemMod(_) |
             ast::Item_::ItemTrait(..) => {
-                self.block_indent += TAB_SPACES;
+                self.block_indent += config!(tab_spaces);
                 visit::walk_item(self, item);
-                self.block_indent -= TAB_SPACES;
+                self.block_indent -= config!(tab_spaces);
             }
             ast::Item_::ItemExternCrate(_) => {
                 self.format_missing_with_indent(item.span.lo);
