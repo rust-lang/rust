@@ -184,7 +184,7 @@ impl DirEntryExt for fs::DirEntry {
 /// # Ok(())
 /// # }
 /// ```
-#[stable(feature = "rust1", since = "1.0.0")]
+#[stable(feature = "symlink", since = "1.1.0")]
 pub fn symlink<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> io::Result<()>
 {
     sys::fs::symlink(src.as_ref(), dst.as_ref())

@@ -949,7 +949,7 @@ pub fn hard_link<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> io::Result<(
 /// # Ok(())
 /// # }
 /// ```
-#[deprecated(since = "1.0.0",
+#[deprecated(since = "1.1.0",
              reason = "replaced with std::os::unix::fs::symlink and \
                        std::os::windows::fs::{symlink_file, symlink_dir}")]
 #[stable(feature = "rust1", since = "1.0.0")]
