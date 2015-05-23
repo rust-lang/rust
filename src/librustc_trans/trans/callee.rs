@@ -36,7 +36,7 @@ use trans::callee;
 use trans::cleanup;
 use trans::cleanup::CleanupMethods;
 use trans::closure;
-use trans::common::{self, Block, Result, NodeIdAndSpan, ExprId, CrateContext,
+use trans::common::{self, BlockContext, Block, Result, NodeIdAndSpan, ExprId, CrateContext,
                     ExprOrMethodCall, FunctionContext, MethodCallKey};
 use trans::consts;
 use trans::datum::*;
@@ -83,19 +83,20 @@ pub enum CalleeData<'tcx> {
 }
 
 pub struct Callee<'blk, 'tcx: 'blk> {
-    pub bcx: Block<'blk, 'tcx>,
+    pub bcx: &'blk Block,
     pub data: CalleeData<'tcx>,
 }
 
-fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
-                     -> Callee<'blk, 'tcx> {
+fn trans<'r, 'blk, 'tcx>(bcx: &mut BlockContext<'r, 'blk, 'tcx>, expr: &ast::Expr)
+                         -> Callee<'blk, 'tcx> {
     let _icx = push_ctxt("trans_callee");
     debug!("callee::trans(expr={})", expr.repr(bcx.tcx()));
 
     // pick out special kinds of expressions that can be called:
     match expr.node {
         ast::ExprPath(..) => {
-            return trans_def(bcx, bcx.def(expr.id), expr);
+            let d = bcx.def(expr.id);
+            return trans_def(bcx, d, expr);
         }
         _ => {}
     }
@@ -103,14 +104,14 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
     // any other expressions are closures:
     return datum_callee(bcx, expr);
 
-    fn datum_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
-                                -> Callee<'blk, 'tcx> {
-        let DatumBlock { bcx, datum, .. } = expr::trans(bcx, expr);
+    fn datum_callee<'r, 'blk, 'tcx>(bcx: &mut BlockContext<'r, 'blk, 'tcx>, expr: &ast::Expr)
+                                    -> Callee<'blk, 'tcx> {
+        let DatumBlock { bcx: bl, datum, .. } = expr::trans(bcx, expr);
         match datum.ty.sty {
             ty::ty_bare_fn(..) => {
-                let llval = datum.to_llscalarish(bcx);
+                let llval = datum.to_llscalarish(&mut bl.with_fcx(bcx.fcx));
                 return Callee {
-                    bcx: bcx,
+                    bcx: bl,
                     data: Fn(llval),
                 };
             }
@@ -119,20 +120,20 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
                     expr.span,
                     &format!("type of callee is neither bare-fn nor closure: \
                              {}",
-                            bcx.ty_to_string(datum.ty)));
+                            bl.with_fcx(bcx.fcx).ty_to_string(datum.ty)));
             }
         }
     }
 
-    fn fn_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, llfn: ValueRef)
+    fn fn_callee<'r, 'blk, 'tcx>(bcx: &mut BlockContext<'r, 'blk, 'tcx>, llfn: ValueRef)
                              -> Callee<'blk, 'tcx> {
         return Callee {
-            bcx: bcx,
+            bcx: bcx.bl,
             data: Fn(llfn),
         };
     }
 
-    fn trans_def<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+    fn trans_def<'r, 'blk, 'tcx>(bcx: &mut BlockContext<'r, 'blk, 'tcx>,
                              def: def::Def,
                              ref_expr: &ast::Expr)
                              -> Callee<'blk, 'tcx> {
@@ -152,7 +153,7 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
                                                     ExprId(ref_expr.id),
                                                     bcx.fcx.param_substs);
                 Callee {
-                    bcx: bcx,
+                    bcx: bcx.bl,
                     data: NamedTupleConstructor(substs, 0)
                 }
             }
@@ -164,18 +165,20 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
                                                     ExprId(ref_expr.id),
                                                     bcx.fcx.param_substs);
                 let def_id = inline::maybe_instantiate_inline(bcx.ccx(), did);
-                Callee { bcx: bcx, data: Intrinsic(def_id.node, substs) }
+                Callee { bcx: bcx.bl, data: Intrinsic(def_id.node, substs) }
             }
             def::DefFn(did, _) | def::DefMethod(did, def::FromImpl(_)) => {
-                fn_callee(bcx, trans_fn_ref(bcx.ccx(), did, ExprId(ref_expr.id),
-                                            bcx.fcx.param_substs).val)
+                let v = trans_fn_ref(bcx.ccx(), did, ExprId(ref_expr.id),
+                                     bcx.fcx.param_substs).val;
+                fn_callee(bcx, v)
             }
             def::DefMethod(meth_did, def::FromTrait(trait_did)) => {
-                fn_callee(bcx, meth::trans_static_method_callee(bcx.ccx(),
-                                                                meth_did,
-                                                                trait_did,
-                                                                ref_expr.id,
-                                                                bcx.fcx.param_substs).val)
+                let v = meth::trans_static_method_callee(bcx.ccx(),
+                                                         meth_did,
+                                                         trait_did,
+                                                         ref_expr.id,
+                                                         bcx.fcx.param_substs).val;
+                fn_callee(bcx, v)
             }
             def::DefVariant(tid, vid, _) => {
                 let vinfo = ty::enum_variant_with_id(bcx.tcx(), tid, vid);
@@ -187,7 +190,7 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
                 assert!(!vinfo.args.is_empty());
 
                 Callee {
-                    bcx: bcx,
+                    bcx: bcx.bl,
                     data: NamedTupleConstructor(substs, vinfo.disr_val)
                 }
             }
@@ -196,7 +199,7 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
                                                     ExprId(ref_expr.id),
                                                     bcx.fcx.param_substs);
                 Callee {
-                    bcx: bcx,
+                    bcx: bcx.bl,
                     data: NamedTupleConstructor(substs, 0)
                 }
             }
@@ -237,13 +240,13 @@ pub fn trans_fn_ref<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     trans_fn_ref_with_substs(ccx, def_id, node, param_substs, substs)
 }
 
-fn trans_fn_ref_with_substs_to_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                                  def_id: ast::DefId,
-                                                  ref_id: ast::NodeId,
-                                                  substs: subst::Substs<'tcx>)
-                                                  -> Callee<'blk, 'tcx> {
+fn trans_fn_ref_with_substs_to_callee<'r, 'blk, 'tcx>(bcx: &mut BlockContext<'r, 'blk, 'tcx>,
+                                                      def_id: ast::DefId,
+                                                      ref_id: ast::NodeId,
+                                                      substs: subst::Substs<'tcx>)
+                                                      -> Callee<'blk, 'tcx> {
     Callee {
-        bcx: bcx,
+        bcx: bcx.bl,
         data: Fn(trans_fn_ref_with_substs(bcx.ccx(),
                                           def_id,
                                           ExprId(ref_id),
@@ -334,7 +337,7 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
 
     //
     let empty_substs = tcx.mk_substs(Substs::trans_empty());
-    let (block_arena, fcx): (TypedArena<_>, FunctionContext);
+    let (block_arena, mut fcx): (TypedArena<_>, FunctionContext);
     block_arena = TypedArena::new();
     fcx = new_fn_ctxt(ccx,
                       llfn,
@@ -344,11 +347,13 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
                       empty_substs,
                       None,
                       &block_arena);
-    let mut bcx = init_function(&fcx, false, sig.output);
+    let mut fcx = &mut fcx;
+    let mut bcx = init_function(fcx, false, sig.output);
 
     // the first argument (`self`) will be ptr to the the fn pointer
     let llfnpointer = if is_by_ref {
-        Load(bcx, get_param(fcx.llfn, fcx.arg_pos(0) as u32))
+        let p = get_param(fcx.llfn, fcx.arg_pos(0) as u32);
+        Load(&mut bcx.with_fcx(fcx), p)
     } else {
         get_param(fcx.llfn, fcx.arg_pos(0) as u32)
     };
@@ -361,18 +366,18 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
         .collect();
     assert!(!fcx.needs_ret_allocas);
 
-    let dest = fcx.llretslotptr.get().map(|_|
+    let dest = fcx.llretslotptr.map(|_|
         expr::SaveIn(fcx.get_ret_slot(bcx, sig.output, "ret_slot"))
     );
 
-    bcx = trans_call_inner(bcx,
+    bcx = trans_call_inner(&mut bcx.with_fcx(fcx),
                            DebugLoc::None,
                            bare_fn_ty,
-                           |bcx, _| Callee { bcx: bcx, data: Fn(llfnpointer) },
+                           |bcx, _| Callee { bcx: bcx.bl, data: Fn(llfnpointer) },
                            ArgVals(&llargs[..]),
                            dest).bcx;
 
-    finish_fn(&fcx, bcx, sig.output, DebugLoc::None);
+    finish_fn(fcx, bcx, sig.output, DebugLoc::None);
 
     ccx.fn_pointer_shims().borrow_mut().insert(bare_fn_ty_maybe_ref, llfn);
 
@@ -592,27 +597,28 @@ pub fn trans_fn_ref_with_substs<'a, 'tcx>(
 // ______________________________________________________________________
 // Translating calls
 
-pub fn trans_call<'a, 'blk, 'tcx>(in_cx: Block<'blk, 'tcx>,
-                                  call_expr: &ast::Expr,
-                                  f: &ast::Expr,
-                                  args: CallArgs<'a, 'tcx>,
-                                  dest: expr::Dest)
-                                  -> Block<'blk, 'tcx> {
+pub fn trans_call<'a, 'r, 'blk, 'tcx>(in_cx: &mut BlockContext<'r, 'blk, 'tcx>,
+                                      call_expr: &ast::Expr,
+                                      f: &ast::Expr,
+                                      args: CallArgs<'a, 'tcx>,
+                                      dest: expr::Dest)
+                                      -> &'blk Block {
     let _icx = push_ctxt("trans_call");
+    let ty = common::expr_ty_adjusted(in_cx, f);
     trans_call_inner(in_cx,
                      call_expr.debug_loc(),
-                     common::expr_ty_adjusted(in_cx, f),
+                     ty,
                      |cx, _| trans(cx, f),
                      args,
                      Some(dest)).bcx
 }
 
-pub fn trans_method_call<'a, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                         call_expr: &ast::Expr,
-                                         rcvr: &ast::Expr,
-                                         args: CallArgs<'a, 'tcx>,
-                                         dest: expr::Dest)
-                                         -> Block<'blk, 'tcx> {
+pub fn trans_method_call<'a, 'r, 'blk, 'tcx>(bcx: &mut BlockContext<'r, 'blk, 'tcx>,
+                                             call_expr: &ast::Expr,
+                                             rcvr: &ast::Expr,
+                                             args: CallArgs<'a, 'tcx>,
+                                             dest: expr::Dest)
+                                             -> &'blk Block {
     let _icx = push_ctxt("trans_method_call");
     debug!("trans_method_call(call_expr={})", call_expr.repr(bcx.tcx()));
     let method_call = MethodCall::expr(call_expr.id);
@@ -628,10 +634,11 @@ pub fn trans_method_call<'a, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         },
         None => panic!("method not found in trans_method_call")
     };
+    let ty = common::monomorphize_type(bcx, method_ty);
     trans_call_inner(
         bcx,
         call_expr.debug_loc(),
-        common::monomorphize_type(bcx, method_ty),
+        ty,
         |cx, arg_cleanup_scope| {
             meth::trans_method_callee(cx, method_call, Some(rcvr), arg_cleanup_scope)
         },
@@ -639,12 +646,12 @@ pub fn trans_method_call<'a, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         Some(dest)).bcx
 }
 
-pub fn trans_lang_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                   did: ast::DefId,
-                                   args: &[ValueRef],
-                                   dest: Option<expr::Dest>,
-                                   debug_loc: DebugLoc)
-                                   -> Result<'blk, 'tcx> {
+pub fn trans_lang_call<'r, 'blk, 'tcx>(bcx: &mut BlockContext<'r, 'blk, 'tcx>,
+                                       did: ast::DefId,
+                                       args: &[ValueRef],
+                                       dest: Option<expr::Dest>,
+                                       debug_loc: DebugLoc)
+                                       -> Result<'blk> {
     let fty = if did.krate == ast::LOCAL_CRATE {
         ty::node_id_to_type(bcx.tcx(), did.node)
     } else {
@@ -673,14 +680,15 @@ pub fn trans_lang_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 ///
 /// For non-lang items, `dest` is always Some, and hence the result is written into memory
 /// somewhere. Nonetheless we return the actual return value of the function.
-pub fn trans_call_inner<'a, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
-                                           debug_loc: DebugLoc,
-                                           callee_ty: Ty<'tcx>,
-                                           get_callee: F,
-                                           args: CallArgs<'a, 'tcx>,
-                                           dest: Option<expr::Dest>)
-                                           -> Result<'blk, 'tcx> where
-    F: FnOnce(Block<'blk, 'tcx>, cleanup::ScopeId) -> Callee<'blk, 'tcx>,
+pub fn trans_call_inner<'a, 'r, 'blk, 'tcx, F>
+                       (&mut BlockContext { bl, ref mut fcx }: &mut BlockContext<'r, 'blk, 'tcx>,
+                        debug_loc: DebugLoc,
+                        callee_ty: Ty<'tcx>,
+                        get_callee: F,
+                        args: CallArgs<'a, 'tcx>,
+                        dest: Option<expr::Dest>)
+                        -> Result<'blk> where
+    F: for<'b> FnOnce(&mut BlockContext<'b, 'blk, 'tcx>, cleanup::ScopeId) -> Callee<'blk, 'tcx>,
 {
     // Introduce a temporary cleanup scope that will contain cleanups
     // for the arguments while they are being evaluated. The purpose
@@ -689,16 +697,15 @@ pub fn trans_call_inner<'a, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
     // cleaned up. If no panic occurs, the values are handed off to
     // the callee, and hence none of the cleanups in this temporary
     // scope will ever execute.
-    let fcx = bcx.fcx;
     let ccx = fcx.ccx;
     let arg_cleanup_scope = fcx.push_custom_cleanup_scope();
 
-    let callee = get_callee(bcx, cleanup::CustomScope(arg_cleanup_scope));
+    let callee = get_callee(&mut bl.with_fcx(fcx), cleanup::CustomScope(arg_cleanup_scope));
     let mut bcx = callee.bcx;
 
     let (abi, ret_ty) = match callee_ty.sty {
         ty::ty_bare_fn(_, ref f) => {
-            let output = ty::erase_late_bound_regions(bcx.tcx(), &f.sig.output());
+            let output = ty::erase_late_bound_regions(bcx.with_fcx(fcx).tcx(), &f.sig.output());
             (f.abi, output)
         }
         _ => panic!("expected bare rust fn or closure in trans_call_inner")
@@ -718,11 +725,11 @@ pub fn trans_call_inner<'a, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
             let call_info = match debug_loc {
                 DebugLoc::At(id, span) => NodeIdAndSpan { id: id, span: span },
                 DebugLoc::None => {
-                    bcx.sess().bug("No call info for intrinsic call?")
+                    bcx.with_fcx(fcx).sess().bug("No call info for intrinsic call?")
                 }
             };
 
-            return intrinsic::trans_intrinsic_call(bcx, node, callee_ty,
+            return intrinsic::trans_intrinsic_call(&mut bcx.with_fcx(fcx), node, callee_ty,
                                                    arg_cleanup_scope, args,
                                                    dest.unwrap(), substs,
                                                    call_info);
@@ -731,8 +738,8 @@ pub fn trans_call_inner<'a, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
             assert!(dest.is_some());
             fcx.pop_custom_cleanup_scope(arg_cleanup_scope);
 
-            let ctor_ty = callee_ty.subst(bcx.tcx(), &substs);
-            return base::trans_named_tuple_constructor(bcx,
+            let ctor_ty = callee_ty.subst(bcx.with_fcx(fcx).tcx(), &substs);
+            return base::trans_named_tuple_constructor(&mut bcx.with_fcx(fcx),
                                                        ctor_ty,
                                                        disr,
                                                        args,
@@ -758,14 +765,14 @@ pub fn trans_call_inner<'a, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
             };
             if !is_rust_fn ||
               type_of::return_uses_outptr(ccx, ret_ty) ||
-              bcx.fcx.type_needs_drop(ret_ty) {
+              fcx.type_needs_drop(ret_ty) {
                 // Push the out-pointer if we use an out-pointer for this
                 // return type, otherwise push "undef".
                 if common::type_is_zero_size(ccx, ret_ty) {
                     let llty = type_of::type_of(ccx, ret_ty);
                     Some(common::C_undef(llty.ptr_to()))
                 } else {
-                    Some(alloc_ty(bcx, ret_ty, "__llret"))
+                    Some(alloc_ty(&mut bcx.with_fcx(fcx), ret_ty, "__llret"))
                 }
             } else {
                 None
@@ -793,8 +800,9 @@ pub fn trans_call_inner<'a, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
                 if llformal_ret_ty != llret_ty {
                     // this could happen due to e.g. subtyping
                     debug!("casting actual return type ({}) to match formal ({})",
-                        bcx.llty_str(llret_ty), bcx.llty_str(llformal_ret_ty));
-                    llretslot = PointerCast(bcx, llretslot, llformal_ret_ty);
+                        bcx.with_fcx(fcx).llty_str(llret_ty),
+                        bcx.with_fcx(fcx).llty_str(llformal_ret_ty));
+                    llretslot = PointerCast(&mut bcx.with_fcx(fcx), llretslot, llformal_ret_ty);
                 }
                 llargs.push(llretslot);
             }
@@ -808,7 +816,7 @@ pub fn trans_call_inner<'a, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
         }
 
         // Push the arguments.
-        bcx = trans_args(bcx,
+        bcx = trans_args(&mut bcx.with_fcx(fcx),
                          args,
                          callee_ty,
                          &mut llargs,
@@ -816,10 +824,10 @@ pub fn trans_call_inner<'a, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
                          llself.is_some(),
                          abi);
 
-        fcx.scopes.borrow_mut().last_mut().unwrap().drop_non_lifetime_clean();
+        fcx.scopes.last_mut().unwrap().drop_non_lifetime_clean();
 
         // Invoke the actual rust fn and update bcx/llresult.
-        let (llret, b) = base::invoke(bcx,
+        let (llret, b) = base::invoke(&mut bcx.with_fcx(fcx),
                                       llfn,
                                       &llargs[..],
                                       callee_ty,
@@ -831,10 +839,10 @@ pub fn trans_call_inner<'a, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
         // the return value, copy it into llretslot.
         match (opt_llretslot, ret_ty) {
             (Some(llretslot), ty::FnConverging(ret_ty)) => {
-                if !type_of::return_uses_outptr(bcx.ccx(), ret_ty) &&
-                    !common::type_is_zero_size(bcx.ccx(), ret_ty)
+                if !type_of::return_uses_outptr(bcx.with_fcx(fcx).ccx(), ret_ty) &&
+                    !common::type_is_zero_size(bcx.with_fcx(fcx).ccx(), ret_ty)
                 {
-                    store_ty(bcx, llret, llretslot, ret_ty)
+                    store_ty(&mut bcx.with_fcx(fcx), llret, llretslot, ret_ty)
                 }
             }
             (_, _) => {}
@@ -846,19 +854,20 @@ pub fn trans_call_inner<'a, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
 
         let mut llargs = Vec::new();
         let arg_tys = match args {
-            ArgExprs(a) => a.iter().map(|x| common::expr_ty(bcx, &**x)).collect(),
+            ArgExprs(a) => a.iter().map(|x| common::expr_ty(&mut bcx.with_fcx(fcx), &**x))
+                                   .collect(),
             _ => panic!("expected arg exprs.")
         };
-        bcx = trans_args(bcx,
+        bcx = trans_args(&mut bcx.with_fcx(fcx),
                          args,
                          callee_ty,
                          &mut llargs,
                          cleanup::CustomScope(arg_cleanup_scope),
                          false,
                          abi);
-        fcx.scopes.borrow_mut().last_mut().unwrap().drop_non_lifetime_clean();
+        fcx.scopes.last_mut().unwrap().drop_non_lifetime_clean();
 
-        bcx = foreign::trans_native_call(bcx,
+        bcx = foreign::trans_native_call(&mut bcx.with_fcx(fcx),
                                          callee_ty,
                                          llfn,
                                          opt_llretslot.unwrap(),
@@ -874,17 +883,17 @@ pub fn trans_call_inner<'a, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
     match (dest, opt_llretslot, ret_ty) {
         (Some(expr::Ignore), Some(llretslot), ty::FnConverging(ret_ty)) => {
             // drop the value if it is not being saved.
-            bcx = glue::drop_ty(bcx,
+            bcx = glue::drop_ty(&mut bcx.with_fcx(fcx),
                                 llretslot,
                                 ret_ty,
                                 debug_loc);
-            call_lifetime_end(bcx, llretslot);
+            call_lifetime_end(&mut bcx.with_fcx(fcx), llretslot);
         }
         _ => {}
     }
 
     if ret_ty == ty::FnDiverging {
-        Unreachable(bcx);
+        Unreachable(&mut bcx.with_fcx(fcx));
     }
 
     Result::new(bcx, llresult)
@@ -911,15 +920,16 @@ pub enum CallArgs<'a, 'tcx> {
     ArgOverloadedCall(Vec<&'a ast::Expr>),
 }
 
-fn trans_args_under_call_abi<'blk, 'tcx>(
-                             mut bcx: Block<'blk, 'tcx>,
-                             arg_exprs: &[P<ast::Expr>],
-                             fn_ty: Ty<'tcx>,
-                             llargs: &mut Vec<ValueRef>,
-                             arg_cleanup_scope: cleanup::ScopeId,
-                             ignore_self: bool)
-                             -> Block<'blk, 'tcx>
+fn trans_args_under_call_abi<'r, 'blk, 'tcx>(
+        &mut BlockContext { bl, ref mut fcx }: &mut BlockContext<'r, 'blk, 'tcx>,
+        arg_exprs: &[P<ast::Expr>],
+        fn_ty: Ty<'tcx>,
+        llargs: &mut Vec<ValueRef>,
+        arg_cleanup_scope: cleanup::ScopeId,
+        ignore_self: bool)
+        -> &'blk Block
 {
+    let mut bcx = &mut bl.with_fcx(fcx);
     let args =
         ty::erase_late_bound_regions(
             bcx.tcx(), &ty::ty_fn_args(fn_ty));
@@ -951,21 +961,21 @@ fn trans_args_under_call_abi<'blk, 'tcx>(
                                                           tuple_expr.id));
             let repr = adt::represent_type(bcx.ccx(), tuple_type);
             let repr_ptr = &*repr;
-            llargs.extend(field_types.iter().enumerate().map(|(i, field_type)| {
+            for (i, field_type) in field_types.iter().enumerate() {
                 let arg_datum = tuple_lvalue_datum.get_element(
                     bcx,
                     field_type,
-                    |srcval| {
+                    |bcx, srcval| {
                         adt::trans_field_ptr(bcx, repr_ptr, srcval, 0, i)
                     }).to_expr_datum();
-                unpack_result!(bcx, trans_arg_datum(
+                llargs.push(unpack_result!(bcx, trans_arg_datum(
                     bcx,
                     field_type,
                     arg_datum,
                     arg_cleanup_scope,
                     DontAutorefArg)
-                )
-            }));
+                ));
+            }
         }
         _ => {
             bcx.sess().span_bug(tuple_expr.span,
@@ -973,17 +983,19 @@ fn trans_args_under_call_abi<'blk, 'tcx>(
         }
     };
 
-    bcx
+    bcx.bl
 }
 
-fn trans_overloaded_call_args<'blk, 'tcx>(
-                              mut bcx: Block<'blk, 'tcx>,
-                              arg_exprs: Vec<&ast::Expr>,
-                              fn_ty: Ty<'tcx>,
-                              llargs: &mut Vec<ValueRef>,
-                              arg_cleanup_scope: cleanup::ScopeId,
-                              ignore_self: bool)
-                              -> Block<'blk, 'tcx> {
+fn trans_overloaded_call_args<'r, 'blk, 'tcx>(
+        &mut BlockContext { bl, ref mut fcx }: &mut BlockContext<'r, 'blk, 'tcx>,
+        arg_exprs: Vec<&ast::Expr>,
+        fn_ty: Ty<'tcx>,
+        llargs: &mut Vec<ValueRef>,
+        arg_cleanup_scope: cleanup::ScopeId,
+        ignore_self: bool)
+        -> &'blk Block
+{
+    let mut bcx = &mut bl.with_fcx(fcx);
     // Translate the `self` argument first.
     let arg_tys = ty::erase_late_bound_regions(bcx.tcx(),  &ty::ty_fn_args(fn_ty));
     if !ignore_self {
@@ -1019,24 +1031,25 @@ fn trans_overloaded_call_args<'blk, 'tcx>(
         }
     };
 
-    bcx
+    bcx.bl
 }
 
-pub fn trans_args<'a, 'blk, 'tcx>(cx: Block<'blk, 'tcx>,
-                                  args: CallArgs<'a, 'tcx>,
-                                  fn_ty: Ty<'tcx>,
-                                  llargs: &mut Vec<ValueRef>,
-                                  arg_cleanup_scope: cleanup::ScopeId,
-                                  ignore_self: bool,
-                                  abi: synabi::Abi)
-                                  -> Block<'blk, 'tcx> {
+pub fn trans_args<'a, 'r, 'blk, 'tcx>
+                 (&mut BlockContext { bl, ref mut fcx }: &mut BlockContext<'r, 'blk, 'tcx>,
+                  args: CallArgs<'a, 'tcx>,
+                  fn_ty: Ty<'tcx>,
+                  llargs: &mut Vec<ValueRef>,
+                  arg_cleanup_scope: cleanup::ScopeId,
+                  ignore_self: bool,
+                  abi: synabi::Abi)
+                  -> &'blk Block {
     debug!("trans_args(abi={})", abi);
 
-    let _icx = push_ctxt("trans_args");
-    let arg_tys = ty::erase_late_bound_regions(cx.tcx(), &ty::ty_fn_args(fn_ty));
-    let variadic = ty::fn_is_variadic(fn_ty);
+    let mut bcx = &mut bl.with_fcx(fcx);
 
-    let mut bcx = cx;
+    let _icx = push_ctxt("trans_args");
+    let arg_tys = ty::erase_late_bound_regions(bcx.tcx(), &ty::ty_fn_args(fn_ty));
+    let variadic = ty::fn_is_variadic(fn_ty);
 
     // First we figure out the caller's view of the types of the arguments.
     // This will be needed if this is a generic call, because the callee has
@@ -1046,7 +1059,7 @@ pub fn trans_args<'a, 'blk, 'tcx>(cx: Block<'blk, 'tcx>,
             if abi == synabi::RustCall {
                 // This is only used for direct calls to the `call`,
                 // `call_mut` or `call_once` functions.
-                return trans_args_under_call_abi(cx,
+                return trans_args_under_call_abi(bcx,
                                                  arg_exprs,
                                                  fn_ty,
                                                  llargs,
@@ -1061,7 +1074,7 @@ pub fn trans_args<'a, 'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                 }
                 let arg_ty = if i >= num_formal_args {
                     assert!(variadic);
-                    common::expr_ty_adjusted(cx, &**arg_expr)
+                    common::expr_ty_adjusted(bcx, &**arg_expr)
                 } else {
                     arg_tys[i]
                 };
@@ -1075,7 +1088,7 @@ pub fn trans_args<'a, 'blk, 'tcx>(cx: Block<'blk, 'tcx>,
             }
         }
         ArgOverloadedCall(arg_exprs) => {
-            return trans_overloaded_call_args(cx,
+            return trans_overloaded_call_args(bcx,
                                               arg_exprs,
                                               fn_ty,
                                               llargs,
@@ -1105,7 +1118,7 @@ pub fn trans_args<'a, 'blk, 'tcx>(cx: Block<'blk, 'tcx>,
         }
     }
 
-    bcx
+    bcx.bl
 }
 
 #[derive(Copy, Clone)]
@@ -1114,14 +1127,15 @@ pub enum AutorefArg {
     DoAutorefArg(ast::NodeId)
 }
 
-pub fn trans_arg_datum<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                   formal_arg_ty: Ty<'tcx>,
-                                   arg_datum: Datum<'tcx, Expr>,
-                                   arg_cleanup_scope: cleanup::ScopeId,
-                                   autoref_arg: AutorefArg)
-                                   -> Result<'blk, 'tcx> {
+pub fn trans_arg_datum<'r, 'blk, 'tcx>
+                      (&mut BlockContext { bl, ref mut fcx }: &mut BlockContext<'r, 'blk, 'tcx>,
+                       formal_arg_ty: Ty<'tcx>,
+                       arg_datum: Datum<'tcx, Expr>,
+                       arg_cleanup_scope: cleanup::ScopeId,
+                       autoref_arg: AutorefArg)
+                       -> Result<'blk> {
     let _icx = push_ctxt("trans_arg_datum");
-    let mut bcx = bcx;
+    let mut bcx = &mut bl.with_fcx(fcx);
     let ccx = bcx.ccx();
 
     debug!("trans_arg_datum({})",
@@ -1170,5 +1184,5 @@ pub fn trans_arg_datum<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }
 
     debug!("--- trans_arg_datum passing {}", bcx.val_to_string(val));
-    Result::new(bcx, val)
+    Result::new(bcx.bl, val)
 }

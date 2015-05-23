@@ -78,7 +78,7 @@ pub fn DIB(cx: &CrateContext) -> DIBuilderRef {
     cx.dbg_cx().as_ref().unwrap().builder
 }
 
-pub fn fn_should_be_ignored(fcx: &FunctionContext) -> bool {
+pub fn fn_should_be_ignored(fcx: &mut FunctionContext) -> bool {
     match fcx.debug_context {
         FunctionDebugContext::RegularContext(_) => false,
         _ => true

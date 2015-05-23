@@ -89,7 +89,7 @@ pub fn get_cleanup_debug_loc_for_ast_node<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 /// Maps to a call to llvm::LLVMSetCurrentDebugLocation(...). The node_id
 /// parameter is used to reliably find the correct visibility scope for the code
 /// position.
-pub fn set_source_location(fcx: &FunctionContext,
+pub fn set_source_location(fcx: &mut FunctionContext,
                            node_id: ast::NodeId,
                            span: Span) {
     match fcx.debug_context {
@@ -109,53 +109,61 @@ pub fn set_source_location(fcx: &FunctionContext,
 
             debug!("set_source_location: {}", cx.sess().codemap().span_to_string(span));
 
-            if function_debug_context.source_locations_enabled.get() {
-                let loc = span_start(cx, span);
-                let scope = scope_metadata(fcx, node_id, span);
-
-                set_debug_location(cx, InternalDebugLocation::new(scope,
-                                                                  loc.line,
-                                                                  loc.col.to_usize()));
-            } else {
+            if !function_debug_context.source_locations_enabled.get() {
                 set_debug_location(cx, UnknownLocation);
+                return;
             }
         }
     }
+
+    let loc = span_start(fcx.ccx, span);
+    let scope = scope_metadata(fcx, node_id, span);
+
+    set_debug_location(fcx.ccx, InternalDebugLocation::new(scope,
+                                                           loc.line,
+                                                           loc.col.to_usize()));
 }
 
 /// This function makes sure that all debug locations emitted while executing
 /// `wrapped_function` are set to the given `debug_loc`.
-pub fn with_source_location_override<F, R>(fcx: &FunctionContext,
-                                           debug_loc: DebugLoc,
-                                           wrapped_function: F) -> R
-    where F: FnOnce() -> R
+pub fn with_source_location_override<'blk, 'tcx, F, R>(fcx: &mut FunctionContext<'blk, 'tcx>,
+                                                       debug_loc: DebugLoc,
+                                                       wrapped_function: F) -> R
+    where F: FnOnce(&mut FunctionContext<'blk, 'tcx>) -> R
 {
-    match fcx.debug_context {
+    let slo = match fcx.debug_context {
         FunctionDebugContext::DebugInfoDisabled => {
-            wrapped_function()
+            return wrapped_function(fcx)
         }
         FunctionDebugContext::FunctionWithoutDebugInfo => {
             set_debug_location(fcx.ccx, UnknownLocation);
-            wrapped_function()
+            return wrapped_function(fcx)
         }
         FunctionDebugContext::RegularContext(box ref function_debug_context) => {
-            if function_debug_context.source_location_override.get() {
-                wrapped_function()
-            } else {
-                debug_loc.apply(fcx);
-                function_debug_context.source_location_override.set(true);
-                let result = wrapped_function();
-                function_debug_context.source_location_override.set(false);
-                result
-            }
+            function_debug_context.source_location_override.get()
         }
+    };
+
+    if slo {
+        return wrapped_function(fcx);
     }
+
+    debug_loc.apply(fcx);
+
+    if let FunctionDebugContext::RegularContext(box ref fdc) = fcx.debug_context {
+        fdc.source_location_override.set(true);
+    }
+    let result = wrapped_function(fcx);
+    if let FunctionDebugContext::RegularContext(box ref fdc) = fcx.debug_context {
+        fdc.source_location_override.set(false);
+    }
+    result
 }
 
 /// Clears the current debug location.
 ///
 /// Instructions generated hereafter won't be assigned a source location.
-pub fn clear_source_location(fcx: &FunctionContext) {
+pub fn clear_source_location(fcx: &mut FunctionContext) {
     if fn_should_be_ignored(fcx) {
         return;
     }
@@ -169,7 +177,7 @@ pub fn clear_source_location(fcx: &FunctionContext) {
 /// they are disabled when beginning to translate a new function. This functions
 /// switches source location emitting on and must therefore be called before the
 /// first real statement/expression of the function is translated.
-pub fn start_emitting_source_locations(fcx: &FunctionContext) {
+pub fn start_emitting_source_locations(fcx: &mut FunctionContext) {
     match fcx.debug_context {
         FunctionDebugContext::RegularContext(box ref data) => {
             data.source_locations_enabled.set(true)

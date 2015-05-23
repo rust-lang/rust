@@ -11,7 +11,7 @@
 use llvm;
 use llvm::{UseRef, ValueRef};
 use trans::basic_block::BasicBlock;
-use trans::common::Block;
+use trans::common::BlockContext;
 use libc::c_uint;
 
 #[derive(Copy, Clone)]
@@ -54,11 +54,11 @@ impl Value {
     /// This only performs a search for a trivially dominating store. The store
     /// must be the only user of this value, and there must not be any conditional
     /// branches between the store and the given block.
-    pub fn get_dominating_store(self, bcx: Block) -> Option<Value> {
+    pub fn get_dominating_store(self, bcx: &mut BlockContext) -> Option<Value> {
         match self.get_single_user().and_then(|user| user.as_store_inst()) {
             Some(store) => {
                 store.get_parent().and_then(|store_bb| {
-                    let mut bb = BasicBlock(bcx.llbb);
+                    let mut bb = BasicBlock(bcx.bl.llbb);
                     let mut ret = Some(store);
                     while bb.get() != store_bb.get() {
                         match bb.get_single_predecessor() {

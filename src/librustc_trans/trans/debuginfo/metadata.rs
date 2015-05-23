@@ -27,7 +27,7 @@ use metadata::csearch;
 use middle::pat_util;
 use middle::subst::{self, Substs};
 use trans::{type_of, adt, machine, monomorphize};
-use trans::common::{self, CrateContext, FunctionContext, NormalizingClosureTyper, Block};
+use trans::common::{self, CrateContext, FunctionContext, NormalizingClosureTyper, BlockContext};
 use trans::_match::{BindingInfo, TrByCopy, TrByMove, TrByRef};
 use trans::type_::Type;
 use middle::ty::{self, Ty, ClosureTyper};
@@ -899,9 +899,9 @@ pub fn file_metadata(cx: &CrateContext, full_path: &str) -> DIFile {
 }
 
 /// Finds the scope metadata node for the given AST node.
-pub fn scope_metadata(fcx: &FunctionContext,
-                  node_id: ast::NodeId,
-                  error_reporting_span: Span)
+pub fn scope_metadata(fcx: &mut FunctionContext,
+                      node_id: ast::NodeId,
+                      error_reporting_span: Span)
                -> DIScope {
     let scope_map = &fcx.debug_context
                         .get_ref(fcx.ccx, error_reporting_span)
@@ -1919,8 +1919,8 @@ pub fn create_global_var_metadata(cx: &CrateContext,
 /// This function assumes that there's a datum for each pattern component of the
 /// local in `bcx.fcx.lllocals`.
 /// Adds the created metadata nodes directly to the crate's IR.
-pub fn create_local_var_metadata(bcx: Block, local: &ast::Local) {
-    if bcx.unreachable.get() ||
+pub fn create_local_var_metadata(bcx: &mut BlockContext, local: &ast::Local) {
+    if bcx.bl.unreachable.get() ||
        fn_should_be_ignored(bcx.fcx) ||
        bcx.sess().opts.debuginfo != FullDebugInfo  {
         return;
@@ -1928,30 +1928,30 @@ pub fn create_local_var_metadata(bcx: Block, local: &ast::Local) {
 
     let cx = bcx.ccx();
     let def_map = &cx.tcx().def_map;
-    let locals = bcx.fcx.lllocals.borrow();
-
     pat_util::pat_bindings(def_map, &*local.pat, |_, node_id, span, var_ident| {
-        let datum = match locals.get(&node_id) {
-            Some(datum) => datum,
-            None => {
-                bcx.sess().span_bug(span,
-                    &format!("no entry in lllocals table for {}",
-                            node_id));
+        let (ty, v) = {
+            let datum = match bcx.fcx.lllocals.get(&node_id) {
+                Some(datum) => datum,
+                None => {
+                    bcx.sess().span_bug(span,
+                        &format!("no entry in lllocals table for {}",
+                                node_id));
+                }
+            };
+            if unsafe { llvm::LLVMIsAAllocaInst(datum.val) } == ptr::null_mut() {
+                cx.sess().span_bug(span, "debuginfo::create_local_var_metadata() - \
+                                          Referenced variable location is not an alloca!");
             }
+            (datum.ty, datum.val)
         };
-
-        if unsafe { llvm::LLVMIsAAllocaInst(datum.val) } == ptr::null_mut() {
-            cx.sess().span_bug(span, "debuginfo::create_local_var_metadata() - \
-                                      Referenced variable location is not an alloca!");
-        }
 
         let scope_metadata = scope_metadata(bcx.fcx, node_id, span);
 
         declare_local(bcx,
                       var_ident.node.name,
-                      datum.ty,
+                      ty,
                       scope_metadata,
-                      VariableAccess::DirectVariable { alloca: datum.val },
+                      VariableAccess::DirectVariable { alloca: v },
                       VariableKind::LocalVariable,
                       span);
     })
@@ -1960,13 +1960,13 @@ pub fn create_local_var_metadata(bcx: Block, local: &ast::Local) {
 /// Creates debug information for a variable captured in a closure.
 ///
 /// Adds the created metadata nodes directly to the crate's IR.
-pub fn create_captured_var_metadata<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                                node_id: ast::NodeId,
-                                                env_pointer: ValueRef,
-                                                env_index: usize,
-                                                captured_by_ref: bool,
-                                                span: Span) {
-    if bcx.unreachable.get() ||
+pub fn create_captured_var_metadata<'r, 'blk, 'tcx>(bcx: &mut BlockContext<'r, 'blk, 'tcx>,
+                                                    node_id: ast::NodeId,
+                                                    env_pointer: ValueRef,
+                                                    env_index: usize,
+                                                    captured_by_ref: bool,
+                                                    span: Span) {
+    if bcx.bl.unreachable.get() ||
        fn_should_be_ignored(bcx.fcx) ||
        bcx.sess().opts.debuginfo != FullDebugInfo {
         return;
@@ -2049,10 +2049,10 @@ pub fn create_captured_var_metadata<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 /// match-statement arm.
 ///
 /// Adds the created metadata nodes directly to the crate's IR.
-pub fn create_match_binding_metadata<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                                 variable_name: ast::Name,
-                                                 binding: BindingInfo<'tcx>) {
-    if bcx.unreachable.get() ||
+pub fn create_match_binding_metadata<'r, 'blk, 'tcx>(bcx: &mut BlockContext<'r, 'blk, 'tcx>,
+                                                     variable_name: ast::Name,
+                                                     binding: BindingInfo<'tcx>) {
+    if bcx.bl.unreachable.get() ||
        fn_should_be_ignored(bcx.fcx) ||
        bcx.sess().opts.debuginfo != FullDebugInfo {
         return;
@@ -2094,8 +2094,8 @@ pub fn create_match_binding_metadata<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 /// This function assumes that there's a datum for each pattern component of the
 /// argument in `bcx.fcx.lllocals`.
 /// Adds the created metadata nodes directly to the crate's IR.
-pub fn create_argument_metadata(bcx: Block, arg: &ast::Arg) {
-    if bcx.unreachable.get() ||
+pub fn create_argument_metadata(bcx: &mut BlockContext, arg: &ast::Arg) {
+    if bcx.bl.unreachable.get() ||
        fn_should_be_ignored(bcx.fcx) ||
        bcx.sess().opts.debuginfo != FullDebugInfo {
         return;
@@ -2107,22 +2107,23 @@ pub fn create_argument_metadata(bcx: Block, arg: &ast::Arg) {
                          .debug_context
                          .get_ref(bcx.ccx(), arg.pat.span)
                          .fn_metadata;
-    let locals = bcx.fcx.lllocals.borrow();
-
     pat_util::pat_bindings(def_map, &*arg.pat, |_, node_id, span, var_ident| {
-        let datum = match locals.get(&node_id) {
-            Some(v) => v,
-            None => {
-                bcx.sess().span_bug(span,
-                    &format!("no entry in lllocals table for {}",
-                            node_id));
-            }
-        };
+        let (ty, v) = {
+            let datum = match bcx.fcx.lllocals.get(&node_id) {
+                Some(v) => v,
+                None => {
+                    bcx.sess().span_bug(span,
+                        &format!("no entry in lllocals table for {}",
+                                node_id));
+                }
+            };
 
-        if unsafe { llvm::LLVMIsAAllocaInst(datum.val) } == ptr::null_mut() {
-            bcx.sess().span_bug(span, "debuginfo::create_argument_metadata() - \
-                                       Referenced variable location is not an alloca!");
-        }
+            if unsafe { llvm::LLVMIsAAllocaInst(datum.val) } == ptr::null_mut() {
+                bcx.sess().span_bug(span, "debuginfo::create_argument_metadata() - \
+                                           Referenced variable location is not an alloca!");
+            }
+            (datum.ty, datum.val)
+        };
 
         let argument_index = {
             let counter = &bcx
@@ -2137,9 +2138,9 @@ pub fn create_argument_metadata(bcx: Block, arg: &ast::Arg) {
 
         declare_local(bcx,
                       var_ident.node.name,
-                      datum.ty,
+                      ty,
                       scope_metadata,
-                      VariableAccess::DirectVariable { alloca: datum.val },
+                      VariableAccess::DirectVariable { alloca: v },
                       VariableKind::ArgumentVariable(argument_index),
                       span);
     })

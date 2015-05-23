@@ -26,7 +26,7 @@ use llvm::{ModuleRef, ContextRef, ValueRef};
 use llvm::debuginfo::{DIFile, DIType, DIScope, DIBuilderRef, DISubprogram, DIArray,
                       DIDescriptor, FlagPrototyped};
 use middle::subst::{self, Substs};
-use trans::common::{NodeIdAndSpan, CrateContext, FunctionContext, Block};
+use trans::common::{NodeIdAndSpan, CrateContext, FunctionContext, BlockContext};
 use trans;
 use trans::monomorphize;
 use middle::ty::{self, Ty, ClosureTyper};
@@ -535,13 +535,13 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     }
 }
 
-fn declare_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                             variable_name: ast::Name,
-                             variable_type: Ty<'tcx>,
-                             scope_metadata: DIScope,
-                             variable_access: VariableAccess,
-                             variable_kind: VariableKind,
-                             span: Span) {
+fn declare_local<'r, 'blk, 'tcx>(bcx: &mut BlockContext<'r, 'blk, 'tcx>,
+                                 variable_name: ast::Name,
+                                 variable_type: Ty<'tcx>,
+                                 scope_metadata: DIScope,
+                                 variable_access: VariableAccess,
+                                 variable_kind: VariableKind,
+                                 span: Span) {
     let cx: &CrateContext = bcx.ccx();
 
     let filename = span_start(cx, span).file.name.clone();
@@ -586,7 +586,7 @@ fn declare_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                     metadata,
                     address_operations.as_ptr(),
                     address_operations.len() as c_uint,
-                    bcx.llbb);
+                    bcx.bl.llbb);
 
                 llvm::LLVMSetInstDebugLocation(trans::build::B(bcx).llbuilder, instr);
             }
@@ -613,7 +613,7 @@ pub enum DebugLoc {
 }
 
 impl DebugLoc {
-    pub fn apply(&self, fcx: &FunctionContext) {
+    pub fn apply(&self, fcx: &mut FunctionContext) {
         match *self {
             DebugLoc::At(node_id, span) => {
                 source_loc::set_source_location(fcx, node_id, span);

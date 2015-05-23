@@ -373,15 +373,15 @@ pub struct FunctionContext<'a, 'tcx: 'a> {
     // immediate, this points to an alloca in the function. Otherwise, it's a
     // pointer to the hidden first parameter of the function. After function
     // construction, this should always be Some.
-    pub llretslotptr: Cell<Option<ValueRef>>,
+    pub llretslotptr: Option<ValueRef>,
 
     // These pub elements: "hoisted basic blocks" containing
     // administrative activities that have to happen in only one place in
     // the function, due to LLVM's quirks.
     // A marker for the place where we want to insert the function's static
     // allocas, so that LLVM will coalesce them into a single alloca call.
-    pub alloca_insert_pt: Cell<Option<ValueRef>>,
-    pub llreturn: Cell<Option<BasicBlockRef>>,
+    pub alloca_insert_pt: Option<ValueRef>,
+    pub llreturn: Option<BasicBlockRef>,
 
     // If the function has any nested return's, including something like:
     // fn foo() -> Option<Foo> { Some(Foo { x: return None }) }, then
@@ -390,7 +390,7 @@ pub struct FunctionContext<'a, 'tcx: 'a> {
 
     // The a value alloca'd for calls to upcalls.rust_personality. Used when
     // outputting the resume instruction.
-    pub personality: Cell<Option<ValueRef>>,
+    pub personality: Option<ValueRef>,
 
     // True if the caller expects this fn to use the out pointer to
     // return. Either way, your code should write into the slot llretslotptr
@@ -399,10 +399,10 @@ pub struct FunctionContext<'a, 'tcx: 'a> {
 
     // Maps the DefId's for local variables to the allocas created for
     // them in llallocas.
-    pub lllocals: RefCell<NodeMap<LvalueDatum<'tcx>>>,
+    pub lllocals: NodeMap<LvalueDatum<'tcx>>,
 
     // Same as above, but for closure upvars
-    pub llupvars: RefCell<NodeMap<ValueRef>>,
+    pub llupvars: NodeMap<ValueRef>,
 
     // The NodeId of the function, or -1 if it doesn't correspond to
     // a user-defined function.
@@ -417,7 +417,7 @@ pub struct FunctionContext<'a, 'tcx: 'a> {
     pub span: Option<Span>,
 
     // The arena that blocks are allocated from.
-    pub block_arena: &'a TypedArena<BlockS<'a, 'tcx>>,
+    pub block_arena: &'a TypedArena<Block>,
 
     // This function's enclosing crate context.
     pub ccx: &'a CrateContext<'a, 'tcx>,
@@ -426,12 +426,16 @@ pub struct FunctionContext<'a, 'tcx: 'a> {
     pub debug_context: debuginfo::FunctionDebugContext,
 
     // Cleanup scopes.
-    pub scopes: RefCell<Vec<cleanup::CleanupScope<'a, 'tcx>>>,
+    pub scopes: Vec<cleanup::CleanupScope<'a, 'tcx>>,
 
     pub cfg: Option<cfg::CFG>,
 }
 
 impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
+    pub fn tcx(&self) -> &'a ty::ctxt<'tcx> {
+        self.ccx.tcx()
+    }
+
     pub fn arg_pos(&self, arg: usize) -> usize {
         let arg = self.env_arg_pos() + arg;
         if self.llenv.is_some() {
@@ -449,80 +453,81 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
         }
     }
 
-    pub fn cleanup(&self) {
+    pub fn cleanup(&mut self) {
         unsafe {
             llvm::LLVMInstructionEraseFromParent(self.alloca_insert_pt
-                                                     .get()
                                                      .unwrap());
         }
     }
 
-    pub fn get_llreturn(&self) -> BasicBlockRef {
-        if self.llreturn.get().is_none() {
+    pub fn get_llreturn(&mut self) -> BasicBlockRef {
+        if self.llreturn.is_none() {
 
-            self.llreturn.set(Some(unsafe {
+            self.llreturn = Some(unsafe {
                 llvm::LLVMAppendBasicBlockInContext(self.ccx.llcx(), self.llfn,
                                                     "return\0".as_ptr() as *const _)
-            }))
+            });
         }
 
-        self.llreturn.get().unwrap()
+        self.llreturn.unwrap()
     }
 
-    pub fn get_ret_slot(&self, bcx: Block<'a, 'tcx>,
+    pub fn get_ret_slot(&mut self, bcx: &'a Block,
                         output: ty::FnOutput<'tcx>,
                         name: &str) -> ValueRef {
         if self.needs_ret_allocas {
-            base::alloca_no_lifetime(bcx, match output {
-                ty::FnConverging(output_type) => type_of::type_of(bcx.ccx(), output_type),
-                ty::FnDiverging => Type::void(bcx.ccx())
-            }, name)
+            let ty = match output {
+                ty::FnConverging(output_type) => type_of::type_of(bcx.with_fcx(self).ccx(),
+                                                                  output_type),
+                ty::FnDiverging => Type::void(bcx.with_fcx(self).ccx())
+            };
+            base::alloca_no_lifetime(&mut bcx.with_fcx(self), ty, name)
         } else {
-            self.llretslotptr.get().unwrap()
+            self.llretslotptr.unwrap()
         }
     }
 
-    pub fn new_block(&'a self,
+    pub fn new_block(&self,
                      is_lpad: bool,
                      name: &str,
                      opt_node_id: Option<ast::NodeId>)
-                     -> Block<'a, 'tcx> {
+                     -> &'a mut Block {
         unsafe {
             let name = CString::new(name).unwrap();
             let llbb = llvm::LLVMAppendBasicBlockInContext(self.ccx.llcx(),
                                                            self.llfn,
                                                            name.as_ptr());
-            BlockS::new(llbb, is_lpad, opt_node_id, self)
+            Block::new(llbb, is_lpad, opt_node_id).alloc(self)
         }
     }
 
-    pub fn new_id_block(&'a self,
+    pub fn new_id_block(&mut self,
                         name: &str,
                         node_id: ast::NodeId)
-                        -> Block<'a, 'tcx> {
+                        -> &'a mut Block {
         self.new_block(false, name, Some(node_id))
     }
 
-    pub fn new_temp_block(&'a self,
+    pub fn new_temp_block(&mut self,
                           name: &str)
-                          -> Block<'a, 'tcx> {
+                          -> &'a mut Block {
         self.new_block(false, name, None)
     }
 
-    pub fn join_blocks(&'a self,
+    pub fn join_blocks(&mut self,
                        id: ast::NodeId,
-                       in_cxs: &[Block<'a, 'tcx>])
-                       -> Block<'a, 'tcx> {
+                       in_cxs: &[&'a Block])
+                       -> &'a Block {
         let out = self.new_id_block("join", id);
         let mut reachable = false;
         for bcx in in_cxs {
             if !bcx.unreachable.get() {
-                build::Br(*bcx, out.llbb, DebugLoc::None);
+                build::Br(&mut bcx.with_fcx(self), out.llbb, DebugLoc::None);
                 reachable = true;
             }
         }
         if !reachable {
-            build::Unreachable(out);
+            build::Unreachable(&mut out.with_fcx(self));
         }
         return out;
     }
@@ -547,7 +552,7 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
 // code.  Each basic block we generate is attached to a function, typically
 // with many basic blocks per function.  All the basic blocks attached to a
 // function are organized as a directed graph.
-pub struct BlockS<'blk, 'tcx: 'blk> {
+pub struct Block {
     // The BasicBlockRef returned from a call to
     // llvm::LLVMAppendBasicBlock(llfn, name), which adds a basic
     // block to the function pointed to by llfn.  We insert
@@ -563,28 +568,49 @@ pub struct BlockS<'blk, 'tcx: 'blk> {
     // AST node-id associated with this block, if any. Used for
     // debugging purposes only.
     pub opt_node_id: Option<ast::NodeId>,
-
-    // The function context for the function to which this block is
-    // attached.
-    pub fcx: &'blk FunctionContext<'blk, 'tcx>,
 }
 
-pub type Block<'blk, 'tcx> = &'blk BlockS<'blk, 'tcx>;
-
-impl<'blk, 'tcx> BlockS<'blk, 'tcx> {
+impl Block {
     pub fn new(llbb: BasicBlockRef,
                is_lpad: bool,
-               opt_node_id: Option<ast::NodeId>,
-               fcx: &'blk FunctionContext<'blk, 'tcx>)
-               -> Block<'blk, 'tcx> {
-        fcx.block_arena.alloc(BlockS {
+               opt_node_id: Option<ast::NodeId>)
+               -> Block {
+        Block {
             llbb: llbb,
             terminated: Cell::new(false),
             unreachable: Cell::new(false),
             is_lpad: is_lpad,
             opt_node_id: opt_node_id,
-            fcx: fcx
-        })
+        }
+    }
+
+    pub fn alloc<'r, 'blk, 'tcx>(self, fcx: &FunctionContext<'blk, 'tcx>) -> &'blk mut Block {
+        fcx.block_arena.alloc(self)
+    }
+
+    pub fn with_fcx<'r, 'blk, 'tcx>(&'blk self,
+                                    fcx: &'r mut FunctionContext<'blk, 'tcx>)
+                                    -> BlockContext<'r, 'blk, 'tcx> {
+        BlockContext::new(self, fcx)
+    }
+}
+
+pub struct BlockContext<'r, 'blk: 'r, 'tcx: 'blk> {
+    pub bl: &'blk Block,
+
+    // The function context for the function to which this block is
+    // attached.
+    pub fcx: &'r mut FunctionContext<'blk, 'tcx>,
+}
+
+impl<'r, 'blk, 'tcx> BlockContext<'r, 'blk, 'tcx> {
+    pub fn new(bl: &'blk Block,
+               fcx: &'r mut FunctionContext<'blk, 'tcx>)
+               -> BlockContext<'r, 'blk, 'tcx> {
+        BlockContext {
+            bl: bl,
+            fcx: fcx,
+        }
     }
 
     pub fn ccx(&self) -> &'blk CrateContext<'blk, 'tcx> {
@@ -633,7 +659,7 @@ impl<'blk, 'tcx> BlockS<'blk, 'tcx> {
         format!("[block {:p}]", self)
     }
 
-    pub fn monomorphize<T>(&self, value: &T) -> T
+    pub fn monomorphize<T>(&mut self, value: &T) -> T
         where T : TypeFoldable<'tcx> + Repr<'tcx> + HasProjectionTypes + Clone
     {
         monomorphize::apply_param_substs(self.tcx(),
@@ -642,7 +668,7 @@ impl<'blk, 'tcx> BlockS<'blk, 'tcx> {
     }
 }
 
-impl<'blk, 'tcx> mc::Typer<'tcx> for BlockS<'blk, 'tcx> {
+impl<'r, 'blk, 'tcx> mc::Typer<'tcx> for BlockContext<'r, 'blk, 'tcx> {
     fn node_ty(&self, id: ast::NodeId) -> mc::McResult<Ty<'tcx>> {
         Ok(node_id_type(self, id))
     }
@@ -690,7 +716,7 @@ impl<'blk, 'tcx> mc::Typer<'tcx> for BlockS<'blk, 'tcx> {
     }
 }
 
-impl<'blk, 'tcx> ty::ClosureTyper<'tcx> for BlockS<'blk, 'tcx> {
+impl<'r, 'blk, 'tcx> ty::ClosureTyper<'tcx> for BlockContext<'r, 'blk, 'tcx> {
     fn param_env<'a>(&'a self) -> &'a ty::ParameterEnvironment<'a, 'tcx> {
         &self.fcx.param_env
     }
@@ -722,13 +748,13 @@ impl<'blk, 'tcx> ty::ClosureTyper<'tcx> for BlockS<'blk, 'tcx> {
     }
 }
 
-pub struct Result<'blk, 'tcx: 'blk> {
-    pub bcx: Block<'blk, 'tcx>,
+pub struct Result<'blk> {
+    pub bcx: &'blk Block,
     pub val: ValueRef
 }
 
-impl<'b, 'tcx> Result<'b, 'tcx> {
-    pub fn new(bcx: Block<'b, 'tcx>, val: ValueRef) -> Result<'b, 'tcx> {
+impl<'b> Result<'b> {
+    pub fn new(bcx: &'b Block, val: ValueRef) -> Result<'b> {
         Result {
             bcx: bcx,
             val: val,
@@ -908,7 +934,7 @@ pub fn C_bytes_in_context(llcx: ContextRef, bytes: &[u8]) -> ValueRef {
 }
 
 pub fn const_get_elt(cx: &CrateContext, v: ValueRef, us: &[c_uint])
-              -> ValueRef {
+                     -> ValueRef {
     unsafe {
         let r = llvm::LLVMConstExtractValue(v, us.as_ptr(), us.len() as c_uint);
 
@@ -970,21 +996,25 @@ pub fn is_null(val: ValueRef) -> bool {
     }
 }
 
-pub fn monomorphize_type<'blk, 'tcx>(bcx: &BlockS<'blk, 'tcx>, t: Ty<'tcx>) -> Ty<'tcx> {
+pub fn monomorphize_type<'r, 'blk, 'tcx>(bcx: &BlockContext<'r, 'blk, 'tcx>,
+                                         t: Ty<'tcx>)
+                                         -> Ty<'tcx> {
     bcx.fcx.monomorphize(&t)
 }
 
-pub fn node_id_type<'blk, 'tcx>(bcx: &BlockS<'blk, 'tcx>, id: ast::NodeId) -> Ty<'tcx> {
+pub fn node_id_type<'r, 'blk, 'tcx>(bcx: &BlockContext<'r, 'blk, 'tcx>,
+                                    id: ast::NodeId) -> Ty<'tcx> {
     let tcx = bcx.tcx();
     let t = ty::node_id_to_type(tcx, id);
     monomorphize_type(bcx, t)
 }
 
-pub fn expr_ty<'blk, 'tcx>(bcx: &BlockS<'blk, 'tcx>, ex: &ast::Expr) -> Ty<'tcx> {
+pub fn expr_ty<'r, 'blk, 'tcx>(bcx: &BlockContext<'r, 'blk, 'tcx>, ex: &ast::Expr) -> Ty<'tcx> {
     node_id_type(bcx, ex.id)
 }
 
-pub fn expr_ty_adjusted<'blk, 'tcx>(bcx: &BlockS<'blk, 'tcx>, ex: &ast::Expr) -> Ty<'tcx> {
+pub fn expr_ty_adjusted<'r, 'blk, 'tcx>(bcx: &BlockContext<'r, 'blk, 'tcx>,
+                                        ex: &ast::Expr) -> Ty<'tcx> {
     monomorphize_type(bcx, ty::expr_ty_adjusted(bcx.tcx(), ex))
 }
 
@@ -1203,9 +1233,9 @@ pub enum ExprOrMethodCall {
 }
 
 pub fn node_id_substs<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                            node: ExprOrMethodCall,
-                            param_substs: &subst::Substs<'tcx>)
-                            -> subst::Substs<'tcx> {
+                                node: ExprOrMethodCall,
+                                param_substs: &subst::Substs<'tcx>)
+                                -> subst::Substs<'tcx> {
     let tcx = ccx.tcx();
 
     let substs = match node {
@@ -1227,7 +1257,7 @@ pub fn node_id_substs<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                          &substs.erase_regions())
 }
 
-pub fn langcall(bcx: Block,
+pub fn langcall(bcx: &mut BlockContext,
                 span: Option<Span>,
                 msg: &str,
                 li: LangItem)

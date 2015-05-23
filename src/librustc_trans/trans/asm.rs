@@ -25,20 +25,24 @@ use std::ffi::CString;
 use libc::{c_uint, c_char};
 
 // Take an inline assembly expression and splat it out via LLVM
-pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
-                                    -> Block<'blk, 'tcx> {
-    let fcx = bcx.fcx;
-    let mut bcx = bcx;
+pub fn trans_inline_asm<'r, 'blk, 'tcx>
+                       (&mut BlockContext { bl, ref mut fcx }: &mut BlockContext<'r, 'blk, 'tcx>,
+                        ia: &ast::InlineAsm)
+                        -> &'blk Block
+{
+    let mut bcx = &mut bl.with_fcx(fcx);
     let mut constraints = Vec::new();
     let mut output_types = Vec::new();
 
-    let temp_scope = fcx.push_custom_cleanup_scope();
+    let temp_scope = bcx.fcx.push_custom_cleanup_scope();
 
     let mut ext_inputs = Vec::new();
     let mut ext_constraints = Vec::new();
 
     // Prepare the output operands
-    let outputs = ia.outputs.iter().enumerate().map(|(i, &(ref c, ref out, is_rw))| {
+    let mut outputs = Vec::new();
+
+    for (i, &(ref c, ref out, is_rw)) in ia.outputs.iter().enumerate() {
         constraints.push((*c).clone());
 
         let out_datum = unpack_datum!(bcx, expr::trans(bcx, &**out));
@@ -46,35 +50,38 @@ pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
         let val = out_datum.val;
         if is_rw {
             ext_inputs.push(unpack_result!(bcx, {
+                let expr_ty = expr_ty(bcx, &**out);
                 callee::trans_arg_datum(bcx,
-                                       expr_ty(bcx, &**out),
-                                       out_datum,
-                                       cleanup::CustomScope(temp_scope),
-                                       callee::DontAutorefArg)
+                                        expr_ty,
+                                        out_datum,
+                                        cleanup::CustomScope(temp_scope),
+                                        callee::DontAutorefArg)
             }));
             ext_constraints.push(i.to_string());
         }
-        val
+        outputs.push(val);
 
-    }).collect::<Vec<_>>();
+    }
 
     // Now the input operands
-    let mut inputs = ia.inputs.iter().map(|&(ref c, ref input)| {
+    let mut inputs = Vec::new();
+    for &(ref c, ref input) in &ia.inputs {
         constraints.push((*c).clone());
 
         let in_datum = unpack_datum!(bcx, expr::trans(bcx, &**input));
-        unpack_result!(bcx, {
+        inputs.push(unpack_result!(bcx, {
+            let expr_ty = expr_ty(bcx, &**input);
             callee::trans_arg_datum(bcx,
-                                    expr_ty(bcx, &**input),
+                                    expr_ty,
                                     in_datum,
                                     cleanup::CustomScope(temp_scope),
                                     callee::DontAutorefArg)
-        })
-    }).collect::<Vec<_>>();
+        }));
+    }
     inputs.push_all(&ext_inputs[..]);
 
     // no failure occurred preparing operands, no need to cleanup
-    fcx.pop_custom_cleanup_scope(temp_scope);
+    bcx.fcx.pop_custom_cleanup_scope(temp_scope);
 
     let clobbers = ia.clobbers.iter()
                               .map(|s| format!("~{{{}}}", &s));
@@ -144,7 +151,6 @@ pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
             llvm::LLVMMDNodeInContext(bcx.ccx().llcx(), &val, 1));
     }
 
-    return bcx;
-
+    return bcx.bl;
 }
 

@@ -222,14 +222,14 @@ pub fn register_foreign_item_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 ///   can derive these from callee_ty but in the case of variadic
 ///   functions passed_arg_tys will include the Rust type of all
 ///   the arguments including the ones not specified in the fn's signature.
-pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                     callee_ty: Ty<'tcx>,
-                                     llfn: ValueRef,
-                                     llretptr: ValueRef,
-                                     llargs_rust: &[ValueRef],
-                                     passed_arg_tys: Vec<Ty<'tcx>>,
-                                     call_debug_loc: DebugLoc)
-                                     -> Block<'blk, 'tcx>
+pub fn trans_native_call<'r, 'blk, 'tcx>(bcx: &mut BlockContext<'r, 'blk, 'tcx>,
+                                         callee_ty: Ty<'tcx>,
+                                         llfn: ValueRef,
+                                         llretptr: ValueRef,
+                                         llargs_rust: &[ValueRef],
+                                         passed_arg_tys: Vec<Ty<'tcx>>,
+                                         call_debug_loc: DebugLoc)
+                                         -> &'blk Block
 {
     let ccx = bcx.ccx();
     let tcx = bcx.tcx();
@@ -319,7 +319,8 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         } else {
             if ty::type_is_bool(passed_arg_tys[i]) {
                 let val = LoadRangeAssert(bcx, llarg_rust, 0, 2, llvm::False);
-                Trunc(bcx, val, Type::i1(bcx.ccx()))
+                let ty = Type::i1(bcx.ccx());
+                Trunc(bcx, val, ty)
             } else {
                 Load(bcx, llarg_rust)
             }
@@ -435,7 +436,7 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         }
     }
 
-    return bcx;
+    return bcx.bl;
 }
 
 // feature gate SIMD types in FFI, since I (huonw) am not sure the
