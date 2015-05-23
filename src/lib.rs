@@ -267,7 +267,6 @@ impl<'a> CompilerCalls<'a> for RustFmtCalls {
             changes.append_newlines();
             fmt_lines(&mut changes);
 
-            // FIXME(#5) Should be user specified whether to show or replace.
             let result = changes.write_all_files(write_mode);
 
             match result {
