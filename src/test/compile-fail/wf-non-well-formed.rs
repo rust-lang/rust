@@ -43,9 +43,6 @@ fn b7() -> &'static (u32,[u8],u32)
 fn main() {}
 
 trait TrBogus {
-    type T = &'static [[u32]];
-    //^^ Associated type defaults don't work yet
-
     const X1: &'static [[u16]];
     //~^ ERROR the trait `core::marker::Sized` is not implemented
 }

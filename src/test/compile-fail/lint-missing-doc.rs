@@ -71,12 +71,9 @@ pub trait D {
 /// dox
 pub trait E {
     type AssociatedType; //~ ERROR: missing documentation for an associated type
-    type AssociatedTypeDef = Self; //~ ERROR: missing documentation for an associated type
 
     /// dox
     type DocumentedType;
-    /// dox
-    type DocumentedTypeDef = Self;
     /// dox
     fn dummy(&self) {}
 }

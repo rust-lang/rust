@@ -31,7 +31,7 @@ pub trait Copy {
 
 #[lang="rem"]
 pub trait Rem<RHS=Self> {
-    type Output = Self;
+    type Output;
     fn rem(self, rhs: RHS) -> Self::Output;
 }
 

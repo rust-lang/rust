@@ -405,7 +405,7 @@ div_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
 pub trait Rem<RHS=Self> {
     /// The resulting type after applying the `%` operator
     #[stable(feature = "rust1", since = "1.0.0")]
-    type Output = Self;
+    type Output;
 
     /// The method for the `%` operator
     #[stable(feature = "rust1", since = "1.0.0")]

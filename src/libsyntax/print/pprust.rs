@@ -1272,9 +1272,8 @@ impl<'a> State<'a> {
                     try!(word(&mut self.s, ";"));
                 }
             }
-            ast::TypeTraitItem(ref bounds, ref default) => {
-                try!(self.print_associated_type(ti.ident, Some(bounds),
-                                                default.as_ref().map(|ty| &**ty)));
+            ast::TypeTraitItem(ref bounds) => {
+                try!(self.print_associated_type(ti.ident, Some(bounds), None))
             }
         }
         self.ann.post(self, NodeSubItem(ti.id))

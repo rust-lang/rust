@@ -1238,7 +1238,7 @@ pub struct TraitItem {
 pub enum TraitItem_ {
     ConstTraitItem(P<Ty>, Option<P<Expr>>),
     MethodTraitItem(MethodSig, Option<P<Block>>),
-    TypeTraitItem(TyParamBounds, Option<P<Ty>>),
+    TypeTraitItem(TyParamBounds),
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]

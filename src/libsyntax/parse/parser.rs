@@ -1158,8 +1158,12 @@ impl<'a> Parser<'a> {
 
             let (name, node) = if try!(p.eat_keyword(keywords::Type)) {
                 let TyParam {ident, bounds, default, ..} = try!(p.parse_ty_param());
+                if let Some(dty) = default {
+                    p.span_err(dty.span,
+                               "defaults are not supported in associated types");
+                }
                 try!(p.expect(&token::Semi));
-                (ident, TypeTraitItem(bounds, default))
+                (ident, TypeTraitItem(bounds))
             } else if try!(p.eat_keyword(keywords::Const)) {
                 let ident = try!(p.parse_ident());
                 try!(p.expect(&token::Colon));

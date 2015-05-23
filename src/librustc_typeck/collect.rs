@@ -1376,7 +1376,7 @@ fn convert_trait_predicates<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, it: &ast::Item)
     {
         trait_items.iter().flat_map(|trait_item| {
             let bounds = match trait_item.node {
-                ast::TypeTraitItem(ref bounds, _) => bounds,
+                ast::TypeTraitItem(ref bounds) => bounds,
                 _ => {
                     return vec!().into_iter();
                 }

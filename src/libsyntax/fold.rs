@@ -991,9 +991,8 @@ pub fn noop_fold_trait_item<T: Folder>(i: P<TraitItem>, folder: &mut T)
                 MethodTraitItem(noop_fold_method_sig(sig, folder),
                                 body.map(|x| folder.fold_block(x)))
             }
-            TypeTraitItem(bounds, default) => {
-                TypeTraitItem(folder.fold_bounds(bounds),
-                              default.map(|x| folder.fold_ty(x)))
+            TypeTraitItem(bounds) => {
+                TypeTraitItem(folder.fold_bounds(bounds))
             }
         },
         span: folder.new_span(span)
