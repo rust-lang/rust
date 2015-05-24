@@ -262,3 +262,5 @@ pub const tag_item_super_predicates: usize = 0xa3;
 pub const tag_defaulted_trait: usize = 0xa4;
 
 pub const tag_impl_coerce_unsized_kind: usize = 0xa5;
+
+pub const tag_items_data_item_constness: usize = 0xa6;

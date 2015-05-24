@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(box_syntax)]
+// Test that we can't declare a const fn in an impl -- right now it's
+// just not allowed at all, though eventually it'd make sense to allow
+// it if the trait fn is const (but right now no trait fns can be
+// const).
 
-use std::cell::RefCell;
+#![feature(const_fn)]
 
-// Regression test for issue 7364
-static boxed: Box<RefCell<isize>> = box RefCell::new(0);
-//~^ ERROR allocations are not allowed in statics
-//~| ERROR the trait `core::marker::Sync` is not implemented for the type
-//~| ERROR the trait `core::marker::Sync` is not implemented for the type
-//~| ERROR E0015
+trait Foo {
+    fn f() -> u32;
+}
+
+impl Foo for u32 {
+    const fn f() -> u32 { 22 } //~ ERROR E0379
+}
 
 fn main() { }

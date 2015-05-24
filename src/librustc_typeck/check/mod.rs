@@ -741,7 +741,7 @@ pub fn check_item_type<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx ast::Item) {
                             &enum_definition.variants,
                             it.id);
       }
-      ast::ItemFn(_, _, _, _, _) => {} // entirely within check_item_body
+      ast::ItemFn(..) => {} // entirely within check_item_body
       ast::ItemImpl(_, _, _, _, _, ref impl_items) => {
           debug!("ItemImpl {} with id {}", token::get_ident(it.ident), it.id);
           match ty::impl_trait_ref(ccx.tcx, local_def(it.id)) {
@@ -796,7 +796,7 @@ pub fn check_item_body<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx ast::Item) {
            ty::item_path_str(ccx.tcx, local_def(it.id)));
     let _indenter = indenter();
     match it.node {
-      ast::ItemFn(ref decl, _, _, _, ref body) => {
+      ast::ItemFn(ref decl, _, _, _, _, ref body) => {
         let fn_pty = ty::lookup_item_type(ccx.tcx, ast_util::local_def(it.id));
         let param_env = ParameterEnvironment::for_item(ccx.tcx, it.id);
         check_bare_fn(ccx, &**decl, &**body, it.id, it.span, fn_pty.ty, param_env);
@@ -830,11 +830,15 @@ pub fn check_item_body<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx ast::Item) {
                     check_const(ccx, trait_item.span, &*expr, trait_item.id)
                 }
                 ast::MethodTraitItem(ref sig, Some(ref body)) => {
+                    check_trait_fn_not_const(ccx, trait_item.span, sig.constness);
+
                     check_method_body(ccx, &trait_def.generics, sig, body,
                                       trait_item.id, trait_item.span);
                 }
+                ast::MethodTraitItem(ref sig, None) => {
+                    check_trait_fn_not_const(ccx, trait_item.span, sig.constness);
+                }
                 ast::ConstTraitItem(_, None) |
-                ast::MethodTraitItem(_, None) |
                 ast::TypeTraitItem(..) => {
                     // Nothing to do.
                 }
@@ -842,6 +846,20 @@ pub fn check_item_body<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx ast::Item) {
         }
       }
       _ => {/* nothing to do */ }
+    }
+}
+
+fn check_trait_fn_not_const<'a,'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
+                                     span: Span,
+                                     constness: ast::Constness)
+{
+    match constness {
+        ast::Constness::NotConst => {
+            // good
+        }
+        ast::Constness::Const => {
+            span_err!(ccx.tcx.sess, span, E0379, "trait fns cannot be declared const");
+        }
     }
 }
 
@@ -966,7 +984,9 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                     }
                 }
             }
-            ast::MethodImplItem(_, ref body) => {
+            ast::MethodImplItem(ref sig, ref body) => {
+                check_trait_fn_not_const(ccx, impl_item.span, sig.constness);
+
                 let impl_method_def_id = local_def(impl_item.id);
                 let impl_item_ty = ty::impl_or_trait_item(ccx.tcx,
                                                           impl_method_def_id);

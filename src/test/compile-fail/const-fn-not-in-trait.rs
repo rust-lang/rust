@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,18 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-mod Y {
-    type X = usize;
-    extern {
-        static x: *const usize;
-    }
-    fn foo(value: *const X) -> *const X {
-        value
-    }
+// Test that const fn is illegal in a trait declaration, whether or
+// not a default is provided.
+
+#![feature(const_fn)]
+
+trait Foo {
+    const fn f() -> u32; //~ ERROR trait fns cannot be declared const
+    const fn g() -> u32 { 0 } //~ ERROR trait fns cannot be declared const
 }
 
-static foo: *const Y::X = Y::foo(Y::x as *const Y::X);
-//~^ ERROR the trait `core::marker::Sync` is not implemented for the type
-//~| ERROR E0015
-
-fn main() {}
+fn main() { }

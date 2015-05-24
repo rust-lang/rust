@@ -1113,6 +1113,7 @@ register_diagnostics! {
            // fields need coercions
     E0376, // the trait `CoerceUnsized` may only be implemented for a coercion
            // between structures
-    E0377  // the trait `CoerceUnsized` may only be implemented for a coercion
+    E0377, // the trait `CoerceUnsized` may only be implemented for a coercion
            // between structures with the same definition
+    E0379  // trait fns cannot be const
 }

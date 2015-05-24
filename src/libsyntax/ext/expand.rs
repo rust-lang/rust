@@ -513,11 +513,12 @@ pub fn expand_item(it: P<ast::Item>, fld: &mut MacroExpander)
 /// Expand item_underscore
 fn expand_item_underscore(item: ast::Item_, fld: &mut MacroExpander) -> ast::Item_ {
     match item {
-        ast::ItemFn(decl, fn_style, abi, generics, body) => {
+        ast::ItemFn(decl, unsafety, constness, abi, generics, body) => {
             let (rewritten_fn_decl, rewritten_body)
                 = expand_and_rename_fn_decl_and_block(decl, body, fld);
             let expanded_generics = fold::noop_fold_generics(generics,fld);
-            ast::ItemFn(rewritten_fn_decl, fn_style, abi, expanded_generics, rewritten_body)
+            ast::ItemFn(rewritten_fn_decl, unsafety, constness, abi,
+                        expanded_generics, rewritten_body)
         }
         _ => noop_fold_item_underscore(item, fld)
     }
@@ -1395,6 +1396,7 @@ fn expand_and_rename_method(sig: ast::MethodSig, body: P<ast::Block>,
         abi: sig.abi,
         explicit_self: fld.fold_explicit_self(sig.explicit_self),
         unsafety: sig.unsafety,
+        constness: sig.constness,
         decl: rewritten_fn_decl
     }, rewritten_body)
 }

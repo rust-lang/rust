@@ -11,6 +11,6 @@
 fn foo() -> isize { 23 }
 
 static a: [isize; 2] = [foo(); 2];
-//~^ ERROR: function calls in statics are limited to struct and enum constructors
+//~^ ERROR: E0015
 
 fn main() {}

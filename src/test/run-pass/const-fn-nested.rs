@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,18 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-mod Y {
-    type X = usize;
-    extern {
-        static x: *const usize;
-    }
-    fn foo(value: *const X) -> *const X {
-        value
-    }
+// Test a call whose argument is the result of another call.
+
+#![feature(const_fn)]
+
+const fn sub(x: u32, y: u32) -> u32 {
+    x - y
 }
 
-static foo: *const Y::X = Y::foo(Y::x as *const Y::X);
-//~^ ERROR the trait `core::marker::Sync` is not implemented for the type
-//~| ERROR E0015
+const X: u32 = sub(sub(88, 44), 22);
 
-fn main() {}
+fn main() {
+    assert_eq!(X, 22);
+}
