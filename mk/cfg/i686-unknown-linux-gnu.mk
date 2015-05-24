@@ -1,5 +1,6 @@
 # i686-unknown-linux-gnu configuration
 CC_i686-unknown-linux-gnu=$(CC)
+LINK_i686-unknown-linux-gnu=cc
 CXX_i686-unknown-linux-gnu=$(CXX)
 CPP_i686-unknown-linux-gnu=$(CPP)
 AR_i686-unknown-linux-gnu=$(AR)
