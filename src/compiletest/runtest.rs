@@ -28,8 +28,6 @@ use std::iter::repeat;
 use std::net::TcpStream;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output, ExitStatus};
-use std::str;
-use test::MetricMap;
 
 pub fn run(config: Config, testfile: &Path) {
     match &*config.target {
@@ -43,11 +41,6 @@ pub fn run(config: Config, testfile: &Path) {
         _=> { }
     }
 
-    let mut _mm = MetricMap::new();
-    run_metrics(config, testfile, &mut _mm);
-}
-
-pub fn run_metrics(config: Config, testfile: &Path, mm: &mut MetricMap) {
     if config.verbose {
         // We're going to be dumping a lot of info. Start on a new line.
         print!("\n\n");
@@ -64,7 +57,7 @@ pub fn run_metrics(config: Config, testfile: &Path, mm: &mut MetricMap) {
         Pretty => run_pretty_test(&config, &props, &testfile),
         DebugInfoGdb => run_debuginfo_gdb_test(&config, &props, &testfile),
         DebugInfoLldb => run_debuginfo_lldb_test(&config, &props, &testfile),
-        Codegen => run_codegen_test(&config, &props, &testfile, mm),
+        Codegen => run_codegen_test(&config, &props, &testfile),
         Rustdoc => run_rustdoc_test(&config, &props, &testfile),
     }
 }
@@ -1685,26 +1678,15 @@ fn _arm_push_aux_shared_library(config: &Config, testfile: &Path) {
     }
 }
 
-// codegen tests (vs. clang)
+// codegen tests (using FileCheck)
 
-fn append_suffix_to_stem(p: &Path, suffix: &str) -> PathBuf {
-    if suffix.is_empty() {
-        p.to_path_buf()
-    } else {
-        let mut stem = p.file_stem().unwrap().to_os_string();
-        stem.push("-");
-        stem.push(suffix);
-        p.with_file_name(&stem)
-    }
-}
-
-fn compile_test_and_save_bitcode(config: &Config, props: &TestProps,
+fn compile_test_and_save_ir(config: &Config, props: &TestProps,
                                  testfile: &Path) -> ProcRes {
     let aux_dir = aux_output_dir_name(config, testfile);
     // FIXME (#9639): This needs to handle non-utf8 paths
     let mut link_args = vec!("-L".to_string(),
                              aux_dir.to_str().unwrap().to_string());
-    let llvm_args = vec!("--emit=llvm-bc,obj".to_string(),
+    let llvm_args = vec!("--emit=llvm-ir".to_string(),
                          "--crate-type=lib".to_string());
     link_args.extend(llvm_args.into_iter());
     let args = make_compile_args(config,
@@ -1717,121 +1699,34 @@ fn compile_test_and_save_bitcode(config: &Config, props: &TestProps,
     compose_and_run_compiler(config, props, testfile, args, None)
 }
 
-fn compile_cc_with_clang_and_save_bitcode(config: &Config, _props: &TestProps,
-                                          testfile: &Path) -> ProcRes {
-    let bitcodefile = output_base_name(config, testfile).with_extension("bc");
-    let bitcodefile = append_suffix_to_stem(&bitcodefile, "clang");
-    let testcc = testfile.with_extension("cc");
-    let proc_args = ProcArgs {
-        // FIXME (#9639): This needs to handle non-utf8 paths
-        prog: config.clang_path.as_ref().unwrap().to_str().unwrap().to_string(),
-        args: vec!("-c".to_string(),
-                   "-emit-llvm".to_string(),
-                   "-o".to_string(),
-                   bitcodefile.to_str().unwrap().to_string(),
-                   testcc.to_str().unwrap().to_string())
-    };
-    compose_and_run(config, testfile, proc_args, Vec::new(), "", None, None)
-}
-
-fn extract_function_from_bitcode(config: &Config, _props: &TestProps,
-                                 fname: &str, testfile: &Path,
-                                 suffix: &str) -> ProcRes {
-    let bitcodefile = output_base_name(config, testfile).with_extension("bc");
-    let bitcodefile = append_suffix_to_stem(&bitcodefile, suffix);
-    let extracted_bc = append_suffix_to_stem(&bitcodefile, "extract");
-    let prog = config.llvm_bin_path.as_ref().unwrap().join("llvm-extract");
+fn check_ir_with_filecheck(config: &Config, testfile: &Path) -> ProcRes {
+    let irfile = output_base_name(config, testfile).with_extension("ll");
+    let prog = config.llvm_bin_path.as_ref().unwrap().join("FileCheck");
     let proc_args = ProcArgs {
         // FIXME (#9639): This needs to handle non-utf8 paths
         prog: prog.to_str().unwrap().to_string(),
-        args: vec!(format!("-func={}", fname),
-                   format!("-o={}", extracted_bc.to_str().unwrap()),
-                   bitcodefile.to_str().unwrap().to_string())
+        args: vec!(format!("-input-file={}", irfile.to_str().unwrap()),
+                   testfile.to_str().unwrap().to_string())
     };
     compose_and_run(config, testfile, proc_args, Vec::new(), "", None, None)
 }
 
-fn disassemble_extract(config: &Config, _props: &TestProps,
-                       testfile: &Path, suffix: &str) -> ProcRes {
-    let bitcodefile = output_base_name(config, testfile).with_extension("bc");
-    let bitcodefile = append_suffix_to_stem(&bitcodefile, suffix);
-    let extracted_bc = append_suffix_to_stem(&bitcodefile, "extract");
-    let extracted_ll = extracted_bc.with_extension("ll");
-    let prog = config.llvm_bin_path.as_ref().unwrap().join("llvm-dis");
-    let proc_args = ProcArgs {
-        // FIXME (#9639): This needs to handle non-utf8 paths
-        prog: prog.to_str().unwrap().to_string(),
-        args: vec!(format!("-o={}", extracted_ll.to_str().unwrap()),
-                   extracted_bc.to_str().unwrap().to_string())
-    };
-    compose_and_run(config, testfile, proc_args, Vec::new(), "", None, None)
-}
-
-
-fn count_extracted_lines(p: &Path) -> usize {
-    let mut x = Vec::new();
-    File::open(&p.with_extension("ll")).unwrap().read_to_end(&mut x).unwrap();
-    let x = str::from_utf8(&x).unwrap();
-    x.lines().count()
-}
-
-
-fn run_codegen_test(config: &Config, props: &TestProps,
-                    testfile: &Path, mm: &mut MetricMap) {
+fn run_codegen_test(config: &Config, props: &TestProps, testfile: &Path) {
 
     if config.llvm_bin_path.is_none() {
         fatal("missing --llvm-bin-path");
     }
 
-    if config.clang_path.is_none() {
-        fatal("missing --clang-path");
-    }
-
-    let mut proc_res = compile_test_and_save_bitcode(config, props, testfile);
+    let mut proc_res = compile_test_and_save_ir(config, props, testfile);
     if !proc_res.status.success() {
         fatal_proc_rec("compilation failed!", &proc_res);
     }
 
-    proc_res = extract_function_from_bitcode(config, props, "test", testfile, "");
+    proc_res = check_ir_with_filecheck(config, testfile);
     if !proc_res.status.success() {
-        fatal_proc_rec("extracting 'test' function failed",
+        fatal_proc_rec("verification with 'FileCheck' failed",
                       &proc_res);
     }
-
-    proc_res = disassemble_extract(config, props, testfile, "");
-    if !proc_res.status.success() {
-        fatal_proc_rec("disassembling extract failed", &proc_res);
-    }
-
-
-    let mut proc_res = compile_cc_with_clang_and_save_bitcode(config, props, testfile);
-    if !proc_res.status.success() {
-        fatal_proc_rec("compilation failed!", &proc_res);
-    }
-
-    proc_res = extract_function_from_bitcode(config, props, "test", testfile, "clang");
-    if !proc_res.status.success() {
-        fatal_proc_rec("extracting 'test' function failed",
-                      &proc_res);
-    }
-
-    proc_res = disassemble_extract(config, props, testfile, "clang");
-    if !proc_res.status.success() {
-        fatal_proc_rec("disassembling extract failed", &proc_res);
-    }
-
-    let base = output_base_name(config, testfile);
-    let base_extract = append_suffix_to_stem(&base, "extract");
-
-    let base_clang = append_suffix_to_stem(&base, "clang");
-    let base_clang_extract = append_suffix_to_stem(&base_clang, "extract");
-
-    let base_lines = count_extracted_lines(&base_extract);
-    let clang_lines = count_extracted_lines(&base_clang_extract);
-
-    mm.insert_metric("clang-codegen-ratio",
-                     (base_lines as f64) / (clang_lines as f64),
-                     0.001);
 }
 
 fn charset() -> &'static str {
