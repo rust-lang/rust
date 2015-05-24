@@ -8,7 +8,7 @@ use rustc::middle::def::{DefTy, DefStruct, DefTrait};
 use syntax::codemap::{Span, Spanned};
 
 declare_lint!(pub LEN_ZERO, Warn,
-              "Warn on usage of double-mut refs, e.g. '&mut &mut ...'");
+              "Warn when .is_empty() could be used instead of checking .len()");
 
 declare_lint!(pub LEN_WITHOUT_IS_EMPTY, Warn,
               "Warn on traits and impls that have .len() but not .is_empty()");
