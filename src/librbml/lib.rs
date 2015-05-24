@@ -436,13 +436,11 @@ pub mod reader {
         }
     }
 
-    pub fn tagged_docs<F>(d: Doc, tg: usize, it: F) -> bool where
-        F: FnMut(Doc) -> bool,
-    {
+    pub fn tagged_docs<'a>(d: Doc<'a>, tag: usize) -> TaggedDocsIterator<'a> {
         TaggedDocsIterator {
             iter: docs(d),
-            tag: tg,
-        }.all(it)
+            tag: tag,
+        }
     }
 
     pub struct TaggedDocsIterator<'a> {
