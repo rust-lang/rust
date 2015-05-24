@@ -125,6 +125,15 @@ impl<'a> FmtVisitor<'a> {
         format!("{}({})", callee_str, args_str)
     }
 
+    fn rewrite_paren(&mut self, subexpr: &ast::Expr, width: usize, offset: usize) -> String {
+        debug!("rewrite_paren, width: {}, offset: {}", width, offset);
+        // 1 is for opening paren, 2 is for opening+closing, we want to keep the closing
+        // paren on the same line as the subexpr
+        let subexpr_str = self.rewrite_expr(subexpr, width-2, offset+1);
+        debug!("rewrite_paren, subexpr_str: `{}`", subexpr_str);
+        format!("({})", subexpr_str)
+    }
+
     pub fn rewrite_expr(&mut self, expr: &ast::Expr, width: usize, offset: usize) -> String {
         match expr.node {
             ast::Expr_::ExprLit(ref l) => {
@@ -139,6 +148,9 @@ impl<'a> FmtVisitor<'a> {
             }
             ast::Expr_::ExprCall(ref callee, ref args) => {
                 return self.rewrite_call(callee, args, width, offset);
+            }
+            ast::Expr_::ExprParen(ref subexpr) => {
+                return self.rewrite_paren(subexpr, width, offset);
             }
             _ => {}
         }
