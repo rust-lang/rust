@@ -132,11 +132,14 @@ impl<'a> FmtVisitor<'a> {
         debug!("rewrite_paren, subexpr_str: `{}`", subexpr_str);
         let mut lines = subexpr_str.rsplit('\n');
         let last_line_len = lines.next().unwrap().len();
-        let last_line_offset = if lines.next().is_none() {offset+1} else {0};
+        let last_line_offset = match lines.next() {
+            None => offset+1,
+            Some(_) => 0,
+        };
         if width + offset - last_line_offset - last_line_len > 0 {
             format!("({})", subexpr_str)
         } else {
-            // FIXME That's correct unless we have width < 2. Return an Optrion for such cases ?
+            // FIXME That's correct unless we have width < 2. Return an Option for such cases ?
             format!("({}\n{} )", subexpr_str, make_indent(offset))
         }
     }
