@@ -8,22 +8,32 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//error-pattern: lower range bound
-//error-pattern: only char and numeric types
-//error-pattern: mismatched types
-
 fn main() {
     match 5 {
-      6 ... 1 => { }
-      _ => { }
+        6 ... 1 => { }
+        _ => { }
     };
+    //~^^^ ERROR lower range bound must be less than or equal to upper
 
     match "wow" {
-      "bar" ... "foo" => { }
+        "bar" ... "foo" => { }
     };
+    //~^^ ERROR only char and numeric types are allowed in range
+    //~| start type: &'static str
+    //~| end type: &'static str
+
+    match "wow" {
+        10 ... "what" => ()
+    };
+    //~^^ ERROR only char and numeric types are allowed in range
+    //~| start type: _
+    //~| end type: &'static str
 
     match 5 {
-      'c' ... 100 => { }
-      _ => { }
+        'c' ... 100 => { }
+        _ => { }
     };
+    //~^^^ ERROR mismatched types in range
+    //~| expected char
+    //~| found integral variable
 }
