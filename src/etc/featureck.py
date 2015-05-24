@@ -78,8 +78,15 @@ for (dirpath, dirnames, filenames) in os.walk(src_dir):
         if not filename.endswith(".rs"):
             continue
 
+        if sys.version_info.major == 2:
+            _open = lambda f: open(f, 'r')
+        elif sys.version_info.major == 3:
+            _open = lambda f: open(f, 'r', encoding="utf-8")
+        else:
+            raise RuntimeError("Unsupported python version: %s" % (repr(sys.version_info)))
+
         path = os.path.join(dirpath, filename)
-        with open(path, 'r') as f:
+        with _open(path) as f:
             line_num = 0
             for line in f:
                 line_num += 1
