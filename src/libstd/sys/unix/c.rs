@@ -25,7 +25,7 @@
 #![allow(non_camel_case_types)]
 
 pub use self::signal_os::{sigaction, siginfo, sigset_t, sigaltstack};
-pub use self::signal_os::{SA_ONSTACK, SA_SIGINFO, SIGBUS, SIGSTKSZ};
+pub use self::signal_os::{SA_ONSTACK, SA_SIGINFO, SIGBUS, SIGSTKSZ, SIG_SETMASK};
 
 use libc;
 
@@ -112,6 +112,7 @@ pub struct passwd {
 pub type sighandler_t = *mut libc::c_void;
 
 pub const SIG_DFL: sighandler_t = 0 as sighandler_t;
+pub const SIG_ERR: sighandler_t = !0 as sighandler_t;
 
 extern {
     pub fn getsockopt(sockfd: libc::c_int,
@@ -135,6 +136,8 @@ extern {
                        oss: *mut sigaltstack) -> libc::c_int;
 
     pub fn sigemptyset(set: *mut sigset_t) -> libc::c_int;
+    pub fn pthread_sigmask(how: libc::c_int, set: *const sigset_t,
+                           oldset: *mut sigset_t) -> libc::c_int;
 
     #[cfg(not(target_os = "ios"))]
     pub fn getpwuid_r(uid: libc::uid_t,
@@ -155,7 +158,7 @@ extern {
 #[cfg(any(target_os = "linux",
           target_os = "android"))]
 mod signal_os {
-    pub use self::arch::{SA_ONSTACK, SA_SIGINFO, SIGBUS,
+    pub use self::arch::{SA_ONSTACK, SA_SIGINFO, SIGBUS, SIG_SETMASK,
                          sigaction, sigaltstack};
     use libc;
 
@@ -216,6 +219,8 @@ mod signal_os {
 
         pub const SIGBUS: libc::c_int = 7;
 
+        pub const SIG_SETMASK: libc::c_int = 2;
+
         #[cfg(target_os = "linux")]
         #[repr(C)]
         pub struct sigaction {
@@ -262,6 +267,8 @@ mod signal_os {
         pub const SA_SIGINFO: libc::c_ulong = 0x00000008;
 
         pub const SIGBUS: libc::c_int = 10;
+
+        pub const SIG_SETMASK: libc::c_int = 3;
 
         #[cfg(all(target_os = "linux", not(target_env = "musl")))]
         #[repr(C)]
@@ -320,6 +327,8 @@ mod signal_os {
     // No harm in being generous.
     #[cfg(not(any(target_os = "macos", target_os = "ios")))]
     pub const SIGSTKSZ: libc::size_t = 40960;
+
+    pub const SIG_SETMASK: libc::c_int = 3;
 
     #[cfg(any(target_os = "macos",
               target_os = "ios"))]
