@@ -127,23 +127,12 @@ impl<'a> FmtVisitor<'a> {
 
     fn rewrite_paren(&mut self, subexpr: &ast::Expr, width: usize, offset: usize) -> String {
         debug!("rewrite_paren, width: {}, offset: {}", width, offset);
-        // 1 is for opening paren
-        let subexpr_str = self.rewrite_expr(subexpr, width-1, offset+1);
+        // 1 is for opening paren, 2 is for opening+closing, we want to keep the closing
+        // paren on the same line as the subexpr
+        let subexpr_str = self.rewrite_expr(subexpr, width-2, offset+1);
         debug!("rewrite_paren, subexpr_str: `{}`", subexpr_str);
-        let mut lines = subexpr_str.rsplit('\n');
-        let last_line_len = lines.next().unwrap().len();
-        let last_line_offset = match lines.next() {
-            None => offset+1,
-            Some(_) => 0,
-        };
-        if width + offset - last_line_offset - last_line_len > 0 {
-            format!("({})", subexpr_str)
-        } else {
-            // FIXME That's correct unless we have width < 2. Return an Option for such cases ?
-            format!("({}\n{} )", subexpr_str, make_indent(offset))
-        }
+        format!("({})", subexpr_str)
     }
-
 
     pub fn rewrite_expr(&mut self, expr: &ast::Expr, width: usize, offset: usize) -> String {
         match expr.node {
