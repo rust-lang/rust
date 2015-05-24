@@ -358,6 +358,7 @@ struct Context<'a> {
     features: Vec<&'static str>,
     span_handler: &'a SpanHandler,
     cm: &'a CodeMap,
+    plugin_attributes: &'a [(String, AttributeType)],
 }
 
 impl<'a> Context<'a> {
@@ -372,7 +373,7 @@ impl<'a> Context<'a> {
         self.features.iter().any(|&n| n == feature)
     }
 
-    fn check_attribute(&self, attr: &ast::Attribute) {
+    fn check_attribute(&self, attr: &ast::Attribute, is_macro: bool) {
         debug!("check_attribute(attr = {:?})", attr);
         let name = &*attr.name();
         for &(n, ty) in KNOWN_ATTRIBUTES {
@@ -381,6 +382,15 @@ impl<'a> Context<'a> {
                     self.gate_feature(gate, attr.span, desc);
                 }
                 debug!("check_attribute: {:?} is known, {:?}", name, ty);
+                return;
+            }
+        }
+        for &(ref n, ref ty) in self.plugin_attributes.iter() {
+            if &*n == name {
+                // Plugins can't gate attributes, so we don't check for it
+                // unlike the code above; we only use this loop to
+                // short-circuit to avoid the checks below
+                debug!("check_attribute: {:?} is registered by a plugin, {:?}", name, ty);
                 return;
             }
         }
@@ -394,12 +404,18 @@ impl<'a> Context<'a> {
                               "attributes of the form `#[derive_*]` are reserved \
                                for the compiler");
         } else {
-            self.gate_feature("custom_attribute", attr.span,
-                       &format!("The attribute `{}` is currently \
-                                unknown to the compiler and \
-                                may have meaning \
-                                added to it in the future",
-                                name));
+            // Only run the custom attribute lint during regular
+            // feature gate checking. Macro gating runs
+            // before the plugin attributes are registered
+            // so we skip this then
+            if !is_macro {
+                self.gate_feature("custom_attribute", attr.span,
+                           &format!("The attribute `{}` is currently \
+                                    unknown to the compiler and \
+                                    may have meaning \
+                                    added to it in the future",
+                                    name));
+            }
         }
     }
 }
@@ -478,7 +494,7 @@ impl<'a, 'v> Visitor<'v> for MacroVisitor<'a> {
     }
 
     fn visit_attribute(&mut self, attr: &'v ast::Attribute) {
-        self.context.check_attribute(attr);
+        self.context.check_attribute(attr, true);
     }
 }
 
@@ -497,7 +513,7 @@ impl<'a> PostExpansionVisitor<'a> {
 impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
     fn visit_attribute(&mut self, attr: &ast::Attribute) {
         if !self.context.cm.span_allows_unstable(attr.span) {
-            self.context.check_attribute(attr);
+            self.context.check_attribute(attr, false);
         }
     }
 
@@ -684,6 +700,7 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
 
 fn check_crate_inner<F>(cm: &CodeMap, span_handler: &SpanHandler,
                         krate: &ast::Crate,
+                        plugin_attributes: &[(String, AttributeType)],
                         check: F)
                        -> Features
     where F: FnOnce(&mut Context, &ast::Crate)
@@ -692,6 +709,7 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &SpanHandler,
         features: Vec::new(),
         span_handler: span_handler,
         cm: cm,
+        plugin_attributes: plugin_attributes,
     };
 
     let mut accepted_features = Vec::new();
@@ -764,14 +782,14 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &SpanHandler,
 
 pub fn check_crate_macros(cm: &CodeMap, span_handler: &SpanHandler, krate: &ast::Crate)
 -> Features {
-    check_crate_inner(cm, span_handler, krate,
+    check_crate_inner(cm, span_handler, krate, &[] as &'static [_],
                       |ctx, krate| visit::walk_crate(&mut MacroVisitor { context: ctx }, krate))
 }
 
-pub fn check_crate(cm: &CodeMap, span_handler: &SpanHandler, krate: &ast::Crate)
-                   -> Features
+pub fn check_crate(cm: &CodeMap, span_handler: &SpanHandler, krate: &ast::Crate,
+                   plugin_attributes: &[(String, AttributeType)]) -> Features
 {
-    check_crate_inner(cm, span_handler, krate,
+    check_crate_inner(cm, span_handler, krate, plugin_attributes,
                       |ctx, krate| visit::walk_crate(&mut PostExpansionVisitor { context: ctx },
                                                      krate))
 }
