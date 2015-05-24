@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub trait AbstractRenderer {}
+struct Wrap<'a, T: ?Sized>(&'a (), T);
 
-fn _create_render(_: &()) -> AbstractRenderer
-//~^ ERROR: the trait `core::marker::Sized` is not implemented
-{
-    match 0 {
-        _ => unimplemented!()
-    }
+fn foo<'a, T>(a: for<'s> fn() -> Wrap<'s, T>) where Wrap<'a, T>: Sized {
+    //~^ ERROR mismatched types
+    //~^^ ERROR mismatched types
 }
 
-fn main() {
-}
+fn main() {}

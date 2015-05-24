@@ -803,7 +803,7 @@ pub struct Union<'a, T: 'a, S: 'a> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T, S> IntoIterator for &'a HashSet<T, S>
+impl<'a, T: 'a, S: 'a> IntoIterator for &'a HashSet<T, S>
     where T: Eq + Hash, S: HashState
 {
     type Item = &'a T;

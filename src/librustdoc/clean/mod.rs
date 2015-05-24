@@ -1247,8 +1247,8 @@ impl Clean<Item> for ast::TraitItem {
             ast::MethodTraitItem(ref sig, None) => {
                 TyMethodItem(sig.clean(cx))
             }
-            ast::TypeTraitItem(ref bounds, ref default) => {
-                AssociatedTypeItem(bounds.clean(cx), default.clean(cx))
+            ast::TypeTraitItem(ref bounds) => {
+                AssociatedTypeItem(bounds.clean(cx), None)
             }
         };
         Item {

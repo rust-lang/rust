@@ -14,7 +14,7 @@
 use std::marker::PhantomData;
 use std::ops::Deref;
 
-pub struct Cow<'a, B: ?Sized>(PhantomData<(&'a (),B)>);
+pub struct Cow<'a, B: ?Sized+'a>(PhantomData<(&'a (),&'a B)>);
 
 /// Trait for moving into a `Cow`
 pub trait IntoCow<'a, B: ?Sized> {

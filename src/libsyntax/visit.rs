@@ -638,9 +638,8 @@ pub fn walk_trait_item<'v, V: Visitor<'v>>(visitor: &mut V, trait_item: &'v Trai
             visitor.visit_fn(FkMethod(trait_item.ident, sig, None), &sig.decl,
                              body, trait_item.span, trait_item.id);
         }
-        TypeTraitItem(ref bounds, ref default) => {
+        TypeTraitItem(ref bounds) => {
             walk_ty_param_bounds_helper(visitor, bounds);
-            walk_ty_opt(visitor, default);
         }
     }
 }

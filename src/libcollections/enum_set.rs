@@ -272,7 +272,7 @@ impl<E:CLike> FromIterator<E> for EnumSet<E> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, E> IntoIterator for &'a EnumSet<E> where E: CLike {
+impl<'a, E: 'a> IntoIterator for &'a EnumSet<E> where E: CLike {
     type Item = E;
     type IntoIter = Iter<E>;
 

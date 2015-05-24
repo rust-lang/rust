@@ -1757,7 +1757,7 @@ impl<T> IntoIterator for VecDeque<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T> IntoIterator for &'a VecDeque<T> {
+impl<'a, T: 'a> IntoIterator for &'a VecDeque<T> {
     type Item = &'a T;
     type IntoIter = Iter<'a, T>;
 
@@ -1767,7 +1767,7 @@ impl<'a, T> IntoIterator for &'a VecDeque<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T> IntoIterator for &'a mut VecDeque<T> {
+impl<'a, T: 'a> IntoIterator for &'a mut VecDeque<T> {
     type Item = &'a mut T;
     type IntoIter = IterMut<'a, T>;
 

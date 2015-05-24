@@ -171,7 +171,7 @@ pub struct CrateContextIterator<'a, 'tcx: 'a> {
     index: usize,
 }
 
-impl<'a, 'tcx> Iterator for CrateContextIterator<'a,'tcx> {
+impl<'a, 'tcx: 'a> Iterator for CrateContextIterator<'a, 'tcx> {
     type Item = CrateContext<'a, 'tcx>;
 
     fn next(&mut self) -> Option<CrateContext<'a, 'tcx>> {
@@ -198,7 +198,7 @@ pub struct CrateContextMaybeIterator<'a, 'tcx: 'a> {
     origin: usize,
 }
 
-impl<'a, 'tcx> Iterator for CrateContextMaybeIterator<'a, 'tcx> {
+impl<'a, 'tcx: 'a> Iterator for CrateContextMaybeIterator<'a, 'tcx> {
     type Item = (CrateContext<'a, 'tcx>, bool);
 
     fn next(&mut self) -> Option<(CrateContext<'a, 'tcx>, bool)> {

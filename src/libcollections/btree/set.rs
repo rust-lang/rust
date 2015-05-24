@@ -490,7 +490,7 @@ impl<T> IntoIterator for BTreeSet<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T> IntoIterator for &'a BTreeSet<T> {
+impl<'a, T: 'a> IntoIterator for &'a BTreeSet<T> {
     type Item = &'a T;
     type IntoIter = Iter<'a, T>;
 

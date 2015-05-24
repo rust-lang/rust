@@ -12,11 +12,13 @@
 
 trait T {}
 
+struct T2<U, V: ?Sized>(U, V);
+
 fn f1<X: ?Sized>(x: &X) {
     let _: X; // <-- this is OK, no bindings created, no initializer.
-    let _: (isize, (X, isize)); // same
+    let _: T2<isize, T2<isize, X>>;
     let y: X; //~ERROR the trait `core::marker::Sized` is not implemented
-    let y: (isize, (X, isize)); //~ERROR the trait `core::marker::Sized` is not implemented
+    let y: T2<isize, T2<isize, X>>; //~ERROR the trait `core::marker::Sized` is not implemented
 }
 fn f2<X: ?Sized + T>(x: &X) {
     let y: X; //~ERROR the trait `core::marker::Sized` is not implemented
@@ -33,9 +35,6 @@ fn f4<X: ?Sized + T>(x1: Box<X>, x2: Box<X>, x3: Box<X>) {
     let y = *x2;            //~ERROR the trait `core::marker::Sized` is not implemented
     let (y, z) = (*x3, 4); //~ERROR the trait `core::marker::Sized` is not implemented
 }
-
-fn g1<X: ?Sized>(x: X) {} //~ERROR the trait `core::marker::Sized` is not implemented
-fn g2<X: ?Sized + T>(x: X) {} //~ERROR the trait `core::marker::Sized` is not implemented
 
 pub fn main() {
 }

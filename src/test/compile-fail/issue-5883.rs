@@ -16,7 +16,6 @@ struct Struct {
 
 fn new_struct(r: A+'static)
     -> Struct { //~^  ERROR the trait `core::marker::Sized` is not implemented
-    //~^ ERROR the trait `core::marker::Sized` is not implemented
     Struct { r: r }
 }
 

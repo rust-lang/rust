@@ -647,7 +647,7 @@ impl<'a, T> Default for &'a [T] {
 //
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T> IntoIterator for &'a [T] {
+impl<'a, T: 'a> IntoIterator for &'a [T] {
     type Item = &'a T;
     type IntoIter = Iter<'a, T>;
 
@@ -657,7 +657,7 @@ impl<'a, T> IntoIterator for &'a [T] {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T> IntoIterator for &'a mut [T] {
+impl<'a, T: 'a> IntoIterator for &'a mut [T] {
     type Item = &'a mut T;
     type IntoIter = IterMut<'a, T>;
 

@@ -26,7 +26,7 @@ trait IntoIterator {
     fn into_iter(self) -> Self::Iter;
 }
 
-impl<'a, T> IntoIterator for &'a [T; 3] {
+impl<'a, T: 'a> IntoIterator for &'a [T; 3] {
     type Iter = slice::Iter<'a, T>;
 
     fn into_iter(self) -> slice::Iter<'a, T> {

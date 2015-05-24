@@ -430,6 +430,24 @@ fn note_obligation_cause_code<'a, 'tcx, T>(infcx: &InferCtxt<'a, 'tcx>,
                 "the return type of a function must have a \
                  statically known size");
         }
+        ObligationCauseCode::ArgumentType => {
+            tcx.sess.span_note(
+                cause_span,
+                "the type of a function's argument must have a \
+                 statically known size");
+        }
+        ObligationCauseCode::TupleElemSized => {
+            tcx.sess.span_note(
+                cause_span,
+                "tuples can only contain elements with a \
+                 statically known size");
+        }
+        ObligationCauseCode::VecElemSized => {
+            tcx.sess.span_note(
+                cause_span,
+                "arrays can only contain elements with a \
+                 statically known size");
+        }
         ObligationCauseCode::AssignmentLhsSized => {
             tcx.sess.span_note(
                 cause_span,

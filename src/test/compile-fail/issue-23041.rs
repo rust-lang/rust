@@ -11,8 +11,7 @@
 use std::any::Any;
 fn main()
 {
-    fn bar(x:i32) ->i32 { 3*x };
-    let b:Box<Any> = Box::new(bar as fn(_)->_);
-    b.downcast_ref::<fn(_)->_>();
-    //~^ ERROR cannot determine a type for this expression: unconstrained type
+    fn bar(x:&'static i32) -> &'static i32 { x };
+    let b:Box<Any> = Box::new(bar as fn(&'static _)->&'static _);
+    b.downcast_ref::<fn(&_)->&_>(); //~ ERROR unconstrained type
 }
