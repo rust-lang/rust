@@ -23,6 +23,7 @@ use syntax::parse;
 use syntax::parse::token;
 use syntax::parse::ParseSess;
 use syntax::{ast, codemap};
+use syntax::feature_gate::AttributeType;
 
 use rustc_back::target::Target;
 
@@ -54,6 +55,7 @@ pub struct Session {
     pub lint_store: RefCell<lint::LintStore>,
     pub lints: RefCell<NodeMap<Vec<(lint::LintId, codemap::Span, String)>>>,
     pub plugin_llvm_passes: RefCell<Vec<String>>,
+    pub plugin_attributes: RefCell<Vec<(String, AttributeType)>>,
     pub crate_types: RefCell<Vec<config::CrateType>>,
     pub crate_metadata: RefCell<Vec<String>>,
     pub features: RefCell<feature_gate::Features>,
@@ -425,6 +427,7 @@ pub fn build_session_(sopts: config::Options,
         lint_store: RefCell::new(lint::LintStore::new()),
         lints: RefCell::new(NodeMap()),
         plugin_llvm_passes: RefCell::new(Vec::new()),
+        plugin_attributes: RefCell::new(Vec::new()),
         crate_types: RefCell::new(Vec::new()),
         crate_metadata: RefCell::new(Vec::new()),
         delayed_span_bug: RefCell::new(None),
