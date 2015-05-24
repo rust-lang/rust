@@ -917,10 +917,11 @@ pub fn noop_fold_item_underscore<T: Folder>(i: Item_, folder: &mut T) -> Item_ {
         ItemConst(t, e) => {
             ItemConst(folder.fold_ty(t), folder.fold_expr(e))
         }
-        ItemFn(decl, unsafety, abi, generics, body) => {
+        ItemFn(decl, unsafety, constness, abi, generics, body) => {
             ItemFn(
                 folder.fold_fn_decl(decl),
                 unsafety,
+                constness,
                 abi,
                 folder.fold_generics(generics),
                 folder.fold_block(body)
@@ -1124,6 +1125,7 @@ pub fn noop_fold_method_sig<T: Folder>(sig: MethodSig, folder: &mut T) -> Method
         abi: sig.abi,
         explicit_self: folder.fold_explicit_self(sig.explicit_self),
         unsafety: sig.unsafety,
+        constness: sig.constness,
         decl: folder.fold_fn_decl(sig.decl)
     }
 }

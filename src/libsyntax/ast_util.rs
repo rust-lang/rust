@@ -440,7 +440,7 @@ impl<'a, 'v, O: IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> {
         self.operation.visit_id(node_id);
 
         match function_kind {
-            visit::FkItemFn(_, generics, _, _, _) => {
+            visit::FkItemFn(_, generics, _, _, _, _) => {
                 self.visit_generics_helper(generics)
             }
             visit::FkMethod(_, sig, _) => {

@@ -278,14 +278,14 @@ impl<'a, 'tcx> Opt<'a, 'tcx> {
         match *self {
             ConstantValue(ConstantExpr(lit_expr), _) => {
                 let lit_ty = ty::node_id_to_type(bcx.tcx(), lit_expr.id);
-                let (llval, _) = consts::const_expr(ccx, &*lit_expr, bcx.fcx.param_substs);
+                let (llval, _) = consts::const_expr(ccx, &*lit_expr, bcx.fcx.param_substs, None);
                 let lit_datum = immediate_rvalue(llval, lit_ty);
                 let lit_datum = unpack_datum!(bcx, lit_datum.to_appropriate_datum(bcx));
                 SingleResult(Result::new(bcx, lit_datum.val))
             }
             ConstantRange(ConstantExpr(ref l1), ConstantExpr(ref l2), _) => {
-                let (l1, _) = consts::const_expr(ccx, &**l1, bcx.fcx.param_substs);
-                let (l2, _) = consts::const_expr(ccx, &**l2, bcx.fcx.param_substs);
+                let (l1, _) = consts::const_expr(ccx, &**l1, bcx.fcx.param_substs, None);
+                let (l2, _) = consts::const_expr(ccx, &**l2, bcx.fcx.param_substs, None);
                 RangeResult(Result::new(bcx, l1), Result::new(bcx, l2))
             }
             Variant(disr_val, ref repr, _, _) => {

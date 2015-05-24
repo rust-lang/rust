@@ -1215,6 +1215,7 @@ pub struct TypeField {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct MethodSig {
     pub unsafety: Unsafety,
+    pub constness: Constness,
     pub abi: Abi,
     pub decl: P<FnDecl>,
     pub generics: Generics,
@@ -1473,6 +1474,12 @@ pub struct FnDecl {
 pub enum Unsafety {
     Unsafe,
     Normal,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub enum Constness {
+    Const,
+    NotConst,
 }
 
 impl fmt::Display for Unsafety {
@@ -1761,7 +1768,7 @@ pub enum Item_ {
     /// A `const` item
     ItemConst(P<Ty>, P<Expr>),
     /// A function declaration
-    ItemFn(P<FnDecl>, Unsafety, Abi, Generics, P<Block>),
+    ItemFn(P<FnDecl>, Unsafety, Constness, Abi, Generics, P<Block>),
     /// A module
     ItemMod(Mod),
     /// An external module
