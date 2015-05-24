@@ -251,9 +251,10 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
                 b: &'v ast::Block,
                 s: Span,
                 fn_id: ast::NodeId) {
-        assert!(self.mode == Mode::Var);
-        self.with_euv(Some(fn_id), |euv| euv.walk_fn(fd, b));
-        visit::walk_fn(self, fk, fd, b, s);
+        self.with_mode(Mode::Var, |v| {
+            v.with_euv(Some(fn_id), |euv| euv.walk_fn(fd, b));
+            visit::walk_fn(v, fk, fd, b, s);
+        })
     }
 
     fn visit_pat(&mut self, p: &ast::Pat) {
