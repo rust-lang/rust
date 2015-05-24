@@ -23,7 +23,6 @@ pub struct Config {
 
 impl Config {
     fn from_toml(toml: &str) -> Config {
-        println!("About to parse: {}", toml);
         let parsed = toml.parse().unwrap();
         toml::decode(parsed).unwrap()
     }

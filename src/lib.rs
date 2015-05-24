@@ -50,7 +50,7 @@ use visitor::FmtVisitor;
 mod config;
 mod changes;
 mod visitor;
-mod functions;
+mod items;
 mod missed_spans;
 mod lists;
 mod utils;

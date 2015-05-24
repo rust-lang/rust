@@ -180,6 +180,15 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
                 self.changes.push_str_span(item.span, &new_str);
                 self.last_pos = item.span.hi;
             }
+            ast::Item_::ItemStruct(ref def, ref generics) => {
+                self.format_missing_with_indent(item.span.lo);
+                self.visit_struct(item.ident,
+                                  item.vis,
+                                  def,
+                                  generics,
+                                  item.span);
+                self.last_pos = item.span.hi;
+            }
             _ => {
                 visit::walk_item(self, item);
             }
@@ -252,7 +261,7 @@ impl<'a> FmtVisitor<'a> {
     }
 
     // Returns true if we should skip the following item.
-    fn visit_attrs(&mut self, attrs: &[ast::Attribute]) -> bool {
+    pub fn visit_attrs(&mut self, attrs: &[ast::Attribute]) -> bool {
         if attrs.len() == 0 {
             return false;
         }
