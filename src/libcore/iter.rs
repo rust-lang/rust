@@ -1009,8 +1009,19 @@ pub trait Iterator {
         (ts, us)
     }
 
-    /// Creates an iterator that clones the elements it yields. Useful for
-    /// converting an Iterator<&T> to an Iterator<T>.
+    /// Creates an iterator that clones the elements it yields.
+    ///
+    /// This is useful for converting an Iterator<&T> to an Iterator<T>,
+    /// so it's a more convenient form of `map(|&x| x)`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let a = [0, 1, 2];
+    /// let v_cloned: Vec<_> = a.iter().cloned().collect();
+    /// let v_map: Vec<_> = a.iter().map(|&x| x).collect();
+    /// assert_eq!(v_cloned, v_map);
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn cloned<'a, T: 'a>(self) -> Cloned<Self>
         where Self: Sized + Iterator<Item=&'a T>, T: Clone
