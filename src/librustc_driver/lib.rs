@@ -831,10 +831,13 @@ pub fn monitor<F:FnOnce()+Send+'static>(f: F) {
                     "the compiler unexpectedly panicked. this is a bug.".to_string(),
                     format!("we would appreciate a bug report: {}",
                             BUG_REPORT_URL),
-                    "run with `RUST_BACKTRACE=1` for a backtrace".to_string(),
                 ];
                 for note in &xs {
                     emitter.emit(None, &note[..], None, diagnostic::Note)
+                }
+                if let None = env::var_os("RUST_BACKTRACE") {
+                    emitter.emit(None, "run with `RUST_BACKTRACE=1` for a backtrace",
+                                 None, diagnostic::Note);
                 }
 
                 println!("{}", str::from_utf8(&data.lock().unwrap()).unwrap());
