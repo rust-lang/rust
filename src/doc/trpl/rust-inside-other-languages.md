@@ -6,24 +6,24 @@ Rust’s greatest strengths: a lack of a substantial runtime.
 As organizations grow, they increasingly rely on a multitude of programming
 languages. Different programming languages have different strengths and
 weaknesses, and a polyglot stack lets you use a particular language where
-its strengths make sense, and use a different language where it’s weak.
+its strengths make sense and a different one where it’s weak.
 
 A very common area where many programming languages are weak is in runtime
 performance of programs. Often, using a language that is slower, but offers
-greater programmer productivity is a worthwhile trade-off. To help mitigate
-this, they provide a way to write some of your system in C, and then call
-the C code as though it were written in the higher-level language. This is
+greater programmer productivity, is a worthwhile trade-off. To help mitigate
+this, they provide a way to write some of your system in C and then call
+that C code as though it were written in the higher-level language. This is
 called a ‘foreign function interface’, often shortened to ‘FFI’.
 
 Rust has support for FFI in both directions: it can call into C code easily,
 but crucially, it can also be called _into_ as easily as C. Combined with
 Rust’s lack of a garbage collector and low runtime requirements, this makes
 Rust a great candidate to embed inside of other languages when you need
-some extra oomph.
+that extra oomph.
 
 There is a whole [chapter devoted to FFI][ffi] and its specifics elsewhere in
 the book, but in this chapter, we’ll examine this particular use-case of FFI,
-with three examples, in Ruby, Python, and JavaScript.
+with examples in Ruby, Python, and JavaScript.
 
 [ffi]: ffi.html
 
@@ -40,18 +40,18 @@ optimizations can stack allocate particular numbers, but rather than relying
 on an optimizer to do its job, we may want to ensure that we’re always using
 primitive number types rather than some sort of object type.
 
-Second, many languages have a ‘global interpreter lock’, which limits
+Second, many languages have a ‘global interpreter lock’ (GIL), which limits
 concurrency in many situations. This is done in the name of safety, which is
 a positive effect, but it limits the amount of work that can be done at the
 same time, which is a big negative.
 
 To emphasize these two aspects, we’re going to create a little project that
-uses these two aspects heavily. Since the focus of the example is the embedding
-of Rust into the languages, rather than the problem itself, we’ll just use a
+uses these two aspects heavily. Since the focus of the example is to embed
+Rust into other languages, rather than the problem itself, we’ll just use a
 toy example:
 
 > Start ten threads. Inside each thread, count from one to five million. After
-> All ten threads are finished, print out ‘done!’.
+> all ten threads are finished, print out ‘done!’.
 
 I chose five million based on my particular computer. Here’s an example of this
 code in Ruby:
@@ -69,7 +69,7 @@ threads = []
   end
 end
 
-threads.each {|t| t.join }
+threads.each { |t| t.join }
 puts "done!"
 ```
 
@@ -82,12 +82,12 @@ sort of process monitoring tool, like `top`, I can see that it only uses one
 core on my machine. That’s the GIL kicking in.
 
 While it’s true that this is a synthetic program, one can imagine many problems
-that are similar to this in the real world. For our purposes, spinning up some
+that are similar to this in the real world. For our purposes, spinning up a few
 busy threads represents some sort of parallel, expensive computation.
 
 # A Rust library
 
-Let’s re-write this problem in Rust. First, let’s make a new project with
+Let’s rewrite this problem in Rust. First, let’s make a new project with
 Cargo:
 
 ```bash
@@ -129,7 +129,7 @@ src/lib.rs:3 fn process() {
 src/lib.rs:4     let handles: Vec<_> = (0..10).map(|_| {
 src/lib.rs:5         thread::spawn(|| {
 src/lib.rs:6             let mut x = 0;
-src/lib.rs:7             for _ in (0..5_000_001) {
+src/lib.rs:7             for _ in (0..5_000_000) {
 src/lib.rs:8                 x += 1
              ...
 src/lib.rs:6:17: 6:22 warning: variable `x` is assigned to, but never used, #[warn(unused_variables)] on by default
@@ -151,7 +151,7 @@ Finally, we join on each thread.
 Right now, however, this is a Rust library, and it doesn’t expose anything
 that’s callable from C. If we tried to hook this up to another language right
 now, it wouldn’t work. We only need to make two small changes to fix this,
-though. The first is modify the beginning of our code:
+though. The first is to modify the beginning of our code:
 
 ```rust,ignore
 #[no_mangle]
@@ -161,7 +161,7 @@ pub extern fn process() {
 We have to add a new attribute, `no_mangle`. When you create a Rust library, it
 changes the name of the function in the compiled output. The reasons for this
 are outside the scope of this tutorial, but in order for other languages to
-know how to call the function, we need to not do that. This attribute turns
+know how to call the function, we can’t do that. This attribute turns
 that behavior off.
 
 The other change is the `pub extern`. The `pub` means that this function should
@@ -178,7 +178,7 @@ crate-type = ["dylib"]
 ```
 
 This tells Rust that we want to compile our library into a standard dynamic
-library. By default, Rust compiles into an ‘rlib’, a Rust-specific format.
+library. By default, Rust compiles an ‘rlib’, a Rust-specific format.
 
 Let’s build the project now:
 
@@ -204,7 +204,7 @@ Now that we’ve got our Rust library built, let’s use it from our Ruby.
 
 # Ruby
 
-Open up a `embed.rb` file inside of our project, and do this:
+Open up an `embed.rb` file inside of our project, and do this:
 
 ```ruby
 require 'ffi'
@@ -217,7 +217,7 @@ end
 
 Hello.process
 
-puts "done!"
+puts 'done!'
 ```
 
 Before we can run this, we need to install the `ffi` gem:
@@ -241,7 +241,7 @@ done!
 $
 ```
 
-Whoah, that was fast! On my system, this took `0.086` seconds, rather than
+Whoa, that was fast! On my system, this took `0.086` seconds, rather than
 the two seconds the pure Ruby version took. Let’s break down this Ruby
 code:
 
@@ -258,11 +258,11 @@ module Hello
   ffi_lib 'target/release/libembed.so'
 ```
 
-The `ffi` gem’s authors recommend using a module to scope the functions
-we’ll import from the shared library. Inside, we `extend` the necessary
-`FFI::Library` module, and then call `ffi_lib` to load up our shared
-object library. We just pass it the path that our library is stored,
-which as we saw before, is `target/release/libembed.so`.
+The `Hello` module is used to attach the native functions from the shared
+library. Inside, we `extend` the necessary `FFI::Library` module and then call
+`ffi_lib` to load up our shared object library. We just pass it the path that
+our library is stored, which, as we saw before, is
+`target/release/libembed.so`.
 
 ```ruby
 attach_function :process, [], :void
@@ -280,10 +280,10 @@ Hello.process
 
 This is the actual call into Rust. The combination of our `module`
 and the call to `attach_function` sets this all up. It looks like
-a Ruby function, but is actually Rust!
+a Ruby function but is actually Rust!
 
 ```ruby
-puts "done!"
+puts 'done!'
 ```
 
 Finally, as per our project’s requirements, we print out `done!`.
@@ -329,7 +329,7 @@ After that installs, we can use it:
 var ffi = require('ffi');
 
 var lib = ffi.Library('target/release/libembed', {
-  'process': [ 'void', []  ]
+  'process': ['void', []]
 });
 
 lib.process();
@@ -340,7 +340,7 @@ console.log("done!");
 It looks more like the Ruby example than the Python example. We use
 the `ffi` module to get access to `ffi.Library()`, which loads up
 our shared object. We need to annotate the return type and argument
-types of the function, which are 'void' for return, and an empty
+types of the function, which are `void` for return and an empty
 array to signify no arguments. From there, we just call it and
 print the result.
 

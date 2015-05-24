@@ -7,7 +7,7 @@
 * [Learn Rust](learn-rust.md)
     * [Guessing Game](guessing-game.md)
     * [Dining Philosophers](dining-philosophers.md)
-    * [Rust inside other languages](rust-inside-other-languages.md)
+    * [Rust Inside Other Languages](rust-inside-other-languages.md)
 * [Effective Rust](effective-rust.md)
     * [The Stack and the Heap](the-stack-and-the-heap.md)
     * [Testing](testing.md)
