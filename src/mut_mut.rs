@@ -27,7 +27,7 @@ impl LintPass for MutMut {
 }
 
 fn check_expr_expd(cx: &Context, expr: &Expr, info: Option<&ExpnInfo>) {
-	if in_external_macro(info) { return; }
+	if in_macro(info) { return; }
 
 	fn unwrap_addr(expr : &Expr) -> Option<&Expr> {
 		match expr.node {
@@ -51,8 +51,8 @@ fn check_expr_expd(cx: &Context, expr: &Expr, info: Option<&ExpnInfo>) {
 	})
 }
 
-fn in_external_macro(info: Option<&ExpnInfo>) -> bool {
-	info.map_or(false, |i| i.callee.span.is_some())
+fn in_macro(info: Option<&ExpnInfo>) -> bool {
+	info.is_some()
 }
 
 fn unwrap_mut(ty : &Ty) -> Option<&Ty> {
