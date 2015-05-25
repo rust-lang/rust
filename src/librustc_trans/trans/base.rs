@@ -785,7 +785,7 @@ pub fn load_ty<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
         if !global.is_null() && llvm::LLVMIsGlobalConstant(global) == llvm::True {
             let val = llvm::LLVMGetInitializer(global);
             if !val.is_null() {
-                return from_arg_ty(cx, val, t);
+                return to_arg_ty(cx, val, t);
             }
         }
     }
@@ -807,7 +807,7 @@ pub fn load_ty<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
         llvm::LLVMSetAlignment(val, align);
     }
 
-    from_arg_ty(cx, val, t)
+    to_arg_ty(cx, val, t)
 }
 
 /// Helper for storing values in memory. Does the necessary conversion if the in-memory type
@@ -817,13 +817,13 @@ pub fn store_ty<'blk, 'tcx>(cx: Block<'blk, 'tcx>, v: ValueRef, dst: ValueRef, t
         return;
     }
 
-    let store = Store(cx, to_arg_ty(cx, v, t), to_arg_ty_ptr(cx, dst, t));
+    let store = Store(cx, from_arg_ty(cx, v, t), to_arg_ty_ptr(cx, dst, t));
     unsafe {
         llvm::LLVMSetAlignment(store, type_of::align_of(cx.ccx(), t));
     }
 }
 
-pub fn to_arg_ty(bcx: Block, val: ValueRef, ty: Ty) -> ValueRef {
+pub fn from_arg_ty(bcx: Block, val: ValueRef, ty: Ty) -> ValueRef {
     if ty::type_is_bool(ty) {
         ZExt(bcx, val, Type::i8(bcx.ccx()))
     } else {
@@ -831,7 +831,7 @@ pub fn to_arg_ty(bcx: Block, val: ValueRef, ty: Ty) -> ValueRef {
     }
 }
 
-pub fn from_arg_ty(bcx: Block, val: ValueRef, ty: Ty) -> ValueRef {
+pub fn to_arg_ty(bcx: Block, val: ValueRef, ty: Ty) -> ValueRef {
     if ty::type_is_bool(ty) {
         Trunc(bcx, val, Type::i1(bcx.ccx()))
     } else {
