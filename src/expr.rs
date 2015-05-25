@@ -13,7 +13,9 @@ use utils::*;
 use lists::{write_list, ListFormatting, SeparatorTactic, ListTactic};
 
 use syntax::{ast, ptr};
-use syntax::codemap::{Span, Pos};
+use syntax::codemap::{Pos, Span};
+use syntax::parse::token;
+use syntax::print::pprust;
 
 use MIN_STRING;
 
@@ -134,6 +136,64 @@ impl<'a> FmtVisitor<'a> {
         format!("({})", subexpr_str)
     }
 
+    fn rewrite_struct_lit(&mut self,
+                          path: &ast::Path,
+                          fields: &[ast::Field],
+                          base: Option<&ast::Expr>,
+                          width: usize,
+                          offset: usize)
+        -> String
+    {
+        debug!("rewrite_struct_lit: width {}, offset {}", width, offset);
+        assert!(fields.len() > 0 || base.is_some());
+
+        let path_str = pprust::path_to_string(path);
+        // Foo { a: Foo } - indent is +3, width is -5.
+        let indent = offset + path_str.len() + 3;
+        let budget = width - (path_str.len() + 5);
+
+        let mut field_strs: Vec<_> =
+            fields.iter().map(|f| self.rewrite_field(f, budget, indent)).collect();
+        if let Some(expr) = base {
+            // Another 2 on the width/indent for the ..
+            field_strs.push(format!("..{}", self.rewrite_expr(expr, budget - 2, indent + 2)))
+        }
+
+        // FIXME comments
+        let field_strs: Vec<_> = field_strs.into_iter().map(|s| (s, String::new())).collect();
+        let tactics = if field_strs.iter().any(|&(ref s, _)| s.contains('\n')) {
+            ListTactic::Vertical
+        } else {
+            ListTactic::HorizontalVertical
+        };
+        let fmt = ListFormatting {
+            tactic: tactics,
+            separator: ",",
+            trailing_separator: if base.is_some() {
+                    SeparatorTactic::Never
+                } else {
+                    config!(struct_lit_trailing_comma)
+                },
+            indent: indent,
+            h_width: budget,
+            v_width: budget,
+        };
+        let fields_str = write_list(&field_strs, &fmt);
+        format!("{} {{ {} }}", path_str, fields_str)
+
+        // FIXME if the usual multi-line layout is too wide, we should fall back to
+        // Foo {
+        //     a: ...,
+        // }
+    }
+
+    fn rewrite_field(&mut self, field: &ast::Field, width: usize, offset: usize) -> String {
+        let name = &token::get_ident(field.ident.node);
+        let overhead = name.len() + 2;
+        let expr = self.rewrite_expr(&field.expr, width - overhead, offset + overhead);
+        format!("{}: {}", name, expr)
+    }
+
     pub fn rewrite_expr(&mut self, expr: &ast::Expr, width: usize, offset: usize) -> String {
         match expr.node {
             ast::Expr_::ExprLit(ref l) => {
@@ -151,6 +211,13 @@ impl<'a> FmtVisitor<'a> {
             }
             ast::Expr_::ExprParen(ref subexpr) => {
                 return self.rewrite_paren(subexpr, width, offset);
+            }
+            ast::Expr_::ExprStruct(ref path, ref fields, ref base) => {
+                return self.rewrite_struct_lit(path,
+                                               fields,
+                                               base.as_ref().map(|e| &**e),
+                                               width,
+                                               offset);
             }
             _ => {}
         }

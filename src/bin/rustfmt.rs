@@ -24,8 +24,8 @@ fn main() {
     let mut def_config = String::new();
     def_config_file.read_to_string(&mut def_config).unwrap();
 
-    run(args, WriteMode::Display, &def_config);
-    //run(args, WriteMode::Overwrite, &def_config);
+    //run(args, WriteMode::Display, &def_config);
+    run(args, WriteMode::Overwrite, &def_config);
 
     std::env::set_exit_status(0);
 

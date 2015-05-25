@@ -20,6 +20,7 @@ pub struct Config {
     pub fn_brace_style: ::BraceStyle,
     pub fn_return_indent: ::ReturnIndent,
     pub struct_trailing_comma: bool,
+    pub struct_lit_trailing_comma: ::lists::SeparatorTactic,
 }
 
 impl Config {
