@@ -68,6 +68,9 @@ Read ["Installing Rust"] from [The Book].
    $ pacman -S mingw-w64-x86_64-toolchain
 
    $ pacman -S base-devel
+   
+   # If `gcc` isn't already installed
+   $ pacman -S gcc
    ```
 
 3. Run `mingw32_shell.bat` or `mingw64_shell.bat` from wherever you installed
