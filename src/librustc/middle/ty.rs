@@ -32,7 +32,6 @@ pub use self::ImplOrTraitItem::*;
 pub use self::BoundRegion::*;
 pub use self::sty::*;
 pub use self::IntVarValue::*;
-pub use self::vtable_origin::*;
 pub use self::MethodOrigin::*;
 pub use self::CopyImplementationError::*;
 
@@ -402,12 +401,6 @@ pub enum CustomCoerceUnsized {
     Struct(usize)
 }
 
-#[derive(Clone, Copy, RustcEncodable, RustcDecodable, PartialEq, PartialOrd, Debug)]
-pub struct param_index {
-    pub space: subst::ParamSpace,
-    pub index: usize
-}
-
 #[derive(Clone, Debug)]
 pub enum MethodOrigin<'tcx> {
     // fully statically resolved method
@@ -509,46 +502,6 @@ impl MethodCall {
 // maps from an expression id that corresponds to a method call to the details
 // of the method to be invoked
 pub type MethodMap<'tcx> = RefCell<FnvHashMap<MethodCall, MethodCallee<'tcx>>>;
-
-pub type vtable_param_res<'tcx> = Vec<vtable_origin<'tcx>>;
-
-// Resolutions for bounds of all parameters, left to right, for a given path.
-pub type vtable_res<'tcx> = VecPerParamSpace<vtable_param_res<'tcx>>;
-
-#[derive(Clone)]
-pub enum vtable_origin<'tcx> {
-    /*
-      Statically known vtable. def_id gives the impl item
-      from whence comes the vtable, and tys are the type substs.
-      vtable_res is the vtable itself.
-     */
-    vtable_static(ast::DefId, subst::Substs<'tcx>, vtable_res<'tcx>),
-
-    /*
-      Dynamic vtable, comes from a parameter that has a bound on it:
-      fn foo<T:quux,baz,bar>(a: T) -- a's vtable would have a
-      vtable_param origin
-
-      The first argument is the param index (identifying T in the example),
-      and the second is the bound number (identifying baz)
-     */
-    vtable_param(param_index, usize),
-
-    /*
-      Vtable automatically generated for a closure. The def ID is the
-      ID of the closure expression.
-     */
-    vtable_closure(ast::DefId),
-
-    /*
-      Asked to determine the vtable for ty_err. This is the value used
-      for the vtables of `Self` in a virtual call like `foo.bar()`
-      where `foo` is of object type. The same value is also used when
-      type errors occur.
-     */
-    vtable_error,
-}
-
 
 // For every explicit cast into an object type, maps from the cast
 // expr to the associated trait ref.
@@ -802,9 +755,6 @@ pub struct ctxt<'tcx> {
 
     /// Maps any item's def-id to its stability index.
     pub stability: RefCell<stability::Index>,
-
-    /// Maps def IDs to true if and only if they're associated types.
-    pub associated_types: RefCell<DefIdMap<bool>>,
 
     /// Caches the results of trait selection. This cache is used
     /// for things that do not have to do with the parameters in scope.
@@ -2816,7 +2766,6 @@ pub fn mk_ctxt<'tcx>(s: Session,
         node_lint_levels: RefCell::new(FnvHashMap()),
         transmute_restrictions: RefCell::new(Vec::new()),
         stability: RefCell::new(stability),
-        associated_types: RefCell::new(DefIdMap()),
         selection_cache: traits::SelectionCache::new(),
         repr_hint_cache: RefCell::new(DefIdMap()),
         type_impls_copy_cache: RefCell::new(HashMap::new()),
@@ -4305,17 +4254,9 @@ pub fn is_type_representable<'tcx>(cx: &ctxt<'tcx>, sp: Span, ty: Ty<'tcx>)
 }
 
 pub fn type_is_trait(ty: Ty) -> bool {
-    type_trait_info(ty).is_some()
-}
-
-pub fn type_trait_info<'tcx>(ty: Ty<'tcx>) -> Option<&'tcx TyTrait<'tcx>> {
     match ty.sty {
-        ty_uniq(ty) | ty_rptr(_, mt { ty, ..}) | ty_ptr(mt { ty, ..}) => match ty.sty {
-            ty_trait(ref t) => Some(&**t),
-            _ => None
-        },
-        ty_trait(ref t) => Some(&**t),
-        _ => None
+        ty_trait(..) => true,
+        _ => false
     }
 }
 
@@ -5396,26 +5337,6 @@ pub fn impl_or_trait_item<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)
                                              .borrow_mut(),
                                      || {
         csearch::get_impl_or_trait_item(cx, id)
-    })
-}
-
-/// Returns true if the given ID refers to an associated type and false if it
-/// refers to anything else.
-pub fn is_associated_type(cx: &ctxt, id: ast::DefId) -> bool {
-    memoized(&cx.associated_types, id, |id: ast::DefId| {
-        if id.krate == ast::LOCAL_CRATE {
-            match cx.impl_or_trait_items.borrow().get(&id) {
-                Some(ref item) => {
-                    match **item {
-                        TypeTraitItem(_) => true,
-                        _ => false,
-                    }
-                }
-                None => false,
-            }
-        } else {
-            csearch::is_associated_type(&cx.sess.cstore, id)
-        }
     })
 }
 
@@ -7219,32 +7140,6 @@ impl<'tcx> Repr<'tcx> for ty::Predicate<'tcx> {
             Predicate::RegionOutlives(ref pair) => pair.repr(tcx),
             Predicate::TypeOutlives(ref pair) => pair.repr(tcx),
             Predicate::Projection(ref pair) => pair.repr(tcx),
-        }
-    }
-}
-
-impl<'tcx> Repr<'tcx> for vtable_origin<'tcx> {
-    fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
-        match *self {
-            vtable_static(def_id, ref tys, ref vtable_res) => {
-                format!("vtable_static({:?}:{}, {}, {})",
-                        def_id,
-                        ty::item_path_str(tcx, def_id),
-                        tys.repr(tcx),
-                        vtable_res.repr(tcx))
-            }
-
-            vtable_param(x, y) => {
-                format!("vtable_param({:?}, {})", x, y)
-            }
-
-            vtable_closure(def_id) => {
-                format!("vtable_closure({:?})", def_id)
-            }
-
-            vtable_error => {
-                format!("vtable_error")
-            }
         }
     }
 }
