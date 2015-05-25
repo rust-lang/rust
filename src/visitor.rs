@@ -98,13 +98,19 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
 
         let indent = self.block_indent;
         match fk {
-            visit::FkItemFn(ident, ref generics, ref unsafety, ref abi, vis) => {
+            visit::FkItemFn(ident,
+                            ref generics,
+                            ref unsafety,
+                            ref constness,
+                            ref abi,
+                            vis) => {
                 let new_fn = self.rewrite_fn(indent,
                                              ident,
                                              fd,
                                              None,
                                              generics,
                                              unsafety,
+                                             constness,
                                              abi,
                                              vis,
                                              b.span.lo);
@@ -117,6 +123,7 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
                                              Some(&sig.explicit_self),
                                              &sig.generics,
                                              &sig.unsafety,
+                                             &sig.constness,
                                              &sig.abi,
                                              vis.unwrap_or(ast::Visibility::Inherited),
                                              b.span.lo);
