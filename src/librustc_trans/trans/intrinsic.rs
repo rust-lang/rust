@@ -223,7 +223,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                     let val = if datum.kind.is_by_ref() {
                         load_ty(bcx, datum.val, datum.ty)
                     } else {
-                        datum.val
+                        from_arg_ty(bcx, datum.val, datum.ty)
                     };
 
                     let cast_val = BitCast(bcx, val, llret_ty);
