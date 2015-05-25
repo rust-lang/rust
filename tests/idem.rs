@@ -57,7 +57,7 @@ fn idempotent_tests() {
 
 // Compare output to input.
 fn print_mismatches(result: HashMap<String, String>) {
-    for (file_name, fmt_text) in result {
+    for (_, fmt_text) in result {
         println!("{}", fmt_text);
     }
 }

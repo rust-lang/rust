@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use utils::make_indent;
+use rustc_serialize::{Decodable, Decoder};
 
 #[derive(Eq, PartialEq, Debug, Copy, Clone)]
 pub enum ListTactic {
@@ -27,6 +28,19 @@ pub enum SeparatorTactic {
     Always,
     Never,
     Vertical,
+}
+
+// TODO could use a macro for all these Decodable impls.
+impl Decodable for SeparatorTactic {
+    fn decode<D: Decoder>(d: &mut D) -> Result<Self, D::Error> {
+        let s = try!(d.read_str());
+        match &*s {
+            "Always" => Ok(SeparatorTactic::Always),
+            "Never" => Ok(SeparatorTactic::Never),
+            "Vertical" => Ok(SeparatorTactic::Vertical),
+            _ => Err(d.error("Bad variant")),
+        }
+    }
 }
 
 // TODO having some helpful ctors for ListFormatting would be nice.

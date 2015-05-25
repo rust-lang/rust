@@ -47,7 +47,7 @@ impl<'a> FmtVisitor<'a> {
                             path: &ast::Path,
                             path_list: &[ast::PathListItem],
                             visibility: ast::Visibility) -> String {
-        let path_str = pprust::path_to_string(&path);
+        let path_str = pprust::path_to_string(path);
 
         let vis = match visibility {
             ast::Public => "pub ",

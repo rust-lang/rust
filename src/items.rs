@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Formatting top-level items - functions, structs, enums, traits, impls.
+
 use {ReturnIndent, BraceStyle};
 use utils::make_indent;
 use lists::{write_list, ListFormatting, SeparatorTactic, ListTactic};
@@ -123,7 +125,7 @@ impl<'a> FmtVisitor<'a> {
         let generics_indent = indent + result.len();
         result.push_str(&self.rewrite_generics(generics,
                                                generics_indent,
-                                               span_for_return(&fd.output)));
+                                               span_for_return(&fd.output).lo));
 
         let ret_str = self.rewrite_return(&fd.output);
 
@@ -388,7 +390,130 @@ impl<'a> FmtVisitor<'a> {
         }
     }
 
-    fn rewrite_generics(&self, generics: &ast::Generics, indent: usize, ret_span: Span) -> String {
+    pub fn visit_struct(&mut self,
+                        ident: ast::Ident,
+                        vis: ast::Visibility,
+                        struct_def: &ast::StructDef,
+                        generics: &ast::Generics,
+                        span: Span)
+    {
+        let header_str = self.struct_header(ident, vis);
+        self.changes.push_str_span(span, &header_str);
+
+        if struct_def.fields.len() == 0 {
+            assert!(generics.where_clause.predicates.len() == 0,
+                    "No-field struct with where clause?");
+            assert!(generics.lifetimes.len() == 0, "No-field struct with generics?");
+            assert!(generics.ty_params.len() == 0, "No-field struct with generics?");
+
+            self.changes.push_str_span(span, ";");
+            return;
+        }
+
+        let mut generics_buf = String::new();
+        let generics_str = self.rewrite_generics(generics, self.block_indent, struct_def.fields[0].span.lo);
+        generics_buf.push_str(&generics_str);
+
+        if generics.where_clause.predicates.len() > 0 {
+            generics_buf.push_str(&self.rewrite_where_clause(&generics.where_clause,
+                                                             self.block_indent,
+                                                             struct_def.fields[0].span.lo));
+            generics_buf.push_str(&make_indent(self.block_indent));
+            generics_buf.push_str("\n{");
+
+        } else {
+            generics_buf.push_str(" {");
+        }
+        self.changes.push_str_span(span, &generics_buf);
+
+        let struct_snippet = self.snippet(span);
+        // FIXME this will give incorrect results if there is a { in a commet.
+        self.last_pos = span.lo + BytePos(struct_snippet.find('{').unwrap() as u32 + 1);
+
+        self.block_indent += config!(tab_spaces);
+        for (i, f) in struct_def.fields.iter().enumerate() {
+            self.visit_field(f, i == struct_def.fields.len() - 1, span.lo, &struct_snippet);
+        }
+        self.block_indent -= config!(tab_spaces);
+
+        self.format_missing_with_indent(span.lo + BytePos(struct_snippet.rfind('}').unwrap() as u32));
+        self.changes.push_str_span(span, "}");
+    }
+
+    fn struct_header(&self,
+                     ident: ast::Ident,
+                     vis: ast::Visibility)
+        -> String
+    {
+        let vis = if vis == ast::Visibility::Public {
+            "pub "
+        } else {
+            ""
+        };
+
+        format!("{}struct {}", vis, &token::get_ident(ident))
+    }
+
+    // Field of a struct
+    fn visit_field(&mut self,
+                   field: &ast::StructField,
+                   last_field: bool,
+                   // These two args are for missing spans hacks.
+                   struct_start: BytePos,
+                   struct_snippet: &str)
+    {
+        if self.visit_attrs(&field.node.attrs) {
+            return;
+        }
+        self.format_missing_with_indent(field.span.lo);
+
+        let name = match field.node.kind {
+            ast::StructFieldKind::NamedField(ident, _) => Some(token::get_ident(ident)),
+            ast::StructFieldKind::UnnamedField(_) => None,
+        };
+        let vis = match field.node.kind {
+            ast::StructFieldKind::NamedField(_, vis) |
+            ast::StructFieldKind::UnnamedField(vis) => if vis == ast::Visibility::Public {
+                "pub "
+            } else {
+                ""
+            }
+        };
+        let typ = pprust::ty_to_string(&field.node.ty);
+
+        let mut field_str = match name {
+            Some(name) => {
+                let budget = config!(ideal_width) - self.block_indent;
+                // 3 is being conservative and assuming that there will be a trailing comma.
+                if self.block_indent + vis.len() + name.len() + typ.len() + 3 > budget {
+                    format!("{}{}:\n{}{}",
+                            vis,
+                            name,
+                            &make_indent(self.block_indent + config!(tab_spaces)),
+                            typ)
+                } else {
+                    format!("{}{}: {}", vis, name, typ)
+                }
+            }
+            None => format!("{}{}", vis, typ),
+        };
+        if !last_field || config!(struct_trailing_comma) {
+            field_str.push(',');
+        }
+        self.changes.push_str_span(field.span, &field_str);
+
+        // This hack makes sure we only add comments etc. after the comma, and
+        // makes sure we don't repeat any commas.
+        let hi = field.span.hi;
+        // FIXME a comma in a comment will break this hack.
+        let comma_pos = match struct_snippet[(hi.0 - struct_start.0) as usize..].find(',') {
+            Some(i) => i,
+            None => 0,
+        };
+        self.last_pos = hi + BytePos(comma_pos as u32 + 1);
+    }
+
+    fn rewrite_generics(&self, generics: &ast::Generics, indent: usize, span_end: BytePos) -> String {
         // FIXME convert bounds to where clauses where they get too big or if
         // there is a where clause at all.
         let mut result = String::new();
@@ -422,7 +547,7 @@ impl<'a> FmtVisitor<'a> {
                                                    ">",
                                                    |sp| sp.lo,
                                                    |sp| sp.hi,
-                                                   ret_span.lo);
+                                                   span_end);
 
         // If there are // comments, keep them multi-line.
         let mut list_tactic = ListTactic::HorizontalVertical;

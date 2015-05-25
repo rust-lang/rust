@@ -19,11 +19,12 @@ pub struct Config {
     pub newline_style: ::NewlineStyle,
     pub fn_brace_style: ::BraceStyle,
     pub fn_return_indent: ::ReturnIndent,
+    pub struct_trailing_comma: bool,
+    pub struct_lit_trailing_comma: ::lists::SeparatorTactic,
 }
 
 impl Config {
     fn from_toml(toml: &str) -> Config {
-        println!("About to parse: {}", toml);
         let parsed = toml.parse().unwrap();
         toml::decode(parsed).unwrap()
     }
