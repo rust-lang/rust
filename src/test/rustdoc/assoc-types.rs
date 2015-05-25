@@ -18,3 +18,25 @@ pub trait Index<I: ?Sized> {
     //      "fn index<'a>(&'a self, index: I) -> &'a Self::Output"
     fn index<'a>(&'a self, index: I) -> &'a Self::Output;
 }
+
+// @has assoc_types/fn.use_output.html
+// @has - '//*[@class="rust fn"]' '-> &T::Output'
+pub fn use_output<T: Index<usize>>(obj: &T, index: usize) -> &T::Output {
+    obj.index(index)
+}
+
+pub trait Feed {
+    type Input;
+}
+
+// @has assoc_types/fn.use_input.html
+// @has - '//*[@class="rust fn"]' 'T::Input'
+pub fn use_input<T: Feed>(_feed: &T, _element: T::Input) { }
+
+// @has assoc_types/fn.cmp_input.html
+// @has - '//*[@class="rust fn"]' 'where T::Input: PartialEq<U::Input>'
+pub fn cmp_input<T: Feed, U: Feed>(a: &T::Input, b: &U::Input) -> bool
+    where T::Input: PartialEq<U::Input>
+{
+    a == b
+}
