@@ -139,24 +139,20 @@ impl<T : ?Sized> Box<T> {
 /// convert pointer back to `Box` with `Box::from_raw` function, because
 /// `Box` does not specify, how memory is allocated.
 ///
-/// Function is unsafe, because result of this function is no longer
-/// automatically managed that may lead to memory or other resource
-/// leak.
-///
 /// # Examples
 /// ```
 /// # #![feature(alloc)]
 /// use std::boxed;
 ///
 /// let seventeen = Box::new(17u32);
-/// let raw = unsafe { boxed::into_raw(seventeen) };
+/// let raw = boxed::into_raw(seventeen);
 /// let boxed_again = unsafe { Box::from_raw(raw) };
 /// ```
 #[unstable(feature = "alloc",
            reason = "may be renamed")]
 #[inline]
-pub unsafe fn into_raw<T : ?Sized>(b: Box<T>) -> *mut T {
-    mem::transmute(b)
+pub fn into_raw<T : ?Sized>(b: Box<T>) -> *mut T {
+    unsafe { mem::transmute(b) }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
