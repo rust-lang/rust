@@ -5,3 +5,4 @@ tab_spaces = 4
 newline_style = "Unix"
 fn_brace_style = "SameLineWhere"
 fn_return_indent = "WithArgs"
+struct_trailing_comma = true

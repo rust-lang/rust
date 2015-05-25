@@ -19,6 +19,7 @@ pub struct Config {
     pub newline_style: ::NewlineStyle,
     pub fn_brace_style: ::BraceStyle,
     pub fn_return_indent: ::ReturnIndent,
+    pub struct_trailing_comma: bool,
 }
 
 impl Config {

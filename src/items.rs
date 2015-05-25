@@ -431,8 +431,8 @@ impl<'a> FmtVisitor<'a> {
         self.last_pos = span.lo + BytePos(struct_snippet.find('{').unwrap() as u32 + 1);
 
         self.block_indent += config!(tab_spaces);
-        for f in &struct_def.fields {
-            self.visit_field(f, span.lo, &struct_snippet);
+        for (i, f) in struct_def.fields.iter().enumerate() {
+            self.visit_field(f, i == struct_def.fields.len() - 1, span.lo, &struct_snippet);
         }
         self.block_indent -= config!(tab_spaces);
 
@@ -457,6 +457,7 @@ impl<'a> FmtVisitor<'a> {
     // Field of a struct
     fn visit_field(&mut self,
                    field: &ast::StructField,
+                   last_field: bool,
                    // These two args are for missing spans hacks.
                    struct_start: BytePos,
                    struct_snippet: &str)
@@ -480,21 +481,25 @@ impl<'a> FmtVisitor<'a> {
         };
         let typ = pprust::ty_to_string(&field.node.ty);
 
-        let field_str = match name {
+        let mut field_str = match name {
             Some(name) => {
                 let budget = config!(ideal_width) - self.block_indent;
+                // 3 is being conservative and assuming that there will be a trailing comma.
                 if self.block_indent + vis.len() + name.len() + typ.len() + 3 > budget {
-                    format!("{}{}:\n{}{},",
+                    format!("{}{}:\n{}{}",
                             vis,
                             name,
                             &make_indent(self.block_indent + config!(tab_spaces)),
                             typ)
                 } else {
-                    format!("{}{}: {},", vis, name, typ)
+                    format!("{}{}: {}", vis, name, typ)
                 }
             }
-            None => format!("{}{},", vis, typ),
+            None => format!("{}{}", vis, typ),
         };
+        if !last_field || config!(struct_trailing_comma) {
+            field_str.push(',');
+        }
         self.changes.push_str_span(field.span, &field_str);
 
         // This hack makes sure we only add comments etc. after the comma, and
