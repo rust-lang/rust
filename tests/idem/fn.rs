@@ -58,6 +58,20 @@ pub fn render<'a,
     render_opts(g, w, &[])
 }
 
+const fn foo() {
+    x;
+}
+
+pub const fn foo() {
+    x;
+}
+
+impl Foo {
+    const fn foo() {
+        x;
+    }
+}
+
 fn main() {
     let _ = function(move || 5);
     let _ = move || 42;

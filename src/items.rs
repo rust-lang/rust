@@ -27,6 +27,7 @@ impl<'a> FmtVisitor<'a> {
                       explicit_self: Option<&ast::ExplicitSelf>,
                       generics: &ast::Generics,
                       unsafety: &ast::Unsafety,
+                      constness: &ast::Constness,
                       abi: &abi::Abi,
                       vis: ast::Visibility,
                       span_end: BytePos)
@@ -40,6 +41,7 @@ impl<'a> FmtVisitor<'a> {
                                               explicit_self,
                                               generics,
                                               unsafety,
+                                              constness,
                                               abi,
                                               vis,
                                               span_end,
@@ -74,6 +76,7 @@ impl<'a> FmtVisitor<'a> {
                                               Some(&sig.explicit_self),
                                               &sig.generics,
                                               &sig.unsafety,
+                                              &sig.constness,
                                               &sig.abi,
                                               ast::Visibility::Inherited,
                                               span_end,
@@ -92,6 +95,7 @@ impl<'a> FmtVisitor<'a> {
                        explicit_self: Option<&ast::ExplicitSelf>,
                        generics: &ast::Generics,
                        unsafety: &ast::Unsafety,
+                       constness: &ast::Constness,
                        abi: &abi::Abi,
                        vis: ast::Visibility,
                        span_end: BytePos,
@@ -110,6 +114,9 @@ impl<'a> FmtVisitor<'a> {
         }
         if let &ast::Unsafety::Unsafe = unsafety {
             result.push_str("unsafe ");
+        }
+        if let &ast::Constness::Const = constness {
+            result.push_str("const ");
         }
         if *abi != abi::Rust {
             result.push_str("extern ");
