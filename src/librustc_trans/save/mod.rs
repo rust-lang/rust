@@ -49,6 +49,12 @@ pub enum Data {
     FunctionData(FunctionData),
     /// Data for local and global variables (consts and statics).
     VariableData(VariableData),
+    /// Data for modules.
+    ModData(ModData),
+
+    /// Data for the use of some variable (e.g., the use of a local variable, which
+    /// will refere to that variables declaration).
+    VariableRefData(VariableRefData),
 }
 
 /// Data for all kinds of functions and methods.
@@ -71,6 +77,26 @@ pub struct VariableData {
     pub value: String,
     pub type_value: String,
 }
+
+/// Data for modules.
+pub struct ModData {
+    pub id: NodeId,
+    pub name: String,
+    pub qualname: String,
+    pub span: Span,
+    pub scope: NodeId,
+    pub filename: String,
+}
+
+/// Data for the use of some item (e.g., the use of a local variable, which
+/// will refere to that variables declaration (by ref_id)).
+pub struct VariableRefData {
+    pub name: String,
+    pub span: Span,
+    pub scope: NodeId,
+    pub ref_id: DefId,
+}
+
 
 impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
     pub fn new(sess: &'l Session,
@@ -97,7 +123,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
 
     pub fn get_item_data(&self, item: &ast::Item) -> Data {
         match item.node {
-            ast::Item_::ItemFn(..) => {
+            ast::ItemFn(..) => {
                 let name = self.analysis.ty_cx.map.path_to_string(item.id);
                 let qualname = format!("::{}", name);
                 let sub_span = self.span_utils.sub_span_after_keyword(item.span, keywords::Fn);
@@ -145,6 +171,58 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     value: self.span_utils.snippet(expr.span),
                     type_value: ty_to_string(&typ),
                 })
+            }
+            ast::ItemMod(ref m) => {
+                let qualname = format!("::{}", self.analysis.ty_cx.map.path_to_string(item.id));
+
+                let cm = self.sess.codemap();
+                let filename = cm.span_to_filename(m.inner);
+
+                let sub_span = self.span_utils.sub_span_after_keyword(item.span, keywords::Mod);
+
+                Data::ModData(ModData {
+                    id: item.id,
+                    name: get_ident(item.ident).to_string(),
+                    qualname: qualname,
+                    span: sub_span.unwrap(),
+                    scope: self.analysis.ty_cx.map.get_parent(item.id),
+                    filename: filename,
+                })
+            }
+            _ => {
+                // FIXME
+                unimplemented!();
+            }
+        }
+    }
+
+    pub fn get_expr_data(&self, expr: &ast::Expr) -> Data {
+        match expr.node {
+            ast::ExprField(ref sub_ex, ident) => {
+                let ty = &ty::expr_ty_adjusted(&self.analysis.ty_cx, &sub_ex).sty;
+                match *ty {
+                    ty::ty_struct(def_id, _) => {
+                        let fields = ty::lookup_struct_fields(&self.analysis.ty_cx, def_id);
+                        for f in &fields {
+                            if f.name == ident.node.name {
+                                let sub_span = self.span_utils.span_for_last_ident(expr.span);
+                                return Data::VariableRefData(VariableRefData {
+                                    name: get_ident(ident.node).to_string(),
+                                    span: sub_span.unwrap(),
+                                    scope: self.analysis.ty_cx.map.get_parent(expr.id),
+                                    ref_id: f.id,
+                                });
+                            }
+                        }
+
+                        self.sess.span_bug(expr.span,
+                                           &format!("Couldn't find field {} on {:?}",
+                                                    &get_ident(ident.node),
+                                                    ty))
+                    }
+                    _ => self.sess.span_bug(expr.span,
+                                            &format!("Expected struct type, found {:?}", ty)),
+                }
             }
             _ => {
                 // FIXME
