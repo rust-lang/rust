@@ -2180,7 +2180,9 @@ fn auto_ref<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     // Construct the resulting datum, using what was the "by ref"
     // ValueRef of type `referent_ty` to be the "by value" ValueRef
     // of type `&referent_ty`.
-    DatumBlock::new(bcx, Datum::new(llref, ptr_ty, RvalueExpr(Rvalue::new(ByValue))))
+    // Pointers to DST types are non-immediate, and therefore still use ByRef.
+    let kind  = if type_is_sized(bcx.tcx(), referent_ty) { ByValue } else { ByRef };
+    DatumBlock::new(bcx, Datum::new(llref, ptr_ty, RvalueExpr(Rvalue::new(kind))))
 }
 
 fn deref_multiple<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
