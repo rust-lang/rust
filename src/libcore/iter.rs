@@ -452,20 +452,19 @@ pub trait Iterator {
         Scan{iter: self, f: f, state: initial_state}
     }
 
-    /// Creates an iterator that maps each element to an iterator,
-    /// and yields the elements of the produced iterators.
+    /// Takes a function that maps each element to a new iterator and yields
+    /// all the elements of the produced iterators.
+    ///
+    /// This is useful for unraveling nested structures.
     ///
     /// # Examples
     ///
     /// ```
-    /// # #![feature(core)]
-    /// let xs = [2, 3];
-    /// let ys = [0, 1, 0, 1, 2];
-    /// let it = xs.iter().flat_map(|&x| (0..).take(x));
-    /// // Check that `it` has the same elements as `ys`
-    /// for (i, x) in it.enumerate() {
-    ///     assert_eq!(x, ys[i]);
-    /// }
+    /// let words = ["alpha", "beta", "gamma"];
+    /// let merged: String = words.iter()
+    ///                           .flat_map(|s| s.chars())
+    ///                           .collect();
+    /// assert_eq!(merged, "alphabetagamma");
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
