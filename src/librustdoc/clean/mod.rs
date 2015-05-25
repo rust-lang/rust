@@ -2695,6 +2695,21 @@ impl Clean<Stability> for attr::Stability {
     }
 }
 
+impl<'a> Clean<Stability> for &'a attr::Stability {
+    fn clean(&self, _: &DocContext) -> Stability {
+        Stability {
+            level: self.level,
+            feature: self.feature.to_string(),
+            since: self.since.as_ref().map_or("".to_string(),
+                                              |interned| interned.to_string()),
+            deprecated_since: self.deprecated_since.as_ref().map_or("".to_string(),
+                                                                    |istr| istr.to_string()),
+            reason: self.reason.as_ref().map_or("".to_string(),
+                                                |interned| interned.to_string()),
+        }
+    }
+}
+
 impl<'tcx> Clean<Item> for ty::AssociatedConst<'tcx> {
     fn clean(&self, cx: &DocContext) -> Item {
         Item {

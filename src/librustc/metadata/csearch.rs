@@ -380,6 +380,11 @@ pub fn is_const_fn(cstore: &cstore::CStore, did: ast::DefId) -> bool {
     decoder::is_const_fn(&*cdata, did.node)
 }
 
+pub fn is_impl(cstore: &cstore::CStore, did: ast::DefId) -> bool {
+    let cdata = cstore.get_crate_data(did.krate);
+    decoder::is_impl(&*cdata, did.node)
+}
+
 pub fn get_stability(cstore: &cstore::CStore,
                      def: ast::DefId)
                      -> Option<attr::Stability> {
@@ -387,8 +392,8 @@ pub fn get_stability(cstore: &cstore::CStore,
     decoder::get_stability(&*cdata, def.node)
 }
 
-pub fn is_staged_api(cstore: &cstore::CStore, def: ast::DefId) -> bool {
-    let cdata = cstore.get_crate_data(def.krate);
+pub fn is_staged_api(cstore: &cstore::CStore, krate: ast::CrateNum) -> bool {
+    let cdata = cstore.get_crate_data(krate);
     let attrs = decoder::get_crate_attributes(cdata.data());
     for attr in &attrs {
         if &attr.name()[..] == "staged_api" {

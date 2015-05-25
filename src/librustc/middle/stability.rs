@@ -23,46 +23,47 @@ use syntax::{attr, visit};
 use syntax::ast;
 use syntax::ast::{Attribute, Block, Crate, DefId, FnDecl, NodeId, Variant};
 use syntax::ast::{Item, Generics, StructField};
-use syntax::ast_util::is_local;
+use syntax::ast_util::{is_local, local_def};
 use syntax::attr::{Stability, AttrMetaMethods};
 use syntax::visit::{FnKind, Visitor};
 use syntax::feature_gate::emit_feature_err;
-use util::nodemap::{NodeMap, DefIdMap, FnvHashSet, FnvHashMap};
+use util::nodemap::{DefIdMap, FnvHashSet, FnvHashMap};
 use util::ppaux::Repr;
 
 use std::mem::replace;
 
 /// A stability index, giving the stability level for items and methods.
-pub struct Index {
-    // Indicates whether this crate has #![feature(staged_api)]
-    staged_api: bool,
-    // stability for crate-local items; unmarked stability == no entry
-    local: NodeMap<Stability>,
-    // cache for extern-crate items; unmarked stability == entry with None
-    extern_cache: DefIdMap<Option<Stability>>
+pub struct Index<'tcx> {
+    /// This is mostly a cache, except the stabilities of local items
+    /// are filled by the annotator.
+    map: DefIdMap<Option<&'tcx Stability>>,
+
+    /// Maps for each crate whether it is part of the staged API.
+    staged_api: FnvHashMap<ast::CrateNum, bool>
 }
 
 // A private tree-walker for producing an Index.
-struct Annotator<'a> {
-    sess: &'a Session,
-    index: &'a mut Index,
-    parent: Option<Stability>,
+struct Annotator<'a, 'tcx: 'a> {
+    tcx: &'a ty::ctxt<'tcx>,
+    index: &'a mut Index<'tcx>,
+    parent: Option<&'tcx Stability>,
     export_map: &'a PublicItems,
 }
 
-impl<'a> Annotator<'a> {
+impl<'a, 'tcx: 'a> Annotator<'a, 'tcx> {
     // Determine the stability for a node based on its attributes and inherited
     // stability. The stability is recorded in the index and used as the parent.
     fn annotate<F>(&mut self, id: NodeId, use_parent: bool,
                    attrs: &Vec<Attribute>, item_sp: Span, f: F, required: bool) where
         F: FnOnce(&mut Annotator),
     {
-        if self.index.staged_api {
+        if self.index.staged_api[&ast::LOCAL_CRATE] {
             debug!("annotate(id = {:?}, attrs = {:?})", id, attrs);
-            match attr::find_stability(self.sess.diagnostic(), attrs, item_sp) {
+            match attr::find_stability(self.tcx.sess.diagnostic(), attrs, item_sp) {
                 Some(stab) => {
                     debug!("annotate: found {:?}", stab);
-                    self.index.local.insert(id, stab.clone());
+                    let stab = self.tcx.intern_stability(stab);
+                    self.index.map.insert(local_def(id), Some(stab));
 
                     // Don't inherit #[stable(feature = "rust1", since = "1.0.0")]
                     if stab.level != attr::Stable {
@@ -77,13 +78,14 @@ impl<'a> Annotator<'a> {
                     debug!("annotate: not found, use_parent = {:?}, parent = {:?}",
                            use_parent, self.parent);
                     if use_parent {
-                        if let Some(stab) = self.parent.clone() {
-                            self.index.local.insert(id, stab);
-                        } else if self.index.staged_api && required
+                        if let Some(stab) = self.parent {
+                            self.index.map.insert(local_def(id), Some(stab));
+                        } else if self.index.staged_api[&ast::LOCAL_CRATE] && required
                             && self.export_map.contains(&id)
-                            && !self.sess.opts.test {
-                                self.sess.span_err(item_sp,
-                                                   "This node does not have a stability attribute");
+                            && !self.tcx.sess.opts.test {
+                                self.tcx.sess.span_err(item_sp,
+                                                       "This node does not \
+                                                        have a stability attribute");
                             }
                     }
                     f(self);
@@ -95,7 +97,7 @@ impl<'a> Annotator<'a> {
                 let tag = attr.name();
                 if tag == "unstable" || tag == "stable" || tag == "deprecated" {
                     attr::mark_used(attr);
-                    self.sess.span_err(attr.span(),
+                    self.tcx.sess.span_err(attr.span(),
                                        "stability attributes may not be used outside \
                                         of the standard library");
                 }
@@ -105,7 +107,7 @@ impl<'a> Annotator<'a> {
     }
 }
 
-impl<'a, 'v> Visitor<'v> for Annotator<'a> {
+impl<'a, 'tcx, 'v> Visitor<'v> for Annotator<'a, 'tcx> {
     fn visit_item(&mut self, i: &Item) {
         // FIXME (#18969): the following is a hack around the fact
         // that we cannot currently annotate the stability of
@@ -168,11 +170,11 @@ impl<'a, 'v> Visitor<'v> for Annotator<'a> {
     }
 }
 
-impl Index {
+impl<'tcx> Index<'tcx> {
     /// Construct the stability index for a crate being compiled.
-    pub fn build(&mut self, sess: &Session, krate: &Crate, export_map: &PublicItems) {
+    pub fn build(&mut self, tcx: &ty::ctxt<'tcx>, krate: &Crate, export_map: &PublicItems) {
         let mut annotator = Annotator {
-            sess: sess,
+            tcx: tcx,
             index: self,
             parent: None,
             export_map: export_map,
@@ -182,22 +184,23 @@ impl Index {
     }
 
     pub fn new(krate: &Crate) -> Index {
-        let mut staged_api = false;
+        let mut is_staged_api = false;
         for attr in &krate.attrs {
             if &attr.name()[..] == "staged_api" {
                 match attr.node.value.node {
                     ast::MetaWord(_) => {
                         attr::mark_used(attr);
-                        staged_api = true;
+                        is_staged_api = true;
                     }
                     _ => (/*pass*/)
                 }
             }
         }
+        let mut staged_api = FnvHashMap();
+        staged_api.insert(ast::LOCAL_CRATE, is_staged_api);
         Index {
             staged_api: staged_api,
-            local: NodeMap(),
-            extern_cache: DefIdMap()
+            map: DefIdMap(),
         }
     }
 }
@@ -232,13 +235,13 @@ struct Checker<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> Checker<'a, 'tcx> {
-    fn check(&mut self, id: ast::DefId, span: Span, stab: &Option<Stability>) {
+    fn check(&mut self, id: ast::DefId, span: Span, stab: &Option<&Stability>) {
         // Only the cross-crate scenario matters when checking unstable APIs
         let cross_crate = !is_local(id);
         if !cross_crate { return }
 
         match *stab {
-            Some(Stability { level: attr::Unstable, ref feature, ref reason, .. }) => {
+            Some(&Stability { level: attr::Unstable, ref feature, ref reason, .. }) => {
                 self.used_features.insert(feature.clone(), attr::Unstable);
 
                 if !self.active_features.contains(feature) {
@@ -252,7 +255,7 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
                                       &feature, span, &msg);
                 }
             }
-            Some(Stability { level, ref feature, .. }) => {
+            Some(&Stability { level, ref feature, .. }) => {
                 self.used_features.insert(feature.clone(), level);
 
                 // Stable APIs are always ok to call and deprecated APIs are
@@ -312,7 +315,7 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Checker<'a, 'tcx> {
 
 /// Helper for discovering nodes to check for stability
 pub fn check_item(tcx: &ty::ctxt, item: &ast::Item, warn_about_defns: bool,
-                  cb: &mut FnMut(ast::DefId, Span, &Option<Stability>)) {
+                  cb: &mut FnMut(ast::DefId, Span, &Option<&Stability>)) {
     match item.node {
         ast::ItemExternCrate(_) => {
             // compiler-generated `extern crate` items have a dummy span.
@@ -349,7 +352,7 @@ pub fn check_item(tcx: &ty::ctxt, item: &ast::Item, warn_about_defns: bool,
 
 /// Helper for discovering nodes to check for stability
 pub fn check_expr(tcx: &ty::ctxt, e: &ast::Expr,
-                  cb: &mut FnMut(ast::DefId, Span, &Option<Stability>)) {
+                  cb: &mut FnMut(ast::DefId, Span, &Option<&Stability>)) {
     let span;
     let id = match e.node {
         ast::ExprMethodCall(i, _, _) => {
@@ -458,7 +461,7 @@ pub fn check_expr(tcx: &ty::ctxt, e: &ast::Expr,
 }
 
 pub fn check_path(tcx: &ty::ctxt, path: &ast::Path, id: ast::NodeId,
-                  cb: &mut FnMut(ast::DefId, Span, &Option<Stability>)) {
+                  cb: &mut FnMut(ast::DefId, Span, &Option<&Stability>)) {
     match tcx.def_map.borrow().get(&id).map(|d| d.full_def()) {
         Some(def::DefPrimTy(..)) => {}
         Some(def) => {
@@ -470,7 +473,7 @@ pub fn check_path(tcx: &ty::ctxt, path: &ast::Path, id: ast::NodeId,
 }
 
 pub fn check_pat(tcx: &ty::ctxt, pat: &ast::Pat,
-                 cb: &mut FnMut(ast::DefId, Span, &Option<Stability>)) {
+                 cb: &mut FnMut(ast::DefId, Span, &Option<&Stability>)) {
     debug!("check_pat(pat = {:?})", pat);
     if is_internal(tcx, pat.span) { return; }
 
@@ -511,7 +514,7 @@ pub fn check_pat(tcx: &ty::ctxt, pat: &ast::Pat,
 }
 
 fn maybe_do_stability_check(tcx: &ty::ctxt, id: ast::DefId, span: Span,
-                            cb: &mut FnMut(ast::DefId, Span, &Option<Stability>)) {
+                            cb: &mut FnMut(ast::DefId, Span, &Option<&Stability>)) {
     if !is_staged_api(tcx, id) { return  }
     if is_internal(tcx, span) { return }
     let ref stability = lookup(tcx, id);
@@ -528,20 +531,27 @@ fn is_staged_api(tcx: &ty::ctxt, id: DefId) -> bool {
             if trait_method_id != id => {
                 is_staged_api(tcx, trait_method_id)
             }
-        _ if is_local(id) => {
-            tcx.stability.borrow().staged_api
-        }
         _ => {
-            csearch::is_staged_api(&tcx.sess.cstore, id)
+            *tcx.stability.borrow_mut().staged_api.entry(id.krate).or_insert_with(
+                || csearch::is_staged_api(&tcx.sess.cstore, id.krate))
         }
     }
 }
 
 /// Lookup the stability for a node, loading external crate
 /// metadata as necessary.
-pub fn lookup(tcx: &ty::ctxt, id: DefId) -> Option<Stability> {
-    debug!("lookup(id={})",
-           id.repr(tcx));
+pub fn lookup<'tcx>(tcx: &ty::ctxt<'tcx>, id: DefId) -> Option<&'tcx Stability> {
+    if let Some(st) = tcx.stability.borrow().map.get(&id) {
+        return *st;
+    }
+
+    let st = lookup_uncached(tcx, id);
+    tcx.stability.borrow_mut().map.insert(id, st);
+    st
+}
+
+fn lookup_uncached<'tcx>(tcx: &ty::ctxt<'tcx>, id: DefId) -> Option<&'tcx Stability> {
+    debug!("lookup(id={})", id.repr(tcx));
 
     // is this definition the implementation of a trait method?
     match ty::trait_item_of_item(tcx, id) {
@@ -553,25 +563,23 @@ pub fn lookup(tcx: &ty::ctxt, id: DefId) -> Option<Stability> {
     }
 
     let item_stab = if is_local(id) {
-        tcx.stability.borrow().local.get(&id.node).cloned()
+        None // The stability cache is filled partially lazily
     } else {
-        let stab = csearch::get_stability(&tcx.sess.cstore, id);
-        let mut index = tcx.stability.borrow_mut();
-        (*index).extern_cache.insert(id, stab.clone());
-        stab
+        csearch::get_stability(&tcx.sess.cstore, id).map(|st| tcx.intern_stability(st))
     };
 
     item_stab.or_else(|| {
-        if let Some(trait_id) = ty::trait_id_of_impl(tcx, id) {
-            // FIXME (#18969): for the time being, simply use the
-            // stability of the trait to determine the stability of any
-            // unmarked impls for it. See FIXME above for more details.
+        if ty::is_impl(tcx, id) {
+            if let Some(trait_id) = ty::trait_id_of_impl(tcx, id) {
+                // FIXME (#18969): for the time being, simply use the
+                // stability of the trait to determine the stability of any
+                // unmarked impls for it. See FIXME above for more details.
 
-            debug!("lookup: trait_id={:?}", trait_id);
-            lookup(tcx, trait_id)
-        } else {
-            None
+                debug!("lookup: trait_id={:?}", trait_id);
+                return lookup(tcx, trait_id);
+            }
         }
+        None
     })
 }
 
