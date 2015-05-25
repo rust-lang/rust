@@ -54,7 +54,9 @@ instead of `&str`. For example, [`TcpStream::connect`][connect] has a parameter
 of type `ToSocketAddrs`. A `&str` is okay but a `String` must be explicitly
 converted using `&*`.
 
-```rust
+```rust,no_run
+use std::net::TcpStream;
+
 TcpStream::connect("192.168.0.1:3000"); // &str parameter
 
 let addr_string = "192.168.0.1:3000".to_string();
