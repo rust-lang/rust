@@ -664,6 +664,7 @@ impl Clean<TyParamBound> for ty::BuiltinBound {
                 path: path,
                 typarams: None,
                 did: did,
+                is_generic: false,
             },
             lifetimes: vec![]
         }, ast::TraitBoundModifier::None)
@@ -706,7 +707,12 @@ impl<'tcx> Clean<TyParamBound> for ty::TraitRef<'tcx> {
         }
 
         TraitBound(PolyTrait {
-            trait_: ResolvedPath { path: path, typarams: None, did: self.def_id, },
+            trait_: ResolvedPath {
+                path: path,
+                typarams: None,
+                did: self.def_id,
+                is_generic: false,
+            },
             lifetimes: late_bounds
         }, ast::TraitBoundModifier::None)
     }
@@ -1394,11 +1400,13 @@ pub struct PolyTrait {
 /// it does not preserve mutability or boxes.
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Debug)]
 pub enum Type {
-    /// structs/enums/traits (anything that'd be an ast::TyPath)
+    /// structs/enums/traits (most that'd be an ast::TyPath)
     ResolvedPath {
         path: Path,
         typarams: Option<Vec<TyParamBound>>,
         did: ast::DefId,
+        /// true if is a `T::Name` path for associated types
+        is_generic: bool,
     },
     /// For parameterized types, so the consumer of the JSON don't go
     /// looking for types which don't exist anywhere.
@@ -1587,8 +1595,13 @@ impl Clean<Type> for ast::Ty {
             TyObjectSum(ref lhs, ref bounds) => {
                 let lhs_ty = lhs.clean(cx);
                 match lhs_ty {
-                    ResolvedPath { path, typarams: None, did } => {
-                        ResolvedPath { path: path, typarams: Some(bounds.clean(cx)), did: did}
+                    ResolvedPath { path, typarams: None, did, is_generic } => {
+                        ResolvedPath {
+                            path: path,
+                            typarams: Some(bounds.clean(cx)),
+                            did: did,
+                            is_generic: is_generic,
+                        }
                     }
                     _ => {
                         lhs_ty // shouldn't happen
@@ -1668,6 +1681,7 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
                     path: path,
                     typarams: None,
                     did: did,
+                    is_generic: false,
                 }
             }
             ty::ty_trait(box ty::TyTrait { ref principal, ref bounds }) => {
@@ -1682,6 +1696,7 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
                     path: path,
                     typarams: Some(typarams),
                     did: did,
+                    is_generic: false,
                 }
             }
             ty::ty_tup(ref t) => Tuple(t.clean(cx)),
@@ -2572,10 +2587,7 @@ fn resolve_type(cx: &DocContext,
         None => panic!("unresolved id not in defmap")
     };
 
-    match def {
-        def::DefSelfTy(..) if path.segments.len() == 1 => {
-            return Generic(token::get_name(special_idents::type_self.name).to_string());
-        }
+    let is_generic = match def {
         def::DefPrimTy(p) => match p {
             ast::TyStr => return Primitive(Str),
             ast::TyBool => return Primitive(Bool),
@@ -2593,13 +2605,14 @@ fn resolve_type(cx: &DocContext,
             ast::TyFloat(ast::TyF32) => return Primitive(F32),
             ast::TyFloat(ast::TyF64) => return Primitive(F64),
         },
-        def::DefTyParam(_, _, _, n) => {
-            return Generic(token::get_name(n).to_string())
+        def::DefSelfTy(..) if path.segments.len() == 1 => {
+            return Generic(token::get_name(special_idents::type_self.name).to_string());
         }
-        _ => {}
+        def::DefSelfTy(..) | def::DefTyParam(..) => true,
+        _ => false,
     };
     let did = register_def(&*cx, def);
-    ResolvedPath { path: path, typarams: None, did: did }
+    ResolvedPath { path: path, typarams: None, did: did, is_generic: is_generic }
 }
 
 fn register_def(cx: &DocContext, def: def::Def) -> ast::DefId {
@@ -2798,6 +2811,7 @@ fn lang_struct(cx: &DocContext, did: Option<ast::DefId>,
                 }
             }],
         },
+        is_generic: false,
     }
 }
 
