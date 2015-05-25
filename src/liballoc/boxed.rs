@@ -57,15 +57,11 @@ use core::any::Any;
 use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{self, Hash};
+use core::marker::Unsize;
 use core::mem;
-use core::ops::{Deref, DerefMut};
+use core::ops::{CoerceUnsized, Deref, DerefMut};
 use core::ptr::{Unique};
 use core::raw::{TraitObject};
-
-#[cfg(not(stage0))]
-use core::marker::Unsize;
-#[cfg(not(stage0))]
-use core::ops::CoerceUnsized;
 
 /// A value that represents the heap. This is the default place that the `box`
 /// keyword allocates into when no place is supplied.
@@ -392,5 +388,4 @@ impl<'a,A,R> FnOnce<A> for Box<FnBox<A,Output=R>+Send+'a> {
     }
 }
 
-#[cfg(not(stage0))]
 impl<T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<Box<U>> for Box<T> {}

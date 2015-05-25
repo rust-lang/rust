@@ -344,7 +344,4 @@ pub fn check_crate(tcx: &ty::ctxt, trait_map: ty::TraitMap) {
     tcx.sess.abort_if_errors();
 }
 
-#[cfg(stage0)]
-__build_diagnostic_array! { DIAGNOSTICS }
-#[cfg(not(stage0))]
 __build_diagnostic_array! { librustc_typeck, DIAGNOSTICS }

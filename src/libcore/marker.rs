@@ -55,7 +55,6 @@ pub trait Sized {
 
 /// Types that can be "unsized" to a dynamically sized type.
 #[unstable(feature = "core")]
-#[cfg(not(stage0))]
 #[lang="unsize"]
 pub trait Unsize<T> {
     // Empty.
