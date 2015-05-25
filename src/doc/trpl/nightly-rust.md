@@ -46,11 +46,11 @@ Some people, and somewhat rightfully so, get very upset when we tell you to
 `curl | sh`. Basically, when you do this, you are trusting that the good
 people who maintain Rust aren't going to hack your computer and do bad things.
 That's a good instinct! If you're one of those people, please check out the
-documentation on [building Rust from Source][from source], or [the official
-binary downloads][install page].
+documentation on [building Rust from Source][from-source], or [the official
+binary downloads][install-page].
 
-[from source]: https://github.com/rust-lang/rust#building-from-source
-[install page]: http://www.rust-lang.org/install.html
+[from-source]: https://github.com/rust-lang/rust#building-from-source
+[install-page]: http://www.rust-lang.org/install.html
 
 Oh, we should also mention the officially supported platforms:
 
@@ -91,9 +91,9 @@ If not, there are a number of places where you can get help. The easiest is
 [the #rust IRC channel on irc.mozilla.org][irc], which you can access through
 [Mibbit][mibbit]. Click that link, and you'll be chatting with other Rustaceans
 (a silly nickname we call ourselves), and we can help you out. Other great
-resources include [the user’s forum][users], and [Stack Overflow][stack overflow].
+resources include [the user’s forum][users], and [Stack Overflow][stackoverflow].
 
 [irc]: irc://irc.mozilla.org/#rust
 [mibbit]: http://chat.mibbit.com/?server=irc.mozilla.org&channel=%23rust
 [users]: http://users.rust-lang.org/ 
-[stack overflow]: http://stackoverflow.com/questions/tagged/rust
+[stackoverflow]: http://stackoverflow.com/questions/tagged/rust
