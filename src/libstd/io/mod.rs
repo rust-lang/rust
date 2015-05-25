@@ -307,7 +307,7 @@ pub trait Write {
     /// any wrapped object.
     ///
     /// Calls to `write` are not guaranteed to block waiting for data to be
-    /// written, and a write which would otherwise block can indicated through
+    /// written, and a write which would otherwise block can be indicated through
     /// an `Err` variant.
     ///
     /// If the return value is `Ok(n)` then it must be guaranteed that
