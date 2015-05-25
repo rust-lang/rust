@@ -366,7 +366,7 @@ pub fn cfg_matches(diagnostic: &SpanHandler, cfgs: &[P<MetaItem>], cfg: &ast::Me
 }
 
 /// Represents the #[deprecated] and friends attributes.
-#[derive(RustcEncodable,RustcDecodable,Clone,Debug)]
+#[derive(RustcEncodable, RustcDecodable, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Stability {
     pub level: StabilityLevel,
     pub feature: InternedString,
@@ -378,7 +378,7 @@ pub struct Stability {
 }
 
 /// The available stability levels.
-#[derive(RustcEncodable,RustcDecodable,PartialEq,PartialOrd,Clone,Debug,Copy)]
+#[derive(RustcEncodable, RustcDecodable, PartialEq, PartialOrd, Clone, Debug, Copy, Eq, Hash)]
 pub enum StabilityLevel {
     Unstable,
     Stable,

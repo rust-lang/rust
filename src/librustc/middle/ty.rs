@@ -554,9 +554,11 @@ pub struct CtxtArenas<'tcx> {
     substs: TypedArena<Substs<'tcx>>,
     bare_fn: TypedArena<BareFnTy<'tcx>>,
     region: TypedArena<Region>,
+    stability: TypedArena<attr::Stability>,
 
     // references
     trait_defs: TypedArena<TraitDef<'tcx>>
+
 }
 
 impl<'tcx> CtxtArenas<'tcx> {
@@ -566,6 +568,7 @@ impl<'tcx> CtxtArenas<'tcx> {
             substs: TypedArena::new(),
             bare_fn: TypedArena::new(),
             region: TypedArena::new(),
+            stability: TypedArena::new(),
 
             trait_defs: TypedArena::new()
         }
@@ -607,6 +610,8 @@ pub struct ctxt<'tcx> {
     substs_interner: RefCell<FnvHashMap<&'tcx Substs<'tcx>, &'tcx Substs<'tcx>>>,
     bare_fn_interner: RefCell<FnvHashMap<&'tcx BareFnTy<'tcx>, &'tcx BareFnTy<'tcx>>>,
     region_interner: RefCell<FnvHashMap<&'tcx Region, &'tcx Region>>,
+    stability_interner: RefCell<FnvHashMap<&'tcx attr::Stability, &'tcx attr::Stability>>,
+
 
     /// Common types, pre-interned for your convenience.
     pub types: CommonTypes<'tcx>,
@@ -754,7 +759,7 @@ pub struct ctxt<'tcx> {
     pub transmute_restrictions: RefCell<Vec<TransmuteRestriction<'tcx>>>,
 
     /// Maps any item's def-id to its stability index.
-    pub stability: RefCell<stability::Index>,
+    pub stability: RefCell<stability::Index<'tcx>>,
 
     /// Caches the results of trait selection. This cache is used
     /// for things that do not have to do with the parameters in scope.
@@ -794,6 +799,16 @@ impl<'tcx> ctxt<'tcx> {
         let did = def.trait_ref.def_id;
         let interned = self.arenas.trait_defs.alloc(def);
         self.trait_defs.borrow_mut().insert(did, interned);
+        interned
+    }
+
+    pub fn intern_stability(&self, stab: attr::Stability) -> &'tcx attr::Stability {
+        if let Some(st) = self.stability_interner.borrow().get(&stab) {
+            return st;
+        }
+
+        let interned = self.arenas.stability.alloc(stab);
+        self.stability_interner.borrow_mut().insert(interned, interned);
         interned
     }
 
@@ -898,6 +913,7 @@ impl<'tcx> ctxt<'tcx> {
         println!("Substs interner: #{}", self.substs_interner.borrow().len());
         println!("BareFnTy interner: #{}", self.bare_fn_interner.borrow().len());
         println!("Region interner: #{}", self.region_interner.borrow().len());
+        println!("Stability interner: #{}", self.stability_interner.borrow().len());
     }
 }
 
@@ -2703,7 +2719,7 @@ pub fn mk_ctxt<'tcx>(s: Session,
                      freevars: RefCell<FreevarMap>,
                      region_maps: RegionMaps,
                      lang_items: middle::lang_items::LanguageItems,
-                     stability: stability::Index) -> ctxt<'tcx>
+                     stability: stability::Index<'tcx>) -> ctxt<'tcx>
 {
     let mut interner = FnvHashMap();
     let common_types = CommonTypes::new(&arenas.type_, &mut interner);
@@ -2714,6 +2730,7 @@ pub fn mk_ctxt<'tcx>(s: Session,
         substs_interner: RefCell::new(FnvHashMap()),
         bare_fn_interner: RefCell::new(FnvHashMap()),
         region_interner: RefCell::new(FnvHashMap()),
+        stability_interner: RefCell::new(FnvHashMap()),
         types: common_types,
         named_region_map: named_region_map,
         region_maps: region_maps,
@@ -5355,34 +5372,33 @@ pub fn associated_type_parameter_index(cx: &ctxt,
 
 pub fn trait_item_def_ids(cx: &ctxt, id: ast::DefId)
                           -> Rc<Vec<ImplOrTraitItemId>> {
-    lookup_locally_or_in_crate_store("trait_item_def_ids",
-                                     id,
-                                     &mut *cx.trait_item_def_ids.borrow_mut(),
-                                     || {
-        Rc::new(csearch::get_trait_item_def_ids(&cx.sess.cstore, id))
-    })
+    lookup_locally_or_in_crate_store(
+        "trait_item_def_ids", id, &cx.trait_item_def_ids,
+        || Rc::new(csearch::get_trait_item_def_ids(&cx.sess.cstore, id)))
 }
 
+/// Returns the trait-ref corresponding to a given impl, or None if it is
+/// an inherent impl.
 pub fn impl_trait_ref<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)
-                            -> Option<TraitRef<'tcx>> {
-    memoized(&cx.impl_trait_cache, id, |id: ast::DefId| {
-        if id.krate == ast::LOCAL_CRATE {
-            debug!("(impl_trait_ref) searching for trait impl {:?}", id);
-            if let Some(ast_map::NodeItem(item)) = cx.map.find(id.node) {
-                match item.node {
-                    ast::ItemImpl(_, _, _, Some(_), _, _) |
-                    ast::ItemDefaultImpl(..) => {
-                        Some(ty::impl_id_to_trait_ref(cx, id.node))
-                    }
-                    _ => None
-                }
-            } else {
-                None
-            }
+                            -> Option<TraitRef<'tcx>>
+{
+    lookup_locally_or_in_crate_store(
+        "impl_trait_refs", id, &cx.impl_trait_refs,
+        || csearch::get_impl_trait(cx, id))
+}
+
+/// Returns whether this DefId refers to an impl
+pub fn is_impl<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId) -> bool {
+    if id.krate == ast::LOCAL_CRATE {
+        if let Some(ast_map::NodeItem(
+            &ast::Item { node: ast::ItemImpl(..), .. })) = cx.map.find(id.node) {
+            true
         } else {
-            csearch::get_impl_trait(cx, id)
+            false
         }
-    })
+    } else {
+        csearch::is_impl(&cx.sess.cstore, id)
+    }
 }
 
 pub fn trait_ref_to_def_id(tcx: &ctxt, tr: &ast::TraitRef) -> ast::DefId {

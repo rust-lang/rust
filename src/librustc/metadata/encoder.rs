@@ -999,7 +999,7 @@ fn encode_extension_implementations(ecx: &EncodeContext,
     });
 }
 
-fn encode_stability(rbml_w: &mut Encoder, stab_opt: Option<attr::Stability>) {
+fn encode_stability(rbml_w: &mut Encoder, stab_opt: Option<&attr::Stability>) {
     stab_opt.map(|stab| {
         rbml_w.start_tag(tag_items_data_item_stability);
         stab.encode(rbml_w).unwrap();

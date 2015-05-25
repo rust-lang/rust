@@ -1533,6 +1533,14 @@ pub fn is_const_fn(cdata: Cmd, id: ast::NodeId) -> bool {
     }
 }
 
+pub fn is_impl(cdata: Cmd, id: ast::NodeId) -> bool {
+    let item_doc = lookup_item(id, cdata.data());
+    match item_family(item_doc) {
+        Impl => true,
+        _ => false,
+    }
+}
+
 fn doc_generics<'tcx>(base_doc: rbml::Doc,
                       tcx: &ty::ctxt<'tcx>,
                       cdata: Cmd,
