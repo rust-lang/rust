@@ -80,12 +80,10 @@ unsafe impl<T: Send> Sync for Queue<T> { }
 
 impl<T> Node<T> {
     fn new() -> *mut Node<T> {
-        unsafe {
-            boxed::into_raw(box Node {
-                value: None,
-                next: AtomicPtr::new(ptr::null_mut::<Node<T>>()),
-            })
-        }
+        boxed::into_raw(box Node {
+            value: None,
+            next: AtomicPtr::new(ptr::null_mut::<Node<T>>()),
+        })
     }
 }
 
