@@ -336,27 +336,6 @@ impl<'tcx> TypeFoldable<'tcx> for ty::MethodOrigin<'tcx> {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for ty::vtable_origin<'tcx> {
-    fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> ty::vtable_origin<'tcx> {
-        match *self {
-            ty::vtable_static(def_id, ref substs, ref origins) => {
-                let r_substs = substs.fold_with(folder);
-                let r_origins = origins.fold_with(folder);
-                ty::vtable_static(def_id, r_substs, r_origins)
-            }
-            ty::vtable_param(n, b) => {
-                ty::vtable_param(n, b)
-            }
-            ty::vtable_closure(def_id) => {
-                ty::vtable_closure(def_id)
-            }
-            ty::vtable_error => {
-                ty::vtable_error
-            }
-        }
-    }
-}
-
 impl<'tcx> TypeFoldable<'tcx> for ty::BuiltinBounds {
     fn fold_with<F: TypeFolder<'tcx>>(&self, _folder: &mut F) -> ty::BuiltinBounds {
         *self
