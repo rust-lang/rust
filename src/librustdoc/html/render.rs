@@ -2429,10 +2429,11 @@ fn render_impl(w: &mut fmt::Formatter, i: &Impl, link: AssocItemLink,
 
 fn item_typedef(w: &mut fmt::Formatter, it: &clean::Item,
                 t: &clean::Typedef) -> fmt::Result {
-    try!(write!(w, "<pre class='rust typedef'>type {}{} = {};</pre>",
+    try!(write!(w, "<pre class='rust typedef'>type {}{}{where_clause} = {type_};</pre>",
                   it.name.as_ref().unwrap(),
                   t.generics,
-                  t.type_));
+                  where_clause = WhereClause(&t.generics),
+                  type_ = t.type_));
 
     document(w, it)
 }
