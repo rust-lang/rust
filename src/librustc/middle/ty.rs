@@ -503,10 +503,6 @@ impl MethodCall {
 // of the method to be invoked
 pub type MethodMap<'tcx> = RefCell<FnvHashMap<MethodCall, MethodCallee<'tcx>>>;
 
-// For every explicit cast into an object type, maps from the cast
-// expr to the associated trait ref.
-pub type ObjectCastMap<'tcx> = RefCell<NodeMap<ty::PolyTraitRef<'tcx>>>;
-
 // Contains information needed to resolve types and (in the future) look up
 // the types of AST nodes.
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
@@ -557,8 +553,7 @@ pub struct CtxtArenas<'tcx> {
     stability: TypedArena<attr::Stability>,
 
     // references
-    trait_defs: TypedArena<TraitDef<'tcx>>
-
+    trait_defs: TypedArena<TraitDef<'tcx>>,
 }
 
 impl<'tcx> CtxtArenas<'tcx> {
@@ -612,7 +607,6 @@ pub struct ctxt<'tcx> {
     region_interner: RefCell<FnvHashMap<&'tcx Region, &'tcx Region>>,
     stability_interner: RefCell<FnvHashMap<&'tcx attr::Stability, &'tcx attr::Stability>>,
 
-
     /// Common types, pre-interned for your convenience.
     pub types: CommonTypes<'tcx>,
 
@@ -664,10 +658,6 @@ pub struct ctxt<'tcx> {
     /// full predicates are available (note that supertraits have
     /// additional acyclicity requirements).
     pub super_predicates: RefCell<DefIdMap<GenericPredicates<'tcx>>>,
-
-    /// Maps from node-id of a trait object cast (like `foo as
-    /// Box<Trait>`) to the trait reference.
-    pub object_cast_map: ObjectCastMap<'tcx>,
 
     pub map: ast_map::Map<'tcx>,
     pub freevars: RefCell<FreevarMap>,
@@ -2742,7 +2732,6 @@ pub fn mk_ctxt<'tcx>(s: Session,
         trait_defs: RefCell::new(DefIdMap()),
         predicates: RefCell::new(DefIdMap()),
         super_predicates: RefCell::new(DefIdMap()),
-        object_cast_map: RefCell::new(NodeMap()),
         map: map,
         freevars: freevars,
         tcache: RefCell::new(DefIdMap()),

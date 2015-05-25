@@ -1796,7 +1796,8 @@ declare_lint! {
 pub struct Stability;
 
 impl Stability {
-    fn lint(&self, cx: &Context, _id: ast::DefId, span: Span, stability: &Option<&attr::Stability>) {
+    fn lint(&self, cx: &Context, _id: ast::DefId,
+            span: Span, stability: &Option<&attr::Stability>) {
         // Deprecated attributes apply in-crate and cross-crate.
         let (lint, label) = match *stability {
             Some(&attr::Stability { deprecated_since: Some(_), .. }) =>

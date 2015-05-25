@@ -1117,13 +1117,6 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
         })
     }
 
-    if let Some(trait_ref) = tcx.object_cast_map.borrow().get(&id) {
-        rbml_w.tag(c::tag_table_object_cast_map, |rbml_w| {
-            rbml_w.id(id);
-            rbml_w.emit_trait_ref(ecx, &trait_ref.0);
-        })
-    }
-
     if let Some(adjustment) = tcx.adjustments.borrow().get(&id) {
         match *adjustment {
             ty::AdjustDerefRef(ref adj) => {
@@ -1707,11 +1700,6 @@ fn decode_side_tables(dcx: &DecodeContext,
                             autoderef: autoderef
                         };
                         dcx.tcx.method_map.borrow_mut().insert(method_call, method);
-                    }
-                    c::tag_table_object_cast_map => {
-                        let trait_ref = val_dsr.read_poly_trait_ref(dcx);
-                        dcx.tcx.object_cast_map.borrow_mut()
-                                               .insert(id, trait_ref);
                     }
                     c::tag_table_adjustments => {
                         let adj: ty::AutoAdjustment = val_dsr.read_auto_adjustment(dcx);
