@@ -650,9 +650,7 @@ pub struct ctxt<'tcx> {
     /// A cache for the trait_items() routine
     pub trait_items_cache: RefCell<DefIdMap<Rc<Vec<ImplOrTraitItem<'tcx>>>>>,
 
-    pub impl_trait_cache: RefCell<DefIdMap<Option<TraitRef<'tcx>>>>,
-
-    pub impl_trait_refs: RefCell<NodeMap<TraitRef<'tcx>>>,
+    pub impl_trait_refs: RefCell<DefIdMap<Option<TraitRef<'tcx>>>>,
     pub trait_defs: RefCell<DefIdMap<&'tcx TraitDef<'tcx>>>,
 
     /// Maps from the def-id of an item (trait/struct/enum/fn) to its
@@ -675,7 +673,6 @@ pub struct ctxt<'tcx> {
     pub freevars: RefCell<FreevarMap>,
     pub tcache: RefCell<DefIdMap<TypeScheme<'tcx>>>,
     pub rcache: RefCell<FnvHashMap<creader_cache_key, Ty<'tcx>>>,
-    pub short_names_cache: RefCell<FnvHashMap<Ty<'tcx>, String>>,
     pub tc_cache: RefCell<FnvHashMap<Ty<'tcx>, TypeContents>>,
     pub ast_ty_to_ty_cache: RefCell<NodeMap<Ty<'tcx>>>,
     pub enum_var_cache: RefCell<DefIdMap<Rc<Vec<Rc<VariantInfo<'tcx>>>>>>,
@@ -2741,7 +2738,7 @@ pub fn mk_ctxt<'tcx>(s: Session,
         def_map: def_map,
         node_types: RefCell::new(FnvHashMap()),
         item_substs: RefCell::new(NodeMap()),
-        impl_trait_refs: RefCell::new(NodeMap()),
+        impl_trait_refs: RefCell::new(DefIdMap()),
         trait_defs: RefCell::new(DefIdMap()),
         predicates: RefCell::new(DefIdMap()),
         super_predicates: RefCell::new(DefIdMap()),
@@ -2750,14 +2747,12 @@ pub fn mk_ctxt<'tcx>(s: Session,
         freevars: freevars,
         tcache: RefCell::new(DefIdMap()),
         rcache: RefCell::new(FnvHashMap()),
-        short_names_cache: RefCell::new(FnvHashMap()),
         tc_cache: RefCell::new(FnvHashMap()),
         ast_ty_to_ty_cache: RefCell::new(NodeMap()),
         enum_var_cache: RefCell::new(DefIdMap()),
         impl_or_trait_items: RefCell::new(DefIdMap()),
         trait_item_def_ids: RefCell::new(DefIdMap()),
         trait_items_cache: RefCell::new(DefIdMap()),
-        impl_trait_cache: RefCell::new(DefIdMap()),
         ty_param_defs: RefCell::new(NodeMap()),
         adjustments: RefCell::new(NodeMap()),
         normalized_cache: RefCell::new(FnvHashMap()),
@@ -4464,16 +4459,6 @@ pub fn named_element_ty<'tcx>(cx: &ctxt<'tcx>,
     }
 }
 
-pub fn impl_id_to_trait_ref<'tcx>(cx: &ctxt<'tcx>, id: ast::NodeId)
-                                  -> ty::TraitRef<'tcx> {
-    match cx.impl_trait_refs.borrow().get(&id) {
-        Some(ty) => *ty,
-        None => cx.sess.bug(
-            &format!("impl_id_to_trait_ref: no trait ref for impl `{}`",
-                    cx.map.node_to_string(id)))
-    }
-}
-
 pub fn node_id_to_type<'tcx>(cx: &ctxt<'tcx>, id: ast::NodeId) -> Ty<'tcx> {
     match node_id_to_type_opt(cx, id) {
        Some(ty) => ty,
@@ -5268,12 +5253,12 @@ pub fn associated_consts<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)
 /// the future).
 fn lookup_locally_or_in_crate_store<V, F>(descr: &str,
                                           def_id: ast::DefId,
-                                          map: &mut DefIdMap<V>,
+                                          map: &RefCell<DefIdMap<V>>,
                                           load_external: F) -> V where
     V: Clone,
     F: FnOnce() -> V,
 {
-    match map.get(&def_id).cloned() {
+    match map.borrow().get(&def_id).cloned() {
         Some(v) => { return v; }
         None => { }
     }
@@ -5282,7 +5267,7 @@ fn lookup_locally_or_in_crate_store<V, F>(descr: &str,
         panic!("No def'n found for {:?} in tcx.{}", def_id, descr);
     }
     let v = load_external();
-    map.insert(def_id, v.clone());
+    map.borrow_mut().insert(def_id, v.clone());
     v
 }
 
@@ -5348,13 +5333,9 @@ pub fn custom_coerce_unsized_kind<'tcx>(cx: &ctxt<'tcx>, did: ast::DefId)
 
 pub fn impl_or_trait_item<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)
                                 -> ImplOrTraitItem<'tcx> {
-    lookup_locally_or_in_crate_store("impl_or_trait_items",
-                                     id,
-                                     &mut *cx.impl_or_trait_items
-                                             .borrow_mut(),
-                                     || {
-        csearch::get_impl_or_trait_item(cx, id)
-    })
+    lookup_locally_or_in_crate_store(
+        "impl_or_trait_items", id, &cx.impl_or_trait_items,
+        || csearch::get_impl_or_trait_item(cx, id))
 }
 
 /// Returns the parameter index that the given associated type corresponds to.
@@ -5881,37 +5862,35 @@ pub fn lookup_item_type<'tcx>(cx: &ctxt<'tcx>,
                               did: ast::DefId)
                               -> TypeScheme<'tcx> {
     lookup_locally_or_in_crate_store(
-        "tcache", did, &mut *cx.tcache.borrow_mut(),
+        "tcache", did, &cx.tcache,
         || csearch::get_type(cx, did))
 }
 
 /// Given the did of a trait, returns its canonical trait ref.
 pub fn lookup_trait_def<'tcx>(cx: &ctxt<'tcx>, did: ast::DefId)
                               -> &'tcx TraitDef<'tcx> {
-    memoized(&cx.trait_defs, did, |did: DefId| {
-        assert!(did.krate != ast::LOCAL_CRATE);
-        cx.arenas.trait_defs.alloc(csearch::get_trait_def(cx, did))
-    })
+    lookup_locally_or_in_crate_store(
+        "trait_defs", did, &cx.trait_defs,
+        || cx.arenas.trait_defs.alloc(csearch::get_trait_def(cx, did))
+    )
 }
 
 /// Given the did of an item, returns its full set of predicates.
 pub fn lookup_predicates<'tcx>(cx: &ctxt<'tcx>, did: ast::DefId)
                                 -> GenericPredicates<'tcx>
 {
-    memoized(&cx.predicates, did, |did: DefId| {
-        assert!(did.krate != ast::LOCAL_CRATE);
-        csearch::get_predicates(cx, did)
-    })
+    lookup_locally_or_in_crate_store(
+        "predicates", did, &cx.predicates,
+        || csearch::get_predicates(cx, did))
 }
 
 /// Given the did of a trait, returns its superpredicates.
 pub fn lookup_super_predicates<'tcx>(cx: &ctxt<'tcx>, did: ast::DefId)
                                      -> GenericPredicates<'tcx>
 {
-    memoized(&cx.super_predicates, did, |did: DefId| {
-        assert!(did.krate != ast::LOCAL_CRATE);
-        csearch::get_super_predicates(cx, did)
-    })
+    lookup_locally_or_in_crate_store(
+        "super_predicates", did, &cx.super_predicates,
+        || csearch::get_super_predicates(cx, did))
 }
 
 pub fn predicates<'tcx>(
@@ -6281,7 +6260,7 @@ pub fn required_region_bounds<'tcx>(tcx: &ctxt<'tcx>,
 
 pub fn item_variances(tcx: &ctxt, item_id: ast::DefId) -> Rc<ItemVariances> {
     lookup_locally_or_in_crate_store(
-        "item_variance_map", item_id, &mut *tcx.item_variance_map.borrow_mut(),
+        "item_variance_map", item_id, &tcx.item_variance_map,
         || Rc::new(csearch::get_item_variances(&tcx.sess.cstore, item_id)))
 }
 

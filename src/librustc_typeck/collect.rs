@@ -820,7 +820,7 @@ fn convert_item(ccx: &CrateCtxt, it: &ast::Item) {
 
             ty::record_trait_has_default_impl(tcx, trait_ref.def_id);
 
-            tcx.impl_trait_refs.borrow_mut().insert(it.id, trait_ref);
+            tcx.impl_trait_refs.borrow_mut().insert(local_def(it.id), Some(trait_ref));
         }
         ast::ItemImpl(_, _,
                       ref generics,
@@ -828,7 +828,6 @@ fn convert_item(ccx: &CrateCtxt, it: &ast::Item) {
                       ref selfty,
                       ref impl_items) => {
             // Create generics from the generics specified in the impl head.
-
             debug!("convert: ast_generics={:?}", generics);
             let ty_generics = ty_generics_for_type_or_impl(ccx, generics);
             let ty_predicates = ty_generic_predicates_for_type_or_impl(ccx, generics);
@@ -926,14 +925,16 @@ fn convert_item(ccx: &CrateCtxt, it: &ast::Item) {
                 }
             }
 
-            if let Some(ref ast_trait_ref) = *opt_trait_ref {
-                let trait_ref =
-                    astconv::instantiate_mono_trait_ref(&ccx.icx(&ty_predicates),
-                                                        &ExplicitRscope,
-                                                        ast_trait_ref,
-                                                        Some(selfty));
-
-                tcx.impl_trait_refs.borrow_mut().insert(it.id, trait_ref);
+            if let &Some(ref ast_trait_ref) = opt_trait_ref {
+                tcx.impl_trait_refs.borrow_mut().insert(
+                    local_def(it.id),
+                    Some(astconv::instantiate_mono_trait_ref(&ccx.icx(&ty_predicates),
+                                                             &ExplicitRscope,
+                                                             ast_trait_ref,
+                                                             Some(selfty)))
+                        );
+            } else {
+                tcx.impl_trait_refs.borrow_mut().insert(local_def(it.id), None);
             }
 
             enforce_impl_params_are_constrained(tcx,
