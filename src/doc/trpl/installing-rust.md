@@ -43,11 +43,11 @@ Some people, and somewhat rightfully so, get very upset when we tell you to
 `curl | sh`. Basically, when you do this, you are trusting that the good
 people who maintain Rust aren't going to hack your computer and do bad things.
 That's a good instinct! If you're one of those people, please check out the
-documentation on [building Rust from Source][from source], or [the official
-binary downloads][install page].
+documentation on [building Rust from Source][from-source], or [the official
+binary downloads][install-page].
 
-[from source]: https://github.com/rust-lang/rust#building-from-source
-[install page]: http://www.rust-lang.org/install.html
+[from-source]: https://github.com/rust-lang/rust#building-from-source
+[install-page]: http://www.rust-lang.org/install.html
 
 Oh, we should also mention the officially supported platforms:
 
