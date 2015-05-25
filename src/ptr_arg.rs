@@ -27,7 +27,7 @@ impl LintPass for PtrArg {
     }
     
     fn check_item(&mut self, cx: &Context, item: &Item) {
-		if let &ItemFn(ref decl, _, _, _, _) = &item.node {
+		if let &ItemFn(ref decl, _, _, _, _, _) = &item.node {
 			check_fn(cx, decl);
 		}
 	}
