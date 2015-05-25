@@ -30,8 +30,8 @@ mind.
 
 # Defining a macro
 
-You may have seen the `vec!` macro, used to initialize a [vector][] with any
-number of elements.
+You may have seen the `vec!` macro, used to initialize a [vector][vector] with
+any number of elements.
 
 [vector]: vectors.html
 
@@ -349,7 +349,7 @@ fn main() {
 }
 ```
 
-This holds for `let` bindings and loop labels, but not for [items][].
+This holds for `let` bindings and loop labels, but not for [items][items].
 So the following code does compile:
 
 ```rust
@@ -470,7 +470,7 @@ which syntactic form it matches.
 * `stmt`: a single statement. Example: `let x = 3`.
 * `block`: a brace-delimited sequence of statements. Example:
   `{ log(error, "hi"); return 12; }`.
-* `item`: an [item][]. Examples: `fn foo() { }`; `struct Bar;`.
+* `item`: an [item][item]. Examples: `fn foo() { }`; `struct Bar;`.
 * `meta`: a "meta item", as found in attributes. Example: `cfg(target_os = "windows")`.
 * `tt`: a single token tree.
 
