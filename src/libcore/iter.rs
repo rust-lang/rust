@@ -1068,7 +1068,7 @@ pub trait Iterator {
     /// # #![feature(core)]
     ///
     /// let a = [1, 2, 3, 4, 5];
-    /// let mut it = a.iter().cloned();
+    /// let it = a.iter();
     /// assert_eq!(it.sum::<i32>(), 15);
     /// ```
     #[unstable(feature="core")]
