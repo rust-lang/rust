@@ -112,14 +112,7 @@ pub mod boxed;
 mod boxed { pub use std::boxed::{Box, HEAP}; }
 #[cfg(test)]
 mod boxed_test;
-#[cfg(not(stage0))]
 pub mod arc;
-#[cfg(stage0)]
-mod arc_stage0;
-#[cfg(stage0)]
-pub mod arc {
-    pub use arc_stage0::*;
-}
 pub mod rc;
 
 /// Common out-of-memory routine
