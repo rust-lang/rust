@@ -379,7 +379,7 @@ impl<'a> FmtVisitor<'a> {
 
         // Didn't work. we must force vertical layout and put args on a newline.
         if let None = budgets {
-            let new_indent = indent + 4;
+            let new_indent = indent + config!(tab_spaces);
             let used_space = new_indent + 2; // account for `(` and `)`
             let max_space = config!(ideal_width) + config!(leeway);
             if used_space > max_space {
