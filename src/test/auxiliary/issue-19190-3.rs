@@ -22,6 +22,7 @@ pub struct Baz;
 
 impl Baz {
     pub fn baz(&self) {}
+    pub fn static_baz() {}
 }
 
 impl Deref for Bar {
