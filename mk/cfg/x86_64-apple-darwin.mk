@@ -1,6 +1,5 @@
 # x86_64-apple-darwin configuration
 CC_x86_64-apple-darwin=$(CC)
-LINK_x86_64-apple-darwin=cc
 CXX_x86_64-apple-darwin=$(CXX)
 CPP_x86_64-apple-darwin=$(CPP)
 AR_x86_64-apple-darwin=$(AR)
