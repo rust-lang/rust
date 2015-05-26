@@ -18,7 +18,10 @@
 #     since the same version
 #   * Prints information about features
 
-import sys, os, re
+import sys
+import os
+import re
+import codecs
 
 if len(sys.argv) < 2:
     print("usage: featureck.py <src-dir>")
@@ -78,15 +81,8 @@ for (dirpath, dirnames, filenames) in os.walk(src_dir):
         if not filename.endswith(".rs"):
             continue
 
-        if sys.version_info.major == 2:
-            _open = lambda f: open(f, 'r')
-        elif sys.version_info.major == 3:
-            _open = lambda f: open(f, 'r', encoding="utf-8")
-        else:
-            raise RuntimeError("Unsupported python version: %s" % (repr(sys.version_info)))
-
         path = os.path.join(dirpath, filename)
-        with _open(path) as f:
+        with codecs.open(filename=path, mode='r', encoding="utf-8") as f:
             line_num = 0
             for line in f:
                 line_num += 1
