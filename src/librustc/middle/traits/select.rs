@@ -300,6 +300,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         debug!("select({})", obligation.repr(self.tcx()));
         assert!(!obligation.predicate.has_escaping_regions());
 
+        match self.select_fastpath(obligation) {
+            Ok(None) => {}
+            fres => { return fres; }
+        }
+
         let stack = self.push_stack(TraitObligationStackList::empty(), obligation);
         match try!(self.candidate_from_obligation(&stack)) {
             None => {
@@ -363,6 +368,58 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             Err(_) => { /* Silently ignore errors. */ }
         }
     }
+
+    /// fast-path for simple selection cases (ATM builtin bounds). Returns
+    /// Ok(None) if the selection can't be determinated.
+    fn select_fastpath(&mut self, obligation: &TraitObligation<'tcx>)
+                  -> SelectionResult<'tcx, Selection<'tcx>> {
+        let trait_ref = obligation.predicate.skip_binder().trait_ref;
+
+        let res = if trait_ref.def_id == self.tcx().traits.sized {
+            match self.infcx.shallow_resolve(trait_ref.substs.self_ty().unwrap()).sty {
+                ty::ty_bool | ty::ty_char |
+                ty::ty_int(..) | ty::ty_uint(..) | ty::ty_float(..) |
+                ty::ty_uniq(..) | ty::ty_vec(_, Some(..)) |
+                ty::ty_ptr(..) | ty::ty_rptr(..) | ty::ty_bare_fn(..) |
+                ty::ty_tup(..) | ty::ty_closure(..) => Some(true),
+
+                ty::ty_str | ty::ty_trait(..) |
+                ty::ty_vec(_, None) => Some(false),
+
+                ty::ty_enum(..) | ty::ty_struct(..) | ty::ty_projection(..) |
+                ty::ty_param(..) | ty::ty_infer(..) | ty::ty_err => None
+
+            }
+        } else if trait_ref.def_id == self.tcx().traits.copy {
+            match self.infcx.shallow_resolve(trait_ref.substs.self_ty().unwrap()).sty {
+                ty::ty_bool | ty::ty_char |
+                ty::ty_int(..) | ty::ty_uint(..) | ty::ty_float(..) |
+                ty::ty_ptr(..) | ty::ty_bare_fn(..) | ty::ty_rptr(_, ty::mt {
+                    mutbl: ast::MutImmutable, ..
+                }) => Some(true),
+
+                ty::ty_str | ty::ty_uniq(..) | ty::ty_rptr(_, ty::mt {
+                    mutbl: ast::MutMutable, ..
+                }) => Some(false),
+
+                ty::ty_vec(..) | ty::ty_trait(..) | ty::ty_tup(..) | ty::ty_closure(..) |
+                ty::ty_enum(..) | ty::ty_struct(..) | ty::ty_projection(..) |
+                ty::ty_param(..) | ty::ty_infer(..) | ty::ty_err => None
+
+            }
+        } else {
+            None
+        };
+
+        match res {
+            Some(false) => Err(Unimplemented),
+            Some(true) => Ok(Some(VtableBuiltin(VtableBuiltinData {
+                nested: VecPerParamSpace::empty()
+            }))),
+            None => Ok(None)
+        }
+    }
+
 
     ///////////////////////////////////////////////////////////////////////////
     // EVALUATION

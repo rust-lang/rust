@@ -67,7 +67,6 @@ There are some shortcomings in this design:
 use astconv::{self, AstConv, ty_of_arg, ast_ty_to_ty, ast_region_to_region};
 use middle::def;
 use constrained_type_params as ctp;
-use middle::lang_items::SizedTraitLangItem;
 use middle::free_region::FreeRegionMap;
 use middle::region;
 use middle::resolve_lifetime;
@@ -1684,27 +1683,21 @@ fn add_unsized_bound<'tcx>(astconv: &AstConv<'tcx>,
         }
     }
 
-    let kind_id = tcx.lang_items.require(SizedTraitLangItem);
     match unbound {
         Some(ref tpb) => {
             // FIXME(#8559) currently requires the unbound to be built-in.
             let trait_def_id = ty::trait_ref_to_def_id(tcx, tpb);
-            match kind_id {
-                Ok(kind_id) if trait_def_id != kind_id => {
-                    tcx.sess.span_warn(span,
-                                       "default bound relaxed for a type parameter, but \
-                                       this does nothing because the given bound is not \
-                                       a default. Only `?Sized` is supported");
-                    ty::try_add_builtin_trait(tcx, kind_id, bounds);
-                }
-                _ => {}
+            if trait_def_id != tcx.traits.sized {
+                tcx.sess.span_warn(span,
+                                   "default bound relaxed for a type parameter, but \
+                                   this does nothing because the given bound is not \
+                                   a default. Only `?Sized` is supported");
+                ty::try_add_builtin_trait(tcx, tcx.traits.sized, bounds);
             }
         }
-        _ if kind_id.is_ok() => {
-            ty::try_add_builtin_trait(tcx, kind_id.unwrap(), bounds);
+        _ => {
+            ty::try_add_builtin_trait(tcx, tcx.traits.sized, bounds);
         }
-        // No lang item for Sized, so we can't add it as a bound.
-        None => {}
     }
 }
 

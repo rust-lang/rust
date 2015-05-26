@@ -588,6 +588,11 @@ pub struct CommonTypes<'tcx> {
     pub err: Ty<'tcx>,
 }
 
+pub struct CommonTraits {
+    pub copy: DefId,
+    pub sized: DefId,
+}
+
 /// The data structure to keep track of all the information that typechecker
 /// generates so that so that it can be reused and doesn't have to be redone
 /// later on.
@@ -609,6 +614,7 @@ pub struct ctxt<'tcx> {
 
     /// Common types, pre-interned for your convenience.
     pub types: CommonTypes<'tcx>,
+    pub traits: CommonTraits,
 
     pub sess: Session,
     pub def_map: DefMap,
@@ -2673,6 +2679,17 @@ pub trait ClosureTyper<'tcx> {
                       -> Option<Vec<ClosureUpvar<'tcx>>>;
 }
 
+impl CommonTraits {
+    fn new(lang_items: &middle::lang_items::LanguageItems) -> Option<CommonTraits> {
+        if let Ok(sized) = lang_items.require(middle::lang_items::SizedTraitLangItem) {
+            if let Ok(copy) = lang_items.require(middle::lang_items::CopyTraitLangItem) {
+                return Some(CommonTraits { sized: sized, copy: copy });
+            }
+        }
+        None
+    }
+}
+
 impl<'tcx> CommonTypes<'tcx> {
     fn new(arena: &'tcx TypedArena<TyS<'tcx>>,
            interner: &mut FnvHashMap<InternedTy<'tcx>, Ty<'tcx>>)
@@ -2710,6 +2727,9 @@ pub fn mk_ctxt<'tcx>(s: Session,
 {
     let mut interner = FnvHashMap();
     let common_types = CommonTypes::new(&arenas.type_, &mut interner);
+    let common_traits = CommonTraits::new(&lang_items).unwrap_or_else(|| {
+       s.fatal("The Copy and Sized lang-items must be defined")
+    });
 
     ctxt {
         arenas: arenas,
@@ -2719,6 +2739,7 @@ pub fn mk_ctxt<'tcx>(s: Session,
         region_interner: RefCell::new(FnvHashMap()),
         stability_interner: RefCell::new(FnvHashMap()),
         types: common_types,
+        traits: common_traits,
         named_region_map: named_region_map,
         region_maps: region_maps,
         free_region_maps: RefCell::new(FnvHashMap()),
