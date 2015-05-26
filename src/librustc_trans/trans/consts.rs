@@ -342,9 +342,11 @@ pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 let info = expr::unsized_info(cx, pointee_ty, unsized_ty,
                                               old_info, param_substs);
 
-                let prev_const = cx.const_unsized().borrow_mut()
-                                   .insert(base, llconst);
-                assert!(prev_const.is_none() || prev_const == Some(llconst));
+                if old_info.is_none() {
+                    let prev_const = cx.const_unsized().borrow_mut()
+                                       .insert(base, llconst);
+                    assert!(prev_const.is_none() || prev_const == Some(llconst));
+                }
                 assert_eq!(abi::FAT_PTR_ADDR, 0);
                 assert_eq!(abi::FAT_PTR_EXTRA, 1);
                 llconst = C_struct(cx, &[base, info], false);
