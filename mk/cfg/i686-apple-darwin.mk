@@ -1,6 +1,5 @@
 # i686-apple-darwin configuration
 CC_i686-apple-darwin=$(CC)
-LINK_i686-apple-darwin=cc
 CXX_i686-apple-darwin=$(CXX)
 CPP_i686-apple-darwin=$(CPP)
 AR_i686-apple-darwin=$(AR)

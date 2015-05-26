@@ -120,6 +120,15 @@ endef
 $(foreach target,$(CFG_TARGET), \
   $(eval $(call ADD_INSTALLED_OBJECTS,$(target))))
 
+define DEFINE_LINKER
+  ifndef LINK_$(1)
+    LINK_$(1) := $$(CC_$(1))
+  endif
+endef
+
+$(foreach target,$(CFG_TARGET), \
+  $(eval $(call DEFINE_LINKER,$(target))))
+
 # The -Qunused-arguments sidesteps spurious warnings from clang
 define FILTER_FLAGS
   ifeq ($$(CFG_USING_CLANG),1)
