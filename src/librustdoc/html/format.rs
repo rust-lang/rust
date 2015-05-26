@@ -437,9 +437,9 @@ impl fmt::Display for clean::Type {
             clean::Generic(ref name) => {
                 f.write_str(name)
             }
-            clean::ResolvedPath{ did, ref typarams, ref path } => {
-                // Paths like Self::Output should be rendered with all segments
-                try!(resolved_path(f, did, path, path.segments[0].name == "Self"));
+            clean::ResolvedPath{ did, ref typarams, ref path, is_generic } => {
+                // Paths like T::Output and Self::Output should be rendered with all segments
+                try!(resolved_path(f, did, path, is_generic));
                 tybounds(f, typarams)
             }
             clean::Infer => write!(f, "_"),

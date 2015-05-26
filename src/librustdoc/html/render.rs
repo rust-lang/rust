@@ -865,7 +865,7 @@ impl DocFolder for Cache {
             clean::StructItem(ref s)          => self.generics(&s.generics),
             clean::EnumItem(ref e)            => self.generics(&e.generics),
             clean::FunctionItem(ref f)        => self.generics(&f.generics),
-            clean::TypedefItem(ref t)         => self.generics(&t.generics),
+            clean::TypedefItem(ref t, _)      => self.generics(&t.generics),
             clean::TraitItem(ref t)           => self.generics(&t.generics),
             clean::ImplItem(ref i)            => self.generics(&i.generics),
             clean::TyMethodItem(ref i)        => self.generics(&i.generics),
@@ -930,6 +930,10 @@ impl DocFolder for Cache {
                         };
                         ((Some(*last), path), true)
                     }
+                }
+                clean::TypedefItem(_, true) => {
+                    // skip associated types in impls
+                    ((None, None), false)
                 }
                 _ => ((None, Some(&*self.stack)), false)
             };
@@ -1492,7 +1496,7 @@ impl<'a> fmt::Display for Item<'a> {
             clean::TraitItem(ref t) => item_trait(fmt, self.cx, self.item, t),
             clean::StructItem(ref s) => item_struct(fmt, self.item, s),
             clean::EnumItem(ref e) => item_enum(fmt, self.item, e),
-            clean::TypedefItem(ref t) => item_typedef(fmt, self.item, t),
+            clean::TypedefItem(ref t, _) => item_typedef(fmt, self.item, t),
             clean::MacroItem(ref m) => item_macro(fmt, self.item, m),
             clean::PrimitiveItem(ref p) => item_primitive(fmt, self.item, p),
             clean::StaticItem(ref i) | clean::ForeignStaticItem(ref i) =>
@@ -2304,10 +2308,10 @@ fn render_deref_methods(w: &mut fmt::Formatter, impl_: &Impl) -> fmt::Result {
     let deref_type = impl_.impl_.trait_.as_ref().unwrap();
     let target = impl_.impl_.items.iter().filter_map(|item| {
         match item.inner {
-            clean::TypedefItem(ref t) => Some(&t.type_),
+            clean::TypedefItem(ref t, true) => Some(&t.type_),
             _ => None,
         }
-    }).next().unwrap();
+    }).next().expect("Expected associated type binding");
     let what = AssocItemRender::DerefFor { trait_: deref_type, type_: target };
     match *target {
         clean::ResolvedPath { did, .. } => render_assoc_items(w, did, what),
@@ -2357,7 +2361,7 @@ fn render_impl(w: &mut fmt::Formatter, i: &Impl, link: AssocItemLink,
                     try!(write!(w, "</code></h4>\n"));
                 }
             }
-            clean::TypedefItem(ref tydef) => {
+            clean::TypedefItem(ref tydef, _) => {
                 let name = item.name.as_ref().unwrap();
                 try!(write!(w, "<h4 id='assoc_type.{}' class='{}'><code>",
                             *name,
@@ -2447,10 +2451,11 @@ fn render_impl(w: &mut fmt::Formatter, i: &Impl, link: AssocItemLink,
 
 fn item_typedef(w: &mut fmt::Formatter, it: &clean::Item,
                 t: &clean::Typedef) -> fmt::Result {
-    try!(write!(w, "<pre class='rust typedef'>type {}{} = {};</pre>",
+    try!(write!(w, "<pre class='rust typedef'>type {}{}{where_clause} = {type_};</pre>",
                   it.name.as_ref().unwrap(),
                   t.generics,
-                  t.type_));
+                  where_clause = WhereClause(&t.generics),
+                  type_ = t.type_));
 
     document(w, it)
 }
