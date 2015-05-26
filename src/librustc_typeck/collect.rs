@@ -876,7 +876,7 @@ fn convert_item(ccx: &CrateCtxt, it: &ast::Item) {
                 if let ast::TypeImplItem(ref ty) = impl_item.node {
                     if opt_trait_ref.is_none() {
                         span_err!(tcx.sess, impl_item.span, E0202,
-                                  "associated items are not allowed in inherent impls");
+                                  "associated types are not allowed in inherent impls");
                     }
 
                     as_refsociated_type(ccx, ImplContainer(local_def(it.id)),
