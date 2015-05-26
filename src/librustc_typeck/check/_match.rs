@@ -98,7 +98,9 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                 lhs_eq_rhs && (ty::type_is_numeric(lhs_ty) || ty::type_is_char(lhs_ty));
 
             if numeric_or_char {
-                match const_eval::compare_lit_exprs(tcx, &**begin, &**end, Some(lhs_ty)) {
+                match const_eval::compare_lit_exprs(tcx, &**begin, &**end, Some(lhs_ty),
+                                                    |id| {fcx.item_substs()[&id].substs
+                                                             .clone()}) {
                     Some(Ordering::Less) |
                     Some(Ordering::Equal) => {}
                     Some(Ordering::Greater) => {
