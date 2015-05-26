@@ -217,7 +217,7 @@ fn build_type(cx: &DocContext, tcx: &ty::ctxt, did: ast::DefId) -> clean::ItemEn
     clean::TypedefItem(clean::Typedef {
         type_: t.ty.clean(cx),
         generics: (&t.generics, &predicates, subst::TypeSpace).clean(cx),
-    })
+    }, false)
 }
 
 pub fn build_impls(cx: &DocContext, tcx: &ty::ctxt,
@@ -370,7 +370,7 @@ pub fn build_impl(cx: &DocContext,
                                subst::ParamSpace::TypeSpace).clean(cx);
                 Some(clean::Item {
                     name: Some(assoc_ty.name.clean(cx)),
-                    inner: clean::TypedefItem(typedef),
+                    inner: clean::TypedefItem(typedef, true),
                     source: clean::Span::empty(),
                     attrs: vec![],
                     visibility: None,
