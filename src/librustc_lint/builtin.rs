@@ -203,10 +203,12 @@ impl LintPass for TypeLimits {
                                 } else {
                                     t
                                 };
-                                let (min, max) = int_ty_range(int_type);
+                                let (_, max) = int_ty_range(int_type);
                                 let negative = self.negated_expr_id == e.id;
 
-                                if (negative && min != i64::MIN && v > -min as u64) ||
+                                // Detect literal value out of range [min, max] inclusive
+                                // avoiding use of -min to prevent overflow/panic
+                                if (negative && v > max as u64 + 1) ||
                                    (!negative && v > max as u64) {
                                     cx.span_lint(OVERFLOWING_LITERALS, e.span,
                                                  &*format!("literal out of range for {:?}", t));
