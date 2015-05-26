@@ -18,14 +18,17 @@ use issue_19190_3::Baz;
 
 // @has issue_19190_3/struct.Foo.html
 // @has - '//*[@id="method.count_ones"]' 'fn count_ones(self) -> u32'
+// @!has - '//*[@id="method.min_value"]' 'fn min_value() -> i32'
 pub use issue_19190_3::Foo;
 
 // @has issue_19190_3/struct.Bar.html
 // @has - '//*[@id="method.baz"]' 'fn baz(&self)'
+// @!has - '//*[@id="method.static_baz"]' 'fn static_baz()'
 pub use issue_19190_3::Bar;
 
 // @has issue_19190_3/struct.MyBar.html
 // @has - '//*[@id="method.baz"]' 'fn baz(&self)'
+// @!has - '//*[@id="method.static_baz"]' 'fn static_baz()'
 pub struct MyBar;
 
 impl Deref for MyBar {
