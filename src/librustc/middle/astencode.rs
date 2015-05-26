@@ -696,19 +696,6 @@ pub fn encode_cast_kind(ebml_w: &mut Encoder, kind: cast::CastKind) {
 pub trait vtable_decoder_helpers<'tcx> {
     fn read_vec_per_param_space<T, F>(&mut self, f: F) -> VecPerParamSpace<T> where
         F: FnMut(&mut Self) -> T;
-    fn read_vtable_res_with_key(&mut self,
-                                tcx: &ty::ctxt<'tcx>,
-                                cdata: &cstore::crate_metadata)
-                                -> (u32, ty::vtable_res<'tcx>);
-    fn read_vtable_res(&mut self,
-                       tcx: &ty::ctxt<'tcx>, cdata: &cstore::crate_metadata)
-                      -> ty::vtable_res<'tcx>;
-    fn read_vtable_param_res(&mut self,
-                       tcx: &ty::ctxt<'tcx>, cdata: &cstore::crate_metadata)
-                      -> ty::vtable_param_res<'tcx>;
-    fn read_vtable_origin(&mut self,
-                          tcx: &ty::ctxt<'tcx>, cdata: &cstore::crate_metadata)
-                          -> ty::vtable_origin<'tcx>;
 }
 
 impl<'tcx, 'a> vtable_decoder_helpers<'tcx> for reader::Decoder<'a> {
@@ -719,85 +706,6 @@ impl<'tcx, 'a> vtable_decoder_helpers<'tcx> for reader::Decoder<'a> {
         let selfs = self.read_to_vec(|this| Ok(f(this))).unwrap();
         let fns = self.read_to_vec(|this| Ok(f(this))).unwrap();
         VecPerParamSpace::new(types, selfs, fns)
-    }
-
-    fn read_vtable_res_with_key(&mut self,
-                                tcx: &ty::ctxt<'tcx>,
-                                cdata: &cstore::crate_metadata)
-                                -> (u32, ty::vtable_res<'tcx>) {
-        self.read_struct("VtableWithKey", 2, |this| {
-            let autoderef = this.read_struct_field("autoderef", 0, |this| {
-                Decodable::decode(this)
-            }).unwrap();
-            Ok((autoderef, this.read_struct_field("vtable_res", 1, |this| {
-                Ok(this.read_vtable_res(tcx, cdata))
-            }).unwrap()))
-        }).unwrap()
-    }
-
-    fn read_vtable_res(&mut self,
-                       tcx: &ty::ctxt<'tcx>,
-                       cdata: &cstore::crate_metadata)
-                       -> ty::vtable_res<'tcx>
-    {
-        self.read_vec_per_param_space(
-            |this| this.read_vtable_param_res(tcx, cdata))
-    }
-
-    fn read_vtable_param_res(&mut self,
-                             tcx: &ty::ctxt<'tcx>, cdata: &cstore::crate_metadata)
-                      -> ty::vtable_param_res<'tcx> {
-        self.read_to_vec(|this| Ok(this.read_vtable_origin(tcx, cdata)))
-             .unwrap().into_iter().collect()
-    }
-
-    fn read_vtable_origin(&mut self,
-                          tcx: &ty::ctxt<'tcx>, cdata: &cstore::crate_metadata)
-        -> ty::vtable_origin<'tcx> {
-        self.read_enum("vtable_origin", |this| {
-            this.read_enum_variant(&["vtable_static",
-                                     "vtable_param",
-                                     "vtable_error",
-                                     "vtable_closure"],
-                                   |this, i| {
-                Ok(match i {
-                  0 => {
-                    ty::vtable_static(
-                        this.read_enum_variant_arg(0, |this| {
-                            Ok(this.read_def_id_nodcx(cdata))
-                        }).unwrap(),
-                        this.read_enum_variant_arg(1, |this| {
-                            Ok(this.read_substs_nodcx(tcx, cdata))
-                        }).unwrap(),
-                        this.read_enum_variant_arg(2, |this| {
-                            Ok(this.read_vtable_res(tcx, cdata))
-                        }).unwrap()
-                    )
-                  }
-                  1 => {
-                    ty::vtable_param(
-                        this.read_enum_variant_arg(0, |this| {
-                            Decodable::decode(this)
-                        }).unwrap(),
-                        this.read_enum_variant_arg(1, |this| {
-                            this.read_uint()
-                        }).unwrap()
-                    )
-                  }
-                  2 => {
-                    ty::vtable_closure(
-                        this.read_enum_variant_arg(0, |this| {
-                            Ok(this.read_def_id_nodcx(cdata))
-                        }).unwrap()
-                    )
-                  }
-                  3 => {
-                    ty::vtable_error
-                  }
-                  _ => panic!("bad enum variant")
-                })
-            })
-        }).unwrap()
     }
 }
 
@@ -1206,13 +1114,6 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
         rbml_w.tag(c::tag_table_method_map, |rbml_w| {
             rbml_w.id(id);
             encode_method_callee(ecx, rbml_w, method_call.autoderef, method)
-        })
-    }
-
-    if let Some(trait_ref) = tcx.object_cast_map.borrow().get(&id) {
-        rbml_w.tag(c::tag_table_object_cast_map, |rbml_w| {
-            rbml_w.id(id);
-            rbml_w.emit_trait_ref(ecx, &trait_ref.0);
         })
     }
 
@@ -1799,11 +1700,6 @@ fn decode_side_tables(dcx: &DecodeContext,
                             autoderef: autoderef
                         };
                         dcx.tcx.method_map.borrow_mut().insert(method_call, method);
-                    }
-                    c::tag_table_object_cast_map => {
-                        let trait_ref = val_dsr.read_poly_trait_ref(dcx);
-                        dcx.tcx.object_cast_map.borrow_mut()
-                                               .insert(id, trait_ref);
                     }
                     c::tag_table_adjustments => {
                         let adj: ty::AutoAdjustment = val_dsr.read_auto_adjustment(dcx);

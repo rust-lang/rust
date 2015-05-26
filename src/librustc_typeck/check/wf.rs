@@ -81,7 +81,8 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                 self.check_impl(item);
             }
             ast::ItemImpl(_, ast::ImplPolarity::Negative, _, Some(_), _, _) => {
-                let trait_ref = ty::impl_id_to_trait_ref(ccx.tcx, item.id);
+                let trait_ref = ty::impl_trait_ref(ccx.tcx,
+                                                   local_def(item.id)).unwrap();
                 ty::populate_implementations_for_trait_if_necessary(ccx.tcx, trait_ref.def_id);
                 match ccx.tcx.lang_items.to_builtin_kind(trait_ref.def_id) {
                     Some(ty::BoundSend) | Some(ty::BoundSync) => {}

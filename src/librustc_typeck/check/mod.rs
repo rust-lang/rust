@@ -98,7 +98,7 @@ use middle::ty::{FnSig, GenericPredicates, TypeScheme};
 use middle::ty::{Disr, ParamTy, ParameterEnvironment};
 use middle::ty::{self, HasProjectionTypes, RegionEscape, ToPolyTraitRef, Ty};
 use middle::ty::liberate_late_bound_regions;
-use middle::ty::{MethodCall, MethodCallee, MethodMap, ObjectCastMap};
+use middle::ty::{MethodCall, MethodCallee, MethodMap};
 use middle::ty_fold::{TypeFolder, TypeFoldable};
 use rscope::RegionScope;
 use session::Session;
@@ -164,7 +164,6 @@ pub struct Inherited<'a, 'tcx: 'a> {
     upvar_capture_map: RefCell<ty::UpvarCaptureMap>,
     closure_tys: RefCell<DefIdMap<ty::ClosureTy<'tcx>>>,
     closure_kinds: RefCell<DefIdMap<ty::ClosureKind>>,
-    object_cast_map: ObjectCastMap<'tcx>,
 
     // A mapping from each fn's id to its signature, with all bound
     // regions replaced with free ones. Unlike the other tables, this
@@ -383,7 +382,6 @@ impl<'a, 'tcx> Inherited<'a, 'tcx> {
             item_substs: RefCell::new(NodeMap()),
             adjustments: RefCell::new(NodeMap()),
             method_map: RefCell::new(FnvHashMap()),
-            object_cast_map: RefCell::new(NodeMap()),
             upvar_capture_map: RefCell::new(FnvHashMap()),
             closure_tys: RefCell::new(DefIdMap()),
             closure_kinds: RefCell::new(DefIdMap()),
