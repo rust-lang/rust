@@ -36,7 +36,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use syntax::ast::{Crate, DefId};
 use syntax::ast::{Item, ItemImpl};
-use syntax::ast::{LOCAL_CRATE, TraitRef};
+use syntax::ast::{LOCAL_CRATE};
 use syntax::ast;
 use syntax::ast_map::NodeItem;
 use syntax::ast_map;
@@ -100,11 +100,8 @@ struct CoherenceCheckVisitor<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx, 'v> visit::Visitor<'v> for CoherenceCheckVisitor<'a, 'tcx> {
     fn visit_item(&mut self, item: &Item) {
-
-        //debug!("(checking coherence) item '{}'", token::get_ident(item.ident));
-
-        if let ItemImpl(_, _, _, ref opt_trait, _, _) = item.node {
-            self.cc.check_implementation(item, opt_trait.as_ref())
+        if let ItemImpl(..) = item.node {
+            self.cc.check_implementation(item)
         }
 
         visit::walk_item(self, item);
@@ -141,7 +138,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
         self.check_implementations_of_coerce_unsized();
     }
 
-    fn check_implementation(&self, item: &Item, opt_trait: Option<&TraitRef>) {
+    fn check_implementation(&self, item: &Item) {
         let tcx = self.crate_context.tcx;
         let impl_did = local_def(item.id);
         let self_type = ty::lookup_item_type(tcx, impl_did);
@@ -151,8 +148,8 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
 
         let impl_items = self.create_impl_from_item(item);
 
-        if opt_trait.is_some() {
-            let trait_ref = ty::impl_id_to_trait_ref(self.crate_context.tcx, item.id);
+        if let Some(trait_ref) = ty::impl_trait_ref(self.crate_context.tcx,
+                                                    impl_did) {
             debug!("(checking implementation) adding impl for trait '{}', item '{}'",
                    trait_ref.repr(self.crate_context.tcx),
                    token::get_ident(item.ident));
@@ -161,22 +158,13 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
                                                  item.span,
                                                  trait_ref.def_id);
             self.add_trait_impl(trait_ref, impl_did);
-        }
-
-        // Add the implementation to the mapping from implementation to base
-        // type def ID, if there is a base type for this implementation and
-        // the implementation does not have any associated traits.
-        match get_base_type_def_id(&self.inference_context,
-                                   item.span,
-                                   self_type.ty) {
-            None => {
-                // Nothing to do.
-            }
-            Some(base_type_def_id) => {
-                // FIXME: Gather up default methods?
-                if opt_trait.is_none() {
-                    self.add_inherent_impl(base_type_def_id, impl_did);
-                }
+        } else {
+            // Add the implementation to the mapping from implementation to base
+            // type def ID, if there is a base type for this implementation and
+            // the implementation does not have any associated traits.
+            if let Some(base_type_def_id) = get_base_type_def_id(
+                    &self.inference_context, item.span, self_type.ty) {
+                self.add_inherent_impl(base_type_def_id, impl_did);
             }
         }
 
@@ -267,7 +255,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
     // Converts an implementation in the AST to a vector of items.
     fn create_impl_from_item(&self, item: &Item) -> Vec<ImplOrTraitItemId> {
         match item.node {
-            ItemImpl(_, _, _, ref opt_trait, _, ref impl_items) => {
+            ItemImpl(_, _, _, _, _, ref impl_items) => {
                 let mut items: Vec<ImplOrTraitItemId> =
                         impl_items.iter().map(|impl_item| {
                     match impl_item.node {
@@ -287,10 +275,8 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
                     }
                 }).collect();
 
-                if opt_trait.is_some() {
-                    let trait_ref = ty::impl_id_to_trait_ref(self.crate_context.tcx,
-                                                             item.id);
-
+                if let Some(trait_ref) = ty::impl_trait_ref(self.crate_context.tcx,
+                                                            local_def(item.id)) {
                     self.instantiate_default_methods(local_def(item.id),
                                                      &trait_ref,
                                                      &mut items);
@@ -300,7 +286,8 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
             }
             _ => {
                 self.crate_context.tcx.sess.span_bug(item.span,
-                                                     "can't convert a non-impl to an impl");
+                                                     "can't convert a non-impl \
+                                                      to an impl");
             }
         }
     }
@@ -453,8 +440,8 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
             }
 
             let source = ty::lookup_item_type(tcx, impl_did).ty;
-            let trait_ref = ty::impl_id_to_trait_ref(self.crate_context.tcx,
-                                                     impl_did.node);
+            let trait_ref = ty::impl_trait_ref(self.crate_context.tcx,
+                                               impl_did).unwrap();
             let target = *trait_ref.substs.types.get(subst::TypeSpace, 0);
             debug!("check_implementations_of_coerce_unsized: {} -> {} (bound)",
                    source.repr(tcx), target.repr(tcx));

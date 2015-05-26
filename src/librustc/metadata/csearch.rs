@@ -297,15 +297,6 @@ pub fn get_impl_trait<'tcx>(tcx: &ty::ctxt<'tcx>,
     decoder::get_impl_trait(&*cdata, def.node, tcx)
 }
 
-// Given a def_id for an impl, return information about its vtables
-pub fn get_impl_vtables<'tcx>(tcx: &ty::ctxt<'tcx>,
-                              def: ast::DefId)
-                              -> ty::vtable_res<'tcx> {
-    let cstore = &tcx.sess.cstore;
-    let cdata = cstore.get_crate_data(def.krate);
-    decoder::get_impl_vtables(&*cdata, def.node, tcx)
-}
-
 pub fn get_native_libraries(cstore: &cstore::CStore, crate_num: ast::CrateNum)
                             -> Vec<(cstore::NativeLibraryKind, String)> {
     let cdata = cstore.get_crate_data(crate_num);
@@ -389,6 +380,11 @@ pub fn is_const_fn(cstore: &cstore::CStore, did: ast::DefId) -> bool {
     decoder::is_const_fn(&*cdata, did.node)
 }
 
+pub fn is_impl(cstore: &cstore::CStore, did: ast::DefId) -> bool {
+    let cdata = cstore.get_crate_data(did.krate);
+    decoder::is_impl(&*cdata, did.node)
+}
+
 pub fn get_stability(cstore: &cstore::CStore,
                      def: ast::DefId)
                      -> Option<attr::Stability> {
@@ -396,8 +392,8 @@ pub fn get_stability(cstore: &cstore::CStore,
     decoder::get_stability(&*cdata, def.node)
 }
 
-pub fn is_staged_api(cstore: &cstore::CStore, def: ast::DefId) -> bool {
-    let cdata = cstore.get_crate_data(def.krate);
+pub fn is_staged_api(cstore: &cstore::CStore, krate: ast::CrateNum) -> bool {
+    let cdata = cstore.get_crate_data(krate);
     let attrs = decoder::get_crate_attributes(cdata.data());
     for attr in &attrs {
         if &attr.name()[..] == "staged_api" {
@@ -412,11 +408,6 @@ pub fn get_repr_attrs(cstore: &cstore::CStore, def: ast::DefId)
                       -> Vec<attr::ReprAttr> {
     let cdata = cstore.get_crate_data(def.krate);
     decoder::get_repr_attrs(&*cdata, def.node)
-}
-
-pub fn is_associated_type(cstore: &cstore::CStore, def: ast::DefId) -> bool {
-    let cdata = cstore.get_crate_data(def.krate);
-    decoder::is_associated_type(&*cdata, def.node)
 }
 
 pub fn is_defaulted_trait(cstore: &cstore::CStore, trait_def_id: ast::DefId) -> bool {

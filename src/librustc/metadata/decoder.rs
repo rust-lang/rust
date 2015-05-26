@@ -30,7 +30,6 @@ use middle::lang_items;
 use middle::subst;
 use middle::ty::{ImplContainer, TraitContainer};
 use middle::ty::{self, Ty};
-use middle::astencode::vtable_decoder_helpers;
 use util::nodemap::FnvHashMap;
 
 use std::cell::{Cell, RefCell};
@@ -521,18 +520,6 @@ pub fn get_impl_trait<'tcx>(cdata: Cmd,
         _ => None
     }
 }
-
-pub fn get_impl_vtables<'tcx>(cdata: Cmd,
-                              id: ast::NodeId,
-                              tcx: &ty::ctxt<'tcx>)
-                              -> ty::vtable_res<'tcx>
-{
-    let item_doc = lookup_item(id, cdata.data());
-    let vtables_doc = reader::get_doc(item_doc, tag_item_impl_vtables);
-    let mut decoder = reader::Decoder::new(vtables_doc);
-    decoder.read_vtable_res(tcx, cdata)
-}
-
 
 pub fn get_symbol(data: &[u8], id: ast::NodeId) -> String {
     return item_symbol(lookup_item(id, data));
@@ -1546,6 +1533,14 @@ pub fn is_const_fn(cdata: Cmd, id: ast::NodeId) -> bool {
     }
 }
 
+pub fn is_impl(cdata: Cmd, id: ast::NodeId) -> bool {
+    let item_doc = lookup_item(id, cdata.data());
+    match item_family(item_doc) {
+        Impl => true,
+        _ => false,
+    }
+}
+
 fn doc_generics<'tcx>(base_doc: rbml::Doc,
                       tcx: &ty::ctxt<'tcx>,
                       cdata: Cmd,
@@ -1621,14 +1616,6 @@ fn doc_predicates<'tcx>(base_doc: rbml::Doc,
     });
 
     ty::GenericPredicates { predicates: predicates }
-}
-
-pub fn is_associated_type(cdata: Cmd, id: ast::NodeId) -> bool {
-    let items = reader::get_doc(rbml::Doc::new(cdata.data()), tag_items);
-    match maybe_find_item(id, items) {
-        None => false,
-        Some(item) => item_sort(item) == Some('t'),
-    }
 }
 
 pub fn is_defaulted_trait(cdata: Cmd, trait_id: ast::NodeId) -> bool {

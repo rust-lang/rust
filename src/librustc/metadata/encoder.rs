@@ -999,7 +999,7 @@ fn encode_extension_implementations(ecx: &EncodeContext,
     });
 }
 
-fn encode_stability(rbml_w: &mut Encoder, stab_opt: Option<attr::Stability>) {
+fn encode_stability(rbml_w: &mut Encoder, stab_opt: Option<&attr::Stability>) {
     stab_opt.map(|stab| {
         rbml_w.start_tag(tag_items_data_item_stability);
         stab.encode(rbml_w).unwrap();
@@ -1215,11 +1215,11 @@ fn encode_info_for_item(ecx: &EncodeContext,
           encode_name(rbml_w, item.ident.name);
           encode_unsafety(rbml_w, unsafety);
 
-          let trait_ref = ty::impl_id_to_trait_ref(tcx, item.id);
+          let trait_ref = ty::impl_trait_ref(tcx, local_def(item.id)).unwrap();
           encode_trait_ref(rbml_w, ecx, trait_ref, tag_item_trait_ref);
           rbml_w.end_tag();
       }
-      ast::ItemImpl(unsafety, polarity, _, ref opt_trait, ref ty, ref ast_items) => {
+      ast::ItemImpl(unsafety, polarity, _, _, ref ty, ref ast_items) => {
         // We need to encode information about the default methods we
         // have inherited, so we drive this based on the impl structure.
         let impl_items = tcx.impl_items.borrow();
@@ -1269,8 +1269,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
             }
             rbml_w.end_tag();
         }
-        if opt_trait.is_some() {
-            let trait_ref = ty::impl_id_to_trait_ref(tcx, item.id);
+        if let Some(trait_ref) = ty::impl_trait_ref(tcx, local_def(item.id)) {
             encode_trait_ref(rbml_w, ecx, trait_ref, tag_item_trait_ref);
         }
         encode_path(rbml_w, path.clone());

@@ -32,7 +32,6 @@ pub use self::ImplOrTraitItem::*;
 pub use self::BoundRegion::*;
 pub use self::sty::*;
 pub use self::IntVarValue::*;
-pub use self::vtable_origin::*;
 pub use self::MethodOrigin::*;
 pub use self::CopyImplementationError::*;
 
@@ -402,12 +401,6 @@ pub enum CustomCoerceUnsized {
     Struct(usize)
 }
 
-#[derive(Clone, Copy, RustcEncodable, RustcDecodable, PartialEq, PartialOrd, Debug)]
-pub struct param_index {
-    pub space: subst::ParamSpace,
-    pub index: usize
-}
-
 #[derive(Clone, Debug)]
 pub enum MethodOrigin<'tcx> {
     // fully statically resolved method
@@ -510,50 +503,6 @@ impl MethodCall {
 // of the method to be invoked
 pub type MethodMap<'tcx> = RefCell<FnvHashMap<MethodCall, MethodCallee<'tcx>>>;
 
-pub type vtable_param_res<'tcx> = Vec<vtable_origin<'tcx>>;
-
-// Resolutions for bounds of all parameters, left to right, for a given path.
-pub type vtable_res<'tcx> = VecPerParamSpace<vtable_param_res<'tcx>>;
-
-#[derive(Clone)]
-pub enum vtable_origin<'tcx> {
-    /*
-      Statically known vtable. def_id gives the impl item
-      from whence comes the vtable, and tys are the type substs.
-      vtable_res is the vtable itself.
-     */
-    vtable_static(ast::DefId, subst::Substs<'tcx>, vtable_res<'tcx>),
-
-    /*
-      Dynamic vtable, comes from a parameter that has a bound on it:
-      fn foo<T:quux,baz,bar>(a: T) -- a's vtable would have a
-      vtable_param origin
-
-      The first argument is the param index (identifying T in the example),
-      and the second is the bound number (identifying baz)
-     */
-    vtable_param(param_index, usize),
-
-    /*
-      Vtable automatically generated for a closure. The def ID is the
-      ID of the closure expression.
-     */
-    vtable_closure(ast::DefId),
-
-    /*
-      Asked to determine the vtable for ty_err. This is the value used
-      for the vtables of `Self` in a virtual call like `foo.bar()`
-      where `foo` is of object type. The same value is also used when
-      type errors occur.
-     */
-    vtable_error,
-}
-
-
-// For every explicit cast into an object type, maps from the cast
-// expr to the associated trait ref.
-pub type ObjectCastMap<'tcx> = RefCell<NodeMap<ty::PolyTraitRef<'tcx>>>;
-
 // Contains information needed to resolve types and (in the future) look up
 // the types of AST nodes.
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
@@ -601,9 +550,10 @@ pub struct CtxtArenas<'tcx> {
     substs: TypedArena<Substs<'tcx>>,
     bare_fn: TypedArena<BareFnTy<'tcx>>,
     region: TypedArena<Region>,
+    stability: TypedArena<attr::Stability>,
 
     // references
-    trait_defs: TypedArena<TraitDef<'tcx>>
+    trait_defs: TypedArena<TraitDef<'tcx>>,
 }
 
 impl<'tcx> CtxtArenas<'tcx> {
@@ -613,6 +563,7 @@ impl<'tcx> CtxtArenas<'tcx> {
             substs: TypedArena::new(),
             bare_fn: TypedArena::new(),
             region: TypedArena::new(),
+            stability: TypedArena::new(),
 
             trait_defs: TypedArena::new()
         }
@@ -654,6 +605,7 @@ pub struct ctxt<'tcx> {
     substs_interner: RefCell<FnvHashMap<&'tcx Substs<'tcx>, &'tcx Substs<'tcx>>>,
     bare_fn_interner: RefCell<FnvHashMap<&'tcx BareFnTy<'tcx>, &'tcx BareFnTy<'tcx>>>,
     region_interner: RefCell<FnvHashMap<&'tcx Region, &'tcx Region>>,
+    stability_interner: RefCell<FnvHashMap<&'tcx attr::Stability, &'tcx attr::Stability>>,
 
     /// Common types, pre-interned for your convenience.
     pub types: CommonTypes<'tcx>,
@@ -692,9 +644,7 @@ pub struct ctxt<'tcx> {
     /// A cache for the trait_items() routine
     pub trait_items_cache: RefCell<DefIdMap<Rc<Vec<ImplOrTraitItem<'tcx>>>>>,
 
-    pub impl_trait_cache: RefCell<DefIdMap<Option<TraitRef<'tcx>>>>,
-
-    pub impl_trait_refs: RefCell<NodeMap<TraitRef<'tcx>>>,
+    pub impl_trait_refs: RefCell<DefIdMap<Option<TraitRef<'tcx>>>>,
     pub trait_defs: RefCell<DefIdMap<&'tcx TraitDef<'tcx>>>,
 
     /// Maps from the def-id of an item (trait/struct/enum/fn) to its
@@ -709,15 +659,10 @@ pub struct ctxt<'tcx> {
     /// additional acyclicity requirements).
     pub super_predicates: RefCell<DefIdMap<GenericPredicates<'tcx>>>,
 
-    /// Maps from node-id of a trait object cast (like `foo as
-    /// Box<Trait>`) to the trait reference.
-    pub object_cast_map: ObjectCastMap<'tcx>,
-
     pub map: ast_map::Map<'tcx>,
     pub freevars: RefCell<FreevarMap>,
     pub tcache: RefCell<DefIdMap<TypeScheme<'tcx>>>,
     pub rcache: RefCell<FnvHashMap<creader_cache_key, Ty<'tcx>>>,
-    pub short_names_cache: RefCell<FnvHashMap<Ty<'tcx>, String>>,
     pub tc_cache: RefCell<FnvHashMap<Ty<'tcx>, TypeContents>>,
     pub ast_ty_to_ty_cache: RefCell<NodeMap<Ty<'tcx>>>,
     pub enum_var_cache: RefCell<DefIdMap<Rc<Vec<Rc<VariantInfo<'tcx>>>>>>,
@@ -801,10 +746,7 @@ pub struct ctxt<'tcx> {
     pub transmute_restrictions: RefCell<Vec<TransmuteRestriction<'tcx>>>,
 
     /// Maps any item's def-id to its stability index.
-    pub stability: RefCell<stability::Index>,
-
-    /// Maps def IDs to true if and only if they're associated types.
-    pub associated_types: RefCell<DefIdMap<bool>>,
+    pub stability: RefCell<stability::Index<'tcx>>,
 
     /// Caches the results of trait selection. This cache is used
     /// for things that do not have to do with the parameters in scope.
@@ -844,6 +786,16 @@ impl<'tcx> ctxt<'tcx> {
         let did = def.trait_ref.def_id;
         let interned = self.arenas.trait_defs.alloc(def);
         self.trait_defs.borrow_mut().insert(did, interned);
+        interned
+    }
+
+    pub fn intern_stability(&self, stab: attr::Stability) -> &'tcx attr::Stability {
+        if let Some(st) = self.stability_interner.borrow().get(&stab) {
+            return st;
+        }
+
+        let interned = self.arenas.stability.alloc(stab);
+        self.stability_interner.borrow_mut().insert(interned, interned);
         interned
     }
 
@@ -948,6 +900,7 @@ impl<'tcx> ctxt<'tcx> {
         println!("Substs interner: #{}", self.substs_interner.borrow().len());
         println!("BareFnTy interner: #{}", self.bare_fn_interner.borrow().len());
         println!("Region interner: #{}", self.region_interner.borrow().len());
+        println!("Stability interner: #{}", self.stability_interner.borrow().len());
     }
 }
 
@@ -2753,7 +2706,7 @@ pub fn mk_ctxt<'tcx>(s: Session,
                      freevars: RefCell<FreevarMap>,
                      region_maps: RegionMaps,
                      lang_items: middle::lang_items::LanguageItems,
-                     stability: stability::Index) -> ctxt<'tcx>
+                     stability: stability::Index<'tcx>) -> ctxt<'tcx>
 {
     let mut interner = FnvHashMap();
     let common_types = CommonTypes::new(&arenas.type_, &mut interner);
@@ -2764,6 +2717,7 @@ pub fn mk_ctxt<'tcx>(s: Session,
         substs_interner: RefCell::new(FnvHashMap()),
         bare_fn_interner: RefCell::new(FnvHashMap()),
         region_interner: RefCell::new(FnvHashMap()),
+        stability_interner: RefCell::new(FnvHashMap()),
         types: common_types,
         named_region_map: named_region_map,
         region_maps: region_maps,
@@ -2774,23 +2728,20 @@ pub fn mk_ctxt<'tcx>(s: Session,
         def_map: def_map,
         node_types: RefCell::new(FnvHashMap()),
         item_substs: RefCell::new(NodeMap()),
-        impl_trait_refs: RefCell::new(NodeMap()),
+        impl_trait_refs: RefCell::new(DefIdMap()),
         trait_defs: RefCell::new(DefIdMap()),
         predicates: RefCell::new(DefIdMap()),
         super_predicates: RefCell::new(DefIdMap()),
-        object_cast_map: RefCell::new(NodeMap()),
         map: map,
         freevars: freevars,
         tcache: RefCell::new(DefIdMap()),
         rcache: RefCell::new(FnvHashMap()),
-        short_names_cache: RefCell::new(FnvHashMap()),
         tc_cache: RefCell::new(FnvHashMap()),
         ast_ty_to_ty_cache: RefCell::new(NodeMap()),
         enum_var_cache: RefCell::new(DefIdMap()),
         impl_or_trait_items: RefCell::new(DefIdMap()),
         trait_item_def_ids: RefCell::new(DefIdMap()),
         trait_items_cache: RefCell::new(DefIdMap()),
-        impl_trait_cache: RefCell::new(DefIdMap()),
         ty_param_defs: RefCell::new(NodeMap()),
         adjustments: RefCell::new(NodeMap()),
         normalized_cache: RefCell::new(FnvHashMap()),
@@ -2816,7 +2767,6 @@ pub fn mk_ctxt<'tcx>(s: Session,
         node_lint_levels: RefCell::new(FnvHashMap()),
         transmute_restrictions: RefCell::new(Vec::new()),
         stability: RefCell::new(stability),
-        associated_types: RefCell::new(DefIdMap()),
         selection_cache: traits::SelectionCache::new(),
         repr_hint_cache: RefCell::new(DefIdMap()),
         type_impls_copy_cache: RefCell::new(HashMap::new()),
@@ -4305,17 +4255,9 @@ pub fn is_type_representable<'tcx>(cx: &ctxt<'tcx>, sp: Span, ty: Ty<'tcx>)
 }
 
 pub fn type_is_trait(ty: Ty) -> bool {
-    type_trait_info(ty).is_some()
-}
-
-pub fn type_trait_info<'tcx>(ty: Ty<'tcx>) -> Option<&'tcx TyTrait<'tcx>> {
     match ty.sty {
-        ty_uniq(ty) | ty_rptr(_, mt { ty, ..}) | ty_ptr(mt { ty, ..}) => match ty.sty {
-            ty_trait(ref t) => Some(&**t),
-            _ => None
-        },
-        ty_trait(ref t) => Some(&**t),
-        _ => None
+        ty_trait(..) => true,
+        _ => false
     }
 }
 
@@ -4503,16 +4445,6 @@ pub fn named_element_ty<'tcx>(cx: &ctxt<'tcx>,
                 .map(|(_name, arg_t)| arg_t.subst(cx, substs))
         }
         _ => None
-    }
-}
-
-pub fn impl_id_to_trait_ref<'tcx>(cx: &ctxt<'tcx>, id: ast::NodeId)
-                                  -> ty::TraitRef<'tcx> {
-    match cx.impl_trait_refs.borrow().get(&id) {
-        Some(ty) => *ty,
-        None => cx.sess.bug(
-            &format!("impl_id_to_trait_ref: no trait ref for impl `{}`",
-                    cx.map.node_to_string(id)))
     }
 }
 
@@ -5310,12 +5242,12 @@ pub fn associated_consts<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)
 /// the future).
 fn lookup_locally_or_in_crate_store<V, F>(descr: &str,
                                           def_id: ast::DefId,
-                                          map: &mut DefIdMap<V>,
+                                          map: &RefCell<DefIdMap<V>>,
                                           load_external: F) -> V where
     V: Clone,
     F: FnOnce() -> V,
 {
-    match map.get(&def_id).cloned() {
+    match map.borrow().get(&def_id).cloned() {
         Some(v) => { return v; }
         None => { }
     }
@@ -5324,7 +5256,7 @@ fn lookup_locally_or_in_crate_store<V, F>(descr: &str,
         panic!("No def'n found for {:?} in tcx.{}", def_id, descr);
     }
     let v = load_external();
-    map.insert(def_id, v.clone());
+    map.borrow_mut().insert(def_id, v.clone());
     v
 }
 
@@ -5390,33 +5322,9 @@ pub fn custom_coerce_unsized_kind<'tcx>(cx: &ctxt<'tcx>, did: ast::DefId)
 
 pub fn impl_or_trait_item<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)
                                 -> ImplOrTraitItem<'tcx> {
-    lookup_locally_or_in_crate_store("impl_or_trait_items",
-                                     id,
-                                     &mut *cx.impl_or_trait_items
-                                             .borrow_mut(),
-                                     || {
-        csearch::get_impl_or_trait_item(cx, id)
-    })
-}
-
-/// Returns true if the given ID refers to an associated type and false if it
-/// refers to anything else.
-pub fn is_associated_type(cx: &ctxt, id: ast::DefId) -> bool {
-    memoized(&cx.associated_types, id, |id: ast::DefId| {
-        if id.krate == ast::LOCAL_CRATE {
-            match cx.impl_or_trait_items.borrow().get(&id) {
-                Some(ref item) => {
-                    match **item {
-                        TypeTraitItem(_) => true,
-                        _ => false,
-                    }
-                }
-                None => false,
-            }
-        } else {
-            csearch::is_associated_type(&cx.sess.cstore, id)
-        }
-    })
+    lookup_locally_or_in_crate_store(
+        "impl_or_trait_items", id, &cx.impl_or_trait_items,
+        || csearch::get_impl_or_trait_item(cx, id))
 }
 
 /// Returns the parameter index that the given associated type corresponds to.
@@ -5434,34 +5342,33 @@ pub fn associated_type_parameter_index(cx: &ctxt,
 
 pub fn trait_item_def_ids(cx: &ctxt, id: ast::DefId)
                           -> Rc<Vec<ImplOrTraitItemId>> {
-    lookup_locally_or_in_crate_store("trait_item_def_ids",
-                                     id,
-                                     &mut *cx.trait_item_def_ids.borrow_mut(),
-                                     || {
-        Rc::new(csearch::get_trait_item_def_ids(&cx.sess.cstore, id))
-    })
+    lookup_locally_or_in_crate_store(
+        "trait_item_def_ids", id, &cx.trait_item_def_ids,
+        || Rc::new(csearch::get_trait_item_def_ids(&cx.sess.cstore, id)))
 }
 
+/// Returns the trait-ref corresponding to a given impl, or None if it is
+/// an inherent impl.
 pub fn impl_trait_ref<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)
-                            -> Option<TraitRef<'tcx>> {
-    memoized(&cx.impl_trait_cache, id, |id: ast::DefId| {
-        if id.krate == ast::LOCAL_CRATE {
-            debug!("(impl_trait_ref) searching for trait impl {:?}", id);
-            if let Some(ast_map::NodeItem(item)) = cx.map.find(id.node) {
-                match item.node {
-                    ast::ItemImpl(_, _, _, Some(_), _, _) |
-                    ast::ItemDefaultImpl(..) => {
-                        Some(ty::impl_id_to_trait_ref(cx, id.node))
-                    }
-                    _ => None
-                }
-            } else {
-                None
-            }
+                            -> Option<TraitRef<'tcx>>
+{
+    lookup_locally_or_in_crate_store(
+        "impl_trait_refs", id, &cx.impl_trait_refs,
+        || csearch::get_impl_trait(cx, id))
+}
+
+/// Returns whether this DefId refers to an impl
+pub fn is_impl<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId) -> bool {
+    if id.krate == ast::LOCAL_CRATE {
+        if let Some(ast_map::NodeItem(
+            &ast::Item { node: ast::ItemImpl(..), .. })) = cx.map.find(id.node) {
+            true
         } else {
-            csearch::get_impl_trait(cx, id)
+            false
         }
-    })
+    } else {
+        csearch::is_impl(&cx.sess.cstore, id)
+    }
 }
 
 pub fn trait_ref_to_def_id(tcx: &ctxt, tr: &ast::TraitRef) -> ast::DefId {
@@ -5944,37 +5851,35 @@ pub fn lookup_item_type<'tcx>(cx: &ctxt<'tcx>,
                               did: ast::DefId)
                               -> TypeScheme<'tcx> {
     lookup_locally_or_in_crate_store(
-        "tcache", did, &mut *cx.tcache.borrow_mut(),
+        "tcache", did, &cx.tcache,
         || csearch::get_type(cx, did))
 }
 
 /// Given the did of a trait, returns its canonical trait ref.
 pub fn lookup_trait_def<'tcx>(cx: &ctxt<'tcx>, did: ast::DefId)
                               -> &'tcx TraitDef<'tcx> {
-    memoized(&cx.trait_defs, did, |did: DefId| {
-        assert!(did.krate != ast::LOCAL_CRATE);
-        cx.arenas.trait_defs.alloc(csearch::get_trait_def(cx, did))
-    })
+    lookup_locally_or_in_crate_store(
+        "trait_defs", did, &cx.trait_defs,
+        || cx.arenas.trait_defs.alloc(csearch::get_trait_def(cx, did))
+    )
 }
 
 /// Given the did of an item, returns its full set of predicates.
 pub fn lookup_predicates<'tcx>(cx: &ctxt<'tcx>, did: ast::DefId)
                                 -> GenericPredicates<'tcx>
 {
-    memoized(&cx.predicates, did, |did: DefId| {
-        assert!(did.krate != ast::LOCAL_CRATE);
-        csearch::get_predicates(cx, did)
-    })
+    lookup_locally_or_in_crate_store(
+        "predicates", did, &cx.predicates,
+        || csearch::get_predicates(cx, did))
 }
 
 /// Given the did of a trait, returns its superpredicates.
 pub fn lookup_super_predicates<'tcx>(cx: &ctxt<'tcx>, did: ast::DefId)
                                      -> GenericPredicates<'tcx>
 {
-    memoized(&cx.super_predicates, did, |did: DefId| {
-        assert!(did.krate != ast::LOCAL_CRATE);
-        csearch::get_super_predicates(cx, did)
-    })
+    lookup_locally_or_in_crate_store(
+        "super_predicates", did, &cx.super_predicates,
+        || csearch::get_super_predicates(cx, did))
 }
 
 pub fn predicates<'tcx>(
@@ -6344,7 +6249,7 @@ pub fn required_region_bounds<'tcx>(tcx: &ctxt<'tcx>,
 
 pub fn item_variances(tcx: &ctxt, item_id: ast::DefId) -> Rc<ItemVariances> {
     lookup_locally_or_in_crate_store(
-        "item_variance_map", item_id, &mut *tcx.item_variance_map.borrow_mut(),
+        "item_variance_map", item_id, &tcx.item_variance_map,
         || Rc::new(csearch::get_item_variances(&tcx.sess.cstore, item_id)))
 }
 
@@ -7219,32 +7124,6 @@ impl<'tcx> Repr<'tcx> for ty::Predicate<'tcx> {
             Predicate::RegionOutlives(ref pair) => pair.repr(tcx),
             Predicate::TypeOutlives(ref pair) => pair.repr(tcx),
             Predicate::Projection(ref pair) => pair.repr(tcx),
-        }
-    }
-}
-
-impl<'tcx> Repr<'tcx> for vtable_origin<'tcx> {
-    fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
-        match *self {
-            vtable_static(def_id, ref tys, ref vtable_res) => {
-                format!("vtable_static({:?}:{}, {}, {})",
-                        def_id,
-                        ty::item_path_str(tcx, def_id),
-                        tys.repr(tcx),
-                        vtable_res.repr(tcx))
-            }
-
-            vtable_param(x, y) => {
-                format!("vtable_param({:?}, {})", x, y)
-            }
-
-            vtable_closure(def_id) => {
-                format!("vtable_closure({:?})", def_id)
-            }
-
-            vtable_error => {
-                format!("vtable_error")
-            }
         }
     }
 }
