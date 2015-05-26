@@ -136,7 +136,7 @@ impl ImplOrTraitItemContainer {
 pub enum ImplOrTraitItem<'tcx> {
     ConstTraitItem(Rc<AssociatedConst<'tcx>>),
     MethodTraitItem(Rc<Method<'tcx>>),
-    TypeTraitItem(Rc<AssociatedType>),
+    TypeTraitItem(Rc<AssociatedType<'tcx>>),
 }
 
 impl<'tcx> ImplOrTraitItem<'tcx> {
@@ -267,8 +267,9 @@ pub struct AssociatedConst<'tcx> {
 }
 
 #[derive(Clone, Copy, Debug)]
-pub struct AssociatedType {
+pub struct AssociatedType<'tcx> {
     pub name: ast::Name,
+    pub ty: Option<Ty<'tcx>>,
     pub vis: ast::Visibility,
     pub def_id: ast::DefId,
     pub container: ImplOrTraitItemContainer,

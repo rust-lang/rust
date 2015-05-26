@@ -362,11 +362,13 @@ pub fn build_impl(cx: &DocContext,
             }
             ty::TypeTraitItem(ref assoc_ty) => {
                 let did = assoc_ty.def_id;
-                let type_scheme = ty::lookup_item_type(tcx, did);
-                let predicates = ty::lookup_predicates(tcx, did);
+                let type_scheme = ty::TypeScheme {
+                    ty: assoc_ty.ty.unwrap(),
+                    generics: ty::Generics::empty()
+                };
                 // Not sure the choice of ParamSpace actually matters here,
                 // because an associated type won't have generics on the LHS
-                let typedef = (type_scheme, predicates,
+                let typedef = (type_scheme, ty::GenericPredicates::empty(),
                                subst::ParamSpace::TypeSpace).clean(cx);
                 Some(clean::Item {
                     name: Some(assoc_ty.name.clean(cx)),

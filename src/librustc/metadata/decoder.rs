@@ -252,6 +252,13 @@ fn doc_type<'tcx>(doc: rbml::Doc, tcx: &ty::ctxt<'tcx>, cdata: Cmd) -> Ty<'tcx> 
                   |_, did| translate_def_id(cdata, did))
 }
 
+fn maybe_doc_type<'tcx>(doc: rbml::Doc, tcx: &ty::ctxt<'tcx>, cdata: Cmd) -> Option<Ty<'tcx>> {
+    reader::maybe_get_doc(doc, tag_items_data_item_type).map(|tp| {
+        parse_ty_data(tp.data, cdata.cnum, tp.start, tcx,
+                      |_, did| translate_def_id(cdata, did))
+    })
+}
+
 fn doc_method_fty<'tcx>(doc: rbml::Doc, tcx: &ty::ctxt<'tcx>,
                         cdata: Cmd) -> ty::BareFnTy<'tcx> {
     let tp = reader::get_doc(doc, tag_item_method_fty);
@@ -875,24 +882,24 @@ pub fn get_impl_or_trait_item<'tcx>(intr: Rc<IdentInterner>,
                                     id: ast::NodeId,
                                     tcx: &ty::ctxt<'tcx>)
                                     -> ty::ImplOrTraitItem<'tcx> {
-    let method_doc = lookup_item(id, cdata.data());
+    let item_doc = lookup_item(id, cdata.data());
 
-    let def_id = item_def_id(method_doc, cdata);
+    let def_id = item_def_id(item_doc, cdata);
 
-    let container_id = item_require_parent_item(cdata, method_doc);
+    let container_id = item_require_parent_item(cdata, item_doc);
     let container_doc = lookup_item(container_id.node, cdata.data());
     let container = match item_family(container_doc) {
         Trait => TraitContainer(container_id),
         _ => ImplContainer(container_id),
     };
 
-    let name = item_name(&*intr, method_doc);
-    let vis = item_visibility(method_doc);
+    let name = item_name(&*intr, item_doc);
+    let vis = item_visibility(item_doc);
 
-    match item_sort(method_doc) {
+    match item_sort(item_doc) {
         Some('C') => {
-            let ty = doc_type(method_doc, tcx, cdata);
-            let default = get_provided_source(method_doc, cdata);
+            let ty = doc_type(item_doc, tcx, cdata);
+            let default = get_provided_source(item_doc, cdata);
             ty::ConstTraitItem(Rc::new(ty::AssociatedConst {
                 name: name,
                 ty: ty,
@@ -903,11 +910,11 @@ pub fn get_impl_or_trait_item<'tcx>(intr: Rc<IdentInterner>,
             }))
         }
         Some('r') | Some('p') => {
-            let generics = doc_generics(method_doc, tcx, cdata, tag_method_ty_generics);
-            let predicates = doc_predicates(method_doc, tcx, cdata, tag_method_ty_generics);
-            let fty = doc_method_fty(method_doc, tcx, cdata);
-            let explicit_self = get_explicit_self(method_doc);
-            let provided_source = get_provided_source(method_doc, cdata);
+            let generics = doc_generics(item_doc, tcx, cdata, tag_method_ty_generics);
+            let predicates = doc_predicates(item_doc, tcx, cdata, tag_method_ty_generics);
+            let fty = doc_method_fty(item_doc, tcx, cdata);
+            let explicit_self = get_explicit_self(item_doc);
+            let provided_source = get_provided_source(item_doc, cdata);
 
             ty::MethodTraitItem(Rc::new(ty::Method::new(name,
                                                         generics,
@@ -920,8 +927,10 @@ pub fn get_impl_or_trait_item<'tcx>(intr: Rc<IdentInterner>,
                                                         provided_source)))
         }
         Some('t') => {
+            let ty = maybe_doc_type(item_doc, tcx, cdata);
             ty::TypeTraitItem(Rc::new(ty::AssociatedType {
                 name: name,
+                ty: ty,
                 vis: vis,
                 def_id: def_id,
                 container: container,
