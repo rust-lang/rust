@@ -13,6 +13,6 @@
 trait MyDefaultImpl {}
 
 impl<T> MyDefaultImpl for .. {}
-//~^ ERROR default trait implementations are not allowed to have genercis
+//~^ ERROR default trait implementations are not allowed to have generics
 
 fn main() {}

@@ -4564,7 +4564,7 @@ impl<'a> Parser<'a> {
         if try!(self.eat(&token::DotDot) ){
             if generics.is_parameterized() {
                 self.span_err(impl_span, "default trait implementations are not \
-                                          allowed to have genercis");
+                                          allowed to have generics");
             }
 
             try!(self.expect(&token::OpenDelim(token::Brace)));
