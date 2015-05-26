@@ -1096,6 +1096,19 @@ fn test_fuse_count() {
     // Can't check len now because count consumes.
 }
 
+#[test]
+fn test_once() {
+    let mut it = once(42);
+    assert_eq!(it.next(), Some(42));
+    assert_eq!(it.next(), None);
+}
+
+#[test]
+fn test_empty() {
+    let mut it = empty::<i32>();
+    assert_eq!(it.next(), None);
+}
+
 #[bench]
 fn bench_rposition(b: &mut Bencher) {
     let it: Vec<usize> = (0..300).collect();
