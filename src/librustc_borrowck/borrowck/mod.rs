@@ -603,11 +603,12 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
 
         let (ol, moved_lp_msg) = match the_move.kind {
             move_data::Declared => {
-                self.tcx.sess.span_err(
-                    use_span,
-                    &format!("{} of possibly uninitialized variable: `{}`",
-                            verb,
-                            self.loan_path_to_string(lp)));
+                span_err!(
+                    self.tcx.sess, use_span, E0381,
+                    "{} of possibly uninitialized variable: `{}`",
+                    verb,
+                    self.loan_path_to_string(lp));
+
                 (self.loan_path_to_string(moved_lp),
                  String::new())
             }
@@ -644,12 +645,10 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 let msg = if !has_fork && partial { "partially " }
                           else if has_fork && !has_common { "collaterally "}
                           else { "" };
-                self.tcx.sess.span_err(
-                    use_span,
-                    &format!("{} of {}moved value: `{}`",
-                            verb,
-                            msg,
-                            nl));
+                span_err!(
+                    self.tcx.sess, use_span, E0382,
+                    "{} of {}moved value: `{}`",
+                    verb, msg, nl);
                 (ol, moved_lp_msg)
             }
         };
@@ -762,12 +761,10 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
             &self,
             span: Span,
             lp: &LoanPath<'tcx>) {
-        self.tcx
-            .sess
-            .span_err(span,
-                      &format!("partial reinitialization of uninitialized \
-                               structure `{}`",
-                               self.loan_path_to_string(lp)));
+        span_err!(
+            self.tcx.sess, span, E0383,
+            "partial reinitialization of uninitialized structure `{}`",
+            self.loan_path_to_string(lp));
     }
 
     pub fn report_reassigned_immutable_variable(&self,
@@ -775,10 +772,10 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                                                 lp: &LoanPath<'tcx>,
                                                 assign:
                                                 &move_data::Assignment) {
-        self.tcx.sess.span_err(
-            span,
-            &format!("re-assignment of immutable variable `{}`",
-                    self.loan_path_to_string(lp)));
+        span_err!(
+            self.tcx.sess, span, E0384,
+            "re-assignment of immutable variable `{}`",
+            self.loan_path_to_string(lp));
         self.tcx.sess.span_note(assign.span, "prior assignment occurs here");
     }
 
@@ -896,21 +893,19 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
 
         match cause {
             mc::AliasableOther => {
-                self.tcx.sess.span_err(
-                    span,
-                    &format!("{} in an aliasable location",
-                             prefix));
+                span_err!(
+                    self.tcx.sess, span, E0385,
+                    "{} in an aliasable location", prefix);
             }
             mc::AliasableReason::UnaliasableImmutable => {
-                self.tcx.sess.span_err(
-                    span,
-                    &format!("{} in an immutable container",
-                             prefix));
+                span_err!(
+                    self.tcx.sess, span, E0386,
+                    "{} in an immutable container", prefix);
             }
             mc::AliasableClosure(id) => {
-                self.tcx.sess.span_err(span,
-                                       &format!("{} in a captured outer \
-                                                variable in an `Fn` closure", prefix));
+                span_err!(
+                    self.tcx.sess, span, E0387,
+                    "{} in a captured outer variable in an `Fn` closure", prefix);
                 if let BorrowViolation(euv::ClosureCapture(_)) = kind {
                     // The aliasability violation with closure captures can
                     // happen for nested closures, so we know the enclosing
@@ -925,14 +920,14 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
             }
             mc::AliasableStatic(..) |
             mc::AliasableStaticMut(..) => {
-                self.tcx.sess.span_err(
-                    span,
-                    &format!("{} in a static location", prefix));
+                span_err!(
+                    self.tcx.sess, span, E0388,
+                    "{} in a static location", prefix);
             }
             mc::AliasableBorrowed => {
-                self.tcx.sess.span_err(
-                    span,
-                    &format!("{} in a `&` reference", prefix));
+                span_err!(
+                    self.tcx.sess, span, E0389,
+                    "{} in a `&` reference", prefix);
             }
         }
 

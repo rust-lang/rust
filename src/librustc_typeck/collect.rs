@@ -236,9 +236,8 @@ impl<'a,'tcx> CrateCtxt<'a,'tcx> {
         assert!(!cycle.is_empty());
         let tcx = self.tcx;
 
-        tcx.sess.span_err(
-            span,
-            &format!("unsupported cyclic reference between types/traits detected"));
+        span_err!(tcx.sess, span, E0391,
+            "unsupported cyclic reference between types/traits detected");
 
         match cycle[0] {
             AstConvRequest::GetItemTypeScheme(def_id) |

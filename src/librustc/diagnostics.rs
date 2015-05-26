@@ -396,6 +396,54 @@ enum Method { GET, POST }
 ```
 "##,
 
+E0261: r##"
+When using a lifetime like `'a` in a type, it must be declared before being
+used.
+
+These two examples illustrate the problem:
+
+```
+// error, use of undeclared lifetime name `'a`
+fn foo(x: &'a str) { }
+
+struct Foo {
+    // error, use of undeclared lifetime name `'a`
+    x: &'a str,
+}
+```
+
+These can be fixed by declaring lifetime parameters:
+
+```
+fn foo<'a>(x: &'a str) { }
+
+struct Foo<'a> {
+    x: &'a str,
+}
+```
+"##,
+
+E0262: r##"
+Declaring certain lifetime names in parameters is disallowed. For example,
+because the `'static` lifetime is a special built-in lifetime name denoting
+the lifetime of the entire program, this is an error:
+
+```
+// error, illegal lifetime parameter name `'static`
+fn foo<'static>(x: &'static str) { }
+```
+"##,
+
+E0263: r##"
+A lifetime name cannot be declared more than once in the same scope. For
+example:
+
+```
+// error, lifetime name `'a` declared twice in the same scope
+fn foo<'a, 'b, 'a>(x: &'a str, y: &'b str) { }
+```
+"##,
+
 E0265: r##"
 This error indicates that a static or constant references itself.
 All statics and constants need to resolve to a value in an acyclic manner.
@@ -814,9 +862,6 @@ register_diagnostics! {
     E0136,
     E0138,
     E0139,
-    E0261, // use of undeclared lifetime name
-    E0262, // illegal lifetime parameter name
-    E0263, // lifetime name declared twice in same scope
     E0264, // unknown external lang item
     E0266, // expected item
     E0269, // not all control paths return a value
@@ -846,5 +891,7 @@ register_diagnostics! {
     E0315, // cannot invoke closure outside of its lifetime
     E0316, // nested quantification of lifetimes
     E0370, // discriminant overflow
-    E0378  // method calls limited to constant inherent methods
+    E0378, // method calls limited to constant inherent methods
+    E0394  // cannot refer to other statics by value, use the address-of
+           // operator or a constant instead
 }

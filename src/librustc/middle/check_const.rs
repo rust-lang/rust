@@ -762,9 +762,9 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for CheckCrateVisitor<'a, 'tcx> {
                         // statics cannot be consumed by value at any time, that would imply
                         // that they're an initializer (what a const is for) or kept in sync
                         // over time (not feasible), so deny it outright.
-                        self.tcx.sess.span_err(consume_span,
-                            "cannot refer to other statics by value, use the \
-                             address-of operator or a constant instead");
+                        span_err!(self.tcx.sess, consume_span, E0394,
+                                  "cannot refer to other statics by value, use the \
+                                   address-of operator or a constant instead");
                     }
                     break;
                 }

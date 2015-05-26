@@ -4688,9 +4688,12 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 } else if i == type_count {
                     span_err!(fcx.tcx().sess, typ.span, E0087,
                         "too many type parameters provided: \
-                         expected at most {} parameter(s), \
-                         found {} parameter(s)",
-                         type_count, data.types.len());
+                         expected at most {} parameter{}, \
+                         found {} parameter{}",
+                         type_count,
+                         if type_count == 1 {""} else {"s"},
+                         data.types.len(),
+                         if data.types.len() == 1 {""} else {"s"});
                     substs.types.truncate(space, 0);
                     break;
                 }
@@ -4713,9 +4716,11 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 } else if i == region_count {
                     span_err!(fcx.tcx().sess, lifetime.span, E0088,
                         "too many lifetime parameters provided: \
-                         expected {} parameter(s), found {} parameter(s)",
+                         expected {} parameter{}, found {} parameter{}",
                         region_count,
-                        data.lifetimes.len());
+                        if region_count == 1 {""} else {"s"},
+                        data.lifetimes.len(),
+                        if data.lifetimes.len() == 1 {""} else {"s"});
                     substs.mut_regions().truncate(space, 0);
                     break;
                 }
@@ -4805,9 +4810,12 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             let qualifier =
                 if desired.len() != required_len { "at least " } else { "" };
             span_err!(fcx.tcx().sess, span, E0089,
-                "too few type parameters provided: expected {}{} parameter(s) \
-                , found {} parameter(s)",
-                qualifier, required_len, provided_len);
+                "too few type parameters provided: expected {}{} parameter{}, \
+                 found {} parameter{}",
+                qualifier, required_len,
+                if required_len == 1 {""} else {"s"},
+                provided_len,
+                if provided_len == 1 {""} else {"s"});
             substs.types.replace(space, repeat(fcx.tcx().types.err).take(desired.len()).collect());
             return;
         }
@@ -4858,9 +4866,12 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         // Otherwise, too few were provided. Report an error and then
         // use inference variables.
         span_err!(fcx.tcx().sess, span, E0090,
-            "too few lifetime parameters provided: expected {} parameter(s), \
-             found {} parameter(s)",
-            desired.len(), provided_len);
+            "too few lifetime parameters provided: expected {} parameter{}, \
+             found {} parameter{}",
+            desired.len(),
+            if desired.len() == 1 {""} else {"s"},
+            provided_len,
+            if provided_len == 1 {""} else {"s"});
 
         substs.mut_regions().replace(
             space,
