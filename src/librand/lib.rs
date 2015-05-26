@@ -31,7 +31,6 @@
 #![feature(core)]
 #![feature(no_std)]
 #![feature(staged_api)]
-#![feature(step_by)]
 
 #![cfg_attr(test, feature(test, rand, rustc_private))]
 
