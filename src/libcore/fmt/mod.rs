@@ -125,7 +125,7 @@ pub trait Write {
 /// traits.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Formatter<'a> {
-    flags: u32,
+    flags: FlagV1,
     fill: char,
     align: rt::v1::Alignment,
     width: Option<usize>,
@@ -192,10 +192,21 @@ impl<'a> ArgumentV1<'a> {
     }
 }
 
-// flags available in the v1 format of format_args
-#[derive(Copy, Clone)]
-#[allow(dead_code)] // SignMinus isn't currently used
-enum FlagV1 { SignPlus, SignMinus, Alternate, SignAwareZeroPad, }
+bitflags! {
+    // flags available in the v1 format of format_args
+    #[doc(hidden)]
+    flags FlagV1 : u32 {
+        #[doc(hidden)]
+        const SIGNPLUS         = 1 << 0,
+        #[doc(hidden)]
+        #[allow(dead_code)] // SIGNMINUS isn't currently used
+        const SIGNMINUS        = 1 << 1,
+        #[doc(hidden)]
+        const ALTERNATE        = 1 << 2,
+        #[doc(hidden)]
+        const SIGNAWAREZEROPAD = 1 << 3,
+    }
+}
 
 impl<'a> Arguments<'a> {
     /// When using the format_args!() macro, this function is used to generate the
@@ -359,7 +370,7 @@ pub trait UpperExp {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn write(output: &mut Write, args: Arguments) -> Result {
     let mut formatter = Formatter {
-        flags: 0,
+        flags: FlagV1::empty(),
         width: None,
         precision: None,
         buf: output,
@@ -409,7 +420,7 @@ impl<'a> Formatter<'a> {
         // Fill in the format parameters into the formatter
         self.fill = arg.format.fill;
         self.align = arg.format.align;
-        self.flags = arg.format.flags;
+        self.flags = FlagV1::from_bits_truncate(arg.format.flags);
         self.width = self.getcount(&arg.format.width);
         self.precision = self.getcount(&arg.format.precision);
 
@@ -465,12 +476,12 @@ impl<'a> Formatter<'a> {
         let mut sign = None;
         if !is_positive {
             sign = Some('-'); width += 1;
-        } else if self.flags & (1 << (FlagV1::SignPlus as u32)) != 0 {
+        } else if self.flags.intersects(FlagV1::SIGNPLUS) {
             sign = Some('+'); width += 1;
         }
 
         let mut prefixed = false;
-        if self.flags & (1 << (FlagV1::Alternate as u32)) != 0 {
+        if self.flags.intersects(FlagV1::ALTERNATE) {
             prefixed = true; width += prefix.char_len();
         }
 
@@ -500,7 +511,7 @@ impl<'a> Formatter<'a> {
             }
             // The sign and prefix goes before the padding if the fill character
             // is zero
-            Some(min) if self.flags & (1 << (FlagV1::SignAwareZeroPad as u32)) != 0 => {
+            Some(min) if self.flags.intersects(FlagV1::SIGNAWAREZEROPAD) => {
                 self.fill = '0';
                 try!(write_prefix(self));
                 self.with_padding(min - width, Alignment::Right, |f| {
@@ -695,7 +706,7 @@ impl<'a> Formatter<'a> {
 
     /// Flags for formatting (packed version of rt::Flag)
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn flags(&self) -> u32 { self.flags }
+    pub fn flags(&self) -> FlagV1 { self.flags }
 
     /// Character used as 'fill' whenever there is alignment
     #[unstable(feature = "core", reason = "method was just created")]
@@ -938,8 +949,8 @@ impl<T> Pointer for *const T {
         // it denotes whether to prefix with 0x. We use it to work out whether
         // or not to zero extend, and then unconditionally set it to get the
         // prefix.
-        if f.flags & 1 << (FlagV1::Alternate as u32) > 0 {
-            f.flags |= 1 << (FlagV1::SignAwareZeroPad as u32);
+        if f.flags.intersects(FlagV1::ALTERNATE) {
+            f.flags.insert(FlagV1::SIGNAWAREZEROPAD);
 
             if let None = f.width {
                 // The formats need two extra bytes, for the 0x
@@ -950,7 +961,7 @@ impl<T> Pointer for *const T {
                 }
             }
         }
-        f.flags |= 1 << (FlagV1::Alternate as u32);
+        f.flags.insert(FlagV1::ALTERNATE);
 
         let ret = LowerHex::fmt(&(*self as usize), f);
 

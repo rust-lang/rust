@@ -60,7 +60,8 @@ HOST_CRATES := syntax $(RUSTC_CRATES) rustdoc fmt_macros
 CRATES := $(TARGET_CRATES) $(HOST_CRATES)
 TOOLS := compiletest rustdoc rustc rustbook error-index-generator
 
-DEPS_core :=
+DEPS_rustc_bitflags :=
+DEPS_core := rustc_bitflags
 DEPS_libc := core
 DEPS_rustc_unicode := core
 DEPS_alloc := core libc native:jemalloc
@@ -87,7 +88,6 @@ DEPS_rustc_back := std syntax rustc_llvm flate log libc
 DEPS_rustc_data_structures := std log serialize
 DEPS_rustdoc := rustc rustc_driver native:hoedown serialize getopts \
                 test rustc_lint
-DEPS_rustc_bitflags := core
 DEPS_flate := std native:miniz
 DEPS_arena := std
 DEPS_graphviz := std

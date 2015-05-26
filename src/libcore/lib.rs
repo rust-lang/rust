@@ -63,17 +63,20 @@
 #![allow(raw_pointer_derive)]
 #![deny(missing_docs)]
 
+#![feature(associated_consts)]
+#![feature(concat_idents)]
+#![feature(custom_attribute)]
+#![feature(fundamental)]
 #![feature(intrinsics, lang_items)]
 #![feature(on_unimplemented)]
+#![feature(optin_builtin_traits)]
+#![feature(reflect)]
+#![feature(rustc_attrs)]
 #![feature(simd)]
 #![feature(staged_api)]
 #![feature(unboxed_closures)]
-#![feature(rustc_attrs)]
-#![feature(optin_builtin_traits)]
-#![feature(fundamental)]
-#![feature(concat_idents)]
-#![feature(reflect)]
-#![feature(custom_attribute)]
+
+#[macro_use] #[no_link] extern crate rustc_bitflags;
 
 #[macro_use]
 mod macros;
@@ -173,4 +176,6 @@ mod core {
 mod std {
     // range syntax
     pub use ops;
+    // bitflags!{}
+    pub use option;
 }
