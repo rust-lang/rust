@@ -3759,8 +3759,36 @@ pub fn resolve_ty_and_def_ufcs<'a, 'b, 'tcx>(fcx: &FnCtxt<'b, 'tcx>,
                                                         &'a [ast::PathSegment],
                                                         def::Def)>
 {
+
+    // Associated constants can't depend on generic types.
+    fn have_disallowed_generic_consts<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
+                                                def: def::Def,
+                                                ty: Ty<'tcx>,
+                                                span: Span,
+                                                node_id: ast::NodeId) -> bool {
+        match def {
+            def::DefAssociatedConst(..) => {
+                if ty::type_has_params(ty) || ty::type_has_self(ty) {
+                    span_err!(fcx.sess(), span, E0329,
+                              "Associated consts cannot depend \
+                               on type parameters or Self.");
+                    fcx.write_error(node_id);
+                    return true;
+                }
+            }
+            _ => {}
+        }
+        false
+    }
+
     // If fully resolved already, we don't have to do anything.
     if path_res.depth == 0 {
+        if let Some(ty) = opt_self_ty {
+            if have_disallowed_generic_consts(fcx, path_res.full_def(), ty,
+                                              span, node_id) {
+                return None;
+            }
+        }
         Some((opt_self_ty, &path.segments, path_res.base_def))
     } else {
         let mut def = path_res.base_def;
@@ -3776,6 +3804,9 @@ pub fn resolve_ty_and_def_ufcs<'a, 'b, 'tcx>(fcx: &FnCtxt<'b, 'tcx>,
         let item_name = item_segment.identifier.name;
         match method::resolve_ufcs(fcx, span, item_name, ty, node_id) {
             Ok((def, lp)) => {
+                if have_disallowed_generic_consts(fcx, def, ty, span, node_id) {
+                    return None;
+                }
                 // Write back the new resolution.
                 fcx.ccx.tcx.def_map.borrow_mut()
                        .insert(node_id, def::PathResolution {

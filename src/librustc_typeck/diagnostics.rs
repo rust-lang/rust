@@ -1103,6 +1103,7 @@ register_diagnostics! {
     E0326, // associated const implemented with different type from trait
     E0327, // referred to method instead of constant in match pattern
     E0328, // cannot implement Unsize explicitly
+    E0329, // associated const depends on type parameter or Self.
     E0366, // dropck forbid specialization to concrete type or region
     E0367, // dropck forbid specialization to predicate not in struct/enum
     E0369, // binary operation `<op>` cannot be applied to types
