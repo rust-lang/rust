@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 //
-// ignore-stage1 (#20184)
+// WONTFIX(#20184) Needs landing pads (not present in stage1) or the compiler hangs.
+// ignore-stage1
 // compile-flags: -C codegen-units=2
 // error-pattern: build without -C codegen-units for more exact errors
 
