@@ -598,40 +598,94 @@ pub fn page_size() -> usize {
 pub mod consts {
     /// A string describing the architecture of the CPU that this is currently
     /// in use.
+    ///
+    /// Some possible values:
+    ///
+    /// - x86
+    /// - x86_64
+    /// - arm
+    /// - aarch64
+    /// - mips
+    /// - mipsel
+    /// - powerpc
     #[stable(feature = "env", since = "1.0.0")]
     pub const ARCH: &'static str = super::arch::ARCH;
 
     /// The family of the operating system. In this case, `unix`.
+    ///
+    /// Some possible values:
+    ///
+    /// - unix
+    /// - windows
     #[stable(feature = "env", since = "1.0.0")]
     pub const FAMILY: &'static str = super::os::FAMILY;
 
     /// A string describing the specific operating system in use: in this
     /// case, `linux`.
+    ///
+    /// Some possible values:
+    ///
+    /// - linux
+    /// - macos
+    /// - ios
+    /// - freebsd
+    /// - dragonfly
+    /// - bitrig
+    /// - openbsd
+    /// - android
+    /// - windows
     #[stable(feature = "env", since = "1.0.0")]
     pub const OS: &'static str = super::os::OS;
 
     /// Specifies the filename prefix used for shared libraries on this
     /// platform: in this case, `lib`.
+    ///
+    /// Some possible values:
+    ///
+    /// - lib
+    /// - `""` (an empty string)
     #[stable(feature = "env", since = "1.0.0")]
     pub const DLL_PREFIX: &'static str = super::os::DLL_PREFIX;
 
     /// Specifies the filename suffix used for shared libraries on this
     /// platform: in this case, `.so`.
+    ///
+    /// Some possible values:
+    ///
+    /// - .so
+    /// - .dylib
+    /// - .dll
     #[stable(feature = "env", since = "1.0.0")]
     pub const DLL_SUFFIX: &'static str = super::os::DLL_SUFFIX;
 
     /// Specifies the file extension used for shared libraries on this
     /// platform that goes after the dot: in this case, `so`.
+    ///
+    /// Some possible values:
+    ///
+    /// - .so
+    /// - .dylib
+    /// - .dll
     #[stable(feature = "env", since = "1.0.0")]
     pub const DLL_EXTENSION: &'static str = super::os::DLL_EXTENSION;
 
     /// Specifies the filename suffix used for executable binaries on this
     /// platform: in this case, the empty string.
+    ///
+    /// Some possible values:
+    ///
+    /// - exe
+    /// - `""` (an empty string)
     #[stable(feature = "env", since = "1.0.0")]
     pub const EXE_SUFFIX: &'static str = super::os::EXE_SUFFIX;
 
     /// Specifies the file extension, if any, used for executable binaries
     /// on this platform: in this case, the empty string.
+    ///
+    /// Some possible values:
+    ///
+    /// - exe
+    /// - `""` (an empty string)
     #[stable(feature = "env", since = "1.0.0")]
     pub const EXE_EXTENSION: &'static str = super::os::EXE_EXTENSION;
 
