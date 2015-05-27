@@ -33,7 +33,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use getopts::{optopt, optflag, reqopt};
 use common::Config;
-use common::{Pretty, DebugInfoGdb, DebugInfoLldb, Codegen};
+use common::{Pretty, DebugInfoGdb, DebugInfoLldb};
 use util::logv;
 
 pub mod procsrv;
@@ -63,7 +63,6 @@ pub fn parse_config(args: Vec<String> ) -> Config {
           reqopt("", "rustc-path", "path to rustc to use for compiling", "PATH"),
           reqopt("", "rustdoc-path", "path to rustdoc to use for compiling", "PATH"),
           reqopt("", "python", "path to python to use for doc tests", "PATH"),
-          optopt("", "clang-path", "path to  executable for codegen tests", "PATH"),
           optopt("", "valgrind-path", "path to Valgrind executable for Valgrind tests", "PROGRAM"),
           optflag("", "force-valgrind", "fail if Valgrind tests cannot be run under Valgrind"),
           optopt("", "llvm-bin-path", "path to directory holding llvm binaries", "DIR"),
@@ -133,7 +132,6 @@ pub fn parse_config(args: Vec<String> ) -> Config {
         rustc_path: opt_path(matches, "rustc-path"),
         rustdoc_path: opt_path(matches, "rustdoc-path"),
         python: matches.opt_str("python").unwrap(),
-        clang_path: matches.opt_str("clang-path").map(|s| PathBuf::from(&s)),
         valgrind_path: matches.opt_str("valgrind-path"),
         force_valgrind: matches.opt_present("force-valgrind"),
         llvm_bin_path: matches.opt_str("llvm-bin-path").map(|s| PathBuf::from(&s)),
@@ -284,13 +282,7 @@ pub fn make_tests(config: &Config) -> Vec<test::TestDescAndFn> {
         let file = file.unwrap().path();
         debug!("inspecting file {:?}", file.display());
         if is_test(config, &file) {
-            let t = make_test(config, &file, || {
-                match config.mode {
-                    Codegen => make_metrics_test_closure(config, &file),
-                    _ => make_test_closure(config, &file)
-                }
-            });
-            tests.push(t)
+            tests.push(make_test(config, &file))
         }
     }
     tests
@@ -323,8 +315,7 @@ pub fn is_test(config: &Config, testfile: &Path) -> bool {
     return valid;
 }
 
-pub fn make_test<F>(config: &Config, testfile: &Path, f: F) -> test::TestDescAndFn where
-    F: FnOnce() -> test::TestFn,
+pub fn make_test(config: &Config, testfile: &Path) -> test::TestDescAndFn
 {
     test::TestDescAndFn {
         desc: test::TestDesc {
@@ -332,7 +323,7 @@ pub fn make_test<F>(config: &Config, testfile: &Path, f: F) -> test::TestDescAnd
             ignore: header::is_test_ignored(config, testfile),
             should_panic: test::ShouldPanic::No,
         },
-        testfn: f(),
+        testfn: make_test_closure(config, &testfile),
     }
 }
 
@@ -355,14 +346,6 @@ pub fn make_test_closure(config: &Config, testfile: &Path) -> test::TestFn {
     test::DynTestFn(Box::new(move || {
         runtest::run(config, &testfile)
     }))
-}
-
-pub fn make_metrics_test_closure(config: &Config, testfile: &Path) -> test::TestFn {
-    let config = (*config).clone();
-    let testfile = testfile.to_path_buf();
-    test::DynMetricFn(box move |mm: &mut test::MetricMap| {
-        runtest::run_metrics(config, &testfile, mm)
-    })
 }
 
 fn extract_gdb_version(full_version_line: Option<String>) -> Option<String> {
