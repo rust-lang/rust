@@ -196,9 +196,13 @@ const Y: i32 = A;
 "##,
 
 E0015: r##"
-The only function calls allowed in static or constant expressions are enum
-variant constructors or struct constructors (for unit or tuple structs). This
-is because Rust currently does not support compile-time function execution.
+The only function calls allowed in static or constant expressions are
+constructors for enum variants and structs, or `const fn`s. Rust currently does
+not support more general compile-time function execution.
+
+See [RFC 911] for more details on the design of `const fn`s.
+
+[RFC 911]: https://github.com/rust-lang/rfcs/pull/911
 "##,
 
 E0018: r##"
