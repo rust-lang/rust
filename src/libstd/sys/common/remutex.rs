@@ -54,7 +54,7 @@ impl<T> ReentrantMutex<T> {
         unsafe {
             let mut mutex = ReentrantMutex {
                 inner: box sys::ReentrantMutex::uninitialized(),
-                poison: poison::FLAG_INIT,
+                poison: poison::Flag::new(),
                 data: t,
             };
             mutex.inner.init();

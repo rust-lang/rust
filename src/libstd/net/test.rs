@@ -12,9 +12,9 @@ use prelude::v1::*;
 
 use env;
 use net::{SocketAddr, SocketAddrV4, SocketAddrV6, Ipv4Addr, Ipv6Addr, ToSocketAddrs};
-use sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT, Ordering};
+use sync::atomic::{AtomicUsize, Ordering};
 
-static PORT: AtomicUsize = ATOMIC_USIZE_INIT;
+static PORT: AtomicUsize = AtomicUsize::new(0);
 
 pub fn next_test_ip4() -> SocketAddr {
     let port = PORT.fetch_add(1, Ordering::SeqCst) as u16 + base_port();

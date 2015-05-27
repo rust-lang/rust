@@ -15,7 +15,7 @@ use libc::types::os::arch::extra::{DWORD, LPVOID, BOOL};
 use boxed;
 use ptr;
 use rt;
-use sys_common::mutex::{MUTEX_INIT, Mutex};
+use sys_common::mutex::Mutex;
 
 pub type Key = DWORD;
 pub type Dtor = unsafe extern fn(*mut u8);
@@ -58,7 +58,7 @@ pub type Dtor = unsafe extern fn(*mut u8);
 // on poisoning and this module needs to operate at a lower level than requiring
 // the thread infrastructure to be in place (useful on the borders of
 // initialization/destruction).
-static DTOR_LOCK: Mutex = MUTEX_INIT;
+static DTOR_LOCK: Mutex = Mutex::new();
 static mut DTORS: *mut Vec<(Key, Dtor)> = 0 as *mut _;
 
 // -------------------------------------------------------------------------

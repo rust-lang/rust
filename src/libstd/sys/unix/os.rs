@@ -216,8 +216,8 @@ pub fn current_exe() -> io::Result<PathBuf> {
 
 #[cfg(any(target_os = "bitrig", target_os = "openbsd"))]
 pub fn current_exe() -> io::Result<PathBuf> {
-    use sync::{StaticMutex, MUTEX_INIT};
-    static LOCK: StaticMutex = MUTEX_INIT;
+    use sync::StaticMutex;
+    static LOCK: StaticMutex = StaticMutex::new();
 
     extern {
         fn rust_current_exe() -> *const c_char;

@@ -10,26 +10,28 @@
 
 use prelude::v1::*;
 
-use marker::Reflect;
-use cell::UnsafeCell;
+use cell::Cell;
 use error::{Error};
 use fmt;
+use marker::Reflect;
 use thread;
 
-pub struct Flag { failed: UnsafeCell<bool> }
+pub struct Flag { failed: Cell<bool> }
 
 // This flag is only ever accessed with a lock previously held. Note that this
 // a totally private structure.
 unsafe impl Send for Flag {}
 unsafe impl Sync for Flag {}
 
-pub const FLAG_INIT: Flag = Flag { failed: UnsafeCell { value: false } };
-
 impl Flag {
+    pub const fn new() -> Flag {
+        Flag { failed: Cell::new(false) }
+    }
+
     #[inline]
     pub fn borrow(&self) -> LockResult<Guard> {
         let ret = Guard { panicking: thread::panicking() };
-        if unsafe { *self.failed.get() } {
+        if self.get() {
             Err(PoisonError::new(ret))
         } else {
             Ok(ret)
@@ -39,13 +41,13 @@ impl Flag {
     #[inline]
     pub fn done(&self, guard: &Guard) {
         if !guard.panicking && thread::panicking() {
-            unsafe { *self.failed.get() = true; }
+            self.failed.set(true);
         }
     }
 
     #[inline]
     pub fn get(&self) -> bool {
-        unsafe { *self.failed.get() }
+        self.failed.get()
     }
 }
 

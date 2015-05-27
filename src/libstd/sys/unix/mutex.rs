@@ -21,20 +21,15 @@ pub unsafe fn raw(m: &Mutex) -> *mut ffi::pthread_mutex_t {
     m.inner.get()
 }
 
-pub const MUTEX_INIT: Mutex = Mutex {
-    inner: UnsafeCell { value: ffi::PTHREAD_MUTEX_INITIALIZER },
-};
-
 unsafe impl Send for Mutex {}
 unsafe impl Sync for Mutex {}
 
 #[allow(dead_code)] // sys isn't exported yet
 impl Mutex {
-    #[inline]
-    pub unsafe fn new() -> Mutex {
+    pub const fn new() -> Mutex {
         // Might be moved and address is changing it is better to avoid
         // initialization of potentially opaque OS data before it landed
-        MUTEX_INIT
+        Mutex { inner: UnsafeCell::new(ffi::PTHREAD_MUTEX_INITIALIZER) }
     }
     #[inline]
     pub unsafe fn lock(&self) {

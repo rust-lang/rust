@@ -23,8 +23,8 @@ use ffi::{OsStr, OsString};
 use fmt;
 use io;
 use path::{Path, PathBuf};
-use sync::atomic::{AtomicIsize, ATOMIC_ISIZE_INIT, Ordering};
-use sync::{StaticMutex, MUTEX_INIT};
+use sync::atomic::{AtomicIsize, Ordering};
+use sync::StaticMutex;
 use sys::os as os_imp;
 
 /// Returns the current working directory as a `PathBuf`.
@@ -70,7 +70,7 @@ pub fn set_current_dir<P: AsRef<Path>>(p: P) -> io::Result<()> {
     os_imp::chdir(p.as_ref())
 }
 
-static ENV_LOCK: StaticMutex = MUTEX_INIT;
+static ENV_LOCK: StaticMutex = StaticMutex::new();
 
 /// An iterator over a snapshot of the environment variables of this process.
 ///
@@ -475,7 +475,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
     os_imp::current_exe()
 }
 
-static EXIT_STATUS: AtomicIsize = ATOMIC_ISIZE_INIT;
+static EXIT_STATUS: AtomicIsize = AtomicIsize::new(0);
 
 /// Sets the process exit code
 ///

@@ -11,7 +11,7 @@
 
 #![feature(rand, core)]
 
-use std::sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT, Ordering};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::__rand::{thread_rng, Rng};
 use std::thread;
 
@@ -20,20 +20,20 @@ const MAX_LEN: usize = 32;
 static drop_counts: [AtomicUsize;  MAX_LEN] =
     // FIXME #5244: AtomicUsize is not Copy.
     [
-        ATOMIC_USIZE_INIT, ATOMIC_USIZE_INIT, ATOMIC_USIZE_INIT,
-        ATOMIC_USIZE_INIT, ATOMIC_USIZE_INIT, ATOMIC_USIZE_INIT,
-        ATOMIC_USIZE_INIT, ATOMIC_USIZE_INIT, ATOMIC_USIZE_INIT,
-        ATOMIC_USIZE_INIT, ATOMIC_USIZE_INIT, ATOMIC_USIZE_INIT,
-        ATOMIC_USIZE_INIT, ATOMIC_USIZE_INIT, ATOMIC_USIZE_INIT,
-        ATOMIC_USIZE_INIT, ATOMIC_USIZE_INIT, ATOMIC_USIZE_INIT,
-        ATOMIC_USIZE_INIT, ATOMIC_USIZE_INIT, ATOMIC_USIZE_INIT,
-        ATOMIC_USIZE_INIT, ATOMIC_USIZE_INIT, ATOMIC_USIZE_INIT,
-        ATOMIC_USIZE_INIT, ATOMIC_USIZE_INIT, ATOMIC_USIZE_INIT,
-        ATOMIC_USIZE_INIT, ATOMIC_USIZE_INIT, ATOMIC_USIZE_INIT,
-        ATOMIC_USIZE_INIT, ATOMIC_USIZE_INIT,
+        AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
+        AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
+        AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
+        AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
+        AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
+        AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
+        AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
+        AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
+        AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
+        AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
+        AtomicUsize::new(0), AtomicUsize::new(0),
      ];
 
-static creation_count: AtomicUsize = ATOMIC_USIZE_INIT;
+static creation_count: AtomicUsize = AtomicUsize::new(0);
 
 #[derive(Clone, PartialEq, PartialOrd, Eq, Ord)]
 struct DropCounter { x: u32, creation_id: usize }

@@ -122,7 +122,7 @@ pub struct StdinLock<'a> {
 /// locked version, `StdinLock`, implements both `Read` and `BufRead`, however.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn stdin() -> Stdin {
-    static INSTANCE: Lazy<Mutex<BufReader<StdinRaw>>> = lazy_init!(stdin_init);
+    static INSTANCE: Lazy<Mutex<BufReader<StdinRaw>>> = Lazy::new(stdin_init);
     return Stdin {
         inner: INSTANCE.get().expect("cannot access stdin during shutdown"),
     };
@@ -236,7 +236,7 @@ pub struct StdoutLock<'a> {
 /// The returned handle implements the `Write` trait.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn stdout() -> Stdout {
-    static INSTANCE: Lazy<ReentrantMutex<RefCell<LineWriter<StdoutRaw>>>> = lazy_init!(stdout_init);
+    static INSTANCE: Lazy<ReentrantMutex<RefCell<LineWriter<StdoutRaw>>>> = Lazy::new(stdout_init);
     return Stdout {
         inner: INSTANCE.get().expect("cannot access stdout during shutdown"),
     };
@@ -308,7 +308,7 @@ pub struct StderrLock<'a> {
 /// The returned handle implements the `Write` trait.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn stderr() -> Stderr {
-    static INSTANCE: Lazy<ReentrantMutex<RefCell<StderrRaw>>> = lazy_init!(stderr_init);
+    static INSTANCE: Lazy<ReentrantMutex<RefCell<StderrRaw>>> = Lazy::new(stderr_init);
     return Stderr {
         inner: INSTANCE.get().expect("cannot access stderr during shutdown"),
     };
