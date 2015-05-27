@@ -863,11 +863,6 @@ then
     CFG_DISABLE_JEMALLOC=1
 fi
 
-if [ -z "$CFG_ENABLE_CLANG" -a -z "$CFG_GCC" ]
-then
-    err "either clang or gcc is required"
-fi
-
 # OS X 10.9, gcc is actually clang. This can cause some confusion in the build
 # system, so if we find that gcc is clang, we should just use clang directly.
 if [ $CFG_OSTYPE = apple-darwin -a -z "$CFG_ENABLE_CLANG" ]

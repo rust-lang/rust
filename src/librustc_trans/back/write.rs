@@ -342,8 +342,8 @@ struct HandlerFreeVars<'a> {
 }
 
 unsafe extern "C" fn report_inline_asm<'a, 'b>(cgcx: &'a CodegenContext<'a>,
-                                           msg: &'b str,
-                                           cookie: c_uint) {
+                                               msg: &'b str,
+                                               cookie: c_uint) {
     use syntax::codemap::ExpnId;
 
     match cgcx.lto_ctxt {
