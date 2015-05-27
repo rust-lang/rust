@@ -441,16 +441,16 @@ impl<T> Vec<T> {
 
     /// Extracts a slice containing the entire vector.
     #[inline]
-    #[unstable(feature = "convert",
-               reason = "waiting on RFC revision")]
+    #[deprecated(since = "1.2",
+                reason = "Use slicing syntax instead: &v[..]")]
     pub fn as_slice(&self) -> &[T] {
         self
     }
 
     /// Deprecated: use `&mut s[..]` instead.
     #[inline]
-    #[unstable(feature = "convert",
-               reason = "waiting on RFC revision")]
+    #[deprecated(since = "1.2",
+                reason = "Use slicing syntax instead: &mut v[..]")]
     pub fn as_mut_slice(&mut self) -> &mut [T] {
         &mut self[..]
     }
