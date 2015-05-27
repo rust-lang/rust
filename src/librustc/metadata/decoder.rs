@@ -220,16 +220,8 @@ fn get_provided_source(d: rbml::Doc, cdata: Cmd) -> Option<ast::DefId> {
     })
 }
 
-fn each_reexport<F>(d: rbml::Doc, mut f: F) -> bool where
-    F: FnMut(rbml::Doc) -> bool,
-{
-    for doc in reader::tagged_docs(d, tag_items_data_item_reexport) {
-        if !f(doc) {
-            return false;
-        }
-    }
-
-    true
+fn reexports<'a>(d: rbml::Doc<'a>) -> reader::TaggedDocsIterator<'a> {
+    reader::tagged_docs(d, tag_items_data_item_reexport)
 }
 
 fn variant_disr_val(d: rbml::Doc) -> Option<ty::Disr> {
@@ -615,8 +607,7 @@ fn each_child_of_item_or_crate<F, G>(intr: Rc<IdentInterner>,
         }
     }
 
-    // Iterate over all reexports.
-    let _ = each_reexport(item_doc, |reexport_doc| {
+    for reexport_doc in reexports(item_doc) {
         let def_id_doc = reader::get_doc(reexport_doc,
                                          tag_items_data_item_reexport_def_id);
         let child_def_id = translated_def_id(cdata, def_id_doc);
@@ -646,9 +637,7 @@ fn each_child_of_item_or_crate<F, G>(intr: Rc<IdentInterner>,
             // a public re-export.
             callback(def_like, token::intern(name), ast::Public);
         }
-
-        true
-    });
+    }
 }
 
 /// Iterates over each child of the given item.
