@@ -129,9 +129,7 @@ impl Error {
     ///
     /// This function is used to generically create I/O errors which do not
     /// originate from the OS itself. The `error` argument is an arbitrary
-    /// payload which will be contained in this `Error`. Accessors as well as
-    /// downcasting will soon be added to this type as well to access the custom
-    /// information.
+    /// payload which will be contained in this `Error`.
     ///
     /// # Examples
     ///
