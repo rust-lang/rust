@@ -17,10 +17,13 @@ use sys::rwlock as imp;
 /// safer types at the top level of this crate instead of this type.
 pub struct RWLock(imp::RWLock);
 
-/// Constant initializer for static RWLocks.
-pub const RWLOCK_INIT: RWLock = RWLock(imp::RWLOCK_INIT);
-
 impl RWLock {
+    /// Creates a new reader-writer lock for use.
+    ///
+    /// Behavior is undefined if the reader-writer lock is moved after it is
+    /// first used with any of the functions below.
+    pub const fn new() -> RWLock { RWLock(imp::RWLock::new()) }
+
     /// Acquires shared access to the underlying lock, blocking the current
     /// thread to do so.
     ///

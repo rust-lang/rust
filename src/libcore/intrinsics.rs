@@ -145,13 +145,9 @@ extern "rust-intrinsic" {
     /// but no instructions will be emitted for it. This is appropriate for operations
     /// on the same thread that may be preempted, such as when interacting with signal
     /// handlers.
-    #[cfg(not(stage0))]     // SNAP 857ef6e
     pub fn atomic_singlethreadfence();
-    #[cfg(not(stage0))]     // SNAP 857ef6e
     pub fn atomic_singlethreadfence_acq();
-    #[cfg(not(stage0))]     // SNAP 857ef6e
     pub fn atomic_singlethreadfence_rel();
-    #[cfg(not(stage0))]     // SNAP 857ef6e
     pub fn atomic_singlethreadfence_acqrel();
 
     /// Aborts the execution of the process.
@@ -193,11 +189,8 @@ extern "rust-intrinsic" {
     pub fn min_align_of<T>() -> usize;
     pub fn pref_align_of<T>() -> usize;
 
-    #[cfg(not(stage0))]
     pub fn size_of_val<T: ?Sized>(_: &T) -> usize;
-    #[cfg(not(stage0))]
     pub fn min_align_of_val<T: ?Sized>(_: &T) -> usize;
-    #[cfg(not(stage0))]
     pub fn drop_in_place<T: ?Sized>(_: *mut T);
 
     /// Gets a static string slice containing the name of a type.
@@ -294,7 +287,6 @@ extern "rust-intrinsic" {
     /// resulting pointer to point into or one byte past the end of an allocated
     /// object, and it wraps with two's complement arithmetic. The resulting
     /// value is not necessarily valid to be used to actually access memory.
-    #[cfg(not(stage0))]
     pub fn arith_offset<T>(dst: *const T, offset: isize) -> *const T;
 
     /// Copies `count * size_of<T>` bytes from `src` to `dst`. The source
@@ -592,13 +584,6 @@ extern "rust-intrinsic" {
     /// Returns (a * b) mod 2^N, where N is the width of N in bits.
     pub fn overflowing_mul<T>(a: T, b: T) -> T;
 
-    /// Returns the value of the discriminant for the variant in 'v',
-    /// cast to a `u64`; if `T` has no discriminant, returns 0.
-    pub fn discriminant_value<T>(v: &T) -> u64;
-}
-
-#[cfg(not(stage0))]
-extern "rust-intrinsic" {
     /// Performs an unchecked signed division, which results in undefined behavior,
     /// in cases where y == 0, or x == int::MIN and y == -1
     pub fn unchecked_sdiv<T>(x: T, y: T) -> T;
@@ -612,4 +597,8 @@ extern "rust-intrinsic" {
     /// Returns the remainder of an unchecked signed division, which results in
     /// undefined behavior, in cases where y == 0
     pub fn unchecked_srem<T>(x: T, y: T) -> T;
+
+    /// Returns the value of the discriminant for the variant in 'v',
+    /// cast to a `u64`; if `T` has no discriminant, returns 0.
+    pub fn discriminant_value<T>(v: &T) -> u64;
 }

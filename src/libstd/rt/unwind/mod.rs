@@ -72,7 +72,7 @@ use intrinsics;
 use libc::c_void;
 use mem;
 use sync::atomic::{self, Ordering};
-use sys_common::mutex::{Mutex, MUTEX_INIT};
+use sys_common::mutex::Mutex;
 
 // The actual unwinding implementation is cfg'd here, and we've got two current
 // implementations. One goes through SEH on Windows and the other goes through
@@ -89,15 +89,15 @@ pub type Callback = fn(msg: &(Any + Send), file: &'static str, line: u32);
 // For more information, see below.
 const MAX_CALLBACKS: usize = 16;
 static CALLBACKS: [atomic::AtomicUsize; MAX_CALLBACKS] =
-        [atomic::ATOMIC_USIZE_INIT, atomic::ATOMIC_USIZE_INIT,
-         atomic::ATOMIC_USIZE_INIT, atomic::ATOMIC_USIZE_INIT,
-         atomic::ATOMIC_USIZE_INIT, atomic::ATOMIC_USIZE_INIT,
-         atomic::ATOMIC_USIZE_INIT, atomic::ATOMIC_USIZE_INIT,
-         atomic::ATOMIC_USIZE_INIT, atomic::ATOMIC_USIZE_INIT,
-         atomic::ATOMIC_USIZE_INIT, atomic::ATOMIC_USIZE_INIT,
-         atomic::ATOMIC_USIZE_INIT, atomic::ATOMIC_USIZE_INIT,
-         atomic::ATOMIC_USIZE_INIT, atomic::ATOMIC_USIZE_INIT];
-static CALLBACK_CNT: atomic::AtomicUsize = atomic::ATOMIC_USIZE_INIT;
+        [atomic::AtomicUsize::new(0), atomic::AtomicUsize::new(0),
+         atomic::AtomicUsize::new(0), atomic::AtomicUsize::new(0),
+         atomic::AtomicUsize::new(0), atomic::AtomicUsize::new(0),
+         atomic::AtomicUsize::new(0), atomic::AtomicUsize::new(0),
+         atomic::AtomicUsize::new(0), atomic::AtomicUsize::new(0),
+         atomic::AtomicUsize::new(0), atomic::AtomicUsize::new(0),
+         atomic::AtomicUsize::new(0), atomic::AtomicUsize::new(0),
+         atomic::AtomicUsize::new(0), atomic::AtomicUsize::new(0)];
+static CALLBACK_CNT: atomic::AtomicUsize = atomic::AtomicUsize::new(0);
 
 thread_local! { static PANICKING: Cell<bool> = Cell::new(false) }
 
@@ -243,7 +243,7 @@ fn begin_unwind_inner(msg: Box<Any + Send>,
     // `std::sync` one as accessing TLS can cause weird recursive problems (and
     // we don't need poison checking).
     unsafe {
-        static LOCK: Mutex = MUTEX_INIT;
+        static LOCK: Mutex = Mutex::new();
         static mut INIT: bool = false;
         LOCK.lock();
         if !INIT {

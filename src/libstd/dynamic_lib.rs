@@ -211,8 +211,8 @@ mod dl {
     pub fn check_for_errors_in<T, F>(f: F) -> Result<T, String> where
         F: FnOnce() -> T,
     {
-        use sync::{StaticMutex, MUTEX_INIT};
-        static LOCK: StaticMutex = MUTEX_INIT;
+        use sync::StaticMutex;
+        static LOCK: StaticMutex = StaticMutex::new();
         unsafe {
             // dlerror isn't thread safe, so we need to lock around this entire
             // sequence

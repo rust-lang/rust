@@ -216,8 +216,7 @@ pub use self::local::{LocalKey, LocalKeyState};
                       consider stabilizing its interface")]
 pub use self::scoped_tls::ScopedKey;
 
-#[doc(hidden)] pub use self::local::__impl as __local;
-#[doc(hidden)] pub use self::scoped_tls::__impl as __scoped;
+#[doc(hidden)] pub use self::local::__KeyInner as __LocalKeyInner;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Builder

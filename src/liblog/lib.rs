@@ -184,7 +184,7 @@ use std::mem;
 use std::env;
 use std::rt;
 use std::slice;
-use std::sync::{Once, ONCE_INIT, StaticMutex, MUTEX_INIT};
+use std::sync::{Once, StaticMutex};
 
 use directive::LOG_LEVEL_NAMES;
 
@@ -200,7 +200,7 @@ pub const MAX_LOG_LEVEL: u32 = 255;
 /// The default logging level of a crate if no other is specified.
 const DEFAULT_LOG_LEVEL: u32 = 1;
 
-static LOCK: StaticMutex = MUTEX_INIT;
+static LOCK: StaticMutex = StaticMutex::new();
 
 /// An unsafe constant that is the maximum logging level of any module
 /// specified. This is the first line of defense to determining whether a
@@ -367,7 +367,7 @@ pub struct LogLocation {
 /// module's log statement should be emitted or not.
 #[doc(hidden)]
 pub fn mod_enabled(level: u32, module: &str) -> bool {
-    static INIT: Once = ONCE_INIT;
+    static INIT: Once = Once::new();
     INIT.call_once(init);
 
     // It's possible for many threads are in this function, only one of them

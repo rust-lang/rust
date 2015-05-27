@@ -18,7 +18,7 @@ use net::SocketAddr;
 use num::One;
 use ops::Neg;
 use rt;
-use sync::{Once, ONCE_INIT};
+use sync::Once;
 use sys::c;
 use sys_common::{AsInner, FromInner};
 
@@ -29,7 +29,7 @@ pub struct Socket(libc::SOCKET);
 /// Checks whether the Windows socket interface has been started already, and
 /// if not, starts it.
 pub fn init() {
-    static START: Once = ONCE_INIT;
+    static START: Once = Once::new();
 
     START.call_once(|| unsafe {
         let mut data: c::WSADATA = mem::zeroed();

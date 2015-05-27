@@ -20,7 +20,7 @@ use boxed;
 use boxed::Box;
 use vec::Vec;
 use thunk::Thunk;
-use sys_common::mutex::{Mutex, MUTEX_INIT};
+use sys_common::mutex::Mutex;
 
 type Queue = Vec<Thunk<'static>>;
 
@@ -28,7 +28,7 @@ type Queue = Vec<Thunk<'static>>;
 // on poisoning and this module needs to operate at a lower level than requiring
 // the thread infrastructure to be in place (useful on the borders of
 // initialization/destruction).
-static LOCK: Mutex = MUTEX_INIT;
+static LOCK: Mutex = Mutex::new();
 static mut QUEUE: *mut Queue = 0 as *mut Queue;
 
 // The maximum number of times the cleanup routines will be run. While running

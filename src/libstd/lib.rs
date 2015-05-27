@@ -109,6 +109,7 @@
 #![feature(box_syntax)]
 #![feature(collections)]
 #![feature(core)]
+#![feature(const_fn)]
 #![feature(into_cow)]
 #![feature(lang_items)]
 #![feature(libc)]

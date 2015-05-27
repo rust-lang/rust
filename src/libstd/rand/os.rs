@@ -96,11 +96,11 @@ mod imp {
                   target_arch = "aarch64",
                   target_arch = "powerpc")))]
     fn is_getrandom_available() -> bool {
-        use sync::atomic::{AtomicBool, ATOMIC_BOOL_INIT, Ordering};
-        use sync::{Once, ONCE_INIT};
+        use sync::atomic::{AtomicBool, Ordering};
+        use sync::Once;
 
-        static CHECKER: Once = ONCE_INIT;
-        static AVAILABLE: AtomicBool = ATOMIC_BOOL_INIT;
+        static CHECKER: Once = Once::new();
+        static AVAILABLE: AtomicBool = AtomicBool::new(false);
 
         CHECKER.call_once(|| {
             let mut buf: [u8; 0] = [];

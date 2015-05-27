@@ -10,7 +10,7 @@
 use libc;
 use ops::Sub;
 use time::Duration;
-use sync::{Once, ONCE_INIT};
+use sync::Once;
 
 const NANOS_PER_SEC: u64 = 1_000_000_000;
 
@@ -28,7 +28,7 @@ impl SteadyTime {
 
 fn frequency() -> libc::LARGE_INTEGER {
     static mut FREQUENCY: libc::LARGE_INTEGER = 0;
-    static ONCE: Once = ONCE_INIT;
+    static ONCE: Once = Once::new();
 
     unsafe {
         ONCE.call_once(|| {

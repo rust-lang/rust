@@ -24,7 +24,7 @@ use mem;
 use os::windows::ffi::OsStrExt;
 use path::Path;
 use ptr;
-use sync::{StaticMutex, MUTEX_INIT};
+use sync::StaticMutex;
 use sys::c;
 use sys::fs::{OpenOptions, File};
 use sys::handle::Handle;
@@ -169,7 +169,7 @@ impl Process {
         try!(unsafe {
             // `CreateProcess` is racy!
             // http://support.microsoft.com/kb/315939
-            static CREATE_PROCESS_LOCK: StaticMutex = MUTEX_INIT;
+            static CREATE_PROCESS_LOCK: StaticMutex = StaticMutex::new();
             let _lock = CREATE_PROCESS_LOCK.lock();
 
             cvt(CreateProcessW(ptr::null(),

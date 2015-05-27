@@ -86,19 +86,13 @@ use sys::thread_local as imp;
 /// }
 /// ```
 pub struct StaticKey {
-    /// Inner static TLS key (internals), created with by `INIT_INNER` in this
-    /// module.
-    pub inner: StaticKeyInner,
+    /// Inner static TLS key (internals).
+    key: AtomicUsize,
     /// Destructor for the TLS value.
     ///
     /// See `Key::new` for information about when the destructor runs and how
     /// it runs.
-    pub dtor: Option<unsafe extern fn(*mut u8)>,
-}
-
-/// Inner contents of `StaticKey`, created by the `INIT_INNER` constant.
-pub struct StaticKeyInner {
-    key: AtomicUsize,
+    dtor: Option<unsafe extern fn(*mut u8)>,
 }
 
 /// A type for a safely managed OS-based TLS slot.
@@ -129,19 +123,16 @@ pub struct Key {
 /// Constant initialization value for static TLS keys.
 ///
 /// This value specifies no destructor by default.
-pub const INIT: StaticKey = StaticKey {
-    inner: INIT_INNER,
-    dtor: None,
-};
-
-/// Constant initialization value for the inner part of static TLS keys.
-///
-/// This value allows specific configuration of the destructor for a TLS key.
-pub const INIT_INNER: StaticKeyInner = StaticKeyInner {
-    key: atomic::ATOMIC_USIZE_INIT,
-};
+pub const INIT: StaticKey = StaticKey::new(None);
 
 impl StaticKey {
+    pub const fn new(dtor: Option<unsafe extern fn(*mut u8)>) -> StaticKey {
+        StaticKey {
+            key: atomic::AtomicUsize::new(0),
+            dtor: dtor
+        }
+    }
+
     /// Gets the value associated with this TLS key
     ///
     /// This will lazily allocate a TLS key from the OS if one has not already
@@ -164,7 +155,7 @@ impl StaticKey {
     /// Note that this does *not* run the user-provided destructor if one was
     /// specified at definition time. Doing so must be done manually.
     pub unsafe fn destroy(&self) {
-        match self.inner.key.swap(0, Ordering::SeqCst) {
+        match self.key.swap(0, Ordering::SeqCst) {
             0 => {}
             n => { imp::destroy(n as imp::Key) }
         }
@@ -172,7 +163,7 @@ impl StaticKey {
 
     #[inline]
     unsafe fn key(&self) -> imp::Key {
-        match self.inner.key.load(Ordering::Relaxed) {
+        match self.key.load(Ordering::Relaxed) {
             0 => self.lazy_init() as imp::Key,
             n => n as imp::Key
         }
@@ -197,7 +188,7 @@ impl StaticKey {
             key2
         };
         assert!(key != 0);
-        match self.inner.key.compare_and_swap(0, key as usize, Ordering::SeqCst) {
+        match self.key.compare_and_swap(0, key as usize, Ordering::SeqCst) {
             // The CAS succeeded, so we've created the actual key
             0 => key as usize,
             // If someone beat us to the punch, use their key instead
@@ -245,7 +236,7 @@ impl Drop for Key {
 #[cfg(test)]
 mod tests {
     use prelude::v1::*;
-    use super::{Key, StaticKey, INIT_INNER};
+    use super::{Key, StaticKey};
 
     fn assert_sync<T: Sync>() {}
     fn assert_send<T: Send>() {}
@@ -267,8 +258,8 @@ mod tests {
 
     #[test]
     fn statik() {
-        static K1: StaticKey = StaticKey { inner: INIT_INNER, dtor: None };
-        static K2: StaticKey = StaticKey { inner: INIT_INNER, dtor: None };
+        static K1: StaticKey = StaticKey::new(None);
+        static K2: StaticKey = StaticKey::new(None);
 
         unsafe {
             assert!(K1.get().is_null());

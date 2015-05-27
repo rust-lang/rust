@@ -36,13 +36,12 @@ pub use self::stdio::{StdoutLock, StderrLock, StdinLock};
 #[doc(no_inline, hidden)]
 pub use self::stdio::{set_panic, set_print};
 
-#[macro_use] mod lazy;
-
 pub mod prelude;
 mod buffered;
 mod cursor;
 mod error;
 mod impls;
+mod lazy;
 mod util;
 mod stdio;
 

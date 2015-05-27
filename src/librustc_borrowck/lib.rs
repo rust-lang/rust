@@ -47,7 +47,4 @@ mod borrowck;
 
 pub mod graphviz;
 
-#[cfg(stage0)]
-__build_diagnostic_array! { DIAGNOSTICS }
-#[cfg(not(stage0))]
 __build_diagnostic_array! { librustc_borrowck, DIAGNOSTICS }

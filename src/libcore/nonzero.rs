@@ -11,9 +11,7 @@
 //! Exposes the NonZero lang item which provides optimization hints.
 
 use marker::Sized;
-use ops::Deref;
-#[cfg(not(stage0))]
-use ops::CoerceUnsized;
+use ops::{CoerceUnsized, Deref};
 
 /// Unsafe trait to indicate what types are usable with the NonZero struct
 pub unsafe trait Zeroable {}
@@ -57,5 +55,4 @@ impl<T: Zeroable> Deref for NonZero<T> {
     }
 }
 
-#[cfg(not(stage0))]
 impl<T: Zeroable+CoerceUnsized<U>, U: Zeroable> CoerceUnsized<NonZero<U>> for NonZero<T> {}

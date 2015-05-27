@@ -13,7 +13,7 @@
 // construction.
 
 
-use std::sync::atomic::{Ordering, AtomicUsize, ATOMIC_USIZE_INIT};
+use std::sync::atomic::{Ordering, AtomicUsize};
 
 #[derive(Debug)]
 struct Noisy(u8);
@@ -69,7 +69,7 @@ pub fn main() {
     assert_eq!(0x03_04, event_log());
 }
 
-static LOG: AtomicUsize = ATOMIC_USIZE_INIT;
+static LOG: AtomicUsize = AtomicUsize::new(0);
 
 fn reset_log() {
     LOG.store(0, Ordering::SeqCst);
