@@ -212,7 +212,7 @@ impl<T:Copy> Cell<T> {
         }
     }
 
-    /// Gets a reference to the underlying `UnsafeCell`.
+    /// Returns a reference to the underlying `UnsafeCell`.
     ///
     /// # Unsafety
     ///
@@ -439,7 +439,7 @@ impl<T: ?Sized> RefCell<T> {
         }
     }
 
-    /// Gets a reference to the underlying `UnsafeCell`.
+    /// Returns a reference to the underlying `UnsafeCell`.
     ///
     /// This can be used to circumvent `RefCell`'s safety checks.
     ///
@@ -671,8 +671,8 @@ impl<T> UnsafeCell<T> {
     ///
     /// # Unsafety
     ///
-    /// This function is unsafe because there is no guarantee that this or other threads are
-    /// currently inspecting the inner value.
+    /// This function is unsafe because this thread or another thread may currently be
+    /// inspecting the inner value.
     ///
     /// # Examples
     ///
