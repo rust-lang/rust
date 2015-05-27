@@ -8,15 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(std_misc)]
-
 use std::thread;
 
 macro_rules! expr { ($e: expr) => { $e } }
 
 macro_rules! spawn {
     ($($code: tt)*) => {
-        expr!(thread::spawn(move|| {$($code)*}))
+        expr!(thread::spawn(move|| {$($code)*}).join())
     }
 }
 
