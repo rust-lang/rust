@@ -241,7 +241,7 @@ impl Foo for Bar {
     fn foo(x: i16) { }
 
     // error, values differ in mutability
-    fn foo(&mut self) { }
+    fn bar(&mut self) { }
 }
 ```
 "##,
