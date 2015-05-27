@@ -892,6 +892,8 @@ register_diagnostics! {
     E0316, // nested quantification of lifetimes
     E0370, // discriminant overflow
     E0378, // method calls limited to constant inherent methods
-    E0394  // cannot refer to other statics by value, use the address-of
+    E0394, // cannot refer to other statics by value, use the address-of
            // operator or a constant instead
+    E0395, // pointer comparison in const-expr
+    E0396  // pointer dereference in const-expr
 }

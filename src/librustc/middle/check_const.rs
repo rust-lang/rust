@@ -536,11 +536,32 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
                           "allocations are not allowed in {}s", v.msg());
             }
         }
-        ast::ExprUnary(ast::UnDeref, ref ptr) => {
-            match ty::node_id_to_type(v.tcx, ptr.id).sty {
+        ast::ExprUnary(op, ref inner) => {
+            match ty::node_id_to_type(v.tcx, inner.id).sty {
                 ty::ty_ptr(_) => {
-                    // This shouldn't be allowed in constants at all.
+                    assert!(op == ast::UnDeref);
+
                     v.add_qualif(ConstQualif::NOT_CONST);
+                    if v.mode != Mode::Var {
+                        span_err!(v.tcx.sess, e.span, E0396,
+                                  "raw pointers cannot be dereferenced in {}s", v.msg());
+                    }
+                }
+                _ => {}
+            }
+        }
+        ast::ExprBinary(op, ref lhs, _) => {
+            match ty::node_id_to_type(v.tcx, lhs.id).sty {
+                ty::ty_ptr(_) => {
+                    assert!(op.node == ast::BiEq || op.node == ast::BiNe ||
+                            op.node == ast::BiLe || op.node == ast::BiLt ||
+                            op.node == ast::BiGe || op.node == ast::BiGt);
+
+                    v.add_qualif(ConstQualif::NOT_CONST);
+                    if v.mode != Mode::Var {
+                        span_err!(v.tcx.sess, e.span, E0395,
+                                  "raw pointers cannot be compared in {}s", v.msg());
+                    }
                 }
                 _ => {}
             }
@@ -553,7 +574,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
                     v.add_qualif(ConstQualif::NOT_CONST);
                     if v.mode != Mode::Var {
                         span_err!(v.tcx.sess, e.span, E0018,
-                                  "can't cast a pointer to an integer in {}s", v.msg());
+                                  "raw pointers cannot be cast to integers in {}s", v.msg());
                     }
                 }
                 _ => {}
@@ -695,8 +716,6 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
         }
 
         ast::ExprBlock(_) |
-        ast::ExprUnary(..) |
-        ast::ExprBinary(..) |
         ast::ExprIndex(..) |
         ast::ExprField(..) |
         ast::ExprTupField(..) |
