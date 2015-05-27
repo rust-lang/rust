@@ -714,6 +714,16 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
                     self.insert(ti.id, NodeTraitItem(ti));
                 }
             }
+            ItemUse(ref view_path) => {
+                match view_path.node {
+                    ViewPathList(_, ref paths) => {
+                        for path in paths {
+                            self.insert(path.node.id(), NodeItem(i));
+                        }
+                    }
+                    _ => ()
+                }
+            }
             _ => {}
         }
         visit::walk_item(self, i);
