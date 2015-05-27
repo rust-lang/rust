@@ -495,6 +495,7 @@ fn is_in_follow(_: &ExtCtxt, tok: &Token, frag: &str) -> Result<bool, String> {
             "pat" => {
                 match *tok {
                     FatArrow | Comma | Eq => Ok(true),
+                    Ident(i, _) if i.as_str() == "if" || i.as_str() == "in" => Ok(true),
                     _ => Ok(false)
                 }
             },
