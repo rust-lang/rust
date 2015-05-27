@@ -34,7 +34,7 @@ if __name__ == '__main__':
             summaries.append((fname, summary))
 
     def count(t):
-        return sum(map(lambda (f, s): len(s.get(t, [])), summaries))
+        return sum(map(lambda f: len(f[1].get(t, [])), summaries))
 
     logfiles = sys.argv[1:]
     for files in map(glob.glob, logfiles):
@@ -43,15 +43,15 @@ if __name__ == '__main__':
     failed = count('failed')
     ignored = count('ignored')
     measured = count('bench')
-    print "summary of %d test runs: %d passed; %d failed; %d ignored; %d measured" % \
-          (len(logfiles), ok, failed, ignored, measured)
-    print ""
+    print("summary of %d test runs: %d passed; %d failed; %d ignored; %d measured" %
+          (len(logfiles), ok, failed, ignored, measured))
+    print("")
 
     if failed > 0:
-        print "failed tests:"
+        print("failed tests:")
         for f, s in summaries:
             failures = s.get('failed', [])
             if len(failures) > 0:
-                print "  %s:" % (f)
+                print("  %s:" % (f))
             for test in failures:
-                print "    %s" % (test)
+                print("    %s" % (test))

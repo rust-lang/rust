@@ -81,7 +81,7 @@ check_cr = True
 check_linelength = True
 
 if len(sys.argv) < 2:
-    print "usage: tidy.py <src-dir>"
+    print("usage: tidy.py <src-dir>")
     sys.exit(1)
 
 src_dir = sys.argv[1]
@@ -200,10 +200,10 @@ except UnicodeDecodeError as e:
 
 print
 for ext in sorted(file_counts, key=file_counts.get, reverse=True):
-    print "* linted {} {} files".format(file_counts[ext], ext)
-print "* linted {} other files".format(count_other_linted_files)
-print "* total lines of code: {}".format(count_lines)
-print "* total non-blank lines of code: {}".format(count_non_blank_lines)
-print
+    print("* linted {} {} files".format(file_counts[ext], ext))
+print("* linted {} other files".format(count_other_linted_files))
+print("* total lines of code: {}".format(count_lines))
+print("* total non-blank lines of code: {}".format(count_non_blank_lines))
+print()
 
 sys.exit(err)
