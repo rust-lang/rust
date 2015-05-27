@@ -10,7 +10,7 @@
 
 trait Expr : PartialEq<Self::Item> {
     //~^ ERROR: unsupported cyclic reference between types/traits detected
-    type Item = Expr;
+    type Item;
 }
 
 fn main() {}
