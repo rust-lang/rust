@@ -1,3 +1,21 @@
+Version 1.1.0 (July 2015)
+========================
+
+* NNNN changes, numerous bugfixes
+
+Libraries
+---------
+
+* The [`std::fs` module has been expanded][fs-expand] to expand the set of
+  functionality exposed:
+  * `DirEntry` now supports optimizations like `file_type` and `metadata` which
+    don't incur a syscall on some platforms.
+  * A `symlink_metadata` function has been added.
+  * The `fs::Metadata` structure now lowers to its OS counterpart, providing
+    access to all underlying information.
+
+[fs-expand]: https://github.com/rust-lang/rust/pull/25844
+
 Version 1.0.0 (May 2015)
 ========================
 

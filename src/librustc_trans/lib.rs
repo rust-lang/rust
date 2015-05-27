@@ -38,7 +38,6 @@
 #![feature(staged_api)]
 #![feature(unicode)]
 #![feature(path_ext)]
-#![feature(fs)]
 #![feature(path_relative_from)]
 #![feature(std_misc)]
 

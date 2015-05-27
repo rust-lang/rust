@@ -148,7 +148,7 @@ pub struct OpenOptions(fs_imp::OpenOptions);
 pub struct Permissions(fs_imp::FilePermissions);
 
 /// An structure representing a type of file with accessors for each file type.
-#[unstable(feature = "file_type", reason = "recently added API")]
+#[stable(feature = "file_type", since = "1.1.0")]
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct FileType(fs_imp::FileType);
 
@@ -206,14 +206,6 @@ impl File {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn create<P: AsRef<Path>>(path: P) -> io::Result<File> {
         OpenOptions::new().write(true).create(true).truncate(true).open(path)
-    }
-
-    /// Returns `None`.
-    #[unstable(feature = "file_path",
-               reason = "this abstraction was imposed by this library and was removed")]
-    #[deprecated(since = "1.0.0", reason = "abstraction was removed")]
-    pub fn path(&self) -> Option<&Path> {
-        None
     }
 
     /// Attempts to sync all OS-internal metadata to disk.
@@ -501,7 +493,7 @@ impl AsInnerMut<fs_imp::OpenOptions> for OpenOptions {
 
 impl Metadata {
     /// Returns the file type for this metadata.
-    #[unstable(feature = "file_type", reason = "recently added API")]
+    #[stable(feature = "file_type", since = "1.1.0")]
     pub fn file_type(&self) -> FileType {
         FileType(self.0.file_type())
     }
@@ -575,38 +567,6 @@ impl Metadata {
     pub fn permissions(&self) -> Permissions {
         Permissions(self.0.perm())
     }
-
-    /// Returns the most recent access time for a file.
-    ///
-    /// The return value is in milliseconds since the epoch.
-    #[unstable(feature = "fs_time",
-               reason = "the return type of u64 is not quite appropriate for \
-                         this method and may change if the standard library \
-                         gains a type to represent a moment in time")]
-    #[deprecated(since = "1.1.0",
-                 reason = "use os::platform::fs::MetadataExt extension traits")]
-    pub fn accessed(&self) -> u64 {
-        self.adjust_time(self.0.accessed())
-    }
-
-    /// Returns the most recent modification time for a file.
-    ///
-    /// The return value is in milliseconds since the epoch.
-    #[unstable(feature = "fs_time",
-               reason = "the return type of u64 is not quite appropriate for \
-                         this method and may change if the standard library \
-                         gains a type to represent a moment in time")]
-    #[deprecated(since = "1.1.0",
-                 reason = "use os::platform::fs::MetadataExt extension traits")]
-    pub fn modified(&self) -> u64 {
-        self.adjust_time(self.0.modified())
-    }
-
-    fn adjust_time(&self, val: u64) -> u64 {
-        // FILETIME (what `val` represents) is in 100ns intervals and there are
-        // 10000 intervals in a millisecond.
-        if cfg!(windows) {val / 10000} else {val}
-    }
 }
 
 impl AsInner<fs_imp::FileAttr> for Metadata {
@@ -663,15 +623,17 @@ impl Permissions {
     }
 }
 
-#[unstable(feature = "file_type", reason = "recently added API")]
 impl FileType {
     /// Test whether this file type represents a directory.
+    #[stable(feature = "file_type", since = "1.1.0")]
     pub fn is_dir(&self) -> bool { self.0.is_dir() }
 
     /// Test whether this file type represents a regular file.
+    #[stable(feature = "file_type", since = "1.1.0")]
     pub fn is_file(&self) -> bool { self.0.is_file() }
 
     /// Test whether this file type represents a symbolic link.
+    #[stable(feature = "file_type", since = "1.1.0")]
     pub fn is_symlink(&self) -> bool { self.0.is_symlink() }
 }
 
@@ -736,7 +698,7 @@ impl DirEntry {
     /// On Windows this function is cheap to call (no extra system calls
     /// needed), but on Unix platforms this function is the equivalent of
     /// calling `symlink_metadata` on the path.
-    #[unstable(feature = "dir_entry_ext", reason = "recently added API")]
+    #[stable(feature = "dir_entry_ext", since = "1.1.0")]
     pub fn metadata(&self) -> io::Result<Metadata> {
         self.0.metadata().map(Metadata)
     }
@@ -751,14 +713,14 @@ impl DirEntry {
     /// On Windows and most Unix platforms this function is free (no extra
     /// system calls needed), but some Unix platforms may require the equivalent
     /// call to `symlink_metadata` to learn about the target file type.
-    #[unstable(feature = "dir_entry_ext", reason = "recently added API")]
+    #[stable(feature = "dir_entry_ext", since = "1.1.0")]
     pub fn file_type(&self) -> io::Result<FileType> {
         self.0.file_type().map(FileType)
     }
 
     /// Returns the bare file name of this directory entry without any other
     /// leading path component.
-    #[unstable(feature = "dir_entry_ext", reason = "recently added API")]
+    #[stable(feature = "dir_entry_ext", since = "1.1.0")]
     pub fn file_name(&self) -> OsString {
         self.0.file_name()
     }
@@ -828,7 +790,6 @@ pub fn metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
 /// # Examples
 ///
 /// ```rust
-/// #![feature(symlink_metadata)]
 /// # fn foo() -> std::io::Result<()> {
 /// use std::fs;
 ///
@@ -837,7 +798,7 @@ pub fn metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
 /// # Ok(())
 /// # }
 /// ```
-#[unstable(feature = "symlink_metadata", reason = "recently added API")]
+#[stable(feature = "symlink_metadata", since = "1.1.0")]
 pub fn symlink_metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
     fs_imp::lstat(path.as_ref()).map(Metadata)
 }
@@ -1270,7 +1231,6 @@ pub fn set_file_times<P: AsRef<Path>>(path: P, accessed: u64,
 /// # Examples
 ///
 /// ```
-/// # #![feature(fs)]
 /// # fn foo() -> std::io::Result<()> {
 /// use std::fs;
 ///
@@ -1286,14 +1246,13 @@ pub fn set_file_times<P: AsRef<Path>>(path: P, accessed: u64,
 /// This function will return an error if the provided `path` doesn't exist, if
 /// the process lacks permissions to change the attributes of the file, or if
 /// some other I/O error is encountered.
-#[unstable(feature = "fs",
-           reason = "a more granual ability to set specific permissions may \
-                     be exposed on the Permissions structure itself and this \
-                     method may not always exist")]
-pub fn set_permissions<P: AsRef<Path>>(path: P, perm: Permissions) -> io::Result<()> {
+#[stable(feature = "set_permissions", since = "1.1.0")]
+pub fn set_permissions<P: AsRef<Path>>(path: P, perm: Permissions)
+                                       -> io::Result<()> {
     fs_imp::set_perm(path.as_ref(), perm.0)
 }
 
+#[unstable(feature = "dir_builder", reason = "recently added API")]
 impl DirBuilder {
     /// Creates a new set of options with default mode/security settings for all
     /// platforms and also non-recursive.
@@ -2066,9 +2025,24 @@ mod tests {
         // These numbers have to be bigger than the time in the day to account
         // for timezones Windows in particular will fail in certain timezones
         // with small enough values
-        check!(fs::set_file_times(&path, 100000, 200000));
-        assert_eq!(check!(path.metadata()).accessed(), 100000);
-        assert_eq!(check!(path.metadata()).modified(), 200000);
+        check!(fs::set_file_times(&path, 100_000, 200_000));
+
+        check(&check!(path.metadata()));
+
+        #[cfg(unix)]
+        fn check(metadata: &fs::Metadata) {
+            use os::unix::prelude::*;
+            assert_eq!(metadata.atime(), 100);
+            assert_eq!(metadata.atime_nsec(), 0);
+            assert_eq!(metadata.mtime(), 200);
+            assert_eq!(metadata.mtime_nsec(), 0);
+        }
+        #[cfg(windows)]
+        fn check(metadata: &fs::Metadata) {
+            use os::windows::prelude::*;
+            assert_eq!(metadata.last_access_time(), 100_000 * 10_000);
+            assert_eq!(metadata.last_write_time(), 200_000 * 10_000);
+        }
     }
 
     #[test]
