@@ -80,9 +80,6 @@ pub struct Config {
     // The python executable
     pub python: String,
 
-    // The clang executable
-    pub clang_path: Option<PathBuf>,
-
     // The llvm binaries path
     pub llvm_bin_path: Option<PathBuf>,
 
