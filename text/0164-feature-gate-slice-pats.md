@@ -4,18 +4,18 @@
 
 # Summary
 
-Rust's support for pattern matching on sices has grown steadily and incrementally without a lot of oversight,
-and we have concern that Rust is doing too much here, that the complexity is not worth it. This RFC proposes
-to feature gate multiple-element slice matches in the head and middle positions (`[..xs, 0, 0]` and `[0, ..xs, 0]`.
+Rust's support for pattern matching on slices has grown steadily and incrementally without a lot of oversight.
+We have concern that Rust is doing too much here, and that the complexity is not worth it. This RFC proposes
+to feature gate multiple-element slice matches in the head and middle positions (`[xs.., 0, 0]` and `[0, xs.., 0]`).
 
 # Motivation
 
-Some general reasons and one specific: first, the implementation of Rust's match machinery is notoriously complex, and not well-loved. Remove features is seen as a valid way to reduce complexity. Second, slice matching in particular, is difficult to implement, while also being of only moderate utility (there are many types of collections - slices just happen to be built into the language). Finally, the exhaustiveness check is not correct for slice patterns - because of their complexity; it's not known that it
-can be done correctly, nor whether it is worth the effort even if.
+Some general reasons and one specific: first, the implementation of Rust's match machinery is notoriously complex, and not well-loved. Removing features is seen as a valid way to reduce complexity. Second, slice matching in particular, is difficult to implement, while also being of only moderate utility (there are many types of collections - slices just happen to be built into the language). Finally, the exhaustiveness check is not correct for slice patterns because of their complexity; it's not known if it
+can be done correctly, nor whether it is worth the effort to do so.
 
 # Detailed design
 
-The `advanced_slice_patterns` feature gate will be added. When the compiler encounters slice pattern matches in head or middle position it will emit a warning or error accourding to the current settings.
+The `advanced_slice_patterns` feature gate will be added. When the compiler encounters slice pattern matches in head or middle position it will emit a warning or error according to the current settings.
 
 # Drawbacks
 
