@@ -857,37 +857,41 @@ fn confirm_impl_candidate<'cx,'tcx>(
     -> (Ty<'tcx>, Vec<PredicateObligation<'tcx>>)
 {
     // there don't seem to be nicer accessors to these:
-    let impl_items_map = selcx.tcx().impl_items.borrow();
     let impl_or_trait_items_map = selcx.tcx().impl_or_trait_items.borrow();
 
-    let impl_items = impl_items_map.get(&impl_vtable.impl_def_id).unwrap();
-    let mut impl_ty = None;
-    for impl_item in impl_items {
-        let assoc_type = match *impl_or_trait_items_map.get(&impl_item.def_id()).unwrap() {
-            ty::TypeTraitItem(ref assoc_type) => assoc_type.clone(),
-            ty::ConstTraitItem(..) | ty::MethodTraitItem(..) => { continue; }
-        };
-
-        if assoc_type.name != obligation.predicate.item_name {
-            continue;
-        }
-
-        let impl_poly_ty = ty::lookup_item_type(selcx.tcx(), assoc_type.def_id);
-        impl_ty = Some(impl_poly_ty.ty.subst(selcx.tcx(), &impl_vtable.substs));
-        break;
-    }
-
-    match impl_ty {
-        Some(ty) => (ty, impl_vtable.nested.into_vec()),
-        None => {
-            // This means that the impl is missing a
-            // definition for the associated type. This error
-            // ought to be reported by the type checker method
-            // `check_impl_items_against_trait`, so here we
-            // just return ty_err.
-            (selcx.tcx().types.err, vec!())
+    // Look for the associated type in the impl
+    for impl_item in &selcx.tcx().impl_items.borrow()[&impl_vtable.impl_def_id] {
+        if let ty::TypeTraitItem(ref assoc_ty) = impl_or_trait_items_map[&impl_item.def_id()] {
+            if assoc_ty.name == obligation.predicate.item_name {
+                return (assoc_ty.ty.unwrap().subst(selcx.tcx(), &impl_vtable.substs),
+                        impl_vtable.nested.into_vec());
+            }
         }
     }
+
+    // It is not in the impl - get the default from the trait.
+    let trait_ref = obligation.predicate.trait_ref;
+    for trait_item in ty::trait_items(selcx.tcx(), trait_ref.def_id).iter() {
+        if let &ty::TypeTraitItem(ref assoc_ty) = trait_item {
+            if assoc_ty.name == obligation.predicate.item_name {
+                if let Some(ty) = assoc_ty.ty {
+                    return (ty.subst(selcx.tcx(), trait_ref.substs),
+                            impl_vtable.nested.into_vec());
+                } else {
+                    // This means that the impl is missing a
+                    // definition for the associated type. This error
+                    // ought to be reported by the type checker method
+                    // `check_impl_items_against_trait`, so here we
+                    // just return ty_err.
+                    return (selcx.tcx().types.err, vec!());
+                }
+            }
+        }
+    }
+
+    selcx.tcx().sess.span_bug(obligation.cause.span,
+                              &format!("No associated type for {}",
+                                       trait_ref.repr(selcx.tcx())));
 }
 
 impl<'tcx> Repr<'tcx> for ProjectionTyError<'tcx> {

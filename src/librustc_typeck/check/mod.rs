@@ -1070,7 +1070,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     // Check for missing items from trait
     let provided_methods = ty::provided_trait_methods(tcx, impl_trait_ref.def_id);
     let associated_consts = ty::associated_consts(tcx, impl_trait_ref.def_id);
-    let mut missing_methods = Vec::new();
+    let mut missing_items = Vec::new();
     for trait_item in &*trait_items {
         match *trait_item {
             ty::ConstTraitItem(ref associated_const) => {
@@ -1086,8 +1086,8 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                     associated_consts.iter().any(|ac| ac.default.is_some() &&
                                                  ac.name == associated_const.name);
                 if !is_implemented && !is_provided {
-                    missing_methods.push(format!("`{}`",
-                                                 token::get_name(associated_const.name)));
+                    missing_items.push(format!("`{}`",
+                                               token::get_name(associated_const.name)));
                 }
             }
             ty::MethodTraitItem(ref trait_method) => {
@@ -1103,7 +1103,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                 let is_provided =
                     provided_methods.iter().any(|m| m.name == trait_method.name);
                 if !is_implemented && !is_provided {
-                    missing_methods.push(format!("`{}`", token::get_name(trait_method.name)));
+                    missing_items.push(format!("`{}`", token::get_name(trait_method.name)));
                 }
             }
             ty::TypeTraitItem(ref associated_type) => {
@@ -1115,17 +1115,18 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                         _ => false,
                     }
                 });
-                if !is_implemented {
-                    missing_methods.push(format!("`{}`", token::get_name(associated_type.name)));
+                let is_provided = associated_type.ty.is_some();
+                if !is_implemented && !is_provided {
+                    missing_items.push(format!("`{}`", token::get_name(associated_type.name)));
                 }
             }
         }
     }
 
-    if !missing_methods.is_empty() {
+    if !missing_items.is_empty() {
         span_err!(tcx.sess, impl_span, E0046,
             "not all trait items implemented, missing: {}",
-            missing_methods.connect(", "));
+            missing_items.connect(", "));
     }
 }
 

@@ -894,12 +894,12 @@ fn encode_info_for_method<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
     rbml_w.end_tag();
 }
 
-fn encode_info_for_associated_type(ecx: &EncodeContext,
-                                   rbml_w: &mut Encoder,
-                                   associated_type: &ty::AssociatedType,
-                                   impl_path: PathElems,
-                                   parent_id: NodeId,
-                                   impl_item_opt: Option<&ast::ImplItem>) {
+fn encode_info_for_associated_type<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
+                                             rbml_w: &mut Encoder,
+                                             associated_type: &ty::AssociatedType<'tcx>,
+                                             impl_path: PathElems,
+                                             parent_id: NodeId,
+                                             impl_item_opt: Option<&ast::ImplItem>) {
     debug!("encode_info_for_associated_type({:?},{:?})",
            associated_type.def_id,
            token::get_name(associated_type.name));
@@ -913,8 +913,6 @@ fn encode_info_for_associated_type(ecx: &EncodeContext,
     encode_parent_item(rbml_w, local_def(parent_id));
     encode_item_sort(rbml_w, 't');
 
-    encode_bounds_and_type_for_item(rbml_w, ecx, associated_type.def_id.local_id());
-
     let stab = stability::lookup(ecx.tcx, associated_type.def_id);
     encode_stability(rbml_w, stab);
 
@@ -923,7 +921,14 @@ fn encode_info_for_associated_type(ecx: &EncodeContext,
 
     if let Some(ii) = impl_item_opt {
         encode_attributes(rbml_w, &ii.attrs);
-        encode_type(ecx, rbml_w, ty::node_id_to_type(ecx.tcx, ii.id));
+    } else {
+        encode_predicates(rbml_w, ecx,
+                          &ty::lookup_predicates(ecx.tcx, associated_type.def_id),
+                          tag_item_generics);
+    }
+
+    if let Some(ty) = associated_type.ty {
+        encode_type(ecx, rbml_w, ty);
     }
 
     rbml_w.end_tag();

@@ -717,15 +717,17 @@ fn convert_associated_const<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
        .insert(local_def(id), ty::ConstTraitItem(associated_const));
 }
 
-fn as_refsociated_type<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
-                                 container: ImplOrTraitItemContainer,
-                                 ident: ast::Ident,
-                                 id: ast::NodeId,
-                                 vis: ast::Visibility)
+fn convert_associated_type<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
+                                     container: ImplOrTraitItemContainer,
+                                     ident: ast::Ident,
+                                     id: ast::NodeId,
+                                     vis: ast::Visibility,
+                                     ty: Option<Ty<'tcx>>)
 {
     let associated_type = Rc::new(ty::AssociatedType {
         name: ident.name,
         vis: vis,
+        ty: ty,
         def_id: local_def(id),
         container: container
     });
@@ -878,18 +880,11 @@ fn convert_item(ccx: &CrateCtxt, it: &ast::Item) {
                                   "associated types are not allowed in inherent impls");
                     }
 
-                    as_refsociated_type(ccx, ImplContainer(local_def(it.id)),
-                                        impl_item.ident, impl_item.id, impl_item.vis);
-
                     let typ = ccx.icx(&ty_predicates).to_ty(&ExplicitRscope, ty);
-                    tcx.tcache.borrow_mut().insert(local_def(impl_item.id),
-                                                   TypeScheme {
-                                                       generics: ty::Generics::empty(),
-                                                       ty: typ,
-                                                   });
-                    tcx.predicates.borrow_mut().insert(local_def(impl_item.id),
-                                                       ty::GenericPredicates::empty());
-                    write_ty_to_tcx(tcx, impl_item.id, typ);
+
+                    convert_associated_type(ccx, ImplContainer(local_def(it.id)),
+                                            impl_item.ident, impl_item.id, impl_item.vis,
+                                            Some(typ));
                 }
             }
 
@@ -972,9 +967,14 @@ fn convert_item(ccx: &CrateCtxt, it: &ast::Item) {
             // Convert all the associated types.
             for trait_item in trait_items {
                 match trait_item.node {
-                    ast::TypeTraitItem(..) => {
-                        as_refsociated_type(ccx, TraitContainer(local_def(it.id)),
-                                                trait_item.ident, trait_item.id, ast::Public);
+                    ast::TypeTraitItem(_, ref opt_ty) => {
+                        let typ = opt_ty.as_ref().map({
+                            |ty| ccx.icx(&trait_predicates).to_ty(&ExplicitRscope, &ty)
+                        });
+
+                        convert_associated_type(ccx, TraitContainer(local_def(it.id)),
+                                                trait_item.ident, trait_item.id, ast::Public,
+                                                typ);
                     }
                     _ => {}
                 }
@@ -2291,10 +2291,10 @@ fn enforce_impl_params_are_constrained<'tcx>(tcx: &ty::ctxt<'tcx>,
 
     let lifetimes_in_associated_types: HashSet<_> =
         impl_items.iter()
-                  .filter_map(|item| match item.node {
-                      ast::TypeImplItem(..) => Some(ty::node_id_to_type(tcx, item.id)),
-                      ast::ConstImplItem(..) | ast::MethodImplItem(..) |
-                      ast::MacImplItem(..) => None,
+                  .map(|item| ty::impl_or_trait_item(tcx, local_def(item.id)))
+                  .filter_map(|item| match item {
+                      ty::TypeTraitItem(ref assoc_ty) => assoc_ty.ty,
+                      ty::ConstTraitItem(..) | ty::MethodTraitItem(..) => None
                   })
                   .flat_map(|ty| ctp::parameters_for_type(ty).into_iter())
                   .filter_map(|p| match p {
