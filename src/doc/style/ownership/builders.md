@@ -75,7 +75,7 @@ impl Command {
     }
 
     /// Executes the command as a child process, which is returned.
-    pub fn spawn(&self) -> IoResult<Process> {
+    pub fn spawn(&self) -> std::io::Result<Process> {
         ...
     }
 }
