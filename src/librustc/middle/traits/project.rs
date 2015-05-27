@@ -859,6 +859,7 @@ fn confirm_impl_candidate<'cx,'tcx>(
     // there don't seem to be nicer accessors to these:
     let impl_or_trait_items_map = selcx.tcx().impl_or_trait_items.borrow();
 
+    // Look for the associated type in the impl
     for impl_item in &selcx.tcx().impl_items.borrow()[&impl_vtable.impl_def_id] {
         if let ty::TypeTraitItem(ref assoc_ty) = impl_or_trait_items_map[&impl_item.def_id()] {
             if assoc_ty.name == obligation.predicate.item_name {
@@ -868,6 +869,7 @@ fn confirm_impl_candidate<'cx,'tcx>(
         }
     }
 
+    // It is not in the impl - get the default from the trait.
     let trait_ref = obligation.predicate.trait_ref;
     for trait_item in ty::trait_items(selcx.tcx(), trait_ref.def_id).iter() {
         if let &ty::TypeTraitItem(ref assoc_ty) = trait_item {
