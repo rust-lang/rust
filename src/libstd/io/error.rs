@@ -215,6 +215,13 @@ impl error::Error for Error {
             Repr::Custom(ref c) => c.error.description(),
         }
     }
+
+    fn cause(&self) -> Option<&Error> {
+        match self.repr {
+            Repr::Os(..) => None,
+            Repr::Custom(ref c) => c.error.cause(),
+        }
+    }
 }
 
 fn _assert_error_is_sync_send() {
