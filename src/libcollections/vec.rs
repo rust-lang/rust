@@ -440,6 +440,8 @@ impl<T> Vec<T> {
     }
 
     /// Extracts a slice containing the entire vector.
+    ///
+    /// Equivalent to `&s[..]`.
     #[inline]
     #[unstable(feature = "convert",
                reason = "waiting on RFC revision")]
@@ -447,7 +449,9 @@ impl<T> Vec<T> {
         self
     }
 
-    /// Deprecated: use `&mut s[..]` instead.
+    /// Extracts a mutable slice of the entire vector.
+    ///
+    /// Equivalent to `&mut s[..]`.
     #[inline]
     #[unstable(feature = "convert",
                reason = "waiting on RFC revision")]
