@@ -399,7 +399,7 @@ fn test_map_in_place_zero_sized() {
 
 #[test]
 fn test_map_in_place_zero_drop_count() {
-    use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
+    use std::sync::atomic::{AtomicUsize, Ordering};
 
     #[derive(Clone, PartialEq, Debug)]
     struct Nothing;
@@ -413,7 +413,7 @@ fn test_map_in_place_zero_drop_count() {
         }
     }
     const NUM_ELEMENTS: usize = 2;
-    static DROP_COUNTER: AtomicUsize = ATOMIC_USIZE_INIT;
+    static DROP_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
     let v = repeat(Nothing).take(NUM_ELEMENTS).collect::<Vec<_>>();
 

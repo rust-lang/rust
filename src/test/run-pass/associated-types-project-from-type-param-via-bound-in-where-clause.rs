@@ -13,10 +13,10 @@
 // `T`. Issue #20300.
 
 use std::marker::{PhantomData};
-use std::sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT};
+use std::sync::atomic::{AtomicUsize};
 use std::sync::atomic::Ordering::SeqCst;
 
-static COUNTER: AtomicUsize = ATOMIC_USIZE_INIT;
+static COUNTER: AtomicUsize = AtomicUsize::new(0);
 
 // Preamble.
 trait Trait { type Item; }

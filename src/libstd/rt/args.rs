@@ -52,10 +52,10 @@ mod imp {
     use mem;
     use ffi::CStr;
 
-    use sync::{StaticMutex, MUTEX_INIT};
+    use sync::StaticMutex;
 
     static mut GLOBAL_ARGS_PTR: usize = 0;
-    static LOCK: StaticMutex = MUTEX_INIT;
+    static LOCK: StaticMutex = StaticMutex::new();
 
     pub unsafe fn init(argc: isize, argv: *const *const u8) {
         let args = load_argc_and_argv(argc, argv);

@@ -15,14 +15,13 @@ use sys::sync as ffi;
 
 pub struct RWLock { inner: UnsafeCell<ffi::SRWLOCK> }
 
-pub const RWLOCK_INIT: RWLock = RWLock {
-    inner: UnsafeCell { value: ffi::SRWLOCK_INIT }
-};
-
 unsafe impl Send for RWLock {}
 unsafe impl Sync for RWLock {}
 
 impl RWLock {
+    pub const fn new() -> RWLock {
+        RWLock { inner: UnsafeCell::new(ffi::SRWLOCK_INIT) }
+    }
     #[inline]
     pub unsafe fn read(&self) {
         ffi::AcquireSRWLockShared(self.inner.get())

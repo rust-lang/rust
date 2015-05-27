@@ -178,17 +178,14 @@ impl<'a, T: ?Sized> !marker::Send for MutexGuard<'a, T> {}
 /// other mutex constants.
 #[unstable(feature = "std_misc",
            reason = "may be merged with Mutex in the future")]
-pub const MUTEX_INIT: StaticMutex = StaticMutex {
-    lock: sys::MUTEX_INIT,
-    poison: poison::FLAG_INIT,
-};
+pub const MUTEX_INIT: StaticMutex = StaticMutex::new();
 
 impl<T> Mutex<T> {
     /// Creates a new mutex in an unlocked state ready for use.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(t: T) -> Mutex<T> {
         Mutex {
-            inner: box MUTEX_INIT,
+            inner: box StaticMutex::new(),
             data: UnsafeCell::new(t),
         }
     }
@@ -271,9 +268,19 @@ impl<T: ?Sized + fmt::Debug + 'static> fmt::Debug for Mutex<T> {
 
 struct Dummy(UnsafeCell<()>);
 unsafe impl Sync for Dummy {}
-static DUMMY: Dummy = Dummy(UnsafeCell { value: () });
+static DUMMY: Dummy = Dummy(UnsafeCell::new(()));
 
 impl StaticMutex {
+    /// Creates a new mutex in an unlocked state ready for use.
+    #[unstable(feature = "std_misc",
+               reason = "may be merged with Mutex in the future")]
+    pub const fn new() -> StaticMutex {
+        StaticMutex {
+            lock: sys::Mutex::new(),
+            poison: poison::Flag::new(),
+        }
+    }
+
     /// Acquires this lock, see `Mutex::lock`
     #[inline]
     #[unstable(feature = "std_misc",
@@ -365,7 +372,7 @@ mod tests {
     use prelude::v1::*;
 
     use sync::mpsc::channel;
-    use sync::{Arc, Mutex, StaticMutex, MUTEX_INIT, Condvar};
+    use sync::{Arc, Mutex, StaticMutex, Condvar};
     use thread;
 
     struct Packet<T: Send>(Arc<(Mutex<T>, Condvar)>);
@@ -382,7 +389,7 @@ mod tests {
 
     #[test]
     fn smoke_static() {
-        static M: StaticMutex = MUTEX_INIT;
+        static M: StaticMutex = StaticMutex::new();
         unsafe {
             drop(M.lock().unwrap());
             drop(M.lock().unwrap());
@@ -392,7 +399,7 @@ mod tests {
 
     #[test]
     fn lots_and_lots() {
-        static M: StaticMutex = MUTEX_INIT;
+        static M: StaticMutex = StaticMutex::new();
         static mut CNT: u32 = 0;
         const J: u32 = 1000;
         const K: u32 = 3;

@@ -91,7 +91,7 @@ use io;
 use libc;
 use mem;
 use str;
-use sync::{StaticMutex, MUTEX_INIT};
+use sync::StaticMutex;
 
 use sys_common::backtrace::*;
 
@@ -117,7 +117,7 @@ pub fn write(w: &mut Write) -> io::Result<()> {
     // while it doesn't requires lock for work as everything is
     // local, it still displays much nicer backtraces when a
     // couple of threads panic simultaneously
-    static LOCK: StaticMutex = MUTEX_INIT;
+    static LOCK: StaticMutex = StaticMutex::new();
     let _g = LOCK.lock();
 
     try!(writeln!(w, "stack backtrace:"));
@@ -148,7 +148,7 @@ pub fn write(w: &mut Write) -> io::Result<()> {
     // is semi-reasonable in terms of printing anyway, and we know that all
     // I/O done here is blocking I/O, not green I/O, so we don't have to
     // worry about this being a native vs green mutex.
-    static LOCK: StaticMutex = MUTEX_INIT;
+    static LOCK: StaticMutex = StaticMutex::new();
     let _g = LOCK.lock();
 
     try!(writeln!(w, "stack backtrace:"));

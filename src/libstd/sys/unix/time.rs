@@ -17,7 +17,7 @@ mod inner {
     use libc;
     use time::Duration;
     use ops::Sub;
-    use sync::{Once, ONCE_INIT};
+    use sync::Once;
     use super::NSEC_PER_SEC;
 
     pub struct SteadyTime {
@@ -42,7 +42,7 @@ mod inner {
             numer: 0,
             denom: 0,
         };
-        static ONCE: Once = ONCE_INIT;
+        static ONCE: Once = Once::new();
 
         unsafe {
             ONCE.call_once(|| {

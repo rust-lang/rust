@@ -170,7 +170,7 @@ impl<T:Copy> Cell<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn new(value: T) -> Cell<T> {
+    pub const fn new(value: T) -> Cell<T> {
         Cell {
             value: UnsafeCell::new(value),
         }
@@ -302,7 +302,7 @@ impl<T> RefCell<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn new(value: T) -> RefCell<T> {
+    pub const fn new(value: T) -> RefCell<T> {
         RefCell {
             value: UnsafeCell::new(value),
             borrow: Cell::new(UNUSED),
@@ -663,7 +663,7 @@ impl<T> UnsafeCell<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn new(value: T) -> UnsafeCell<T> {
+    pub const fn new(value: T) -> UnsafeCell<T> {
         UnsafeCell { value: value }
     }
 
