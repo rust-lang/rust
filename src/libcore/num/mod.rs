@@ -50,34 +50,30 @@ pub mod flt2dec;
 /// Types that have a "zero" value.
 ///
 /// This trait is intended for use in conjunction with `Add`, as an identity:
-/// `x + T::zero() == x`.
-#[unstable(feature = "zero_one",
-           reason = "unsure of placement, wants to use associated constants")]
+/// `x + T::ZERO == x`.
+#[unstable(feature = "zero_one", reason = "unsure of placement")]
 pub trait Zero {
     /// The "zero" (usually, additive identity) for this type.
-    fn zero() -> Self;
+    const ZERO: Self;
 }
 
 /// Types that have a "one" value.
 ///
 /// This trait is intended for use in conjunction with `Mul`, as an identity:
-/// `x * T::one() == x`.
-#[unstable(feature = "zero_one",
-           reason = "unsure of placement, wants to use associated constants")]
+/// `x * T::ONE == x`.
+#[unstable(feature = "zero_one", reason = "unsure of placement")]
 pub trait One {
     /// The "one" (usually, multiplicative identity) for this type.
-    fn one() -> Self;
+    const ONE: Self;
 }
 
 macro_rules! zero_one_impl {
     ($($t:ty)*) => ($(
         impl Zero for $t {
-            #[inline]
-            fn zero() -> Self { 0 }
+            const ZERO: $t = 0;
         }
         impl One for $t {
-            #[inline]
-            fn one() -> Self { 1 }
+            const ONE: $t = 1;
         }
     )*)
 }
@@ -86,12 +82,10 @@ zero_one_impl! { u8 u16 u32 u64 usize i8 i16 i32 i64 isize }
 macro_rules! zero_one_impl_float {
     ($($t:ty)*) => ($(
         impl Zero for $t {
-            #[inline]
-            fn zero() -> Self { 0.0 }
+            const ZERO: $t = 0.0;
         }
         impl One for $t {
-            #[inline]
-            fn one() -> Self { 1.0 }
+            const ONE: $t = 1.0;
         }
     )*)
 }
@@ -415,7 +409,7 @@ macro_rules! int_impl {
         pub fn saturating_add(self, other: Self) -> Self {
             match self.checked_add(other) {
                 Some(x)                       => x,
-                None if other >= Self::zero() => Self::max_value(),
+                None if other >= Self::ZERO => Self::max_value(),
                 None => Self::min_value(),
             }
         }
@@ -427,7 +421,7 @@ macro_rules! int_impl {
         pub fn saturating_sub(self, other: Self) -> Self {
             match self.checked_sub(other) {
                 Some(x)                      => x,
-                None if other >= Self::zero() => Self::min_value(),
+                None if other >= Self::ZERO => Self::min_value(),
                 None => Self::max_value(),
             }
         }
@@ -535,7 +529,7 @@ macro_rules! int_impl {
         #[inline]
         pub fn pow(self, mut exp: u32) -> Self {
             let mut base = self;
-            let mut acc = Self::one();
+            let mut acc = Self::ONE;
 
             let mut prev_base = self;
             let mut base_oflo = false;
@@ -985,7 +979,7 @@ macro_rules! uint_impl {
         pub fn saturating_add(self, other: Self) -> Self {
             match self.checked_add(other) {
                 Some(x)                       => x,
-                None if other >= Self::zero() => Self::max_value(),
+                None if other >= Self::ZERO => Self::max_value(),
                 None => Self::min_value(),
             }
         }
@@ -997,7 +991,7 @@ macro_rules! uint_impl {
         pub fn saturating_sub(self, other: Self) -> Self {
             match self.checked_sub(other) {
                 Some(x)                       => x,
-                None if other >= Self::zero() => Self::min_value(),
+                None if other >= Self::ZERO => Self::min_value(),
                 None => Self::max_value(),
             }
         }
@@ -1103,7 +1097,7 @@ macro_rules! uint_impl {
         #[inline]
         pub fn pow(self, mut exp: u32) -> Self {
             let mut base = self;
-            let mut acc = Self::one();
+            let mut acc = Self::ONE;
 
             let mut prev_base = self;
             let mut base_oflo = false;
@@ -1131,8 +1125,8 @@ macro_rules! uint_impl {
         #[stable(feature = "rust1", since = "1.0.0")]
         #[inline]
         pub fn is_power_of_two(self) -> bool {
-            (self.wrapping_sub(Self::one())) & self == Self::zero() &&
-                !(self == Self::zero())
+            (self.wrapping_sub(Self::ONE)) & self == Self::ZERO &&
+                !(self == Self::ZERO)
         }
 
         /// Returns the smallest power of two greater than or equal to `self`.
@@ -1141,7 +1135,7 @@ macro_rules! uint_impl {
         #[inline]
         pub fn next_power_of_two(self) -> Self {
             let bits = size_of::<Self>() * 8;
-            let one: Self = Self::one();
+            let one = Self::ONE;
             one << ((bits - self.wrapping_sub(one).leading_zeros() as usize) % bits)
         }
 

@@ -75,7 +75,7 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
 }
 
 pub fn cvt<T: One + PartialEq + Neg<Output=T>>(t: T) -> io::Result<T> {
-    let one: T = T::one();
+    let one: T = T::ONE;
     if t == -one {
         Err(io::Error::last_os_error())
     } else {

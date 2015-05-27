@@ -50,7 +50,7 @@ fn last_error() -> io::Error {
 /// and if so, returns the last error from the Windows socket interface. . This
 /// function must be called before another call to the socket API is made.
 pub fn cvt<T: One + Neg<Output=T> + PartialEq>(t: T) -> io::Result<T> {
-    let one: T = T::one();
+    let one: T = T::ONE;
     if t == -one {
         Err(last_error())
     } else {

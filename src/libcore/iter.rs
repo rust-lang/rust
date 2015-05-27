@@ -1075,7 +1075,7 @@ pub trait Iterator {
         S: Add<Self::Item, Output=S> + Zero,
         Self: Sized,
     {
-        self.fold(Zero::zero(), |s, e| s + e)
+        self.fold(Zero::ZERO, |s, e| s + e)
     }
 
     /// Iterates over the entire iterator, multiplying all the elements
@@ -1097,7 +1097,7 @@ pub trait Iterator {
         P: Mul<Self::Item, Output=P> + One,
         Self: Sized,
     {
-        self.fold(One::one(), |p, e| p * e)
+        self.fold(One::ONE, |p, e| p * e)
     }
 }
 
@@ -2840,7 +2840,7 @@ impl<A> DoubleEndedIterator for RangeInclusive<A> where
     fn next_back(&mut self) -> Option<A> {
         if self.range.end > self.range.start {
             let result = self.range.end.clone();
-            self.range.end = &self.range.end - &A::one();
+            self.range.end = &self.range.end - &A::ONE;
             Some(result)
         } else if !self.done && self.range.start == self.range.end {
             self.done = true;
@@ -2858,7 +2858,7 @@ impl<A: Step + Zero + Clone> Iterator for StepBy<A, ops::Range<A>> {
 
     #[inline]
     fn next(&mut self) -> Option<A> {
-        let rev = self.step_by < A::zero();
+        let rev = self.step_by < A::ZERO;
         if (rev && self.range.start > self.range.end) ||
            (!rev && self.range.start < self.range.end)
         {
@@ -2906,7 +2906,7 @@ impl<A: Step + One> Iterator for ops::Range<A> where
     #[inline]
     fn next(&mut self) -> Option<A> {
         if self.start < self.end {
-            let mut n = &self.start + &A::one();
+            let mut n = &self.start + &A::ONE;
             mem::swap(&mut n, &mut self.start);
             Some(n)
         } else {
@@ -2916,7 +2916,7 @@ impl<A: Step + One> Iterator for ops::Range<A> where
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        match Step::steps_between(&self.start, &self.end, &A::one()) {
+        match Step::steps_between(&self.start, &self.end, &A::ONE) {
             Some(hint) => (hint, Some(hint)),
             None => (0, None)
         }
@@ -2936,7 +2936,7 @@ impl<A: Step + One + Clone> DoubleEndedIterator for ops::Range<A> where
     #[inline]
     fn next_back(&mut self) -> Option<A> {
         if self.start < self.end {
-            self.end = &self.end - &A::one();
+            self.end = &self.end - &A::ONE;
             Some(self.end.clone())
         } else {
             None
@@ -2953,7 +2953,7 @@ impl<A: Step + One> Iterator for ops::RangeFrom<A> where
 
     #[inline]
     fn next(&mut self) -> Option<A> {
-        let mut n = &self.start + &A::one();
+        let mut n = &self.start + &A::ONE;
         mem::swap(&mut n, &mut self.start);
         Some(n)
     }
