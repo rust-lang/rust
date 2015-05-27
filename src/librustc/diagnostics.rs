@@ -846,6 +846,40 @@ struct Foo<T: 'static> {
     foo: &'static T
 }
 ```
+"##,
+
+E0378: r##"
+Method calls that aren't calls to inherent `const` methods are disallowed
+in statics, constants, and constant functions.
+
+For example:
+
+```
+const BAZ: i32 = Foo(25).bar(); // error, `bar` isn't `const`
+
+struct Foo(i32);
+
+impl Foo {
+    const fn foo(&self) -> i32 {
+        self.bar() // error, `bar` isn't `const`
+    }
+
+    fn bar(&self) -> i32 { self.0 }
+}
+```
+
+For more information about `const fn`'s, see [RFC 911].
+
+[RFC 911]: https://github.com/rust-lang/rfcs/pull/911
+"##,
+
+E0394: r##"
+From [RFC 246]:
+
+ > It is illegal for a static to reference another static by value. It is
+ > required that all references be borrowed.
+
+[RFC 246]: https://github.com/rust-lang/rfcs/pull/246
 "##
 
 }
@@ -895,9 +929,6 @@ register_diagnostics! {
     E0315, // cannot invoke closure outside of its lifetime
     E0316, // nested quantification of lifetimes
     E0370, // discriminant overflow
-    E0378, // method calls limited to constant inherent methods
-    E0394, // cannot refer to other statics by value, use the address-of
-           // operator or a constant instead
     E0395, // pointer comparison in const-expr
     E0396  // pointer dereference in const-expr
 }
