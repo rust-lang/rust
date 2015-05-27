@@ -36,7 +36,7 @@ use mem;
 use path::Path;
 use ptr;
 use str;
-use sync::{StaticMutex, MUTEX_INIT};
+use sync::StaticMutex;
 
 use sys_common::backtrace::*;
 
@@ -295,7 +295,7 @@ impl Drop for Cleanup {
 pub fn write(w: &mut Write) -> io::Result<()> {
     // According to windows documentation, all dbghelp functions are
     // single-threaded.
-    static LOCK: StaticMutex = MUTEX_INIT;
+    static LOCK: StaticMutex = StaticMutex::new();
     let _g = LOCK.lock();
 
     // Open up dbghelp.dll, we don't link to it explicitly because it can't

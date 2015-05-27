@@ -125,19 +125,6 @@ pub trait SliceExt {
 }
 
 // Use macros to be generic over const/mut
-#[cfg(stage0)]
-macro_rules! slice_offset {
-    ($ptr:expr, $by:expr) => {{
-        let ptr = $ptr;
-        if size_from_ptr(ptr) == 0 {
-            transmute((ptr as isize).wrapping_add($by))
-        } else {
-            ptr.offset($by)
-        }
-    }};
-}
-
-#[cfg(not(stage0))]
 macro_rules! slice_offset {
     ($ptr:expr, $by:expr) => {{
         let ptr = $ptr;

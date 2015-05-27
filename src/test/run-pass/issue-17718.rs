@@ -15,10 +15,10 @@
 
 extern crate issue_17718 as other;
 
-use std::sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT, Ordering};
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 const C1: usize = 1;
-const C2: AtomicUsize = ATOMIC_USIZE_INIT;
+const C2: AtomicUsize = AtomicUsize::new(0);
 const C3: fn() = foo;
 const C4: usize = C1 * C1 + C1 / C1;
 const C5: &'static usize = &C4;
@@ -28,7 +28,7 @@ const C6: usize = {
 };
 
 static S1: usize = 3;
-static S2: AtomicUsize = ATOMIC_USIZE_INIT;
+static S2: AtomicUsize = AtomicUsize::new(0);
 
 mod test {
     static A: usize = 4;

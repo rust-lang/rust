@@ -3723,7 +3723,4 @@ pub fn resolve_crate<'a, 'tcx>(session: &'a Session,
     }
 }
 
-#[cfg(stage0)]
-__build_diagnostic_array! { DIAGNOSTICS }
-#[cfg(not(stage0))]
 __build_diagnostic_array! { librustc_resolve, DIAGNOSTICS }

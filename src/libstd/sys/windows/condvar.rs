@@ -22,13 +22,10 @@ pub struct Condvar { inner: UnsafeCell<ffi::CONDITION_VARIABLE> }
 unsafe impl Send for Condvar {}
 unsafe impl Sync for Condvar {}
 
-pub const CONDVAR_INIT: Condvar = Condvar {
-    inner: UnsafeCell { value: ffi::CONDITION_VARIABLE_INIT }
-};
-
 impl Condvar {
-    #[inline]
-    pub unsafe fn new() -> Condvar { CONDVAR_INIT }
+    pub const fn new() -> Condvar {
+        Condvar { inner: UnsafeCell::new(ffi::CONDITION_VARIABLE_INIT) }
+    }
 
     #[inline]
     pub unsafe fn wait(&self, mutex: &Mutex) {

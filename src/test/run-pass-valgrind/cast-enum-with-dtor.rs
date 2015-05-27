@@ -22,7 +22,7 @@ enum E {
     C = 2
 }
 
-static FLAG: atomic::AtomicUsize = atomic::ATOMIC_USIZE_INIT;
+static FLAG: atomic::AtomicUsize = atomic::AtomicUsize::new(0);
 
 impl Drop for E {
     fn drop(&mut self) {

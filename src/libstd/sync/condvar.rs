@@ -10,7 +10,7 @@
 
 use prelude::v1::*;
 
-use sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
+use sync::atomic::{AtomicUsize, Ordering};
 use sync::{mutex, MutexGuard, PoisonError};
 use sys_common::condvar as sys;
 use sys_common::mutex as sys_mutex;
@@ -84,10 +84,7 @@ pub struct StaticCondvar {
 /// Constant initializer for a statically allocated condition variable.
 #[unstable(feature = "static_condvar",
            reason = "may be merged with Condvar in the future")]
-pub const CONDVAR_INIT: StaticCondvar = StaticCondvar {
-    inner: sys::CONDVAR_INIT,
-    mutex: ATOMIC_USIZE_INIT,
-};
+pub const CONDVAR_INIT: StaticCondvar = StaticCondvar::new();
 
 impl Condvar {
     /// Creates a new condition variable which is ready to be waited on and
@@ -96,7 +93,7 @@ impl Condvar {
     pub fn new() -> Condvar {
         Condvar {
             inner: box StaticCondvar {
-                inner: unsafe { sys::Condvar::new() },
+                inner: sys::Condvar::new(),
                 mutex: AtomicUsize::new(0),
             }
         }
@@ -234,6 +231,16 @@ impl Drop for Condvar {
 }
 
 impl StaticCondvar {
+    /// Creates a new condition variable
+    #[unstable(feature = "static_condvar",
+               reason = "may be merged with Condvar in the future")]
+    pub const fn new() -> StaticCondvar {
+        StaticCondvar {
+            inner: sys::Condvar::new(),
+            mutex: AtomicUsize::new(0),
+        }
+    }
+
     /// Blocks the current thread until this condition variable receives a
     /// notification.
     ///
@@ -388,10 +395,10 @@ impl StaticCondvar {
 mod tests {
     use prelude::v1::*;
 
-    use super::{StaticCondvar, CONDVAR_INIT};
+    use super::StaticCondvar;
     use sync::mpsc::channel;
-    use sync::{StaticMutex, MUTEX_INIT, Condvar, Mutex, Arc};
-    use sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT, Ordering};
+    use sync::{StaticMutex, Condvar, Mutex, Arc};
+    use sync::atomic::{AtomicUsize, Ordering};
     use thread;
     use time::Duration;
     use u32;
@@ -405,7 +412,7 @@ mod tests {
 
     #[test]
     fn static_smoke() {
-        static C: StaticCondvar = CONDVAR_INIT;
+        static C: StaticCondvar = StaticCondvar::new();
         C.notify_one();
         C.notify_all();
         unsafe { C.destroy(); }
@@ -413,8 +420,8 @@ mod tests {
 
     #[test]
     fn notify_one() {
-        static C: StaticCondvar = CONDVAR_INIT;
-        static M: StaticMutex = MUTEX_INIT;
+        static C: StaticCondvar = StaticCondvar::new();
+        static M: StaticMutex = StaticMutex::new();
 
         let g = M.lock().unwrap();
         let _t = thread::spawn(move|| {
@@ -464,8 +471,8 @@ mod tests {
 
     #[test]
     fn wait_timeout_ms() {
-        static C: StaticCondvar = CONDVAR_INIT;
-        static M: StaticMutex = MUTEX_INIT;
+        static C: StaticCondvar = StaticCondvar::new();
+        static M: StaticMutex = StaticMutex::new();
 
         let g = M.lock().unwrap();
         let (g, _no_timeout) = C.wait_timeout_ms(g, 1).unwrap();
@@ -483,9 +490,9 @@ mod tests {
 
     #[test]
     fn wait_timeout_with() {
-        static C: StaticCondvar = CONDVAR_INIT;
-        static M: StaticMutex = MUTEX_INIT;
-        static S: AtomicUsize = ATOMIC_USIZE_INIT;
+        static C: StaticCondvar = StaticCondvar::new();
+        static M: StaticMutex = StaticMutex::new();
+        static S: AtomicUsize = AtomicUsize::new(0);
 
         let g = M.lock().unwrap();
         let (g, success) = C.wait_timeout_with(g, Duration::new(0, 1000), |_| {
@@ -530,9 +537,9 @@ mod tests {
     #[test]
     #[should_panic]
     fn two_mutexes() {
-        static M1: StaticMutex = MUTEX_INIT;
-        static M2: StaticMutex = MUTEX_INIT;
-        static C: StaticCondvar = CONDVAR_INIT;
+        static M1: StaticMutex = StaticMutex::new();
+        static M2: StaticMutex = StaticMutex::new();
+        static C: StaticCondvar = StaticCondvar::new();
 
         let mut g = M1.lock().unwrap();
         let _t = thread::spawn(move|| {

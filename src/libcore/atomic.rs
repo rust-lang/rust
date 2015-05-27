@@ -76,7 +76,6 @@ use marker::Sync;
 
 use intrinsics;
 use cell::UnsafeCell;
-use marker::PhantomData;
 
 use default::Default;
 
@@ -87,8 +86,8 @@ pub struct AtomicBool {
 }
 
 impl Default for AtomicBool {
-    fn default() -> AtomicBool {
-        ATOMIC_BOOL_INIT
+    fn default() -> Self {
+        Self::new(Default::default())
     }
 }
 
@@ -101,8 +100,8 @@ pub struct AtomicIsize {
 }
 
 impl Default for AtomicIsize {
-    fn default() -> AtomicIsize {
-        ATOMIC_ISIZE_INIT
+    fn default() -> Self {
+        Self::new(Default::default())
     }
 }
 
@@ -115,8 +114,8 @@ pub struct AtomicUsize {
 }
 
 impl Default for AtomicUsize {
-    fn default() -> AtomicUsize {
-        ATOMIC_USIZE_INIT
+    fn default() -> Self {
+        Self::new(Default::default())
     }
 }
 
@@ -125,8 +124,7 @@ unsafe impl Sync for AtomicUsize {}
 /// A raw pointer type which can be safely shared between threads.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct AtomicPtr<T> {
-    p: UnsafeCell<usize>,
-    _marker: PhantomData<*mut T>,
+    p: UnsafeCell<*mut T>,
 }
 
 impl<T> Default for AtomicPtr<T> {
@@ -175,16 +173,13 @@ pub enum Ordering {
 
 /// An `AtomicBool` initialized to `false`.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub const ATOMIC_BOOL_INIT: AtomicBool =
-        AtomicBool { v: UnsafeCell { value: 0 } };
+pub const ATOMIC_BOOL_INIT: AtomicBool = AtomicBool::new(false);
 /// An `AtomicIsize` initialized to `0`.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub const ATOMIC_ISIZE_INIT: AtomicIsize =
-        AtomicIsize { v: UnsafeCell { value: 0 } };
+pub const ATOMIC_ISIZE_INIT: AtomicIsize = AtomicIsize::new(0);
 /// An `AtomicUsize` initialized to `0`.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub const ATOMIC_USIZE_INIT: AtomicUsize =
-        AtomicUsize { v: UnsafeCell { value: 0, } };
+pub const ATOMIC_USIZE_INIT: AtomicUsize = AtomicUsize::new(0);
 
 // NB: Needs to be -1 (0b11111111...) to make fetch_nand work correctly
 const UINT_TRUE: usize = !0;
@@ -202,9 +197,8 @@ impl AtomicBool {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn new(v: bool) -> AtomicBool {
-        let val = if v { UINT_TRUE } else { 0 };
-        AtomicBool { v: UnsafeCell::new(val) }
+    pub const fn new(v: bool) -> AtomicBool {
+        AtomicBool { v: UnsafeCell::new(-(v as isize) as usize) }
     }
 
     /// Loads a value from the bool.
@@ -445,7 +439,7 @@ impl AtomicIsize {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn new(v: isize) -> AtomicIsize {
+    pub const fn new(v: isize) -> AtomicIsize {
         AtomicIsize {v: UnsafeCell::new(v)}
     }
 
@@ -633,7 +627,7 @@ impl AtomicUsize {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn new(v: usize) -> AtomicUsize {
+    pub const fn new(v: usize) -> AtomicUsize {
         AtomicUsize { v: UnsafeCell::new(v) }
     }
 
@@ -821,9 +815,8 @@ impl<T> AtomicPtr<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn new(p: *mut T) -> AtomicPtr<T> {
-        AtomicPtr { p: UnsafeCell::new(p as usize),
-                    _marker: PhantomData }
+    pub const fn new(p: *mut T) -> AtomicPtr<T> {
+        AtomicPtr { p: UnsafeCell::new(p) }
     }
 
     /// Loads a value from the pointer.
@@ -848,7 +841,7 @@ impl<T> AtomicPtr<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn load(&self, order: Ordering) -> *mut T {
         unsafe {
-            atomic_load(self.p.get(), order) as *mut T
+            atomic_load(self.p.get() as *mut usize, order) as *mut T
         }
     }
 
@@ -875,7 +868,7 @@ impl<T> AtomicPtr<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn store(&self, ptr: *mut T, order: Ordering) {
-        unsafe { atomic_store(self.p.get(), ptr as usize, order); }
+        unsafe { atomic_store(self.p.get() as *mut usize, ptr as usize, order); }
     }
 
     /// Stores a value into the pointer, returning the old value.
@@ -897,7 +890,7 @@ impl<T> AtomicPtr<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn swap(&self, ptr: *mut T, order: Ordering) -> *mut T {
-        unsafe { atomic_swap(self.p.get(), ptr as usize, order) as *mut T }
+        unsafe { atomic_swap(self.p.get() as *mut usize, ptr as usize, order) as *mut T }
     }
 
     /// Stores a value into the pointer if the current value is the same as the expected value.
@@ -925,7 +918,7 @@ impl<T> AtomicPtr<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn compare_and_swap(&self, old: *mut T, new: *mut T, order: Ordering) -> *mut T {
         unsafe {
-            atomic_compare_and_swap(self.p.get(), old as usize,
+            atomic_compare_and_swap(self.p.get() as *mut usize, old as usize,
                                     new as usize, order) as *mut T
         }
     }

@@ -74,6 +74,7 @@
 #![feature(concat_idents)]
 #![feature(reflect)]
 #![feature(custom_attribute)]
+#![feature(const_fn)]
 
 #[macro_use]
 mod macros;

@@ -167,7 +167,4 @@ mod rustc {
 }
 
 // Build the diagnostics array at the end so that the metadata includes error use sites.
-#[cfg(stage0)]
-__build_diagnostic_array! { DIAGNOSTICS }
-#[cfg(not(stage0))]
 __build_diagnostic_array! { librustc, DIAGNOSTICS }

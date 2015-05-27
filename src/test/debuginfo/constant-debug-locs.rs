@@ -19,7 +19,7 @@
 // This test makes sure that the compiler doesn't crash when trying to assign
 // debug locations to const-expressions.
 
-use std::sync::MUTEX_INIT;
+use std::sync::StaticMutex;
 use std::cell::UnsafeCell;
 
 const CONSTANT: u64 = 3 + 4;
@@ -49,7 +49,7 @@ const VEC: [u32; 8] = [0; 8];
 
 const NESTED: (Struct, TupleStruct) = (STRUCT, TUPLE_STRUCT);
 
-const UNSAFE_CELL: UnsafeCell<bool> = UnsafeCell { value: false };
+const UNSAFE_CELL: UnsafeCell<bool> = UnsafeCell::new(false);
 
 fn main() {
     let mut _constant = CONSTANT;
@@ -61,6 +61,6 @@ fn main() {
     let mut _string = STRING;
     let mut _vec = VEC;
     let mut _nested = NESTED;
-    let mut _extern = MUTEX_INIT;
+    let mut _extern = StaticMutex::new();
     let mut _unsafe_cell = UNSAFE_CELL;
 }

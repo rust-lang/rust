@@ -20,10 +20,13 @@ pub struct Mutex(imp::Mutex);
 
 unsafe impl Sync for Mutex {}
 
-/// Constant initializer for statically allocated mutexes.
-pub const MUTEX_INIT: Mutex = Mutex(imp::MUTEX_INIT);
-
 impl Mutex {
+    /// Creates a new mutex for use.
+    ///
+    /// Behavior is undefined if the mutex is moved after it is
+    /// first used with any of the functions below.
+    pub const fn new() -> Mutex { Mutex(imp::Mutex::new()) }
+
     /// Locks the mutex blocking the current thread until it is available.
     ///
     /// Behavior is undefined if the mutex has been moved between this and any

@@ -20,16 +20,12 @@ use sys::condvar as imp;
 /// this type.
 pub struct Condvar(imp::Condvar);
 
-/// Static initializer for condition variables.
-pub const CONDVAR_INIT: Condvar = Condvar(imp::CONDVAR_INIT);
-
 impl Condvar {
     /// Creates a new condition variable for use.
     ///
     /// Behavior is undefined if the condition variable is moved after it is
     /// first used with any of the functions below.
-    #[inline]
-    pub unsafe fn new() -> Condvar { Condvar(imp::Condvar::new()) }
+    pub const fn new() -> Condvar { Condvar(imp::Condvar::new()) }
 
     /// Signals one waiter on this condition variable to wake up.
     #[inline]
