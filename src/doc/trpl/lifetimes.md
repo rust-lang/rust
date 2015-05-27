@@ -134,8 +134,8 @@ x: &'a i32,
 # }
 ```
 
-uses it. So why do we need a lifetime here? We need to ensure that any reference
-to a `Foo` cannot outlive the reference to an `i32` it contains.
+uses it. So why do we need a lifetime here? We need to ensure that any
+reference to the contained `i32` does not outlive the containing `Foo`.
 
 ## Thinking in scopes
 
