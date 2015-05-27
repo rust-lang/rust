@@ -15,7 +15,7 @@ trait Printable {
     fn print(&self) { println!("{:?}", *self) }
 }
 
-impl Printable for int {}
+impl Printable for i32 {}
 
 impl Printable for String {
     fn print(&self) { println!("{}", *self) }

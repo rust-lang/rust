@@ -43,7 +43,7 @@ trait Graph {
 Now, our clients can be abstract over a given `Graph`:
 
 ```rust,ignore
-fn distance<G: Graph>(graph: &G, start: &G::N, end: &G::N) -> uint { ... }
+fn distance<G: Graph>(graph: &G, start: &G::N, end: &G::N) -> usize { ... }
 ```
 
 No need to deal with the `E`dge type here!
