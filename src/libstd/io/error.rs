@@ -129,9 +129,7 @@ impl Error {
     ///
     /// This function is used to generically create I/O errors which do not
     /// originate from the OS itself. The `error` argument is an arbitrary
-    /// payload which will be contained in this `Error`. Accessors as well as
-    /// downcasting will soon be added to this type as well to access the custom
-    /// information.
+    /// payload which will be contained in this `Error`.
     ///
     /// # Examples
     ///
@@ -174,13 +172,51 @@ impl Error {
 
     /// Returns the OS error that this error represents (if any).
     ///
-    /// If this `Error` was constructed via `last_os_error` then this function
-    /// will return `Some`, otherwise it will return `None`.
+    /// If this `Error` was constructed via `last_os_error` or
+    /// `from_raw_os_error`, then this function will return `Some`, otherwise
+    /// it will return `None`.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn raw_os_error(&self) -> Option<i32> {
         match self.repr {
             Repr::Os(i) => Some(i),
             Repr::Custom(..) => None,
+        }
+    }
+
+    /// Returns a reference to the inner error wrapped by this error (if any).
+    ///
+    /// If this `Error` was constructed via `new` then this function will
+    /// return `Some`, otherwise it will return `None`.
+    #[unstable(feature = "io_error_inner", reason = "recently added")]
+    pub fn get_ref(&self) -> Option<&(error::Error+Send+Sync)> {
+        match self.repr {
+            Repr::Os(..) => None,
+            Repr::Custom(ref c) => Some(&*c.error),
+        }
+    }
+
+    /// Returns a mutable reference to the inner error wrapped by this error
+    /// (if any).
+    ///
+    /// If this `Error` was constructed via `new` then this function will
+    /// return `Some`, otherwise it will return `None`.
+    #[unstable(feature = "io_error_inner", reason = "recently added")]
+    pub fn get_mut(&mut self) -> Option<&mut (error::Error+Send+Sync)> {
+        match self.repr {
+            Repr::Os(..) => None,
+            Repr::Custom(ref mut c) => Some(&mut *c.error),
+        }
+    }
+
+    /// Consumes the `Error`, returning its inner error (if any).
+    ///
+    /// If this `Error` was constructed via `new` then this function will
+    /// return `Some`, otherwise it will return `None`.
+    #[unstable(feature = "io_error_inner", reason = "recently added")]
+    pub fn into_inner(self) -> Option<Box<error::Error+Send+Sync>> {
+        match self.repr {
+            Repr::Os(..) => None,
+            Repr::Custom(c) => Some(c.error)
         }
     }
 
@@ -216,7 +252,7 @@ impl error::Error for Error {
         }
     }
 
-    fn cause(&self) -> Option<&Error> {
+    fn cause(&self) -> Option<&error::Error> {
         match self.repr {
             Repr::Os(..) => None,
             Repr::Custom(ref c) => c.error.cause(),
