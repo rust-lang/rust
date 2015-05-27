@@ -1077,7 +1077,7 @@ impl<'tcx> Repr<'tcx> for ty::AssociatedConst<'tcx> {
     }
 }
 
-impl<'tcx> Repr<'tcx> for ty::AssociatedType {
+impl<'tcx> Repr<'tcx> for ty::AssociatedType<'tcx> {
     fn repr(&self, tcx: &ctxt<'tcx>) -> String {
         format!("AssociatedType(name: {}, vis: {}, def_id: {})",
                 self.name.repr(tcx),

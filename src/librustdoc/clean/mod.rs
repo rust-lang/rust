@@ -2737,43 +2737,40 @@ impl<'tcx> Clean<Item> for ty::AssociatedConst<'tcx> {
     }
 }
 
-impl Clean<Item> for ty::AssociatedType {
+impl<'tcx> Clean<Item> for ty::AssociatedType<'tcx> {
     fn clean(&self, cx: &DocContext) -> Item {
-        // When loading a cross-crate associated type, the bounds for this type
-        // are actually located on the trait/impl itself, so we need to load
-        // all of the generics from there and then look for bounds that are
-        // applied to this associated type in question.
-        let predicates = ty::lookup_predicates(cx.tcx(), self.container.id());
-        let generics = match self.container {
-            ty::TraitContainer(did) => {
-                let def = ty::lookup_trait_def(cx.tcx(), did);
-                (&def.generics, &predicates, subst::TypeSpace).clean(cx)
-            }
-            ty::ImplContainer(did) => {
-                let ty = ty::lookup_item_type(cx.tcx(), did);
-                (&ty.generics, &predicates, subst::TypeSpace).clean(cx)
-            }
-        };
         let my_name = self.name.clean(cx);
-        let mut bounds = generics.where_predicates.iter().filter_map(|pred| {
-            let (name, self_type, trait_, bounds) = match *pred {
-                WherePredicate::BoundPredicate {
-                    ty: QPath { ref name, ref self_type, ref trait_ },
-                    ref bounds
-                } => (name, self_type, trait_, bounds),
-                _ => return None,
-            };
-            if *name != my_name { return None }
-            match **trait_ {
-                ResolvedPath { did, .. } if did == self.container.id() => {}
-                _ => return None,
-            }
-            match **self_type {
-                Generic(ref s) if *s == "Self" => {}
-                _ => return None,
-            }
-            Some(bounds)
-        }).flat_map(|i| i.iter().cloned()).collect::<Vec<_>>();
+
+        let mut bounds = if let ty::TraitContainer(did) = self.container {
+            // When loading a cross-crate associated type, the bounds for this type
+            // are actually located on the trait/impl itself, so we need to load
+            // all of the generics from there and then look for bounds that are
+            // applied to this associated type in question.
+            let def = ty::lookup_trait_def(cx.tcx(), did);
+            let predicates = ty::lookup_predicates(cx.tcx(), did);
+            let generics = (&def.generics, &predicates, subst::TypeSpace).clean(cx);
+            generics.where_predicates.iter().filter_map(|pred| {
+                let (name, self_type, trait_, bounds) = match *pred {
+                    WherePredicate::BoundPredicate {
+                        ty: QPath { ref name, ref self_type, ref trait_ },
+                        ref bounds
+                    } => (name, self_type, trait_, bounds),
+                    _ => return None,
+                };
+                if *name != my_name { return None }
+                match **trait_ {
+                    ResolvedPath { did, .. } if did == self.container.id() => {}
+                    _ => return None,
+                }
+                match **self_type {
+                    Generic(ref s) if *s == "Self" => {}
+                    _ => return None,
+                }
+                Some(bounds)
+            }).flat_map(|i| i.iter().cloned()).collect::<Vec<_>>()
+        } else {
+            vec![]
+        };
 
         // Our Sized/?Sized bound didn't get handled when creating the generics
         // because we didn't actually get our whole set of bounds until just now
@@ -2789,7 +2786,7 @@ impl Clean<Item> for ty::AssociatedType {
             source: DUMMY_SP.clean(cx),
             name: Some(self.name.clean(cx)),
             attrs: inline::load_attrs(cx, cx.tcx(), self.def_id),
-            inner: AssociatedTypeItem(bounds, None),
+            inner: AssociatedTypeItem(bounds, self.ty.clean(cx)),
             visibility: self.vis.clean(cx),
             def_id: self.def_id,
             stability: stability::lookup(cx.tcx(), self.def_id).clean(cx),
