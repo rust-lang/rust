@@ -16,7 +16,7 @@ import os
 import re
 
 if len(sys.argv) < 2:
-    print "usage: errorck.py <src-dir>"
+    print("usage: errorck.py <src-dir>")
     sys.exit(1)
 
 src_dir = sys.argv[1]

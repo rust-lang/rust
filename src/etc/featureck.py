@@ -18,10 +18,13 @@
 #     since the same version
 #   * Prints information about features
 
-import sys, os, re
+import sys
+import os
+import re
+import codecs
 
 if len(sys.argv) < 2:
-    print "usage: featurkck.py <src-dir>"
+    print("usage: featureck.py <src-dir>")
     sys.exit(1)
 
 src_dir = sys.argv[1]
@@ -47,7 +50,7 @@ with open(feature_gate_source, 'r') as f:
             line = line.replace("(", "").replace("),", "").replace(")", "")
             parts = line.split(",")
             if len(parts) != 3:
-                print "error: unexpected number of components in line: " + original_line
+                print("error: unexpected number of components in line: " + original_line)
                 sys.exit(1)
             feature_name = parts[0].strip().replace('"', "")
             since = parts[1].strip().replace('"', "")
@@ -79,7 +82,7 @@ for (dirpath, dirnames, filenames) in os.walk(src_dir):
             continue
 
         path = os.path.join(dirpath, filename)
-        with open(path, 'r') as f:
+        with codecs.open(filename=path, mode='r', encoding="utf-8") as f:
             line_num = 0
             for line in f:
                 line_num += 1
@@ -107,9 +110,9 @@ for (dirpath, dirnames, filenames) in os.walk(src_dir):
                         if not mm is None:
                             since = mm.group(1)
                         else:
-                            print "error: misformed stability attribute"
-                            print "line " + str(line_num) + " of " + path + ":"
-                            print line
+                            print("error: misformed stability attribute")
+                            print("line %d of %:" % (line_num, path))
+                            print(line)
                             errors = True
 
                     lib_features[feature_name] = feature_name
@@ -123,24 +126,24 @@ for (dirpath, dirnames, filenames) in os.walk(src_dir):
                         (expected_since, source_path, source_line_num, source_line) = \
                             lib_features_and_level.get((feature_name, level))
                         if since != expected_since:
-                            print "error: mismatch in " + level + " feature '" + feature_name + "'"
-                            print "line " + str(source_line_num) + " of " + source_path + ":"
-                            print source_line
-                            print "line " + str(line_num) + " of " + path + ":"
-                            print line
+                            print("error: mismatch in %s feature '%s'" % (level, feature_name))
+                            print("line %d of %s:" % (source_line_num, source_path))
+                            print(source_line)
+                            print("line %d of %s:" % (line_num, path))
+                            print(line)
                             errors = True
 
                     # Verify that this lib feature doesn't duplicate a lang feature
                     if feature_name in language_feature_names:
-                        print "error: lib feature '" + feature_name + "' duplicates a lang feature"
-                        print "line " + str(line_num) + " of " + path + ":"
-                        print line
+                        print("error: lib feature '%s' duplicates a lang feature" % (feature_name))
+                        print("line %d of %s:" % (line_num, path))
+                        print(line)
                         errors = True
 
                 else:
-                    print "error: misformed stability attribute"
-                    print "line " + str(line_num) + " of " + path + ":"
-                    print line
+                    print("error: misformed stability attribute")
+                    print("line %d of %s:" % (line_num, path))
+                    print(line)
                     errors = True
 
 # Merge data about both lists
@@ -175,7 +178,7 @@ for f in lib_features:
     is_unstable = lib_features_and_level.get((name, "unstable")) is not None
 
     if is_stable and is_unstable:
-        print "error: feature '" + name + "' is both stable and unstable"
+        print("error: feature '%s' is both stable and unstable" % (name))
         errors = True
 
     if is_stable:
@@ -192,7 +195,7 @@ merged_stats = { }
 for name in lib_feature_stats:
     if language_feature_stats.get(name) is not None:
         if not name in joint_features:
-            print "error: feature '" + name + "' is both a lang and lib feature but not whitelisted"
+            print("error: feature '%s' is both a lang and lib feature but not whitelisted" % (name))
             errors = True
         lang_status = language_feature_stats[name][3]
         lib_status = lib_feature_stats[name][3]
@@ -200,13 +203,13 @@ for name in lib_feature_stats:
         lib_stable_since = lib_feature_stats[name][4]
 
         if lang_status != lib_status and lib_status != "deprecated":
-            print "error: feature '" + name + "' has lang status " + lang_status + \
-                  " but lib status " + lib_status
+            print("error: feature '%s' has lang status %s " +
+                  "but lib status %s" % (name, lang_status, lib_status))
             errors = True
 
         if lang_stable_since != lib_stable_since:
-            print "error: feature '" + name + "' has lang stable since " + lang_stable_since + \
-                  " but lib stable since " + lib_stable_since
+            print("error: feature '%s' has lang stable since %s " +
+                  "but lib stable since %s" % (name, lang_stable_since, lib_stable_since))
             errors = True
 
         merged_stats[name] = (name, True, True, lang_status, lang_stable_since)
@@ -240,5 +243,5 @@ lines.sort()
 
 print
 for line in lines:
-    print "* " + line
+    print("* " + line)
 print
