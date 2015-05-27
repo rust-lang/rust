@@ -20,12 +20,13 @@ use str::from_utf8;
 use sys::c;
 use sys::net::{cvt, cvt_r, cvt_gai, Socket, init, wrlen_t};
 use sys_common::{AsInner, FromInner, IntoInner};
+use time::Duration;
 
 ////////////////////////////////////////////////////////////////////////////////
 // sockaddr and misc bindings
 ////////////////////////////////////////////////////////////////////////////////
 
-fn setsockopt<T>(sock: &Socket, opt: c_int, val: c_int,
+pub fn setsockopt<T>(sock: &Socket, opt: c_int, val: c_int,
                      payload: T) -> io::Result<()> {
     unsafe {
         let payload = &payload as *const T as *const c_void;
@@ -35,16 +36,15 @@ fn setsockopt<T>(sock: &Socket, opt: c_int, val: c_int,
     }
 }
 
-#[allow(dead_code)]
-fn getsockopt<T: Copy>(sock: &Socket, opt: c_int,
+pub fn getsockopt<T: Copy>(sock: &Socket, opt: c_int,
                        val: c_int) -> io::Result<T> {
     unsafe {
         let mut slot: T = mem::zeroed();
         let mut len = mem::size_of::<T>() as socklen_t;
-        let ret = try!(cvt(c::getsockopt(*sock.as_inner(), opt, val,
-                                         &mut slot as *mut _ as *mut _,
-                                         &mut len)));
-        assert_eq!(ret as usize, mem::size_of::<T>());
+        try!(cvt(c::getsockopt(*sock.as_inner(), opt, val,
+                               &mut slot as *mut _ as *mut _,
+                               &mut len)));
+        assert_eq!(len as usize, mem::size_of::<T>());
         Ok(slot)
     }
 }
@@ -218,6 +218,22 @@ impl TcpStream {
                   target_os = "linux")))]
     fn set_tcp_keepalive(&self, _seconds: u32) -> io::Result<()> {
         Ok(())
+    }
+
+    pub fn set_read_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
+        self.inner.set_timeout(dur, libc::SO_RCVTIMEO)
+    }
+
+    pub fn set_write_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
+        self.inner.set_timeout(dur, libc::SO_SNDTIMEO)
+    }
+
+    pub fn read_timeout(&self) -> io::Result<Option<Duration>> {
+        self.inner.timeout(libc::SO_RCVTIMEO)
+    }
+
+    pub fn write_timeout(&self) -> io::Result<Option<Duration>> {
+        self.inner.timeout(libc::SO_SNDTIMEO)
     }
 
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
@@ -470,6 +486,22 @@ impl UdpSocket {
 
     pub fn duplicate(&self) -> io::Result<UdpSocket> {
         self.inner.duplicate().map(|s| UdpSocket { inner: s })
+    }
+
+    pub fn set_read_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
+        self.inner.set_timeout(dur, libc::SO_RCVTIMEO)
+    }
+
+    pub fn set_write_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
+        self.inner.set_timeout(dur, libc::SO_SNDTIMEO)
+    }
+
+    pub fn read_timeout(&self) -> io::Result<Option<Duration>> {
+        self.inner.timeout(libc::SO_RCVTIMEO)
+    }
+
+    pub fn write_timeout(&self) -> io::Result<Option<Duration>> {
+        self.inner.timeout(libc::SO_SNDTIMEO)
     }
 }
 

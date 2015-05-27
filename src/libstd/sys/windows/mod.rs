@@ -60,6 +60,7 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
         libc::WSAEINVAL => ErrorKind::InvalidInput,
         libc::WSAENOTCONN => ErrorKind::NotConnected,
         libc::WSAEWOULDBLOCK => ErrorKind::WouldBlock,
+        libc::WSAETIMEDOUT => ErrorKind::TimedOut,
 
         _ => ErrorKind::Other,
     }
