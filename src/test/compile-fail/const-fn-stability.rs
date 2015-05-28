@@ -25,4 +25,9 @@ impl Foo for u32 {
     const fn foo() -> u32 { 0 } //~ ERROR const fn is unstable
 }
 
-fn main() { }
+static FOO: usize = foo();
+const BAR: usize = foo();
+
+fn main() {
+    let x: [usize; foo()] = [];
+}
