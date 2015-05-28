@@ -880,6 +880,19 @@ From [RFC 246]:
  > required that all references be borrowed.
 
 [RFC 246]: https://github.com/rust-lang/rfcs/pull/246
+"##,
+
+E0397: r##"
+It is not allowed for a mutable static to allocate or have destructors. For
+example:
+
+```
+// error: mutable statics are not allowed to have boxes
+static mut FOO: Option<Box<usize>> = None;
+
+// error: mutable statics are not allowed to have destructors
+static mut BAR: Option<Vec<i32>> = None;
+```
 "##
 
 }
