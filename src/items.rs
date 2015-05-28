@@ -137,13 +137,27 @@ impl<'a> FmtVisitor<'a> {
         let ret_str = self.rewrite_return(&fd.output);
 
         // Args.
-        let (one_line_budget, multi_line_budget, arg_indent) =
-            self.compute_budgets_for_args(&mut result, indent, ret_str.len(), newline_brace);
+        let (one_line_budget, multi_line_budget, mut arg_indent) =
+            self.compute_budgets_for_args(&result, indent, ret_str.len(), newline_brace);
 
         debug!("rewrite_fn: one_line_budget: {}, multi_line_budget: {}, arg_indent: {}",
                one_line_budget, multi_line_budget, arg_indent);
 
-        result.push('(');
+        // Check if vertical layout was forced by compute_budget_for_args.
+        if one_line_budget <= 0 {
+            if config!(fn_args_paren_newline) {
+                result.push('\n');
+                result.push_str(&make_indent(arg_indent));
+                arg_indent = arg_indent + 1; // extra space for `(`
+                result.push('(');
+            } else {
+                result.push_str("(\n");
+                result.push_str(&make_indent(arg_indent));
+            }
+        } else {
+            result.push('(');
+        }
+
         result.push_str(&self.rewrite_args(&fd.inputs,
                                            explicit_self,
                                            one_line_budget,
@@ -337,7 +351,7 @@ impl<'a> FmtVisitor<'a> {
     }
 
     fn compute_budgets_for_args(&self,
-                                result: &mut String,
+                                result: &String,
                                 indent: usize,
                                 ret_str_len: usize,
                                 newline_brace: bool)
@@ -372,17 +386,14 @@ impl<'a> FmtVisitor<'a> {
 
         // Didn't work. we must force vertical layout and put args on a newline.
         if let None = budgets {
-            result.push('\n');
-            result.push_str(&make_indent(indent + 4));
-            // 6 = new indent + `()`
-            let used_space = indent + 6;
+            let new_indent = indent + config!(tab_spaces);
+            let used_space = new_indent + 2; // account for `(` and `)`
             let max_space = config!(ideal_width) + config!(leeway);
             if used_space > max_space {
                 // Whoops! bankrupt.
                 // TODO take evasive action, perhaps kill the indent or something.
             } else {
-                // 5 = new indent + `(`
-                budgets = Some((0, max_space - used_space, indent + 5));
+                budgets = Some((0, max_space - used_space, new_indent));
             }
         }
 
