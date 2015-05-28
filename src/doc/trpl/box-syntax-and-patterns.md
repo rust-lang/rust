@@ -58,7 +58,7 @@ fn main() {
 ```
 
 The idea is that by passing around a box, you're only copying a pointer, rather
-than the hundred `int`s that make up the `BigStruct`.
+than the hundred `i32`s that make up the `BigStruct`.
 
 This is an antipattern in Rust. Instead, write this:
 

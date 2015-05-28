@@ -5,7 +5,7 @@
 Prefer
 
 ```rust
-fn use_mutex(m: sync::mutex::Mutex<int>) {
+fn use_mutex(m: sync::mutex::Mutex<i32>) {
     let guard = m.lock();
     do_work(guard);
     drop(guard); // unlock the lock
@@ -16,7 +16,7 @@ fn use_mutex(m: sync::mutex::Mutex<int>) {
 over
 
 ```rust
-fn use_mutex(m: sync::mutex::Mutex<int>) {
+fn use_mutex(m: sync::mutex::Mutex<i32>) {
     do_work(m.lock());
     // do other work
 }
