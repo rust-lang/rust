@@ -218,9 +218,9 @@ Therefore, casting one of these non-constant pointers to an integer results
 in a non-constant integer which lead to this error. Example:
 
 ```
-const X: u32 = 50;
-const Y: *const u32 = &X;
-println!("{:?}", Y);
+const X: u32 = 1;
+const Y: usize = &X as *const u32 as usize;
+println!("{}", Y);
 ```
 "##,
 
