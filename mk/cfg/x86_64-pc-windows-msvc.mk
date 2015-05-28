@@ -80,3 +80,8 @@ CUSTOM_DEPS_rustc_llvm_T_x86_64-pc-windows-msvc += \
 x86_64-pc-windows-msvc/rt/rustc_llvm.def: $(S)src/etc/mklldef.py \
 			$(S)src/librustc_llvm/lib.rs
 	$(CFG_PYTHON) $^ $@ rustc_llvm-$(CFG_FILENAME_EXTRA)
+
+# All windows nightiles are currently a GNU triple, so this MSVC triple is not
+# bootstrapping from itself. This is relevant during stage0, and other parts of
+# the build system take this into account.
+BOOTSTRAP_FROM_x86_64-pc-windows-msvc := x86_64-pc-windows-gnu
