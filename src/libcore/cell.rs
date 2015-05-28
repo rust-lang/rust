@@ -545,13 +545,30 @@ impl<'b, T: ?Sized> Deref for Ref<'b, T> {
 ///
 /// A `Clone` implementation would interfere with the widespread
 /// use of `r.borrow().clone()` to clone the contents of a `RefCell`.
+#[deprecated(since = "1.2.0", reason = "moved to a `Ref::clone` associated function")]
 #[unstable(feature = "core",
            reason = "likely to be moved to a method, pending language changes")]
 #[inline]
 pub fn clone_ref<'b, T:Clone>(orig: &Ref<'b, T>) -> Ref<'b, T> {
-    Ref {
-        _value: orig._value,
-        _borrow: orig._borrow.clone(),
+    Ref::clone(orig)
+}
+
+impl<'b, T: ?Sized> Ref<'b, T> {
+    /// Copies a `Ref`.
+    ///
+    /// The `RefCell` is already immutably borrowed, so this cannot fail.
+    ///
+    /// This is an associated function that needs to be used as `Ref::clone(...)`.
+    /// A `Clone` implementation or a method would interfere with the widespread
+    /// use of `r.borrow().clone()` to clone the contents of a `RefCell`.
+    #[unstable(feature = "cell_extras",
+               reason = "likely to be moved to a method, pending language changes")]
+    #[inline]
+    pub fn clone(orig: &Ref<'b, T>) -> Ref<'b, T> {
+        Ref {
+            _value: orig._value,
+            _borrow: orig._borrow.clone(),
+        }
     }
 }
 
