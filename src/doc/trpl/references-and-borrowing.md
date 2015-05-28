@@ -206,7 +206,7 @@ fn main() {
 ^
 ```
 
-In other words, the mutable borow is held through the rest of our example. What
+In other words, the mutable borrow is held through the rest of our example. What
 we want is for the mutable borrow to end _before_ we try to call `println!` and
 make an immutable borrow. In Rust, borrowing is tied to the scope that the
 borrow is valid for. And our scopes look like this:
