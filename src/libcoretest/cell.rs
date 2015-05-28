@@ -115,13 +115,13 @@ fn discard_doesnt_unborrow() {
 }
 
 #[test]
-fn clone_ref_updates_flag() {
+fn ref_clone_updates_flag() {
     let x = RefCell::new(0);
     {
         let b1 = x.borrow();
         assert_eq!(x.borrow_state(), BorrowState::Reading);
         {
-            let _b2 = clone_ref(&b1);
+            let _b2 = Ref::clone(&b1);
             assert_eq!(x.borrow_state(), BorrowState::Reading);
         }
         assert_eq!(x.borrow_state(), BorrowState::Reading);
