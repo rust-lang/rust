@@ -153,7 +153,7 @@
 use core::prelude::*;
 
 use core::iter::{FromIterator};
-use core::mem::{zeroed, replace, swap};
+use core::mem::swap;
 use core::ptr;
 
 use slice;
@@ -484,46 +484,42 @@ impl<T: Ord> BinaryHeap<T> {
 
     // The implementations of sift_up and sift_down use unsafe blocks in
     // order to move an element out of the vector (leaving behind a
-    // zeroed element), shift along the others and move it back into the
-    // vector over the junk element. This reduces the constant factor
-    // compared to using swaps, which involves twice as many moves.
-    fn sift_up(&mut self, start: usize, mut pos: usize) {
+    // hole), shift along the others and move the removed element back into the
+    // vector at the final location of the hole.
+    // The `Hole` type is used to represent this, and make sure
+    // the hole is filled back at the end of its scope, even on panic.
+    // Using a hole reduces the constant factor compared to using swaps,
+    // which involves twice as many moves.
+    fn sift_up(&mut self, start: usize, pos: usize) {
         unsafe {
-            let new = replace(&mut self.data[pos], zeroed());
+            // Take out the value at `pos` and create a hole.
+            let mut hole = Hole::new(&mut self.data, pos);
 
-            while pos > start {
-                let parent = (pos - 1) >> 1;
-
-                if new <= self.data[parent] { break; }
-
-                let x = replace(&mut self.data[parent], zeroed());
-                ptr::write(&mut self.data[pos], x);
-                pos = parent;
+            while hole.pos() > start {
+                let parent = (hole.pos() - 1) / 2;
+                if hole.removed() <= hole.get(parent) { break }
+                hole.move_to(parent);
             }
-            ptr::write(&mut self.data[pos], new);
         }
     }
 
     fn sift_down_range(&mut self, mut pos: usize, end: usize) {
+        let start = pos;
         unsafe {
-            let start = pos;
-            let new = replace(&mut self.data[pos], zeroed());
-
+            let mut hole = Hole::new(&mut self.data, pos);
             let mut child = 2 * pos + 1;
             while child < end {
                 let right = child + 1;
-                if right < end && !(self.data[child] > self.data[right]) {
+                if right < end && !(hole.get(child) > hole.get(right)) {
                     child = right;
                 }
-                let x = replace(&mut self.data[child], zeroed());
-                ptr::write(&mut self.data[pos], x);
-                pos = child;
-                child = 2 * pos + 1;
+                hole.move_to(child);
+                child = 2 * hole.pos() + 1;
             }
 
-            ptr::write(&mut self.data[pos], new);
-            self.sift_up(start, pos);
+            pos = hole.pos;
         }
+        self.sift_up(start, pos);
     }
 
     fn sift_down(&mut self, pos: usize) {
@@ -552,6 +548,73 @@ impl<T: Ord> BinaryHeap<T> {
     /// Drops all items from the binary heap.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn clear(&mut self) { self.drain(); }
+}
+
+/// Hole represents a hole in a slice i.e. an index without valid value
+/// (because it was moved from or duplicated).
+/// In drop, `Hole` will restore the slice by filling the hole
+/// position with the value that was originally removed.
+struct Hole<'a, T: 'a> {
+    data: &'a mut [T],
+    /// `elt` is always `Some` from new until drop.
+    elt: Option<T>,
+    pos: usize,
+}
+
+impl<'a, T> Hole<'a, T> {
+    /// Create a new Hole at index `pos`.
+    fn new(data: &'a mut [T], pos: usize) -> Self {
+        unsafe {
+            let elt = ptr::read(&data[pos]);
+            Hole {
+                data: data,
+                elt: Some(elt),
+                pos: pos,
+            }
+        }
+    }
+
+    #[inline(always)]
+    fn pos(&self) -> usize { self.pos }
+
+    /// Return a reference to the element removed
+    #[inline(always)]
+    fn removed(&self) -> &T {
+        self.elt.as_ref().unwrap()
+    }
+
+    /// Return a reference to the element at `index`.
+    ///
+    /// Panics if the index is out of bounds.
+    ///
+    /// Unsafe because index must not equal pos.
+    #[inline(always)]
+    unsafe fn get(&self, index: usize) -> &T {
+        debug_assert!(index != self.pos);
+        &self.data[index]
+    }
+
+    /// Move hole to new location
+    ///
+    /// Unsafe because index must not equal pos.
+    #[inline(always)]
+    unsafe fn move_to(&mut self, index: usize) {
+        debug_assert!(index != self.pos);
+        let index_ptr: *const _ = &self.data[index];
+        let hole_ptr = &mut self.data[self.pos];
+        ptr::copy_nonoverlapping(index_ptr, hole_ptr, 1);
+        self.pos = index;
+    }
+}
+
+impl<'a, T> Drop for Hole<'a, T> {
+    fn drop(&mut self) {
+        // fill the hole again
+        unsafe {
+            let pos = self.pos;
+            ptr::write(&mut self.data[pos], self.elt.take().unwrap());
+        }
+    }
 }
 
 /// `BinaryHeap` iterator.
