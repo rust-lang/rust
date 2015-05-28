@@ -740,7 +740,7 @@ fn should_sort_failures_before_printing_them() {
 
 fn use_color(opts: &TestOpts) -> bool {
     match opts.color {
-        AutoColor => get_concurrency() == 1 && stdout_isatty(),
+        AutoColor => !opts.nocapture && stdout_isatty(),
         AlwaysColor => true,
         NeverColor => false,
     }
