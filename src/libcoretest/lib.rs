@@ -24,6 +24,7 @@
 #![feature(step_by)]
 #![feature(slice_patterns)]
 #![feature(float_from_str_radix)]
+#![feature(cell_extras)]
 
 extern crate core;
 extern crate test;
