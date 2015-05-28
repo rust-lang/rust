@@ -181,3 +181,42 @@ $(foreach host,$(CFG_HOST), \
   $(foreach stage,$(STAGES), \
    $(foreach tool,$(TOOLS), \
     $(eval $(call TARGET_TOOL,$(stage),$(target),$(host),$(tool)))))))
+
+# We have some triples which are bootstrapped from other triples, and this means
+# that we need to fixup some of the native tools that a triple depends on.
+#
+# For example, MSVC requires the llvm-ar.exe executable to manage archives, but
+# it bootstraps from the GNU Windows triple. This means that the compiler will
+# add this directory to PATH when executing new processes:
+#
+# 	$SYSROOT/rustlib/x86_64-pc-windows-gnu/bin
+#
+# Unfortunately, however, the GNU triple is not known about in stage0, so the
+# tools are actually located in:
+#
+# 	$SYSROOT/rustlib/x86_64-pc-windows-msvc/bin
+#
+# To remedy this problem, the rules below copy all native tool dependencies into
+# the bootstrap triple's location in stage 0 so the bootstrap compiler can find
+# the right sets of tools. Later stages (1+) will have the right host triple for
+# the compiler, so there's no need to worry there.
+#
+# $(1) - stage
+# $(2) - triple that's being used as host/target
+# $(3) - triple snapshot is built for
+# $(4) - crate
+# $(5) - tool
+define MOVE_TOOLS_TO_SNAPSHOT_HOST_DIR
+ifneq (,$(3))
+$$(TLIB$(1)_T_$(2)_H_$(2))/stamp.$(4): $$(HLIB$(1)_H_$(2))/rustlib/$(3)/bin/$(5)
+
+$$(HLIB$(1)_H_$(2))/rustlib/$(3)/bin/$(5): $$(TBIN$(1)_T_$(2)_H_$(2))/$(5)
+	mkdir -p $$(@D)
+	cp $$< $$@
+endif
+endef
+
+$(foreach target,$(CFG_TARGET), \
+ $(foreach crate,$(CRATES), \
+  $(foreach tool,$(NATIVE_TOOL_DEPS_$(crate)_T_$(target)), \
+   $(eval $(call MOVE_TOOLS_TO_SNAPSHOT_HOST_DIR,0,$(target),$(BOOTSTRAP_FROM_$(target)),$(crate),$(tool))))))
