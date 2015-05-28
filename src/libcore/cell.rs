@@ -143,7 +143,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use clone::Clone;
-use cmp::PartialEq;
+use cmp::{PartialEq, Eq};
 use default::Default;
 use marker::{Copy, Send, Sync, Sized};
 use ops::{Deref, DerefMut, Drop};
@@ -263,6 +263,9 @@ impl<T:PartialEq + Copy> PartialEq for Cell<T> {
     }
 }
 
+#[stable(feature = "cell_eq", since = "1.2.0")]
+impl<T:Eq + Copy> Eq for Cell<T> {}
+
 /// A mutable memory location with dynamically checked borrow rules
 ///
 /// See the [module-level documentation](index.html) for more.
@@ -273,7 +276,7 @@ pub struct RefCell<T: ?Sized> {
 }
 
 /// An enumeration of values returned from the `state` method on a `RefCell<T>`.
-#[derive(Copy, Clone, PartialEq, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 #[unstable(feature = "std_misc")]
 pub enum BorrowState {
     /// The cell is currently being read, there is at least one active `borrow`.
@@ -478,6 +481,9 @@ impl<T: ?Sized + PartialEq> PartialEq for RefCell<T> {
         *self.borrow() == *other.borrow()
     }
 }
+
+#[stable(feature = "cell_eq", since = "1.2.0")]
+impl<T: ?Sized + Eq> Eq for RefCell<T> {}
 
 struct BorrowRef<'b> {
     _borrow: &'b Cell<BorrowFlag>,
