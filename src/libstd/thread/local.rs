@@ -99,35 +99,58 @@ pub struct LocalKey<T> {
 
 /// Declare a new thread local storage key of type `std::thread::LocalKey`.
 ///
-/// See [LocalKey documentation](thread/struct.LocalKey.html) for more information.
+/// See [LocalKey documentation](thread/struct.LocalKey.html) for more
+/// information.
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow_internal_unstable]
+#[cfg(not(no_elf_tls))]
 macro_rules! thread_local {
     (static $name:ident: $t:ty = $init:expr) => (
-        static $name: ::std::thread::LocalKey<$t> = {
-            #[cfg_attr(all(any(target_os = "macos", target_os = "linux"),
-                           not(target_arch = "aarch64")),
-                       thread_local)]
-            static __KEY: ::std::thread::__LocalKeyInner<$t> =
-                ::std::thread::__LocalKeyInner::new();
-            fn __init() -> $t { $init }
-            fn __getit() -> &'static ::std::thread::__LocalKeyInner<$t> { &__KEY }
-            ::std::thread::LocalKey::new(__getit, __init)
-        };
+        static $name: ::std::thread::LocalKey<$t> =
+            __thread_local_inner!($t, $init,
+                #[cfg_attr(all(any(target_os = "macos", target_os = "linux"),
+                               not(target_arch = "aarch64")),
+                           thread_local)]);
     );
     (pub static $name:ident: $t:ty = $init:expr) => (
-        pub static $name: ::std::thread::LocalKey<$t> = {
-            #[cfg_attr(all(any(target_os = "macos", target_os = "linux"),
-                           not(target_arch = "aarch64")),
-                       thread_local)]
-            static __KEY: ::std::thread::__LocalKeyInner<$t> =
-                ::std::thread::__LocalKeyInner::new();
-            fn __init() -> $t { $init }
-            fn __getit() -> &'static ::std::thread::__LocalKeyInner<$t> { &__KEY }
-            ::std::thread::LocalKey::new(__getit, __init)
-        };
+        pub static $name: ::std::thread::LocalKey<$t> =
+            __thread_local_inner!($t, $init,
+                #[cfg_attr(all(any(target_os = "macos", target_os = "linux"),
+                               not(target_arch = "aarch64")),
+                           thread_local)]);
     );
+}
+
+#[macro_export]
+#[stable(feature = "rust1", since = "1.0.0")]
+#[allow_internal_unstable]
+#[cfg(no_elf_tls)]
+macro_rules! thread_local {
+    (static $name:ident: $t:ty = $init:expr) => (
+        static $name: ::std::thread::LocalKey<$t> =
+            __thread_local_inner!($t, $init, #[]);
+    );
+    (pub static $name:ident: $t:ty = $init:expr) => (
+        pub static $name: ::std::thread::LocalKey<$t> =
+            __thread_local_inner!($t, $init, #[]);
+    );
+}
+
+#[doc(hidden)]
+#[unstable(feature = "thread_local_internals",
+           reason = "should not be necessary")]
+#[macro_export]
+#[allow_internal_unstable]
+macro_rules! __thread_local_inner {
+    ($t:ty, $init:expr, #[$($attr:meta),*]) => {{
+        $(#[$attr])*
+        static __KEY: ::std::thread::__LocalKeyInner<$t> =
+            ::std::thread::__LocalKeyInner::new();
+        fn __init() -> $t { $init }
+        fn __getit() -> &'static ::std::thread::__LocalKeyInner<$t> { &__KEY }
+        ::std::thread::LocalKey::new(__getit, __init)
+    }}
 }
 
 /// Indicator of the state of a thread local storage key.
@@ -163,7 +186,10 @@ pub enum LocalKeyState {
 
 impl<T: 'static> LocalKey<T> {
     #[doc(hidden)]
-    pub const fn new(inner: fn() -> &'static __KeyInner<T>, init: fn() -> T) -> LocalKey<T> {
+    #[unstable(feature = "thread_local_internals",
+               reason = "recently added to create a key")]
+    pub const fn new(inner: fn() -> &'static __KeyInner<T>,
+                     init: fn() -> T) -> LocalKey<T> {
         LocalKey {
             inner: inner,
             init: init
@@ -240,7 +266,9 @@ impl<T: 'static> LocalKey<T> {
     }
 }
 
-#[cfg(all(any(target_os = "macos", target_os = "linux"), not(target_arch = "aarch64")))]
+#[cfg(all(any(target_os = "macos", target_os = "linux"),
+          not(target_arch = "aarch64"),
+          not(no_elf_tls)))]
 #[doc(hidden)]
 mod imp {
     use prelude::v1::*;
@@ -371,7 +399,9 @@ mod imp {
     }
 }
 
-#[cfg(any(not(any(target_os = "macos", target_os = "linux")), target_arch = "aarch64"))]
+#[cfg(any(not(any(target_os = "macos", target_os = "linux")),
+          target_arch = "aarch64",
+          no_elf_tls))]
 #[doc(hidden)]
 mod imp {
     use prelude::v1::*;
