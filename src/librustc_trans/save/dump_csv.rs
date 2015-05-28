@@ -508,7 +508,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
             self.process_formals(&decl.inputs, &fn_data.qualname);
             self.process_generic_params(ty_params, item.span, &fn_data.qualname, item.id);
         } else {
-            unreachable!();
+            self.sess.span_bug(item.span, "expected FunctionData");
         }
 
         for arg in &decl.inputs {
@@ -538,7 +538,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
                                 &var_data.type_value,
                                 var_data.scope);
         } else {
-            unreachable!();
+            self.sess.span_bug(item.span, "expected VariableData");
         }
 
         self.visit_ty(&typ);
@@ -768,22 +768,18 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
     }
 
     fn process_mod(&mut self,
-                   item: &ast::Item,  // The module in question, represented as an item.
-                   m: &ast::Mod) {
-        let qualname = format!("::{}", self.analysis.ty_cx.map.path_to_string(item.id));
-
-        let cm = self.sess.codemap();
-        let filename = cm.span_to_filename(m.inner);
-
-        let sub_span = self.span.sub_span_after_keyword(item.span, keywords::Mod);
-        self.fmt.mod_str(item.span,
-                         sub_span,
-                         item.id,
-                         &qualname[..],
-                         self.cur_scope,
-                         &filename[..]);
-
-        self.nest(item.id, |v| visit::walk_mod(v, m));
+                   item: &ast::Item) {  // The module in question, represented as an item.
+        let mod_data = self.save_ctxt.get_item_data(item);
+        if let super::Data::ModData(mod_data) = mod_data {
+            self.fmt.mod_str(item.span,
+                             Some(mod_data.span),
+                             mod_data.id,
+                             &mod_data.qualname,
+                             mod_data.scope,
+                             &mod_data.filename);
+        } else {
+            self.sess.span_bug(item.span, "expected ModData");
+        }
     }
 
     fn process_path(&mut self,
@@ -1188,7 +1184,10 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
             }
             ast::ItemTrait(_, ref generics, ref trait_refs, ref methods) =>
                 self.process_trait(item, generics, trait_refs, methods),
-            ast::ItemMod(ref m) => self.process_mod(item, m),
+            ast::ItemMod(ref m) => {
+                self.process_mod(item);
+                self.nest(item.id, |v| visit::walk_mod(v, m));
+            }
             ast::ItemTy(ref ty, ref ty_params) => {
                 let qualname = format!("::{}", self.analysis.ty_cx.map.path_to_string(item.id));
                 let value = ty_to_string(&**ty);
@@ -1295,30 +1294,22 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
             ast::ExprStruct(ref path, ref fields, ref base) =>
                 self.process_struct_lit(ex, path, fields, base),
             ast::ExprMethodCall(_, _, ref args) => self.process_method_call(ex, args),
-            ast::ExprField(ref sub_ex, ident) => {
+            ast::ExprField(ref sub_ex, _) => {
                 if generated_code(sub_ex.span) {
                     return
                 }
 
-                self.visit_expr(&**sub_ex);
-                let ty = &ty::expr_ty_adjusted(&self.analysis.ty_cx, &**sub_ex).sty;
-                match *ty {
-                    ty::ty_struct(def_id, _) => {
-                        let fields = ty::lookup_struct_fields(&self.analysis.ty_cx, def_id);
-                        for f in &fields {
-                            if f.name == ident.node.name {
-                                let sub_span = self.span.span_for_last_ident(ex.span);
-                                self.fmt.ref_str(recorder::VarRef,
-                                                 ex.span,
-                                                 sub_span,
-                                                 f.id,
-                                                 self.cur_scope);
-                                break;
-                            }
-                        }
-                    }
-                    _ => self.sess.span_bug(ex.span,
-                                            &format!("Expected struct type, found {:?}", ty)),
+                self.visit_expr(&sub_ex);
+
+                let field_data = self.save_ctxt.get_expr_data(ex);
+                if let super::Data::VariableRefData(field_data) = field_data {
+                    self.fmt.ref_str(recorder::VarRef,
+                                     ex.span,
+                                     Some(field_data.span),
+                                     field_data.ref_id,
+                                     field_data.scope);
+                } else {
+                    self.sess.span_bug(ex.span, "expected VariableRefData");
                 }
             },
             ast::ExprTupField(ref sub_ex, idx) => {
