@@ -188,7 +188,7 @@ impl Error {
     /// If this `Error` was constructed via `new` then this function will
     /// return `Some`, otherwise it will return `None`.
     #[unstable(feature = "io_error_inner", reason = "recently added")]
-    pub fn get_ref(&self) -> Option<&(error::Error+Send+Sync)> {
+    pub fn get_ref(&self) -> Option<&(error::Error+Send+Sync+'static)> {
         match self.repr {
             Repr::Os(..) => None,
             Repr::Custom(ref c) => Some(&*c.error),
@@ -201,7 +201,7 @@ impl Error {
     /// If this `Error` was constructed via `new` then this function will
     /// return `Some`, otherwise it will return `None`.
     #[unstable(feature = "io_error_inner", reason = "recently added")]
-    pub fn get_mut(&mut self) -> Option<&mut (error::Error+Send+Sync)> {
+    pub fn get_mut(&mut self) -> Option<&mut (error::Error+Send+Sync+'static)> {
         match self.repr {
             Repr::Os(..) => None,
             Repr::Custom(ref mut c) => Some(&mut *c.error),
@@ -263,4 +263,40 @@ impl error::Error for Error {
 fn _assert_error_is_sync_send() {
     fn _is_sync_send<T: Sync+Send>() {}
     _is_sync_send::<Error>();
+}
+
+#[cfg(test)]
+mod test {
+    use prelude::v1::*;
+    use super::{Error, ErrorKind};
+    use error;
+    use error::Error as error_Error;
+    use fmt;
+
+    #[test]
+    fn test_downcasting() {
+        #[derive(Debug)]
+        struct TestError;
+
+        impl fmt::Display for TestError {
+            fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+                Ok(())
+            }
+        }
+
+        impl error::Error for TestError {
+            fn description(&self) -> &str {
+                "asdf"
+            }
+        }
+
+        // we have to call all of these UFCS style right now since method
+        // resolution won't implicitly drop the Send+Sync bounds
+        let mut err = Error::new(ErrorKind::Other, TestError);
+        assert!(error::Error::is::<TestError>(err.get_ref().unwrap()));
+        assert_eq!("asdf", err.get_ref().unwrap().description());
+        assert!(error::Error::is::<TestError>(err.get_mut().unwrap()));
+        let extracted = err.into_inner().unwrap();
+        error::Error::downcast::<TestError>(extracted).unwrap();
+    }
 }
