@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-static X: usize = 0 as *const usize as usize;
-//~^ ERROR: raw pointers cannot be cast to integers in statics
+// Check that you can't dereference raw pointers in constants.
 
 fn main() {
-    assert_eq!(X, 0);
+    static C: u64 = unsafe {*(0xdeadbeef as *const u64)}; //~ ERROR E0396
+    println!("{}", C);
 }
