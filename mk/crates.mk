@@ -150,3 +150,7 @@ TOOL_INPUTS_$(1) := $$(call rwildcard,$$(dir $$(TOOL_SOURCE_$(1))),*.rs)
 endef
 
 $(foreach crate,$(TOOLS),$(eval $(call RUST_TOOL,$(crate))))
+
+ifdef CFG_DISABLE_ELF_TLS
+RUSTFLAGS_std := --cfg no_elf_tls
+endif

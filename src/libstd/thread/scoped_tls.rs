@@ -60,9 +60,11 @@ pub struct ScopedKey<T> { inner: imp::KeyInner<T> }
 /// This macro declares a `static` item on which methods are used to get and
 /// set the value stored within.
 ///
-/// See [ScopedKey documentation](thread/struct.ScopedKey.html) for more information.
+/// See [ScopedKey documentation](thread/struct.ScopedKey.html) for more
+/// information.
 #[macro_export]
 #[allow_internal_unstable]
+#[cfg(not(no_elf_tls))]
 macro_rules! scoped_thread_local {
     (static $name:ident: $t:ty) => (
         #[cfg_attr(not(any(windows,
@@ -81,6 +83,20 @@ macro_rules! scoped_thread_local {
                            target_os = "openbsd",
                            target_arch = "aarch64")),
                    thread_local)]
+        pub static $name: ::std::thread::ScopedKey<$t> =
+            ::std::thread::ScopedKey::new();
+    );
+}
+
+#[macro_export]
+#[allow_internal_unstable]
+#[cfg(no_elf_tls)]
+macro_rules! scoped_thread_local {
+    (static $name:ident: $t:ty) => (
+        static $name: ::std::thread::ScopedKey<$t> =
+            ::std::thread::ScopedKey::new();
+    );
+    (pub static $name:ident: $t:ty) => (
         pub static $name: ::std::thread::ScopedKey<$t> =
             ::std::thread::ScopedKey::new();
     );
@@ -187,7 +203,8 @@ impl<T> ScopedKey<T> {
               target_os = "android",
               target_os = "ios",
               target_os = "openbsd",
-              target_arch = "aarch64")))]
+              target_arch = "aarch64",
+              no_elf_tls)))]
 mod imp {
     use std::cell::Cell;
 
@@ -208,7 +225,8 @@ mod imp {
           target_os = "android",
           target_os = "ios",
           target_os = "openbsd",
-          target_arch = "aarch64"))]
+          target_arch = "aarch64",
+          no_elf_tls))]
 mod imp {
     use prelude::v1::*;
 
