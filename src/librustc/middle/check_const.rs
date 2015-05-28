@@ -205,7 +205,16 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
                             ret_ty: Ty<'tcx>)
                             -> bool {
         if let Some(fn_like) = const_eval::lookup_const_fn_by_id(self.tcx, def_id) {
-            if self.mode != Mode::Var && !self.tcx.sess.features.borrow().const_fn {
+            if
+                // we are in a static/const initializer
+                self.mode != Mode::Var &&
+
+                // feature-gate is not enabled
+                !self.tcx.sess.features.borrow().const_fn &&
+
+                // this doesn't come from a macro that has #[allow_internal_unstable]
+                !self.tcx.sess.codemap().span_allows_unstable(expr.span)
+            {
                 self.tcx.sess.span_err(
                     expr.span,
                     &format!("const fns are an unstable feature"));
