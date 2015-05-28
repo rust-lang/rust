@@ -121,7 +121,7 @@ The primary exception: sometimes a function is meant to modify data
 that the caller already owns, for example to re-use a buffer:
 
 ```rust
-fn read(&mut self, buf: &mut [u8]) -> IoResult<usize>
+fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize>
 ```
 
 (From the [Reader trait](http://static.rust-lang.org/doc/master/std/io/trait.Reader.html#tymethod.read).)

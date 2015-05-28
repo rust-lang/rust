@@ -164,8 +164,8 @@
 //! provides some helper methods.
 //!
 //! Additionally, the return value of this function is `fmt::Result` which is a
-//! typedef to `Result<(), IoError>` (also known as `IoResult<()>`). Formatting
-//! implementations should ensure that they return errors from `write!`
+//! typedef to `Result<(), std::io::Error>` (also known as `std::io::Result<()>`).
+//! Formatting implementations should ensure that they return errors from `write!`
 //! correctly (propagating errors upward).
 //!
 //! An example of implementing the formatting traits would look
