@@ -10,7 +10,7 @@
 
 ``` rust
 #[deprecated = "Use `bar` instead."]
-fn foo(a: uint, b: uint) -> uint {
+fn foo(a: usize, b: usize) -> usize {
     a + b
 }
 ```

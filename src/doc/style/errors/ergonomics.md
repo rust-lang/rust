@@ -14,8 +14,8 @@ use std::io::{File, Open, Write, IoError};
 
 struct Info {
     name: String,
-    age: int,
-    rating: int
+    age: i32,
+    rating: i32
 }
 
 fn write_info(info: &Info) -> Result<(), IoError> {
@@ -36,8 +36,8 @@ use std::io::{File, Open, Write, IoError};
 
 struct Info {
     name: String,
-    age: int,
-    rating: int
+    age: i32,
+    rating: i32
 }
 
 fn write_info(info: &Info) -> Result<(), IoError> {

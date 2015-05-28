@@ -160,7 +160,7 @@ that all delimiters be balanced.
 ## `->` for function return type
 
 This is to make the language easier to parse for humans, especially in the face
-of higher-order functions. `fn foo<T>(f: fn(int): int, fn(T): U): U` is not
+of higher-order functions. `fn foo<T>(f: fn(i32): i32, fn(T): U): U` is not
 particularly easy to read.
 
 ## Why is `let` used to introduce variables?

@@ -44,7 +44,7 @@ For example:
 use option::Option;
 use mem;
 
-let i: int = mem::transmute(Option(0));
+let i: isize = mem::transmute(Option(0));
 ```
 
 > **[FIXME]** Add rationale.

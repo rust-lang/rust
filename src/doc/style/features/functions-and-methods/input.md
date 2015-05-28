@@ -57,15 +57,15 @@ it becomes.
 Prefer
 
 ```rust
-fn foo<T: Iterator<int>>(c: T) { ... }
+fn foo<T: Iterator<i32>>(c: T) { ... }
 ```
 
 over any of
 
 ```rust
-fn foo(c: &[int]) { ... }
-fn foo(c: &Vec<int>) { ... }
-fn foo(c: &SomeOtherCollection<int>) { ... }
+fn foo(c: &[i32]) { ... }
+fn foo(c: &Vec<i32>) { ... }
+fn foo(c: &SomeOtherCollection<i32>) { ... }
 ```
 
 if the function only needs to iterate over the data.
@@ -121,7 +121,7 @@ The primary exception: sometimes a function is meant to modify data
 that the caller already owns, for example to re-use a buffer:
 
 ```rust
-fn read(&mut self, buf: &mut [u8]) -> IoResult<uint>
+fn read(&mut self, buf: &mut [u8]) -> IoResult<usize>
 ```
 
 (From the [Reader trait](http://static.rust-lang.org/doc/master/std/io/trait.Reader.html#tymethod.read).)

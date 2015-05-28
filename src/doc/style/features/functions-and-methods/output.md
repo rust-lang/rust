@@ -19,7 +19,7 @@ Prefer
 ```rust
 struct SearchResult {
     found: bool,          // item in container?
-    expected_index: uint  // what would the item's index be?
+    expected_index: usize // what would the item's index be?
 }
 
 fn binary_search(&self, k: Key) -> SearchResult
@@ -27,7 +27,7 @@ fn binary_search(&self, k: Key) -> SearchResult
 or
 
 ```rust
-fn binary_search(&self, k: Key) -> (bool, uint)
+fn binary_search(&self, k: Key) -> (bool, usize)
 ```
 
 over

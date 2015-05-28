@@ -146,7 +146,7 @@ print_area(5);
 We get a compile-time error:
 
 ```text
-error: failed to find an implementation of trait main::HasArea for int
+error: the trait `HasArea` is not implemented for the type `_` [E0277]
 ```
 
 So far, we’ve only added trait implementations to structs, but you can
