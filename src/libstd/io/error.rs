@@ -187,7 +187,8 @@ impl Error {
     ///
     /// If this `Error` was constructed via `new` then this function will
     /// return `Some`, otherwise it will return `None`.
-    #[unstable(feature = "io_error_inner", reason = "recently added")]
+    #[unstable(feature = "io_error_inner",
+               reason = "recently added and requires UFCS to downcast")]
     pub fn get_ref(&self) -> Option<&(error::Error+Send+Sync+'static)> {
         match self.repr {
             Repr::Os(..) => None,
@@ -200,7 +201,8 @@ impl Error {
     ///
     /// If this `Error` was constructed via `new` then this function will
     /// return `Some`, otherwise it will return `None`.
-    #[unstable(feature = "io_error_inner", reason = "recently added")]
+    #[unstable(feature = "io_error_inner",
+               reason = "recently added and requires UFCS to downcast")]
     pub fn get_mut(&mut self) -> Option<&mut (error::Error+Send+Sync+'static)> {
         match self.repr {
             Repr::Os(..) => None,
@@ -212,7 +214,8 @@ impl Error {
     ///
     /// If this `Error` was constructed via `new` then this function will
     /// return `Some`, otherwise it will return `None`.
-    #[unstable(feature = "io_error_inner", reason = "recently added")]
+    #[unstable(feature = "io_error_inner",
+               reason = "recently added and requires UFCS to downcast")]
     pub fn into_inner(self) -> Option<Box<error::Error+Send+Sync>> {
         match self.repr {
             Repr::Os(..) => None,
