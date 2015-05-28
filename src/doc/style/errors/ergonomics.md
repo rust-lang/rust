@@ -63,4 +63,4 @@ for more details.
 ### The `Result`-`impl` pattern [FIXME]
 
 > **[FIXME]** Document the way that the `io` module uses trait impls
-> on `IoResult` to painlessly propagate errors.
+> on `std::io::Result` to painlessly propagate errors.
