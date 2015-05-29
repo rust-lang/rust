@@ -12,6 +12,7 @@
 
 
 #![feature(core)]
+#![feature(const_fn)]
 
 extern crate issue_17718 as other;
 

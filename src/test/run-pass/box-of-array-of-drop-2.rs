@@ -11,6 +11,8 @@
 // Test that we cleanup dynamic sized Box<[D]> properly when D has a
 // destructor.
 
+#![feature(const_fn)]
+
 use std::thread;
 use std::sync::atomic::{AtomicUsize, Ordering};
 

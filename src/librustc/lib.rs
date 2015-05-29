@@ -29,6 +29,7 @@
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(collections)]
+#![feature(const_fn)]
 #![feature(core)]
 #![feature(duration)]
 #![feature(duration_span)]

@@ -12,6 +12,7 @@
 // created via FRU and control-flow breaks in the middle of
 // construction.
 
+#![feature(const_fn)]
 
 use std::sync::atomic::{Ordering, AtomicUsize};
 

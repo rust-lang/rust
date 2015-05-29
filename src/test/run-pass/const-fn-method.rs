@@ -10,7 +10,7 @@
 
 #![feature(const_fn)]
 
-struct Foo { val: u32 }
+struct Foo { value: u32 }
 
 impl Foo {
     const fn new() -> Foo {
