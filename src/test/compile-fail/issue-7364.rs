@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![feature(box_syntax)]
+#![feature(const_fn)]
 
 use std::cell::RefCell;
 

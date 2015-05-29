@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(const_fn)]
+
 use std::sync::atomic;
 
 pub const C1: usize = 1;

@@ -14,6 +14,7 @@
 #![feature(collections)]
 #![feature(collections_drain)]
 #![feature(core)]
+#![feature(const_fn)]
 #![feature(hash)]
 #![feature(rand)]
 #![feature(rustc_private)]

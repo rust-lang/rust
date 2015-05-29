@@ -12,6 +12,8 @@
 // `Item` originates in a where-clause, not the declaration of
 // `T`. Issue #20300.
 
+#![feature(const_fn)]
+
 use std::marker::{PhantomData};
 use std::sync::atomic::{AtomicUsize};
 use std::sync::atomic::Ordering::SeqCst;

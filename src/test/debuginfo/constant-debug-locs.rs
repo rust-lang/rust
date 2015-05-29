@@ -15,6 +15,7 @@
 #![allow(dead_code, unused_variables)]
 #![omit_gdb_pretty_printer_section]
 #![feature(std_misc, core)]
+#![feature(const_fn)]
 
 // This test makes sure that the compiler doesn't crash when trying to assign
 // debug locations to const-expressions.

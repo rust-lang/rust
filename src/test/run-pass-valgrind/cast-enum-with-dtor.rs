@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![allow(dead_code)]
+#![feature(const_fn)]
 
 // check dtor calling order when casting enums.
 
