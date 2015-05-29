@@ -15,7 +15,7 @@ language would.
 
 [rust]: http://rust-lang.org
 
-“The Rust Programming Language” is split into seven sections. This introduction
+“The Rust Programming Language” is split into eight sections. This introduction
 is the first. After this:
 
 * [Getting started][gs] - Set up your computer for Rust development.
