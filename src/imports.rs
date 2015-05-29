@@ -10,6 +10,7 @@
 
 use visitor::FmtVisitor;
 use lists::{write_list, ListFormatting, SeparatorTactic, ListTactic};
+use utils::format_visibility;
 
 use syntax::ast;
 use syntax::parse::token;
@@ -48,11 +49,7 @@ impl<'a> FmtVisitor<'a> {
                             path_list: &[ast::PathListItem],
                             visibility: ast::Visibility) -> String {
         let path_str = pprust::path_to_string(path);
-
-        let vis = match visibility {
-            ast::Public => "pub ",
-            _ => ""
-        };
+        let vis = format_visibility(visibility);
 
         if path_list.len() == 1 {
             return rewrite_single_use_list(path_str, path_list[0], vis);

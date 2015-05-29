@@ -264,7 +264,6 @@ impl<'a> FmtVisitor<'a> {
             _ => {}
         }
 
-        let result = self.snippet(expr.span);
-        result
+        self.snippet(expr.span)
     }
 }

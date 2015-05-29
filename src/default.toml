@@ -8,3 +8,4 @@ fn_return_indent = "WithArgs"
 fn_args_paren_newline = true
 struct_trailing_comma = true
 struct_lit_trailing_comma = "Vertical"
+enum_trailing_comma = true

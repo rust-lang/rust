@@ -22,6 +22,7 @@ pub struct Config {
     pub fn_args_paren_newline: bool,
     pub struct_trailing_comma: bool,
     pub struct_lit_trailing_comma: ::lists::SeparatorTactic,
+    pub enum_trailing_comma: bool,
 }
 
 impl Config {
