@@ -2454,7 +2454,13 @@ fn item_typedef(w: &mut fmt::Formatter, it: &clean::Item,
                   where_clause = WhereClause(&t.generics),
                   type_ = t.type_));
 
-    document(w, it)
+    try!(document(w, it));
+    match t.type_ {
+        clean::Type::ResolvedPath { did, .. } => {
+            render_assoc_items(w, &[it.def_id, did], AssocItemRender::All)
+        }
+        _ => render_assoc_items(w, &[it.def_id], AssocItemRender::All),
+    }
 }
 
 impl<'a> fmt::Display for Sidebar<'a> {
