@@ -10,6 +10,7 @@
 
 
 #![feature(rand, core)]
+#![feature(const_fn)]
 
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::__rand::{thread_rng, Rng};

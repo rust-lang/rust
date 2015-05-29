@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(const_fn)]
+
 use std::cell::UnsafeCell;
 
 const A: UnsafeCell<usize> = UnsafeCell::new(1);

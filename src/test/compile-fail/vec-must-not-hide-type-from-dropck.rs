@@ -23,6 +23,8 @@
 // conditions above to be satisfied, meaning that if the dropck is
 // sound, it should reject this code.
 
+#![feature(const_fn)]
+
 use std::cell::Cell;
 use id::Id;
 

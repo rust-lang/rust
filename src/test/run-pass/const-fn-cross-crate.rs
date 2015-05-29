@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,17 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// aux-build:const_fn_lib.rs
+
+// A very basic test of const fn functionality.
+
 #![feature(const_fn)]
 
-use std::sync::atomic;
+extern crate const_fn_lib;
 
-pub const C1: usize = 1;
-pub const C2: atomic::AtomicUsize = atomic::AtomicUsize::new(0);
-pub const C3: fn() = foo;
-pub const C4: usize = C1 * C1 + C1 / C1;
-pub const C5: &'static usize = &C4;
+use const_fn_lib::foo;
 
-pub static S1: usize = 3;
-pub static S2: atomic::AtomicUsize = atomic::AtomicUsize::new(0);
+const FOO: usize = foo();
 
-fn foo() {}
+fn main() {
+    assert_eq!(FOO, 22);
+}

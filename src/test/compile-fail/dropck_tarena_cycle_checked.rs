@@ -17,6 +17,7 @@
 //  for the error message we see here.)
 
 #![allow(unstable)]
+#![feature(const_fn)]
 
 extern crate arena;
 
