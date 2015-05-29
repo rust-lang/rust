@@ -84,7 +84,8 @@ feature. We use the 'fork and pull' model described there.
 Please make pull requests against the `master` branch.
 
 All pull requests are reviewed by another person. We have a bot,
-@rust-highfive, that will automatically assign a random person to review your request.
+@rust-highfive, that will automatically assign a random person to review your
+request.
 
 If you want to request that a specific person reviews your pull request,
 you can add an `r?` to the message. For example, Steve usually reviews
@@ -124,6 +125,10 @@ To save @bors some work, and to get small changes through more quickly, when
 the other rollup-eligible patches too, and they'll get tested and merged at
 the same time.
 
+To find documentation-related issues, sort by the [A-docs label][adocs]. 
+
+[adocs]: https://github.com/rust-lang/rust/issues?q=is%3Aopen+is%3Aissue+label%3AA-docs
+
 ## Issue Triage
 
 Sometimes, an issue will stay open, even though the bug has been fixed. And
@@ -132,8 +137,40 @@ meantime.
 
 It can be helpful to go through older bug reports and make sure that they are
 still valid. Load up an older issue, double check that it's still true, and
-leave a comment letting us know if it is or is not. The [least recently updated sort][lru] is good for finding issues like this.
+leave a comment letting us know if it is or is not. The [least recently
+updated sort][lru] is good for finding issues like this.
 
+Contributors with sufficient permissions on the Rust repo can help by adding
+labels to triage issues:
+
+* Yellow, **A**-prefixed labels state which **area** of the project an issue
+  relates to. 
+
+* Magenta, **B**-prefixed labels identify bugs which **belong** elsewhere. 
+
+* Green, **E**-prefixed labels explain the level of **experience** necessary
+  to fix the issue.
+
+* Red, **I**-prefixed labels indicate the **importance** of the issue. The
+  [I-nominated][inom] label indicates that an issue has been nominated for
+  prioritizing at the next triage meeting. 
+
+* Orange, **P**-prefixed labels indicate a bug's **priority**. These labels
+  are only assigned during triage meetings, and replace the [I-nominated][inom]
+  label. 
+
+* Blue, **T**-prefixed bugs denote which **team** the issue belongs to.
+
+* Dark blue, **beta-** labels track changes which need to be backported into
+  the beta branches. 
+ 
+* The purple **metabug** label marks lists of bugs collected by other
+  categories.  
+
+If you're looking for somewhere to start, check out the [E-easy][eeasy] tag. 
+
+[inom]: https://github.com/rust-lang/rust/issues?q=is%3Aopen+is%3Aissue+label%3AI-nominated
+[eeasy]: https://github.com/rust-lang/rust/issues?q=is%3Aopen+is%3Aissue+label%3AE-easy
 [lru]: https://github.com/rust-lang/rust/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-asc
 
 ## Out-of-tree Contributions
