@@ -14,8 +14,7 @@ import subprocess
 
 f = open(sys.argv[1], 'wb')
 
-components = sys.argv[2].split(' ')
-components = [i for i in components if i]  # ignore extra whitespaces
+components = sys.argv[2].split() # splits on whitespace
 enable_static = sys.argv[3]
 llconfig = sys.argv[4]
 
