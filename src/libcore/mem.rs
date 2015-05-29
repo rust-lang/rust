@@ -52,19 +52,60 @@ pub use intrinsics::transmute;
 /// * `mpsc::{Sender, Receiver}` cycles (they use `Arc` internally)
 /// * Panicking destructors are likely to leak local resources
 ///
+/// # When To Use
+///
+/// There's only a few reasons to use this function. They mainly come
+/// up in unsafe code or FFI code.
+///
+/// * You have an uninitialized value, perhaps for performance reasons, and
+///   need to prevent the destructor from running on it.
+/// * You have two copies of a value (like `std::mem::swap`), but need the
+///   destructor to only run once to prevent a double free.
+/// * Transferring resources across FFI boundries.
+///
 /// # Example
+///
+/// Leak some heap memory by never deallocating it.
+///
+/// ```rust
+/// use std::mem;
+///
+/// let heap_memory = Box::new(3);
+/// mem::forget(heap_memory);
+/// ```
+///
+/// Leak an I/O object, never closing the file.
 ///
 /// ```rust,no_run
 /// use std::mem;
 /// use std::fs::File;
 ///
-/// // Leak some heap memory by never deallocating it
-/// let heap_memory = Box::new(3);
-/// mem::forget(heap_memory);
-///
-/// // Leak an I/O object, never closing the file
 /// let file = File::open("foo.txt").unwrap();
 /// mem::forget(file);
+/// ```
+///
+/// The swap function uses forget to good effect.
+///
+/// ```rust
+/// use std::mem;
+/// use std::ptr;
+///
+/// fn swap<T>(x: &mut T, y: &mut T) {
+///     unsafe {
+///         // Give ourselves some scratch space to work with
+///         let mut t: T = mem::uninitialized();
+///
+///         // Perform the swap, `&mut` pointers never alias
+///         ptr::copy_nonoverlapping(&*x, &mut t, 1);
+///         ptr::copy_nonoverlapping(&*y, x, 1);
+///         ptr::copy_nonoverlapping(&t, y, 1);
+///
+///         // y and t now point to the same thing, but we need to completely
+///         // forget `t` because we do not want to run the destructor for `T`
+///         // on its value, which is still owned somewhere outside this function.
+///         mem::forget(t);
+///     }
+/// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn forget<T>(t: T) {
@@ -267,8 +308,9 @@ pub fn swap<T>(x: &mut T, y: &mut T) {
         ptr::copy_nonoverlapping(&*y, x, 1);
         ptr::copy_nonoverlapping(&t, y, 1);
 
-        // y and t now point to the same thing, but we need to completely forget `t`
-        // because it's no longer relevant.
+        // y and t now point to the same thing, but we need to completely
+        // forget `t` because we do not want to run the destructor for `T`
+        // on its value, which is still owned somewhere outside this function.
         forget(t);
     }
 }

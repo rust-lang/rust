@@ -273,13 +273,13 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
         let suffix = if tcontents.has_dtor() {
             "destructors"
         } else if tcontents.owns_owned() {
-            "owned pointers"
+            "boxes"
         } else {
             return
         };
 
-        self.tcx.sess.span_err(e.span, &format!("mutable statics are not allowed \
-                                                 to have {}", suffix));
+        span_err!(self.tcx.sess, e.span, E0397,
+                 "mutable statics are not allowed to have {}", suffix);
     }
 
     fn check_static_type(&self, e: &ast::Expr) {
