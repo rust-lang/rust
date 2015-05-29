@@ -2,8 +2,12 @@
 
 The first step to using Rust is to install it! There are a number of ways to
 install Rust, but the easiest is to use the `rustup` script. If you're on Linux
-or a Mac, all you need to do is this (note that you don't need to type in the
-`$`s, they just indicate the start of each command):
+or a Mac, all you need to do is this: 
+
+> Note: you don't need to type in the `$`s, they just indicate the start of
+> each command. You’ll see many tutorials and examples around the web that
+> follow this convention: `$` for commands run as your regular user, and
+> `#` for commands you should be running as an administrator.
 
 ```bash
 $ curl -sf -L https://static.rust-lang.org/rustup.sh | sh
