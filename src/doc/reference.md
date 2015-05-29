@@ -3256,8 +3256,8 @@ User-defined types have limited capabilities.
 The primitive types are the following:
 
 * The boolean type `bool` with values `true` and `false`.
-* The machine types.
-* The machine-dependent integer and floating-point types.
+* The machine types (integer and floating-point).
+* The machine-dependent integer types.
 
 #### Machine types
 
