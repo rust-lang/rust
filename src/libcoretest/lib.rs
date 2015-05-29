@@ -14,6 +14,7 @@
 #![feature(box_syntax)]
 #![feature(unboxed_closures)]
 #![feature(core)]
+#![feature(const_fn)]
 #![feature(test)]
 #![feature(rand)]
 #![feature(unicode)]

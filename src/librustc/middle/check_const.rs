@@ -199,8 +199,32 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
     }
 
     /// Returns true if the call is to a const fn or method.
-    fn handle_const_fn_call(&mut self, def_id: ast::DefId, ret_ty: Ty<'tcx>) -> bool {
+    fn handle_const_fn_call(&mut self,
+                            expr: &ast::Expr,
+                            def_id: ast::DefId,
+                            ret_ty: Ty<'tcx>)
+                            -> bool {
         if let Some(fn_like) = const_eval::lookup_const_fn_by_id(self.tcx, def_id) {
+            if
+                // we are in a static/const initializer
+                self.mode != Mode::Var &&
+
+                // feature-gate is not enabled
+                !self.tcx.sess.features.borrow().const_fn &&
+
+                // this doesn't come from a macro that has #[allow_internal_unstable]
+                !self.tcx.sess.codemap().span_allows_unstable(expr.span)
+            {
+                self.tcx.sess.span_err(
+                    expr.span,
+                    &format!("const fns are an unstable feature"));
+                fileline_help!(
+                    self.tcx.sess,
+                    expr.span,
+                    "in Nightly builds, add `#![feature(const_fn)]` to the crate \
+                     attributes to enable");
+            }
+
             let qualif = self.fn_like(fn_like.kind(),
                                       fn_like.decl(),
                                       fn_like.body(),
@@ -657,7 +681,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
                 }
                 Some(def::DefMethod(did, def::FromImpl(_))) |
                 Some(def::DefFn(did, _)) => {
-                    v.handle_const_fn_call(did, node_ty)
+                    v.handle_const_fn_call(e, did, node_ty)
                 }
                 _ => false
             };
@@ -677,7 +701,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
                 _ => None
             };
             let is_const = match method_did {
-                Some(did) => v.handle_const_fn_call(did, node_ty),
+                Some(did) => v.handle_const_fn_call(e, did, node_ty),
                 None => false
             };
             if !is_const {

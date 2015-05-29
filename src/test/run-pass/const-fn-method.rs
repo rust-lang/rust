@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -10,15 +10,16 @@
 
 #![feature(const_fn)]
 
-use std::sync::atomic;
+struct Foo { value: u32 }
 
-pub const C1: usize = 1;
-pub const C2: atomic::AtomicUsize = atomic::AtomicUsize::new(0);
-pub const C3: fn() = foo;
-pub const C4: usize = C1 * C1 + C1 / C1;
-pub const C5: &'static usize = &C4;
+impl Foo {
+    const fn new() -> Foo {
+        Foo { value: 22 }
+    }
+}
 
-pub static S1: usize = 3;
-pub static S2: atomic::AtomicUsize = atomic::AtomicUsize::new(0);
+const FOO: Foo = Foo::new();
 
-fn foo() {}
+pub fn main() {
+    assert_eq!(FOO.value, 22);
+}

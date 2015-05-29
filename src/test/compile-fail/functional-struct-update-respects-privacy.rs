@@ -10,6 +10,8 @@
 
 // RFC 736 (and Issue 21407): functional struct update should respect privacy.
 
+#![feature(const_fn)]
+
 // The `foo` module attempts to maintains an invariant that each `S`
 // has a unique `u64` id.
 use self::foo::S;

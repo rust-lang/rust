@@ -332,7 +332,8 @@ pub struct Features {
     /// spans of #![feature] attrs for stable language features. for error reporting
     pub declared_stable_lang_features: Vec<Span>,
     /// #![feature] attrs for non-language (library) features
-    pub declared_lib_features: Vec<(InternedString, Span)>
+    pub declared_lib_features: Vec<(InternedString, Span)>,
+    pub const_fn: bool,
 }
 
 impl Features {
@@ -352,7 +353,8 @@ impl Features {
             unmarked_api: false,
             negate_unsigned: false,
             declared_stable_lang_features: Vec::new(),
-            declared_lib_features: Vec::new()
+            declared_lib_features: Vec::new(),
+            const_fn: false,
         }
     }
 }
@@ -802,7 +804,8 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &SpanHandler,
         unmarked_api: cx.has_feature("unmarked_api"),
         negate_unsigned: cx.has_feature("negate_unsigned"),
         declared_stable_lang_features: accepted_features,
-        declared_lib_features: unknown_features
+        declared_lib_features: unknown_features,
+        const_fn: cx.has_feature("const_fn"),
     }
 }
 

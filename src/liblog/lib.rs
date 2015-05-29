@@ -173,6 +173,7 @@
 #![feature(staged_api)]
 #![feature(box_syntax)]
 #![feature(core)]
+#![feature(const_fn)]
 #![feature(std_misc)]
 
 use std::boxed;
