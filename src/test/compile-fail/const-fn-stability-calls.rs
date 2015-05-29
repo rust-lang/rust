@@ -8,25 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test use of const fn without feature gate.
+// Test use of const fn from another crate without a feature gate.
 
-const fn foo() -> usize { 0 } //~ ERROR const fn is unstable
+// aux-build:const_fn_lib.rs
 
-trait Foo {
-    const fn foo() -> u32; //~ ERROR const fn is unstable
-    const fn bar() -> u32 { 0 } //~ ERROR const fn is unstable
-}
+extern crate const_fn_lib;
 
-impl Foo {
-    const fn baz() -> u32 { 0 } //~ ERROR const fn is unstable
-}
+use const_fn_lib::foo;
 
-impl Foo for u32 {
-    const fn foo() -> u32 { 0 } //~ ERROR const fn is unstable
-}
-
-static FOO: usize = foo();
-const BAR: usize = foo();
+static FOO: usize = foo(); //~ ERROR const fns are an unstable feature
+const BAR: usize = foo(); //~ ERROR const fns are an unstable feature
 
 macro_rules! constant {
     ($n:ident: $t:ty = $v:expr) => {
@@ -35,9 +26,9 @@ macro_rules! constant {
 }
 
 constant! {
-    BAZ: usize = foo()
+    BAZ: usize = foo() //~ ERROR const fns are an unstable feature
 }
 
 fn main() {
-    let x: [usize; foo()] = [];
+//    let x: [usize; foo()] = [];
 }
