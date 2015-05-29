@@ -4,7 +4,7 @@ Functions are great, but if you want to call a bunch of them on some data, it
 can be awkward. Consider this code:
 
 ```rust,ignore
-baz(bar(foo)));
+baz(bar(foo));
 ```
 
 We would read this left-to right, and so we see ‘baz bar foo’. But this isn’t the
