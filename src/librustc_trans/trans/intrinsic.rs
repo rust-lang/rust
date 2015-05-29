@@ -265,6 +265,48 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         }
     }
 
+    // For `move_val_init` we can evaluate the destination address
+    // (the first argument) and then trans the source value (the
+    // second argument) directly into the resulting destination
+    // address.
+    if &name[..] == "move_val_init" {
+        if let callee::ArgExprs(ref exprs) = args {
+            let (dest_expr, source_expr) = if exprs.len() != 2 {
+                ccx.sess().bug("expected two exprs as arguments for `move_val_init` intrinsic");
+            } else {
+                (&exprs[0], &exprs[1])
+            };
+            let arg_tys = ty::erase_late_bound_regions(bcx.tcx(), &ty::ty_fn_args(callee_ty));
+
+            // evaluate destination address
+            let lldest_addr = unpack_result!(bcx, {
+                let dest_datum = unpack_datum!(bcx, expr::trans(bcx, dest_expr));
+                callee::trans_arg_datum(bcx,
+                                        arg_tys[0],
+                                        dest_datum,
+                                        cleanup::CustomScope(cleanup_scope),
+                                        callee::DontAutorefArg)
+            });
+
+            // `expr::trans_into(bcx, expr, dest)` is equiv to
+            //
+            //    `trans(bcx, expr).store_to_dest(dest)`,
+            //
+            // which for `dest == expr::SaveIn(addr)`, is equivalent to:
+            //
+            //    `trans(bcx, expr).store_to(bcx, addr)`.
+            let lldest = expr::Dest::SaveIn(lldest_addr);
+            bcx = expr::trans_into(bcx, source_expr, lldest);
+
+            let llresult = C_nil(ccx);
+            fcx.pop_and_trans_custom_cleanup_scope(bcx, cleanup_scope);
+
+            return Result::new(bcx, llresult);
+        } else {
+            ccx.sess().bug("expected two exprs as arguments for `move_val_init` intrinsic");
+        }
+    }
+
     // Push the arguments.
     let mut llargs = Vec::new();
     bcx = callee::trans_args(bcx,
@@ -355,22 +397,6 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
             let tp_ty = *substs.types.get(FnSpace, 0);
             let lltp_ty = type_of::type_of(ccx, tp_ty);
             C_uint(ccx, machine::llalign_of_pref(ccx, lltp_ty))
-        }
-        (_, "move_val_init") => {
-            // Create a datum reflecting the value being moved.
-            // Use `appropriate_mode` so that the datum is by ref
-            // if the value is non-immediate. Note that, with
-            // intrinsics, there are no argument cleanups to
-            // concern ourselves with, so we can use an rvalue datum.
-            let tp_ty = *substs.types.get(FnSpace, 0);
-            let mode = appropriate_rvalue_mode(ccx, tp_ty);
-            let src = Datum {
-                val: llargs[1],
-                ty: tp_ty,
-                kind: Rvalue::new(mode)
-            };
-            bcx = src.store_to(bcx, llargs[0]);
-            C_nil(ccx)
         }
         (_, "drop_in_place") => {
             let tp_ty = *substs.types.get(FnSpace, 0);
