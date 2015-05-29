@@ -15,26 +15,55 @@ use io;
 use libc::funcs::extra::kernel32::{GetCurrentProcess, DuplicateHandle};
 use libc::{self, HANDLE};
 use mem;
+use ops::Deref;
 use ptr;
 use sys::cvt;
 
-pub struct Handle(HANDLE);
+/// An owned container for `HANDLE` object, closing them on Drop.
+///
+/// All methods are inherited through a `Deref` impl to `RawHandle`
+pub struct Handle(RawHandle);
 
-unsafe impl Send for Handle {}
-unsafe impl Sync for Handle {}
+/// A wrapper type for `HANDLE` objects to give them proper Send/Sync inference
+/// as well as Rust-y methods.
+///
+/// This does **not** drop the handle when it goes out of scope, use `Handle`
+/// instead for that.
+#[derive(Copy, Clone)]
+pub struct RawHandle(HANDLE);
+
+unsafe impl Send for RawHandle {}
+unsafe impl Sync for RawHandle {}
 
 impl Handle {
     pub fn new(handle: HANDLE) -> Handle {
-        Handle(handle)
+        Handle(RawHandle::new(handle))
     }
 
-    pub fn raw(&self) -> HANDLE { self.0 }
-
     pub fn into_raw(self) -> HANDLE {
-        let ret = self.0;
+        let ret = self.raw();
         mem::forget(self);
         return ret;
     }
+}
+
+impl Deref for Handle {
+    type Target = RawHandle;
+    fn deref(&self) -> &RawHandle { &self.0 }
+}
+
+impl Drop for Handle {
+    fn drop(&mut self) {
+        unsafe { let _ = libc::CloseHandle(self.raw()); }
+    }
+}
+
+impl RawHandle {
+    pub fn new(handle: HANDLE) -> RawHandle {
+        RawHandle(handle)
+    }
+
+    pub fn raw(&self) -> HANDLE { self.0 }
 
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
         let mut read = 0;
@@ -77,11 +106,5 @@ impl Handle {
                             options)
         }));
         Ok(Handle::new(ret))
-    }
-}
-
-impl Drop for Handle {
-    fn drop(&mut self) {
-        unsafe { let _ = libc::CloseHandle(self.0); }
     }
 }
