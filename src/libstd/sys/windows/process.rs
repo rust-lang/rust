@@ -27,7 +27,7 @@ use ptr;
 use sync::StaticMutex;
 use sys::c;
 use sys::fs::{OpenOptions, File};
-use sys::handle::Handle;
+use sys::handle::{Handle, RawHandle};
 use sys::pipe::AnonPipe;
 use sys::stdio;
 use sys::{self, cvt};
@@ -109,6 +109,7 @@ pub enum Stdio {
     Inherit,
     Piped(AnonPipe),
     None,
+    Handle(RawHandle),
 }
 
 impl Process {
@@ -217,6 +218,8 @@ impl Process {
             }
         }
     }
+
+    pub fn handle(&self) -> &Handle { &self.handle }
 }
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
@@ -353,6 +356,15 @@ fn make_dirp(d: Option<&OsString>) -> (*const u16, Vec<u16>) {
 }
 
 impl Stdio {
+    pub fn clone_if_copy(&self) -> Stdio {
+        match *self {
+            Stdio::Inherit => Stdio::Inherit,
+            Stdio::None => Stdio::None,
+            Stdio::Handle(handle) => Stdio::Handle(handle),
+            Stdio::Piped(_) => unreachable!(),
+        }
+    }
+
     fn to_handle(&self, stdio_id: libc::DWORD) -> io::Result<Handle> {
         use libc::DUPLICATE_SAME_ACCESS;
 
@@ -361,6 +373,9 @@ impl Stdio {
                 stdio::get(stdio_id).and_then(|io| {
                     io.handle().duplicate(0, true, DUPLICATE_SAME_ACCESS)
                 })
+            }
+            Stdio::Handle(ref handle) => {
+                handle.duplicate(0, true, DUPLICATE_SAME_ACCESS)
             }
             Stdio::Piped(ref pipe) => {
                 pipe.handle().duplicate(0, true, DUPLICATE_SAME_ACCESS)

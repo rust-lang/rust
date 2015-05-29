@@ -44,7 +44,6 @@ impl AnonPipe {
         self.0.write(buf)
     }
 
-    pub fn into_fd(self) -> FileDesc {
-        self.0
-    }
+    pub fn fd(&self) -> &FileDesc { &self.0 }
+    pub fn into_fd(self) -> FileDesc { self.0 }
 }

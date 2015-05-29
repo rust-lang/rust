@@ -123,6 +123,7 @@ pub enum Stdio {
     Inherit,
     Piped(AnonPipe),
     None,
+    Fd(c_int),
 }
 
 const CLOEXEC_MSG_FOOTER: &'static [u8] = b"NOEX";
@@ -253,6 +254,7 @@ impl Process {
         let setup = |src: Stdio, dst: c_int| {
             let fd = match src {
                 Stdio::Inherit => return true,
+                Stdio::Fd(fd) => return cvt_r(|| libc::dup2(fd, dst)).is_ok(),
                 Stdio::Piped(pipe) => pipe.into_fd(),
 
                 // If a stdio file descriptor is set to be ignored, we open up
@@ -414,5 +416,16 @@ fn translate_status(status: c_int) -> ExitStatus {
         ExitStatus::Code(imp::WEXITSTATUS(status))
     } else {
         ExitStatus::Signal(imp::WTERMSIG(status))
+    }
+}
+
+impl Stdio {
+    pub fn clone_if_copy(&self) -> Stdio {
+        match *self {
+            Stdio::Inherit => Stdio::Inherit,
+            Stdio::None => Stdio::None,
+            Stdio::Fd(fd) => Stdio::Fd(fd),
+            Stdio::Piped(_) => unreachable!(),
+        }
     }
 }
