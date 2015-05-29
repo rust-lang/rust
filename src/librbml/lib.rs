@@ -436,23 +436,29 @@ pub mod reader {
         }
     }
 
-    pub fn tagged_docs<F>(d: Doc, tg: usize, mut it: F) -> bool where
-        F: FnMut(Doc) -> bool,
-    {
-        let mut pos = d.start;
-        while pos < d.end {
-            let elt_tag = try_or!(tag_at(d.data, pos), false);
-            let elt_size = try_or!(tag_len_at(d.data, elt_tag), false);
-            pos = elt_size.next + elt_size.val;
-            if elt_tag.val == tg {
-                let doc = Doc { data: d.data, start: elt_size.next,
-                                end: pos };
-                if !it(doc) {
-                    return false;
+    pub fn tagged_docs<'a>(d: Doc<'a>, tag: usize) -> TaggedDocsIterator<'a> {
+        TaggedDocsIterator {
+            iter: docs(d),
+            tag: tag,
+        }
+    }
+
+    pub struct TaggedDocsIterator<'a> {
+        iter: DocsIterator<'a>,
+        tag: usize,
+    }
+
+    impl<'a> Iterator for TaggedDocsIterator<'a> {
+        type Item = Doc<'a>;
+
+        fn next(&mut self) -> Option<Doc<'a>> {
+            while let Some((tag, doc)) = self.iter.next() {
+                if tag == self.tag {
+                    return Some(doc);
                 }
             }
+            None
         }
-        return true;
     }
 
     pub fn with_doc_data<T, F>(d: Doc, f: F) -> T where
