@@ -269,6 +269,50 @@ impl<'a> Display for Arguments<'a> {
 
 /// Format trait for the `:?` format. Useful for debugging, all types
 /// should implement this.
+///
+/// Generally speaking, you should just `derive` a `Debug` implementation.
+///
+/// # Examples
+///
+/// Deriving an implementation:
+///
+/// ```
+/// #[derive(Debug)]
+/// struct Point {
+///     x: i32,
+///     y: i32,
+/// }
+///
+/// let origin = Point { x: 0, y: 0 };
+///
+/// println!("The origin is: {:?}", origin);
+/// ```
+///
+/// Manually implementing:
+///
+/// ```
+/// use std::fmt;
+///
+/// struct Point {
+///     x: i32,
+///     y: i32,
+/// }
+///
+/// impl fmt::Debug for Point {
+///     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+///         write!(f, "({}, {})", self.x, self.y)
+///     }
+/// }
+///
+/// let origin = Point { x: 0, y: 0 };
+///
+/// println!("The origin is: {:?}", origin);
+/// ```
+///
+/// There are a number of `debug_*` methods on `Formatter` to help you with manual
+/// implementations, such as [`debug_struct`][debug_struct].
+///
+/// [debug_struct]: ../std/fmt/struct.Formatter.html#method.debug_struct
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented = "`{Self}` cannot be formatted using `:?`; if it is \
                             defined in your crate, add `#[derive(Debug)]` or \
