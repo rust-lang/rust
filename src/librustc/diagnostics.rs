@@ -202,7 +202,7 @@ function execution.
 
 See [RFC 911] for more details on the design of `const fn`s.
 
-[RFC 911]: https://github.com/rust-lang/rfcs/pull/911
+[RFC 911]: https://github.com/rust-lang/rfcs/blob/master/text/0911-const-fn.md
 "##,
 
 E0018: r##"
@@ -870,7 +870,7 @@ impl Foo {
 
 For more information about `const fn`'s, see [RFC 911].
 
-[RFC 911]: https://github.com/rust-lang/rfcs/pull/911
+[RFC 911]: https://github.com/rust-lang/rfcs/blob/master/text/0911-const-fn.md
 "##,
 
 E0394: r##"
