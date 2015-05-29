@@ -285,7 +285,7 @@ fn bar<T, K>(x: T, y: K) where T: Clone, K: Clone + Debug {
 
 fn main() {
     foo("Hello", "world");
-    bar("Hello", "workd");
+    bar("Hello", "world");
 }
 ```
 
