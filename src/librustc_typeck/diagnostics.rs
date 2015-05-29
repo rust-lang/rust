@@ -170,6 +170,31 @@ Reference:
 http://doc.rust-lang.org/reference.html#trait-objects
 "##,
 
+E0040: r##"
+It is not allowed to manually call destructors in Rust. It is also not
+necessary to do this since `drop` is called automatically whenever a value goes
+out of scope.
+
+Here's an example of this error:
+
+```
+struct Foo {
+    x: i32,
+}
+
+impl Drop for Foo {
+    fn drop(&mut self) {
+        println!("kaboom");
+    }
+}
+
+fn main() {
+    let mut x = Foo { x: -7 };
+    x.drop(); // error: explicit use of destructor method
+}
+```
+"##,
+
 E0046: r##"
 When trying to make some type implement a trait `Foo`, you must, at minimum,
 provide implementations for all of `Foo`'s required methods (meaning the
@@ -241,7 +266,7 @@ impl Foo for Bar {
     fn foo(x: i16) { }
 
     // error, values differ in mutability
-    fn foo(&mut self) { }
+    fn bar(&mut self) { }
 }
 ```
 "##,
@@ -540,6 +565,21 @@ construct an instance of the following type using only safe code:
 ```
 enum Empty {}
 ```
+"##,
+
+E0087: r##"
+Too many type parameters were supplied for a function. For example:
+
+```
+fn foo<T>() {}
+
+fn main() {
+    foo::<f64, bool>(); // error, expected 1 parameter, found 2 parameters
+}
+```
+
+The number of supplied parameters much exactly match the number of defined type
+parameters.
 "##,
 
 E0089: r##"
@@ -1098,6 +1138,13 @@ Trait2 { ... }`) does not work if the trait is not object-safe. Please see the
 [RFC 255]: https://github.com/rust-lang/rfcs/pull/255
 "##,
 
+E0379: r##"
+Trait methods cannot be declared `const` by design. For more information, see
+[RFC 911].
+
+[RFC 911]: https://github.com/rust-lang/rfcs/pull/911
+"##,
+
 E0380: r##"
 Default impls are only allowed for traits with no methods or associated items.
 For more information see the [opt-in builtin traits RFC](https://github.com/rust
@@ -1113,7 +1160,6 @@ register_diagnostics! {
     E0034, // multiple applicable methods in scope
     E0035, // does not take type parameters
     E0036, // incorrect number of type parameters given for this method
-    E0040, // explicit use of destructor method
     E0044, // foreign items may not have type parameters
     E0045, // variadic function must have C calling convention
     E0057, // method has an incompatible type for trait
@@ -1128,7 +1174,6 @@ register_diagnostics! {
     E0077,
     E0085,
     E0086,
-    E0087,
     E0088,
     E0090,
     E0091,
@@ -1235,7 +1280,6 @@ register_diagnostics! {
            // between structures
     E0377, // the trait `CoerceUnsized` may only be implemented for a coercion
            // between structures with the same definition
-    E0379,  // trait fns cannot be const
     E0390, // only a single inherent implementation marked with
            // `#[lang = \"{}\"]` is allowed for the `{}` primitive
     E0391, // unsupported cyclic reference between types/traits detected

@@ -12,6 +12,6 @@
 
 static mut a: Box<isize> = box 3;
 //~^ ERROR allocations are not allowed in statics
-//~^^ ERROR mutable statics are not allowed to have owned pointers
+//~^^ ERROR mutable statics are not allowed to have boxes
 
 fn main() {}
