@@ -134,8 +134,29 @@ x: &'a i32,
 # }
 ```
 
-uses it. So why do we need a lifetime here? We need to ensure that any
-reference to the contained `i32` does not outlive the containing `Foo`.
+uses it. So why do we need a lifetime here? We need to ensure that any reference
+to a `Foo` cannot outlive the reference to an `i32` it contains.
+
+If you have multiple references, you can use the same lifetime multiple times:
+
+```rust
+fn x_or_y<'a>(x: &'a str, y: &'a str) -> &'a str {
+#    x
+# }
+```
+
+This says that `x` and `y` both are alive for the same scope, and that the
+return value is also alive for that scope. If you wanted `x` and `y` to have
+different lifetimes, you can use multiple lifetime parameters:
+
+```rust
+fn x_or_y<'a, 'b>(x: &'a str, y: &'b str) -> &'a str {
+#    x
+# }
+```
+
+In this example, `x` and `y` have different valid scopes, but the return value
+has the same lifetime as `x`.
 
 ## Thinking in scopes
 
