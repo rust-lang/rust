@@ -17,14 +17,12 @@
 
 use std::slice;
 
-pub type IoResult<T> = Result<T, ()>;
-
 trait MyWriter {
-    fn my_write(&mut self, buf: &[u8]) -> IoResult<()>;
+    fn my_write(&mut self, buf: &[u8]) -> Result<(), ()>;
 }
 
 impl<'a> MyWriter for &'a mut [u8] {
-    fn my_write(&mut self, buf: &[u8]) -> IoResult<()> {
+    fn my_write(&mut self, buf: &[u8]) -> Result<(), ()> {
         slice::bytes::copy_memory(buf, *self);
 
         let write_len = buf.len();
