@@ -159,7 +159,7 @@ fn foo(a: u8) { ... }
 Note that
 [`ascii::Ascii`](http://static.rust-lang.org/doc/master/std/ascii/struct.Ascii.html)
 is a _wrapper_ around `u8` that guarantees the highest bit is zero; see
-[newtype patterns]() for more details on creating typesafe wrappers.
+[newtype patterns](../types/newtype.md) for more details on creating typesafe wrappers.
 
 Static enforcement usually comes at little run-time cost: it pushes the
 costs to the boundaries (e.g. when a `u8` is first converted into an
