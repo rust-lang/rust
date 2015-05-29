@@ -20,6 +20,7 @@ for any operation that is clearly associated with a particular
 type.
 
 Methods have numerous advantages over functions:
+
 * They do not need to be imported or qualified to be used: all you
   need is a value of the appropriate type.
 * Their invocation performs autoborrowing (including mutable borrows).
