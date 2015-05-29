@@ -146,7 +146,7 @@ use clone::Clone;
 use cmp::{PartialEq, Eq};
 use default::Default;
 use marker::{Copy, Send, Sync, Sized};
-use ops::{Deref, DerefMut, Drop};
+use ops::{Deref, DerefMut, Drop, FnOnce};
 use option::Option;
 use option::Option::{None, Some};
 
@@ -551,13 +551,161 @@ impl<'b, T: ?Sized> Deref for Ref<'b, T> {
 ///
 /// A `Clone` implementation would interfere with the widespread
 /// use of `r.borrow().clone()` to clone the contents of a `RefCell`.
+#[deprecated(since = "1.2.0", reason = "moved to a `Ref::clone` associated function")]
 #[unstable(feature = "core",
            reason = "likely to be moved to a method, pending language changes")]
 #[inline]
 pub fn clone_ref<'b, T:Clone>(orig: &Ref<'b, T>) -> Ref<'b, T> {
-    Ref {
-        _value: orig._value,
-        _borrow: orig._borrow.clone(),
+    Ref::clone(orig)
+}
+
+impl<'b, T: ?Sized> Ref<'b, T> {
+    /// Copies a `Ref`.
+    ///
+    /// The `RefCell` is already immutably borrowed, so this cannot fail.
+    ///
+    /// This is an associated function that needs to be used as `Ref::clone(...)`.
+    /// A `Clone` implementation or a method would interfere with the widespread
+    /// use of `r.borrow().clone()` to clone the contents of a `RefCell`.
+    #[unstable(feature = "cell_extras",
+               reason = "likely to be moved to a method, pending language changes")]
+    #[inline]
+    pub fn clone(orig: &Ref<'b, T>) -> Ref<'b, T> {
+        Ref {
+            _value: orig._value,
+            _borrow: orig._borrow.clone(),
+        }
+    }
+
+    /// Make a new `Ref` for a component of the borrowed data.
+    ///
+    /// The `RefCell` is already immutably borrowed, so this cannot fail.
+    ///
+    /// This is an associated function that needs to be used as `Ref::map(...)`.
+    /// A method would interfere with methods of the same name on the contents of a `RefCell`
+    /// used through `Deref`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # #![feature(cell_extras)]
+    /// use std::cell::{RefCell, Ref};
+    ///
+    /// let c = RefCell::new((5, 'b'));
+    /// let b1: Ref<(u32, char)> = c.borrow();
+    /// let b2: Ref<u32> = Ref::map(b1, |t| &t.0);
+    /// assert_eq!(*b2, 5)
+    /// ```
+    #[unstable(feature = "cell_extras", reason = "recently added")]
+    #[inline]
+    pub fn map<U: ?Sized, F>(orig: Ref<'b, T>, f: F) -> Ref<'b, U>
+        where F: FnOnce(&T) -> &U
+    {
+        Ref {
+            _value: f(orig._value),
+            _borrow: orig._borrow,
+        }
+    }
+
+    /// Make a new `Ref` for a optional component of the borrowed data, e.g. an enum variant.
+    ///
+    /// The `RefCell` is already immutably borrowed, so this cannot fail.
+    ///
+    /// This is an associated function that needs to be used as `Ref::filter_map(...)`.
+    /// A method would interfere with methods of the same name on the contents of a `RefCell`
+    /// used through `Deref`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # #![feature(cell_extras)]
+    /// use std::cell::{RefCell, Ref};
+    ///
+    /// let c = RefCell::new(Ok(5));
+    /// let b1: Ref<Result<u32, ()>> = c.borrow();
+    /// let b2: Ref<u32> = Ref::filter_map(b1, |o| o.as_ref().ok()).unwrap();
+    /// assert_eq!(*b2, 5)
+    /// ```
+    #[unstable(feature = "cell_extras", reason = "recently added")]
+    #[inline]
+    pub fn filter_map<U: ?Sized, F>(orig: Ref<'b, T>, f: F) -> Option<Ref<'b, U>>
+        where F: FnOnce(&T) -> Option<&U>
+    {
+        f(orig._value).map(move |new| Ref {
+            _value: new,
+            _borrow: orig._borrow,
+        })
+    }
+}
+
+impl<'b, T: ?Sized> RefMut<'b, T> {
+    /// Make a new `RefMut` for a component of the borrowed data, e.g. an enum variant.
+    ///
+    /// The `RefCell` is already mutably borrowed, so this cannot fail.
+    ///
+    /// This is an associated function that needs to be used as `RefMut::map(...)`.
+    /// A method would interfere with methods of the same name on the contents of a `RefCell`
+    /// used through `Deref`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # #![feature(cell_extras)]
+    /// use std::cell::{RefCell, RefMut};
+    ///
+    /// let c = RefCell::new((5, 'b'));
+    /// {
+    ///     let b1: RefMut<(u32, char)> = c.borrow_mut();
+    ///     let mut b2: RefMut<u32> = RefMut::map(b1, |t| &mut t.0);
+    ///     assert_eq!(*b2, 5);
+    ///     *b2 = 42;
+    /// }
+    /// assert_eq!(*c.borrow(), (42, 'b'));
+    /// ```
+    #[unstable(feature = "cell_extras", reason = "recently added")]
+    #[inline]
+    pub fn map<U: ?Sized, F>(orig: RefMut<'b, T>, f: F) -> RefMut<'b, U>
+        where F: FnOnce(&mut T) -> &mut U
+    {
+        RefMut {
+            _value: f(orig._value),
+            _borrow: orig._borrow,
+        }
+    }
+
+    /// Make a new `RefMut` for a optional component of the borrowed data, e.g. an enum variant.
+    ///
+    /// The `RefCell` is already mutably borrowed, so this cannot fail.
+    ///
+    /// This is an associated function that needs to be used as `RefMut::filter_map(...)`.
+    /// A method would interfere with methods of the same name on the contents of a `RefCell`
+    /// used through `Deref`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # #![feature(cell_extras)]
+    /// use std::cell::{RefCell, RefMut};
+    ///
+    /// let c = RefCell::new(Ok(5));
+    /// {
+    ///     let b1: RefMut<Result<u32, ()>> = c.borrow_mut();
+    ///     let mut b2: RefMut<u32> = RefMut::filter_map(b1, |o| o.as_mut().ok()).unwrap();
+    ///     assert_eq!(*b2, 5);
+    ///     *b2 = 42;
+    /// }
+    /// assert_eq!(*c.borrow(), Ok(42));
+    /// ```
+    #[unstable(feature = "cell_extras", reason = "recently added")]
+    #[inline]
+    pub fn filter_map<U: ?Sized, F>(orig: RefMut<'b, T>, f: F) -> Option<RefMut<'b, U>>
+        where F: FnOnce(&mut T) -> Option<&mut U>
+    {
+        let RefMut { _value, _borrow } = orig;
+        f(_value).map(move |new| RefMut {
+            _value: new,
+            _borrow: _borrow,
+        })
     }
 }
 

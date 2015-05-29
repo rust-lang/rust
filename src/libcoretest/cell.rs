@@ -115,18 +115,94 @@ fn discard_doesnt_unborrow() {
 }
 
 #[test]
-fn clone_ref_updates_flag() {
+fn ref_clone_updates_flag() {
     let x = RefCell::new(0);
     {
         let b1 = x.borrow();
         assert_eq!(x.borrow_state(), BorrowState::Reading);
         {
-            let _b2 = clone_ref(&b1);
+            let _b2 = Ref::clone(&b1);
             assert_eq!(x.borrow_state(), BorrowState::Reading);
         }
         assert_eq!(x.borrow_state(), BorrowState::Reading);
     }
     assert_eq!(x.borrow_state(), BorrowState::Unused);
+}
+
+#[test]
+fn ref_map_does_not_update_flag() {
+    let x = RefCell::new(Some(5));
+    {
+        let b1: Ref<Option<u32>> = x.borrow();
+        assert_eq!(x.borrow_state(), BorrowState::Reading);
+        {
+            let b2: Ref<u32> = Ref::map(b1, |o| o.as_ref().unwrap());
+            assert_eq!(*b2, 5);
+            assert_eq!(x.borrow_state(), BorrowState::Reading);
+        }
+        assert_eq!(x.borrow_state(), BorrowState::Unused);
+    }
+    assert_eq!(x.borrow_state(), BorrowState::Unused);
+}
+
+#[test]
+fn ref_map_accessor() {
+    struct X(RefCell<(u32, char)>);
+    impl X {
+        fn accessor(&self) -> Ref<u32> {
+            Ref::map(self.0.borrow(), |tuple| &tuple.0)
+        }
+    }
+    let x = X(RefCell::new((7, 'z')));
+    let d: Ref<u32> = x.accessor();
+    assert_eq!(*d, 7);
+}
+
+#[test]
+fn ref_filter_map_accessor() {
+    struct X(RefCell<Result<u32, ()>>);
+    impl X {
+        fn accessor(&self) -> Option<Ref<u32>> {
+            Ref::filter_map(self.0.borrow(), |r| r.as_ref().ok())
+        }
+    }
+    let x = X(RefCell::new(Ok(7)));
+    let d: Ref<u32> = x.accessor().unwrap();
+    assert_eq!(*d, 7);
+}
+
+#[test]
+fn ref_mut_map_accessor() {
+    struct X(RefCell<(u32, char)>);
+    impl X {
+        fn accessor(&self) -> RefMut<u32> {
+            RefMut::map(self.0.borrow_mut(), |tuple| &mut tuple.0)
+        }
+    }
+    let x = X(RefCell::new((7, 'z')));
+    {
+        let mut d: RefMut<u32> = x.accessor();
+        assert_eq!(*d, 7);
+        *d += 1;
+    }
+    assert_eq!(*x.0.borrow(), (8, 'z'));
+}
+
+#[test]
+fn ref_mut_filter_map_accessor() {
+    struct X(RefCell<Result<u32, ()>>);
+    impl X {
+        fn accessor(&self) -> Option<RefMut<u32>> {
+            RefMut::filter_map(self.0.borrow_mut(), |r| r.as_mut().ok())
+        }
+    }
+    let x = X(RefCell::new(Ok(7)));
+    {
+        let mut d: RefMut<u32> = x.accessor().unwrap();
+        assert_eq!(*d, 7);
+        *d += 1;
+    }
+    assert_eq!(*x.0.borrow(), Ok(8));
 }
 
 #[test]
