@@ -145,7 +145,7 @@
 //!         val: num.to_json(),
 //!     }).unwrap();
 //!     println!("data: {}", data);
-//!     // data: {"uid":1,"dsc":"test","val":"0.0001+12.539j"};
+//!     // data: {"uid":1,"dsc":"test","val":"0.0001+12.539i"};
 //! }
 //! ```
 //!
