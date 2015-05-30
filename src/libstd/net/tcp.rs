@@ -933,17 +933,15 @@ mod tests {
         let listener = t!(TcpListener::bind(&addr));
 
         let mut stream = t!(TcpStream::connect(&("localhost", addr.port())));
-        t!(stream.set_read_timeout(Some(Duration::from_millis(10))));
+        t!(stream.set_read_timeout(Some(Duration::from_millis(1000))));
 
         let mut buf = [0; 10];
         let wait = Duration::span(|| {
             let kind = stream.read(&mut buf).err().expect("expected error").kind();
             assert!(kind == ErrorKind::WouldBlock || kind == ErrorKind::TimedOut);
         });
-        assert!(wait > Duration::from_millis(5));
-        // windows will sometimes extend this by ~500ms, so we'll just take the
-        // fact that we did time out as a win :(
-        assert!(cfg!(windows) || wait < Duration::from_millis(15));
+        assert!(wait > Duration::from_millis(400));
+        assert!(wait < Duration::from_millis(1600));
     }
 
     #[test]
@@ -952,7 +950,7 @@ mod tests {
         let listener = t!(TcpListener::bind(&addr));
 
         let mut stream = t!(TcpStream::connect(&("localhost", addr.port())));
-        t!(stream.set_read_timeout(Some(Duration::from_millis(10))));
+        t!(stream.set_read_timeout(Some(Duration::from_millis(1000))));
 
         let mut other_end = t!(listener.accept()).0;
         t!(other_end.write_all(b"hello world"));
@@ -965,9 +963,7 @@ mod tests {
             let kind = stream.read(&mut buf).err().expect("expected error").kind();
             assert!(kind == ErrorKind::WouldBlock || kind == ErrorKind::TimedOut);
         });
-        assert!(wait > Duration::from_millis(5));
-        // windows will sometimes extend this by ~500ms, so we'll just take the
-        // fact that we did time out as a win :(
-        assert!(cfg!(windows) || wait < Duration::from_millis(15));
+        assert!(wait > Duration::from_millis(400));
+        assert!(wait < Duration::from_millis(1600));
     }
 }
