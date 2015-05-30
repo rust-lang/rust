@@ -37,12 +37,11 @@
 #![feature(unsafe_no_drop_flag, filling_drop)]
 #![feature(step_by)]
 #![feature(str_char)]
-#![feature(str_words)]
 #![feature(slice_patterns)]
 #![feature(utf8_error)]
-#![cfg_attr(test, feature(rand, rustc_private, test, hash, collections,
-                          collections_drain, collections_range))]
+#![cfg_attr(test, feature(rand, test))]
 #![cfg_attr(test, allow(deprecated))] // rand
+#![cfg_attr(not(test), feature(str_words))]
 
 #![feature(no_std)]
 #![no_std]

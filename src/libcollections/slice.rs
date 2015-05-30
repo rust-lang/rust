@@ -79,6 +79,10 @@
 #![doc(primitive = "slice")]
 #![stable(feature = "rust1", since = "1.0.0")]
 
+// Many of the usings in this module are only used in the test configuration.
+// It's cleaner to just turn off the unused_imports warning than to fix them.
+#![allow(unused_imports)]
+
 use alloc::boxed::Box;
 use core::clone::Clone;
 use core::cmp::Ordering::{self, Greater, Less};
