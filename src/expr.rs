@@ -198,6 +198,10 @@ impl<'a> FmtVisitor<'a> {
         -> String {
         // opening paren
         let indent = offset + 1;
+        // In case of length 1, need a trailing comma
+        if items.len() == 1 {
+            return format!("({},)", self.rewrite_expr(&*items[0], width - 3, indent));
+        }
         // Only last line has width-1 as budget, other may take max_width
         let item_strs: Vec<_> =
             items.iter()

@@ -7,4 +7,5 @@ fn foo() {
                                   aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,
                                   aaaaaaaaaaaaaaaaaaaaaaaaa,
                                   aaaa);
+    let a = (a,);
 }
