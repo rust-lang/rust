@@ -172,23 +172,24 @@ check: check-sanitycheck cleantmptestlogs cleantestlibs all check-stage2 tidy
 	$(Q)$(CFG_PYTHON) $(S)src/etc/check-summary.py tmp/*.log
 
 # As above but don't bother running tidy.
-check-notidy: cleantmptestlogs cleantestlibs all check-stage2
+check-notidy: check-sanitycheck cleantmptestlogs cleantestlibs all check-stage2
 	$(Q)$(CFG_PYTHON) $(S)src/etc/check-summary.py tmp/*.log
 
 # A slightly smaller set of tests for smoke testing.
-check-lite: cleantestlibs cleantmptestlogs \
+check-lite: check-sanitycheck cleantestlibs cleantmptestlogs \
 	$(foreach crate,$(TEST_TARGET_CRATES),check-stage2-$(crate)) \
 	check-stage2-rpass check-stage2-rpass-valgrind \
 	check-stage2-rfail check-stage2-cfail check-stage2-pfail check-stage2-rmake
 	$(Q)$(CFG_PYTHON) $(S)src/etc/check-summary.py tmp/*.log
 
 # Only check the 'reference' tests: rpass/cfail/rfail/rmake.
-check-ref: cleantestlibs cleantmptestlogs check-stage2-rpass check-stage2-rpass-valgrind \
-	check-stage2-rfail check-stage2-cfail check-stage2-pfail check-stage2-rmake
+check-ref: check-sanitycheck cleantestlibs cleantmptestlogs check-stage2-rpass \
+	check-stage2-rpass-valgrind check-stage2-rfail check-stage2-cfail check-stage2-pfail \
+	check-stage2-rmake
 	$(Q)$(CFG_PYTHON) $(S)src/etc/check-summary.py tmp/*.log
 
 # Only check the docs.
-check-docs: cleantestlibs cleantmptestlogs check-stage2-docs
+check-docs: check-sanitycheck cleantestlibs cleantmptestlogs check-stage2-docs
 	$(Q)$(CFG_PYTHON) $(S)src/etc/check-summary.py tmp/*.log
 
 # Some less critical tests that are not prone to breakage.

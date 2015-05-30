@@ -11,6 +11,7 @@
 # except according to those terms.
 
 import os
+import subprocess
 import sys
 import functools
 
@@ -45,8 +46,14 @@ will segfault many rustc's, creating many potentially large core files.
 set ALLOW_NONZERO_RLIMIT_CORE to ignore this warning
 """ % (soft))
 
+@only_on(('windows'))
+def check_console_code_page():
+    if "65001" not in subprocess.check_output(['cmd', '/c', 'chcp']):
+        sys.stderr.write('Warning: the console output code page is not UTF-8, \
+some tests may fail. Use `cmd /c "chcp 65001"` to setup UTF-8 code page.\n')
 
 def main():
+    check_console_code_page()
     check_rlimit_core()
 
 if __name__ == '__main__':
