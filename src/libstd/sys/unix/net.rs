@@ -18,6 +18,8 @@ use sys::c;
 use net::SocketAddr;
 use sys::fd::FileDesc;
 use sys_common::{AsInner, FromInner};
+use sys_common::net::{getsockopt, setsockopt};
+use time::Duration;
 
 pub use sys::{cvt, cvt_r};
 
@@ -72,6 +74,49 @@ impl Socket {
 
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
         self.0.read(buf)
+    }
+
+    pub fn set_timeout(&self, dur: Option<Duration>, kind: libc::c_int) -> io::Result<()> {
+        let timeout = match dur {
+            Some(dur) => {
+                if dur.secs() == 0 && dur.extra_nanos() == 0 {
+                    return Err(io::Error::new(io::ErrorKind::InvalidInput,
+                                              "cannot set a 0 duration timeout"));
+                }
+
+                let secs = if dur.secs() > libc::time_t::max_value() as u64 {
+                    libc::time_t::max_value()
+                } else {
+                    dur.secs() as libc::time_t
+                };
+                let mut timeout = libc::timeval {
+                    tv_sec: secs,
+                    tv_usec: (dur.extra_nanos() / 1000) as libc::suseconds_t,
+                };
+                if timeout.tv_sec == 0 && timeout.tv_usec == 0 {
+                    timeout.tv_usec = 1;
+                }
+                timeout
+            }
+            None => {
+                libc::timeval {
+                    tv_sec: 0,
+                    tv_usec: 0,
+                }
+            }
+        };
+        setsockopt(self, libc::SOL_SOCKET, kind, timeout)
+    }
+
+    pub fn timeout(&self, kind: libc::c_int) -> io::Result<Option<Duration>> {
+        let raw: libc::timeval = try!(getsockopt(self, libc::SOL_SOCKET, kind));
+        if raw.tv_sec == 0 && raw.tv_usec == 0 {
+            Ok(None)
+        } else {
+            let sec = raw.tv_sec as u64;
+            let nsec = (raw.tv_usec as u32) * 1000;
+            Ok(Some(Duration::new(sec, nsec)))
+        }
     }
 }
 

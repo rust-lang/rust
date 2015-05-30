@@ -18,6 +18,7 @@ use io::{self, Error, ErrorKind};
 use net::{ToSocketAddrs, SocketAddr, IpAddr};
 use sys_common::net as net_imp;
 use sys_common::{AsInner, FromInner};
+use time::Duration;
 
 /// A User Datagram Protocol socket.
 ///
@@ -127,6 +128,42 @@ impl UdpSocket {
     pub fn set_time_to_live(&self, ttl: i32) -> io::Result<()> {
         self.0.time_to_live(ttl)
     }
+
+    /// Sets the read timeout to the timeout specified.
+    ///
+    /// If the value specified is `None`, then `read` calls will block
+    /// indefinitely. It is an error to pass the zero `Duration` to this
+    /// method.
+    #[unstable(feature = "socket_timeout", reason = "RFC 1047 - recently added")]
+    pub fn set_read_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
+        self.0.set_read_timeout(dur)
+    }
+
+    /// Sets the write timeout to the timeout specified.
+    ///
+    /// If the value specified is `None`, then `write` calls will block
+    /// indefinitely. It is an error to pass the zero `Duration` to this
+    /// method.
+    #[unstable(feature = "socket_timeout", reason = "RFC 1047 - recently added")]
+    pub fn set_write_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
+        self.0.set_write_timeout(dur)
+    }
+
+    /// Returns the read timeout of this socket.
+    ///
+    /// If the timeout is `None`, then `read` calls will block indefinitely.
+    #[unstable(feature = "socket_timeout", reason = "RFC 1047 - recently added")]
+    pub fn read_timeout(&self) -> io::Result<Option<Duration>> {
+        self.0.read_timeout()
+    }
+
+    /// Returns the write timeout of this socket.
+    ///
+    /// If the timeout is `None`, then `write` calls will block indefinitely.
+    #[unstable(feature = "socket_timeout", reason = "RFC 1047 - recently added")]
+    pub fn write_timeout(&self) -> io::Result<Option<Duration>> {
+        self.0.write_timeout()
+    }
 }
 
 impl AsInner<net_imp::UdpSocket> for UdpSocket {
@@ -152,6 +189,7 @@ mod tests {
     use net::test::{next_test_ip4, next_test_ip6};
     use sync::mpsc::channel;
     use sys_common::AsInner;
+    use time::Duration;
     use thread;
 
     fn each_ip(f: &mut FnMut(SocketAddr, SocketAddr)) {
@@ -320,5 +358,66 @@ mod tests {
         let compare = format!("UdpSocket {{ addr: {:?}, {}: {:?} }}",
                               socket_addr, name, udpsock_inner);
         assert_eq!(format!("{:?}", udpsock), compare);
+    }
+
+    #[test]
+    fn timeouts() {
+        let addr = next_test_ip4();
+
+        let stream = t!(UdpSocket::bind(&addr));
+        let dur = Duration::new(15410, 0);
+
+        assert_eq!(None, t!(stream.read_timeout()));
+
+        t!(stream.set_read_timeout(Some(dur)));
+        assert_eq!(Some(dur), t!(stream.read_timeout()));
+
+        assert_eq!(None, t!(stream.write_timeout()));
+
+        t!(stream.set_write_timeout(Some(dur)));
+        assert_eq!(Some(dur), t!(stream.write_timeout()));
+
+        t!(stream.set_read_timeout(None));
+        assert_eq!(None, t!(stream.read_timeout()));
+
+        t!(stream.set_write_timeout(None));
+        assert_eq!(None, t!(stream.write_timeout()));
+    }
+
+    #[test]
+    fn test_read_timeout() {
+        let addr = next_test_ip4();
+
+        let mut stream = t!(UdpSocket::bind(&addr));
+        t!(stream.set_read_timeout(Some(Duration::from_millis(1000))));
+
+        let mut buf = [0; 10];
+        let wait = Duration::span(|| {
+            let kind = stream.recv_from(&mut buf).err().expect("expected error").kind();
+            assert!(kind == ErrorKind::WouldBlock || kind == ErrorKind::TimedOut);
+        });
+        assert!(wait > Duration::from_millis(400));
+        assert!(wait < Duration::from_millis(1600));
+    }
+
+    #[test]
+    fn test_read_with_timeout() {
+        let addr = next_test_ip4();
+
+        let mut stream = t!(UdpSocket::bind(&addr));
+        t!(stream.set_read_timeout(Some(Duration::from_millis(1000))));
+
+        t!(stream.send_to(b"hello world", &addr));
+
+        let mut buf = [0; 11];
+        t!(stream.recv_from(&mut buf));
+        assert_eq!(b"hello world", &buf[..]);
+
+        let wait = Duration::span(|| {
+            let kind = stream.recv_from(&mut buf).err().expect("expected error").kind();
+            assert!(kind == ErrorKind::WouldBlock || kind == ErrorKind::TimedOut);
+        });
+        assert!(wait > Duration::from_millis(400));
+        assert!(wait < Duration::from_millis(1600));
     }
 }
