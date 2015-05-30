@@ -6043,7 +6043,6 @@ pub mod funcs {
         use types::common::c95::{c_void};
         use types::os::common::bsd44::{socklen_t, sockaddr, SOCKET};
         use types::os::arch::c95::c_int;
-        use types::os::arch::posix88::ssize_t;
 
         extern "system" {
             pub fn socket(domain: c_int, ty: c_int, protocol: c_int) -> SOCKET;
@@ -6068,7 +6067,7 @@ pub mod funcs {
                         flags: c_int) -> c_int;
             pub fn recvfrom(socket: SOCKET, buf: *mut c_void, len: c_int,
                             flags: c_int, addr: *mut sockaddr,
-                            addrlen: *mut c_int) -> ssize_t;
+                            addrlen: *mut c_int) -> c_int;
             pub fn sendto(socket: SOCKET, buf: *const c_void, len: c_int,
                           flags: c_int, addr: *const sockaddr,
                           addrlen: c_int) -> c_int;
