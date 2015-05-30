@@ -100,7 +100,7 @@ pub enum ErrorKind {
     /// Unlike `InvalidInput`, this typically means that the operation
     /// parameters were valid, however the error was caused by malformed
     /// input data.
-    #[stable(feature = "io_invalid_data", since = "1.1.0")]
+    #[stable(feature = "io_invalid_data", since = "1.2.0")]
     InvalidData,
     /// The I/O operation's timeout expired, causing it to be canceled.
     #[stable(feature = "rust1", since = "1.0.0")]
