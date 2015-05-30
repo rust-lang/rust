@@ -3030,6 +3030,100 @@ pub fn repeat<T: Clone>(elt: T) -> Repeat<T> {
     Repeat{element: elt}
 }
 
+/// An iterator that yields nothing.
+#[unstable(feature="iter_empty", reason = "new addition")]
+pub struct Empty<T>(marker::PhantomData<T>);
+
+#[unstable(feature="iter_empty", reason = "new addition")]
+impl<T> Iterator for Empty<T> {
+    type Item = T;
+
+    fn next(&mut self) -> Option<T> {
+        None
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>){
+        (0, Some(0))
+    }
+}
+
+#[unstable(feature="iter_empty", reason = "new addition")]
+impl<T> DoubleEndedIterator for Empty<T> {
+    fn next_back(&mut self) -> Option<T> {
+        None
+    }
+}
+
+#[unstable(feature="iter_empty", reason = "new addition")]
+impl<T> ExactSizeIterator for Empty<T> {
+    fn len(&self) -> usize {
+        0
+    }
+}
+
+// not #[derive] because that adds a Clone bound on T,
+// which isn't necessary.
+#[unstable(feature="iter_empty", reason = "new addition")]
+impl<T> Clone for Empty<T> {
+    fn clone(&self) -> Empty<T> {
+        Empty(marker::PhantomData)
+    }
+}
+
+// not #[derive] because that adds a Default bound on T,
+// which isn't necessary.
+#[unstable(feature="iter_empty", reason = "new addition")]
+impl<T> Default for Empty<T> {
+    fn default() -> Empty<T> {
+        Empty(marker::PhantomData)
+    }
+}
+
+/// Creates an iterator that yields nothing.
+#[unstable(feature="iter_empty", reason = "new addition")]
+pub fn empty<T>() -> Empty<T> {
+    Empty(marker::PhantomData)
+}
+
+/// An iterator that yields an element exactly once.
+#[unstable(feature="iter_once", reason = "new addition")]
+pub struct Once<T> {
+    inner: ::option::IntoIter<T>
+}
+
+#[unstable(feature="iter_once", reason = "new addition")]
+impl<T> Iterator for Once<T> {
+    type Item = T;
+
+    fn next(&mut self) -> Option<T> {
+        self.inner.next()
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.inner.size_hint()
+    }
+}
+
+#[unstable(feature="iter_once", reason = "new addition")]
+impl<T> DoubleEndedIterator for Once<T> {
+    fn next_back(&mut self) -> Option<T> {
+        self.inner.next_back()
+    }
+}
+
+#[unstable(feature="iter_once", reason = "new addition")]
+impl<T> ExactSizeIterator for Once<T> {
+    fn len(&self) -> usize {
+        self.inner.len()
+    }
+}
+
+/// Creates an iterator that yields an element exactly once.
+#[unstable(feature="iter_once", reason = "new addition")]
+pub fn once<T>(value: T) -> Once<T> {
+    Once { inner: Some(value).into_iter() }
+}
+
 /// Functions for lexicographical ordering of sequences.
 ///
 /// Lexicographical ordering through `<`, `<=`, `>=`, `>` requires
