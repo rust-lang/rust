@@ -250,6 +250,9 @@ pub fn strong_count<T: ?Sized>(this: &Arc<T>) -> usize { this.inner().strong.loa
 ///
 /// Returns `None` if the `Arc<T>` is not unique.
 ///
+/// This function is marked **unsafe** because it is racy if weak pointers
+/// are active.
+///
 /// # Examples
 ///
 /// ```
@@ -258,6 +261,7 @@ pub fn strong_count<T: ?Sized>(this: &Arc<T>) -> usize { this.inner().strong.loa
 /// # fn main() {
 /// use alloc::arc::{Arc, get_mut};
 ///
+/// # unsafe {
 /// let mut x = Arc::new(3);
 /// *get_mut(&mut x).unwrap() = 4;
 /// assert_eq!(*x, 4);
@@ -265,17 +269,19 @@ pub fn strong_count<T: ?Sized>(this: &Arc<T>) -> usize { this.inner().strong.loa
 /// let _y = x.clone();
 /// assert!(get_mut(&mut x).is_none());
 /// # }
+/// # }
 /// ```
 #[inline]
 #[unstable(feature = "alloc")]
-pub fn get_mut<T: ?Sized>(this: &mut Arc<T>) -> Option<&mut T> {
+pub unsafe fn get_mut<T: ?Sized>(this: &mut Arc<T>) -> Option<&mut T> {
+    // FIXME(#24880) potential race with upgraded weak pointers here
     if strong_count(this) == 1 && weak_count(this) == 0 {
         // This unsafety is ok because we're guaranteed that the pointer
         // returned is the *only* pointer that will ever be returned to T. Our
         // reference count is guaranteed to be 1 at this point, and we required
         // the Arc itself to be `mut`, so we're returning the only possible
         // reference to the inner data.
-        let inner = unsafe { &mut **this._ptr };
+        let inner = &mut **this._ptr;
         Some(&mut inner.data)
     } else {
         None
@@ -332,19 +338,26 @@ impl<T: Clone> Arc<T> {
     /// This is also referred to as a copy-on-write operation because the inner
     /// data is cloned if the reference count is greater than one.
     ///
+    /// This method is marked **unsafe** because it is racy if weak pointers
+    /// are active.
+    ///
     /// # Examples
     ///
     /// ```
     /// # #![feature(alloc)]
     /// use std::sync::Arc;
     ///
+    /// # unsafe {
     /// let mut five = Arc::new(5);
     ///
     /// let mut_five = five.make_unique();
+    /// # }
     /// ```
     #[inline]
     #[unstable(feature = "alloc")]
-    pub fn make_unique(&mut self) -> &mut T {
+    pub unsafe fn make_unique(&mut self) -> &mut T {
+        // FIXME(#24880) potential race with upgraded weak pointers here
+        //
         // Note that we hold a strong reference, which also counts as a weak
         // reference, so we only clone if there is an additional reference of
         // either kind.
@@ -354,7 +367,7 @@ impl<T: Clone> Arc<T> {
         }
         // As with `get_mut()`, the unsafety is ok because our reference was
         // either unique to begin with, or became one upon cloning the contents.
-        let inner = unsafe { &mut **self._ptr };
+        let inner = &mut **self._ptr;
         &mut inner.data
     }
 }
@@ -744,39 +757,43 @@ mod tests {
 
     #[test]
     fn test_arc_get_mut() {
-        let mut x = Arc::new(3);
-        *get_mut(&mut x).unwrap() = 4;
-        assert_eq!(*x, 4);
-        let y = x.clone();
-        assert!(get_mut(&mut x).is_none());
-        drop(y);
-        assert!(get_mut(&mut x).is_some());
-        let _w = x.downgrade();
-        assert!(get_mut(&mut x).is_none());
+        unsafe {
+            let mut x = Arc::new(3);
+            *get_mut(&mut x).unwrap() = 4;
+            assert_eq!(*x, 4);
+            let y = x.clone();
+            assert!(get_mut(&mut x).is_none());
+            drop(y);
+            assert!(get_mut(&mut x).is_some());
+            let _w = x.downgrade();
+            assert!(get_mut(&mut x).is_none());
+        }
     }
 
     #[test]
     fn test_cowarc_clone_make_unique() {
-        let mut cow0 = Arc::new(75);
-        let mut cow1 = cow0.clone();
-        let mut cow2 = cow1.clone();
+        unsafe {
+            let mut cow0 = Arc::new(75);
+            let mut cow1 = cow0.clone();
+            let mut cow2 = cow1.clone();
 
-        assert!(75 == *cow0.make_unique());
-        assert!(75 == *cow1.make_unique());
-        assert!(75 == *cow2.make_unique());
+            assert!(75 == *cow0.make_unique());
+            assert!(75 == *cow1.make_unique());
+            assert!(75 == *cow2.make_unique());
 
-        *cow0.make_unique() += 1;
-        *cow1.make_unique() += 2;
-        *cow2.make_unique() += 3;
+            *cow0.make_unique() += 1;
+            *cow1.make_unique() += 2;
+            *cow2.make_unique() += 3;
 
-        assert!(76 == *cow0);
-        assert!(77 == *cow1);
-        assert!(78 == *cow2);
+            assert!(76 == *cow0);
+            assert!(77 == *cow1);
+            assert!(78 == *cow2);
 
-        // none should point to the same backing memory
-        assert!(*cow0 != *cow1);
-        assert!(*cow0 != *cow2);
-        assert!(*cow1 != *cow2);
+            // none should point to the same backing memory
+            assert!(*cow0 != *cow1);
+            assert!(*cow0 != *cow2);
+            assert!(*cow1 != *cow2);
+        }
     }
 
     #[test]
@@ -789,7 +806,9 @@ mod tests {
         assert!(75 == *cow1);
         assert!(75 == *cow2);
 
-        *cow0.make_unique() += 1;
+        unsafe {
+            *cow0.make_unique() += 1;
+        }
 
         assert!(76 == *cow0);
         assert!(75 == *cow1);
@@ -810,7 +829,9 @@ mod tests {
         assert!(75 == *cow0);
         assert!(75 == *cow1_weak.upgrade().unwrap());
 
-        *cow0.make_unique() += 1;
+        unsafe {
+            *cow0.make_unique() += 1;
+        }
 
         assert!(76 == *cow0);
         assert!(cow1_weak.upgrade().is_none());
