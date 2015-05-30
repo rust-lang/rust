@@ -204,8 +204,9 @@ impl<'a> FmtVisitor<'a> {
                  .enumerate()
                  .map(|(i, item)| self.rewrite_expr(
                     item,
-                    // for last line, -2 is for indent + ")", for other lines, -1 is for comma
-                    if i == items.len() - 1 { width - 2 } else { config!(max_width) - indent - 1 },
+                    // last line : given width (minus "("+")"), other lines : max_width
+                    // (minus "("+","))
+                    if i == items.len() - 1 { width - 2 } else { config!(max_width) - indent - 2 },
                     indent))
                  .collect();
         let tactics = if item_strs.iter().any(|s| s.contains('\n')) {
