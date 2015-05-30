@@ -284,7 +284,7 @@ struct Info {
 }
 
 fn write_info(info: &Info) -> io::Result<()> {
-    let mut file = try!(File::create("my_best_friends.txt"));
+    let mut file = File::create("my_best_friends.txt").unwrap();
 
     try!(writeln!(&mut file, "name: {}", info.name));
     try!(writeln!(&mut file, "age: {}", info.age));
