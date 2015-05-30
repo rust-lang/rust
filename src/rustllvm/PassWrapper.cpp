@@ -123,11 +123,7 @@ LLVMRustAddAnalysisPasses(LLVMTargetMachineRef TM,
                           LLVMPassManagerRef PMR,
                           LLVMModuleRef M) {
     PassManagerBase *PM = unwrap(PMR);
-#if LLVM_VERSION_MINOR >= 6
     PM->add(new DataLayoutPass());
-#else
-    PM->add(new DataLayoutPass(unwrap(M)));
-#endif
     unwrap(TM)->addAnalysisPasses(*PM);
 }
 
@@ -192,14 +188,10 @@ LLVMRustWriteOutputFile(LLVMTargetMachineRef Target,
   PassManager *PM = unwrap<PassManager>(PMR);
 
   std::string ErrorInfo;
-#if LLVM_VERSION_MINOR >= 6
   std::error_code EC;
   raw_fd_ostream OS(path, EC, sys::fs::F_None);
   if (EC)
     ErrorInfo = EC.message();
-#else
-  raw_fd_ostream OS(path, ErrorInfo, sys::fs::F_None);
-#endif
   if (ErrorInfo != "") {
     LLVMRustSetLastError(ErrorInfo.c_str());
     return false;
@@ -218,14 +210,10 @@ LLVMRustPrintModule(LLVMPassManagerRef PMR,
   PassManager *PM = unwrap<PassManager>(PMR);
   std::string ErrorInfo;
 
-#if LLVM_VERSION_MINOR >= 6
   std::error_code EC;
   raw_fd_ostream OS(path, EC, sys::fs::F_None);
   if (EC)
     ErrorInfo = EC.message();
-#else
-  raw_fd_ostream OS(path, ErrorInfo, sys::fs::F_None);
-#endif
 
   formatted_raw_ostream FOS(OS);
 

@@ -214,7 +214,6 @@ extern "C" LLVMValueRef LLVMInlineAsm(LLVMTypeRef Ty,
 
 typedef DIBuilder* DIBuilderRef;
 
-#if LLVM_VERSION_MINOR >= 6
 typedef struct LLVMOpaqueMetadata *LLVMMetadataRef;
 
 namespace llvm {
@@ -224,9 +223,6 @@ inline Metadata **unwrap(LLVMMetadataRef *Vals) {
   return reinterpret_cast<Metadata**>(Vals);
 }
 }
-#else
-typedef LLVMValueRef LLVMMetadataRef;
-#endif
 
 template<typename DIT>
 DIT unwrapDI(LLVMMetadataRef ref) {
@@ -288,11 +284,7 @@ extern "C" LLVMMetadataRef LLVMDIBuilderCreateSubroutineType(
     LLVMMetadataRef ParameterTypes) {
     return wrap(Builder->createSubroutineType(
         unwrapDI<DIFile>(File),
-#if LLVM_VERSION_MINOR >= 6
         unwrapDI<DITypeArray>(ParameterTypes)));
-#else
-        unwrapDI<DIArray>(ParameterTypes)));
-#endif
 }
 
 extern "C" LLVMMetadataRef LLVMDIBuilderCreateFunction(
@@ -398,11 +390,7 @@ extern "C" LLVMMetadataRef LLVMDIBuilderCreateLexicalBlock(
     unsigned Col) {
     return wrap(Builder->createLexicalBlock(
         unwrapDI<DIDescriptor>(Scope),
-        unwrapDI<DIFile>(File), Line, Col
-#if LLVM_VERSION_MINOR == 5
-        , 0
-#endif
-        ));
+        unwrapDI<DIFile>(File), Line, Col));
 }
 
 extern "C" LLVMMetadataRef LLVMDIBuilderCreateStaticVariable(
@@ -416,11 +404,7 @@ extern "C" LLVMMetadataRef LLVMDIBuilderCreateStaticVariable(
     bool isLocalToUnit,
     LLVMValueRef Val,
     LLVMMetadataRef Decl = NULL) {
-#if LLVM_VERSION_MINOR >= 6
     return wrap(Builder->createGlobalVariable(unwrapDI<DIDescriptor>(Context),
-#else
-    return wrap(Builder->createStaticVariable(unwrapDI<DIDescriptor>(Context),
-#endif
         Name,
         LinkageName,
         unwrapDI<DIFile>(File),
@@ -444,25 +428,6 @@ extern "C" LLVMMetadataRef LLVMDIBuilderCreateVariable(
     int64_t* AddrOps,
     unsigned AddrOpsCount,
     unsigned ArgNo) {
-#if LLVM_VERSION_MINOR == 5
-    if (AddrOpsCount > 0) {
-        SmallVector<llvm::Value *, 16> addr_ops;
-        llvm::Type *Int64Ty = Type::getInt64Ty(unwrap<MDNode>(Scope)->getContext());
-        for (unsigned i = 0; i < AddrOpsCount; ++i)
-            addr_ops.push_back(ConstantInt::get(Int64Ty, AddrOps[i]));
-
-        return wrap(Builder->createComplexVariable(
-            Tag,
-            unwrapDI<DIDescriptor>(Scope),
-            Name,
-            unwrapDI<DIFile>(File),
-            LineNo,
-            unwrapDI<DIType>(Ty),
-            addr_ops,
-            ArgNo
-        ));
-    }
-#endif
     return wrap(Builder->createLocalVariable(Tag,
         unwrapDI<DIDescriptor>(Scope), Name,
         unwrapDI<DIFile>(File),
@@ -504,11 +469,7 @@ extern "C" LLVMMetadataRef LLVMDIBuilderGetOrCreateArray(
     LLVMMetadataRef* Ptr,
     unsigned Count) {
     return wrap(Builder->getOrCreateArray(
-#if LLVM_VERSION_MINOR >= 6
         ArrayRef<Metadata*>(unwrap(Ptr), Count)));
-#else
-        ArrayRef<Value*>(reinterpret_cast<Value**>(Ptr), Count)));
-#endif
 }
 
 extern "C" LLVMValueRef LLVMDIBuilderInsertDeclareAtEnd(
@@ -518,7 +479,6 @@ extern "C" LLVMValueRef LLVMDIBuilderInsertDeclareAtEnd(
     int64_t* AddrOps,
     unsigned AddrOpsCount,
     LLVMBasicBlockRef InsertAtEnd) {
-#if LLVM_VERSION_MINOR >= 6
     DIExpression Expr;
     if (AddrOpsCount == 0) {
       Expr = Builder->createExpression();
@@ -526,13 +486,10 @@ extern "C" LLVMValueRef LLVMDIBuilderInsertDeclareAtEnd(
       llvm::ArrayRef<int64_t> addr_ops(AddrOps, AddrOpsCount);
       Expr = Builder->createExpression(addr_ops);
     }
-#endif
     return wrap(Builder->insertDeclare(
         unwrap(Val),
         unwrapDI<DIVariable>(VarInfo),
-#if LLVM_VERSION_MINOR >= 6
         Expr,
-#endif
         unwrap(InsertAtEnd)));
 }
 
@@ -543,7 +500,6 @@ extern "C" LLVMValueRef LLVMDIBuilderInsertDeclareBefore(
     int64_t* AddrOps,
     unsigned AddrOpsCount,
     LLVMValueRef InsertBefore) {
-#if LLVM_VERSION_MINOR >= 6
     DIExpression Expr;
     if (AddrOpsCount == 0) {
       Expr = Builder->createExpression();
@@ -551,13 +507,10 @@ extern "C" LLVMValueRef LLVMDIBuilderInsertDeclareBefore(
       llvm::ArrayRef<int64_t> addr_ops(AddrOps, AddrOpsCount);
       Expr = Builder->createExpression(addr_ops);
     }
-#endif
     return wrap(Builder->insertDeclare(
         unwrap(Val),
         unwrapDI<DIVariable>(VarInfo),
-#if LLVM_VERSION_MINOR >= 6
         Expr,
-#endif
         unwrap<Instruction>(InsertBefore)));
 }
 
@@ -665,12 +618,8 @@ extern "C" void LLVMDICompositeTypeSetTypeArray(
     LLVMMetadataRef CompositeType,
     LLVMMetadataRef TypeArray)
 {
-#if LLVM_VERSION_MINOR >= 6
     DICompositeType tmp = unwrapDI<DICompositeType>(CompositeType);
     Builder->replaceArrays(tmp, unwrapDI<DIArray>(TypeArray));
-#else
-    unwrapDI<DICompositeType>(CompositeType).setTypeArray(unwrapDI<DIArray>(TypeArray));
-#endif
 }
 
 extern "C" LLVMValueRef LLVMDIBuilderCreateDebugLocation(
@@ -687,11 +636,7 @@ extern "C" LLVMValueRef LLVMDIBuilderCreateDebugLocation(
                                        unwrapDI<MDNode*>(Scope),
                                        unwrapDI<MDNode*>(InlinedAt));
 
-#if LLVM_VERSION_MINOR >= 6
     return wrap(MetadataAsValue::get(context, debug_loc.getAsMDNode(context)));
-#else
-    return wrap(debug_loc.getAsMDNode(context));
-#endif
 }
 
 extern "C" void LLVMWriteTypeToString(LLVMTypeRef Type, RustStringRef str) {
@@ -711,30 +656,18 @@ extern "C" void LLVMWriteValueToString(LLVMValueRef Value, RustStringRef str) {
 extern "C" bool
 LLVMRustLinkInExternalBitcode(LLVMModuleRef dst, char *bc, size_t len) {
     Module *Dst = unwrap(dst);
-#if LLVM_VERSION_MINOR >= 6
     std::unique_ptr<MemoryBuffer> buf = MemoryBuffer::getMemBufferCopy(StringRef(bc, len));
     ErrorOr<Module *> Src = llvm::getLazyBitcodeModule(std::move(buf), Dst->getContext());
-#else
-    MemoryBuffer* buf = MemoryBuffer::getMemBufferCopy(StringRef(bc, len));
-    ErrorOr<Module *> Src = llvm::getLazyBitcodeModule(buf, Dst->getContext());
-#endif
     if (!Src) {
         LLVMRustSetLastError(Src.getError().message().c_str());
-#if LLVM_VERSION_MINOR == 5
-        delete buf;
-#endif
         return false;
     }
 
     std::string Err;
 
-#if LLVM_VERSION_MINOR >= 6
     raw_string_ostream Stream(Err);
     DiagnosticPrinterRawOStream DP(Stream);
     if (Linker::LinkModules(Dst, *Src, [&](const DiagnosticInfo &DI) { DI.print(DP); })) {
-#else
-    if (Linker::LinkModules(Dst, *Src, Linker::DestroySource, &Err)) {
-#endif
         LLVMRustSetLastError(Err.c_str());
         return false;
     }
@@ -751,7 +684,6 @@ LLVMRustOpenArchive(char *path) {
         return nullptr;
     }
 
-#if LLVM_VERSION_MINOR >= 6
     ErrorOr<std::unique_ptr<Archive>> archive_or =
         Archive::create(buf_or.get()->getMemBufferRef());
 
@@ -762,25 +694,12 @@ LLVMRustOpenArchive(char *path) {
 
     OwningBinary<Archive> *ret = new OwningBinary<Archive>(
             std::move(archive_or.get()), std::move(buf_or.get()));
-#else
-    std::error_code err;
-    Archive *ret = new Archive(std::move(buf_or.get()), err);
-    if (err) {
-        LLVMRustSetLastError(err.message().c_str());
-        return nullptr;
-    }
-#endif
 
     return ret;
 }
 
-#if LLVM_VERSION_MINOR >= 6
 typedef OwningBinary<Archive> RustArchive;
 #define GET_ARCHIVE(a) ((a)->getBinary())
-#else
-typedef Archive RustArchive;
-#define GET_ARCHIVE(a) (a)
-#endif
 
 extern "C" void
 LLVMRustDestroyArchive(RustArchive *ar) {
