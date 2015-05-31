@@ -56,7 +56,7 @@ for (i,j) in (5..10).enumerate() {
 
 Outputs:
 
-```rust
+```text
 i = 0 and j = 5
 i = 1 and j = 6
 i = 2 and j = 7
@@ -76,7 +76,7 @@ for (linenumber, line) in lines.enumerate() {
 
 Outputs:
 
-```rust
+```text
 0: Content of line one
 1: Content of line two
 2: Content of line tree
