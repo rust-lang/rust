@@ -528,6 +528,7 @@ fn test_rounding() {
 
 // Returns a tuple of (key_offset, val_offset),
 // from the start of a mallocated array.
+#[inline]
 fn calculate_offsets(hashes_size: usize,
                      keys_size: usize, keys_align: usize,
                      vals_align: usize)
