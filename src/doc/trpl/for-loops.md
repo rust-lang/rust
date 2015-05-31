@@ -42,35 +42,41 @@ Rust does not have the “C-style” `for` loop on purpose. Manually controlling
 each element of the loop is complicated and error prone, even for experienced C
 developers.
 
-# Loopcounter
+# Enumerate
 
 When you need to keep track of how many times you already looped, you can use the `.enumerate()` function.
 
-#### On ranges:
+## On ranges:
 
 ```rust
 for (i,j) in (5..10).enumerate() {
     println!("i = {} and j = {}", i, j);
 }
 ```
+
 Outputs:
-```
+
+```rust
 i = 0 and j = 5
 i = 1 and j = 6
 i = 2 and j = 7
 i = 3 and j = 8
 i = 4 and j = 9
 ```
+
 Don't forget to add the parentheses around the range.
 
-#### On iterators: 
+## On iterators:
+
 ```rust
 for (linenumber, line) in lines.enumerate() {
     println!("{}: {}", linenumber, line);
 }
 ```
+
 Outputs:
-```
+
+```rust
 0: Content of line one
 1: Content of line two
 2: Content of line tree
