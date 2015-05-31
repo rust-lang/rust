@@ -194,6 +194,45 @@ impl<'a> FmtVisitor<'a> {
         format!("{}: {}", name, expr)
     }
 
+    fn rewrite_tuple_lit(&mut self, items: &[ptr::P<ast::Expr>], width: usize, offset: usize)
+        -> String {
+        // opening paren
+        let indent = offset + 1;
+        // In case of length 1, need a trailing comma
+        if items.len() == 1 {
+            return format!("({},)", self.rewrite_expr(&*items[0], width - 3, indent));
+        }
+        // Only last line has width-1 as budget, other may take max_width
+        let item_strs: Vec<_> =
+            items.iter()
+                 .enumerate()
+                 .map(|(i, item)| self.rewrite_expr(
+                    item,
+                    // last line : given width (minus "("+")"), other lines : max_width
+                    // (minus "("+","))
+                    if i == items.len() - 1 { width - 2 } else { config!(max_width) - indent - 2 },
+                    indent))
+                 .collect();
+        let tactics = if item_strs.iter().any(|s| s.contains('\n')) {
+            ListTactic::Vertical
+        } else {
+            ListTactic::HorizontalVertical
+        };
+        // FIXME handle comments
+        let item_strs: Vec<_> = item_strs.into_iter().map(|s| (s, String::new())).collect();
+        let fmt = ListFormatting {
+            tactic: tactics,
+            separator: ",",
+            trailing_separator: SeparatorTactic::Never,
+            indent: indent,
+            h_width: width - 2,
+            v_width: width - 2,
+        };
+        let item_str = write_list(&item_strs, &fmt);
+        format!("({})", item_str)
+    }
+
+
     pub fn rewrite_expr(&mut self, expr: &ast::Expr, width: usize, offset: usize) -> String {
         match expr.node {
             ast::Expr_::ExprLit(ref l) => {
@@ -218,6 +257,9 @@ impl<'a> FmtVisitor<'a> {
                                                base.as_ref().map(|e| &**e),
                                                width,
                                                offset);
+            }
+            ast::Expr_::ExprTup(ref items) => {
+                return self.rewrite_tuple_lit(items, width, offset);
             }
             _ => {}
         }
