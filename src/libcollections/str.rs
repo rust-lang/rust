@@ -30,7 +30,7 @@
 //! You can get a non-`'static` `&str` by taking a slice of a `String`:
 //!
 //! ```
-//! # let some_string = "Hello, world.".to_string();
+//! let some_string = "Hello, world.".to_string();
 //! let s = &some_string;
 //! ```
 //!
