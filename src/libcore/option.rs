@@ -409,9 +409,11 @@ impl<T> Option<T> {
     /// Convert an `Option<String>` into an `Option<usize>`, consuming the original:
     ///
     /// ```
-    /// let num_as_str: Option<String> = Some("10".to_string());
-    /// // `Option::map` takes self *by value*, consuming `num_as_str`
-    /// let num_as_int: Option<usize> = num_as_str.map(|n| n.len());
+    /// let maybe_some_string = Some(String::from("Hello, World!"));
+    /// // `Option::map` takes self *by value*, consuming `maybe_some_string`
+    /// let maybe_some_len = maybe_some_string.map(|s| s.len());
+    ///
+    /// assert_eq!(maybe_some_len, Some(13));
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
