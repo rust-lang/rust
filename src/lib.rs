@@ -47,6 +47,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_lint_pass(box len_zero::LenZero as LintPassObject);
     reg.register_lint_pass(box misc::CmpOwned as LintPassObject);
     reg.register_lint_pass(box collapsible_if::CollapsibleIf as LintPassObject);
+    reg.register_lint_pass(box misc::ModuloOne as LintPassObject);
     
     reg.register_lint_group("clippy", vec![types::BOX_VEC, types::LINKEDLIST,
                                            misc::SINGLE_MATCH, misc::STR_TO_STRING,
@@ -64,5 +65,6 @@ pub fn plugin_registrar(reg: &mut Registry) {
                                            len_zero::LEN_ZERO,
                                            len_zero::LEN_WITHOUT_IS_EMPTY,
                                            collapsible_if::COLLAPSIBLE_IF,
+                                           misc::MODULO_ONE,
                                            ]);
 }
