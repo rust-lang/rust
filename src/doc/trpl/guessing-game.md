@@ -38,7 +38,7 @@ Finally, Cargo generated a ‘Hello, world!’ for us. Check out `src/main.rs`:
 
 ```rust
 fn main() {
-    println!("Hello, world!")
+    println!("Hello, world!");
 }
 ```
 
@@ -362,7 +362,7 @@ everything that follows it is part of it, until the next section starts.
 Cargo uses the dependencies section to know what dependencies on external
 crates you have, and what versions you require. In this case, we’ve used version `0.3.0`.
 Cargo understands [Semantic Versioning][semver], which is a standard for writing version
-numbers. If we wanted to use the latest version we could use `*` or we could use a range 
+numbers. If we wanted to use the latest version we could use `*` or we could use a range
 of versions. [Cargo’s documentation][cargodoc] contains more details.
 
 [semver]: http://semver.org
