@@ -422,7 +422,8 @@ impl<T> Option<T> {
         }
     }
 
-    /// Applies a function to the contained value or returns a default.
+    /// Applies a function to the contained value (if any),
+    /// or returns a `default` (if not).
     ///
     /// # Examples
     ///
@@ -435,14 +436,15 @@ impl<T> Option<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn map_or<U, F: FnOnce(T) -> U>(self, def: U, f: F) -> U {
+    pub fn map_or<U, F: FnOnce(T) -> U>(self, default: U, f: F) -> U {
         match self {
             Some(t) => f(t),
-            None => def
+            None => default,
         }
     }
 
-    /// Applies a function to the contained value or computes a default.
+    /// Applies a function to the contained value (if any),
+    /// or computes a `default` (if not).
     ///
     /// # Examples
     ///
@@ -457,10 +459,10 @@ impl<T> Option<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn map_or_else<U, D: FnOnce() -> U, F: FnOnce(T) -> U>(self, def: D, f: F) -> U {
+    pub fn map_or_else<U, D: FnOnce() -> U, F: FnOnce(T) -> U>(self, default: D, f: F) -> U {
         match self {
             Some(t) => f(t),
-            None => def()
+            None => default()
         }
     }
 
