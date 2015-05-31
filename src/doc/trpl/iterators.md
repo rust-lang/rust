@@ -213,7 +213,7 @@ As we've said before, an iterator is something that we can call the
 `.next()` method on repeatedly, and it gives us a sequence of things.
 Because you need to call the method, this means that iterators
 can be *lazy* and not generate all of the values upfront. This code,
-for example, does not actually generate the numbers `1-100`, instead
+for example, does not actually generate the numbers `1-99`, instead
 creating a value that merely represents the sequence:
 
 ```rust
@@ -259,7 +259,7 @@ a new iterator. The simplest one is called `map`:
 
 `map` is called upon another iterator, and produces a new iterator where each
 element reference has the closure it's been given as an argument called on it.
-So this would give us the numbers from `2-101`. Well, almost! If you
+So this would give us the numbers from `2-100`. Well, almost! If you
 compile the example, you'll get a warning:
 
 ```text
