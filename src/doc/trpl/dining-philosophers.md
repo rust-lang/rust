@@ -70,8 +70,8 @@ fn main() {
 }
 ```
 
-Here, we make a [`struct`][struct] to represent a philosopher. For now,
-a name is all we need. We choose the [`String`][string] type for the name,
+Here, we make a `struct` to represent a philosopher. For now,
+a name is all we need. We choose the `String` type for the name,
 rather than `&str`. Generally speaking, working with a type which owns its
 data is easier than working with one that uses references.
 
