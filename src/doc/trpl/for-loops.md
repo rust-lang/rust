@@ -69,6 +69,7 @@ Don't forget to add the parentheses around the range.
 ## On iterators:
 
 ```rust
+# let lines = "hello\nworld".lines();
 for (linenumber, line) in lines.enumerate() {
     println!("{}: {}", linenumber, line);
 }
