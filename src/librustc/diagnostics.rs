@@ -177,9 +177,9 @@ the heap at runtime, and therefore cannot be done at compile time.
 "##,
 
 E0011: r##"
-Using a user-defined operator on const/static variable is restricted to what
-can be evaluated at compile-time. Using an user-defined operator could call a
-user-defined function, which is not allowed.
+Initializers for constants and statics are evaluated at compile time.
+User-defined operators rely on user-defined functions, which cannot be evaluated
+at compile time.
 
 Bad example:
 
