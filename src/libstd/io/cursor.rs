@@ -90,6 +90,8 @@ impl<'a> io::Seek for Cursor<&'a [u8]> { seek!(); }
 impl<'a> io::Seek for Cursor<&'a mut [u8]> { seek!(); }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl io::Seek for Cursor<Vec<u8>> { seek!(); }
+impl<'a> io::Seek for Cursor<&'a Vec<u8>> { seek!(); }
+impl<'a> io::Seek for Cursor<&'a mut Vec<u8>> { seek!(); }
 
 macro_rules! read {
     () => {
@@ -107,6 +109,8 @@ impl<'a> Read for Cursor<&'a [u8]> { read!(); }
 impl<'a> Read for Cursor<&'a mut [u8]> { read!(); }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Read for Cursor<Vec<u8>> { read!(); }
+impl<'a> Read for Cursor<&'a Vec<u8>> { read!(); }
+impl<'a> Read for Cursor<&'a mut Vec<u8>> { read!(); }
 
 macro_rules! buffer {
     () => {
@@ -123,7 +127,9 @@ impl<'a> BufRead for Cursor<&'a [u8]> { buffer!(); }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> BufRead for Cursor<&'a mut [u8]> { buffer!(); }
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> BufRead for Cursor<Vec<u8>> { buffer!(); }
+impl BufRead for Cursor<Vec<u8>> { buffer!(); }
+impl<'a> BufRead for Cursor<&'a Vec<u8>> { buffer!(); }
+impl<'a> BufRead for Cursor<&'a mut Vec<u8>> { buffer!(); }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Write for Cursor<&'a mut [u8]> {
@@ -136,29 +142,33 @@ impl<'a> Write for Cursor<&'a mut [u8]> {
     fn flush(&mut self) -> io::Result<()> { Ok(()) }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
-impl Write for Cursor<Vec<u8>> {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        // Make sure the internal buffer is as least as big as where we
-        // currently are
-        let pos = self.position();
-        let amt = pos.saturating_sub(self.inner.len() as u64);
-        self.inner.extend(repeat(0).take(amt as usize));
+macro_rules! write_vec {
+    () => {
+        fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+            // Make sure the internal buffer is as least as big as where we
+            // currently are
+            let pos = self.position();
+            let amt = pos.saturating_sub(self.inner.len() as u64);
+            self.inner.extend(repeat(0).take(amt as usize));
 
-        // Figure out what bytes will be used to overwrite what's currently
-        // there (left), and what will be appended on the end (right)
-        let space = self.inner.len() - pos as usize;
-        let (left, right) = buf.split_at(cmp::min(space, buf.len()));
-        slice::bytes::copy_memory(left, &mut self.inner[(pos as usize)..]);
-        self.inner.push_all(right);
+            // Figure out what bytes will be used to overwrite what's currently
+            // there (left), and what will be appended on the end (right)
+            let space = self.inner.len() - pos as usize;
+            let (left, right) = buf.split_at(cmp::min(space, buf.len()));
+            slice::bytes::copy_memory(left, &mut self.inner[(pos as usize)..]);
+            self.inner.push_all(right);
 
-        // Bump us forward
-        self.set_position(pos + buf.len() as u64);
-        Ok(buf.len())
+            // Bump us forward
+            self.set_position(pos + buf.len() as u64);
+            Ok(buf.len())
+        }
+        fn flush(&mut self) -> io::Result<()> { Ok(()) }
     }
-    fn flush(&mut self) -> io::Result<()> { Ok(()) }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Write for Cursor<Vec<u8>> { write_vec!(); }
+impl<'a> Write for Cursor<&'a mut Vec<u8>> { write_vec!(); }
 
 #[cfg(test)]
 mod tests {
@@ -186,6 +196,19 @@ mod tests {
         assert_eq!(writer.write(&[4, 5, 6, 7]).unwrap(), 4);
         let b: &[_] = &[0, 1, 2, 3, 4, 5, 6, 7];
         assert_eq!(&writer.get_ref()[..], b);
+    }
+
+    #[test]
+    fn test_mem_writer_ref_mut() {
+        let mut buffer = Vec::new();
+        {
+            let mut writer = Cursor::new(&mut buffer);
+            assert_eq!(writer.write(&[0]).unwrap(), 1);
+            assert_eq!(writer.write(&[1, 2, 3]).unwrap(), 3);
+            assert_eq!(writer.write(&[4, 5, 6, 7]).unwrap(), 4);
+        }
+        let b: &[_] = &[0, 1, 2, 3, 4, 5, 6, 7];
+        assert_eq!(&buffer[..], b);
     }
 
     #[test]
@@ -250,6 +273,29 @@ mod tests {
     #[test]
     fn test_mem_reader() {
         let mut reader = Cursor::new(vec!(0, 1, 2, 3, 4, 5, 6, 7));
+        let mut buf = [];
+        assert_eq!(reader.read(&mut buf).unwrap(), 0);
+        assert_eq!(reader.position(), 0);
+        let mut buf = [0];
+        assert_eq!(reader.read(&mut buf).unwrap(), 1);
+        assert_eq!(reader.position(), 1);
+        let b: &[_] = &[0];
+        assert_eq!(buf, b);
+        let mut buf = [0; 4];
+        assert_eq!(reader.read(&mut buf).unwrap(), 4);
+        assert_eq!(reader.position(), 5);
+        let b: &[_] = &[1, 2, 3, 4];
+        assert_eq!(buf, b);
+        assert_eq!(reader.read(&mut buf).unwrap(), 3);
+        let b: &[_] = &[5, 6, 7];
+        assert_eq!(&buf[..3], b);
+        assert_eq!(reader.read(&mut buf).unwrap(), 0);
+    }
+
+    #[test]
+    fn test_mem_reader_ref() {
+        let buffer = vec!(0, 1, 2, 3, 4, 5, 6, 7);
+        let mut reader = Cursor::new(&buffer);
         let mut buf = [];
         assert_eq!(reader.read(&mut buf).unwrap(), 0);
         assert_eq!(reader.position(), 0);
