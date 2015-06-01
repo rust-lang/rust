@@ -176,6 +176,38 @@ for the entire lifetime of a program. Creating a boxed value allocates memory on
 the heap at runtime, and therefore cannot be done at compile time.
 "##,
 
+E0011: r##"
+Initializers for constants and statics are evaluated at compile time.
+User-defined operators rely on user-defined functions, which cannot be evaluated
+at compile time.
+
+Bad example:
+
+```
+use std::ops::Index;
+
+struct Foo { a: u8 }
+
+impl Index<u8> for Foo {
+    type Output = u8;
+
+    fn index<'a>(&'a self, idx: u8) -> &'a u8 { &self.a }
+}
+
+const a: Foo = Foo { a: 0u8 };
+const b: u8 = a[0]; // Index trait is defined by the user, bad!
+```
+
+Only operators on builtin types are allowed.
+
+Example:
+
+```
+const a: &'static [i32] = &[1, 2, 3];
+const b: i32 = a[0]; // Good!
+```
+"##,
+
 E0013: r##"
 Static and const variables can refer to other const variables. But a const
 variable cannot refer to a static variable. For example, `Y` cannot refer to `X`
@@ -899,7 +931,6 @@ static mut BAR: Option<Vec<i32>> = None;
 
 
 register_diagnostics! {
-    E0011,
     E0014,
     E0016,
     E0017,
