@@ -320,7 +320,7 @@ impl<T> Option<T> {
     ///
     /// ```{.should_panic}
     /// let x: Option<&str> = None;
-    /// x.expect("the world is ending"); // panics with `world is ending`
+    /// x.expect("the world is ending"); // panics with `the world is ending`
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
