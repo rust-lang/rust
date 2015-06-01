@@ -1,6 +1,5 @@
 #![feature(plugin_registrar, box_syntax)]
 #![feature(rustc_private, collections)]
-
 #![allow(unused_imports)]
 
 #[macro_use]

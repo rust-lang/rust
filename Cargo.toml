@@ -17,3 +17,6 @@ plugin = true
 
 [dev-dependencies]
 compiletest_rs = "*"
+regex = "*"
+regex_macros = "*"
+lazy_static = "*"
