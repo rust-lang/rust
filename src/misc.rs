@@ -10,7 +10,7 @@ use syntax::codemap::{Span, Spanned};
 
 use types::span_note_and_lint;
 
-fn walk_ty<'t>(ty: ty::Ty<'t>) -> ty::Ty<'t> {
+pub fn walk_ty<'t>(ty: ty::Ty<'t>) -> ty::Ty<'t> {
 	match ty.sty {
 		ty_ptr(ref tm) | ty_rptr(_, ref tm) => walk_ty(tm.ty),
 		_ => ty
