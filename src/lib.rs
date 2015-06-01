@@ -26,6 +26,7 @@ pub mod mut_mut;
 pub mod len_zero;
 pub mod attrs;
 pub mod collapsible_if;
+pub mod utils;
 
 #[plugin_registrar]
 pub fn plugin_registrar(reg: &mut Registry) {
