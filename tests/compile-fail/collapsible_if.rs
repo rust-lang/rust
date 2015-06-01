@@ -34,4 +34,10 @@ fn main() {
         }
     }
 
+	if x == "hello" {
+		print!("Hello ");
+		if y == "world" {
+			println!("world!")
+		}
+	}
 }

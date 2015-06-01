@@ -3,6 +3,7 @@ use syntax::ast::*;
 use rustc::lint::{Context, LintPass, LintArray, Lint};
 use rustc::middle::ty::{expr_ty, sty, ty_ptr, ty_rptr, mt};
 use syntax::codemap::{BytePos, ExpnInfo, MacroFormat, Span};
+use utils::in_macro;
 
 declare_lint!(pub MUT_MUT, Warn,
               "Warn on usage of double-mut refs, e.g. '&mut &mut ...'");
@@ -47,16 +48,6 @@ fn check_expr_expd(cx: &Context, expr: &Expr, info: Option<&ExpnInfo>) {
 					"This expression mutably borrows a mutable reference. \
 					Consider reborrowing")
 			}
-		})
-	})
-}
-
-fn in_macro(cx: &Context, opt_info: Option<&ExpnInfo>) -> bool {
-	opt_info.map_or(false, |info| {
-		info.callee.span.map_or(true, |span| {
-			cx.sess().codemap().span_to_snippet(span).ok().map_or(true, |code| 
-				!code.starts_with("macro_rules")
-			)
 		})
 	})
 }
