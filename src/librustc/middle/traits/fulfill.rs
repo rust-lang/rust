@@ -178,10 +178,7 @@ impl<'tcx> FulfillmentContext<'tcx> {
                               body_id: ast::NodeId)
                               -> &[RegionObligation<'tcx>]
     {
-        match self.region_obligations.get(&body_id) {
-            None => Default::default(),
-            Some(vec) => vec,
-        }
+        self.region_obligations.get(&body_id).unwrap_or_default()
     }
 
     pub fn select_all_or_error<'a>(&mut self,
