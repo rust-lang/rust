@@ -215,7 +215,7 @@ it won’t affect you, unless you `use` that trait.
 There’s one more restriction on implementing traits: either the trait, or the
 type you’re writing the `impl` for, must be defined by you. So, we could
 implement the `HasArea` type for `i32`, because `HasArea` is in our code. But
-if we tried to implement `Float`, a trait provided by Rust, for `i32`, we could
+if we tried to implement `ToString`, a trait provided by Rust, for `i32`, we could
 not, because neither the trait nor the type are in our code.
 
 One last thing about traits: generic functions with a trait bound use
