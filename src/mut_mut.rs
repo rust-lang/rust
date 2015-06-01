@@ -2,7 +2,7 @@ use syntax::ptr::P;
 use syntax::ast::*;
 use rustc::lint::{Context, LintPass, LintArray, Lint};
 use rustc::middle::ty::{expr_ty, sty, ty_ptr, ty_rptr, mt};
-use syntax::codemap::ExpnInfo;
+use syntax::codemap::{BytePos, ExpnInfo, MacroFormat, Span};
 
 declare_lint!(pub MUT_MUT, Warn,
               "Warn on usage of double-mut refs, e.g. '&mut &mut ...'");
@@ -27,7 +27,7 @@ impl LintPass for MutMut {
 }
 
 fn check_expr_expd(cx: &Context, expr: &Expr, info: Option<&ExpnInfo>) {
-	if in_macro(info) { return; }
+	if in_macro(cx, info) { return; }
 
 	fn unwrap_addr(expr : &Expr) -> Option<&Expr> {
 		match expr.node {
@@ -51,8 +51,14 @@ fn check_expr_expd(cx: &Context, expr: &Expr, info: Option<&ExpnInfo>) {
 	})
 }
 
-fn in_macro(info: Option<&ExpnInfo>) -> bool {
-	info.is_some()
+fn in_macro(cx: &Context, opt_info: Option<&ExpnInfo>) -> bool {
+	opt_info.map_or(false, |info| {
+		info.callee.span.map_or(true, |span| {
+			cx.sess().codemap().span_to_snippet(span).ok().map_or(true, |code| 
+				!code.starts_with("macro_rules")
+			)
+		})
+	})
 }
 
 fn unwrap_mut(ty : &Ty) -> Option<&Ty> {

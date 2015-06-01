@@ -19,3 +19,4 @@ plugin = true
 compiletest_rs = "*"
 regex = "*"
 regex_macros = "*"
+lazy_static = "*"
