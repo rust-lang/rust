@@ -17,8 +17,9 @@ use rustc::lint::*;
 use rustc::middle::def::*;
 use syntax::ast::*;
 use syntax::ptr::P;
-use syntax::codemap::{Span, Spanned};
+use syntax::codemap::{Span, Spanned, ExpnInfo};
 use syntax::print::pprust::expr_to_string;
+use mut_mut::in_macro;
 
 declare_lint! {
     pub COLLAPSIBLE_IF,
@@ -34,20 +35,23 @@ impl LintPass for CollapsibleIf {
         lint_array!(COLLAPSIBLE_IF)
     }
     
-    fn check_expr(&mut self, cx: &Context, e: &Expr) {
-        if let ExprIf(ref check, ref then_block, None) = e.node {
-            let expr = check_block(then_block);
-            let expr = match expr {
-                Some(e) => e,
-                None => return
-            };
-            if let ExprIf(ref check_inner, _, None) = expr.node {
-                let (check, check_inner) = (check_to_string(check), check_to_string(check_inner));
-                cx.span_lint(COLLAPSIBLE_IF, e.span,
-                             &format!("This if statement can be collapsed. Try: if {} && {}", check, check_inner));
-            }
-		    }
-    }
+	fn check_expr(&mut self, cx: &Context, expr: &Expr) {
+		cx.sess().codemap().with_expn_info(expr.span.expn_id, 
+			|info| check_expr_expd(cx, expr, info))
+	}
+}
+
+fn check_expr_expd(cx: &Context, e: &Expr, info: Option<&ExpnInfo>) {
+	if in_macro(cx, info) { return; }
+	
+	if let ExprIf(ref check, ref then, None) = e.node {
+		if let Some(&Expr{ node: ExprIf(ref check_inner, _, None), ..}) = 
+				single_stmt_of_block(then) {
+			cx.span_lint(COLLAPSIBLE_IF, e.span, &format!(
+				"This if statement can be collapsed. Try: if {} && {}\n{:?}", 
+				check_to_string(check), check_to_string(check_inner), e));
+		}
+	}
 }
 
 fn requires_brackets(e: &Expr) -> bool {
@@ -65,16 +69,20 @@ fn check_to_string(e: &Expr) -> String {
     }
 }
 
-fn check_block(b: &Block) -> Option<&P<Expr>> {
-    if b.stmts.len() == 1 && b.expr.is_none() {
-        let stmt = &b.stmts[0];
-        return match stmt.node {
-            StmtExpr(ref e, _) => Some(e),
-            _ => None
-        };
+fn single_stmt_of_block(block: &Block) -> Option<&Expr> {
+    if block.stmts.len() == 1 && block.expr.is_none() {
+        if let StmtExpr(ref expr, _) = block.stmts[0].node {
+            single_stmt_of_expr(expr)
+        } else { None }
+    } else {
+        if block.stmts.is_empty() {
+            if let Some(ref p) = block.expr { Some(&*p) } else { None }
+        } else { None }
     }
-    if let Some(ref e) = b.expr {
-        return Some(e);
-    }
-    None
+}
+
+fn single_stmt_of_expr(expr: &Expr) -> Option<&Expr> {
+    if let ExprBlock(ref block) = expr.node {
+        single_stmt_of_block(block)
+    } else { Some(expr) }
 }

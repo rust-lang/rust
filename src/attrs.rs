@@ -4,8 +4,9 @@ use rustc::plugin::Registry;
 use rustc::lint::*;
 use syntax::ast::*;
 use syntax::ptr::P;
-use syntax::codemap::Span;
+use syntax::codemap::{Span, ExpnInfo};
 use syntax::parse::token::InternedString;
+use mut_mut::in_macro;
 
 declare_lint! { pub INLINE_ALWAYS, Warn,
     "#[inline(always)] is usually a bad idea."}
@@ -20,19 +21,25 @@ impl LintPass for AttrPass {
     }
     
     fn check_item(&mut self, cx: &Context, item: &Item) {
-		check_attrs(cx, &item.ident, &item.attrs)
+		cx.sess().codemap().with_expn_info(item.span.expn_id, 
+			|info| check_attrs(cx, info, &item.ident, &item.attrs))
 	}
     
     fn check_impl_item(&mut self, cx: &Context, item: &ImplItem) { 
-		check_attrs(cx, &item.ident, &item.attrs)
+		cx.sess().codemap().with_expn_info(item.span.expn_id, 
+			|info| check_attrs(cx, info, &item.ident, &item.attrs))
 	}
         
 	fn check_trait_item(&mut self, cx: &Context, item: &TraitItem) {
-		check_attrs(cx, &item.ident, &item.attrs)
+		cx.sess().codemap().with_expn_info(item.span.expn_id, 
+			|info| check_attrs(cx, info, &item.ident, &item.attrs))
 	}
 }
 
-fn check_attrs(cx: &Context, ident: &Ident, attrs: &[Attribute]) {
+fn check_attrs(cx: &Context, info: Option<&ExpnInfo>, ident: &Ident, 
+		attrs: &[Attribute]) {
+	if in_macro(cx, info) { return; }
+			
 	for attr in attrs {
 		if let MetaList(ref inline, ref values) = attr.node.value.node {
 			if values.len() != 1 || inline != &"inline" { continue; }
