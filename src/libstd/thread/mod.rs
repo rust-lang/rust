@@ -217,6 +217,7 @@ pub use self::local::{LocalKey, LocalKeyState};
 pub use self::scoped_tls::ScopedKey;
 
 #[doc(hidden)] pub use self::local::__KeyInner as __LocalKeyInner;
+#[doc(hidden)] pub use self::scoped_tls::__KeyInner as __ScopedKeyInner;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Builder
