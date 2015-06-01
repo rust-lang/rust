@@ -56,7 +56,7 @@ fn print_area<T>(shape: T) {
 Rust complains:
 
 ```text
-error: type `T` does not implement any method in scope named `area`
+error: no method named `area` found for type `T` in the current scope
 ```
 
 Because `T` can be any type, we can’t be sure that it implements the `area`
