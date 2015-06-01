@@ -24,6 +24,7 @@ pub mod eta_reduction;
 pub mod identity_op;
 pub mod mut_mut;
 pub mod len_zero;
+pub mod attrs;
 pub mod collapsible_if;
 
 #[plugin_registrar]
@@ -45,6 +46,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_lint_pass(box mut_mut::MutMut as LintPassObject);
     reg.register_lint_pass(box len_zero::LenZero as LintPassObject);
     reg.register_lint_pass(box misc::CmpOwned as LintPassObject);
+    reg.register_lint_pass(box attrs::AttrPass as LintPassObject);
     reg.register_lint_pass(box collapsible_if::CollapsibleIf as LintPassObject);
     
     reg.register_lint_group("clippy", vec![types::BOX_VEC, types::LINKEDLIST,
@@ -62,6 +64,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
                                            mut_mut::MUT_MUT,
                                            len_zero::LEN_ZERO,
                                            len_zero::LEN_WITHOUT_IS_EMPTY,
+                                           attrs::INLINE_ALWAYS,
                                            collapsible_if::COLLAPSIBLE_IF,
                                            ]);
 }
