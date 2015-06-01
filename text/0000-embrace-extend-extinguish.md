@@ -5,10 +5,10 @@
 
 # Summary
 
-Make all collections `impl<'a, T: Copy> Extend<&'a T>`. 
+Make all collections `impl<'a, T: Copy> Extend<&'a T>`.
 
-This enables both `vec.extend(&[1, 2, 3])`, and `vec.extend(&hash_set_of_ints)`. 
-This partially covers the usecase of the awkward `Vec::push_all` with 
+This enables both `vec.extend(&[1, 2, 3])`, and `vec.extend(&hash_set_of_ints)`.
+This partially covers the usecase of the awkward `Vec::push_all` with
 literally no ergonomic loss, while leveraging established APIs.
 
 # Motivation
@@ -69,7 +69,7 @@ fn feed<'a, X: Extend<&'a T>>(&'a self, buf: &mut X) {
 }
 ```
 
-One would reasonably extend X to contain &T's, but with this
+One would reasonably expect X to contain &T's, but with this
 proposal it is possible that X now instead contains T's. It's not
 clear that in "real" code that this would ever be a problem, though.
 It may lead to novices accidentally by-passing ownership through
