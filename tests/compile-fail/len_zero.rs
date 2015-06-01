@@ -44,8 +44,7 @@ fn main() {
 	}
 	
 	let y = One;
-	// false positives here
-	if y.len()  == 0 { //~ERROR Consider replacing the len comparison
+	if y.len()  == 0 { //no error because One does not have .is_empty()
 		println!("This should not happen either!");
 	}
 	

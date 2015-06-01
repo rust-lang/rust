@@ -1,11 +1,15 @@
 extern crate rustc_typeck as typeck;
 
+use std::rc::Rc;
+use std::cell::RefCell;
 use syntax::ptr::P;
-use syntax::ast::*;
 use rustc::lint::{Context, LintPass, LintArray, Lint};
-use rustc::middle::ty::{self, node_id_to_type, sty, ty_ptr, ty_rptr, mt, MethodTraitItemId};
+use rustc::util::nodemap::DefIdMap;
+use rustc::middle::ty::{self, node_id_to_type, sty, ty_ptr, ty_rptr, expr_ty,
+	mt, ty_to_def_id, impl_or_trait_item, MethodTraitItemId, ImplOrTraitItemId};
 use rustc::middle::def::{DefTy, DefStruct, DefTrait};
 use syntax::codemap::{Span, Spanned};
+use syntax::ast::*;
 
 declare_lint!(pub LEN_ZERO, Warn,
               "Warn on usage of double-mut refs, e.g. '&mut &mut ...'");
@@ -69,7 +73,9 @@ fn check_impl_items(cx: &Context, item: &Item, impl_items: &[P<ImplItem>]) {
 	if !impl_items.iter().any(|i| is_named_self(i, "is_empty")) {
 		for i in impl_items {
 			if is_named_self(i, "len") {
-				cx.span_lint(LEN_WITHOUT_IS_EMPTY, i.span,
+				let s = i.span;
+				cx.span_lint(LEN_WITHOUT_IS_EMPTY, 
+					Span{ lo: s.lo, hi: s.lo, expn_id: s.expn_id },
 					&format!("Item '{}' has a '.len()' method, but no \
 						'.is_empty()' method. Consider adding one.", 
 						item.ident.as_str()));
@@ -92,10 +98,30 @@ fn check_cmp(cx: &Context, span: Span, left: &Expr, right: &Expr, empty: &str) {
 fn check_len_zero(cx: &Context, span: Span, method: &SpannedIdent, 
 		args: &[P<Expr>], lit: &Lit, empty: &str) {
 	if let &Spanned{node: LitInt(0, _), ..} = lit {
-		if method.node.as_str() == "len" && args.len() == 1 {
+		if method.node.as_str() == "len" && args.len() == 1 &&
+			has_is_empty(cx, &expr_ty(cx.tcx, &*args[0])) {
 			cx.span_lint(LEN_ZERO, span, &format!(
-				"Consider replacing the len comparison with '{}_.is_empty()' if available",
+				"Consider replacing the len comparison with \
+				'{}_.is_empty()' if available",
 					empty))
 		}
 	}
+}
+
+fn has_is_empty(cx: &Context, ty: &::rustc::middle::ty::Ty) -> bool {
+	fn check_item(cx: &Context, id: &ImplOrTraitItemId) -> bool {
+		if let &MethodTraitItemId(ref def_id) = id {
+			if let ty::MethodTraitItem(ref method) = ty::impl_or_trait_item(
+					cx.tcx, *def_id) {
+				method.name.as_str() == "is_empty"
+			} else { false }
+		} else { false }
+	}
+	
+	::rustc::middle::ty::ty_to_def_id(ty).map_or(true, |id| {
+		cx.tcx.impl_items.borrow().get(&id).map_or(false, |item_ids| {
+			item_ids.iter().any(|i| check_item(cx, i))
+		}) || cx.tcx.trait_item_def_ids.borrow().get(&id).map_or(false,
+			|item_ids| { item_ids.iter().any(|i| check_item(cx, i)) })
+	})
 }
