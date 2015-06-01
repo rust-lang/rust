@@ -188,7 +188,7 @@ use std::ops::Index;
 
 struct Foo { a: u8 }
 
-impl ::std::ops::Index<u8> for Foo {
+impl Index<u8> for Foo {
     type Output = u8;
 
     fn index<'a>(&'a self, idx: u8) -> &'a u8 { &self.a }
