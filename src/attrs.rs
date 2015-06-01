@@ -6,7 +6,7 @@ use syntax::ast::*;
 use syntax::ptr::P;
 use syntax::codemap::{Span, ExpnInfo};
 use syntax::parse::token::InternedString;
-use mut_mut::in_macro;
+use utils::in_macro;
 
 declare_lint! { pub INLINE_ALWAYS, Warn,
     "#[inline(always)] is usually a bad idea."}

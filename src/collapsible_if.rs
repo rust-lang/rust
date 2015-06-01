@@ -19,7 +19,7 @@ use syntax::ast::*;
 use syntax::ptr::P;
 use syntax::codemap::{Span, Spanned, ExpnInfo};
 use syntax::print::pprust::expr_to_string;
-use mut_mut::in_macro;
+use utils::in_macro;
 
 declare_lint! {
     pub COLLAPSIBLE_IF,
