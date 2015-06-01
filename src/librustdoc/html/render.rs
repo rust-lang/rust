@@ -1898,7 +1898,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     }
 
     // If there are methods directly on this trait object, render them here.
-    try!(render_assoc_items(w, it.def_id, AssocItemRender::All));
+    try!(render_assoc_items(w, &[it.def_id], AssocItemRender::All));
 
     let cache = cache();
     try!(write!(w, "
@@ -2047,7 +2047,7 @@ fn item_struct(w: &mut fmt::Formatter, it: &clean::Item,
             try!(write!(w, "</table>"));
         }
     }
-    render_assoc_items(w, it.def_id, AssocItemRender::All)
+    render_assoc_items(w, &[it.def_id], AssocItemRender::All)
 }
 
 fn item_enum(w: &mut fmt::Formatter, it: &clean::Item,
@@ -2146,7 +2146,7 @@ fn item_enum(w: &mut fmt::Formatter, it: &clean::Item,
         try!(write!(w, "</table>"));
 
     }
-    try!(render_assoc_items(w, it.def_id, AssocItemRender::All));
+    try!(render_assoc_items(w, &[it.def_id], AssocItemRender::All));
     Ok(())
 }
 
@@ -2241,14 +2241,11 @@ enum AssocItemRender<'a> {
 }
 
 fn render_assoc_items(w: &mut fmt::Formatter,
-                      it: ast::DefId,
+                      its: &[ast::DefId],
                       what: AssocItemRender) -> fmt::Result {
     let c = cache();
-    let v = match c.impls.get(&it) {
-        Some(v) => v,
-        None => return Ok(()),
-    };
-    let (non_trait, traits): (Vec<_>, _) = v.iter().partition(|i| {
+    let impls = its.iter().filter_map(|it| c.impls.get(it)).flat_map(|i| i);
+    let (non_trait, traits): (Vec<_>, _) = impls.partition(|i| {
         i.impl_.trait_.is_none()
     });
     if !non_trait.is_empty() {
@@ -2314,12 +2311,12 @@ fn render_deref_methods(w: &mut fmt::Formatter, impl_: &Impl) -> fmt::Result {
     }).next().expect("Expected associated type binding");
     let what = AssocItemRender::DerefFor { trait_: deref_type, type_: target };
     match *target {
-        clean::ResolvedPath { did, .. } => render_assoc_items(w, did, what),
+        clean::ResolvedPath { did, .. } => render_assoc_items(w, &[did], what),
         _ => {
             if let Some(prim) = target.primitive_type() {
                 if let Some(c) = cache().primitive_locations.get(&prim) {
                     let did = ast::DefId { krate: *c, node: prim.to_node_id() };
-                    try!(render_assoc_items(w, did, what));
+                    try!(render_assoc_items(w, &[did], what));
                 }
             }
             Ok(())
@@ -2457,7 +2454,13 @@ fn item_typedef(w: &mut fmt::Formatter, it: &clean::Item,
                   where_clause = WhereClause(&t.generics),
                   type_ = t.type_));
 
-    document(w, it)
+    try!(document(w, it));
+    match t.type_ {
+        clean::Type::ResolvedPath { did, .. } => {
+            render_assoc_items(w, &[it.def_id, did], AssocItemRender::All)
+        }
+        _ => render_assoc_items(w, &[it.def_id], AssocItemRender::All),
+    }
 }
 
 impl<'a> fmt::Display for Sidebar<'a> {
@@ -2540,7 +2543,7 @@ fn item_primitive(w: &mut fmt::Formatter,
                   it: &clean::Item,
                   _p: &clean::PrimitiveType) -> fmt::Result {
     try!(document(w, it));
-    render_assoc_items(w, it.def_id, AssocItemRender::All)
+    render_assoc_items(w, &[it.def_id], AssocItemRender::All)
 }
 
 fn get_basic_keywords() -> &'static str {
