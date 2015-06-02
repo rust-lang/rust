@@ -1,7 +1,7 @@
 - Feature Name: embrace-extend-extinguish
 - Start Date: 2015-02-13
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#839](https://github.com/rust-lang/rfcs/pull/839)
+- Rust Issue: [rust-lang/rust#25976](https://github.com/rust-lang/rust/issues/25976)
 
 # Summary
 
