@@ -367,7 +367,7 @@ pub fn process_crate(sess: &Session,
 
     let mut visitor = dump_csv::DumpCsvVisitor::new(sess, analysis, output_file);
 
-    visitor.dump_crate_info(&cratename[..], krate);
+    visitor.dump_crate_info(&cratename, krate);
     visit::walk_crate(&mut visitor, krate);
 }
 
