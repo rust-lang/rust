@@ -86,3 +86,14 @@ something if you know its name.
 
 If you encounter an error while compiling your code you may be able to look it
 up in the [Rust Compiler Error Index](error-index.html).
+
+# Community Translations
+
+Several projects have been started to translate the documentation into other
+languages:
+
+- [Russian](https://github.com/kgv/rust_book_ru)
+- [Korean](https://github.com/rust-kr/doc.rust-kr.org)
+- [Chinese](https://github.com/KaiserY/rust-book-chinese)
+- [Spanish](https://github.com/goyox86/elpr)
+

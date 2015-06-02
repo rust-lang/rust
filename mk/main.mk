@@ -74,9 +74,6 @@ ifneq ($(wildcard $(subst $(SPACE),\$(SPACE),$(CFG_GIT_DIR))),)
 endif
 endif
 
-CFG_BUILD_DATE = $(shell date +%F)
-CFG_VERSION += (built $(CFG_BUILD_DATE))
-
 # Windows exe's need numeric versions - don't use anything but
 # numbers and dots here
 CFG_VERSION_WIN = $(CFG_RELEASE_NUM)
@@ -130,9 +127,7 @@ CFG_JEMALLOC_FLAGS += $(JEMALLOC_FLAGS)
 
 ifdef CFG_ENABLE_DEBUG_ASSERTIONS
   $(info cfg: enabling debug assertions (CFG_ENABLE_DEBUG_ASSERTIONS))
-  CFG_RUSTC_FLAGS += --cfg debug -C debug-assertions=on
-else
-  CFG_RUSTC_FLAGS += --cfg ndebug
+  CFG_RUSTC_FLAGS += -C debug-assertions=on
 endif
 
 ifdef CFG_ENABLE_DEBUGINFO
@@ -334,7 +329,6 @@ endif
 ifdef CFG_VER_HASH
 export CFG_VER_HASH
 endif
-export CFG_BUILD_DATE
 export CFG_VERSION
 export CFG_VERSION_WIN
 export CFG_RELEASE
