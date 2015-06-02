@@ -338,10 +338,10 @@ nav.sub {
     font-size: 1em;
     position: relative;
 }
-/* Shift "where ..." part of method definition down a line */
-.content .method .where { display: block; }
+/* Shift "where ..." part of method or fn definition down a line */
+.content .method .where, .content .fn .where { display: block; }
 /* Bit of whitespace to indent it */
-.content .method .where::before { content: '  '; }
+.content .method .where::before, .content .fn .where::before { content: '  '; }
 
 .content .methods > div { margin-left: 40px; }
 
