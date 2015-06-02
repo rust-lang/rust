@@ -196,6 +196,15 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
                                   item.span);
                 self.last_pos = item.span.hi;
             }
+            ast::Item_::ItemEnum(ref def, ref generics) => {
+                self.format_missing_with_indent(item.span.lo);
+                self.visit_enum(item.ident,
+                                item.vis,
+                                def,
+                                generics,
+                                item.span);
+                self.last_pos = item.span.hi;
+            }
             _ => {
                 visit::walk_item(self, item);
             }

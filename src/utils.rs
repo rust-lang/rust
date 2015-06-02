@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use syntax::ast::Visibility;
 
 #[inline]
 pub fn prev_char(s: &str, mut i: usize) -> usize {
@@ -37,4 +38,12 @@ pub fn make_indent(width: usize) -> String {
         indent.push(' ')
     }
     indent
+}
+
+#[inline]
+pub fn format_visibility(vis: Visibility) -> &'static str {
+    match vis {
+        Visibility::Public => "pub ",
+        Visibility::Inherited => ""
+    }
 }
