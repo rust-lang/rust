@@ -604,65 +604,60 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
                     item: &ast::Item,
                     enum_definition: &ast::EnumDef,
                     ty_params: &ast::Generics) {
-        let enum_name = format!("::{}", self.analysis.ty_cx.map.path_to_string(item.id));
-        let val = self.span.snippet(item.span);
-        match self.span.sub_span_after_keyword(item.span, keywords::Enum) {
-            Some(sub_span) => self.fmt.enum_str(item.span,
-                                                Some(sub_span),
-                                                item.id,
-                                                &enum_name[..],
-                                                self.cur_scope,
-                                                &val[..]),
-            None => self.sess.span_bug(item.span,
-                                       &format!("Could not find subspan for enum {}",
-                                               enum_name)),
-        }
-        for variant in &enum_definition.variants {
-            let name = get_ident(variant.node.name);
-            let name = &name;
-            let mut qualname = enum_name.clone();
-            qualname.push_str("::");
-            qualname.push_str(name);
-            let val = self.span.snippet(variant.span);
-            match variant.node.kind {
-                ast::TupleVariantKind(ref args) => {
-                    // first ident in span is the variant's name
-                    self.fmt.tuple_variant_str(variant.span,
-                                               self.span.span_for_first_ident(variant.span),
-                                               variant.node.id,
-                                               name,
-                                               &qualname[..],
-                                               &enum_name[..],
-                                               &val[..],
-                                               item.id);
-                    for arg in args {
-                        self.visit_ty(&*arg.ty);
+        let enum_data = self.save_ctxt.get_item_data(item);
+        if let super::Data::EnumData(enum_data) = enum_data {
+            self.fmt.enum_str(item.span,
+                              Some(enum_data.span),
+                              enum_data.id,
+                              &enum_data.qualname,
+                              self.cur_scope,
+                              &enum_data.value);
+            for variant in &enum_definition.variants {
+                let name = &get_ident(variant.node.name);
+                let mut qualname = enum_data.qualname.clone();
+                qualname.push_str("::");
+                qualname.push_str(name);
+                let val = self.span.snippet(variant.span);
+                match variant.node.kind {
+                    ast::TupleVariantKind(ref args) => {
+                        // first ident in span is the variant's name
+                        self.fmt.tuple_variant_str(variant.span,
+                                                   self.span.span_for_first_ident(variant.span),
+                                                   variant.node.id,
+                                                   name,
+                                                   &qualname,
+                                                   &enum_data.qualname,
+                                                   &val,
+                                                   item.id);
+                        for arg in args {
+                            self.visit_ty(&*arg.ty);
+                        }
                     }
-                }
-                ast::StructVariantKind(ref struct_def) => {
-                    let ctor_id = match struct_def.ctor_id {
-                        Some(node_id) => node_id,
-                        None => -1,
-                    };
-                    self.fmt.struct_variant_str(
-                        variant.span,
-                        self.span.span_for_first_ident(variant.span),
-                        variant.node.id,
-                        ctor_id,
-                        &qualname[..],
-                        &enum_name[..],
-                        &val[..],
-                        item.id);
+                    ast::StructVariantKind(ref struct_def) => {
+                        let ctor_id = match struct_def.ctor_id {
+                            Some(node_id) => node_id,
+                            None => -1,
+                        };
+                        self.fmt.struct_variant_str(variant.span,
+                                                    self.span.span_for_first_ident(variant.span),
+                                                    variant.node.id,
+                                                    ctor_id,
+                                                    &qualname,
+                                                    &enum_data.qualname,
+                                                    &val,
+                                                    item.id);
 
-                    for field in &struct_def.fields {
-                        self.process_struct_field_def(field, &qualname, variant.node.id);
-                        self.visit_ty(&*field.node.ty);
+                        for field in &struct_def.fields {
+                            self.process_struct_field_def(field, &qualname, variant.node.id);
+                            self.visit_ty(&*field.node.ty);
+                        }
                     }
                 }
             }
+            self.process_generic_params(ty_params, item.span, &enum_data.qualname, item.id);
+        } else {
+            self.sess.span_bug(item.span, "expected EnumData");
         }
-
-        self.process_generic_params(ty_params, item.span, &enum_name[..], item.id);
     }
 
     fn process_impl(&mut self,
