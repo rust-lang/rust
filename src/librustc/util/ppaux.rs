@@ -304,11 +304,14 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
         s
     }
 
-    fn closure_to_string<'tcx>(cx: &ctxt<'tcx>, cty: &ty::ClosureTy<'tcx>) -> String {
+    fn closure_to_string<'tcx>(cx: &ctxt<'tcx>,
+                               cty: &ty::ClosureTy<'tcx>,
+                               did: &ast::DefId)
+                               -> String {
         let mut s = String::new();
         s.push_str("[closure");
         push_sig_to_string(cx, &mut s, '(', ')', &cty.sig);
-        s.push(']');
+        s.push_str(&format!(" id={:?}]", did));
         s
     }
 
@@ -407,13 +410,13 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
         ty_closure(ref did, substs) => {
             let closure_tys = cx.closure_tys.borrow();
             closure_tys.get(did).map(|closure_type| {
-                closure_to_string(cx, &closure_type.subst(cx, substs))
+                closure_to_string(cx, &closure_type.subst(cx, substs), did)
             }).unwrap_or_else(|| {
                 if did.krate == ast::LOCAL_CRATE {
                     let span = cx.map.span(did.node);
-                    format!("[closure {}]", span.repr(cx))
+                    format!("[closure {} id={:?}]", span.repr(cx), did)
                 } else {
-                    format!("[closure]")
+                    format!("[closure id={:?}]", did)
                 }
             })
         }
