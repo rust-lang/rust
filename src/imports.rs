@@ -15,8 +15,6 @@ use syntax::ast;
 use syntax::parse::token;
 use syntax::print::pprust;
 
-
-// TODO remove empty lists (if they're even possible)
 // TODO (some day) remove unused imports, expand globs, compress many single imports into a list import
 
 fn rewrite_single_use_list(path_str: String, vpi: ast::PathListItem, vis: &str) -> String {
@@ -40,13 +38,14 @@ fn rewrite_single_use_list(path_str: String, vpi: ast::PathListItem, vis: &str) 
 
 impl<'a> FmtVisitor<'a> {
     // Basically just pretty prints a multi-item import.
+    // Returns None when the import can be removed.
     pub fn rewrite_use_list(&mut self,
                             block_indent: usize,
                             one_line_budget: usize, // excluding indentation
                             multi_line_budget: usize,
                             path: &ast::Path,
                             path_list: &[ast::PathListItem],
-                            visibility: ast::Visibility) -> String {
+                            visibility: ast::Visibility) -> Option<String> {
         let path_str = pprust::path_to_string(path);
 
         let vis = match visibility {
@@ -54,8 +53,10 @@ impl<'a> FmtVisitor<'a> {
             _ => ""
         };
 
-        if path_list.len() == 1 {
-            return rewrite_single_use_list(path_str, path_list[0], vis);
+        match path_list.len() {
+            0 => return None,
+            1 => return Some(rewrite_single_use_list(path_str, path_list[0], vis)),
+            _ => ()
         }
 
         // 2 = ::
@@ -110,10 +111,10 @@ impl<'a> FmtVisitor<'a> {
                 ast::PathListItem_::PathListMod{ .. } => None,
             }
         })).collect();
-        if path_str.len() == 0 {
+        Some(if path_str.len() == 0 {
             format!("{}use {{{}}};", vis, write_list(&items, &fmt))
         } else {
             format!("{}use {}::{{{}}};", vis, path_str, write_list(&items, &fmt))
-        }
+        })
     }
 }
