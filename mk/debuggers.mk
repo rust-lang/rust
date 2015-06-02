@@ -15,7 +15,8 @@
 
 ## GDB ##
 DEBUGGER_RUSTLIB_ETC_SCRIPTS_GDB=gdb_load_rust_pretty_printers.py \
-                                 gdb_rust_pretty_printing.py
+                                 gdb_rust_pretty_printing.py \
+                                 debugger_pretty_printers_common.py
 DEBUGGER_RUSTLIB_ETC_SCRIPTS_GDB_ABS=\
     $(foreach script,$(DEBUGGER_RUSTLIB_ETC_SCRIPTS_GDB), \
         $(CFG_SRC_DIR)src/etc/$(script))
@@ -27,7 +28,8 @@ DEBUGGER_BIN_SCRIPTS_GDB_ABS=\
 
 
 ## LLDB ##
-DEBUGGER_RUSTLIB_ETC_SCRIPTS_LLDB=lldb_rust_formatters.py
+DEBUGGER_RUSTLIB_ETC_SCRIPTS_LLDB=lldb_rust_formatters.py \
+                                  debugger_pretty_printers_common.py
 DEBUGGER_RUSTLIB_ETC_SCRIPTS_LLDB_ABS=\
     $(foreach script,$(DEBUGGER_RUSTLIB_ETC_SCRIPTS_LLDB), \
         $(CFG_SRC_DIR)src/etc/$(script))
