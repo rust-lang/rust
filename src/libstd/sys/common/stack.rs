@@ -139,7 +139,6 @@ pub unsafe fn record_os_managed_stack_bounds(stack_lo: usize, _stack_hi: usize) 
 pub unsafe fn record_sp_limit(limit: usize) {
     return target_record_sp_limit(limit);
 
-    // x86-64
     #[cfg(all(target_arch = "x86_64",
               any(target_os = "macos", target_os = "ios")))]
     #[inline(always)]
@@ -164,7 +163,6 @@ pub unsafe fn record_sp_limit(limit: usize) {
         asm!("movq $0, %fs:32" :: "r"(limit) :: "volatile")
     }
 
-    // x86
     #[cfg(all(target_arch = "x86",
               any(target_os = "macos", target_os = "ios")))]
     #[inline(always)]
@@ -182,8 +180,8 @@ pub unsafe fn record_sp_limit(limit: usize) {
     unsafe fn target_record_sp_limit(_: usize) {
     }
 
-    // mips, arm - Some brave soul can port these to inline asm, but it's over
-    //             my head personally
+    // mips, arm - The implementations are a bit big for inline asm!
+    //             They can be found in src/rt/arch/$target_arch/record_sp.S
     #[cfg(any(target_arch = "mips",
               target_arch = "mipsel",
               all(target_arch = "arm", not(target_os = "ios"))))]
@@ -221,7 +219,6 @@ pub unsafe fn record_sp_limit(limit: usize) {
 pub unsafe fn get_sp_limit() -> usize {
     return target_get_sp_limit();
 
-    // x86-64
     #[cfg(all(target_arch = "x86_64",
               any(target_os = "macos", target_os = "ios")))]
     #[inline(always)]
@@ -255,7 +252,6 @@ pub unsafe fn get_sp_limit() -> usize {
         return limit;
     }
 
-    // x86
     #[cfg(all(target_arch = "x86",
               any(target_os = "macos", target_os = "ios")))]
     #[inline(always)]
@@ -278,8 +274,8 @@ pub unsafe fn get_sp_limit() -> usize {
         return 1024;
     }
 
-    // mips, arm - Some brave soul can port these to inline asm, but it's over
-    //             my head personally
+    // mips, arm - The implementations are a bit big for inline asm!
+    //             They can be found in src/rt/arch/$target_arch/record_sp.S
     #[cfg(any(target_arch = "mips",
               target_arch = "mipsel",
               all(target_arch = "arm", not(target_os = "ios"))))]
