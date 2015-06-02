@@ -660,6 +660,8 @@ impl f32 {
     ///
     /// assert_eq!(x.max(y), y);
     /// ```
+    ///
+    /// If one of the arguments is NaN, then the other argument is returned.
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn max(self, other: f32) -> f32 {
@@ -674,6 +676,8 @@ impl f32 {
     ///
     /// assert_eq!(x.min(y), x);
     /// ```
+    ///
+    /// If one of the arguments is NaN, then the other argument is returned.
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn min(self, other: f32) -> f32 {
