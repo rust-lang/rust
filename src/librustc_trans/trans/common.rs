@@ -1051,7 +1051,7 @@ pub fn fulfill_obligation<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     // all nested obligations. This is because they can inform the
     // inference of the impl's type parameters.
     let mut fulfill_cx = traits::FulfillmentContext::new();
-    let vtable = selection.map_move_nested(|predicate| {
+    let vtable = selection.map(|predicate| {
         fulfill_cx.register_predicate_obligation(&infcx, predicate);
     });
     let vtable = drain_fulfillment_cx_or_panic(span, &infcx, &mut fulfill_cx, &vtable);

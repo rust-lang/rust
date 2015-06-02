@@ -203,6 +203,7 @@ pub fn normalize_with_depth<'a,'b,'tcx,T>(selcx: &'a mut SelectionContext<'b,'tc
 {
     let mut normalizer = AssociatedTypeNormalizer::new(selcx, cause, depth);
     let result = normalizer.fold(value);
+
     Normalized {
         value: result,
         obligations: normalizer.obligations,
@@ -864,7 +865,7 @@ fn confirm_impl_candidate<'cx,'tcx>(
         if let ty::TypeTraitItem(ref assoc_ty) = impl_or_trait_items_map[&impl_item.def_id()] {
             if assoc_ty.name == obligation.predicate.item_name {
                 return (assoc_ty.ty.unwrap().subst(selcx.tcx(), &impl_vtable.substs),
-                        impl_vtable.nested.into_vec());
+                        impl_vtable.nested);
             }
         }
     }
@@ -876,7 +877,7 @@ fn confirm_impl_candidate<'cx,'tcx>(
             if assoc_ty.name == obligation.predicate.item_name {
                 if let Some(ty) = assoc_ty.ty {
                     return (ty.subst(selcx.tcx(), trait_ref.substs),
-                            impl_vtable.nested.into_vec());
+                            impl_vtable.nested);
                 } else {
                     // This means that the impl is missing a
                     // definition for the associated type. This error
