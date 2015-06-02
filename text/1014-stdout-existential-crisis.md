@@ -1,7 +1,7 @@
-- Feature Name: stdout_existential_crisis
+- Feature Name: `stdout_existential_crisis`
 - Start Date: 2015-03-25
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#1014](https://github.com/rust-lang/rfcs/pull/1014)
+- Rust Issue: [rust-lang/rust#25977](https://github.com/rust-lang/rust/issues/25977)
 
 # Summary
 
