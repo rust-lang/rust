@@ -795,6 +795,8 @@ pub struct UnsafeCell<T: ?Sized> {
     ///
     /// This field should not be accessed directly, it is made public for static
     /// initializers.
+    #[deprecated(since = "1.2.0", reason = "use `get` to access the wrapped \
+        value or `new` to initialize `UnsafeCell` in statics")]
     #[unstable(feature = "core")]
     pub value: T,
 }
@@ -818,6 +820,7 @@ impl<T> UnsafeCell<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub const fn new(value: T) -> UnsafeCell<T> {
+        #![allow(deprecated)]
         UnsafeCell { value: value }
     }
 
@@ -839,7 +842,10 @@ impl<T> UnsafeCell<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub unsafe fn into_inner(self) -> T { self.value }
+    pub unsafe fn into_inner(self) -> T {
+        #![allow(deprecated)]
+        self.value
+    }
 }
 
 impl<T: ?Sized> UnsafeCell<T> {
@@ -859,6 +865,7 @@ impl<T: ?Sized> UnsafeCell<T> {
     pub fn get(&self) -> *mut T {
         // FIXME(#23542) Replace with type ascription.
         #![allow(trivial_casts)]
+        #![allow(deprecated)]
         &self.value as *const T as *mut T
     }
 }
