@@ -321,7 +321,7 @@ You can chain all three things together: start with an iterator, adapt it
 a few times, and then consume the result. Check it out:
 
 ```rust
-(1..1000)
+(1..)
     .filter(|&x| x % 2 == 0)
     .filter(|&x| x % 3 == 0)
     .take(5)
