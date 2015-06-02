@@ -1788,11 +1788,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         debug!("add_obligations_for_parameters(predicates={})",
                predicates.repr(self.tcx()));
 
-        let obligations = traits::predicates_for_generics(self.tcx(),
+        for obligation in traits::predicates_for_generics(self.tcx(),
                                                           cause,
-                                                          predicates);
-
-        obligations.map_move(|o| self.register_predicate(o));
+                                                          predicates) {
+            self.register_predicate(obligation);
+        }
     }
 
     // Only for fields! Returns <none> for methods>

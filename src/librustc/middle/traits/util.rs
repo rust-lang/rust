@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use middle::subst::{Substs, VecPerParamSpace};
+use middle::subst::Substs;
 use middle::infer::InferCtxt;
 use middle::ty::{self, Ty, AsPredicate, ToPolyTraitRef};
 use std::fmt;
@@ -319,16 +319,16 @@ pub fn predicates_for_generics<'tcx>(tcx: &ty::ctxt<'tcx>,
                                      cause: ObligationCause<'tcx>,
                                      recursion_depth: usize,
                                      generic_bounds: &ty::InstantiatedPredicates<'tcx>)
-                                     -> VecPerParamSpace<PredicateObligation<'tcx>>
+                                     -> Vec<PredicateObligation<'tcx>>
 {
     debug!("predicates_for_generics(generic_bounds={})",
            generic_bounds.repr(tcx));
 
-    generic_bounds.predicates.map(|predicate| {
+    generic_bounds.predicates.iter().map(|predicate| {
         Obligation { cause: cause.clone(),
                      recursion_depth: recursion_depth,
                      predicate: predicate.clone() }
-    })
+    }).collect()
 }
 
 pub fn trait_ref_for_builtin_bound<'tcx>(

@@ -329,7 +329,7 @@ fn process_predicate<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
                     false
                 }
                 Ok(Some(s)) => {
-                    s.map_move_nested(|p| new_obligations.push(p));
+                    new_obligations.append(&mut s.nested_obligations());
                     true
                 }
                 Err(selection_err) => {
