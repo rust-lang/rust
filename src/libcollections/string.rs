@@ -495,8 +495,7 @@ impl String {
     ///
     /// ```
     /// let s = String::from("hello");
-    /// let b: &[_] = &[104, 101, 108, 108, 111];
-    /// assert_eq!(s.as_bytes(), b);
+    /// assert_eq!(s.as_bytes(), [104, 101, 108, 108, 111]);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
