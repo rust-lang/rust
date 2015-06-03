@@ -901,7 +901,7 @@ trait Baz {
 impl Baz for Foo {
     fn baz(&self) -> bool { true }
 
-    // error: duplicate associated function
+    // error: duplicate method
     fn baz(&self) -> bool { self.0 > 5 }
 }
 ```
