@@ -16,6 +16,7 @@
 #![feature(staged_api)]
 #![staged_api]
 #![crate_type = "rlib"]
+#![feature(core)]
 #![feature(no_std)]
 #![no_std]
 #![unstable(feature = "rustc_private")]
@@ -23,6 +24,7 @@
 
 //! A typesafe bitmask flag generator.
 
+extern crate core;
 #[cfg(test)] #[macro_use] extern crate std;
 
 /// The `bitflags!` macro generates a `struct` that holds a set of C-style
@@ -288,13 +290,6 @@ macro_rules! bitflags {
             }
         }
     };
-}
-
-// This is a no_std crate. So the test code's invocation of #[derive] etc, via
-// bitflags!, will use names from the underlying crates.
-#[cfg(test)]
-mod core {
-    pub use std::{fmt, hash, clone, cmp, marker, option};
 }
 
 #[cfg(test)]
