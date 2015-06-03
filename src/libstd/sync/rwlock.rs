@@ -24,6 +24,10 @@ use sys_common::rwlock as sys;
 /// of the underlying data (exclusive access) and the read portion of this lock
 /// typically allows for read-only access (shared access).
 ///
+/// The priority policy of the lock is dependent on the underlying operating
+/// system's implementation, and this type does not guarantee that any
+/// particular policy will be used.
+///
 /// The type parameter `T` represents the data that this lock protects. It is
 /// required that `T` satisfies `Send` to be shared across threads and `Sync` to
 /// allow concurrent access through readers. The RAII guards returned from the
