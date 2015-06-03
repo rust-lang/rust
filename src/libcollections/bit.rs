@@ -1070,6 +1070,13 @@ impl Extend<bool> for BitVec {
     }
 }
 
+#[stable(feature = "extend_ref", since = "1.2.0")]
+impl<'a> Extend<&'a bool> for BitVec {
+    fn extend<I: IntoIterator<Item=&'a bool>>(&mut self, iter: I) {
+        self.extend(iter.into_iter().cloned());
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Clone for BitVec {
     #[inline]
@@ -1275,6 +1282,13 @@ impl Extend<usize> for BitSet {
         for i in iter {
             self.insert(i);
         }
+    }
+}
+
+#[stable(feature = "extend_ref", since = "1.2.0")]
+impl<'a> Extend<&'a usize> for BitSet {
+    fn extend<I: IntoIterator<Item=&'a usize>>(&mut self, iter: I) {
+        self.extend(iter.into_iter().cloned());
     }
 }
 

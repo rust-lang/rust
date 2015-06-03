@@ -113,6 +113,21 @@ fn test_extend() {
 }
 
 #[test]
+fn test_extend_ref() {
+    let mut v = vec![1, 2];
+    v.extend(&[3, 4, 5]);
+
+    assert_eq!(v.len(), 5);
+    assert_eq!(v, [1, 2, 3, 4, 5]);
+
+    let w = vec![6, 7];
+    v.extend(&w);
+
+    assert_eq!(v.len(), 7);
+    assert_eq!(v, [1, 2, 3, 4, 5, 6, 7]);
+}
+
+#[test]
 fn test_slice_from_mut() {
     let mut values = vec![1, 2, 3, 4, 5];
     {

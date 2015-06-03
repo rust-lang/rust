@@ -249,6 +249,22 @@ fn test_entry(){
     assert_eq!(map.len(), 6);
 }
 
+#[test]
+fn test_extend_ref() {
+    let mut a = BTreeMap::new();
+    a.insert(1, "one");
+    let mut b = BTreeMap::new();
+    b.insert(2, "two");
+    b.insert(3, "three");
+
+    a.extend(&b);
+
+    assert_eq!(a.len(), 3);
+    assert_eq!(a[&1], "one");
+    assert_eq!(a[&2], "two");
+    assert_eq!(a[&3], "three");
+}
+
 mod bench {
     use std::collections::BTreeMap;
     use std::__rand::{Rng, thread_rng};

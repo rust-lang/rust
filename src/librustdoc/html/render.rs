@@ -2284,7 +2284,7 @@ fn render_assoc_items(w: &mut fmt::Formatter,
         }
         try!(write!(w, "<h2 id='implementations'>Trait \
                           Implementations</h2>"));
-        let (derived, manual): (Vec<_>, _) = traits.iter().partition(|i| {
+        let (derived, manual): (Vec<_>, Vec<&Impl>) = traits.iter().partition(|i| {
             i.impl_.derived
         });
         for i in &manual {
