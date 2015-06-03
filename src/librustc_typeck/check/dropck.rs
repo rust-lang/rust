@@ -238,14 +238,12 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
 /// Let `v` be some value (either temporary or named) and 'a be some
 /// lifetime (scope). If the type of `v` owns data of type `D`, where
 ///
-///   (1.) `D` has a lifetime- or type-parametric Drop implementation, and
-///   (2.) the structure of `D` can reach a reference of type `&'a _`, and
-///   (3.) either:
-///
-///     (A.) the Drop impl for `D` instantiates `D` at 'a directly,
+/// * (1.) `D` has a lifetime- or type-parametric Drop implementation, and
+/// * (2.) the structure of `D` can reach a reference of type `&'a _`, and
+/// * (3.) either:
+///   * (A.) the Drop impl for `D` instantiates `D` at 'a directly,
 ///          i.e. `D<'a>`, or,
-///
-///     (B.) the Drop impl for `D` has some type parameter with a
+///   * (B.) the Drop impl for `D` has some type parameter with a
 ///          trait bound `T` where `T` is a trait that has at least
 ///          one method,
 ///
