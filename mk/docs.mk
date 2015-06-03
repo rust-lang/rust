@@ -265,7 +265,7 @@ endef
 $(foreach crate,$(CRATES),$(eval $(call DEF_LIB_DOC,$(crate))))
 
 COMPILER_DOC_TARGETS := $(CRATES:%=doc/%/index.html)
-ifdef CFG_COMPILER_DOCS
+ifdef CFG_ENABLE_COMPILER_DOCS
   DOC_TARGETS += $(COMPILER_DOC_TARGETS)
 else
   DOC_TARGETS += $(DOC_CRATES:%=doc/%/index.html)
