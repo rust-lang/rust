@@ -10,7 +10,9 @@
 
 #![unstable(feature = "std_misc")]
 
-use borrow::Cow;
+use borrow::{Cow, ToOwned};
+use boxed::Box;
+use clone::Clone;
 use convert::{Into, From};
 use cmp::{PartialEq, Eq, PartialOrd, Ord, Ordering};
 use error::Error;
@@ -61,10 +63,10 @@ use vec::Vec;
 /// }
 /// # }
 /// ```
-#[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+#[derive(PartialEq, PartialOrd, Eq, Ord, Hash)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct CString {
-    inner: Vec<u8>,
+    inner: Box<[u8]>,
 }
 
 /// Representation of a borrowed C string.
@@ -197,7 +199,7 @@ impl CString {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub unsafe fn from_vec_unchecked(mut v: Vec<u8>) -> CString {
         v.push(0);
-        CString { inner: v }
+        CString { inner: v.into_boxed_slice() }
     }
 
     /// Returns the contents of this `CString` as a slice of bytes.
@@ -214,6 +216,13 @@ impl CString {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn as_bytes_with_nul(&self) -> &[u8] {
         &self.inner
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Clone for CString {
+    fn clone(&self) -> Self {
+        CString { inner: self.inner.to_owned().into_boxed_slice() }
     }
 }
 
