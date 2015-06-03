@@ -973,8 +973,8 @@ fi
 
 if [ ! -z "$CFG_ENABLE_CLANG" ]
 then
-    if [ -z "$CC" ] || [[ $CC == *clang ]]
-    then
+    case "$CC" in
+        (''|*clang)
         CFG_CLANG_VERSION=$($CFG_CC \
             --version \
             | grep version \
@@ -994,9 +994,11 @@ then
             err "bad CLANG version: $CFG_CLANG_VERSION, need >=3.0svn"
             ;;
         esac
-    else
+        ;;
+        (*)
         msg "skipping CFG_ENABLE_CLANG version check; provided CC=$CC"
-    fi
+        ;;
+    esac
 fi
 
 if [ ! -z "$CFG_ENABLE_CCACHE" ]
