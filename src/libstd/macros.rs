@@ -126,6 +126,7 @@ macro_rules! println {
 /// ```
 /// use std::io;
 /// use std::fs::File;
+/// use std::io::prelude::*;
 ///
 /// fn write_to_file_using_try() -> Result<(), io::Error> {
 ///     let mut file = try!(File::create("my_best_friends.txt"));
