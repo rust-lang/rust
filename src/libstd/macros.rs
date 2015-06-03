@@ -132,7 +132,7 @@ macro_rules! println {
 ///     let mut file = try!(File::create("my_best_friends.txt"));
 ///     try!(file.write_all(b"This is a list of my best friends."));
 ///     println!("I wrote to the file");
-///     Ok()
+///     Ok(())
 /// }
 /// // This is equivalent to:
 /// fn write_to_file_using_match() -> Result<(), io::Error> {
@@ -142,7 +142,7 @@ macro_rules! println {
 ///       Err(e) => return Err(e),
 ///     }
 ///     println!("I wrote to the file");
-///     Ok()
+///     Ok(())
 /// }
 /// ```
 #[macro_export]
