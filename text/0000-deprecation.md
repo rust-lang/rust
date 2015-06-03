@@ -37,7 +37,11 @@ First, crates should state their target version using a `#![version =
 "1.0.0"]` attribute. Cargo should insert the current rust version by 
 default on `cargo new` and *warn* if no version is defined on all other 
 commands. It may optionally *note* that the specified target version is 
-outdated on `cargo package`. [crates.io](https://crates.io) may deny 
+outdated on `cargo package`. To get the current rust version, cargo
+could query rustc -V (with some postprocessing) or use some as yet
+undefined symbol exported by the rust libraries.
+
+[crates.io](https://crates.io) may deny 
 packages that do not declare a version to give the target version 
 requirement more weight to library authors. Cargo should also be able 
 to hold back a new library version if its declared target version is 
