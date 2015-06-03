@@ -51,13 +51,13 @@ An example implementation:
 
 ```
 impl<T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<Rc<U>> for Rc<T> {}
-impl<T: ?Sized+CoerceUnsized<U>, U: ?Sized> CoerceUnsized<NonZero<U>> for NonZero<T> {}
+impl<T: Zeroable+CoerceUnsized<U>, U: Zeroable> CoerceUnsized<NonZero<U>> for NonZero<T> {}
 
 // For reference, the definitions of Rc and NonZero:
 pub struct Rc<T: ?Sized> {
     _ptr: NonZero<*mut RcBox<T>>,
 }
-pub struct NonZero<T: Zeroable+?Sized>(T);
+pub struct NonZero<T: Zeroable>(T);
 ```
 
 Implementing `CoerceUnsized` indicates that the self type should be able to be
@@ -75,24 +75,18 @@ fn foo<T: CoerceUnsized<U>, U>(x: T) -> U {
 Built-in pointer impls:
 
 ```
-impl<T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<Box<U>> for Box<T> {}
-impl<T: ?Sized+Unsize<U>, U: ?Sized, 'a> CoerceUnsized<&'a U> for Box<T> {}
-impl<T: ?Sized+Unsize<U>, U: ?Sized, 'a> CoerceUnsized<&mut 'a U> for Box<T> {}
-impl<T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for Box<T> {}
-impl<T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<*mut U> for Box<T> {}
+impl<'a, 'b: 'aT: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<&'a U> for &'b mut T {}
+impl<'a, T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<&'a mut U> for &'a mut T {}
+impl<'a, T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for &'a mut T {}
+impl<'a, T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<*mut U> for &'a mut T {}
 
-impl<T: ?Sized+Unsize<U>, U: ?Sized, 'a, 'b: 'a> CoerceUnsized<&'a U> for &mut 'b U {}
-impl<T: ?Sized+Unsize<U>, U: ?Sized, 'a> CoerceUnsized<&mut 'a U> for &mut 'a U {}
-impl<T: ?Sized+Unsize<U>, U: ?Sized, 'a> CoerceUnsized<*const U> for &mut 'a U {}
-impl<T: ?Sized+Unsize<U>, U: ?Sized, 'a> CoerceUnsized<*mut U> for &mut 'a U {}
+impl<'a, 'b: 'a, T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<&'a U> for &'b T {}
+impl<'b, T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for &'b T {}
 
-impl<T: ?Sized+Unsize<U>, U: ?Sized, 'a, 'b> CoerceUnsized<&'a U> for &'b U {}
-impl<T: ?Sized+Unsize<U>, U: ?Sized, 'b> CoerceUnsized<*const U> for &'b U {}
+impl<T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for *mut T {}
+impl<T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<*mut U> for *mut T {}
 
-impl<T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for *mut U {}
-impl<T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<*mut U> for *mut U {}
-
-impl<T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for *const U {}
+impl<T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for *const T {}
 ```
 
 Note that there are some coercions which are not given by `CoerceUnsized`, e.g.,
