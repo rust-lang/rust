@@ -11,7 +11,7 @@
 struct Foo;
 impl Foo {
     fn orange(&self){}
-    fn orange(&self){}   //~ ERROR duplicate associated function
+    fn orange(&self){}   //~ ERROR duplicate method
 }
 
 fn main() {}
