@@ -51,6 +51,8 @@ pub enum Data {
     VariableData(VariableData),
     /// Data for modules.
     ModData(ModData),
+    /// Data for Enums.
+    EnumData(EnumData),
 
     /// Data for the use of some variable (e.g., the use of a local variable, which
     /// will refere to that variables declaration).
@@ -86,6 +88,14 @@ pub struct ModData {
     pub span: Span,
     pub scope: NodeId,
     pub filename: String,
+}
+
+/// Data for enum declarations.
+pub struct EnumData {
+    pub id: NodeId,
+    pub value: String,
+    pub qualname: String,
+    pub span: Span,
 }
 
 /// Data for the use of some item (e.g., the use of a local variable, which
@@ -188,7 +198,19 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     scope: self.analysis.ty_cx.map.get_parent(item.id),
                     filename: filename,
                 })
-            }
+            },
+            ast::ItemEnum(..) => {
+                let enum_name = format!("::{}", self.analysis.ty_cx.map.path_to_string(item.id));
+                let val = self.span_utils.snippet(item.span);
+                let sub_span = self.span_utils.sub_span_after_keyword(item.span, keywords::Enum);
+
+                Data::EnumData(EnumData {
+                    id: item.id,
+                    value: val,
+                    span: sub_span.unwrap(),
+                    qualname: enum_name,
+                })
+            },
             _ => {
                 // FIXME
                 unimplemented!();
@@ -345,7 +367,7 @@ pub fn process_crate(sess: &Session,
 
     let mut visitor = dump_csv::DumpCsvVisitor::new(sess, analysis, output_file);
 
-    visitor.dump_crate_info(&cratename[..], krate);
+    visitor.dump_crate_info(&cratename, krate);
     visit::walk_crate(&mut visitor, krate);
 }
 
