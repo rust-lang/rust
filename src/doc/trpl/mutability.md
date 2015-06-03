@@ -159,7 +159,7 @@ b.x = 10; // error: cannot assign to immutable field `b.x`
 
 [struct]: structs.html
 
-However, by using `Cell<T>`, you can emulate field-level mutability:
+However, by using [`Cell<T>`][cell], you can emulate field-level mutability:
 
 ```rust
 use std::cell::Cell;
@@ -175,5 +175,7 @@ point.y.set(7);
 
 println!("y: {:?}", point.y);
 ```
+
+[cell]: ../std/cell/struct.Cell.html
 
 This will print `y: Cell { value: 7 }`. We’ve successfully updated `y`.
