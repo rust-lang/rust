@@ -2032,28 +2032,6 @@ pub fn trans_item(ccx: &CrateContext, item: &ast::Item) {
 
           let g = consts::trans_static(ccx, m, item.id);
           update_linkage(ccx, g, Some(item.id), OriginalTranslation);
-
-          // Do static_assert checking. It can't really be done much earlier
-          // because we need to get the value of the bool out of LLVM
-          if attr::contains_name(&item.attrs, "static_assert") {
-              if !ty::type_is_bool(ty::expr_ty(ccx.tcx(), expr)) {
-                  ccx.sess().span_fatal(expr.span,
-                                        "can only have static_assert on a static \
-                                         with type `bool`");
-              }
-              if m == ast::MutMutable {
-                  ccx.sess().span_fatal(expr.span,
-                                        "cannot have static_assert on a mutable \
-                                         static");
-              }
-
-              let v = ccx.static_values().borrow().get(&item.id).unwrap().clone();
-              unsafe {
-                  if !(llvm::LLVMConstIntGetZExtValue(v) != 0) {
-                      ccx.sess().span_fatal(expr.span, "static assertion failed");
-                  }
-              }
-          }
       },
       ast::ItemForeignMod(ref foreign_mod) => {
         foreign::trans_foreign_mod(ccx, foreign_mod);
