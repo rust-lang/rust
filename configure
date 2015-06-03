@@ -582,6 +582,7 @@ valopt sysconfdir "/etc" "install system configuration files"
 valopt datadir "${CFG_PREFIX}/share" "install data"
 valopt infodir "${CFG_PREFIX}/share/info" "install additional info"
 valopt llvm-root "" "set LLVM root"
+valopt python "" "set path to python"
 valopt jemalloc-root "" "set directory where libjemalloc_pic.a is located"
 valopt build "${DEFAULT_BUILD}" "GNUs ./configure syntax LLVM build triple"
 valopt android-cross-path "/opt/ndk_standalone" "Android NDK standalone path"
@@ -695,7 +696,9 @@ putvar CFG_BOOTSTRAP_KEY
 step_msg "looking for build programs"
 
 probe_need CFG_CURLORWGET  curl wget
-probe_need CFG_PYTHON      python2.7 python2.6 python2 python
+if [ -z "$CFG_PYTHON_PROVIDED" ]; then
+    probe_need CFG_PYTHON      python2.7 python2.6 python2 python
+fi
 
 python_version=$($CFG_PYTHON -V 2>&1)
 if [ $(echo $python_version | grep -c '^Python 2\.[4567]') -ne 1 ]; then
@@ -847,13 +850,6 @@ then
     fi
     step_msg "using rustc at: ${CFG_LOCAL_RUST_ROOT} with version: $LRV"
     putvar CFG_LOCAL_RUST_ROOT
-fi
-
-# Force freebsd to build with clang; gcc doesn't like us there
-if [ $CFG_OSTYPE = unknown-freebsd ]
-then
-    step_msg "on FreeBSD, forcing use of clang"
-    CFG_ENABLE_CLANG=1
 fi
 
 # Force bitrig to build with clang; gcc doesn't like us there
