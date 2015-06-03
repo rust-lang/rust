@@ -2,7 +2,9 @@
 - RFC PR: [rust-lang/rfcs#8](https://github.com/rust-lang/rfcs/pull/8)
 - Rust Issue: 
 
-** Note: this RFC was never implemented. **
+** Note: this RFC was never implemented and has been retired. The
+design may still be useful in the future, but before implementing we
+would prefer to revisit it so as to be sure it is up to date. **
 
 # Summary
 
