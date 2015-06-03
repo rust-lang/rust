@@ -849,13 +849,6 @@ then
     putvar CFG_LOCAL_RUST_ROOT
 fi
 
-# Force freebsd to build with clang; gcc doesn't like us there
-if [ $CFG_OSTYPE = unknown-freebsd ]
-then
-    step_msg "on FreeBSD, forcing use of clang"
-    CFG_ENABLE_CLANG=1
-fi
-
 # Force bitrig to build with clang; gcc doesn't like us there
 if [ $CFG_OSTYPE = unknown-bitrig ]
 then
