@@ -137,9 +137,6 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Status)] = &[
     // Allows the use of rustc_* attributes; RFC 572
     ("rustc_attrs", "1.0.0", Active),
 
-    // Allows the use of `static_assert`
-    ("static_assert", "1.0.0", Active),
-
     // Allows the use of #[allow_internal_unstable]. This is an
     // attribute on macro_rules! and can't use the attribute handling
     // below (it has to be checked before expansion possibly makes
@@ -261,8 +258,6 @@ pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType)] = &[
     ("no_builtins", Whitelisted),
     ("no_mangle", Whitelisted),
     ("no_stack_check", Whitelisted),
-    ("static_assert", Gated("static_assert",
-                            "`#[static_assert]` is an experimental feature, and has a poor API")),
     ("no_debug", Whitelisted),
     ("omit_gdb_pretty_printer_section", Whitelisted),
     ("unsafe_no_drop_flag", Gated("unsafe_no_drop_flag",

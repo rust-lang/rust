@@ -1943,9 +1943,6 @@ macro scope.
 - `simd` - on certain tuple structs, derive the arithmetic operators, which
   lower to the target's SIMD instructions, if any; the `simd` feature gate
   is necessary to use this attribute.
-- `static_assert` - on statics whose type is `bool`, terminates compilation
-  with an error if it is not initialized to `true`. To use this, the `static_assert`
-  feature gate must be enabled.
 - `unsafe_no_drop_flag` - on structs, remove the flag that prevents
   destructors from being run twice. Destructors might be run multiple times on
   the same object with this attribute. To use this, the `unsafe_no_drop_flag` feature
@@ -2300,12 +2297,6 @@ The currently implemented features of the reference compiler are:
 * `staged_api` - Allows usage of stability markers and `#![staged_api]` in a
                  crate. Stability markers are also attributes: `#[stable]`,
                  `#[unstable]`, and `#[deprecated]` are the three levels.
-
-* `static_assert` - The `#[static_assert]` functionality is experimental and
-                    unstable. The attribute can be attached to a `static` of
-                    type `bool` and the compiler will error if the `bool` is
-                    `false` at compile time. This version of this functionality
-                    is unintuitive and suboptimal.
 
 * `start` - Allows use of the `#[start]` attribute, which changes the entry point
             into a Rust program. This capability, especially the signature for the
