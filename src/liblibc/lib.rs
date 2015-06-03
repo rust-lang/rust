@@ -6308,8 +6308,8 @@ pub mod funcs {
                                 lpOverlapped: LPOVERLAPPED) -> BOOL;
                 pub fn WriteFile(hFile: HANDLE,
                                  lpBuffer: LPVOID,
-                                 nNumberOfBytesToRead: DWORD,
-                                 lpNumberOfBytesRead: LPDWORD,
+                                 nNumberOfBytesToWrite: DWORD,
+                                 lpNumberOfBytesWritten: LPDWORD,
                                  lpOverlapped: LPOVERLAPPED) -> BOOL;
                 pub fn SetFilePointerEx(hFile: HANDLE,
                                         liDistanceToMove: LARGE_INTEGER,
