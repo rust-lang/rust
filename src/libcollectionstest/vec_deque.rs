@@ -894,3 +894,29 @@ fn test_retain() {
     let v: Vec<_> = buf.into_iter().collect();
     assert_eq!(&v[..], &[2, 4]);
 }
+
+#[test]
+fn test_extend_ref() {
+    let mut v = VecDeque::new();
+    v.push_back(1);
+    v.extend(&[2, 3, 4]);
+
+    assert_eq!(v.len(), 4);
+    assert_eq!(v[0], 1);
+    assert_eq!(v[1], 2);
+    assert_eq!(v[2], 3);
+    assert_eq!(v[3], 4);
+
+    let mut w = VecDeque::new();
+    w.push_back(5);
+    w.push_back(6);
+    v.extend(&w);
+
+    assert_eq!(v.len(), 6);
+    assert_eq!(v[0], 1);
+    assert_eq!(v[1], 2);
+    assert_eq!(v[2], 3);
+    assert_eq!(v[3], 4);
+    assert_eq!(v[4], 5);
+    assert_eq!(v[5], 6);
+}

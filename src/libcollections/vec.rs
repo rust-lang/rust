@@ -1578,6 +1578,13 @@ impl<T> Extend<T> for Vec<T> {
     }
 }
 
+#[stable(feature = "extend_ref", since = "1.2.0")]
+impl<'a, T: 'a + Copy> Extend<&'a T> for Vec<T> {
+    fn extend<I: IntoIterator<Item=&'a T>>(&mut self, iter: I) {
+        self.extend(iter.into_iter().cloned());
+    }
+}
+
 __impl_slice_eq1! { Vec<A>, Vec<B> }
 __impl_slice_eq1! { Vec<A>, &'b [B] }
 __impl_slice_eq1! { Vec<A>, &'b mut [B] }

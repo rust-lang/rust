@@ -448,6 +448,26 @@ fn test_bit_set_split_off() {
                                                             0b00101011, 0b10101101])));
 }
 
+#[test]
+fn test_bit_set_extend_ref() {
+    let mut a = BitSet::new();
+    a.insert(3);
+
+    a.extend(&[5, 7, 10]);
+
+    assert_eq!(a.len(), 4);
+    assert_eq!(a, BitSet::from_bit_vec(BitVec::from_bytes(&[0b00010101,0b00100000])));
+
+    let mut b = BitSet::new();
+    b.insert(11);
+    b.insert(15);
+
+    a.extend(&b);
+
+    assert_eq!(a.len(), 6);
+    assert_eq!(a, BitSet::from_bit_vec(BitVec::from_bytes(&[0b00010101,0b00110001])));
+}
+
 mod bench {
     use std::collections::{BitSet, BitVec};
     use std::__rand::{Rng, thread_rng, ThreadRng};

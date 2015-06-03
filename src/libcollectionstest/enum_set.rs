@@ -242,3 +242,25 @@ fn test_overflow() {
     let mut set = EnumSet::new();
     set.insert(Bar::V64);
 }
+
+#[test]
+fn test_extend_ref() {
+    let mut a = EnumSet::new();
+    a.insert(A);
+
+    a.extend(&[A, C]);
+
+    assert_eq!(a.len(), 2);
+    assert!(a.contains(&A));
+    assert!(a.contains(&C));
+
+    let mut b = EnumSet::new();
+    b.insert(B);
+
+    a.extend(&b);
+
+    assert_eq!(a.len(), 3);
+    assert!(a.contains(&A));
+    assert!(a.contains(&B));
+    assert!(a.contains(&C));
+}

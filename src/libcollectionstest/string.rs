@@ -365,6 +365,14 @@ fn test_drain() {
     assert_eq!(t, "");
 }
 
+#[test]
+fn test_extend_ref() {
+    let mut a = "foo".to_string();
+    a.extend(&['b', 'a', 'r']);
+
+    assert_eq!(&a, "foobar");
+}
+
 #[bench]
 fn bench_with_capacity(b: &mut Bencher) {
     b.iter(|| {

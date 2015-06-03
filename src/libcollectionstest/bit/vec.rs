@@ -631,6 +631,24 @@ fn test_bit_vec_extend() {
 }
 
 #[test]
+fn test_bit_vecextend_ref() {
+    let mut bv = BitVec::from_bytes(&[0b10100011]);
+    bv.extend(&[true, false, true]);
+
+    assert_eq!(bv.len(), 11);
+    assert!(bv.eq_vec(&[true, false, true, false, false, false, true, true,
+                        true, false, true]));
+
+    let bw = BitVec::from_bytes(&[0b00010001]);
+    bv.extend(&bw);
+
+    assert_eq!(bv.len(), 19);
+    assert!(bv.eq_vec(&[true, false, true, false, false, false, true, true,
+                        true, false, true, false, false, false, true, false,
+                        false, false, true]));
+}
+
+#[test]
 fn test_bit_vec_append() {
     // Append to BitVec that holds a multiple of u32::BITS bits
     let mut a = BitVec::from_bytes(&[0b10100000, 0b00010010, 0b10010010, 0b00110011]);

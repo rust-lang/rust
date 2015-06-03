@@ -1785,6 +1785,13 @@ impl<A> Extend<A> for VecDeque<A> {
     }
 }
 
+#[stable(feature = "extend_ref", since = "1.2.0")]
+impl<'a, T: 'a + Copy> Extend<&'a T> for VecDeque<T> {
+    fn extend<I: IntoIterator<Item=&'a T>>(&mut self, iter: I) {
+        self.extend(iter.into_iter().cloned());
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: fmt::Debug> fmt::Debug for VecDeque<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

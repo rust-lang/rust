@@ -879,6 +879,13 @@ impl<K: Ord, V> Extend<(K, V)> for BTreeMap<K, V> {
     }
 }
 
+#[stable(feature = "extend_ref", since = "1.2.0")]
+impl<'a, K: Ord + Copy, V: Copy> Extend<(&'a K, &'a V)> for BTreeMap<K, V> {
+    fn extend<I: IntoIterator<Item=(&'a K, &'a V)>>(&mut self, iter: I) {
+        self.extend(iter.into_iter().map(|(&key, &value)| (key, value)));
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K: Hash, V: Hash> Hash for BTreeMap<K, V> {
     fn hash<H: Hasher>(&self, state: &mut H) {
