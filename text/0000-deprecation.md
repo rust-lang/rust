@@ -57,7 +57,11 @@ probably make cargo not warn on build to get rid of duplicate
 warnings). Otherwise, use of API items whose `since` attribute is less 
 or equal to the target version of the crate should trigger a warning, 
 while API items whose `removed_at` attribute is less or equal to the 
-target version should trigger an error.
+target version should trigger an error. 
+
+Also if the target definition has a higher version than `rustc`, it
+should warn that it probably has to be updated in order to build the
+crate.
 
 `rustdoc` should mark deprecated APIs as such (e.g. make them in a 
 lighter gray font) and relegate removed APIs to a section below all 
