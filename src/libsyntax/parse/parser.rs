@@ -2070,10 +2070,9 @@ impl<'a> Parser<'a> {
             }
             _ => {
                 if try!(self.eat_lt()){
-
                     let (qself, path) =
                         try!(self.parse_qualified_path(LifetimeAndTypesWithColons));
-
+                    hi = path.span.hi;
                     return Ok(self.mk_expr(lo, hi, ExprPath(Some(qself), path)));
                 }
                 if try!(self.eat_keyword(keywords::Move) ){
