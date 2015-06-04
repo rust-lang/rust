@@ -117,7 +117,34 @@ macro_rules! println {
 }
 
 /// Helper macro for unwrapping `Result` values while returning early with an
-/// error if the value of the expression is `Err`.
+/// error if the value of the expression is `Err`. Can only be used in
+/// functions that return `Result` because of the early return of `Err` that
+/// it provides.
+///
+/// # Examples
+///
+/// ```
+/// use std::io;
+/// use std::fs::File;
+/// use std::io::prelude::*;
+///
+/// fn write_to_file_using_try() -> Result<(), io::Error> {
+///     let mut file = try!(File::create("my_best_friends.txt"));
+///     try!(file.write_all(b"This is a list of my best friends."));
+///     println!("I wrote to the file");
+///     Ok(())
+/// }
+/// // This is equivalent to:
+/// fn write_to_file_using_match() -> Result<(), io::Error> {
+///     let mut file = try!(File::create("my_best_friends.txt"));
+///     match file.write_all(b"This is a list of my best friends.") {
+///         Ok(_) => (),
+///         Err(e) => return Err(e),
+///     }
+///     println!("I wrote to the file");
+///     Ok(())
+/// }
+/// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 macro_rules! try {
