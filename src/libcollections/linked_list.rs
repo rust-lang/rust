@@ -106,16 +106,14 @@ impl<T> Rawlink<T> {
     /// Convert the `Rawlink` into an Option value
     fn resolve_immut<'a>(&self) -> Option<&'a T> {
         unsafe {
-            mem::transmute(self.p.as_ref())
+            self.p.as_ref()
         }
     }
 
     /// Convert the `Rawlink` into an Option value
     fn resolve<'a>(&mut self) -> Option<&'a mut T> {
-        if self.p.is_null() {
-            None
-        } else {
-            Some(unsafe { mem::transmute(self.p) })
+        unsafe {
+            self.p.as_mut()
         }
     }
 
