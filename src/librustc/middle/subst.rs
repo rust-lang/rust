@@ -448,20 +448,6 @@ impl<T> VecPerParamSpace<T> {
                                        self.self_limit)
     }
 
-    pub fn map_move<U, F>(self, mut pred: F) -> VecPerParamSpace<U> where
-        F: FnMut(T) -> U,
-    {
-        let SeparateVecsPerParamSpace {
-            types: t,
-            selfs: s,
-            fns: f
-        } = self.split();
-
-        VecPerParamSpace::new(t.into_iter().map(|p| pred(p)).collect(),
-                              s.into_iter().map(|p| pred(p)).collect(),
-                              f.into_iter().map(|p| pred(p)).collect())
-    }
-
     pub fn split(self) -> SeparateVecsPerParamSpace<T> {
         let VecPerParamSpace { type_limit, self_limit, content } = self;
 

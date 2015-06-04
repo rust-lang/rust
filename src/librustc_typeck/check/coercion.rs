@@ -323,7 +323,9 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 }
 
                 Ok(Some(vtable)) => {
-                    vtable.map_move_nested(|o| queue.push_back(o));
+                    for obligation in vtable.nested_obligations() {
+                        queue.push_back(obligation);
+                    }
                 }
             }
         }

@@ -20,7 +20,6 @@ use middle::subst;
 use middle::ty::{self, HasProjectionTypes, Ty};
 use middle::ty_fold::TypeFoldable;
 use middle::infer::{self, fixup_err_to_string, InferCtxt};
-use std::slice::Iter;
 use std::rc::Rc;
 use syntax::ast;
 use syntax::codemap::{Span, DUMMY_SP};
@@ -146,9 +145,9 @@ pub struct DerivedObligationCause<'tcx> {
     parent_code: Rc<ObligationCauseCode<'tcx>>
 }
 
-pub type Obligations<'tcx, O> = subst::VecPerParamSpace<Obligation<'tcx, O>>;
-pub type PredicateObligations<'tcx> = subst::VecPerParamSpace<PredicateObligation<'tcx>>;
-pub type TraitObligations<'tcx> = subst::VecPerParamSpace<TraitObligation<'tcx>>;
+pub type Obligations<'tcx, O> = Vec<Obligation<'tcx, O>>;
+pub type PredicateObligations<'tcx> = Vec<PredicateObligation<'tcx>>;
+pub type TraitObligations<'tcx> = Vec<TraitObligation<'tcx>>;
 
 pub type Selection<'tcx> = Vtable<'tcx, PredicateObligation<'tcx>>;
 
@@ -266,7 +265,7 @@ pub enum Vtable<'tcx, N> {
 pub struct VtableImplData<'tcx, N> {
     pub impl_def_id: ast::DefId,
     pub substs: subst::Substs<'tcx>,
-    pub nested: subst::VecPerParamSpace<N>
+    pub nested: Vec<N>
 }
 
 #[derive(Debug,Clone)]
@@ -277,7 +276,7 @@ pub struct VtableDefaultImplData<N> {
 
 #[derive(Debug,Clone)]
 pub struct VtableBuiltinData<N> {
-    pub nested: subst::VecPerParamSpace<N>
+    pub nested: Vec<N>
 }
 
 /// A vtable for some object-safe trait `Foo` automatically derived
@@ -525,114 +524,35 @@ impl<'tcx> ObligationCause<'tcx> {
 }
 
 impl<'tcx, N> Vtable<'tcx, N> {
-    pub fn iter_nested(&self) -> Iter<N> {
-        match *self {
-            VtableImpl(ref i) => i.iter_nested(),
-            VtableParam(ref n) => n.iter(),
-            VtableBuiltin(ref i) => i.iter_nested(),
-            VtableObject(_) |
-            VtableDefaultImpl(..) | VtableFnPointer(..) |
-            VtableClosure(..) => (&[]).iter(),
-        }
-    }
-
-    pub fn map_nested<M, F>(&self, op: F) -> Vtable<'tcx, M> where
-        F: FnMut(&N) -> M,
-    {
-        match *self {
-            VtableImpl(ref i) => VtableImpl(i.map_nested(op)),
-            VtableDefaultImpl(ref t) => VtableDefaultImpl(t.map_nested(op)),
-            VtableFnPointer(ref sig) => VtableFnPointer((*sig).clone()),
-            VtableClosure(d, ref s) => VtableClosure(d, s.clone()),
-            VtableParam(ref n) => VtableParam(n.iter().map(op).collect()),
-            VtableObject(ref p) => VtableObject(p.clone()),
-            VtableBuiltin(ref b) => VtableBuiltin(b.map_nested(op)),
-        }
-    }
-
-    pub fn map_move_nested<M, F>(self, op: F) -> Vtable<'tcx, M> where
-        F: FnMut(N) -> M,
-    {
+    pub fn nested_obligations(self) -> Vec<N> {
         match self {
-            VtableImpl(i) => VtableImpl(i.map_move_nested(op)),
-            VtableFnPointer(sig) => VtableFnPointer(sig),
+            VtableImpl(i) => i.nested,
+            VtableParam(n) => n,
+            VtableBuiltin(i) => i.nested,
+            VtableDefaultImpl(d) => d.nested,
+            VtableObject(_) | VtableFnPointer(..) |
+            VtableClosure(..) => vec![]
+        }
+    }
+
+    pub fn map<M, F>(self, f: F) -> Vtable<'tcx, M> where F: FnMut(N) -> M {
+        match self {
+            VtableImpl(i) => VtableImpl(VtableImplData {
+                impl_def_id: i.impl_def_id,
+                substs: i.substs,
+                nested: i.nested.into_iter().map(f).collect()
+            }),
+            VtableParam(n) => VtableParam(n.into_iter().map(f).collect()),
+            VtableBuiltin(i) => VtableBuiltin(VtableBuiltinData {
+                nested: i.nested.into_iter().map(f).collect()
+            }),
+            VtableObject(o) => VtableObject(o),
+            VtableDefaultImpl(d) => VtableDefaultImpl(VtableDefaultImplData {
+                trait_def_id: d.trait_def_id,
+                nested: d.nested.into_iter().map(f).collect()
+            }),
+            VtableFnPointer(f) => VtableFnPointer(f),
             VtableClosure(d, s) => VtableClosure(d, s),
-            VtableDefaultImpl(t) => VtableDefaultImpl(t.map_move_nested(op)),
-            VtableParam(n) => VtableParam(n.into_iter().map(op).collect()),
-            VtableObject(p) => VtableObject(p),
-            VtableBuiltin(no) => VtableBuiltin(no.map_move_nested(op)),
-        }
-    }
-}
-
-impl<'tcx, N> VtableImplData<'tcx, N> {
-    pub fn iter_nested(&self) -> Iter<N> {
-        self.nested.iter()
-    }
-
-    pub fn map_nested<M, F>(&self, op: F) -> VtableImplData<'tcx, M> where
-        F: FnMut(&N) -> M,
-    {
-        VtableImplData {
-            impl_def_id: self.impl_def_id,
-            substs: self.substs.clone(),
-            nested: self.nested.map(op)
-        }
-    }
-
-    pub fn map_move_nested<M, F>(self, op: F) -> VtableImplData<'tcx, M> where
-        F: FnMut(N) -> M,
-    {
-        let VtableImplData { impl_def_id, substs, nested } = self;
-        VtableImplData {
-            impl_def_id: impl_def_id,
-            substs: substs,
-            nested: nested.map_move(op)
-        }
-    }
-}
-
-impl<N> VtableDefaultImplData<N> {
-    pub fn iter_nested(&self) -> Iter<N> {
-        self.nested.iter()
-    }
-
-    pub fn map_nested<M, F>(&self, op: F) -> VtableDefaultImplData<M> where
-        F: FnMut(&N) -> M,
-    {
-        VtableDefaultImplData {
-            trait_def_id: self.trait_def_id,
-            nested: self.nested.iter().map(op).collect()
-        }
-    }
-
-    pub fn map_move_nested<M, F>(self, op: F) -> VtableDefaultImplData<M> where
-        F: FnMut(N) -> M,
-    {
-        let VtableDefaultImplData { trait_def_id, nested } = self;
-        VtableDefaultImplData {
-            trait_def_id: trait_def_id,
-            nested: nested.into_iter().map(op).collect()
-        }
-    }
-}
-
-impl<N> VtableBuiltinData<N> {
-    pub fn iter_nested(&self) -> Iter<N> {
-        self.nested.iter()
-    }
-
-    pub fn map_nested<M, F>(&self, op: F) -> VtableBuiltinData<M> where F: FnMut(&N) -> M {
-        VtableBuiltinData {
-            nested: self.nested.map(op)
-        }
-    }
-
-    pub fn map_move_nested<M, F>(self, op: F) -> VtableBuiltinData<M> where
-        F: FnMut(N) -> M,
-    {
-        VtableBuiltinData {
-            nested: self.nested.map_move(op)
         }
     }
 }
