@@ -752,7 +752,11 @@ fn convert_methods<'a,'tcx,'i,I>(ccx: &CrateCtxt<'a, 'tcx>,
     let mut seen_methods = FnvHashSet();
     for (sig, id, ident, vis, span) in methods {
         if !seen_methods.insert(ident.name) {
-            span_err!(tcx.sess, span, E0201, "duplicate method");
+            let fn_desc = match sig.explicit_self.node {
+                ast::SelfStatic => "associated function",
+                _               => "method",
+            };
+            span_err!(tcx.sess, span, E0201, "duplicate {}", fn_desc);
         }
 
         convert_method(ccx,

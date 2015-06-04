@@ -921,19 +921,29 @@ unsafe impl Bar for Foo { }
 "##,
 
 E0201: r##"
-It is an error to define a method--a trait method or an inherent method--more
-than once.
+It is an error to define an associated function more than once.
 
-For example,
+For example:
 
 ```
 struct Foo(u8);
 
 impl Foo {
+    fn bar(&self) -> bool { self.0 > 5 }
+
+    // error: duplicate associated function
     fn bar() {}
+}
+
+trait Baz {
+    fn baz(&self) -> bool;
+}
+
+impl Baz for Foo {
+    fn baz(&self) -> bool { true }
 
     // error: duplicate method
-    fn bar(&self) -> bool { self.0 > 5 }
+    fn baz(&self) -> bool { self.0 > 5 }
 }
 ```
 "##,
