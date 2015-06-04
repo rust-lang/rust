@@ -40,6 +40,9 @@ clippy = "*"
 More to come, please [file an issue](https://github.com/Manishearth/rust-clippy/issues) if you have ideas!
 
 ##Usage
+
+Compiler plugins are highly unstable and will only work with a nightly Rust for now. Since stable Rust is backwards compatible you hsould be able to compile your stable programs with nightly Rust with clippy plugged in to circumvent this.
+
 Add in your `Cargo.toml`:
 ```toml
 [dependencies.clippy]
