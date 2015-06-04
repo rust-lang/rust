@@ -83,41 +83,64 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
             demand::suptype(fcx, pat.span, expected, pat_ty);
         }
         ast::PatRange(ref begin, ref end) => {
-            check_expr(fcx, &**begin);
-            check_expr(fcx, &**end);
+            check_expr(fcx, begin);
+            check_expr(fcx, end);
 
-            let lhs_ty = fcx.expr_ty(&**begin);
-            let rhs_ty = fcx.expr_ty(&**end);
+            let lhs_ty = fcx.expr_ty(begin);
+            let rhs_ty = fcx.expr_ty(end);
 
-            let lhs_eq_rhs =
-                require_same_types(
-                    tcx, Some(fcx.infcx()), false, pat.span, lhs_ty, rhs_ty,
-                    || "mismatched types in range".to_string());
+            // Check that both end-points are of numeric or char type.
+            let numeric_or_char = |t| ty::type_is_numeric(t) || ty::type_is_char(t);
+            let lhs_compat = numeric_or_char(lhs_ty);
+            let rhs_compat = numeric_or_char(rhs_ty);
 
-            let numeric_or_char =
-                lhs_eq_rhs && (ty::type_is_numeric(lhs_ty) || ty::type_is_char(lhs_ty));
+            if !lhs_compat || !rhs_compat {
+                let span = if !lhs_compat && !rhs_compat {
+                    pat.span
+                } else if !lhs_compat {
+                    begin.span
+                } else {
+                    end.span
+                };
 
-            if numeric_or_char {
-                match const_eval::compare_lit_exprs(tcx, &**begin, &**end, Some(lhs_ty),
-                                                    |id| {fcx.item_substs()[&id].substs
-                                                             .clone()}) {
-                    Some(Ordering::Less) |
-                    Some(Ordering::Equal) => {}
-                    Some(Ordering::Greater) => {
-                        span_err!(tcx.sess, begin.span, E0030,
-                            "lower range bound must be less than upper");
-                    }
-                    None => {
-                        span_err!(tcx.sess, begin.span, E0031,
-                            "mismatched types in range");
-                    }
-                }
-            } else {
-                span_err!(tcx.sess, begin.span, E0029,
-                          "only char and numeric types are allowed in range");
+                // Note: spacing here is intentional, we want a space before "start" and "end".
+                span_err!(tcx.sess, span, E0029,
+                          "only char and numeric types are allowed in range patterns\n \
+                           start type: {}\n end type: {}",
+                          fcx.infcx().ty_to_string(lhs_ty),
+                          fcx.infcx().ty_to_string(rhs_ty)
+                );
+                return;
             }
 
-            fcx.write_ty(pat.id, lhs_ty);
+            // Check that the types of the end-points can be unified.
+            let types_unify = require_same_types(
+                    tcx, Some(fcx.infcx()), false, pat.span, rhs_ty, lhs_ty,
+                    || "mismatched types in range".to_string()
+            );
+
+            // It's ok to return without a message as `require_same_types` prints an error.
+            if !types_unify {
+                return;
+            }
+
+            // Now that we know the types can be unified we find the unified type and use
+            // it to type the entire expression.
+            let common_type = fcx.infcx().resolve_type_vars_if_possible(&lhs_ty);
+
+            fcx.write_ty(pat.id, common_type);
+
+            // Finally we evaluate the constants and check that the range is non-empty.
+            let get_substs = |id| fcx.item_substs()[&id].substs.clone();
+            match const_eval::compare_lit_exprs(tcx, begin, end, Some(&common_type), get_substs) {
+                Some(Ordering::Less) |
+                Some(Ordering::Equal) => {}
+                Some(Ordering::Greater) => {
+                    span_err!(tcx.sess, begin.span, E0030,
+                        "lower range bound must be less than or equal to upper");
+                }
+                None => tcx.sess.span_bug(begin.span, "literals of different types in range pat")
+            }
 
             // subtyping doesn't matter here, as the value is some kind of scalar
             demand::eqtype(fcx, pat.span, expected, lhs_ty);
