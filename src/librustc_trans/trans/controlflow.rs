@@ -30,7 +30,6 @@ use syntax::ast;
 use syntax::ast_util;
 use syntax::parse::token::InternedString;
 use syntax::parse::token;
-use syntax::visit::Visitor;
 
 pub fn trans_stmt<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                               s: &ast::Stmt)
@@ -171,16 +170,7 @@ pub fn trans_if<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             // if true { .. } [else { .. }]
             bcx = trans_block(bcx, &*thn, dest);
             trans::debuginfo::clear_source_location(bcx.fcx);
-
-            if let Some(elexpr) = els {
-                let mut trans = TransItemVisitor { ccx: bcx.fcx.ccx };
-                trans.visit_expr(&*elexpr);
-            }
         } else {
-            // if false { .. } [else { .. }]
-            let mut trans = TransItemVisitor { ccx: bcx.fcx.ccx };
-            trans.visit_block(&*thn);
-
             if let Some(elexpr) = els {
                 bcx = expr::trans_into(bcx, &*elexpr, dest);
                 trans::debuginfo::clear_source_location(bcx.fcx);
