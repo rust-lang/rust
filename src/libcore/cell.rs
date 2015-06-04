@@ -38,7 +38,7 @@
 //!
 //! * Introducing inherited mutability roots to shared types.
 //! * Implementation details of logically-immutable methods.
-//! * Mutating implementations of `clone`.
+//! * Mutating implementations of `Clone`.
 //!
 //! ## Introducing inherited mutability roots to shared types
 //!
@@ -109,7 +109,7 @@
 //! }
 //! ```
 //!
-//! ## Mutating implementations of `clone`
+//! ## Mutating implementations of `Clone`
 //!
 //! This is simply a special - but common - case of the previous: hiding mutability for operations
 //! that appear to be immutable. The `clone` method is expected to not change the source value, and
