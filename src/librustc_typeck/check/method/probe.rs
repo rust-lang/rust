@@ -1046,7 +1046,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                     debug!("impl_obligations={}", obligations.repr(self.tcx()));
 
                     // Evaluate those obligations to see if they might possibly hold.
-                    obligations.all(|o| selcx.evaluate_obligation(o)) &&
+                    obligations.iter().all(|o| selcx.evaluate_obligation(o)) &&
                         norm_obligations.iter().all(|o| selcx.evaluate_obligation(o))
                 }
 

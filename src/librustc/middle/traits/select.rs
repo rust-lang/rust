@@ -36,7 +36,7 @@ use super::object_safety;
 use super::util;
 
 use middle::fast_reject;
-use middle::subst::{Subst, Substs, TypeSpace, VecPerParamSpace};
+use middle::subst::{Subst, Substs, TypeSpace};
 use middle::ty::{self, AsPredicate, RegionEscape, ToPolyTraitRef, Ty};
 use middle::infer;
 use middle::infer::{InferCtxt, TypeFreshener};
@@ -1134,7 +1134,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // type/region parameters
         let self_ty = self.infcx.shallow_resolve(*obligation.self_ty().skip_binder());
         let (closure_def_id, substs) = match self_ty.sty {
-            ty::ty_closure(id, ref substs) => (id, substs.clone()),
+            ty::ty_closure(id, substs) => (id, substs),
             ty::ty_infer(ty::TyVar(_)) => {
                 debug!("assemble_unboxed_closure_candidates: ambiguous self-type");
                 candidates.ambiguous = true;
@@ -1152,7 +1152,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             Some(closure_kind) => {
                 debug!("assemble_unboxed_candidates: closure_kind = {:?}", closure_kind);
                 if closure_kind.extends(kind) {
-                    candidates.vec.push(ClosureCandidate(closure_def_id, substs.clone()));
+                    candidates.vec.push(ClosureCandidate(closure_def_id,
+                                                         substs.clone()));
                 }
             }
             None => {
@@ -1479,7 +1480,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             selection: Selection<'tcx>)
                             -> EvaluationResult<'tcx>
     {
-        self.evaluate_predicates_recursively(stack, selection.iter_nested())
+        self.evaluate_predicates_recursively(stack,
+                                             selection.nested_obligations().iter())
     }
 
     /// Returns true if `candidate_i` should be dropped in favor of
@@ -1987,7 +1989,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             PhantomFnCandidate |
             ErrorCandidate => {
-                Ok(VtableBuiltin(VtableBuiltinData { nested: VecPerParamSpace::empty() }))
+                Ok(VtableBuiltin(VtableBuiltinData { nested: vec![] }))
             }
 
             ParamCandidate(param) => {
@@ -2120,8 +2122,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let obligations = self.collect_predicates_for_types(obligation, trait_def, nested);
 
-        let obligations = VecPerParamSpace::new(obligations, Vec::new(), Vec::new());
-
         debug!("vtable_builtin_data: obligations={}",
                obligations.repr(self.tcx()));
 
@@ -2207,7 +2207,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                                                 trait_def_id,
                                                                 nested);
 
-        let trait_obligations: Result<VecPerParamSpace<_>,()> = self.infcx.commit_if_ok(|snapshot| {
+        let trait_obligations: Result<Vec<_>,()> = self.infcx.commit_if_ok(|snapshot| {
             let poly_trait_ref = obligation.predicate.to_poly_trait_ref();
             let (trait_ref, skol_map) =
                 self.infcx().skolemize_late_bound_regions(&poly_trait_ref, snapshot);
@@ -2219,7 +2219,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                               snapshot))
         });
 
-        obligations.extend(trait_obligations.unwrap().into_iter()); // no Errors in that code above
+        // no Errors in that code above
+        obligations.append(&mut trait_obligations.unwrap());
 
         debug!("vtable_default_impl_data: obligations={}", obligations.repr(self.tcx()));
 
@@ -2253,7 +2254,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     fn vtable_impl(&mut self,
                    impl_def_id: ast::DefId,
-                   substs: Normalized<'tcx, Substs<'tcx>>,
+                   mut substs: Normalized<'tcx, Substs<'tcx>>,
                    cause: ObligationCause<'tcx>,
                    recursion_depth: usize,
                    skol_map: infer::SkolemizationMap,
@@ -2278,7 +2279,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                impl_def_id.repr(self.tcx()),
                impl_obligations.repr(self.tcx()));
 
-        impl_obligations.extend(TypeSpace, substs.obligations.into_iter());
+        impl_obligations.append(&mut substs.obligations);
 
         VtableImplData { impl_def_id: impl_def_id,
                          substs: substs.value,
@@ -2568,9 +2569,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             _ => unreachable!()
         };
 
-        Ok(VtableBuiltinData {
-            nested: VecPerParamSpace::new(nested, vec![], vec![])
-        })
+        Ok(VtableBuiltinData { nested: nested })
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -2851,20 +2850,20 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                  substs: &Substs<'tcx>, // for impl or trait
                                  skol_map: infer::SkolemizationMap,
                                  snapshot: &infer::CombinedSnapshot)
-                                 -> VecPerParamSpace<PredicateObligation<'tcx>>
+                                 -> Vec<PredicateObligation<'tcx>>
     {
         debug!("impl_or_trait_obligations(def_id={})", def_id.repr(self.tcx()));
 
         let predicates = ty::lookup_predicates(self.tcx(), def_id);
         let predicates = predicates.instantiate(self.tcx(), substs);
         let predicates = normalize_with_depth(self, cause.clone(), recursion_depth, &predicates);
-        let predicates = self.infcx().plug_leaks(skol_map, snapshot, &predicates);
+        let mut predicates = self.infcx().plug_leaks(skol_map, snapshot, &predicates);
         let mut obligations =
             util::predicates_for_generics(self.tcx(),
                                           cause,
                                           recursion_depth,
                                           &predicates.value);
-        obligations.extend(TypeSpace, predicates.obligations.into_iter());
+        obligations.append(&mut predicates.obligations);
         obligations
     }
 
