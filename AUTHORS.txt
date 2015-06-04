@@ -338,7 +338,7 @@ Hajime Morrita <omo@dodgson.org>
 Hanno Braun <mail@hannobraun.de>
 Harry Marr <harry.marr@gmail.com>
 Heather <heather@cynede.net>
-Heejong Ahn <heejongahn@gmail.com
+Heejong Ahn <heejongahn@gmail.com>
 Henrik Schopmans <h.schopmans@googlemail.com>
 Herman J. Radtke III <herman@hermanradtke.com>
 HeroesGrave <heroesgrave@gmail.com>
