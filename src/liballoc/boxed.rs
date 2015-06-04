@@ -91,8 +91,8 @@ pub const HEAP: ExchangeHeapSingleton =
     ExchangeHeapSingleton { _force_singleton: () };
 
 /// This the singleton type used solely for `boxed::HEAP`.
+#[derive(Copy, Clone)]
 pub struct ExchangeHeapSingleton { _force_singleton: () }
-impl Copy for ExchangeHeapSingleton { }
 
 /// A pointer type for heap allocation.
 ///
@@ -123,12 +123,13 @@ pub struct Box<T: ?Sized>(Unique<T>);
 #[unstable(feature = "placement_in", reason = "placement box design is still being worked out.")]
 pub struct IntermediateBox<T: ?Sized>{
     ptr: *mut u8,
-    size: uint,
-    align: uint,
+    size: usize,
+    align: usize,
     marker: marker::PhantomData<*mut T>,
 }
 
-impl<T: ?Sized> Place<T> for IntermediateBox<T> {
+impl<T> Place<T> for IntermediateBox<T> {
+    // FIXME: what about unsized T?
     fn pointer(&mut self) -> *mut T { self.ptr as *mut T }
 }
 
@@ -180,7 +181,6 @@ impl<T> Placer<T> for ExchangeHeapSingleton {
     }
 }
 
-#[unsafe_destructor]
 impl<T: ?Sized> Drop for IntermediateBox<T> {
     fn drop(&mut self) {
         if self.size > 0 {
