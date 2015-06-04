@@ -224,7 +224,7 @@ more" match. Both forms optionally include a separator, which can be any token
 except `+` or `*`.
 
 This system is based on
-"[Macro-by-Example](http://www.cs.indiana.edu/ftp/techreports/TR206.pdf)"
+"[Macro-by-Example](https://www.cs.indiana.edu/ftp/techreports/TR206.pdf)"
 (PDF link).
 
 # Hygiene
@@ -319,7 +319,7 @@ syntax context where it was introduced. It’s as though the variable `state`
 inside `main` is painted a different "color" from the variable `state` inside
 the macro, and therefore they don’t conflict.
 
-[hygienic macro system]: http://en.wikipedia.org/wiki/Hygienic_macro
+[hygienic macro system]: https://en.wikipedia.org/wiki/Hygienic_macro
 
 This also restricts the ability of macros to introduce new bindings at the
 invocation site. Code such as the following will not work:
@@ -622,7 +622,7 @@ invocation gives you another opportunity to pattern-match the macro’s
 arguments.
 
 As an extreme example, it is possible, though hardly advisable, to implement
-the [Bitwise Cyclic Tag](http://esolangs.org/wiki/Bitwise_Cyclic_Tag) automaton
+the [Bitwise Cyclic Tag](https://esolangs.org/wiki/Bitwise_Cyclic_Tag) automaton
 within Rust’s macro system.
 
 ```rust
