@@ -79,7 +79,8 @@ pub fn write_list<'b>(items: &[(String, String)], formatting: &ListFormatting<'b
     if tactic == ListTactic::HorizontalVertical {
         debug!("write_list: total_width: {}, total_sep_len: {}, h_width: {}",
                total_width, total_sep_len, formatting.h_width);
-        tactic = if fits_single {
+        tactic = if fits_single &&
+                    !items.iter().any(|&(ref s, _)| s.contains('\n')) {
             ListTactic::Horizontal
         } else {
             ListTactic::Vertical
