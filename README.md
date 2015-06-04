@@ -55,6 +55,7 @@ the direction the language is evolving in.
 * [1040-duration-reform.md](text/1040-duration-reform.md)
 * [1044-io-fs-2.1.md](text/1044-io-fs-2.1.md)
 * [1066-safe-mem-forget.md](text/1066-safe-mem-forget.md)
+* [1096-remove-static-assert.md](text/1096-remove-static-assert.md)
 
 ## Table of Contents
 [Table of Contents]: #table-of-contents
