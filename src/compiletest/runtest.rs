@@ -24,7 +24,6 @@ use std::fmt;
 use std::fs::{self, File};
 use std::io::BufReader;
 use std::io::prelude::*;
-use std::iter::repeat;
 use std::net::TcpStream;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output, ExitStatus};
@@ -928,12 +927,12 @@ fn check_forbid_output(props: &TestProps,
     }
 }
 
-fn check_expected_errors(expected_errors: Vec<errors::ExpectedError> ,
+fn check_expected_errors(expected_errors: Vec<errors::ExpectedError>,
                          testfile: &Path,
                          proc_res: &ProcRes) {
 
     // true if we found the error in question
-    let mut found_flags: Vec<_> = repeat(false).take(expected_errors.len()).collect();
+    let mut found_flags = vec![false; expected_errors.len()];
 
     if proc_res.status.success() {
         fatal("process did not return an error status");
@@ -954,14 +953,10 @@ fn check_expected_errors(expected_errors: Vec<errors::ExpectedError> ,
         }
     }
 
-    // A multi-line error will have followup lines which will always
-    // start with one of these strings.
+    // A multi-line error will have followup lines which start with a space
+    // or open paren.
     fn continuation( line: &str) -> bool {
-        line.starts_with(" expected") ||
-        line.starts_with("    found") ||
-        //                1234
-        // Should have 4 spaces: see issue 18946
-        line.starts_with("(")
+        line.starts_with(" ") || line.starts_with("(")
     }
 
     // Scan and extract our error/warning messages,
