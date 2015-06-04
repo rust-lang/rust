@@ -268,30 +268,6 @@ fn item_trait_ref<'tcx>(doc: rbml::Doc, tcx: &ty::ctxt<'tcx>, cdata: Cmd)
     doc_trait_ref(tp, tcx, cdata)
 }
 
-struct EnumVariantIds<'a> {
-    iter: reader::TaggedDocsIterator<'a>,
-    cdata: Cmd<'a>,
-}
-
-impl<'a> Iterator for EnumVariantIds<'a> {
-    type Item = ast::DefId;
-
-    fn next(&mut self) -> Option<ast::DefId> {
-        self.iter.next().map(|p| translated_def_id(self.cdata, p))
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.iter.size_hint()
-    }
-}
-
-fn enum_variant_ids<'a>(item: rbml::Doc<'a>, cdata: Cmd<'a>) -> EnumVariantIds<'a> {
-    EnumVariantIds {
-        iter: reader::tagged_docs(item, tag_items_data_item_variant),
-        cdata: cdata,
-    }
-}
-
 fn item_path(item_doc: rbml::Doc) -> Vec<ast_map::PathElem> {
     let path_doc = reader::get_doc(item_doc, tag_path);
     reader::docs(path_doc).filter_map(|(tag, elt_doc)| {
@@ -730,31 +706,14 @@ pub fn maybe_get_item_ast<'tcx>(cdata: Cmd, tcx: &ty::ctxt<'tcx>, id: ast::NodeI
     }
 }
 
-pub fn get_enum_variant_defs(intr: &IdentInterner,
-                             cdata: Cmd,
-                             id: ast::NodeId)
-                             -> Vec<(def::Def, ast::Name, ast::Visibility)> {
-    let data = cdata.data();
-    let items = reader::get_doc(rbml::Doc::new(data), tag_items);
-    let item = find_item(id, items);
-    enum_variant_ids(item, cdata).map(|did| {
-        let item = find_item(did.node, items);
-        let name = item_name(intr, item);
-        let visibility = item_visibility(item);
-        match item_to_def_like(cdata, item, did) {
-            DlDef(def @ def::DefVariant(..)) => (def, name, visibility),
-            _ => unreachable!()
-        }
-    }).collect()
-}
-
 pub fn get_enum_variants<'tcx>(intr: Rc<IdentInterner>, cdata: Cmd, id: ast::NodeId,
                                tcx: &ty::ctxt<'tcx>) -> Vec<Rc<ty::VariantInfo<'tcx>>> {
     let data = cdata.data();
     let items = reader::get_doc(rbml::Doc::new(data), tag_items);
     let item = find_item(id, items);
     let mut disr_val = 0;
-    enum_variant_ids(item, cdata).map(|did| {
+    reader::tagged_docs(item, tag_items_data_item_variant).map(|p| {
+        let did = translated_def_id(cdata, p);
         let item = find_item(did.node, items);
         let ctor_ty = item_type(ast::DefId { krate: cdata.cnum, node: id},
                                 item, tcx, cdata);
