@@ -70,6 +70,9 @@
        test(no_crate_inject))]
 #![no_std]
 
+// SNAP ba0e1cd
+#![allow(unused_features)] // for placement_in_syntax
+
 #![feature(allocator)]
 #![feature(box_syntax)]
 #![feature(coerce_unsized)]
