@@ -3699,28 +3699,29 @@ Coercion is allowed between the following types:
 * `&mut T` to `*mut T`.
 
 * `&T` to `&U` if `T` implements `Deref<Target = U>`. For example:
-    ```
-    use std::ops::Deref;
 
-    struct CharContainer {
-        value: char
+```rust
+use std::ops::Deref;
+
+struct CharContainer {
+    value: char
+}
+
+impl Deref for CharContainer {
+    type Target = char;
+
+    fn deref<'a>(&'a self) -> &'a char {
+        &self.value
     }
+}
 
-    impl Deref for CharContainer {
-        type Target = char;
+fn foo(arg: &char) {}
 
-        fn deref<'a>(&'a self) -> &'a char {
-            &self.value
-        }
-    }
-
-    fn foo(arg: &char) {}
-
-    fn main() {
-        let x = &mut CharContainer { value: 'y' };
-        foo(x); //&mut CharContainer is coerced to &char.
-    }
-    ```
+fn main() {
+    let x = &mut CharContainer { value: 'y' };
+    foo(x); //&mut CharContainer is coerced to &char.
+}
+```
 * `&mut T` to `&mut U` if `T` implements `DerefMut<Target = U>`.
 
 * TyCtor(`T`) to TyCtor(coerce_inner(`T`)), where TyCtor(`T`) is one of
