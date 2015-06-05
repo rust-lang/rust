@@ -1335,9 +1335,9 @@ pub fn create_datums_for_fn_args<'a, 'tcx>(mut bcx: Block<'a, 'tcx>,
                 let llarg = get_param(fcx.llfn, idx);
                 idx += 1;
                 bcx.fcx.schedule_lifetime_end(arg_scope_id, llarg);
-                bcx.fcx.schedule_drop_mem(arg_scope_id, llarg, arg_ty);
+                bcx.fcx.schedule_drop_mem(arg_scope_id, llarg, arg_ty, None);
 
-                datum::Datum::new(llarg, arg_ty, datum::Lvalue)
+                datum::Datum::new(llarg, arg_ty, datum::Lvalue::new("create_datum_for_fn_args"))
             } else if common::type_is_fat_ptr(bcx.tcx(), arg_ty) {
                 let data = get_param(fcx.llfn, idx);
                 let extra = get_param(fcx.llfn, idx + 1);
@@ -1408,7 +1408,7 @@ pub fn create_datums_for_fn_args<'a, 'tcx>(mut bcx: Block<'a, 'tcx>,
         } else {
             // General path. Copy out the values that are used in the
             // pattern.
-            _match::bind_irrefutable_pat(bcx, pat, arg_datum.val, arg_scope_id)
+            _match::bind_irrefutable_pat(bcx, pat, arg_datum.match_input(), arg_scope_id)
         };
         debuginfo::create_argument_metadata(bcx, &args[i]);
     }
