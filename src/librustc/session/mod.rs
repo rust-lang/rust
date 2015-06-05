@@ -272,6 +272,9 @@ impl Session {
     pub fn print_enum_sizes(&self) -> bool {
         self.opts.debugging_opts.print_enum_sizes
     }
+    pub fn nonzeroing_move_hints(&self) -> bool {
+        !self.opts.debugging_opts.disable_nonzeroing_move_hints
+    }
     pub fn sysroot<'a>(&'a self) -> &'a Path {
         match self.opts.maybe_sysroot {
             Some (ref sysroot) => sysroot,
