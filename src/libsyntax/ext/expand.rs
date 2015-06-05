@@ -50,10 +50,21 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
             callee: NameAndSpan {
                 name: expansion_desc.to_string(),
                 format: CompilerExpansion,
+
+                // This does *not* mean code generated after
+                // `push_compiler_expansion` is automatically exempt
+                // from stability lints; must also tag such code with
+                // an appropriate span from `fld.cx.backtrace()`.
                 allow_internal_unstable: true,
+
                 span: None,
             },
         });
+    }
+
+    // Sets the expn_id so that we can use unstable methods.
+    fn allow_unstable(fld: &mut MacroExpander, span: Span) -> Span {
+        Span { expn_id: fld.cx.backtrace(), ..span }
     }
 
     let expr_span = e.span;
@@ -123,9 +134,11 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
             let inplace_finalize = ["ops", "InPlace", "finalize"];
 
             let make_call = |fld: &mut MacroExpander, p, args| {
-                let path = mk_core_path(fld, placer_span, p);
+                let placer_span_unstable = allow_unstable(fld, placer_span);
+                let path = mk_core_path(fld, placer_span_unstable, p);
                 let path = fld.cx.expr_path(path);
-                fld.cx.expr_call(span, path, args)
+                let expr_span_unstable = allow_unstable(fld, span);
+                fld.cx.expr_call(expr_span_unstable, path, args)
             };
 
             let stmt_let = |fld: &mut MacroExpander, bind, expr| {
@@ -208,9 +221,10 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
             let boxed_finalize = ["ops", "Boxed", "finalize"];
 
             let make_call = |fld: &mut MacroExpander, p, args| {
-                let path = mk_core_path(fld, expr_span, p);
+                let expr_span_unstable = allow_unstable(fld, expr_span);
+                let path = mk_core_path(fld, expr_span_unstable, p);
                 let path = fld.cx.expr_path(path);
-                fld.cx.expr_call(span, path, args)
+                fld.cx.expr_call(expr_span_unstable, path, args)
             };
 
             let stmt_let = |fld: &mut MacroExpander, bind, expr| {
