@@ -252,8 +252,8 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
                     s.push_str(&format!("<span class='rusttest'>{}</span>", Escape(&test)));
                 });
                 s.push_str(&highlight::highlight(&text,
-                                                 None,
-                                                 Some("rust-example-rendered")));
+                                                 Some("rust-example-rendered"),
+                                                 None));
                 let output = CString::new(s).unwrap();
                 hoedown_buffer_puts(ob, output.as_ptr());
             })
