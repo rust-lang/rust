@@ -543,9 +543,19 @@ pub fn check_pat(tcx: &ty::ctxt, pat: &ast::Pat,
 
 fn maybe_do_stability_check(tcx: &ty::ctxt, id: ast::DefId, span: Span,
                             cb: &mut FnMut(ast::DefId, Span, &Option<&Stability>)) {
-    if !is_staged_api(tcx, id) { return  }
-    if is_internal(tcx, span) { return }
+    if !is_staged_api(tcx, id) {
+        debug!("maybe_do_stability_check: \
+                skipping id={:?} since it is not staged_api", id);
+        return;
+    }
+    if is_internal(tcx, span) {
+        debug!("maybe_do_stability_check: \
+                skipping span={:?} since it is internal", span);
+        return;
+    }
     let ref stability = lookup(tcx, id);
+    debug!("maybe_do_stability_check: \
+            inspecting id={:?} span={:?} of stability={:?}", id, span, stability);
     cb(id, span, stability);
 }
 
