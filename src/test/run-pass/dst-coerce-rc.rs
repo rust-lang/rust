@@ -12,6 +12,7 @@
 
 #![feature(core)]
 
+use std::cell::RefCell;
 use std::rc::Rc;
 
 trait Baz {
@@ -36,4 +37,8 @@ fn main() {
     assert_eq!(b.get(), 42);
 
     let _c = b.clone();
+
+    let a: Rc<RefCell<i32>> = Rc::new(RefCell::new(42));
+    let b: Rc<RefCell<Baz>> = a.clone();
+    assert_eq!(b.borrow().get(), 42);
 }
