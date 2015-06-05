@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 //
-// error-pattern: symbol `fail` is already defined
 #![crate_type="rlib"]
 #![allow(warnings)]
 
@@ -27,5 +26,5 @@ impl A for B {
 
 impl A for C {
     #[no_mangle]
-    fn fail(self) {}
+    fn fail(self) {} //~ ERROR symbol `fail` is already defined
 }

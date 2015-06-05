@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -11,8 +11,6 @@
 // We only want to assert that this doesn't ICE, we don't particularly care
 // about whether it nor it fails to compile.
 
-// error-pattern:
-
 macro_rules! foo{
     () => {{
         macro_rules! bar{() => (())}
@@ -24,8 +22,11 @@ pub fn main() {
     foo!();
 
     assert!({one! two()});
+    //~^ ERROR
+    //~| ERROR
 
     // regardless of whether nested macro_rules works, the following should at
     // least throw a conventional error.
     assert!({one! two});
+    //~^ ERROR
 }

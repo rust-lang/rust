@@ -10,6 +10,7 @@
 
 // compile-flags: --crate-name NonSnakeCase
 // error-pattern: crate `NonSnakeCase` should have a snake case name such as `non_snake_case`
+// error-pattern: aborting due to previous error
 
 #![deny(non_snake_case)]
 

@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,12 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:18:3
-
 /* 1
  * 2
  * 3
  */
 fn main() {
-  %; // parse error on line 18, but is reported on line 6 instead.
+  %;
+  //~^ ERROR unexpected token: `%`
 }

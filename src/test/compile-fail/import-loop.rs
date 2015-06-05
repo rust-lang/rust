@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,12 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:import
-
-use y::x;
+use y::x; //~ ERROR unresolved import
 
 mod y {
-    pub use y::x;
+    pub use y::x; //~ ERROR unresolved import `y::x`. There is no `x` in `y`
 }
 
 fn main() { }

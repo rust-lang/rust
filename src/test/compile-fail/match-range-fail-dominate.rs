@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,40 +8,34 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//error-pattern: unreachable
-//error-pattern: unreachable
-//error-pattern: unreachable
-//error-pattern: unreachable
-//error-pattern: unreachable
-
 fn main() {
     match 5 {
       1 ... 10 => { }
-      5 ... 6 => { }
+      5 ... 6 => { } //~ ERROR unreachable pattern
       _ => {}
     };
 
     match 5 {
       3 ... 6 => { }
-      4 ... 6 => { }
+      4 ... 6 => { } //~ ERROR unreachable pattern
       _ => {}
     };
 
     match 5 {
       4 ... 6 => { }
-      4 ... 6 => { }
+      4 ... 6 => { } //~ ERROR unreachable pattern
       _ => {}
     };
 
     match 'c' {
       'A' ... 'z' => {}
-      'a' ... 'z' => {}
+      'a' ... 'z' => {} //~ ERROR unreachable pattern
       _ => {}
     };
 
     match 1.0f64 {
       0.01f64 ... 6.5f64 => {}
-      0.02f64 => {}
+      0.02f64 => {} //~ ERROR unreachable pattern
       _ => {}
     };
 }

@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -10,14 +10,15 @@
 
 #![feature(macro_rules)]
 
-// error-pattern: unknown macro variable `nonexistent`
-
 macro_rules! g {
     ($inp:ident) => (
         { $inp $nonexistent }
+        //~^ ERROR unknown macro variable `nonexistent`
+        //~| ERROR macro expansion ignores token `$nonexistent` and any following
     );
 }
 
 fn main() {
     g!(foo);
+//~^ NOTE caused by the macro expansion here; the usage of `g` is likely invalid in this context
 }

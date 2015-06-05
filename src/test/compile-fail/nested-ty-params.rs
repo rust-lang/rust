@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,9 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:can't use type parameters from outer function; try using
 fn hd<U>(v: Vec<U> ) -> U {
     fn hd1(w: [U]) -> U { return w[0]; }
+    //~^ ERROR can't use type parameters from outer function; try using a local type
+    // parameter instead
+    //~| ERROR use of undeclared type name `U`
+    //~| ERROR can't use type parameters from outer function; try using a local type
+    // parameter instead
+    //~| ERROR use of undeclared type name `U`
 
     return hd1(v);
 }

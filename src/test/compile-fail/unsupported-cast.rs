@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -13,5 +13,7 @@
 extern crate libc;
 
 fn main() {
-  println!("{:?}", 1.0 as *const libc::FILE); //~ ERROR illegal cast; cast through a usize first: `f64` as `*const libc::types::common::c95::FILE`
+  println!("{:?}", 1.0 as *const libc::FILE);
+  //~^ ERROR illegal cast; cast through a usize first: `f64` as `*const
+  // libc::types::common::c95::FILE`
 }

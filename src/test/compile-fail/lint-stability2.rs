@@ -10,6 +10,7 @@
 
 // aux-build:lint_stability.rs
 // error-pattern: use of deprecated item
+// error-pattern: aborting due to previous error
 
 #![deny(deprecated)]
 

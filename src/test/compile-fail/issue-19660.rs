@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // error-pattern: requires `copy` lang_item
+// error-pattern: aborting due to previous error
 
 #![feature(lang_items, start, no_std)]
 #![no_std]

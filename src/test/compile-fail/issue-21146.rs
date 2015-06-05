@@ -9,5 +9,6 @@
 // except according to those terms.
 
 // error-pattern: expected item, found `parse_error`
+// error-pattern: ^~~~~~
 include!("../auxiliary/issue-21146-inc.rs");
 fn main() {}

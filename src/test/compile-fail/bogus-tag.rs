@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-// error-pattern: unresolved
-
 enum color { rgb(isize, isize, isize), rgba(isize, isize, isize, isize), }
 
 fn main() {
-    let red: color = rgb(255, 0, 0);
+    let red: color = rgb(255, 0, 0); //~ ERROR unresolved name `rgb`
     match red {
-      rgb(r, g, b) => { println!("rgb"); }
-      hsl(h, s, l) => { println!("hsl"); }
+      rgb(r, g, b) => { println!("rgb"); } //~ ERROR unresolved enum variant, struct or const `rgb`
+      hsl(h, s, l) => { println!("hsl"); } //~ ERROR unresolved enum variant, struct or const `hsl`
     }
 }

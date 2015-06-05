@@ -9,6 +9,7 @@
 // except according to those terms.
 //
 // error-pattern: main function not found
+// error-pattern: aborting due to previous error
 // compile-flags: --cfg foo
 
 // main is conditionally compiled, but the conditional compilation

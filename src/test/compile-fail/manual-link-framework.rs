@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -12,6 +12,7 @@
 // ignore-ios
 // compile-flags:-l framework=foo
 // error-pattern: native frameworks are only available on OSX targets
+// error-pattern: aborting due to previous error
 
 fn main() {
 }

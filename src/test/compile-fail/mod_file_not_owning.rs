@@ -11,6 +11,7 @@
 // compile-flags: -Z parse-only
 
 // error-pattern: cannot declare a new module at this location
+// error-pattern: aborting due to previous error
 
 mod mod_file_not_owning_aux1;
 

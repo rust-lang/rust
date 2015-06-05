@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,16 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: Option
+// error-pattern: too big for the current architecture
 
 // FIXME: work properly with higher limits
 
 #[cfg(target_pointer_width = "32")]
 fn main() {
-    let big: Option<[u32; (1<<29)-1]> = None;
+    let _big: Option<[u32; (1<<29)-1]> = None;
 }
 
 #[cfg(target_pointer_width = "64")]
 fn main() {
-    let big: Option<[u32; (1<<45)-1]> = None;
+    let _big: Option<[u32; (1<<45)-1]> = None;
 }

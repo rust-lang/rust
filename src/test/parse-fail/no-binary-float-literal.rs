@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -10,10 +10,8 @@
 
 // compile-flags: -Z parse-only
 
-// error-pattern:binary float literal is not supported
-
 fn main() {
-    0b101010f64;
-    0b101.010;
-    0b101p4f64;
+    0b101010f64; //~ ERROR binary float literal is not supported
+    0b101.010;   //~ ERROR binary float literal is not supported
+    0b101p4f64;  //~ ERROR illegal suffix `p4f64`
 }

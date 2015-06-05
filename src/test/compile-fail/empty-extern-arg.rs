@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // compile-flags: --extern std=
+// error-pattern: extern location for std does not exist:
 // error-pattern: can't find crate for `std`
+// error-pattern: aborting due to 2 previous errors
 
 fn main() {}

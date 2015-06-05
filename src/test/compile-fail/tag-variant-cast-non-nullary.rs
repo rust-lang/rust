@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//error-pattern: non-scalar cast
-
 enum non_nullary {
     nullary,
     other(isize),
@@ -17,5 +15,5 @@ enum non_nullary {
 
 fn main() {
     let v = non_nullary::nullary;
-    let val = v as isize;
+    let val = v as isize; //~ ERROR non-scalar cast: `non_nullary` as `isize`
 }
