@@ -80,6 +80,7 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Status)] = &[
     ("visible_private_types", "1.0.0", Active),
     ("slicing_syntax", "1.0.0", Accepted),
     ("box_syntax", "1.0.0", Active),
+    ("pushpop_unsafe", "1.2.0", Active),
     ("on_unimplemented", "1.0.0", Active),
     ("simd_ffi", "1.0.0", Active),
     ("allocator", "1.0.0", Active),
@@ -325,6 +326,7 @@ pub struct Features {
     pub allow_trace_macros: bool,
     pub allow_internal_unstable: bool,
     pub allow_custom_derive: bool,
+    pub allow_pushpop_unsafe: bool,
     pub simd_ffi: bool,
     pub unmarked_api: bool,
     pub negate_unsigned: bool,
@@ -348,6 +350,7 @@ impl Features {
             allow_trace_macros: false,
             allow_internal_unstable: false,
             allow_custom_derive: false,
+            allow_pushpop_unsafe: false,
             simd_ffi: false,
             unmarked_api: false,
             negate_unsigned: false,
@@ -356,6 +359,13 @@ impl Features {
             const_fn: false,
         }
     }
+}
+
+pub fn check_for_pushpop_syntax(f: Option<&Features>, diag: &SpanHandler, span: Span) {
+    if let Some(&Features { allow_pushpop_unsafe: true, .. }) = f {
+        return;
+    }
+    emit_feature_err(diag, "pushpop_unsafe", span, EXPLAIN_PUSHPOP_UNSAFE);
 }
 
 struct Context<'a> {
@@ -787,6 +797,7 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &SpanHandler,
         allow_trace_macros: cx.has_feature("trace_macros"),
         allow_internal_unstable: cx.has_feature("allow_internal_unstable"),
         allow_custom_derive: cx.has_feature("custom_derive"),
+        allow_pushpop_unsafe: cx.has_feature("pushpop_unsafe"),
         simd_ffi: cx.has_feature("simd_ffi"),
         unmarked_api: cx.has_feature("unmarked_api"),
         negate_unsigned: cx.has_feature("negate_unsigned"),
