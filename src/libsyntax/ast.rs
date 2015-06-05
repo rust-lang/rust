@@ -67,7 +67,7 @@ use ptr::P;
 
 use std::fmt;
 use std::rc::Rc;
-use serialize::{Encodable, Decodable, Encoder, Decoder};
+use rustc_serialize::{Encodable, Decodable, Encoder, Decoder};
 
 // FIXME #6993: in librustc, uses of "ident" should be replaced
 // by just "Name".
@@ -1879,13 +1879,13 @@ pub struct MacroDef {
 
 #[cfg(test)]
 mod tests {
-    use serialize;
+    use rustc_serialize;
     use super::*;
 
     // are ASTs encodable?
     #[test]
     fn check_asts_encodable() {
-        fn assert_encodable<T: serialize::Encodable>() {}
+        fn assert_encodable<T: rustc_serialize::Encodable>() {}
         assert_encodable::<Crate>();
     }
 }

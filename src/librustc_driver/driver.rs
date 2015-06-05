@@ -29,7 +29,7 @@ use rustc_typeck as typeck;
 use rustc_privacy;
 use super::Compilation;
 
-use serialize::json;
+use rustc_serialize::json;
 
 use std::env;
 use std::ffi::OsString;

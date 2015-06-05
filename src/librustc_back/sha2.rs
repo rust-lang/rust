@@ -14,7 +14,7 @@
 
 use std::iter::repeat;
 use std::slice::bytes::{MutableByteVector, copy_memory};
-use serialize::hex::ToHex;
+use rustc_serialize::hex::ToHex;
 
 /// Write a u32 into a vector, which must be 4 bytes long. The value is written in big-endian
 /// format.
@@ -532,7 +532,7 @@ mod tests {
 
     use self::rand::Rng;
     use self::rand::isaac::IsaacRng;
-    use serialize::hex::FromHex;
+    use rustc_serialize::hex::FromHex;
     use std::iter::repeat;
     use std::u64;
     use super::{Digest, Sha256, FixedBuffer};

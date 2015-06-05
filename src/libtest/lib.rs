@@ -47,8 +47,7 @@
 #![feature(duration_span)]
 
 extern crate getopts;
-extern crate serialize;
-extern crate serialize as rustc_serialize;
+extern crate rustc_serialize;
 extern crate term;
 extern crate libc;
 
@@ -61,8 +60,7 @@ use self::NamePadding::*;
 use self::OutputLocation::*;
 
 use stats::Stats;
-use getopts::{OptGroup, optflag, optopt};
-use serialize::Encodable;
+use rustc_serialize::Encodable;
 use std::boxed::FnBox;
 use term::Terminal;
 use term::color::{Color, RED, YELLOW, GREEN, CYAN};
@@ -311,22 +309,23 @@ impl TestOpts {
 /// Result of parsing the options.
 pub type OptRes = Result<TestOpts, String>;
 
-fn optgroups() -> Vec<getopts::OptGroup> {
-    vec!(getopts::optflag("", "ignored", "Run ignored tests"),
-      getopts::optflag("", "test", "Run tests and not benchmarks"),
-      getopts::optflag("", "bench", "Run benchmarks instead of tests"),
-      getopts::optflag("h", "help", "Display this message (longer with --help)"),
-      getopts::optopt("", "logfile", "Write logs to the specified file instead \
-                          of stdout", "PATH"),
-      getopts::optflag("", "nocapture", "don't capture stdout/stderr of each \
-                                         task, allow printing directly"),
-      getopts::optopt("", "color", "Configure coloring of output:
+fn optgroups(options: &mut getopts::Options) {
+    options
+      .optflag("", "ignored", "Run ignored tests")
+      .optflag("", "test", "Run tests and not benchmarks")
+      .optflag("", "bench", "Run benchmarks instead of tests")
+      .optflag("h", "help", "Display this message (longer with --help)")
+      .optopt("", "logfile", "Write logs to the specified file instead \
+                          of stdout", "PATH")
+      .optflag("", "nocapture", "don't capture stdout/stderr of each \
+                                 task, allow printing directly")
+      .optopt("", "color", "Configure coloring of output:
             auto   = colorize if stdout is a tty and tests are run on serially (default);
             always = always colorize output;
-            never  = never colorize output;", "auto|always|never"))
+            never  = never colorize output;", "auto|always|never");
 }
 
-fn usage(binary: &str) {
+fn usage(binary: &str, options: &mut getopts::Options) {
     let message = format!("Usage: {} [OPTIONS] [FILTER]", binary);
     println!(r#"{usage}
 
@@ -354,19 +353,20 @@ Test Attributes:
                      test, then the test runner will ignore these tests during
                      normal test runs. Running with --ignored will run these
                      tests."#,
-             usage = getopts::usage(&message, &optgroups()));
+             usage = options.usage(&message));
 }
 
 // Parses command line arguments into test options
 pub fn parse_opts(args: &[String]) -> Option<OptRes> {
     let args_ = args.tail();
-    let matches =
-        match getopts::getopts(args_, &optgroups()) {
-          Ok(m) => m,
-          Err(f) => return Some(Err(f.to_string()))
-        };
+    let mut options = getopts::Options::new();
+    optgroups(&mut options);
+    let matches = match options.parse(args_) {
+        Ok(m) => m,
+        Err(f) => return Some(Err(f.to_string()))
+    };
 
-    if matches.opt_present("h") { usage(&args[0]); return None; }
+    if matches.opt_present("h") { usage(&args[0], &mut options); return None; }
 
     let filter = if !matches.free.is_empty() {
         Some(matches.free[0].clone())
@@ -429,7 +429,7 @@ pub enum TestResult {
 unsafe impl Send for TestResult {}
 
 enum OutputLocation<T> {
-    Pretty(Box<term::Terminal<term::WriterWrapper> + Send>),
+    Pretty(Box<term::Terminal<Output=io::Stdout> + Send>),
     Raw(T),
 }
 

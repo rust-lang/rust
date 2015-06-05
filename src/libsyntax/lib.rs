@@ -37,13 +37,11 @@
 
 extern crate arena;
 extern crate fmt_macros;
-extern crate serialize;
+extern crate rustc_serialize;
 extern crate term;
 extern crate libc;
 #[macro_use] extern crate log;
 #[macro_use] #[no_link] extern crate rustc_bitflags;
-
-extern crate serialize as rustc_serialize; // used by deriving
 
 // A variant of 'try!' that panics on Err(FatalError). This is used as a
 // crutch on the way towards a non-panic!-prone parser. It should be used

@@ -27,7 +27,7 @@ use middle::ty::{self, Ty};
 use middle::stability;
 use util::nodemap::{FnvHashMap, NodeMap, NodeSet};
 
-use serialize::Encodable;
+use rustc_serialize::Encodable;
 use std::cell::RefCell;
 use std::hash::{Hash, Hasher, SipHasher};
 use std::io::prelude::*;

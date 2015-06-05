@@ -129,7 +129,7 @@
 
 #![cfg_attr(test, feature(test))]
 
-extern crate serialize;
+extern crate rustc_serialize as serialize;
 #[macro_use] extern crate log;
 
 #[cfg(test)] extern crate test;
@@ -641,7 +641,7 @@ pub mod reader {
         fn read_u32(&mut self) -> DecodeResult<u32> { Ok(try!(self._next_int(EsU8, EsU32)) as u32) }
         fn read_u16(&mut self) -> DecodeResult<u16> { Ok(try!(self._next_int(EsU8, EsU16)) as u16) }
         fn read_u8(&mut self) -> DecodeResult<u8> { Ok(doc_as_u8(try!(self.next_doc(EsU8)))) }
-        fn read_uint(&mut self) -> DecodeResult<usize> {
+        fn read_usize(&mut self) -> DecodeResult<usize> {
             let v = try!(self._next_int(EsU8, EsU64));
             if v > (::std::usize::MAX as u64) {
                 Err(IntTooBig(v as usize))
@@ -654,7 +654,7 @@ pub mod reader {
         fn read_i32(&mut self) -> DecodeResult<i32> { Ok(try!(self._next_int(EsI8, EsI32)) as i32) }
         fn read_i16(&mut self) -> DecodeResult<i16> { Ok(try!(self._next_int(EsI8, EsI16)) as i16) }
         fn read_i8(&mut self) -> DecodeResult<i8> { Ok(doc_as_u8(try!(self.next_doc(EsI8))) as i8) }
-        fn read_int(&mut self) -> DecodeResult<isize> {
+        fn read_isize(&mut self) -> DecodeResult<isize> {
             let v = try!(self._next_int(EsI8, EsI64)) as i64;
             if v > (isize::MAX as i64) || v < (isize::MIN as i64) {
                 debug!("FIXME \\#6122: Removing this makes this function miscompile");
@@ -1125,7 +1125,7 @@ pub mod writer {
             Ok(())
         }
 
-        fn emit_uint(&mut self, v: usize) -> EncodeResult {
+        fn emit_usize(&mut self, v: usize) -> EncodeResult {
             self.emit_u64(v as u64)
         }
         fn emit_u64(&mut self, v: u64) -> EncodeResult {
@@ -1153,7 +1153,7 @@ pub mod writer {
             self.wr_tagged_raw_u8(EsU8 as usize, v)
         }
 
-        fn emit_int(&mut self, v: isize) -> EncodeResult {
+        fn emit_isize(&mut self, v: isize) -> EncodeResult {
             self.emit_i64(v as i64)
         }
         fn emit_i64(&mut self, v: i64) -> EncodeResult {

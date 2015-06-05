@@ -45,7 +45,7 @@
 //! settings, though `target-feature` and `link-args` will *add* to the list
 //! specified by the target, rather than replace.
 
-use serialize::json::Json;
+use rustc_serialize::json::Json;
 use std::default::Default;
 use std::io::prelude::*;
 use syntax::{diagnostic, abi};
@@ -310,14 +310,12 @@ impl Target {
         use std::ffi::OsString;
         use std::fs::File;
         use std::path::{Path, PathBuf};
-        use serialize::json;
 
         fn load_file(path: &Path) -> Result<Target, String> {
             let mut f = try!(File::open(path).map_err(|e| e.to_string()));
-            let mut contents = Vec::new();
-            try!(f.read_to_end(&mut contents).map_err(|e| e.to_string()));
-            let obj = try!(json::from_reader(&mut &contents[..])
-                                .map_err(|e| e.to_string()));
+            let mut contents = String::new();
+            try!(f.read_to_string(&mut contents).map_err(|e| e.to_string()));
+            let obj = try!(contents.parse::<Json>().map_err(|e| e.to_string()));
             Ok(Target::from_json(obj))
         }
 

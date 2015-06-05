@@ -53,17 +53,16 @@ struct Config {
     stress: bool
 }
 
-fn parse_opts(argv: Vec<String> ) -> Config {
-    let opts = vec!(getopts::optflag("", "stress", ""));
+fn parse_opts(argv: Vec<String>) -> Config {
+    let mut options = getopts::Options::new();
+    options.optflag("", "stress", "");
 
     let argv = argv.iter().map(|x| x.to_string()).collect::<Vec<_>>();
     let opt_args = &argv[1..argv.len()];
 
-    match getopts::getopts(opt_args, &opts) {
-      Ok(ref m) => {
-          return Config {stress: m.opt_present("stress")}
-      }
-      Err(_) => { panic!(); }
+    match options.parse(opt_args) {
+        Ok(ref m) => Config {stress: m.opt_present("stress")},
+        Err(_) => { panic!(); }
     }
 }
 

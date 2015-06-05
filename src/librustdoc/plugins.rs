@@ -13,7 +13,7 @@
 use clean;
 
 use std::dynamic_lib as dl;
-use serialize::json;
+use rustc_serialize::json;
 use std::mem;
 use std::string::String;
 use std::path::PathBuf;

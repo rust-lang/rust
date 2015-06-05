@@ -12,24 +12,24 @@
 #![feature(rustc_private)]
 
 extern crate rbml;
-extern crate serialize;
+extern crate rustc_serialize;
 
 use std::io::Cursor;
 use std::io::prelude::*;
 use std::fmt;
 use std::slice;
 
-use serialize::{Encodable, Encoder};
-use serialize::json;
+use rustc_serialize::{Encodable, Encoder};
+use rustc_serialize::json;
 
 use rbml::writer;
 
-#[derive(Encodable)]
+#[derive(RustcEncodable)]
 struct Foo {
     baz: bool,
 }
 
-#[derive(Encodable)]
+#[derive(RustcEncodable)]
 struct Bar {
     froboz: usize,
 }

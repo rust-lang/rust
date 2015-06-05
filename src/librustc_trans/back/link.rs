@@ -36,7 +36,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::str;
 use flate;
-use serialize::hex::ToHex;
+use rustc_serialize::hex::ToHex;
 use syntax::ast;
 use syntax::ast_map::{PathElem, PathElems, PathName};
 use syntax::attr::AttrMetaMethods;

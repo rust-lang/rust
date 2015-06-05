@@ -31,7 +31,7 @@
 #![cfg_attr(test, feature(test))]
 
 #[macro_use] extern crate log;
-extern crate serialize as rustc_serialize; // used by deriving
+extern crate rustc_serialize;
 
 pub mod snapshot_vec;
 pub mod graph;

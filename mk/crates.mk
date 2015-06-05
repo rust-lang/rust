@@ -29,6 +29,11 @@
 #	the HOST_CRATES set, but the HOST_CRATES set can depend on target
 #	crates.
 #
+#   EXTERNAL_CRATES
+#   	These crates are all imported using the git-subtree command and have a
+#   	slightly different structure as they're primarily intended to be built
+#   	with Cargo, but we build them manually here.
+#
 #   TOOLS
 #	A list of all tools which will be built as part of the compilation
 #	process. It is currently assumed that most tools are built through
@@ -49,15 +54,16 @@
 # automatically generated for all stage/host/target combinations.
 ################################################################################
 
-TARGET_CRATES := libc std flate arena term \
-                 serialize getopts collections test rand \
+TARGET_CRATES := libc std flate arena \
+                 collections test rand \
                  log graphviz core rbml alloc \
                  rustc_unicode rustc_bitflags
 RUSTC_CRATES := rustc rustc_typeck rustc_borrowck rustc_resolve rustc_driver \
                 rustc_trans rustc_back rustc_llvm rustc_privacy rustc_lint \
                 rustc_data_structures
 HOST_CRATES := syntax $(RUSTC_CRATES) rustdoc fmt_macros
-CRATES := $(TARGET_CRATES) $(HOST_CRATES)
+EXTERNAL_CRATES := term rustc_serialize getopts
+CRATES := $(TARGET_CRATES) $(HOST_CRATES) $(EXTERNAL_CRATES)
 TOOLS := compiletest rustdoc rustc rustbook error-index-generator
 
 DEPS_core :=
@@ -68,37 +74,37 @@ DEPS_std := core libc rand alloc collections rustc_unicode \
 	native:rust_builtin native:backtrace native:rustrt_native \
 	rustc_bitflags
 DEPS_graphviz := std
-DEPS_syntax := std term serialize log fmt_macros arena libc
+DEPS_syntax := std term rustc_serialize log fmt_macros arena libc
 DEPS_rustc_driver := arena flate getopts graphviz libc rustc rustc_back rustc_borrowck \
-                     rustc_typeck rustc_resolve log syntax serialize rustc_llvm \
+                     rustc_typeck rustc_resolve log syntax rustc_serialize rustc_llvm \
 		     rustc_trans rustc_privacy rustc_lint
 
 DEPS_rustc_trans := arena flate getopts graphviz libc rustc rustc_back \
-	                log syntax serialize rustc_llvm
+	                log syntax rustc_serialize rustc_llvm
 DEPS_rustc_typeck := rustc syntax
 DEPS_rustc_borrowck := rustc log graphviz syntax
 DEPS_rustc_resolve := rustc log syntax
 DEPS_rustc_privacy := rustc log syntax
 DEPS_rustc_lint := rustc log syntax
-DEPS_rustc := syntax flate arena serialize getopts rbml \
+DEPS_rustc := syntax flate arena rustc_serialize getopts rbml \
               log graphviz rustc_llvm rustc_back rustc_data_structures
 DEPS_rustc_llvm := native:rustllvm libc std
 DEPS_rustc_back := std syntax rustc_llvm flate log libc
-DEPS_rustc_data_structures := std log serialize
-DEPS_rustdoc := rustc rustc_driver native:hoedown serialize getopts \
+DEPS_rustc_data_structures := std log rustc_serialize
+DEPS_rustdoc := rustc rustc_driver native:hoedown rustc_serialize getopts \
                 test rustc_lint
 DEPS_rustc_bitflags := core
 DEPS_flate := std native:miniz
 DEPS_arena := std
 DEPS_graphviz := std
 DEPS_glob := std
-DEPS_serialize := std log
-DEPS_rbml := std log serialize
-DEPS_term := std log
+DEPS_rustc_serialize := std
+DEPS_rbml := std log rustc_serialize
+DEPS_term := std
 DEPS_getopts := std
 DEPS_collections := core alloc rustc_unicode
 DEPS_num := std
-DEPS_test := std getopts serialize rbml term native:rust_test_helpers
+DEPS_test := std getopts rustc_serialize rbml term native:rust_test_helpers
 DEPS_rand := core
 DEPS_log := std
 DEPS_fmt_macros = std
@@ -107,7 +113,7 @@ TOOL_DEPS_compiletest := test getopts
 TOOL_DEPS_rustdoc := rustdoc
 TOOL_DEPS_rustc := rustc_driver
 TOOL_DEPS_rustbook := std rustdoc
-TOOL_DEPS_error-index-generator := rustdoc syntax serialize
+TOOL_DEPS_error-index-generator := rustdoc syntax rustc_serialize
 TOOL_SOURCE_compiletest := $(S)src/compiletest/compiletest.rs
 TOOL_SOURCE_rustdoc := $(S)src/driver/driver.rs
 TOOL_SOURCE_rustc := $(S)src/driver/driver.rs
@@ -136,11 +142,33 @@ DOC_CRATES := std alloc collections core libc rustc_unicode
 define RUST_CRATE
 CRATEFILE_$(1) := $$(S)src/lib$(1)/lib.rs
 RSINPUTS_$(1) := $$(call rwildcard,$(S)src/lib$(1)/,*.rs)
+endef
+
+$(foreach crate,$(TARGET_CRATES),$(eval $(call RUST_CRATE,$(crate))))
+$(foreach crate,$(HOST_CRATES),$(eval $(call RUST_CRATE,$(crate))))
+
+# Distinct from the above macro, this generates the variables needed for
+# external crates (located in the src/external folder). These crates are
+# typically intended to be built with Cargo so we need to pass some extra flags
+# and use a different source location.
+#
+# $(1) is the crate to generate variables for
+define EXTERNAL_CRATE
+CRATEFILE_$(1) := $$(S)src/external/$(1)/src/lib.rs
+RUSTFLAGS_$(1) += --crate-type rlib,dylib --crate-name $(1) --cfg rust_build
+RSINPUTS_$(1) := $$(call rwildcard,$(S)src/external/$(1)/src/,*.rs)
+endef
+
+$(foreach crate,$(EXTERNAL_CRATES),$(eval $(call EXTERNAL_CRATE,$(crate))))
+
+# Build the dependencies array for all crates
+#
+# $(1) is the crate to generate variables for
+define BUILD_CRATE_DEPS
 RUST_DEPS_$(1) := $$(filter-out native:%,$$(DEPS_$(1)))
 NATIVE_DEPS_$(1) := $$(patsubst native:%,%,$$(filter native:%,$$(DEPS_$(1))))
 endef
-
-$(foreach crate,$(CRATES),$(eval $(call RUST_CRATE,$(crate))))
+$(foreach crate,$(CRATES),$(eval $(call BUILD_CRATE_DEPS,$(crate))))
 
 # Similar to the macro above for crates, this macro is for tools
 #

@@ -51,7 +51,7 @@ extern crate graphviz;
 extern crate libc;
 extern crate rustc;
 extern crate rustc_back;
-extern crate serialize;
+extern crate rustc_serialize;
 extern crate rustc_llvm as llvm;
 
 #[macro_use] extern crate log;

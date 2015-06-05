@@ -13,7 +13,7 @@ use std::fmt;
 use std::iter::{IntoIterator, FromIterator};
 use std::ops::Deref;
 use std::vec;
-use serialize::{Encodable, Decodable, Encoder, Decoder};
+use rustc_serialize::{Encodable, Decodable, Encoder, Decoder};
 
 /// A non-growable owned slice. This is a separate type to allow the
 /// representation to change.

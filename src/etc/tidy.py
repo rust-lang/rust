@@ -108,6 +108,7 @@ try:
             'src/rustllvm',
             'src/rt/valgrind',
             'src/rt/msvc',
+            'src/external',
             'src/rust-installer'
         }
 

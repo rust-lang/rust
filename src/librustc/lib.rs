@@ -58,14 +58,12 @@ extern crate libc;
 extern crate rustc_llvm;
 extern crate rustc_back;
 extern crate rustc_data_structures;
-extern crate serialize;
+extern crate rustc_serialize;
 extern crate rbml;
 extern crate collections;
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;
 #[macro_use] #[no_link] extern crate rustc_bitflags;
-
-extern crate serialize as rustc_serialize; // used by deriving
 
 #[cfg(test)]
 extern crate test;

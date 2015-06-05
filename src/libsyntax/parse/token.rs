@@ -21,7 +21,7 @@ use ptr::P;
 use util::interner::{RcStr, StrInterner};
 use util::interner;
 
-use serialize::{Decodable, Decoder, Encodable, Encoder};
+use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use std::fmt;
 use std::ops::Deref;
 use std::rc::Rc;

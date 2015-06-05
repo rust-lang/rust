@@ -10,19 +10,19 @@
 
 #![feature(rustc_private)]
 
-extern crate serialize;
+extern crate rustc_serialize;
 
-use serialize::{Encodable, Decodable};
-use serialize::json;
+use rustc_serialize::{Encodable, Decodable};
+use rustc_serialize::json;
 
-#[derive(Encodable, Decodable, PartialEq, Debug)]
+#[derive(RustcEncodable, RustcDecodable, PartialEq, Debug)]
 struct UnitLikeStruct;
 
 pub fn main() {
     let obj = UnitLikeStruct;
     let json_str: String = json::encode(&obj).unwrap();
 
-    let json_object = json::from_str(&json_str);
+    let json_object = json_str.parse();
     let mut decoder = json::Decoder::new(json_object.unwrap());
     let mut decoded_obj: UnitLikeStruct = Decodable::decode(&mut decoder).unwrap();
 

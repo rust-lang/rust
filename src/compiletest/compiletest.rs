@@ -31,7 +31,6 @@ extern crate log;
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
-use getopts::{optopt, optflag, reqopt};
 use common::Config;
 use common::{Pretty, DebugInfoGdb, DebugInfoLldb};
 use util::logv;
@@ -55,60 +54,60 @@ pub fn main() {
     run_tests(&config);
 }
 
-pub fn parse_config(args: Vec<String> ) -> Config {
+pub fn parse_config(args: Vec<String>) -> Config {
 
-    let groups : Vec<getopts::OptGroup> =
-        vec!(reqopt("", "compile-lib-path", "path to host shared libraries", "PATH"),
-          reqopt("", "run-lib-path", "path to target shared libraries", "PATH"),
-          reqopt("", "rustc-path", "path to rustc to use for compiling", "PATH"),
-          reqopt("", "rustdoc-path", "path to rustdoc to use for compiling", "PATH"),
-          reqopt("", "python", "path to python to use for doc tests", "PATH"),
-          optopt("", "valgrind-path", "path to Valgrind executable for Valgrind tests", "PROGRAM"),
-          optflag("", "force-valgrind", "fail if Valgrind tests cannot be run under Valgrind"),
-          optopt("", "llvm-bin-path", "path to directory holding llvm binaries", "DIR"),
-          reqopt("", "src-base", "directory to scan for test files", "PATH"),
-          reqopt("", "build-base", "directory to deposit test outputs", "PATH"),
-          reqopt("", "aux-base", "directory to find auxiliary test files", "PATH"),
-          reqopt("", "stage-id", "the target-stage identifier", "stageN-TARGET"),
-          reqopt("", "mode", "which sort of compile tests to run",
-                 "(compile-fail|parse-fail|run-fail|run-pass|run-pass-valgrind|pretty|debug-info)"),
-          optflag("", "ignored", "run tests marked as ignored"),
-          optopt("", "runtool", "supervisor program to run tests under \
-                                 (eg. emulator, valgrind)", "PROGRAM"),
-          optopt("", "host-rustcflags", "flags to pass to rustc for host", "FLAGS"),
-          optopt("", "target-rustcflags", "flags to pass to rustc for target", "FLAGS"),
-          optflag("", "verbose", "run tests verbosely, showing all output"),
-          optopt("", "logfile", "file to log test execution to", "FILE"),
-          optflag("", "jit", "run tests under the JIT"),
-          optopt("", "target", "the target to build for", "TARGET"),
-          optopt("", "host", "the host to build for", "HOST"),
-          optopt("", "gdb-version", "the version of GDB used", "VERSION STRING"),
-          optopt("", "lldb-version", "the version of LLDB used", "VERSION STRING"),
-          optopt("", "android-cross-path", "Android NDK standalone path", "PATH"),
-          optopt("", "adb-path", "path to the android debugger", "PATH"),
-          optopt("", "adb-test-dir", "path to tests for the android debugger", "PATH"),
-          optopt("", "lldb-python-dir", "directory containing LLDB's python module", "PATH"),
-          optflag("h", "help", "show this message"));
+    let mut options = getopts::Options::new();
+    options
+        .reqopt("", "compile-lib-path", "path to host shared libraries", "PATH")
+        .reqopt("", "run-lib-path", "path to target shared libraries", "PATH")
+        .reqopt("", "rustc-path", "path to rustc to use for compiling", "PATH")
+        .reqopt("", "rustdoc-path", "path to rustdoc to use for compiling", "PATH")
+        .reqopt("", "python", "path to python to use for doc tests", "PATH")
+        .optopt("", "valgrind-path", "path to Valgrind executable for Valgrind tests", "PROGRAM")
+        .optflag("", "force-valgrind", "fail if Valgrind tests cannot be run under Valgrind")
+        .optopt("", "llvm-bin-path", "path to directory holding llvm binaries", "DIR")
+        .reqopt("", "src-base", "directory to scan for test files", "PATH")
+        .reqopt("", "build-base", "directory to deposit test outputs", "PATH")
+        .reqopt("", "aux-base", "directory to find auxiliary test files", "PATH")
+        .reqopt("", "stage-id", "the target-stage identifier", "stageN-TARGET")
+        .reqopt("", "mode", "which sort of compile tests to run",
+                "(compile-fail|parse-fail|run-fail|run-pass|run-pass-valgrind|pretty|debug-info)")
+        .optflag("", "ignored", "run tests marked as ignored")
+        .optopt("", "runtool", "supervisor program to run tests under \
+                                (eg. emulator, valgrind)", "PROGRAM")
+        .optopt("", "host-rustcflags", "flags to pass to rustc for host", "FLAGS")
+        .optopt("", "target-rustcflags", "flags to pass to rustc for target", "FLAGS")
+        .optflag("", "verbose", "run tests verbosely, showing all output")
+        .optopt("", "logfile", "file to log test execution to", "FILE")
+        .optflag("", "jit", "run tests under the JIT")
+        .optopt("", "target", "the target to build for", "TARGET")
+        .optopt("", "host", "the host to build for", "HOST")
+        .optopt("", "gdb-version", "the version of GDB used", "VERSION STRING")
+        .optopt("", "lldb-version", "the version of LLDB used", "VERSION STRING")
+        .optopt("", "android-cross-path", "Android NDK standalone path", "PATH")
+        .optopt("", "adb-path", "path to the android debugger", "PATH")
+        .optopt("", "adb-test-dir", "path to tests for the android debugger", "PATH")
+        .optopt("", "lldb-python-dir", "directory containing LLDB's python module", "PATH")
+        .optflag("h", "help", "show this message");
 
     assert!(!args.is_empty());
     let argv0 = args[0].clone();
     let args_ = args.tail();
     if args[1] == "-h" || args[1] == "--help" {
         let message = format!("Usage: {} [OPTIONS] [TESTNAME...]", argv0);
-        println!("{}", getopts::usage(&message, &groups));
+        println!("{}", options.usage(&message));
         println!("");
         panic!()
     }
 
-    let matches =
-        &match getopts::getopts(args_, &groups) {
-          Ok(m) => m,
-          Err(f) => panic!("{:?}", f)
-        };
+    let matches = &match options.parse(args_) {
+        Ok(m) => m,
+        Err(f) => panic!("{:?}", f)
+    };
 
     if matches.opt_present("h") || matches.opt_present("help") {
         let message = format!("Usage: {} [OPTIONS]  [TESTNAME...]", argv0);
-        println!("{}", getopts::usage(&message, &groups));
+        println!("{}", options.usage(&message));
         println!("");
         panic!()
     }

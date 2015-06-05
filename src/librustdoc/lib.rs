@@ -44,13 +44,11 @@ extern crate rustc_driver;
 extern crate rustc_resolve;
 extern crate rustc_lint;
 extern crate rustc_back;
-extern crate serialize;
+extern crate rustc_serialize;
 extern crate syntax;
 extern crate test as testing;
 extern crate rustc_unicode;
 #[macro_use] extern crate log;
-
-extern crate serialize as rustc_serialize; // used by deriving
 
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -62,8 +60,8 @@ use std::rc::Rc;
 use std::sync::mpsc::channel;
 
 use externalfiles::ExternalHtml;
-use serialize::Decodable;
-use serialize::json::{self, Json};
+use rustc_serialize::Decodable;
+use rustc_serialize::json::{self, Json};
 use rustc::session::search_paths::SearchPaths;
 
 // reexported from `clean` so it can be easily updated with the mod itself
@@ -134,62 +132,60 @@ pub fn main() {
     env::set_exit_status(res as i32);
 }
 
-pub fn opts() -> Vec<getopts::OptGroup> {
-    use getopts::*;
-    vec!(
-        optflag("h", "help", "show this help message"),
-        optflag("V", "version", "print rustdoc's version"),
-        optflag("v", "verbose", "use verbose output"),
-        optopt("r", "input-format", "the input type of the specified file",
-               "[rust|json]"),
-        optopt("w", "output-format", "the output type to write",
-               "[html|json]"),
-        optopt("o", "output", "where to place the output", "PATH"),
-        optopt("", "crate-name", "specify the name of this crate", "NAME"),
-        optmulti("L", "library-path", "directory to add to crate search path",
-                 "DIR"),
-        optmulti("", "cfg", "pass a --cfg to rustc", ""),
-        optmulti("", "extern", "pass an --extern to rustc", "NAME=PATH"),
-        optmulti("", "plugin-path", "directory to load plugins from", "DIR"),
-        optmulti("", "passes", "list of passes to also run, you might want \
+pub fn opts(options: &mut getopts::Options) {
+    options
+        .optflag("h", "help", "show this help message")
+        .optflag("V", "version", "print rustdoc's version")
+        .optflag("v", "verbose", "use verbose output")
+        .optopt("r", "input-format", "the input type of the specified file",
+               "[rust|json]")
+        .optopt("w", "output-format", "the output type to write",
+               "[html|json]")
+        .optopt("o", "output", "where to place the output", "PATH")
+        .optopt("", "crate-name", "specify the name of this crate", "NAME")
+        .optmulti("L", "library-path", "directory to add to crate search path",
+                 "DIR")
+        .optmulti("", "cfg", "pass a --cfg to rustc", "")
+        .optmulti("", "extern", "pass an --extern to rustc", "NAME=PATH")
+        .optmulti("", "plugin-path", "directory to load plugins from", "DIR")
+        .optmulti("", "passes", "list of passes to also run, you might want \
                                 to pass it multiple times; a value of `list` \
                                 will print available passes",
-                 "PASSES"),
-        optmulti("", "plugins", "space separated list of plugins to also load",
-                 "PLUGINS"),
-        optflag("", "no-defaults", "don't run the default passes"),
-        optflag("", "test", "run code examples as tests"),
-        optmulti("", "test-args", "arguments to pass to the test runner",
-                 "ARGS"),
-        optopt("", "target", "target triple to document", "TRIPLE"),
-        optmulti("", "markdown-css", "CSS files to include via <link> in a rendered Markdown file",
-                 "FILES"),
-        optmulti("", "html-in-header",
+                 "PASSES")
+        .optmulti("", "plugins", "space separated list of plugins to also load",
+                 "PLUGINS")
+        .optflag("", "no-defaults", "don't run the default passes")
+        .optflag("", "test", "run code examples as tests")
+        .optmulti("", "test-args", "arguments to pass to the test runner",
+                 "ARGS")
+        .optopt("", "target", "target triple to document", "TRIPLE")
+        .optmulti("", "markdown-css", "CSS files to include via <link> in a rendered Markdown file",
+                 "FILES")
+        .optmulti("", "html-in-header",
                  "files to include inline in the <head> section of a rendered Markdown file \
                  or generated documentation",
-                 "FILES"),
-        optmulti("", "html-before-content",
+                 "FILES")
+        .optmulti("", "html-before-content",
                  "files to include inline between <body> and the content of a rendered \
                  Markdown file or generated documentation",
-                 "FILES"),
-        optmulti("", "html-after-content",
+                 "FILES")
+        .optmulti("", "html-after-content",
                  "files to include inline between the content and </body> of a rendered \
                  Markdown file or generated documentation",
-                 "FILES"),
-        optopt("", "markdown-playground-url",
-               "URL to send code snippets to", "URL"),
-        optflag("", "markdown-no-toc", "don't include table of contents")
-    )
+                 "FILES")
+        .optopt("", "markdown-playground-url",
+               "URL to send code snippets to", "URL")
+        .optflag("", "markdown-no-toc", "don't include table of contents");
 }
 
-pub fn usage(argv0: &str) {
-    println!("{}",
-             getopts::usage(&format!("{} [options] <input>", argv0),
-                            &opts()));
+pub fn usage(argv0: &str, options: &getopts::Options) {
+    println!("{}", options.usage(&format!("{} [options] <input>", argv0)));
 }
 
 pub fn main_args(args: &[String]) -> isize {
-    let matches = match getopts::getopts(args.tail(), &opts()) {
+    let mut options = getopts::Options::new();
+    opts(&mut options);
+    let matches = match options.parse(args.tail()) {
         Ok(m) => m,
         Err(err) => {
             println!("{}", err);
@@ -197,7 +193,7 @@ pub fn main_args(args: &[String]) -> isize {
         }
     };
     if matches.opt_present("h") || matches.opt_present("help") {
-        usage(&args[0]);
+        usage(&args[0], &options);
         return 0;
     } else if matches.opt_present("version") {
         rustc_driver::version("rustdoc", &matches);
@@ -456,12 +452,12 @@ fn rust_input(cratefile: &str, externs: core::Externs, matches: &getopts::Matche
 /// This input format purely deserializes the json output file. No passes are
 /// run over the deserialized output.
 fn json_input(input: &str) -> Result<Output, String> {
-    let mut bytes = Vec::new();
-    match File::open(input).and_then(|mut f| f.read_to_end(&mut bytes)) {
+    let mut contents = String::new();
+    match File::open(input).and_then(|mut f| f.read_to_string(&mut contents)) {
         Ok(_) => {}
         Err(e) => return Err(format!("couldn't open {}: {}", input, e)),
     };
-    match json::from_reader(&mut &bytes[..]) {
+    match contents.parse() {
         Err(s) => Err(format!("{:?}", s)),
         Ok(Json::Object(obj)) => {
             let mut obj = obj;
@@ -520,7 +516,7 @@ fn json_output(krate: clean::Crate, res: Vec<plugins::PluginJson> ,
     // FIXME #8335: yuck, Rust -> str -> JSON round trip! No way to .encode
     // straight to the Rust JSON representation.
     let crate_json_str = format!("{}", json::as_json(&krate));
-    let crate_json = match json::from_str(&crate_json_str) {
+    let crate_json = match crate_json_str.parse() {
         Ok(j) => j,
         Err(e) => panic!("Rust generated JSON is invalid: {:?}", e)
     };

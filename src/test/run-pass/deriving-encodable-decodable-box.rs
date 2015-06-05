@@ -13,12 +13,12 @@
 #![feature(box_syntax)]
 #![feature(rustc_private)]
 
-extern crate serialize;
+extern crate rustc_serialize;
 
-use serialize::{Encodable, Decodable};
-use serialize::json;
+use rustc_serialize::{Encodable, Decodable};
+use rustc_serialize::json;
 
-#[derive(Encodable, Decodable)]
+#[derive(RustcEncodable, RustcDecodable)]
 struct A {
     foo: Box<[bool]>,
 }
