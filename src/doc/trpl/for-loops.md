@@ -41,3 +41,45 @@ so our loop will print `0` through `9`, not `10`.
 Rust does not have the “C-style” `for` loop on purpose. Manually controlling
 each element of the loop is complicated and error prone, even for experienced C
 developers.
+
+# Enumerate
+
+When you need to keep track of how many times you already looped, you can use the `.enumerate()` function.
+
+## On ranges:
+
+```rust
+for (i,j) in (5..10).enumerate() {
+    println!("i = {} and j = {}", i, j);
+}
+```
+
+Outputs:
+
+```text
+i = 0 and j = 5
+i = 1 and j = 6
+i = 2 and j = 7
+i = 3 and j = 8
+i = 4 and j = 9
+```
+
+Don't forget to add the parentheses around the range.
+
+## On iterators:
+
+```rust
+# let lines = "hello\nworld".lines();
+for (linenumber, line) in lines.enumerate() {
+    println!("{}: {}", linenumber, line);
+}
+```
+
+Outputs:
+
+```text
+0: Content of line one
+1: Content of line two
+2: Content of line tree
+3: Content of line four
+```
