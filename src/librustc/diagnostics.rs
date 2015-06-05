@@ -227,6 +227,25 @@ const Y: i32 = A;
 ```
 "##,
 
+E0014: r##"
+Constants can only be initialized by a constant value or, in a future
+version of Rust, a call to a const function. This error indicates the use
+of a path (like a::b, or x) denoting something other than one of these
+allowed items. Example:
+
+```
+const FOO: i32 = { let x = 0; x }; // 'x' isn't a constant nor a function!
+```
+
+To avoid it, you have to replace the non-constant value:
+
+```
+const FOO: i32 = { const X : i32 = 0; X };
+// or even:
+const FOO: i32 = { 0 }; // but brackets are useless here
+```
+"##,
+
 E0015: r##"
 The only functions that can be called in static or constant expressions are
 `const` functions. Rust currently does not support more general compile-time
@@ -931,7 +950,6 @@ static mut BAR: Option<Vec<i32>> = None;
 
 
 register_diagnostics! {
-    E0014,
     E0016,
     E0017,
     E0019,
