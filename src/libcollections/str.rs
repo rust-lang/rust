@@ -1466,6 +1466,7 @@ impl str {
     /// assert_eq!("bors".as_bytes(), b"bors");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline(always)]
     pub fn as_bytes(&self) -> &[u8] {
         core_str::StrExt::as_bytes(&self[..])
     }
