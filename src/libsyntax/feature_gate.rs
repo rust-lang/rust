@@ -81,6 +81,7 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Status)] = &[
     ("slicing_syntax", "1.0.0", Accepted),
     ("box_syntax", "1.0.0", Active),
     ("placement_in_syntax", "1.0.0", Active),
+    ("pushpop_unsafe", "1.2.0", Active),
     ("on_unimplemented", "1.0.0", Active),
     ("simd_ffi", "1.0.0", Active),
     ("allocator", "1.0.0", Active),
@@ -328,6 +329,7 @@ pub struct Features {
     pub allow_custom_derive: bool,
     pub allow_placement_in: bool,
     pub allow_box: bool,
+    pub allow_pushpop_unsafe: bool,
     pub simd_ffi: bool,
     pub unmarked_api: bool,
     pub negate_unsigned: bool,
@@ -353,6 +355,7 @@ impl Features {
             allow_custom_derive: false,
             allow_placement_in: false,
             allow_box: false,
+            allow_pushpop_unsafe: false,
             simd_ffi: false,
             unmarked_api: false,
             negate_unsigned: false,
@@ -369,6 +372,9 @@ const EXPLAIN_BOX_SYNTAX: &'static str =
 const EXPLAIN_PLACEMENT_IN: &'static str =
     "placement-in expression syntax is experimental and subject to change.";
 
+const EXPLAIN_PUSHPOP_UNSAFE: &'static str =
+    "push/pop_unsafe macros are experimental and subject to change.";
+
 pub fn check_for_box_syntax(f: Option<&Features>, diag: &SpanHandler, span: Span) {
     if let Some(&Features { allow_box: true, .. }) = f {
         return;
@@ -381,6 +387,13 @@ pub fn check_for_placement_in(f: Option<&Features>, diag: &SpanHandler, span: Sp
         return;
     }
     emit_feature_err(diag, "placement_in_syntax", span, EXPLAIN_PLACEMENT_IN);
+}
+
+pub fn check_for_pushpop_syntax(f: Option<&Features>, diag: &SpanHandler, span: Span) {
+    if let Some(&Features { allow_pushpop_unsafe: true, .. }) = f {
+        return;
+    }
+    emit_feature_err(diag, "pushpop_unsafe", span, EXPLAIN_PUSHPOP_UNSAFE);
 }
 
 struct Context<'a> {
@@ -839,6 +852,7 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &SpanHandler,
         allow_custom_derive: cx.has_feature("custom_derive"),
         allow_placement_in: cx.has_feature("placement_in_syntax"),
         allow_box: cx.has_feature("box_syntax"),
+        allow_pushpop_unsafe: cx.has_feature("pushpop_unsafe"),
         simd_ffi: cx.has_feature("simd_ffi"),
         unmarked_api: cx.has_feature("unmarked_api"),
         negate_unsigned: cx.has_feature("negate_unsigned"),
