@@ -118,7 +118,7 @@ name = "hello_world"
 version = "0.0.1"
 ```
 
-The `Cargo.lock` is used by Cargo to keep track of dependencies in your application.
+The `Cargo.lock` file is used by Cargo to keep track of dependencies in your application.
 Right now, we don’t have any, so it’s a bit sparse. You won't ever need
 to touch this file yourself, just let Cargo handle it.
 
