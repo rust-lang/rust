@@ -56,7 +56,7 @@ use trans::cleanup;
 use trans::closure;
 use trans::common::{Block, C_bool, C_bytes_in_context, C_i32, C_int, C_integral};
 use trans::common::{C_null, C_struct_in_context, C_u64, C_u8, C_undef};
-use trans::common::{CrateContext, FunctionContext};
+use trans::common::{CrateContext, DropFlagHintsMap, FunctionContext};
 use trans::common::{Result, NodeIdAndSpan};
 use trans::common::{node_id_type, return_type_is_void};
 use trans::common::{type_is_immediate, type_is_zero_size, val_ty};
@@ -1235,6 +1235,7 @@ pub fn new_fn_ctxt<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
           caller_expects_out_pointer: uses_outptr,
           lllocals: RefCell::new(NodeMap()),
           llupvars: RefCell::new(NodeMap()),
+          lldropflag_hints: RefCell::new(DropFlagHintsMap::new()),
           id: id,
           param_substs: param_substs,
           span: sp,

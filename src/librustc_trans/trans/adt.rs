@@ -1083,7 +1083,7 @@ pub fn trans_drop_flag_ptr<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
             ));
             bcx = fold_variants(bcx, r, val, |variant_cx, st, value| {
                 let ptr = struct_field_ptr(variant_cx, st, value, (st.fields.len() - 1), false);
-                datum::Datum::new(ptr, ptr_ty, datum::Lvalue)
+                datum::Datum::new(ptr, ptr_ty, datum::Lvalue::new("adt::trans_drop_flag_ptr"))
                     .store_to(variant_cx, scratch.val)
             });
             let expr_datum = scratch.to_expr_datum();

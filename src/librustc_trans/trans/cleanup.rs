@@ -124,6 +124,7 @@ use trans::base;
 use trans::build;
 use trans::common;
 use trans::common::{Block, FunctionContext, NodeIdAndSpan};
+use trans::datum::{Datum, Lvalue};
 use trans::debuginfo::{DebugLoc, ToDebugLoc};
 use trans::glue;
 use middle::region;
@@ -211,6 +212,12 @@ pub enum ScopeId {
     AstScope(ast::NodeId),
     CustomScope(CustomScopeIndex)
 }
+
+#[derive(Copy, Clone, Debug)]
+pub struct DropHint<K>(pub ast::NodeId, pub K);
+
+pub type DropHintDatum<'tcx> = DropHint<Datum<'tcx, Lvalue>>;
+pub type DropHintValue = DropHint<ValueRef>;
 
 impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
     /// Invoked when we start to trans the code contained within a new cleanup scope.
