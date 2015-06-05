@@ -56,7 +56,7 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
         });
     }
 
-    e.and_then(|ast::Expr {id, node, span}| match node {
+    return e.and_then(|ast::Expr {id, node, span}| match node {
 
         // expr_mac should really be expr_ext or something; it's the
         // entry-point for all syntax extensions.
@@ -88,12 +88,11 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
             //
             // let p = PLACE;
             // let mut place = Placer::make_place(p);
-            // let raw_place = InPlace::pointer(&mut place);
-            // let value = EXPR;
-            // unsafe {
-            //     std::ptr::write(raw_place, value);
+            // let raw_place = Place::pointer(&mut place);
+            // push_unsafe!({
+            //     std::intrinsics::move_val_init(raw_place, pop_unsafe!( EXPR ));
             //     InPlace::finalize(place)
-            // }
+            // })
 
             let value_span = value_expr.span;
             let placer_span = placer.span;
@@ -103,17 +102,15 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
 
             let placer_ident = token::gensym_ident("placer");
             let agent_ident = token::gensym_ident("place");
-            let value_ident = token::gensym_ident("value");
             let p_ptr_ident = token::gensym_ident("p_ptr");
 
             let placer = fld.cx.expr_ident(span, placer_ident);
             let agent = fld.cx.expr_ident(span, agent_ident);
-            let value = fld.cx.expr_ident(span, value_ident);
             let p_ptr = fld.cx.expr_ident(span, p_ptr_ident);
 
             let make_place = ["ops", "Placer", "make_place"];
             let place_pointer = ["ops", "Place", "pointer"];
-            let ptr_write = ["ptr", "write"];
+            let move_val_init = ["intrinsics", "move_val_init"];
             let inplace_finalize = ["ops", "InPlace", "finalize"];
 
             let make_call = |fld: &mut MacroExpander, p, args| {
@@ -145,26 +142,23 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
                 stmt_let(fld, p_ptr_ident, call)
             };
 
-            // let value = <value_expr>;
-            let s4 = fld.cx.stmt_let(value_span, false, value_ident, value_expr);
+            // pop_unsafe!(EXPR));
+            let pop_unsafe_expr = pop_unsafe_expr(fld.cx, value_expr, value_span);
 
-            // unsafe { ptr::write(p_ptr, value); InPlace::finalize(place) }
+            // push_unsafe!({
+            //     ptr::write(p_ptr, pop_unsafe!(<value_expr>));
+            //     InPlace::finalize(place)
+            // })
             let expr = {
-                let call_ptr_write = StmtSemi(make_call(
-                    fld, &ptr_write, vec![p_ptr, value]), ast::DUMMY_NODE_ID);
-                let call_ptr_write = codemap::respan(value_span, call_ptr_write);
+                let call_move_val_init = StmtSemi(make_call(
+                    fld, &move_val_init, vec![p_ptr, pop_unsafe_expr]), ast::DUMMY_NODE_ID);
+                let call_move_val_init = codemap::respan(value_span, call_move_val_init);
 
                 let call = make_call(fld, &inplace_finalize, vec![agent]);
-                Some(fld.cx.expr_block(P(ast::Block {
-                    stmts: vec![P(call_ptr_write)],
-                    expr: Some(call),
-                    id: ast::DUMMY_NODE_ID,
-                    rules: ast::UnsafeBlock(ast::CompilerGenerated),
-                    span: span,
-                })))
+                Some(push_unsafe_expr(fld.cx, vec![P(call_move_val_init)], call, span))
             };
 
-            let block = fld.cx.block_all(span, vec![s1, s2, s3, s4], expr);
+            let block = fld.cx.block_all(span, vec![s1, s2, s3], expr);
             fld.cx.expr_block(block)
         }
 
@@ -474,7 +468,26 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
                 span: span
             }, fld))
         }
-    })
+    });
+
+    fn push_unsafe_expr(cx: &mut ExtCtxt, stmts: Vec<P<ast::Stmt>>,
+                        expr: P<ast::Expr>, span: Span)
+                        -> P<ast::Expr> {
+        let rules = ast::PushUnsafeBlock(ast::CompilerGenerated);
+        cx.expr_block(P(ast::Block {
+            rules: rules, span: span, id: ast::DUMMY_NODE_ID,
+            stmts: stmts, expr: Some(expr),
+        }))
+    }
+
+    fn pop_unsafe_expr(cx: &mut ExtCtxt, expr: P<ast::Expr>, span: Span)
+                       -> P<ast::Expr> {
+        let rules = ast::PopUnsafeBlock(ast::CompilerGenerated);
+        cx.expr_block(P(ast::Block {
+            rules: rules, span: span, id: ast::DUMMY_NODE_ID,
+            stmts: vec![], expr: Some(expr),
+        }))
+    }
 }
 
 /// Expand a (not-ident-style) macro invocation. Returns the result
