@@ -101,6 +101,8 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
                 &fld.cx.parse_sess.span_diagnostic,
                 expr_span);
 
+            push_compiler_expansion(fld, expr_span, "placement-in expansion");
+
             let value_span = value_expr.span;
             let placer_span = placer.span;
 
@@ -166,7 +168,9 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
             };
 
             let block = fld.cx.block_all(span, vec![s1, s2, s3], expr);
-            fld.cx.expr_block(block)
+            let result = fld.cx.expr_block(block);
+            fld.cx.bt_pop();
+            result
         }
 
         // Desugar ExprBox: `box EXPR`
@@ -185,6 +189,8 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
                 fld.cx.ecfg.features,
                 &fld.cx.parse_sess.span_diagnostic,
                 expr_span);
+
+            push_compiler_expansion(fld, expr_span, "box expansion");
 
             let value_span = value_expr.span;
 
@@ -245,7 +251,9 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
             };
 
             let block = fld.cx.block_all(span, vec![s1, s2], expr);
-            fld.cx.expr_block(block)
+            let result = fld.cx.expr_block(block);
+            fld.cx.bt_pop();
+            result
         }
 
         ast::ExprWhile(cond, body, opt_ident) => {
