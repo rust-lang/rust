@@ -34,7 +34,7 @@ $ mv main.rs src/main.rs
 
 Note that since we're creating an executable, we used `main.rs`. If we
 want to make a library instead, we should use `lib.rs`. This convention is required
-for Cargo to successfully compile our projects. 
+for Cargo to successfully compile our projects, but it can be overridden if we wish. 
 Custom file locations for the entry point can be specified
 with a [`[[lib]]` or `[[bin]]`][crates-custom] key in the TOML file described below.
 
@@ -64,7 +64,7 @@ authors = [ "Your name <you@example.com>" ]
 ```
 
 This file is in the [TOML][toml] format. TOML is similar to INI, but has some 
-extra goodies. According to the Rust docs, 
+extra goodies. According to the TOML docs, 
 
 > TOML aims to be a minimal configuration file format that's easy to read due
 > to obvious semantics. TOML is designed to map unambiguously to a hash table.
