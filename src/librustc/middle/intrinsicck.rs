@@ -212,7 +212,7 @@ impl<'a, 'tcx> IntrinsicCheckingVisitor<'a, 'tcx> {
                 debug!("with_each_combination: space={:?}, index={}, param_ty={}",
                        space, index, param_ty.repr(self.tcx));
 
-                if !ty::type_is_sized(param_env, span, param_ty) {
+                if !ty::type_is_sized(Some(param_env), self.tcx, span, param_ty) {
                     debug!("with_each_combination: param_ty is not known to be sized");
 
                     substs.types.get_mut_slice(space)[index] = self.dummy_unsized_ty;
