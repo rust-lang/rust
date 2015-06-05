@@ -33,7 +33,8 @@ $ mv main.rs src/main.rs
 ```
 
 Note that since we're creating an executable, we used `main.rs`. If we
-want to make a library instead, we should use `lib.rs`.
+want to make a library instead, we should use `lib.rs`. This convention is required
+for Cargo to successfully compile our projects. 
 Custom file locations for the entry point can be specified
 with a [`[[lib]]` or `[[bin]]`][crates-custom] key in the TOML file described below.
 
