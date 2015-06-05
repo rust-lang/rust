@@ -417,6 +417,13 @@ impl< T: Decodable> Decodable for Box<T> {
     }
 }
 
+impl< T: Decodable> Decodable for Box<[T]> {
+    fn decode<D: Decoder>(d: &mut D) -> Result<Box<[T]>, D::Error> {
+        let v: Vec<T> = try!(Decodable::decode(d));
+        Ok(v.into_boxed_slice())
+    }
+}
+
 impl<T:Encodable> Encodable for Rc<T> {
     #[inline]
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
