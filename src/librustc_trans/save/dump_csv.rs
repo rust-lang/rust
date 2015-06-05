@@ -419,19 +419,15 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
                                     id);
     }
 
-    fn process_trait_ref(&mut self,
-                         trait_ref: &ast::TraitRef) {
-        match self.lookup_type_ref(trait_ref.ref_id) {
-            Some(id) => {
-                let sub_span = self.span.sub_span_for_type_name(trait_ref.path.span);
-                self.fmt.ref_str(recorder::TypeRef,
-                                 trait_ref.path.span,
-                                 sub_span,
-                                 id,
-                                 self.cur_scope);
-                visit::walk_path(self, &trait_ref.path);
-            },
-            None => ()
+    fn process_trait_ref(&mut self, trait_ref: &ast::TraitRef) {
+        let trait_ref_data = self.save_ctxt.get_trait_ref_data(trait_ref, self.cur_scope);
+        if let Some(trait_ref_data) = trait_ref_data {
+            self.fmt.ref_str(recorder::TypeRef,
+                             trait_ref.path.span,
+                             Some(trait_ref_data.span),
+                             trait_ref_data.ref_id,
+                             trait_ref_data.scope);
+            visit::walk_path(self, &trait_ref.path);
         }
     }
 
@@ -600,8 +596,9 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
                               Some(enum_data.span),
                               enum_data.id,
                               &enum_data.qualname,
-                              self.cur_scope,
+                              enum_data.scope,
                               &enum_data.value);
+
             for variant in &enum_definition.variants {
                 let name = &get_ident(variant.node.name);
                 let mut qualname = enum_data.qualname.clone();
@@ -618,7 +615,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
                                                    &qualname,
                                                    &enum_data.qualname,
                                                    &val,
-                                                   item.id);
+                                                   enum_data.id);
                         for arg in args {
                             self.visit_ty(&*arg.ty);
                         }
@@ -635,7 +632,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
                                                     &qualname,
                                                     &enum_data.qualname,
                                                     &val,
-                                                    item.id);
+                                                    enum_data.id);
 
                         for field in &struct_def.fields {
                             self.process_struct_field_def(field, variant.node.id);
@@ -644,7 +641,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
                     }
                 }
             }
-            self.process_generic_params(ty_params, item.span, &enum_data.qualname, item.id);
+            self.process_generic_params(ty_params, item.span, &enum_data.qualname, enum_data.id);
         } else {
             self.sess.span_bug(item.span, "expected EnumData");
         }
@@ -656,43 +653,37 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
                     trait_ref: &Option<ast::TraitRef>,
                     typ: &ast::Ty,
                     impl_items: &[P<ast::ImplItem>]) {
-        let trait_id = trait_ref.as_ref().and_then(|tr| self.lookup_type_ref(tr.ref_id));
-        match typ.node {
-            // Common case impl for a struct or something basic.
-            ast::TyPath(None, ref path) => {
-                let sub_span = self.span.sub_span_for_type_name(path.span);
-                let self_id = self.lookup_type_ref(typ.id).map(|id| {
+        let impl_data = self.save_ctxt.get_item_data(item);
+        if let super::Data::ImplData(impl_data) = impl_data {
+            match impl_data.self_ref {
+                Some(ref self_ref) => {
                     self.fmt.ref_str(recorder::TypeRef,
-                                     path.span,
-                                     sub_span,
-                                     id,
-                                     self.cur_scope);
-                    id
-                });
-                self.fmt.impl_str(path.span,
-                                  sub_span,
-                                  item.id,
-                                  self_id,
-                                  trait_id,
-                                  self.cur_scope);
-            },
-            _ => {
-                // Less useful case, impl for a compound type.
-                self.visit_ty(&*typ);
-
-                let sub_span = self.span.sub_span_for_type_name(typ.span);
-                self.fmt.impl_str(typ.span,
-                                  sub_span,
-                                  item.id,
-                                  None,
-                                  trait_id,
-                                  self.cur_scope);
+                                     item.span,
+                                     Some(self_ref.span),
+                                     self_ref.ref_id,
+                                     self_ref.scope);
+                }
+                None => {
+                    self.visit_ty(&typ);
+                }
             }
-        }
+            if let Some(ref trait_ref_data) = impl_data.trait_ref {
+                self.fmt.ref_str(recorder::TypeRef,
+                                 item.span,
+                                 Some(trait_ref_data.span),
+                                 trait_ref_data.ref_id,
+                                 trait_ref_data.scope);
+                visit::walk_path(self, &trait_ref.as_ref().unwrap().path);
+            }
 
-        match *trait_ref {
-            Some(ref trait_ref) => self.process_trait_ref(trait_ref),
-            None => (),
+            self.fmt.impl_str(item.span,
+                              Some(impl_data.span),
+                              impl_data.id,
+                              impl_data.self_ref.map(|data| data.ref_id),
+                              impl_data.trait_ref.map(|data| data.ref_id),
+                              impl_data.scope);
+        } else {
+            self.sess.span_bug(item.span, "expected ImplData");
         }
 
         self.process_generic_params(type_parameters, item.span, "", item.id);
@@ -717,7 +708,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
                            &val);
 
         // super-traits
-        for super_bound in trait_refs.iter() {
+        for super_bound in &trait_refs {
             let trait_ref = match *super_bound {
                 ast::TraitTyParamBound(ref trait_ref, _) => {
                     trait_ref
@@ -1164,7 +1155,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
                 self.process_impl(item,
                                   ty_params,
                                   trait_ref,
-                                  &**typ,
+                                  &typ,
                                   impl_items)
             }
             ast::ItemTrait(_, ref generics, ref trait_refs, ref methods) =>

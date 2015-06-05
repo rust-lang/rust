@@ -10,6 +10,7 @@
 
 use session::Session;
 use middle::ty;
+use middle::def;
 
 use std::env;
 use std::fs::{self, File};
@@ -55,10 +56,14 @@ pub enum Data {
     ModData(ModData),
     /// Data for Enums.
     EnumData(EnumData),
+    /// Data for impls.
+    ImplData(ImplData),
 
     /// Data for the use of some variable (e.g., the use of a local variable, which
     /// will refere to that variables declaration).
     VariableRefData(VariableRefData),
+    /// Data for a reference to a type or trait.
+    TypeRefData(TypeRefData),
 }
 
 /// Data for all kinds of functions and methods.
@@ -98,12 +103,31 @@ pub struct EnumData {
     pub value: String,
     pub qualname: String,
     pub span: Span,
+    pub scope: NodeId,
+}
+
+pub struct ImplData {
+    pub id: NodeId,
+    pub span: Span,
+    pub scope: NodeId,
+    // FIXME: I'm not really sure inline data is the best way to do this. Seems
+    // OK in this case, but generalising leads to returning chunks of AST, which
+    // feels wrong.
+    pub trait_ref: Option<TypeRefData>,
+    pub self_ref: Option<TypeRefData>,
 }
 
 /// Data for the use of some item (e.g., the use of a local variable, which
 /// will refere to that variables declaration (by ref_id)).
 pub struct VariableRefData {
     pub name: String,
+    pub span: Span,
+    pub scope: NodeId,
+    pub ref_id: DefId,
+}
+
+/// Data for a reference to a type or trait.
+pub struct TypeRefData {
     pub span: Span,
     pub scope: NodeId,
     pub ref_id: DefId,
@@ -211,8 +235,42 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     value: val,
                     span: sub_span.unwrap(),
                     qualname: enum_name,
+                    scope: self.analysis.ty_cx.map.get_parent(item.id),
                 })
             },
+            ast::ItemImpl(_, _, _, ref trait_ref, ref typ, _) => {
+                let mut type_data = None;
+                let sub_span;
+
+                let parent = self.analysis.ty_cx.map.get_parent(item.id);
+
+                match typ.node {
+                    // Common case impl for a struct or something basic.
+                    ast::TyPath(None, ref path) => {
+                        sub_span = self.span_utils.sub_span_for_type_name(path.span);
+                        type_data = self.lookup_ref_id(typ.id).map(|id| TypeRefData {
+                            span: sub_span.unwrap(),
+                            scope: parent,
+                            ref_id: id,
+                        });
+                    },
+                    _ => {
+                        // Less useful case, impl for a compound type.
+                        sub_span = self.span_utils.sub_span_for_type_name(typ.span);
+                    }
+                }
+
+                let trait_data =
+                    trait_ref.as_ref().and_then(|tr| self.get_trait_ref_data(tr, parent));
+
+                Data::ImplData(ImplData {
+                    id: item.id,
+                    span: sub_span.unwrap(),
+                    scope: parent,
+                    trait_ref: trait_data,
+                    self_ref: type_data,
+                })
+            }
             _ => {
                 // FIXME
                 unimplemented!();
@@ -245,6 +303,22 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             },
             _ => None,
         }
+    }
+
+    // FIXME: we ought to be able to get the parent id ourselves, but we can't
+    // for now.
+    pub fn get_trait_ref_data(&self,
+                              trait_ref: &ast::TraitRef,
+                              parent: NodeId)
+                              -> Option<TypeRefData> {
+        self.lookup_ref_id(trait_ref.ref_id).map(|def_id| {
+            let sub_span = self.span_utils.sub_span_for_type_name(trait_ref.path.span);
+            TypeRefData {
+                span: sub_span.unwrap(),
+                scope: parent,
+                ref_id: def_id,
+            }
+        })
     }
 
     pub fn get_expr_data(&self, expr: &ast::Expr) -> Data {
@@ -286,6 +360,19 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         // FIXME
         unimplemented!();
     }
+
+    fn lookup_ref_id(&self, ref_id: NodeId) -> Option<DefId> {
+        if !self.analysis.ty_cx.def_map.borrow().contains_key(&ref_id) {
+            self.sess.bug(&format!("def_map has no key for {} in lookup_type_ref",
+                                  ref_id));
+        }
+        let def = self.analysis.ty_cx.def_map.borrow().get(&ref_id).unwrap().full_def();
+        match def {
+            def::DefPrimTy(_) => None,
+            _ => Some(def.def_id()),
+        }
+    }
+
 }
 
 // An AST visitor for collecting paths from patterns.
