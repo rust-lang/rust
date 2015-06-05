@@ -1504,6 +1504,7 @@ impl<'feat> ExpansionConfig<'feat> {
         fn enable_trace_macros = allow_trace_macros,
         fn enable_allow_internal_unstable = allow_internal_unstable,
         fn enable_custom_derive = allow_custom_derive,
+        fn enable_pushpop_unsafe = allow_pushpop_unsafe,
     }
 }
 
