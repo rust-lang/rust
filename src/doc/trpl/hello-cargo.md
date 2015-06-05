@@ -63,18 +63,17 @@ version = "0.0.1"
 authors = [ "Your name <you@example.com>" ]
 ```
 
-This file is in the [TOML][toml] format. Let’s let it explain itself to you:
+This file is in the [TOML][toml] format. TOML is similar to INI, but has some 
+extra goodies. According to the Rust docs, 
 
 > TOML aims to be a minimal configuration file format that's easy to read due
 > to obvious semantics. TOML is designed to map unambiguously to a hash table.
 > TOML should be easy to parse into data structures in a wide variety of
 > languages.
 
-TOML is very similar to INI, but with some extra goodies.
-
 [toml]: https://github.com/toml-lang/toml
 
-Once you have this file in place, we should be ready to build! Try this:
+Once you have this file in place, we should be ready to build! To do so, run:
 
 ```bash
 $ cargo build
@@ -83,7 +82,7 @@ $ ./target/debug/hello_world
 Hello, world!
 ```
 
-Bam! We build our project with `cargo build`, and run it with
+Bam! We built our project with `cargo build`, and ran it with
 `./target/debug/hello_world`. We can do both in one step with `cargo run`:
 
 ```bash
@@ -104,9 +103,9 @@ Hello, world!
 ```
 
 This hasn’t bought us a whole lot over our simple use of `rustc`, but think
-about the future: when our project gets more complex, we would need to do more
+about the future: when our project gets more complex, we need to do more
 things to get all of the parts to properly compile. With Cargo, as our project
-grows, we can just `cargo build`, and it’ll work the right way.
+grows, we can just run `cargo build`, and it’ll work the right way.
 
 When your project is finally ready for release, you can use
 `cargo build --release` to compile your project with optimizations.
@@ -119,7 +118,7 @@ name = "hello_world"
 version = "0.0.1"
 ```
 
-This file is used by Cargo to keep track of dependencies in your application.
+The `Cargo.lock` is used by Cargo to keep track of dependencies in your application.
 Right now, we don’t have any, so it’s a bit sparse. You won't ever need
 to touch this file yourself, just let Cargo handle it.
 
