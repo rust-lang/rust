@@ -9,11 +9,12 @@
 // except according to those terms.
 
 // error-pattern:thread 'owned name' panicked at 'test'
+// error-pattern:thread '<main>' panicked at 'called `Result::unwrap()` on an `Err` value: Any'
 
 use std::thread::Builder;
 
 fn main() {
-    let r: () = Builder::new().name("owned name".to_string()).spawn(move|| {
+    let _r: () = Builder::new().name("owned name".to_string()).spawn(move|| {
         panic!("test");
         ()
     }).unwrap().join().unwrap();

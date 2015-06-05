@@ -881,20 +881,28 @@ fn check_error_patterns(props: &TestProps,
     }
     let mut next_err_idx = 0;
     let mut next_err_pat = &props.error_patterns[next_err_idx];
-    let mut done = false;
-    for line in output_to_check.lines() {
+    let mut matched_all_patterns = false;
+    let mut lines = output_to_check.lines();
+    for line in &mut lines {
         if line.contains(next_err_pat) {
             debug!("found error pattern {}", next_err_pat);
             next_err_idx += 1;
             if next_err_idx == props.error_patterns.len() {
-                debug!("found all error patterns");
-                done = true;
+                matched_all_patterns = true;
                 break;
             }
             next_err_pat = &props.error_patterns[next_err_idx];
         }
     }
-    if done { return; }
+
+    if matched_all_patterns {
+        if lines.next().is_none() {
+            debug!("found all error patterns");
+            return;
+        } else {
+            fatal_proc_rec("no more error patterns to match against", proc_res);
+        }
+    }
 
     let missing_patterns = &props.error_patterns[next_err_idx..];
     if missing_patterns.len() == 1 {

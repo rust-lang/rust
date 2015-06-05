@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // error-pattern:thread '<unnamed>' panicked at 'test'
+// error-pattern:thread '<main>' panicked at 'assertion failed: r.is_ok()'
 
 use std::thread;
 

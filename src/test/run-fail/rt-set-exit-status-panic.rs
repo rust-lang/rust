@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // error-pattern:whatever
+// error-pattern:thread '<main>' panicked at 'explicit panic'
 
 #![feature(exit_status, rustc_private)]
 

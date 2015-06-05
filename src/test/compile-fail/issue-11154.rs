@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -11,5 +11,7 @@
 // compile-flags: -C lto -C prefer-dynamic
 
 // error-pattern: cannot prefer dynamic linking
+// error-pattern: only 'staticlib' and 'bin' outputs are supported with LTO
+// error-pattern: aborting due to previous error
 
 fn main() {}
