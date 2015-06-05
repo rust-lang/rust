@@ -101,7 +101,7 @@ impl Write for WriterWrapper {
 /// opened.
 pub fn stdout() -> Option<Box<Terminal<WriterWrapper> + Send>> {
     TerminfoTerminal::new(WriterWrapper {
-        wrapped: box std::io::stdout(),
+        wrapped: Box::new(std::io::stdout()),
     })
 }
 
@@ -128,7 +128,7 @@ pub fn stdout() -> Option<Box<Terminal<WriterWrapper> + Send>> {
 /// opened.
 pub fn stderr() -> Option<Box<Terminal<WriterWrapper> + Send>> {
     TerminfoTerminal::new(WriterWrapper {
-        wrapped: box std::io::stderr(),
+        wrapped: Box::new(std::io::stderr()),
     })
 }
 

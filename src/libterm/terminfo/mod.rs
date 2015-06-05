@@ -186,11 +186,11 @@ impl<T: Write+Send+'static> TerminfoTerminal<T> {
             Err(err) => return match env::var("MSYSCON") {
                 Ok(ref val) if &val[..] == "mintty.exe" => {
                     // msys terminal
-                    Some(box TerminfoTerminal{
-                        out: out,
-                        ti: msys_terminfo(),
-                        num_colors: 8,
-                    })
+                    Some(Box::new(TerminfoTerminal{
+                            out: out,
+                            ti: msys_terminfo(),
+                            num_colors: 8,
+                    }))
                 },
                 _ => {
                     debug!("error finding terminfo entry: {:?}", err);
@@ -211,9 +211,9 @@ impl<T: Write+Send+'static> TerminfoTerminal<T> {
                      inf.numbers.get("colors").map_or(0, |&n| n)
                  } else { 0 };
 
-        return Some(box TerminfoTerminal {out: out,
-                                          ti: inf,
-                                          num_colors: nc});
+        return Some(Box::new(TerminfoTerminal {out: out,
+                                               ti: inf,
+                                               num_colors: nc}));
     }
 
     fn dim_if_necessary(&self, color: color::Color) -> color::Color {
