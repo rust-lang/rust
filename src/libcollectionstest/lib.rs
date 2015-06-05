@@ -37,6 +37,7 @@ extern crate rustc_unicode;
 mod binary_heap;
 mod bit;
 mod btree;
+mod char;  // char isn't really a collection, but didn't find a better place for this.
 mod enum_set;
 mod fmt;
 mod linked_list;
