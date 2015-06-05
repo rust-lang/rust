@@ -16,7 +16,10 @@
 #[lang = "sized"]
 trait Sized { }
 
+struct S;
+
 #[start]
 fn main(_: isize, _: *const *const u8) -> isize {
+    let _ = S;
     0
 }
