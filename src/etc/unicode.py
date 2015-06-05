@@ -72,8 +72,8 @@ def is_surrogate(n):
 def load_unicode_data(f):
     fetch(f)
     gencats = {}
-    upperlower = {}
-    lowerupper = {}
+    to_lower = {}
+    to_upper = {}
     combines = {}
     canon_decomp = {}
     compat_decomp = {}
@@ -103,12 +103,12 @@ def load_unicode_data(f):
 
         # generate char to char direct common and simple conversions
         # uppercase to lowercase
-        if gencat == "Lu" and lowcase != "" and code_org != lowcase:
-            upperlower[code] = int(lowcase, 16)
+        if lowcase != "" and code_org != lowcase:
+            to_lower[code] = int(lowcase, 16)
 
         # lowercase to uppercase
-        if gencat == "Ll" and upcase != "" and code_org != upcase:
-            lowerupper[code] = int(upcase, 16)
+        if upcase != "" and code_org != upcase:
+            to_upper[code] = int(upcase, 16)
 
         # store decomposition, if given
         if decomp != "":
@@ -144,7 +144,7 @@ def load_unicode_data(f):
     gencats = group_cats(gencats)
     combines = to_combines(group_cats(combines))
 
-    return (canon_decomp, compat_decomp, gencats, combines, lowerupper, upperlower)
+    return (canon_decomp, compat_decomp, gencats, combines, to_upper, to_lower)
 
 def group_cats(cats):
     cats_out = {}
@@ -319,7 +319,7 @@ def emit_property_module(f, mod, tbl, emit):
         f.write("    }\n\n")
     f.write("}\n\n")
 
-def emit_conversions_module(f, lowerupper, upperlower):
+def emit_conversions_module(f, to_upper, to_lower):
     f.write("pub mod conversions {")
     f.write("""
     use core::cmp::Ordering::{Equal, Less, Greater};
@@ -329,16 +329,16 @@ def emit_conversions_module(f, lowerupper, upperlower):
     use core::result::Result::{Ok, Err};
 
     pub fn to_lower(c: char) -> char {
-        match bsearch_case_table(c, LuLl_table) {
+        match bsearch_case_table(c, to_lowercase_table) {
           None        => c,
-          Some(index) => LuLl_table[index].1
+          Some(index) => to_lowercase_table[index].1
         }
     }
 
     pub fn to_upper(c: char) -> char {
-        match bsearch_case_table(c, LlLu_table) {
+        match bsearch_case_table(c, to_uppercase_table) {
             None        => c,
-            Some(index) => LlLu_table[index].1
+            Some(index) => to_uppercase_table[index].1
         }
     }
 
@@ -354,10 +354,10 @@ def emit_conversions_module(f, lowerupper, upperlower):
     }
 
 """)
-    emit_table(f, "LuLl_table",
-        sorted(upperlower.iteritems(), key=operator.itemgetter(0)), is_pub=False)
-    emit_table(f, "LlLu_table",
-        sorted(lowerupper.iteritems(), key=operator.itemgetter(0)), is_pub=False)
+    emit_table(f, "to_lowercase_table",
+        sorted(to_lower.iteritems(), key=operator.itemgetter(0)), is_pub=False)
+    emit_table(f, "to_uppercase_table",
+        sorted(to_upper.iteritems(), key=operator.itemgetter(0)), is_pub=False)
     f.write("}\n\n")
 
 def emit_grapheme_module(f, grapheme_table, grapheme_cats):
@@ -591,7 +591,7 @@ if __name__ == "__main__":
 pub const UNICODE_VERSION: (u64, u64, u64) = (%s, %s, %s);
 """ % unicode_version)
         (canon_decomp, compat_decomp, gencats, combines,
-                lowerupper, upperlower) = load_unicode_data("UnicodeData.txt")
+                to_upper, to_lower) = load_unicode_data("UnicodeData.txt")
         want_derived = ["XID_Start", "XID_Continue", "Alphabetic", "Lowercase", "Uppercase"]
         derived = load_properties("DerivedCoreProperties.txt", want_derived)
         scripts = load_properties("Scripts.txt", [])
@@ -611,7 +611,7 @@ pub const UNICODE_VERSION: (u64, u64, u64) = (%s, %s, %s);
 
         # normalizations and conversions module
         emit_norm_module(rf, canon_decomp, compat_decomp, combines, norm_props)
-        emit_conversions_module(rf, lowerupper, upperlower)
+        emit_conversions_module(rf, to_upper, to_lower)
 
         ### character width module
         width_table = []
