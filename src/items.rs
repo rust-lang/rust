@@ -341,8 +341,7 @@ impl<'a> FmtVisitor<'a> {
         // The fix is comments in the AST or a span for the closing paren.
         let snippet = self.snippet(codemap::mk_sp(prev_end, next_span_start));
         let snippet = snippet.trim();
-        let snippet = &snippet[..snippet.find(terminator)
-                                    .unwrap_or(snippet.find(separator).unwrap_or(snippet.len()))];
+        let snippet = &snippet[..snippet.find(terminator).unwrap_or(snippet.len())];
         let snippet = snippet.trim();
         result.push(snippet.to_owned());
 

@@ -64,6 +64,23 @@ const SKIP_ANNOTATION: &'static str = "rustfmt_skip";
 
 static mut CONFIG: Option<config::Config> = None;
 
+// Macro for deriving implementations of Decodable for enums
+macro_rules! impl_enum_decodable {
+    ( $e:ident, $( $x:ident ),* ) => {
+        impl Decodable for $e {
+            fn decode<D: Decoder>(d: &mut D) -> Result<Self, D::Error> {
+                let s = try!(d.read_str());
+                match &*s {
+                    $(
+                        stringify!($x) => Ok($e::$x),
+                    )*
+                    _ => Err(d.error("Bad variant")),
+                }
+            }
+        }
+    };
+}
+
 #[derive(Copy, Clone)]
 pub enum WriteMode {
     Overwrite,
@@ -81,16 +98,7 @@ pub enum NewlineStyle {
     Unix, // \n
 }
 
-impl Decodable for NewlineStyle {
-    fn decode<D: Decoder>(d: &mut D) -> Result<Self, D::Error> {
-        let s = try!(d.read_str());
-        match &*s {
-            "Windows" => Ok(NewlineStyle::Windows),
-            "Unix" => Ok(NewlineStyle::Unix),
-            _ => Err(d.error("Bad variant")),
-        }
-    }
-}
+impl_enum_decodable!(NewlineStyle, Windows, Unix);
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub enum BraceStyle {
@@ -101,17 +109,7 @@ pub enum BraceStyle {
     SameLineWhere,
 }
 
-impl Decodable for BraceStyle {
-    fn decode<D: Decoder>(d: &mut D) -> Result<Self, D::Error> {
-        let s = try!(d.read_str());
-        match &*s {
-            "AlwaysNextLine" => Ok(BraceStyle::AlwaysNextLine),
-            "PreferSameLine" => Ok(BraceStyle::PreferSameLine),
-            "SameLineWhere" => Ok(BraceStyle::SameLineWhere),
-            _ => Err(d.error("Bad variant")),
-        }
-    }
-}
+impl_enum_decodable!(BraceStyle, AlwaysNextLine, PreferSameLine, SameLineWhere);
 
 // How to indent a function's return type.
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
@@ -122,17 +120,7 @@ pub enum ReturnIndent {
     WithWhereClause,
 }
 
-// TODO could use a macro for all these Decodable impls.
-impl Decodable for ReturnIndent {
-    fn decode<D: Decoder>(d: &mut D) -> Result<Self, D::Error> {
-        let s = try!(d.read_str());
-        match &*s {
-            "WithArgs" => Ok(ReturnIndent::WithArgs),
-            "WithWhereClause" => Ok(ReturnIndent::WithWhereClause),
-            _ => Err(d.error("Bad variant")),
-        }
-    }
-}
+impl_enum_decodable!(ReturnIndent, WithArgs, WithWhereClause);
 
 // Formatting which depends on the AST.
 fn fmt_ast<'a>(krate: &ast::Crate, codemap: &'a CodeMap) -> ChangeSet<'a> {

@@ -105,14 +105,8 @@ impl<'a> FmtVisitor<'a> {
             let args: Vec<_> = args.iter().map(|e| (self.rewrite_expr(e,
                                                                       remaining_width,
                                                                       offset), String::new())).collect();
-            // TODO move this into write_list
-            let tactics = if args.iter().any(|&(ref s, _)| s.contains('\n')) {
-                ListTactic::Vertical
-            } else {
-                ListTactic::HorizontalVertical
-            };
             let fmt = ListFormatting {
-                tactic: tactics,
+                tactic: ListTactic::HorizontalVertical,
                 separator: ",",
                 trailing_separator: SeparatorTactic::Never,
                 indent: offset,
@@ -161,13 +155,8 @@ impl<'a> FmtVisitor<'a> {
 
         // FIXME comments
         let field_strs: Vec<_> = field_strs.into_iter().map(|s| (s, String::new())).collect();
-        let tactics = if field_strs.iter().any(|&(ref s, _)| s.contains('\n')) {
-            ListTactic::Vertical
-        } else {
-            ListTactic::HorizontalVertical
-        };
         let fmt = ListFormatting {
-            tactic: tactics,
+            tactic: ListTactic::HorizontalVertical,
             separator: ",",
             trailing_separator: if base.is_some() {
                     SeparatorTactic::Never
