@@ -437,30 +437,20 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
 
     fn process_struct_field_def(&mut self,
                                 field: &ast::StructField,
-                                qualname: &str,
-                                scope_id: NodeId) {
-        match field.node.kind {
-            ast::NamedField(ident, _) => {
-                let name = get_ident(ident);
-                let qualname = format!("{}::{}", qualname, name);
-                let typ =
-                    ppaux::ty_to_string(
-                        &self.analysis.ty_cx,
-                        *self.analysis.ty_cx.node_types().get(&field.node.id).unwrap());
-                match self.span.sub_span_before_token(field.span, token::Colon) {
-                    Some(sub_span) => self.fmt.field_str(field.span,
-                                                         Some(sub_span),
-                                                         field.node.id,
-                                                         &name,
-                                                         &qualname,
-                                                         &typ,
-                                                         scope_id),
-                    None => self.sess.span_bug(field.span,
-                                               &format!("Could not find sub-span for field {}",
-                                                       qualname)),
-                }
-            },
-            _ => (),
+                                parent_id: NodeId) {
+        let field_data = self.save_ctxt.get_field_data(field, parent_id);
+        if let Some(field_data) = field_data {
+            if let super::Data::VariableData(field_data) = field_data {
+                self.fmt.field_str(field.span,
+                                   Some(field_data.span),
+                                   field_data.id,
+                                   &field_data.name,
+                                   &field_data.qualname,
+                                   &field_data.type_value,
+                                   field_data.scope);
+            } else {
+                self.sess.span_bug(field.span, "expected VariableData");
+            }
         }
     }
 
@@ -593,8 +583,8 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
 
         // fields
         for field in &def.fields {
-            self.process_struct_field_def(field, &qualname, item.id);
-            self.visit_ty(&*field.node.ty);
+            self.process_struct_field_def(field, item.id);
+            self.visit_ty(&field.node.ty);
         }
 
         self.process_generic_params(ty_params, item.span, &qualname, item.id);
@@ -648,7 +638,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
                                                     item.id);
 
                         for field in &struct_def.fields {
-                            self.process_struct_field_def(field, &qualname, variant.node.id);
+                            self.process_struct_field_def(field, variant.node.id);
                             self.visit_ty(&*field.node.ty);
                         }
                     }

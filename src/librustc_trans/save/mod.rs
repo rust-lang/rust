@@ -23,8 +23,10 @@ use syntax::parse::token::{self, get_ident, keywords};
 use syntax::visit::{self, Visitor};
 use syntax::print::pprust::ty_to_string;
 
+use util::ppaux;
 
 use self::span_utils::SpanUtils;
+
 
 mod span_utils;
 mod recorder;
@@ -47,7 +49,7 @@ pub struct CrateData {
 pub enum Data {
     /// Data for all kinds of functions and methods.
     FunctionData(FunctionData),
-    /// Data for local and global variables (consts and statics).
+    /// Data for local and global variables (consts and statics), and fields.
     VariableData(VariableData),
     /// Data for modules.
     ModData(ModData),
@@ -215,6 +217,33 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 // FIXME
                 unimplemented!();
             }
+        }
+    }
+
+    // FIXME: we ought to be able to get the parent id ourselves, but we can't
+    // for now.
+    pub fn get_field_data(&self, field: &ast::StructField, parent: NodeId) -> Option<Data> {
+        match field.node.kind {
+            ast::NamedField(ident, _) => {
+                let name = get_ident(ident);
+                let qualname = format!("::{}::{}",
+                                       self.analysis.ty_cx.map.path_to_string(parent),
+                                       name);
+                let typ = ppaux::ty_to_string(&self.analysis.ty_cx,
+                                              *self.analysis.ty_cx.node_types()
+                                                  .get(&field.node.id).unwrap());
+                let sub_span = self.span_utils.sub_span_before_token(field.span, token::Colon);
+                Some(Data::VariableData(VariableData {
+                    id: field.node.id,
+                    name: get_ident(ident).to_string(),
+                    qualname: qualname,
+                    span: sub_span.unwrap(),
+                    scope: parent,
+                    value: "".to_owned(),
+                    type_value: typ,
+                }))
+            },
+            _ => None,
         }
     }
 
