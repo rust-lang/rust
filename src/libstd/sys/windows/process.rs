@@ -119,7 +119,7 @@ impl Process {
                  err_handle: Stdio) -> io::Result<Process>
     {
         use libc::{TRUE, STARTF_USESTDHANDLES};
-        use libc::{DWORD, STARTUPINFO, CreateProcessW};
+        use libc::{DWORD, STARTUPINFO};
 
         // To have the spawning semantics of unix/windows stay the same, we need
         // to read the *child's* PATH if one is provided. See #15149 for more
@@ -173,12 +173,12 @@ impl Process {
             static CREATE_PROCESS_LOCK: StaticMutex = StaticMutex::new();
             let _lock = CREATE_PROCESS_LOCK.lock();
 
-            cvt(CreateProcessW(ptr::null(),
-                               cmd_str.as_mut_ptr(),
-                               ptr::null_mut(),
-                               ptr::null_mut(),
-                               TRUE, flags, envp, dirp,
-                               &mut si, &mut pi))
+            cvt(c::CreateProcessW(ptr::null(),
+                                  cmd_str.as_mut_ptr(),
+                                  ptr::null_mut(),
+                                  ptr::null_mut(),
+                                  TRUE, flags, envp, dirp,
+                                  &mut si, &mut pi))
         });
 
         // We close the thread handle because we don't care about keeping
@@ -190,7 +190,7 @@ impl Process {
     }
 
     pub unsafe fn kill(&self) -> io::Result<()> {
-        try!(cvt(libc::TerminateProcess(self.handle.raw(), 1)));
+        try!(cvt(c::TerminateProcess(self.handle.raw(), 1)));
         Ok(())
     }
 
@@ -202,16 +202,15 @@ impl Process {
 
     pub fn wait(&self) -> io::Result<ExitStatus> {
         use libc::{STILL_ACTIVE, INFINITE, WAIT_OBJECT_0};
-        use libc::{GetExitCodeProcess, WaitForSingleObject};
 
         unsafe {
             loop {
                 let mut status = 0;
-                try!(cvt(GetExitCodeProcess(self.handle.raw(), &mut status)));
+                try!(cvt(c::GetExitCodeProcess(self.handle.raw(), &mut status)));
                 if status != STILL_ACTIVE {
                     return Ok(ExitStatus(status as i32));
                 }
-                match WaitForSingleObject(self.handle.raw(), INFINITE) {
+                match c::WaitForSingleObject(self.handle.raw(), INFINITE) {
                     WAIT_OBJECT_0 => {}
                     _ => return Err(Error::last_os_error()),
                 }

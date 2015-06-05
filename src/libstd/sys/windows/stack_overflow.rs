@@ -14,6 +14,7 @@ use ptr;
 use mem;
 use libc;
 use libc::types::os::arch::extra::{LPVOID, DWORD, LONG, BOOL};
+use sys::c;
 use sys_common::stack;
 
 pub struct Handler {
@@ -55,7 +56,7 @@ extern "system" fn vectored_handler(ExceptionInfo: *mut EXCEPTION_POINTERS) -> L
 
 pub unsafe fn init() {
     let mut info = mem::zeroed();
-    libc::GetSystemInfo(&mut info);
+    c::GetSystemInfo(&mut info);
     PAGE_SIZE = info.dwPageSize as usize;
 
     if AddVectoredExceptionHandler(0, vectored_handler) == ptr::null_mut() {

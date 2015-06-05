@@ -246,21 +246,6 @@ extern "system" {
                       lpWSAData: LPWSADATA) -> libc::c_int;
     pub fn WSACleanup() -> libc::c_int;
     pub fn WSAGetLastError() -> libc::c_int;
-    pub fn WSACloseEvent(hEvent: WSAEVENT) -> libc::BOOL;
-    pub fn WSACreateEvent() -> WSAEVENT;
-    pub fn WSAEventSelect(s: libc::SOCKET,
-                          hEventObject: WSAEVENT,
-                          lNetworkEvents: libc::c_long) -> libc::c_int;
-    pub fn WSASetEvent(hEvent: WSAEVENT) -> libc::BOOL;
-    pub fn WSAWaitForMultipleEvents(cEvents: libc::DWORD,
-                                    lphEvents: *const WSAEVENT,
-                                    fWaitAll: libc::BOOL,
-                                    dwTimeout: libc::DWORD,
-                                    fAltertable: libc::BOOL) -> libc::DWORD;
-    pub fn WSAEnumNetworkEvents(s: libc::SOCKET,
-                                hEventObject: WSAEVENT,
-                                lpNetworkEvents: LPWSANETWORKEVENTS)
-                                -> libc::c_int;
     pub fn WSADuplicateSocketW(s: libc::SOCKET,
                                dwProcessId: libc::DWORD,
                                lpProtocolInfo: LPWSAPROTOCOL_INFO)
@@ -272,29 +257,11 @@ extern "system" {
                       lpProtocolInfo: LPWSAPROTOCOL_INFO,
                       g: GROUP,
                       dwFlags: libc::DWORD) -> libc::SOCKET;
-
-    pub fn ioctlsocket(s: libc::SOCKET, cmd: libc::c_long,
-                       argp: *mut libc::c_ulong) -> libc::c_int;
-    pub fn select(nfds: libc::c_int,
-                  readfds: *mut fd_set,
-                  writefds: *mut fd_set,
-                  exceptfds: *mut fd_set,
-                  timeout: *mut libc::timeval) -> libc::c_int;
     pub fn getsockopt(sockfd: libc::SOCKET,
                       level: libc::c_int,
                       optname: libc::c_int,
                       optval: *mut libc::c_char,
                       optlen: *mut libc::c_int) -> libc::c_int;
-
-    pub fn SetEvent(hEvent: libc::HANDLE) -> libc::BOOL;
-    pub fn WaitForMultipleObjects(nCount: libc::DWORD,
-                                  lpHandles: *const libc::HANDLE,
-                                  bWaitAll: libc::BOOL,
-                                  dwMilliseconds: libc::DWORD) -> libc::DWORD;
-
-    pub fn CancelIo(hFile: libc::HANDLE) -> libc::BOOL;
-    pub fn CancelIoEx(hFile: libc::HANDLE,
-                      lpOverlapped: libc::LPOVERLAPPED) -> libc::BOOL;
 }
 
 pub mod compat {
@@ -419,21 +386,12 @@ extern "system" {
 
     pub fn GetConsoleMode(hConsoleHandle: libc::HANDLE,
                           lpMode: libc::LPDWORD) -> libc::BOOL;
-
-    pub fn SetConsoleMode(hConsoleHandle: libc::HANDLE,
-                          lpMode: libc::DWORD) -> libc::BOOL;
-    pub fn GetConsoleScreenBufferInfo(
-        hConsoleOutput: libc::HANDLE,
-        lpConsoleScreenBufferInfo: PCONSOLE_SCREEN_BUFFER_INFO,
-    ) -> libc::BOOL;
-
     pub fn GetFileAttributesExW(lpFileName: libc::LPCWSTR,
                                 fInfoLevelId: GET_FILEEX_INFO_LEVELS,
                                 lpFileInformation: libc::LPVOID) -> libc::BOOL;
     pub fn RemoveDirectoryW(lpPathName: libc::LPCWSTR) -> libc::BOOL;
     pub fn SetFileAttributesW(lpFileName: libc::LPCWSTR,
                               dwFileAttributes: libc::DWORD) -> libc::BOOL;
-    pub fn GetFileAttributesW(lpFileName: libc::LPCWSTR) -> libc::DWORD;
     pub fn GetFileInformationByHandle(hFile: libc::HANDLE,
                             lpFileInformation: LPBY_HANDLE_FILE_INFORMATION)
                             -> libc::BOOL;
@@ -483,6 +441,95 @@ extern "system" {
     pub fn SwitchToThread() -> libc::BOOL;
     pub fn Sleep(dwMilliseconds: libc::DWORD);
     pub fn GetProcessId(handle: libc::HANDLE) -> libc::DWORD;
+    pub fn GetEnvironmentVariableW(n: libc::LPCWSTR,
+                                   v: libc::LPWSTR,
+                                   nsize: libc::DWORD)
+                                   -> libc::DWORD;
+    pub fn SetEnvironmentVariableW(n: libc::LPCWSTR, v: libc::LPCWSTR)
+                                   -> libc::BOOL;
+    pub fn GetEnvironmentStringsW() -> libc::LPWCH;
+    pub fn FreeEnvironmentStringsW(env_ptr: libc::LPWCH) -> libc::BOOL;
+    pub fn GetModuleFileNameW(hModule: libc::HMODULE,
+                              lpFilename: libc::LPWSTR,
+                              nSize: libc::DWORD)
+                              -> libc::DWORD;
+    pub fn CreateDirectoryW(lpPathName: libc::LPCWSTR,
+                            lpSecurityAttributes:
+                            libc::LPSECURITY_ATTRIBUTES)
+                            -> libc::BOOL;
+    pub fn DeleteFileW(lpPathName: libc::LPCWSTR) -> libc::BOOL;
+    pub fn GetCurrentDirectoryW(nBufferLength: libc::DWORD,
+                                lpBuffer: libc::LPWSTR)
+                                -> libc::DWORD;
+    pub fn SetCurrentDirectoryW(lpPathName: libc::LPCWSTR) -> libc::BOOL;
+    pub fn GetLastError() -> libc::DWORD;
+    pub fn FindFirstFileW(fileName: libc::LPCWSTR, findFileData: libc::LPWIN32_FIND_DATAW)
+                          -> libc::HANDLE;
+    pub fn FindNextFileW(findFile: libc::HANDLE, findFileData: libc::LPWIN32_FIND_DATAW)
+                         -> libc::BOOL;
+    pub fn FindClose(findFile: libc::HANDLE) -> libc::BOOL;
+    pub fn DuplicateHandle(hSourceProcessHandle: libc::HANDLE,
+                           hSourceHandle: libc::HANDLE,
+                           hTargetProcessHandle: libc::HANDLE,
+                           lpTargetHandle: libc::LPHANDLE,
+                           dwDesiredAccess: libc::DWORD,
+                           bInheritHandle: libc::BOOL,
+                           dwOptions: libc::DWORD)
+                           -> libc::BOOL;
+    pub fn CloseHandle(hObject: libc::HANDLE) -> libc::BOOL;
+    pub fn CreateProcessW(lpApplicationName: libc::LPCWSTR,
+                          lpCommandLine: libc::LPWSTR,
+                          lpProcessAttributes:
+                          libc::LPSECURITY_ATTRIBUTES,
+                          lpThreadAttributes:
+                          libc::LPSECURITY_ATTRIBUTES,
+                          bInheritHandles: libc::BOOL,
+                          dwCreationFlags: libc::DWORD,
+                          lpEnvironment: libc::LPVOID,
+                          lpCurrentDirectory: libc::LPCWSTR,
+                          lpStartupInfo: libc::LPSTARTUPINFO,
+                          lpProcessInformation:
+                          libc::LPPROCESS_INFORMATION)
+                          -> libc::BOOL;
+    pub fn TerminateProcess(hProcess: libc::HANDLE, uExitCode: libc::c_uint)
+                            -> libc::BOOL;
+    pub fn GetExitCodeProcess(hProcess: libc::HANDLE,
+                              lpExitCode: libc::LPDWORD)
+                              -> libc::BOOL;
+    pub fn GetSystemInfo(lpSystemInfo: libc::LPSYSTEM_INFO);
+    pub fn MoveFileExW(lpExistingFileName: libc::LPCWSTR,
+                       lpNewFileName: libc::LPCWSTR,
+                       dwFlags: libc::DWORD) -> libc::BOOL;
+    pub fn CreateHardLinkW(lpSymlinkFileName: libc::LPCWSTR,
+                           lpTargetFileName: libc::LPCWSTR,
+                           lpSecurityAttributes: libc::LPSECURITY_ATTRIBUTES)
+                            -> libc::BOOL;
+    pub fn FlushFileBuffers(hFile: libc::HANDLE) -> libc::BOOL;
+    pub fn CreateFileW(lpFileName: libc::LPCWSTR,
+                       dwDesiredAccess: libc::DWORD,
+                       dwShareMode: libc::DWORD,
+                       lpSecurityAttributes: libc::LPSECURITY_ATTRIBUTES,
+                       dwCreationDisposition: libc::DWORD,
+                       dwFlagsAndAttributes: libc::DWORD,
+                       hTemplateFile: libc::HANDLE) -> libc::HANDLE;
+    pub fn ReadFile(hFile: libc::HANDLE,
+                    lpBuffer: libc::LPVOID,
+                    nNumberOfBytesToRead: libc::DWORD,
+                    lpNumberOfBytesRead: libc::LPDWORD,
+                    lpOverlapped: libc::LPOVERLAPPED) -> libc::BOOL;
+    pub fn WriteFile(hFile: libc::HANDLE,
+                     lpBuffer: libc::LPVOID,
+                     nNumberOfBytesToWrite: libc::DWORD,
+                     lpNumberOfBytesWritten: libc::LPDWORD,
+                     lpOverlapped: libc::LPOVERLAPPED) -> libc::BOOL;
+    pub fn SetFilePointerEx(hFile: libc::HANDLE,
+                            liDistanceToMove: libc::LARGE_INTEGER,
+                            lpNewFilePointer: libc::PLARGE_INTEGER,
+                            dwMoveMethod: libc::DWORD) -> libc::BOOL;
+    pub fn QueryPerformanceFrequency(
+                lpFrequency: *mut libc::LARGE_INTEGER) -> libc::BOOL;
+    pub fn QueryPerformanceCounter(
+                lpPerformanceCount: *mut libc::LARGE_INTEGER) -> libc::BOOL;
 }
 
 #[link(name = "userenv")]

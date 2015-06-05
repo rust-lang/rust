@@ -84,8 +84,8 @@ impl Iterator for ReadDir {
         unsafe {
             let mut wfd = mem::zeroed();
             loop {
-                if libc::FindNextFileW(self.handle.0, &mut wfd) == 0 {
-                    if libc::GetLastError() ==
+                if c::FindNextFileW(self.handle.0, &mut wfd) == 0 {
+                    if c::GetLastError() ==
                         c::ERROR_NO_MORE_FILES as libc::DWORD {
                         return None
                     } else {
@@ -102,7 +102,7 @@ impl Iterator for ReadDir {
 
 impl Drop for FindNextFileHandle {
     fn drop(&mut self) {
-        let r = unsafe { libc::FindClose(self.0) };
+        let r = unsafe { c::FindClose(self.0) };
         debug_assert!(r != 0);
     }
 }
@@ -228,13 +228,13 @@ impl File {
     pub fn open(path: &Path, opts: &OpenOptions) -> io::Result<File> {
         let path = to_utf16(path);
         let handle = unsafe {
-            libc::CreateFileW(path.as_ptr(),
-                              opts.get_desired_access(),
-                              opts.get_share_mode(),
-                              opts.security_attributes as *mut _,
-                              opts.get_creation_disposition(),
-                              opts.get_flags_and_attributes(),
-                              ptr::null_mut())
+            c::CreateFileW(path.as_ptr(),
+                           opts.get_desired_access(),
+                           opts.get_share_mode(),
+                           opts.security_attributes as *mut _,
+                           opts.get_creation_disposition(),
+                           opts.get_flags_and_attributes(),
+                           ptr::null_mut())
         };
         if handle == libc::INVALID_HANDLE_VALUE {
             Err(Error::last_os_error())
@@ -244,7 +244,7 @@ impl File {
     }
 
     pub fn fsync(&self) -> io::Result<()> {
-        try!(cvt(unsafe { libc::FlushFileBuffers(self.handle.raw()) }));
+        try!(cvt(unsafe { c::FlushFileBuffers(self.handle.raw()) }));
         Ok(())
     }
 
@@ -306,8 +306,8 @@ impl File {
         let pos = pos as libc::LARGE_INTEGER;
         let mut newpos = 0;
         try!(cvt(unsafe {
-            libc::SetFilePointerEx(self.handle.raw(), pos,
-                                   &mut newpos, whence)
+            c::SetFilePointerEx(self.handle.raw(), pos,
+                                &mut newpos, whence)
         }));
         Ok(newpos as u64)
     }
@@ -439,7 +439,7 @@ impl DirBuilder {
     pub fn mkdir(&self, p: &Path) -> io::Result<()> {
         let p = to_utf16(p);
         try!(cvt(unsafe {
-            libc::CreateDirectoryW(p.as_ptr(), ptr::null_mut())
+            c::CreateDirectoryW(p.as_ptr(), ptr::null_mut())
         }));
         Ok(())
     }
@@ -452,7 +452,7 @@ pub fn readdir(p: &Path) -> io::Result<ReadDir> {
 
     unsafe {
         let mut wfd = mem::zeroed();
-        let find_handle = libc::FindFirstFileW(path.as_ptr(), &mut wfd);
+        let find_handle = c::FindFirstFileW(path.as_ptr(), &mut wfd);
         if find_handle != libc::INVALID_HANDLE_VALUE {
             Ok(ReadDir {
                 handle: FindNextFileHandle(find_handle),
@@ -467,7 +467,7 @@ pub fn readdir(p: &Path) -> io::Result<ReadDir> {
 
 pub fn unlink(p: &Path) -> io::Result<()> {
     let p_utf16 = to_utf16(p);
-    try!(cvt(unsafe { libc::DeleteFileW(p_utf16.as_ptr()) }));
+    try!(cvt(unsafe { c::DeleteFileW(p_utf16.as_ptr()) }));
     Ok(())
 }
 
@@ -475,8 +475,8 @@ pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
     let old = to_utf16(old);
     let new = to_utf16(new);
     try!(cvt(unsafe {
-        libc::MoveFileExW(old.as_ptr(), new.as_ptr(),
-                          libc::MOVEFILE_REPLACE_EXISTING)
+        c::MoveFileExW(old.as_ptr(), new.as_ptr(),
+                       libc::MOVEFILE_REPLACE_EXISTING)
     }));
     Ok(())
 }
@@ -511,7 +511,7 @@ pub fn link(src: &Path, dst: &Path) -> io::Result<()> {
     let src = to_utf16(src);
     let dst = to_utf16(dst);
     try!(cvt(unsafe {
-        libc::CreateHardLinkW(dst.as_ptr(), src.as_ptr(), ptr::null_mut())
+        c::CreateHardLinkW(dst.as_ptr(), src.as_ptr(), ptr::null_mut())
     }));
     Ok(())
 }

@@ -12,11 +12,11 @@ use prelude::v1::*;
 
 use io::ErrorKind;
 use io;
-use libc::funcs::extra::kernel32::{GetCurrentProcess, DuplicateHandle};
 use libc::{self, HANDLE};
 use mem;
 use ops::Deref;
 use ptr;
+use sys::c;
 use sys::cvt;
 
 /// An owned container for `HANDLE` object, closing them on Drop.
@@ -54,7 +54,7 @@ impl Deref for Handle {
 
 impl Drop for Handle {
     fn drop(&mut self) {
-        unsafe { let _ = libc::CloseHandle(self.raw()); }
+        unsafe { let _ = c::CloseHandle(self.raw()); }
     }
 }
 
@@ -68,9 +68,9 @@ impl RawHandle {
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
         let mut read = 0;
         let res = cvt(unsafe {
-            libc::ReadFile(self.0, buf.as_ptr() as libc::LPVOID,
-                           buf.len() as libc::DWORD, &mut read,
-                           ptr::null_mut())
+            c::ReadFile(self.0, buf.as_ptr() as libc::LPVOID,
+                        buf.len() as libc::DWORD, &mut read,
+                        ptr::null_mut())
         });
 
         match res {
@@ -89,9 +89,9 @@ impl RawHandle {
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
         let mut amt = 0;
         try!(cvt(unsafe {
-            libc::WriteFile(self.0, buf.as_ptr() as libc::LPVOID,
-                            buf.len() as libc::DWORD, &mut amt,
-                            ptr::null_mut())
+            c::WriteFile(self.0, buf.as_ptr() as libc::LPVOID,
+                         buf.len() as libc::DWORD, &mut amt,
+                         ptr::null_mut())
         }));
         Ok(amt as usize)
     }
@@ -100,10 +100,10 @@ impl RawHandle {
                      options: libc::DWORD) -> io::Result<Handle> {
         let mut ret = 0 as libc::HANDLE;
         try!(cvt(unsafe {
-            let cur_proc = GetCurrentProcess();
-            DuplicateHandle(cur_proc, self.0, cur_proc, &mut ret,
-                            access, inherit as libc::BOOL,
-                            options)
+            let cur_proc = c::GetCurrentProcess();
+            c::DuplicateHandle(cur_proc, self.0, cur_proc, &mut ret,
+                               access, inherit as libc::BOOL,
+                               options)
         }));
         Ok(Handle::new(ret))
     }

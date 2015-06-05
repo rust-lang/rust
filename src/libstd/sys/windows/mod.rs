@@ -117,12 +117,12 @@ fn fill_utf16_buf<F1, F2, T>(mut f1: F1, f2: F2) -> io::Result<T>
             // not an actual error.
             c::SetLastError(0);
             let k = match f1(buf.as_mut_ptr(), n as libc::DWORD) {
-                0 if libc::GetLastError() == 0 => 0,
+                0 if c::GetLastError() == 0 => 0,
                 0 => return Err(io::Error::last_os_error()),
                 n => n,
             } as usize;
-            if k == n && libc::GetLastError() ==
-                            libc::ERROR_INSUFFICIENT_BUFFER as libc::DWORD {
+            if k == n && c::GetLastError() ==
+                         libc::ERROR_INSUFFICIENT_BUFFER as libc::DWORD {
                 n *= 2;
             } else if k >= n {
                 n = k;
