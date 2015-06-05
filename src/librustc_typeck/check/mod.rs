@@ -4894,9 +4894,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
             "move_val_init" => {
                 (1,
                  vec!(
-                    tcx.mk_mut_ref(tcx.mk_region(ty::ReLateBound(ty::DebruijnIndex::new(1),
-                                                                  ty::BrAnon(0))),
-                                    param(ccx, 0)),
+                    tcx.mk_mut_ptr(param(ccx, 0)),
                     param(ccx, 0)
                   ),
                tcx.mk_nil())
