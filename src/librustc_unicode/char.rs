@@ -67,6 +67,18 @@ impl Iterator for ToUppercase {
     fn next(&mut self) -> Option<char> { self.0.next() }
 }
 
+/// An iterator over the titlecase mapping of a given character, returned from
+/// the [`to_titlecase` method](../primitive.char.html#method.to_titlecase) on
+/// characters.
+#[stable(feature = "char_to_titlecase", since = "1.2.0")]
+pub struct ToTitlecase(CaseMappingIter);
+
+#[stable(feature = "char_to_titlecase", since = "1.2.0")]
+impl Iterator for ToTitlecase {
+    type Item = char;
+    fn next(&mut self) -> Option<char> { self.0.next() }
+}
+
 
 enum CaseMappingIter {
     Three(char, char, char),
@@ -452,6 +464,27 @@ impl char {
     #[inline]
     pub fn to_lowercase(self) -> ToLowercase {
         ToLowercase(CaseMappingIter::new(conversions::to_lower(self)))
+    }
+
+    /// Converts a character to its titlecase equivalent.
+    ///
+    /// This performs complex unconditional mappings with no tailoring.
+    /// See `to_uppercase()` for references and more information.
+    ///
+    /// This differs from `to_uppercase()` since Unicode contains
+    /// digraphs and ligature characters.
+    /// For example, U+01F3 “ǳ” and U+FB01 “ﬁ”
+    /// map to U+01F1 “Ǳ” and U+0046 U+0069 “Fi”, respectively.
+    ///
+    /// # Return value
+    ///
+    /// Returns an iterator which yields the characters corresponding to the
+    /// lowercase equivalent of the character. If no conversion is possible then
+    /// an iterator with just the input character is returned.
+    #[stable(feature = "char_to_titlecase", since = "1.2.0")]
+    #[inline]
+    pub fn to_titlecase(self) -> ToTitlecase {
+        ToTitlecase(CaseMappingIter::new(conversions::to_title(self)))
     }
 
     /// Converts a character to its uppercase equivalent.

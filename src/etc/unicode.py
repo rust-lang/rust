@@ -74,6 +74,7 @@ def load_unicode_data(f):
     gencats = {}
     to_lower = {}
     to_upper = {}
+    to_title = {}
     combines = {}
     canon_decomp = {}
     compat_decomp = {}
@@ -110,6 +111,10 @@ def load_unicode_data(f):
         if upcase != "" and code_org != upcase:
             to_upper[code] = (int(upcase, 16), 0, 0)
 
+        # title case
+        if titlecase.strip() != "" and code_org != titlecase:
+            to_title[code] = (int(titlecase, 16), 0, 0)
+
         # store decomposition, if given
         if decomp != "":
             if decomp.startswith('<'):
@@ -144,9 +149,9 @@ def load_unicode_data(f):
     gencats = group_cats(gencats)
     combines = to_combines(group_cats(combines))
 
-    return (canon_decomp, compat_decomp, gencats, combines, to_upper, to_lower)
+    return (canon_decomp, compat_decomp, gencats, combines, to_upper, to_lower, to_title)
 
-def load_special_casing(f, to_upper, to_lower):
+def load_special_casing(f, to_upper, to_lower, to_title):
     fetch(f)
     for line in fileinput.input(f):
         data = line.split('#')[0].split(';')
@@ -163,7 +168,7 @@ def load_special_casing(f, to_upper, to_lower):
         title = title.strip()
         upper = upper.strip()
         key = int(code, 16)
-        for (map_, values) in [(to_lower, lower), (to_upper, upper)]:
+        for (map_, values) in [(to_lower, lower), (to_upper, upper), (to_title, title)]:
             if values != code:
                 values = [int(i, 16) for i in values.split()]
                 for _ in range(len(values), 3):
@@ -344,7 +349,7 @@ def emit_property_module(f, mod, tbl, emit):
         f.write("    }\n\n")
     f.write("}\n\n")
 
-def emit_conversions_module(f, to_upper, to_lower):
+def emit_conversions_module(f, to_upper, to_lower, to_title):
     f.write("pub mod conversions {")
     f.write("""
     use core::cmp::Ordering::{Equal, Less, Greater};
@@ -367,6 +372,13 @@ def emit_conversions_module(f, to_upper, to_lower):
         }
     }
 
+    pub fn to_title(c: char) -> [char; 3] {
+        match bsearch_case_table(c, to_titlecase_table) {
+            None        => [c, '\\0', '\\0'],
+            Some(index) => to_titlecase_table[index].1
+        }
+    }
+
     fn bsearch_case_table(c: char, table: &'static [(char, [char; 3])]) -> Option<usize> {
         match table.binary_search_by(|&(key, _)| {
             if c == key { Equal }
@@ -379,18 +391,18 @@ def emit_conversions_module(f, to_upper, to_lower):
     }
 
 """)
+    t_type = "&'static [(char, [char; 3])]"
+    pfun = lambda x: "(%s,[%s,%s,%s])" % (
+        escape_char(x[0]), escape_char(x[1][0]), escape_char(x[1][1]), escape_char(x[1][2]))
     emit_table(f, "to_lowercase_table",
         sorted(to_lower.iteritems(), key=operator.itemgetter(0)),
-        is_pub=False,
-        t_type = "&'static [(char, [char; 3])]",
-        pfun=lambda x: "(%s,[%s,%s,%s])" % (
-            escape_char(x[0]), escape_char(x[1][0]), escape_char(x[1][1]), escape_char(x[1][2])))
+        is_pub=False, t_type = t_type, pfun=pfun)
     emit_table(f, "to_uppercase_table",
         sorted(to_upper.iteritems(), key=operator.itemgetter(0)),
-        is_pub=False,
-        t_type = "&'static [(char, [char; 3])]",
-        pfun=lambda x: "(%s,[%s,%s,%s])" % (
-            escape_char(x[0]), escape_char(x[1][0]), escape_char(x[1][1]), escape_char(x[1][2])))
+        is_pub=False, t_type = t_type, pfun=pfun)
+    emit_table(f, "to_titlecase_table",
+        sorted(to_title.iteritems(), key=operator.itemgetter(0)),
+        is_pub=False, t_type = t_type, pfun=pfun)
     f.write("}\n\n")
 
 def emit_grapheme_module(f, grapheme_table, grapheme_cats):
@@ -624,8 +636,8 @@ if __name__ == "__main__":
 pub const UNICODE_VERSION: (u64, u64, u64) = (%s, %s, %s);
 """ % unicode_version)
         (canon_decomp, compat_decomp, gencats, combines,
-                to_upper, to_lower) = load_unicode_data("UnicodeData.txt")
-        load_special_casing("SpecialCasing.txt", to_upper, to_lower)
+                to_upper, to_lower, to_title) = load_unicode_data("UnicodeData.txt")
+        load_special_casing("SpecialCasing.txt", to_upper, to_lower, to_title)
         want_derived = ["XID_Start", "XID_Continue", "Alphabetic", "Lowercase", "Uppercase"]
         derived = load_properties("DerivedCoreProperties.txt", want_derived)
         scripts = load_properties("Scripts.txt", [])
@@ -645,7 +657,7 @@ pub const UNICODE_VERSION: (u64, u64, u64) = (%s, %s, %s);
 
         # normalizations and conversions module
         emit_norm_module(rf, canon_decomp, compat_decomp, combines, norm_props)
-        emit_conversions_module(rf, to_upper, to_lower)
+        emit_conversions_module(rf, to_upper, to_lower, to_title)
 
         ### character width module
         width_table = []

@@ -27,6 +27,16 @@ fn char_to_uppercase() {
     assert_iter_eq('ᾀ'.to_uppercase(), &['Ἀ', 'Ι']);
 }
 
+#[test]
+fn char_to_titlecase() {
+    assert_iter_eq('a'.to_titlecase(), &['A']);
+    assert_iter_eq('é'.to_titlecase(), &['É']);
+    assert_iter_eq('Ǆ'.to_titlecase(), &['ǅ']);
+    assert_iter_eq('ß'.to_titlecase(), &['S', 's']);
+    assert_iter_eq('ﬁ'.to_titlecase(), &['F', 'i']);
+    assert_iter_eq('ᾀ'.to_titlecase(), &['ᾈ']);
+}
+
 fn assert_iter_eq<I: Iterator<Item=char>>(iter: I, expected: &[char]) {
     assert_eq!(iter.collect::<Vec<_>>(), expected);
 }
