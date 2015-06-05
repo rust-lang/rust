@@ -1,0 +1,11 @@
+install:
+  - ps: Start-FileDownload 'https://static.rust-lang.org/dist/rust-nightly-i686-pc-windows-gnu.exe'
+  - rust-nightly-i686-pc-windows-gnu.exe /VERYSILENT /NORESTART /DIR="C:\Program Files (x86)\Rust"
+  - SET PATH=%PATH%;C:\Program Files (x86)\Rust\bin
+  - rustc -V
+  - cargo -V
+
+build: false
+
+test_script:
+  - cargo test --verbose
