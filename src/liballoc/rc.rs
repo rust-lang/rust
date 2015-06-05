@@ -156,6 +156,7 @@ use std::boxed;
 use core::cell::Cell;
 use core::clone::Clone;
 use core::cmp::{PartialEq, PartialOrd, Eq, Ord, Ordering};
+use core::convert::AsRef;
 use core::default::Default;
 use core::fmt;
 use core::hash::{Hasher, Hash};
@@ -375,6 +376,15 @@ impl<T: ?Sized> Deref for Rc<T> {
 
     #[inline(always)]
     fn deref(&self) -> &T {
+        &self.inner().value
+    }
+}
+
+#[stable(feature = "rc_arc_as_ref", since = "1.2.0")]
+impl<T: ?Sized> AsRef<T> for Rc<T> {
+
+    #[inline(always)]
+    fn as_ref(&self) -> &T {
         &self.inner().value
     }
 }
