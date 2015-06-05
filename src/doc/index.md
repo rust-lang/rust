@@ -25,7 +25,7 @@ series of small examples.
 If you need help with something, or just want to talk about Rust with others,
 there are a few places you can do that:
 
-The Rust IRC channels on [irc.mozilla.org](http://irc.mozilla.org/) are the
+The Rust IRC channels on [irc.mozilla.org](irc://irc.mozilla.org/) are the
 fastest way to get help.
 [`#rust`](http://chat.mibbit.com/?server=irc.mozilla.org&channel=%23rust) is
 the general discussion channel, and you'll find people willing to help you with
@@ -40,15 +40,15 @@ There's also
 [`#rust-internals`](http://chat.mibbit.com/?server=irc.mozilla.org&channel=%23rust-internals), which is for discussion of the development of Rust itself.
 
 You can also get help on [Stack
-Overflow](http://stackoverflow.com/questions/tagged/rust). Searching for your
+Overflow](https://stackoverflow.com/questions/tagged/rust). Searching for your
 problem might reveal someone who has asked it before!
 
-There is an active [subreddit](http://reddit.com/r/rust) with lots of
+There is an active [subreddit](https://reddit.com/r/rust) with lots of
 discussion and news about Rust.
 
-There is also a [user forum](http://users.rust-lang.org), for all
-user-oriented discussion, and a [developer
-forum](http://internals.rust-lang.org/), where the development of Rust
+There is also a [user forum](https://users.rust-lang.org), for all
+user-oriented discussion, and a [developer 
+forum](https://internals.rust-lang.org/), where the development of Rust
 itself is discussed.
 
 # Specification
@@ -61,7 +61,7 @@ the language in as much detail as possible is in [the reference](reference.html)
 Rust is still a young language, so there isn't a ton of tooling yet, but the
 tools we have are really nice.
 
-[Cargo](http://crates.io) is Rust's package manager, and its website contains
+[Cargo](https://crates.io) is Rust's package manager, and its website contains
 lots of good documentation.
 
 [`rustdoc`](book/documentation.html) is used to generate documentation for Rust code.
