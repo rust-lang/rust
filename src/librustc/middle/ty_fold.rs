@@ -42,6 +42,7 @@ use std::rc::Rc;
 use syntax::abi;
 use syntax::ast;
 use syntax::owned_slice::OwnedSlice;
+use util::nodemap::FnvHashMap;
 use util::ppaux::Repr;
 
 ///////////////////////////////////////////////////////////////////////////
@@ -842,6 +843,86 @@ impl<'a, 'tcx> TypeFolder<'tcx> for RegionFolder<'a, 'tcx>
 }
 
 ///////////////////////////////////////////////////////////////////////////
+// Late-bound region replacer
+
+// Replaces the escaping regions in a type.
+
+struct RegionReplacer<'a, 'tcx: 'a> {
+    tcx: &'a ty::ctxt<'tcx>,
+    current_depth: u32,
+    fld_r: &'a mut (FnMut(ty::BoundRegion) -> ty::Region + 'a),
+    map: FnvHashMap<ty::BoundRegion, ty::Region>
+}
+
+impl<'a, 'tcx> RegionReplacer<'a, 'tcx> {
+    fn new<F>(tcx: &'a ty::ctxt<'tcx>, fld_r: &'a mut F) -> RegionReplacer<'a, 'tcx>
+        where F : FnMut(ty::BoundRegion) -> ty::Region
+    {
+        RegionReplacer {
+            tcx: tcx,
+            current_depth: 1,
+            fld_r: fld_r,
+            map: FnvHashMap()
+        }
+    }
+}
+
+pub fn replace_late_bound_regions<'tcx,T,F>(tcx: &ty::ctxt<'tcx>,
+                                            value: &ty::Binder<T>,
+                                            mut f: F)
+                                            -> (T, FnvHashMap<ty::BoundRegion, ty::Region>)
+    where F : FnMut(ty::BoundRegion) -> ty::Region,
+          T : TypeFoldable<'tcx> + Repr<'tcx>,
+{
+    debug!("replace_late_bound_regions({})", value.repr(tcx));
+    let mut replacer = RegionReplacer::new(tcx, &mut f);
+    let result = value.skip_binder().fold_with(&mut replacer);
+    (result, replacer.map)
+}
+
+impl<'a, 'tcx> TypeFolder<'tcx> for RegionReplacer<'a, 'tcx>
+{
+    fn tcx(&self) -> &ty::ctxt<'tcx> { self.tcx }
+
+    fn enter_region_binder(&mut self) {
+        self.current_depth += 1;
+    }
+
+    fn exit_region_binder(&mut self) {
+        self.current_depth -= 1;
+    }
+
+    fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
+        if !ty::type_escapes_depth(t, self.current_depth-1) {
+            return t;
+        }
+
+        super_fold_ty(self, t)
+    }
+
+    fn fold_region(&mut self, r: ty::Region) -> ty::Region {
+        match r {
+            ty::ReLateBound(debruijn, br) if debruijn.depth == self.current_depth => {
+                debug!("RegionReplacer.fold_region({}) folding region (current_depth={})",
+                       r.repr(self.tcx()), self.current_depth);
+                let fld_r = &mut self.fld_r;
+                let region = *self.map.entry(br).or_insert_with(|| fld_r(br));
+                if let ty::ReLateBound(debruijn1, br) = region {
+                    // If the callback returns a late-bound region,
+                    // that region should always use depth 1. Then we
+                    // adjust it to the correct depth.
+                    assert_eq!(debruijn1.depth, 1);
+                    ty::ReLateBound(debruijn, br)
+                } else {
+                    region
+                }
+            }
+            r => r
+        }
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////
 // Region eraser
 //
 // Replaces all free regions with 'static. Useful in contexts, such as
@@ -860,6 +941,14 @@ pub fn erase_regions<'tcx, T: TypeFoldable<'tcx>>(tcx: &ty::ctxt<'tcx>, t: T) ->
 
 impl<'a, 'tcx> TypeFolder<'tcx> for RegionEraser<'a, 'tcx> {
     fn tcx(&self) -> &ty::ctxt<'tcx> { self.tcx }
+
+    fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
+        if !ty::type_has_erasable_regions(t) {
+            return t;
+        }
+
+        super_fold_ty(self, t)
+    }
 
     fn fold_region(&mut self, r: ty::Region) -> ty::Region {
         // because whether or not a region is bound affects subtyping,

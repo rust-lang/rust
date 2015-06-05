@@ -24,7 +24,7 @@ use middle::ty::{ty_param, ty_ptr, ty_rptr, ty_tup};
 use middle::ty::ty_closure;
 use middle::ty::{ty_uniq, ty_trait, ty_int, ty_uint, ty_infer};
 use middle::ty;
-use middle::ty_fold::TypeFoldable;
+use middle::ty_fold::{self, TypeFoldable};
 
 use std::collections::HashMap;
 use std::collections::hash_state::HashState;
@@ -1301,7 +1301,7 @@ impl<'tcx, T> UserString<'tcx> for ty::Binder<T>
         // the output. We'll probably want to tweak this over time to
         // decide just how much information to give.
         let mut names = Vec::new();
-        let (unbound_value, _) = ty::replace_late_bound_regions(tcx, self, |br| {
+        let (unbound_value, _) = ty_fold::replace_late_bound_regions(tcx, self, |br| {
             ty::ReLateBound(ty::DebruijnIndex::new(1), match br {
                 ty::BrNamed(_, name) => {
                     names.push(token::get_name(name));
