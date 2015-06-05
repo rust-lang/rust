@@ -756,16 +756,6 @@ pub struct ctxt<'tcx> {
     /// Caches the representation hints for struct definitions.
     pub repr_hint_cache: RefCell<DefIdMap<Rc<Vec<attr::ReprAttr>>>>,
 
-    /// Caches whether types are known to impl Copy. Note that type
-    /// parameters are never placed into this cache, because their
-    /// results are dependent on the parameter environment.
-    pub type_impls_copy_cache: RefCell<HashMap<Ty<'tcx>,bool>>,
-
-    /// Caches whether types are known to impl Sized. Note that type
-    /// parameters are never placed into this cache, because their
-    /// results are dependent on the parameter environment.
-    pub type_impls_sized_cache: RefCell<HashMap<Ty<'tcx>,bool>>,
-
     /// Maps Expr NodeId's to their constant qualification.
     pub const_qualif_map: RefCell<NodeMap<check_const::ConstQualif>>,
 
@@ -827,6 +817,23 @@ bitflags! {
         const NEEDS_SUBST       = TypeFlags::HAS_PARAMS.bits |
                                   TypeFlags::HAS_SELF.bits |
                                   TypeFlags::HAS_REGIONS.bits,
+
+        // Flags representing the nominal content of a type,
+        // computed by FlagsComputetion
+        const NOMINAL_FLAGS     = TypeFlags::HAS_PARAMS.bits |
+                                  TypeFlags::HAS_SELF.bits |
+                                  TypeFlags::HAS_TY_INFER.bits |
+                                  TypeFlags::HAS_RE_INFER.bits |
+                                  TypeFlags::HAS_RE_LATE_BOUND.bits |
+                                  TypeFlags::HAS_REGIONS.bits |
+                                  TypeFlags::HAS_TY_ERR.bits |
+                                  TypeFlags::HAS_PROJECTION.bits,
+
+        // Caches for type_is_sized, type_moves_by_default
+        const SIZEDNESS_CACHED  = 1 << 16,
+        const IS_SIZED          = 1 << 17,
+        const MOVENESS_CACHED   = 1 << 18,
+        const MOVES_BY_DEFAULT  = 1 << 19,
     }
 }
 
@@ -859,8 +866,8 @@ macro_rules! sty_debug_print {
                         ty::ty_err => /* unimportant */ continue,
                         $(ty::$variant(..) => &mut $variant,)*
                     };
-                    let region = t.flags.intersects(ty::TypeFlags::HAS_RE_INFER);
-                    let ty = t.flags.intersects(ty::TypeFlags::HAS_TY_INFER);
+                    let region = t.flags.get().intersects(ty::TypeFlags::HAS_RE_INFER);
+                    let ty = t.flags.get().intersects(ty::TypeFlags::HAS_TY_INFER);
 
                     variant.total += 1;
                     total.total += 1;
@@ -908,7 +915,7 @@ impl<'tcx> ctxt<'tcx> {
 #[derive(Debug)]
 pub struct TyS<'tcx> {
     pub sty: sty<'tcx>,
-    pub flags: TypeFlags,
+    pub flags: Cell<TypeFlags>,
 
     // the maximal depth of any bound regions appearing in this type.
     region_depth: u32,
@@ -964,23 +971,23 @@ impl<'tcx> Borrow<sty<'tcx>> for InternedTy<'tcx> {
 }
 
 pub fn type_has_params(ty: Ty) -> bool {
-    ty.flags.intersects(TypeFlags::HAS_PARAMS)
+    ty.flags.get().intersects(TypeFlags::HAS_PARAMS)
 }
 pub fn type_has_self(ty: Ty) -> bool {
-    ty.flags.intersects(TypeFlags::HAS_SELF)
+    ty.flags.get().intersects(TypeFlags::HAS_SELF)
 }
 pub fn type_has_ty_infer(ty: Ty) -> bool {
-    ty.flags.intersects(TypeFlags::HAS_TY_INFER)
+    ty.flags.get().intersects(TypeFlags::HAS_TY_INFER)
 }
 pub fn type_needs_infer(ty: Ty) -> bool {
-    ty.flags.intersects(TypeFlags::HAS_TY_INFER | TypeFlags::HAS_RE_INFER)
+    ty.flags.get().intersects(TypeFlags::HAS_TY_INFER | TypeFlags::HAS_RE_INFER)
 }
 pub fn type_has_projection(ty: Ty) -> bool {
-    ty.flags.intersects(TypeFlags::HAS_PROJECTION)
+    ty.flags.get().intersects(TypeFlags::HAS_PROJECTION)
 }
 
 pub fn type_has_late_bound_regions(ty: Ty) -> bool {
-    ty.flags.intersects(TypeFlags::HAS_RE_LATE_BOUND)
+    ty.flags.get().intersects(TypeFlags::HAS_RE_LATE_BOUND)
 }
 
 /// An "escaping region" is a bound region whose binder is not part of `t`.
@@ -2770,8 +2777,6 @@ pub fn mk_ctxt<'tcx>(s: Session,
         stability: RefCell::new(stability),
         selection_cache: traits::SelectionCache::new(),
         repr_hint_cache: RefCell::new(DefIdMap()),
-        type_impls_copy_cache: RefCell::new(HashMap::new()),
-        type_impls_sized_cache: RefCell::new(HashMap::new()),
         const_qualif_map: RefCell::new(NodeMap()),
         custom_coerce_unsized_kinds: RefCell::new(DefIdMap()),
         cast_kinds: RefCell::new(NodeMap()),
@@ -2871,7 +2876,7 @@ fn intern_ty<'tcx>(type_arena: &'tcx TypedArena<TyS<'tcx>>,
 
     let ty = match () {
         () => type_arena.alloc(TyS { sty: st,
-                                     flags: flags.flags,
+                                     flags: Cell::new(flags.flags),
                                      region_depth: flags.depth, }),
     };
 
@@ -2902,7 +2907,7 @@ impl FlagComputation {
     }
 
     fn add_flags(&mut self, flags: TypeFlags) {
-        self.flags = self.flags | flags;
+        self.flags = self.flags | (flags & TypeFlags::NOMINAL_FLAGS);
     }
 
     fn add_depth(&mut self, depth: u32) {
@@ -3008,7 +3013,7 @@ impl FlagComputation {
     }
 
     fn add_ty(&mut self, ty: Ty) {
-        self.add_flags(ty.flags);
+        self.add_flags(ty.flags.get());
         self.add_depth(ty.region_depth);
     }
 
@@ -3389,11 +3394,11 @@ pub fn type_is_nil(ty: Ty) -> bool {
 }
 
 pub fn type_is_error(ty: Ty) -> bool {
-    ty.flags.intersects(TypeFlags::HAS_TY_ERR)
+    ty.flags.get().intersects(TypeFlags::HAS_TY_ERR)
 }
 
 pub fn type_needs_subst(ty: Ty) -> bool {
-    ty.flags.intersects(TypeFlags::NEEDS_SUBST)
+    ty.flags.get().intersects(TypeFlags::NEEDS_SUBST)
 }
 
 pub fn trait_ref_contains_error(tref: &ty::TraitRef) -> bool {
@@ -3911,41 +3916,29 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
     }
 }
 
-fn type_impls_bound<'a,'tcx>(param_env: &ParameterEnvironment<'a,'tcx>,
-                             cache: &RefCell<HashMap<Ty<'tcx>,bool>>,
+fn type_impls_bound<'a,'tcx>(param_env: Option<&ParameterEnvironment<'a,'tcx>>,
+                             tcx: &ty::ctxt<'tcx>,
                              ty: Ty<'tcx>,
                              bound: ty::BuiltinBound,
                              span: Span)
                              -> bool
 {
-    assert!(!ty::type_needs_infer(ty));
-
-    if !type_has_params(ty) && !type_has_self(ty) {
-        match cache.borrow().get(&ty) {
-            None => {}
-            Some(&result) => {
-                debug!("type_impls_bound({}, {:?}) = {:?} (cached)",
-                       ty.repr(param_env.tcx),
-                       bound,
-                       result);
-                return result
-            }
+    let pe;
+    let param_env = match param_env {
+        Some(e) => e,
+        None => {
+            pe = empty_parameter_environment(tcx);
+            &pe
         }
-    }
-
-    let infcx = infer::new_infer_ctxt(param_env.tcx);
+    };
+    let infcx = infer::new_infer_ctxt(tcx);
 
     let is_impld = traits::type_known_to_meet_builtin_bound(&infcx, param_env, ty, bound, span);
 
     debug!("type_impls_bound({}, {:?}) = {:?}",
-           ty.repr(param_env.tcx),
+           ty.repr(tcx),
            bound,
            is_impld);
-
-    if !type_has_params(ty) && !type_has_self(ty) {
-        let old_value = cache.borrow_mut().insert(ty, is_impld);
-        assert!(old_value.is_none());
-    }
 
     is_impld
 }
@@ -3955,17 +3948,85 @@ pub fn type_moves_by_default<'a,'tcx>(param_env: &ParameterEnvironment<'a,'tcx>,
                                       ty: Ty<'tcx>)
                                       -> bool
 {
-    let tcx = param_env.tcx;
-    !type_impls_bound(param_env, &tcx.type_impls_copy_cache, ty, ty::BoundCopy, span)
+    if ty.flags.get().intersects(TypeFlags::MOVENESS_CACHED) {
+        return ty.flags.get().intersects(TypeFlags::MOVES_BY_DEFAULT);
+    }
+
+    assert!(!ty::type_needs_infer(ty));
+
+    // Fast-path for primitive types
+    let result = match ty.sty {
+        ty_bool | ty_char | ty_int(..) | ty_uint(..) | ty_float(..) |
+        ty_ptr(..) | ty_bare_fn(..) | ty_rptr(_, mt {
+            mutbl: ast::MutImmutable, ..
+        }) => Some(false),
+
+        ty_str | ty_uniq(..) | ty_rptr(_, mt {
+            mutbl: ast::MutMutable, ..
+        }) => Some(true),
+
+        ty_vec(..) | ty_trait(..) | ty_tup(..) |
+        ty_closure(..) | ty_enum(..) | ty_struct(..) |
+        ty_projection(..) | ty_param(..) | ty_infer(..) | ty_err => None
+    }.unwrap_or_else(|| !type_impls_bound(Some(param_env),
+                                          param_env.tcx,
+                                          ty,
+                                          ty::BoundCopy,
+                                          span));
+
+    if !type_has_params(ty) && !type_has_self(ty) {
+        ty.flags.set(ty.flags.get() | if result {
+            TypeFlags::MOVENESS_CACHED | TypeFlags::MOVES_BY_DEFAULT
+        } else {
+            TypeFlags::MOVENESS_CACHED
+        });
+    }
+
+    result
 }
 
-pub fn type_is_sized<'a,'tcx>(param_env: &ParameterEnvironment<'a,'tcx>,
+#[inline]
+pub fn type_is_sized<'a,'tcx>(param_env: Option<&ParameterEnvironment<'a,'tcx>>,
+                              tcx: &ty::ctxt<'tcx>,
                               span: Span,
                               ty: Ty<'tcx>)
                               -> bool
 {
-    let tcx = param_env.tcx;
-    type_impls_bound(param_env, &tcx.type_impls_sized_cache, ty, ty::BoundSized, span)
+    if ty.flags.get().intersects(TypeFlags::SIZEDNESS_CACHED) {
+        let result = ty.flags.get().intersects(TypeFlags::IS_SIZED);
+        return result;
+    }
+
+    type_is_sized_uncached(param_env, tcx, span, ty)
+}
+
+fn type_is_sized_uncached<'a,'tcx>(param_env: Option<&ParameterEnvironment<'a,'tcx>>,
+                                   tcx: &ty::ctxt<'tcx>,
+                                   span: Span,
+                                   ty: Ty<'tcx>) -> bool {
+    assert!(!ty::type_needs_infer(ty));
+
+    // Fast-path for primitive types
+    let result = match ty.sty {
+        ty_bool | ty_char | ty_int(..) | ty_uint(..) | ty_float(..) |
+        ty_uniq(..) | ty_ptr(..) | ty_rptr(..) | ty_bare_fn(..) |
+        ty_vec(_, Some(..)) | ty_tup(..) | ty_closure(..) => Some(true),
+
+        ty_str | ty_trait(..) | ty_vec(_, None) => Some(false),
+
+        ty_enum(..) | ty_struct(..) | ty_projection(..) | ty_param(..) |
+        ty_infer(..) | ty_err => None
+    }.unwrap_or_else(|| type_impls_bound(param_env, tcx, ty, ty::BoundSized, span));
+
+    if !type_has_params(ty) && !type_has_self(ty) {
+        ty.flags.set(ty.flags.get() | if result {
+            TypeFlags::SIZEDNESS_CACHED | TypeFlags::IS_SIZED
+        } else {
+            TypeFlags::SIZEDNESS_CACHED
+        });
+    }
+
+    result
 }
 
 pub fn is_ffi_safe<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
