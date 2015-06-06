@@ -135,12 +135,19 @@ pub fn pat_contains_bindings(dm: &DefMap, pat: &ast::Pat) -> bool {
     contains_bindings
 }
 
-/// Checks if the pattern contains any `ref` or `ref mut` bindings.
-pub fn pat_contains_ref_binding(dm: &DefMap, pat: &ast::Pat) -> bool {
-    let mut result = false;
+/// Checks if the pattern contains any `ref` or `ref mut` bindings,
+/// and if yes wether its containing mutable ones or just immutables ones.
+pub fn pat_contains_ref_binding(dm: &DefMap, pat: &ast::Pat) -> Option<ast::Mutability> {
+    let mut result = None;
     pat_bindings(dm, pat, |mode, _, _, _| {
         match mode {
-            ast::BindingMode::BindByRef(_) => { result = true; }
+            ast::BindingMode::BindByRef(m) => {
+                // Pick Mutable as maximum
+                match result {
+                    None | Some(ast::MutImmutable) => result = Some(m),
+                    _ => (),
+                }
+            }
             ast::BindingMode::BindByValue(_) => { }
         }
     });
@@ -148,9 +155,14 @@ pub fn pat_contains_ref_binding(dm: &DefMap, pat: &ast::Pat) -> bool {
 }
 
 /// Checks if the patterns for this arm contain any `ref` or `ref mut`
-/// bindings.
-pub fn arm_contains_ref_binding(dm: &DefMap, arm: &ast::Arm) -> bool {
-    arm.pats.iter().any(|pat| pat_contains_ref_binding(dm, pat))
+/// bindings, and if yes wether its containing mutable ones or just immutables ones.
+pub fn arm_contains_ref_binding(dm: &DefMap, arm: &ast::Arm) -> Option<ast::Mutability> {
+    arm.pats.iter()
+            .filter_map(|pat| pat_contains_ref_binding(dm, pat))
+            .max_by(|m| match *m {
+                ast::MutMutable => 1,
+                ast::MutImmutable => 0,
+            })
 }
 
 /// Checks if the pattern contains any patterns that bind something to

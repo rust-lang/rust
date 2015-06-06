@@ -1908,6 +1908,15 @@ pub enum LvaluePreference {
     NoPreference
 }
 
+impl LvaluePreference {
+    pub fn from_mutbl(m: ast::Mutability) -> Self {
+        match m {
+            ast::MutMutable => PreferMutLvalue,
+            ast::MutImmutable => NoPreference,
+        }
+    }
+}
+
 /// Whether `autoderef` requires types to resolve.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum UnresolvedTypeAction {
@@ -3224,10 +3233,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                 _ => NoExpectation
             }
         });
-        let lvalue_pref = match mutbl {
-            ast::MutMutable => PreferMutLvalue,
-            ast::MutImmutable => NoPreference
-        };
+        let lvalue_pref = LvaluePreference::from_mutbl(mutbl);
         check_expr_with_expectation_and_lvalue_pref(fcx,
                                                     &**oprnd,
                                                     hint,
@@ -3925,9 +3931,7 @@ pub fn check_decl_initializer<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
     let ref_bindings = fcx.tcx().pat_contains_ref_binding(&local.pat);
 
     let local_ty = fcx.local_ty(init.span, local.id);
-    if !ref_bindings {
-        check_expr_coercable_to_type(fcx, init, local_ty)
-    } else {
+    if let Some(m) = ref_bindings {
         // Somewhat subtle: if we have a `ref` binding in the pattern,
         // we want to avoid introducing coercions for the RHS. This is
         // both because it helps preserve sanity and, in the case of
@@ -3936,9 +3940,11 @@ pub fn check_decl_initializer<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
         // referent for the reference that results is *equal to* the
         // type of the lvalue it is referencing, and not some
         // supertype thereof.
-        check_expr(fcx, init);
+        check_expr_with_lvalue_pref(fcx, init, LvaluePreference::from_mutbl(m));
         let init_ty = fcx.expr_ty(init);
         demand::eqtype(fcx, init.span, init_ty, local_ty);
+    } else {
+        check_expr_coercable_to_type(fcx, init, local_ty)
     };
 }
 

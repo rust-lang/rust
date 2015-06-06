@@ -60,7 +60,7 @@
 //! sort of a minor point so I've opted to leave it for later---after all
 //! we may want to adjust precisely when coercions occur.
 
-use check::{autoderef, FnCtxt, NoPreference, PreferMutLvalue, UnresolvedTypeAction};
+use check::{autoderef, FnCtxt, LvaluePreference, UnresolvedTypeAction};
 
 use middle::infer::{self, Coercion};
 use middle::traits::{self, ObligationCause};
@@ -188,10 +188,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         let r_borrow = self.tcx().mk_region(r_borrow);
         let autoref = Some(ty::AutoPtr(r_borrow, mutbl_b));
 
-        let lvalue_pref = match mutbl_b {
-            ast::MutMutable => PreferMutLvalue,
-            ast::MutImmutable => NoPreference
-        };
+        let lvalue_pref = LvaluePreference::from_mutbl(mutbl_b);
         let mut first_error = None;
         let (_, autoderefs, success) = autoderef(self.fcx,
                                                  expr_a.span,
