@@ -104,17 +104,23 @@ impl<T> Rawlink<T> {
     }
 
     /// Convert the `Rawlink` into an Option value
-    fn resolve_immut<'a>(&self) -> Option<&'a T> {
-        unsafe {
-            self.p.as_ref()
-        }
+    ///
+    /// **unsafe** because:
+    ///
+    /// - Dereference of raw pointer.
+    /// - Returns reference of arbitrary lifetime.
+    unsafe fn resolve<'a>(&self) -> Option<&'a T> {
+        self.p.as_ref()
     }
 
     /// Convert the `Rawlink` into an Option value
-    fn resolve<'a>(&mut self) -> Option<&'a mut T> {
-        unsafe {
-            self.p.as_mut()
-        }
+    ///
+    /// **unsafe** because:
+    ///
+    /// - Dereference of raw pointer.
+    /// - Returns reference of arbitrary lifetime.
+    unsafe fn resolve_mut<'a>(&mut self) -> Option<&'a mut T> {
+        self.p.as_mut()
     }
 
     /// Return the `Rawlink` and replace with `Rawlink::none()`
@@ -179,7 +185,7 @@ impl<T> LinkedList<T> {
     /// Add a Node last in the list
     #[inline]
     fn push_back_node(&mut self, mut new_tail: Box<Node<T>>) {
-        match self.list_tail.resolve() {
+        match unsafe { self.list_tail.resolve_mut() } {
             None => return self.push_front_node(new_tail),
             Some(tail) => {
                 self.list_tail = Rawlink::some(&mut *new_tail);
@@ -192,14 +198,16 @@ impl<T> LinkedList<T> {
     /// Remove the last Node and return it, or None if the list is empty
     #[inline]
     fn pop_back_node(&mut self) -> Option<Box<Node<T>>> {
-        self.list_tail.resolve().map_or(None, |tail| {
-            self.length -= 1;
-            self.list_tail = tail.prev;
-            match tail.prev.resolve() {
-                None => self.list_head.take(),
-                Some(tail_prev) => tail_prev.next.take()
-            }
-        })
+        unsafe {
+            self.list_tail.resolve_mut().and_then(|tail| {
+                self.length -= 1;
+                self.list_tail = tail.prev;
+                match tail.prev.resolve_mut() {
+                    None => self.list_head.take(),
+                    Some(tail_prev) => tail_prev.next.take()
+                }
+            })
+        }
     }
 }
 
@@ -246,7 +254,7 @@ impl<T> LinkedList<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn append(&mut self, other: &mut LinkedList<T>) {
-        match self.list_tail.resolve() {
+        match unsafe { self.list_tail.resolve_mut() } {
             None => {
                 self.length = other.length;
                 self.list_head = other.list_head.take();
@@ -433,7 +441,9 @@ impl<T> LinkedList<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn back(&self) -> Option<&T> {
-        self.list_tail.resolve_immut().as_ref().map(|tail| &tail.value)
+        unsafe {
+            self.list_tail.resolve().map(|tail| &tail.value)
+        }
     }
 
     /// Provides a mutable reference to the back element, or `None` if the list
@@ -460,7 +470,9 @@ impl<T> LinkedList<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn back_mut(&mut self) -> Option<&mut T> {
-        self.list_tail.resolve().map(|tail| &mut tail.value)
+        unsafe {
+            self.list_tail.resolve_mut().map(|tail| &mut tail.value)
+        }
     }
 
     /// Adds an element first in the list.
@@ -609,12 +621,14 @@ impl<T> LinkedList<T> {
             length: len - at
         };
 
-        // Swap split_node.next with list_head (which is None), nulling out split_node.next,
-        // as it is the new tail.
-        mem::swap(&mut split_node.resolve().unwrap().next, &mut splitted_list.list_head);
-        // Null out list_head.prev. Note this `unwrap` won't fail because if at == len
-        // we already branched out at the top of the fn to return the empty list.
-        splitted_list.list_head.as_mut().unwrap().prev = Rawlink::none();
+        unsafe {
+            // Swap split_node.next with list_head (which is None), nulling out split_node.next,
+            // as it is the new tail.
+            mem::swap(&mut split_node.resolve_mut().unwrap().next, &mut splitted_list.list_head);
+            // Null out list_head.prev. Note this `unwrap` won't fail because if at == len
+            // we already branched out at the top of the fn to return the empty list.
+            splitted_list.list_head.as_mut().unwrap().prev = Rawlink::none();
+        }
         // Fix the tail ptr
         self.list_tail = split_node;
         self.length = at;
@@ -666,11 +680,13 @@ impl<'a, A> DoubleEndedIterator for Iter<'a, A> {
         if self.nelem == 0 {
             return None;
         }
-        self.tail.resolve_immut().as_ref().map(|prev| {
-            self.nelem -= 1;
-            self.tail = prev.prev;
-            &prev.value
-        })
+        unsafe {
+            self.tail.resolve().map(|prev| {
+                self.nelem -= 1;
+                self.tail = prev.prev;
+                &prev.value
+            })
+        }
     }
 }
 
@@ -685,14 +701,16 @@ impl<'a, A> Iterator for IterMut<'a, A> {
         if self.nelem == 0 {
             return None;
         }
-        self.head.resolve().map(|next| {
-            self.nelem -= 1;
-            self.head = match next.next {
-                Some(ref mut node) => Rawlink::some(&mut **node),
-                None => Rawlink::none(),
-            };
-            &mut next.value
-        })
+        unsafe {
+            self.head.resolve_mut().map(|next| {
+                self.nelem -= 1;
+                self.head = match next.next {
+                    Some(ref mut node) => Rawlink::some(&mut **node),
+                    None => Rawlink::none(),
+                };
+                &mut next.value
+            })
+        }
     }
 
     #[inline]
@@ -708,11 +726,13 @@ impl<'a, A> DoubleEndedIterator for IterMut<'a, A> {
         if self.nelem == 0 {
             return None;
         }
-        self.tail.resolve().map(|prev| {
-            self.nelem -= 1;
-            self.tail = prev.prev;
-            &mut prev.value
-        })
+        unsafe {
+            self.tail.resolve_mut().map(|prev| {
+                self.nelem -= 1;
+                self.tail = prev.prev;
+                &mut prev.value
+            })
+        }
     }
 }
 
@@ -726,10 +746,10 @@ impl<'a, A> IterMut<'a, A> {
         // previously yielded element and self.head.
         //
         // The inserted node will not appear in further iteration.
-        match self.head.resolve() {
+        match unsafe { self.head.resolve_mut() } {
             None => { self.list.push_back_node(ins_node); }
             Some(node) => {
-                let prev_node = match node.prev.resolve() {
+                let prev_node = match unsafe { node.prev.resolve_mut() } {
                     None => return self.list.push_front_node(ins_node),
                     Some(prev) => prev,
                 };
@@ -795,7 +815,9 @@ impl<'a, A> IterMut<'a, A> {
         if self.nelem == 0 {
             return None
         }
-        self.head.resolve().map(|head| &mut head.value)
+        unsafe {
+            self.head.resolve_mut().map(|head| &mut head.value)
+        }
     }
 }
 
@@ -947,7 +969,7 @@ mod tests {
             Some(ref node) => node_ptr = &**node,
         }
         loop {
-            match (last_ptr, node_ptr.prev.resolve_immut()) {
+            match unsafe { (last_ptr, node_ptr.prev.resolve()) } {
                 (None   , None      ) => {}
                 (None   , _         ) => panic!("prev link for list_head"),
                 (Some(p), Some(pptr)) => {
