@@ -130,9 +130,11 @@ pub struct IntermediateBox<T: ?Sized>{
 
 impl<T> Place<T> for IntermediateBox<T> {
     // FIXME: what about unsized T?
+    #[inline]
     fn pointer(&mut self) -> *mut T { self.ptr as *mut T }
 }
 
+#[inline]
 unsafe fn finalize<T>(b: IntermediateBox<T>) -> Box<T> {
     let p = b.ptr as *mut T;
     mem::forget(b);
@@ -159,23 +161,27 @@ fn make_place<T>() -> IntermediateBox<T> {
 }
 
 impl<T> BoxPlace<T> for IntermediateBox<T> {
+    #[inline]
     fn make_place() -> IntermediateBox<T> { make_place() }
 }
 
 impl<T> InPlace<T> for IntermediateBox<T> {
     type Owner = Box<T>;
+    #[inline]
     unsafe fn finalize(self) -> Box<T> { finalize(self) }
 }
 
 impl<T> Boxed for Box<T> {
     type Data = T;
     type Place = IntermediateBox<T>;
+    #[inline]
     unsafe fn finalize(b: IntermediateBox<T>) -> Box<T> { finalize(b) }
 }
 
 impl<T> Placer<T> for ExchangeHeapSingleton {
     type Place = IntermediateBox<T>;
 
+    #[inline]
     fn make_place(self) -> IntermediateBox<T> {
         make_place()
     }
