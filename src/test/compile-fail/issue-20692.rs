@@ -1,0 +1,20 @@
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// file at the top-level directory of this distribution and at
+// http://rust-lang.org/COPYRIGHT.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+
+trait Foo: Sized { }
+trait Bar: Foo { }
+
+fn foo<T: Bar>(x: &T) {
+    let _ = x as &Bar;
+    //~^ ERROR cannot convert to a trait object because trait `Bar` is not object-safe
+    //~| NOTE the trait cannot require that `Self : Sized`
+}
+
+fn main() {}
