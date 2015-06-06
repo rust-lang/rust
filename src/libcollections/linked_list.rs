@@ -615,25 +615,29 @@ impl<T> LinkedList<T> {
             iter.tail
         };
 
-        let mut splitted_list = LinkedList {
-            list_head: None,
+        // The split node is the new tail node of the first part and owns
+        // the head of the second part.
+        let mut second_part_head;
+
+        unsafe {
+            second_part_head = split_node.resolve_mut().unwrap().next.take();
+            match second_part_head {
+                None => {}
+                Some(ref mut head) => head.prev = Rawlink::none(),
+            }
+        }
+
+        let second_part = LinkedList {
+            list_head: second_part_head,
             list_tail: self.list_tail,
             length: len - at
         };
 
-        unsafe {
-            // Swap split_node.next with list_head (which is None), nulling out split_node.next,
-            // as it is the new tail.
-            mem::swap(&mut split_node.resolve_mut().unwrap().next, &mut splitted_list.list_head);
-            // Null out list_head.prev. Note this `unwrap` won't fail because if at == len
-            // we already branched out at the top of the fn to return the empty list.
-            splitted_list.list_head.as_mut().unwrap().prev = Rawlink::none();
-        }
-        // Fix the tail ptr
+        // Fix the tail ptr of the first part
         self.list_tail = split_node;
         self.length = at;
 
-        splitted_list
+        second_part
     }
 }
 
@@ -947,7 +951,7 @@ impl<A: Hash> Hash for LinkedList<A> {
 #[cfg(test)]
 mod tests {
     use std::clone::Clone;
-    use std::iter::{Iterator, IntoIterator};
+    use std::iter::{Iterator, IntoIterator, Extend};
     use std::option::Option::{Some, None, self};
     use std::__rand::{thread_rng, Rng};
     use std::thread;
@@ -1114,6 +1118,26 @@ mod tests {
         assert_eq!(v1.iter().len(), 3);
         assert_eq!(v1.iter().collect::<Vec<_>>().len(), 3);
     }
+
+    #[test]
+    fn test_split_off() {
+        let mut v1 = LinkedList::new();
+        v1.push_front(1u8);
+        v1.push_front(1u8);
+        v1.push_front(1u8);
+        v1.push_front(1u8);
+
+        // test all splits
+        for ix in 0..1 + v1.len() {
+            let mut a = v1.clone();
+            let b = a.split_off(ix);
+            check_links(&a);
+            check_links(&b);
+            a.extend(b);
+            assert_eq!(v1, a);
+        }
+    }
+
 
     #[cfg(test)]
     fn fuzz_test(sz: i32) {
