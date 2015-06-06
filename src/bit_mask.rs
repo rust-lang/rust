@@ -89,20 +89,26 @@ fn check_compare(cx: &Context, bit_op: &Expr, cmp_op: BinOp_, cmp_value: u64, sp
 	}
 }
 
-fn check_bit_mask(cx: &Context, bit_op: BinOp_, cmp_op: BinOp_, mask_value: u64, cmp_value: u64, span: &Span) {
+fn check_bit_mask(cx: &Context, bit_op: BinOp_, cmp_op: BinOp_, 
+		mask_value: u64, cmp_value: u64, span: &Span) {
 	match cmp_op {
 		BiEq | BiNe => match bit_op {
 			BiBitAnd => if mask_value & cmp_value != mask_value {
-				cx.span_lint(BAD_BIT_MASK, *span, &format!("incompatible bit mask: _ & {} can never be equal to {}", mask_value,
-					cmp_value));
+				if cmp_value != 0 {
+					cx.span_lint(BAD_BIT_MASK, *span, &format!(
+						"incompatible bit mask: _ & {} can never be equal to {}", 
+						mask_value, cmp_value));
+				}
 			} else { 
 				if mask_value == 0 {
-					cx.span_lint(BAD_BIT_MASK, *span, &format!("&-masking with zero"));
+					cx.span_lint(BAD_BIT_MASK, *span, 
+						&format!("&-masking with zero"));
 				}
 			},
 			BiBitOr => if mask_value | cmp_value != cmp_value {
-				cx.span_lint(BAD_BIT_MASK, *span, &format!("incompatible bit mask: _ | {} can never be equal to {}", mask_value,
-					cmp_value));
+				cx.span_lint(BAD_BIT_MASK, *span, &format!(
+					"incompatible bit mask: _ | {} can never be equal to {}", 
+					mask_value, cmp_value));
 			},
 			_ => ()
 		},
@@ -113,7 +119,8 @@ fn check_bit_mask(cx: &Context, bit_op: BinOp_, cmp_op: BinOp_, mask_value: u64,
 					mask_value, cmp_value));
 			} else { 
 				if mask_value == 0 {
-					cx.span_lint(BAD_BIT_MASK, *span, &format!("&-masking with zero"));
+					cx.span_lint(BAD_BIT_MASK, *span, 
+						&format!("&-masking with zero"));
 				}
 			},
 			BiBitOr => if mask_value >= cmp_value {
@@ -136,7 +143,8 @@ fn check_bit_mask(cx: &Context, bit_op: BinOp_, cmp_op: BinOp_, mask_value: u64,
 					mask_value, cmp_value));
 			} else { 
 				if mask_value == 0 {
-					cx.span_lint(BAD_BIT_MASK, *span, &format!("&-masking with zero"));
+					cx.span_lint(BAD_BIT_MASK, *span, 
+						&format!("&-masking with zero"));
 				}
 			},
 			BiBitOr => if mask_value > cmp_value {

@@ -11,6 +11,7 @@ fn main() {
 	
 	x & 0 == 0; //~ERROR &-masking with zero
 	x & 1 == 1; //ok, distinguishes bit 0
+	x & 1 == 0; //ok, compared with zero
 	x & 2 == 1; //~ERROR
 	x | 0 == 0; //ok, equals x == 0 (maybe warn?)
 	x | 1 == 3; //ok, equals x == 2 || x == 3
