@@ -17,6 +17,7 @@ impl bar for u32 { fn dup(&self) -> u32 { *self } fn blah<X>(&self) {} }
 fn main() {
     10.dup::<i32>(); //~ ERROR does not take type parameters
     10.blah::<i32, i32>(); //~ ERROR incorrect number of type parameters
-    (box 10 as Box<bar>).dup(); //~ ERROR cannot convert to a trait object
+    let b: Box<_> = box 10;
+    (b as Box<bar>).dup(); //~ ERROR cannot convert to a trait object
     //~^ ERROR the trait `bar` is not implemented for the type `bar`
 }

@@ -18,6 +18,7 @@ fn main() {
     let blah;
     {
         let ss: &isize = &1; //~ ERROR borrowed value does not live long enough
-        blah = box ss as Box<Foo>;
+        let b: Box<_> = box ss;
+        blah = b as Box<Foo>;
     }
 }

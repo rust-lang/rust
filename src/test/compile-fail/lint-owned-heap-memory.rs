@@ -11,7 +11,6 @@
 #![allow(dead_code)]
 #![forbid(box_pointers)]
 #![feature(box_syntax)]
-#![feature(core)]
 
 struct Foo {
     x: Box<isize> //~ ERROR type uses owned

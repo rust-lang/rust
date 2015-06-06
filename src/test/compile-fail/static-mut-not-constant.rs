@@ -19,12 +19,10 @@ static mut a: Box<isize> = box 3;
 //~| ERROR blocks in statics are limited to items and tail expressions
 //~| ERROR blocks in statics are limited to items and tail expressions
 //~| ERROR blocks in statics are limited to items and tail expressions
-//~| ERROR blocks in statics are limited to items and tail expressions
-//~| ERROR function calls in statics are limited to struct and enum constructors
-//~| ERROR function calls in statics are limited to struct and enum constructors
-//~| ERROR function calls in statics are limited to struct and enum constructors
-//~| ERROR function calls in statics are limited to struct and enum constructors
-//~| ERROR paths in statics may only refer to constants or functions
+//~| ERROR function calls in statics are limited to constant functions, struct and enum constructors
+//~| ERROR function calls in statics are limited to constant functions, struct and enum constructors
+//~| ERROR function calls in statics are limited to constant functions, struct and enum constructors
+//~| ERROR function calls in statics are limited to constant functions, struct and enum constructors
 //~| ERROR paths in statics may only refer to constants or functions
 //~| ERROR paths in statics may only refer to constants or functions
 //~| ERROR paths in statics may only refer to constants or functions

@@ -23,11 +23,13 @@ static boxed: Box<RefCell<isize>> = box RefCell::new(0);
 //~| ERROR blocks in statics are limited to items and tail expressions
 //~| ERROR blocks in statics are limited to items and tail expressions
 //~| ERROR blocks in statics are limited to items and tail expressions
-//~| ERROR blocks in statics are limited to items and tail expressions
 //~| ERROR paths in statics may only refer to constants or functions
 //~| ERROR paths in statics may only refer to constants or functions
 //~| ERROR paths in statics may only refer to constants or functions
-//~| ERROR paths in statics may only refer to constants or functions
+//~| ERROR function calls in statics are limited to constant functions, struct and enum constructors
+//~| ERROR function calls in statics are limited to constant functions, struct and enum constructors
+//~| ERROR function calls in statics are limited to constant functions, struct and enum constructors
+//~| ERROR function calls in statics are limited to constant functions, struct and enum constructors
 //~| ERROR references in statics may only refer to immutable values
 
 fn main() { }

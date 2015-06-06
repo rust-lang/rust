@@ -59,6 +59,7 @@ fn cat(in_x : usize, in_y : isize, in_name: String) -> cat {
 }
 
 fn main() {
-  let nyan: Box<noisy> = box cat(0, 2, "nyan".to_string()) as Box<noisy>;
+  let b: Box<_> = box cat(0, 2, "nyan".to_string());
+  let nyan: Box<noisy> = b as Box<noisy>;
   nyan.eat(); //~ ERROR no method named `eat` found
 }

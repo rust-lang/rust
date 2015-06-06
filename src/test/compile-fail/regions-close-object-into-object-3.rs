@@ -17,8 +17,10 @@ struct B<'a, T>(&'a (A<T>+'a));
 trait X { }
 impl<'a, T> X for B<'a, T> {}
 
+fn id<T>(x: T) -> T { x }
+
 fn h<'a, T, U:'static>(v: Box<A<U>+'static>) -> Box<X+'static> {
-    box B(&*v) as Box<X> //~ ERROR `*v` does not live long enough
+    id::<Box<_>>(box B(&*v)) as Box<X> //~ ERROR `*v` does not live long enough
 }
 
 fn main() {}
