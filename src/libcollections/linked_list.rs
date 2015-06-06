@@ -140,12 +140,21 @@ impl<T> Node<T> {
     fn new(v: T) -> Node<T> {
         Node{value: v, next: None, prev: Rawlink::none()}
     }
+
+    /// Update the `prev` link on `next`, then set self's next pointer.
+    ///
+    /// `self.next` should be `None` when you call this
+    /// (otherwise a Node is probably being dropped by mistake).
+    fn set_next(&mut self, mut next: Box<Node<T>>) {
+        debug_assert!(self.next.is_none());
+        next.prev = Rawlink::some(self);
+        self.next = Some(next);
+    }
 }
 
-/// Set the .prev field on `next`, then return `Some(next)`
-fn link_with_prev<T>(mut next: Box<Node<T>>, prev: Rawlink<Node<T>>)
-                  -> Link<T> {
-    next.prev = prev;
+/// Clear the .prev field on `next`, then return `Some(next)`
+fn link_no_prev<T>(mut next: Box<Node<T>>) -> Link<T> {
+    next.prev = Rawlink::none();
     Some(next)
 }
 
@@ -157,7 +166,7 @@ impl<T> LinkedList<T> {
         match self.list_head {
             None => {
                 self.list_tail = Rawlink::some(&mut *new_head);
-                self.list_head = link_with_prev(new_head, Rawlink::none());
+                self.list_head = link_no_prev(new_head);
             }
             Some(ref mut head) => {
                 new_head.prev = Rawlink::none();
@@ -175,7 +184,7 @@ impl<T> LinkedList<T> {
         self.list_head.take().map(|mut front_node| {
             self.length -= 1;
             match front_node.next.take() {
-                Some(node) => self.list_head = link_with_prev(node, Rawlink::none()),
+                Some(node) => self.list_head = link_no_prev(node),
                 None => self.list_tail = Rawlink::none()
             }
             front_node
@@ -184,12 +193,12 @@ impl<T> LinkedList<T> {
 
     /// Add a Node last in the list
     #[inline]
-    fn push_back_node(&mut self, mut new_tail: Box<Node<T>>) {
+    fn push_back_node(&mut self, new_tail: Box<Node<T>>) {
         match unsafe { self.list_tail.resolve_mut() } {
             None => return self.push_front_node(new_tail),
             Some(tail) => {
                 self.list_tail = Rawlink::some(&mut *new_tail);
-                tail.next = link_with_prev(new_tail, Rawlink::some(tail));
+                tail.set_next(new_tail);
             }
         }
         self.length += 1;
@@ -267,7 +276,7 @@ impl<T> LinkedList<T> {
                 match other.list_head.take() {
                     None => return,
                     Some(node) => {
-                        tail.next = link_with_prev(node, self.list_tail);
+                        tail.set_next(node);
                         self.list_tail = o_tail;
                         self.length += o_length;
                     }
@@ -758,8 +767,8 @@ impl<'a, A> IterMut<'a, A> {
                     Some(prev) => prev,
                 };
                 let node_own = prev_node.next.take().unwrap();
-                ins_node.next = link_with_prev(node_own, Rawlink::some(&mut *ins_node));
-                prev_node.next = link_with_prev(ins_node, Rawlink::some(prev_node));
+                ins_node.set_next(node_own);
+                prev_node.set_next(ins_node);
                 self.list.length += 1;
             }
         }
