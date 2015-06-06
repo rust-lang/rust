@@ -567,10 +567,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         if let Some(v) = self.intrinsics().borrow().get(key).cloned() {
             return v;
         }
-        match declare_intrinsic(self, key) {
-            Some(v) => return v,
-            None => panic!()
-        }
+        declare_intrinsic(self, key).expect(&format!("intrinsic declaration failed: {}", key))
     }
 
     pub fn is_split_stack_supported(&self) -> bool {
@@ -929,6 +926,9 @@ fn declare_intrinsic(ccx: &CrateContext, key: & &'static str) -> Option<ValueRef
 
     ifn!("llvm.expect.i1", fn(i1, i1) -> i1);
     ifn!("llvm.assume", fn(i1) -> void);
+
+    ifn!("llvm.stacksave", fn() -> i8p);
+    ifn!("llvm.stackrestore", fn(i8p) -> void);
 
     // Some intrinsics were introduced in later versions of LLVM, but they have
     // fallbacks in libc or libm and such. Currently, all of these intrinsics

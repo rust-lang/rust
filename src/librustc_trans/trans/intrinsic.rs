@@ -84,6 +84,8 @@ pub fn get_simple_intrinsic(ccx: &CrateContext, item: &ast::ForeignItem) -> Opti
         "bswap32" => "llvm.bswap.i32",
         "bswap64" => "llvm.bswap.i64",
         "assume" => "llvm.assume",
+        "stacksave" => "llvm.stacksave",
+        "stackrestore" => "llvm.stackrestore",
         _ => return None
     };
     Some(ccx.get_intrinsic(&name))
@@ -320,6 +322,14 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         (_, "breakpoint") => {
             let llfn = ccx.get_intrinsic(&("llvm.debugtrap"));
             Call(bcx, llfn, &[], None, call_debug_location)
+        }
+        (_, "stackalloc") => {
+            // cannot use ArrayAlloca since it places the alloca at
+            // the function start
+            let tp_ty = *substs.types.get(FnSpace, 0);
+            let lltp_ty = type_of::type_of(ccx, tp_ty);
+            let n = llargs[0];
+            B(bcx).array_alloca(lltp_ty, n)
         }
         (_, "size_of") => {
             let tp_ty = *substs.types.get(FnSpace, 0);
