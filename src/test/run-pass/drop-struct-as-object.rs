@@ -43,7 +43,7 @@ impl Drop for Cat {
 
 pub fn main() {
     {
-        let x = box Cat {name: 22};
+        let x: Box<Cat> = box Cat {name: 22};
         let nyan: Box<Dummy> = x as Box<Dummy>;
     }
     unsafe {

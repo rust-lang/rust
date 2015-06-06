@@ -27,7 +27,8 @@ struct Structure {
 }
 
 pub fn main() {
-    let x: Box<isize> = in HEAP { 2 };
+    // XXX
+    // let x: Box<isize> = in HEAP { 2 };
     let y: Box<isize> = box 2;
     let b: Box<isize> = box () (1 + 2);
     let c: Box<_> = box () (3 + 4);

@@ -20,6 +20,7 @@ fn f(wr: &mut Write) {
 }
 
 fn main() {
-    let mut wr = box io::stdout() as Box<Write>;
+    let b: Box<_> = box io::stdout();
+    let mut wr = b as Box<Write>;
     f(&mut wr);
 }

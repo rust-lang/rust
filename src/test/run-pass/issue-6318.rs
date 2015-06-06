@@ -26,7 +26,8 @@ pub struct Struct;
 impl Foo for Struct {}
 
 pub fn main() {
-    match Thing::A(box Struct as Box<Foo+'static>) {
+    let b: Box<_> = box Struct;
+    match Thing::A(b as Box<Foo+'static>) {
         Thing::A(_a) => 0,
     };
 }

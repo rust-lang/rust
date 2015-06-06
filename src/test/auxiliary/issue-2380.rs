@@ -22,5 +22,6 @@ pub trait i<T>
 pub fn f<T>() -> Box<i<T>+'static> {
     impl<T> i<T> for () { }
 
-    box() () as Box<i<T>+'static>
+    let b: Box<_> = box() ();
+    b as Box<i<T>+'static>
 }

@@ -37,5 +37,6 @@ fn g(x: Box<Trait>) {
 
 fn main() {
     f(box 1234);
-    g(box Struct as Box<Trait>);
+    let b: Box<_> = box Struct;
+    g(b as Box<Trait>);
 }

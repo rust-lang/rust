@@ -21,8 +21,8 @@ impl<A:Clone + 'static> repeat<A> for Box<A> {
 }
 
 fn repeater<A:Clone + 'static>(v: Box<A>) -> Box<repeat<A>+'static> {
-    // FIXME(22450): workaround pretty-printer deficiency via parens.
-    (box v) as Box<repeat<A>+'static> // No
+    let b: Box<_> = box v;
+    b as Box<repeat<A>+'static> // No
 }
 
 pub fn main() {

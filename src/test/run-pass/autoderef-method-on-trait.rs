@@ -21,6 +21,7 @@ impl double for usize {
 }
 
 pub fn main() {
-    let x: Box<_> = box() (box 3usize as Box<double>);
+    let b: Box<usize> = box 3usize;
+    let x: Box<_> = box() (b as Box<double>);
     assert_eq!(x.double(), 6);
 }

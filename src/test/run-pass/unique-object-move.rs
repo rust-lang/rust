@@ -24,6 +24,7 @@ pub struct UvEventLoop {
 impl EventLoop for UvEventLoop { }
 
 pub fn main() {
-    let loop_: Box<EventLoop> = box UvEventLoop { uvio: 0 } as Box<EventLoop>;
+    let b: Box<_> = box UvEventLoop { uvio: 0 };
+    let loop_: Box<EventLoop> = b as Box<EventLoop>;
     let _loop2_ = loop_;
 }

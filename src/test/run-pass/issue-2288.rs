@@ -40,6 +40,7 @@ fn f<A>(x: Box<clam<A>>, a: A) {
 pub fn main() {
 
   let c = foo(42);
-  let d: Box<clam<isize>> = box c as Box<clam<isize>>;
+  let b: Box<_> = box c;
+  let d: Box<clam<isize>> = b as Box<clam<isize>>;
   f(d, c.x);
 }

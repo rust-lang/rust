@@ -28,7 +28,8 @@ pub fn main() {
   //   let y = box ({a: 4});
   //    let z = box ({a: 4} as it);
   //    let z = box ({a: true} as it);
-    let z: Box<_> = box () (box true as Box<it>);
+    let b: Box<_> = box true;
+    let z: Box<_> = box () (b as Box<it>);
     //  x.f();
     // y.f();
     // (*z).f();

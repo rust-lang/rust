@@ -37,6 +37,7 @@ pub fn light_fuse(fld: Box<bomb>) {
 }
 
 pub fn main() {
-    let b = box S as Box<bomb>;
+    let b: Box<_> = box S;
+    let b = b as Box<bomb>;
     light_fuse(b);
 }

@@ -46,5 +46,6 @@ impl Scheduler {
 }
 
 pub fn main() {
-    let _sched = Scheduler::new(box UvEventLoop::new() as Box<EventLoop>);
+    let b: Box<_> = box UvEventLoop::new();
+    let _sched = Scheduler::new(b as Box<EventLoop>);
 }

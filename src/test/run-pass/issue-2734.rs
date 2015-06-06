@@ -19,8 +19,8 @@ trait hax {
 impl<A> hax for A { }
 
 fn perform_hax<T: 'static>(x: Box<T>) -> Box<hax+'static> {
-    // FIXME(22450): workaround pretty-printer deficiency via parens.
-    (box x) as Box<hax+'static>
+    let b: Box<_> = box x;
+    b as Box<hax+'static>
 }
 
 fn deadcode() {
