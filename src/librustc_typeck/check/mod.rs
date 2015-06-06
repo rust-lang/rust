@@ -5239,6 +5239,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
                                     tcx.mk_region(ty::ReLateBound(ty::DebruijnIndex::new(1),
                                                                   ty::BrAnon(0))),
                                     param(ccx, 0))], tcx.types.u64),
+            "likely" | "unlikely" => (0, vec![tcx.types.bool], tcx.types.bool),
 
             ref other => {
                 span_err!(tcx.sess, it.span, E0093,

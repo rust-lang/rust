@@ -602,4 +602,9 @@ extern "rust-intrinsic" {
     /// Returns the value of the discriminant for the variant in 'v',
     /// cast to a `u64`; if `T` has no discriminant, returns 0.
     pub fn discriminant_value<T>(v: &T) -> u64;
+
+    #[cfg(not(stage0))]
+    pub fn likely(v: bool) -> bool;
+    #[cfg(not(stage0))]
+    pub fn unlikely(v: bool) -> bool;
 }

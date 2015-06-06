@@ -763,6 +763,17 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
             }
         }
 
+        (_, "likely") => {
+            let llfn = ccx.get_intrinsic(&("llvm.expect.i1"));
+            let expected = C_bool(ccx, true);
+            Call(bcx, llfn, &[llargs[0], expected], None, call_debug_location)
+        }
+        (_, "unlikely") => {
+            let llfn = ccx.get_intrinsic(&("llvm.expect.i1"));
+            let expected = C_bool(ccx, false);
+            Call(bcx, llfn, &[llargs[0], expected], None, call_debug_location)
+        }
+
         // This requires that atomic intrinsics follow a specific naming pattern:
         // "atomic_<operation>[_<ordering>]", and no ordering means SeqCst
         (_, name) if name.starts_with("atomic_") => {
