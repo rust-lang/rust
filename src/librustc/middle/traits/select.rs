@@ -2523,41 +2523,57 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     ty::lookup_field_type_unsubstituted(tcx, def_id, f.id)
                 }).collect::<Vec<_>>();
 
-                // FIXME(#25351) The last field of the structure has to exist and be a
-                // type parameter (for now, to avoid tracking edge cases).
-                let i = if let Some(&ty::ty_param(p)) = fields.last().map(|ty| &ty.sty) {
-                    assert!(p.space == TypeSpace);
-                    p.idx as usize
+                // The last field of the structure has to exist and contain type parameters.
+                let field = if let Some(&field) = fields.last() {
+                    field
                 } else {
                     return Err(Unimplemented);
                 };
+                let mut ty_params = vec![];
+                ty::walk_ty(field, |ty| {
+                    if let ty::ty_param(p) = ty.sty {
+                        assert!(p.space == TypeSpace);
+                        let idx = p.idx as usize;
+                        if !ty_params.contains(&idx) {
+                            ty_params.push(idx);
+                        }
+                    }
+                });
+                if ty_params.is_empty() {
+                    return Err(Unimplemented);
+                }
 
-                // Replace the type parameter chosen for unsizing with
-                // ty_err and ensure it does not affect any other fields.
+                // Replace type parameters used in unsizing with
+                // ty_err and ensure they do not affect any other fields.
                 // This could be checked after type collection for any struct
                 // with a potentially unsized trailing field.
                 let mut new_substs = substs_a.clone();
-                new_substs.types.get_mut_slice(TypeSpace)[i] = tcx.types.err;
+                for &i in &ty_params {
+                    new_substs.types.get_mut_slice(TypeSpace)[i] = tcx.types.err;
+                }
                 for &ty in fields.init() {
                     if ty::type_is_error(ty.subst(tcx, &new_substs)) {
                         return Err(Unimplemented);
                     }
                 }
 
-                // Extract T and U from Struct<T> and Struct<U>.
-                let inner_source = *substs_a.types.get(TypeSpace, i);
-                let inner_target = *substs_b.types.get(TypeSpace, i);
+                // Extract Field<T> and Field<U> from Struct<T> and Struct<U>.
+                let inner_source = field.subst(tcx, substs_a);
+                let inner_target = field.subst(tcx, substs_b);
 
-                // Check that all the source structure with the unsized
-                // type parameter is a subtype of the target.
-                new_substs.types.get_mut_slice(TypeSpace)[i] = inner_target;
+                // Check that the source structure with the target's
+                // type parameters is a subtype of the target.
+                for &i in &ty_params {
+                    let param_b = *substs_b.types.get(TypeSpace, i);
+                    new_substs.types.get_mut_slice(TypeSpace)[i] = param_b;
+                }
                 let new_struct = ty::mk_struct(tcx, def_id, tcx.mk_substs(new_substs));
                 let origin = infer::Misc(obligation.cause.span);
                 if self.infcx.sub_types(false, origin, new_struct, target).is_err() {
                     return Err(Unimplemented);
                 }
 
-                // Construct the nested T: Unsize<U> predicate.
+                // Construct the nested Field<T>: Unsize<Field<U>> predicate.
                 nested.push(util::predicate_for_trait_def(tcx,
                     obligation.cause.clone(),
                     obligation.predicate.def_id(),
