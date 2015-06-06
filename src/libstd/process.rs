@@ -300,7 +300,7 @@ impl Command {
     /// Executes a command as a child process, waiting for it to finish and
     /// collecting its exit status.
     ///
-    /// By default, stdin, stdout and stderr are inherited by the parent.
+    /// By default, stdin, stdout and stderr are inherited from the parent.
     ///
     /// # Examples
     ///
