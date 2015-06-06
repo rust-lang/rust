@@ -31,17 +31,17 @@ fn main() {
     all_sync_send!("Я", escape_default, escape_unicode);
 
     // for iter.rs
-    // TODO
+    // FIXME
 
     // for option.rs
-    // TODO
+    // FIXME
 
     // for result.rs
-    // TODO
+    // FIXME
 
     // for slice.rs
-    // TODO
+    // FIXME
 
     // for str/mod.rs
-    // TODO
+    // FIXME
 }
