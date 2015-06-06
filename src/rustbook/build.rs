@@ -59,7 +59,7 @@ fn write_toc(book: &Book, current_page: &BookItem, out: &mut Write) -> io::Resul
 
         try!(writeln!(out, "<li><a {} href='{}'><b>{}</b> {}</a>",
                  class_string,
-                 item.path_to_root.join(&item.path.with_extension("html")).display(),
+                 current_page.path_to_root.join(&item.path).with_extension("html").display(),
                  section,
                  item.title));
         if !item.children.is_empty() {
