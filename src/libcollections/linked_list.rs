@@ -626,21 +626,13 @@ impl<T> LinkedList<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Drop for LinkedList<T> {
     fn drop(&mut self) {
-        // Dissolve the linked_list in backwards direction
+        // Dissolve the linked_list in a loop.
         // Just dropping the list_head can lead to stack exhaustion
         // when length is >> 1_000_000
-        let mut tail = self.list_tail;
-        loop {
-            match tail.resolve() {
-                None => break,
-                Some(prev) => {
-                    prev.next.take(); // release Box<Node<T>>
-                    tail = prev.prev;
-                }
-            }
+        while let Some(mut head_) = self.list_head.take() {
+            self.list_head = head_.next.take();
         }
         self.length = 0;
-        self.list_head = None;
         self.list_tail = Rawlink::none();
     }
 }
