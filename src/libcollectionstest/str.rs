@@ -1687,6 +1687,19 @@ fn trim_ws() {
                "");
 }
 
+#[test]
+fn to_lowercase() {
+    assert_eq!("".to_lowercase(), "");
+    // https://github.com/rust-lang/rust/issues/26035
+    assert_eq!("'Σ AÉΣ'Σ'' Σ ǅΣ".to_lowercase(), "'σ aéσ'ς'' σ ǆς");
+}
+
+#[test]
+fn to_uppercase() {
+    assert_eq!("".to_uppercase(), "");
+    assert_eq!("aéǅßﬁᾀ".to_uppercase(), "AÉǄSSFIἈΙ");
+}
+
 mod pattern {
     use std::str::pattern::Pattern;
     use std::str::pattern::{Searcher, ReverseSearcher};
