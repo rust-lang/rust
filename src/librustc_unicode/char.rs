@@ -70,10 +70,10 @@ impl Iterator for ToUppercase {
 /// An iterator over the titlecase mapping of a given character, returned from
 /// the [`to_titlecase` method](../primitive.char.html#method.to_titlecase) on
 /// characters.
-#[stable(feature = "char_to_titlecase", since = "1.2.0")]
+#[stable(feature = "unicode_case_mapping", since = "1.2.0")]
 pub struct ToTitlecase(CaseMappingIter);
 
-#[stable(feature = "char_to_titlecase", since = "1.2.0")]
+#[stable(feature = "unicode_case_mapping", since = "1.2.0")]
 impl Iterator for ToTitlecase {
     type Item = char;
     fn next(&mut self) -> Option<char> { self.0.next() }
@@ -481,7 +481,7 @@ impl char {
     /// Returns an iterator which yields the characters corresponding to the
     /// lowercase equivalent of the character. If no conversion is possible then
     /// an iterator with just the input character is returned.
-    #[stable(feature = "char_to_titlecase", since = "1.2.0")]
+    #[stable(feature = "unicode_case_mapping", since = "1.2.0")]
     #[inline]
     pub fn to_titlecase(self) -> ToTitlecase {
         ToTitlecase(CaseMappingIter::new(conversions::to_title(self)))

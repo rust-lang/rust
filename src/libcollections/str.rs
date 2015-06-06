@@ -1851,7 +1851,7 @@ impl str {
     /// let s = "HELLO";
     /// assert_eq!(s.to_lowercase(), "hello");
     /// ```
-    #[unstable(feature = "collections")]
+    #[stable(feature = "unicode_case_mapping", since = "1.2.0")]
     pub fn to_lowercase(&self) -> String {
         let mut s = String::with_capacity(self.len());
         for (i, c) in self[..].char_indices() {
@@ -1892,7 +1892,7 @@ impl str {
     /// let s = "hello";
     /// assert_eq!(s.to_uppercase(), "HELLO");
     /// ```
-    #[unstable(feature = "collections")]
+    #[stable(feature = "unicode_case_mapping", since = "1.2.0")]
     pub fn to_uppercase(&self) -> String {
         let mut s = String::with_capacity(self.len());
         s.extend(self[..].chars().flat_map(|c| c.to_uppercase()));
