@@ -49,3 +49,8 @@ pub mod str {
     pub use u_str::{utf8_char_width, is_utf16, Utf16Items, Utf16Item};
     pub use u_str::{utf16_items, Utf16Encoder};
 }
+
+// For use in libcollections, not re-exported in libstd.
+pub mod derived_property {
+    pub use tables::derived_property::{Cased, Case_Ignorable};
+}

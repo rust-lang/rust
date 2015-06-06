@@ -1854,8 +1854,32 @@ impl str {
     #[unstable(feature = "collections")]
     pub fn to_lowercase(&self) -> String {
         let mut s = String::with_capacity(self.len());
-        s.extend(self[..].chars().flat_map(|c| c.to_lowercase()));
+        for (i, c) in self[..].char_indices() {
+            if c == 'Σ' {
+                map_uppercase_sigma(self, i, &mut s)
+            } else {
+                s.extend(c.to_lowercase());
+            }
+        }
         return s;
+
+        #[cold]
+        #[inline(never)]
+        fn map_uppercase_sigma(from: &str, i: usize, to: &mut String) {
+            debug_assert!('Σ'.len_utf8() == 2);
+            let is_word_final =
+                case_ignoreable_then_cased(from[..i].chars().rev()) &&
+                !case_ignoreable_then_cased(from[i + 2..].chars());
+            to.push_str(if is_word_final { "ς" } else { "σ" });
+        }
+
+        fn case_ignoreable_then_cased<I: Iterator<Item=char>>(iter: I) -> bool {
+            use rustc_unicode::derived_property::{Cased, Case_Ignorable};
+            match iter.skip_while(|&c| Case_Ignorable(c)).next() {
+                Some(c) => Cased(c),
+                None => false,
+            }
+        }
     }
 
     /// Returns the uppercase equivalent of this string.

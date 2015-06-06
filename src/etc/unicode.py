@@ -638,7 +638,8 @@ pub const UNICODE_VERSION: (u64, u64, u64) = (%s, %s, %s);
         (canon_decomp, compat_decomp, gencats, combines,
                 to_upper, to_lower, to_title) = load_unicode_data("UnicodeData.txt")
         load_special_casing("SpecialCasing.txt", to_upper, to_lower, to_title)
-        want_derived = ["XID_Start", "XID_Continue", "Alphabetic", "Lowercase", "Uppercase"]
+        want_derived = ["XID_Start", "XID_Continue", "Alphabetic", "Lowercase", "Uppercase",
+                        "Cased", "Case_Ignorable"]
         derived = load_properties("DerivedCoreProperties.txt", want_derived)
         scripts = load_properties("Scripts.txt", [])
         props = load_properties("PropList.txt",
