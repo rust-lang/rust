@@ -173,12 +173,11 @@ macro_rules! try {
 /// # Examples
 ///
 /// ```
-/// # #![allow(unused_must_use)]
 /// use std::io::Write;
 ///
 /// let mut w = Vec::new();
-/// write!(&mut w, "test");
-/// write!(&mut w, "formatted {}", "arguments");
+/// write!(&mut w, "test").unwrap();
+/// write!(&mut w, "formatted {}", "arguments").unwrap();
 /// ```
 #[macro_export]
 macro_rules! write {

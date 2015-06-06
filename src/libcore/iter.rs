@@ -326,7 +326,6 @@ pub trait Iterator {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(core)]
     /// let xs = [100, 200, 300];
     /// let mut it = xs.iter().cloned().peekable();
     /// assert_eq!(*it.peek().unwrap(), 100);
@@ -514,15 +513,13 @@ pub trait Iterator {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(core)]
-    ///
     /// let a = [1, 4, 2, 3, 8, 9, 6];
     /// let sum: i32 = a.iter()
     ///                 .map(|x| *x)
     ///                 .inspect(|&x| println!("filtering {}", x))
     ///                 .filter(|&x| x % 2 == 0)
     ///                 .inspect(|&x| println!("{} made it through", x))
-    ///                 .sum();
+    ///                 .fold(0, |sum, i| sum + i);
     /// println!("{}", sum);
     /// ```
     #[inline]
@@ -572,7 +569,6 @@ pub trait Iterator {
     /// do not.
     ///
     /// ```
-    /// # #![feature(core)]
     /// let vec = vec![1, 2, 3, 4];
     /// let (even, odd): (Vec<_>, Vec<_>) = vec.into_iter().partition(|&n| n % 2 == 0);
     /// assert_eq!(even, [2, 4]);
@@ -897,7 +893,6 @@ pub trait Iterator {
     ///
     /// ```
     /// # #![feature(core)]
-    ///
     /// let a = [-3_i32, 0, 1, 5, -10];
     /// assert_eq!(*a.iter().max_by(|x| x.abs()).unwrap(), -10);
     /// ```
@@ -926,7 +921,6 @@ pub trait Iterator {
     ///
     /// ```
     /// # #![feature(core)]
-    ///
     /// let a = [-3_i32, 0, 1, 5, -10];
     /// assert_eq!(*a.iter().min_by(|x| x.abs()).unwrap(), 0);
     /// ```
@@ -971,7 +965,6 @@ pub trait Iterator {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(core)]
     /// let a = [(1, 2), (3, 4)];
     /// let (left, right): (Vec<_>, Vec<_>) = a.iter().cloned().unzip();
     /// assert_eq!(left, [1, 3]);
@@ -1065,7 +1058,6 @@ pub trait Iterator {
     ///
     /// ```
     /// # #![feature(core)]
-    ///
     /// let a = [1, 2, 3, 4, 5];
     /// let it = a.iter();
     /// assert_eq!(it.sum::<i32>(), 15);
@@ -1084,7 +1076,6 @@ pub trait Iterator {
     ///
     /// ```
     /// # #![feature(core)]
-    ///
     /// fn factorial(n: u32) -> u32 {
     ///     (1..).take_while(|&i| i <= n).product()
     /// }
@@ -2730,7 +2721,7 @@ impl<A: Step> ops::Range<A> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(step_by, core)]
+    /// # #![feature(step_by)]
     /// for i in (0..10).step_by(2) {
     ///     println!("{}", i);
     /// }

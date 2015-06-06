@@ -88,7 +88,7 @@ impl String {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections, core)]
+    /// # #![feature(collections)]
     /// let s = String::from_str("hello");
     /// assert_eq!(&s[..], "hello");
     /// ```
