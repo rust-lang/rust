@@ -82,6 +82,7 @@ use util::ppaux::Repr;
 use trans::machine::{llsize_of, llsize_of_alloc};
 use trans::type_::Type;
 
+use syntax::abi as synabi;
 use syntax::{ast, ast_util, codemap};
 use syntax::parse::token::InternedString;
 use syntax::ptr::P;
@@ -571,14 +572,50 @@ pub fn trans_to_lvalue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 /// A version of `trans` that ignores adjustments. You almost certainly do not want to call this
 /// directly.
 fn trans_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                expr: &ast::Expr)
-                                -> DatumBlock<'blk, 'tcx, Expr> {
+                                expr: &ast::Expr) -> DatumBlock<'blk, 'tcx, Expr> {
     let mut bcx = bcx;
 
     debug!("trans_unadjusted(expr={})", bcx.expr_to_string(expr));
     let _indenter = indenter();
 
     debuginfo::set_source_location(bcx.fcx, expr.id, expr.span);
+
+    match expr.node {
+        ast::ExprCall(ref f, ref args) if !bcx.tcx().is_method_call(expr.id) => {
+            if let ast::ExprPath(..) = f.node {
+                let fn_ty = expr_ty_adjusted(bcx, f);
+                let (fty, ret_ty) = match fn_ty.sty {
+                    ty::ty_bare_fn(_, ref fty) => {
+                        (fty, ty::erase_late_bound_regions(bcx.tcx(), &fty.sig.output()))
+                    }
+                    _ => panic!("Not calling a function?!")
+                };
+
+                if let ty::FnConverging(ret_ty) = ret_ty {
+                    let is_rust_fn = fty.abi == synabi::Rust ||
+                        fty.abi == synabi::RustIntrinsic;
+
+                    let valid_type =
+                        ty::type_is_scalar(ret_ty) ||
+                        ty::type_is_simd(bcx.tcx(), ret_ty);
+
+                    if is_rust_fn && type_is_immediate(bcx.ccx(), ret_ty) && valid_type {
+
+                        let args = callee::ArgExprs(&args[..]);
+                        let result = callee::trans_call_inner(bcx,
+                                                              expr.debug_loc(),
+                                                              fn_ty,
+                                                              |cx, _| callee::trans(cx, f),
+                                                              args, Some(Ignore));
+
+                        return immediate_rvalue_bcx(result.bcx, result.val, ret_ty)
+                            .to_expr_datumblock();
+                    }
+                }
+            }
+        }
+        _ => {}
+    }
 
     return match ty::expr_kind(bcx.tcx(), expr) {
         ty::LvalueExpr | ty::RvalueDatumExpr => {

@@ -87,8 +87,8 @@ pub struct Callee<'blk, 'tcx: 'blk> {
     pub data: CalleeData<'tcx>,
 }
 
-fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
-                     -> Callee<'blk, 'tcx> {
+pub fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
+                         -> Callee<'blk, 'tcx> {
     let _icx = push_ctxt("trans_callee");
     debug!("callee::trans(expr={})", expr.repr(bcx.tcx()));
 

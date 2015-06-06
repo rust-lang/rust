@@ -208,7 +208,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                         in_kind == TypeKind::Pointer && ret_kind == TypeKind::Pointer
                     };
 
-                let dest = if bitcast_compatible {
+                let val = if bitcast_compatible {
                     // if we're here, the type is scalar-like (a primitive, a
                     // SIMD type or a pointer), and so can be handled as a
                     // by-value ValueRef and can also be directly bitcast to the
@@ -233,10 +233,10 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                             // this often occurs in a sequence like `Store(val,
                             // d); val2 = Load(d)`, so disappears easily.
                             Store(bcx, cast_val, d);
+                            d
                         }
-                        expr::Ignore => {}
+                        expr::Ignore => { cast_val }
                     }
-                    dest
                 } else {
                     // The types are too complicated to do with a by-value
                     // bitcast, so pointer cast instead. We need to cast the
@@ -246,16 +246,17 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                         expr::Ignore => expr::Ignore
                     };
                     bcx = expr::trans_into(bcx, &*arg_exprs[0], dest);
-                    dest
+                    match dest {
+                        expr::SaveIn(d) => d,
+                        expr::Ignore => C_undef(llret_ty)
+                    }
                 };
 
                 fcx.scopes.borrow_mut().last_mut().unwrap().drop_non_lifetime_clean();
                 fcx.pop_and_trans_custom_cleanup_scope(bcx, cleanup_scope);
 
-                return match dest {
-                    expr::SaveIn(d) => Result::new(bcx, d),
-                    expr::Ignore => Result::new(bcx, C_undef(llret_ty.ptr_to()))
-                };
+                return Result::new(bcx, val);
+
 
             }
 
@@ -888,7 +889,14 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
 
     fcx.pop_and_trans_custom_cleanup_scope(bcx, cleanup_scope);
 
-    Result::new(bcx, llresult)
+    match dest {
+        expr::Ignore => {
+            Result::new(bcx, llval)
+        }
+        expr::SaveIn(_) => {
+            Result::new(bcx, llresult)
+        }
+    }
 }
 
 fn copy_intrinsic<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
