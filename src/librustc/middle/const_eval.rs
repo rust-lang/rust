@@ -218,7 +218,7 @@ fn inline_const_fn_from_external_crate(tcx: &ty::ctxt, def_id: ast::DefId)
     }
 
     let fn_id = match csearch::maybe_get_item_ast(tcx, def_id,
-        box |a, b, c, d| astencode::decode_inlined_item(a, b, c, d)) {
+        Box::new(|a, b, c, d| astencode::decode_inlined_item(a, b, c, d))) {
         csearch::FoundAst::Found(&ast::IIItem(ref item)) => Some(item.id),
         csearch::FoundAst::Found(&ast::IIImplItem(_, ref item)) => Some(item.id),
         _ => None
