@@ -268,7 +268,7 @@ impl Command {
 
     /// Executes the command as a child process, returning a handle to it.
     ///
-    /// By default, stdin, stdout and stderr are inherited by the parent.
+    /// By default, stdin, stdout and stderr are inherited from the parent.
     #[stable(feature = "process", since = "1.0.0")]
     pub fn spawn(&mut self) -> io::Result<Child> {
         self.spawn_inner(StdioImp::Raw(imp::Stdio::Inherit))
