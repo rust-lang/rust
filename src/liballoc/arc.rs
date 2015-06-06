@@ -98,7 +98,6 @@ use heap::deallocate;
 /// increase the reference counter.
 ///
 /// ```
-/// # #![feature(alloc, core)]
 /// use std::sync::Arc;
 /// use std::thread;
 ///
@@ -297,7 +296,6 @@ impl<T: ?Sized> Clone for Arc<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(alloc)]
     /// use std::sync::Arc;
     ///
     /// let five = Arc::new(5);
@@ -392,7 +390,6 @@ impl<T: ?Sized> Drop for Arc<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(alloc)]
     /// use std::sync::Arc;
     ///
     /// {
