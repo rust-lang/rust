@@ -11,7 +11,7 @@
 // force-host
 
 #![feature(plugin_registrar)]
-#![feature(box_syntax, rustc_private)]
+#![feature(rustc_private)]
 
 extern crate syntax;
 
@@ -43,5 +43,5 @@ impl LintPass for Pass {
 
 #[plugin_registrar]
 pub fn plugin_registrar(reg: &mut Registry) {
-    reg.register_lint_pass(box Pass as LintPassObject);
+    reg.register_lint_pass(Box::new(Pass) as LintPassObject);
 }
