@@ -60,7 +60,7 @@ use trans::common::{node_id_type, return_type_is_void};
 use trans::common::{type_is_immediate, type_is_zero_size, val_ty};
 use trans::common;
 use trans::consts;
-use trans::context::SharedCrateContext;
+use trans::context::{SharedCrateContext, create_context_and_module};
 use trans::controlflow;
 use trans::datum;
 use trans::debuginfo::{self, DebugLoc, ToDebugLoc};
@@ -2513,14 +2513,14 @@ pub fn crate_ctxt_to_encode_parms<'a, 'tcx>(cx: &'a SharedCrateContext<'tcx>,
     }
 }
 
-pub fn write_metadata(cx: &SharedCrateContext, krate: &ast::Crate) -> Vec<u8> {
+pub fn write_metadata(cx: &SharedCrateContext, krate: &ast::Crate) -> (Vec<u8>, Option<ModuleTranslation>) {
     use flate;
 
-    let any_library = cx.sess().crate_types.borrow().iter().any(|ty| {
+    let need_metadata = cx.sess().crate_types.borrow().iter().any(|ty| {
         *ty != config::CrateTypeExecutable
     });
-    if !any_library {
-        return Vec::new()
+    if !need_metadata {
+        return (Vec::new(), None);
     }
 
     let encode_inlined_item: encoder::EncodeInlinedItem =
@@ -2528,25 +2528,44 @@ pub fn write_metadata(cx: &SharedCrateContext, krate: &ast::Crate) -> Vec<u8> {
 
     let encode_parms = crate_ctxt_to_encode_parms(cx, encode_inlined_item);
     let metadata = encoder::encode_metadata(encode_parms, krate);
-    let mut compressed = encoder::metadata_encoding_version.to_vec();
-    compressed.push_all(&flate::deflate_bytes(&metadata));
-    let llmeta = C_bytes_in_context(cx.metadata_llcx(), &compressed[..]);
-    let llconst = C_struct_in_context(cx.metadata_llcx(), &[llmeta], false);
-    let name = format!("rust_metadata_{}_{}",
-                       cx.link_meta().crate_name,
-                       cx.link_meta().crate_hash);
-    let buf = CString::new(name).unwrap();
-    let llglobal = unsafe {
-        llvm::LLVMAddGlobal(cx.metadata_llmod(), val_ty(llconst).to_ref(),
-                            buf.as_ptr())
-    };
-    unsafe {
-        llvm::LLVMSetInitializer(llglobal, llconst);
-        let name = loader::meta_section_name(&cx.sess().target.target);
-        let name = CString::new(name).unwrap();
-        llvm::LLVMSetSection(llglobal, name.as_ptr())
+
+    let need_metadata_module = cx.sess().crate_types.borrow().iter().any(|ty| {
+        *ty == config::CrateTypeDylib
+    });
+
+    if !need_metadata_module {
+        return (metadata, None);
+    } else {
+        let (metadata_llcx, metadata_llmod) = unsafe {
+            create_context_and_module(cx.sess(), "metadata")
+        };
+        
+        let mut compressed = encoder::metadata_encoding_version.to_vec();
+        compressed.push_all(&flate::deflate_bytes(&metadata));
+        let llmeta = C_bytes_in_context(metadata_llcx, &compressed[..]);
+        let llconst = C_struct_in_context(metadata_llcx, &[llmeta], false);
+        let name = format!("rust_metadata_{}_{}",
+                           cx.link_meta().crate_name,
+                           cx.link_meta().crate_hash);
+        let buf = CString::new(name).unwrap();
+        let llglobal = unsafe {
+            llvm::LLVMAddGlobal(metadata_llmod, val_ty(llconst).to_ref(),
+                                buf.as_ptr())
+        };
+        unsafe {
+            llvm::LLVMSetInitializer(llglobal, llconst);
+            let name = loader::meta_section_name(&cx.sess().target.target);
+            let name = CString::new(name).unwrap();
+            llvm::LLVMSetSection(llglobal, name.as_ptr())
+        }
+
+        let metadata_module = Some(ModuleTranslation {
+            llcx: metadata_llcx,
+            llmod: metadata_llmod,
+        });
+
+        return (metadata, metadata_module);
     }
-    return metadata;
 }
 
 /// Find any symbols that are defined in one compilation unit, but not declared
@@ -2702,7 +2721,7 @@ pub fn trans_crate<'tcx>(analysis: ty::CrateAnalysis<'tcx>)
     }
 
     // Translate the metadata.
-    let metadata = write_metadata(&shared_ccx, krate);
+    let (metadata, metadata_module) = write_metadata(&shared_ccx, krate);
 
     if shared_ccx.sess().trans_stats() {
         let stats = shared_ccx.stats();
@@ -2769,10 +2788,6 @@ pub fn trans_crate<'tcx>(analysis: ty::CrateAnalysis<'tcx>)
         internalize_symbols(&shared_ccx, &reachable.iter().cloned().collect());
     }
 
-    let metadata_module = ModuleTranslation {
-        llcx: shared_ccx.metadata_llcx(),
-        llmod: shared_ccx.metadata_llmod(),
-    };
     let formats = shared_ccx.tcx().dependency_formats.borrow().clone();
     let no_builtins = attr::contains_name(&krate.attrs, "no_builtins");
 

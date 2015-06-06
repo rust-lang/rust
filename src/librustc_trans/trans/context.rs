@@ -60,9 +60,6 @@ pub struct Stats {
 pub struct SharedCrateContext<'tcx> {
     local_ccxs: Vec<LocalCrateContext<'tcx>>,
 
-    metadata_llmod: ModuleRef,
-    metadata_llcx: ContextRef,
-
     export_map: ExportMap,
     reachable: NodeSet,
     item_symbols: RefCell<NodeMap<String>>,
@@ -222,7 +219,7 @@ impl<'a, 'tcx> Iterator for CrateContextMaybeIterator<'a, 'tcx> {
 }
 
 
-unsafe fn create_context_and_module(sess: &Session, mod_name: &str) -> (ContextRef, ModuleRef) {
+pub unsafe fn create_context_and_module(sess: &Session, mod_name: &str) -> (ContextRef, ModuleRef) {
     let llcx = llvm::LLVMContextCreate();
     let mod_name = CString::new(mod_name).unwrap();
     let llmod = llvm::LLVMModuleCreateWithNameInContext(mod_name.as_ptr(), llcx);
@@ -248,10 +245,6 @@ impl<'tcx> SharedCrateContext<'tcx> {
                check_overflow: bool,
                check_drop_flag_for_sanity: bool)
                -> SharedCrateContext<'tcx> {
-        let (metadata_llcx, metadata_llmod) = unsafe {
-            create_context_and_module(&tcx.sess, "metadata")
-        };
-
         // An interesting part of Windows which MSVC forces our hand on (and
         // apparently MinGW didn't) is the usage of `dllimport` and `dllexport`
         // attributes in LLVM IR as well as native dependencies (in C these
@@ -299,8 +292,6 @@ impl<'tcx> SharedCrateContext<'tcx> {
 
         let mut shared_ccx = SharedCrateContext {
             local_ccxs: Vec::with_capacity(local_count),
-            metadata_llmod: metadata_llmod,
-            metadata_llcx: metadata_llcx,
             export_map: export_map,
             reachable: reachable,
             item_symbols: RefCell::new(NodeMap()),
@@ -370,15 +361,6 @@ impl<'tcx> SharedCrateContext<'tcx> {
             local: local_ccx,
             index: index,
         }
-    }
-
-
-    pub fn metadata_llmod(&self) -> ModuleRef {
-        self.metadata_llmod
-    }
-
-    pub fn metadata_llcx(&self) -> ContextRef {
-        self.metadata_llcx
     }
 
     pub fn export_map<'a>(&'a self) -> &'a ExportMap {

@@ -70,7 +70,7 @@ unsafe impl Sync for ModuleTranslation { }
 
 pub struct CrateTranslation {
     pub modules: Vec<ModuleTranslation>,
-    pub metadata_module: ModuleTranslation,
+    pub metadata_module: Option<ModuleTranslation>,
     pub link: LinkMeta,
     pub metadata: Vec<u8>,
     pub reachable: Vec<String>,
