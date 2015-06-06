@@ -65,7 +65,7 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
     macro_rules! add_builtin {
         ($sess:ident, $($name:ident),*,) => (
             {$(
-                store.register_pass($sess, false, box builtin::$name);
+                store.register_pass($sess, false, Box::new(builtin::$name));
                 )*}
             )
     }
@@ -73,7 +73,7 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
     macro_rules! add_builtin_with_new {
         ($sess:ident, $($name:ident),*,) => (
             {$(
-                store.register_pass($sess, false, box builtin::$name::new());
+                store.register_pass($sess, false, Box::new(builtin::$name::new()));
                 )*}
             )
     }
@@ -128,7 +128,7 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
                     UNUSED_UNSAFE, PATH_STATEMENTS);
 
     // We have one lint pass defined specially
-    store.register_pass(sess, false, box lint::GatherNodeLevels);
+    store.register_pass(sess, false, Box::new(lint::GatherNodeLevels));
 
     // Insert temporary renamings for a one-time deprecation
     store.register_renamed("raw_pointer_deriving", "raw_pointer_derive");
