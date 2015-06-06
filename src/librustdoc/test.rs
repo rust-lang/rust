@@ -201,13 +201,13 @@ fn runtest(test: &str, cratename: &str, libs: SearchPaths,
         }
     }
     let data = Arc::new(Mutex::new(Vec::new()));
-    let emitter = diagnostic::EmitterWriter::new(box Sink(data.clone()), None);
-    let old = io::set_panic(box Sink(data.clone()));
-    let _bomb = Bomb(data, old.unwrap_or(box io::stdout()));
+    let emitter = diagnostic::EmitterWriter::new(Box::new(Sink(data.clone())), None);
+    let old = io::set_panic(Box::new(Sink(data.clone())));
+    let _bomb = Bomb(data, old.unwrap_or(Box::new(io::stdout())));
 
     // Compile the code
     let codemap = CodeMap::new();
-    let diagnostic_handler = diagnostic::Handler::with_emitter(true, box emitter);
+    let diagnostic_handler = diagnostic::Handler::with_emitter(true, Box::new(emitter));
     let span_diagnostic_handler =
         diagnostic::SpanHandler::new(diagnostic_handler, codemap);
 
