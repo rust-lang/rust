@@ -2624,9 +2624,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         visit::walk_block(self, block);
 
         // Move back up.
-        self.current_module = orig_module;
-
         if !self.resolved {
+            self.current_module = orig_module;
             self.value_ribs.pop();
         }
         debug!("(resolving block) leaving block");
