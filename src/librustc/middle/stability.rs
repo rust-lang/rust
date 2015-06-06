@@ -60,8 +60,18 @@ impl<'a, 'tcx: 'a> Annotator<'a, 'tcx> {
         if self.index.staged_api[&ast::LOCAL_CRATE] {
             debug!("annotate(id = {:?}, attrs = {:?})", id, attrs);
             match attr::find_stability(self.tcx.sess.diagnostic(), attrs, item_sp) {
-                Some(stab) => {
+                Some(mut stab) => {
                     debug!("annotate: found {:?}", stab);
+                    // if parent is deprecated and we're not, inherit this by merging
+                    // deprecated_since and its reason.
+                    if let Some(parent_stab) = self.parent {
+                        if parent_stab.deprecated_since.is_some()
+                        && stab.deprecated_since.is_none() {
+                            stab.deprecated_since = parent_stab.deprecated_since.clone();
+                            stab.reason = parent_stab.reason.clone();
+                        }
+                    }
+
                     let stab = self.tcx.intern_stability(stab);
                     self.index.map.insert(local_def(id), Some(stab));
 
