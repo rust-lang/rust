@@ -18,6 +18,7 @@ use middle::subst::Substs;
 use middle::ty::{self, Ty};
 use check::{check_expr, check_expr_has_type, check_expr_with_expectation};
 use check::{check_expr_coercable_to_type, demand, FnCtxt, Expectation};
+use check::{check_expr_with_lvalue_pref, LvaluePreference};
 use check::{instantiate_path, resolve_ty_and_def_ufcs, structurally_resolved_type};
 use require_same_types;
 use util::nodemap::FnvHashMap;
@@ -438,10 +439,15 @@ pub fn check_match<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     // Not entirely obvious: if matches may create ref bindings, we
     // want to use the *precise* type of the discriminant, *not* some
     // supertype, as the "discriminant type" (issue #23116).
-    let contains_ref_bindings = arms.iter().any(|a| tcx.arm_contains_ref_binding(a));
+    let contains_ref_bindings = arms.iter()
+                                    .filter_map(|a| tcx.arm_contains_ref_binding(a))
+                                    .max_by(|m| match *m {
+                                        ast::MutMutable => 1,
+                                        ast::MutImmutable => 0,
+                                    });
     let discrim_ty;
-    if contains_ref_bindings {
-        check_expr(fcx, discrim);
+    if let Some(m) = contains_ref_bindings {
+        check_expr_with_lvalue_pref(fcx, discrim, LvaluePreference::from_mutbl(m));
         discrim_ty = fcx.expr_ty(discrim);
     } else {
         // ...but otherwise we want to use any supertype of the
