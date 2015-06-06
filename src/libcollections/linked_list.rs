@@ -129,6 +129,15 @@ impl<T> Rawlink<T> {
     }
 }
 
+impl<'a, T> From<&'a mut Link<T>> for Rawlink<Node<T>> {
+    fn from(node: &'a mut Link<T>) -> Self {
+        match node.as_mut() {
+            None => Rawlink::none(),
+            Some(ptr) => Rawlink::some(ptr),
+        }
+    }
+}
+
 impl<T> Clone for Rawlink<T> {
     #[inline]
     fn clone(&self) -> Rawlink<T> {
@@ -165,8 +174,8 @@ impl<T> LinkedList<T> {
     fn push_front_node(&mut self, mut new_head: Box<Node<T>>) {
         match self.list_head {
             None => {
-                self.list_tail = Rawlink::some(&mut *new_head);
                 self.list_head = link_no_prev(new_head);
+                self.list_tail = Rawlink::from(&mut self.list_head);
             }
             Some(ref mut head) => {
                 new_head.prev = Rawlink::none();
@@ -197,8 +206,8 @@ impl<T> LinkedList<T> {
         match unsafe { self.list_tail.resolve_mut() } {
             None => return self.push_front_node(new_tail),
             Some(tail) => {
-                self.list_tail = Rawlink::some(&mut *new_tail);
                 tail.set_next(new_tail);
+                self.list_tail = Rawlink::from(&mut tail.next);
             }
         }
         self.length += 1;
@@ -297,13 +306,9 @@ impl<T> LinkedList<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter_mut(&mut self) -> IterMut<T> {
-        let head_raw = match self.list_head {
-            Some(ref mut h) => Rawlink::some(&mut **h),
-            None => Rawlink::none(),
-        };
-        IterMut{
+        IterMut {
             nelem: self.len(),
-            head: head_raw,
+            head: Rawlink::from(&mut self.list_head),
             tail: self.list_tail,
             list: self
         }
@@ -717,10 +722,7 @@ impl<'a, A> Iterator for IterMut<'a, A> {
         unsafe {
             self.head.resolve_mut().map(|next| {
                 self.nelem -= 1;
-                self.head = match next.next {
-                    Some(ref mut node) => Rawlink::some(&mut **node),
-                    None => Rawlink::none(),
-                };
+                self.head = Rawlink::from(&mut next.next);
                 &mut next.value
             })
         }
