@@ -19,5 +19,5 @@ pub fn main() {
         })
     }
 
-    assert!(mylambda_tt!(y, y * 2)(8) == 16);
+    assert_eq!(mylambda_tt!(y, y * 2)(8), 16);
 }

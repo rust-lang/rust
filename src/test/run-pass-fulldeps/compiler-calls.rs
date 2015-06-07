@@ -78,5 +78,5 @@ fn main() {
     // we should never get use this filename, but lets make sure they are valid args.
     let args = vec!["compiler-calls".to_string(), "foo.rs".to_string()];
     rustc_driver::run_compiler(&args, &mut tc);
-    assert!(tc.count == 30);
+    assert_eq!(tc.count, 30);
 }

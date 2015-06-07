@@ -28,5 +28,5 @@ fn main() {
     let obj = A { foo: Box::new([true, false]) };
     let s = json::encode(&obj).unwrap();
     let obj2: A = json::decode(&s).unwrap();
-    assert!(obj.foo == obj2.foo);
+    assert_eq!(obj.foo, obj2.foo);
 }

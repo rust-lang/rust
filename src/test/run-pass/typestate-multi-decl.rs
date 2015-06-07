@@ -12,5 +12,5 @@
 pub fn main() {
     let (x, y) = (10, 20);
     let z = x + y;
-    assert!((z == 30));
+    assert_eq!(z, 30);
 }

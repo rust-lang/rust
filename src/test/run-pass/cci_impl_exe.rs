@@ -22,6 +22,6 @@ pub fn main() {
 
         //let bt1 = sys::frame_address();
         //println!("%?", bt1);
-        //assert!(bt0 == bt1);
+        //assert_eq!(bt0, bt1);
     })
 }

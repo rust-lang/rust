@@ -41,10 +41,10 @@ pub fn main() {
 }
 
 fn test_color(color: color, val: isize, name: String) {
-    //assert!(unsafe::transmute(color) == val);
+    //assert_eq!(unsafe::transmute(color), val);
     assert_eq!(color as isize, val);
-    assert!(get_color_alt(color) == name);
-    assert!(get_color_if(color) == name);
+    assert_eq!(get_color_alt(color), name);
+    assert_eq!(get_color_if(color), name);
 }
 
 fn get_color_alt(color: color) -> String {

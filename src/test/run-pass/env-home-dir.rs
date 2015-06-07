@@ -19,7 +19,7 @@ fn main() {
     let oldhome = var("HOME");
 
     set_var("HOME", "/home/MountainView");
-    assert!(home_dir() == Some(PathBuf::from("/home/MountainView")));
+    assert_eq!(home_dir(), Some(PathBuf::from("/home/MountainView")));
 
     remove_var("HOME");
     if cfg!(target_os = "android") {
@@ -40,14 +40,14 @@ fn main() {
     assert!(home_dir().is_some());
 
     set_var("HOME", "/home/MountainView");
-    assert!(home_dir() == Some(PathBuf::from("/home/MountainView")));
+    assert_eq!(home_dir(), Some(PathBuf::from("/home/MountainView")));
 
     remove_var("HOME");
 
     set_var("USERPROFILE", "/home/MountainView");
-    assert!(home_dir() == Some(PathBuf::from("/home/MountainView")));
+    assert_eq!(home_dir(), Some(PathBuf::from("/home/MountainView")));
 
     set_var("HOME", "/home/MountainView");
     set_var("USERPROFILE", "/home/PaloAlto");
-    assert!(home_dir() == Some(PathBuf::from("/home/MountainView")));
+    assert_eq!(home_dir(), Some(PathBuf::from("/home/MountainView")));
 }

@@ -9,4 +9,4 @@
 // except according to those terms.
 
 // error-pattern:1 == 2
-fn main() { assert!((1 == 2)); }
+fn main() { assert!(1 == 2); }

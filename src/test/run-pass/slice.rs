@@ -86,6 +86,6 @@ fn main() {
     &mut x[..Foo];
     &mut x[Foo..Foo];
     unsafe {
-        assert!(COUNT == 8);
+        assert_eq!(COUNT, 8);
     }
 }

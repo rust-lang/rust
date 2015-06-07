@@ -21,5 +21,5 @@ pub fn main() {
 }
 
 fn test_color(color: color, val: isize, _name: String) {
-    assert!(color as isize == val);
+    assert_eq!(color as isize , val);
 }

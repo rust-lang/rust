@@ -102,13 +102,13 @@ pub fn main() {
 
         // Causes linker error
         // undefined reference to llvm.ceil.f32/64
-        //assert!((ceilf32(-2.3f32) == -2.0f32));
-        //assert!((ceilf64(3.8f64) == 4.0f64));
+        //assert_eq!(ceilf32(-2.3f32), -2.0f32);
+        //assert_eq!(ceilf64(3.8f64), 4.0f64);
 
         // Causes linker error
         // undefined reference to llvm.trunc.f32/64
-        //assert!((truncf32(0.1f32) == 0.0f32));
-        //assert!((truncf64(-0.1f64) == 0.0f64));
+        //assert_eq!(truncf32(0.1f32), 0.0f32);
+        //assert_eq!(truncf64(-0.1f64), 0.0f64);
     }
 
 }

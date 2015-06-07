@@ -26,6 +26,6 @@ enum Hero {
 pub fn main() {
     let pet: Animal = Animal::Snake;
     let hero: Hero = Hero::Superman;
-    assert!(pet as usize == 3);
-    assert!(hero as isize == -2);
+    assert_eq!(pet as usize, 3);
+    assert_eq!(hero as isize, -2);
 }

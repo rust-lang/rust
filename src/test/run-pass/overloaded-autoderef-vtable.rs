@@ -43,5 +43,5 @@ impl Foo {
 pub fn main() {
     let x: DerefWithHelper<Option<Foo>, Foo> =
         DerefWithHelper { helper: Some(Foo {x: 5}), value: Foo { x: 2 } };
-    assert!(x.foo() == 5);
+    assert_eq!(x.foo(), 5);
 }
