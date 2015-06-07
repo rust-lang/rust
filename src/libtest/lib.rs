@@ -625,17 +625,44 @@ impl<T: Write> ConsoleTestState<T> {
     }
 }
 
-pub fn fmt_bench_samples(bs: &BenchSamples) -> String {
-    if bs.mb_s != 0 {
-        format!("{:>9} ns/iter (+/- {}) = {} MB/s",
-             bs.ns_iter_summ.median as usize,
-             (bs.ns_iter_summ.max - bs.ns_iter_summ.min) as usize,
-             bs.mb_s)
-    } else {
-        format!("{:>9} ns/iter (+/- {})",
-             bs.ns_iter_summ.median as usize,
-             (bs.ns_iter_summ.max - bs.ns_iter_summ.min) as usize)
+// Format a number with thousands separators
+fn fmt_thousands_sep(mut n: usize, sep: char) -> String {
+    use std::fmt::Write;
+    let mut output = String::new();
+    let mut first = true;
+    for &pow in &[9, 6, 3, 0] {
+        let base = 10_usize.pow(pow);
+        if pow == 0 || n / base != 0 {
+            if first {
+                output.write_fmt(format_args!("{}", n / base)).unwrap();
+            } else {
+                output.write_fmt(format_args!("{:03}", n / base)).unwrap();
+            }
+            if pow != 0 {
+                output.push(sep);
+            }
+            first = false;
+        }
+        n %= base;
     }
+
+    output
+}
+
+pub fn fmt_bench_samples(bs: &BenchSamples) -> String {
+    use std::fmt::Write;
+    let mut output = String::new();
+
+    let median = bs.ns_iter_summ.median as usize;
+    let deviation = (bs.ns_iter_summ.max - bs.ns_iter_summ.min) as usize;
+
+    output.write_fmt(format_args!("{:>11} ns/iter (+/- {})",
+                     fmt_thousands_sep(median, ','),
+                     fmt_thousands_sep(deviation, ','))).unwrap();
+    if bs.mb_s != 0 {
+        output.write_fmt(format_args!(" = {} MB/s", bs.mb_s)).unwrap();
+    }
+    output
 }
 
 // A simple console test runner
