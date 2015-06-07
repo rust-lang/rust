@@ -840,7 +840,7 @@ impl<T> Vec<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections, core)]
+    /// # #![feature(collections)]
     /// let v = vec![0, 1, 2];
     /// let w = v.map_in_place(|i| i + 3);
     /// assert_eq!(&w[..], &[3, 4, 5]);
