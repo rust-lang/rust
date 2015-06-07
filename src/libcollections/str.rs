@@ -640,16 +640,19 @@ impl str {
     ///
     /// let v: Vec<&str> = "lion::tiger::leopard".split("::").collect();
     /// assert_eq!(v, ["lion", "tiger", "leopard"]);
-    /// ```
     ///
-    /// More complex patterns with closures:
-    ///
-    /// ```
-    /// let v: Vec<&str> = "abc1def2ghi".split(|c: char| c.is_numeric()).collect();
+    /// let v: Vec<&str> = "abc1def2ghi".split(char::is_numeric).collect();
     /// assert_eq!(v, ["abc", "def", "ghi"]);
     ///
     /// let v: Vec<&str> = "lionXtigerXleopard".split(char::is_uppercase).collect();
     /// assert_eq!(v, ["lion", "tiger", "leopard"]);
+    /// ```
+    ///
+    /// A more complex pattern, using a closure:
+    ///
+    /// ```
+    /// let v: Vec<&str> = "abc1defXghi".split(|c| c == '1' || c == 'X').collect();
+    /// assert_eq!(v, ["abc", "def", "ghi"]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn split<'a, P: Pattern<'a>>(&'a self, pat: P) -> Split<'a, P> {
@@ -691,14 +694,11 @@ impl str {
     /// assert_eq!(v, ["leopard", "tiger", "lion"]);
     /// ```
     ///
-    /// More complex patterns with closures:
+    /// A more complex pattern, using a closure:
     ///
-    /// ```rust
-    /// let v: Vec<&str> = "abc1def2ghi".rsplit(|c: char| c.is_numeric()).collect();
+    /// ```
+    /// let v: Vec<&str> = "abc1defXghi".rsplit(|c| c == '1' || c == 'X').collect();
     /// assert_eq!(v, ["ghi", "def", "abc"]);
-    ///
-    /// let v: Vec<&str> = "lionXtigerXleopard".rsplit(char::is_uppercase).collect();
-    /// assert_eq!(v, ["leopard", "tiger", "lion"]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn rsplit<'a, P: Pattern<'a>>(&'a self, pat: P) -> RSplit<'a, P>
@@ -733,21 +733,12 @@ impl str {
     ///
     /// # Examples
     ///
-    /// Simple patterns:
-    ///
     /// ```
     /// let v: Vec<&str> = "A.B.".split_terminator('.').collect();
     /// assert_eq!(v, ["A", "B"]);
     ///
     /// let v: Vec<&str> = "A..B..".split_terminator(".").collect();
     /// assert_eq!(v, ["A", "", "B", ""]);
-    /// ```
-    ///
-    /// More complex patterns with closures:
-    ///
-    /// ```
-    /// let v: Vec<&str> = "abc1def2ghi3".split_terminator(|c: char| c.is_numeric()).collect();
-    /// assert_eq!(v, ["abc", "def", "ghi"]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn split_terminator<'a, P: Pattern<'a>>(&'a self, pat: P) -> SplitTerminator<'a, P> {
@@ -778,21 +769,12 @@ impl str {
     ///
     /// # Examples
     ///
-    /// Simple patterns:
-    ///
     /// ```
     /// let v: Vec<&str> = "A.B.".rsplit_terminator('.').collect();
     /// assert_eq!(v, ["B", "A"]);
     ///
     /// let v: Vec<&str> = "A..B..".rsplit_terminator(".").collect();
     /// assert_eq!(v, ["", "B", "", "A"]);
-    /// ```
-    ///
-    /// More complex patterns with closures:
-    ///
-    /// ```
-    /// let v: Vec<&str> = "abc1def2ghi3".rsplit_terminator(|c: char| c.is_numeric()).collect();
-    /// assert_eq!(v, ["ghi", "def", "abc"]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn rsplit_terminator<'a, P: Pattern<'a>>(&'a self, pat: P) -> RSplitTerminator<'a, P>
@@ -837,11 +819,11 @@ impl str {
     /// assert_eq!(v, [""]);
     /// ```
     ///
-    /// More complex patterns with closures:
+    /// A more complex pattern, using a closure:
     ///
     /// ```
-    /// let v: Vec<&str> = "abc1def2ghi".splitn(2, |c: char| c.is_numeric()).collect();
-    /// assert_eq!(v, ["abc", "def2ghi"]);
+    /// let v: Vec<&str> = "abc1defXghi".splitn(2, |c| c == '1' || c == 'X').collect();
+    /// assert_eq!(v, ["abc", "defXghi"]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn splitn<'a, P: Pattern<'a>>(&'a self, count: usize, pat: P) -> SplitN<'a, P> {
@@ -882,10 +864,10 @@ impl str {
     /// assert_eq!(v, ["leopard", "lion::tiger"]);
     /// ```
     ///
-    /// More complex patterns with closures:
+    /// A more complex pattern, using a closure:
     ///
     /// ```
-    /// let v: Vec<&str> = "abc1def2ghi".rsplitn(2, |c: char| c.is_numeric()).collect();
+    /// let v: Vec<&str> = "abc1defXghi".rsplitn(2, |c| c == '1' || c == 'X').collect();
     /// assert_eq!(v, ["ghi", "abc1def"]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -920,7 +902,7 @@ impl str {
     /// let v: Vec<&str> = "abcXXXabcYYYabc".matches("abc").collect();
     /// assert_eq!(v, ["abc", "abc", "abc"]);
     ///
-    /// let v: Vec<&str> = "1abc2abc3".matches(|c: char| c.is_numeric()).collect();
+    /// let v: Vec<&str> = "1abc2abc3".matches(char::is_numeric).collect();
     /// assert_eq!(v, ["1", "2", "3"]);
     /// ```
     #[unstable(feature = "collections",
@@ -953,7 +935,7 @@ impl str {
     /// let v: Vec<&str> = "abcXXXabcYYYabc".rmatches("abc").collect();
     /// assert_eq!(v, ["abc", "abc", "abc"]);
     ///
-    /// let v: Vec<&str> = "1abc2abc3".rmatches(|c: char| c.is_numeric()).collect();
+    /// let v: Vec<&str> = "1abc2abc3".rmatches(char::is_numeric).collect();
     /// assert_eq!(v, ["3", "2", "1"]);
     /// ```
     #[unstable(feature = "collections",
@@ -1199,15 +1181,16 @@ impl str {
     ///
     /// ```
     /// assert_eq!("11foo1bar11".trim_matches('1'), "foo1bar");
+    /// assert_eq!("123foo1bar123".trim_matches(char::is_numeric), "foo1bar");
     ///
     /// let x: &[_] = &['1', '2'];
     /// assert_eq!("12foo1bar12".trim_matches(x), "foo1bar");
     /// ```
     ///
-    /// More complex patterns with closures:
+    /// A more complex pattern, using a closure:
     ///
     /// ```
-    /// assert_eq!("123foo1bar123".trim_matches(|c: char| c.is_numeric()), "foo1bar");
+    /// assert_eq!("1foo1barXX".trim_matches(|c| c == '1' || c == 'X'), "foo1bar");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn trim_matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> &'a str
@@ -1224,19 +1207,12 @@ impl str {
     ///
     /// # Examples
     ///
-    /// Simple patterns:
-    ///
     /// ```
     /// assert_eq!("11foo1bar11".trim_left_matches('1'), "foo1bar11");
+    /// assert_eq!("123foo1bar123".trim_left_matches(char::is_numeric), "foo1bar123");
     ///
     /// let x: &[_] = &['1', '2'];
     /// assert_eq!("12foo1bar12".trim_left_matches(x), "foo1bar12");
-    /// ```
-    ///
-    /// More complex patterns with closures:
-    ///
-    /// ```
-    /// assert_eq!("123foo1bar123".trim_left_matches(|c: char| c.is_numeric()), "foo1bar123");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn trim_left_matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> &'a str {
@@ -1255,14 +1231,16 @@ impl str {
     ///
     /// ```
     /// assert_eq!("11foo1bar11".trim_right_matches('1'), "11foo1bar");
+    /// assert_eq!("123foo1bar123".trim_right_matches(char::is_numeric), "123foo1bar");
+    ///
     /// let x: &[_] = &['1', '2'];
     /// assert_eq!("12foo1bar12".trim_right_matches(x), "12foo1bar");
     /// ```
     ///
-    /// More complex patterns with closures:
+    /// A more complex pattern, using a closure:
     ///
     /// ```
-    /// assert_eq!("123foo1bar123".trim_right_matches(|c: char| c.is_numeric()), "123foo1bar");
+    /// assert_eq!("1fooX".trim_left_matches(|c| c == '1' || c == 'X'), "fooX");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn trim_right_matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> &'a str
@@ -1499,7 +1477,7 @@ impl str {
     /// ```
     /// let s = "Löwe 老虎 Léopard";
     ///
-    /// assert_eq!(s.find(|c: char| c.is_whitespace()), Some(5));
+    /// assert_eq!(s.find(char::is_whitespace), Some(5));
     /// assert_eq!(s.find(char::is_lowercase), Some(1));
     /// ```
     ///
@@ -1541,7 +1519,7 @@ impl str {
     /// ```
     /// let s = "Löwe 老虎 Léopard";
     ///
-    /// assert_eq!(s.rfind(|c: char| c.is_whitespace()), Some(12));
+    /// assert_eq!(s.rfind(char::is_whitespace), Some(12));
     /// assert_eq!(s.rfind(char::is_lowercase), Some(20));
     /// ```
     ///
