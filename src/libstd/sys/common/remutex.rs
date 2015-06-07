@@ -187,7 +187,7 @@ mod tests {
             assert_eq!(*lock.borrow(), 4950);
         });
         for i in 0..100 {
-            let mut lock = m.lock().unwrap();
+            let lock = m.lock().unwrap();
             *lock.borrow_mut() += i;
         }
         drop(lock);

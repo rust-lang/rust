@@ -452,6 +452,7 @@ impl<'a, 'b> Context<'a, 'b> {
             Some(ecx.lifetime(sp, special_idents::static_lifetime.name)),
             ast::MutImmutable);
         let slice = ecx.expr_vec_slice(sp, pieces);
+        // static instead of const to speed up codegen by not requiring this to be inlined
         let st = ast::ItemStatic(ty, ast::MutImmutable, slice);
 
         let name = ecx.ident_of(name);

@@ -83,7 +83,7 @@ use borrow::{Cow, IntoCow};
 use super::range::RangeArgument;
 
 // FIXME- fix places which assume the max vector allowed has memory usize::MAX.
-static MAX_MEMORY_SIZE: usize = isize::MAX as usize;
+const MAX_MEMORY_SIZE: usize = isize::MAX as usize;
 
 /// A growable list type, written `Vec<T>` but pronounced 'vector.'
 ///

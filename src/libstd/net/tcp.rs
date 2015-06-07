@@ -483,7 +483,7 @@ mod tests {
 
     #[test]
     fn multiple_connect_interleaved_greedy_schedule() {
-        static MAX: usize = 10;
+        const MAX: usize = 10;
         each_ip(&mut |addr| {
             let acceptor = t!(TcpListener::bind(&addr));
 
@@ -890,7 +890,7 @@ mod tests {
                               socket_addr, name, listener_inner);
         assert_eq!(format!("{:?}", listener), compare);
 
-        let mut stream = t!(TcpStream::connect(&("localhost",
+        let stream = t!(TcpStream::connect(&("localhost",
                                                  socket_addr.port())));
         let stream_inner = stream.0.socket().as_inner();
         let compare = format!("TcpStream {{ addr: {:?}, \
