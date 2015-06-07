@@ -1038,7 +1038,7 @@ be undesired.
 
 * Deadlocks
 * Reading data from private fields (`std::repr`)
-* Leaks due to reference count cycles, even in the global heap
+* Leaks of memory and other resources
 * Exiting without calling destructors
 * Sending signals
 * Accessing/modifying the file system
