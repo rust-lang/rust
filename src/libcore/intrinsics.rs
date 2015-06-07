@@ -169,6 +169,21 @@ extern "rust-intrinsic" {
     /// own, or if it does not enable any significant optimizations.
     pub fn assume(b: bool);
 
+    /// Returns the current position on the stack
+    #[cfg(not(stage0))]
+    pub fn stacksave() -> *const i8;
+
+    /// Allocates `n` consecutive uninitialized values of type T on the stack
+    /// and returns a pointer to the first one
+    #[cfg(not(stage0))]
+    pub fn stackalloc<T>(n: usize) -> *mut T;
+
+    /// Restores the stack to the location at which `stacksave` was called to
+    /// obtain the StackPosition value. This is useful to erase any memory
+    /// allocated by `stackalloc`
+    #[cfg(not(stage0))]
+    pub fn stackrestore(pos: *const i8);
+
     /// Executes a breakpoint trap, for inspection by a debugger.
     pub fn breakpoint();
 

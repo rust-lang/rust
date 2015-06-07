@@ -5235,6 +5235,24 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
                                                                   ty::BrAnon(0))),
                                     param(ccx, 0))], tcx.types.u64),
 
+            "stackrestore" => (
+                0,
+                vec![ty::mk_imm_ptr(tcx, tcx.types.i8)],
+                ty::mk_nil(tcx),
+            ),
+
+            "stacksave" => (
+                0,
+                vec![],
+                ty::mk_imm_ptr(tcx, tcx.types.i8),
+            ),
+
+            "stackalloc" => (
+                1,
+                vec![tcx.types.usize],
+                ty::mk_mut_ptr(tcx, param(ccx, 0)),
+            ),
+
             ref other => {
                 span_err!(tcx.sess, it.span, E0093,
                     "unrecognized intrinsic function: `{}`", *other);
