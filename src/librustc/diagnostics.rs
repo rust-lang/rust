@@ -559,7 +559,7 @@ impl Trait for i8 { type AssociatedType = &'static str; }
 
 foo(3_i8);
 // Here, we invoke `foo` with an `i8`, which does not satisfy
-// the constraint `<i8 as Trait>::AssociatedType=32`, and
+// the constraint `<i8 as Trait>::AssociatedType=u32`, and
 // therefore the type-checker complains with this error code.
 ```
 
