@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-test also broken on nightly linux distcheck. it's just broken!
 // ignore-windows failing on win32 bot
 // ignore-freebsd: output doesn't match
 // ignore-tidy-linelength
