@@ -61,7 +61,7 @@ use middle::traits;
 use trans::{_match, adt, asm, base, callee, closure, consts, controlflow};
 use trans::base::*;
 use trans::build::*;
-use trans::cleanup::{self, CleanupMethods};
+use trans::cleanup::{self, CleanupMethods, DropHintMethods};
 use trans::common::*;
 use trans::datum::*;
 use trans::debuginfo::{self, DebugLoc, ToDebugLoc};
@@ -1004,10 +1004,26 @@ fn trans_rvalue_stmt_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 debuginfo::set_source_location(bcx.fcx, expr.id, expr.span);
                 let src_datum = unpack_datum!(
                     bcx, src_datum.to_rvalue_datum(bcx, "ExprAssign"));
-                bcx = glue::drop_ty(bcx,
-                                    dst_datum.val,
-                                    dst_datum.ty,
-                                    expr.debug_loc());
+                if let Some(hint_datum) = dst_datum.kind.drop_flag_info.hint_datum(bcx) {
+                    let hint_val = hint_datum.to_value();
+                    // XXX the checkpointed branch only does the
+                    // drop_ty call within this branch (and I claim
+                    // that seems like a bug). At this point I have
+                    // moved it into the branch solely to see if it
+                    // makes my plague of bugs go away.
+                    bcx = glue::drop_ty_core(bcx,
+                                             dst_datum.val,
+                                             dst_datum.ty,
+                                             expr.debug_loc(),
+                                             false,
+                                             Some(hint_val));
+                    // We are initializing or overwriting the
+                    // destination, so we need to write "drop needed"
+                    // into the hint.
+                    let hint_llval = hint_val.value();
+                    let drop_needed = C_u8(bcx.fcx.ccx, adt::DTOR_NEEDED_HINT as usize);
+                    Store(bcx, drop_needed, hint_llval);
+                }
                 src_datum.store_to(bcx, dst_datum.val)
             } else {
                 src_datum.store_to(bcx, dst_datum.val)
@@ -1578,7 +1594,8 @@ pub fn trans_adt<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
             bcx = trans_into(bcx, &**e, SaveIn(dest));
             let scope = cleanup::CustomScope(custom_cleanup_scope);
             fcx.schedule_lifetime_end(scope, dest);
-            fcx.schedule_drop_mem(scope, dest, e_ty);
+            // FIXME: nonzeroing move should generalize to fields
+            fcx.schedule_drop_mem(scope, dest, e_ty, None);
         }
     }
 

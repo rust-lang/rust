@@ -205,7 +205,7 @@ use trans::build::{AddCase, And, Br, CondBr, GEPi, InBoundsGEP, Load, PointerCas
 use trans::build::{Not, Store, Sub, add_comment};
 use trans::build;
 use trans::callee;
-use trans::cleanup::{self, CleanupMethods};
+use trans::cleanup::{self, CleanupMethods, DropHintMethods};
 use trans::common::*;
 use trans::consts;
 use trans::datum::*;
@@ -947,14 +947,14 @@ fn insert_lllocals<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
             TrByCopy(llbinding) |
             TrByMoveIntoCopy(llbinding) => {
                 let llval = Load(bcx, binding_info.llmatch);
-                let lval = match binding_info.trmode {
+                let lvalue = match binding_info.trmode {
                     TrByCopy(..) =>
                         Lvalue::new("_match::insert_lllocals"),
                     TrByMoveIntoCopy(..) =>
                         Lvalue::match_input("_match::insert_lllocals", bcx, binding_info.id),
                     _ => unreachable!(),
                 };
-                let datum = Datum::new(llval, binding_info.ty, lval);
+                let datum = Datum::new(llval, binding_info.ty, lvalue);
                 call_lifetime_start(bcx, llbinding);
                 bcx = datum.store_to(bcx, llbinding);
                 if let Some(cs) = cs {
@@ -971,14 +971,15 @@ fn insert_lllocals<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
             TrByRef => (binding_info.llmatch, true),
         };
 
-        let lval = Lvalue::local("_match::insert_lllocals",
-                                 bcx,
-                                 binding_info.id,
-                                 aliases_other_state);
-        let datum = Datum::new(llval, binding_info.ty, lval);
+        let lvalue = Lvalue::local("_match::insert_lllocals",
+                                   bcx,
+                                   binding_info.id,
+                                   aliases_other_state);
+        let datum = Datum::new(llval, binding_info.ty, lvalue);
         if let Some(cs) = cs {
+            let opt_datum = lvalue.dropflag_hint(bcx);
             bcx.fcx.schedule_lifetime_end(cs, binding_info.llmatch);
-            bcx.fcx.schedule_drop_and_fill_mem(cs, llval, binding_info.ty);
+            bcx.fcx.schedule_drop_and_fill_mem(cs, llval, binding_info.ty, opt_datum);
         }
 
         debug!("binding {} to {}", binding_info.id, bcx.val_to_string(llval));
@@ -1505,13 +1506,13 @@ fn create_bindings_map<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, pat: &ast::Pat,
                 // but during matching we need to store a *T as explained
                 // above
                 llmatch = alloca_no_lifetime(bcx,
-                                 llvariable_ty.ptr_to(),
-                                 &bcx.name(name));
+                                             llvariable_ty.ptr_to(),
+                                             &bcx.name(name));
                 trmode = TrByMoveRef;
             }
             ast::BindByRef(_) => {
                 llmatch = alloca_no_lifetime(bcx,
-                                             llvariable_ty,
+                                 llvariable_ty,
                                  &bcx.name(name));
                 trmode = TrByRef;
             }
@@ -1631,7 +1632,25 @@ pub fn store_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             bcx = mk_binding_alloca(
                 bcx, p_id, path1.node.name, scope, (),
                 "_match::store_local::create_dummy_locals",
-                |(), bcx, llval, ty| { drop_done_fill_mem(bcx, llval, ty); bcx });
+                |(), bcx, Datum { val: llval, ty, kind }| {
+                    // Dummy-locals start out uninitialized, so set their
+                    // drop-flag hints (if any) to "moved."
+                    if let Some(hint) = kind.dropflag_hint(bcx) {
+                        let moved_hint = adt::DTOR_MOVED_HINT as usize;
+                        debug!("store moved_hint={} for hint={:?}, uninitialized dummy",
+                               moved_hint, hint);
+                        Store(bcx, C_u8(bcx.fcx.ccx, moved_hint), hint.to_value().value());
+                    }
+
+                    if kind.drop_flag_info.must_zero() {
+                        // if no drop-flag hint, or the hint requires
+                        // we maintain the embedded drop-flag, then
+                        // mark embedded drop-flag(s) as moved
+                        // (i.e. "already dropped").
+                        drop_done_fill_mem(bcx, llval, ty);
+                    }
+                    bcx
+                });
         });
         bcx
     }
@@ -1654,8 +1673,8 @@ pub fn store_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                     return mk_binding_alloca(
                         bcx, pat.id, ident.name, var_scope, (),
                         "_match::store_local",
-                        |(), bcx, v, _| expr::trans_into(bcx, &**init_expr,
-                                                         expr::SaveIn(v)));
+                        |(), bcx, Datum { val: v, .. }| expr::trans_into(bcx, &**init_expr,
+                                                                         expr::SaveIn(v)));
                 }
 
                 None => {}
@@ -1684,23 +1703,23 @@ fn mk_binding_alloca<'blk, 'tcx, A, F>(bcx: Block<'blk, 'tcx>,
                                        caller_name: &'static str,
                                        populate: F)
                                        -> Block<'blk, 'tcx> where
-    F: FnOnce(A, Block<'blk, 'tcx>, ValueRef, Ty<'tcx>) -> Block<'blk, 'tcx>,
+    F: FnOnce(A, Block<'blk, 'tcx>, Datum<'tcx, Lvalue>) -> Block<'blk, 'tcx>,
 {
     let var_ty = node_id_type(bcx, p_id);
 
     // Allocate memory on stack for the binding.
     let llval = alloc_ty(bcx, var_ty, &bcx.name(name));
+    let lvalue = Lvalue::binding(caller_name, bcx, p_id, name);
+    let datum = Datum::new(llval, var_ty, lvalue);
 
     // Subtle: be sure that we *populate* the memory *before*
     // we schedule the cleanup.
-    let bcx = populate(arg, bcx, llval, var_ty);
+    let bcx = populate(arg, bcx, datum);
     bcx.fcx.schedule_lifetime_end(cleanup_scope, llval);
-    bcx.fcx.schedule_drop_mem(cleanup_scope, llval, var_ty);
+    bcx.fcx.schedule_drop_mem(cleanup_scope, llval, var_ty, lvalue.dropflag_hint(bcx));
 
     // Now that memory is initialized and has cleanup scheduled,
-    // create the datum and insert into the local variable map.
-    let lval = Lvalue::binding(caller_name, bcx, p_id, name);
-    let datum = Datum::new(llval, var_ty, lval);
+    // insert datum into the local variable map.
     bcx.fcx.lllocals.borrow_mut().insert(p_id, datum);
     bcx
 }
@@ -1746,7 +1765,7 @@ pub fn bind_irrefutable_pat<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 bcx = mk_binding_alloca(
                     bcx, pat.id, path1.node.name, cleanup_scope, (),
                     "_match::bind_irrefutable_pat",
-                    |(), bcx, llval, ty| {
+                    |(), bcx, Datum { val: llval, ty, kind: _ }| {
                         match pat_binding_mode {
                             ast::BindByValue(_) => {
                                 // By value binding: move the value that `val`
@@ -1854,10 +1873,7 @@ pub fn bind_irrefutable_pat<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         ast::PatBox(ref inner) => {
             let llbox = Load(bcx, val.val);
             bcx = bind_irrefutable_pat(
-                bcx,
-                &**inner,
-                MatchInput::from_val(llbox),
-                cleanup_scope);
+                bcx, &**inner, MatchInput::from_val(llbox), cleanup_scope);
         }
         ast::PatRegion(ref inner, _) => {
             let loaded_val = Load(bcx, val.val);
@@ -1884,13 +1900,13 @@ pub fn bind_irrefutable_pat<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 .chain(slice.iter())
                 .chain(after.iter())
                 .zip(extracted.vals)
-                .fold(bcx, |bcx, (inner, elem)|
+                .fold(bcx, |bcx, (inner, elem)| {
                     bind_irrefutable_pat(
                         bcx,
                         &**inner,
                         MatchInput::from_val(elem),
                         cleanup_scope)
-                );
+                });
         }
         ast::PatMac(..) => {
             bcx.sess().span_bug(pat.span, "unexpanded macro");

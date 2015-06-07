@@ -219,6 +219,23 @@ pub struct DropHint<K>(pub ast::NodeId, pub K);
 pub type DropHintDatum<'tcx> = DropHint<Datum<'tcx, Lvalue>>;
 pub type DropHintValue = DropHint<ValueRef>;
 
+impl<K> DropHint<K> {
+    pub fn new(id: ast::NodeId, k: K) -> DropHint<K> { DropHint(id, k) }
+}
+
+impl DropHint<ValueRef> {
+    pub fn value(&self) -> ValueRef { self.1 }
+}
+
+pub trait DropHintMethods {
+    type ValueKind;
+    fn to_value(&self) -> Self::ValueKind;
+}
+impl<'tcx> DropHintMethods for DropHintDatum<'tcx> {
+    type ValueKind = DropHintValue;
+    fn to_value(&self) -> DropHintValue { DropHint(self.0, self.1.val) }
+}
+
 impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
     /// Invoked when we start to trans the code contained within a new cleanup scope.
     fn push_ast_cleanup_scope(&self, debug_loc: NodeIdAndSpan) {
@@ -389,14 +406,17 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
     fn schedule_drop_mem(&self,
                          cleanup_scope: ScopeId,
                          val: ValueRef,
-                         ty: Ty<'tcx>) {
+                         ty: Ty<'tcx>,
+                         drop_hint: Option<DropHintDatum<'tcx>>) {
         if !self.type_needs_drop(ty) { return; }
+        let drop_hint = drop_hint.map(|hint|hint.to_value());
         let drop = box DropValue {
             is_immediate: false,
             val: val,
             ty: ty,
             fill_on_drop: false,
             skip_dtor: false,
+            drop_hint: drop_hint,
         };
 
         debug!("schedule_drop_mem({:?}, val={}, ty={:?}) fill_on_drop={} skip_dtor={}",
@@ -413,23 +433,28 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
     fn schedule_drop_and_fill_mem(&self,
                                   cleanup_scope: ScopeId,
                                   val: ValueRef,
-                                  ty: Ty<'tcx>) {
+                                  ty: Ty<'tcx>,
+                                  drop_hint: Option<DropHintDatum<'tcx>>) {
         if !self.type_needs_drop(ty) { return; }
 
+        let drop_hint = drop_hint.map(|datum|datum.to_value());
         let drop = box DropValue {
             is_immediate: false,
             val: val,
             ty: ty,
             fill_on_drop: true,
             skip_dtor: false,
+            drop_hint: drop_hint,
         };
 
-        debug!("schedule_drop_and_fill_mem({:?}, val={}, ty={:?}, fill_on_drop={}, skip_dtor={})",
+        debug!("schedule_drop_and_fill_mem({:?}, val={}, ty={:?},
+                fill_on_drop={}, skip_dtor={}, has_drop_hint={})",
                cleanup_scope,
                self.ccx.tn().val_to_string(val),
                ty,
                drop.fill_on_drop,
-               drop.skip_dtor);
+               drop.skip_dtor,
+               drop_hint.is_some());
 
         self.schedule_clean(cleanup_scope, drop as CleanupObj);
     }
@@ -453,6 +478,7 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
             ty: ty,
             fill_on_drop: false,
             skip_dtor: true,
+            drop_hint: None,
         };
 
         debug!("schedule_drop_adt_contents({:?}, val={}, ty={:?}) fill_on_drop={} skip_dtor={}",
@@ -472,13 +498,14 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
                                ty: Ty<'tcx>) {
 
         if !self.type_needs_drop(ty) { return; }
-        let drop = box DropValue {
+        let drop = Box::new(DropValue {
             is_immediate: true,
             val: val,
             ty: ty,
             fill_on_drop: false,
             skip_dtor: false,
-        };
+            drop_hint: None,
+        });
 
         debug!("schedule_drop_immediate({:?}, val={}, ty={:?}) fill_on_drop={} skip_dtor={}",
                cleanup_scope,
@@ -983,6 +1010,7 @@ pub struct DropValue<'tcx> {
     ty: Ty<'tcx>,
     fill_on_drop: bool,
     skip_dtor: bool,
+    drop_hint: Option<DropHintValue>,
 }
 
 impl<'tcx> Cleanup<'tcx> for DropValue<'tcx> {
@@ -1007,7 +1035,7 @@ impl<'tcx> Cleanup<'tcx> for DropValue<'tcx> {
         let bcx = if self.is_immediate {
             glue::drop_ty_immediate(bcx, self.val, self.ty, debug_loc, self.skip_dtor)
         } else {
-            glue::drop_ty_core(bcx, self.val, self.ty, debug_loc, self.skip_dtor)
+            glue::drop_ty_core(bcx, self.val, self.ty, debug_loc, self.skip_dtor, self.drop_hint)
         };
         if self.fill_on_drop {
             base::drop_done_fill_mem(bcx, self.val, self.ty);
@@ -1135,11 +1163,13 @@ pub trait CleanupMethods<'blk, 'tcx> {
     fn schedule_drop_mem(&self,
                          cleanup_scope: ScopeId,
                          val: ValueRef,
-                         ty: Ty<'tcx>);
+                         ty: Ty<'tcx>,
+                         drop_hint: Option<DropHintDatum<'tcx>>);
     fn schedule_drop_and_fill_mem(&self,
                                   cleanup_scope: ScopeId,
                                   val: ValueRef,
-                                  ty: Ty<'tcx>);
+                                  ty: Ty<'tcx>,
+                                  drop_hint: Option<DropHintDatum<'tcx>>);
     fn schedule_drop_adt_contents(&self,
                                   cleanup_scope: ScopeId,
                                   val: ValueRef,

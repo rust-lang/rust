@@ -93,11 +93,12 @@ pub use self::Expr::*;
 pub use self::RvalueMode::*;
 
 use llvm::ValueRef;
+use trans::adt;
 use trans::base::*;
-use trans::build::Load;
+use trans::build::{Load, Store};
 use trans::common::*;
 use trans::cleanup;
-use trans::cleanup::CleanupMethods;
+use trans::cleanup::{CleanupMethods, DropHintDatum, DropHintMethods};
 use trans::expr;
 use trans::tvec;
 use trans::type_of;
@@ -111,7 +112,7 @@ use syntax::codemap::DUMMY_SP;
 /// describes where the value is stored, what Rust type the value has,
 /// whether it is addressed by reference, and so forth. Please refer
 /// the section on datums in `README.md` for more details.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct Datum<'tcx, K> {
     /// The llvm value.  This is either a pointer to the Rust value or
     /// the value itself, depending on `kind` below.
@@ -141,7 +142,7 @@ pub enum Expr {
     LvalueExpr(Lvalue),
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum DropFlagInfo {
     DontZeroJustUse(ast::NodeId),
     ZeroAndMaintain(ast::NodeId),
@@ -157,12 +158,18 @@ impl DropFlagInfo {
         }
     }
 
-    pub fn hint_to_maintain(&self) -> Option<ast::NodeId> {
-        match *self {
-            DropFlagInfo::DontZeroJustUse(id) => Some(id),
-            DropFlagInfo::ZeroAndMaintain(id) => Some(id),
-            DropFlagInfo::None => None,
-        }
+    pub fn hint_datum<'blk, 'tcx>(&self, bcx: Block<'blk, 'tcx>)
+                              -> Option<DropHintDatum<'tcx>> {
+        let id = match *self {
+            DropFlagInfo::None => return None,
+            DropFlagInfo::DontZeroJustUse(id) |
+            DropFlagInfo::ZeroAndMaintain(id) => id,
+        };
+
+        let hints = bcx.fcx.lldropflag_hints.borrow();
+        let retval = hints.hint_datum(id);
+        assert!(retval.is_some(), "An id (={}) means must have a hint", id);
+        retval
     }
 }
 
@@ -182,7 +189,8 @@ pub struct Rvalue {
     pub mode: RvalueMode
 }
 
-impl Lvalue {
+// XXX: reduce this to a smaller kernel of constructors.
+impl Lvalue { // These are all constructors for various Lvalues.
     pub fn new(source: &'static str) -> Lvalue {
         Lvalue { source: source, drop_flag_info: DropFlagInfo::None }
     }
@@ -267,9 +275,21 @@ impl Lvalue {
         Lvalue { source: source, drop_flag_info: info }
     }
 
+    pub fn new_dropflag_hint(source: &'static str) -> Lvalue {
+        debug!("dropflag hint Lvalue at {}", source);
+        Lvalue { source: source, drop_flag_info: DropFlagInfo::None }
+    }
+} // end Lvalue constructor methods.
+
+impl Lvalue {
     fn has_dropflag_hint<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                      id: ast::NodeId) -> bool {
-        bcx.fcx.lldropflag_hints.borrow().has_hint(id)
+        let hints = bcx.fcx.lldropflag_hints.borrow();
+        hints.has_hint(id)
+    }
+    pub fn dropflag_hint<'blk, 'tcx>(&self, bcx: Block<'blk, 'tcx>)
+                                 -> Option<DropHintDatum<'tcx>> {
+        self.drop_flag_info.hint_datum(bcx)
     }
 }
 
@@ -323,7 +343,7 @@ pub fn lvalue_scratch_datum<'blk, 'tcx, A, F>(bcx: Block<'blk, 'tcx>,
     // Subtle. Populate the scratch memory *before* scheduling cleanup.
     let bcx = populate(arg, bcx, scratch);
     bcx.fcx.schedule_lifetime_end(scope, scratch);
-    bcx.fcx.schedule_drop_mem(scope, scratch, ty);
+    bcx.fcx.schedule_drop_mem(scope, scratch, ty, None);
 
     DatumBlock::new(bcx, Datum::new(scratch, ty, Lvalue::new("datum::lvalue_scratch_datum")))
 }
@@ -362,7 +382,7 @@ fn add_rvalue_clean<'a, 'tcx>(mode: RvalueMode,
         ByValue => { fcx.schedule_drop_immediate(scope, val, ty); }
         ByRef => {
             fcx.schedule_lifetime_end(scope, val);
-            fcx.schedule_drop_mem(scope, val, ty);
+            fcx.schedule_drop_mem(scope, val, ty, None);
         }
     }
 }
@@ -419,10 +439,28 @@ impl KindOps for Lvalue {
                               -> Block<'blk, 'tcx> {
         let _icx = push_ctxt("<Lvalue as KindOps>::post_store");
         if bcx.fcx.type_needs_drop(ty) {
-            // cancel cleanup of affine values by drop-filling the memory
-            let () = drop_done_fill_mem(bcx, val, ty);
+            // cancel cleanup of affine values:
+            // 1. if it has drop-hint, mark as moved; then code
+            //    aware of drop-hint won't bother calling the
+            //    drop-glue itself.
+            if let Some(hint_datum) = self.drop_flag_info.hint_datum(bcx) {
+                let moved_hint_byte = adt::DTOR_MOVED_HINT as usize;
+                let hint_llval = hint_datum.to_value().value();
+                Store(bcx, C_u8(bcx.fcx.ccx, moved_hint_byte), hint_llval);
+            }
+            // 2. if the drop info says its necessary, drop-fill the memory.
+            if self.drop_flag_info.must_zero() {
+                let () = drop_done_fill_mem(bcx, val, ty);
+            }
             bcx
         } else {
+            // XXX would be nice to assert this, but we currently are
+            // adding e.g.  DontZeroJustUse flags. (The dropflag hint
+            // construction should be taking !type_needs_drop into
+            // account; earlier analysis phases may not have all the
+            // info they need to do it properly, I think...)
+            //
+            // assert_eq!(self.drop_flag_info, DropFlagInfo::None);
             bcx
         }
     }
