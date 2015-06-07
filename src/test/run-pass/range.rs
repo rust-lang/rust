@@ -23,7 +23,7 @@ pub fn main() {
         assert!(i >= 0 && i < 10);
         count += i;
     }
-    assert!(count == 45);
+    assert_eq!(count, 45);
 
     let mut count = 0;
     let mut range = 0_usize..10;
@@ -31,7 +31,7 @@ pub fn main() {
         assert!(i >= 0 && i < 10);
         count += i;
     }
-    assert!(count == 45);
+    assert_eq!(count, 45);
 
     let mut count = 0;
     let mut rf = 3_usize..;
@@ -39,7 +39,7 @@ pub fn main() {
         assert!(i >= 3 && i < 13);
         count += i;
     }
-    assert!(count == 75);
+    assert_eq!(count, 75);
 
     let _ = 0_usize..4+4-3;
     let _ = 0..foo();

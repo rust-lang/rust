@@ -34,7 +34,7 @@ pub fn main() {
         let _a = Foo{ dropped: false };
     }
     // Check that we dropped already (as expected from a `{ expr }`).
-    unsafe { assert!(drop_count == 1); }
+    unsafe { assert_eq!(drop_count, 1); }
 
     // An `if false {} else { expr }` statement should compile the same as `{ expr }`.
     if false {
@@ -43,5 +43,5 @@ pub fn main() {
         let _a = Foo{ dropped: false };
     }
     // Check that we dropped already (as expected from a `{ expr }`).
-    unsafe { assert!(drop_count == 2); }
+    unsafe { assert_eq!(drop_count, 2); }
 }

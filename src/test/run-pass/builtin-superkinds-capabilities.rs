@@ -26,5 +26,5 @@ fn foo<T: Foo + 'static>(val: T, chan: Sender<T>) {
 pub fn main() {
     let (tx, rx): (Sender<isize>, Receiver<isize>) = channel();
     foo(31337, tx);
-    assert!(rx.recv().unwrap() == 31337);
+    assert_eq!(rx.recv().unwrap(), 31337);
 }

@@ -42,7 +42,7 @@ fn main() {
     T::foo(x);
     T::bar();
 
-    unsafe { assert!(COUNT == 12); }
+    unsafe { assert_eq!(COUNT, 12); }
 
     // Cross-crait case
     let x: &Bar = &Foo;

@@ -33,9 +33,9 @@ impl DerefMut for Arr {
 
 pub fn foo(arr: &mut Arr) {
     let x: &mut [usize] = &mut **arr;
-    assert!(x[0] == 1);
-    assert!(x[1] == 2);
-    assert!(x[2] == 3);
+    assert_eq!(x[0], 1);
+    assert_eq!(x[1], 2);
+    assert_eq!(x[2], 3);
 }
 
 fn main() {

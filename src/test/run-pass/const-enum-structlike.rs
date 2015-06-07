@@ -19,6 +19,6 @@ static C: E = E::S1 { u: 23 };
 pub fn main() {
     match C {
         E::S0 { .. } => panic!(),
-        E::S1 { u } => assert!(u == 23)
+        E::S1 { u } => assert_eq!(u, 23)
     }
 }

@@ -14,10 +14,10 @@
 #[inline(never)]
 #[cfg(target_arch = "x86_64")]
 pub extern "win64" fn foo(a: isize, b: isize, c: isize, d: isize) {
-    assert!(a == 1);
-    assert!(b == 2);
-    assert!(c == 3);
-    assert!(d == 4);
+    assert_eq!(a, 1);
+    assert_eq!(b, 2);
+    assert_eq!(c, 3);
+    assert_eq!(d, 4);
 
     println!("a: {}, b: {}, c: {}, d: {}",
              a, b, c, d)
@@ -26,10 +26,10 @@ pub extern "win64" fn foo(a: isize, b: isize, c: isize, d: isize) {
 #[inline(never)]
 #[cfg(any(target_arch = "x86", target_arch = "arm", target_arch = "aarch64"))]
 pub extern fn foo(a: isize, b: isize, c: isize, d: isize) {
-    assert!(a == 1);
-    assert!(b == 2);
-    assert!(c == 3);
-    assert!(d == 4);
+    assert_eq!(a, 1);
+    assert_eq!(b, 2);
+    assert_eq!(c, 3);
+    assert_eq!(d, 4);
 
     println!("a: {}, b: {}, c: {}, d: {}",
              a, b, c, d)

@@ -29,5 +29,5 @@ fn main() {
                 break
         }
     }
-    assert!(result == [2, 4]);
+    assert_eq!(result, [2, 4]);
 }

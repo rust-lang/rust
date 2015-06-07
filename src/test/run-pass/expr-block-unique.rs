@@ -13,4 +13,4 @@
 #![allow(unknown_features)]
 #![feature(box_syntax)]
 
-pub fn main() { let x: Box<_> = { box 100 }; assert!((*x == 100)); }
+pub fn main() { let x: Box<_> = { box 100 }; assert_eq!(*x, 100); }

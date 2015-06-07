@@ -20,7 +20,7 @@ struct Foo(Cell<isize>);
 impl fmt::Debug for Foo {
     fn fmt(&self, _fmt: &mut fmt::Formatter) -> fmt::Result {
         let Foo(ref f) = *self;
-        assert!(f.get() == 0);
+        assert_eq!(f.get(), 0);
         f.set(1);
         Ok(())
     }
@@ -31,6 +31,6 @@ pub fn main() {
         let mut f = Foo(Cell::new(0));
         println!("{:?}", f);
         let Foo(ref mut f) = f;
-        assert!(f.get() == 1);
+        assert_eq!(f.get(), 1);
     }).join().ok().unwrap();
 }

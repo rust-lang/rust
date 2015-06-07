@@ -27,6 +27,6 @@ pub fn main() {
         let _x: Box<Fat<[Foo]>> = Box::<Fat<[Foo; 3]>>::new(Fat { f: [Foo, Foo, Foo] });
     }
     unsafe {
-        assert!(DROP_RAN == 3);
+        assert_eq!(DROP_RAN, 3);
     }
 }

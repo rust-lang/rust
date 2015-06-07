@@ -18,7 +18,7 @@ fn f(mut y: Box<isize>) {
 }
 
 fn g() {
-    let frob = |mut q: Box<isize>| { *q = 2; assert!(*q == 2); };
+    let frob = |mut q: Box<isize>| { *q = 2; assert_eq!(*q, 2); };
     let w = box 37;
     frob(w);
 

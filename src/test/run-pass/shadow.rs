@@ -27,4 +27,4 @@ fn foo(c: Vec<isize> ) {
 
 enum t<T> { none, some(T), }
 
-pub fn main() { let x = 10; let x = x + 20; assert!((x == 30)); foo(Vec::new()); }
+pub fn main() { let x = 10; let x = x + 20; assert_eq!(x, 30); foo(Vec::new()); }

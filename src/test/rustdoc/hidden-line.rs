@@ -22,7 +22,7 @@
 ///
 /// fn test() {
 ///     let x = Bar(Foo);
-///     assert!(x == x); // check that the derivings worked
+///     assert_eq!(x, x); // check that the derivings worked
 /// }
 ///
 /// }

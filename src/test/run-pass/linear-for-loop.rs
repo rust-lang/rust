@@ -19,11 +19,11 @@ pub fn main() {
     let s = "hello there".to_string();
     let mut i: isize = 0;
     for c in s.bytes() {
-        if i == 0 { assert!((c == 'h' as u8)); }
-        if i == 1 { assert!((c == 'e' as u8)); }
-        if i == 2 { assert!((c == 'l' as u8)); }
-        if i == 3 { assert!((c == 'l' as u8)); }
-        if i == 4 { assert!((c == 'o' as u8)); }
+        if i == 0 { assert_eq!(c, 'h' as u8); }
+        if i == 1 { assert_eq!(c, 'e' as u8); }
+        if i == 2 { assert_eq!(c, 'l' as u8); }
+        if i == 3 { assert_eq!(c, 'l' as u8); }
+        if i == 4 { assert_eq!(c, 'o' as u8); }
         // ...
 
         i += 1;
