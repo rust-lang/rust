@@ -139,9 +139,12 @@ pub fn trans_into<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 // have different types.
                 let lldest = PointerCast(bcx, lldest, val_ty(global));
                 memcpy_ty(bcx, lldest, global, expr_ty_adjusted(bcx, expr));
+                return bcx;
             }
-            // Don't do anything in the Ignore case, consts don't need drop.
-            return bcx;
+            // Even if we don't have a value to emit, and the expression
+            // doesn't have any side-effects, we still have to translate the
+            // body of any closures.
+            // FIXME: Find a better way of handling this case.
         } else {
             // The only way we're going to see a `const` at this point is if
             // it prefers in-place instantiation, likely because it contains
