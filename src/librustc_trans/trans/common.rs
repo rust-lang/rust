@@ -318,6 +318,12 @@ pub struct DropFlagHintsMap<'tcx> {
 impl<'tcx> DropFlagHintsMap<'tcx> {
     pub fn new() -> DropFlagHintsMap<'tcx> { DropFlagHintsMap { node_map: NodeMap() } }
     pub fn has_hint(&self, id: ast::NodeId) -> bool { self.node_map.contains_key(&id) }
+    pub fn insert(&mut self, id: ast::NodeId, datum: cleanup::DropHintDatum<'tcx>) {
+        self.node_map.insert(id, HintEntry { datum: datum });
+    }
+    pub fn hint_datum(&self, id: ast::NodeId) -> Option<cleanup::DropHintDatum<'tcx>> {
+        self.node_map.get(&id).map(|t|t.datum)
+    }
 }
 
 // Function context.  Every LLVM function we create will have one of

@@ -163,6 +163,20 @@ macro_rules! repeat_u8_as_u64 {
                        (repeat_u8_as_u32!($name) as u64)) }
 }
 
+/// `DTOR_NEEDED_HINT` is a stack-local hint that just means
+/// "we do not know whether the destructor has run or not; check the
+/// drop-flag embedded in the value itself."
+pub const DTOR_NEEDED_HINT: u8 = 0x3d;
+
+/// `DTOR_MOVED_HINT` is a stack-local hint that means "this value has
+/// definitely been moved; you do not need to run its destructor."
+///
+/// (However, for now, such values may still end up being explicitly
+/// zeroed by the generated code; this is the distinction between
+/// `datum::DropFlagInfo::ZeroAndMaintain` versus
+/// `datum::DropFlagInfo::DontZeroJustUse`.)
+pub const DTOR_MOVED_HINT: u8 = 0x2d;
+
 pub const DTOR_NEEDED: u8 = 0xd4;
 pub const DTOR_NEEDED_U32: u32 = repeat_u8_as_u32!(DTOR_NEEDED);
 pub const DTOR_NEEDED_U64: u64 = repeat_u8_as_u64!(DTOR_NEEDED);

@@ -51,8 +51,7 @@ use trans::attributes;
 use trans::build::*;
 use trans::builder::{Builder, noname};
 use trans::callee;
-use trans::cleanup::CleanupMethods;
-use trans::cleanup;
+use trans::cleanup::{self, CleanupMethods, DropHint};
 use trans::closure;
 use trans::common::{Block, C_bool, C_bytes_in_context, C_i32, C_int, C_integral};
 use trans::common::{C_null, C_struct_in_context, C_u64, C_u8, C_undef};
@@ -88,7 +87,7 @@ use arena::TypedArena;
 use libc::c_uint;
 use std::ffi::{CStr, CString};
 use std::cell::{Cell, RefCell};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::mem;
 use std::str;
 use std::{i8, i16, i32, i64};
@@ -1280,6 +1279,54 @@ pub fn init_function<'a, 'tcx>(fcx: &'a FunctionContext<'a, 'tcx>,
                 // have been instructed to skip it for immediate return
                 // values.
                 fcx.llretslotptr.set(Some(make_return_slot_pointer(fcx, substd_output_type)));
+            }
+        }
+    }
+
+    // Create the drop-flag hints for every unfragmented path in the function.
+    let tcx = fcx.ccx.tcx();
+    let fn_did = ast::DefId { krate: ast::LOCAL_CRATE, node: fcx.id };
+    let mut hints = fcx.lldropflag_hints.borrow_mut();
+    let fragment_infos = tcx.fragment_infos.borrow();
+
+    // Intern table for drop-flag hint datums.
+    let mut seen = HashMap::new();
+
+    if let Some(fragment_infos) = fragment_infos.get(&fn_did) {
+        for &info in fragment_infos {
+
+            let make_datum = |id| {
+                let init_val = C_u8(fcx.ccx, adt::DTOR_NEEDED_HINT as usize);
+                let llname = &format!("dropflag_hint_{}", id);
+                debug!("adding hint {}", llname);
+                let ptr = alloc_ty(entry_bcx, tcx.types.u8, llname);
+                Store(entry_bcx, init_val, ptr);
+                let ty = tcx.mk_ptr(ty::TypeAndMut { ty: tcx.types.u8, mutbl: ast::MutMutable });
+                let flag = datum::Lvalue::new_dropflag_hint("base::init_function");
+                let datum = datum::Datum::new(ptr, ty, flag);
+                datum
+            };
+
+            let (var, datum) = match info {
+                ty::FragmentInfo::Moved { var, .. } |
+                ty::FragmentInfo::Assigned { var, .. } => {
+                    let datum = seen.get(&var).cloned().unwrap_or_else(|| {
+                        let datum = make_datum(var);
+                        seen.insert(var, datum.clone());
+                        datum
+                    });
+                    (var, datum)
+                }
+            };
+            match info {
+                ty::FragmentInfo::Moved { move_expr: expr_id, .. } => {
+                    debug!("FragmentInfo::Moved insert drop hint for {}", expr_id);
+                    hints.insert(expr_id, DropHint::new(var, datum));
+                }
+                ty::FragmentInfo::Assigned { assignee_id: expr_id, .. } => {
+                    debug!("FragmentInfo::Assigned insert drop hint for {}", expr_id);
+                    hints.insert(expr_id, DropHint::new(var, datum));
+                }
             }
         }
     }

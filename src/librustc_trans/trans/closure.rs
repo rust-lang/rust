@@ -82,9 +82,11 @@ fn load_closure_environment<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         bcx.fcx.llupvars.borrow_mut().insert(def_id.node, upvar_ptr);
 
         if kind == ty::FnOnceClosureKind && !captured_by_ref {
+            let hint = bcx.fcx.lldropflag_hints.borrow().hint_datum(upvar_id.var_id);
             bcx.fcx.schedule_drop_mem(arg_scope_id,
                                       upvar_ptr,
-                                      node_id_type(bcx, def_id.node))
+                                      node_id_type(bcx, def_id.node),
+                                      hint)
         }
 
         if let Some(env_pointer_alloca) = env_pointer_alloca {
