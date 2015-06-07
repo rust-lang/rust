@@ -93,8 +93,8 @@ impl String {
     /// assert_eq!(&s[..], "hello");
     /// ```
     #[inline]
-    #[unstable(feature = "collections",
-               reason = "needs investigation to see if to_string() can match perf")]
+    #[unstable(feature = "collections", reason = "use `String::from` instead")]
+    #[deprecated(since = "1.2.0", reason = "use `String::from` instead")]
     #[cfg(not(test))]
     pub fn from_str(string: &str) -> String {
         String { vec: <[_]>::to_vec(string.as_bytes()) }
