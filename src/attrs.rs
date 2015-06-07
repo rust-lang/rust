@@ -6,7 +6,7 @@ use syntax::ast::*;
 use syntax::ptr::P;
 use syntax::codemap::{Span, ExpnInfo};
 use syntax::parse::token::InternedString;
-use utils::in_macro;
+use utils::{in_macro, match_path};
 
 declare_lint! { pub INLINE_ALWAYS, Warn,
     "#[inline(always)] is usually a bad idea."}
@@ -21,18 +21,73 @@ impl LintPass for AttrPass {
     }
     
     fn check_item(&mut self, cx: &Context, item: &Item) {
-		cx.sess().codemap().with_expn_info(item.span.expn_id, 
-			|info| check_attrs(cx, info, &item.ident, &item.attrs))
+		if is_relevant_item(item) {
+			cx.sess().codemap().with_expn_info(item.span.expn_id, 
+				|info| check_attrs(cx, info, &item.ident, &item.attrs))
+		}
 	}
     
-    fn check_impl_item(&mut self, cx: &Context, item: &ImplItem) { 
-		cx.sess().codemap().with_expn_info(item.span.expn_id, 
-			|info| check_attrs(cx, info, &item.ident, &item.attrs))
+    fn check_impl_item(&mut self, cx: &Context, item: &ImplItem) {
+		if is_relevant_impl(item) {
+			cx.sess().codemap().with_expn_info(item.span.expn_id, 
+				|info| check_attrs(cx, info, &item.ident, &item.attrs))
+		}
 	}
         
 	fn check_trait_item(&mut self, cx: &Context, item: &TraitItem) {
-		cx.sess().codemap().with_expn_info(item.span.expn_id, 
-			|info| check_attrs(cx, info, &item.ident, &item.attrs))
+		if is_relevant_trait(item) {
+			cx.sess().codemap().with_expn_info(item.span.expn_id, 
+				|info| check_attrs(cx, info, &item.ident, &item.attrs))
+		}
+	}
+}
+
+fn is_relevant_item(item: &Item) -> bool {
+	if let &ItemFn(_, _, _, _, _, ref block) = &item.node {
+		is_relevant_block(block)
+	} else { false }
+}
+
+fn is_relevant_impl(item: &ImplItem) -> bool {
+	match item.node {
+		MethodImplItem(_, ref block) => is_relevant_block(block),
+		_ => false
+	}
+}
+
+fn is_relevant_trait(item: &TraitItem) -> bool {
+	match item.node {
+		MethodTraitItem(_, None) => true,
+		MethodTraitItem(_, Some(ref block)) => is_relevant_block(block),
+		_ => false
+	}
+}
+
+fn is_relevant_block(block: &Block) -> bool {
+	for stmt in block.stmts.iter() { 
+		match stmt.node {
+			StmtDecl(_, _) => return true,
+			StmtExpr(ref expr, _) | StmtSemi(ref expr, _) => {
+				return is_relevant_expr(expr);
+			}
+			_ => ()
+		}
+	}
+	block.expr.as_ref().map_or(false, |e| is_relevant_expr(&*e))
+}
+
+fn is_relevant_expr(expr: &Expr) -> bool {
+	match expr.node {
+		ExprBlock(ref block) => is_relevant_block(block),
+		ExprRet(Some(ref e)) | ExprParen(ref e) => 
+			is_relevant_expr(&*e),
+		ExprRet(None) | ExprBreak(_) | ExprMac(_) => false,
+		ExprCall(ref path_expr, _) => {
+			if let ExprPath(_, ref path) = path_expr.node {
+				!match_path(path, &["std", "rt", "begin_unwind"])
+			} else { true }
+		}
+		_ => true
 	}
 }
 
