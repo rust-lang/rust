@@ -169,11 +169,15 @@ fn borrowck_fn(this: &mut BorrowckCtxt,
 
     check_loans::check_loans(this,
                              &loan_dfcx,
-                             flowed_moves,
+                             &flowed_moves,
                              &all_loans[..],
                              id,
                              decl,
                              body);
+
+    move_data::fragments::build_unfragmented_map(this,
+                                                 &flowed_moves.move_data,
+                                                 id);
 
     visit::walk_fn(this, fk, decl, body, sp);
 }

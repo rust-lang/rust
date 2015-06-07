@@ -957,6 +957,44 @@ pub struct ctxt<'tcx> {
     /// Maps a cast expression to its kind. This is keyed on the
     /// *from* expression of the cast, not the cast itself.
     pub cast_kinds: RefCell<NodeMap<cast::CastKind>>,
+
+    /// Maps Fn items to a collection of fragment infos.
+    ///
+    /// The main goal is to identify data (each of which may be moved
+    /// or assigned) whose subparts are not moved nor assigned
+    /// (i.e. their state is *unfragmented*) and corresponding ast
+    /// nodes where the path to that data is moved or assigned.
+    ///
+    /// In the long term, unfragmented values will have their
+    /// destructor entirely driven by a single stack-local drop-flag,
+    /// and their parents, the collections of the unfragmented values
+    /// (or more simply, "fragmented values"), are mapped to the
+    /// corresponding collections of stack-local drop-flags.
+    ///
+    /// (However, in the short term that is not the case; e.g. some
+    /// unfragmented paths still need to be zeroed, namely when they
+    /// reference parent data from an outer scope that was not
+    /// entirely moved, and therefore that needs to be zeroed so that
+    /// we do not get double-drop when we hit the end of the parent
+    /// scope.)
+    ///
+    /// Also: currently the table solely holds keys for node-ids of
+    /// unfragmented values (see `FragmentInfo` enum definition), but
+    /// longer-term we will need to also store mappings from
+    /// fragmented data to the set of unfragmented pieces that
+    /// constitute it.
+    pub fragment_infos: RefCell<DefIdMap<Vec<FragmentInfo>>>,
+}
+
+/// Describes the fragment-state associated with a NodeId.
+///
+/// Currently only unfragmented paths have entries in the table,
+/// but longer-term this enum is expected to expand to also
+/// include data for fragmented paths.
+#[derive(Copy, Clone, Debug)]
+pub enum FragmentInfo {
+    Moved { var: NodeId, move_expr: NodeId },
+    Assigned { var: NodeId, assign_expr: NodeId, assignee_id: NodeId },
 }
 
 impl<'tcx> ctxt<'tcx> {
@@ -3498,6 +3536,7 @@ impl<'tcx> ctxt<'tcx> {
             const_qualif_map: RefCell::new(NodeMap()),
             custom_coerce_unsized_kinds: RefCell::new(DefIdMap()),
             cast_kinds: RefCell::new(NodeMap()),
+            fragment_infos: RefCell::new(DefIdMap()),
        }, f)
     }
 

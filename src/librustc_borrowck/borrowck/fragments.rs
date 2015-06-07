@@ -15,7 +15,7 @@
 use self::Fragment::*;
 
 use borrowck::InteriorKind::{InteriorField, InteriorElement};
-use borrowck::LoanPath;
+use borrowck::{self, LoanPath};
 use borrowck::LoanPathKind::{LpVar, LpUpvar, LpDowncast, LpExtend};
 use borrowck::LoanPathElem::{LpDeref, LpInterior};
 use borrowck::move_data::InvalidMovePathIndex;
@@ -57,6 +57,84 @@ impl Fragment {
             AllButOneFrom(mpi) => format!("$(allbutone {})", lp(mpi)),
         }
     }
+}
+
+pub fn build_unfragmented_map(this: &mut borrowck::BorrowckCtxt,
+                              move_data: &MoveData,
+                              id: ast::NodeId) {
+    let fr = &move_data.fragments.borrow();
+
+    // For now, don't care about other kinds of fragments; the precise
+    // classfication of all paths for non-zeroing *drop* needs them,
+    // but the loose approximation used by non-zeroing moves does not.
+    let moved_leaf_paths = fr.moved_leaf_paths();
+    let assigned_leaf_paths = fr.assigned_leaf_paths();
+
+    let mut fragment_infos = Vec::with_capacity(moved_leaf_paths.len());
+
+    let find_var_id = |move_path_index: MovePathIndex| -> Option<ast::NodeId> {
+        let lp = move_data.path_loan_path(move_path_index);
+        match lp.kind {
+            LpVar(var_id) => Some(var_id),
+            LpUpvar(ty::UpvarId { var_id, closure_expr_id }) => {
+                // The `var_id` is unique *relative to* the current function.
+                // (Check that we are indeed talking about the same function.)
+                assert_eq!(id, closure_expr_id);
+                Some(var_id)
+            }
+            LpDowncast(..) | LpExtend(..) => {
+                // This simple implementation of non-zeroing move does
+                // not attempt to deal with tracking substructure
+                // accurately in the general case.
+                None
+            }
+        }
+    };
+
+    let moves = move_data.moves.borrow();
+    for &move_path_index in moved_leaf_paths {
+        let var_id = match find_var_id(move_path_index) {
+            None => continue,
+            Some(var_id) => var_id,
+        };
+
+        move_data.each_applicable_move(move_path_index, |move_index| {
+            let info = ty::FragmentInfo::Moved {
+                var: var_id,
+                move_expr: moves[move_index.get()].id,
+            };
+            debug!("fragment_infos push({:?} \
+                    due to move_path_index: {} move_index: {}",
+                   info, move_path_index.get(), move_index.get());
+            fragment_infos.push(info);
+            true
+        });
+    }
+
+    for &move_path_index in assigned_leaf_paths {
+        let var_id = match find_var_id(move_path_index) {
+            None => continue,
+            Some(var_id) => var_id,
+        };
+
+        let var_assigns = move_data.var_assignments.borrow();
+        for var_assign in var_assigns.iter()
+            .filter(|&assign| assign.path == move_path_index)
+        {
+            let info = ty::FragmentInfo::Assigned {
+                var: var_id,
+                assign_expr: var_assign.id,
+                assignee_id: var_assign.assignee_id,
+            };
+            debug!("fragment_infos push({:?} due to var_assignment", info);
+            fragment_infos.push(info);
+        }
+    }
+
+    let mut fraginfo_map = this.tcx.fragment_infos.borrow_mut();
+    let fn_did = ast::DefId { krate: ast::LOCAL_CRATE, node: id };
+    let prev = fraginfo_map.insert(fn_did, fragment_infos);
+    assert!(prev.is_none());
 }
 
 pub struct FragmentSets {
@@ -101,6 +179,14 @@ impl FragmentSets {
             assigned_leaf_paths: Vec::new(),
             parents_of_fragments: Vec::new(),
         }
+    }
+
+    pub fn moved_leaf_paths(&self) -> &[MovePathIndex] {
+        &self.moved_leaf_paths
+    }
+
+    pub fn assigned_leaf_paths(&self) -> &[MovePathIndex] {
+        &self.assigned_leaf_paths
     }
 
     pub fn add_move(&mut self, path_index: MovePathIndex) {
