@@ -1418,9 +1418,13 @@ impl<T> Container for Vec<T> {
 ```
 
 Generic functions may use traits as _bounds_ on their type parameters. This
-will have two effects: only types that have the trait may instantiate the
-parameter, and within the generic function, the methods of the trait can be
-called on values that have the parameter's type. For example:
+will have two effects:
+
+- Only types that have the trait may instantiate the parameter.
+- Within the generic function, the methods of the trait can be
+  called on values that have the parameter's type.
+
+For example:
 
 ```
 # type Surface = i32;
