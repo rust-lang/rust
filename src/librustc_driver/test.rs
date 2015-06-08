@@ -92,7 +92,7 @@ impl Emitter for ExpectErrorEmitter {
 
 fn errors(msgs: &[&str]) -> (Box<Emitter+Send>, usize) {
     let v = msgs.iter().map(|m| m.to_string()).collect();
-    (box ExpectErrorEmitter { messages: v } as Box<Emitter+Send>, msgs.len())
+    (Box::new(ExpectErrorEmitter { messages: v }) as Box<Emitter+Send>, msgs.len())
 }
 
 fn test_env<F>(source_string: &str,

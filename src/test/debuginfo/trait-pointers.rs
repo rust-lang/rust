@@ -33,5 +33,5 @@ impl Trait for Struct {}
 fn main() {
     let stack_struct = Struct { a:0, b: 1.0 };
     let reference: &Trait = &stack_struct as &Trait;
-    let unique: Box<Trait> = box Struct { a:2, b: 3.0 } as Box<Trait>;
+    let unique: Box<Trait> = Box::new(Struct { a:2, b: 3.0 }) as Box<Trait>;
 }
