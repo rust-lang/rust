@@ -3206,14 +3206,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         NoSuggestion
     }
 
-    fn find_best_match_for_name(&mut self, name: &str, max_distance: usize)
-                                -> Option<String> {
-        let this = &mut *self;
-
+    fn find_best_match_for_name(&mut self, name: &str) -> Option<String> {
         let mut maybes: Vec<token::InternedString> = Vec::new();
         let mut values: Vec<usize> = Vec::new();
 
-        for rib in this.value_ribs.iter().rev() {
+        for rib in self.value_ribs.iter().rev() {
             for (&k, _) in &rib.bindings {
                 maybes.push(token::get_name(k));
                 values.push(usize::MAX);
@@ -3229,9 +3226,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
         }
 
+        // As a loose rule to avoid obviously incorrect suggestions, clamp the
+        // maximum edit distance we will accept for a suggestion to one third of
+        // the typo'd name's length.
+        let max_distance = std::cmp::max(name.len(), 3) / 3;
+
         if !values.is_empty() &&
-            values[smallest] != usize::MAX &&
-            values[smallest] < name.len() + 2 &&
             values[smallest] <= max_distance &&
             name != &maybes[smallest][..] {
 
@@ -3357,7 +3357,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                     NoSuggestion => {
                                         // limit search to 5 to reduce the number
                                         // of stupid suggestions
-                                        self.find_best_match_for_name(&path_name, 5)
+                                        self.find_best_match_for_name(&path_name)
                                                             .map_or("".to_string(),
                                                                     |x| format!("`{}`", x))
                                     }
