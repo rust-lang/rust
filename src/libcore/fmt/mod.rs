@@ -1163,6 +1163,33 @@ impl<T: Debug> Debug for [T] {
     }
 }
 
+macro_rules! fmt_slice {
+    ($($Trait:ident => $fmt_char:expr),*) => {
+        $(
+            impl<T: $Trait> $Trait for [T] {
+                fn fmt(&self, f: &mut Formatter) -> Result {
+                    try!(write!(f, "["));
+                    for (i, x) in self.iter().enumerate() {
+                        if i != 0 { try!(write!(f, ", ")); }
+                        try!(write!(f, $fmt_char, *x));
+                    }
+                    write!(f, "]")
+                }
+            }
+        )*
+    }
+}
+
+fmt_slice! {
+    Octal => "{:o}",
+    Binary => "{:b}",
+    UpperHex => "{:X}",
+    LowerHex => "{:x}",
+    UpperExp => "{:E}",
+    LowerExp => "{:e}"
+}
+
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Debug for () {
     fn fmt(&self, f: &mut Formatter) -> Result {

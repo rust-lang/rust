@@ -23,6 +23,8 @@ use borrow::Borrow;
 use btree_map::{BTreeMap, Keys};
 use Bound;
 
+use format_helpers::*;
+
 // FIXME(conventions): implement bounded iterators
 
 /// A set based on a B-Tree.
@@ -614,6 +616,16 @@ impl<T: Debug> Debug for BTreeSet<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_set().entries(self.iter()).finish()
     }
+}
+
+impl_set_fmt! {
+    BTreeSet,
+    Octal    => seq_fmt_octal,
+    Binary   => seq_fmt_binary,
+    LowerHex => seq_fmt_lower_hex,
+    UpperHex => seq_fmt_upper_hex,
+    LowerExp => seq_fmt_lower_exp,
+    UpperExp => seq_fmt_upper_exp
 }
 
 impl<'a, T> Clone for Iter<'a, T> {

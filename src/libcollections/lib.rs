@@ -79,6 +79,7 @@ mod btree;
 pub mod borrow;
 pub mod enum_set;
 pub mod fmt;
+mod format_helpers;
 pub mod linked_list;
 pub mod range;
 pub mod slice;

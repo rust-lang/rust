@@ -32,6 +32,8 @@ use core::hash::{Hash, Hasher};
 use core::cmp;
 
 use alloc::heap;
+use format_helpers::*;
+
 
 const INITIAL_CAPACITY: usize = 7; // 2^3 - 1
 const MINIMUM_CAPACITY: usize = 1; // 2 - 1
@@ -1785,18 +1787,15 @@ impl<A> Extend<A> for VecDeque<A> {
     }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<T: fmt::Debug> fmt::Debug for VecDeque<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(f, "["));
-
-        for (i, e) in self.iter().enumerate() {
-            if i != 0 { try!(write!(f, ", ")); }
-            try!(write!(f, "{:?}", *e));
-        }
-
-        write!(f, "]")
-    }
+impl_seq_fmt! {
+    VecDeque,
+    Debug    => seq_fmt_debug,
+    Octal    => seq_fmt_octal,
+    Binary   => seq_fmt_binary,
+    LowerHex => seq_fmt_lower_hex,
+    UpperHex => seq_fmt_upper_hex,
+    LowerExp => seq_fmt_lower_exp,
+    UpperExp => seq_fmt_upper_exp
 }
 
 #[cfg(test)]

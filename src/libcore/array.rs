@@ -38,6 +38,18 @@ pub trait FixedSizeArray<T> {
     fn as_mut_slice(&mut self) -> &mut [T];
 }
 
+macro_rules! fmt_array {
+    ($N:expr, $($Trait:ident),*) => {
+        $(
+            impl<T:fmt::$Trait> fmt::$Trait for [T; $N] {
+                fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                    fmt::$Trait::fmt(&&self[..], f)
+                }
+            }
+        )*
+    }
+}
+
 // macro for implementing n-ary tuple functions and operations
 macro_rules! array_impls {
     ($($N:expr)+) => {
@@ -86,12 +98,7 @@ macro_rules! array_impls {
                 }
             }
 
-            #[stable(feature = "rust1", since = "1.0.0")]
-            impl<T: fmt::Debug> fmt::Debug for [T; $N] {
-                fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                    fmt::Debug::fmt(&&self[..], f)
-                }
-            }
+            fmt_array! { $N, Debug, Octal, Binary, UpperHex, LowerHex, UpperExp, LowerExp }
 
             #[stable(feature = "rust1", since = "1.0.0")]
             impl<'a, T> IntoIterator for &'a [T; $N] {

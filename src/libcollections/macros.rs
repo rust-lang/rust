@@ -75,3 +75,45 @@ macro_rules! vec {
 macro_rules! format {
     ($($arg:tt)*) => ($crate::fmt::format(format_args!($($arg)*)))
 }
+
+macro_rules! impl_seq_fmt {
+    ($seq:ident, $($Trait:ident => $fmt_fun:ident),+) => {
+        $(
+            impl<T: fmt::$Trait> fmt::$Trait for $seq<T> {
+                fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                    try!(write!(f, "["));
+                    try!($fmt_fun(self.iter(), f));
+                    write!(f, "]")
+                }
+            }
+        )+
+    }
+}
+
+macro_rules! impl_set_fmt {
+    ($seq:ident, $($Trait:ident => $fmt_fun:ident),+) => {
+        $(
+            impl<T: fmt::$Trait> fmt::$Trait for $seq<T> {
+                fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                    try!(write!(f, "{{"));
+                    try!($fmt_fun(self.iter(), f));
+                    write!(f, "}}")
+                }
+            }
+        )+
+    }
+}
+
+macro_rules! impl_map_fmt {
+    ($map:ident, $($Trait:ident => $fmt_fun:ident),+) => {
+        $(
+            impl<K: fmt::$Trait, V: fmt::$Trait> fmt::$Trait for $map<K, V> {
+                fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                    try!(write!(f, "{{"));
+                    try!($fmt_fun(self.iter(), f));
+                    write!(f, "}}")
+                }
+            }
+        )+
+    };
+}
