@@ -51,7 +51,7 @@ use std::sync::Arc;
 
 use externalfiles::ExternalHtml;
 
-use serialize::json::{self, ToJson};
+use rustc_serialize::json::{self, ToJson};
 use syntax::{abi, ast, ast_util, attr};
 use rustc::util::nodemap::NodeSet;
 

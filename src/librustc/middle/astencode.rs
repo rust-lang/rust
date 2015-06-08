@@ -47,9 +47,9 @@ use std::fmt::Debug;
 use rbml::reader;
 use rbml::writer::Encoder;
 use rbml;
-use serialize;
-use serialize::{Decodable, Decoder, DecoderHelpers, Encodable};
-use serialize::EncoderHelpers;
+use rustc_serialize;
+use rustc_serialize::{Decodable, Decoder, DecoderHelpers, Encodable};
+use rustc_serialize::EncoderHelpers;
 
 #[cfg(test)] use std::io::Cursor;
 #[cfg(test)] use syntax::parse;
@@ -313,8 +313,8 @@ trait def_id_encoder_helpers {
     fn emit_def_id(&mut self, did: ast::DefId);
 }
 
-impl<S:serialize::Encoder> def_id_encoder_helpers for S
-    where <S as serialize::serialize::Encoder>::Error: Debug
+impl<S: rustc_serialize::Encoder> def_id_encoder_helpers for S
+    where <S as rustc_serialize::Encoder>::Error: Debug
 {
     fn emit_def_id(&mut self, did: ast::DefId) {
         did.encode(self).unwrap()
@@ -327,8 +327,8 @@ trait def_id_decoder_helpers {
                          cdata: &cstore::crate_metadata) -> ast::DefId;
 }
 
-impl<D:serialize::Decoder> def_id_decoder_helpers for D
-    where <D as serialize::serialize::Decoder>::Error: Debug
+impl<D: rustc_serialize::Decoder> def_id_decoder_helpers for D
+    where <D as rustc_serialize::Decoder>::Error: Debug
 {
     fn read_def_id(&mut self, dcx: &DecodeContext) -> ast::DefId {
         let did: ast::DefId = Decodable::decode(self).unwrap();
@@ -608,7 +608,7 @@ fn encode_method_callee<'a, 'tcx>(ecx: &e::EncodeContext<'a, 'tcx>,
                                   rbml_w: &mut Encoder,
                                   autoderef: u32,
                                   method: &MethodCallee<'tcx>) {
-    use serialize::Encoder;
+    use rustc_serialize::Encoder;
 
     rbml_w.emit_struct("MethodCallee", 4, |rbml_w| {
         rbml_w.emit_struct_field("autoderef", 0, |rbml_w| {
@@ -746,7 +746,7 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
                               ecx: &e::EncodeContext<'b, 'tcx>,
                               method_origin: &ty::MethodOrigin<'tcx>)
     {
-        use serialize::Encoder;
+        use rustc_serialize::Encoder;
 
         self.emit_enum("MethodOrigin", |this| {
             match *method_origin {
@@ -769,7 +769,7 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
                                 Ok(this.emit_trait_ref(ecx, &p.trait_ref))
                             }));
                             try!(this.emit_struct_field("method_num", 0, |this| {
-                                this.emit_uint(p.method_num)
+                                this.emit_usize(p.method_num)
                             }));
                             try!(this.emit_struct_field("impl_def_id", 0, |this| {
                                 this.emit_option(|this| {
@@ -796,10 +796,10 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
                                 Ok(this.emit_def_id(o.object_trait_id))
                             }));
                             try!(this.emit_struct_field("method_num", 0, |this| {
-                                this.emit_uint(o.method_num)
+                                this.emit_usize(o.method_num)
                             }));
                             try!(this.emit_struct_field("vtable_index", 0, |this| {
-                                this.emit_uint(o.vtable_index)
+                                this.emit_usize(o.vtable_index)
                             }));
                             Ok(())
                         })
@@ -843,7 +843,7 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
     fn emit_type_scheme<'b>(&mut self,
                             ecx: &e::EncodeContext<'b, 'tcx>,
                             type_scheme: ty::TypeScheme<'tcx>) {
-        use serialize::Encoder;
+        use rustc_serialize::Encoder;
 
         self.emit_struct("TypeScheme", 2, |this| {
             this.emit_struct_field("generics", 0, |this| {
@@ -888,7 +888,7 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
 
     fn emit_auto_adjustment<'b>(&mut self, ecx: &e::EncodeContext<'b, 'tcx>,
                                 adj: &ty::AutoAdjustment<'tcx>) {
-        use serialize::Encoder;
+        use rustc_serialize::Encoder;
 
         self.emit_enum("AutoAdjustment", |this| {
             match *adj {
@@ -913,7 +913,7 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
     }
 
     fn emit_autoref<'b>(&mut self, autoref: &ty::AutoRef<'tcx>) {
-        use serialize::Encoder;
+        use rustc_serialize::Encoder;
 
         self.emit_enum("AutoRef", |this| {
             match autoref {
@@ -934,7 +934,7 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
 
     fn emit_auto_deref_ref<'b>(&mut self, ecx: &e::EncodeContext<'b, 'tcx>,
                                auto_deref_ref: &ty::AutoDerefRef<'tcx>) {
-        use serialize::Encoder;
+        use rustc_serialize::Encoder;
 
         self.emit_struct("AutoDerefRef", 2, |this| {
             this.emit_struct_field("autoderefs", 0, |this| auto_deref_ref.autoderefs.encode(this));
@@ -1260,7 +1260,7 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
                                     },
                                     method_num: {
                                         this.read_struct_field("method_num", 1, |this| {
-                                            this.read_uint()
+                                            this.read_usize()
                                         }).unwrap()
                                     },
                                     impl_def_id: {
@@ -1294,12 +1294,12 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
                                     },
                                     method_num: {
                                         this.read_struct_field("method_num", 2, |this| {
-                                            this.read_uint()
+                                            this.read_usize()
                                         }).unwrap()
                                     },
                                     vtable_index: {
                                         this.read_struct_field("vtable_index", 3, |this| {
-                                            this.read_uint()
+                                            this.read_usize()
                                         }).unwrap()
                                     },
                                 }))

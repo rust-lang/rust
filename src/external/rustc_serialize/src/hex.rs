@@ -7,6 +7,8 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+//
+// ignore-lexer-test FIXME #15679
 
 //! Hex binary-to-text encoding
 
@@ -22,17 +24,16 @@ pub trait ToHex {
     fn to_hex(&self) -> String;
 }
 
-const CHARS: &'static [u8] = b"0123456789abcdef";
+static CHARS: &'static[u8] = b"0123456789abcdef";
 
 impl ToHex for [u8] {
     /// Turn a vector of `u8` bytes into a hexadecimal string.
     ///
-    /// # Examples
+    /// # Example
     ///
-    /// ```
-    /// # #![feature(rustc_private)]
-    /// extern crate serialize;
-    /// use serialize::hex::ToHex;
+    /// ```rust
+    /// extern crate rustc_serialize;
+    /// use rustc_serialize::hex::ToHex;
     ///
     /// fn main () {
     ///     let str = [52,32].to_hex();
@@ -41,7 +42,7 @@ impl ToHex for [u8] {
     /// ```
     fn to_hex(&self) -> String {
         let mut v = Vec::with_capacity(self.len() * 2);
-        for &byte in self {
+        for &byte in self.iter() {
             v.push(CHARS[(byte >> 4) as usize]);
             v.push(CHARS[(byte & 0xf) as usize]);
         }
@@ -60,7 +61,7 @@ pub trait FromHex {
 }
 
 /// Errors that can occur when decoding a hex encoded string
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Copy)]
 pub enum FromHexError {
     /// The input contained a character not part of the hex format
     InvalidHexCharacter(char, usize),
@@ -68,7 +69,7 @@ pub enum FromHexError {
     InvalidHexLength,
 }
 
-impl fmt::Display for FromHexError {
+impl fmt::Debug for FromHexError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             InvalidHexCharacter(ch, idx) =>
@@ -87,6 +88,11 @@ impl error::Error for FromHexError {
     }
 }
 
+impl fmt::Display for FromHexError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Debug::fmt(&self, f)
+    }
+}
 
 impl FromHex for str {
     /// Convert any hexadecimal encoded string (literal, `@`, `&`, or `~`)
@@ -95,14 +101,13 @@ impl FromHex for str {
     /// You can use the `String::from_utf8` function to turn a
     /// `Vec<u8>` into a string with characters corresponding to those values.
     ///
-    /// # Examples
+    /// # Example
     ///
     /// This converts a string literal to hexadecimal and back.
     ///
-    /// ```
-    /// # #![feature(rustc_private)]
-    /// extern crate serialize;
-    /// use serialize::hex::{FromHex, ToHex};
+    /// ```rust
+    /// extern crate rustc_serialize;
+    /// use rustc_serialize::hex::{FromHex, ToHex};
     ///
     /// fn main () {
     ///     let hello_str = "Hello, World".as_bytes().to_hex();
@@ -117,7 +122,7 @@ impl FromHex for str {
         // This may be an overestimate if there is any whitespace
         let mut b = Vec::with_capacity(self.len() / 2);
         let mut modulus = 0;
-        let mut buf = 0;
+        let mut buf = 08;
 
         for (idx, byte) in self.bytes().enumerate() {
             buf <<= 4;
@@ -130,7 +135,10 @@ impl FromHex for str {
                     buf >>= 4;
                     continue
                 }
-                _ => return Err(InvalidHexCharacter(self.char_at(idx), idx)),
+                _ => {
+                    let ch = self[idx..].chars().next().unwrap();
+                    return Err(InvalidHexCharacter(ch, idx))
+                }
             }
 
             modulus += 1;
@@ -149,8 +157,6 @@ impl FromHex for str {
 
 #[cfg(test)]
 mod tests {
-    extern crate test;
-    use self::test::Bencher;
     use hex::{FromHex, ToHex};
 
     #[test]
@@ -186,7 +192,7 @@ mod tests {
     #[test]
     pub fn test_to_hex_all_bytes() {
         for i in 0..256 {
-            assert_eq!([i as u8].to_hex(), format!("{:02x}", i as usize));
+            assert_eq!([i as u8].to_hex(), format!("{:02x}", i));
         }
     }
 
@@ -194,33 +200,10 @@ mod tests {
     pub fn test_from_hex_all_bytes() {
         for i in 0..256 {
             let ii: &[u8] = &[i as u8];
-            assert_eq!(format!("{:02x}", i as usize).from_hex()
-                                                   .unwrap(),
+            assert_eq!(format!("{:02x}", i).from_hex().unwrap(),
                        ii);
-            assert_eq!(format!("{:02X}", i as usize).from_hex()
-                                                   .unwrap(),
+            assert_eq!(format!("{:02X}", i).from_hex().unwrap(),
                        ii);
         }
-    }
-
-    #[bench]
-    pub fn bench_to_hex(b: &mut Bencher) {
-        let s = "イロハニホヘト チリヌルヲ ワカヨタレソ ツネナラム \
-                 ウヰノオクヤマ ケフコエテ アサキユメミシ ヱヒモセスン";
-        b.iter(|| {
-            s.as_bytes().to_hex();
-        });
-        b.bytes = s.len() as u64;
-    }
-
-    #[bench]
-    pub fn bench_from_hex(b: &mut Bencher) {
-        let s = "イロハニホヘト チリヌルヲ ワカヨタレソ ツネナラム \
-                 ウヰノオクヤマ ケフコエテ アサキユメミシ ヱヒモセスン";
-        let sb = s.as_bytes().to_hex();
-        b.iter(|| {
-            sb.from_hex().unwrap();
-        });
-        b.bytes = sb.len() as u64;
     }
 }

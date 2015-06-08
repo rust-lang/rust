@@ -27,7 +27,7 @@ use std::rc::Rc;
 use std::{fmt, fs};
 use std::io::{self, Read};
 
-use serialize::{Encodable, Decodable, Encoder, Decoder};
+use rustc_serialize::{Encodable, Decodable, Encoder, Decoder};
 
 
 // _____________________________________________________________________________

@@ -688,162 +688,80 @@ pub fn build_target_config(opts: &Options, sp: &SpanHandler) -> Config {
 }
 
 /// Returns the "short" subset of the stable rustc command line options.
-pub fn short_optgroups() -> Vec<getopts::OptGroup> {
-    rustc_short_optgroups().into_iter()
-        .filter(|g|g.is_stable())
-        .map(|g|g.opt_group)
-        .collect()
-}
-
-/// Returns all of the stable rustc command line options.
-pub fn optgroups() -> Vec<getopts::OptGroup> {
-    rustc_optgroups().into_iter()
-        .filter(|g|g.is_stable())
-        .map(|g|g.opt_group)
-        .collect()
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub enum OptionStability { Stable, Unstable }
-
-#[derive(Clone, PartialEq, Eq)]
-pub struct RustcOptGroup {
-    pub opt_group: getopts::OptGroup,
-    pub stability: OptionStability,
-}
-
-impl RustcOptGroup {
-    pub fn is_stable(&self) -> bool {
-        self.stability == OptionStability::Stable
-    }
-
-    fn stable(g: getopts::OptGroup) -> RustcOptGroup {
-        RustcOptGroup { opt_group: g, stability: OptionStability::Stable }
-    }
-
-    fn unstable(g: getopts::OptGroup) -> RustcOptGroup {
-        RustcOptGroup { opt_group: g, stability: OptionStability::Unstable }
-    }
-}
-
-// The `opt` local module holds wrappers around the `getopts` API that
-// adds extra rustc-specific metadata to each option; such metadata
-// is exposed by .  The public
-// functions below ending with `_u` are the functions that return
-// *unstable* options, i.e. options that are only enabled when the
-// user also passes the `-Z unstable-options` debugging flag.
-mod opt {
-    // The `fn opt_u` etc below are written so that we can use them
-    // in the future; do not warn about them not being used right now.
-    #![allow(dead_code)]
-
-    use getopts;
-    use super::RustcOptGroup;
-
-    pub type R = RustcOptGroup;
-    pub type S<'a> = &'a str;
-
-    fn stable(g: getopts::OptGroup) -> R { RustcOptGroup::stable(g) }
-    fn unstable(g: getopts::OptGroup) -> R { RustcOptGroup::unstable(g) }
-
-    // FIXME (pnkfelix): We default to stable since the current set of
-    // options is defacto stable.  However, it would be good to revise the
-    // code so that a stable option is the thing that takes extra effort
-    // to encode.
-
-    pub fn     opt(a: S, b: S, c: S, d: S) -> R { stable(getopts::optopt(a, b, c, d)) }
-    pub fn   multi(a: S, b: S, c: S, d: S) -> R { stable(getopts::optmulti(a, b, c, d)) }
-    pub fn    flag(a: S, b: S, c: S)       -> R { stable(getopts::optflag(a, b, c)) }
-    pub fn flagopt(a: S, b: S, c: S, d: S) -> R { stable(getopts::optflagopt(a, b, c, d)) }
-    pub fn flagmulti(a: S, b: S, c: S)     -> R { stable(getopts::optflagmulti(a, b, c)) }
-
-
-    pub fn     opt_u(a: S, b: S, c: S, d: S) -> R { unstable(getopts::optopt(a, b, c, d)) }
-    pub fn   multi_u(a: S, b: S, c: S, d: S) -> R { unstable(getopts::optmulti(a, b, c, d)) }
-    pub fn    flag_u(a: S, b: S, c: S)       -> R { unstable(getopts::optflag(a, b, c)) }
-    pub fn flagopt_u(a: S, b: S, c: S, d: S) -> R { unstable(getopts::optflagopt(a, b, c, d)) }
-    pub fn flagmulti_u(a: S, b: S, c: S)     -> R { unstable(getopts::optflagmulti(a, b, c)) }
-}
-
-/// Returns the "short" subset of the rustc command line options,
-/// including metadata for each option, such as whether the option is
-/// part of the stable long-term interface for rustc.
-pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
-    vec![
-        opt::flag("h", "help", "Display this message"),
-        opt::multi("", "cfg", "Configure the compilation environment", "SPEC"),
-        opt::multi("L", "",   "Add a directory to the library search path",
-                   "[KIND=]PATH"),
-        opt::multi("l", "",   "Link the generated crate(s) to the specified native
+pub fn short_optgroups(options: &mut getopts::Options) {
+    options.optflag("h", "help", "Display this message")
+        .optmulti("", "cfg", "Configure the compilation environment", "SPEC")
+        .optmulti("L", "",   "Add a directory to the library search path",
+                   "[KIND=]PATH")
+        .optmulti("l", "",   "Link the generated crate(s) to the specified native
                              library NAME. The optional KIND can be one of,
                              static, dylib, or framework. If omitted, dylib is
-                             assumed.", "[KIND=]NAME"),
-        opt::multi("", "crate-type", "Comma separated list of types of crates
+                             assumed.", "[KIND=]NAME")
+        .optmulti("", "crate-type", "Comma separated list of types of crates
                                     for the compiler to emit",
-                   "[bin|lib|rlib|dylib|staticlib]"),
-        opt::opt("", "crate-name", "Specify the name of the crate being built",
-               "NAME"),
-        opt::multi("", "emit", "Comma separated list of types of output for \
+                   "[bin|lib|rlib|dylib|staticlib]")
+        .optopt("", "crate-name", "Specify the name of the crate being built",
+               "NAME")
+        .optmulti("", "emit", "Comma separated list of types of output for \
                               the compiler to emit",
-                 "[asm|llvm-bc|llvm-ir|obj|link|dep-info]"),
-        opt::multi("", "print", "Comma separated list of compiler information to \
+                 "[asm|llvm-bc|llvm-ir|obj|link|dep-info]")
+        .optmulti("", "print", "Comma separated list of compiler information to \
                                print on stdout",
-                 "[crate-name|file-names|sysroot]"),
-        opt::flagmulti("g",  "",  "Equivalent to -C debuginfo=2"),
-        opt::flagmulti("O", "", "Equivalent to -C opt-level=2"),
-        opt::opt("o", "", "Write output to <filename>", "FILENAME"),
-        opt::opt("",  "out-dir", "Write output to compiler-chosen filename \
-                                in <dir>", "DIR"),
-        opt::opt("", "explain", "Provide a detailed explanation of an error \
-                               message", "OPT"),
-        opt::flag("", "test", "Build a test harness"),
-        opt::opt("", "target", "Target triple cpu-manufacturer-kernel[-os] \
+                 "[crate-name|file-names|sysroot]")
+        .optflagmulti("g",  "",  "Equivalent to -C debuginfo=2")
+        .optflagmulti("O", "", "Equivalent to -C opt-level=2")
+        .optopt("o", "", "Write output to <filename>", "FILENAME")
+        .optopt("",  "out-dir", "Write output to compiler-chosen filename \
+                                in <dir>", "DIR")
+        .optopt("", "explain", "Provide a detailed explanation of an error \
+                               message", "OPT")
+        .optflag("", "test", "Build a test harness")
+        .optopt("", "target", "Target triple cpu-manufacturer-kernel[-os] \
                               to compile for (see chapter 3.4 of \
                               http://www.sourceware.org/autobook/
                               for details)",
-               "TRIPLE"),
-        opt::multi("W", "warn", "Set lint warnings", "OPT"),
-        opt::multi("A", "allow", "Set lint allowed", "OPT"),
-        opt::multi("D", "deny", "Set lint denied", "OPT"),
-        opt::multi("F", "forbid", "Set lint forbidden", "OPT"),
-        opt::multi("C", "codegen", "Set a codegen option", "OPT[=VALUE]"),
-        opt::flag("V", "version", "Print version info and exit"),
-        opt::flag("v", "verbose", "Use verbose output"),
-    ]
+               "TRIPLE")
+        .optmulti("W", "warn", "Set lint warnings", "OPT")
+        .optmulti("A", "allow", "Set lint allowed", "OPT")
+        .optmulti("D", "deny", "Set lint denied", "OPT")
+        .optmulti("F", "forbid", "Set lint forbidden", "OPT")
+        .optmulti("C", "codegen", "Set a codegen option", "OPT[=VALUE]")
+        .optflag("V", "version", "Print version info and exit")
+        .optflag("v", "verbose", "Use verbose output");
 }
 
-/// Returns all rustc command line options, including metadata for
-/// each option, such as whether the option is part of the stable
-/// long-term interface for rustc.
-pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
-    let mut opts = rustc_short_optgroups();
-    opts.push_all(&[
-        opt::multi("", "extern", "Specify where an external rust library is \
+/// Returns all of the stable rustc command line options.
+pub fn optgroups(options: &mut getopts::Options, unstable: bool) {
+    short_optgroups(options);
+    options
+        .optmulti("", "extern", "Specify where an external rust library is \
                                 located",
-                 "NAME=PATH"),
-        opt::opt("", "sysroot", "Override the system root", "PATH"),
-        opt::multi("Z", "", "Set internal debugging options", "FLAG"),
-        opt::opt("", "color", "Configure coloring of output:
+                 "NAME=PATH")
+        .optopt("", "sysroot", "Override the system root", "PATH")
+        .optmulti("Z", "", "Set internal debugging options", "FLAG")
+        .optopt("", "color", "Configure coloring of output:
             auto   = colorize, if output goes to a tty (default);
             always = always colorize output;
-            never  = never colorize output", "auto|always|never"),
+            never  = never colorize output", "auto|always|never");
 
-        opt::flagopt_u("", "pretty",
-                   "Pretty-print the input instead of compiling;
-                   valid types are: `normal` (un-annotated source),
-                   `expanded` (crates expanded),
-                   `typed` (crates expanded, with type annotations), or
-                   `expanded,identified` (fully parenthesized, AST nodes with IDs).",
-                 "TYPE"),
-        opt::flagopt_u("", "xpretty",
-                     "Pretty-print the input instead of compiling, unstable variants;
-                      valid types are any of the types for `--pretty`, as well as:
-                      `flowgraph=<nodeid>` (graphviz formatted flowgraph for node), or
-                      `everybody_loops` (all function bodies replaced with `loop {}`).",
-                     "TYPE"),
-        opt::opt_u("", "show-span", "Show spans for compiler debugging", "expr|pat|ty"),
-    ]);
-    opts
+    if unstable {
+        options
+        .optflagopt("", "pretty",
+             "Pretty-print the input instead of compiling;
+             valid types are: `normal` (un-annotated source)
+             `expanded` (crates expanded)
+             `typed` (crates expanded, with type annotations), or
+             `expanded,identified` (fully parenthesized, AST nodes with IDs).",
+             "TYPE")
+        .optflagopt("", "xpretty",
+             "Pretty-print the input instead of compiling, unstable variants;
+              valid types are any of the types for `--pretty`, as well as:
+              `flowgraph=<nodeid>` (graphviz formatted flowgraph for node), or
+              `everybody_loops` (all function bodies replaced with `loop {}`).",
+             "TYPE")
+        .optopt("", "show-span", "Show spans for compiler debugging",
+                "expr|pat|ty");
+    }
 }
 
 // Convert strings provided as --cfg [cfgspec] into a crate_cfg
@@ -1120,7 +1038,7 @@ mod tests {
     use session::config::{build_configuration, optgroups, build_session_options};
     use session::build_session;
 
-    use getopts::getopts;
+    use getopts;
     use syntax::attr;
     use syntax::attr::AttrMetaMethods;
     use syntax::diagnostics;
@@ -1128,11 +1046,12 @@ mod tests {
     // When the user supplies --test we should implicitly supply --cfg test
     #[test]
     fn test_switch_implies_cfg_test() {
-        let matches =
-            &match getopts(&["--test".to_string()], &optgroups()) {
-              Ok(m) => m,
-              Err(f) => panic!("test_switch_implies_cfg_test: {}", f)
-            };
+        let mut options = getopts::Options::new();
+        optgroups(&mut options, false);
+        let matches = &match options.parse(&["--test"]) {
+            Ok(m) => m,
+            Err(f) => panic!("test_switch_implies_cfg_test: {}", f)
+        };
         let registry = diagnostics::registry::Registry::new(&[]);
         let sessopts = build_session_options(matches);
         let sess = build_session(sessopts, None, registry);
@@ -1144,14 +1063,14 @@ mod tests {
     // another --cfg test
     #[test]
     fn test_switch_implies_cfg_test_unless_cfg_test() {
-        let matches =
-            &match getopts(&["--test".to_string(), "--cfg=test".to_string()],
-                           &optgroups()) {
-              Ok(m) => m,
-              Err(f) => {
+        let mut options = getopts::Options::new();
+        optgroups(&mut options, false);
+        let matches = &match options.parse(&["--test", "--cfg=test"]) {
+            Ok(m) => m,
+            Err(f) => {
                 panic!("test_switch_implies_cfg_test_unless_cfg_test: {}", f)
-              }
-            };
+            }
+        };
         let registry = diagnostics::registry::Registry::new(&[]);
         let sessopts = build_session_options(matches);
         let sess = build_session(sessopts, None, registry);
@@ -1163,10 +1082,10 @@ mod tests {
 
     #[test]
     fn test_can_print_warnings() {
+        let mut options = getopts::Options::new();
+        optgroups(&mut options, false);
         {
-            let matches = getopts(&[
-                "-Awarnings".to_string()
-            ], &optgroups()).unwrap();
+            let matches = options.parse(&[ "-Awarnings" ]).unwrap();
             let registry = diagnostics::registry::Registry::new(&[]);
             let sessopts = build_session_options(&matches);
             let sess = build_session(sessopts, None, registry);
@@ -1174,10 +1093,10 @@ mod tests {
         }
 
         {
-            let matches = getopts(&[
-                "-Awarnings".to_string(),
-                "-Dwarnings".to_string()
-            ], &optgroups()).unwrap();
+            let matches = options.parse(&[
+                "-Awarnings",
+                "-Dwarnings",
+            ]).unwrap();
             let registry = diagnostics::registry::Registry::new(&[]);
             let sessopts = build_session_options(&matches);
             let sess = build_session(sessopts, None, registry);
@@ -1185,9 +1104,9 @@ mod tests {
         }
 
         {
-            let matches = getopts(&[
-                "-Adead_code".to_string()
-            ], &optgroups()).unwrap();
+            let matches = options.parse(&[
+                "-Adead_code",
+            ]).unwrap();
             let registry = diagnostics::registry::Registry::new(&[]);
             let sessopts = build_session_options(&matches);
             let sess = build_session(sessopts, None, registry);

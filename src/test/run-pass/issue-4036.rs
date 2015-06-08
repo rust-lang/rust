@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 // Issue #4036: Test for an issue that arose around fixing up type inference
 // byproducts in vtable records.
 
@@ -16,12 +15,12 @@
 
 #![feature(rustc_private)]
 
-extern crate serialize;
+extern crate rustc_serialize;
 
-use serialize::{json, Decodable};
+use rustc_serialize::{json, Decodable};
 
 pub fn main() {
-    let json = json::from_str("[1]").unwrap();
+    let json = "[1]".parse().unwrap();
     let mut decoder = json::Decoder::new(json);
     let _x: Vec<isize> = Decodable::decode(&mut decoder).unwrap();
 }

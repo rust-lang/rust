@@ -43,7 +43,7 @@ use std::str;
 
 use rbml::reader;
 use rbml;
-use serialize::Decodable;
+use rustc_serialize::Decodable;
 use syntax::ast_map;
 use syntax::attr;
 use syntax::parse::token::{IdentInterner, special_idents};

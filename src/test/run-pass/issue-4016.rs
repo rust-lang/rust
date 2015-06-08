@@ -8,17 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 #![feature(rustc_private)]
 
-extern crate serialize;
+extern crate rustc_serialize;
 
-use serialize::{json, Decodable};
+use rustc_serialize::{json, Decodable};
 
 trait JD : Decodable {}
 
 fn exec<T: JD>() {
-    let doc = json::from_str("").unwrap();
+    let doc = "".parse().unwrap();
     let mut decoder = json::Decoder::new(doc);
     let _v: T = Decodable::decode(&mut decoder).unwrap();
     panic!()

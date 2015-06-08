@@ -53,7 +53,9 @@ PKG_FILES := \
       driver                                   \
       etc                                      \
       error-index-generator                    \
-      $(foreach crate,$(CRATES),lib$(crate))   \
+      external                                 \
+      $(foreach crate,$(TARGET_CRATES),lib$(crate))  \
+      $(foreach crate,$(HOST_CRATES),lib$(crate))    \
       libcollectionstest                       \
       libcoretest                              \
       libbacktrace                             \

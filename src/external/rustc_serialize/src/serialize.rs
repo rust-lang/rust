@@ -14,22 +14,25 @@
 Core encoding and decoding interfaces.
 */
 
+use std::cell::{Cell, RefCell};
+use std::ffi::OsString;
 use std::path;
 use std::rc::Rc;
-use std::cell::{Cell, RefCell};
 use std::sync::Arc;
+use std::marker::PhantomData;
+use std::borrow::Cow;
 
 pub trait Encoder {
     type Error;
 
     // Primitive types:
     fn emit_nil(&mut self) -> Result<(), Self::Error>;
-    fn emit_uint(&mut self, v: usize) -> Result<(), Self::Error>;
+    fn emit_usize(&mut self, v: usize) -> Result<(), Self::Error>;
     fn emit_u64(&mut self, v: u64) -> Result<(), Self::Error>;
     fn emit_u32(&mut self, v: u32) -> Result<(), Self::Error>;
     fn emit_u16(&mut self, v: u16) -> Result<(), Self::Error>;
     fn emit_u8(&mut self, v: u8) -> Result<(), Self::Error>;
-    fn emit_int(&mut self, v: isize) -> Result<(), Self::Error>;
+    fn emit_isize(&mut self, v: isize) -> Result<(), Self::Error>;
     fn emit_i64(&mut self, v: i64) -> Result<(), Self::Error>;
     fn emit_i32(&mut self, v: i32) -> Result<(), Self::Error>;
     fn emit_i16(&mut self, v: i16) -> Result<(), Self::Error>;
@@ -108,12 +111,12 @@ pub trait Decoder {
 
     // Primitive types:
     fn read_nil(&mut self) -> Result<(), Self::Error>;
-    fn read_uint(&mut self) -> Result<usize, Self::Error>;
+    fn read_usize(&mut self) -> Result<usize, Self::Error>;
     fn read_u64(&mut self) -> Result<u64, Self::Error>;
     fn read_u32(&mut self) -> Result<u32, Self::Error>;
     fn read_u16(&mut self) -> Result<u16, Self::Error>;
     fn read_u8(&mut self) -> Result<u8, Self::Error>;
-    fn read_int(&mut self) -> Result<isize, Self::Error>;
+    fn read_isize(&mut self) -> Result<isize, Self::Error>;
     fn read_i64(&mut self) -> Result<i64, Self::Error>;
     fn read_i32(&mut self) -> Result<i32, Self::Error>;
     fn read_i16(&mut self) -> Result<i16, Self::Error>;
@@ -200,13 +203,13 @@ pub trait Decodable {
 
 impl Encodable for usize {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_uint(*self)
+        s.emit_usize(*self)
     }
 }
 
 impl Decodable for usize {
     fn decode<D: Decoder>(d: &mut D) -> Result<usize, D::Error> {
-        d.read_uint()
+        d.read_usize()
     }
 }
 
@@ -260,13 +263,13 @@ impl Decodable for u64 {
 
 impl Encodable for isize {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_int(*self)
+        s.emit_isize(*self)
     }
 }
 
 impl Decodable for isize {
     fn decode<D: Decoder>(d: &mut D) -> Result<isize, D::Error> {
-        d.read_int()
+        d.read_isize()
     }
 }
 
@@ -326,7 +329,7 @@ impl Encodable for str {
 
 impl Encodable for String {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_str(&self[..])
+        s.emit_str(self)
     }
 }
 
@@ -410,7 +413,7 @@ impl<T: ?Sized + Encodable> Encodable for Box<T> {
 
 impl< T: Decodable> Decodable for Box<T> {
     fn decode<D: Decoder>(d: &mut D) -> Result<Box<T>, D::Error> {
-        Ok(box try!(Decodable::decode(d)))
+        Ok(Box::new(try!(Decodable::decode(d))))
     }
 }
 
@@ -432,6 +435,22 @@ impl<T:Decodable> Decodable for Rc<T> {
     #[inline]
     fn decode<D: Decoder>(d: &mut D) -> Result<Rc<T>, D::Error> {
         Ok(Rc::new(try!(Decodable::decode(d))))
+    }
+}
+
+impl<'a, T:Encodable + ToOwned + ?Sized> Encodable for Cow<'a, T> {
+    #[inline]
+    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+        (**self).encode(s)
+    }
+}
+
+impl<'a, T: ?Sized> Decodable for Cow<'a, T>
+    where T: ToOwned, T::Owned: Decodable
+{
+    #[inline]
+    fn decode<D: Decoder>(d: &mut D) -> Result<Cow<'static, T>, D::Error> {
+        Ok(Cow::Owned(try!(Decodable::decode(d))))
     }
 }
 
@@ -492,11 +511,24 @@ impl<T:Decodable> Decodable for Option<T> {
     }
 }
 
+impl<T> Encodable for PhantomData<T> {
+    fn encode<S: Encoder>(&self, _s: &mut S) -> Result<(), S::Error> {
+        Ok(())
+    }
+}
+
+impl<T> Decodable for PhantomData<T> {
+    fn decode<D: Decoder>(_d: &mut D) -> Result<PhantomData<T>, D::Error> {
+        Ok(PhantomData)
+    }
+}
+
 macro_rules! peel {
     ($name:ident, $($other:ident,)*) => (tuple! { $($other,)* })
 }
 
-/// Evaluates to the number of identifiers passed to it, for example: `count_idents!(a, b, c) == 3
+/// Evaluates to the number of identifiers passed to it, for example:
+/// `count_idents!(a, b, c) == 3
 macro_rules! count_idents {
     () => { 0 };
     ($_i:ident, $($rest:ident,)*) => { 1 + count_idents!($($rest,)*) }
@@ -506,7 +538,6 @@ macro_rules! tuple {
     () => ();
     ( $($name:ident,)+ ) => (
         impl<$($name:Decodable),*> Decodable for ($($name,)*) {
-            #[allow(non_snake_case)]
             fn decode<D: Decoder>(d: &mut D) -> Result<($($name,)*), D::Error> {
                 let len: usize = count_idents!($($name,)*);
                 d.read_tuple(len, |d| {
@@ -538,16 +569,80 @@ macro_rules! tuple {
 
 tuple! { T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, }
 
+macro_rules! array {
+    ($zero:expr) => ();
+    ($len:expr, $($idx:expr),*) => {
+        impl<T:Decodable> Decodable for [T; $len] {
+            fn decode<D: Decoder>(d: &mut D) -> Result<[T; $len], D::Error> {
+                d.read_seq(|d, len| {
+                    if len != $len {
+                        return Err(d.error("wrong array length"));
+                    }
+                    Ok([$(
+                        try!(d.read_seq_elt($len - $idx - 1,
+                                            |d| Decodable::decode(d)))
+                    ),+])
+                })
+            }
+        }
+
+        impl<T:Encodable> Encodable for [T; $len] {
+            fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+                s.emit_seq($len, |s| {
+                    for i in 0..$len {
+                        try!(s.emit_seq_elt(i, |s| self[i].encode(s)));
+                    }
+                    Ok(())
+                })
+            }
+        }
+        array! { $($idx),* }
+    }
+}
+
+array! {
+    32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16,
+    15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0
+}
+
+impl Encodable for path::Path {
+    #[cfg(unix)]
+    fn encode<S: Encoder>(&self, e: &mut S) -> Result<(), S::Error> {
+        use std::os::unix::prelude::*;
+        self.as_os_str().as_bytes().encode(e)
+    }
+    #[cfg(windows)]
+    fn encode<S: Encoder>(&self, e: &mut S) -> Result<(), S::Error> {
+        use std::os::windows::prelude::*;
+        let v = self.as_os_str().encode_wide().collect::<Vec<_>>();
+        v.encode(e)
+    }
+}
+
 impl Encodable for path::PathBuf {
     fn encode<S: Encoder>(&self, e: &mut S) -> Result<(), S::Error> {
-        self.to_str().unwrap().encode(e)
+        (**self).encode(e)
     }
 }
 
 impl Decodable for path::PathBuf {
+    #[cfg(unix)]
     fn decode<D: Decoder>(d: &mut D) -> Result<path::PathBuf, D::Error> {
-        let bytes: String = try!(Decodable::decode(d));
-        Ok(path::PathBuf::from(bytes))
+        use std::os::unix::prelude::*;
+        let bytes: Vec<u8> = try!(Decodable::decode(d));
+        let s: OsString = OsStringExt::from_vec(bytes);
+        let mut p = path::PathBuf::new();
+        p.push(s);
+        Ok(p)
+    }
+    #[cfg(windows)]
+    fn decode<D: Decoder>(d: &mut D) -> Result<path::PathBuf, D::Error> {
+        use std::os::windows::prelude::*;
+        let bytes: Vec<u16> = try!(Decodable::decode(d));
+        let s: OsString = OsStringExt::from_wide(&bytes);
+        let mut p = path::PathBuf::new();
+        p.push(s);
+        Ok(p)
     }
 }
 
@@ -597,8 +692,8 @@ impl<T:Decodable+Send+Sync> Decodable for Arc<T> {
 
 pub trait EncoderHelpers: Encoder {
     fn emit_from_vec<T, F>(&mut self, v: &[T], f: F)
-                           -> Result<(), Self::Error>
-        where F: FnMut(&mut Self, &T) -> Result<(), Self::Error>;
+                           -> Result<(), <Self as Encoder>::Error>
+        where F: FnMut(&mut Self, &T) -> Result<(), <Self as Encoder>::Error>;
 }
 
 impl<S:Encoder> EncoderHelpers for S {
@@ -618,8 +713,8 @@ impl<S:Encoder> EncoderHelpers for S {
 
 pub trait DecoderHelpers: Decoder {
     fn read_to_vec<T, F>(&mut self, f: F)
-                         -> Result<Vec<T>, Self::Error> where
-        F: FnMut(&mut Self) -> Result<T, Self::Error>;
+                         -> Result<Vec<T>, <Self as Decoder>::Error> where
+        F: FnMut(&mut Self) -> Result<T, <Self as Decoder>::Error>;
 }
 
 impl<D: Decoder> DecoderHelpers for D {

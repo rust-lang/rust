@@ -1,0 +1,21 @@
+[package]
+
+name = "term"
+version = "0.2.7"
+authors = ["The Rust Project Developers"]
+license = "MIT/Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/rust-lang/term"
+homepage = "https://github.com/rust-lang/term"
+documentation = "http://doc.rust-lang.org/term"
+description = """
+A terminal formatting library
+"""
+
+[target.i686-pc-windows-gnu.dependencies]
+winapi = "0.1"
+kernel32-sys = "0.1"
+
+[target.x86_64-pc-windows-gnu.dependencies]
+winapi = "0.1"
+kernel32-sys = "0.1"

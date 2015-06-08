@@ -20,7 +20,7 @@ use std::cell::{RefCell, Cell};
 use std::{cmp, error, fmt};
 use std::io::prelude::*;
 use std::io;
-use term::{self, WriterWrapper};
+use term;
 use libc;
 
 /// maximum number of lines we will print for each error; arbitrary.
@@ -310,7 +310,7 @@ impl Level {
 
 fn print_maybe_styled(w: &mut EmitterWriter,
                       msg: &str,
-                      color: term::attr::Attr) -> io::Result<()> {
+                      color: term::Attr) -> io::Result<()> {
     match w.dst {
         Terminal(ref mut t) => {
             try!(t.attr(color));
@@ -349,14 +349,14 @@ fn print_diagnostic(dst: &mut EmitterWriter, topic: &str, lvl: Level,
 
     try!(print_maybe_styled(dst,
                             &format!("{}: ", lvl.to_string()),
-                            term::attr::ForegroundColor(lvl.color())));
+                            term::Attr::ForegroundColor(lvl.color())));
     try!(print_maybe_styled(dst,
                             &format!("{}", msg),
-                            term::attr::Bold));
+                            term::Attr::Bold));
 
     match code {
         Some(code) => {
-            let style = term::attr::ForegroundColor(term::color::BRIGHT_MAGENTA);
+            let style = term::Attr::ForegroundColor(term::color::BRIGHT_MAGENTA);
             try!(print_maybe_styled(dst, &format!(" [{}]", code.clone()), style));
         }
         None => ()
@@ -371,7 +371,7 @@ pub struct EmitterWriter {
 }
 
 enum Destination {
-    Terminal(Box<term::Terminal<WriterWrapper> + Send>),
+    Terminal(Box<term::Terminal<Output=io::Stderr> + Send>),
     Raw(Box<Write + Send>),
 }
 
@@ -679,7 +679,7 @@ fn highlight_lines(err: &mut EmitterWriter,
 
             try!(print_maybe_styled(err,
                                     &format!("{}\n", s),
-                                    term::attr::ForegroundColor(lvl.color())));
+                                    term::Attr::ForegroundColor(lvl.color())));
         }
     }
     Ok(())
@@ -754,7 +754,7 @@ fn end_highlight_lines(w: &mut EmitterWriter,
     s.push('\n');
     print_maybe_styled(w,
                        &s[..],
-                       term::attr::ForegroundColor(lvl.color()))
+                       term::Attr::ForegroundColor(lvl.color()))
 }
 
 fn print_macro_backtrace(w: &mut EmitterWriter,
