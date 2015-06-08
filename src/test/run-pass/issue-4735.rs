@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-// pretty-expanded FIXME #23616
+// no-pretty-expanded FIXME #26067
 
 #![allow(unknown_features)]
 #![feature(box_syntax, libc)]

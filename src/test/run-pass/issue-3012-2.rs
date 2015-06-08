@@ -10,7 +10,7 @@
 
 // aux-build:issue-3012-1.rs
 
-// pretty-expanded FIXME #23616
+// no-pretty-expanded FIXME #26067
 
 #![allow(unknown_features)]
 #![feature(box_syntax, libc)]
