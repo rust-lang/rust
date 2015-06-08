@@ -1367,7 +1367,6 @@ Traits can include default implementations of methods, as in:
 ```
 trait Foo {
     fn bar(&self);
-
     fn baz(&self) { println!("We called baz."); }
 }
 ```
