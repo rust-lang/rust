@@ -793,6 +793,13 @@ impl Extend<char> for String {
     }
 }
 
+#[stable(feature = "extend_ref", since = "1.2.0")]
+impl<'a> Extend<&'a char> for String {
+    fn extend<I: IntoIterator<Item=&'a char>>(&mut self, iter: I) {
+        self.extend(iter.into_iter().cloned());
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Extend<&'a str> for String {
     fn extend<I: IntoIterator<Item=&'a str>>(&mut self, iterable: I) {

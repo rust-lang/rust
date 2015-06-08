@@ -904,6 +904,13 @@ impl<A> Extend<A> for LinkedList<A> {
     }
 }
 
+#[stable(feature = "extend_ref", since = "1.2.0")]
+impl<'a, T: 'a + Copy> Extend<&'a T> for LinkedList<T> {
+    fn extend<I: IntoIterator<Item=&'a T>>(&mut self, iter: I) {
+        self.extend(iter.into_iter().cloned());
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A: PartialEq> PartialEq for LinkedList<A> {
     fn eq(&self, other: &LinkedList<A>) -> bool {
