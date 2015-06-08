@@ -152,7 +152,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
 
                 // If the variable is immutable, save the initialising expression.
                 let (value, keyword) = match mt {
-                    ast::MutMutable => (String::from_str("<mutable>"), keywords::Mut),
+                    ast::MutMutable => (String::from("<mutable>"), keywords::Mut),
                     ast::MutImmutable => (self.span_utils.snippet(expr.span), keywords::Static),
                 };
 
@@ -326,7 +326,7 @@ pub fn process_crate(sess: &Session,
         Some(name) => name.to_string(),
         None => {
             info!("Could not find crate name, using 'unknown_crate'");
-            String::from_str("unknown_crate")
+            String::from("unknown_crate")
         },
     };
 

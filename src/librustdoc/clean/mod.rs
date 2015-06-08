@@ -2521,7 +2521,7 @@ fn lit_to_string(lit: &ast::Lit) -> String {
         ast::LitStr(ref st, _) => st.to_string(),
         ast::LitBinary(ref data) => format!("{:?}", data),
         ast::LitByte(b) => {
-            let mut res = String::from_str("b'");
+            let mut res = String::from("b'");
             for c in (b as char).escape_default() {
                 res.push(c);
             }

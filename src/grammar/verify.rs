@@ -287,7 +287,7 @@ fn main() {
     let options = config::basic_options();
     let session = session::build_session(options, None,
                                          syntax::diagnostics::registry::Registry::new(&[]));
-    let filemap = session.parse_sess.codemap().new_filemap(String::from_str("<n/a>"), code);
+    let filemap = session.parse_sess.codemap().new_filemap(String::from("<n/a>"), code);
     let mut lexer = lexer::StringReader::new(session.diagnostic(), filemap);
     let cm = session.codemap();
 

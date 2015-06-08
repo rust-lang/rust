@@ -89,7 +89,7 @@ impl String {
     ///
     /// ```
     /// # #![feature(collections)]
-    /// let s = String::from_str("hello");
+    /// let s = String::from("hello");
     /// assert_eq!(&s[..], "hello");
     /// ```
     #[inline]
@@ -1002,7 +1002,7 @@ pub fn as_string<'a>(x: &'a str) -> DerefString<'a> {
     DerefString { x: as_vec(x.as_bytes()) }
 }
 
-/// Error returned from `String::from_str`
+/// Error returned from `String::from`
 #[unstable(feature = "str_parse_error", reason = "may want to be replaced with \
                                                   Void if it ever exists")]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -1013,7 +1013,7 @@ impl FromStr for String {
     type Err = ParseError;
     #[inline]
     fn from_str(s: &str) -> Result<String, ParseError> {
-        Ok(String::from_str(s))
+        Ok(String::from(s))
     }
 }
 

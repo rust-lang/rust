@@ -17,7 +17,7 @@ enum t { a, b(String), }
 
 fn make(i: isize) -> t {
     if i > 10 { return t::a; }
-    let mut s = String::from_str("hello");
+    let mut s = String::from("hello");
     // Ensure s is non-const.
 
     s.push_str("there");

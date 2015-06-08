@@ -651,7 +651,7 @@ fn run_debuginfo_lldb_test(config: &Config, props: &TestProps, testfile: &Path) 
 
     // Write debugger script:
     // We don't want to hang when calling `quit` while the process is still running
-    let mut script_str = String::from_str("settings set auto-confirm true\n");
+    let mut script_str = String::from("settings set auto-confirm true\n");
 
     // Make LLDB emit its version, so we have it documented in the test output
     script_str.push_str("version\n");

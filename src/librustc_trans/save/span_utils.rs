@@ -83,7 +83,7 @@ impl<'a> SpanUtils<'a> {
         // the codemap as a new filemap. This is mostly OK, but means we should
         // not iterate over the codemap. Also, any spans over the new filemap
         // are incompatible with spans over other filemaps.
-        let filemap = self.sess.codemap().new_filemap(String::from_str("<anon-dxr>"),
+        let filemap = self.sess.codemap().new_filemap(String::from("<anon-dxr>"),
                                                       self.snippet(span));
         let s = self.sess;
         lexer::StringReader::new(s.diagnostic(), filemap)

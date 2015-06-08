@@ -906,8 +906,8 @@ mod tests {
 
     #[test]
     fn wtf8buf_from_string() {
-        assert_eq!(Wtf8Buf::from_string(String::from_str("")).bytes, b"");
-        assert_eq!(Wtf8Buf::from_string(String::from_str("aé 💩")).bytes,
+        assert_eq!(Wtf8Buf::from_string(String::from("")).bytes, b"");
+        assert_eq!(Wtf8Buf::from_string(String::from("aé 💩")).bytes,
                    b"a\xC3\xA9 \xF0\x9F\x92\xA9");
     }
 
@@ -1049,7 +1049,7 @@ mod tests {
     #[test]
     fn wtf8buf_into_string() {
         let mut string = Wtf8Buf::from_str("aé 💩");
-        assert_eq!(string.clone().into_string(), Ok(String::from_str("aé 💩")));
+        assert_eq!(string.clone().into_string(), Ok(String::from("aé 💩")));
         string.push(CodePoint::from_u32(0xD800).unwrap());
         assert_eq!(string.clone().into_string(), Err(string));
     }
@@ -1057,9 +1057,9 @@ mod tests {
     #[test]
     fn wtf8buf_into_string_lossy() {
         let mut string = Wtf8Buf::from_str("aé 💩");
-        assert_eq!(string.clone().into_string_lossy(), String::from_str("aé 💩"));
+        assert_eq!(string.clone().into_string_lossy(), String::from("aé 💩"));
         string.push(CodePoint::from_u32(0xD800).unwrap());
-        assert_eq!(string.clone().into_string_lossy(), String::from_str("aé 💩�"));
+        assert_eq!(string.clone().into_string_lossy(), String::from("aé 💩�"));
     }
 
     #[test]
@@ -1226,7 +1226,7 @@ mod tests {
         assert_eq!(Wtf8::from_str("aé 💩").to_string_lossy(), Cow::Borrowed("aé 💩"));
         let mut string = Wtf8Buf::from_str("aé 💩");
         string.push(CodePoint::from_u32(0xD800).unwrap());
-        let expected: Cow<str> = Cow::Owned(String::from_str("aé 💩�"));
+        let expected: Cow<str> = Cow::Owned(String::from("aé 💩�"));
         assert_eq!(string.to_string_lossy(), expected);
     }
 
