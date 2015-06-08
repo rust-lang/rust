@@ -210,7 +210,7 @@ fn symbol_hash<'tcx>(tcx: &ty::ctxt<'tcx>,
     symbol_hasher.input_str("-");
     symbol_hasher.input_str(&encoder::encoded_ty(tcx, t));
     // Prefix with 'h' so that it never blends into adjacent digits
-    let mut hash = String::from_str("h");
+    let mut hash = String::from("h");
     hash.push_str(&truncated_hash_result(symbol_hasher));
     hash
 }
@@ -294,7 +294,7 @@ pub fn mangle<PI: Iterator<Item=PathElem>>(path: PI,
     // To be able to work on all platforms and get *some* reasonable output, we
     // use C++ name-mangling.
 
-    let mut n = String::from_str("_ZN"); // _Z == Begin name-sequence, N == nested
+    let mut n = String::from("_ZN"); // _Z == Begin name-sequence, N == nested
 
     fn push(n: &mut String, s: &str) {
         let sani = sanitize(s);

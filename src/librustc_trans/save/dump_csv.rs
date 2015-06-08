@@ -318,7 +318,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
                     scope_id = item.id;
                     match item.node {
                         ast::ItemImpl(_, _, _, _, ref ty, _) => {
-                            let mut result = String::from_str("<");
+                            let mut result = String::from("<");
                             result.push_str(&ty_to_string(&**ty));
 
                             match ty::trait_of_item(&self.analysis.ty_cx,
@@ -1341,7 +1341,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
                     return
                 }
 
-                let mut id = String::from_str("$");
+                let mut id = String::from("$");
                 id.push_str(&ex.id.to_string());
                 self.process_formals(&decl.inputs, &id);
 

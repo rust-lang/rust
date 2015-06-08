@@ -121,7 +121,7 @@ impl From<String> for Box<Error + Send + Sync> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, 'b> From<&'b str> for Box<Error + Send + Sync + 'a> {
     fn from(err: &'b str) -> Box<Error + Send + Sync + 'a> {
-        From::from(String::from_str(err))
+        From::from(String::from(err))
     }
 }
 

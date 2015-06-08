@@ -457,7 +457,7 @@ fn spaces(wr: &mut fmt::Write, mut n: usize) -> EncodeResult {
 
 fn fmt_number_or_null(v: f64) -> string::String {
     match v.classify() {
-        Fp::Nan | Fp::Infinite => string::String::from_str("null"),
+        Fp::Nan | Fp::Infinite => string::String::from("null"),
         _ if v.fract() != 0f64 => v.to_string(),
         _ => v.to_string() + ".0",
     }
