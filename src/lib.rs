@@ -48,13 +48,13 @@ use visitor::FmtVisitor;
 
 #[macro_use]
 mod config;
+#[macro_use]
+mod utils;
 mod changes;
 mod visitor;
 mod items;
 mod missed_spans;
 mod lists;
-#[macro_use]
-mod utils;
 mod types;
 mod expr;
 mod imports;
