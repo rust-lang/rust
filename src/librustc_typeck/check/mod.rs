@@ -2085,7 +2085,7 @@ fn lookup_indexing<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         return final_mt;
     }
 
-    // After we have fully autoderef'd, if the resulting type is [T, ..n], then
+    // After we have fully autoderef'd, if the resulting type is [T; n], then
     // do a final unsized coercion to yield [T].
     if let ty::ty_vec(element_ty, Some(_)) = ty.sty {
         let adjusted_ty = ty::mk_vec(fcx.tcx(), element_ty, None);
