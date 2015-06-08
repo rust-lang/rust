@@ -987,7 +987,7 @@ pub fn type_has_projection(ty: Ty) -> bool {
     ty.flags.get().intersects(TypeFlags::HAS_PROJECTION)
 }
 pub fn type_has_ty_closure(ty: Ty) -> bool {
-    ty.flags.intersects(TypeFlags::HAS_TY_CLOSURE)
+    ty.flags.get().intersects(TypeFlags::HAS_TY_CLOSURE)
 }
 
 pub fn type_has_late_bound_regions(ty: Ty) -> bool {
