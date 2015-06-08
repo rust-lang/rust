@@ -249,7 +249,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
         match def {
             def::DefMod(_) |
             def::DefForeignMod(_) => Some(recorder::ModRef),
-            def::DefStruct(_) => Some(recorder::StructRef),
+            def::DefStruct(_) => Some(recorder::TypeRef),
             def::DefTy(..) |
             def::DefAssociatedTy(..) |
             def::DefTrait(_) => Some(recorder::TypeRef),
@@ -785,7 +785,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
                                                     sub_span,
                                                     def.def_id(),
                                                     self.cur_scope),
-            def::DefStruct(def_id) => self.fmt.ref_str(recorder::StructRef,
+            def::DefStruct(def_id) => self.fmt.ref_str(recorder::TypeRef,
                                                        span,
                                                        sub_span,
                                                        def_id,
@@ -886,7 +886,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
         let struct_def = match *ty {
             ty::TyStruct(def_id, _) => {
                 let sub_span = self.span.span_for_last_ident(path.span);
-                self.fmt.ref_str(recorder::StructRef,
+                self.fmt.ref_str(recorder::TypeRef,
                                  path.span,
                                  sub_span,
                                  def_id,
@@ -918,7 +918,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
                 None => {}
             }
 
-            self.visit_expr(&*field.expr)
+            self.visit_expr(&field.expr)
         }
         visit::walk_expr_opt(self, base)
     }
