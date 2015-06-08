@@ -26,8 +26,11 @@ fn get_path_string(dir_entry: io::Result<fs::DirEntry>) -> String {
     path.to_str().expect("Couldn't stringify path.").to_owned()
 }
 
-// For now, the only supported regression tests are idempotent tests - the input and
+// Integration tests and idempotence tests. The files in the tests/source are
+// formatted and compared to their equivalent in tests/target. The target file
+// and config can be overriden by annotations in the source file. The input and
 // output must match exactly.
+// Files in tests/target are checked to be unaltered by rustfmt.
 // FIXME(#28) would be good to check for error messages and fail on them, or at least report.
 #[test]
 fn system_tests() {
