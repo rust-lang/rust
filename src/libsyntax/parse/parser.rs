@@ -3394,7 +3394,10 @@ impl<'a> Parser<'a> {
     /// Parse a structure field
     fn parse_name_and_ty(&mut self, pr: Visibility,
                          attrs: Vec<Attribute> ) -> PResult<StructField> {
-        let lo = self.span.lo;
+        let lo = match pr {
+            Inherited => self.span.lo,
+            Public => self.last_span.lo,
+        };
         if !self.token.is_plain_ident() {
             return Err(self.fatal("expected ident"));
         }
