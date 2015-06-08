@@ -32,7 +32,7 @@
 
 #![feature(box_patterns)]
 #![feature(box_syntax)]
-#![feature(collections)]
+#![cfg_attr(stage0, feature(collections))]
 #![feature(core)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]

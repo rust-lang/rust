@@ -1856,6 +1856,11 @@ impl str {
         let mut s = String::with_capacity(self.len());
         for (i, c) in self[..].char_indices() {
             if c == 'Σ' {
+                // Σ maps to σ, except at the end of a word where it maps to ς.
+                // This is the only conditional (contextual) but language-independent mapping
+                // in `SpecialCasing.txt`,
+                // so hard-code it rather than have a generic "condition" mechanim.
+                // See https://github.com/rust-lang/rust/issues/26035
                 map_uppercase_sigma(self, i, &mut s)
             } else {
                 s.extend(c.to_lowercase());
@@ -1863,9 +1868,9 @@ impl str {
         }
         return s;
 
-        #[cold]
-        #[inline(never)]
         fn map_uppercase_sigma(from: &str, i: usize, to: &mut String) {
+            // See http://www.unicode.org/versions/Unicode7.0.0/ch03.pdf#G33992
+            // for the definition of `Final_Sigma`.
             debug_assert!('Σ'.len_utf8() == 2);
             let is_word_final =
                 case_ignoreable_then_cased(from[..i].chars().rev()) &&
