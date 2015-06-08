@@ -349,11 +349,52 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                                             &format!("Expected struct type, found {:?}", ty)),
                 }
             }
+            ast::ExprStruct(ref path, _, _) => {
+                let ty = &ty::expr_ty_adjusted(&self.analysis.ty_cx, expr).sty;
+                match *ty {
+                    ty::ty_struct(def_id, _) => {
+                        let sub_span = self.span_utils.span_for_last_ident(path.span);
+                        Data::TypeRefData(TypeRefData {
+                            span: sub_span.unwrap(),
+                            scope: self.analysis.ty_cx.map.get_parent(expr.id),
+                            ref_id: def_id,
+                        })
+                    }
+                    _ => {
+                        self.sess.span_bug(expr.span,
+                                           &format!("expected ty_struct, found {:?}", ty));
+                    }
+                }
+            }
             _ => {
                 // FIXME
                 unimplemented!();
             }
         }
+    }
+
+    pub fn get_field_ref_data(&self,
+                              field_ref: &ast::Field,
+                              struct_id: DefId,
+                              parent: NodeId)
+                              -> VariableRefData {
+        let fields = ty::lookup_struct_fields(&self.analysis.ty_cx, struct_id);
+        let field_name = get_ident(field_ref.ident.node).to_string();
+        for f in &fields {
+            if f.name == field_ref.ident.node.name {
+                // We don't really need a sub-span here, but no harm done
+                let sub_span = self.span_utils.span_for_last_ident(field_ref.ident.span);
+                return VariableRefData {
+                    name: field_name,
+                    span: sub_span.unwrap(),
+                    scope: parent,
+                    ref_id: f.id,
+                };
+            }
+        }
+
+        self.sess.span_bug(field_ref.span,
+                           &format!("Couldn't find field {}", field_name));
     }
 
     pub fn get_data_for_id(&self, _id: &NodeId) -> Data {
@@ -400,7 +441,7 @@ impl<'v> Visitor<'v> for PathCollector {
                 self.collected_paths.push((p.id,
                                            path.clone(),
                                            ast::MutMutable,
-                                           recorder::StructRef));
+                                           recorder::TypeRef));
             }
             ast::PatEnum(ref path, _) |
             ast::PatQPath(_, ref path) => {

@@ -708,7 +708,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
                            &val);
 
         // super-traits
-        for super_bound in &trait_refs {
+        for super_bound in trait_refs.iter() {
             let trait_ref = match *super_bound {
                 ast::TraitTyParamBound(ref trait_ref, _) => {
                     trait_ref
@@ -882,44 +882,35 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
 
         self.write_sub_paths_truncated(path, false);
 
-        let ty = &ty::expr_ty_adjusted(&self.analysis.ty_cx, ex).sty;
-        let struct_def = match *ty {
-            ty::TyStruct(def_id, _) => {
-                let sub_span = self.span.span_for_last_ident(path.span);
-                self.fmt.ref_str(recorder::TypeRef,
-                                 path.span,
-                                 sub_span,
-                                 def_id,
-                                 self.cur_scope);
-                Some(def_id)
-            }
-            _ => None
+        let struct_lit_data = self.save_ctxt.get_expr_data(ex);
+        let struct_def = if let super::Data::TypeRefData(struct_lit_data) = struct_lit_data {
+            self.fmt.ref_str(recorder::TypeRef,
+                             ex.span,
+                             Some(struct_lit_data.span),
+                             struct_lit_data.ref_id,
+                             struct_lit_data.scope);
+            struct_lit_data.ref_id
+        } else {
+            self.sess.span_bug(ex.span, "expected TypeRefData");
         };
 
         for field in fields {
-            match struct_def {
-                Some(struct_def) => {
-                    let fields = ty::lookup_struct_fields(&self.analysis.ty_cx, struct_def);
-                    for f in &fields {
-                        if generated_code(field.ident.span) {
-                            continue;
-                        }
-                        if f.name == field.ident.node.name {
-                            // We don't really need a sub-span here, but no harm done
-                            let sub_span = self.span.span_for_last_ident(field.ident.span);
-                            self.fmt.ref_str(recorder::VarRef,
-                                             field.ident.span,
-                                             sub_span,
-                                             f.id,
-                                             self.cur_scope);
-                        }
-                    }
-                }
-                None => {}
+            if generated_code(field.ident.span) {
+                continue;
             }
+
+            let field_data = self.save_ctxt.get_field_ref_data(field,
+                                                               struct_def,
+                                                               self.cur_scope);
+            self.fmt.ref_str(recorder::VarRef,
+                             field.ident.span,
+                             Some(field_data.span),
+                             field_data.ref_id,
+                             field_data.scope);
 
             self.visit_expr(&field.expr)
         }
+
         visit::walk_expr_opt(self, base)
     }
 
