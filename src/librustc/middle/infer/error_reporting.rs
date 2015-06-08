@@ -1783,7 +1783,7 @@ impl LifeGiver {
     fn give_lifetime(&self) -> ast::Lifetime {
         let mut lifetime;
         loop {
-            let mut s = String::from_str("'");
+            let mut s = String::from("'");
             s.push_str(&num_to_string(self.counter.get()));
             if !self.taken.contains(&s) {
                 lifetime = name_to_dummy_lifetime(

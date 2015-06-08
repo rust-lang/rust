@@ -71,17 +71,17 @@ fn test_rfind() {
 
 #[test]
 fn test_collect() {
-    let empty = String::from_str("");
+    let empty = String::from("");
     let s: String = empty.chars().collect();
     assert_eq!(empty, s);
-    let data = String::from_str("ประเทศไทย中");
+    let data = String::from("ประเทศไทย中");
     let s: String = data.chars().collect();
     assert_eq!(data, s);
 }
 
 #[test]
 fn test_into_bytes() {
-    let data = String::from_str("asdf");
+    let data = String::from("asdf");
     let buf = data.into_bytes();
     assert_eq!(buf, b"asdf");
 }
@@ -98,7 +98,7 @@ fn test_find_str() {
     assert!(data[2..4].find("ab").is_none());
 
     let string = "ประเทศไทย中华Việt Nam";
-    let mut data = String::from_str(string);
+    let mut data = String::from(string);
     data.push_str(string);
     assert!(data.find("ไท华").is_none());
     assert_eq!(data[0..43].find(""), Some(0));
@@ -211,7 +211,7 @@ fn test_unsafe_slice() {
     }
     let letters = a_million_letter_a();
     assert!(half_a_million_letter_a() ==
-        unsafe {String::from_str(letters.slice_unchecked(
+        unsafe {String::from(letters.slice_unchecked(
                                  0,
                                  500000))});
 }
@@ -247,13 +247,13 @@ fn test_is_empty() {
 #[test]
 fn test_replace() {
     let a = "a";
-    assert_eq!("".replace(a, "b"), String::from_str(""));
-    assert_eq!("a".replace(a, "b"), String::from_str("b"));
-    assert_eq!("ab".replace(a, "b"), String::from_str("bb"));
+    assert_eq!("".replace(a, "b"), String::from(""));
+    assert_eq!("a".replace(a, "b"), String::from("b"));
+    assert_eq!("ab".replace(a, "b"), String::from("bb"));
     let test = "test";
     assert!(" test test ".replace(test, "toast") ==
-        String::from_str(" toast toast "));
-    assert_eq!(" test test ".replace(test, ""), String::from_str("   "));
+        String::from(" toast toast "));
+    assert_eq!(" test test ".replace(test, ""), String::from("   "));
 }
 
 #[test]
@@ -328,7 +328,7 @@ fn test_slice() {
     }
     let letters = a_million_letter_x();
     assert!(half_a_million_letter_x() ==
-        String::from_str(&letters[0..3 * 500000]));
+        String::from(&letters[0..3 * 500000]));
 }
 
 #[test]
@@ -581,7 +581,7 @@ fn test_as_bytes() {
 fn test_as_bytes_fail() {
     // Don't double free. (I'm not sure if this exercises the
     // original problem code path anymore.)
-    let s = String::from_str("");
+    let s = String::from("");
     let _bytes = s.as_bytes();
     panic!();
 }
@@ -623,10 +623,10 @@ fn test_subslice_offset_2() {
 
 #[test]
 fn vec_str_conversions() {
-    let s1: String = String::from_str("All mimsy were the borogoves");
+    let s1: String = String::from("All mimsy were the borogoves");
 
     let v: Vec<u8> = s1.as_bytes().to_vec();
-    let s2: String = String::from_str(from_utf8(&v).unwrap());
+    let s2: String = String::from(from_utf8(&v).unwrap());
     let mut i = 0;
     let n1 = s1.len();
     let n2 = v.len();
@@ -691,39 +691,39 @@ fn test_char_at_reverse() {
 #[test]
 fn test_escape_unicode() {
     assert_eq!("abc".escape_unicode(),
-               String::from_str("\\u{61}\\u{62}\\u{63}"));
+               String::from("\\u{61}\\u{62}\\u{63}"));
     assert_eq!("a c".escape_unicode(),
-               String::from_str("\\u{61}\\u{20}\\u{63}"));
+               String::from("\\u{61}\\u{20}\\u{63}"));
     assert_eq!("\r\n\t".escape_unicode(),
-               String::from_str("\\u{d}\\u{a}\\u{9}"));
+               String::from("\\u{d}\\u{a}\\u{9}"));
     assert_eq!("'\"\\".escape_unicode(),
-               String::from_str("\\u{27}\\u{22}\\u{5c}"));
+               String::from("\\u{27}\\u{22}\\u{5c}"));
     assert_eq!("\x00\x01\u{fe}\u{ff}".escape_unicode(),
-               String::from_str("\\u{0}\\u{1}\\u{fe}\\u{ff}"));
+               String::from("\\u{0}\\u{1}\\u{fe}\\u{ff}"));
     assert_eq!("\u{100}\u{ffff}".escape_unicode(),
-               String::from_str("\\u{100}\\u{ffff}"));
+               String::from("\\u{100}\\u{ffff}"));
     assert_eq!("\u{10000}\u{10ffff}".escape_unicode(),
-               String::from_str("\\u{10000}\\u{10ffff}"));
+               String::from("\\u{10000}\\u{10ffff}"));
     assert_eq!("ab\u{fb00}".escape_unicode(),
-               String::from_str("\\u{61}\\u{62}\\u{fb00}"));
+               String::from("\\u{61}\\u{62}\\u{fb00}"));
     assert_eq!("\u{1d4ea}\r".escape_unicode(),
-               String::from_str("\\u{1d4ea}\\u{d}"));
+               String::from("\\u{1d4ea}\\u{d}"));
 }
 
 #[test]
 fn test_escape_default() {
-    assert_eq!("abc".escape_default(), String::from_str("abc"));
-    assert_eq!("a c".escape_default(), String::from_str("a c"));
-    assert_eq!("\r\n\t".escape_default(), String::from_str("\\r\\n\\t"));
-    assert_eq!("'\"\\".escape_default(), String::from_str("\\'\\\"\\\\"));
+    assert_eq!("abc".escape_default(), String::from("abc"));
+    assert_eq!("a c".escape_default(), String::from("a c"));
+    assert_eq!("\r\n\t".escape_default(), String::from("\\r\\n\\t"));
+    assert_eq!("'\"\\".escape_default(), String::from("\\'\\\"\\\\"));
     assert_eq!("\u{100}\u{ffff}".escape_default(),
-               String::from_str("\\u{100}\\u{ffff}"));
+               String::from("\\u{100}\\u{ffff}"));
     assert_eq!("\u{10000}\u{10ffff}".escape_default(),
-               String::from_str("\\u{10000}\\u{10ffff}"));
+               String::from("\\u{10000}\\u{10ffff}"));
     assert_eq!("ab\u{fb00}".escape_default(),
-               String::from_str("ab\\u{fb00}"));
+               String::from("ab\\u{fb00}"));
     assert_eq!("\u{1d4ea}\r".escape_default(),
-               String::from_str("\\u{1d4ea}\\r"));
+               String::from("\\u{1d4ea}\\r"));
 }
 
 #[test]
@@ -1490,12 +1490,12 @@ fn test_str_container() {
         v.iter().map(|x| x.len()).sum()
     }
 
-    let s = String::from_str("01234");
+    let s = String::from("01234");
     assert_eq!(5, sum_len(&["012", "", "34"]));
-    assert_eq!(5, sum_len(&[&String::from_str("01"),
-                            &String::from_str("2"),
-                            &String::from_str("34"),
-                            &String::from_str("")]));
+    assert_eq!(5, sum_len(&[&String::from("01"),
+                            &String::from("2"),
+                            &String::from("34"),
+                            &String::from("")]));
     assert_eq!(5, sum_len(&[&s]));
 }
 

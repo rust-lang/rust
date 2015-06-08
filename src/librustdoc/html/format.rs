@@ -335,8 +335,7 @@ fn resolved_path(w: &mut fmt::Formatter, did: ast::DefId, path: &clean::Path,
     if print_all {
         let amt = path.segments.len() - 1;
         match rel_root {
-            Some(root) => {
-                let mut root = String::from_str(&root);
+            Some(mut root) => {
                 for seg in &path.segments[..amt] {
                     if "super" == seg.name || "self" == seg.name {
                         try!(write!(w, "{}::", seg.name));
