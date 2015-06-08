@@ -21,6 +21,7 @@ use std::fs::File;
 use std::io::{Write, stdout};
 use WriteMode;
 use NewlineStyle;
+use utils::round_up_to_power_of_two;
 
 // This is basically a wrapper around a bunch of Ropes which makes it convenient
 // to work with libsyntax. It is badly named.
@@ -41,11 +42,10 @@ impl<'a> ChangeSet<'a> {
 
         for f in codemap.files.borrow().iter() {
             // Use the length of the file as a heuristic for how much space we
-            // need. I hope that at some stage someone rounds this up to the next
-            // power of two. TODO check that or do it here.
-            result.file_map.insert(f.name.clone(),
-                                   StringBuffer::with_capacity(f.src.as_ref().unwrap().len()));
+            // need. Round to the next power of two.
+            let buffer_cap = round_up_to_power_of_two(f.src.as_ref().unwrap().len());
 
+            result.file_map.insert(f.name.clone(), StringBuffer::with_capacity(buffer_cap));
             result.file_spans.push((f.start_pos.0, f.end_pos.0));
         }
 

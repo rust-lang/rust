@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use utils::make_indent;
-use rustc_serialize::{Decodable, Decoder};
 
 #[derive(Eq, PartialEq, Debug, Copy, Clone)]
 pub enum ListTactic {

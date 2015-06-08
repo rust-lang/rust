@@ -33,8 +33,6 @@ use rustc::session::config as rustc_config;
 use rustc::session::config::Input;
 use rustc_driver::{driver, CompilerCalls, Compilation};
 
-use rustc_serialize::{Decodable, Decoder};
-
 use syntax::ast;
 use syntax::codemap::CodeMap;
 use syntax::diagnostics;
@@ -42,7 +40,9 @@ use syntax::visit;
 
 use std::path::PathBuf;
 use std::collections::HashMap;
+use std::fmt;
 
+use issues::{BadIssueSeeker, Issue};
 use changes::ChangeSet;
 use visitor::FmtVisitor;
 
@@ -58,6 +58,7 @@ mod lists;
 mod types;
 mod expr;
 mod imports;
+mod issues;
 
 const MIN_STRING: usize = 10;
 // When we get scoped annotations, we should have rustfmt::skip.
@@ -106,6 +107,58 @@ pub enum ReturnIndent {
 
 impl_enum_decodable!(ReturnIndent, WithArgs, WithWhereClause);
 
+enum ErrorKind {
+    // Line has more than config!(max_width) characters
+    LineOverflow,
+    // Line ends in whitespace
+    TrailingWhitespace,
+    // TO-DO or FIX-ME item without an issue number
+    BadIssue(Issue),
+}
+
+impl fmt::Display for ErrorKind {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        match *self {
+            ErrorKind::LineOverflow => {
+                write!(fmt, "line exceeded maximum length")
+            },
+            ErrorKind::TrailingWhitespace => {
+                write!(fmt, "left behind trailing whitespace")
+            },
+            ErrorKind::BadIssue(issue) => {
+                write!(fmt, "found {}", issue)
+            },
+        }
+    }
+}
+
+// Formatting errors that are identified *after* rustfmt has run
+struct FormattingError {
+    line: u32,
+    kind: ErrorKind,
+}
+
+struct FormatReport {
+    // Maps stringified file paths to their associated formatting errors
+    file_error_map: HashMap<String, Vec<FormattingError>>,
+}
+
+impl fmt::Display for FormatReport {
+    // Prints all the formatting errors.
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        for (file, errors) in self.file_error_map.iter() {
+            for error in errors {
+                try!(write!(fmt,
+                            "Rustfmt failed at {}:{}: {} (sorry)\n",
+                            file,
+                            error.line,
+                            error.kind));
+            }
+        }
+        Ok(())
+    }
+}
+
 // Formatting which depends on the AST.
 fn fmt_ast<'a>(krate: &ast::Crate, codemap: &'a CodeMap) -> ChangeSet<'a> {
     let mut visitor = FmtVisitor::from_codemap(codemap);
@@ -119,11 +172,11 @@ fn fmt_ast<'a>(krate: &ast::Crate, codemap: &'a CodeMap) -> ChangeSet<'a> {
 }
 
 // Formatting done on a char by char or line by line basis.
-// TODO warn on TODOs and FIXMEs without an issue number
 // TODO warn on bad license
 // TODO other stuff for parity with make tidy
-fn fmt_lines(changes: &mut ChangeSet) {
+fn fmt_lines(changes: &mut ChangeSet) -> FormatReport {
     let mut truncate_todo = Vec::new();
+    let mut report = FormatReport { file_error_map: HashMap::new() };
 
     // Iterate over the chars in the change set.
     for (f, text) in changes.text() {
@@ -132,8 +185,21 @@ fn fmt_lines(changes: &mut ChangeSet) {
         let mut line_len = 0;
         let mut cur_line = 1;
         let mut newline_count = 0;
+        let mut errors = vec![];
+        let mut issue_seeker = BadIssueSeeker::new(config!(report_todo),
+                                                   config!(report_fixme));
+
         for (c, b) in text.chars() {
             if c == '\r' { continue; }
+
+            // Add warnings for bad todos/ fixmes
+            if let Some(issue) = issue_seeker.inspect(c) {
+                errors.push(FormattingError {
+                    line: cur_line,
+                    kind: ErrorKind::BadIssue(issue)
+                });
+            }
+
             if c == '\n' {
                 // Check for (and record) trailing whitespace.
                 if let Some(lw) = last_wspace {
@@ -142,9 +208,10 @@ fn fmt_lines(changes: &mut ChangeSet) {
                 }
                 // Check for any line width errors we couldn't correct.
                 if line_len > config!(max_width) {
-                    // TODO store the error rather than reporting immediately.
-                    println!("Rustfmt couldn't fix (sorry). {}:{}: line longer than {} characters",
-                             f, cur_line, config!(max_width));
+                    errors.push(FormattingError {
+                        line: cur_line,
+                        kind: ErrorKind::LineOverflow
+                    });
                 }
                 line_len = 0;
                 cur_line += 1;
@@ -165,18 +232,24 @@ fn fmt_lines(changes: &mut ChangeSet) {
 
         if newline_count > 1 {
             debug!("track truncate: {} {} {}", f, text.len, newline_count);
-            truncate_todo.push((f.to_string(), text.len - newline_count + 1))
+            truncate_todo.push((f.to_owned(), text.len - newline_count + 1))
         }
 
         for &(l, _, _) in trims.iter() {
-            // TODO store the error rather than reporting immediately.
-            println!("Rustfmt left trailing whitespace at {}:{} (sorry)", f, l);
+            errors.push(FormattingError {
+                line: l,
+                kind: ErrorKind::TrailingWhitespace
+            });
         }
+
+        report.file_error_map.insert(f.to_owned(), errors);
     }
 
     for (f, l) in truncate_todo {
         changes.get_mut(&f).truncate(l);
     }
+
+    report
 }
 
 struct RustFmtCalls {
@@ -237,7 +310,7 @@ impl<'a> CompilerCalls<'a> for RustFmtCalls {
             // For some reason, the codemap does not include terminating newlines
             // so we must add one on for each file. This is sad.
             changes.append_newlines();
-            fmt_lines(&mut changes);
+            println!("{}", fmt_lines(&mut changes));
 
             let result = changes.write_all_files(write_mode);
 

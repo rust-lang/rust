@@ -10,19 +10,25 @@
 
 extern crate toml;
 
+use {NewlineStyle, BraceStyle, ReturnIndent};
+use lists::SeparatorTactic;
+use issues::ReportTactic;
+
 #[derive(RustcDecodable)]
 pub struct Config {
     pub max_width: usize,
     pub ideal_width: usize,
     pub leeway: usize,
     pub tab_spaces: usize,
-    pub newline_style: ::NewlineStyle,
-    pub fn_brace_style: ::BraceStyle,
-    pub fn_return_indent: ::ReturnIndent,
+    pub newline_style: NewlineStyle,
+    pub fn_brace_style: BraceStyle,
+    pub fn_return_indent: ReturnIndent,
     pub fn_args_paren_newline: bool,
     pub struct_trailing_comma: bool,
-    pub struct_lit_trailing_comma: ::lists::SeparatorTactic,
+    pub struct_lit_trailing_comma: SeparatorTactic,
     pub enum_trailing_comma: bool,
+    pub report_todo: ReportTactic,
+    pub report_fixme: ReportTactic,
 }
 
 impl Config {
