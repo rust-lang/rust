@@ -1000,7 +1000,8 @@ pub fn fulfill_obligation<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         None => { }
     }
 
-    debug!("trans fulfill_obligation: trait_ref={}", trait_ref.repr(ccx.tcx()));
+    debug!("trans fulfill_obligation: trait_ref={} def_id={:?}",
+           trait_ref.repr(ccx.tcx()), trait_ref.def_id());
 
     ty::populate_implementations_for_trait_if_necessary(tcx, trait_ref.def_id());
     let infcx = infer::new_infer_ctxt(tcx);

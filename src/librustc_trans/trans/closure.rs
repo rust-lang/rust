@@ -153,7 +153,8 @@ pub fn get_or_create_declaration_if_closure<'a, 'tcx>(ccx: &CrateContext<'a, 'tc
 
     match ccx.closure_vals().borrow().get(&mono_id) {
         Some(&llfn) => {
-            debug!("get_or_create_declaration_if_closure(): found closure");
+            debug!("get_or_create_declaration_if_closure(): found closure {:?}: {:?}",
+                   mono_id, ccx.tn().val_to_string(llfn));
             return Some(Datum::new(llfn, function_type, Rvalue::new(ByValue)))
         }
         None => {}
@@ -173,9 +174,10 @@ pub fn get_or_create_declaration_if_closure<'a, 'tcx>(ccx: &CrateContext<'a, 'tc
     attributes::inline(llfn, attributes::InlineAttr::Hint);
 
     debug!("get_or_create_declaration_if_closure(): inserting new \
-            closure {:?} (type {})",
+            closure {:?} (type {}): {:?}",
            mono_id,
-           ccx.tn().type_to_string(val_ty(llfn)));
+           ccx.tn().type_to_string(val_ty(llfn)),
+           ccx.tn().val_to_string(llfn));
     ccx.closure_vals().borrow_mut().insert(mono_id, llfn);
 
     Some(Datum::new(llfn, function_type, Rvalue::new(ByValue)))
@@ -198,9 +200,9 @@ pub fn trans_closure_expr<'a, 'tcx>(dest: Dest<'a, 'tcx>,
         Dest::Ignore(ccx) => ccx
     };
     let tcx = ccx.tcx();
-    let _icx = push_ctxt("closure::trans_closure");
+    let _icx = push_ctxt("closure::trans_closure_expr");
 
-    debug!("trans_closure()");
+    debug!("trans_closure_expr()");
 
     let closure_id = ast_util::local_def(id);
     let llfn = get_or_create_declaration_if_closure(
@@ -230,7 +232,7 @@ pub fn trans_closure_expr<'a, 'tcx>(dest: Dest<'a, 'tcx>,
                   &[],
                   sig.output,
                   function_type.abi,
-                  ClosureEnv::Closure(&freevars[..]));
+                  ClosureEnv::Closure(&freevars));
 
     // Don't hoist this to the top of the function. It's perfectly legitimate
     // to have a zero-size closure (in which case dest will be `Ignore`) and
@@ -238,7 +240,7 @@ pub fn trans_closure_expr<'a, 'tcx>(dest: Dest<'a, 'tcx>,
     let (mut bcx, dest_addr) = match dest {
         Dest::SaveIn(bcx, p) => (bcx, p),
         Dest::Ignore(_) => {
-            debug!("trans_closure() ignoring result");
+            debug!("trans_closure_expr() ignoring result");
             return None;
         }
     };

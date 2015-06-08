@@ -117,9 +117,8 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
             _ => {
                 bcx.tcx().sess.span_bug(
                     expr.span,
-                    &format!("type of callee is neither bare-fn nor closure: \
-                             {}",
-                            bcx.ty_to_string(datum.ty)));
+                    &format!("type of callee is neither bare-fn nor closure: {}",
+                             bcx.ty_to_string(datum.ty)));
             }
         }
     }
@@ -505,6 +504,9 @@ pub fn trans_fn_ref_with_substs<'a, 'tcx>(
     } else {
         false
     };
+
+    debug!("trans_fn_ref_with_substs({}) must_monomorphise: {}",
+           def_id.repr(tcx), must_monomorphise);
 
     // Create a monomorphic version of generic functions
     if must_monomorphise {

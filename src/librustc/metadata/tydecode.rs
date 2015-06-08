@@ -50,9 +50,6 @@ pub enum DefIdSource {
     // Identifies a type alias (`type X = ...`).
     TypeWithId,
 
-    // Identifies a type parameter (`fn foo<X>() { ... }`).
-    TypeParameter,
-
     // Identifies a region parameter (`fn foo<'X>() { ... }`).
     RegionParameter,
 
@@ -193,7 +190,7 @@ pub fn parse_substs_data<'tcx, F>(data: &[u8], crate_num: ast::CrateNum, pos: us
                                   tcx: &ty::ctxt<'tcx>, conv: F) -> subst::Substs<'tcx> where
     F: FnMut(DefIdSource, ast::DefId) -> ast::DefId,
 {
-    debug!("parse_substs_data {}", data_log_string(data, pos));
+    debug!("parse_substs_data{}", data_log_string(data, pos));
     let mut st = parse_state_from_data(data, crate_num, pos, tcx);
     parse_substs(&mut st, conv)
 }
@@ -542,7 +539,14 @@ fn parse_ty_<'a, 'tcx, F>(st: &mut PState<'a, 'tcx>, conv: &mut F) -> Ty<'tcx> w
                                          len: len };
 
         match tcx.rcache.borrow().get(&key).cloned() {
-          Some(tt) => return tt,
+          Some(tt) => {
+            // If there is a closure buried in the type some where, then we
+            // need to re-convert any def ids (see case 'k', below). That means
+            // we can't reuse the cached version.
+            if !ty::type_has_ty_closure(tt) {
+                return tt;
+            }
+          }
           None => {}
         }
         let mut ps = PState {

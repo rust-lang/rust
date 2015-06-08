@@ -73,7 +73,6 @@ pub struct SharedCrateContext<'tcx> {
     check_overflow: bool,
     check_drop_flag_for_sanity: bool,
 
-    available_monomorphizations: RefCell<FnvHashSet<String>>,
     available_drop_glues: RefCell<FnvHashMap<DropGlueKind<'tcx>, String>>,
     use_dll_storage_attrs: bool,
 }
@@ -100,6 +99,7 @@ pub struct LocalCrateContext<'tcx> {
     /// Cache instances of monomorphized functions
     monomorphized: RefCell<FnvHashMap<MonoId<'tcx>, ValueRef>>,
     monomorphizing: RefCell<DefIdMap<usize>>,
+    available_monomorphizations: RefCell<FnvHashSet<String>>,
     /// Cache generated vtables
     vtables: RefCell<FnvHashMap<ty::PolyTraitRef<'tcx>, ValueRef>>,
     /// Cache of constant strings,
@@ -321,7 +321,6 @@ impl<'tcx> SharedCrateContext<'tcx> {
             },
             check_overflow: check_overflow,
             check_drop_flag_for_sanity: check_drop_flag_for_sanity,
-            available_monomorphizations: RefCell::new(FnvHashSet()),
             available_drop_glues: RefCell::new(FnvHashMap()),
             use_dll_storage_attrs: use_dll_storage_attrs,
         };
@@ -452,6 +451,7 @@ impl<'tcx> LocalCrateContext<'tcx> {
                 external_srcs: RefCell::new(NodeMap()),
                 monomorphized: RefCell::new(FnvHashMap()),
                 monomorphizing: RefCell::new(DefIdMap()),
+                available_monomorphizations: RefCell::new(FnvHashSet()),
                 vtables: RefCell::new(FnvHashMap()),
                 const_cstr_cache: RefCell::new(FnvHashMap()),
                 const_unsized: RefCell::new(FnvHashMap()),
@@ -709,7 +709,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
     }
 
     pub fn available_monomorphizations<'a>(&'a self) -> &'a RefCell<FnvHashSet<String>> {
-        &self.shared.available_monomorphizations
+        &self.local.available_monomorphizations
     }
 
     pub fn available_drop_glues(&self) -> &RefCell<FnvHashMap<DropGlueKind<'tcx>, String>> {

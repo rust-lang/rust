@@ -21,11 +21,13 @@ use syntax::ast_util::local_def;
 
 fn instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
     -> Option<ast::DefId> {
-    let _icx = push_ctxt("maybe_instantiate_inline");
+    debug!("instantiate_inline({:?})", fn_id);
+    let _icx = push_ctxt("instantiate_inline");
+
     match ccx.external().borrow().get(&fn_id) {
         Some(&Some(node_id)) => {
             // Already inline
-            debug!("maybe_instantiate_inline({}): already inline as node id {}",
+            debug!("instantiate_inline({}): already inline as node id {}",
                    ty::item_path_str(ccx.tcx(), fn_id), node_id);
             return Some(local_def(node_id));
         }
@@ -52,7 +54,7 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
             ccx.external_srcs().borrow_mut().insert(item.id, fn_id);
 
             ccx.stats().n_inlines.set(ccx.stats().n_inlines.get() + 1);
-            trans_item(ccx, &**item);
+            trans_item(ccx, item);
 
             let linkage = match item.node {
                 ast::ItemFn(_, _, _, _, ref generics, _) => {
@@ -118,7 +120,7 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
                 }
               }
             }
-            _ => ccx.sess().bug("maybe_instantiate_inline: item has a \
+            _ => ccx.sess().bug("instantiate_inline: item has a \
                                  non-enum, non-struct parent")
           }
           trans_item(ccx, &**item);
@@ -126,7 +128,7 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
         }
         csearch::FoundAst::FoundParent(_, _) => {
             ccx.sess().bug("maybe_get_item_ast returned a FoundParent \
-             with a non-item parent");
+                            with a non-item parent");
         }
         csearch::FoundAst::Found(&ast::IITraitItem(_, ref trait_item)) => {
             ccx.external().borrow_mut().insert(fn_id, Some(trait_item.id));
@@ -167,8 +169,12 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
                              empty_substs,
                              impl_item.id,
                              &[]);
-                    // Use InternalLinkage so LLVM can optimize more aggressively.
-                    SetLinkage(llfn, InternalLinkage);
+                    // See linkage comments on items.
+                    if ccx.sess().opts.cg.codegen_units == 1 {
+                        SetLinkage(llfn, InternalLinkage);
+                    } else {
+                        SetLinkage(llfn, AvailableExternallyLinkage);
+                    }
                 }
             }
 
