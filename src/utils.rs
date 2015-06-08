@@ -47,3 +47,22 @@ pub fn format_visibility(vis: Visibility) -> &'static str {
         Visibility::Inherited => ""
     }
 }
+
+// Macro for deriving implementations of Decodable for enums
+#[macro_export]
+macro_rules! impl_enum_decodable {
+    ( $e:ident, $( $x:ident ),* ) => {
+        impl Decodable for $e {
+            fn decode<D: Decoder>(d: &mut D) -> Result<Self, D::Error> {
+                let s = try!(d.read_str());
+                match &*s {
+                    $(
+                        stringify!($x) => Ok($e::$x),
+                    )*
+                    _ => Err(d.error("Bad variant")),
+                }
+            }
+        }
+    };
+}
+

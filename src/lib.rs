@@ -53,6 +53,7 @@ mod visitor;
 mod items;
 mod missed_spans;
 mod lists;
+#[macro_use]
 mod utils;
 mod types;
 mod expr;
@@ -63,23 +64,6 @@ const MIN_STRING: usize = 10;
 const SKIP_ANNOTATION: &'static str = "rustfmt_skip";
 
 static mut CONFIG: Option<config::Config> = None;
-
-// Macro for deriving implementations of Decodable for enums
-macro_rules! impl_enum_decodable {
-    ( $e:ident, $( $x:ident ),* ) => {
-        impl Decodable for $e {
-            fn decode<D: Decoder>(d: &mut D) -> Result<Self, D::Error> {
-                let s = try!(d.read_str());
-                match &*s {
-                    $(
-                        stringify!($x) => Ok($e::$x),
-                    )*
-                    _ => Err(d.error("Bad variant")),
-                }
-            }
-        }
-    };
-}
 
 #[derive(Copy, Clone)]
 pub enum WriteMode {
