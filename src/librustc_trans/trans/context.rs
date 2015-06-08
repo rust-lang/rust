@@ -870,6 +870,11 @@ fn declare_intrinsic(ccx: &CrateContext, key: & &'static str) -> Option<ValueRef
     ifn!("llvm.trunc.f32", fn(t_f32) -> t_f32);
     ifn!("llvm.trunc.f64", fn(t_f64) -> t_f64);
 
+    ifn!("llvm.copysign.f32", fn(t_f32, t_f32) -> t_f32);
+    ifn!("llvm.copysign.f64", fn(t_f64, t_f64) -> t_f64);
+    ifn!("llvm.round.f32", fn(t_f32) -> t_f32);
+    ifn!("llvm.round.f64", fn(t_f64) -> t_f64);
+
     ifn!("llvm.rint.f32", fn(t_f32) -> t_f32);
     ifn!("llvm.rint.f64", fn(t_f64) -> t_f64);
     ifn!("llvm.nearbyint.f32", fn(t_f32) -> t_f32);
@@ -928,22 +933,48 @@ fn declare_intrinsic(ccx: &CrateContext, key: & &'static str) -> Option<ValueRef
     ifn!("llvm.lifetime.end", fn(t_i64, i8p) -> void);
 
     ifn!("llvm.expect.i1", fn(i1, i1) -> i1);
-    ifn!("llvm.assume", fn(i1) -> void);
 
     // Some intrinsics were introduced in later versions of LLVM, but they have
-    // fallbacks in libc or libm and such. Currently, all of these intrinsics
-    // were introduced in LLVM 3.4, so we case on that.
+    // fallbacks in libc or libm and such.
     macro_rules! compatible_ifn {
-        ($name:expr, $cname:ident ($($arg:expr),*) -> $ret:expr) => (
-            ifn!($name, fn($($arg),*) -> $ret);
+        ($name:expr, noop($cname:ident ($($arg:expr),*) -> void), $llvm_version:expr) => (
+            if unsafe { llvm::LLVMVersionMinor() >= $llvm_version } {
+                // The `if key == $name` is already in ifn!
+                ifn!($name, fn($($arg),*) -> void);
+            } else if *key == $name {
+                let f = declare::declare_cfn(ccx, stringify!($cname),
+                                             Type::func(&[$($arg),*], &void),
+                                             ty::mk_nil(ccx.tcx()));
+                llvm::SetLinkage(f, llvm::InternalLinkage);
+
+                let bld = ccx.builder();
+                let llbb = unsafe {
+                    llvm::LLVMAppendBasicBlockInContext(ccx.llcx(), f,
+                                                        "entry-block\0".as_ptr() as *const _)
+                };
+
+                bld.position_at_end(llbb);
+                bld.ret_void();
+
+                ccx.intrinsics().borrow_mut().insert($name, f.clone());
+                return Some(f);
+            }
+        );
+        ($name:expr, $cname:ident ($($arg:expr),*) -> $ret:expr, $llvm_version:expr) => (
+            if unsafe { llvm::LLVMVersionMinor() >= $llvm_version } {
+                // The `if key == $name` is already in ifn!
+                ifn!($name, fn($($arg),*) -> $ret);
+            } else if *key == $name {
+                let f = declare::declare_cfn(ccx, stringify!($cname),
+                                             Type::func(&[$($arg),*], &$ret),
+                                             ty::mk_nil(ccx.tcx()));
+                ccx.intrinsics().borrow_mut().insert($name, f.clone());
+                return Some(f);
+            }
         )
     }
 
-    compatible_ifn!("llvm.copysign.f32", copysignf(t_f32, t_f32) -> t_f32);
-    compatible_ifn!("llvm.copysign.f64", copysign(t_f64, t_f64) -> t_f64);
-    compatible_ifn!("llvm.round.f32", roundf(t_f32) -> t_f32);
-    compatible_ifn!("llvm.round.f64", round(t_f64) -> t_f64);
-
+    compatible_ifn!("llvm.assume", noop(llvmcompat_assume(i1) -> void), 6);
 
     if ccx.sess().opts.debuginfo != NoDebugInfo {
         ifn!("llvm.dbg.declare", fn(Type::metadata(ccx), Type::metadata(ccx)) -> void);
