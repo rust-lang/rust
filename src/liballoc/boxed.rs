@@ -81,7 +81,7 @@ use core::raw::{TraitObject};
 #[lang = "exchange_heap"]
 #[unstable(feature = "alloc",
            reason = "may be renamed; uncertain about custom allocator design")]
-pub static HEAP: () = ();
+pub const HEAP: () = ();
 
 /// A pointer type for heap allocation.
 ///

@@ -55,7 +55,7 @@ use visit_ast;
 
 /// A stable identifier to the particular version of JSON output.
 /// Increment this when the `Crate` and related structures change.
-pub static SCHEMA_VERSION: &'static str = "0.8.3";
+pub const SCHEMA_VERSION: &'static str = "0.8.3";
 
 mod inline;
 mod simplify;

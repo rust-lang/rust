@@ -125,8 +125,8 @@ fn match_words <'a,'b>(a: &'a BitVec, b: &'b BitVec) -> (MatchWords<'a>, MatchWo
     }
 }
 
-static TRUE: bool = true;
-static FALSE: bool = false;
+const TRUE: &'static bool = &true;
+const FALSE: &'static bool = &false;
 
 /// The bitvector type.
 ///
@@ -172,9 +172,9 @@ impl Index<usize> for BitVec {
     #[inline]
     fn index(&self, i: usize) -> &bool {
         if self.get(i).expect("index out of bounds") {
-            &TRUE
+            TRUE
         } else {
-            &FALSE
+            FALSE
         }
     }
 }
