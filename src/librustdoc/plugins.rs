@@ -90,7 +90,7 @@ fn libname(mut n: String) -> String {
 
 #[cfg(all(not(target_os="windows"), not(target_os="macos")))]
 fn libname(n: String) -> String {
-    let mut i = String::from_str("lib");
+    let mut i = String::from("lib");
     i.push_str(&n);
     i.push_str(".so");
     i

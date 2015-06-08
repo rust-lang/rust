@@ -37,11 +37,11 @@ fn test_unsized_to_string() {
 fn test_from_utf8() {
     let xs = b"hello".to_vec();
     assert_eq!(String::from_utf8(xs).unwrap(),
-               String::from_str("hello"));
+               String::from("hello"));
 
     let xs = "ศไทย中华Việt Nam".as_bytes().to_vec();
     assert_eq!(String::from_utf8(xs).unwrap(),
-               String::from_str("ศไทย中华Việt Nam"));
+               String::from("ศไทย中华Việt Nam"));
 
     let xs = b"hello\xFF".to_vec();
     let err = String::from_utf8(xs).err().unwrap();
@@ -60,44 +60,44 @@ fn test_from_utf8_lossy() {
 
     let xs = b"Hello\xC2 There\xFF Goodbye";
     assert_eq!(String::from_utf8_lossy(xs),
-               String::from_str("Hello\u{FFFD} There\u{FFFD} Goodbye").into_cow());
+               String::from("Hello\u{FFFD} There\u{FFFD} Goodbye").into_cow());
 
     let xs = b"Hello\xC0\x80 There\xE6\x83 Goodbye";
     assert_eq!(String::from_utf8_lossy(xs),
-               String::from_str("Hello\u{FFFD}\u{FFFD} There\u{FFFD} Goodbye").into_cow());
+               String::from("Hello\u{FFFD}\u{FFFD} There\u{FFFD} Goodbye").into_cow());
 
     let xs = b"\xF5foo\xF5\x80bar";
     assert_eq!(String::from_utf8_lossy(xs),
-               String::from_str("\u{FFFD}foo\u{FFFD}\u{FFFD}bar").into_cow());
+               String::from("\u{FFFD}foo\u{FFFD}\u{FFFD}bar").into_cow());
 
     let xs = b"\xF1foo\xF1\x80bar\xF1\x80\x80baz";
     assert_eq!(String::from_utf8_lossy(xs),
-               String::from_str("\u{FFFD}foo\u{FFFD}bar\u{FFFD}baz").into_cow());
+               String::from("\u{FFFD}foo\u{FFFD}bar\u{FFFD}baz").into_cow());
 
     let xs = b"\xF4foo\xF4\x80bar\xF4\xBFbaz";
     assert_eq!(String::from_utf8_lossy(xs),
-               String::from_str("\u{FFFD}foo\u{FFFD}bar\u{FFFD}\u{FFFD}baz").into_cow());
+               String::from("\u{FFFD}foo\u{FFFD}bar\u{FFFD}\u{FFFD}baz").into_cow());
 
     let xs = b"\xF0\x80\x80\x80foo\xF0\x90\x80\x80bar";
-    assert_eq!(String::from_utf8_lossy(xs), String::from_str("\u{FFFD}\u{FFFD}\u{FFFD}\u{FFFD}\
+    assert_eq!(String::from_utf8_lossy(xs), String::from("\u{FFFD}\u{FFFD}\u{FFFD}\u{FFFD}\
                                            foo\u{10000}bar").into_cow());
 
     // surrogates
     let xs = b"\xED\xA0\x80foo\xED\xBF\xBFbar";
-    assert_eq!(String::from_utf8_lossy(xs), String::from_str("\u{FFFD}\u{FFFD}\u{FFFD}foo\
+    assert_eq!(String::from_utf8_lossy(xs), String::from("\u{FFFD}\u{FFFD}\u{FFFD}foo\
                                            \u{FFFD}\u{FFFD}\u{FFFD}bar").into_cow());
 }
 
 #[test]
 fn test_from_utf16() {
     let pairs =
-        [(String::from_str("𐍅𐌿𐌻𐍆𐌹𐌻𐌰\n"),
+        [(String::from("𐍅𐌿𐌻𐍆𐌹𐌻𐌰\n"),
           vec![0xd800, 0xdf45, 0xd800, 0xdf3f,
             0xd800, 0xdf3b, 0xd800, 0xdf46,
             0xd800, 0xdf39, 0xd800, 0xdf3b,
             0xd800, 0xdf30, 0x000a]),
 
-         (String::from_str("𐐒𐑉𐐮𐑀𐐲𐑋 𐐏𐐲𐑍\n"),
+         (String::from("𐐒𐑉𐐮𐑀𐐲𐑋 𐐏𐐲𐑍\n"),
           vec![0xd801, 0xdc12, 0xd801,
             0xdc49, 0xd801, 0xdc2e, 0xd801,
             0xdc40, 0xd801, 0xdc32, 0xd801,
@@ -105,7 +105,7 @@ fn test_from_utf16() {
             0xd801, 0xdc32, 0xd801, 0xdc4d,
             0x000a]),
 
-         (String::from_str("𐌀𐌖𐌋𐌄𐌑𐌉·𐌌𐌄𐌕𐌄𐌋𐌉𐌑\n"),
+         (String::from("𐌀𐌖𐌋𐌄𐌑𐌉·𐌌𐌄𐌕𐌄𐌋𐌉𐌑\n"),
           vec![0xd800, 0xdf00, 0xd800, 0xdf16,
             0xd800, 0xdf0b, 0xd800, 0xdf04,
             0xd800, 0xdf11, 0xd800, 0xdf09,
@@ -114,7 +114,7 @@ fn test_from_utf16() {
             0xdf04, 0xd800, 0xdf0b, 0xd800,
             0xdf09, 0xd800, 0xdf11, 0x000a ]),
 
-         (String::from_str("𐒋𐒘𐒈𐒑𐒛𐒒 𐒕𐒓 𐒈𐒚𐒍 𐒏𐒜𐒒𐒖𐒆 𐒕𐒆\n"),
+         (String::from("𐒋𐒘𐒈𐒑𐒛𐒒 𐒕𐒓 𐒈𐒚𐒍 𐒏𐒜𐒒𐒖𐒆 𐒕𐒆\n"),
           vec![0xd801, 0xdc8b, 0xd801, 0xdc98,
             0xd801, 0xdc88, 0xd801, 0xdc91,
             0xd801, 0xdc9b, 0xd801, 0xdc92,
@@ -127,7 +127,7 @@ fn test_from_utf16() {
             0xd801, 0xdc95, 0xd801, 0xdc86,
             0x000a ]),
          // Issue #12318, even-numbered non-BMP planes
-         (String::from_str("\u{20000}"),
+         (String::from("\u{20000}"),
           vec![0xD840, 0xDC00])];
 
     for p in &pairs {
@@ -165,22 +165,22 @@ fn test_utf16_invalid() {
 fn test_from_utf16_lossy() {
     // completely positive cases tested above.
     // lead + eof
-    assert_eq!(String::from_utf16_lossy(&[0xD800]), String::from_str("\u{FFFD}"));
+    assert_eq!(String::from_utf16_lossy(&[0xD800]), String::from("\u{FFFD}"));
     // lead + lead
     assert_eq!(String::from_utf16_lossy(&[0xD800, 0xD800]),
-               String::from_str("\u{FFFD}\u{FFFD}"));
+               String::from("\u{FFFD}\u{FFFD}"));
 
     // isolated trail
-    assert_eq!(String::from_utf16_lossy(&[0x0061, 0xDC00]), String::from_str("a\u{FFFD}"));
+    assert_eq!(String::from_utf16_lossy(&[0x0061, 0xDC00]), String::from("a\u{FFFD}"));
 
     // general
     assert_eq!(String::from_utf16_lossy(&[0xD800, 0xd801, 0xdc8b, 0xD800]),
-               String::from_str("\u{FFFD}𐒋\u{FFFD}"));
+               String::from("\u{FFFD}𐒋\u{FFFD}"));
 }
 
 #[test]
 fn test_push_bytes() {
-    let mut s = String::from_str("ABC");
+    let mut s = String::from("ABC");
     unsafe {
         let mv = s.as_mut_vec();
         mv.push_all(&[b'D']);
@@ -201,7 +201,7 @@ fn test_push_str() {
 
 #[test]
 fn test_push() {
-    let mut data = String::from_str("ประเทศไทย中");
+    let mut data = String::from("ประเทศไทย中");
     data.push('华');
     data.push('b'); // 1 byte
     data.push('¢'); // 2 byte
@@ -212,7 +212,7 @@ fn test_push() {
 
 #[test]
 fn test_pop() {
-    let mut data = String::from_str("ประเทศไทย中华b¢€𤭢");
+    let mut data = String::from("ประเทศไทย中华b¢€𤭢");
     assert_eq!(data.pop().unwrap(), '𤭢'); // 4 bytes
     assert_eq!(data.pop().unwrap(), '€'); // 3 bytes
     assert_eq!(data.pop().unwrap(), '¢'); // 2 bytes
@@ -223,7 +223,7 @@ fn test_pop() {
 
 #[test]
 fn test_str_truncate() {
-    let mut s = String::from_str("12345");
+    let mut s = String::from("12345");
     s.truncate(5);
     assert_eq!(s, "12345");
     s.truncate(3);
@@ -231,7 +231,7 @@ fn test_str_truncate() {
     s.truncate(0);
     assert_eq!(s, "");
 
-    let mut s = String::from_str("12345");
+    let mut s = String::from("12345");
     let p = s.as_ptr();
     s.truncate(3);
     s.push_str("6");
@@ -242,20 +242,20 @@ fn test_str_truncate() {
 #[test]
 #[should_panic]
 fn test_str_truncate_invalid_len() {
-    let mut s = String::from_str("12345");
+    let mut s = String::from("12345");
     s.truncate(6);
 }
 
 #[test]
 #[should_panic]
 fn test_str_truncate_split_codepoint() {
-    let mut s = String::from_str("\u{FC}"); // ü
+    let mut s = String::from("\u{FC}"); // ü
     s.truncate(1);
 }
 
 #[test]
 fn test_str_clear() {
-    let mut s = String::from_str("12345");
+    let mut s = String::from("12345");
     s.clear();
     assert_eq!(s.len(), 0);
     assert_eq!(s, "");
@@ -263,7 +263,7 @@ fn test_str_clear() {
 
 #[test]
 fn test_str_add() {
-    let a = String::from_str("12345");
+    let a = String::from("12345");
     let b = a + "2";
     let b = b + "2";
     assert_eq!(b.len(), 7);
@@ -481,7 +481,7 @@ fn bench_from_str(b: &mut Bencher) {
     let s = "Hello there, the quick brown fox jumped over the lazy dog! \
              Lorem ipsum dolor sit amet, consectetur. ";
     b.iter(|| {
-        String::from_str(s)
+        String::from(s)
     })
 }
 

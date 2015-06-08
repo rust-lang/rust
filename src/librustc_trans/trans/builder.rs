@@ -71,7 +71,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // Pass 2: concat strings for each elt, skipping
                 // forwards over any cycles by advancing to rightmost
                 // occurrence of each element in path.
-                let mut s = String::from_str(".");
+                let mut s = String::from(".");
                 i = 0;
                 while i < len {
                     i = mm[v[i]];

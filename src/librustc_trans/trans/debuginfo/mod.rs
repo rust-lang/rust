@@ -331,7 +331,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
     // Get_template_parameters() will append a `<...>` clause to the function
     // name if necessary.
-    let mut function_name = String::from_str(&token::get_name(name));
+    let mut function_name = String::from(&*token::get_name(name));
     let template_parameters = get_template_parameters(cx,
                                                       generics,
                                                       param_substs,

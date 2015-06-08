@@ -19,7 +19,7 @@ pub fn main() {
     assert_eq!(s, "⨐⨁⪠");
 
     let s = "\\{20}";
-    let mut correct_s = String::from_str("\\");
+    let mut correct_s = String::from("\\");
     correct_s.push_str("{20}");
     assert_eq!(s, correct_s);
 }

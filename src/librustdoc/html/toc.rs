@@ -145,7 +145,7 @@ impl TocBuilder {
                     (0, &self.top_level)
                 }
                 Some(entry) => {
-                    sec_number = String::from_str(&entry.sec_number);
+                    sec_number = entry.sec_number.clone();
                     sec_number.push_str(".");
                     (entry.level, &entry.children)
                 }

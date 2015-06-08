@@ -178,7 +178,7 @@ impl<'a> FmtStrs<'a> {
         });
 
         let pairs = fields.iter().zip(values);
-        let strs = pairs.map(|(f, v)| format!(",{},\"{}\"", f, escape(String::from_str(v))));
+        let strs = pairs.map(|(f, v)| format!(",{},\"{}\"", f, escape(String::from(v))));
         Some(strs.fold(String::new(), |mut s, ss| {
             s.push_str(&ss[..]);
             s
@@ -207,7 +207,7 @@ impl<'a> FmtStrs<'a> {
             None => return,
         };
 
-        let mut result = String::from_str(label);
+        let mut result = String::from(label);
         result.push_str(&values_str[..]);
         result.push_str("\n");
         self.recorder.record(&result[..]);
@@ -269,7 +269,7 @@ impl<'a> FmtStrs<'a> {
         // the local case they can be overridden in one block and there is no nice way
         // to refer to such a scope in english, so we just hack it by appending the
         // variable def's node id
-        let mut qualname = String::from_str(name);
+        let mut qualname = String::from(name);
         qualname.push_str("$");
         qualname.push_str(&id.to_string());
         self.check_and_record(Variable,
@@ -286,7 +286,7 @@ impl<'a> FmtStrs<'a> {
                       fn_name: &str,
                       name: &str,
                       typ: &str) {
-        let mut qualname = String::from_str(fn_name);
+        let mut qualname = String::from(fn_name);
         qualname.push_str("::");
         qualname.push_str(name);
         self.check_and_record(Variable,
