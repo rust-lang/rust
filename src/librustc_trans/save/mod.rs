@@ -47,6 +47,7 @@ pub struct CrateData {
 
 /// Data for any entity in the Rust language. The actual data contained varied
 /// with the kind of entity being queried. See the nested structs for details.
+#[derive(Debug)]
 pub enum Data {
     /// Data for all kinds of functions and methods.
     FunctionData(FunctionData),
@@ -67,6 +68,7 @@ pub enum Data {
 }
 
 /// Data for all kinds of functions and methods.
+#[derive(Debug)]
 pub struct FunctionData {
     pub id: NodeId,
     pub name: String,
@@ -77,6 +79,7 @@ pub struct FunctionData {
 }
 
 /// Data for local and global variables (consts and statics).
+#[derive(Debug)]
 pub struct VariableData {
     pub id: NodeId,
     pub name: String,
@@ -88,6 +91,7 @@ pub struct VariableData {
 }
 
 /// Data for modules.
+#[derive(Debug)]
 pub struct ModData {
     pub id: NodeId,
     pub name: String,
@@ -98,6 +102,7 @@ pub struct ModData {
 }
 
 /// Data for enum declarations.
+#[derive(Debug)]
 pub struct EnumData {
     pub id: NodeId,
     pub value: String,
@@ -106,6 +111,7 @@ pub struct EnumData {
     pub scope: NodeId,
 }
 
+#[derive(Debug)]
 pub struct ImplData {
     pub id: NodeId,
     pub span: Span,
@@ -119,6 +125,7 @@ pub struct ImplData {
 
 /// Data for the use of some item (e.g., the use of a local variable, which
 /// will refere to that variables declaration (by ref_id)).
+#[derive(Debug)]
 pub struct VariableRefData {
     pub name: String,
     pub span: Span,
@@ -127,6 +134,7 @@ pub struct VariableRefData {
 }
 
 /// Data for a reference to a type or trait.
+#[derive(Debug)]
 pub struct TypeRefData {
     pub span: Span,
     pub scope: NodeId,
