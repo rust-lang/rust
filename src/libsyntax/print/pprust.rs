@@ -1969,7 +1969,7 @@ impl<'a> State<'a> {
 
                 try!(self.pclose());
             }
-            ast::ExprMac(ref m) => try!(self.print_mac(m, token::Paren)),
+            ast::ExprMac(ref m, delim) => try!(self.print_mac(m, delim)),
             ast::ExprParen(ref e) => {
                 try!(self.popen());
                 try!(self.print_expr(&**e));

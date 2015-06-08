@@ -414,7 +414,7 @@ fn walk_expr(cx: &CrateContext,
                                           Found unexpanded for loop.");
         }
 
-        ast::ExprMac(_) => {
+        ast::ExprMac(..) => {
             cx.sess().span_bug(exp.span, "debuginfo::create_scope_map() - \
                                           Found unexpanded macro.");
         }

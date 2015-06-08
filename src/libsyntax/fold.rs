@@ -1321,7 +1321,7 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span}: Expr, folder: &mut T) ->
                 dialect: dialect,
                 expn_id: expn_id,
             }),
-            ExprMac(mac) => ExprMac(folder.fold_mac(mac)),
+            ExprMac(mac, delim) => ExprMac(folder.fold_mac(mac), delim),
             ExprStruct(path, fields, maybe_expr) => {
                 ExprStruct(folder.fold_path(path),
                         fields.move_map(|x| folder.fold_field(x)),

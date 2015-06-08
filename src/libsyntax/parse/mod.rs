@@ -1078,7 +1078,7 @@ mod tests {
             "foo!( fn main() { body } )".to_string(), vec![], &sess);
 
         let tts = match expr.node {
-            ast::ExprMac(ref mac) => {
+            ast::ExprMac(ref mac, _) => {
                 let ast::MacInvocTT(_, ref tts, _) = mac.node;
                 tts.clone()
             }
