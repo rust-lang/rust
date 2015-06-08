@@ -30,18 +30,7 @@ pub enum SeparatorTactic {
     Vertical,
 }
 
-// TODO could use a macro for all these Decodable impls.
-impl Decodable for SeparatorTactic {
-    fn decode<D: Decoder>(d: &mut D) -> Result<Self, D::Error> {
-        let s = try!(d.read_str());
-        match &*s {
-            "Always" => Ok(SeparatorTactic::Always),
-            "Never" => Ok(SeparatorTactic::Never),
-            "Vertical" => Ok(SeparatorTactic::Vertical),
-            _ => Err(d.error("Bad variant")),
-        }
-    }
-}
+impl_enum_decodable!(SeparatorTactic, Always, Never, Vertical);
 
 // TODO having some helpful ctors for ListFormatting would be nice.
 pub struct ListFormatting<'a> {
