@@ -288,3 +288,10 @@ impl<E:CLike> Extend<E> for EnumSet<E> {
         }
     }
 }
+
+#[stable(feature = "extend_ref", since = "1.2.0")]
+impl<'a, E: 'a + CLike + Copy> Extend<&'a E> for EnumSet<E> {
+    fn extend<I: IntoIterator<Item=&'a E>>(&mut self, iter: I) {
+        self.extend(iter.into_iter().cloned());
+    }
+}

@@ -321,6 +321,25 @@ fn test_show() {
     assert_eq!(format!("{:?}", list), "[\"just\", \"one\", \"test\", \"more\"]");
 }
 
+#[test]
+fn test_extend_ref() {
+    let mut a = LinkedList::new();
+    a.push_back(1);
+
+    a.extend(&[2, 3, 4]);
+
+    assert_eq!(a.len(), 4);
+    assert_eq!(a, list_from(&[1, 2, 3, 4]));
+
+    let mut b = LinkedList::new();
+    b.push_back(5);
+    b.push_back(6);
+    a.extend(&b);
+
+    assert_eq!(a.len(), 6);
+    assert_eq!(a, list_from(&[1, 2, 3, 4, 5, 6]));
+}
+
 #[bench]
 fn bench_collect_into(b: &mut test::Bencher) {
     let v = &[0; 64];

@@ -217,3 +217,28 @@ fn test_drain() {
 
     assert!(q.is_empty());
 }
+
+#[test]
+fn test_extend_ref() {
+    let mut a = BinaryHeap::new();
+    a.push(1);
+    a.push(2);
+
+    a.extend(&[3, 4, 5]);
+
+    assert_eq!(a.len(), 5);
+    assert_eq!(a.into_sorted_vec(), [1, 2, 3, 4, 5]);
+
+    let mut a = BinaryHeap::new();
+    a.push(1);
+    a.push(2);
+    let mut b = BinaryHeap::new();
+    b.push(3);
+    b.push(4);
+    b.push(5);
+
+    a.extend(&b);
+
+    assert_eq!(a.len(), 5);
+    assert_eq!(a.into_sorted_vec(), [1, 2, 3, 4, 5]);
+}

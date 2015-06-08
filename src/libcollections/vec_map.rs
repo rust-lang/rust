@@ -828,6 +828,13 @@ impl<V> Extend<(usize, V)> for VecMap<V> {
     }
 }
 
+#[stable(feature = "extend_ref", since = "1.2.0")]
+impl<'a, V: Copy> Extend<(usize, &'a V)> for VecMap<V> {
+    fn extend<I: IntoIterator<Item=(usize, &'a V)>>(&mut self, iter: I) {
+        self.extend(iter.into_iter().map(|(key, &value)| (key, value)));
+    }
+}
+
 impl<V> Index<usize> for VecMap<V> {
     type Output = V;
 

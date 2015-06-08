@@ -509,6 +509,13 @@ impl<T: Ord> Extend<T> for BTreeSet<T> {
     }
 }
 
+#[stable(feature = "extend_ref", since = "1.2.0")]
+impl<'a, T: 'a + Ord + Copy> Extend<&'a T> for BTreeSet<T> {
+    fn extend<I: IntoIterator<Item=&'a T>>(&mut self, iter: I) {
+        self.extend(iter.into_iter().cloned());
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Ord> Default for BTreeSet<T> {
     #[stable(feature = "rust1", since = "1.0.0")]

@@ -184,3 +184,31 @@ fn test_show() {
     assert_eq!(set_str, "{1, 2}");
     assert_eq!(format!("{:?}", empty), "{}");
 }
+
+#[test]
+fn test_extend_ref() {
+    let mut a = BTreeSet::new();
+    a.insert(1);
+
+    a.extend(&[2, 3, 4]);
+
+    assert_eq!(a.len(), 4);
+    assert!(a.contains(&1));
+    assert!(a.contains(&2));
+    assert!(a.contains(&3));
+    assert!(a.contains(&4));
+
+    let mut b = BTreeSet::new();
+    b.insert(5);
+    b.insert(6);
+
+    a.extend(&b);
+
+    assert_eq!(a.len(), 6);
+    assert!(a.contains(&1));
+    assert!(a.contains(&2));
+    assert!(a.contains(&3));
+    assert!(a.contains(&4));
+    assert!(a.contains(&5));
+    assert!(a.contains(&6));
+}
