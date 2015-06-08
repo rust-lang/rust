@@ -221,6 +221,7 @@ pub fn get_const_expr_as_global<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                           qualif: check_const::ConstQualif,
                                           param_substs: &'tcx Substs<'tcx>)
                                           -> ValueRef {
+    debug!("get_const_expr_as_global: {:?}", expr.id);
     // Special-case constants to cache a common global for all uses.
     match expr.node {
         ast::ExprPath(..) => {
@@ -228,6 +229,8 @@ pub fn get_const_expr_as_global<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             match def {
                 def::DefConst(def_id) | def::DefAssociatedConst(def_id, _) => {
                     if !ccx.tcx().adjustments.borrow().contains_key(&expr.id) {
+                        debug!("get_const_expr_as_global ({:?}): found const {:?}",
+                               expr.id, def_id);
                         return get_const_val(ccx, def_id, expr);
                     }
                 }
@@ -911,7 +914,9 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
           }
           ast::ExprClosure(_, ref decl, ref body) => {
             closure::trans_closure_expr(closure::Dest::Ignore(cx),
-                                        &**decl, &**body, e.id,
+                                        decl,
+                                        body,
+                                        e.id,
                                         param_substs);
             C_null(type_of::type_of(cx, ety))
           }

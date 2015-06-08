@@ -118,6 +118,7 @@ pub fn trans_method_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     match origin {
         ty::MethodStatic(did) |
         ty::MethodStaticClosure(did) => {
+            debug!("trans_method_callee: static, {:?}", did);
             Callee {
                 bcx: bcx,
                 data: Fn(callee::trans_fn_ref(bcx.ccx(),
@@ -134,9 +135,11 @@ pub fn trans_method_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         }) => {
             let trait_ref = ty::Binder(bcx.monomorphize(trait_ref));
             let span = bcx.tcx().map.span(method_call.expr_id);
-            debug!("method_call={:?} trait_ref={}",
+            debug!("method_call={:?} trait_ref={} trait_ref id={:?} substs={:?}",
                    method_call,
-                   trait_ref.repr(bcx.tcx()));
+                   trait_ref.repr(bcx.tcx()),
+                   trait_ref.0.def_id,
+                   trait_ref.0.substs);
             let origin = fulfill_obligation(bcx.ccx(),
                                             span,
                                             trait_ref.clone());

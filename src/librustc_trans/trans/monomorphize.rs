@@ -60,6 +60,8 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     };
 
     let item_ty = ty::lookup_item_type(ccx.tcx(), fn_id).ty;
+
+    debug!("monomorphic_fn about to subst into {}", item_ty.repr(ccx.tcx()));
     let mono_ty = item_ty.subst(ccx.tcx(), psubsts);
 
     match ccx.monomorphized().borrow().get(&hash_id) {
@@ -96,8 +98,6 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             return (get_item_val(ccx, fn_id.node), mono_ty, true);
         }
     }
-
-    debug!("monomorphic_fn about to subst into {}", item_ty.repr(ccx.tcx()));
 
     debug!("mono_ty = {} (post-substitution)", mono_ty.repr(ccx.tcx()));
 

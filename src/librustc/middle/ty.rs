@@ -814,6 +814,7 @@ bitflags! {
         const HAS_REGIONS       = 1 << 5,
         const HAS_TY_ERR        = 1 << 6,
         const HAS_PROJECTION    = 1 << 7,
+        const HAS_TY_CLOSURE    = 1 << 8,
         const NEEDS_SUBST       = TypeFlags::HAS_PARAMS.bits |
                                   TypeFlags::HAS_SELF.bits |
                                   TypeFlags::HAS_REGIONS.bits,
@@ -984,6 +985,9 @@ pub fn type_needs_infer(ty: Ty) -> bool {
 }
 pub fn type_has_projection(ty: Ty) -> bool {
     ty.flags.get().intersects(TypeFlags::HAS_PROJECTION)
+}
+pub fn type_has_ty_closure(ty: Ty) -> bool {
+    ty.flags.get().intersects(TypeFlags::HAS_TY_CLOSURE)
 }
 
 pub fn type_has_late_bound_regions(ty: Ty) -> bool {
@@ -2960,6 +2964,7 @@ impl FlagComputation {
             }
 
             &ty_closure(_, substs) => {
+                self.add_flags(TypeFlags::HAS_TY_CLOSURE);
                 self.add_substs(substs);
             }
 
