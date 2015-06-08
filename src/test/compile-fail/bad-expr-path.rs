@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: unresolved name `m1::a`. Did you mean `args`?
+// error-pattern: unresolved name `m1::arguments`. Did you mean `arguments`?
 
 mod m1 {}
 
-fn main(args: Vec<String>) { log(debug, m1::a); }
+fn main(arguments: Vec<String>) { log(debug, m1::arguments); }
