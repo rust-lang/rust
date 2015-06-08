@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,12 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: unresolved name `m1::arguments`. Did you mean `arguments`?
+fn main() {
+    let foo = 1;
 
-mod m1 {
-    pub mod arguments {}
-}
+    // `foo` shouldn't be suggested, it is too dissimilar from `bar`.
+    println!("Hello {}", bar);
+    //~^ ERROR: unresolved name `bar`
 
-fn main(arguments: Vec<String>) {
-    log(debug, m1::arguments);
+    // But this is close enough.
+    println!("Hello {}", fob);
+    //~^ ERROR: unresolved name `fob`. Did you mean `foo`?
 }
