@@ -1,6 +1,7 @@
-% Universal Function Call Syntax
+% Associated Item Lookup Syntax
 
-Sometimes, functions can have the same names. Consider this code:
+Sometimes, the functions associated with traits can have the same names.
+Consider this code:
 
 ```rust
 trait Foo {
@@ -41,8 +42,8 @@ note: candidate #2 is defined in an impl of the trait `main::Bar` for the type
 
 ```
 
-We need a way to disambiguate which method we need. This feature is called
-‘universal function call syntax’, and it looks like this:
+We need a way to disambiguate which method we need. There is a syntax we can
+use, and it looks like this:
 
 ```rust
 # trait Foo {
@@ -86,7 +87,7 @@ not, and so we need to pass an explicit `&b`.
 
 # Angle-bracket Form
 
-The form of UFCS we just talked about:
+The form of function call syntax we just talked about:
 
 ```rust,ignore
 Trait::method(args);
@@ -125,3 +126,58 @@ impl Foo for Bar {
 ```
 
 This will call the `Clone` trait’s `clone()` method, rather than `Foo`’s.
+
+# Associated Item Lookup Syntax
+
+In addition to being used for function calls, the syntax discussed above can
+also be used to disambiguate lookups of associated types and constants. Consider
+the following code:
+
+```rust
+trait Foo {
+    type Quux;
+}
+
+trait Bar {
+    type Quux;
+}
+
+struct Baz;
+
+impl Foo for Baz {
+    type Quux = i32;
+}
+
+impl Bar for Baz {
+    type Quux = u32;
+}
+```
+
+Trying to use the type `Baz::Quux` would be ambiguous, since there are two
+possible types that match. To disambiguate, the `<Type as Trait>` syntax can be
+used:
+
+```rust
+# trait Foo {
+#     type Quux;
+# }
+
+# trait Bar {
+#     type Quux;
+# }
+#
+# struct Baz;
+#
+# impl Foo for Baz {
+#     type Quux = i32;
+# }
+#
+# impl Bar for Baz {
+#     type Quux = u32;
+# }
+let x: <Baz as Foo>::Quux = 5;
+```
+
+This syntax is sometimes called 'associated item lookup syntax', but you can
+just think of it as a way to disambiguate lookup of associated functions,
+types, and constants.

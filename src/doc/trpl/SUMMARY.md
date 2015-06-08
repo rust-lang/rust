@@ -44,7 +44,7 @@
     * [if let](if-let.md)
     * [Trait Objects](trait-objects.md)
     * [Closures](closures.md)
-    * [Universal Function Call Syntax](ufcs.md)
+    * [Associated Item Lookup Syntax](ails.md)
     * [Crates and Modules](crates-and-modules.md)
     * [`const` and `static`](const-and-static.md)
     * [Attributes](attributes.md)
