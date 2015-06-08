@@ -429,13 +429,14 @@ impl<'a> Context<'a> {
             let slot = candidates.entry(hash_str)
                                  .or_insert_with(|| (HashMap::new(), HashMap::new()));
             let (ref mut rlibs, ref mut dylibs) = *slot;
-            if rlib {
-                rlibs.insert(fs::canonicalize(path).unwrap(), kind);
-            } else {
-                dylibs.insert(fs::canonicalize(path).unwrap(), kind);
-            }
-
-            FileMatches
+            fs::canonicalize(path).map(|p| {
+                if rlib {
+                    rlibs.insert(p, kind);
+                } else {
+                    dylibs.insert(p, kind);
+                }
+                FileMatches
+            }).unwrap_or(FileDoesntMatch)
         });
         self.rejected_via_kind.extend(staticlibs.into_iter());
 
