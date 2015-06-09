@@ -51,14 +51,6 @@
 #include "llvm/IR/DIBuilder.h"
 #include "llvm/Linker/Linker.h"
 
-// Used by RustMCJITMemoryManager::getPointerToNamedFunction()
-// to get around glibc issues. See the function for more information.
-#ifdef __linux__
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <unistd.h>
-#endif
-
 void LLVMRustSetLastError(const char*);
 
 typedef struct OpaqueRustString *RustStringRef;
