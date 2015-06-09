@@ -19,7 +19,8 @@ impl Circle {
 
 [methodsyntax]: method-syntax.html
 
-Traits are similar, except that we define a trait with just the method
+[Traits](../reference.html#traits) are similar,
+except that we define a trait with just the method
 signature, then implement the trait for that struct. Like this:
 
 ```rust
