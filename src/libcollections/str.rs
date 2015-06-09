@@ -525,7 +525,7 @@ impl str {
         core_str::StrExt::as_bytes(&self[..])
     }
 
-    /// Returns an unsafe pointer to the `&str`'s buffer.
+    /// Returns a raw pointer to the `&str`'s buffer.
     ///
     /// The caller must ensure that the string outlives this pointer, and
     /// that it is not

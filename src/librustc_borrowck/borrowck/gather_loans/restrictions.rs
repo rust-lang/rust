@@ -145,7 +145,7 @@ impl<'a, 'tcx> RestrictionsContext<'a, 'tcx> {
                             }
                         }
                     }
-                    // Borrowck is not relevant for unsafe pointers
+                    // Borrowck is not relevant for raw pointers
                     mc::UnsafePtr(..) => Safe
                 }
             }

@@ -4215,7 +4215,7 @@ impl<'a> Parser<'a> {
                 };
                 if self.is_self_ident() {
                     let span = self.span;
-                    self.span_err(span, "cannot pass self by unsafe pointer");
+                    self.span_err(span, "cannot pass self by raw pointer");
                     try!(self.bump());
                 }
                 // error case, making bogus self ident:

@@ -341,8 +341,8 @@ impl<'tcx> CastCheck<'tcx> {
                 // Due to the limitations of LLVM global constants,
                 // region pointers end up pointing at copies of
                 // vector elements instead of the original values.
-                // To allow unsafe pointers to work correctly, we
-                // need to special-case obtaining an unsafe pointer
+                // To allow raw pointers to work correctly, we
+                // need to special-case obtaining a raw pointer
                 // from a region pointer to a vector.
 
                 // this will report a type mismatch if needed
