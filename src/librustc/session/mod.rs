@@ -43,7 +43,7 @@ pub struct Session {
     pub cstore: CStore,
     pub parse_sess: ParseSess,
     // For a library crate, this is always none
-    pub entry_fn: RefCell<Option<(NodeId, codemap::Span)>>,
+    pub entry_fn: RefCell<Option<(NodeId, token::InternedString, codemap::Span)>>,
     pub entry_type: Cell<Option<config::EntryFnType>>,
     pub plugin_registrar_fn: Cell<Option<ast::NodeId>>,
     pub default_sysroot: Option<PathBuf>,
