@@ -36,7 +36,7 @@ Note that since we're creating an executable, we used `main.rs`. If we
 want to make a library instead, we should use `lib.rs`. This convention is required
 for Cargo to successfully compile our projects, but it can be overridden if we wish. 
 Custom file locations for the entry point can be specified
-with a [`[[lib]]` or `[[bin]]`][crates-custom] key in the TOML file described below.
+with a [`[lib]` or `[[bin]]`][crates-custom] key in the TOML file.
 
 [crates-custom]: http://doc.crates.io/manifest.html#configuring-a-target
 
