@@ -63,6 +63,9 @@ pub fn get_target_strs(target_triple: String, target_os: abi::Os) -> target_strs
                 -v64:64:64-v128:64:128\
                 -a:0:64-n32".to_string()
           }
+          abi::OsNaCl => {
+              "e-p:32:32-f64:32:64-i64:32:64-f80:32:32-n8:16:32".to_string()
+          }
         },
 
         target_triple: target_triple,
