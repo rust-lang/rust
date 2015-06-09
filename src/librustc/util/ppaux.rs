@@ -9,6 +9,7 @@
 // except according to those terms.
 
 
+use ast_map;
 use middle::def;
 use middle::region;
 use middle::subst::{VecPerParamSpace,Subst};
@@ -31,7 +32,6 @@ use std::collections::hash_state::HashState;
 use std::hash::Hash;
 use std::rc::Rc;
 use syntax::abi;
-use syntax::ast_map;
 use syntax::codemap::{Span, Pos};
 use syntax::parse::token;
 use syntax::print::pprust;

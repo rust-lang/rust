@@ -11,6 +11,7 @@
 use rustc::session::Session;
 use rustc::session::config::{self, Input, OutputFilenames};
 use rustc::session::search_paths::PathKind;
+use rustc::ast_map;
 use rustc::lint;
 use rustc::metadata;
 use rustc::metadata::creader::CrateReader;
@@ -37,7 +38,6 @@ use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use syntax::ast;
-use syntax::ast_map;
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
 use syntax::diagnostics;

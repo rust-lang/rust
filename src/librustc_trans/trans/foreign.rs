@@ -13,6 +13,7 @@ use back::link;
 use llvm::{ValueRef, CallConv, get_param};
 use llvm;
 use middle::weak_lang_items;
+use rustc::ast_map;
 use trans::attributes;
 use trans::base::{llvm_linkage_by_name, push_ctxt};
 use trans::base;
@@ -37,7 +38,7 @@ use syntax::codemap::Span;
 use syntax::parse::token::{InternedString, special_idents};
 use syntax::parse::token;
 use syntax::ast;
-use syntax::{attr, ast_map};
+use syntax::attr;
 use syntax::print::pprust;
 use util::ppaux::Repr;
 

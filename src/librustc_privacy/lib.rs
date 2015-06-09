@@ -33,6 +33,7 @@ use self::FieldName::*;
 
 use std::mem::replace;
 
+use rustc::ast_map;
 use rustc::metadata::csearch;
 use rustc::middle::def;
 use rustc::middle::privacy::ImportUse::*;
@@ -46,7 +47,7 @@ use rustc::middle::ty::MethodTraitObject;
 use rustc::middle::ty::{self, Ty};
 use rustc::util::nodemap::{NodeMap, NodeSet};
 
-use syntax::{ast, ast_map};
+use syntax::ast;
 use syntax::ast_util::{is_local, local_def};
 use syntax::codemap::Span;
 use syntax::parse::token;

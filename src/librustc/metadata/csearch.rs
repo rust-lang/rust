@@ -10,6 +10,7 @@
 
 // Searching for information from the cstore
 
+use ast_map;
 use metadata::common::*;
 use metadata::cstore;
 use metadata::decoder;
@@ -20,7 +21,6 @@ use rbml;
 use rbml::reader;
 use std::rc::Rc;
 use syntax::ast;
-use syntax::ast_map;
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
 use syntax::diagnostic::expect;

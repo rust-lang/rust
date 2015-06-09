@@ -40,6 +40,7 @@ use middle::traits;
 use middle::ty::{self, HasProjectionTypes, Ty};
 use middle::ty_fold;
 use middle::ty_fold::{TypeFolder, TypeFoldable};
+use rustc::ast_map::{PathElem, PathName};
 use util::ppaux::Repr;
 use util::nodemap::{FnvHashMap, NodeMap};
 
@@ -50,7 +51,6 @@ use std::cell::{Cell, RefCell};
 use std::result::Result as StdResult;
 use std::vec::Vec;
 use syntax::ast;
-use syntax::ast_map::{PathElem, PathName};
 use syntax::codemap::{DUMMY_SP, Span};
 use syntax::parse::token::InternedString;
 use syntax::parse::token;
