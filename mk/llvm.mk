@@ -81,8 +81,12 @@ endif
 
 # LLVM linkage:
 LLVM_LINKAGE_PATH_$(1):=$$(abspath $$(RT_OUTPUT_DIR_$(1))/llvmdeps.rs)
+LLVM_FILTER_OUT_COMPONENTS_$(1):=lto
+ifeq (le32-unknown-nacl,$(1))
+LLVM_FILTER_OUT_COMPONENTS_$(1) += aarch64 mips powerpc
+endif
 $$(LLVM_LINKAGE_PATH_$(1)): $(S)src/etc/mklldeps.py $$(LLVM_CONFIG_$(1))
-	$(Q)$(CFG_PYTHON) "$$<" "$$@" "$$(LLVM_COMPONENTS)" "$$(CFG_ENABLE_LLVM_STATIC_STDCPP)" \
+	$(Q)$(CFG_PYTHON) "$$<" "$$@" "$$(filter-out $$(LLVM_FILTER_OUT_COMPONENTS_$(1)),$$(LLVM_COMPONENTS))" "$$(CFG_ENABLE_LLVM_STATIC_STDCPP)" \
 		$$(LLVM_CONFIG_$(1))
 endef
 
