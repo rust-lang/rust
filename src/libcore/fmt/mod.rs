@@ -33,7 +33,7 @@ pub use self::builders::{DebugStruct, DebugTuple, DebugSet, DebugList, DebugMap}
 mod num;
 mod builders;
 
-#[unstable(feature = "core", reason = "internal to format_args!")]
+#[unstable(feature = "fmt_internals", reason = "internal to format_args!")]
 #[doc(hidden)]
 pub mod rt {
     pub mod v1;
@@ -146,7 +146,7 @@ enum Void {}
 /// compile time it is ensured that the function and the value have the correct
 /// types, and then this struct is used to canonicalize arguments to one type.
 #[derive(Copy)]
-#[unstable(feature = "core", reason = "internal to format_args!")]
+#[unstable(feature = "fmt_internals", reason = "internal to format_args!")]
 #[doc(hidden)]
 pub struct ArgumentV1<'a> {
     value: &'a Void,
@@ -166,7 +166,7 @@ impl<'a> ArgumentV1<'a> {
     }
 
     #[doc(hidden)]
-    #[unstable(feature = "core", reason = "internal to format_args!")]
+    #[unstable(feature = "fmt_internals", reason = "internal to format_args!")]
     pub fn new<'b, T>(x: &'b T,
                       f: fn(&T, &mut Formatter) -> Result) -> ArgumentV1<'b> {
         unsafe {
@@ -178,7 +178,7 @@ impl<'a> ArgumentV1<'a> {
     }
 
     #[doc(hidden)]
-    #[unstable(feature = "core", reason = "internal to format_args!")]
+    #[unstable(feature = "fmt_internals", reason = "internal to format_args!")]
     pub fn from_usize(x: &usize) -> ArgumentV1 {
         ArgumentV1::new(x, ArgumentV1::show_usize)
     }
@@ -201,7 +201,7 @@ impl<'a> Arguments<'a> {
     /// When using the format_args!() macro, this function is used to generate the
     /// Arguments structure.
     #[doc(hidden)] #[inline]
-    #[unstable(feature = "core", reason = "internal to format_args!")]
+    #[unstable(feature = "fmt_internals", reason = "internal to format_args!")]
     pub fn new_v1(pieces: &'a [&'a str],
                   args: &'a [ArgumentV1<'a>]) -> Arguments<'a> {
         Arguments {
@@ -218,7 +218,7 @@ impl<'a> Arguments<'a> {
     /// created with `argumentusize`. However, failing to do so doesn't cause
     /// unsafety, but will ignore invalid .
     #[doc(hidden)] #[inline]
-    #[unstable(feature = "core", reason = "internal to format_args!")]
+    #[unstable(feature = "fmt_internals", reason = "internal to format_args!")]
     pub fn new_v1_formatted(pieces: &'a [&'a str],
                             args: &'a [ArgumentV1<'a>],
                             fmt: &'a [rt::v1::Argument]) -> Arguments<'a> {
@@ -742,19 +742,19 @@ impl<'a> Formatter<'a> {
     pub fn flags(&self) -> u32 { self.flags }
 
     /// Character used as 'fill' whenever there is alignment
-    #[unstable(feature = "core", reason = "method was just created")]
+    #[unstable(feature = "fmt_flags", reason = "method was just created")]
     pub fn fill(&self) -> char { self.fill }
 
     /// Flag indicating what form of alignment was requested
-    #[unstable(feature = "core", reason = "method was just created")]
+    #[unstable(feature = "fmt_flags", reason = "method was just created")]
     pub fn align(&self) -> Alignment { self.align }
 
     /// Optionally specified integer width that the output should be
-    #[unstable(feature = "core", reason = "method was just created")]
+    #[unstable(feature = "fmt_flags", reason = "method was just created")]
     pub fn width(&self) -> Option<usize> { self.width }
 
     /// Optionally specified precision for numeric types
-    #[unstable(feature = "core", reason = "method was just created")]
+    #[unstable(feature = "fmt_flags", reason = "method was just created")]
     pub fn precision(&self) -> Option<usize> { self.precision }
 
     /// Creates a `DebugStruct` builder designed to assist with creation of

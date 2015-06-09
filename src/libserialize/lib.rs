@@ -29,12 +29,13 @@ Core encoding and decoding interfaces.
 
 #![feature(box_syntax)]
 #![feature(collections)]
-#![feature(core)]
+#![feature(num_bits_bytes)]
+#![feature(num_wrapping)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
 #![feature(std_misc)]
-#![feature(unicode)]
 #![feature(str_char)]
+#![feature(unicode)]
 #![cfg_attr(test, feature(test))]
 
 // test harness access

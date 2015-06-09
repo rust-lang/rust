@@ -32,7 +32,9 @@
 
 #![feature(alloc)]
 #![feature(box_syntax)]
-#![feature(core)]
+#![feature(core_intrinsics)]
+#![feature(ptr_as_ref)]
+#![feature(raw)]
 #![feature(staged_api)]
 #![feature(unboxed_closures)]
 #![cfg_attr(test, feature(test))]

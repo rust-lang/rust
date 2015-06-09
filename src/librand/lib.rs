@@ -29,7 +29,11 @@
 #![unstable(feature = "rand",
             reason = "use `rand` from crates.io")]
 #![feature(core)]
+#![feature(core_float)]
+#![feature(core_prelude)]
+#![feature(core_slice_ext)]
 #![feature(no_std)]
+#![feature(num_bits_bytes)]
 #![feature(staged_api)]
 #![feature(step_by)]
 

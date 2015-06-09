@@ -32,9 +32,10 @@
 
 #![feature(box_patterns)]
 #![feature(box_syntax)]
-#![cfg_attr(stage0, feature(collections))]
-#![feature(core)]
+#![feature(collections)]
+#![feature(num_bits_bytes)]
 #![feature(quote)]
+#![feature(ref_slice)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
 #![feature(staged_api)]

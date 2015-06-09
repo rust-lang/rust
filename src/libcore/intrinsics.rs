@@ -39,7 +39,10 @@
 //!   guaranteed to happen in order. This is the standard mode for working
 //!   with atomic types and is equivalent to Java's `volatile`.
 
-#![unstable(feature = "core")]
+#![unstable(feature = "core_intrinsics",
+            reason = "intrinsics are unlikely to ever be stabilized, instead \
+                      they should be used through stabilized interfaces \
+                      in the rest of the standard library")]
 #![allow(missing_docs)]
 
 use marker::Sized;
@@ -141,10 +144,10 @@ extern "rust-intrinsic" {
 
     /// A compiler-only memory barrier.
     ///
-    /// Memory accesses will never be reordered across this barrier by the compiler,
-    /// but no instructions will be emitted for it. This is appropriate for operations
-    /// on the same thread that may be preempted, such as when interacting with signal
-    /// handlers.
+    /// Memory accesses will never be reordered across this barrier by the
+    /// compiler, but no instructions will be emitted for it. This is
+    /// appropriate for operations on the same thread that may be preempted,
+    /// such as when interacting with signal handlers.
     pub fn atomic_singlethreadfence();
     pub fn atomic_singlethreadfence_acq();
     pub fn atomic_singlethreadfence_rel();

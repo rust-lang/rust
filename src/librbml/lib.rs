@@ -123,9 +123,9 @@
        html_root_url = "http://doc.rust-lang.org/nightly/",
        html_playground_url = "http://play.rust-lang.org/")]
 
-#![feature(core)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
+#![feature(slice_bytes)]
 
 #![cfg_attr(test, feature(test))]
 
