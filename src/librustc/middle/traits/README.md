@@ -120,7 +120,7 @@ implement `Convert` like so:
 
 ```rust
 impl Convert<uint> for int { ... } // int -> uint
-impl Convert<int> for uint { ... } // uint -> uint
+impl Convert<int> for uint { ... } // uint -> int
 ```
 
 Now imagine there is some code like the following:
