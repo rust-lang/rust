@@ -470,6 +470,58 @@ const char * rust_current_exe() {
 
 #endif
 
+#ifdef __native_client__
+#undef __arm__
+#include <unwind.h>
+
+#define STUB \
+    static const char MSG1[] = "ABORT: ";     \
+    static const char MSG2[] = " called!";    \
+    write(2, MSG1, sizeof(MSG1) - 1);         \
+    write(2, __func__, sizeof(__func__) - 1); \
+    write(2, MSG2, sizeof(MSG2) - 1);         \
+    abort()
+
+void __pnacl_eh_sjlj_Unwind_DeleteException(struct _Unwind_Exception*);
+_Unwind_Reason_Code __pnacl_eh_sjlj_Unwind_RaiseException(struct _Unwind_Exception*);
+_Unwind_Reason_Code _Unwind_RaiseException(struct _Unwind_Exception *e) {
+    return __pnacl_eh_sjlj_Unwind_RaiseException(e);
+}
+void _Unwind_DeleteException(struct _Unwind_Exception *e) {
+    __pnacl_eh_sjlj_Unwind_DeleteException(e);
+}
+
+void _Unwind_PNaClSetResult0(struct _Unwind_Context *c, _Unwind_Word w) {
+    STUB;
+}
+void _Unwind_PNaClSetResult1(struct _Unwind_Context *c, _Unwind_Word w) {
+    STUB;
+}
+_Unwind_Ptr _Unwind_GetIP(struct _Unwind_Context *c) {
+    STUB;
+}
+void _Unwind_SetIP(struct _Unwind_Context *c, _Unwind_Ptr p) {
+    STUB;
+}
+void *_Unwind_GetLanguageSpecificData(struct _Unwind_Context *c) {
+    STUB;
+}
+_Unwind_Ptr _Unwind_GetRegionStart(struct _Unwind_Context *c) {
+    STUB;
+}
+_Unwind_Reason_Code _Unwind_Resume_or_Rethrow(struct _Unwind_Exception *e) {
+    STUB;
+}
+_Unwind_Ptr _Unwind_GetIPInfo(struct _Unwind_Context *c, int *i) {
+    STUB;
+}
+_Unwind_Ptr _Unwind_GetTextRelBase(struct _Unwind_Context *c) {
+    STUB;
+}
+_Unwind_Ptr _Unwind_GetDataRelBase(struct _Unwind_Context *c) {
+    STUB;
+}
+#endif
 #endif // !defined(_WIN32)
 
 //
