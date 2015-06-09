@@ -1041,7 +1041,7 @@ pub fn fulfill_obligation<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     // Currently, we use a fulfillment context to completely resolve
     // all nested obligations. This is because they can inform the
     // inference of the impl's type parameters.
-    let mut fulfill_cx = traits::FulfillmentContext::new();
+    let mut fulfill_cx = traits::FulfillmentContext::new(true);
     let vtable = selection.map(|predicate| {
         fulfill_cx.register_predicate_obligation(&infcx, predicate);
     });
@@ -1069,7 +1069,7 @@ pub fn normalize_and_test_predicates<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let infcx = infer::new_infer_ctxt(tcx);
     let typer = NormalizingClosureTyper::new(tcx);
     let mut selcx = traits::SelectionContext::new(&infcx, &typer);
-    let mut fulfill_cx = traits::FulfillmentContext::new();
+    let mut fulfill_cx = traits::FulfillmentContext::new(false);
     let cause = traits::ObligationCause::dummy();
     let traits::Normalized { value: predicates, obligations } =
         traits::normalize(&mut selcx, cause.clone(), &predicates);
