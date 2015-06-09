@@ -779,6 +779,33 @@ impl str {
         core_str::StrExt::slice_shift_char(&self[..])
     }
 
+    /// Divide one string slice into two at an index.
+    ///
+    /// The index `mid` is a byte offset from the start of the string
+    /// that must be on a character boundary.
+    ///
+    /// Return slices `&self[..mid]` and `&self[mid..]`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `mid` is beyond the last character of the string,
+    /// or if it is not on a character boundary.
+    ///
+    /// # Examples
+    /// ```
+    /// # #![feature(collections)]
+    /// let s = "Löwe 老虎 Léopard";
+    /// let first_space = s.find(' ').unwrap_or(s.len());
+    /// let (a, b) = s.split_at(first_space);
+    ///
+    /// assert_eq!(a, "Löwe");
+    /// assert_eq!(b, " 老虎 Léopard");
+    /// ```
+    #[inline]
+    pub fn split_at(&self, mid: usize) -> (&str, &str) {
+        core_str::StrExt::split_at(self, mid)
+    }
+
     /// An iterator over the codepoints of `self`.
     ///
     /// # Examples
