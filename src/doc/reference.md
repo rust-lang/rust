@@ -1038,7 +1038,7 @@ be undesired.
 
 * Deadlocks
 * Reading data from private fields (`std::repr`)
-* Leaks due to reference count cycles, even in the global heap
+* Leaks of memory and other resources
 * Exiting without calling destructors
 * Sending signals
 * Accessing/modifying the file system
@@ -1418,9 +1418,13 @@ impl<T> Container for Vec<T> {
 ```
 
 Generic functions may use traits as _bounds_ on their type parameters. This
-will have two effects: only types that have the trait may instantiate the
-parameter, and within the generic function, the methods of the trait can be
-called on values that have the parameter's type. For example:
+will have two effects:
+
+- Only types that have the trait may instantiate the parameter.
+- Within the generic function, the methods of the trait can be
+  called on values that have the parameter's type.
+
+For example:
 
 ```
 # type Surface = i32;
@@ -2831,13 +2835,13 @@ on the right-hand side.
 An example of an `as` expression:
 
 ```
-# fn sum(v: &[f64]) -> f64 { 0.0 }
-# fn len(v: &[f64]) -> i32 { 0 }
+# fn sum(values: &[f64]) -> f64 { 0.0 }
+# fn len(values: &[f64]) -> i32 { 0 }
 
-fn avg(v: &[f64]) -> f64 {
-  let sum: f64 = sum(v);
-  let sz: f64 = len(v) as f64;
-  return sum / sz;
+fn average(values: &[f64]) -> f64 {
+  let sum: f64 = sum(values);
+  let size: f64 = len(values) as f64;
+  sum / size
 }
 ```
 

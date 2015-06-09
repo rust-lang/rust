@@ -18,7 +18,7 @@ into a more explicit UFCS form:
 Here `ADJ` is some kind of adjustment, which is typically a series of
 autoderefs and then possibly an autoref (e.g., `&**receiver`). However
 we sometimes do other adjustments and coercions along the way, in
-particular unsizing (e.g., converting from `[T, ..n]` to `[T]`).
+particular unsizing (e.g., converting from `[T; n]` to `[T]`).
 
 ## The Two Phases
 

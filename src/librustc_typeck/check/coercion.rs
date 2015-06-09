@@ -234,8 +234,8 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
     }
 
 
-    // &[T, ..n] or &mut [T, ..n] -> &[T]
-    // or &mut [T, ..n] -> &mut [T]
+    // &[T; n] or &mut [T; n] -> &[T]
+    // or &mut [T; n] -> &mut [T]
     // or &Concrete -> &Trait, etc.
     fn coerce_unsized(&self,
                       source: Ty<'tcx>,

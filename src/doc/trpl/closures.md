@@ -33,8 +33,8 @@ let plus_two = |x| {
 assert_eq!(4, plus_two(2));
 ```
 
-You’ll notice a few things about closures that are a bit different than regular
-functions defined with `fn`. The first of which is that we did not need to
+You’ll notice a few things about closures that are a bit different from regular
+functions defined with `fn`. The first is that we did not need to
 annotate the types of arguments the closure takes or the values it returns. We
 can:
 
@@ -48,10 +48,10 @@ But we don’t have to. Why is this? Basically, it was chosen for ergonomic reas
 While specifying the full type for named functions is helpful with things like
 documentation and type inference, the types of closures are rarely documented
 since they’re anonymous, and they don’t cause the kinds of error-at-a-distance
-that inferring named function types can.
+problems that inferring named function types can.
 
 The second is that the syntax is similar, but a bit different. I’ve added spaces
-here to make them look a little closer:
+here for easier comparison:
 
 ```rust
 fn  plus_one_v1   (x: i32) -> i32 { x + 1 }
@@ -59,7 +59,7 @@ let plus_one_v2 = |x: i32| -> i32 { x + 1 };
 let plus_one_v3 = |x: i32|          x + 1  ;
 ```
 
-Small differences, but they’re similar in ways.
+Small differences, but they’re similar.
 
 # Closures and their environment
 
@@ -99,7 +99,7 @@ note: previous borrow ends here
 fn main() {
     let mut num = 5;
     let plus_num = |x| x + num;
-    
+
     let y = &mut num;
 }
 ^
@@ -161,7 +161,7 @@ of `num`. So what’s the difference?
 ```rust
 let mut num = 5;
 
-{ 
+{
     let mut add_num = |x: i32| num += x;
 
     add_num(5);
@@ -180,7 +180,7 @@ If we change to a `move` closure, it’s different:
 ```rust
 let mut num = 5;
 
-{ 
+{
     let mut add_num = move |x: i32| num += x;
 
     add_num(5);
