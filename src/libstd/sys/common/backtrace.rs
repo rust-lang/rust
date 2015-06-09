@@ -27,7 +27,7 @@ pub const HEX_WIDTH: usize = 10;
 // 2. For each element of the path, emit the length plus the element
 // 3. End the path with "E"
 //
-// For example, "_ZN4testE" => "test" and "_ZN3foo3bar" => "foo::bar".
+// For example, "_ZN4testE" => "test" and "_ZN3foo3barE" => "foo::bar".
 //
 // We're the ones printing our backtraces, so we can't rely on anything else to
 // demangle our symbols. It's *much* nicer to look at demangled symbols, so
