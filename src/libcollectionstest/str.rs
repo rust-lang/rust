@@ -1687,6 +1687,45 @@ fn trim_ws() {
                "");
 }
 
+#[test]
+fn to_lowercase() {
+    assert_eq!("".to_lowercase(), "");
+    assert_eq!("AÉǅaé ".to_lowercase(), "aéǆaé ");
+
+    // https://github.com/rust-lang/rust/issues/26035
+    assert_eq!("ΑΣ".to_lowercase(), "ας");
+    assert_eq!("Α'Σ".to_lowercase(), "α'ς");
+    assert_eq!("Α''Σ".to_lowercase(), "α''ς");
+
+    assert_eq!("ΑΣ Α".to_lowercase(), "ας α");
+    assert_eq!("Α'Σ Α".to_lowercase(), "α'ς α");
+    assert_eq!("Α''Σ Α".to_lowercase(), "α''ς α");
+
+    assert_eq!("ΑΣ' Α".to_lowercase(), "ας' α");
+    assert_eq!("ΑΣ'' Α".to_lowercase(), "ας'' α");
+
+    assert_eq!("Α'Σ' Α".to_lowercase(), "α'ς' α");
+    assert_eq!("Α''Σ'' Α".to_lowercase(), "α''ς'' α");
+
+    assert_eq!("Α Σ".to_lowercase(), "α σ");
+    assert_eq!("Α 'Σ".to_lowercase(), "α 'σ");
+    assert_eq!("Α ''Σ".to_lowercase(), "α ''σ");
+
+    assert_eq!("Σ".to_lowercase(), "σ");
+    assert_eq!("'Σ".to_lowercase(), "'σ");
+    assert_eq!("''Σ".to_lowercase(), "''σ");
+
+    assert_eq!("ΑΣΑ".to_lowercase(), "ασα");
+    assert_eq!("ΑΣ'Α".to_lowercase(), "ασ'α");
+    assert_eq!("ΑΣ''Α".to_lowercase(), "ασ''α");
+}
+
+#[test]
+fn to_uppercase() {
+    assert_eq!("".to_uppercase(), "");
+    assert_eq!("aéǅßﬁᾀ".to_uppercase(), "AÉǄSSFIἈΙ");
+}
+
 mod pattern {
     use std::str::pattern::Pattern;
     use std::str::pattern::{Searcher, ReverseSearcher};

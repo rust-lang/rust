@@ -1816,11 +1816,40 @@ impl str {
     /// let s = "HELLO";
     /// assert_eq!(s.to_lowercase(), "hello");
     /// ```
-    #[unstable(feature = "collections")]
+    #[stable(feature = "unicode_case_mapping", since = "1.2.0")]
     pub fn to_lowercase(&self) -> String {
         let mut s = String::with_capacity(self.len());
-        s.extend(self[..].chars().flat_map(|c| c.to_lowercase()));
+        for (i, c) in self[..].char_indices() {
+            if c == 'Σ' {
+                // Σ maps to σ, except at the end of a word where it maps to ς.
+                // This is the only conditional (contextual) but language-independent mapping
+                // in `SpecialCasing.txt`,
+                // so hard-code it rather than have a generic "condition" mechanim.
+                // See https://github.com/rust-lang/rust/issues/26035
+                map_uppercase_sigma(self, i, &mut s)
+            } else {
+                s.extend(c.to_lowercase());
+            }
+        }
         return s;
+
+        fn map_uppercase_sigma(from: &str, i: usize, to: &mut String) {
+            // See http://www.unicode.org/versions/Unicode7.0.0/ch03.pdf#G33992
+            // for the definition of `Final_Sigma`.
+            debug_assert!('Σ'.len_utf8() == 2);
+            let is_word_final =
+                case_ignoreable_then_cased(from[..i].chars().rev()) &&
+                !case_ignoreable_then_cased(from[i + 2..].chars());
+            to.push_str(if is_word_final { "ς" } else { "σ" });
+        }
+
+        fn case_ignoreable_then_cased<I: Iterator<Item=char>>(iter: I) -> bool {
+            use rustc_unicode::derived_property::{Cased, Case_Ignorable};
+            match iter.skip_while(|&c| Case_Ignorable(c)).next() {
+                Some(c) => Cased(c),
+                None => false,
+            }
+        }
     }
 
     /// Returns the uppercase equivalent of this string.
@@ -1833,7 +1862,7 @@ impl str {
     /// let s = "hello";
     /// assert_eq!(s.to_uppercase(), "HELLO");
     /// ```
-    #[unstable(feature = "collections")]
+    #[stable(feature = "unicode_case_mapping", since = "1.2.0")]
     pub fn to_uppercase(&self) -> String {
         let mut s = String::with_capacity(self.len());
         s.extend(self[..].chars().flat_map(|c| c.to_uppercase()));

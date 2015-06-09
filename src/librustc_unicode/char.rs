@@ -29,7 +29,7 @@
 #![doc(primitive = "char")]
 
 use core::char::CharExt as C;
-use core::option::Option::{self, Some};
+use core::option::Option::{self, Some, None};
 use core::iter::Iterator;
 use tables::{derived_property, property, general_category, conversions, charwidth};
 
@@ -47,24 +47,79 @@ pub use tables::UNICODE_VERSION;
 /// the [`to_lowercase` method](../primitive.char.html#method.to_lowercase) on
 /// characters.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct ToLowercase(Option<char>);
+pub struct ToLowercase(CaseMappingIter);
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Iterator for ToLowercase {
     type Item = char;
-    fn next(&mut self) -> Option<char> { self.0.take() }
+    fn next(&mut self) -> Option<char> { self.0.next() }
 }
 
 /// An iterator over the uppercase mapping of a given character, returned from
 /// the [`to_uppercase` method](../primitive.char.html#method.to_uppercase) on
 /// characters.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct ToUppercase(Option<char>);
+pub struct ToUppercase(CaseMappingIter);
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Iterator for ToUppercase {
     type Item = char;
-    fn next(&mut self) -> Option<char> { self.0.take() }
+    fn next(&mut self) -> Option<char> { self.0.next() }
+}
+
+/// An iterator over the titlecase mapping of a given character, returned from
+/// the [`to_titlecase` method](../primitive.char.html#method.to_titlecase) on
+/// characters.
+#[unstable(feature = "unicode", reason = "recently added")]
+pub struct ToTitlecase(CaseMappingIter);
+
+#[stable(feature = "unicode_case_mapping", since = "1.2.0")]
+impl Iterator for ToTitlecase {
+    type Item = char;
+    fn next(&mut self) -> Option<char> { self.0.next() }
+}
+
+
+enum CaseMappingIter {
+    Three(char, char, char),
+    Two(char, char),
+    One(char),
+    Zero
+}
+
+impl CaseMappingIter {
+    fn new(chars: [char; 3]) -> CaseMappingIter {
+        if chars[2] == '\0' {
+            if chars[1] == '\0' {
+                CaseMappingIter::One(chars[0])  // Including if chars[0] == '\0'
+            } else {
+                CaseMappingIter::Two(chars[0], chars[1])
+            }
+        } else {
+            CaseMappingIter::Three(chars[0], chars[1], chars[2])
+        }
+    }
+}
+
+impl Iterator for CaseMappingIter {
+    type Item = char;
+    fn next(&mut self) -> Option<char> {
+        match *self {
+            CaseMappingIter::Three(a, b, c) => {
+                *self = CaseMappingIter::Two(b, c);
+                Some(a)
+            }
+            CaseMappingIter::Two(b, c) => {
+                *self = CaseMappingIter::One(c);
+                Some(b)
+            }
+            CaseMappingIter::One(c) => {
+                *self = CaseMappingIter::Zero;
+                Some(c)
+            }
+            CaseMappingIter::Zero => None,
+        }
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -397,27 +452,48 @@ impl char {
 
     /// Converts a character to its lowercase equivalent.
     ///
-    /// The case-folding performed is the common or simple mapping. See
-    /// `to_uppercase()` for references and more information.
+    /// This performs complex unconditional mappings with no tailoring.
+    /// See `to_uppercase()` for references and more information.
     ///
     /// # Return value
     ///
     /// Returns an iterator which yields the characters corresponding to the
     /// lowercase equivalent of the character. If no conversion is possible then
-    /// the input character is returned.
+    /// an iterator with just the input character is returned.
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn to_lowercase(self) -> ToLowercase {
-        ToLowercase(Some(conversions::to_lower(self)))
+        ToLowercase(CaseMappingIter::new(conversions::to_lower(self)))
+    }
+
+    /// Converts a character to its titlecase equivalent.
+    ///
+    /// This performs complex unconditional mappings with no tailoring.
+    /// See `to_uppercase()` for references and more information.
+    ///
+    /// This differs from `to_uppercase()` since Unicode contains
+    /// digraphs and ligature characters.
+    /// For example, U+01F3 “ǳ” and U+FB01 “ﬁ”
+    /// map to U+01F1 “Ǳ” and U+0046 U+0069 “Fi”, respectively.
+    ///
+    /// # Return value
+    ///
+    /// Returns an iterator which yields the characters corresponding to the
+    /// lowercase equivalent of the character. If no conversion is possible then
+    /// an iterator with just the input character is returned.
+    #[unstable(feature = "unicode", reason = "recently added")]
+    #[inline]
+    pub fn to_titlecase(self) -> ToTitlecase {
+        ToTitlecase(CaseMappingIter::new(conversions::to_title(self)))
     }
 
     /// Converts a character to its uppercase equivalent.
     ///
-    /// The case-folding performed is the common or simple mapping: it maps
-    /// one Unicode codepoint to its uppercase equivalent according to the
-    /// Unicode database [1]. The additional [`SpecialCasing.txt`] is not yet
-    /// considered here, but the iterator returned will soon support this form
-    /// of case folding.
+    /// This performs complex unconditional mappings with no tailoring:
+    /// it maps one Unicode character to its uppercase equivalent
+    /// according to the Unicode database [1]
+    /// and the additional complex mappings [`SpecialCasing.txt`].
+    /// Conditional mappings (based on context or language) are not considerd here.
     ///
     /// A full reference can be found here [2].
     ///
@@ -425,17 +501,17 @@ impl char {
     ///
     /// Returns an iterator which yields the characters corresponding to the
     /// uppercase equivalent of the character. If no conversion is possible then
-    /// the input character is returned.
+    /// an iterator with just the input character is returned.
     ///
     /// [1]: ftp://ftp.unicode.org/Public/UNIDATA/UnicodeData.txt
     ///
     /// [`SpecialCasing.txt`]: ftp://ftp.unicode.org/Public/UNIDATA/SpecialCasing.txt
     ///
-    /// [2]: http://www.unicode.org/versions/Unicode4.0.0/ch03.pdf#G33992
+    /// [2]: http://www.unicode.org/versions/Unicode7.0.0/ch03.pdf#G33992
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn to_uppercase(self) -> ToUppercase {
-        ToUppercase(Some(conversions::to_upper(self)))
+        ToUppercase(CaseMappingIter::new(conversions::to_upper(self)))
     }
 
     /// Returns this character's displayed width in columns, or `None` if it is a

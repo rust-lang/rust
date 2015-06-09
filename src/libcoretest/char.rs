@@ -58,6 +58,8 @@ fn test_to_lowercase() {
     fn lower(c: char) -> char {
         let mut it = c.to_lowercase();
         let c = it.next().unwrap();
+        // As of Unicode version 7.0.0, `SpecialCasing.txt` has no lower-case mapping
+        // to multiple code points.
         assert!(it.next().is_none());
         c
     }
@@ -73,29 +75,54 @@ fn test_to_lowercase() {
     assert_eq!(lower('Μ'), 'μ');
     assert_eq!(lower('Α'), 'α');
     assert_eq!(lower('Σ'), 'σ');
+    assert_eq!(lower('ǅ'), 'ǆ');
+    assert_eq!(lower('ﬁ'), 'ﬁ');
 }
 
 #[test]
 fn test_to_uppercase() {
-    fn upper(c: char) -> char {
-        let mut it = c.to_uppercase();
-        let c = it.next().unwrap();
-        assert!(it.next().is_none());
-        c
+    fn upper(c: char) -> Vec<char> {
+        c.to_uppercase().collect()
     }
-    assert_eq!(upper('a'), 'A');
-    assert_eq!(upper('ö'), 'Ö');
-    assert_eq!(upper('ß'), 'ß'); // not ẞ: Latin capital letter sharp s
-    assert_eq!(upper('ü'), 'Ü');
-    assert_eq!(upper('💩'), '💩');
+    assert_eq!(upper('a'), ['A']);
+    assert_eq!(upper('ö'), ['Ö']);
+    assert_eq!(upper('ß'), ['S', 'S']); // not ẞ: Latin capital letter sharp s
+    assert_eq!(upper('ü'), ['Ü']);
+    assert_eq!(upper('💩'), ['💩']);
 
-    assert_eq!(upper('σ'), 'Σ');
-    assert_eq!(upper('τ'), 'Τ');
-    assert_eq!(upper('ι'), 'Ι');
-    assert_eq!(upper('γ'), 'Γ');
-    assert_eq!(upper('μ'), 'Μ');
-    assert_eq!(upper('α'), 'Α');
-    assert_eq!(upper('ς'), 'Σ');
+    assert_eq!(upper('σ'), ['Σ']);
+    assert_eq!(upper('τ'), ['Τ']);
+    assert_eq!(upper('ι'), ['Ι']);
+    assert_eq!(upper('γ'), ['Γ']);
+    assert_eq!(upper('μ'), ['Μ']);
+    assert_eq!(upper('α'), ['Α']);
+    assert_eq!(upper('ς'), ['Σ']);
+    assert_eq!(upper('ǅ'), ['Ǆ']);
+    assert_eq!(upper('ﬁ'), ['F', 'I']);
+    assert_eq!(upper('ᾀ'), ['Ἀ', 'Ι']);
+}
+
+#[test]
+fn test_to_titlecase() {
+    fn title(c: char) -> Vec<char> {
+        c.to_titlecase().collect()
+    }
+    assert_eq!(title('a'), ['A']);
+    assert_eq!(title('ö'), ['Ö']);
+    assert_eq!(title('ß'), ['S', 's']); // not ẞ: Latin capital letter sharp s
+    assert_eq!(title('ü'), ['Ü']);
+    assert_eq!(title('💩'), ['💩']);
+
+    assert_eq!(title('σ'), ['Σ']);
+    assert_eq!(title('τ'), ['Τ']);
+    assert_eq!(title('ι'), ['Ι']);
+    assert_eq!(title('γ'), ['Γ']);
+    assert_eq!(title('μ'), ['Μ']);
+    assert_eq!(title('α'), ['Α']);
+    assert_eq!(title('ς'), ['Σ']);
+    assert_eq!(title('Ǆ'), ['ǅ']);
+    assert_eq!(title('ﬁ'), ['F', 'i']);
+    assert_eq!(title('ᾀ'), ['ᾈ']);
 }
 
 #[test]
