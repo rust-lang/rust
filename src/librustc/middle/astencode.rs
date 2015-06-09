@@ -12,6 +12,7 @@
 // FIXME: remove this after snapshot, and Results are handled
 #![allow(unused_must_use)]
 
+use ast_map;
 use metadata::common as c;
 use metadata::cstore as cstore;
 use session::Session;
@@ -32,7 +33,7 @@ use middle::subst::VecPerParamSpace;
 use middle::ty::{self, Ty, MethodCall, MethodCallee, MethodOrigin};
 use util::ppaux::ty_to_string;
 
-use syntax::{ast, ast_map, ast_util, codemap, fold};
+use syntax::{ast, ast_util, codemap, fold};
 use syntax::codemap::Span;
 use syntax::fold::Folder;
 use syntax::parse::token;

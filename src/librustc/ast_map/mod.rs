@@ -12,14 +12,14 @@ pub use self::Node::*;
 pub use self::PathElem::*;
 use self::MapEntry::*;
 
-use abi;
-use ast::*;
-use ast_util;
-use codemap::{DUMMY_SP, Span, Spanned};
-use fold::Folder;
-use parse::token;
-use print::pprust;
-use visit::{self, Visitor};
+use syntax::abi;
+use syntax::ast::*;
+use syntax::ast_util;
+use syntax::codemap::{DUMMY_SP, Span, Spanned};
+use syntax::fold::Folder;
+use syntax::parse::token;
+use syntax::print::pprust;
+use syntax::visit::{self, Visitor};
 
 use arena::TypedArena;
 use std::cell::RefCell;

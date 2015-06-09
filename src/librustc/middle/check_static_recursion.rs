@@ -11,11 +11,11 @@
 // This compiler pass detects static items that refer to themselves
 // recursively.
 
+use ast_map;
 use session::Session;
 use middle::def::{DefStatic, DefConst, DefAssociatedConst, DefMap};
 
-use syntax::ast;
-use syntax::{ast_util, ast_map};
+use syntax::{ast, ast_util};
 use syntax::codemap::Span;
 use syntax::visit::Visitor;
 use syntax::visit;

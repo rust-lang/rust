@@ -49,6 +49,7 @@ use self::ParentLink::*;
 use self::ModuleKind::*;
 use self::FallbackChecks::*;
 
+use rustc::ast_map;
 use rustc::session::Session;
 use rustc::lint;
 use rustc::metadata::csearch;
@@ -80,7 +81,6 @@ use syntax::ast::{TyPath, TyPtr};
 use syntax::ast::{TyRptr, TyStr, TyUs, TyU8, TyU16, TyU32, TyU64, TyUint};
 use syntax::ast::TypeImplItem;
 use syntax::ast;
-use syntax::ast_map;
 use syntax::ast_util::{local_def, walk_pat};
 use syntax::attr::AttrMetaMethods;
 use syntax::ext::mtwt;

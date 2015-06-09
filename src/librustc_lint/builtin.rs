@@ -35,6 +35,7 @@ use middle::ty::{self, Ty};
 use middle::{def, pat_util, stability};
 use middle::const_eval::{eval_const_expr_partial, const_int, const_uint};
 use middle::cfg;
+use rustc::ast_map;
 use util::ppaux::ty_to_string;
 use util::nodemap::{FnvHashMap, NodeSet};
 use lint::{Level, Context, LintPass, LintArray, Lint};
@@ -44,7 +45,7 @@ use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::{cmp, slice};
 use std::{i8, i16, i32, i64, u8, u16, u32, u64, f32, f64};
 
-use syntax::{abi, ast, ast_map};
+use syntax::{abi, ast};
 use syntax::ast_util::{self, is_shift_binop, local_def};
 use syntax::attr::{self, AttrMetaMethods};
 use syntax::codemap::{self, Span};

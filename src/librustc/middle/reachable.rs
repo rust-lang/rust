@@ -15,6 +15,7 @@
 // makes all other generics or inline functions that it references
 // reachable as well.
 
+use ast_map;
 use middle::def;
 use middle::ty;
 use middle::privacy;
@@ -24,7 +25,6 @@ use util::nodemap::NodeSet;
 use std::collections::HashSet;
 use syntax::abi;
 use syntax::ast;
-use syntax::ast_map;
 use syntax::ast_util::is_local;
 use syntax::attr;
 use syntax::visit::Visitor;

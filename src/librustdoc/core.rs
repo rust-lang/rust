@@ -14,11 +14,12 @@ use rustc_driver::driver;
 use rustc::session::{self, config};
 use rustc::session::config::UnstableFeatures;
 use rustc::middle::{privacy, ty};
+use rustc::ast_map;
 use rustc::lint;
 use rustc_trans::back::link;
 use rustc_resolve as resolve;
 
-use syntax::{ast, ast_map, codemap, diagnostic};
+use syntax::{ast, codemap, diagnostic};
 
 use std::cell::{RefCell, Cell};
 use std::collections::{HashMap, HashSet};

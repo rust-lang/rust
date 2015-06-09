@@ -14,13 +14,14 @@ use super::utils::{DIB, debug_context};
 
 use llvm;
 use llvm::debuginfo::DIScope;
+use rustc::ast_map;
 use trans::common::CrateContext;
 use middle::ty::{self, ClosureTyper};
 
 use std::ffi::CString;
 use std::ptr;
 use std::rc::{Rc, Weak};
-use syntax::{ast, ast_map};
+use syntax::ast;
 use syntax::parse::token;
 
 pub struct NamespaceTreeNode {

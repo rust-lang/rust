@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use ast_map::NodeForeignItem;
 use metadata::csearch;
 use middle::def::DefFn;
 use middle::subst::{Subst, Substs, EnumeratedItems};
@@ -18,7 +19,6 @@ use util::ppaux::Repr;
 use syntax::abi::RustIntrinsic;
 use syntax::ast::DefId;
 use syntax::ast;
-use syntax::ast_map::NodeForeignItem;
 use syntax::codemap::Span;
 use syntax::parse::token;
 use syntax::visit::Visitor;

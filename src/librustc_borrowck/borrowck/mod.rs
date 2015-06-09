@@ -20,6 +20,8 @@ pub use self::MovedValueUseKind::*;
 
 use self::InteriorKind::*;
 
+use rustc::ast_map;
+use rustc::ast_map::blocks::{FnLikeNode, FnParts};
 use rustc::middle::cfg;
 use rustc::middle::dataflow::DataFlowContext;
 use rustc::middle::dataflow::BitwiseOperator;
@@ -35,8 +37,6 @@ use std::mem;
 use std::rc::Rc;
 use std::string::String;
 use syntax::ast;
-use syntax::ast_map;
-use syntax::ast_map::blocks::{FnLikeNode, FnParts};
 use syntax::ast_util;
 use syntax::codemap::Span;
 use syntax::parse::token;

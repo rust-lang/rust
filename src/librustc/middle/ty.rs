@@ -35,6 +35,7 @@ pub use self::IntVarValue::*;
 pub use self::MethodOrigin::*;
 pub use self::CopyImplementationError::*;
 
+use ast_map::{self, LinkedPath};
 use back::svh::Svh;
 use session::Session;
 use lint;
@@ -91,7 +92,6 @@ use syntax::parse::token::{self, InternedString, special_idents};
 use syntax::print::pprust;
 use syntax::ptr::P;
 use syntax::ast;
-use syntax::ast_map::{self, LinkedPath};
 
 pub type Disr = u64;
 
