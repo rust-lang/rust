@@ -33,8 +33,8 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
     fn check_def_id(&self, item: &ast::Item, def_id: ast::DefId) {
         if def_id.krate != ast::LOCAL_CRATE {
             span_err!(self.tcx.sess, item.span, E0116,
-                      "cannot associate methods with a type outside the \
-                       crate the type is defined in; define and implement \
+                      "cannot define inherent `impl` for a type outside of the \
+                       crate where the type is defined; define and implement \
                        a trait or new type instead");
         }
     }
