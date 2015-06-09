@@ -25,41 +25,41 @@ use sys_common::{AsInnerMut, AsInner};
 pub trait OpenOptionsExt {
     /// Overrides the `dwDesiredAccess` argument to the call to `CreateFile`
     /// with the specified value.
-    fn desired_access(&mut self, access: i32) -> &mut Self;
+    fn desired_access(&mut self, access: u32) -> &mut Self;
 
     /// Overrides the `dwCreationDisposition` argument to the call to
     /// `CreateFile` with the specified value.
     ///
     /// This will override any values of the standard `create` flags, for
     /// example.
-    fn creation_disposition(&mut self, val: i32) -> &mut Self;
+    fn creation_disposition(&mut self, val: u32) -> &mut Self;
 
     /// Overrides the `dwFlagsAndAttributes` argument to the call to
     /// `CreateFile` with the specified value.
     ///
     /// This will override any values of the standard flags on the
     /// `OpenOptions` structure.
-    fn flags_and_attributes(&mut self, val: i32) -> &mut Self;
+    fn flags_and_attributes(&mut self, val: u32) -> &mut Self;
 
     /// Overrides the `dwShareMode` argument to the call to `CreateFile` with
     /// the specified value.
     ///
     /// This will override any values of the standard flags on the
     /// `OpenOptions` structure.
-    fn share_mode(&mut self, val: i32) -> &mut Self;
+    fn share_mode(&mut self, val: u32) -> &mut Self;
 }
 
 impl OpenOptionsExt for OpenOptions {
-    fn desired_access(&mut self, access: i32) -> &mut OpenOptions {
+    fn desired_access(&mut self, access: u32) -> &mut OpenOptions {
         self.as_inner_mut().desired_access(access); self
     }
-    fn creation_disposition(&mut self, access: i32) -> &mut OpenOptions {
+    fn creation_disposition(&mut self, access: u32) -> &mut OpenOptions {
         self.as_inner_mut().creation_disposition(access); self
     }
-    fn flags_and_attributes(&mut self, access: i32) -> &mut OpenOptions {
+    fn flags_and_attributes(&mut self, access: u32) -> &mut OpenOptions {
         self.as_inner_mut().flags_and_attributes(access); self
     }
-    fn share_mode(&mut self, access: i32) -> &mut OpenOptions {
+    fn share_mode(&mut self, access: u32) -> &mut OpenOptions {
         self.as_inner_mut().share_mode(access); self
     }
 }

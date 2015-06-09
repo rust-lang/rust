@@ -158,17 +158,17 @@ impl OpenOptions {
     pub fn append(&mut self, append: bool) { self.append = append; }
     pub fn create(&mut self, create: bool) { self.create = create; }
     pub fn truncate(&mut self, truncate: bool) { self.truncate = truncate; }
-    pub fn creation_disposition(&mut self, val: i32) {
-        self.creation_disposition = Some(val as libc::DWORD);
+    pub fn creation_disposition(&mut self, val: u32) {
+        self.creation_disposition = Some(val);
     }
-    pub fn flags_and_attributes(&mut self, val: i32) {
-        self.flags_and_attributes = Some(val as libc::DWORD);
+    pub fn flags_and_attributes(&mut self, val: u32) {
+        self.flags_and_attributes = Some(val);
     }
-    pub fn desired_access(&mut self, val: i32) {
-        self.desired_access = Some(val as libc::DWORD);
+    pub fn desired_access(&mut self, val: u32) {
+        self.desired_access = Some(val);
     }
-    pub fn share_mode(&mut self, val: i32) {
-        self.share_mode = Some(val as libc::DWORD);
+    pub fn share_mode(&mut self, val: u32) {
+        self.share_mode = Some(val);
     }
     pub fn security_attributes(&mut self, attrs: libc::LPSECURITY_ATTRIBUTES) {
         self.security_attributes = attrs as usize;
@@ -221,7 +221,7 @@ impl File {
     fn open_reparse_point(path: &Path) -> io::Result<File> {
         let mut opts = OpenOptions::new();
         opts.read(true);
-        opts.flags_and_attributes(c::FILE_FLAG_OPEN_REPARSE_POINT as i32);
+        opts.flags_and_attributes(c::FILE_FLAG_OPEN_REPARSE_POINT);
         File::open(path, &opts)
     }
 
