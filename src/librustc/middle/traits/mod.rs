@@ -304,12 +304,12 @@ pub fn predicates_for_generics<'tcx>(tcx: &ty::ctxt<'tcx>,
 /// `bound` or is not known to meet bound (note that this is
 /// conservative towards *no impl*, which is the opposite of the
 /// `evaluate` methods).
-pub fn evaluate_builtin_bound<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
-                                       typer: &ty::ClosureTyper<'tcx>,
-                                       ty: Ty<'tcx>,
-                                       bound: ty::BuiltinBound,
-                                       span: Span)
-                                       -> SelectionResult<'tcx, ()>
+pub fn type_known_to_meet_builtin_bound<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
+                                                 typer: &ty::ClosureTyper<'tcx>,
+                                                 ty: Ty<'tcx>,
+                                                 bound: ty::BuiltinBound,
+                                                 span: Span)
+                                                 -> bool
 {
     debug!("type_known_to_meet_builtin_bound(ty={}, bound={:?})",
            ty.repr(infcx.tcx),
@@ -327,61 +327,18 @@ pub fn evaluate_builtin_bound<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
     // Note: we only assume something is `Copy` if we can
     // *definitively* show that it implements `Copy`. Otherwise,
     // assume it is move; linear is always ok.
-    let result = match fulfill_cx.select_all_or_error(infcx, typer) {
-        Ok(()) => Ok(Some(())), // Success, we know it implements Copy.
-        Err(errors) => {
-            // If there were any hard errors, propagate an arbitrary
-            // one of those. If no hard errors at all, report
-            // ambiguity.
-            let sel_error =
-                errors.iter()
-                      .filter_map(|err| {
-                          match err.code {
-                              CodeAmbiguity => None,
-                              CodeSelectionError(ref e) => Some(e.clone()),
-                              CodeProjectionError(_) => {
-                                  infcx.tcx.sess.span_bug(
-                                      span,
-                                      "projection error while selecting?")
-                              }
-                          }
-                      })
-                      .next();
-            match sel_error {
-                None => { Ok(None) }
-                Some(e) => { Err(e) }
-            }
-        }
-    };
-
-    debug!("type_known_to_meet_builtin_bound: ty={} bound={:?} result={:?}",
-           ty.repr(infcx.tcx),
-           bound,
-           result);
-
-    result
-}
-
-pub fn type_known_to_meet_builtin_bound<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
-                                                 typer: &ty::ClosureTyper<'tcx>,
-                                                 ty: Ty<'tcx>,
-                                                 bound: ty::BuiltinBound,
-                                                 span: Span)
-                                                 -> bool
-{
-    match evaluate_builtin_bound(infcx, typer, ty, bound, span) {
-        Ok(Some(())) => {
-            // definitely impl'd
+    match fulfill_cx.select_all_or_error(infcx, typer) {
+        Ok(()) => {
+            debug!("type_known_to_meet_builtin_bound: ty={} bound={:?} success",
+                   ty.repr(infcx.tcx),
+                   bound);
             true
         }
-        Ok(None) => {
-            // ambiguous: if coherence check was successful, shouldn't
-            // happen, but we might have reported an error and been
-            // soldering on, so just treat this like not implemented
-            false
-        }
-        Err(_) => {
-            // errors: not implemented.
+        Err(e) => {
+            debug!("type_known_to_meet_builtin_bound: ty={} bound={:?} errors={}",
+                   ty.repr(infcx.tcx),
+                   bound,
+                   e.repr(infcx.tcx));
             false
         }
     }
