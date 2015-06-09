@@ -38,6 +38,8 @@ pub fn anon_pipe() -> io::Result<(AnonPipe, AnonPipe)> {
 impl AnonPipe {
     pub fn handle(&self) -> &Handle { &self.inner }
 
+    pub fn raw(&self) -> libc::HANDLE { self.inner.raw() }
+
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
         self.inner.read(buf)
     }
