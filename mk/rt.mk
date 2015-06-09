@@ -53,10 +53,20 @@ NATIVE_DEPS_hoedown_$(1) := hoedown/src/autolink.c \
 NATIVE_DEPS_miniz_$(1) = miniz.c
 NATIVE_DEPS_rust_builtin_$(1) := rust_builtin.c \
 			rust_android_dummy.c
-NATIVE_DEPS_rustrt_native_$(1) := arch/$$(HOST_$(1))/record_sp.S
+NATIVE_DEPS_rustrt_native_$(1) := \
+			rust_try.ll
+
+ifeq ($(1),le32-unknown-nacl)
+NATIVE_DEPS_rustrt_native_$(1) += crtbegin.bc crti.bc
+endif
+
 NATIVE_DEPS_rust_test_helpers_$(1) := rust_test_helpers.c
+
+ifneq ($$(RUNTIME_DISABLE_ASM_$(1)), 1)
+NATIVE_DEPS_rustrt_native_$(1)	+= arch/$$(HOST_$(1))/record_sp.S
 NATIVE_DEPS_morestack_$(1) := arch/$$(HOST_$(1))/morestack.S
 
+endif
 
 ################################################################################
 # You shouldn't find it that necessary to edit anything below this line.
@@ -67,6 +77,7 @@ NATIVE_DEPS_morestack_$(1) := arch/$$(HOST_$(1))/morestack.S
 
 RT_OUTPUT_DIR_$(1) := $(1)/rt
 
+ifneq ($(1), le32-unknown-nacl)
 $$(RT_OUTPUT_DIR_$(1))/%.o: $(S)src/rt/%.c $$(MKFILE_DEPS)
 	@mkdir -p $$(@D)
 	@$$(call E, compile: $$@)
@@ -106,6 +117,7 @@ OBJS_$(2)_$(1) := $$(NATIVE_DEPS_$(2)_$(1):%=$$(RT_OUTPUT_DIR_$(1))/%)
 OBJS_$(2)_$(1) := $$(OBJS_$(2)_$(1):.c=.o)
 OBJS_$(2)_$(1) := $$(OBJS_$(2)_$(1):.cpp=.o)
 OBJS_$(2)_$(1) := $$(OBJS_$(2)_$(1):.S=.o)
+OBJS_$(2)_$(1) := $$(OBJS_$(2)_$(1):.bc=.o)
 NATIVE_$(2)_$(1) := $$(call CFG_STATIC_LIB_NAME_$(1),$(2))
 $$(RT_OUTPUT_DIR_$(1))/$$(NATIVE_$(2)_$(1)): $$(OBJS_$(2)_$(1))
 	@$$(call E, link: $$@)
@@ -189,7 +201,7 @@ $$(JEMALLOC_LOCAL_$(1)): $$(JEMALLOC_DEPS) $$(MKFILE_DEPS)
 	$$(Q)$$(MAKE) -C "$$(JEMALLOC_BUILD_DIR_$(1))" build_lib_static
 
 ifeq ($$(CFG_DISABLE_JEMALLOC),)
-RUSTFLAGS_alloc := --cfg jemalloc
+RUSTFLAGS_alloc_$(1) := --cfg jemalloc
 ifeq ($(1),$$(CFG_BUILD))
 ifneq ($$(CFG_JEMALLOC_ROOT),)
 $$(JEMALLOC_LIB_$(1)): $$(CFG_JEMALLOC_ROOT)/libjemalloc_pic.a
@@ -289,6 +301,12 @@ $$(BACKTRACE_LIB_$(1)):
 	touch $$@
 else
 
+ifeq ($$(CFG_NACLY_$(1)),1)
+# See comment above
+$$(BACKTRACE_LIB_$(1)):
+	touch $$@
+else
+
 ifdef CFG_ENABLE_FAST_MAKE
 BACKTRACE_DEPS := $(S)/.gitmodules
 else
@@ -327,6 +345,7 @@ $$(BACKTRACE_LIB_$(1)): $$(BACKTRACE_BUILD_DIR_$(1))/Makefile $$(MKFILE_DEPS)
 		INCDIR=$(S)src/libbacktrace
 	$$(Q)cp $$(BACKTRACE_BUILD_DIR_$(1))/.libs/libbacktrace.a $$@
 
+endif # endif for nacly
 endif # endif for windowsy
 endif # endif for ios
 endif # endif for darwin

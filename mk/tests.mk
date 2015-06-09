@@ -437,6 +437,18 @@ $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4)): \
 		exit 101; \
 	fi
 endef
+define DEF_TEST_CRATE_RULES_le32-unknown-nacl
+check-stage$(1)-T-$(2)-H-$(3)-$(4)-exec: $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4))
+$$(call TEST_OK_FILE,$(1),$(2),$(3),$(4)): \
+		$(3)/stage$(1)/test/$(4)test-$(2)$$(X_$(2))
+	@$$(call E, run: rust_pnacl_trans $$<)
+	$$(Q)$$(RPATH_VAR$(1)_T_$(2)_H_$(3)) \
+		$$(HBIN$(1)_H_$(3))/rust_pnacl_trans$$(X_$(3)) \
+		--cross-path=$$(CFG_NACL_CROSS_PATH) $$< \
+		-o $$<.nexe
+	@$$(call E, run: $$<.nexe)
+	$$(Q)$$(CFG_NACL_CROSS_PATH)/tools/sel_ldr.py -- $$<.nexe
+endef
 
 define DEF_TEST_CRATE_RULES_null
 check-stage$(1)-T-$(2)-H-$(3)-$(4)-exec: $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4))
@@ -458,8 +470,10 @@ $(foreach host,$(CFG_HOST), \
        $(eval $(call DEF_TEST_CRATE_RULES_android,$(stage),$(target),$(host),$(crate))), \
        $(eval $(call DEF_TEST_CRATE_RULES_null,$(stage),$(target),$(host),$(crate))) \
       ), \
+     $(if $(findstring $(target),"le32-unknown-nacl"), \
+       $(eval $(call DEF_TEST_CRATE_RULES_le32-unknown-nacl,$(stage),$(target),$(host),$(crate))), \
       $(eval $(call DEF_TEST_CRATE_RULES,$(stage),$(target),$(host),$(crate))) \
-     ))))))
+     )))))))
 
 ######################################################################
 # Rules for the compiletest tests (rpass, rfail, etc.)
@@ -644,6 +658,7 @@ CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3) := \
         --rustc-path $$(HBIN$(1)_H_$(3))/rustc$$(X_$(3)) \
         --rustdoc-path $$(HBIN$(1)_H_$(3))/rustdoc$$(X_$(3)) \
         --llvm-bin-path $(CFG_LLVM_INST_DIR_$(CFG_BUILD))/bin \
+	--nacl-cross-path=$(CFG_NACL_CROSS_PATH) \
         --aux-base $$(S)src/test/auxiliary/ \
         --stage-id stage$(1)-$(2) \
         --target $(2) \
@@ -657,7 +672,7 @@ CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3) := \
         --host-rustcflags "$(RUSTC_FLAGS_$(3)) $$(CTEST_RUSTC_FLAGS) -L $$(RT_OUTPUT_DIR_$(3))" \
         --lldb-python-dir=$(CFG_LLDB_PYTHON_DIR) \
         --target-rustcflags "$(RUSTC_FLAGS_$(2)) $$(CTEST_RUSTC_FLAGS) -L $$(RT_OUTPUT_DIR_$(2))" \
-        $$(CTEST_TESTARGS)
+        $$(CTEST_TESTARGS) $$(CTEST_TARGETARGS_$(2))
 
 ifdef CFG_VALGRIND_RPASS
 ifdef GOOD_VALGRIND_$(2)

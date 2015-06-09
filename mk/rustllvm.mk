@@ -36,6 +36,14 @@ RUSTLLVM_OBJS_OBJS_$(1) := $$(RUSTLLVM_OBJS_CS_$(1):rustllvm/%.cpp=$(1)/rustllvm
 # handling flag with the `EHsc` argument here as well.
 ifeq ($$(findstring msvc,$(1)),msvc)
 EXTRA_RUSTLLVM_CXXFLAGS_$(1) := //EHsc
+else
+
+ifneq ($(filter-out le32-unknown-nacl,$(CFG_TARGET)),$(CFG_TARGET))
+EXTRA_RUSTLLVM_CXXFLAGS_$(1) := -DENABLE_PNACL=1
+else
+EXTRA_RUSTLLVM_CXXFLAGS_$(1) := -DENABLE_PNACL=0
+endif
+
 endif
 
 $$(RT_OUTPUT_DIR_$(1))/$$(call CFG_STATIC_LIB_NAME_$(1),rustllvm): \
