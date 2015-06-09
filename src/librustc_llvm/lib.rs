@@ -2076,6 +2076,8 @@ extern {
     pub fn LLVMRustLinkInExternalBitcode(M: ModuleRef,
                                          bc: *const c_char,
                                          len: size_t) -> bool;
+    pub fn LLVMRustLinkInModule(Dest: ModuleRef,
+                                Src:  ModuleRef) -> bool;
     pub fn LLVMRustRunRestrictionPass(M: ModuleRef,
                                       syms: *const *const c_char,
                                       len: size_t);
@@ -2119,6 +2121,18 @@ extern {
     pub fn LLVMGetDiagInfoKind(DI: DiagnosticInfoRef) -> DiagnosticKind;
 
     pub fn LLVMWriteDebugLocToString(C: ContextRef, DL: DebugLocRef, s: RustStringRef);
+
+    pub fn LLVMRustParseBitcode(C: ContextRef,
+                                N: *const c_char,
+                                P: *const c_void,
+                                L: size_t) -> ModuleRef;
+
+    pub fn LLVMRustWritePNaClBitcode(M: ModuleRef,
+                                     Path: *const c_char,
+                                     AcceptSupportedOnly: bool) -> bool;
+    pub fn LLVMRustStripDebugInfo(M: ModuleRef);
+    pub fn LLVMRustSetContextIgnoreDebugMetadataVersionDiagnostics(C: ContextRef);
+    pub fn LLVMRustResetContextIgnoreDebugMetadataVersionDiagnostics(C: ContextRef);
 
     pub fn LLVMSetInlineAsmDiagnosticHandler(C: ContextRef,
                                              H: InlineAsmDiagHandler,
