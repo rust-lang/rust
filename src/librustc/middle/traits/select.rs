@@ -1663,11 +1663,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             ty::ty_vec(element_ty, ref len) => {
-                // [T, ..n] and [T]
+                // [T; n] and [T]
                 match bound {
                     ty::BoundCopy => {
                         match *len {
-                            // [T, ..n] is copy iff T is copy
+                            // [T; n] is copy iff T is copy
                             Some(_) => ok_if(vec![element_ty]),
 
                             // [T] is unsized and hence affine
