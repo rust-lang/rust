@@ -59,9 +59,11 @@
 // Do not remove on snapshot creation. Needed for bootstrap. (Issue #22364)
 #![cfg_attr(stage0, feature(custom_attribute))]
 #![crate_name = "alloc"]
-#![unstable(feature = "alloc")]
-#![staged_api]
 #![crate_type = "rlib"]
+#![staged_api]
+#![unstable(feature = "alloc",
+            reason = "this library is unlikely to be stabilized in its current \
+                      form or name")]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/nightly/",
@@ -86,10 +88,10 @@
 #![feature(unique)]
 #![feature(unsafe_no_drop_flag, filling_drop)]
 #![feature(unsize)]
+
 #![cfg_attr(test, feature(test, alloc, rustc_private))]
 #![cfg_attr(all(not(feature = "external_funcs"), not(feature = "external_crate")),
             feature(libc))]
-
 
 #[macro_use]
 extern crate core;
@@ -124,6 +126,7 @@ pub mod rc;
 /// Common out-of-memory routine
 #[cold]
 #[inline(never)]
+#[unstable(feature = "oom", reason = "not a scrutinized interface")]
 pub fn oom() -> ! {
     // FIXME(#14674): This really needs to do something other than just abort
     //                here, but any printing done must be *guaranteed* to not
@@ -144,4 +147,5 @@ pub fn oom() -> ! {
 //                to get linked in to libstd successfully (the linker won't
 //                optimize it out).
 #[doc(hidden)]
+#[unstable(feature = "issue_14344_fixme")]
 pub fn fixme_14344_be_sure_to_link_to_collections() {}

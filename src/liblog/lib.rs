@@ -169,10 +169,11 @@
        html_playground_url = "http://play.rust-lang.org/")]
 #![deny(missing_docs)]
 
-#![feature(alloc)]
-#![feature(staged_api)]
+#![feature(box_raw)]
 #![feature(box_syntax)]
+#![feature(const_fn)]
 #![feature(iter_cmp)]
+#![feature(staged_api)]
 #![feature(std_misc)]
 
 use std::boxed;

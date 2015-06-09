@@ -37,14 +37,15 @@
 #![feature(asm)]
 #![feature(box_syntax)]
 #![feature(collections)]
-#![feature(core)]
-#![feature(rustc_private)]
-#![feature(staged_api)]
-#![feature(std_misc)]
-#![feature(libc)]
-#![feature(set_stdio)]
 #![feature(duration)]
 #![feature(duration_span)]
+#![feature(fnbox)]
+#![feature(iter_cmp)]
+#![feature(libc)]
+#![feature(rustc_private)]
+#![feature(set_stdio)]
+#![feature(staged_api)]
+#![feature(std_misc)]
 
 extern crate getopts;
 extern crate serialize;

@@ -236,7 +236,7 @@ impl<T: ?Sized> Rc<T> {
     ///
     /// let weak_five = five.downgrade();
     /// ```
-    #[unstable(feature = "alloc",
+    #[unstable(feature = "rc_weak",
                reason = "Weak pointers may not belong in this module")]
     pub fn downgrade(&self) -> Weak<T> {
         self.inc_weak();
@@ -246,12 +246,12 @@ impl<T: ?Sized> Rc<T> {
 
 /// Get the number of weak references to this value.
 #[inline]
-#[unstable(feature = "alloc")]
+#[unstable(feature = "rc_extras")]
 pub fn weak_count<T: ?Sized>(this: &Rc<T>) -> usize { this.weak() - 1 }
 
 /// Get the number of strong references to this value.
 #[inline]
-#[unstable(feature = "alloc")]
+#[unstable(feature = "rc_extras")]
 pub fn strong_count<T: ?Sized>(this: &Rc<T>) -> usize { this.strong() }
 
 /// Returns true if there are no other `Rc` or `Weak<T>` values that share the
@@ -269,7 +269,7 @@ pub fn strong_count<T: ?Sized>(this: &Rc<T>) -> usize { this.strong() }
 /// rc::is_unique(&five);
 /// ```
 #[inline]
-#[unstable(feature = "alloc")]
+#[unstable(feature = "rc_extras")]
 pub fn is_unique<T>(rc: &Rc<T>) -> bool {
     weak_count(rc) == 0 && strong_count(rc) == 1
 }
@@ -292,7 +292,7 @@ pub fn is_unique<T>(rc: &Rc<T>) -> bool {
 /// assert_eq!(rc::try_unwrap(x), Err(Rc::new(4)));
 /// ```
 #[inline]
-#[unstable(feature = "alloc")]
+#[unstable(feature = "rc_extras")]
 pub fn try_unwrap<T>(rc: Rc<T>) -> Result<T, Rc<T>> {
     if is_unique(&rc) {
         unsafe {
@@ -327,7 +327,7 @@ pub fn try_unwrap<T>(rc: Rc<T>) -> Result<T, Rc<T>> {
 /// assert!(rc::get_mut(&mut x).is_none());
 /// ```
 #[inline]
-#[unstable(feature = "alloc")]
+#[unstable(feature = "rc_extras")]
 pub fn get_mut<T>(rc: &mut Rc<T>) -> Option<&mut T> {
     if is_unique(rc) {
         let inner = unsafe { &mut **rc._ptr };
@@ -354,7 +354,7 @@ impl<T: Clone> Rc<T> {
     /// let mut_five = five.make_unique();
     /// ```
     #[inline]
-    #[unstable(feature = "alloc")]
+    #[unstable(feature = "rc_extras")]
     pub fn make_unique(&mut self) -> &mut T {
         if !is_unique(self) {
             *self = Rc::new((**self).clone())
@@ -652,7 +652,7 @@ impl<T> fmt::Pointer for Rc<T> {
 ///
 /// See the [module level documentation](./index.html) for more.
 #[unsafe_no_drop_flag]
-#[unstable(feature = "alloc",
+#[unstable(feature = "rc_weak",
            reason = "Weak pointers may not belong in this module.")]
 pub struct Weak<T: ?Sized> {
     // FIXME #12808: strange names to try to avoid interfering with
@@ -663,7 +663,7 @@ pub struct Weak<T: ?Sized> {
 impl<T: ?Sized> !marker::Send for Weak<T> {}
 impl<T: ?Sized> !marker::Sync for Weak<T> {}
 
-#[unstable(feature = "alloc",
+#[unstable(feature = "rc_weak",
            reason = "Weak pointers may not belong in this module.")]
 impl<T: ?Sized> Weak<T> {
 
@@ -741,7 +741,7 @@ impl<T: ?Sized> Drop for Weak<T> {
     }
 }
 
-#[unstable(feature = "alloc",
+#[unstable(feature = "rc_weak",
            reason = "Weak pointers may not belong in this module.")]
 impl<T: ?Sized> Clone for Weak<T> {
 
