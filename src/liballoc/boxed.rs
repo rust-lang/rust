@@ -81,7 +81,7 @@ use core::raw::{TraitObject};
 /// }
 /// ```
 #[lang = "exchange_heap"]
-#[unstable(feature = "alloc",
+#[unstable(feature = "box_heap",
            reason = "may be renamed; uncertain about custom allocator design")]
 pub const HEAP: () = ();
 
@@ -121,7 +121,7 @@ impl<T : ?Sized> Box<T> {
     /// Function is unsafe, because improper use of this function may
     /// lead to memory problems like double-free, for example if the
     /// function is called twice on the same raw pointer.
-    #[unstable(feature = "alloc",
+    #[unstable(feature = "box_raw",
                reason = "may be renamed or moved out of Box scope")]
     #[inline]
     pub unsafe fn from_raw(raw: *mut T) -> Self {
@@ -146,7 +146,7 @@ impl<T : ?Sized> Box<T> {
 /// let raw = boxed::into_raw(seventeen);
 /// let boxed_again = unsafe { Box::from_raw(raw) };
 /// ```
-#[unstable(feature = "alloc",
+#[unstable(feature = "box_raw",
            reason = "may be renamed")]
 #[inline]
 pub fn into_raw<T : ?Sized>(b: Box<T>) -> *mut T {

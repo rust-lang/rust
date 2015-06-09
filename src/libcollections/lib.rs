@@ -29,6 +29,7 @@
 
 #![feature(alloc)]
 #![feature(box_patterns)]
+#![feature(box_raw)]
 #![feature(box_syntax)]
 #![feature(copy_lifetime)]
 #![feature(core)]
@@ -36,6 +37,7 @@
 #![feature(core_prelude)]
 #![feature(core_slice_ext)]
 #![feature(core_str_ext)]
+#![feature(heap_api)]
 #![feature(iter_cmp)]
 #![feature(iter_idx)]
 #![feature(iter_order)]
@@ -43,6 +45,7 @@
 #![feature(iter_sum)]
 #![feature(lang_items)]
 #![feature(num_bits_bytes)]
+#![feature(oom)]
 #![feature(pattern)]
 #![feature(ptr_as_ref)]
 #![feature(raw)]

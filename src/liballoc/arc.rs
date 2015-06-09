@@ -134,7 +134,7 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Arc<U>> for Arc<T> {}
 /// Weak pointers will not keep the data inside of the `Arc` alive, and can be
 /// used to break cycles between `Arc` pointers.
 #[unsafe_no_drop_flag]
-#[unstable(feature = "alloc",
+#[unstable(feature = "arc_weak",
            reason = "Weak pointers may not belong in this module.")]
 pub struct Weak<T: ?Sized> {
     // FIXME #12808: strange name to try to avoid interfering with
@@ -198,7 +198,7 @@ impl<T: ?Sized> Arc<T> {
     ///
     /// let weak_five = five.downgrade();
     /// ```
-    #[unstable(feature = "alloc",
+    #[unstable(feature = "arc_weak",
                reason = "Weak pointers may not belong in this module.")]
     pub fn downgrade(&self) -> Weak<T> {
         // See the clone() impl for why this is relaxed
@@ -236,12 +236,12 @@ impl<T: ?Sized> Arc<T> {
 
 /// Get the number of weak references to this value.
 #[inline]
-#[unstable(feature = "alloc")]
+#[unstable(feature = "arc_extras")]
 pub fn weak_count<T: ?Sized>(this: &Arc<T>) -> usize { this.inner().weak.load(SeqCst) - 1 }
 
 /// Get the number of strong references to this value.
 #[inline]
-#[unstable(feature = "alloc")]
+#[unstable(feature = "arc_extras")]
 pub fn strong_count<T: ?Sized>(this: &Arc<T>) -> usize { this.inner().strong.load(SeqCst) }
 
 
@@ -271,7 +271,7 @@ pub fn strong_count<T: ?Sized>(this: &Arc<T>) -> usize { this.inner().strong.loa
 /// # }
 /// ```
 #[inline]
-#[unstable(feature = "alloc")]
+#[unstable(feature = "arc_extras")]
 pub unsafe fn get_mut<T: ?Sized>(this: &mut Arc<T>) -> Option<&mut T> {
     // FIXME(#24880) potential race with upgraded weak pointers here
     if strong_count(this) == 1 && weak_count(this) == 0 {
@@ -352,7 +352,7 @@ impl<T: Clone> Arc<T> {
     /// # }
     /// ```
     #[inline]
-    #[unstable(feature = "alloc")]
+    #[unstable(feature = "arc_extras")]
     pub unsafe fn make_unique(&mut self) -> &mut T {
         // FIXME(#24880) potential race with upgraded weak pointers here
         //
@@ -438,7 +438,7 @@ impl<T: ?Sized> Drop for Arc<T> {
     }
 }
 
-#[unstable(feature = "alloc",
+#[unstable(feature = "arc_weak",
            reason = "Weak pointers may not belong in this module.")]
 impl<T: ?Sized> Weak<T> {
     /// Upgrades a weak reference to a strong reference.
@@ -479,7 +479,7 @@ impl<T: ?Sized> Weak<T> {
     }
 }
 
-#[unstable(feature = "alloc",
+#[unstable(feature = "arc_weak",
            reason = "Weak pointers may not belong in this module.")]
 impl<T: ?Sized> Clone for Weak<T> {
     /// Makes a clone of the `Weak<T>`.
