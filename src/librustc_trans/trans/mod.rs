@@ -59,10 +59,11 @@ mod type_;
 mod type_of;
 mod value;
 
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 pub struct ModuleTranslation {
     pub llcx: ContextRef,
     pub llmod: ModuleRef,
+    pub name: Option<String>,
 }
 
 unsafe impl Send for ModuleTranslation { }

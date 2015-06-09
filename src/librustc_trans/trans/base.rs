@@ -2778,7 +2778,7 @@ pub fn trans_crate(tcx: &ty::ctxt, analysis: ty::CrateAnalysis) -> CrateTranslat
     }
 
     let modules = shared_ccx.iter()
-        .map(|ccx| ModuleTranslation { llcx: ccx.llcx(), llmod: ccx.llmod() })
+        .map(|ccx| ModuleTranslation { llcx: ccx.llcx(), llmod: ccx.llmod(), name: None, })
         .collect();
 
     let mut reachable: Vec<String> = shared_ccx.reachable().iter().filter_map(|id| {
@@ -2816,6 +2816,7 @@ pub fn trans_crate(tcx: &ty::ctxt, analysis: ty::CrateAnalysis) -> CrateTranslat
     let metadata_module = ModuleTranslation {
         llcx: shared_ccx.metadata_llcx(),
         llmod: shared_ccx.metadata_llmod(),
+        name: Some("metadata".to_string()),
     };
     let formats = shared_ccx.tcx().dependency_formats.borrow().clone();
     let no_builtins = attr::contains_name(&krate.attrs, "no_builtins");

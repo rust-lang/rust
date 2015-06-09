@@ -43,6 +43,7 @@
 #![feature(unicode)]
 #![feature(unicode)]
 #![feature(vec_push_all)]
+#![feature(fs_ext)]
 
 #![allow(trivial_casts)]
 

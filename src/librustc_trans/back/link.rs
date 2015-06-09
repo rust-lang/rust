@@ -37,9 +37,11 @@ use std::fs::{self, PathExt};
 use std::io::{self, Read, Write};
 use std::mem;
 use std::path::{Path, PathBuf};
+use std::ptr;
 use std::process::Command;
 use std::str;
 use flate;
+use llvm;
 use serialize::hex::ToHex;
 use syntax::ast;
 use syntax::attr::AttrMetaMethods;
@@ -76,6 +78,33 @@ pub const RLIB_BYTECODE_OBJECT_V1_DATA_OFFSET: usize =
     RLIB_BYTECODE_OBJECT_V1_DATASIZE_OFFSET + 8;
 
 
+pub fn llvm_actual_err(sess: &Session, msg: String) {
+    unsafe {
+        let cstr = llvm::LLVMRustGetLastError();
+        if cstr == ptr::null() {
+            sess.err(&msg[..]);
+        } else {
+            let err = ffi::CStr::from_ptr(cstr).to_bytes();
+            let err = String::from_utf8_lossy(&err[..]).to_string();
+            sess.err(&format!("{}: {}",
+                              msg, err)[..]);
+        }
+    }
+}
+pub fn llvm_warn(sess: &Session, msg: String) {
+    use llvm;
+    unsafe {
+        let cstr = llvm::LLVMRustGetLastError();
+        if cstr == ptr::null() {
+            sess.warn(&msg[..]);
+        } else {
+            let err = ffi::CStr::from_ptr(cstr).to_bytes();
+            let err = String::from_utf8_lossy(&err[..]).to_string();
+            sess.warn(&format!("{}: {}",
+                               msg, err)[..]);
+        }
+    }
+}
 /*
  * Name mangling and its relationship to metadata. This is complex. Read
  * carefully.
@@ -499,20 +528,6 @@ fn link_binary_output(sess: &Session,
                       outputs: &OutputFilenames,
                       crate_name: &str) -> PathBuf {
     let objects = object_filenames(sess, outputs);
-    let out_filename = match outputs.single_output_file {
-        Some(ref file) => file.clone(),
-        None => filename_for_input(sess, crate_type, crate_name, outputs),
-    };
-
-    // Make sure files are writeable.  Mac, FreeBSD, and Windows system linkers
-    // check this already -- however, the Linux linker will happily overwrite a
-    // read-only file.  We should be consistent.
-    for file in objects.iter().chain(Some(&out_filename)) {
-        if !is_writeable(file) {
-            sess.fatal(&format!("output file {} is not writeable -- check its \
-                                permissions", file.display()));
-        }
-    }
 
     let tmpdir = TempDir::new("rustc").ok().expect("needs a temp dir");
     match crate_type {
@@ -534,6 +549,548 @@ fn link_binary_output(sess: &Session,
     }
 
     out_filename
+}
+
+#[cfg(not(target_os = "nacl"))]
+fn pnacl_host_tool(sess: &Session, tool: &str) -> PathBuf {
+    use std::env::consts;
+    let tool = format!("le32-nacl-{}{}", tool, consts::EXE_SUFFIX);
+    sess.pnacl_toolchain()
+        .join("bin")
+        .join(&tool)
+}
+#[cfg(target_os = "nacl")]
+fn pnacl_host_tool(_sess: &Session, tool: &str) -> PathBuf {
+    use std::env::consts;
+    let tool = format!("{}{}", tool, consts::EXE_SUFFIX);
+    Path::new("/bin")
+        .join(&tool)
+}
+
+// Gets the filepath for the gold LTO plugin.
+#[cfg(not(target_os = "nacl"))]
+fn gold_plugin_path(sess: &Session) -> PathBuf {
+    use std::env::consts;
+    let mut s = sess.sysroot().to_path_buf();
+    s.push("lib");
+    s.push("rustlib");
+    s.push(&config::host_triple().to_string());
+    s.push("lib");
+    s.push(&format!("LLVMgold{}", consts::DLL_SUFFIX));
+    s
+}
+
+fn link_pnacl_rlib(sess: &Session,
+                   trans: &CrateTranslation,
+                   outputs: &OutputFilenames,
+                   crate_name: &str) {
+    let (_, out_filename) = check_outputs(sess, config::CrateTypeRlib,
+                                          outputs, crate_name);
+
+    #[cfg(not(target_os = "nacl"))]
+    fn create_archive_config(sess: &Session, out_filename: PathBuf) -> ArchiveBuilder {
+
+        let handler = &sess.diagnostic().handler;
+        let config = ArchiveConfig {
+            handler: handler,
+            dst: out_filename,
+            lib_search_paths: archive_search_paths(sess),
+            slib_prefix: "lib".to_string(),
+            slib_suffix: "rlib".to_string(),
+            gold_plugin: Some(gold_plugin_path(sess)),
+            ar_prog: pnacl_host_tool(sess, "ar").display().to_string(),
+        };
+        ArchiveBuilder::create(config)
+    }
+    #[cfg(target_os = "nacl")]
+    fn create_archive_config(sess: &Session, out_filename: PathBuf) -> ArchiveBuilder {
+        let handler = &sess.diagnostic().handler;
+        let config = ArchiveConfig {
+            handler: handler,
+            dst: out_filename,
+            lib_search_paths: archive_search_paths(sess),
+            slib_prefix: "lib".to_string(),
+            slib_suffix: "rlib".to_string(),
+            gold_plugin: None,
+            maybe_ar_prog: Some("llvm-ar".to_string()),
+        };
+        ArchiveBuilder::create(config)
+    }
+
+    let mut a = create_archive_config(sess, out_filename.clone());
+
+    for (index, mtrans) in trans.modules.iter().enumerate() {
+        let f = match mtrans.name {
+            Some(ref name) => outputs
+                .with_extension(&format!("{}.bc",
+                                         name)[..]),
+            None => outputs
+                .with_extension(&format!("{}.bc",
+                                         index)[..]),
+        };
+        let _: Result<(), ()> = a
+            .add_file(&f)
+            .or_else(|e| {
+                sess.err(&format!("error adding file to archive: `{}`",
+                                  e)[..]);
+                Ok(())
+            });
+    }
+
+    // Instead of putting the metadata in an object file section, rlibs
+    // contain the metadata in a separate file. We use a temp directory
+    // here so concurrent builds in the same directory don't try to use
+    // the same filename for metadata (stomping over one another)
+    debug!("adding metadata to archive");
+    let tmpdir = TempDir::new("rustc").ok().expect("needs a temp dir");
+    let metadata = tmpdir.path().join(METADATA_FILENAME);
+    match fs::File::create(&metadata)
+        .and_then(|mut f| f.write_all(&trans.metadata[..]) )
+    {
+        Ok(..) => {}
+        Err(e) => {
+            sess.fatal(&format!("failed to write {:?}: {}",
+                                metadata, e)[..]);
+        }
+    }
+
+    let _: Result<(), ()> = a
+        .add_file(&metadata)
+        .or_else(|e| {
+            sess.err(&format!("error adding file to archive: `{}`",
+                              e)[..]);
+            Ok(())
+        });
+
+    a.update_symbols();
+    a.build();
+
+    sess.abort_if_errors();
+}
+
+pub fn link_outputs_for_pnacl(sess: &Session,
+                              trans: &mut CrateTranslation,
+                              outputs: &OutputFilenames,
+                              crate_name: &str) {
+    use super::write;
+
+    write::run_passes(sess, trans,
+                      &sess.opts.output_types[..],
+                      outputs);
+
+    // Rlibs and statics first, then exes.
+    for &crate_type in sess.crate_types.borrow().iter() {
+        match crate_type {
+            config::CrateTypeDylib => unreachable!(),
+            config::CrateTypeRlib => link_pnacl_rlib(sess, trans, outputs, crate_name),
+            config::CrateTypeExecutable => {}
+            config::CrateTypeStaticlib => unimplemented!(),
+        }
+    }
+
+    for &crate_type in sess.crate_types.borrow().iter() {
+        match crate_type {
+            config::CrateTypeExecutable => link_pnacl_module(sess, trans,
+                                                             outputs, crate_name),
+            _ => (),
+        }
+    }
+
+    // cleanup:
+    if !sess.opts.cg.save_temps {
+        for (index, mtrans) in trans.modules.iter().enumerate() {
+            let f = match mtrans.name {
+                Some(ref name) => outputs
+                    .with_extension(&format!("{}.bc",
+                                             name)[..]),
+                None => outputs
+                    .with_extension(&format!("{}.bc",
+                                             index)[..]),
+            };
+            remove(sess, &f);
+        }
+
+        remove(sess, &outputs.with_extension("metadata.bc"));
+    }
+}
+
+pub fn link_pnacl_module(sess: &Session,
+                         trans: &mut CrateTranslation,
+                         outputs: &OutputFilenames,
+                         crate_name: &str) {
+    // Note that we don't use pnacl-ld here. We want to avoid the costly post-link
+    // simplification passes pnacl-ld runs. Instead, since pnacl-ld's output is just bitcode,
+    // what we do here is pull all of our 'native' dependencies into a (vary large)
+    // module and, if requested, run the LTO passes on it.
+    //
+    // This function should not be called on non-pexe outputs.
+    use libc;
+    use lib::llvm::{ModuleRef, ContextRef};
+    use std::env;
+    use std::fs::{File};
+    use back::write;
+    use back::write::llvm_err;
+    use session::config::OutputTypeLlvmAssembly;
+    use metadata::cstore;
+
+    fn link_buf_into_module(sess: &Session,
+                            ctxt:  ContextRef,
+                            llmod: Option<ModuleRef>,
+                            name: &str,
+                            bc: &[u8]) -> Option<ModuleRef> {
+        use libc;
+        debug!("inserting `{}` into module", name);
+        match llmod {
+            Some(llmod) => unsafe {
+                if !llvm::LLVMRustLinkInExternalBitcode(llmod,
+                                                        bc.as_ptr() as *const libc::c_char,
+                                                        bc.len() as libc::size_t) {
+                    llvm_warn(sess, format!("failed to link in external bitcode `{}`",
+                                            name));
+                }
+                Some(llmod)
+            },
+            None => unsafe {
+                let cname = format!("{}\0", name);
+                let llmod = llvm::LLVMRustParseBitcode(ctxt,
+                                                       cname.as_ptr() as *const i8,
+                                                       bc.as_ptr() as *const libc::c_void,
+                                                       bc.len() as libc::size_t);
+                if llmod == ptr::null_mut() {
+                    llvm_warn(sess, format!("failed to parse external bitcode `{}`",
+                                            name));
+                    None
+                } else {
+                    Some(llmod)
+                }
+            },
+        }
+    }
+
+    let post_link_path = outputs.with_extension("post-link.bc");
+
+    #[cfg(not(target_os = "nacl"))]
+    fn add_plugin_arg(sess: &Session, cmd: &mut Command) {
+        cmd.arg(&format!("-plugin={}", gold_plugin_path(sess).display()));
+    }
+    #[cfg(target_os = "nacl")]
+    fn add_plugin_arg(_sess: &Session, _cmd: &mut Command) {
+        // on PNaCl, the gold plugin is linked statically.
+    }
+
+    let linker = pnacl_host_tool(sess, "ld.gold");
+    let mut cmd = Command::new(&linker);
+    cmd.arg("--oformat=elf32-i386-nacl");
+    add_plugin_arg(sess, &mut cmd);
+    cmd.arg("-plugin-opt=emit-llvm");
+    cmd.arg("-nostdlib");
+    cmd.arg("--undef-sym-check");
+    cmd.arg("-static");
+    cmd.args(&["--allow-unresolved=memcpy",
+               "--allow-unresolved=memset",
+               "--allow-unresolved=memmove",
+               "--allow-unresolved=setjmp",
+               "--allow-unresolved=longjmp",
+               "--allow-unresolved=__nacl_tp_tls_offset",
+               "--allow-unresolved=__nacl_tp_tdb_offset",
+               "--allow-unresolved=__nacl_get_arch",
+               "--undefined=__pnacl_eh_stack",
+               "--undefined=__pnacl_eh_resume",
+               "--allow-unresolved=__pnacl_eh_type_table",
+               "--allow-unresolved=__pnacl_eh_action_table",
+               "--allow-unresolved=__pnacl_eh_filter_table",
+               "--undefined=main",
+               "--undefined=exit",
+               "--undefined=_exit",
+               ]);
+    cmd.arg("-o").arg(&post_link_path);
+
+    cmd.arg("-L").arg(&sess.target_filesearch(PathKind::Crate).get_lib_path());
+
+    match sess.opts.cg.link_args {
+        Some(ref args) => {
+            for arg in args.iter() {
+                cmd.arg(arg);
+            }
+        }
+        _ => {}
+    }
+    for arg in sess.cstore.get_used_link_args().borrow().iter() {
+        cmd.arg(&arg[..]);
+    }
+    cmd.arg("--start-group");
+
+    for (index, mtrans) in trans.modules.iter().enumerate() {
+        let f = match mtrans.name {
+            Some(ref name) => outputs
+                .with_extension(&format!("{}.bc",
+                                         name)[..]),
+            None => outputs
+                .with_extension(&format!("{}.bc",
+                                         index)[..]),
+        };
+        cmd.arg(&f);
+    }
+
+    let deps = sess.cstore.get_used_crates(cstore::RequireStatic);
+    for &(cnum, _) in deps.iter() {
+        let src = sess.cstore.get_used_crate_source(cnum).unwrap();
+        let (path, _) = src.rlib.unwrap();
+        cmd.arg(&path);
+    }
+    cmd.arg("--end-group");
+
+    debug!("running toolchain linker:");
+    debug!("{:?}", &cmd);
+
+    let prog = time(sess.time_passes(),
+                    "running linker",
+                    (),
+                    |()| cmd.output() );
+    match prog {
+        Ok(prog) => {
+            if !prog.status.success() {
+                sess.err(&format!("linking with `{}` failed: {}",
+                                  linker.display(),
+                                  prog.status)[..]);
+                sess.note(&format!("{:?}", &cmd)[..]);
+                let mut output = prog.stderr.clone();
+                output.push_all(&prog.stdout[..]);
+                sess.note(&str::from_utf8(&output[..]).unwrap()[..]);
+                sess.abort_if_errors();
+            }
+        },
+        Err(e) => {
+            sess.err(&format!("could not exec the linker `{}`: {}",
+                              linker.display(), e)[..]);
+            sess.abort_if_errors();
+        }
+    }
+    let llcx = unsafe { llvm::LLVMContextCreate() };
+    // Now load the linked module and run LTO + a limited set of passes to cleanup:
+    let llmod = match File::open(&post_link_path)
+        .and_then(|mut f| {
+            let mut b = Vec::new();
+            try!(f.read_to_end(&mut b));
+            Ok(b)
+        })
+    {
+        Ok(buf) => {
+            let post_link_path = post_link_path
+                .clone()
+                .into_os_string()
+                .into_string()
+                .unwrap();
+            link_buf_into_module(sess,
+                                 llcx,
+                                 None,
+                                 &post_link_path,
+                                 &buf[..]).unwrap()
+        },
+        Err(e) => {
+            sess.fatal(&format!("error reading file `{:?}`: `{}`",
+                                post_link_path, e)[..]);
+        }
+    };
+
+    if !sess.opts.cg.save_temps {
+        remove(sess, &post_link_path);
+    }
+
+    // # Run LTO passes:
+
+    // Internalize everything.
+    unsafe {
+        let reachable = vec!("_start\0".as_ptr(),
+                             "__pnacl_eh_stack\0".as_ptr());
+        llvm::LLVMRustRunRestrictionPass(llmod,
+                                         reachable.as_ptr() as *const *const libc::c_char,
+                                         reachable.len() as libc::size_t);
+    }
+
+    if sess.no_landing_pads() {
+        unsafe {
+            llvm::LLVMRustMarkAllFunctionsNounwind(llmod);
+        }
+    }
+
+    if sess.opts.cg.save_temps {
+        let out = outputs.with_extension("pre-lto.bc");
+        let out = format!("{}\0", out.display().to_string());
+        unsafe { llvm::LLVMWriteBitcodeToFile(llmod, out.as_ptr() as *const i8) };
+    }
+
+    // FIXME: technically there are two sets of passes Rust should accept: the
+    // first is at crate level (ie write.rs) and the second is here
+    if !sess.opts.cg.no_prepopulate_passes {
+        unsafe {
+            // PNaCl uses an ARM target machine for optimizations.
+            let tm = write::create_target_machine(sess);
+
+            let pre = |pm| {
+                let ap = |s: &'static str| {
+                    assert!(llvm::LLVMRustAddPass(pm, s.as_ptr() as *const i8),
+                            "failed to add pass `{}`", &s[0 .. s.len() - 1]);
+                };
+
+                ap("pnacl-sjlj-eh\0");
+                ap("internalize-used-globals\0");
+                ap("expand-indirectbr\0");
+                ap("lower-expect\0");
+                ap("rewrite-llvm-intrinsic-calls\0");
+                ap("expand-varargs\0");
+                ap("expand-arith-with-overflow\0");
+                ap("expand-constant-expr\0");
+                ap("simplify-struct-reg-signatures\0");
+                ap("expand-struct-regs\0");
+                ap("nacl-expand-ctors\0");
+                ap("resolve-aliases\0");
+                ap("nacl-expand-tls-constant-expr\0");
+                ap("nacl-expand-tls\0");
+                ap("nacl-global-cleanup\0");
+            };
+
+            let post = |pm| {
+                let ap = |s: &'static str| {
+                    assert!(llvm::LLVMRustAddPass(pm, s.as_ptr() as *const i8),
+                            "failed to add pass `{}`", &s[0 .. s.len() - 1]);
+                };
+
+                ap("rewrite-pnacl-library-calls\0");
+                ap("expand-byval\0");
+                ap("expand-small-arguments\0");
+                ap("nacl-promote-i1-ops\0");
+                ap("expand-shufflevector\0");
+                ap("globalize-constant-vectors\0");
+                ap("constant-insert-extract-element-index\0");
+                ap("fix-vector-load-store-alignment\0");
+                ap("canonicalize-mem-intrinsics\0");
+                ap("constmerge\0");
+                ap("flatten-globals\0");
+                ap("expand-constant-expr\0");
+                ap("nacl-expand-ints\0");
+                ap("nacl-promote-ints\0");
+                ap("expand-getelementptr\0");
+                ap("nacl-rewrite-atomics\0");
+                ap("expand-struct-regs\0");
+                ap("remove-asm-memory\0");
+                ap("simplify-allocas\0");
+                ap("replace-ptrs-with-ints\0");
+                ap("expand-struct-regs\0");
+                ap("normalize-alignment\0");
+                ap("strip-dead-prototypes\0");
+                ap("die\0");
+                ap("dce\0");
+                ap("cleanup-used-globals-metadata\0");
+            };
+
+            time(sess.time_passes(), "PNaCl simplification passes + LTO", (pre, post),
+                 |(pre, post)| {
+                     super::lto::run_passes(sess, llmod,
+                                            tm, pre, post);
+                 });
+            llvm::LLVMRustDisposeTargetMachine(tm);
+        }
+    }
+
+    // Write out IR if asked:
+    if sess.opts.output_types.iter().any(|&i| i == OutputTypeLlvmAssembly) {
+        // emit ir
+        let p = outputs.path(OutputTypeLlvmAssembly).display().to_string();
+        let cp = format!("{}\0", p);
+        unsafe {
+            let pm = llvm::LLVMCreatePassManager();
+            llvm::LLVMRustPrintModule(pm, llmod, cp.as_ptr() as *const i8);
+            llvm::LLVMDisposePassManager(pm);
+        }
+    }
+
+    let force_non_stable_output = {
+        let t = env::var("RUSTC_FORCE_NON_STABLE_BC_EMISSION").ok();
+        t != None || t.as_ref().map(|v| &v[..] ) != Some("0")
+    };
+    if force_non_stable_output || sess.opts.debuginfo != config::NoDebugInfo {
+        // emit bc for translation into nexe w/ debugging info.
+        let out = outputs.with_extension("debug.pexe").display().to_string();
+        let cout = format!("{}\0", out);
+        unsafe { llvm::LLVMWriteBitcodeToFile(llmod, cout.as_ptr() as *const i8) };
+    }
+
+    let emit_stable_pexe = true; // always emit stable bitcode.
+    if emit_stable_pexe {
+        unsafe {
+            // The PNaCl stable bitcode format doesn't accept metadata types.
+            llvm::LLVMRustStripDebugInfo(llmod);
+
+            let pm = llvm::LLVMCreatePassManager();
+
+            let ap = |s: &'static str| {
+                assert!(llvm::LLVMRustAddPass(pm, s.as_ptr() as *const i8),
+                        "failed to add pass `{}`", &s[0 .. s.len() - 1]);
+            };
+
+            // Strip unsupported metadata and things:
+            ap("rewrite-llvm-debugtrap-intrinsic\0");
+            ap("strip-metadata\0");
+            ap("strip-module-flags\0");
+            ap("nacl-strip-attributes\0");
+
+            if !sess.no_verify() {
+                ap("verify-pnaclabi-module\0");
+                ap("verify-pnaclabi-functions\0");
+            }
+
+            llvm::LLVMRunPassManager(pm, llmod);
+
+            llvm::LLVMDisposePassManager(pm);
+
+            llvm::LLVMRustStripDebugInfo(llmod);
+        }
+    }
+
+    let out = match outputs.single_output_file {
+        Some(ref file) => file.clone(),
+        None => {
+            let out_filename = outputs.path(OutputTypeExe);
+            filename_for_input(sess, config::CrateTypeExecutable, crate_name, &out_filename)
+        }
+    };
+    let out_cstr = format!("{}\0", out.display().to_string());
+
+    sess.check_writeable_output(&out, "final output");
+
+    if emit_stable_pexe {
+        if !unsafe { llvm::LLVMRustWritePNaClBitcode(llmod,
+                                                     out_cstr.as_ptr() as *const i8,
+                                                     false) } {
+            llvm_err(&sess.diagnostic().handler, "failed to write output file".to_string());
+        }
+    } else {
+        // regular bitcode output:
+        unsafe { llvm::LLVMWriteBitcodeToFile(llmod, out_cstr.as_ptr() as *const i8) };
+    }
+
+
+    #[cfg(unix)]
+    fn set_permissions(out: &PathBuf) {
+        use std::os::unix::fs::PermissionsExt;
+        use std::fs::{metadata, set_permissions};
+
+        let mut perms = metadata(out)
+            .unwrap()
+            .permissions();
+        perms.set_mode(0o0755);
+        set_permissions(out, perms)
+            .unwrap();
+    }
+    #[cfg(not(unix))]
+    fn set_permissions(_: &PathBuf) { }
+
+    set_permissions(&out);
+
+    unsafe {
+        llvm::LLVMContextDispose(llcx);
+    }
 }
 
 fn object_filenames(sess: &Session, outputs: &OutputFilenames) -> Vec<PathBuf> {

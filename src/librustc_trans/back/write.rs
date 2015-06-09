@@ -214,7 +214,13 @@ pub fn create_target_machine(sess: &Session) -> TargetMachineRef {
         }
     };
 
-    let triple = &sess.target.target.llvm_target;
+    let triple = if sess.targeting_pnacl() {
+        // Pretend that we are ARM for name mangling and assembly conventions.
+        // https://code.google.com/p/nativeclient/issues/detail?id=2554
+        "armv7a-none-nacl-gnueabi"
+    } else {
+        &sess.target.target.llvm_target[..]
+    };
 
     let tm = unsafe {
         let triple = CString::new(triple.as_bytes()).unwrap();
@@ -280,7 +286,7 @@ pub struct ModuleConfig {
 unsafe impl Send for ModuleConfig { }
 
 impl ModuleConfig {
-    fn new(tm: TargetMachineRef, passes: Vec<String>) -> ModuleConfig {
+    pub fn new(tm: TargetMachineRef, passes: Vec<String>) -> ModuleConfig {
         ModuleConfig {
             tm: tm,
             passes: passes,
@@ -303,7 +309,7 @@ impl ModuleConfig {
         }
     }
 
-    fn set_flags(&mut self, sess: &Session, trans: &CrateTranslation) {
+    pub fn set_flags(&mut self, sess: &Session, trans: &CrateTranslation) {
         self.no_verify = sess.no_verify();
         self.no_prepopulate_passes = sess.opts.cg.no_prepopulate_passes;
         self.no_builtins = trans.no_builtins;
@@ -424,7 +430,7 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
                                config: ModuleConfig,
                                name_extra: String,
                                output_names: OutputFilenames) {
-    let ModuleTranslation { llmod, llcx } = mtrans;
+    let ModuleTranslation { llmod, llcx, .. } = mtrans;
     let tm = config.tm;
 
     // llcx doesn't outlive this function, so we can put this on the stack.
@@ -572,15 +578,24 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
 }
 
 pub fn run_passes(sess: &Session,
-                  trans: &CrateTranslation,
+                  trans: &mut CrateTranslation,
                   output_types: &[config::OutputType],
                   crate_output: &OutputFilenames) {
+    use llvm::archive_ro::ArchiveRO;
+    use std::collections::HashSet;
+    use metadata::cstore;
+    use libc;
+    use back::link::llvm_actual_err;
+
+    use std::path::{PathBuf};
+
     // It's possible that we have `codegen_units > 1` but only one item in
     // `trans.modules`.  We could theoretically proceed and do LTO in that
     // case, but it would be confusing to have the validity of
     // `-Z lto -C codegen-units=2` depend on details of the crate being
     // compiled, so we complain regardless.
-    if sess.lto() && sess.opts.cg.codegen_units > 1 {
+    // PNaCl uses a bitcode linker, so this isn't an issue.
+    if sess.lto() && sess.opts.cg.codegen_units > 1 && !sess.targeting_pnacl() {
         // This case is impossible to handle because LTO expects to be able
         // to combine the entire crate and all its dependencies into a
         // single compilation unit, but each codegen unit is in a separate
@@ -616,7 +631,6 @@ pub fn run_passes(sess: &Session,
             sess.opts.output_types.contains(&config::OutputTypeExe);
     let needs_crate_object =
             sess.opts.output_types.contains(&config::OutputTypeExe);
-    if needs_crate_bitcode {
         modules_config.emit_bc = true;
     }
 
@@ -645,6 +659,23 @@ pub fn run_passes(sess: &Session,
     modules_config.set_flags(sess, trans);
     metadata_config.set_flags(sess, trans);
 
+    if sess.targeting_pnacl() {
+        // If targeting PNaCl, never try to run codegen.
+        metadata_config.emit_bc = true;
+        metadata_config.emit_no_opt_bc = false;
+        metadata_config.emit_lto_bc = false;
+        metadata_config.emit_ir = false;
+        metadata_config.emit_asm = false;
+        metadata_config.emit_obj = false;
+
+        modules_config.emit_bc = true;
+        modules_config.emit_no_opt_bc = false;
+        modules_config.emit_lto_bc = false;
+        modules_config.emit_ir = false;
+        modules_config.emit_asm = false;
+        modules_config.emit_obj = false;
+    }
+
 
     // Populate a buffer with a list of codegen threads.  Items are processed in
     // LIFO order, just because it's a tiny bit simpler that way.  (The order
@@ -653,7 +684,7 @@ pub fn run_passes(sess: &Session,
 
     {
         let work = build_work_item(sess,
-                                   trans.metadata_module,
+                                   trans.metadata_module.clone(),
                                    metadata_config.clone(),
                                    crate_output.clone(),
                                    "metadata".to_string());
@@ -662,23 +693,279 @@ pub fn run_passes(sess: &Session,
 
     for (index, mtrans) in trans.modules.iter().enumerate() {
         let work = build_work_item(sess,
-                                   *mtrans,
+                                   mtrans.clone(),
                                    modules_config.clone(),
                                    crate_output.clone(),
                                    format!("{}", index));
         work_items.push(work);
     }
 
+    if sess.targeting_pnacl() {
+
+        // In contrast to the NaCl SDK PNaCl toolchain, we do things a little
+        // differently.
+        // `pnacl-clang` or `pnacl-ld` run all optimization passes (set by
+        // -O[0-3sz]) after linking. This isn't such a problem when you have a
+        // compiler (ie clang) that generates reasonably sized modules to begin
+        // with, or when you don't have a test suite with 1500+ separate binary
+        // tests that you'd like to run and complete sometime before you
+        // retire. Rust isn't so lucky.
+        // So to make things more manageable, Rust runs the optimization passes
+        // on each of its modules as per usual, and uses LLVM's LTO passes for,
+        // well, LTO, with the IR simplification passes before and
+        // after. However, `pnacl-clang`s behavior is unchanged, which means we
+        // need to run the regular optimization passes on the current crate's
+        // link deps.
+
+        fn already_linked_libs(sess: &Session,
+                               crates: &Vec<(u32, Option<PathBuf>)>) -> HashSet<String> {
+            use metadata::csearch;
+            // Go though all extern crates and insert their deps into our linked set.
+            let linked = crates
+                .iter()
+                .fold(HashSet::new(), |mut led: HashSet<String>, &(cnum, _)| {
+                    let libs = csearch::get_native_libraries(&sess.cstore, cnum);
+                    for (_, name) in libs.into_iter() {
+                        led.insert(name);
+                    }
+                    led
+                });
+            debug!("linked: `{:?}`", linked);
+            linked
+        }
+        #[cfg(not(target_os = "nacl"))]
+        fn pnacl_lib_paths(sess: &Session) -> Vec<PathBuf> {
+            fn make_absolute(p: &Path) -> ::std::io::Result<PathBuf> {
+                use std::env;
+                env::current_dir()
+                    .map(|cwd| {
+                        let v = cwd.join(p)
+                            .into_os_string()
+                            .into_string()
+                            .unwrap();
+                        Path::new(&v)
+                            .to_path_buf()
+                    })
+            }
+            use rustc::session::search_paths::PathKind;
+            let native_dep_lib_path = {
+                make_absolute(&sess.pnacl_toolchain()
+                              .join("le32-nacl")
+                              .join("lib"))
+                    .unwrap()
+            };
+            let builtin_ports_lib_path = {
+                make_absolute(&sess.expect_cross_path()
+                              .join("lib")
+                              .join("pnacl")
+                              .join(if sess.opts.optimize == config::No {
+                                  "Debug"
+                              } else {
+                                  "Release"
+                              }))
+                    .unwrap()
+            };
+            let ports_lib_path = {
+                make_absolute(&sess.pnacl_toolchain()
+                              .join("le32-nacl/usr/lib"))
+                    .unwrap()
+            };
+            let mut paths: Vec<PathBuf> = sess.opts.search_paths
+                .iter(PathKind::Dependency)
+                .map(|(p, _): (&Path, _)| p.to_path_buf() )
+                .collect();
+            paths.extend({
+                sess.opts.search_paths
+                    .iter(PathKind::Native)
+                    .map(|(p, _): (&Path, _)| p.to_path_buf() )
+            });
+            paths.push(native_dep_lib_path);
+            paths.push(builtin_ports_lib_path);
+            paths.push(ports_lib_path);
+            paths
+        }
+        #[cfg(target_os = "nacl")]
+        fn pnacl_lib_paths(sess: &Session) -> Vec<PathBuf> {
+            use rustc::session::search_paths::PathKind;
+            let ports = Path::new("/lib/ports");
+            let ports = ports.join(if sess.opts.optimize == config::No {
+                "Debug"
+            } else {
+                "Release"
+            });
+            let base = Path::new("/lib");
+            let mut paths: Vec<PathBuf> = sess.opts.search_paths
+                .iter(PathKind::Dependency)
+                .map(|(p, _): (&Path, _)| p.to_path_buf() )
+                .collect();
+            paths.extend({
+                sess.opts.search_paths
+                    .iter(PathKind::Native)
+                    .map(|(p, _): (&Path, _)| p.to_path_buf() )
+            });
+            paths.push(base.to_path_buf());
+            paths.push(ports.to_path_buf());
+            paths
+        }
+
+        fn link_attrs_filter(sess: &Session,
+                             lib: &String,
+                             kind: cstore::NativeLibraryKind,
+                             linked: &mut HashSet<String>,
+                             lib_paths: &Vec<PathBuf>) -> Option<(String, PathBuf)> {
+            let lib_name = {
+                let mut i = lib.rsplit(':');
+                i.next();
+                let name = i.next();
+                if name.is_some() {
+                    name
+                        .unwrap()
+                        .to_string()
+                } else {
+                    lib.clone()
+                }
+            };
+            match kind {
+                cstore::NativeFramework => {
+                    sess.bug("can't link MacOS frameworks into PNaCl modules");
+                }
+                cstore::NativeStatic | cstore::NativeUnknown
+                    if !linked.contains(&lib_name) => {
+                        // Don't link archives twice:
+                        linked.insert(lib_name.clone());
+                        let lib_path = search_for_native(lib_paths, &lib_name);
+                        maybe_lib(sess,
+                                  &lib_name,
+                                  lib_path.map(|p| (lib_name.clone(), p) ))
+                    }
+                cstore::NativeStatic | cstore::NativeUnknown => { None }
+            }
+        }
+
+        fn search_for_native(paths: &Vec<PathBuf>,
+                             name: &String) -> Option<PathBuf> {
+            use std::fs::metadata;
+            let name_path = Path::new(&format!("lib{}.a", name))
+                .to_path_buf();
+            debug!(">> searching for native lib `{}` starting", name);
+            let found = paths.iter().find(|dir| {
+                debug!("   searching in `{:?}`", dir);
+                match metadata(&dir.join(&name_path)) {
+                    Ok(_) => true,
+                    Err(_) => false,
+                }
+            });
+            let found = found.map(|f| f.join(&name_path) );
+            debug!("<< searching for native lib `{}` finished, result=`{:?}`",
+                   name, found.as_ref());
+            found
+        }
+        fn maybe_lib<T>(sess: &Session, name: &String, p_opt: Option<T>) -> Option<T> {
+            p_opt.or_else(|| {
+                sess.err(&format!("couldn't find library `{}`", name)[..]);
+                sess.note("maybe missing `-L`?");
+                None
+            })
+        }
+
+
+        let used = sess.cstore.get_used_libraries().borrow();
+        let mut linked = already_linked_libs
+            (sess, &sess.cstore.get_used_crates(cstore::RequireStatic));
+        let lib_paths = pnacl_lib_paths(sess);
+        let mut index = 0usize;
+        let bitcodes: Vec<ModuleTranslation> = (*used)
+            .iter()
+            .filter_map(|&(ref lib, kind)| {
+                link_attrs_filter(sess, lib, kind, &mut linked, &lib_paths)
+            })
+            .flat_map(|(l, p): (String, PathBuf)| {
+                debug!("processing archive `{}`", p.display());
+                let archive = ArchiveRO::open(&p)
+                    .unwrap_or_else(|| {
+                        sess.fatal(&format!("invalid archive: `{}`",
+                                            p.display())[..]);
+                    });
+                let mut bitcodes = Vec::new();
+                for (id, object) in archive.iter().enumerate() {
+                    let name = object.name()
+                        .map(|name| name.to_string() )
+                        .unwrap_or_else(|| {
+                            format!("unnamed_object_{}", id)
+                        });
+                    let bc = object.data();
+                    debug!("processing object `{}`", name);
+                    let llctx = unsafe { llvm::LLVMContextCreate() };
+                    // Ignore all messages about invalid debug versions (toolchain libraries
+                    // cause an abundance of these):
+                    unsafe {
+                        llvm::LLVMRustSetContextIgnoreDebugMetadataVersionDiagnostics(llctx);
+                    }
+                    let llmod = unsafe {
+                        let name = format!("{}\0", name);
+                        llvm::LLVMRustParseBitcode(llctx,
+                                                   name.as_ptr() as *const i8,
+                                                   bc.as_ptr() as *const libc::c_void,
+                                                   bc.len() as libc::size_t)
+                    };
+                    unsafe {
+                        llvm::LLVMRustResetContextIgnoreDebugMetadataVersionDiagnostics(llctx);
+                    }
+                    if llmod == ptr::null_mut() {
+                        let msg = format!("failed to parse external bitcode
+                                              `{}` in archive `{:?}`",
+                                          name, p);
+                        unsafe { llvm::LLVMContextDispose(llctx) };
+                        llvm_actual_err(sess, msg);
+                    } else {
+                        // Some globals in the bitcode from PNaCl have what is
+                        // considered invalid linkage in our LLVM (their LLVM is
+                        // old). Fortunately, all linkage types get stripped later, so
+                        // it's safe to just ignore them all.
+
+                        let name = format!("r-{}-{}-{}",
+                                           l, name, index);
+                        index = index + 1;
+
+                        let mtrans = ModuleTranslation {
+                            llmod: llmod,
+                            llcx: llctx,
+                            name: Some(name.clone()),
+                        };
+                        bitcodes.push(mtrans.clone());
+                        let work_item = build_work_item(sess,
+                                                        mtrans,
+                                                        modules_config.clone(),
+                                                        crate_output.clone(),
+                                                        name);
+                        work_items.push(work_item);
+                    }
+                }
+                bitcodes.into_iter()
+            })
+            .collect();
+        trans.modules.push_all(&bitcodes[..]);
+    }
+
     // Process the work items, optionally using worker threads.
     if sess.opts.cg.codegen_units == 1 {
-        run_work_singlethreaded(sess, &trans.reachable, work_items);
+        run_work_singlethreaded(sess, &trans.reachable[..], work_items);
     } else {
         run_work_multithreaded(sess, work_items, sess.opts.cg.codegen_units);
     }
 
-    // All codegen is finished.
-    unsafe {
-        llvm::LLVMRustDisposeTargetMachine(tm);
+    if sess.targeting_pnacl() {
+        // PNaCl targets (ie PNaCl/ASM.js) use a separate tool for native/js codegen.
+        // Therefore we just return.
+        unsafe {
+            llvm::LLVMRustDisposeTargetMachine(tm);
+        }
+        // FIXME: time_llvm_passes support - does this use a global context or
+        // something?
+        if sess.opts.cg.codegen_units == 1 && sess.time_llvm_passes() {
+            unsafe { llvm::LLVMRustPrintPassTimings(); }
+        }
+        return;
     }
 
     // Produce final compile outputs.
@@ -979,23 +1266,30 @@ pub unsafe fn configure_llvm(sess: &Session) {
     llvm::LLVMInitializeARMAsmPrinter();
     llvm::LLVMInitializeARMAsmParser();
 
-    llvm::LLVMInitializeAArch64TargetInfo();
-    llvm::LLVMInitializeAArch64Target();
-    llvm::LLVMInitializeAArch64TargetMC();
-    llvm::LLVMInitializeAArch64AsmPrinter();
-    llvm::LLVMInitializeAArch64AsmParser();
+    #[cfg(not(target_os = "nacl"))]
+    unsafe fn init() {
+        llvm::LLVMInitializeAArch64TargetInfo();
+        llvm::LLVMInitializeAArch64Target();
+        llvm::LLVMInitializeAArch64TargetMC();
+        llvm::LLVMInitializeAArch64AsmPrinter();
+        llvm::LLVMInitializeAArch64AsmParser();
 
-    llvm::LLVMInitializeMipsTargetInfo();
-    llvm::LLVMInitializeMipsTarget();
-    llvm::LLVMInitializeMipsTargetMC();
-    llvm::LLVMInitializeMipsAsmPrinter();
-    llvm::LLVMInitializeMipsAsmParser();
+        llvm::LLVMInitializeMipsTargetInfo();
+        llvm::LLVMInitializeMipsTarget();
+        llvm::LLVMInitializeMipsTargetMC();
+        llvm::LLVMInitializeMipsAsmPrinter();
+        llvm::LLVMInitializeMipsAsmParser();
 
-    llvm::LLVMInitializePowerPCTargetInfo();
-    llvm::LLVMInitializePowerPCTarget();
-    llvm::LLVMInitializePowerPCTargetMC();
-    llvm::LLVMInitializePowerPCAsmPrinter();
-    llvm::LLVMInitializePowerPCAsmParser();
+        llvm::LLVMInitializePowerPCTargetInfo();
+        llvm::LLVMInitializePowerPCTarget();
+        llvm::LLVMInitializePowerPCTargetMC();
+        llvm::LLVMInitializePowerPCAsmPrinter();
+        llvm::LLVMInitializePowerPCAsmParser();
+    }
+    #[cfg(target_os = "nacl")]
+    unsafe fn init() { }
+
+    init();
 
     llvm::LLVMRustSetLLVMOptions(llvm_args.len() as c_int,
                                  llvm_args.as_ptr());
