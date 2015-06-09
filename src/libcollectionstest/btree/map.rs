@@ -12,6 +12,7 @@ use std::collections::BTreeMap;
 use std::collections::Bound::{Excluded, Included, Unbounded, self};
 use std::collections::btree_map::Entry::{Occupied, Vacant};
 use std::iter::range_inclusive;
+use std::rc::Rc;
 
 #[test]
 fn test_basic_large() {
@@ -195,6 +196,34 @@ fn test_range() {
             assert_eq!(kvs.next(), None);
             assert_eq!(pairs.next(), None);
         }
+    }
+}
+
+#[test]
+fn test_borrow() {
+    // make sure these compile -- using the Borrow trait
+    {
+        let mut map = BTreeMap::new();
+        map.insert("0".to_string(), 1);
+        assert_eq!(map["0"], 1);
+    }
+
+    {
+        let mut map = BTreeMap::new();
+        map.insert(Box::new(0), 1);
+        assert_eq!(map[&0], 1);
+    }
+
+    {
+        let mut map = BTreeMap::new();
+        map.insert(Box::new([0, 1]) as Box<[i32]>, 1);
+        assert_eq!(map[&[0, 1][..]], 1);
+    }
+
+    {
+        let mut map = BTreeMap::new();
+        map.insert(Rc::new(0), 1);
+        assert_eq!(map[&0], 1);
     }
 }
 
