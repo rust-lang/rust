@@ -84,6 +84,9 @@ pub const unwinder_private_data_size: usize = 2;
 #[cfg(target_arch = "powerpc")]
 pub const unwinder_private_data_size: usize = 2;
 
+#[cfg(target_os = "nacl")]
+pub const unwinder_private_data_size: usize = 2;
+
 #[repr(C)]
 pub struct _Unwind_Exception {
     pub exception_class: _Unwind_Exception_Class,
@@ -97,8 +100,9 @@ pub type _Unwind_Exception_Cleanup_Fn =
         extern "C" fn(unwind_code: _Unwind_Reason_Code,
                       exception: *mut _Unwind_Exception);
 
-#[cfg(any(all(target_os = "linux", not(target_env = "musl")),
-          target_os = "freebsd"))]
+#[cfg(all(any(all(target_os = "linux", not(target_env = "musl")),
+              target_os = "freebsd"),
+          not(target_os = "nacl")))]
 #[link(name = "gcc_s")]
 extern {}
 
@@ -118,6 +122,7 @@ extern {}
 #[link(name = "c++abi")]
 extern {}
 
+#[cfg(not(target_os = "nacl"))]
 extern "C" {
     // iOS on armv7 uses SjLj exceptions and requires to link
     // against corresponding routine (..._SjLj_...)
@@ -140,4 +145,13 @@ extern "C" {
 pub unsafe fn _Unwind_RaiseException(exc: *mut _Unwind_Exception)
                                      -> _Unwind_Reason_Code {
     _Unwind_SjLj_RaiseException(exc)
+}
+
+#[cfg(target_os = "nacl")]
+extern "C" {
+    #[link_name = "__pnacl_eh_sjlj_Unwind_RaiseException"]
+    pub fn _Unwind_RaiseException(exception: *mut _Unwind_Exception)
+                                  -> _Unwind_Reason_Code;
+    #[link_name = "__pnacl_eh_sjlj_Unwind_DeleteException"]
+    pub fn _Unwind_DeleteException(exception: *mut _Unwind_Exception);
 }
