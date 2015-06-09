@@ -281,7 +281,8 @@ type_path_tail : '<' type_expr [ ',' type_expr ] + '>'
 ## Macros
 
 ```antlr
-expr_macro_rules : "macro_rules" '!' ident '(' macro_rule * ')' ;
+expr_macro_rules : "macro_rules" '!' ident '(' macro_rule * ')' ';' 
+                 | "macro_rules" '!' ident '{' macro_rule * '}' ;
 macro_rule : '(' matcher * ')' "=>" '(' transcriber * ')' ';' ;
 matcher : '(' matcher * ')' | '[' matcher * ']'
         | '{' matcher * '}' | '$' ident ':' ident
