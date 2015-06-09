@@ -30,6 +30,7 @@ pub struct ArchiveConfig<'a> {
     pub lib_search_paths: Vec<PathBuf>,
     pub slib_prefix: String,
     pub slib_suffix: String,
+    pub gold_plugin: Option<PathBuf>,
     pub ar_prog: String
 }
 
@@ -148,16 +149,36 @@ impl<'a> Archive<'a> {
 
     fn prepare_ar_action(&self, cmd: &mut Command, dst: &Path, action: Action) {
         match action {
-            Action::Remove(file) => {
-                cmd.arg("d").arg(dst).arg(file);
+            Action::Remove(_) => {
+                cmd.arg("d");
             }
-            Action::AddObjects(objs, update_symbols) => {
-                cmd.arg(if update_symbols {"crs"} else {"crS"})
-                   .arg(dst)
-                   .args(objs);
+            Action::AddObjects(_, update_symbols) => {
+                cmd.arg(if update_symbols {"crs"} else {"crS"});
             }
             Action::UpdateSymbols => {
-                cmd.arg("s").arg(dst);
+                cmd.arg("s");
+            }
+        }
+
+        // The gold plugin argument *must* go after the command flags, but before
+        // the path arguments.
+        match self.config.gold_plugin {
+            Some(ref path) => {
+                cmd.arg(format!("--plugin={}", path.display()));
+            }
+            None => {}
+        };
+
+        // Now add the file arguments:
+        match action {
+            Action::Remove(file) => {
+                cmd.arg(dst).arg(file);
+            }
+            Action::AddObjects(objs, _) => {
+                cmd.arg(dst).args(objs);
+            }
+            Action::UpdateSymbols => {
+                cmd.arg(dst);
             }
         }
     }
