@@ -1180,9 +1180,8 @@ impl str {
     /// matched by a pattern.
     ///
     /// The pattern can be a simple `&str`, `char`, or a closure that
-    /// determines the split.
-    /// Additional libraries might provide more complex patterns like
-    /// regular expressions.
+    /// determines the split. Additional libraries might provide more complex
+    /// patterns like regular expressions.
     ///
     /// # Iterator behavior
     ///
@@ -1223,6 +1222,32 @@ impl str {
     /// ```
     /// let v: Vec<&str> = "abc1defXghi".split(|c| c == '1' || c == 'X').collect();
     /// assert_eq!(v, ["abc", "def", "ghi"]);
+    /// ```
+    ///
+    /// If a string contains multiple contiguous separators, you will end up
+    /// with empty strings in the output:
+    ///
+    /// ```
+    /// let x = "||||a||b|c".to_string();
+    /// let d: Vec<_> = x.split('|').collect();
+    ///
+    /// assert_eq!(d, &["", "", "", "", "a", "", "b", "c"]);
+    /// ```
+    ///
+    /// This can lead to possibly surprising behavior when whitespace is used
+    /// as the separator. This code is correct:
+    ///
+    /// ```
+    /// let x = "    a  b c".to_string();
+    /// let d: Vec<_> = x.split(' ').collect();
+    ///
+    /// assert_eq!(d, &["", "", "", "", "a", "", "b", "c"]);
+    /// ```
+    ///
+    /// It does _not_ give you:
+    ///
+    /// ```rust,ignore
+    /// assert_eq!(d, &["a", "b", "c"]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn split<'a, P: Pattern<'a>>(&'a self, pat: P) -> Split<'a, P> {
