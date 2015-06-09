@@ -342,8 +342,10 @@ Note that frameworks are only available on OSX targets.
 The different `kind` values are meant to differentiate how the native library
 participates in linkage. From a linkage perspective, the rust compiler creates
 two flavors of artifacts: partial (rlib/staticlib) and final (dylib/binary).
-Native dynamic libraries and frameworks are propagated to the final artifact
-boundary, while static libraries are not propagated at all.
+Native dynamic library and framework dependencies are propagated to the final
+artifact boundary, while static library dependencies are not propagated at
+all, because the static libraries are integrated directly into the subsequent
+artifact.
 
 A few examples of how this model can be used are:
 
