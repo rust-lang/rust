@@ -13,10 +13,10 @@
 //
 // - For each *mutable* static item, it checks that its **type**:
 //     - doesn't have a destructor
-//     - doesn't own an owned pointer
+//     - doesn't own a box
 //
 // - For each *immutable* static item, it checks that its **value**:
-//       - doesn't own owned, managed pointers
+//       - doesn't own a box
 //       - doesn't contain a struct literal or a call to an enum variant / struct constructor where
 //           - the type of the struct/enum has a dtor
 //

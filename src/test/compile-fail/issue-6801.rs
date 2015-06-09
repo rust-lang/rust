@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Creating a stack closure which references an owned pointer and then
-// transferring ownership of the owned box before invoking the stack
+// Creating a stack closure which references an box and then
+// transferring ownership of the box before invoking the stack
 // closure results in a crash.
 
 #![feature(box_syntax)]

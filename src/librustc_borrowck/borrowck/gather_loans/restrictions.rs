@@ -110,7 +110,7 @@ impl<'a, 'tcx> RestrictionsContext<'a, 'tcx> {
                     mc::Unique => {
                         // R-Deref-Send-Pointer
                         //
-                        // When we borrow the interior of an owned pointer, we
+                        // When we borrow the interior of a box, we
                         // cannot permit the base to be mutated, because that
                         // would cause the unique pointer to be freed.
                         //
