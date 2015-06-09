@@ -156,6 +156,46 @@ that, just like a move, when we assign `v` to `v2`, a copy of the data is made.
 But, unlike a move, we can still use `v` afterward. This is because an `i32`
 has no pointers to data somewhere else, copying it is a full copy.
 
+All primitive types implement the `Copy` trait and their ownership is
+therefore not moved like one would assume, following the ´ownership rules´.
+To give an example, the two following snippets of code only compile because the 
+`i32` and `bool` types implement the `Copy` trait. 
+
+```rust
+fn main() {
+    let a = 5;
+
+    let _y = double(a);
+    println!("{}", a);
+}
+
+fn double(x: i32) -> i32 {
+    x * 2
+}
+```
+
+```rust
+fn main() {
+    let a = true;
+
+    let _y = change_truth(a);
+    println!("{}", a);
+}
+
+fn change_truth(x: bool) -> bool {
+    !x
+}
+```
+
+If we would have used types that do not implement the `Copy` trait,
+we would have gotten a compile error because we tried to use a moved value.
+
+```text
+error: use of moved value: `a`
+println!("{}", a);
+               ^
+```
+
 We will discuss how to make your own types `Copy` in the [traits][traits]
 section.
 
