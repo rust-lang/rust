@@ -1,7 +1,7 @@
-- Feature Name: str-split-at
+- Feature Name: `str_split_at`
 - Start Date: 2015-05-17
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#1123](https://github.com/rust-lang/rfcs/pull/1123)
+- Rust Issue: [rust-lang/rust#25839](https://github.com/rust-lang/rust/pull/25839)
 
 # Summary
 
