@@ -96,6 +96,7 @@ pub mod diagnostics;
 
 pub mod back {
     pub use rustc_back::abi;
+    pub use rustc_back::le32;
     pub use rustc_back::rpath;
     pub use rustc_back::svh;
 }
@@ -112,6 +113,7 @@ pub mod middle {
     pub mod check_loop;
     pub mod check_match;
     pub mod check_rvalues;
+    pub mod check_pnacl_no_asm;
     pub mod const_eval;
     pub mod dataflow;
     pub mod dead;

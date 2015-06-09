@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use lint;
+use session::config::OutputType;
 use metadata::cstore::CStore;
 use metadata::filesearch;
 use session::search_paths::PathKind;
@@ -30,6 +31,8 @@ use rustc_back::target::Target;
 use std::path::{Path, PathBuf};
 use std::cell::{Cell, RefCell};
 use std::env;
+use std::ffi;
+use std::fmt;
 
 pub mod config;
 pub mod search_paths;
@@ -295,6 +298,76 @@ impl Session {
             &self.opts.search_paths,
             kind)
     }
+
+    #[cfg(not(target_os = "nacl"))]
+    pub fn expect_cross_path(&self) -> PathBuf {
+        use std::env;
+        let cross_path = self.opts.cg.cross_path.clone();
+        match cross_path.or_else(|| env::var("NACL_SDK_ROOT").ok() ) {
+            None => self.fatal("need cross path (-C cross-path, or via NACL_SDK_ROOT) \
+                                for this target"),
+            Some(p) => Path::new(&p).to_path_buf(),
+        }
+    }
+    #[cfg(not(target_os = "nacl"))]
+    pub fn pnacl_toolchain(&self) -> PathBuf {
+        let mut tc = self.expect_cross_path();
+        tc.push("toolchain");
+        tc.push(&format!("{}_pnacl", get_os_for_nacl_toolchain(self)));
+        tc
+    }
+
+    /// Shortcut to test if we need to do special things because we are targeting PNaCl.
+    pub fn targeting_pnacl(&self) -> bool {
+        &self.target.target.target_os[..] == "nacl"
+            && &self.target.target.arch[..] == "le32"
+    }
+
+    // Emits a fatal error if path is not writeable.
+    pub fn check_writeable_output<T: ?Sized>(&self, path: &T, name: &str)
+        where T: AsRef<Path> + AsRef<ffi::OsStr> + fmt::Debug
+    {
+        use std::fs::metadata;
+        use std::io::ErrorKind;
+
+        let is_writeable = match metadata(path) {
+            Ok(m) => !m.permissions().readonly(),
+            Err(e) => (e.kind() == ErrorKind::NotFound),
+        };
+
+        if !is_writeable {
+            self.fatal(&format!("`{}` file `{:?}` is not writeable -- check it's permissions.",
+                                name, path)[..]);
+        }
+    }
+
+    // checks if we're saving temps or if we're emitting the specified type.
+    // If neither, the file is unlinked from the filesystem.
+    pub fn remove_temp<T: ?Sized>(&self, path: &T, t: OutputType)
+        where T: AsRef<Path> + AsRef<ffi::OsStr> + fmt::Debug
+    {
+        use std::fs;
+        if self.opts.cg.save_temps ||
+            self.opts.output_types.contains(&t) {
+            return;
+        }
+        match fs::remove_file(path) {
+            Ok(..) => {}
+            Err(e) => {
+                // strictly speaking, this isn't a fatal error.
+                self.warn(&format!("failed to remove `{:?}`: `{}`", path, e)[..]);
+            }
+        }
+    }
+    // Create a 'temp' if we're either saving all temps, or --emit-ing that
+    // output type.
+    pub fn create_temp<F: FnOnce()>(&self, t: OutputType, f: F) {
+        if self.opts.cg.save_temps ||
+            self.opts.output_types.contains(&t) {
+            return;
+        }
+        f()
+    }
 }
 
 fn split_msg_into_multilines(msg: &str) -> Option<String> {
@@ -449,6 +522,20 @@ pub fn expect<T, M>(sess: &Session, opt: Option<T>, msg: M) -> T where
     M: FnOnce() -> String,
 {
     diagnostic::expect(sess.diagnostic(), opt, msg)
+}
+
+#[cfg(windows)]
+fn get_os_for_nacl_toolchain(_sess: &Session) -> String { "win".to_string() }
+#[cfg(target_os = "linux")]
+fn get_os_for_nacl_toolchain(_sess: &Session) -> String { "linux".to_string() }
+#[cfg(target_os = "macos")]
+fn get_os_for_nacl_toolchain(_sess: &Session) -> String { "mac".to_string() }
+#[cfg(all(not(windows),
+          not(target_os = "linux"),
+          not(target_os = "macos"),
+          not(target_os = "nacl")))]
+fn get_os_for_nacl_toolchain(sess: &Session) -> ! {
+    sess.fatal("NaCl/PNaCl toolchain unsupported on this OS (update this if that's changed)");
 }
 
 pub fn early_error(msg: &str) -> ! {
