@@ -18,9 +18,10 @@ use fmt;
 use io::{self, Error, ErrorKind};
 use libc::{self, pid_t, c_void, c_int, gid_t, uid_t};
 use ptr;
+use sys::fd::FileDesc;
+use sys::fs::{File, OpenOptions};
 use sys::pipe::AnonPipe;
 use sys::{self, c, cvt, cvt_r};
-use sys::fs::{File, OpenOptions};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Command
@@ -121,10 +122,11 @@ pub struct Process {
 
 pub enum Stdio {
     Inherit,
-    Piped(AnonPipe),
     None,
-    Fd(c_int),
+    Raw(c_int),
 }
+
+pub type RawStdio = FileDesc;
 
 const CLOEXEC_MSG_FOOTER: &'static [u8] = b"NOEX";
 
@@ -252,10 +254,9 @@ impl Process {
         }
 
         let setup = |src: Stdio, dst: c_int| {
-            let fd = match src {
-                Stdio::Inherit => return true,
-                Stdio::Fd(fd) => return cvt_r(|| libc::dup2(fd, dst)).is_ok(),
-                Stdio::Piped(pipe) => pipe.into_fd(),
+            match src {
+                Stdio::Inherit => true,
+                Stdio::Raw(fd) => cvt_r(|| libc::dup2(fd, dst)).is_ok(),
 
                 // If a stdio file descriptor is set to be ignored, we open up
                 // /dev/null into that file descriptor. Otherwise, the first
@@ -269,13 +270,12 @@ impl Process {
                     let devnull = CStr::from_ptr(b"/dev/null\0".as_ptr()
                                                     as *const _);
                     if let Ok(f) = File::open_c(devnull, &opts) {
-                        f.into_fd()
+                        cvt_r(|| libc::dup2(f.fd().raw(), dst)).is_ok()
                     } else {
-                        return false
+                        false
                     }
                 }
-            };
-            cvt_r(|| libc::dup2(fd.raw(), dst)).is_ok()
+            }
         };
 
         if !setup(in_fd, libc::STDIN_FILENO) { fail(&mut output) }
@@ -416,16 +416,5 @@ fn translate_status(status: c_int) -> ExitStatus {
         ExitStatus::Code(imp::WEXITSTATUS(status))
     } else {
         ExitStatus::Signal(imp::WTERMSIG(status))
-    }
-}
-
-impl Stdio {
-    pub fn clone_if_copy(&self) -> Stdio {
-        match *self {
-            Stdio::Inherit => Stdio::Inherit,
-            Stdio::None => Stdio::None,
-            Stdio::Fd(fd) => Stdio::Fd(fd),
-            Stdio::Piped(_) => unreachable!(),
-        }
     }
 }

@@ -65,46 +65,28 @@ impl ExitStatusExt for process::ExitStatus {
     }
 }
 
-#[stable(feature = "from_raw_os", since = "1.1.0")]
+#[stable(feature = "process_extensions", since = "1.2.0")]
 impl FromRawFd for process::Stdio {
-    /// Creates a new instance of `Stdio` from the raw underlying file
-    /// descriptor.
-    ///
-    /// When this `Stdio` is used as an I/O handle for a child process the given
-    /// file descriptor will be `dup`d into the destination file descriptor in
-    /// the child process.
-    ///
-    /// Note that this function **does not** take ownership of the file
-    /// descriptor provided and it will **not** be closed when `Stdio` goes out
-    /// of scope. As a result this method is unsafe because due to the lack of
-    /// knowledge about the lifetime of the provided file descriptor, this could
-    /// cause another I/O primitive's ownership property of its file descriptor
-    /// to be violated.
-    ///
-    /// Also note that this file descriptor may be used multiple times to spawn
-    /// processes. For example the `Command::spawn` function could be called
-    /// more than once to spawn more than one process sharing this file
-    /// descriptor.
     unsafe fn from_raw_fd(fd: RawFd) -> process::Stdio {
-        process::Stdio::from_inner(sys::process::Stdio::Fd(fd))
+        process::Stdio::from_inner(sys::fd::FileDesc::new(fd))
     }
 }
 
-#[stable(feature = "from_raw_os", since = "1.1.0")]
+#[stable(feature = "process_extensions", since = "1.2.0")]
 impl AsRawFd for process::ChildStdin {
     fn as_raw_fd(&self) -> RawFd {
         self.as_inner().fd().raw()
     }
 }
 
-#[stable(feature = "from_raw_os", since = "1.1.0")]
+#[stable(feature = "process_extensions", since = "1.2.0")]
 impl AsRawFd for process::ChildStdout {
     fn as_raw_fd(&self) -> RawFd {
         self.as_inner().fd().raw()
     }
 }
 
-#[stable(feature = "from_raw_os", since = "1.1.0")]
+#[stable(feature = "process_extensions", since = "1.2.0")]
 impl AsRawFd for process::ChildStderr {
     fn as_raw_fd(&self) -> RawFd {
         self.as_inner().fd().raw()
