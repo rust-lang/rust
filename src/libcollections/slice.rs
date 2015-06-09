@@ -370,7 +370,7 @@ impl<T> [T] {
         core_slice::SliceExt::get_unchecked_mut(self, index)
     }
 
-    /// Returns an unsafe pointer to the slice's buffer
+    /// Returns an raw pointer to the slice's buffer
     ///
     /// The caller must ensure that the slice outlives the pointer this
     /// function returns, or else it will end up pointing to garbage.

@@ -52,9 +52,9 @@ println!("raw points at {}", *raw);
 It gives this error:
 
 ```text
-error: dereference of unsafe pointer requires unsafe function or block [E0133]
-     println!("raw points at{}", *raw);
-                                 ^~~~
+error: dereference of raw pointer requires unsafe function or block [E0133]
+     println!("raw points at {}", *raw);
+                                  ^~~~
 ```
 
 When you dereference a raw pointer, you’re taking responsibility that it’s not
