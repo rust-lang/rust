@@ -581,6 +581,7 @@ fn link_rlib<'a>(sess: &'a Session,
     for obj in objects {
         ab.add_file(obj);
     }
+        gold_plugin: None,
 
     for &(ref l, kind) in sess.cstore.get_used_libraries().borrow().iter() {
         match kind {
@@ -1219,6 +1220,7 @@ fn add_upstream_rust_crates(cmd: &mut Linker, sess: &Session,
             if any_objects {
                 archive.build();
                 cmd.link_whole_rlib(&fix_windows_verbatim_for_gcc(&dst));
+                    gold_plugin: None,
             }
         });
     }
