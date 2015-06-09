@@ -308,6 +308,12 @@ impl<'tcx, N> fmt::Debug for VtableImplData<'tcx, N> {
     }
 }
 
+impl<'tcx, N> fmt::Debug for super::VtableClosureData<'tcx, N> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "VtableClosure({:?})", self.closure_def_id)
+    }
+}
+
 impl<'tcx> fmt::Debug for super::VtableObjectData<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "VtableObject(...)")
@@ -497,10 +503,8 @@ impl<'tcx, N:Repr<'tcx>> Repr<'tcx> for super::Vtable<'tcx, N> {
             super::VtableDefaultImpl(ref t) =>
                 t.repr(tcx),
 
-            super::VtableClosure(ref d, ref s) =>
-                format!("VtableClosure({},{})",
-                        d.repr(tcx),
-                        s.repr(tcx)),
+            super::VtableClosure(ref d) =>
+                d.repr(tcx),
 
             super::VtableFnPointer(ref d) =>
                 format!("VtableFnPointer({})",
@@ -524,6 +528,15 @@ impl<'tcx, N:Repr<'tcx>> Repr<'tcx> for super::VtableImplData<'tcx, N> {
     fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
         format!("VtableImpl(impl_def_id={}, substs={}, nested={})",
                 self.impl_def_id.repr(tcx),
+                self.substs.repr(tcx),
+                self.nested.repr(tcx))
+    }
+}
+
+impl<'tcx, N:Repr<'tcx>> Repr<'tcx> for super::VtableClosureData<'tcx, N> {
+    fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
+        format!("VtableClosure(closure_def_id={}, substs={}, nested={})",
+                self.closure_def_id.repr(tcx),
                 self.substs.repr(tcx),
                 self.nested.repr(tcx))
     }
