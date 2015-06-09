@@ -41,6 +41,7 @@
 #![feature(fs)]
 #![feature(path_relative_from)]
 #![feature(std_misc)]
+#![feature(fs_ext)]
 
 #![allow(trivial_casts)]
 
