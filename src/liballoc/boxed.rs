@@ -68,19 +68,21 @@ use core::ops::{Placer, Boxed, Place, InPlace, BoxPlace};
 use core::ptr::{Unique};
 use core::raw::{TraitObject};
 
+// FIXME (#22181): Put in the new placement-in syntax once that lands.
+
 /// A value that represents the heap. This is the place that the `box`
 /// keyword allocates into.
 ///
 /// The following two examples are equivalent:
 ///
 /// ```
-/// # #![feature(box_heap)]
+/// # #![feature(box_heap, core)]
 /// #![feature(box_syntax)]
 /// #![feature(placement_in_syntax)]
 /// use std::boxed::HEAP;
 ///
 /// fn main() {
-///     let foo = in HEAP { 5 };
+///     let foo = box (HEAP) { 5 };
 ///     let foo: Box<_> = box 5;
 /// }
 /// ```

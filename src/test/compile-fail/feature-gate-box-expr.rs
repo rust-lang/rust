@@ -20,7 +20,7 @@ fn main() {
     let x: Box<_> = box (HEAP) 'c'; //~ ERROR placement-in expression syntax is experimental
     println!("x: {}", x);
 
-    // XXX
+    // FIXME (#22181) put back when new placement-in syntax is supported
     // let x = in HEAP { 'c' };
     // println!("x: {}", x);
 }

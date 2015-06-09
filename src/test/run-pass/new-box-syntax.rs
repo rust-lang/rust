@@ -27,7 +27,7 @@ struct Structure {
 }
 
 pub fn main() {
-    // XXX
+    // FIXME (#22181) put back when new placement-in syntax is supported
     // let x: Box<isize> = in HEAP { 2 };
     let y: Box<isize> = box 2;
     let b: Box<isize> = box () (1 + 2);
