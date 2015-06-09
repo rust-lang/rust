@@ -119,6 +119,7 @@ impl char {
     /// assert_eq!('f'.to_digit(16), Some(15));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn to_digit(self, radix: u32) -> Option<u32> { C::to_digit(self, radix) }
 
     /// Returns an iterator that yields the hexadecimal Unicode escape of a
@@ -157,6 +158,7 @@ impl char {
     /// assert_eq!(heart, r"\u{2764}");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn escape_unicode(self) -> EscapeUnicode { C::escape_unicode(self) }
 
     /// Returns an iterator that yields the 'default' ASCII and
@@ -195,6 +197,7 @@ impl char {
     /// assert_eq!(quote, "\\\"");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn escape_default(self) -> EscapeDefault { C::escape_default(self) }
 
     /// Returns the number of bytes this character would need if encoded in
@@ -208,6 +211,7 @@ impl char {
     /// assert_eq!(n, 2);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn len_utf8(self) -> usize { C::len_utf8(self) }
 
     /// Returns the number of 16-bit code units this character would need if
@@ -221,6 +225,7 @@ impl char {
     /// assert_eq!(n, 1);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn len_utf16(self) -> usize { C::len_utf16(self) }
 
     /// Encodes this character as UTF-8 into the provided byte buffer, and then
@@ -255,6 +260,7 @@ impl char {
     /// ```
     #[unstable(feature = "unicode",
                reason = "pending decision about Iterator/Writer/Reader")]
+    #[inline]
     pub fn encode_utf8(self, dst: &mut [u8]) -> Option<usize> { C::encode_utf8(self, dst) }
 
     /// Encodes this character as UTF-16 into the provided `u16` buffer, and
@@ -289,6 +295,7 @@ impl char {
     /// ```
     #[unstable(feature = "unicode",
                reason = "pending decision about Iterator/Writer/Reader")]
+    #[inline]
     pub fn encode_utf16(self, dst: &mut [u16]) -> Option<usize> { C::encode_utf16(self, dst) }
 
     /// Returns whether the specified character is considered a Unicode
@@ -451,5 +458,6 @@ impl char {
                  since = "1.0.0")]
     #[unstable(feature = "unicode",
                reason = "needs expert opinion. is_cjk flag stands out as ugly")]
+    #[inline]
     pub fn width(self, is_cjk: bool) -> Option<usize> { charwidth::width(self, is_cjk) }
 }
