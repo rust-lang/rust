@@ -435,6 +435,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         debug!("evaluate_predicate_recursively({})",
                obligation.repr(self.tcx()));
 
+        // Check the cache from the tcx of predicates that we know
+        // have been proven elsewhere. This cache only contains
+        // predicates that are global in scope and hence unaffected by
+        // the current environment.
+        if self.tcx().fulfilled_predicates.borrow().is_duplicate(&obligation.predicate) {
+            return EvaluatedToOk;
+        }
+
         match obligation.predicate {
             ty::Predicate::Trait(ref t) => {
                 assert!(!t.has_escaping_regions());

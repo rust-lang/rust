@@ -45,7 +45,7 @@ pub fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
            impl_trait_ref.repr(tcx));
 
     let infcx = infer::new_infer_ctxt(tcx);
-    let mut fulfillment_cx = traits::FulfillmentContext::new();
+    let mut fulfillment_cx = traits::FulfillmentContext::new(true);
 
     let trait_to_impl_substs = &impl_trait_ref.substs;
 
@@ -422,7 +422,7 @@ pub fn compare_const_impl<'tcx>(tcx: &ty::ctxt<'tcx>,
            impl_trait_ref.repr(tcx));
 
     let infcx = infer::new_infer_ctxt(tcx);
-    let mut fulfillment_cx = traits::FulfillmentContext::new();
+    let mut fulfillment_cx = traits::FulfillmentContext::new(true);
 
     // The below is for the most part highly similar to the procedure
     // for methods above. It is simpler in many respects, especially
