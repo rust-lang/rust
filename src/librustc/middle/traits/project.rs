@@ -17,15 +17,15 @@ use super::ObligationCause;
 use super::PredicateObligation;
 use super::SelectionContext;
 use super::SelectionError;
+use super::VtableClosureData;
 use super::VtableImplData;
 use super::util;
 
 use middle::infer;
-use middle::subst::{Subst, Substs};
+use middle::subst::Subst;
 use middle::ty::{self, AsPredicate, ReferencesError, RegionEscape,
                  HasProjectionTypes, ToPolyTraitRef, Ty};
 use middle::ty_fold::{self, TypeFoldable, TypeFolder};
-use syntax::ast;
 use syntax::parse::token;
 use util::common::FN_OUTPUT_NAME;
 use util::ppaux::Repr;
@@ -57,7 +57,7 @@ pub struct MismatchedProjectionTypes<'tcx> {
 enum ProjectionTyCandidate<'tcx> {
     ParamEnv(ty::PolyProjectionPredicate<'tcx>),
     Impl(VtableImplData<'tcx, PredicateObligation<'tcx>>),
-    Closure(ast::DefId, Substs<'tcx>),
+    Closure(VtableClosureData<'tcx, PredicateObligation<'tcx>>),
     FnPointer(Ty<'tcx>),
 }
 
@@ -162,11 +162,16 @@ fn consider_unification_despite_ambiguity<'cx,'tcx>(selcx: &mut SelectionContext
                                                         self_ty,
                                                         &closure_type.sig,
                                                         util::TupleArgumentsFlag::No);
+            // We don't have to normalize the return type here - this is only
+            // reached for TyClosure: Fn inputs where the closure kind is
+            // still unknown, which should only occur in typeck where the
+            // closure type is already normalized.
             let (ret_type, _) =
                 infcx.replace_late_bound_regions_with_fresh_var(
                     obligation.cause.span,
                     infer::AssocTypeProjection(obligation.predicate.projection_ty.item_name),
                     &ty::Binder(ret_type));
+
             debug!("consider_unification_despite_ambiguity: ret_type={:?}",
                    ret_type.repr(selcx.tcx()));
             let origin = infer::RelateOutputImplTypes(obligation.cause.span);
@@ -686,9 +691,9 @@ fn assemble_candidates_from_impls<'cx,'tcx>(
                 selcx, obligation, obligation_trait_ref, candidate_set,
                 data.object_ty);
         }
-        super::VtableClosure(closure_def_id, substs) => {
+        super::VtableClosure(data) => {
             candidate_set.vec.push(
-                ProjectionTyCandidate::Closure(closure_def_id, substs));
+                ProjectionTyCandidate::Closure(data));
         }
         super::VtableFnPointer(fn_type) => {
             candidate_set.vec.push(
@@ -755,8 +760,8 @@ fn confirm_candidate<'cx,'tcx>(
             confirm_impl_candidate(selcx, obligation, impl_vtable)
         }
 
-        ProjectionTyCandidate::Closure(def_id, substs) => {
-            confirm_closure_candidate(selcx, obligation, def_id, &substs)
+        ProjectionTyCandidate::Closure(closure_vtable) => {
+            confirm_closure_candidate(selcx, obligation, closure_vtable)
         }
 
         ProjectionTyCandidate::FnPointer(fn_type) => {
@@ -779,13 +784,24 @@ fn confirm_fn_pointer_candidate<'cx,'tcx>(
 fn confirm_closure_candidate<'cx,'tcx>(
     selcx: &mut SelectionContext<'cx,'tcx>,
     obligation: &ProjectionTyObligation<'tcx>,
-    closure_def_id: ast::DefId,
-    substs: &Substs<'tcx>)
+    vtable: VtableClosureData<'tcx, PredicateObligation<'tcx>>)
     -> (Ty<'tcx>, Vec<PredicateObligation<'tcx>>)
 {
     let closure_typer = selcx.closure_typer();
-    let closure_type = closure_typer.closure_type(closure_def_id, substs);
-    confirm_callable_candidate(selcx, obligation, &closure_type.sig, util::TupleArgumentsFlag::No)
+    let closure_type = closure_typer.closure_type(vtable.closure_def_id, &vtable.substs);
+    let Normalized {
+        value: closure_type,
+        mut obligations
+    } = normalize_with_depth(selcx,
+                             obligation.cause.clone(),
+                             obligation.recursion_depth+1,
+                             &closure_type);
+    let (ty, mut cc_obligations) = confirm_callable_candidate(selcx,
+                                                              obligation,
+                                                              &closure_type.sig,
+                                                              util::TupleArgumentsFlag::No);
+    obligations.append(&mut cc_obligations);
+    (ty, obligations)
 }
 
 fn confirm_callable_candidate<'cx,'tcx>(
@@ -797,7 +813,7 @@ fn confirm_callable_candidate<'cx,'tcx>(
 {
     let tcx = selcx.tcx();
 
-    debug!("confirm_closure_candidate({},{})",
+    debug!("confirm_callable_candidate({},{})",
            obligation.repr(tcx),
            fn_sig.repr(tcx));
 
@@ -921,8 +937,8 @@ impl<'tcx> Repr<'tcx> for ProjectionTyCandidate<'tcx> {
                 format!("ParamEnv({})", data.repr(tcx)),
             ProjectionTyCandidate::Impl(ref data) =>
                 format!("Impl({})", data.repr(tcx)),
-            ProjectionTyCandidate::Closure(ref a, ref b) =>
-                format!("Closure(({},{}))", a.repr(tcx), b.repr(tcx)),
+            ProjectionTyCandidate::Closure(ref data) =>
+                format!("Closure({})", data.repr(tcx)),
             ProjectionTyCandidate::FnPointer(a) =>
                 format!("FnPointer(({}))", a.repr(tcx)),
         }
