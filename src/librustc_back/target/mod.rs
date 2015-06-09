@@ -57,6 +57,7 @@ mod bitrig_base;
 mod dragonfly_base;
 mod freebsd_base;
 mod linux_base;
+mod nacl_base;
 mod openbsd_base;
 mod netbsd_base;
 mod windows_base;
