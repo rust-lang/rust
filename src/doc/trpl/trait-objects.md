@@ -261,7 +261,7 @@ static Foo_for_String_vtable: FooVtable = FooVtable {
 ```
 
 The `destructor` field in each vtable points to a function that will clean up
-any resources of the vtable’s type, for `u8` it is trivial, but for `String` it
+any resources of the vtable’s type: for `u8` it is trivial, but for `String` it
 will free the memory. This is necessary for owning trait objects like
 `Box<Foo>`, which need to clean-up both the `Box` allocation as well as the
 internal type when they go out of scope. The `size` and `align` fields store
@@ -270,7 +270,7 @@ essentially unused at the moment since the information is embedded in the
 destructor, but will be used in the future, as trait objects are progressively
 made more flexible.
 
-Suppose we’ve got some values that implement `Foo`, then the explicit form of
+Suppose we’ve got some values that implement `Foo`. The explicit form of
 construction and use of `Foo` trait objects might look a bit like (ignoring the
 type mismatches: they’re all just pointers anyway):
 

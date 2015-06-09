@@ -45,7 +45,7 @@ but we don’t define a body, just a type signature. When we `impl` a trait,
 we use `impl Trait for Item`, rather than just `impl Item`.
 
 We can use traits to constrain our generics. Consider this function, which
-does not compile, and gives us a similar error:
+does not compile:
 
 ```rust,ignore
 fn print_area<T>(shape: T) {
@@ -56,7 +56,7 @@ fn print_area<T>(shape: T) {
 Rust complains:
 
 ```text
-error: type `T` does not implement any method in scope named `area`
+error: no method named `area` found for type `T` in the current scope
 ```
 
 Because `T` can be any type, we can’t be sure that it implements the `area`
@@ -212,10 +212,10 @@ This will compile without error.
 This means that even if someone does something bad like add methods to `i32`,
 it won’t affect you, unless you `use` that trait.
 
-There’s one more restriction on implementing traits. Either the trait or the
-type you’re writing the `impl` for must be defined by you. So, we could
+There’s one more restriction on implementing traits: either the trait, or the
+type you’re writing the `impl` for, must be defined by you. So, we could
 implement the `HasArea` type for `i32`, because `HasArea` is in our code. But
-if we tried to implement `Float`, a trait provided by Rust, for `i32`, we could
+if we tried to implement `ToString`, a trait provided by Rust, for `i32`, we could
 not, because neither the trait nor the type are in our code.
 
 One last thing about traits: generic functions with a trait bound use
