@@ -26,8 +26,23 @@
 
 pub use self::signal_os::{sigaction, siginfo, sigset_t, sigaltstack};
 pub use self::signal_os::{SA_ONSTACK, SA_SIGINFO, SIGBUS, SIGSTKSZ, SIG_SETMASK};
+#[cfg(not(target_os = "nacl"))]
+#[cfg(not(target_os = "nacl"))]
+
+#[cfg(target_os = "nacl")]
+pub use self::signal::{SA_NOCLDSTOP, SA_SIGINFO};
 
 use libc;
+
+// For (P)NaCl targets, nacl_io is a Pepper wrapper providing some C functions
+// missing in Newlib/libnacl.
+#[cfg(all(target_os = "nacl", not(test)))]
+#[link(name = "nacl_io", kind = "static")] extern {}
+
+// Both nacl_io && PNaCl SJLJ EH need libc++.
+#[cfg(all(target_os = "nacl", not(test)))]
+#[link(name = "c++", kind = "static")]
+extern {}
 
 #[cfg(any(target_os = "macos",
           target_os = "ios",
@@ -52,6 +67,10 @@ pub const FIOCLEX: libc::c_ulong = 0x5451;
               target_arch = "powerpc")))]
 pub const FIOCLEX: libc::c_ulong = 0x6601;
 
+#[cfg(target_os = "nacl")]
+mod consts { }
+
+
 pub const WNOHANG: libc::c_int = 1;
 
 #[cfg(target_os = "linux")]
@@ -74,6 +93,18 @@ pub struct passwd {
     pub pw_passwd: *mut libc::c_char,
     pub pw_uid: libc::uid_t,
     pub pw_gid: libc::gid_t,
+    pub pw_gecos: *mut libc::c_char,
+    pub pw_dir: *mut libc::c_char,
+    pub pw_shell: *mut libc::c_char,
+}
+#[repr(C)]
+#[cfg(target_os = "nacl")]
+pub struct passwd {
+    pub pw_name: *mut libc::c_char,
+    pub pw_passwd: *mut libc::c_char,
+    pub pw_uid: libc::uid_t,
+    pub pw_gid: libc::gid_t,
+    pub pw_comment: *mut libc::c_char,
     pub pw_gecos: *mut libc::c_char,
     pub pw_dir: *mut libc::c_char,
     pub pw_shell: *mut libc::c_char,
@@ -318,7 +349,26 @@ mod signal_os {
         }
     }
 }
+#[cfg(target_os = "nacl")]
+mod signal_os {
+    use libc;
 
+    pub static SA_NOCLDSTOP: libc::c_ulong = 1;
+    pub static SA_SIGINFO:   libc::c_ulong = 2;
+    #[repr(C)]
+    pub struct siginfo {
+        pub si_signo: libc::c_int,
+        pub si_code:  libc::c_int,
+        pub si_val:   usize,
+    }
+    pub type sigset_t = libc::c_ulong;
+    #[repr(C)]
+    pub struct sigaction {
+        pub sa_flags: libc::c_int,
+        pub sa_mask:  sigset_t,
+        pub handler:  extern fn(libc::c_int),
+    }
+}
 #[cfg(any(target_os = "macos",
           target_os = "ios",
           target_os = "freebsd",

@@ -128,6 +128,10 @@ impl Thread {
             pthread_setname_np(cname.as_ptr());
         }
     }
+    #[cfg(target_libc = "newlib")]
+    pub unsafe fn set_name(_name: &str) {
+        // Newlib has no way to set a thread name.
+    }
 
     pub fn sleep(dur: Duration) {
         let mut ts = libc::timespec {
@@ -202,7 +206,7 @@ pub mod guard {
         current().map(|s| s as *mut libc::c_void)
     }
 
-    #[cfg(any(target_os = "linux", target_os = "android"))]
+    #[cfg(any(target_os = "linux", target_os = "android", target_os = "nacl"))]
     unsafe fn get_stack_start() -> Option<*mut libc::c_void> {
         use super::pthread_attr_init;
 

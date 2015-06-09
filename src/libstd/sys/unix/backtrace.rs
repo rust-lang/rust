@@ -131,7 +131,17 @@ pub fn write(w: &mut Write) -> io::Result<()> {
     Ok(())
 }
 
-#[cfg(not(all(target_os = "ios", target_arch = "arm")))]
+#[cfg(target_os = "nacl")]
+#[inline(never)]
+pub fn write(_w: &mut Write) -> io::Result<()> {
+    use io::ErrorKind;
+    Err(io::Error::new(ErrorKind::PermissionDenied,
+                       "can't read the stack instruction pointer \
+                        to find the backtrace"))
+}
+
+#[cfg(not(any(all(target_os = "ios", target_arch = "arm"),
+              target_os = "nacl")))]
 #[inline(never)] // if we know this is a function call, we can skip it when
                  // tracing
 pub fn write(w: &mut Write) -> io::Result<()> {
@@ -245,7 +255,16 @@ fn print(w: &mut Write, idx: isize, addr: *mut libc::c_void,
     }
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "ios")))]
+#[cfg(target_os = "nacl")]
+fn print(_w: &mut Write, _idx: isize, _addr: *mut libc::c_void,
+         _symaddr: *mut libc::c_void) -> io::Result<()> {
+    use io::ErrorKind;
+    Err(io::Error::new(ErrorKind::PermissionDenied,
+                       "can't read the stack instruction pointer \
+                        to find the backtrace"))
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "ios", target_os = "nacl")))]
 fn print(w: &mut Write, idx: isize, addr: *mut libc::c_void,
          symaddr: *mut libc::c_void) -> io::Result<()> {
     use env;
@@ -496,20 +515,23 @@ mod uw {
 
     extern {
         // No native _Unwind_Backtrace on iOS
-        #[cfg(not(all(target_os = "ios", target_arch = "arm")))]
+        #[cfg(not(any(all(target_os = "ios", target_arch = "arm"),
+                      target_os = "nacl")))]
         pub fn _Unwind_Backtrace(trace: _Unwind_Trace_Fn,
                                  trace_argument: *mut libc::c_void)
                     -> _Unwind_Reason_Code;
 
         // available since GCC 4.2.0, should be fine for our purpose
         #[cfg(all(not(all(target_os = "android", target_arch = "arm")),
-                  not(all(target_os = "linux", target_arch = "arm"))))]
+                  not(all(target_os = "linux", target_arch = "arm")),
+                  not(target_os = "nacl")))]
         pub fn _Unwind_GetIPInfo(ctx: *mut _Unwind_Context,
                                  ip_before_insn: *mut libc::c_int)
                     -> libc::uintptr_t;
 
         #[cfg(all(not(target_os = "android"),
-                  not(all(target_os = "linux", target_arch = "arm"))))]
+                  not(all(target_os = "linux", target_arch = "arm")),
+                  not(target_os = "nacl")))]
         pub fn _Unwind_FindEnclosingFunction(pc: *mut libc::c_void)
             -> *mut libc::c_void;
     }

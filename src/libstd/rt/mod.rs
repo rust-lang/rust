@@ -113,8 +113,8 @@ fn lang_start(main: *const u8, argc: isize, argv: *const *const u8) -> isize {
         //
         // Hence, we set SIGPIPE to ignore when the program starts up in order
         // to prevent this problem.
-        #[cfg(windows)] fn ignore_sigpipe() {}
-        #[cfg(unix)] fn ignore_sigpipe() {
+        #[cfg(any(windows, target_os = "nacl"))] fn ignore_sigpipe() {}
+        #[cfg(all(unix, not(target_os = "nacl")))] fn ignore_sigpipe() {
             use libc;
             use libc::funcs::posix01::signal::signal;
             unsafe {

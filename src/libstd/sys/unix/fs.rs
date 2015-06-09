@@ -462,9 +462,18 @@ pub fn rmdir(p: &Path) -> io::Result<()> {
 }
 
 pub fn readlink(p: &Path) -> io::Result<PathBuf> {
+    #[cfg(not(target_libc = "newlib"))]
+    unsafe fn pathconf(p: *mut libc::c_char) -> i64 {
+        libc::pathconf(p, libc::_PC_NAME_MAX) as i64
+    }
+    #[cfg(target_libc = "newlib")]
+    unsafe fn pathconf(_: *mut libc::c_char) -> i64 {
+        libc::sysconf(libc::_PC_NAME_MAX) as i64
+    }
+
     let c_path = try!(cstr(p));
     let p = c_path.as_ptr();
-    let mut len = unsafe { libc::pathconf(p as *mut _, libc::_PC_NAME_MAX) };
+    let mut len = unsafe { pathconf(p as *mut _) };
     if len < 0 {
         len = 1024; // FIXME: read PATH_MAX from C ffi?
     }
