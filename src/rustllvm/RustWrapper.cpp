@@ -11,6 +11,11 @@
 #include "rustllvm.h"
 #include "llvm/Object/Archive.h"
 #include "llvm/Object/ObjectFile.h"
+
+#if ENABLE_PNACL
+#include "llvm/Bitcode/NaCl/NaClReaderWriter.h"
+#endif
+
 #include "llvm/IR/DiagnosticInfo.h"
 #include "llvm/IR/DiagnosticPrinter.h"
 
@@ -784,6 +789,19 @@ extern "C" void LLVMWriteValueToString(LLVMValueRef Value, RustStringRef str) {
     os << ")";
 }
 
+static bool MaterializeModule(Module* M) {
+  // LinkModules overrides the module materializer, orphaning any globalvalues
+  // still unmaterialized. This is here to force the loading of any lazy
+  // bitcode parsing.
+  const auto ec = M->materializeAllPermanently();
+  if(ec) {
+    LLVMRustSetLastError(ec.message().c_str());
+    return false;
+  } else {
+    return true;
+  }
+}
+
 extern "C" bool
 LLVMRustLinkInExternalBitcode(LLVMModuleRef dst, char *bc, size_t len) {
     Module *Dst = unwrap(dst);
@@ -807,6 +825,10 @@ LLVMRustLinkInExternalBitcode(LLVMModuleRef dst, char *bc, size_t len) {
         return false;
     }
 
+    if(!MaterializeModule(Dst)) {
+      return false;
+    }
+
     std::string Err;
 
 #if LLVM_VERSION_MINOR >= 6
@@ -824,6 +846,26 @@ LLVMRustLinkInExternalBitcode(LLVMModuleRef dst, char *bc, size_t len) {
         return false;
     }
     return true;
+}
+
+extern "C" bool
+LLVMRustLinkInModule(LLVMModuleRef dest, LLVMModuleRef src) {
+  Module* Dst = unwrap(dest);
+  Module* Src  = unwrap(src);
+
+  std::string Err;
+
+#if LLVM_VERSION_MINOR >= 6
+  raw_string_ostream Stream(Err);
+  DiagnosticPrinterRawOStream DP(Stream);
+  if (Linker::LinkModules(Dst, Src, [&](const DiagnosticInfo &DI) { DI.print(DP); })) {
+#else
+  if (Linker::LinkModules(Dst, Src, Linker::DestroySource, &Err)) {
+#endif
+      LLVMRustSetLastError(Err.c_str());
+      return false;
+  }
+  return true;
 }
 
 extern "C" void
@@ -857,10 +899,119 @@ LLVMRustGetSectionName(LLVMSectionIteratorRef SI, const char **ptr) {
     return ret.size();
 }
 
+#if ENABLE_PNACL
+extern "C" bool
+LLVMRustWritePNaClBitcode(LLVMModuleRef M,
+                          const char* Path,
+                          const bool AcceptSupportedOnly) {
+  std::string ErrorInfo;
+#if LLVM_VERSION_MINOR >= 6
+  std::error_code EC;
+  raw_fd_ostream OS(Path, EC, sys::fs::F_None);
+  if (EC)
+    ErrorInfo = EC.message();
+#elif LLVM_VERSION_MINOR >= 4
+  raw_fd_ostream OS(Path, ErrorInfo, sys::fs::F_None);
+#else
+  raw_fd_ostream OS(Path, ErrorInfo, raw_fd_ostream::F_Binary);
+#endif
+  if (!ErrorInfo.empty()) {
+    LLVMRustSetLastError(ErrorInfo.c_str());
+    return false;
+  }
+
+  NaClWriteBitcodeToFile(unwrap(M), OS);
+  return true;
+}
+#else
+extern "C" bool
+LLVMRustWritePNaClBitcode(LLVMModuleRef _M,
+                          const char* _Path,
+                          const bool _AcceptSupportedOnly) {
+  LLVMRustSetLastError("This Rust wasn't built with PNaCl support");
+  return false;
+}
+#endif
+
+#if ENABLE_PNACL
+/// isNaClBitcode - Return true if the given bytes are the magic bytes for
+/// PNaCl bitcode wire format. Does not take ownership of Buffer. Placed here so
+/// tools don't need to depend on extra components.
+static inline bool isNaClBitcode(const MemoryBuffer *Buffer) {
+  return isNaClBitcode((const unsigned char *)Buffer->getBufferStart(),
+                       (const unsigned char *)Buffer->getBufferEnd());
+}
+#else
+ static inline bool isNaClBitcode(const MemoryBuffer *_Buffer) {
+  return false;
+ }
+ static inline ErrorOr<Module*> NaClParseBitcodeFile(MemoryBufferRef _Buffer,
+                                                     LLVMContext &_Context,
+                                                     raw_ostream *_Verbose = nullptr,
+                                                     bool _AcceptSupportedOnly = true) {
+   __builtin_unreachable();
+ }
+#endif
+
+extern "C" LLVMModuleRef
+LLVMRustParseBitcode(LLVMContextRef ctxt, const char* name, const void* bc, size_t len) {
+  std::unique_ptr<MemoryBuffer> buf =
+    MemoryBuffer::getMemBuffer(StringRef(static_cast<const char*>(bc),
+                                         len),
+                               name,
+                               false);
+
+  LLVMModuleRef Mod = wrap(static_cast<Module*>(nullptr));
+  ErrorOr<Module *> Src(nullptr);
+  if (isNaClBitcode(buf.get())) {
+    Src = NaClParseBitcodeFile(buf->getMemBufferRef(), *unwrap(ctxt),
+                               nullptr, false);
+
+  } else {
+    Src = llvm::parseBitcodeFile(buf->getMemBufferRef(), *unwrap(ctxt));
+  }
+
+  if (!Src) {
+    LLVMRustSetLastError(Src.getError().message().c_str());
+  } else {
+    Mod = wrap(Src.get());
+  }
+
+  return Mod;
+}
+extern "C" void
+LLVMRustStripDebugInfo(LLVMModuleRef M) {
+  llvm::StripDebugInfo(*unwrap(M));
+}
+
 // LLVMArrayType function does not support 64-bit ElementCount
 extern "C" LLVMTypeRef
 LLVMRustArrayType(LLVMTypeRef ElementType, uint64_t ElementCount) {
     return wrap(ArrayType::get(unwrap(ElementType), ElementCount));
+}
+
+static void ignore_debug_metadata_diagnostic_handler(const DiagnosticInfo& di, void* _context) {
+  switch(di.getSeverity()) {
+  case DS_Error:
+    if(!isa<DiagnosticInfoDebugMetadataVersion>(di)) {
+      raw_fd_ostream stdout_(fileno(stdout), false);
+      DiagnosticPrinterRawOStream diag(stdout_);
+      di.print(diag);
+    }
+  default:
+    return;
+  }
+}
+
+extern "C" void
+LLVMRustSetContextIgnoreDebugMetadataVersionDiagnostics(LLVMContextRef C) {
+  LLVMContext* Context = unwrap(C);
+  Context->setDiagnosticHandler(ignore_debug_metadata_diagnostic_handler);
+}
+extern "C" void
+LLVMRustResetContextIgnoreDebugMetadataVersionDiagnostics(LLVMContextRef C) {
+  LLVMContext* Context = unwrap(C);
+  Context->setDiagnosticHandler(nullptr);
 }
 
 DEFINE_SIMPLE_CONVERSION_FUNCTIONS(Twine, LLVMTwineRef)
