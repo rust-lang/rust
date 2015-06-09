@@ -12,9 +12,10 @@
 //! up to a certain length. Eventually we should able to generalize
 //! to all lengths.
 
-#![unstable(feature = "core")] // not yet reviewed
-
 #![doc(primitive = "array")]
+#![unstable(feature = "fixed_size_array",
+            reason = "traits and impls are better expressed through generic \
+                      integer constants")]
 
 use clone::Clone;
 use cmp::{PartialEq, Eq, PartialOrd, Ord, Ordering};
@@ -30,7 +31,6 @@ use slice::{Iter, IterMut, SliceExt};
 ///
 /// This trait can be used to implement other traits on fixed-size arrays
 /// without causing much metadata bloat.
-#[unstable(feature = "core")]
 pub trait FixedSizeArray<T> {
     /// Converts the array to immutable slice
     fn as_slice(&self) -> &[T];
@@ -42,7 +42,6 @@ pub trait FixedSizeArray<T> {
 macro_rules! array_impls {
     ($($N:expr)+) => {
         $(
-            #[unstable(feature = "core")]
             impl<T> FixedSizeArray<T> for [T; $N] {
                 #[inline]
                 fn as_slice(&self) -> &[T] {
@@ -54,8 +53,6 @@ macro_rules! array_impls {
                 }
             }
 
-            #[unstable(feature = "array_as_ref",
-                       reason = "should ideally be implemented for all fixed-sized arrays")]
             impl<T> AsRef<[T]> for [T; $N] {
                 #[inline]
                 fn as_ref(&self) -> &[T] {
@@ -63,8 +60,6 @@ macro_rules! array_impls {
                 }
             }
 
-            #[unstable(feature = "array_as_ref",
-                       reason = "should ideally be implemented for all fixed-sized arrays")]
             impl<T> AsMut<[T]> for [T; $N] {
                 #[inline]
                 fn as_mut(&mut self) -> &mut [T] {

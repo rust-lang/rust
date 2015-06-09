@@ -29,8 +29,8 @@
 //!
 //! # Examples
 //!
-//! This example creates a `Point` struct that implements `Add` and `Sub`, and then
-//! demonstrates adding and subtracting two `Point`s.
+//! This example creates a `Point` struct that implements `Add` and `Sub`, and
+//! then demonstrates adding and subtracting two `Point`s.
 //!
 //! ```rust
 //! use std::ops::{Add, Sub};
@@ -62,21 +62,21 @@
 //! }
 //! ```
 //!
-//! See the documentation for each trait for a minimum implementation that prints
-//! something to the screen.
+//! See the documentation for each trait for a minimum implementation that
+//! prints something to the screen.
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use marker::{Sized, Unsize};
 use fmt;
 
-/// The `Drop` trait is used to run some code when a value goes out of scope. This
-/// is sometimes called a 'destructor'.
+/// The `Drop` trait is used to run some code when a value goes out of scope.
+/// This is sometimes called a 'destructor'.
 ///
 /// # Examples
 ///
-/// A trivial implementation of `Drop`. The `drop` method is called when `_x` goes
-/// out of scope, and therefore `main` prints `Dropping!`.
+/// A trivial implementation of `Drop`. The `drop` method is called when `_x`
+/// goes out of scope, and therefore `main` prints `Dropping!`.
 ///
 /// ```
 /// struct HasDrop;
@@ -103,8 +103,7 @@ pub trait Drop {
 // based on "op T" where T is expected to be `Copy`able
 macro_rules! forward_ref_unop {
     (impl $imp:ident, $method:ident for $t:ty) => {
-        #[unstable(feature = "core",
-                   reason = "recently added, waiting for dust to settle")]
+        #[stable(feature = "rust1", since = "1.0.0")]
         impl<'a> $imp for &'a $t {
             type Output = <$t as $imp>::Output;
 
@@ -120,8 +119,7 @@ macro_rules! forward_ref_unop {
 // based on "T op U" where T and U are expected to be `Copy`able
 macro_rules! forward_ref_binop {
     (impl $imp:ident, $method:ident for $t:ty, $u:ty) => {
-        #[unstable(feature = "core",
-                   reason = "recently added, waiting for dust to settle")]
+        #[stable(feature = "rust1", since = "1.0.0")]
         impl<'a> $imp<$u> for &'a $t {
             type Output = <$t as $imp<$u>>::Output;
 
@@ -131,8 +129,7 @@ macro_rules! forward_ref_binop {
             }
         }
 
-        #[unstable(feature = "core",
-                   reason = "recently added, waiting for dust to settle")]
+        #[stable(feature = "rust1", since = "1.0.0")]
         impl<'a> $imp<&'a $u> for $t {
             type Output = <$t as $imp<$u>>::Output;
 
@@ -142,8 +139,7 @@ macro_rules! forward_ref_binop {
             }
         }
 
-        #[unstable(feature = "core",
-                   reason = "recently added, waiting for dust to settle")]
+        #[stable(feature = "rust1", since = "1.0.0")]
         impl<'a, 'b> $imp<&'a $u> for &'b $t {
             type Output = <$t as $imp<$u>>::Output;
 
@@ -1210,7 +1206,7 @@ mod impls {
 
 /// Trait that indicates that this is a pointer or a wrapper for one,
 /// where unsizing can be performed on the pointee.
-#[unstable(feature = "core")]
+#[unstable(feature = "coerce_unsized")]
 #[lang="coerce_unsized"]
 pub trait CoerceUnsized<T> {
     // Empty.

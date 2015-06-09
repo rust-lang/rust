@@ -21,26 +21,42 @@
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/nightly/",
-       html_playground_url = "http://play.rust-lang.org/")]
-#![doc(test(no_crate_inject))]
+       html_playground_url = "http://play.rust-lang.org/",
+       test(no_crate_inject))]
 
 #![allow(trivial_casts)]
+#![cfg_attr(test, allow(deprecated))] // rand
+
 #![feature(alloc)]
-#![feature(box_syntax)]
 #![feature(box_patterns)]
+#![feature(box_syntax)]
+#![feature(copy_lifetime)]
 #![feature(core)]
+#![feature(core_intrinsics)]
+#![feature(core_prelude)]
+#![feature(core_slice_ext)]
+#![feature(core_str_ext)]
+#![feature(iter_cmp)]
+#![feature(iter_idx)]
+#![feature(iter_order)]
+#![feature(iter_product)]
+#![feature(iter_sum)]
 #![feature(lang_items)]
+#![feature(num_bits_bytes)]
+#![feature(pattern)]
+#![feature(ptr_as_ref)]
+#![feature(raw)]
+#![feature(slice_patterns)]
 #![feature(staged_api)]
+#![feature(step_by)]
+#![feature(str_char)]
+#![feature(str_internals)]
 #![feature(unboxed_closures)]
 #![feature(unicode)]
 #![feature(unique)]
 #![feature(unsafe_no_drop_flag, filling_drop)]
-#![feature(step_by)]
-#![feature(str_char)]
-#![feature(slice_patterns)]
 #![feature(utf8_error)]
 #![cfg_attr(test, feature(rand, test))]
-#![cfg_attr(test, allow(deprecated))] // rand
 #![cfg_attr(not(test), feature(str_words))]
 
 #![feature(no_std)]

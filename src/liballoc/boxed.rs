@@ -10,9 +10,9 @@
 
 //! A pointer type for heap allocation.
 //!
-//! `Box<T>`, casually referred to as a 'box', provides the simplest form of heap allocation in
-//! Rust. Boxes provide ownership for this allocation, and drop their contents when they go out of
-//! scope.
+//! `Box<T>`, casually referred to as a 'box', provides the simplest form of
+//! heap allocation in Rust. Boxes provide ownership for this allocation, and
+//! drop their contents when they go out of scope.
 //!
 //! # Examples
 //!
@@ -39,15 +39,17 @@
 //!
 //! This will print `Cons(1, Cons(2, Nil))`.
 //!
-//! Recursive structures must be boxed, because if the definition of `Cons` looked like this:
+//! Recursive structures must be boxed, because if the definition of `Cons`
+//! looked like this:
 //!
 //! ```rust,ignore
 //! Cons(T, List<T>),
 //! ```
 //!
-//! It wouldn't work. This is because the size of a `List` depends on how many elements are in the
-//! list, and so we don't know how much memory to allocate for a `Cons`. By introducing a `Box`,
-//! which has a defined size, we know how big `Cons` needs to be.
+//! It wouldn't work. This is because the size of a `List` depends on how many
+//! elements are in the list, and so we don't know how much memory to allocate
+//! for a `Cons`. By introducing a `Box`, which has a defined size, we know how
+//! big `Cons` needs to be.
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -355,7 +357,7 @@ impl<I: ExactSizeIterator + ?Sized> ExactSizeIterator for Box<I> {}
 /// }
 /// ```
 #[rustc_paren_sugar]
-#[unstable(feature = "core", reason = "Newly introduced")]
+#[unstable(feature = "fnbox", reason = "Newly introduced")]
 pub trait FnBox<A> {
     type Output;
 

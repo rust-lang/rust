@@ -24,6 +24,10 @@
 //! use core::prelude::*;
 //! ```
 
+#![unstable(feature = "core_prelude",
+            reason = "the libcore prelude has not been scrutinized and \
+                      stabilized yet")]
+
 // Reexported core operators
 pub use marker::{Copy, Send, Sized, Sync};
 pub use ops::{Drop, Fn, FnMut, FnOnce};
@@ -32,7 +36,6 @@ pub use ops::{Drop, Fn, FnMut, FnOnce};
 pub use mem::drop;
 
 // Reexported types and traits
-
 pub use char::CharExt;
 pub use clone::Clone;
 pub use cmp::{PartialEq, PartialOrd, Eq, Ord};
