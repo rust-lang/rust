@@ -491,7 +491,7 @@ impl<T> VecDeque<T> {
     /// assert_eq!(buf.len(), 1);
     /// assert_eq!(Some(&5), buf.get(0));
     /// ```
-    #[unstable(feature = "collections",
+    #[unstable(feature = "deque_extras",
                reason = "matches collection reform specification; waiting on panic semantics")]
     pub fn truncate(&mut self, len: usize) {
         for _ in len..self.len() {
@@ -552,7 +552,7 @@ impl<T> VecDeque<T> {
     /// Returns a pair of slices which contain, in order, the contents of the
     /// `VecDeque`.
     #[inline]
-    #[unstable(feature = "collections",
+    #[unstable(feature = "deque_extras",
                reason = "matches collection reform specification, waiting for dust to settle")]
     pub fn as_slices(&self) -> (&[T], &[T]) {
         unsafe {
@@ -572,7 +572,7 @@ impl<T> VecDeque<T> {
     /// Returns a pair of slices which contain, in order, the contents of the
     /// `VecDeque`.
     #[inline]
-    #[unstable(feature = "collections",
+    #[unstable(feature = "deque_extras",
                reason = "matches collection reform specification, waiting for dust to settle")]
     pub fn as_mut_slices(&mut self) -> (&mut [T], &mut [T]) {
         unsafe {
@@ -638,7 +638,7 @@ impl<T> VecDeque<T> {
     /// assert!(v.is_empty());
     /// ```
     #[inline]
-    #[unstable(feature = "collections",
+    #[unstable(feature = "drain",
                reason = "matches collection reform specification, waiting for dust to settle")]
     pub fn drain(&mut self) -> Drain<T> {
         Drain {
@@ -880,7 +880,7 @@ impl<T> VecDeque<T> {
     /// buf.push_back(10);
     /// assert_eq!(buf.swap_back_remove(1), Some(99));
     /// ```
-    #[unstable(feature = "collections",
+    #[unstable(feature = "deque_extras",
                reason = "the naming of this function may be altered")]
     pub fn swap_back_remove(&mut self, index: usize) -> Option<T> {
         let length = self.len();
@@ -914,7 +914,7 @@ impl<T> VecDeque<T> {
     /// buf.push_back(20);
     /// assert_eq!(buf.swap_front_remove(3), Some(99));
     /// ```
-    #[unstable(feature = "collections",
+    #[unstable(feature = "deque_extras",
                reason = "the naming of this function may be altered")]
     pub fn swap_front_remove(&mut self, index: usize) -> Option<T> {
         let length = self.len();
@@ -1320,7 +1320,7 @@ impl<T> VecDeque<T> {
     /// assert_eq!(buf2.len(), 2);
     /// ```
     #[inline]
-    #[unstable(feature = "collections",
+    #[unstable(feature = "split_off",
                reason = "new API, waiting for dust to settle")]
     pub fn split_off(&mut self, at: usize) -> Self {
         let len = self.len();
@@ -1383,7 +1383,7 @@ impl<T> VecDeque<T> {
     /// assert_eq!(buf2.len(), 0);
     /// ```
     #[inline]
-    #[unstable(feature = "collections",
+    #[unstable(feature = "append",
                reason = "new API, waiting for dust to settle")]
     pub fn append(&mut self, other: &mut Self) {
         // naive impl
@@ -1447,7 +1447,7 @@ impl<T: Clone> VecDeque<T> {
     ///     assert_eq!(a, b);
     /// }
     /// ```
-    #[unstable(feature = "collections",
+    #[unstable(feature = "deque_extras",
                reason = "matches collection reform specification; waiting on panic semantics")]
     pub fn resize(&mut self, new_len: usize, value: T) {
         let len = self.len();
@@ -1635,7 +1635,7 @@ impl<T> DoubleEndedIterator for IntoIter<T> {
 impl<T> ExactSizeIterator for IntoIter<T> {}
 
 /// A draining VecDeque iterator
-#[unstable(feature = "collections",
+#[unstable(feature = "drain",
            reason = "matches collection reform specification, waiting for dust to settle")]
 pub struct Drain<'a, T: 'a> {
     inner: &'a mut VecDeque<T>,

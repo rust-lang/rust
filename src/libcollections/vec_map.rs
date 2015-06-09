@@ -12,6 +12,8 @@
 //! are O(highest integer key).
 
 #![allow(missing_docs)]
+#![unstable(feature = "vecmap",
+            reason = "may not be stabilized in the standard library")]
 
 use self::Entry::*;
 
@@ -325,7 +327,7 @@ impl<V> VecMap<V> {
     /// assert_eq!(a[3], "c");
     /// assert_eq!(a[4], "d");
     /// ```
-    #[unstable(feature = "collections",
+    #[unstable(feature = "append",
                reason = "recently added as part of collections reform 2")]
     pub fn append(&mut self, other: &mut Self) {
         self.extend(other.drain());
@@ -358,7 +360,7 @@ impl<V> VecMap<V> {
     /// assert_eq!(b[3], "c");
     /// assert_eq!(b[4], "d");
     /// ```
-    #[unstable(feature = "collections",
+    #[unstable(feature = "split_off",
                reason = "recently added as part of collections reform 2")]
     pub fn split_off(&mut self, at: usize) -> Self {
         let mut other = VecMap::new();
@@ -410,7 +412,7 @@ impl<V> VecMap<V> {
     ///
     /// assert_eq!(vec, [(1, "a"), (2, "b"), (3, "c")]);
     /// ```
-    #[unstable(feature = "collections",
+    #[unstable(feature = "drain",
                reason = "matches collection reform specification, waiting for dust to settle")]
     pub fn drain<'a>(&'a mut self) -> Drain<'a, V> {
         fn filter<A>((i, v): (usize, Option<A>)) -> Option<(usize, A)> {
@@ -632,7 +634,7 @@ impl<V> VecMap<V> {
 
 
 impl<'a, V> Entry<'a, V> {
-    #[unstable(feature = "collections",
+    #[unstable(feature = "entry",
                reason = "will soon be replaced by or_insert")]
     #[deprecated(since = "1.0",
                 reason = "replaced with more ergonomic `or_insert` and `or_insert_with`")]
@@ -644,7 +646,7 @@ impl<'a, V> Entry<'a, V> {
         }
     }
 
-    #[unstable(feature = "collections",
+    #[unstable(feature = "entry",
                reason = "matches entry v3 specification, waiting for dust to settle")]
     /// Ensures a value is in the entry by inserting the default if empty, and returns
     /// a mutable reference to the value in the entry.
@@ -655,7 +657,7 @@ impl<'a, V> Entry<'a, V> {
         }
     }
 
-    #[unstable(feature = "collections",
+    #[unstable(feature = "entry",
                reason = "matches entry v3 specification, waiting for dust to settle")]
     /// Ensures a value is in the entry by inserting the result of the default function if empty,
     /// and returns a mutable reference to the value in the entry.
@@ -1003,14 +1005,14 @@ pub struct IntoIter<V> {
     fn((usize, Option<V>)) -> Option<(usize, V)>>
 }
 
-#[unstable(feature = "collections")]
+#[unstable(feature = "drain")]
 pub struct Drain<'a, V:'a> {
     iter: FilterMap<
     Enumerate<vec::Drain<'a, Option<V>>>,
     fn((usize, Option<V>)) -> Option<(usize, V)>>
 }
 
-#[unstable(feature = "collections")]
+#[unstable(feature = "drain")]
 impl<'a, V> Iterator for Drain<'a, V> {
     type Item = (usize, V);
 
@@ -1018,7 +1020,7 @@ impl<'a, V> Iterator for Drain<'a, V> {
     fn size_hint(&self) -> (usize, Option<usize>) { self.iter.size_hint() }
 }
 
-#[unstable(feature = "collections")]
+#[unstable(feature = "drain")]
 impl<'a, V> DoubleEndedIterator for Drain<'a, V> {
     fn next_back(&mut self) -> Option<(usize, V)> { self.iter.next_back() }
 }

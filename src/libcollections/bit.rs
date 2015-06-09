@@ -156,8 +156,7 @@ const FALSE: &'static bool = &false;
 /// println!("{:?}", bv);
 /// println!("total bits set to true: {}", bv.iter().filter(|x| *x).count());
 /// ```
-#[unstable(feature = "collections",
-           reason = "RFC 509")]
+#[unstable(feature = "bitvec", reason = "RFC 509")]
 pub struct BitVec {
     /// Internal representation of the bit vector
     storage: Vec<u32>,
@@ -181,14 +180,16 @@ impl Index<usize> for BitVec {
 
 /// Computes how many blocks are needed to store that many bits
 fn blocks_for_bits(bits: usize) -> usize {
-    // If we want 17 bits, dividing by 32 will produce 0. So we add 1 to make sure we
-    // reserve enough. But if we want exactly a multiple of 32, this will actually allocate
-    // one too many. So we need to check if that's the case. We can do that by computing if
-    // bitwise AND by `32 - 1` is 0. But LLVM should be able to optimize the semantically
-    // superior modulo operator on a power of two to this.
+    // If we want 17 bits, dividing by 32 will produce 0. So we add 1 to make
+    // sure we reserve enough. But if we want exactly a multiple of 32, this
+    // will actually allocate one too many. So we need to check if that's the
+    // case. We can do that by computing if bitwise AND by `32 - 1` is 0. But
+    // LLVM should be able to optimize the semantically superior modulo operator
+    // on a power of two to this.
     //
     // Note that we can technically avoid this branch with the expression
-    // `(nbits + u32::BITS - 1) / 32::BITS`, but if nbits is almost usize::MAX this will overflow.
+    // `(nbits + u32::BITS - 1) / 32::BITS`, but if nbits is almost usize::MAX
+    // this will overflow.
     if bits % u32::BITS == 0 {
         bits / u32::BITS
     } else {
@@ -202,6 +203,7 @@ fn mask_for_bits(bits: usize) -> u32 {
     !0 >> (u32::BITS - bits % u32::BITS) % u32::BITS
 }
 
+#[unstable(feature = "bitvec", reason = "RFC 509")]
 impl BitVec {
     /// Applies the given operation to the blocks of self and other, and sets
     /// self to be the result. This relies on the caller not to corrupt the
@@ -407,8 +409,6 @@ impl BitVec {
     /// assert_eq!(bv[3], true);
     /// ```
     #[inline]
-    #[unstable(feature = "collections",
-               reason = "panic semantics are likely to change in the future")]
     pub fn set(&mut self, i: usize, x: bool) {
         assert!(i < self.nbits);
         let w = i / u32::BITS;
@@ -608,7 +608,7 @@ impl BitVec {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections, bit_vec_append_split_off)]
+    /// # #![feature(bitvec, append)]
     /// use std::collections::BitVec;
     ///
     /// let mut a = BitVec::from_bytes(&[0b10000000]);
@@ -621,7 +621,7 @@ impl BitVec {
     /// assert!(a.eq_vec(&[true, false, false, false, false, false, false, false,
     ///                    false, true, true, false, false, false, false, true]));
     /// ```
-    #[unstable(feature = "bit_vec_append_split_off",
+    #[unstable(feature = "append",
                reason = "recently added as part of collections reform 2")]
     pub fn append(&mut self, other: &mut Self) {
         let b = self.len() % u32::BITS;
@@ -651,7 +651,7 @@ impl BitVec {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections, bit_vec_append_split_off)]
+    /// # #![feature(bitvec, split_off)]
     /// use std::collections::BitVec;
     /// let mut a = BitVec::new();
     /// a.push(true);
@@ -666,7 +666,7 @@ impl BitVec {
     /// assert!(a.eq_vec(&[true, false]));
     /// assert!(b.eq_vec(&[false, true]));
     /// ```
-    #[unstable(feature = "bit_vec_append_split_off",
+    #[unstable(feature = "split_off",
                reason = "recently added as part of collections reform 2")]
     pub fn split_off(&mut self, at: usize) -> Self {
         assert!(at <= self.len(), "`at` out of bounds");
@@ -1254,8 +1254,7 @@ impl<'a> IntoIterator for &'a BitVec {
 /// assert!(bv[3]);
 /// ```
 #[derive(Clone)]
-#[unstable(feature = "collections",
-           reason = "RFC 509")]
+#[unstable(feature = "bitset", reason = "RFC 509")]
 pub struct BitSet {
     bit_vec: BitVec,
 }
@@ -1322,6 +1321,7 @@ impl cmp::PartialEq for BitSet {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl cmp::Eq for BitSet {}
 
+#[unstable(feature = "bitset", reason = "RFC 509")]
 impl BitSet {
     /// Creates a new empty `BitSet`.
     ///
@@ -1808,7 +1808,7 @@ impl BitSet {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections, bit_set_append_split_off)]
+    /// # #![feature(collections, append)]
     /// use std::collections::{BitVec, BitSet};
     ///
     /// let mut a = BitSet::new();
@@ -1826,7 +1826,7 @@ impl BitSet {
     /// assert_eq!(b.len(), 0);
     /// assert_eq!(a, BitSet::from_bit_vec(BitVec::from_bytes(&[0b01110010])));
     /// ```
-    #[unstable(feature = "bit_set_append_split_off",
+    #[unstable(feature = "append",
                reason = "recently added as part of collections reform 2")]
     pub fn append(&mut self, other: &mut Self) {
         self.union_with(other);
@@ -1839,7 +1839,7 @@ impl BitSet {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections, bit_set_append_split_off)]
+    /// # #![feature(bitset, split_off)]
     /// use std::collections::{BitSet, BitVec};
     /// let mut a = BitSet::new();
     /// a.insert(2);
@@ -1854,7 +1854,7 @@ impl BitSet {
     /// assert_eq!(a, BitSet::from_bit_vec(BitVec::from_bytes(&[0b01100000])));
     /// assert_eq!(b, BitSet::from_bit_vec(BitVec::from_bytes(&[0b00010010])));
     /// ```
-    #[unstable(feature = "bit_set_append_split_off",
+    #[unstable(feature = "split_off",
                reason = "recently added as part of collections reform 2")]
     pub fn split_off(&mut self, at: usize) -> Self {
         let mut other = BitSet::new();

@@ -33,7 +33,6 @@
       html_root_url = "http://doc.rust-lang.org/nightly/")]
 
 #![feature(box_syntax)]
-#![feature(collections)]
 #![feature(fs_canonicalize)]
 #![feature(libc)]
 #![feature(path_ext)]
@@ -42,6 +41,7 @@
 #![feature(slice_bytes)]
 #![feature(staged_api)]
 #![feature(step_by)]
+#![feature(vec_push_all)]
 #![cfg_attr(test, feature(test, rand))]
 
 extern crate syntax;

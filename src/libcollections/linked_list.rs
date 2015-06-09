@@ -801,7 +801,7 @@ impl<'a, A> IterMut<'a, A> {
     /// }
     /// ```
     #[inline]
-    #[unstable(feature = "collections",
+    #[unstable(feature = "linked_list_extras",
                reason = "this is probably better handled by a cursor type -- we'll see")]
     pub fn insert_next(&mut self, elt: A) {
         self.insert_next_node(box Node::new(elt))
@@ -824,7 +824,7 @@ impl<'a, A> IterMut<'a, A> {
     /// assert_eq!(it.next().unwrap(), &2);
     /// ```
     #[inline]
-    #[unstable(feature = "collections",
+    #[unstable(feature = "linked_list_extras",
                reason = "this is probably better handled by a cursor type -- we'll see")]
     pub fn peek_next(&mut self) -> Option<&mut A> {
         if self.nelem == 0 {

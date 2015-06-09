@@ -27,7 +27,6 @@
 
 #![feature(box_patterns)]
 #![feature(box_syntax)]
-#![feature(collections)]
 #![feature(const_fn)]
 #![feature(fs)]
 #![feature(iter_cmp)]
@@ -46,6 +45,7 @@
 #![feature(std_misc)]
 #![feature(unicode)]
 #![feature(unicode)]
+#![feature(vec_push_all)]
 
 #![allow(trivial_casts)]
 

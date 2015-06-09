@@ -10,11 +10,11 @@
 
 #![deny(warnings)]
 
-#![feature(core)]
 #![feature(exit_status)]
-#![feature(rustdoc)]
-#![feature(rustc_private)]
+#![feature(iter_sum)]
 #![feature(path_relative_from)]
+#![feature(rustc_private)]
+#![feature(rustdoc)]
 
 extern crate rustdoc;
 extern crate rustc_back;
