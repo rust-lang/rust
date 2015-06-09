@@ -696,7 +696,7 @@ impl String {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections_drain)]
+    /// # #![feature(drain)]
     ///
     /// let mut s = String::from("α is alpha, β is beta");
     /// let beta_offset = s.find('β').unwrap_or(s.len());
@@ -710,7 +710,7 @@ impl String {
     /// s.drain(..);
     /// assert_eq!(s, "");
     /// ```
-    #[unstable(feature = "collections_drain",
+    #[unstable(feature = "drain",
                reason = "recently added, matches RFC")]
     pub fn drain<R>(&mut self, range: R) -> Drain where R: RangeArgument<usize> {
         // Memory safety
@@ -975,10 +975,14 @@ impl ops::Deref for String {
 
 /// Wrapper type providing a `&String` reference via `Deref`.
 #[unstable(feature = "collections")]
+#[deprecated(since = "1.2.0",
+             reason = "replaced with deref coercions or Borrow")]
+#[allow(deprecated)]
 pub struct DerefString<'a> {
     x: DerefVec<'a, u8>
 }
 
+#[allow(deprecated)]
 impl<'a> Deref for DerefString<'a> {
     type Target = String;
 
@@ -1005,6 +1009,9 @@ impl<'a> Deref for DerefString<'a> {
 /// string_consumer(&as_string("foo"));
 /// ```
 #[unstable(feature = "collections")]
+#[deprecated(since = "1.2.0",
+             reason = "replaced with deref coercions or Borrow")]
+#[allow(deprecated)]
 pub fn as_string<'a>(x: &'a str) -> DerefString<'a> {
     DerefString { x: as_vec(x.as_bytes()) }
 }
@@ -1134,7 +1141,7 @@ impl fmt::Write for String {
 }
 
 /// A draining iterator for `String`.
-#[unstable(feature = "collections_drain", reason = "recently added")]
+#[unstable(feature = "drain", reason = "recently added")]
 pub struct Drain<'a> {
     /// Will be used as &'a mut String in the destructor
     string: *mut String,
@@ -1149,7 +1156,7 @@ pub struct Drain<'a> {
 unsafe impl<'a> Sync for Drain<'a> {}
 unsafe impl<'a> Send for Drain<'a> {}
 
-#[unstable(feature = "collections_drain", reason = "recently added")]
+#[unstable(feature = "drain", reason = "recently added")]
 impl<'a> Drop for Drain<'a> {
     fn drop(&mut self) {
         unsafe {
@@ -1163,7 +1170,7 @@ impl<'a> Drop for Drain<'a> {
     }
 }
 
-#[unstable(feature = "collections_drain", reason = "recently added")]
+#[unstable(feature = "drain", reason = "recently added")]
 impl<'a> Iterator for Drain<'a> {
     type Item = char;
 
@@ -1177,7 +1184,7 @@ impl<'a> Iterator for Drain<'a> {
     }
 }
 
-#[unstable(feature = "collections_drain", reason = "recently added")]
+#[unstable(feature = "drain", reason = "recently added")]
 impl<'a> DoubleEndedIterator for Drain<'a> {
     #[inline]
     fn next_back(&mut self) -> Option<char> {

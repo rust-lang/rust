@@ -10,14 +10,17 @@
 
 //! Collection types.
 //!
-//! See [std::collections](../std/collections) for a detailed discussion of collections in Rust.
+//! See [std::collections](../std/collections) for a detailed discussion of
+//! collections in Rust.
 
 // Do not remove on snapshot creation. Needed for bootstrap. (Issue #22364)
 #![cfg_attr(stage0, feature(custom_attribute))]
 #![crate_name = "collections"]
-#![unstable(feature = "collections")]
 #![staged_api]
 #![crate_type = "rlib"]
+#![unstable(feature = "collections",
+            reason = "library is unlikely to be stabilized with the current \
+                      layout and name, use std::collections instead")]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/nightly/",
@@ -107,14 +110,12 @@ pub mod vec;
 pub mod vec_deque;
 pub mod vec_map;
 
-#[unstable(feature = "collections",
-           reason = "RFC 509")]
+#[unstable(feature = "bitvec", reason = "RFC 509")]
 pub mod bit_vec {
     pub use bit::{BitVec, Iter};
 }
 
-#[unstable(feature = "collections",
-           reason = "RFC 509")]
+#[unstable(feature = "bitset", reason = "RFC 509")]
 pub mod bit_set {
     pub use bit::{BitSet, Union, Intersection, Difference, SymmetricDifference};
     pub use bit::SetIter as Iter;
@@ -133,6 +134,7 @@ pub mod btree_set {
 
 // FIXME(#14344) this shouldn't be necessary
 #[doc(hidden)]
+#[unstable(feature = "issue_14344_fixme")]
 pub fn fixme_14344_be_sure_to_link_to_collections() {}
 
 #[cfg(not(test))]
@@ -141,6 +143,7 @@ mod std {
 }
 
 /// An endpoint of a range of keys.
+#[unstable(feature = "collections_bound")]
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
 pub enum Bound<T> {
     /// An inclusive bound.

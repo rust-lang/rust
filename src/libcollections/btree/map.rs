@@ -1520,7 +1520,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// }
     /// assert_eq!(Some((&5, &"b")), map.range(Included(&4), Unbounded).next());
     /// ```
-    #[unstable(feature = "collections",
+    #[unstable(feature = "btree_range",
                reason = "matches collection reform specification, waiting for dust to settle")]
     pub fn range<'a>(&'a self, min: Bound<&K>, max: Bound<&K>) -> Range<'a, K, V> {
         range_impl!(&self.root, min, max, as_slices_internal, iter, Range, edges, [])
@@ -1548,7 +1548,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     ///     println!("{} => {}", name, balance);
     /// }
     /// ```
-    #[unstable(feature = "collections",
+    #[unstable(feature = "btree_range",
                reason = "matches collection reform specification, waiting for dust to settle")]
     pub fn range_mut<'a>(&'a mut self, min: Bound<&K>, max: Bound<&K>) -> RangeMut<'a, K, V> {
         range_impl!(&mut self.root, min, max, as_slices_internal_mut, iter_mut, RangeMut,

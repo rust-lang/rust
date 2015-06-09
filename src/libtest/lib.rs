@@ -36,7 +36,6 @@
 
 #![feature(asm)]
 #![feature(box_syntax)]
-#![feature(collections)]
 #![feature(duration)]
 #![feature(duration_span)]
 #![feature(fnbox)]
@@ -44,6 +43,7 @@
 #![feature(libc)]
 #![feature(rustc_private)]
 #![feature(set_stdio)]
+#![feature(slice_extras)]
 #![feature(staged_api)]
 #![feature(std_misc)]
 

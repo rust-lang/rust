@@ -36,6 +36,8 @@ Core encoding and decoding interfaces.
 #![feature(std_misc)]
 #![feature(str_char)]
 #![feature(unicode)]
+#![feature(vecmap)]
+#![feature(enumset)]
 #![cfg_attr(test, feature(test))]
 
 // test harness access

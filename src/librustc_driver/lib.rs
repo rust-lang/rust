@@ -26,14 +26,15 @@
       html_root_url = "http://doc.rust-lang.org/nightly/")]
 
 #![feature(box_syntax)]
-#![feature(collections)]
+#![feature(exit_status)]
 #![feature(libc)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
-#![feature(staged_api)]
-#![feature(exit_status)]
 #![feature(set_stdio)]
+#![feature(staged_api)]
+#![feature(str_casing)]
+#![feature(vec_push_all)]
 
 extern crate arena;
 extern crate flate;

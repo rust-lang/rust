@@ -11,7 +11,8 @@
 //! Utilities for slice manipulation
 //!
 //! The `slice` module contains useful code to help work with slice values.
-//! Slices are a view into a block of memory represented as a pointer and a length.
+//! Slices are a view into a block of memory represented as a pointer and a
+//! length.
 //!
 //! ```
 //! // slicing a Vec
@@ -69,8 +70,9 @@
 //! }
 //! ```
 //!
-//! This iterator yields mutable references to the slice's elements, so while the element
-//! type of the slice is `i32`, the element type of the iterator is `&mut i32`.
+//! This iterator yields mutable references to the slice's elements, so while
+//! the element type of the slice is `i32`, the element type of the iterator is
+//! `&mut i32`.
 //!
 //! * `.iter()` and `.iter_mut()` are the explicit methods to return the default
 //!   iterators.
@@ -278,14 +280,14 @@ impl<T> [T] {
     }
 
     /// Returns all but the first element of a slice.
-    #[unstable(feature = "collections", reason = "likely to be renamed")]
+    #[unstable(feature = "slice_extras", reason = "likely to be renamed")]
     #[inline]
     pub fn tail(&self) -> &[T] {
         core_slice::SliceExt::tail(self)
     }
 
     /// Returns all but the first element of a mutable slice
-    #[unstable(feature = "collections",
+    #[unstable(feature = "slice_extras",
                reason = "likely to be renamed or removed")]
     #[inline]
     pub fn tail_mut(&mut self) -> &mut [T] {
@@ -293,14 +295,14 @@ impl<T> [T] {
     }
 
     /// Returns all but the last element of a slice.
-    #[unstable(feature = "collections", reason = "likely to be renamed")]
+    #[unstable(feature = "slice_extras", reason = "likely to be renamed")]
     #[inline]
     pub fn init(&self) -> &[T] {
         core_slice::SliceExt::init(self)
     }
 
     /// Returns all but the last element of a mutable slice
-    #[unstable(feature = "collections",
+    #[unstable(feature = "slice_extras",
                reason = "likely to be renamed or removed")]
     #[inline]
     pub fn init_mut(&mut self) -> &mut [T] {
@@ -727,13 +729,13 @@ impl<T> [T] {
     }
 
     /// Find the first index containing a matching value.
-    #[unstable(feature = "collections")]
+    #[unstable(feature = "slice_position_elem")]
     pub fn position_elem(&self, t: &T) -> Option<usize> where T: PartialEq {
         core_slice::SliceExt::position_elem(self, t)
     }
 
     /// Find the last index containing a matching value.
-    #[unstable(feature = "collections")]
+    #[unstable(feature = "slice_position_elem")]
     pub fn rposition_elem(&self, t: &T) -> Option<usize> where T: PartialEq {
         core_slice::SliceExt::rposition_elem(self, t)
     }
@@ -869,7 +871,7 @@ impl<T> [T] {
     /// assert_eq!(Some(vec![1, 3, 2]), perms.next());
     /// assert_eq!(Some(vec![3, 1, 2]), perms.next());
     /// ```
-    #[unstable(feature = "collections")]
+    #[unstable(feature = "permutations")]
     #[inline]
     pub fn permutations(&self) -> Permutations<T> where T: Clone {
         // NB see hack module in this file
@@ -893,7 +895,7 @@ impl<T> [T] {
     /// let b: &mut [_] = &mut [1, 0, 2];
     /// assert!(v == b);
     /// ```
-    #[unstable(feature = "collections",
+    #[unstable(feature = "permutations",
                reason = "uncertain if this merits inclusion in std")]
     pub fn next_permutation(&mut self) -> bool where T: Ord {
         core_slice::SliceExt::next_permutation(self)
@@ -916,7 +918,7 @@ impl<T> [T] {
     /// let b: &mut [_] = &mut [0, 1, 2];
     /// assert!(v == b);
     /// ```
-    #[unstable(feature = "collections",
+    #[unstable(feature = "permutations",
                reason = "uncertain if this merits inclusion in std")]
     pub fn prev_permutation(&mut self) -> bool where T: Ord {
         core_slice::SliceExt::prev_permutation(self)
@@ -940,7 +942,7 @@ impl<T> [T] {
     /// assert!(dst.clone_from_slice(&src2) == 3);
     /// assert!(dst == [3, 4, 5]);
     /// ```
-    #[unstable(feature = "collections")]
+    #[unstable(feature = "clone_from_slice")]
     pub fn clone_from_slice(&mut self, src: &[T]) -> usize where T: Clone {
         core_slice::SliceExt::clone_from_slice(self, src)
     }
@@ -967,7 +969,7 @@ impl<T> [T] {
     /// assert_eq!(num_moved, 3);
     /// assert!(a == [6, 7, 8, 4, 5]);
     /// ```
-    #[unstable(feature = "collections",
+    #[unstable(feature = "move_from",
                reason = "uncertain about this API approach")]
     #[inline]
     pub fn move_from(&mut self, mut src: Vec<T>, start: usize, end: usize) -> usize {
@@ -997,10 +999,12 @@ impl<T> [T] {
 ////////////////////////////////////////////////////////////////////////////////
 // Extension traits for slices over specific kinds of data
 ////////////////////////////////////////////////////////////////////////////////
-#[unstable(feature = "collections", reason = "recently changed")]
+#[unstable(feature = "slice_concat_ext",
+           reason = "trait should not have to exist")]
 /// An extension trait for concatenating slices
 pub trait SliceConcatExt<T: ?Sized> {
-    #[unstable(feature = "collections", reason = "recently changed")]
+    #[unstable(feature = "slice_concat_ext",
+               reason = "trait should not have to exist")]
     /// The resulting type after concatenation
     type Output;
 
@@ -1014,8 +1018,8 @@ pub trait SliceConcatExt<T: ?Sized> {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn concat(&self) -> Self::Output;
 
-    /// Flattens a slice of `T` into a single value `Self::Output`, placing a given separator
-    /// between each.
+    /// Flattens a slice of `T` into a single value `Self::Output`, placing a
+    /// given separator between each.
     ///
     /// # Examples
     ///
@@ -1060,7 +1064,7 @@ impl<T: Clone, V: Borrow<[T]>> SliceConcatExt<T> for [V] {
 ///
 /// The last generated swap is always (0, 1), and it returns the
 /// sequence to its initial order.
-#[unstable(feature = "collections")]
+#[unstable(feature = "permutations")]
 #[derive(Clone)]
 pub struct ElementSwaps {
     sdir: Vec<SizeDirection>,
@@ -1072,7 +1076,7 @@ pub struct ElementSwaps {
 
 impl ElementSwaps {
     /// Creates an `ElementSwaps` iterator for a sequence of `length` elements.
-    #[unstable(feature = "collections")]
+    #[unstable(feature = "permutations")]
     pub fn new(length: usize) -> ElementSwaps {
         // Initialize `sdir` with a direction that position should move in
         // (all negative at the beginning) and the `size` of the
@@ -1194,13 +1198,13 @@ impl Iterator for ElementSwaps {
 /// swap applied.
 ///
 /// Generates even and odd permutations alternately.
-#[unstable(feature = "collections")]
+#[unstable(feature = "permutations")]
 pub struct Permutations<T> {
     swaps: ElementSwaps,
     v: Vec<T>,
 }
 
-#[unstable(feature = "collections", reason = "trait is unstable")]
+#[unstable(feature = "permutations", reason = "trait is unstable")]
 impl<T: Clone> Iterator for Permutations<T> {
     type Item = Vec<T>;
 

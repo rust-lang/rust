@@ -366,7 +366,7 @@ impl<'a> Iterator for Recompositions<'a> {
 ///
 /// For use with the `std::iter` module.
 #[derive(Clone)]
-#[unstable(feature = "collections")]
+#[unstable(feature = "str_utf16")]
 pub struct Utf16Units<'a> {
     encoder: Utf16Encoder<Chars<'a>>
 }
@@ -591,7 +591,7 @@ impl str {
     /// assert_eq!(s.slice_chars(0, 4), "Löwe");
     /// assert_eq!(s.slice_chars(5, 7), "老虎");
     /// ```
-    #[unstable(feature = "collections",
+    #[unstable(feature = "slice_chars",
                reason = "may have yet to prove its worth")]
     pub fn slice_chars(&self, begin: usize, end: usize) -> &str {
         core_str::StrExt::slice_chars(self, begin, end)
@@ -1068,7 +1068,7 @@ impl str {
     }
 
     /// Returns an iterator of `u16` over the string encoded as UTF-16.
-    #[unstable(feature = "collections",
+    #[unstable(feature = "str_utf16",
                reason = "this functionality may only be provided by libunicode")]
     pub fn utf16_units(&self) -> Utf16Units {
         Utf16Units { encoder: Utf16Encoder::new(self[..].chars()) }
@@ -1527,7 +1527,7 @@ impl str {
     /// let v: Vec<&str> = "1abc2abc3".matches(char::is_numeric).collect();
     /// assert_eq!(v, ["1", "2", "3"]);
     /// ```
-    #[unstable(feature = "collections",
+    #[unstable(feature = "str_matches",
                reason = "method got recently added")]
     pub fn matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> Matches<'a, P> {
         core_str::StrExt::matches(self, pat)
@@ -1560,7 +1560,7 @@ impl str {
     /// let v: Vec<&str> = "1abc2abc3".rmatches(char::is_numeric).collect();
     /// assert_eq!(v, ["3", "2", "1"]);
     /// ```
-    #[unstable(feature = "collections",
+    #[unstable(feature = "str_matches",
                reason = "method got recently added")]
     pub fn rmatches<'a, P: Pattern<'a>>(&'a self, pat: P) -> RMatches<'a, P>
         where P::Searcher: ReverseSearcher<'a>
@@ -1605,7 +1605,7 @@ impl str {
     /// let v: Vec<(usize, usize)> = "ababa".match_indices("aba").collect();
     /// assert_eq!(v, [(0, 3)]); // only the first `aba`
     /// ```
-    #[unstable(feature = "collections",
+    #[unstable(feature = "str_matches",
                reason = "might have its iterator type changed")]
     // NB: Right now MatchIndices yields `(usize, usize)`, but it would
     // be more consistent with `matches` and `char_indices` to return `(usize, &str)`
@@ -1649,7 +1649,7 @@ impl str {
     /// let v: Vec<(usize, usize)> = "ababa".rmatch_indices("aba").collect();
     /// assert_eq!(v, [(2, 5)]); // only the last `aba`
     /// ```
-    #[unstable(feature = "collections",
+    #[unstable(feature = "str_matches",
                reason = "might have its iterator type changed")]
     // NB: Right now RMatchIndices yields `(usize, usize)`, but it would
     // be more consistent with `rmatches` and `char_indices` to return `(usize, &str)`
@@ -1677,7 +1677,7 @@ impl str {
     /// assert!(string.subslice_offset(lines[1]) == 2); // &"b"
     /// assert!(string.subslice_offset(lines[2]) == 4); // &"c"
     /// ```
-    #[unstable(feature = "collections",
+    #[unstable(feature = "subslice_offset",
                reason = "awaiting convention about comparability of arbitrary slices")]
     pub fn subslice_offset(&self, inner: &str) -> usize {
         core_str::StrExt::subslice_offset(self, inner)
@@ -1922,14 +1922,14 @@ impl str {
     }
 
     /// Escapes each char in `s` with `char::escape_default`.
-    #[unstable(feature = "collections",
+    #[unstable(feature = "str_escape",
                reason = "return type may change to be an iterator")]
     pub fn escape_default(&self) -> String {
         self.chars().flat_map(|c| c.escape_default()).collect()
     }
 
     /// Escapes each char in `s` with `char::escape_unicode`.
-    #[unstable(feature = "collections",
+    #[unstable(feature = "str_escape",
                reason = "return type may change to be an iterator")]
     pub fn escape_unicode(&self) -> String {
         self.chars().flat_map(|c| c.escape_unicode()).collect()
