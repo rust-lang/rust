@@ -169,6 +169,7 @@ DOC_TARGETS += doc/not_found.html
 doc/not_found.html: $(D)/not_found.md $(HTML_DEPS) | doc/
 	@$(call E, rustdoc: $@)
 	$(Q)$(RUSTDOC) $(RUSTDOC_HTML_OPTS_NO_CSS) \
+		--markdown-no-toc \
 		--markdown-css http://doc.rust-lang.org/rust.css $<
 
 define DEF_DOC
