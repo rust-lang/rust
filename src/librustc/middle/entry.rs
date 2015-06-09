@@ -27,13 +27,13 @@ struct EntryContext<'a, 'ast: 'a> {
     main_name: Name,
 
     // The top-level function called 'main'
-    main_fn: Option<(NodeId, Span)>,
+    main_fn: Option<(NodeId, token::InternedString, Span)>,
 
     // The function that has attribute named 'main'
-    attr_main_fn: Option<(NodeId, Span)>,
+    attr_main_fn: Option<(NodeId, token::InternedString, Span)>,
 
     // The function that has the attribute 'start' on it
-    start_fn: Option<(NodeId, Span)>,
+    start_fn: Option<(NodeId, token::InternedString, Span)>,
 
     // The functions that one might think are 'main' but aren't, e.g.
     // main functions not defined at the top level. For diagnostics.
@@ -84,7 +84,11 @@ fn find_item(item: &Item, ctxt: &mut EntryContext) {
                         if path.count() == 1 {
                             // This is a top-level function so can be 'main'
                             if ctxt.main_fn.is_none() {
-                                ctxt.main_fn = Some((item.id, item.span));
+                                let link_name =
+                                    attr::first_attr_value_str_by_name(&item.attrs,
+                                                                       "main_link_name")
+                                    .unwrap_or_else(|| token::get_name(ctxt.main_name));
+                                ctxt.main_fn = Some((item.id, link_name, item.span));
                             } else {
                                 span_err!(ctxt.session, item.span, E0136,
                                           "multiple 'main' functions");
@@ -98,7 +102,10 @@ fn find_item(item: &Item, ctxt: &mut EntryContext) {
 
             if attr::contains_name(&item.attrs, "main") {
                 if ctxt.attr_main_fn.is_none() {
-                    ctxt.attr_main_fn = Some((item.id, item.span));
+                    let link_name = attr::first_attr_value_str_by_name(&item.attrs,
+                                                                       "main_link_name")
+                        .unwrap_or_else(|| token::get_name(ctxt.main_name));
+                    ctxt.attr_main_fn = Some((item.id, link_name, item.span));
                 } else {
                     span_err!(ctxt.session, item.span, E0137,
                               "multiple functions with a #[main] attribute");
@@ -107,7 +114,10 @@ fn find_item(item: &Item, ctxt: &mut EntryContext) {
 
             if attr::contains_name(&item.attrs, "start") {
                 if ctxt.start_fn.is_none() {
-                    ctxt.start_fn = Some((item.id, item.span));
+                    let link_name = attr::first_attr_value_str_by_name(&item.attrs,
+                                                                       "main_link_name")
+                        .unwrap_or_else(|| token::get_name(ctxt.main_name));
+                    ctxt.start_fn = Some((item.id, link_name, item.span));
                 } else {
                     span_err!(ctxt.session, item.span, E0138,
                               "multiple 'start' functions");
@@ -122,13 +132,13 @@ fn find_item(item: &Item, ctxt: &mut EntryContext) {
 
 fn configure_main(this: &mut EntryContext) {
     if this.start_fn.is_some() {
-        *this.session.entry_fn.borrow_mut() = this.start_fn;
+        *this.session.entry_fn.borrow_mut() = this.start_fn.clone();
         this.session.entry_type.set(Some(config::EntryStart));
     } else if this.attr_main_fn.is_some() {
-        *this.session.entry_fn.borrow_mut() = this.attr_main_fn;
+        *this.session.entry_fn.borrow_mut() = this.attr_main_fn.clone();
         this.session.entry_type.set(Some(config::EntryMain));
     } else if this.main_fn.is_some() {
-        *this.session.entry_fn.borrow_mut() = this.main_fn;
+        *this.session.entry_fn.borrow_mut() = this.main_fn.clone();
         this.session.entry_type.set(Some(config::EntryMain));
     } else {
         // No main function
