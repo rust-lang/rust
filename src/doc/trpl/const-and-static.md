@@ -64,7 +64,10 @@ unsafe {
 
 [unsafe]: unsafe.html
 
-Furthermore, any type stored in a `static` must be `Sync`.
+Furthermore, any type stored in a `static` must be `Sync`, and may not have
+a [`Drop`][drop] implementation.
+
+[drop]: drop.html
 
 # Initializing
 
