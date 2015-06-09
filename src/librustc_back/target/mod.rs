@@ -272,6 +272,7 @@ impl Target {
         }
 
         key!(cpu);
+        key!(ar);
         key!(linker);
         key!(relocation_model);
         key!(code_model);
