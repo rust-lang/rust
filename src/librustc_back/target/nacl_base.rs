@@ -15,6 +15,7 @@ pub fn base_target() -> Target {
     let opts = TargetOptions {
         dynamic_linking: false,
         executables: true,
+        no_asm: true,
         .. Default::default()
     };
     Target {
