@@ -10,4 +10,4 @@
 
 // error-pattern:cannot apply unary operator `-` to type `collections::string::String`
 
-fn main() { -"foo".to_string(); }
+fn main() { -"foo".to_owned(); }

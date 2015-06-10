@@ -61,7 +61,7 @@
 //! }
 //!
 //! fn main() {
-//!     let my_string = "Hello World".to_string();
+//!     let my_string = "Hello World".to_owned();
 //!     do_work(&my_string);
 //!
 //!     let my_i8: i8 = 100;

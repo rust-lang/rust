@@ -22,7 +22,7 @@ trait to_str_2 {
 // the compiler to attempt autoderef and then
 // try to resolve the method.
 impl to_str_2 for t {
-    fn my_to_string() -> String { "t".to_string() }
+    fn my_to_string() -> String { "t".to_owned() }
 }
 
 fn new_t(x: t) {

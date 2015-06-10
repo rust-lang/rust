@@ -16,4 +16,4 @@
 
 enum thing<K> { some(K), }
 
-pub fn main() { let _x = thing::some("hi".to_string()); }
+pub fn main() { let _x = thing::some("hi".to_owned()); }

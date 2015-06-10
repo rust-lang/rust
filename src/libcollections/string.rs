@@ -277,7 +277,7 @@ impl String {
     /// let mut v = &mut [0xD834, 0xDD1E, 0x006d, 0x0075,
     ///                   0x0073, 0x0069, 0x0063];
     /// assert_eq!(String::from_utf16(v).unwrap(),
-    ///            "𝄞music".to_string());
+    ///            "𝄞music".to_owned());
     ///
     /// // 𝄞mu<invalid>ic
     /// v[4] = 0xD800;
@@ -307,7 +307,7 @@ impl String {
     ///           0xD834];
     ///
     /// assert_eq!(String::from_utf16_lossy(v),
-    ///            "𝄞mus\u{FFFD}ic\u{FFFD}".to_string());
+    ///            "𝄞mus\u{FFFD}ic\u{FFFD}".to_owned());
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -648,7 +648,7 @@ impl String {
     /// # Examples
     ///
     /// ```
-    /// let a = "foo".to_string();
+    /// let a = "foo".to_owned();
     /// assert_eq!(a.len(), 3);
     /// ```
     #[inline]
@@ -674,7 +674,7 @@ impl String {
     /// # Examples
     ///
     /// ```
-    /// let mut s = "foo".to_string();
+    /// let mut s = "foo".to_owned();
     /// s.clear();
     /// assert!(s.is_empty());
     /// ```

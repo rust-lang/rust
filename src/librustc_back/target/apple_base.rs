@@ -15,14 +15,14 @@ pub fn opts() -> TargetOptions {
     TargetOptions {
         // OSX has -dead_strip, which doesn't rely on ffunction_sections
         function_sections: false,
-        linker: "cc".to_string(),
+        linker: "cc".to_owned(),
         dynamic_linking: true,
         executables: true,
         is_like_osx: true,
         morestack: true,
         has_rpath: true,
-        dll_prefix: "lib".to_string(),
-        dll_suffix: ".dylib".to_string(),
+        dll_prefix: "lib".to_owned(),
+        dll_suffix: ".dylib".to_owned(),
         pre_link_args: Vec::new(),
         .. Default::default()
     }

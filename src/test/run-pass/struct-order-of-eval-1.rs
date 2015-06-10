@@ -12,7 +12,7 @@
 struct S { f0: String, f1: isize }
 
 pub fn main() {
-    let s = "Hello, world!".to_string();
+    let s = "Hello, world!".to_owned();
     let s = S {
         f0: s.to_string(),
         ..S {

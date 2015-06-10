@@ -4055,7 +4055,7 @@ fn check_block_with_expected<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 .add_lint(lint::builtin::UNREACHABLE_CODE,
                           s_id,
                           s.span,
-                          "unreachable statement".to_string());
+                          "unreachable statement".to_owned());
             warned = true;
         }
         any_diverges = any_diverges || fcx.infcx().type_var_diverges(s_ty);
@@ -4077,7 +4077,7 @@ fn check_block_with_expected<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                     .add_lint(lint::builtin::UNREACHABLE_CODE,
                               e.id,
                               e.span,
-                              "unreachable expression".to_string());
+                              "unreachable expression".to_owned());
             }
             let ety = match expected {
                 ExpectHasType(ety) => {
@@ -4894,7 +4894,7 @@ fn structurally_resolve_type_or_else<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         // If not, error.
         if ty::type_is_ty_var(alternative) || ty::type_is_error(alternative) {
             fcx.type_error_message(sp, |_actual| {
-                "the type of this value must be known in this context".to_string()
+                "the type of this value must be known in this context".to_owned()
             }, ty, None);
             demand::suptype(fcx, sp, fcx.tcx().types.err, ty);
             ty = fcx.tcx().types.err;

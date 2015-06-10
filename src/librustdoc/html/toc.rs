@@ -212,7 +212,7 @@ mod tests {
             ($level: expr, $name: expr) => {
                 assert_eq!(builder.push($level,
                                         $name.to_string(),
-                                        "".to_string()),
+                                        "".to_owned()),
                            $name);
             }
         }
@@ -253,7 +253,7 @@ mod tests {
                                 level: $level,
                                 name: $name.to_string(),
                                 sec_number: $name.to_string(),
-                                id: "".to_string(),
+                                id: "".to_owned(),
                                 children: toc!($($sub),*)
                             }
                             ),*

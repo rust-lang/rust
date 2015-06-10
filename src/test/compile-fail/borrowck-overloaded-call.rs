@@ -80,10 +80,10 @@ fn g() {
 
 fn h() {
     let s = SFnOnce {
-        x: "hello".to_string(),
+        x: "hello".to_owned(),
     };
-    s(" world".to_string());
-    s(" world".to_string());    //~ ERROR use of moved value: `s`
+    s(" world".to_owned());
+    s(" world".to_owned());    //~ ERROR use of moved value: `s`
 }
 
 fn main() {}

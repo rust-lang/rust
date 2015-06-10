@@ -19,5 +19,5 @@ fn test(s: String) -> bool {
 }
 
 fn main() {
-    assert!(test("12345".to_string()));
+    assert!(test("12345".to_owned()));
 }

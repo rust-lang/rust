@@ -25,7 +25,7 @@ use syntax::parse;
 pub fn highlight(src: &str, class: Option<&str>, id: Option<&str>) -> String {
     debug!("highlighting: ================\n{}\n==============", src);
     let sess = parse::ParseSess::new();
-    let fm = sess.codemap().new_filemap("<stdin>".to_string(), src.to_string());
+    let fm = sess.codemap().new_filemap("<stdin>".to_owned(), src.to_string());
 
     let mut out = Vec::new();
     doit(&sess,

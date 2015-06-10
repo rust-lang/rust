@@ -397,7 +397,7 @@ impl RustcDefaultCalls {
                          input: &Input)
                          -> Compilation {
         let r = matches.opt_strs("Z");
-        if r.contains(&("ls".to_string())) {
+        if r.contains(&("ls".to_owned())) {
             match input {
                 &Input::File(ref ifile) => {
                     let path = &(*ifile);
@@ -746,7 +746,7 @@ pub fn handle_options(mut args: Vec<String>) -> Option<getopts::Matches> {
         return None;
     }
 
-    if cg_flags.contains(&"passes=list".to_string()) {
+    if cg_flags.contains(&"passes=list".to_owned()) {
         unsafe { ::llvm::LLVMRustPrintPasses(); }
         return None;
     }
@@ -797,7 +797,7 @@ pub fn monitor<F:FnOnce()+Send+'static>(f: F) {
     let data = Arc::new(Mutex::new(Vec::new()));
     let err = Sink(data.clone());
 
-    let mut cfg = thread::Builder::new().name("rustc".to_string());
+    let mut cfg = thread::Builder::new().name("rustc".to_owned());
 
     // FIXME: Hacks on hacks. If the env is trying to override the stack size
     // then *don't* set it explicitly.
@@ -823,7 +823,7 @@ pub fn monitor<F:FnOnce()+Send+'static>(f: F) {
                 }
 
                 let xs = [
-                    "the compiler unexpectedly panicked. this is a bug.".to_string(),
+                    "the compiler unexpectedly panicked. this is a bug.".to_owned(),
                     format!("we would appreciate a bug report: {}",
                             BUG_REPORT_URL),
                 ];

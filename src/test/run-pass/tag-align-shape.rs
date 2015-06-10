@@ -23,5 +23,5 @@ pub fn main() {
     let x = t_rec {c8: 22, t: a_tag::a_tag_var(44)};
     let y = format!("{:?}", x);
     println!("y = {:?}", y);
-    assert_eq!(y, "t_rec { c8: 22, t: a_tag_var(44) }".to_string());
+    assert_eq!(y, "t_rec { c8: 22, t: a_tag_var(44) }".to_owned());
 }

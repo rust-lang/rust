@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn main() {
-    let a = "".to_string();
+    let a = "".to_owned();
     let b: Vec<&str> = a.lines().collect();
     drop(a);    //~ ERROR cannot move out of `a` because it is borrowed
     for s in &b {

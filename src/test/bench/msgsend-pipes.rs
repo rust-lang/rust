@@ -104,9 +104,9 @@ fn run(args: &[String]) {
 fn main() {
     let args = env::args();
     let args = if env::var_os("RUST_BENCH").is_some() {
-        vec!("".to_string(), "1000000".to_string(), "8".to_string())
+        vec!("".to_owned(), "1000000".to_owned(), "8".to_owned())
     } else if args.len() <= 1 {
-        vec!("".to_string(), "10000".to_string(), "4".to_string())
+        vec!("".to_owned(), "10000".to_owned(), "4".to_owned())
     } else {
         args.map(|x| x.to_string()).collect()
     };

@@ -170,7 +170,7 @@ macro_rules! test_connect {
 #[test]
 fn test_connect_for_different_types() {
     test_connect!("a-b", ["a", "b"], "-");
-    let hyphen = "-".to_string();
+    let hyphen = "-".to_owned();
     test_connect!("a-b", [s("a"), s("b")], &*hyphen);
     test_connect!("a-b", vec!["a", "b"], &*hyphen);
     test_connect!("a-b", &*vec!["a", "b"], "-");
@@ -1516,7 +1516,7 @@ fn test_pattern_deref_forward() {
     let data = "aabcdaa";
     assert!(data.contains("bcd"));
     assert!(data.contains(&"bcd"));
-    assert!(data.contains(&"bcd".to_string()));
+    assert!(data.contains(&"bcd".to_owned()));
 }
 
 #[test]

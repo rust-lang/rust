@@ -21,35 +21,35 @@ type SendStr = Cow<'static, str>;
 pub fn main() {
     let mut map: HashMap<SendStr, usize> = HashMap::new();
     assert!(map.insert("foo".into_cow(), 42).is_none());
-    assert!(map.insert("foo".to_string().into_cow(), 42).is_some());
+    assert!(map.insert("foo".to_owned().into_cow(), 42).is_some());
     assert!(map.insert("foo".into_cow(), 42).is_some());
-    assert!(map.insert("foo".to_string().into_cow(), 42).is_some());
+    assert!(map.insert("foo".to_owned().into_cow(), 42).is_some());
 
     assert!(map.insert("foo".into_cow(), 43).is_some());
-    assert!(map.insert("foo".to_string().into_cow(), 44).is_some());
+    assert!(map.insert("foo".to_owned().into_cow(), 44).is_some());
     assert!(map.insert("foo".into_cow(), 45).is_some());
-    assert!(map.insert("foo".to_string().into_cow(), 46).is_some());
+    assert!(map.insert("foo".to_owned().into_cow(), 46).is_some());
 
     let v = 46;
 
-    assert_eq!(map.get(&"foo".to_string().into_cow()), Some(&v));
+    assert_eq!(map.get(&"foo".to_owned().into_cow()), Some(&v));
     assert_eq!(map.get(&"foo".into_cow()), Some(&v));
 
     let (a, b, c, d) = (50, 51, 52, 53);
 
     assert!(map.insert("abc".into_cow(), a).is_none());
-    assert!(map.insert("bcd".to_string().into_cow(), b).is_none());
+    assert!(map.insert("bcd".to_owned().into_cow(), b).is_none());
     assert!(map.insert("cde".into_cow(), c).is_none());
-    assert!(map.insert("def".to_string().into_cow(), d).is_none());
+    assert!(map.insert("def".to_owned().into_cow(), d).is_none());
 
     assert!(map.insert("abc".into_cow(), a).is_some());
-    assert!(map.insert("bcd".to_string().into_cow(), b).is_some());
+    assert!(map.insert("bcd".to_owned().into_cow(), b).is_some());
     assert!(map.insert("cde".into_cow(), c).is_some());
-    assert!(map.insert("def".to_string().into_cow(), d).is_some());
+    assert!(map.insert("def".to_owned().into_cow(), d).is_some());
 
-    assert!(map.insert("abc".to_string().into_cow(), a).is_some());
+    assert!(map.insert("abc".to_owned().into_cow(), a).is_some());
     assert!(map.insert("bcd".into_cow(), b).is_some());
-    assert!(map.insert("cde".to_string().into_cow(), c).is_some());
+    assert!(map.insert("cde".to_owned().into_cow(), c).is_some());
     assert!(map.insert("def".into_cow(), d).is_some());
 
     assert_eq!(map.get("abc"), Some(&a));

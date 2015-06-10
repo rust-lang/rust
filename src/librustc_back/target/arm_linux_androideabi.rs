@@ -12,18 +12,18 @@ use target::Target;
 
 pub fn target() -> Target {
     let mut base = super::android_base::opts();
-    base.features = "+v7".to_string();
+    base.features = "+v7".to_owned();
 
     Target {
         data_layout: "e-p:32:32:32-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-\
                       f32:32:32-f64:64:64-v64:64:64-v128:64:128-a:0:64-\
-                      n32".to_string(),
-        llvm_target: "arm-linux-androideabi".to_string(),
-        target_endian: "little".to_string(),
-        target_pointer_width: "32".to_string(),
-        arch: "arm".to_string(),
-        target_os: "android".to_string(),
-        target_env: "gnu".to_string(),
+                      n32".to_owned(),
+        llvm_target: "arm-linux-androideabi".to_owned(),
+        target_endian: "little".to_owned(),
+        target_pointer_width: "32".to_owned(),
+        arch: "arm".to_owned(),
+        target_os: "android".to_owned(),
+        target_env: "gnu".to_owned(),
         options: base,
     }
 }

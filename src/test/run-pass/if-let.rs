@@ -45,7 +45,7 @@ pub fn main() {
         Three(String, isize)
     }
 
-    let foo = Foo::Three("three".to_string(), 42);
+    let foo = Foo::Three("three".to_owned(), 42);
     if let Foo::One = foo {
         panic!("bad pattern match");
     } else if let Foo::Two(_x) = foo {

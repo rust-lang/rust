@@ -42,7 +42,7 @@ fn main() {
     // parameters sent to child / expected to be received from parent
     let arg = blah;
     let cwd = my_dir.join(&child_dir);
-    let env = ("RUST_TEST_PROC_SPAWN_UNICODE".to_string(), blah.to_string());
+    let env = ("RUST_TEST_PROC_SPAWN_UNICODE".to_owned(), blah.to_string());
 
     // am I the parent or the child?
     if my_args.len() == 1 {             // parent

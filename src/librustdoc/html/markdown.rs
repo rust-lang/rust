@@ -267,7 +267,7 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
 
         // Extract the text provided
         let s = if text.is_null() {
-            "".to_string()
+            "".to_owned()
         } else {
             let s = unsafe { (*text).as_bytes() };
             str::from_utf8(s).unwrap().to_string()
@@ -319,7 +319,7 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
 
     extern fn codespan(ob: *mut hoedown_buffer, text: *const hoedown_buffer, _: *mut libc::c_void) {
         let content = if text.is_null() {
-            "".to_string()
+            "".to_owned()
         } else {
             let bytes = unsafe { (*text).as_bytes() };
             let s = str::from_utf8(bytes).unwrap();
@@ -546,7 +546,7 @@ pub fn plain_summary_line(md: &str) -> String {
         let plain_slice = (*ob).as_bytes();
         let plain = match str::from_utf8(plain_slice) {
             Ok(s) => s.to_string(),
-            Err(_) => "".to_string(),
+            Err(_) => "".to_owned(),
         };
         hoedown_buffer_free(ob);
         plain

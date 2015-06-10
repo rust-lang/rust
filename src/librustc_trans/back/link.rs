@@ -171,7 +171,7 @@ pub fn find_crate_name(sess: Option<&Session>,
         }
     }
 
-    "rust_out".to_string()
+    "rust_out".to_owned()
 }
 
 pub fn build_link_meta(sess: &Session, krate: &ast::Crate,

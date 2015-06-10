@@ -26,8 +26,8 @@
 //!     phone: u64,
 //! }
 //!
-//! let person1 = Person { id: 5, name: "Janet".to_string(), phone: 555_666_7777 };
-//! let person2 = Person { id: 5, name: "Bob".to_string(), phone: 555_666_7777 };
+//! let person1 = Person { id: 5, name: "Janet".to_owned(), phone: 555_666_7777 };
+//! let person2 = Person { id: 5, name: "Bob".to_owned(), phone: 555_666_7777 };
 //!
 //! assert!(hash::<_, SipHasher>(&person1) != hash::<_, SipHasher>(&person2));
 //! ```
@@ -52,8 +52,8 @@
 //!     }
 //! }
 //!
-//! let person1 = Person { id: 5, name: "Janet".to_string(), phone: 555_666_7777 };
-//! let person2 = Person { id: 5, name: "Bob".to_string(), phone: 555_666_7777 };
+//! let person1 = Person { id: 5, name: "Janet".to_owned(), phone: 555_666_7777 };
+//! let person2 = Person { id: 5, name: "Bob".to_owned(), phone: 555_666_7777 };
 //!
 //! assert_eq!(hash::<_, SipHasher>(&person1), hash::<_, SipHasher>(&person2));
 //! ```

@@ -97,12 +97,12 @@ fn parse_response(io: @io::Reader) -> Result {
 }
 
 fn cmd_to_string(cmd: Vec<String>) -> String {
-  let mut res = "*".to_string();
+  let mut res = "*".to_owned();
   res.push_str(cmd.len().to_string());
   res.push_str("\r\n");
     for s in &cmd {
-    res.push_str(["$".to_string(), s.len().to_string(), "\r\n".to_string(),
-                  (*s).clone(), "\r\n".to_string()].concat() );
+    res.push_str(["$".to_owned(), s.len().to_string(), "\r\n".to_owned(),
+                  (*s).clone(), "\r\n".to_owned()].concat() );
     }
   res
 }
@@ -117,7 +117,7 @@ fn query(cmd: Vec<String>, sb: TcpSocketBuf) -> Result {
 
 fn query2(cmd: Vec<String>) -> Result {
   let _cmd = cmd_to_string(cmd);
-    io::with_str_reader("$3\r\nXXX\r\n".to_string())(|sb| {
+    io::with_str_reader("$3\r\nXXX\r\n".to_owned())(|sb| {
     let res = parse_response(@sb as @io::Reader);
     println!("{}", res);
     res

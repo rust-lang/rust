@@ -25,9 +25,9 @@ fn ack(m: i64, n: i64) -> i64 {
 fn main() {
     let mut args = env::args();
     let args = if env::var_os("RUST_BENCH").is_some() {
-        vec!("".to_string(), "12".to_string())
+        vec!("".to_owned(), "12".to_owned())
     } else if args.len() <= 1 {
-        vec!("".to_string(), "8".to_string())
+        vec!("".to_owned(), "8".to_owned())
     } else {
         args.collect()
     };

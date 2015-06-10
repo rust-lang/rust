@@ -418,7 +418,7 @@ impl<'a> Context<'a> {
                    file.ends_with(".a") {
                     staticlibs.push(CrateMismatch {
                         path: path.to_path_buf(),
-                        got: "static".to_string()
+                        got: "static".to_owned()
                     });
                 }
                 return FileDoesntMatch

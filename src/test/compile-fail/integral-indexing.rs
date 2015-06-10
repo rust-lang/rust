@@ -10,7 +10,7 @@
 
 pub fn main() {
     let v: Vec<isize> = vec!(0, 1, 2, 3, 4, 5);
-    let s: String = "abcdef".to_string();
+    let s: String = "abcdef".to_owned();
     v[3_usize];
     v[3];
     v[3u8];  //~ERROR the trait `core::ops::Index<u8>` is not implemented

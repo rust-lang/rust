@@ -26,7 +26,7 @@ pub fn opts() -> TargetOptions {
             // resolutions the linker does). This option only applies to all
             // following libraries so we're sure to pass it as one of the first
             // arguments.
-            "-Wl,--as-needed".to_string(),
+            "-Wl,--as-needed".to_owned(),
         ],
         position_independent_executables: true,
         .. Default::default()

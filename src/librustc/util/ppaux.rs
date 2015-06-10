@@ -135,7 +135,7 @@ pub fn explain_region_and_span(cx: &ctxt, region: ty::Region)
           BrAnon(idx) => {
               format!("the anonymous lifetime #{} defined on", idx + 1)
           }
-          BrFresh(_) => "an anonymous lifetime defined on".to_string(),
+          BrFresh(_) => "an anonymous lifetime defined on".to_owned(),
           _ => {
               format!("the lifetime {} as defined on",
                       bound_region_ptr_to_string(cx, fr.bound_region))
@@ -159,9 +159,9 @@ pub fn explain_region_and_span(cx: &ctxt, region: ty::Region)
         }
       }
 
-      ReStatic => { ("the static lifetime".to_string(), None) }
+      ReStatic => { ("the static lifetime".to_owned(), None) }
 
-      ReEmpty => { ("the empty lifetime".to_string(), None) }
+      ReEmpty => { ("the empty lifetime".to_owned(), None) }
 
       ReEarlyBound(ref data) => {
         (format!("{}", token::get_name(data.name)), None)
@@ -239,8 +239,8 @@ pub fn region_to_string(cx: &ctxt, prefix: &str, space: bool, region: Region) ->
 
 pub fn mutability_to_string(m: ast::Mutability) -> String {
     match m {
-        ast::MutMutable => "mut ".to_string(),
-        ast::MutImmutable => "".to_string(),
+        ast::MutMutable => "mut ".to_owned(),
+        ast::MutImmutable => "".to_owned(),
     }
 }
 
@@ -363,8 +363,8 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
 
     // pretty print the structural type representation:
     match typ.sty {
-        ty_bool => "bool".to_string(),
-        ty_char => "char".to_string(),
+        ty_bool => "bool".to_owned(),
+        ty_char => "char".to_owned(),
         ty_int(t) => ast_util::int_ty_to_string(t, None).to_string(),
         ty_uint(t) => ast_util::uint_ty_to_string(t, None).to_string(),
         ty_float(t) => ast_util::float_ty_to_string(t).to_string(),
@@ -394,7 +394,7 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
             bare_fn_to_string(cx, opt_def_id, f.unsafety, f.abi, None, &f.sig)
         }
         ty_infer(infer_ty) => infer_ty_to_string(cx, infer_ty),
-        ty_err => "[type error]".to_string(),
+        ty_err => "[type error]".to_owned(),
         ty_param(ref param_ty) => param_ty.user_string(cx),
         ty_enum(did, substs) | ty_struct(did, substs) => {
             let base = ty::item_path_str(cx, did);
@@ -410,7 +410,7 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
                     data.trait_ref.user_string(cx),
                     data.item_name.user_string(cx))
         }
-        ty_str => "str".to_string(),
+        ty_str => "str".to_owned(),
         ty_closure(ref did, substs) => {
             let closure_tys = cx.closure_tys.borrow();
             closure_tys.get(did).map(|closure_type| {
@@ -591,7 +591,7 @@ pub fn ty_to_short_str<'tcx>(cx: &ctxt<'tcx>, typ: Ty<'tcx>) -> String {
 impl<'tcx, T:Repr<'tcx>> Repr<'tcx> for Option<T> {
     fn repr(&self, tcx: &ctxt<'tcx>) -> String {
         match self {
-            &None => "None".to_string(),
+            &None => "None".to_owned(),
             &Some(ref t) => t.repr(tcx),
         }
     }
@@ -614,7 +614,7 @@ impl<'tcx,T:Repr<'tcx>,U:Repr<'tcx>> Repr<'tcx> for Result<T,U> {
 
 impl<'tcx> Repr<'tcx> for () {
     fn repr(&self, _tcx: &ctxt) -> String {
-        "()".to_string()
+        "()".to_owned()
     }
 }
 
@@ -787,7 +787,7 @@ impl<'tcx> Repr<'tcx> for ty::ItemSubsts<'tcx> {
 impl<'tcx> Repr<'tcx> for subst::RegionSubsts {
     fn repr(&self, tcx: &ctxt) -> String {
         match *self {
-            subst::ErasedRegions => "erased".to_string(),
+            subst::ErasedRegions => "erased".to_owned(),
             subst::NonerasedRegions(ref regions) => regions.repr(tcx)
         }
     }
@@ -798,10 +798,10 @@ impl<'tcx> Repr<'tcx> for ty::BuiltinBounds {
         let mut res = Vec::new();
         for b in self {
             res.push(match b {
-                ty::BoundSend => "Send".to_string(),
-                ty::BoundSized => "Sized".to_string(),
-                ty::BoundCopy => "Copy".to_string(),
-                ty::BoundSync => "Sync".to_string(),
+                ty::BoundSend => "Send".to_owned(),
+                ty::BoundSized => "Sized".to_owned(),
+                ty::BoundCopy => "Copy".to_owned(),
+                ty::BoundSync => "Sync".to_owned(),
             });
         }
         res.connect("+")
@@ -911,7 +911,7 @@ impl<'tcx> Repr<'tcx> for ty::BoundRegion {
                 format!("BrNamed({}, {})", id.repr(tcx), token::get_name(name))
             }
             ty::BrFresh(id) => format!("BrFresh({})", id),
-            ty::BrEnv => "BrEnv".to_string()
+            ty::BrEnv => "BrEnv".to_owned()
         }
     }
 }
@@ -940,7 +940,7 @@ impl<'tcx> Repr<'tcx> for ty::Region {
             }
 
             ty::ReStatic => {
-                "ReStatic".to_string()
+                "ReStatic".to_owned()
             }
 
             ty::ReInfer(ReVar(ref vid)) => {
@@ -952,7 +952,7 @@ impl<'tcx> Repr<'tcx> for ty::Region {
             }
 
             ty::ReEmpty => {
-                "ReEmpty".to_string()
+                "ReEmpty".to_owned()
             }
         }
     }
@@ -1166,7 +1166,7 @@ impl<'tcx> Repr<'tcx> for ty::FnOutput<'tcx> {
             ty::FnConverging(ty) =>
                 format!("FnConverging({0})", ty.repr(tcx)),
             ty::FnDiverging =>
-                "FnDiverging".to_string()
+                "FnDiverging".to_owned()
         }
     }
 }
@@ -1225,10 +1225,10 @@ impl<'tcx> Repr<'tcx> for ty::BuiltinBound {
 impl<'tcx> UserString<'tcx> for ty::BuiltinBound {
     fn user_string(&self, _tcx: &ctxt) -> String {
         match *self {
-            ty::BoundSend => "Send".to_string(),
-            ty::BoundSized => "Sized".to_string(),
-            ty::BoundCopy => "Copy".to_string(),
-            ty::BoundSync => "Sync".to_string(),
+            ty::BoundSend => "Send".to_owned(),
+            ty::BoundSized => "Sized".to_owned(),
+            ty::BoundCopy => "Copy".to_owned(),
+            ty::BoundSync => "Sync".to_owned(),
         }
     }
 }

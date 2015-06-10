@@ -59,7 +59,7 @@ fn cat(in_x : usize, in_y : isize, in_name: String) -> cat {
 
 
 pub fn main() {
-    let mut nyan = cat(0, 2, "nyan".to_string());
+    let mut nyan = cat(0, 2, "nyan".to_owned());
     let mut nyan: &mut noisy = &mut nyan;
     nyan.speak();
 }

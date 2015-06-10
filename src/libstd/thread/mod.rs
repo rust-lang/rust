@@ -121,7 +121,7 @@
 //! # #![allow(unused_must_use)]
 //! use std::thread;
 //!
-//! thread::Builder::new().name("child1".to_string()).spawn(move || {
+//! thread::Builder::new().name("child1".to_owned()).spawn(move || {
 //!     println!("Hello, world!");
 //! });
 //! ```
@@ -781,8 +781,8 @@ mod tests {
 
     #[test]
     fn test_named_thread() {
-        Builder::new().name("ada lovelace".to_string()).scoped(move|| {
-            assert!(thread::current().name().unwrap() == "ada lovelace".to_string());
+        Builder::new().name("ada lovelace".to_owned()).scoped(move|| {
+            assert!(thread::current().name().unwrap() == "ada lovelace".to_owned());
         }).unwrap().join();
     }
 
@@ -798,7 +798,7 @@ mod tests {
     #[test]
     fn test_join_success() {
         assert!(thread::scoped(move|| -> String {
-            "Success!".to_string()
+            "Success!".to_owned()
         }).join() == "Success!");
     }
 
@@ -815,7 +815,7 @@ mod tests {
     #[test]
     fn test_scoped_success() {
         let res = thread::scoped(move|| -> String {
-            "Success!".to_string()
+            "Success!".to_owned()
         }).join();
         assert!(res == "Success!");
     }
@@ -945,12 +945,12 @@ mod tests {
     #[test]
     fn test_try_panic_message_owned_str() {
         match thread::spawn(move|| {
-            panic!("owned string".to_string());
+            panic!("owned string".to_owned());
         }).join() {
             Err(e) => {
                 type T = String;
                 assert!(e.is::<T>());
-                assert_eq!(*e.downcast::<T>().unwrap(), "owned string".to_string());
+                assert_eq!(*e.downcast::<T>().unwrap(), "owned string".to_owned());
             }
             Ok(()) => panic!()
         }

@@ -179,7 +179,7 @@ fn live_node_kind_to_string(lnk: LiveNodeKind, cx: &ty::ctxt) -> String {
         VarDefNode(s) => {
             format!("Var def node [{}]", cm.span_to_string(s))
         }
-        ExitNode => "Exit node".to_string(),
+        ExitNode => "Exit node".to_owned(),
     }
 }
 
@@ -337,8 +337,8 @@ impl<'a, 'tcx> IrMaps<'a, 'tcx> {
             Local(LocalInfo { name, .. }) | Arg(_, name) => {
                 token::get_name(name).to_string()
             },
-            ImplicitRet => "<implicit-ret>".to_string(),
-            CleanExit => "<clean-exit>".to_string()
+            ImplicitRet => "<implicit-ret>".to_owned(),
+            CleanExit => "<clean-exit>".to_owned()
         }
     }
 

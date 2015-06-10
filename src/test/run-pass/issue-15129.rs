@@ -29,6 +29,6 @@ fn foo(x: (T, V)) -> String {
 
 
 fn main() {
-    assert_eq!(foo((T::T1(()), V::V1(99))), "T1(()), V1(99)".to_string());
-    assert_eq!(foo((T::T2(()), V::V2(true))), "T2(()), V2(true)".to_string());
+    assert_eq!(foo((T::T1(()), V::V1(99))), "T1(()), V1(99)".to_owned());
+    assert_eq!(foo((T::T2(()), V::V2(true))), "T2(()), V2(true)".to_owned());
 }

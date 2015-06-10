@@ -23,5 +23,5 @@ fn cat(in_name: String) -> cat {
 }
 
 pub fn main() {
-  let _nyan = cat("nyan".to_string());
+  let _nyan = cat("nyan".to_owned());
 }

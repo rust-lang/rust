@@ -27,7 +27,7 @@ fn test_get_ptr() {
 
 #[test]
 fn test_get_str() {
-    let x = "test".to_string();
+    let x = "test".to_owned();
     let addr_x = x.as_ptr();
     let opt = Some(x);
     let y = opt.unwrap();
@@ -133,7 +133,7 @@ fn test_or_else() {
 #[test]
 fn test_unwrap() {
     assert_eq!(Some(1).unwrap(), 1);
-    let s = Some("hello".to_string()).unwrap();
+    let s = Some("hello".to_owned()).unwrap();
     assert_eq!(s, "hello");
 }
 

@@ -13,12 +13,12 @@ use syntax::abi;
 
 pub fn get_target_strs(target_triple: String, target_os: abi::Os) -> target_strs::t {
     let cc_args = if target_triple.contains("thumb") {
-        vec!("-mthumb".to_string())
+        vec!("-mthumb".to_owned())
     } else {
-        vec!("-marm".to_string())
+        vec!("-marm".to_owned())
     };
     return target_strs::t {
-        module_asm: "".to_string(),
+        module_asm: "".to_owned(),
 
         data_layout: match target_os {
           abi::OsMacos => {
@@ -26,7 +26,7 @@ pub fn get_target_strs(target_triple: String, target_os: abi::Os) -> target_strs
                 -i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64\
                 -f32:32:32-f64:64:64\
                 -v64:64:64-v128:64:128\
-                -a:0:64-n32".to_string()
+                -a:0:64-n32".to_owned()
           }
 
           abi::OsiOS => {
@@ -34,7 +34,7 @@ pub fn get_target_strs(target_triple: String, target_os: abi::Os) -> target_strs
                 -i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64\
                 -f32:32:32-f64:64:64\
                 -v64:64:64-v128:64:128\
-                -a:0:64-n32".to_string()
+                -a:0:64-n32".to_owned()
           }
 
           abi::OsWindows => {
@@ -42,7 +42,7 @@ pub fn get_target_strs(target_triple: String, target_os: abi::Os) -> target_strs
                 -i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64\
                 -f32:32:32-f64:64:64\
                 -v64:64:64-v128:64:128\
-                -a:0:64-n32".to_string()
+                -a:0:64-n32".to_owned()
           }
 
           abi::OsLinux => {
@@ -50,7 +50,7 @@ pub fn get_target_strs(target_triple: String, target_os: abi::Os) -> target_strs
                 -i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64\
                 -f32:32:32-f64:64:64\
                 -v64:64:64-v128:64:128\
-                -a:0:64-n32".to_string()
+                -a:0:64-n32".to_owned()
           }
 
           abi::OsAndroid => {
@@ -58,7 +58,7 @@ pub fn get_target_strs(target_triple: String, target_os: abi::Os) -> target_strs
                 -i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64\
                 -f32:32:32-f64:64:64\
                 -v64:64:64-v128:64:128\
-                -a:0:64-n32".to_string()
+                -a:0:64-n32".to_owned()
           }
 
           abi::OsFreebsd | abi::OsDragonfly | abi::OsBitrig | abi::OsOpenbsd => {
@@ -66,7 +66,7 @@ pub fn get_target_strs(target_triple: String, target_os: abi::Os) -> target_strs
                 -i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64\
                 -f32:32:32-f64:64:64\
                 -v64:64:64-v128:64:128\
-                -a:0:64-n32".to_string()
+                -a:0:64-n32".to_owned()
           }
         },
 

@@ -32,6 +32,6 @@ fn g(mut x: String, y: String) -> String {
 
 fn main() {
     call_f(f);
-    assert_eq!(call_g(g, "foo".to_string(), "bar".to_string()),
+    assert_eq!(call_g(g, "foo".to_owned(), "bar".to_owned()),
                "foobar");
 }

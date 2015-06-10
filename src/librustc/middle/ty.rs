@@ -5011,36 +5011,36 @@ pub fn ty_sort_string<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> String {
         ty_tup(ref tys) if tys.is_empty() => ::util::ppaux::ty_to_string(cx, ty),
 
         ty_enum(id, _) => format!("enum `{}`", item_path_str(cx, id)),
-        ty_uniq(_) => "box".to_string(),
+        ty_uniq(_) => "box".to_owned(),
         ty_vec(_, Some(n)) => format!("array of {} elements", n),
-        ty_vec(_, None) => "slice".to_string(),
-        ty_ptr(_) => "*-ptr".to_string(),
-        ty_rptr(_, _) => "&-ptr".to_string(),
+        ty_vec(_, None) => "slice".to_owned(),
+        ty_ptr(_) => "*-ptr".to_owned(),
+        ty_rptr(_, _) => "&-ptr".to_owned(),
         ty_bare_fn(Some(_), _) => format!("fn item"),
-        ty_bare_fn(None, _) => "fn pointer".to_string(),
+        ty_bare_fn(None, _) => "fn pointer".to_owned(),
         ty_trait(ref inner) => {
             format!("trait {}", item_path_str(cx, inner.principal_def_id()))
         }
         ty_struct(id, _) => {
             format!("struct `{}`", item_path_str(cx, id))
         }
-        ty_closure(..) => "closure".to_string(),
-        ty_tup(_) => "tuple".to_string(),
-        ty_infer(TyVar(_)) => "inferred type".to_string(),
-        ty_infer(IntVar(_)) => "integral variable".to_string(),
-        ty_infer(FloatVar(_)) => "floating-point variable".to_string(),
-        ty_infer(FreshTy(_)) => "skolemized type".to_string(),
-        ty_infer(FreshIntTy(_)) => "skolemized integral type".to_string(),
-        ty_infer(FreshFloatTy(_)) => "skolemized floating-point type".to_string(),
-        ty_projection(_) => "associated type".to_string(),
+        ty_closure(..) => "closure".to_owned(),
+        ty_tup(_) => "tuple".to_owned(),
+        ty_infer(TyVar(_)) => "inferred type".to_owned(),
+        ty_infer(IntVar(_)) => "integral variable".to_owned(),
+        ty_infer(FloatVar(_)) => "floating-point variable".to_owned(),
+        ty_infer(FreshTy(_)) => "skolemized type".to_owned(),
+        ty_infer(FreshIntTy(_)) => "skolemized integral type".to_owned(),
+        ty_infer(FreshFloatTy(_)) => "skolemized floating-point type".to_owned(),
+        ty_projection(_) => "associated type".to_owned(),
         ty_param(ref p) => {
             if p.space == subst::SelfSpace {
-                "Self".to_string()
+                "Self".to_owned()
             } else {
-                "type parameter".to_string()
+                "type parameter".to_owned()
             }
         }
-        ty_err => "type error".to_string(),
+        ty_err => "type error".to_owned(),
     }
 }
 
@@ -5056,8 +5056,8 @@ impl<'tcx> Repr<'tcx> for ty::type_err<'tcx> {
 /// errors.
 pub fn type_err_to_str<'tcx>(cx: &ctxt<'tcx>, err: &type_err<'tcx>) -> String {
     match *err {
-        terr_cyclic_ty => "cyclic type of infinite size".to_string(),
-        terr_mismatch => "types differ".to_string(),
+        terr_cyclic_ty => "cyclic type of infinite size".to_owned(),
+        terr_mismatch => "types differ".to_owned(),
         terr_unsafety_mismatch(values) => {
             format!("expected {} fn, found {} fn",
                     values.expected,
@@ -5068,13 +5068,13 @@ pub fn type_err_to_str<'tcx>(cx: &ctxt<'tcx>, err: &type_err<'tcx>) -> String {
                     values.expected,
                     values.found)
         }
-        terr_mutability => "values differ in mutability".to_string(),
+        terr_mutability => "values differ in mutability".to_owned(),
         terr_box_mutability => {
-            "boxed values differ in mutability".to_string()
+            "boxed values differ in mutability".to_owned()
         }
-        terr_vec_mutability => "vectors differ in mutability".to_string(),
-        terr_ptr_mutability => "pointers differ in mutability".to_string(),
-        terr_ref_mutability => "references differ in mutability".to_string(),
+        terr_vec_mutability => "vectors differ in mutability".to_owned(),
+        terr_ptr_mutability => "pointers differ in mutability".to_owned(),
+        terr_ref_mutability => "references differ in mutability".to_owned(),
         terr_ty_param_size(values) => {
             format!("expected a type with {} type params, \
                      found one with {} type params",
@@ -5094,16 +5094,16 @@ pub fn type_err_to_str<'tcx>(cx: &ctxt<'tcx>, err: &type_err<'tcx>) -> String {
                     values.found)
         }
         terr_arg_count => {
-            "incorrect number of function parameters".to_string()
+            "incorrect number of function parameters".to_owned()
         }
         terr_regions_does_not_outlive(..) => {
-            "lifetime mismatch".to_string()
+            "lifetime mismatch".to_owned()
         }
         terr_regions_not_same(..) => {
-            "lifetimes are not the same".to_string()
+            "lifetimes are not the same".to_owned()
         }
         terr_regions_no_overlap(..) => {
-            "lifetimes do not intersect".to_string()
+            "lifetimes do not intersect".to_owned()
         }
         terr_regions_insufficiently_polymorphic(br, _) => {
             format!("expected bound lifetime parameter {}, \
@@ -5145,7 +5145,7 @@ pub fn type_err_to_str<'tcx>(cx: &ctxt<'tcx>, err: &type_err<'tcx>) -> String {
             }
         }
         terr_integer_as_char => {
-            "expected an integral type, found `char`".to_string()
+            "expected an integral type, found `char`".to_owned()
         }
         terr_int_mismatch(ref values) => {
             format!("expected `{:?}`, found `{:?}`",

@@ -60,9 +60,9 @@ impl<T> vec_utils<T> for Vec<T> {
 
 pub fn main() {
     assert_eq!(10_usize.plus(), 30);
-    assert_eq!(("hi".to_string()).plus(), 200);
+    assert_eq!(("hi".to_owned()).plus(), 200);
 
-    assert_eq!((vec!(1)).length_().str(), "1".to_string());
+    assert_eq!((vec!(1)).length_().str(), "1".to_owned());
     let vect = vec!(3, 4).map_(|a| *a + 4);
     assert_eq!(vect[0], 7);
     let vect = (vec!(3, 4)).map_::<usize, _>(|a| *a as usize + 4_usize);

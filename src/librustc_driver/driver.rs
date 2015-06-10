@@ -165,7 +165,7 @@ pub fn compile_input(sess: Session,
 /// The name used for source code that doesn't originate in a file
 /// (e.g. source from stdin or a string)
 pub fn anon_src() -> String {
-    "<anon>".to_string()
+    "<anon>".to_owned()
 }
 
 pub fn source_name(input: &Input) -> String {
@@ -870,7 +870,7 @@ pub fn collect_crate_types(session: &Session,
                                      ast::CRATE_NODE_ID,
                                      a.span,
                                      "invalid `crate_type` \
-                                      value".to_string());
+                                      value".to_owned());
                     None
                 }
                 _ => {

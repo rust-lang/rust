@@ -17,13 +17,13 @@ pub fn target() -> Target {
                       -i32:32:32-i64:32:64\
                       -f32:32:32-f64:32:64-v64:64:64\
                       -v128:128:128-a:0:64-f80:128:128\
-                      -n8:16:32".to_string(),
-        llvm_target: "i386-apple-ios".to_string(),
-        target_endian: "little".to_string(),
-        target_pointer_width: "32".to_string(),
-        arch: "x86".to_string(),
-        target_os: "ios".to_string(),
-        target_env: "".to_string(),
+                      -n8:16:32".to_owned(),
+        llvm_target: "i386-apple-ios".to_owned(),
+        target_endian: "little".to_owned(),
+        target_pointer_width: "32".to_owned(),
+        arch: "x86".to_owned(),
+        target_os: "ios".to_owned(),
+        target_env: "".to_owned(),
         options: opts(Arch::I386)
     }
 }

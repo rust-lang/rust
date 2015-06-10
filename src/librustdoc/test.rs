@@ -112,7 +112,7 @@ pub fn run(input: &str,
                                        opts);
     collector.fold_crate(krate);
 
-    test_args.insert(0, "rustdoctest".to_string());
+    test_args.insert(0, "rustdoctest".to_owned());
 
     testing::test_main(&test_args,
                        collector.tests.into_iter().collect());

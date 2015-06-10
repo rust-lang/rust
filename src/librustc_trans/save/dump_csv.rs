@@ -1395,7 +1395,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
                     let value = if immut == ast::MutImmutable {
                         self.span.snippet(p.span).to_string()
                     } else {
-                        "<mutable>".to_string()
+                        "<mutable>".to_owned()
                     };
 
                     assert!(p.segments.len() == 1, "qualified path for local variable def in arm");
@@ -1449,7 +1449,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
             let value = if immut == ast::MutImmutable {
                 value.to_string()
             } else {
-                "<mutable>".to_string()
+                "<mutable>".to_owned()
             };
             let types = self.analysis.ty_cx.node_types();
             let typ = ppaux::ty_to_string(&self.analysis.ty_cx, *types.get(&id).unwrap());

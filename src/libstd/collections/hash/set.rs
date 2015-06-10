@@ -831,8 +831,8 @@ impl<T, S> IntoIterator for HashSet<T, S>
     /// ```
     /// use std::collections::HashSet;
     /// let mut set = HashSet::new();
-    /// set.insert("a".to_string());
-    /// set.insert("b".to_string());
+    /// set.insert("a".to_owned());
+    /// set.insert("b".to_owned());
     ///
     /// // Not possible to collect to a Vec<String> with a regular `.iter()`.
     /// let v: Vec<String> = set.into_iter().collect();

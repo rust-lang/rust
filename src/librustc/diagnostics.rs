@@ -76,7 +76,7 @@ into a variable called `op_string` while simultaneously requiring the inner
 String to be moved into a variable called `s`.
 
 ```
-let x = Some("s".to_string());
+let x = Some("s".to_owned());
 match x {
     op_string @ Some(s) => ...
     None => ...
@@ -93,7 +93,7 @@ referenced in the pattern guard code. Doing so however would prevent the name
 from being available in the body of the match arm. Consider the following:
 
 ```
-match Some("hi".to_string()) {
+match Some("hi".to_owned()) {
     Some(s) if s.len() == 0 => // use s.
     ...
 }
@@ -107,7 +107,7 @@ innocuous, the problem is most clear when considering functions that take their
 argument by value.
 
 ```
-match Some("hi".to_string()) {
+match Some("hi".to_owned()) {
     Some(s) if { drop(s); false } => (),
     Some(s) => // use s.
     ...
@@ -815,7 +815,7 @@ match Some(5) {
 }
 
 // After.
-match Some("hi".to_string()) {
+match Some("hi".to_owned()) {
     Some(ref s) => {
         let op_string_ref = &Some(&s);
         ...

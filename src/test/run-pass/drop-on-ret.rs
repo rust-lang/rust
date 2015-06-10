@@ -15,7 +15,7 @@
 
 fn f() -> isize {
     if true {
-        let _s: String = "should not leak".to_string();
+        let _s: String = "should not leak".to_owned();
         return 1;
     }
     return 0;

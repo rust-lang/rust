@@ -116,7 +116,7 @@ static mut STATIC13: SafeStruct = SafeStruct{field1: SafeEnum::Variant1,
 static mut STATIC14: SafeStruct = SafeStruct {
 //~^ ERROR mutable statics are not allowed to have destructors
     field1: SafeEnum::Variant1,
-    field2: SafeEnum::Variant4("str".to_string())
+    field2: SafeEnum::Variant4("str".to_owned())
 //~^ ERROR method calls in statics are limited to constant inherent methods
 };
 

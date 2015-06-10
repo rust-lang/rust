@@ -10,7 +10,7 @@
 
 
 fn main() {
-    let foo = "hello".to_string();
+    let foo = "hello".to_owned();
     let foo: Vec<&str> = foo.split_whitespace().collect();
     let invalid_string = &foo[0];
     assert_eq!(*invalid_string, "hello");

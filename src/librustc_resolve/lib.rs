@@ -1020,7 +1020,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                     module_to_string(&*self.current_module);
 
                                 let prefix = if target_mod_str == current_mod_str {
-                                    "self::".to_string()
+                                    "self::".to_owned()
                                 } else {
                                     format!("{}::", target_mod_str)
                                 };
@@ -2367,7 +2367,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             maybe_qself.is_none() &&
                             path.segments[0].identifier.name == self_type_name;
                         let msg = if is_invalid_self_type_name {
-                            "use of `Self` outside of an impl or trait".to_string()
+                            "use of `Self` outside of an impl or trait".to_owned()
                         } else {
                             format!("use of undeclared {} `{}`",
                                 kind, path_names_to_string(path, 0))
@@ -2773,7 +2773,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 self.session
                     .add_lint(lint::builtin::UNUSED_QUALIFICATIONS,
                               id, span,
-                              "unnecessary qualification".to_string());
+                              "unnecessary qualification".to_owned());
             }
             _ => {}
         }
@@ -3358,7 +3358,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                         // limit search to 5 to reduce the number
                                         // of stupid suggestions
                                         self.find_best_match_for_name(&path_name)
-                                                            .map_or("".to_string(),
+                                                            .map_or("".to_owned(),
                                                                     |x| format!("`{}`", x))
                                     }
                                     Field => format!("`self.{}`", path_name),
@@ -3600,18 +3600,18 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         for (&name, import_resolution) in &*import_resolutions {
             let value_repr;
             match import_resolution.target_for_namespace(ValueNS) {
-                None => { value_repr = "".to_string(); }
+                None => { value_repr = "".to_owned(); }
                 Some(_) => {
-                    value_repr = " value:?".to_string();
+                    value_repr = " value:?".to_owned();
                     // FIXME #4954
                 }
             }
 
             let type_repr;
             match import_resolution.target_for_namespace(TypeNS) {
-                None => { type_repr = "".to_string(); }
+                None => { type_repr = "".to_owned(); }
                 Some(_) => {
-                    type_repr = " type:?".to_string();
+                    type_repr = " type:?".to_owned();
                     // FIXME #4954
                 }
             }
@@ -3665,7 +3665,7 @@ fn module_to_string(module: &Module) -> String {
     collect_mod(&mut names, module);
 
     if names.is_empty() {
-        return "???".to_string();
+        return "???".to_owned();
     }
     names_to_string(&names.into_iter().rev().collect::<Vec<ast::Name>>())
 }

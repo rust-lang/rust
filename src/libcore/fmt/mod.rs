@@ -780,7 +780,7 @@ impl<'a> Formatter<'a> {
     /// }
     ///
     /// // prints "Foo { bar: 10, baz: "Hello World" }"
-    /// println!("{:?}", Foo { bar: 10, baz: "Hello World".to_string() });
+    /// println!("{:?}", Foo { bar: 10, baz: "Hello World".to_owned() });
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
     #[inline]
@@ -808,7 +808,7 @@ impl<'a> Formatter<'a> {
     /// }
     ///
     /// // prints "Foo(10, "Hello World")"
-    /// println!("{:?}", Foo(10, "Hello World".to_string()));
+    /// println!("{:?}", Foo(10, "Hello World".to_owned()));
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
     #[inline]
@@ -883,7 +883,7 @@ impl<'a> Formatter<'a> {
     /// }
     ///
     /// // prints "{"A": 10, "B": 11}"
-    /// println!("{:?}", Foo(vec![("A".to_string(), 10), ("B".to_string(), 11)]));
+    /// println!("{:?}", Foo(vec![("A".to_owned(), 10), ("B".to_owned(), 11)]));
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
     #[inline]

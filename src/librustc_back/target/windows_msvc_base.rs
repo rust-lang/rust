@@ -14,7 +14,7 @@ use std::default::Default;
 pub fn opts() -> TargetOptions {
     TargetOptions {
         function_sections: true,
-        linker: "link.exe".to_string(),
+        linker: "link.exe".to_owned(),
         // When taking a look at the value of this `ar` field, one might expect
         // `lib.exe` to be the value here! The `lib.exe` program is the default
         // tool for managing `.lib` archives on Windows, but unfortunately the
@@ -45,20 +45,20 @@ pub fn opts() -> TargetOptions {
         //
         // Perhaps one day we won't even need this tool at all and we'll just be
         // able to make library calls into LLVM!
-        ar: "llvm-ar.exe".to_string(),
+        ar: "llvm-ar.exe".to_owned(),
         dynamic_linking: true,
         executables: true,
-        dll_prefix: "".to_string(),
-        dll_suffix: ".dll".to_string(),
-        exe_suffix: ".exe".to_string(),
-        staticlib_prefix: "".to_string(),
-        staticlib_suffix: ".lib".to_string(),
+        dll_prefix: "".to_owned(),
+        dll_suffix: ".dll".to_owned(),
+        exe_suffix: ".exe".to_owned(),
+        staticlib_prefix: "".to_owned(),
+        staticlib_suffix: ".lib".to_owned(),
         morestack: false,
         is_like_windows: true,
         is_like_msvc: true,
         pre_link_args: vec![
-            "/NOLOGO".to_string(),
-            "/NXCOMPAT".to_string(),
+            "/NOLOGO".to_owned(),
+            "/NXCOMPAT".to_owned(),
         ],
 
         .. Default::default()

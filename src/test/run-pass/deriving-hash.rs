@@ -27,12 +27,12 @@ fn hash<T: Hash>(t: &T) -> u64 {
 fn main() {
     let person1 = Person {
         id: 5,
-        name: "Janet".to_string(),
+        name: "Janet".to_owned(),
         phone: 555_666_7777
     };
     let person2 = Person {
         id: 5,
-        name: "Bob".to_string(),
+        name: "Bob".to_owned(),
         phone: 555_666_7777
     };
     assert!(hash(&person1) == hash(&person1));

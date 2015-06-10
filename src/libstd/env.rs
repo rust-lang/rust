@@ -261,7 +261,7 @@ impl Error for VarError {
 ///
 /// let key = "KEY";
 /// env::set_var(key, "VALUE");
-/// assert_eq!(env::var(key), Ok("VALUE".to_string()));
+/// assert_eq!(env::var(key), Ok("VALUE".to_owned()));
 /// ```
 #[stable(feature = "env", since = "1.0.0")]
 pub fn set_var<K: AsRef<OsStr>, V: AsRef<OsStr>>(k: K, v: V) {
@@ -289,7 +289,7 @@ pub fn set_var<K: AsRef<OsStr>, V: AsRef<OsStr>>(k: K, v: V) {
 ///
 /// let key = "KEY";
 /// env::set_var(key, "VALUE");
-/// assert_eq!(env::var(key), Ok("VALUE".to_string()));
+/// assert_eq!(env::var(key), Ok("VALUE".to_owned()));
 ///
 /// env::remove_var(key);
 /// assert!(env::var(key).is_err());
@@ -875,7 +875,7 @@ mod tests {
 
     #[test]
     fn test_var_big() {
-        let mut s = "".to_string();
+        let mut s = "".to_owned();
         let mut i = 0;
         while i < 100 {
             s.push_str("aaaaaaaaaa");

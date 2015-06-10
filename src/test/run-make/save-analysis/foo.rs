@@ -289,7 +289,7 @@ pub struct blah {
 
 fn main() { // foo
     let s = box some_fields {field1: 43};
-    hello((43, "a".to_string()), *s);
+    hello((43, "a".to_owned()), *s);
     sub::sub2::hello();
     sub2::sub3::hello();
 
@@ -319,8 +319,8 @@ fn main() { // foo
     let s4: msalias::nested_struct = sub2::nested_struct{ field2: 55};
     println(&s2.field1.to_string());
     let s5: MyType = box some_fields{ field1: 55};
-    let s = SameDir::SameStruct{name: "Bob".to_string()};
-    let s = SubDir::SubStruct{name:"Bob".to_string()};
+    let s = SameDir::SameStruct{name: "Bob".to_owned()};
+    let s = SubDir::SubStruct{name:"Bob".to_owned()};
     let s6: SomeEnum = SomeEnum::MyTypes(box s2.clone(), s5);
     let s7: SomeEnum = SomeEnum::Strings("one", "two", "three");
     matchSomeEnum(s6);

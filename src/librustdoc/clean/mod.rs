@@ -322,7 +322,7 @@ impl Item {
         match self.stability {
             Some(ref s) => {
                 let mut base = match s.level {
-                    attr::Unstable => "unstable".to_string(),
+                    attr::Unstable => "unstable".to_owned(),
                     attr::Stable => String::new(),
                 };
                 if !s.deprecated_since.is_empty() {
@@ -377,7 +377,7 @@ impl Clean<Item> for doctree::Module {
         let name = if self.name.is_some() {
             self.name.unwrap().clean(cx)
         } else {
-            "".to_string()
+            "".to_owned()
         };
 
         let mut items: Vec<Item> = vec![];
@@ -754,7 +754,7 @@ impl Lifetime {
     }
 
     pub fn statik() -> Lifetime {
-        Lifetime("'static".to_string())
+        Lifetime("'static".to_owned())
     }
 }
 
@@ -1159,7 +1159,7 @@ impl<'a, 'tcx> Clean<FnDecl> for (ast::DefId, &'a ty::PolyFnSig<'tcx>) {
                     Argument {
                         type_: t.clean(cx),
                         id: 0,
-                        name: names.next().unwrap_or("".to_string()),
+                        name: names.next().unwrap_or("".to_owned()),
                     }
                 }).collect(),
             },
@@ -1953,7 +1953,7 @@ pub struct Span {
 impl Span {
     fn empty() -> Span {
         Span {
-            filename: "".to_string(),
+            filename: "".to_owned(),
             loline: 0, locol: 0,
             hiline: 0, hicol: 0,
         }
@@ -2446,7 +2446,7 @@ impl Clean<ViewListIdent> for ast::PathListItem {
                 source: resolve_def(cx, id)
             },
             ast::PathListMod { id } => ViewListIdent {
-                name: "self".to_string(),
+                name: "self".to_owned(),
                 source: resolve_def(cx, id)
             }
         }
@@ -2482,7 +2482,7 @@ impl Clean<Item> for ast::ForeignItem {
                 ForeignStaticItem(Static {
                     type_: ty.clean(cx),
                     mutability: if mutbl {Mutable} else {Immutable},
-                    expr: "".to_string(),
+                    expr: "".to_owned(),
                 })
             }
         };
@@ -2509,7 +2509,7 @@ impl ToSource for syntax::codemap::Span {
         debug!("converting span {:?} to snippet", self.clean(cx));
         let sn = match cx.sess().codemap().span_to_snippet(*self) {
             Ok(x) => x.to_string(),
-            Err(_) => "".to_string()
+            Err(_) => "".to_owned()
         };
         debug!("got snippet {}", sn);
         sn
@@ -2541,8 +2541,8 @@ fn name_from_pat(p: &ast::Pat) -> String {
     debug!("Trying to get a name from pattern: {:?}", p);
 
     match p.node {
-        PatWild(PatWildSingle) => "_".to_string(),
-        PatWild(PatWildMulti) => "..".to_string(),
+        PatWild(PatWildSingle) => "_".to_owned(),
+        PatWild(PatWildMulti) => "..".to_owned(),
         PatIdent(_, ref p, _) => token::get_ident(p.node).to_string(),
         PatEnum(ref p, _) => path_to_string(p),
         PatQPath(..) => panic!("tried to get argument name from PatQPath, \
@@ -2562,7 +2562,7 @@ fn name_from_pat(p: &ast::Pat) -> String {
         PatLit(..) => {
             warn!("tried to get argument name from PatLit, \
                   which is silly in function arguments");
-            "()".to_string()
+            "()".to_owned()
         },
         PatRange(..) => panic!("tried to get argument name from PatRange, \
                               which is not allowed in function arguments"),
@@ -2575,7 +2575,7 @@ fn name_from_pat(p: &ast::Pat) -> String {
         PatMac(..) => {
             warn!("can't document the name of a function argument \
                    produced by a pattern macro");
-            "(argument produced by macro)".to_string()
+            "(argument produced by macro)".to_owned()
         }
     }
 }
@@ -2698,11 +2698,11 @@ impl Clean<Stability> for attr::Stability {
         Stability {
             level: self.level,
             feature: self.feature.to_string(),
-            since: self.since.as_ref().map_or("".to_string(),
+            since: self.since.as_ref().map_or("".to_owned(),
                                               |interned| interned.to_string()),
-            deprecated_since: self.deprecated_since.as_ref().map_or("".to_string(),
+            deprecated_since: self.deprecated_since.as_ref().map_or("".to_owned(),
                                                                     |istr| istr.to_string()),
-            reason: self.reason.as_ref().map_or("".to_string(),
+            reason: self.reason.as_ref().map_or("".to_owned(),
                                                 |interned| interned.to_string()),
         }
     }
@@ -2713,11 +2713,11 @@ impl<'a> Clean<Stability> for &'a attr::Stability {
         Stability {
             level: self.level,
             feature: self.feature.to_string(),
-            since: self.since.as_ref().map_or("".to_string(),
+            since: self.since.as_ref().map_or("".to_owned(),
                                               |interned| interned.to_string()),
-            deprecated_since: self.deprecated_since.as_ref().map_or("".to_string(),
+            deprecated_since: self.deprecated_since.as_ref().map_or("".to_owned(),
                                                                     |istr| istr.to_string()),
-            reason: self.reason.as_ref().map_or("".to_string(),
+            reason: self.reason.as_ref().map_or("".to_owned(),
                                                 |interned| interned.to_string()),
         }
     }

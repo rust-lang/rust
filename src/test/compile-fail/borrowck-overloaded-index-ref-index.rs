@@ -54,7 +54,7 @@ fn main() {
         x: 1,
         y: 2,
     };
-    let mut s = "hello".to_string();
+    let mut s = "hello".to_owned();
     let rs = &mut s;
     println!("{}", f[&s]);
     //~^ ERROR cannot borrow `s` as immutable because it is also borrowed as mutable

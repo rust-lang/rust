@@ -19,9 +19,9 @@ struct Foo {
 
 pub fn main() {
     let x = vec!(
-        Foo { string: "foo".to_string() },
-        Foo { string: "bar".to_string() },
-        Foo { string: "baz".to_string() }
+        Foo { string: "foo".to_owned() },
+        Foo { string: "bar".to_owned() },
+        Foo { string: "baz".to_owned() }
     );
     let x: &[Foo] = &x;
     match x {

@@ -17,7 +17,7 @@ pub fn main() {
     enum t { tag1(String), tag2, }
 
 
-    match t::tag1("test".to_string()) {
+    match t::tag1("test".to_owned()) {
       t::tag2 => panic!(),
       t::tag1(ref s) if "test" != &**s => panic!(),
       t::tag1(ref s) if "test" == &**s => (),

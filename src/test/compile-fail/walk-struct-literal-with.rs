@@ -15,13 +15,13 @@ struct Mine{
 
 impl Mine{
     fn make_string_bar(mut self) -> Mine{
-        self.test = "Bar".to_string();
+        self.test = "Bar".to_owned();
         self
     }
 }
 
 fn main(){
-    let start = Mine{test:"Foo".to_string(), other_val:0};
+    let start = Mine{test:"Foo".to_owned(), other_val:0};
     let end = Mine{other_val:1, ..start.make_string_bar()};
     println!("{}", start.test); //~ ERROR use of moved value: `start.test`
 }

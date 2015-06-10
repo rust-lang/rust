@@ -280,26 +280,26 @@ fn find_libdir(sysroot: &Path) -> String {
 
     #[cfg(target_pointer_width = "64")]
     fn primary_libdir_name() -> String {
-        "lib64".to_string()
+        "lib64".to_owned()
     }
 
     #[cfg(target_pointer_width = "32")]
     fn primary_libdir_name() -> String {
-        "lib32".to_string()
+        "lib32".to_owned()
     }
 
     fn secondary_libdir_name() -> String {
-        "lib".to_string()
+        "lib".to_owned()
     }
 }
 
 #[cfg(windows)]
 fn find_libdir(_sysroot: &Path) -> String {
-    "bin".to_string()
+    "bin".to_owned()
 }
 
 // The name of rustc's own place to organize libraries.
 // Used to be "rustc", now the default is "rustlib"
 pub fn rustlibdir() -> String {
-    "rustlib".to_string()
+    "rustlib".to_owned()
 }

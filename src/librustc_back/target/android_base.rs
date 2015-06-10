@@ -14,7 +14,7 @@ pub fn opts() -> TargetOptions {
     let mut base = super::linux_base::opts();
     // Many of the symbols defined in compiler-rt are also defined in libgcc.
     // Android's linker doesn't like that by default.
-    base.pre_link_args.push("-Wl,--allow-multiple-definition".to_string());
+    base.pre_link_args.push("-Wl,--allow-multiple-definition".to_owned());
     base.is_like_android = true;
     base.position_independent_executables = true;
     base

@@ -41,7 +41,7 @@ use marker::Sized;
 /// let s = "hello";
 /// is_hello(s);
 ///
-/// let s = "hello".to_string();
+/// let s = "hello".to_owned();
 /// is_hello(s);
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -71,7 +71,7 @@ pub trait AsMut<T: ?Sized> {
 ///    assert_eq!(bytes, s.into());
 /// }
 ///
-/// let s = "hello".to_string();
+/// let s = "hello".to_owned();
 /// is_hello(s);
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -88,7 +88,7 @@ pub trait Into<T>: Sized {
 /// `String` implements `From<&str>`:
 ///
 /// ```
-/// let string = "hello".to_string();
+/// let string = "hello".to_owned();
 /// let other_string = String::from("hello");
 ///
 /// assert_eq!(string, other_string);

@@ -19,9 +19,9 @@ fn main() {
         _ => ()
     }
 
-    let x: Vec<String> = vec!["foo".to_string(),
-                              "bar".to_string(),
-                              "baz".to_string()];
+    let x: Vec<String> = vec!["foo".to_owned(),
+                              "bar".to_owned(),
+                              "baz".to_owned()];
     let x: &[String] = &x;
     match x {
         [a, _, _, ..] => { println!("{}", a); }

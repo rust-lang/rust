@@ -33,6 +33,6 @@ fn strlen(str: String) -> usize {
 }
 
 pub fn main() {
-    let len = strlen("Rust".to_string());
+    let len = strlen("Rust".to_owned());
     assert_eq!(len, 4);
 }

@@ -75,7 +75,7 @@ fn main() {
     let str_slice = "IAMA string slice!";
 
     // String
-    let string = "IAMA string!".to_string();
+    let string = "IAMA string!".to_owned();
 
     // Option
     let some = Some(8i16);

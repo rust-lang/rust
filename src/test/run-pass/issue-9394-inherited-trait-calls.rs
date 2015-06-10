@@ -13,7 +13,7 @@ trait Base: Base2 + Base3{
     fn foo(&self) -> String;
     fn foo1(&self) -> String;
     fn foo2(&self) -> String{
-        "base foo2".to_string()
+        "base foo2".to_owned()
     }
 }
 
@@ -33,39 +33,39 @@ struct X;
 
 impl Base for X {
     fn foo(&self) -> String{
-        "base foo".to_string()
+        "base foo".to_owned()
     }
     fn foo1(&self) -> String{
-        "base foo1".to_string()
+        "base foo1".to_owned()
     }
 
 }
 
 impl Base2 for X {
     fn baz(&self) -> String{
-        "base2 baz".to_string()
+        "base2 baz".to_owned()
     }
 }
 
 impl Base3 for X {
     fn root(&self) -> String{
-        "base3 root".to_string()
+        "base3 root".to_owned()
     }
 }
 
 impl Super for X {
     fn bar(&self) -> String{
-        "super bar".to_string()
+        "super bar".to_owned()
     }
 }
 
 pub fn main() {
     let n = X;
     let s = &n as &Super;
-    assert_eq!(s.bar(),"super bar".to_string());
-    assert_eq!(s.foo(),"base foo".to_string());
-    assert_eq!(s.foo1(),"base foo1".to_string());
-    assert_eq!(s.foo2(),"base foo2".to_string());
-    assert_eq!(s.baz(),"base2 baz".to_string());
-    assert_eq!(s.root(),"base3 root".to_string());
+    assert_eq!(s.bar(),"super bar".to_owned());
+    assert_eq!(s.foo(),"base foo".to_owned());
+    assert_eq!(s.foo1(),"base foo1".to_owned());
+    assert_eq!(s.foo2(),"base foo2".to_owned());
+    assert_eq!(s.baz(),"base2 baz".to_owned());
+    assert_eq!(s.root(),"base3 root".to_owned());
 }

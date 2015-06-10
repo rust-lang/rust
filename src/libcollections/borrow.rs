@@ -55,7 +55,7 @@ pub trait Borrow<Borrowed: ?Sized> {
     ///     assert_eq!("Hello", s.borrow());
     /// }
     ///
-    /// let s = "Hello".to_string();
+    /// let s = "Hello".to_owned();
     ///
     /// check(s);
     ///

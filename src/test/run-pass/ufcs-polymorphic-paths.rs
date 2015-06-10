@@ -127,11 +127,11 @@ tests! {
     <i32 as Add<i32>>::add, fn(i32, i32) -> i32, (5, 6);
 
     String::into_cow, fn(String) -> Cow<'static, str>,
-        ("foo".to_string());
+        ("foo".to_owned());
     <String>::into_cow, fn(String) -> Cow<'static, str>,
-        ("foo".to_string());
+        ("foo".to_owned());
     <String as IntoCow<_>>::into_cow, fn(String) -> Cow<'static, str>,
-        ("foo".to_string());
+        ("foo".to_owned());
     <String as IntoCow<'static, _>>::into_cow, fn(String) -> Cow<'static, str>,
-        ("foo".to_string());
+        ("foo".to_owned());
 }
