@@ -15,7 +15,7 @@
 #![allow(unknown_features)]
 #![feature(box_syntax)]
 
-use std::fmt;
+use std::fmt::{self, Write};
 use std::usize;
 
 struct A;

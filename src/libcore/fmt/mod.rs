@@ -731,13 +731,6 @@ impl<'a> Formatter<'a> {
         self.buf.write_str(data)
     }
 
-    /// Writes a `char` to the underlying buffer contained within this
-    /// formatter.
-    #[stable(feature = "fmt_write_char", since = "1.1.0")]
-    pub fn write_char(&mut self, c: char) -> Result {
-        self.buf.write_char(c)
-    }
-
     /// Writes some formatted information into this instance
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn write_fmt(&mut self, fmt: Arguments) -> Result {
@@ -896,6 +889,21 @@ impl<'a> Formatter<'a> {
     #[inline]
     pub fn debug_map<'b>(&'b mut self) -> DebugMap<'b, 'a> {
         builders::debug_map_new(self)
+    }
+}
+
+#[stable(since = "1.2.0", feature = "formatter_write")]
+impl<'a> Write for Formatter<'a> {
+    fn write_str(&mut self, s: &str) -> Result {
+        self.buf.write_str(s)
+    }
+
+    fn write_char(&mut self, c: char) -> Result {
+        self.buf.write_char(c)
+    }
+
+    fn write_fmt(&mut self, args: Arguments) -> Result {
+        write(self.buf, args)
     }
 }
 
