@@ -1004,22 +1004,22 @@ fn trans_rvalue_stmt_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 debuginfo::set_source_location(bcx.fcx, expr.id, expr.span);
                 let src_datum = unpack_datum!(
                     bcx, src_datum.to_rvalue_datum(bcx, "ExprAssign"));
-                if let Some(hint_datum) = dst_datum.kind.drop_flag_info.hint_datum(bcx) {
-                    let hint_val = hint_datum.to_value();
-                    // XXX the checkpointed branch only does the
-                    // drop_ty call within this branch (and I claim
-                    // that seems like a bug). At this point I have
-                    // moved it into the branch solely to see if it
-                    // makes my plague of bugs go away.
-                    bcx = glue::drop_ty_core(bcx,
-                                             dst_datum.val,
-                                             dst_datum.ty,
-                                             expr.debug_loc(),
-                                             false,
-                                             Some(hint_val));
-                    // We are initializing or overwriting the
-                    // destination, so we need to write "drop needed"
-                    // into the hint.
+                let opt_hint_datum = dst_datum.kind.drop_flag_info.hint_datum(bcx);
+                let opt_hint_val = opt_hint_datum.map(|d|d.to_value());
+
+                // 1. Drop the data at the destination, passing the
+                //    drop-hint in case the lvalue has already been
+                //    dropped or moved.
+                bcx = glue::drop_ty_core(bcx,
+                                         dst_datum.val,
+                                         dst_datum.ty,
+                                         expr.debug_loc(),
+                                         false,
+                                         opt_hint_val);
+
+                // 2. We are overwriting the destination; ensure that
+                //    its drop-hint (if any) says "initialized."
+                if let Some(hint_val) = opt_hint_val {
                     let hint_llval = hint_val.value();
                     let drop_needed = C_u8(bcx.fcx.ccx, adt::DTOR_NEEDED_HINT as usize);
                     Store(bcx, drop_needed, hint_llval);
