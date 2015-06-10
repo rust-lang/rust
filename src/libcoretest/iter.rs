@@ -652,6 +652,20 @@ fn test_by_ref() {
 }
 
 #[test]
+fn test_by_ref_nth() {
+    let mut xs = 0..10;
+    let mut ys = 0..10;
+    let mut ysr = ys.by_ref();
+    loop {
+        match (xs.nth(2), ysr.nth(2)) {
+            (Some(x), Some(y)) => assert_eq!(x, y),
+            (None, None) => break,
+            _ => panic!("Both iterators should have finished at the same time."),
+        }
+    }
+}
+
+#[test]
 fn test_rev() {
     let xs = [2, 4, 6, 8, 10, 12, 14, 16];
     let mut it = xs.iter();

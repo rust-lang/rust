@@ -160,8 +160,8 @@ pub trait Iterator {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn nth(&mut self, mut n: usize) -> Option<Self::Item> where Self: Sized {
-        for x in self.by_ref() {
+    fn nth(&mut self, mut n: usize) -> Option<Self::Item> {
+        for x in self {
             if n == 0 { return Some(x) }
             n -= 1;
         }
@@ -631,7 +631,7 @@ pub trait Iterator {
     fn all<F>(&mut self, mut f: F) -> bool where
         Self: Sized, F: FnMut(Self::Item) -> bool
     {
-        for x in self.by_ref() {
+        for x in self {
             if !f(x) {
                 return false;
             }
@@ -658,7 +658,7 @@ pub trait Iterator {
         Self: Sized,
         F: FnMut(Self::Item) -> bool
     {
-        for x in self.by_ref() {
+        for x in self {
             if f(x) {
                 return true;
             }
@@ -683,7 +683,7 @@ pub trait Iterator {
         Self: Sized,
         P: FnMut(&Self::Item) -> bool,
     {
-        for x in self.by_ref() {
+        for x in self {
             if predicate(&x) { return Some(x) }
         }
         None
@@ -719,7 +719,7 @@ pub trait Iterator {
         P: FnMut(Self::Item) -> bool,
     {
         // `enumerate` might overflow.
-        for (i, x) in self.by_ref().enumerate() {
+        for (i, x) in self.enumerate() {
             if predicate(x) {
                 return Some(i);
             }
@@ -1128,6 +1128,7 @@ impl<'a, I: Iterator + ?Sized> Iterator for &'a mut I {
     type Item = I::Item;
     fn next(&mut self) -> Option<I::Item> { (**self).next() }
     fn size_hint(&self) -> (usize, Option<usize>) { (**self).size_hint() }
+    fn nth(&mut self, n: usize) -> Option<I::Item> { (**self).nth(n) }
 }
 
 /// Conversion from an `Iterator`
