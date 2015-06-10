@@ -104,6 +104,10 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
     }
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
+        if !ty::type_needs_infer(t) && !ty::type_has_erasable_regions(t) {
+            return t;
+        }
+
         let tcx = self.infcx.tcx;
 
         match t.sty {

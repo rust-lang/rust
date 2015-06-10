@@ -26,9 +26,8 @@ use middle::free_region::FreeRegionMap;
 use middle::subst;
 use middle::subst::Substs;
 use middle::ty::{TyVid, IntVid, FloatVid, RegionVid, UnconstrainedNumeric};
-use middle::ty::replace_late_bound_regions;
 use middle::ty::{self, Ty};
-use middle::ty_fold::{TypeFolder, TypeFoldable};
+use middle::ty_fold::{self, TypeFolder, TypeFoldable};
 use middle::ty_relate::{Relate, RelateResult, TypeRelation};
 use rustc_data_structures::unify::{self, UnificationTable};
 use std::cell::{RefCell};
@@ -1038,7 +1037,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         -> (T, FnvHashMap<ty::BoundRegion,ty::Region>)
         where T : TypeFoldable<'tcx> + Repr<'tcx>
     {
-        ty::replace_late_bound_regions(
+        ty_fold::replace_late_bound_regions(
             self.tcx,
             value,
             |br| self.next_region_var(LateBoundRegion(span, br, lbrct)))
