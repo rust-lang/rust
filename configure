@@ -582,6 +582,7 @@ opt rpath 0 "build rpaths into rustc itself"
 opt dist-host-only 0 "only install bins for the host architecture"
 opt inject-std-version 1 "inject the current compiler version of libstd into programs"
 opt llvm-version-check 1 "check if the LLVM version is supported, build anyway"
+valopt nacl-cross-path  "" "NaCl SDK path (must be Pepper 43 or higher). Must be absolute!"
 
 # Optimization and debugging options. These may be overridden by the release channel, etc.
 opt_nosave optimize 1 "build optimized rust code"
@@ -1131,7 +1132,12 @@ do
                 fi
             done
             ;;
-
+        *-unknown-nacl)
+	    if [ -z "$CFG_NACL_CROSS_PATH" ]
+	    then
+		err "I need the NaCl SDK path! (use --nacl-cross-path)"
+	    fi
+	    ;;
         arm-apple-darwin)
             if [ $CFG_OSTYPE != apple-darwin ]
             then
@@ -1390,11 +1396,157 @@ for t in $CFG_HOST
 do
     do_reconfigure=1
     is_msvc=0
+
+    # LLVM's configure doesn't recognize the new Windows triples yet
+    gnu_t=$(to_gnu_triple $t)
+    if [ "$t" != "$CFG_BUILD" ]
+    then
+        LLVM_PREFIX="$gnu_t-"
+    else
+        LLVM_PREFIX=""
+    fi
+
+    LLVM_AR="ar"
+    LLVM_RANLIB="ranlib"
+
+    case "$CFG_CC" in
+        ("ccache clang")
+            LLVM_CXX_32="ccache ${LLVM_PREFIX}clang++ -Qunused-arguments"
+            LLVM_CC_32="ccache ${LLVM_PREFIX}clang -Qunused-arguments"
+
+            LLVM_CXX_64="ccache ${LLVM_PREFIX}clang++ -Qunused-arguments"
+            LLVM_CC_64="ccache ${LLVM_PREFIX}clang -Qunused-arguments"
+            ;;
+        ("clang")
+            LLVM_CXX_32="${LLVM_PREFIX}clang++ -Qunused-arguments"
+            LLVM_CC_32="${LLVM_PREFIX}clang -Qunused-arguments"
+
+            LLVM_CXX_64="${LLVM_PREFIX}clang++ -Qunused-arguments"
+            LLVM_CC_64="${LLVM_PREFIX}clang -Qunused-arguments"
+            ;;
+        ("ccache gcc")
+            LLVM_CXX_32="ccache ${LLVM_PREFIX}g++"
+            LLVM_CC_32="ccache ${LLVM_PREFIX}gcc"
+
+            LLVM_CXX_64="ccache ${LLVM_PREFIX}g++"
+            LLVM_CC_64="ccache ${LLVM_PREFIX}gcc"
+            ;;
+        ("gcc")
+            LLVM_CXX_32="${LLVM_PREFIX}g++"
+            LLVM_CC_32="${LLVM_PREFIX}gcc"
+
+            LLVM_CXX_64="${LLVM_PREFIX}g++"
+            LLVM_CC_64="${LLVM_PREFIX}gcc"
+            ;;
+
+        (*)
+            msg "inferring LLVM_CXX/CC from CXX/CC = $CXX/$CC"
+            if [ -n "$CFG_ENABLE_CCACHE" ]
+            then
+                if [ -z "$CFG_CCACHE" ]
+                then
+                    err "ccache requested but not found"
+                fi
+
+                LLVM_CXX_32="ccache $CXX"
+                LLVM_CC_32="ccache $CC"
+
+                LLVM_CXX_64="ccache $CXX"
+                LLVM_CC_64="ccache $CC"
+            else
+                LLVM_CXX_32="$CXX"
+                LLVM_CC_32="$CC"
+
+                LLVM_CXX_64="$CXX"
+                LLVM_CC_64="$CC"
+            fi
+
+            ;;
+    esac
+
+    case "$CFG_CPUTYPE" in
+        (x86*)
+            LLVM_CFLAGS_32="-m32"
+            LLVM_CXXFLAGS_32="-m32"
+            LLVM_LDFLAGS_32="-m32"
+
+            LLVM_CFLAGS_64=""
+            LLVM_CXXFLAGS_64=""
+            LLVM_LDFLAGS_64=""
+            ;;
+
+        (*)
+            LLVM_CFLAGS_32=""
+            LLVM_CXXFLAGS_32=""
+            LLVM_LDFLAGS_32=""
+
+            LLVM_CFLAGS_64=""
+            LLVM_CXXFLAGS_64=""
+            LLVM_LDFLAGS_64=""
+            ;;
+    esac
+
+    if echo $t | grep -q x86_64
+    then
+        LLVM_CXX=$LLVM_CXX_64
+        LLVM_CC=$LLVM_CC_64
+        LLVM_CFLAGS=$LLVM_CFLAGS_64
+        LLVM_CXXFLAGS=$LLVM_CXXFLAGS_64
+        LLVM_LDFLAGS=$LLVM_LDFLAGS_64
+    else
+        LLVM_CXX=$LLVM_CXX_32
+        LLVM_CC=$LLVM_CC_32
+        LLVM_CFLAGS=$LLVM_CFLAGS_32
+        LLVM_CXXFLAGS=$LLVM_CXXFLAGS_32
+        LLVM_LDFLAGS=$LLVM_LDFLAGS_32
+    fi
+
+    # Toolchain overrides for crosses
     case "$t" in
         (*-msvc)
-        is_msvc=1
+            is_msvc=1
+        ;;
+        (le32-unknown-nacl)
+            BUILD_CXX=clang++
+            BUILD_CC=clang
+            BUILD_CXXFLAGS=$LLVM_CXXFLAGS
+            BUILD_CFLAGS=$LLVM_CFLAGS
+
+            export BUILD_CXX
+            export BUILD_CC
+            export BUILD_CXXFLAGS
+            export BUILD_CFLAGS
+
+            LLVM_CXX="`$CFG_NACL_CROSS_PATH/tools/nacl_config.py -t pnacl --tool=c++`"
+            LLVM_CC="`$CFG_NACL_CROSS_PATH/tools/nacl_config.py -t pnacl --tool=cc`"
+            LLVM_RANLIB="`$CFG_NACL_CROSS_PATH/tools/nacl_config.py -t pnacl --tool=ranlib`"
+            LLVM_CFLAGS="-I$NACL_SDK_ROOT/toolchain/$($NACL_SDK_ROOT/tools/getos.py)_pnacl/le32-nacl/usr/include/glibc-compat"
+            LLVM_CXXFLAGS=$LLVM_CFLAGS
+            LLVM_AR="`$CFG_NACL_CROSS_PATH/tools/nacl_config.py -t pnacl --tool=ar`"
+        ;;
+        (*)
+            unset BUILD_CXX
+            unset BUILD_CC
+            unset BUILD_CXXFLAGS
+            unset BUILD_CFLAGS
         ;;
     esac
+
+    CXX=$LLVM_CXX
+    CC=$LLVM_CC
+    AR=$LLVM_AR
+    RANLIB=$LLVM_RANLIB
+    CFLAGS=$LLVM_CFLAGS
+    CXXFLAGS=$LLVM_CXXFLAGS
+    LDFLAGS=$LLVM_LDFLAGS
+
+    export CXX
+    export CC
+    export AR
+    export RANLIB
+    export CFLAGS
+    export CXXFLAGS
+    export LDFLAGS
 
     if [ -z $CFG_LLVM_ROOT ]
     then
@@ -1404,10 +1556,10 @@ do
             LLVM_DBG_OPTS="--enable-debug-symbols --disable-optimized"
             # Just use LLVM straight from its build directory to
             # avoid 'make install' time
-            LLVM_INST_DIR=$LLVM_BUILD_DIR/Debug
+            LLVM_BUILD_SUBDIR=Debug
         else
             LLVM_DBG_OPTS="--enable-optimized"
-            LLVM_INST_DIR=$LLVM_BUILD_DIR/Release
+            LLVM_BUILD_SUBDIR=Release
         fi
         if [ -z "$CFG_ENABLE_LLVM_ASSERTIONS" ]
         then
@@ -1419,9 +1571,13 @@ do
             # LLVM's CMake build system ignore this and outputs in `Release`
             # anyway.
             if [ ${is_msvc} -eq 0 ]; then
-                LLVM_INST_DIR=${LLVM_INST_DIR}+Asserts
+                LLVM_BUILD_SUBDIR=${LLVM_BUILD_SUBDIR}+Asserts
+            else
+                LLVM_BUILD_SUBDIR=${LLVM_BUILD_SUBDIR}
             fi
         fi
+
+        LLVM_INST_DIR=$LLVM_BUILD_DIR/$LLVM_BUILD_SUBDIR
     else
         msg "not reconfiguring LLVM, external LLVM root"
         # The user is using their own LLVM
@@ -1498,18 +1654,27 @@ do
 
     if [ ${do_reconfigure} -ne 0 ] && [ ${is_msvc} -eq 0 ]
     then
-        # LLVM's configure doesn't recognize the new Windows triples yet
-        gnu_t=$(to_gnu_triple $t)
-
         msg "configuring LLVM for $gnu_t"
 
-        LLVM_TARGETS="--enable-targets=x86,x86_64,arm,aarch64,mips,powerpc"
-        LLVM_BUILD="--build=$gnu_t"
+        LLVM_BUILD="--build=$(to_gnu_triple $CFG_BUILD)"
         LLVM_HOST="--host=$gnu_t"
         LLVM_TARGET="--target=$gnu_t"
 
         # Disable unused LLVM features
         LLVM_OPTS="$LLVM_DBG_OPTS $LLVM_ASSERTION_OPTS --disable-docs --enable-bindings=none"
+
+        case "$t" in
+            (le32-unknown-nacl)
+                # Enable only the arches that NaCl can sandbox.
+                LLVM_TARGETS="--enable-targets=x86,arm,mips"
+                # Use libc++ to match Rust.
+                LLVM_OPTS="$LLVM_OPTS --enable-libcpp"
+            ;;
+            (*)
+                LLVM_TARGETS="--enable-targets=x86,x86_64,arm,aarch64,mips,powerpc"
+            ;;
+        esac
+
         # Disable term-info, linkage of which comes in multiple forms,
         # making our snapshots incompatible (#9334)
         LLVM_OPTS="$LLVM_OPTS --disable-terminfo"
@@ -1525,110 +1690,6 @@ do
             ;;
         esac
 
-        case "$CFG_CC" in
-            ("ccache clang")
-            LLVM_CXX_32="ccache clang++ -Qunused-arguments"
-            LLVM_CC_32="ccache clang -Qunused-arguments"
-
-            LLVM_CXX_64="ccache clang++ -Qunused-arguments"
-            LLVM_CC_64="ccache clang -Qunused-arguments"
-            ;;
-            ("clang")
-            LLVM_CXX_32="clang++ -Qunused-arguments"
-            LLVM_CC_32="clang -Qunused-arguments"
-
-            LLVM_CXX_64="clang++ -Qunused-arguments"
-            LLVM_CC_64="clang -Qunused-arguments"
-            ;;
-            ("ccache gcc")
-            LLVM_CXX_32="ccache g++"
-            LLVM_CC_32="ccache gcc"
-
-            LLVM_CXX_64="ccache g++"
-            LLVM_CC_64="ccache gcc"
-            ;;
-            ("gcc")
-            LLVM_CXX_32="g++"
-            LLVM_CC_32="gcc"
-
-            LLVM_CXX_64="g++"
-            LLVM_CC_64="gcc"
-            ;;
-
-            (*)
-            msg "inferring LLVM_CXX/CC from CXX/CC = $CXX/$CC"
-            if [ -n "$CFG_ENABLE_CCACHE" ]
-            then
-                if [ -z "$CFG_CCACHE" ]
-                then
-                    err "ccache requested but not found"
-                fi
-
-                LLVM_CXX_32="ccache $CXX"
-                LLVM_CC_32="ccache $CC"
-
-                LLVM_CXX_64="ccache $CXX"
-                LLVM_CC_64="ccache $CC"
-            else
-                LLVM_CXX_32="$CXX"
-                LLVM_CC_32="$CC"
-
-                LLVM_CXX_64="$CXX"
-                LLVM_CC_64="$CC"
-            fi
-
-            ;;
-        esac
-
-        case "$CFG_CPUTYPE" in
-            (x86*)
-                LLVM_CXX_32="$LLVM_CXX_32 -m32"
-                LLVM_CC_32="$LLVM_CC_32 -m32"
-
-                LLVM_CFLAGS_32="-m32"
-                LLVM_CXXFLAGS_32="-m32"
-                LLVM_LDFLAGS_32="-m32"
-
-                LLVM_CFLAGS_64=""
-                LLVM_CXXFLAGS_64=""
-                LLVM_LDFLAGS_64=""
-
-                LLVM_CXX_32="$LLVM_CXX_32 -m32"
-                LLVM_CC_32="$LLVM_CC_32 -m32"
-                ;;
-
-            (*)
-                LLVM_CFLAGS_32=""
-                LLVM_CXXFLAGS_32=""
-                LLVM_LDFLAGS_32=""
-
-                LLVM_CFLAGS_64=""
-                LLVM_CXXFLAGS_64=""
-                LLVM_LDFLAGS_64=""
-                ;;
-        esac
-
-        if echo $t | grep -q x86_64
-        then
-            LLVM_CXX=$LLVM_CXX_64
-            LLVM_CC=$LLVM_CC_64
-            LLVM_CFLAGS=$LLVM_CFLAGS_64
-            LLVM_CXXFLAGS=$LLVM_CXXFLAGS_64
-            LLVM_LDFLAGS=$LLVM_LDFLAGS_64
-        else
-            LLVM_CXX=$LLVM_CXX_32
-            LLVM_CC=$LLVM_CC_32
-            LLVM_CFLAGS=$LLVM_CFLAGS_32
-            LLVM_CXXFLAGS=$LLVM_CXXFLAGS_32
-            LLVM_LDFLAGS=$LLVM_LDFLAGS_32
-        fi
-
-        CXX=$LLVM_CXX
-        CC=$LLVM_CC
-        CFLAGS=$LLVM_CFLAGS
-        CXXFLAGS=$LLVM_CXXFLAGS
-        LDFLAGS=$LLVM_LDFLAGS
-
         if [ -z "$CFG_DISABLE_LIBCPP" ] && [ -n "$CFG_USING_CLANG" ]; then
             LLVM_OPTS="$LLVM_OPTS --enable-libcpp"
         fi
@@ -1638,12 +1699,6 @@ do
 
         msg "configuring LLVM with:"
         msg "$LLVM_FLAGS"
-
-        export CXX
-        export CC
-        export CFLAGS
-        export CXXFLAGS
-        export LDFLAGS
 
         cd $LLVM_BUILD_DIR
         case $CFG_SRC_DIR in
@@ -1667,8 +1722,10 @@ do
     # variables can't contain hyphens. The makefile will then have to
     # convert back.
     CFG_LLVM_BUILD_DIR=$(echo CFG_LLVM_BUILD_DIR_${t} | tr - _)
+    CFG_LLVM_BUILD_SUBDIR=$(echo CFG_LLVM_BUILD_SUBDIR_${t} | tr - _)
     CFG_LLVM_INST_DIR=$(echo CFG_LLVM_INST_DIR_${t} | tr - _)
     eval ${CFG_LLVM_BUILD_DIR}="'$LLVM_BUILD_DIR'"
+    eval ${CFG_LLVM_BUILD_SUBDIR}="'$LLVM_BUILD_SUBDIR'"
     eval ${CFG_LLVM_INST_DIR}="'$LLVM_INST_DIR'"
 done
 
@@ -1688,6 +1745,7 @@ putvar CFG_LIBDIR_RELATIVE
 putvar CFG_DISABLE_MANAGE_SUBMODULES
 putvar CFG_AARCH64_LINUX_ANDROID_NDK
 putvar CFG_ARM_LINUX_ANDROIDEABI_NDK
+putvar CFG_NACL_CROSS_PATH
 putvar CFG_MANDIR
 
 # Avoid spurious warnings from clang by feeding it original source on
@@ -1716,8 +1774,10 @@ putvar CFG_LLVM_SRC_DIR
 for t in $CFG_HOST
 do
     CFG_LLVM_BUILD_DIR=$(echo CFG_LLVM_BUILD_DIR_${t} | tr - _)
+    CFG_LLVM_BUILD_SUBDIR=$(echo CFG_LLVM_BUILD_SUBDIR_${t} | tr - _)
     CFG_LLVM_INST_DIR=$(echo CFG_LLVM_INST_DIR_${t} | tr - _)
     putvar $CFG_LLVM_BUILD_DIR
+    putvar $CFG_LLVM_BUILD_SUBDIR
     putvar $CFG_LLVM_INST_DIR
 done
 
