@@ -1,7 +1,7 @@
 - Feature Name: `result_expect`
 - Start Date: 2015-05-13
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#1119](https://github.com/rust-lang/rfcs/pull/1119)
+- Rust Issue: [rust-lang/rust#25359](https://github.com/rust-lang/rust/pull/25359)
 
 # Summary
 
@@ -21,6 +21,7 @@ message and the error value.
 
 The format of the error message is left undefined in the documentation, but will most likely be
 the following
+
 ```
 panic!("{}: {:?}", msg, e)
 ```
