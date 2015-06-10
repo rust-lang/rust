@@ -1030,7 +1030,6 @@ pub fn link_pnacl_module(sess: &Session,
             };
 
             // Strip unsupported metadata and things:
-            ap("rewrite-llvm-debugtrap-intrinsic\0");
             ap("strip-metadata\0");
             ap("strip-module-flags\0");
             ap("nacl-strip-attributes\0");
