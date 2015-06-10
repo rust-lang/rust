@@ -19,7 +19,7 @@
 //! provided beyond this module.
 //!
 //! ```rust
-//! # #![feature(core)]
+//! # #![feature(core_simd)]
 //! fn main() {
 //!     use std::simd::f32x4;
 //!     let a = f32x4(40.0, 41.0, 42.0, 43.0);

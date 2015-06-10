@@ -39,7 +39,6 @@
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
-#![feature(str_casing)]
 #![feature(str_char)]
 
 extern crate syntax;

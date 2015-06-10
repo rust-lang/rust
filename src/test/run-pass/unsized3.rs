@@ -11,8 +11,8 @@
 // Test structs with always-unsized fields.
 
 
-#![allow(unknown_features)]
-#![feature(box_syntax, core)]
+#![allow(warnings)]
+#![feature(box_syntax, unsize, raw)]
 
 use std::mem;
 use std::raw;

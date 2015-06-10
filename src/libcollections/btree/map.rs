@@ -1507,7 +1507,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
+    /// # #![feature(btree_range, collections_bound)]
     /// use std::collections::BTreeMap;
     /// use std::collections::Bound::{Included, Unbounded};
     ///
@@ -1534,7 +1534,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
+    /// # #![feature(btree_range, collections_bound)]
     /// use std::collections::BTreeMap;
     /// use std::collections::Bound::{Included, Excluded};
     ///

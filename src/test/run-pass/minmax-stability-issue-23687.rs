@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(core)]
+#![feature(iter_min_max, cmp_partial, iter_cmp)]
+
 use std::fmt::Debug;
 use std::cmp::{self, PartialOrd, Ordering};
 use std::iter::MinMaxResult::MinMax;

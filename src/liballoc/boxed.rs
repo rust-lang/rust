@@ -71,7 +71,7 @@ use core::raw::{TraitObject};
 /// The following two examples are equivalent:
 ///
 /// ```
-/// # #![feature(alloc)]
+/// # #![feature(box_heap)]
 /// #![feature(box_syntax)]
 /// use std::boxed::HEAP;
 ///
@@ -139,7 +139,7 @@ impl<T : ?Sized> Box<T> {
 ///
 /// # Examples
 /// ```
-/// # #![feature(alloc)]
+/// # #![feature(box_raw)]
 /// use std::boxed;
 ///
 /// let seventeen = Box::new(17u32);
@@ -183,7 +183,7 @@ impl<T: Clone> Clone for Box<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(alloc, core)]
+    /// # #![feature(box_raw)]
     /// let x = Box::new(5);
     /// let mut y = Box::new(10);
     ///
@@ -336,7 +336,7 @@ impl<I: ExactSizeIterator + ?Sized> ExactSizeIterator for Box<I> {}
 /// -> i32>`.
 ///
 /// ```
-/// #![feature(core)]
+/// #![feature(fnbox)]
 ///
 /// use std::boxed::FnBox;
 /// use std::collections::HashMap;

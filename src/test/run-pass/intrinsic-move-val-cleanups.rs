@@ -18,7 +18,7 @@
 // introduce temporaries that require cleanup, and SOURCE panics, then
 // make sure the cleanups still occur.
 
-#![feature(core, std_misc)]
+#![feature(core_intrinsics, sync_poison)]
 
 use std::cell::RefCell;
 use std::intrinsics;

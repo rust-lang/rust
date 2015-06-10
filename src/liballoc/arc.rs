@@ -191,7 +191,7 @@ impl<T: ?Sized> Arc<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(alloc)]
+    /// # #![feature(arc_weak)]
     /// use std::sync::Arc;
     ///
     /// let five = Arc::new(5);
@@ -236,12 +236,12 @@ impl<T: ?Sized> Arc<T> {
 
 /// Get the number of weak references to this value.
 #[inline]
-#[unstable(feature = "arc_extras")]
+#[unstable(feature = "arc_counts")]
 pub fn weak_count<T: ?Sized>(this: &Arc<T>) -> usize { this.inner().weak.load(SeqCst) - 1 }
 
 /// Get the number of strong references to this value.
 #[inline]
-#[unstable(feature = "arc_extras")]
+#[unstable(feature = "arc_counts")]
 pub fn strong_count<T: ?Sized>(this: &Arc<T>) -> usize { this.inner().strong.load(SeqCst) }
 
 
@@ -255,7 +255,7 @@ pub fn strong_count<T: ?Sized>(this: &Arc<T>) -> usize { this.inner().strong.loa
 /// # Examples
 ///
 /// ```
-/// # #![feature(alloc)]
+/// # #![feature(arc_unique, alloc)]
 /// extern crate alloc;
 /// # fn main() {
 /// use alloc::arc::{Arc, get_mut};
@@ -271,7 +271,7 @@ pub fn strong_count<T: ?Sized>(this: &Arc<T>) -> usize { this.inner().strong.loa
 /// # }
 /// ```
 #[inline]
-#[unstable(feature = "arc_extras")]
+#[unstable(feature = "arc_unique")]
 pub unsafe fn get_mut<T: ?Sized>(this: &mut Arc<T>) -> Option<&mut T> {
     // FIXME(#24880) potential race with upgraded weak pointers here
     if strong_count(this) == 1 && weak_count(this) == 0 {
@@ -342,7 +342,7 @@ impl<T: Clone> Arc<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(alloc)]
+    /// # #![feature(arc_unique)]
     /// use std::sync::Arc;
     ///
     /// # unsafe {
@@ -352,7 +352,7 @@ impl<T: Clone> Arc<T> {
     /// # }
     /// ```
     #[inline]
-    #[unstable(feature = "arc_extras")]
+    #[unstable(feature = "arc_unique")]
     pub unsafe fn make_unique(&mut self) -> &mut T {
         // FIXME(#24880) potential race with upgraded weak pointers here
         //
@@ -451,7 +451,7 @@ impl<T: ?Sized> Weak<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(alloc)]
+    /// # #![feature(arc_weak)]
     /// use std::sync::Arc;
     ///
     /// let five = Arc::new(5);
@@ -489,7 +489,7 @@ impl<T: ?Sized> Clone for Weak<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(alloc)]
+    /// # #![feature(arc_weak)]
     /// use std::sync::Arc;
     ///
     /// let weak_five = Arc::new(5).downgrade();
@@ -513,7 +513,7 @@ impl<T: ?Sized> Drop for Weak<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(alloc)]
+    /// # #![feature(arc_weak)]
     /// use std::sync::Arc;
     ///
     /// {

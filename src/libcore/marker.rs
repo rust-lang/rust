@@ -388,7 +388,7 @@ mod impls {
 /// that function. Here is an example:
 ///
 /// ```
-/// #![feature(core)]
+/// #![feature(reflect_marker)]
 /// use std::marker::Reflect;
 /// use std::any::Any;
 /// fn foo<T:Reflect+'static>(x: &T) {

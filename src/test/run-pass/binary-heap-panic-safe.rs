@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(std_misc, collections, catch_panic, rand)]
+#![feature(std_misc, collections, catch_panic, rand, sync_poison)]
 
 use std::__rand::{thread_rng, Rng};
 use std::thread;

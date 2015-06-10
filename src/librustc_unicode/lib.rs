@@ -38,7 +38,7 @@
 #![feature(core_prelude)]
 #![feature(core_slice_ext)]
 #![feature(core_str_ext)]
-#![feature(iter_sum)]
+#![feature(iter_arith)]
 #![feature(lang_items)]
 #![feature(no_std)]
 #![feature(staged_api)]

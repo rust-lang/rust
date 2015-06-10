@@ -37,7 +37,7 @@
 #![feature(staged_api)]
 #![feature(step_by)]
 
-#![cfg_attr(test, feature(test, rand, rustc_private))]
+#![cfg_attr(test, feature(test, rand, rustc_private, iter_order))]
 
 #![allow(deprecated)]
 

@@ -18,6 +18,7 @@
 #![feature(iter_once)]
 
 use std::iter::{empty, once, range_inclusive, repeat, Unfold};
+>>>>>>> Fallout in tests and docs from feature renamings
 
 fn is_sync<T>(_: T) where T: Sync {}
 fn is_send<T>(_: T) where T: Send {}

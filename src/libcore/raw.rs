@@ -49,7 +49,7 @@ use mem;
 /// # Examples
 ///
 /// ```
-/// # #![feature(core)]
+/// # #![feature(raw)]
 /// use std::raw::{self, Repr};
 ///
 /// let slice: &[u16] = &[1, 2, 3, 4];
@@ -98,7 +98,7 @@ impl<T> Clone for Slice<T> {
 /// # Examples
 ///
 /// ```
-/// # #![feature(core)]
+/// # #![feature(raw)]
 /// use std::mem;
 /// use std::raw;
 ///

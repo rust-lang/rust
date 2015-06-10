@@ -30,7 +30,7 @@
 #![feature(const_fn)]
 #![feature(fs)]
 #![feature(iter_cmp)]
-#![feature(iter_sum)]
+#![feature(iter_arith)]
 #![feature(iter_unfold)]
 #![feature(libc)]
 #![feature(once_new)]

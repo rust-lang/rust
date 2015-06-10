@@ -585,7 +585,7 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
+    /// # #![feature(slice_chars)]
     /// let s = "Löwe 老虎 Léopard";
     ///
     /// assert_eq!(s.slice_chars(0, 4), "Löwe");
@@ -1520,7 +1520,7 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
+    /// # #![feature(str_matches)]
     /// let v: Vec<&str> = "abcXXXabcYYYabc".matches("abc").collect();
     /// assert_eq!(v, ["abc", "abc", "abc"]);
     ///
@@ -1553,7 +1553,7 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
+    /// # #![feature(str_matches)]
     /// let v: Vec<&str> = "abcXXXabcYYYabc".rmatches("abc").collect();
     /// assert_eq!(v, ["abc", "abc", "abc"]);
     ///
@@ -1595,7 +1595,7 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
+    /// # #![feature(str_matches)]
     /// let v: Vec<(usize, usize)> = "abcXXXabcYYYabc".match_indices("abc").collect();
     /// assert_eq!(v, [(0, 3), (6, 9), (12, 15)]);
     ///
@@ -1639,7 +1639,7 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
+    /// # #![feature(str_matches)]
     /// let v: Vec<(usize, usize)> = "abcXXXabcYYYabc".rmatch_indices("abc").collect();
     /// assert_eq!(v, [(12, 15), (6, 9), (0, 3)]);
     ///
@@ -1669,7 +1669,7 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
+    /// # #![feature(subslice_offset)]
     /// let string = "a\nb\nc";
     /// let lines: Vec<&str> = string.lines().collect();
     ///
@@ -1863,7 +1863,7 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// #![feature(collections)]
+    /// #![feature(str_casing)]
     ///
     /// let s = "HELLO";
     /// assert_eq!(s.to_lowercase(), "hello");
@@ -1909,7 +1909,7 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// #![feature(collections)]
+    /// #![feature(str_casing)]
     ///
     /// let s = "hello";
     /// assert_eq!(s.to_uppercase(), "HELLO");

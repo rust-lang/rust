@@ -32,7 +32,6 @@
 //! and have the `Owner` remain allocated as long as any `Gadget` points at it.
 //!
 //! ```rust
-//! # #![feature(alloc)]
 //! use std::rc::Rc;
 //!
 //! struct Owner {
@@ -92,7 +91,7 @@
 //! documentation for more details on interior mutability.
 //!
 //! ```rust
-//! # #![feature(alloc)]
+//! # #![feature(rc_weak)]
 //! use std::rc::Rc;
 //! use std::rc::Weak;
 //! use std::cell::RefCell;
@@ -229,7 +228,7 @@ impl<T: ?Sized> Rc<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(alloc)]
+    /// # #![feature(rc_weak)]
     /// use std::rc::Rc;
     ///
     /// let five = Rc::new(5);
@@ -246,12 +245,12 @@ impl<T: ?Sized> Rc<T> {
 
 /// Get the number of weak references to this value.
 #[inline]
-#[unstable(feature = "rc_extras")]
+#[unstable(feature = "rc_counts")]
 pub fn weak_count<T: ?Sized>(this: &Rc<T>) -> usize { this.weak() - 1 }
 
 /// Get the number of strong references to this value.
 #[inline]
-#[unstable(feature = "rc_extras")]
+#[unstable(feature = "rc_counts")]
 pub fn strong_count<T: ?Sized>(this: &Rc<T>) -> usize { this.strong() }
 
 /// Returns true if there are no other `Rc` or `Weak<T>` values that share the
@@ -260,7 +259,7 @@ pub fn strong_count<T: ?Sized>(this: &Rc<T>) -> usize { this.strong() }
 /// # Examples
 ///
 /// ```
-/// # #![feature(alloc)]
+/// # #![feature(rc_unique)]
 /// use std::rc;
 /// use std::rc::Rc;
 ///
@@ -269,7 +268,7 @@ pub fn strong_count<T: ?Sized>(this: &Rc<T>) -> usize { this.strong() }
 /// rc::is_unique(&five);
 /// ```
 #[inline]
-#[unstable(feature = "rc_extras")]
+#[unstable(feature = "rc_unique")]
 pub fn is_unique<T>(rc: &Rc<T>) -> bool {
     weak_count(rc) == 0 && strong_count(rc) == 1
 }
@@ -281,7 +280,7 @@ pub fn is_unique<T>(rc: &Rc<T>) -> bool {
 /// # Examples
 ///
 /// ```
-/// # #![feature(alloc)]
+/// # #![feature(rc_unique)]
 /// use std::rc::{self, Rc};
 ///
 /// let x = Rc::new(3);
@@ -292,7 +291,7 @@ pub fn is_unique<T>(rc: &Rc<T>) -> bool {
 /// assert_eq!(rc::try_unwrap(x), Err(Rc::new(4)));
 /// ```
 #[inline]
-#[unstable(feature = "rc_extras")]
+#[unstable(feature = "rc_unique")]
 pub fn try_unwrap<T>(rc: Rc<T>) -> Result<T, Rc<T>> {
     if is_unique(&rc) {
         unsafe {
@@ -316,7 +315,7 @@ pub fn try_unwrap<T>(rc: Rc<T>) -> Result<T, Rc<T>> {
 /// # Examples
 ///
 /// ```
-/// # #![feature(alloc)]
+/// # #![feature(rc_unique)]
 /// use std::rc::{self, Rc};
 ///
 /// let mut x = Rc::new(3);
@@ -327,7 +326,7 @@ pub fn try_unwrap<T>(rc: Rc<T>) -> Result<T, Rc<T>> {
 /// assert!(rc::get_mut(&mut x).is_none());
 /// ```
 #[inline]
-#[unstable(feature = "rc_extras")]
+#[unstable(feature = "rc_unique")]
 pub fn get_mut<T>(rc: &mut Rc<T>) -> Option<&mut T> {
     if is_unique(rc) {
         let inner = unsafe { &mut **rc._ptr };
@@ -346,7 +345,7 @@ impl<T: Clone> Rc<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(alloc)]
+    /// # #![feature(rc_unique)]
     /// use std::rc::Rc;
     ///
     /// let mut five = Rc::new(5);
@@ -354,7 +353,7 @@ impl<T: Clone> Rc<T> {
     /// let mut_five = five.make_unique();
     /// ```
     #[inline]
-    #[unstable(feature = "rc_extras")]
+    #[unstable(feature = "rc_unique")]
     pub fn make_unique(&mut self) -> &mut T {
         if !is_unique(self) {
             *self = Rc::new((**self).clone())
@@ -390,7 +389,6 @@ impl<T: ?Sized> Drop for Rc<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(alloc)]
     /// use std::rc::Rc;
     ///
     /// {
@@ -443,7 +441,6 @@ impl<T: ?Sized> Clone for Rc<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(alloc)]
     /// use std::rc::Rc;
     ///
     /// let five = Rc::new(5);
@@ -677,7 +674,7 @@ impl<T: ?Sized> Weak<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(alloc)]
+    /// # #![feature(rc_weak)]
     /// use std::rc::Rc;
     ///
     /// let five = Rc::new(5);
@@ -705,7 +702,7 @@ impl<T: ?Sized> Drop for Weak<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(alloc)]
+    /// # #![feature(rc_weak)]
     /// use std::rc::Rc;
     ///
     /// {
@@ -752,7 +749,7 @@ impl<T: ?Sized> Clone for Weak<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(alloc)]
+    /// # #![feature(rc_weak)]
     /// use std::rc::Rc;
     ///
     /// let weak_five = Rc::new(5).downgrade();

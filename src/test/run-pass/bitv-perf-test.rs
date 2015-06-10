@@ -10,16 +10,14 @@
 
 // pretty-expanded FIXME #23616
 
-#![allow(unknown_features)]
-#![feature(box_syntax, collections)]
+#![feature(bitvec)]
 
-extern crate collections;
 use std::collections::BitVec;
 
 fn bitv_test() {
-    let mut v1: Box<_> = box BitVec::from_elem(31, false);
-    let v2: Box<_> = box BitVec::from_elem(31, true);
-    v1.union(&*v2);
+    let mut v1 = BitVec::from_elem(31, false);
+    let v2 = BitVec::from_elem(31, true);
+    v1.union(&v2);
 }
 
 pub fn main() {

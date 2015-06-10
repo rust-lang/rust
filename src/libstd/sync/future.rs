@@ -14,7 +14,7 @@
 //! # Examples
 //!
 //! ```
-//! # #![feature(std_misc)]
+//! # #![feature(future)]
 //! use std::sync::Future;
 //!
 //! // a fake, for now

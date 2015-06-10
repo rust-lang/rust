@@ -41,11 +41,12 @@
 #![feature(fnbox)]
 #![feature(iter_cmp)]
 #![feature(libc)]
+#![feature(rt)]
 #![feature(rustc_private)]
 #![feature(set_stdio)]
 #![feature(slice_extras)]
 #![feature(staged_api)]
-#![feature(std_misc)]
+#![feature(thunk)]
 
 extern crate getopts;
 extern crate serialize;

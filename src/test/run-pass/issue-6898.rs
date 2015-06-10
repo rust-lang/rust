@@ -10,9 +10,7 @@
 
 // pretty-expanded FIXME #23616
 
-#![feature(core)]
-
-use std::intrinsics;
+use std::mem;
 
 /// Returns the size of a type
 pub fn size_of<T>() -> usize {
@@ -32,7 +30,7 @@ pub trait TypeInfo {
 impl<T> TypeInfo for T {
     /// The size of the type in bytes.
     fn size_of(_lame_type_hint: Option<T>) -> usize {
-        unsafe { intrinsics::size_of::<T>() }
+        mem::size_of::<T>()
     }
 
     /// Returns the size of the type of `self` in bytes.

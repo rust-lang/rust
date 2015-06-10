@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-#![feature(core)]
+#![feature(core_simd)]
 
 use std::simd::{i32x4, f32x4, u32x4};
 

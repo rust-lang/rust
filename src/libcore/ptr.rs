@@ -49,7 +49,7 @@
 //! the raw pointer. It doesn't destroy `T` or deallocate any memory.
 //!
 //! ```
-//! # #![feature(alloc)]
+//! # #![feature(box_raw)]
 //! use std::boxed;
 //!
 //! unsafe {

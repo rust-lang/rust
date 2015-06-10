@@ -28,7 +28,7 @@
 #![feature(libc)]
 #![feature(staged_api)]
 #![feature(unique)]
-#![cfg_attr(test, feature(rustc_private, rand, collections))]
+#![cfg_attr(test, feature(rustc_private, rand, vec_push_all))]
 
 #[cfg(test)] #[macro_use] extern crate log;
 

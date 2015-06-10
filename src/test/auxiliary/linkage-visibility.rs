@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(std_misc)]
+#![feature(dynamic_lib)]
 
 // We're testing linkage visibility; the compiler warns us, but we want to
 // do the runtime check that these functions aren't exported.
