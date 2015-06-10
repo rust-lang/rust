@@ -1546,7 +1546,7 @@ impl<'tcx> cmt_<'tcx> {
                                 format!("`Box` content")
                             }
                             UnsafePtr(..) => {
-                                format!("dereference of unsafe pointer")
+                                format!("dereference of raw pointer")
                             }
                             BorrowedPtr(..) => {
                                 format!("borrowed content")

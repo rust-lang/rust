@@ -238,7 +238,7 @@ However it is often desired that the callback is targeted to a special
 Rust object. This could be the object that represents the wrapper for the
 respective C object.
 
-This can be achieved by passing an unsafe pointer to the object down to the
+This can be achieved by passing an raw pointer to the object down to the
 C library. The C library can then include the pointer to the Rust object in
 the notification. This will allow the callback to unsafely access the
 referenced Rust object.
@@ -370,7 +370,7 @@ On OSX, frameworks behave with the same semantics as a dynamic library.
 
 # Unsafe blocks
 
-Some operations, like dereferencing unsafe pointers or calling functions that have been marked
+Some operations, like dereferencing raw pointers or calling functions that have been marked
 unsafe are only allowed inside unsafe blocks. Unsafe blocks isolate unsafety and are a promise to
 the compiler that the unsafety does not leak out of the block.
 
