@@ -281,7 +281,7 @@ $(foreach target,$(CFG_TARGET), \
   $(eval $(call DEF_ADD_LLVM_TARGET_COMPONENTS,$(target))))
 
 # deduplicate components:
-LLVM_COMPONENTS := $(shell echo $(LLVM_COMPONENTS) | tr ' ' '\n' | awk '!a[$$0]++')
+LLVM_COMPONENTS:=$(shell echo $(LLVM_COMPONENTS) | tr ' ' '\n' | awk '!a[$$0]++' | tr '\n' ' ')
 
 # Only build these LLVM tools
 LLVM_TOOLS=bugpoint llc llvm-ar llvm-as llvm-dis llvm-mc opt llvm-extract
@@ -292,9 +292,6 @@ define DEF_LLVM_VARS
 ifeq ($$(CFG_LLVM_ROOT),)
 CFG_LLVM_BUILD_DIR_$(1):=$$(CFG_LLVM_BUILD_DIR_$(subst -,_,$(1)))
 CFG_LLVM_INST_DIR_$(1):=$$(CFG_LLVM_INST_DIR_$(subst -,_,$(1)))
-else
-CFG_LLVM_INST_DIR_$(1):=$$(CFG_LLVM_ROOT)
-endif
 
 # We need to use a copy of llvm-config that can run on the build machine:
 ifneq ($$(CFG_BUILD),$(1))
@@ -304,6 +301,13 @@ else
 LLVM_CONFIG_$(1):=$$(CFG_LLVM_INST_DIR_$(1))/bin/llvm-config$$(X_$(1))
 endif
 
+else
+CFG_LLVM_INST_DIR_$(1):=$$(CFG_LLVM_ROOT)
+# Any rules that depend on LLVM should depend on LLVM_CONFIG
+LLVM_CONFIG_$(1):=$$(CFG_LLVM_INST_DIR_$(1))/bin/llvm-config$$(X_$(1))
+endif
+
+
 LLVM_MC_$(1):=$$(CFG_LLVM_INST_DIR_$(1))/bin/llvm-mc$$(X_$(1))
 LLVM_AR_$(1):=$$(CFG_LLVM_INST_DIR_$(1))/bin/llvm-ar$$(X_$(1))
 LLVM_VERSION_$(1)=$$(shell "$$(LLVM_CONFIG_$(1))" --version)
@@ -312,7 +316,7 @@ LLVM_INCDIR_$(1)=$$(shell "$$(LLVM_CONFIG_$(1))" --includedir)
 LLVM_LIBDIR_$(1)=$$(shell "$$(LLVM_CONFIG_$(1))" --libdir)
 LLVM_LIBDIR_RUSTFLAGS_$(1)=-L "$$(LLVM_LIBDIR_$(1))"
 
-LLVM_LIBS_$(1)=$$(shell "$$(LLVM_CONFIG_$(1))" --libs $$(filter-out $$(CFG_LLVM_DISABLED_TARGETS_$(1)), \
+LLVM_LIBS_$(1)=$$(shell "$$(LLVM_CONFIG_$(1))" --libs $$(filter-out $$(LLVM_DISABLED_TARGETS_$(1)), \
                                                            $$(LLVM_COMPONENTS))
 LLVM_LDFLAGS_$(1)=$$(shell "$$(LLVM_CONFIG_$(1))" --ldflags)
 
@@ -321,7 +325,7 @@ ifeq ($$(findstring freebsd,$(1)),freebsd)
 # so we replace -I with -iquote to ensure that it searches bundled LLVM first.
 LLVM_CXXFLAGS_$(1)=$$(subst -I, -iquote , $$(shell "$$(LLVM_CONFIG_$(1))" --cxxflags))
 else
-LLVM_CXXFLAGS_$(1)=$$(filter-out $$(CFG_LLVM_FILTER_CXXFLAGS_$(1)),
+LLVM_CXXFLAGS_$(1)=$$(filter-out $$(LLVM_FILTER_CXXFLAGS_$(1)),      \
 			$$(shell "$$(LLVM_CONFIG_$(1))" --cxxflags)) \
 		   $$(LLVM_EXTRA_CXXFLAGS_$(1))
 endif
