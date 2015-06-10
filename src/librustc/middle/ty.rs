@@ -2854,11 +2854,11 @@ impl<'tcx> ctxt<'tcx> {
         self.ty_param_defs.borrow().get(&node_id).unwrap().clone()
     }
 
-    pub fn pat_contains_ref_binding(&self, pat: &ast::Pat) -> bool {
+    pub fn pat_contains_ref_binding(&self, pat: &ast::Pat) -> Option<ast::Mutability> {
         pat_util::pat_contains_ref_binding(&self.def_map, pat)
     }
 
-    pub fn arm_contains_ref_binding(&self, arm: &ast::Arm) -> bool {
+    pub fn arm_contains_ref_binding(&self, arm: &ast::Arm) -> Option<ast::Mutability> {
         pat_util::arm_contains_ref_binding(&self.def_map, arm)
     }
 }
