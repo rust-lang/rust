@@ -162,7 +162,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EffectCheckVisitor<'a, 'tcx> {
                 debug!("effect: unary case, base type is {}",
                        ppaux::ty_to_string(self.tcx, base_type));
                 if let ty::ty_ptr(_) = base_type.sty {
-                    self.require_unsafe(expr.span, "dereference of unsafe pointer")
+                    self.require_unsafe(expr.span, "dereference of raw pointer")
                 }
             }
             ast::ExprAssign(ref base, _) | ast::ExprAssignOp(_, ref base, _) => {

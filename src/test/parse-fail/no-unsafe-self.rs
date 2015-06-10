@@ -11,14 +11,14 @@
 // compile-flags: -Z parse-only
 
 trait A {
-    fn foo(*mut self); //~ ERROR cannot pass self by unsafe pointer
-    fn bar(*self); //~ ERROR cannot pass self by unsafe pointer
+    fn foo(*mut self); //~ ERROR cannot pass self by raw pointer
+    fn bar(*self); //~ ERROR cannot pass self by raw pointer
 }
 
 struct X;
 impl A for X {
-    fn foo(*mut self) { } //~ ERROR cannot pass self by unsafe pointer
-    fn bar(*self) { } //~ ERROR cannot pass self by unsafe pointer
+    fn foo(*mut self) { } //~ ERROR cannot pass self by raw pointer
+    fn bar(*self) { } //~ ERROR cannot pass self by raw pointer
 }
 
 fn main() { }

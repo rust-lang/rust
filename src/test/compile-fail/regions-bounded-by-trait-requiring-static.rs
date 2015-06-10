@@ -54,7 +54,7 @@ fn box_with_region_not_ok<'a>() {
     assert_send::<Box<&'a isize>>(); //~ ERROR does not fulfill the required lifetime
 }
 
-// unsafe pointers are ok unless they point at unsendable things
+// raw pointers are ok unless they point at unsendable things
 
 fn unsafe_ok1<'a>(_: &'a isize) {
     assert_send::<*const isize>();

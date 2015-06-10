@@ -102,7 +102,7 @@ pub struct StaticKey {
 /// type is entirely safe to use.
 ///
 /// Implementations will likely, however, contain unsafe code as this type only
-/// operates on `*mut u8`, an unsafe pointer.
+/// operates on `*mut u8`, a raw pointer.
 ///
 /// # Examples
 ///

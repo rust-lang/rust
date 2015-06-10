@@ -117,6 +117,30 @@ let dog = hachiko.chars().nth(1); // kinda like hachiko[1]
 
 This emphasizes that we have to go through the whole list of `chars`.
 
+## Slicing
+
+You can get a slice of a string with slicing syntax:
+
+```rust
+let dog = "hachiko";
+let hachi = &dog[0..5];
+```
+
+But note that these are _byte_ offsets, not _character_ offsets. So
+this will fail at runtime:
+
+```rust,should_panic
+let dog = "忠犬ハチ公";
+let hachi = &dog[0..2];
+```
+
+with this error:
+
+```text
+thread '<main>' panicked at 'index 0 and/or 2 in `忠犬ハチ公` do not lie on
+character boundary'
+```
+
 ## Concatenation
 
 If you have a `String`, you can concatenate a `&str` to the end of it:

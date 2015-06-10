@@ -64,3 +64,45 @@ equality yet, but we’ll find out in the [`traits`][traits] section.
 [match]: match.html
 [if-let]: if-let.html
 [traits]: traits.html
+
+# Constructors as functions
+
+An enum’s constructors can also be used like functions. For example:
+
+```rust
+# enum Message {
+# Write(String),
+# }
+let m = Message::Write("Hello, world".to_string());
+```
+
+Is the same as
+
+```rust
+# enum Message {
+# Write(String),
+# }
+fn foo(x: String) -> Message {
+    Message::Write(x)
+}
+
+let x = foo("Hello, world".to_string());
+```
+
+This is not immediately useful to us, but when we get to
+[`closures`][closures], we’ll talk about passing functions as arguments to
+other functions. For example, with [`iterators`][iterators], we can do this
+to convert a vector of `String`s into a vector of `Message::Write`s:
+
+```rust
+# enum Message {
+# Write(String),
+# }
+
+let v = vec!["Hello".to_string(), "World".to_string()];
+
+let v1: Vec<Message> = v.into_iter().map(Message::Write).collect();
+```
+
+[closures]: closures.html
+[iterators]: iterators.html

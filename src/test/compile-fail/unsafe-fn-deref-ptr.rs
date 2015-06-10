@@ -10,7 +10,7 @@
 
 
 fn f(p: *const u8) -> u8 {
-    return *p; //~ ERROR dereference of unsafe pointer requires unsafe function or block
+    return *p; //~ ERROR dereference of raw pointer requires unsafe function or block
 }
 
 fn main() {

@@ -22,9 +22,9 @@
 //!
 //! ## Boxed values
 //!
-//! The [`Box`](boxed/index.html) type is the core owned pointer type in Rust.
-//! There can only be one owner of a `Box`, and the owner can decide to mutate
-//! the contents, which live on the heap.
+//! The [`Box`](boxed/index.html) type is a smart pointer type. There can
+//! only be one owner of a `Box`, and the owner can decide to mutate the
+//! contents, which live on the heap.
 //!
 //! This type can be sent among threads efficiently as the size of a `Box` value
 //! is the same as that of a pointer. Tree-like data structures are often built
