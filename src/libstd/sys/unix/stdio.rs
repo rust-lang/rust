@@ -19,7 +19,7 @@ pub struct Stdout(());
 pub struct Stderr(());
 
 impl Stdin {
-    pub fn new() -> Stdin { Stdin(()) }
+    pub fn new() -> io::Result<Stdin> { Ok(Stdin(())) }
 
     pub fn read(&self, data: &mut [u8]) -> io::Result<usize> {
         let fd = FileDesc::new(libc::STDIN_FILENO);
@@ -30,7 +30,7 @@ impl Stdin {
 }
 
 impl Stdout {
-    pub fn new() -> Stdout { Stdout(()) }
+    pub fn new() -> io::Result<Stdout> { Ok(Stdout(())) }
 
     pub fn write(&self, data: &[u8]) -> io::Result<usize> {
         let fd = FileDesc::new(libc::STDOUT_FILENO);
@@ -41,7 +41,7 @@ impl Stdout {
 }
 
 impl Stderr {
-    pub fn new() -> Stderr { Stderr(()) }
+    pub fn new() -> io::Result<Stderr> { Ok(Stderr(())) }
 
     pub fn write(&self, data: &[u8]) -> io::Result<usize> {
         let fd = FileDesc::new(libc::STDERR_FILENO);

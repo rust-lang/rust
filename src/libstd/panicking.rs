@@ -33,7 +33,10 @@ pub fn on_panic(obj: &(Any+Send), file: &'static str, line: u32) {
             None => "Box<Any>",
         }
     };
-    let mut err = Stderr::new();
+    let mut err = match Stderr::new() {
+        Ok(err) => err,
+        _ => return,
+    };
     let thread = thread_info::current_thread();
     let name = thread.as_ref().and_then(|t| t.name()).unwrap_or("<unnamed>");
     let prev = LOCAL_STDERR.with(|s| s.borrow_mut().take());
