@@ -77,11 +77,13 @@ fn write(out: &Output, data: &[u8]) -> io::Result<usize> {
 }
 
 impl Stdin {
-    pub fn new() -> Stdin {
-        Stdin {
-            handle: get(c::STD_INPUT_HANDLE).unwrap(),
-            utf8: Mutex::new(Cursor::new(Vec::new())),
-        }
+    pub fn new() -> io::Result<Stdin> {
+        get(c::STD_INPUT_HANDLE).map(|handle| {
+            Stdin {
+                handle: handle,
+                utf8: Mutex::new(Cursor::new(Vec::new())),
+            }
+        })
     }
 
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
@@ -116,8 +118,8 @@ impl Stdin {
 }
 
 impl Stdout {
-    pub fn new() -> Stdout {
-        Stdout(get(c::STD_OUTPUT_HANDLE).unwrap())
+    pub fn new() -> io::Result<Stdout> {
+        get(c::STD_OUTPUT_HANDLE).map(Stdout)
     }
 
     pub fn write(&self, data: &[u8]) -> io::Result<usize> {
@@ -126,8 +128,8 @@ impl Stdout {
 }
 
 impl Stderr {
-    pub fn new() -> Stderr {
-        Stderr(get(c::STD_ERROR_HANDLE).unwrap())
+    pub fn new() -> io::Result<Stderr> {
+        get(c::STD_ERROR_HANDLE).map(Stderr)
     }
 
     pub fn write(&self, data: &[u8]) -> io::Result<usize> {
