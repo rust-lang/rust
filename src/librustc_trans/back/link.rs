@@ -719,9 +719,10 @@ pub fn link_pnacl_module(sess: &Session,
                          outputs: &OutputFilenames,
                          crate_name: &str) {
     // Note that we don't use pnacl-ld here. We want to avoid the costly post-link
-    // simplification passes pnacl-ld runs. Instead, since pnacl-ld's output is just bitcode,
-    // what we do here is pull all of our 'native' dependencies into a (vary large)
-    // module and, if requested, run the LTO passes on it.
+    // simplification passes pnacl-ld runs (it runs -O *post link*). Instead,
+    // since pnacl-ld's output is just bitcode, what we do here is pull all of
+    // our 'native' dependencies into a (vary large) module and, if requested,
+    // run the LTO passes on it.
     //
     // This function should not be called on non-pexe outputs.
     use libc;
@@ -732,40 +733,6 @@ pub fn link_pnacl_module(sess: &Session,
     use back::write::llvm_err;
     use session::config::OutputTypeLlvmAssembly;
     use metadata::cstore;
-
-    fn link_buf_into_module(sess: &Session,
-                            ctxt:  ContextRef,
-                            llmod: Option<ModuleRef>,
-                            name: &str,
-                            bc: &[u8]) -> Option<ModuleRef> {
-        use libc;
-        debug!("inserting `{}` into module", name);
-        match llmod {
-            Some(llmod) => unsafe {
-                if !llvm::LLVMRustLinkInExternalBitcode(llmod,
-                                                        bc.as_ptr() as *const libc::c_char,
-                                                        bc.len() as libc::size_t) {
-                    llvm_warn(sess, format!("failed to link in external bitcode `{}`",
-                                            name));
-                }
-                Some(llmod)
-            },
-            None => unsafe {
-                let cname = format!("{}\0", name);
-                let llmod = llvm::LLVMRustParseBitcode(ctxt,
-                                                       cname.as_ptr() as *const i8,
-                                                       bc.as_ptr() as *const libc::c_void,
-                                                       bc.len() as libc::size_t);
-                if llmod == ptr::null_mut() {
-                    llvm_warn(sess, format!("failed to parse external bitcode `{}`",
-                                            name));
-                    None
-                } else {
-                    Some(llmod)
-                }
-            },
-        }
-    }
 
     let post_link_path = outputs.with_extension("post-link.bc");
 
@@ -881,11 +848,19 @@ pub fn link_pnacl_module(sess: &Session,
                 .into_os_string()
                 .into_string()
                 .unwrap();
-            link_buf_into_module(sess,
-                                 llcx,
-                                 None,
-                                 &post_link_path,
-                                 &buf[..]).unwrap()
+            unsafe {
+                let cname = format!("{}\0", post_link_path);
+                let llmod = llvm::LLVMRustParseBitcode(ctxt,
+                                                       cname.as_ptr() as *const i8,
+                                                       buf.as_ptr() as *const libc::c_void,
+                                                       buf.len() as libc::size_t);
+                if llmod == ptr::null_mut() {
+                    llvm_err(sess, format!("failed to parse external bitcode `{}`",
+                                           post_link_path));
+                } else {
+                    llmod
+                }
+            }
         },
         Err(e) => {
             sess.fatal(&format!("error reading file `{:?}`: `{}`",
