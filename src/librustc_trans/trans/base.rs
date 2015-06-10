@@ -1676,7 +1676,7 @@ pub fn trans_named_tuple_constructor<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
             if !type_is_zero_size(ccx, result_ty) {
                 alloc_ty(bcx, result_ty, "constructor_result")
             } else {
-                C_undef(type_of::type_of(ccx, result_ty))
+                C_undef(type_of::type_of(ccx, result_ty).ptr_to())
             }
         }
     };
