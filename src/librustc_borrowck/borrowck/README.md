@@ -170,7 +170,7 @@ overwrite (or freeze) `(*x).f`, and thus invalidate the reference
 that was created. In general it holds that when a path is
 lent, restrictions are issued for all the owning prefixes of that
 path. In this case, the path `*x` owns the path `(*x).f` and,
-because `x` is an owned pointer, the path `x` owns the path `*x`.
+because `x` has ownership, the path `x` owns the path `*x`.
 Therefore, borrowing `(*x).f` yields restrictions on both
 `*x` and `x`.
 
@@ -286,7 +286,7 @@ MUTABILITY(X, imm)                  // M-Var-Imm
 
 ### Checking mutability of owned content
 
-Fields and owned pointers inherit their mutability from
+Fields and boxes inherit their mutability from
 their base expressions, so both of their rules basically
 delegate the check to the base expression `LV`:
 
@@ -387,7 +387,7 @@ LIFETIME(X, LT, MQ)                 // L-Local
 
 ### Checking lifetime for owned content
 
-The lifetime of a field or owned pointer is the same as the lifetime
+The lifetime of a field or box is the same as the lifetime
 of its owner:
 
 ```text
@@ -466,10 +466,10 @@ origin of inherited mutability.
 
 Because the mutability of owned referents is inherited, restricting an
 owned referent is similar to restricting a field, in that it implies
-restrictions on the pointer. However, owned pointers have an important
+restrictions on the pointer. However, boxes have an important
 twist: if the owner `LV` is mutated, that causes the owned referent
 `*LV` to be freed! So whenever an owned referent `*LV` is borrowed, we
-must prevent the owned pointer `LV` from being mutated, which means
+must prevent the box `LV` from being mutated, which means
 that we always add `MUTATE` and `CLAIM` to the restriction set imposed
 on `LV`:
 
@@ -648,7 +648,7 @@ fn main() {
 ```
 
 Clause (2) propagates the restrictions on the referent to the pointer
-itself. This is the same as with an owned pointer, though the
+itself. This is the same as with an box, though the
 reasoning is mildly different. The basic goal in all cases is to
 prevent the user from establishing another route to the same data. To
 see what I mean, let's examine various cases of what can go wrong and

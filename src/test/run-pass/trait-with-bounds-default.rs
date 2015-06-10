@@ -10,7 +10,7 @@
 //
 
 pub trait Clone2 {
-    /// Returns a copy of the value. The contents of owned pointers
+    /// Returns a copy of the value. The contents of boxes
     /// are copied to maintain uniqueness, while the contents of
     /// managed pointers are not copied.
     fn clone(&self) -> Self;
