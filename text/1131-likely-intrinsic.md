@@ -1,7 +1,7 @@
 - Feature Name: expect_intrinsic
 - Start Date: 2015-05-20
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#1131](https://github.com/rust-lang/rfcs/pull/1131)
+- Rust Issue: [rust-lang/rust#26179](https://github.com/rust-lang/rust/issues/26179)
 
 # Summary
 
