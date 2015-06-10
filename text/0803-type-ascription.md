@@ -153,10 +153,10 @@ context of cross-platform programming).
 ### Type ascription and temporaries
 
 There is an implementation choice between treating `x: T` as an lvalue or
-rvalue. Note that when a rvalue is used in lvalue context (e.g., the subject of
-a reference operation), then the compiler introduces a temporary variable.
-Neither option is satisfactory, if we treat an ascription expression as an
-lvalue (i.e., no new temporary), then there is potential for unsoundness:
+rvalue. Note that when an rvalue is used in 'reference context' (e.g., the
+subject of a reference operation), then the compiler introduces a temporary
+variable. Neither option is satisfactory, if we treat an ascription expression
+as an lvalue (i.e., no new temporary), then there is potential for unsoundness:
 
 ```
 let mut foo: S = ...;
@@ -172,11 +172,13 @@ lvalue position), then we don't have the soundness problem, but we do get the
 unexpected result that `&(x: T)` is not in fact a reference to `x`, but a
 reference to a temporary copy of `x`.
 
-The proposed solution is that type ascription expressions are lvalues. If the
-type ascription expression is in reference context, then we require the ascribed
-type to exactly match the type of the expression, i.e., neither subtyping nor
-coercion is allowed. These reference contexts are as follows (where <expr> is a
-type ascription expression):
+The proposed solution is that type ascription expressions inherit their
+'lvalue-ness' from their underlying expressions. I.e., `e: T` is an lvalue if
+`e` is an lvalue, and an rvalue otherwise. If the type ascription expression is
+in reference context, then we require the ascribed type to exactly match the
+type of the expression, i.e., neither subtyping nor coercion is allowed. These
+reference contexts are as follows (where `<expr>` is a type ascription
+expression):
 
 ```
 &[mut] <expr>
