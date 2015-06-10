@@ -14,14 +14,7 @@
 #![allow(non_camel_case_types)]
 
 pub use self::select::fd_set;
-pub use self::signal::{sigaction, siginfo, sigset_t};
-#[cfg(not(target_os = "nacl"))]
-pub use self::signal::{SA_ONSTACK, SA_RESTART, SA_RESETHAND, SA_NOCLDSTOP};
-#[cfg(not(target_os = "nacl"))]
-pub use self::signal::{SA_NODEFER, SA_NOCLDWAIT, SA_SIGINFO, SIGCHLD};
-
-#[cfg(target_os = "nacl")]
-pub use self::signal::{SA_NOCLDSTOP, SA_SIGINFO};
+pub use self::signal::*;
 
 use libc;
 
