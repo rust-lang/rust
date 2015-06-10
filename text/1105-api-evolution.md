@@ -1,7 +1,7 @@
 - Feature Name: not applicable
 - Start Date: 2015-05-04
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#1105](https://github.com/rust-lang/rfcs/pull/1105)
+- Rust Issue: N/A
 
 # Summary
 
