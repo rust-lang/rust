@@ -18,7 +18,7 @@ extern crate std as other;
 #[macro_use] extern crate core;
 #[macro_use] extern crate collections;
 
-use collections::string::ToString;
+use other::borrow::ToOwned;
 
 #[start]
 fn start(_argc: isize, _argv: *const *const u8) -> isize {
