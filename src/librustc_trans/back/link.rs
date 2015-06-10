@@ -734,6 +734,24 @@ pub fn link_pnacl_module(sess: &Session,
     use session::config::OutputTypeLlvmAssembly;
     use metadata::cstore;
 
+    // Emits a fatal error if path is not writeable.
+    pub fn check_writeable_output<T: ?Sized>(sess: &Session, path: &T, name: &str)
+        where T: AsRef<Path> + AsRef<ffi::OsStr> + fmt::Debug
+    {
+        use std::fs::metadata;
+        use std::io::ErrorKind;
+
+        let is_writeable = match metadata(path) {
+            Ok(m) => !m.permissions().readonly(),
+            Err(e) => (e.kind() == ErrorKind::NotFound),
+        };
+
+        if !is_writeable {
+            sess.fatal(&format!("`{}` file `{:?}` is not writeable -- check it's permissions.",
+                                name, path)[..]);
+        }
+    }
+
     let post_link_path = outputs.with_extension("post-link.bc");
 
     #[cfg(not(target_os = "nacl"))]
@@ -891,6 +909,7 @@ pub fn link_pnacl_module(sess: &Session,
 
     if sess.opts.cg.save_temps {
         let out = outputs.with_extension("pre-lto.bc");
+        check_writeable_output(sess, &out, "pre lto output");
         let out = format!("{}\0", out.display().to_string());
         unsafe { llvm::LLVMWriteBitcodeToFile(llmod, out.as_ptr() as *const i8) };
     }
@@ -972,6 +991,7 @@ pub fn link_pnacl_module(sess: &Session,
     if sess.opts.output_types.iter().any(|&i| i == OutputTypeLlvmAssembly) {
         // emit ir
         let p = outputs.path(OutputTypeLlvmAssembly).display().to_string();
+        check_writeable_output(sess, &p, "LLVM assembly output");
         let cp = format!("{}\0", p);
         unsafe {
             let pm = llvm::LLVMCreatePassManager();
@@ -986,9 +1006,14 @@ pub fn link_pnacl_module(sess: &Session,
     };
     if force_non_stable_output || sess.opts.debuginfo != config::NoDebugInfo {
         // emit bc for translation into nexe w/ debugging info.
-        let out = outputs.with_extension("debug.pexe").display().to_string();
+        let outpath = outputs.with_extension("debug.pexe");
+        let out = outpath.display().to_string();
+        check_writeable_output(sess, &outpath, "debug output");
         let cout = format!("{}\0", out);
-        unsafe { llvm::LLVMWriteBitcodeToFile(llmod, cout.as_ptr() as *const i8) };
+        unsafe {
+            llvm::LLVMWriteBitcodeToFile(llmod, cout.as_ptr() as *const i8)
+        };
+        set_permissions(&outpath);
     }
 
     let emit_stable_pexe = true; // always emit stable bitcode.
@@ -1031,7 +1056,7 @@ pub fn link_pnacl_module(sess: &Session,
     };
     let out_cstr = format!("{}\0", out.display().to_string());
 
-    sess.check_writeable_output(&out, "final output");
+    check_writeable_output(sess, &out, "final output");
 
     if emit_stable_pexe {
         if !unsafe { llvm::LLVMRustWritePNaClBitcode(llmod,
