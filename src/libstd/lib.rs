@@ -150,7 +150,7 @@
 #![feature(wrapping)]
 #![feature(zero_one)]
 #![cfg_attr(test, feature(float_from_str_radix))]
-#![cfg_attr(test, feature(test, rustc_private, std_misc))]
+#![cfg_attr(test, feature(test, rustc_private))]
 
 // Don't link to std. We are std.
 #![no_std]

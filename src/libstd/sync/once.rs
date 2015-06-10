@@ -48,7 +48,7 @@ pub const ONCE_INIT: Once = Once::new();
 
 impl Once {
     /// Creates a new `Once` value.
-    #[unstable(feature = "std_misc")]
+    #[unstable(feature = "once_new")]
     pub const fn new() -> Once {
         Once {
             mutex: StaticMutex::new(),

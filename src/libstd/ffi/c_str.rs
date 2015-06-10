@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![unstable(feature = "std_misc")]
 
 use borrow::{Cow, ToOwned};
 use boxed::{self, Box};

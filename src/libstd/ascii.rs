@@ -18,7 +18,7 @@ use ops::Range;
 use mem;
 
 /// Extension methods for ASCII-subset only operations on owned strings
-#[unstable(feature = "std_misc",
+#[unstable(feature = "owned_ascii_ext",
            reason = "would prefer to do this in a more general way")]
 pub trait OwnedAsciiExt {
     /// Converts the string to ASCII upper case:
@@ -189,8 +189,6 @@ impl AsciiExt for str {
     }
 }
 
-#[unstable(feature = "std_misc",
-           reason = "would prefer to do this in a more general way")]
 impl OwnedAsciiExt for String {
     #[inline]
     fn into_ascii_uppercase(self) -> String {
@@ -244,8 +242,6 @@ impl AsciiExt for [u8] {
     }
 }
 
-#[unstable(feature = "std_misc",
-           reason = "would prefer to do this in a more general way")]
 impl OwnedAsciiExt for Vec<u8> {
     #[inline]
     fn into_ascii_uppercase(mut self) -> Vec<u8> {

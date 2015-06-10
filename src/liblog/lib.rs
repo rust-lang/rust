@@ -173,8 +173,10 @@
 #![feature(box_syntax)]
 #![feature(const_fn)]
 #![feature(iter_cmp)]
+#![feature(once_new)]
+#![feature(rt)]
 #![feature(staged_api)]
-#![feature(std_misc)]
+#![feature(static_mutex)]
 
 use std::boxed;
 use std::cell::RefCell;

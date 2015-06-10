@@ -1151,7 +1151,7 @@ impl<'a, K, V> DoubleEndedIterator for RangeMut<'a, K, V> {
 }
 
 impl<'a, K: Ord, V> Entry<'a, K, V> {
-    #[unstable(feature = "std_misc",
+    #[unstable(feature = "entry",
                reason = "will soon be replaced by or_insert")]
     #[deprecated(since = "1.0",
                 reason = "replaced with more ergonomic `or_insert` and `or_insert_with`")]

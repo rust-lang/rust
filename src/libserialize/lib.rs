@@ -29,15 +29,15 @@ Core encoding and decoding interfaces.
 
 #![feature(box_syntax)]
 #![feature(collections)]
+#![feature(enumset)]
+#![feature(hashmap_hasher)]
 #![feature(num_bits_bytes)]
 #![feature(num_wrapping)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
-#![feature(std_misc)]
 #![feature(str_char)]
 #![feature(unicode)]
 #![feature(vecmap)]
-#![feature(enumset)]
 #![cfg_attr(test, feature(test))]
 
 // test harness access

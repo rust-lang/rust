@@ -154,7 +154,7 @@ macro_rules! __thread_local_inner {
 }
 
 /// Indicator of the state of a thread local storage key.
-#[unstable(feature = "std_misc",
+#[unstable(feature = "thread_local_state",
            reason = "state querying was recently added")]
 #[derive(Eq, PartialEq, Copy, Clone)]
 pub enum LocalKeyState {
@@ -249,7 +249,7 @@ impl<T: 'static> LocalKey<T> {
     /// initialization does not panic. Keys in the `Valid` state are guaranteed
     /// to be able to be accessed. Keys in the `Destroyed` state will panic on
     /// any call to `with`.
-    #[unstable(feature = "std_misc",
+    #[unstable(feature = "thread_local_state",
                reason = "state querying was recently added")]
     pub fn state(&'static self) -> LocalKeyState {
         unsafe {

@@ -56,10 +56,10 @@
 #![deny(missing_docs)]
 
 #![feature(box_syntax)]
+#![feature(owned_ascii_ext)]
 #![feature(path_ext)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
-#![feature(std_misc)]
 #![feature(str_char)]
 #![feature(vec_push_all)]
 #![cfg_attr(windows, feature(libc))]

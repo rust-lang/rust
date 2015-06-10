@@ -43,8 +43,7 @@ use super::table::BucketState::{
 use super::state::HashState;
 
 const INITIAL_LOG2_CAP: usize = 5;
-#[unstable(feature = "std_misc")]
-pub const INITIAL_CAPACITY: usize = 1 << INITIAL_LOG2_CAP; // 2^5
+const INITIAL_CAPACITY: usize = 1 << INITIAL_LOG2_CAP; // 2^5
 
 /// The default behavior of HashMap implements a load factor of 90.9%.
 /// This behavior is characterized by the following condition:
@@ -544,7 +543,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// # Examples
     ///
     /// ```
-    /// # #![feature(std_misc)]
+    /// # #![feature(hashmap_hasher)]
     /// use std::collections::HashMap;
     /// use std::collections::hash_map::RandomState;
     ///
@@ -553,7 +552,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// map.insert(1, 2);
     /// ```
     #[inline]
-    #[unstable(feature = "std_misc", reason = "hasher stuff is unclear")]
+    #[unstable(feature = "hashmap_hasher", reason = "hasher stuff is unclear")]
     pub fn with_hash_state(hash_state: S) -> HashMap<K, V, S> {
         HashMap {
             hash_state:    hash_state,
@@ -573,7 +572,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// # Examples
     ///
     /// ```
-    /// # #![feature(std_misc)]
+    /// # #![feature(hashmap_hasher)]
     /// use std::collections::HashMap;
     /// use std::collections::hash_map::RandomState;
     ///
@@ -582,7 +581,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// map.insert(1, 2);
     /// ```
     #[inline]
-    #[unstable(feature = "std_misc", reason = "hasher stuff is unclear")]
+    #[unstable(feature = "hashmap_hasher", reason = "hasher stuff is unclear")]
     pub fn with_capacity_and_hash_state(capacity: usize, hash_state: S)
                                         -> HashMap<K, V, S> {
         let resize_policy = DefaultResizePolicy::new();
@@ -980,7 +979,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// # Examples
     ///
     /// ```
-    /// # #![feature(std_misc)]
+    /// # #![feature(drain)]
     /// use std::collections::HashMap;
     ///
     /// let mut a = HashMap::new();
@@ -995,7 +994,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// assert!(a.is_empty());
     /// ```
     #[inline]
-    #[unstable(feature = "std_misc",
+    #[unstable(feature = "drain",
                reason = "matches collection reform specification, waiting for dust to settle")]
     pub fn drain(&mut self) -> Drain<K, V> {
         fn last_two<A, B, C>((_, b, c): (A, B, C)) -> (B, C) { (b, c) }
@@ -1308,7 +1307,7 @@ impl<'a, K, V> Clone for Values<'a, K, V> {
 }
 
 /// HashMap drain iterator.
-#[unstable(feature = "std_misc",
+#[unstable(feature = "drain",
            reason = "matches collection reform specification, waiting for dust to settle")]
 pub struct Drain<'a, K: 'a, V: 'a> {
     inner: iter::Map<table::Drain<'a, K, V>, fn((SafeHash, K, V)) -> (K, V)>
@@ -1480,7 +1479,7 @@ impl<'a, K, V> ExactSizeIterator for Drain<'a, K, V> {
 }
 
 impl<'a, K, V> Entry<'a, K, V> {
-    #[unstable(feature = "std_misc",
+    #[unstable(feature = "entry",
                reason = "will soon be replaced by or_insert")]
     #[deprecated(since = "1.0",
                 reason = "replaced with more ergonomic `or_insert` and `or_insert_with`")]
@@ -1596,14 +1595,14 @@ impl<K, V, S> Extend<(K, V)> for HashMap<K, V, S>
 /// `Hasher`, but the hashers created by two different `RandomState`
 /// instances are unlikely to produce the same result for the same values.
 #[derive(Clone)]
-#[unstable(feature = "std_misc",
+#[unstable(feature = "hashmap_hasher",
            reason = "hashing an hash maps may be altered")]
 pub struct RandomState {
     k0: u64,
     k1: u64,
 }
 
-#[unstable(feature = "std_misc",
+#[unstable(feature = "hashmap_hasher",
            reason = "hashing an hash maps may be altered")]
 impl RandomState {
     /// Constructs a new `RandomState` that is initialized with random keys.
@@ -1615,7 +1614,7 @@ impl RandomState {
     }
 }
 
-#[unstable(feature = "std_misc",
+#[unstable(feature = "hashmap_hasher",
            reason = "hashing an hash maps may be altered")]
 impl HashState for RandomState {
     type Hasher = SipHasher;
