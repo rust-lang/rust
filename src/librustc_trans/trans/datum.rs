@@ -189,95 +189,41 @@ pub struct Rvalue {
     pub mode: RvalueMode
 }
 
-// XXX: reduce this to a smaller kernel of constructors.
-impl Lvalue { // These are all constructors for various Lvalues.
-    pub fn new(source: &'static str) -> Lvalue {
+#[derive(Copy, Clone, Debug)]
+pub enum HintKind {
+    ZeroAndMaintain,
+    DontZeroJustUse,
+}
+
+impl Lvalue { // Constructors for various Lvalues.
+    pub fn new<'blk, 'tcx>(source: &'static str) -> Lvalue {
+        debug!("Lvalue at {} no drop flag info", source);
         Lvalue { source: source, drop_flag_info: DropFlagInfo::None }
-    }
-
-    pub fn upvar<'blk, 'tcx>(source: &'static str,
-                             bcx: Block<'blk, 'tcx>,
-                             id: ast::NodeId) -> Lvalue {
-        let info = if Lvalue::has_dropflag_hint(bcx, id) {
-            DropFlagInfo::ZeroAndMaintain(id)
-        } else {
-            DropFlagInfo::None
-        };
-        let info = if bcx.tcx().sess.nonzeroing_move_hints() { info } else { DropFlagInfo::None };
-        debug!("upvar Lvalue at {}, id: {} info: {:?}", source, id, info);
-        Lvalue { source: source, drop_flag_info: info }
-    }
-
-    pub fn match_input<'blk, 'tcx>(source: &'static str,
-                                   bcx: Block<'blk, 'tcx>,
-                                   id: ast::NodeId) -> Lvalue
-    {
-        let info = if Lvalue::has_dropflag_hint(bcx, id) {
-            // match_input is used to move from the input into a
-            // separate stack slot; it must zero (at least until we
-            // improve things to track drop flags for the fragmented
-            // parent match input expression).
-            DropFlagInfo::ZeroAndMaintain(id)
-        } else {
-            DropFlagInfo::None
-        };
-        let info = if bcx.tcx().sess.nonzeroing_move_hints() { info } else { DropFlagInfo::None };
-        debug!("match_input Lvalue at {}, id: {} info: {:?}", source, id, info);
-        Lvalue { source: source, drop_flag_info: info }
-    }
-
-    pub fn local<'blk, 'tcx>(source: &'static str,
-                             bcx: Block<'blk, 'tcx>,
-                             id: ast::NodeId,
-                             aliases_other_state: bool)
-                             -> Lvalue
-    {
-        let info = if Lvalue::has_dropflag_hint(bcx, id) {
-            if aliases_other_state {
-                DropFlagInfo::ZeroAndMaintain(id)
-            } else {
-                DropFlagInfo::DontZeroJustUse(id)
-            }
-        } else {
-            DropFlagInfo::None
-        };
-        let info = if bcx.tcx().sess.nonzeroing_move_hints() { info } else { DropFlagInfo::None };
-        debug!("local Lvalue at {}, id: {} info: {:?}", source, id, info);
-        Lvalue { source: source, drop_flag_info: info }
-    }
-
-    pub fn store_arg<'blk, 'tcx>(source: &'static str,
-                                 bcx: Block<'blk, 'tcx>,
-                                 id: ast::NodeId) -> Lvalue
-    {
-        let info = if Lvalue::has_dropflag_hint(bcx, id) {
-            DropFlagInfo::ZeroAndMaintain(id)
-        } else {
-            DropFlagInfo::None
-        };
-        let info = if bcx.tcx().sess.nonzeroing_move_hints() { info } else { DropFlagInfo::None };
-        debug!("store_arg Lvalue at {}, id: {} info: {:?}", source, id, info);
-        Lvalue { source: source, drop_flag_info: info }
-    }
-
-    pub fn binding<'blk, 'tcx>(source: &'static str,
-                               bcx: Block<'blk, 'tcx>,
-                               id: ast::NodeId,
-                               name: ast::Name) -> Lvalue {
-        let info = if Lvalue::has_dropflag_hint(bcx, id) {
-            DropFlagInfo::DontZeroJustUse(id)
-        } else {
-            DropFlagInfo::None
-        };
-        let info = if bcx.tcx().sess.nonzeroing_move_hints() { info } else { DropFlagInfo::None };
-        debug!("binding Lvalue at {}, id: {} name: {} info: {:?}",
-               source, id, name, info);
-        Lvalue { source: source, drop_flag_info: info }
     }
 
     pub fn new_dropflag_hint(source: &'static str) -> Lvalue {
-        debug!("dropflag hint Lvalue at {}", source);
+        debug!("Lvalue at {} is drop flag hint", source);
         Lvalue { source: source, drop_flag_info: DropFlagInfo::None }
+    }
+
+    pub fn new_with_hint<'blk, 'tcx>(source: &'static str,
+                                     bcx: Block<'blk, 'tcx>,
+                                     id: ast::NodeId,
+                                     k: HintKind) -> Lvalue {
+        let (opt_id, info) = {
+            let hint_available = Lvalue::has_dropflag_hint(bcx, id) &&
+                bcx.tcx().sess.nonzeroing_move_hints();
+            let info = match k {
+                HintKind::ZeroAndMaintain if hint_available =>
+                    DropFlagInfo::ZeroAndMaintain(id),
+                HintKind::DontZeroJustUse if hint_available =>
+                    DropFlagInfo::DontZeroJustUse(id),
+                _ => DropFlagInfo::None,
+            };
+            (Some(id), info)
+        };
+        debug!("Lvalue at {}, id: {:?} info: {:?}", source, opt_id, info);
+        Lvalue { source: source, drop_flag_info: info }
     }
 } // end Lvalue constructor methods.
 
@@ -454,11 +400,15 @@ impl KindOps for Lvalue {
             }
             bcx
         } else {
-            // XXX would be nice to assert this, but we currently are
-            // adding e.g.  DontZeroJustUse flags. (The dropflag hint
-            // construction should be taking !type_needs_drop into
-            // account; earlier analysis phases may not have all the
-            // info they need to do it properly, I think...)
+            // FIXME (#5016) would be nice to assert this, but we have
+            // to allow for e.g. DontZeroJustUse flags, for now.
+            //
+            // (The dropflag hint construction should be taking
+            // !type_needs_drop into account; earlier analysis phases
+            // may not have all the info they need to include such
+            // information properly, I think; in particular the
+            // fragments analysis works on a non-monomorphized view of
+            // the code.)
             //
             // assert_eq!(self.drop_flag_info, DropFlagInfo::None);
             bcx

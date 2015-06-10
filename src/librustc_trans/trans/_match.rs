@@ -950,8 +950,15 @@ fn insert_lllocals<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                 let lvalue = match binding_info.trmode {
                     TrByCopy(..) =>
                         Lvalue::new("_match::insert_lllocals"),
-                    TrByMoveIntoCopy(..) =>
-                        Lvalue::match_input("_match::insert_lllocals", bcx, binding_info.id),
+                    TrByMoveIntoCopy(..) => {
+                        // match_input moves from the input into a
+                        // separate stack slot; it must zero (at least
+                        // until we track drop flags for a fragmented
+                        // parent match input expression).
+                        let hint_kind = HintKind::ZeroAndMaintain;
+                        Lvalue::new_with_hint("_match::insert_lllocals (match_input)",
+                                              bcx, binding_info.id, hint_kind)
+                    }
                     _ => unreachable!(),
                 };
                 let datum = Datum::new(llval, binding_info.ty, lvalue);
@@ -971,10 +978,22 @@ fn insert_lllocals<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
             TrByRef => (binding_info.llmatch, true),
         };
 
-        let lvalue = Lvalue::local("_match::insert_lllocals",
-                                   bcx,
-                                   binding_info.id,
-                                   aliases_other_state);
+
+        // A local that aliases some other state must be zeroed, since
+        // the other state (e.g. some parent data that we matched
+        // into) will still have its subcomponents (such as this
+        // local) destructed at the end of the parent's scope. Longer
+        // term, we will properly map such parents to the set of
+        // unique drop flags for its fragments.
+        let hint_kind = if aliases_other_state {
+            HintKind::ZeroAndMaintain
+        } else {
+            HintKind::DontZeroJustUse
+        };
+        let lvalue = Lvalue::new_with_hint("_match::insert_lllocals (local)",
+                                           bcx,
+                                           binding_info.id,
+                                           hint_kind);
         let datum = Datum::new(llval, binding_info.ty, lvalue);
         if let Some(cs) = cs {
             let opt_datum = lvalue.dropflag_hint(bcx);
@@ -1709,7 +1728,7 @@ fn mk_binding_alloca<'blk, 'tcx, A, F>(bcx: Block<'blk, 'tcx>,
 
     // Allocate memory on stack for the binding.
     let llval = alloc_ty(bcx, var_ty, &bcx.name(name));
-    let lvalue = Lvalue::binding(caller_name, bcx, p_id, name);
+    let lvalue = Lvalue::new_with_hint(caller_name, bcx, p_id, HintKind::DontZeroJustUse);
     let datum = Datum::new(llval, var_ty, lvalue);
 
     // Subtle: be sure that we *populate* the memory *before*
