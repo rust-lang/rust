@@ -375,7 +375,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
 fn reject_non_type_param_bounds<'tcx>(tcx: &ty::ctxt<'tcx>,
                                       span: Span,
                                       predicates: &ty::GenericPredicates<'tcx>) {
-    for predicate in predicates.predicates.iter() {
+    for predicate in &predicates.predicates {
         match predicate {
             &ty::Predicate::Trait(ty::Binder(ref tr)) => {
                 let found_param = tr.input_types().iter()
@@ -514,7 +514,7 @@ impl<'cx,'tcx> BoundsChecker<'cx,'tcx> {
                 traits::ItemObligation(trait_ref.def_id)),
             &bounds);
 
-        for &ty in trait_ref.substs.types.iter() {
+        for &ty in &trait_ref.substs.types {
             self.check_traits_in_ty(ty);
         }
     }

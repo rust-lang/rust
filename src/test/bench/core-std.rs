@@ -72,7 +72,7 @@ fn vec_plus() {
     while i < 1500 {
         let rv = repeat(i).take(r.gen_range(0, i + 1)).collect::<Vec<_>>();
         if r.gen() {
-            v.extend(rv.into_iter());
+            v.extend(rv);
         } else {
             let mut rv = rv.clone();
             rv.push_all(&v);

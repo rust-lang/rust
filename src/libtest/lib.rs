@@ -1423,7 +1423,7 @@ mod tests {
                  "test::parse_ignored_flag".to_string(),
                  "test::sort_tests".to_string());
 
-        for (a, b) in expected.iter().zip(filtered.iter()) {
+        for (a, b) in expected.iter().zip(filtered) {
             assert!(*a == b.desc.name.to_string());
         }
     }

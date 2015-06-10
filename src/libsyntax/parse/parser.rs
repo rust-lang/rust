@@ -1060,7 +1060,7 @@ impl<'a> Parser<'a> {
             };
             let all_bounds =
                 Some(TraitTyParamBound(poly_trait_ref, TraitBoundModifier::None)).into_iter()
-                .chain(other_bounds.into_vec().into_iter())
+                .chain(other_bounds.into_vec())
                 .collect();
             Ok(ast::TyPolyTraitRef(all_bounds))
         }
@@ -2058,7 +2058,7 @@ impl<'a> Parser<'a> {
                             |p| Ok(try!(p.parse_expr_nopanic()))
                                 ));
                         let mut exprs = vec!(first_expr);
-                        exprs.extend(remaining_exprs.into_iter());
+                        exprs.extend(remaining_exprs);
                         ex = ExprVec(exprs);
                     } else {
                         // Vector with one element.
@@ -4423,7 +4423,7 @@ impl<'a> Parser<'a> {
             (name, ConstImplItem(typ, expr))
         } else {
             let (name, inner_attrs, node) = try!(self.parse_impl_method(vis));
-            attrs.extend(inner_attrs.into_iter());
+            attrs.extend(inner_attrs);
             (name, node)
         };
 
@@ -5068,7 +5068,7 @@ impl<'a> Parser<'a> {
 
         let abi = opt_abi.unwrap_or(abi::C);
 
-        attrs.extend(self.parse_inner_attributes().into_iter());
+        attrs.extend(self.parse_inner_attributes());
 
         let mut foreign_items = vec![];
         while let Some(item) = try!(self.parse_foreign_item()) {
@@ -5244,7 +5244,7 @@ impl<'a> Parser<'a> {
                 try!(self.bump());
                 let mut attrs = attrs;
                 mem::swap(&mut item.attrs, &mut attrs);
-                item.attrs.extend(attrs.into_iter());
+                item.attrs.extend(attrs);
                 return Ok(Some(P(item)));
             }
             None => {}

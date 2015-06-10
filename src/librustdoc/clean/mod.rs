@@ -190,7 +190,7 @@ impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
                     inner: PrimitiveItem(prim),
                 });
             }
-            m.items.extend(tmp.into_iter());
+            m.items.extend(tmp);
         }
 
         let src = match cx.input {
@@ -382,17 +382,17 @@ impl Clean<Item> for doctree::Module {
 
         let mut items: Vec<Item> = vec![];
         items.extend(self.extern_crates.iter().map(|x| x.clean(cx)));
-        items.extend(self.imports.iter().flat_map(|x| x.clean(cx).into_iter()));
+        items.extend(self.imports.iter().flat_map(|x| x.clean(cx)));
         items.extend(self.structs.iter().map(|x| x.clean(cx)));
         items.extend(self.enums.iter().map(|x| x.clean(cx)));
         items.extend(self.fns.iter().map(|x| x.clean(cx)));
-        items.extend(self.foreigns.iter().flat_map(|x| x.clean(cx).into_iter()));
+        items.extend(self.foreigns.iter().flat_map(|x| x.clean(cx)));
         items.extend(self.mods.iter().map(|x| x.clean(cx)));
         items.extend(self.typedefs.iter().map(|x| x.clean(cx)));
         items.extend(self.statics.iter().map(|x| x.clean(cx)));
         items.extend(self.constants.iter().map(|x| x.clean(cx)));
         items.extend(self.traits.iter().map(|x| x.clean(cx)));
-        items.extend(self.impls.iter().flat_map(|x| x.clean(cx).into_iter()));
+        items.extend(self.impls.iter().flat_map(|x| x.clean(cx)));
         items.extend(self.macros.iter().map(|x| x.clean(cx)));
         items.extend(self.def_traits.iter().map(|x| x.clean(cx)));
 
@@ -1884,7 +1884,7 @@ impl<'tcx> Clean<Item> for ty::VariantInfo<'tcx> {
                 StructVariant(VariantStruct {
                     struct_type: doctree::Plain,
                     fields_stripped: false,
-                    fields: s.iter().zip(self.args.iter()).map(|(name, ty)| {
+                    fields: s.iter().zip(&self.args).map(|(name, ty)| {
                         Item {
                             source: Span::empty(),
                             name: Some(name.clean(cx)),
@@ -2375,7 +2375,7 @@ impl Clean<Vec<Item>> for doctree::Import {
                     for path in list {
                         match inline::try_inline(cx, path.node.id(), None) {
                             Some(items) => {
-                                ret.extend(items.into_iter());
+                                ret.extend(items);
                             }
                             None => {
                                 remaining.push(path.clean(cx));

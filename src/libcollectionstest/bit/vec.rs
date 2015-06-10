@@ -625,7 +625,7 @@ fn test_bit_vec_grow() {
 fn test_bit_vec_extend() {
     let mut bit_vec = BitVec::from_bytes(&[0b10110110, 0b00000000, 0b11111111]);
     let ext = BitVec::from_bytes(&[0b01001001, 0b10010010, 0b10111101]);
-    bit_vec.extend(ext.iter());
+    bit_vec.extend(&ext);
     assert_eq!(bit_vec, BitVec::from_bytes(&[0b10110110, 0b00000000, 0b11111111,
                                  0b01001001, 0b10010010, 0b10111101]));
 }

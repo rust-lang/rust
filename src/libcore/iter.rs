@@ -177,7 +177,7 @@ pub trait Iterator {
     /// ```
     /// let a = [0];
     /// let b = [1];
-    /// let mut it = a.iter().chain(b.iter());
+    /// let mut it = a.iter().chain(&b);
     /// assert_eq!(it.next(), Some(&0));
     /// assert_eq!(it.next(), Some(&1));
     /// assert!(it.next().is_none());
@@ -200,7 +200,7 @@ pub trait Iterator {
     /// ```
     /// let a = [0];
     /// let b = [1];
-    /// let mut it = a.iter().zip(b.iter());
+    /// let mut it = a.iter().zip(&b);
     /// assert_eq!(it.next(), Some((&0, &1)));
     /// assert!(it.next().is_none());
     /// ```
@@ -585,9 +585,9 @@ pub trait Iterator {
 
         for x in self {
             if f(&x) {
-                left.extend(Some(x).into_iter())
+                left.extend(Some(x))
             } else {
-                right.extend(Some(x).into_iter())
+                right.extend(Some(x))
             }
         }
 
@@ -994,8 +994,8 @@ pub trait Iterator {
         us.extend(SizeHint(lo, hi, marker::PhantomData));
 
         for (t, u) in self {
-            ts.extend(Some(t).into_iter());
-            us.extend(Some(u).into_iter());
+            ts.extend(Some(t));
+            us.extend(Some(u));
         }
 
         (ts, us)

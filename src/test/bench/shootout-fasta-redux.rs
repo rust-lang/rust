@@ -124,11 +124,11 @@ impl<'a, W: Write> RepeatFasta<'a, W> {
         let mut buf = repeat(0).take(alu_len + LINE_LEN).collect::<Vec<_>>();
         let alu: &[u8] = self.alu.as_bytes();
 
-        for (slot, val) in buf.iter_mut().zip(alu.iter()) {
+        for (slot, val) in buf.iter_mut().zip(alu) {
             *slot = *val;
         }
         let buf_len = buf.len();
-        for (slot, val) in buf[alu_len..buf_len].iter_mut().zip(alu[..LINE_LEN].iter()) {
+        for (slot, val) in buf[alu_len..buf_len].iter_mut().zip(&alu[..LINE_LEN]) {
             *slot = *val;
         }
 

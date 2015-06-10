@@ -80,7 +80,7 @@ pub fn object_safety_violations<'tcx>(tcx: &ty::ctxt<'tcx>,
                                       -> Vec<ObjectSafetyViolation<'tcx>>
 {
     traits::supertrait_def_ids(tcx, trait_def_id)
-        .flat_map(|def_id| object_safety_violations_for_trait(tcx, def_id).into_iter())
+        .flat_map(|def_id| object_safety_violations_for_trait(tcx, def_id))
         .collect()
 }
 

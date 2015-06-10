@@ -74,7 +74,7 @@
 //!         // (assumes that |N| \approxeq |E|)
 //!         let &Edges(ref v) = self;
 //!         let mut nodes = Vec::with_capacity(v.len());
-//!         for &(s,t) in v.iter() {
+//!         for &(s,t) in v {
 //!             nodes.push(s); nodes.push(t);
 //!         }
 //!         nodes.sort();

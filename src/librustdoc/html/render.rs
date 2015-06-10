@@ -2414,7 +2414,7 @@ fn render_impl(w: &mut fmt::Formatter, i: &Impl, link: AssocItemLink,
     }
 
     try!(write!(w, "<div class='impl-items'>"));
-    for trait_item in i.impl_.items.iter() {
+    for trait_item in &i.impl_.items {
         try!(doctraititem(w, trait_item, link, render_header));
     }
 

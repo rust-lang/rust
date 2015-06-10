@@ -83,17 +83,17 @@ fn try_inline_def(cx: &DocContext, tcx: &ty::ctxt,
         }
         def::DefStruct(did) => {
             record_extern_fqn(cx, did, clean::TypeStruct);
-            ret.extend(build_impls(cx, tcx, did).into_iter());
+            ret.extend(build_impls(cx, tcx, did));
             clean::StructItem(build_struct(cx, tcx, did))
         }
         def::DefTy(did, false) => {
             record_extern_fqn(cx, did, clean::TypeTypedef);
-            ret.extend(build_impls(cx, tcx, did).into_iter());
+            ret.extend(build_impls(cx, tcx, did));
             build_type(cx, tcx, did)
         }
         def::DefTy(did, true) => {
             record_extern_fqn(cx, did, clean::TypeEnum);
-            ret.extend(build_impls(cx, tcx, did).into_iter());
+            ret.extend(build_impls(cx, tcx, did));
             build_type(cx, tcx, did)
         }
         // Assume that the enum type is reexported next to the variant, and
@@ -228,7 +228,7 @@ pub fn build_impls(cx: &DocContext, tcx: &ty::ctxt,
     match tcx.inherent_impls.borrow().get(&did) {
         None => {}
         Some(i) => {
-            for &did in i.iter() {
+            for &did in &**i {
                 build_impl(cx, tcx, did, &mut impls);
             }
         }
@@ -451,7 +451,7 @@ fn build_module(cx: &DocContext, tcx: &ty::ctxt,
                 decoder::DlDef(def) if vis == ast::Public => {
                     if !visited.insert(def) { return }
                     match try_inline_def(cx, tcx, def) {
-                        Some(i) => items.extend(i.into_iter()),
+                        Some(i) => items.extend(i),
                         None => {}
                     }
                 }

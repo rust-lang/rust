@@ -135,7 +135,7 @@ impl<'cx, 'tcx> Elaborator<'cx, 'tcx> {
                 // Sized { }`.
                 predicates.retain(|r| self.visited.insert(r));
 
-                self.stack.extend(predicates.into_iter());
+                self.stack.extend(predicates);
             }
             ty::Predicate::Equate(..) => {
                 // Currently, we do not "elaborate" predicates like

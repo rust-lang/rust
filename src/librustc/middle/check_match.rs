@@ -187,7 +187,7 @@ fn check_expr(cx: &mut MatchCheckCtxt, ex: &ast::Expr) {
 
             for pat in inlined_arms
                 .iter()
-                .flat_map(|&(ref pats, _)| pats.iter()) {
+                .flat_map(|&(ref pats, _)| pats) {
                 // Third, check legality of move bindings.
                 check_legality_of_bindings_in_at_patterns(cx, &**pat);
 
@@ -220,7 +220,7 @@ fn check_expr(cx: &mut MatchCheckCtxt, ex: &ast::Expr) {
             let matrix: Matrix = inlined_arms
                 .iter()
                 .filter(|&&(_, guard)| guard.is_none())
-                .flat_map(|arm| arm.0.iter())
+                .flat_map(|arm| &arm.0)
                 .map(|pat| vec![&**pat])
                 .collect();
             check_exhaustive(cx, ex.span, &matrix, source);
@@ -583,7 +583,7 @@ fn construct_witness(cx: &MatchCheckCtxt, ctor: &Constructor,
 fn missing_constructor(cx: &MatchCheckCtxt, &Matrix(ref rows): &Matrix,
                        left_ty: Ty, max_slice_length: usize) -> Option<Constructor> {
     let used_constructors: Vec<Constructor> = rows.iter()
-        .flat_map(|row| pat_constructors(cx, row[0], left_ty, max_slice_length).into_iter())
+        .flat_map(|row| pat_constructors(cx, row[0], left_ty, max_slice_length))
         .collect();
     all_constructors(cx, left_ty, max_slice_length)
         .into_iter()
@@ -705,7 +705,7 @@ fn is_useful(cx: &MatchCheckCtxt,
                         let wild_pats: Vec<_> = repeat(DUMMY_WILD_PAT).take(arity).collect();
                         let enum_pat = construct_witness(cx, &constructor, wild_pats, left_ty);
                         let mut new_pats = vec![enum_pat];
-                        new_pats.extend(pats.into_iter());
+                        new_pats.extend(pats);
                         UsefulWithWitness(new_pats)
                     },
                     result => result

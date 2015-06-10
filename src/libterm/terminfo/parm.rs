@@ -105,7 +105,7 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
         Number(0), Number(0), Number(0), Number(0), Number(0),
         Number(0), Number(0), Number(0), Number(0),
     ];
-    for (dst, src) in mparams.iter_mut().zip(params.iter()) {
+    for (dst, src) in mparams.iter_mut().zip(params) {
         *dst = (*src).clone();
     }
 
@@ -510,7 +510,7 @@ fn format(val: Param, op: FormatOp, flags: Flags) -> Result<Vec<u8> ,String> {
                 let mut s_ = Vec::with_capacity(flags.precision);
                 let n = flags.precision - s.len();
                 s_.extend(repeat(b'0').take(n));
-                s_.extend(s.into_iter());
+                s_.extend(s);
                 s = s_;
             }
             assert!(!s.is_empty(), "string conversion produced empty result");
@@ -528,14 +528,14 @@ fn format(val: Param, op: FormatOp, flags: Flags) -> Result<Vec<u8> ,String> {
                 FormatHex => {
                     if flags.alternate {
                         let s_ = replace(&mut s, vec!(b'0', b'x'));
-                        s.extend(s_.into_iter());
+                        s.extend(s_);
                     }
                 }
                 FormatHEX => {
                     s = s.into_ascii_uppercase();
                     if flags.alternate {
                         let s_ = replace(&mut s, vec!(b'0', b'X'));
-                        s.extend(s_.into_iter());
+                        s.extend(s_);
                     }
                 }
                 FormatString => unreachable!()
@@ -565,7 +565,7 @@ fn format(val: Param, op: FormatOp, flags: Flags) -> Result<Vec<u8> ,String> {
         } else {
             let mut s_ = Vec::with_capacity(flags.width);
             s_.extend(repeat(b' ').take(n));
-            s_.extend(s.into_iter());
+            s_.extend(s);
             s = s_;
         }
     }

@@ -85,7 +85,7 @@
 //!
 //!         // For each node we can reach, see if we can find a way with
 //!         // a lower cost going through this node
-//!         for edge in adj_list[position].iter() {
+//!         for edge in &adj_list[position] {
 //!             let next = State { cost: cost + edge.cost, position: edge.node };
 //!
 //!             // If so, add it to the frontier and continue
@@ -450,7 +450,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// let vec = heap.into_vec();
     ///
     /// // Will print in some order
-    /// for x in vec.iter() {
+    /// for x in vec {
     ///     println!("{}", x);
     /// }
     /// ```

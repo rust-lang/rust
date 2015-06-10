@@ -139,7 +139,7 @@ pub fn where_clauses(cx: &DocContext, clauses: Vec<WP>) -> Vec<WP> {
 }
 
 pub fn ty_params(mut params: Vec<clean::TyParam>) -> Vec<clean::TyParam> {
-    for param in params.iter_mut() {
+    for param in &mut params {
         param.bounds = ty_bounds(mem::replace(&mut param.bounds, Vec::new()));
     }
     return params;
@@ -165,7 +165,7 @@ fn trait_is_same_or_supertrait(cx: &DocContext, child: ast::DefId,
             } if *s == "Self" => Some(bounds),
             _ => None,
         }
-    }).flat_map(|bounds| bounds.iter()).any(|bound| {
+    }).flat_map(|bounds| bounds).any(|bound| {
         let poly_trait = match *bound {
             clean::TraitBound(ref t, _) => t,
             _ => return false,

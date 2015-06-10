@@ -470,15 +470,15 @@ pub fn parameterized<'tcx,GG>(cx: &ctxt<'tcx>,
                 strings.push(format!(".."));
             }
             subst::NonerasedRegions(ref regions) => {
-                for region in regions.iter() {
+                for region in regions {
                     strings.push(region.repr(cx));
                 }
             }
         }
-        for ty in substs.types.iter() {
+        for ty in &substs.types {
             strings.push(ty.repr(cx));
         }
-        for projection in projections.iter() {
+        for projection in projections {
             strings.push(format!("{}={}",
                                  projection.projection_ty.item_name.user_string(cx),
                                  projection.ty.user_string(cx)));
@@ -495,7 +495,7 @@ pub fn parameterized<'tcx,GG>(cx: &ctxt<'tcx>,
     match substs.regions {
         subst::ErasedRegions => { }
         subst::NonerasedRegions(ref regions) => {
-            for &r in regions.iter() {
+            for &r in regions {
                 let s = region_to_string(cx, "", false, r);
                 if s.is_empty() {
                     // This happens when the value of the region
@@ -523,7 +523,7 @@ pub fn parameterized<'tcx,GG>(cx: &ctxt<'tcx>,
     let ty_params = generics.types.get_slice(subst::TypeSpace);
     let has_defaults = ty_params.last().map_or(false, |def| def.default.is_some());
     let num_defaults = if has_defaults {
-        ty_params.iter().zip(tps.iter()).rev().take_while(|&(def, &actual)| {
+        ty_params.iter().zip(tps).rev().take_while(|&(def, &actual)| {
             match def.default {
                 Some(default) => {
                     if !has_self && ty::type_has_self(default) {

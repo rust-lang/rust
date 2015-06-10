@@ -526,7 +526,7 @@ fn coerce_unsized<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             };
             assert!(coerce_index < src_fields.len() && src_fields.len() == target_fields.len());
 
-            let iter = src_fields.iter().zip(target_fields.iter()).enumerate();
+            let iter = src_fields.iter().zip(target_fields).enumerate();
             for (i, (src_ty, target_ty)) in iter {
                 let ll_source = adt::trans_field_ptr(bcx, &repr_source, source.val, 0, i);
                 let ll_target = adt::trans_field_ptr(bcx, &repr_target, target.val, 0, i);
@@ -1547,7 +1547,7 @@ pub fn trans_adt<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         }
 
         // Finally, move scratch field values into actual field locations
-        for (i, datum) in scratch_vals.into_iter() {
+        for (i, datum) in scratch_vals {
             let dest = adt::trans_field_ptr(bcx, &*repr, addr, discr, i);
             bcx = datum.store_to(bcx, dest);
         }

@@ -274,8 +274,7 @@ fn relate_arg_vecs<'a,'tcx:'a,R>(relation: &mut R,
         return Err(ty::terr_arg_count);
     }
 
-    a_args.iter()
-          .zip(b_args.iter())
+    a_args.iter().zip(b_args)
           .map(|(a, b)| relation.relate_with_variance(ty::Contravariant, a, b))
           .collect()
 }
@@ -355,8 +354,7 @@ impl<'a,'tcx:'a> Relate<'a,'tcx> for Vec<ty::PolyProjectionPredicate<'tcx>> {
         if a.len() != b.len() {
             Err(ty::terr_projection_bounds_length(expected_found(relation, &a.len(), &b.len())))
         } else {
-            a.iter()
-                .zip(b.iter())
+            a.iter().zip(b)
                 .map(|(a, b)| relation.relate(a, b))
                 .collect()
         }
@@ -539,8 +537,7 @@ pub fn super_relate_tys<'a,'tcx:'a,R>(relation: &mut R,
         (&ty::ty_tup(ref as_), &ty::ty_tup(ref bs)) =>
         {
             if as_.len() == bs.len() {
-                let ts = try!(as_.iter()
-                                 .zip(bs.iter())
+                let ts = try!(as_.iter().zip(bs)
                                  .map(|(a, b)| relation.relate(a, b))
                                  .collect::<Result<_, _>>());
                 Ok(ty::mk_tup(tcx, ts))

@@ -1331,7 +1331,7 @@ impl<T:Clone> Clone for Vec<T> {
         }
 
         // reuse the contained values' allocations/resources.
-        for (place, thing) in self.iter_mut().zip(other.iter()) {
+        for (place, thing) in self.iter_mut().zip(other) {
             place.clone_from(thing)
         }
 

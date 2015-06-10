@@ -184,11 +184,11 @@ fn try_overloaded_call_traits<'a,'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                        -> Option<ty::MethodCallee<'tcx>>
 {
     // Try the options that are least restrictive on the caller first.
-    for &(opt_trait_def_id, method_name) in [
+    for &(opt_trait_def_id, method_name) in &[
         (fcx.tcx().lang_items.fn_trait(), token::intern("call")),
         (fcx.tcx().lang_items.fn_mut_trait(), token::intern("call_mut")),
         (fcx.tcx().lang_items.fn_once_trait(), token::intern("call_once")),
-    ].iter() {
+    ] {
         let trait_def_id = match opt_trait_def_id {
             Some(def_id) => def_id,
             None => continue,
@@ -379,7 +379,7 @@ impl<'tcx> DeferredCallResolution<'tcx> for CallResolution<'tcx> {
                        method_callee.repr(fcx.tcx()));
 
                 for (&method_arg_ty, &self_arg_ty) in
-                    method_sig.inputs[1..].iter().zip(self.fn_sig.inputs.iter())
+                    method_sig.inputs[1..].iter().zip(&self.fn_sig.inputs)
                 {
                     demand::eqtype(fcx, self.call_expr.span, self_arg_ty, method_arg_ty);
                 }

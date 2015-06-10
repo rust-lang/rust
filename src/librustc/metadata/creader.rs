@@ -698,7 +698,7 @@ pub fn import_codemap(local_codemap: &codemap::CodeMap,
             return false;
         }
 
-        for (&line1, &line2) in lines1.iter().zip(lines2.iter()) {
+        for (&line1, &line2) in lines1.iter().zip(&*lines2) {
             if (line1 - fm1.start_pos) != (line2 - fm2.start_pos) {
                 return false;
             }
@@ -711,7 +711,7 @@ pub fn import_codemap(local_codemap: &codemap::CodeMap,
             return false;
         }
 
-        for (mb1, mb2) in multibytes1.iter().zip(multibytes2.iter()) {
+        for (mb1, mb2) in multibytes1.iter().zip(&*multibytes2) {
             if (mb1.bytes != mb2.bytes) ||
                ((mb1.pos - fm1.start_pos) != (mb2.pos - fm2.start_pos)) {
                 return false;

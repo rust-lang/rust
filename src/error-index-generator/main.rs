@@ -73,7 +73,7 @@ r##"<!DOCTYPE html>
 
     try!(write!(&mut output_file, "<h1>Rust Compiler Error Index</h1>\n"));
 
-    for (err_code, info) in err_map.iter() {
+    for (err_code, info) in err_map {
         // Enclose each error in a div so they can be shown/hidden en masse.
         let desc_desc = match info.description {
             Some(_) => "error-described",

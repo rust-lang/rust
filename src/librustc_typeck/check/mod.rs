@@ -482,7 +482,7 @@ pub fn check_item_types(ccx: &CrateCtxt) {
 
     ccx.tcx.sess.abort_if_errors();
 
-    for drop_method_did in ccx.tcx.destructors.borrow().iter() {
+    for drop_method_did in &*ccx.tcx.destructors.borrow() {
         if drop_method_did.krate == ast::LOCAL_CRATE {
             let drop_impl_did = ccx.tcx.map.get_parent_did(drop_method_did.node);
             match dropck::check_drop_impl(ccx.tcx, drop_impl_did) {
@@ -679,7 +679,7 @@ fn check_fn<'a, 'tcx>(ccx: &'a CrateCtxt<'a, 'tcx>,
         let mut visit = GatherLocalsVisitor { fcx: &fcx, };
 
         // Add formal parameters.
-        for (arg_ty, input) in arg_tys.iter().zip(decl.inputs.iter()) {
+        for (arg_ty, input) in arg_tys.iter().zip(&decl.inputs) {
             // Create type variables for each argument.
             pat_util::pat_bindings(
                 &tcx.def_map,
@@ -706,8 +706,8 @@ fn check_fn<'a, 'tcx>(ccx: &'a CrateCtxt<'a, 'tcx>,
         ty::FnDiverging => NoExpectation
     });
 
-    for (input, arg) in decl.inputs.iter().zip(arg_tys.iter()) {
-        fcx.write_ty(input.id, *arg);
+    for (input, arg) in decl.inputs.iter().zip(arg_tys) {
+        fcx.write_ty(input.id, arg);
     }
 
     fcx
@@ -1753,7 +1753,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                            substs: &Substs<'tcx>,
                                            expr: &ast::Expr)
     {
-        for &ty in substs.types.iter() {
+        for &ty in &substs.types {
             let default_bound = ty::ReScope(CodeExtent::from_node_id(expr.id));
             let cause = traits::ObligationCause::new(expr.span, self.body_id,
                                                      traits::MiscObligation);
@@ -4292,7 +4292,7 @@ pub fn check_enum_variants<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
         // we need not check for that.
         let variants = ty::enum_variants(ccx.tcx, def_id);
 
-        for (v, variant) in vs.iter().zip(variants.iter()) {
+        for (v, variant) in vs.iter().zip(&*variants) {
             let current_disr_val = variant.disr_val;
 
             // Check for duplicate discriminant values
@@ -4563,7 +4563,7 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     // provided (if any) into their appropriate spaces. We'll also report
     // errors if type parameters are provided in an inappropriate place.
     let mut substs = Substs::empty();
-    for (opt_space, segment) in segment_spaces.iter().zip(segments.iter()) {
+    for (opt_space, segment) in segment_spaces.iter().zip(segments) {
         match *opt_space {
             None => {
                 check_path_args(fcx.tcx(), slice::ref_slice(segment),

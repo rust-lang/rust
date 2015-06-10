@@ -130,7 +130,7 @@
 //!     gadget_owner.gadgets.borrow_mut().push(gadget2.clone().downgrade());
 //!
 //!     // Iterate over our Gadgets, printing their details out
-//!     for gadget_opt in gadget_owner.gadgets.borrow().iter() {
+//!     for gadget_opt in &*gadget_owner.gadgets.borrow() {
 //!
 //!         // gadget_opt is a Weak<Gadget>. Since weak pointers can't guarantee
 //!         // that their object is still allocated, we need to call upgrade()

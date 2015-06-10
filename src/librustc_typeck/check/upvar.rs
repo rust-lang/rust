@@ -235,7 +235,7 @@ impl<'a,'tcx> AdjustBorrowKind<'a,'tcx> {
         if self.closures_with_inferred_kinds.contains(&id) {
             let mut deferred_call_resolutions =
                 self.fcx.remove_deferred_call_resolutions(closure_def_id);
-            for deferred_call_resolution in deferred_call_resolutions.iter_mut() {
+            for deferred_call_resolution in &mut deferred_call_resolutions {
                 deferred_call_resolution.resolve(self.fcx);
             }
         }

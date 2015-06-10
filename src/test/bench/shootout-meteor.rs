@@ -315,7 +315,7 @@ fn par_search(masks: Vec<Vec<Vec<u64>>>) -> Data {
 
     // launching the search in parallel on every masks at minimum
     // coordinate (0,0)
-    for m in (*masks)[0].iter().flat_map(|masks_pos| masks_pos.iter()) {
+    for m in (*masks)[0].iter().flat_map(|masks_pos| masks_pos) {
         let masks = masks.clone();
         let tx = tx.clone();
         let m = *m;

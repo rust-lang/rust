@@ -385,7 +385,7 @@ impl<'a> Context<'a> {
                 return;
             }
         }
-        for &(ref n, ref ty) in self.plugin_attributes.iter() {
+        for &(ref n, ref ty) in self.plugin_attributes {
             if &*n == name {
                 // Plugins can't gate attributes, so we don't check for it
                 // unlike the code above; we only use this loop to

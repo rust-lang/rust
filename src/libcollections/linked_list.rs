@@ -265,7 +265,7 @@ impl<T> LinkedList<T> {
     ///
     /// a.append(&mut b);
     ///
-    /// for e in a.iter() {
+    /// for e in &a {
     ///     println!("{}", e); // prints 1, then 2, then 3, then 4
     /// }
     /// println!("{}", b.len()); // prints 0
@@ -1189,7 +1189,7 @@ mod tests {
         check_links(&m);
 
         let mut i = 0;
-        for (a, &b) in m.into_iter().zip(v.iter()) {
+        for (a, &b) in m.into_iter().zip(&v) {
             i += 1;
             assert_eq!(a, b);
         }

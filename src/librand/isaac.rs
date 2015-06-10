@@ -140,7 +140,7 @@ impl IsaacRng {
         }
 
         let r = [(0, MIDPOINT), (MIDPOINT, 0)];
-        for &(mr_offset, m2_offset) in r.iter() {
+        for &(mr_offset, m2_offset) in &r {
 
             macro_rules! rngstepp {
                 ($j:expr, $shift:expr) => {{
@@ -379,7 +379,7 @@ impl Isaac64Rng {
             }
         }
 
-        for &(mr_offset, m2_offset) in MP_VEC.iter() {
+        for &(mr_offset, m2_offset) in &MP_VEC {
             for base in (0..MIDPOINT / 4).map(|i| i * 4) {
 
                 macro_rules! rngstepp {

@@ -1501,7 +1501,7 @@ fn trans_match_inner<'blk, 'tcx>(scope_cx: Block<'blk, 'tcx>,
     };
 
     let mut matches = Vec::new();
-    for (arm_data, pats) in arm_datas.iter().zip(arm_pats.iter()) {
+    for (arm_data, pats) in arm_datas.iter().zip(&arm_pats) {
         matches.extend(pats.iter().map(|p| Match {
             pats: vec![&**p],
             data: arm_data,
@@ -1833,7 +1833,7 @@ fn bind_irrefutable_pat<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 .iter()
                 .chain(slice.iter())
                 .chain(after.iter())
-                .zip(extracted.vals.into_iter())
+                .zip(extracted.vals)
                 .fold(bcx, |bcx, (inner, elem)|
                     bind_irrefutable_pat(bcx, &**inner, elem, cleanup_scope)
                 );

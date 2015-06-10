@@ -183,7 +183,7 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
 
             let mut arms = Vec::with_capacity(else_if_arms.len() + 2);
             arms.push(pat_arm);
-            arms.extend(else_if_arms.into_iter());
+            arms.extend(else_if_arms);
             arms.push(else_arm);
 
             let match_expr = fld.cx.expr(span,
@@ -779,7 +779,7 @@ fn expand_non_macro_stmt(Spanned {node, span: stmt_span}: Stmt, fld: &mut MacroE
                     };
                     // add them to the existing pending renames:
                     fld.cx.syntax_env.info().pending_renames
-                          .extend(new_pending_renames.into_iter());
+                          .extend(new_pending_renames);
                     Local {
                         id: id,
                         ty: expanded_ty,

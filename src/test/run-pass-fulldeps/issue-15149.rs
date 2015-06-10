@@ -52,7 +52,7 @@ fn test() {
     let path = {
         let mut paths: Vec<_> = env::split_paths(&env::var_os("PATH").unwrap()).collect();
         paths.push(child_dir.to_path_buf());
-        env::join_paths(paths.iter()).unwrap()
+        env::join_paths(paths).unwrap()
     };
 
     let child_output = process::Command::new("mytest").env("PATH", &path)

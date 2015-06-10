@@ -699,7 +699,7 @@ fn do_bench_from_iter(b: &mut Bencher, src_len: usize) {
     b.bytes = src_len as u64;
 
     b.iter(|| {
-        let dst: Vec<_> = FromIterator::from_iter(src.clone().into_iter());
+        let dst: Vec<_> = FromIterator::from_iter(src.clone());
         assert_eq!(dst.len(), src_len);
         assert!(dst.iter().enumerate().all(|(i, x)| i == *x));
     });
@@ -733,7 +733,7 @@ fn do_bench_extend(b: &mut Bencher, dst_len: usize, src_len: usize) {
 
     b.iter(|| {
         let mut dst = dst.clone();
-        dst.extend(src.clone().into_iter());
+        dst.extend(src.clone());
         assert_eq!(dst.len(), dst_len + src_len);
         assert!(dst.iter().enumerate().all(|(i, x)| i == *x));
     });
@@ -831,7 +831,7 @@ fn do_bench_push_all_move(b: &mut Bencher, dst_len: usize, src_len: usize) {
 
     b.iter(|| {
         let mut dst = dst.clone();
-        dst.extend(src.clone().into_iter());
+        dst.extend(src.clone());
         assert_eq!(dst.len(), dst_len + src_len);
         assert!(dst.iter().enumerate().all(|(i, x)| i == *x));
     });

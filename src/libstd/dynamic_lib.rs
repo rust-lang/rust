@@ -294,7 +294,7 @@ mod dl {
         let result = match filename {
             Some(filename) => {
                 let filename_str: Vec<_> =
-                    filename.encode_wide().chain(Some(0).into_iter()).collect();
+                    filename.encode_wide().chain(Some(0)).collect();
                 let result = unsafe {
                     LoadLibraryW(filename_str.as_ptr() as *const libc::c_void)
                 };

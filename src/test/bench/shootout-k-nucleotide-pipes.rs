@@ -158,7 +158,7 @@ fn main() {
         Some(channel::<String>())
     }).collect::<Vec<_>>();
     let mut from_child = Vec::new();
-    let to_child  = sizes.iter().zip(streams.iter_mut()).map(|(sz, stream_ref)| {
+    let to_child  = sizes.iter().zip(&mut streams).map(|(sz, stream_ref)| {
         let sz = *sz;
         let stream = replace(stream_ref, None);
         let (to_parent_, from_child_) = stream.unwrap();
