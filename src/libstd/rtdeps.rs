@@ -44,8 +44,17 @@ extern {}
 #[link(name = "pthread")]
 extern {}
 
-#[cfg(target_os = "nacl")]
-#[link(name = "pthread")]
+// For PNaCl targets, nacl_io is a Pepper wrapper for some IO functions
+// missing (ie always error) in Newlib.
+#[cfg(all(target_os = "nacl", not(test)))]
+#[link(name = "nacl_io", kind = "static")]
+#[link(name = "c++", kind = "static")] // for `nacl_io` and EH.
+#[link(name = "pthread", kind = "static")]
+extern {}
+
+
+#[cfg(all(target_os = "nacl", not(test)))]
+#[link(name = "c++", kind = "static")]
 extern {}
 
 #[cfg(target_os = "macos")]

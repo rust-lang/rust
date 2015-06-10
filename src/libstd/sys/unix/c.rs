@@ -29,16 +29,6 @@ pub use self::signal_os::*;
 
 use libc;
 
-// For (P)NaCl targets, nacl_io is a Pepper wrapper providing some C functions
-// missing in Newlib/libnacl.
-#[cfg(all(target_os = "nacl", not(test)))]
-#[link(name = "nacl_io", kind = "static")] extern {}
-
-// Both nacl_io && PNaCl SJLJ EH need libc++.
-#[cfg(all(target_os = "nacl", not(test)))]
-#[link(name = "c++", kind = "static")]
-extern {}
-
 #[cfg(any(target_os = "macos",
           target_os = "ios",
           target_os = "freebsd",
