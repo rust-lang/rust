@@ -53,12 +53,12 @@ use trans::type_::Type;
 use trans::type_of;
 use middle::ty::{self, Ty};
 use middle::ty::MethodCall;
+use rustc::ast_map;
 use util::ppaux::Repr;
 use util::ppaux::ty_to_string;
 
 use syntax::abi as synabi;
 use syntax::ast;
-use syntax::ast_map;
 use syntax::ptr::P;
 
 #[derive(Copy, Clone)]

@@ -17,11 +17,11 @@ use std::mem;
 use syntax::abi;
 use syntax::ast;
 use syntax::ast_util;
-use syntax::ast_map;
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
 use syntax::codemap::Span;
 
+use rustc::ast_map;
 use rustc::middle::stability;
 
 use core;

@@ -16,6 +16,7 @@
 //! Most of the documentation on regions can be found in
 //! `middle/typeck/infer/region_inference.rs`
 
+use ast_map;
 use session::Session;
 use middle::ty::{self, Ty};
 use util::nodemap::{FnvHashMap, FnvHashSet, NodeMap};
@@ -25,7 +26,6 @@ use syntax::codemap::{self, Span};
 use syntax::{ast, visit};
 use syntax::ast::{Block, Item, FnDecl, NodeId, Arm, Pat, Stmt, Expr, Local};
 use syntax::ast_util::stmt_id;
-use syntax::ast_map;
 use syntax::ptr::P;
 use syntax::visit::{Visitor, FnKind};
 

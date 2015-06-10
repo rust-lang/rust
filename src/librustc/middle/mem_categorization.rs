@@ -73,6 +73,7 @@ pub use self::categorization::*;
 
 use self::Aliasability::*;
 
+use ast_map;
 use middle::check_const;
 use middle::def;
 use middle::region;
@@ -82,7 +83,6 @@ use util::ppaux::{Repr, UserString};
 
 use syntax::ast::{MutImmutable, MutMutable};
 use syntax::ast;
-use syntax::ast_map;
 use syntax::codemap::Span;
 use syntax::print::pprust;
 use syntax::parse::token;

@@ -17,6 +17,7 @@ use middle::subst;
 use middle::subst::{Subst, Substs};
 use middle::traits;
 use middle::ty_fold::{TypeFolder, TypeFoldable};
+use rustc::ast_map;
 use trans::attributes;
 use trans::base::{trans_enum_variant, push_ctxt, get_item_val};
 use trans::base::trans_fn;
@@ -29,7 +30,6 @@ use util::ppaux::Repr;
 
 use syntax::abi;
 use syntax::ast;
-use syntax::ast_map;
 use syntax::ast_util::local_def;
 use syntax::attr;
 use syntax::codemap::DUMMY_SP;

@@ -77,6 +77,7 @@ use middle::ty::{self, RegionEscape, ToPolyTraitRef, Ty, TypeScheme};
 use middle::ty_fold::{self, TypeFolder, TypeFoldable};
 use middle::infer;
 use rscope::*;
+use rustc::ast_map;
 use util::common::{ErrorReported, memoized};
 use util::nodemap::{FnvHashMap, FnvHashSet};
 use util::ppaux;
@@ -89,7 +90,6 @@ use std::rc::Rc;
 
 use syntax::abi;
 use syntax::ast;
-use syntax::ast_map;
 use syntax::ast_util::local_def;
 use syntax::codemap::Span;
 use syntax::parse::token::special_idents;

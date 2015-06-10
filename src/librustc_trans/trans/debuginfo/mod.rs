@@ -26,6 +26,7 @@ use llvm::{ModuleRef, ContextRef, ValueRef};
 use llvm::debuginfo::{DIFile, DIType, DIScope, DIBuilderRef, DISubprogram, DIArray,
                       DIDescriptor, FlagPrototyped};
 use middle::subst::{self, Substs};
+use rustc::ast_map;
 use trans::common::{NodeIdAndSpan, CrateContext, FunctionContext, Block};
 use trans;
 use trans::monomorphize;
@@ -39,7 +40,7 @@ use std::ffi::CString;
 use std::ptr;
 use std::rc::Rc;
 use syntax::codemap::{Span, Pos};
-use syntax::{ast, codemap, ast_util, ast_map};
+use syntax::{ast, codemap, ast_util};
 use syntax::parse::token::{self, special_idents};
 
 pub mod gdb;
