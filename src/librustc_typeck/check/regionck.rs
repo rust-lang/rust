@@ -76,7 +76,7 @@
 //! the borrow itself (L2).  What do I mean by "guaranteed" by a
 //! borrowed pointer? I mean any data that is reached by first
 //! dereferencing a borrowed pointer and then either traversing
-//! interior offsets or owned pointers.  We say that the guarantor
+//! interior offsets or boxes.  We say that the guarantor
 //! of such data it the region of the borrowed pointer that was
 //! traversed.  This is essentially the same as the ownership
 //! relation, except that a borrowed pointer never owns its

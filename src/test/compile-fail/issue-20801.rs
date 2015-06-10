@@ -40,8 +40,8 @@ pub fn main() {
     //~^ ERROR cannot move out of borrowed content
 
     let c = unsafe { *mut_ptr() };
-    //~^ ERROR cannot move out of dereference of unsafe pointer
+    //~^ ERROR cannot move out of dereference of raw pointer
 
     let d = unsafe { *const_ptr() };
-    //~^ ERROR cannot move out of dereference of unsafe pointer
+    //~^ ERROR cannot move out of dereference of raw pointer
 }

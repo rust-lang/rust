@@ -1213,9 +1213,9 @@ impl<T: PartialEq> Vec<T> {
             // Duplicate, advance r. End of vec. Truncate to w.
 
             let ln = self.len();
-            if ln < 1 { return; }
+            if ln <= 1 { return; }
 
-            // Avoid bounds checks by using unsafe pointers.
+            // Avoid bounds checks by using raw pointers.
             let p = self.as_mut_ptr();
             let mut r: usize = 1;
             let mut w: usize = 1;

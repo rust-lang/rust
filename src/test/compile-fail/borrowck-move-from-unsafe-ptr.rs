@@ -10,7 +10,7 @@
 
 
 fn foo(x: *const Box<isize>) -> Box<isize> {
-    let y = *x; //~ ERROR dereference of unsafe pointer requires unsafe function or block
+    let y = *x; //~ ERROR dereference of raw pointer requires unsafe function or block
     return y;
 }
 

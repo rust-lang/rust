@@ -357,7 +357,7 @@ macro_rules! impls{
 /// struct is dropped, it may in turn drop one or more instances of
 /// the type `T`, though that may not be apparent from the other
 /// structure of the type itself. This is commonly necessary if the
-/// structure is using an unsafe pointer like `*mut T` whose referent
+/// structure is using a raw pointer like `*mut T` whose referent
 /// may be dropped when the type is dropped, as a `*mut T` is
 /// otherwise not treated as owned.
 ///

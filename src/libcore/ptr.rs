@@ -10,16 +10,16 @@
 
 // FIXME: talk about offset, copy_memory, copy_nonoverlapping_memory
 
-//! Operations on unsafe pointers, `*const T`, and `*mut T`.
+//! Operations on raw pointers, `*const T`, and `*mut T`.
 //!
-//! Working with unsafe pointers in Rust is uncommon,
+//! Working with raw pointers in Rust is uncommon,
 //! typically limited to a few patterns.
 //!
 //! Use the `null` function to create null pointers, and the `is_null` method
 //! of the `*const T` type  to check for null. The `*const T` type also defines
 //! the `offset` method, for pointer math.
 //!
-//! # Common ways to create unsafe pointers
+//! # Common ways to create raw pointers
 //!
 //! ## 1. Coerce a reference (`&T`) or mutable reference (`&mut T`).
 //!
@@ -86,7 +86,7 @@
 //!
 //! Usually you wouldn't literally use `malloc` and `free` from Rust,
 //! but C APIs hand out a lot of pointers generally, so are a common source
-//! of unsafe pointers in Rust.
+//! of raw pointers in Rust.
 
 #![stable(feature = "rust1", since = "1.0.0")]
 #![doc(primitive = "pointer")]
