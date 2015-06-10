@@ -18,7 +18,7 @@ use syntax::visit::Visitor;
 use syntax::visit;
 
 pub fn check_crate(sess: &Session, krate: &ast::Crate) {
-    if !sess.targeting_pnacl() { return; }
+    if !sess.target.target.options.no_asm { return; }
 
     visit::walk_crate(&mut CheckNoAsm { sess: sess, }, krate);
 }

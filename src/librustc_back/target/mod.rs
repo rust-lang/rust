@@ -172,6 +172,8 @@ pub struct TargetOptions {
     /// currently only "gnu" is used to fall into LLVM. Unknown strings cause
     /// the system linker to be used.
     pub archive_format: String,
+    /// Is asm!() allowed?
+    pub no_asm: bool,
 }
 
 impl Default for TargetOptions {
@@ -210,6 +212,7 @@ impl Default for TargetOptions {
             pre_link_objects: Vec::new(),
             post_link_objects: Vec::new(),
             archive_format: String::new(),
+            no_asm: false,
         }
     }
 }
