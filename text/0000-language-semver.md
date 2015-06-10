@@ -144,6 +144,9 @@ relatively small, it could be an option to leave the "opt out"
 mechanism in place permanently. In either case, use of the "opt out"
 API would trigger the deprecation lint.
 
+Note that we should make every effort to ensure that crates which
+employ this opt out can be used compatibly with crates that do not.
+
 #### Changes that alter dynamic semantics versus typing rules
 
 In some cases, fixing a bug may not cause crates to stop compiling,
@@ -266,6 +269,26 @@ observe on `crates.io` will be of the total breakage that will occur:
 it is certainly possible that all crates on `crates.io` work fine, but
 the change still breaks a large body of code we do not have access to.
 
+**What attribute should we use to "opt out" of soundness changes?**
+The section on breaking changes indicated that it may sometimes be
+appropriate to includ an "opt out" that people can use to temporarily
+revert to older, unsound type rules, but did not specify precisely
+what that opt-out should look like. Ideally, we would identify a
+specific attribute in advance that will be used for such purposes.  In
+the past, we have simply created ad-hoc attributes (e.g.,
+`#[old_orphan_check]`), but because custom attributes are forbidden by
+stable Rust, this has the unfortunate side-effect of meaning that code
+which opts out of the newer rules cannot be compiled on older
+compilers (even though it's using the older type system rules). If we
+introduce an attribute in advance we will not have this problem.
+
+**Are there any other circumstances in which we might perform a
+breaking change?** In particular, it may happen from time to time that
+we wish to alter some detail of a stable component. If we believe that
+this change will not affect anyone, such a change may be worth doing,
+but we'll have to work out more precise guidelines. [RFC 1156] is an
+example.
+
 [RFC 1105]: https://github.com/rust-lang/rfcs/pull/1105
 [RFC 320]: https://github.com/rust-lang/rfcs/pull/320
 [#744]: https://github.com/rust-lang/rfcs/issues/744
@@ -281,3 +304,4 @@ the change still breaks a large body of code we do not have access to.
 [RFC 560]: https://github.com/rust-lang/rfcs/pull/560
 [macro]: https://internals.rust-lang.org/t/pre-rfc-macro-improvements/2088
 [#24451]: https://github.com/rust-lang/rust/pull/24451
+[RFC 1156]: https://github.com/rust-lang/rfcs/pull/1156
