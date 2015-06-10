@@ -5,14 +5,65 @@
 
 # Summary
 
-There has been an ongoing [discussion on internals](https://internals.rust-lang.org/t/thoughts-on-aggressive-deprecation-in-libstd/2176/55) about how we are going to evolve the standard library. This RFC tries to condense the consensus.
+There has been an ongoing [discussion on 
+internals](https://internals.rust-lang.org/t/thoughts-on-aggressive-deprecation-in-libstd/2176/55) 
+about how we are going to evolve the standard library. This RFC tries 
+to condense the consensus.
+
+As a starting point, the current deprecation feature allows a developer
+to annotate their API items with `#[deprecated(since="1.1.0")]` and
+have suitable warnings shown if the feature is used.
 
 # Motivation
 
-We want to guide the deprecation efforts to allow std to evolve freely to get the best possible API while ensuring minimum-breakage backwards compatibility for users and allow std authors to remove API items for a given version of Rust. Basically have our cake and eat it. Yum, cake.
+We want to:
 
-Of course we cannot really keep and remove a feature at the same time. 
-To square this circle, we can follow the process outlined herein.
+1. evolve the `std` API, including making items unavailable with new 
+versions
+2. with minimal -- next to no -- breakage
+3. be able to plug security/safety holes 
+4. avoid confusing users
+5. stay backwards-compatible so people can continue to use dependencies 
+written for older versions (except where point 3. forbids this)
+6. give users sensible defaults
+7. and an update plan when they want to use a more current version
+
+This was quite short, so let me explain a bit: We want Rust to be
+successful, and since the 1.0.0 release, there is an expectation of
+stability. Therefore the first order of business when evolving the
+`std` API is: **Don't break people's code**. 
+
+In practice there will be some qualification, e.g. if fixing a security 
+hole requires breaking an API, it is nonetheless acceptable, because 
+the API was broken to begin with, as is code using it. So breaking this
+code is acceptable.  
+
+On the other hand, we really want to make features inaccessible in a
+newer version, not just mark them as deprecated. Otherwise we would
+bloat our APIs with deprecated features that no one uses (see Java). To
+do this, it's not enough to hide the feature from the docs, as that
+would be confusing (see point 4.) to those who encounter a hidden API.
+
+Not breaking code also mean we do not want to have the deprecation 
+feature interfere with a project's dependencies, which would teach 
+people to disable or ignore the warnings until their builds break. On
+the other hand, we don't want to have all unavailable APIs show up
+for library writers, as that -- apart from defeating the purpose of the
+deprecation feature -- would create a confusing mirror world, 
+which is directly in conflict to point 4.
+
+We also want the feature to be *usable* to the programmer, therefore
+any additional code we require should be minimal. If the feature is too
+obscure, or too complicated to use, people will just 
+`#![allow(deprecate)]` and complain when their build finally breaks.
+
+Note that we expect many more *users* than *writers* of the `std` APIs,
+so the wants of the former should count higher than those of the latter.
+
+Ideally, this can be done so that all parts play well together: Cargo 
+could help with setup (and possibly reporting), rustc warnings / error 
+reporting should be extended to inform people of pending or active 
+deprecations, rustdoc needs some way of reflecting the API lifecycle.
 
 # Detailed design
 
