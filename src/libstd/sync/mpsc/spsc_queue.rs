@@ -33,8 +33,6 @@
 //! concurrently between two threads. This data structure is safe to use and
 //! enforces the semantics that there is one pusher and one popper.
 
-#![unstable(feature = "std_misc")]
-
 use core::prelude::*;
 
 use alloc::boxed;

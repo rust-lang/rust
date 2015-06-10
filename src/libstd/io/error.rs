@@ -123,7 +123,7 @@ pub enum ErrorKind {
     Other,
 
     /// Any I/O error not part of this list.
-    #[unstable(feature = "std_misc",
+    #[unstable(feature = "io_error_internals",
                reason = "better expressed through extensible enums that this \
                          enum cannot be exhaustively matched against")]
     #[doc(hidden)]

@@ -16,7 +16,9 @@
 //! and should be considered as private implementation details for the
 //! time being.
 
-#![unstable(feature = "std_misc")]
+#![unstable(feature = "rt",
+            reason = "this public module should not exist and is highly likely \
+                      to disappear")]
 #![allow(missing_docs)]
 
 use prelude::v1::*;

@@ -20,8 +20,10 @@ use iter::{Iterator, IntoIterator, ExactSizeIterator, FromIterator, Map, Chain, 
 use ops::{BitOr, BitAnd, BitXor, Sub};
 use option::Option::{Some, None, self};
 
-use super::map::{self, HashMap, Keys, INITIAL_CAPACITY, RandomState};
+use super::map::{self, HashMap, Keys, RandomState};
 use super::state::HashState;
+
+const INITIAL_CAPACITY: usize = 32;
 
 // Future Optimization (FIXME!)
 // =============================
@@ -152,7 +154,7 @@ impl<T, S> HashSet<T, S>
     /// # Examples
     ///
     /// ```
-    /// # #![feature(std_misc)]
+    /// # #![feature(hashmap_hasher)]
     /// use std::collections::HashSet;
     /// use std::collections::hash_map::RandomState;
     ///
@@ -161,7 +163,7 @@ impl<T, S> HashSet<T, S>
     /// set.insert(2);
     /// ```
     #[inline]
-    #[unstable(feature = "std_misc", reason = "hasher stuff is unclear")]
+    #[unstable(feature = "hashmap_hasher", reason = "hasher stuff is unclear")]
     pub fn with_hash_state(hash_state: S) -> HashSet<T, S> {
         HashSet::with_capacity_and_hash_state(INITIAL_CAPACITY, hash_state)
     }
@@ -177,7 +179,7 @@ impl<T, S> HashSet<T, S>
     /// # Examples
     ///
     /// ```
-    /// # #![feature(std_misc)]
+    /// # #![feature(hashmap_hasher)]
     /// use std::collections::HashSet;
     /// use std::collections::hash_map::RandomState;
     ///
@@ -186,7 +188,7 @@ impl<T, S> HashSet<T, S>
     /// set.insert(1);
     /// ```
     #[inline]
-    #[unstable(feature = "std_misc", reason = "hasher stuff is unclear")]
+    #[unstable(feature = "hashmap_hasher", reason = "hasher stuff is unclear")]
     pub fn with_capacity_and_hash_state(capacity: usize, hash_state: S)
                                         -> HashSet<T, S> {
         HashSet {
@@ -406,7 +408,7 @@ impl<T, S> HashSet<T, S>
 
     /// Clears the set, returning all elements in an iterator.
     #[inline]
-    #[unstable(feature = "std_misc",
+    #[unstable(feature = "drain",
                reason = "matches collection reform specification, waiting for dust to settle")]
     pub fn drain(&mut self) -> Drain<T> {
         fn first<A, B>((a, _): (A, B)) -> A { a }
