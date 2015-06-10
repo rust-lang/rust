@@ -56,6 +56,7 @@ the direction the language is evolving in.
 * [1044-io-fs-2.1.md](text/1044-io-fs-2.1.md)
 * [1066-safe-mem-forget.md](text/1066-safe-mem-forget.md)
 * [1096-remove-static-assert.md](text/1096-remove-static-assert.md)
+* [1122-language-semver.md](text/1122-language-semver.md)
 * [1131-likely-intrinsic.md](text/1131-likely-intrinsic.md)
 
 ## Table of Contents
