@@ -10,7 +10,9 @@
 
 #![unstable(feature = "std_misc")]
 
-use borrow::Cow;
+use borrow::{Cow, ToOwned};
+use boxed::{self, Box};
+use clone::Clone;
 use convert::{Into, From};
 use cmp::{PartialEq, Eq, PartialOrd, Ord, Ordering};
 use error::Error;
@@ -61,10 +63,10 @@ use vec::Vec;
 /// }
 /// # }
 /// ```
-#[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+#[derive(PartialEq, PartialOrd, Eq, Ord, Hash)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct CString {
-    inner: Vec<u8>,
+    inner: Box<[u8]>,
 }
 
 /// Representation of a borrowed C string.
@@ -197,7 +199,35 @@ impl CString {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub unsafe fn from_vec_unchecked(mut v: Vec<u8>) -> CString {
         v.push(0);
-        CString { inner: v }
+        CString { inner: v.into_boxed_slice() }
+    }
+
+    /// Retakes ownership of a CString that was transferred to C.
+    ///
+    /// The only appropriate argument is a pointer obtained by calling
+    /// `into_ptr`. The length of the string will be recalculated
+    /// using the pointer.
+    #[unstable(feature = "cstr_memory", reason = "recently added")]
+    pub unsafe fn from_ptr(ptr: *const libc::c_char) -> CString {
+        let len = libc::strlen(ptr) + 1; // Including the NUL byte
+        let slice = slice::from_raw_parts(ptr, len as usize);
+        CString { inner: mem::transmute(slice) }
+    }
+
+    /// Transfers ownership of the string to a C caller.
+    ///
+    /// The pointer must be returned to Rust and reconstituted using
+    /// `from_ptr` to be properly deallocated. Specifically, one
+    /// should *not* use the standard C `free` function to deallocate
+    /// this string.
+    ///
+    /// Failure to call `from_ptr` will lead to a memory leak.
+    #[unstable(feature = "cstr_memory", reason = "recently added")]
+    pub fn into_ptr(self) -> *const libc::c_char {
+        // It is important that the bytes be sized to fit - we need
+        // the capacity to be determinable from the string length, and
+        // shrinking to fit is the only way to be sure.
+        boxed::into_raw(self.inner) as *const libc::c_char
     }
 
     /// Returns the contents of this `CString` as a slice of bytes.
@@ -214,6 +244,13 @@ impl CString {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn as_bytes_with_nul(&self) -> &[u8] {
         &self.inner
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Clone for CString {
+    fn clone(&self) -> Self {
+        CString { inner: self.inner.to_owned().into_boxed_slice() }
     }
 }
 
