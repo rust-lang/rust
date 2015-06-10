@@ -46,7 +46,7 @@ use marker::Sized;
 
 extern "rust-intrinsic" {
 
-    // NB: These intrinsics take unsafe pointers because they mutate aliased
+    // NB: These intrinsics take raw pointers because they mutate aliased
     // memory, which is not valid for either `&` or `&mut`.
 
     pub fn atomic_cxchg<T>(dst: *mut T, old: T, src: T) -> T;

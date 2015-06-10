@@ -3646,7 +3646,7 @@ impl TypeContents {
             *self & TC::ReachesAll)
     }
 
-    /// Includes only those bits that still apply when indirected through an unsafe pointer (`*`)
+    /// Includes only those bits that still apply when indirected through a raw pointer (`*`)
     pub fn unsafe_pointer(&self) -> TypeContents {
         *self & TC::ReachesAll
     }
