@@ -139,6 +139,8 @@ define FILTER_FLAGS
   endif
 endef
 
+# pnacl-clang doesn't accept `-Qunused-arguments` despite using clang under the
+# hood.
 $(foreach target,$(filter-out le32-unknown-nacl,$(CFG_TARGET)), \
   $(eval $(call FILTER_FLAGS,$(target))))
 
