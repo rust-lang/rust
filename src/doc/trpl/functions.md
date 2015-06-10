@@ -145,7 +145,7 @@ Note that assigning to an already-bound variable (e.g. `y = 5`) is still an
 expression, although its value is not particularly useful. Unlike other
 languages where an assignment evaluates to the assigned value (e.g. `5` in the
 previous example), in Rust the value of an assignment is an empty tuple `()`
-because the assigned value can have (just one owner)[ownership.html], and any
+because the assigned value can have [just one owner](ownership.html), and any
 other returned value would be too surprising:
 
 ```rust
