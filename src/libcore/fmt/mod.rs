@@ -892,6 +892,21 @@ impl<'a> Formatter<'a> {
     }
 }
 
+#[stable(since = "1.2.0", feature = "formatter_write")]
+impl<'a> Write for Formatter<'a> {
+    fn write_str(&mut self, s: &str) -> Result {
+        self.buf.write_str(s)
+    }
+
+    fn write_char(&mut self, c: char) -> Result {
+        self.buf.write_char(c)
+    }
+
+    fn write_fmt(&mut self, args: Arguments) -> Result {
+        write(self.buf, args)
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter) -> Result {
@@ -965,10 +980,7 @@ impl Debug for char {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Display for char {
     fn fmt(&self, f: &mut Formatter) -> Result {
-        let mut utf8 = [0; 4];
-        let amt = self.encode_utf8(&mut utf8).unwrap_or(0);
-        let s: &str = unsafe { mem::transmute(&utf8[..amt]) };
-        Display::fmt(s, f)
+        f.write_char(*self)
     }
 }
 
