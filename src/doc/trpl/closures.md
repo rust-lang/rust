@@ -324,37 +324,34 @@ first, it may seem strange, but we’ll figure it out. Here’s how you’d prob
 try to return a closure from a function:
 
 ```rust,ignore
-fn factory() -> (Fn(i32) -> Vec<i32>) {
-    let vec = vec![1, 2, 3];
+fn factory() -> (Fn(i32) -> i32) {
+    let num = 5;
 
-    |n| vec.push(n)
+    |x| x + num
 }
 
 let f = factory();
 
-let answer = f(4);
-assert_eq!(vec![1, 2, 3, 4], answer);
+let answer = f(1);
+assert_eq!(6, answer);
 ```
 
 This gives us these long, related errors:
 
 ```text
 error: the trait `core::marker::Sized` is not implemented for the type
-`core::ops::Fn(i32) -> collections::vec::Vec<i32>` [E0277]
-f = factory();
-^
-note: `core::ops::Fn(i32) -> collections::vec::Vec<i32>` does not have a
-constant size known at compile-time
-f = factory();
-^
-error: the trait `core::marker::Sized` is not implemented for the type
-`core::ops::Fn(i32) -> collections::vec::Vec<i32>` [E0277]
-factory() -> (Fn(i32) -> Vec<i32>) {
-             ^~~~~~~~~~~~~~~~~~~~~
-note: `core::ops::Fn(i32) -> collections::vec::Vec<i32>` does not have a constant size known at compile-time
-factory() -> (Fn(i32) -> Vec<i32>) {
-             ^~~~~~~~~~~~~~~~~~~~~
-
+`core::ops::Fn(i32) -> i32` [E0277]
+fn factory() -> (Fn(i32) -> i32) {
+                ^~~~~~~~~~~~~~~~
+note: `core::ops::Fn(i32) -> i32` does not have a constant size known at compile-time
+fn factory() -> (Fn(i32) -> i32) {
+                ^~~~~~~~~~~~~~~~
+error: the trait `core::marker::Sized` is not implemented for the type `core::ops::Fn(i32) -> i32` [E0277]
+let f = factory();
+    ^
+note: `core::ops::Fn(i32) -> i32` does not have a constant size known at compile-time
+let f = factory();
+    ^
 ```
 
 In order to return something from a function, Rust needs to know what
@@ -364,16 +361,16 @@ way to give something a size is to take a reference to it, as references
 have a known size. So we’d write this:
 
 ```rust,ignore
-fn factory() -> &(Fn(i32) -> Vec<i32>) {
-    let vec = vec![1, 2, 3];
+fn factory() -> &(Fn(i32) -> i32) {
+    let num = 5;
 
-    |n| vec.push(n)
+    |x| x + num
 }
 
 let f = factory();
 
-let answer = f(4);
-assert_eq!(vec![1, 2, 3, 4], answer);
+let answer = f(1);
+assert_eq!(6, answer);
 ```
 
 But we get another error:
@@ -448,7 +445,8 @@ assert_eq!(6, answer);
 We use a trait object, by `Box`ing up the `Fn`. There’s just one last problem:
 
 ```text
-error: `num` does not live long enough
+error: closure may outlive the current function, but it borrows `num`,
+which is owned by the current function [E0373]
 Box::new(|x| x + num)
          ^~~~~~~~~~~
 ```
