@@ -13,26 +13,26 @@
 use std::string::String;
 
 fn test_stack_assign() {
-    let s: String = "a".to_string();
+    let s: String = "a".to_owned();
     println!("{}", s.clone());
-    let t: String = "a".to_string();
+    let t: String = "a".to_owned();
     assert!(s == t);
-    let u: String = "b".to_string();
+    let u: String = "b".to_owned();
     assert!((s != u));
 }
 
-fn test_heap_lit() { "a big string".to_string(); }
+fn test_heap_lit() { "a big string".to_owned(); }
 
 fn test_heap_assign() {
-    let s: String = "a big ol' string".to_string();
-    let t: String = "a big ol' string".to_string();
+    let s: String = "a big ol' string".to_owned();
+    let t: String = "a big ol' string".to_owned();
     assert!(s == t);
-    let u: String = "a bad ol' string".to_string();
+    let u: String = "a bad ol' string".to_owned();
     assert!((s != u));
 }
 
 fn test_heap_log() {
-    let s = "a big ol' string".to_string();
+    let s = "a big ol' string".to_owned();
     println!("{}", s);
 }
 

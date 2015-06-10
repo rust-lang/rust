@@ -11,7 +11,7 @@
 use std::thread;
 
 fn main() {
-    let x = "Hello world!".to_string();
+    let x = "Hello world!".to_owned();
     thread::spawn(move|| {
         println!("{}", x);
     });

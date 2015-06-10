@@ -1521,7 +1521,7 @@ impl<T> IntoIterator for Vec<T> {
     /// # Examples
     ///
     /// ```
-    /// let v = vec!["a".to_string(), "b".to_string()];
+    /// let v = vec!["a".to_owned(), "b".to_owned()];
     /// for s in v.into_iter() {
     ///     // s has type String, not &String
     ///     println!("{}", s);

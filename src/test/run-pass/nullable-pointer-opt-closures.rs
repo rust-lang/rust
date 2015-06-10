@@ -28,7 +28,7 @@ pub fn main() {
     assert_eq!(mem::size_of_val(&b), mem::size_of::<Box<i32>>());
 
     // By Value Capture - Transitive case
-    let a = "Hello".to_string(); // String -> Vec -> Unique -> NonZero
+    let a = "Hello".to_owned(); // String -> Vec -> Unique -> NonZero
     let b = Some(move || println!("{}", a));
     // We captured `a` by value and since down the chain it contains
     // a `NonZero` field, we can use it as the discriminant.

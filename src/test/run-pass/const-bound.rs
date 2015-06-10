@@ -19,7 +19,7 @@ struct F { field: isize }
 
 pub fn main() {
     /*foo(1);
-    foo("hi".to_string());
+    foo("hi".to_owned());
     foo(vec![1, 2, 3]);
     foo(F{field: 42});
     foo((1, 2));

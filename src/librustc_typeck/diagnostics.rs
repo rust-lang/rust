@@ -127,7 +127,7 @@ struct Dog {
     age: u32
 }
 
-let d = Dog { name: "Rusty".to_string(), age: 8 };
+let d = Dog { name: "Rusty".to_owned(), age: 8 };
 
 // This is incorrect.
 match d {

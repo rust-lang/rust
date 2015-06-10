@@ -287,7 +287,7 @@ impl TokenType {
     fn to_string(&self) -> String {
         match *self {
             TokenType::Token(ref t) => format!("`{}`", Parser::token_to_string(t)),
-            TokenType::Operator => "an operator".to_string(),
+            TokenType::Operator => "an operator".to_owned(),
             TokenType::Keyword(kw) => format!("`{}`", token::get_name(kw.to_name())),
         }
     }
@@ -417,7 +417,7 @@ impl<'a> Parser<'a> {
             let mut i = tokens.iter();
             // This might be a sign we need a connect method on Iterator.
             let b = i.next()
-                     .map_or("".to_string(), |t| t.to_string());
+                     .map_or("".to_owned(), |t| t.to_string());
             i.enumerate().fold(b, |mut b, (i, ref a)| {
                 if tokens.len() > 2 && i == tokens.len() - 2 {
                     b.push_str(", or ");
@@ -2617,7 +2617,7 @@ impl<'a> Parser<'a> {
                         let box_span = mk_sp(lo, box_hi);
                         self.span_suggestion(box_span,
                                              "try using `box()` instead:",
-                                             "box()".to_string());
+                                             "box()".to_owned());
                         self.abort_if_errors();
                     }
                     let subexpression = try!(self.parse_prefix_expr());

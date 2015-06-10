@@ -13,7 +13,7 @@ use std::default::Default;
 
 pub fn opts() -> TargetOptions {
     TargetOptions {
-        linker: "cc".to_string(),
+        linker: "cc".to_owned(),
         dynamic_linking: true,
         executables: true,
         morestack: true,

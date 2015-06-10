@@ -494,7 +494,7 @@ impl<T, E> Result<T, E> {
     /// assert_eq!(x.map_err(stringify), Ok(2));
     ///
     /// let x: Result<u32, u32> = Err(13);
-    /// assert_eq!(x.map_err(stringify), Err("error code: 13".to_string()));
+    /// assert_eq!(x.map_err(stringify), Err("error code: 13".to_owned()));
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]

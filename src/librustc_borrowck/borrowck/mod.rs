@@ -846,7 +846,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
             }
             err_out_of_scope(..) => {
                 let msg = match opt_loan_path(&err.cmt) {
-                    None => "borrowed value".to_string(),
+                    None => "borrowed value".to_owned(),
                     Some(lp) => {
                         format!("`{}`", self.loan_path_to_string(&*lp))
                     }
@@ -1159,7 +1159,7 @@ impl<'tcx> Repr<'tcx> for InteriorKind {
             InteriorField(mc::NamedField(fld)) =>
                 format!("{}", token::get_name(fld)),
             InteriorField(mc::PositionalField(i)) => format!("#{}", i),
-            InteriorElement(..) => "[]".to_string(),
+            InteriorElement(..) => "[]".to_owned(),
         }
     }
 }

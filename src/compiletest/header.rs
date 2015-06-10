@@ -153,7 +153,7 @@ pub fn load_props(testfile: &Path) -> TestProps {
         check_stdout: check_stdout,
         no_prefer_dynamic: no_prefer_dynamic,
         pretty_expanded: pretty_expanded,
-        pretty_mode: pretty_mode.unwrap_or("normal".to_string()),
+        pretty_mode: pretty_mode.unwrap_or("normal".to_owned()),
         pretty_compare_only: pretty_compare_only,
         forbid_output: forbid_output,
     }
@@ -320,7 +320,7 @@ fn parse_exec_env(line: &str) -> Option<(String, String)> {
                                       .collect();
 
         match strs.len() {
-          1 => (strs.pop().unwrap(), "".to_string()),
+          1 => (strs.pop().unwrap(), "".to_owned()),
           2 => {
               let end = strs.pop().unwrap();
               (strs.pop().unwrap(), end)
@@ -345,7 +345,7 @@ fn parse_pp_exact(line: &str, testfile: &Path) -> Option<PathBuf> {
 
 fn parse_name_directive(line: &str, directive: &str) -> bool {
     // This 'no-' rule is a quick hack to allow pretty-expanded and no-pretty-expanded to coexist
-    line.contains(directive) && !line.contains(&("no-".to_string() + directive))
+    line.contains(directive) && !line.contains(&("no-".to_owned() + directive))
 }
 
 pub fn parse_name_value_directive(line: &str, directive: &str)

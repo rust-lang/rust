@@ -18,16 +18,16 @@ struct Foo {
 
 pub fn main() {
     let x = [
-        Foo { string: "foo".to_string() },
-        Foo { string: "bar".to_string() },
-        Foo { string: "baz".to_string() }
+        Foo { string: "foo".to_owned() },
+        Foo { string: "bar".to_owned() },
+        Foo { string: "baz".to_owned() }
     ];
     match x {
         [ref first, tail..] => {
-            assert!(first.string == "foo".to_string());
+            assert!(first.string == "foo".to_owned());
             assert_eq!(tail.len(), 2);
-            assert!(tail[0].string == "bar".to_string());
-            assert!(tail[1].string == "baz".to_string());
+            assert!(tail[0].string == "bar".to_owned());
+            assert!(tail[1].string == "baz".to_owned());
 
             match tail {
                 [Foo { .. }, _, Foo { .. }, _tail..] => {

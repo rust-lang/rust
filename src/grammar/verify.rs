@@ -40,7 +40,7 @@ fn parse_token_list(file: &str) -> HashMap<String, token::Token> {
 
     let mut res = HashMap::new();
 
-    res.insert("-1".to_string(), token::Eof);
+    res.insert("-1".to_owned(), token::Eof);
 
     for line in file.split('\n') {
         let eq = match line.trim().rfind('=') {

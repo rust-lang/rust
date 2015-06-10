@@ -13,9 +13,9 @@ use std::env;
 fn main() {
     let args = env::args();
     let args = if env::var_os("RUST_BENCH").is_some() {
-        vec!("".to_string(), "10000000".to_string())
+        vec!("".to_owned(), "10000000".to_owned())
     } else if args.len() <= 1 {
-        vec!("".to_string(), "100000".to_string())
+        vec!("".to_owned(), "100000".to_owned())
     } else {
         args.collect()
     };

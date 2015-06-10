@@ -49,7 +49,7 @@ impl<'a> Iterator for BookItems<'a> {
             } else {
                 let cur = self.cur_items.get(self.cur_idx).unwrap();
 
-                let mut section = "".to_string();
+                let mut section = "".to_owned();
                 for &(_, idx) in &self.stack {
                     section.push_str(&(idx + 1).to_string()[..]);
                     section.push('.');
@@ -100,7 +100,7 @@ pub fn parse_summary(input: &mut Read, src: &Path) -> Result<Book, Vec<String>> 
 
     // always include the introduction
     top_items.push(BookItem {
-        title: "Introduction".to_string(),
+        title: "Introduction".to_owned(),
         path: PathBuf::from("README.md"),
         path_to_root: PathBuf::from("."),
         children: vec!(),

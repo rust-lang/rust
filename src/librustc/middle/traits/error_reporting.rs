@@ -95,7 +95,7 @@ fn report_on_unimplemented<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                                                 trait_ref.substs.types.get(param, i)
                                                          .user_string(infcx.tcx))
                                               }).collect::<HashMap<String, String>>();
-                generic_map.insert("Self".to_string(),
+                generic_map.insert("Self".to_owned(),
                                    trait_ref.self_ty().user_string(infcx.tcx));
                 let parser = Parser::new(&istring);
                 let mut errored = false;

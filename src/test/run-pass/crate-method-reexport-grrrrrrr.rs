@@ -27,5 +27,5 @@ pub fn main() {
     let x: Box<_> = box () ();
     x.cx();
     let y = ();
-    y.add("hi".to_string());
+    y.add("hi".to_owned());
 }

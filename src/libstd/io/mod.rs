@@ -963,13 +963,13 @@ mod tests {
     fn lines() {
         let buf = Cursor::new(&b"12"[..]);
         let mut s = buf.lines();
-        assert_eq!(s.next().unwrap().unwrap(), "12".to_string());
+        assert_eq!(s.next().unwrap().unwrap(), "12".to_owned());
         assert!(s.next().is_none());
 
         let buf = Cursor::new(&b"12\n\n"[..]);
         let mut s = buf.lines();
-        assert_eq!(s.next().unwrap().unwrap(), "12".to_string());
-        assert_eq!(s.next().unwrap().unwrap(), "".to_string());
+        assert_eq!(s.next().unwrap().unwrap(), "12".to_owned());
+        assert_eq!(s.next().unwrap().unwrap(), "".to_owned());
         assert!(s.next().is_none());
     }
 

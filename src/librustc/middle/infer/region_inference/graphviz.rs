@@ -85,7 +85,7 @@ pub fn maybe_print_constraints_for<'a, 'tcx>(region_vars: &RegionVarBindings<'a,
             }
 
             Ok(other_path) => other_path,
-            Err(_) => "/tmp/constraints.node%.dot".to_string(),
+            Err(_) => "/tmp/constraints.node%.dot".to_owned(),
         };
 
         if output_template.is_empty() {

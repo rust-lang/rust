@@ -138,14 +138,14 @@ fn render(book: &Book, tgt: &Path) -> CliResult<()> {
         try!(fs::create_dir_all(&out_path));
 
         let rustdoc_args: &[String] = &[
-            "".to_string(),
+            "".to_owned(),
             preprocessed_path.display().to_string(),
             format!("-o{}", out_path.display()),
             format!("--html-before-content={}", prelude.display()),
             format!("--html-after-content={}", postlude.display()),
             format!("--markdown-playground-url=http://play.rust-lang.org"),
             format!("--markdown-css={}", item.path_to_root.join("rust-book.css").display()),
-            "--markdown-no-toc".to_string(),
+            "--markdown-no-toc".to_owned(),
         ];
         let output_result = rustdoc::main_args(rustdoc_args);
         if output_result != 0 {

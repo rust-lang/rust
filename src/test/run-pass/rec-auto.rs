@@ -17,7 +17,7 @@
 struct X { foo: String, bar: String }
 
 pub fn main() {
-    let x = X {foo: "hello".to_string(), bar: "world".to_string()};
+    let x = X {foo: "hello".to_owned(), bar: "world".to_owned()};
     println!("{}", x.foo.clone());
     println!("{}", x.bar.clone());
 }

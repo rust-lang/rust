@@ -24,9 +24,9 @@ fn g() { }
 fn main() {
     let args = env::args();
     let args = if env::var_os("RUST_BENCH").is_some() {
-        vec!("".to_string(), "400".to_string())
+        vec!("".to_owned(), "400".to_owned())
     } else if args.len() <= 1 {
-        vec!("".to_string(), "10".to_string())
+        vec!("".to_owned(), "10".to_owned())
     } else {
         args.collect()
     };

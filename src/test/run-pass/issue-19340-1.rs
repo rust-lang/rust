@@ -17,7 +17,7 @@ extern crate issue_19340_1 as lib;
 use lib::Homura;
 
 fn main() {
-    let homura = Homura::Madoka { name: "Kaname".to_string() };
+    let homura = Homura::Madoka { name: "Kaname".to_owned() };
 
     match homura {
         Homura::Madoka { name } => (),

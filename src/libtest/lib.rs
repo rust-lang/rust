@@ -566,9 +566,9 @@ impl<T: Write> ConsoleTestState<T> {
             None => Ok(()),
             Some(ref mut o) => {
                 let s = format!("{} {}\n", match *result {
-                        TrOk => "ok".to_string(),
-                        TrFailed => "failed".to_string(),
-                        TrIgnored => "ignored".to_string(),
+                        TrOk => "ok".to_owned(),
+                        TrFailed => "failed".to_owned(),
+                        TrIgnored => "ignored".to_owned(),
                         TrMetrics(ref mm) => mm.fmt_metrics(),
                         TrBench(ref bs) => fmt_bench_samples(bs)
                     }, test.name);
@@ -1334,9 +1334,9 @@ mod tests {
 
     #[test]
     fn parse_ignored_flag() {
-        let args = vec!("progname".to_string(),
-                        "filter".to_string(),
-                        "--ignored".to_string());
+        let args = vec!("progname".to_owned(),
+                        "filter".to_owned(),
+                        "--ignored".to_owned());
         let opts = match parse_opts(&args) {
             Some(Ok(o)) => o,
             _ => panic!("Malformed arg in parse_ignored_flag")
@@ -1384,15 +1384,15 @@ mod tests {
         opts.run_tests = true;
 
         let names =
-            vec!("sha1::test".to_string(),
-                 "isize::test_to_str".to_string(),
-                 "isize::test_pow".to_string(),
-                 "test::do_not_run_ignored_tests".to_string(),
-                 "test::ignored_tests_result_in_ignored".to_string(),
-                 "test::first_free_arg_should_be_a_filter".to_string(),
-                 "test::parse_ignored_flag".to_string(),
-                 "test::filter_for_ignored_option".to_string(),
-                 "test::sort_tests".to_string());
+            vec!("sha1::test".to_owned(),
+                 "isize::test_to_str".to_owned(),
+                 "isize::test_pow".to_owned(),
+                 "test::do_not_run_ignored_tests".to_owned(),
+                 "test::ignored_tests_result_in_ignored".to_owned(),
+                 "test::first_free_arg_should_be_a_filter".to_owned(),
+                 "test::parse_ignored_flag".to_owned(),
+                 "test::filter_for_ignored_option".to_owned(),
+                 "test::sort_tests".to_owned());
         let tests =
         {
             fn testfn() { }
@@ -1413,15 +1413,15 @@ mod tests {
         let filtered = filter_tests(&opts, tests);
 
         let expected =
-            vec!("isize::test_pow".to_string(),
-                 "isize::test_to_str".to_string(),
-                 "sha1::test".to_string(),
-                 "test::do_not_run_ignored_tests".to_string(),
-                 "test::filter_for_ignored_option".to_string(),
-                 "test::first_free_arg_should_be_a_filter".to_string(),
-                 "test::ignored_tests_result_in_ignored".to_string(),
-                 "test::parse_ignored_flag".to_string(),
-                 "test::sort_tests".to_string());
+            vec!("isize::test_pow".to_owned(),
+                 "isize::test_to_str".to_owned(),
+                 "sha1::test".to_owned(),
+                 "test::do_not_run_ignored_tests".to_owned(),
+                 "test::filter_for_ignored_option".to_owned(),
+                 "test::first_free_arg_should_be_a_filter".to_owned(),
+                 "test::ignored_tests_result_in_ignored".to_owned(),
+                 "test::parse_ignored_flag".to_owned(),
+                 "test::sort_tests".to_owned());
 
         for (a, b) in expected.iter().zip(filtered.iter()) {
             assert!(*a == b.desc.name.to_string());

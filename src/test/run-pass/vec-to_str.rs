@@ -10,7 +10,7 @@
 
 
 pub fn main() {
-    assert_eq!(format!("{:?}", vec!(0, 1)), "[0, 1]".to_string());
+    assert_eq!(format!("{:?}", vec!(0, 1)), "[0, 1]".to_owned());
 
     let foo = vec!(3, 4);
     let bar: &[isize] = &[4, 5];

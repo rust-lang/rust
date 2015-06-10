@@ -1174,7 +1174,7 @@ pub fn new_fn_ctxt<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
 
     debug!("new_fn_ctxt(path={}, id={}, param_substs={})",
            if id == !0 {
-               "".to_string()
+               "".to_owned()
            } else {
                ccx.tcx().map.path_to_string(id).to_string()
            },
@@ -2735,13 +2735,13 @@ pub fn trans_crate<'tcx>(analysis: ty::CrateAnalysis<'tcx>)
     // symbol. This symbol is required for use by the libmorestack library that
     // we link in, so we must ensure that this symbol is not internalized (if
     // defined in the crate).
-    reachable.push("main".to_string());
-    reachable.push("rust_stack_exhausted".to_string());
+    reachable.push("main".to_owned());
+    reachable.push("rust_stack_exhausted".to_owned());
 
     // referenced from .eh_frame section on some platforms
-    reachable.push("rust_eh_personality".to_string());
+    reachable.push("rust_eh_personality".to_owned());
     // referenced from rt/rust_try.ll
-    reachable.push("rust_eh_personality_catch".to_string());
+    reachable.push("rust_eh_personality_catch".to_owned());
 
     if codegen_units > 1 {
         internalize_symbols(&shared_ccx, &reachable.iter().cloned().collect());

@@ -92,9 +92,9 @@ fn stress(num_tasks: isize) {
 fn main() {
     let args = env::args();
     let args = if env::var_os("RUST_BENCH").is_some() {
-        vec!("".to_string(), "20".to_string())
+        vec!("".to_owned(), "20".to_owned())
     } else if args.len() <= 1 {
-        vec!("".to_string(), "8".to_string())
+        vec!("".to_owned(), "8".to_owned())
     } else {
         args.map(|x| x.to_string()).collect()
     };

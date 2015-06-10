@@ -584,21 +584,21 @@ mod tests {
         // Examples from wikipedia
         let wikipedia_tests = vec!(
             Test {
-                input: "".to_string(),
+                input: "".to_owned(),
                 output_str: "e3b0c44298fc1c149afb\
-            f4c8996fb92427ae41e4649b934ca495991b7852b855".to_string()
+            f4c8996fb92427ae41e4649b934ca495991b7852b855".to_owned()
             },
             Test {
                 input: "The quick brown fox jumps over the lazy \
-                        dog".to_string(),
+                        dog".to_owned(),
                 output_str: "d7a8fbb307d7809469ca\
-            9abcb0082e4f8d5651e46d3cdb762d02d0bf37c9e592".to_string()
+            9abcb0082e4f8d5651e46d3cdb762d02d0bf37c9e592".to_owned()
             },
             Test {
                 input: "The quick brown fox jumps over the lazy \
-                        dog.".to_string(),
+                        dog.".to_owned(),
                 output_str: "ef537f25c895bfa78252\
-            6529a9b63d97aa631564d5d789c2b765448c8635fb6c".to_string()
+            6529a9b63d97aa631564d5d789c2b765448c8635fb6c".to_owned()
             });
 
         let tests = wikipedia_tests;

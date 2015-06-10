@@ -208,7 +208,7 @@ pub fn opt_str<'a>(maybestr: &'a Option<String>) -> &'a str {
 
 pub fn opt_str2(maybestr: Option<String>) -> String {
     match maybestr {
-        None => "(none)".to_string(),
+        None => "(none)".to_owned(),
         Some(s) => s,
     }
 }
@@ -292,10 +292,10 @@ pub fn is_test(config: &Config, testfile: &Path) -> bool {
     // Pretty-printer does not work with .rc files yet
     let valid_extensions =
         match config.mode {
-          Pretty => vec!(".rs".to_string()),
-          _ => vec!(".rc".to_string(), ".rs".to_string())
+          Pretty => vec!(".rs".to_owned()),
+          _ => vec!(".rc".to_owned(), ".rs".to_owned())
         };
-    let invalid_prefixes = vec!(".".to_string(), "#".to_string(), "~".to_string());
+    let invalid_prefixes = vec!(".".to_owned(), "#".to_owned(), "~".to_owned());
     let name = testfile.file_name().unwrap().to_str().unwrap();
 
     let mut valid = false;

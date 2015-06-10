@@ -31,5 +31,5 @@ impl Foo for usize {
 
 pub fn main() {
     let x: Box<_> = box 3;
-    assert_eq!(x.foo(), "box 3".to_string());
+    assert_eq!(x.foo(), "box 3".to_owned());
 }

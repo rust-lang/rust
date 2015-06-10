@@ -620,6 +620,6 @@ pub fn check_unused_or_stable_features(sess: &Session,
         sess.add_lint(lint::builtin::UNUSED_FEATURES,
                       ast::CRATE_NODE_ID,
                       span,
-                      "unused or unknown feature".to_string());
+                      "unused or unknown feature".to_owned());
     }
 }

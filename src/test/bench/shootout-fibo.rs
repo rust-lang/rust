@@ -21,9 +21,9 @@ fn fib(n: i64) -> i64 {
 fn main() {
     let args = env::args();
     let args = if env::var_os("RUST_BENCH").is_some() {
-        vec!("".to_string(), "40".to_string())
+        vec!("".to_owned(), "40".to_owned())
     } else if args.len() <= 1 {
-        vec!("".to_string(), "30".to_string())
+        vec!("".to_owned(), "30".to_owned())
     } else {
         args.collect()
     };

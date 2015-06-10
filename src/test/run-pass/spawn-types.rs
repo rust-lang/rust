@@ -21,11 +21,11 @@ use std::sync::mpsc::{channel, Sender};
 type ctx = Sender<isize>;
 
 fn iotask(_tx: &ctx, ip: String) {
-    assert_eq!(ip, "localhost".to_string());
+    assert_eq!(ip, "localhost".to_owned());
 }
 
 pub fn main() {
     let (tx, _rx) = channel::<isize>();
-    let t = thread::spawn(move|| iotask(&tx, "localhost".to_string()) );
+    let t = thread::spawn(move|| iotask(&tx, "localhost".to_owned()) );
     t.join().ok().unwrap();
 }

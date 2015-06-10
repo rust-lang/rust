@@ -145,7 +145,7 @@ pub fn register_static(ccx: &CrateContext,
                 // linkage and there are no definitions), then
                 // `extern_with_linkage_foo` will instead be initialized to
                 // zero.
-                let mut real_name = "_rust_extern_with_linkage_".to_string();
+                let mut real_name = "_rust_extern_with_linkage_".to_owned();
                 real_name.push_str(&ident);
                 let g2 = declare::define_global(ccx, &real_name[..], llty).unwrap_or_else(||{
                     ccx.sess().span_fatal(foreign_item.span,

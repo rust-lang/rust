@@ -12,19 +12,19 @@ use target::Target;
 
 pub fn target() -> Target {
     let mut base = super::linux_base::opts();
-    base.cpu = "x86-64".to_string();
-    base.pre_link_args.push("-m64".to_string());
+    base.cpu = "x86-64".to_owned();
+    base.pre_link_args.push("-m64".to_owned());
 
     // Make sure that the linker/gcc really don't pull in anything, including
     // default objects, libs, etc.
-    base.pre_link_args.push("-nostdlib".to_string());
-    base.pre_link_args.push("-static".to_string());
+    base.pre_link_args.push("-nostdlib".to_owned());
+    base.pre_link_args.push("-static".to_owned());
 
     // At least when this was tested, the linker would not add the
     // `GNU_EH_FRAME` program header to executables generated, which is required
     // when unwinding to locate the unwinding information. I'm not sure why this
     // argument is *not* necessary for normal builds, but it can't hurt!
-    base.pre_link_args.push("-Wl,--eh-frame-hdr".to_string());
+    base.pre_link_args.push("-Wl,--eh-frame-hdr".to_owned());
 
     // There's a whole bunch of circular dependencies when dealing with MUSL
     // unfortunately. To put this in perspective libc is statically linked to
@@ -48,8 +48,8 @@ pub fn target() -> Target {
     // link everything as a group, not stripping anything out until everything
     // is processed. The linker will still perform a pass to strip out object
     // files but it won't do so until all objects/archives have been processed.
-    base.pre_link_args.push("-Wl,-(".to_string());
-    base.post_link_args.push("-Wl,-)".to_string());
+    base.pre_link_args.push("-Wl,-(".to_owned());
+    base.post_link_args.push("-Wl,-)".to_owned());
 
     // When generating a statically linked executable there's generally some
     // small setup needed which is listed in these files. These are provided by
@@ -58,9 +58,9 @@ pub fn target() -> Target {
     //
     // Each target directory for musl has these object files included in it so
     // they'll be included from there.
-    base.pre_link_objects.push("crt1.o".to_string());
-    base.pre_link_objects.push("crti.o".to_string());
-    base.post_link_objects.push("crtn.o".to_string());
+    base.pre_link_objects.push("crt1.o".to_owned());
+    base.pre_link_objects.push("crti.o".to_owned());
+    base.post_link_objects.push("crtn.o".to_owned());
 
     // MUSL support doesn't currently include dynamic linking, so there's no
     // need for dylibs or rpath business. Additionally `-pie` is incompatible
@@ -72,13 +72,13 @@ pub fn target() -> Target {
     Target {
         data_layout: "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-\
                       f32:32:32-f64:64:64-v64:64:64-v128:128:128-a:0:64-\
-                      s0:64:64-f80:128:128-n8:16:32:64-S128".to_string(),
-        llvm_target: "x86_64-unknown-linux-musl".to_string(),
-        target_endian: "little".to_string(),
-        target_pointer_width: "64".to_string(),
-        arch: "x86_64".to_string(),
-        target_os: "linux".to_string(),
-        target_env: "musl".to_string(),
+                      s0:64:64-f80:128:128-n8:16:32:64-S128".to_owned(),
+        llvm_target: "x86_64-unknown-linux-musl".to_owned(),
+        target_endian: "little".to_owned(),
+        target_pointer_width: "64".to_owned(),
+        arch: "x86_64".to_owned(),
+        target_os: "linux".to_owned(),
+        target_env: "musl".to_owned(),
         options: base,
     }
 }

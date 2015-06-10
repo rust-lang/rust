@@ -227,7 +227,7 @@ impl Handler {
         let s;
         match self.err_count.get() {
           0 => return,
-          1 => s = "aborting due to previous error".to_string(),
+          1 => s = "aborting due to previous error".to_owned(),
           _   => {
             s = format!("aborting due to {} previous errors",
                         self.err_count.get());
@@ -471,7 +471,7 @@ fn emit(dst: &mut EmitterWriter, cm: &codemap::CodeMap, rsp: RenderSpan,
     // We cannot check equality directly with COMMAND_LINE_SP
     // since PartialEq is manually implemented to ignore the ExpnId
     let ss = if sp.expn_id == COMMAND_LINE_EXPN {
-        "<command line option>".to_string()
+        "<command line option>".to_owned()
     } else if let EndSpan(_) = rsp {
         let span_end = Span { lo: sp.hi, hi: sp.hi, expn_id: sp.expn_id};
         cm.span_to_string(span_end)

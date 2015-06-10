@@ -1071,7 +1071,7 @@ impl<'a> StringReader<'a> {
                                    // character before position `start` is an
                                    // ascii single quote.
                                    start - BytePos(1), last_bpos,
-                                   "unterminated character constant".to_string());
+                                   "unterminated character constant".to_owned());
             }
             let id = if valid { self.name_from(start) } else { token::intern("0") };
             self.bump(); // advance curr past token
@@ -1262,7 +1262,7 @@ impl<'a> StringReader<'a> {
             let last_pos = self.last_pos;
             self.fatal_span_verbose(
                 start - BytePos(2), last_pos,
-                "unterminated byte constant".to_string());
+                "unterminated byte constant".to_owned());
         }
 
         let id = if valid { self.name_from(start) } else { token::intern("?") };
@@ -1419,7 +1419,7 @@ mod tests {
     // open a string reader for the given string
     fn setup<'a>(span_handler: &'a diagnostic::SpanHandler,
                  teststr: String) -> StringReader<'a> {
-        let fm = span_handler.cm.new_filemap("zebra.rs".to_string(), teststr);
+        let fm = span_handler.cm.new_filemap("zebra.rs".to_owned(), teststr);
         StringReader::new(span_handler, fm)
     }
 
@@ -1427,7 +1427,7 @@ mod tests {
         let span_handler = mk_sh();
         let mut string_reader = setup(&span_handler,
             "/* my source file */ \
-             fn main() { println!(\"zebra\"); }\n".to_string());
+             fn main() { println!(\"zebra\"); }\n".to_owned());
         let id = str_to_ident("fn");
         assert_eq!(string_reader.next_token().tok, token::Comment);
         assert_eq!(string_reader.next_token().tok, token::Whitespace);
@@ -1463,21 +1463,21 @@ mod tests {
     }
 
     #[test] fn doublecolonparsing () {
-        check_tokenization(setup(&mk_sh(), "a b".to_string()),
+        check_tokenization(setup(&mk_sh(), "a b".to_owned()),
                            vec![mk_ident("a", token::Plain),
                                 token::Whitespace,
                                 mk_ident("b", token::Plain)]);
     }
 
     #[test] fn dcparsing_2 () {
-        check_tokenization(setup(&mk_sh(), "a::b".to_string()),
+        check_tokenization(setup(&mk_sh(), "a::b".to_owned()),
                            vec![mk_ident("a",token::ModName),
                                 token::ModSep,
                                 mk_ident("b", token::Plain)]);
     }
 
     #[test] fn dcparsing_3 () {
-        check_tokenization(setup(&mk_sh(), "a ::b".to_string()),
+        check_tokenization(setup(&mk_sh(), "a ::b".to_owned()),
                            vec![mk_ident("a", token::Plain),
                                 token::Whitespace,
                                 token::ModSep,
@@ -1485,7 +1485,7 @@ mod tests {
     }
 
     #[test] fn dcparsing_4 () {
-        check_tokenization(setup(&mk_sh(), "a:: b".to_string()),
+        check_tokenization(setup(&mk_sh(), "a:: b".to_owned()),
                            vec![mk_ident("a",token::ModName),
                                 token::ModSep,
                                 token::Whitespace,
@@ -1493,28 +1493,28 @@ mod tests {
     }
 
     #[test] fn character_a() {
-        assert_eq!(setup(&mk_sh(), "'a'".to_string()).next_token().tok,
+        assert_eq!(setup(&mk_sh(), "'a'".to_owned()).next_token().tok,
                    token::Literal(token::Char(token::intern("a")), None));
     }
 
     #[test] fn character_space() {
-        assert_eq!(setup(&mk_sh(), "' '".to_string()).next_token().tok,
+        assert_eq!(setup(&mk_sh(), "' '".to_owned()).next_token().tok,
                    token::Literal(token::Char(token::intern(" ")), None));
     }
 
     #[test] fn character_escaped() {
-        assert_eq!(setup(&mk_sh(), "'\\n'".to_string()).next_token().tok,
+        assert_eq!(setup(&mk_sh(), "'\\n'".to_owned()).next_token().tok,
                    token::Literal(token::Char(token::intern("\\n")), None));
     }
 
     #[test] fn lifetime_name() {
-        assert_eq!(setup(&mk_sh(), "'abc".to_string()).next_token().tok,
+        assert_eq!(setup(&mk_sh(), "'abc".to_owned()).next_token().tok,
                    token::Lifetime(token::str_to_ident("'abc")));
     }
 
     #[test] fn raw_string() {
         assert_eq!(setup(&mk_sh(),
-                         "r###\"\"#a\\b\x00c\"\"###".to_string()).next_token()
+                         "r###\"\"#a\\b\x00c\"\"###".to_owned()).next_token()
                                                                  .tok,
                    token::Literal(token::StrRaw(token::intern("\"#a\\b\x00c\""), 3), None));
     }
@@ -1542,13 +1542,13 @@ mod tests {
         test!("1.0", Float, "1.0");
         test!("1.0e10", Float, "1.0e10");
 
-        assert_eq!(setup(&mk_sh(), "2us".to_string()).next_token().tok,
+        assert_eq!(setup(&mk_sh(), "2us".to_owned()).next_token().tok,
                    token::Literal(token::Integer(token::intern("2")),
                                   Some(token::intern("us"))));
-        assert_eq!(setup(&mk_sh(), "r###\"raw\"###suffix".to_string()).next_token().tok,
+        assert_eq!(setup(&mk_sh(), "r###\"raw\"###suffix".to_owned()).next_token().tok,
                    token::Literal(token::StrRaw(token::intern("raw"), 3),
                                   Some(token::intern("suffix"))));
-        assert_eq!(setup(&mk_sh(), "br###\"raw\"###suffix".to_string()).next_token().tok,
+        assert_eq!(setup(&mk_sh(), "br###\"raw\"###suffix".to_owned()).next_token().tok,
                    token::Literal(token::BinaryRaw(token::intern("raw"), 3),
                                   Some(token::intern("suffix"))));
     }
@@ -1561,7 +1561,7 @@ mod tests {
 
     #[test] fn nested_block_comments() {
         let sh = mk_sh();
-        let mut lexer = setup(&sh, "/* /* */ */'a'".to_string());
+        let mut lexer = setup(&sh, "/* /* */ */'a'".to_owned());
         match lexer.next_token().tok {
             token::Comment => { },
             _ => panic!("expected a comment!")
@@ -1571,7 +1571,7 @@ mod tests {
 
     #[test] fn crlf_comments() {
         let sh = mk_sh();
-        let mut lexer = setup(&sh, "// test\r\n/// test\r\n".to_string());
+        let mut lexer = setup(&sh, "// test\r\n/// test\r\n".to_owned());
         let comment = lexer.next_token();
         assert_eq!(comment.tok, token::Comment);
         assert_eq!(comment.sp, ::codemap::mk_sp(BytePos(0), BytePos(7)));

@@ -187,7 +187,7 @@ pub fn expand_include_bytes(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
             // Add this input file to the code map to make it available as
             // dependency information, but don't enter it's contents
             let filename = format!("{}", file.display());
-            cx.codemap().new_filemap(filename, "".to_string());
+            cx.codemap().new_filemap(filename, "".to_owned());
 
             base::MacEager::expr(cx.expr_lit(sp, ast::LitBinary(Rc::new(bytes))))
         }

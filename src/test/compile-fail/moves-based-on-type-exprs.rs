@@ -17,13 +17,13 @@ fn guard(_s: String) -> bool {panic!()}
 fn touch<A>(_a: &A) {}
 
 fn f10() {
-    let x = "hi".to_string();
+    let x = "hi".to_owned();
     let _y = Foo { f:x };
     touch(&x); //~ ERROR use of moved value: `x`
 }
 
 fn f20() {
-    let x = "hi".to_string();
+    let x = "hi".to_owned();
     let _y = (x, 3);
     touch(&x); //~ ERROR use of moved value: `x`
 }
@@ -35,8 +35,8 @@ fn f21() {
 }
 
 fn f30(cond: bool) {
-    let x = "hi".to_string();
-    let y = "ho".to_string();
+    let x = "hi".to_owned();
+    let y = "ho".to_owned();
     let _y = if cond {
         x
     } else {
@@ -47,8 +47,8 @@ fn f30(cond: bool) {
 }
 
 fn f40(cond: bool) {
-    let x = "hi".to_string();
-    let y = "ho".to_string();
+    let x = "hi".to_owned();
+    let y = "ho".to_owned();
     let _y = match cond {
         true => x,
         false => y
@@ -58,8 +58,8 @@ fn f40(cond: bool) {
 }
 
 fn f50(cond: bool) {
-    let x = "hi".to_string();
-    let y = "ho".to_string();
+    let x = "hi".to_owned();
+    let y = "ho".to_owned();
     let _y = match cond {
         _ if guard(x) => 10,
         true => 10,
@@ -70,31 +70,31 @@ fn f50(cond: bool) {
 }
 
 fn f70() {
-    let x = "hi".to_string();
+    let x = "hi".to_owned();
     let _y = [x];
     touch(&x); //~ ERROR use of moved value: `x`
 }
 
 fn f80() {
-    let x = "hi".to_string();
+    let x = "hi".to_owned();
     let _y = vec!(x);
     touch(&x); //~ ERROR use of moved value: `x`
 }
 
 fn f100() {
-    let x = vec!("hi".to_string());
+    let x = vec!("hi".to_owned());
     let _y = x.into_iter().next().unwrap();
     touch(&x); //~ ERROR use of moved value: `x`
 }
 
 fn f110() {
-    let x = vec!("hi".to_string());
+    let x = vec!("hi".to_owned());
     let _y = [x.into_iter().next().unwrap(); 1];
     touch(&x); //~ ERROR use of moved value: `x`
 }
 
 fn f120() {
-    let mut x = vec!("hi".to_string(), "ho".to_string());
+    let mut x = vec!("hi".to_owned(), "ho".to_owned());
     x.swap(0, 1);
     touch(&x[0]);
     touch(&x[1]);

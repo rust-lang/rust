@@ -32,13 +32,13 @@ fn check_strs(actual: &str, expected: &str) -> bool
 
 pub fn main()
 {
-    let t = Token::Text("foo".to_string());
-    let u = Token::Section(vec!["alpha".to_string()],
+    let t = Token::Text("foo".to_owned());
+    let u = Token::Section(vec!["alpha".to_owned()],
                     true,
                     vec![t],
-                    "foo".to_string(),
-                    "foo".to_string(), "foo".to_string(), "foo".to_string(),
-                    "foo".to_string());
+                    "foo".to_owned(),
+                    "foo".to_owned(), "foo".to_owned(), "foo".to_owned(),
+                    "foo".to_owned());
     let v = format!("{:?}", u);    // this is the line that causes the seg fault
     assert!(!v.is_empty());
 }

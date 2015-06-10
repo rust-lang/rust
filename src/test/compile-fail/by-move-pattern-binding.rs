@@ -20,7 +20,7 @@ struct S {
 fn f(x: String) {}
 
 fn main() {
-    let s = S { x: E::Bar("hello".to_string()) };
+    let s = S { x: E::Bar("hello".to_owned()) };
     match &s.x {
         &E::Foo => {}
         &E::Bar(identifier) => f(identifier.clone())  //~ ERROR cannot move

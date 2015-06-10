@@ -164,7 +164,7 @@ pub struct RadixFmt<T, R>(T, R);
 /// ```
 /// # #![feature(core)]
 /// use std::fmt::radix;
-/// assert_eq!(format!("{}", radix(55, 36)), "1j".to_string());
+/// assert_eq!(format!("{}", radix(55, 36)), "1j".to_owned());
 /// ```
 #[unstable(feature = "core",
            reason = "may be renamed or move to a different module")]

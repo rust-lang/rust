@@ -328,7 +328,7 @@ fn resolved_path(w: &mut fmt::Formatter, did: ast::DefId, path: &clean::Path,
                  print_all: bool) -> fmt::Result {
     let last = path.segments.last().unwrap();
     let rel_root = match &*path.segments[0].name {
-        "self" => Some("./".to_string()),
+        "self" => Some("./".to_owned()),
         _ => None,
     };
 
@@ -447,8 +447,8 @@ impl fmt::Display for clean::Type {
                 write!(f, "{}{}fn{}{}",
                        UnsafetySpace(decl.unsafety),
                        match &*decl.abi {
-                           "" => " extern ".to_string(),
-                           "\"Rust\"" => "".to_string(),
+                           "" => " extern ".to_owned(),
+                           "\"Rust\"" => "".to_owned(),
                            s => format!(" extern {} ", s)
                        },
                        decl.generics,
@@ -476,7 +476,7 @@ impl fmt::Display for clean::Type {
             clean::BorrowedRef{ lifetime: ref l, mutability, type_: ref ty} => {
                 let lt = match *l {
                     Some(ref l) => format!("{} ", *l),
-                    _ => "".to_string(),
+                    _ => "".to_owned(),
                 };
                 let m = MutableSpace(mutability);
                 match **ty {

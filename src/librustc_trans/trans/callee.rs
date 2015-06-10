@@ -491,7 +491,7 @@ pub fn trans_fn_ref_with_substs<'a, 'tcx>(
         let map_node = session::expect(
             ccx.sess(),
             tcx.map.find(def_id.node),
-            || "local item should be in ast map".to_string());
+            || "local item should be in ast map".to_owned());
 
         match map_node {
             ast_map::NodeVariant(v) => match v.node.kind {

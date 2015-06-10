@@ -16,10 +16,10 @@ struct S {
 // on field of struct or tuple which we reassign in the match body.
 
 fn main() {
-    let mut a = (0, Some("right".to_string()));
+    let mut a = (0, Some("right".to_owned()));
     let b = match a.1 {
         Some(v) => {
-            a.1 = Some("wrong".to_string());
+            a.1 = Some("wrong".to_owned());
             v
         }
         None => String::new()
@@ -28,10 +28,10 @@ fn main() {
     assert_eq!(b, "right");
 
 
-    let mut s = S{ o: Some("right".to_string()) };
+    let mut s = S{ o: Some("right".to_owned()) };
     let b = match s.o {
         Some(v) => {
-            s.o = Some("wrong".to_string());
+            s.o = Some("wrong".to_owned());
             v
         }
         None => String::new(),

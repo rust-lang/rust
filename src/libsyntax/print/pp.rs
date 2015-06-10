@@ -114,10 +114,10 @@ impl Token {
 pub fn tok_str(token: &Token) -> String {
     match *token {
         Token::String(ref s, len) => format!("STR({},{})", s, len),
-        Token::Break(_) => "BREAK".to_string(),
-        Token::Begin(_) => "BEGIN".to_string(),
-        Token::End => "END".to_string(),
-        Token::Eof => "EOF".to_string()
+        Token::Break(_) => "BREAK".to_owned(),
+        Token::Begin(_) => "BEGIN".to_owned(),
+        Token::End => "END".to_owned(),
+        Token::Eof => "EOF".to_owned()
     }
 }
 

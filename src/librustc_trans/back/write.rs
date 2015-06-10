@@ -647,7 +647,7 @@ pub fn run_passes(sess: &Session,
                                    trans.metadata_module,
                                    metadata_config.clone(),
                                    crate_output.clone(),
-                                   "metadata".to_string());
+                                   "metadata".to_owned());
         work_items.push(work);
     }
 

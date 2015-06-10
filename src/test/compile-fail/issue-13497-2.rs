@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn read_lines_borrowed<'a>() -> Vec<&'a str> {
-    let rawLines: Vec<String> = vec!["foo  ".to_string(), "  bar".to_string()];
+    let rawLines: Vec<String> = vec!["foo  ".to_owned(), "  bar".to_owned()];
     rawLines //~ ERROR `rawLines` does not live long enough
         .iter().map(|l| l.trim()).collect()
 }

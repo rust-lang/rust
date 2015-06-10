@@ -549,7 +549,7 @@ impl<'a> FmtStrs<'a> {
         };
         let (dcn, dck) = match declid {
             Some(declid) => (s!(declid.node), s!(declid.krate)),
-            None => ("".to_string(), "".to_string())
+            None => ("".to_owned(), "".to_owned())
         };
         self.check_and_record(MethodCall,
                               span,

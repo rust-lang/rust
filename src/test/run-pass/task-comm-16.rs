@@ -37,7 +37,7 @@ fn test_vec() {
 
 fn test_str() {
     let (tx, rx) = channel();
-    let s0 = "test".to_string();
+    let s0 = "test".to_owned();
     tx.send(s0).unwrap();
     let s1 = rx.recv().unwrap();
     assert_eq!(s1.as_bytes()[0], 't' as u8);

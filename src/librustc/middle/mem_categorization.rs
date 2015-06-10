@@ -1517,17 +1517,17 @@ impl<'tcx> cmt_<'tcx> {
     pub fn descriptive_string(&self, tcx: &ty::ctxt) -> String {
         match self.cat {
             cat_static_item => {
-                "static item".to_string()
+                "static item".to_owned()
             }
             cat_rvalue(..) => {
-                "non-lvalue".to_string()
+                "non-lvalue".to_owned()
             }
             cat_local(vid) => {
                 match tcx.map.find(vid) {
                     Some(ast_map::NodeArg(_)) => {
-                        "argument".to_string()
+                        "argument".to_owned()
                     }
-                    _ => "local variable".to_string()
+                    _ => "local variable".to_owned()
                 }
             }
             cat_deref(_, _, pk) => {
@@ -1556,22 +1556,22 @@ impl<'tcx> cmt_<'tcx> {
                 }
             }
             cat_interior(_, InteriorField(NamedField(_))) => {
-                "field".to_string()
+                "field".to_owned()
             }
             cat_interior(_, InteriorField(PositionalField(_))) => {
-                "anonymous field".to_string()
+                "anonymous field".to_owned()
             }
             cat_interior(_, InteriorElement(InteriorOffsetKind::Index,
                                             VecElement)) |
             cat_interior(_, InteriorElement(InteriorOffsetKind::Index,
                                             OtherElement)) => {
-                "indexed content".to_string()
+                "indexed content".to_owned()
             }
             cat_interior(_, InteriorElement(InteriorOffsetKind::Pattern,
                                             VecElement)) |
             cat_interior(_, InteriorElement(InteriorOffsetKind::Pattern,
                                             OtherElement)) => {
-                "pattern-bound indexed content".to_string()
+                "pattern-bound indexed content".to_owned()
             }
             cat_upvar(ref var) => {
                 var.user_string(tcx)
@@ -1660,7 +1660,7 @@ impl<'tcx> Repr<'tcx> for InteriorKind {
                 token::get_name(fld).to_string()
             }
             InteriorField(PositionalField(i)) => format!("#{}", i),
-            InteriorElement(..) => "[]".to_string(),
+            InteriorElement(..) => "[]".to_owned(),
         }
     }
 }

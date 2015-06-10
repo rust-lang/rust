@@ -43,7 +43,7 @@ fn maybe_run_test<F>(argv: &[String], name: String, test: F) where F: FnOnce() {
     if env::var_os("RUST_BENCH").is_some() {
         run_test = true
     } else if !argv.is_empty() {
-        run_test = argv.iter().any(|x| x == &"all".to_string()) || argv.iter().any(|x| x == &name)
+        run_test = argv.iter().any(|x| x == &"all".to_owned()) || argv.iter().any(|x| x == &name)
     }
 
     if !run_test {

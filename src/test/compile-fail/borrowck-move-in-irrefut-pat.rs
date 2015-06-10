@@ -19,7 +19,7 @@ fn arg_closure() {
 }
 
 fn let_pat() {
-    let &_x = &"hi".to_string();
+    let &_x = &"hi".to_owned();
     //~^ ERROR cannot move out of borrowed content
 }
 

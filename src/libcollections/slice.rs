@@ -178,7 +178,7 @@ mod hack {
             assert_eq!(it.next(), None);
         }
         {
-            let v = ["Hello".to_string()];
+            let v = ["Hello".to_owned()];
             let mut it = permutations(&v);
             let (min_size, max_opt) = it.size_hint();
             assert_eq!(min_size, 1);

@@ -12,20 +12,20 @@ use target::Target;
 
 pub fn target() -> Target {
     let mut base = super::apple_base::opts();
-    base.cpu = "core2".to_string();
+    base.cpu = "core2".to_owned();
     base.eliminate_frame_pointer = false;
-    base.pre_link_args.push("-m64".to_string());
+    base.pre_link_args.push("-m64".to_owned());
 
     Target {
         data_layout: "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-\
                       f32:32:32-f64:64:64-v64:64:64-v128:128:128-a:0:64-\
-                      s0:64:64-f80:128:128-n8:16:32:64".to_string(),
-        llvm_target: "x86_64-apple-darwin".to_string(),
-        target_endian: "little".to_string(),
-        target_pointer_width: "64".to_string(),
-        arch: "x86_64".to_string(),
-        target_os: "macos".to_string(),
-        target_env: "".to_string(),
+                      s0:64:64-f80:128:128-n8:16:32:64".to_owned(),
+        llvm_target: "x86_64-apple-darwin".to_owned(),
+        target_endian: "little".to_owned(),
+        target_pointer_width: "64".to_owned(),
+        arch: "x86_64".to_owned(),
+        target_os: "macos".to_owned(),
+        target_env: "".to_owned(),
         options: base,
     }
 }

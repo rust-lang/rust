@@ -418,7 +418,7 @@ pub fn parse(sess: &ParseSess,
                         }
                     }
                     TtToken(sp, SubstNt(..)) => {
-                        return Error(sp, "Cannot transcribe in macro LHS".to_string())
+                        return Error(sp, "Cannot transcribe in macro LHS".to_owned())
                     }
                     seq @ TtDelimited(..) | seq @ TtToken(_, DocComment(..)) => {
                         let lower_elts = mem::replace(&mut ei.top_elts, Tt(seq));
@@ -450,9 +450,9 @@ pub fn parse(sess: &ParseSess,
                 }
                 return Success(nameize(sess, ms, &v[..]));
             } else if eof_eis.len() > 1 {
-                return Error(sp, "ambiguity: multiple successful parses".to_string());
+                return Error(sp, "ambiguity: multiple successful parses".to_owned());
             } else {
-                return Failure(sp, "unexpected end of macro invocation".to_string());
+                return Failure(sp, "unexpected end of macro invocation".to_owned());
             }
         } else {
             if (!bb_eis.is_empty() && !next_eis.is_empty())

@@ -45,8 +45,8 @@ impl<'a, K: PartialEq + std::fmt::Debug, V:Clone> Index<&'a K> for AssociationLi
 }
 
 pub fn main() {
-    let foo = "foo".to_string();
-    let bar = "bar".to_string();
+    let foo = "foo".to_owned();
+    let bar = "bar".to_owned();
 
     let mut list = AssociationList {pairs: Vec::new()};
     list.push(foo.clone(), 22);

@@ -11,10 +11,10 @@
 // pretty-expanded FIXME #23616
 
 pub fn main () {
-  let mut line = "".to_string();
+  let mut line = "".to_owned();
   let mut i = 0;
-  while line != "exit".to_string() {
-    line = if i == 9 { "exit".to_string() } else { "notexit".to_string() };
+  while line != "exit".to_owned() {
+    line = if i == 9 { "exit".to_owned() } else { "notexit".to_owned() };
     i += 1;
   }
 }

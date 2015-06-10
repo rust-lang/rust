@@ -335,13 +335,13 @@ fn parse_externs(matches: &getopts::Matches) -> Result<core::Externs, String> {
         let name = match parts.next() {
             Some(s) => s,
             None => {
-                return Err("--extern value must not be empty".to_string());
+                return Err("--extern value must not be empty".to_owned());
             }
         };
         let location = match parts.next() {
             Some(s) => s,
             None => {
-                return Err("--extern value must be of the format `foo=bar`".to_string());
+                return Err("--extern value must be of the format `foo=bar`".to_owned());
             }
         };
         let name = name.to_string();
@@ -427,7 +427,7 @@ fn rust_input(cratefile: &str, externs: core::Externs, matches: &getopts::Matche
 
     // Load all plugins/passes into a PluginManager
     let path = matches.opt_str("plugin-path")
-                      .unwrap_or("/tmp/rustdoc/plugins".to_string());
+                      .unwrap_or("/tmp/rustdoc/plugins".to_owned());
     let mut pm = plugins::PluginManager::new(PathBuf::from(path));
     for pass in &passes {
         let plugin = match PASSES.iter()
@@ -466,7 +466,7 @@ fn json_input(input: &str) -> Result<Output, String> {
         Ok(Json::Object(obj)) => {
             let mut obj = obj;
             // Make sure the schema is what we expect
-            match obj.remove(&"schema".to_string()) {
+            match obj.remove(&"schema".to_owned()) {
                 Some(Json::String(version)) => {
                     if version != SCHEMA_VERSION {
                         return Err(format!(
@@ -474,15 +474,15 @@ fn json_input(input: &str) -> Result<Output, String> {
                                 SCHEMA_VERSION))
                     }
                 }
-                Some(..) => return Err("malformed json".to_string()),
-                None => return Err("expected a schema version".to_string()),
+                Some(..) => return Err("malformed json".to_owned()),
+                None => return Err("expected a schema version".to_owned()),
             }
-            let krate = match obj.remove(&"crate".to_string()) {
+            let krate = match obj.remove(&"crate".to_owned()) {
                 Some(json) => {
                     let mut d = json::Decoder::new(json);
                     Decodable::decode(&mut d).unwrap()
                 }
-                None => return Err("malformed json".to_string()),
+                None => return Err("malformed json".to_owned()),
             };
             // FIXME: this should read from the "plugins" field, but currently
             //      Json doesn't implement decodable...
@@ -491,7 +491,7 @@ fn json_input(input: &str) -> Result<Output, String> {
         }
         Ok(..) => {
             Err("malformed json input: expected an object at the \
-                 top".to_string())
+                 top".to_owned())
         }
     }
 }
@@ -506,7 +506,7 @@ fn json_output(krate: clean::Crate, res: Vec<plugins::PluginJson> ,
     //   "plugins": { output of plugins ... }
     // }
     let mut json = std::collections::BTreeMap::new();
-    json.insert("schema".to_string(), Json::String(SCHEMA_VERSION.to_string()));
+    json.insert("schema".to_owned(), Json::String(SCHEMA_VERSION.to_string()));
     let plugins_json = res.into_iter()
                           .filter_map(|opt| {
                               match opt {
@@ -525,8 +525,8 @@ fn json_output(krate: clean::Crate, res: Vec<plugins::PluginJson> ,
         Err(e) => panic!("Rust generated JSON is invalid: {:?}", e)
     };
 
-    json.insert("crate".to_string(), crate_json);
-    json.insert("plugins".to_string(), Json::Object(plugins_json));
+    json.insert("crate".to_owned(), crate_json);
+    json.insert("plugins".to_owned(), Json::Object(plugins_json));
 
     let mut file = try!(File::create(&dst));
     write!(&mut file, "{}", Json::Object(json))

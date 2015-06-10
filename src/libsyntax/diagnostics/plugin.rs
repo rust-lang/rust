@@ -129,7 +129,7 @@ pub fn expand_register_diagnostic<'cx>(ecx: &'cx mut ExtCtxt,
         }
     });
     let sym = Ident::new(token::gensym(&(
-        "__register_diagnostic_".to_string() + &token::get_ident(*code)
+        "__register_diagnostic_".to_owned() + &token::get_ident(*code)
     )));
     MacEager::items(SmallVector::many(vec![
         ecx.item_mod(

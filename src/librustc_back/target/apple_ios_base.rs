@@ -68,8 +68,8 @@ fn pre_link_args(arch: Arch) -> Vec<String> {
 
     let arch_name = arch.to_string();
 
-    vec!["-arch".to_string(), arch_name.to_string(),
-         "-Wl,-syslibroot".to_string(), get_sdk_root(sdk_name)]
+    vec!["-arch".to_owned(), arch_name.to_string(),
+         "-Wl,-syslibroot".to_owned(), get_sdk_root(sdk_name)]
 }
 
 fn target_cpu(arch: Arch) -> String {

@@ -163,33 +163,33 @@ mod tests {
 
     #[test]
     fn test_from_value() {
-        let mut f = Future::from_value("snail".to_string());
+        let mut f = Future::from_value("snail".to_owned());
         assert_eq!(f.get(), "snail");
     }
 
     #[test]
     fn test_from_receiver() {
         let (tx, rx) = channel();
-        tx.send("whale".to_string()).unwrap();
+        tx.send("whale".to_owned()).unwrap();
         let mut f = Future::from_receiver(rx);
         assert_eq!(f.get(), "whale");
     }
 
     #[test]
     fn test_from_fn() {
-        let mut f = Future::from_fn(move|| "brail".to_string());
+        let mut f = Future::from_fn(move|| "brail".to_owned());
         assert_eq!(f.get(), "brail");
     }
 
     #[test]
     fn test_interface_get() {
-        let mut f = Future::from_value("fail".to_string());
+        let mut f = Future::from_value("fail".to_owned());
         assert_eq!(f.get(), "fail");
     }
 
     #[test]
     fn test_interface_unwrap() {
-        let f = Future::from_value("fail".to_string());
+        let f = Future::from_value("fail".to_owned());
         assert_eq!(f.into_inner(), "fail");
     }
 
@@ -201,7 +201,7 @@ mod tests {
 
     #[test]
     fn test_spawn() {
-        let mut f = Future::spawn(move|| "bale".to_string());
+        let mut f = Future::spawn(move|| "bale".to_owned());
         assert_eq!(f.get(), "bale");
     }
 

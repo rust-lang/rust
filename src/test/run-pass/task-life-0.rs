@@ -15,7 +15,7 @@
 use std::thread;
 
 pub fn main() {
-    thread::spawn(move|| child("Hello".to_string()) ).join();
+    thread::spawn(move|| child("Hello".to_owned()) ).join();
 }
 
 fn child(_s: String) {

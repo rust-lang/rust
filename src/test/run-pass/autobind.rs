@@ -17,6 +17,6 @@ fn g<F>(act: F) -> isize where F: FnOnce(Vec<isize>) -> isize { return act(vec!(
 pub fn main() {
     assert_eq!(g(f), 1);
     let f1 = f;
-    assert_eq!(f1(vec!["x".to_string(), "y".to_string(), "z".to_string()]),
-               "x".to_string());
+    assert_eq!(f1(vec!["x".to_owned(), "y".to_owned(), "z".to_owned()]),
+               "x".to_owned());
 }

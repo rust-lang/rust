@@ -24,17 +24,17 @@ pub fn main() {
     assert_eq!(pi as isize, '\u{3a0}' as isize);
     assert_eq!('\x0a' as isize, '\n' as isize);
 
-    let bhutan: String = "འབྲུག་ཡུལ།".to_string();
-    let japan: String = "日本".to_string();
-    let uzbekistan: String = "Ўзбекистон".to_string();
-    let austria: String = "Österreich".to_string();
+    let bhutan: String = "འབྲུག་ཡུལ།".to_owned();
+    let japan: String = "日本".to_owned();
+    let uzbekistan: String = "Ўзбекистон".to_owned();
+    let austria: String = "Österreich".to_owned();
 
     let bhutan_e: String =
-        "\u{f60}\u{f56}\u{fb2}\u{f74}\u{f42}\u{f0b}\u{f61}\u{f74}\u{f63}\u{f0d}".to_string();
-    let japan_e: String = "\u{65e5}\u{672c}".to_string();
+        "\u{f60}\u{f56}\u{fb2}\u{f74}\u{f42}\u{f0b}\u{f61}\u{f74}\u{f63}\u{f0d}".to_owned();
+    let japan_e: String = "\u{65e5}\u{672c}".to_owned();
     let uzbekistan_e: String =
-        "\u{40e}\u{437}\u{431}\u{435}\u{43a}\u{438}\u{441}\u{442}\u{43e}\u{43d}".to_string();
-    let austria_e: String = "\u{d6}sterreich".to_string();
+        "\u{40e}\u{437}\u{431}\u{435}\u{43a}\u{438}\u{441}\u{442}\u{43e}\u{43d}".to_owned();
+    let austria_e: String = "\u{d6}sterreich".to_owned();
 
     let oo: char = 'Ö';
     assert_eq!(oo as isize, 0xd6);

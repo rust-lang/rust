@@ -201,7 +201,7 @@ fn build_exec_options(sysroot: PathBuf) -> Options {
 fn compile_program(input: &str, sysroot: PathBuf)
                    -> Option<(llvm::ModuleRef, Vec<PathBuf>)> {
     let input = Input::Str(input.to_string());
-    let thread = Builder::new().name("compile_program".to_string());
+    let thread = Builder::new().name("compile_program".to_owned());
 
     let handle = thread.spawn(move || {
         let opts = build_exec_options(sysroot);
@@ -210,7 +210,7 @@ fn compile_program(input: &str, sysroot: PathBuf)
 
         let cfg = build_configuration(&sess);
 
-        let id = "input".to_string();
+        let id = "input".to_owned();
 
         let krate = driver::phase_1_parse_input(&sess, cfg, &input);
 

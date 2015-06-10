@@ -1015,7 +1015,7 @@ fn import_directive_subclass_to_string(subclass: ImportDirectiveSubclass) -> Str
         SingleImport(_, source) => {
             token::get_name(source).to_string()
         }
-        GlobImport => "*".to_string()
+        GlobImport => "*".to_owned()
     }
 }
 

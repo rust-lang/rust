@@ -250,7 +250,7 @@ fn generate_test_harness(sess: &ParseSess,
         sess: sess,
         span_diagnostic: sd,
         ext_cx: ExtCtxt::new(sess, cfg.clone(),
-                             ExpansionConfig::default("test".to_string())),
+                             ExpansionConfig::default("test".to_owned())),
         path: Vec::new(),
         testfns: Vec::new(),
         reexport_test_harness_main: reexport_test_harness_main,
@@ -262,7 +262,7 @@ fn generate_test_harness(sess: &ParseSess,
     cx.ext_cx.bt_push(ExpnInfo {
         call_site: DUMMY_SP,
         callee: NameAndSpan {
-            name: "test".to_string(),
+            name: "test".to_owned(),
             format: MacroAttribute,
             span: None,
             allow_internal_unstable: false,
@@ -295,7 +295,7 @@ fn ignored_span(cx: &TestCtxt, sp: Span) -> Span {
     let info = ExpnInfo {
         call_site: DUMMY_SP,
         callee: NameAndSpan {
-            name: "test".to_string(),
+            name: "test".to_owned(),
             format: MacroAttribute,
             span: None,
             allow_internal_unstable: true,

@@ -692,7 +692,7 @@ impl CodeMap {
 
     pub fn span_to_string(&self, sp: Span) -> String {
         if self.files.borrow().is_empty() && sp == DUMMY_SP {
-            return "no-location".to_string();
+            return "no-location".to_owned();
         }
 
         let lo = self.lookup_char_pos_adj(sp.lo);
@@ -1019,8 +1019,8 @@ mod tests {
     #[test]
     fn t1 () {
         let cm = CodeMap::new();
-        let fm = cm.new_filemap("blork.rs".to_string(),
-                                "first line.\nsecond line".to_string());
+        let fm = cm.new_filemap("blork.rs".to_owned(),
+                                "first line.\nsecond line".to_owned());
         fm.next_line(BytePos(0));
         assert_eq!(fm.get_line(0), Some("first line."));
         // TESTING BROKEN BEHAVIOR:
@@ -1032,8 +1032,8 @@ mod tests {
     #[should_panic]
     fn t2 () {
         let cm = CodeMap::new();
-        let fm = cm.new_filemap("blork.rs".to_string(),
-                                "first line.\nsecond line".to_string());
+        let fm = cm.new_filemap("blork.rs".to_owned(),
+                                "first line.\nsecond line".to_owned());
         // TESTING *REALLY* BROKEN BEHAVIOR:
         fm.next_line(BytePos(0));
         fm.next_line(BytePos(10));
@@ -1042,12 +1042,12 @@ mod tests {
 
     fn init_code_map() -> CodeMap {
         let cm = CodeMap::new();
-        let fm1 = cm.new_filemap("blork.rs".to_string(),
-                                 "first line.\nsecond line".to_string());
-        let fm2 = cm.new_filemap("empty.rs".to_string(),
-                                 "".to_string());
-        let fm3 = cm.new_filemap("blork2.rs".to_string(),
-                                 "first line.\nsecond line".to_string());
+        let fm1 = cm.new_filemap("blork.rs".to_owned(),
+                                 "first line.\nsecond line".to_owned());
+        let fm2 = cm.new_filemap("empty.rs".to_owned(),
+                                 "".to_owned());
+        let fm3 = cm.new_filemap("blork2.rs".to_owned(),
+                                 "first line.\nsecond line".to_owned());
 
         fm1.next_line(BytePos(0));
         fm1.next_line(BytePos(12));
@@ -1104,10 +1104,10 @@ mod tests {
         let cm = CodeMap::new();
         // € is a three byte utf8 char.
         let fm1 =
-            cm.new_filemap("blork.rs".to_string(),
-                           "fir€st €€€€ line.\nsecond line".to_string());
-        let fm2 = cm.new_filemap("blork2.rs".to_string(),
-                                 "first line€€.\n€ second line".to_string());
+            cm.new_filemap("blork.rs".to_owned(),
+                           "fir€st €€€€ line.\nsecond line".to_owned());
+        let fm2 = cm.new_filemap("blork2.rs".to_owned(),
+                                 "first line€€.\n€ second line".to_owned());
 
         fm1.next_line(BytePos(0));
         fm1.next_line(BytePos(22));
@@ -1210,7 +1210,7 @@ mod tests {
         let span = Span {lo: BytePos(12), hi: BytePos(23), expn_id: NO_EXPANSION};
         let snippet = cm.span_to_snippet(span);
 
-        assert_eq!(snippet, Ok("second line".to_string()));
+        assert_eq!(snippet, Ok("second line".to_owned()));
     }
 
     #[test]

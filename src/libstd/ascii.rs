@@ -514,9 +514,9 @@ mod tests {
 
     #[test]
     fn test_into_ascii_uppercase() {
-        assert_eq!(("url()URL()uRl()ürl".to_string()).into_ascii_uppercase(),
-                   "URL()URL()URL()üRL".to_string());
-        assert_eq!(("hıKß".to_string()).into_ascii_uppercase(), "HıKß");
+        assert_eq!(("url()URL()uRl()ürl".to_owned()).into_ascii_uppercase(),
+                   "URL()URL()URL()üRL".to_owned());
+        assert_eq!(("hıKß".to_owned()).into_ascii_uppercase(), "HıKß");
 
         for i in 0..501 {
             let upper = if 'a' as u32 <= i && i <= 'z' as u32 { i + 'A' as u32 - 'a' as u32 }
@@ -528,10 +528,10 @@ mod tests {
 
     #[test]
     fn test_into_ascii_lowercase() {
-        assert_eq!(("url()URL()uRl()Ürl".to_string()).into_ascii_lowercase(),
+        assert_eq!(("url()URL()uRl()Ürl".to_owned()).into_ascii_lowercase(),
                    "url()url()url()Ürl");
         // Dotted capital I, Kelvin sign, Sharp S.
-        assert_eq!(("HİKß".to_string()).into_ascii_lowercase(), "hİKß");
+        assert_eq!(("HİKß".to_owned()).into_ascii_lowercase(), "hİKß");
 
         for i in 0..501 {
             let lower = if 'A' as u32 <= i && i <= 'Z' as u32 { i + 'a' as u32 - 'A' as u32 }
