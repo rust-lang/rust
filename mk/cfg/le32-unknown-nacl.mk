@@ -34,5 +34,5 @@ SHARED_LIBS_DISABLED_le32-unknown-nacl := 1
 RUNTIME_CFLAGS_le32-unknown-nacl:= -I$(CFG_NACL_CROSS_PATH)/include/pnacl
 RUNTIME_DISABLE_ASM_le32-unknown-nacl := 1
 RUSTC_FLAGS_le32-unknown-nacl:=
-RUSTC_CROSS_FLAGS_le32-unknown-nacl=-C cross-path=$(CFG_NACL_CROSS_PATH) --cfg "target_libc=\"newlib\"" -L $(CFG_NACL_CROSS_PATH)/lib/pnacl/Release -L $(CFG_NACL_CROSS_PATH)/toolchain/$(NACL_TOOLCHAIN_OS_PATH)_pnacl/lib/clang/3.6.0/lib/le32-nacl -L $(S)src/etc/third-party/nacl-spawn/lib
+RUSTC_CROSS_FLAGS_le32-unknown-nacl=-C cross-path=$(CFG_NACL_CROSS_PATH) --cfg "target_libc=\"newlib\"" -L $(CFG_NACL_CROSS_PATH)/lib/pnacl/Release -L $(CFG_NACL_CROSS_PATH)/toolchain/$(NACL_TOOLCHAIN_OS_PATH)_pnacl/lib/clang/3.6.0/lib/le32-nacl -L $(CFG_NACL_CROSS_PATH)/toolchain/$(NACL_TOOLCHAIN_OS_PATH)_pnacl/le32-nacl/usr/lib
 CFG_GNU_TRIPLE_le32-unknown-nacl := le32-unknown-nacl
