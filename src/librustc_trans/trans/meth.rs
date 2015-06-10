@@ -18,6 +18,7 @@ use middle::subst::VecPerParamSpace;
 use middle::subst;
 use middle::traits;
 use middle::ty::ClosureTyper;
+use rustc::ast_map;
 use trans::base::*;
 use trans::build::*;
 use trans::callee::*;
@@ -42,7 +43,7 @@ use util::ppaux::Repr;
 
 use syntax::abi::{Rust, RustCall};
 use syntax::parse::token;
-use syntax::{ast, ast_map, attr, visit};
+use syntax::{ast, attr, visit};
 use syntax::codemap::DUMMY_SP;
 use syntax::ptr::P;
 

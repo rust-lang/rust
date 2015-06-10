@@ -19,6 +19,7 @@ use rustc_trans::back::link;
 
 use driver;
 
+use rustc::ast_map::{self, blocks, NodePrinter};
 use rustc::middle::ty;
 use rustc::middle::cfg;
 use rustc::middle::cfg::graphviz::LabelledCFG;
@@ -30,7 +31,6 @@ use rustc_borrowck::graphviz as borrowck_dot;
 use rustc_resolve as resolve;
 
 use syntax::ast;
-use syntax::ast_map::{self, blocks, NodePrinter};
 use syntax::codemap;
 use syntax::fold::{self, Folder};
 use syntax::print::{pp, pprust};

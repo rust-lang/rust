@@ -41,6 +41,7 @@ use middle::lang_items::{LangItem, ExchangeMallocFnLangItem, StartFnLangItem};
 use middle::weak_lang_items;
 use middle::subst::Substs;
 use middle::ty::{self, Ty, ClosureTyper, type_is_simd, simd_size};
+use rustc::ast_map;
 use session::config::{self, NoDebugInfo};
 use session::Session;
 use trans::_match;
@@ -99,7 +100,7 @@ use syntax::codemap::Span;
 use syntax::parse::token::InternedString;
 use syntax::visit::Visitor;
 use syntax::visit;
-use syntax::{ast, ast_util, ast_map};
+use syntax::{ast, ast_util};
 
 thread_local! {
     static TASK_LOCAL_INSN_KEY: RefCell<Option<Vec<&'static str>>> = {

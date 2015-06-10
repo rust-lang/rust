@@ -92,6 +92,8 @@ pub mod back {
     pub use rustc_back::x86_64;
 }
 
+pub mod ast_map;
+
 pub mod middle {
     pub mod astconv_util;
     pub mod astencode;

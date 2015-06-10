@@ -101,6 +101,7 @@ use middle::def;
 use middle::infer;
 use middle::subst;
 use middle::ty::{self, Ty};
+use rustc::ast_map;
 use session::config;
 use util::common::time;
 use util::ppaux::Repr;
@@ -108,7 +109,7 @@ use util::ppaux;
 
 use syntax::codemap::Span;
 use syntax::print::pprust::*;
-use syntax::{ast, ast_map, abi};
+use syntax::{ast, abi};
 use syntax::ast_util::local_def;
 
 use std::cell::RefCell;

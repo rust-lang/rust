@@ -34,6 +34,7 @@ use session::Session;
 
 use middle::def;
 use middle::ty::{self, Ty};
+use rustc::ast_map::NodeItem;
 
 use std::cell::Cell;
 use std::fs::File;
@@ -41,7 +42,6 @@ use std::path::Path;
 
 use syntax::ast_util;
 use syntax::ast::{self, NodeId, DefId};
-use syntax::ast_map::NodeItem;
 use syntax::codemap::*;
 use syntax::parse::token::{self, get_ident, keywords};
 use syntax::owned_slice::OwnedSlice;

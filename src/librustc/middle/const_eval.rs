@@ -15,6 +15,8 @@ pub use self::const_val::*;
 
 use self::ErrKind::*;
 
+use ast_map;
+use ast_map::blocks::FnLikeNode;
 use metadata::csearch;
 use middle::{astencode, def, infer, subst, traits};
 use middle::pat_util::def_to_path;
@@ -24,13 +26,12 @@ use util::num::ToPrimitive;
 use util::ppaux::Repr;
 
 use syntax::ast::{self, Expr};
-use syntax::ast_map::blocks::FnLikeNode;
 use syntax::ast_util;
 use syntax::codemap::Span;
 use syntax::feature_gate;
 use syntax::parse::token::InternedString;
 use syntax::ptr::P;
-use syntax::{ast_map, codemap, visit};
+use syntax::{codemap, visit};
 
 use std::borrow::{Cow, IntoCow};
 use std::num::wrapping::OverflowingOps;

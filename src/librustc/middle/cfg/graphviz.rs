@@ -17,8 +17,8 @@ use std::borrow::IntoCow;
 use graphviz as dot;
 
 use syntax::ast;
-use syntax::ast_map;
 
+use ast_map;
 use middle::cfg;
 
 pub type Node<'a> = (cfg::CFGIndex, &'a cfg::CFGNode);

@@ -26,6 +26,7 @@ use llvm::debuginfo::{DIType, DIFile, DIScope, DIDescriptor, DICompositeType};
 use metadata::csearch;
 use middle::pat_util;
 use middle::subst::{self, Substs};
+use rustc::ast_map;
 use trans::{type_of, adt, machine, monomorphize};
 use trans::common::{self, CrateContext, FunctionContext, NormalizingClosureTyper, Block};
 use trans::_match::{BindingInfo, TrByCopy, TrByMove, TrByRef};
@@ -43,7 +44,7 @@ use std::ptr;
 use std::rc::Rc;
 use syntax::util::interner::Interner;
 use syntax::codemap::Span;
-use syntax::{ast, codemap, ast_util, ast_map};
+use syntax::{ast, codemap, ast_util};
 use syntax::parse::token::{self, special_idents};
 
 

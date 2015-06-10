@@ -15,6 +15,7 @@
 pub use self::DefLike::*;
 use self::Family::*;
 
+use ast_map;
 use back::svh::Svh;
 use metadata::cstore::crate_metadata;
 use metadata::common::*;
@@ -44,7 +45,6 @@ use std::str;
 use rbml::reader;
 use rbml;
 use serialize::Decodable;
-use syntax::ast_map;
 use syntax::attr;
 use syntax::parse::token::{IdentInterner, special_idents};
 use syntax::parse::token;

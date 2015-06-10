@@ -12,12 +12,13 @@
 // closely. The idea is that all reachable symbols are live, codes called
 // from live codes are live, and everything else is dead.
 
+use ast_map;
 use middle::{def, pat_util, privacy, ty};
 use lint;
 use util::nodemap::NodeSet;
 
 use std::collections::HashSet;
-use syntax::{ast, ast_map, codemap};
+use syntax::{ast, codemap};
 use syntax::ast_util::{local_def, is_local};
 use syntax::attr::{self, AttrMetaMethods};
 use syntax::visit::{self, Visitor};

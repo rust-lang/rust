@@ -23,13 +23,12 @@
 
 pub use self::Code::*;
 
-use abi;
-use ast::{Block, FnDecl, NodeId};
-use ast;
-use ast_map::Node;
-use ast_map;
-use codemap::Span;
-use visit;
+use ast_map::{self, Node};
+use syntax::abi;
+use syntax::ast::{Block, FnDecl, NodeId};
+use syntax::ast;
+use syntax::codemap::Span;
+use syntax::visit;
 
 /// An FnLikeNode is a Node that is like a fn, in that it has a decl
 /// and a body (as well as a NodeId, a span, etc).

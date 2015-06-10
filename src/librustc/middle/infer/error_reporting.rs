@@ -72,6 +72,7 @@ use super::region_inference::ProcessedErrors;
 use super::region_inference::SameRegions;
 
 use std::collections::HashSet;
+use ast_map;
 use middle::def;
 use middle::infer;
 use middle::subst;
@@ -81,7 +82,6 @@ use std::cell::{Cell, RefCell};
 use std::char::from_u32;
 use std::string::String;
 use syntax::ast;
-use syntax::ast_map;
 use syntax::ast_util::name_to_dummy_lifetime;
 use syntax::owned_slice::OwnedSlice;
 use syntax::codemap;

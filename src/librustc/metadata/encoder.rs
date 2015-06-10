@@ -15,6 +15,7 @@
 
 pub use self::InlinedItemRef::*;
 
+use ast_map::{self, LinkedPath, PathElem, PathElems};
 use back::svh::Svh;
 use session::config;
 use metadata::common::*;
@@ -34,7 +35,6 @@ use std::io::prelude::*;
 use std::io::{Cursor, SeekFrom};
 use syntax::abi;
 use syntax::ast::{self, DefId, NodeId};
-use syntax::ast_map::{self, LinkedPath, PathElem, PathElems};
 use syntax::ast_util::*;
 use syntax::ast_util;
 use syntax::attr;
