@@ -35,7 +35,6 @@
 #![feature(unicode)]
 #![feature(unique)]
 #![feature(unsafe_no_drop_flag, filling_drop)]
-#![feature(step_by)]
 #![feature(str_char)]
 #![feature(slice_patterns)]
 #![feature(utf8_error)]

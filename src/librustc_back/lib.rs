@@ -39,7 +39,6 @@
 #![feature(staged_api)]
 #![feature(rand)]
 #![feature(path_ext)]
-#![feature(step_by)]
 #![feature(libc)]
 #![feature(fs_canonicalize)]
 #![cfg_attr(test, feature(test, rand))]

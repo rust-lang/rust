@@ -22,7 +22,6 @@
 #![feature(unboxed_closures)]
 #![feature(unicode)]
 #![feature(into_cow)]
-#![feature(step_by)]
 #![cfg_attr(test, feature(str_char))]
 #![cfg_attr(test, feature(vec_deque_retain))]
 

@@ -285,7 +285,6 @@ has no side effect on the original iterator. Let's try it out with our infinite
 iterator from before:
 
 ```rust
-# #![feature(step_by)]
 for i in (1..).step_by(5).take(5) {
     println!("{}", i);
 }

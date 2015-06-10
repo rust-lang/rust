@@ -38,7 +38,7 @@
 //! [sieve]: http://en.wikipedia.org/wiki/Sieve_of_Eratosthenes
 //!
 //! ```
-//! # #![feature(collections, core, step_by)]
+//! # #![feature(collections, core)]
 //! use std::collections::{BitSet, BitVec};
 //! use std::iter;
 //!
