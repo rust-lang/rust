@@ -124,7 +124,7 @@
 //! // but to start with we've just got `None`.
 //! let mut name_of_biggest_animal = None;
 //! let mut size_of_biggest_animal = 0;
-//! for big_thing in all_the_big_things.iter() {
+//! for big_thing in &all_the_big_things {
 //!     match *big_thing {
 //!         Kingdom::Animal(size, name) if size > size_of_biggest_animal => {
 //!             // Now we've found the name of some big animal

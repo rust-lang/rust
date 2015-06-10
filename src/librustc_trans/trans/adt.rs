@@ -1199,7 +1199,7 @@ fn build_const_struct<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     // offset of current value
     let mut offset = 0;
     let mut cfields = Vec::new();
-    for (&val, &target_offset) in vals.iter().zip(target_offsets.iter()) {
+    for (&val, target_offset) in vals.iter().zip(target_offsets) {
         if !st.packed {
             let val_align = machine::llalign_of_min(ccx, val_ty(val));
             offset = roundup(offset, val_align);

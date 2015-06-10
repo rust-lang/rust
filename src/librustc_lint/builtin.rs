@@ -645,7 +645,7 @@ impl LintPass for UnusedAttributes {
         }
 
         let plugin_attributes = cx.sess().plugin_attributes.borrow_mut();
-        for &(ref name, ty) in plugin_attributes.iter() {
+        for &(ref name, ty) in &*plugin_attributes {
             if ty == AttributeType::Whitelisted && attr.check_name(&*name) {
                 break;
             }
@@ -2249,7 +2249,7 @@ impl LintPass for DropWithReprExtern {
         lint_array!(DROP_WITH_REPR_EXTERN)
     }
     fn check_crate(&mut self, ctx: &Context, _: &ast::Crate) {
-        for dtor_did in ctx.tcx.destructors.borrow().iter() {
+        for dtor_did in &*ctx.tcx.destructors.borrow() {
             let (drop_impl_did, dtor_self_type) =
                 if dtor_did.krate == ast::LOCAL_CRATE {
                     let impl_did = ctx.tcx.map.get_parent_did(dtor_did.node);

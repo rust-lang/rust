@@ -1557,7 +1557,7 @@ fn describe_enum_variant<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
     // Build an array of (field name, field type) pairs to be captured in the factory closure.
     let args: Vec<(String, Ty)> = arg_names.iter()
-        .zip(struct_def.fields.iter())
+        .zip(&struct_def.fields)
         .map(|(s, &t)| (s.to_string(), t))
         .collect();
 

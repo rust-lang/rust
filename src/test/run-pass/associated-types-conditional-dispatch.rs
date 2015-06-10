@@ -28,8 +28,7 @@ impl<A, B> MyEq<[B]> for [A]
 {
     fn eq(&self, other: &[B]) -> bool {
         self.len() == other.len() &&
-            self.iter().zip(other.iter())
-                       .all(|(a, b)| MyEq::eq(a, b))
+            self.iter().zip(other).all(|(a, b)| MyEq::eq(a, b))
     }
 }
 

@@ -372,22 +372,22 @@ struct RegionResolutionVisitor<'a> {
 
 impl RegionMaps {
     pub fn each_encl_scope<E>(&self, mut e:E) where E: FnMut(&CodeExtent, &CodeExtent) {
-        for (child, parent) in self.scope_map.borrow().iter() {
+        for (child, parent) in &*self.scope_map.borrow() {
             e(child, parent)
         }
     }
     pub fn each_var_scope<E>(&self, mut e:E) where E: FnMut(&ast::NodeId, &CodeExtent) {
-        for (child, parent) in self.var_map.borrow().iter() {
+        for (child, parent) in &*self.var_map.borrow() {
             e(child, parent)
         }
     }
     pub fn each_rvalue_scope<E>(&self, mut e:E) where E: FnMut(&ast::NodeId, &CodeExtent) {
-        for (child, parent) in self.rvalue_scopes.borrow().iter() {
+        for (child, parent) in &*self.rvalue_scopes.borrow() {
             e(child, parent)
         }
     }
     pub fn each_terminating_scope<E>(&self, mut e:E) where E: FnMut(&CodeExtent) {
-        for scope in self.terminating_scopes.borrow().iter() {
+        for scope in &*self.terminating_scopes.borrow() {
             e(scope)
         }
     }

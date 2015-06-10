@@ -107,7 +107,7 @@ fn A(i: usize, j: usize) -> f64 {
 }
 
 fn dot(v: &[f64], u: &[f64]) -> f64 {
-    v.iter().zip(u.iter()).map(|(a, b)| *a * *b).sum()
+    v.iter().zip(u).map(|(a, b)| *a * *b).sum()
 }
 
 

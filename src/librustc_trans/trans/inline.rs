@@ -106,7 +106,7 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
             ast::ItemEnum(_, _) => {
               let vs_here = ty::enum_variants(ccx.tcx(), local_def(item.id));
               let vs_there = ty::enum_variants(ccx.tcx(), parent_id);
-              for (here, there) in vs_here.iter().zip(vs_there.iter()) {
+              for (here, there) in vs_here.iter().zip(&*vs_there) {
                   if there.id == fn_id { my_id = here.id.node; }
                   ccx.external().borrow_mut().insert(there.id, Some(here.id.node));
               }

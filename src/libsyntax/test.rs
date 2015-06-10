@@ -658,7 +658,7 @@ fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> P<ast::Expr> {
             diag.handler.bug("expected to find top-level re-export name, but found None");
         }
     };
-    visible_path.extend(path.into_iter());
+    visible_path.extend(path);
 
     let fn_expr = ecx.expr_path(ecx.path_global(span, visible_path));
 

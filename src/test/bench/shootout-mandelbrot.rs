@@ -108,8 +108,8 @@ fn mandelbrot<W: Write>(w: usize, mut out: W) -> io::Result<()> {
 
     for res in precalc_futures {
         let (rs, is) = res.join().unwrap();
-        precalc_r.extend(rs.into_iter());
-        precalc_i.extend(is.into_iter());
+        precalc_r.extend(rs);
+        precalc_i.extend(is);
     }
 
     assert_eq!(precalc_r.len(), w);

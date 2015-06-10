@@ -443,7 +443,7 @@ impl<'a,'tcx> InferCtxtExt for InferCtxt<'a,'tcx> {
         let escaping_region_vars: FnvHashSet<_> =
             escaping_types
             .iter()
-            .flat_map(|&t| ty_fold::collect_regions(self.tcx, &t).into_iter())
+            .flat_map(|&t| ty_fold::collect_regions(self.tcx, &t))
             .collect();
 
         region_vars.retain(|&region_vid| {

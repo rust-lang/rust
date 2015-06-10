@@ -595,7 +595,7 @@ fn highlight_lines(err: &mut EmitterWriter,
     let display_line_strings = &line_strings[..display_lines];
 
     // Print the offending lines
-    for (line_info, line) in display_line_infos.iter().zip(display_line_strings.iter()) {
+    for (line_info, line) in display_line_infos.iter().zip(display_line_strings) {
         try!(write!(&mut err.dst, "{}:{} {}\n",
                     fm.name,
                     line_info.line_index + 1,

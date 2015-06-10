@@ -475,7 +475,7 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'tcx>(
 
                     let fields =
                         ty::lookup_struct_fields(rcx.tcx(), struct_did);
-                    for field in fields.iter() {
+                    for field in &fields {
                         let field_type =
                             ty::lookup_field_type(rcx.tcx(),
                                                   struct_did,
@@ -507,7 +507,7 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'tcx>(
                         ty::substd_enum_variants(rcx.tcx(),
                                                  enum_did,
                                                  substs);
-                    for variant_info in all_variant_info.iter() {
+                    for variant_info in &all_variant_info {
                         for (i, arg_type) in variant_info.args.iter().enumerate() {
                             try!(iterate_over_potentially_unsafe_regions_in_type(
                                 rcx,

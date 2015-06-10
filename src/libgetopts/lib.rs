@@ -953,7 +953,7 @@ fn test_split_within() {
     fn t(s: &str, i: usize, u: &[String]) {
         let mut v = Vec::new();
         each_split_within(s, i, |s| { v.push(s.to_string()); true });
-        assert!(v.iter().zip(u.iter()).all(|(a,b)| a == b));
+        assert!(v.iter().zip(u).all(|(a,b)| a == b));
     }
     t("", 0, &[]);
     t("", 15, &[]);

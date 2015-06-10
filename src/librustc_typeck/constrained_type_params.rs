@@ -21,7 +21,7 @@ pub enum Parameter {
 
 pub fn parameters_for_type<'tcx>(ty: Ty<'tcx>) -> Vec<Parameter> {
     ty.walk()
-      .flat_map(|ty| parameters_for_type_shallow(ty).into_iter())
+      .flat_map(|ty| parameters_for_type_shallow(ty))
       .collect()
 }
 
@@ -31,7 +31,7 @@ pub fn parameters_for_trait_ref<'tcx>(trait_ref: &ty::TraitRef<'tcx>) -> Vec<Par
 
     let type_parameters =
         trait_ref.substs.types.iter()
-                              .flat_map(|ty| parameters_for_type(ty).into_iter());
+                              .flat_map(|ty| parameters_for_type(ty));
 
     region_parameters.extend(type_parameters);
 

@@ -54,7 +54,7 @@ use vec::Vec;
 /// assert_eq!(months.get(&3), Some(&"Venus"));
 ///
 /// // Print out all months
-/// for (key, value) in months.iter() {
+/// for (key, value) in &months {
 ///     println!("month {} is {}", key, value);
 /// }
 ///
@@ -287,7 +287,7 @@ impl<V> VecMap<V> {
     ///     *value = "x";
     /// }
     ///
-    /// for (key, value) in map.iter() {
+    /// for (key, value) in &map {
     ///     assert_eq!(value, &"x");
     /// }
     /// ```

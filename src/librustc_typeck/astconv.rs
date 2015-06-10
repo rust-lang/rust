@@ -508,7 +508,7 @@ fn find_implied_output_region(input_tys: &[Ty], input_pats: Vec<String>)
     let mut lifetimes_for_params: Vec<(String, usize)> = Vec::new();
     let mut possible_implied_output_region = None;
 
-    for (input_type, input_pat) in input_tys.iter().zip(input_pats.into_iter()) {
+    for (input_type, input_pat) in input_tys.iter().zip(input_pats) {
         let mut accumulator = Vec::new();
         ty::accumulate_lifetimes_in_type(&mut accumulator, *input_type);
 

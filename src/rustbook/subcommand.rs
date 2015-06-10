@@ -36,7 +36,7 @@ pub fn parse_name(name: &str) -> Option<Box<Subcommand>> {
                                                           build::parse_cmd,
                                                           serve::parse_cmd,
                                                           test::parse_cmd];
-    for parser in cmds.iter() {
+    for parser in &cmds {
         let parsed = (*parser)(name);
         if parsed.is_some() { return parsed }
     }

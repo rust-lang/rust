@@ -723,14 +723,14 @@ fn encode_generics<'a, 'tcx>(rbml_w: &mut Encoder,
         abbrevs: &ecx.type_abbrevs
     };
 
-    for param in generics.types.iter() {
+    for param in &generics.types {
         rbml_w.start_tag(tag_type_param_def);
         tyencode::enc_type_param_def(rbml_w, ty_str_ctxt, param);
         rbml_w.end_tag();
     }
 
     // Region parameters
-    for param in generics.regions.iter() {
+    for param in &generics.regions {
         rbml_w.start_tag(tag_region_param_def);
 
         rbml_w.start_tag(tag_region_param_def_ident);
@@ -838,7 +838,7 @@ fn encode_info_for_associated_const(ecx: &EncodeContext,
     encode_stability(rbml_w, stab);
 
     let elem = ast_map::PathName(associated_const.name);
-    encode_path(rbml_w, impl_path.chain(Some(elem).into_iter()));
+    encode_path(rbml_w, impl_path.chain(Some(elem)));
 
     if let Some(ii) = impl_item_opt {
         encode_attributes(rbml_w, &ii.attrs);
@@ -871,7 +871,7 @@ fn encode_info_for_method<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
     encode_bounds_and_type_for_item(rbml_w, ecx, m.def_id.local_id());
 
     let elem = ast_map::PathName(m.name);
-    encode_path(rbml_w, impl_path.chain(Some(elem).into_iter()));
+    encode_path(rbml_w, impl_path.chain(Some(elem)));
     if let Some(impl_item) = impl_item_opt {
         if let ast::MethodImplItem(ref sig, _) = impl_item.node {
             encode_attributes(rbml_w, &impl_item.attrs);
@@ -917,7 +917,7 @@ fn encode_info_for_associated_type<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
     encode_stability(rbml_w, stab);
 
     let elem = ast_map::PathName(associated_type.name);
-    encode_path(rbml_w, impl_path.chain(Some(elem).into_iter()));
+    encode_path(rbml_w, impl_path.chain(Some(elem)));
 
     if let Some(ii) = impl_item_opt {
         encode_attributes(rbml_w, &ii.attrs);
@@ -955,7 +955,7 @@ fn encode_repr_attrs(rbml_w: &mut Encoder,
     let mut repr_attrs = Vec::new();
     for attr in attrs {
         repr_attrs.extend(attr::find_repr_attrs(ecx.tcx.sess.diagnostic(),
-                                                attr).into_iter());
+                                                attr));
     }
     rbml_w.start_tag(tag_items_data_item_repr);
     repr_attrs.encode(rbml_w);
@@ -1409,7 +1409,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
 
                     let elem = ast_map::PathName(associated_const.name);
                     encode_path(rbml_w,
-                                path.clone().chain(Some(elem).into_iter()));
+                                path.clone().chain(Some(elem)));
 
                     encode_item_sort(rbml_w, 'C');
                     encode_family(rbml_w, 'C');
@@ -1426,7 +1426,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
 
                     let elem = ast_map::PathName(method_ty.name);
                     encode_path(rbml_w,
-                                path.clone().chain(Some(elem).into_iter()));
+                                path.clone().chain(Some(elem)));
 
                     match method_ty.explicit_self {
                         ty::StaticExplicitSelfCategory => {
@@ -1449,7 +1449,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
 
                     let elem = ast_map::PathName(associated_type.name);
                     encode_path(rbml_w,
-                                path.clone().chain(Some(elem).into_iter()));
+                                path.clone().chain(Some(elem)));
 
                     encode_item_sort(rbml_w, 't');
                     encode_family(rbml_w, 'y');
@@ -1822,8 +1822,8 @@ fn encode_lang_items(ecx: &EncodeContext, rbml_w: &mut Encoder) {
 fn encode_native_libraries(ecx: &EncodeContext, rbml_w: &mut Encoder) {
     rbml_w.start_tag(tag_native_libraries);
 
-    for &(ref lib, kind) in ecx.tcx.sess.cstore.get_used_libraries()
-                               .borrow().iter() {
+    for &(ref lib, kind) in &*ecx.tcx.sess.cstore.get_used_libraries()
+                               .borrow() {
         match kind {
             cstore::NativeStatic => {} // these libraries are not propagated
             cstore::NativeFramework | cstore::NativeUnknown => {

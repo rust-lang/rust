@@ -226,7 +226,7 @@ impl AsciiExt for [u8] {
     #[inline]
     fn eq_ignore_ascii_case(&self, other: &[u8]) -> bool {
         self.len() == other.len() &&
-        self.iter().zip(other.iter()).all(|(a, b)| {
+        self.iter().zip(other).all(|(a, b)| {
             a.eq_ignore_ascii_case(b)
         })
     }

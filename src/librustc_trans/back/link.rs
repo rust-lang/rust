@@ -355,7 +355,7 @@ pub fn mangle_internal_name_by_type_and_seq<'a, 'tcx>(ccx: &CrateContext<'a, 'tc
 }
 
 pub fn mangle_internal_name_by_path_and_seq(path: PathElems, flav: &str) -> String {
-    mangle(path.chain(Some(gensym_name(flav)).into_iter()), None)
+    mangle(path.chain(Some(gensym_name(flav))), None)
 }
 
 pub fn get_cc_prog(sess: &Session) -> String {
@@ -761,7 +761,7 @@ fn link_staticlib(sess: &Session, obj_filename: &Path, out_filename: &Path) {
         ab.add_rlib(&p, &name[..], sess.lto()).unwrap();
 
         let native_libs = csearch::get_native_libraries(&sess.cstore, cnum);
-        all_native_libs.extend(native_libs.into_iter());
+        all_native_libs.extend(native_libs);
     }
 
     ab.update_symbols();
@@ -918,7 +918,7 @@ fn link_args(cmd: &mut Linker,
         let empty_vec = Vec::new();
         let empty_str = String::new();
         let args = sess.opts.cg.link_args.as_ref().unwrap_or(&empty_vec);
-        let mut args = args.iter().chain(used_link_args.iter());
+        let mut args = args.iter().chain(&*used_link_args);
         let relocation_model = sess.opts.cg.relocation_model.as_ref()
                                    .unwrap_or(&empty_str);
         if (t.options.relocation_model == "pic" || *relocation_model == "pic")

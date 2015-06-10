@@ -368,7 +368,7 @@ impl fmt::Debug for File {
 }
 
 pub fn to_utf16(s: &Path) -> Vec<u16> {
-    s.as_os_str().encode_wide().chain(Some(0).into_iter()).collect()
+    s.as_os_str().encode_wide().chain(Some(0)).collect()
 }
 
 impl FileAttr {

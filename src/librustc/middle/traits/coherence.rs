@@ -85,7 +85,7 @@ fn overlap(selcx: &mut SelectionContext,
     let infcx = selcx.infcx();
     let opt_failing_obligation =
         a_obligations.iter()
-                     .chain(b_obligations.iter())
+                     .chain(&b_obligations)
                      .map(|o| infcx.resolve_type_vars_if_possible(o))
                      .find(|o| !selcx.evaluate_obligation(o));
 
@@ -159,8 +159,8 @@ fn impl_trait_ref_and_oblig<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
 
     let impl_obligations: Vec<_> =
         impl_obligations.into_iter()
-        .chain(normalization_obligations1.into_iter())
-        .chain(normalization_obligations2.into_iter())
+        .chain(normalization_obligations1)
+        .chain(normalization_obligations2)
         .collect();
 
     (impl_trait_ref, impl_obligations)
@@ -209,7 +209,7 @@ fn orphan_check_trait_ref<'tcx>(tcx: &ty::ctxt<'tcx>,
     // First, create an ordered iterator over all the type parameters to the trait, with the self
     // type appearing first.
     let input_tys = Some(trait_ref.self_ty());
-    let input_tys = input_tys.iter().chain(trait_ref.substs.types.get_slice(TypeSpace).iter());
+    let input_tys = input_tys.iter().chain(trait_ref.substs.types.get_slice(TypeSpace));
 
     // Find the first input type that either references a type parameter OR
     // some local type.
@@ -255,7 +255,7 @@ fn uncovered_tys<'tcx>(tcx: &ty::ctxt<'tcx>,
         vec![]
     } else if fundamental_ty(tcx, ty) {
         ty.walk_shallow()
-          .flat_map(|t| uncovered_tys(tcx, t, infer_is_local).into_iter())
+          .flat_map(|t| uncovered_tys(tcx, t, infer_is_local))
           .collect()
     } else {
         vec![ty]

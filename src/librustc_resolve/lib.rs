@@ -215,7 +215,7 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Resolver<'a, 'tcx> {
         // `visit::walk_variant` without the discriminant expression.
         match variant.node.kind {
             ast::TupleVariantKind(ref variant_arguments) => {
-                for variant_argument in variant_arguments.iter() {
+                for variant_argument in variant_arguments {
                     self.visit_ty(&*variant_argument.ty);
                 }
             }

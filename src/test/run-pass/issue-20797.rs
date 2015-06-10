@@ -85,7 +85,7 @@ impl<S: Strategy> Iterator for Subpaths<S> {
                 if path.is_dir() {
                     let result = self.strategy.get_more(&path);
                     match result {
-                        Ok(dirs) => { self.stack.extend(dirs.into_iter()); },
+                        Ok(dirs) => { self.stack.extend(dirs); },
                         Err(..) => { }
                     }
                 }

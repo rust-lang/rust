@@ -138,7 +138,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
         let mut result: Vec<(Span, String)> = vec!();
 
         let mut segs = vec!();
-        for (i, (seg, span)) in path.segments.iter().zip(spans.iter()).enumerate() {
+        for (i, (seg, span)) in path.segments.iter().zip(&spans).enumerate() {
             segs.push(seg.clone());
             let sub_path = ast::Path{span: *span, // span for the last segment
                                      global: path.global,
@@ -476,14 +476,14 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
         // the first few to match the number of generics we're looking for.
         let param_sub_spans = self.span.spans_for_ty_params(full_span,
                                                            (generics.ty_params.len() as isize));
-        for (param, param_ss) in generics.ty_params.iter().zip(param_sub_spans.iter()) {
+        for (param, param_ss) in generics.ty_params.iter().zip(param_sub_spans) {
             // Append $id to name to make sure each one is unique
             let name = format!("{}::{}${}",
                                prefix,
-                               escape(self.span.snippet(*param_ss)),
+                               escape(self.span.snippet(param_ss)),
                                id);
             self.fmt.typedef_str(full_span,
-                                 Some(*param_ss),
+                                 Some(param_ss),
                                  param.id,
                                  &name,
                                  "");

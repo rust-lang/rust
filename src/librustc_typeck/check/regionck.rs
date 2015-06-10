@@ -637,7 +637,7 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
             // outlive the operation you are performing.
             let lhs_ty = rcx.resolve_expr_type_adjusted(&**lhs);
             let rhs_ty = rcx.resolve_expr_type_adjusted(&**rhs);
-            for &ty in [lhs_ty, rhs_ty].iter() {
+            for &ty in &[lhs_ty, rhs_ty] {
                 type_must_outlive(rcx,
                                   infer::Operand(expr.span),
                                   ty,

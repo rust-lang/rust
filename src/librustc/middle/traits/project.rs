@@ -280,7 +280,7 @@ impl<'a,'b,'tcx> TypeFolder<'tcx> for AssociatedTypeNormalizer<'a,'b,'tcx> {
                                               data.clone(),
                                               self.cause.clone(),
                                               self.depth);
-                self.obligations.extend(obligations.into_iter());
+                self.obligations.extend(obligations);
                 ty
             }
 
@@ -376,7 +376,7 @@ fn opt_normalize_projection_type<'a,'b,'tcx>(
                        normalized_ty.repr(tcx),
                        depth);
 
-                obligations.extend(normalizer.obligations.into_iter());
+                obligations.extend(normalizer.obligations);
                 Some(Normalized {
                     value: normalized_ty,
                     obligations: obligations,
@@ -872,7 +872,7 @@ fn confirm_impl_candidate<'cx,'tcx>(
 
     // It is not in the impl - get the default from the trait.
     let trait_ref = obligation.predicate.trait_ref;
-    for trait_item in ty::trait_items(selcx.tcx(), trait_ref.def_id).iter() {
+    for trait_item in &*ty::trait_items(selcx.tcx(), trait_ref.def_id) {
         if let &ty::TypeTraitItem(ref assoc_ty) = trait_item {
             if assoc_ty.name == obligation.predicate.item_name {
                 if let Some(ty) = assoc_ty.ty {

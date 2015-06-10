@@ -164,14 +164,14 @@ impl<'a> MacroLoader<'a> {
         }
 
         if let Some(sel) = import.as_ref() {
-            for (name, span) in sel.iter() {
+            for (name, span) in sel {
                 if !seen.contains(name) {
                     self.sess.span_err(*span, "imported macro not found");
                 }
             }
         }
 
-        for (name, span) in reexport.iter() {
+        for (name, span) in &reexport {
             if !seen.contains(name) {
                 self.sess.span_err(*span, "reexported macro not found");
             }
