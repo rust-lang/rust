@@ -25,12 +25,7 @@
 #![allow(non_camel_case_types)]
 
 pub use self::signal_os::{sigaction, siginfo, sigset_t, sigaltstack};
-pub use self::signal_os::{SA_ONSTACK, SA_SIGINFO, SIGBUS, SIGSTKSZ, SIG_SETMASK};
-#[cfg(not(target_os = "nacl"))]
-#[cfg(not(target_os = "nacl"))]
-
-#[cfg(target_os = "nacl")]
-pub use self::signal::{SA_NOCLDSTOP, SA_SIGINFO};
+pub use self::signal_os::*;
 
 use libc;
 
