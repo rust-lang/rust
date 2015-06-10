@@ -54,15 +54,27 @@ actually think about it is probably the general *Deref Coercion*: `&T` coerces t
 
 Casts are a superset of coercions: every coercion can be explicitly invoked via a cast,
 but some changes require a cast. These "true casts" are generally regarded as dangerous or
-problematic actions. The set of true casts is actually quite small, and once again revolves
-largely around pointers. However it also introduces the primary mechanism to convert between
-numeric types.
+problematic actions. True casts revolves around raw pointers and the primitive numeric
+types. Here's an exhaustive list of all the true casts:
 
 * rawptr -> rawptr (e.g. `*mut T as *const T` or `*mut T as *mut U`)
 * rawptr <-> usize (e.g. `*mut T as usize` or `usize as *mut T`)
-* primitive -> primitive (e.g. `u32 as u8` or `u8 as u32`)
-* c-like enum -> integer/bool (e.g. `DaysOfWeek as u8`)
+* number -> number (e.g. `u32 as i8` or `i16 as f64`)
+* c-like enum -> integer/bool (e.g. `DaysOfWeek as u32`)
 * `u8` -> `char`
+* something about arrays?
+
+For number -> number casts, there are quite a few cases to consider:
+
+* unsigned to bigger unsigned will zero-extend losslessly
+* unsigned to smaller unsigned will truncate via wrapping
+* signed to unsigned will  ... TODO rest of this list
+
+The casts involving rawptrs also allow us to completely bypass type-safety
+by re-interpretting a pointer of T to a pointer of U for arbitrary types, as
+well as interpret integers as addresses. However it is impossible to actually
+*capitalize* on this violation in Safe Rust, because derefencing a raw ptr is
+`unsafe`.
 
 
 ## Conversion Traits
