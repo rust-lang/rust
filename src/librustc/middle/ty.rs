@@ -806,29 +806,31 @@ impl<'tcx> ctxt<'tcx> {
 // recursing over the type itself.
 bitflags! {
     flags TypeFlags: u32 {
-        const HAS_PARAMS        = 1 << 0,
-        const HAS_SELF          = 1 << 1,
-        const HAS_TY_INFER      = 1 << 2,
-        const HAS_RE_INFER      = 1 << 3,
-        const HAS_RE_LATE_BOUND = 1 << 4,
-        const HAS_REGIONS       = 1 << 5,
-        const HAS_TY_ERR        = 1 << 6,
-        const HAS_PROJECTION    = 1 << 7,
-        const HAS_TY_CLOSURE    = 1 << 8,
-        const NEEDS_SUBST       = TypeFlags::HAS_PARAMS.bits |
-                                  TypeFlags::HAS_SELF.bits |
-                                  TypeFlags::HAS_REGIONS.bits,
+        const HAS_PARAMS         = 1 << 0,
+        const HAS_SELF           = 1 << 1,
+        const HAS_TY_INFER       = 1 << 2,
+        const HAS_RE_INFER       = 1 << 3,
+        const HAS_RE_EARLY_BOUND = 1 << 4,
+        const HAS_FREE_REGIONS   = 1 << 5,
+        const HAS_TY_ERR         = 1 << 6,
+        const HAS_PROJECTION     = 1 << 7,
+        const HAS_TY_CLOSURE     = 1 << 8,
+        const NEEDS_SUBST        = TypeFlags::HAS_PARAMS.bits |
+                                   TypeFlags::HAS_SELF.bits |
+                                   TypeFlags::HAS_RE_EARLY_BOUND.bits,
 
         // Flags representing the nominal content of a type,
-        // computed by FlagsComputetion
+        // computed by FlagsComputation. If you add a new nominal
+        // flag, it should be added here too.
         const NOMINAL_FLAGS     = TypeFlags::HAS_PARAMS.bits |
                                   TypeFlags::HAS_SELF.bits |
                                   TypeFlags::HAS_TY_INFER.bits |
                                   TypeFlags::HAS_RE_INFER.bits |
-                                  TypeFlags::HAS_RE_LATE_BOUND.bits |
-                                  TypeFlags::HAS_REGIONS.bits |
+                                  TypeFlags::HAS_RE_EARLY_BOUND.bits |
+                                  TypeFlags::HAS_FREE_REGIONS.bits |
                                   TypeFlags::HAS_TY_ERR.bits |
-                                  TypeFlags::HAS_PROJECTION.bits,
+                                  TypeFlags::HAS_PROJECTION.bits |
+                                  TypeFlags::HAS_TY_CLOSURE.bits,
 
         // Caches for type_is_sized, type_moves_by_default
         const SIZEDNESS_CACHED  = 1 << 16,
@@ -990,8 +992,10 @@ pub fn type_has_ty_closure(ty: Ty) -> bool {
     ty.flags.get().intersects(TypeFlags::HAS_TY_CLOSURE)
 }
 
-pub fn type_has_late_bound_regions(ty: Ty) -> bool {
-    ty.flags.get().intersects(TypeFlags::HAS_RE_LATE_BOUND)
+pub fn type_has_erasable_regions(ty: Ty) -> bool {
+    ty.flags.get().intersects(TypeFlags::HAS_RE_EARLY_BOUND |
+                              TypeFlags::HAS_RE_INFER |
+                              TypeFlags::HAS_FREE_REGIONS)
 }
 
 /// An "escaping region" is a bound region whose binder is not part of `t`.
@@ -2987,7 +2991,7 @@ impl FlagComputation {
                 for projection_bound in &bounds.projection_bounds {
                     let mut proj_computation = FlagComputation::new();
                     proj_computation.add_projection_predicate(&projection_bound.0);
-                    computation.add_bound_computation(&proj_computation);
+                    self.add_bound_computation(&proj_computation);
                 }
                 self.add_bound_computation(&computation);
 
@@ -3041,14 +3045,12 @@ impl FlagComputation {
     }
 
     fn add_region(&mut self, r: Region) {
-        self.add_flags(TypeFlags::HAS_REGIONS);
         match r {
             ty::ReInfer(_) => { self.add_flags(TypeFlags::HAS_RE_INFER); }
-            ty::ReLateBound(debruijn, _) => {
-                self.add_flags(TypeFlags::HAS_RE_LATE_BOUND);
-                self.add_depth(debruijn.depth);
-            }
-            _ => { }
+            ty::ReLateBound(debruijn, _) => { self.add_depth(debruijn.depth); }
+            ty::ReEarlyBound(..) => { self.add_flags(TypeFlags::HAS_RE_EARLY_BOUND); }
+            ty::ReStatic => {}
+            _ => { self.add_flags(TypeFlags::HAS_FREE_REGIONS); }
         }
     }
 
@@ -6994,7 +6996,7 @@ pub fn liberate_late_bound_regions<'tcx, T>(
     -> T
     where T : TypeFoldable<'tcx> + Repr<'tcx>
 {
-    replace_late_bound_regions(
+    ty_fold::replace_late_bound_regions(
         tcx, value,
         |br| ty::ReFree(ty::FreeRegion{scope: all_outlive_scope, bound_region: br})).0
 }
@@ -7005,7 +7007,7 @@ pub fn count_late_bound_regions<'tcx, T>(
     -> usize
     where T : TypeFoldable<'tcx> + Repr<'tcx>
 {
-    let (_, skol_map) = replace_late_bound_regions(tcx, value, |_| ty::ReStatic);
+    let (_, skol_map) = ty_fold::replace_late_bound_regions(tcx, value, |_| ty::ReStatic);
     skol_map.len()
 }
 
@@ -7063,7 +7065,7 @@ pub fn erase_late_bound_regions<'tcx, T>(
     -> T
     where T : TypeFoldable<'tcx> + Repr<'tcx>
 {
-    replace_late_bound_regions(tcx, value, |_| ty::ReStatic).0
+    ty_fold::replace_late_bound_regions(tcx, value, |_| ty::ReStatic).0
 }
 
 /// Rewrite any late-bound regions so that they are anonymous.  Region numbers are
@@ -7081,51 +7083,10 @@ pub fn anonymize_late_bound_regions<'tcx, T>(
     where T : TypeFoldable<'tcx> + Repr<'tcx>,
 {
     let mut counter = 0;
-    ty::Binder(replace_late_bound_regions(tcx, sig, |_| {
+    ty::Binder(ty_fold::replace_late_bound_regions(tcx, sig, |_| {
         counter += 1;
         ReLateBound(ty::DebruijnIndex::new(1), BrAnon(counter))
     }).0)
-}
-
-/// Replaces the late-bound-regions in `value` that are bound by `value`.
-pub fn replace_late_bound_regions<'tcx, T, F>(
-    tcx: &ty::ctxt<'tcx>,
-    binder: &Binder<T>,
-    mut mapf: F)
-    -> (T, FnvHashMap<ty::BoundRegion,ty::Region>)
-    where T : TypeFoldable<'tcx> + Repr<'tcx>,
-          F : FnMut(BoundRegion) -> ty::Region,
-{
-    debug!("replace_late_bound_regions({})", binder.repr(tcx));
-
-    let mut map = FnvHashMap();
-
-    // Note: fold the field `0`, not the binder, so that late-bound
-    // regions bound by `binder` are considered free.
-    let value = ty_fold::fold_regions(tcx, &binder.0, |region, current_depth| {
-        debug!("region={}", region.repr(tcx));
-        match region {
-            ty::ReLateBound(debruijn, br) if debruijn.depth == current_depth => {
-                let region = *map.entry(br).or_insert_with(|| mapf(br));
-
-                if let ty::ReLateBound(debruijn1, br) = region {
-                    // If the callback returns a late-bound region,
-                    // that region should always use depth 1. Then we
-                    // adjust it to the correct depth.
-                    assert_eq!(debruijn1.depth, 1);
-                    ty::ReLateBound(debruijn, br)
-                } else {
-                    region
-                }
-            }
-            _ => {
-                region
-            }
-        }
-    });
-
-    debug!("resulting map: {:?} value: {:?}", map, value.repr(tcx));
-    (value, map)
 }
 
 impl DebruijnIndex {
