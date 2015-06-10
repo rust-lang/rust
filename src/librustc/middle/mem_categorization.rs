@@ -1410,7 +1410,7 @@ pub enum AliasableReason {
 
 impl<'tcx> cmt_<'tcx> {
     pub fn guarantor(&self) -> cmt<'tcx> {
-        //! Returns `self` after stripping away any owned pointer derefs or
+        //! Returns `self` after stripping away any derefs or
         //! interior content. The return value is basically the `cmt` which
         //! determines how long the value in `self` remains live.
 
