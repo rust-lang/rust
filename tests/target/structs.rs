@@ -10,6 +10,7 @@ pub struct Foo {
     g: SomeOtherType,
     /// A doc comment on a field
     h: AThirdType,
+    pub i: TypeForPublicField,
 }
 
 struct Bar;
