@@ -10,7 +10,7 @@
 
 // compile-flags: -C debug-assertions
 
-#![feature(core)]
+#![feature(iter_to_slice)]
 
 use std::slice;
 

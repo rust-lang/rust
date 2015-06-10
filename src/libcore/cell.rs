@@ -221,7 +221,7 @@ impl<T:Copy> Cell<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(core)]
+    /// # #![feature(as_unsafe_cell)]
     /// use std::cell::Cell;
     ///
     /// let c = Cell::new(5);

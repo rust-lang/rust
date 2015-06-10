@@ -40,7 +40,7 @@
 
 // ignore-android: FIXME(#10393) hangs without output
 
-#![feature(box_syntax, std_misc, collections)]
+#![feature(box_syntax, owned_ascii_ext, vec_push_all)]
 
 use std::ascii::OwnedAsciiExt;
 use std::env;

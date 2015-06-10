@@ -10,9 +10,9 @@
 
 // pretty-expanded FIXME #23616
 
-#![allow(unused_mut)]
+#![allow(warnings)]
 #![feature(collections)]
-#![feature(collections_drain)]
+#![feature(drain, enumset, collections_bound, btree_range, vecmap)]
 
 extern crate collections;
 

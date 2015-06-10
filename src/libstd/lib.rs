@@ -149,8 +149,8 @@
 #![feature(vec_push_all)]
 #![feature(wrapping)]
 #![feature(zero_one)]
-#![cfg_attr(test, feature(float_from_str_radix))]
-#![cfg_attr(test, feature(test, rustc_private))]
+#![cfg_attr(test, feature(float_from_str_radix, range_inclusive, float_extras))]
+#![cfg_attr(test, feature(test, rustc_private, float_consts))]
 
 // Don't link to std. We are std.
 #![no_std]

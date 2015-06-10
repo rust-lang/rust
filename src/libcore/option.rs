@@ -274,7 +274,7 @@ impl<T> Option<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(core)]
+    /// # #![feature(as_slice)]
     /// let mut x = Some("Diamonds");
     /// {
     ///     let v = x.as_mut_slice();

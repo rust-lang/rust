@@ -17,7 +17,7 @@
 
 // no-pretty-expanded FIXME #15189
 
-#![feature(duration, duration_span, std_misc)]
+#![feature(duration, duration_span, future)]
 
 use std::env;
 use std::sync::{Arc, Future, Mutex, Condvar};

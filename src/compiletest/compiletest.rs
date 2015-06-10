@@ -11,13 +11,14 @@
 #![crate_type = "bin"]
 
 #![feature(box_syntax)]
-#![feature(collections)]
-#![feature(rustc_private)]
-#![feature(std_misc)]
-#![feature(test)]
-#![feature(path_ext)]
-#![feature(str_char)]
+#![feature(dynamic_lib)]
 #![feature(libc)]
+#![feature(path_ext)]
+#![feature(rustc_private)]
+#![feature(slice_extras)]
+#![feature(str_char)]
+#![feature(test)]
+#![feature(vec_push_all)]
 
 #![deny(warnings)]
 

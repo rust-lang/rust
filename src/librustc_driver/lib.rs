@@ -33,7 +33,6 @@
 #![feature(rustc_private)]
 #![feature(set_stdio)]
 #![feature(staged_api)]
-#![feature(str_casing)]
 #![feature(vec_push_all)]
 
 extern crate arena;

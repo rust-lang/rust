@@ -13,8 +13,6 @@
 // ignore-windows: std::dynamic_lib does not work on Windows well
 // ignore-musl
 
-#![feature(std_misc)]
-
 extern crate linkage_visibility as foo;
 
 pub fn main() {

@@ -822,7 +822,7 @@ pub trait Iterator {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(core)]
+    /// # #![feature(iter_min_max)]
     /// use std::iter::MinMaxResult::{NoElements, OneElement, MinMax};
     ///
     /// let a: [i32; 0] = [];
@@ -894,7 +894,7 @@ pub trait Iterator {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(core)]
+    /// # #![feature(iter_cmp)]
     /// let a = [-3_i32, 0, 1, 5, -10];
     /// assert_eq!(*a.iter().max_by(|x| x.abs()).unwrap(), -10);
     /// ```
@@ -922,7 +922,7 @@ pub trait Iterator {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(core)]
+    /// # #![feature(iter_cmp)]
     /// let a = [-3_i32, 0, 1, 5, -10];
     /// assert_eq!(*a.iter().min_by(|x| x.abs()).unwrap(), 0);
     /// ```
@@ -1061,12 +1061,12 @@ pub trait Iterator {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(core)]
+    /// # #![feature(iter_arith)]
     /// let a = [1, 2, 3, 4, 5];
     /// let it = a.iter();
     /// assert_eq!(it.sum::<i32>(), 15);
     /// ```
-    #[unstable(feature="iter_sum", reason = "bounds recently changed")]
+    #[unstable(feature="iter_arith", reason = "bounds recently changed")]
     fn sum<S=<Self as Iterator>::Item>(self) -> S where
         S: Add<Self::Item, Output=S> + Zero,
         Self: Sized,
@@ -1079,7 +1079,7 @@ pub trait Iterator {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(core)]
+    /// # #![feature(iter_arith)]
     /// fn factorial(n: u32) -> u32 {
     ///     (1..).take_while(|&i| i <= n).product()
     /// }
@@ -1087,7 +1087,7 @@ pub trait Iterator {
     /// assert_eq!(factorial(1), 1);
     /// assert_eq!(factorial(5), 120);
     /// ```
-    #[unstable(feature="iter_product", reason = "bounds recently changed")]
+    #[unstable(feature="iter_arith", reason = "bounds recently changed")]
     fn product<P=<Self as Iterator>::Item>(self) -> P where
         P: Mul<Self::Item, Output=P> + One,
         Self: Sized,
@@ -1353,7 +1353,7 @@ impl<T: Clone> MinMaxResult<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(core)]
+    /// # #![feature(iter_min_max)]
     /// use std::iter::MinMaxResult::{self, NoElements, OneElement, MinMax};
     ///
     /// let r: MinMaxResult<i32> = NoElements;
@@ -2509,7 +2509,7 @@ impl<I: RandomAccessIterator, F> RandomAccessIterator for Inspect<I, F>
 /// An iterator that yields sequential Fibonacci numbers, and stops on overflow.
 ///
 /// ```
-/// #![feature(core)]
+/// #![feature(iter_unfold)]
 /// use std::iter::Unfold;
 ///
 /// // This iterator will yield up to the last Fibonacci number before the max

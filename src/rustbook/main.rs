@@ -11,7 +11,7 @@
 #![deny(warnings)]
 
 #![feature(exit_status)]
-#![feature(iter_sum)]
+#![feature(iter_arith)]
 #![feature(path_relative_from)]
 #![feature(rustc_private)]
 #![feature(rustdoc)]

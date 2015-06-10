@@ -8,8 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-#![feature(hash)]
+#![feature(hash_default)]
 
 use std::hash::{SipHasher, hash};
 

@@ -11,7 +11,7 @@
 // pretty-expanded FIXME #23616
 
 #![forbid(warnings)]
-#![feature(std_misc)]
+#![feature(thunk)]
 
 // Pretty printing tests complain about `use std::predule::*`
 #![allow(unused_imports)]

@@ -480,7 +480,7 @@ impl<T> VecDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
+    /// # #![feature(deque_extras)]
     /// use std::collections::VecDeque;
     ///
     /// let mut buf = VecDeque::new();
@@ -629,7 +629,7 @@ impl<T> VecDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
+    /// # #![feature(drain)]
     /// use std::collections::VecDeque;
     ///
     /// let mut v = VecDeque::new();
@@ -868,7 +868,7 @@ impl<T> VecDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
+    /// # #![feature(deque_extras)]
     /// use std::collections::VecDeque;
     ///
     /// let mut buf = VecDeque::new();
@@ -892,8 +892,8 @@ impl<T> VecDeque<T> {
         self.pop_back()
     }
 
-    /// Removes an element from anywhere in the ringbuf and returns it, replacing it with the first
-    /// element.
+    /// Removes an element from anywhere in the ringbuf and returns it,
+    /// replacing it with the first element.
     ///
     /// This does not preserve ordering, but is O(1).
     ///
@@ -902,7 +902,7 @@ impl<T> VecDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
+    /// # #![feature(deque_extras)]
     /// use std::collections::VecDeque;
     ///
     /// let mut buf = VecDeque::new();
@@ -1310,7 +1310,7 @@ impl<T> VecDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
+    /// # #![feature(split_off)]
     /// use std::collections::VecDeque;
     ///
     /// let mut buf: VecDeque<_> = vec![1,2,3].into_iter().collect();
@@ -1373,7 +1373,7 @@ impl<T> VecDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
+    /// # #![feature(append)]
     /// use std::collections::VecDeque;
     ///
     /// let mut buf: VecDeque<_> = vec![1, 2, 3].into_iter().collect();
@@ -1434,7 +1434,7 @@ impl<T: Clone> VecDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
+    /// # #![feature(deque_extras)]
     /// use std::collections::VecDeque;
     ///
     /// let mut buf = VecDeque::new();

@@ -10,8 +10,7 @@
 
 // pretty-expanded FIXME #23616
 
-#![feature(core)]
-#![feature(simd)]
+#![feature(core_simd)]
 
 pub fn main() {
     let _o = None::<std::simd::i32x4>;

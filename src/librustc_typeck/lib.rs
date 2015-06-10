@@ -79,7 +79,7 @@ This API is completely unstable and subject to change.
 #![feature(box_syntax)]
 #![feature(drain)]
 #![feature(iter_cmp)]
-#![feature(iter_sum)]
+#![feature(iter_arith)]
 #![feature(quote)]
 #![feature(ref_slice)]
 #![feature(rustc_diagnostic_macros)]
