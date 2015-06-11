@@ -63,7 +63,7 @@ define PREPARE_LIB
 	  echo "  at destination $(PREPARE_WORKING_DEST_LIB_DIR):"      && \
 	  echo $$MATCHES ; \
 	fi
-	$(Q)$(PREPARE_LIB_CMD) `ls -drt1 $(PREPARE_WORKING_SOURCE_LIB_DIR)/$(1) | tail -1` $(PREPARE_WORKING_DEST_LIB_DIR)/
+	$(Q)$(PREPARE_LIB_CMD) `ls -drt1 $(PREPARE_WORKING_SOURCE_LIB_DIR)/$(1)` $(PREPARE_WORKING_DEST_LIB_DIR)/
 endef
 
 # Copy a man page
