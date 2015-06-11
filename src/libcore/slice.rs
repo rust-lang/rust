@@ -1501,6 +1501,10 @@ impl<T: PartialOrd> PartialOrd for [T] {
 
 /// Extension methods for slices containing integers.
 #[unstable(feature = "int_slice")]
+#[deprecated(since = "1.2.0",
+             reason = "has not seen much usage and may want to live in the \
+                       standard library now that most slice methods are \
+                       on an inherent implementation block")]
 pub trait IntSliceExt<U, S> {
     /// Converts the slice to an immutable slice of unsigned integers with the same width.
     fn as_unsigned<'a>(&'a self) -> &'a [U];
