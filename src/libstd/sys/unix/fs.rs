@@ -283,8 +283,6 @@ impl File {
         Ok(File(fd))
     }
 
-    pub fn into_fd(self) -> FileDesc { self.0 }
-
     pub fn file_attr(&self) -> io::Result<FileAttr> {
         let mut stat: raw::stat = unsafe { mem::zeroed() };
         try!(cvt(unsafe {

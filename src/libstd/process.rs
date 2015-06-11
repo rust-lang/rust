@@ -243,13 +243,15 @@ impl Command {
 
     fn spawn_inner(&self, default_io: StdioImp) -> io::Result<Child> {
         let default_io = Stdio(default_io);
-        let (their_stdin, our_stdin) = try!(
+
+        // See comment on `setup_io` for what `_drop_later` is.
+        let (their_stdin, our_stdin, _drop_later) = try!(
             setup_io(self.stdin.as_ref().unwrap_or(&default_io), true)
         );
-        let (their_stdout, our_stdout) = try!(
+        let (their_stdout, our_stdout, _drop_later) = try!(
             setup_io(self.stdout.as_ref().unwrap_or(&default_io), false)
         );
-        let (their_stderr, our_stderr) = try!(
+        let (their_stderr, our_stderr, _drop_later) = try!(
             setup_io(self.stderr.as_ref().unwrap_or(&default_io), false)
         );
 
@@ -271,7 +273,7 @@ impl Command {
     /// By default, stdin, stdout and stderr are inherited from the parent.
     #[stable(feature = "process", since = "1.0.0")]
     pub fn spawn(&mut self) -> io::Result<Child> {
-        self.spawn_inner(StdioImp::Raw(imp::Stdio::Inherit))
+        self.spawn_inner(StdioImp::Inherit)
     }
 
     /// Executes the command as a child process, waiting for it to finish and
@@ -341,19 +343,30 @@ impl AsInnerMut<imp::Command> for Command {
     fn as_inner_mut(&mut self) -> &mut imp::Command { &mut self.inner }
 }
 
+// Takes a `Stdio` configuration (this module) and whether the to-be-owned
+// handle will be readable.
+//
+// Returns a triple of (stdio to spawn with, stdio to store, stdio to drop). The
+// stdio to spawn with is passed down to the `sys` module and indicates how the
+// stdio stream should be set up. The "stdio to store" is an object which
+// should be returned in the `Child` that makes its way out. The "stdio to drop"
+// represents the raw value of "stdio to spawn with", but is the owned variant
+// for it. This needs to be dropped after the child spawns
 fn setup_io(io: &Stdio, readable: bool)
-            -> io::Result<(imp::Stdio, Option<AnonPipe>)>
+            -> io::Result<(imp::Stdio, Option<AnonPipe>, Option<AnonPipe>)>
 {
     Ok(match io.0 {
         StdioImp::MakePipe => {
             let (reader, writer) = try!(pipe::anon_pipe());
             if readable {
-                (imp::Stdio::Piped(reader), Some(writer))
+                (imp::Stdio::Raw(reader.raw()), Some(writer), Some(reader))
             } else {
-                (imp::Stdio::Piped(writer), Some(reader))
+                (imp::Stdio::Raw(writer.raw()), Some(reader), Some(writer))
             }
         }
-        StdioImp::Raw(ref raw) => (raw.clone_if_copy(), None),
+        StdioImp::Raw(ref owned) => (imp::Stdio::Raw(owned.raw()), None, None),
+        StdioImp::Inherit => (imp::Stdio::Inherit, None, None),
+        StdioImp::None => (imp::Stdio::None, None, None),
     })
 }
 
@@ -379,7 +392,9 @@ pub struct Stdio(StdioImp);
 // The internal enum for stdio setup; see below for descriptions.
 enum StdioImp {
     MakePipe,
-    Raw(imp::Stdio),
+    Raw(imp::RawStdio),
+    Inherit,
+    None,
 }
 
 impl Stdio {
@@ -389,16 +404,16 @@ impl Stdio {
 
     /// The child inherits from the corresponding parent descriptor.
     #[stable(feature = "process", since = "1.0.0")]
-    pub fn inherit() -> Stdio { Stdio(StdioImp::Raw(imp::Stdio::Inherit)) }
+    pub fn inherit() -> Stdio { Stdio(StdioImp::Inherit) }
 
     /// This stream will be ignored. This is the equivalent of attaching the
     /// stream to `/dev/null`
     #[stable(feature = "process", since = "1.0.0")]
-    pub fn null() -> Stdio { Stdio(StdioImp::Raw(imp::Stdio::None)) }
+    pub fn null() -> Stdio { Stdio(StdioImp::None) }
 }
 
-impl FromInner<imp::Stdio> for Stdio {
-    fn from_inner(inner: imp::Stdio) -> Stdio {
+impl FromInner<imp::RawStdio> for Stdio {
+    fn from_inner(inner: imp::RawStdio) -> Stdio {
         Stdio(StdioImp::Raw(inner))
     }
 }
