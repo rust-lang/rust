@@ -446,10 +446,20 @@ mod tests {
     use mem;
     use ptr;
     use libc;
+    use slice;
     use sys::{self, c, cvt, pipe};
 
+    #[cfg(not(target_os = "android"))]
     extern {
         fn sigaddset(set: *mut c::sigset_t, signum: libc::c_int) -> libc::c_int;
+    }
+
+    #[cfg(target_os = "android")]
+    unsafe fn sigaddset(set: *mut c::sigset_t, signum: libc::c_int) -> libc::c_int {
+        let raw = slice::from_raw_parts_mut(set as *mut u8, mem::size_of::<c::sigset_t>());
+        let bit = (signum - 1) as usize;
+        raw[bit / 8] |= 1 << (bit % 8);
+        return 0;
     }
 
     #[test]
