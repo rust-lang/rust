@@ -872,6 +872,7 @@ impl<T> [T] {
     /// assert_eq!(Some(vec![3, 1, 2]), perms.next());
     /// ```
     #[unstable(feature = "permutations")]
+    #[deprecated(since = "1.2.0", reason = "not clear this should be in the stdlib")]
     #[inline]
     pub fn permutations(&self) -> Permutations<T> where T: Clone {
         // NB see hack module in this file
@@ -897,6 +898,7 @@ impl<T> [T] {
     /// ```
     #[unstable(feature = "permutations",
                reason = "uncertain if this merits inclusion in std")]
+    #[deprecated(since = "1.2.0", reason = "not clear this should be in the stdlib")]
     pub fn next_permutation(&mut self) -> bool where T: Ord {
         core_slice::SliceExt::next_permutation(self)
     }
@@ -920,6 +922,7 @@ impl<T> [T] {
     /// ```
     #[unstable(feature = "permutations",
                reason = "uncertain if this merits inclusion in std")]
+    #[deprecated(since = "1.2.0", reason = "not clear this should be in the stdlib")]
     pub fn prev_permutation(&mut self) -> bool where T: Ord {
         core_slice::SliceExt::prev_permutation(self)
     }
@@ -1066,6 +1069,7 @@ impl<T: Clone, V: Borrow<[T]>> SliceConcatExt<T> for [V] {
 /// sequence to its initial order.
 #[unstable(feature = "permutations")]
 #[derive(Clone)]
+#[deprecated(since = "1.2.0", reason = "not clear this should be in the stdlib")]
 pub struct ElementSwaps {
     sdir: Vec<SizeDirection>,
     /// If `true`, emit the last swap that returns the sequence to initial
@@ -1077,6 +1081,7 @@ pub struct ElementSwaps {
 impl ElementSwaps {
     /// Creates an `ElementSwaps` iterator for a sequence of `length` elements.
     #[unstable(feature = "permutations")]
+    #[deprecated(since = "1.2.0", reason = "not clear this should be in the stdlib")]
     pub fn new(length: usize) -> ElementSwaps {
         // Initialize `sdir` with a direction that position should move in
         // (all negative at the beginning) and the `size` of the
@@ -1199,6 +1204,7 @@ impl Iterator for ElementSwaps {
 ///
 /// Generates even and odd permutations alternately.
 #[unstable(feature = "permutations")]
+#[deprecated(since = "1.2.0", reason = "not clear this should be in the stdlib")]
 pub struct Permutations<T> {
     swaps: ElementSwaps,
     v: Vec<T>,
