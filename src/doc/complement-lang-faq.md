@@ -30,15 +30,13 @@ You may also be interested in browsing [trending Rust repositories][github-rust]
 
 ## Is anyone using Rust in production?
 
-Currently, Rust is still pre-1.0, and so we don't recommend that you use Rust
-in production unless you know exactly what you're getting into.
-
-That said, there are two production deployments of Rust that we're aware of:
+Yes. For example (incomplete):
 
 * [OpenDNS](http://labs.opendns.com/2013/10/04/zeromq-helping-us-block-malicious-domains/)
 * [Skylight](http://skylight.io)
-
-Let the fact that this is an easily countable number be a warning.
+* [wit.ai](https://github.com/wit-ai/witd)
+* [Codius](https://codius.org/blog/codius-rust/)
+* [MaidSafe](http://maidsafe.net/)
 
 ## Does it run on Windows?
 

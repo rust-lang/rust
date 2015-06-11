@@ -865,6 +865,7 @@ impl<'a, A> DoubleEndedIterator for IterMut<'a, A> {
 impl<'a, A> ExactSizeIterator for IterMut<'a, A> {}
 
 /// An iterator over the item contained inside an Option.
+#[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<A> { inner: Item<A> }
 
