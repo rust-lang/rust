@@ -3043,10 +3043,10 @@ pub fn repeat<T: Clone>(elt: T) -> Repeat<T> {
 }
 
 /// An iterator that yields nothing.
-#[unstable(feature="iter_empty", reason = "new addition")]
+#[stable(feature = "iter_empty", since = "1.2.0")]
 pub struct Empty<T>(marker::PhantomData<T>);
 
-#[unstable(feature="iter_empty", reason = "new addition")]
+#[stable(feature = "iter_empty", since = "1.2.0")]
 impl<T> Iterator for Empty<T> {
     type Item = T;
 
@@ -3059,14 +3059,14 @@ impl<T> Iterator for Empty<T> {
     }
 }
 
-#[unstable(feature="iter_empty", reason = "new addition")]
+#[stable(feature = "iter_empty", since = "1.2.0")]
 impl<T> DoubleEndedIterator for Empty<T> {
     fn next_back(&mut self) -> Option<T> {
         None
     }
 }
 
-#[unstable(feature="iter_empty", reason = "new addition")]
+#[stable(feature = "iter_empty", since = "1.2.0")]
 impl<T> ExactSizeIterator for Empty<T> {
     fn len(&self) -> usize {
         0
@@ -3075,7 +3075,7 @@ impl<T> ExactSizeIterator for Empty<T> {
 
 // not #[derive] because that adds a Clone bound on T,
 // which isn't necessary.
-#[unstable(feature="iter_empty", reason = "new addition")]
+#[stable(feature = "iter_empty", since = "1.2.0")]
 impl<T> Clone for Empty<T> {
     fn clone(&self) -> Empty<T> {
         Empty(marker::PhantomData)
@@ -3084,7 +3084,7 @@ impl<T> Clone for Empty<T> {
 
 // not #[derive] because that adds a Default bound on T,
 // which isn't necessary.
-#[unstable(feature="iter_empty", reason = "new addition")]
+#[stable(feature = "iter_empty", since = "1.2.0")]
 impl<T> Default for Empty<T> {
     fn default() -> Empty<T> {
         Empty(marker::PhantomData)
@@ -3092,19 +3092,19 @@ impl<T> Default for Empty<T> {
 }
 
 /// Creates an iterator that yields nothing.
-#[unstable(feature="iter_empty", reason = "new addition")]
+#[stable(feature = "iter_empty", since = "1.2.0")]
 pub fn empty<T>() -> Empty<T> {
     Empty(marker::PhantomData)
 }
 
 /// An iterator that yields an element exactly once.
 #[derive(Clone)]
-#[unstable(feature="iter_once", reason = "new addition")]
+#[stable(feature = "iter_once", since = "1.2.0")]
 pub struct Once<T> {
     inner: ::option::IntoIter<T>
 }
 
-#[unstable(feature="iter_once", reason = "new addition")]
+#[stable(feature = "iter_once", since = "1.2.0")]
 impl<T> Iterator for Once<T> {
     type Item = T;
 
@@ -3117,14 +3117,14 @@ impl<T> Iterator for Once<T> {
     }
 }
 
-#[unstable(feature="iter_once", reason = "new addition")]
+#[stable(feature = "iter_once", since = "1.2.0")]
 impl<T> DoubleEndedIterator for Once<T> {
     fn next_back(&mut self) -> Option<T> {
         self.inner.next_back()
     }
 }
 
-#[unstable(feature="iter_once", reason = "new addition")]
+#[stable(feature = "iter_once", since = "1.2.0")]
 impl<T> ExactSizeIterator for Once<T> {
     fn len(&self) -> usize {
         self.inner.len()
@@ -3132,7 +3132,7 @@ impl<T> ExactSizeIterator for Once<T> {
 }
 
 /// Creates an iterator that yields an element exactly once.
-#[unstable(feature="iter_once", reason = "new addition")]
+#[stable(feature = "iter_once", since = "1.2.0")]
 pub fn once<T>(value: T) -> Once<T> {
     Once { inner: Some(value).into_iter() }
 }
