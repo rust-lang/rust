@@ -124,6 +124,7 @@ impl<T : ?Sized> Box<T> {
     #[unstable(feature = "box_raw",
                reason = "may be renamed or moved out of Box scope")]
     #[inline]
+    // NB: may want to be called from_ptr, see comments on CStr::from_ptr
     pub unsafe fn from_raw(raw: *mut T) -> Self {
         mem::transmute(raw)
     }
@@ -147,6 +148,7 @@ impl<T : ?Sized> Box<T> {
     /// ```
     #[unstable(feature = "box_raw", reason = "may be renamed")]
     #[inline]
+    // NB: may want to be called into_ptr, see comments on CStr::from_ptr
     pub fn into_raw(b: Box<T>) -> *mut T {
         unsafe { mem::transmute(b) }
     }

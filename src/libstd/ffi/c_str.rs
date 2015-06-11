@@ -206,6 +206,9 @@ impl CString {
     /// `into_ptr`. The length of the string will be recalculated
     /// using the pointer.
     #[unstable(feature = "cstr_memory", reason = "recently added")]
+    // NB: may want to be called from_raw, needs to consider CStr::from_ptr,
+    //     Box::from_raw (or whatever it's currently called), and
+    //     slice::from_raw_parts
     pub unsafe fn from_ptr(ptr: *const libc::c_char) -> CString {
         let len = libc::strlen(ptr) + 1; // Including the NUL byte
         let slice = slice::from_raw_parts(ptr, len as usize);
@@ -221,6 +224,7 @@ impl CString {
     ///
     /// Failure to call `from_ptr` will lead to a memory leak.
     #[unstable(feature = "cstr_memory", reason = "recently added")]
+    // NB: may want to be called into_raw, see comments on from_ptr
     pub fn into_ptr(self) -> *const libc::c_char {
         // It is important that the bytes be sized to fit - we need
         // the capacity to be determinable from the string length, and
