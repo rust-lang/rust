@@ -1230,6 +1230,10 @@ impl<'a, I: DoubleEndedIterator + ?Sized> DoubleEndedIterator for &'a mut I {
 #[unstable(feature = "iter_idx",
            reason = "not widely used, may be better decomposed into Index \
                      and ExactSizeIterator")]
+#[deprecated(since = "1.2.0",
+             reason = "trait has not proven itself as a widely useful \
+                       abstraction for iterators, and more time may be needed \
+                       for iteration on the design")]
 pub trait RandomAccessIterator: Iterator {
     /// Returns the number of indexable elements. At most `std::usize::MAX`
     /// elements are indexable, even if the iterator represents a longer range.
