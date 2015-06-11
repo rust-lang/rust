@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -12,6 +12,8 @@
 // ignore-stage1
 // compile-flags: -C codegen-units=2
 // error-pattern: build without -C codegen-units for more exact errors
+// error-pattern: aborting due to previous error
+// error-pattern: aborting due to worker thread panic
 
 #![feature(asm)]
 

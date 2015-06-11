@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -11,6 +11,7 @@
 // aux-build:macro_crate_MacroRulesTT.rs
 // ignore-stage1
 // error-pattern: plugin tried to register a new MacroRulesTT
+// error-pattern: aborting due to previous error
 
 #![feature(plugin)]
 #![plugin(macro_crate_MacroRulesTT)]
