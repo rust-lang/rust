@@ -468,7 +468,7 @@ macro_rules! int_impl {
         /// to `-MIN`, a positive value that is too large to represent
         /// in the type. In such a case, this function returns `MIN`
         /// itself..
-        #[unstable(feature = "num_wrapping")]
+        #[stable(feature = "num_wrapping", since = "1.2.0")]
         #[inline(always)]
         pub fn wrapping_div(self, rhs: Self) -> Self {
             self.overflowing_div(rhs).0
@@ -481,7 +481,7 @@ macro_rules! int_impl {
         /// implementation artifacts make `x % y` illegal for `MIN /
         /// -1` on a signed type illegal (where `MIN` is the negative
         /// minimal value). In such a case, this function returns `0`.
-        #[unstable(feature = "num_wrapping")]
+        #[stable(feature = "num_wrapping", since = "1.2.0")]
         #[inline(always)]
         pub fn wrapping_rem(self, rhs: Self) -> Self {
             self.overflowing_rem(rhs).0
@@ -495,7 +495,7 @@ macro_rules! int_impl {
         /// negative minimal value for the type); this is a positive
         /// value that is too large to represent in the type. In such
         /// a case, this function returns `MIN` itself.
-        #[unstable(feature = "num_wrapping")]
+        #[stable(feature = "num_wrapping", since = "1.2.0")]
         #[inline(always)]
         pub fn wrapping_neg(self) -> Self {
             self.overflowing_neg().0
@@ -504,7 +504,7 @@ macro_rules! int_impl {
         /// Panic-free bitwise shift-left; yields `self << mask(rhs)`,
         /// where `mask` removes any high-order bits of `rhs` that
         /// would cause the shift to exceed the bitwidth of the type.
-        #[unstable(feature = "num_wrapping")]
+        #[stable(feature = "num_wrapping", since = "1.2.0")]
         #[inline(always)]
         pub fn wrapping_shl(self, rhs: u32) -> Self {
             self.overflowing_shl(rhs).0
@@ -513,7 +513,7 @@ macro_rules! int_impl {
         /// Panic-free bitwise shift-left; yields `self >> mask(rhs)`,
         /// where `mask` removes any high-order bits of `rhs` that
         /// would cause the shift to exceed the bitwidth of the type.
-        #[unstable(feature = "num_wrapping")]
+        #[stable(feature = "num_wrapping", since = "1.2.0")]
         #[inline(always)]
         pub fn wrapping_shr(self, rhs: u32) -> Self {
             self.overflowing_shr(rhs).0
@@ -1038,7 +1038,7 @@ macro_rules! uint_impl {
         /// to `-MIN`, a positive value that is too large to represent
         /// in the type. In such a case, this function returns `MIN`
         /// itself..
-        #[unstable(feature = "num_wrapping")]
+        #[stable(feature = "num_wrapping", since = "1.2.0")]
         #[inline(always)]
         pub fn wrapping_div(self, rhs: Self) -> Self {
             self.overflowing_div(rhs).0
@@ -1051,7 +1051,7 @@ macro_rules! uint_impl {
         /// implementation artifacts make `x % y` illegal for `MIN /
         /// -1` on a signed type illegal (where `MIN` is the negative
         /// minimal value). In such a case, this function returns `0`.
-        #[unstable(feature = "num_wrapping")]
+        #[stable(feature = "num_wrapping", since = "1.2.0")]
         #[inline(always)]
         pub fn wrapping_rem(self, rhs: Self) -> Self {
             self.overflowing_rem(rhs).0
@@ -1065,7 +1065,7 @@ macro_rules! uint_impl {
         /// negative minimal value for the type); this is a positive
         /// value that is too large to represent in the type. In such
         /// a case, this function returns `MIN` itself.
-        #[unstable(feature = "num_wrapping")]
+        #[stable(feature = "num_wrapping", since = "1.2.0")]
         #[inline(always)]
         pub fn wrapping_neg(self) -> Self {
             self.overflowing_neg().0
@@ -1074,7 +1074,7 @@ macro_rules! uint_impl {
         /// Panic-free bitwise shift-left; yields `self << mask(rhs)`,
         /// where `mask` removes any high-order bits of `rhs` that
         /// would cause the shift to exceed the bitwidth of the type.
-        #[unstable(feature = "num_wrapping")]
+        #[stable(feature = "num_wrapping", since = "1.2.0")]
         #[inline(always)]
         pub fn wrapping_shl(self, rhs: u32) -> Self {
             self.overflowing_shl(rhs).0
@@ -1083,7 +1083,7 @@ macro_rules! uint_impl {
         /// Panic-free bitwise shift-left; yields `self >> mask(rhs)`,
         /// where `mask` removes any high-order bits of `rhs` that
         /// would cause the shift to exceed the bitwidth of the type.
-        #[unstable(feature = "num_wrapping")]
+        #[stable(feature = "num_wrapping", since = "1.2.0")]
         #[inline(always)]
         pub fn wrapping_shr(self, rhs: u32) -> Self {
             self.overflowing_shr(rhs).0
