@@ -46,7 +46,6 @@
 #![feature(set_stdio)]
 #![feature(slice_extras)]
 #![feature(staged_api)]
-#![feature(thunk)]
 
 extern crate getopts;
 extern crate serialize;
@@ -82,7 +81,6 @@ use std::path::PathBuf;
 use std::sync::mpsc::{channel, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread;
-use std::thunk::Thunk;
 use std::time::Duration;
 
 // to be used by rustc to compile tests in libtest
@@ -155,7 +153,7 @@ pub enum TestFn {
     StaticTestFn(fn()),
     StaticBenchFn(fn(&mut Bencher)),
     StaticMetricFn(fn(&mut MetricMap)),
-    DynTestFn(Thunk<'static>),
+    DynTestFn(Box<FnBox() + Send>),
     DynMetricFn(Box<FnBox(&mut MetricMap)+Send>),
     DynBenchFn(Box<TDynBenchFn+'static>)
 }
@@ -961,7 +959,7 @@ pub fn run_test(opts: &TestOpts,
     fn run_test_inner(desc: TestDesc,
                       monitor_ch: Sender<MonitorMsg>,
                       nocapture: bool,
-                      testfn: Thunk<'static>) {
+                      testfn: Box<FnBox() + Send>) {
         struct Sink(Arc<Mutex<Vec<u8>>>);
         impl Write for Sink {
             fn write(&mut self, data: &[u8]) -> io::Result<usize> {
@@ -1229,7 +1227,6 @@ mod tests {
                TestDesc, TestDescAndFn, TestOpts, run_test,
                MetricMap,
                StaticTestName, DynTestName, DynTestFn, ShouldPanic};
-    use std::thunk::Thunk;
     use std::sync::mpsc::channel;
 
     #[test]

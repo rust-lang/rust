@@ -465,6 +465,7 @@ pub struct BufStream<S: Write> {
                      leading to issues like #17136")]
 #[deprecated(since = "1.2.0",
              reason = "use the crates.io `bufstream` crate instead")]
+#[allow(deprecated)]
 impl<S: Read + Write> BufStream<S> {
     /// Creates a new buffered stream with explicitly listed capacities for the
     /// reader/writer buffer.
@@ -516,6 +517,7 @@ impl<S: Read + Write> BufStream<S> {
 #[unstable(feature = "buf_stream",
            reason = "unsure about semantics of buffering two directions, \
                      leading to issues like #17136")]
+#[allow(deprecated)]
 impl<S: Read + Write> BufRead for BufStream<S> {
     fn fill_buf(&mut self) -> io::Result<&[u8]> { self.inner.fill_buf() }
     fn consume(&mut self, amt: usize) { self.inner.consume(amt) }
@@ -524,6 +526,7 @@ impl<S: Read + Write> BufRead for BufStream<S> {
 #[unstable(feature = "buf_stream",
            reason = "unsure about semantics of buffering two directions, \
                      leading to issues like #17136")]
+#[allow(deprecated)]
 impl<S: Read + Write> Read for BufStream<S> {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         self.inner.read(buf)
@@ -533,6 +536,7 @@ impl<S: Read + Write> Read for BufStream<S> {
 #[unstable(feature = "buf_stream",
            reason = "unsure about semantics of buffering two directions, \
                      leading to issues like #17136")]
+#[allow(deprecated)]
 impl<S: Read + Write> Write for BufStream<S> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         self.inner.inner.get_mut().write(buf)
@@ -545,6 +549,7 @@ impl<S: Read + Write> Write for BufStream<S> {
 #[unstable(feature = "buf_stream",
            reason = "unsure about semantics of buffering two directions, \
                      leading to issues like #17136")]
+#[allow(deprecated)]
 impl<S: Write> fmt::Debug for BufStream<S> where S: fmt::Debug {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         let reader = &self.inner;

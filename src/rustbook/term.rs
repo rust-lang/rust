@@ -11,9 +11,9 @@
 //! An abstraction of the terminal. Eventually, provide color and
 //! verbosity support. For now, just a wrapper around stdout/stderr.
 
-use std::env;
 use std::io;
 use std::io::prelude::*;
+use std::sync::atomic::Ordering;
 
 pub struct Term {
     err: Box<Write + 'static>
@@ -29,6 +29,6 @@ impl Term {
     pub fn err(&mut self, msg: &str) {
         // swallow any errors
         let _ = writeln!(&mut self.err, "{}", msg);
-        env::set_exit_status(101);
+        ::EXIT_STATUS.store(101, Ordering::SeqCst);
     }
 }

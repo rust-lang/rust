@@ -148,26 +148,24 @@
 //! ```
 
 #![stable(feature = "rust1", since = "1.0.0")]
+
+use core::prelude::*;
+
 #[cfg(not(test))]
-use boxed;
+use boxed::Box;
 #[cfg(test)]
-use std::boxed;
+use std::boxed::Box;
+
 use core::cell::Cell;
-use core::clone::Clone;
-use core::cmp::{PartialEq, PartialOrd, Eq, Ord, Ordering};
-use core::default::Default;
+use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{Hasher, Hash};
 use core::intrinsics::{assume, drop_in_place};
-use core::marker::{self, Sized, Unsize};
+use core::marker::{self, Unsize};
 use core::mem::{self, min_align_of, size_of, min_align_of_val, size_of_val, forget};
 use core::nonzero::NonZero;
-use core::ops::{CoerceUnsized, Deref, Drop};
-use core::option::Option;
-use core::option::Option::{Some, None};
+use core::ops::{CoerceUnsized, Deref};
 use core::ptr;
-use core::result::Result;
-use core::result::Result::{Ok, Err};
 
 use heap::deallocate;
 
@@ -212,7 +210,7 @@ impl<T> Rc<T> {
                 // pointers, which ensures that the weak destructor never frees
                 // the allocation while the strong destructor is running, even
                 // if the weak pointer is stored inside the strong one.
-                _ptr: NonZero::new(boxed::into_raw(box RcBox {
+                _ptr: NonZero::new(Box::into_raw(box RcBox {
                     strong: Cell::new(1),
                     weak: Cell::new(1),
                     value: value
@@ -230,14 +228,14 @@ impl<T> Rc<T> {
     ///
     /// ```
     /// # #![feature(rc_unique)]
-    /// use std::rc::{self, Rc};
+    /// use std::rc::Rc;
     ///
     /// let x = Rc::new(3);
-    /// assert_eq!(rc::try_unwrap(x), Ok(3));
+    /// assert_eq!(Rc::try_unwrap(x), Ok(3));
     ///
     /// let x = Rc::new(4);
     /// let _y = x.clone();
-    /// assert_eq!(rc::try_unwrap(x), Err(Rc::new(4)));
+    /// assert_eq!(Rc::try_unwrap(x), Err(Rc::new(4)));
     /// ```
     #[inline]
     #[unstable(feature = "rc_unique")]
@@ -295,17 +293,16 @@ impl<T: ?Sized> Rc<T> {
     ///
     /// ```
     /// # #![feature(rc_unique)]
-    /// use std::rc;
     /// use std::rc::Rc;
     ///
     /// let five = Rc::new(5);
     ///
-    /// rc::is_unique(&five);
+    /// assert!(Rc::is_unique(&five));
     /// ```
     #[inline]
     #[unstable(feature = "rc_unique")]
     pub fn is_unique(rc: &Rc<T>) -> bool {
-        weak_count(rc) == 0 && strong_count(rc) == 1
+        Rc::weak_count(rc) == 0 && Rc::strong_count(rc) == 1
     }
 
     /// Returns a mutable reference to the contained value if the `Rc<T>` is
@@ -317,14 +314,14 @@ impl<T: ?Sized> Rc<T> {
     ///
     /// ```
     /// # #![feature(rc_unique)]
-    /// use std::rc::{self, Rc};
+    /// use std::rc::Rc;
     ///
     /// let mut x = Rc::new(3);
-    /// *rc::get_mut(&mut x).unwrap() = 4;
+    /// *Rc::get_mut(&mut x).unwrap() = 4;
     /// assert_eq!(*x, 4);
     ///
     /// let _y = x.clone();
-    /// assert!(rc::get_mut(&mut x).is_none());
+    /// assert!(Rc::get_mut(&mut x).is_none());
     /// ```
     #[inline]
     #[unstable(feature = "rc_unique")]
@@ -432,7 +429,7 @@ impl<T: Clone> Rc<T> {
     #[inline]
     #[unstable(feature = "rc_unique")]
     pub fn make_unique(&mut self) -> &mut T {
-        if !is_unique(self) {
+        if !Rc::is_unique(self) {
             *self = Rc::new((**self).clone())
         }
         // This unsafety is ok because we're guaranteed that the pointer

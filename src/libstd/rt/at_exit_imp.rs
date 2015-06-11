@@ -16,13 +16,12 @@
 // segfaults (the queue's memory is mysteriously gone), so
 // instead the cleanup is tied to the `std::rt` entry point.
 
-use boxed;
+use alloc::boxed::FnBox;
 use boxed::Box;
-use vec::Vec;
-use thunk::Thunk;
 use sys_common::mutex::Mutex;
+use vec::Vec;
 
-type Queue = Vec<Thunk<'static>>;
+type Queue = Vec<Box<FnBox()>>;
 
 // NB these are specifically not types from `std::sync` as they currently rely
 // on poisoning and this module needs to operate at a lower level than requiring
@@ -40,7 +39,7 @@ const ITERS: usize = 10;
 unsafe fn init() -> bool {
     if QUEUE.is_null() {
         let state: Box<Queue> = box Vec::new();
-        QUEUE = boxed::into_raw(state);
+        QUEUE = Box::into_raw(state);
     } else if QUEUE as usize == 1 {
         // can't re-init after a cleanup
         return false
@@ -71,7 +70,7 @@ pub fn cleanup() {
     }
 }
 
-pub fn push(f: Thunk<'static>) -> bool {
+pub fn push(f: Box<FnBox()>) -> bool {
     let mut ret = true;
     unsafe {
         LOCK.lock();

@@ -8,9 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 use borrow::{Cow, ToOwned};
-use boxed::{self, Box};
+use boxed::Box;
 use clone::Clone;
 use convert::{Into, From};
 use cmp::{PartialEq, Eq, PartialOrd, Ord, Ordering};
@@ -226,7 +225,7 @@ impl CString {
         // It is important that the bytes be sized to fit - we need
         // the capacity to be determinable from the string length, and
         // shrinking to fit is the only way to be sure.
-        boxed::into_raw(self.inner) as *const libc::c_char
+        Box::into_raw(self.inner) as *const libc::c_char
     }
 
     /// Returns the contents of this `CString` as a slice of bytes.

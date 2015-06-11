@@ -26,7 +26,6 @@
       html_root_url = "http://doc.rust-lang.org/nightly/")]
 
 #![feature(box_syntax)]
-#![feature(exit_status)]
 #![feature(libc)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
@@ -73,6 +72,7 @@ use std::env;
 use std::io::{self, Read, Write};
 use std::iter::repeat;
 use std::path::PathBuf;
+use std::process;
 use std::str;
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -861,5 +861,5 @@ pub fn diagnostics_registry() -> diagnostics::registry::Registry {
 
 pub fn main() {
     let result = run(env::args().collect());
-    std::env::set_exit_status(result as i32);
+    process::exit(result as i32);
 }

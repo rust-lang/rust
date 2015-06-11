@@ -802,6 +802,7 @@ impl<'a, T> Clone for Iter<'a, T> {
 }
 
 #[unstable(feature = "iter_idx", reason = "trait is experimental")]
+#[allow(deprecated)]
 impl<'a, T> RandomAccessIterator for Iter<'a, T> {
     #[inline]
     fn indexable(&self) -> usize {
@@ -1174,6 +1175,7 @@ impl<'a, T> DoubleEndedIterator for Windows<'a, T> {
 impl<'a, T> ExactSizeIterator for Windows<'a, T> {}
 
 #[unstable(feature = "iter_idx", reason = "trait is experimental")]
+#[allow(deprecated)]
 impl<'a, T> RandomAccessIterator for Windows<'a, T> {
     #[inline]
     fn indexable(&self) -> usize {
@@ -1261,6 +1263,7 @@ impl<'a, T> DoubleEndedIterator for Chunks<'a, T> {
 impl<'a, T> ExactSizeIterator for Chunks<'a, T> {}
 
 #[unstable(feature = "iter_idx", reason = "trait is experimental")]
+#[allow(deprecated)]
 impl<'a, T> RandomAccessIterator for Chunks<'a, T> {
     #[inline]
     fn indexable(&self) -> usize {
@@ -1520,6 +1523,7 @@ pub trait IntSliceExt<U, S> {
 macro_rules! impl_int_slice {
     ($u:ty, $s:ty, $t:ty) => {
         #[unstable(feature = "int_slice")]
+        #[allow(deprecated)]
         impl IntSliceExt<$u, $s> for [$t] {
             #[inline]
             fn as_unsigned(&self) -> &[$u] { unsafe { transmute(self) } }

@@ -1520,7 +1520,6 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(str_matches)]
     /// let v: Vec<&str> = "abcXXXabcYYYabc".matches("abc").collect();
     /// assert_eq!(v, ["abc", "abc", "abc"]);
     ///
@@ -1552,7 +1551,6 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(str_matches)]
     /// let v: Vec<&str> = "abcXXXabcYYYabc".rmatches("abc").collect();
     /// assert_eq!(v, ["abc", "abc", "abc"]);
     ///
@@ -1593,7 +1591,7 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(str_matches)]
+    /// # #![feature(str_match_indices)]
     /// let v: Vec<(usize, usize)> = "abcXXXabcYYYabc".match_indices("abc").collect();
     /// assert_eq!(v, [(0, 3), (6, 9), (12, 15)]);
     ///
@@ -1637,7 +1635,7 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(str_matches)]
+    /// # #![feature(str_match_indices)]
     /// let v: Vec<(usize, usize)> = "abcXXXabcYYYabc".rmatch_indices("abc").collect();
     /// assert_eq!(v, [(12, 15), (6, 9), (0, 3)]);
     ///

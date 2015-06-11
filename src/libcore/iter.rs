@@ -1234,6 +1234,7 @@ impl<'a, I: DoubleEndedIterator + ?Sized> DoubleEndedIterator for &'a mut I {
              reason = "trait has not proven itself as a widely useful \
                        abstraction for iterators, and more time may be needed \
                        for iteration on the design")]
+#[allow(deprecated)]
 pub trait RandomAccessIterator: Iterator {
     /// Returns the number of indexable elements. At most `std::usize::MAX`
     /// elements are indexable, even if the iterator represents a longer range.
@@ -1313,6 +1314,7 @@ impl<I> DoubleEndedIterator for Rev<I> where I: DoubleEndedIterator {
 }
 
 #[unstable(feature = "iter_idx", reason = "trait is experimental")]
+#[allow(deprecated)]
 impl<I> RandomAccessIterator for Rev<I>
     where I: DoubleEndedIterator + RandomAccessIterator
 {
@@ -1416,6 +1418,7 @@ impl<'a, I, T: 'a> ExactSizeIterator for Cloned<I>
 {}
 
 #[unstable(feature = "iter_idx", reason = "trait is experimental")]
+#[allow(deprecated)]
 impl<'a, I, T: 'a> RandomAccessIterator for Cloned<I>
     where I: RandomAccessIterator<Item=&'a T>, T: Clone
 {
@@ -1463,6 +1466,7 @@ impl<I> Iterator for Cycle<I> where I: Clone + Iterator {
 }
 
 #[unstable(feature = "iter_idx", reason = "trait is experimental")]
+#[allow(deprecated)]
 impl<I> RandomAccessIterator for Cycle<I> where
     I: Clone + RandomAccessIterator,
 {
@@ -1577,6 +1581,7 @@ impl<A, B> DoubleEndedIterator for Chain<A, B> where
 }
 
 #[unstable(feature = "iter_idx", reason = "trait is experimental")]
+#[allow(deprecated)]
 impl<A, B> RandomAccessIterator for Chain<A, B> where
     A: RandomAccessIterator,
     B: RandomAccessIterator<Item = A::Item>,
@@ -1665,6 +1670,7 @@ impl<A, B> DoubleEndedIterator for Zip<A, B> where
 }
 
 #[unstable(feature = "iter_idx", reason = "trait is experimental")]
+#[allow(deprecated)]
 impl<A, B> RandomAccessIterator for Zip<A, B> where
     A: RandomAccessIterator,
     B: RandomAccessIterator
@@ -1719,6 +1725,7 @@ impl<B, I: DoubleEndedIterator, F> DoubleEndedIterator for Map<I, F> where
 }
 
 #[unstable(feature = "iter_idx", reason = "trait is experimental")]
+#[allow(deprecated)]
 impl<B, I: RandomAccessIterator, F> RandomAccessIterator for Map<I, F> where
     F: FnMut(I::Item) -> B,
 {
@@ -1893,6 +1900,7 @@ impl<I> DoubleEndedIterator for Enumerate<I> where
 }
 
 #[unstable(feature = "iter_idx", reason = "trait is experimental")]
+#[allow(deprecated)]
 impl<I> RandomAccessIterator for Enumerate<I> where I: RandomAccessIterator {
     #[inline]
     fn indexable(&self) -> usize {
@@ -2143,6 +2151,7 @@ impl<I> Iterator for Skip<I> where I: Iterator {
 }
 
 #[unstable(feature = "iter_idx", reason = "trait is experimental")]
+#[allow(deprecated)]
 impl<I> RandomAccessIterator for Skip<I> where I: RandomAccessIterator{
     #[inline]
     fn indexable(&self) -> usize {
@@ -2215,6 +2224,7 @@ impl<I> Iterator for Take<I> where I: Iterator{
 }
 
 #[unstable(feature = "iter_idx", reason = "trait is experimental")]
+#[allow(deprecated)]
 impl<I> RandomAccessIterator for Take<I> where I: RandomAccessIterator{
     #[inline]
     fn indexable(&self) -> usize {
@@ -2416,6 +2426,7 @@ impl<I> DoubleEndedIterator for Fuse<I> where I: DoubleEndedIterator {
 
 // Allow RandomAccessIterators to be fused without affecting random-access behavior
 #[unstable(feature = "iter_idx", reason = "trait is experimental")]
+#[allow(deprecated)]
 impl<I> RandomAccessIterator for Fuse<I> where I: RandomAccessIterator {
     #[inline]
     fn indexable(&self) -> usize {
@@ -2491,6 +2502,7 @@ impl<I: DoubleEndedIterator, F> DoubleEndedIterator for Inspect<I, F>
 }
 
 #[unstable(feature = "iter_idx", reason = "trait is experimental")]
+#[allow(deprecated)]
 impl<I: RandomAccessIterator, F> RandomAccessIterator for Inspect<I, F>
     where F: FnMut(&I::Item),
 {
@@ -2545,6 +2557,7 @@ impl<I: RandomAccessIterator, F> RandomAccessIterator for Inspect<I, F>
 #[deprecated(since = "1.2.0",
              reason = "has gained enough traction to retain its position \
                        in the standard library")]
+#[allow(deprecated)]
 pub struct Unfold<St, F> {
     f: F,
     /// Internal state that will be passed to the closure on the next iteration
@@ -2556,6 +2569,7 @@ pub struct Unfold<St, F> {
 #[deprecated(since = "1.2.0",
              reason = "has gained enough traction to retain its position \
                        in the standard library")]
+#[allow(deprecated)]
 impl<A, St, F> Unfold<St, F> where F: FnMut(&mut St) -> Option<A> {
     /// Creates a new iterator with the specified closure as the "iterator
     /// function" and an initial state to eventually pass to the closure
@@ -2569,6 +2583,7 @@ impl<A, St, F> Unfold<St, F> where F: FnMut(&mut St) -> Option<A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(deprecated)]
 impl<A, St, F> Iterator for Unfold<St, F> where F: FnMut(&mut St) -> Option<A> {
     type Item = A;
 
@@ -2977,7 +2992,7 @@ impl<A: Clone> Iterator for Repeat<A> {
     type Item = A;
 
     #[inline]
-    fn next(&mut self) -> Option<A> { self.idx(0) }
+    fn next(&mut self) -> Option<A> { Some(self.element.clone()) }
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) { (usize::MAX, None) }
 }
@@ -2985,10 +3000,11 @@ impl<A: Clone> Iterator for Repeat<A> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A: Clone> DoubleEndedIterator for Repeat<A> {
     #[inline]
-    fn next_back(&mut self) -> Option<A> { self.idx(0) }
+    fn next_back(&mut self) -> Option<A> { Some(self.element.clone()) }
 }
 
 #[unstable(feature = "iter_idx", reason = "trait is experimental")]
+#[allow(deprecated)]
 impl<A: Clone> RandomAccessIterator for Repeat<A> {
     #[inline]
     fn indexable(&self) -> usize { usize::MAX }
@@ -3004,6 +3020,7 @@ type IterateState<T, F> = (F, Option<T>, bool);
 #[deprecated(since = "1.2.0",
              reason = "has gained enough traction to retain its position \
                        in the standard library")]
+#[allow(deprecated)]
 pub type Iterate<T, F> = Unfold<IterateState<T, F>, fn(&mut IterateState<T, F>) -> Option<T>>;
 
 /// Creates a new iterator that produces an infinite sequence of
@@ -3012,6 +3029,7 @@ pub type Iterate<T, F> = Unfold<IterateState<T, F>, fn(&mut IterateState<T, F>) 
 #[deprecated(since = "1.2.0",
              reason = "has gained enough traction to retain its position \
                        in the standard library")]
+#[allow(deprecated)]
 pub fn iterate<T, F>(seed: T, f: F) -> Iterate<T, F> where
     T: Clone,
     F: FnMut(T) -> T,

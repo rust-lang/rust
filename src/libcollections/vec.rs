@@ -1709,12 +1709,14 @@ impl<'a, T> FromIterator<T> for Cow<'a, [T]> where T: Clone {
     }
 }
 
+#[allow(deprecated)]
 impl<'a, T: 'a> IntoCow<'a, [T]> for Vec<T> where T: Clone {
     fn into_cow(self) -> Cow<'a, [T]> {
         Cow::Owned(self)
     }
 }
 
+#[allow(deprecated)]
 impl<'a, T> IntoCow<'a, [T]> for &'a [T] where T: Clone {
     fn into_cow(self) -> Cow<'a, [T]> {
         Cow::Borrowed(self)

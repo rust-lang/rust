@@ -30,6 +30,7 @@ pub use self::rwlock::{RwLockReadGuard, RwLockWriteGuard};
 pub use self::rwlock::{RwLock, StaticRwLock, RW_LOCK_INIT};
 pub use self::semaphore::{Semaphore, SemaphoreGuard};
 
+#[allow(deprecated)]
 pub use self::future::Future;
 
 pub mod mpsc;
