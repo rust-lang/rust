@@ -968,6 +968,9 @@ impl<A, E, V: FromIterator<A>> FromIterator<Result<A, E>> for Result<V, E> {
 #[inline]
 #[unstable(feature = "result_fold",
            reason = "unclear if this function should exist")]
+#[deprecated(since = "1.2.0",
+             reason = "has not seen enough usage to justify its position in \
+                       the standard library")]
 pub fn fold<T,
             V,
             E,
