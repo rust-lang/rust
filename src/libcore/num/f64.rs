@@ -73,6 +73,7 @@ pub mod consts {
     /// pi * 2.0
     #[unstable(feature = "float_consts",
                reason = "unclear naming convention/usefulness")]
+    #[deprecated(since = "1.2.0", reason = "unclear on usefulness")]
     pub const PI_2: f64 = 6.28318530717958647692528676655900576_f64;
 
     /// pi/2.0
