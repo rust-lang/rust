@@ -48,51 +48,51 @@ pub fn simplify_type(tcx: &ty::ctxt,
                      -> Option<SimplifiedType>
 {
     match ty.sty {
-        ty::ty_bool => Some(BoolSimplifiedType),
-        ty::ty_char => Some(CharSimplifiedType),
-        ty::ty_int(int_type) => Some(IntSimplifiedType(int_type)),
-        ty::ty_uint(uint_type) => Some(UintSimplifiedType(uint_type)),
-        ty::ty_float(float_type) => Some(FloatSimplifiedType(float_type)),
-        ty::ty_enum(def_id, _) => Some(EnumSimplifiedType(def_id)),
-        ty::ty_str => Some(StrSimplifiedType),
-        ty::ty_vec(..) => Some(VecSimplifiedType),
-        ty::ty_ptr(_) => Some(PtrSimplifiedType),
-        ty::ty_trait(ref trait_info) => {
+        ty::TyBool => Some(BoolSimplifiedType),
+        ty::TyChar => Some(CharSimplifiedType),
+        ty::TyInt(int_type) => Some(IntSimplifiedType(int_type)),
+        ty::TyUint(uint_type) => Some(UintSimplifiedType(uint_type)),
+        ty::TyFloat(float_type) => Some(FloatSimplifiedType(float_type)),
+        ty::TyEnum(def_id, _) => Some(EnumSimplifiedType(def_id)),
+        ty::TyStr => Some(StrSimplifiedType),
+        ty::TyArray(..) => Some(VecSimplifiedType),
+        ty::TyRawPtr(_) => Some(PtrSimplifiedType),
+        ty::TyTrait(ref trait_info) => {
             Some(TraitSimplifiedType(trait_info.principal_def_id()))
         }
-        ty::ty_struct(def_id, _) => {
+        ty::TyStruct(def_id, _) => {
             Some(StructSimplifiedType(def_id))
         }
-        ty::ty_rptr(_, mt) => {
+        ty::TyRef(_, mt) => {
             // since we introduce auto-refs during method lookup, we
             // just treat &T and T as equivalent from the point of
             // view of possibly unifying
             simplify_type(tcx, mt.ty, can_simplify_params)
         }
-        ty::ty_uniq(_) => {
+        ty::TyBox(_) => {
             // treat like we would treat `Box`
             let def_id = tcx.lang_items.owned_box().unwrap();
             Some(StructSimplifiedType(def_id))
         }
-        ty::ty_closure(def_id, _) => {
+        ty::TyClosure(def_id, _) => {
             Some(ClosureSimplifiedType(def_id))
         }
-        ty::ty_tup(ref tys) => {
+        ty::TyTuple(ref tys) => {
             Some(TupleSimplifiedType(tys.len()))
         }
-        ty::ty_bare_fn(_, ref f) => {
+        ty::TyBareFn(_, ref f) => {
             Some(FunctionSimplifiedType(f.sig.0.inputs.len()))
         }
-        ty::ty_projection(_) => {
+        ty::TyProjection(_) => {
             None
         }
-        ty::ty_param(_) => {
+        ty::TyParam(_) => {
             if can_simplify_params {
                 Some(ParameterSimplifiedType)
             } else {
                 None
             }
         }
-        ty::ty_infer(_) | ty::ty_err => None,
+        ty::TyInfer(_) | ty::TyError => None,
     }
 }

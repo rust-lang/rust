@@ -339,7 +339,7 @@ fn add_fragment_siblings_for_extension<'tcx>(this: &MoveData<'tcx>,
     };
 
     match (&parent_ty.sty, enum_variant_info) {
-        (&ty::ty_tup(ref v), None) => {
+        (&ty::TyTuple(ref v), None) => {
             let tuple_idx = match *origin_field_name {
                 mc::PositionalField(tuple_idx) => tuple_idx,
                 mc::NamedField(_) =>
@@ -354,7 +354,7 @@ fn add_fragment_siblings_for_extension<'tcx>(this: &MoveData<'tcx>,
             }
         }
 
-        (&ty::ty_struct(def_id, ref _substs), None) => {
+        (&ty::TyStruct(def_id, ref _substs), None) => {
             let fields = ty::lookup_struct_fields(tcx, def_id);
             match *origin_field_name {
                 mc::NamedField(ast_name) => {
@@ -378,7 +378,7 @@ fn add_fragment_siblings_for_extension<'tcx>(this: &MoveData<'tcx>,
             }
         }
 
-        (&ty::ty_enum(enum_def_id, substs), ref enum_variant_info) => {
+        (&ty::TyEnum(enum_def_id, substs), ref enum_variant_info) => {
             let variant_info = {
                 let mut variants = ty::substd_enum_variants(tcx, enum_def_id, substs);
                 match *enum_variant_info {

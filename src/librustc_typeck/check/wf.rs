@@ -403,7 +403,7 @@ fn reject_non_type_param_bounds<'tcx>(tcx: &ty::ctxt<'tcx>,
 
     fn is_ty_param(ty: ty::Ty) -> bool {
         match &ty.sty {
-            &ty::sty::ty_param(_) => true,
+            &ty::TyParam(_) => true,
             _ => false
         }
     }
@@ -568,8 +568,8 @@ impl<'cx,'tcx> TypeFolder<'tcx> for BoundsChecker<'cx,'tcx> {
         }
 
         match t.sty{
-            ty::ty_struct(type_id, substs) |
-            ty::ty_enum(type_id, substs) => {
+            ty::TyStruct(type_id, substs) |
+            ty::TyEnum(type_id, substs) => {
                 let type_predicates = ty::lookup_predicates(self.fcx.tcx(), type_id);
                 let bounds = self.fcx.instantiate_bounds(self.span, substs,
                                                          &type_predicates);

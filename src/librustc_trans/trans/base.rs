@@ -320,7 +320,7 @@ pub fn compare_scalar_types<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                         debug_loc: DebugLoc)
                                         -> ValueRef {
     match t.sty {
-        ty::ty_tup(ref tys) if tys.is_empty() => {
+        ty::TyTuple(ref tys) if tys.is_empty() => {
             // We don't need to do actual comparisons for nil.
             // () == () holds but () < () does not.
             match op {
@@ -330,16 +330,16 @@ pub fn compare_scalar_types<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 _ => bcx.sess().bug("compare_scalar_types: must be a comparison operator")
             }
         }
-        ty::ty_bare_fn(..) | ty::ty_bool | ty::ty_uint(_) | ty::ty_char => {
+        ty::TyBareFn(..) | ty::TyBool | ty::TyUint(_) | ty::TyChar => {
             ICmp(bcx, bin_op_to_icmp_predicate(bcx.ccx(), op, false), lhs, rhs, debug_loc)
         }
-        ty::ty_ptr(mt) if common::type_is_sized(bcx.tcx(), mt.ty) => {
+        ty::TyRawPtr(mt) if common::type_is_sized(bcx.tcx(), mt.ty) => {
             ICmp(bcx, bin_op_to_icmp_predicate(bcx.ccx(), op, false), lhs, rhs, debug_loc)
         }
-        ty::ty_int(_) => {
+        ty::TyInt(_) => {
             ICmp(bcx, bin_op_to_icmp_predicate(bcx.ccx(), op, true), lhs, rhs, debug_loc)
         }
-        ty::ty_float(_) => {
+        ty::TyFloat(_) => {
             FCmp(bcx, bin_op_to_fcmp_predicate(bcx.ccx(), op), lhs, rhs, debug_loc)
         }
         // Should never get here, because t is scalar.
@@ -355,7 +355,7 @@ pub fn compare_simd_types<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                       debug_loc: DebugLoc)
                                       -> ValueRef {
     let signed = match t.sty {
-        ty::ty_float(_) => {
+        ty::TyFloat(_) => {
             // The comparison operators for floating point vectors are challenging.
             // LLVM outputs a `< size x i1 >`, but if we perform a sign extension
             // then bitcast to a floating point vector, the result will be `-NaN`
@@ -363,8 +363,8 @@ pub fn compare_simd_types<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             bcx.sess().bug("compare_simd_types: comparison operators \
                             not supported for floating point SIMD types")
         },
-        ty::ty_uint(_) => false,
-        ty::ty_int(_) => true,
+        ty::TyUint(_) => false,
+        ty::TyInt(_) => true,
         _ => bcx.sess().bug("compare_simd_types: invalid SIMD type"),
     };
 
@@ -416,7 +416,7 @@ pub fn iter_structural_ty<'blk, 'tcx, F>(cx: Block<'blk, 'tcx>,
 
     let mut cx = cx;
     match t.sty {
-      ty::ty_struct(..) => {
+      ty::TyStruct(..) => {
           let repr = adt::represent_type(cx.ccx(), t);
           expr::with_field_tys(cx.tcx(), t, None, |discr, field_tys| {
               for (i, field_ty) in field_tys.iter().enumerate() {
@@ -435,7 +435,7 @@ pub fn iter_structural_ty<'blk, 'tcx, F>(cx: Block<'blk, 'tcx>,
               }
           })
       }
-      ty::ty_closure(def_id, substs) => {
+      ty::TyClosure(def_id, substs) => {
           let repr = adt::represent_type(cx.ccx(), t);
           let typer = common::NormalizingClosureTyper::new(cx.tcx());
           let upvars = typer.closure_upvars(def_id, substs).unwrap();
@@ -444,23 +444,23 @@ pub fn iter_structural_ty<'blk, 'tcx, F>(cx: Block<'blk, 'tcx>,
               cx = f(cx, llupvar, upvar.ty);
           }
       }
-      ty::ty_vec(_, Some(n)) => {
+      ty::TyArray(_, Some(n)) => {
         let (base, len) = tvec::get_fixed_base_and_len(cx, data_ptr, n);
         let unit_ty = ty::sequence_element_type(cx.tcx(), t);
         cx = tvec::iter_vec_raw(cx, base, unit_ty, len, f);
       }
-      ty::ty_vec(_, None) | ty::ty_str => {
+      ty::TyArray(_, None) | ty::TyStr => {
         let unit_ty = ty::sequence_element_type(cx.tcx(), t);
         cx = tvec::iter_vec_raw(cx, data_ptr, unit_ty, info.unwrap(), f);
       }
-      ty::ty_tup(ref args) => {
+      ty::TyTuple(ref args) => {
           let repr = adt::represent_type(cx.ccx(), t);
           for (i, arg) in args.iter().enumerate() {
               let llfld_a = adt::trans_field_ptr(cx, &*repr, data_ptr, 0, i);
               cx = f(cx, llfld_a, *arg);
           }
       }
-      ty::ty_enum(tid, substs) => {
+      ty::TyEnum(tid, substs) => {
           let fcx = cx.fcx;
           let ccx = fcx.ccx;
 
@@ -574,7 +574,7 @@ fn cast_shift_rhs<F, G>(op: ast::BinOp_,
 pub fn llty_and_min_for_signed_ty<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                                               val_t: Ty<'tcx>) -> (Type, u64) {
     match val_t.sty {
-        ty::ty_int(t) => {
+        ty::TyInt(t) => {
             let llty = Type::int_from_ty(cx.ccx(), t);
             let min = match t {
                 ast::TyIs if llty == Type::i32(cx.ccx()) => i32::MIN as u64,
@@ -608,15 +608,15 @@ pub fn fail_if_zero_or_overflows<'blk, 'tcx>(
     let debug_loc = call_info.debug_loc();
 
     let (is_zero, is_signed) = match rhs_t.sty {
-        ty::ty_int(t) => {
+        ty::TyInt(t) => {
             let zero = C_integral(Type::int_from_ty(cx.ccx(), t), 0, false);
             (ICmp(cx, llvm::IntEQ, rhs, zero, debug_loc), true)
         }
-        ty::ty_uint(t) => {
+        ty::TyUint(t) => {
             let zero = C_integral(Type::uint_from_ty(cx.ccx(), t), 0, false);
             (ICmp(cx, llvm::IntEQ, rhs, zero, debug_loc), false)
         }
-        ty::ty_struct(_, _) if type_is_simd(cx.tcx(), rhs_t) => {
+        ty::TyStruct(_, _) if type_is_simd(cx.tcx(), rhs_t) => {
             let mut res = C_bool(cx.ccx(), false);
             for i in 0 .. simd_size(cx.tcx(), rhs_t) {
                 res = Or(cx, res,
@@ -665,7 +665,7 @@ pub fn trans_external_path<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                      did: ast::DefId, t: Ty<'tcx>) -> ValueRef {
     let name = csearch::get_symbol(&ccx.sess().cstore, did);
     match t.sty {
-        ty::ty_bare_fn(_, ref fn_ty) => {
+        ty::TyBareFn(_, ref fn_ty) => {
             match ccx.sess().target.target.adjust_abi(fn_ty.abi) {
                 Rust | RustCall => {
                     get_extern_rust_fn(ccx, t, &name[..], did)
@@ -1317,7 +1317,7 @@ fn create_datums_for_fn_args_under_call_abi<'blk, 'tcx>(
 
         // This is the last argument. Tuple it.
         match arg_ty.sty {
-            ty::ty_tup(ref tupled_arg_tys) => {
+            ty::TyTuple(ref tupled_arg_tys) => {
                 let tuple_args_scope_id = cleanup::CustomScope(arg_scope);
                 let tuple =
                     unpack_datum!(bcx,
@@ -1660,7 +1660,7 @@ pub fn trans_named_tuple_constructor<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     let tcx = ccx.tcx();
 
     let result_ty = match ctor_ty.sty {
-        ty::ty_bare_fn(_, ref bft) => {
+        ty::TyBareFn(_, ref bft) => {
             ty::erase_late_bound_regions(bcx.tcx(), &bft.sig.output()).unwrap()
         }
         _ => ccx.sess().bug(
@@ -1738,7 +1738,7 @@ fn trans_enum_variant_or_tuple_like_struct<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx
     let ctor_ty = monomorphize::apply_param_substs(ccx.tcx(), param_substs, &ctor_ty);
 
     let result_ty = match ctor_ty.sty {
-        ty::ty_bare_fn(_, ref bft) => {
+        ty::TyBareFn(_, ref bft) => {
             ty::erase_late_bound_regions(ccx.tcx(), &bft.sig.output())
         }
         _ => ccx.sess().bug(
@@ -2108,7 +2108,7 @@ fn register_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                          node_id: ast::NodeId,
                          node_type: Ty<'tcx>)
                          -> ValueRef {
-    if let ty::ty_bare_fn(_, ref f) = node_type.sty {
+    if let ty::TyBareFn(_, ref f) = node_type.sty {
         if f.abi != Rust && f.abi != RustCall {
             ccx.sess().span_bug(sp, &format!("only the `{}` or `{}` calling conventions are valid \
                                               for this function; `{}` was specified",
@@ -2464,7 +2464,7 @@ fn register_method(ccx: &CrateContext, id: ast::NodeId,
 
     let sym = exported_name(ccx, id, mty, &attrs);
 
-    if let ty::ty_bare_fn(_, ref f) = mty.sty {
+    if let ty::TyBareFn(_, ref f) = mty.sty {
         let llfn = if f.abi == Rust || f.abi == RustCall {
             register_fn(ccx, span, sym, id, mty)
         } else {

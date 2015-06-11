@@ -350,7 +350,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // lifetimes can appear inside the self-type.
         let self_ty = self.infcx.shallow_resolve(*obligation.self_ty().skip_binder());
         let (closure_def_id, substs) = match self_ty.sty {
-            ty::ty_closure(id, ref substs) => (id, substs.clone()),
+            ty::TyClosure(id, ref substs) => (id, substs.clone()),
             _ => { return; }
         };
         assert!(!substs.has_escaping_regions());
@@ -950,8 +950,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // before we go into the whole skolemization thing, just
         // quickly check if the self-type is a projection at all.
         let trait_def_id = match poly_trait_predicate.0.trait_ref.self_ty().sty {
-            ty::ty_projection(ref data) => data.trait_ref.def_id,
-            ty::ty_infer(ty::TyVar(_)) => {
+            ty::TyProjection(ref data) => data.trait_ref.def_id,
+            ty::TyInfer(ty::TyVar(_)) => {
                 // If the self-type is an inference variable, then it MAY wind up
                 // being a projected type, so induce an ambiguity.
                 //
@@ -994,7 +994,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                skol_map.repr(self.tcx()));
 
         let projection_trait_ref = match skol_trait_predicate.trait_ref.self_ty().sty {
-            ty::ty_projection(ref data) => &data.trait_ref,
+            ty::TyProjection(ref data) => &data.trait_ref,
             _ => {
                 self.tcx().sess.span_bug(
                     obligation.cause.span,
@@ -1134,8 +1134,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // type/region parameters
         let self_ty = self.infcx.shallow_resolve(*obligation.self_ty().skip_binder());
         let (closure_def_id, substs) = match self_ty.sty {
-            ty::ty_closure(id, substs) => (id, substs),
-            ty::ty_infer(ty::TyVar(_)) => {
+            ty::TyClosure(id, substs) => (id, substs),
+            ty::TyInfer(ty::TyVar(_)) => {
                 debug!("assemble_unboxed_closure_candidates: ambiguous self-type");
                 candidates.ambiguous = true;
                 return Ok(());
@@ -1179,13 +1179,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // ok to skip binder because what we are inspecting doesn't involve bound regions
         let self_ty = self.infcx.shallow_resolve(*obligation.self_ty().skip_binder());
         match self_ty.sty {
-            ty::ty_infer(ty::TyVar(_)) => {
+            ty::TyInfer(ty::TyVar(_)) => {
                 debug!("assemble_fn_pointer_candidates: ambiguous self-type");
                 candidates.ambiguous = true; // could wind up being a fn() type
             }
 
             // provide an impl, but only for suitable `fn` pointers
-            ty::ty_bare_fn(_, &ty::BareFnTy {
+            ty::TyBareFn(_, &ty::BareFnTy {
                 unsafety: ast::Unsafety::Normal,
                 abi: abi::Rust,
                 sig: ty::Binder(ty::FnSig {
@@ -1241,7 +1241,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         if ty::trait_has_default_impl(self.tcx(), def_id) {
             match self_ty.sty {
-                ty::ty_trait(..) => {
+                ty::TyTrait(..) => {
                     // For object types, we don't know what the closed
                     // over types are. For most traits, this means we
                     // conservatively say nothing; a candidate may be
@@ -1255,8 +1255,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         candidates.vec.push(DefaultImplObjectCandidate(def_id));
                     }
                 }
-                ty::ty_param(..) |
-                ty::ty_projection(..) => {
+                ty::TyParam(..) |
+                ty::TyProjection(..) => {
                     // In these cases, we don't know what the actual
                     // type is.  Therefore, we cannot break it down
                     // into its constituent types. So we don't
@@ -1271,7 +1271,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     // for an example of a test case that exercises
                     // this path.
                 }
-                ty::ty_infer(ty::TyVar(_)) => {
+                ty::TyInfer(ty::TyVar(_)) => {
                     // the defaulted impl might apply, we don't know
                     candidates.ambiguous = true;
                 }
@@ -1325,7 +1325,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             let (self_ty, _) =
                 self.infcx().skolemize_late_bound_regions(&bound_self_ty, snapshot);
             let poly_trait_ref = match self_ty.sty {
-                ty::ty_trait(ref data) => {
+                ty::TyTrait(ref data) => {
                     match self.tcx().lang_items.to_builtin_kind(obligation.predicate.def_id()) {
                         Some(bound @ ty::BoundSend) | Some(bound @ ty::BoundSync) => {
                             if data.bounds.builtin_bounds.contains(&bound) {
@@ -1340,7 +1340,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
                     data.principal_trait_ref_with_self_ty(self.tcx(), self_ty)
                 }
-                ty::ty_infer(ty::TyVar(_)) => {
+                ty::TyInfer(ty::TyVar(_)) => {
                     debug!("assemble_candidates_from_object_ty: ambiguous");
                     candidates.ambiguous = true; // could wind up being an object type
                     return Ok(());
@@ -1399,7 +1399,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let may_apply = match (&source.sty, &target.sty) {
             // Trait+Kx+'a -> Trait+Ky+'b (upcasts).
-            (&ty::ty_trait(ref data_a), &ty::ty_trait(ref data_b)) => {
+            (&ty::TyTrait(ref data_a), &ty::TyTrait(ref data_b)) => {
                 // Upcasts permit two things:
                 //
                 // 1. Dropping builtin bounds, e.g. `Foo+Send` to `Foo`
@@ -1416,23 +1416,23 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             // T -> Trait.
-            (_, &ty::ty_trait(_)) => true,
+            (_, &ty::TyTrait(_)) => true,
 
             // Ambiguous handling is below T -> Trait, because inference
             // variables can still implement Unsize<Trait> and nested
             // obligations will have the final say (likely deferred).
-            (&ty::ty_infer(ty::TyVar(_)), _) |
-            (_, &ty::ty_infer(ty::TyVar(_))) => {
+            (&ty::TyInfer(ty::TyVar(_)), _) |
+            (_, &ty::TyInfer(ty::TyVar(_))) => {
                 debug!("assemble_candidates_for_unsizing: ambiguous");
                 candidates.ambiguous = true;
                 false
             }
 
             // [T; n] -> [T].
-            (&ty::ty_vec(_, Some(_)), &ty::ty_vec(_, None)) => true,
+            (&ty::TyArray(_, Some(_)), &ty::TyArray(_, None)) => true,
 
             // Struct<T> -> Struct<U>.
-            (&ty::ty_struct(def_id_a, _), &ty::ty_struct(def_id_b, _)) => {
+            (&ty::TyStruct(def_id_a, _), &ty::TyStruct(def_id_b, _)) => {
                 def_id_a == def_id_b
             }
 
@@ -1579,19 +1579,19 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let self_ty = self.infcx.shallow_resolve(obligation.predicate.0.self_ty());
         return match self_ty.sty {
-            ty::ty_infer(ty::IntVar(_)) |
-            ty::ty_infer(ty::FloatVar(_)) |
-            ty::ty_uint(_) |
-            ty::ty_int(_) |
-            ty::ty_bool |
-            ty::ty_float(_) |
-            ty::ty_bare_fn(..) |
-            ty::ty_char => {
+            ty::TyInfer(ty::IntVar(_)) |
+            ty::TyInfer(ty::FloatVar(_)) |
+            ty::TyUint(_) |
+            ty::TyInt(_) |
+            ty::TyBool |
+            ty::TyFloat(_) |
+            ty::TyBareFn(..) |
+            ty::TyChar => {
                 // safe for everything
                 ok_if(Vec::new())
             }
 
-            ty::ty_uniq(_) => {  // Box<T>
+            ty::TyBox(_) => {  // Box<T>
                 match bound {
                     ty::BoundCopy => Err(Unimplemented),
 
@@ -1603,7 +1603,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
             }
 
-            ty::ty_ptr(..) => {     // *const T, *mut T
+            ty::TyRawPtr(..) => {     // *const T, *mut T
                 match bound {
                     ty::BoundCopy | ty::BoundSized => ok_if(Vec::new()),
 
@@ -1613,7 +1613,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
             }
 
-            ty::ty_trait(ref data) => {
+            ty::TyTrait(ref data) => {
                 match bound {
                     ty::BoundSized => Err(Unimplemented),
                     ty::BoundCopy => {
@@ -1641,7 +1641,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
             }
 
-            ty::ty_rptr(_, ty::mt { ty: _, mutbl }) => {
+            ty::TyRef(_, ty::mt { ty: _, mutbl }) => {
                 // &mut T or &T
                 match bound {
                     ty::BoundCopy => {
@@ -1662,7 +1662,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
             }
 
-            ty::ty_vec(element_ty, ref len) => {
+            ty::TyArray(element_ty, ref len) => {
                 // [T; n] and [T]
                 match bound {
                     ty::BoundCopy => {
@@ -1689,7 +1689,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
             }
 
-            ty::ty_str => {
+            ty::TyStr => {
                 // Equivalent to [u8]
                 match bound {
                     ty::BoundSync | ty::BoundSend => {
@@ -1701,9 +1701,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             // (T1, ..., Tn) -- meets any bound that all of T1...Tn meet
-            ty::ty_tup(ref tys) => ok_if(tys.clone()),
+            ty::TyTuple(ref tys) => ok_if(tys.clone()),
 
-            ty::ty_closure(def_id, substs) => {
+            ty::TyClosure(def_id, substs) => {
                 // FIXME -- This case is tricky. In the case of by-ref
                 // closures particularly, we need the results of
                 // inference to decide how to reflect the type of each
@@ -1738,7 +1738,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
             }
 
-            ty::ty_struct(def_id, substs) => {
+            ty::TyStruct(def_id, substs) => {
                 let types: Vec<Ty> =
                     ty::struct_fields(self.tcx(), def_id, substs).iter()
                                                                  .map(|f| f.mt.ty)
@@ -1746,7 +1746,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 nominal(bound, types)
             }
 
-            ty::ty_enum(def_id, substs) => {
+            ty::TyEnum(def_id, substs) => {
                 let types: Vec<Ty> =
                     ty::substd_enum_variants(self.tcx(), def_id, substs)
                     .iter()
@@ -1756,7 +1756,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 nominal(bound, types)
             }
 
-            ty::ty_projection(_) | ty::ty_param(_) => {
+            ty::TyProjection(_) | ty::TyParam(_) => {
                 // Note: A type parameter is only considered to meet a
                 // particular bound if there is a where clause telling
                 // us that it does, and that case is handled by
@@ -1764,7 +1764,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 Ok(ParameterBuiltin)
             }
 
-            ty::ty_infer(ty::TyVar(_)) => {
+            ty::TyInfer(ty::TyVar(_)) => {
                 // Unbound type variable. Might or might not have
                 // applicable impls and so forth, depending on what
                 // those type variables wind up being bound to.
@@ -1772,11 +1772,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 Ok(AmbiguousBuiltin)
             }
 
-            ty::ty_err => ok_if(Vec::new()),
+            ty::TyError => ok_if(Vec::new()),
 
-            ty::ty_infer(ty::FreshTy(_))
-            | ty::ty_infer(ty::FreshIntTy(_))
-            | ty::ty_infer(ty::FreshFloatTy(_)) => {
+            ty::TyInfer(ty::FreshTy(_))
+            | ty::TyInfer(ty::FreshIntTy(_))
+            | ty::TyInfer(ty::FreshFloatTy(_)) => {
                 self.tcx().sess.bug(
                     &format!(
                         "asked to assemble builtin bounds of unexpected type: {}",
@@ -1820,51 +1820,51 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// ```
     fn constituent_types_for_ty(&self, t: Ty<'tcx>) -> Option<Vec<Ty<'tcx>>> {
         match t.sty {
-            ty::ty_uint(_) |
-            ty::ty_int(_) |
-            ty::ty_bool |
-            ty::ty_float(_) |
-            ty::ty_bare_fn(..) |
-            ty::ty_str |
-            ty::ty_err |
-            ty::ty_infer(ty::IntVar(_)) |
-            ty::ty_infer(ty::FloatVar(_)) |
-            ty::ty_char => {
+            ty::TyUint(_) |
+            ty::TyInt(_) |
+            ty::TyBool |
+            ty::TyFloat(_) |
+            ty::TyBareFn(..) |
+            ty::TyStr |
+            ty::TyError |
+            ty::TyInfer(ty::IntVar(_)) |
+            ty::TyInfer(ty::FloatVar(_)) |
+            ty::TyChar => {
                 Some(Vec::new())
             }
 
-            ty::ty_trait(..) |
-            ty::ty_param(..) |
-            ty::ty_projection(..) |
-            ty::ty_infer(ty::TyVar(_)) |
-            ty::ty_infer(ty::FreshTy(_)) |
-            ty::ty_infer(ty::FreshIntTy(_)) |
-            ty::ty_infer(ty::FreshFloatTy(_)) => {
+            ty::TyTrait(..) |
+            ty::TyParam(..) |
+            ty::TyProjection(..) |
+            ty::TyInfer(ty::TyVar(_)) |
+            ty::TyInfer(ty::FreshTy(_)) |
+            ty::TyInfer(ty::FreshIntTy(_)) |
+            ty::TyInfer(ty::FreshFloatTy(_)) => {
                 self.tcx().sess.bug(
                     &format!(
                         "asked to assemble constituent types of unexpected type: {}",
                         t.repr(self.tcx())));
             }
 
-            ty::ty_uniq(referent_ty) => {  // Box<T>
+            ty::TyBox(referent_ty) => {  // Box<T>
                 Some(vec![referent_ty])
             }
 
-            ty::ty_ptr(ty::mt { ty: element_ty, ..}) |
-            ty::ty_rptr(_, ty::mt { ty: element_ty, ..}) => {
+            ty::TyRawPtr(ty::mt { ty: element_ty, ..}) |
+            ty::TyRef(_, ty::mt { ty: element_ty, ..}) => {
                 Some(vec![element_ty])
             },
 
-            ty::ty_vec(element_ty, _) => {
+            ty::TyArray(element_ty, _) => {
                 Some(vec![element_ty])
             }
 
-            ty::ty_tup(ref tys) => {
+            ty::TyTuple(ref tys) => {
                 // (T1, ..., Tn) -- meets any bound that all of T1...Tn meet
                 Some(tys.clone())
             }
 
-            ty::ty_closure(def_id, substs) => {
+            ty::TyClosure(def_id, substs) => {
                 assert_eq!(def_id.krate, ast::LOCAL_CRATE);
 
                 match self.closure_typer.closure_upvars(def_id, substs) {
@@ -1878,19 +1878,19 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             // for `PhantomData<T>`, we pass `T`
-            ty::ty_struct(def_id, substs)
+            ty::TyStruct(def_id, substs)
                 if Some(def_id) == self.tcx().lang_items.phantom_data() =>
             {
                 Some(substs.types.get_slice(TypeSpace).to_vec())
             }
 
-            ty::ty_struct(def_id, substs) => {
+            ty::TyStruct(def_id, substs) => {
                 Some(ty::struct_fields(self.tcx(), def_id, substs).iter()
                      .map(|f| f.mt.ty)
                      .collect())
             }
 
-            ty::ty_enum(def_id, substs) => {
+            ty::TyEnum(def_id, substs) => {
                 Some(ty::substd_enum_variants(self.tcx(), def_id, substs)
                      .iter()
                      .flat_map(|variant| &variant.args)
@@ -2169,7 +2169,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // OK to skip binder, it is reintroduced below
         let self_ty = self.infcx.shallow_resolve(obligation.predicate.skip_binder().self_ty());
         match self_ty.sty {
-            ty::ty_trait(ref data) => {
+            ty::TyTrait(ref data) => {
                 // OK to skip the binder, it is reintroduced below
                 let input_types = data.principal.skip_binder().substs.types.get_slice(TypeSpace);
                 let assoc_types = data.bounds.projection_bounds
@@ -2299,7 +2299,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // case that results. -nmatsakis
         let self_ty = self.infcx.shallow_resolve(*obligation.self_ty().skip_binder());
         let poly_trait_ref = match self_ty.sty {
-            ty::ty_trait(ref data) => {
+            ty::TyTrait(ref data) => {
                 data.principal_trait_ref_with_self_ty(self.tcx(), self_ty)
             }
             _ => {
@@ -2437,7 +2437,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let mut nested = vec![];
         match (&source.sty, &target.sty) {
             // Trait+Kx+'a -> Trait+Ky+'b (upcasts).
-            (&ty::ty_trait(ref data_a), &ty::ty_trait(ref data_b)) => {
+            (&ty::TyTrait(ref data_a), &ty::TyTrait(ref data_b)) => {
                 // See assemble_candidates_for_unsizing for more info.
                 let bounds = ty::ExistentialBounds {
                     region_bound: data_b.bounds.region_bound,
@@ -2463,7 +2463,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             // T -> Trait.
-            (_, &ty::ty_trait(ref data)) => {
+            (_, &ty::TyTrait(ref data)) => {
                 let object_did = data.principal_def_id();
                 if !object_safety::is_object_safe(tcx, object_did) {
                     return Err(TraitNotObjectSafe(object_did));
@@ -2510,7 +2510,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             // [T; n] -> [T].
-            (&ty::ty_vec(a, Some(_)), &ty::ty_vec(b, None)) => {
+            (&ty::TyArray(a, Some(_)), &ty::TyArray(b, None)) => {
                 let origin = infer::Misc(obligation.cause.span);
                 if self.infcx.sub_types(false, origin, a, b).is_err() {
                     return Err(Unimplemented);
@@ -2518,7 +2518,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             // Struct<T> -> Struct<U>.
-            (&ty::ty_struct(def_id, substs_a), &ty::ty_struct(_, substs_b)) => {
+            (&ty::TyStruct(def_id, substs_a), &ty::TyStruct(_, substs_b)) => {
                 let fields = ty::lookup_struct_fields(tcx, def_id).iter().map(|f| {
                     ty::lookup_field_type_unsubstituted(tcx, def_id, f.id)
                 }).collect::<Vec<_>>();
@@ -2531,7 +2531,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 };
                 let mut ty_params = vec![];
                 ty::walk_ty(field, |ty| {
-                    if let ty::ty_param(p) = ty.sty {
+                    if let ty::TyParam(p) = ty.sty {
                         assert!(p.space == TypeSpace);
                         let idx = p.idx as usize;
                         if !ty_params.contains(&idx) {
@@ -2544,7 +2544,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
 
                 // Replace type parameters used in unsizing with
-                // ty_err and ensure they do not affect any other fields.
+                // TyError and ensure they do not affect any other fields.
                 // This could be checked after type collection for any struct
                 // with a potentially unsized trailing field.
                 let mut new_substs = substs_a.clone();

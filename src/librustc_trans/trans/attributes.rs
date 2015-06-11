@@ -128,8 +128,8 @@ pub fn from_fn_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_type: ty::Ty<'tcx
 
     let function_type;
     let (fn_sig, abi, env_ty) = match fn_type.sty {
-        ty::ty_bare_fn(_, ref f) => (&f.sig, f.abi, None),
-        ty::ty_closure(closure_did, substs) => {
+        ty::TyBareFn(_, ref f) => (&f.sig, f.abi, None),
+        ty::TyClosure(closure_did, substs) => {
             let typer = common::NormalizingClosureTyper::new(ccx.tcx());
             function_type = typer.closure_type(closure_did, substs);
             let self_type = base::self_type_for_closure(ccx, closure_did, fn_type);
@@ -146,11 +146,11 @@ pub fn from_fn_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_type: ty::Ty<'tcx
     // These have an odd calling convention, so we need to manually
     // unpack the input ty's
     let input_tys = match fn_type.sty {
-        ty::ty_closure(..) => {
+        ty::TyClosure(..) => {
             assert!(abi == abi::RustCall);
 
             match fn_sig.inputs[0].sty {
-                ty::ty_tup(ref inputs) => {
+                ty::TyTuple(ref inputs) => {
                     let mut full_inputs = vec![env_ty.expect("Missing closure environment")];
                     full_inputs.push_all(inputs);
                     full_inputs
@@ -158,11 +158,11 @@ pub fn from_fn_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_type: ty::Ty<'tcx
                 _ => ccx.sess().bug("expected tuple'd inputs")
             }
         },
-        ty::ty_bare_fn(..) if abi == abi::RustCall => {
+        ty::TyBareFn(..) if abi == abi::RustCall => {
             let mut inputs = vec![fn_sig.inputs[0]];
 
             match fn_sig.inputs[1].sty {
-                ty::ty_tup(ref t_in) => {
+                ty::TyTuple(ref t_in) => {
                     inputs.push_all(&t_in[..]);
                     inputs
                 }
@@ -198,7 +198,7 @@ pub fn from_fn_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_type: ty::Ty<'tcx
             match ret_ty.sty {
                 // `Box` pointer return values never alias because ownership
                 // is transferred
-                ty::ty_uniq(it) if common::type_is_sized(ccx.tcx(), it) => {
+                ty::TyBox(it) if common::type_is_sized(ccx.tcx(), it) => {
                     attrs.ret(llvm::Attribute::NoAlias);
                 }
                 _ => {}
@@ -207,15 +207,15 @@ pub fn from_fn_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_type: ty::Ty<'tcx
             // We can also mark the return value as `dereferenceable` in certain cases
             match ret_ty.sty {
                 // These are not really pointers but pairs, (pointer, len)
-                ty::ty_rptr(_, ty::mt { ty: inner, .. })
-                | ty::ty_uniq(inner) if common::type_is_sized(ccx.tcx(), inner) => {
+                ty::TyRef(_, ty::mt { ty: inner, .. })
+                | ty::TyBox(inner) if common::type_is_sized(ccx.tcx(), inner) => {
                     let llret_sz = machine::llsize_of_real(ccx, type_of::type_of(ccx, inner));
                     attrs.ret(llvm::DereferenceableAttribute(llret_sz));
                 }
                 _ => {}
             }
 
-            if let ty::ty_bool = ret_ty.sty {
+            if let ty::TyBool = ret_ty.sty {
                 attrs.ret(llvm::Attribute::ZExt);
             }
         }
@@ -235,12 +235,12 @@ pub fn from_fn_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_type: ty::Ty<'tcx
                      .arg(idx, llvm::DereferenceableAttribute(llarg_sz));
             }
 
-            ty::ty_bool => {
+            ty::TyBool => {
                 attrs.arg(idx, llvm::Attribute::ZExt);
             }
 
             // `Box` pointer parameters never alias because ownership is transferred
-            ty::ty_uniq(inner) => {
+            ty::TyBox(inner) => {
                 let llsz = machine::llsize_of_real(ccx, type_of::type_of(ccx, inner));
 
                 attrs.arg(idx, llvm::Attribute::NoAlias)
@@ -252,7 +252,7 @@ pub fn from_fn_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_type: ty::Ty<'tcx
             // `&T` where `T` contains no `UnsafeCell<U>` is immutable, and can be marked as both
             // `readonly` and `noalias`, as LLVM's definition of `noalias` is based solely on
             // memory dependencies rather than pointer equality
-            ty::ty_rptr(b, mt) if mt.mutbl == ast::MutMutable ||
+            ty::TyRef(b, mt) if mt.mutbl == ast::MutMutable ||
                                   !ty::type_contents(ccx.tcx(), mt.ty).interior_unsafe() => {
 
                 let llsz = machine::llsize_of_real(ccx, type_of::type_of(ccx, mt.ty));
@@ -270,7 +270,7 @@ pub fn from_fn_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_type: ty::Ty<'tcx
 
             // When a reference in an argument has no named lifetime, it's impossible for that
             // reference to escape this function (returned or stored beyond the call by a closure).
-            ty::ty_rptr(&ReLateBound(_, BrAnon(_)), mt) => {
+            ty::TyRef(&ReLateBound(_, BrAnon(_)), mt) => {
                 let llsz = machine::llsize_of_real(ccx, type_of::type_of(ccx, mt.ty));
                 attrs.arg(idx, llvm::Attribute::NoCapture)
                      .arg(idx, llvm::DereferenceableAttribute(llsz));
@@ -278,7 +278,7 @@ pub fn from_fn_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_type: ty::Ty<'tcx
 
             // & pointer parameters are also never null and we know exactly how
             // many bytes we can dereference
-            ty::ty_rptr(_, mt) => {
+            ty::TyRef(_, mt) => {
                 let llsz = machine::llsize_of_real(ccx, type_of::type_of(ccx, mt.ty));
                 attrs.arg(idx, llvm::DereferenceableAttribute(llsz));
             }

@@ -198,7 +198,7 @@ impl<'cx, 'tcx,'v> visit::Visitor<'v> for OverlapChecker<'cx, 'tcx> {
                 let trait_ref = ty::impl_trait_ref(self.tcx, impl_def_id).unwrap();
                 let trait_def_id = trait_ref.def_id;
                 match trait_ref.self_ty().sty {
-                    ty::ty_trait(ref data) => {
+                    ty::TyTrait(ref data) => {
                         // This is something like impl Trait1 for Trait2. Illegal
                         // if Trait1 is a supertrait of Trait2 or Trait2 is not object safe.
 

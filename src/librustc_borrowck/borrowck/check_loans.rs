@@ -752,7 +752,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
             }
             LpExtend(ref lp_base, _, LpInterior(InteriorField(_))) => {
                 match lp_base.to_type().sty {
-                    ty::ty_struct(def_id, _) | ty::ty_enum(def_id, _) => {
+                    ty::TyStruct(def_id, _) | ty::TyEnum(def_id, _) => {
                         if ty::has_dtor(self.tcx(), def_id) {
                             // In the case where the owner implements drop, then
                             // the path must be initialized to prevent a case of

@@ -313,14 +313,14 @@ pub fn unsized_info<'ccx, 'tcx>(ccx: &CrateContext<'ccx, 'tcx>,
                                 -> ValueRef {
     let (source, target) = ty::struct_lockstep_tails(ccx.tcx(), source, target);
     match (&source.sty, &target.sty) {
-        (&ty::ty_vec(_, Some(len)), &ty::ty_vec(_, None)) => C_uint(ccx, len),
-        (&ty::ty_trait(_), &ty::ty_trait(_)) => {
+        (&ty::TyArray(_, Some(len)), &ty::TyArray(_, None)) => C_uint(ccx, len),
+        (&ty::TyTrait(_), &ty::TyTrait(_)) => {
             // For now, upcasts are limited to changes in marker
             // traits, and hence never actually require an actual
             // change to the vtable.
             old_info.expect("unsized_info: missing old info for trait upcast")
         }
-        (_, &ty::ty_trait(box ty::TyTrait { ref principal, .. })) => {
+        (_, &ty::TyTrait(box ty::TraitTy { ref principal, .. })) => {
             // Note that we preserve binding levels here:
             let substs = principal.0.substs.with_self_ty(source).erase_regions();
             let substs = ccx.tcx().mk_substs(substs);
@@ -369,7 +369,7 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 // a different region or mutability, but we don't care here).
                 match datum.ty.sty {
                     // Don't skip a conversion from Box<T> to &T, etc.
-                    ty::ty_rptr(..) => {
+                    ty::TyRef(..) => {
                         let method_call = MethodCall::autoderef(expr.id, 0);
                         if bcx.tcx().method_map.borrow().contains_key(&method_call) {
                             // Don't skip an overloaded deref.
@@ -442,10 +442,10 @@ fn coerce_unsized<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
            target.to_string(bcx.ccx()));
 
     match (&source.ty.sty, &target.ty.sty) {
-        (&ty::ty_uniq(a), &ty::ty_uniq(b)) |
-        (&ty::ty_rptr(_, ty::mt { ty: a, .. }), &ty::ty_rptr(_, ty::mt { ty: b, .. })) |
-        (&ty::ty_rptr(_, ty::mt { ty: a, .. }), &ty::ty_ptr(ty::mt { ty: b, .. })) |
-        (&ty::ty_ptr(ty::mt { ty: a, .. }), &ty::ty_ptr(ty::mt { ty: b, .. })) => {
+        (&ty::TyBox(a), &ty::TyBox(b)) |
+        (&ty::TyRef(_, ty::mt { ty: a, .. }), &ty::TyRef(_, ty::mt { ty: b, .. })) |
+        (&ty::TyRef(_, ty::mt { ty: a, .. }), &ty::TyRawPtr(ty::mt { ty: b, .. })) |
+        (&ty::TyRawPtr(ty::mt { ty: a, .. }), &ty::TyRawPtr(ty::mt { ty: b, .. })) => {
             let (inner_source, inner_target) = (a, b);
 
             let (base, old_info) = if !type_is_sized(bcx.tcx(), inner_source) {
@@ -479,8 +479,8 @@ fn coerce_unsized<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         }
 
         // This can be extended to enums and tuples in the future.
-        // (&ty::ty_enum(def_id_a, _), &ty::ty_enum(def_id_b, _)) |
-        (&ty::ty_struct(def_id_a, _), &ty::ty_struct(def_id_b, _)) => {
+        // (&ty::TyEnum(def_id_a, _), &ty::TyEnum(def_id_b, _)) |
+        (&ty::TyStruct(def_id_a, _), &ty::TyStruct(def_id_b, _)) => {
             assert_eq!(def_id_a, def_id_b);
 
             // The target is already by-ref because it's to be written to.
@@ -657,7 +657,7 @@ fn trans_datum_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             let box_ty = expr_ty(bcx, expr);
             let contents_ty = expr_ty(bcx, &**contents);
             match box_ty.sty {
-                ty::ty_uniq(..) => {
+                ty::TyBox(..) => {
                     trans_uniq_expr(bcx, expr, box_ty, &**contents, contents_ty)
                 }
                 _ => bcx.sess().span_bug(expr.span,
@@ -1245,7 +1245,7 @@ fn trans_def_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         def::DefStruct(_) => {
             let ty = expr_ty(bcx, ref_expr);
             match ty.sty {
-                ty::ty_struct(did, _) if ty::has_dtor(bcx.tcx(), did) => {
+                ty::TyStruct(did, _) if ty::has_dtor(bcx.tcx(), did) => {
                     let repr = adt::represent_type(bcx.ccx(), ty);
                     adt::trans_set_discr(bcx, &*repr, lldest, 0);
                 }
@@ -1339,17 +1339,17 @@ pub fn with_field_tys<'tcx, R, F>(tcx: &ty::ctxt<'tcx>,
     F: FnOnce(ty::Disr, &[ty::field<'tcx>]) -> R,
 {
     match ty.sty {
-        ty::ty_struct(did, substs) => {
+        ty::TyStruct(did, substs) => {
             let fields = struct_fields(tcx, did, substs);
             let fields = monomorphize::normalize_associated_type(tcx, &fields);
             op(0, &fields[..])
         }
 
-        ty::ty_tup(ref v) => {
+        ty::TyTuple(ref v) => {
             op(0, &tup_fields(&v[..]))
         }
 
-        ty::ty_enum(_, substs) => {
+        ty::TyEnum(_, substs) => {
             // We want the *variant* ID here, not the enum ID.
             match node_id_opt {
                 None => {
@@ -2253,7 +2253,7 @@ fn deref_once<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     };
 
     let r = match datum.ty.sty {
-        ty::ty_uniq(content_ty) => {
+        ty::TyBox(content_ty) => {
             // Make sure we have an lvalue datum here to get the
             // proper cleanups scheduled
             let datum = unpack_datum!(
@@ -2274,8 +2274,8 @@ fn deref_once<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             }
         }
 
-        ty::ty_ptr(ty::mt { ty: content_ty, .. }) |
-        ty::ty_rptr(_, ty::mt { ty: content_ty, .. }) => {
+        ty::TyRawPtr(ty::mt { ty: content_ty, .. }) |
+        ty::TyRef(_, ty::mt { ty: content_ty, .. }) => {
             if type_is_sized(bcx.tcx(), content_ty) {
                 let ptr = datum.to_llscalarish(bcx);
 
@@ -2347,61 +2347,61 @@ impl OverflowOpViaIntrinsic {
     fn to_intrinsic_name(&self, tcx: &ty::ctxt, ty: Ty) -> &'static str {
         use syntax::ast::IntTy::*;
         use syntax::ast::UintTy::*;
-        use middle::ty::{ty_int, ty_uint};
+        use middle::ty::{TyInt, TyUint};
 
         let new_sty = match ty.sty {
-            ty_int(TyIs) => match &tcx.sess.target.target.target_pointer_width[..] {
-                "32" => ty_int(TyI32),
-                "64" => ty_int(TyI64),
+            TyInt(TyIs) => match &tcx.sess.target.target.target_pointer_width[..] {
+                "32" => TyInt(TyI32),
+                "64" => TyInt(TyI64),
                 _ => panic!("unsupported target word size")
             },
-            ty_uint(TyUs) => match &tcx.sess.target.target.target_pointer_width[..] {
-                "32" => ty_uint(TyU32),
-                "64" => ty_uint(TyU64),
+            TyUint(TyUs) => match &tcx.sess.target.target.target_pointer_width[..] {
+                "32" => TyUint(TyU32),
+                "64" => TyUint(TyU64),
                 _ => panic!("unsupported target word size")
             },
-            ref t @ ty_uint(_) | ref t @ ty_int(_) => t.clone(),
+            ref t @ TyUint(_) | ref t @ TyInt(_) => t.clone(),
             _ => panic!("tried to get overflow intrinsic for {:?} applied to non-int type",
                         *self)
         };
 
         match *self {
             OverflowOpViaIntrinsic::Add => match new_sty {
-                ty_int(TyI8) => "llvm.sadd.with.overflow.i8",
-                ty_int(TyI16) => "llvm.sadd.with.overflow.i16",
-                ty_int(TyI32) => "llvm.sadd.with.overflow.i32",
-                ty_int(TyI64) => "llvm.sadd.with.overflow.i64",
+                TyInt(TyI8) => "llvm.sadd.with.overflow.i8",
+                TyInt(TyI16) => "llvm.sadd.with.overflow.i16",
+                TyInt(TyI32) => "llvm.sadd.with.overflow.i32",
+                TyInt(TyI64) => "llvm.sadd.with.overflow.i64",
 
-                ty_uint(TyU8) => "llvm.uadd.with.overflow.i8",
-                ty_uint(TyU16) => "llvm.uadd.with.overflow.i16",
-                ty_uint(TyU32) => "llvm.uadd.with.overflow.i32",
-                ty_uint(TyU64) => "llvm.uadd.with.overflow.i64",
+                TyUint(TyU8) => "llvm.uadd.with.overflow.i8",
+                TyUint(TyU16) => "llvm.uadd.with.overflow.i16",
+                TyUint(TyU32) => "llvm.uadd.with.overflow.i32",
+                TyUint(TyU64) => "llvm.uadd.with.overflow.i64",
 
                 _ => unreachable!(),
             },
             OverflowOpViaIntrinsic::Sub => match new_sty {
-                ty_int(TyI8) => "llvm.ssub.with.overflow.i8",
-                ty_int(TyI16) => "llvm.ssub.with.overflow.i16",
-                ty_int(TyI32) => "llvm.ssub.with.overflow.i32",
-                ty_int(TyI64) => "llvm.ssub.with.overflow.i64",
+                TyInt(TyI8) => "llvm.ssub.with.overflow.i8",
+                TyInt(TyI16) => "llvm.ssub.with.overflow.i16",
+                TyInt(TyI32) => "llvm.ssub.with.overflow.i32",
+                TyInt(TyI64) => "llvm.ssub.with.overflow.i64",
 
-                ty_uint(TyU8) => "llvm.usub.with.overflow.i8",
-                ty_uint(TyU16) => "llvm.usub.with.overflow.i16",
-                ty_uint(TyU32) => "llvm.usub.with.overflow.i32",
-                ty_uint(TyU64) => "llvm.usub.with.overflow.i64",
+                TyUint(TyU8) => "llvm.usub.with.overflow.i8",
+                TyUint(TyU16) => "llvm.usub.with.overflow.i16",
+                TyUint(TyU32) => "llvm.usub.with.overflow.i32",
+                TyUint(TyU64) => "llvm.usub.with.overflow.i64",
 
                 _ => unreachable!(),
             },
             OverflowOpViaIntrinsic::Mul => match new_sty {
-                ty_int(TyI8) => "llvm.smul.with.overflow.i8",
-                ty_int(TyI16) => "llvm.smul.with.overflow.i16",
-                ty_int(TyI32) => "llvm.smul.with.overflow.i32",
-                ty_int(TyI64) => "llvm.smul.with.overflow.i64",
+                TyInt(TyI8) => "llvm.smul.with.overflow.i8",
+                TyInt(TyI16) => "llvm.smul.with.overflow.i16",
+                TyInt(TyI32) => "llvm.smul.with.overflow.i32",
+                TyInt(TyI64) => "llvm.smul.with.overflow.i64",
 
-                ty_uint(TyU8) => "llvm.umul.with.overflow.i8",
-                ty_uint(TyU16) => "llvm.umul.with.overflow.i16",
-                ty_uint(TyU32) => "llvm.umul.with.overflow.i32",
-                ty_uint(TyU64) => "llvm.umul.with.overflow.i64",
+                TyUint(TyU8) => "llvm.umul.with.overflow.i8",
+                TyUint(TyU16) => "llvm.umul.with.overflow.i16",
+                TyUint(TyU32) => "llvm.umul.with.overflow.i32",
+                TyUint(TyU64) => "llvm.umul.with.overflow.i64",
 
                 _ => unreachable!(),
             },

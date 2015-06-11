@@ -296,7 +296,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
     }
 
     fn extract_trait_ref<R, F>(&mut self, self_ty: Ty<'tcx>, mut closure: F) -> R where
-        F: FnMut(&mut ConfirmContext<'a, 'tcx>, Ty<'tcx>, &ty::TyTrait<'tcx>) -> R,
+        F: FnMut(&mut ConfirmContext<'a, 'tcx>, Ty<'tcx>, &ty::TraitTy<'tcx>) -> R,
     {
         // If we specified that this is an object method, then the
         // self-type ought to be something that can be dereferenced to
@@ -311,7 +311,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                                               NoPreference,
                                               |ty, _| {
             match ty.sty {
-                ty::ty_trait(ref data) => Some(closure(self, ty, &**data)),
+                ty::TyTrait(ref data) => Some(closure(self, ty, &**data)),
                 _ => None,
             }
         });
@@ -456,12 +456,12 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
     fn fixup_derefs_on_method_receiver_if_necessary(&self,
                                                     method_callee: &MethodCallee) {
         let sig = match method_callee.ty.sty {
-            ty::ty_bare_fn(_, ref f) => f.sig.clone(),
+            ty::TyBareFn(_, ref f) => f.sig.clone(),
             _ => return,
         };
 
         match sig.0.inputs[0].sty {
-            ty::ty_rptr(_, ty::mt {
+            ty::TyRef(_, ty::mt {
                 ty: _,
                 mutbl: ast::MutMutable,
             }) => {}

@@ -850,10 +850,10 @@ fn compare_values<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
     }
 
     match rhs_t.sty {
-        ty::ty_rptr(_, mt) => match mt.ty.sty {
-            ty::ty_str => compare_str(cx, lhs, rhs, rhs_t, debug_loc),
-            ty::ty_vec(ty, _) => match ty.sty {
-                ty::ty_uint(ast::TyU8) => {
+        ty::TyRef(_, mt) => match mt.ty.sty {
+            ty::TyStr => compare_str(cx, lhs, rhs, rhs_t, debug_loc),
+            ty::TyArray(ty, _) => match ty.sty {
+                ty::TyUint(ast::TyU8) => {
                     // NOTE: cast &[u8] and &[u8; N] to &str and abuse the str_eq lang item,
                     // which calls memcmp().
                     let pat_len = val_ty(rhs).element_type().array_length();
@@ -1092,7 +1092,7 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         ).collect();
 
         match left_ty.sty {
-            ty::ty_struct(def_id, substs) if !type_is_sized(bcx.tcx(), left_ty) => {
+            ty::TyStruct(def_id, substs) if !type_is_sized(bcx.tcx(), left_ty) => {
                 // The last field is technically unsized but
                 // since we can only ever match that field behind
                 // a reference we construct a fat ptr here.
@@ -1116,7 +1116,7 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         Some(vec!(Load(bcx, val)))
     } else {
         match left_ty.sty {
-            ty::ty_vec(_, Some(n)) => {
+            ty::TyArray(_, Some(n)) => {
                 let args = extract_vec_elems(bcx, left_ty, n, 0, val);
                 Some(args.vals)
             }

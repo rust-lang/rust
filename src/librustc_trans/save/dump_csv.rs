@@ -903,7 +903,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
 
         let ty = &ty::expr_ty_adjusted(&self.analysis.ty_cx, ex).sty;
         let struct_def = match *ty {
-            ty::ty_struct(def_id, _) => {
+            ty::TyStruct(def_id, _) => {
                 let sub_span = self.span.span_for_last_ident(path.span);
                 self.fmt.ref_str(recorder::StructRef,
                                  path.span,
@@ -1316,7 +1316,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
 
                 let ty = &ty::expr_ty_adjusted(&self.analysis.ty_cx, &**sub_ex).sty;
                 match *ty {
-                    ty::ty_struct(def_id, _) => {
+                    ty::TyStruct(def_id, _) => {
                         let fields = ty::lookup_struct_fields(&self.analysis.ty_cx, def_id);
                         for (i, f) in fields.iter().enumerate() {
                             if i == idx.node {
@@ -1330,7 +1330,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
                             }
                         }
                     }
-                    ty::ty_tup(_) => {}
+                    ty::TyTuple(_) => {}
                     _ => self.sess.span_bug(ex.span,
                                             &format!("Expected struct or tuple \
                                                       type, found {:?}", ty)),

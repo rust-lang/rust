@@ -145,7 +145,7 @@ impl LintPass for TypeLimits {
                     _ => {
                         let t = ty::expr_ty(cx.tcx, &**expr);
                         match t.sty {
-                            ty::ty_uint(_) => {
+                            ty::TyUint(_) => {
                                 cx.span_lint(UNSIGNED_NEGATION, e.span,
                                              "negation of unsigned int variable may \
                                              be unintentional");
@@ -170,8 +170,8 @@ impl LintPass for TypeLimits {
 
                 if is_shift_binop(binop.node) {
                     let opt_ty_bits = match ty::expr_ty(cx.tcx, &**l).sty {
-                        ty::ty_int(t) => Some(int_ty_bits(t, cx.sess().target.int_type)),
-                        ty::ty_uint(t) => Some(uint_ty_bits(t, cx.sess().target.uint_type)),
+                        ty::TyInt(t) => Some(int_ty_bits(t, cx.sess().target.int_type)),
+                        ty::TyUint(t) => Some(uint_ty_bits(t, cx.sess().target.uint_type)),
                         _ => None
                     };
 
@@ -195,7 +195,7 @@ impl LintPass for TypeLimits {
             },
             ast::ExprLit(ref lit) => {
                 match ty::expr_ty(cx.tcx, e).sty {
-                    ty::ty_int(t) => {
+                    ty::TyInt(t) => {
                         match lit.node {
                             ast::LitInt(v, ast::SignedIntLit(_, ast::Plus)) |
                             ast::LitInt(v, ast::UnsuffixedIntLit(ast::Plus)) => {
@@ -219,7 +219,7 @@ impl LintPass for TypeLimits {
                             _ => panic!()
                         };
                     },
-                    ty::ty_uint(t) => {
+                    ty::TyUint(t) => {
                         let uint_type = if let ast::TyUs = t {
                             cx.sess().target.uint_type
                         } else {
@@ -236,7 +236,7 @@ impl LintPass for TypeLimits {
                                          &*format!("literal out of range for {:?}", t));
                         }
                     },
-                    ty::ty_float(t) => {
+                    ty::TyFloat(t) => {
                         let (min, max) = float_ty_range(t);
                         let lit_val: f64 = match lit.node {
                             ast::LitFloat(ref v, _) |
@@ -345,7 +345,7 @@ impl LintPass for TypeLimits {
                 binop
             };
             match ty::expr_ty(tcx, expr).sty {
-                ty::ty_int(int_ty) => {
+                ty::TyInt(int_ty) => {
                     let (min, max) = int_ty_range(int_ty);
                     let lit_val: i64 = match lit.node {
                         ast::ExprLit(ref li) => match li.node {
@@ -359,7 +359,7 @@ impl LintPass for TypeLimits {
                     };
                     is_valid(norm_binop, lit_val, min, max)
                 }
-                ty::ty_uint(uint_ty) => {
+                ty::TyUint(uint_ty) => {
                     let (min, max): (u64, u64) = uint_ty_range(uint_ty);
                     let lit_val: u64 = match lit.node {
                         ast::ExprLit(ref li) => match li.node {
@@ -486,7 +486,7 @@ impl BoxPointers {
         let mut n_uniq: usize = 0;
         ty::fold_ty(cx.tcx, ty, |t| {
             match t.sty {
-                ty::ty_uniq(_) => {
+                ty::TyBox(_) => {
                     n_uniq += 1;
                 }
                 _ => ()
@@ -591,8 +591,8 @@ impl LintPass for RawPointerDerive {
                 }
 
                 match ty::node_id_to_type(cx.tcx, item.id).sty {
-                    ty::ty_enum(did, _) => did,
-                    ty::ty_struct(did, _) => did,
+                    ty::TyEnum(did, _) => did,
+                    ty::TyStruct(did, _) => did,
                     _ => return,
                 }
             }
@@ -736,10 +736,10 @@ impl LintPass for UnusedResults {
 
         let t = ty::expr_ty(cx.tcx, expr);
         let warned = match t.sty {
-            ty::ty_tup(ref tys) if tys.is_empty() => return,
-            ty::ty_bool => return,
-            ty::ty_struct(did, _) |
-            ty::ty_enum(did, _) => {
+            ty::TyTuple(ref tys) if tys.is_empty() => return,
+            ty::TyBool => return,
+            ty::TyStruct(did, _) |
+            ty::TyEnum(did, _) => {
                 if ast_util::is_local(did) {
                     if let ast_map::NodeItem(it) = cx.tcx.map.get(did.node) {
                         check_must_use(cx, &it.attrs, s.span)
@@ -2162,7 +2162,7 @@ impl LintPass for MutableTransmutes {
         let msg = "mutating transmuted &mut T from &T may cause undefined behavior,\
                    consider instead using an UnsafeCell";
         match get_transmute_from_to(cx, expr) {
-            Some((&ty::ty_rptr(_, from_mt), &ty::ty_rptr(_, to_mt))) => {
+            Some((&ty::TyRef(_, from_mt), &ty::TyRef(_, to_mt))) => {
                 if to_mt.mutbl == ast::Mutability::MutMutable
                     && from_mt.mutbl == ast::Mutability::MutImmutable {
                     cx.span_lint(MUTABLE_TRANSMUTES, expr.span, msg);
@@ -2172,7 +2172,7 @@ impl LintPass for MutableTransmutes {
         }
 
         fn get_transmute_from_to<'a, 'tcx>(cx: &Context<'a, 'tcx>, expr: &ast::Expr)
-            -> Option<(&'tcx ty::sty<'tcx>, &'tcx ty::sty<'tcx>)> {
+            -> Option<(&'tcx ty::TypeVariants<'tcx>, &'tcx ty::TypeVariants<'tcx>)> {
             match expr.node {
                 ast::ExprPath(..) => (),
                 _ => return None
@@ -2183,7 +2183,7 @@ impl LintPass for MutableTransmutes {
                 }
                 let typ = ty::node_id_to_type(cx.tcx, expr.id);
                 match typ.sty {
-                    ty::ty_bare_fn(_, ref bare_fn) if bare_fn.abi == RustIntrinsic => {
+                    ty::TyBareFn(_, ref bare_fn) if bare_fn.abi == RustIntrinsic => {
                         if let ty::FnConverging(to) = bare_fn.sig.0.output {
                             let from = bare_fn.sig.0.inputs[0];
                             return Some((&from.sty, &to.sty));
@@ -2197,7 +2197,7 @@ impl LintPass for MutableTransmutes {
 
         fn def_id_is_transmute(cx: &Context, def_id: DefId) -> bool {
             match ty::lookup_item_type(cx.tcx, def_id).ty.sty {
-                ty::ty_bare_fn(_, ref bfty) if bfty.abi == RustIntrinsic => (),
+                ty::TyBareFn(_, ref bfty) if bfty.abi == RustIntrinsic => (),
                 _ => return false
             }
             ty::with_path(cx.tcx, def_id, |path| match path.last() {
@@ -2260,9 +2260,9 @@ impl LintPass for DropWithReprExtern {
                 };
 
             match dtor_self_type.sty {
-                ty::ty_enum(self_type_did, _) |
-                ty::ty_struct(self_type_did, _) |
-                ty::ty_closure(self_type_did, _) => {
+                ty::TyEnum(self_type_did, _) |
+                ty::TyStruct(self_type_did, _) |
+                ty::TyClosure(self_type_did, _) => {
                     let hints = ty::lookup_repr_hints(ctx.tcx, self_type_did);
                     if hints.iter().any(|attr| *attr == attr::ReprExtern) &&
                         ty::ty_dtor(ctx.tcx, self_type_did).has_drop_flag() {

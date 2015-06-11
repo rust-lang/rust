@@ -202,7 +202,7 @@ fn create_steps<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     });
 
     match final_ty.sty {
-        ty::ty_vec(elem_ty, Some(_)) => {
+        ty::TyArray(elem_ty, Some(_)) => {
             let slice_ty = ty::mk_vec(fcx.tcx(), elem_ty, None);
             steps.push(CandidateStep {
                 self_ty: slice_ty,
@@ -210,7 +210,7 @@ fn create_steps<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 unsize: true
             });
         }
-        ty::ty_err => return None,
+        ty::TyError => return None,
         _ => (),
     }
 
@@ -270,88 +270,88 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                self_ty.repr(self.tcx()));
 
         match self_ty.sty {
-            ty::ty_trait(box ref data) => {
+            ty::TyTrait(box ref data) => {
                 self.assemble_inherent_candidates_from_object(self_ty, data);
                 self.assemble_inherent_impl_candidates_for_type(data.principal_def_id());
             }
-            ty::ty_enum(did, _) |
-            ty::ty_struct(did, _) |
-            ty::ty_closure(did, _) => {
+            ty::TyEnum(did, _) |
+            ty::TyStruct(did, _) |
+            ty::TyClosure(did, _) => {
                 self.assemble_inherent_impl_candidates_for_type(did);
             }
-            ty::ty_uniq(_) => {
+            ty::TyBox(_) => {
                 if let Some(box_did) = self.tcx().lang_items.owned_box() {
                     self.assemble_inherent_impl_candidates_for_type(box_did);
                 }
             }
-            ty::ty_param(p) => {
+            ty::TyParam(p) => {
                 self.assemble_inherent_candidates_from_param(self_ty, p);
             }
-            ty::ty_char => {
+            ty::TyChar => {
                 let lang_def_id = self.tcx().lang_items.char_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
-            ty::ty_str => {
+            ty::TyStr => {
                 let lang_def_id = self.tcx().lang_items.str_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
-            ty::ty_vec(_, None) => {
+            ty::TyArray(_, None) => {
                 let lang_def_id = self.tcx().lang_items.slice_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
-            ty::ty_ptr(ty::mt { ty: _, mutbl: ast::MutImmutable }) => {
+            ty::TyRawPtr(ty::mt { ty: _, mutbl: ast::MutImmutable }) => {
                 let lang_def_id = self.tcx().lang_items.const_ptr_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
-            ty::ty_ptr(ty::mt { ty: _, mutbl: ast::MutMutable }) => {
+            ty::TyRawPtr(ty::mt { ty: _, mutbl: ast::MutMutable }) => {
                 let lang_def_id = self.tcx().lang_items.mut_ptr_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
-            ty::ty_int(ast::TyI8) => {
+            ty::TyInt(ast::TyI8) => {
                 let lang_def_id = self.tcx().lang_items.i8_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
-            ty::ty_int(ast::TyI16) => {
+            ty::TyInt(ast::TyI16) => {
                 let lang_def_id = self.tcx().lang_items.i16_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
-            ty::ty_int(ast::TyI32) => {
+            ty::TyInt(ast::TyI32) => {
                 let lang_def_id = self.tcx().lang_items.i32_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
-            ty::ty_int(ast::TyI64) => {
+            ty::TyInt(ast::TyI64) => {
                 let lang_def_id = self.tcx().lang_items.i64_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
-            ty::ty_int(ast::TyIs) => {
+            ty::TyInt(ast::TyIs) => {
                 let lang_def_id = self.tcx().lang_items.isize_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
-            ty::ty_uint(ast::TyU8) => {
+            ty::TyUint(ast::TyU8) => {
                 let lang_def_id = self.tcx().lang_items.u8_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
-            ty::ty_uint(ast::TyU16) => {
+            ty::TyUint(ast::TyU16) => {
                 let lang_def_id = self.tcx().lang_items.u16_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
-            ty::ty_uint(ast::TyU32) => {
+            ty::TyUint(ast::TyU32) => {
                 let lang_def_id = self.tcx().lang_items.u32_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
-            ty::ty_uint(ast::TyU64) => {
+            ty::TyUint(ast::TyU64) => {
                 let lang_def_id = self.tcx().lang_items.u64_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
-            ty::ty_uint(ast::TyUs) => {
+            ty::TyUint(ast::TyUs) => {
                 let lang_def_id = self.tcx().lang_items.usize_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
-            ty::ty_float(ast::TyF32) => {
+            ty::TyFloat(ast::TyF32) => {
                 let lang_def_id = self.tcx().lang_items.f32_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
-            ty::ty_float(ast::TyF64) => {
+            ty::TyFloat(ast::TyF64) => {
                 let lang_def_id = self.tcx().lang_items.f64_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
@@ -413,7 +413,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
 
     fn assemble_inherent_candidates_from_object(&mut self,
                                                 self_ty: Ty<'tcx>,
-                                                data: &ty::TyTrait<'tcx>) {
+                                                data: &ty::TraitTy<'tcx>) {
         debug!("assemble_inherent_candidates_from_object(self_ty={})",
                self_ty.repr(self.tcx()));
 
@@ -460,7 +460,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                 match *predicate {
                     ty::Predicate::Trait(ref trait_predicate) => {
                         match trait_predicate.0.trait_ref.self_ty().sty {
-                            ty::ty_param(ref p) if *p == param_ty => {
+                            ty::TyParam(ref p) if *p == param_ty => {
                                 Some(trait_predicate.to_poly_trait_ref())
                             }
                             _ => None
@@ -702,7 +702,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         let steps = self.steps.clone();
         for step in steps.iter() {
             let closure_def_id = match step.self_ty.sty {
-                ty::ty_closure(a, _) => a,
+                ty::TyClosure(a, _) => a,
                 _ => continue,
             };
 
@@ -759,7 +759,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                    step.repr(self.tcx()));
 
             let projection_trait_ref = match step.self_ty.sty {
-                ty::ty_projection(ref data) => &data.trait_ref,
+                ty::TyProjection(ref data) => &data.trait_ref,
                 _ => continue,
             };
 
@@ -924,7 +924,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             pick.autoderefs = step.autoderefs;
 
             // Insert a `&*` or `&mut *` if this is a reference type:
-            if let ty::ty_rptr(_, mt) = step.self_ty.sty {
+            if let ty::TyRef(_, mt) = step.self_ty.sty {
                 pick.autoderefs += 1;
                 pick.autoref = Some(mt.mutbl);
             }

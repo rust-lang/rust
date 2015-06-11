@@ -1882,7 +1882,7 @@ fn get_or_create_type_parameter_def<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
 
             ty::walk_ty(ty, |t| {
                 match t.sty {
-                    ty::ty_param(p) => if p.idx > cur_idx {
+                    ty::TyParam(p) => if p.idx > cur_idx {
                         span_err!(tcx.sess, path.span, E0128,
                                   "type parameters with a default cannot use \
                                    forward declared identifiers");
@@ -2174,8 +2174,8 @@ fn check_method_self_type<'a, 'tcx, RS:RegionScope>(
     if let ast::SelfExplicit(ref ast_type, _) = explicit_self.node {
         let typ = ccx.icx(&method_type.predicates).to_ty(rs, &**ast_type);
         let base_type = match typ.sty {
-            ty::ty_rptr(_, tm) => tm.ty,
-            ty::ty_uniq(typ) => typ,
+            ty::TyRef(_, tm) => tm.ty,
+            ty::TyBox(typ) => typ,
             _ => typ,
         };
 

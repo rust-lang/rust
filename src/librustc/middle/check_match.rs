@@ -234,7 +234,7 @@ fn check_for_bindings_named_the_same_as_variants(cx: &MatchCheckCtxt, pat: &Pat)
         match p.node {
             ast::PatIdent(ast::BindByValue(ast::MutImmutable), ident, None) => {
                 let pat_ty = ty::pat_ty(cx.tcx, p);
-                if let ty::ty_enum(def_id, _) = pat_ty.sty {
+                if let ty::TyEnum(def_id, _) = pat_ty.sty {
                     let def = cx.tcx.def_map.borrow().get(&p.id).map(|d| d.full_def());
                     if let Some(DefLocal(_)) = def {
                         if ty::enum_variants(cx.tcx, def_id).iter().any(|variant|
@@ -506,9 +506,9 @@ fn construct_witness(cx: &MatchCheckCtxt, ctor: &Constructor,
     let pats_len = pats.len();
     let mut pats = pats.into_iter().map(|p| P((*p).clone()));
     let pat = match left_ty.sty {
-        ty::ty_tup(_) => ast::PatTup(pats.collect()),
+        ty::TyTuple(_) => ast::PatTup(pats.collect()),
 
-        ty::ty_enum(cid, _) | ty::ty_struct(cid, _)  => {
+        ty::TyEnum(cid, _) | ty::TyStruct(cid, _)  => {
             let (vid, is_structure) = match ctor {
                 &Variant(vid) =>
                     (vid, ty::enum_variant_with_id(cx.tcx, cid, vid).arg_names.is_some()),
@@ -535,23 +535,23 @@ fn construct_witness(cx: &MatchCheckCtxt, ctor: &Constructor,
             }
         }
 
-        ty::ty_rptr(_, ty::mt { ty, mutbl }) => {
+        ty::TyRef(_, ty::mt { ty, mutbl }) => {
             match ty.sty {
-               ty::ty_vec(_, Some(n)) => match ctor {
+               ty::TyArray(_, Some(n)) => match ctor {
                     &Single => {
                         assert_eq!(pats_len, n);
                         ast::PatVec(pats.collect(), None, vec!())
                     },
                     _ => unreachable!()
                 },
-                ty::ty_vec(_, None) => match ctor {
+                ty::TyArray(_, None) => match ctor {
                     &Slice(n) => {
                         assert_eq!(pats_len, n);
                         ast::PatVec(pats.collect(), None, vec!())
                     },
                     _ => unreachable!()
                 },
-                ty::ty_str => ast::PatWild(ast::PatWildSingle),
+                ty::TyStr => ast::PatWild(ast::PatWildSingle),
 
                 _ => {
                     assert_eq!(pats_len, 1);
@@ -560,7 +560,7 @@ fn construct_witness(cx: &MatchCheckCtxt, ctor: &Constructor,
             }
         }
 
-        ty::ty_vec(_, Some(len)) => {
+        ty::TyArray(_, Some(len)) => {
             assert_eq!(pats_len, len);
             ast::PatVec(pats.collect(), None, vec![])
         }
@@ -597,16 +597,16 @@ fn missing_constructor(cx: &MatchCheckCtxt, &Matrix(ref rows): &Matrix,
 fn all_constructors(cx: &MatchCheckCtxt, left_ty: Ty,
                     max_slice_length: usize) -> Vec<Constructor> {
     match left_ty.sty {
-        ty::ty_bool =>
+        ty::TyBool =>
             [true, false].iter().map(|b| ConstantValue(const_bool(*b))).collect(),
 
-        ty::ty_rptr(_, ty::mt { ty, .. }) => match ty.sty {
-            ty::ty_vec(_, None) =>
+        ty::TyRef(_, ty::mt { ty, .. }) => match ty.sty {
+            ty::TyArray(_, None) =>
                 range_inclusive(0, max_slice_length).map(|length| Slice(length)).collect(),
             _ => vec!(Single)
         },
 
-        ty::ty_enum(eid, _) =>
+        ty::TyEnum(eid, _) =>
             ty::enum_variants(cx.tcx, eid)
                 .iter()
                 .map(|va| Variant(va.id))
@@ -779,7 +779,7 @@ fn pat_constructors(cx: &MatchCheckCtxt, p: &Pat,
             vec!(ConstantRange(eval_const_expr(cx.tcx, &**lo), eval_const_expr(cx.tcx, &**hi))),
         ast::PatVec(ref before, ref slice, ref after) =>
             match left_ty.sty {
-                ty::ty_vec(_, Some(_)) => vec!(Single),
+                ty::TyArray(_, Some(_)) => vec!(Single),
                 _                      => if slice.is_some() {
                     range_inclusive(before.len() + after.len(), max_slice_length)
                         .map(|length| Slice(length))
@@ -804,25 +804,25 @@ fn pat_constructors(cx: &MatchCheckCtxt, p: &Pat,
 /// A struct pattern's arity is the number of fields it contains, etc.
 pub fn constructor_arity(cx: &MatchCheckCtxt, ctor: &Constructor, ty: Ty) -> usize {
     match ty.sty {
-        ty::ty_tup(ref fs) => fs.len(),
-        ty::ty_uniq(_) => 1,
-        ty::ty_rptr(_, ty::mt { ty, .. }) => match ty.sty {
-            ty::ty_vec(_, None) => match *ctor {
+        ty::TyTuple(ref fs) => fs.len(),
+        ty::TyBox(_) => 1,
+        ty::TyRef(_, ty::mt { ty, .. }) => match ty.sty {
+            ty::TyArray(_, None) => match *ctor {
                 Slice(length) => length,
                 ConstantValue(_) => 0,
                 _ => unreachable!()
             },
-            ty::ty_str => 0,
+            ty::TyStr => 0,
             _ => 1
         },
-        ty::ty_enum(eid, _) => {
+        ty::TyEnum(eid, _) => {
             match *ctor {
                 Variant(id) => enum_variant_with_id(cx.tcx, eid, id).args.len(),
                 _ => unreachable!()
             }
         }
-        ty::ty_struct(cid, _) => ty::lookup_struct_fields(cx.tcx, cid).len(),
-        ty::ty_vec(_, Some(n)) => n,
+        ty::TyStruct(cid, _) => ty::lookup_struct_fields(cx.tcx, cid).len(),
+        ty::TyArray(_, Some(n)) => n,
         _ => 0
     }
 }

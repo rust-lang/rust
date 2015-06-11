@@ -19,11 +19,11 @@ use middle::ty::{ReEarlyBound, BrFresh, ctxt};
 use middle::ty::{ReFree, ReScope, ReInfer, ReStatic, Region, ReEmpty};
 use middle::ty::{ReSkolemized, ReVar, BrEnv};
 use middle::ty::{mt, Ty, ParamTy};
-use middle::ty::{ty_bool, ty_char, ty_struct, ty_enum};
-use middle::ty::{ty_err, ty_str, ty_vec, ty_float, ty_bare_fn};
-use middle::ty::{ty_param, ty_ptr, ty_rptr, ty_tup};
-use middle::ty::ty_closure;
-use middle::ty::{ty_uniq, ty_trait, ty_int, ty_uint, ty_infer};
+use middle::ty::{TyBool, TyChar, TyStruct, TyEnum};
+use middle::ty::{TyError, TyStr, TyArray, TyFloat, TyBareFn};
+use middle::ty::{TyParam, TyRawPtr, TyRef, TyTuple};
+use middle::ty::TyClosure;
+use middle::ty::{TyBox, TyTrait, TyInt, TyUint, TyInfer};
 use middle::ty;
 use middle::ty_fold::{self, TypeFoldable};
 
@@ -363,24 +363,24 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
 
     // pretty print the structural type representation:
     match typ.sty {
-        ty_bool => "bool".to_string(),
-        ty_char => "char".to_string(),
-        ty_int(t) => ast_util::int_ty_to_string(t, None).to_string(),
-        ty_uint(t) => ast_util::uint_ty_to_string(t, None).to_string(),
-        ty_float(t) => ast_util::float_ty_to_string(t).to_string(),
-        ty_uniq(typ) => format!("Box<{}>", ty_to_string(cx, typ)),
-        ty_ptr(ref tm) => {
+        TyBool => "bool".to_string(),
+        TyChar => "char".to_string(),
+        TyInt(t) => ast_util::int_ty_to_string(t, None).to_string(),
+        TyUint(t) => ast_util::uint_ty_to_string(t, None).to_string(),
+        TyFloat(t) => ast_util::float_ty_to_string(t).to_string(),
+        TyBox(typ) => format!("Box<{}>", ty_to_string(cx, typ)),
+        TyRawPtr(ref tm) => {
             format!("*{} {}", match tm.mutbl {
                 ast::MutMutable => "mut",
                 ast::MutImmutable => "const",
             }, ty_to_string(cx, tm.ty))
         }
-        ty_rptr(r, ref tm) => {
+        TyRef(r, ref tm) => {
             let mut buf = region_ptr_to_string(cx, *r);
             buf.push_str(&mt_to_string(cx, tm));
             buf
         }
-        ty_tup(ref elems) => {
+        TyTuple(ref elems) => {
             let strs = elems
                 .iter()
                 .map(|elem| ty_to_string(cx, *elem))
@@ -390,28 +390,28 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
                 strs => format!("({})", strs.connect(", "))
             }
         }
-        ty_bare_fn(opt_def_id, ref f) => {
+        TyBareFn(opt_def_id, ref f) => {
             bare_fn_to_string(cx, opt_def_id, f.unsafety, f.abi, None, &f.sig)
         }
-        ty_infer(infer_ty) => infer_ty_to_string(cx, infer_ty),
-        ty_err => "[type error]".to_string(),
-        ty_param(ref param_ty) => param_ty.user_string(cx),
-        ty_enum(did, substs) | ty_struct(did, substs) => {
+        TyInfer(infer_ty) => infer_ty_to_string(cx, infer_ty),
+        TyError => "[type error]".to_string(),
+        TyParam(ref param_ty) => param_ty.user_string(cx),
+        TyEnum(did, substs) | TyStruct(did, substs) => {
             let base = ty::item_path_str(cx, did);
             parameterized(cx, &base, substs, did, &[],
                           || ty::lookup_item_type(cx, did).generics)
         }
-        ty_trait(ref data) => {
+        TyTrait(ref data) => {
             data.user_string(cx)
         }
-        ty::ty_projection(ref data) => {
+        ty::TyProjection(ref data) => {
             format!("<{} as {}>::{}",
                     data.trait_ref.self_ty().user_string(cx),
                     data.trait_ref.user_string(cx),
                     data.item_name.user_string(cx))
         }
-        ty_str => "str".to_string(),
-        ty_closure(ref did, substs) => {
+        TyStr => "str".to_string(),
+        TyClosure(ref did, substs) => {
             let closure_tys = cx.closure_tys.borrow();
             closure_tys.get(did).map(|closure_type| {
                 closure_to_string(cx, &closure_type.subst(cx, substs), did)
@@ -431,7 +431,7 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
                 }
             })
         }
-        ty_vec(t, sz) => {
+        TyArray(t, sz) => {
             let inner_str = ty_to_string(cx, t);
             match sz {
                 Some(n) => format!("[{}; {}]", inner_str, n),
@@ -701,9 +701,9 @@ impl<'tcx> UserString<'tcx> for TraitAndProjections<'tcx> {
     }
 }
 
-impl<'tcx> UserString<'tcx> for ty::TyTrait<'tcx> {
+impl<'tcx> UserString<'tcx> for ty::TraitTy<'tcx> {
     fn user_string(&self, tcx: &ctxt<'tcx>) -> String {
-        let &ty::TyTrait { ref principal, ref bounds } = self;
+        let &ty::TraitTy { ref principal, ref bounds } = self;
 
         let mut components = vec![];
 
