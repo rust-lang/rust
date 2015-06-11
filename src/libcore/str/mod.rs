@@ -227,9 +227,8 @@ pub fn next_code_point(bytes: &mut slice::Iter<u8>) -> Option<u32> {
 
 /// Reads the last code point out of a byte iterator (assuming a
 /// UTF-8-like encoding).
-#[unstable(feature = "str_internals")]
 #[inline]
-pub fn next_code_point_reverse(bytes: &mut slice::Iter<u8>) -> Option<u32> {
+fn next_code_point_reverse(bytes: &mut slice::Iter<u8>) -> Option<u32> {
     // Decode UTF-8
     let w = match bytes.next_back() {
         None => return None,
@@ -1873,8 +1872,7 @@ impl AsRef<[u8]> for str {
 /// Pluck a code point out of a UTF-8-like byte slice and return the
 /// index of the next code point.
 #[inline]
-#[unstable(feature = "str_internals")]
-pub fn char_range_at_raw(bytes: &[u8], i: usize) -> (u32, usize) {
+fn char_range_at_raw(bytes: &[u8], i: usize) -> (u32, usize) {
     if bytes[i] < 128 {
         return (bytes[i] as u32, i + 1);
     }

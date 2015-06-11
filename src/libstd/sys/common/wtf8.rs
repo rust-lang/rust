@@ -480,31 +480,6 @@ impl Wtf8 {
         }
     }
 
-    /// Returns the code point at `position`.
-    ///
-    /// # Panics
-    ///
-    /// Panics if `position` is not at a code point boundary,
-    /// or is beyond the end of the string.
-    #[inline]
-    pub fn code_point_at(&self, position: usize) -> CodePoint {
-        let (code_point, _) = self.code_point_range_at(position);
-        code_point
-    }
-
-    /// Returns the code point at `position`
-    /// and the position of the next code point.
-    ///
-    /// # Panics
-    ///
-    /// Panics if `position` is not at a code point boundary,
-    /// or is beyond the end of the string.
-    #[inline]
-    pub fn code_point_range_at(&self, position: usize) -> (CodePoint, usize) {
-        let (c, n) = char_range_at_raw(&self.bytes, position);
-        (CodePoint { value: c }, n)
-    }
-
     /// Returns an iterator for the string’s code points.
     #[inline]
     pub fn code_points(&self) -> Wtf8CodePoints {
