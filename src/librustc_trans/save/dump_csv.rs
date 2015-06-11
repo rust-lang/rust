@@ -727,7 +727,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
                            &val);
 
         // super-traits
-        for super_bound in &**trait_refs {
+        for super_bound in trait_refs.iter() {
             let trait_ref = match *super_bound {
                 ast::TraitTyParamBound(ref trait_ref, _) => {
                     trait_ref
@@ -1202,8 +1202,8 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
     }
 
     fn visit_generics(&mut self, generics: &ast::Generics) {
-        for param in &*generics.ty_params {
-            for bound in &*param.bounds {
+        for param in generics.ty_params.iter() {
+            for bound in param.bounds.iter() {
                 if let ast::TraitTyParamBound(ref trait_ref, _) = *bound {
                     self.process_trait_ref(&trait_ref.trait_ref);
                 }

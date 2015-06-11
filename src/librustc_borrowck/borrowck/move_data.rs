@@ -478,14 +478,14 @@ impl<'tcx> MoveData<'tcx> {
                             KillFrom::Execution, dfcx_moves);
         }
 
-        for assignment in &*self.path_assignments.borrow() {
+        for assignment in self.path_assignments.borrow().iter() {
             self.kill_moves(assignment.path, assignment.id,
                             KillFrom::Execution, dfcx_moves);
         }
 
         // Kill all moves related to a variable `x` when
         // it goes out of scope:
-        for path in &*self.paths.borrow() {
+        for path in self.paths.borrow().iter() {
             match path.loan_path.kind {
                 LpVar(..) | LpUpvar(..) | LpDowncast(..) => {
                     let kill_scope = path.loan_path.kill_scope(tcx);

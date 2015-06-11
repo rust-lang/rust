@@ -330,7 +330,7 @@ pub struct IdVisitor<'a, O:'a> {
 
 impl<'a, O: IdVisitingOperation> IdVisitor<'a, O> {
     fn visit_generics_helper(&mut self, generics: &Generics) {
-        for type_parameter in &*generics.ty_params {
+        for type_parameter in generics.ty_params.iter() {
             self.operation.visit_id(type_parameter.id)
         }
         for lifetime in &generics.lifetimes {

@@ -232,7 +232,7 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
     }
 
     fn visit_generics(&mut self, generics: &ast::Generics) {
-        for ty_param in &*generics.ty_params {
+        for ty_param in generics.ty_params.iter() {
             visit::walk_ty_param_bounds_helper(self, &ty_param.bounds);
             match ty_param.default {
                 Some(ref ty) => self.visit_ty(&**ty),
@@ -773,7 +773,7 @@ fn early_bound_lifetime_names(generics: &ast::Generics) -> Vec<ast::Name> {
         let mut collector =
             FreeLifetimeCollector { early_bound: &mut early_bound,
                                     late_bound: &mut late_bound };
-        for ty_param in &*generics.ty_params {
+        for ty_param in generics.ty_params.iter() {
             visit::walk_ty_param_bounds_helper(&mut collector, &ty_param.bounds);
         }
         for predicate in &generics.where_clause.predicates {

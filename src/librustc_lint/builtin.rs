@@ -645,7 +645,7 @@ impl LintPass for UnusedAttributes {
         }
 
         let plugin_attributes = cx.sess().plugin_attributes.borrow_mut();
-        for &(ref name, ty) in &*plugin_attributes {
+        for &(ref name, ty) in plugin_attributes.iter() {
             if ty == AttributeType::Whitelisted && attr.check_name(&*name) {
                 break;
             }
@@ -860,7 +860,7 @@ impl LintPass for NonCamelCaseTypes {
     }
 
     fn check_generics(&mut self, cx: &Context, it: &ast::Generics) {
-        for gen in &*it.ty_params {
+        for gen in it.ty_params.iter() {
             self.check_case(cx, "type parameter", gen.ident, gen.span);
         }
     }
@@ -2249,7 +2249,7 @@ impl LintPass for DropWithReprExtern {
         lint_array!(DROP_WITH_REPR_EXTERN)
     }
     fn check_crate(&mut self, ctx: &Context, _: &ast::Crate) {
-        for dtor_did in &*ctx.tcx.destructors.borrow() {
+        for dtor_did in ctx.tcx.destructors.borrow().iter() {
             let (drop_impl_did, dtor_self_type) =
                 if dtor_did.krate == ast::LOCAL_CRATE {
                     let impl_did = ctx.tcx.map.get_parent_did(dtor_did.node);

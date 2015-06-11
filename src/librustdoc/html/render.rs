@@ -471,7 +471,7 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> io::Result<String> {
 
         // Reduce `NodeId` in paths into smaller sequential numbers,
         // and prune the paths that do not appear in the index.
-        for item in &*search_index {
+        for item in search_index.iter() {
             match item.parent {
                 Some(nodeid) => {
                     if !nodeid_to_pathid.contains_key(&nodeid) {

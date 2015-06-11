@@ -85,7 +85,7 @@ pub type Dependencies = FnvHashMap<config::CrateType, DependencyList>;
 
 pub fn calculate(tcx: &ty::ctxt) {
     let mut fmts = tcx.dependency_formats.borrow_mut();
-    for &ty in &*tcx.sess.crate_types.borrow() {
+    for &ty in tcx.sess.crate_types.borrow().iter() {
         fmts.insert(ty, calculate_type(&tcx.sess, ty));
     }
     tcx.sess.abort_if_errors();

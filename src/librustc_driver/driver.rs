@@ -792,7 +792,7 @@ fn write_out_deps(sess: &Session,
         let file = outputs.path(*output_type);
         match *output_type {
             config::OutputTypeExe => {
-                for output in &*sess.crate_types.borrow() {
+                for output in sess.crate_types.borrow().iter() {
                     let p = link::filename_for_input(sess, *output,
                                                      id, &file);
                     out_filenames.push(p);

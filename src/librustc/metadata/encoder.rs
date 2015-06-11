@@ -377,7 +377,7 @@ fn encode_reexported_static_base_methods(ecx: &EncodeContext,
     let impl_items = ecx.tcx.impl_items.borrow();
     match ecx.tcx.inherent_impls.borrow().get(&exp.def_id) {
         Some(implementations) => {
-            for base_impl_did in &**implementations {
+            for base_impl_did in implementations.iter() {
                 for &method_did in impl_items.get(base_impl_did).unwrap() {
                     let impl_item = ty::impl_or_trait_item(
                         ecx.tcx,
@@ -403,7 +403,7 @@ fn encode_reexported_static_trait_methods(ecx: &EncodeContext,
                                           -> bool {
     match ecx.tcx.trait_items_cache.borrow().get(&exp.def_id) {
         Some(trait_items) => {
-            for trait_item in &**trait_items {
+            for trait_item in trait_items.iter() {
                 if let ty::MethodTraitItem(ref m) = *trait_item {
                     encode_reexported_static_method(rbml_w,
                                                     exp,
@@ -981,7 +981,7 @@ fn encode_inherent_implementations(ecx: &EncodeContext,
     match ecx.tcx.inherent_impls.borrow().get(&def_id) {
         None => {}
         Some(implementations) => {
-            for &impl_def_id in &**implementations {
+            for &impl_def_id in implementations.iter() {
                 rbml_w.start_tag(tag_items_data_item_inherent_impl);
                 encode_def_id(rbml_w, impl_def_id);
                 rbml_w.end_tag();
@@ -1348,7 +1348,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_attributes(rbml_w, &item.attrs);
         encode_visibility(rbml_w, vis);
         encode_stability(rbml_w, stab);
-        for &method_def_id in &*ty::trait_item_def_ids(tcx, def_id) {
+        for &method_def_id in ty::trait_item_def_ids(tcx, def_id).iter() {
             rbml_w.start_tag(tag_item_trait_item);
             match method_def_id {
                 ty::ConstTraitItemId(const_def_id) => {
@@ -1822,8 +1822,8 @@ fn encode_lang_items(ecx: &EncodeContext, rbml_w: &mut Encoder) {
 fn encode_native_libraries(ecx: &EncodeContext, rbml_w: &mut Encoder) {
     rbml_w.start_tag(tag_native_libraries);
 
-    for &(ref lib, kind) in &*ecx.tcx.sess.cstore.get_used_libraries()
-                               .borrow() {
+    for &(ref lib, kind) in ecx.tcx.sess.cstore.get_used_libraries()
+                               .borrow().iter() {
         match kind {
             cstore::NativeStatic => {} // these libraries are not propagated
             cstore::NativeFramework | cstore::NativeUnknown => {

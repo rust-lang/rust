@@ -233,7 +233,7 @@ pub fn get_extern_const<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, did: ast::DefId,
     // don't do this then linker errors can be generated where the linker
     // complains that one object files has a thread local version of the
     // symbol and another one doesn't.
-    for attr in &*ty::get_attrs(ccx.tcx(), did) {
+    for attr in ty::get_attrs(ccx.tcx(), did).iter() {
         if attr.check_name("thread_local") {
             llvm::set_thread_local(c, true);
         }
@@ -2698,7 +2698,7 @@ pub fn trans_crate<'tcx>(analysis: ty::CrateAnalysis<'tcx>)
         stats.fn_stats.borrow_mut().sort_by(|&(_, insns_a), &(_, insns_b)| {
             insns_b.cmp(&insns_a)
         });
-        for tuple in &*stats.fn_stats.borrow() {
+        for tuple in stats.fn_stats.borrow().iter() {
             match *tuple {
                 (ref name, insns) => {
                     println!("{} insns, {}", insns, *name);
@@ -2707,7 +2707,7 @@ pub fn trans_crate<'tcx>(analysis: ty::CrateAnalysis<'tcx>)
         }
     }
     if shared_ccx.sess().count_llvm_insns() {
-        for (k, v) in &*shared_ccx.stats().llvm_insns.borrow() {
+        for (k, v) in shared_ccx.stats().llvm_insns.borrow().iter() {
             println!("{:7} {}", *v, *k);
         }
     }

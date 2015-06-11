@@ -712,7 +712,7 @@ pub fn check_crate(tcx: &ty::ctxt,
 
     // If we missed any lints added to the session, then there's a bug somewhere
     // in the iteration code.
-    for (id, v) in &*tcx.sess.lints.borrow() {
+    for (id, v) in tcx.sess.lints.borrow().iter() {
         for &(lint, span, ref msg) in v {
             tcx.sess.span_bug(span,
                               &format!("unprocessed lint {} at {}: {}",

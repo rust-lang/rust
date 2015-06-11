@@ -127,7 +127,7 @@ impl CStore {
     pub fn iter_crate_data<I>(&self, mut i: I) where
         I: FnMut(ast::CrateNum, &crate_metadata),
     {
-        for (&k, v) in &*self.metas.borrow() {
+        for (&k, v) in self.metas.borrow().iter() {
             i(k, &**v);
         }
     }
@@ -136,7 +136,7 @@ impl CStore {
     pub fn iter_crate_data_origins<I>(&self, mut i: I) where
         I: FnMut(ast::CrateNum, &crate_metadata, Option<CrateSource>),
     {
-        for (&k, v) in &*self.metas.borrow() {
+        for (&k, v) in self.metas.borrow().iter() {
             let origin = self.get_used_crate_source(k);
             origin.as_ref().map(|cs| { assert!(k == cs.cnum); });
             i(k, &**v, origin);
@@ -185,7 +185,7 @@ impl CStore {
             }
             ordering.push(cnum);
         };
-        for (&num, _) in &*self.metas.borrow() {
+        for (&num, _) in self.metas.borrow().iter() {
             visit(self, num, &mut ordering);
         }
         ordering.reverse();

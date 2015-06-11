@@ -119,7 +119,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
         // the tcx.
         let mut tcx_inherent_impls =
             self.crate_context.tcx.inherent_impls.borrow_mut();
-        for (k, v) in &*self.inherent_impls.borrow() {
+        for (k, v) in self.inherent_impls.borrow().iter() {
             tcx_inherent_impls.insert((*k).clone(),
                                       Rc::new((*v.borrow()).clone()));
         }

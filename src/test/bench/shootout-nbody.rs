@@ -158,7 +158,7 @@ fn offset_momentum(bodies: &mut [Planet;N_BODIES]) {
     let mut px = 0.0;
     let mut py = 0.0;
     let mut pz = 0.0;
-    for bi in &*bodies {
+    for bi in bodies.iter() {
         px += bi.vx * bi.mass;
         py += bi.vy * bi.mass;
         pz += bi.vz * bi.mass;
