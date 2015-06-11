@@ -2542,6 +2542,9 @@ impl<I: RandomAccessIterator, F> RandomAccessIterator for Inspect<I, F>
 /// ```
 #[unstable(feature = "iter_unfold")]
 #[derive(Clone)]
+#[deprecated(since = "1.2.0",
+             reason = "has gained enough traction to retain its position \
+                       in the standard library")]
 pub struct Unfold<St, F> {
     f: F,
     /// Internal state that will be passed to the closure on the next iteration
@@ -2550,6 +2553,9 @@ pub struct Unfold<St, F> {
 }
 
 #[unstable(feature = "iter_unfold")]
+#[deprecated(since = "1.2.0",
+             reason = "has gained enough traction to retain its position \
+                       in the standard library")]
 impl<A, St, F> Unfold<St, F> where F: FnMut(&mut St) -> Option<A> {
     /// Creates a new iterator with the specified closure as the "iterator
     /// function" and an initial state to eventually pass to the closure
@@ -2995,11 +3001,17 @@ type IterateState<T, F> = (F, Option<T>, bool);
 /// An iterator that repeatedly applies a given function, starting
 /// from a given seed value.
 #[unstable(feature = "iter_iterate")]
+#[deprecated(since = "1.2.0",
+             reason = "has gained enough traction to retain its position \
+                       in the standard library")]
 pub type Iterate<T, F> = Unfold<IterateState<T, F>, fn(&mut IterateState<T, F>) -> Option<T>>;
 
 /// Creates a new iterator that produces an infinite sequence of
 /// repeated applications of the given function `f`.
 #[unstable(feature = "iter_iterate")]
+#[deprecated(since = "1.2.0",
+             reason = "has gained enough traction to retain its position \
+                       in the standard library")]
 pub fn iterate<T, F>(seed: T, f: F) -> Iterate<T, F> where
     T: Clone,
     F: FnMut(T) -> T,
