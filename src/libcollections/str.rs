@@ -1527,8 +1527,7 @@ impl str {
     /// let v: Vec<&str> = "1abc2abc3".matches(char::is_numeric).collect();
     /// assert_eq!(v, ["1", "2", "3"]);
     /// ```
-    #[unstable(feature = "str_matches",
-               reason = "method got recently added")]
+    #[stable(feature = "str_matches", since = "1.2.0")]
     pub fn matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> Matches<'a, P> {
         core_str::StrExt::matches(self, pat)
     }
@@ -1560,8 +1559,7 @@ impl str {
     /// let v: Vec<&str> = "1abc2abc3".rmatches(char::is_numeric).collect();
     /// assert_eq!(v, ["3", "2", "1"]);
     /// ```
-    #[unstable(feature = "str_matches",
-               reason = "method got recently added")]
+    #[stable(feature = "str_matches", since = "1.2.0")]
     pub fn rmatches<'a, P: Pattern<'a>>(&'a self, pat: P) -> RMatches<'a, P>
         where P::Searcher: ReverseSearcher<'a>
     {
@@ -1605,7 +1603,7 @@ impl str {
     /// let v: Vec<(usize, usize)> = "ababa".match_indices("aba").collect();
     /// assert_eq!(v, [(0, 3)]); // only the first `aba`
     /// ```
-    #[unstable(feature = "str_matches",
+    #[unstable(feature = "str_match_indices",
                reason = "might have its iterator type changed")]
     // NB: Right now MatchIndices yields `(usize, usize)`, but it would
     // be more consistent with `matches` and `char_indices` to return `(usize, &str)`
@@ -1649,7 +1647,7 @@ impl str {
     /// let v: Vec<(usize, usize)> = "ababa".rmatch_indices("aba").collect();
     /// assert_eq!(v, [(2, 5)]); // only the last `aba`
     /// ```
-    #[unstable(feature = "str_matches",
+    #[unstable(feature = "str_match_indices",
                reason = "might have its iterator type changed")]
     // NB: Right now RMatchIndices yields `(usize, usize)`, but it would
     // be more consistent with `rmatches` and `char_indices` to return `(usize, &str)`
