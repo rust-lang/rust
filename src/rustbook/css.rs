@@ -15,6 +15,15 @@ pub static STYLE: &'static str = r#"
 
 body {
     max-width:none;
+    font: 16px/1.4 'Open Sans', 'Source Serif Pro', Georgia, Times, 'Times New Roman', serif;
+    line-height: 1.6;
+    color: #333;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: 'Open Sans', 'Fira Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-weight: bold;
+    color: #333;
 }
 
 @media only screen {
@@ -23,20 +32,21 @@ body {
         left: 0px;
         top: 0px;
         bottom: 0px;
-        width: 250px;
+        width: 300px;
         overflow-y: auto;
         border-right: 1px solid rgba(0, 0, 0, 0.07);
         padding: 10px 10px;
-        font-size: 16px;
-        background: none repeat scroll 0% 0% #FFF;
+        font-size: 14px;
         box-sizing: border-box;
         -webkit-overflow-scrolling: touch;
+        background-color: #fafafa;
+        color: #364149;
     }
 
     #page-wrapper {
         position: absolute;
         overflow-y: auto;
-        left: 260px;
+        left: 310px;
         right: 0px;
         top: 0px;
         bottom: 0px;
@@ -84,7 +94,7 @@ body {
 .section {
     list-style: none outside none;
     padding-left: 20px;
-    line-height: 30px;
+    line-height: 40px;
 }
 
 .section li {
@@ -94,12 +104,17 @@ body {
 }
 
 .chapter li a {
-    color: #000000;
+    color: #333;
+    padding: 5px 0;
 }
 
 .chapter li a.active {
-    text-decoration: underline;
-    font-weight: bold;
+    color: #008cff;
+}
+
+.chapter li a:hover {
+    color: #008cff;
+    text-decoration: none;
 }
 
 #toggle-nav {
@@ -136,6 +151,16 @@ body {
     height: 2px;
     margin: 2px 0 3px;
     padding: 0;
+}
+
+pre {
+    padding: 16px;
+    overflow: auto;
+    font-size: 85%;
+    line-height: 1.45;
+    background-color: #f7f7f7;
+    border: 0;
+    border-radius: 3px;
 }
 
 .left {
