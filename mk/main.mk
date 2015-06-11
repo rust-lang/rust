@@ -74,9 +74,6 @@ ifneq ($(wildcard $(subst $(SPACE),\$(SPACE),$(CFG_GIT_DIR))),)
 endif
 endif
 
-CFG_BUILD_DATE = $(shell date +%F)
-CFG_VERSION += (built $(CFG_BUILD_DATE))
-
 # Windows exe's need numeric versions - don't use anything but
 # numbers and dots here
 CFG_VERSION_WIN = $(CFG_RELEASE_NUM)
@@ -333,7 +330,6 @@ endif
 ifdef CFG_VER_HASH
 export CFG_VER_HASH
 endif
-export CFG_BUILD_DATE
 export CFG_VERSION
 export CFG_VERSION_WIN
 export CFG_RELEASE
