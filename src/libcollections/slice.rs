@@ -971,7 +971,7 @@ impl<T> [T] {
                reason = "uncertain about this API approach")]
     #[inline]
     pub fn move_from(&mut self, mut src: Vec<T>, start: usize, end: usize) -> usize {
-        for (a, b) in self.iter_mut().zip(src[start .. end].iter_mut()) {
+        for (a, b) in self.iter_mut().zip(&mut src[start .. end]) {
             mem::swap(a, b);
         }
         cmp::min(self.len(), end-start)

@@ -679,7 +679,7 @@ fn check_fn<'a, 'tcx>(ccx: &'a CrateCtxt<'a, 'tcx>,
         let mut visit = GatherLocalsVisitor { fcx: &fcx, };
 
         // Add formal parameters.
-        for (arg_ty, input) in arg_tys.iter().zip(decl.inputs.iter()) {
+        for (arg_ty, input) in arg_tys.iter().zip(&decl.inputs) {
             // Create type variables for each argument.
             pat_util::pat_bindings(
                 &tcx.def_map,
@@ -706,8 +706,8 @@ fn check_fn<'a, 'tcx>(ccx: &'a CrateCtxt<'a, 'tcx>,
         ty::FnDiverging => NoExpectation
     });
 
-    for (input, arg) in decl.inputs.iter().zip(arg_tys.iter()) {
-        fcx.write_ty(input.id, *arg);
+    for (input, arg) in decl.inputs.iter().zip(arg_tys) {
+        fcx.write_ty(input.id, arg);
     }
 
     fcx
@@ -1071,7 +1071,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     let provided_methods = ty::provided_trait_methods(tcx, impl_trait_ref.def_id);
     let associated_consts = ty::associated_consts(tcx, impl_trait_ref.def_id);
     let mut missing_items = Vec::new();
-    for trait_item in &*trait_items {
+    for trait_item in trait_items.iter() {
         match *trait_item {
             ty::ConstTraitItem(ref associated_const) => {
                 let is_implemented = impl_items.iter().any(|ii| {
@@ -1753,7 +1753,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                            substs: &Substs<'tcx>,
                                            expr: &ast::Expr)
     {
-        for &ty in substs.types.iter() {
+        for &ty in &substs.types {
             let default_bound = ty::ReScope(CodeExtent::from_node_id(expr.id));
             let cause = traits::ObligationCause::new(expr.span, self.body_id,
                                                      traits::MiscObligation);
@@ -4563,7 +4563,7 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     // provided (if any) into their appropriate spaces. We'll also report
     // errors if type parameters are provided in an inappropriate place.
     let mut substs = Substs::empty();
-    for (opt_space, segment) in segment_spaces.iter().zip(segments.iter()) {
+    for (opt_space, segment) in segment_spaces.iter().zip(segments) {
         match *opt_space {
             None => {
                 check_path_args(fcx.tcx(), slice::ref_slice(segment),

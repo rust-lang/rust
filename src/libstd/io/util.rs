@@ -78,7 +78,7 @@ pub fn repeat(byte: u8) -> Repeat { Repeat { byte: byte } }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Read for Repeat {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        for slot in buf.iter_mut() {
+        for slot in &mut *buf {
             *slot = self.byte;
         }
         Ok(buf.len())

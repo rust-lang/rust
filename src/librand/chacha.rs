@@ -174,7 +174,7 @@ impl<'a> SeedableRng<&'a [u32]> for ChaChaRng {
         self.init(&[0; KEY_WORDS]);
         // set key in place
         let key = &mut self.state[4 .. 4+KEY_WORDS];
-        for (k, s) in key.iter_mut().zip(seed.iter()) {
+        for (k, s) in key.iter_mut().zip(seed) {
             *k = *s;
         }
     }

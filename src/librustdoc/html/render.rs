@@ -471,7 +471,7 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> io::Result<String> {
 
         // Reduce `NodeId` in paths into smaller sequential numbers,
         // and prune the paths that do not appear in the index.
-        for item in &*search_index {
+        for item in search_index.iter() {
             match item.parent {
                 Some(nodeid) => {
                     if !nodeid_to_pathid.contains_key(&nodeid) {
@@ -2414,7 +2414,7 @@ fn render_impl(w: &mut fmt::Formatter, i: &Impl, link: AssocItemLink,
     }
 
     try!(write!(w, "<div class='impl-items'>"));
-    for trait_item in i.impl_.items.iter() {
+    for trait_item in &i.impl_.items {
         try!(doctraititem(w, trait_item, link, render_header));
     }
 

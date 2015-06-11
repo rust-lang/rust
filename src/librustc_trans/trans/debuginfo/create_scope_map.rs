@@ -257,7 +257,7 @@ fn walk_pattern(cx: &CrateContext,
             for &codemap::Spanned {
                 node: ast::FieldPat { pat: ref sub_pat, .. },
                 ..
-            } in field_pats.iter() {
+            } in field_pats {
                 walk_pattern(cx, &**sub_pat, scope_stack, scope_map);
             }
         }

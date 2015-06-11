@@ -505,7 +505,7 @@ impl<'a> TraitDef<'a> {
             bounds.push(cx.typarambound(trait_path.clone()));
 
             // also add in any bounds from the declaration
-            for declared_bound in &*ty_param.bounds {
+            for declared_bound in ty_param.bounds.iter() {
                 bounds.push((*declared_bound).clone());
             }
 
@@ -549,10 +549,10 @@ impl<'a> TraitDef<'a> {
                 .map(|ty_param| ty_param.ident.name)
                 .collect();
 
-            for field_ty in field_tys.into_iter() {
+            for field_ty in field_tys {
                 let tys = find_type_parameters(&*field_ty, &ty_param_names);
 
-                for ty in tys.into_iter() {
+                for ty in tys {
                     let mut bounds: Vec<_> = self.additional_bounds.iter().map(|p| {
                         cx.typarambound(p.to_path(cx, self.span, type_ident, generics))
                     }).collect();
@@ -672,7 +672,7 @@ impl<'a> TraitDef<'a> {
                        generics: &Generics) -> P<ast::Item> {
         let mut field_tys = Vec::new();
 
-        for variant in enum_def.variants.iter() {
+        for variant in &enum_def.variants {
             match variant.node.kind {
                 ast::VariantKind::TupleVariantKind(ref args) => {
                     field_tys.extend(args.iter()
@@ -967,7 +967,7 @@ impl<'a> MethodDef<'a> {
         // make a series of nested matches, to destructure the
         // structs. This is actually right-to-left, but it shouldn't
         // matter.
-        for (arg_expr, pat) in self_args.iter().zip(patterns.iter()) {
+        for (arg_expr, pat) in self_args.iter().zip(patterns) {
             body = cx.expr_match(trait_.span, arg_expr.clone(),
                                      vec!( cx.arm(trait_.span, vec!(pat.clone()), body) ))
         }
@@ -1226,7 +1226,7 @@ impl<'a> MethodDef<'a> {
             let target_type_name =
                 find_repr_type_name(&cx.parse_sess.span_diagnostic, type_attrs);
 
-            for (&ident, self_arg) in vi_idents.iter().zip(self_args.iter()) {
+            for (&ident, self_arg) in vi_idents.iter().zip(&self_args) {
                 let path = vec![cx.ident_of_std("core"),
                                 cx.ident_of("intrinsics"),
                                 cx.ident_of("discriminant_value")];
@@ -1465,7 +1465,7 @@ impl<'a> TraitDef<'a> {
         // struct_type is definitely not Unknown, since struct_def.fields
         // must be nonempty to reach here
         let pattern = if struct_type == Record {
-            let field_pats = subpats.into_iter().zip(ident_expr.iter())
+            let field_pats = subpats.into_iter().zip(&ident_expr)
                                     .map(|(pat, &(_, id, _, _))| {
                 // id is guaranteed to be Some
                 codemap::Spanned {

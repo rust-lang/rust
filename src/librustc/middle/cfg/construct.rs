@@ -338,7 +338,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
 
             ast::ExprRange(ref start, ref end) => {
                 let fields = start.as_ref().map(|e| &**e).into_iter()
-                    .chain(end.as_ref().map(|e| &**e).into_iter());
+                    .chain(end.as_ref().map(|e| &**e));
                 self.straightline(expr, pred, fields)
             }
 

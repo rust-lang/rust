@@ -1750,7 +1750,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 let types: Vec<Ty> =
                     ty::substd_enum_variants(self.tcx(), def_id, substs)
                     .iter()
-                    .flat_map(|variant| variant.args.iter())
+                    .flat_map(|variant| &variant.args)
                     .cloned()
                     .collect();
                 nominal(bound, types)
@@ -1893,7 +1893,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::ty_enum(def_id, substs) => {
                 Some(ty::substd_enum_variants(self.tcx(), def_id, substs)
                      .iter()
-                     .flat_map(|variant| variant.args.iter())
+                     .flat_map(|variant| &variant.args)
                      .map(|&ty| ty)
                      .collect())
             }
@@ -1960,7 +1960,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         // Flatten those vectors (couldn't do it above due `collect`)
         match obligations {
-            Ok(obligations) => obligations.into_iter().flat_map(|o| o.into_iter()).collect(),
+            Ok(obligations) => obligations.into_iter().flat_map(|o| o).collect(),
             Err(ErrorReported) => Vec::new(),
         }
     }
@@ -2689,7 +2689,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // simplified, do not match.
 
         obligation.predicate.0.input_types().iter()
-            .zip(impl_trait_ref.input_types().iter())
+            .zip(impl_trait_ref.input_types())
             .any(|(&obligation_ty, &impl_ty)| {
                 let simplified_obligation_ty =
                     fast_reject::simplify_type(self.tcx(), obligation_ty, true);

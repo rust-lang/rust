@@ -566,7 +566,7 @@ Available lint options:
     let plugin_groups = sort_lint_groups(plugin_groups);
     let builtin_groups = sort_lint_groups(builtin_groups);
 
-    let max_name_len = plugin.iter().chain(builtin.iter())
+    let max_name_len = plugin.iter().chain(&builtin)
         .map(|&s| s.name.chars().count())
         .max().unwrap_or(0);
     let padded = |x: &str| {
@@ -593,7 +593,7 @@ Available lint options:
 
 
 
-    let max_name_len = plugin_groups.iter().chain(builtin_groups.iter())
+    let max_name_len = plugin_groups.iter().chain(&builtin_groups)
         .map(|&(s, _)| s.chars().count())
         .max().unwrap_or(0);
     let padded = |x: &str| {

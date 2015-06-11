@@ -266,9 +266,9 @@ impl BitVec {
     /// # #![feature(collections)]
     /// use std::collections::BitVec;
     ///
-    /// let mut bv = BitVec::from_elem(10, false);
+    /// let bv = BitVec::from_elem(10, false);
     /// assert_eq!(bv.len(), 10);
-    /// for x in bv.iter() {
+    /// for x in &bv {
     ///     assert_eq!(x, false);
     /// }
     /// ```
@@ -1245,7 +1245,7 @@ impl<'a> IntoIterator for &'a BitVec {
 /// s.union_with(&other);
 ///
 /// // Print 0, 1, 3 in some order
-/// for x in s.iter() {
+/// for x in &s {
 ///     println!("{}", x);
 /// }
 ///
@@ -1370,7 +1370,7 @@ impl BitSet {
     /// let s = BitSet::from_bit_vec(bv);
     ///
     /// // Print 1, 2 in arbitrary order
-    /// for x in s.iter() {
+    /// for x in &s {
     ///     println!("{}", x);
     /// }
     /// ```

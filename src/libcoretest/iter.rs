@@ -82,7 +82,7 @@ fn test_iterator_chain() {
     let xs = [0, 1, 2, 3, 4, 5];
     let ys = [30, 40, 50, 60];
     let expected = [0, 1, 2, 3, 4, 5, 30, 40, 50, 60];
-    let it = xs.iter().chain(ys.iter());
+    let it = xs.iter().chain(&ys);
     let mut i = 0;
     for &x in it {
         assert_eq!(x, expected[i]);
@@ -107,11 +107,11 @@ fn test_iterator_chain_nth() {
     let zs = [];
     let expected = [0, 1, 2, 3, 4, 5, 30, 40, 50, 60];
     for (i, x) in expected.iter().enumerate() {
-        assert_eq!(Some(x), xs.iter().chain(ys.iter()).nth(i));
+        assert_eq!(Some(x), xs.iter().chain(&ys).nth(i));
     }
-    assert_eq!(zs.iter().chain(xs.iter()).nth(0), Some(&0));
+    assert_eq!(zs.iter().chain(&xs).nth(0), Some(&0));
 
-    let mut it = xs.iter().chain(zs.iter());
+    let mut it = xs.iter().chain(&zs);
     assert_eq!(it.nth(5), Some(&5));
     assert_eq!(it.next(), None);
 }
@@ -121,10 +121,10 @@ fn test_iterator_chain_last() {
     let xs = [0, 1, 2, 3, 4, 5];
     let ys = [30, 40, 50, 60];
     let zs = [];
-    assert_eq!(xs.iter().chain(ys.iter()).last(), Some(&60));
-    assert_eq!(zs.iter().chain(ys.iter()).last(), Some(&60));
-    assert_eq!(ys.iter().chain(zs.iter()).last(), Some(&60));
-    assert_eq!(zs.iter().chain(zs.iter()).last(), None);
+    assert_eq!(xs.iter().chain(&ys).last(), Some(&60));
+    assert_eq!(zs.iter().chain(&ys).last(), Some(&60));
+    assert_eq!(ys.iter().chain(&zs).last(), Some(&60));
+    assert_eq!(zs.iter().chain(&zs).last(), None);
 }
 
 #[test]
@@ -132,8 +132,8 @@ fn test_iterator_chain_count() {
     let xs = [0, 1, 2, 3, 4, 5];
     let ys = [30, 40, 50, 60];
     let zs = [];
-    assert_eq!(xs.iter().chain(ys.iter()).count(), 10);
-    assert_eq!(zs.iter().chain(ys.iter()).count(), 4);
+    assert_eq!(xs.iter().chain(&ys).count(), 10);
+    assert_eq!(zs.iter().chain(&ys).count(), 4);
 }
 
 #[test]
@@ -571,8 +571,8 @@ fn test_iterator_size_hint() {
     assert_eq!(vi.clone().take_while(|_| false).size_hint(), (0, Some(10)));
     assert_eq!(vi.clone().skip_while(|_| false).size_hint(), (0, Some(10)));
     assert_eq!(vi.clone().enumerate().size_hint(), (10, Some(10)));
-    assert_eq!(vi.clone().chain(v2.iter()).size_hint(), (13, Some(13)));
-    assert_eq!(vi.clone().zip(v2.iter()).size_hint(), (3, Some(3)));
+    assert_eq!(vi.clone().chain(v2).size_hint(), (13, Some(13)));
+    assert_eq!(vi.clone().zip(v2).size_hint(), (3, Some(3)));
     assert_eq!(vi.clone().scan(0, |_,_| Some(0)).size_hint(), (0, Some(10)));
     assert_eq!(vi.clone().filter(|_| false).size_hint(), (0, Some(10)));
     assert_eq!(vi.clone().map(|&i| i+1).size_hint(), (10, Some(10)));
@@ -742,7 +742,7 @@ fn test_double_ended_filter_map() {
 fn test_double_ended_chain() {
     let xs = [1, 2, 3, 4, 5];
     let ys = [7, 9, 11];
-    let mut it = xs.iter().chain(ys.iter()).rev();
+    let mut it = xs.iter().chain(&ys).rev();
     assert_eq!(it.next().unwrap(), &11);
     assert_eq!(it.next().unwrap(), &9);
     assert_eq!(it.next_back().unwrap(), &1);
@@ -807,7 +807,7 @@ fn check_randacc_iter<A, T>(a: T, len: usize) where
 fn test_double_ended_flat_map() {
     let u = [0,1];
     let v = [5,6,7,8];
-    let mut it = u.iter().flat_map(|x| v[*x..v.len()].iter());
+    let mut it = u.iter().flat_map(|x| &v[*x..v.len()]);
     assert_eq!(it.next_back().unwrap(), &8);
     assert_eq!(it.next().unwrap(),      &5);
     assert_eq!(it.next_back().unwrap(), &7);
@@ -824,7 +824,7 @@ fn test_double_ended_flat_map() {
 fn test_random_access_chain() {
     let xs = [1, 2, 3, 4, 5];
     let ys = [7, 9, 11];
-    let mut it = xs.iter().chain(ys.iter());
+    let mut it = xs.iter().chain(&ys);
     assert_eq!(it.idx(0).unwrap(), &1);
     assert_eq!(it.idx(5).unwrap(), &7);
     assert_eq!(it.idx(7).unwrap(), &11);
@@ -862,7 +862,7 @@ fn test_random_access_rev() {
 fn test_random_access_zip() {
     let xs = [1, 2, 3, 4, 5];
     let ys = [7, 9, 11];
-    check_randacc_iter(xs.iter().zip(ys.iter()), cmp::min(xs.len(), ys.len()));
+    check_randacc_iter(xs.iter().zip(&ys), cmp::min(xs.len(), ys.len()));
 }
 
 #[test]

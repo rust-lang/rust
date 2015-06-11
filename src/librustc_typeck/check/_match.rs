@@ -250,7 +250,7 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
             let pat_ty = ty::mk_tup(tcx, element_tys.clone());
             fcx.write_ty(pat.id, pat_ty);
             demand::eqtype(fcx, pat.span, expected, pat_ty);
-            for (element_pat, element_ty) in elements.iter().zip(element_tys.into_iter()) {
+            for (element_pat, element_ty) in elements.iter().zip(element_tys) {
                 check_pat(pcx, &**element_pat, element_ty);
             }
         }
@@ -697,8 +697,8 @@ pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
 
     if let Some(subpats) = subpats {
         if subpats.len() == arg_tys.len() {
-            for (subpat, arg_ty) in subpats.iter().zip(arg_tys.iter()) {
-                check_pat(pcx, &**subpat, *arg_ty);
+            for (subpat, arg_ty) in subpats.iter().zip(arg_tys) {
+                check_pat(pcx, &**subpat, arg_ty);
             }
         } else if arg_tys.is_empty() {
             span_err!(tcx.sess, pat.span, E0024,

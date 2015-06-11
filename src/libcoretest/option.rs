@@ -72,7 +72,7 @@ fn test_option_dance() {
     let x = Some(());
     let mut y = Some(5);
     let mut y2 = 0;
-    for _x in x.iter() {
+    for _x in x {
         y2 = y.take().unwrap();
     }
     assert_eq!(y2, 5);

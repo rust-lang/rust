@@ -344,7 +344,7 @@ fn test_from_iterator() {
     assert_eq!(s, c);
 
     let mut d = t.to_string();
-    d.extend(vec![u].into_iter());
+    d.extend(vec![u]);
     assert_eq!(s, d);
 }
 

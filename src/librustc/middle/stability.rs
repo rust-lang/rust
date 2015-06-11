@@ -485,7 +485,7 @@ pub fn check_pat(tcx: &ty::ctxt, pat: &ast::Pat,
     match pat.node {
         // Foo(a, b, c)
         ast::PatEnum(_, Some(ref pat_fields)) => {
-            for (field, struct_field) in pat_fields.iter().zip(struct_fields.iter()) {
+            for (field, struct_field) in pat_fields.iter().zip(&struct_fields) {
                 // a .. pattern is fine, but anything positional is
                 // not.
                 if let ast::PatWild(ast::PatWildMulti) = field.node {
@@ -595,14 +595,14 @@ pub fn check_unused_or_stable_features(sess: &Session,
 
     let stable_msg = "this feature is stable. attribute no longer needed";
 
-    for &span in sess.features.borrow().declared_stable_lang_features.iter() {
+    for &span in &sess.features.borrow().declared_stable_lang_features {
         sess.add_lint(lint::builtin::STABLE_FEATURES,
                       ast::CRATE_NODE_ID,
                       span,
                       stable_msg.to_string());
     }
 
-    for (used_lib_feature, level) in lib_features_used.iter() {
+    for (used_lib_feature, level) in lib_features_used {
         match remaining_lib_features.remove(used_lib_feature) {
             Some(span) => {
                 if *level == attr::Stable {
@@ -616,7 +616,7 @@ pub fn check_unused_or_stable_features(sess: &Session,
         }
     }
 
-    for (_, &span) in remaining_lib_features.iter() {
+    for &span in remaining_lib_features.values() {
         sess.add_lint(lint::builtin::UNUSED_FEATURES,
                       ast::CRATE_NODE_ID,
                       span,

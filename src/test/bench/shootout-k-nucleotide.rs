@@ -317,7 +317,7 @@ fn main() {
     for (i, freq) in nb_freqs {
         print_frequencies(&freq.join().unwrap(), i);
     }
-    for (&occ, freq) in OCCURRENCES.iter().zip(occ_freqs.into_iter()) {
+    for (&occ, freq) in OCCURRENCES.iter().zip(occ_freqs) {
         print_occurrences(&mut freq.join().unwrap(), occ);
     }
 }

@@ -204,7 +204,7 @@ fn symbol_hash<'tcx>(tcx: &ty::ctxt<'tcx>,
     symbol_hasher.input_str(&link_meta.crate_name);
     symbol_hasher.input_str("-");
     symbol_hasher.input_str(link_meta.crate_hash.as_str());
-    for meta in &*tcx.sess.crate_metadata.borrow() {
+    for meta in tcx.sess.crate_metadata.borrow().iter() {
         symbol_hasher.input_str(&meta[..]);
     }
     symbol_hasher.input_str("-");
@@ -355,7 +355,7 @@ pub fn mangle_internal_name_by_type_and_seq<'a, 'tcx>(ccx: &CrateContext<'a, 'tc
 }
 
 pub fn mangle_internal_name_by_path_and_seq(path: PathElems, flav: &str) -> String {
-    mangle(path.chain(Some(gensym_name(flav)).into_iter()), None)
+    mangle(path.chain(Some(gensym_name(flav))), None)
 }
 
 pub fn get_cc_prog(sess: &Session) -> String {
@@ -389,7 +389,7 @@ pub fn link_binary(sess: &Session,
                    outputs: &OutputFilenames,
                    crate_name: &str) -> Vec<PathBuf> {
     let mut out_filenames = Vec::new();
-    for &crate_type in &*sess.crate_types.borrow() {
+    for &crate_type in sess.crate_types.borrow().iter() {
         if invalid_output_for_target(sess, crate_type) {
             sess.bug(&format!("invalid output type `{:?}` for target os `{}`",
                              crate_type, sess.opts.target_triple));
@@ -559,7 +559,7 @@ fn link_rlib<'a>(sess: &'a Session,
     let mut ab = ArchiveBuilder::create(config);
     ab.add_file(obj_filename).unwrap();
 
-    for &(ref l, kind) in &*sess.cstore.get_used_libraries().borrow() {
+    for &(ref l, kind) in sess.cstore.get_used_libraries().borrow().iter() {
         match kind {
             cstore::NativeStatic => ab.add_native_library(&l).unwrap(),
             cstore::NativeFramework | cstore::NativeUnknown => {}
@@ -761,7 +761,7 @@ fn link_staticlib(sess: &Session, obj_filename: &Path, out_filename: &Path) {
         ab.add_rlib(&p, &name[..], sess.lto()).unwrap();
 
         let native_libs = csearch::get_native_libraries(&sess.cstore, cnum);
-        all_native_libs.extend(native_libs.into_iter());
+        all_native_libs.extend(native_libs);
     }
 
     ab.update_symbols();

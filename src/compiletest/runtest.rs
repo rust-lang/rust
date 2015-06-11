@@ -285,8 +285,8 @@ fn run_pretty_test(config: &Config, props: &TestProps, testfile: &Path) {
                             format!("--target={}", config.target),
                             "-L".to_string(),
                             aux_dir.to_str().unwrap().to_string());
-        args.extend(split_maybe_args(&config.target_rustcflags).into_iter());
-        args.extend(split_maybe_args(&props.compile_flags).into_iter());
+        args.extend(split_maybe_args(&config.target_rustcflags));
+        args.extend(split_maybe_args(&props.compile_flags));
         return ProcArgs {
             prog: config.rustc_path.to_str().unwrap().to_string(),
             args: args,
@@ -333,8 +333,8 @@ actual:\n\
                             config.build_base.to_str().unwrap().to_string(),
                             "-L".to_string(),
                             aux_dir.to_str().unwrap().to_string());
-        args.extend(split_maybe_args(&config.target_rustcflags).into_iter());
-        args.extend(split_maybe_args(&props.compile_flags).into_iter());
+        args.extend(split_maybe_args(&config.target_rustcflags));
+        args.extend(split_maybe_args(&props.compile_flags));
         // FIXME (#9639): This needs to handle non-utf8 paths
         return ProcArgs {
             prog: config.rustc_path.to_str().unwrap().to_string(),
@@ -380,7 +380,7 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
             script_str.push_str(&format!("set solib-search-path \
                                          ./{}/stage2/lib/rustlib/{}/lib/\n",
                                          config.host, config.target));
-            for line in breakpoint_lines.iter() {
+            for line in &breakpoint_lines {
                 script_str.push_str(&format!("break {:?}:{}\n",
                                              testfile.file_name().unwrap()
                                                      .to_string_lossy(),
@@ -1171,7 +1171,7 @@ fn document(config: &Config, props: &TestProps,
                         out_dir.to_str().unwrap().to_string(),
                         testfile.to_str().unwrap().to_string()];
     args.extend(extra_args.iter().cloned());
-    args.extend(split_maybe_args(&props.compile_flags).into_iter());
+    args.extend(split_maybe_args(&props.compile_flags));
     let args = ProcArgs {
         prog: config.rustdoc_path.to_str().unwrap().to_string(),
         args: args,
@@ -1236,7 +1236,7 @@ fn compose_and_run_compiler(config: &Config, props: &TestProps,
                 vec!("--crate-type=dylib".to_string())
             }
         };
-        crate_type.extend(extra_link_args.clone().into_iter());
+        crate_type.extend(extra_link_args.clone());
         let aux_args =
             make_compile_args(config,
                               &aux_props,
@@ -1334,11 +1334,11 @@ fn make_compile_args<F>(config: &Config,
     };
     args.push(path.to_str().unwrap().to_string());
     if props.force_host {
-        args.extend(split_maybe_args(&config.host_rustcflags).into_iter());
+        args.extend(split_maybe_args(&config.host_rustcflags));
     } else {
-        args.extend(split_maybe_args(&config.target_rustcflags).into_iter());
+        args.extend(split_maybe_args(&config.target_rustcflags));
     }
-    args.extend(split_maybe_args(&props.compile_flags).into_iter());
+    args.extend(split_maybe_args(&props.compile_flags));
     return ProcArgs {
         prog: config.rustc_path.to_str().unwrap().to_string(),
         args: args,
@@ -1373,7 +1373,7 @@ fn make_run_args(config: &Config, props: &TestProps, testfile: &Path)
     args.push(exe_file.to_str().unwrap().to_string());
 
     // Add the arguments in the run_flags directive
-    args.extend(split_maybe_args(&props.run_flags).into_iter());
+    args.extend(split_maybe_args(&props.run_flags));
 
     let prog = args.remove(0);
     return ProcArgs {
@@ -1683,7 +1683,7 @@ fn compile_test_and_save_ir(config: &Config, props: &TestProps,
                              aux_dir.to_str().unwrap().to_string());
     let llvm_args = vec!("--emit=llvm-ir".to_string(),
                          "--crate-type=lib".to_string());
-    link_args.extend(llvm_args.into_iter());
+    link_args.extend(llvm_args);
     let args = make_compile_args(config,
                                  props,
                                  link_args,

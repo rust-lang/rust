@@ -399,7 +399,7 @@ fn process_predicate<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
                    result.repr(tcx));
             match result {
                 Ok(Some(obligations)) => {
-                    new_obligations.extend(obligations.into_iter());
+                    new_obligations.extend(obligations);
                     true
                 }
                 Ok(None) => {

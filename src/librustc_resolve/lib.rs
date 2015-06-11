@@ -215,7 +215,7 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Resolver<'a, 'tcx> {
         // `visit::walk_variant` without the discriminant expression.
         match variant.node.kind {
             ast::TupleVariantKind(ref variant_arguments) => {
-                for variant_argument in variant_arguments.iter() {
+                for variant_argument in variant_arguments {
                     self.visit_ty(&*variant_argument.ty);
                 }
             }
@@ -1574,7 +1574,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         // Descend into children and anonymous children.
         build_reduced_graph::populate_module_if_necessary(self, &module_);
 
-        for (_, child_node) in &*module_.children.borrow() {
+        for (_, child_node) in module_.children.borrow().iter() {
             match child_node.get_module_if_available() {
                 None => {
                     // Continue.
@@ -1585,7 +1585,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
         }
 
-        for (_, module_) in &*module_.anonymous_children.borrow() {
+        for (_, module_) in module_.anonymous_children.borrow().iter() {
             self.report_unresolved_imports(module_.clone());
         }
     }
@@ -2039,7 +2039,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     }
 
     fn resolve_generics(&mut self, generics: &Generics) {
-        for type_parameter in &*generics.ty_params {
+        for type_parameter in generics.ty_params.iter() {
             self.check_if_primitive_type_name(type_parameter.ident.name, type_parameter.span);
         }
         for predicate in &generics.where_clause.predicates {
@@ -3502,7 +3502,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             build_reduced_graph::populate_module_if_necessary(self, &search_module);
 
             {
-                for (_, child_names) in &*search_module.children.borrow() {
+                for (_, child_names) in search_module.children.borrow().iter() {
                     let def = match child_names.def_for_namespace(TypeNS) {
                         Some(def) => def,
                         None => continue
@@ -3518,7 +3518,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
 
             // Look for imports.
-            for (_, import) in &*search_module.import_resolutions.borrow() {
+            for (_, import) in search_module.import_resolutions.borrow().iter() {
                 let target = match import.target_for_namespace(TypeNS) {
                     None => continue,
                     Some(target) => target,
@@ -3591,13 +3591,13 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         debug!("Children:");
         build_reduced_graph::populate_module_if_necessary(self, &module_);
-        for (&name, _) in &*module_.children.borrow() {
+        for (&name, _) in module_.children.borrow().iter() {
             debug!("* {}", token::get_name(name));
         }
 
         debug!("Import resolutions:");
         let import_resolutions = module_.import_resolutions.borrow();
-        for (&name, import_resolution) in &*import_resolutions {
+        for (&name, import_resolution) in import_resolutions.iter() {
             let value_repr;
             match import_resolution.target_for_namespace(ValueNS) {
                 None => { value_repr = "".to_string(); }

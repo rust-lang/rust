@@ -414,7 +414,7 @@ fn find_stability_generic<'a,
                 let mut feature = None;
                 let mut since = None;
                 let mut reason = None;
-                for meta in metas.iter() {
+                for meta in metas {
                     if meta.name() == "feature" {
                         match meta.value_str() {
                             Some(v) => feature = Some(v),

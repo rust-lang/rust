@@ -330,7 +330,7 @@ pub struct IdVisitor<'a, O:'a> {
 
 impl<'a, O: IdVisitingOperation> IdVisitor<'a, O> {
     fn visit_generics_helper(&mut self, generics: &Generics) {
-        for type_parameter in &*generics.ty_params {
+        for type_parameter in generics.ty_params.iter() {
             self.operation.visit_id(type_parameter.id)
         }
         for lifetime in &generics.lifetimes {
@@ -615,7 +615,7 @@ pub fn path_name_eq(a : &ast::Path, b : &ast::Path) -> bool {
 // are two arrays of segments equal when compared unhygienically?
 pub fn segments_name_eq(a : &[ast::PathSegment], b : &[ast::PathSegment]) -> bool {
     a.len() == b.len() &&
-    a.iter().zip(b.iter()).all(|(s, t)| {
+    a.iter().zip(b).all(|(s, t)| {
         s.identifier.name == t.identifier.name &&
         // FIXME #7743: ident -> name problems in lifetime comparison?
         // can types contain idents?

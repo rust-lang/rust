@@ -368,7 +368,7 @@ mod imp {
         unsafe extern fn run_dtors(mut ptr: *mut u8) {
             while !ptr.is_null() {
                 let list: Box<List> = Box::from_raw(ptr as *mut List);
-                for &(ptr, dtor) in &*list {
+                for &(ptr, dtor) in list.iter() {
                     dtor(ptr);
                 }
                 ptr = DTORS.get();

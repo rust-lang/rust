@@ -260,7 +260,7 @@ impl<'a,'tcx> CrateCtxt<'a,'tcx> {
             }
         }
 
-        for request in cycle[1..].iter() {
+        for request in &cycle[1..] {
             match *request {
                 AstConvRequest::GetItemTypeScheme(def_id) |
                 AstConvRequest::GetTraitDef(def_id) => {
@@ -443,7 +443,7 @@ impl<'a,'b,'tcx,A,B> GetTypeParameterBounds<'tcx> for (&'a A,&'b B)
                                  -> Vec<ty::Predicate<'tcx>>
     {
         let mut v = self.0.get_type_parameter_bounds(astconv, span, node_id);
-        v.extend(self.1.get_type_parameter_bounds(astconv, span, node_id).into_iter());
+        v.extend(self.1.get_type_parameter_bounds(astconv, span, node_id));
         v
     }
 }
@@ -517,7 +517,7 @@ impl<'tcx> GetTypeParameterBounds<'tcx> for ast::Generics {
                 .iter()
                 .filter(|p| p.id == node_id)
                 .flat_map(|p| p.bounds.iter())
-                .flat_map(|b| predicates_from_bound(astconv, ty, b).into_iter());
+                .flat_map(|b| predicates_from_bound(astconv, ty, b));
 
         let from_where_clauses =
             self.where_clause
@@ -529,7 +529,7 @@ impl<'tcx> GetTypeParameterBounds<'tcx> for ast::Generics {
                 })
                 .filter(|bp| is_param(astconv.tcx(), &bp.bounded_ty, node_id))
                 .flat_map(|bp| bp.bounds.iter())
-                .flat_map(|b| predicates_from_bound(astconv, ty, b).into_iter());
+                .flat_map(|b| predicates_from_bound(astconv, ty, b));
 
         from_ty_params.chain(from_where_clauses).collect()
     }
@@ -777,8 +777,8 @@ fn ensure_no_ty_param_bounds(ccx: &CrateCtxt,
                                  thing: &'static str) {
     let mut warn = false;
 
-    for ty_param in &*generics.ty_params {
-        for bound in &*ty_param.bounds {
+    for ty_param in generics.ty_params.iter() {
+        for bound in ty_param.bounds.iter() {
             match *bound {
                 ast::TraitTyParamBound(..) => {
                     warn = true;
@@ -1188,7 +1188,7 @@ fn ensure_super_predicates_step(ccx: &CrateCtxt,
         let superbounds2 = generics.get_type_parameter_bounds(&ccx.icx(scope), item.span, item.id);
 
         // Combine the two lists to form the complete set of superbounds:
-        let superbounds = superbounds1.into_iter().chain(superbounds2.into_iter()).collect();
+        let superbounds = superbounds1.into_iter().chain(superbounds2).collect();
         let superpredicates = ty::GenericPredicates {
             predicates: VecPerParamSpace::new(superbounds, vec![], vec![])
         };
@@ -1778,7 +1778,7 @@ fn ty_generic_predicates<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                                       &ExplicitRscope,
                                       &*bound_pred.bounded_ty);
 
-                for bound in &*bound_pred.bounds {
+                for bound in bound_pred.bounds.iter() {
                     match bound {
                         &ast::TyParamBound::TraitTyParamBound(ref poly_trait_ref, _) => {
                             let mut projections = Vec::new();
@@ -1928,7 +1928,7 @@ fn compute_object_lifetime_default<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
     let inline_bounds = from_bounds(ccx, param_bounds);
     let where_bounds = from_predicates(ccx, param_id, &where_clause.predicates);
     let all_bounds: HashSet<_> = inline_bounds.into_iter()
-                                              .chain(where_bounds.into_iter())
+                                              .chain(where_bounds)
                                               .collect();
     return if all_bounds.len() > 1 {
         Some(ty::ObjectLifetimeDefault::Ambiguous)
@@ -2026,7 +2026,7 @@ fn predicates_from_bound<'tcx>(astconv: &AstConv<'tcx>,
             let pred = conv_poly_trait_ref(astconv, param_ty, tr, &mut projections);
             projections.into_iter()
                        .map(|p| p.as_predicate())
-                       .chain(Some(pred.as_predicate()).into_iter())
+                       .chain(Some(pred.as_predicate()))
                        .collect()
         }
         ast::RegionTyParamBound(ref lifetime) => {
@@ -2096,7 +2096,7 @@ fn compute_type_scheme_of_foreign_fn_decl<'a, 'tcx>(
     abi: abi::Abi)
     -> ty::TypeScheme<'tcx>
 {
-    for i in decl.inputs.iter() {
+    for i in &decl.inputs {
         match (*i).pat.node {
             ast::PatIdent(_, _, _) => (),
             ast::PatWild(ast::PatWildSingle) => (),
@@ -2300,7 +2300,7 @@ fn enforce_impl_params_are_constrained<'tcx>(tcx: &ty::ctxt<'tcx>,
                       ty::TypeTraitItem(ref assoc_ty) => assoc_ty.ty,
                       ty::ConstTraitItem(..) | ty::MethodTraitItem(..) => None
                   })
-                  .flat_map(|ty| ctp::parameters_for_type(ty).into_iter())
+                  .flat_map(|ty| ctp::parameters_for_type(ty))
                   .filter_map(|p| match p {
                       ctp::Parameter::Type(_) => None,
                       ctp::Parameter::Region(r) => Some(r),

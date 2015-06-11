@@ -454,7 +454,7 @@ fn gate_simd_ffi(tcx: &ty::ctxt, decl: &ast::FnDecl, ty: &ty::BareFnTy) {
             }
         };
         let sig = &ty.sig.0;
-        for (input, ty) in decl.inputs.iter().zip(sig.inputs.iter()) {
+        for (input, ty) in decl.inputs.iter().zip(&sig.inputs) {
             check(&*input.ty, *ty)
         }
         if let ast::Return(ref ty) = decl.output {
@@ -600,7 +600,7 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
         let ps = ccx.tcx().map.with_path(id, |path| {
             let abi = Some(ast_map::PathName(special_idents::clownshoe_abi.name));
-            link::mangle(path.chain(abi.into_iter()), hash)
+            link::mangle(path.chain(abi), hash)
         });
 
         // Compute the type that the function would have if it were just a
