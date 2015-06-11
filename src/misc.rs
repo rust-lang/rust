@@ -7,8 +7,8 @@ use rustc::lint::{Context, LintPass, LintArray, Lint, Level};
 use rustc::middle::ty::{self, expr_ty, ty_str, ty_ptr, ty_rptr, ty_float};
 use syntax::codemap::{Span, Spanned};
 
-
 use types::span_note_and_lint;
+use utils::match_path;
 
 pub fn walk_ty<'t>(ty: ty::Ty<'t>) -> ty::Ty<'t> {
 	match ty.sty {
@@ -248,8 +248,8 @@ fn check_to_owned(cx: &Context, expr: &Expr, other_span: Span) {
 		},
 		&ExprCall(ref path, _) => {
 			if let &ExprPath(None, ref path) = &path.node {
-				if path.segments.iter().zip(["String", "from_str"].iter()).all(
-						|(seg, name)| &seg.identifier.as_str() == name) {
+				if match_path(path, &["String", "from_str"]) ||
+						match_path(path, &["String", "from"]) {
 					cx.span_lint(CMP_OWNED, expr.span, &format!(
 					"this creates an owned instance just for comparison. \
 					Consider using {}.as_slice() to compare without allocation",

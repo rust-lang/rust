@@ -13,5 +13,11 @@ fn main() {
 	
 	x != "foo".to_owned(); //~ERROR this creates an owned instance
 	
-	x != String::from_str("foo"); //~ERROR this creates an owned instance
+	#[allow(deprecated)] // for from_str
+	fn old_timey(x : &str) {
+		x != String::from_str("foo"); //~ERROR this creates an owned instance
+	}
+	old_timey(x);
+	
+	x != String::from("foo"); //~ERROR this creates an owned instance
 }
