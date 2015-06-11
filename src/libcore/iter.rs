@@ -3077,6 +3077,7 @@ pub fn empty<T>() -> Empty<T> {
 }
 
 /// An iterator that yields an element exactly once.
+#[derive(Clone)]
 #[unstable(feature="iter_once", reason = "new addition")]
 pub struct Once<T> {
     inner: ::option::IntoIter<T>

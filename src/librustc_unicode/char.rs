@@ -486,7 +486,7 @@ impl char {
     /// # Return value
     ///
     /// Returns an iterator which yields the characters corresponding to the
-    /// lowercase equivalent of the character. If no conversion is possible then
+    /// titlecase equivalent of the character. If no conversion is possible then
     /// an iterator with just the input character is returned.
     #[unstable(feature = "unicode", reason = "recently added")]
     #[inline]
