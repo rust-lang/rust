@@ -439,7 +439,7 @@ impl str {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn len(&self) -> usize {
-        core_str::StrExt::len(&self[..])
+        core_str::StrExt::len(self)
     }
 
     /// Returns true if this slice has a length of zero bytes.
@@ -452,7 +452,7 @@ impl str {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_empty(&self) -> bool {
-        core_str::StrExt::is_empty(&self[..])
+        core_str::StrExt::is_empty(self)
     }
 
     /// Returns a string's displayed width in columns.
@@ -473,7 +473,7 @@ impl str {
     #[unstable(feature = "unicode",
                reason = "this functionality may only be provided by libunicode")]
     pub fn width(&self, is_cjk: bool) -> usize {
-        UnicodeStr::width(&self[..], is_cjk)
+        UnicodeStr::width(self, is_cjk)
     }
 
     /// Checks that `index`-th byte lies at the start and/or end of a
@@ -509,7 +509,7 @@ impl str {
                          this method may want to be replaced with checked \
                          slicing")]
     pub fn is_char_boundary(&self, index: usize) -> bool {
-        core_str::StrExt::is_char_boundary(&self[..], index)
+        core_str::StrExt::is_char_boundary(self, index)
     }
 
     /// Converts `self` to a byte slice.
@@ -522,7 +522,7 @@ impl str {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline(always)]
     pub fn as_bytes(&self) -> &[u8] {
-        core_str::StrExt::as_bytes(&self[..])
+        core_str::StrExt::as_bytes(self)
     }
 
     /// Returns a raw pointer to the `&str`'s buffer.
@@ -540,7 +540,7 @@ impl str {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn as_ptr(&self) -> *const u8 {
-        core_str::StrExt::as_ptr(&self[..])
+        core_str::StrExt::as_ptr(self)
     }
 
     /// Takes a bytewise slice from a string.
@@ -564,7 +564,7 @@ impl str {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub unsafe fn slice_unchecked(&self, begin: usize, end: usize) -> &str {
-        core_str::StrExt::slice_unchecked(&self[..], begin, end)
+        core_str::StrExt::slice_unchecked(self, begin, end)
     }
 
     /// Returns a slice of the string from the character range [`begin`..`end`).
@@ -594,7 +594,7 @@ impl str {
     #[unstable(feature = "collections",
                reason = "may have yet to prove its worth")]
     pub fn slice_chars(&self, begin: usize, end: usize) -> &str {
-        core_str::StrExt::slice_chars(&self[..], begin, end)
+        core_str::StrExt::slice_chars(self, begin, end)
     }
 
     /// Given a byte position, return the next char and its index.
@@ -644,7 +644,7 @@ impl str {
                          be removed in favor of just char_at() or eventually \
                          removed altogether")]
     pub fn char_range_at(&self, start: usize) -> CharRange {
-        core_str::StrExt::char_range_at(&self[..], start)
+        core_str::StrExt::char_range_at(self, start)
     }
 
     /// Given a byte position, return the previous `char` and its position.
@@ -696,7 +696,7 @@ impl str {
                          be removed in favor of just char_at_reverse() or \
                          eventually removed altogether")]
     pub fn char_range_at_reverse(&self, start: usize) -> CharRange {
-        core_str::StrExt::char_range_at_reverse(&self[..], start)
+        core_str::StrExt::char_range_at_reverse(self, start)
     }
 
     /// Given a byte position, return the `char` at that position.
@@ -721,7 +721,7 @@ impl str {
                          iterators or by getting the first char from a \
                          subslice")]
     pub fn char_at(&self, i: usize) -> char {
-        core_str::StrExt::char_at(&self[..], i)
+        core_str::StrExt::char_at(self, i)
     }
 
     /// Given a byte position, return the `char` at that position, counting
@@ -745,7 +745,7 @@ impl str {
                          are also somewhat unclear, especially with which \
                          cases generate panics")]
     pub fn char_at_reverse(&self, i: usize) -> char {
-        core_str::StrExt::char_at_reverse(&self[..], i)
+        core_str::StrExt::char_at_reverse(self, i)
     }
 
     /// Retrieves the first character from a `&str` and returns it.
@@ -776,7 +776,34 @@ impl str {
                          may not be warranted with the existence of the chars \
                          and/or char_indices iterators")]
     pub fn slice_shift_char(&self) -> Option<(char, &str)> {
-        core_str::StrExt::slice_shift_char(&self[..])
+        core_str::StrExt::slice_shift_char(self)
+    }
+
+    /// Divide one string slice into two at an index.
+    ///
+    /// The index `mid` is a byte offset from the start of the string
+    /// that must be on a character boundary.
+    ///
+    /// Return slices `&self[..mid]` and `&self[mid..]`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `mid` is beyond the last character of the string,
+    /// or if it is not on a character boundary.
+    ///
+    /// # Examples
+    /// ```
+    /// # #![feature(collections)]
+    /// let s = "Löwe 老虎 Léopard";
+    /// let first_space = s.find(' ').unwrap_or(s.len());
+    /// let (a, b) = s.split_at(first_space);
+    ///
+    /// assert_eq!(a, "Löwe");
+    /// assert_eq!(b, " 老虎 Léopard");
+    /// ```
+    #[inline]
+    pub fn split_at(&self, mid: usize) -> (&str, &str) {
+        core_str::StrExt::split_at(self, mid)
     }
 
     /// An iterator over the codepoints of `self`.
@@ -790,7 +817,7 @@ impl str {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn chars(&self) -> Chars {
-        core_str::StrExt::chars(&self[..])
+        core_str::StrExt::chars(self)
     }
 
     /// An iterator over the characters of `self` and their byte offsets.
@@ -805,7 +832,7 @@ impl str {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn char_indices(&self) -> CharIndices {
-        core_str::StrExt::char_indices(&self[..])
+        core_str::StrExt::char_indices(self)
     }
 
     /// An iterator over the bytes of `self`.
@@ -819,7 +846,7 @@ impl str {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn bytes(&self) -> Bytes {
-        core_str::StrExt::bytes(&self[..])
+        core_str::StrExt::bytes(self)
     }
 
     /// An iterator over the non-empty substrings of `self` which contain no whitespace,
@@ -835,7 +862,7 @@ impl str {
     /// ```
     #[stable(feature = "split_whitespace", since = "1.1.0")]
     pub fn split_whitespace(&self) -> SplitWhitespace {
-        UnicodeStr::split_whitespace(&self[..])
+        UnicodeStr::split_whitespace(self)
     }
 
     /// An iterator over the non-empty substrings of `self` which contain no whitespace,
@@ -857,7 +884,7 @@ impl str {
                reason = "the precise algorithm to use is unclear")]
     #[allow(deprecated)]
     pub fn words(&self) -> Words {
-        UnicodeStr::words(&self[..])
+        UnicodeStr::words(self)
     }
 
     /// An iterator over the lines of a string, separated by `\n`.
@@ -883,7 +910,7 @@ impl str {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn lines(&self) -> Lines {
-        core_str::StrExt::lines(&self[..])
+        core_str::StrExt::lines(self)
     }
 
     /// An iterator over the lines of a string, separated by either
@@ -910,7 +937,7 @@ impl str {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn lines_any(&self) -> LinesAny {
-        core_str::StrExt::lines_any(&self[..])
+        core_str::StrExt::lines_any(self)
     }
 
     /// Returns an iterator over the string in Unicode Normalization Form D
@@ -1016,7 +1043,7 @@ impl str {
     #[unstable(feature = "unicode",
                reason = "this functionality may only be provided by libunicode")]
     pub fn graphemes(&self, is_extended: bool) -> Graphemes {
-        UnicodeStr::graphemes(&self[..], is_extended)
+        UnicodeStr::graphemes(self, is_extended)
     }
 
     /// Returns an iterator over the grapheme clusters of `self` and their
@@ -1037,7 +1064,7 @@ impl str {
     #[unstable(feature = "unicode",
                reason = "this functionality may only be provided by libunicode")]
     pub fn grapheme_indices(&self, is_extended: bool) -> GraphemeIndices {
-        UnicodeStr::grapheme_indices(&self[..], is_extended)
+        UnicodeStr::grapheme_indices(self, is_extended)
     }
 
     /// Returns an iterator of `u16` over the string encoded as UTF-16.
@@ -1058,7 +1085,7 @@ impl str {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn contains<'a, P: Pattern<'a>>(&'a self, pat: P) -> bool {
-        core_str::StrExt::contains(&self[..], pat)
+        core_str::StrExt::contains(self, pat)
     }
 
     /// Returns `true` if the given `&str` is a prefix of the string.
@@ -1070,7 +1097,7 @@ impl str {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn starts_with<'a, P: Pattern<'a>>(&'a self, pat: P) -> bool {
-        core_str::StrExt::starts_with(&self[..], pat)
+        core_str::StrExt::starts_with(self, pat)
     }
 
     /// Returns true if the given `&str` is a suffix of the string.
@@ -1084,7 +1111,7 @@ impl str {
     pub fn ends_with<'a, P: Pattern<'a>>(&'a self, pat: P) -> bool
         where P::Searcher: ReverseSearcher<'a>
     {
-        core_str::StrExt::ends_with(&self[..], pat)
+        core_str::StrExt::ends_with(self, pat)
     }
 
     /// Returns the byte index of the first character of `self` that matches
@@ -1129,7 +1156,7 @@ impl str {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn find<'a, P: Pattern<'a>>(&'a self, pat: P) -> Option<usize> {
-        core_str::StrExt::find(&self[..], pat)
+        core_str::StrExt::find(self, pat)
     }
 
     /// Returns the byte index of the last character of `self` that
@@ -1173,7 +1200,7 @@ impl str {
     pub fn rfind<'a, P: Pattern<'a>>(&'a self, pat: P) -> Option<usize>
         where P::Searcher: ReverseSearcher<'a>
     {
-        core_str::StrExt::rfind(&self[..], pat)
+        core_str::StrExt::rfind(self, pat)
     }
 
     /// An iterator over substrings of `self`, separated by characters
@@ -1251,7 +1278,7 @@ impl str {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn split<'a, P: Pattern<'a>>(&'a self, pat: P) -> Split<'a, P> {
-        core_str::StrExt::split(&self[..], pat)
+        core_str::StrExt::split(self, pat)
     }
 
     /// An iterator over substrings of `self`, separated by characters
@@ -1299,7 +1326,7 @@ impl str {
     pub fn rsplit<'a, P: Pattern<'a>>(&'a self, pat: P) -> RSplit<'a, P>
         where P::Searcher: ReverseSearcher<'a>
     {
-        core_str::StrExt::rsplit(&self[..], pat)
+        core_str::StrExt::rsplit(self, pat)
     }
 
     /// An iterator over substrings of `self`, separated by characters
@@ -1337,7 +1364,7 @@ impl str {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn split_terminator<'a, P: Pattern<'a>>(&'a self, pat: P) -> SplitTerminator<'a, P> {
-        core_str::StrExt::split_terminator(&self[..], pat)
+        core_str::StrExt::split_terminator(self, pat)
     }
 
     /// An iterator over substrings of `self`, separated by characters
@@ -1375,7 +1402,7 @@ impl str {
     pub fn rsplit_terminator<'a, P: Pattern<'a>>(&'a self, pat: P) -> RSplitTerminator<'a, P>
         where P::Searcher: ReverseSearcher<'a>
     {
-        core_str::StrExt::rsplit_terminator(&self[..], pat)
+        core_str::StrExt::rsplit_terminator(self, pat)
     }
 
     /// An iterator over substrings of `self`, separated by a pattern,
@@ -1422,7 +1449,7 @@ impl str {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn splitn<'a, P: Pattern<'a>>(&'a self, count: usize, pat: P) -> SplitN<'a, P> {
-        core_str::StrExt::splitn(&self[..], count, pat)
+        core_str::StrExt::splitn(self, count, pat)
     }
 
     /// An iterator over substrings of `self`, separated by a pattern,
@@ -1469,7 +1496,7 @@ impl str {
     pub fn rsplitn<'a, P: Pattern<'a>>(&'a self, count: usize, pat: P) -> RSplitN<'a, P>
         where P::Searcher: ReverseSearcher<'a>
     {
-        core_str::StrExt::rsplitn(&self[..], count, pat)
+        core_str::StrExt::rsplitn(self, count, pat)
     }
 
     /// An iterator over the matches of a pattern within `self`.
@@ -1503,7 +1530,7 @@ impl str {
     #[unstable(feature = "collections",
                reason = "method got recently added")]
     pub fn matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> Matches<'a, P> {
-        core_str::StrExt::matches(&self[..], pat)
+        core_str::StrExt::matches(self, pat)
     }
 
     /// An iterator over the matches of a pattern within `self`, yielded in
@@ -1538,7 +1565,7 @@ impl str {
     pub fn rmatches<'a, P: Pattern<'a>>(&'a self, pat: P) -> RMatches<'a, P>
         where P::Searcher: ReverseSearcher<'a>
     {
-        core_str::StrExt::rmatches(&self[..], pat)
+        core_str::StrExt::rmatches(self, pat)
     }
 
     /// An iterator over the start and end indices of the disjoint matches
@@ -1583,7 +1610,7 @@ impl str {
     // NB: Right now MatchIndices yields `(usize, usize)`, but it would
     // be more consistent with `matches` and `char_indices` to return `(usize, &str)`
     pub fn match_indices<'a, P: Pattern<'a>>(&'a self, pat: P) -> MatchIndices<'a, P> {
-        core_str::StrExt::match_indices(&self[..], pat)
+        core_str::StrExt::match_indices(self, pat)
     }
 
     /// An iterator over the start and end indices of the disjoint matches of
@@ -1629,7 +1656,7 @@ impl str {
     pub fn rmatch_indices<'a, P: Pattern<'a>>(&'a self, pat: P) -> RMatchIndices<'a, P>
         where P::Searcher: ReverseSearcher<'a>
     {
-        core_str::StrExt::rmatch_indices(&self[..], pat)
+        core_str::StrExt::rmatch_indices(self, pat)
     }
 
     /// Returns the byte offset of an inner slice relative to an enclosing
@@ -1653,7 +1680,7 @@ impl str {
     #[unstable(feature = "collections",
                reason = "awaiting convention about comparability of arbitrary slices")]
     pub fn subslice_offset(&self, inner: &str) -> usize {
-        core_str::StrExt::subslice_offset(&self[..], inner)
+        core_str::StrExt::subslice_offset(self, inner)
     }
 
     /// Returns a `&str` with leading and trailing whitespace removed.
@@ -1666,7 +1693,7 @@ impl str {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn trim(&self) -> &str {
-        UnicodeStr::trim(&self[..])
+        UnicodeStr::trim(self)
     }
 
     /// Returns a `&str` with leading whitespace removed.
@@ -1679,7 +1706,7 @@ impl str {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn trim_left(&self) -> &str {
-        UnicodeStr::trim_left(&self[..])
+        UnicodeStr::trim_left(self)
     }
 
     /// Returns a `&str` with trailing whitespace removed.
@@ -1692,7 +1719,7 @@ impl str {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn trim_right(&self) -> &str {
-        UnicodeStr::trim_right(&self[..])
+        UnicodeStr::trim_right(self)
     }
 
     /// Returns a string with all pre- and suffixes that match a pattern
@@ -1722,7 +1749,7 @@ impl str {
     pub fn trim_matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> &'a str
         where P::Searcher: DoubleEndedSearcher<'a>
     {
-        core_str::StrExt::trim_matches(&self[..], pat)
+        core_str::StrExt::trim_matches(self, pat)
     }
 
     /// Returns a string with all prefixes that match a pattern
@@ -1742,7 +1769,7 @@ impl str {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn trim_left_matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> &'a str {
-        core_str::StrExt::trim_left_matches(&self[..], pat)
+        core_str::StrExt::trim_left_matches(self, pat)
     }
 
     /// Returns a string with all suffixes that match a pattern
@@ -1772,7 +1799,7 @@ impl str {
     pub fn trim_right_matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> &'a str
         where P::Searcher: ReverseSearcher<'a>
     {
-        core_str::StrExt::trim_right_matches(&self[..], pat)
+        core_str::StrExt::trim_right_matches(self, pat)
     }
 
     /// Parses `self` into the specified type.
@@ -1795,7 +1822,7 @@ impl str {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn parse<F: FromStr>(&self) -> Result<F, F::Err> {
-        core_str::StrExt::parse(&self[..])
+        core_str::StrExt::parse(self)
     }
 
     /// Replaces all occurrences of one string with another.

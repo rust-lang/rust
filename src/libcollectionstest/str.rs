@@ -689,6 +689,26 @@ fn test_char_at_reverse() {
 }
 
 #[test]
+fn test_split_at() {
+    let s = "ศไทย中华Việt Nam";
+    for (index, _) in s.char_indices() {
+        let (a, b) = s.split_at(index);
+        assert_eq!(&s[..a.len()], a);
+        assert_eq!(&s[a.len()..], b);
+    }
+    let (a, b) = s.split_at(s.len());
+    assert_eq!(a, s);
+    assert_eq!(b, "");
+}
+
+#[test]
+#[should_panic]
+fn test_split_at_boundscheck() {
+    let s = "ศไทย中华Việt Nam";
+    let (a, b) = s.split_at(1);
+}
+
+#[test]
 fn test_escape_unicode() {
     assert_eq!("abc".escape_unicode(),
                String::from("\\u{61}\\u{62}\\u{63}"));
