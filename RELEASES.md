@@ -1,10 +1,10 @@
-Version 1.1.0 (July 2015)
-========================
+Version 1.1.0 (June 2015)
+=========================
 
-* NNNN changes, numerous bugfixes
+* ~850 changes, numerous bugfixes
 
-Libraries
----------
+Highlights
+----------
 
 * The [`std::fs` module has been expanded][fs-expand] to expand the set of
   functionality exposed:
@@ -13,8 +13,103 @@ Libraries
   * A `symlink_metadata` function has been added.
   * The `fs::Metadata` structure now lowers to its OS counterpart, providing
     access to all underlying information.
+* The compiler contains extended explanations of many errors.  When it
+  emits such an error it also suggests using the `--explain` flag to
+  read the extended explanations, which are also [cataloged on the web
+  site][err].
+* Thanks to multiple [improvements][sk] to [type checking][pre], as
+  well as other work, the time to bootstrap the compiler decreased by
+  32%.
 
-[fs-expand]: https://github.com/rust-lang/rust/pull/25844
+Libraries
+---------
+
+* The `str::split_whitespace` method splits a string on unicode
+  whitespace boundaries.
+* On both Windows and Unix, new extension traits provide conversion of
+  I/O types to and from the underlying system handles. On Unix, these
+  traits are [`FrowRawFd`] and [`AsRawFd`], on Windows `FromRawHandle`
+  and `AsRawHandle`. These are implemented for `File`, `TcpStream`,
+  `TcpListener`, and `UpdSocket`. Further implementations for
+  `std::process` will be stabilized later.
+* On Unix, [`std::os::unix::symlink`] creates symlinks. On
+  Windows, symlinks can be created with
+  `std::os::windows::symlink_dir` and
+  `std::os::windows::symlink_file`.
+* The `mpsc::Receiver` type can now be converted into an iterator with
+  `into_iter` on the [`IntoIterator`] trait.
+* `Ipv4Addr` can be created from `u32` with the `From<u32>`
+  implementation of the [`From`] trait.
+* The `Debug` implementation for `RangeFull` [creates output that is
+  more consistent with other implementations][rf].
+* [`Debug` is implemented for `File`][file].
+* The `Default` implementation for `Arc` [no longer requires `Sync +
+  Send`][arc].
+* [The `Iterator` methods `count`, `nth`, and `last` have been
+  overridden for slices to have O(1) performance instead of O(n)][si].
+* Incorrect handling of paths on Windows has been improved in both the
+  compiler and the standard library.
+* [`AtomicPtr` gained a `Default` implementation][ap].
+* In accordance with Rust's policy on arithmetic overflow `abs` now
+  [panics on overflow when debug assertions are enabled][abs].
+* The [`Cloned`] iterator, which was accidentally left unstable for
+  1.0 [has been stabilized][c].
+* The [`Incoming`] iterator, which iterates over incoming TCP
+  connections, and which was accidentally unnamable in 1.0, [is now
+  properly exported][inc].
+* [`BinaryHeap`] no longer corrupts itself [when functions called by
+  `sift_up` or `sift_down` panic][bh].
+* The [`split_off`] method of `LinkedList` [no longer corrupts
+  the list in certain scenarios][ll].
+
+Misc
+----
+
+* Type checking performance [has improved notably][sk] with
+  [multiple improvements][pre].
+* The compiler [suggests code changes][ch] for more errors.
+* rustc and it's build system have experimental support for [building
+  toolchains against MUSL][m] instead of glibc on Linux.
+* The compiler defines the `target_env` cfg value, which is used for
+  distinguishing toolchains that are otherwise for the same
+  platform. Presently this is set to `gnu` for common GNU Linux
+  targets and for MinGW targets, and `musl` for MUSL Linux targets.
+* The [`cargo rustc`][crc] command invokes a build with custom flags
+  to rustc.
+* [Android executables are always position independent][pie].
+* [The `drop_with_repr_extern` lint warns about mixing `repr(C)`
+  with `Drop`][drop].
+
+[`split_whitespace`]: http://doc.rust-lang.org/nightly/std/primitive.str.html#method.split_whitespace
+[`Iterator::cloned`]: http://doc.rust-lang.org/nightly/core/iter/trait.Iterator.html#method.cloned
+[`FromRawFd`]: http://doc.rust-lang.org/nightly/std/os/unix/io/trait.FromRawFd.html
+[`AsRawFd`]: http://doc.rust-lang.org/nightly/std/os/unix/io/trait.AsRawFd.html
+[`std::os::unix::symlink`]: http://doc.rust-lang.org/nightly/std/os/unix/fs/fn.symlink.html
+[`IntoIterator`]: http://doc.rust-lang.org/nightly/std/iter/trait.IntoIterator.html
+[`From`]: http://doc.rust-lang.org/nightly/std/convert/trait.From.html
+[rf]: https://github.com/rust-lang/rust/pull/24491
+[err]: http://doc.rust-lang.org/error-index.html
+[sk]: https://github.com/rust-lang/rust/pull/24615
+[pre]: https://github.com/rust-lang/rust/pull/25323
+[file]: https://github.com/rust-lang/rust/pull/24598
+[ch]: https://github.com/rust-lang/rust/pull/24683
+[arc]: https://github.com/rust-lang/rust/pull/24695
+[si]: https://github.com/rust-lang/rust/pull/24701
+[ap]: https://github.com/rust-lang/rust/pull/24834
+[m]: https://github.com/rust-lang/rust/pull/24777
+[fs]: https://github.com/rust-lang/rfcs/blob/master/text/1044-io-fs-2.1.md
+[crc]: https://github.com/rust-lang/cargo/pull/1568
+[pie]: https://github.com/rust-lang/rust/pull/24953
+[abs]: https://github.com/rust-lang/rust/pull/25441
+[c]: https://github.com/rust-lang/rust/pull/25496
+[`Cloned`]: http://doc.rust-lang.org/nightly/std/iter/struct.Cloned.html
+[`Incoming`]: http://doc.rust-lang.org/nightly/std/net/struct.Incoming.html
+[inc]: https://github.com/rust-lang/rust/pull/25522
+[bh]: https://github.com/rust-lang/rust/pull/25856
+[`BinaryHeap`]: http://doc.rust-lang.org/nightly/std/collections/struct.BinaryHeap.html
+[ll]: https://github.com/rust-lang/rust/pull/26022
+[`split_off`]: http://doc.rust-lang.org/nightly/collections/linked_list/struct.LinkedList.html#method.split_off
+[drop]: https://github.com/rust-lang/rust/pull/24935
 
 Version 1.0.0 (May 2015)
 ========================
