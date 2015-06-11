@@ -33,16 +33,24 @@ successful, and since the 1.0.0 release, there is an expectation of
 stability. Therefore the first order of business when evolving the
 `std` API is: **Don't break people's code**. 
 
-In practice there will be some qualification, e.g. if fixing a security 
-hole requires breaking an API, it is nonetheless acceptable, because 
-the API was broken to begin with, as is code using it. So breaking this
-code is acceptable.  
+In practice there will be some qualification, e.g. if an API is
+*inherently* unsafe, it should be acceptable to remove it completely,
+as any code using it was in fact broken to begin with. Therefore it is
+acceptable to make this code stop working altogether.
 
-On the other hand, we really want to make features inaccessible in a
-newer version, not just mark them as deprecated. Otherwise we would
-bloat our APIs with deprecated features that no one uses (see Java). To
-do this, it's not enough to hide the feature from the docs, as that
-would be confusing (see point 4.) to those who encounter a hidden API.
+On the other hand, if an API permits unsafe uses, and a safer 
+alternative is available, we may want to *retroactively deprecate* it, 
+so that people will get warnings even if they specified an older target 
+version. We may want to have a different kind of warning than the 
+standard deprecation warning, as there are already some crates (e.g. 
+compiletest.rs) on crates.io that declare `#![deny(deprecate)]`, so 
+those warnings would turn to errors. 
+
+We also really want to make features inaccessible in a newer version, 
+not just mark them as deprecated. Otherwise we would bloat our APIs 
+with deprecated features that no one uses (see Java). To do this, it's 
+not enough to hide the feature from the docs, as that would be 
+confusing (see point 4.) to those who encounter a hidden API.
 
 Not breaking code also mean we do not want to have the deprecation 
 feature interfere with a project's dependencies, which would teach 
