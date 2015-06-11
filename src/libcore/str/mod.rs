@@ -1517,6 +1517,7 @@ pub trait StrExt {
     fn rfind<'a, P: Pattern<'a>>(&'a self, pat: P) -> Option<usize>
         where P::Searcher: ReverseSearcher<'a>;
     fn find_str<'a, P: Pattern<'a>>(&'a self, pat: P) -> Option<usize>;
+    fn split_at(&self, mid: usize) -> (&str, &str);
     fn slice_shift_char<'a>(&'a self) -> Option<(char, &'a str)>;
     fn subslice_offset(&self, inner: &str) -> usize;
     fn as_ptr(&self) -> *const u8;
@@ -1807,6 +1808,18 @@ impl StrExt for str {
 
     fn find_str<'a, P: Pattern<'a>>(&'a self, pat: P) -> Option<usize> {
         self.find(pat)
+    }
+
+    fn split_at(&self, mid: usize) -> (&str, &str) {
+        // is_char_boundary checks that the index is in [0, .len()]
+        if self.is_char_boundary(mid) {
+            unsafe {
+                (self.slice_unchecked(0, mid),
+                 self.slice_unchecked(mid, self.len()))
+            }
+        } else {
+            slice_error_fail(self, 0, mid)
+        }
     }
 
     #[inline]
