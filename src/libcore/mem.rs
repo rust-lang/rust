@@ -462,6 +462,10 @@ pub unsafe fn transmute_copy<T, U>(src: &T) -> U {
 #[unstable(feature = "copy_lifetime",
            reason = "this function may be removed in the future due to its \
                      questionable utility")]
+#[deprecated(since = "1.2.0",
+             reason = "unclear that this function buys more safety and \
+                       lifetimes are generally not handled as such in unsafe \
+                       code today")]
 pub unsafe fn copy_lifetime<'a, S: ?Sized, T: ?Sized + 'a>(_ptr: &'a S,
                                                         ptr: &T) -> &'a T {
     transmute(ptr)
@@ -472,6 +476,10 @@ pub unsafe fn copy_lifetime<'a, S: ?Sized, T: ?Sized + 'a>(_ptr: &'a S,
 #[unstable(feature = "copy_lifetime",
            reason = "this function may be removed in the future due to its \
                      questionable utility")]
+#[deprecated(since = "1.2.0",
+             reason = "unclear that this function buys more safety and \
+                       lifetimes are generally not handled as such in unsafe \
+                       code today")]
 pub unsafe fn copy_mut_lifetime<'a, S: ?Sized, T: ?Sized + 'a>(_ptr: &'a S,
                                                                ptr: &mut T)
                                                               -> &'a mut T
