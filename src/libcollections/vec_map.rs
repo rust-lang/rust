@@ -646,10 +646,9 @@ impl<'a, V> Entry<'a, V> {
         }
     }
 
-    #[unstable(feature = "entry",
-               reason = "matches entry v3 specification, waiting for dust to settle")]
-    /// Ensures a value is in the entry by inserting the default if empty, and returns
-    /// a mutable reference to the value in the entry.
+    #[stable(feature = "vecmap_entry", since = "1.2.0")]
+    /// Ensures a value is in the entry by inserting the default if empty, and
+    /// returns a mutable reference to the value in the entry.
     pub fn or_insert(self, default: V) -> &'a mut V {
         match self {
             Occupied(entry) => entry.into_mut(),
@@ -657,10 +656,10 @@ impl<'a, V> Entry<'a, V> {
         }
     }
 
-    #[unstable(feature = "entry",
-               reason = "matches entry v3 specification, waiting for dust to settle")]
-    /// Ensures a value is in the entry by inserting the result of the default function if empty,
-    /// and returns a mutable reference to the value in the entry.
+    #[stable(feature = "vecmap_entry", since = "1.2.0")]
+    /// Ensures a value is in the entry by inserting the result of the default
+    /// function if empty, and returns a mutable reference to the value in the
+    /// entry.
     pub fn or_insert_with<F: FnOnce() -> V>(self, default: F) -> &'a mut V {
         match self {
             Occupied(entry) => entry.into_mut(),
