@@ -586,11 +586,9 @@ struct ListNode {
 This type cannot have a well-defined size, because it needs to be arbitrarily
 large (since we would be able to nest `ListNode`s to any depth). Specifically,
 
-```
-size of ListNode = 1 byte for head
-                 + 1 byte for the discriminant of the Option
-                 + size of ListNode
-```
+    size of `ListNode` = 1 byte for `head`
+                       + 1 byte for the discriminant of the `Option`
+                       + size of `ListNode`
 
 One way to fix this is by wrapping `ListNode` in a `Box`, like so:
 
