@@ -730,6 +730,32 @@ RFC. It is, however, [currently unimplemented][iss15872].
 [iss15872]: https://github.com/rust-lang/rust/issues/15872
 "##,
 
+E0116: r##"
+You can only define an inherent implementation for a type in the same crate
+where the type was defined. For example, an `impl` block as below is not allowed
+since `Vec` is defined in the standard library:
+
+```
+impl Vec<u8> { ... } // error
+```
+
+To fix this problem, you can do either of these things:
+
+ - define a trait that has the desired associated functions/types/constants and
+   implement the trait for the type in question
+ - define a new type wrapping the type and define an implementation on the new
+   type
+
+Note that using the `type` keyword does not work here because `type` only
+introduces a type alias:
+
+```
+type Bytes = Vec<u8>;
+
+impl Bytes { ... } // error, same as above
+```
+"##,
+
 E0121: r##"
 In order to be consistent with Rust's lack of global type inference, type
 placeholders are disallowed by design in item signatures.
@@ -1232,7 +1258,6 @@ register_diagnostics! {
     E0102,
     E0103,
     E0104,
-    E0116,
     E0117,
     E0118,
     E0119,
