@@ -234,7 +234,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         self.resolver.current_module = orig_module;
 
         build_reduced_graph::populate_module_if_necessary(self.resolver, &module_);
-        for (_, child_node) in &*module_.children.borrow() {
+        for (_, child_node) in module_.children.borrow().iter() {
             match child_node.get_module_if_available() {
                 None => {
                     // Nothing to do.
@@ -245,7 +245,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
             }
         }
 
-        for (_, child_module) in &*module_.anonymous_children.borrow() {
+        for (_, child_module) in module_.anonymous_children.borrow().iter() {
             self.resolve_imports_for_module_subtree(child_module.clone());
         }
     }
@@ -732,7 +732,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
 
         // Add all resolved imports from the containing module.
         let import_resolutions = target_module.import_resolutions.borrow();
-        for (ident, target_import_resolution) in &*import_resolutions {
+        for (ident, target_import_resolution) in import_resolutions.iter() {
             debug!("(resolving glob import) writing module resolution \
                     {} into `{}`",
                    token::get_name(*ident),
@@ -793,7 +793,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         // Add all children from the containing module.
         build_reduced_graph::populate_module_if_necessary(self.resolver, &target_module);
 
-        for (&name, name_bindings) in &*target_module.children.borrow() {
+        for (&name, name_bindings) in target_module.children.borrow().iter() {
             self.merge_import_resolution(module_,
                                          target_module.clone(),
                                          import_directive,
@@ -803,7 +803,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         }
 
         // Add external module children from the containing module.
-        for (&name, module) in &*target_module.external_module_children.borrow() {
+        for (&name, module) in target_module.external_module_children.borrow().iter() {
             let name_bindings =
                 Rc::new(Resolver::create_name_bindings_from_module(module.clone()));
             self.merge_import_resolution(module_,

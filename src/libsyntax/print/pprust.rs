@@ -2110,7 +2110,7 @@ impl<'a> State<'a> {
                         comma = true;
                 }
 
-                for binding in &*data.bindings {
+                for binding in data.bindings.iter() {
                     if comma {
                         try!(self.word_space(","))
                     }
@@ -2845,7 +2845,7 @@ impl<'a> State<'a> {
             }
             ast::LitBinary(ref v) => {
                 let mut escaped: String = String::new();
-                for &ch in &**v {
+                for &ch in v.iter() {
                     escaped.extend(ascii::escape_default(ch)
                                          .map(|c| c as char));
                 }

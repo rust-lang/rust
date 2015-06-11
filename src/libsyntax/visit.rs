@@ -428,13 +428,13 @@ pub fn walk_path_parameters<'v, V: Visitor<'v>>(visitor: &mut V,
                                                 path_parameters: &'v PathParameters) {
     match *path_parameters {
         ast::AngleBracketedParameters(ref data) => {
-            for typ in &*data.types {
+            for typ in data.types.iter() {
                 visitor.visit_ty(&**typ);
             }
             for lifetime in &data.lifetimes {
                 visitor.visit_lifetime_ref(lifetime);
             }
-            for binding in &*data.bindings {
+            for binding in data.bindings.iter() {
                 visitor.visit_assoc_type_binding(&**binding);
             }
         }
@@ -531,7 +531,7 @@ pub fn walk_foreign_item<'v, V: Visitor<'v>>(visitor: &mut V,
 
 pub fn walk_ty_param_bounds_helper<'v, V: Visitor<'v>>(visitor: &mut V,
                                                        bounds: &'v OwnedSlice<TyParamBound>) {
-    for bound in &**bounds {
+    for bound in bounds.iter() {
         visitor.visit_ty_param_bound(bound)
     }
 }
@@ -549,7 +549,7 @@ pub fn walk_ty_param_bound<'v, V: Visitor<'v>>(visitor: &mut V,
 }
 
 pub fn walk_generics<'v, V: Visitor<'v>>(visitor: &mut V, generics: &'v Generics) {
-    for param in &*generics.ty_params {
+    for param in generics.ty_params.iter() {
         visitor.visit_ident(param.span, param.ident);
         walk_ty_param_bounds_helper(visitor, &param.bounds);
         walk_ty_opt(visitor, &param.default);

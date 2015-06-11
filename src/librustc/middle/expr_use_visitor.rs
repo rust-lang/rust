@@ -212,11 +212,11 @@ enum OverloadedCallType {
 impl OverloadedCallType {
     fn from_trait_id(tcx: &ty::ctxt, trait_id: ast::DefId)
                      -> OverloadedCallType {
-        for &(maybe_function_trait, overloaded_call_type) in [
+        for &(maybe_function_trait, overloaded_call_type) in &[
             (tcx.lang_items.fn_once_trait(), FnOnceOverloadedCall),
             (tcx.lang_items.fn_mut_trait(), FnMutOverloadedCall),
             (tcx.lang_items.fn_trait(), FnOverloadedCall)
-        ].iter() {
+        ] {
             match maybe_function_trait {
                 Some(function_trait) if function_trait == trait_id => {
                     return overloaded_call_type

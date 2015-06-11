@@ -409,7 +409,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
         // Special-case some expressions to avoid certain flags bubbling up.
         match ex.node {
             ast::ExprCall(ref callee, ref args) => {
-                for arg in args.iter() {
+                for arg in args {
                     self.visit_expr(&**arg)
                 }
 
@@ -435,7 +435,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
                 // Compute the most demanding borrow from all the arms'
                 // patterns and set that on the discriminator.
                 let mut borrow = None;
-                for pat in arms.iter().flat_map(|arm| arm.pats.iter()) {
+                for pat in arms.iter().flat_map(|arm| &arm.pats) {
                     let pat_borrow = self.rvalue_borrows.remove(&pat.id);
                     match (borrow, pat_borrow) {
                         (None, _) | (_, Some(ast::MutMutable)) => {

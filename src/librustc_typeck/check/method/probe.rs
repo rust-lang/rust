@@ -260,7 +260,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
 
     fn assemble_inherent_candidates(&mut self) {
         let steps = self.steps.clone();
-        for step in &*steps {
+        for step in steps.iter() {
             self.assemble_probe(step.self_ty);
         }
     }
@@ -374,7 +374,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         ty::populate_inherent_implementations_for_type_if_necessary(self.tcx(), def_id);
 
         if let Some(impl_infos) = self.tcx().inherent_impls.borrow().get(&def_id) {
-            for &impl_def_id in &***impl_infos {
+            for &impl_def_id in impl_infos.iter() {
                 self.assemble_inherent_impl_probe(impl_def_id);
             }
         }
@@ -700,7 +700,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         // Check if there is an unboxed-closure self-type in the list of receivers.
         // If so, add "synthetic impls".
         let steps = self.steps.clone();
-        for step in &*steps {
+        for step in steps.iter() {
             let closure_def_id = match step.self_ty.sty {
                 ty::ty_closure(a, _) => a,
                 _ => continue,
@@ -754,7 +754,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                item.repr(self.tcx()),
                item_index);
 
-        for step in &*self.steps {
+        for step in self.steps.iter() {
             debug!("assemble_projection_candidates: step={}",
                    step.repr(self.tcx()));
 

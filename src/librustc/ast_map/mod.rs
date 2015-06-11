@@ -404,7 +404,7 @@ impl<'ast> Map<'ast> {
 
     fn path_to_str_with_ident(&self, id: NodeId, i: Ident) -> String {
         self.with_path(id, |path| {
-            path_to_string(path.chain(Some(PathName(i.name)).into_iter()))
+            path_to_string(path.chain(Some(PathName(i.name))))
         })
     }
 
@@ -704,7 +704,7 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
                 }
             }
             ItemTrait(_, _, ref bounds, ref trait_items) => {
-                for b in &**bounds {
+                for b in bounds.iter() {
                     if let TraitTyParamBound(ref t, TraitBoundModifier::None) = *b {
                         self.insert(t.trait_ref.ref_id, NodeItem(i));
                     }

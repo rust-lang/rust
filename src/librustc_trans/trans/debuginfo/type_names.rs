@@ -216,7 +216,7 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
         output.push('<');
 
-        for &type_parameter in substs.types.iter() {
+        for &type_parameter in &substs.types {
             push_debuginfo_type_name(cx, type_parameter, true, output);
             output.push_str(", ");
         }

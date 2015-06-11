@@ -1301,7 +1301,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
                     return
                 }
 
-                for bound in &**bounds {
+                for bound in bounds.iter() {
                     self.check_ty_param_bound(bound)
                 }
             }
@@ -1466,15 +1466,15 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
     }
 
     fn visit_generics(&mut self, generics: &ast::Generics) {
-        for ty_param in &*generics.ty_params {
-            for bound in &*ty_param.bounds {
+        for ty_param in generics.ty_params.iter() {
+            for bound in ty_param.bounds.iter() {
                 self.check_ty_param_bound(bound)
             }
         }
         for predicate in &generics.where_clause.predicates {
             match predicate {
                 &ast::WherePredicate::BoundPredicate(ref bound_pred) => {
-                    for bound in &*bound_pred.bounds {
+                    for bound in bound_pred.bounds.iter() {
                         self.check_ty_param_bound(bound)
                     }
                 }

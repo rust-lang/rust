@@ -438,7 +438,7 @@ impl<'a> Context<'a> {
                 FileMatches
             }).unwrap_or(FileDoesntMatch)
         });
-        self.rejected_via_kind.extend(staticlibs.into_iter());
+        self.rejected_via_kind.extend(staticlibs);
 
         // We have now collected all known libraries into a set of candidates
         // keyed of the filename hash listed. For each filename, we also have a

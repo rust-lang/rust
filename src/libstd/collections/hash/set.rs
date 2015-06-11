@@ -647,7 +647,7 @@ impl<'a, 'b, T, S> BitOr<&'b HashSet<T, S>> for &'a HashSet<T, S>
     ///
     /// let mut i = 0;
     /// let expected = [1, 2, 3, 4, 5];
-    /// for x in set.iter() {
+    /// for x in &set {
     ///     assert!(expected.contains(x));
     ///     i += 1;
     /// }
@@ -679,7 +679,7 @@ impl<'a, 'b, T, S> BitAnd<&'b HashSet<T, S>> for &'a HashSet<T, S>
     ///
     /// let mut i = 0;
     /// let expected = [2, 3];
-    /// for x in set.iter() {
+    /// for x in &set {
     ///     assert!(expected.contains(x));
     ///     i += 1;
     /// }
@@ -711,7 +711,7 @@ impl<'a, 'b, T, S> BitXor<&'b HashSet<T, S>> for &'a HashSet<T, S>
     ///
     /// let mut i = 0;
     /// let expected = [1, 2, 4, 5];
-    /// for x in set.iter() {
+    /// for x in &set {
     ///     assert!(expected.contains(x));
     ///     i += 1;
     /// }
@@ -743,7 +743,7 @@ impl<'a, 'b, T, S> Sub<&'b HashSet<T, S>> for &'a HashSet<T, S>
     ///
     /// let mut i = 0;
     /// let expected = [1, 2];
-    /// for x in set.iter() {
+    /// for x in &set {
     ///     assert!(expected.contains(x));
     ///     i += 1;
     /// }
@@ -838,7 +838,7 @@ impl<T, S> IntoIterator for HashSet<T, S>
     /// let v: Vec<String> = set.into_iter().collect();
     ///
     /// // Will print in an arbitrary order.
-    /// for x in v.iter() {
+    /// for x in &v {
     ///     println!("{}", x);
     /// }
     /// ```

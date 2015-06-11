@@ -99,7 +99,7 @@ fn group_errors_with_same_origin<'tcx>(errors: &Vec<MoveError<'tcx>>)
         for ge in &mut *grouped_errors {
             if move_from_id == ge.move_from.id && error.move_to.is_some() {
                 debug!("appending move_to to list");
-                ge.move_to_places.extend(move_to.into_iter());
+                ge.move_to_places.extend(move_to);
                 return
             }
         }

@@ -1917,7 +1917,7 @@ impl str {
     #[stable(feature = "unicode_case_mapping", since = "1.2.0")]
     pub fn to_uppercase(&self) -> String {
         let mut s = String::with_capacity(self.len());
-        s.extend(self[..].chars().flat_map(|c| c.to_uppercase()));
+        s.extend(self.chars().flat_map(|c| c.to_uppercase()));
         return s;
     }
 

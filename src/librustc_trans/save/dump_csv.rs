@@ -138,7 +138,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
         let mut result: Vec<(Span, String)> = vec!();
 
         let mut segs = vec!();
-        for (i, (seg, span)) in path.segments.iter().zip(spans.iter()).enumerate() {
+        for (i, (seg, span)) in path.segments.iter().zip(&spans).enumerate() {
             segs.push(seg.clone());
             let sub_path = ast::Path{span: *span, // span for the last segment
                                      global: path.global,
@@ -476,14 +476,14 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
         // the first few to match the number of generics we're looking for.
         let param_sub_spans = self.span.spans_for_ty_params(full_span,
                                                            (generics.ty_params.len() as isize));
-        for (param, param_ss) in generics.ty_params.iter().zip(param_sub_spans.iter()) {
+        for (param, param_ss) in generics.ty_params.iter().zip(param_sub_spans) {
             // Append $id to name to make sure each one is unique
             let name = format!("{}::{}${}",
                                prefix,
-                               escape(self.span.snippet(*param_ss)),
+                               escape(self.span.snippet(param_ss)),
                                id);
             self.fmt.typedef_str(full_span,
-                                 Some(*param_ss),
+                                 Some(param_ss),
                                  param.id,
                                  &name,
                                  "");
@@ -727,7 +727,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
                            &val);
 
         // super-traits
-        for super_bound in &**trait_refs {
+        for super_bound in trait_refs.iter() {
             let trait_ref = match *super_bound {
                 ast::TraitTyParamBound(ref trait_ref, _) => {
                     trait_ref
@@ -1202,8 +1202,8 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
     }
 
     fn visit_generics(&mut self, generics: &ast::Generics) {
-        for param in &*generics.ty_params {
-            for bound in &*param.bounds {
+        for param in generics.ty_params.iter() {
+            for bound in param.bounds.iter() {
                 if let ast::TraitTyParamBound(ref trait_ref, _) = *bound {
                     self.process_trait_ref(&trait_ref.trait_ref);
                 }

@@ -860,7 +860,7 @@ impl LintPass for NonCamelCaseTypes {
     }
 
     fn check_generics(&mut self, cx: &Context, it: &ast::Generics) {
-        for gen in &*it.ty_params {
+        for gen in it.ty_params.iter() {
             self.check_case(cx, "type parameter", gen.ident, gen.span);
         }
     }

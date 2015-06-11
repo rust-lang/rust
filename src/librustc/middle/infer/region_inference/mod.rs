@@ -1218,7 +1218,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                                       errors: &mut Vec<RegionResolutionError<'tcx>>)
     {
         let mut reg_reg_dups = FnvHashSet();
-        for verify in &*self.verifys.borrow() {
+        for verify in self.verifys.borrow().iter() {
             match *verify {
                 VerifyRegSubReg(ref origin, sub, sup) => {
                     if free_regions.is_subregion_of(self.tcx, sub, sup) {
@@ -1350,7 +1350,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         }
         let dummy_idx = graph.add_node(());
 
-        for (constraint, _) in &*constraints {
+        for (constraint, _) in constraints.iter() {
             match *constraint {
                 ConstrainVarSubVar(a_id, b_id) => {
                     graph.add_edge(NodeIndex(a_id.index as usize),
@@ -1575,7 +1575,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
             changed = false;
             iteration += 1;
             debug!("---- {} Iteration {}{}", "#", tag, iteration);
-            for (constraint, _) in &*self.constraints.borrow() {
+            for (constraint, _) in self.constraints.borrow().iter() {
                 let edge_changed = body(constraint);
                 if edge_changed {
                     debug!("Updated due to constraint {}",

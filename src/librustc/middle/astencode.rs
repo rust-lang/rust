@@ -1126,7 +1126,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
         })
     }
 
-    for &qualif in tcx.const_qualif_map.borrow().get(&id).iter() {
+    if let Some(qualif) = tcx.const_qualif_map.borrow().get(&id) {
         rbml_w.tag(c::tag_table_const_qualif, |rbml_w| {
             rbml_w.id(id);
             qualif.encode(rbml_w).unwrap()

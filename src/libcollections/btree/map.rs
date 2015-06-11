@@ -907,7 +907,7 @@ impl<K: Ord, V> Default for BTreeMap<K, V> {
 impl<K: PartialEq, V: PartialEq> PartialEq for BTreeMap<K, V> {
     fn eq(&self, other: &BTreeMap<K, V>) -> bool {
         self.len() == other.len() &&
-            self.iter().zip(other.iter()).all(|(a, b)| a == b)
+            self.iter().zip(other).all(|(a, b)| a == b)
     }
 }
 
@@ -1544,7 +1544,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// for (_, balance) in map.range_mut(Included(&"B"), Excluded(&"Cheryl")) {
     ///     *balance += 100;
     /// }
-    /// for (name, balance) in map.iter() {
+    /// for (name, balance) in &map {
     ///     println!("{} => {}", name, balance);
     /// }
     /// ```

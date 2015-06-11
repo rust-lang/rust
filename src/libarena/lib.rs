@@ -127,7 +127,7 @@ impl<'longer_than_self> Drop for Arena<'longer_than_self> {
     fn drop(&mut self) {
         unsafe {
             destroy_chunk(&*self.head.borrow());
-            for chunk in &*self.chunks.borrow() {
+            for chunk in self.chunks.borrow().iter() {
                 if !chunk.is_copy.get() {
                     destroy_chunk(chunk);
                 }

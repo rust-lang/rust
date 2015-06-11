@@ -88,7 +88,7 @@ pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
 
     let all_constraints= constraints.iter()
                                     .map(|s| s.to_string())
-                                    .chain(ext_constraints.into_iter())
+                                    .chain(ext_constraints)
                                     .chain(clobbers)
                                     .chain(arch_clobbers.iter()
                                                .map(|s| s.to_string()))

@@ -1443,7 +1443,7 @@ impl<T: Clone> VecDeque<T> {
     /// buf.push_back(15);
     /// buf.resize(2, 0);
     /// buf.resize(6, 20);
-    /// for (a, b) in [5, 10, 20, 20, 20, 20].iter().zip(buf.iter()) {
+    /// for (a, b) in [5, 10, 20, 20, 20, 20].iter().zip(&buf) {
     ///     assert_eq!(a, b);
     /// }
     /// ```
@@ -1681,7 +1681,7 @@ impl<'a, T: 'a> ExactSizeIterator for Drain<'a, T> {}
 impl<A: PartialEq> PartialEq for VecDeque<A> {
     fn eq(&self, other: &VecDeque<A>) -> bool {
         self.len() == other.len() &&
-            self.iter().zip(other.iter()).all(|(a, b)| a.eq(b))
+            self.iter().zip(other).all(|(a, b)| a.eq(b))
     }
 }
 

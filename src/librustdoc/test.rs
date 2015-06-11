@@ -75,7 +75,7 @@ pub fn run(input: &str,
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
 
     let mut cfg = config::build_configuration(&sess);
-    cfg.extend(config::parse_cfgspecs(cfgs).into_iter());
+    cfg.extend(config::parse_cfgspecs(cfgs));
     let krate = driver::phase_1_parse_input(&sess, cfg, &input);
     let krate = driver::phase_2_configure_and_expand(&sess, krate,
                                                      "rustdoc-test", None)
@@ -129,12 +129,13 @@ fn scrape_test_config(krate: &::syntax::ast::Crate) -> TestOptions {
         attrs: Vec::new(),
     };
 
-    let attrs = krate.attrs.iter().filter(|a| a.check_name("doc"))
+    let attrs = krate.attrs.iter()
+                     .filter(|a| a.check_name("doc"))
                      .filter_map(|a| a.meta_item_list())
-                     .flat_map(|l| l.iter())
+                     .flat_map(|l| l)
                      .filter(|a| a.check_name("test"))
                      .filter_map(|a| a.meta_item_list())
-                     .flat_map(|l| l.iter());
+                     .flat_map(|l| l);
     for attr in attrs {
         if attr.check_name("no_crate_inject") {
             opts.no_crate_inject = true;
@@ -239,7 +240,7 @@ fn runtest(test: &str, cratename: &str, libs: SearchPaths,
         let path = env::var_os(var).unwrap_or(OsString::new());
         let mut path = env::split_paths(&path).collect::<Vec<_>>();
         path.insert(0, libdir.clone());
-        env::join_paths(path.iter()).unwrap()
+        env::join_paths(path).unwrap()
     };
     cmd.env(var, &newpath);
 

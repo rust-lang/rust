@@ -205,7 +205,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             return;
         }
 
-        for (upvar_id, upvar_capture) in &*self.fcx.inh.upvar_capture_map.borrow() {
+        for (upvar_id, upvar_capture) in self.fcx.inh.upvar_capture_map.borrow().iter() {
             let new_upvar_capture = match *upvar_capture {
                 ty::UpvarCapture::ByValue => ty::UpvarCapture::ByValue,
                 ty::UpvarCapture::ByRef(ref upvar_borrow) => {
@@ -227,12 +227,12 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             return
         }
 
-        for (def_id, closure_ty) in &*self.fcx.inh.closure_tys.borrow() {
+        for (def_id, closure_ty) in self.fcx.inh.closure_tys.borrow().iter() {
             let closure_ty = self.resolve(closure_ty, ResolvingClosure(*def_id));
             self.fcx.tcx().closure_tys.borrow_mut().insert(*def_id, closure_ty);
         }
 
-        for (def_id, &closure_kind) in &*self.fcx.inh.closure_kinds.borrow() {
+        for (def_id, &closure_kind) in self.fcx.inh.closure_kinds.borrow().iter() {
             self.fcx.tcx().closure_kinds.borrow_mut().insert(*def_id, closure_kind);
         }
     }

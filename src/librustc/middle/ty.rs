@@ -862,7 +862,7 @@ macro_rules! sty_debug_print {
                 $(let mut $variant = total;)*
 
 
-                for (_, t) in &*tcx.interner.borrow() {
+                for (_, t) in tcx.interner.borrow().iter() {
                     let variant = match t.sty {
                         ty::ty_bool | ty::ty_char | ty::ty_int(..) | ty::ty_uint(..) |
                             ty::ty_float(..) | ty::ty_str => continue,
@@ -2154,7 +2154,7 @@ impl<'tcx> Predicate<'tcx> {
                 let trait_inputs = data.0.projection_ty.trait_ref.substs.types.as_slice();
                 trait_inputs.iter()
                             .cloned()
-                            .chain(Some(data.0.ty).into_iter())
+                            .chain(Some(data.0.ty))
                             .collect()
             }
         };
@@ -3068,7 +3068,7 @@ impl FlagComputation {
         match substs.regions {
             subst::ErasedRegions => {}
             subst::NonerasedRegions(ref regions) => {
-                for &r in regions.iter() {
+                for &r in regions {
                     self.add_region(r);
                 }
             }
@@ -4199,7 +4199,7 @@ pub fn is_type_representable<'tcx>(cx: &ctxt<'tcx>, sp: Span, ty: Ty<'tcx>)
             ty_enum(did, substs) => {
                 let vs = enum_variants(cx, did);
                 let iter = vs.iter()
-                    .flat_map(|variant| { variant.args.iter() })
+                    .flat_map(|variant| &variant.args)
                     .map(|aty| { aty.subst_spanned(cx, substs, Some(sp)) });
 
                 find_nonrepresentable(cx, sp, seen, iter)
@@ -4233,7 +4233,7 @@ pub fn is_type_representable<'tcx>(cx: &ctxt<'tcx>, sp: Span, ty: Ty<'tcx>)
                 let types_a = substs_a.types.get_slice(subst::TypeSpace);
                 let types_b = substs_b.types.get_slice(subst::TypeSpace);
 
-                let mut pairs = types_a.iter().zip(types_b.iter());
+                let mut pairs = types_a.iter().zip(types_b);
 
                 pairs.all(|(&a, &b)| same_type(a, b))
             }
@@ -4509,7 +4509,7 @@ pub fn named_element_ty<'tcx>(cx: &ctxt<'tcx>,
             let variant_info = enum_variant_with_id(cx, def_id, variant_def_id);
             variant_info.arg_names.as_ref()
                 .expect("must have struct enum variant if accessing a named fields")
-                .iter().zip(variant_info.args.iter())
+                .iter().zip(&variant_info.args)
                 .find(|&(&name, _)| name == n)
                 .map(|(_name, arg_t)| arg_t.subst(cx, substs))
         }
@@ -5401,7 +5401,7 @@ pub fn associated_type_parameter_index(cx: &ctxt,
                                        trait_def: &TraitDef,
                                        associated_type_id: ast::DefId)
                                        -> usize {
-    for type_parameter_def in trait_def.generics.types.iter() {
+    for type_parameter_def in &trait_def.generics.types {
         if type_parameter_def.def_id == associated_type_id {
             return type_parameter_def.index as usize
         }
@@ -6607,8 +6607,8 @@ pub fn hash_crate_independent<'tcx>(tcx: &ctxt<'tcx>, ty: Ty<'tcx>, svh: &Svh) -
                     hash!(data.bounds);
 
                     let principal = anonymize_late_bound_regions(tcx, &data.principal).0;
-                    for subty in principal.substs.types.iter() {
-                        helper(tcx, *subty, svh, state);
+                    for subty in &principal.substs.types {
+                        helper(tcx, subty, svh, state);
                     }
 
                     return false;
@@ -6933,7 +6933,7 @@ pub fn accumulate_lifetimes_in_type(accumulator: &mut Vec<ty::Region>,
         match substs.regions {
             subst::ErasedRegions => {}
             subst::NonerasedRegions(ref regions) => {
-                for region in regions.iter() {
+                for region in regions {
                     accumulator.push(*region)
                 }
             }
@@ -7207,7 +7207,7 @@ pub fn can_type_implement_copy<'a,'tcx>(param_env: &ParameterEnvironment<'a, 'tc
         }
         ty::ty_enum(enum_did, substs) => {
             let enum_variants = ty::enum_variants(tcx, enum_did);
-            for variant in &*enum_variants {
+            for variant in enum_variants.iter() {
                 for variant_arg_type in &variant.args {
                     let substd_arg_type =
                         variant_arg_type.subst(tcx, substs);

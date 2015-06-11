@@ -906,7 +906,7 @@ impl<K, V, S> HashMap<K, V, S>
     ///     *val *= 2;
     /// }
     ///
-    /// for (key, val) in map.iter() {
+    /// for (key, val) in &map {
     ///     println!("key: {} val: {}", key, val);
     /// }
     /// ```

@@ -276,7 +276,7 @@ impl<'a, 'tcx> Implicator<'a, 'tcx> {
 
         let variances = ty::item_variances(self.tcx(), def_id);
 
-        for (&region, &variance) in substs.regions().iter().zip(variances.regions.iter()) {
+        for (&region, &variance) in substs.regions().iter().zip(&variances.regions) {
             match variance {
                 ty::Contravariant | ty::Invariant => {
                     // If any data with this lifetime is reachable
@@ -287,7 +287,7 @@ impl<'a, 'tcx> Implicator<'a, 'tcx> {
             }
         }
 
-        for (&ty, &variance) in substs.types.iter().zip(variances.types.iter()) {
+        for (&ty, &variance) in substs.types.iter().zip(&variances.types) {
             match variance {
                 ty::Covariant | ty::Invariant => {
                     // If any data of this type is reachable within,

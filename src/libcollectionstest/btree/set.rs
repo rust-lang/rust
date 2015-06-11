@@ -147,7 +147,7 @@ fn test_zip() {
 
     let x = x;
     let y = y;
-    let mut z = x.iter().zip(y.iter());
+    let mut z = x.iter().zip(&y);
 
     // FIXME: #5801: this needs a type hint to compile...
     let result: Option<(&usize, & &'static str)> = z.next();
