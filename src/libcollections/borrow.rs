@@ -21,7 +21,7 @@ use core::ops::Deref;
 use core::option::Option;
 
 use fmt;
-use alloc::{rc, arc};
+use alloc::{boxed, rc, arc};
 
 use self::Cow::*;
 
@@ -113,6 +113,14 @@ impl<'a, T: ?Sized> Borrow<T> for &'a mut T {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: ?Sized> BorrowMut<T> for &'a mut T {
+    fn borrow_mut(&mut self) -> &mut T { &mut **self }
+}
+
+impl<T: ?Sized> Borrow<T> for boxed::Box<T> {
+    fn borrow(&self) -> &T { &**self }
+}
+
+impl<T: ?Sized> BorrowMut<T> for boxed::Box<T> {
     fn borrow_mut(&mut self) -> &mut T { &mut **self }
 }
 
