@@ -54,6 +54,7 @@ document.addEventListener("DOMContentLoaded", function(event) {
   for (var i = 0; i < toc.length; i++) {
     if (toc[i].attributes['href'].value.split('/').pop() === href) {
       var nav = document.createElement('p');
+      nav.className = 'nav-previous-next'
       if (i > 0) {
         var prevNode = toc[i-1].cloneNode(true);
         prevNode.className = 'left';

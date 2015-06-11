@@ -163,6 +163,10 @@ pre {
     border-radius: 3px;
 }
 
+.nav-previous-next {
+    margin-top: 60px;
+}
+
 .left {
     float: left;
 }
