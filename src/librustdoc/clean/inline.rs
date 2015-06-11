@@ -228,7 +228,7 @@ pub fn build_impls(cx: &DocContext, tcx: &ty::ctxt,
     match tcx.inherent_impls.borrow().get(&did) {
         None => {}
         Some(i) => {
-            for &did in &**i {
+            for &did in i.iter() {
                 build_impl(cx, tcx, did, &mut impls);
             }
         }

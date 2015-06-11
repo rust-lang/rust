@@ -482,7 +482,7 @@ pub fn check_item_types(ccx: &CrateCtxt) {
 
     ccx.tcx.sess.abort_if_errors();
 
-    for drop_method_did in &*ccx.tcx.destructors.borrow() {
+    for drop_method_did in ccx.tcx.destructors.borrow().iter() {
         if drop_method_did.krate == ast::LOCAL_CRATE {
             let drop_impl_did = ccx.tcx.map.get_parent_did(drop_method_did.node);
             match dropck::check_drop_impl(ccx.tcx, drop_impl_did) {
@@ -1071,7 +1071,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     let provided_methods = ty::provided_trait_methods(tcx, impl_trait_ref.def_id);
     let associated_consts = ty::associated_consts(tcx, impl_trait_ref.def_id);
     let mut missing_items = Vec::new();
-    for trait_item in &*trait_items {
+    for trait_item in trait_items.iter() {
         match *trait_item {
             ty::ConstTraitItem(ref associated_const) => {
                 let is_implemented = impl_items.iter().any(|ii| {
@@ -4292,7 +4292,7 @@ pub fn check_enum_variants<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
         // we need not check for that.
         let variants = ty::enum_variants(ccx.tcx, def_id);
 
-        for (v, variant) in vs.iter().zip(&*variants) {
+        for (v, variant) in vs.iter().zip(variants.iter()) {
             let current_disr_val = variant.disr_val;
 
             // Check for duplicate discriminant values

@@ -81,7 +81,7 @@ impl<'a, 'b, 'tcx> ExportRecorder<'a, 'b, 'tcx> {
         self.record_exports_for_module(&*module_);
         build_reduced_graph::populate_module_if_necessary(self.resolver, &module_);
 
-        for (_, child_name_bindings) in &*module_.children.borrow() {
+        for (_, child_name_bindings) in module_.children.borrow().iter() {
             match child_name_bindings.get_module_if_available() {
                 None => {
                     // Nothing to do.
@@ -92,7 +92,7 @@ impl<'a, 'b, 'tcx> ExportRecorder<'a, 'b, 'tcx> {
             }
         }
 
-        for (_, child_module) in &*module_.anonymous_children.borrow() {
+        for (_, child_module) in module_.anonymous_children.borrow().iter() {
             self.record_exports_for_module_subtree(child_module.clone());
         }
     }
@@ -134,7 +134,7 @@ impl<'a, 'b, 'tcx> ExportRecorder<'a, 'b, 'tcx> {
     fn add_exports_for_module(&mut self,
                               exports: &mut Vec<Export>,
                               module_: &Module) {
-        for (name, import_resolution) in &*module_.import_resolutions.borrow() {
+        for (name, import_resolution) in module_.import_resolutions.borrow().iter() {
             if !import_resolution.is_public {
                 continue
             }

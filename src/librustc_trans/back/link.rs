@@ -204,7 +204,7 @@ fn symbol_hash<'tcx>(tcx: &ty::ctxt<'tcx>,
     symbol_hasher.input_str(&link_meta.crate_name);
     symbol_hasher.input_str("-");
     symbol_hasher.input_str(link_meta.crate_hash.as_str());
-    for meta in &*tcx.sess.crate_metadata.borrow() {
+    for meta in tcx.sess.crate_metadata.borrow().iter() {
         symbol_hasher.input_str(&meta[..]);
     }
     symbol_hasher.input_str("-");
@@ -389,7 +389,7 @@ pub fn link_binary(sess: &Session,
                    outputs: &OutputFilenames,
                    crate_name: &str) -> Vec<PathBuf> {
     let mut out_filenames = Vec::new();
-    for &crate_type in &*sess.crate_types.borrow() {
+    for &crate_type in sess.crate_types.borrow().iter() {
         if invalid_output_for_target(sess, crate_type) {
             sess.bug(&format!("invalid output type `{:?}` for target os `{}`",
                              crate_type, sess.opts.target_triple));
@@ -559,7 +559,7 @@ fn link_rlib<'a>(sess: &'a Session,
     let mut ab = ArchiveBuilder::create(config);
     ab.add_file(obj_filename).unwrap();
 
-    for &(ref l, kind) in &*sess.cstore.get_used_libraries().borrow() {
+    for &(ref l, kind) in sess.cstore.get_used_libraries().borrow().iter() {
         match kind {
             cstore::NativeStatic => ab.add_native_library(&l).unwrap(),
             cstore::NativeFramework | cstore::NativeUnknown => {}
@@ -918,7 +918,7 @@ fn link_args(cmd: &mut Linker,
         let empty_vec = Vec::new();
         let empty_str = String::new();
         let args = sess.opts.cg.link_args.as_ref().unwrap_or(&empty_vec);
-        let mut args = args.iter().chain(&*used_link_args);
+        let mut args = args.iter().chain(used_link_args.iter());
         let relocation_model = sess.opts.cg.relocation_model.as_ref()
                                    .unwrap_or(&empty_str);
         if (t.options.relocation_model == "pic" || *relocation_model == "pic")

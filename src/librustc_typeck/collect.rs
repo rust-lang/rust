@@ -516,7 +516,7 @@ impl<'tcx> GetTypeParameterBounds<'tcx> for ast::Generics {
             self.ty_params
                 .iter()
                 .filter(|p| p.id == node_id)
-                .flat_map(|p| &*p.bounds)
+                .flat_map(|p| p.bounds.iter())
                 .flat_map(|b| predicates_from_bound(astconv, ty, b));
 
         let from_where_clauses =
@@ -528,7 +528,7 @@ impl<'tcx> GetTypeParameterBounds<'tcx> for ast::Generics {
                     _ => None
                 })
                 .filter(|bp| is_param(astconv.tcx(), &bp.bounded_ty, node_id))
-                .flat_map(|bp| &*bp.bounds)
+                .flat_map(|bp| bp.bounds.iter())
                 .flat_map(|b| predicates_from_bound(astconv, ty, b));
 
         from_ty_params.chain(from_where_clauses).collect()
@@ -777,8 +777,8 @@ fn ensure_no_ty_param_bounds(ccx: &CrateCtxt,
                                  thing: &'static str) {
     let mut warn = false;
 
-    for ty_param in &*generics.ty_params {
-        for bound in &*ty_param.bounds {
+    for ty_param in generics.ty_params.iter() {
+        for bound in ty_param.bounds.iter() {
             match *bound {
                 ast::TraitTyParamBound(..) => {
                     warn = true;
@@ -1778,7 +1778,7 @@ fn ty_generic_predicates<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                                       &ExplicitRscope,
                                       &*bound_pred.bounded_ty);
 
-                for bound in &*bound_pred.bounds {
+                for bound in bound_pred.bounds.iter() {
                     match bound {
                         &ast::TyParamBound::TraitTyParamBound(ref poly_trait_ref, _) => {
                             let mut projections = Vec::new();

@@ -505,7 +505,7 @@ impl<'a> TraitDef<'a> {
             bounds.push(cx.typarambound(trait_path.clone()));
 
             // also add in any bounds from the declaration
-            for declared_bound in &*ty_param.bounds {
+            for declared_bound in ty_param.bounds.iter() {
                 bounds.push((*declared_bound).clone());
             }
 

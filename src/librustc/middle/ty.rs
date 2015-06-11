@@ -862,7 +862,7 @@ macro_rules! sty_debug_print {
                 $(let mut $variant = total;)*
 
 
-                for (_, t) in &*tcx.interner.borrow() {
+                for (_, t) in tcx.interner.borrow().iter() {
                     let variant = match t.sty {
                         ty::ty_bool | ty::ty_char | ty::ty_int(..) | ty::ty_uint(..) |
                             ty::ty_float(..) | ty::ty_str => continue,
@@ -2571,7 +2571,7 @@ impl<'tcx> TraitDef<'tcx> {
     pub fn for_each_impl<F: FnMut(DefId)>(&self, tcx: &ctxt<'tcx>, mut f: F)  {
         ty::populate_implementations_for_trait_if_necessary(tcx, self.trait_ref.def_id);
 
-        for &impl_def_id in &*self.blanket_impls.borrow() {
+        for &impl_def_id in self.blanket_impls.borrow().iter() {
             f(impl_def_id);
         }
 
@@ -2589,7 +2589,7 @@ impl<'tcx> TraitDef<'tcx> {
     {
         ty::populate_implementations_for_trait_if_necessary(tcx, self.trait_ref.def_id);
 
-        for &impl_def_id in &*self.blanket_impls.borrow() {
+        for &impl_def_id in self.blanket_impls.borrow().iter() {
             f(impl_def_id);
         }
 
@@ -7207,7 +7207,7 @@ pub fn can_type_implement_copy<'a,'tcx>(param_env: &ParameterEnvironment<'a, 'tc
         }
         ty::ty_enum(enum_did, substs) => {
             let enum_variants = ty::enum_variants(tcx, enum_did);
-            for variant in &*enum_variants {
+            for variant in enum_variants.iter() {
                 for variant_arg_type in &variant.args {
                     let substd_arg_type =
                         variant_arg_type.subst(tcx, substs);

@@ -79,7 +79,7 @@ fn report_on_unimplemented<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                                      span: Span) -> Option<String> {
     let def_id = trait_ref.def_id;
     let mut report = None;
-    for item in &*ty::get_attrs(infcx.tcx, def_id) {
+    for item in ty::get_attrs(infcx.tcx, def_id).iter() {
         if item.check_name("rustc_on_unimplemented") {
             let err_sp = if item.meta().span == DUMMY_SP {
                 span

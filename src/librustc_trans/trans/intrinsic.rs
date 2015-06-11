@@ -93,7 +93,7 @@ pub fn get_simple_intrinsic(ccx: &CrateContext, item: &ast::ForeignItem) -> Opti
 /// the only intrinsic that needs such verification is `transmute`.
 pub fn check_intrinsics(ccx: &CrateContext) {
     let mut last_failing_id = None;
-    for transmute_restriction in &*ccx.tcx().transmute_restrictions.borrow() {
+    for transmute_restriction in ccx.tcx().transmute_restrictions.borrow().iter() {
         // Sometimes, a single call to transmute will push multiple
         // type pairs to test in order to exhaustively test the
         // possibility around a type parameter. If one of those fails,
