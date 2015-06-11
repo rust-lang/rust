@@ -220,6 +220,42 @@ impl<T> Rc<T> {
             }
         }
     }
+
+    /// Unwraps the contained value if the `Rc<T>` is unique.
+    ///
+    /// If the `Rc<T>` is not unique, an `Err` is returned with the same
+    /// `Rc<T>`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(rc_unique)]
+    /// use std::rc::{self, Rc};
+    ///
+    /// let x = Rc::new(3);
+    /// assert_eq!(rc::try_unwrap(x), Ok(3));
+    ///
+    /// let x = Rc::new(4);
+    /// let _y = x.clone();
+    /// assert_eq!(rc::try_unwrap(x), Err(Rc::new(4)));
+    /// ```
+    #[inline]
+    #[unstable(feature = "rc_unique")]
+    pub fn try_unwrap(rc: Rc<T>) -> Result<T, Rc<T>> {
+        if Rc::is_unique(&rc) {
+            unsafe {
+                let val = ptr::read(&*rc); // copy the contained object
+                // destruct the box and skip our Drop
+                // we can ignore the refcounts because we know we're unique
+                deallocate(*rc._ptr as *mut u8, size_of::<RcBox<T>>(),
+                            min_align_of::<RcBox<T>>());
+                forget(rc);
+                Ok(val)
+            }
+        } else {
+            Err(rc)
+        }
+    }
 }
 
 impl<T: ?Sized> Rc<T> {
@@ -241,17 +277,78 @@ impl<T: ?Sized> Rc<T> {
         self.inc_weak();
         Weak { _ptr: self._ptr }
     }
+
+    /// Get the number of weak references to this value.
+    #[inline]
+    #[unstable(feature = "rc_counts")]
+    pub fn weak_count(this: &Rc<T>) -> usize { this.weak() - 1 }
+
+    /// Get the number of strong references to this value.
+    #[inline]
+    #[unstable(feature = "rc_counts")]
+    pub fn strong_count(this: &Rc<T>) -> usize { this.strong() }
+
+    /// Returns true if there are no other `Rc` or `Weak<T>` values that share
+    /// the same inner value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(rc_unique)]
+    /// use std::rc;
+    /// use std::rc::Rc;
+    ///
+    /// let five = Rc::new(5);
+    ///
+    /// rc::is_unique(&five);
+    /// ```
+    #[inline]
+    #[unstable(feature = "rc_unique")]
+    pub fn is_unique(rc: &Rc<T>) -> bool {
+        weak_count(rc) == 0 && strong_count(rc) == 1
+    }
+
+    /// Returns a mutable reference to the contained value if the `Rc<T>` is
+    /// unique.
+    ///
+    /// Returns `None` if the `Rc<T>` is not unique.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(rc_unique)]
+    /// use std::rc::{self, Rc};
+    ///
+    /// let mut x = Rc::new(3);
+    /// *rc::get_mut(&mut x).unwrap() = 4;
+    /// assert_eq!(*x, 4);
+    ///
+    /// let _y = x.clone();
+    /// assert!(rc::get_mut(&mut x).is_none());
+    /// ```
+    #[inline]
+    #[unstable(feature = "rc_unique")]
+    pub fn get_mut(rc: &mut Rc<T>) -> Option<&mut T> {
+        if Rc::is_unique(rc) {
+            let inner = unsafe { &mut **rc._ptr };
+            Some(&mut inner.value)
+        } else {
+            None
+        }
+    }
 }
 
 /// Get the number of weak references to this value.
 #[inline]
 #[unstable(feature = "rc_counts")]
-pub fn weak_count<T: ?Sized>(this: &Rc<T>) -> usize { this.weak() - 1 }
+#[deprecated(since = "1.2.0", reason = "renamed to Rc::weak_count")]
+pub fn weak_count<T: ?Sized>(this: &Rc<T>) -> usize { Rc::weak_count(this) }
 
 /// Get the number of strong references to this value.
 #[inline]
 #[unstable(feature = "rc_counts")]
-pub fn strong_count<T: ?Sized>(this: &Rc<T>) -> usize { this.strong() }
+#[deprecated(since = "1.2.0", reason = "renamed to Rc::strong_count")]
+pub fn strong_count<T: ?Sized>(this: &Rc<T>) -> usize { Rc::strong_count(this) }
 
 /// Returns true if there are no other `Rc` or `Weak<T>` values that share the
 /// same inner value.
@@ -269,9 +366,8 @@ pub fn strong_count<T: ?Sized>(this: &Rc<T>) -> usize { this.strong() }
 /// ```
 #[inline]
 #[unstable(feature = "rc_unique")]
-pub fn is_unique<T>(rc: &Rc<T>) -> bool {
-    weak_count(rc) == 0 && strong_count(rc) == 1
-}
+#[deprecated(since = "1.2.0", reason = "renamed to Rc::is_unique")]
+pub fn is_unique<T>(rc: &Rc<T>) -> bool { Rc::is_unique(rc) }
 
 /// Unwraps the contained value if the `Rc<T>` is unique.
 ///
@@ -292,21 +388,8 @@ pub fn is_unique<T>(rc: &Rc<T>) -> bool {
 /// ```
 #[inline]
 #[unstable(feature = "rc_unique")]
-pub fn try_unwrap<T>(rc: Rc<T>) -> Result<T, Rc<T>> {
-    if is_unique(&rc) {
-        unsafe {
-            let val = ptr::read(&*rc); // copy the contained object
-            // destruct the box and skip our Drop
-            // we can ignore the refcounts because we know we're unique
-            deallocate(*rc._ptr as *mut u8, size_of::<RcBox<T>>(),
-                        min_align_of::<RcBox<T>>());
-            forget(rc);
-            Ok(val)
-        }
-    } else {
-        Err(rc)
-    }
-}
+#[deprecated(since = "1.2.0", reason = "renamed to Rc::try_unwrap")]
+pub fn try_unwrap<T>(rc: Rc<T>) -> Result<T, Rc<T>> { Rc::try_unwrap(rc) }
 
 /// Returns a mutable reference to the contained value if the `Rc<T>` is unique.
 ///
@@ -327,14 +410,8 @@ pub fn try_unwrap<T>(rc: Rc<T>) -> Result<T, Rc<T>> {
 /// ```
 #[inline]
 #[unstable(feature = "rc_unique")]
-pub fn get_mut<T>(rc: &mut Rc<T>) -> Option<&mut T> {
-    if is_unique(rc) {
-        let inner = unsafe { &mut **rc._ptr };
-        Some(&mut inner.value)
-    } else {
-        None
-    }
-}
+#[deprecated(since = "1.2.0", reason = "renamed to Rc::get_mut")]
+pub fn get_mut<T>(rc: &mut Rc<T>) -> Option<&mut T> { Rc::get_mut(rc) }
 
 impl<T: Clone> Rc<T> {
     /// Make a mutable reference from the given `Rc<T>`.

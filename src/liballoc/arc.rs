@@ -205,9 +205,21 @@ impl<T: ?Sized> Arc<T> {
         self.inner().weak.fetch_add(1, Relaxed);
         Weak { _ptr: self._ptr }
     }
-}
 
-impl<T: ?Sized> Arc<T> {
+    /// Get the number of weak references to this value.
+    #[inline]
+    #[unstable(feature = "arc_counts")]
+    pub fn weak_count(this: &Arc<T>) -> usize {
+        this.inner().weak.load(SeqCst) - 1
+    }
+
+    /// Get the number of strong references to this value.
+    #[inline]
+    #[unstable(feature = "arc_counts")]
+    pub fn strong_count(this: &Arc<T>) -> usize {
+        this.inner().strong.load(SeqCst)
+    }
+
     #[inline]
     fn inner(&self) -> &ArcInner<T> {
         // This unsafety is ok because while this arc is alive we're guaranteed
@@ -237,12 +249,14 @@ impl<T: ?Sized> Arc<T> {
 /// Get the number of weak references to this value.
 #[inline]
 #[unstable(feature = "arc_counts")]
-pub fn weak_count<T: ?Sized>(this: &Arc<T>) -> usize { this.inner().weak.load(SeqCst) - 1 }
+#[deprecated(since = "1.2.0", reason = "renamed to Arc::weak_count")]
+pub fn weak_count<T: ?Sized>(this: &Arc<T>) -> usize { Arc::weak_count(this) }
 
 /// Get the number of strong references to this value.
 #[inline]
 #[unstable(feature = "arc_counts")]
-pub fn strong_count<T: ?Sized>(this: &Arc<T>) -> usize { this.inner().strong.load(SeqCst) }
+#[deprecated(since = "1.2.0", reason = "renamed to Arc::strong_count")]
+pub fn strong_count<T: ?Sized>(this: &Arc<T>) -> usize { Arc::strong_count(this) }
 
 
 /// Returns a mutable reference to the contained value if the `Arc<T>` is unique.
@@ -272,6 +286,8 @@ pub fn strong_count<T: ?Sized>(this: &Arc<T>) -> usize { this.inner().strong.loa
 /// ```
 #[inline]
 #[unstable(feature = "arc_unique")]
+#[deprecated(since = "1.2.0",
+             reason = "this function is unsafe with weak pointers")]
 pub unsafe fn get_mut<T: ?Sized>(this: &mut Arc<T>) -> Option<&mut T> {
     // FIXME(#24880) potential race with upgraded weak pointers here
     if strong_count(this) == 1 && weak_count(this) == 0 {
@@ -353,6 +369,8 @@ impl<T: Clone> Arc<T> {
     /// ```
     #[inline]
     #[unstable(feature = "arc_unique")]
+    #[deprecated(since = "1.2.0",
+                 reason = "this function is unsafe with weak pointers")]
     pub unsafe fn make_unique(&mut self) -> &mut T {
         // FIXME(#24880) potential race with upgraded weak pointers here
         //
