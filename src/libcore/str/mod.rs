@@ -738,7 +738,7 @@ generate_pattern_iterators! {
         #[doc="Created with the method `.rmatch_indices()`."]
         struct RMatchIndices;
     stability:
-        #[unstable(feature = "str_internals",
+        #[unstable(feature = "str_match_indices",
                    reason = "type may be removed or have its iterator impl changed")]
     internal:
         MatchIndicesInternal yielding ((usize, usize));
@@ -779,7 +779,7 @@ generate_pattern_iterators! {
         #[doc="Created with the method `.rmatches()`."]
         struct RMatches;
     stability:
-        #[unstable(feature = "str_internals", reason = "type got recently added")]
+        #[stable(feature = "str_matches", since = "1.2.0")]
     internal:
         MatchesInternal yielding (&'a str);
     delegate double ended;
