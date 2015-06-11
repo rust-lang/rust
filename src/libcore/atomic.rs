@@ -216,7 +216,7 @@ impl AtomicBool {
     ///
     /// let some_bool = AtomicBool::new(true);
     ///
-    /// let value = some_bool.load(Ordering::Relaxed);
+    /// assert_eq!(some_bool.load(Ordering::Relaxed), true);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -236,6 +236,7 @@ impl AtomicBool {
     /// let some_bool = AtomicBool::new(true);
     ///
     /// some_bool.store(false, Ordering::Relaxed);
+    /// assert_eq!(some_bool.load(Ordering::Relaxed), false);
     /// ```
     ///
     /// # Panics
@@ -260,7 +261,8 @@ impl AtomicBool {
     ///
     /// let some_bool = AtomicBool::new(true);
     ///
-    /// let value = some_bool.swap(false, Ordering::Relaxed);
+    /// assert_eq!(some_bool.swap(false, Ordering::Relaxed), true);
+    /// assert_eq!(some_bool.load(Ordering::Relaxed), false);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -285,7 +287,11 @@ impl AtomicBool {
     ///
     /// let some_bool = AtomicBool::new(true);
     ///
-    /// let value = some_bool.store(false, Ordering::Relaxed);
+    /// assert_eq!(some_bool.compare_and_swap(true, false, Ordering::Relaxed), true);
+    /// assert_eq!(some_bool.load(Ordering::Relaxed), false);
+    ///
+    /// assert_eq!(some_bool.compare_and_swap(true, true, Ordering::Relaxed), false);
+    /// assert_eq!(some_bool.load(Ordering::Relaxed), false);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -309,16 +315,16 @@ impl AtomicBool {
     /// use std::sync::atomic::{AtomicBool, Ordering};
     ///
     /// let foo = AtomicBool::new(true);
-    /// assert_eq!(true, foo.fetch_and(false, Ordering::SeqCst));
-    /// assert_eq!(false, foo.load(Ordering::SeqCst));
+    /// assert_eq!(foo.fetch_and(false, Ordering::SeqCst), true);
+    /// assert_eq!(foo.load(Ordering::SeqCst), false);
     ///
     /// let foo = AtomicBool::new(true);
-    /// assert_eq!(true, foo.fetch_and(true, Ordering::SeqCst));
-    /// assert_eq!(true, foo.load(Ordering::SeqCst));
+    /// assert_eq!(foo.fetch_and(true, Ordering::SeqCst), true);
+    /// assert_eq!(foo.load(Ordering::SeqCst), true);
     ///
     /// let foo = AtomicBool::new(false);
-    /// assert_eq!(false, foo.fetch_and(false, Ordering::SeqCst));
-    /// assert_eq!(false, foo.load(Ordering::SeqCst));
+    /// assert_eq!(foo.fetch_and(false, Ordering::SeqCst), false);
+    /// assert_eq!(foo.load(Ordering::SeqCst), false);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -341,17 +347,17 @@ impl AtomicBool {
     /// use std::sync::atomic::{AtomicBool, Ordering};
     ///
     /// let foo = AtomicBool::new(true);
-    /// assert_eq!(true, foo.fetch_nand(false, Ordering::SeqCst));
-    /// assert_eq!(true, foo.load(Ordering::SeqCst));
+    /// assert_eq!(foo.fetch_nand(false, Ordering::SeqCst), true);
+    /// assert_eq!(foo.load(Ordering::SeqCst), true);
     ///
     /// let foo = AtomicBool::new(true);
-    /// assert_eq!(true, foo.fetch_nand(true, Ordering::SeqCst));
-    /// assert_eq!(0, foo.load(Ordering::SeqCst) as usize);
-    /// assert_eq!(false, foo.load(Ordering::SeqCst));
+    /// assert_eq!(foo.fetch_nand(true, Ordering::SeqCst), true);
+    /// assert_eq!(foo.load(Ordering::SeqCst) as usize, 0);
+    /// assert_eq!(foo.load(Ordering::SeqCst), false);
     ///
     /// let foo = AtomicBool::new(false);
-    /// assert_eq!(false, foo.fetch_nand(false, Ordering::SeqCst));
-    /// assert_eq!(true, foo.load(Ordering::SeqCst));
+    /// assert_eq!(foo.fetch_nand(false, Ordering::SeqCst), false);
+    /// assert_eq!(foo.load(Ordering::SeqCst), true);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -374,16 +380,16 @@ impl AtomicBool {
     /// use std::sync::atomic::{AtomicBool, Ordering};
     ///
     /// let foo = AtomicBool::new(true);
-    /// assert_eq!(true, foo.fetch_or(false, Ordering::SeqCst));
-    /// assert_eq!(true, foo.load(Ordering::SeqCst));
+    /// assert_eq!(foo.fetch_or(false, Ordering::SeqCst), true);
+    /// assert_eq!(foo.load(Ordering::SeqCst), true);
     ///
     /// let foo = AtomicBool::new(true);
-    /// assert_eq!(true, foo.fetch_or(true, Ordering::SeqCst));
-    /// assert_eq!(true, foo.load(Ordering::SeqCst));
+    /// assert_eq!(foo.fetch_or(true, Ordering::SeqCst), true);
+    /// assert_eq!(foo.load(Ordering::SeqCst), true);
     ///
     /// let foo = AtomicBool::new(false);
-    /// assert_eq!(false, foo.fetch_or(false, Ordering::SeqCst));
-    /// assert_eq!(false, foo.load(Ordering::SeqCst));
+    /// assert_eq!(foo.fetch_or(false, Ordering::SeqCst), false);
+    /// assert_eq!(foo.load(Ordering::SeqCst), false);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -406,16 +412,16 @@ impl AtomicBool {
     /// use std::sync::atomic::{AtomicBool, Ordering};
     ///
     /// let foo = AtomicBool::new(true);
-    /// assert_eq!(true, foo.fetch_xor(false, Ordering::SeqCst));
-    /// assert_eq!(true, foo.load(Ordering::SeqCst));
+    /// assert_eq!(foo.fetch_xor(false, Ordering::SeqCst), true);
+    /// assert_eq!(foo.load(Ordering::SeqCst), true);
     ///
     /// let foo = AtomicBool::new(true);
-    /// assert_eq!(true, foo.fetch_xor(true, Ordering::SeqCst));
-    /// assert_eq!(false, foo.load(Ordering::SeqCst));
+    /// assert_eq!(foo.fetch_xor(true, Ordering::SeqCst), true);
+    /// assert_eq!(foo.load(Ordering::SeqCst), false);
     ///
     /// let foo = AtomicBool::new(false);
-    /// assert_eq!(false, foo.fetch_xor(false, Ordering::SeqCst));
-    /// assert_eq!(false, foo.load(Ordering::SeqCst));
+    /// assert_eq!(foo.fetch_xor(false, Ordering::SeqCst), false);
+    /// assert_eq!(foo.load(Ordering::SeqCst), false);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -458,7 +464,7 @@ impl AtomicIsize {
     ///
     /// let some_isize = AtomicIsize::new(5);
     ///
-    /// let value = some_isize.load(Ordering::Relaxed);
+    /// assert_eq!(some_isize.load(Ordering::Relaxed), 5);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -478,6 +484,7 @@ impl AtomicIsize {
     /// let some_isize = AtomicIsize::new(5);
     ///
     /// some_isize.store(10, Ordering::Relaxed);
+    /// assert_eq!(some_isize.load(Ordering::Relaxed), 10);
     /// ```
     ///
     /// # Panics
@@ -500,7 +507,7 @@ impl AtomicIsize {
     ///
     /// let some_isize = AtomicIsize::new(5);
     ///
-    /// let value = some_isize.swap(10, Ordering::Relaxed);
+    /// assert_eq!(some_isize.swap(10, Ordering::Relaxed), 5);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -523,7 +530,11 @@ impl AtomicIsize {
     ///
     /// let some_isize = AtomicIsize::new(5);
     ///
-    /// let value = some_isize.compare_and_swap(5, 10, Ordering::Relaxed);
+    /// assert_eq!(some_isize.compare_and_swap(5, 10, Ordering::Relaxed), 5);
+    /// assert_eq!(some_isize.load(Ordering::Relaxed), 10);
+    ///
+    /// assert_eq!(some_isize.compare_and_swap(6, 12, Ordering::Relaxed), 10);
+    /// assert_eq!(some_isize.load(Ordering::Relaxed), 10);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -539,8 +550,8 @@ impl AtomicIsize {
     /// use std::sync::atomic::{AtomicIsize, Ordering};
     ///
     /// let foo = AtomicIsize::new(0);
-    /// assert_eq!(0, foo.fetch_add(10, Ordering::SeqCst));
-    /// assert_eq!(10, foo.load(Ordering::SeqCst));
+    /// assert_eq!(foo.fetch_add(10, Ordering::SeqCst), 0);
+    /// assert_eq!(foo.load(Ordering::SeqCst), 10);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -556,8 +567,8 @@ impl AtomicIsize {
     /// use std::sync::atomic::{AtomicIsize, Ordering};
     ///
     /// let foo = AtomicIsize::new(0);
-    /// assert_eq!(0, foo.fetch_sub(10, Ordering::SeqCst));
-    /// assert_eq!(-10, foo.load(Ordering::SeqCst));
+    /// assert_eq!(foo.fetch_sub(10, Ordering::SeqCst), 0);
+    /// assert_eq!(foo.load(Ordering::SeqCst), -10);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -573,8 +584,8 @@ impl AtomicIsize {
     /// use std::sync::atomic::{AtomicIsize, Ordering};
     ///
     /// let foo = AtomicIsize::new(0b101101);
-    /// assert_eq!(0b101101, foo.fetch_and(0b110011, Ordering::SeqCst));
-    /// assert_eq!(0b100001, foo.load(Ordering::SeqCst));
+    /// assert_eq!(foo.fetch_and(0b110011, Ordering::SeqCst), 0b101101);
+    /// assert_eq!(foo.load(Ordering::SeqCst), 0b100001);
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn fetch_and(&self, val: isize, order: Ordering) -> isize {
@@ -589,8 +600,8 @@ impl AtomicIsize {
     /// use std::sync::atomic::{AtomicIsize, Ordering};
     ///
     /// let foo = AtomicIsize::new(0b101101);
-    /// assert_eq!(0b101101, foo.fetch_or(0b110011, Ordering::SeqCst));
-    /// assert_eq!(0b111111, foo.load(Ordering::SeqCst));
+    /// assert_eq!(foo.fetch_or(0b110011, Ordering::SeqCst), 0b101101);
+    /// assert_eq!(foo.load(Ordering::SeqCst), 0b111111);
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn fetch_or(&self, val: isize, order: Ordering) -> isize {
@@ -605,8 +616,8 @@ impl AtomicIsize {
     /// use std::sync::atomic::{AtomicIsize, Ordering};
     ///
     /// let foo = AtomicIsize::new(0b101101);
-    /// assert_eq!(0b101101, foo.fetch_xor(0b110011, Ordering::SeqCst));
-    /// assert_eq!(0b011110, foo.load(Ordering::SeqCst));
+    /// assert_eq!(foo.fetch_xor(0b110011, Ordering::SeqCst), 0b101101);
+    /// assert_eq!(foo.load(Ordering::SeqCst), 0b011110);
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn fetch_xor(&self, val: isize, order: Ordering) -> isize {
@@ -646,7 +657,7 @@ impl AtomicUsize {
     ///
     /// let some_usize = AtomicUsize::new(5);
     ///
-    /// let value = some_usize.load(Ordering::Relaxed);
+    /// assert_eq!(some_usize.load(Ordering::Relaxed), 5);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -666,6 +677,7 @@ impl AtomicUsize {
     /// let some_usize = AtomicUsize::new(5);
     ///
     /// some_usize.store(10, Ordering::Relaxed);
+    /// assert_eq!(some_usize.load(Ordering::Relaxed), 10);
     /// ```
     ///
     /// # Panics
@@ -688,7 +700,8 @@ impl AtomicUsize {
     ///
     /// let some_usize= AtomicUsize::new(5);
     ///
-    /// let value = some_usize.swap(10, Ordering::Relaxed);
+    /// assert_eq!(some_usize.swap(10, Ordering::Relaxed), 5);
+    /// assert_eq!(some_usize.load(Ordering::Relaxed), 10);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -711,7 +724,11 @@ impl AtomicUsize {
     ///
     /// let some_usize = AtomicUsize::new(5);
     ///
-    /// let value = some_usize.compare_and_swap(5, 10, Ordering::Relaxed);
+    /// assert_eq!(some_usize.compare_and_swap(5, 10, Ordering::Relaxed), 5);
+    /// assert_eq!(some_usize.load(Ordering::Relaxed), 10);
+    ///
+    /// assert_eq!(some_usize.compare_and_swap(6, 12, Ordering::Relaxed), 10);
+    /// assert_eq!(some_usize.load(Ordering::Relaxed), 10);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -727,8 +744,8 @@ impl AtomicUsize {
     /// use std::sync::atomic::{AtomicUsize, Ordering};
     ///
     /// let foo = AtomicUsize::new(0);
-    /// assert_eq!(0, foo.fetch_add(10, Ordering::SeqCst));
-    /// assert_eq!(10, foo.load(Ordering::SeqCst));
+    /// assert_eq!(foo.fetch_add(10, Ordering::SeqCst), 0);
+    /// assert_eq!(foo.load(Ordering::SeqCst), 10);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -744,8 +761,8 @@ impl AtomicUsize {
     /// use std::sync::atomic::{AtomicUsize, Ordering};
     ///
     /// let foo = AtomicUsize::new(10);
-    /// assert_eq!(10, foo.fetch_sub(10, Ordering::SeqCst));
-    /// assert_eq!(0, foo.load(Ordering::SeqCst));
+    /// assert_eq!(foo.fetch_sub(10, Ordering::SeqCst), 10);
+    /// assert_eq!(foo.load(Ordering::SeqCst), 0);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -761,8 +778,8 @@ impl AtomicUsize {
     /// use std::sync::atomic::{AtomicUsize, Ordering};
     ///
     /// let foo = AtomicUsize::new(0b101101);
-    /// assert_eq!(0b101101, foo.fetch_and(0b110011, Ordering::SeqCst));
-    /// assert_eq!(0b100001, foo.load(Ordering::SeqCst));
+    /// assert_eq!(foo.fetch_and(0b110011, Ordering::SeqCst), 0b101101);
+    /// assert_eq!(foo.load(Ordering::SeqCst), 0b100001);
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn fetch_and(&self, val: usize, order: Ordering) -> usize {
@@ -777,8 +794,8 @@ impl AtomicUsize {
     /// use std::sync::atomic::{AtomicUsize, Ordering};
     ///
     /// let foo = AtomicUsize::new(0b101101);
-    /// assert_eq!(0b101101, foo.fetch_or(0b110011, Ordering::SeqCst));
-    /// assert_eq!(0b111111, foo.load(Ordering::SeqCst));
+    /// assert_eq!(foo.fetch_or(0b110011, Ordering::SeqCst), 0b101101);
+    /// assert_eq!(foo.load(Ordering::SeqCst), 0b111111);
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn fetch_or(&self, val: usize, order: Ordering) -> usize {
@@ -793,8 +810,8 @@ impl AtomicUsize {
     /// use std::sync::atomic::{AtomicUsize, Ordering};
     ///
     /// let foo = AtomicUsize::new(0b101101);
-    /// assert_eq!(0b101101, foo.fetch_xor(0b110011, Ordering::SeqCst));
-    /// assert_eq!(0b011110, foo.load(Ordering::SeqCst));
+    /// assert_eq!(foo.fetch_xor(0b110011, Ordering::SeqCst), 0b101101);
+    /// assert_eq!(foo.load(Ordering::SeqCst), 0b011110);
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn fetch_xor(&self, val: usize, order: Ordering) -> usize {
