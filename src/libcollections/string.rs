@@ -468,24 +468,24 @@ impl String {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn push(&mut self, ch: char) {
-        if (ch as u32) < 0x80 {
-            self.vec.push(ch as u8);
-            return;
-        }
+        match ch.len_utf8() {
+            1 => self.vec.push(ch as u8),
+            ch_len => {
+                let cur_len = self.len();
+                // This may use up to 4 bytes.
+                self.vec.reserve(ch_len);
 
-        let cur_len = self.len();
-        // This may use up to 4 bytes.
-        self.vec.reserve(4);
-
-        unsafe {
-            // Attempt to not use an intermediate buffer by just pushing bytes
-            // directly onto this string.
-            let slice = slice::from_raw_parts_mut (
-                self.vec.as_mut_ptr().offset(cur_len as isize),
-                4
-            );
-            let used = ch.encode_utf8(slice).unwrap_or(0);
-            self.vec.set_len(cur_len + used);
+                unsafe {
+                    // Attempt to not use an intermediate buffer by just pushing bytes
+                    // directly onto this string.
+                    let slice = slice::from_raw_parts_mut (
+                        self.vec.as_mut_ptr().offset(cur_len as isize),
+                        ch_len
+                    );
+                    let used = ch.encode_utf8(slice).unwrap_or(0);
+                    self.vec.set_len(cur_len + used);
+                }
+            }
         }
     }
 
