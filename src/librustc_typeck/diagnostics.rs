@@ -358,6 +358,97 @@ create an infinite recursion of dereferencing, in which case the only fix is to
 somehow break the recursion.
 "##,
 
+E0057: r##"
+When invoking closures or other implementations of the function traits `Fn`,
+`FnMut` or `FnOnce` using call notation, the number of parameters passed to the
+function must match its definition.
+
+An example using a closure:
+
+```
+let f = |x| x * 3;
+let a = f();        // invalid, too few parameters
+let b = f(4);       // this works!
+let c = f(2, 3);    // invalid, too many parameters
+```
+
+A generic function must be treated similarly:
+
+```
+fn foo<F: Fn()>(f: F) {
+    f(); // this is valid, but f(3) would not work
+}
+```
+"##,
+
+E0059: r##"
+The built-in function traits are generic over a tuple of the function arguments.
+If one uses angle-bracket notation (`Fn<(T,), Output=U>`) instead of parentheses
+(`Fn(T) -> U`) to denote the function trait, the type parameter should be a
+tuple. Otherwise function call notation cannot be used and the trait will not be
+implemented by closures.
+
+The most likely source of this error is using angle-bracket notation without
+wrapping the function argument type into a tuple, for example:
+
+```
+fn foo<F: Fn<i32>>(f: F) -> F::Output { f(3) }
+```
+
+It can be fixed by adjusting the trait bound like this:
+
+```
+fn foo<F: Fn<(i32,)>>(f: F) -> F::Output { f(3) }
+```
+
+Note that `(T,)` always denotes the type of a 1-tuple containing an element of
+type `T`. The comma is necessary for syntactic disambiguation.
+"##,
+
+E0060: r##"
+External C functions are allowed to be variadic. However, a variadic function
+takes a minimum number of arguments. For example, consider C's variadic `printf`
+function:
+
+```
+extern crate libc;
+use libc::{ c_char, c_int };
+
+extern "C" {
+    fn printf(_: *const c_char, ...) -> c_int;
+}
+```
+
+Using this declaration, it must be called with at least one argument, so
+simply calling `printf()` is illegal. But the following uses are allowed:
+
+```
+unsafe {
+    use std::ffi::CString;
+
+    printf(CString::new("test\n").unwrap().as_ptr());
+    printf(CString::new("number = %d\n").unwrap().as_ptr(), 3);
+    printf(CString::new("%d, %d\n").unwrap().as_ptr(), 10, 5);
+}
+```
+"##,
+
+E0061: r##"
+The number of arguments passed to a function must match the number of arguments
+specified in the function signature.
+
+For example, a function like
+
+```
+fn f(a: u16, b: &str) {}
+```
+
+must always be called with exactly two arguments, e.g. `f(2, "test")`.
+
+Note, that Rust does not have a notion of optional function arguments or
+variadic functions (except for its C-FFI).
+"##,
+
 E0062: r##"
 This error indicates that during an attempt to build a struct or struct-like
 enum variant, one of the fields was specified more than once. Each field should
@@ -1236,10 +1327,6 @@ register_diagnostics! {
     E0036, // incorrect number of type parameters given for this method
     E0044, // foreign items may not have type parameters
     E0045, // variadic function must have C calling convention
-    E0057, // method has an incompatible type for trait
-    E0059,
-    E0060,
-    E0061,
     E0068,
     E0071,
     E0074,
