@@ -454,6 +454,8 @@ impl<W: Read + Write> Read for InternalBufWriter<W> {
 #[unstable(feature = "buf_stream",
            reason = "unsure about semantics of buffering two directions, \
                      leading to issues like #17136")]
+#[deprecated(since = "1.2.0",
+             reason = "use the crates.io `bufstream` crate instead")]
 pub struct BufStream<S: Write> {
     inner: BufReader<InternalBufWriter<S>>
 }
@@ -461,6 +463,8 @@ pub struct BufStream<S: Write> {
 #[unstable(feature = "buf_stream",
            reason = "unsure about semantics of buffering two directions, \
                      leading to issues like #17136")]
+#[deprecated(since = "1.2.0",
+             reason = "use the crates.io `bufstream` crate instead")]
 impl<S: Read + Write> BufStream<S> {
     /// Creates a new buffered stream with explicitly listed capacities for the
     /// reader/writer buffer.
