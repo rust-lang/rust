@@ -685,10 +685,7 @@ mod stack {
         /// tied to the original tree.
         pub fn into_top(mut self) -> &'a mut V {
             unsafe {
-                mem::copy_mut_lifetime(
-                    self.map,
-                    self.top.from_raw_mut().val_mut()
-                )
+                &mut *(self.top.from_raw_mut().val_mut() as *mut V)
             }
         }
     }

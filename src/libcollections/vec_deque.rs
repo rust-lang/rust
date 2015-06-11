@@ -1530,6 +1530,7 @@ impl<'a, T> DoubleEndedIterator for Iter<'a, T> {
 impl<'a, T> ExactSizeIterator for Iter<'a, T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(deprecated)]
 impl<'a, T> RandomAccessIterator for Iter<'a, T> {
     #[inline]
     fn indexable(&self) -> usize {

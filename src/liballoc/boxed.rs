@@ -267,7 +267,7 @@ impl Box<Any> {
         if self.is::<T>() {
             unsafe {
                 // Get the raw representation of the trait object
-                let raw = into_raw(self);
+                let raw = Box::into_raw(self);
                 let to: TraitObject =
                     mem::transmute::<*mut Any, TraitObject>(raw);
 

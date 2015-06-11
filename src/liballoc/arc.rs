@@ -290,7 +290,7 @@ pub fn strong_count<T: ?Sized>(this: &Arc<T>) -> usize { Arc::strong_count(this)
              reason = "this function is unsafe with weak pointers")]
 pub unsafe fn get_mut<T: ?Sized>(this: &mut Arc<T>) -> Option<&mut T> {
     // FIXME(#24880) potential race with upgraded weak pointers here
-    if strong_count(this) == 1 && weak_count(this) == 0 {
+    if Arc::strong_count(this) == 1 && Arc::weak_count(this) == 0 {
         // This unsafety is ok because we're guaranteed that the pointer
         // returned is the *only* pointer that will ever be returned to T. Our
         // reference count is guaranteed to be 1 at this point, and we required

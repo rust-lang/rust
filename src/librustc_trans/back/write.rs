@@ -25,7 +25,6 @@ use syntax::diagnostic::{Emitter, Handler, Level};
 
 use std::ffi::{CStr, CString};
 use std::fs;
-use std::iter::Unfold;
 use std::mem;
 use std::path::Path;
 use std::process::{Command, Stdio};
@@ -913,11 +912,10 @@ fn run_work_singlethreaded(sess: &Session,
                            reachable: &[String],
                            work_items: Vec<WorkItem>) {
     let cgcx = CodegenContext::new_with_session(sess, reachable);
-    let mut work_items = work_items;
 
     // Since we're running single-threaded, we can pass the session to
     // the proc, allowing `optimize_and_codegen` to perform LTO.
-    for work in Unfold::new((), |_| work_items.pop()) {
+    for work in work_items.into_iter().rev() {
         execute_work_item(&cgcx, work);
     }
 }

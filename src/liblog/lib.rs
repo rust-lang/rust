@@ -173,12 +173,10 @@
 #![feature(box_syntax)]
 #![feature(const_fn)]
 #![feature(iter_cmp)]
-#![feature(once_new)]
 #![feature(rt)]
 #![feature(staged_api)]
 #![feature(static_mutex)]
 
-use std::boxed;
 use std::cell::RefCell;
 use std::fmt;
 use std::io::{self, Stderr};
@@ -437,12 +435,12 @@ fn init() {
 
         assert!(FILTER.is_null());
         match filter {
-            Some(f) => FILTER = boxed::into_raw(box f),
+            Some(f) => FILTER = Box::into_raw(box f),
             None => {}
         }
 
         assert!(DIRECTIVES.is_null());
-        DIRECTIVES = boxed::into_raw(box directives);
+        DIRECTIVES = Box::into_raw(box directives);
 
         // Schedule the cleanup for the globals for when the runtime exits.
         let _ = rt::at_exit(move || {

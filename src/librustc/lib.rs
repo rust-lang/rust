@@ -57,7 +57,7 @@
 #![feature(slice_position_elem)]
 #![feature(staged_api)]
 #![feature(str_char)]
-#![feature(str_matches)]
+#![feature(str_match_indices)]
 #![feature(vec_push_all)]
 #![feature(wrapping)]
 #![cfg_attr(test, feature(test))]

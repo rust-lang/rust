@@ -48,7 +48,7 @@
 // reconsider what crate these items belong in.
 
 use any::TypeId;
-use boxed::{self, Box};
+use boxed::Box;
 use convert::From;
 use fmt::{self, Debug, Display};
 use marker::{Send, Sync, Reflect};
@@ -249,7 +249,7 @@ impl Error {
         if self.is::<T>() {
             unsafe {
                 // Get the raw representation of the trait object
-                let raw = boxed::into_raw(self);
+                let raw = Box::into_raw(self);
                 let to: TraitObject =
                     transmute::<*mut Error, TraitObject>(raw);
 

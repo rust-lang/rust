@@ -11,7 +11,6 @@
 use prelude::v1::*;
 
 use any::Any;
-use boxed;
 use libc::c_void;
 use rt::libunwind as uw;
 
@@ -29,7 +28,7 @@ pub unsafe fn panic(data: Box<Any + Send + 'static>) -> ! {
         },
         cause: Some(data),
     };
-    let exception_param = boxed::into_raw(exception) as *mut uw::_Unwind_Exception;
+    let exception_param = Box::into_raw(exception) as *mut uw::_Unwind_Exception;
     let error = uw::_Unwind_RaiseException(exception_param);
     rtabort!("Could not unwind stack, error = {}", error as isize);
 

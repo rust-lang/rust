@@ -404,6 +404,7 @@ pub fn spawn<F, T>(f: F) -> JoinHandle<T> where
 #[deprecated(since = "1.2.0",
              reason = "this unsafe API is unlikely to ever be stabilized \
                        in this form")]
+#[allow(deprecated)]
 pub fn scoped<'a, T, F>(f: F) -> JoinGuard<'a, T> where
     T: Send + 'a, F: FnOnce() -> T, F: Send + 'a
 {

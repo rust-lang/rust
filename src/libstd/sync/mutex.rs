@@ -85,8 +85,6 @@ use sys_common::poison::{self, TryLockError, TryLockResult, LockResult};
 /// To recover from a poisoned mutex:
 ///
 /// ```
-/// #![feature(sync_poison)]
-///
 /// use std::sync::{Arc, Mutex};
 /// use std::thread;
 ///

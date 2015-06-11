@@ -151,6 +151,7 @@ mod hack {
         }
     }
 
+    #[allow(deprecated)]
     pub fn permutations<T>(s: &[T]) -> Permutations<T> where T: Clone {
         Permutations{
             swaps: ElementSwaps::new(s.len()),
@@ -871,6 +872,7 @@ impl<T> [T] {
     /// assert_eq!(Some(vec![1, 3, 2]), perms.next());
     /// assert_eq!(Some(vec![3, 1, 2]), perms.next());
     /// ```
+    #[allow(deprecated)]
     #[unstable(feature = "permutations")]
     #[deprecated(since = "1.2.0", reason = "not clear this should be in the stdlib")]
     #[inline]
@@ -896,6 +898,7 @@ impl<T> [T] {
     /// let b: &mut [_] = &mut [1, 0, 2];
     /// assert!(v == b);
     /// ```
+    #[allow(deprecated)]
     #[unstable(feature = "permutations",
                reason = "uncertain if this merits inclusion in std")]
     #[deprecated(since = "1.2.0", reason = "not clear this should be in the stdlib")]
@@ -920,6 +923,7 @@ impl<T> [T] {
     /// let b: &mut [_] = &mut [0, 1, 2];
     /// assert!(v == b);
     /// ```
+    #[allow(deprecated)]
     #[unstable(feature = "permutations",
                reason = "uncertain if this merits inclusion in std")]
     #[deprecated(since = "1.2.0", reason = "not clear this should be in the stdlib")]
@@ -1067,6 +1071,7 @@ impl<T: Clone, V: Borrow<[T]>> SliceConcatExt<T> for [V] {
 ///
 /// The last generated swap is always (0, 1), and it returns the
 /// sequence to its initial order.
+#[allow(deprecated)]
 #[unstable(feature = "permutations")]
 #[derive(Clone)]
 #[deprecated(since = "1.2.0", reason = "not clear this should be in the stdlib")]
@@ -1078,6 +1083,7 @@ pub struct ElementSwaps {
     swaps_made : usize,
 }
 
+#[allow(deprecated)]
 impl ElementSwaps {
     /// Creates an `ElementSwaps` iterator for a sequence of `length` elements.
     #[unstable(feature = "permutations")]
@@ -1137,6 +1143,7 @@ struct SizeDirection {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(deprecated)]
 impl Iterator for ElementSwaps {
     type Item = (usize, usize);
 
@@ -1205,12 +1212,14 @@ impl Iterator for ElementSwaps {
 /// Generates even and odd permutations alternately.
 #[unstable(feature = "permutations")]
 #[deprecated(since = "1.2.0", reason = "not clear this should be in the stdlib")]
+#[allow(deprecated)]
 pub struct Permutations<T> {
     swaps: ElementSwaps,
     v: Vec<T>,
 }
 
 #[unstable(feature = "permutations", reason = "trait is unstable")]
+#[allow(deprecated)]
 impl<T: Clone> Iterator for Permutations<T> {
     type Item = Vec<T>;
 

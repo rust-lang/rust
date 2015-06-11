@@ -326,7 +326,6 @@ mod imp {
     // Due to rust-lang/rust#18804, make sure this is not generic!
     #[cfg(target_os = "linux")]
     unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern fn(*mut u8)) {
-        use boxed;
         use mem;
         use ptr;
         use libc;
@@ -360,7 +359,7 @@ mod imp {
         type List = Vec<(*mut u8, unsafe extern fn(*mut u8))>;
         if DTORS.get().is_null() {
             let v: Box<List> = box Vec::new();
-            DTORS.set(boxed::into_raw(v) as *mut u8);
+            DTORS.set(Box::into_raw(v) as *mut u8);
         }
         let list: &mut List = &mut *(DTORS.get() as *mut List);
         list.push((t, dtor));

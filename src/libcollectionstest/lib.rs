@@ -43,7 +43,7 @@
 #![feature(step_by)]
 #![feature(str_char)]
 #![feature(str_escape)]
-#![feature(str_matches)]
+#![feature(str_match_indices)]
 #![feature(str_utf16)]
 #![feature(subslice_offset)]
 #![feature(test)]

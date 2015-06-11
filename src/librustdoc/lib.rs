@@ -23,7 +23,6 @@
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(dynamic_lib)]
-#![feature(exit_status)]
 #![feature(libc)]
 #![feature(owned_ascii_ext)]
 #![feature(path_ext)]
@@ -61,6 +60,7 @@ use std::env;
 use std::fs::File;
 use std::io::{self, Read, Write};
 use std::path::PathBuf;
+use std::process;
 use std::rc::Rc;
 use std::sync::mpsc::channel;
 
@@ -134,7 +134,7 @@ pub fn main() {
         let s = env::args().collect::<Vec<_>>();
         main_args(&s)
     }).unwrap().join().unwrap();
-    env::set_exit_status(res as i32);
+    process::exit(res as i32);
 }
 
 pub fn opts() -> Vec<getopts::OptGroup> {

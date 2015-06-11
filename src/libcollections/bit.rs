@@ -86,6 +86,7 @@ use core::cmp::Ordering;
 use core::cmp;
 use core::fmt;
 use core::hash;
+#[allow(deprecated)]
 use core::iter::RandomAccessIterator;
 use core::iter::{Chain, Enumerate, Repeat, Skip, Take, repeat, Cloned};
 use core::iter::{self, FromIterator};
@@ -1188,6 +1189,7 @@ impl<'a> DoubleEndedIterator for Iter<'a> {
 impl<'a> ExactSizeIterator for Iter<'a> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(deprecated)]
 impl<'a> RandomAccessIterator for Iter<'a> {
     #[inline]
     fn indexable(&self) -> usize {
