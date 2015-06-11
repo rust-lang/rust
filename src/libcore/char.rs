@@ -152,10 +152,12 @@ pub trait CharExt {
 }
 
 impl CharExt for char {
+    #[inline]
     fn is_digit(self, radix: u32) -> bool {
         self.to_digit(radix).is_some()
     }
 
+    #[inline]
     fn to_digit(self, radix: u32) -> Option<u32> {
         if radix > 36 {
             panic!("to_digit: radix is too high (maximum 36)");
@@ -170,10 +172,12 @@ impl CharExt for char {
         else { None }
     }
 
+    #[inline]
     fn escape_unicode(self) -> EscapeUnicode {
         EscapeUnicode { c: self, state: EscapeUnicodeState::Backslash }
     }
 
+    #[inline]
     fn escape_default(self) -> EscapeDefault {
         let init_state = match self {
             '\t' => EscapeDefaultState::Backslash('t'),
