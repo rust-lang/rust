@@ -135,7 +135,9 @@ extern {
     pub fn sigaltstack(ss: *const sigaltstack,
                        oss: *mut sigaltstack) -> libc::c_int;
 
+    #[cfg(not(target_os = "android"))]
     pub fn sigemptyset(set: *mut sigset_t) -> libc::c_int;
+
     pub fn pthread_sigmask(how: libc::c_int, set: *const sigset_t,
                            oldset: *mut sigset_t) -> libc::c_int;
 
@@ -153,6 +155,14 @@ extern {
                      ptr: *const libc::c_void) -> libc::c_int;
     pub fn realpath(pathname: *const libc::c_char, resolved: *mut libc::c_char)
                     -> *mut libc::c_char;
+}
+
+// Ugh. This is only available as an inline until Android API 21.
+#[cfg(target_os = "android")]
+pub unsafe fn sigemptyset(set: *mut sigset_t) -> libc::c_int {
+    use intrinsics;
+    intrinsics::write_bytes(set, 0, 1);
+    return 0;
 }
 
 #[cfg(any(target_os = "linux",
