@@ -53,12 +53,15 @@ impl FileDesc {
         Ok(ret as usize)
     }
 
+    #[cfg(not(target_os = "nacl"))]
     pub fn set_cloexec(&self) {
         unsafe {
             let ret = c::ioctl(self.fd, c::FIOCLEX);
             debug_assert_eq!(ret, 0);
         }
     }
+    #[cfg(target_os = "nacl")]
+    pub fn set_cloexec(&self) { }
 }
 
 impl AsInner<c_int> for FileDesc {

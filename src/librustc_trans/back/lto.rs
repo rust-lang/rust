@@ -13,7 +13,7 @@ use super::write;
 use rustc::session::{self, config};
 use llvm;
 use llvm::archive_ro::ArchiveRO;
-use llvm::{ModuleRef, TargetMachineRef, True, False};
+use llvm::{ModuleRef, TargetMachineRef, False, True, PassManagerRef};
 use rustc::metadata::cstore;
 use rustc::util::common::time;
 
@@ -154,37 +154,62 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
         }
     }
 
+    run_passes(sess, llmod, tm, |_| (), |_| ());
+}
+
+pub fn run_passes<FA, FB>(sess: &session::Session,
+                          llmod: ModuleRef,
+                          tm: TargetMachineRef,
+                          pre: FA,
+                          post: FB)
+    where FA: FnOnce(PassManagerRef),
+          FB: FnOnce(PassManagerRef),
+{
     // Now we have one massive module inside of llmod. Time to run the
     // LTO-specific optimization passes that LLVM provides.
     //
     // This code is based off the code found in llvm's LTO code generator:
     //      tools/lto/LTOCodeGenerator.cpp
     debug!("running the pass manager");
-    unsafe {
-        let pm = llvm::LLVMCreatePassManager();
-        llvm::LLVMRustAddAnalysisPasses(tm, pm, llmod);
-        llvm::LLVMRustAddPass(pm, "verify\0".as_ptr() as *const _);
+    if !sess.opts.cg.no_prepopulate_passes {
+        unsafe {
+            let pm = llvm::LLVMCreatePassManager();
+            llvm::LLVMRustAddAnalysisPasses(tm, pm, llmod);
+            if !sess.no_verify() {
+                llvm::LLVMRustAddPass(pm, "verify\0".as_ptr() as *const i8);
+            }
 
-        let opt = match sess.opts.optimize {
-            config::No => 0,
-            config::Less => 1,
-            config::Default => 2,
-            config::Aggressive => 3,
-        };
+            pre(pm);
 
-        let builder = llvm::LLVMPassManagerBuilderCreate();
-        llvm::LLVMPassManagerBuilderSetOptLevel(builder, opt);
-        llvm::LLVMPassManagerBuilderPopulateLTOPassManager(builder, pm,
-            /* Internalize = */ False,
-            /* RunInliner = */ True);
-        llvm::LLVMPassManagerBuilderDispose(builder);
+            let opt = match sess.opts.optimize {
+                config::No => 0,
+                config::Less => 1,
+                config::Default => 2,
+                config::Aggressive => 3,
+            };
 
-        llvm::LLVMRustAddPass(pm, "verify\0".as_ptr() as *const _);
+            if sess.opts.optimize != config::No && sess.lto() {
+                let builder = llvm::LLVMPassManagerBuilderCreate();
+                llvm::LLVMPassManagerBuilderSetOptLevel(builder, opt);
+                llvm::LLVMPassManagerBuilderPopulateLTOPassManager
+                    (builder,
+                     pm,
+                     /* Internalize = */ False,
+                     /* RunInliner = */ True);
+                llvm::LLVMPassManagerBuilderDispose(builder);
+            }
 
-        time(sess.time_passes(), "LTO passes", (), |()|
-             llvm::LLVMRunPassManager(pm, llmod));
+            post(pm);
 
-        llvm::LLVMDisposePassManager(pm);
+            if !sess.no_verify() {
+                llvm::LLVMRustAddPass(pm, "verify\0".as_ptr() as *const i8);
+            }
+
+            time(sess.time_passes(), "LTO pases", (), |()|
+                 llvm::LLVMRunPassManager(pm, llmod));
+
+            llvm::LLVMDisposePassManager(pm);
+        }
     }
     debug!("lto done");
 }

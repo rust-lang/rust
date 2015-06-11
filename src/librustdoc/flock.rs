@@ -47,6 +47,27 @@ mod imp {
         pub const F_SETLKW: libc::c_int = 7;
     }
 
+    #[cfg(target_os = "nacl")]
+    mod os {
+        use libc;
+
+        pub struct flock {
+            pub l_type: libc::c_short,
+            pub l_whence: libc::c_short,
+            pub l_start: libc::off_t,
+            pub l_len: libc::off_t,
+            pub l_pid: libc::pid_t,
+
+            // not actually here, but brings in line with freebsd
+            pub l_sysid: libc::c_int,
+        }
+
+        pub const F_WRLCK: libc::c_short = 2;
+        pub const F_UNLCK: libc::c_short = 3;
+        pub const F_SETLK: libc::c_int = 8;
+        pub const F_SETLKW: libc::c_int = 9;
+    }
+
     #[cfg(target_os = "freebsd")]
     mod os {
         use libc;

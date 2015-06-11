@@ -83,6 +83,7 @@ pub mod back {
     pub use rustc_back::abi;
     pub use rustc_back::archive;
     pub use rustc_back::arm;
+    pub use rustc_back::le32;
     pub use rustc_back::mips;
     pub use rustc_back::mipsel;
     pub use rustc_back::rpath;
@@ -104,6 +105,7 @@ pub mod middle {
     pub mod check_loop;
     pub mod check_match;
     pub mod check_rvalues;
+    pub mod check_no_asm;
     pub mod const_eval;
     pub mod dataflow;
     pub mod dead;

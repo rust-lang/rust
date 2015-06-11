@@ -26,6 +26,7 @@ pub enum Os {
     OsDragonfly,
     OsBitrig,
     OsOpenbsd,
+    OsNaCl,
 }
 
 #[derive(PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Clone, Copy, Debug)]
@@ -55,7 +56,8 @@ pub enum Architecture {
     X86_64,
     Arm,
     Mips,
-    Mipsel
+    Mipsel,
+    Le32,
 }
 
 #[derive(Copy, Clone)]
@@ -139,6 +141,7 @@ impl fmt::Display for Os {
             OsDragonfly => "dragonfly".fmt(f),
             OsBitrig => "bitrig".fmt(f),
             OsOpenbsd => "openbsd".fmt(f),
+            OsNaCl => "nacl".fmt(f),
         }
     }
 }

@@ -57,6 +57,7 @@ mod bitrig_base;
 mod dragonfly_base;
 mod freebsd_base;
 mod linux_base;
+mod nacl_base;
 mod openbsd_base;
 mod windows_base;
 mod windows_msvc_base;
@@ -165,6 +166,8 @@ pub struct TargetOptions {
     /// the functions in the executable are not randomized and can be used
     /// during an exploit of a vulnerability in any code.
     pub position_independent_executables: bool,
+    /// Is asm!() allowed?
+    pub no_asm: bool,
 }
 
 impl Default for TargetOptions {
@@ -201,6 +204,7 @@ impl Default for TargetOptions {
             position_independent_executables: false,
             pre_link_objects: Vec::new(),
             post_link_objects: Vec::new(),
+            no_asm: false,
         }
     }
 }

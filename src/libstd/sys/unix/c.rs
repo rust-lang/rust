@@ -14,9 +14,7 @@
 #![allow(non_camel_case_types)]
 
 pub use self::select::fd_set;
-pub use self::signal::{sigaction, siginfo, sigset_t};
-pub use self::signal::{SA_ONSTACK, SA_RESTART, SA_RESETHAND, SA_NOCLDSTOP};
-pub use self::signal::{SA_NODEFER, SA_NOCLDWAIT, SA_SIGINFO, SIGCHLD};
+pub use self::signal::*;
 
 use libc;
 
@@ -54,6 +52,10 @@ mod consts {
     pub const FIOCLEX: libc::c_ulong = 0x6601;
     pub const FIONCLEX: libc::c_ulong = 0x6600;
 }
+
+#[cfg(target_os = "nacl")]
+mod consts { }
+
 pub use self::consts::*;
 
 #[cfg(any(target_os = "macos",
@@ -61,7 +63,8 @@ pub use self::consts::*;
           target_os = "freebsd",
           target_os = "dragonfly",
           target_os = "bitrig",
-          target_os = "openbsd"))]
+          target_os = "openbsd",
+          target_os = "nacl"))]
 pub const MSG_DONTWAIT: libc::c_int = 0x80;
 #[cfg(any(target_os = "linux", target_os = "android"))]
 pub const MSG_DONTWAIT: libc::c_int = 0x40;
@@ -87,6 +90,18 @@ pub struct passwd {
     pub pw_passwd: *mut libc::c_char,
     pub pw_uid: libc::uid_t,
     pub pw_gid: libc::gid_t,
+    pub pw_gecos: *mut libc::c_char,
+    pub pw_dir: *mut libc::c_char,
+    pub pw_shell: *mut libc::c_char,
+}
+#[repr(C)]
+#[cfg(target_os = "nacl")]
+pub struct passwd {
+    pub pw_name: *mut libc::c_char,
+    pub pw_passwd: *mut libc::c_char,
+    pub pw_uid: libc::uid_t,
+    pub pw_gid: libc::gid_t,
+    pub pw_comment: *mut libc::c_char,
     pub pw_gecos: *mut libc::c_char,
     pub pw_dir: *mut libc::c_char,
     pub pw_shell: *mut libc::c_char,
@@ -184,7 +199,8 @@ mod select {
           target_os = "dragonfly",
           target_os = "bitrig",
           target_os = "openbsd",
-          target_os = "linux"))]
+          target_os = "linux",
+          target_os = "nacl"))]
 mod select {
     use usize;
     use libc;
@@ -200,6 +216,27 @@ mod select {
     pub fn fd_set(set: &mut fd_set, fd: i32) {
         let fd = fd as usize;
         set.fds_bits[fd / usize::BITS] |= 1 << (fd % usize::BITS);
+    }
+}
+
+#[cfg(target_os = "nacl")]
+mod signal {
+    use libc;
+
+    pub static SA_NOCLDSTOP: libc::c_ulong = 1;
+    pub static SA_SIGINFO:   libc::c_ulong = 2;
+    #[repr(C)]
+    pub struct siginfo {
+        pub si_signo: libc::c_int,
+        pub si_code:  libc::c_int,
+        pub si_val:   usize,
+    }
+    pub type sigset_t = libc::c_ulong;
+    #[repr(C)]
+    pub struct sigaction {
+        pub sa_flags: libc::c_int,
+        pub sa_mask:  sigset_t,
+        pub handler:  extern fn(libc::c_int),
     }
 }
 

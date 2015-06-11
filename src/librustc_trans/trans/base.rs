@@ -2127,7 +2127,7 @@ fn register_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
 pub fn is_entry_fn(sess: &Session, node_id: ast::NodeId) -> bool {
     match *sess.entry_fn.borrow() {
-        Some((entry_id, _)) => node_id == entry_id,
+        Some((entry_id, _, _)) => node_id == entry_id,
         None => false
     }
 }
@@ -2153,7 +2153,12 @@ pub fn create_entry_wrapper(ccx: &CrateContext,
         let llfty = Type::func(&[ccx.int_type(), Type::i8p(ccx).ptr_to()],
                                &ccx.int_type());
 
-        let llfn = declare::define_cfn(ccx, "main", llfty,
+        let main_name = match *ccx.sess().entry_fn.borrow() {
+            Some((_, ref name, _)) => (*name).to_string(),
+            None => "main".to_string(),
+        };
+
+        let llfn = declare::define_cfn(ccx, &main_name[..], llfty,
                                        ty::mk_nil(ccx.tcx())).unwrap_or_else(||{
             ccx.sess().span_err(sp, "entry symbol `main` defined multiple times");
             // FIXME: We should be smart and show a better diagnostic here.
@@ -2713,7 +2718,7 @@ pub fn trans_crate<'tcx>(analysis: ty::CrateAnalysis<'tcx>)
     }
 
     let modules = shared_ccx.iter()
-        .map(|ccx| ModuleTranslation { llcx: ccx.llcx(), llmod: ccx.llmod() })
+        .map(|ccx| ModuleTranslation { llcx: ccx.llcx(), llmod: ccx.llmod(), name: None, })
         .collect();
 
     let mut reachable: Vec<String> = shared_ccx.reachable().iter().filter_map(|id| {
@@ -2751,6 +2756,7 @@ pub fn trans_crate<'tcx>(analysis: ty::CrateAnalysis<'tcx>)
     let metadata_module = ModuleTranslation {
         llcx: shared_ccx.metadata_llcx(),
         llmod: shared_ccx.metadata_llmod(),
+        name: Some("metadata".to_string()),
     };
     let formats = shared_ccx.tcx().dependency_formats.borrow().clone();
     let no_builtins = attr::contains_name(&krate.attrs, "no_builtins");

@@ -23,6 +23,11 @@
 #include <sys/time.h>
 #include <sys/types.h>
 #include <unistd.h>
+
+#if _POSIX_C_SOURCE < 1
+#include <errno.h>
+#endif
+
 #else
 #include <windows.h>
 #include <wincrypt.h>
@@ -84,13 +89,31 @@ rust_opendir(char *dirname) {
 }
 
 int
-rust_readdir_r(DIR *dirp, struct dirent *entry, struct dirent **result) {
-    return readdir_r(dirp, entry, result);
+rust_dirent_t_size() {
+    return sizeof(struct dirent);
 }
 
 int
-rust_dirent_t_size() {
-    return sizeof(struct dirent);
+rust_readdir_r(DIR *dirp, struct dirent *entry, struct dirent **result) {
+#if _POSIX_C_SOURCE < 1
+    /// This is needed for Newlib.
+    if(result == NULL || entry == NULL || dirp == NULL) {
+        errno = EBADF;
+        return EBADF;
+    }
+
+    errno = 0;
+    struct dirent* next_entry = readdir(dirp);
+    if(next_entry == NULL) {
+        *result = NULL;
+    } else {
+        memcpy(entry, next_entry, rust_dirent_t_size());
+        *result = next_entry;
+    }
+    return 0;
+#else
+    return readdir_r(dirp, entry, result);
+#endif
 }
 #endif
 
@@ -480,6 +503,60 @@ const char * rust_current_exe() {
     }
 
     return (self);
+}
+
+#endif
+
+#ifdef __native_client__
+#undef __arm__
+#include <unwind.h>
+
+#define STUB \
+    static const char MSG1[] = "ABORT: ";     \
+    static const char MSG2[] = " called!";    \
+    write(2, MSG1, sizeof(MSG1) - 1);         \
+    write(2, __func__, sizeof(__func__) - 1); \
+    write(2, MSG2, sizeof(MSG2) - 1);         \
+    abort()
+
+void __pnacl_eh_sjlj_Unwind_DeleteException(struct _Unwind_Exception*);
+_Unwind_Reason_Code __pnacl_eh_sjlj_Unwind_RaiseException(struct _Unwind_Exception*);
+_Unwind_Reason_Code _Unwind_RaiseException(struct _Unwind_Exception *e) {
+    return __pnacl_eh_sjlj_Unwind_RaiseException(e);
+}
+void _Unwind_DeleteException(struct _Unwind_Exception *e) {
+    __pnacl_eh_sjlj_Unwind_DeleteException(e);
+}
+
+void _Unwind_PNaClSetResult0(struct _Unwind_Context *c, _Unwind_Word w) {
+    STUB;
+}
+void _Unwind_PNaClSetResult1(struct _Unwind_Context *c, _Unwind_Word w) {
+    STUB;
+}
+_Unwind_Ptr _Unwind_GetIP(struct _Unwind_Context *c) {
+    STUB;
+}
+void _Unwind_SetIP(struct _Unwind_Context *c, _Unwind_Ptr p) {
+    STUB;
+}
+void *_Unwind_GetLanguageSpecificData(struct _Unwind_Context *c) {
+    STUB;
+}
+_Unwind_Ptr _Unwind_GetRegionStart(struct _Unwind_Context *c) {
+    STUB;
+}
+_Unwind_Reason_Code _Unwind_Resume_or_Rethrow(struct _Unwind_Exception *e) {
+    STUB;
+}
+_Unwind_Ptr _Unwind_GetIPInfo(struct _Unwind_Context *c, int *i) {
+    STUB;
+}
+_Unwind_Ptr _Unwind_GetTextRelBase(struct _Unwind_Context *c) {
+    STUB;
+}
+_Unwind_Ptr _Unwind_GetDataRelBase(struct _Unwind_Context *c) {
+    STUB;
 }
 
 #endif

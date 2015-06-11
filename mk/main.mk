@@ -273,6 +273,16 @@ endif
 LLVM_COMPONENTS=x86 arm aarch64 mips powerpc ipo bitreader bitwriter linker asmparser mcjit \
                 interpreter instrumentation
 
+define DEF_ADD_LLVM_TARGET_COMPONENTS
+LLVM_COMPONENTS += $$(LLVM_EXTRA_COMPONENTS_$(1))
+endef
+
+$(foreach target,$(CFG_TARGET), \
+  $(eval $(call DEF_ADD_LLVM_TARGET_COMPONENTS,$(target))))
+
+# deduplicate components:
+LLVM_COMPONENTS:=$(shell echo $(LLVM_COMPONENTS) | tr ' ' '\n' | awk '!a[$$0]++' | tr '\n' ' ')
+
 # Only build these LLVM tools
 LLVM_TOOLS=bugpoint llc llvm-ar llvm-as llvm-dis llvm-mc opt llvm-extract
 
@@ -282,12 +292,22 @@ define DEF_LLVM_VARS
 ifeq ($$(CFG_LLVM_ROOT),)
 CFG_LLVM_BUILD_DIR_$(1):=$$(CFG_LLVM_BUILD_DIR_$(subst -,_,$(1)))
 CFG_LLVM_INST_DIR_$(1):=$$(CFG_LLVM_INST_DIR_$(subst -,_,$(1)))
-else
-CFG_LLVM_INST_DIR_$(1):=$$(CFG_LLVM_ROOT)
-endif
 
+# We need to use a copy of llvm-config that can run on the build machine:
+ifneq ($$(CFG_BUILD),$(1))
+LLVM_CONFIG_$(1):=$$(CFG_LLVM_BUILD_DIR_$(subst -,_,$(1)))/BuildTools/$$(CFG_LLVM_BUILD_SUBDIR_$(subst -,_,$(1)))/bin/llvm-config$$(X_$$(CFG_BUILD))
+else
 # Any rules that depend on LLVM should depend on LLVM_CONFIG
 LLVM_CONFIG_$(1):=$$(CFG_LLVM_INST_DIR_$(1))/bin/llvm-config$$(X_$(1))
+endif
+
+else
+CFG_LLVM_INST_DIR_$(1):=$$(CFG_LLVM_ROOT)
+# Any rules that depend on LLVM should depend on LLVM_CONFIG
+LLVM_CONFIG_$(1):=$$(CFG_LLVM_INST_DIR_$(1))/bin/llvm-config$$(X_$(1))
+endif
+
+
 LLVM_MC_$(1):=$$(CFG_LLVM_INST_DIR_$(1))/bin/llvm-mc$$(X_$(1))
 LLVM_AR_$(1):=$$(CFG_LLVM_INST_DIR_$(1))/bin/llvm-ar$$(X_$(1))
 LLVM_VERSION_$(1)=$$(shell "$$(LLVM_CONFIG_$(1))" --version)
@@ -295,19 +315,26 @@ LLVM_BINDIR_$(1)=$$(shell "$$(LLVM_CONFIG_$(1))" --bindir)
 LLVM_INCDIR_$(1)=$$(shell "$$(LLVM_CONFIG_$(1))" --includedir)
 LLVM_LIBDIR_$(1)=$$(shell "$$(LLVM_CONFIG_$(1))" --libdir)
 LLVM_LIBDIR_RUSTFLAGS_$(1)=-L "$$(LLVM_LIBDIR_$(1))"
-LLVM_LIBS_$(1)=$$(shell "$$(LLVM_CONFIG_$(1))" --libs $$(LLVM_COMPONENTS))
+
+LLVM_LIBS_$(1)=$$(shell "$$(LLVM_CONFIG_$(1))" --libs $$(filter-out $$(LLVM_DISABLED_TARGETS_$(1)), \
+                                                           $$(LLVM_COMPONENTS))
 LLVM_LDFLAGS_$(1)=$$(shell "$$(LLVM_CONFIG_$(1))" --ldflags)
+
 ifeq ($$(findstring freebsd,$(1)),freebsd)
 # On FreeBSD, it may search wrong headers (that are for pre-installed LLVM),
 # so we replace -I with -iquote to ensure that it searches bundled LLVM first.
 LLVM_CXXFLAGS_$(1)=$$(subst -I, -iquote , $$(shell "$$(LLVM_CONFIG_$(1))" --cxxflags))
 else
-LLVM_CXXFLAGS_$(1)=$$(shell "$$(LLVM_CONFIG_$(1))" --cxxflags)
+LLVM_CXXFLAGS_$(1)=$$(filter-out $$(LLVM_FILTER_CXXFLAGS_$(1)),      \
+			$$(shell "$$(LLVM_CONFIG_$(1))" --cxxflags)) \
+		   $$(LLVM_EXTRA_CXXFLAGS_$(1))
 endif
+
 LLVM_HOST_TRIPLE_$(1)=$$(shell "$$(LLVM_CONFIG_$(1))" --host-target)
 
 LLVM_AS_$(1)=$$(CFG_LLVM_INST_DIR_$(1))/bin/llvm-as$$(X_$(1))
 LLC_$(1)=$$(CFG_LLVM_INST_DIR_$(1))/bin/llc$$(X_$(1))
+OPT_$(1)=$$(CFG_LLVM_INST_DIR_$(1))/bin/opt$$(X_$(1))
 
 endef
 

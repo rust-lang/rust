@@ -54,6 +54,7 @@ pub mod abi;
 pub mod archive;
 pub mod tempdir;
 pub mod arm;
+pub mod le32;
 pub mod mips;
 pub mod mipsel;
 pub mod rpath;

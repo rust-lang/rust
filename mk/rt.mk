@@ -54,11 +54,19 @@ NATIVE_DEPS_miniz_$(1) = miniz.c
 NATIVE_DEPS_rust_builtin_$(1) := rust_builtin.c \
 			rust_android_dummy.c
 NATIVE_DEPS_rustrt_native_$(1) := \
-			rust_try.ll \
-			arch/$$(HOST_$(1))/record_sp.S
+			rust_try.ll
+
+ifeq ($(1),le32-unknown-nacl)
+NATIVE_DEPS_rustrt_native_$(1) += crtbegin.bc crti.bc
+endif
+
 NATIVE_DEPS_rust_test_helpers_$(1) := rust_test_helpers.c
+
+ifneq ($$(RUNTIME_DISABLE_ASM_$(1)), 1)
+NATIVE_DEPS_rustrt_native_$(1)	+= arch/$$(HOST_$(1))/record_sp.S
 NATIVE_DEPS_morestack_$(1) := arch/$$(HOST_$(1))/morestack.S
 
+endif
 
 ################################################################################
 # You shouldn't find it that necessary to edit anything below this line.
@@ -69,6 +77,7 @@ NATIVE_DEPS_morestack_$(1) := arch/$$(HOST_$(1))/morestack.S
 
 RT_OUTPUT_DIR_$(1) := $(1)/rt
 
+ifneq ($(1), le32-unknown-nacl)
 $$(RT_OUTPUT_DIR_$(1))/%.o: $(S)src/rt/%.ll $$(MKFILE_DEPS) \
 	    $$(LLVM_CONFIG_$$(CFG_BUILD))
 	@mkdir -p $$(@D)
@@ -76,6 +85,25 @@ $$(RT_OUTPUT_DIR_$(1))/%.o: $(S)src/rt/%.ll $$(MKFILE_DEPS) \
 	$$(Q)$$(LLC_$$(CFG_BUILD)) $$(CFG_LLC_FLAGS_$(1)) \
 	    -filetype=obj -mtriple=$$(CFG_LLVM_TARGET_$(1)) \
 	    -relocation-model=pic -o $$@ $$<
+else
+# le32-unknown-nacl doesn't have a target machine, so llc chokes.
+# Fortunately, PNaCl object files are just bitcode.
+$$(RT_OUTPUT_DIR_$(1))/%.o: $(S)src/rt/%.ll \
+            $$(MKFILE_DEPS) $$(LLVM_CONFIG_$$(CFG_BUILD))
+	@mkdir -p $$(@D)
+	@$$(call E, compile: $$@)
+	$$(OPT_$$(CFG_BUILD)) -Oz -o $$@ $$<
+$$(RT_OUTPUT_DIR_$(1))/%.o: $(CFG_NACL_CROSS_PATH)/toolchain/$(NACL_TOOLCHAIN_OS_PATH)_pnacl/lib/clang/3.6.0/lib/le32-nacl/%.bc \
+            $$(MKFILE_DEPS) $$(LLVM_CONFIG_$$(CFG_BUILD))
+	@mkdir -p $$(@D)
+	@$$(call E, compile: $$@)
+	$$(OPT_$$(CFG_BUILD)) -Oz -o $$@ $$<
+$$(RT_OUTPUT_DIR_$(1))/%.o: $(CFG_NACL_CROSS_PATH)/toolchain/$(NACL_TOOLCHAIN_OS_PATH)_pnacl/le32-nacl/lib/%.bc \
+            $$(MKFILE_DEPS) $$(LLVM_CONFIG_$$(CFG_BUILD))
+	@mkdir -p $$(@D)
+	@$$(call E, compile: $$@)
+	$$(OPT_$$(CFG_BUILD)) -Oz -o $$@ $$<
+endif
 
 $$(RT_OUTPUT_DIR_$(1))/%.o: $(S)src/rt/%.c $$(MKFILE_DEPS)
 	@mkdir -p $$(@D)
@@ -106,6 +134,7 @@ OBJS_$(2)_$(1) := $$(OBJS_$(2)_$(1):.c=.o)
 OBJS_$(2)_$(1) := $$(OBJS_$(2)_$(1):.cpp=.o)
 OBJS_$(2)_$(1) := $$(OBJS_$(2)_$(1):.ll=.o)
 OBJS_$(2)_$(1) := $$(OBJS_$(2)_$(1):.S=.o)
+OBJS_$(2)_$(1) := $$(OBJS_$(2)_$(1):.bc=.o)
 NATIVE_$(2)_$(1) := $$(call CFG_STATIC_LIB_NAME_$(1),$(2))
 $$(RT_OUTPUT_DIR_$(1))/$$(NATIVE_$(2)_$(1)): $$(OBJS_$(2)_$(1))
 	@$$(call E, link: $$@)
@@ -285,6 +314,12 @@ $$(BACKTRACE_LIB_$(1)):
 	touch $$@
 else
 
+ifeq ($$(CFG_NACLY_$(1)),1)
+# See comment above
+$$(BACKTRACE_LIB_$(1)):
+	touch $$@
+else
+
 ifdef CFG_ENABLE_FAST_MAKE
 BACKTRACE_DEPS := $(S)/.gitmodules
 else
@@ -323,6 +358,7 @@ $$(BACKTRACE_LIB_$(1)): $$(BACKTRACE_BUILD_DIR_$(1))/Makefile $$(MKFILE_DEPS)
 		INCDIR=$(S)src/libbacktrace
 	$$(Q)cp $$(BACKTRACE_BUILD_DIR_$(1))/.libs/libbacktrace.a $$@
 
+endif # endif for nacly
 endif # endif for windowsy
 endif # endif for ios
 endif # endif for darwin
