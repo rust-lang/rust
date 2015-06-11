@@ -60,10 +60,10 @@ pub fn report_projection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
 {
     let predicate =
         infcx.resolve_type_vars_if_possible(&obligation.predicate);
-    // The ty_err created by normalize_to_error can end up being unified
+    // The TyError created by normalize_to_error can end up being unified
     // into all obligations: for example, if our obligation is something
     // like `$X = <() as Foo<$X>>::Out` and () does not implement Foo<_>,
-    // then $X will be unified with ty_err, but the error still needs to be
+    // then $X will be unified with TyError, but the error still needs to be
     // reported.
     if !infcx.tcx.sess.has_errors() || !predicate.references_error() {
         span_err!(infcx.tcx.sess, obligation.cause.span, E0271,

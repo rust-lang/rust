@@ -423,7 +423,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
                 self.visit_expr(&**element);
                 // The count is checked elsewhere (typeck).
                 let count = match node_ty.sty {
-                    ty::ty_vec(_, Some(n)) => n,
+                    ty::TyArray(_, Some(n)) => n,
                     _ => unreachable!()
                 };
                 // [element; 0] is always zero-sized.
@@ -454,7 +454,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
                 visit::walk_expr(self, ex);
                 let div_or_rem = op.node == ast::BiDiv || op.node == ast::BiRem;
                 match node_ty.sty {
-                    ty::ty_uint(_) | ty::ty_int(_) if div_or_rem => {
+                    ty::TyUint(_) | ty::TyInt(_) if div_or_rem => {
                         if !self.qualif.intersects(ConstQualif::NOT_CONST) {
                             match const_eval::eval_const_expr_partial(self.tcx, ex, None) {
                                 Ok(_) => {}
@@ -529,8 +529,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
 fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
                         e: &ast::Expr, node_ty: Ty<'tcx>) {
     match node_ty.sty {
-        ty::ty_struct(did, _) |
-        ty::ty_enum(did, _) if ty::has_dtor(v.tcx, did) => {
+        ty::TyStruct(did, _) |
+        ty::TyEnum(did, _) if ty::has_dtor(v.tcx, did) => {
             v.add_qualif(ConstQualif::NEEDS_DROP);
             if v.mode != Mode::Var {
                 v.tcx.sess.span_err(e.span,
@@ -562,7 +562,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
         }
         ast::ExprUnary(op, ref inner) => {
             match ty::node_id_to_type(v.tcx, inner.id).sty {
-                ty::ty_ptr(_) => {
+                ty::TyRawPtr(_) => {
                     assert!(op == ast::UnDeref);
 
                     v.add_qualif(ConstQualif::NOT_CONST);
@@ -576,7 +576,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
         }
         ast::ExprBinary(op, ref lhs, _) => {
             match ty::node_id_to_type(v.tcx, lhs.id).sty {
-                ty::ty_ptr(_) => {
+                ty::TyRawPtr(_) => {
                     assert!(op.node == ast::BiEq || op.node == ast::BiNe ||
                             op.node == ast::BiLe || op.node == ast::BiLt ||
                             op.node == ast::BiGe || op.node == ast::BiGt);
@@ -612,7 +612,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
                     v.add_qualif(ConstQualif::NON_ZERO_SIZED);
                 }
                 Some(def::DefStruct(_)) => {
-                    if let ty::ty_bare_fn(..) = node_ty.sty {
+                    if let ty::TyBareFn(..) = node_ty.sty {
                         // Count the function pointer.
                         v.add_qualif(ConstQualif::NON_ZERO_SIZED);
                     }
@@ -854,7 +854,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for CheckCrateVisitor<'a, 'tcx> {
                         // Mutable slices are the only `&mut` allowed in globals,
                         // but only in `static mut`, nowhere else.
                         match cmt.ty.sty {
-                            ty::ty_vec(_, _) => break,
+                            ty::TyArray(_, _) => break,
                             _ => {}
                         }
                     }

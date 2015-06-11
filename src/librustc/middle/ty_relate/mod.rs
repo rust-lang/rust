@@ -438,87 +438,87 @@ pub fn super_relate_tys<'a,'tcx:'a,R>(relation: &mut R,
     let b_sty = &b.sty;
     debug!("super_tys: a_sty={:?} b_sty={:?}", a_sty, b_sty);
     match (a_sty, b_sty) {
-        (&ty::ty_infer(_), _) |
-        (_, &ty::ty_infer(_)) =>
+        (&ty::TyInfer(_), _) |
+        (_, &ty::TyInfer(_)) =>
         {
             // The caller should handle these cases!
             tcx.sess.bug("var types encountered in super_relate_tys")
         }
 
-        (&ty::ty_err, _) | (_, &ty::ty_err) =>
+        (&ty::TyError, _) | (_, &ty::TyError) =>
         {
             Ok(tcx.types.err)
         }
 
-        (&ty::ty_char, _) |
-        (&ty::ty_bool, _) |
-        (&ty::ty_int(_), _) |
-        (&ty::ty_uint(_), _) |
-        (&ty::ty_float(_), _) |
-        (&ty::ty_str, _)
+        (&ty::TyChar, _) |
+        (&ty::TyBool, _) |
+        (&ty::TyInt(_), _) |
+        (&ty::TyUint(_), _) |
+        (&ty::TyFloat(_), _) |
+        (&ty::TyStr, _)
             if a == b =>
         {
             Ok(a)
         }
 
-        (&ty::ty_param(ref a_p), &ty::ty_param(ref b_p))
+        (&ty::TyParam(ref a_p), &ty::TyParam(ref b_p))
             if a_p.idx == b_p.idx && a_p.space == b_p.space =>
         {
             Ok(a)
         }
 
-        (&ty::ty_enum(a_id, a_substs), &ty::ty_enum(b_id, b_substs))
+        (&ty::TyEnum(a_id, a_substs), &ty::TyEnum(b_id, b_substs))
             if a_id == b_id =>
         {
             let substs = try!(relate_item_substs(relation, a_id, a_substs, b_substs));
             Ok(ty::mk_enum(tcx, a_id, tcx.mk_substs(substs)))
         }
 
-        (&ty::ty_trait(ref a_), &ty::ty_trait(ref b_)) =>
+        (&ty::TyTrait(ref a_), &ty::TyTrait(ref b_)) =>
         {
             let principal = try!(relation.relate(&a_.principal, &b_.principal));
             let bounds = try!(relation.relate(&a_.bounds, &b_.bounds));
             Ok(ty::mk_trait(tcx, principal, bounds))
         }
 
-        (&ty::ty_struct(a_id, a_substs), &ty::ty_struct(b_id, b_substs))
+        (&ty::TyStruct(a_id, a_substs), &ty::TyStruct(b_id, b_substs))
             if a_id == b_id =>
         {
             let substs = try!(relate_item_substs(relation, a_id, a_substs, b_substs));
             Ok(ty::mk_struct(tcx, a_id, tcx.mk_substs(substs)))
         }
 
-        (&ty::ty_closure(a_id, a_substs),
-         &ty::ty_closure(b_id, b_substs))
+        (&ty::TyClosure(a_id, a_substs),
+         &ty::TyClosure(b_id, b_substs))
             if a_id == b_id =>
         {
-            // All ty_closure types with the same id represent
+            // All TyClosure types with the same id represent
             // the (anonymous) type of the same closure expression. So
             // all of their regions should be equated.
             let substs = try!(relate_substs(relation, None, a_substs, b_substs));
             Ok(ty::mk_closure(tcx, a_id, tcx.mk_substs(substs)))
         }
 
-        (&ty::ty_uniq(a_inner), &ty::ty_uniq(b_inner)) =>
+        (&ty::TyBox(a_inner), &ty::TyBox(b_inner)) =>
         {
             let typ = try!(relation.relate(&a_inner, &b_inner));
             Ok(ty::mk_uniq(tcx, typ))
         }
 
-        (&ty::ty_ptr(ref a_mt), &ty::ty_ptr(ref b_mt)) =>
+        (&ty::TyRawPtr(ref a_mt), &ty::TyRawPtr(ref b_mt)) =>
         {
             let mt = try!(relation.relate(a_mt, b_mt));
             Ok(ty::mk_ptr(tcx, mt))
         }
 
-        (&ty::ty_rptr(a_r, ref a_mt), &ty::ty_rptr(b_r, ref b_mt)) =>
+        (&ty::TyRef(a_r, ref a_mt), &ty::TyRef(b_r, ref b_mt)) =>
         {
             let r = try!(relation.relate_with_variance(ty::Contravariant, a_r, b_r));
             let mt = try!(relation.relate(a_mt, b_mt));
             Ok(ty::mk_rptr(tcx, tcx.mk_region(r), mt))
         }
 
-        (&ty::ty_vec(a_t, Some(sz_a)), &ty::ty_vec(b_t, Some(sz_b))) =>
+        (&ty::TyArray(a_t, Some(sz_a)), &ty::TyArray(b_t, Some(sz_b))) =>
         {
             let t = try!(relation.relate(&a_t, &b_t));
             if sz_a == sz_b {
@@ -528,13 +528,13 @@ pub fn super_relate_tys<'a,'tcx:'a,R>(relation: &mut R,
             }
         }
 
-        (&ty::ty_vec(a_t, None), &ty::ty_vec(b_t, None)) =>
+        (&ty::TyArray(a_t, None), &ty::TyArray(b_t, None)) =>
         {
             let t = try!(relation.relate(&a_t, &b_t));
             Ok(ty::mk_vec(tcx, t, None))
         }
 
-        (&ty::ty_tup(ref as_), &ty::ty_tup(ref bs)) =>
+        (&ty::TyTuple(ref as_), &ty::TyTuple(ref bs)) =>
         {
             if as_.len() == bs.len() {
                 let ts = try!(as_.iter().zip(bs)
@@ -549,14 +549,14 @@ pub fn super_relate_tys<'a,'tcx:'a,R>(relation: &mut R,
             }
         }
 
-        (&ty::ty_bare_fn(a_opt_def_id, a_fty), &ty::ty_bare_fn(b_opt_def_id, b_fty))
+        (&ty::TyBareFn(a_opt_def_id, a_fty), &ty::TyBareFn(b_opt_def_id, b_fty))
             if a_opt_def_id == b_opt_def_id =>
         {
             let fty = try!(relation.relate(a_fty, b_fty));
             Ok(ty::mk_bare_fn(tcx, a_opt_def_id, tcx.mk_bare_fn(fty)))
         }
 
-        (&ty::ty_projection(ref a_data), &ty::ty_projection(ref b_data)) =>
+        (&ty::TyProjection(ref a_data), &ty::TyProjection(ref b_data)) =>
         {
             let projection_ty = try!(relation.relate(a_data, b_data));
             Ok(ty::mk_projection(tcx, projection_ty.trait_ref, projection_ty.item_name))

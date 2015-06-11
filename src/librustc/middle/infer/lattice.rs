@@ -64,15 +64,15 @@ pub fn super_lattice_tys<'a,'tcx,L:LatticeDir<'a,'tcx>>(this: &mut L,
     let a = infcx.type_variables.borrow().replace_if_possible(a);
     let b = infcx.type_variables.borrow().replace_if_possible(b);
     match (&a.sty, &b.sty) {
-        (&ty::ty_infer(TyVar(..)), &ty::ty_infer(TyVar(..)))
+        (&ty::TyInfer(TyVar(..)), &ty::TyInfer(TyVar(..)))
             if infcx.type_var_diverges(a) && infcx.type_var_diverges(b) => {
             let v = infcx.next_diverging_ty_var();
             try!(this.relate_bound(v, a, b));
             Ok(v)
         }
 
-        (&ty::ty_infer(TyVar(..)), _) |
-        (_, &ty::ty_infer(TyVar(..))) => {
+        (&ty::TyInfer(TyVar(..)), _) |
+        (_, &ty::TyInfer(TyVar(..))) => {
             let v = infcx.next_ty_var();
             try!(this.relate_bound(v, a, b));
             Ok(v)

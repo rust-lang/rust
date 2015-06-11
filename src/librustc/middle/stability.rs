@@ -387,7 +387,7 @@ pub fn check_expr(tcx: &ty::ctxt, e: &ast::Expr,
         ast::ExprField(ref base_e, ref field) => {
             span = field.span;
             match ty::expr_ty_adjusted(tcx, base_e).sty {
-                ty::ty_struct(did, _) => {
+                ty::TyStruct(did, _) => {
                     ty::lookup_struct_fields(tcx, did)
                         .iter()
                         .find(|f| f.name == field.node.name)
@@ -404,7 +404,7 @@ pub fn check_expr(tcx: &ty::ctxt, e: &ast::Expr,
         ast::ExprTupField(ref base_e, ref field) => {
             span = field.span;
             match ty::expr_ty_adjusted(tcx, base_e).sty {
-                ty::ty_struct(did, _) => {
+                ty::TyStruct(did, _) => {
                     ty::lookup_struct_fields(tcx, did)
                         .get(field.node)
                         .unwrap_or_else(|| {
@@ -413,7 +413,7 @@ pub fn check_expr(tcx: &ty::ctxt, e: &ast::Expr,
                         })
                         .id
                 }
-                ty::ty_tup(..) => return,
+                ty::TyTuple(..) => return,
                 _ => tcx.sess.span_bug(e.span,
                                        "stability::check_expr: unnamed field access on \
                                         something other than a tuple or struct")
@@ -422,7 +422,7 @@ pub fn check_expr(tcx: &ty::ctxt, e: &ast::Expr,
         ast::ExprStruct(_, ref expr_fields, _) => {
             let type_ = ty::expr_ty(tcx, e);
             match type_.sty {
-                ty::ty_struct(did, _) => {
+                ty::TyStruct(did, _) => {
                     let struct_fields = ty::lookup_struct_fields(tcx, did);
                     // check the stability of each field that appears
                     // in the construction expression.
@@ -445,7 +445,7 @@ pub fn check_expr(tcx: &ty::ctxt, e: &ast::Expr,
                 // we don't look at stability attributes on
                 // struct-like enums (yet...), but it's definitely not
                 // a bug to have construct one.
-                ty::ty_enum(..) => return,
+                ty::TyEnum(..) => return,
                 _ => {
                     tcx.sess.span_bug(e.span,
                                       &format!("stability::check_expr: struct construction \
@@ -478,7 +478,7 @@ pub fn check_pat(tcx: &ty::ctxt, pat: &ast::Pat,
     if is_internal(tcx, pat.span) { return; }
 
     let did = match ty::pat_ty_opt(tcx, pat) {
-        Some(&ty::TyS { sty: ty::ty_struct(did, _), .. }) => did,
+        Some(&ty::TyS { sty: ty::TyStruct(did, _), .. }) => did,
         Some(_) | None => return,
     };
     let struct_fields = ty::lookup_struct_fields(tcx, did);

@@ -506,7 +506,7 @@ fn check_bare_fn<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                            param_env: ty::ParameterEnvironment<'a, 'tcx>)
 {
     match raw_fty.sty {
-        ty::ty_bare_fn(_, ref fn_ty) => {
+        ty::TyBareFn(_, ref fn_ty) => {
             let inh = Inherited::new(ccx.tcx, param_env);
 
             // Compute the fty from point of view of inside fn.
@@ -1142,7 +1142,7 @@ fn report_cast_to_unsized_type<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         format!("cast to unsized type: `{}` as `{}`", actual, tstr)
     }, t_expr, None);
     match t_expr.sty {
-        ty::ty_rptr(_, ty::mt { mutbl: mt, .. }) => {
+        ty::TyRef(_, ty::mt { mutbl: mt, .. }) => {
             let mtstr = match mt {
                 ast::MutMutable => "mut ",
                 ast::MutImmutable => ""
@@ -1164,7 +1164,7 @@ fn report_cast_to_unsized_type<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                            mtstr, tstr);
             }
         }
-        ty::ty_uniq(..) => {
+        ty::TyBox(..) => {
             match fcx.tcx().sess.codemap().span_to_snippet(t_span) {
                 Ok(s) => {
                     fcx.tcx().sess.span_suggestion(t_span,
@@ -1920,8 +1920,8 @@ impl LvaluePreference {
 /// Whether `autoderef` requires types to resolve.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum UnresolvedTypeAction {
-    /// Produce an error and return `ty_err` whenever a type cannot
-    /// be resolved (i.e. it is `ty_infer`).
+    /// Produce an error and return `TyError` whenever a type cannot
+    /// be resolved (i.e. it is `TyInfer`).
     Error,
     /// Go on without emitting any errors, and return the unresolved
     /// type. Useful for probing, e.g. in coercions.
@@ -2096,7 +2096,7 @@ fn lookup_indexing<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
     // After we have fully autoderef'd, if the resulting type is [T; n], then
     // do a final unsized coercion to yield [T].
-    if let ty::ty_vec(element_ty, Some(_)) = ty.sty {
+    if let ty::TyArray(element_ty, Some(_)) = ty.sty {
         let adjusted_ty = ty::mk_vec(fcx.tcx(), element_ty, None);
         try_index_step(fcx, MethodCall::expr(expr.id), expr, base_expr,
                        adjusted_ty, autoderefs, true, lvalue_pref, idx_ty)
@@ -2134,7 +2134,7 @@ fn try_index_step<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
     // First, try built-in indexing.
     match (ty::index(adjusted_ty), &index_ty.sty) {
-        (Some(ty), &ty::ty_uint(ast::TyUs)) | (Some(ty), &ty::ty_infer(ty::IntVar(_))) => {
+        (Some(ty), &ty::TyUint(ast::TyUs)) | (Some(ty), &ty::TyInfer(ty::IntVar(_))) => {
             debug!("try_index_step: success, using built-in indexing");
             // If we had `[T; N]`, we should've caught it before unsizing to `[T]`.
             assert!(!unsize);
@@ -2212,7 +2212,7 @@ fn check_method_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         ty::FnConverging(fcx.tcx().types.err)
     } else {
         match method_fn_ty.sty {
-            ty::ty_bare_fn(_, ref fty) => {
+            ty::TyBareFn(_, ref fty) => {
                 // HACK(eddyb) ignore self in the definition (see above).
                 let expected_arg_tys = expected_types_for_fn_args(fcx,
                                                                   sp,
@@ -2260,7 +2260,7 @@ fn check_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     let formal_tys = if tuple_arguments == TupleArguments {
         let tuple_type = structurally_resolved_type(fcx, sp, fn_inputs[0]);
         match tuple_type.sty {
-            ty::ty_tup(ref arg_types) => {
+            ty::TyTuple(ref arg_types) => {
                 if arg_types.len() != args.len() {
                     span_err!(tcx.sess, sp, E0057,
                         "this function takes {} parameter{} but {} parameter{} supplied",
@@ -2273,7 +2273,7 @@ fn check_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 } else {
                     expected_arg_tys = match expected_arg_tys.get(0) {
                         Some(&ty) => match ty.sty {
-                            ty::ty_tup(ref tys) => &**tys,
+                            ty::TyTuple(ref tys) => &**tys,
                             _ => &[]
                         },
                         None => &[]
@@ -2391,21 +2391,21 @@ fn check_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             let arg_ty = structurally_resolved_type(fcx, arg.span,
                                                     fcx.expr_ty(&**arg));
             match arg_ty.sty {
-                ty::ty_float(ast::TyF32) => {
+                ty::TyFloat(ast::TyF32) => {
                     fcx.type_error_message(arg.span,
                                            |t| {
                         format!("can't pass an {} to variadic \
                                  function, cast to c_double", t)
                     }, arg_ty, None);
                 }
-                ty::ty_int(ast::TyI8) | ty::ty_int(ast::TyI16) | ty::ty_bool => {
+                ty::TyInt(ast::TyI8) | ty::TyInt(ast::TyI16) | ty::TyBool => {
                     fcx.type_error_message(arg.span, |t| {
                         format!("can't pass {} to variadic \
                                  function, cast to c_int",
                                        t)
                     }, arg_ty, None);
                 }
-                ty::ty_uint(ast::TyU8) | ty::ty_uint(ast::TyU16) => {
+                ty::TyUint(ast::TyU8) | ty::TyUint(ast::TyU16) => {
                     fcx.type_error_message(arg.span, |t| {
                         format!("can't pass {} to variadic \
                                  function, cast to c_uint",
@@ -2455,10 +2455,10 @@ fn check_lit<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         ast::LitInt(_, ast::UnsuffixedIntLit(_)) => {
             let opt_ty = expected.to_option(fcx).and_then(|ty| {
                 match ty.sty {
-                    ty::ty_int(_) | ty::ty_uint(_) => Some(ty),
-                    ty::ty_char => Some(tcx.types.u8),
-                    ty::ty_ptr(..) => Some(tcx.types.usize),
-                    ty::ty_bare_fn(..) => Some(tcx.types.usize),
+                    ty::TyInt(_) | ty::TyUint(_) => Some(ty),
+                    ty::TyChar => Some(tcx.types.u8),
+                    ty::TyRawPtr(..) => Some(tcx.types.usize),
+                    ty::TyBareFn(..) => Some(tcx.types.usize),
                     _ => None
                 }
             });
@@ -2469,7 +2469,7 @@ fn check_lit<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         ast::LitFloatUnsuffixed(_) => {
             let opt_ty = expected.to_option(fcx).and_then(|ty| {
                 match ty.sty {
-                    ty::ty_float(_) => Some(ty),
+                    ty::TyFloat(_) => Some(ty),
                     _ => None
                 }
             });
@@ -2621,7 +2621,7 @@ fn expected_types_for_fn_args<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 /// strict, _|_ can appear in the type of an expression that does not,
 /// itself, diverge: for example, fn() -> _|_.)
 /// Note that inspecting a type's structure *directly* may expose the fact
-/// that there are actually multiple representations for `ty_err`, so avoid
+/// that there are actually multiple representations for `TyError`, so avoid
 /// that when err needs to be handled differently.
 fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                         expr: &'tcx ast::Expr,
@@ -2746,7 +2746,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                                   lvalue_pref,
                                                   |base_t, _| {
                 match base_t.sty {
-                    ty::ty_struct(base_id, substs) => {
+                    ty::TyStruct(base_id, substs) => {
                         debug!("struct named {}", ppaux::ty_to_string(tcx, base_t));
                         let fields = ty::lookup_struct_fields(tcx, base_id);
                         fcx.lookup_field_ty(expr.span, base_id, &fields[..],
@@ -2787,7 +2787,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                             actual)
                 },
                 expr_t, None);
-            if let ty::ty_struct(did, _) = expr_t.sty {
+            if let ty::TyStruct(did, _) = expr_t.sty {
                 suggest_field_names(did, field, tcx, vec![]);
             }
         }
@@ -2848,7 +2848,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                                   lvalue_pref,
                                                   |base_t, _| {
                 match base_t.sty {
-                    ty::ty_struct(base_id, substs) => {
+                    ty::TyStruct(base_id, substs) => {
                         tuple_like = ty::is_tuple_struct(tcx, base_id);
                         if tuple_like {
                             debug!("tuple struct named {}", ppaux::ty_to_string(tcx, base_t));
@@ -2859,7 +2859,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                             None
                         }
                     }
-                    ty::ty_tup(ref v) => {
+                    ty::TyTuple(ref v) => {
                         tuple_like = true;
                         if idx.node < v.len() { Some(v[idx.node]) } else { None }
                     }
@@ -3138,7 +3138,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         let expected_inner = expected.to_option(fcx).map_or(NoExpectation, |ty| {
             match unop {
                 ast::UnUniq => match ty.sty {
-                    ty::ty_uniq(ty) => {
+                    ty::TyBox(ty) => {
                         Expectation::rvalue_hint(ty)
                     }
                     _ => {
@@ -3188,7 +3188,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                     oprnd_t = structurally_resolved_type(fcx, oprnd.span,
                                                          oprnd_t);
                     if !(ty::type_is_integral(oprnd_t) ||
-                         oprnd_t.sty == ty::ty_bool) {
+                         oprnd_t.sty == ty::TyBool) {
                         oprnd_t = op::check_user_unop(fcx, "!", "not",
                                                       tcx.lang_items.not_trait(),
                                                       expr, &**oprnd, oprnd_t, unop);
@@ -3203,7 +3203,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                                       tcx.lang_items.neg_trait(),
                                                       expr, &**oprnd, oprnd_t, unop);
                     }
-                    if let ty::ty_uint(_) = oprnd_t.sty {
+                    if let ty::TyUint(_) = oprnd_t.sty {
                         if !tcx.sess.features.borrow().negate_unsigned {
                             feature_gate::emit_feature_err(
                                 &tcx.sess.parse_sess.span_diagnostic,
@@ -3220,7 +3220,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
       ast::ExprAddrOf(mutbl, ref oprnd) => {
         let hint = expected.only_has_type(fcx).map_or(NoExpectation, |ty| {
             match ty.sty {
-                ty::ty_rptr(_, ref mt) | ty::ty_ptr(ref mt) => {
+                ty::TyRef(_, ref mt) | ty::TyRawPtr(ref mt) => {
                     if ty::expr_is_lval(fcx.tcx(), &**oprnd) {
                         // Lvalues may legitimately have unsized types.
                         // For example, dereferences of a fat pointer and
@@ -3453,7 +3453,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
       ast::ExprVec(ref args) => {
         let uty = expected.to_option(fcx).and_then(|uty| {
             match uty.sty {
-                ty::ty_vec(ty, _) => Some(ty),
+                ty::TyArray(ty, _) => Some(ty),
                 _ => None
             }
         });
@@ -3483,7 +3483,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         let uty = match expected {
             ExpectHasType(uty) => {
                 match uty.sty {
-                    ty::ty_vec(ty, _) => Some(ty),
+                    ty::TyArray(ty, _) => Some(ty),
                     _ => None
                 }
             }
@@ -3522,7 +3522,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
       ast::ExprTup(ref elts) => {
         let flds = expected.only_has_type(fcx).and_then(|ty| {
             match ty.sty {
-                ty::ty_tup(ref flds) => Some(&flds[..]),
+                ty::TyTuple(ref flds) => Some(&flds[..]),
                 _ => None
             }
         });
@@ -3573,7 +3573,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                 // Verify that this was actually a struct.
                 let typ = ty::lookup_item_type(fcx.ccx.tcx, def.def_id());
                 match typ.ty.sty {
-                    ty::ty_struct(struct_did, _) => {
+                    ty::TyStruct(struct_did, _) => {
                         check_struct_constructor(fcx,
                                                  id,
                                                  expr.span,
@@ -3863,7 +3863,7 @@ impl<'tcx> Expectation<'tcx> {
     /// for examples of where this comes up,.
     fn rvalue_hint(ty: Ty<'tcx>) -> Expectation<'tcx> {
         match ty.sty {
-            ty::ty_vec(_, None) | ty::ty_trait(..) => {
+            ty::TyArray(_, None) | ty::TyTrait(..) => {
                 ExpectRvalueLikeUnsized(ty)
             }
             _ => ExpectHasType(ty)
@@ -4213,7 +4213,7 @@ pub fn check_simd(tcx: &ty::ctxt, sp: Span, id: ast::NodeId) {
         return;
     }
     match t.sty {
-        ty::ty_struct(did, substs) => {
+        ty::TyStruct(did, substs) => {
             let fields = ty::lookup_struct_fields(tcx, did);
             if fields.is_empty() {
                 span_err!(tcx.sess, sp, E0075, "SIMD vector cannot be empty");
@@ -4959,7 +4959,7 @@ pub fn check_bounds_are_used<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
     ty::walk_ty(ty, |t| {
             match t.sty {
-                ty::ty_param(ParamTy {idx, ..}) => {
+                ty::TyParam(ParamTy {idx, ..}) => {
                     debug!("Found use of ty param num {}", idx);
                     tps_used[idx as usize] = true;
                 }

@@ -107,7 +107,7 @@ fn deduce_expectations_from_expected_type<'a,'tcx>(
            expected_ty.repr(fcx.tcx()));
 
     match expected_ty.sty {
-        ty::ty_trait(ref object_type) => {
+        ty::TyTrait(ref object_type) => {
             let proj_bounds = object_type.projection_bounds_with_self_ty(fcx.tcx(),
                                                                          fcx.tcx().types.err);
             let sig = proj_bounds.iter()
@@ -116,7 +116,7 @@ fn deduce_expectations_from_expected_type<'a,'tcx>(
             let kind = fcx.tcx().lang_items.fn_trait_kind(object_type.principal_def_id());
             (sig, kind)
         }
-        ty::ty_infer(ty::TyVar(vid)) => {
+        ty::TyInfer(ty::TyVar(vid)) => {
             deduce_expectations_from_obligations(fcx, vid)
         }
         _ => {
@@ -214,7 +214,7 @@ fn deduce_sig_from_projection<'a,'tcx>(
     debug!("deduce_sig_from_projection: arg_param_ty {}", arg_param_ty.repr(tcx));
 
     let input_tys = match arg_param_ty.sty {
-        ty::ty_tup(ref tys) => { (*tys).clone() }
+        ty::TyTuple(ref tys) => { (*tys).clone() }
         _ => { return None; }
     };
     debug!("deduce_sig_from_projection: input_tys {}", input_tys.repr(tcx));
@@ -244,7 +244,7 @@ fn self_type_matches_expected_vid<'a,'tcx>(
            trait_ref.repr(fcx.tcx()),
            self_ty.repr(fcx.tcx()));
     match self_ty.sty {
-        ty::ty_infer(ty::TyVar(v)) if expected_vid == v => Some(trait_ref),
+        ty::TyInfer(ty::TyVar(v)) if expected_vid == v => Some(trait_ref),
         _ => None,
     }
 }

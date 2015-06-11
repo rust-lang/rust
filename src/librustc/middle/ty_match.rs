@@ -66,18 +66,18 @@ impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Match<'a, 'tcx> {
         if a == b { return Ok(a); }
 
         match (&a.sty, &b.sty) {
-            (_, &ty::ty_infer(ty::FreshTy(_))) |
-            (_, &ty::ty_infer(ty::FreshIntTy(_))) |
-            (_, &ty::ty_infer(ty::FreshFloatTy(_))) => {
+            (_, &ty::TyInfer(ty::FreshTy(_))) |
+            (_, &ty::TyInfer(ty::FreshIntTy(_))) |
+            (_, &ty::TyInfer(ty::FreshFloatTy(_))) => {
                 Ok(a)
             }
 
-            (&ty::ty_infer(_), _) |
-            (_, &ty::ty_infer(_)) => {
+            (&ty::TyInfer(_), _) |
+            (_, &ty::TyInfer(_)) => {
                 Err(ty::terr_sorts(ty_relate::expected_found(self, &a, &b)))
             }
 
-            (&ty::ty_err, _) | (_, &ty::ty_err) => {
+            (&ty::TyError, _) | (_, &ty::TyError) => {
                 Ok(self.tcx().types.err)
             }
 

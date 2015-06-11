@@ -107,7 +107,7 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
                                 -> Callee<'blk, 'tcx> {
         let DatumBlock { bcx, datum, .. } = expr::trans(bcx, expr);
         match datum.ty.sty {
-            ty::ty_bare_fn(..) => {
+            ty::TyBareFn(..) => {
                 let llval = datum.to_llscalarish(bcx);
                 return Callee {
                     bcx: bcx,
@@ -156,7 +156,7 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
                 }
             }
             def::DefFn(did, _) if match expr_ty.sty {
-                ty::ty_bare_fn(_, ref f) => f.abi == synabi::RustIntrinsic,
+                ty::TyBareFn(_, ref f) => f.abi == synabi::RustIntrinsic,
                 _ => false
             } => {
                 let substs = common::node_id_substs(bcx.ccx(),
@@ -299,7 +299,7 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
     // which is the fn pointer, and `args`, which is the arguments tuple.
     let (opt_def_id, sig) =
         match bare_fn_ty.sty {
-            ty::ty_bare_fn(opt_def_id,
+            ty::TyBareFn(opt_def_id,
                            &ty::BareFnTy { unsafety: ast::Unsafety::Normal,
                                            abi: synabi::Rust,
                                            ref sig }) => {
@@ -621,7 +621,7 @@ pub fn trans_method_call<'a, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let method_ty = match bcx.tcx().method_map.borrow().get(&method_call) {
         Some(method) => match method.origin {
             ty::MethodTraitObject(_) => match method.ty.sty {
-                ty::ty_bare_fn(_, ref fty) => {
+                ty::TyBareFn(_, ref fty) => {
                     ty::mk_bare_fn(bcx.tcx(), None, meth::opaque_method_ty(bcx.tcx(), fty))
                 }
                 _ => method.ty
@@ -699,7 +699,7 @@ pub fn trans_call_inner<'a, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
     let mut bcx = callee.bcx;
 
     let (abi, ret_ty) = match callee_ty.sty {
-        ty::ty_bare_fn(_, ref f) => {
+        ty::TyBareFn(_, ref f) => {
             let output = ty::erase_late_bound_regions(bcx.tcx(), &f.sig.output());
             (f.abi, output)
         }
@@ -943,7 +943,7 @@ fn trans_args_under_call_abi<'blk, 'tcx>(
     let tuple_type = common::node_id_type(bcx, tuple_expr.id);
 
     match tuple_type.sty {
-        ty::ty_tup(ref field_types) => {
+        ty::TyTuple(ref field_types) => {
             let tuple_datum = unpack_datum!(bcx,
                                             expr::trans(bcx, &**tuple_expr));
             let tuple_lvalue_datum =
@@ -1002,7 +1002,7 @@ fn trans_overloaded_call_args<'blk, 'tcx>(
     // Now untuple the rest of the arguments.
     let tuple_type = arg_tys[1];
     match tuple_type.sty {
-        ty::ty_tup(ref field_types) => {
+        ty::TyTuple(ref field_types) => {
             for (i, &field_type) in field_types.iter().enumerate() {
                 let arg_datum =
                     unpack_datum!(bcx, expr::trans(bcx, arg_exprs[i + 1]));

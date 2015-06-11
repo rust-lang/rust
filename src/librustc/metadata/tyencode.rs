@@ -41,7 +41,7 @@ pub struct ctxt<'a, 'tcx: 'a> {
     pub abbrevs: &'a abbrev_map<'tcx>
 }
 
-// Compact string representation for Ty values. API ty_str & parse_from_str.
+// Compact string representation for Ty values. API TyStr & parse_from_str.
 // Extra parameters are for converting to/from def_ids in the string rep.
 // Whatever format you choose should not contain pipe characters.
 pub struct ty_abbrev {
@@ -60,9 +60,9 @@ pub fn enc_ty<'a, 'tcx>(w: &mut Encoder, cx: &ctxt<'a, 'tcx>, t: Ty<'tcx>) {
     let pos = w.mark_stable_position();
 
     match t.sty {
-        ty::ty_bool => mywrite!(w, "b"),
-        ty::ty_char => mywrite!(w, "c"),
-        ty::ty_int(t) => {
+        ty::TyBool => mywrite!(w, "b"),
+        ty::TyChar => mywrite!(w, "c"),
+        ty::TyInt(t) => {
             match t {
                 ast::TyIs => mywrite!(w, "is"),
                 ast::TyI8 => mywrite!(w, "MB"),
@@ -71,7 +71,7 @@ pub fn enc_ty<'a, 'tcx>(w: &mut Encoder, cx: &ctxt<'a, 'tcx>, t: Ty<'tcx>) {
                 ast::TyI64 => mywrite!(w, "MD")
             }
         }
-        ty::ty_uint(t) => {
+        ty::TyUint(t) => {
             match t {
                 ast::TyUs => mywrite!(w, "us"),
                 ast::TyU8 => mywrite!(w, "Mb"),
@@ -80,37 +80,37 @@ pub fn enc_ty<'a, 'tcx>(w: &mut Encoder, cx: &ctxt<'a, 'tcx>, t: Ty<'tcx>) {
                 ast::TyU64 => mywrite!(w, "Md")
             }
         }
-        ty::ty_float(t) => {
+        ty::TyFloat(t) => {
             match t {
                 ast::TyF32 => mywrite!(w, "Mf"),
                 ast::TyF64 => mywrite!(w, "MF"),
             }
         }
-        ty::ty_enum(def, substs) => {
+        ty::TyEnum(def, substs) => {
             mywrite!(w, "t[{}|", (cx.ds)(def));
             enc_substs(w, cx, substs);
             mywrite!(w, "]");
         }
-        ty::ty_trait(box ty::TyTrait { ref principal,
+        ty::TyTrait(box ty::TraitTy { ref principal,
                                        ref bounds }) => {
             mywrite!(w, "x[");
             enc_trait_ref(w, cx, principal.0);
             enc_existential_bounds(w, cx, bounds);
             mywrite!(w, "]");
         }
-        ty::ty_tup(ref ts) => {
+        ty::TyTuple(ref ts) => {
             mywrite!(w, "T[");
             for t in ts { enc_ty(w, cx, *t); }
             mywrite!(w, "]");
         }
-        ty::ty_uniq(typ) => { mywrite!(w, "~"); enc_ty(w, cx, typ); }
-        ty::ty_ptr(mt) => { mywrite!(w, "*"); enc_mt(w, cx, mt); }
-        ty::ty_rptr(r, mt) => {
+        ty::TyBox(typ) => { mywrite!(w, "~"); enc_ty(w, cx, typ); }
+        ty::TyRawPtr(mt) => { mywrite!(w, "*"); enc_mt(w, cx, mt); }
+        ty::TyRef(r, mt) => {
             mywrite!(w, "&");
             enc_region(w, cx, *r);
             enc_mt(w, cx, mt);
         }
-        ty::ty_vec(t, sz) => {
+        ty::TyArray(t, sz) => {
             mywrite!(w, "V");
             enc_ty(w, cx, t);
             mywrite!(w, "/");
@@ -119,40 +119,40 @@ pub fn enc_ty<'a, 'tcx>(w: &mut Encoder, cx: &ctxt<'a, 'tcx>, t: Ty<'tcx>) {
                 None => mywrite!(w, "|"),
             }
         }
-        ty::ty_str => {
+        ty::TyStr => {
             mywrite!(w, "v");
         }
-        ty::ty_bare_fn(Some(def_id), f) => {
+        ty::TyBareFn(Some(def_id), f) => {
             mywrite!(w, "F");
             mywrite!(w, "{}|", (cx.ds)(def_id));
             enc_bare_fn_ty(w, cx, f);
         }
-        ty::ty_bare_fn(None, f) => {
+        ty::TyBareFn(None, f) => {
             mywrite!(w, "G");
             enc_bare_fn_ty(w, cx, f);
         }
-        ty::ty_infer(_) => {
+        ty::TyInfer(_) => {
             cx.diag.handler().bug("cannot encode inference variable types");
         }
-        ty::ty_param(ParamTy {space, idx, name}) => {
+        ty::TyParam(ParamTy {space, idx, name}) => {
             mywrite!(w, "p[{}|{}|{}]", idx, space.to_uint(), token::get_name(name))
         }
-        ty::ty_struct(def, substs) => {
+        ty::TyStruct(def, substs) => {
             mywrite!(w, "a[{}|", (cx.ds)(def));
             enc_substs(w, cx, substs);
             mywrite!(w, "]");
         }
-        ty::ty_closure(def, substs) => {
+        ty::TyClosure(def, substs) => {
             mywrite!(w, "k[{}|", (cx.ds)(def));
             enc_substs(w, cx, substs);
             mywrite!(w, "]");
         }
-        ty::ty_projection(ref data) => {
+        ty::TyProjection(ref data) => {
             mywrite!(w, "P[");
             enc_trait_ref(w, cx, data.trait_ref);
             mywrite!(w, "{}]", token::get_name(data.item_name));
         }
-        ty::ty_err => {
+        ty::TyError => {
             mywrite!(w, "e");
         }
     }

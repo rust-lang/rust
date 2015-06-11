@@ -171,26 +171,26 @@ impl<'tcx> TypeMap<'tcx> {
         unique_type_id.push('{');
 
         match type_.sty {
-            ty::ty_bool     |
-            ty::ty_char     |
-            ty::ty_str      |
-            ty::ty_int(_)   |
-            ty::ty_uint(_)  |
-            ty::ty_float(_) => {
+            ty::TyBool     |
+            ty::TyChar     |
+            ty::TyStr      |
+            ty::TyInt(_)   |
+            ty::TyUint(_)  |
+            ty::TyFloat(_) => {
                 push_debuginfo_type_name(cx, type_, false, &mut unique_type_id);
             },
-            ty::ty_enum(def_id, substs) => {
+            ty::TyEnum(def_id, substs) => {
                 unique_type_id.push_str("enum ");
                 from_def_id_and_substs(self, cx, def_id, substs, &mut unique_type_id);
             },
-            ty::ty_struct(def_id, substs) => {
+            ty::TyStruct(def_id, substs) => {
                 unique_type_id.push_str("struct ");
                 from_def_id_and_substs(self, cx, def_id, substs, &mut unique_type_id);
             },
-            ty::ty_tup(ref component_types) if component_types.is_empty() => {
+            ty::TyTuple(ref component_types) if component_types.is_empty() => {
                 push_debuginfo_type_name(cx, type_, false, &mut unique_type_id);
             },
-            ty::ty_tup(ref component_types) => {
+            ty::TyTuple(ref component_types) => {
                 unique_type_id.push_str("tuple ");
                 for &component_type in component_types {
                     let component_type_id =
@@ -200,13 +200,13 @@ impl<'tcx> TypeMap<'tcx> {
                     unique_type_id.push_str(&component_type_id[..]);
                 }
             },
-            ty::ty_uniq(inner_type) => {
+            ty::TyBox(inner_type) => {
                 unique_type_id.push_str("box ");
                 let inner_type_id = self.get_unique_type_id_of_type(cx, inner_type);
                 let inner_type_id = self.get_unique_type_id_as_string(inner_type_id);
                 unique_type_id.push_str(&inner_type_id[..]);
             },
-            ty::ty_ptr(ty::mt { ty: inner_type, mutbl } ) => {
+            ty::TyRawPtr(ty::mt { ty: inner_type, mutbl } ) => {
                 unique_type_id.push('*');
                 if mutbl == ast::MutMutable {
                     unique_type_id.push_str("mut");
@@ -216,7 +216,7 @@ impl<'tcx> TypeMap<'tcx> {
                 let inner_type_id = self.get_unique_type_id_as_string(inner_type_id);
                 unique_type_id.push_str(&inner_type_id[..]);
             },
-            ty::ty_rptr(_, ty::mt { ty: inner_type, mutbl }) => {
+            ty::TyRef(_, ty::mt { ty: inner_type, mutbl }) => {
                 unique_type_id.push('&');
                 if mutbl == ast::MutMutable {
                     unique_type_id.push_str("mut");
@@ -226,7 +226,7 @@ impl<'tcx> TypeMap<'tcx> {
                 let inner_type_id = self.get_unique_type_id_as_string(inner_type_id);
                 unique_type_id.push_str(&inner_type_id[..]);
             },
-            ty::ty_vec(inner_type, optional_length) => {
+            ty::TyArray(inner_type, optional_length) => {
                 match optional_length {
                     Some(len) => {
                         unique_type_id.push_str(&format!("[{}]", len));
@@ -240,7 +240,7 @@ impl<'tcx> TypeMap<'tcx> {
                 let inner_type_id = self.get_unique_type_id_as_string(inner_type_id);
                 unique_type_id.push_str(&inner_type_id[..]);
             },
-            ty::ty_trait(ref trait_data) => {
+            ty::TyTrait(ref trait_data) => {
                 unique_type_id.push_str("trait ");
 
                 let principal =
@@ -253,7 +253,7 @@ impl<'tcx> TypeMap<'tcx> {
                                        principal.substs,
                                        &mut unique_type_id);
             },
-            ty::ty_bare_fn(_, &ty::BareFnTy{ unsafety, abi, ref sig } ) => {
+            ty::TyBareFn(_, &ty::BareFnTy{ unsafety, abi, ref sig } ) => {
                 if unsafety == ast::Unsafety::Unsafe {
                     unique_type_id.push_str("unsafe ");
                 }
@@ -289,7 +289,7 @@ impl<'tcx> TypeMap<'tcx> {
                     }
                 }
             },
-            ty::ty_closure(def_id, substs) => {
+            ty::TyClosure(def_id, substs) => {
                 let typer = NormalizingClosureTyper::new(cx.tcx());
                 let closure_ty = typer.closure_type(def_id, substs);
                 self.get_unique_type_id_of_closure_type(cx,
@@ -635,7 +635,7 @@ fn subroutine_type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     // return type
     signature_metadata.push(match signature.output {
         ty::FnConverging(ret_ty) => match ret_ty.sty {
-            ty::ty_tup(ref tys) if tys.is_empty() => ptr::null_mut(),
+            ty::TyTuple(ref tys) if tys.is_empty() => ptr::null_mut(),
             _ => type_metadata(cx, ret_ty, span)
         },
         ty::FnDiverging => diverging_type_metadata(cx)
@@ -674,7 +674,7 @@ fn trait_pointer_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     // But it does not describe the trait's methods.
 
     let def_id = match trait_type.sty {
-        ty::ty_trait(ref data) => data.principal_def_id(),
+        ty::TyTrait(ref data) => data.principal_def_id(),
         _ => {
             let pp_type_name = ppaux::ty_to_string(cx.tcx(), trait_type);
             cx.sess().bug(&format!("debuginfo: Unexpected trait-object type in \
@@ -742,39 +742,39 @@ pub fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
     let sty = &t.sty;
     let MetadataCreationResult { metadata, already_stored_in_typemap } = match *sty {
-        ty::ty_bool     |
-        ty::ty_char     |
-        ty::ty_int(_)   |
-        ty::ty_uint(_)  |
-        ty::ty_float(_) => {
+        ty::TyBool     |
+        ty::TyChar     |
+        ty::TyInt(_)   |
+        ty::TyUint(_)  |
+        ty::TyFloat(_) => {
             MetadataCreationResult::new(basic_type_metadata(cx, t), false)
         }
-        ty::ty_tup(ref elements) if elements.is_empty() => {
+        ty::TyTuple(ref elements) if elements.is_empty() => {
             MetadataCreationResult::new(basic_type_metadata(cx, t), false)
         }
-        ty::ty_enum(def_id, _) => {
+        ty::TyEnum(def_id, _) => {
             prepare_enum_metadata(cx, t, def_id, unique_type_id, usage_site_span).finalize(cx)
         }
-        ty::ty_vec(typ, len) => {
+        ty::TyArray(typ, len) => {
             fixed_vec_metadata(cx, unique_type_id, typ, len.map(|x| x as u64), usage_site_span)
         }
-        ty::ty_str => {
+        ty::TyStr => {
             fixed_vec_metadata(cx, unique_type_id, cx.tcx().types.i8, None, usage_site_span)
         }
-        ty::ty_trait(..) => {
+        ty::TyTrait(..) => {
             MetadataCreationResult::new(
                         trait_pointer_metadata(cx, t, None, unique_type_id),
             false)
         }
-        ty::ty_uniq(ty) | ty::ty_ptr(ty::mt{ty, ..}) | ty::ty_rptr(_, ty::mt{ty, ..}) => {
+        ty::TyBox(ty) | ty::TyRawPtr(ty::mt{ty, ..}) | ty::TyRef(_, ty::mt{ty, ..}) => {
             match ty.sty {
-                ty::ty_vec(typ, None) => {
+                ty::TyArray(typ, None) => {
                     vec_slice_metadata(cx, t, typ, unique_type_id, usage_site_span)
                 }
-                ty::ty_str => {
+                ty::TyStr => {
                     vec_slice_metadata(cx, t, cx.tcx().types.u8, unique_type_id, usage_site_span)
                 }
-                ty::ty_trait(..) => {
+                ty::TyTrait(..) => {
                     MetadataCreationResult::new(
                         trait_pointer_metadata(cx, ty, Some(t), unique_type_id),
                         false)
@@ -794,15 +794,15 @@ pub fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 }
             }
         }
-        ty::ty_bare_fn(_, ref barefnty) => {
+        ty::TyBareFn(_, ref barefnty) => {
             subroutine_type_metadata(cx, unique_type_id, &barefnty.sig, usage_site_span)
         }
-        ty::ty_closure(def_id, substs) => {
+        ty::TyClosure(def_id, substs) => {
             let typer = NormalizingClosureTyper::new(cx.tcx());
             let sig = typer.closure_type(def_id, substs).sig;
             subroutine_type_metadata(cx, unique_type_id, &sig, usage_site_span)
         }
-        ty::ty_struct(def_id, substs) => {
+        ty::TyStruct(def_id, substs) => {
             prepare_struct_metadata(cx,
                                     t,
                                     def_id,
@@ -810,7 +810,7 @@ pub fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                     unique_type_id,
                                     usage_site_span).finalize(cx)
         }
-        ty::ty_tup(ref elements) => {
+        ty::TyTuple(ref elements) => {
             prepare_tuple_metadata(cx,
                                    t,
                                    &elements[..],
@@ -936,25 +936,25 @@ fn basic_type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     debug!("basic_type_metadata: {:?}", t);
 
     let (name, encoding) = match t.sty {
-        ty::ty_tup(ref elements) if elements.is_empty() =>
+        ty::TyTuple(ref elements) if elements.is_empty() =>
             ("()".to_string(), DW_ATE_unsigned),
-        ty::ty_bool => ("bool".to_string(), DW_ATE_boolean),
-        ty::ty_char => ("char".to_string(), DW_ATE_unsigned_char),
-        ty::ty_int(int_ty) => match int_ty {
+        ty::TyBool => ("bool".to_string(), DW_ATE_boolean),
+        ty::TyChar => ("char".to_string(), DW_ATE_unsigned_char),
+        ty::TyInt(int_ty) => match int_ty {
             ast::TyIs => ("isize".to_string(), DW_ATE_signed),
             ast::TyI8 => ("i8".to_string(), DW_ATE_signed),
             ast::TyI16 => ("i16".to_string(), DW_ATE_signed),
             ast::TyI32 => ("i32".to_string(), DW_ATE_signed),
             ast::TyI64 => ("i64".to_string(), DW_ATE_signed)
         },
-        ty::ty_uint(uint_ty) => match uint_ty {
+        ty::TyUint(uint_ty) => match uint_ty {
             ast::TyUs => ("usize".to_string(), DW_ATE_unsigned),
             ast::TyU8 => ("u8".to_string(), DW_ATE_unsigned),
             ast::TyU16 => ("u16".to_string(), DW_ATE_unsigned),
             ast::TyU32 => ("u32".to_string(), DW_ATE_unsigned),
             ast::TyU64 => ("u64".to_string(), DW_ATE_unsigned)
         },
-        ty::ty_float(float_ty) => match float_ty {
+        ty::TyFloat(float_ty) => match float_ty {
             ast::TyF32 => ("f32".to_string(), DW_ATE_float),
             ast::TyF64 => ("f64".to_string(), DW_ATE_float),
         },
@@ -1179,7 +1179,7 @@ fn prepare_struct_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     let mut fields = ty::struct_fields(cx.tcx(), def_id, substs);
 
     // The `Ty` values returned by `ty::struct_fields` can still contain
-    // `ty_projection` variants, so normalize those away.
+    // `TyProjection` variants, so normalize those away.
     for field in &mut fields {
         field.mt.ty = monomorphize::normalize_associated_type(cx.tcx(), &field.mt.ty);
     }

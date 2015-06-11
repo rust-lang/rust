@@ -669,7 +669,7 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
                 }
                 None => rcx.resolve_node_type(base.id)
             };
-            if let ty::ty_rptr(r_ptr, _) = base_ty.sty {
+            if let ty::TyRef(r_ptr, _) = base_ty.sty {
                 mk_subregion_due_to_dereference(
                     rcx, expr.span, ty::ReScope(CodeExtent::from_node_id(expr.id)), *r_ptr);
             }
@@ -762,23 +762,23 @@ fn constrain_cast(rcx: &mut Rcx,
                from_ty.repr(rcx.tcx()),
                to_ty.repr(rcx.tcx()));
         match (&from_ty.sty, &to_ty.sty) {
-            /*From:*/ (&ty::ty_rptr(from_r, ref from_mt),
-            /*To:  */  &ty::ty_rptr(to_r, ref to_mt)) => {
+            /*From:*/ (&ty::TyRef(from_r, ref from_mt),
+            /*To:  */  &ty::TyRef(to_r, ref to_mt)) => {
                 // Target cannot outlive source, naturally.
                 rcx.fcx.mk_subr(infer::Reborrow(cast_expr.span), *to_r, *from_r);
                 walk_cast(rcx, cast_expr, from_mt.ty, to_mt.ty);
             }
 
             /*From:*/ (_,
-            /*To:  */  &ty::ty_trait(box ty::TyTrait { ref bounds, .. })) => {
+            /*To:  */  &ty::TyTrait(box ty::TraitTy { ref bounds, .. })) => {
                 // When T is existentially quantified as a trait
                 // `Foo+'to`, it must outlive the region bound `'to`.
                 type_must_outlive(rcx, infer::RelateObjectBound(cast_expr.span),
                                   from_ty, bounds.region_bound);
             }
 
-            /*From:*/ (&ty::ty_uniq(from_referent_ty),
-            /*To:  */  &ty::ty_uniq(to_referent_ty)) => {
+            /*From:*/ (&ty::TyBox(from_referent_ty),
+            /*To:  */  &ty::TyBox(to_referent_ty)) => {
                 walk_cast(rcx, cast_expr, from_referent_ty, to_referent_ty);
             }
 
@@ -801,7 +801,7 @@ fn constrain_callee(rcx: &mut Rcx,
                     _callee_expr: &ast::Expr) {
     let callee_ty = rcx.resolve_node_type(callee_id);
     match callee_ty.sty {
-        ty::ty_bare_fn(..) => { }
+        ty::TyBareFn(..) => { }
         _ => {
             // this should not happen, but it does if the program is
             // erroneous
@@ -899,7 +899,7 @@ fn constrain_autoderefs<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
                     ty::no_late_bound_regions(rcx.tcx(), fn_sig).unwrap();
                 let self_ty = fn_sig.inputs[0];
                 let (m, r) = match self_ty.sty {
-                    ty::ty_rptr(r, ref m) => (m.mutbl, r),
+                    ty::TyRef(r, ref m) => (m.mutbl, r),
                     _ => {
                         rcx.tcx().sess.span_bug(
                             deref_expr.span,
@@ -935,7 +935,7 @@ fn constrain_autoderefs<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
             None => derefd_ty
         };
 
-        if let ty::ty_rptr(r_ptr, _) =  derefd_ty.sty {
+        if let ty::TyRef(r_ptr, _) =  derefd_ty.sty {
             mk_subregion_due_to_dereference(rcx, deref_expr.span,
                                             r_deref_expr, *r_ptr);
         }
@@ -995,9 +995,9 @@ fn constrain_index<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
            rcx.fcx.infcx().ty_to_string(indexed_ty));
 
     let r_index_expr = ty::ReScope(CodeExtent::from_node_id(index_expr.id));
-    if let ty::ty_rptr(r_ptr, mt) = indexed_ty.sty {
+    if let ty::TyRef(r_ptr, mt) = indexed_ty.sty {
         match mt.ty.sty {
-            ty::ty_vec(_, None) | ty::ty_str => {
+            ty::TyArray(_, None) | ty::TyStr => {
                 rcx.fcx.mk_subr(infer::IndexSlice(index_expr.span),
                                 r_index_expr, *r_ptr);
             }

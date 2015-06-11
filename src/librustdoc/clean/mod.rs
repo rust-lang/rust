@@ -579,7 +579,6 @@ impl<'tcx> Clean<(Vec<TyParamBound>, Vec<TypeBinding>)> for ty::ExistentialBound
 
 fn external_path_params(cx: &DocContext, trait_did: Option<ast::DefId>,
                         bindings: Vec<TypeBinding>, substs: &subst::Substs) -> PathParameters {
-    use rustc::middle::ty::sty;
     let lifetimes = substs.regions().get_slice(subst::TypeSpace)
                     .iter()
                     .filter_map(|v| v.clean(cx))
@@ -591,7 +590,7 @@ fn external_path_params(cx: &DocContext, trait_did: Option<ast::DefId>,
         (Some(did), Some(ref tcx)) if tcx.lang_items.fn_trait_kind(did).is_some() => {
             assert_eq!(types.len(), 1);
             let inputs = match types[0].sty {
-                sty::ty_tup(ref tys) => tys.iter().map(|t| t.clean(cx)).collect(),
+                ty::TyTuple(ref tys) => tys.iter().map(|t| t.clean(cx)).collect(),
                 _ => {
                     return PathParameters::AngleBracketed {
                         lifetimes: lifetimes,
@@ -603,7 +602,7 @@ fn external_path_params(cx: &DocContext, trait_did: Option<ast::DefId>,
             let output = None;
             // FIXME(#20299) return type comes from a projection now
             // match types[1].sty {
-            //     sty::ty_tup(ref v) if v.is_empty() => None, // -> ()
+            //     ty::TyTuple(ref v) if v.is_empty() => None, // -> ()
             //     _ => Some(types[1].clean(cx))
             // };
             PathParameters::Parenthesized {
@@ -691,11 +690,10 @@ impl<'tcx> Clean<TyParamBound> for ty::TraitRef<'tcx> {
         // collect any late bound regions
         let mut late_bounds = vec![];
         for &ty_s in self.substs.types.get_slice(ParamSpace::TypeSpace) {
-            use rustc::middle::ty::{Region, sty};
-            if let sty::ty_tup(ref ts) = ty_s.sty {
+            if let ty::TyTuple(ref ts) = ty_s.sty {
                 for &ty_s in ts {
-                    if let sty::ty_rptr(ref reg, _) = ty_s.sty {
-                        if let &Region::ReLateBound(_, _) = *reg {
+                    if let ty::TyRef(ref reg, _) = ty_s.sty {
+                        if let &ty::Region::ReLateBound(_, _) = *reg {
                             debug!("  hit an ReLateBound {:?}", reg);
                             if let Some(lt) = reg.clean(cx) {
                                 late_bounds.push(lt)
@@ -1326,7 +1324,7 @@ impl<'tcx> Clean<Item> for ty::Method<'tcx> {
                     ty::ByValueExplicitSelfCategory => SelfValue,
                     ty::ByReferenceExplicitSelfCategory(..) => {
                         match self.fty.sig.0.inputs[0].sty {
-                            ty::ty_rptr(r, mt) => {
+                            ty::TyRef(r, mt) => {
                                 SelfBorrowed(r.clean(cx), mt.mutbl.clean(cx))
                             }
                             _ => unreachable!(),
@@ -1633,37 +1631,37 @@ impl Clean<Type> for ast::Ty {
 impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
     fn clean(&self, cx: &DocContext) -> Type {
         match self.sty {
-            ty::ty_bool => Primitive(Bool),
-            ty::ty_char => Primitive(Char),
-            ty::ty_int(ast::TyIs) => Primitive(Isize),
-            ty::ty_int(ast::TyI8) => Primitive(I8),
-            ty::ty_int(ast::TyI16) => Primitive(I16),
-            ty::ty_int(ast::TyI32) => Primitive(I32),
-            ty::ty_int(ast::TyI64) => Primitive(I64),
-            ty::ty_uint(ast::TyUs) => Primitive(Usize),
-            ty::ty_uint(ast::TyU8) => Primitive(U8),
-            ty::ty_uint(ast::TyU16) => Primitive(U16),
-            ty::ty_uint(ast::TyU32) => Primitive(U32),
-            ty::ty_uint(ast::TyU64) => Primitive(U64),
-            ty::ty_float(ast::TyF32) => Primitive(F32),
-            ty::ty_float(ast::TyF64) => Primitive(F64),
-            ty::ty_str => Primitive(Str),
-            ty::ty_uniq(t) => {
+            ty::TyBool => Primitive(Bool),
+            ty::TyChar => Primitive(Char),
+            ty::TyInt(ast::TyIs) => Primitive(Isize),
+            ty::TyInt(ast::TyI8) => Primitive(I8),
+            ty::TyInt(ast::TyI16) => Primitive(I16),
+            ty::TyInt(ast::TyI32) => Primitive(I32),
+            ty::TyInt(ast::TyI64) => Primitive(I64),
+            ty::TyUint(ast::TyUs) => Primitive(Usize),
+            ty::TyUint(ast::TyU8) => Primitive(U8),
+            ty::TyUint(ast::TyU16) => Primitive(U16),
+            ty::TyUint(ast::TyU32) => Primitive(U32),
+            ty::TyUint(ast::TyU64) => Primitive(U64),
+            ty::TyFloat(ast::TyF32) => Primitive(F32),
+            ty::TyFloat(ast::TyF64) => Primitive(F64),
+            ty::TyStr => Primitive(Str),
+            ty::TyBox(t) => {
                 let box_did = cx.tcx_opt().and_then(|tcx| {
                     tcx.lang_items.owned_box()
                 });
                 lang_struct(cx, box_did, t, "Box", Unique)
             }
-            ty::ty_vec(ty, None) => Vector(box ty.clean(cx)),
-            ty::ty_vec(ty, Some(i)) => FixedVector(box ty.clean(cx),
+            ty::TyArray(ty, None) => Vector(box ty.clean(cx)),
+            ty::TyArray(ty, Some(i)) => FixedVector(box ty.clean(cx),
                                                    format!("{}", i)),
-            ty::ty_ptr(mt) => RawPointer(mt.mutbl.clean(cx), box mt.ty.clean(cx)),
-            ty::ty_rptr(r, mt) => BorrowedRef {
+            ty::TyRawPtr(mt) => RawPointer(mt.mutbl.clean(cx), box mt.ty.clean(cx)),
+            ty::TyRef(r, mt) => BorrowedRef {
                 lifetime: r.clean(cx),
                 mutability: mt.mutbl.clean(cx),
                 type_: box mt.ty.clean(cx),
             },
-            ty::ty_bare_fn(_, ref fty) => BareFunction(box BareFunctionDecl {
+            ty::TyBareFn(_, ref fty) => BareFunction(box BareFunctionDecl {
                 unsafety: fty.unsafety,
                 generics: Generics {
                     lifetimes: Vec::new(),
@@ -1673,12 +1671,12 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
                 decl: (ast_util::local_def(0), &fty.sig).clean(cx),
                 abi: fty.abi.to_string(),
             }),
-            ty::ty_struct(did, substs) |
-            ty::ty_enum(did, substs) => {
+            ty::TyStruct(did, substs) |
+            ty::TyEnum(did, substs) => {
                 let fqn = csearch::get_item_path(cx.tcx(), did);
                 let fqn: Vec<_> = fqn.into_iter().map(|i| i.to_string()).collect();
                 let kind = match self.sty {
-                    ty::ty_struct(..) => TypeStruct,
+                    ty::TyStruct(..) => TypeStruct,
                     _ => TypeEnum,
                 };
                 let path = external_path(cx, &fqn.last().unwrap().to_string(),
@@ -1691,7 +1689,7 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
                     is_generic: false,
                 }
             }
-            ty::ty_trait(box ty::TyTrait { ref principal, ref bounds }) => {
+            ty::TyTrait(box ty::TraitTy { ref principal, ref bounds }) => {
                 let did = principal.def_id();
                 let fqn = csearch::get_item_path(cx.tcx(), did);
                 let fqn: Vec<_> = fqn.into_iter().map(|i| i.to_string()).collect();
@@ -1706,16 +1704,16 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
                     is_generic: false,
                 }
             }
-            ty::ty_tup(ref t) => Tuple(t.clean(cx)),
+            ty::TyTuple(ref t) => Tuple(t.clean(cx)),
 
-            ty::ty_projection(ref data) => data.clean(cx),
+            ty::TyProjection(ref data) => data.clean(cx),
 
-            ty::ty_param(ref p) => Generic(token::get_name(p.name).to_string()),
+            ty::TyParam(ref p) => Generic(token::get_name(p.name).to_string()),
 
-            ty::ty_closure(..) => Tuple(vec![]), // FIXME(pcwalton)
+            ty::TyClosure(..) => Tuple(vec![]), // FIXME(pcwalton)
 
-            ty::ty_infer(..) => panic!("ty_infer"),
-            ty::ty_err => panic!("ty_err"),
+            ty::TyInfer(..) => panic!("TyInfer"),
+            ty::TyError => panic!("TyError"),
         }
     }
 }

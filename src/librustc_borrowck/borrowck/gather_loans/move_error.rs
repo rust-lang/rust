@@ -137,8 +137,8 @@ fn report_cannot_move_out_of<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
         mc::cat_downcast(ref b, _) |
         mc::cat_interior(ref b, mc::InteriorField(_)) => {
             match b.ty.sty {
-                ty::ty_struct(did, _) |
-                ty::ty_enum(did, _) if ty::has_dtor(bccx.tcx, did) => {
+                ty::TyStruct(did, _) |
+                ty::TyEnum(did, _) if ty::has_dtor(bccx.tcx, did) => {
                     bccx.span_err(
                         move_from.span,
                         &format!("cannot move out of type `{}`, \
