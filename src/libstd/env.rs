@@ -486,6 +486,7 @@ static EXIT_STATUS: AtomicIsize = AtomicIsize::new(0);
 ///
 /// Note that this is not synchronized against modifications of other threads.
 #[unstable(feature = "exit_status", reason = "managing the exit status may change")]
+#[deprecated(since = "1.2.0", reason = "use process::exit instead")]
 pub fn set_exit_status(code: i32) {
     EXIT_STATUS.store(code as isize, Ordering::SeqCst)
 }
@@ -493,6 +494,7 @@ pub fn set_exit_status(code: i32) {
 /// Fetches the process's current exit code. This defaults to 0 and can change
 /// by calling `set_exit_status`.
 #[unstable(feature = "exit_status", reason = "managing the exit status may change")]
+#[deprecated(since = "1.2.0", reason = "use process::exit instead")]
 pub fn get_exit_status() -> i32 {
     EXIT_STATUS.load(Ordering::SeqCst) as i32
 }
