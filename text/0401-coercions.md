@@ -335,7 +335,12 @@ following holds:
 
 where `&.T` and `*T` are references of either mutability,
 and where unsize_kind(`T`) is the kind of the unsize info
-in `T` - a vtable or a length (or `()` if `T: Sized`).
+in `T` - the vtable for a trait definition (e.g. `fmt::Display` or
+`Iterator`, not `Iterator<Item=u8>`) or a length (or `()` if `T: Sized`).
+
+Note that lengths are not adjusted when casting raw slices - 
+`T: *const [u16] as *const [u8]` creates a slice that only includes
+half of the original memory.
 
 Casting is not transitive, that is, even if `e as U1 as U2` is a valid
 expression, `e as U2` is not necessarily so (in fact it will only be valid if
