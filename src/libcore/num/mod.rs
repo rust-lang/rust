@@ -1514,7 +1514,8 @@ impl ParseIntError {
     #[unstable(feature = "int_error_internals",
                reason = "available through Error trait and this method should \
                          not be exposed publicly")]
-    pub fn description(&self) -> &str {
+    #[doc(hidden)]
+    pub fn __description(&self) -> &str {
         match self.kind {
             IntErrorKind::Empty => "cannot parse integer from empty string",
             IntErrorKind::InvalidDigit => "invalid digit found in string",
@@ -1527,7 +1528,7 @@ impl ParseIntError {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for ParseIntError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.description().fmt(f)
+        self.__description().fmt(f)
     }
 }
 
@@ -1544,6 +1545,7 @@ pub struct ParseFloatError {
 #[derive(Debug, Clone, PartialEq)]
 #[unstable(feature = "float_error_internals",
            reason = "should not be exposed publicly")]
+#[doc(hidden)]
 pub enum FloatErrorKind {
     Empty,
     Invalid,

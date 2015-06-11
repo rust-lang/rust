@@ -140,7 +140,7 @@ impl Error for str::Utf8Error {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Error for num::ParseIntError {
     fn description(&self) -> &str {
-        self.description()
+        self.__description()
     }
 }
 
