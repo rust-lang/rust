@@ -389,7 +389,9 @@ pub fn link_binary(sess: &Session,
                    outputs: &OutputFilenames,
                    crate_name: &str) -> Vec<PathBuf> {
     let mut out_filenames = Vec::new();
+    let mut dylib = false;
     for &crate_type in &*sess.crate_types.borrow() {
+        dylib = dylib || crate_type == config::CrateTypeDylib;
         if invalid_output_for_target(sess, crate_type) {
             sess.bug(&format!("invalid output type `{:?}` for target os `{}`",
                              crate_type, sess.opts.target_triple));
@@ -405,7 +407,10 @@ pub fn link_binary(sess: &Session,
         if !sess.opts.output_types.contains(&OutputTypeObject) {
             remove(sess, &obj_filename);
         }
-        remove(sess, &obj_filename.with_extension("metadata.o"));
+        if dylib {
+            // metadata.o is only produced for dylibs
+            remove(sess, &obj_filename.with_extension("metadata.o"));
+        }
     }
 
     out_filenames

@@ -642,9 +642,9 @@ pub fn run_passes(sess: &Session,
     // doesn't actually matter.)
     let mut work_items = Vec::with_capacity(1 + trans.modules.len());
 
-    {
+    if let Some(m) = trans.metadata_module {
         let work = build_work_item(sess,
-                                   trans.metadata_module,
+                                   m,
                                    metadata_config.clone(),
                                    crate_output.clone(),
                                    "metadata".to_string());
@@ -850,7 +850,8 @@ pub fn run_passes(sess: &Session,
             }
         }
 
-        if metadata_config.emit_bc && !user_wants_bitcode {
+        if metadata_config.emit_bc &&
+            trans.metadata_module.is_some() && !user_wants_bitcode {
             remove(sess, &crate_output.with_extension("metadata.bc"));
         }
     }
