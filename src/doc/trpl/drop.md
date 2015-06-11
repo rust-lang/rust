@@ -56,7 +56,38 @@ BOOM times 1!!!
 ```
 
 The TNT goes off before the firecracker does, because it was declared
-afterwards. Last in, first out.
+afterwards. Last in, first out. There’s one exception to this, however:
+a binding to `_` will be dropped immediately:
+
+```rust
+struct Noisy(u8);
+ 
+impl Drop for Noisy {
+    fn drop(&mut self) { println!("dropping {}", self.0); }
+}
+ 
+fn main() {
+    let _ = Noisy(1);
+    let x = Noisy(2);
+    let y = Noisy(3);
+} 
+```
+
+Will print:
+
+```text
+dropping 1
+dropping 3
+dropping 2
+```
+
+rather than
+
+```text
+dropping 3
+dropping 2
+dropping 1
+```
 
 So what is `Drop` good for? Generally, `Drop` is used to clean up any resources
 associated with a `struct`. For example, the [`Arc<T>` type][arc] is a
