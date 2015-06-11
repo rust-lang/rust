@@ -16,8 +16,8 @@ using namespace llvm;
 using namespace llvm::sys;
 using namespace llvm::object;
 
-// libmorestack is not used on Windows
-#if !defined(_WIN32) && !defined(__FreeBSD__) && !defined(__DragonFly__) && !defined(__Bitrig__)
+// libmorestack is not used on Windows, FreeBSD, DragonFly, Bitrig, and OpenBSD
+#if !defined(_WIN32) && !defined(__FreeBSD__) && !defined(__DragonFly__) && !defined(__Bitrig__) && !defined(__OpenBSD__)
 extern "C" void __morestack(void);
 
 static void* morestack_addr() {
@@ -35,7 +35,7 @@ class RustJITMemoryManager : public SectionMemoryManager
 
     uint64_t getSymbolAddress(const std::string &Name) override
     {
-#if !defined(_WIN32) && !defined(__FreeBSD__) && !defined(__DragonFly__) && !defined(__Bitrig__)
+#if !defined(_WIN32) && !defined(__FreeBSD__) && !defined(__DragonFly__) && !defined(__Bitrig__) && !defined(__OpenBSD__)
         if (Name == "__morestack" || Name == "___morestack")
             return reinterpret_cast<uint64_t>(__morestack);
         if (Name == "__morestack_addr" || Name == "___morestack_addr")
