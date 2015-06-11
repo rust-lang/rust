@@ -130,6 +130,15 @@ decades, so it appears the tradeoff has seen some confirmation already.
 
 # Alternatives
 
+* Opt-in and / or opt-out "feature-flags" (e.g. `#[legacy(..)]` for 
+opting out of a change) was suggested. The big problem is that this 
+relies on the user being able to change their dependencies, which may 
+not be possible for legal, organizational or other reasons. In 
+contrast, a defined target version doesn't ever need to change. 
+Depending on the specific case, it may be useful to allow a combination 
+of `#![legacy(..)]`, `#![future(..)]` and `#![target(..)]` where each 
+API version can declare the currently active feature and permit or
+forbid use of the opt-in/out flags.
 * Follow a more agressive strategy that actually removes stuff from the 
 API. This would make it easier for the libstd creators at some cost for 
 library and application writers, as they are required to keep up to 
@@ -155,4 +164,5 @@ authors to join the process
 # Unresolved questions
 
 Should we allow library writers to use the same features for 
-deprecating their API items?
+deprecating their API items? I think we should at least make sure that
+our design and implementation allow this in the future.
