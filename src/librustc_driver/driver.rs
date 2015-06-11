@@ -33,7 +33,7 @@ use super::Compilation;
 use serialize::json;
 
 use std::env;
-use std::ffi::OsString;
+use std::ffi::{OsString, OsStr};
 use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
@@ -966,7 +966,7 @@ pub fn build_output_filenames(input: &Input,
 
             OutputFilenames {
                 out_directory: out_file.parent().unwrap_or(cur_dir).to_path_buf(),
-                out_filestem: out_file.file_stem().unwrap()
+                out_filestem: out_file.file_stem().unwrap_or(OsStr::new(""))
                                       .to_str().unwrap().to_string(),
                 single_output_file: ofile,
                 extra: sess.opts.cg.extra_filename.clone(),
