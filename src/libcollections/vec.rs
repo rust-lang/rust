@@ -278,6 +278,8 @@ impl<T> Vec<T> {
     #[inline]
     #[unstable(feature = "vec_from_raw_buf",
                reason = "may be better expressed via composition")]
+    #[deprecated(since = "1.2.0",
+                 reason = "use slice::from_raw_parts + .to_vec() instead")]
     pub unsafe fn from_raw_buf(ptr: *const T, elts: usize) -> Vec<T> {
         let mut dst = Vec::with_capacity(elts);
         dst.set_len(elts);
