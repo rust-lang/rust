@@ -238,7 +238,7 @@ impl<T: ?Sized> Mutex<T> {
     /// time.  You should not trust a `false` value for program correctness
     /// without additional synchronization.
     #[inline]
-    #[unstable(feature = "sync_poison")]
+    #[stable(feature = "sync_poison", since = "1.2.0")]
     pub fn is_poisoned(&self) -> bool {
         self.inner.poison.get()
     }
