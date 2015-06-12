@@ -187,8 +187,8 @@ impl char {
     /// # Examples
     ///
     /// ```
-    /// for i in '❤'.escape_unicode() {
-    ///     print!("{}", i);
+    /// for c in '❤'.escape_unicode() {
+    ///     print!("{}", c);
     /// }
     /// println!("");
     /// ```
