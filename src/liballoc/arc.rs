@@ -330,15 +330,6 @@ impl<T: ?Sized> Deref for Arc<T> {
     }
 }
 
-#[stable(feature = "rc_arc_as_ref", since = "1.2.0")]
-impl<T: ?Sized> AsRef<T> for Arc<T> {
-
-    #[inline]
-    fn as_ref(&self) -> &T {
-        &self.inner().data
-    }
-}
-
 impl<T: Clone> Arc<T> {
     /// Make a mutable reference from the given `Arc<T>`.
     ///
