@@ -22,7 +22,7 @@ use term::Term;
 use error::{err, CliResult, CommandResult};
 use book;
 use book::{Book, BookItem};
-use css;
+
 use javascript;
 
 use rustdoc;
@@ -146,7 +146,8 @@ fn render(book: &Book, tgt: &Path) -> CliResult<()> {
             format!("--markdown-playground-url=http://play.rust-lang.org"),
             format!("--markdown-css={}", item.path_to_root.join("rust-book.css").display()),
             format!("--markdown-css={}",
-            "http://fonts.googleapis.com/css?family&#61;Open+Sans:400italic,700italic,400,700"),
+                "http://fonts.googleapis.com/css?family&#61;Open+Sans:400italic,700italic,400,700"
+                ),
             "--markdown-no-toc".to_string(),
         ];
         let output_result = rustdoc::main_args(rustdoc_args);
@@ -197,9 +198,16 @@ impl Subcommand for Build {
         }
         try!(fs::create_dir(&tgt));
 
-        try!(File::create(&tgt.join("rust-book.css")).and_then(|mut f| {
-            f.write_all(css::STYLE.as_bytes())
-        }));
+        // Copy static files
+        try!(fs::copy(
+            &cwd.join("src/rustbook/static/rustbook.css"),
+            &tgt.join("rust-book.css")
+        ));
+
+        try!(fs::copy(
+            &cwd.join("src/rustbook/static/rustbook.js"),
+            &tgt.join("rust-book.js")
+        ));
 
         let mut summary = try!(File::open(&src.join("SUMMARY.md")));
         match book::parse_summary(&mut summary, &src) {
