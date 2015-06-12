@@ -21,7 +21,8 @@ use sys;
 use sys_common::{AsInnerMut, AsInner};
 
 /// Windows-specific extensions to `OpenOptions`
-#[unstable(feature = "fs_ext", reason = "may require more thought/methods")]
+#[unstable(feature = "open_options_ext",
+           reason = "may require more thought/methods")]
 pub trait OpenOptionsExt {
     /// Overrides the `dwDesiredAccess` argument to the call to `CreateFile`
     /// with the specified value.
@@ -66,39 +67,45 @@ impl OpenOptionsExt for OpenOptions {
 
 /// Extension methods for `fs::Metadata` to access the raw fields contained
 /// within.
-#[unstable(feature = "metadata_ext", reason = "recently added API")]
+#[stable(feature = "metadata_ext", since = "1.1.0")]
 pub trait MetadataExt {
     /// Returns the value of the `dwFileAttributes` field of this metadata.
     ///
     /// This field contains the file system attribute information for a file
     /// or directory.
+    #[stable(feature = "metadata_ext", since = "1.1.0")]
     fn file_attributes(&self) -> u32;
 
     /// Returns the value of the `ftCreationTime` field of this metadata.
     ///
     /// The returned 64-bit value represents the number of 100-nanosecond
     /// intervals since January 1, 1601 (UTC).
+    #[stable(feature = "metadata_ext", since = "1.1.0")]
     fn creation_time(&self) -> u64;
 
     /// Returns the value of the `ftLastAccessTime` field of this metadata.
     ///
     /// The returned 64-bit value represents the number of 100-nanosecond
     /// intervals since January 1, 1601 (UTC).
+    #[stable(feature = "metadata_ext", since = "1.1.0")]
     fn last_access_time(&self) -> u64;
 
     /// Returns the value of the `ftLastWriteTime` field of this metadata.
     ///
     /// The returned 64-bit value represents the number of 100-nanosecond
     /// intervals since January 1, 1601 (UTC).
+    #[stable(feature = "metadata_ext", since = "1.1.0")]
     fn last_write_time(&self) -> u64;
 
     /// Returns the value of the `nFileSize{High,Low}` fields of this
     /// metadata.
     ///
     /// The returned value does not have meaning for directories.
+    #[stable(feature = "metadata_ext", since = "1.1.0")]
     fn file_size(&self) -> u64;
 }
 
+#[stable(feature = "metadata_ext", since = "1.1.0")]
 impl MetadataExt for Metadata {
     fn file_attributes(&self) -> u32 { self.as_inner().attrs() }
     fn creation_time(&self) -> u64 { self.as_inner().created() }
