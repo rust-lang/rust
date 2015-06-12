@@ -106,6 +106,7 @@
 #![feature(alloc)]
 #![feature(allow_internal_unstable)]
 #![feature(associated_consts)]
+#![feature(borrow_state)]
 #![feature(box_raw)]
 #![feature(box_syntax)]
 #![feature(char_internals)]
@@ -130,7 +131,6 @@
 #![feature(slice_concat_ext)]
 #![feature(slice_position_elem)]
 #![feature(no_std)]
-#![feature(num_bits_bytes)]
 #![feature(oom)]
 #![feature(optin_builtin_traits)]
 #![feature(rand)]
@@ -148,6 +148,9 @@
 #![feature(vec_push_all)]
 #![feature(wrapping)]
 #![feature(zero_one)]
+#![cfg_attr(all(unix, not(target_os = "macos"), not(target_os = "ios")),
+            feature(num_bits_bytes))]
+#![cfg_attr(windows, feature(str_utf16))]
 #![cfg_attr(test, feature(float_from_str_radix, range_inclusive, float_extras))]
 #![cfg_attr(test, feature(test, rustc_private, float_consts))]
 

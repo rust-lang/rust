@@ -10,15 +10,15 @@
 
 // pretty-expanded FIXME #23616
 
-#![allow(unused_mut)]
-#![feature(core)]
-#![feature(collections)]
-#![feature(step_by)]
+#![allow(warnings)]
 #![feature(iter_empty)]
 #![feature(iter_once)]
+#![feature(iter_unfold)]
+#![feature(range_inclusive)]
+#![feature(step_by)]
+#![feature(str_escape)]
 
 use std::iter::{empty, once, range_inclusive, repeat, Unfold};
->>>>>>> Fallout in tests and docs from feature renamings
 
 fn is_sync<T>(_: T) where T: Sync {}
 fn is_send<T>(_: T) where T: Send {}

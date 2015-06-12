@@ -405,7 +405,6 @@ mod imp {
 mod imp {
     use prelude::v1::*;
 
-    use alloc::boxed;
     use cell::{Cell, UnsafeCell};
     use marker;
     use ptr;
@@ -447,7 +446,7 @@ mod imp {
                 key: self,
                 value: UnsafeCell::new(None),
             };
-            let ptr = boxed::into_raw(ptr);
+            let ptr = Box::into_raw(ptr);
             self.os.set(ptr as *mut u8);
             Some(&(*ptr).value)
         }
