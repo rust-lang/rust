@@ -469,16 +469,19 @@ mod tests {
     use char::from_u32;
 
     #[test]
-    fn test_ascii() {
-        assert!("banana".chars().all(|c| c.is_ascii()));
-        assert!(!"ประเทศไทย中华Việt Nam".chars().all(|c| c.is_ascii()));
-    }
+    fn test_is_ascii() {
+        assert!(b"".is_ascii());
+        assert!(b"banana\0\x7F".is_ascii());
+        assert!(b"banana\0\x7F".iter().all(|b| b.is_ascii()));
+        assert!(!b"Vi\xe1\xbb\x87t Nam".is_ascii());
+        assert!(!b"Vi\xe1\xbb\x87t Nam".iter().all(|b| b.is_ascii()));
+        assert!(!b"\xe1\xbb\x87".iter().any(|b| b.is_ascii()));
 
-    #[test]
-    fn test_ascii_vec() {
         assert!("".is_ascii());
-        assert!("a".is_ascii());
-        assert!(!"\u{2009}".is_ascii());
+        assert!("banana\0\u{7F}".is_ascii());
+        assert!("banana\0\u{7F}".chars().all(|c| c.is_ascii()));
+        assert!(!"ประเทศไทย中华Việt Nam".chars().all(|c| c.is_ascii()));
+        assert!(!"ประเทศไทย中华ệ ".chars().any(|c| c.is_ascii()));
     }
 
     #[test]
