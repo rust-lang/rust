@@ -16,6 +16,11 @@ before_script:
 script:
   - make tidy
 
+# Real testing happens on http://buildbot.rust-lang.org/
+#
+# See https://github.com/rust-lang/rust-buildbot
+#     CONTRIBUTING.md#pull-requests
+
 notifications:
   email: false
 
