@@ -134,7 +134,7 @@ DOC_CRATES := std alloc collections core libc rustc_unicode
 #
 # $(1) is the crate to generate variables for
 define RUST_CRATE
-CRATEFILE_$(1) := $$(S)src/lib$(1)/lib.rs
+CRATEFILE_$(1) := $$(SREL)src/lib$(1)/lib.rs
 RSINPUTS_$(1) := $$(call rwildcard,$(S)src/lib$(1)/,*.rs)
 RUST_DEPS_$(1) := $$(filter-out native:%,$$(DEPS_$(1)))
 NATIVE_DEPS_$(1) := $$(patsubst native:%,%,$$(filter native:%,$$(DEPS_$(1))))
