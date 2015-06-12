@@ -260,14 +260,15 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
             return;
         }
 
-        let imports = module.imports.borrow();
+        let mut imports = module.imports.borrow_mut();
         let import_count = imports.len();
-        while module.resolved_import_count.get() < import_count {
+        let mut indeterminate_imports = Vec::new();
+        while module.resolved_import_count.get() + indeterminate_imports.len() < import_count {
             let import_index = module.resolved_import_count.get();
-            let import_directive = &(*imports)[import_index];
             match self.resolve_import_for_module(module.clone(),
-                                                 import_directive) {
+                                                 &imports[import_index]) {
                 ResolveResult::Failed(err) => {
+                    let import_directive = &imports[import_index];
                     let (span, help) = match err {
                         Some((span, msg)) => (span, format!(". {}", msg)),
                         None => (import_directive.span, String::new())
@@ -279,13 +280,17 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                                       help);
                     self.resolver.resolve_error(span, &msg[..]);
                 }
-                ResolveResult::Indeterminate => break, // Bail out. We'll come around next time.
+                ResolveResult::Indeterminate => {
+                    indeterminate_imports.push(imports.swap_remove(import_index));
+                    continue;
+                },
                 ResolveResult::Success(()) => () // Good. Continue.
             }
-
             module.resolved_import_count
                   .set(module.resolved_import_count.get() + 1);
         }
+        // put back all the unresolved imports, for next pass
+        imports.extend(indeterminate_imports);
     }
 
     /// Attempts to resolve the given import. The return value indicates
@@ -654,10 +659,12 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
             target);
 
         if value_result.is_unbound() && type_result.is_unbound() {
-            let msg = format!("There is no `{}` in `{}`",
-                              token::get_name(source),
-                              module_to_string(&target_module));
-            return ResolveResult::Failed(Some((directive.span, msg)));
+            // Due to chained imports, it is possible that this import is simply not yet
+            // resolved, so we settle with Indeterminate.
+            // The main loop of the algorithm will break anyway is a pass does not resolve
+            // anything more.
+            debug!("(resolving single import) unresolved for now, bailing out");
+            return ResolveResult::Indeterminate;
         }
         let value_used_public = value_used_reexport || value_used_public;
         let type_used_public = type_used_reexport || type_used_public;
