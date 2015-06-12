@@ -69,22 +69,8 @@ impl FileAttr {
         FilePermissions { mode: (self.stat.st_mode as mode_t) & 0o777 }
     }
 
-    pub fn accessed(&self) -> u64 {
-        self.mktime(self.stat.st_atime as u64, self.stat.st_atime_nsec as u64)
-    }
-    pub fn modified(&self) -> u64 {
-        self.mktime(self.stat.st_mtime as u64, self.stat.st_mtime_nsec as u64)
-    }
-
     pub fn file_type(&self) -> FileType {
         FileType { mode: self.stat.st_mode as mode_t }
-    }
-
-    pub fn raw(&self) -> &raw::stat { &self.stat }
-
-    // times are in milliseconds (currently)
-    fn mktime(&self, secs: u64, nsecs: u64) -> u64 {
-        secs * 1000 + nsecs / 1000000
     }
 }
 
@@ -92,17 +78,22 @@ impl AsInner<raw::stat> for FileAttr {
     fn as_inner(&self) -> &raw::stat { &self.stat }
 }
 
-#[unstable(feature = "metadata_ext", reason = "recently added API")]
+/// OS-specific extension methods for `fs::Metadata`
+#[stable(feature = "metadata_ext", since = "1.1.0")]
 pub trait MetadataExt {
+    /// Gain a reference to the underlying `stat` structure which contains the
+    /// raw information returned by the OS.
+    ///
+    /// The contents of the returned `stat` are **not** consistent across Unix
+    /// platforms. The `os::unix::fs::MetadataExt` trait contains the cross-Unix
+    /// abstractions contained within the raw stat.
+    #[stable(feature = "metadata_ext", since = "1.1.0")]
     fn as_raw_stat(&self) -> &raw::stat;
 }
 
+#[stable(feature = "metadata_ext", since = "1.1.0")]
 impl MetadataExt for ::fs::Metadata {
     fn as_raw_stat(&self) -> &raw::stat { &self.as_inner().stat }
-}
-
-impl MetadataExt for ::os::unix::fs::Metadata {
-    fn as_raw_stat(&self) -> &raw::stat { self.as_inner() }
 }
 
 impl FilePermissions {
