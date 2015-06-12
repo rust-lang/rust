@@ -145,8 +145,7 @@ To start a new project with Cargo, use `cargo new`:
 $ cargo new hello_world --bin
 ```
 
-We’re passing `--bin` because we're making a binary program: if we were making
-a library, we'd leave it off.
+We’re passing `--bin` because our goal is to get straight to making an executable application, as opposed to a library. Executables are often called ‘binaries.’ (as in `/usr/bin`, if you’re on a Unix system)
 
 Let's check out what Cargo has generated for us:
 
