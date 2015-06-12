@@ -1111,7 +1111,7 @@ extern fn new_i32() -> i32 { 0 }
 extern "stdcall" fn new_i32_stdcall() -> i32 { 0 }
 ```
 
-Unlike normal functions, extern fns have an `extern "ABI" fn()`. This is the
+Unlike normal functions, extern fns have type `extern "ABI" fn()`. This is the
 same type as the functions declared in an extern block.
 
 ```
