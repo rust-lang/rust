@@ -22,12 +22,12 @@ use middle::traits;
 use middle::ty::RegionEscape;
 use middle::ty::{ImplContainer, ImplOrTraitItemId, ConstTraitItemId};
 use middle::ty::{MethodTraitItemId, TypeTraitItemId, ParameterEnvironment};
-use middle::ty::{Ty, ty_bool, ty_char, ty_enum, ty_err};
-use middle::ty::{ty_param, TypeScheme, ty_ptr};
-use middle::ty::{ty_rptr, ty_struct, ty_trait, ty_tup};
-use middle::ty::{ty_str, ty_vec, ty_float, ty_infer, ty_int};
-use middle::ty::{ty_uint, ty_closure, ty_uniq, ty_bare_fn};
-use middle::ty::ty_projection;
+use middle::ty::{Ty, TyBool, TyChar, TyEnum, TyError};
+use middle::ty::{TyParam, TypeScheme, TyRawPtr};
+use middle::ty::{TyRef, TyStruct, TyTrait, TyTuple};
+use middle::ty::{TyStr, TyArray, TyFloat, TyInfer, TyInt};
+use middle::ty::{TyUint, TyClosure, TyBox, TyBareFn};
+use middle::ty::TyProjection;
 use middle::ty;
 use middle::free_region::FreeRegionMap;
 use CrateCtxt;
@@ -56,27 +56,27 @@ fn get_base_type_def_id<'a, 'tcx>(inference_context: &InferCtxt<'a, 'tcx>,
                                   ty: Ty<'tcx>)
                                   -> Option<DefId> {
     match ty.sty {
-        ty_enum(def_id, _) |
-        ty_struct(def_id, _) => {
+        TyEnum(def_id, _) |
+        TyStruct(def_id, _) => {
             Some(def_id)
         }
 
-        ty_trait(ref t) => {
+        TyTrait(ref t) => {
             Some(t.principal_def_id())
         }
 
-        ty_uniq(_) => {
+        TyBox(_) => {
             inference_context.tcx.lang_items.owned_box()
         }
 
-        ty_bool | ty_char | ty_int(..) | ty_uint(..) | ty_float(..) |
-        ty_str(..) | ty_vec(..) | ty_bare_fn(..) | ty_tup(..) |
-        ty_param(..) | ty_err |
-        ty_ptr(_) | ty_rptr(_, _) | ty_projection(..) => {
+        TyBool | TyChar | TyInt(..) | TyUint(..) | TyFloat(..) |
+        TyStr(..) | TyArray(..) | TyBareFn(..) | TyTuple(..) |
+        TyParam(..) | TyError |
+        TyRawPtr(_) | TyRef(_, _) | TyProjection(..) => {
             None
         }
 
-        ty_infer(..) | ty_closure(..) => {
+        TyInfer(..) | TyClosure(..) => {
             // `ty` comes from a user declaration so we should only expect types
             // that the user can type
             inference_context.tcx.sess.span_bug(
@@ -315,9 +315,9 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
 
             let self_type = ty::lookup_item_type(tcx, impl_did);
             match self_type.ty.sty {
-                ty::ty_enum(type_def_id, _) |
-                ty::ty_struct(type_def_id, _) |
-                ty::ty_closure(type_def_id, _) => {
+                ty::TyEnum(type_def_id, _) |
+                ty::TyStruct(type_def_id, _) |
+                ty::TyClosure(type_def_id, _) => {
                     tcx.destructor_for_type
                        .borrow_mut()
                        .insert(type_def_id, method_def_id.def_id());
@@ -465,19 +465,19 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
                 (mt_a.ty, mt_b.ty, unsize_trait, None)
             };
             let (source, target, trait_def_id, kind) = match (&source.sty, &target.sty) {
-                (&ty::ty_uniq(a), &ty::ty_uniq(b)) => (a, b, unsize_trait, None),
+                (&ty::TyBox(a), &ty::TyBox(b)) => (a, b, unsize_trait, None),
 
-                (&ty::ty_rptr(r_a, mt_a), &ty::ty_rptr(r_b, mt_b)) => {
+                (&ty::TyRef(r_a, mt_a), &ty::TyRef(r_b, mt_b)) => {
                     infer::mk_subr(&infcx, infer::RelateObjectBound(span), *r_b, *r_a);
                     check_mutbl(mt_a, mt_b, &|ty| ty::mk_imm_rptr(tcx, r_b, ty))
                 }
 
-                (&ty::ty_rptr(_, mt_a), &ty::ty_ptr(mt_b)) |
-                (&ty::ty_ptr(mt_a), &ty::ty_ptr(mt_b)) => {
+                (&ty::TyRef(_, mt_a), &ty::TyRawPtr(mt_b)) |
+                (&ty::TyRawPtr(mt_a), &ty::TyRawPtr(mt_b)) => {
                     check_mutbl(mt_a, mt_b, &|ty| ty::mk_imm_ptr(tcx, ty))
                 }
 
-                (&ty::ty_struct(def_id_a, substs_a), &ty::ty_struct(def_id_b, substs_b)) => {
+                (&ty::TyStruct(def_id_a, substs_a), &ty::TyStruct(def_id_b, substs_b)) => {
                     if def_id_a != def_id_b {
                         let source_path = ty::item_path_str(tcx, def_id_a);
                         let target_path = ty::item_path_str(tcx, def_id_b);

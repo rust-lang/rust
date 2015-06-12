@@ -656,7 +656,7 @@ fn glb_bound_free_infer() {
         // `&'_ isize`
         let t_resolve1 = env.infcx.shallow_resolve(t_infer1);
         match t_resolve1.sty {
-            ty::ty_rptr(..) => { }
+            ty::TyRef(..) => { }
             _ => { panic!("t_resolve1={}", t_resolve1.repr(env.infcx.tcx)); }
         }
     })

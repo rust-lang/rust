@@ -493,7 +493,7 @@ pub fn trans_trait_callee_from_llval<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     // Replace the self type (&Self or Box<Self>) with an opaque pointer.
     let llcallee_ty = match callee_ty.sty {
-        ty::ty_bare_fn(_, ref f) if f.abi == Rust || f.abi == RustCall => {
+        ty::TyBareFn(_, ref f) if f.abi == Rust || f.abi == RustCall => {
             let fake_sig =
                 ty::Binder(ty::FnSig {
                     inputs: f.sig.0.inputs[1..].to_vec(),
@@ -563,7 +563,7 @@ pub fn trans_object_shim<'a, 'tcx>(
 
     let object_trait_ref =
         match object_ty.sty {
-            ty::ty_trait(ref data) => {
+            ty::TyTrait(ref data) => {
                 data.principal_trait_ref_with_self_ty(tcx, object_ty)
             }
             _ => {
@@ -624,7 +624,7 @@ pub fn trans_object_shim<'a, 'tcx>(
             RustCall => {
                 // unpack the tuple to extract the input type arguments:
                 match sig.inputs[1].sty {
-                    ty::ty_tup(ref tys) => &**tys,
+                    ty::TyTuple(ref tys) => &**tys,
                     _ => {
                         bcx.sess().bug(
                             &format!("rust-call expects a tuple not {}",

@@ -40,27 +40,27 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                           qualified: bool,
                                           output: &mut String) {
     match t.sty {
-        ty::ty_bool              => output.push_str("bool"),
-        ty::ty_char              => output.push_str("char"),
-        ty::ty_str               => output.push_str("str"),
-        ty::ty_int(ast::TyIs)     => output.push_str("isize"),
-        ty::ty_int(ast::TyI8)    => output.push_str("i8"),
-        ty::ty_int(ast::TyI16)   => output.push_str("i16"),
-        ty::ty_int(ast::TyI32)   => output.push_str("i32"),
-        ty::ty_int(ast::TyI64)   => output.push_str("i64"),
-        ty::ty_uint(ast::TyUs)    => output.push_str("usize"),
-        ty::ty_uint(ast::TyU8)   => output.push_str("u8"),
-        ty::ty_uint(ast::TyU16)  => output.push_str("u16"),
-        ty::ty_uint(ast::TyU32)  => output.push_str("u32"),
-        ty::ty_uint(ast::TyU64)  => output.push_str("u64"),
-        ty::ty_float(ast::TyF32) => output.push_str("f32"),
-        ty::ty_float(ast::TyF64) => output.push_str("f64"),
-        ty::ty_struct(def_id, substs) |
-        ty::ty_enum(def_id, substs) => {
+        ty::TyBool              => output.push_str("bool"),
+        ty::TyChar              => output.push_str("char"),
+        ty::TyStr               => output.push_str("str"),
+        ty::TyInt(ast::TyIs)     => output.push_str("isize"),
+        ty::TyInt(ast::TyI8)    => output.push_str("i8"),
+        ty::TyInt(ast::TyI16)   => output.push_str("i16"),
+        ty::TyInt(ast::TyI32)   => output.push_str("i32"),
+        ty::TyInt(ast::TyI64)   => output.push_str("i64"),
+        ty::TyUint(ast::TyUs)    => output.push_str("usize"),
+        ty::TyUint(ast::TyU8)   => output.push_str("u8"),
+        ty::TyUint(ast::TyU16)  => output.push_str("u16"),
+        ty::TyUint(ast::TyU32)  => output.push_str("u32"),
+        ty::TyUint(ast::TyU64)  => output.push_str("u64"),
+        ty::TyFloat(ast::TyF32) => output.push_str("f32"),
+        ty::TyFloat(ast::TyF64) => output.push_str("f64"),
+        ty::TyStruct(def_id, substs) |
+        ty::TyEnum(def_id, substs) => {
             push_item_name(cx, def_id, qualified, output);
             push_type_params(cx, substs, output);
         },
-        ty::ty_tup(ref component_types) => {
+        ty::TyTuple(ref component_types) => {
             output.push('(');
             for &component_type in component_types {
                 push_debuginfo_type_name(cx, component_type, true, output);
@@ -72,12 +72,12 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             }
             output.push(')');
         },
-        ty::ty_uniq(inner_type) => {
+        ty::TyBox(inner_type) => {
             output.push_str("Box<");
             push_debuginfo_type_name(cx, inner_type, true, output);
             output.push('>');
         },
-        ty::ty_ptr(ty::mt { ty: inner_type, mutbl } ) => {
+        ty::TyRawPtr(ty::mt { ty: inner_type, mutbl } ) => {
             output.push('*');
             match mutbl {
                 ast::MutImmutable => output.push_str("const "),
@@ -86,7 +86,7 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
             push_debuginfo_type_name(cx, inner_type, true, output);
         },
-        ty::ty_rptr(_, ty::mt { ty: inner_type, mutbl }) => {
+        ty::TyRef(_, ty::mt { ty: inner_type, mutbl }) => {
             output.push('&');
             if mutbl == ast::MutMutable {
                 output.push_str("mut ");
@@ -94,7 +94,7 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
             push_debuginfo_type_name(cx, inner_type, true, output);
         },
-        ty::ty_vec(inner_type, optional_length) => {
+        ty::TyArray(inner_type, optional_length) => {
             output.push('[');
             push_debuginfo_type_name(cx, inner_type, true, output);
 
@@ -107,12 +107,12 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
             output.push(']');
         },
-        ty::ty_trait(ref trait_data) => {
+        ty::TyTrait(ref trait_data) => {
             let principal = ty::erase_late_bound_regions(cx.tcx(), &trait_data.principal);
             push_item_name(cx, principal.def_id, false, output);
             push_type_params(cx, principal.substs, output);
         },
-        ty::ty_bare_fn(_, &ty::BareFnTy{ unsafety, abi, ref sig } ) => {
+        ty::TyBareFn(_, &ty::BareFnTy{ unsafety, abi, ref sig } ) => {
             if unsafety == ast::Unsafety::Unsafe {
                 output.push_str("unsafe ");
             }
@@ -156,13 +156,13 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 }
             }
         },
-        ty::ty_closure(..) => {
+        ty::TyClosure(..) => {
             output.push_str("closure");
         }
-        ty::ty_err |
-        ty::ty_infer(_) |
-        ty::ty_projection(..) |
-        ty::ty_param(_) => {
+        ty::TyError |
+        ty::TyInfer(_) |
+        ty::TyProjection(..) |
+        ty::TyParam(_) => {
             cx.sess().bug(&format!("debuginfo: Trying to create type name for \
                 unexpected type: {}", ppaux::ty_to_string(cx.tcx(), t)));
         }

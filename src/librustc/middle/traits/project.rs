@@ -153,7 +153,7 @@ fn consider_unification_despite_ambiguity<'cx,'tcx>(selcx: &mut SelectionContext
     debug!("consider_unification_despite_ambiguity: self_ty.sty={:?}",
            self_ty.sty);
     match self_ty.sty {
-        ty::ty_closure(closure_def_id, substs) => {
+        ty::TyClosure(closure_def_id, substs) => {
             let closure_typer = selcx.closure_typer();
             let closure_type = closure_typer.closure_type(closure_def_id, substs);
             let ty::Binder((_, ret_type)) =
@@ -261,7 +261,7 @@ impl<'a,'b,'tcx> TypeFolder<'tcx> for AssociatedTypeNormalizer<'a,'b,'tcx> {
 
         let ty = ty_fold::super_fold_ty(self, ty);
         match ty.sty {
-            ty::ty_projection(ref data) if !data.has_escaping_regions() => { // (*)
+            ty::TyProjection(ref data) if !data.has_escaping_regions() => { // (*)
 
                 // (*) This is kind of hacky -- we need to be able to
                 // handle normalization within binders because
@@ -408,11 +408,11 @@ fn opt_normalize_projection_type<'a,'b,'tcx>(
     }
 }
 
-/// in various error cases, we just set ty_err and return an obligation
+/// in various error cases, we just set TyError and return an obligation
 /// that, when fulfilled, will lead to an error.
 ///
-/// FIXME: the ty_err created here can enter the obligation we create,
-/// leading to error messages involving ty_err.
+/// FIXME: the TyError created here can enter the obligation we create,
+/// leading to error messages involving TyError.
 fn normalize_to_error<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
                                projection_ty: ty::ProjectionTy<'tcx>,
                                cause: ObligationCause<'tcx>,
@@ -554,8 +554,8 @@ fn assemble_candidates_from_trait_def<'cx,'tcx>(
 {
     // Check whether the self-type is itself a projection.
     let trait_ref = match obligation_trait_ref.self_ty().sty {
-        ty::ty_projection(ref data) => data.trait_ref.clone(),
-        ty::ty_infer(ty::TyVar(_)) => {
+        ty::TyProjection(ref data) => data.trait_ref.clone(),
+        ty::TyInfer(ty::TyVar(_)) => {
             // If the self-type is an inference variable, then it MAY wind up
             // being a projected type, so induce an ambiguity.
             candidate_set.ambiguous = true;
@@ -625,7 +625,7 @@ fn assemble_candidates_from_object_type<'cx,'tcx>(
     debug!("assemble_candidates_from_object_type(object_ty={})",
            object_ty.repr(infcx.tcx));
     let data = match object_ty.sty {
-        ty::ty_trait(ref data) => data,
+        ty::TyTrait(ref data) => data,
         _ => {
             selcx.tcx().sess.span_bug(
                 obligation.cause.span,
@@ -883,7 +883,7 @@ fn confirm_impl_candidate<'cx,'tcx>(
                     // definition for the associated type. This error
                     // ought to be reported by the type checker method
                     // `check_impl_items_against_trait`, so here we
-                    // just return ty_err.
+                    // just return TyError.
                     return (selcx.tcx().types.err, vec!());
                 }
             }

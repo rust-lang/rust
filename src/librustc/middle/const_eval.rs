@@ -732,11 +732,11 @@ pub fn eval_const_expr_with_substs<'tcx, S>(tcx: &ty::ctxt<'tcx>,
     // bindings so that isize/usize is mapped to a type with an
     // inherently known bitwidth.
     let expr_int_type = ety.and_then(|ty| {
-        if let ty::ty_int(t) = ty.sty {
+        if let ty::TyInt(t) = ty.sty {
             Some(IntTy::from(tcx, t)) } else { None }
     });
     let expr_uint_type = ety.and_then(|ty| {
-        if let ty::ty_uint(t) = ty.sty {
+        if let ty::TyUint(t) = ty.sty {
             Some(UintTy::from(tcx, t)) } else { None }
     });
 
@@ -1093,33 +1093,33 @@ fn cast_const<'tcx>(tcx: &ty::ctxt<'tcx>, val: const_val, ty: Ty) -> CastResult 
 
     // Issue #23890: If isize/usize, then dispatch to appropriate target representation type
     match (&ty.sty, tcx.sess.target.int_type, tcx.sess.target.uint_type) {
-        (&ty::ty_int(ast::TyIs), ast::TyI32, _) => return convert_val!(i32, const_int, i64),
-        (&ty::ty_int(ast::TyIs), ast::TyI64, _) => return convert_val!(i64, const_int, i64),
-        (&ty::ty_int(ast::TyIs), _, _) => panic!("unexpected target.int_type"),
+        (&ty::TyInt(ast::TyIs), ast::TyI32, _) => return convert_val!(i32, const_int, i64),
+        (&ty::TyInt(ast::TyIs), ast::TyI64, _) => return convert_val!(i64, const_int, i64),
+        (&ty::TyInt(ast::TyIs), _, _) => panic!("unexpected target.int_type"),
 
-        (&ty::ty_uint(ast::TyUs), _, ast::TyU32) => return convert_val!(u32, const_uint, u64),
-        (&ty::ty_uint(ast::TyUs), _, ast::TyU64) => return convert_val!(u64, const_uint, u64),
-        (&ty::ty_uint(ast::TyUs), _, _) => panic!("unexpected target.uint_type"),
+        (&ty::TyUint(ast::TyUs), _, ast::TyU32) => return convert_val!(u32, const_uint, u64),
+        (&ty::TyUint(ast::TyUs), _, ast::TyU64) => return convert_val!(u64, const_uint, u64),
+        (&ty::TyUint(ast::TyUs), _, _) => panic!("unexpected target.uint_type"),
 
         _ => {}
     }
 
     match ty.sty {
-        ty::ty_int(ast::TyIs) => unreachable!(),
-        ty::ty_uint(ast::TyUs) => unreachable!(),
+        ty::TyInt(ast::TyIs) => unreachable!(),
+        ty::TyUint(ast::TyUs) => unreachable!(),
 
-        ty::ty_int(ast::TyI8) => convert_val!(i8, const_int, i64),
-        ty::ty_int(ast::TyI16) => convert_val!(i16, const_int, i64),
-        ty::ty_int(ast::TyI32) => convert_val!(i32, const_int, i64),
-        ty::ty_int(ast::TyI64) => convert_val!(i64, const_int, i64),
+        ty::TyInt(ast::TyI8) => convert_val!(i8, const_int, i64),
+        ty::TyInt(ast::TyI16) => convert_val!(i16, const_int, i64),
+        ty::TyInt(ast::TyI32) => convert_val!(i32, const_int, i64),
+        ty::TyInt(ast::TyI64) => convert_val!(i64, const_int, i64),
 
-        ty::ty_uint(ast::TyU8) => convert_val!(u8, const_uint, u64),
-        ty::ty_uint(ast::TyU16) => convert_val!(u16, const_uint, u64),
-        ty::ty_uint(ast::TyU32) => convert_val!(u32, const_uint, u64),
-        ty::ty_uint(ast::TyU64) => convert_val!(u64, const_uint, u64),
+        ty::TyUint(ast::TyU8) => convert_val!(u8, const_uint, u64),
+        ty::TyUint(ast::TyU16) => convert_val!(u16, const_uint, u64),
+        ty::TyUint(ast::TyU32) => convert_val!(u32, const_uint, u64),
+        ty::TyUint(ast::TyU64) => convert_val!(u64, const_uint, u64),
 
-        ty::ty_float(ast::TyF32) => convert_val!(f32, const_float, f64),
-        ty::ty_float(ast::TyF64) => convert_val!(f64, const_float, f64),
+        ty::TyFloat(ast::TyF32) => convert_val!(f32, const_float, f64),
+        ty::TyFloat(ast::TyF64) => convert_val!(f64, const_float, f64),
         _ => Err(ErrKind::CannotCast),
     }
 }
@@ -1135,7 +1135,7 @@ fn lit_to_const(lit: &ast::Lit, ty_hint: Option<Ty>) -> const_val {
         ast::LitInt(n, ast::SignedIntLit(_, ast::Plus)) => const_int(n as i64),
         ast::LitInt(n, ast::UnsuffixedIntLit(ast::Plus)) => {
             match ty_hint.map(|ty| &ty.sty) {
-                Some(&ty::ty_uint(_)) => const_uint(n),
+                Some(&ty::TyUint(_)) => const_uint(n),
                 _ => const_int(n as i64)
             }
         }

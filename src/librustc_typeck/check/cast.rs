@@ -74,17 +74,17 @@ fn unsize_kind<'a,'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                         t: Ty<'tcx>)
                         -> Option<UnsizeKind<'tcx>> {
     match t.sty {
-        ty::ty_vec(_, None) | ty::ty_str => Some(UnsizeKind::Length),
-        ty::ty_trait(_) => Some(UnsizeKind::Vtable),
-        ty::ty_struct(did, substs) => {
+        ty::TyArray(_, None) | ty::TyStr => Some(UnsizeKind::Length),
+        ty::TyTrait(_) => Some(UnsizeKind::Vtable),
+        ty::TyStruct(did, substs) => {
             match ty::struct_fields(fcx.tcx(), did, substs).pop() {
                 None => None,
                 Some(f) => unsize_kind(fcx, f.mt.ty)
             }
         }
         // We should really try to normalize here.
-        ty::ty_projection(ref pi) => Some(UnsizeKind::OfProjection(pi)),
-        ty::ty_param(ref p) => Some(UnsizeKind::OfParam(p)),
+        ty::TyProjection(ref pi) => Some(UnsizeKind::OfProjection(pi)),
+        ty::TyParam(ref p) => Some(UnsizeKind::OfParam(p)),
         _ => None
     }
 }
@@ -337,7 +337,7 @@ impl<'tcx> CastCheck<'tcx> {
         // array-ptr-cast.
 
         if m_expr.mutbl == ast::MutImmutable && m_cast.mutbl == ast::MutImmutable {
-            if let ty::ty_vec(ety, Some(_)) = m_expr.ty.sty {
+            if let ty::TyArray(ety, Some(_)) = m_expr.ty.sty {
                 // Due to the limitations of LLVM global constants,
                 // region pointers end up pointing at copies of
                 // vector elements instead of the original values.

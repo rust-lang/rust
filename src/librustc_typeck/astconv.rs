@@ -1040,7 +1040,7 @@ fn make_object_type<'tcx>(this: &AstConv<'tcx>,
                           bounds: ty::ExistentialBounds<'tcx>)
                           -> Ty<'tcx> {
     let tcx = this.tcx();
-    let object = ty::TyTrait {
+    let object = ty::TraitTy {
         principal: principal,
         bounds: bounds
     };
@@ -1224,8 +1224,8 @@ fn associated_path_def_to_ty<'tcx>(this: &AstConv<'tcx>,
                 _ => unreachable!()
             }
         }
-        (&ty::ty_param(_), def::DefTyParam(..)) |
-        (&ty::ty_param(_), def::DefSelfTy(Some(_), None)) => {
+        (&ty::TyParam(_), def::DefTyParam(..)) |
+        (&ty::TyParam(_), def::DefSelfTy(Some(_), None)) => {
             // A type parameter or Self, we need to find the associated item from
             // a bound.
             let ty_param_node_id = ty_path_def.local_node_id();
@@ -1471,7 +1471,7 @@ pub fn finish_resolving_def_to_ty<'tcx>(this: &AstConv<'tcx>,
     let mut def = *def;
     // If any associated type segments remain, attempt to resolve them.
     for segment in assoc_segments {
-        if ty.sty == ty::ty_err {
+        if ty.sty == ty::TyError {
             break;
         }
         // This is pretty bad (it will fail except for T::A and Self::A).
@@ -1529,7 +1529,7 @@ pub fn ast_ty_to_ty<'tcx>(this: &AstConv<'tcx>,
         }
         ast::TyRptr(ref region, ref mt) => {
             let r = opt_ast_region_to_region(this, rscope, ast_ty.span, region);
-            debug!("ty_rptr r={}", r.repr(this.tcx()));
+            debug!("TyRef r={}", r.repr(this.tcx()));
             let rscope1 =
                 &ObjectLifetimeDefaultRscope::new(
                     rscope,
@@ -1583,7 +1583,7 @@ pub fn ast_ty_to_ty<'tcx>(this: &AstConv<'tcx>,
                                                 &path.segments[..base_ty_end],
                                                 &path.segments[base_ty_end..]);
 
-            if path_res.depth != 0 && ty.sty != ty::ty_err {
+            if path_res.depth != 0 && ty.sty != ty::TyError {
                 // Write back the new resolution.
                 tcx.def_map.borrow_mut().insert(ast_ty.id, def::PathResolution {
                     base_def: def,
@@ -1853,8 +1853,8 @@ fn determine_explicit_self_category<'a, 'tcx>(this: &AstConv<'tcx>,
                 ty::ByValueExplicitSelfCategory
             } else {
                 match explicit_type.sty {
-                    ty::ty_rptr(r, mt) => ty::ByReferenceExplicitSelfCategory(*r, mt.mutbl),
-                    ty::ty_uniq(_) => ty::ByBoxExplicitSelfCategory,
+                    ty::TyRef(r, mt) => ty::ByReferenceExplicitSelfCategory(*r, mt.mutbl),
+                    ty::TyBox(_) => ty::ByBoxExplicitSelfCategory,
                     _ => ty::ByValueExplicitSelfCategory,
                 }
             }
@@ -1863,8 +1863,8 @@ fn determine_explicit_self_category<'a, 'tcx>(this: &AstConv<'tcx>,
 
     fn count_modifiers(ty: Ty) -> usize {
         match ty.sty {
-            ty::ty_rptr(_, mt) => count_modifiers(mt.ty) + 1,
-            ty::ty_uniq(t) => count_modifiers(t) + 1,
+            ty::TyRef(_, mt) => count_modifiers(mt.ty) + 1,
+            ty::TyBox(t) => count_modifiers(t) + 1,
             _ => 0,
         }
     }

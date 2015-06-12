@@ -125,9 +125,9 @@ pub fn type_is_sized<'tcx>(tcx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
 
 pub fn type_is_fat_ptr<'tcx>(cx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
     match ty.sty {
-        ty::ty_ptr(ty::mt{ty, ..}) |
-        ty::ty_rptr(_, ty::mt{ty, ..}) |
-        ty::ty_uniq(ty) => {
+        ty::TyRawPtr(ty::mt{ty, ..}) |
+        ty::TyRef(_, ty::mt{ty, ..}) |
+        ty::TyBox(ty) => {
             !type_is_sized(cx, ty)
         }
         _ => {
@@ -158,10 +158,10 @@ pub fn type_needs_unwind_cleanup<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<
         let mut needs_unwind_cleanup = false;
         ty::maybe_walk_ty(ty, |ty| {
             needs_unwind_cleanup |= match ty.sty {
-                ty::ty_bool | ty::ty_int(_) | ty::ty_uint(_) |
-                ty::ty_float(_) | ty::ty_tup(_) | ty::ty_ptr(_) => false,
+                ty::TyBool | ty::TyInt(_) | ty::TyUint(_) |
+                ty::TyFloat(_) | ty::TyTuple(_) | ty::TyRawPtr(_) => false,
 
-                ty::ty_enum(did, substs) =>
+                ty::TyEnum(did, substs) =>
                     ty::enum_variants(tcx, did).iter().any(|v|
                         v.args.iter().any(|&aty| {
                             let t = aty.subst(tcx, substs);
@@ -218,7 +218,7 @@ fn type_needs_drop_given_env<'a,'tcx>(cx: &ty::ctxt<'tcx>,
 
 fn type_is_newtype_immediate<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
     match ty.sty {
-        ty::ty_struct(def_id, substs) => {
+        ty::TyStruct(def_id, substs) => {
             let fields = ty::lookup_struct_fields(ccx.tcx(), def_id);
             fields.len() == 1 && {
                 let ty = ty::lookup_field_type(ccx.tcx(), def_id, fields[0].id, substs);
@@ -246,8 +246,8 @@ pub fn type_is_immediate<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -
         return false;
     }
     match ty.sty {
-        ty::ty_struct(..) | ty::ty_enum(..) | ty::ty_tup(..) | ty::ty_vec(_, Some(_)) |
-        ty::ty_closure(..) => {
+        ty::TyStruct(..) | ty::TyEnum(..) | ty::TyTuple(..) | ty::TyArray(_, Some(_)) |
+        ty::TyClosure(..) => {
             let llty = sizing_type_of(ccx, ty);
             llsize_of_alloc(ccx, llty) <= llsize_of_alloc(ccx, ccx.int_type())
         }

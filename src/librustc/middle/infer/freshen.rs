@@ -111,14 +111,14 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
         let tcx = self.infcx.tcx;
 
         match t.sty {
-            ty::ty_infer(ty::TyVar(v)) => {
+            ty::TyInfer(ty::TyVar(v)) => {
                 self.freshen(
                     self.infcx.type_variables.borrow().probe(v),
                     ty::TyVar(v),
                     ty::FreshTy)
             }
 
-            ty::ty_infer(ty::IntVar(v)) => {
+            ty::TyInfer(ty::IntVar(v)) => {
                 self.freshen(
                     self.infcx.int_unification_table.borrow_mut()
                                                     .probe(v)
@@ -127,7 +127,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
                     ty::FreshIntTy)
             }
 
-            ty::ty_infer(ty::FloatVar(v)) => {
+            ty::TyInfer(ty::FloatVar(v)) => {
                 self.freshen(
                     self.infcx.float_unification_table.borrow_mut()
                                                       .probe(v)
@@ -136,9 +136,9 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
                     ty::FreshFloatTy)
             }
 
-            ty::ty_infer(ty::FreshTy(c)) |
-            ty::ty_infer(ty::FreshIntTy(c)) |
-            ty::ty_infer(ty::FreshFloatTy(c)) => {
+            ty::TyInfer(ty::FreshTy(c)) |
+            ty::TyInfer(ty::FreshIntTy(c)) |
+            ty::TyInfer(ty::FreshFloatTy(c)) => {
                 if c >= self.freshen_count {
                     tcx.sess.bug(
                         &format!("Encountered a freshend type with id {} \
@@ -149,25 +149,25 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
                 t
             }
 
-            ty::ty_bool |
-            ty::ty_char |
-            ty::ty_int(..) |
-            ty::ty_uint(..) |
-            ty::ty_float(..) |
-            ty::ty_enum(..) |
-            ty::ty_uniq(..) |
-            ty::ty_str |
-            ty::ty_err |
-            ty::ty_vec(..) |
-            ty::ty_ptr(..) |
-            ty::ty_rptr(..) |
-            ty::ty_bare_fn(..) |
-            ty::ty_trait(..) |
-            ty::ty_struct(..) |
-            ty::ty_closure(..) |
-            ty::ty_tup(..) |
-            ty::ty_projection(..) |
-            ty::ty_param(..) => {
+            ty::TyBool |
+            ty::TyChar |
+            ty::TyInt(..) |
+            ty::TyUint(..) |
+            ty::TyFloat(..) |
+            ty::TyEnum(..) |
+            ty::TyBox(..) |
+            ty::TyStr |
+            ty::TyError |
+            ty::TyArray(..) |
+            ty::TyRawPtr(..) |
+            ty::TyRef(..) |
+            ty::TyBareFn(..) |
+            ty::TyTrait(..) |
+            ty::TyStruct(..) |
+            ty::TyClosure(..) |
+            ty::TyTuple(..) |
+            ty::TyProjection(..) |
+            ty::TyParam(..) => {
                 ty_fold::super_fold_ty(self, t)
             }
         }

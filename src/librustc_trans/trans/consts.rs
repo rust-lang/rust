@@ -59,10 +59,10 @@ pub fn const_lit(cx: &CrateContext, e: &ast::Expr, lit: &ast::Lit)
         ast::LitInt(i, ast::UnsuffixedIntLit(_)) => {
             let lit_int_ty = ty::node_id_to_type(cx.tcx(), e.id);
             match lit_int_ty.sty {
-                ty::ty_int(t) => {
+                ty::TyInt(t) => {
                     C_integral(Type::int_from_ty(cx, t), i as u64, true)
                 }
-                ty::ty_uint(t) => {
+                ty::TyUint(t) => {
                     C_integral(Type::uint_from_ty(cx, t), i as u64, false)
                 }
                 _ => cx.sess().span_bug(lit.span,
@@ -77,7 +77,7 @@ pub fn const_lit(cx: &CrateContext, e: &ast::Expr, lit: &ast::Lit)
         ast::LitFloatUnsuffixed(ref fs) => {
             let lit_float_ty = ty::node_id_to_type(cx.tcx(), e.id);
             match lit_float_ty.sty {
-                ty::ty_float(t) => {
+                ty::TyFloat(t) => {
                     C_floating(&fs, Type::float_from_ty(cx, t))
                 }
                 _ => {
@@ -392,7 +392,7 @@ fn check_unary_expr_validity(cx: &CrateContext, e: &ast::Expr, t: Ty,
         if let ast::ExprLit(_) = inner_e.node { return; }
 
         let result = match t.sty {
-            ty::ty_int(int_type) => {
+            ty::TyInt(int_type) => {
                 let input = match const_to_opt_int(te) {
                     Some(v) => v,
                     None => return,
@@ -400,7 +400,7 @@ fn check_unary_expr_validity(cx: &CrateContext, e: &ast::Expr, t: Ty,
                 const_int_checked_neg(
                     input, e, Some(const_eval::IntTy::from(cx.tcx(), int_type)))
             }
-            ty::ty_uint(uint_type) => {
+            ty::TyUint(uint_type) => {
                 let input = match const_to_opt_uint(te) {
                     Some(v) => v,
                     None => return,
@@ -423,7 +423,7 @@ fn check_binary_expr_validity(cx: &CrateContext, e: &ast::Expr, t: Ty,
     let b = if let ast::ExprBinary(b, _, _) = e.node { b } else { return };
 
     let result = match t.sty {
-        ty::ty_int(int_type) => {
+        ty::TyInt(int_type) => {
             let (lhs, rhs) = match (const_to_opt_int(te1),
                                     const_to_opt_int(te2)) {
                 (Some(v1), Some(v2)) => (v1, v2),
@@ -442,7 +442,7 @@ fn check_binary_expr_validity(cx: &CrateContext, e: &ast::Expr, t: Ty,
                 _ => return,
             }
         }
-        ty::ty_uint(uint_type) => {
+        ty::TyUint(uint_type) => {
             let (lhs, rhs) = match (const_to_opt_uint(te1),
                                     const_to_opt_uint(te2)) {
                 (Some(v1), Some(v2)) => (v1, v2),
@@ -609,13 +609,13 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                           "index is not an integer-constant expression")
               };
               let (arr, len) = match bt.sty {
-                  ty::ty_vec(_, Some(u)) => (bv, C_uint(cx, u)),
-                  ty::ty_vec(_, None) | ty::ty_str => {
+                  ty::TyArray(_, Some(u)) => (bv, C_uint(cx, u)),
+                  ty::TyArray(_, None) | ty::TyStr => {
                       let e1 = const_get_elt(cx, bv, &[0]);
                       (const_deref_ptr(cx, e1), const_get_elt(cx, bv, &[1]))
                   }
-                  ty::ty_rptr(_, mt) => match mt.ty.sty {
-                      ty::ty_vec(_, Some(u)) => {
+                  ty::TyRef(_, mt) => match mt.ty.sty {
+                      ty::TyArray(_, Some(u)) => {
                           (const_deref_ptr(cx, bv), C_uint(cx, u))
                       },
                       _ => cx.sess().span_bug(base.span,
@@ -631,8 +631,8 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
               let len = llvm::LLVMConstIntGetZExtValue(len) as u64;
               let len = match bt.sty {
-                  ty::ty_uniq(ty) | ty::ty_rptr(_, ty::mt{ty, ..}) => match ty.sty {
-                      ty::ty_str => {
+                  ty::TyBox(ty) | ty::TyRef(_, ty::mt{ty, ..}) => match ty.sty {
+                      ty::TyStr => {
                           assert!(len > 0);
                           len - 1
                       }
@@ -842,7 +842,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                     }
                 }
                 def::DefStruct(_) => {
-                    if let ty::ty_bare_fn(..) = ety.sty {
+                    if let ty::TyBareFn(..) = ety.sty {
                         // Tuple struct.
                         expr::trans_def_fn_unadjusted(cx, e, def, param_substs).val
                     } else {
