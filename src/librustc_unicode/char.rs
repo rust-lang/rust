@@ -188,21 +188,15 @@ impl char {
     ///
     /// ```
     /// for i in '❤'.escape_unicode() {
-    ///     println!("{}", i);
+    ///     print!("{}", i);
     /// }
+    /// println!("");
     /// ```
     ///
     /// This prints:
     ///
     /// ```text
-    /// \
-    /// u
-    /// {
-    /// 2
-    /// 7
-    /// 6
-    /// 4
-    /// }
+    /// \u{2764}
     /// ```
     ///
     /// Collecting into a `String`:
