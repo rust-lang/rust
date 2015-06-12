@@ -620,7 +620,8 @@ pub fn run_passes(sess: &Session,
                 modules_config.emit_obj = true;
                 metadata_config.emit_obj = true;
             },
-            config::OutputTypeDepInfo => {}
+            config::OutputTypeDepInfo |
+            config::OutputTypeRlibMeta => {}
         }
     }
 
@@ -793,7 +794,8 @@ pub fn run_passes(sess: &Session,
                     link_obj(&crate_output.temp_path(config::OutputTypeObject));
                 }
             }
-            config::OutputTypeDepInfo => {}
+            config::OutputTypeDepInfo |
+            config::OutputTypeRlibMeta => {}
         }
     }
     let user_wants_bitcode = user_wants_bitcode;

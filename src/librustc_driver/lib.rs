@@ -368,9 +368,22 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
 
         if sess.opts.no_trans {
             control.after_analysis.stop = Compilation::Stop;
+            if sess.opts.output_types.contains(&config::OutputTypeRlibMeta) {
+                control.after_analysis.callback = box |state| {
+                    use rustc_trans::trans;
+
+                    let tcx = state.tcx.unwrap();
+                    let name = state.analysis.unwrap().name.clone();
+                    let trans = trans::trans_only_metadata(tcx, name);
+                    let outputs = state.output_filenames.unwrap();
+                    driver::phase_6_link_output(&tcx.sess, &trans, outputs);
+                };
+            }
         }
 
-        if !sess.opts.output_types.iter().any(|&i| i == config::OutputTypeExe) {
+        if !sess.opts.output_types.iter().any(|&i|
+                i == config::OutputTypeExe ||
+                i == config::OutputTypeRlibMeta) {
             control.after_llvm.stop = Compilation::Stop;
         }
 
@@ -456,6 +469,7 @@ impl RustcDefaultCalls {
                     for &style in &crate_types {
                         let fname = link::filename_for_input(sess,
                                                              style,
+                                                             config::OutputTypeExe,
                                                              &id,
                                                              &t_outputs.with_extension(""));
                         println!("{}", fname.file_name().unwrap()
