@@ -88,6 +88,7 @@ fn multiple3() { } //~ ERROR multiple stability levels
 #[deprecated(since = "b")]
 #[deprecated(since = "b")]
 fn multiple4() { } //~ ERROR multiple deprecated attributes
+//~^ ERROR Invalid stability or deprecation version found
 
 #[deprecated(since = "a")]
 fn deprecated_without_unstable_or_stable() { } //~ ERROR deprecated attribute must be paired
