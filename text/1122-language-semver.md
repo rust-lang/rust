@@ -14,37 +14,29 @@ how to go about making such changes.
 With the release of 1.0, we need to establish clear policy on what
 precisely constitutes a "minor" vs "major" change to the Rust language
 itself (as opposed to libraries, which are covered by [RFC 1105]).
-**This RFC proposes that minor releases may only contain breaking
+**This RFC proposes that minor releases may contain breaking
 changes that fix compiler bugs or other type-system
 issues**. Primarily, this means soundness issues where "innocent" code
 can cause undefined behavior (in the technical sense), but it also
 covers cases like compiler bugs and tightening up the semantics of
 "underspecified" parts of the language (more details below).
 
-However, simply landing all breaking changes immediately could be very
+Simply landing all breaking changes immediately could be very
 disruptive to the ecosystem. Therefore, **the RFC also proposes
 specific measures to mitigate the impact of breaking changes**, and
 some criteria when those measures might be appropriate.
 
-In rare cases, it may be deemed a good idea to make a breaking change
+In rare cases, it may be deemed worthwhile to make a breaking change
 that is not a soundness problem or compiler bug, but rather correcting
-a defect in design. Such cases should be rare. But if such a change is
-deemed worthwhile, then the guidelines given here can still be used to
-mitigate its impact.
+a defect in design. **These changes are to be avoided, but may be
+permissible if the impact is judged to be negligible (and thus there
+is expected to be no breakage in practice).** This RFC also includes
+criteria for how to estimate the impact of a change and advice on the
+timing of such changes.
 
 # Detailed design
 
-The detailed design is broken into two major sections: how to address
-soundness changes, and how to address other, opt-in style changes. We
-do not discuss non-breaking changes here, since obviously those are
-safe.
-
-### Soundness changes
-
-When compiler or type-system bugs are encountered in the language
-itself (as opposed to in a library), clearly they ought to be
-fixed. However, it is important to fix them in such a way as to
-minimize the impact on the ecosystem.
+### Evaluating the impact of a change
 
 The first step then is to evaluate the impact of the fix on the crates
 found in the `crates.io` website (using e.g. the crater tool). If
@@ -55,6 +47,8 @@ commit message of any breaking change should include the term
 problem, which helps those people who are affected to migrate their
 code. A description of the problem should also appear in the relevant
 subteam report.
+
+### Techniques for easing the transition
 
 In cases where the impact seems larger, any effort to ease the
 transition is sure to be welcome. The following are suggestions for
@@ -80,6 +74,8 @@ all scenarios):
    However, this option may frequently not be available, because the
    source of a compilation error is often hard to pin down with
    precision.
+     
+### Other factors to consider
    
 Some of the factors that should be taken into consideration when
 deciding whether and how to minimize the impact of a fix:
@@ -142,10 +138,19 @@ opt out will thus be removed in a later release. But in some cases,
 particularly those cases where the severity of the problem is
 relatively small, it could be an option to leave the "opt out"
 mechanism in place permanently. In either case, use of the "opt out"
-API would trigger the deprecation lint.
+API would trigger the deprecation lint. Note that we should make every
+effort to ensure that crates which employ this opt out can be used
+compatibly with crates that do not.
 
-Note that we should make every effort to ensure that crates which
-employ this opt out can be used compatibly with crates that do not.
+Opt outs should be specified using the `#[legacy(foo)]` attribute.
+This attribute intentionally ignores unrecognized opt-outs (such as
+`foo`) to allow for forwards compatibility with opt-outs that may be
+added in later compiler releases (in such cases, older compilers will
+naturally perform the legacy behavior).
+
+Ideally, opt-outs should be constructed in as targeted a fashion as
+possible. That means it is generally better, for example, to have
+users opt out individual items than an entire crate at once.
 
 #### Changes that alter dynamic semantics versus typing rules
 
@@ -229,6 +234,34 @@ future as well. The `-Z` flags are of course explicitly unstable, but
 some of the `-C`, rustdoc, and linker-specific flags are expected to
 evolve over time (see e.g. [#24451]).
 
+#### Other kinds of breaking changes
+
+From time to time, we may find a flaw in a design that is neither a
+soundness concern nor a bug fix, but rather simply a suboptimal
+decision. In general, it is best to find ways to correct such errors
+without making breaking changes, such as improved error messages or
+deprecation. However, if the impact of making the change is judged to
+be negligible, we can also consider fixing the problem, presuming that
+the following criteria are met:
+
+- All data indicates that correcting this flaw will break extremely little
+  or no existing code (such as crates.io testing, communication with production
+  users of Rust or other private developers, etc).
+- The feature was only recently stabilized, preferably in the previous
+  cycle. This minimizes the possibility that a large body of code has
+  crept up that relies on this feature.
+  - If and when we establish LTS releases, we should never make
+    changes to features marked as stable in a LTS release (except for
+    soundness reasons).
+- There is no backwards compatible way to repair the problem.
+
+Naturally, all of the concerns listed above in the section "Other
+Factors to Consider" also apply here. For example, we should consider
+the quality of the error messages that result from the breaking
+change, and evaluate whether it is possible to write code that works
+both before/after the change (which enables users to span compiler
+versions).
+
 # Drawbacks
 
 The primary drawback is that making breaking changes are disruptive,
@@ -268,26 +301,6 @@ precedent. One of the big unknowns is how indicative the breakage we
 observe on `crates.io` will be of the total breakage that will occur:
 it is certainly possible that all crates on `crates.io` work fine, but
 the change still breaks a large body of code we do not have access to.
-
-**What attribute should we use to "opt out" of soundness changes?**
-The section on breaking changes indicated that it may sometimes be
-appropriate to includ an "opt out" that people can use to temporarily
-revert to older, unsound type rules, but did not specify precisely
-what that opt-out should look like. Ideally, we would identify a
-specific attribute in advance that will be used for such purposes.  In
-the past, we have simply created ad-hoc attributes (e.g.,
-`#[old_orphan_check]`), but because custom attributes are forbidden by
-stable Rust, this has the unfortunate side-effect of meaning that code
-which opts out of the newer rules cannot be compiled on older
-compilers (even though it's using the older type system rules). If we
-introduce an attribute in advance we will not have this problem.
-
-**Are there any other circumstances in which we might perform a
-breaking change?** In particular, it may happen from time to time that
-we wish to alter some detail of a stable component. If we believe that
-this change will not affect anyone, such a change may be worth doing,
-but we'll have to work out more precise guidelines. [RFC 1156] is an
-example.
 
 [RFC 1105]: https://github.com/rust-lang/rfcs/pull/1105
 [RFC 320]: https://github.com/rust-lang/rfcs/pull/320
