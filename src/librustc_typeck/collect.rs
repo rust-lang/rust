@@ -2174,7 +2174,7 @@ fn check_method_self_type<'a, 'tcx, RS:RegionScope>(
     if let ast::SelfExplicit(ref ast_type, _) = explicit_self.node {
         let typ = ccx.icx(&method_type.predicates).to_ty(rs, &**ast_type);
         let base_type = match typ.sty {
-            ty::ty_ptr(tm) | ty::ty_rptr(_, tm) => tm.ty,
+            ty::ty_rptr(_, tm) => tm.ty,
             ty::ty_uniq(typ) => typ,
             _ => typ,
         };
@@ -2220,7 +2220,7 @@ fn check_method_self_type<'a, 'tcx, RS:RegionScope>(
                         ppaux::ty_to_string(tcx, required_type))
         }));
 
-        // We could conceviably add more free-reion relations here,
+        // We could conceviably add more free-region relations here,
         // but since this code is just concerned with checking that
         // the `&Self` types etc match up, it's not really necessary.
         // It would just allow people to be more approximate in some
