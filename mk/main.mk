@@ -322,6 +322,7 @@ $(foreach host,$(CFG_HOST), \
 # exported
 
 export CFG_SRC_DIR
+export CFG_SRC_DIR_RELATIVE
 export CFG_BUILD_DIR
 ifdef CFG_VER_DATE
 export CFG_VER_DATE
