@@ -32,23 +32,27 @@ impl<T> Foo<T> {
 }
 
 struct Baz {
-//~^ ERROR not implemented
-    a: Foo<isize>,
+    a: Foo<isize>, //~ ERROR not implemented
 }
 
 enum Boo {
-//~^ ERROR not implemented
-    Quux(Bar<usize>),
+    Quux(Bar<usize>), //~ ERROR not implemented
 }
 
 struct Badness<U> {
-//~^ ERROR not implemented
-    b: Foo<U>,
+    b: Foo<U>, //~ ERROR not implemented
 }
 
 enum MoreBadness<V> {
-//~^ ERROR not implemented
-    EvenMoreBadness(Bar<V>),
+    EvenMoreBadness(Bar<V>), //~ ERROR not implemented
+}
+
+struct TupleLike(
+    Foo<i32>, //~ ERROR not implemented
+);
+
+enum Enum {
+    DictionaryLike { field: Bar<i32> }, //~ ERROR not implemented
 }
 
 trait PolyTrait<T>
