@@ -61,7 +61,7 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 None);
 
             // If the item has the name of a field, give a help note
-            if let (&ty::ty_struct(did, _), Some(_)) = (&rcvr_ty.sty, rcvr_expr) {
+            if let (&ty::TyStruct(did, _), Some(_)) = (&rcvr_ty.sty, rcvr_expr) {
                 let fields = ty::lookup_struct_fields(cx, did);
                 if fields.iter().any(|f| f.name == item_name) {
                     cx.sess.span_note(span,
@@ -238,11 +238,11 @@ fn type_derefs_to_local<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                   rcvr_expr: Option<&ast::Expr>) -> bool {
     fn is_local(ty: Ty) -> bool {
         match ty.sty {
-            ty::ty_enum(did, _) | ty::ty_struct(did, _) => ast_util::is_local(did),
+            ty::TyEnum(did, _) | ty::TyStruct(did, _) => ast_util::is_local(did),
 
-            ty::ty_trait(ref tr) => ast_util::is_local(tr.principal_def_id()),
+            ty::TyTrait(ref tr) => ast_util::is_local(tr.principal_def_id()),
 
-            ty::ty_param(_) => true,
+            ty::TyParam(_) => true,
 
             // everything else (primitive types etc.) is effectively
             // non-local (there are "edge" cases, e.g. (LocalType,), but

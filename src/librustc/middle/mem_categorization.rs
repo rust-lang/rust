@@ -212,25 +212,25 @@ type DerefKindContext = Option<InteriorOffsetKind>;
 // pointer adjustment).
 fn deref_kind(t: Ty, context: DerefKindContext) -> McResult<deref_kind> {
     match t.sty {
-        ty::ty_uniq(_) => {
+        ty::TyBox(_) => {
             Ok(deref_ptr(Unique))
         }
 
-        ty::ty_rptr(r, mt) => {
+        ty::TyRef(r, mt) => {
             let kind = ty::BorrowKind::from_mutbl(mt.mutbl);
             Ok(deref_ptr(BorrowedPtr(kind, *r)))
         }
 
-        ty::ty_ptr(ref mt) => {
+        ty::TyRawPtr(ref mt) => {
             Ok(deref_ptr(UnsafePtr(mt.mutbl)))
         }
 
-        ty::ty_enum(..) |
-        ty::ty_struct(..) => { // newtype
+        ty::TyEnum(..) |
+        ty::TyStruct(..) => { // newtype
             Ok(deref_interior(InteriorField(PositionalField(0))))
         }
 
-        ty::ty_vec(_, _) | ty::ty_str => {
+        ty::TyArray(_, _) | ty::TyStr => {
             // no deref of indexed content without supplying InteriorOffsetKind
             if let Some(context) = context {
                 Ok(deref_interior(InteriorElement(context, element_kind(t))))
@@ -523,7 +523,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                     // The index method always returns an `&T`, so
                     // dereference it to find the result type.
                     let elem_ty = match ret_ty.sty {
-                        ty::ty_rptr(_, mt) => mt.ty,
+                        ty::TyRef(_, mt) => mt.ty,
                         _ => {
                             debug!("cat_expr_unadjusted: return type of overloaded index is {}?",
                                    ret_ty.repr(self.tcx()));
@@ -621,7 +621,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
           def::DefUpvar(var_id, fn_node_id) => {
               let ty = try!(self.node_ty(fn_node_id));
               match ty.sty {
-                  ty::ty_closure(closure_id, _) => {
+                  ty::TyClosure(closure_id, _) => {
                       match self.typer.closure_kind(closure_id) {
                           Some(kind) => {
                               self.cat_upvar(id, span, var_id, fn_node_id, kind)
@@ -791,7 +791,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
         // that the above is actually immutable and
         // has a ref type.  However, nothing should
         // actually look at the type, so we can get
-        // away with stuffing a `ty_err` in there
+        // away with stuffing a `TyError` in there
         // instead of bothering to construct a proper
         // one.
         let cmt_result = cmt_ {
@@ -843,7 +843,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
         // Only promote `[T; 0]` before an RFC for rvalue promotions
         // is accepted.
         let qualif = match expr_ty.sty {
-            ty::ty_vec(_, Some(0)) => qualif,
+            ty::TyArray(_, Some(0)) => qualif,
             _ => check_const::ConstQualif::NOT_CONST
         };
 
@@ -1129,8 +1129,8 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                           slice_ty: Ty)
                           -> (ast::Mutability, ty::Region) {
             match slice_ty.sty {
-                ty::ty_rptr(r, ref mt) => match mt.ty.sty {
-                    ty::ty_vec(_, None) => (mt.mutbl, *r),
+                ty::TyRef(r, ref mt) => match mt.ty.sty {
+                    ty::TyArray(_, None) => (mt.mutbl, *r),
                     _ => vec_slice_info(tcx, pat, mt.ty),
                 },
 
@@ -1667,12 +1667,12 @@ impl<'tcx> Repr<'tcx> for InteriorKind {
 
 fn element_kind(t: Ty) -> ElementKind {
     match t.sty {
-        ty::ty_rptr(_, ty::mt{ty, ..}) |
-        ty::ty_uniq(ty) => match ty.sty {
-            ty::ty_vec(_, None) => VecElement,
+        ty::TyRef(_, ty::mt{ty, ..}) |
+        ty::TyBox(ty) => match ty.sty {
+            ty::TyArray(_, None) => VecElement,
             _ => OtherElement
         },
-        ty::ty_vec(..) => VecElement,
+        ty::TyArray(..) => VecElement,
         _ => OtherElement
     }
 }

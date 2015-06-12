@@ -61,16 +61,16 @@ impl<'tcx> CastTy<'tcx> {
     pub fn from_ty(tcx: &ty::ctxt<'tcx>, t: Ty<'tcx>)
                    -> Option<CastTy<'tcx>> {
         match t.sty {
-            ty::ty_bool => Some(CastTy::Int(IntTy::Bool)),
-            ty::ty_char => Some(CastTy::Int(IntTy::Char)),
-            ty::ty_int(_) => Some(CastTy::Int(IntTy::I)),
-            ty::ty_uint(u) => Some(CastTy::Int(IntTy::U(u))),
-            ty::ty_float(_) => Some(CastTy::Float),
-            ty::ty_enum(..) if ty::type_is_c_like_enum(
+            ty::TyBool => Some(CastTy::Int(IntTy::Bool)),
+            ty::TyChar => Some(CastTy::Int(IntTy::Char)),
+            ty::TyInt(_) => Some(CastTy::Int(IntTy::I)),
+            ty::TyUint(u) => Some(CastTy::Int(IntTy::U(u))),
+            ty::TyFloat(_) => Some(CastTy::Float),
+            ty::TyEnum(..) if ty::type_is_c_like_enum(
                 tcx, t) => Some(CastTy::Int(IntTy::CEnum)),
-            ty::ty_ptr(ref mt) => Some(CastTy::Ptr(mt)),
-            ty::ty_rptr(_, ref mt) => Some(CastTy::RPtr(mt)),
-            ty::ty_bare_fn(..) => Some(CastTy::FnPtr),
+            ty::TyRawPtr(ref mt) => Some(CastTy::Ptr(mt)),
+            ty::TyRef(_, ref mt) => Some(CastTy::RPtr(mt)),
+            ty::TyBareFn(..) => Some(CastTy::FnPtr),
             _ => None,
         }
     }

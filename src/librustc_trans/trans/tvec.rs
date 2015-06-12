@@ -310,15 +310,15 @@ pub fn get_base_and_len<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let ccx = bcx.ccx();
 
     match vec_ty.sty {
-        ty::ty_vec(_, Some(n)) => get_fixed_base_and_len(bcx, llval, n),
-        ty::ty_vec(_, None) | ty::ty_str => {
+        ty::TyArray(_, Some(n)) => get_fixed_base_and_len(bcx, llval, n),
+        ty::TyArray(_, None) | ty::TyStr => {
             let base = Load(bcx, expr::get_dataptr(bcx, llval));
             let len = Load(bcx, expr::get_len(bcx, llval));
             (base, len)
         }
 
         // Only used for pattern matching.
-        ty::ty_uniq(ty) | ty::ty_rptr(_, ty::mt{ty, ..}) => {
+        ty::TyBox(ty) | ty::TyRef(_, ty::mt{ty, ..}) => {
             let inner = if type_is_sized(bcx.tcx(), ty) {
                 Load(bcx, llval)
             } else {

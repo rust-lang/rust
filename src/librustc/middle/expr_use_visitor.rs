@@ -622,10 +622,10 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                callee.repr(self.tcx()), callee_ty.repr(self.tcx()));
         let call_scope = region::CodeExtent::from_node_id(call.id);
         match callee_ty.sty {
-            ty::ty_bare_fn(..) => {
+            ty::TyBareFn(..) => {
                 self.consume_expr(callee);
             }
-            ty::ty_err => { }
+            ty::TyError => { }
             _ => {
                 let overloaded_call_type =
                     match self.typer.node_method_origin(MethodCall::expr(call.id)) {
@@ -740,7 +740,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
         // Select just those fields of the `with`
         // expression that will actually be used
         let with_fields = match with_cmt.ty.sty {
-            ty::ty_struct(did, substs) => {
+            ty::TyStruct(did, substs) => {
                 ty::struct_fields(self.tcx(), did, substs)
             }
             _ => {
@@ -826,7 +826,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                     let self_ty = ty::no_late_bound_regions(self.tcx(), &self_ty).unwrap();
 
                     let (m, r) = match self_ty.sty {
-                        ty::ty_rptr(r, ref m) => (m.mutbl, r),
+                        ty::TyRef(r, ref m) => (m.mutbl, r),
                         _ => self.tcx().sess.span_bug(expr.span,
                                 &format!("bad overloaded deref type {}",
                                     method_ty.repr(self.tcx())))

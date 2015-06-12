@@ -143,7 +143,7 @@ pub fn get_or_create_declaration_if_closure<'a, 'tcx>(ccx: &CrateContext<'a, 'tc
     // duplicate declarations
     let function_type = erase_regions(ccx.tcx(), &function_type);
     let params = match function_type.sty {
-        ty::ty_closure(_, substs) => &substs.types,
+        ty::TyClosure(_, substs) => &substs.types,
         _ => unreachable!()
     };
     let mono_id = MonoId {
@@ -421,7 +421,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
 
     // the remaining arguments will be packed up in a tuple.
     let input_tys = match sig.inputs[1].sty {
-        ty::ty_tup(ref tys) => &**tys,
+        ty::TyTuple(ref tys) => &**tys,
         _ => bcx.sess().bug(&format!("trans_fn_once_adapter_shim: not rust-call! \
                                       closure_def_id={}",
                                      closure_def_id.repr(tcx)))

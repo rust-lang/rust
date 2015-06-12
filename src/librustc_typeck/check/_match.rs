@@ -58,8 +58,8 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
             if let ast::ExprLit(ref lt) = lt.node {
                 if let ast::LitBinary(_) = lt.node {
                     let expected_ty = structurally_resolved_type(fcx, pat.span, expected);
-                    if let ty::ty_rptr(_, mt) = expected_ty.sty {
-                        if let ty::ty_vec(_, None) = mt.ty.sty {
+                    if let ty::TyRef(_, mt) = expected_ty.sty {
+                        if let ty::TyArray(_, None) = mt.ty.sty {
                             pat_ty = ty::mk_slice(tcx, tcx.mk_region(ty::ReStatic),
                                 ty::mt{ ty: tcx.types.u8, mutbl: ast::MutImmutable })
                         }
@@ -293,7 +293,7 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
             let expected_ty = structurally_resolved_type(fcx, pat.span, expected);
             let inner_ty = fcx.infcx().next_ty_var();
             let pat_ty = match expected_ty.sty {
-                ty::ty_vec(_, Some(size)) => ty::mk_vec(tcx, inner_ty, Some({
+                ty::TyArray(_, Some(size)) => ty::mk_vec(tcx, inner_ty, Some({
                     let min_len = before.len() + after.len();
                     match *slice {
                         Some(_) => cmp::max(min_len, size),
@@ -413,7 +413,7 @@ pub fn check_dereferencable<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
     if pat_is_binding(&tcx.def_map, inner) {
         let expected = fcx.infcx().shallow_resolve(expected);
         ty::deref(expected, true).map_or(true, |mt| match mt.ty.sty {
-            ty::ty_trait(_) => {
+            ty::TyTrait(_) => {
                 // This is "x = SomeTrait" being reduced from
                 // "let &x = &SomeTrait" or "let box x = Box<SomeTrait>", an error.
                 span_err!(tcx.sess, span, E0033,
@@ -558,9 +558,9 @@ pub fn check_pat_struct<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>, pat: &'tcx ast::Pat,
         _ => {
             let def_type = ty::lookup_item_type(tcx, def.def_id());
             match def_type.ty.sty {
-                ty::ty_struct(struct_def_id, _) =>
+                ty::TyStruct(struct_def_id, _) =>
                     (struct_def_id, struct_def_id),
-                ty::ty_enum(enum_def_id, _)
+                ty::TyEnum(enum_def_id, _)
                     if def == def::DefVariant(enum_def_id, def.def_id(), true) =>
                     (enum_def_id, def.def_id()),
                 _ => {
@@ -662,7 +662,7 @@ pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
 
     let real_path_ty = fcx.node_ty(pat.id);
     let (arg_tys, kind_name): (Vec<_>, &'static str) = match real_path_ty.sty {
-        ty::ty_enum(enum_def_id, expected_substs)
+        ty::TyEnum(enum_def_id, expected_substs)
             if def == def::DefVariant(enum_def_id, def.def_id(), false) =>
         {
             let variant = ty::enum_variant_with_id(tcx, enum_def_id, def.def_id());
@@ -671,7 +671,7 @@ pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                          .collect(),
              "variant")
         }
-        ty::ty_struct(struct_def_id, expected_substs) => {
+        ty::TyStruct(struct_def_id, expected_substs) => {
             let struct_fields = ty::struct_fields(tcx, struct_def_id, expected_substs);
             (struct_fields.iter()
                           .map(|field| fcx.instantiate_type_scheme(pat.span,

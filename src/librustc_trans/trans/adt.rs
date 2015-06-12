@@ -206,10 +206,10 @@ fn dtor_active(flag: u8) -> bool {
 fn represent_type_uncached<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                      t: Ty<'tcx>) -> Repr<'tcx> {
     match t.sty {
-        ty::ty_tup(ref elems) => {
+        ty::TyTuple(ref elems) => {
             Univariant(mk_struct(cx, &elems[..], false, t), 0)
         }
-        ty::ty_struct(def_id, substs) => {
+        ty::TyStruct(def_id, substs) => {
             let fields = ty::lookup_struct_fields(cx.tcx(), def_id);
             let mut ftys = fields.iter().map(|field| {
                 let fty = ty::lookup_field_type(cx.tcx(), def_id, field.id, substs);
@@ -223,13 +223,13 @@ fn represent_type_uncached<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
             Univariant(mk_struct(cx, &ftys[..], packed, t), dtor_to_init_u8(dtor))
         }
-        ty::ty_closure(def_id, substs) => {
+        ty::TyClosure(def_id, substs) => {
             let typer = NormalizingClosureTyper::new(cx.tcx());
             let upvars = typer.closure_upvars(def_id, substs).unwrap();
             let upvar_types = upvars.iter().map(|u| u.ty).collect::<Vec<_>>();
             Univariant(mk_struct(cx, &upvar_types[..], false, t), 0)
         }
-        ty::ty_enum(def_id, substs) => {
+        ty::TyEnum(def_id, substs) => {
             let cases = get_cases(cx.tcx(), def_id, substs);
             let hint = *ty::lookup_repr_hints(cx.tcx(), def_id).get(0)
                 .unwrap_or(&attr::ReprAny);
@@ -400,28 +400,28 @@ fn find_discr_field_candidate<'tcx>(tcx: &ty::ctxt<'tcx>,
                                     mut path: DiscrField) -> Option<DiscrField> {
     match ty.sty {
         // Fat &T/&mut T/Box<T> i.e. T is [T], str, or Trait
-        ty::ty_rptr(_, ty::mt { ty, .. }) | ty::ty_uniq(ty) if !type_is_sized(tcx, ty) => {
+        ty::TyRef(_, ty::mt { ty, .. }) | ty::TyBox(ty) if !type_is_sized(tcx, ty) => {
             path.push(FAT_PTR_ADDR);
             Some(path)
         },
 
         // Regular thin pointer: &T/&mut T/Box<T>
-        ty::ty_rptr(..) | ty::ty_uniq(..) => Some(path),
+        ty::TyRef(..) | ty::TyBox(..) => Some(path),
 
         // Functions are just pointers
-        ty::ty_bare_fn(..) => Some(path),
+        ty::TyBareFn(..) => Some(path),
 
         // Is this the NonZero lang item wrapping a pointer or integer type?
-        ty::ty_struct(did, substs) if Some(did) == tcx.lang_items.non_zero() => {
+        ty::TyStruct(did, substs) if Some(did) == tcx.lang_items.non_zero() => {
             let nonzero_fields = ty::lookup_struct_fields(tcx, did);
             assert_eq!(nonzero_fields.len(), 1);
             let nonzero_field = ty::lookup_field_type(tcx, did, nonzero_fields[0].id, substs);
             match nonzero_field.sty {
-                ty::ty_ptr(ty::mt { ty, .. }) if !type_is_sized(tcx, ty) => {
+                ty::TyRawPtr(ty::mt { ty, .. }) if !type_is_sized(tcx, ty) => {
                     path.push_all(&[0, FAT_PTR_ADDR]);
                     Some(path)
                 },
-                ty::ty_ptr(..) | ty::ty_int(..) | ty::ty_uint(..) => {
+                ty::TyRawPtr(..) | ty::TyInt(..) | ty::TyUint(..) => {
                     path.push(0);
                     Some(path)
                 },
@@ -431,7 +431,7 @@ fn find_discr_field_candidate<'tcx>(tcx: &ty::ctxt<'tcx>,
 
         // Perhaps one of the fields of this struct is non-zero
         // let's recurse and find out
-        ty::ty_struct(def_id, substs) => {
+        ty::TyStruct(def_id, substs) => {
             let fields = ty::lookup_struct_fields(tcx, def_id);
             for (j, field) in fields.iter().enumerate() {
                 let field_ty = ty::lookup_field_type(tcx, def_id, field.id, substs);
@@ -445,7 +445,7 @@ fn find_discr_field_candidate<'tcx>(tcx: &ty::ctxt<'tcx>,
 
         // Perhaps one of the upvars of this struct is non-zero
         // Let's recurse and find out!
-        ty::ty_closure(def_id, substs) => {
+        ty::TyClosure(def_id, substs) => {
             let typer = NormalizingClosureTyper::new(tcx);
             let upvars = typer.closure_upvars(def_id, substs).unwrap();
             let upvar_types = upvars.iter().map(|u| u.ty).collect::<Vec<_>>();
@@ -460,7 +460,7 @@ fn find_discr_field_candidate<'tcx>(tcx: &ty::ctxt<'tcx>,
         },
 
         // Can we use one of the fields in this tuple?
-        ty::ty_tup(ref tys) => {
+        ty::TyTuple(ref tys) => {
             for (j, &ty) in tys.iter().enumerate() {
                 if let Some(mut fpath) = find_discr_field_candidate(tcx, ty, path.clone()) {
                     fpath.push(j);
@@ -472,7 +472,7 @@ fn find_discr_field_candidate<'tcx>(tcx: &ty::ctxt<'tcx>,
 
         // Is this a fixed-size array of something non-zero
         // with at least one element?
-        ty::ty_vec(ety, Some(d)) if d > 0 => {
+        ty::TyArray(ety, Some(d)) if d > 0 => {
             if let Some(mut vpath) = find_discr_field_candidate(tcx, ety, path) {
                 vpath.push(0);
                 Some(vpath)

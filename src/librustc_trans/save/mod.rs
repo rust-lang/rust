@@ -223,7 +223,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             ast::ExprField(ref sub_ex, ident) => {
                 let ty = &ty::expr_ty_adjusted(&self.analysis.ty_cx, &sub_ex).sty;
                 match *ty {
-                    ty::ty_struct(def_id, _) => {
+                    ty::TyStruct(def_id, _) => {
                         let fields = ty::lookup_struct_fields(&self.analysis.ty_cx, def_id);
                         for f in &fields {
                             if f.name == ident.node.name {

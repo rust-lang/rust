@@ -68,33 +68,33 @@ pub fn walk_shallow<'tcx>(ty: Ty<'tcx>) -> IntoIter<Ty<'tcx>> {
 
 fn push_subtypes<'tcx>(stack: &mut Vec<Ty<'tcx>>, parent_ty: Ty<'tcx>) {
     match parent_ty.sty {
-        ty::ty_bool | ty::ty_char | ty::ty_int(_) | ty::ty_uint(_) | ty::ty_float(_) |
-        ty::ty_str | ty::ty_infer(_) | ty::ty_param(_) | ty::ty_err => {
+        ty::TyBool | ty::TyChar | ty::TyInt(_) | ty::TyUint(_) | ty::TyFloat(_) |
+        ty::TyStr | ty::TyInfer(_) | ty::TyParam(_) | ty::TyError => {
         }
-        ty::ty_uniq(ty) | ty::ty_vec(ty, _) => {
+        ty::TyBox(ty) | ty::TyArray(ty, _) => {
             stack.push(ty);
         }
-        ty::ty_ptr(ref mt) | ty::ty_rptr(_, ref mt) => {
+        ty::TyRawPtr(ref mt) | ty::TyRef(_, ref mt) => {
             stack.push(mt.ty);
         }
-        ty::ty_projection(ref data) => {
+        ty::TyProjection(ref data) => {
             push_reversed(stack, data.trait_ref.substs.types.as_slice());
         }
-        ty::ty_trait(box ty::TyTrait { ref principal, ref bounds }) => {
+        ty::TyTrait(box ty::TraitTy { ref principal, ref bounds }) => {
             push_reversed(stack, principal.substs().types.as_slice());
             push_reversed(stack, &bounds.projection_bounds.iter().map(|pred| {
                 pred.0.ty
             }).collect::<Vec<_>>());
         }
-        ty::ty_enum(_, ref substs) |
-        ty::ty_struct(_, ref substs) |
-        ty::ty_closure(_, ref substs) => {
+        ty::TyEnum(_, ref substs) |
+        ty::TyStruct(_, ref substs) |
+        ty::TyClosure(_, ref substs) => {
             push_reversed(stack, substs.types.as_slice());
         }
-        ty::ty_tup(ref ts) => {
+        ty::TyTuple(ref ts) => {
             push_reversed(stack, ts);
         }
-        ty::ty_bare_fn(_, ref ft) => {
+        ty::TyBareFn(_, ref ft) => {
             push_sig_subtypes(stack, &ft.sig);
         }
     }

@@ -873,39 +873,39 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                variance);
 
         match ty.sty {
-            ty::ty_bool |
-            ty::ty_char | ty::ty_int(_) | ty::ty_uint(_) |
-            ty::ty_float(_) | ty::ty_str => {
+            ty::TyBool |
+            ty::TyChar | ty::TyInt(_) | ty::TyUint(_) |
+            ty::TyFloat(_) | ty::TyStr => {
                 /* leaf type -- noop */
             }
 
-            ty::ty_closure(..) => {
+            ty::TyClosure(..) => {
                 self.tcx().sess.bug("Unexpected closure type in variance computation");
             }
 
-            ty::ty_rptr(region, ref mt) => {
+            ty::TyRef(region, ref mt) => {
                 let contra = self.contravariant(variance);
                 self.add_constraints_from_region(generics, *region, contra);
                 self.add_constraints_from_mt(generics, mt, variance);
             }
 
-            ty::ty_uniq(typ) | ty::ty_vec(typ, _) => {
+            ty::TyBox(typ) | ty::TyArray(typ, _) => {
                 self.add_constraints_from_ty(generics, typ, variance);
             }
 
 
-            ty::ty_ptr(ref mt) => {
+            ty::TyRawPtr(ref mt) => {
                 self.add_constraints_from_mt(generics, mt, variance);
             }
 
-            ty::ty_tup(ref subtys) => {
+            ty::TyTuple(ref subtys) => {
                 for &subty in subtys {
                     self.add_constraints_from_ty(generics, subty, variance);
                 }
             }
 
-            ty::ty_enum(def_id, substs) |
-            ty::ty_struct(def_id, substs) => {
+            ty::TyEnum(def_id, substs) |
+            ty::TyStruct(def_id, substs) => {
                 let item_type = ty::lookup_item_type(self.tcx(), def_id);
 
                 // All type parameters on enums and structs should be
@@ -924,7 +924,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                     variance);
             }
 
-            ty::ty_projection(ref data) => {
+            ty::TyProjection(ref data) => {
                 let trait_ref = &data.trait_ref;
                 let trait_def = ty::lookup_trait_def(self.tcx(), trait_ref.def_id);
                 self.add_constraints_from_substs(
@@ -936,7 +936,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                     variance);
             }
 
-            ty::ty_trait(ref data) => {
+            ty::TyTrait(ref data) => {
                 let poly_trait_ref =
                     data.principal_trait_ref_with_self_ty(self.tcx(),
                                                           self.tcx().types.err);
@@ -955,7 +955,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 }
             }
 
-            ty::ty_param(ref data) => {
+            ty::TyParam(ref data) => {
                 let def_id = generics.types.get(data.space, data.idx as usize).def_id;
                 assert_eq!(def_id.krate, ast::LOCAL_CRATE);
                 match self.terms_cx.inferred_map.get(&def_id.node) {
@@ -970,16 +970,16 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 }
             }
 
-            ty::ty_bare_fn(_, &ty::BareFnTy { ref sig, .. }) => {
+            ty::TyBareFn(_, &ty::BareFnTy { ref sig, .. }) => {
                 self.add_constraints_from_sig(generics, sig, variance);
             }
 
-            ty::ty_err => {
+            ty::TyError => {
                 // we encounter this when walking the trait references for object
-                // types, where we use ty_err as the Self type
+                // types, where we use TyError as the Self type
             }
 
-            ty::ty_infer(..) => {
+            ty::TyInfer(..) => {
                 self.tcx().sess.bug(
                     &format!("unexpected type encountered in \
                             variance inference: {}",

@@ -114,7 +114,7 @@ pub fn get_drop_glue_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         return tcx.types.i8;
     }
     match t.sty {
-        ty::ty_uniq(typ) if !type_needs_drop(tcx, typ)
+        ty::TyBox(typ) if !type_needs_drop(tcx, typ)
                          && type_is_sized(tcx, typ) => {
             let llty = sizing_type_of(ccx, typ);
             // `Box<ZeroSizeType>` does not allocate.
@@ -398,7 +398,7 @@ pub fn size_and_align_of_dst<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, in
         return (size, align);
     }
     match t.sty {
-        ty::ty_struct(id, substs) => {
+        ty::TyStruct(id, substs) => {
             let ccx = bcx.ccx();
             // First get the size of all statically known fields.
             // Don't use type_of::sizing_type_of because that expects t to be sized.
@@ -427,7 +427,7 @@ pub fn size_and_align_of_dst<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, in
                                unsized_align);
             (size, align)
         }
-        ty::ty_trait(..) => {
+        ty::TyTrait(..) => {
             // info points to the vtable and the second entry in the vtable is the
             // dynamic size of the object.
             let info = PointerCast(bcx, info, Type::int(bcx.ccx()).ptr_to());
@@ -435,7 +435,7 @@ pub fn size_and_align_of_dst<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, in
             let align_ptr = GEPi(bcx, info, &[2]);
             (Load(bcx, size_ptr), Load(bcx, align_ptr))
         }
-        ty::ty_vec(_, None) | ty::ty_str => {
+        ty::TyArray(_, None) | ty::TyStr => {
             let unit_ty = ty::sequence_element_type(bcx.tcx(), t);
             // The info in this case is the length of the str, so the size is that
             // times the unit size.
@@ -466,10 +466,10 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, g: DropGlueK
     let dropped_pattern = C_integral(inttype, adt::dtor_done_usize(bcx.fcx.ccx) as u64, false);
 
     match t.sty {
-        ty::ty_uniq(content_ty) => {
-            // Support for ty_uniq is built-in and its drop glue is
+        ty::TyBox(content_ty) => {
+            // Support for TyBox is built-in and its drop glue is
             // special. It may move to library and have Drop impl. As
-            // a safe-guard, assert ty_uniq not used with TyContents.
+            // a safe-guard, assert TyBox not used with TyContents.
             assert!(!skip_dtor);
             if !type_is_sized(bcx.tcx(), content_ty) {
                 let llval = GEPi(bcx, v0, &[0, abi::FAT_PTR_ADDR]);
@@ -505,7 +505,7 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, g: DropGlueK
                 })
             }
         }
-        ty::ty_struct(did, substs) | ty::ty_enum(did, substs) => {
+        ty::TyStruct(did, substs) | ty::TyEnum(did, substs) => {
             let tcx = bcx.tcx();
             match (ty::ty_dtor(tcx, did), skip_dtor) {
                 (ty::TraitDtor(dtor, true), false) => {
@@ -534,7 +534,7 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, g: DropGlueK
                 }
             }
         }
-        ty::ty_trait(..) => {
+        ty::TyTrait(..) => {
             // No support in vtable for distinguishing destroying with
             // versus without calling Drop::drop. Assert caller is
             // okay with always calling the Drop impl, if any.

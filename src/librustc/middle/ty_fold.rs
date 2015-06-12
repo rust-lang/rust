@@ -590,51 +590,51 @@ pub fn super_fold_ty<'tcx, T: TypeFolder<'tcx>>(this: &mut T,
                                                 ty: Ty<'tcx>)
                                                 -> Ty<'tcx> {
     let sty = match ty.sty {
-        ty::ty_uniq(typ) => {
-            ty::ty_uniq(typ.fold_with(this))
+        ty::TyBox(typ) => {
+            ty::TyBox(typ.fold_with(this))
         }
-        ty::ty_ptr(ref tm) => {
-            ty::ty_ptr(tm.fold_with(this))
+        ty::TyRawPtr(ref tm) => {
+            ty::TyRawPtr(tm.fold_with(this))
         }
-        ty::ty_vec(typ, sz) => {
-            ty::ty_vec(typ.fold_with(this), sz)
+        ty::TyArray(typ, sz) => {
+            ty::TyArray(typ.fold_with(this), sz)
         }
-        ty::ty_enum(tid, ref substs) => {
+        ty::TyEnum(tid, ref substs) => {
             let substs = substs.fold_with(this);
-            ty::ty_enum(tid, this.tcx().mk_substs(substs))
+            ty::TyEnum(tid, this.tcx().mk_substs(substs))
         }
-        ty::ty_trait(box ty::TyTrait { ref principal, ref bounds }) => {
-            ty::ty_trait(box ty::TyTrait {
+        ty::TyTrait(box ty::TraitTy { ref principal, ref bounds }) => {
+            ty::TyTrait(box ty::TraitTy {
                 principal: principal.fold_with(this),
                 bounds: bounds.fold_with(this),
             })
         }
-        ty::ty_tup(ref ts) => {
-            ty::ty_tup(ts.fold_with(this))
+        ty::TyTuple(ref ts) => {
+            ty::TyTuple(ts.fold_with(this))
         }
-        ty::ty_bare_fn(opt_def_id, ref f) => {
+        ty::TyBareFn(opt_def_id, ref f) => {
             let bfn = f.fold_with(this);
-            ty::ty_bare_fn(opt_def_id, this.tcx().mk_bare_fn(bfn))
+            ty::TyBareFn(opt_def_id, this.tcx().mk_bare_fn(bfn))
         }
-        ty::ty_rptr(r, ref tm) => {
+        ty::TyRef(r, ref tm) => {
             let r = r.fold_with(this);
-            ty::ty_rptr(this.tcx().mk_region(r), tm.fold_with(this))
+            ty::TyRef(this.tcx().mk_region(r), tm.fold_with(this))
         }
-        ty::ty_struct(did, ref substs) => {
+        ty::TyStruct(did, ref substs) => {
             let substs = substs.fold_with(this);
-            ty::ty_struct(did, this.tcx().mk_substs(substs))
+            ty::TyStruct(did, this.tcx().mk_substs(substs))
         }
-        ty::ty_closure(did, ref substs) => {
+        ty::TyClosure(did, ref substs) => {
             let s = substs.fold_with(this);
-            ty::ty_closure(did, this.tcx().mk_substs(s))
+            ty::TyClosure(did, this.tcx().mk_substs(s))
         }
-        ty::ty_projection(ref data) => {
-            ty::ty_projection(data.fold_with(this))
+        ty::TyProjection(ref data) => {
+            ty::TyProjection(data.fold_with(this))
         }
-        ty::ty_bool | ty::ty_char | ty::ty_str |
-        ty::ty_int(_) | ty::ty_uint(_) | ty::ty_float(_) |
-        ty::ty_err | ty::ty_infer(_) |
-        ty::ty_param(..) => {
+        ty::TyBool | ty::TyChar | ty::TyStr |
+        ty::TyInt(_) | ty::TyUint(_) | ty::TyFloat(_) |
+        ty::TyError | ty::TyInfer(_) |
+        ty::TyParam(..) => {
             ty.sty.clone()
         }
     };

@@ -88,61 +88,61 @@ impl<'a, 'tcx> Implicator<'a, 'tcx> {
         }
 
         match ty.sty {
-            ty::ty_bool |
-            ty::ty_char |
-            ty::ty_int(..) |
-            ty::ty_uint(..) |
-            ty::ty_float(..) |
-            ty::ty_bare_fn(..) |
-            ty::ty_err |
-            ty::ty_str => {
+            ty::TyBool |
+            ty::TyChar |
+            ty::TyInt(..) |
+            ty::TyUint(..) |
+            ty::TyFloat(..) |
+            ty::TyBareFn(..) |
+            ty::TyError |
+            ty::TyStr => {
                 // No borrowed content reachable here.
             }
 
-            ty::ty_closure(def_id, substs) => {
+            ty::TyClosure(def_id, substs) => {
                 let &(r_a, opt_ty) = self.stack.last().unwrap();
                 self.out.push(Implication::RegionSubClosure(opt_ty, r_a, def_id, substs));
             }
 
-            ty::ty_trait(ref t) => {
+            ty::TyTrait(ref t) => {
                 let required_region_bounds =
                     object_region_bounds(self.tcx(), &t.principal, t.bounds.builtin_bounds);
                 self.accumulate_from_object_ty(ty, t.bounds.region_bound, required_region_bounds)
             }
 
-            ty::ty_enum(def_id, substs) |
-            ty::ty_struct(def_id, substs) => {
+            ty::TyEnum(def_id, substs) |
+            ty::TyStruct(def_id, substs) => {
                 let item_scheme = ty::lookup_item_type(self.tcx(), def_id);
                 self.accumulate_from_adt(ty, def_id, &item_scheme.generics, substs)
             }
 
-            ty::ty_vec(t, _) |
-            ty::ty_ptr(ty::mt { ty: t, .. }) |
-            ty::ty_uniq(t) => {
+            ty::TyArray(t, _) |
+            ty::TyRawPtr(ty::mt { ty: t, .. }) |
+            ty::TyBox(t) => {
                 self.accumulate_from_ty(t)
             }
 
-            ty::ty_rptr(r_b, mt) => {
+            ty::TyRef(r_b, mt) => {
                 self.accumulate_from_rptr(ty, *r_b, mt.ty);
             }
 
-            ty::ty_param(p) => {
+            ty::TyParam(p) => {
                 self.push_param_constraint_from_top(p);
             }
 
-            ty::ty_projection(ref data) => {
+            ty::TyProjection(ref data) => {
                 // `<T as TraitRef<..>>::Name`
 
                 self.push_projection_constraint_from_top(data);
             }
 
-            ty::ty_tup(ref tuptys) => {
+            ty::TyTuple(ref tuptys) => {
                 for &tupty in tuptys {
                     self.accumulate_from_ty(tupty);
                 }
             }
 
-            ty::ty_infer(_) => {
+            ty::TyInfer(_) => {
                 // This should not happen, BUT:
                 //
                 //   Currently we uncover region relationships on

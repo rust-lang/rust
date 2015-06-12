@@ -127,12 +127,12 @@ fn try_overloaded_call_step<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
     // If the callee is a bare function or a closure, then we're all set.
     match structurally_resolved_type(fcx, callee_expr.span, adjusted_ty).sty {
-        ty::ty_bare_fn(..) => {
+        ty::TyBareFn(..) => {
             fcx.write_autoderef_adjustment(callee_expr.id, autoderefs);
             return Some(CallStep::Builtin);
         }
 
-        ty::ty_closure(def_id, substs) => {
+        ty::TyClosure(def_id, substs) => {
             assert_eq!(def_id.krate, ast::LOCAL_CRATE);
 
             // Check whether this is a call to a closure where we
@@ -165,7 +165,7 @@ fn try_overloaded_call_step<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         // over the top. The simplest fix by far is to just ignore
         // this case and deref again, so we wind up with
         // `FnMut::call_mut(&mut *x, ())`.
-        ty::ty_rptr(..) if autoderefs == 0 => {
+        ty::TyRef(..) if autoderefs == 0 => {
             return None;
         }
 
@@ -222,7 +222,7 @@ fn confirm_builtin_call<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
     let error_fn_sig;
 
     let fn_sig = match callee_ty.sty {
-        ty::ty_bare_fn(_, &ty::BareFnTy {ref sig, ..}) => {
+        ty::TyBareFn(_, &ty::BareFnTy {ref sig, ..}) => {
             sig
         }
         _ => {

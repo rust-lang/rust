@@ -114,10 +114,10 @@ pub fn declare_rust_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, name: &str,
 
     let function_type; // placeholder so that the memory ownership works out ok
     let (sig, abi, env) = match fn_type.sty {
-        ty::ty_bare_fn(_, ref f) => {
+        ty::TyBareFn(_, ref f) => {
             (&f.sig, f.abi, None)
         }
-        ty::ty_closure(closure_did, substs) => {
+        ty::TyClosure(closure_did, substs) => {
             let typer = common::NormalizingClosureTyper::new(ccx.tcx());
             function_type = typer.closure_type(closure_did, substs);
             let self_type = base::self_type_for_closure(ccx, closure_did, fn_type);

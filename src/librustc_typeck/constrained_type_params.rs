@@ -40,14 +40,14 @@ pub fn parameters_for_trait_ref<'tcx>(trait_ref: &ty::TraitRef<'tcx>) -> Vec<Par
 
 fn parameters_for_type_shallow<'tcx>(ty: Ty<'tcx>) -> Vec<Parameter> {
     match ty.sty {
-        ty::ty_param(ref d) =>
+        ty::TyParam(ref d) =>
             vec![Parameter::Type(d.clone())],
-        ty::ty_rptr(region, _) =>
+        ty::TyRef(region, _) =>
             parameters_for_region(region).into_iter().collect(),
-        ty::ty_struct(_, substs) |
-        ty::ty_enum(_, substs) =>
+        ty::TyStruct(_, substs) |
+        ty::TyEnum(_, substs) =>
             parameters_for_regions_in_substs(substs),
-        ty::ty_trait(ref data) =>
+        ty::TyTrait(ref data) =>
             parameters_for_regions_in_substs(&data.principal.skip_binder().substs),
         _ =>
             vec![],

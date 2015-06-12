@@ -308,7 +308,7 @@ fn contains_illegal_self_type_reference<'tcx>(tcx: &ty::ctxt<'tcx>,
     let mut error = false;
     ty::maybe_walk_ty(ty, |ty| {
         match ty.sty {
-            ty::ty_param(ref param_ty) => {
+            ty::TyParam(ref param_ty) => {
                 if param_ty.space == SelfSpace {
                     error = true;
                 }
@@ -316,7 +316,7 @@ fn contains_illegal_self_type_reference<'tcx>(tcx: &ty::ctxt<'tcx>,
                 false // no contained types to walk
             }
 
-            ty::ty_projection(ref data) => {
+            ty::TyProjection(ref data) => {
                 // This is a projected type `<Foo as SomeTrait>::X`.
 
                 // Compute supertraits of current trait lazily.
@@ -367,7 +367,7 @@ impl<'tcx> Repr<'tcx> for ObjectSafetyViolation<'tcx> {
 
 fn is_self<'tcx>(ty: Ty<'tcx>) -> bool {
     match ty.sty {
-        ty::ty_param(ref data) => data.space == subst::SelfSpace,
+        ty::TyParam(ref data) => data.space == subst::SelfSpace,
         _ => false,
     }
 }
