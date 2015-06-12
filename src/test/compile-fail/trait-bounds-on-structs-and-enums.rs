@@ -47,6 +47,14 @@ enum MoreBadness<V> {
     EvenMoreBadness(Bar<V>), //~ ERROR not implemented
 }
 
+struct TupleLike(
+    Foo<i32>, //~ ERROR not implemented
+);
+
+enum Enum {
+    DictionaryLike { field: Bar<i32> }, //~ ERROR not implemented
+}
+
 trait PolyTrait<T>
 {
     fn whatever(&self, t: T) {}
