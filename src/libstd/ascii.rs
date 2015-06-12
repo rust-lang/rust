@@ -538,6 +538,51 @@ mod tests {
     }
 
     #[test]
+    fn test_make_ascii_lower_case() {
+        macro_rules! test {
+            ($from: expr, $to: expr) => {
+                {
+                    let mut x = $from;
+                    x.make_ascii_lowercase();
+                    assert_eq!(x, $to);
+                }
+            }
+        }
+        test!(b'A', b'a');
+        test!(b'a', b'a');
+        test!(b'!', b'!');
+        test!('A', 'a');
+        test!('À', 'À');
+        test!('a', 'a');
+        test!('!', '!');
+        test!(b"H\xc3\x89".to_vec(), b"h\xc3\x89");
+        test!("HİKß".to_string(), "hİKß");
+    }
+
+
+    #[test]
+    fn test_make_ascii_upper_case() {
+        macro_rules! test {
+            ($from: expr, $to: expr) => {
+                {
+                    let mut x = $from;
+                    x.make_ascii_uppercase();
+                    assert_eq!(x, $to);
+                }
+            }
+        }
+        test!(b'a', b'A');
+        test!(b'A', b'A');
+        test!(b'!', b'!');
+        test!('a', 'A');
+        test!('à', 'à');
+        test!('A', 'A');
+        test!('!', '!');
+        test!(b"h\xc3\xa9".to_vec(), b"H\xc3\xa9");
+        test!("hıKß".to_string(), "HıKß");
+    }
+
+    #[test]
     fn test_eq_ignore_ascii_case() {
         assert!("url()URL()uRl()Ürl".eq_ignore_ascii_case("url()url()url()Ürl"));
         assert!(!"Ürl".eq_ignore_ascii_case("ürl"));
