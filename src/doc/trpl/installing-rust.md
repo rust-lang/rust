@@ -24,11 +24,9 @@ $ sh rustup.sh
 
 [insecurity]: http://curlpipesh.tumblr.com
 
-If you're on Windows, please download either the [32-bit installer][win32] or
-the [64-bit installer][win64] and run it.
+If you're on Windows, please download the appropriate [installer][install-page].
 
-[win32]: https://static.rust-lang.org/dist/rust-1.0.0-i686-pc-windows-gnu.msi
-[win64]: https://static.rust-lang.org/dist/rust-1.0.0-x86_64-pc-windows-gnu.msi
+[install-page]: http://www.rust-lang.org/install.html
 
 ## Uninstalling
 
@@ -51,7 +49,6 @@ documentation on [building Rust from Source][from-source], or [the official
 binary downloads][install-page].
 
 [from-source]: https://github.com/rust-lang/rust#building-from-source
-[install-page]: http://www.rust-lang.org/install.html
 
 Oh, we should also mention the officially supported platforms:
 
@@ -75,10 +72,11 @@ If you've got Rust installed, you can open up a shell, and type this:
 $ rustc --version
 ```
 
-You should see the version number, commit hash, commit date and build date:
+You should see the version number, commit hash, and commit date. If you just
+installed version 1.0.0, you should see:
 
 ```bash
-rustc 1.0.0 (a59de37e9 2015-05-13) (built 2015-05-14)
+rustc 1.0.0 (a59de37e9 2015-05-13)
 ```
 
 If you did, Rust has been installed successfully! Congrats!
