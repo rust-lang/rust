@@ -906,7 +906,7 @@ impl<'tcx> ctxt<'tcx> {
     pub fn print_debug_stats(&self) {
         sty_debug_print!(
             self,
-            TyEnum, TyBox, TyArray, TyRawPtr, TyRef, TyBareFn, TyTrait,
+            TyEnum, TyBox, TyArray, TySlice, TyRawPtr, TyRef, TyBareFn, TyTrait,
             TyStruct, TyClosure, TyTuple, TyParam, TyInfer, TyProjection);
 
         println!("Substs interner: #{}", self.substs_interner.borrow().len());
@@ -1378,10 +1378,11 @@ pub enum TypeVariants<'tcx> {
     /// The pointee of a string slice. Written as `str`.
     TyStr,
 
-    /// An array with the given length, or the pointee
-    /// of an array slice.  Written as `[T; n]`, or `[T]`.
-    /// FIXME: It probably makes sense to separate these.
-    TyArray(Ty<'tcx>, Option<usize>),
+    /// An array with the given length. Written as `[T; n]`.
+    TyArray(Ty<'tcx>, usize),
+
+    /// The pointee of an array slice.  Written as `[T]`.
+    TySlice(Ty<'tcx>),
 
     /// A raw pointer. Written as `*mut T` or `*const T`
     TyRawPtr(mt<'tcx>),
@@ -3047,7 +3048,7 @@ impl FlagComputation {
                 self.add_bounds(bounds);
             }
 
-            &TyBox(tt) | &TyArray(tt, _) => {
+            &TyBox(tt) | &TyArray(tt, _) | &TySlice(tt) => {
                 self.add_ty(tt)
             }
 
@@ -3201,7 +3202,10 @@ pub fn mk_nil_ptr<'tcx>(cx: &ctxt<'tcx>) -> Ty<'tcx> {
 }
 
 pub fn mk_vec<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>, sz: Option<usize>) -> Ty<'tcx> {
-    mk_t(cx, TyArray(ty, sz))
+    match sz {
+        Some(n) => mk_t(cx, TyArray(ty, n)),
+        None => mk_t(cx, TySlice(ty))
+    }
 }
 
 pub fn mk_slice<'tcx>(cx: &ctxt<'tcx>, r: &'tcx Region, tm: mt<'tcx>) -> Ty<'tcx> {
@@ -3480,20 +3484,8 @@ pub fn type_is_self(ty: Ty) -> bool {
 fn type_is_slice(ty: Ty) -> bool {
     match ty.sty {
         TyRawPtr(mt) | TyRef(_, mt) => match mt.ty.sty {
-            TyArray(_, None) | TyStr => true,
+            TySlice(_) | TyStr => true,
             _ => false,
-        },
-        _ => false
-    }
-}
-
-pub fn type_is_vec(ty: Ty) -> bool {
-    match ty.sty {
-        TyArray(..) => true,
-        TyRawPtr(mt{ty, ..}) | TyRef(_, mt{ty, ..}) |
-        TyBox(ty) => match ty.sty {
-            TyArray(_, None) => true,
-            _ => false
         },
         _ => false
     }
@@ -3502,7 +3494,7 @@ pub fn type_is_vec(ty: Ty) -> bool {
 pub fn type_is_structural(ty: Ty) -> bool {
     match ty.sty {
       TyStruct(..) | TyTuple(_) | TyEnum(..) |
-      TyArray(_, Some(_)) | TyClosure(..) => true,
+      TyArray(..) | TyClosure(..) => true,
       _ => type_is_slice(ty) | type_is_trait(ty)
     }
 }
@@ -3516,7 +3508,7 @@ pub fn type_is_simd(cx: &ctxt, ty: Ty) -> bool {
 
 pub fn sequence_element_type<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
     match ty.sty {
-        TyArray(ty, _) => ty,
+        TyArray(ty, _) | TySlice(ty) => ty,
         TyStr => mk_mach_uint(cx, ast::TyU8),
         _ => cx.sess.bug(&format!("sequence_element_type called on non-sequence value: {}",
                                  ty_to_string(cx, ty))),
@@ -3816,17 +3808,18 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
             TyRef(r, ref mt) => {
                 TC::ReachesFfiUnsafe | match mt.ty.sty {
                     TyStr => borrowed_contents(*r, ast::MutImmutable),
-                    TyArray(..) => tc_ty(cx, mt.ty, cache).reference(borrowed_contents(*r,
+                    TyArray(..) |
+                    TySlice(_) => tc_ty(cx, mt.ty, cache).reference(borrowed_contents(*r,
                                                                                       mt.mutbl)),
                     _ => tc_ty(cx, mt.ty, cache).reference(borrowed_contents(*r, mt.mutbl)),
                 }
             }
 
-            TyArray(ty, Some(_)) => {
+            TyArray(ty, _) => {
                 tc_ty(cx, ty, cache)
             }
 
-            TyArray(ty, None) => {
+            TySlice(ty) => {
                 tc_ty(cx, ty, cache) | TC::Nonsized
             }
             TyStr => TC::Nonsized,
@@ -4021,7 +4014,7 @@ pub fn type_moves_by_default<'a,'tcx>(param_env: &ParameterEnvironment<'a,'tcx>,
             mutbl: ast::MutMutable, ..
         }) => Some(true),
 
-        TyArray(..) | TyTrait(..) | TyTuple(..) |
+        TyArray(..) | TySlice(_) | TyTrait(..) | TyTuple(..) |
         TyClosure(..) | TyEnum(..) | TyStruct(..) |
         TyProjection(..) | TyParam(..) | TyInfer(..) | TyError => None
     }.unwrap_or_else(|| !type_impls_bound(Some(param_env),
@@ -4066,9 +4059,9 @@ fn type_is_sized_uncached<'a,'tcx>(param_env: Option<&ParameterEnvironment<'a,'t
     let result = match ty.sty {
         TyBool | TyChar | TyInt(..) | TyUint(..) | TyFloat(..) |
         TyBox(..) | TyRawPtr(..) | TyRef(..) | TyBareFn(..) |
-        TyArray(_, Some(..)) | TyTuple(..) | TyClosure(..) => Some(true),
+        TyArray(..) | TyTuple(..) | TyClosure(..) => Some(true),
 
-        TyStr | TyTrait(..) | TyArray(_, None) => Some(false),
+        TyStr | TyTrait(..) | TySlice(_) => Some(false),
 
         TyEnum(..) | TyStruct(..) | TyProjection(..) | TyParam(..) |
         TyInfer(..) | TyError => None
@@ -4116,8 +4109,8 @@ pub fn is_instantiable<'tcx>(cx: &ctxt<'tcx>, r_ty: Ty<'tcx>) -> bool {
             // fixed length vectors need special treatment compared to
             // normal vectors, since they don't necessarily have the
             // possibility to have length zero.
-            TyArray(_, Some(0)) => false, // don't need no contents
-            TyArray(ty, Some(_)) => type_requires(cx, seen, r_ty, ty),
+            TyArray(_, 0) => false, // don't need no contents
+            TyArray(ty, _) => type_requires(cx, seen, r_ty, ty),
 
             TyBool |
             TyChar |
@@ -4128,7 +4121,7 @@ pub fn is_instantiable<'tcx>(cx: &ctxt<'tcx>, r_ty: Ty<'tcx>) -> bool {
             TyBareFn(..) |
             TyParam(_) |
             TyProjection(_) |
-            TyArray(_, None) => {
+            TySlice(_) => {
                 false
             }
             TyBox(typ) => {
@@ -4238,7 +4231,7 @@ pub fn is_type_representable<'tcx>(cx: &ctxt<'tcx>, sp: Span, ty: Ty<'tcx>)
             }
             // Fixed-length vectors.
             // FIXME(#11924) Behavior undecided for zero-length vectors.
-            TyArray(ty, Some(_)) => {
+            TyArray(ty, _) => {
                 is_type_structurally_recursive(cx, sp, seen, ty)
             }
             TyStruct(did, substs) => {
@@ -4494,7 +4487,7 @@ pub fn type_content<'tcx>(ty: Ty<'tcx>) -> Ty<'tcx> {
 // Returns the type of ty[i]
 pub fn index<'tcx>(ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
     match ty.sty {
-        TyArray(ty, _) => Some(ty),
+        TyArray(ty, _) | TySlice(ty) => Some(ty),
         _ => None
     }
 }
@@ -4504,7 +4497,7 @@ pub fn index<'tcx>(ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
 // which can't actually be indexed.
 pub fn array_element_ty<'tcx>(tcx: &ctxt<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
     match ty.sty {
-        TyArray(ty, _) => Some(ty),
+        TyArray(ty, _) | TySlice(ty) => Some(ty),
         TyStr => Some(tcx.types.u8),
         _ => None
     }
@@ -5063,8 +5056,8 @@ pub fn ty_sort_string<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> String {
 
         TyEnum(id, _) => format!("enum `{}`", item_path_str(cx, id)),
         TyBox(_) => "box".to_string(),
-        TyArray(_, Some(n)) => format!("array of {} elements", n),
-        TyArray(_, None) => "slice".to_string(),
+        TyArray(_, n) => format!("array of {} elements", n),
+        TySlice(_) => "slice".to_string(),
         TyRawPtr(_) => "*-ptr".to_string(),
         TyRef(_, _) => "&-ptr".to_string(),
         TyBareFn(Some(_), _) => format!("fn item"),
@@ -6626,11 +6619,11 @@ pub fn hash_crate_independent<'tcx>(tcx: &ctxt<'tcx>, ty: Ty<'tcx>, svh: &Svh) -
                 TyBox(_) => {
                     byte!(9);
                 }
-                TyArray(_, Some(n)) => {
+                TyArray(_, n) => {
                     byte!(10);
                     n.hash(state);
                 }
-                TyArray(_, None) => {
+                TySlice(_) => {
                     byte!(11);
                 }
                 TyRawPtr(m) => {
@@ -6967,6 +6960,7 @@ pub fn accumulate_lifetimes_in_type(accumulator: &mut Vec<ty::Region>,
             TyBox(_) |
             TyStr |
             TyArray(_, _) |
+            TySlice(_) |
             TyRawPtr(_) |
             TyBareFn(..) |
             TyTuple(_) |

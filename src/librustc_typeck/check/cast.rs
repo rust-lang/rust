@@ -74,7 +74,7 @@ fn unsize_kind<'a,'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                         t: Ty<'tcx>)
                         -> Option<UnsizeKind<'tcx>> {
     match t.sty {
-        ty::TyArray(_, None) | ty::TyStr => Some(UnsizeKind::Length),
+        ty::TySlice(_) | ty::TyStr => Some(UnsizeKind::Length),
         ty::TyTrait(_) => Some(UnsizeKind::Vtable),
         ty::TyStruct(did, substs) => {
             match ty::struct_fields(fcx.tcx(), did, substs).pop() {
@@ -337,7 +337,7 @@ impl<'tcx> CastCheck<'tcx> {
         // array-ptr-cast.
 
         if m_expr.mutbl == ast::MutImmutable && m_cast.mutbl == ast::MutImmutable {
-            if let ty::TyArray(ety, Some(_)) = m_expr.ty.sty {
+            if let ty::TyArray(ety, _) = m_expr.ty.sty {
                 // Due to the limitations of LLVM global constants,
                 // region pointers end up pointing at copies of
                 // vector elements instead of the original values.

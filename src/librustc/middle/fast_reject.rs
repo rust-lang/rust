@@ -55,7 +55,7 @@ pub fn simplify_type(tcx: &ty::ctxt,
         ty::TyFloat(float_type) => Some(FloatSimplifiedType(float_type)),
         ty::TyEnum(def_id, _) => Some(EnumSimplifiedType(def_id)),
         ty::TyStr => Some(StrSimplifiedType),
-        ty::TyArray(..) => Some(VecSimplifiedType),
+        ty::TyArray(..) | ty::TySlice(_) => Some(VecSimplifiedType),
         ty::TyRawPtr(_) => Some(PtrSimplifiedType),
         ty::TyTrait(ref trait_info) => {
             Some(TraitSimplifiedType(trait_info.principal_def_id()))

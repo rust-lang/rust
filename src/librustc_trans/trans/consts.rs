@@ -609,13 +609,13 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                           "index is not an integer-constant expression")
               };
               let (arr, len) = match bt.sty {
-                  ty::TyArray(_, Some(u)) => (bv, C_uint(cx, u)),
-                  ty::TyArray(_, None) | ty::TyStr => {
+                  ty::TyArray(_, u) => (bv, C_uint(cx, u)),
+                  ty::TySlice(_) | ty::TyStr => {
                       let e1 = const_get_elt(cx, bv, &[0]);
                       (const_deref_ptr(cx, e1), const_get_elt(cx, bv, &[1]))
                   }
                   ty::TyRef(_, mt) => match mt.ty.sty {
-                      ty::TyArray(_, Some(u)) => {
+                      ty::TyArray(_, u) => {
                           (const_deref_ptr(cx, bv), C_uint(cx, u))
                       },
                       _ => cx.sess().span_bug(base.span,

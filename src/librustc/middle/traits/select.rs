@@ -1429,7 +1429,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             // [T; n] -> [T].
-            (&ty::TyArray(_, Some(_)), &ty::TyArray(_, None)) => true,
+            (&ty::TyArray(_, _), &ty::TySlice(_)) => true,
 
             // Struct<T> -> Struct<U>.
             (&ty::TyStruct(def_id_a, _), &ty::TyStruct(def_id_b, _)) => {
@@ -1662,35 +1662,18 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
             }
 
-            ty::TyArray(element_ty, ref len) => {
-                // [T; n] and [T]
+            ty::TyArray(element_ty, _) => {
+                // [T; n]
                 match bound {
-                    ty::BoundCopy => {
-                        match *len {
-                            // [T; n] is copy iff T is copy
-                            Some(_) => ok_if(vec![element_ty]),
-
-                            // [T] is unsized and hence affine
-                            None => Err(Unimplemented),
-                        }
-                    }
-
-                    ty::BoundSized => {
-                        if len.is_some() {
-                            ok_if(Vec::new())
-                        } else {
-                            Err(Unimplemented)
-                        }
-                    }
-
+                    ty::BoundCopy => ok_if(vec![element_ty]),
+                    ty::BoundSized => ok_if(Vec::new()),
                     ty::BoundSync | ty::BoundSend => {
                         self.tcx().sess.bug("Send/Sync shouldn't occur in builtin_bounds()");
                     }
                 }
             }
 
-            ty::TyStr => {
-                // Equivalent to [u8]
+            ty::TyStr | ty::TySlice(_) => {
                 match bound {
                     ty::BoundSync | ty::BoundSend => {
                         self.tcx().sess.bug("Send/Sync shouldn't occur in builtin_bounds()");
@@ -1855,7 +1838,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 Some(vec![element_ty])
             },
 
-            ty::TyArray(element_ty, _) => {
+            ty::TyArray(element_ty, _) | ty::TySlice(element_ty) => {
                 Some(vec![element_ty])
             }
 
@@ -2510,7 +2493,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             // [T; n] -> [T].
-            (&ty::TyArray(a, Some(_)), &ty::TyArray(b, None)) => {
+            (&ty::TyArray(a, _), &ty::TySlice(b)) => {
                 let origin = infer::Misc(obligation.cause.span);
                 if self.infcx.sub_types(false, origin, a, b).is_err() {
                     return Err(Unimplemented);

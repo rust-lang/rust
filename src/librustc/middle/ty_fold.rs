@@ -599,6 +599,9 @@ pub fn super_fold_ty<'tcx, T: TypeFolder<'tcx>>(this: &mut T,
         ty::TyArray(typ, sz) => {
             ty::TyArray(typ.fold_with(this), sz)
         }
+        ty::TySlice(typ) => {
+            ty::TySlice(typ.fold_with(this))
+        }
         ty::TyEnum(tid, ref substs) => {
             let substs = substs.fold_with(this);
             ty::TyEnum(tid, this.tcx().mk_substs(substs))
