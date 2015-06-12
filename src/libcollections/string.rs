@@ -989,6 +989,14 @@ impl ops::Deref for String {
     }
 }
 
+#[stable(feature = "derefmut_for_string", since = "1.2.0")]
+impl ops::DerefMut for String {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut str {
+        unsafe { mem::transmute(&mut self.vec[..]) }
+    }
+}
+
 /// Wrapper type providing a `&String` reference via `Deref`.
 #[unstable(feature = "collections")]
 #[deprecated(since = "1.2.0",
