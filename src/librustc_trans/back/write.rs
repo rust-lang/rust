@@ -36,15 +36,6 @@ use std::sync::mpsc::channel;
 use std::thread;
 use libc::{self, c_uint, c_int, c_void};
 
-#[derive(Clone, Copy, PartialEq, PartialOrd, Ord, Eq)]
-pub enum OutputType {
-    OutputTypeBitcode,
-    OutputTypeAssembly,
-    OutputTypeLlvmAssembly,
-    OutputTypeObject,
-    OutputTypeExe,
-}
-
 pub fn llvm_err(handler: &diagnostic::Handler, msg: String) -> ! {
     unsafe {
         let cstr = llvm::LLVMRustGetLastError();
