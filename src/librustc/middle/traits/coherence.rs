@@ -306,6 +306,7 @@ fn ty_is_local_constructor<'tcx>(tcx: &ty::ctxt<'tcx>,
         ty::TyStr(..) |
         ty::TyBareFn(..) |
         ty::TyArray(..) |
+        ty::TySlice(..) |
         ty::TyRawPtr(..) |
         ty::TyRef(..) |
         ty::TyTuple(..) |

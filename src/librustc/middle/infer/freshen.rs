@@ -159,6 +159,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
             ty::TyStr |
             ty::TyError |
             ty::TyArray(..) |
+            ty::TySlice(..) |
             ty::TyRawPtr(..) |
             ty::TyRef(..) |
             ty::TyBareFn(..) |

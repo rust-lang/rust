@@ -94,17 +94,15 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
             push_debuginfo_type_name(cx, inner_type, true, output);
         },
-        ty::TyArray(inner_type, optional_length) => {
+        ty::TyArray(inner_type, len) => {
             output.push('[');
             push_debuginfo_type_name(cx, inner_type, true, output);
-
-            match optional_length {
-                Some(len) => {
-                    output.push_str(&format!("; {}", len));
-                }
-                None => { /* nothing to do */ }
-            };
-
+            output.push_str(&format!("; {}", len));
+            output.push(']');
+        },
+        ty::TySlice(inner_type) => {
+            output.push('[');
+            push_debuginfo_type_name(cx, inner_type, true, output);
             output.push(']');
         },
         ty::TyTrait(ref trait_data) => {

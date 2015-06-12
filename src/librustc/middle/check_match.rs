@@ -537,14 +537,14 @@ fn construct_witness(cx: &MatchCheckCtxt, ctor: &Constructor,
 
         ty::TyRef(_, ty::mt { ty, mutbl }) => {
             match ty.sty {
-               ty::TyArray(_, Some(n)) => match ctor {
+               ty::TyArray(_, n) => match ctor {
                     &Single => {
                         assert_eq!(pats_len, n);
                         ast::PatVec(pats.collect(), None, vec!())
                     },
                     _ => unreachable!()
                 },
-                ty::TyArray(_, None) => match ctor {
+                ty::TySlice(_) => match ctor {
                     &Slice(n) => {
                         assert_eq!(pats_len, n);
                         ast::PatVec(pats.collect(), None, vec!())
@@ -560,7 +560,7 @@ fn construct_witness(cx: &MatchCheckCtxt, ctor: &Constructor,
             }
         }
 
-        ty::TyArray(_, Some(len)) => {
+        ty::TyArray(_, len) => {
             assert_eq!(pats_len, len);
             ast::PatVec(pats.collect(), None, vec![])
         }
@@ -601,7 +601,7 @@ fn all_constructors(cx: &MatchCheckCtxt, left_ty: Ty,
             [true, false].iter().map(|b| ConstantValue(const_bool(*b))).collect(),
 
         ty::TyRef(_, ty::mt { ty, .. }) => match ty.sty {
-            ty::TyArray(_, None) =>
+            ty::TySlice(_) =>
                 range_inclusive(0, max_slice_length).map(|length| Slice(length)).collect(),
             _ => vec!(Single)
         },
@@ -779,7 +779,7 @@ fn pat_constructors(cx: &MatchCheckCtxt, p: &Pat,
             vec!(ConstantRange(eval_const_expr(cx.tcx, &**lo), eval_const_expr(cx.tcx, &**hi))),
         ast::PatVec(ref before, ref slice, ref after) =>
             match left_ty.sty {
-                ty::TyArray(_, Some(_)) => vec!(Single),
+                ty::TyArray(_, _) => vec!(Single),
                 _                      => if slice.is_some() {
                     range_inclusive(before.len() + after.len(), max_slice_length)
                         .map(|length| Slice(length))
@@ -807,7 +807,7 @@ pub fn constructor_arity(cx: &MatchCheckCtxt, ctor: &Constructor, ty: Ty) -> usi
         ty::TyTuple(ref fs) => fs.len(),
         ty::TyBox(_) => 1,
         ty::TyRef(_, ty::mt { ty, .. }) => match ty.sty {
-            ty::TyArray(_, None) => match *ctor {
+            ty::TySlice(_) => match *ctor {
                 Slice(length) => length,
                 ConstantValue(_) => 0,
                 _ => unreachable!()
@@ -822,7 +822,7 @@ pub fn constructor_arity(cx: &MatchCheckCtxt, ctor: &Constructor, ty: Ty) -> usi
             }
         }
         ty::TyStruct(cid, _) => ty::lookup_struct_fields(cx.tcx, cid).len(),
-        ty::TyArray(_, Some(n)) => n,
+        ty::TyArray(_, n) => n,
         _ => 0
     }
 }

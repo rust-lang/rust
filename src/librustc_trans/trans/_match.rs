@@ -852,7 +852,7 @@ fn compare_values<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
     match rhs_t.sty {
         ty::TyRef(_, mt) => match mt.ty.sty {
             ty::TyStr => compare_str(cx, lhs, rhs, rhs_t, debug_loc),
-            ty::TyArray(ty, _) => match ty.sty {
+            ty::TyArray(ty, _) | ty::TySlice(ty) => match ty.sty {
                 ty::TyUint(ast::TyU8) => {
                     // NOTE: cast &[u8] and &[u8; N] to &str and abuse the str_eq lang item,
                     // which calls memcmp().
@@ -1116,7 +1116,7 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         Some(vec!(Load(bcx, val)))
     } else {
         match left_ty.sty {
-            ty::TyArray(_, Some(n)) => {
+            ty::TyArray(_, n) => {
                 let args = extract_vec_elems(bcx, left_ty, n, 0, val);
                 Some(args.vals)
             }

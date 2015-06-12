@@ -313,7 +313,7 @@ pub fn unsized_info<'ccx, 'tcx>(ccx: &CrateContext<'ccx, 'tcx>,
                                 -> ValueRef {
     let (source, target) = ty::struct_lockstep_tails(ccx.tcx(), source, target);
     match (&source.sty, &target.sty) {
-        (&ty::TyArray(_, Some(len)), &ty::TyArray(_, None)) => C_uint(ccx, len),
+        (&ty::TyArray(_, len), &ty::TySlice(_)) => C_uint(ccx, len),
         (&ty::TyTrait(_), &ty::TyTrait(_)) => {
             // For now, upcasts are limited to changes in marker
             // traits, and hence never actually require an actual

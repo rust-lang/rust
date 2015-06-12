@@ -435,7 +435,7 @@ pub fn size_and_align_of_dst<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, in
             let align_ptr = GEPi(bcx, info, &[2]);
             (Load(bcx, size_ptr), Load(bcx, align_ptr))
         }
-        ty::TyArray(_, None) | ty::TyStr => {
+        ty::TySlice(_) | ty::TyStr => {
             let unit_ty = ty::sequence_element_type(bcx.tcx(), t);
             // The info in this case is the length of the str, so the size is that
             // times the unit size.
