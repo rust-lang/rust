@@ -2797,14 +2797,12 @@ impl<A> Iterator for RangeInclusive<A> where
 
     #[inline]
     fn next(&mut self) -> Option<A> {
-        self.range.next().or_else(|| {
-            if !self.done && self.range.start == self.range.end {
-                self.done = true;
-                Some(self.range.end.clone())
-            } else {
-                None
-            }
-        })
+        if !self.done && self.range.start == self.range.end {
+            self.done = true;
+            Some(self.range.end.clone())
+        } else {
+            self.range.next()
+        }
     }
 
     #[inline]
