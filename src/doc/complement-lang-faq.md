@@ -37,6 +37,7 @@ Yes. For example (incomplete):
 * [wit.ai](https://github.com/wit-ai/witd)
 * [Codius](https://codius.org/blog/codius-rust/)
 * [MaidSafe](http://maidsafe.net/)
+* [Terminal.com](https://terminal.com)
 
 ## Does it run on Windows?
 
