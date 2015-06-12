@@ -23,7 +23,7 @@ use util::ppaux::{Repr, UserString};
 use std::collections::HashSet;
 use syntax::ast;
 use syntax::ast_util::local_def;
-use syntax::codemap::Span;
+use syntax::codemap::{DUMMY_SP, Span};
 use syntax::parse::token::{self, special_idents};
 use syntax::visit;
 use syntax::visit::Visitor;
@@ -162,15 +162,14 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
         self.with_fcx(item, |this, fcx| {
             let variants = lookup_fields(fcx);
             let mut bounds_checker = BoundsChecker::new(fcx,
-                                                        item.span,
                                                         item.id,
                                                         Some(&mut this.cache));
             debug!("check_type_defn at bounds_checker.scope: {:?}", bounds_checker.scope);
 
-             for variant in &variants {
+            for variant in &variants {
                 for field in &variant.fields {
                     // Regions are checked below.
-                    bounds_checker.check_traits_in_ty(field.ty);
+                    bounds_checker.check_traits_in_ty(field.ty, field.span);
                 }
 
                 // For DST, all intermediate types must be sized.
@@ -199,7 +198,6 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
     {
         self.with_fcx(item, |this, fcx| {
             let mut bounds_checker = BoundsChecker::new(fcx,
-                                                        item.span,
                                                         item.id,
                                                         Some(&mut this.cache));
             debug!("check_item_type at bounds_checker.scope: {:?}", bounds_checker.scope);
@@ -209,7 +207,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                                                       &fcx.inh.param_env.free_substs,
                                                       &type_scheme.ty);
 
-            bounds_checker.check_traits_in_ty(item_ty);
+            bounds_checker.check_traits_in_ty(item_ty, item.span);
         });
     }
 
@@ -218,7 +216,6 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
     {
         self.with_fcx(item, |this, fcx| {
             let mut bounds_checker = BoundsChecker::new(fcx,
-                                                        item.span,
                                                         item.id,
                                                         Some(&mut this.cache));
             debug!("check_impl at bounds_checker.scope: {:?}", bounds_checker.scope);
@@ -231,7 +228,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                                                       &fcx.inh.param_env.free_substs,
                                                       &self_ty);
 
-            bounds_checker.check_traits_in_ty(self_ty);
+            bounds_checker.check_traits_in_ty(self_ty, item.span);
 
             // Similarly, obtain an "inside" reference to the trait
             // that the impl implements.
@@ -252,7 +249,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
             // trait reference. Instead, this is done at the impl site.
             // Arguably this is wrong and we should treat the trait-reference
             // the same way as we treat the self-type.
-            bounds_checker.check_trait_ref(&trait_ref);
+            bounds_checker.check_trait_ref(&trait_ref, item.span);
 
             let cause =
                 traits::ObligationCause::new(
@@ -483,11 +480,10 @@ pub struct BoundsChecker<'cx,'tcx:'cx> {
 
 impl<'cx,'tcx> BoundsChecker<'cx,'tcx> {
     pub fn new(fcx: &'cx FnCtxt<'cx,'tcx>,
-               span: Span,
                scope: ast::NodeId,
                cache: Option<&'cx mut HashSet<Ty<'tcx>>>)
                -> BoundsChecker<'cx,'tcx> {
-        BoundsChecker { fcx: fcx, span: span, scope: scope,
+        BoundsChecker { fcx: fcx, span: DUMMY_SP, scope: scope,
                         cache: cache, binding_count: 0 }
     }
 
@@ -500,30 +496,32 @@ impl<'cx,'tcx> BoundsChecker<'cx,'tcx> {
     ///
     /// Note that it does not (currently, at least) check that `A : Copy` (that check is delegated
     /// to the point where impl `A : Trait<B>` is implemented).
-    pub fn check_trait_ref(&mut self, trait_ref: &ty::TraitRef<'tcx>) {
+    pub fn check_trait_ref(&mut self, trait_ref: &ty::TraitRef<'tcx>, span: Span) {
         let trait_predicates = ty::lookup_predicates(self.fcx.tcx(), trait_ref.def_id);
 
-        let bounds = self.fcx.instantiate_bounds(self.span,
+        let bounds = self.fcx.instantiate_bounds(span,
                                                  trait_ref.substs,
                                                  &trait_predicates);
 
         self.fcx.add_obligations_for_parameters(
             traits::ObligationCause::new(
-                self.span,
+                span,
                 self.fcx.body_id,
                 traits::ItemObligation(trait_ref.def_id)),
             &bounds);
 
         for &ty in &trait_ref.substs.types {
-            self.check_traits_in_ty(ty);
+            self.check_traits_in_ty(ty, span);
         }
     }
 
-    pub fn check_ty(&mut self, ty: Ty<'tcx>) {
+    pub fn check_ty(&mut self, ty: Ty<'tcx>, span: Span) {
+        self.span = span;
         ty.fold_with(self);
     }
 
-    fn check_traits_in_ty(&mut self, ty: Ty<'tcx>) {
+    fn check_traits_in_ty(&mut self, ty: Ty<'tcx>, span: Span) {
+        self.span = span;
         // When checking types outside of a type def'n, we ignore
         // region obligations. See discussion below in fold_ty().
         self.binding_count += 1;

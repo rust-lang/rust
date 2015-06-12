@@ -1626,10 +1626,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let t = ast_ty_to_ty(self, self, ast_t);
 
         let mut bounds_checker = wf::BoundsChecker::new(self,
-                                                        ast_t.span,
                                                         self.body_id,
                                                         None);
-        bounds_checker.check_ty(t);
+        bounds_checker.check_ty(t, ast_t.span);
 
         t
     }
