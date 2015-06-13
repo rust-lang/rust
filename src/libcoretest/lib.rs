@@ -28,6 +28,7 @@
 #![feature(cell_extras)]
 #![feature(iter_empty)]
 #![feature(iter_once)]
+#![feature(result_expect)]
 
 extern crate core;
 extern crate test;
