@@ -133,17 +133,17 @@ pub fn run_core(search_paths: SearchPaths, cfgs: Vec<String>, externs: Externs,
     let arenas = ty::CtxtArenas::new();
     let ast_map = driver::assign_node_ids_and_map(&sess, &mut forest);
 
-    let ty::CrateAnalysis {
-        exported_items, public_items, ty_cx, ..
-    } = driver::phase_3_run_analysis_passes(sess,
-                                            ast_map,
-                                            &arenas,
-                                            name,
-                                            resolve::MakeGlobMap::No);
+    let (tcx, ty::CrateAnalysis {
+        exported_items, public_items, ..
+    }) = driver::phase_3_run_analysis_passes(sess,
+                                             ast_map,
+                                             &arenas,
+                                             name,
+                                             resolve::MakeGlobMap::No);
 
     let ctxt = DocContext {
-        krate: ty_cx.map.krate(),
-        maybe_typed: Typed(ty_cx),
+        krate: tcx.map.krate(),
+        maybe_typed: Typed(tcx),
         input: input,
         external_traits: RefCell::new(Some(HashMap::new())),
         external_typarams: RefCell::new(Some(HashMap::new())),

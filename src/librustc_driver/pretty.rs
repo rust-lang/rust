@@ -148,12 +148,12 @@ impl PpSourceMode {
             }
             PpmTyped => {
                 let ast_map = ast_map.expect("--pretty=typed missing ast_map");
-                let analysis = driver::phase_3_run_analysis_passes(sess,
+                let (tcx, _) = driver::phase_3_run_analysis_passes(sess,
                                                                    ast_map,
                                                                    arenas,
                                                                    id,
                                                                    resolve::MakeGlobMap::No);
-                let annotation = TypedAnnotation { analysis: analysis };
+                let annotation = TypedAnnotation { tcx: tcx };
                 f(&annotation, payload)
             }
         }
@@ -285,14 +285,14 @@ impl<'ast> pprust::PpAnn for HygieneAnnotation<'ast> {
 
 
 struct TypedAnnotation<'tcx> {
-    analysis: ty::CrateAnalysis<'tcx>,
+    tcx: ty::ctxt<'tcx>,
 }
 
 impl<'tcx> PrinterSupport<'tcx> for TypedAnnotation<'tcx> {
-    fn sess<'a>(&'a self) -> &'a Session { &self.analysis.ty_cx.sess }
+    fn sess<'a>(&'a self) -> &'a Session { &self.tcx.sess }
 
     fn ast_map<'a>(&'a self) -> Option<&'a ast_map::Map<'tcx>> {
-        Some(&self.analysis.ty_cx.map)
+        Some(&self.tcx.map)
     }
 
     fn pp_ann<'a>(&'a self) -> &'a pprust::PpAnn { self }
@@ -310,7 +310,6 @@ impl<'tcx> pprust::PpAnn for TypedAnnotation<'tcx> {
     fn post(&self,
             s: &mut pprust::State,
             node: pprust::AnnNode) -> io::Result<()> {
-        let tcx = &self.analysis.ty_cx;
         match node {
             pprust::NodeExpr(expr) => {
                 try!(pp::space(&mut s.s));
@@ -318,8 +317,8 @@ impl<'tcx> pprust::PpAnn for TypedAnnotation<'tcx> {
                 try!(pp::space(&mut s.s));
                 try!(pp::word(&mut s.s,
                               &ppaux::ty_to_string(
-                                  tcx,
-                                  ty::expr_ty(tcx, expr))));
+                                  &self.tcx,
+                                  ty::expr_ty(&self.tcx, expr))));
                 s.pclose()
             }
             _ => Ok(())
@@ -646,12 +645,12 @@ pub fn pretty_print_input(sess: Session,
             match code {
                 Some(code) => {
                     let variants = gather_flowgraph_variants(&sess);
-                    let analysis = driver::phase_3_run_analysis_passes(sess,
+                    let (tcx, _) = driver::phase_3_run_analysis_passes(sess,
                                                                        ast_map,
                                                                        &arenas,
                                                                        id,
                                                                        resolve::MakeGlobMap::No);
-                    print_flowgraph(variants, analysis, code, mode, out)
+                    print_flowgraph(variants, &tcx, code, mode, out)
                 }
                 None => {
                     let message = format!("--pretty=flowgraph needs \
@@ -682,18 +681,17 @@ pub fn pretty_print_input(sess: Session,
 }
 
 fn print_flowgraph<W: Write>(variants: Vec<borrowck_dot::Variant>,
-                             analysis: ty::CrateAnalysis,
+                             tcx: &ty::ctxt,
                              code: blocks::Code,
                              mode: PpFlowGraphMode,
                              mut out: W) -> io::Result<()> {
-    let ty_cx = &analysis.ty_cx;
     let cfg = match code {
-        blocks::BlockCode(block) => cfg::CFG::new(ty_cx, &*block),
-        blocks::FnLikeCode(fn_like) => cfg::CFG::new(ty_cx, &*fn_like.body()),
+        blocks::BlockCode(block) => cfg::CFG::new(tcx, &*block),
+        blocks::FnLikeCode(fn_like) => cfg::CFG::new(tcx, &*fn_like.body()),
     };
     let labelled_edges = mode != PpFlowGraphMode::UnlabelledEdges;
     let lcfg = LabelledCFG {
-        ast_map: &ty_cx.map,
+        ast_map: &tcx.map,
         cfg: &cfg,
         name: format!("node_{}", code.id()),
         labelled_edges: labelled_edges,
@@ -705,14 +703,14 @@ fn print_flowgraph<W: Write>(variants: Vec<borrowck_dot::Variant>,
             return expand_err_details(r);
         }
         blocks::BlockCode(_) => {
-            ty_cx.sess.err("--pretty flowgraph with -Z flowgraph-print \
-                            annotations requires fn-like node id.");
+            tcx.sess.err("--pretty flowgraph with -Z flowgraph-print \
+                          annotations requires fn-like node id.");
             return Ok(())
         }
         blocks::FnLikeCode(fn_like) => {
             let fn_parts = borrowck::FnPartsWithCFG::from_fn_like(&fn_like, &cfg);
             let (bccx, analysis_data) =
-                borrowck::build_borrowck_dataflow_data_for_fn(ty_cx, fn_parts);
+                borrowck::build_borrowck_dataflow_data_for_fn(tcx, fn_parts);
 
             let lcfg = borrowck_dot::DataflowLabeller {
                 inner: lcfg,
