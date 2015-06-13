@@ -2491,7 +2491,7 @@ fn register_method(ccx: &CrateContext, id: ast::NodeId,
     }
 }
 
-pub fn crate_ctxt_to_encode_parms<'a, 'tcx>(cx: &'a SharedCrateContext<'tcx>,
+pub fn crate_ctxt_to_encode_parms<'a, 'tcx>(cx: &'a SharedCrateContext<'a, 'tcx>,
                                             ie: encoder::EncodeInlinedItem<'a>)
                                             -> encoder::EncodeParams<'a, 'tcx> {
     encoder::EncodeParams {
@@ -2627,9 +2627,8 @@ fn internalize_symbols(cx: &SharedCrateContext, reachable: &HashSet<String>) {
     }
 }
 
-pub fn trans_crate<'tcx>(analysis: ty::CrateAnalysis<'tcx>)
-                         -> (ty::ctxt<'tcx>, CrateTranslation) {
-    let ty::CrateAnalysis { ty_cx: tcx, export_map, reachable, name, .. } = analysis;
+pub fn trans_crate(tcx: &ty::ctxt, analysis: ty::CrateAnalysis) -> CrateTranslation {
+    let ty::CrateAnalysis { export_map, reachable, name, .. } = analysis;
     let krate = tcx.map.krate();
 
     let check_overflow = if let Some(v) = tcx.sess.opts.debugging_opts.force_overflow_checks {
@@ -2769,7 +2768,7 @@ pub fn trans_crate<'tcx>(analysis: ty::CrateAnalysis<'tcx>)
     let formats = shared_ccx.tcx().dependency_formats.borrow().clone();
     let no_builtins = attr::contains_name(&krate.attrs, "no_builtins");
 
-    let translation = CrateTranslation {
+    CrateTranslation {
         modules: modules,
         metadata_module: metadata_module,
         link: link_meta,
@@ -2777,7 +2776,5 @@ pub fn trans_crate<'tcx>(analysis: ty::CrateAnalysis<'tcx>)
         reachable: reachable,
         crate_formats: formats,
         no_builtins: no_builtins,
-    };
-
-    (shared_ccx.take_tcx(), translation)
+    }
 }

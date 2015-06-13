@@ -119,26 +119,26 @@ pub fn compile_input(sess: Session,
                                                                      &ast_map.krate(),
                                                                      &id[..]));
 
-        let analysis = phase_3_run_analysis_passes(sess,
-                                                   ast_map,
-                                                   &arenas,
-                                                   id,
-                                                   control.make_glob_map);
+        let (tcx, analysis) = phase_3_run_analysis_passes(sess,
+                                                          ast_map,
+                                                          &arenas,
+                                                          id,
+                                                          control.make_glob_map);
 
         controller_entry_point!(after_analysis,
-                                analysis.ty_cx.sess,
+                                tcx.sess,
                                 CompileState::state_after_analysis(input,
-                                                                   &analysis.ty_cx.sess,
+                                                                   &tcx.sess,
                                                                    outdir,
-                                                                   analysis.ty_cx.map.krate(),
+                                                                   tcx.map.krate(),
                                                                    &analysis,
-                                                                   &analysis.ty_cx));
+                                                                   &tcx));
 
         if log_enabled!(::log::INFO) {
             println!("Pre-trans");
-            analysis.ty_cx.print_debug_stats();
+            tcx.print_debug_stats();
         }
-        let (tcx, trans) = phase_4_translate_to_llvm(analysis);
+        let trans = phase_4_translate_to_llvm(&tcx, analysis);
 
         if log_enabled!(::log::INFO) {
             println!("Post-trans");
@@ -240,7 +240,7 @@ pub struct CompileState<'a, 'ast: 'a, 'tcx: 'a> {
     pub out_dir: Option<&'a Path>,
     pub expanded_crate: Option<&'a ast::Crate>,
     pub ast_map: Option<&'a ast_map::Map<'ast>>,
-    pub analysis: Option<&'a ty::CrateAnalysis<'tcx>>,
+    pub analysis: Option<&'a ty::CrateAnalysis>,
     pub tcx: Option<&'a ty::ctxt<'tcx>>,
     pub trans: Option<&'a trans::CrateTranslation>,
 }
@@ -309,7 +309,7 @@ impl<'a, 'ast, 'tcx> CompileState<'a, 'ast, 'tcx> {
                             session: &'a Session,
                             out_dir: &'a Option<PathBuf>,
                             expanded_crate: &'a ast::Crate,
-                            analysis: &'a ty::CrateAnalysis<'tcx>,
+                            analysis: &'a ty::CrateAnalysis,
                             tcx: &'a ty::ctxt<'tcx>)
                             -> CompileState<'a, 'ast, 'tcx> {
         CompileState {
@@ -583,7 +583,7 @@ pub fn phase_3_run_analysis_passes<'tcx>(sess: Session,
                                          arenas: &'tcx ty::CtxtArenas<'tcx>,
                                          name: String,
                                          make_glob_map: resolve::MakeGlobMap)
-                                         -> ty::CrateAnalysis<'tcx> {
+                                         -> (ty::ctxt<'tcx>, ty::CrateAnalysis) {
     let time_passes = sess.time_passes();
     let krate = ast_map.krate();
 
@@ -704,29 +704,28 @@ pub fn phase_3_run_analysis_passes<'tcx>(sess: Session,
     // The above three passes generate errors w/o aborting
     ty_cx.sess.abort_if_errors();
 
-    ty::CrateAnalysis {
+    (ty_cx, ty::CrateAnalysis {
         export_map: export_map,
-        ty_cx: ty_cx,
         exported_items: exported_items,
         public_items: public_items,
         reachable: reachable_map,
         name: name,
         glob_map: glob_map,
-    }
+    })
 }
 
 /// Run the translation phase to LLVM, after which the AST and analysis can
 /// be discarded.
-pub fn phase_4_translate_to_llvm<'tcx>(analysis: ty::CrateAnalysis<'tcx>)
-                                       -> (ty::ctxt<'tcx>, trans::CrateTranslation) {
-    let time_passes = analysis.ty_cx.sess.time_passes();
+pub fn phase_4_translate_to_llvm(tcx: &ty::ctxt, analysis: ty::CrateAnalysis)
+                                 -> trans::CrateTranslation {
+    let time_passes = tcx.sess.time_passes();
 
     time(time_passes, "resolving dependency formats", (), |_|
-         dependency_format::calculate(&analysis.ty_cx));
+         dependency_format::calculate(tcx));
 
     // Option dance to work around the lack of stack once closures.
     time(time_passes, "translation", analysis, |analysis|
-         trans::trans_crate(analysis))
+         trans::trans_crate(tcx, analysis))
 }
 
 /// Run LLVM itself, producing a bitcode file, assembly file or object file

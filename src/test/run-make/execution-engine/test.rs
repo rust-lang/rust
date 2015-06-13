@@ -221,10 +221,10 @@ fn compile_program(input: &str, sysroot: PathBuf)
         let arenas = ty::CtxtArenas::new();
         let ast_map = driver::assign_node_ids_and_map(&sess, &mut forest);
 
-        let analysis = driver::phase_3_run_analysis_passes(
+        let (tcx, analysis) = driver::phase_3_run_analysis_passes(
             sess, ast_map, &arenas, id, MakeGlobMap::No);
 
-        let (tcx, trans) = driver::phase_4_translate_to_llvm(analysis);
+        let trans = driver::phase_4_translate_to_llvm(&tcx, analysis);
 
         let crates = tcx.sess.cstore.get_used_crates(RequireDynamic);
 
