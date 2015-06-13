@@ -285,8 +285,7 @@ has no side effect on the original iterator. Let's try it out with our infinite
 iterator from before:
 
 ```rust
-# #![feature(step_by)]
-for i in (1..).step_by(5).take(5) {
+for i in (1..).take(5) {
     println!("{}", i);
 }
 ```
@@ -295,10 +294,10 @@ This will print
 
 ```text
 1
-6
-11
-16
-21
+2
+3
+4
+5
 ```
 
 `filter()` is an adapter that takes a closure as an argument. This closure
