@@ -79,7 +79,6 @@ pub fn parse_config(args: Vec<String> ) -> Config {
           optopt("", "target-rustcflags", "flags to pass to rustc for target", "FLAGS"),
           optflag("", "verbose", "run tests verbosely, showing all output"),
           optopt("", "logfile", "file to log test execution to", "FILE"),
-          optflag("", "jit", "run tests under the JIT"),
           optopt("", "target", "the target to build for", "TARGET"),
           optopt("", "host", "the host to build for", "HOST"),
           optopt("", "gdb-version", "the version of GDB used", "VERSION STRING"),
@@ -146,7 +145,6 @@ pub fn parse_config(args: Vec<String> ) -> Config {
         runtool: matches.opt_str("runtool"),
         host_rustcflags: matches.opt_str("host-rustcflags"),
         target_rustcflags: matches.opt_str("target-rustcflags"),
-        jit: matches.opt_present("jit"),
         target: opt_str2(matches.opt_str("target")),
         host: opt_str2(matches.opt_str("host")),
         gdb_version: extract_gdb_version(matches.opt_str("gdb-version")),
@@ -186,7 +184,6 @@ pub fn log_config(config: &Config) {
                     opt_str(&config.host_rustcflags)));
     logv(c, format!("target-rustcflags: {}",
                     opt_str(&config.target_rustcflags)));
-    logv(c, format!("jit: {}", config.jit));
     logv(c, format!("target: {}", config.target));
     logv(c, format!("host: {}", config.host));
     logv(c, format!("android-cross-path: {:?}",
