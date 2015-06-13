@@ -30,7 +30,7 @@ DEFAULT_PREPARE_MAN_CMD = install -m644
 # Create a directory
 # $(1) is the directory
 define PREPARE_DIR
-	@$(Q)$(call E, prepare: $(1))
+	@$(call E, prepare: $(1))
 	$(Q)$(PREPARE_DIR_CMD) $(1)
 endef
 
