@@ -917,7 +917,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                     }
                 }
                 Def::Struct(..) => {
-                    if let ty::TyBareFn(..) = ety.sty {
+                    if let ty::TyFnDef(..) = ety.sty {
                         // Tuple struct.
                         expr::trans_def_fn_unadjusted(cx, e, def, param_substs).val
                     } else {

@@ -1636,8 +1636,7 @@ pub fn ast_ty_to_ty<'tcx>(this: &AstConv<'tcx>,
         }
         hir::TyBareFn(ref bf) => {
             require_c_abi_if_variadic(tcx, &bf.decl, bf.abi, ast_ty.span);
-            let bare_fn = ty_of_bare_fn(this, bf.unsafety, bf.abi, &bf.decl);
-            tcx.mk_fn(None, tcx.mk_bare_fn(bare_fn))
+            tcx.mk_fn_ptr(ty_of_bare_fn(this, bf.unsafety, bf.abi, &bf.decl))
         }
         hir::TyPolyTraitRef(ref bounds) => {
             conv_ty_poly_trait_ref(this, rscope, ast_ty.span, bounds)

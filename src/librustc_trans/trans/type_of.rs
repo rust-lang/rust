@@ -153,7 +153,7 @@ pub fn type_of_rust_fn<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 // Given a function type and a count of ty params, construct an llvm type
 pub fn type_of_fn_from_ty<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, fty: Ty<'tcx>) -> Type {
     match fty.sty {
-        ty::TyBareFn(_, ref f) => {
+        ty::TyFnDef(_, ref f) | ty::TyFnPtr(ref f) => {
             // FIXME(#19925) once fn item types are
             // zero-sized, we'll need to do something here
             if f.abi == Abi::Rust || f.abi == Abi::RustCall {
@@ -210,7 +210,7 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
             }
         }
 
-        ty::TyBareFn(..) => Type::i8p(cx),
+        ty::TyFnDef(..) | ty::TyFnPtr(_) => Type::i8p(cx),
 
         ty::TyArray(ty, size) => {
             let llty = sizing_type_of(cx, ty);
@@ -415,7 +415,7 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
       ty::TySlice(ty) => in_memory_type_of(cx, ty),
       ty::TyStr | ty::TyTrait(..) => Type::i8(cx),
 
-      ty::TyBareFn(..) => {
+      ty::TyFnDef(..) | ty::TyFnPtr(_) => {
           type_of_fn_from_ty(cx, t).ptr_to()
       }
       ty::TyTuple(ref tys) if tys.is_empty() => Type::nil(cx),

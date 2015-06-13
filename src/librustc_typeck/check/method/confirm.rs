@@ -105,11 +105,11 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
 
         // Create the method type
         let method_ty = pick.item.as_opt_method().unwrap();
-        let fty = self.tcx().mk_fn(None, self.tcx().mk_bare_fn(ty::BareFnTy {
+        let fty = self.tcx().mk_fn_ptr(ty::BareFnTy {
             sig: ty::Binder(method_sig),
             unsafety: method_ty.fty.unsafety,
             abi: method_ty.fty.abi.clone(),
-        }));
+        });
 
         // Add any trait/regions obligations specified on the method's type parameters.
         self.add_obligations(fty, &all_substs, &method_predicates);
@@ -457,7 +457,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
     fn fixup_derefs_on_method_receiver_if_necessary(&self,
                                                     method_callee: &ty::MethodCallee) {
         let sig = match method_callee.ty.sty {
-            ty::TyBareFn(_, ref f) => f.sig.clone(),
+            ty::TyFnPtr(ref f) => f.sig.clone(),
             _ => return,
         };
 

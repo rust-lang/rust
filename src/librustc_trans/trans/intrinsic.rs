@@ -1264,7 +1264,7 @@ fn get_rust_try_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
     // Define the type up front for the signature of the rust_try function.
     let tcx = ccx.tcx();
     let i8p = tcx.mk_mut_ptr(tcx.types.i8);
-    let fn_ty = tcx.mk_bare_fn(ty::BareFnTy {
+    let fn_ty = tcx.mk_fn_ptr(ty::BareFnTy {
         unsafety: hir::Unsafety::Unsafe,
         abi: Abi::Rust,
         sig: ty::Binder(ty::FnSig {
@@ -1273,9 +1273,8 @@ fn get_rust_try_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
             variadic: false,
         }),
     });
-    let fn_ty = tcx.mk_fn(None, fn_ty);
     let output = ty::FnOutput::FnConverging(tcx.types.i32);
-    let try_fn_ty  = tcx.mk_bare_fn(ty::BareFnTy {
+    let try_fn_ty  = ty::BareFnTy {
         unsafety: hir::Unsafety::Unsafe,
         abi: Abi::Rust,
         sig: ty::Binder(ty::FnSig {
@@ -1283,8 +1282,8 @@ fn get_rust_try_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
             output: output,
             variadic: false,
         }),
-    });
-    let rust_try = gen_fn(fcx, "__rust_try", tcx.mk_fn(None, try_fn_ty), output,
+    };
+    let rust_try = gen_fn(fcx, "__rust_try", tcx.mk_fn_ptr(try_fn_ty), output,
                           trans);
     *ccx.rust_try_fn().borrow_mut() = Some(rust_try);
     return rust_try
@@ -1353,7 +1352,7 @@ fn generate_filter_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
         // going on here, all I can say is that there's a few tests cases in
         // LLVM's test suite which follow this pattern of instructions, so we
         // just do the same.
-        let filter_fn_ty = tcx.mk_bare_fn(ty::BareFnTy {
+        let filter_fn_ty = tcx.mk_fn_ptr(ty::BareFnTy {
             unsafety: hir::Unsafety::Unsafe,
             abi: Abi::Rust,
             sig: ty::Binder(ty::FnSig {
@@ -1362,7 +1361,6 @@ fn generate_filter_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
                 variadic: false,
             }),
         });
-        let filter_fn_ty = tcx.mk_fn(None, filter_fn_ty);
         gen_fn(fcx, "__rustc_try_filter", filter_fn_ty, output, &mut |bcx| {
             let ebp = Call(bcx, frameaddress, &[C_i32(ccx, 1)], None, dloc);
             let exn = InBoundsGEP(bcx, ebp, &[C_i32(ccx, -20)]);
@@ -1373,7 +1371,7 @@ fn generate_filter_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
         // Conveniently on x86_64 the EXCEPTION_POINTERS handle and base pointer
         // are passed in as arguments to the filter function, so we just pass
         // those along.
-        let filter_fn_ty = tcx.mk_bare_fn(ty::BareFnTy {
+        let filter_fn_ty = tcx.mk_fn_ptr(ty::BareFnTy {
             unsafety: hir::Unsafety::Unsafe,
             abi: Abi::Rust,
             sig: ty::Binder(ty::FnSig {
@@ -1382,7 +1380,6 @@ fn generate_filter_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
                 variadic: false,
             }),
         });
-        let filter_fn_ty = tcx.mk_fn(None, filter_fn_ty);
         gen_fn(fcx, "__rustc_try_filter", filter_fn_ty, output, &mut |bcx| {
             let exn = llvm::get_param(bcx.fcx.llfn, 0);
             let rbp = llvm::get_param(bcx.fcx.llfn, 1);

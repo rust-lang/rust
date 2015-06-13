@@ -220,7 +220,7 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
     let tcx = ccx.tcx;
     let main_t = tcx.node_id_to_type(main_id);
     match main_t.sty {
-        ty::TyBareFn(..) => {
+        ty::TyFnDef(..) => {
             match tcx.map.find(main_id) {
                 Some(hir_map::NodeItem(it)) => {
                     match it.node {
@@ -236,7 +236,7 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
                 _ => ()
             }
             let main_def_id = tcx.map.local_def_id(main_id);
-            let se_ty = tcx.mk_fn(Some(main_def_id), tcx.mk_bare_fn(ty::BareFnTy {
+            let se_ty = tcx.mk_fn_def(main_def_id, ty::BareFnTy {
                 unsafety: hir::Unsafety::Normal,
                 abi: Abi::Rust,
                 sig: ty::Binder(ty::FnSig {
@@ -244,7 +244,7 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
                     output: ty::FnConverging(tcx.mk_nil()),
                     variadic: false
                 })
-            }));
+            });
 
             require_same_types(tcx, None, false, main_span, main_t, se_ty,
                 || {
@@ -266,7 +266,7 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
     let tcx = ccx.tcx;
     let start_t = tcx.node_id_to_type(start_id);
     match start_t.sty {
-        ty::TyBareFn(..) => {
+        ty::TyFnDef(..) => {
             match tcx.map.find(start_id) {
                 Some(hir_map::NodeItem(it)) => {
                     match it.node {
@@ -282,8 +282,7 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
                 _ => ()
             }
 
-            let se_ty = tcx.mk_fn(Some(ccx.tcx.map.local_def_id(start_id)),
-                                  tcx.mk_bare_fn(ty::BareFnTy {
+            let se_ty = tcx.mk_fn_def(ccx.tcx.map.local_def_id(start_id), ty::BareFnTy {
                 unsafety: hir::Unsafety::Normal,
                 abi: Abi::Rust,
                 sig: ty::Binder(ty::FnSig {
@@ -294,7 +293,7 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
                     output: ty::FnConverging(tcx.types.isize),
                     variadic: false,
                 }),
-            }));
+            });
 
             require_same_types(tcx, None, false, start_span, start_t, se_ty,
                 || {

@@ -261,16 +261,15 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
 
     pub fn t_fn(&self, input_tys: &[Ty<'tcx>], output_ty: Ty<'tcx>) -> Ty<'tcx> {
         let input_args = input_tys.iter().cloned().collect();
-        self.infcx.tcx.mk_fn(None,
-                             self.infcx.tcx.mk_bare_fn(ty::BareFnTy {
-                                 unsafety: hir::Unsafety::Normal,
-                                 abi: Abi::Rust,
-                                 sig: ty::Binder(ty::FnSig {
-                                     inputs: input_args,
-                                     output: ty::FnConverging(output_ty),
-                                     variadic: false,
-                                 }),
-                             }))
+        self.infcx.tcx.mk_fn_ptr(ty::BareFnTy {
+            unsafety: hir::Unsafety::Normal,
+            abi: Abi::Rust,
+            sig: ty::Binder(ty::FnSig {
+                inputs: input_args,
+                output: ty::FnConverging(output_ty),
+                variadic: false,
+            }),
+        })
     }
 
     pub fn t_nil(&self) -> Ty<'tcx> {

@@ -514,9 +514,16 @@ impl<'tcx> TyCtxt<'tcx> {
                         region(state, *r);
                         mt(state, m);
                     }
-                    TyBareFn(opt_def_id, ref b) => {
+                    TyFnDef(def_id, ref b) => {
                         byte!(14);
-                        hash!(opt_def_id);
+                        hash!(def_id);
+                        hash!(b.unsafety);
+                        hash!(b.abi);
+                        fn_sig(state, &b.sig);
+                        return false;
+                    }
+                    TyFnPtr(ref b) => {
+                        byte!(15);
                         hash!(b.unsafety);
                         hash!(b.abi);
                         fn_sig(state, &b.sig);
@@ -677,7 +684,7 @@ impl<'tcx> ty::TyS<'tcx> {
         // Fast-path for primitive types
         let result = match self.sty {
             TyBool | TyChar | TyInt(..) | TyUint(..) | TyFloat(..) |
-            TyRawPtr(..) | TyBareFn(..) | TyRef(_, TypeAndMut {
+            TyRawPtr(..) | TyFnDef(..) | TyFnPtr(_) | TyRef(_, TypeAndMut {
                 mutbl: hir::MutImmutable, ..
             }) => Some(false),
 
@@ -719,7 +726,7 @@ impl<'tcx> ty::TyS<'tcx> {
         // Fast-path for primitive types
         let result = match self.sty {
             TyBool | TyChar | TyInt(..) | TyUint(..) | TyFloat(..) |
-            TyBox(..) | TyRawPtr(..) | TyRef(..) | TyBareFn(..) |
+            TyBox(..) | TyRawPtr(..) | TyRef(..) | TyFnDef(..) | TyFnPtr(_) |
             TyArray(..) | TyTuple(..) | TyClosure(..) => Some(true),
 
             TyStr | TyTrait(..) | TySlice(_) => Some(false),
