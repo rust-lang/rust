@@ -29,7 +29,10 @@ DEFAULT_PREPARE_MAN_CMD = install -m644
 
 # Create a directory
 # $(1) is the directory
+#
+# Gee, what's up with that $(nop)? See comment below.
 define PREPARE_DIR
+	$(nop)
 	@$(call E, prepare: $(1))
 	$(Q)$(PREPARE_DIR_CMD) $(1)
 endef
@@ -68,7 +71,10 @@ endef
 
 # Copy a man page
 # $(1) - source dir
+#
+# Gee, what's up with that $(nop)? See comment above.
 define PREPARE_MAN
+	$(nop)
 	@$(call E, prepare: $(PREPARE_DEST_MAN_DIR)/$(1))
 	$(Q)$(PREPARE_MAN_CMD) $(PREPARE_SOURCE_MAN_DIR)/$(1) $(PREPARE_DEST_MAN_DIR)/$(1)
 endef
