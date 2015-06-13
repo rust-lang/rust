@@ -187,22 +187,16 @@ impl char {
     /// # Examples
     ///
     /// ```
-    /// for i in '❤'.escape_unicode() {
-    ///     println!("{}", i);
+    /// for c in '❤'.escape_unicode() {
+    ///     print!("{}", c);
     /// }
+    /// println!("");
     /// ```
     ///
     /// This prints:
     ///
     /// ```text
-    /// \
-    /// u
-    /// {
-    /// 2
-    /// 7
-    /// 6
-    /// 4
-    /// }
+    /// \u{2764}
     /// ```
     ///
     /// Collecting into a `String`:
@@ -467,6 +461,12 @@ impl char {
     /// Returns an iterator which yields the characters corresponding to the
     /// lowercase equivalent of the character. If no conversion is possible then
     /// an iterator with just the input character is returned.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// assert_eq!(Some('c'), 'C'.to_lowercase().next());
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn to_lowercase(self) -> ToLowercase {
@@ -515,6 +515,12 @@ impl char {
     /// [`SpecialCasing.txt`]: ftp://ftp.unicode.org/Public/UNIDATA/SpecialCasing.txt
     ///
     /// [2]: http://www.unicode.org/versions/Unicode7.0.0/ch03.pdf#G33992
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// assert_eq!(Some('C'), 'c'.to_uppercase().next());
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn to_uppercase(self) -> ToUppercase {
