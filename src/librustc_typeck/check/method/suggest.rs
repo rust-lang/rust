@@ -59,12 +59,24 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 None);
 
             // If the item has the name of a field, give a help note
-            if let (&ty::TyStruct(did, _), Some(_)) = (&rcvr_ty.sty, rcvr_expr) {
+            if let (&ty::TyStruct(did, substs), Some(_)) = (&rcvr_ty.sty, rcvr_expr) {
                 let fields = ty::lookup_struct_fields(cx, did);
-                if fields.iter().any(|f| f.name == item_name) {
-                    cx.sess.span_note(span,
-                        &format!("use `(s.{0})(...)` if you meant to call the \
-                                 function stored in the `{0}` field", item_name));
+
+                if let Some(field) = fields.iter().find(|f| f.name == item_name) {
+
+                    match ty::lookup_field_type(cx, did, field.id, substs).sty {
+                        ty::TyClosure(_, _) | ty::TyBareFn(_,_) => {
+                            cx.sess.span_note(span,
+                                &format!("use `({0}.{1})(...)` if you meant to call the \
+                                          function stored in the `{1}` field",
+                                    ty::item_path_str(cx, did), item_name));
+                        },
+                        _ => {
+                            cx.sess.span_note(span,
+                                &format!("did you mean to write `{0}.{1}`?",
+                                    ty::item_path_str(cx, did), item_name));
+                        },
+                    };
                 }
             }
 
