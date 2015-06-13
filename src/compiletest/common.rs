@@ -124,9 +124,6 @@ pub struct Config {
     // Flags to pass to the compiler when building for the target
     pub target_rustcflags: Option<String>,
 
-    // Run tests using the JIT
-    pub jit: bool,
-
     // Target system to be tested
     pub target: String,
 
