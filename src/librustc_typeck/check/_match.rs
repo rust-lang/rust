@@ -59,7 +59,7 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                 if let ast::LitBinary(_) = lt.node {
                     let expected_ty = structurally_resolved_type(fcx, pat.span, expected);
                     if let ty::TyRef(_, mt) = expected_ty.sty {
-                        if let ty::TyArray(_, None) = mt.ty.sty {
+                        if let ty::TySlice(_) = mt.ty.sty {
                             pat_ty = ty::mk_slice(tcx, tcx.mk_region(ty::ReStatic),
                                 ty::mt{ ty: tcx.types.u8, mutbl: ast::MutImmutable })
                         }
@@ -293,7 +293,7 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
             let expected_ty = structurally_resolved_type(fcx, pat.span, expected);
             let inner_ty = fcx.infcx().next_ty_var();
             let pat_ty = match expected_ty.sty {
-                ty::TyArray(_, Some(size)) => ty::mk_vec(tcx, inner_ty, Some({
+                ty::TyArray(_, size) => ty::mk_vec(tcx, inner_ty, Some({
                     let min_len = before.len() + after.len();
                     match *slice {
                         Some(_) => cmp::max(min_len, size),

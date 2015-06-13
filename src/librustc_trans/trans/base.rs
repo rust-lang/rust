@@ -444,12 +444,12 @@ pub fn iter_structural_ty<'blk, 'tcx, F>(cx: Block<'blk, 'tcx>,
               cx = f(cx, llupvar, upvar.ty);
           }
       }
-      ty::TyArray(_, Some(n)) => {
+      ty::TyArray(_, n) => {
         let (base, len) = tvec::get_fixed_base_and_len(cx, data_ptr, n);
         let unit_ty = ty::sequence_element_type(cx.tcx(), t);
         cx = tvec::iter_vec_raw(cx, base, unit_ty, len, f);
       }
-      ty::TyArray(_, None) | ty::TyStr => {
+      ty::TySlice(_) | ty::TyStr => {
         let unit_ty = ty::sequence_element_type(cx.tcx(), t);
         cx = tvec::iter_vec_raw(cx, data_ptr, unit_ty, info.unwrap(), f);
       }

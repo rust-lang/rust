@@ -310,8 +310,8 @@ pub fn get_base_and_len<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let ccx = bcx.ccx();
 
     match vec_ty.sty {
-        ty::TyArray(_, Some(n)) => get_fixed_base_and_len(bcx, llval, n),
-        ty::TyArray(_, None) | ty::TyStr => {
+        ty::TyArray(_, n) => get_fixed_base_and_len(bcx, llval, n),
+        ty::TySlice(_) | ty::TyStr => {
             let base = Load(bcx, expr::get_dataptr(bcx, llval));
             let len = Load(bcx, expr::get_len(bcx, llval));
             (base, len)

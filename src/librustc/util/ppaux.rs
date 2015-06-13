@@ -20,7 +20,7 @@ use middle::ty::{ReFree, ReScope, ReInfer, ReStatic, Region, ReEmpty};
 use middle::ty::{ReSkolemized, ReVar, BrEnv};
 use middle::ty::{mt, Ty, ParamTy};
 use middle::ty::{TyBool, TyChar, TyStruct, TyEnum};
-use middle::ty::{TyError, TyStr, TyArray, TyFloat, TyBareFn};
+use middle::ty::{TyError, TyStr, TyArray, TySlice, TyFloat, TyBareFn};
 use middle::ty::{TyParam, TyRawPtr, TyRef, TyTuple};
 use middle::ty::TyClosure;
 use middle::ty::{TyBox, TyTrait, TyInt, TyUint, TyInfer};
@@ -432,11 +432,10 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
             })
         }
         TyArray(t, sz) => {
-            let inner_str = ty_to_string(cx, t);
-            match sz {
-                Some(n) => format!("[{}; {}]", inner_str, n),
-                None => format!("[{}]", inner_str),
-            }
+            format!("[{}; {}]", ty_to_string(cx, t), sz)
+        }
+        TySlice(t) => {
+            format!("[{}]", ty_to_string(cx, t))
         }
     }
 }

@@ -423,7 +423,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
                 self.visit_expr(&**element);
                 // The count is checked elsewhere (typeck).
                 let count = match node_ty.sty {
-                    ty::TyArray(_, Some(n)) => n,
+                    ty::TyArray(_, n) => n,
                     _ => unreachable!()
                 };
                 // [element; 0] is always zero-sized.
@@ -851,10 +851,14 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for CheckCrateVisitor<'a, 'tcx> {
                     }
                     let mutbl = bk.to_mutbl_lossy();
                     if mutbl == ast::MutMutable && self.mode == Mode::StaticMut {
-                        // Mutable slices are the only `&mut` allowed in globals,
-                        // but only in `static mut`, nowhere else.
+                        // Mutable slices are the only `&mut` allowed in
+                        // globals, but only in `static mut`, nowhere else.
+                        // FIXME: This exception is really weird... there isn't
+                        // any fundamental reason to restrict this based on
+                        // type of the expression.  `&mut [1]` has exactly the
+                        // same representation as &mut 1.
                         match cmt.ty.sty {
-                            ty::TyArray(_, _) => break,
+                            ty::TyArray(_, _) | ty::TySlice(_) => break,
                             _ => {}
                         }
                     }

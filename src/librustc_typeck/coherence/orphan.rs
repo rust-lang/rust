@@ -93,7 +93,7 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
                                                   "str",
                                                   item.span);
                     }
-                    ty::TyArray(_, None) => {
+                    ty::TySlice(_) => {
                         self.check_primitive_impl(def_id,
                                                   self.tcx.lang_items.slice_impl(),
                                                   "slice",
