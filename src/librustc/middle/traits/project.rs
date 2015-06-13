@@ -389,15 +389,19 @@ fn opt_normalize_projection_type<'a,'b,'tcx>(
             }
         }
         Ok(ProjectedTy::NoProgress(projected_ty)) => {
+            debug!("normalize_projection_type: projected_ty={} no progress",
+                   projected_ty.repr(selcx.tcx()));
             Some(Normalized {
                 value: projected_ty,
                 obligations: vec!()
             })
         }
         Err(ProjectionTyError::TooManyCandidates) => {
+            debug!("normalize_projection_type: too many candidates");
             None
         }
         Err(ProjectionTyError::TraitSelectionError(_)) => {
+            debug!("normalize_projection_type: ERROR");
             // if we got an error processing the `T as Trait` part,
             // just return `ty::err` but add the obligation `T :
             // Trait`, which when processed will cause the error to be
