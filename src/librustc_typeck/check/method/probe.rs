@@ -398,11 +398,19 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         }
 
         let (impl_ty, impl_substs) = self.impl_ty_and_substs(impl_def_id);
-        let impl_ty = self.fcx.instantiate_type_scheme(self.span, &impl_substs, &impl_ty);
+
+        // We can't use instantiate_type_scheme here as it will pollute
+        // the fcx's fulfillment context if this probe is rolled back.
+        let cause = traits::ObligationCause::misc(self.span, self.fcx.body_id);
+        let mut selcx = &mut traits::SelectionContext::new(self.fcx.infcx(), self.fcx);
+        let traits::Normalized { value: impl_ty, .. } =
+            traits::normalize(selcx, cause, &impl_ty.subst(self.tcx(), &impl_substs));
 
         // Determine the receiver type that the method itself expects.
         let xform_self_ty =
             self.xform_self_ty(&item, impl_ty, &impl_substs);
+        debug!("assemble_inherent_impl_probe: self ty = {:?}",
+               xform_self_ty.repr(self.tcx()));
 
         self.inherent_candidates.push(Candidate {
             xform_self_ty: xform_self_ty,
