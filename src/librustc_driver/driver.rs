@@ -602,11 +602,7 @@ pub fn phase_3_run_analysis_passes<'tcx>(sess: Session,
         glob_map,
     } =
         time(time_passes, "resolution", (),
-             |_| resolve::resolve_crate(&sess,
-                                        &ast_map,
-                                        &lang_items,
-                                        krate,
-                                        make_glob_map));
+             |_| resolve::resolve_crate(&sess, &ast_map, make_glob_map));
 
     // Discard MTWT tables that aren't required past resolution.
     syntax::ext::mtwt::clear_tables();
