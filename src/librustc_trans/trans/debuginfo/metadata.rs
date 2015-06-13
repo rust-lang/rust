@@ -253,7 +253,8 @@ impl<'tcx> TypeMap<'tcx> {
                                        principal.substs,
                                        &mut unique_type_id);
             },
-            ty::TyBareFn(_, &ty::BareFnTy{ unsafety, abi, ref sig } ) => {
+            ty::TyFnDef(_, &ty::BareFnTy{ unsafety, abi, ref sig } ) |
+            ty::TyFnPtr(&ty::BareFnTy{ unsafety, abi, ref sig } ) => {
                 if unsafety == ast::Unsafety::Unsafe {
                     unique_type_id.push_str("unsafe ");
                 }
@@ -797,7 +798,7 @@ pub fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 }
             }
         }
-        ty::TyBareFn(_, ref barefnty) => {
+        ty::TyFnDef(_, ref barefnty) | ty::TyFnPtr(ref barefnty) => {
             subroutine_type_metadata(cx, unique_type_id, &barefnty.sig, usage_site_span)
         }
         ty::TyClosure(def_id, substs) => {

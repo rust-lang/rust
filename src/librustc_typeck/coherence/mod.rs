@@ -26,7 +26,7 @@ use middle::ty::{Ty, TyBool, TyChar, TyEnum, TyError};
 use middle::ty::{TyParam, TypeScheme, TyRawPtr};
 use middle::ty::{TyRef, TyStruct, TyTrait, TyTuple};
 use middle::ty::{TyStr, TyArray, TySlice, TyFloat, TyInfer, TyInt};
-use middle::ty::{TyUint, TyClosure, TyBox, TyBareFn};
+use middle::ty::{TyUint, TyClosure, TyBox, TyFnDef, TyFnPtr};
 use middle::ty::TyProjection;
 use middle::ty;
 use middle::free_region::FreeRegionMap;
@@ -70,8 +70,8 @@ fn get_base_type_def_id<'a, 'tcx>(inference_context: &InferCtxt<'a, 'tcx>,
         }
 
         TyBool | TyChar | TyInt(..) | TyUint(..) | TyFloat(..) |
-        TyStr(..) | TyArray(..) | TySlice(..) | TyBareFn(..) | TyTuple(..) |
-        TyParam(..) | TyError |
+        TyStr(..) | TyArray(..) | TySlice(..) | TyFnDef(..) | TyFnPtr(_) |
+        TyTuple(..) | TyParam(..) | TyError |
         TyRawPtr(_) | TyRef(_, _) | TyProjection(..) => {
             None
         }

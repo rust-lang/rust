@@ -123,12 +123,12 @@ pub fn enc_ty<'a, 'tcx>(w: &mut Encoder, cx: &ctxt<'a, 'tcx>, t: Ty<'tcx>) {
         ty::TyStr => {
             mywrite!(w, "v");
         }
-        ty::TyBareFn(Some(def_id), f) => {
+        ty::TyFnDef(def_id, f) => {
             mywrite!(w, "F");
             mywrite!(w, "{}|", (cx.ds)(def_id));
             enc_bare_fn_ty(w, cx, f);
         }
-        ty::TyBareFn(None, f) => {
+        ty::TyFnPtr(f) => {
             mywrite!(w, "G");
             enc_bare_fn_ty(w, cx, f);
         }

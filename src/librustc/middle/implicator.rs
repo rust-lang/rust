@@ -93,7 +93,8 @@ impl<'a, 'tcx> Implicator<'a, 'tcx> {
             ty::TyInt(..) |
             ty::TyUint(..) |
             ty::TyFloat(..) |
-            ty::TyBareFn(..) |
+            ty::TyFnDef(..) |
+            ty::TyFnPtr(..) |
             ty::TyError |
             ty::TyStr => {
                 // No borrowed content reachable here.

@@ -456,7 +456,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
     fn fixup_derefs_on_method_receiver_if_necessary(&self,
                                                     method_callee: &MethodCallee) {
         let sig = match method_callee.ty.sty {
-            ty::TyBareFn(_, ref f) => f.sig.clone(),
+            ty::TyFnPtr(ref f) => f.sig.clone(),
             _ => return,
         };
 

@@ -107,7 +107,7 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
                                 -> Callee<'blk, 'tcx> {
         let DatumBlock { bcx, datum, .. } = expr::trans(bcx, expr);
         match datum.ty.sty {
-            ty::TyBareFn(..) => {
+            ty::TyFnDef(..) | ty::TyFnPtr(_) => {
                 let llval = datum.to_llscalarish(bcx);
                 return Callee {
                     bcx: bcx,
@@ -156,7 +156,7 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
                 }
             }
             def::DefFn(did, _) if match expr_ty.sty {
-                ty::TyBareFn(_, ref f) => f.abi == synabi::RustIntrinsic,
+                ty::TyFnDef(_, ref f) => f.abi == synabi::RustIntrinsic,
                 _ => false
             } => {
                 let substs = common::node_id_substs(bcx.ccx(),
@@ -299,11 +299,16 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
     // which is the fn pointer, and `args`, which is the arguments tuple.
     let (opt_def_id, sig) =
         match bare_fn_ty.sty {
-            ty::TyBareFn(opt_def_id,
-                           &ty::BareFnTy { unsafety: ast::Unsafety::Normal,
-                                           abi: synabi::Rust,
-                                           ref sig }) => {
-                (opt_def_id, sig)
+            ty::TyFnDef(def_id,
+                        &ty::BareFnTy { unsafety: ast::Unsafety::Normal,
+                                        abi: synabi::Rust,
+                                        ref sig }) => {
+                (Some(def_id), sig)
+            }
+            ty::TyFnPtr(&ty::BareFnTy { unsafety: ast::Unsafety::Normal,
+                                        abi: synabi::Rust,
+                                        ref sig }) => {
+                (None, sig)
             }
 
             _ => {
@@ -621,10 +626,10 @@ pub fn trans_method_call<'a, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let method_ty = match bcx.tcx().method_map.borrow().get(&method_call) {
         Some(method) => match method.origin {
             ty::MethodTraitObject(_) => match method.ty.sty {
-                ty::TyBareFn(_, ref fty) => {
+                ty::TyFnPtr(ref fty) => {
                     ty::mk_bare_fn(bcx.tcx(), None, meth::opaque_method_ty(bcx.tcx(), fty))
                 }
-                _ => method.ty
+                _ => bcx.sess().bug("bad type in trans_method_call")
             },
             _ => method.ty
         },
@@ -699,7 +704,7 @@ pub fn trans_call_inner<'a, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
     let mut bcx = callee.bcx;
 
     let (abi, ret_ty) = match callee_ty.sty {
-        ty::TyBareFn(_, ref f) => {
+        ty::TyFnDef(_, ref f) | ty::TyFnPtr(ref f) => {
             let output = ty::erase_late_bound_regions(bcx.tcx(), &f.sig.output());
             (f.abi, output)
         }

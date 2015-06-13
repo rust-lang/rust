@@ -31,7 +31,8 @@ enum UnsafeContext {
 
 fn type_is_unsafe_function(ty: Ty) -> bool {
     match ty.sty {
-        ty::TyBareFn(_, ref f) => f.unsafety == ast::Unsafety::Unsafe,
+        ty::TyFnDef(_, ref f) |
+        ty::TyFnPtr(ref f) => f.unsafety == ast::Unsafety::Unsafe,
         _ => false,
     }
 }
