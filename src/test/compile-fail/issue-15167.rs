@@ -9,11 +9,6 @@
 // except according to those terms.
 
 // macro f should not be able to inject a reference to 'n'.
-//
-// Ignored because `for` loops are not hygienic yet; they will require special
-// handling since they introduce a new pattern binding position.
-
-// ignore-test
 
 macro_rules! f { () => (n) }
 

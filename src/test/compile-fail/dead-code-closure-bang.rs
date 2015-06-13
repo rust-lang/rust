@@ -15,5 +15,5 @@
 fn main() {
     let x = || panic!();
     x();
-    std::io::println("Foo bar"); //~ ERROR: unreachable statement
+    println!("Foo bar"); //~ ERROR: unreachable statement
 }
