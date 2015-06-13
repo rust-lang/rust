@@ -518,7 +518,7 @@ pub fn super_relate_tys<'a,'tcx:'a,R>(relation: &mut R,
             Ok(ty::mk_rptr(tcx, tcx.mk_region(r), mt))
         }
 
-        (&ty::TyArray(a_t, Some(sz_a)), &ty::TyArray(b_t, Some(sz_b))) =>
+        (&ty::TyArray(a_t, sz_a), &ty::TyArray(b_t, sz_b)) =>
         {
             let t = try!(relation.relate(&a_t, &b_t));
             if sz_a == sz_b {
@@ -528,7 +528,7 @@ pub fn super_relate_tys<'a,'tcx:'a,R>(relation: &mut R,
             }
         }
 
-        (&ty::TyArray(a_t, None), &ty::TyArray(b_t, None)) =>
+        (&ty::TySlice(a_t), &ty::TySlice(b_t)) =>
         {
             let t = try!(relation.relate(&a_t, &b_t));
             Ok(ty::mk_vec(tcx, t, None))

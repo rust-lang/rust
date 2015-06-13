@@ -230,7 +230,7 @@ fn deref_kind(t: Ty, context: DerefKindContext) -> McResult<deref_kind> {
             Ok(deref_interior(InteriorField(PositionalField(0))))
         }
 
-        ty::TyArray(_, _) | ty::TyStr => {
+        ty::TyArray(_, _) | ty::TySlice(_) | ty::TyStr => {
             // no deref of indexed content without supplying InteriorOffsetKind
             if let Some(context) = context {
                 Ok(deref_interior(InteriorElement(context, element_kind(t))))
@@ -843,7 +843,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
         // Only promote `[T; 0]` before an RFC for rvalue promotions
         // is accepted.
         let qualif = match expr_ty.sty {
-            ty::TyArray(_, Some(0)) => qualif,
+            ty::TyArray(_, 0) => qualif,
             _ => check_const::ConstQualif::NOT_CONST
         };
 
@@ -1130,7 +1130,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                           -> (ast::Mutability, ty::Region) {
             match slice_ty.sty {
                 ty::TyRef(r, ref mt) => match mt.ty.sty {
-                    ty::TyArray(_, None) => (mt.mutbl, *r),
+                    ty::TySlice(_) => (mt.mutbl, *r),
                     _ => vec_slice_info(tcx, pat, mt.ty),
                 },
 
@@ -1669,10 +1669,10 @@ fn element_kind(t: Ty) -> ElementKind {
     match t.sty {
         ty::TyRef(_, ty::mt{ty, ..}) |
         ty::TyBox(ty) => match ty.sty {
-            ty::TyArray(_, None) => VecElement,
+            ty::TySlice(_) => VecElement,
             _ => OtherElement
         },
-        ty::TyArray(..) => VecElement,
+        ty::TyArray(..) | ty::TySlice(_) => VecElement,
         _ => OtherElement
     }
 }

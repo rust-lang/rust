@@ -997,7 +997,7 @@ fn constrain_index<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
     let r_index_expr = ty::ReScope(CodeExtent::from_node_id(index_expr.id));
     if let ty::TyRef(r_ptr, mt) = indexed_ty.sty {
         match mt.ty.sty {
-            ty::TyArray(_, None) | ty::TyStr => {
+            ty::TySlice(_) | ty::TyStr => {
                 rcx.fcx.mk_subr(infer::IndexSlice(index_expr.span),
                                 r_index_expr, *r_ptr);
             }

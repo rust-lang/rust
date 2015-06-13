@@ -472,7 +472,7 @@ fn find_discr_field_candidate<'tcx>(tcx: &ty::ctxt<'tcx>,
 
         // Is this a fixed-size array of something non-zero
         // with at least one element?
-        ty::TyArray(ety, Some(d)) if d > 0 => {
+        ty::TyArray(ety, d) if d > 0 => {
             if let Some(mut vpath) = find_discr_field_candidate(tcx, ety, path) {
                 vpath.push(0);
                 Some(vpath)

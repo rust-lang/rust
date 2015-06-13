@@ -113,11 +113,12 @@ pub fn enc_ty<'a, 'tcx>(w: &mut Encoder, cx: &ctxt<'a, 'tcx>, t: Ty<'tcx>) {
         ty::TyArray(t, sz) => {
             mywrite!(w, "V");
             enc_ty(w, cx, t);
-            mywrite!(w, "/");
-            match sz {
-                Some(n) => mywrite!(w, "{}|", n),
-                None => mywrite!(w, "|"),
-            }
+            mywrite!(w, "/{}|", sz);
+        }
+        ty::TySlice(t) => {
+            mywrite!(w, "V");
+            enc_ty(w, cx, t);
+            mywrite!(w, "/|");
         }
         ty::TyStr => {
             mywrite!(w, "v");

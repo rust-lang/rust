@@ -200,7 +200,7 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
 
         ty::TyBareFn(..) => Type::i8p(cx),
 
-        ty::TyArray(ty, Some(size)) => {
+        ty::TyArray(ty, size) => {
             let llty = sizing_type_of(cx, ty);
             let size = size as u64;
             ensure_array_fits_in_address_space(cx, llty, size, t);
@@ -232,7 +232,7 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
             cx.sess().bug(&format!("fictitious type {} in sizing_type_of()",
                                   ppaux::ty_to_string(cx.tcx(), t)))
         }
-        ty::TyArray(_, None) | ty::TyTrait(..) | ty::TyStr => unreachable!()
+        ty::TySlice(_) | ty::TyTrait(..) | ty::TyStr => unreachable!()
     };
 
     cx.llsizingtypes().borrow_mut().insert(t, llsizingty);
@@ -359,7 +359,7 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
                   let ptr_ty = in_memory_type_of(cx, ty).ptr_to();
                   let unsized_part = ty::struct_tail(cx.tcx(), ty);
                   let info_ty = match unsized_part.sty {
-                      ty::TyStr | ty::TyArray(..) => {
+                      ty::TyStr | ty::TyArray(..) | ty::TySlice(_) => {
                           Type::uint_from_ty(cx, ast::TyUs)
                       }
                       ty::TyTrait(_) => Type::vtable_ptr(cx),
@@ -374,7 +374,7 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
           }
       }
 
-      ty::TyArray(ty, Some(size)) => {
+      ty::TyArray(ty, size) => {
           let size = size as u64;
           let llty = in_memory_type_of(cx, ty);
           ensure_array_fits_in_address_space(cx, llty, size, t);
@@ -385,7 +385,7 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
       // traits have the type of u8. This is so that the data pointer inside
       // fat pointers is of the right type (e.g. for array accesses), even
       // when taking the address of an unsized field in a struct.
-      ty::TyArray(ty, None) => in_memory_type_of(cx, ty),
+      ty::TySlice(ty) => in_memory_type_of(cx, ty),
       ty::TyStr | ty::TyTrait(..) => Type::i8(cx),
 
       ty::TyBareFn(..) => {

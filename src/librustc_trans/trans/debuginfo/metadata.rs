@@ -226,15 +226,15 @@ impl<'tcx> TypeMap<'tcx> {
                 let inner_type_id = self.get_unique_type_id_as_string(inner_type_id);
                 unique_type_id.push_str(&inner_type_id[..]);
             },
-            ty::TyArray(inner_type, optional_length) => {
-                match optional_length {
-                    Some(len) => {
-                        unique_type_id.push_str(&format!("[{}]", len));
-                    }
-                    None => {
-                        unique_type_id.push_str("[]");
-                    }
-                };
+            ty::TyArray(inner_type, len) => {
+                unique_type_id.push_str(&format!("[{}]", len));
+
+                let inner_type_id = self.get_unique_type_id_of_type(cx, inner_type);
+                let inner_type_id = self.get_unique_type_id_as_string(inner_type_id);
+                unique_type_id.push_str(&inner_type_id[..]);
+            },
+            ty::TySlice(inner_type) => {
+                unique_type_id.push_str("[]");
 
                 let inner_type_id = self.get_unique_type_id_of_type(cx, inner_type);
                 let inner_type_id = self.get_unique_type_id_as_string(inner_type_id);
@@ -756,7 +756,10 @@ pub fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             prepare_enum_metadata(cx, t, def_id, unique_type_id, usage_site_span).finalize(cx)
         }
         ty::TyArray(typ, len) => {
-            fixed_vec_metadata(cx, unique_type_id, typ, len.map(|x| x as u64), usage_site_span)
+            fixed_vec_metadata(cx, unique_type_id, typ, Some(len as u64), usage_site_span)
+        }
+        ty::TySlice(typ) => {
+            fixed_vec_metadata(cx, unique_type_id, typ, None, usage_site_span)
         }
         ty::TyStr => {
             fixed_vec_metadata(cx, unique_type_id, cx.tcx().types.i8, None, usage_site_span)
@@ -768,7 +771,7 @@ pub fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         }
         ty::TyBox(ty) | ty::TyRawPtr(ty::mt{ty, ..}) | ty::TyRef(_, ty::mt{ty, ..}) => {
             match ty.sty {
-                ty::TyArray(typ, None) => {
+                ty::TySlice(typ) => {
                     vec_slice_metadata(cx, t, typ, unique_type_id, usage_site_span)
                 }
                 ty::TyStr => {

@@ -202,7 +202,7 @@ fn create_steps<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     });
 
     match final_ty.sty {
-        ty::TyArray(elem_ty, Some(_)) => {
+        ty::TyArray(elem_ty, _) => {
             let slice_ty = ty::mk_vec(fcx.tcx(), elem_ty, None);
             steps.push(CandidateStep {
                 self_ty: slice_ty,
@@ -295,7 +295,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                 let lang_def_id = self.tcx().lang_items.str_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
-            ty::TyArray(_, None) => {
+            ty::TySlice(_) => {
                 let lang_def_id = self.tcx().lang_items.slice_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }

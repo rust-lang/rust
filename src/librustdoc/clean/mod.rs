@@ -1652,9 +1652,9 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
                 });
                 lang_struct(cx, box_did, t, "Box", Unique)
             }
-            ty::TyArray(ty, None) => Vector(box ty.clean(cx)),
-            ty::TyArray(ty, Some(i)) => FixedVector(box ty.clean(cx),
-                                                   format!("{}", i)),
+            ty::TySlice(ty) => Vector(box ty.clean(cx)),
+            ty::TyArray(ty, i) => FixedVector(box ty.clean(cx),
+                                              format!("{}", i)),
             ty::TyRawPtr(mt) => RawPointer(mt.mutbl.clean(cx), box mt.ty.clean(cx)),
             ty::TyRef(r, mt) => BorrowedRef {
                 lifetime: r.clean(cx),

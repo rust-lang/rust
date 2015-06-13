@@ -2095,7 +2095,7 @@ fn lookup_indexing<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
     // After we have fully autoderef'd, if the resulting type is [T; n], then
     // do a final unsized coercion to yield [T].
-    if let ty::TyArray(element_ty, Some(_)) = ty.sty {
+    if let ty::TyArray(element_ty, _) = ty.sty {
         let adjusted_ty = ty::mk_vec(fcx.tcx(), element_ty, None);
         try_index_step(fcx, MethodCall::expr(expr.id), expr, base_expr,
                        adjusted_ty, autoderefs, true, lvalue_pref, idx_ty)
@@ -3452,7 +3452,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
       ast::ExprVec(ref args) => {
         let uty = expected.to_option(fcx).and_then(|uty| {
             match uty.sty {
-                ty::TyArray(ty, _) => Some(ty),
+                ty::TyArray(ty, _) | ty::TySlice(ty) => Some(ty),
                 _ => None
             }
         });
@@ -3482,7 +3482,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         let uty = match expected {
             ExpectHasType(uty) => {
                 match uty.sty {
-                    ty::TyArray(ty, _) => Some(ty),
+                    ty::TyArray(ty, _) | ty::TySlice(ty) => Some(ty),
                     _ => None
                 }
             }
@@ -3862,7 +3862,7 @@ impl<'tcx> Expectation<'tcx> {
     /// for examples of where this comes up,.
     fn rvalue_hint(ty: Ty<'tcx>) -> Expectation<'tcx> {
         match ty.sty {
-            ty::TyArray(_, None) | ty::TyTrait(..) => {
+            ty::TySlice(_) | ty::TyTrait(..) => {
                 ExpectRvalueLikeUnsized(ty)
             }
             _ => ExpectHasType(ty)
