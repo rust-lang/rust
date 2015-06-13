@@ -259,8 +259,8 @@ fn trans_monomorphized_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         traits::VtableObject(ref data) => {
             let idx = traits::get_vtable_index_of_object_method(bcx.tcx(), data, method_id);
             if let Some(self_expr) = self_expr {
-                if let ty::TyBareFn(_, ref fty) = monomorphize_type(bcx, method_ty).sty {
-                    let ty = bcx.tcx().mk_fn(None, opaque_method_ty(bcx.tcx(), fty));
+                if let ty::TyFnDef(_, ref fty) = monomorphize_type(bcx, method_ty).sty {
+                    let ty = opaque_method_ty(bcx.tcx(), fty);
                     return trans_trait_callee(bcx, ty, idx, self_expr, arg_cleanup_scope);
                 }
             }
@@ -401,18 +401,18 @@ pub fn trans_object_shim<'a, 'tcx>(
         }
     };
     let fty = monomorphize::apply_param_substs(tcx, &object_substs, &method_ty.fty);
-    let fty = tcx.mk_bare_fn(fty);
-    let method_ty = opaque_method_ty(tcx, fty);
-    debug!("trans_object_shim: fty={:?} method_ty={:?}", fty, method_ty);
+
+    let ret_ty = ccx.tcx().erase_late_bound_regions(&fty.sig.output());
+    let ret_ty = infer::normalize_associated_type(ccx.tcx(), &ret_ty);
+
+    let method_fn_ty = opaque_method_ty(tcx, &fty);
+    let shim_fn_ty = tcx.mk_fn_ptr(fty);
+    debug!("trans_object_shim: shim_fn_ty={:?} method_fn_ty={:?}",
+           shim_fn_ty, method_fn_ty);
 
     //
-    let shim_fn_ty = tcx.mk_fn(None, fty);
-    let method_bare_fn_ty = tcx.mk_fn(None, method_ty);
     let function_name = link::mangle_internal_name_by_type_and_seq(ccx, shim_fn_ty, "object_shim");
     let llfn = declare::define_internal_rust_fn(ccx, &function_name, shim_fn_ty);
-
-    let sig = ccx.tcx().erase_late_bound_regions(&fty.sig);
-    let sig = infer::normalize_associated_type(ccx.tcx(), &sig);
 
     let empty_substs = tcx.mk_substs(Substs::trans_empty());
     let (block_arena, fcx): (TypedArena<_>, FunctionContext);
@@ -421,11 +421,11 @@ pub fn trans_object_shim<'a, 'tcx>(
                       llfn,
                       ast::DUMMY_NODE_ID,
                       false,
-                      sig.output,
+                      ret_ty,
                       empty_substs,
                       None,
                       &block_arena);
-    let mut bcx = init_function(&fcx, false, sig.output);
+    let mut bcx = init_function(&fcx, false, ret_ty);
 
     let llargs = get_params(fcx.llfn);
 
@@ -440,7 +440,7 @@ pub fn trans_object_shim<'a, 'tcx>(
 
     let dest =
         fcx.llretslotptr.get().map(
-            |_| expr::SaveIn(fcx.get_ret_slot(bcx, sig.output, "ret_slot")));
+            |_| expr::SaveIn(fcx.get_ret_slot(bcx, ret_ty, "ret_slot")));
 
     debug!("trans_object_shim: method_offset_in_vtable={}",
            vtable_index);
@@ -448,13 +448,13 @@ pub fn trans_object_shim<'a, 'tcx>(
     bcx = trans_call_inner(bcx,
                            DebugLoc::None,
                            |bcx, _| trans_trait_callee_from_llval(bcx,
-                                                                  method_bare_fn_ty,
+                                                                  method_fn_ty,
                                                                   vtable_index,
                                                                   llself, llvtable),
                            ArgVals(&llargs[(self_idx + 2)..]),
                            dest).bcx;
 
-    finish_fn(&fcx, bcx, sig.output, DebugLoc::None);
+    finish_fn(&fcx, bcx, ret_ty, DebugLoc::None);
 
     immediate_rvalue(llfn, shim_fn_ty)
 }
@@ -642,11 +642,11 @@ pub fn get_vtable_methods<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
 /// Replace the self type (&Self or Box<Self>) with an opaque pointer.
 fn opaque_method_ty<'tcx>(tcx: &TyCtxt<'tcx>, method_ty: &ty::BareFnTy<'tcx>)
-                          -> &'tcx ty::BareFnTy<'tcx> {
+                          -> Ty<'tcx> {
     let mut inputs = method_ty.sig.0.inputs.clone();
     inputs[0] = tcx.mk_mut_ptr(tcx.mk_mach_int(ast::IntTy::I8));
 
-    tcx.mk_bare_fn(ty::BareFnTy {
+    tcx.mk_fn_ptr(ty::BareFnTy {
         unsafety: method_ty.unsafety,
         abi: method_ty.abi,
         sig: ty::Binder(ty::FnSig {

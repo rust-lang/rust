@@ -552,8 +552,7 @@ fn convert_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                     def_id,
                                     container);
 
-    let fty = ccx.tcx.mk_fn(Some(def_id),
-                            ccx.tcx.mk_bare_fn(ty_method.fty.clone()));
+    let fty = ccx.tcx.mk_fn_def(def_id, ty_method.fty.clone());
     debug!("method {} (id {}) has type {:?}",
             name, id, fty);
     ccx.tcx.register_item_type(def_id, TypeScheme {
@@ -1436,7 +1435,7 @@ fn compute_type_scheme_of_item<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
         hir::ItemFn(ref decl, unsafety, _, abi, ref generics, _) => {
             let ty_generics = ty_generics_for_fn(ccx, generics, &ty::Generics::empty());
             let tofd = astconv::ty_of_bare_fn(&ccx.icx(generics), unsafety, abi, &decl);
-            let ty = tcx.mk_fn(Some(ccx.tcx.map.local_def_id(it.id)), tcx.mk_bare_fn(tofd));
+            let ty = tcx.mk_fn_def(ccx.tcx.map.local_def_id(it.id), tofd);
             ty::TypeScheme { ty: ty, generics: ty_generics }
         }
         hir::ItemTy(ref t, ref generics) => {
@@ -1556,7 +1555,9 @@ fn compute_type_scheme_of_foreign_item<'a, 'tcx>(
 {
     match it.node {
         hir::ForeignItemFn(ref fn_decl, ref generics) => {
-            compute_type_scheme_of_foreign_fn_decl(ccx, fn_decl, generics, abi)
+            compute_type_scheme_of_foreign_fn_decl(
+                ccx, ccx.tcx.map.local_def_id(it.id),
+                fn_decl, generics, abi)
         }
         hir::ForeignItemStatic(ref t, _) => {
             ty::TypeScheme {
@@ -2107,6 +2108,7 @@ fn conv_param_bounds<'a,'tcx>(astconv: &AstConv<'tcx>,
 
 fn compute_type_scheme_of_foreign_fn_decl<'a, 'tcx>(
     ccx: &CrateCtxt<'a, 'tcx>,
+    id: DefId,
     decl: &hir::FnDecl,
     ast_generics: &hir::Generics,
     abi: abi::Abi)
@@ -2140,14 +2142,13 @@ fn compute_type_scheme_of_foreign_fn_decl<'a, 'tcx>(
             ty::FnDiverging
     };
 
-    let t_fn = ccx.tcx.mk_fn(None,
-        ccx.tcx.mk_bare_fn(ty::BareFnTy {
-            abi: abi,
-            unsafety: hir::Unsafety::Unsafe,
-            sig: ty::Binder(ty::FnSig {inputs: input_tys,
-                                       output: output,
-                                       variadic: decl.variadic}),
-        }));
+    let t_fn = ccx.tcx.mk_fn_def(id, ty::BareFnTy {
+        abi: abi,
+        unsafety: hir::Unsafety::Unsafe,
+        sig: ty::Binder(ty::FnSig {inputs: input_tys,
+                                    output: output,
+                                    variadic: decl.variadic}),
+    });
 
     ty::TypeScheme {
         generics: ty_generics,

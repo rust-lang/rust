@@ -568,11 +568,17 @@ pub fn super_relate_tys<'a,'tcx:'a,R>(relation: &mut R,
             }
         }
 
-        (&ty::TyBareFn(a_opt_def_id, a_fty), &ty::TyBareFn(b_opt_def_id, b_fty))
-            if a_opt_def_id == b_opt_def_id =>
+        (&ty::TyFnDef(a_def_id, a_fty), &ty::TyFnDef(b_def_id, b_fty))
+            if a_def_id == b_def_id =>
         {
             let fty = try!(relation.relate(a_fty, b_fty));
-            Ok(tcx.mk_fn(a_opt_def_id, tcx.mk_bare_fn(fty)))
+            Ok(tcx.mk_fn_def(a_def_id, fty))
+        }
+
+        (&ty::TyFnPtr(a_fty), &ty::TyFnPtr(b_fty)) =>
+        {
+            let fty = try!(relation.relate(a_fty, b_fty));
+            Ok(tcx.mk_fn_ptr(fty))
         }
 
         (&ty::TyProjection(ref a_data), &ty::TyProjection(ref b_data)) =>

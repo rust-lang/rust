@@ -22,7 +22,7 @@ fn main() {
         let x: unsafe extern "C" fn(f: isize, x: u8) = foo;
         //~^ ERROR: mismatched types
         //~| expected `unsafe extern "C" fn(isize, u8)`
-        //~| found `unsafe extern "C" fn(isize, u8, ...)`
+        //~| found `unsafe extern "C" fn(isize, u8, ...) {foo}`
         //~| expected non-variadic fn
         //~| found variadic function
 

@@ -600,13 +600,14 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                                               def_id: DefId)
                                               -> bool {
             if !match ccx.tcx().lookup_item_type(def_id).ty.sty {
-                ty::TyBareFn(Some(def_id), _) => {
-                    // Some constructors also have type TyBareFn but they are
+                ty::TyFnDef(def_id, _) => {
+                    // Some constructors also have type TyFnDef but they are
                     // always instantiated inline and don't result in
-                    // translation item.
+                    // translation item. Same for FFI functions.
                     match ccx.tcx().map.get_if_local(def_id) {
                         Some(hir_map::NodeVariant(_))    |
-                        Some(hir_map::NodeStructCtor(_)) => false,
+                        Some(hir_map::NodeStructCtor(_)) |
+                        Some(hir_map::NodeForeignItem(_)) => false,
                         Some(_) => true,
                         None => {
                             ccx.sess().cstore.variant_kind(def_id).is_none()
@@ -697,17 +698,18 @@ fn find_drop_glue_neighbors<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     // Finally add the types of nested values
     match ty.sty {
-        ty::TyBool       |
-        ty::TyChar       |
-        ty::TyInt(_)     |
-        ty::TyUint(_)    |
-        ty::TyStr        |
-        ty::TyFloat(_)   |
-        ty::TyRawPtr(_)  |
-        ty::TyRef(..)    |
-        ty::TyBareFn(..) |
-        ty::TySlice(_)   |
-        ty::TyTrait(_)   => {
+        ty::TyBool      |
+        ty::TyChar      |
+        ty::TyInt(_)    |
+        ty::TyUint(_)   |
+        ty::TyStr       |
+        ty::TyFloat(_)  |
+        ty::TyRawPtr(_) |
+        ty::TyRef(..)   |
+        ty::TyFnDef(..) |
+        ty::TyFnPtr(_)  |
+        ty::TySlice(_)  |
+        ty::TyTrait(_)  => {
             /* nothing to do */
         }
         ty::TyStruct(ref adt_def, substs) |
@@ -1289,7 +1291,8 @@ pub fn push_unique_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                              &trait_data.bounds.projection_bounds,
                              output);
         },
-        ty::TyBareFn(_, &ty::BareFnTy{ unsafety, abi, ref sig } ) => {
+        ty::TyFnDef(_, &ty::BareFnTy{ unsafety, abi, ref sig } ) |
+        ty::TyFnPtr(&ty::BareFnTy{ unsafety, abi, ref sig } ) => {
             if unsafety == hir::Unsafety::Unsafe {
                 output.push_str("unsafe ");
             }

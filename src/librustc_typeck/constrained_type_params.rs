@@ -72,7 +72,8 @@ fn parameters_for_type_shallow<'tcx>(ty: Ty<'tcx>) -> Vec<Parameter> {
             parameters_for_regions_in_substs(&pi.trait_ref.substs),
         ty::TyBool | ty::TyChar | ty::TyInt(..) | ty::TyUint(..) |
         ty::TyFloat(..) | ty::TyBox(..) | ty::TyStr |
-        ty::TyArray(..) | ty::TySlice(..) | ty::TyBareFn(..) |
+        ty::TyArray(..) | ty::TySlice(..) |
+        ty::TyFnDef(..) | ty::TyFnPtr(_) |
         ty::TyTuple(..) | ty::TyRawPtr(..) |
         ty::TyInfer(..) | ty::TyClosure(..) | ty::TyError =>
             vec![]

@@ -182,7 +182,8 @@ fn compute_components<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
         ty::TyRawPtr(..) |      // ...
         ty::TyRef(..) |         // OutlivesReference
         ty::TyTuple(..) |       // ...
-        ty::TyBareFn(..) |      // OutlivesFunction (*)
+        ty::TyFnDef(..) |       // OutlivesFunction (*)
+        ty::TyFnPtr(_) |        // OutlivesFunction (*)
         ty::TyTrait(..) |       // OutlivesObject, OutlivesFragment (*)
         ty::TyError => {
             // (*) Bare functions and traits are both binders. In the

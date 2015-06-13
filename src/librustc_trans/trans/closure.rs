@@ -355,28 +355,31 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     // Make a version with the type of by-ref closure.
     let ty::ClosureTy { unsafety, abi, mut sig } = infcx.closure_type(closure_def_id, &substs);
     sig.0.inputs.insert(0, ref_closure_ty); // sig has no self type as of yet
-    let llref_bare_fn_ty = tcx.mk_bare_fn(ty::BareFnTy { unsafety: unsafety,
-                                                               abi: abi,
-                                                               sig: sig.clone() });
-    let llref_fn_ty = tcx.mk_fn(None, llref_bare_fn_ty);
+    let llref_fn_ty = tcx.mk_fn_ptr(ty::BareFnTy {
+        unsafety: unsafety,
+        abi: abi,
+        sig: sig.clone()
+    });
     debug!("trans_fn_once_adapter_shim: llref_fn_ty={:?}",
            llref_fn_ty);
+
+    let ret_ty = tcx.erase_late_bound_regions(&sig.output());
+    let ret_ty = infer::normalize_associated_type(ccx.tcx(), &ret_ty);
 
     // Make a version of the closure type with the same arguments, but
     // with argument #0 being by value.
     assert_eq!(abi, RustCall);
     sig.0.inputs[0] = closure_ty;
-    let llonce_bare_fn_ty = tcx.mk_bare_fn(ty::BareFnTy { unsafety: unsafety,
-                                                                abi: abi,
-                                                                sig: sig });
-    let llonce_fn_ty = tcx.mk_fn(None, llonce_bare_fn_ty);
+    let llonce_fn_ty = tcx.mk_fn_ptr(ty::BareFnTy {
+        unsafety: unsafety,
+        abi: abi,
+        sig: sig
+    });
 
     // Create the by-value helper.
     let function_name = link::mangle_internal_name_by_type_and_seq(ccx, llonce_fn_ty, "once_shim");
     let lloncefn = declare::define_internal_rust_fn(ccx, &function_name,
                                                     llonce_fn_ty);
-    let sig = tcx.erase_late_bound_regions(&llonce_bare_fn_ty.sig);
-    let sig = infer::normalize_associated_type(ccx.tcx(), &sig);
 
     let (block_arena, fcx): (TypedArena<_>, FunctionContext);
     block_arena = TypedArena::new();
@@ -384,11 +387,11 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
                       lloncefn,
                       ast::DUMMY_NODE_ID,
                       false,
-                      sig.output,
+                      ret_ty,
                       substs.func_substs,
                       None,
                       &block_arena);
-    let mut bcx = init_function(&fcx, false, sig.output);
+    let mut bcx = init_function(&fcx, false, ret_ty);
 
     let llargs = get_params(fcx.llfn);
 
@@ -408,7 +411,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
 
     let dest =
         fcx.llretslotptr.get().map(
-            |_| expr::SaveIn(fcx.get_ret_slot(bcx, sig.output, "ret_slot")));
+            |_| expr::SaveIn(fcx.get_ret_slot(bcx, ret_ty, "ret_slot")));
 
     let callee_data = TraitItem(MethodData { llfn: llreffn,
                                              llself: env_datum.val });
@@ -423,7 +426,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
 
     fcx.pop_and_trans_custom_cleanup_scope(bcx, self_scope);
 
-    finish_fn(&fcx, bcx, sig.output, DebugLoc::None);
+    finish_fn(&fcx, bcx, ret_ty, DebugLoc::None);
 
     lloncefn
 }

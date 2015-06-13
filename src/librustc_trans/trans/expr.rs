@@ -2525,7 +2525,7 @@ fn expr_kind(tcx: &TyCtxt, expr: &hir::Expr) -> ExprKind {
         hir::ExprPath(..) => {
             match tcx.resolve_expr(expr) {
                 Def::Struct(..) | Def::Variant(..) => {
-                    if let ty::TyBareFn(..) = tcx.node_id_to_type(expr.id).sty {
+                    if let ty::TyFnDef(..) = tcx.node_id_to_type(expr.id).sty {
                         // ctor function
                         ExprKind::RvalueDatum
                     } else {

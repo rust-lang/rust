@@ -434,7 +434,7 @@ fn check_bare_fn<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                            param_env: ty::ParameterEnvironment<'a, 'tcx>)
 {
     match raw_fty.sty {
-        ty::TyBareFn(_, ref fn_ty) => {
+        ty::TyFnDef(_, ref fn_ty) => {
             let tables = RefCell::new(ty::Tables::empty());
             let inh = Inherited::new(ccx.tcx, &tables, param_env);
 
@@ -2340,7 +2340,7 @@ fn check_method_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         ty::FnConverging(fcx.tcx().types.err)
     } else {
         match method_fn_ty.sty {
-            ty::TyBareFn(_, ref fty) => {
+            ty::TyFnPtr(ref fty) => {
                 // HACK(eddyb) ignore self in the definition (see above).
                 let expected_arg_tys = expected_types_for_fn_args(fcx,
                                                                   sp,
@@ -2619,7 +2619,7 @@ fn check_lit<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                     ty::TyInt(_) | ty::TyUint(_) => Some(ty),
                     ty::TyChar => Some(tcx.types.u8),
                     ty::TyRawPtr(..) => Some(tcx.types.usize),
-                    ty::TyBareFn(..) => Some(tcx.types.usize),
+                    ty::TyFnDef(..) | ty::TyFnPtr(_) => Some(tcx.types.usize),
                     _ => None
                 }
             });

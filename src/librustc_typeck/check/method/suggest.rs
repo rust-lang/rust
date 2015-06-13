@@ -101,7 +101,7 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                     match field_ty.sty {
                         // Not all of these (e.g. unsafe fns) implement FnOnce
                         // so we look for these beforehand
-                        ty::TyClosure(..) | ty::TyBareFn(..) => {
+                        ty::TyClosure(..) | ty::TyFnDef(..) | ty::TyFnPtr(_) => {
                             span_stored_function!();
                         }
                         // If it's not a simple function, look for things which implement FnOnce

@@ -1277,7 +1277,7 @@ pub fn inlined_variant_def<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     debug!("inlined_variant_def: ctor_ty={:?} inlined_vid={:?}", ctor_ty,
            inlined_vid);
     let adt_def = match ctor_ty.sty {
-        ty::TyBareFn(_, &ty::BareFnTy { sig: ty::Binder(ty::FnSig {
+        ty::TyFnDef(_, &ty::BareFnTy { sig: ty::Binder(ty::FnSig {
             output: ty::FnConverging(ty), ..
         }), ..}) => ty,
         _ => ctor_ty
