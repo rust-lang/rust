@@ -18,4 +18,7 @@ fn altlit(f: isize) -> isize {
     }
 }
 
-pub fn main() { assert!((altlit(10) == 20)); assert!((altlit(11) == 22)); }
+pub fn main() {
+    assert_eq!(altlit(10), 20);
+    assert_eq!(altlit(11), 22);
+}

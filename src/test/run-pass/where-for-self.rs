@@ -55,6 +55,6 @@ fn main() {
     foo1(&x);
     foo2(&x);
     unsafe {
-        assert!(COUNT == 12);
+        assert_eq!(COUNT, 12);
     }
 }

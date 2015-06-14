@@ -35,7 +35,7 @@ pub fn main() {
     let r = unsafe {
         (&*z).foo()
     };
-    assert!(r == 42);
+    assert_eq!(r, 42);
 
     // raw DST struct
     let p = Foo {f: A { f: 42 }};
@@ -43,33 +43,33 @@ pub fn main() {
     let r = unsafe {
         (&*o).f.foo()
     };
-    assert!(r == 42);
+    assert_eq!(r, 42);
 
     // raw slice
     let a: *const [_] = &[1, 2, 3];
     unsafe {
         let b = (*a)[2];
-        assert!(b == 3);
+        assert_eq!(b, 3);
         let len = (*a).len();
-        assert!(len == 3);
+        assert_eq!(len, 3);
     }
 
     // raw slice with explicit cast
     let a = &[1, 2, 3] as *const [i32];
     unsafe {
         let b = (*a)[2];
-        assert!(b == 3);
+        assert_eq!(b, 3);
         let len = (*a).len();
-        assert!(len == 3);
+        assert_eq!(len, 3);
     }
 
     // raw DST struct with slice
     let c: *const Foo<[_]> = &Foo {f: [1, 2, 3]};
     unsafe {
         let b = (&*c).f[0];
-        assert!(b == 1);
+        assert_eq!(b, 1);
         let len = (&*c).f.len();
-        assert!(len == 3);
+        assert_eq!(len, 3);
     }
 
     // all of the above with *mut
@@ -78,36 +78,36 @@ pub fn main() {
     let r = unsafe {
         (&*z).foo()
     };
-    assert!(r == 42);
+    assert_eq!(r, 42);
 
     let mut p = Foo {f: A { f: 42 }};
     let o: *mut Foo<Trait> = &mut p;
     let r = unsafe {
         (&*o).f.foo()
     };
-    assert!(r == 42);
+    assert_eq!(r, 42);
 
     let a: *mut [_] = &mut [1, 2, 3];
     unsafe {
         let b = (*a)[2];
-        assert!(b == 3);
+        assert_eq!(b, 3);
         let len = (*a).len();
-        assert!(len == 3);
+        assert_eq!(len, 3);
     }
 
     let a = &mut [1, 2, 3] as *mut [i32];
     unsafe {
         let b = (*a)[2];
-        assert!(b == 3);
+        assert_eq!(b, 3);
         let len = (*a).len();
-        assert!(len == 3);
+        assert_eq!(len, 3);
     }
 
     let c: *mut Foo<[_]> = &mut Foo {f: [1, 2, 3]};
     unsafe {
         let b = (&*c).f[0];
-        assert!(b == 1);
+        assert_eq!(b, 1);
         let len = (&*c).f.len();
-        assert!(len == 3);
+        assert_eq!(len, 3);
     }
 }

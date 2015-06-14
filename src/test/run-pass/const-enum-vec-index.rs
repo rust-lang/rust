@@ -23,7 +23,7 @@ pub fn main() {
         _ => panic!()
     }
     match C1 {
-        E::V1(n) => assert!(n == 0xDEADBEE),
+        E::V1(n) => assert_eq!(n, 0xDEADBEE),
         _ => panic!()
     }
 
@@ -32,7 +32,7 @@ pub fn main() {
         _ => panic!()
     }
     match D1 {
-        E::V1(n) => assert!(n == 0xDEADBEE),
+        E::V1(n) => assert_eq!(n, 0xDEADBEE),
         _ => panic!()
     }
 }

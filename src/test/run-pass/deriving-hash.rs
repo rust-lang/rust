@@ -35,6 +35,6 @@ fn main() {
         name: "Bob".to_string(),
         phone: 555_666_7777
     };
-    assert!(hash(&person1) == hash(&person1));
+    assert_eq!(hash(&person1), hash(&person1));
     assert!(hash(&person1) != hash(&person2));
 }

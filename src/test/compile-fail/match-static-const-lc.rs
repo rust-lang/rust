@@ -22,7 +22,7 @@ fn f() {
         //~^ ERROR constant in pattern `a` should have an upper case name such as `A`
         (x, y) => 1 + x + y,
     };
-    assert!(r == 1);
+    assert_eq!(r, 1);
 }
 
 mod m {
@@ -37,7 +37,7 @@ fn g() {
         //~^ ERROR constant in pattern `aha` should have an upper case name such as `AHA`
         (x, y)   => 1 + x + y,
     };
-    assert!(r == 1);
+    assert_eq!(r, 1);
 }
 
 mod n {
@@ -51,7 +51,7 @@ fn h() {
 //~^ ERROR constant in pattern `not_okay` should have an upper case name such as `NOT_OKAY`
         (x, y)   => 1 + x + y,
     };
-    assert!(r == 1);
+    assert_eq!(r, 1);
 }
 
 fn main () {

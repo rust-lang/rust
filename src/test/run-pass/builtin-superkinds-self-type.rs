@@ -25,5 +25,5 @@ impl <T: Send + 'static> Foo for T { }
 pub fn main() {
     let (tx, rx) = channel();
     1193182.foo(tx);
-    assert!(rx.recv().unwrap() == 1193182);
+    assert_eq!(rx.recv().unwrap(), 1193182);
 }

@@ -18,20 +18,20 @@ struct Fat<T: ?Sized> {
 // x is a fat pointer
 fn foo(x: &Fat<[isize]>) {
     let y = &x.ptr;
-    assert!(x.ptr.len() == 3);
-    assert!(y[0] == 1);
-    assert!(x.ptr[1] == 2);
+    assert_eq!(x.ptr.len(), 3);
+    assert_eq!(y[0], 1);
+    assert_eq!(x.ptr[1], 2);
 }
 
 fn foo2<T:ToBar>(x: &Fat<[T]>) {
     let y = &x.ptr;
     let bar = Bar;
-    assert!(x.ptr.len() == 3);
-    assert!(y[0].to_bar() == bar);
-    assert!(x.ptr[1].to_bar() == bar);
+    assert_eq!(x.ptr.len(), 3);
+    assert_eq!(y[0].to_bar(), bar);
+    assert_eq!(x.ptr[1].to_bar(), bar);
 }
 
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 struct Bar;
 
 trait ToBar {
@@ -73,9 +73,9 @@ pub fn main() {
     // Assignment.
     let f5: &mut Fat<[isize]> = &mut Fat { ptr: [1, 2, 3] };
     f5.ptr[1] = 34;
-    assert!(f5.ptr[0] == 1);
-    assert!(f5.ptr[1] == 34);
-    assert!(f5.ptr[2] == 3);
+    assert_eq!(f5.ptr[0], 1);
+    assert_eq!(f5.ptr[1], 34);
+    assert_eq!(f5.ptr[2], 3);
 
     // Zero size vec.
     let f5: &Fat<[isize]> = &Fat { ptr: [] };

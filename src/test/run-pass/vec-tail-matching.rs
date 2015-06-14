@@ -24,10 +24,10 @@ pub fn main() {
     ];
     match x {
         [ref first, tail..] => {
-            assert!(first.string == "foo".to_string());
+            assert_eq!(first.string, "foo".to_string());
             assert_eq!(tail.len(), 2);
-            assert!(tail[0].string == "bar".to_string());
-            assert!(tail[1].string == "baz".to_string());
+            assert_eq!(tail[0].string, "bar".to_string());
+            assert_eq!(tail[1].string, "baz".to_string());
 
             match tail {
                 [Foo { .. }, _, Foo { .. }, _tail..] => {

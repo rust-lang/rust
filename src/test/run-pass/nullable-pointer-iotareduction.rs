@@ -40,7 +40,7 @@ impl<T> E<T> {
 
 macro_rules! check_option {
     ($e:expr, $T:ty) => {{
-        check_option!($e, $T, |ptr| assert!(*ptr == $e));
+        check_option!($e, $T, |ptr| assert_eq!(*ptr, $e));
     }};
     ($e:expr, $T:ty, |$v:ident| $chk:expr) => {{
         assert!(option::Option::None::<$T>.is_none());
@@ -53,7 +53,7 @@ macro_rules! check_option {
 
 macro_rules! check_fancy {
     ($e:expr, $T:ty) => {{
-        check_fancy!($e, $T, |ptr| assert!(*ptr == $e));
+        check_fancy!($e, $T, |ptr| assert_eq!(*ptr, $e));
     }};
     ($e:expr, $T:ty, |$v:ident| $chk:expr) => {{
         assert!(E::Nothing::<$T>((), ((), ()), [23; 0]).is_none());
@@ -81,6 +81,6 @@ pub fn main() {
     check_type!(vec!(20, 22), Vec<isize> );
     let mint: usize = unsafe { mem::transmute(main) };
     check_type!(main, fn(), |pthing| {
-        assert!(mint == unsafe { mem::transmute(*pthing) })
+        assert_eq!(mint, unsafe { mem::transmute(*pthing) })
     });
 }

@@ -18,5 +18,5 @@ pub fn main() {
         }
         y += *i;
     }
-    assert!(y == 11);
+    assert_eq!(y, 11);
 }

@@ -20,5 +20,5 @@ pub fn main() {
         }
         q += *i + p;
     }
-    assert!(q == 1010100);
+    assert_eq!(q, 1010100);
 }

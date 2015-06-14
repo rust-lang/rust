@@ -76,5 +76,5 @@ fn main() {
 
     x.baz();
 
-    unsafe { assert!(COUNT == 2*2*3*3*5*5*7*7*11*11*13*13*17); }
+    unsafe { assert_eq!(COUNT, 2*2*3*3*5*5*7*7*11*11*13*13*17); }
 }

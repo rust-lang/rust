@@ -31,5 +31,5 @@ fn main() {
 
     x.run_trait();
 
-    assert!(method_self_arg2::get_count() == 2*2*3*3*5*5*7*7*11*11*13*13*17);
+    assert_eq!(method_self_arg2::get_count(), 2*2*3*3*5*5*7*7*11*11*13*13*17);
 }

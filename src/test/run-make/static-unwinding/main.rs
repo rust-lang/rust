@@ -28,7 +28,7 @@ fn main() {
     }).join().err().unwrap();
 
     unsafe {
-        assert!(lib::statik == 1);
-        assert!(statik == 1);
+        assert_eq!(lib::statik, 1);
+        assert_eq!(statik, 1);
     }
 }

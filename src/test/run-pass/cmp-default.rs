@@ -13,6 +13,7 @@ use std::cmp::Ordering;
 
 // Test default methods in PartialOrd and PartialEq
 //
+#[derive(Debug)]
 struct Fool(bool);
 
 impl PartialEq for Fool {
@@ -74,8 +75,8 @@ pub fn main() {
     assert!(RevInt(1) >= RevInt(2));
     assert!(RevInt(1) >= RevInt(1));
 
-    assert!(Fool(true)  == Fool(false));
+    assert_eq!(Fool(true), Fool(false));
     assert!(Fool(true)  != Fool(true));
     assert!(Fool(false) != Fool(false));
-    assert!(Fool(false) == Fool(true));
+    assert_eq!(Fool(false), Fool(true));
 }

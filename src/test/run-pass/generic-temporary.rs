@@ -11,7 +11,7 @@
 
 fn mk() -> isize { return 1; }
 
-fn chk(a: isize) { println!("{}", a); assert!((a == 1)); }
+fn chk(a: isize) { println!("{}", a); assert_eq!(a, 1); }
 
 fn apply<T>(produce: fn() -> T,
             consume: fn(T)) {

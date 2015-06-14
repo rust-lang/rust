@@ -19,7 +19,9 @@ pub fn main() {
     let x_internal = &mut *x;
     match *x_internal {
       Pair {a: ref mut a, b: ref mut _b} => {
-        assert!(**a == 10); *a = box 30; assert!(**a == 30);
+        assert_eq!(**a, 10);
+        *a = box 30;
+        assert_eq!(**a, 30);
       }
     }
 }

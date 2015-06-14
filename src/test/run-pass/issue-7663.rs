@@ -19,7 +19,7 @@ mod test1 {
     pub mod baz {
         use test1::bar::p;
 
-        pub fn my_main() { assert!(p() == 2); }
+        pub fn my_main() { assert_eq!(p(), 2); }
     }
 }
 
@@ -31,7 +31,7 @@ mod test2 {
     pub mod baz {
         use test2::bar::p;
 
-        pub fn my_main() { assert!(p() == 2); }
+        pub fn my_main() { assert_eq!(p(), 2); }
     }
 }
 

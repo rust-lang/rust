@@ -18,7 +18,7 @@ fn test_basic() { let rs: bool = { true }; assert!((rs)); }
 
 struct RS { v1: isize, v2: isize }
 
-fn test_rec() { let rs = { RS {v1: 10, v2: 20} }; assert!((rs.v2 == 20)); }
+fn test_rec() { let rs = { RS {v1: 10, v2: 20} }; assert_eq!(rs.v2, 20); }
 
 fn test_filled_with_stuff() {
     let rs = { let mut a = 0; while a < 10 { a += 1; } a };

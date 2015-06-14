@@ -17,5 +17,5 @@ use std::hash::{SipHasher, hash};
 struct Empty;
 
 pub fn main() {
-    assert!(hash::<_, SipHasher>(&Empty) == hash::<_, SipHasher>(&Empty));
+    assert_eq!(hash::<_, SipHasher>(&Empty), hash::<_, SipHasher>(&Empty));
 }

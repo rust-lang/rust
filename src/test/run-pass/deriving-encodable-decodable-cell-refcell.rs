@@ -38,6 +38,6 @@ fn main() {
     };
     let s = json::encode(&obj).unwrap();
     let obj2: B = json::decode(&s).unwrap();
-    assert!(obj.foo.get() == obj2.foo.get());
-    assert!(obj.bar.borrow().baz == obj2.bar.borrow().baz);
+    assert_eq!(obj.foo.get(), obj2.foo.get());
+    assert_eq!(obj.bar.borrow().baz, obj2.bar.borrow().baz);
 }
