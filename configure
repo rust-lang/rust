@@ -521,6 +521,7 @@ fi
 DEFAULT_BUILD="${CFG_CPUTYPE}-${CFG_OSTYPE}"
 
 CFG_SRC_DIR="$(abs_path $(dirname $0))/"
+CFG_SRC_DIR_RELATIVE="$(dirname $0)/"
 CFG_BUILD_DIR="$(pwd)/"
 CFG_SELF="$0"
 CFG_CONFIGURE_ARGS="$@"
@@ -1558,6 +1559,7 @@ done
 step_msg "writing configuration"
 
 putvar CFG_SRC_DIR
+putvar CFG_SRC_DIR_RELATIVE
 putvar CFG_BUILD_DIR
 putvar CFG_OSTYPE
 putvar CFG_CPUTYPE

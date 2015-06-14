@@ -34,4 +34,4 @@ Makefile config.mk: config.stamp
 
 config.stamp: $(S)configure $(S)Makefile.in $(S)src/snapshots.txt
 	@$(call E, cfg: reconfiguring)
-	$(S)configure $(CFG_CONFIGURE_ARGS)
+	$(SREL)configure $(CFG_CONFIGURE_ARGS)
