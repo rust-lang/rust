@@ -146,7 +146,10 @@ pub use funcs::bsd43::*;
 #[link(name = "m")]
 extern {}
 
-#[cfg(all(target_env = "musl", not(test)))]
+// When compiling rust with musl, statically include libc.a in liblibc.rlib.
+// A cargo build of the libc crate will therefore automatically pick up the
+// libc.a symbols because liblibc is transitively linked to by the stdlib.
+#[cfg(all(target_env = "musl", not(feature = "cargo-build"), not(test)))]
 #[link(name = "c", kind = "static")]
 extern {}
 
