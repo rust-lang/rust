@@ -20,3 +20,4 @@ print-%:
 	@echo $*=$($*)
 
 S := $(CFG_SRC_DIR)
+SREL := $(CFG_SRC_DIR_RELATIVE)
