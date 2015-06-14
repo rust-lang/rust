@@ -1042,10 +1042,12 @@ impl<'a> MethodDef<'a> {
     /// variants where all of the variants match, and one catch-all for
     /// when one does not match.
 
+    /// As an optimization we generate code which checks whether all variants
+    /// match first which makes llvm see that C-like enums can be compiled into
+    /// a simple equality check (for PartialEq).
+
     /// The catch-all handler is provided access the variant index values
-    /// for each of the self-args, carried in precomputed variables. (Nota
-    /// bene: the variant index values are not necessarily the
-    /// discriminant values.  See issue #15523.)
+    /// for each of the self-args, carried in precomputed variables.
 
     /// ```{.text}
     /// let __self0_vi = unsafe {
