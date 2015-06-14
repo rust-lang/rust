@@ -89,7 +89,6 @@ pub enum Row {
     ModRef,
     VarRef,
     TypeRef,
-    StructRef,
     FnRef,
 }
 
@@ -150,9 +149,6 @@ impl<'a> FmtStrs<'a> {
             TypeRef => ("type_ref",
                         vec!("refid","refidcrate","qualname","scopeid"),
                         true, true),
-            StructRef => ("struct_ref",
-                          vec!("refid","refidcrate","qualname","scopeid"),
-                          true, true),
             FnRef => ("fn_ref", vec!("refid","refidcrate","qualname","scopeid"), true, true)
         }
     }
