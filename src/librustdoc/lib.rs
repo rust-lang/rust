@@ -86,6 +86,7 @@ pub mod html {
     pub mod render;
     pub mod toc;
 }
+pub mod ascii;
 pub mod markdown;
 pub mod passes;
 pub mod plugins;
@@ -143,7 +144,7 @@ pub fn opts() -> Vec<getopts::OptGroup> {
         optopt("r", "input-format", "the input type of the specified file",
                "[rust|json]"),
         optopt("w", "output-format", "the output type to write",
-               "[html|json]"),
+               "[html|json|ascii]"),
         optopt("o", "output", "where to place the output", "PATH"),
         optopt("", "crate-name", "specify the name of this crate", "NAME"),
         optmulti("L", "library-path", "directory to add to crate search path",
@@ -295,6 +296,14 @@ pub fn main_args(args: &[String]) -> isize {
                               output.unwrap_or(PathBuf::from("doc.json"))) {
                 Ok(()) => {}
                 Err(e) => panic!("failed to write json: {}", e),
+            }
+        }
+        Some("ascii") => {
+            match ascii::render::run(krate, &external_html,
+                                    output.unwrap_or(PathBuf::from("doc")),
+                                    passes.into_iter().collect()) {
+                Ok(()) => {}
+                Err(e) => panic!("failed to generate documentation: {}", e),
             }
         }
         Some(s) => {
