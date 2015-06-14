@@ -54,6 +54,15 @@ use super::recorder::{Recorder, FmtStrs};
 
 use util::ppaux;
 
+macro_rules! down_cast_data {
+    ($id:ident, $kind:ident, $this:ident, $sp:expr) => {
+        let $id = if let super::Data::$kind(data) = $id {
+            data
+        } else {
+            $this.sess.span_bug($sp, &format!("unexpected data kind: {:?}", $id));
+        };
+    };
+}
 
 pub struct DumpCsvVisitor<'l, 'tcx: 'l> {
     save_ctxt: SaveContext<'l, 'tcx>,
@@ -249,7 +258,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
         match def {
             def::DefMod(_) |
             def::DefForeignMod(_) => Some(recorder::ModRef),
-            def::DefStruct(_) => Some(recorder::StructRef),
+            def::DefStruct(_) => Some(recorder::TypeRef),
             def::DefTy(..) |
             def::DefAssociatedTy(..) |
             def::DefTrait(_) => Some(recorder::TypeRef),
@@ -419,48 +428,31 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
                                     id);
     }
 
-    fn process_trait_ref(&mut self,
-                         trait_ref: &ast::TraitRef) {
-        match self.lookup_type_ref(trait_ref.ref_id) {
-            Some(id) => {
-                let sub_span = self.span.sub_span_for_type_name(trait_ref.path.span);
-                self.fmt.ref_str(recorder::TypeRef,
-                                 trait_ref.path.span,
-                                 sub_span,
-                                 id,
-                                 self.cur_scope);
-                visit::walk_path(self, &trait_ref.path);
-            },
-            None => ()
+    fn process_trait_ref(&mut self, trait_ref: &ast::TraitRef) {
+        let trait_ref_data = self.save_ctxt.get_trait_ref_data(trait_ref, self.cur_scope);
+        if let Some(trait_ref_data) = trait_ref_data {
+            self.fmt.ref_str(recorder::TypeRef,
+                             trait_ref.path.span,
+                             Some(trait_ref_data.span),
+                             trait_ref_data.ref_id,
+                             trait_ref_data.scope);
+            visit::walk_path(self, &trait_ref.path);
         }
     }
 
     fn process_struct_field_def(&mut self,
                                 field: &ast::StructField,
-                                qualname: &str,
-                                scope_id: NodeId) {
-        match field.node.kind {
-            ast::NamedField(ident, _) => {
-                let name = get_ident(ident);
-                let qualname = format!("{}::{}", qualname, name);
-                let typ =
-                    ppaux::ty_to_string(
-                        &self.analysis.ty_cx,
-                        *self.analysis.ty_cx.node_types().get(&field.node.id).unwrap());
-                match self.span.sub_span_before_token(field.span, token::Colon) {
-                    Some(sub_span) => self.fmt.field_str(field.span,
-                                                         Some(sub_span),
-                                                         field.node.id,
-                                                         &name,
-                                                         &qualname,
-                                                         &typ,
-                                                         scope_id),
-                    None => self.sess.span_bug(field.span,
-                                               &format!("Could not find sub-span for field {}",
-                                                       qualname)),
-                }
-            },
-            _ => (),
+                                parent_id: NodeId) {
+        let field_data = self.save_ctxt.get_field_data(field, parent_id);
+        if let Some(field_data) = field_data {
+            down_cast_data!(field_data, VariableData, self, field.span);
+            self.fmt.field_str(field.span,
+                               Some(field_data.span),
+                               field_data.id,
+                               &field_data.name,
+                               &field_data.qualname,
+                               &field_data.type_value,
+                               field_data.scope);
         }
     }
 
@@ -497,19 +489,16 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
                   ty_params: &ast::Generics,
                   body: &ast::Block) {
         let fn_data = self.save_ctxt.get_item_data(item);
-        if let super::Data::FunctionData(fn_data) = fn_data {
-            self.fmt.fn_str(item.span,
-                            Some(fn_data.span),
-                            fn_data.id,
-                            &fn_data.qualname,
-                            fn_data.scope);
+        down_cast_data!(fn_data, FunctionData, self, item.span);
+        self.fmt.fn_str(item.span,
+                        Some(fn_data.span),
+                        fn_data.id,
+                        &fn_data.qualname,
+                        fn_data.scope);
 
 
-            self.process_formals(&decl.inputs, &fn_data.qualname);
-            self.process_generic_params(ty_params, item.span, &fn_data.qualname, item.id);
-        } else {
-            self.sess.span_bug(item.span, "expected FunctionData");
-        }
+        self.process_formals(&decl.inputs, &fn_data.qualname);
+        self.process_generic_params(ty_params, item.span, &fn_data.qualname, item.id);
 
         for arg in &decl.inputs {
             self.visit_ty(&arg.ty);
@@ -528,18 +517,15 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
                                     expr: &ast::Expr)
     {
         let var_data = self.save_ctxt.get_item_data(item);
-        if let super::Data::VariableData(var_data) = var_data {
-            self.fmt.static_str(item.span,
-                                Some(var_data.span),
-                                var_data.id,
-                                &var_data.name,
-                                &var_data.qualname,
-                                &var_data.value,
-                                &var_data.type_value,
-                                var_data.scope);
-        } else {
-            self.sess.span_bug(item.span, "expected VariableData");
-        }
+        down_cast_data!(var_data, VariableData, self, item.span);
+        self.fmt.static_str(item.span,
+                            Some(var_data.span),
+                            var_data.id,
+                            &var_data.name,
+                            &var_data.qualname,
+                            &var_data.value,
+                            &var_data.type_value,
+                            var_data.scope);
 
         self.visit_ty(&typ);
         self.visit_expr(expr);
@@ -593,8 +579,8 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
 
         // fields
         for field in &def.fields {
-            self.process_struct_field_def(field, &qualname, item.id);
-            self.visit_ty(&*field.node.ty);
+            self.process_struct_field_def(field, item.id);
+            self.visit_ty(&field.node.ty);
         }
 
         self.process_generic_params(ty_params, item.span, &qualname, item.id);
@@ -605,59 +591,57 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
                     enum_definition: &ast::EnumDef,
                     ty_params: &ast::Generics) {
         let enum_data = self.save_ctxt.get_item_data(item);
-        if let super::Data::EnumData(enum_data) = enum_data {
-            self.fmt.enum_str(item.span,
-                              Some(enum_data.span),
-                              enum_data.id,
-                              &enum_data.qualname,
-                              self.cur_scope,
-                              &enum_data.value);
-            for variant in &enum_definition.variants {
-                let name = &get_ident(variant.node.name);
-                let mut qualname = enum_data.qualname.clone();
-                qualname.push_str("::");
-                qualname.push_str(name);
-                let val = self.span.snippet(variant.span);
-                match variant.node.kind {
-                    ast::TupleVariantKind(ref args) => {
-                        // first ident in span is the variant's name
-                        self.fmt.tuple_variant_str(variant.span,
-                                                   self.span.span_for_first_ident(variant.span),
-                                                   variant.node.id,
-                                                   name,
-                                                   &qualname,
-                                                   &enum_data.qualname,
-                                                   &val,
-                                                   item.id);
-                        for arg in args {
-                            self.visit_ty(&*arg.ty);
-                        }
-                    }
-                    ast::StructVariantKind(ref struct_def) => {
-                        let ctor_id = match struct_def.ctor_id {
-                            Some(node_id) => node_id,
-                            None => -1,
-                        };
-                        self.fmt.struct_variant_str(variant.span,
-                                                    self.span.span_for_first_ident(variant.span),
-                                                    variant.node.id,
-                                                    ctor_id,
-                                                    &qualname,
-                                                    &enum_data.qualname,
-                                                    &val,
-                                                    item.id);
+        down_cast_data!(enum_data, EnumData, self, item.span);
+        self.fmt.enum_str(item.span,
+                          Some(enum_data.span),
+                          enum_data.id,
+                          &enum_data.qualname,
+                          enum_data.scope,
+                          &enum_data.value);
 
-                        for field in &struct_def.fields {
-                            self.process_struct_field_def(field, &qualname, variant.node.id);
-                            self.visit_ty(&*field.node.ty);
-                        }
+        for variant in &enum_definition.variants {
+            let name = &get_ident(variant.node.name);
+            let mut qualname = enum_data.qualname.clone();
+            qualname.push_str("::");
+            qualname.push_str(name);
+            let val = self.span.snippet(variant.span);
+            match variant.node.kind {
+                ast::TupleVariantKind(ref args) => {
+                    // first ident in span is the variant's name
+                    self.fmt.tuple_variant_str(variant.span,
+                                               self.span.span_for_first_ident(variant.span),
+                                               variant.node.id,
+                                               name,
+                                               &qualname,
+                                               &enum_data.qualname,
+                                               &val,
+                                               enum_data.id);
+                    for arg in args {
+                        self.visit_ty(&*arg.ty);
+                    }
+                }
+                ast::StructVariantKind(ref struct_def) => {
+                    let ctor_id = match struct_def.ctor_id {
+                        Some(node_id) => node_id,
+                        None => -1,
+                    };
+                    self.fmt.struct_variant_str(variant.span,
+                                                self.span.span_for_first_ident(variant.span),
+                                                variant.node.id,
+                                                ctor_id,
+                                                &qualname,
+                                                &enum_data.qualname,
+                                                &val,
+                                                enum_data.id);
+
+                    for field in &struct_def.fields {
+                        self.process_struct_field_def(field, variant.node.id);
+                        self.visit_ty(&*field.node.ty);
                     }
                 }
             }
-            self.process_generic_params(ty_params, item.span, &enum_data.qualname, item.id);
-        } else {
-            self.sess.span_bug(item.span, "expected EnumData");
         }
+        self.process_generic_params(ty_params, item.span, &enum_data.qualname, enum_data.id);
     }
 
     fn process_impl(&mut self,
@@ -666,44 +650,35 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
                     trait_ref: &Option<ast::TraitRef>,
                     typ: &ast::Ty,
                     impl_items: &[P<ast::ImplItem>]) {
-        let trait_id = trait_ref.as_ref().and_then(|tr| self.lookup_type_ref(tr.ref_id));
-        match typ.node {
-            // Common case impl for a struct or something basic.
-            ast::TyPath(None, ref path) => {
-                let sub_span = self.span.sub_span_for_type_name(path.span);
-                let self_id = self.lookup_type_ref(typ.id).map(|id| {
-                    self.fmt.ref_str(recorder::TypeRef,
-                                     path.span,
-                                     sub_span,
-                                     id,
-                                     self.cur_scope);
-                    id
-                });
-                self.fmt.impl_str(path.span,
-                                  sub_span,
-                                  item.id,
-                                  self_id,
-                                  trait_id,
-                                  self.cur_scope);
-            },
-            _ => {
-                // Less useful case, impl for a compound type.
-                self.visit_ty(&*typ);
-
-                let sub_span = self.span.sub_span_for_type_name(typ.span);
-                self.fmt.impl_str(typ.span,
-                                  sub_span,
-                                  item.id,
-                                  None,
-                                  trait_id,
-                                  self.cur_scope);
+        let impl_data = self.save_ctxt.get_item_data(item);
+        down_cast_data!(impl_data, ImplData, self, item.span);
+        match impl_data.self_ref {
+            Some(ref self_ref) => {
+                self.fmt.ref_str(recorder::TypeRef,
+                                 item.span,
+                                 Some(self_ref.span),
+                                 self_ref.ref_id,
+                                 self_ref.scope);
+            }
+            None => {
+                self.visit_ty(&typ);
             }
         }
-
-        match *trait_ref {
-            Some(ref trait_ref) => self.process_trait_ref(trait_ref),
-            None => (),
+        if let Some(ref trait_ref_data) = impl_data.trait_ref {
+            self.fmt.ref_str(recorder::TypeRef,
+                             item.span,
+                             Some(trait_ref_data.span),
+                             trait_ref_data.ref_id,
+                             trait_ref_data.scope);
+            visit::walk_path(self, &trait_ref.as_ref().unwrap().path);
         }
+
+        self.fmt.impl_str(item.span,
+                          Some(impl_data.span),
+                          impl_data.id,
+                          impl_data.self_ref.map(|data| data.ref_id),
+                          impl_data.trait_ref.map(|data| data.ref_id),
+                          impl_data.scope);
 
         self.process_generic_params(type_parameters, item.span, "", item.id);
         for impl_item in impl_items {
@@ -765,16 +740,13 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
     fn process_mod(&mut self,
                    item: &ast::Item) {  // The module in question, represented as an item.
         let mod_data = self.save_ctxt.get_item_data(item);
-        if let super::Data::ModData(mod_data) = mod_data {
-            self.fmt.mod_str(item.span,
-                             Some(mod_data.span),
-                             mod_data.id,
-                             &mod_data.qualname,
-                             mod_data.scope,
-                             &mod_data.filename);
-        } else {
-            self.sess.span_bug(item.span, "expected ModData");
-        }
+        down_cast_data!(mod_data, ModData, self, item.span);
+        self.fmt.mod_str(item.span,
+                         Some(mod_data.span),
+                         mod_data.id,
+                         &mod_data.qualname,
+                         mod_data.scope,
+                         &mod_data.filename);
     }
 
     fn process_path(&mut self,
@@ -804,7 +776,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
                                                     sub_span,
                                                     def.def_id(),
                                                     self.cur_scope),
-            def::DefStruct(def_id) => self.fmt.ref_str(recorder::StructRef,
+            def::DefStruct(def_id) => self.fmt.ref_str(recorder::TypeRef,
                                                        span,
                                                        sub_span,
                                                        def_id,
@@ -901,44 +873,33 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
 
         self.write_sub_paths_truncated(path, false);
 
-        let ty = &ty::expr_ty_adjusted(&self.analysis.ty_cx, ex).sty;
-        let struct_def = match *ty {
-            ty::TyStruct(def_id, _) => {
-                let sub_span = self.span.span_for_last_ident(path.span);
-                self.fmt.ref_str(recorder::StructRef,
-                                 path.span,
-                                 sub_span,
-                                 def_id,
-                                 self.cur_scope);
-                Some(def_id)
-            }
-            _ => None
-        };
+        if let Some(struct_lit_data) = self.save_ctxt.get_expr_data(ex) {
+            down_cast_data!(struct_lit_data, TypeRefData, self, ex.span);
+            self.fmt.ref_str(recorder::TypeRef,
+                             ex.span,
+                             Some(struct_lit_data.span),
+                             struct_lit_data.ref_id,
+                             struct_lit_data.scope);
+            let struct_def = struct_lit_data.ref_id;
 
-        for field in fields {
-            match struct_def {
-                Some(struct_def) => {
-                    let fields = ty::lookup_struct_fields(&self.analysis.ty_cx, struct_def);
-                    for f in &fields {
-                        if generated_code(field.ident.span) {
-                            continue;
-                        }
-                        if f.name == field.ident.node.name {
-                            // We don't really need a sub-span here, but no harm done
-                            let sub_span = self.span.span_for_last_ident(field.ident.span);
-                            self.fmt.ref_str(recorder::VarRef,
-                                             field.ident.span,
-                                             sub_span,
-                                             f.id,
-                                             self.cur_scope);
-                        }
-                    }
+            for field in fields {
+                if generated_code(field.ident.span) {
+                    continue;
                 }
-                None => {}
-            }
 
-            self.visit_expr(&*field.expr)
+                let field_data = self.save_ctxt.get_field_ref_data(field,
+                                                                   struct_def,
+                                                                   self.cur_scope);
+                self.fmt.ref_str(recorder::VarRef,
+                                 field.ident.span,
+                                 Some(field_data.span),
+                                 field_data.ref_id,
+                                 field_data.scope);
+
+                self.visit_expr(&field.expr)
+            }
         }
+
         visit::walk_expr_opt(self, base)
     }
 
@@ -1174,7 +1135,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
                 self.process_impl(item,
                                   ty_params,
                                   trait_ref,
-                                  &**typ,
+                                  &typ,
                                   impl_items)
             }
             ast::ItemTrait(_, ref generics, ref trait_refs, ref methods) =>
@@ -1296,15 +1257,13 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
 
                 self.visit_expr(&sub_ex);
 
-                let field_data = self.save_ctxt.get_expr_data(ex);
-                if let super::Data::VariableRefData(field_data) = field_data {
+                if let Some(field_data) = self.save_ctxt.get_expr_data(ex) {
+                    down_cast_data!(field_data, VariableRefData, self, ex.span);
                     self.fmt.ref_str(recorder::VarRef,
                                      ex.span,
                                      Some(field_data.span),
                                      field_data.ref_id,
                                      field_data.scope);
-                } else {
-                    self.sess.span_bug(ex.span, "expected VariableRefData");
                 }
             },
             ast::ExprTupField(ref sub_ex, idx) => {
