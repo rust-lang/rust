@@ -15,5 +15,5 @@ pub fn main() {
     for i in &x[..] {
         y += *i
     }
-    assert!(y == 100);
+    assert_eq!(y, 100);
 }

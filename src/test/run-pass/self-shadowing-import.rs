@@ -19,7 +19,7 @@ mod a {
 
 mod c {
     use a::b::a;
-    pub fn bar() { assert!((a::foo() == 1)); }
+    pub fn bar() { assert_eq!(a::foo(), 1); }
 }
 
 pub fn main() { c::bar(); }

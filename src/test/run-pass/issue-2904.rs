@@ -70,14 +70,14 @@ fn read_board_grid<rdr:'static + Read>(mut input: rdr)
     }
     grid.push(row);
     let width = grid[0].len();
-    for row in &grid { assert!(row.len() == width) }
+    for row in &grid { assert_eq!(row.len(), width) }
     grid
 }
 
 mod test {
     #[test]
     pub fn trivial_to_string() {
-        assert!(lambda.to_string() == "\\")
+        assert_eq!(lambda.to_string(), "\\")
     }
 }
 

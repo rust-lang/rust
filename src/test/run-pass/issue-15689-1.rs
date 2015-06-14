@@ -9,11 +9,11 @@
 // except according to those terms.
 
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 enum Test<'a> {
     Slice(&'a isize)
 }
 
 fn main() {
-    assert!(Test::Slice(&1) == Test::Slice(&1))
+    assert_eq!(Test::Slice(&1), Test::Slice(&1))
 }

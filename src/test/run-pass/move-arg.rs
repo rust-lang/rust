@@ -9,6 +9,6 @@
 // except according to those terms.
 
 
-fn test(foo: isize) { assert!((foo == 10)); }
+fn test(foo: isize) { assert_eq!(foo, 10); }
 
 pub fn main() { let x = 10; test(x); }

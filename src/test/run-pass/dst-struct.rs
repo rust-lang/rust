@@ -21,36 +21,36 @@ struct Fat<T: ?Sized> {
 // x is a fat pointer
 fn foo(x: &Fat<[isize]>) {
     let y = &x.ptr;
-    assert!(x.ptr.len() == 3);
-    assert!(y[0] == 1);
-    assert!(x.ptr[1] == 2);
-    assert!(x.f1 == 5);
-    assert!(x.f2 == "some str");
+    assert_eq!(x.ptr.len(), 3);
+    assert_eq!(y[0], 1);
+    assert_eq!(x.ptr[1], 2);
+    assert_eq!(x.f1, 5);
+    assert_eq!(x.f2, "some str");
 }
 
 fn foo2<T:ToBar>(x: &Fat<[T]>) {
     let y = &x.ptr;
     let bar = Bar;
-    assert!(x.ptr.len() == 3);
-    assert!(y[0].to_bar() == bar);
-    assert!(x.ptr[1].to_bar() == bar);
-    assert!(x.f1 == 5);
-    assert!(x.f2 == "some str");
+    assert_eq!(x.ptr.len(), 3);
+    assert_eq!(y[0].to_bar(), bar);
+    assert_eq!(x.ptr[1].to_bar(), bar);
+    assert_eq!(x.f1, 5);
+    assert_eq!(x.f2, "some str");
 }
 
 fn foo3(x: &Fat<Fat<[isize]>>) {
     let y = &x.ptr.ptr;
-    assert!(x.f1 == 5);
-    assert!(x.f2 == "some str");
-    assert!(x.ptr.f1 == 8);
-    assert!(x.ptr.f2 == "deep str");
-    assert!(x.ptr.ptr.len() == 3);
-    assert!(y[0] == 1);
-    assert!(x.ptr.ptr[1] == 2);
+    assert_eq!(x.f1, 5);
+    assert_eq!(x.f2, "some str");
+    assert_eq!(x.ptr.f1, 8);
+    assert_eq!(x.ptr.f2, "deep str");
+    assert_eq!(x.ptr.ptr.len(), 3);
+    assert_eq!(y[0], 1);
+    assert_eq!(x.ptr.ptr[1], 2);
 }
 
 
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 struct Bar;
 
 trait ToBar {
@@ -92,9 +92,9 @@ pub fn main() {
     // Assignment.
     let f5: &mut Fat<[isize]> = &mut Fat { f1: 5, f2: "some str", ptr: [1, 2, 3] };
     f5.ptr[1] = 34;
-    assert!(f5.ptr[0] == 1);
-    assert!(f5.ptr[1] == 34);
-    assert!(f5.ptr[2] == 3);
+    assert_eq!(f5.ptr[0], 1);
+    assert_eq!(f5.ptr[1], 34);
+    assert_eq!(f5.ptr[2], 3);
 
     // Zero size vec.
     let f5: &Fat<[isize]> = &Fat { f1: 5, f2: "some str", ptr: [] };
@@ -117,9 +117,9 @@ pub fn main() {
 
     // Box.
     let f1 = Box::new([1, 2, 3]);
-    assert!((*f1)[1] == 2);
+    assert_eq!((*f1)[1], 2);
     let f2: Box<[isize]> = f1;
-    assert!((*f2)[1] == 2);
+    assert_eq!((*f2)[1], 2);
 
     // Nested Box.
     let f1 : Box<Fat<[isize; 3]>> = box Fat { f1: 5, f2: "some str", ptr: [1, 2, 3] };

@@ -38,6 +38,6 @@ fn call_box(f: &mut FnMut(i32) -> i32, x: i32) -> i32 {
 fn main() {
     let x = call_it(S, 1);
     let y = call_box(&mut S, 1);
-    assert!(x == 4);
-    assert!(y == 4);
+    assert_eq!(x, 4);
+    assert_eq!(y, 4);
 }

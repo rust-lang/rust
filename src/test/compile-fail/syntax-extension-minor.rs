@@ -17,6 +17,5 @@ pub fn main() {
     assert_eq!(concat_idents!(asd, f_f, dsa), "<.<".to_string());
     //~^ ERROR: unresolved name `asdf_fdsa`
 
-    assert!(stringify!(use_mention_distinction) ==
-                "use_mention_distinction");
+    assert_eq!(stringify!(use_mention_distinction), "use_mention_distinction");
 }

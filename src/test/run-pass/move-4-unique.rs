@@ -25,5 +25,5 @@ fn test(foo: Box<Triple>) -> Box<Triple> {
 pub fn main() {
     let x = box Triple{a: 1, b: 2, c: 3};
     let y = test(x);
-    assert!((y.c == 3));
+    assert_eq!(y.c, 3);
 }

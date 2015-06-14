@@ -8,14 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[derive(PartialEq, PartialOrd, Eq, Ord)]
+#[derive(PartialEq, PartialOrd, Eq, Ord, Debug)]
 struct Foo(Box<[u8]>);
 
 pub fn main() {
     // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
     let a = Foo(Box::new([0, 1, 2]));
     let b = Foo(Box::new([0, 1, 2]));
-    assert!(a == b);
+    assert_eq!(a, b);
     println!("{}", a != b);
     println!("{}", a < b);
     println!("{}", a <= b);

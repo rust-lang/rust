@@ -23,7 +23,7 @@ pub fn main() {
         _ => panic!()
     }
     match Y {
-        Foo::Bar(s) => assert!(s == 2654435769),
+        Foo::Bar(s) => assert_eq!(s, 2654435769),
         _ => panic!()
     }
     match Z {

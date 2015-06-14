@@ -32,5 +32,5 @@ fn mi(v: isize) -> MyInt { MyInt { val: v } }
 pub fn main() {
     let (x, y) = (mi(3), mi(5));
     let z = f(x, y);
-    assert!(z.val == 8)
+    assert_eq!(z.val, 8)
 }

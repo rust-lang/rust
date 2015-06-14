@@ -16,7 +16,7 @@ pub trait Foo {
     fn boo(&self) -> <Self as Foo>::A;
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 pub struct Bar;
 
 impl Foo for isize {
@@ -44,12 +44,12 @@ fn foo2<I: Foo>(x: I) -> <I as Foo>::A {
 
 pub fn main() {
     let a = 42;
-    assert!(foo2(a) == 42);
+    assert_eq!(foo2(a), 42);
 
     let a = Bar;
-    assert!(foo2(a) == 43);
+    assert_eq!(foo2(a), 43);
 
     let a = 'a';
     foo1(a);
-    assert!(foo2(a) == Bar);
+    assert_eq!(foo2(a), Bar);
 }

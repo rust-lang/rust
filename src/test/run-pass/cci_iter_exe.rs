@@ -17,6 +17,6 @@ pub fn main() {
     //println!("%?", bt0);
     cci_iter_lib::iter(&[1, 2, 3], |i| {
         println!("{}", *i);
-        //assert!(bt0 == sys::rusti::frame_address(2));
+        //assert_eq!(bt0, sys::rusti::frame_address(2));
     })
 }

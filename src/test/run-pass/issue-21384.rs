@@ -15,16 +15,16 @@ fn test<T : Clone>(arg: T) -> T {
     arg.clone()
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 struct Test(isize);
 
 fn main() {
     // Check that ranges implement clone
-    assert!(test(1..5) == (1..5));
-    assert!(test(..5) == (..5));
-    assert!(test(1..) == (1..));
-    assert!(test(RangeFull) == (RangeFull));
+    assert_eq!(test(1..5), (1..5));
+    assert_eq!(test(..5), (..5));
+    assert_eq!(test(1..), (1..));
+    assert_eq!(test(RangeFull), (RangeFull));
 
     // Check that ranges can still be used with non-clone limits
-    assert!((Test(1)..Test(5)) == (Test(1)..Test(5)));
+    assert_eq!((Test(1)..Test(5)), (Test(1)..Test(5)));
 }

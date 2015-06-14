@@ -52,9 +52,9 @@ pub fn main() {
     list.push(foo.clone(), 22);
     list.push(bar.clone(), 44);
 
-    assert!(list[&foo] == 22);
-    assert!(list[&bar] == 44);
+    assert_eq!(list[&foo], 22);
+    assert_eq!(list[&bar], 44);
 
-    assert!(list[&foo] == 22);
-    assert!(list[&bar] == 44);
+    assert_eq!(list[&foo], 22);
+    assert_eq!(list[&bar], 44);
 }

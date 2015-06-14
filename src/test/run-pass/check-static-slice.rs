@@ -28,14 +28,14 @@ static cf: isize = af[2];
 
 fn main () {
     let b: &[isize] = &[1, 2, 3];
-    assert!(ac == b);
-    assert!(ad == b);
-    assert!(af == b);
+    assert_eq!(ac, b);
+    assert_eq!(ad, b);
+    assert_eq!(af, b);
 
-    assert!(ca == 1);
-    assert!(cb == 2);
-    assert!(cc == 3);
-    assert!(cd == 1);
-    assert!(ce == 2);
-    assert!(cf == 3);
+    assert_eq!(ca, 1);
+    assert_eq!(cb, 2);
+    assert_eq!(cc, 3);
+    assert_eq!(cd, 1);
+    assert_eq!(ce, 2);
+    assert_eq!(cf, 3);
 }

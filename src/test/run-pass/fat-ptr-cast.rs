@@ -26,13 +26,13 @@ fn main() {
     let a: *const [i32] = &[1, 2, 3];
     let b = a as *const [i32; 2];
     unsafe {
-        assert!(*b == [1, 2]);
+        assert_eq!(*b, [1, 2]);
     }
 
     // Test conversion to an address (usize).
     let a: *const [i32; 3] = &[1, 2, 3];
     let b: *const [i32] = a;
-    assert!(a as usize == b as *const () as usize);
+    assert_eq!(a as usize, b as *const () as usize);
 
     // And conversion to a void pointer/address for trait objects too.
     let a: *mut Foo = &mut Bar;
@@ -43,7 +43,7 @@ fn main() {
         r.data
     };
 
-    assert!(b == d);
-    assert!(c == d as usize);
+    assert_eq!(b, d);
+    assert_eq!(c, d as usize);
 
 }

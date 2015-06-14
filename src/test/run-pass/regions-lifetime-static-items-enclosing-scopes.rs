@@ -14,8 +14,8 @@
 
 use std::cmp::PartialEq;
 
-fn f<T:PartialEq>(o: &mut Option<T>) {
-    assert!(*o == None);
+fn f<T:PartialEq+std::fmt::Debug>(o: &mut Option<T>) {
+    assert_eq!(*o, None);
 }
 
 pub fn main() {

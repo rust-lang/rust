@@ -70,8 +70,8 @@ pub fn main() {
 
         let data: Box<Foo_<i32>> = box Foo_{f: [1, 2, 3] };
         let x: &Foo<i32> = mem::transmute(slice::from_raw_parts(&*data, 3));
-        assert!(x.f.len() == 3);
-        assert!(x.f[0] == 1);
+        assert_eq!(x.f.len(), 3);
+        assert_eq!(x.f[0], 1);
 
         struct Baz_ {
             f1: usize,
@@ -81,14 +81,14 @@ pub fn main() {
         let data: Box<_> = box Baz_ {
             f1: 42, f2: ['a' as u8, 'b' as u8, 'c' as u8, 'd' as u8, 'e' as u8] };
         let x: &Baz = mem::transmute(slice::from_raw_parts(&*data, 5));
-        assert!(x.f1 == 42);
+        assert_eq!(x.f1, 42);
         let chs: Vec<char> = x.f2.chars().collect();
-        assert!(chs.len() == 5);
-        assert!(chs[0] == 'a');
-        assert!(chs[1] == 'b');
-        assert!(chs[2] == 'c');
-        assert!(chs[3] == 'd');
-        assert!(chs[4] == 'e');
+        assert_eq!(chs.len(), 5);
+        assert_eq!(chs[0], 'a');
+        assert_eq!(chs[1], 'b');
+        assert_eq!(chs[2], 'c');
+        assert_eq!(chs[3], 'd');
+        assert_eq!(chs[4], 'e');
 
         struct Qux_ {
             f: St
@@ -100,6 +100,6 @@ pub fn main() {
         let data: Box<_> = box Qux_{ f: St { f: 234 } };
         let x: &Qux = mem::transmute(raw::TraitObject { vtable: obj.vtable,
                                                         data: mem::transmute(&*data) });
-        assert!(x.f.foo() == 234);
+        assert_eq!(x.f.foo(), 234);
     }
 }

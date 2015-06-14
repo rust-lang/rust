@@ -74,8 +74,8 @@ fn main() {
     assert!(true >= false);
     assert!(!(true <= false));
 
-    assert!(true.cmp(&true) == Equal);
-    assert!(false.cmp(&false) == Equal);
-    assert!(true.cmp(&false) == Greater);
-    assert!(false.cmp(&true) == Less);
+    assert_eq!(true.cmp(&true), Equal);
+    assert_eq!(false.cmp(&false), Equal);
+    assert_eq!(true.cmp(&false), Greater);
+    assert_eq!(false.cmp(&true), Less);
 }

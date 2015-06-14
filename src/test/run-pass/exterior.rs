@@ -16,9 +16,9 @@ use std::cell::Cell;
 struct Point {x: isize, y: isize, z: isize}
 
 fn f(p: &Cell<Point>) {
-    assert!((p.get().z == 12));
+    assert_eq!(p.get().z, 12);
     p.set(Point {x: 10, y: 11, z: 13});
-    assert!((p.get().z == 13));
+    assert_eq!(p.get().z, 13);
 }
 
 pub fn main() {

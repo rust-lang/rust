@@ -54,7 +54,7 @@ const LIMIT: f64 = 2.0;
 const WORKERS: usize = 16;
 
 fn mandelbrot<W: Write>(w: usize, mut out: W) -> io::Result<()> {
-    assert!(WORKERS % 2 == 0);
+    assert_eq!(WORKERS % 2, 0);
 
     // Ensure w and h are multiples of 8.
     let w = (w + 7) / 8 * 8;
@@ -76,7 +76,7 @@ fn mandelbrot<W: Write>(w: usize, mut out: W) -> io::Result<()> {
     let v_consts = f64x2(1.5, 1.0);
 
     // A lot of this code assumes this (so do other lang benchmarks)
-    assert!(w == h);
+    assert_eq!(w, h);
     let mut precalc_r = Vec::with_capacity(w);
     let mut precalc_i = Vec::with_capacity(h);
 

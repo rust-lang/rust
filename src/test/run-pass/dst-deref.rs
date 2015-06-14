@@ -26,11 +26,11 @@ impl Deref for Arr {
 }
 
 pub fn foo(arr: &Arr) {
-    assert!(arr.len() == 3);
+    assert_eq!(arr.len(), 3);
     let x: &[usize] = &**arr;
-    assert!(x[0] == 1);
-    assert!(x[1] == 2);
-    assert!(x[2] == 3);
+    assert_eq!(x[0], 1);
+    assert_eq!(x[1], 2);
+    assert_eq!(x[2], 3);
 }
 
 fn main() {

@@ -14,57 +14,57 @@
 fn main() {
     let x: &[isize] = &[1, 2, 3, 4, 5];
     let cmp: &[isize] = &[1, 2, 3, 4, 5];
-    assert!(&x[..] == cmp);
+    assert_eq!(&x[..], cmp);
     let cmp: &[isize] = &[3, 4, 5];
-    assert!(&x[2..] == cmp);
+    assert_eq!(&x[2..], cmp);
     let cmp: &[isize] = &[1, 2, 3];
-    assert!(&x[..3] == cmp);
+    assert_eq!(&x[..3], cmp);
     let cmp: &[isize] = &[2, 3, 4];
-    assert!(&x[1..4] == cmp);
+    assert_eq!(&x[1..4], cmp);
 
     let x: Vec<isize> = vec![1, 2, 3, 4, 5];
     let cmp: &[isize] = &[1, 2, 3, 4, 5];
-    assert!(&x[..] == cmp);
+    assert_eq!(&x[..], cmp);
     let cmp: &[isize] = &[3, 4, 5];
-    assert!(&x[2..] == cmp);
+    assert_eq!(&x[2..], cmp);
     let cmp: &[isize] = &[1, 2, 3];
-    assert!(&x[..3] == cmp);
+    assert_eq!(&x[..3], cmp);
     let cmp: &[isize] = &[2, 3, 4];
-    assert!(&x[1..4] == cmp);
+    assert_eq!(&x[1..4], cmp);
 
     let x: &mut [isize] = &mut [1, 2, 3, 4, 5];
     {
         let cmp: &mut [isize] = &mut [1, 2, 3, 4, 5];
-        assert!(&mut x[..] == cmp);
+        assert_eq!(&mut x[..], cmp);
     }
     {
         let cmp: &mut [isize] = &mut [3, 4, 5];
-        assert!(&mut x[2..] == cmp);
+        assert_eq!(&mut x[2..], cmp);
     }
     {
         let cmp: &mut [isize] = &mut [1, 2, 3];
-        assert!(&mut x[..3] == cmp);
+        assert_eq!(&mut x[..3], cmp);
     }
     {
         let cmp: &mut [isize] = &mut [2, 3, 4];
-        assert!(&mut x[1..4] == cmp);
+        assert_eq!(&mut x[1..4], cmp);
     }
 
     let mut x: Vec<isize> = vec![1, 2, 3, 4, 5];
     {
         let cmp: &mut [isize] = &mut [1, 2, 3, 4, 5];
-        assert!(&mut x[..] == cmp);
+        assert_eq!(&mut x[..], cmp);
     }
     {
         let cmp: &mut [isize] = &mut [3, 4, 5];
-        assert!(&mut x[2..] == cmp);
+        assert_eq!(&mut x[2..], cmp);
     }
     {
         let cmp: &mut [isize] = &mut [1, 2, 3];
-        assert!(&mut x[..3] == cmp);
+        assert_eq!(&mut x[..3], cmp);
     }
     {
         let cmp: &mut [isize] = &mut [2, 3, 4];
-        assert!(&mut x[1..4] == cmp);
+        assert_eq!(&mut x[1..4], cmp);
     }
 }

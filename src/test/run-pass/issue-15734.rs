@@ -57,14 +57,14 @@ fn main() {
     let m = Mat::new(vec!(1, 2, 3, 4, 5, 6), 3);
     let r = m.row(1);
 
-    assert!(r.index(2) == &6);
-    assert!(r[2] == 6);
-    assert!(r[2] == 6);
-    assert!(6 == r[2]);
+    assert_eq!(r.index(2), &6);
+    assert_eq!(r[2], 6);
+    assert_eq!(r[2], 6);
+    assert_eq!(6, r[2]);
 
     let e = r[2];
-    assert!(e == 6);
+    assert_eq!(e, 6);
 
     let e: usize = r[2];
-    assert!(e == 6);
+    assert_eq!(e, 6);
 }

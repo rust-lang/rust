@@ -18,7 +18,7 @@ struct Fat<T: ?Sized> {
     ptr: T
 }
 
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 struct Bar;
 
 #[derive(Copy, Clone, PartialEq, Eq)]
@@ -50,32 +50,32 @@ impl ToBar for Bar1 {
 
 // x is a fat pointer
 fn foo(x: &Fat<ToBar>) {
-    assert!(x.f1 == 5);
-    assert!(x.f2 == "some str");
-    assert!(x.ptr.to_bar() == Bar);
-    assert!(x.ptr.to_val() == 42);
+    assert_eq!(x.f1, 5);
+    assert_eq!(x.f2, "some str");
+    assert_eq!(x.ptr.to_bar(), Bar);
+    assert_eq!(x.ptr.to_val(), 42);
 
     let y = &x.ptr;
-    assert!(y.to_bar() == Bar);
-    assert!(y.to_val() == 42);
+    assert_eq!(y.to_bar(), Bar);
+    assert_eq!(y.to_val(), 42);
 }
 
 fn bar(x: &ToBar) {
-    assert!(x.to_bar() == Bar);
-    assert!(x.to_val() == 42);
+    assert_eq!(x.to_bar(), Bar);
+    assert_eq!(x.to_val(), 42);
 }
 
 fn baz(x: &Fat<Fat<ToBar>>) {
-    assert!(x.f1 == 5);
-    assert!(x.f2 == "some str");
-    assert!(x.ptr.f1 == 8);
-    assert!(x.ptr.f2 == "deep str");
-    assert!(x.ptr.ptr.to_bar() == Bar);
-    assert!(x.ptr.ptr.to_val() == 42);
+    assert_eq!(x.f1, 5);
+    assert_eq!(x.f2, "some str");
+    assert_eq!(x.ptr.f1, 8);
+    assert_eq!(x.ptr.f2, "deep str");
+    assert_eq!(x.ptr.ptr.to_bar(), Bar);
+    assert_eq!(x.ptr.ptr.to_val(), 42);
 
     let y = &x.ptr.ptr;
-    assert!(y.to_bar() == Bar);
-    assert!(y.to_val() == 42);
+    assert_eq!(y.to_bar(), Bar);
+    assert_eq!(y.to_val(), 42);
 
 }
 
@@ -93,7 +93,7 @@ pub fn main() {
 
     // Zero size object.
     let f6: &Fat<ToBar> = &Fat { f1: 5, f2: "some str", ptr: Bar };
-    assert!(f6.ptr.to_bar() == Bar);
+    assert_eq!(f6.ptr.to_bar(), Bar);
 
     // &*
     //
