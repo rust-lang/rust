@@ -99,6 +99,7 @@ pub fn expand_register_diagnostic<'cx>(ecx: &'cx mut ExtCtxt,
         }
         _ => unreachable!()
     };
+
     // Check that the description starts and ends with a newline and doesn't
     // overflow the maximum line width.
     description.map(|raw_msg| {
@@ -109,9 +110,15 @@ pub fn expand_register_diagnostic<'cx>(ecx: &'cx mut ExtCtxt,
                 token::get_ident(*code)
             ));
         }
-        if msg.lines().any(|line| line.len() > MAX_DESCRIPTION_WIDTH) {
+
+        // URLs can be unavoidably longer than the line limit, so we allow them.
+        // Allowed format is: `[name]: http://rust-lang.org/`
+        let is_url = |l: &str| l.starts_with('[') && l.contains("]:") && l.contains("http");
+
+        if msg.lines().any(|line| line.len() > MAX_DESCRIPTION_WIDTH && !is_url(line)) {
             ecx.span_err(span, &format!(
-                "description for error code {} contains a line longer than {} characters",
+                "description for error code {} contains a line longer than {} characters.\n\
+                 if you're inserting a long URL use the footnote style to bypass this check.",
                 token::get_ident(*code), MAX_DESCRIPTION_WIDTH
             ));
         }
