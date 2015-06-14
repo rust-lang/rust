@@ -873,30 +873,31 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
 
         self.write_sub_paths_truncated(path, false);
 
-        let struct_lit_data = self.save_ctxt.get_expr_data(ex);
-        down_cast_data!(struct_lit_data, TypeRefData, self, ex.span);
-        self.fmt.ref_str(recorder::TypeRef,
-                         ex.span,
-                         Some(struct_lit_data.span),
-                         struct_lit_data.ref_id,
-                         struct_lit_data.scope);
-        let struct_def = struct_lit_data.ref_id;
+        if let Some(struct_lit_data) = self.save_ctxt.get_expr_data(ex) {
+            down_cast_data!(struct_lit_data, TypeRefData, self, ex.span);
+            self.fmt.ref_str(recorder::TypeRef,
+                             ex.span,
+                             Some(struct_lit_data.span),
+                             struct_lit_data.ref_id,
+                             struct_lit_data.scope);
+            let struct_def = struct_lit_data.ref_id;
 
-        for field in fields {
-            if generated_code(field.ident.span) {
-                continue;
+            for field in fields {
+                if generated_code(field.ident.span) {
+                    continue;
+                }
+
+                let field_data = self.save_ctxt.get_field_ref_data(field,
+                                                                   struct_def,
+                                                                   self.cur_scope);
+                self.fmt.ref_str(recorder::VarRef,
+                                 field.ident.span,
+                                 Some(field_data.span),
+                                 field_data.ref_id,
+                                 field_data.scope);
+
+                self.visit_expr(&field.expr)
             }
-
-            let field_data = self.save_ctxt.get_field_ref_data(field,
-                                                               struct_def,
-                                                               self.cur_scope);
-            self.fmt.ref_str(recorder::VarRef,
-                             field.ident.span,
-                             Some(field_data.span),
-                             field_data.ref_id,
-                             field_data.scope);
-
-            self.visit_expr(&field.expr)
         }
 
         visit::walk_expr_opt(self, base)
@@ -1256,13 +1257,14 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
 
                 self.visit_expr(&sub_ex);
 
-                let field_data = self.save_ctxt.get_expr_data(ex);
-                down_cast_data!(field_data, VariableRefData, self, ex.span);
-                self.fmt.ref_str(recorder::VarRef,
-                                 ex.span,
-                                 Some(field_data.span),
-                                 field_data.ref_id,
-                                 field_data.scope);
+                if let Some(field_data) = self.save_ctxt.get_expr_data(ex) {
+                    down_cast_data!(field_data, VariableRefData, self, ex.span);
+                    self.fmt.ref_str(recorder::VarRef,
+                                     ex.span,
+                                     Some(field_data.span),
+                                     field_data.ref_id,
+                                     field_data.scope);
+                }
             },
             ast::ExprTupField(ref sub_ex, idx) => {
                 if generated_code(sub_ex.span) {

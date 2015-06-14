@@ -329,7 +329,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         })
     }
 
-    pub fn get_expr_data(&self, expr: &ast::Expr) -> Data {
+    pub fn get_expr_data(&self, expr: &ast::Expr) -> Option<Data> {
         match expr.node {
             ast::ExprField(ref sub_ex, ident) => {
                 let ty = &ty::expr_ty_adjusted(&self.analysis.ty_cx, &sub_ex).sty;
@@ -339,12 +339,12 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                         for f in &fields {
                             if f.name == ident.node.name {
                                 let sub_span = self.span_utils.span_for_last_ident(expr.span);
-                                return Data::VariableRefData(VariableRefData {
+                                return Some(Data::VariableRefData(VariableRefData {
                                     name: get_ident(ident.node).to_string(),
                                     span: sub_span.unwrap(),
                                     scope: self.analysis.ty_cx.map.get_parent(expr.id),
                                     ref_id: f.id,
-                                });
+                                }));
                             }
                         }
 
@@ -353,24 +353,28 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                                                     &get_ident(ident.node),
                                                     ty))
                     }
-                    _ => self.sess.span_bug(expr.span,
-                                            &format!("Expected struct type, found {:?}", ty)),
+                    _ => {
+                        debug!("Expected struct type, found {:?}", ty);
+                        None
+                    }
                 }
             }
             ast::ExprStruct(ref path, _, _) => {
                 let ty = &ty::expr_ty_adjusted(&self.analysis.ty_cx, expr).sty;
                 match *ty {
-                    ty::ty_struct(def_id, _) => {
+                    ty::TyStruct(def_id, _) => {
                         let sub_span = self.span_utils.span_for_last_ident(path.span);
-                        Data::TypeRefData(TypeRefData {
+                        Some(Data::TypeRefData(TypeRefData {
                             span: sub_span.unwrap(),
                             scope: self.analysis.ty_cx.map.get_parent(expr.id),
                             ref_id: def_id,
-                        })
+                        }))
                     }
                     _ => {
-                        self.sess.span_bug(expr.span,
-                                           &format!("expected ty_struct, found {:?}", ty));
+                        // FIXME ty could legitimately be a TyEnum, but then we will fail
+                        // later if we try to look up the fields.
+                        debug!("expected TyStruct, found {:?}", ty);
+                        None
                     }
                 }
             }
