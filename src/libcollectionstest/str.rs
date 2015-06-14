@@ -705,7 +705,7 @@ fn test_split_at() {
 #[should_panic]
 fn test_split_at_boundscheck() {
     let s = "ศไทย中华Việt Nam";
-    let (a, b) = s.split_at(1);
+    s.split_at(1);
 }
 
 #[test]
@@ -1819,6 +1819,14 @@ mod pattern {
         Reject(3, 4),
         Match (4, 6),
         Reject(6, 7),
+    ]);
+    make_test!(str_searcher_ascii_haystack_seq, "bb", "abbcbbbbd", [
+        Reject(0, 1),
+        Match (1, 3),
+        Reject(3, 4),
+        Match (4, 6),
+        Match (6, 8),
+        Reject(8, 9),
     ]);
     make_test!(str_searcher_empty_needle_ascii_haystack, "", "abbcbbd", [
         Match (0, 0),
