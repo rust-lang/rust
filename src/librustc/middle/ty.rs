@@ -2810,20 +2810,22 @@ impl<'tcx> CommonTypes<'tcx> {
     }
 }
 
-pub fn mk_ctxt<'tcx>(s: Session,
-                     arenas: &'tcx CtxtArenas<'tcx>,
-                     def_map: DefMap,
-                     named_region_map: resolve_lifetime::NamedRegionMap,
-                     map: ast_map::Map<'tcx>,
-                     freevars: RefCell<FreevarMap>,
-                     region_maps: RegionMaps,
-                     lang_items: middle::lang_items::LanguageItems,
-                     stability: stability::Index<'tcx>) -> ctxt<'tcx>
+pub fn with_ctxt<'tcx, F, R>(s: Session,
+                             arenas: &'tcx CtxtArenas<'tcx>,
+                             def_map: DefMap,
+                             named_region_map: resolve_lifetime::NamedRegionMap,
+                             map: ast_map::Map<'tcx>,
+                             freevars: RefCell<FreevarMap>,
+                             region_maps: RegionMaps,
+                             lang_items: middle::lang_items::LanguageItems,
+                             stability: stability::Index<'tcx>,
+                             f: F) -> (Session, R)
+                             where F: FnOnce(&ctxt<'tcx>) -> R
 {
     let mut interner = FnvHashMap();
     let common_types = CommonTypes::new(&arenas.type_, &mut interner);
 
-    ctxt {
+    let tcx = ctxt {
         arenas: arenas,
         interner: RefCell::new(interner),
         substs_interner: RefCell::new(FnvHashMap()),
@@ -2885,7 +2887,9 @@ pub fn mk_ctxt<'tcx>(s: Session,
         const_qualif_map: RefCell::new(NodeMap()),
         custom_coerce_unsized_kinds: RefCell::new(DefIdMap()),
         cast_kinds: RefCell::new(NodeMap()),
-   }
+   };
+   let result = f(&tcx);
+   (tcx.sess, result)
 }
 
 // Type constructors

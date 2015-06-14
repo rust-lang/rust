@@ -148,13 +148,15 @@ impl PpSourceMode {
             }
             PpmTyped => {
                 let ast_map = ast_map.expect("--pretty=typed missing ast_map");
-                let (tcx, _) = driver::phase_3_run_analysis_passes(sess,
-                                                                   ast_map,
-                                                                   arenas,
-                                                                   id,
-                                                                   resolve::MakeGlobMap::No);
-                let annotation = TypedAnnotation { tcx: tcx };
-                f(&annotation, payload)
+                driver::phase_3_run_analysis_passes(sess,
+                                                    ast_map,
+                                                    arenas,
+                                                    id,
+                                                    resolve::MakeGlobMap::No,
+                                                    |tcx, _| {
+                    let annotation = TypedAnnotation { tcx: tcx };
+                    f(&annotation, payload)
+                }).1
             }
         }
     }
@@ -284,11 +286,11 @@ impl<'ast> pprust::PpAnn for HygieneAnnotation<'ast> {
 }
 
 
-struct TypedAnnotation<'tcx> {
-    tcx: ty::ctxt<'tcx>,
+struct TypedAnnotation<'a, 'tcx: 'a> {
+    tcx: &'a ty::ctxt<'tcx>,
 }
 
-impl<'tcx> PrinterSupport<'tcx> for TypedAnnotation<'tcx> {
+impl<'b, 'tcx> PrinterSupport<'tcx> for TypedAnnotation<'b, 'tcx> {
     fn sess<'a>(&'a self) -> &'a Session { &self.tcx.sess }
 
     fn ast_map<'a>(&'a self) -> Option<&'a ast_map::Map<'tcx>> {
@@ -298,7 +300,7 @@ impl<'tcx> PrinterSupport<'tcx> for TypedAnnotation<'tcx> {
     fn pp_ann<'a>(&'a self) -> &'a pprust::PpAnn { self }
 }
 
-impl<'tcx> pprust::PpAnn for TypedAnnotation<'tcx> {
+impl<'a, 'tcx> pprust::PpAnn for TypedAnnotation<'a, 'tcx> {
     fn pre(&self,
            s: &mut pprust::State,
            node: pprust::AnnNode) -> io::Result<()> {
@@ -645,12 +647,14 @@ pub fn pretty_print_input(sess: Session,
             match code {
                 Some(code) => {
                     let variants = gather_flowgraph_variants(&sess);
-                    let (tcx, _) = driver::phase_3_run_analysis_passes(sess,
-                                                                       ast_map,
-                                                                       &arenas,
-                                                                       id,
-                                                                       resolve::MakeGlobMap::No);
-                    print_flowgraph(variants, &tcx, code, mode, out)
+                    driver::phase_3_run_analysis_passes(sess,
+                                                        ast_map,
+                                                        &arenas,
+                                                        id,
+                                                        resolve::MakeGlobMap::No,
+                                                        |tcx, _| {
+                        print_flowgraph(variants, tcx, code, mode, out)
+                    }).1
                 }
                 None => {
                     let message = format!("--pretty=flowgraph needs \

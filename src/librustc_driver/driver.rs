@@ -65,7 +65,7 @@ pub fn compile_input(sess: Session,
     // We need nested scopes here, because the intermediate results can keep
     // large chunks of memory alive and we want to free them as soon as
     // possible to keep the peak memory usage low
-    let (outputs, trans, sess) = {
+    let (sess, result) = {
         let (outputs, expanded_crate, id) = {
             let krate = phase_1_parse_input(&sess, cfg, input);
 
@@ -119,37 +119,52 @@ pub fn compile_input(sess: Session,
                                                                      &ast_map.krate(),
                                                                      &id[..]));
 
-        let (tcx, analysis) = phase_3_run_analysis_passes(sess,
-                                                          ast_map,
-                                                          &arenas,
-                                                          id,
-                                                          control.make_glob_map);
+        phase_3_run_analysis_passes(sess,
+                                    ast_map,
+                                    &arenas,
+                                    id,
+                                    control.make_glob_map,
+                                    |tcx, analysis| {
 
-        controller_entry_point!(after_analysis,
-                                tcx.sess,
-                                CompileState::state_after_analysis(input,
-                                                                   &tcx.sess,
-                                                                   outdir,
-                                                                   tcx.map.krate(),
-                                                                   &analysis,
-                                                                   &tcx));
+            {
+                let state = CompileState::state_after_analysis(input,
+                                                               &tcx.sess,
+                                                               outdir,
+                                                               tcx.map.krate(),
+                                                               &analysis,
+                                                               tcx);
+                (control.after_analysis.callback)(state);
 
-        if log_enabled!(::log::INFO) {
-            println!("Pre-trans");
-            tcx.print_debug_stats();
-        }
-        let trans = phase_4_translate_to_llvm(&tcx, analysis);
+                tcx.sess.abort_if_errors();
+                if control.after_analysis.stop == Compilation::Stop {
+                    return Err(());
+                }
+            }
 
-        if log_enabled!(::log::INFO) {
-            println!("Post-trans");
-            tcx.print_debug_stats();
-        }
+            if log_enabled!(::log::INFO) {
+                println!("Pre-trans");
+                tcx.print_debug_stats();
+            }
+            let trans = phase_4_translate_to_llvm(tcx, analysis);
 
-        // Discard interned strings as they are no longer required.
-        token::get_ident_interner().clear();
+            if log_enabled!(::log::INFO) {
+                println!("Post-trans");
+                tcx.print_debug_stats();
+            }
 
-        (outputs, trans, tcx.sess)
+            // Discard interned strings as they are no longer required.
+            token::get_ident_interner().clear();
+
+            Ok((outputs, trans))
+        })
     };
+
+    let (outputs, trans) = if let Ok(out) = result {
+        out
+    } else {
+        return;
+    };
+
     phase_5_run_llvm_passes(&sess, &trans, &outputs);
 
     controller_entry_point!(after_llvm,
@@ -578,12 +593,16 @@ pub fn assign_node_ids_and_map<'ast>(sess: &Session,
 /// Run the resolution, typechecking, region checking and other
 /// miscellaneous analysis passes on the crate. Return various
 /// structures carrying the results of the analysis.
-pub fn phase_3_run_analysis_passes<'tcx>(sess: Session,
-                                         ast_map: ast_map::Map<'tcx>,
-                                         arenas: &'tcx ty::CtxtArenas<'tcx>,
-                                         name: String,
-                                         make_glob_map: resolve::MakeGlobMap)
-                                         -> (ty::ctxt<'tcx>, ty::CrateAnalysis) {
+pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: Session,
+                                               ast_map: ast_map::Map<'tcx>,
+                                               arenas: &'tcx ty::CtxtArenas<'tcx>,
+                                               name: String,
+                                               make_glob_map: resolve::MakeGlobMap,
+                                               f: F)
+                                               -> (Session, R)
+                                               where F: FnOnce(&ty::ctxt<'tcx>,
+                                                               ty::CrateAnalysis) -> R
+{
     let time_passes = sess.time_passes();
     let krate = ast_map.krate();
 
@@ -627,86 +646,88 @@ pub fn phase_3_run_analysis_passes<'tcx>(sess: Session,
     time(time_passes, "static item recursion checking", (), |_|
          middle::check_static_recursion::check_crate(&sess, krate, &def_map, &ast_map));
 
-    let ty_cx = ty::mk_ctxt(sess,
-                            arenas,
-                            def_map,
-                            named_region_map,
-                            ast_map,
-                            freevars,
-                            region_map,
-                            lang_items,
-                            stability::Index::new(krate));
+    ty::with_ctxt(sess,
+                  arenas,
+                  def_map,
+                  named_region_map,
+                  ast_map,
+                  freevars,
+                  region_map,
+                  lang_items,
+                  stability::Index::new(krate),
+                  |tcx| {
 
-    // passes are timed inside typeck
-    typeck::check_crate(&ty_cx, trait_map);
+        // passes are timed inside typeck
+        typeck::check_crate(tcx, trait_map);
 
-    time(time_passes, "const checking", (), |_|
-         middle::check_const::check_crate(&ty_cx));
+        time(time_passes, "const checking", (), |_|
+            middle::check_const::check_crate(tcx));
 
-    let (exported_items, public_items) =
-            time(time_passes, "privacy checking", (), |_|
-                 rustc_privacy::check_crate(&ty_cx, &export_map, external_exports));
+        let (exported_items, public_items) =
+                time(time_passes, "privacy checking", (), |_|
+                    rustc_privacy::check_crate(tcx, &export_map, external_exports));
 
-    // Do not move this check past lint
-    time(time_passes, "stability index", (), |_|
-         ty_cx.stability.borrow_mut().build(&ty_cx, krate, &public_items));
+        // Do not move this check past lint
+        time(time_passes, "stability index", (), |_|
+            tcx.stability.borrow_mut().build(tcx, krate, &public_items));
 
-    time(time_passes, "intrinsic checking", (), |_|
-         middle::intrinsicck::check_crate(&ty_cx));
+        time(time_passes, "intrinsic checking", (), |_|
+            middle::intrinsicck::check_crate(tcx));
 
-    time(time_passes, "effect checking", (), |_|
-         middle::effect::check_crate(&ty_cx));
+        time(time_passes, "effect checking", (), |_|
+            middle::effect::check_crate(tcx));
 
-    time(time_passes, "match checking", (), |_|
-         middle::check_match::check_crate(&ty_cx));
+        time(time_passes, "match checking", (), |_|
+            middle::check_match::check_crate(tcx));
 
-    time(time_passes, "liveness checking", (), |_|
-         middle::liveness::check_crate(&ty_cx));
+        time(time_passes, "liveness checking", (), |_|
+            middle::liveness::check_crate(tcx));
 
-    time(time_passes, "borrow checking", (), |_|
-         borrowck::check_crate(&ty_cx));
+        time(time_passes, "borrow checking", (), |_|
+            borrowck::check_crate(tcx));
 
-    time(time_passes, "rvalue checking", (), |_|
-         middle::check_rvalues::check_crate(&ty_cx, krate));
+        time(time_passes, "rvalue checking", (), |_|
+            middle::check_rvalues::check_crate(tcx, krate));
 
-    // Avoid overwhelming user with errors if type checking failed.
-    // I'm not sure how helpful this is, to be honest, but it avoids a
-    // lot of annoying errors in the compile-fail tests (basically,
-    // lint warnings and so on -- kindck used to do this abort, but
-    // kindck is gone now). -nmatsakis
-    ty_cx.sess.abort_if_errors();
+        // Avoid overwhelming user with errors if type checking failed.
+        // I'm not sure how helpful this is, to be honest, but it avoids a
+        // lot of annoying errors in the compile-fail tests (basically,
+        // lint warnings and so on -- kindck used to do this abort, but
+        // kindck is gone now). -nmatsakis
+        tcx.sess.abort_if_errors();
 
-    let reachable_map =
-        time(time_passes, "reachability checking", (), |_|
-             reachable::find_reachable(&ty_cx, &exported_items));
+        let reachable_map =
+            time(time_passes, "reachability checking", (), |_|
+                reachable::find_reachable(tcx, &exported_items));
 
-    time(time_passes, "death checking", (), |_| {
-        middle::dead::check_crate(&ty_cx,
-                                  &exported_items,
-                                  &reachable_map)
-    });
+        time(time_passes, "death checking", (), |_| {
+            middle::dead::check_crate(tcx,
+                                      &exported_items,
+                                      &reachable_map)
+        });
 
-    let ref lib_features_used =
-        time(time_passes, "stability checking", (), |_|
-             stability::check_unstable_api_usage(&ty_cx));
+        let ref lib_features_used =
+            time(time_passes, "stability checking", (), |_|
+                stability::check_unstable_api_usage(tcx));
 
-    time(time_passes, "unused lib feature checking", (), |_|
-         stability::check_unused_or_stable_features(
-             &ty_cx.sess, lib_features_used));
+        time(time_passes, "unused lib feature checking", (), |_|
+            stability::check_unused_or_stable_features(
+                &tcx.sess, lib_features_used));
 
-    time(time_passes, "lint checking", (), |_|
-         lint::check_crate(&ty_cx, &exported_items));
+        time(time_passes, "lint checking", (), |_|
+            lint::check_crate(tcx, &exported_items));
 
-    // The above three passes generate errors w/o aborting
-    ty_cx.sess.abort_if_errors();
+        // The above three passes generate errors w/o aborting
+        tcx.sess.abort_if_errors();
 
-    (ty_cx, ty::CrateAnalysis {
-        export_map: export_map,
-        exported_items: exported_items,
-        public_items: public_items,
-        reachable: reachable_map,
-        name: name,
-        glob_map: glob_map,
+        f(tcx, ty::CrateAnalysis {
+            export_map: export_map,
+            exported_items: exported_items,
+            public_items: public_items,
+            reachable: reachable_map,
+            name: name,
+            glob_map: glob_map,
+        })
     })
 }
 

@@ -38,14 +38,14 @@ use doctree::*;
 pub struct RustdocVisitor<'a, 'tcx: 'a> {
     pub module: Module,
     pub attrs: Vec<ast::Attribute>,
-    pub cx: &'a core::DocContext<'tcx>,
+    pub cx: &'a core::DocContext<'a, 'tcx>,
     pub analysis: Option<&'a core::CrateAnalysis>,
     view_item_stack: HashSet<ast::NodeId>,
     inlining_from_glob: bool,
 }
 
 impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
-    pub fn new(cx: &'a core::DocContext<'tcx>,
+    pub fn new(cx: &'a core::DocContext<'a, 'tcx>,
                analysis: Option<&'a core::CrateAnalysis>) -> RustdocVisitor<'a, 'tcx> {
         // If the root is reexported, terminate all recursion.
         let mut stack = HashSet::new();
