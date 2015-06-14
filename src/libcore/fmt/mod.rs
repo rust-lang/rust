@@ -72,7 +72,7 @@ pub trait Write {
     ///
     /// # Errors
     ///
-    /// This function will return an instance of `FormatError` on error.
+    /// This function will return an instance of `Error` on error.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn write_str(&mut self, s: &str) -> Result;
 
@@ -85,7 +85,7 @@ pub trait Write {
     ///
     /// # Errors
     ///
-    /// This function will return an instance of `FormatError` on error.
+    /// This function will return an instance of `Error` on error.
     #[stable(feature = "fmt_write_char", since = "1.1.0")]
     fn write_char(&mut self, c: char) -> Result {
         let mut utf_8 = [0u8; 4];
