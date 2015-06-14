@@ -13,7 +13,7 @@ use middle::infer;
 use middle::traits;
 use middle::ty::{self};
 use middle::subst::{self, Subst, Substs, VecPerParamSpace};
-use util::ppaux::{self, Repr};
+use util::ppaux::Repr;
 
 use syntax::ast;
 use syntax::codemap::Span;
@@ -64,8 +64,7 @@ pub fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
                 "method `{}` has a `{}` declaration in the impl, \
                         but not in the trait",
                         token::get_name(trait_m.name),
-                        ppaux::explicit_self_category_to_str(
-                            &impl_m.explicit_self));
+                        impl_m.explicit_self.repr(tcx));
             return;
         }
         (_, &ty::StaticExplicitSelfCategory) => {
@@ -73,8 +72,7 @@ pub fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
                 "method `{}` has a `{}` declaration in the trait, \
                         but not in the impl",
                         token::get_name(trait_m.name),
-                        ppaux::explicit_self_category_to_str(
-                            &trait_m.explicit_self));
+                        trait_m.explicit_self.repr(tcx));
             return;
         }
         _ => {

@@ -1001,20 +1001,14 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                     "reference must be valid for ",
                     sub_scope,
                     "...");
-                let suggestion = if is_statement_scope(self.tcx, super_scope) {
-                    Some("consider using a `let` binding to increase its lifetime")
-                } else {
-                    None
-                };
-                let span = note_and_explain_region(
+                note_and_explain_region(
                     self.tcx,
                     "...but borrowed value is only valid for ",
                     super_scope,
                     "");
-                match (span, suggestion) {
-                    (_, None) => {},
-                    (Some(span), Some(msg)) => self.tcx.sess.span_help(span, msg),
-                    (None, Some(msg)) => self.tcx.sess.help(msg),
+                if let Some(span) = statement_scope_span(self.tcx, super_scope) {
+                    self.tcx.sess.span_help(span,
+                        "consider using a `let` binding to increase its lifetime");
                 }
             }
 
@@ -1127,16 +1121,16 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
     }
 }
 
-fn is_statement_scope(tcx: &ty::ctxt, region: ty::Region) -> bool {
-     match region {
-         ty::ReScope(scope) => {
-             match tcx.map.find(scope.node_id()) {
-                 Some(ast_map::NodeStmt(_)) => true,
-                 _ => false
-             }
-         }
-         _ => false
-     }
+fn statement_scope_span(tcx: &ty::ctxt, region: ty::Region) -> Option<Span> {
+    match region {
+        ty::ReScope(scope) => {
+            match tcx.map.find(scope.node_id()) {
+                Some(ast_map::NodeStmt(stmt)) => Some(stmt.span),
+                _ => None
+            }
+        }
+        _ => None
+    }
 }
 
 impl BitwiseOperator for LoanDataFlowOperator {

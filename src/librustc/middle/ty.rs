@@ -61,7 +61,7 @@ use middle::traits;
 use middle::ty;
 use middle::ty_fold::{self, TypeFoldable, TypeFolder};
 use middle::ty_walk::{self, TypeWalker};
-use util::ppaux::{note_and_explain_region, bound_region_ptr_to_string};
+use util::ppaux::note_and_explain_region;
 use util::ppaux::ty_to_string;
 use util::ppaux::{Repr, UserString};
 use util::common::{memoized, ErrorReported};
@@ -5205,12 +5205,12 @@ pub fn type_err_to_str<'tcx>(cx: &ctxt<'tcx>, err: &type_err<'tcx>) -> String {
         terr_regions_insufficiently_polymorphic(br, _) => {
             format!("expected bound lifetime parameter {}, \
                      found concrete lifetime",
-                    bound_region_ptr_to_string(cx, br))
+                    br.user_string(cx))
         }
         terr_regions_overly_polymorphic(br, _) => {
             format!("expected concrete lifetime, \
                      found bound lifetime parameter {}",
-                    bound_region_ptr_to_string(cx, br))
+                    br.user_string(cx))
         }
         terr_sorts(values) => {
             // A naive approach to making sure that we're not reporting silly errors such as:

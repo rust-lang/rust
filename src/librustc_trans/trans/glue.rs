@@ -39,8 +39,7 @@ use trans::machine::*;
 use trans::monomorphize;
 use trans::type_of::{type_of, type_of_dtor, sizing_type_of, align_of};
 use trans::type_::Type;
-use util::ppaux;
-use util::ppaux::{ty_to_short_str, Repr};
+use util::ppaux::{self, Repr};
 
 use arena::TypedArena;
 use libc::c_uint;
@@ -247,7 +246,7 @@ fn get_drop_glue_core<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     });
     ccx.available_drop_glues().borrow_mut().insert(g, fn_nm);
 
-    let _s = StatRecorder::new(ccx, format!("drop {}", ty_to_short_str(ccx.tcx(), t)));
+    let _s = StatRecorder::new(ccx, format!("drop {}", t.repr(ccx.tcx())));
 
     let empty_substs = ccx.tcx().mk_substs(Substs::trans_empty());
     let (arena, fcx): (TypedArena<_>, FunctionContext);

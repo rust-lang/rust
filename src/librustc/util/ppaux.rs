@@ -52,19 +52,13 @@ pub trait UserString<'tcx> : Repr<'tcx> {
 pub fn note_and_explain_region(cx: &ctxt,
                                prefix: &str,
                                region: ty::Region,
-                               suffix: &str) -> Option<Span> {
-    match explain_region_and_span(cx, region) {
-      (ref str, Some(span)) => {
-        cx.sess.span_note(
-            span,
-            &format!("{}{}{}", prefix, *str, suffix));
-        Some(span)
-      }
-      (ref str, None) => {
-        cx.sess.note(
-            &format!("{}{}{}", prefix, *str, suffix));
-        None
-      }
+                               suffix: &str) {
+    let (description, span) = explain_region_and_span(cx, region);
+    let message = format!("{}{}{}", prefix, description, suffix);
+    if let Some(span) = span {
+        cx.sess.span_note(span, &message);
+    } else {
+        cx.sess.note(&message);
     }
 }
 
@@ -81,8 +75,8 @@ fn item_scope_tag(item: &ast::Item) -> &'static str {
     }
 }
 
-pub fn explain_region_and_span(cx: &ctxt, region: ty::Region)
-                            -> (String, Option<Span>) {
+fn explain_region_and_span(cx: &ctxt, region: ty::Region)
+                           -> (String, Option<Span>) {
     return match region {
       ReScope(scope) => {
         let new_string;
@@ -138,7 +132,7 @@ pub fn explain_region_and_span(cx: &ctxt, region: ty::Region)
           BrFresh(_) => "an anonymous lifetime defined on".to_string(),
           _ => {
               format!("the lifetime {} as defined on",
-                      bound_region_ptr_to_string(cx, fr.bound_region))
+                      fr.bound_region.user_string(cx))
           }
         };
 
@@ -179,61 +173,6 @@ pub fn explain_region_and_span(cx: &ctxt, region: ty::Region)
         let lo = cx.sess.codemap().lookup_char_pos_adj(span.lo);
         (format!("the {} at {}:{}", heading, lo.line, lo.col.to_usize()),
          Some(span))
-    }
-}
-
-pub fn bound_region_ptr_to_string(cx: &ctxt, br: BoundRegion) -> String {
-    bound_region_to_string(cx, "", false, br)
-}
-
-pub fn bound_region_to_string(cx: &ctxt,
-                           prefix: &str, space: bool,
-                           br: BoundRegion) -> String {
-    let space_str = if space { " " } else { "" };
-
-    if cx.sess.verbose() {
-        return format!("{}{}{}", prefix, br.repr(cx), space_str)
-    }
-
-    match br {
-        BrNamed(_, name) => {
-            format!("{}{}{}", prefix, token::get_name(name), space_str)
-        }
-        BrAnon(_) | BrFresh(_) | BrEnv => prefix.to_string()
-    }
-}
-
-// In general, if you are giving a region error message,
-// you should use `explain_region()` or, better yet,
-// `note_and_explain_region()`
-pub fn region_ptr_to_string(cx: &ctxt, region: Region) -> String {
-    region_to_string(cx, "&", true, region)
-}
-
-pub fn region_to_string(cx: &ctxt, prefix: &str, space: bool, region: Region) -> String {
-    let space_str = if space { " " } else { "" };
-
-    if cx.sess.verbose() {
-        return format!("{}{}{}", prefix, region.repr(cx), space_str)
-    }
-
-    // These printouts are concise.  They do not contain all the information
-    // the user might want to diagnose an error, but there is basically no way
-    // to fit that into a short string.  Hence the recommendation to use
-    // `explain_region()` or `note_and_explain_region()`.
-    match region {
-        ty::ReScope(_) => prefix.to_string(),
-        ty::ReEarlyBound(ref data) => {
-            token::get_name(data.name).to_string()
-        }
-        ty::ReLateBound(_, br) => bound_region_to_string(cx, prefix, space, br),
-        ty::ReFree(ref fr) => bound_region_to_string(cx, prefix, space, fr.bound_region),
-        ty::ReInfer(ReSkolemized(_, br)) => {
-            bound_region_to_string(cx, prefix, space, br)
-        }
-        ty::ReInfer(ReVar(_)) => prefix.to_string(),
-        ty::ReStatic => format!("{}'static{}", prefix, space_str),
-        ty::ReEmpty => format!("{}'<empty>{}", prefix, space_str),
     }
 }
 
@@ -376,7 +315,11 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
             }, ty_to_string(cx, tm.ty))
         }
         TyRef(r, ref tm) => {
-            let mut buf = region_ptr_to_string(cx, *r);
+            let mut buf = "&".to_owned();
+            buf.push_str(&r.user_string(cx));
+            if !buf.is_empty() {
+                buf.push_str(" ");
+            }
             buf.push_str(&mt_to_string(cx, tm));
             buf
         }
@@ -440,26 +383,13 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
     }
 }
 
-pub fn explicit_self_category_to_str(category: &ty::ExplicitSelfCategory)
-                                     -> &'static str {
-    match *category {
-        ty::StaticExplicitSelfCategory => "static",
-        ty::ByValueExplicitSelfCategory => "self",
-        ty::ByReferenceExplicitSelfCategory(_, ast::MutMutable) => {
-            "&mut self"
-        }
-        ty::ByReferenceExplicitSelfCategory(_, ast::MutImmutable) => "&self",
-        ty::ByBoxExplicitSelfCategory => "Box<self>",
-    }
-}
-
-pub fn parameterized<'tcx,GG>(cx: &ctxt<'tcx>,
-                              base: &str,
-                              substs: &subst::Substs<'tcx>,
-                              did: ast::DefId,
-                              projections: &[ty::ProjectionPredicate<'tcx>],
-                              get_generics: GG)
-                              -> String
+fn parameterized<'tcx, GG>(cx: &ctxt<'tcx>,
+                           base: &str,
+                           substs: &subst::Substs<'tcx>,
+                           did: ast::DefId,
+                           projections: &[ty::ProjectionPredicate<'tcx>],
+                           get_generics: GG)
+                           -> String
     where GG : FnOnce() -> ty::Generics<'tcx>
 {
     if cx.sess.verbose() {
@@ -495,7 +425,7 @@ pub fn parameterized<'tcx,GG>(cx: &ctxt<'tcx>,
         subst::ErasedRegions => { }
         subst::NonerasedRegions(ref regions) => {
             for &r in regions {
-                let s = region_to_string(cx, "", false, r);
+                let s = r.user_string(cx);
                 if s.is_empty() {
                     // This happens when the value of the region
                     // parameter is not easily serialized. This may be
@@ -577,14 +507,6 @@ pub fn parameterized<'tcx,GG>(cx: &ctxt<'tcx>,
     } else {
         format!("{}", base)
     }
-}
-
-pub fn ty_to_short_str<'tcx>(cx: &ctxt<'tcx>, typ: Ty<'tcx>) -> String {
-    let mut s = typ.repr(cx).to_string();
-    if s.len() >= 32 {
-        s = (&s[0..32]).to_string();
-    }
-    return s;
 }
 
 impl<'tcx, T:Repr<'tcx>> Repr<'tcx> for Option<T> {
@@ -915,6 +837,19 @@ impl<'tcx> Repr<'tcx> for ty::BoundRegion {
     }
 }
 
+impl<'tcx> UserString<'tcx> for ty::BoundRegion {
+    fn user_string(&self, tcx: &ctxt) -> String {
+        if tcx.sess.verbose() {
+            return self.repr(tcx);
+        }
+
+        match *self {
+            BrNamed(_, name) => token::get_name(name).to_string(),
+            BrAnon(_) | BrFresh(_) | BrEnv => String::new()
+        }
+    }
+}
+
 impl<'tcx> Repr<'tcx> for ty::Region {
     fn repr(&self, tcx: &ctxt) -> String {
         match *self {
@@ -959,7 +894,28 @@ impl<'tcx> Repr<'tcx> for ty::Region {
 
 impl<'tcx> UserString<'tcx> for ty::Region {
     fn user_string(&self, tcx: &ctxt) -> String {
-        region_to_string(tcx, "", false, *self)
+        if tcx.sess.verbose() {
+            return self.repr(tcx);
+        }
+
+        // These printouts are concise.  They do not contain all the information
+        // the user might want to diagnose an error, but there is basically no way
+        // to fit that into a short string.  Hence the recommendation to use
+        // `explain_region()` or `note_and_explain_region()`.
+        match *self {
+            ty::ReEarlyBound(ref data) => {
+                token::get_name(data.name).to_string()
+            }
+            ty::ReLateBound(_, br) |
+            ty::ReFree(ty::FreeRegion { bound_region: br, .. }) |
+            ty::ReInfer(ReSkolemized(_, br)) => {
+                br.user_string(tcx)
+            }
+            ty::ReScope(_) |
+            ty::ReInfer(ReVar(_)) => String::new(),
+            ty::ReStatic => "'static".to_owned(),
+            ty::ReEmpty => "'<empty>".to_owned(),
+        }
     }
 }
 
@@ -1446,7 +1402,15 @@ impl<'tcx> Repr<'tcx> for ast::FloatTy {
 
 impl<'tcx> Repr<'tcx> for ty::ExplicitSelfCategory {
     fn repr(&self, _: &ctxt) -> String {
-        explicit_self_category_to_str(self).to_string()
+        match *self {
+            ty::StaticExplicitSelfCategory => "static",
+            ty::ByValueExplicitSelfCategory => "self",
+            ty::ByReferenceExplicitSelfCategory(_, ast::MutMutable) => {
+                "&mut self"
+            }
+            ty::ByReferenceExplicitSelfCategory(_, ast::MutImmutable) => "&self",
+            ty::ByBoxExplicitSelfCategory => "Box<self>",
+        }.to_owned()
     }
 }
 

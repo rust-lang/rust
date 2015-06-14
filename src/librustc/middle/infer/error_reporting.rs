@@ -88,7 +88,6 @@ use syntax::codemap;
 use syntax::parse::token;
 use syntax::print::pprust;
 use syntax::ptr::P;
-use util::ppaux::bound_region_to_string;
 use util::ppaux::note_and_explain_region;
 
 // Note: only import UserString, not Repr, since user-facing error
@@ -1441,6 +1440,13 @@ impl<'a, 'tcx> ErrorReportingHelpers<'tcx> for InferCtxt<'a, 'tcx> {
 
     fn report_inference_failure(&self,
                                 var_origin: RegionVariableOrigin) {
+        let br_string = |br: ty::BoundRegion| {
+            let mut s = br.user_string(self.tcx);
+            if !s.is_empty() {
+                s.push_str(" ");
+            }
+            s
+        };
         let var_description = match var_origin {
             infer::MiscVariable(_) => "".to_string(),
             infer::PatternRegion(_) => " for pattern".to_string(),
@@ -1448,17 +1454,15 @@ impl<'a, 'tcx> ErrorReportingHelpers<'tcx> for InferCtxt<'a, 'tcx> {
             infer::Autoref(_) => " for autoref".to_string(),
             infer::Coercion(_) => " for automatic coercion".to_string(),
             infer::LateBoundRegion(_, br, infer::FnCall) => {
-                format!(" for {}in function call",
-                        bound_region_to_string(self.tcx, "lifetime parameter ", true, br))
+                format!(" for lifetime parameter {}in function call",
+                        br_string(br))
             }
             infer::LateBoundRegion(_, br, infer::HigherRankedType) => {
-                format!(" for {}in generic type",
-                        bound_region_to_string(self.tcx, "lifetime parameter ", true, br))
+                format!(" for lifetime parameter {}in generic type", br_string(br))
             }
             infer::LateBoundRegion(_, br, infer::AssocTypeProjection(type_name)) => {
-                format!(" for {}in trait containing associated type `{}`",
-                        bound_region_to_string(self.tcx, "lifetime parameter ", true, br),
-                        token::get_name(type_name))
+                format!(" for lifetime parameter {}in trait containing associated type `{}`",
+                        br_string(br), token::get_name(type_name))
             }
             infer::EarlyBoundRegion(_, name) => {
                 format!(" for lifetime parameter `{}`",
