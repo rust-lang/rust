@@ -59,10 +59,12 @@ struct Candidate<'tcx> {
 }
 
 enum CandidateKind<'tcx> {
-    InherentImplCandidate(/* Impl */ ast::DefId, subst::Substs<'tcx>),
+    InherentImplCandidate(/* Impl */ ast::DefId, subst::Substs<'tcx>,
+                          /* Normalize obligations */ Vec<traits::PredicateObligation<'tcx>>),
     ObjectCandidate(/* Trait */ ast::DefId, /* method_num */ usize, /* vtable index */ usize),
     ExtensionImplCandidate(/* Impl */ ast::DefId, ty::TraitRef<'tcx>,
-                           subst::Substs<'tcx>, ItemIndex),
+                           subst::Substs<'tcx>, ItemIndex,
+                           /* Normalize obligations */ Vec<traits::PredicateObligation<'tcx>>),
     ClosureCandidate(/* Trait */ ast::DefId, ItemIndex),
     WhereClauseCandidate(ty::PolyTraitRef<'tcx>, ItemIndex),
     ProjectionCandidate(ast::DefId, ItemIndex),
@@ -398,16 +400,24 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         }
 
         let (impl_ty, impl_substs) = self.impl_ty_and_substs(impl_def_id);
-        let impl_ty = self.fcx.instantiate_type_scheme(self.span, &impl_substs, &impl_ty);
+        let impl_ty = impl_ty.subst(self.tcx(), &impl_substs);
 
         // Determine the receiver type that the method itself expects.
-        let xform_self_ty =
-            self.xform_self_ty(&item, impl_ty, &impl_substs);
+        let xform_self_ty = self.xform_self_ty(&item, impl_ty, &impl_substs);
+
+        // We can't use normalize_associated_types_in as it will pollute the
+        // fcx's fulfillment context after this probe is over.
+        let cause = traits::ObligationCause::misc(self.span, self.fcx.body_id);
+        let mut selcx = &mut traits::SelectionContext::new(self.fcx.infcx(), self.fcx);
+        let traits::Normalized { value: xform_self_ty, obligations } =
+            traits::normalize(selcx, cause, &xform_self_ty);
+        debug!("assemble_inherent_impl_probe: xform_self_ty = {:?}",
+               xform_self_ty.repr(self.tcx()));
 
         self.inherent_candidates.push(Candidate {
             xform_self_ty: xform_self_ty,
             item: item,
-            kind: InherentImplCandidate(impl_def_id, impl_substs)
+            kind: InherentImplCandidate(impl_def_id, impl_substs, obligations)
         });
     }
 
@@ -653,12 +663,24 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                                    impl_trait_ref.self_ty(),
                                    impl_trait_ref.substs);
 
+            // Normalize the receiver. We can't use normalize_associated_types_in
+            // as it will pollute the fcx's fulfillment context after this probe
+            // is over.
+            let cause = traits::ObligationCause::misc(self.span, self.fcx.body_id);
+            let mut selcx = &mut traits::SelectionContext::new(self.fcx.infcx(), self.fcx);
+            let traits::Normalized { value: xform_self_ty, obligations } =
+                traits::normalize(selcx, cause, &xform_self_ty);
+
             debug!("xform_self_ty={}", xform_self_ty.repr(self.tcx()));
 
             self.extension_candidates.push(Candidate {
                 xform_self_ty: xform_self_ty,
                 item: item.clone(),
-                kind: ExtensionImplCandidate(impl_def_id, impl_trait_ref, impl_substs, item_index)
+                kind: ExtensionImplCandidate(impl_def_id,
+                                             impl_trait_ref,
+                                             impl_substs,
+                                             item_index,
+                                             obligations)
             });
         });
     }
@@ -1026,8 +1048,8 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             // match as well (or at least may match, sometimes we
             // don't have enough information to fully evaluate).
             match probe.kind {
-                InherentImplCandidate(impl_def_id, ref substs) |
-                ExtensionImplCandidate(impl_def_id, _, ref substs, _) => {
+                InherentImplCandidate(impl_def_id, ref substs, ref ref_obligations) |
+                ExtensionImplCandidate(impl_def_id, _, ref substs, _, ref ref_obligations) => {
                     let selcx = &mut traits::SelectionContext::new(self.infcx(), self.fcx);
                     let cause = traits::ObligationCause::misc(self.span, self.fcx.body_id);
 
@@ -1046,8 +1068,10 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                     debug!("impl_obligations={}", obligations.repr(self.tcx()));
 
                     // Evaluate those obligations to see if they might possibly hold.
-                    obligations.iter().all(|o| selcx.evaluate_obligation(o)) &&
-                        norm_obligations.iter().all(|o| selcx.evaluate_obligation(o))
+                    obligations.iter()
+                        .chain(norm_obligations.iter()).chain(ref_obligations.iter())
+                        .all(|o| selcx.evaluate_obligation(o))
+
                 }
 
                 ProjectionCandidate(..) |
@@ -1281,13 +1305,13 @@ impl<'tcx> Candidate<'tcx> {
         Pick {
             item: self.item.clone(),
             kind: match self.kind {
-                InherentImplCandidate(def_id, _) => {
+                InherentImplCandidate(def_id, _, _) => {
                     InherentImplPick(def_id)
                 }
                 ObjectCandidate(def_id, item_num, real_index) => {
                     ObjectPick(def_id, item_num, real_index)
                 }
-                ExtensionImplCandidate(def_id, _, _, index) => {
+                ExtensionImplCandidate(def_id, _, _, index, _) => {
                     ExtensionImplPick(def_id, index)
                 }
                 ClosureCandidate(trait_def_id, index) => {
@@ -1315,9 +1339,9 @@ impl<'tcx> Candidate<'tcx> {
 
     fn to_source(&self) -> CandidateSource {
         match self.kind {
-            InherentImplCandidate(def_id, _) => ImplSource(def_id),
+            InherentImplCandidate(def_id, _, _) => ImplSource(def_id),
             ObjectCandidate(def_id, _, _) => TraitSource(def_id),
-            ExtensionImplCandidate(def_id, _, _, _) => ImplSource(def_id),
+            ExtensionImplCandidate(def_id, _, _, _, _) => ImplSource(def_id),
             ClosureCandidate(trait_def_id, _) => TraitSource(trait_def_id),
             WhereClauseCandidate(ref trait_ref, _) => TraitSource(trait_ref.def_id()),
             ProjectionCandidate(trait_def_id, _) => TraitSource(trait_def_id),
@@ -1335,7 +1359,7 @@ impl<'tcx> Candidate<'tcx> {
             ClosureCandidate(trait_def_id, item_num) => {
                 Some((trait_def_id, item_num))
             }
-            ExtensionImplCandidate(_, ref trait_ref, _, item_num) => {
+            ExtensionImplCandidate(_, ref trait_ref, _, item_num, _) => {
                 Some((trait_ref.def_id, item_num))
             }
             WhereClauseCandidate(ref trait_ref, item_num) => {
@@ -1359,13 +1383,14 @@ impl<'tcx> Repr<'tcx> for Candidate<'tcx> {
 impl<'tcx> Repr<'tcx> for CandidateKind<'tcx> {
     fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
         match *self {
-            InherentImplCandidate(ref a, ref b) =>
-                format!("InherentImplCandidate({},{})", a.repr(tcx), b.repr(tcx)),
+            InherentImplCandidate(ref a, ref b, ref c) =>
+                format!("InherentImplCandidate({},{},{})", a.repr(tcx), b.repr(tcx),
+                        c.repr(tcx)),
             ObjectCandidate(a, b, c) =>
                 format!("ObjectCandidate({},{},{})", a.repr(tcx), b, c),
-            ExtensionImplCandidate(ref a, ref b, ref c, ref d) =>
-                format!("ExtensionImplCandidate({},{},{},{})", a.repr(tcx), b.repr(tcx),
-                        c.repr(tcx), d),
+            ExtensionImplCandidate(ref a, ref b, ref c, ref d, ref e) =>
+                format!("ExtensionImplCandidate({},{},{},{},{})", a.repr(tcx), b.repr(tcx),
+                        c.repr(tcx), d, e.repr(tcx)),
             ClosureCandidate(ref a, ref b) =>
                 format!("ClosureCandidate({},{})", a.repr(tcx), b),
             WhereClauseCandidate(ref a, ref b) =>
