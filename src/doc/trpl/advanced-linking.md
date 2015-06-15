@@ -22,10 +22,12 @@ extern {}
 
 Note that this feature is currently hidden behind the `feature(link_args)` gate
 because this is not a sanctioned way of performing linking. Right now `rustc`
-shells out to the system linker, so it makes sense to provide extra command line
+shells out to the system linker (`gcc` on most systems, `link.exe` on MSVC),
+so it makes sense to provide extra command line
 arguments, but this will not always be the case. In the future `rustc` may use
 LLVM directly to link native libraries, in which case `link_args` will have no
-meaning.
+meaning. You can achieve the same effect as the `link-args` attribute with the
+`-C link-args` argument to `rustc`.
 
 It is highly recommended to *not* use this attribute, and rather use the more
 formal `#[link(...)]` attribute on `extern` blocks instead.
