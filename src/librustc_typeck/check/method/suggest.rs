@@ -73,40 +73,49 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                         // snippet
                     };
 
-                    fn span_stored_function() {
-                        cx.sess.span_note(span, &format!("use `({0}.{1})(...)` if you meant to call \
-                                                          the function stored in the `{1}` field",
-                                                         expr_string, item_name));
-                    }
+                    macro_rules! span_stored_function {
+                        () => {
+                            cx.sess.span_note(span,
+                                              &format!("use `({0}.{1})(...)` if you meant to call \
+                                                        the function stored in the `{1}` field",
+                                                       expr_string, item_name));
+                        }
+                    };
 
-                    fn span_did_you_mean() {
-                        cx.sess.span_note(span, &format!("did you mean to write `{0}.{1}`?",
-                                                         expr_string, item_name));
-                    }
+                    macro_rules! span_did_you_mean {
+                        () => {
+                            cx.sess.span_note(span, &format!("did you mean to write `{0}.{1}`?",
+                                                             expr_string, item_name));
+                        }
+                    };
 
                     // Determine if the field can be used as a function in some way
                     let field_ty = ty::lookup_field_type(cx, did, field.id, substs);
                     if let Ok(fn_once_trait_did) = cx.lang_items.require(FnOnceTraitLangItem) {
-                        let fn_once_substs = Substs::new_trait(vec![fcx.inh.infcx.next_ty_var()],
-                                                               Vec::new(),
-                                                               field_ty);
-                        let trait_ref = ty::TraitRef::new(fn_once_trait_did,
-                                                          cx.mk_substs(fn_once_substs));
-                        let poly_trait_ref = trait_ref.to_poly_trait_ref();
-                        let obligation = Obligation::misc(span,
-                                                          fcx.body_id,
-                                                          poly_trait_ref.as_predicate());
-                        let mut selcx = SelectionContext::new(fcx.infcx(), fcx);
+                        let infcx = fcx.infcx();
+                        infcx.probe(|_| {
+                            let fn_once_substs = Substs::new_trait(vec![infcx.next_ty_var()],
+                                                                   Vec::new(),
+                                                                   field_ty);
+                            let trait_ref = ty::TraitRef::new(fn_once_trait_did,
+                                                              cx.mk_substs(fn_once_substs));
+                            let poly_trait_ref = trait_ref.to_poly_trait_ref();
+                            let obligation = Obligation::misc(span,
+                                                              fcx.body_id,
+                                                              poly_trait_ref.as_predicate());
+                            let mut selcx = SelectionContext::new(infcx, fcx);
 
-                        if selcx.evaluate_obligation(&obligation) {
-                            span_stored_function();
-                        } else {
-                            span_did_you_mean();
-                        }
+                            if selcx.evaluate_obligation(&obligation) {
+                                span_stored_function!();
+                            } else {
+                                span_did_you_mean!();
+                            }
+                        });
                     } else {
                         match field_ty.sty {
-                            ty::TyClosure(_,_) | ty::TyFnPtr(_,_) => span_stored_function(),
-                            _ => span_did_you_mean(),
+                            // fallback to matching a closure or function pointer
+                            ty::TyClosure(_,_) | ty::TyBareFn(None,_) => span_stored_function!(),
+                            _ => span_did_you_mean!(),
                         }
                     }
                 }
