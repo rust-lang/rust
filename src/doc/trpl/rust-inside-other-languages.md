@@ -66,10 +66,14 @@ threads = []
     5_000_000.times do
       count += 1
     end
+
+    count
   end
 end
 
-threads.each { |t| t.join }
+threads.each do |t|
+  puts "Thread finished with count=#{t.value}"
+end
 puts "done!"
 ```
 
@@ -103,50 +107,26 @@ use std::thread;
 fn process() {
     let handles: Vec<_> = (0..10).map(|_| {
         thread::spawn(|| {
-            let mut _x = 0;
+            let mut x = 0;
             for _ in (0..5_000_000) {
-                _x += 1
+                x += 1
             }
+	    x
         })
     }).collect();
 
     for h in handles {
-        h.join().ok().expect("Could not join a thread!");
+        println!("Thread finished with count={}",
+	    h.join().map_err(|_| "Could not join a thread!").unwrap());
     }
+    println!("done!");
 }
 ```
 
 Some of this should look familiar from previous examples. We spin up ten
 threads, collecting them into a `handles` vector. Inside of each thread, we
-loop five million times, and add one to `_x` each time. Why the underscore?
-Well, if we remove it and compile:
-
-```bash
-$ cargo build
-   Compiling embed v0.1.0 (file:///home/steve/src/embed)
-src/lib.rs:3:1: 16:2 warning: function is never used: `process`, #[warn(dead_code)] on by default
-src/lib.rs:3 fn process() {
-src/lib.rs:4     let handles: Vec<_> = (0..10).map(|_| {
-src/lib.rs:5         thread::spawn(|| {
-src/lib.rs:6             let mut x = 0;
-src/lib.rs:7             for _ in (0..5_000_000) {
-src/lib.rs:8                 x += 1
-             ...
-src/lib.rs:6:17: 6:22 warning: variable `x` is assigned to, but never used, #[warn(unused_variables)] on by default
-src/lib.rs:6             let mut x = 0;
-                             ^~~~~
-```
-
-That first warning is because we are building a library. If we had a test
-for this function, the warning would go away. But for now, it’s never
-called.
-
-The second is related to `x` versus `_x`. Because we never actually _do_
-anything with `x`, we get a warning about it. In our case, that’s perfectly
-okay, as we’re just trying to waste CPU cycles. Prefixing `x` with the
-underscore removes the warning.
-
-Finally, we join on each thread.
+loop five million times, and add one to `x` each time. Finally, we join on
+each thread.
 
 Right now, however, this is a Rust library, and it doesn’t expose anything
 that’s callable from C. If we tried to hook this up to another language right
