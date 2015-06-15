@@ -120,7 +120,7 @@ let y = &mut num;
 ```
 
 If your closure requires it, however, Rust will take ownership and move
-the environment instead:
+the environment instead. This doesn’t work:
 
 ```rust,ignore
 let nums = vec![1, 2, 3];
@@ -130,7 +130,7 @@ let takes_nums = || nums;
 println!("{:?}", nums);
 ```
 
-This gives us:
+We get this error:
 
 ```text
 note: `nums` moved into closure environment here because it has type
