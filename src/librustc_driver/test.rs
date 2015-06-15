@@ -28,7 +28,7 @@ use rustc_typeck::middle::infer;
 use rustc_typeck::middle::infer::lub::Lub;
 use rustc_typeck::middle::infer::glb::Glb;
 use rustc_typeck::middle::infer::sub::Sub;
-use rustc_typeck::util::ppaux::{ty_to_string, Repr, UserString};
+use rustc_typeck::util::ppaux::{Repr, UserString};
 use rustc::ast_map;
 use rustc::session::{self,config};
 use syntax::{abi, ast};
@@ -253,7 +253,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
     }
 
     pub fn ty_to_string(&self, a: Ty<'tcx>) -> String {
-        ty_to_string(self.infcx.tcx, a)
+         a.user_string(self.infcx.tcx)
     }
 
     pub fn t_fn(&self,

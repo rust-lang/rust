@@ -62,7 +62,6 @@ use middle::ty;
 use middle::ty_fold::{self, TypeFoldable, TypeFolder};
 use middle::ty_walk::{self, TypeWalker};
 use util::ppaux::note_and_explain_region;
-use util::ppaux::ty_to_string;
 use util::ppaux::{Repr, UserString};
 use util::common::{memoized, ErrorReported};
 use util::nodemap::{NodeMap, NodeSet, DefIdMap, DefIdSet};
@@ -3568,7 +3567,7 @@ pub fn sequence_element_type<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
         TyArray(ty, _) | TySlice(ty) => ty,
         TyStr => mk_mach_uint(cx, ast::TyU8),
         _ => cx.sess.bug(&format!("sequence_element_type called on non-sequence value: {}",
-                                 ty_to_string(cx, ty))),
+                                  ty.user_string(cx))),
     }
 }
 
@@ -4139,24 +4138,20 @@ pub fn is_ffi_safe<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
 pub fn is_instantiable<'tcx>(cx: &ctxt<'tcx>, r_ty: Ty<'tcx>) -> bool {
     fn type_requires<'tcx>(cx: &ctxt<'tcx>, seen: &mut Vec<DefId>,
                            r_ty: Ty<'tcx>, ty: Ty<'tcx>) -> bool {
-        debug!("type_requires({:?}, {:?})?",
-               ::util::ppaux::ty_to_string(cx, r_ty),
-               ::util::ppaux::ty_to_string(cx, ty));
+        debug!("type_requires({}, {})?",
+               r_ty.repr(cx), ty.repr(cx));
 
         let r = r_ty == ty || subtypes_require(cx, seen, r_ty, ty);
 
-        debug!("type_requires({:?}, {:?})? {:?}",
-               ::util::ppaux::ty_to_string(cx, r_ty),
-               ::util::ppaux::ty_to_string(cx, ty),
-               r);
+        debug!("type_requires({}, {})? {:?}",
+               r_ty.repr(cx), ty.repr(cx), r);
         return r;
     }
 
     fn subtypes_require<'tcx>(cx: &ctxt<'tcx>, seen: &mut Vec<DefId>,
                               r_ty: Ty<'tcx>, ty: Ty<'tcx>) -> bool {
-        debug!("subtypes_require({:?}, {:?})?",
-               ::util::ppaux::ty_to_string(cx, r_ty),
-               ::util::ppaux::ty_to_string(cx, ty));
+        debug!("subtypes_require({}, {})?",
+               r_ty.repr(cx), ty.repr(cx));
 
         let r = match ty.sty {
             // fixed length vectors need special treatment compared to
@@ -4234,10 +4229,8 @@ pub fn is_instantiable<'tcx>(cx: &ctxt<'tcx>, r_ty: Ty<'tcx>) -> bool {
             }
         };
 
-        debug!("subtypes_require({:?}, {:?})? {:?}",
-               ::util::ppaux::ty_to_string(cx, r_ty),
-               ::util::ppaux::ty_to_string(cx, ty),
-               r);
+        debug!("subtypes_require({}, {})? {:?}",
+               r_ty.repr(cx), ty.repr(cx), r);
 
         return r;
     }
@@ -4343,8 +4336,7 @@ pub fn is_type_representable<'tcx>(cx: &ctxt<'tcx>, sp: Span, ty: Ty<'tcx>)
     fn is_type_structurally_recursive<'tcx>(cx: &ctxt<'tcx>, sp: Span,
                                             seen: &mut Vec<Ty<'tcx>>,
                                             ty: Ty<'tcx>) -> Representability {
-        debug!("is_type_structurally_recursive: {:?}",
-               ::util::ppaux::ty_to_string(cx, ty));
+        debug!("is_type_structurally_recursive: {}", ty.repr(cx));
 
         match ty.sty {
             TyStruct(did, _) | TyEnum(did, _) => {
@@ -4363,9 +4355,9 @@ pub fn is_type_representable<'tcx>(cx: &ctxt<'tcx>, sp: Span, ty: Ty<'tcx>)
                     match iter.next() {
                         Some(&seen_type) => {
                             if same_struct_or_enum_def_id(seen_type, did) {
-                                debug!("SelfRecursive: {:?} contains {:?}",
-                                       ::util::ppaux::ty_to_string(cx, seen_type),
-                                       ::util::ppaux::ty_to_string(cx, ty));
+                                debug!("SelfRecursive: {} contains {}",
+                                       seen_type.repr(cx),
+                                       ty.repr(cx));
                                 return SelfRecursive;
                             }
                         }
@@ -4383,9 +4375,9 @@ pub fn is_type_representable<'tcx>(cx: &ctxt<'tcx>, sp: Span, ty: Ty<'tcx>)
 
                     for &seen_type in iter {
                         if same_type(ty, seen_type) {
-                            debug!("ContainsRecursive: {:?} contains {:?}",
-                                   ::util::ppaux::ty_to_string(cx, seen_type),
-                                   ::util::ppaux::ty_to_string(cx, ty));
+                            debug!("ContainsRecursive: {} contains {}",
+                                   seen_type.repr(cx),
+                                   ty.repr(cx));
                             return ContainsRecursive;
                         }
                     }
@@ -4405,16 +4397,14 @@ pub fn is_type_representable<'tcx>(cx: &ctxt<'tcx>, sp: Span, ty: Ty<'tcx>)
         }
     }
 
-    debug!("is_type_representable: {:?}",
-           ::util::ppaux::ty_to_string(cx, ty));
+    debug!("is_type_representable: {}", ty.repr(cx));
 
     // To avoid a stack overflow when checking an enum variant or struct that
     // contains a different, structurally recursive type, maintain a stack
     // of seen types and check recursion for each of them (issues #3008, #3779).
     let mut seen: Vec<Ty> = Vec::new();
     let r = is_type_structurally_recursive(cx, sp, &mut seen, ty);
-    debug!("is_type_representable: {:?} is {:?}",
-           ::util::ppaux::ty_to_string(cx, ty), r);
+    debug!("is_type_representable: {} is {:?}", ty.repr(cx), r);
     r
 }
 
@@ -4857,7 +4847,7 @@ pub fn adjust_ty<'tcx, F>(cx: &ctxt<'tcx>,
                                         span,
                                         &format!("the {}th autoderef failed: {}",
                                                 i,
-                                                ty_to_string(cx, adjusted_ty))
+                                                 adjusted_ty.user_string(cx))
                                         );
                                 }
                             }
@@ -5102,10 +5092,8 @@ pub fn impl_or_trait_item_idx(id: ast::Name, trait_items: &[ImplOrTraitItem])
 pub fn ty_sort_string<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> String {
     match ty.sty {
         TyBool | TyChar | TyInt(_) |
-        TyUint(_) | TyFloat(_) | TyStr => {
-            ::util::ppaux::ty_to_string(cx, ty)
-        }
-        TyTuple(ref tys) if tys.is_empty() => ::util::ppaux::ty_to_string(cx, ty),
+        TyUint(_) | TyFloat(_) | TyStr => ty.user_string(cx),
+        TyTuple(ref tys) if tys.is_empty() => ty.user_string(cx),
 
         TyEnum(id, _) => format!("enum `{}`", item_path_str(cx, id)),
         TyBox(_) => "box".to_string(),

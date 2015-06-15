@@ -186,7 +186,7 @@ pub fn mutability_to_string(m: ast::Mutability) -> String {
 pub fn mt_to_string<'tcx>(cx: &ctxt<'tcx>, m: &mt<'tcx>) -> String {
     format!("{}{}",
         mutability_to_string(m.mutbl),
-        ty_to_string(cx, m.ty))
+         m.ty.user_string(cx))
 }
 
 pub fn vec_map_to_string<T, F>(ts: &[T], f: F) -> String where
@@ -196,7 +196,7 @@ pub fn vec_map_to_string<T, F>(ts: &[T], f: F) -> String where
     format!("[{}]", tstrs.connect(", "))
 }
 
-pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
+fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
     fn bare_fn_to_string<'tcx>(cx: &ctxt<'tcx>,
                                opt_def_id: Option<ast::DefId>,
                                unsafety: ast::Unsafety,
@@ -266,7 +266,7 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
         s.push(bra);
         let strs = sig.0.inputs
             .iter()
-            .map(|a| ty_to_string(cx, *a))
+            .map(|a| a.user_string(cx))
             .collect::<Vec<_>>();
         s.push_str(&strs.connect(", "));
         if sig.0.variadic {
@@ -278,7 +278,7 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
             ty::FnConverging(t) => {
                 if !ty::type_is_nil(t) {
                    s.push_str(" -> ");
-                   s.push_str(&ty_to_string(cx, t));
+                   s.push_str(& t.user_string(cx));
                 }
             }
             ty::FnDiverging => {
@@ -307,12 +307,12 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
         TyInt(t) => ast_util::int_ty_to_string(t, None).to_string(),
         TyUint(t) => ast_util::uint_ty_to_string(t, None).to_string(),
         TyFloat(t) => ast_util::float_ty_to_string(t).to_string(),
-        TyBox(typ) => format!("Box<{}>", ty_to_string(cx, typ)),
+        TyBox(typ) => format!("Box<{}>",  typ.user_string(cx)),
         TyRawPtr(ref tm) => {
             format!("*{} {}", match tm.mutbl {
                 ast::MutMutable => "mut",
                 ast::MutImmutable => "const",
-            }, ty_to_string(cx, tm.ty))
+            },  tm.ty.user_string(cx))
         }
         TyRef(r, ref tm) => {
             let mut buf = "&".to_owned();
@@ -326,7 +326,7 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
         TyTuple(ref elems) => {
             let strs = elems
                 .iter()
-                .map(|elem| ty_to_string(cx, *elem))
+                .map(|elem| elem.user_string(cx))
                 .collect::<Vec<_>>();
             match &strs[..] {
                 [ref string] => format!("({},)", string),
@@ -375,10 +375,10 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
             })
         }
         TyArray(t, sz) => {
-            format!("[{}; {}]", ty_to_string(cx, t), sz)
+            format!("[{}; {}]",  t.user_string(cx), sz)
         }
         TySlice(t) => {
-            format!("[{}]", ty_to_string(cx, t))
+            format!("[{}]",  t.user_string(cx))
         }
     }
 }
@@ -475,7 +475,7 @@ fn parameterized<'tcx, GG>(cx: &ctxt<'tcx>,
     };
 
     for t in &tps[..tps.len() - num_defaults] {
-        strs.push(ty_to_string(cx, *t))
+        strs.push(t.user_string(cx))
     }
 
     for projection in projections {
@@ -581,6 +581,12 @@ impl<'tcx, T:Repr<'tcx>> Repr<'tcx> for Vec<T> {
     }
 }
 
+impl<'a, 'tcx, T: ?Sized +UserString<'tcx>> UserString<'tcx> for &'a T {
+    fn user_string(&self, tcx: &ctxt<'tcx>) -> String {
+        UserString::user_string(*self, tcx)
+    }
+}
+
 impl<'tcx, T:UserString<'tcx>> UserString<'tcx> for Vec<T> {
     fn user_string(&self, tcx: &ctxt<'tcx>) -> String {
         let strs: Vec<String> =
@@ -672,7 +678,7 @@ impl<'tcx> Repr<'tcx> for ty::RegionParameterDef {
 
 impl<'tcx> Repr<'tcx> for ty::TyS<'tcx> {
     fn repr(&self, tcx: &ctxt<'tcx>) -> String {
-        ty_to_string(tcx, self)
+        self.user_string(tcx)
     }
 }
 
@@ -1290,9 +1296,9 @@ impl<'tcx> UserString<'tcx> for ty::TraitRef<'tcx> {
     }
 }
 
-impl<'tcx> UserString<'tcx> for Ty<'tcx> {
+impl<'tcx> UserString<'tcx> for ty::TyS<'tcx> {
     fn user_string(&self, tcx: &ctxt<'tcx>) -> String {
-        ty_to_string(tcx, *self)
+        ty_to_string(tcx, self)
     }
 }
 

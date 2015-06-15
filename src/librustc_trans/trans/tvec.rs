@@ -28,7 +28,7 @@ use trans::machine::llsize_of_alloc;
 use trans::type_::Type;
 use trans::type_of;
 use middle::ty::{self, Ty};
-use util::ppaux::ty_to_string;
+use util::ppaux::UserString;
 
 use syntax::ast;
 use syntax::parse::token::InternedString;
@@ -42,7 +42,7 @@ struct VecTypes<'tcx> {
 impl<'tcx> VecTypes<'tcx> {
     pub fn to_string<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> String {
         format!("VecTypes {{unit_ty={}, llunit_ty={}}}",
-                ty_to_string(ccx.tcx(), self.unit_ty),
+                self.unit_ty.user_string(ccx.tcx()),
                 ccx.tn().type_to_string(self.llunit_ty))
     }
 }

@@ -102,7 +102,7 @@ use trans::expr;
 use trans::tvec;
 use trans::type_of;
 use middle::ty::{self, Ty};
-use util::ppaux::ty_to_string;
+use util::ppaux::Repr;
 
 use std::fmt;
 use syntax::ast;
@@ -616,7 +616,7 @@ impl<'tcx, K: KindOps + fmt::Debug> Datum<'tcx, K> {
     pub fn to_string<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> String {
         format!("Datum({}, {}, {:?})",
                 ccx.tn().val_to_string(self.val),
-                ty_to_string(ccx.tcx(), self.ty),
+                self.ty.repr(ccx.tcx()),
                 self.kind)
     }
 

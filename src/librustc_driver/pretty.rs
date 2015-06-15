@@ -25,7 +25,7 @@ use rustc::middle::cfg;
 use rustc::middle::cfg::graphviz::LabelledCFG;
 use rustc::session::Session;
 use rustc::session::config::Input;
-use rustc::util::ppaux;
+use rustc::util::ppaux::UserString;
 use rustc_borrowck as borrowck;
 use rustc_borrowck::graphviz as borrowck_dot;
 use rustc_resolve as resolve;
@@ -318,9 +318,7 @@ impl<'a, 'tcx> pprust::PpAnn for TypedAnnotation<'a, 'tcx> {
                 try!(pp::word(&mut s.s, "as"));
                 try!(pp::space(&mut s.s));
                 try!(pp::word(&mut s.s,
-                              &ppaux::ty_to_string(
-                                  &self.tcx,
-                                  ty::expr_ty(&self.tcx, expr))));
+                              &ty::expr_ty(self.tcx, expr).user_string(self.tcx)));
                 s.pclose()
             }
             _ => Ok(())

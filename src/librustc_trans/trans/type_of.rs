@@ -16,7 +16,6 @@ use trans::common::*;
 use trans::foreign;
 use trans::machine;
 use middle::ty::{self, RegionEscape, Ty};
-use util::ppaux;
 use util::ppaux::Repr;
 
 use trans::type_::Type;
@@ -230,7 +229,7 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
 
         ty::TyProjection(..) | ty::TyInfer(..) | ty::TyParam(..) | ty::TyError(..) => {
             cx.sess().bug(&format!("fictitious type {} in sizing_type_of()",
-                                  ppaux::ty_to_string(cx.tcx(), t)))
+                                   t.repr(cx.tcx())))
         }
         ty::TySlice(_) | ty::TyTrait(..) | ty::TyStr => unreachable!()
     };

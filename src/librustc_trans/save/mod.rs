@@ -23,7 +23,7 @@ use syntax::parse::token::{self, get_ident, keywords};
 use syntax::visit::{self, Visitor};
 use syntax::print::pprust::ty_to_string;
 
-use util::ppaux;
+use util::ppaux::UserString;
 
 use self::span_utils::SpanUtils;
 
@@ -292,9 +292,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 let qualname = format!("::{}::{}",
                                        self.tcx.map.path_to_string(parent),
                                        name);
-                let typ = ppaux::ty_to_string(&self.tcx,
-                                              *self.tcx.node_types()
-                                                  .get(&field.node.id).unwrap());
+                let typ = self.tcx.node_types().get(&field.node.id).unwrap()
+                                               .user_string(self.tcx);
                 let sub_span = self.span_utils.sub_span_before_token(field.span, token::Colon);
                 Some(Data::VariableData(VariableData {
                     id: field.node.id,
