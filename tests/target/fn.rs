@@ -4,13 +4,13 @@ fn foo(a: AAAA, b: BBB, c: CCC) -> RetType {
 
 }
 
-fn foo(a: AAAA, b: BBB, c: CCC) -> RetType
+fn foo(a: AAAA, b: BBB /* some, weird, inline comment */, c: CCC) -> RetType
     where T: Blah
 {
 
 }
 
-fn foo(a: AAA)
+fn foo(a: AAA /* (comment) */)
     where T: Blah
 {
 

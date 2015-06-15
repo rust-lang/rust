@@ -11,7 +11,7 @@
 // Formatting top-level items - functions, structs, enums, traits, impls.
 
 use {ReturnIndent, BraceStyle};
-use utils::{format_visibility, make_indent};
+use utils::{format_visibility, make_indent, FindUncommented};
 use lists::{write_list, ListFormatting, SeparatorTactic, ListTactic};
 use visitor::FmtVisitor;
 use syntax::{ast, abi};
@@ -336,12 +336,11 @@ impl<'a> FmtVisitor<'a> {
         // FIXME If you thought the crap with the commas was ugly, just wait.
         // This is awful. We're going to look from the last item span to the
         // start of the return type span, then we drop everything after the
-        // first closing paren. Obviously, this will break if there is a
-        // closing paren in the comment.
+        // first closing paren.
         // The fix is comments in the AST or a span for the closing paren.
         let snippet = self.snippet(codemap::mk_sp(prev_end, next_span_start));
         let snippet = snippet.trim();
-        let snippet = &snippet[..snippet.find(terminator).unwrap_or(snippet.len())];
+        let snippet = &snippet[..snippet.find_uncommented(terminator).unwrap_or(snippet.len())];
         let snippet = snippet.trim();
         result.push(snippet.to_owned());
 
@@ -417,8 +416,7 @@ impl<'a> FmtVisitor<'a> {
         self.changes.push_str_span(span, &header_str);
 
         let enum_snippet = self.snippet(span);
-        // FIXME this will give incorrect results if there is a { in a comment.
-        let body_start = span.lo + BytePos(enum_snippet.find('{').unwrap() as u32 + 1);
+        let body_start = span.lo + BytePos(enum_snippet.find_uncommented("{").unwrap() as u32 + 1);
         let generics_str = self.format_generics(generics, body_start);
         self.changes.push_str_span(span, &generics_str);
 
@@ -542,8 +540,8 @@ impl<'a> FmtVisitor<'a> {
         self.changes.push_str_span(span, &generics_str);
 
         let struct_snippet = self.snippet(span);
-        // FIXME this will give incorrect results if there is a { in a comment.
-        self.last_pos = span.lo + BytePos(struct_snippet.find('{').unwrap() as u32 + 1);
+        // This will drop the comment in between the header and body.
+        self.last_pos = span.lo + BytePos(struct_snippet.find_uncommented("{").unwrap() as u32 + 1);
 
         self.block_indent += config!(tab_spaces);
         for (i, f) in struct_def.fields.iter().enumerate() {
@@ -632,8 +630,7 @@ impl<'a> FmtVisitor<'a> {
         // This hack makes sure we only add comments etc. after the comma, and
         // makes sure we don't repeat any commas.
         let hi = field.span.hi;
-        // FIXME a comma in a comment will break this hack.
-        let comma_pos = match struct_snippet[(hi.0 - struct_start.0) as usize..].find(',') {
+        let comma_pos = match struct_snippet[(hi.0 - struct_start.0) as usize..].find_uncommented(",") {
             Some(i) => i,
             None => 0,
         };
