@@ -19,6 +19,7 @@ use io::{self, BufReader, LineWriter};
 use sync::{Arc, Mutex, MutexGuard};
 use sys::stdio;
 use sys_common::remutex::{ReentrantMutex, ReentrantMutexGuard};
+use libc;
 
 /// Stdout used by print! and println! macros
 thread_local! {
@@ -52,7 +53,7 @@ struct StderrRaw(stdio::Stderr);
 /// handles is **not** available to raw handles returned from this function.
 ///
 /// The returned handle has no external synchronization or buffering.
-fn stdin_raw() -> StdinRaw { StdinRaw(stdio::Stdin::new()) }
+fn stdin_raw() -> io::Result<StdinRaw> { stdio::Stdin::new().map(StdinRaw) }
 
 /// Constructs a new raw handle to the standard input stream of this process.
 ///
@@ -63,7 +64,7 @@ fn stdin_raw() -> StdinRaw { StdinRaw(stdio::Stdin::new()) }
 ///
 /// The returned handle has no external synchronization or buffering layered on
 /// top.
-fn stdout_raw() -> StdoutRaw { StdoutRaw(stdio::Stdout::new()) }
+fn stdout_raw() -> io::Result<StdoutRaw> { stdio::Stdout::new().map(StdoutRaw) }
 
 /// Constructs a new raw handle to the standard input stream of this process.
 ///
@@ -72,7 +73,7 @@ fn stdout_raw() -> StdoutRaw { StdoutRaw(stdio::Stdout::new()) }
 ///
 /// The returned handle has no external synchronization or buffering layered on
 /// top.
-fn stderr_raw() -> StderrRaw { StderrRaw(stdio::Stderr::new()) }
+fn stderr_raw() -> io::Result<StderrRaw> { stdio::Stderr::new().map(StderrRaw) }
 
 impl Read for StdinRaw {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> { self.0.read(buf) }
@@ -84,6 +85,48 @@ impl Write for StdoutRaw {
 impl Write for StderrRaw {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> { self.0.write(buf) }
     fn flush(&mut self) -> io::Result<()> { Ok(()) }
+}
+
+enum Maybe<T> {
+    Real(T),
+    Fake,
+}
+
+impl<W: io::Write> io::Write for Maybe<W> {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        match *self {
+            Maybe::Real(ref mut w) => handle_ebadf(w.write(buf), buf.len()),
+            Maybe::Fake => Ok(buf.len())
+        }
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        match *self {
+            Maybe::Real(ref mut w) => handle_ebadf(w.flush(), ()),
+            Maybe::Fake => Ok(())
+        }
+    }
+}
+
+impl<R: io::Read> io::Read for Maybe<R> {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        match *self {
+            Maybe::Real(ref mut r) => handle_ebadf(r.read(buf), buf.len()),
+            Maybe::Fake => Ok(0)
+        }
+    }
+}
+
+fn handle_ebadf<T>(r: io::Result<T>, default: T) -> io::Result<T> {
+    #[cfg(windows)]
+    const ERR: libc::c_int = libc::ERROR_INVALID_HANDLE;
+    #[cfg(not(windows))]
+    const ERR: libc::c_int = libc::EBADF;
+
+    match r {
+        Err(ref e) if e.raw_os_error() == Some(ERR) => Ok(default),
+        r => r
+    }
 }
 
 /// A handle to the standard input stream of a process.
@@ -99,7 +142,7 @@ impl Write for StderrRaw {
 /// Created by the function `io::stdin()`.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Stdin {
-    inner: Arc<Mutex<BufReader<StdinRaw>>>,
+    inner: Arc<Mutex<BufReader<Maybe<StdinRaw>>>>,
 }
 
 /// A locked reference to the a `Stdin` handle.
@@ -108,7 +151,7 @@ pub struct Stdin {
 /// constructed via the `lock` method on `Stdin`.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct StdinLock<'a> {
-    inner: MutexGuard<'a, BufReader<StdinRaw>>,
+    inner: MutexGuard<'a, BufReader<Maybe<StdinRaw>>>,
 }
 
 /// Creates a new handle to the global standard input stream of this process.
@@ -122,20 +165,25 @@ pub struct StdinLock<'a> {
 /// locked version, `StdinLock`, implements both `Read` and `BufRead`, however.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn stdin() -> Stdin {
-    static INSTANCE: Lazy<Mutex<BufReader<StdinRaw>>> = Lazy::new(stdin_init);
+    static INSTANCE: Lazy<Mutex<BufReader<Maybe<StdinRaw>>>> = Lazy::new(stdin_init);
     return Stdin {
         inner: INSTANCE.get().expect("cannot access stdin during shutdown"),
     };
 
-    fn stdin_init() -> Arc<Mutex<BufReader<StdinRaw>>> {
+    fn stdin_init() -> Arc<Mutex<BufReader<Maybe<StdinRaw>>>> {
+        let stdin = match stdin_raw() {
+            Ok(stdin) => Maybe::Real(stdin),
+            _ => Maybe::Fake
+        };
+
         // The default buffer capacity is 64k, but apparently windows
         // doesn't like 64k reads on stdin. See #13304 for details, but the
         // idea is that on windows we use a slightly smaller buffer that's
         // been seen to be acceptable.
         Arc::new(Mutex::new(if cfg!(windows) {
-            BufReader::with_capacity(8 * 1024, stdin_raw())
+            BufReader::with_capacity(8 * 1024, stdin)
         } else {
-            BufReader::new(stdin_raw())
+            BufReader::new(stdin)
         }))
     }
 }
@@ -181,6 +229,7 @@ impl<'a> Read for StdinLock<'a> {
         self.inner.read(buf)
     }
 }
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> BufRead for StdinLock<'a> {
     fn fill_buf(&mut self) -> io::Result<&[u8]> { self.inner.fill_buf() }
@@ -215,7 +264,7 @@ pub struct Stdout {
     // FIXME: this should be LineWriter or BufWriter depending on the state of
     //        stdout (tty or not). Note that if this is not line buffered it
     //        should also flush-on-panic or some form of flush-on-abort.
-    inner: Arc<ReentrantMutex<RefCell<LineWriter<StdoutRaw>>>>,
+    inner: Arc<ReentrantMutex<RefCell<LineWriter<Maybe<StdoutRaw>>>>>,
 }
 
 /// A locked reference to the a `Stdout` handle.
@@ -224,7 +273,7 @@ pub struct Stdout {
 /// method on `Stdout`.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct StdoutLock<'a> {
-    inner: ReentrantMutexGuard<'a, RefCell<LineWriter<StdoutRaw>>>,
+    inner: ReentrantMutexGuard<'a, RefCell<LineWriter<Maybe<StdoutRaw>>>>,
 }
 
 /// Constructs a new reference to the standard output of the current process.
@@ -236,13 +285,18 @@ pub struct StdoutLock<'a> {
 /// The returned handle implements the `Write` trait.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn stdout() -> Stdout {
-    static INSTANCE: Lazy<ReentrantMutex<RefCell<LineWriter<StdoutRaw>>>> = Lazy::new(stdout_init);
+    static INSTANCE: Lazy<ReentrantMutex<RefCell<LineWriter<Maybe<StdoutRaw>>>>>
+        = Lazy::new(stdout_init);
     return Stdout {
         inner: INSTANCE.get().expect("cannot access stdout during shutdown"),
     };
 
-    fn stdout_init() -> Arc<ReentrantMutex<RefCell<LineWriter<StdoutRaw>>>> {
-        Arc::new(ReentrantMutex::new(RefCell::new(LineWriter::new(stdout_raw()))))
+    fn stdout_init() -> Arc<ReentrantMutex<RefCell<LineWriter<Maybe<StdoutRaw>>>>> {
+        let stdout = match stdout_raw() {
+            Ok(stdout) => Maybe::Real(stdout),
+            _ => Maybe::Fake,
+        };
+        Arc::new(ReentrantMutex::new(RefCell::new(LineWriter::new(stdout))))
     }
 }
 
@@ -288,7 +342,7 @@ impl<'a> Write for StdoutLock<'a> {
 /// For more information, see `stderr`
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Stderr {
-    inner: Arc<ReentrantMutex<RefCell<StderrRaw>>>,
+    inner: Arc<ReentrantMutex<RefCell<Maybe<StderrRaw>>>>,
 }
 
 /// A locked reference to the a `Stderr` handle.
@@ -297,7 +351,7 @@ pub struct Stderr {
 /// method on `Stderr`.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct StderrLock<'a> {
-    inner: ReentrantMutexGuard<'a, RefCell<StderrRaw>>,
+    inner: ReentrantMutexGuard<'a, RefCell<Maybe<StderrRaw>>>,
 }
 
 /// Constructs a new reference to the standard error stream of a process.
@@ -308,13 +362,17 @@ pub struct StderrLock<'a> {
 /// The returned handle implements the `Write` trait.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn stderr() -> Stderr {
-    static INSTANCE: Lazy<ReentrantMutex<RefCell<StderrRaw>>> = Lazy::new(stderr_init);
+    static INSTANCE: Lazy<ReentrantMutex<RefCell<Maybe<StderrRaw>>>> = Lazy::new(stderr_init);
     return Stderr {
         inner: INSTANCE.get().expect("cannot access stderr during shutdown"),
     };
 
-    fn stderr_init() -> Arc<ReentrantMutex<RefCell<StderrRaw>>> {
-        Arc::new(ReentrantMutex::new(RefCell::new(stderr_raw())))
+    fn stderr_init() -> Arc<ReentrantMutex<RefCell<Maybe<StderrRaw>>>> {
+        let stderr = match stderr_raw() {
+            Ok(stderr) => Maybe::Real(stderr),
+            _ => Maybe::Fake,
+        };
+        Arc::new(ReentrantMutex::new(RefCell::new(stderr)))
     }
 }
 
