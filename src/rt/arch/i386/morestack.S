@@ -75,7 +75,7 @@
 #else
 #if defined(__linux__) || defined(__FreeBSD__)
 #define MORESTACK               __morestack
-#define EXHAUSTED               rust_stack_exhausted
+#define EXHAUSTED               rust_stack_exhausted@plt
 #else
 #define MORESTACK               ___morestack
 #define EXHAUSTED               _rust_stack_exhausted
@@ -83,7 +83,6 @@
 #endif
 
 .globl MORESTACK
-.globl EXHAUSTED
 
 // FIXME: What about __WIN32__?
 #if defined(__linux__) || defined(__FreeBSD__)
@@ -138,7 +137,7 @@ MORESTACK:
 
         // re-align the stack
         subl $12,%esp
-        calll EXHAUSTED
+        call EXHAUSTED
         // the exhaustion function guarantees that it can't return
 
 	.cfi_endproc
