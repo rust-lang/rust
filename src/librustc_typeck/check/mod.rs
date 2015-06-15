@@ -106,7 +106,7 @@ use {CrateCtxt, lookup_full_def, require_same_types};
 use TypeAndSubsts;
 use lint;
 use util::common::{block_query, ErrorReported, indenter, loop_query};
-use util::ppaux::{self, Repr};
+use util::ppaux::{Repr, UserString};
 use util::nodemap::{DefIdMap, FnvHashMap, NodeMap};
 use util::lev_distance::lev_distance;
 
@@ -1396,7 +1396,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     #[inline]
     pub fn write_ty(&self, node_id: ast::NodeId, ty: Ty<'tcx>) {
         debug!("write_ty({}, {}) in fcx {}",
-               node_id, ppaux::ty_to_string(self.tcx(), ty), self.tag());
+               node_id, ty.repr(self.tcx()), self.tag());
         self.inh.node_types.borrow_mut().insert(node_id, ty);
     }
 
@@ -2746,7 +2746,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                                   |base_t, _| {
                 match base_t.sty {
                     ty::TyStruct(base_id, substs) => {
-                        debug!("struct named {}", ppaux::ty_to_string(tcx, base_t));
+                        debug!("struct named {}",  base_t.repr(tcx));
                         let fields = ty::lookup_struct_fields(tcx, base_id);
                         fcx.lookup_field_ty(expr.span, base_id, &fields[..],
                                             field.node.name, &(*substs))
@@ -2850,7 +2850,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                     ty::TyStruct(base_id, substs) => {
                         tuple_like = ty::is_tuple_struct(tcx, base_id);
                         if tuple_like {
-                            debug!("tuple struct named {}", ppaux::ty_to_string(tcx, base_t));
+                            debug!("tuple struct named {}",  base_t.repr(tcx));
                             let fields = ty::lookup_struct_fields(tcx, base_id);
                             fcx.lookup_tup_field_ty(expr.span, base_id, &fields[..],
                                                     idx.node, &(*substs))
@@ -3749,7 +3749,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
     debug!("type of expr({}) {} is...", expr.id,
            syntax::print::pprust::expr_to_string(expr));
     debug!("... {}, expected is {}",
-           ppaux::ty_to_string(tcx, fcx.expr_ty(expr)),
+           fcx.expr_ty(expr).repr(tcx),
            expected.repr(tcx));
 
     unifier();
@@ -4198,7 +4198,7 @@ pub fn check_instantiable(tcx: &ty::ctxt,
             "this type cannot be instantiated without an \
              instance of itself");
         fileline_help!(tcx.sess, sp, "consider using `Option<{}>`",
-            ppaux::ty_to_string(tcx, item_ty));
+             item_ty.repr(tcx));
         false
     } else {
         true
@@ -4950,7 +4950,7 @@ pub fn check_bounds_are_used<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                        tps: &OwnedSlice<ast::TyParam>,
                                        ty: Ty<'tcx>) {
     debug!("check_bounds_are_used(n_tps={}, ty={})",
-           tps.len(), ppaux::ty_to_string(ccx.tcx, ty));
+           tps.len(),  ty.repr(ccx.tcx));
 
     // make a vector of booleans initially false, set to true when used
     if tps.is_empty() { return; }
@@ -5273,7 +5273,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
                            fty,
                            || {
                 format!("intrinsic has wrong type: expected `{}`",
-                        ppaux::ty_to_string(ccx.tcx, fty))
+                         fty.user_string(ccx.tcx))
             });
     }
 }

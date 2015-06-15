@@ -36,7 +36,6 @@ use syntax::ast;
 use syntax::codemap;
 use syntax::codemap::Span;
 use util::nodemap::FnvHashMap;
-use util::ppaux::ty_to_string;
 use util::ppaux::{Repr, UserString};
 
 use self::combine::CombineFields;
@@ -862,8 +861,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 
     pub fn ty_to_string(&self, t: Ty<'tcx>) -> String {
-        ty_to_string(self.tcx,
-                     self.resolve_type_vars_if_possible(&t))
+        self.resolve_type_vars_if_possible(&t).user_string(self.tcx)
     }
 
     pub fn tys_to_string(&self, ts: &[Ty<'tcx>]) -> String {

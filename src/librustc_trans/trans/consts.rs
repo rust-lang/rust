@@ -32,7 +32,7 @@ use trans::type_of;
 use middle::cast::{CastTy,IntTy};
 use middle::subst::Substs;
 use middle::ty::{self, Ty};
-use util::ppaux::{Repr, ty_to_string};
+use util::ppaux::Repr;
 use util::nodemap::NodeMap;
 
 use std::iter::repeat;
@@ -68,7 +68,7 @@ pub fn const_lit(cx: &CrateContext, e: &ast::Expr, lit: &ast::Lit)
                 _ => cx.sess().span_bug(lit.span,
                         &format!("integer literal has type {} (expected int \
                                  or usize)",
-                                ty_to_string(cx.tcx(), lit_int_ty)))
+                                lit_int_ty.repr(cx.tcx())))
             }
         }
         ast::LitFloat(ref fs, t) => {
@@ -161,7 +161,7 @@ fn const_deref<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         }
         None => {
             cx.sess().bug(&format!("unexpected dereferenceable type {}",
-                                   ty_to_string(cx.tcx(), ty)))
+                                   ty.repr(cx.tcx())))
         }
     }
 }
@@ -369,7 +369,7 @@ pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             llvm::LLVMDumpValue(C_undef(llty));
         }
         cx.sess().bug(&format!("const {} of type {} has size {} instead of {}",
-                         e.repr(cx.tcx()), ty_to_string(cx.tcx(), ety_adjusted),
+                         e.repr(cx.tcx()), ety_adjusted.repr(cx.tcx()),
                          csize, tsize));
     }
     (llconst, ety_adjusted)
@@ -621,12 +621,12 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                       _ => cx.sess().span_bug(base.span,
                                               &format!("index-expr base must be a vector \
                                                        or string type, found {}",
-                                                      ty_to_string(cx.tcx(), bt)))
+                                                      bt.repr(cx.tcx())))
                   },
                   _ => cx.sess().span_bug(base.span,
                                           &format!("index-expr base must be a vector \
                                                    or string type, found {}",
-                                                  ty_to_string(cx.tcx(), bt)))
+                                                  bt.repr(cx.tcx())))
               };
 
               let len = llvm::LLVMConstIntGetZExtValue(len) as u64;

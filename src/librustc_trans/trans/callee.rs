@@ -55,7 +55,6 @@ use middle::ty::{self, Ty};
 use middle::ty::MethodCall;
 use rustc::ast_map;
 use util::ppaux::Repr;
-use util::ppaux::ty_to_string;
 
 use syntax::abi as synabi;
 use syntax::ast;
@@ -1166,8 +1165,8 @@ pub fn trans_arg_datum<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         let llformal_arg_ty = type_of::type_of_explicit_arg(ccx, formal_arg_ty);
         debug!("casting actual type ({}) to match formal ({})",
                bcx.val_to_string(val), bcx.llty_str(llformal_arg_ty));
-        debug!("Rust types: {}; {}", ty_to_string(bcx.tcx(), arg_datum_ty),
-                                     ty_to_string(bcx.tcx(), formal_arg_ty));
+        debug!("Rust types: {}; {}", arg_datum_ty.repr(bcx.tcx()),
+                                     formal_arg_ty.repr(bcx.tcx()));
         val = PointerCast(bcx, val, llformal_arg_ty);
     }
 

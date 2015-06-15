@@ -80,7 +80,7 @@ use trans::type_of;
 use trans::type_of::*;
 use trans::value::Value;
 use util::common::indenter;
-use util::ppaux::{Repr, ty_to_string};
+use util::ppaux::Repr;
 use util::sha2::Sha256;
 use util::nodemap::NodeMap;
 
@@ -531,7 +531,7 @@ pub fn iter_structural_ty<'blk, 'tcx, F>(cx: Block<'blk, 'tcx>,
       }
       _ => {
           cx.sess().unimpl(&format!("type in iter_structural_ty: {}",
-                                   ty_to_string(cx.tcx(), t)))
+                                    t.repr(cx.tcx())))
       }
     }
     return cx;
@@ -641,7 +641,7 @@ pub fn fail_if_zero_or_overflows<'blk, 'tcx>(
         }
         _ => {
             cx.sess().bug(&format!("fail-if-zero on unexpected type: {}",
-                                  ty_to_string(cx.tcx(), rhs_t)));
+                                   rhs_t.repr(cx.tcx())));
         }
     };
     let bcx = with_cond(cx, is_zero, |bcx| {
@@ -1554,7 +1554,7 @@ pub fn trans_closure<'a, 'b, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     };
     for monomorphized_arg_type in &monomorphized_arg_types {
         debug!("trans_closure: monomorphized_arg_type: {}",
-               ty_to_string(ccx.tcx(), *monomorphized_arg_type));
+               monomorphized_arg_type.repr(ccx.tcx()));
     }
     debug!("trans_closure: function lltype: {}",
            bcx.fcx.ccx.tn().val_to_string(bcx.fcx.llfn));
@@ -1758,7 +1758,7 @@ fn trans_enum_variant_or_tuple_like_struct<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx
         _ => ccx.sess().bug(
             &format!("trans_enum_variant_or_tuple_like_struct: \
                      unexpected ctor return type {}",
-                    ty_to_string(ccx.tcx(), ctor_ty)))
+                    ctor_ty.repr(ccx.tcx())))
     };
 
     let (arena, fcx): (TypedArena<_>, FunctionContext);

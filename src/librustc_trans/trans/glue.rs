@@ -39,7 +39,7 @@ use trans::machine::*;
 use trans::monomorphize;
 use trans::type_of::{type_of, type_of_dtor, sizing_type_of, align_of};
 use trans::type_::Type;
-use util::ppaux::{self, Repr};
+use util::ppaux::Repr;
 
 use arena::TypedArena;
 use libc::c_uint;
@@ -205,10 +205,13 @@ impl<'tcx> DropGlueKind<'tcx> {
     }
 
     fn to_string<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> String {
-        let t_str = ppaux::ty_to_string(ccx.tcx(), self.ty());
         match *self {
-            DropGlueKind::Ty(_) => format!("DropGlueKind::Ty({})", t_str),
-            DropGlueKind::TyContents(_) => format!("DropGlueKind::TyContents({})", t_str),
+            DropGlueKind::Ty(ty) => {
+                format!("DropGlueKind::Ty({})", ty.repr(ccx.tcx()))
+            }
+            DropGlueKind::TyContents(ty) => {
+                format!("DropGlueKind::TyContents({})", ty.repr(ccx.tcx()))
+            }
         }
     }
 }

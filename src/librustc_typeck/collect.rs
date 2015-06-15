@@ -80,8 +80,7 @@ use rscope::*;
 use rustc::ast_map;
 use util::common::{ErrorReported, memoized};
 use util::nodemap::{FnvHashMap, FnvHashSet};
-use util::ppaux;
-use util::ppaux::{Repr,UserString};
+use util::ppaux::{Repr, UserString};
 use write_ty_to_tcx;
 
 use std::cell::{Cell, RefCell};
@@ -2217,7 +2216,7 @@ fn check_method_self_type<'a, 'tcx, RS:RegionScope>(
                                   required_type_free,
                                   || {
                 format!("mismatched self type: expected `{}`",
-                        ppaux::ty_to_string(tcx, required_type))
+                         required_type.user_string(tcx))
         }));
 
         // We could conceviably add more free-region relations here,

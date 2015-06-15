@@ -94,7 +94,7 @@ use middle::traits;
 use middle::ty::{self, ClosureTyper, ReScope, Ty, MethodCall};
 use middle::infer::{self, GenericKind};
 use middle::pat_util;
-use util::ppaux::{ty_to_string, Repr};
+use util::ppaux::{Repr, UserString};
 
 use std::mem;
 use syntax::{ast, ast_util};
@@ -1025,7 +1025,7 @@ fn type_of_node_must_outlive<'a, 'tcx>(
                            |method_call| rcx.resolve_method_type(method_call));
     debug!("constrain_regions_in_type_of_node(\
             ty={}, ty0={}, id={}, minimum_lifetime={:?})",
-           ty_to_string(tcx, ty), ty_to_string(tcx, ty0),
+            ty.user_string(tcx),  ty0.user_string(tcx),
            id, minimum_lifetime);
     type_must_outlive(rcx, origin, ty, minimum_lifetime);
 }
@@ -1178,7 +1178,7 @@ fn link_region_from_node_type<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
     let rptr_ty = rcx.resolve_node_type(id);
     if !ty::type_is_error(rptr_ty) {
         let tcx = rcx.fcx.ccx.tcx;
-        debug!("rptr_ty={}", ty_to_string(tcx, rptr_ty));
+        debug!("rptr_ty={}",  rptr_ty.user_string(tcx));
         let r = ty::ty_region(tcx, span, rptr_ty);
         link_region(rcx, span, &r, ty::BorrowKind::from_mutbl(mutbl),
                     cmt_borrowed);
