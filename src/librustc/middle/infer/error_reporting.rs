@@ -75,6 +75,7 @@ use std::collections::HashSet;
 use ast_map;
 use middle::def;
 use middle::infer;
+use middle::region;
 use middle::subst;
 use middle::ty::{self, Ty};
 use middle::ty::{Region, ReFree};
@@ -84,15 +85,134 @@ use std::string::String;
 use syntax::ast;
 use syntax::ast_util::name_to_dummy_lifetime;
 use syntax::owned_slice::OwnedSlice;
-use syntax::codemap;
+use syntax::codemap::{Pos, Span};
 use syntax::parse::token;
 use syntax::print::pprust;
 use syntax::ptr::P;
-use util::ppaux::note_and_explain_region;
 
 // Note: only import UserString, not Repr, since user-facing error
 // messages shouldn't include debug serializations.
 use util::ppaux::UserString;
+
+pub fn note_and_explain_region(tcx: &ty::ctxt,
+                               prefix: &str,
+                               region: ty::Region,
+                               suffix: &str) {
+    fn item_scope_tag(item: &ast::Item) -> &'static str {
+        match item.node {
+            ast::ItemImpl(..) => "impl",
+            ast::ItemStruct(..) => "struct",
+            ast::ItemEnum(..) => "enum",
+            ast::ItemTrait(..) => "trait",
+            ast::ItemFn(..) => "function body",
+            _ => "item"
+        }
+    }
+
+    fn explain_span(tcx: &ty::ctxt, heading: &str, span: Span)
+                    -> (String, Option<Span>) {
+        let lo = tcx.sess.codemap().lookup_char_pos_adj(span.lo);
+        (format!("the {} at {}:{}", heading, lo.line, lo.col.to_usize()),
+         Some(span))
+    }
+
+    let (description, span) = match region {
+        ty::ReScope(scope) => {
+            let new_string;
+            let unknown_scope = || {
+                format!("{}unknown scope: {:?}{}.  Please report a bug.",
+                        prefix, scope, suffix)
+            };
+            let span = match scope.span(&tcx.map) {
+                Some(s) => s,
+                None => return tcx.sess.note(&unknown_scope())
+            };
+            let tag = match tcx.map.find(scope.node_id()) {
+                Some(ast_map::NodeBlock(_)) => "block",
+                Some(ast_map::NodeExpr(expr)) => match expr.node {
+                    ast::ExprCall(..) => "call",
+                    ast::ExprMethodCall(..) => "method call",
+                    ast::ExprMatch(_, _, ast::MatchSource::IfLetDesugar { .. }) => "if let",
+                    ast::ExprMatch(_, _, ast::MatchSource::WhileLetDesugar) =>  "while let",
+                    ast::ExprMatch(_, _, ast::MatchSource::ForLoopDesugar) =>  "for",
+                    ast::ExprMatch(..) => "match",
+                    _ => "expression",
+                },
+                Some(ast_map::NodeStmt(_)) => "statement",
+                Some(ast_map::NodeItem(it)) => item_scope_tag(&*it),
+                Some(_) | None => {
+                    return tcx.sess.span_note(span, &unknown_scope());
+                }
+            };
+            let scope_decorated_tag = match scope {
+                region::CodeExtent::Misc(_) => tag,
+                region::CodeExtent::ParameterScope { .. } => {
+                    "scope of parameters for function"
+                }
+                region::CodeExtent::DestructionScope(_) => {
+                    new_string = format!("destruction scope surrounding {}", tag);
+                    &new_string[..]
+                }
+                region::CodeExtent::Remainder(r) => {
+                    new_string = format!("block suffix following statement {}",
+                                         r.first_statement_index);
+                    &new_string[..]
+                }
+            };
+            explain_span(tcx, scope_decorated_tag, span)
+        }
+
+        ty::ReFree(ref fr) => {
+            let prefix = match fr.bound_region {
+                ty::BrAnon(idx) => {
+                    format!("the anonymous lifetime #{} defined on", idx + 1)
+                }
+                ty::BrFresh(_) => "an anonymous lifetime defined on".to_owned(),
+                _ => {
+                    format!("the lifetime {} as defined on",
+                            fr.bound_region.user_string(tcx))
+                }
+            };
+
+            match tcx.map.find(fr.scope.node_id) {
+                Some(ast_map::NodeBlock(ref blk)) => {
+                    let (msg, opt_span) = explain_span(tcx, "block", blk.span);
+                    (format!("{} {}", prefix, msg), opt_span)
+                }
+                Some(ast_map::NodeItem(it)) => {
+                    let tag = item_scope_tag(&*it);
+                    let (msg, opt_span) = explain_span(tcx, tag, it.span);
+                    (format!("{} {}", prefix, msg), opt_span)
+                }
+                Some(_) | None => {
+                    // this really should not happen
+                    (format!("{} unknown free region bounded by scope {:?}",
+                             prefix, fr.scope), None)
+                }
+            }
+        }
+
+        ty::ReStatic => ("the static lifetime".to_owned(), None),
+
+        ty::ReEmpty => ("the empty lifetime".to_owned(), None),
+
+        ty::ReEarlyBound(ref data) => {
+            (format!("{}", token::get_name(data.name)), None)
+        }
+
+        // I believe these cases should not occur (except when debugging,
+        // perhaps)
+        ty::ReInfer(_) | ty::ReLateBound(..) => {
+            (format!("lifetime {:?}", region), None)
+        }
+    };
+    let message = format!("{}{}{}", prefix, description, suffix);
+    if let Some(span) = span {
+        tcx.sess.span_note(span, &message);
+    } else {
+        tcx.sess.note(&message);
+    }
+}
 
 pub trait ErrorReporting<'tcx> {
     fn report_region_errors(&self,
@@ -161,7 +281,7 @@ trait ErrorReportingHelpers<'tcx> {
                                 ident: ast::Ident,
                                 opt_explicit_self: Option<&ast::ExplicitSelf_>,
                                 generics: &ast::Generics,
-                                span: codemap::Span);
+                                span: Span);
 }
 
 impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
@@ -1430,7 +1550,7 @@ impl<'a, 'tcx> ErrorReportingHelpers<'tcx> for InferCtxt<'a, 'tcx> {
                                 ident: ast::Ident,
                                 opt_explicit_self: Option<&ast::ExplicitSelf_>,
                                 generics: &ast::Generics,
-                                span: codemap::Span) {
+                                span: Span) {
         let suggested_fn = pprust::fun_to_string(decl, unsafety, constness, ident,
                                                  opt_explicit_self, generics);
         let msg = format!("consider using an explicit lifetime \

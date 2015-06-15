@@ -217,7 +217,7 @@ use middle::ty::{self, Ty};
 use session::config::{NoDebugInfo, FullDebugInfo};
 use util::common::indenter;
 use util::nodemap::FnvHashMap;
-use util::ppaux::{Repr, vec_map_to_string};
+use util::ppaux::Repr;
 
 use std;
 use std::cmp::Ordering;
@@ -937,11 +937,11 @@ fn compile_guard<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                      chk: &FailureHandler,
                                      has_genuine_default: bool)
                                      -> Block<'blk, 'tcx> {
-    debug!("compile_guard(bcx={}, guard_expr={}, m={}, vals={})",
+    debug!("compile_guard(bcx={}, guard_expr={}, m={}, vals=[{}])",
            bcx.to_str(),
            bcx.expr_to_string(guard_expr),
            m.repr(bcx.tcx()),
-           vec_map_to_string(vals, |v| bcx.val_to_string(*v)));
+           vals.iter().map(|v| bcx.val_to_string(*v)).collect::<Vec<_>>().connect(", "));
     let _indenter = indenter();
 
     let mut bcx = insert_lllocals(bcx, &data.bindings_map, None);
@@ -983,10 +983,10 @@ fn compile_submatch<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                         vals: &[ValueRef],
                                         chk: &FailureHandler,
                                         has_genuine_default: bool) {
-    debug!("compile_submatch(bcx={}, m={}, vals={})",
+    debug!("compile_submatch(bcx={}, m={}, vals=[{}])",
            bcx.to_str(),
            m.repr(bcx.tcx()),
-           vec_map_to_string(vals, |v| bcx.val_to_string(*v)));
+           vals.iter().map(|v| bcx.val_to_string(*v)).collect::<Vec<_>>().connect(", "));
     let _indenter = indenter();
     let _icx = push_ctxt("match::compile_submatch");
     let mut bcx = bcx;
