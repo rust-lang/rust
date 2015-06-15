@@ -255,16 +255,17 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 match typ.node {
                     // Common case impl for a struct or something basic.
                     ast::TyPath(None, ref path) => {
-                        sub_span = self.span_utils.sub_span_for_type_name(path.span);
+                        sub_span = self.span_utils.sub_span_for_type_name(path.span).unwrap();
                         type_data = self.lookup_ref_id(typ.id).map(|id| TypeRefData {
-                            span: sub_span.unwrap(),
+                            span: sub_span,
                             scope: parent,
                             ref_id: id,
                         });
                     },
                     _ => {
                         // Less useful case, impl for a compound type.
-                        sub_span = self.span_utils.sub_span_for_type_name(typ.span);
+                        let span = typ.span;
+                        sub_span = self.span_utils.sub_span_for_type_name(span).unwrap_or(span);
                     }
                 }
 
@@ -273,7 +274,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
 
                 Data::ImplData(ImplData {
                     id: item.id,
-                    span: sub_span.unwrap(),
+                    span: sub_span,
                     scope: parent,
                     trait_ref: trait_data,
                     self_ref: type_data,
@@ -320,9 +321,10 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                               parent: NodeId)
                               -> Option<TypeRefData> {
         self.lookup_ref_id(trait_ref.ref_id).map(|def_id| {
-            let sub_span = self.span_utils.sub_span_for_type_name(trait_ref.path.span);
+            let span = trait_ref.path.span;
+            let sub_span = self.span_utils.sub_span_for_type_name(span).unwrap_or(span);
             TypeRefData {
-                span: sub_span.unwrap(),
+                span: sub_span,
                 scope: parent,
                 ref_id: def_id,
             }
