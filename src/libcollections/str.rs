@@ -793,6 +793,12 @@ impl str {
         core_str::StrExt::split_at(self, mid)
     }
 
+    /// Divide one mutable string slice into two at an index.
+    #[inline]
+    pub fn split_at_mut(&mut self, mid: usize) -> (&mut str, &mut str) {
+        core_str::StrExt::split_at_mut(self, mid)
+    }
+
     /// An iterator over the codepoints of `self`.
     ///
     /// # Examples
