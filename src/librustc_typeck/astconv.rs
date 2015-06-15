@@ -61,7 +61,7 @@ use rscope::{self, UnelidableRscope, RegionScope, ElidableRscope, ExplicitRscope
              ObjectLifetimeDefaultRscope, ShiftedRscope, BindingRscope};
 use util::common::{ErrorReported, FN_OUTPUT_NAME};
 use util::nodemap::FnvHashSet;
-use util::ppaux::{self, Repr, UserString};
+use util::ppaux::{Repr, UserString};
 
 use std::iter::repeat;
 use std::slice;
@@ -985,19 +985,21 @@ fn ast_ty_to_trait_ref<'tcx>(this: &AstConv<'tcx>,
             });
             match (&ty.node, full_span) {
                 (&ast::TyRptr(None, ref mut_ty), Some(full_span)) => {
+                    let mutbl_str = if mut_ty.mutbl == ast::MutMutable { "mut " } else { "" };
                     this.tcx().sess
                         .span_suggestion(full_span, "try adding parentheses (per RFC 438):",
                                          format!("&{}({} +{})",
-                                                 ppaux::mutability_to_string(mut_ty.mutbl),
+                                                 mutbl_str,
                                                  pprust::ty_to_string(&*mut_ty.ty),
                                                  pprust::bounds_to_string(bounds)));
                 }
                 (&ast::TyRptr(Some(ref lt), ref mut_ty), Some(full_span)) => {
+                    let mutbl_str = if mut_ty.mutbl == ast::MutMutable { "mut " } else { "" };
                     this.tcx().sess
                         .span_suggestion(full_span, "try adding parentheses (per RFC 438):",
                                          format!("&{} {}({} +{})",
                                                  pprust::lifetime_to_string(lt),
-                                                 ppaux::mutability_to_string(mut_ty.mutbl),
+                                                 mutbl_str,
                                                  pprust::ty_to_string(&*mut_ty.ty),
                                                  pprust::bounds_to_string(bounds)));
                 }

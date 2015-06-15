@@ -32,7 +32,7 @@ use std::collections::hash_state::HashState;
 use std::hash::Hash;
 use std::rc::Rc;
 use syntax::abi;
-use syntax::codemap::{Span, Pos};
+use syntax::codemap::Span;
 use syntax::parse::token;
 use syntax::print::pprust;
 use syntax::ptr::P;
@@ -49,342 +49,7 @@ pub trait UserString<'tcx> : Repr<'tcx> {
     fn user_string(&self, tcx: &ctxt<'tcx>) -> String;
 }
 
-pub fn note_and_explain_region(cx: &ctxt,
-                               prefix: &str,
-                               region: ty::Region,
-                               suffix: &str) {
-    let (description, span) = explain_region_and_span(cx, region);
-    let message = format!("{}{}{}", prefix, description, suffix);
-    if let Some(span) = span {
-        cx.sess.span_note(span, &message);
-    } else {
-        cx.sess.note(&message);
-    }
-}
-
-/// When a free region is associated with `item`, how should we describe the item in the error
-/// message.
-fn item_scope_tag(item: &ast::Item) -> &'static str {
-    match item.node {
-        ast::ItemImpl(..) => "impl",
-        ast::ItemStruct(..) => "struct",
-        ast::ItemEnum(..) => "enum",
-        ast::ItemTrait(..) => "trait",
-        ast::ItemFn(..) => "function body",
-        _ => "item"
-    }
-}
-
-fn explain_region_and_span(cx: &ctxt, region: ty::Region)
-                           -> (String, Option<Span>) {
-    return match region {
-      ReScope(scope) => {
-        let new_string;
-        let on_unknown_scope = || {
-          (format!("unknown scope: {:?}.  Please report a bug.", scope), None)
-        };
-        let span = match scope.span(&cx.map) {
-          Some(s) => s,
-          None => return on_unknown_scope(),
-        };
-        let tag = match cx.map.find(scope.node_id()) {
-          Some(ast_map::NodeBlock(_)) => "block",
-          Some(ast_map::NodeExpr(expr)) => match expr.node {
-              ast::ExprCall(..) => "call",
-              ast::ExprMethodCall(..) => "method call",
-              ast::ExprMatch(_, _, ast::MatchSource::IfLetDesugar { .. }) => "if let",
-              ast::ExprMatch(_, _, ast::MatchSource::WhileLetDesugar) =>  "while let",
-              ast::ExprMatch(_, _, ast::MatchSource::ForLoopDesugar) =>  "for",
-              ast::ExprMatch(..) => "match",
-              _ => "expression",
-          },
-          Some(ast_map::NodeStmt(_)) => "statement",
-          Some(ast_map::NodeItem(it)) => item_scope_tag(&*it),
-          Some(_) | None => {
-            // this really should not happen
-            return on_unknown_scope();
-          }
-        };
-        let scope_decorated_tag = match scope {
-            region::CodeExtent::Misc(_) => tag,
-            region::CodeExtent::ParameterScope { .. } => {
-                "scope of parameters for function"
-            }
-            region::CodeExtent::DestructionScope(_) => {
-                new_string = format!("destruction scope surrounding {}", tag);
-                &*new_string
-            }
-            region::CodeExtent::Remainder(r) => {
-                new_string = format!("block suffix following statement {}",
-                                     r.first_statement_index);
-                &*new_string
-            }
-        };
-        explain_span(cx, scope_decorated_tag, span)
-
-      }
-
-      ReFree(ref fr) => {
-        let prefix = match fr.bound_region {
-          BrAnon(idx) => {
-              format!("the anonymous lifetime #{} defined on", idx + 1)
-          }
-          BrFresh(_) => "an anonymous lifetime defined on".to_string(),
-          _ => {
-              format!("the lifetime {} as defined on",
-                      fr.bound_region.user_string(cx))
-          }
-        };
-
-        match cx.map.find(fr.scope.node_id) {
-          Some(ast_map::NodeBlock(ref blk)) => {
-              let (msg, opt_span) = explain_span(cx, "block", blk.span);
-              (format!("{} {}", prefix, msg), opt_span)
-          }
-          Some(ast_map::NodeItem(it)) => {
-              let tag = item_scope_tag(&*it);
-              let (msg, opt_span) = explain_span(cx, tag, it.span);
-              (format!("{} {}", prefix, msg), opt_span)
-          }
-          Some(_) | None => {
-              // this really should not happen
-              (format!("{} unknown free region bounded by scope {:?}", prefix, fr.scope), None)
-          }
-        }
-      }
-
-      ReStatic => { ("the static lifetime".to_string(), None) }
-
-      ReEmpty => { ("the empty lifetime".to_string(), None) }
-
-      ReEarlyBound(ref data) => {
-        (format!("{}", token::get_name(data.name)), None)
-      }
-
-      // I believe these cases should not occur (except when debugging,
-      // perhaps)
-      ty::ReInfer(_) | ty::ReLateBound(..) => {
-        (format!("lifetime {:?}", region), None)
-      }
-    };
-
-    fn explain_span(cx: &ctxt, heading: &str, span: Span)
-                    -> (String, Option<Span>) {
-        let lo = cx.sess.codemap().lookup_char_pos_adj(span.lo);
-        (format!("the {} at {}:{}", heading, lo.line, lo.col.to_usize()),
-         Some(span))
-    }
-}
-
-pub fn mutability_to_string(m: ast::Mutability) -> String {
-    match m {
-        ast::MutMutable => "mut ".to_string(),
-        ast::MutImmutable => "".to_string(),
-    }
-}
-
-pub fn mt_to_string<'tcx>(cx: &ctxt<'tcx>, m: &mt<'tcx>) -> String {
-    format!("{}{}",
-        mutability_to_string(m.mutbl),
-         m.ty.user_string(cx))
-}
-
-pub fn vec_map_to_string<T, F>(ts: &[T], f: F) -> String where
-    F: FnMut(&T) -> String,
-{
-    let tstrs = ts.iter().map(f).collect::<Vec<String>>();
-    format!("[{}]", tstrs.connect(", "))
-}
-
-fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
-    fn bare_fn_to_string<'tcx>(cx: &ctxt<'tcx>,
-                               opt_def_id: Option<ast::DefId>,
-                               unsafety: ast::Unsafety,
-                               abi: abi::Abi,
-                               ident: Option<ast::Ident>,
-                               sig: &ty::PolyFnSig<'tcx>)
-                               -> String {
-        let mut s = String::new();
-
-        match unsafety {
-            ast::Unsafety::Normal => {}
-            ast::Unsafety::Unsafe => {
-                s.push_str(&unsafety.to_string());
-                s.push(' ');
-            }
-        };
-
-        if abi != abi::Rust {
-            s.push_str(&format!("extern {} ", abi.to_string()));
-        };
-
-        s.push_str("fn");
-
-        match ident {
-            Some(i) => {
-                s.push(' ');
-                s.push_str(&token::get_ident(i));
-            }
-            _ => { }
-        }
-
-        push_sig_to_string(cx, &mut s, '(', ')', sig);
-
-        match opt_def_id {
-            Some(def_id) => {
-                s.push_str(" {");
-                let path_str = ty::item_path_str(cx, def_id);
-                s.push_str(&path_str[..]);
-                s.push_str("}");
-            }
-            None => { }
-        }
-
-        s
-    }
-
-    fn closure_to_string<'tcx>(cx: &ctxt<'tcx>,
-                               cty: &ty::ClosureTy<'tcx>,
-                               did: &ast::DefId)
-                               -> String {
-        let mut s = String::new();
-        s.push_str("[closure");
-        push_sig_to_string(cx, &mut s, '(', ')', &cty.sig);
-        if cx.sess.verbose() {
-            s.push_str(&format!(" id={:?}]", did));
-        } else {
-            s.push(']');
-        }
-        s
-    }
-
-    fn push_sig_to_string<'tcx>(cx: &ctxt<'tcx>,
-                                s: &mut String,
-                                bra: char,
-                                ket: char,
-                                sig: &ty::PolyFnSig<'tcx>) {
-        s.push(bra);
-        let strs = sig.0.inputs
-            .iter()
-            .map(|a| a.user_string(cx))
-            .collect::<Vec<_>>();
-        s.push_str(&strs.connect(", "));
-        if sig.0.variadic {
-            s.push_str(", ...");
-        }
-        s.push(ket);
-
-        match sig.0.output {
-            ty::FnConverging(t) => {
-                if !ty::type_is_nil(t) {
-                   s.push_str(" -> ");
-                   s.push_str(& t.user_string(cx));
-                }
-            }
-            ty::FnDiverging => {
-                s.push_str(" -> !");
-            }
-        }
-    }
-
-    fn infer_ty_to_string(cx: &ctxt, ty: ty::InferTy) -> String {
-        let print_var_ids = cx.sess.verbose();
-        match ty {
-            ty::TyVar(ref vid) if print_var_ids => vid.repr(cx),
-            ty::IntVar(ref vid) if print_var_ids => vid.repr(cx),
-            ty::FloatVar(ref vid) if print_var_ids => vid.repr(cx),
-            ty::TyVar(_) | ty::IntVar(_) | ty::FloatVar(_) => format!("_"),
-            ty::FreshTy(v) => format!("FreshTy({})", v),
-            ty::FreshIntTy(v) => format!("FreshIntTy({})", v),
-            ty::FreshFloatTy(v) => format!("FreshFloatTy({})", v)
-        }
-    }
-
-    // pretty print the structural type representation:
-    match typ.sty {
-        TyBool => "bool".to_string(),
-        TyChar => "char".to_string(),
-        TyInt(t) => ast_util::int_ty_to_string(t, None).to_string(),
-        TyUint(t) => ast_util::uint_ty_to_string(t, None).to_string(),
-        TyFloat(t) => ast_util::float_ty_to_string(t).to_string(),
-        TyBox(typ) => format!("Box<{}>",  typ.user_string(cx)),
-        TyRawPtr(ref tm) => {
-            format!("*{} {}", match tm.mutbl {
-                ast::MutMutable => "mut",
-                ast::MutImmutable => "const",
-            },  tm.ty.user_string(cx))
-        }
-        TyRef(r, ref tm) => {
-            let mut buf = "&".to_owned();
-            buf.push_str(&r.user_string(cx));
-            if !buf.is_empty() {
-                buf.push_str(" ");
-            }
-            buf.push_str(&mt_to_string(cx, tm));
-            buf
-        }
-        TyTuple(ref elems) => {
-            let strs = elems
-                .iter()
-                .map(|elem| elem.user_string(cx))
-                .collect::<Vec<_>>();
-            match &strs[..] {
-                [ref string] => format!("({},)", string),
-                strs => format!("({})", strs.connect(", "))
-            }
-        }
-        TyBareFn(opt_def_id, ref f) => {
-            bare_fn_to_string(cx, opt_def_id, f.unsafety, f.abi, None, &f.sig)
-        }
-        TyInfer(infer_ty) => infer_ty_to_string(cx, infer_ty),
-        TyError => "[type error]".to_string(),
-        TyParam(ref param_ty) => param_ty.user_string(cx),
-        TyEnum(did, substs) | TyStruct(did, substs) => {
-            let base = ty::item_path_str(cx, did);
-            parameterized(cx, &base, substs, did, &[],
-                          || ty::lookup_item_type(cx, did).generics)
-        }
-        TyTrait(ref data) => {
-            data.user_string(cx)
-        }
-        ty::TyProjection(ref data) => {
-            format!("<{} as {}>::{}",
-                    data.trait_ref.self_ty().user_string(cx),
-                    data.trait_ref.user_string(cx),
-                    data.item_name.user_string(cx))
-        }
-        TyStr => "str".to_string(),
-        TyClosure(ref did, substs) => {
-            let closure_tys = cx.closure_tys.borrow();
-            closure_tys.get(did).map(|closure_type| {
-                closure_to_string(cx, &closure_type.subst(cx, substs), did)
-            }).unwrap_or_else(|| {
-                let id_str = if cx.sess.verbose() {
-                    format!(" id={:?}", did)
-                } else {
-                    "".to_owned()
-                };
-
-
-                if did.krate == ast::LOCAL_CRATE {
-                    let span = cx.map.span(did.node);
-                    format!("[closure {}{}]", span.repr(cx), id_str)
-                } else {
-                    format!("[closure{}]", id_str)
-                }
-            })
-        }
-        TyArray(t, sz) => {
-            format!("[{}; {}]",  t.user_string(cx), sz)
-        }
-        TySlice(t) => {
-            format!("[{}]",  t.user_string(cx))
-        }
-    }
-}
-
 fn parameterized<'tcx, GG>(cx: &ctxt<'tcx>,
-                           base: &str,
                            substs: &subst::Substs<'tcx>,
                            did: ast::DefId,
                            projections: &[ty::ProjectionPredicate<'tcx>],
@@ -392,6 +57,7 @@ fn parameterized<'tcx, GG>(cx: &ctxt<'tcx>,
                            -> String
     where GG : FnOnce() -> ty::Generics<'tcx>
 {
+    let base = ty::item_path_str(cx, did);
     if cx.sess.verbose() {
         let mut strings = vec![];
         match substs.regions {
@@ -557,19 +223,15 @@ impl<'tcx, T:Repr<'tcx>> Repr<'tcx> for Box<T> {
     }
 }
 
-fn repr_vec<'tcx, T:Repr<'tcx>>(tcx: &ctxt<'tcx>, v: &[T]) -> String {
-    vec_map_to_string(v, |t| t.repr(tcx))
-}
-
 impl<'tcx, T:Repr<'tcx>> Repr<'tcx> for [T] {
     fn repr(&self, tcx: &ctxt<'tcx>) -> String {
-        repr_vec(tcx, self)
+        format!("[{}]", self.iter().map(|t| t.repr(tcx)).collect::<Vec<_>>().connect(", "))
     }
 }
 
 impl<'tcx, T:Repr<'tcx>> Repr<'tcx> for OwnedSlice<T> {
     fn repr(&self, tcx: &ctxt<'tcx>) -> String {
-        repr_vec(tcx, &self[..])
+        self[..].repr(tcx)
     }
 }
 
@@ -577,7 +239,7 @@ impl<'tcx, T:Repr<'tcx>> Repr<'tcx> for OwnedSlice<T> {
 // autoderef cannot convert the &[T] handler
 impl<'tcx, T:Repr<'tcx>> Repr<'tcx> for Vec<T> {
     fn repr(&self, tcx: &ctxt<'tcx>) -> String {
-        repr_vec(tcx, &self[..])
+        self[..].repr(tcx)
     }
 }
 
@@ -618,9 +280,7 @@ type TraitAndProjections<'tcx> =
 impl<'tcx> UserString<'tcx> for TraitAndProjections<'tcx> {
     fn user_string(&self, tcx: &ctxt<'tcx>) -> String {
         let &(ref trait_ref, ref projection_bounds) = self;
-        let base = ty::item_path_str(tcx, trait_ref.def_id);
         parameterized(tcx,
-                      &base,
                       trait_ref.substs,
                       trait_ref.def_id,
                       &projection_bounds[..],
@@ -684,7 +344,9 @@ impl<'tcx> Repr<'tcx> for ty::TyS<'tcx> {
 
 impl<'tcx> Repr<'tcx> for ty::mt<'tcx> {
     fn repr(&self, tcx: &ctxt<'tcx>) -> String {
-        mt_to_string(tcx, self)
+        format!("{}{}",
+            if self.mutbl == ast::MutMutable { "mut " } else { "" },
+            self.ty.user_string(tcx))
     }
 }
 
@@ -751,9 +413,7 @@ impl<'tcx> Repr<'tcx> for ty::TraitRef<'tcx> {
         // when printing out the debug representation, we don't need
         // to enumerate the `for<...>` etc because the debruijn index
         // tells you everything you need to know.
-        let base = ty::item_path_str(tcx, self.def_id);
-        let result = parameterized(tcx, &base, self.substs, self.def_id, &[],
-                      || ty::lookup_trait_def(tcx, self.def_id).generics.clone());
+        let result = self.user_string(tcx);
         match self.substs.self_ty() {
             None => result,
             Some(sty) => format!("<{} as {}>", sty.repr(tcx), result)
@@ -1290,15 +950,196 @@ impl<'tcx, T> UserString<'tcx> for ty::Binder<T>
 
 impl<'tcx> UserString<'tcx> for ty::TraitRef<'tcx> {
     fn user_string(&self, tcx: &ctxt<'tcx>) -> String {
-        let path_str = ty::item_path_str(tcx, self.def_id);
-        parameterized(tcx, &path_str, self.substs, self.def_id, &[],
+        parameterized(tcx, self.substs, self.def_id, &[],
                       || ty::lookup_trait_def(tcx, self.def_id).generics.clone())
     }
 }
 
 impl<'tcx> UserString<'tcx> for ty::TyS<'tcx> {
     fn user_string(&self, tcx: &ctxt<'tcx>) -> String {
-        ty_to_string(tcx, self)
+        fn bare_fn_to_string<'tcx>(cx: &ctxt<'tcx>,
+                                   opt_def_id: Option<ast::DefId>,
+                                   unsafety: ast::Unsafety,
+                                   abi: abi::Abi,
+                                   ident: Option<ast::Ident>,
+                                   sig: &ty::PolyFnSig<'tcx>)
+                                   -> String {
+            let mut s = String::new();
+
+            match unsafety {
+                ast::Unsafety::Normal => {}
+                ast::Unsafety::Unsafe => {
+                    s.push_str(&unsafety.to_string());
+                    s.push(' ');
+                }
+            };
+
+            if abi != abi::Rust {
+                s.push_str(&format!("extern {} ", abi.to_string()));
+            };
+
+            s.push_str("fn");
+
+            match ident {
+                Some(i) => {
+                    s.push(' ');
+                    s.push_str(&token::get_ident(i));
+                }
+                _ => { }
+            }
+
+            push_sig_to_string(cx, &mut s, '(', ')', sig);
+
+            match opt_def_id {
+                Some(def_id) => {
+                    s.push_str(" {");
+                    let path_str = ty::item_path_str(cx, def_id);
+                    s.push_str(&path_str[..]);
+                    s.push_str("}");
+                }
+                None => { }
+            }
+
+            s
+        }
+
+        fn closure_to_string<'tcx>(cx: &ctxt<'tcx>,
+                                   cty: &ty::ClosureTy<'tcx>,
+                                   did: &ast::DefId)
+                                   -> String {
+            let mut s = String::new();
+            s.push_str("[closure");
+            push_sig_to_string(cx, &mut s, '(', ')', &cty.sig);
+            if cx.sess.verbose() {
+                s.push_str(&format!(" id={:?}]", did));
+            } else {
+                s.push(']');
+            }
+            s
+        }
+
+        fn push_sig_to_string<'tcx>(cx: &ctxt<'tcx>,
+                                    s: &mut String,
+                                    bra: char,
+                                    ket: char,
+                                    sig: &ty::PolyFnSig<'tcx>) {
+            s.push(bra);
+            let strs = sig.0.inputs
+                .iter()
+                .map(|a| a.user_string(cx))
+                .collect::<Vec<_>>();
+            s.push_str(&strs.connect(", "));
+            if sig.0.variadic {
+                s.push_str(", ...");
+            }
+            s.push(ket);
+
+            match sig.0.output {
+                ty::FnConverging(t) => {
+                    if !ty::type_is_nil(t) {
+                        s.push_str(" -> ");
+                        s.push_str(& t.user_string(cx));
+                    }
+                }
+                ty::FnDiverging => {
+                    s.push_str(" -> !");
+                }
+            }
+        }
+
+        fn infer_ty_to_string(cx: &ctxt, ty: ty::InferTy) -> String {
+            let print_var_ids = cx.sess.verbose();
+            match ty {
+                ty::TyVar(ref vid) if print_var_ids => vid.repr(cx),
+                ty::IntVar(ref vid) if print_var_ids => vid.repr(cx),
+                ty::FloatVar(ref vid) if print_var_ids => vid.repr(cx),
+                ty::TyVar(_) | ty::IntVar(_) | ty::FloatVar(_) => format!("_"),
+                ty::FreshTy(v) => format!("FreshTy({})", v),
+                ty::FreshIntTy(v) => format!("FreshIntTy({})", v),
+                ty::FreshFloatTy(v) => format!("FreshFloatTy({})", v)
+            }
+        }
+
+        // pretty print the structural type representation:
+        match self.sty {
+            TyBool => "bool".to_string(),
+            TyChar => "char".to_string(),
+            TyInt(t) => ast_util::int_ty_to_string(t, None).to_string(),
+            TyUint(t) => ast_util::uint_ty_to_string(t, None).to_string(),
+            TyFloat(t) => ast_util::float_ty_to_string(t).to_string(),
+            TyBox(typ) => format!("Box<{}>",  typ.user_string(tcx)),
+            TyRawPtr(ref tm) => {
+                format!("*{} {}", match tm.mutbl {
+                    ast::MutMutable => "mut",
+                    ast::MutImmutable => "const",
+                },  tm.ty.user_string(tcx))
+            }
+            TyRef(r, ref tm) => {
+                let mut buf = "&".to_owned();
+                buf.push_str(&r.user_string(tcx));
+                if !buf.is_empty() {
+                    buf.push_str(" ");
+                }
+                buf.push_str(&tm.repr(tcx));
+                buf
+            }
+            TyTuple(ref elems) => {
+                let strs = elems
+                    .iter()
+                    .map(|elem| elem.user_string(tcx))
+                    .collect::<Vec<_>>();
+                match &strs[..] {
+                    [ref string] => format!("({},)", string),
+                    strs => format!("({})", strs.connect(", "))
+                }
+            }
+            TyBareFn(opt_def_id, ref f) => {
+                bare_fn_to_string(tcx, opt_def_id, f.unsafety, f.abi, None, &f.sig)
+            }
+            TyInfer(infer_ty) => infer_ty_to_string(tcx, infer_ty),
+            TyError => "[type error]".to_string(),
+            TyParam(ref param_ty) => param_ty.user_string(tcx),
+            TyEnum(did, substs) | TyStruct(did, substs) => {
+                parameterized(tcx, substs, did, &[],
+                              || ty::lookup_item_type(tcx, did).generics)
+            }
+            TyTrait(ref data) => {
+                data.user_string(tcx)
+            }
+            ty::TyProjection(ref data) => {
+                format!("<{} as {}>::{}",
+                        data.trait_ref.self_ty().user_string(tcx),
+                        data.trait_ref.user_string(tcx),
+                        data.item_name.user_string(tcx))
+            }
+            TyStr => "str".to_string(),
+            TyClosure(ref did, substs) => {
+                let closure_tys = tcx.closure_tys.borrow();
+                closure_tys.get(did).map(|closure_type| {
+                    closure_to_string(tcx, &closure_type.subst(tcx, substs), did)
+                }).unwrap_or_else(|| {
+                    let id_str = if tcx.sess.verbose() {
+                        format!(" id={:?}", did)
+                    } else {
+                        "".to_owned()
+                    };
+
+
+                    if did.krate == ast::LOCAL_CRATE {
+                        let span = tcx.map.span(did.node);
+                        format!("[closure {}{}]", span.repr(tcx), id_str)
+                    } else {
+                        format!("[closure{}]", id_str)
+                    }
+                })
+            }
+            TyArray(t, sz) => {
+                format!("[{}; {}]",  t.user_string(tcx), sz)
+            }
+            TySlice(t) => {
+                format!("[{}]",  t.user_string(tcx))
+            }
+        }
     }
 }
 
