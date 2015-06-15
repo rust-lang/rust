@@ -583,6 +583,10 @@ mod tests {
         test!('!', '!');
         test!(b"h\xc3\xa9".to_vec(), b"H\xc3\xa9");
         test!("hıKß".to_string(), "HıKß");
+
+        let mut x = "Hello".to_string();
+        x[..3].make_ascii_uppercase();  // Test IndexMut on String.
+        assert_eq!(x, "HELlo")
     }
 
     #[test]
