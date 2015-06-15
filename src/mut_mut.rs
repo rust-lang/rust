@@ -1,7 +1,7 @@
 use syntax::ptr::P;
 use syntax::ast::*;
 use rustc::lint::{Context, LintPass, LintArray, Lint};
-use rustc::middle::ty::{expr_ty, sty, ty_ptr, ty_rptr, mt};
+use rustc::middle::ty::{expr_ty, TypeVariants, mt, TyRef};
 use syntax::codemap::{BytePos, ExpnInfo, MacroFormat, Span};
 use utils::in_macro;
 
@@ -42,7 +42,7 @@ fn check_expr_expd(cx: &Context, expr: &Expr, info: Option<&ExpnInfo>) {
 			cx.span_lint(MUT_MUT, expr.span, 
 				"Generally you want to avoid &mut &mut _ if possible.")
 		}).unwrap_or_else(|| {
-			if let ty_rptr(_, mt{ty: _, mutbl: MutMutable}) = 
+			if let TyRef(_, mt{ty: _, mutbl: MutMutable}) = 
 					expr_ty(cx.tcx, e).sty {
 				cx.span_lint(MUT_MUT, expr.span,
 					"This expression mutably borrows a mutable reference. \
