@@ -34,32 +34,35 @@ fn check_expression() -> Obj<Box<FnBox() -> u32>> {
 
 fn main() {
     // test variations of function
+
     let o_closure = Obj { closure: || 42, not_closure: 42 };
     o_closure.closure(); //~ ERROR no method named `closure` found
-    //~^ NOTE use `(o_closure.closure)(...)` if you meant to call the function stored in the `closure` field
+    //~^ NOTE use `(o_closure.closure)(...)` if you meant to call the function stored
 
     o_closure.not_closure(); //~ ERROR no method named `not_closure` found
     //~^ NOTE did you mean to write `o_closure.not_closure`?
 
     let o_func = Obj { closure: func, not_closure: 5 };
     o_func.closure(); //~ ERROR no method named `closure` found
-    //~^ NOTE use `(o_func.closure)(...)` if you meant to call the function stored in the `closure` field
+    //~^ NOTE use `(o_func.closure)(...)` if you meant to call the function stored
 
     let boxed_fn = BoxedObj { boxed_closure: Box::new(func) };
     boxed_fn.boxed_closure();//~ ERROR no method named `boxed_closure` found
-    //~^ NOTE use `(boxed_fn.boxed_closure)(...)` if you meant to call the function stored in the `boxed_closure` field
+    //~^ NOTE use `(boxed_fn.boxed_closure)(...)` if you meant to call the function stored
 
     let boxed_closure = BoxedObj { boxed_closure: Box::new(|| 42_u32) as Box<FnBox() -> u32> };
     boxed_closure.boxed_closure();//~ ERROR no method named `boxed_closure` found
-    //~^ NOTE use `(boxed_closure.boxed_closure)(...)` if you meant to call the function stored in the `boxed_closure` field
+    //~^ NOTE use `(boxed_closure.boxed_closure)(...)` if you meant to call the function stored
 
     // test expression writing in the notes
+
     let w = Wrapper { wrap: o_func };
     w.wrap.closure();//~ ERROR no method named `closure` found
-    //~^ NOTE use `(w.wrap.closure)(...)` if you meant to call the function stored in the `closure` field
+    //~^ NOTE use `(w.wrap.closure)(...)` if you meant to call the function stored
+
     w.wrap.not_closure();//~ ERROR no method named `not_closure` found
     //~^ NOTE did you mean to write `w.wrap.not_closure`?
 
     check_expression().closure();//~ ERROR no method named `closure` found
-    //~^ NOTE use `(check_expression().closure)(...)` if you meant to call the function stored in the `closure` field
+    //~^ NOTE use `(check_expression().closure)(...)` if you meant to call the function stored
 }
