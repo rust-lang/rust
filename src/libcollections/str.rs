@@ -546,6 +546,14 @@ impl str {
         core_str::StrExt::slice_unchecked(self, begin, end)
     }
 
+    /// Takes a bytewise mutable slice from a string.
+    ///
+    /// Same as `slice_unchecked`, but works with `&mut str` instead of `&str`.
+    #[stable(feature = "derefmut_for_string", since = "1.2.0")]
+    pub unsafe fn slice_mut_unchecked(&mut self, begin: usize, end: usize) -> &mut str {
+        core_str::StrExt::slice_mut_unchecked(self, begin, end)
+    }
+
     /// Returns a slice of the string from the character range [`begin`..`end`).
     ///
     /// That is, start at the `begin`-th code point of the string and continue
