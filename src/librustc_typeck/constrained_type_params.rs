@@ -19,10 +19,21 @@ pub enum Parameter {
     Region(ty::EarlyBoundRegion),
 }
 
+/// Returns the list of parameters that are constrained by the type `ty`
+/// - i.e. the value of each parameter in the list is uniquely determined
+/// by `ty` (see RFC 447).
 pub fn parameters_for_type<'tcx>(ty: Ty<'tcx>) -> Vec<Parameter> {
-    ty.walk()
-      .flat_map(|ty| parameters_for_type_shallow(ty))
-      .collect()
+    let mut result = vec![];
+    ty::maybe_walk_ty(ty, |t| {
+        if let ty::TyProjection(..) = t.sty {
+            false // projections are not injective.
+        } else {
+            result.append(&mut parameters_for_type_shallow(t));
+            // non-projection type constructors are injective.
+            true
+        }
+    });
+    result
 }
 
 pub fn parameters_for_trait_ref<'tcx>(trait_ref: &ty::TraitRef<'tcx>) -> Vec<Parameter> {
