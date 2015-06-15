@@ -20,7 +20,6 @@ use syntax::print::pprust;
 use MIN_STRING;
 
 impl<'a> FmtVisitor<'a> {
-    // TODO NEEDS TESTS
     fn rewrite_string_lit(&mut self, s: &str, span: Span, width: usize, offset: usize) -> String {
         // FIXME I bet this stomps unicode escapes in the source string
 
@@ -40,12 +39,17 @@ impl<'a> FmtVisitor<'a> {
         let indent = make_indent(offset);
         let indent = &indent;
 
-        let max_chars = width - 1;
-
         let mut cur_start = 0;
-        let mut result = String::new();
+        let mut result = String::with_capacity(round_up_to_power_of_two(s.len()));
         result.push('"');
         loop {
+            let max_chars = if cur_start == 0 {
+                // First line.
+                width - 2 // 2 = " + \
+            } else {
+                config!(max_width) - offset - 1 // 1 = either \ or ;
+            };
+
             let mut cur_end = cur_start + max_chars;
 
             if cur_end >= s.len() {
@@ -64,9 +68,10 @@ impl<'a> FmtVisitor<'a> {
                     // We can't break at whitespace, fall back to splitting
                     // anywhere that doesn't break an escape sequence
                     cur_end = next_char(&s, cur_start + max_chars);
-                    while s.char_at(cur_end) == '\\' {
+                    while s.char_at(prev_char(&s, cur_end)) == '\\' {
                         cur_end = prev_char(&s, cur_end);
                     }
+                    break;
                 }
             }
             // Make sure there is no whitespace to the right of the break.
