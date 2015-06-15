@@ -40,14 +40,14 @@ installing the Rust everywhere. By contrast, native libraries
 (e.g. `libc` and `libm`) usually dynamically linked, but it is possible to
 change this and statically link them as well.
 
-Linking is a very platform dependent topic - on some platforms, static linking
+Linking is a very platform dependent topic — on some platforms, static linking
 may not be possible at all! This section assumes some basic familiarity with
-linking on your platform on choice.
+linking on your platform of choice.
 
 ## Linux
 
 By default, all Rust programs on Linux will link to the system `libc` along with
-a number of other libraries. Let's look at an example on a 64-bit linux machine
+a number of other libraries. Let's look at an example on a 64-bit Linux machine
 with GCC and `glibc` (by far the most common `libc` on Linux):
 
 ``` text
@@ -69,91 +69,81 @@ Dynamic linking on Linux can be undesirable if you wish to use new library
 features on old systems or target systems which do not have the required
 dependencies for your program to run.
 
-The first step in using static linking is examining the Rust linking arguments
-with an option to rustc. Newlines have been added for readability:
+Static linking is supported via an alternative `libc`, `musl` - this must be
+enabled at Rust compile-time with some prerequisites available. You can compile
+your own version of Rust with `musl` enabled and install it into a custom
+directory with the instructions below:
 
-``` text
-$ rustc example.rs -Z print-link-args
-"cc"
-    "-Wl,--as-needed"
-    "-m64"
-    [...]
-    "-o" "example"
-    "example.o"
-    "-Wl,--whole-archive" "-lmorestack" "-Wl,--no-whole-archive"
-    "-Wl,--gc-sections"
-    "-pie"
-    "-nodefaultlibs"
-    [...]
-    "-Wl,--whole-archive" "-Wl,-Bstatic"
-    "-Wl,--no-whole-archive" "-Wl,-Bdynamic"
-    "-ldl" "-lpthread" "-lrt" "-lgcc_s" "-lpthread" "-lc" "-lm" "-lcompiler-rt"
+```text
+$ mkdir musldist
+$ PREFIX=$(pwd)/musldist
+$
+$ # Build musl
+$ wget http://www.musl-libc.org/releases/musl-1.1.10.tar.gz
+[...]
+$ tar xf musl-1.1.10.tar.gz
+$ cd musl-1.1.10/
+musl-1.1.10 $ ./configure --disable-shared --prefix=$PREFIX
+[...]
+musl-1.1.10 $ make
+[...]
+musl-1.1.10 $ make install
+[...]
+musl-1.1.10 $ cd ..
+$ du -h musldist/lib/libc.a
+2.2M    musldist/lib/libc.a
+$
+$ # Build libunwind.a
+$ wget http://llvm.org/releases/3.6.1/llvm-3.6.1.src.tar.xz
+$ tar xf llvm-3.6.1.src.tar.xz
+$ cd llvm-3.6.1.src/projects/
+llvm-3.6.1.src/projects $ svn co http://llvm.org/svn/llvm-project/libcxxabi/trunk/ libcxxabi
+llvm-3.6.1.src/projects $ svn co http://llvm.org/svn/llvm-project/libunwind/trunk/ libunwind
+llvm-3.6.1.src/projects $ sed -i 's#^\(include_directories\).*$#\0\n\1(../libcxxabi/include)#' libunwind/CMakeLists.txt
+llvm-3.6.1.src/projects $ mkdir libunwind/build
+llvm-3.6.1.src/projects $ cd libunwind/build
+llvm-3.6.1.src/projects/libunwind/build $ cmake -DLLVM_PATH=../../.. -DLIBUNWIND_ENABLE_SHARED=0 ..
+llvm-3.6.1.src/projects/libunwind/build $ make
+llvm-3.6.1.src/projects/libunwind/build $ cp lib/libunwind.a $PREFIX/lib/
+llvm-3.6.1.src/projects/libunwind/build $ cd cd ../../../../
+$ du -h musldist/lib/libunwind.a
+164K    musldist/lib/libunwind.a
+$
+$ # Build musl-enabled rust
+$ git clone https://github.com/rust-lang/rust.git muslrust
+$ cd muslrust
+muslrust $ ./configure --target=x86_64-unknown-linux-musl --musl-root=$PREFIX --prefix=$PREFIX
+muslrust $ make
+muslrust $ make install
+muslrust $ cd ..
+$ du -h musldist/bin/rustc
+12K     musldist/bin/rustc
 ```
 
-Arguments with a `-L` before them set up the linker search path and arguments
-ending with `.rlib` are linking Rust crates statically into your application.
-Neither of these are relevent for static linking so have been ommitted.
+You now have a build of a `musl`-enabled Rust! Because we've installed it to a
+custom prefix we need to make sure our system can the binaries and appropriate
+libraries when we try and run it:
 
-The first step in being able to statically link is to obtain an object file.
-This can be achieved with `rustc --emit obj example.rs`, and creates a file
-called `example.o`, which you can see being passed in the command line above -
-rustc automatically deletes it when finished with it by default. As you now have
-the object file, you should be able to run the link command obtained with
-`print-link-args` to create perform the linking stage yourself.
-
-In order to statically link, there are a number of changes you must make. Below
-is the command required to perform a static link; we will go through them each
-in turn.
-
-``` text
-$ rustc example.rs -Z print-link-args
-"cc"
-    "-static"
-    "-m64"
-    [...]
-    "-o" "example"
-    "example.o"
-    "-Wl,--whole-archive" "-lmorestack" "-Wl,--no-whole-archive"
-    "-Wl,--gc-sections"
-    "-nodefaultlibs"
-    [...]
-    "-Wl,--whole-archive"
-    "-Wl,--no-whole-archive"
-    "-ldl" "-lpthread" "-lrt" "-lgcc_eh" "-lpthread" "-lc" "-lm" "-lcompiler-rt"
+```text
+$ export PATH=$PREFIX/bin:$PATH
+$ export LD_LIBRARY_PATH=$PREFIX/lib:$LD_LIBRARY_PATH
 ```
 
- - `-static` was added - this is the signal to the compiler to use a static
-   glibc, among other things
- - `-Wl,--as-needed` was removed - this can be left in, but is unnecessary
-   as it only applies to dynamic librares
- - `-pie` was removed - this is not compatible with static binaries
- - both `-Wl,-B*` options were removed - everything will be linked statically,
-   so informing the linker of how certain libraries should be linked is not
-   appropriate
- - `-lgcc_s` was changed to `-lgcc_eh` - `gcc_s` is the GCC support library,
-   which Rust uses for unwinding support. This is only available as a dynamic
-   library, so we must specify the static version of the library providing
-   unwinding support.
+Let's try it out!
 
-By running this command, you will likely see some warnings like
-
-``` text
-warning: Using 'getpwuid_r' in statically linked applications requires at runtime the shared libraries from the glibc version used for linking
-```
-
-These should be considered carefully! They indicate calls in glibc which
-*cannot* be statically linked without significant extra effort. An application
-using these calls will find it is not as portable as 'static binary' would imply.
-Rust supports targeting musl as an alternative libc to be able to fully
-statically link these calls.
-
-As we are confident that our code does not use these calls, we can now see the
-fruits of our labour:
-
-```
+```text
+$ echo 'fn main() { println!("hi!"); panic!("failed"); }' > example.rs
+$ rustc --target=x86_64-unknown-linux-musl example.rs
 $ ldd example
         not a dynamic executable
+$ ./example
+hi!
+thread '<main>' panicked at 'failed', example.rs:1
 ```
 
-This binary can be copied to virtually any 64-bit Linux machine and work
-without requiring external libraries.
+Success! This binary can be copied to almost any Linux machine with the same
+machine architecture and run without issues.
+
+`cargo build` also permits the `--target` option so you should be able to build
+your crates as normal. However, you may need to recompile your native libraries
+against `musl` before they can be linked against.
