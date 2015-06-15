@@ -1279,6 +1279,7 @@ pub trait StrExt {
         where P::Searcher: ReverseSearcher<'a>;
     fn find_str<'a, P: Pattern<'a>>(&'a self, pat: P) -> Option<usize>;
     fn split_at(&self, mid: usize) -> (&str, &str);
+    fn split_at_mut(&mut self, mid: usize) -> (&mut str, &mut str);
     fn slice_shift_char<'a>(&'a self) -> Option<(char, &'a str)>;
     fn subslice_offset(&self, inner: &str) -> usize;
     fn as_ptr(&self) -> *const u8;
@@ -1585,6 +1586,20 @@ impl StrExt for str {
             unsafe {
                 (self.slice_unchecked(0, mid),
                  self.slice_unchecked(mid, self.len()))
+            }
+        } else {
+            slice_error_fail(self, 0, mid)
+        }
+    }
+
+    fn split_at_mut(&mut self, mid: usize) -> (&mut str, &mut str) {
+        // is_char_boundary checks that the index is in [0, .len()]
+        if self.is_char_boundary(mid) {
+            let len = self.len();
+            unsafe {
+                let self2: &mut str = mem::transmute_copy(&self);
+                (self.slice_mut_unchecked(0, mid),
+                 self2.slice_mut_unchecked(mid, len))
             }
         } else {
             slice_error_fail(self, 0, mid)

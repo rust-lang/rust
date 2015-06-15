@@ -702,6 +702,18 @@ fn test_split_at() {
 }
 
 #[test]
+fn test_split_at_mut() {
+    use std::ascii::AsciiExt;
+    let mut s = "Hello World".to_string();
+    {
+        let (a, b) = s.split_at_mut(5);
+        a.make_ascii_uppercase();
+        b.make_ascii_lowercase();
+    }
+    assert_eq!(s, "HELLO world");
+}
+
+#[test]
 #[should_panic]
 fn test_split_at_boundscheck() {
     let s = "ศไทย中华Việt Nam";
