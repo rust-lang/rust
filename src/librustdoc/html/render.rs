@@ -456,13 +456,15 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> io::Result<String> {
             let did = ast_util::local_def(pid);
             match paths.get(&did) {
                 Some(&(ref fqp, _)) => {
+                    // Needed to determine `self` type.
+                    let parent_basename = Some(fqp[fqp.len() - 1].clone());
                     search_index.push(IndexItem {
                         ty: shortty(item),
                         name: item.name.clone().unwrap(),
                         path: fqp[..fqp.len() - 1].connect("::"),
                         desc: shorter(item.doc_value()),
                         parent: Some(did),
-                        search_type: None,
+                        search_type: get_index_search_type(&item, parent_basename),
                     });
                 },
                 None => {}
