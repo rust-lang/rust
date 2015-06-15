@@ -585,7 +585,7 @@ fn trans_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             if let ast::ExprPath(..) = f.node {
                 let fn_ty = expr_ty_adjusted(bcx, f);
                 let (fty, ret_ty) = match fn_ty.sty {
-                    ty::ty_bare_fn(_, ref fty) => {
+                    ty::TyBareFn(_, ref fty) => {
                         (fty, ty::erase_late_bound_regions(bcx.tcx(), &fty.sig.output()))
                     }
                     _ => panic!("Not calling a function?!")
@@ -595,12 +595,9 @@ fn trans_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                     let is_rust_fn = fty.abi == synabi::Rust ||
                         fty.abi == synabi::RustIntrinsic;
 
-                    let valid_type =
-                        ty::type_is_scalar(ret_ty) ||
-                        ty::type_is_simd(bcx.tcx(), ret_ty);
+                    let needs_drop = type_needs_drop(bcx.tcx(), ret_ty);
 
-                    if is_rust_fn && type_is_immediate(bcx.ccx(), ret_ty) && valid_type {
-
+                    if is_rust_fn && type_is_immediate(bcx.ccx(), ret_ty) && !needs_drop {
                         let args = callee::ArgExprs(&args[..]);
                         let result = callee::trans_call_inner(bcx,
                                                               expr.debug_loc(),
