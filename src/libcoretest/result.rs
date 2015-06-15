@@ -137,3 +137,16 @@ pub fn test_unwrap_or_else_panic() {
     let bad_err: Result<isize, &'static str> = Err("Unrecoverable mess.");
     let _ : isize = bad_err.unwrap_or_else(handler);
 }
+
+
+#[test]
+pub fn test_expect_ok() {
+    let ok: Result<isize, &'static str> = Ok(100);
+    assert_eq!(ok.expect("Unexpected error"), 100);
+}
+#[test]
+#[should_panic(expected="Got expected error: \"All good\"")]
+pub fn test_expect_err() {
+    let err: Result<isize, &'static str> = Err("All good");
+    err.expect("Got expected error");
+}
