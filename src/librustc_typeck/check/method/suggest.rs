@@ -73,20 +73,16 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                         // snippet
                     };
 
-                    macro_rules! span_stored_function {
-                        () => {
-                            cx.sess.span_note(span,
-                                              &format!("use `({0}.{1})(...)` if you meant to call \
-                                                        the function stored in the `{1}` field",
-                                                       expr_string, item_name));
-                        }
+                    let span_stored_function = || {
+                        cx.sess.span_note(span,
+                                          &format!("use `({0}.{1})(...)` if you meant to call \
+                                                    the function stored in the `{1}` field",
+                                                   expr_string, item_name));
                     };
 
-                    macro_rules! span_did_you_mean {
-                        () => {
-                            cx.sess.span_note(span, &format!("did you mean to write `{0}.{1}`?",
-                                                             expr_string, item_name));
-                        }
+                    let span_did_you_mean = || {
+                        cx.sess.span_note(span, &format!("did you mean to write `{0}.{1}`?",
+                                                         expr_string, item_name));
                     };
 
                     // Determine if the field can be used as a function in some way
@@ -106,16 +102,16 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                             let mut selcx = SelectionContext::new(infcx, fcx);
 
                             if selcx.evaluate_obligation(&obligation) {
-                                span_stored_function!();
+                                span_stored_function();
                             } else {
-                                span_did_you_mean!();
+                                span_did_you_mean();
                             }
                         });
                     } else {
                         match field_ty.sty {
                             // fallback to matching a closure or function pointer
-                            ty::TyClosure(_,_) | ty::TyBareFn(None,_) => span_stored_function!(),
-                            _ => span_did_you_mean!(),
+                            ty::TyClosure(..) | ty::TyBareFn(..) => span_stored_function(),
+                            _ => span_did_you_mean(),
                         }
                     }
                 }
