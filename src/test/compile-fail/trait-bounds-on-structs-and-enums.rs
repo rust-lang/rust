@@ -52,7 +52,7 @@ struct TupleLike(
 );
 
 enum Enum {
-    DictionaryLike { field: Bar<i32> }, //~ ERROR not implemented
+    DictionaryLike { field: Bar<u8> }, //~ ERROR not implemented
 }
 
 trait PolyTrait<T>
@@ -62,7 +62,7 @@ trait PolyTrait<T>
 
 struct Struct;
 
-impl PolyTrait<Foo<usize>> for Struct {
+impl PolyTrait<Foo<u16>> for Struct {
 //~^ ERROR not implemented
 }
 
