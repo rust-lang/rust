@@ -48,12 +48,38 @@ pub fn format_visibility(vis: Visibility) -> &'static str {
     }
 }
 
+#[inline]
+#[cfg(target_pointer_width="64")]
+// Based on the trick layed out at
+// http://graphics.stanford.edu/~seander/bithacks.html#RoundUpPowerOf2
+pub fn round_up_to_power_of_two(mut x: usize) -> usize {
+    x -= 1;
+    x |= x >> 1;
+    x |= x >> 2;
+    x |= x >> 4;
+    x |= x >> 8;
+    x |= x >> 16;
+    x |= x >> 32;
+    x + 1
+}
+
+#[cfg(target_pointer_width="32")]
+pub fn round_up_to_power_of_two(mut x: usize) -> usize {
+    x -= 1;
+    x |= x >> 1;
+    x |= x >> 2;
+    x |= x >> 4;
+    x |= x >> 8;
+    x |= x >> 16;
+    x + 1
+}
+
 // Macro for deriving implementations of Decodable for enums
 #[macro_export]
 macro_rules! impl_enum_decodable {
     ( $e:ident, $( $x:ident ),* ) => {
-        impl Decodable for $e {
-            fn decode<D: Decoder>(d: &mut D) -> Result<Self, D::Error> {
+        impl ::rustc_serialize::Decodable for $e {
+            fn decode<D: ::rustc_serialize::Decoder>(d: &mut D) -> Result<Self, D::Error> {
                 let s = try!(d.read_str());
                 match &*s {
                     $(
@@ -64,4 +90,11 @@ macro_rules! impl_enum_decodable {
             }
         }
     };
+}
+
+#[test]
+fn power_rounding() {
+    assert_eq!(1, round_up_to_power_of_two(1));
+    assert_eq!(64, round_up_to_power_of_two(33));
+    assert_eq!(256, round_up_to_power_of_two(256));
 }
