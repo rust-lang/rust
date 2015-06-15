@@ -434,7 +434,7 @@ pub fn mk_assignty<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     debug!("mk_assignty({} -> {})", a.repr(fcx.tcx()), b.repr(fcx.tcx()));
     let mut unsizing_obligations = vec![];
     let adjustment = try!(indent(|| {
-        fcx.infcx().commit_if_ok(|_| {
+        fcx.select_commit_if_ok(|_| {
             let coerce = Coerce {
                 fcx: fcx,
                 origin: infer::ExprAssignable(expr.span),

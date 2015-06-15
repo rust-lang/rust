@@ -12,6 +12,7 @@ use middle::infer::InferCtxt;
 use middle::ty::{self, RegionEscape, Ty};
 use std::collections::HashSet;
 use std::default::Default;
+use std::mem;
 use syntax::ast;
 use util::common::ErrorReported;
 use util::ppaux::Repr;
@@ -80,6 +81,11 @@ pub struct FulfillmentContext<'tcx> {
     // obligations (otherwise, it's easy to fail to walk to a
     // particular node-id).
     region_obligations: NodeMap<Vec<RegionObligation<'tcx>>>,
+
+    // Stored versions of the fields for snapshots
+    stored_region_obligations: Option<NodeMap<Vec<RegionObligation<'tcx>>>>,
+    stored_predicates: Option<Vec<PredicateObligation<'tcx>>>,
+    stored_duplicate_set: Option<HashSet<ty::Predicate<'tcx>>>
 }
 
 #[derive(Clone)]
@@ -96,6 +102,51 @@ impl<'tcx> FulfillmentContext<'tcx> {
             predicates: Vec::new(),
             attempted_mark: 0,
             region_obligations: NodeMap(),
+
+            stored_region_obligations: None,
+            stored_predicates: None,
+            stored_duplicate_set: None
+        }
+    }
+
+    /// Begin a snapshot. This should be done in parallel with infcx
+    /// snapshots.
+    pub fn begin_transaction(&mut self) {
+        assert!(self.stored_duplicate_set.is_none(), "nested transactions are not supported");
+        debug!("begin_transaction");
+
+        self.stored_duplicate_set = Some(mem::replace(&mut self.duplicate_set,
+                                                      HashSet::new()));
+        self.stored_predicates = Some(self.predicates.clone());
+        self.stored_region_obligations = Some(mem::replace(&mut self.region_obligations,
+                                                           NodeMap()));
+    }
+
+    /// Rolls the current transaction back
+    pub fn rollback(&mut self) {
+        assert!(self.stored_duplicate_set.is_some(), "rollback not within a transaction");
+        debug!("rollback!");
+
+        self.duplicate_set = self.stored_duplicate_set.take().unwrap();
+        self.predicates = self.stored_predicates.take().unwrap();
+        self.region_obligations = self.stored_region_obligations.take().unwrap();
+    }
+
+    /// Commits the current transaction
+    pub fn commit(&mut self) {
+        assert!(self.stored_duplicate_set.is_some(), "commit not within a transaction");
+        debug!("commit!");
+
+        let transaction_duplicate_set = mem::replace(&mut self.duplicate_set,
+            self.stored_duplicate_set.take().unwrap());
+        let transaction_region_obligations = mem::replace(&mut self.region_obligations,
+            self.stored_region_obligations.take().unwrap());
+
+        self.duplicate_set.extend(transaction_duplicate_set);
+        self.predicates = self.stored_predicates.take().unwrap();
+
+        for (node, mut ros) in transaction_region_obligations {
+            self.region_obligations.entry(node).or_insert(vec![]).append(&mut ros);
         }
     }
 
@@ -170,6 +221,14 @@ impl<'tcx> FulfillmentContext<'tcx> {
             return;
         }
 
+        if let Some(ref duplicate_set) = self.stored_duplicate_set {
+            if duplicate_set.contains(&obligation.predicate) {
+                debug!("register_predicate({}) -- already seen before transaction, skip",
+                       obligation.repr(infcx.tcx));
+                return;
+            }
+        }
+
         debug!("register_predicate({})", obligation.repr(infcx.tcx));
         self.predicates.push(obligation);
     }
@@ -178,6 +237,8 @@ impl<'tcx> FulfillmentContext<'tcx> {
                               body_id: ast::NodeId)
                               -> &[RegionObligation<'tcx>]
     {
+        assert!(self.stored_region_obligations.is_none(),
+                "can't get region obligations within a transaction");
         match self.region_obligations.get(&body_id) {
             None => Default::default(),
             Some(vec) => vec,
