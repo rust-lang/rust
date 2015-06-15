@@ -81,32 +81,49 @@ reason="foo")]`. This should be extended to add an optional
 `removed_at` key, to state that the item should be made inaccessible at 
 that version. Note that while this allows for marking items as 
 deprecated, there is purposely no provision to actually *remove* items. 
-In fact this proposal bans removing an API type outright, unless 
-security concerns are deemed more important than the resulting breakage 
-from removing it or the API item has some fault that means it cannot be 
-used correctly at all (thus leaving the API in place would result in 
-the same level of breakage than removing it).
+In fact this proposal strongly advises not to remove an API type, 
+unless security concerns are deemed more important than the resulting 
+breakage from removing it or the API item has some fault that means it 
+cannot be used correctly at all (thus leaving the API in place would 
+result in the same level of breakage than removing it).
 
 Currently every rustc version implements only its own version, having 
 multiple versions is possible using something like multirust, though 
 this does not work within a build. Also currently rustc versions do not 
 guarantee interoperability. This RFC aims to change this situation.
 
-First, crates should state their target version using a `#![version = 
-"1.0.0"]` attribute. Cargo should insert the current rust version by 
-default on `cargo new` and *warn* if no version is defined on all other 
-commands. It may optionally *note* that the specified target version is 
-outdated on `cargo package`. To get the current rust version, cargo
-could query rustc -V (with some postprocessing) or use some as yet
-undefined symbol exported by the rust libraries.
+First, crates should state their target version using a 
+`#![target(std= "1.2.0"]` attribute on the main module. The version
+string format is the one that cargo currently uses.
 
-[crates.io](https://crates.io) may deny 
-packages that do not declare a version to give the target version 
-requirement more weight to library authors. Cargo should also be able 
-to hold back a new library version if its declared target version is 
-newer than the rust version installed on the system. In those cases, 
-cargo should emit a warning urging the user to upgrade their rust 
-installation.
+Cargo should insert the current rust version by default on `cargo new` 
+and *warn* if no version is defined on all other commands. It may 
+optionally *note* if the specified target version is outdated on `cargo 
+package` or even  `cargo build --release`. To get the current rust 
+version, cargo could query rustc -V (with some postprocessing) or use a 
+symbol exported by the rust libraries (e.g. `rustc::target_version`).
+
+Cargo should also be able to 'hold back' a new library version if its 
+declared target version is newer than the rust version installed on the 
+system. In those cases, cargo should emit a warning urging the user to 
+upgrade their rust installation.
+
+In the case of packages on crates.io, we could offer a mapping of 
+target versions to crate versions for each crate, so the corresponding 
+crate version can directly be used without further search.
+
+In the case of crates from git, the only reliable way to implement it 
+is to search the history for a suitable target version definition. Note 
+that we'd expect the target version to go up monotonously, so a binary 
+search should be possible, also we can filter out all commits that do 
+not touch lib.rs/mod.rs. 
+
+This is a very complex feature to implement, so stopping with an error 
+and referring to the user to do the search is an acceptable option.
+
+[crates.io](https://crates.io) may start denying new packages that do 
+not declare a version to give the target version requirement more 
+weight to library authors. 
 
 `rustc` should use this target version definition to check for 
 deprecated items. If no target version is defined, deprecation checking 
@@ -128,6 +145,20 @@ others (and that may be hidden via a checkbox). We should not
 completely remove the documentation, as users of libraries that target 
 old versions may still have a use for them, but neither should we let 
 them clutter the docs. 
+
+## Policy
+
+Even if this proposal reduces breakage arising from new versions
+considerably, we should still exercise some care on evolving the APIs.
+We already have a `beta` and `nightly` release train representing
+future versions, this should be taken into account.
+
+In general, the Tarzan principle should be followed where applicable
+(First grab a vine, *then* let go of the previous vine). In terms of
+API evolution, this means not deprecating a feature before a 
+replacement has been stabilized. It is still possible to deprecate a
+feature in a future version, to inform users of its impending 
+departure.
 
 # Drawbacks
 
