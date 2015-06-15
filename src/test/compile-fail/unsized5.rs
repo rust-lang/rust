@@ -24,7 +24,7 @@ struct S3 {
     g: [usize]
 }
 struct S4 {
-    f: str, //~ ERROR `core::marker::Sized` is not implemented
+    f: [u8], //~ ERROR `core::marker::Sized` is not implemented
     g: usize
 }
 enum E<X: ?Sized> {

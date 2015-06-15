@@ -45,7 +45,6 @@ pub fn f1_uint_uint() {
 pub fn f1_uint_int() {
     f1(2u32, 4i32);
     //~^ ERROR the trait `Foo` is not implemented
-    //~| ERROR the trait `Foo` is not implemented
 }
 
 pub fn f2_int() {
