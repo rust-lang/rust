@@ -5,7 +5,7 @@ use std::cell::RefCell;
 use syntax::ptr::P;
 use rustc::lint::{Context, LintPass, LintArray, Lint};
 use rustc::util::nodemap::DefIdMap;
-use rustc::middle::ty::{self, node_id_to_type, sty, ty_ptr, ty_rptr, expr_ty,
+use rustc::middle::ty::{self, node_id_to_type, TypeVariants, expr_ty,
 	mt, ty_to_def_id, impl_or_trait_item, MethodTraitItemId, ImplOrTraitItemId};
 use rustc::middle::def::{DefTy, DefStruct, DefTrait};
 use syntax::codemap::{Span, Spanned};
@@ -138,14 +138,14 @@ fn has_is_empty(cx: &Context, expr: &Expr) -> bool {
 	
 	let ty = &walk_ty(&expr_ty(cx.tcx, expr));
 	match ty.sty {
-		ty::ty_trait(_) => cx.tcx.trait_item_def_ids.borrow().get(
+		ty::TyTrait(_) => cx.tcx.trait_item_def_ids.borrow().get(
 			&ty::ty_to_def_id(ty).expect("trait impl not found")).map_or(false, 
 			|ids| ids.iter().any(|i| is_is_empty(cx, i))),
-		ty::ty_projection(_) => ty::ty_to_def_id(ty).map_or(false, 
+		ty::TyProjection(_) => ty::ty_to_def_id(ty).map_or(false, 
 			|id| has_is_empty_impl(cx, &id)),
-		ty::ty_enum(ref id, _) | ty::ty_struct(ref id, _) => 
+		ty::TyEnum(ref id, _) | ty::TyStruct(ref id, _) => 
 			has_is_empty_impl(cx, id),
-		ty::ty_vec(..) => true,
+		ty::TyArray(..) => true,
 		_ => false,
 	}
 }
