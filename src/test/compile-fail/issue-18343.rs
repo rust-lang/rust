@@ -10,33 +10,10 @@
 
 struct Obj<F> where F: FnMut() -> u32 {
     closure: F,
-    nfn: usize,
-}
-
-struct S<F> where F: FnMut() -> u32 {
-    v: Obj<F>,
-}
-
-fn func() -> u32 {
-    0
 }
 
 fn main() {
-    let o = Obj { closure: || 42, nfn: 42 };
+    let o = Obj { closure: || 42 };
     o.closure(); //~ ERROR no method named `closure` found
     //~^ NOTE use `(o.closure)(...)` if you meant to call the function stored in the `closure` field
-
-    // TODO move these to a new test for #2392
-    let x = o.nfn(); //~ ERROR no method named `nfn` found
-    //~^ NOTE did you mean to write `o.nfn`?
-
-    let b = Obj { closure: func, nfn: 5 };
-    b.closure(); //~ ERROR no method named `closure` found
-    //~^ NOTE use `(b.closure)(...)` if you meant to call the function stored in the `closure` field
-
-    let s = S { v: b };
-    s.v.closure();//~ ERROR no method named `closure` found
-    //~^ NOTE use `(s.v.closure)(...)` if you meant to call the function stored in the `closure` field
-    s.v.nfn();//~ ERROR no method named `nfn` found
-    //~^ NOTE did you mean to write `s.v.nfn`?
 }

@@ -15,8 +15,11 @@ use CrateCtxt;
 
 use astconv::AstConv;
 use check::{self, FnCtxt};
-use middle::ty::{self, Ty};
+use middle::ty::{self, Ty, ToPolyTraitRef, AsPredicate};
 use middle::def;
+use middle::lang_items::FnOnceTraitLangItem;
+use middle::subst::Substs;
+use middle::traits::{Obligation, SelectionContext};
 use metadata::{csearch, cstore, decoder};
 
 use syntax::{ast, ast_util};
@@ -65,31 +68,38 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 if let Some(field) = fields.iter().find(|f| f.name == item_name) {
                     let expr_string = match cx.sess.codemap().span_to_snippet(expr.span) {
                         Ok(expr_string) => expr_string,
-                        _ => "s".into() // default to generic placeholder for expression
+                        _ => "s".into() // Default to a generic placeholder for the
+                                        // expression when we can't generate a string
+                                        // snippet
                     };
 
-                    // TODO Fix when closure note is displayed
-                    // below commented code from eddyb on irc
-                    // let substs = subst::Substs::new_trait(vec![fcx.inh.infcx.next_ty_var()], Vec::new(), field_ty);
-                    // let trait_ref = ty::TraitRef::new(trait_def_id, fcx.tcx().mk_substs(substs));
-                    // let poly_trait_ref = trait_ref.to_poly_trait_ref();
-                    // let obligation = traits::Obligation::misc(span, fcx.body_id, poly_trait_ref.as_predicate());
-                    // let mut selcx = traits::SelectionContext::new(fcx.infcx(), fcx);
-                    // if selcx.evaluate_obligation(&obligation) { /* suggest */ }
-                    
-                    match ty::lookup_field_type(cx, did, field.id, substs).sty {
-                        ty::TyClosure(_, _) | ty::TyBareFn(_,_) => {
-                            cx.sess.span_note(span,
-                                &format!("use `({0}.{1})(...)` if you meant to call the \
-                                          function stored in the `{1}` field",
-                                    expr_string, item_name));
-                        },
-                        _ => {
-                            cx.sess.span_note(span,
-                                &format!("did you mean to write `{0}.{1}`?",
-                                    expr_string, item_name));
-                        },
+                    // Determine if the field can be used as a function in some way
+                    let fn_once_trait_did = match cx.lang_items.require(FnOnceTraitLangItem) {
+                        Ok(trait_did) => trait_did,
+                        Err(err) => cx.sess.fatal(&err[..])
                     };
+
+                    let field_ty = ty::lookup_field_type(cx, did, field.id, substs);
+                    let field_ty_substs = Substs::new_trait(vec![fcx.inh.infcx.next_ty_var()],
+                                                            Vec::new(),
+                                                            field_ty);
+                    let trait_ref = ty::TraitRef::new(fn_once_trait_did,
+                                                      cx.mk_substs(field_ty_substs));
+                    let poly_trait_ref = trait_ref.to_poly_trait_ref();
+                    let obligation = Obligation::misc(span,
+                                                      fcx.body_id,
+                                                      poly_trait_ref.as_predicate());
+                    let mut selcx = SelectionContext::new(fcx.infcx(), fcx);
+
+                    if selcx.evaluate_obligation(&obligation) {
+                        cx.sess.span_note(span,
+                            &format!("use `({0}.{1})(...)` if you meant to call the \
+                                      function stored in the `{1}` field",
+                                expr_string, item_name));
+                    } else {
+                        cx.sess.span_note(span, &format!("did you mean to write `{0}.{1}`?",
+                                                         expr_string, item_name));
+                    }
                 }
             }
 
