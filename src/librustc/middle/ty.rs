@@ -755,7 +755,8 @@ pub struct ctxt<'tcx> {
 
     /// A set of predicates that have been fulfilled *somewhere*.
     /// This is used to avoid duplicate work. Predicates are only
-    /// added to this set when they
+    /// added to this set when they mention only "global" names
+    /// (i.e., no type or lifetime parameters).
     pub fulfilled_predicates: RefCell<traits::FulfilledPredicates<'tcx>>,
 
     /// Caches the representation hints for struct definitions.
@@ -823,7 +824,7 @@ bitflags! {
 
         // true if there are "names" of types and regions and so forth
         // that are local to a particular fn
-        const HAS_LOCAL_NAMES   = 1 << 8,
+        const HAS_LOCAL_NAMES   = 1 << 9,
 
         const NEEDS_SUBST        = TypeFlags::HAS_PARAMS.bits |
                                    TypeFlags::HAS_SELF.bits |
