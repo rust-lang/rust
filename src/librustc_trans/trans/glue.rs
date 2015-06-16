@@ -203,8 +203,10 @@ impl<'tcx> DropGlueKind<'tcx> {
             DropGlueKind::TyContents(t) => DropGlueKind::TyContents(f(t)),
         }
     }
+}
 
-    fn to_string<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> String {
+impl<'tcx> Repr for DropGlueKind<'tcx> {
+    fn repr(&self) -> String {
         match *self {
             DropGlueKind::Ty(ty) => {
                 format!("DropGlueKind::Ty({})", ty.repr())
@@ -218,9 +220,9 @@ impl<'tcx> DropGlueKind<'tcx> {
 
 fn get_drop_glue_core<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                 g: DropGlueKind<'tcx>) -> ValueRef {
-    debug!("make drop glue for {}", g.to_string(ccx));
+    debug!("make drop glue for {}", g.repr());
     let g = g.map_ty(|t| get_drop_glue_type(ccx, t));
-    debug!("drop glue type {}", g.to_string(ccx));
+    debug!("drop glue type {}", g.repr());
     match ccx.drop_glues().borrow().get(&g) {
         Some(&glue) => return glue,
         _ => { }

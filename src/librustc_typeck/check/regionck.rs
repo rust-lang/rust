@@ -348,7 +348,6 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
                            body_id: ast::NodeId,
                            span: Span) {
         debug!("relate_free_regions >>");
-        let tcx = self.tcx();
 
         for &ty in fn_sig_tys {
             let ty = self.resolve_type(ty);
@@ -359,7 +358,7 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
                                                         ty, body_scope, span);
 
             // Record any relations between free regions that we observe into the free-region-map.
-            self.free_region_map.relate_free_regions_from_implications(tcx, &implications);
+            self.free_region_map.relate_free_regions_from_implications(&implications);
 
             // But also record other relationships, such as `T:'x`,
             // that don't go into the free-region-map but which we use
@@ -823,7 +822,6 @@ fn constrain_call<'a, I: Iterator<Item=&'a ast::Expr>>(rcx: &mut Rcx,
     //! in the type of the function. Also constrains the regions that
     //! appear in the arguments appropriately.
 
-    let tcx = rcx.fcx.tcx();
     debug!("constrain_call(call_expr={}, \
             receiver={}, \
             implicitly_ref_args={})",
@@ -1156,7 +1154,6 @@ fn link_autoref(rcx: &Rcx,
 fn link_by_ref(rcx: &Rcx,
                expr: &ast::Expr,
                callee_scope: CodeExtent) {
-    let tcx = rcx.tcx();
     debug!("link_by_ref(expr={}, callee_scope={:?})",
            expr.repr(), callee_scope);
     let mc = mc::MemCategorizationContext::new(rcx.fcx);

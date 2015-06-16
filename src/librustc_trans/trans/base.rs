@@ -1671,7 +1671,6 @@ pub fn trans_named_tuple_constructor<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                                  -> Result<'blk, 'tcx> {
 
     let ccx = bcx.fcx.ccx;
-    let tcx = ccx.tcx();
 
     let result_ty = match ctor_ty.sty {
         ty::TyBareFn(_, ref bft) => {

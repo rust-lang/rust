@@ -2896,8 +2896,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let predicates = normalize_with_depth(self, cause.clone(), recursion_depth, &predicates);
         let mut predicates = self.infcx().plug_leaks(skol_map, snapshot, &predicates);
         let mut obligations =
-            util::predicates_for_generics(self.tcx(),
-                                          cause,
+            util::predicates_for_generics(cause,
                                           recursion_depth,
                                           &predicates.value);
         obligations.append(&mut predicates.obligations);

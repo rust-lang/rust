@@ -29,7 +29,6 @@ impl FreeRegionMap {
     }
 
     pub fn relate_free_regions_from_implications<'tcx>(&mut self,
-                                                       tcx: &ty::ctxt<'tcx>,
                                                        implications: &[Implication<'tcx>])
     {
         for implication in implications {

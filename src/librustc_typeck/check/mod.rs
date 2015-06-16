@@ -1745,7 +1745,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                       cause: traits::ObligationCause<'tcx>)
     {
         let mut fulfillment_cx = self.inh.fulfillment_cx.borrow_mut();
-        fulfillment_cx.register_region_obligation(self.infcx(), ty, region, cause);
+        fulfillment_cx.register_region_obligation(ty, region, cause);
     }
 
     pub fn add_default_region_param_bounds(&self,
@@ -1787,9 +1787,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         debug!("add_obligations_for_parameters(predicates={})",
                predicates.repr());
 
-        for obligation in traits::predicates_for_generics(self.tcx(),
-                                                          cause,
-                                                          predicates) {
+        for obligation in traits::predicates_for_generics(cause, predicates) {
             self.register_predicate(obligation);
         }
     }

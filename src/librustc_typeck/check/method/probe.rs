@@ -1062,8 +1062,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
 
                     // Convert the bounds into obligations.
                     let obligations =
-                        traits::predicates_for_generics(self.tcx(),
-                                                        cause.clone(),
+                        traits::predicates_for_generics(cause.clone(),
                                                         &impl_bounds);
                     debug!("impl_obligations={}", obligations.repr());
 

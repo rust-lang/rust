@@ -373,7 +373,6 @@ fn opt_normalize_projection_type<'a,'b,'tcx>(
                    obligations.repr());
 
             if ty::type_has_projection(projected_ty) {
-                let tcx = selcx.tcx();
                 let mut normalizer = AssociatedTypeNormalizer::new(selcx, cause, depth);
                 let normalized_ty = normalizer.fold(&projected_ty);
 
@@ -633,7 +632,6 @@ fn assemble_candidates_from_object_type<'cx,'tcx>(
     candidate_set: &mut ProjectionTyCandidateSet<'tcx>,
     object_ty: Ty<'tcx>)
 {
-    let infcx = selcx.infcx();
     debug!("assemble_candidates_from_object_type(object_ty={})",
            object_ty.repr());
     let data = match object_ty.sty {
@@ -745,8 +743,6 @@ fn confirm_candidate<'cx,'tcx>(
     candidate: ProjectionTyCandidate<'tcx>)
     -> (Ty<'tcx>, Vec<PredicateObligation<'tcx>>)
 {
-    let infcx = selcx.infcx();
-
     debug!("confirm_candidate(candidate={}, obligation={})",
            candidate.repr(),
            obligation.repr());

@@ -187,7 +187,6 @@ impl<'a, 'tcx> CombineFields<'a, 'tcx> {
                        b_vid: ty::TyVid)
                        -> RelateResult<'tcx, ()>
     {
-        let tcx = self.infcx.tcx;
         let mut stack = Vec::new();
         stack.push((a_ty, dir, b_vid));
         loop {

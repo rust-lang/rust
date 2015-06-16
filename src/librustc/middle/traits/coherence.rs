@@ -81,7 +81,6 @@ fn overlap(selcx: &mut SelectionContext,
     debug!("overlap: subtraitref check succeeded");
 
     // Are any of the obligations unsatisfiable? If so, no overlap.
-    let tcx = selcx.tcx();
     let infcx = selcx.infcx();
     let opt_failing_obligation =
         a_obligations.iter()
@@ -155,7 +154,7 @@ fn impl_trait_ref_and_oblig<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
     let Normalized { value: predicates, obligations: normalization_obligations2 } =
         project::normalize(selcx, ObligationCause::dummy(), &predicates);
     let impl_obligations =
-        util::predicates_for_generics(selcx.tcx(), ObligationCause::dummy(), 0, &predicates);
+        util::predicates_for_generics(ObligationCause::dummy(), 0, &predicates);
 
     let impl_obligations: Vec<_> =
         impl_obligations.into_iter()

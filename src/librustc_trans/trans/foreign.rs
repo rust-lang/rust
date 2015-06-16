@@ -233,7 +233,6 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                      -> Block<'blk, 'tcx>
 {
     let ccx = bcx.ccx();
-    let tcx = bcx.tcx();
 
     debug!("trans_native_call(callee_ty={}, \
             llfn={}, \
@@ -636,7 +635,6 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                       t: Ty<'tcx>) {
         let _icx = push_ctxt(
             "foreign::trans_rust_fn_with_foreign_abi::build_wrap_fn");
-        let tcx = ccx.tcx();
 
         debug!("build_wrap_fn(llrustfn={}, llwrapfn={}, t={})",
                ccx.tn().val_to_string(llrustfn),

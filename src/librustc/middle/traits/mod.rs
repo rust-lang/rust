@@ -300,12 +300,11 @@ pub struct VtableObjectData<'tcx> {
 }
 
 /// Creates predicate obligations from the generic bounds.
-pub fn predicates_for_generics<'tcx>(tcx: &ty::ctxt<'tcx>,
-                                     cause: ObligationCause<'tcx>,
+pub fn predicates_for_generics<'tcx>(cause: ObligationCause<'tcx>,
                                      generic_bounds: &ty::InstantiatedPredicates<'tcx>)
                                      -> PredicateObligations<'tcx>
 {
-    util::predicates_for_generics(tcx, cause, 0, generic_bounds)
+    util::predicates_for_generics(cause, 0, generic_bounds)
 }
 
 /// Determines whether the type `ty` is known to meet `bound` and
@@ -436,8 +435,6 @@ pub fn fully_normalize<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx>,
                                   -> Result<T, Vec<FulfillmentError<'tcx>>>
     where T : TypeFoldable<'tcx> + HasProjectionTypes + Clone + Repr
 {
-    let tcx = closure_typer.tcx();
-
     debug!("normalize_param_env(value={})", value.repr());
 
     let mut selcx = &mut SelectionContext::new(infcx, closure_typer);

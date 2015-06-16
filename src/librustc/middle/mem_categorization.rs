@@ -418,7 +418,6 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
     }
 
     fn pat_ty(&self, pat: &ast::Pat) -> McResult<Ty<'tcx>> {
-        let tcx = self.typer.tcx();
         let base_ty = try!(self.typer.node_ty(pat.id));
         // FIXME (Issue #18207): This code detects whether we are
         // looking at a `ref x`, and if so, figures out what the type

@@ -191,7 +191,6 @@ fn relate_region_params<'a,'tcx:'a,R>(relation: &mut R,
                                       -> RelateResult<'tcx, Vec<ty::Region>>
     where R: TypeRelation<'a,'tcx>
 {
-    let tcx = relation.tcx();
     let num_region_params = a_rs.len();
 
     debug!("relate_region_params(a_rs={}, \
