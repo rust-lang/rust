@@ -716,19 +716,6 @@ impl<'tcx> Clean<TyParamBound> for ty::TraitRef<'tcx> {
     }
 }
 
-impl<'tcx> Clean<Vec<TyParamBound>> for ty::ParamBounds<'tcx> {
-    fn clean(&self, cx: &DocContext) -> Vec<TyParamBound> {
-        let mut v = Vec::new();
-        for t in &self.trait_bounds {
-            v.push(t.clean(cx));
-        }
-        for r in self.region_bounds.iter().filter_map(|r| r.clean(cx)) {
-            v.push(RegionBound(r));
-        }
-        v
-    }
-}
-
 impl<'tcx> Clean<Option<Vec<TyParamBound>>> for subst::Substs<'tcx> {
     fn clean(&self, cx: &DocContext) -> Option<Vec<TyParamBound>> {
         let mut v = Vec::new();

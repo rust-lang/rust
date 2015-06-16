@@ -380,23 +380,9 @@ pub fn enc_builtin_bounds(w: &mut Encoder, _cx: &ctxt, bs: &ty::BuiltinBounds) {
 pub fn enc_existential_bounds<'a,'tcx>(w: &mut Encoder,
                                        cx: &ctxt<'a,'tcx>,
                                        bs: &ty::ExistentialBounds<'tcx>) {
-    let param_bounds = ty::ParamBounds { trait_bounds: vec!(),
-                                         region_bounds: vec!(bs.region_bound),
-                                         builtin_bounds: bs.builtin_bounds,
-                                         projection_bounds: bs.projection_bounds.clone() };
-    enc_bounds(w, cx, &param_bounds);
-}
-
-pub fn enc_bounds<'a, 'tcx>(w: &mut Encoder, cx: &ctxt<'a, 'tcx>,
-                            bs: &ty::ParamBounds<'tcx>) {
     enc_builtin_bounds(w, cx, &bs.builtin_bounds);
 
-    enc_region_bounds(w, cx, &bs.region_bounds);
-
-    for tp in &bs.trait_bounds {
-        mywrite!(w, "I");
-        enc_trait_ref(w, cx, tp.0);
-    }
+    enc_region(w, cx, bs.region_bound);
 
     for tp in &bs.projection_bounds {
         mywrite!(w, "P");

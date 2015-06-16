@@ -1178,9 +1178,13 @@ fn ensure_super_predicates_step(ccx: &CrateCtxt,
 
         // Convert the bounds that follow the colon, e.g. `Bar+Zed` in `trait Foo : Bar+Zed`.
         let self_param_ty = ty::mk_self_type(tcx);
-        let superbounds1 = compute_bounds(&ccx.icx(scope), self_param_ty, bounds,
-                                          SizedByDefault::No, item.span);
-        let superbounds1 = ty::predicates(tcx, self_param_ty, &superbounds1);
+        let superbounds1 = compute_bounds(&ccx.icx(scope),
+                                    self_param_ty,
+                                    bounds,
+                                    SizedByDefault::No,
+                                    item.span);
+
+        let superbounds1 = superbounds1.predicates(tcx, self_param_ty);
 
         // Convert any explicit superbounds in the where clause,
         // e.g. `trait Foo where Self : Bar`:
@@ -1395,7 +1399,7 @@ fn convert_trait_predicates<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, it: &ast::Item)
                                         SizedByDefault::Yes,
                                         trait_item.span);
 
-            ty::predicates(ccx.tcx, assoc_ty, &bounds).into_iter()
+            bounds.predicates(ccx.tcx, assoc_ty).into_iter()
         }).collect()
     }
 }
@@ -1743,7 +1747,7 @@ fn ty_generic_predicates<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                                     &param.bounds,
                                     SizedByDefault::Yes,
                                     param.span);
-        let predicates = ty::predicates(ccx.tcx, param_ty, &bounds);
+        let predicates = bounds.predicates(ccx.tcx, param_ty);
         result.predicates.extend(space, predicates.into_iter());
     }
 
@@ -1989,23 +1993,24 @@ fn compute_bounds<'tcx>(astconv: &AstConv<'tcx>,
                         ast_bounds: &[ast::TyParamBound],
                         sized_by_default: SizedByDefault,
                         span: Span)
-                        -> ty::ParamBounds<'tcx>
+                        -> astconv::Bounds<'tcx>
 {
-    let mut param_bounds = conv_param_bounds(astconv,
-                                             span,
-                                             param_ty,
-                                             ast_bounds);
+    let mut bounds =
+        conv_param_bounds(astconv,
+                          span,
+                          param_ty,
+                          ast_bounds);
 
     if let SizedByDefault::Yes = sized_by_default {
         add_unsized_bound(astconv,
-                          &mut param_bounds.builtin_bounds,
+                          &mut bounds.builtin_bounds,
                           ast_bounds,
                           span);
     }
 
-    param_bounds.trait_bounds.sort_by(|a,b| a.def_id().cmp(&b.def_id()));
+    bounds.trait_bounds.sort_by(|a,b| a.def_id().cmp(&b.def_id()));
 
-    param_bounds
+    bounds
 }
 
 /// Converts a specific TyParamBound from the AST into a set of
@@ -2055,7 +2060,7 @@ fn conv_param_bounds<'a,'tcx>(astconv: &AstConv<'tcx>,
                               span: Span,
                               param_ty: ty::Ty<'tcx>,
                               ast_bounds: &[ast::TyParamBound])
-                              -> ty::ParamBounds<'tcx>
+                              -> astconv::Bounds<'tcx>
 {
     let tcx = astconv.tcx();
     let astconv::PartitionedBounds {
@@ -2079,7 +2084,7 @@ fn conv_param_bounds<'a,'tcx>(astconv: &AstConv<'tcx>,
                      .map(|r| ast_region_to_region(tcx, r))
                      .collect();
 
-    ty::ParamBounds {
+    astconv::Bounds {
         region_bounds: region_bounds,
         builtin_bounds: builtin_bounds,
         trait_bounds: trait_bounds,

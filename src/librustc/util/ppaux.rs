@@ -347,23 +347,6 @@ impl fmt::Debug for subst::RegionSubsts {
     }
 }
 
-
-impl<'tcx> fmt::Debug for ty::ParamBounds<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(f, "{:?}", self.builtin_bounds));
-        let mut bounds = self.trait_bounds.iter();
-        if self.builtin_bounds.is_empty() {
-            if let Some(bound) = bounds.next() {
-                try!(write!(f, "{:?}", bound));
-            }
-        }
-        for bound in bounds {
-            try!(write!(f, " + {:?}", bound));
-        }
-        Ok(())
-    }
-}
-
 impl<'tcx> fmt::Debug for ty::TraitRef<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // when printing out the debug representation, we don't need
@@ -536,22 +519,6 @@ impl<'tcx> fmt::Debug for ty::MethodObject<'tcx> {
                self.trait_ref,
                self.method_num,
                self.vtable_index)
-    }
-}
-
-impl<'tcx> fmt::Display for ty::ParamBounds<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(f, "{}", self.builtin_bounds));
-        let mut bounds = self.trait_bounds.iter();
-        if self.builtin_bounds.is_empty() {
-            if let Some(bound) = bounds.next() {
-                try!(write!(f, "{}", bound));
-            }
-        }
-        for bound in bounds {
-            try!(write!(f, " + {}", bound));
-        }
-        Ok(())
     }
 }
 
