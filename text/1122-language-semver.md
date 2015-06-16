@@ -242,7 +242,8 @@ decision. In general, it is best to find ways to correct such errors
 without making breaking changes, such as improved error messages or
 deprecation. However, if the impact of making the change is judged to
 be negligible, we can also consider fixing the problem, presuming that
-the following criteria are met:
+the following criteria are met (in addition to the criteria listed
+above in the section "Other Factors to Consider"):
 
 - All data indicates that correcting this flaw will break extremely little
   or no existing code (such as crates.io testing, communication with production
@@ -255,12 +256,23 @@ the following criteria are met:
     soundness reasons).
 - There is no backwards compatible way to repair the problem.
 
-Naturally, all of the concerns listed above in the section "Other
-Factors to Consider" also apply here. For example, we should consider
-the quality of the error messages that result from the breaking
-change, and evaluate whether it is possible to write code that works
-both before/after the change (which enables users to span compiler
-versions).
+When we do decide to make such a change, we should follow one of the
+following ways to ease the transition, in order of preference:
+
+1. When possible, issue a release that gives warnings when changes will be required. 
+  - These warnings should be as targeted as possible -- if the warning
+    is too broad, it can easily cause more annoyance than the change
+    itself.
+  - To maximize the chance of these warnings being taken seriously,
+    the warning should not be a lint. The only way to disable it is to
+    make a change that will be forwards compatible with the new
+    version.
+  - After a suitable time has elapsed (at least one cycle, possibly
+    more), make the actual change.
+2. If warnings are not possible, then include a `#[legacy]` attribute
+   that allows the old behavior to be restored.
+  - Ideally, this `#[legacy]` attribute will only persist for a fixed
+    number of cycles.
 
 # Drawbacks
 
@@ -268,8 +280,6 @@ The primary drawback is that making breaking changes are disruptive,
 even when done with the best of intentions. The alternatives list some
 ways that we could avoid breaking changes altogether, and the
 downsides of each.
-
-## Notes on phasing
 
 # Alternatives
 
