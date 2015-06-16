@@ -638,7 +638,7 @@ apply to the crate as a whole.
 ```
 
 A crate that contains a `main` function can be compiled to an executable. If a
-`main` function is present, its return type must be [`unit`](#primitive-types)
+`main` function is present, its return type must be [`unit`](#tuple-types)
 and it must take no arguments.
 
 # Items and attributes
@@ -2873,7 +2873,7 @@ The `+`, `-`, `*`, `/`, `%`, `&`, `|`, `^`, `<<`, and `>>` operators may be
 composed with the `=` operator. The expression `lval OP= val` is equivalent to
 `lval = lval OP val`. For example, `x = x + 1` may be written as `x += 1`.
 
-Any such expression always has the [`unit`](#primitive-types) type.
+Any such expression always has the [`unit`](#tuple-types) type.
 
 #### Operator precedence
 
@@ -3314,6 +3314,9 @@ let (a, b) = p;
 assert!(b != "world");
 assert!(p.0 == 10);
 ```
+
+For historical reasons and convenience, the tuple type with no elements (`()`)
+is often called ‘unit’ or ‘the unit type’.
 
 ### Array, and Slice types
 
