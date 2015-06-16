@@ -191,23 +191,11 @@ fn check_aliasability<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
             /* Uniquely accessible path -- OK for `&` and `&mut` */
             Ok(())
         }
-        (mc::Aliasability::FreelyAliasable(mc::AliasableStatic(safety)), ty::ImmBorrow) => {
-            // Borrow of an immutable static item:
-            match safety {
-                mc::InteriorUnsafe => {
-                    // If the static item contains an Unsafe<T>, it has interior
-                    // mutability.  In such cases, another phase of the compiler
-                    // will ensure that the type is `Sync` and then trans will
-                    // not put it in rodata, so this is ok to allow.
-                    Ok(())
-                }
-                mc::InteriorSafe => {
-                    // Immutable static can be borrowed, no problem.
-                    Ok(())
-                }
-            }
+        (mc::Aliasability::FreelyAliasable(mc::AliasableStatic), ty::ImmBorrow) => {
+            // Borrow of an immutable static item.
+            Ok(())
         }
-        (mc::Aliasability::FreelyAliasable(mc::AliasableStaticMut(..)), _) => {
+        (mc::Aliasability::FreelyAliasable(mc::AliasableStaticMut), _) => {
             // Even touching a static mut is considered unsafe. We assume the
             // user knows what they're doing in these cases.
             Ok(())
