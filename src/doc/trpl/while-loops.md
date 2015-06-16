@@ -10,10 +10,8 @@ while !done {
     x += x - 3;
 
     println!("{}", x);
-
-    if x % 5 == 0 {
-        done = true;
-    }
+    
+    done = x % 5 == 0 
 }
 ```
 
@@ -50,10 +48,9 @@ while !done {
     x += x - 3;
 
     println!("{}", x);
-
-    if x % 5 == 0 {
-        done = true;
-    }
+    
+    done = x % 5 == 0
+    
 }
 ```
 
