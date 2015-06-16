@@ -804,6 +804,29 @@ impl<'tcx> ctxt<'tcx> {
     }
 }
 
+pub mod tls {
+    use middle::ty;
+    use session::Session;
+
+    /// Marker type used for the scoped TLS slot.
+    /// The type context cannot be used directly because the scoped TLS
+    /// in libstd doesn't allow types generic over lifetimes.
+    struct ThreadLocalTyCx;
+
+    scoped_thread_local!(static TLS_TCX: ThreadLocalTyCx);
+
+    pub fn enter<'tcx, F: FnOnce(&ty::ctxt<'tcx>) -> R, R>(tcx: ty::ctxt<'tcx>, f: F)
+                                                           -> (Session, R) {
+        let tls_ptr = &tcx as *const _ as *const ThreadLocalTyCx;
+        let result = TLS_TCX.set(unsafe { &*tls_ptr }, || f(&tcx));
+        (tcx.sess, result)
+    }
+
+    pub fn with<F: FnOnce(&ty::ctxt) -> R, R>(f: F) -> R {
+        TLS_TCX.with(|tcx| f(unsafe { &*(tcx as *const _ as *const ty::ctxt) }))
+    }
+}
+
 // Flags that we track on types. These flags are propagated upwards
 // through the type during type construction, so that we can quickly
 // check whether the type has various kinds of types in it without
@@ -2824,7 +2847,7 @@ pub fn with_ctxt<'tcx, F, R>(s: Session,
     let mut interner = FnvHashMap();
     let common_types = CommonTypes::new(&arenas.type_, &mut interner);
 
-    let tcx = ctxt {
+    tls::enter(ctxt {
         arenas: arenas,
         interner: RefCell::new(interner),
         substs_interner: RefCell::new(FnvHashMap()),
@@ -2886,9 +2909,7 @@ pub fn with_ctxt<'tcx, F, R>(s: Session,
         const_qualif_map: RefCell::new(NodeMap()),
         custom_coerce_unsized_kinds: RefCell::new(DefIdMap()),
         cast_kinds: RefCell::new(NodeMap()),
-   };
-   let result = f(&tcx);
-   (tcx.sess, result)
+   }, f)
 }
 
 // Type constructors
