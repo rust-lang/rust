@@ -420,7 +420,6 @@
             // `i32 -> i32` matching against `T -> T`.
             var genericInputs = [];
             for (var i = 0; i < type.inputs.length; ++i) {
-                console.log(JSON.stringify(type.inputs[i]));
                 if (type.inputs[i].generic && type.inputs[i].ty_params.length === 0) {
                     genericInputs.push(type.inputs[i].name);
                 }
@@ -429,7 +428,6 @@
             var possibleMappings = generateCombinations(genericInputs, inputs);
             var typeOutput = type.output ? type.output.name : "";
 
-            console.log(JSON.stringify(possibleMappings));
             // For every possible mapping, try to replace the generics
             // accordingly and see if the types match.
             for (var i = 0; i < possibleMappings.length; ++i) {
