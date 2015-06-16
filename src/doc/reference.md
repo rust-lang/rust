@@ -928,21 +928,20 @@ A _generic function_ allows one or more _parameterized types_ to appear in its
 signature. Each type parameter must be explicitly declared, in an
 angle-bracket-enclosed, comma-separated list following the function name.
 
-```{.ignore}
-fn iter<T, F>(seq: &[T], f: F) where T: Copy, F: Fn(T) {
-    for elt in seq { f(*elt); }
-}
-fn map<T, U, F>(seq: &[T], f: F) -> Vec<U> where T: Copy, U: Copy, F: Fn(T) -> U {
-    let mut acc = vec![];
-    for elt in seq { acc.push(f(*elt)); }
-    acc
-}
+```rust,ignore
+// foo is generic over A and B
+
+fn foo<A, B>(x: A, y: B) {
 ```
 
 Inside the function signature and body, the name of the type parameter can be
 used as a type name. [Trait](#traits) bounds can be specified for type parameters
 to allow methods with that trait to be called on values of that type. This is
-specified using the `where` syntax, as in the above example.
+specified using the `where` syntax:
+
+```rust,ignore
+fn foo<T>(x: T) where T: Debug {
+```
 
 When a generic function is referenced, its type is instantiated based on the
 context of the reference. For example, calling the `iter` function defined
