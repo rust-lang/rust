@@ -46,8 +46,6 @@ impl<'a,'tcx> HigherRankedRelations<'a,'tcx> for CombineFields<'a,'tcx> {
                             -> RelateResult<'tcx, Binder<T>>
         where T: Relate<'a,'tcx>
     {
-        let tcx = self.infcx.tcx;
-
         debug!("higher_ranked_sub(a={}, b={})",
                a.repr(), b.repr());
 

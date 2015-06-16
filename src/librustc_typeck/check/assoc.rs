@@ -12,7 +12,7 @@ use middle::infer::InferCtxt;
 use middle::traits::{self, FulfillmentContext, Normalized, MiscObligation,
                      SelectionContext, ObligationCause};
 use middle::ty::{self, HasProjectionTypes};
-use middle::ty_fold::{TypeFoldable, TypeFolder};
+use middle::ty_fold::TypeFoldable;
 use syntax::ast;
 use syntax::codemap::Span;
 use util::ppaux::Repr;

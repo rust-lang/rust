@@ -171,12 +171,11 @@ impl<'tcx> FulfillmentContext<'tcx> {
     }
 
     pub fn register_region_obligation<'a>(&mut self,
-                                          infcx: &InferCtxt<'a,'tcx>,
                                           t_a: Ty<'tcx>,
                                           r_b: ty::Region,
                                           cause: ObligationCause<'tcx>)
     {
-        register_region_obligation(infcx.tcx, t_a, r_b, cause, &mut self.region_obligations);
+        register_region_obligation(t_a, r_b, cause, &mut self.region_obligations);
     }
 
     pub fn register_predicate_obligation<'a>(&mut self,
@@ -366,7 +365,6 @@ fn process_predicate<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
      * type inference.
      */
 
-    let tcx = selcx.tcx();
     match obligation.predicate {
         ty::Predicate::Trait(ref data) => {
             let trait_obligation = obligation.with(data.clone());
@@ -430,7 +428,7 @@ fn process_predicate<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
                         CodeSelectionError(Unimplemented)));
             } else {
                 let ty::OutlivesPredicate(t_a, r_b) = binder.0;
-                register_region_obligation(tcx, t_a, r_b,
+                register_region_obligation(t_a, r_b,
                                            obligation.cause.clone(),
                                            region_obligations);
             }
@@ -471,8 +469,7 @@ impl<'tcx> Repr for RegionObligation<'tcx> {
     }
 }
 
-fn register_region_obligation<'tcx>(tcx: &ty::ctxt<'tcx>,
-                                    t_a: Ty<'tcx>,
+fn register_region_obligation<'tcx>(t_a: Ty<'tcx>,
                                     r_b: ty::Region,
                                     cause: ObligationCause<'tcx>,
                                     region_obligations: &mut NodeMap<Vec<RegionObligation<'tcx>>>)

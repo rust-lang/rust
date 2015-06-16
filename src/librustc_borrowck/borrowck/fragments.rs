@@ -42,7 +42,7 @@ enum Fragment {
 }
 
 impl Fragment {
-    fn loan_path_repr<'tcx>(&self, move_data: &MoveData<'tcx>, tcx: &ty::ctxt<'tcx>) -> String {
+    fn loan_path_repr(&self, move_data: &MoveData) -> String {
         let repr = |mpi| move_data.path_loan_path(mpi).repr();
         match *self {
             Just(mpi) => repr(mpi),
@@ -50,9 +50,7 @@ impl Fragment {
         }
     }
 
-    fn loan_path_user_string<'tcx>(&self,
-                                   move_data: &MoveData<'tcx>,
-                                   tcx: &ty::ctxt<'tcx>) -> String {
+    fn loan_path_user_string(&self, move_data: &MoveData) -> String {
         let user_string = |mpi| move_data.path_loan_path(mpi).user_string();
         match *self {
             Just(mpi) => user_string(mpi),
@@ -138,7 +136,7 @@ pub fn instrument_move_fragments<'tcx>(this: &MoveData<'tcx>,
 
     let instrument_all_fragments = |kind, vec_rc: &Vec<Fragment>| {
         for (i, f) in vec_rc.iter().enumerate() {
-            let render = || f.loan_path_user_string(this, tcx);
+            let render = || f.loan_path_user_string(this);
             if span_err {
                 tcx.sess.span_err(sp, &format!("{}: `{}`", kind, render()));
             }
@@ -176,7 +174,7 @@ pub fn fixup_fragment_sets<'tcx>(this: &MoveData<'tcx>, tcx: &ty::ctxt<'tcx>) {
     };
 
     let frag_lps = |fs: &[Fragment]| -> Vec<String> {
-        fs.iter().map(|f| f.loan_path_repr(this, tcx)).collect()
+        fs.iter().map(|f| f.loan_path_repr(this)).collect()
     };
 
     // First, filter out duplicates
