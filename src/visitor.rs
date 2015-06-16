@@ -16,6 +16,7 @@ use utils;
 
 use SKIP_ANNOTATION;
 use changes::ChangeSet;
+use rewrite::{Rewrite, RewriteContext};
 
 pub struct FmtVisitor<'a> {
     pub codemap: &'a CodeMap,
@@ -32,9 +33,16 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
                self.codemap.lookup_char_pos(ex.span.hi));
         self.format_missing(ex.span.lo);
         let offset = self.changes.cur_offset_span(ex.span);
-        let new_str = self.rewrite_expr(ex, config!(max_width) - offset, offset);
-        self.changes.push_str_span(ex.span, &new_str);
-        self.last_pos = ex.span.hi;
+        match ex.rewrite(&RewriteContext { codemap: self.codemap },
+                         config!(max_width) - offset,
+                         offset) {
+            Some(new_str) => {
+                //let new_str = self.rewrite_expr(ex, config!(max_width) - offset, offset);
+                self.changes.push_str_span(ex.span, &new_str);
+                self.last_pos = ex.span.hi;
+            }
+            None => { self.last_pos = ex.span.lo; }
+        }
     }
 
     fn visit_stmt(&mut self, stmt: &'v ast::Stmt) {
