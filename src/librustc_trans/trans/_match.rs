@@ -217,7 +217,7 @@ use middle::ty::{self, Ty};
 use session::config::{NoDebugInfo, FullDebugInfo};
 use util::common::indenter;
 use util::nodemap::FnvHashMap;
-use util::ppaux::Repr;
+use util::ppaux::{self, Repr};
 
 use std;
 use std::cmp::Ordering;
@@ -371,11 +371,11 @@ struct Match<'a, 'p: 'a, 'blk: 'a, 'tcx: 'blk> {
     pat_renaming_map: Option<&'a FnvHashMap<(NodeId, Span), NodeId>>
 }
 
-impl<'a, 'p, 'blk, 'tcx> Repr<'tcx> for Match<'a, 'p, 'blk, 'tcx> {
-    fn repr(&self, tcx: &ty::ctxt) -> String {
-        if tcx.sess.verbose() {
+impl<'a, 'p, 'blk, 'tcx> Repr for Match<'a, 'p, 'blk, 'tcx> {
+    fn repr(&self) -> String {
+        if ppaux::verbose() {
             // for many programs, this just take too long to serialize
-            self.pats.repr(tcx)
+            self.pats.repr()
         } else {
             format!("{} pats", self.pats.len())
         }
@@ -399,7 +399,7 @@ fn expand_nested_bindings<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                               -> Vec<Match<'a, 'p, 'blk, 'tcx>> {
     debug!("expand_nested_bindings(bcx={}, m={}, col={}, val={})",
            bcx.to_str(),
-           m.repr(bcx.tcx()),
+           m.repr(),
            col,
            bcx.val_to_string(val));
     let _indenter = indenter();
@@ -439,7 +439,7 @@ fn enter_match<'a, 'b, 'p, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
 {
     debug!("enter_match(bcx={}, m={}, col={}, val={})",
            bcx.to_str(),
-           m.repr(bcx.tcx()),
+           m.repr(),
            col,
            bcx.val_to_string(val));
     let _indenter = indenter();
@@ -482,7 +482,7 @@ fn enter_default<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                      -> Vec<Match<'a, 'p, 'blk, 'tcx>> {
     debug!("enter_default(bcx={}, m={}, col={}, val={})",
            bcx.to_str(),
-           m.repr(bcx.tcx()),
+           m.repr(),
            col,
            bcx.val_to_string(val));
     let _indenter = indenter();
@@ -539,7 +539,7 @@ fn enter_opt<'a, 'p, 'blk, 'tcx>(
              -> Vec<Match<'a, 'p, 'blk, 'tcx>> {
     debug!("enter_opt(bcx={}, m={}, opt={:?}, col={}, val={})",
            bcx.to_str(),
-           m.repr(bcx.tcx()),
+           m.repr(),
            *opt,
            col,
            bcx.val_to_string(val));
@@ -940,7 +940,7 @@ fn compile_guard<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     debug!("compile_guard(bcx={}, guard_expr={}, m={}, vals=[{}])",
            bcx.to_str(),
            bcx.expr_to_string(guard_expr),
-           m.repr(bcx.tcx()),
+           m.repr(),
            vals.iter().map(|v| bcx.val_to_string(*v)).collect::<Vec<_>>().connect(", "));
     let _indenter = indenter();
 
@@ -985,7 +985,7 @@ fn compile_submatch<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                         has_genuine_default: bool) {
     debug!("compile_submatch(bcx={}, m={}, vals=[{}])",
            bcx.to_str(),
-           m.repr(bcx.tcx()),
+           m.repr(),
            vals.iter().map(|v| bcx.val_to_string(*v)).collect::<Vec<_>>().connect(", "));
     let _indenter = indenter();
     let _icx = push_ctxt("match::compile_submatch");
@@ -1698,11 +1698,11 @@ fn bind_irrefutable_pat<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                     -> Block<'blk, 'tcx> {
     debug!("bind_irrefutable_pat(bcx={}, pat={})",
            bcx.to_str(),
-           pat.repr(bcx.tcx()));
+           pat.repr());
 
     if bcx.sess().asm_comments() {
         add_comment(bcx, &format!("bind_irrefutable_pat(pat={})",
-                                 pat.repr(bcx.tcx())));
+                                 pat.repr()));
     }
 
     let _indenter = indenter();

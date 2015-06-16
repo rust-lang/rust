@@ -67,7 +67,7 @@ pub fn gather_match_variant<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                       mode: euv::MatchMode) {
     let tcx = bccx.tcx;
     debug!("gather_match_variant(move_pat={}, cmt={}, mode={:?})",
-           move_pat.id, cmt.repr(tcx), mode);
+           move_pat.id, cmt.repr(), mode);
 
     let opt_lp = opt_loan_path(&cmt);
     match opt_lp {
@@ -116,13 +116,13 @@ fn gather_move<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                          move_error_collector: &MoveErrorCollector<'tcx>,
                          move_info: GatherMoveInfo<'tcx>) {
     debug!("gather_move(move_id={}, cmt={})",
-           move_info.id, move_info.cmt.repr(bccx.tcx));
+           move_info.id, move_info.cmt.repr());
 
     let potentially_illegal_move =
                 check_and_get_illegal_move_origin(bccx, &move_info.cmt);
     match potentially_illegal_move {
         Some(illegal_move_origin) => {
-            debug!("illegal_move_origin={}", illegal_move_origin.repr(bccx.tcx));
+            debug!("illegal_move_origin={}", illegal_move_origin.repr());
             let error = MoveError::with_move_info(illegal_move_origin,
                                                   move_info.span_path_opt);
             move_error_collector.add_error(error);

@@ -181,7 +181,7 @@ pub fn trans_into<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         }
     }
 
-    debug!("trans_into() expr={}", expr.repr(bcx.tcx()));
+    debug!("trans_into() expr={}", expr.repr());
 
     let cleanup_debug_loc = debuginfo::get_cleanup_debug_loc_for_ast_node(bcx.ccx(),
                                                                           expr.id,
@@ -330,8 +330,8 @@ pub fn unsized_info<'ccx, 'tcx>(ccx: &CrateContext<'ccx, 'tcx>,
                             Type::vtable_ptr(ccx))
         }
         _ => ccx.sess().bug(&format!("unsized_info: invalid unsizing {} -> {}",
-                                     source.repr(ccx.tcx()),
-                                     target.repr(ccx.tcx())))
+                                     source.repr(),
+                                     target.repr()))
     }
 }
 
@@ -351,7 +351,7 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         Some(adj) => { adj }
     };
     debug!("unadjusted datum for expr {}: {} adjustment={:?}",
-           expr.repr(bcx.tcx()),
+           expr.repr(),
            datum.to_string(bcx.ccx()),
            adjustment);
     match adjustment {
@@ -502,7 +502,7 @@ fn coerce_unsized<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 }
                 vtable => {
                     bcx.sess().span_bug(span, &format!("invalid CoerceUnsized vtable: {}",
-                                                       vtable.repr(bcx.tcx())));
+                                                       vtable.repr()));
                 }
             };
 
@@ -546,8 +546,8 @@ fn coerce_unsized<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             }
         }
         _ => bcx.sess().bug(&format!("coerce_unsized: invalid coercion {} -> {}",
-                                     source.ty.repr(bcx.tcx()),
-                                     target.ty.repr(bcx.tcx())))
+                                     source.ty.repr(),
+                                     target.ty.repr()))
     }
     bcx
 }
@@ -1283,7 +1283,7 @@ pub fn trans_def_fn_unadjusted<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             ccx.tcx().sess.span_bug(ref_expr.span, &format!(
                     "trans_def_fn_unadjusted invoked on: {:?} for {}",
                     def,
-                    ref_expr.repr(ccx.tcx())));
+                    ref_expr.repr()));
         }
     }
 }
@@ -1356,7 +1356,7 @@ pub fn with_field_tys<'tcx, R, F>(tcx: &ty::ctxt<'tcx>,
                     tcx.sess.bug(&format!(
                         "cannot get field types from the enum type {} \
                          without a node ID",
-                        ty.repr(tcx)));
+                        ty.repr()));
                 }
                 Some(node_id) => {
                     let def = tcx.def_map.borrow().get(&node_id).unwrap().full_def();
@@ -1379,7 +1379,7 @@ pub fn with_field_tys<'tcx, R, F>(tcx: &ty::ctxt<'tcx>,
         _ => {
             tcx.sess.bug(&format!(
                 "cannot get field types from the type {}",
-                ty.repr(tcx)));
+                ty.repr()));
         }
     }
 }
@@ -2060,7 +2060,7 @@ fn trans_imm_cast<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let t_in = expr_ty_adjusted(bcx, expr);
     let t_out = node_id_type(bcx, id);
 
-    debug!("trans_cast({} as {})", t_in.repr(bcx.tcx()), t_out.repr(bcx.tcx()));
+    debug!("trans_cast({} as {})", t_in.repr(), t_out.repr());
     let mut ll_t_in = type_of::arg_type_of(ccx, t_in);
     let ll_t_out = type_of::arg_type_of(ccx, t_out);
     // Convert the value to be cast into a ValueRef, either by-ref or
@@ -2124,8 +2124,8 @@ fn trans_imm_cast<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         _ => ccx.sess().span_bug(expr.span,
                                   &format!("translating unsupported cast: \
                                             {} -> {}",
-                                           t_in.repr(bcx.tcx()),
-                                           t_out.repr(bcx.tcx()))
+                                           t_in.repr(),
+                                           t_out.repr())
                                  )
     };
     return immediate_rvalue_bcx(bcx, newval, t_out).to_expr_datumblock();
@@ -2211,7 +2211,7 @@ fn deref_once<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let ccx = bcx.ccx();
 
     debug!("deref_once(expr={}, datum={}, method_call={:?})",
-           expr.repr(bcx.tcx()),
+           expr.repr(),
            datum.to_string(ccx),
            method_call);
 
@@ -2296,7 +2296,7 @@ fn deref_once<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             bcx.tcx().sess.span_bug(
                 expr.span,
                 &format!("deref invoked on expr of illegal type {}",
-                        datum.ty.repr(bcx.tcx())));
+                        datum.ty.repr()));
         }
     };
 

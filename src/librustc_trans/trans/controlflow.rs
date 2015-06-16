@@ -36,14 +36,14 @@ pub fn trans_stmt<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                               -> Block<'blk, 'tcx> {
     let _icx = push_ctxt("trans_stmt");
     let fcx = cx.fcx;
-    debug!("trans_stmt({})", s.repr(cx.tcx()));
+    debug!("trans_stmt({})", s.repr());
 
     if cx.unreachable.get() {
         return cx;
     }
 
     if cx.sess().asm_comments() {
-        add_span_comment(cx, s.span, &s.repr(cx.tcx()));
+        add_span_comment(cx, s.span, &s.repr());
     }
 
     let mut bcx = cx;

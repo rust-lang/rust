@@ -29,8 +29,8 @@ pub fn check_expr_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
                                    body: &'tcx ast::Block,
                                    expected: Expectation<'tcx>) {
     debug!("check_expr_closure(expr={},expected={})",
-           expr.repr(fcx.tcx()),
-           expected.repr(fcx.tcx()));
+           expr.repr(),
+           expected.repr());
 
     // It's always helpful for inference if we know the kind of
     // closure sooner rather than later, so first examine the expected
@@ -52,7 +52,7 @@ fn check_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
 
     debug!("check_closure opt_kind={:?} expected_sig={}",
            opt_kind,
-           expected_sig.repr(fcx.tcx()));
+           expected_sig.repr());
 
     let mut fn_ty = astconv::ty_of_closure(
         fcx,
@@ -87,8 +87,8 @@ fn check_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
     fn_ty.sig.0.inputs = vec![ty::mk_tup(fcx.tcx(), fn_ty.sig.0.inputs)];
 
     debug!("closure for {} --> sig={} opt_kind={:?}",
-           expr_def_id.repr(fcx.tcx()),
-           fn_ty.sig.repr(fcx.tcx()),
+           expr_def_id.repr(),
+           fn_ty.sig.repr(),
            opt_kind);
 
     fcx.inh.closure_tys.borrow_mut().insert(expr_def_id, fn_ty);
@@ -104,7 +104,7 @@ fn deduce_expectations_from_expected_type<'a,'tcx>(
     -> (Option<ty::FnSig<'tcx>>,Option<ty::ClosureKind>)
 {
     debug!("deduce_expectations_from_expected_type(expected_ty={})",
-           expected_ty.repr(fcx.tcx()));
+           expected_ty.repr());
 
     match expected_ty.sty {
         ty::TyTrait(ref object_type) => {
@@ -139,7 +139,7 @@ fn deduce_expectations_from_obligations<'a,'tcx>(
         .iter()
         .filter_map(|obligation| {
             debug!("deduce_expectations_from_obligations: obligation.predicate={}",
-                   obligation.predicate.repr(fcx.tcx()));
+                   obligation.predicate.repr());
 
             match obligation.predicate {
                 // Given a Projection predicate, we can potentially infer
@@ -201,7 +201,7 @@ fn deduce_sig_from_projection<'a,'tcx>(
     let tcx = fcx.tcx();
 
     debug!("deduce_sig_from_projection({})",
-           projection.repr(tcx));
+           projection.repr());
 
     let trait_ref = projection.to_poly_trait_ref();
 
@@ -211,24 +211,24 @@ fn deduce_sig_from_projection<'a,'tcx>(
 
     let arg_param_ty = *trait_ref.substs().types.get(subst::TypeSpace, 0);
     let arg_param_ty = fcx.infcx().resolve_type_vars_if_possible(&arg_param_ty);
-    debug!("deduce_sig_from_projection: arg_param_ty {}", arg_param_ty.repr(tcx));
+    debug!("deduce_sig_from_projection: arg_param_ty {}", arg_param_ty.repr());
 
     let input_tys = match arg_param_ty.sty {
         ty::TyTuple(ref tys) => { (*tys).clone() }
         _ => { return None; }
     };
-    debug!("deduce_sig_from_projection: input_tys {}", input_tys.repr(tcx));
+    debug!("deduce_sig_from_projection: input_tys {}", input_tys.repr());
 
     let ret_param_ty = projection.0.ty;
     let ret_param_ty = fcx.infcx().resolve_type_vars_if_possible(&ret_param_ty);
-    debug!("deduce_sig_from_projection: ret_param_ty {}", ret_param_ty.repr(tcx));
+    debug!("deduce_sig_from_projection: ret_param_ty {}", ret_param_ty.repr());
 
     let fn_sig = ty::FnSig {
         inputs: input_tys,
         output: ty::FnConverging(ret_param_ty),
         variadic: false
     };
-    debug!("deduce_sig_from_projection: fn_sig {}", fn_sig.repr(tcx));
+    debug!("deduce_sig_from_projection: fn_sig {}", fn_sig.repr());
 
     Some(fn_sig)
 }
@@ -241,8 +241,8 @@ fn self_type_matches_expected_vid<'a,'tcx>(
 {
     let self_ty = fcx.infcx().shallow_resolve(trait_ref.self_ty());
     debug!("self_type_matches_expected_vid(trait_ref={}, self_ty={})",
-           trait_ref.repr(fcx.tcx()),
-           self_ty.repr(fcx.tcx()));
+           trait_ref.repr(),
+           self_ty.repr());
     match self_ty.sty {
         ty::TyInfer(ty::TyVar(v)) if expected_vid == v => Some(trait_ref),
         _ => None,

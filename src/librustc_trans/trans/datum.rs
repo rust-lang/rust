@@ -616,7 +616,7 @@ impl<'tcx, K: KindOps + fmt::Debug> Datum<'tcx, K> {
     pub fn to_string<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> String {
         format!("Datum({}, {}, {:?})",
                 ccx.tn().val_to_string(self.val),
-                self.ty.repr(ccx.tcx()),
+                self.ty.repr(),
                 self.kind)
     }
 

@@ -45,7 +45,7 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     match error {
         MethodError::NoMatch(static_sources, out_of_scope_traits, mode) => {
             let cx = fcx.tcx();
-            let item_ustring = item_name.user_string(cx);
+            let item_ustring = item_name.user_string();
 
             fcx.type_error_message(
                 span,
@@ -93,7 +93,7 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             let msg = format!("the `{}` method from the `{}` trait cannot be explicitly \
                                invoked on this closure as we have not yet inferred what \
                                kind of closure it is",
-                               item_name.user_string(fcx.tcx()),
+                               item_name.user_string(),
                                ty::item_path_str(fcx.tcx(), trait_def_id));
             let msg = if let Some(callee) = rcvr_expr {
                 format!("{}; use overloaded call notation instead (e.g., `{}()`)",
@@ -134,7 +134,7 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                "candidate #{} is defined in an impl{} for the type `{}`",
                                idx + 1,
                                insertion,
-                               impl_ty.user_string(fcx.tcx()));
+                               impl_ty.user_string());
                 }
                 CandidateSource::TraitSource(trait_did) => {
                     let (_, item) = trait_item(fcx.tcx(), trait_did, item_name).unwrap();
@@ -160,7 +160,7 @@ fn suggest_traits_to_import<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                       valid_out_of_scope_traits: Vec<ast::DefId>)
 {
     let tcx = fcx.tcx();
-    let item_ustring = item_name.user_string(tcx);
+    let item_ustring = item_name.user_string();
 
     if !valid_out_of_scope_traits.is_empty() {
         let mut candidates = valid_out_of_scope_traits;

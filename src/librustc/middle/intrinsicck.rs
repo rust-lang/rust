@@ -203,14 +203,14 @@ impl<'a, 'tcx> IntrinsicCheckingVisitor<'a, 'tcx> {
         match types_in_scope.next() {
             None => {
                 debug!("with_each_combination(substs={})",
-                       substs.repr(self.tcx));
+                       substs.repr());
 
                 callback(substs);
             }
 
             Some((space, index, &param_ty)) => {
                 debug!("with_each_combination: space={:?}, index={}, param_ty={}",
-                       space, index, param_ty.repr(self.tcx));
+                       space, index, param_ty.repr());
 
                 if !ty::type_is_sized(Some(param_env), self.tcx, span, param_ty) {
                     debug!("with_each_combination: param_ty is not known to be sized");
@@ -228,7 +228,7 @@ impl<'a, 'tcx> IntrinsicCheckingVisitor<'a, 'tcx> {
     }
 
     fn push_transmute_restriction(&self, restriction: TransmuteRestriction<'tcx>) {
-        debug!("Pushing transmute restriction: {}", restriction.repr(self.tcx));
+        debug!("Pushing transmute restriction: {}", restriction.repr());
         self.tcx.transmute_restrictions.borrow_mut().push(restriction);
     }
 }
@@ -277,13 +277,13 @@ impl<'a, 'tcx, 'v> Visitor<'v> for IntrinsicCheckingVisitor<'a, 'tcx> {
     }
 }
 
-impl<'tcx> Repr<'tcx> for TransmuteRestriction<'tcx> {
-    fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
+impl<'tcx> Repr for TransmuteRestriction<'tcx> {
+    fn repr(&self) -> String {
         format!("TransmuteRestriction(id={}, original=({},{}), substituted=({},{}))",
                 self.id,
-                self.original_from.repr(tcx),
-                self.original_to.repr(tcx),
-                self.substituted_from.repr(tcx),
-                self.substituted_to.repr(tcx))
+                self.original_from.repr(),
+                self.original_to.repr(),
+                self.substituted_from.repr(),
+                self.substituted_to.repr())
     }
 }

@@ -188,7 +188,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
                       -> Option<ast::NodeId> {
             assert!(idx < names.len());
             for item in &m.items {
-                if item.ident.user_string(this.infcx.tcx) == names[idx] {
+                if item.ident.user_string() == names[idx] {
                     return search(this, &**item, idx+1, names);
                 }
             }
@@ -253,7 +253,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
     }
 
     pub fn ty_to_string(&self, a: Ty<'tcx>) -> String {
-         a.user_string(self.infcx.tcx)
+         a.user_string()
     }
 
     pub fn t_fn(&self,
@@ -388,8 +388,8 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
             Ok(_) => { }
             Err(ref e) => {
                 panic!("unexpected error computing sub({},{}): {}",
-                       t1.repr(self.infcx.tcx),
-                       t2.repr(self.infcx.tcx),
+                       t1.repr(),
+                       t2.repr(),
                        ty::type_err_to_str(self.infcx.tcx, e));
             }
         }
@@ -402,8 +402,8 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
             Err(_) => { }
             Ok(_) => {
                 panic!("unexpected success computing sub({},{})",
-                       t1.repr(self.infcx.tcx),
-                       t2.repr(self.infcx.tcx));
+                       t1.repr(),
+                       t2.repr());
             }
         }
     }
@@ -659,7 +659,7 @@ fn glb_bound_free_infer() {
         let t_resolve1 = env.infcx.shallow_resolve(t_infer1);
         match t_resolve1.sty {
             ty::TyRef(..) => { }
-            _ => { panic!("t_resolve1={}", t_resolve1.repr(env.infcx.tcx)); }
+            _ => { panic!("t_resolve1={}", t_resolve1.repr()); }
         }
     })
 }
@@ -702,10 +702,10 @@ fn subst_ty_renumber_bound() {
         };
 
         debug!("subst_bound: t_source={} substs={} t_substituted={} t_expected={}",
-               t_source.repr(env.infcx.tcx),
-               substs.repr(env.infcx.tcx),
-               t_substituted.repr(env.infcx.tcx),
-               t_expected.repr(env.infcx.tcx));
+               t_source.repr(),
+               substs.repr(),
+               t_substituted.repr(),
+               t_expected.repr());
 
         assert_eq!(t_substituted, t_expected);
     })
@@ -739,10 +739,10 @@ fn subst_ty_renumber_some_bounds() {
         };
 
         debug!("subst_bound: t_source={} substs={} t_substituted={} t_expected={}",
-               t_source.repr(env.infcx.tcx),
-               substs.repr(env.infcx.tcx),
-               t_substituted.repr(env.infcx.tcx),
-               t_expected.repr(env.infcx.tcx));
+               t_source.repr(),
+               substs.repr(),
+               t_substituted.repr(),
+               t_expected.repr());
 
         assert_eq!(t_substituted, t_expected);
     })
@@ -800,10 +800,10 @@ fn subst_region_renumber_region() {
         };
 
         debug!("subst_bound: t_source={} substs={} t_substituted={} t_expected={}",
-               t_source.repr(env.infcx.tcx),
-               substs.repr(env.infcx.tcx),
-               t_substituted.repr(env.infcx.tcx),
-               t_expected.repr(env.infcx.tcx));
+               t_source.repr(),
+               substs.repr(),
+               t_substituted.repr(),
+               t_expected.repr());
 
         assert_eq!(t_substituted, t_expected);
     })

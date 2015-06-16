@@ -66,7 +66,7 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
             ast::ItemImpl(_, _, _, None, _, _) => {
                 // For inherent impls, self type must be a nominal type
                 // defined in this crate.
-                debug!("coherence2::orphan check: inherent impl {}", item.repr(self.tcx));
+                debug!("coherence2::orphan check: inherent impl {}", item.repr());
                 let self_ty = ty::lookup_item_type(self.tcx, def_id).ty;
                 match self_ty.sty {
                     ty::TyEnum(def_id, _) |
@@ -208,7 +208,7 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
             }
             ast::ItemImpl(_, _, _, Some(_), _, _) => {
                 // "Trait" impl
-                debug!("coherence2::orphan check: trait impl {}", item.repr(self.tcx));
+                debug!("coherence2::orphan check: trait impl {}", item.repr());
                 let trait_ref = ty::impl_trait_ref(self.tcx, def_id).unwrap();
                 let trait_def_id = trait_ref.def_id;
                 match traits::orphan_check(self.tcx, def_id) {
@@ -227,7 +227,7 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
                                 "type parameter `{}` must be used as the type parameter for \
                                  some local type (e.g. `MyStruct<T>`); only traits defined in \
                                  the current crate can be implemented for a type parameter",
-                                param_ty.user_string(self.tcx));
+                                param_ty.user_string());
                         return;
                     }
                 }
@@ -266,8 +266,8 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
                 // rules, but it invalidates the reasoning from
                 // `two_foos` above.
                 debug!("trait_ref={} trait_def_id={} trait_has_default_impl={}",
-                       trait_ref.repr(self.tcx),
-                       trait_def_id.repr(self.tcx),
+                       trait_ref.repr(),
+                       trait_def_id.repr(),
                        ty::trait_has_default_impl(self.tcx, trait_def_id));
                 if
                     ty::trait_has_default_impl(self.tcx, trait_def_id) &&
@@ -305,7 +305,7 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
                                  can only be implemented for a struct/enum type, \
                                  not `{}`",
                                 ty::item_path_str(self.tcx, trait_def_id),
-                                self_ty.user_string(self.tcx)))
+                                self_ty.user_string()))
                         }
                     };
 
@@ -329,7 +329,7 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
             }
             ast::ItemDefaultImpl(..) => {
                 // "Trait" impl
-                debug!("coherence2::orphan check: default trait impl {}", item.repr(self.tcx));
+                debug!("coherence2::orphan check: default trait impl {}", item.repr());
                 let trait_ref = ty::impl_trait_ref(self.tcx, def_id).unwrap();
                 if trait_ref.def_id.krate != ast::LOCAL_CRATE {
                     span_err!(self.tcx.sess, item.span, E0318,

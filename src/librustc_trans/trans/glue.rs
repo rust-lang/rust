@@ -140,7 +140,7 @@ pub fn drop_ty_core<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                 debug_loc: DebugLoc,
                                 skip_dtor: bool) -> Block<'blk, 'tcx> {
     // NB: v is an *alias* of type t here, not a direct value.
-    debug!("drop_ty_core(t={}, skip_dtor={})", t.repr(bcx.tcx()), skip_dtor);
+    debug!("drop_ty_core(t={}, skip_dtor={})", t.repr(), skip_dtor);
     let _icx = push_ctxt("drop_ty");
     if bcx.fcx.type_needs_drop(t) {
         let ccx = bcx.ccx();
@@ -207,10 +207,10 @@ impl<'tcx> DropGlueKind<'tcx> {
     fn to_string<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> String {
         match *self {
             DropGlueKind::Ty(ty) => {
-                format!("DropGlueKind::Ty({})", ty.repr(ccx.tcx()))
+                format!("DropGlueKind::Ty({})", ty.repr())
             }
             DropGlueKind::TyContents(ty) => {
-                format!("DropGlueKind::TyContents({})", ty.repr(ccx.tcx()))
+                format!("DropGlueKind::TyContents({})", ty.repr())
             }
         }
     }
@@ -249,7 +249,7 @@ fn get_drop_glue_core<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     });
     ccx.available_drop_glues().borrow_mut().insert(g, fn_nm);
 
-    let _s = StatRecorder::new(ccx, format!("drop {}", t.repr(ccx.tcx())));
+    let _s = StatRecorder::new(ccx, format!("drop {}", t.repr()));
 
     let empty_substs = ccx.tcx().mk_substs(Substs::trans_empty());
     let (arena, fcx): (TypedArena<_>, FunctionContext);

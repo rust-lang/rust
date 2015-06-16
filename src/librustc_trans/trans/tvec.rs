@@ -42,7 +42,7 @@ struct VecTypes<'tcx> {
 impl<'tcx> VecTypes<'tcx> {
     pub fn to_string<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> String {
         format!("VecTypes {{unit_ty={}, llunit_ty={}}}",
-                self.unit_ty.user_string(ccx.tcx()),
+                self.unit_ty.user_string(),
                 ccx.tn().type_to_string(self.llunit_ty))
     }
 }

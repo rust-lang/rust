@@ -1624,7 +1624,7 @@ fn decode_side_tables(dcx: &DecodeContext,
                     c::tag_table_node_type => {
                         let ty = val_dsr.read_ty(dcx);
                         debug!("inserting ty for node {}: {}",
-                               id,  ty.repr(dcx.tcx));
+                               id,  ty.repr());
                         dcx.tcx.node_type_insert(id, ty);
                     }
                     c::tag_table_item_subst => {

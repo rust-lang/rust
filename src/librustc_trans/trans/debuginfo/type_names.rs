@@ -163,7 +163,7 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         ty::TyProjection(..) |
         ty::TyParam(_) => {
             cx.sess().bug(&format!("debuginfo: Trying to create type name for \
-                unexpected type: {}", t.repr(cx.tcx())));
+                unexpected type: {}", t.repr()));
         }
     }
 

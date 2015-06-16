@@ -682,7 +682,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                                   which is {}",
                                  ol,
                                  moved_lp_msg,
-                                 expr_ty.user_string(self.tcx),
+                                 expr_ty.user_string(),
                                  suggestion));
                 } else {
                     self.tcx.sess.span_note(
@@ -690,7 +690,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                         &format!("`{}` moved here{} because it has type `{}`, which is {}",
                                  ol,
                                  moved_lp_msg,
-                                 expr_ty.user_string(self.tcx),
+                                 expr_ty.user_string(),
                                  suggestion));
                 }
             }
@@ -703,7 +703,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                              which is moved by default",
                             ol,
                             moved_lp_msg,
-                            pat_ty.user_string(self.tcx)));
+                            pat_ty.user_string()));
                 self.tcx.sess.fileline_help(span,
                     "use `ref` to override");
             }
@@ -734,7 +734,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                             has type `{}`, which is {}",
                             ol,
                             moved_lp_msg,
-                            expr_ty.user_string(self.tcx),
+                            expr_ty.user_string(),
                             suggestion));
                 self.tcx.sess.fileline_help(expr_span, help);
             }
@@ -1148,8 +1148,8 @@ impl DataFlowOperator for LoanDataFlowOperator {
     }
 }
 
-impl<'tcx> Repr<'tcx> for InteriorKind {
-    fn repr(&self, _tcx: &ty::ctxt<'tcx>) -> String {
+impl<'tcx> Repr for InteriorKind {
+    fn repr(&self) -> String {
         match *self {
             InteriorField(mc::NamedField(fld)) =>
                 format!("{}", token::get_name(fld)),
@@ -1159,77 +1159,77 @@ impl<'tcx> Repr<'tcx> for InteriorKind {
     }
 }
 
-impl<'tcx> Repr<'tcx> for Loan<'tcx> {
-    fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
+impl<'tcx> Repr for Loan<'tcx> {
+    fn repr(&self) -> String {
         format!("Loan_{}({}, {:?}, {:?}-{:?}, {})",
                  self.index,
-                 self.loan_path.repr(tcx),
+                 self.loan_path.repr(),
                  self.kind,
                  self.gen_scope,
                  self.kill_scope,
-                 self.restricted_paths.repr(tcx))
+                 self.restricted_paths.repr())
     }
 }
 
-impl<'tcx> Repr<'tcx> for LoanPath<'tcx> {
-    fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
+impl<'tcx> Repr for LoanPath<'tcx> {
+    fn repr(&self) -> String {
         match self.kind {
             LpVar(id) => {
-                format!("$({})", tcx.map.node_to_string(id))
+                format!("$({})", ty::tls::with(|tcx| tcx.map.node_to_string(id)))
             }
 
             LpUpvar(ty::UpvarId{ var_id, closure_expr_id }) => {
-                let s = tcx.map.node_to_string(var_id);
+                let s = ty::tls::with(|tcx| tcx.map.node_to_string(var_id));
                 format!("$({} captured by id={})", s, closure_expr_id)
             }
 
             LpDowncast(ref lp, variant_def_id) => {
                 let variant_str = if variant_def_id.krate == ast::LOCAL_CRATE {
-                    ty::item_path_str(tcx, variant_def_id)
+                    ty::tls::with(|tcx| ty::item_path_str(tcx, variant_def_id))
                 } else {
-                    variant_def_id.repr(tcx)
+                    variant_def_id.repr()
                 };
-                format!("({}{}{})", lp.repr(tcx), DOWNCAST_PRINTED_OPERATOR, variant_str)
+                format!("({}{}{})", lp.repr(), DOWNCAST_PRINTED_OPERATOR, variant_str)
             }
 
             LpExtend(ref lp, _, LpDeref(_)) => {
-                format!("{}.*", lp.repr(tcx))
+                format!("{}.*", lp.repr())
             }
 
             LpExtend(ref lp, _, LpInterior(ref interior)) => {
-                format!("{}.{}", lp.repr(tcx), interior.repr(tcx))
+                format!("{}.{}", lp.repr(), interior.repr())
             }
         }
     }
 }
 
-impl<'tcx> UserString<'tcx> for LoanPath<'tcx> {
-    fn user_string(&self, tcx: &ty::ctxt<'tcx>) -> String {
+impl<'tcx> UserString for LoanPath<'tcx> {
+    fn user_string(&self) -> String {
         match self.kind {
             LpVar(id) => {
-                format!("$({})", tcx.map.node_to_user_string(id))
+                format!("$({})", ty::tls::with(|tcx| tcx.map.node_to_user_string(id)))
             }
 
             LpUpvar(ty::UpvarId{ var_id, closure_expr_id: _ }) => {
-                let s = tcx.map.node_to_user_string(var_id);
+                let s = ty::tls::with(|tcx| tcx.map.node_to_user_string(var_id));
                 format!("$({} captured by closure)", s)
             }
 
             LpDowncast(ref lp, variant_def_id) => {
                 let variant_str = if variant_def_id.krate == ast::LOCAL_CRATE {
-                    ty::item_path_str(tcx, variant_def_id)
+                    ty::tls::with(|tcx| ty::item_path_str(tcx, variant_def_id))
                 } else {
-                    variant_def_id.repr(tcx)
+                    variant_def_id.repr()
                 };
-                format!("({}{}{})", lp.user_string(tcx), DOWNCAST_PRINTED_OPERATOR, variant_str)
+                format!("({}{}{})", lp.user_string(), DOWNCAST_PRINTED_OPERATOR, variant_str)
             }
 
             LpExtend(ref lp, _, LpDeref(_)) => {
-                format!("{}.*", lp.user_string(tcx))
+                format!("{}.*", lp.user_string())
             }
 
             LpExtend(ref lp, _, LpInterior(ref interior)) => {
-                format!("{}.{}", lp.user_string(tcx), interior.repr(tcx))
+                format!("{}.{}", lp.user_string(), interior.repr())
             }
         }
     }

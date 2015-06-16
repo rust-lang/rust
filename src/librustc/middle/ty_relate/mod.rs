@@ -81,8 +81,8 @@ impl<'a,'tcx:'a> Relate<'a,'tcx> for ty::mt<'tcx> {
     {
         debug!("{}.mts({}, {})",
                relation.tag(),
-               a.repr(relation.tcx()),
-               b.repr(relation.tcx()));
+               a.repr(),
+               b.repr());
         if a.mutbl != b.mutbl {
             Err(ty::terr_mutability)
         } else {
@@ -108,9 +108,9 @@ fn relate_item_substs<'a,'tcx:'a,R>(relation: &mut R,
     where R: TypeRelation<'a,'tcx>
 {
     debug!("substs: item_def_id={} a_subst={} b_subst={}",
-           item_def_id.repr(relation.tcx()),
-           a_subst.repr(relation.tcx()),
-           b_subst.repr(relation.tcx()));
+           item_def_id.repr(),
+           a_subst.repr(),
+           b_subst.repr());
 
     let variances;
     let opt_variances = if relation.tcx().variance_computed.get() {
@@ -196,9 +196,9 @@ fn relate_region_params<'a,'tcx:'a,R>(relation: &mut R,
 
     debug!("relate_region_params(a_rs={}, \
             b_rs={}, variances={})",
-           a_rs.repr(tcx),
-           b_rs.repr(tcx),
-           variances.repr(tcx));
+           a_rs.repr(),
+           b_rs.repr(),
+           variances.repr());
 
     assert_eq!(num_region_params,
                variances.map_or(num_region_params,

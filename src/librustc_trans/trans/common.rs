@@ -64,11 +64,11 @@ pub use trans::context::CrateContext;
 /// subtyping, but they are anonymized and normalized as well). This
 /// is a stronger, caching version of `ty_fold::erase_regions`.
 pub fn erase_regions<'tcx,T>(cx: &ty::ctxt<'tcx>, value: &T) -> T
-    where T : TypeFoldable<'tcx> + Repr<'tcx>
+    where T : TypeFoldable<'tcx> + Repr
 {
     let value1 = value.fold_with(&mut RegionEraser(cx));
     debug!("erase_regions({}) = {}",
-           value.repr(cx), value1.repr(cx));
+           value.repr(), value1.repr());
     return value1;
 
     struct RegionEraser<'a, 'tcx: 'a>(&'a ty::ctxt<'tcx>);
@@ -88,7 +88,7 @@ pub fn erase_regions<'tcx,T>(cx: &ty::ctxt<'tcx>, value: &T) -> T
         }
 
         fn fold_binder<T>(&mut self, t: &ty::Binder<T>) -> ty::Binder<T>
-            where T : TypeFoldable<'tcx> + Repr<'tcx>
+            where T : TypeFoldable<'tcx> + Repr
         {
             let u = ty::anonymize_late_bound_regions(self.tcx(), t);
             ty_fold::super_fold_binder(self, &u)
@@ -212,7 +212,7 @@ fn type_needs_drop_given_env<'a,'tcx>(cx: &ty::ctxt<'tcx>,
     // destructor (e.g. zero its memory on move).
 
     let contents = ty::type_contents(cx, ty);
-    debug!("type_needs_drop ty={} contents={:?}", ty.repr(cx), contents);
+    debug!("type_needs_drop ty={} contents={:?}", ty.repr(), contents);
     contents.needs_drop(cx)
 }
 
@@ -518,7 +518,7 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
     }
 
     pub fn monomorphize<T>(&self, value: &T) -> T
-        where T : TypeFoldable<'tcx> + Repr<'tcx> + HasProjectionTypes + Clone
+        where T : TypeFoldable<'tcx> + Repr + HasProjectionTypes + Clone
     {
         monomorphize::apply_param_substs(self.ccx.tcx(),
                                          self.param_substs,
@@ -594,7 +594,7 @@ impl<'blk, 'tcx> BlockS<'blk, 'tcx> {
     }
 
     pub fn expr_to_string(&self, e: &ast::Expr) -> String {
-        e.repr(self.tcx())
+        e.repr()
     }
 
     pub fn def(&self, nid: ast::NodeId) -> def::Def {
@@ -616,7 +616,7 @@ impl<'blk, 'tcx> BlockS<'blk, 'tcx> {
     }
 
     pub fn ty_to_string(&self, t: Ty<'tcx>) -> String {
-        t.repr(self.tcx())
+        t.repr()
     }
 
     pub fn to_str(&self) -> String {
@@ -624,7 +624,7 @@ impl<'blk, 'tcx> BlockS<'blk, 'tcx> {
     }
 
     pub fn monomorphize<T>(&self, value: &T) -> T
-        where T : TypeFoldable<'tcx> + Repr<'tcx> + HasProjectionTypes + Clone
+        where T : TypeFoldable<'tcx> + Repr + HasProjectionTypes + Clone
     {
         monomorphize::apply_param_substs(self.tcx(),
                                          self.fcx.param_substs,
@@ -994,14 +994,14 @@ pub fn fulfill_obligation<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     // First check the cache.
     match ccx.trait_cache().borrow().get(&trait_ref) {
         Some(vtable) => {
-            info!("Cache hit: {}", trait_ref.repr(ccx.tcx()));
+            info!("Cache hit: {}", trait_ref.repr());
             return (*vtable).clone();
         }
         None => { }
     }
 
     debug!("trans fulfill_obligation: trait_ref={} def_id={:?}",
-           trait_ref.repr(ccx.tcx()), trait_ref.def_id());
+           trait_ref.repr(), trait_ref.def_id());
 
     ty::populate_implementations_for_trait_if_necessary(tcx, trait_ref.def_id());
     let infcx = infer::new_infer_ctxt(tcx);
@@ -1024,7 +1024,7 @@ pub fn fulfill_obligation<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             // where ambiguity can result.
             debug!("Encountered ambiguity selecting `{}` during trans, \
                     presuming due to overflow",
-                   trait_ref.repr(tcx));
+                   trait_ref.repr());
             ccx.sess().span_fatal(
                 span,
                 "reached the recursion limit during monomorphization");
@@ -1033,8 +1033,8 @@ pub fn fulfill_obligation<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             tcx.sess.span_bug(
                 span,
                 &format!("Encountered error `{}` selecting `{}` during trans",
-                        e.repr(tcx),
-                        trait_ref.repr(tcx)))
+                        e.repr(),
+                        trait_ref.repr()))
         }
     };
 
@@ -1047,7 +1047,7 @@ pub fn fulfill_obligation<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     });
     let vtable = drain_fulfillment_cx_or_panic(span, &infcx, &mut fulfill_cx, &vtable);
 
-    info!("Cache miss: {}", trait_ref.repr(ccx.tcx()));
+    info!("Cache miss: {}", trait_ref.repr());
     ccx.trait_cache().borrow_mut().insert(trait_ref,
                                           vtable.clone());
 
@@ -1063,7 +1063,7 @@ pub fn normalize_and_test_predicates<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                                -> bool
 {
     debug!("normalize_and_test_predicates(predicates={})",
-           predicates.repr(ccx.tcx()));
+           predicates.repr());
 
     let tcx = ccx.tcx();
     let infcx = infer::new_infer_ctxt(tcx);
@@ -1135,7 +1135,7 @@ pub fn drain_fulfillment_cx_or_panic<'a,'tcx,T>(span: Span,
                                                 fulfill_cx: &mut traits::FulfillmentContext<'tcx>,
                                                 result: &T)
                                                 -> T
-    where T : TypeFoldable<'tcx> + Repr<'tcx>
+    where T : TypeFoldable<'tcx> + Repr
 {
     match drain_fulfillment_cx(infcx, fulfill_cx, result) {
         Ok(v) => v,
@@ -1143,7 +1143,7 @@ pub fn drain_fulfillment_cx_or_panic<'a,'tcx,T>(span: Span,
             infcx.tcx.sess.span_bug(
                 span,
                 &format!("Encountered errors `{}` fulfilling during trans",
-                         errors.repr(infcx.tcx)));
+                         errors.repr()));
         }
     }
 }
@@ -1159,10 +1159,10 @@ pub fn drain_fulfillment_cx<'a,'tcx,T>(infcx: &infer::InferCtxt<'a,'tcx>,
                                        fulfill_cx: &mut traits::FulfillmentContext<'tcx>,
                                        result: &T)
                                        -> StdResult<T,Vec<traits::FulfillmentError<'tcx>>>
-    where T : TypeFoldable<'tcx> + Repr<'tcx>
+    where T : TypeFoldable<'tcx> + Repr
 {
     debug!("drain_fulfillment_cx(result={})",
-           result.repr(infcx.tcx));
+           result.repr());
 
     // In principle, we only need to do this so long as `result`
     // contains unbound type parameters. It could be a slight
@@ -1210,7 +1210,7 @@ pub fn node_id_substs<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     if substs.types.any(|t| ty::type_needs_infer(*t)) {
             tcx.sess.bug(&format!("type parameters for node {:?} include inference types: {:?}",
-                                 node, substs.repr(tcx)));
+                                 node, substs.repr()));
         }
 
         monomorphize::apply_param_substs(tcx,

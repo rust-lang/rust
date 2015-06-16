@@ -214,9 +214,9 @@ impl<'a, 'tcx> CombineFields<'a, 'tcx> {
             };
 
             debug!("instantiate(a_ty={} dir={:?} b_vid={})",
-                   a_ty.repr(tcx),
+                   a_ty.repr(),
                    dir,
-                   b_vid.repr(tcx));
+                   b_vid.repr());
 
             // Check whether `vid` has been instantiated yet.  If not,
             // make a generalized form of `ty` and instantiate with
@@ -232,8 +232,8 @@ impl<'a, 'tcx> CombineFields<'a, 'tcx> {
                     });
                     debug!("instantiate(a_ty={}, dir={:?}, \
                                         b_vid={}, generalized_ty={})",
-                           a_ty.repr(tcx), dir, b_vid.repr(tcx),
-                           generalized_ty.repr(tcx));
+                           a_ty.repr(), dir, b_vid.repr(),
+                           generalized_ty.repr());
                     self.infcx.type_variables
                         .borrow_mut()
                         .instantiate_and_push(
@@ -336,7 +336,7 @@ impl<'cx, 'tcx> ty_fold::TypeFolder<'tcx> for Generalizer<'cx, 'tcx> {
                 self.tcx().sess.span_bug(
                     self.span,
                     &format!("Encountered early bound region when generalizing: {}",
-                            r.repr(self.tcx())));
+                            r.repr()));
             }
 
             // Always make a fresh region variable for skolemized regions;

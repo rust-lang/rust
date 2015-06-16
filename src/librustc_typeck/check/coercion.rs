@@ -105,8 +105,8 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
               b: Ty<'tcx>)
               -> CoerceResult<'tcx> {
         debug!("Coerce.tys({} => {})",
-               a.repr(self.tcx()),
-               b.repr(self.tcx()));
+               a.repr(),
+               b.repr());
 
         // Consider coercing the subtype to a DST
         let unsize = self.unpack_actual_value(a, |a| {
@@ -167,8 +167,8 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                                mutbl_b: ast::Mutability)
                                -> CoerceResult<'tcx> {
         debug!("coerce_borrowed_pointer(a={}, b={})",
-               a.repr(self.tcx()),
-               b.repr(self.tcx()));
+               a.repr(),
+               b.repr());
 
         // If we have a parameter of type `&M T_a` and the value
         // provided is `expr`, we will be adding an implicit borrow,
@@ -239,8 +239,8 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                       target: Ty<'tcx>)
                       -> CoerceResult<'tcx> {
         debug!("coerce_unsized(source={}, target={})",
-               source.repr(self.tcx()),
-               target.repr(self.tcx()));
+               source.repr(),
+               target.repr());
 
         let traits = (self.tcx().lang_items.unsize_trait(),
                       self.tcx().lang_items.coerce_unsized_trait());
@@ -294,7 +294,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         // inference might unify those two inner type variables later.
         let traits = [coerce_unsized_did, unsize_did];
         while let Some(obligation) = queue.pop_front() {
-            debug!("coerce_unsized resolve step: {}", obligation.repr(self.tcx()));
+            debug!("coerce_unsized resolve step: {}", obligation.repr());
             let trait_ref =  match obligation.predicate {
                 ty::Predicate::Trait(ref tr) if traits.contains(&tr.def_id()) => {
                     tr.clone()
@@ -336,7 +336,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             autoref: reborrow,
             unsize: Some(target)
         };
-        debug!("Success, coerced with {}", adjustment.repr(self.tcx()));
+        debug!("Success, coerced with {}", adjustment.repr());
         Ok(Some(AdjustDerefRef(adjustment)))
     }
 
@@ -353,7 +353,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
         self.unpack_actual_value(b, |b| {
             debug!("coerce_from_fn_pointer(a={}, b={})",
-                   a.repr(self.tcx()), b.repr(self.tcx()));
+                   a.repr(), b.repr());
 
             if let ty::TyBareFn(None, fn_ty_b) = b.sty {
                 match (fn_ty_a.unsafety, fn_ty_b.unsafety) {
@@ -381,7 +381,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
         self.unpack_actual_value(b, |b| {
             debug!("coerce_from_fn_item(a={}, b={})",
-                   a.repr(self.tcx()), b.repr(self.tcx()));
+                   a.repr(), b.repr());
 
             match b.sty {
                 ty::TyBareFn(None, _) => {
@@ -400,8 +400,8 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                          mutbl_b: ast::Mutability)
                          -> CoerceResult<'tcx> {
         debug!("coerce_unsafe_ptr(a={}, b={})",
-               a.repr(self.tcx()),
-               b.repr(self.tcx()));
+               a.repr(),
+               b.repr());
 
         let (is_ref, mt_a) = match a.sty {
             ty::TyRef(_, mt) => (true, mt),
@@ -436,7 +436,7 @@ pub fn mk_assignty<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                              a: Ty<'tcx>,
                              b: Ty<'tcx>)
                              -> RelateResult<'tcx, ()> {
-    debug!("mk_assignty({} -> {})", a.repr(fcx.tcx()), b.repr(fcx.tcx()));
+    debug!("mk_assignty({} -> {})", a.repr(), b.repr());
     let mut unsizing_obligations = vec![];
     let adjustment = try!(indent(|| {
         fcx.infcx().commit_if_ok(|_| {
@@ -460,7 +460,7 @@ pub fn mk_assignty<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     }
 
     if let Some(adjustment) = adjustment {
-        debug!("Success, coerced with {}", adjustment.repr(fcx.tcx()));
+        debug!("Success, coerced with {}", adjustment.repr());
         fcx.write_adjustment(expr.id, adjustment);
     }
     Ok(())

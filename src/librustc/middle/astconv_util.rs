@@ -63,7 +63,7 @@ pub fn ast_ty_to_prim_ty<'tcx>(tcx: &ty::ctxt<'tcx>, ast_ty: &ast::Ty)
         let def = match tcx.def_map.borrow().get(&ast_ty.id) {
             None => {
                 tcx.sess.span_bug(ast_ty.span,
-                                  &format!("unbound path {}", path.repr(tcx)))
+                                  &format!("unbound path {}", path.repr()))
             }
             Some(d) => d.full_def()
         };

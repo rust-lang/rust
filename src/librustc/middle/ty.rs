@@ -2786,7 +2786,7 @@ impl<'tcx> TraitDef<'tcx> {
                        impl_def_id: DefId,
                        impl_trait_ref: TraitRef<'tcx>) {
         debug!("TraitDef::record_impl for {}, from {}",
-               self.repr(tcx), impl_trait_ref.repr(tcx));
+               self.repr(), impl_trait_ref.repr());
 
         // We don't want to borrow_mut after we already populated all impls,
         // so check if an impl is present with an immutable borrow first.
@@ -3710,7 +3710,7 @@ pub fn sequence_element_type<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
         TyArray(ty, _) | TySlice(ty) => ty,
         TyStr => mk_mach_uint(cx, ast::TyU8),
         _ => cx.sess.bug(&format!("sequence_element_type called on non-sequence value: {}",
-                                  ty.user_string(cx))),
+                                  ty.user_string())),
     }
 }
 
@@ -4180,7 +4180,7 @@ fn type_impls_bound<'a,'tcx>(param_env: Option<&ParameterEnvironment<'a,'tcx>>,
     let is_impld = traits::type_known_to_meet_builtin_bound(&infcx, param_env, ty, bound, span);
 
     debug!("type_impls_bound({}, {:?}) = {:?}",
-           ty.repr(tcx),
+           ty.repr(),
            bound,
            is_impld);
 
@@ -4282,19 +4282,19 @@ pub fn is_instantiable<'tcx>(cx: &ctxt<'tcx>, r_ty: Ty<'tcx>) -> bool {
     fn type_requires<'tcx>(cx: &ctxt<'tcx>, seen: &mut Vec<DefId>,
                            r_ty: Ty<'tcx>, ty: Ty<'tcx>) -> bool {
         debug!("type_requires({}, {})?",
-               r_ty.repr(cx), ty.repr(cx));
+               r_ty.repr(), ty.repr());
 
         let r = r_ty == ty || subtypes_require(cx, seen, r_ty, ty);
 
         debug!("type_requires({}, {})? {:?}",
-               r_ty.repr(cx), ty.repr(cx), r);
+               r_ty.repr(), ty.repr(), r);
         return r;
     }
 
     fn subtypes_require<'tcx>(cx: &ctxt<'tcx>, seen: &mut Vec<DefId>,
                               r_ty: Ty<'tcx>, ty: Ty<'tcx>) -> bool {
         debug!("subtypes_require({}, {})?",
-               r_ty.repr(cx), ty.repr(cx));
+               r_ty.repr(), ty.repr());
 
         let r = match ty.sty {
             // fixed length vectors need special treatment compared to
@@ -4373,7 +4373,7 @@ pub fn is_instantiable<'tcx>(cx: &ctxt<'tcx>, r_ty: Ty<'tcx>) -> bool {
         };
 
         debug!("subtypes_require({}, {})? {:?}",
-               r_ty.repr(cx), ty.repr(cx), r);
+               r_ty.repr(), ty.repr(), r);
 
         return r;
     }
@@ -4479,7 +4479,7 @@ pub fn is_type_representable<'tcx>(cx: &ctxt<'tcx>, sp: Span, ty: Ty<'tcx>)
     fn is_type_structurally_recursive<'tcx>(cx: &ctxt<'tcx>, sp: Span,
                                             seen: &mut Vec<Ty<'tcx>>,
                                             ty: Ty<'tcx>) -> Representability {
-        debug!("is_type_structurally_recursive: {}", ty.repr(cx));
+        debug!("is_type_structurally_recursive: {}", ty.repr());
 
         match ty.sty {
             TyStruct(did, _) | TyEnum(did, _) => {
@@ -4499,8 +4499,8 @@ pub fn is_type_representable<'tcx>(cx: &ctxt<'tcx>, sp: Span, ty: Ty<'tcx>)
                         Some(&seen_type) => {
                             if same_struct_or_enum_def_id(seen_type, did) {
                                 debug!("SelfRecursive: {} contains {}",
-                                       seen_type.repr(cx),
-                                       ty.repr(cx));
+                                       seen_type.repr(),
+                                       ty.repr());
                                 return SelfRecursive;
                             }
                         }
@@ -4519,8 +4519,8 @@ pub fn is_type_representable<'tcx>(cx: &ctxt<'tcx>, sp: Span, ty: Ty<'tcx>)
                     for &seen_type in iter {
                         if same_type(ty, seen_type) {
                             debug!("ContainsRecursive: {} contains {}",
-                                   seen_type.repr(cx),
-                                   ty.repr(cx));
+                                   seen_type.repr(),
+                                   ty.repr());
                             return ContainsRecursive;
                         }
                     }
@@ -4540,14 +4540,14 @@ pub fn is_type_representable<'tcx>(cx: &ctxt<'tcx>, sp: Span, ty: Ty<'tcx>)
         }
     }
 
-    debug!("is_type_representable: {}", ty.repr(cx));
+    debug!("is_type_representable: {}", ty.repr());
 
     // To avoid a stack overflow when checking an enum variant or struct that
     // contains a different, structurally recursive type, maintain a stack
     // of seen types and check recursion for each of them (issues #3008, #3779).
     let mut seen: Vec<Ty> = Vec::new();
     let r = is_type_structurally_recursive(cx, sp, &mut seen, ty);
-    debug!("is_type_representable: {} is {:?}", ty.repr(cx), r);
+    debug!("is_type_representable: {} is {:?}", ty.repr(), r);
     r
 }
 
@@ -4949,7 +4949,7 @@ pub fn adjust_ty<'tcx, F>(cx: &ctxt<'tcx>,
                         _ => {
                             cx.sess.bug(
                                 &format!("AdjustReifyFnPointer adjustment on non-fn-item: \
-                                          {}", unadjusted_ty.repr(cx)));
+                                          {}", unadjusted_ty.repr()));
                         }
                     }
                 }
@@ -4990,7 +4990,7 @@ pub fn adjust_ty<'tcx, F>(cx: &ctxt<'tcx>,
                                         span,
                                         &format!("the {}th autoderef failed: {}",
                                                 i,
-                                                 adjusted_ty.user_string(cx))
+                                                 adjusted_ty.user_string())
                                         );
                                 }
                             }
@@ -5232,11 +5232,11 @@ pub fn impl_or_trait_item_idx(id: ast::Name, trait_items: &[ImplOrTraitItem])
     trait_items.iter().position(|m| m.name() == id)
 }
 
-pub fn ty_sort_string<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> String {
+pub fn ty_sort_string(cx: &ctxt, ty: Ty) -> String {
     match ty.sty {
         TyBool | TyChar | TyInt(_) |
-        TyUint(_) | TyFloat(_) | TyStr => ty.user_string(cx),
-        TyTuple(ref tys) if tys.is_empty() => ty.user_string(cx),
+        TyUint(_) | TyFloat(_) | TyStr => ty.user_string(),
+        TyTuple(ref tys) if tys.is_empty() => ty.user_string(),
 
         TyEnum(id, _) => format!("enum `{}`", item_path_str(cx, id)),
         TyBox(_) => "box".to_string(),
@@ -5272,9 +5272,9 @@ pub fn ty_sort_string<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> String {
     }
 }
 
-impl<'tcx> Repr<'tcx> for ty::type_err<'tcx> {
-    fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
-        ty::type_err_to_str(tcx, self)
+impl<'tcx> Repr for ty::type_err<'tcx> {
+    fn repr(&self) -> String {
+        tls::with(|tcx| ty::type_err_to_str(tcx, self))
     }
 }
 
@@ -5282,7 +5282,7 @@ impl<'tcx> Repr<'tcx> for ty::type_err<'tcx> {
 /// in parentheses after some larger message. You should also invoke `note_and_explain_type_err()`
 /// afterwards to present additional details, particularly when it comes to lifetime-related
 /// errors.
-pub fn type_err_to_str<'tcx>(cx: &ctxt<'tcx>, err: &type_err<'tcx>) -> String {
+pub fn type_err_to_str(cx: &ctxt, err: &type_err) -> String {
     match *err {
         terr_cyclic_ty => "cyclic type of infinite size".to_string(),
         terr_mismatch => "types differ".to_string(),
@@ -5336,12 +5336,12 @@ pub fn type_err_to_str<'tcx>(cx: &ctxt<'tcx>, err: &type_err<'tcx>) -> String {
         terr_regions_insufficiently_polymorphic(br, _) => {
             format!("expected bound lifetime parameter {}, \
                      found concrete lifetime",
-                    br.user_string(cx))
+                    br.user_string())
         }
         terr_regions_overly_polymorphic(br, _) => {
             format!("expected concrete lifetime, \
                      found bound lifetime parameter {}",
-                    br.user_string(cx))
+                    br.user_string())
         }
         terr_sorts(values) => {
             // A naive approach to making sure that we're not reporting silly errors such as:
@@ -5362,14 +5362,14 @@ pub fn type_err_to_str<'tcx>(cx: &ctxt<'tcx>, err: &type_err<'tcx>) -> String {
         terr_builtin_bounds(values) => {
             if values.expected.is_empty() {
                 format!("expected no bounds, found `{}`",
-                        values.found.user_string(cx))
+                        values.found.user_string())
             } else if values.found.is_empty() {
                 format!("expected bounds `{}`, found no bounds",
-                        values.expected.user_string(cx))
+                        values.expected.user_string())
             } else {
                 format!("expected bounds `{}`, found bounds `{}`",
-                        values.expected.user_string(cx),
-                        values.found.user_string(cx))
+                        values.expected.user_string(),
+                        values.found.user_string())
             }
         }
         terr_integer_as_char => {
@@ -6010,7 +6010,7 @@ fn report_discrim_overflow(cx: &ctxt,
     let computed_value = repr_type.disr_wrap_incr(Some(prev_val));
     let computed_value = repr_type.disr_string(computed_value);
     let prev_val = repr_type.disr_string(prev_val);
-    let repr_type = repr_type.to_ty(cx).user_string(cx);
+    let repr_type = repr_type.to_ty(cx).user_string();
     span_err!(cx.sess, variant_span, E0370,
               "enum discriminant overflowed on value after {}: {}; \
                set explicitly via {} = {} if that is desired outcome",
@@ -6503,8 +6503,8 @@ pub fn required_region_bounds<'tcx>(tcx: &ctxt<'tcx>,
                                     -> Vec<ty::Region>
 {
     debug!("required_region_bounds(erased_self_ty={:?}, predicates={:?})",
-           erased_self_ty.repr(tcx),
-           predicates.repr(tcx));
+           erased_self_ty.repr(),
+           predicates.repr());
 
     assert!(!erased_self_ty.has_escaping_regions());
 
@@ -6622,7 +6622,7 @@ pub fn populate_implementations_for_trait_if_necessary(tcx: &ctxt, trait_id: ast
         return;
     }
 
-    debug!("populate_implementations_for_trait_if_necessary: searching for {}", def.repr(tcx));
+    debug!("populate_implementations_for_trait_if_necessary: searching for {}", def.repr());
 
     if csearch::is_defaulted_trait(&tcx.sess.cstore, trait_id) {
         record_trait_has_default_impl(tcx, trait_id);
@@ -6931,7 +6931,7 @@ pub fn construct_free_substs<'a,'tcx>(
                                   defs: &[TypeParameterDef<'tcx>]) {
         for def in defs {
             debug!("construct_parameter_environment(): push_types_from_defs: def={:?}",
-                   def.repr(tcx));
+                   def.repr());
             let ty = ty::mk_param_from_def(tcx, def);
             types.push(def.space, ty);
        }
@@ -6964,8 +6964,8 @@ pub fn construct_parameter_environment<'a,'tcx>(
 
     debug!("construct_parameter_environment: free_id={:?} free_subst={:?} predicates={:?}",
            free_id,
-           free_substs.repr(tcx),
-           predicates.repr(tcx));
+           free_substs.repr(),
+           predicates.repr());
 
     //
     // Finally, we have to normalize the bounds in the environment, in
@@ -7221,7 +7221,7 @@ pub fn liberate_late_bound_regions<'tcx, T>(
     all_outlive_scope: region::DestructionScopeData,
     value: &Binder<T>)
     -> T
-    where T : TypeFoldable<'tcx> + Repr<'tcx>
+    where T : TypeFoldable<'tcx> + Repr
 {
     ty_fold::replace_late_bound_regions(
         tcx, value,
@@ -7232,7 +7232,7 @@ pub fn count_late_bound_regions<'tcx, T>(
     tcx: &ty::ctxt<'tcx>,
     value: &Binder<T>)
     -> usize
-    where T : TypeFoldable<'tcx> + Repr<'tcx>
+    where T : TypeFoldable<'tcx> + Repr
 {
     let (_, skol_map) = ty_fold::replace_late_bound_regions(tcx, value, |_| ty::ReStatic);
     skol_map.len()
@@ -7242,7 +7242,7 @@ pub fn binds_late_bound_regions<'tcx, T>(
     tcx: &ty::ctxt<'tcx>,
     value: &Binder<T>)
     -> bool
-    where T : TypeFoldable<'tcx> + Repr<'tcx>
+    where T : TypeFoldable<'tcx> + Repr
 {
     count_late_bound_regions(tcx, value) > 0
 }
@@ -7253,7 +7253,7 @@ pub fn flatten_late_bound_regions<'tcx, T>(
     tcx: &ty::ctxt<'tcx>,
     bound2_value: &Binder<Binder<T>>)
     -> Binder<T>
-    where T: TypeFoldable<'tcx> + Repr<'tcx>
+    where T: TypeFoldable<'tcx> + Repr
 {
     let bound0_value = bound2_value.skip_binder().skip_binder();
     let value = ty_fold::fold_regions(tcx, bound0_value, |region, current_depth| {
@@ -7275,7 +7275,7 @@ pub fn no_late_bound_regions<'tcx, T>(
     tcx: &ty::ctxt<'tcx>,
     value: &Binder<T>)
     -> Option<T>
-    where T : TypeFoldable<'tcx> + Repr<'tcx> + Clone
+    where T : TypeFoldable<'tcx> + Repr + Clone
 {
     if binds_late_bound_regions(tcx, value) {
         None
@@ -7290,7 +7290,7 @@ pub fn erase_late_bound_regions<'tcx, T>(
     tcx: &ty::ctxt<'tcx>,
     value: &Binder<T>)
     -> T
-    where T : TypeFoldable<'tcx> + Repr<'tcx>
+    where T : TypeFoldable<'tcx> + Repr
 {
     ty_fold::replace_late_bound_regions(tcx, value, |_| ty::ReStatic).0
 }
@@ -7307,7 +7307,7 @@ pub fn anonymize_late_bound_regions<'tcx, T>(
     tcx: &ctxt<'tcx>,
     sig: &Binder<T>)
     -> Binder<T>
-    where T : TypeFoldable<'tcx> + Repr<'tcx>,
+    where T : TypeFoldable<'tcx> + Repr,
 {
     let mut counter = 0;
     ty::Binder(ty_fold::replace_late_bound_regions(tcx, sig, |_| {
@@ -7327,8 +7327,8 @@ impl DebruijnIndex {
     }
 }
 
-impl<'tcx> Repr<'tcx> for AutoAdjustment<'tcx> {
-    fn repr(&self, tcx: &ctxt<'tcx>) -> String {
+impl<'tcx> Repr for AutoAdjustment<'tcx> {
+    fn repr(&self) -> String {
         match *self {
             AdjustReifyFnPointer => {
                 format!("AdjustReifyFnPointer")
@@ -7337,24 +7337,24 @@ impl<'tcx> Repr<'tcx> for AutoAdjustment<'tcx> {
                 format!("AdjustUnsafeFnPointer")
             }
             AdjustDerefRef(ref data) => {
-                data.repr(tcx)
+                data.repr()
             }
         }
     }
 }
 
-impl<'tcx> Repr<'tcx> for AutoDerefRef<'tcx> {
-    fn repr(&self, tcx: &ctxt<'tcx>) -> String {
+impl<'tcx> Repr for AutoDerefRef<'tcx> {
+    fn repr(&self) -> String {
         format!("AutoDerefRef({}, unsize={}, {})",
-                self.autoderefs, self.unsize.repr(tcx), self.autoref.repr(tcx))
+                self.autoderefs, self.unsize.repr(), self.autoref.repr())
     }
 }
 
-impl<'tcx> Repr<'tcx> for AutoRef<'tcx> {
-    fn repr(&self, tcx: &ctxt<'tcx>) -> String {
+impl<'tcx> Repr for AutoRef<'tcx> {
+    fn repr(&self) -> String {
         match *self {
             AutoPtr(a, b) => {
-                format!("AutoPtr({},{:?})", a.repr(tcx), b)
+                format!("AutoPtr({},{:?})", a.repr(), b)
             }
             AutoUnsafe(ref a) => {
                 format!("AutoUnsafe({:?})", a)
@@ -7363,22 +7363,22 @@ impl<'tcx> Repr<'tcx> for AutoRef<'tcx> {
     }
 }
 
-impl<'tcx> Repr<'tcx> for TraitTy<'tcx> {
-    fn repr(&self, tcx: &ctxt<'tcx>) -> String {
+impl<'tcx> Repr for TraitTy<'tcx> {
+    fn repr(&self) -> String {
         format!("TraitTy({},{})",
-                self.principal.repr(tcx),
-                self.bounds.repr(tcx))
+                self.principal.repr(),
+                self.bounds.repr())
     }
 }
 
-impl<'tcx> Repr<'tcx> for ty::Predicate<'tcx> {
-    fn repr(&self, tcx: &ctxt<'tcx>) -> String {
+impl<'tcx> Repr for ty::Predicate<'tcx> {
+    fn repr(&self) -> String {
         match *self {
-            Predicate::Trait(ref a) => a.repr(tcx),
-            Predicate::Equate(ref pair) => pair.repr(tcx),
-            Predicate::RegionOutlives(ref pair) => pair.repr(tcx),
-            Predicate::TypeOutlives(ref pair) => pair.repr(tcx),
-            Predicate::Projection(ref pair) => pair.repr(tcx),
+            Predicate::Trait(ref a) => a.repr(),
+            Predicate::Equate(ref pair) => pair.repr(),
+            Predicate::RegionOutlives(ref pair) => pair.repr(),
+            Predicate::TypeOutlives(ref pair) => pair.repr(),
+            Predicate::Projection(ref pair) => pair.repr(),
         }
     }
 }
@@ -7584,11 +7584,11 @@ impl<'tcx> RegionEscape for ProjectionTy<'tcx> {
     }
 }
 
-impl<'tcx> Repr<'tcx> for ty::ProjectionPredicate<'tcx> {
-    fn repr(&self, tcx: &ctxt<'tcx>) -> String {
+impl<'tcx> Repr for ty::ProjectionPredicate<'tcx> {
+    fn repr(&self) -> String {
         format!("ProjectionPredicate({}, {})",
-                self.projection_ty.repr(tcx),
-                self.ty.repr(tcx))
+                self.projection_ty.repr(),
+                self.ty.repr())
     }
 }
 
@@ -7826,48 +7826,48 @@ impl ReferencesError for Region
     }
 }
 
-impl<'tcx> Repr<'tcx> for ClosureTy<'tcx> {
-    fn repr(&self, tcx: &ctxt<'tcx>) -> String {
+impl<'tcx> Repr for ClosureTy<'tcx> {
+    fn repr(&self) -> String {
         format!("ClosureTy({},{},{})",
                 self.unsafety,
-                self.sig.repr(tcx),
+                self.sig.repr(),
                 self.abi)
     }
 }
 
-impl<'tcx> Repr<'tcx> for ClosureUpvar<'tcx> {
-    fn repr(&self, tcx: &ctxt<'tcx>) -> String {
+impl<'tcx> Repr for ClosureUpvar<'tcx> {
+    fn repr(&self) -> String {
         format!("ClosureUpvar({},{})",
-                self.def.repr(tcx),
-                self.ty.repr(tcx))
+                self.def.repr(),
+                self.ty.repr())
     }
 }
 
-impl<'tcx> Repr<'tcx> for field<'tcx> {
-    fn repr(&self, tcx: &ctxt<'tcx>) -> String {
+impl<'tcx> Repr for field<'tcx> {
+    fn repr(&self) -> String {
         format!("field({},{})",
-                self.name.repr(tcx),
-                self.mt.repr(tcx))
+                self.name.repr(),
+                self.mt.repr())
     }
 }
 
-impl<'a, 'tcx> Repr<'tcx> for ParameterEnvironment<'a, 'tcx> {
-    fn repr(&self, tcx: &ctxt<'tcx>) -> String {
+impl<'a, 'tcx> Repr for ParameterEnvironment<'a, 'tcx> {
+    fn repr(&self) -> String {
         format!("ParameterEnvironment(\
             free_substs={}, \
             implicit_region_bound={}, \
             caller_bounds={})",
-            self.free_substs.repr(tcx),
-            self.implicit_region_bound.repr(tcx),
-            self.caller_bounds.repr(tcx))
+            self.free_substs.repr(),
+            self.implicit_region_bound.repr(),
+            self.caller_bounds.repr())
     }
 }
 
-impl<'tcx> Repr<'tcx> for ObjectLifetimeDefault {
-    fn repr(&self, tcx: &ctxt<'tcx>) -> String {
+impl<'tcx> Repr for ObjectLifetimeDefault {
+    fn repr(&self) -> String {
         match *self {
             ObjectLifetimeDefault::Ambiguous => format!("Ambiguous"),
-            ObjectLifetimeDefault::Specific(ref r) => r.repr(tcx),
+            ObjectLifetimeDefault::Specific(ref r) => r.repr(),
         }
     }
 }

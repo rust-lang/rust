@@ -53,8 +53,8 @@ pub fn super_lattice_tys<'a,'tcx,L:LatticeDir<'a,'tcx>>(this: &mut L,
 {
     debug!("{}.lattice_tys({}, {})",
            this.tag(),
-           a.repr(this.tcx()),
-           b.repr(this.tcx()));
+           a.repr(),
+           b.repr());
 
     if a == b {
         return Ok(a);

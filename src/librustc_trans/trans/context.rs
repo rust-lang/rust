@@ -767,7 +767,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
     pub fn report_overbig_object(&self, obj: Ty<'tcx>) -> ! {
         self.sess().fatal(
             &format!("the type `{}` is too big for the current architecture",
-                    obj.repr(self.tcx())))
+                    obj.repr()))
     }
 
     pub fn check_overflow(&self) -> bool {

@@ -300,7 +300,7 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
 
 impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
     fn visit_item(&mut self, i: &ast::Item) {
-        debug!("visit_item(item={})", i.repr(self.tcx));
+        debug!("visit_item(item={})", i.repr());
         match i.node {
             ast::ItemStatic(_, ast::MutImmutable, ref expr) => {
                 self.check_static_type(&**expr);

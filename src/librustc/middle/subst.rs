@@ -623,7 +623,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for SubstFolder<'a, 'tcx> {
                                               when substituting in region {} (root type={}) \
                                               (space={:?}, index={})",
                                              data.name.as_str(),
-                                             self.root_ty.repr(self.tcx()),
+                                             self.root_ty.repr(),
                                              data.space,
                                              data.index));
                             }
@@ -677,12 +677,12 @@ impl<'a,'tcx> SubstFolder<'a,'tcx> {
                     span,
                     &format!("Type parameter `{}` ({}/{:?}/{}) out of range \
                                  when substituting (root type={}) substs={}",
-                            p.repr(self.tcx()),
-                            source_ty.repr(self.tcx()),
+                            p.repr(),
+                            source_ty.repr(),
                             p.space,
                             p.idx,
-                            self.root_ty.repr(self.tcx()),
-                            self.substs.repr(self.tcx())));
+                            self.root_ty.repr(),
+                            self.substs.repr()));
             }
         };
 
@@ -733,14 +733,14 @@ impl<'a,'tcx> SubstFolder<'a,'tcx> {
     /// is that only in the second case have we passed through a fn binder.
     fn shift_regions_through_binders(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
         debug!("shift_regions(ty={:?}, region_binders_passed={:?}, type_has_escaping_regions={:?})",
-               ty.repr(self.tcx()), self.region_binders_passed, ty::type_has_escaping_regions(ty));
+               ty.repr(), self.region_binders_passed, ty::type_has_escaping_regions(ty));
 
         if self.region_binders_passed == 0 || !ty::type_has_escaping_regions(ty) {
             return ty;
         }
 
         let result = ty_fold::shift_regions(self.tcx(), self.region_binders_passed, &ty);
-        debug!("shift_regions: shifted result = {:?}", result.repr(self.tcx()));
+        debug!("shift_regions: shifted result = {:?}", result.repr());
 
         result
     }

@@ -179,9 +179,9 @@ pub fn ast_region_to_region(tcx: &ty::ctxt, lifetime: &ast::Lifetime)
     };
 
     debug!("ast_region_to_region(lifetime={} id={}) yields {}",
-           lifetime.repr(tcx),
+           lifetime.repr(),
            lifetime.id,
-           r.repr(tcx));
+           r.repr());
 
     r
 }
@@ -257,8 +257,8 @@ pub fn opt_ast_region_to_region<'tcx>(
     };
 
     debug!("opt_ast_region_to_region(opt_lifetime={}) yields {}",
-            opt_lifetime.repr(this.tcx()),
-            r.repr(this.tcx()));
+            opt_lifetime.repr(),
+            r.repr());
 
     r
 }
@@ -375,8 +375,8 @@ fn create_substs_for_ast_path<'tcx>(
 
     debug!("create_substs_for_ast_path(decl_generics={}, self_ty={}, \
            types_provided={}, region_substs={}",
-           decl_generics.repr(tcx), self_ty.repr(tcx), types_provided.repr(tcx),
-           region_substs.repr(tcx));
+           decl_generics.repr(), self_ty.repr(), types_provided.repr(),
+           region_substs.repr());
 
     assert_eq!(region_substs.regions().len(TypeSpace), decl_generics.regions.len(TypeSpace));
     assert!(region_substs.types.is_empty());
@@ -441,8 +441,8 @@ fn create_substs_for_ast_path<'tcx>(
                           "the type parameter `{}` must be explicitly specified \
                            in an object type because its default value `{}` references \
                            the type `Self`",
-                          param.name.user_string(tcx),
-                          default.user_string(tcx));
+                          param.name.user_string(),
+                          default.user_string());
                 substs.types.push(TypeSpace, tcx.types.err);
             } else {
                 // This is a default type parameter.
@@ -649,7 +649,7 @@ fn trait_def_id<'tcx>(this: &AstConv<'tcx>, trait_ref: &ast::TraitRef) -> ast::D
         def::DefTrait(trait_def_id) => trait_def_id,
         _ => {
             span_fatal!(this.tcx().sess, path.span, E0245, "`{}` is not a trait",
-                        path.user_string(this.tcx()));
+                        path.user_string());
         }
     }
 }
@@ -879,7 +879,7 @@ fn ast_type_binding_to_poly_projection_predicate<'tcx>(
 
     let candidate = try!(one_bound_for_assoc_type(tcx,
                                                   candidates,
-                                                  &trait_ref.user_string(tcx),
+                                                  &trait_ref.user_string(),
                                                   &token::get_name(binding.item_name),
                                                   binding.span));
 
@@ -1031,7 +1031,7 @@ fn trait_ref_to_object_type<'tcx>(this: &AstConv<'tcx>,
 
     let result = make_object_type(this, span, trait_ref, existential_bounds);
     debug!("trait_ref_to_object_type: result={}",
-           result.repr(this.tcx()));
+           result.repr());
 
     result
 }
@@ -1074,7 +1074,7 @@ fn make_object_type<'tcx>(this: &AstConv<'tcx>,
     for (trait_def_id, name) in associated_types {
         span_err!(tcx.sess, span, E0191,
             "the value of the associated type `{}` (from the trait `{}`) must be specified",
-                    name.user_string(tcx),
+                    name.user_string(),
                     ty::item_path_str(tcx, trait_def_id));
     }
 
@@ -1160,7 +1160,7 @@ fn one_bound_for_assoc_type<'tcx>(tcx: &ty::ctxt<'tcx>,
             span_note!(tcx.sess, span,
                        "associated type `{}` could derive from `{}`",
                        ty_param_name,
-                       bound.user_string(tcx));
+                       bound.user_string());
         }
     }
 
@@ -1183,7 +1183,7 @@ fn associated_path_def_to_ty<'tcx>(this: &AstConv<'tcx>,
     let tcx = this.tcx();
     let assoc_name = item_segment.identifier.name;
 
-    debug!("associated_path_def_to_ty: {}::{}", ty.repr(tcx), token::get_name(assoc_name));
+    debug!("associated_path_def_to_ty: {}::{}", ty.repr(), token::get_name(assoc_name));
 
     check_path_args(tcx, slice::ref_slice(item_segment), NO_TPS | NO_REGIONS);
 
@@ -1239,7 +1239,7 @@ fn associated_path_def_to_ty<'tcx>(this: &AstConv<'tcx>,
         _ => {
             report_ambiguous_associated_type(tcx,
                                              span,
-                                             &ty.user_string(tcx),
+                                             &ty.user_string(),
                                              "Trait",
                                              &token::get_name(assoc_name));
             return (tcx.types.err, ty_path_def);
@@ -1296,7 +1296,7 @@ fn qpath_to_ty<'tcx>(this: &AstConv<'tcx>,
         return tcx.types.err;
     };
 
-    debug!("qpath_to_ty: self_type={}", self_ty.repr(tcx));
+    debug!("qpath_to_ty: self_type={}", self_ty.repr());
 
     let trait_ref = ast_path_to_mono_trait_ref(this,
                                                rscope,
@@ -1306,7 +1306,7 @@ fn qpath_to_ty<'tcx>(this: &AstConv<'tcx>,
                                                Some(self_ty),
                                                trait_segment);
 
-    debug!("qpath_to_ty: trait_ref={}", trait_ref.repr(tcx));
+    debug!("qpath_to_ty: trait_ref={}", trait_ref.repr());
 
     this.projected_ty(span, trait_ref, item_segment.identifier.name)
 }
@@ -1496,7 +1496,7 @@ pub fn ast_ty_to_ty<'tcx>(this: &AstConv<'tcx>,
                           -> Ty<'tcx>
 {
     debug!("ast_ty_to_ty(ast_ty={})",
-           ast_ty.repr(this.tcx()));
+           ast_ty.repr());
 
     let tcx = this.tcx();
 
@@ -1531,7 +1531,7 @@ pub fn ast_ty_to_ty<'tcx>(this: &AstConv<'tcx>,
         }
         ast::TyRptr(ref region, ref mt) => {
             let r = opt_ast_region_to_region(this, rscope, ast_ty.span, region);
-            debug!("TyRef r={}", r.repr(this.tcx()));
+            debug!("TyRef r={}", r.repr());
             let rscope1 =
                 &ObjectLifetimeDefaultRscope::new(
                     rscope,
@@ -1569,7 +1569,7 @@ pub fn ast_ty_to_ty<'tcx>(this: &AstConv<'tcx>,
                 }
             } else {
                 tcx.sess.span_bug(ast_ty.span,
-                                  &format!("unbound path {}", ast_ty.repr(tcx)))
+                                  &format!("unbound path {}", ast_ty.repr()))
             };
             let def = path_res.base_def;
             let base_ty_end = path.segments.len() - path_res.depth;
@@ -1846,8 +1846,8 @@ fn determine_explicit_self_category<'a, 'tcx>(this: &AstConv<'tcx>,
             debug!("determine_explicit_self_category(self_info.untransformed_self_ty={} \
                    explicit_type={} \
                    modifiers=({},{})",
-                   self_info.untransformed_self_ty.repr(this.tcx()),
-                   explicit_type.repr(this.tcx()),
+                   self_info.untransformed_self_ty.repr(),
+                   explicit_type.repr(),
                    impl_modifiers,
                    method_modifiers);
 
@@ -1881,7 +1881,7 @@ pub fn ty_of_closure<'tcx>(
     -> ty::ClosureTy<'tcx>
 {
     debug!("ty_of_closure(expected_sig={})",
-           expected_sig.repr(this.tcx()));
+           expected_sig.repr());
 
     // new region names that appear inside of the fn decl are bound to
     // that function type
@@ -1919,8 +1919,8 @@ pub fn ty_of_closure<'tcx>(
         ast::NoReturn(..) => ty::FnDiverging
     };
 
-    debug!("ty_of_closure: input_tys={}", input_tys.repr(this.tcx()));
-    debug!("ty_of_closure: output_ty={}", output_ty.repr(this.tcx()));
+    debug!("ty_of_closure: input_tys={}", input_tys.repr());
+    debug!("ty_of_closure: output_ty={}", output_ty.repr());
 
     ty::ClosureTy {
         unsafety: unsafety,
@@ -2039,8 +2039,8 @@ fn compute_object_lifetime_bound<'tcx>(
     debug!("compute_opt_region_bound(explicit_region_bounds={:?}, \
            principal_trait_ref={}, builtin_bounds={})",
            explicit_region_bounds,
-           principal_trait_ref.repr(tcx),
-           builtin_bounds.repr(tcx));
+           principal_trait_ref.repr(),
+           builtin_bounds.repr());
 
     if explicit_region_bounds.len() > 1 {
         span_err!(tcx.sess, explicit_region_bounds[1].span, E0226,

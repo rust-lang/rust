@@ -192,8 +192,8 @@ impl<'tcx> CastCheck<'tcx> {
         self.expr_ty = structurally_resolved_type(fcx, self.span, self.expr_ty);
         self.cast_ty = structurally_resolved_type(fcx, self.span, self.cast_ty);
 
-        debug!("check_cast({}, {} as {})", self.expr.id, self.expr_ty.repr(fcx.tcx()),
-               self.cast_ty.repr(fcx.tcx()));
+        debug!("check_cast({}, {} as {})", self.expr.id, self.expr_ty.repr(),
+               self.cast_ty.repr());
 
         if ty::type_is_error(self.expr_ty) || ty::type_is_error(self.cast_ty) {
             // No sense in giving duplicate error messages
@@ -274,7 +274,7 @@ impl<'tcx> CastCheck<'tcx> {
                               -> Result<CastKind, CastError>
     {
         debug!("check_ptr_ptr_cast m_expr={} m_cast={}",
-               m_expr.repr(fcx.tcx()), m_cast.repr(fcx.tcx()));
+               m_expr.repr(), m_cast.repr());
         // ptr-ptr cast. vtables must match.
 
         // Cast to sized is OK

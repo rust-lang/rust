@@ -74,7 +74,7 @@ impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Bivariate<'a, 'tcx> {
 
     fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
         debug!("{}.tys({}, {})", self.tag(),
-               a.repr(self.fields.infcx.tcx), b.repr(self.fields.infcx.tcx));
+               a.repr(), b.repr());
         if a == b { return Ok(a); }
 
         let infcx = self.fields.infcx;

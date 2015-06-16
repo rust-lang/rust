@@ -58,7 +58,7 @@ struct RestrictionsContext<'a, 'tcx: 'a> {
 impl<'a, 'tcx> RestrictionsContext<'a, 'tcx> {
     fn restrict(&self,
                 cmt: mc::cmt<'tcx>) -> RestrictionResult<'tcx> {
-        debug!("restrict(cmt={})", cmt.repr(self.bccx.tcx));
+        debug!("restrict(cmt={})", cmt.repr());
 
         let new_lp = |v: LoanPathKind<'tcx>| Rc::new(LoanPath::new(v, cmt.ty));
 

@@ -143,7 +143,7 @@ pub fn represent_node<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 pub fn represent_type<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                 t: Ty<'tcx>)
                                 -> Rc<Repr<'tcx>> {
-    debug!("Representing: {}", t.repr(cx.tcx()));
+    debug!("Representing: {}", t.repr());
     match cx.adt_reprs().borrow().get(&t) {
         Some(repr) => return repr.clone(),
         None => {}
@@ -382,7 +382,7 @@ fn represent_type_uncached<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             General(ity, fields, dtor_to_init_u8(dtor))
         }
         _ => cx.sess().bug(&format!("adt::represent_type called on non-ADT type: {}",
-                           t.repr(cx.tcx())))
+                           t.repr()))
     }
 }
 

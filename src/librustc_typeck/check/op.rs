@@ -51,8 +51,8 @@ pub fn check_binop_assign<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
         span_err!(tcx.sess, lhs_expr.span, E0368,
                   "binary assignment operation `{}=` cannot be applied to types `{}` and `{}`",
                   ast_util::binop_to_string(op.node),
-                  lhs_ty.user_string(fcx.tcx()),
-                  rhs_ty.user_string(fcx.tcx()));
+                  lhs_ty.user_string(),
+                  rhs_ty.user_string());
         fcx.write_error(expr.id);
     }
 
@@ -75,10 +75,10 @@ pub fn check_binop<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
     debug!("check_binop(expr.id={}, expr={}, op={:?}, lhs_expr={}, rhs_expr={})",
            expr.id,
-           expr.repr(tcx),
+           expr.repr(),
            op,
-           lhs_expr.repr(tcx),
-           rhs_expr.repr(tcx));
+           lhs_expr.repr(),
+           rhs_expr.repr());
 
     check_expr(fcx, lhs_expr);
     let lhs_ty = fcx.resolve_type_vars_if_possible(fcx.expr_ty(lhs_expr));
@@ -181,15 +181,15 @@ fn enforce_builtin_binop_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             if ty::type_is_simd(tcx, lhs_ty) {
                 let unit_ty = ty::simd_type(tcx, lhs_ty);
                 debug!("enforce_builtin_binop_types: lhs_ty={} unit_ty={}",
-                       lhs_ty.repr(tcx),
-                       unit_ty.repr(tcx));
+                       lhs_ty.repr(),
+                       unit_ty.repr());
                 if !ty::type_is_integral(unit_ty) {
                     tcx.sess.span_err(
                         lhs_expr.span,
                         &format!("binary comparison operation `{}` not supported \
                                   for floating point SIMD vector `{}`",
                                  ast_util::binop_to_string(op.node),
-                                 lhs_ty.user_string(tcx)));
+                                 lhs_ty.user_string()));
                     tcx.types.err
                 } else {
                     lhs_ty
@@ -211,7 +211,7 @@ fn check_overloaded_binop<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 {
     debug!("check_overloaded_binop(expr.id={}, lhs_ty={})",
            expr.id,
-           lhs_ty.repr(fcx.tcx()));
+           lhs_ty.repr());
 
     let (name, trait_def_id) = name_and_trait_def_id(fcx, op);
 
@@ -233,7 +233,7 @@ fn check_overloaded_binop<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 span_err!(fcx.tcx().sess, lhs_expr.span, E0369,
                           "binary operation `{}` cannot be applied to type `{}`",
                           ast_util::binop_to_string(op.node),
-                          lhs_ty.user_string(fcx.tcx()));
+                          lhs_ty.user_string());
             }
             fcx.tcx().types.err
         }
@@ -305,11 +305,11 @@ fn lookup_op_method<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
                               -> Result<Ty<'tcx>,()>
 {
     debug!("lookup_op_method(expr={}, lhs_ty={}, opname={:?}, trait_did={}, lhs_expr={})",
-           expr.repr(fcx.tcx()),
-           lhs_ty.repr(fcx.tcx()),
+           expr.repr(),
+           lhs_ty.repr(),
            opname,
-           trait_did.repr(fcx.tcx()),
-           lhs_expr.repr(fcx.tcx()));
+           trait_did.repr(),
+           lhs_expr.repr());
 
     let method = match trait_did {
         Some(trait_did) => {

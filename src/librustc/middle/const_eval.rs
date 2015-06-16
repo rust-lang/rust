@@ -1031,7 +1031,7 @@ fn resolve_trait_associated_const<'a, 'tcx: 'a>(tcx: &'a ty::ctxt<'tcx>,
                                                            Vec::new()));
     let trait_substs = tcx.mk_substs(trait_substs);
     debug!("resolve_trait_associated_const: trait_substs={}",
-           trait_substs.repr(tcx));
+           trait_substs.repr());
     let trait_ref = ty::Binder(ty::TraitRef { def_id: trait_id,
                                               substs: trait_substs });
 
@@ -1055,7 +1055,7 @@ fn resolve_trait_associated_const<'a, 'tcx: 'a>(tcx: &'a ty::ctxt<'tcx>,
                               &format!("Encountered error `{}` when trying \
                                         to select an implementation for \
                                         constant trait item reference.",
-                                       e.repr(tcx)))
+                                       e.repr()))
         }
     };
 

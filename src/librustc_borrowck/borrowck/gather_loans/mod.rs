@@ -77,7 +77,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for GatherLoanCtxt<'a, 'tcx> {
                cmt: mc::cmt<'tcx>,
                mode: euv::ConsumeMode) {
         debug!("consume(consume_id={}, cmt={}, mode={:?})",
-               consume_id, cmt.repr(self.tcx()), mode);
+               consume_id, cmt.repr(), mode);
 
         match mode {
             euv::Move(move_reason) => {
@@ -94,8 +94,8 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for GatherLoanCtxt<'a, 'tcx> {
                    cmt: mc::cmt<'tcx>,
                    mode: euv::MatchMode) {
         debug!("matched_pat(matched_pat={}, cmt={}, mode={:?})",
-               matched_pat.repr(self.tcx()),
-               cmt.repr(self.tcx()),
+               matched_pat.repr(),
+               cmt.repr(),
                mode);
 
         if let mc::cat_downcast(..) = cmt.cat {
@@ -110,8 +110,8 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for GatherLoanCtxt<'a, 'tcx> {
                    cmt: mc::cmt<'tcx>,
                    mode: euv::ConsumeMode) {
         debug!("consume_pat(consume_pat={}, cmt={}, mode={:?})",
-               consume_pat.repr(self.tcx()),
-               cmt.repr(self.tcx()),
+               consume_pat.repr(),
+               cmt.repr(),
                mode);
 
         match mode {
@@ -134,7 +134,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for GatherLoanCtxt<'a, 'tcx> {
     {
         debug!("borrow(borrow_id={}, cmt={}, loan_region={:?}, \
                bk={:?}, loan_cause={:?})",
-               borrow_id, cmt.repr(self.tcx()), loan_region,
+               borrow_id, cmt.repr(), loan_region,
                bk, loan_cause);
 
         self.guarantee_valid(borrow_id,
@@ -153,7 +153,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for GatherLoanCtxt<'a, 'tcx> {
     {
         let opt_lp = opt_loan_path(&assignee_cmt);
         debug!("mutate(assignment_id={}, assignee_cmt={}) opt_lp={:?}",
-               assignment_id, assignee_cmt.repr(self.tcx()), opt_lp);
+               assignment_id, assignee_cmt.repr(), opt_lp);
 
         match opt_lp {
             Some(lp) => {
@@ -237,7 +237,7 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
         debug!("guarantee_valid(borrow_id={}, cmt={}, \
                 req_mutbl={:?}, loan_region={:?})",
                borrow_id,
-               cmt.repr(self.tcx()),
+               cmt.repr(),
                req_kind,
                loan_region);
 
@@ -337,7 +337,7 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
         };
 
         debug!("guarantee_valid(borrow_id={}), loan={}",
-               borrow_id, loan.repr(self.tcx()));
+               borrow_id, loan.repr());
 
         // let loan_path = loan.loan_path;
         // let loan_gen_scope = loan.gen_scope;
@@ -377,7 +377,7 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
                                       -> Result<(),()> {
             //! Implements the M-* rules in README.md.
             debug!("check_mutability(cause={:?} cmt={} req_kind={:?}",
-                   cause, cmt.repr(bccx.tcx), req_kind);
+                   cause, cmt.repr(), req_kind);
             match req_kind {
                 ty::UniqueImmBorrow | ty::ImmBorrow => {
                     match cmt.mutbl {
@@ -507,7 +507,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for StaticInitializerCtxt<'a, 'tcx> {
 
 pub fn gather_loans_in_static_initializer(bccx: &mut BorrowckCtxt, expr: &ast::Expr) {
 
-    debug!("gather_loans_in_static_initializer(expr={})", expr.repr(bccx.tcx));
+    debug!("gather_loans_in_static_initializer(expr={})", expr.repr());
 
     let mut sicx = StaticInitializerCtxt {
         bccx: bccx
