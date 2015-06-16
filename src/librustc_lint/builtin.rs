@@ -495,7 +495,7 @@ impl BoxPointers {
         });
 
         if n_uniq > 0 {
-            let s =  ty.user_string(cx.tcx);
+            let s =  ty.user_string();
             let m = format!("type uses owned (Box type) pointers: {}", s);
             cx.span_lint(BOX_POINTERS, span, &m[..]);
         }

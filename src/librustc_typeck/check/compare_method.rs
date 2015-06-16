@@ -39,10 +39,10 @@ pub fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
                                  trait_m: &ty::Method<'tcx>,
                                  impl_trait_ref: &ty::TraitRef<'tcx>) {
     debug!("compare_impl_method(impl_trait_ref={})",
-           impl_trait_ref.repr(tcx));
+           impl_trait_ref.repr());
 
     debug!("compare_impl_method: impl_trait_ref (liberated) = {}",
-           impl_trait_ref.repr(tcx));
+           impl_trait_ref.repr());
 
     let infcx = infer::new_infer_ctxt(tcx);
     let mut fulfillment_cx = traits::FulfillmentContext::new(true);
@@ -64,7 +64,7 @@ pub fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
                 "method `{}` has a `{}` declaration in the impl, \
                         but not in the trait",
                         token::get_name(trait_m.name),
-                        impl_m.explicit_self.repr(tcx));
+                        impl_m.explicit_self.repr());
             return;
         }
         (_, &ty::StaticExplicitSelfCategory) => {
@@ -72,7 +72,7 @@ pub fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
                 "method `{}` has a `{}` declaration in the trait, \
                         but not in the impl",
                         token::get_name(trait_m.name),
-                        trait_m.explicit_self.repr(tcx));
+                        trait_m.explicit_self.repr());
             return;
         }
         _ => {
@@ -184,7 +184,7 @@ pub fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
         .with_method(impl_to_skol_substs.types.get_slice(subst::FnSpace).to_vec(),
                      impl_to_skol_substs.regions().get_slice(subst::FnSpace).to_vec());
     debug!("compare_impl_method: trait_to_skol_substs={}",
-           trait_to_skol_substs.repr(tcx));
+           trait_to_skol_substs.repr());
 
     // Check region bounds. FIXME(@jroesch) refactor this away when removing
     // ParamBounds.
@@ -212,7 +212,7 @@ pub fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
             infer::HigherRankedType,
             &ty::Binder(impl_bounds));
     debug!("compare_impl_method: impl_bounds={}",
-           impl_bounds.repr(tcx));
+           impl_bounds.repr());
 
     // Normalize the associated types in the trait_bounds.
     let trait_bounds = trait_m.predicates.instantiate(tcx, &trait_to_skol_substs);
@@ -243,7 +243,7 @@ pub fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
                                                                normalize_cause.clone());
 
     debug!("compare_impl_method: trait_bounds={}",
-        trait_param_env.caller_bounds.repr(tcx));
+        trait_param_env.caller_bounds.repr());
 
     let mut selcx = traits::SelectionContext::new(&infcx, &trait_param_env);
 
@@ -304,7 +304,7 @@ pub fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
                                                          abi: impl_m.fty.abi,
                                                          sig: ty::Binder(impl_sig) }));
         debug!("compare_impl_method: impl_fty={}",
-               impl_fty.repr(tcx));
+               impl_fty.repr());
 
         let (trait_sig, skol_map) =
             infcx.skolemize_late_bound_regions(&trait_m.fty.sig, snapshot);
@@ -325,7 +325,7 @@ pub fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
                                                          sig: ty::Binder(trait_sig) }));
 
         debug!("compare_impl_method: trait_fty={}",
-               trait_fty.repr(tcx));
+               trait_fty.repr());
 
         try!(infer::mk_subty(&infcx, false, origin, impl_fty, trait_fty));
 
@@ -336,8 +336,8 @@ pub fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
         Ok(()) => { }
         Err(terr) => {
             debug!("checking trait method for compatibility: impl ty {}, trait ty {}",
-                   impl_fty.repr(tcx),
-                   trait_fty.repr(tcx));
+                   impl_fty.repr(),
+                   trait_fty.repr());
             span_err!(tcx.sess, impl_m_span, E0053,
                       "method `{}` has an incompatible type for trait: {}",
                       token::get_name(trait_m.name),
@@ -385,10 +385,10 @@ pub fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
                impl_generics={} \
                trait_to_skol_substs={} \
                impl_to_skol_substs={}",
-               trait_generics.repr(tcx),
-               impl_generics.repr(tcx),
-               trait_to_skol_substs.repr(tcx),
-               impl_to_skol_substs.repr(tcx));
+               trait_generics.repr(),
+               impl_generics.repr(),
+               trait_to_skol_substs.repr(),
+               impl_to_skol_substs.repr());
 
         // Must have same number of early-bound lifetime parameters.
         // Unfortunately, if the user screws up the bounds, then this
@@ -417,7 +417,7 @@ pub fn compare_const_impl<'tcx>(tcx: &ty::ctxt<'tcx>,
                                 trait_c: &ty::AssociatedConst<'tcx>,
                                 impl_trait_ref: &ty::TraitRef<'tcx>) {
     debug!("compare_const_impl(impl_trait_ref={})",
-           impl_trait_ref.repr(tcx));
+           impl_trait_ref.repr());
 
     let infcx = infer::new_infer_ctxt(tcx);
     let mut fulfillment_cx = traits::FulfillmentContext::new(true);
@@ -444,7 +444,7 @@ pub fn compare_const_impl<'tcx>(tcx: &ty::ctxt<'tcx>,
         .with_method(impl_to_skol_substs.types.get_slice(subst::FnSpace).to_vec(),
                      impl_to_skol_substs.regions().get_slice(subst::FnSpace).to_vec());
     debug!("compare_const_impl: trait_to_skol_substs={}",
-           trait_to_skol_substs.repr(tcx));
+           trait_to_skol_substs.repr());
 
     // Compute skolemized form of impl and trait const tys.
     let impl_ty = impl_c.ty.subst(tcx, impl_to_skol_substs);
@@ -462,7 +462,7 @@ pub fn compare_const_impl<'tcx>(tcx: &ty::ctxt<'tcx>,
                                                  0,
                                                  &impl_ty);
         debug!("compare_const_impl: impl_ty={}",
-               impl_ty.repr(tcx));
+               impl_ty.repr());
 
         let trait_ty =
             assoc::normalize_associated_types_in(&infcx,
@@ -472,7 +472,7 @@ pub fn compare_const_impl<'tcx>(tcx: &ty::ctxt<'tcx>,
                                                  0,
                                                  &trait_ty);
         debug!("compare_const_impl: trait_ty={}",
-               trait_ty.repr(tcx));
+               trait_ty.repr());
 
         infer::mk_subty(&infcx, false, origin, impl_ty, trait_ty)
     });
@@ -481,8 +481,8 @@ pub fn compare_const_impl<'tcx>(tcx: &ty::ctxt<'tcx>,
         Ok(()) => { }
         Err(terr) => {
             debug!("checking associated const for compatibility: impl ty {}, trait ty {}",
-                   impl_ty.repr(tcx),
-                   trait_ty.repr(tcx));
+                   impl_ty.repr(),
+                   trait_ty.repr());
             span_err!(tcx.sess, impl_c_span, E0326,
                       "implemented const `{}` has an incompatible type for \
                       trait: {}",

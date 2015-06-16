@@ -210,7 +210,7 @@ fn check_expr(cx: &mut MatchCheckCtxt, ex: &ast::Expr) {
                     // We know the type is inhabited, so this must be wrong
                     span_err!(cx.tcx.sess, ex.span, E0002,
                               "non-exhaustive patterns: type {} is non-empty",
-                              pat_ty.user_string(cx.tcx));
+                              pat_ty.user_string());
                 }
                 // If the type *is* empty, it's vacuously exhaustive
                 return;
@@ -243,11 +243,11 @@ fn check_for_bindings_named_the_same_as_variants(cx: &MatchCheckCtxt, pat: &Pat)
                             span_warn!(cx.tcx.sess, p.span, E0170,
                                 "pattern binding `{}` is named the same as one \
                                  of the variants of the type `{}`",
-                                &token::get_ident(ident.node), pat_ty.user_string(cx.tcx));
+                                &token::get_ident(ident.node), pat_ty.user_string());
                             fileline_help!(cx.tcx.sess, p.span,
                                 "if you meant to match on a variant, \
                                  consider making the path in the pattern qualified: `{}::{}`",
-                                pat_ty.user_string(cx.tcx), &token::get_ident(ident.node));
+                                pat_ty.user_string(), &token::get_ident(ident.node));
                         }
                     }
                 }

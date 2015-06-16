@@ -77,7 +77,7 @@ pub fn poly_project_and_unify_type<'cx,'tcx>(
     -> Result<Option<Vec<PredicateObligation<'tcx>>>, MismatchedProjectionTypes<'tcx>>
 {
     debug!("poly_project_and_unify_type(obligation={})",
-           obligation.repr(selcx.tcx()));
+           obligation.repr());
 
     let infcx = selcx.infcx();
     infcx.commit_if_ok(|snapshot| {
@@ -110,7 +110,7 @@ fn project_and_unify_type<'cx,'tcx>(
     -> Result<Option<Vec<PredicateObligation<'tcx>>>, MismatchedProjectionTypes<'tcx>>
 {
     debug!("project_and_unify_type(obligation={})",
-           obligation.repr(selcx.tcx()));
+           obligation.repr());
 
     let Normalized { value: normalized_ty, obligations } =
         match opt_normalize_projection_type(selcx,
@@ -125,8 +125,8 @@ fn project_and_unify_type<'cx,'tcx>(
         };
 
     debug!("project_and_unify_type: normalized_ty={} obligations={}",
-           normalized_ty.repr(selcx.tcx()),
-           obligations.repr(selcx.tcx()));
+           normalized_ty.repr(),
+           obligations.repr());
 
     let infcx = selcx.infcx();
     let origin = infer::RelateOutputImplTypes(obligation.cause.span);
@@ -139,7 +139,7 @@ fn project_and_unify_type<'cx,'tcx>(
 fn consider_unification_despite_ambiguity<'cx,'tcx>(selcx: &mut SelectionContext<'cx,'tcx>,
                                                     obligation: &ProjectionObligation<'tcx>) {
     debug!("consider_unification_despite_ambiguity(obligation={})",
-           obligation.repr(selcx.tcx()));
+           obligation.repr());
 
     let def_id = obligation.predicate.projection_ty.trait_ref.def_id;
     match selcx.tcx().lang_items.fn_trait_kind(def_id) {
@@ -173,7 +173,7 @@ fn consider_unification_despite_ambiguity<'cx,'tcx>(selcx: &mut SelectionContext
                     &ty::Binder(ret_type));
 
             debug!("consider_unification_despite_ambiguity: ret_type={:?}",
-                   ret_type.repr(selcx.tcx()));
+                   ret_type.repr());
             let origin = infer::RelateOutputImplTypes(obligation.cause.span);
             let obligation_ty = obligation.predicate.ty;
             match infer::mk_eqty(infcx, true, origin, obligation_ty, ret_type) {
@@ -193,7 +193,7 @@ pub fn normalize<'a,'b,'tcx,T>(selcx: &'a mut SelectionContext<'b,'tcx>,
                                cause: ObligationCause<'tcx>,
                                value: &T)
                                -> Normalized<'tcx, T>
-    where T : TypeFoldable<'tcx> + HasProjectionTypes + Clone + Repr<'tcx>
+    where T : TypeFoldable<'tcx> + HasProjectionTypes + Clone + Repr
 {
     normalize_with_depth(selcx, cause, 0, value)
 }
@@ -204,7 +204,7 @@ pub fn normalize_with_depth<'a,'b,'tcx,T>(selcx: &'a mut SelectionContext<'b,'tc
                                           depth: usize,
                                           value: &T)
                                           -> Normalized<'tcx, T>
-    where T : TypeFoldable<'tcx> + HasProjectionTypes + Clone + Repr<'tcx>
+    where T : TypeFoldable<'tcx> + HasProjectionTypes + Clone + Repr
 {
     let mut normalizer = AssociatedTypeNormalizer::new(selcx, cause, depth);
     let result = normalizer.fold(value);
@@ -356,7 +356,7 @@ fn opt_normalize_projection_type<'a,'b,'tcx>(
     debug!("normalize_projection_type(\
            projection_ty={}, \
            depth={})",
-           projection_ty.repr(selcx.tcx()),
+           projection_ty.repr(),
            depth);
 
     let obligation = Obligation::with_depth(cause.clone(), depth, projection_ty.clone());
@@ -368,9 +368,9 @@ fn opt_normalize_projection_type<'a,'b,'tcx>(
             // re-normalize it
 
             debug!("normalize_projection_type: projected_ty={} depth={} obligations={}",
-                   projected_ty.repr(selcx.tcx()),
+                   projected_ty.repr(),
                    depth,
-                   obligations.repr(selcx.tcx()));
+                   obligations.repr());
 
             if ty::type_has_projection(projected_ty) {
                 let tcx = selcx.tcx();
@@ -378,7 +378,7 @@ fn opt_normalize_projection_type<'a,'b,'tcx>(
                 let normalized_ty = normalizer.fold(&projected_ty);
 
                 debug!("normalize_projection_type: normalized_ty={} depth={}",
-                       normalized_ty.repr(tcx),
+                       normalized_ty.repr(),
                        depth);
 
                 obligations.extend(normalizer.obligations);
@@ -395,7 +395,7 @@ fn opt_normalize_projection_type<'a,'b,'tcx>(
         }
         Ok(ProjectedTy::NoProgress(projected_ty)) => {
             debug!("normalize_projection_type: projected_ty={} no progress",
-                   projected_ty.repr(selcx.tcx()));
+                   projected_ty.repr());
             Some(Normalized {
                 value: projected_ty,
                 obligations: vec!()
@@ -450,7 +450,7 @@ fn project_type<'cx,'tcx>(
     -> Result<ProjectedTy<'tcx>, ProjectionTyError<'tcx>>
 {
     debug!("project(obligation={})",
-           obligation.repr(selcx.tcx()));
+           obligation.repr());
 
     let recursion_limit = selcx.tcx().sess.recursion_limit.get();
     if obligation.recursion_depth >= recursion_limit {
@@ -461,7 +461,7 @@ fn project_type<'cx,'tcx>(
     let obligation_trait_ref =
         selcx.infcx().resolve_type_vars_if_possible(&obligation.predicate.trait_ref);
 
-    debug!("project: obligation_trait_ref={}", obligation_trait_ref.repr(selcx.tcx()));
+    debug!("project: obligation_trait_ref={}", obligation_trait_ref.repr());
 
     if obligation_trait_ref.references_error() {
         return Ok(ProjectedTy::Progress(selcx.tcx().types.err, vec!()));
@@ -590,11 +590,11 @@ fn assemble_candidates_from_predicates<'cx,'tcx,I>(
     where I: Iterator<Item=ty::Predicate<'tcx>>
 {
     debug!("assemble_candidates_from_predicates(obligation={})",
-           obligation.repr(selcx.tcx()));
+           obligation.repr());
     let infcx = selcx.infcx();
     for predicate in env_predicates {
         debug!("assemble_candidates_from_predicates: predicate={}",
-               predicate.repr(selcx.tcx()));
+               predicate.repr());
         match predicate {
             ty::Predicate::Projection(ref data) => {
                 let same_name = data.item_name() == obligation.predicate.item_name;
@@ -612,7 +612,7 @@ fn assemble_candidates_from_predicates<'cx,'tcx,I>(
                 });
 
                 debug!("assemble_candidates_from_predicates: candidate {} is_match {} same_name {}",
-                       data.repr(selcx.tcx()),
+                       data.repr(),
                        is_match,
                        same_name);
 
@@ -635,14 +635,14 @@ fn assemble_candidates_from_object_type<'cx,'tcx>(
 {
     let infcx = selcx.infcx();
     debug!("assemble_candidates_from_object_type(object_ty={})",
-           object_ty.repr(infcx.tcx));
+           object_ty.repr());
     let data = match object_ty.sty {
         ty::TyTrait(ref data) => data,
         _ => {
             selcx.tcx().sess.span_bug(
                 obligation.cause.span,
                 &format!("assemble_candidates_from_object_type called with non-object: {}",
-                         object_ty.repr(selcx.tcx())));
+                         object_ty.repr()));
         }
     };
     let projection_bounds = data.projection_bounds_with_self_ty(selcx.tcx(), object_ty);
@@ -673,7 +673,7 @@ fn assemble_candidates_from_impls<'cx,'tcx>(
         }
         Err(e) => {
             debug!("assemble_candidates_from_impls: selection error {}",
-                   e.repr(selcx.tcx()));
+                   e.repr());
             return Err(e);
         }
     };
@@ -681,7 +681,7 @@ fn assemble_candidates_from_impls<'cx,'tcx>(
     match vtable {
         super::VtableImpl(data) => {
             debug!("assemble_candidates_from_impls: impl candidate {}",
-                   data.repr(selcx.tcx()));
+                   data.repr());
 
             candidate_set.vec.push(
                 ProjectionTyCandidate::Impl(data));
@@ -732,7 +732,7 @@ fn assemble_candidates_from_impls<'cx,'tcx>(
             selcx.tcx().sess.span_bug(
                 obligation.cause.span,
                 &format!("Cannot project an associated type from `{}`",
-                         vtable.repr(selcx.tcx())));
+                         vtable.repr()));
         }
     }
 
@@ -748,8 +748,8 @@ fn confirm_candidate<'cx,'tcx>(
     let infcx = selcx.infcx();
 
     debug!("confirm_candidate(candidate={}, obligation={})",
-           candidate.repr(infcx.tcx),
-           obligation.repr(infcx.tcx));
+           candidate.repr(),
+           obligation.repr());
 
     match candidate {
         ProjectionTyCandidate::ParamEnv(poly_projection) => {
@@ -814,8 +814,8 @@ fn confirm_callable_candidate<'cx,'tcx>(
     let tcx = selcx.tcx();
 
     debug!("confirm_callable_candidate({},{})",
-           obligation.repr(tcx),
-           fn_sig.repr(tcx));
+           obligation.repr(),
+           fn_sig.repr());
 
     // the `Output` associated type is declared on `FnOnce`
     let fn_once_def_id = tcx.lang_items.fn_once_trait().unwrap();
@@ -866,8 +866,8 @@ fn confirm_param_env_candidate<'cx,'tcx>(
             selcx.tcx().sess.span_bug(
                 obligation.cause.span,
                 &format!("Failed to unify `{}` and `{}` in projection: {}",
-                         obligation.repr(selcx.tcx()),
-                         projection.repr(selcx.tcx()),
+                         obligation.repr(),
+                         projection.repr(),
                          ty::type_err_to_str(selcx.tcx(), &e)));
         }
     }
@@ -916,31 +916,31 @@ fn confirm_impl_candidate<'cx,'tcx>(
 
     selcx.tcx().sess.span_bug(obligation.cause.span,
                               &format!("No associated type for {}",
-                                       trait_ref.repr(selcx.tcx())));
+                                       trait_ref.repr()));
 }
 
-impl<'tcx> Repr<'tcx> for ProjectionTyError<'tcx> {
-    fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
+impl<'tcx> Repr for ProjectionTyError<'tcx> {
+    fn repr(&self) -> String {
         match *self {
             ProjectionTyError::TooManyCandidates =>
                 format!("NoCandidate"),
             ProjectionTyError::TraitSelectionError(ref e) =>
-                format!("TraitSelectionError({})", e.repr(tcx)),
+                format!("TraitSelectionError({})", e.repr()),
         }
     }
 }
 
-impl<'tcx> Repr<'tcx> for ProjectionTyCandidate<'tcx> {
-    fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
+impl<'tcx> Repr for ProjectionTyCandidate<'tcx> {
+    fn repr(&self) -> String {
         match *self {
             ProjectionTyCandidate::ParamEnv(ref data) =>
-                format!("ParamEnv({})", data.repr(tcx)),
+                format!("ParamEnv({})", data.repr()),
             ProjectionTyCandidate::Impl(ref data) =>
-                format!("Impl({})", data.repr(tcx)),
+                format!("Impl({})", data.repr()),
             ProjectionTyCandidate::Closure(ref data) =>
-                format!("Closure({})", data.repr(tcx)),
+                format!("Closure({})", data.repr()),
             ProjectionTyCandidate::FnPointer(a) =>
-                format!("FnPointer(({}))", a.repr(tcx)),
+                format!("FnPointer(({}))", a.repr()),
         }
     }
 }
@@ -954,10 +954,10 @@ impl<'tcx, T: TypeFoldable<'tcx>> TypeFoldable<'tcx> for Normalized<'tcx, T> {
     }
 }
 
-impl<'tcx, T:Repr<'tcx>> Repr<'tcx> for Normalized<'tcx, T> {
-    fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
+impl<'tcx, T:Repr> Repr for Normalized<'tcx, T> {
+    fn repr(&self) -> String {
         format!("Normalized({},{})",
-                self.value.repr(tcx),
-                self.obligations.repr(tcx))
+                self.value.repr(),
+                self.obligations.repr())
     }
 }

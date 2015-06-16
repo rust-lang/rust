@@ -324,7 +324,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
             self.undo_log.borrow_mut().push(AddVar(vid));
         }
         debug!("created new region variable {:?} with origin {}",
-               vid, origin.repr(self.tcx));
+               vid, origin.repr());
         return vid;
     }
 
@@ -392,7 +392,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         assert!(self.values_are_none());
 
         debug!("RegionVarBindings: add_constraint({})",
-               constraint.repr(self.tcx));
+               constraint.repr());
 
         if self.constraints.borrow_mut().insert(constraint, origin).is_none() {
             if self.in_snapshot() {
@@ -407,7 +407,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         assert!(self.values_are_none());
 
         debug!("RegionVarBindings: add_verify({})",
-               verify.repr(self.tcx));
+               verify.repr());
 
         let mut verifys = self.verifys.borrow_mut();
         let index = verifys.len();
@@ -426,7 +426,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         let mut givens = self.givens.borrow_mut();
         if givens.insert((sub, sup)) {
             debug!("add_given({} <= {:?})",
-                   sub.repr(self.tcx),
+                   sub.repr(),
                    sup);
 
             self.undo_log.borrow_mut().push(AddGiven(sub, sup));
@@ -453,9 +453,9 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         assert!(self.values_are_none());
 
         debug!("RegionVarBindings: make_subregion({}, {}) due to {}",
-               sub.repr(self.tcx),
-               sup.repr(self.tcx),
-               origin.repr(self.tcx));
+               sub.repr(),
+               sup.repr(),
+               origin.repr());
 
         match (sub, sup) {
           (ReEarlyBound(..), ReEarlyBound(..)) => {
@@ -472,8 +472,8 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
             self.tcx.sess.span_bug(
                 origin.span(),
                 &format!("cannot relate bound region: {} <= {}",
-                        sub.repr(self.tcx),
-                        sup.repr(self.tcx)));
+                        sub.repr(),
+                        sup.repr()));
           }
           (_, ReStatic) => {
             // all regions are subregions of static, so we can ignore this
@@ -511,8 +511,8 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         assert!(self.values_are_none());
 
         debug!("RegionVarBindings: lub_regions({}, {})",
-               a.repr(self.tcx),
-               b.repr(self.tcx));
+               a.repr(),
+               b.repr());
         match (a, b) {
             (ReStatic, _) | (_, ReStatic) => {
                 ReStatic // nothing lives longer than static
@@ -536,8 +536,8 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         assert!(self.values_are_none());
 
         debug!("RegionVarBindings: glb_regions({}, {})",
-               a.repr(self.tcx),
-               b.repr(self.tcx));
+               a.repr(),
+               b.repr());
         match (a, b) {
             (ReStatic, r) | (r, ReStatic) => {
                 // static lives longer than everything else
@@ -563,7 +563,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
             }
             Some(ref values) => {
                 let r = lookup(values, rid);
-                debug!("resolve_var({:?}) = {}", rid, r.repr(self.tcx));
+                debug!("resolve_var({:?}) = {}", rid, r.repr());
                 r
             }
         }
@@ -620,7 +620,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
     /// made---`r0` itself will be the first entry. This is used when checking whether skolemized
     /// regions are being improperly related to other regions.
     pub fn tainted(&self, mark: &RegionSnapshot, r0: Region) -> Vec<Region> {
-        debug!("tainted(mark={:?}, r0={})", mark, r0.repr(self.tcx));
+        debug!("tainted(mark={:?}, r0={})", mark, r0.repr());
         let _indenter = indenter();
 
         // `result_set` acts as a worklist: we explore all outgoing
@@ -732,8 +732,8 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
           (_, ReEarlyBound(..)) => {
             self.tcx.sess.bug(
                 &format!("cannot relate bound region: LUB({}, {})",
-                        a.repr(self.tcx),
-                        b.repr(self.tcx)));
+                        a.repr(),
+                        b.repr()));
           }
 
           (ReStatic, _) | (_, ReStatic) => {
@@ -837,8 +837,8 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
             (_, ReEarlyBound(..)) => {
               self.tcx.sess.bug(
                   &format!("cannot relate bound region: GLB({}, {})",
-                          a.repr(self.tcx),
-                          b.repr(self.tcx)));
+                          a.repr(),
+                          b.repr()));
             }
 
             (ReStatic, r) | (r, ReStatic) => {
@@ -1013,18 +1013,18 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
     fn dump_constraints(&self) {
         debug!("----() Start constraint listing ()----");
         for (idx, (constraint, _)) in self.constraints.borrow().iter().enumerate() {
-            debug!("Constraint {} => {}", idx, constraint.repr(self.tcx));
+            debug!("Constraint {} => {}", idx, constraint.repr());
         }
     }
 
     fn expansion(&self, free_regions: &FreeRegionMap, var_data: &mut [VarData]) {
         self.iterate_until_fixed_point("Expansion", |constraint| {
             debug!("expansion: constraint={} origin={}",
-                   constraint.repr(self.tcx),
+                   constraint.repr(),
                    self.constraints.borrow()
                                    .get(constraint)
                                    .unwrap()
-                                   .repr(self.tcx));
+                                   .repr());
             match *constraint {
               ConstrainRegSubVar(a_region, b_vid) => {
                 let b_data = &mut var_data[b_vid.index as usize];
@@ -1055,9 +1055,9 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                    -> bool
     {
         debug!("expand_node({}, {:?} == {})",
-               a_region.repr(self.tcx),
+               a_region.repr(),
                b_vid,
-               b_data.value.repr(self.tcx));
+               b_data.value.repr());
 
         // Check if this relationship is implied by a given.
         match a_region {
@@ -1074,7 +1074,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         match b_data.value {
           NoValue => {
             debug!("Setting initial value of {:?} to {}",
-                   b_vid, a_region.repr(self.tcx));
+                   b_vid, a_region.repr());
 
             b_data.value = Value(a_region);
             return true;
@@ -1088,8 +1088,8 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
 
             debug!("Expanding value of {:?} from {} to {}",
                    b_vid,
-                   cur_region.repr(self.tcx),
-                   lub.repr(self.tcx));
+                   cur_region.repr(),
+                   lub.repr());
 
             b_data.value = Value(lub);
             return true;
@@ -1106,11 +1106,11 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                    var_data: &mut [VarData]) {
         self.iterate_until_fixed_point("Contraction", |constraint| {
             debug!("contraction: constraint={} origin={}",
-                   constraint.repr(self.tcx),
+                   constraint.repr(),
                    self.constraints.borrow()
                                    .get(constraint)
                                    .unwrap()
-                                   .repr(self.tcx));
+                                   .repr());
             match *constraint {
               ConstrainRegSubVar(..) => {
                 // This is an expansion constraint.  Ignore.
@@ -1140,8 +1140,8 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                      b_region: Region)
                      -> bool {
         debug!("contract_node({:?} == {}/{:?}, {})",
-               a_vid, a_data.value.repr(self.tcx),
-               a_data.classification, b_region.repr(self.tcx));
+               a_vid, a_data.value.repr(),
+               a_data.classification, b_region.repr());
 
         return match a_data.value {
             NoValue => {
@@ -1173,8 +1173,8 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
             if !free_regions.is_subregion_of(this.tcx, a_region, b_region) {
                 debug!("Setting {:?} to ErrorValue: {} not subregion of {}",
                        a_vid,
-                       a_region.repr(this.tcx),
-                       b_region.repr(this.tcx));
+                       a_region.repr(),
+                       b_region.repr());
                 a_data.value = ErrorValue;
             }
             false
@@ -1194,8 +1194,8 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                     } else {
                         debug!("Contracting value of {:?} from {} to {}",
                                a_vid,
-                               a_region.repr(this.tcx),
-                               glb.repr(this.tcx));
+                               a_region.repr(),
+                               glb.repr());
                         a_data.value = Value(glb);
                         true
                     }
@@ -1203,8 +1203,8 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                 Err(_) => {
                     debug!("Setting {:?} to ErrorValue: no glb of {}, {}",
                            a_vid,
-                           a_region.repr(this.tcx),
-                           b_region.repr(this.tcx));
+                           a_region.repr(),
+                           b_region.repr());
                     a_data.value = ErrorValue;
                     false
                 }
@@ -1230,8 +1230,8 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                     }
 
                     debug!("ConcreteFailure: !(sub <= sup): sub={}, sup={}",
-                           sub.repr(self.tcx),
-                           sup.repr(self.tcx));
+                           sub.repr(),
+                           sup.repr());
                     errors.push(ConcreteFailure((*origin).clone(), sub, sup));
                 }
 
@@ -1433,8 +1433,8 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
             &format!("collect_error_for_expanding_node() could not find error \
                     for var {:?}, lower_bounds={}, upper_bounds={}",
                     node_idx,
-                    lower_bounds.repr(self.tcx),
-                    upper_bounds.repr(self.tcx)));
+                    lower_bounds.repr(),
+                    upper_bounds.repr()));
     }
 
     fn collect_error_for_contracting_node(
@@ -1480,7 +1480,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
             &format!("collect_error_for_contracting_node() could not find error \
                      for var {:?}, upper_bounds={}",
                     node_idx,
-                    upper_bounds.repr(self.tcx)));
+                    upper_bounds.repr()));
     }
 
     fn collect_concrete_regions(&self,
@@ -1579,7 +1579,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                 let edge_changed = body(constraint);
                 if edge_changed {
                     debug!("Updated due to constraint {}",
-                           constraint.repr(self.tcx));
+                           constraint.repr());
                     changed = true;
                 }
             }
@@ -1589,31 +1589,31 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
 
 }
 
-impl<'tcx> Repr<'tcx> for Constraint {
-    fn repr(&self, tcx: &ty::ctxt) -> String {
+impl Repr for Constraint {
+    fn repr(&self) -> String {
         match *self {
             ConstrainVarSubVar(a, b) => {
-                format!("ConstrainVarSubVar({}, {})", a.repr(tcx), b.repr(tcx))
+                format!("ConstrainVarSubVar({}, {})", a.repr(), b.repr())
             }
             ConstrainRegSubVar(a, b) => {
-                format!("ConstrainRegSubVar({}, {})", a.repr(tcx), b.repr(tcx))
+                format!("ConstrainRegSubVar({}, {})", a.repr(), b.repr())
             }
             ConstrainVarSubReg(a, b) => {
-                format!("ConstrainVarSubReg({}, {})", a.repr(tcx), b.repr(tcx))
+                format!("ConstrainVarSubReg({}, {})", a.repr(), b.repr())
             }
         }
     }
 }
 
-impl<'tcx> Repr<'tcx> for Verify<'tcx> {
-    fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
+impl<'tcx> Repr for Verify<'tcx> {
+    fn repr(&self) -> String {
         match *self {
             VerifyRegSubReg(_, ref a, ref b) => {
-                format!("VerifyRegSubReg({}, {})", a.repr(tcx), b.repr(tcx))
+                format!("VerifyRegSubReg({}, {})", a.repr(), b.repr())
             }
             VerifyGenericBound(_, ref p, ref a, ref bs) => {
                 format!("VerifyGenericBound({}, {}, {})",
-                        p.repr(tcx), a.repr(tcx), bs.repr(tcx))
+                        p.repr(), a.repr(), bs.repr())
             }
         }
     }
@@ -1634,38 +1634,38 @@ fn lookup(values: &Vec<VarValue>, rid: ty::RegionVid) -> ty::Region {
     }
 }
 
-impl<'tcx> Repr<'tcx> for VarValue {
-    fn repr(&self, tcx: &ty::ctxt) -> String {
+impl Repr for VarValue {
+    fn repr(&self) -> String {
         match *self {
             NoValue => format!("NoValue"),
-            Value(r) => format!("Value({})", r.repr(tcx)),
+            Value(r) => format!("Value({})", r.repr()),
             ErrorValue => format!("ErrorValue"),
         }
     }
 }
 
-impl<'tcx> Repr<'tcx> for RegionAndOrigin<'tcx> {
-    fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
+impl<'tcx> Repr for RegionAndOrigin<'tcx> {
+    fn repr(&self) -> String {
         format!("RegionAndOrigin({},{})",
-                self.region.repr(tcx),
-                self.origin.repr(tcx))
+                self.region.repr(),
+                self.origin.repr())
     }
 }
 
-impl<'tcx> Repr<'tcx> for GenericKind<'tcx> {
-    fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
+impl<'tcx> Repr for GenericKind<'tcx> {
+    fn repr(&self) -> String {
         match *self {
-            GenericKind::Param(ref p) => p.repr(tcx),
-            GenericKind::Projection(ref p) => p.repr(tcx),
+            GenericKind::Param(ref p) => p.repr(),
+            GenericKind::Projection(ref p) => p.repr(),
         }
     }
 }
 
-impl<'tcx> UserString<'tcx> for GenericKind<'tcx> {
-    fn user_string(&self, tcx: &ty::ctxt<'tcx>) -> String {
+impl<'tcx> UserString for GenericKind<'tcx> {
+    fn user_string(&self) -> String {
         match *self {
-            GenericKind::Param(ref p) => p.user_string(tcx),
-            GenericKind::Projection(ref p) => p.user_string(tcx),
+            GenericKind::Param(ref p) => p.user_string(),
+            GenericKind::Projection(ref p) => p.user_string(),
         }
     }
 }

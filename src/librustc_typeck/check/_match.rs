@@ -41,8 +41,8 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
     let tcx = pcx.fcx.ccx.tcx;
 
     debug!("check_pat(pat={},expected={})",
-           pat.repr(tcx),
-           expected.repr(tcx));
+           pat.repr(),
+           expected.repr());
 
     match pat.node {
         ast::PatWild(_) => {
@@ -222,7 +222,7 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                 }
             } else {
                 tcx.sess.span_bug(pat.span,
-                                  &format!("unbound path {}", pat.repr(tcx)))
+                                  &format!("unbound path {}", pat.repr()))
             };
             if let Some((opt_ty, segments, def)) =
                     resolve_ty_and_def_ufcs(fcx, path_res, Some(self_ty),

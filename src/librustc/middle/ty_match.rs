@@ -55,14 +55,14 @@ impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Match<'a, 'tcx> {
     fn regions(&mut self, a: ty::Region, b: ty::Region) -> RelateResult<'tcx, ty::Region> {
         debug!("{}.regions({}, {})",
                self.tag(),
-               a.repr(self.tcx()),
-               b.repr(self.tcx()));
+               a.repr(),
+               b.repr());
         Ok(a)
     }
 
     fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
         debug!("{}.tys({}, {})", self.tag(),
-               a.repr(self.tcx()), b.repr(self.tcx()));
+               a.repr(), b.repr());
         if a == b { return Ok(a); }
 
         match (&a.sty, &b.sty) {

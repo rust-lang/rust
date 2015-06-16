@@ -314,7 +314,7 @@ impl<'tcx> MoveData<'tcx> {
         };
 
         debug!("move_path(lp={}, index={:?})",
-               lp.repr(tcx),
+               lp.repr(),
                index);
 
         assert_eq!(index.get(), self.paths.borrow().len() - 1);
@@ -365,7 +365,7 @@ impl<'tcx> MoveData<'tcx> {
                     id: ast::NodeId,
                     kind: MoveKind) {
         debug!("add_move(lp={}, id={}, kind={:?})",
-               lp.repr(tcx),
+               lp.repr(),
                id,
                kind);
 
@@ -395,7 +395,7 @@ impl<'tcx> MoveData<'tcx> {
                           assignee_id: ast::NodeId,
                           mode: euv::MutateMode) {
         debug!("add_assignment(lp={}, assign_id={}, assignee_id={}",
-               lp.repr(tcx), assign_id, assignee_id);
+               lp.repr(), assign_id, assignee_id);
 
         let path_index = self.move_path(tcx, lp.clone());
 
@@ -416,12 +416,12 @@ impl<'tcx> MoveData<'tcx> {
 
         if self.is_var_path(path_index) {
             debug!("add_assignment[var](lp={}, assignment={}, path_index={:?})",
-                   lp.repr(tcx), self.var_assignments.borrow().len(), path_index);
+                   lp.repr(), self.var_assignments.borrow().len(), path_index);
 
             self.var_assignments.borrow_mut().push(assignment);
         } else {
             debug!("add_assignment[path](lp={}, path_index={:?})",
-                   lp.repr(tcx), path_index);
+                   lp.repr(), path_index);
 
             self.path_assignments.borrow_mut().push(assignment);
         }
@@ -438,7 +438,7 @@ impl<'tcx> MoveData<'tcx> {
                              base_lp: Rc<LoanPath<'tcx>>,
                              mode: euv::MatchMode) {
         debug!("add_variant_match(lp={}, pattern_id={})",
-               lp.repr(tcx), pattern_id);
+               lp.repr(), pattern_id);
 
         let path_index = self.move_path(tcx, lp.clone());
         let base_path_index = self.move_path(tcx, base_lp.clone());

@@ -105,7 +105,7 @@ impl<'tcx> TypeMap<'tcx> {
                                        metadata: DIType) {
         if self.type_to_metadata.insert(type_, metadata).is_some() {
             cx.sess().bug(&format!("Type metadata for Ty '{}' is already in the TypeMap!",
-                                   type_.repr(cx.tcx())));
+                                   type_.repr()));
         }
     }
 
@@ -298,7 +298,7 @@ impl<'tcx> TypeMap<'tcx> {
             },
             _ => {
                 cx.sess().bug(&format!("get_unique_type_id_of_type() - unexpected type: {}, {:?}",
-                                       type_.repr(cx.tcx()), type_.sty))
+                                       type_.repr(), type_.sty))
             }
         };
 
@@ -489,7 +489,7 @@ impl<'tcx> RecursiveTypeDescription<'tcx> {
                        type_map.find_metadata_for_type(unfinished_type).is_none() {
                         cx.sess().bug(&format!("Forward declaration of potentially recursive type \
                                               '{}' was not found in TypeMap!",
-                                              unfinished_type.repr(cx.tcx()))
+                                              unfinished_type.repr())
                                       );
                     }
                 }
@@ -677,7 +677,7 @@ fn trait_pointer_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         _ => {
             cx.sess().bug(&format!("debuginfo: Unexpected trait-object type in \
                                    trait_pointer_metadata(): {}",
-                                   trait_type.repr(cx.tcx())));
+                                   trait_type.repr()));
         }
     };
 
@@ -839,7 +839,7 @@ pub fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                                  the debuginfo::TypeMap but it \
                                                  was not. (Ty = {})",
                                                 &unique_type_id_str[..],
-                                                t.user_string(cx.tcx()));
+                                                t.user_string());
                     cx.sess().span_bug(usage_site_span, &error_message[..]);
                 }
             };
@@ -854,7 +854,7 @@ pub fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                                      debuginfo::TypeMap. \
                                                      UniqueTypeId={}, Ty={}",
                             &unique_type_id_str[..],
-                            t.user_string(cx.tcx()));
+                            t.user_string());
                         cx.sess().span_bug(usage_site_span, &error_message[..]);
                     }
                 }

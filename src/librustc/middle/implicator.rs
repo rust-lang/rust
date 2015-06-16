@@ -55,8 +55,8 @@ pub fn implications<'a,'tcx>(
 {
     debug!("implications(body_id={}, ty={}, outer_region={})",
            body_id,
-           ty.repr(closure_typer.tcx()),
-           outer_region.repr(closure_typer.tcx()));
+           ty.repr(),
+           outer_region.repr());
 
     let mut stack = Vec::new();
     stack.push((outer_region, None));
@@ -68,7 +68,7 @@ pub fn implications<'a,'tcx>(
                               out: Vec::new(),
                               visited: FnvHashSet() };
     wf.accumulate_from_ty(ty);
-    debug!("implications: out={}", wf.out.repr(closure_typer.tcx()));
+    debug!("implications: out={}", wf.out.repr());
     wf.out
 }
 
@@ -79,7 +79,7 @@ impl<'a, 'tcx> Implicator<'a, 'tcx> {
 
     fn accumulate_from_ty(&mut self, ty: Ty<'tcx>) {
         debug!("accumulate_from_ty(ty={})",
-               ty.repr(self.tcx()));
+               ty.repr());
 
         // When expanding out associated types, we can visit a cyclic
         // set of types. Issue #23003.
@@ -313,7 +313,7 @@ impl<'a, 'tcx> Implicator<'a, 'tcx> {
                                               data: &ty::PolyTraitPredicate<'tcx>)
     {
         debug!("accumulate_from_assoc_types_transitive({})",
-               data.repr(self.tcx()));
+               data.repr());
 
         for poly_trait_ref in traits::supertraits(self.tcx(), data.to_poly_trait_ref()) {
             match ty::no_late_bound_regions(self.tcx(), &poly_trait_ref) {
@@ -327,7 +327,7 @@ impl<'a, 'tcx> Implicator<'a, 'tcx> {
                                    trait_ref: ty::TraitRef<'tcx>)
     {
         debug!("accumulate_from_assoc_types({})",
-               trait_ref.repr(self.tcx()));
+               trait_ref.repr());
 
         let trait_def_id = trait_ref.def_id;
         let trait_def = ty::lookup_trait_def(self.tcx(), trait_def_id);
@@ -337,7 +337,7 @@ impl<'a, 'tcx> Implicator<'a, 'tcx> {
                      .map(|&name| ty::mk_projection(self.tcx(), trait_ref.clone(), name))
                      .collect();
         debug!("accumulate_from_assoc_types: assoc_type_projections={}",
-               assoc_type_projections.repr(self.tcx()));
+               assoc_type_projections.repr());
         let tys = match self.fully_normalize(&assoc_type_projections) {
             Ok(tys) => { tys }
             Err(ErrorReported) => { return; }
@@ -400,7 +400,7 @@ impl<'a, 'tcx> Implicator<'a, 'tcx> {
     }
 
     fn fully_normalize<T>(&self, value: &T) -> Result<T,ErrorReported>
-        where T : TypeFoldable<'tcx> + ty::HasProjectionTypes + Clone + Repr<'tcx>
+        where T : TypeFoldable<'tcx> + ty::HasProjectionTypes + Clone + Repr
     {
         let value =
             traits::fully_normalize(self.infcx,
@@ -455,32 +455,32 @@ pub fn object_region_bounds<'tcx>(
     ty::required_region_bounds(tcx, open_ty, predicates)
 }
 
-impl<'tcx> Repr<'tcx> for Implication<'tcx> {
-    fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
+impl<'tcx> Repr for Implication<'tcx> {
+    fn repr(&self) -> String {
         match *self {
             Implication::RegionSubRegion(_, ref r_a, ref r_b) => {
                 format!("RegionSubRegion({}, {})",
-                        r_a.repr(tcx),
-                        r_b.repr(tcx))
+                        r_a.repr(),
+                        r_b.repr())
             }
 
             Implication::RegionSubGeneric(_, ref r, ref p) => {
                 format!("RegionSubGeneric({}, {})",
-                        r.repr(tcx),
-                        p.repr(tcx))
+                        r.repr(),
+                        p.repr())
             }
 
             Implication::RegionSubClosure(_, ref a, ref b, ref c) => {
                 format!("RegionSubClosure({}, {}, {})",
-                        a.repr(tcx),
-                        b.repr(tcx),
-                        c.repr(tcx))
+                        a.repr(),
+                        b.repr(),
+                        c.repr())
             }
 
             Implication::Predicate(ref def_id, ref p) => {
                 format!("Predicate({}, {})",
-                        def_id.repr(tcx),
-                        p.repr(tcx))
+                        def_id.repr(),
+                        p.repr())
             }
         }
     }

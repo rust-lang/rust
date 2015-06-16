@@ -98,7 +98,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for CheckLoanCtxt<'a, 'tcx> {
                cmt: mc::cmt<'tcx>,
                mode: euv::ConsumeMode) {
         debug!("consume(consume_id={}, cmt={}, mode={:?})",
-               consume_id, cmt.repr(self.tcx()), mode);
+               consume_id, cmt.repr(), mode);
 
         self.consume_common(consume_id, consume_span, cmt, mode);
     }
@@ -113,8 +113,8 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for CheckLoanCtxt<'a, 'tcx> {
                    cmt: mc::cmt<'tcx>,
                    mode: euv::ConsumeMode) {
         debug!("consume_pat(consume_pat={}, cmt={}, mode={:?})",
-               consume_pat.repr(self.tcx()),
-               cmt.repr(self.tcx()),
+               consume_pat.repr(),
+               cmt.repr(),
                mode);
 
         self.consume_common(consume_pat.id, consume_pat.span, cmt, mode);
@@ -130,7 +130,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for CheckLoanCtxt<'a, 'tcx> {
     {
         debug!("borrow(borrow_id={}, cmt={}, loan_region={:?}, \
                bk={:?}, loan_cause={:?})",
-               borrow_id, cmt.repr(self.tcx()), loan_region,
+               borrow_id, cmt.repr(), loan_region,
                bk, loan_cause);
 
         match opt_loan_path(&cmt) {
@@ -154,7 +154,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for CheckLoanCtxt<'a, 'tcx> {
               mode: euv::MutateMode)
     {
         debug!("mutate(assignment_id={}, assignee_cmt={})",
-               assignment_id, assignee_cmt.repr(self.tcx()));
+               assignment_id, assignee_cmt.repr());
 
         match opt_loan_path(&assignee_cmt) {
             Some(lp) => {
@@ -385,8 +385,8 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
         //! simultaneously.
 
         debug!("report_error_if_loans_conflict(old_loan={}, new_loan={})",
-               old_loan.repr(self.tcx()),
-               new_loan.repr(self.tcx()));
+               old_loan.repr(),
+               new_loan.repr());
 
         // Should only be called for loans that are in scope at the same time.
         assert!(self.tcx().region_maps.scopes_intersect(old_loan.kill_scope,
@@ -409,8 +409,8 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
 
         debug!("report_error_if_loan_conflicts_with_restriction(\
                 loan1={}, loan2={})",
-               loan1.repr(self.tcx()),
-               loan2.repr(self.tcx()));
+               loan1.repr(),
+               loan2.repr());
 
         if compatible_borrow_kinds(loan1.kind, loan2.kind) {
             return true;
@@ -674,7 +674,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                                        -> UseError<'tcx> {
         debug!("analyze_restrictions_on_use(expr_id={}, use_path={})",
                self.tcx().map.node_to_string(expr_id),
-               use_path.repr(self.tcx()));
+               use_path.repr());
 
         let mut ret = UseOk;
 
@@ -699,7 +699,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                               use_kind: MovedValueUseKind,
                               lp: &Rc<LoanPath<'tcx>>) {
         debug!("check_if_path_is_moved(id={}, use_kind={:?}, lp={})",
-               id, use_kind, lp.repr(self.bccx.tcx));
+               id, use_kind, lp.repr());
 
         // FIXME (22079): if you find yourself tempted to cut and paste
         // the body below and then specializing the error reporting,
@@ -792,7 +792,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                         assignment_span: Span,
                         assignee_cmt: mc::cmt<'tcx>,
                         mode: euv::MutateMode) {
-        debug!("check_assignment(assignee_cmt={})", assignee_cmt.repr(self.tcx()));
+        debug!("check_assignment(assignee_cmt={})", assignee_cmt.repr());
 
         // Mutable values can be assigned, as long as they obey loans
         // and aliasing restrictions:
@@ -884,7 +884,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
             //! `used_mut_nodes` table here.
 
             loop {
-                debug!("mark_variable_as_used_mut(cmt={})", cmt.repr(this.tcx()));
+                debug!("mark_variable_as_used_mut(cmt={})", cmt.repr());
                 match cmt.cat.clone() {
                     mc::cat_upvar(mc::Upvar { id: ty::UpvarId { var_id: id, .. }, .. }) |
                     mc::cat_local(id) => {
@@ -930,7 +930,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
 
             let guarantor = cmt.guarantor();
             debug!("check_for_aliasable_mutable_writes(cmt={}, guarantor={})",
-                   cmt.repr(this.tcx()), guarantor.repr(this.tcx()));
+                   cmt.repr(), guarantor.repr());
             if let mc::cat_deref(ref b, _, mc::BorrowedPtr(ty::MutBorrow, _)) = guarantor.cat {
                 // Statically prohibit writes to `&mut` when aliasable
                 check_for_aliasability_violation(this, span, b.clone());

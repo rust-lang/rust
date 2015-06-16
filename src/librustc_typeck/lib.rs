@@ -148,7 +148,7 @@ pub struct CrateCtxt<'a, 'tcx: 'a> {
 
 // Functions that write types into the node type table
 fn write_ty_to_tcx<'tcx>(tcx: &ty::ctxt<'tcx>, node_id: ast::NodeId, ty: Ty<'tcx>) {
-    debug!("write_ty_to_tcx({}, {})", node_id,  ty.repr(tcx));
+    debug!("write_ty_to_tcx({}, {})", node_id,  ty.repr());
     assert!(!ty::type_needs_infer(ty));
     tcx.node_type_insert(node_id, ty);
 }
@@ -159,7 +159,7 @@ fn write_substs_to_tcx<'tcx>(tcx: &ty::ctxt<'tcx>,
     if !item_substs.is_noop() {
         debug!("write_substs_to_tcx({}, {})",
                node_id,
-               item_substs.repr(tcx));
+               item_substs.repr());
 
         assert!(item_substs.substs.types.all(|t| !ty::type_needs_infer(*t)));
 
@@ -244,14 +244,14 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
             require_same_types(tcx, None, false, main_span, main_t, se_ty,
                 || {
                     format!("main function expects type: `{}`",
-                             se_ty.user_string(ccx.tcx))
+                             se_ty.user_string())
                 });
         }
         _ => {
             tcx.sess.span_bug(main_span,
                               &format!("main has a non-function type: found \
                                        `{}`",
-                                      main_t.repr(tcx)));
+                                      main_t.repr()));
         }
     }
 }
@@ -294,7 +294,7 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
             require_same_types(tcx, None, false, start_span, start_t, se_ty,
                 || {
                     format!("start function expects type: `{}`",
-                             se_ty.user_string(ccx.tcx))
+                             se_ty.user_string())
                 });
 
         }
@@ -302,7 +302,7 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
             tcx.sess.span_bug(start_span,
                               &format!("start has a non-function type: found \
                                        `{}`",
-                                       start_t.repr(tcx)));
+                                       start_t.repr()));
         }
     }
 }

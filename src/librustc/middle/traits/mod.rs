@@ -321,7 +321,7 @@ pub fn type_known_to_meet_builtin_bound<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
                                                  -> bool
 {
     debug!("type_known_to_meet_builtin_bound(ty={}, bound={:?})",
-           ty.repr(infcx.tcx),
+           ty.repr(),
            bound);
 
     let mut fulfill_cx = FulfillmentContext::new(false);
@@ -339,15 +339,15 @@ pub fn type_known_to_meet_builtin_bound<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
     match fulfill_cx.select_all_or_error(infcx, typer) {
         Ok(()) => {
             debug!("type_known_to_meet_builtin_bound: ty={} bound={:?} success",
-                   ty.repr(infcx.tcx),
+                   ty.repr(),
                    bound);
             true
         }
         Err(e) => {
             debug!("type_known_to_meet_builtin_bound: ty={} bound={:?} errors={}",
-                   ty.repr(infcx.tcx),
+                   ty.repr(),
                    bound,
-                   e.repr(infcx.tcx));
+                   e.repr());
             false
         }
     }
@@ -378,7 +378,7 @@ pub fn normalize_param_env_or_error<'a,'tcx>(unnormalized_env: ty::ParameterEnvi
     let body_id = cause.body_id;
 
     debug!("normalize_param_env_or_error(unnormalized_env={})",
-           unnormalized_env.repr(tcx));
+           unnormalized_env.repr());
 
     let predicates: Vec<_> =
         util::elaborate_predicates(tcx, unnormalized_env.caller_bounds.clone())
@@ -394,7 +394,7 @@ pub fn normalize_param_env_or_error<'a,'tcx>(unnormalized_env: ty::ParameterEnvi
     // -nmatsakis
 
     debug!("normalize_param_env_or_error: elaborated-predicates={}",
-           predicates.repr(tcx));
+           predicates.repr());
 
     let elaborated_env = unnormalized_env.with_caller_bounds(predicates);
 
@@ -434,25 +434,25 @@ pub fn fully_normalize<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx>,
                                   cause: ObligationCause<'tcx>,
                                   value: &T)
                                   -> Result<T, Vec<FulfillmentError<'tcx>>>
-    where T : TypeFoldable<'tcx> + HasProjectionTypes + Clone + Repr<'tcx>
+    where T : TypeFoldable<'tcx> + HasProjectionTypes + Clone + Repr
 {
     let tcx = closure_typer.tcx();
 
-    debug!("normalize_param_env(value={})", value.repr(tcx));
+    debug!("normalize_param_env(value={})", value.repr());
 
     let mut selcx = &mut SelectionContext::new(infcx, closure_typer);
     let mut fulfill_cx = FulfillmentContext::new(false);
     let Normalized { value: normalized_value, obligations } =
         project::normalize(selcx, cause, value);
     debug!("normalize_param_env: normalized_value={} obligations={}",
-           normalized_value.repr(tcx),
-           obligations.repr(tcx));
+           normalized_value.repr(),
+           obligations.repr());
     for obligation in obligations {
         fulfill_cx.register_predicate_obligation(selcx.infcx(), obligation);
     }
     try!(fulfill_cx.select_all_or_error(infcx, closure_typer));
     let resolved_value = infcx.resolve_type_vars_if_possible(&normalized_value);
-    debug!("normalize_param_env: resolved_value={}", resolved_value.repr(tcx));
+    debug!("normalize_param_env: resolved_value={}", resolved_value.repr());
     Ok(resolved_value)
 }
 

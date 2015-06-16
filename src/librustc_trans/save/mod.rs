@@ -293,7 +293,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                                        self.tcx.map.path_to_string(parent),
                                        name);
                 let typ = self.tcx.node_types().get(&field.node.id).unwrap()
-                                               .user_string(self.tcx);
+                                               .user_string();
                 let sub_span = self.span_utils.sub_span_before_token(field.span, token::Colon);
                 Some(Data::VariableData(VariableData {
                     id: field.node.id,

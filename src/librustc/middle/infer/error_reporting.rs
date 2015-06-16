@@ -170,7 +170,7 @@ pub fn note_and_explain_region(tcx: &ty::ctxt,
                 ty::BrFresh(_) => "an anonymous lifetime defined on".to_owned(),
                 _ => {
                     format!("the lifetime {} as defined on",
-                            fr.bound_region.user_string(tcx))
+                            fr.bound_region.user_string())
                 }
             };
 
@@ -229,7 +229,7 @@ pub trait ErrorReporting<'tcx> {
 
     fn values_str(&self, values: &ValuePairs<'tcx>) -> Option<String>;
 
-    fn expected_found_str<T: UserString<'tcx> + Resolvable<'tcx>>(
+    fn expected_found_str<T: UserString + Resolvable<'tcx>>(
         &self,
         exp_found: &ty::expected_found<T>)
         -> Option<String>;
@@ -507,7 +507,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
         }
     }
 
-    fn expected_found_str<T: UserString<'tcx> + Resolvable<'tcx>>(
+    fn expected_found_str<T: UserString + Resolvable<'tcx>>(
         &self,
         exp_found: &ty::expected_found<T>)
         -> Option<String>
@@ -523,8 +523,8 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
         }
 
         Some(format!("expected `{}`, found `{}`",
-                     expected.user_string(self.tcx),
-                     found.user_string(self.tcx)))
+                     expected.user_string(),
+                     found.user_string()))
     }
 
     fn report_generic_bound_failure(&self,
@@ -540,9 +540,9 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
 
         let labeled_user_string = match bound_kind {
             GenericKind::Param(ref p) =>
-                format!("the parameter type `{}`", p.user_string(self.tcx)),
+                format!("the parameter type `{}`", p.user_string()),
             GenericKind::Projection(ref p) =>
-                format!("the associated type `{}`", p.user_string(self.tcx)),
+                format!("the associated type `{}`", p.user_string()),
         };
 
         match sub {
@@ -554,8 +554,8 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                     origin.span(),
                     &format!(
                         "consider adding an explicit lifetime bound `{}: {}`...",
-                        bound_kind.user_string(self.tcx),
-                        sub.user_string(self.tcx)));
+                        bound_kind.user_string(),
+                        sub.user_string()));
             }
 
             ty::ReStatic => {
@@ -566,7 +566,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                     origin.span(),
                     &format!(
                         "consider adding an explicit lifetime bound `{}: 'static`...",
-                        bound_kind.user_string(self.tcx)));
+                        bound_kind.user_string()));
             }
 
             _ => {
@@ -578,7 +578,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                     origin.span(),
                     &format!(
                         "consider adding an explicit lifetime bound for `{}`",
-                        bound_kind.user_string(self.tcx)));
+                        bound_kind.user_string()));
                 note_and_explain_region(
                     self.tcx,
                     &format!("{} must be valid for ", labeled_user_string),
@@ -1561,7 +1561,7 @@ impl<'a, 'tcx> ErrorReportingHelpers<'tcx> for InferCtxt<'a, 'tcx> {
     fn report_inference_failure(&self,
                                 var_origin: RegionVariableOrigin) {
         let br_string = |br: ty::BoundRegion| {
-            let mut s = br.user_string(self.tcx);
+            let mut s = br.user_string();
             if !s.is_empty() {
                 s.push_str(" ");
             }

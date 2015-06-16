@@ -134,7 +134,7 @@ impl<'a,'tcx> SeedBorrowKind<'a,'tcx> {
             self.closures_with_inferred_kinds.insert(expr.id);
             self.fcx.inh.closure_kinds.borrow_mut().insert(closure_def_id, ty::FnClosureKind);
             debug!("check_closure: adding closure_id={} to closures_with_inferred_kinds",
-                   closure_def_id.repr(self.tcx()));
+                   closure_def_id.repr());
         }
 
         ty::with_freevars(self.tcx(), expr.id, |freevars| {
@@ -246,7 +246,7 @@ impl<'a,'tcx> AdjustBorrowKind<'a,'tcx> {
                                             mode: euv::ConsumeMode)
     {
         debug!("adjust_upvar_borrow_kind_for_consume(cmt={}, mode={:?})",
-               cmt.repr(self.tcx()), mode);
+               cmt.repr(), mode);
 
         // we only care about moves
         match mode {
@@ -259,7 +259,7 @@ impl<'a,'tcx> AdjustBorrowKind<'a,'tcx> {
         // by value instead
         let guarantor = cmt.guarantor();
         debug!("adjust_upvar_borrow_kind_for_consume: guarantor={}",
-               guarantor.repr(self.tcx()));
+               guarantor.repr());
         match guarantor.cat {
             mc::cat_deref(_, _, mc::BorrowedPtr(..)) |
             mc::cat_deref(_, _, mc::Implicit(..)) => {
@@ -297,7 +297,7 @@ impl<'a,'tcx> AdjustBorrowKind<'a,'tcx> {
     /// those upvars must be borrowed using an `&mut` borrow.
     fn adjust_upvar_borrow_kind_for_mut(&mut self, cmt: mc::cmt<'tcx>) {
         debug!("adjust_upvar_borrow_kind_for_mut(cmt={})",
-               cmt.repr(self.tcx()));
+               cmt.repr());
 
         match cmt.cat.clone() {
             mc::cat_deref(base, _, mc::Unique) |
@@ -331,7 +331,7 @@ impl<'a,'tcx> AdjustBorrowKind<'a,'tcx> {
 
     fn adjust_upvar_borrow_kind_for_unique(&self, cmt: mc::cmt<'tcx>) {
         debug!("adjust_upvar_borrow_kind_for_unique(cmt={})",
-               cmt.repr(self.tcx()));
+               cmt.repr());
 
         match cmt.cat.clone() {
             mc::cat_deref(base, _, mc::Unique) |
@@ -498,7 +498,7 @@ impl<'a,'tcx> euv::Delegate<'tcx> for AdjustBorrowKind<'a,'tcx> {
                cmt: mc::cmt<'tcx>,
                mode: euv::ConsumeMode)
     {
-        debug!("consume(cmt={},mode={:?})", cmt.repr(self.tcx()), mode);
+        debug!("consume(cmt={},mode={:?})", cmt.repr(), mode);
         self.adjust_upvar_borrow_kind_for_consume(cmt, mode);
     }
 
@@ -513,7 +513,7 @@ impl<'a,'tcx> euv::Delegate<'tcx> for AdjustBorrowKind<'a,'tcx> {
                    cmt: mc::cmt<'tcx>,
                    mode: euv::ConsumeMode)
     {
-        debug!("consume_pat(cmt={},mode={:?})", cmt.repr(self.tcx()), mode);
+        debug!("consume_pat(cmt={},mode={:?})", cmt.repr(), mode);
         self.adjust_upvar_borrow_kind_for_consume(cmt, mode);
     }
 
@@ -526,7 +526,7 @@ impl<'a,'tcx> euv::Delegate<'tcx> for AdjustBorrowKind<'a,'tcx> {
               _loan_cause: euv::LoanCause)
     {
         debug!("borrow(borrow_id={}, cmt={}, bk={:?})",
-               borrow_id, cmt.repr(self.tcx()), bk);
+               borrow_id, cmt.repr(), bk);
 
         match bk {
             ty::ImmBorrow => { }
@@ -551,7 +551,7 @@ impl<'a,'tcx> euv::Delegate<'tcx> for AdjustBorrowKind<'a,'tcx> {
               _mode: euv::MutateMode)
     {
         debug!("mutate(assignee_cmt={})",
-               assignee_cmt.repr(self.tcx()));
+               assignee_cmt.repr());
 
         self.adjust_upvar_borrow_kind_for_mut(assignee_cmt);
     }

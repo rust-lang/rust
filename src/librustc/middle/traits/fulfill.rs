@@ -138,7 +138,7 @@ impl<'tcx> FulfillmentContext<'tcx> {
                                          -> Ty<'tcx>
     {
         debug!("normalize_associated_type(projection_ty={})",
-               projection_ty.repr(infcx.tcx));
+               projection_ty.repr());
 
         assert!(!projection_ty.has_escaping_regions());
 
@@ -151,7 +151,7 @@ impl<'tcx> FulfillmentContext<'tcx> {
             self.register_predicate_obligation(infcx, obligation);
         }
 
-        debug!("normalize_associated_type: result={}", normalized.value.repr(infcx.tcx));
+        debug!("normalize_associated_type: result={}", normalized.value.repr());
 
         normalized.value
     }
@@ -190,11 +190,11 @@ impl<'tcx> FulfillmentContext<'tcx> {
         assert!(!obligation.has_escaping_regions());
 
         if self.is_duplicate_or_add(infcx.tcx, &obligation.predicate) {
-            debug!("register_predicate({}) -- already seen, skip", obligation.repr(infcx.tcx));
+            debug!("register_predicate({}) -- already seen, skip", obligation.repr());
             return;
         }
 
-        debug!("register_predicate({})", obligation.repr(infcx.tcx));
+        debug!("register_predicate({})", obligation.repr());
         self.predicates.push(obligation);
     }
 
@@ -380,8 +380,8 @@ fn process_predicate<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
                 }
                 Err(selection_err) => {
                     debug!("predicate: {} error: {}",
-                           obligation.repr(tcx),
-                           selection_err.repr(tcx));
+                           obligation.repr(),
+                           selection_err.repr());
                     errors.push(
                         FulfillmentError::new(
                             obligation.clone(),
@@ -441,8 +441,8 @@ fn process_predicate<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
             let project_obligation = obligation.with(data.clone());
             let result = project::poly_project_and_unify_type(selcx, &project_obligation);
             debug!("process_predicate: poly_project_and_unify_type({}) returned {}",
-                   project_obligation.repr(tcx),
-                   result.repr(tcx));
+                   project_obligation.repr(),
+                   result.repr());
             match result {
                 Ok(Some(obligations)) => {
                     new_obligations.extend(obligations);
@@ -463,11 +463,11 @@ fn process_predicate<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
     }
 }
 
-impl<'tcx> Repr<'tcx> for RegionObligation<'tcx> {
-    fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
+impl<'tcx> Repr for RegionObligation<'tcx> {
+    fn repr(&self) -> String {
         format!("RegionObligation(sub_region={}, sup_type={})",
-                self.sub_region.repr(tcx),
-                self.sup_type.repr(tcx))
+                self.sub_region.repr(),
+                self.sup_type.repr())
     }
 }
 
@@ -482,7 +482,7 @@ fn register_region_obligation<'tcx>(tcx: &ty::ctxt<'tcx>,
                                                cause: cause };
 
     debug!("register_region_obligation({})",
-           region_obligation.repr(tcx));
+           region_obligation.repr());
 
     region_obligations.entry(region_obligation.cause.body_id).or_insert(vec![])
         .push(region_obligation);

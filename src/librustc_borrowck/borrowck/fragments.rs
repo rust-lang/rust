@@ -43,7 +43,7 @@ enum Fragment {
 
 impl Fragment {
     fn loan_path_repr<'tcx>(&self, move_data: &MoveData<'tcx>, tcx: &ty::ctxt<'tcx>) -> String {
-        let repr = |mpi| move_data.path_loan_path(mpi).repr(tcx);
+        let repr = |mpi| move_data.path_loan_path(mpi).repr();
         match *self {
             Just(mpi) => repr(mpi),
             AllButOneFrom(mpi) => format!("$(allbutone {})", repr(mpi)),
@@ -53,7 +53,7 @@ impl Fragment {
     fn loan_path_user_string<'tcx>(&self,
                                    move_data: &MoveData<'tcx>,
                                    tcx: &ty::ctxt<'tcx>) -> String {
-        let user_string = |mpi| move_data.path_loan_path(mpi).user_string(tcx);
+        let user_string = |mpi| move_data.path_loan_path(mpi).user_string();
         match *self {
             Just(mpi) => user_string(mpi),
             AllButOneFrom(mpi) => format!("$(allbutone {})", user_string(mpi)),
@@ -126,7 +126,7 @@ pub fn instrument_move_fragments<'tcx>(this: &MoveData<'tcx>,
 
     let instrument_all_paths = |kind, vec_rc: &Vec<MovePathIndex>| {
         for (i, mpi) in vec_rc.iter().enumerate() {
-            let render = || this.path_loan_path(*mpi).user_string(tcx);
+            let render = || this.path_loan_path(*mpi).user_string();
             if span_err {
                 tcx.sess.span_err(sp, &format!("{}: `{}`", kind, render()));
             }
@@ -172,7 +172,7 @@ pub fn fixup_fragment_sets<'tcx>(this: &MoveData<'tcx>, tcx: &ty::ctxt<'tcx>) {
     let mut assigned = mem::replace(&mut fragments.assigned_leaf_paths, vec![]);
 
     let path_lps = |mpis: &[MovePathIndex]| -> Vec<String> {
-        mpis.iter().map(|mpi| this.path_loan_path(*mpi).repr(tcx)).collect()
+        mpis.iter().map(|mpi| this.path_loan_path(*mpi).repr()).collect()
     };
 
     let frag_lps = |fs: &[Fragment]| -> Vec<String> {
@@ -344,7 +344,7 @@ fn add_fragment_siblings_for_extension<'tcx>(this: &MoveData<'tcx>,
                 mc::PositionalField(tuple_idx) => tuple_idx,
                 mc::NamedField(_) =>
                     panic!("tuple type {} should not have named fields.",
-                           parent_ty.repr(tcx)),
+                           parent_ty.repr()),
             };
             let tuple_len = v.len();
             for i in 0..tuple_len {
@@ -419,7 +419,7 @@ fn add_fragment_siblings_for_extension<'tcx>(this: &MoveData<'tcx>,
 
         ref sty_and_variant_info => {
             let msg = format!("type {} ({:?}) is not fragmentable",
-                              parent_ty.repr(tcx), sty_and_variant_info);
+                              parent_ty.repr(), sty_and_variant_info);
             let opt_span = origin_id.and_then(|id|tcx.map.opt_span(id));
             tcx.sess.opt_span_bug(opt_span, &msg[..])
         }
@@ -451,7 +451,7 @@ fn add_fragment_sibling_core<'tcx>(this: &MoveData<'tcx>,
     let new_lp_variant = LpExtend(parent, mc, loan_path_elem);
     let new_lp = LoanPath::new(new_lp_variant, new_lp_type.unwrap());
     debug!("add_fragment_sibling_core(new_lp={}, origin_lp={})",
-           new_lp.repr(tcx), origin_lp.repr(tcx));
+           new_lp.repr(), origin_lp.repr());
     let mp = this.move_path(tcx, Rc::new(new_lp));
 
     // Do not worry about checking for duplicates here; we will sort

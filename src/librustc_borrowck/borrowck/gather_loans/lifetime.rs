@@ -34,7 +34,7 @@ pub fn guarantee_lifetime<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
     //! where S is `item_scope` if `cmt` is an upvar,
     //! and is scope of `cmt` otherwise.
     debug!("guarantee_lifetime(cmt={}, loan_region={})",
-           cmt.repr(bccx.tcx), loan_region.repr(bccx.tcx));
+           cmt.repr(), loan_region.repr());
     let ctxt = GuaranteeLifetimeContext {bccx: bccx,
                                          item_scope: item_scope,
                                          span: span,
@@ -66,8 +66,8 @@ impl<'a, 'tcx> GuaranteeLifetimeContext<'a, 'tcx> {
         //! "guarantor".  Reports an error if `self.loan_region` is
         //! larger than scope of `cmt`.
         debug!("guarantee_lifetime.check(cmt={}, loan_region={})",
-               cmt.repr(self.bccx.tcx),
-               self.loan_region.repr(self.bccx.tcx));
+               cmt.repr(),
+               self.loan_region.repr());
 
         match cmt.cat {
             mc::cat_rvalue(..) |

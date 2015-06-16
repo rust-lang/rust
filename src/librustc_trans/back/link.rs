@@ -347,7 +347,7 @@ pub fn mangle_exported_name<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, path: PathEl
 pub fn mangle_internal_name_by_type_and_seq<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                                       t: Ty<'tcx>,
                                                       name: &str) -> String {
-    let path = [PathName(token::intern(&t.user_string(ccx.tcx()))),
+    let path = [PathName(token::intern(&t.user_string())),
                 gensym_name(name)];
     let hash = get_symbol_hash(ccx, t);
     mangle(path.iter().cloned(), Some(&hash[..]))

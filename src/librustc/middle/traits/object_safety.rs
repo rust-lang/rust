@@ -70,7 +70,7 @@ pub fn is_object_safe<'tcx>(tcx: &ty::ctxt<'tcx>,
         result
     });
 
-    debug!("is_object_safe({}) = {}", trait_def_id.repr(tcx), result);
+    debug!("is_object_safe({}) = {}", trait_def_id.repr(), result);
 
     result
 }
@@ -112,8 +112,8 @@ fn object_safety_violations_for_trait<'tcx>(tcx: &ty::ctxt<'tcx>,
     }
 
     debug!("object_safety_violations_for_trait(trait_def_id={}) = {}",
-           trait_def_id.repr(tcx),
-           violations.repr(tcx));
+           trait_def_id.repr(),
+           violations.repr());
 
     violations
 }
@@ -352,15 +352,15 @@ fn contains_illegal_self_type_reference<'tcx>(tcx: &ty::ctxt<'tcx>,
     error
 }
 
-impl<'tcx> Repr<'tcx> for ObjectSafetyViolation<'tcx> {
-    fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
+impl<'tcx> Repr for ObjectSafetyViolation<'tcx> {
+    fn repr(&self) -> String {
         match *self {
             ObjectSafetyViolation::SizedSelf =>
                 format!("SizedSelf"),
             ObjectSafetyViolation::SupertraitSelf =>
                 format!("SupertraitSelf"),
             ObjectSafetyViolation::Method(ref m, code) =>
-                format!("Method({},{:?})", m.repr(tcx), code),
+                format!("Method({},{:?})", m.repr(), code),
         }
     }
 }

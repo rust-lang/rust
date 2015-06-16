@@ -331,7 +331,7 @@ pub fn common_supertype<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
                                   -> Ty<'tcx>
 {
     debug!("common_supertype({}, {})",
-           a.repr(cx.tcx), b.repr(cx.tcx));
+           a.repr(), b.repr());
 
     let trace = TypeTrace {
         origin: origin,
@@ -355,7 +355,7 @@ pub fn mk_subty<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
                           b: Ty<'tcx>)
                           -> UnitResult<'tcx>
 {
-    debug!("mk_subty({} <: {})", a.repr(cx.tcx), b.repr(cx.tcx));
+    debug!("mk_subty({} <: {})", a.repr(), b.repr());
     cx.sub_types(a_is_expected, origin, a, b)
 }
 
@@ -363,7 +363,7 @@ pub fn can_mk_subty<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
                               a: Ty<'tcx>,
                               b: Ty<'tcx>)
                               -> UnitResult<'tcx> {
-    debug!("can_mk_subty({} <: {})", a.repr(cx.tcx), b.repr(cx.tcx));
+    debug!("can_mk_subty({} <: {})", a.repr(), b.repr());
     cx.probe(|_| {
         let trace = TypeTrace {
             origin: Misc(codemap::DUMMY_SP),
@@ -383,7 +383,7 @@ pub fn mk_subr<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
                          origin: SubregionOrigin<'tcx>,
                          a: ty::Region,
                          b: ty::Region) {
-    debug!("mk_subr({} <: {})", a.repr(cx.tcx), b.repr(cx.tcx));
+    debug!("mk_subr({} <: {})", a.repr(), b.repr());
     let snapshot = cx.region_vars.start_snapshot();
     cx.region_vars.make_subregion(origin, a, b);
     cx.region_vars.commit(snapshot);
@@ -396,7 +396,7 @@ pub fn mk_eqty<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
                          b: Ty<'tcx>)
                          -> UnitResult<'tcx>
 {
-    debug!("mk_eqty({} <: {})", a.repr(cx.tcx), b.repr(cx.tcx));
+    debug!("mk_eqty({} <: {})", a.repr(), b.repr());
     cx.commit_if_ok(|_| cx.eq_types(a_is_expected, origin, a, b))
 }
 
@@ -408,7 +408,7 @@ pub fn mk_sub_poly_trait_refs<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
                                    -> UnitResult<'tcx>
 {
     debug!("mk_sub_trait_refs({} <: {})",
-           a.repr(cx.tcx), b.repr(cx.tcx));
+           a.repr(), b.repr());
     cx.commit_if_ok(|_| cx.sub_poly_trait_refs(a_is_expected, origin, a.clone(), b.clone()))
 }
 
@@ -637,7 +637,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                      b: Ty<'tcx>)
                      -> UnitResult<'tcx>
     {
-        debug!("sub_types({} <: {})", a.repr(self.tcx), b.repr(self.tcx));
+        debug!("sub_types({} <: {})", a.repr(), b.repr());
         self.commit_if_ok(|_| {
             let trace = TypeTrace::types(origin, a_is_expected, a, b);
             self.sub(a_is_expected, trace).relate(&a, &b).map(|_| ())
@@ -665,8 +665,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                           -> UnitResult<'tcx>
     {
         debug!("sub_trait_refs({} <: {})",
-               a.repr(self.tcx),
-               b.repr(self.tcx));
+               a.repr(),
+               b.repr());
         self.commit_if_ok(|_| {
             let trace = TypeTrace {
                 origin: origin,
@@ -684,8 +684,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                -> UnitResult<'tcx>
     {
         debug!("sub_poly_trait_refs({} <: {})",
-               a.repr(self.tcx),
-               b.repr(self.tcx));
+               a.repr(),
+               b.repr());
         self.commit_if_ok(|_| {
             let trace = TypeTrace {
                 origin: origin,
@@ -708,7 +708,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                            value: &ty::Binder<T>,
                                            snapshot: &CombinedSnapshot)
                                            -> (T, SkolemizationMap)
-        where T : TypeFoldable<'tcx> + Repr<'tcx>
+        where T : TypeFoldable<'tcx> + Repr
     {
         /*! See `higher_ranked::skolemize_late_bound_regions` */
 
@@ -733,7 +733,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                          snapshot: &CombinedSnapshot,
                          value: &T)
                          -> T
-        where T : TypeFoldable<'tcx> + Repr<'tcx>
+        where T : TypeFoldable<'tcx> + Repr
     {
         /*! See `higher_ranked::plug_leaks` */
 
@@ -861,7 +861,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 
     pub fn ty_to_string(&self, t: Ty<'tcx>) -> String {
-        self.resolve_type_vars_if_possible(&t).user_string(self.tcx)
+        self.resolve_type_vars_if_possible(&t).user_string()
     }
 
     pub fn tys_to_string(&self, ts: &[Ty<'tcx>]) -> String {
@@ -871,7 +871,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
     pub fn trait_ref_to_string(&self, t: &ty::TraitRef<'tcx>) -> String {
         let t = self.resolve_type_vars_if_possible(t);
-        t.user_string(self.tcx)
+        t.user_string()
     }
 
     pub fn shallow_resolve(&self, typ: Ty<'tcx>) -> Ty<'tcx> {
@@ -1033,7 +1033,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         lbrct: LateBoundRegionConversionTime,
         value: &ty::Binder<T>)
         -> (T, FnvHashMap<ty::BoundRegion,ty::Region>)
-        where T : TypeFoldable<'tcx> + Repr<'tcx>
+        where T : TypeFoldable<'tcx> + Repr
     {
         ty_fold::replace_late_bound_regions(
             self.tcx,
@@ -1048,17 +1048,17 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                 a: ty::Region,
                                 bs: Vec<ty::Region>) {
         debug!("verify_generic_bound({}, {} <: {})",
-               kind.repr(self.tcx),
-               a.repr(self.tcx),
-               bs.repr(self.tcx));
+               kind.repr(),
+               a.repr(),
+               bs.repr());
 
         self.region_vars.verify_generic_bound(origin, kind, a, bs);
     }
 
     pub fn can_equate<'b,T>(&'b self, a: &T, b: &T) -> UnitResult<'tcx>
-        where T: Relate<'b,'tcx> + Repr<'tcx>
+        where T: Relate<'b,'tcx> + Repr
     {
-        debug!("can_equate({}, {})", a.repr(self.tcx), b.repr(self.tcx));
+        debug!("can_equate({}, {})", a.repr(), b.repr());
         self.probe(|_| {
             // Gin up a dummy trace, since this won't be committed
             // anyhow. We should make this typetrace stuff more
@@ -1099,9 +1099,9 @@ impl<'tcx> TypeTrace<'tcx> {
     }
 }
 
-impl<'tcx> Repr<'tcx> for TypeTrace<'tcx> {
-    fn repr(&self, tcx: &ty::ctxt) -> String {
-        format!("TypeTrace({})", self.origin.repr(tcx))
+impl<'tcx> Repr for TypeTrace<'tcx> {
+    fn repr(&self) -> String {
+        format!("TypeTrace({})", self.origin.repr())
     }
 }
 
@@ -1123,39 +1123,39 @@ impl TypeOrigin {
     }
 }
 
-impl<'tcx> Repr<'tcx> for TypeOrigin {
-    fn repr(&self, tcx: &ty::ctxt) -> String {
+impl<'tcx> Repr for TypeOrigin {
+    fn repr(&self) -> String {
         match *self {
             MethodCompatCheck(a) => {
-                format!("MethodCompatCheck({})", a.repr(tcx))
+                format!("MethodCompatCheck({})", a.repr())
             }
             ExprAssignable(a) => {
-                format!("ExprAssignable({})", a.repr(tcx))
+                format!("ExprAssignable({})", a.repr())
             }
-            Misc(a) => format!("Misc({})", a.repr(tcx)),
+            Misc(a) => format!("Misc({})", a.repr()),
             RelateTraitRefs(a) => {
-                format!("RelateTraitRefs({})", a.repr(tcx))
+                format!("RelateTraitRefs({})", a.repr())
             }
             RelateSelfType(a) => {
-                format!("RelateSelfType({})", a.repr(tcx))
+                format!("RelateSelfType({})", a.repr())
             }
             RelateOutputImplTypes(a) => {
-                format!("RelateOutputImplTypes({})", a.repr(tcx))
+                format!("RelateOutputImplTypes({})", a.repr())
             }
             MatchExpressionArm(a, b) => {
-                format!("MatchExpressionArm({}, {})", a.repr(tcx), b.repr(tcx))
+                format!("MatchExpressionArm({}, {})", a.repr(), b.repr())
             }
             IfExpression(a) => {
-                format!("IfExpression({})", a.repr(tcx))
+                format!("IfExpression({})", a.repr())
             }
             IfExpressionWithNoElse(a) => {
-                format!("IfExpressionWithNoElse({})", a.repr(tcx))
+                format!("IfExpressionWithNoElse({})", a.repr())
             }
             RangeExpression(a) => {
-                format!("RangeExpression({})", a.repr(tcx))
+                format!("RangeExpression({})", a.repr())
             }
             EquatePredicate(a) => {
-                format!("EquatePredicate({})", a.repr(tcx))
+                format!("EquatePredicate({})", a.repr())
             }
         }
     }
@@ -1190,66 +1190,66 @@ impl<'tcx> SubregionOrigin<'tcx> {
     }
 }
 
-impl<'tcx> Repr<'tcx> for SubregionOrigin<'tcx> {
-    fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
+impl<'tcx> Repr for SubregionOrigin<'tcx> {
+    fn repr(&self) -> String {
         match *self {
             Subtype(ref a) => {
-                format!("Subtype({})", a.repr(tcx))
+                format!("Subtype({})", a.repr())
             }
             InfStackClosure(a) => {
-                format!("InfStackClosure({})", a.repr(tcx))
+                format!("InfStackClosure({})", a.repr())
             }
             InvokeClosure(a) => {
-                format!("InvokeClosure({})", a.repr(tcx))
+                format!("InvokeClosure({})", a.repr())
             }
             DerefPointer(a) => {
-                format!("DerefPointer({})", a.repr(tcx))
+                format!("DerefPointer({})", a.repr())
             }
             FreeVariable(a, b) => {
-                format!("FreeVariable({}, {})", a.repr(tcx), b)
+                format!("FreeVariable({}, {})", a.repr(), b)
             }
             IndexSlice(a) => {
-                format!("IndexSlice({})", a.repr(tcx))
+                format!("IndexSlice({})", a.repr())
             }
             RelateObjectBound(a) => {
-                format!("RelateObjectBound({})", a.repr(tcx))
+                format!("RelateObjectBound({})", a.repr())
             }
             RelateParamBound(a, b) => {
                 format!("RelateParamBound({},{})",
-                        a.repr(tcx),
-                        b.repr(tcx))
+                        a.repr(),
+                        b.repr())
             }
             RelateRegionParamBound(a) => {
                 format!("RelateRegionParamBound({})",
-                        a.repr(tcx))
+                        a.repr())
             }
             RelateDefaultParamBound(a, b) => {
                 format!("RelateDefaultParamBound({},{})",
-                        a.repr(tcx),
-                        b.repr(tcx))
+                        a.repr(),
+                        b.repr())
             }
-            Reborrow(a) => format!("Reborrow({})", a.repr(tcx)),
+            Reborrow(a) => format!("Reborrow({})", a.repr()),
             ReborrowUpvar(a, b) => {
-                format!("ReborrowUpvar({},{:?})", a.repr(tcx), b)
+                format!("ReborrowUpvar({},{:?})", a.repr(), b)
             }
             ReferenceOutlivesReferent(_, a) => {
-                format!("ReferenceOutlivesReferent({})", a.repr(tcx))
+                format!("ReferenceOutlivesReferent({})", a.repr())
             }
             ExprTypeIsNotInScope(a, b) => {
                 format!("ExprTypeIsNotInScope({}, {})",
-                        a.repr(tcx),
-                        b.repr(tcx))
+                        a.repr(),
+                        b.repr())
             }
             BindingTypeIsNotValidAtDecl(a) => {
-                format!("BindingTypeIsNotValidAtDecl({})", a.repr(tcx))
+                format!("BindingTypeIsNotValidAtDecl({})", a.repr())
             }
-            CallRcvr(a) => format!("CallRcvr({})", a.repr(tcx)),
-            CallArg(a) => format!("CallArg({})", a.repr(tcx)),
-            CallReturn(a) => format!("CallReturn({})", a.repr(tcx)),
-            Operand(a) => format!("Operand({})", a.repr(tcx)),
-            AddrOf(a) => format!("AddrOf({})", a.repr(tcx)),
-            AutoBorrow(a) => format!("AutoBorrow({})", a.repr(tcx)),
-            SafeDestructor(a) => format!("SafeDestructor({})", a.repr(tcx)),
+            CallRcvr(a) => format!("CallRcvr({})", a.repr()),
+            CallArg(a) => format!("CallArg({})", a.repr()),
+            CallReturn(a) => format!("CallReturn({})", a.repr()),
+            Operand(a) => format!("Operand({})", a.repr()),
+            AddrOf(a) => format!("AddrOf({})", a.repr()),
+            AutoBorrow(a) => format!("AutoBorrow({})", a.repr()),
+            SafeDestructor(a) => format!("SafeDestructor({})", a.repr()),
         }
     }
 }
@@ -1270,31 +1270,31 @@ impl RegionVariableOrigin {
     }
 }
 
-impl<'tcx> Repr<'tcx> for RegionVariableOrigin {
-    fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
+impl<'tcx> Repr for RegionVariableOrigin {
+    fn repr(&self) -> String {
         match *self {
             MiscVariable(a) => {
-                format!("MiscVariable({})", a.repr(tcx))
+                format!("MiscVariable({})", a.repr())
             }
             PatternRegion(a) => {
-                format!("PatternRegion({})", a.repr(tcx))
+                format!("PatternRegion({})", a.repr())
             }
             AddrOfRegion(a) => {
-                format!("AddrOfRegion({})", a.repr(tcx))
+                format!("AddrOfRegion({})", a.repr())
             }
-            Autoref(a) => format!("Autoref({})", a.repr(tcx)),
-            Coercion(a) => format!("Coercion({})", a.repr(tcx)),
+            Autoref(a) => format!("Autoref({})", a.repr()),
+            Coercion(a) => format!("Coercion({})", a.repr()),
             EarlyBoundRegion(a, b) => {
-                format!("EarlyBoundRegion({},{})", a.repr(tcx), b.repr(tcx))
+                format!("EarlyBoundRegion({},{})", a.repr(), b.repr())
             }
             LateBoundRegion(a, b, c) => {
-                format!("LateBoundRegion({},{},{:?})", a.repr(tcx), b.repr(tcx), c)
+                format!("LateBoundRegion({},{},{:?})", a.repr(), b.repr(), c)
             }
             BoundRegionInCoherence(a) => {
-                format!("bound_regionInCoherence({})", a.repr(tcx))
+                format!("bound_regionInCoherence({})", a.repr())
             }
             UpvarRegion(a, b) => {
-                format!("UpvarRegion({}, {})", a.repr(tcx), b.repr(tcx))
+                format!("UpvarRegion({}, {})", a.repr(), b.repr())
             }
         }
     }

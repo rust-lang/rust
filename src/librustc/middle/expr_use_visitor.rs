@@ -363,7 +363,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                         consume_span: Span,
                         cmt: mc::cmt<'tcx>) {
         debug!("delegate_consume(consume_id={}, cmt={})",
-               consume_id, cmt.repr(self.tcx()));
+               consume_id, cmt.repr());
 
         let mode = copy_or_move(self.typer, &cmt, DirectRefMove);
         self.delegate.consume(consume_id, consume_span, cmt, mode);
@@ -376,7 +376,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
     }
 
     pub fn consume_expr(&mut self, expr: &ast::Expr) {
-        debug!("consume_expr(expr={})", expr.repr(self.tcx()));
+        debug!("consume_expr(expr={})", expr.repr());
 
         let cmt = return_if_err!(self.mc.cat_expr(expr));
         self.delegate_consume(expr.id, expr.span, cmt);
@@ -398,7 +398,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                    bk: ty::BorrowKind,
                    cause: LoanCause) {
         debug!("borrow_expr(expr={}, r={}, bk={})",
-               expr.repr(self.tcx()), r.repr(self.tcx()), bk.repr(self.tcx()));
+               expr.repr(), r.repr(), bk.repr());
 
         let cmt = return_if_err!(self.mc.cat_expr(expr));
         self.delegate.borrow(expr.id, expr.span, cmt, r, bk, cause);
@@ -414,7 +414,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
     }
 
     pub fn walk_expr(&mut self, expr: &ast::Expr) {
-        debug!("walk_expr(expr={})", expr.repr(self.tcx()));
+        debug!("walk_expr(expr={})", expr.repr());
 
         self.walk_adjustment(expr);
 
@@ -619,7 +619,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
     fn walk_callee(&mut self, call: &ast::Expr, callee: &ast::Expr) {
         let callee_ty = return_if_err!(self.typer.expr_ty_adjusted(callee));
         debug!("walk_callee: callee={} callee_ty={}",
-               callee.repr(self.tcx()), callee_ty.repr(self.tcx()));
+               callee.repr(), callee_ty.repr());
         let call_scope = region::CodeExtent::from_node_id(call.id);
         match callee_ty.sty {
             ty::TyBareFn(..) => {
@@ -637,7 +637,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                         None => {
                             self.tcx().sess.span_bug(
                                 callee.span,
-                                &format!("unexpected callee type {}", callee_ty.repr(self.tcx())))
+                                &format!("unexpected callee type {}", callee_ty.repr()))
                         }
                     };
                 match overloaded_call_type {
@@ -811,7 +811,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
     fn walk_autoderefs(&mut self,
                        expr: &ast::Expr,
                        autoderefs: usize) {
-        debug!("walk_autoderefs expr={} autoderefs={}", expr.repr(self.tcx()), autoderefs);
+        debug!("walk_autoderefs expr={} autoderefs={}", expr.repr(), autoderefs);
 
         for i in 0..autoderefs {
             let deref_id = ty::MethodCall::autoderef(expr.id, i as u32);
@@ -829,7 +829,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                         ty::TyRef(r, ref m) => (m.mutbl, r),
                         _ => self.tcx().sess.span_bug(expr.span,
                                 &format!("bad overloaded deref type {}",
-                                    method_ty.repr(self.tcx())))
+                                    method_ty.repr()))
                     };
                     let bk = ty::BorrowKind::from_mutbl(m);
                     self.delegate.borrow(expr.id, expr.span, cmt,
@@ -843,8 +843,8 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                          expr: &ast::Expr,
                          adj: &ty::AutoDerefRef<'tcx>) {
         debug!("walk_autoderefref expr={} adj={}",
-               expr.repr(self.tcx()),
-               adj.repr(self.tcx()));
+               expr.repr(),
+               adj.repr());
 
         self.walk_autoderefs(expr, adj.autoderefs);
 
@@ -877,7 +877,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
     {
         debug!("walk_autoref(expr.id={} cmt_derefd={} opt_autoref={:?})",
                expr.id,
-               cmt_base.repr(self.tcx()),
+               cmt_base.repr(),
                opt_autoref);
 
         let cmt_base_ty = cmt_base.ty;
@@ -903,7 +903,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
             ty::AutoUnsafe(m) => {
                 debug!("walk_autoref: expr.id={} cmt_base={}",
                        expr.id,
-                       cmt_base.repr(self.tcx()));
+                       cmt_base.repr());
 
                 // Converting from a &T to *T (or &mut T to *mut T) is
                 // treated as borrowing it for the enclosing temporary
@@ -1011,8 +1011,8 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                                cmt_discr: mc::cmt<'tcx>,
                                pat: &ast::Pat,
                                mode: &mut TrackMatchMode) {
-        debug!("determine_pat_move_mode cmt_discr={} pat={}", cmt_discr.repr(self.tcx()),
-               pat.repr(self.tcx()));
+        debug!("determine_pat_move_mode cmt_discr={} pat={}", cmt_discr.repr(),
+               pat.repr());
         return_if_err!(self.mc.cat_pattern(cmt_discr, pat, |_mc, cmt_pat, pat| {
             let tcx = self.tcx();
             let def_map = &self.tcx().def_map;
@@ -1043,8 +1043,8 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                 cmt_discr: mc::cmt<'tcx>,
                 pat: &ast::Pat,
                 match_mode: MatchMode) {
-        debug!("walk_pat cmt_discr={} pat={}", cmt_discr.repr(self.tcx()),
-               pat.repr(self.tcx()));
+        debug!("walk_pat cmt_discr={} pat={}", cmt_discr.repr(),
+               pat.repr());
 
         let mc = &self.mc;
         let typer = self.typer;
@@ -1055,8 +1055,8 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                 let tcx = typer.tcx();
 
                 debug!("binding cmt_pat={} pat={} match_mode={:?}",
-                       cmt_pat.repr(tcx),
-                       pat.repr(tcx),
+                       cmt_pat.repr(),
+                       pat.repr(),
                        match_mode);
 
                 // pat_ty: the type of the binding being produced.
@@ -1161,8 +1161,8 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                                 };
 
                             debug!("variant downcast_cmt={} pat={}",
-                                   downcast_cmt.repr(tcx),
-                                   pat.repr(tcx));
+                                   downcast_cmt.repr(),
+                                   pat.repr());
 
                             delegate.matched_pat(pat, downcast_cmt, match_mode);
                         }
@@ -1173,8 +1173,8 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                             // e.g. patterns for unit structs).
 
                             debug!("struct cmt_pat={} pat={}",
-                                   cmt_pat.repr(tcx),
-                                   pat.repr(tcx));
+                                   cmt_pat.repr(),
+                                   pat.repr());
 
                             delegate.matched_pat(pat, cmt_pat, match_mode);
                         }
@@ -1194,7 +1194,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                             if !tcx.sess.has_errors() {
                                 let msg = format!("Pattern has unexpected type: {:?} and type {}",
                                                   def,
-                                                  cmt_pat.ty.repr(tcx));
+                                                  cmt_pat.ty.repr());
                                 tcx.sess.span_bug(pat.span, &msg)
                             }
                         }
@@ -1211,7 +1211,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                             if !tcx.sess.has_errors() {
                                 let msg = format!("Pattern has unexpected def: {:?} and type {}",
                                                   def,
-                                                  cmt_pat.ty.repr(tcx));
+                                                  cmt_pat.ty.repr());
                                 tcx.sess.span_bug(pat.span, &msg[..])
                             }
                         }
@@ -1237,7 +1237,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
     }
 
     fn walk_captures(&mut self, closure_expr: &ast::Expr) {
-        debug!("walk_captures({})", closure_expr.repr(self.tcx()));
+        debug!("walk_captures({})", closure_expr.repr());
 
         ty::with_freevars(self.tcx(), closure_expr.id, |freevars| {
             for freevar in freevars {

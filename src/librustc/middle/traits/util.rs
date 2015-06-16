@@ -126,7 +126,7 @@ impl<'cx, 'tcx> Elaborator<'cx, 'tcx> {
                               .collect();
 
                 debug!("super_predicates: data={} predicates={}",
-                       data.repr(self.tcx), predicates.repr(self.tcx));
+                       data.repr(), predicates.repr());
 
                 // Only keep those bounds that we haven't already
                 // seen.  This is necessary to prevent infinite
@@ -328,7 +328,7 @@ pub fn predicates_for_generics<'tcx>(tcx: &ty::ctxt<'tcx>,
                                      -> Vec<PredicateObligation<'tcx>>
 {
     debug!("predicates_for_generics(generic_bounds={})",
-           generic_bounds.repr(tcx));
+           generic_bounds.repr());
 
     generic_bounds.predicates.iter().map(|predicate| {
         Obligation { cause: cause.clone(),
@@ -486,116 +486,116 @@ pub fn closure_trait_ref_and_return_type<'tcx>(
     ty::Binder((trait_ref, sig.0.output.unwrap_or(ty::mk_nil(tcx))))
 }
 
-impl<'tcx,O:Repr<'tcx>> Repr<'tcx> for super::Obligation<'tcx, O> {
-    fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
+impl<'tcx,O:Repr> Repr for super::Obligation<'tcx, O> {
+    fn repr(&self) -> String {
         format!("Obligation(predicate={},depth={})",
-                self.predicate.repr(tcx),
+                self.predicate.repr(),
                 self.recursion_depth)
     }
 }
 
-impl<'tcx, N:Repr<'tcx>> Repr<'tcx> for super::Vtable<'tcx, N> {
-    fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
+impl<'tcx, N:Repr> Repr for super::Vtable<'tcx, N> {
+    fn repr(&self) -> String {
         match *self {
             super::VtableImpl(ref v) =>
-                v.repr(tcx),
+                v.repr(),
 
             super::VtableDefaultImpl(ref t) =>
-                t.repr(tcx),
+                t.repr(),
 
             super::VtableClosure(ref d) =>
-                d.repr(tcx),
+                d.repr(),
 
             super::VtableFnPointer(ref d) =>
                 format!("VtableFnPointer({})",
-                        d.repr(tcx)),
+                        d.repr()),
 
             super::VtableObject(ref d) =>
                 format!("VtableObject({})",
-                        d.repr(tcx)),
+                        d.repr()),
 
             super::VtableParam(ref n) =>
                 format!("VtableParam({})",
-                        n.repr(tcx)),
+                        n.repr()),
 
             super::VtableBuiltin(ref d) =>
-                d.repr(tcx)
+                d.repr()
         }
     }
 }
 
-impl<'tcx, N:Repr<'tcx>> Repr<'tcx> for super::VtableImplData<'tcx, N> {
-    fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
+impl<'tcx, N:Repr> Repr for super::VtableImplData<'tcx, N> {
+    fn repr(&self) -> String {
         format!("VtableImpl(impl_def_id={}, substs={}, nested={})",
-                self.impl_def_id.repr(tcx),
-                self.substs.repr(tcx),
-                self.nested.repr(tcx))
+                self.impl_def_id.repr(),
+                self.substs.repr(),
+                self.nested.repr())
     }
 }
 
-impl<'tcx, N:Repr<'tcx>> Repr<'tcx> for super::VtableClosureData<'tcx, N> {
-    fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
+impl<'tcx, N:Repr> Repr for super::VtableClosureData<'tcx, N> {
+    fn repr(&self) -> String {
         format!("VtableClosure(closure_def_id={}, substs={}, nested={})",
-                self.closure_def_id.repr(tcx),
-                self.substs.repr(tcx),
-                self.nested.repr(tcx))
+                self.closure_def_id.repr(),
+                self.substs.repr(),
+                self.nested.repr())
     }
 }
 
-impl<'tcx, N:Repr<'tcx>> Repr<'tcx> for super::VtableBuiltinData<N> {
-    fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
+impl<'tcx, N:Repr> Repr for super::VtableBuiltinData<N> {
+    fn repr(&self) -> String {
         format!("VtableBuiltin(nested={})",
-                self.nested.repr(tcx))
+                self.nested.repr())
     }
 }
 
-impl<'tcx, N:Repr<'tcx>> Repr<'tcx> for super::VtableDefaultImplData<N> {
-    fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
+impl<'tcx, N:Repr> Repr for super::VtableDefaultImplData<N> {
+    fn repr(&self) -> String {
         format!("VtableDefaultImplData(trait_def_id={}, nested={})",
-                self.trait_def_id.repr(tcx),
-                self.nested.repr(tcx))
+                self.trait_def_id.repr(),
+                self.nested.repr())
     }
 }
 
-impl<'tcx> Repr<'tcx> for super::VtableObjectData<'tcx> {
-    fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
+impl<'tcx> Repr for super::VtableObjectData<'tcx> {
+    fn repr(&self) -> String {
         format!("VtableObject(object_ty={})",
-                self.object_ty.repr(tcx))
+                self.object_ty.repr())
     }
 }
 
-impl<'tcx> Repr<'tcx> for super::SelectionError<'tcx> {
-    fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
+impl<'tcx> Repr for super::SelectionError<'tcx> {
+    fn repr(&self) -> String {
         match *self {
             super::Unimplemented =>
                 format!("Unimplemented"),
 
             super::OutputTypeParameterMismatch(ref a, ref b, ref c) =>
                 format!("OutputTypeParameterMismatch({},{},{})",
-                        a.repr(tcx),
-                        b.repr(tcx),
-                        c.repr(tcx)),
+                        a.repr(),
+                        b.repr(),
+                        c.repr()),
 
             super::TraitNotObjectSafe(ref tr) =>
                 format!("TraitNotObjectSafe({})",
-                        tr.repr(tcx))
+                        tr.repr())
         }
     }
 }
 
-impl<'tcx> Repr<'tcx> for super::FulfillmentError<'tcx> {
-    fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
+impl<'tcx> Repr for super::FulfillmentError<'tcx> {
+    fn repr(&self) -> String {
         format!("FulfillmentError({},{})",
-                self.obligation.repr(tcx),
-                self.code.repr(tcx))
+                self.obligation.repr(),
+                self.code.repr())
     }
 }
 
-impl<'tcx> Repr<'tcx> for super::FulfillmentErrorCode<'tcx> {
-    fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
+impl<'tcx> Repr for super::FulfillmentErrorCode<'tcx> {
+    fn repr(&self) -> String {
         match *self {
-            super::CodeSelectionError(ref o) => o.repr(tcx),
-            super::CodeProjectionError(ref o) => o.repr(tcx),
+            super::CodeSelectionError(ref o) => o.repr(),
+            super::CodeProjectionError(ref o) => o.repr(),
             super::CodeAmbiguity => format!("Ambiguity")
         }
     }
@@ -611,9 +611,9 @@ impl<'tcx> fmt::Debug for super::FulfillmentErrorCode<'tcx> {
     }
 }
 
-impl<'tcx> Repr<'tcx> for super::MismatchedProjectionTypes<'tcx> {
-    fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
-        self.err.repr(tcx)
+impl<'tcx> Repr for super::MismatchedProjectionTypes<'tcx> {
+    fn repr(&self) -> String {
+        self.err.repr()
     }
 }
 

@@ -518,7 +518,7 @@ impl<'a, 'tcx> TermsContext<'a, 'tcx> {
 
 impl<'a, 'tcx, 'v> Visitor<'v> for TermsContext<'a, 'tcx> {
     fn visit_item(&mut self, item: &ast::Item) {
-        debug!("add_inferreds for item {}", item.repr(self.tcx));
+        debug!("add_inferreds for item {}", item.repr());
 
         match item.node {
             ast::ItemEnum(_, ref generics) |
@@ -601,7 +601,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ConstraintContext<'a, 'tcx> {
         let tcx = self.terms_cx.tcx;
 
         debug!("visit_item item={}",
-               item.repr(tcx));
+               item.repr());
 
         match item.node {
             ast::ItemEnum(ref enum_definition, _) => {
@@ -847,7 +847,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                                       trait_ref: ty::TraitRef<'tcx>,
                                       variance: VarianceTermPtr<'a>) {
         debug!("add_constraints_from_trait_ref: trait_ref={} variance={:?}",
-               trait_ref.repr(self.tcx()),
+               trait_ref.repr(),
                variance);
 
         let trait_def = ty::lookup_trait_def(self.tcx(), trait_ref.def_id);
@@ -869,7 +869,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                                ty: Ty<'tcx>,
                                variance: VarianceTermPtr<'a>) {
         debug!("add_constraints_from_ty(ty={}, variance={:?})",
-               ty.repr(self.tcx()),
+               ty.repr(),
                variance);
 
         match ty.sty {
@@ -983,7 +983,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 self.tcx().sess.bug(
                     &format!("unexpected type encountered in \
                             variance inference: {}",
-                            ty.repr(self.tcx())));
+                            ty.repr()));
             }
         }
     }
@@ -999,8 +999,8 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                                    substs: &subst::Substs<'tcx>,
                                    variance: VarianceTermPtr<'a>) {
         debug!("add_constraints_from_substs(def_id={}, substs={}, variance={:?})",
-               def_id.repr(self.tcx()),
-               substs.repr(self.tcx()),
+               def_id.repr(),
+               substs.repr(),
                variance);
 
         for p in type_param_defs {
@@ -1068,7 +1068,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                     .sess
                     .bug(&format!("unexpected region encountered in variance \
                                   inference: {}",
-                                 region.repr(self.tcx())));
+                                 region.repr()));
             }
         }
     }
@@ -1197,14 +1197,14 @@ impl<'a, 'tcx> SolveContext<'a, 'tcx> {
             };
             debug!("item_id={} item_variances={}",
                     item_id,
-                    item_variances.repr(tcx));
+                    item_variances.repr());
 
             let item_def_id = ast_util::local_def(item_id);
 
             // For unit testing: check for a special "rustc_variance"
             // attribute and report an error with various results if found.
             if ty::has_attr(tcx, item_def_id, "rustc_variance") {
-                let found = item_variances.repr(tcx);
+                let found = item_variances.repr();
                 span_err!(tcx.sess, tcx.map.span(item_id), E0208, "{}", &found[..]);
             }
 

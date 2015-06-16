@@ -50,7 +50,7 @@ use util::ppaux::Repr;
 
 /// The TypeFoldable trait is implemented for every type that can be folded.
 /// Basically, every type that has a corresponding method in TypeFolder.
-pub trait TypeFoldable<'tcx>: Repr<'tcx> + Clone {
+pub trait TypeFoldable<'tcx>: Repr + Clone {
     fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self;
 }
 
@@ -74,7 +74,7 @@ pub trait TypeFolder<'tcx> : Sized {
     fn exit_region_binder(&mut self) { }
 
     fn fold_binder<T>(&mut self, t: &ty::Binder<T>) -> ty::Binder<T>
-        where T : TypeFoldable<'tcx> + Repr<'tcx> + Clone
+        where T : TypeFoldable<'tcx> + Repr + Clone
     {
         // FIXME(#20526) this should replace `enter_region_binder`/`exit_region_binder`.
         super_fold_binder(self, t)
@@ -197,7 +197,7 @@ impl<'tcx, T: TypeFoldable<'tcx>> TypeFoldable<'tcx> for Vec<T> {
     }
 }
 
-impl<'tcx, T:TypeFoldable<'tcx>+Repr<'tcx>+Clone> TypeFoldable<'tcx> for ty::Binder<T> {
+impl<'tcx, T:TypeFoldable<'tcx>+Repr+Clone> TypeFoldable<'tcx> for ty::Binder<T> {
     fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> ty::Binder<T> {
         folder.fold_binder(self)
     }
@@ -843,12 +843,12 @@ impl<'a, 'tcx> TypeFolder<'tcx> for RegionFolder<'a, 'tcx>
         match r {
             ty::ReLateBound(debruijn, _) if debruijn.depth < self.current_depth => {
                 debug!("RegionFolder.fold_region({}) skipped bound region (current depth={})",
-                       r.repr(self.tcx()), self.current_depth);
+                       r.repr(), self.current_depth);
                 r
             }
             _ => {
                 debug!("RegionFolder.fold_region({}) folding free region (current_depth={})",
-                       r.repr(self.tcx()), self.current_depth);
+                       r.repr(), self.current_depth);
                 (self.fld_r)(r, self.current_depth)
             }
         }
@@ -885,9 +885,9 @@ pub fn replace_late_bound_regions<'tcx,T,F>(tcx: &ty::ctxt<'tcx>,
                                             mut f: F)
                                             -> (T, FnvHashMap<ty::BoundRegion, ty::Region>)
     where F : FnMut(ty::BoundRegion) -> ty::Region,
-          T : TypeFoldable<'tcx> + Repr<'tcx>,
+          T : TypeFoldable<'tcx> + Repr,
 {
-    debug!("replace_late_bound_regions({})", value.repr(tcx));
+    debug!("replace_late_bound_regions({})", value.repr());
     let mut replacer = RegionReplacer::new(tcx, &mut f);
     let result = value.skip_binder().fold_with(&mut replacer);
     (result, replacer.map)
@@ -917,7 +917,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for RegionReplacer<'a, 'tcx>
         match r {
             ty::ReLateBound(debruijn, br) if debruijn.depth == self.current_depth => {
                 debug!("RegionReplacer.fold_region({}) folding region (current_depth={})",
-                       r.repr(self.tcx()), self.current_depth);
+                       r.repr(), self.current_depth);
                 let fld_r = &mut self.fld_r;
                 let region = *self.map.entry(br).or_insert_with(|| fld_r(br));
                 if let ty::ReLateBound(debruijn1, br) = region {
@@ -994,10 +994,10 @@ pub fn shift_region(region: ty::Region, amount: u32) -> ty::Region {
     }
 }
 
-pub fn shift_regions<'tcx, T:TypeFoldable<'tcx>+Repr<'tcx>>(tcx: &ty::ctxt<'tcx>,
+pub fn shift_regions<'tcx, T:TypeFoldable<'tcx>+Repr>(tcx: &ty::ctxt<'tcx>,
                                                             amount: u32, value: &T) -> T {
     debug!("shift_regions(value={}, amount={})",
-           value.repr(tcx), amount);
+           value.repr(), amount);
 
     value.fold_with(&mut RegionFolder::new(tcx, &mut |region, _current_depth| {
         shift_region(region, amount)

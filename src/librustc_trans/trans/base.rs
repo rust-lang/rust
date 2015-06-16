@@ -531,7 +531,7 @@ pub fn iter_structural_ty<'blk, 'tcx, F>(cx: Block<'blk, 'tcx>,
       }
       _ => {
           cx.sess().unimpl(&format!("type in iter_structural_ty: {}",
-                                    t.repr(cx.tcx())))
+                                    t.repr()))
       }
     }
     return cx;
@@ -641,7 +641,7 @@ pub fn fail_if_zero_or_overflows<'blk, 'tcx>(
         }
         _ => {
             cx.sess().bug(&format!("fail-if-zero on unexpected type: {}",
-                                   rhs_t.repr(cx.tcx())));
+                                   rhs_t.repr()));
         }
     };
     let bcx = with_cond(cx, is_zero, |bcx| {
@@ -1193,7 +1193,7 @@ pub fn new_fn_ctxt<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
            } else {
                ccx.tcx().map.path_to_string(id).to_string()
            },
-           id, param_substs.repr(ccx.tcx()));
+           id, param_substs.repr());
 
     let uses_outptr = match output_type {
         ty::FnConverging(output_type) => {
@@ -1511,7 +1511,7 @@ pub fn trans_closure<'a, 'b, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     attributes::emit_uwtable(llfndecl, true);
 
     debug!("trans_closure(..., param_substs={})",
-           param_substs.repr(ccx.tcx()));
+           param_substs.repr());
 
     let has_env = match closure_env {
         closure::ClosureEnv::Closure(_) => true,
@@ -1554,7 +1554,7 @@ pub fn trans_closure<'a, 'b, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     };
     for monomorphized_arg_type in &monomorphized_arg_types {
         debug!("trans_closure: monomorphized_arg_type: {}",
-               monomorphized_arg_type.repr(ccx.tcx()));
+               monomorphized_arg_type.repr());
     }
     debug!("trans_closure: function lltype: {}",
            bcx.fcx.ccx.tn().val_to_string(bcx.fcx.llfn));
@@ -1636,7 +1636,7 @@ pub fn trans_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                           id: ast::NodeId,
                           attrs: &[ast::Attribute]) {
     let _s = StatRecorder::new(ccx, ccx.tcx().map.path_to_string(id).to_string());
-    debug!("trans_fn(param_substs={})", param_substs.repr(ccx.tcx()));
+    debug!("trans_fn(param_substs={})", param_substs.repr());
     let _icx = push_ctxt("trans_fn");
     let fn_ty = ty::node_id_to_type(ccx.tcx(), id);
     let output_type = ty::erase_late_bound_regions(ccx.tcx(), &ty::ty_fn_ret(fn_ty));
@@ -1680,7 +1680,7 @@ pub fn trans_named_tuple_constructor<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         _ => ccx.sess().bug(
             &format!("trans_enum_variant_constructor: \
                      unexpected ctor return type {}",
-                     ctor_ty.repr(tcx)))
+                     ctor_ty.repr()))
     };
 
     // Get location to store the result. If the user does not care about
@@ -1758,7 +1758,7 @@ fn trans_enum_variant_or_tuple_like_struct<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx
         _ => ccx.sess().bug(
             &format!("trans_enum_variant_or_tuple_like_struct: \
                      unexpected ctor return type {}",
-                    ctor_ty.repr(ccx.tcx())))
+                    ctor_ty.repr()))
     };
 
     let (arena, fcx): (TypedArena<_>, FunctionContext);

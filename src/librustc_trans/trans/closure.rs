@@ -354,8 +354,8 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     -> ValueRef
 {
     debug!("trans_fn_once_adapter_shim(closure_def_id={}, substs={}, llreffn={})",
-           closure_def_id.repr(ccx.tcx()),
-           substs.repr(ccx.tcx()),
+           closure_def_id.repr(),
+           substs.repr(),
            ccx.tn().val_to_string(llreffn));
 
     let tcx = ccx.tcx();
@@ -375,7 +375,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
                                                                sig: sig.clone() });
     let llref_fn_ty = ty::mk_bare_fn(tcx, None, llref_bare_fn_ty);
     debug!("trans_fn_once_adapter_shim: llref_fn_ty={}",
-           llref_fn_ty.repr(tcx));
+           llref_fn_ty.repr());
 
     // Make a version of the closure type with the same arguments, but
     // with argument #0 being by value.
@@ -424,7 +424,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
         ty::TyTuple(ref tys) => &**tys,
         _ => bcx.sess().bug(&format!("trans_fn_once_adapter_shim: not rust-call! \
                                       closure_def_id={}",
-                                     closure_def_id.repr(tcx)))
+                                     closure_def_id.repr()))
     };
     let llargs: Vec<_> =
         input_tys.iter()

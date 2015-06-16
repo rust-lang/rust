@@ -400,7 +400,7 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
         debug!("schedule_drop_mem({:?}, val={}, ty={}) fill_on_drop={} skip_dtor={}",
                cleanup_scope,
                self.ccx.tn().val_to_string(val),
-               ty.repr(self.ccx.tcx()),
+               ty.repr(),
                drop.fill_on_drop,
                drop.skip_dtor);
 
@@ -426,7 +426,7 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
         debug!("schedule_drop_and_fill_mem({:?}, val={}, ty={}, fill_on_drop={}, skip_dtor={})",
                cleanup_scope,
                self.ccx.tn().val_to_string(val),
-               ty.repr(self.ccx.tcx()),
+               ty.repr(),
                drop.fill_on_drop,
                drop.skip_dtor);
 
@@ -458,7 +458,7 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
         debug!("schedule_drop_adt_contents({:?}, val={}, ty={}) fill_on_drop={} skip_dtor={}",
                cleanup_scope,
                self.ccx.tn().val_to_string(val),
-               ty.repr(self.ccx.tcx()),
+               ty.repr(),
                drop.fill_on_drop,
                drop.skip_dtor);
 
@@ -484,7 +484,7 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
         debug!("schedule_drop_immediate({:?}, val={}, ty={:?}) fill_on_drop={} skip_dtor={}",
                cleanup_scope,
                self.ccx.tn().val_to_string(val),
-               ty.repr(self.ccx.tcx()),
+               ty.repr(),
                drop.fill_on_drop,
                drop.skip_dtor);
 

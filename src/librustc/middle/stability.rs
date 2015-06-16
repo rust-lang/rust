@@ -450,7 +450,7 @@ pub fn check_expr(tcx: &ty::ctxt, e: &ast::Expr,
                     tcx.sess.span_bug(e.span,
                                       &format!("stability::check_expr: struct construction \
                                                 of non-struct, type {:?}",
-                                               type_.repr(tcx)));
+                                               type_.repr()));
                 }
             }
         }
@@ -551,7 +551,7 @@ pub fn lookup<'tcx>(tcx: &ty::ctxt<'tcx>, id: DefId) -> Option<&'tcx Stability> 
 }
 
 fn lookup_uncached<'tcx>(tcx: &ty::ctxt<'tcx>, id: DefId) -> Option<&'tcx Stability> {
-    debug!("lookup(id={})", id.repr(tcx));
+    debug!("lookup(id={})", id.repr());
 
     // is this definition the implementation of a trait method?
     match ty::trait_item_of_item(tcx, id) {
