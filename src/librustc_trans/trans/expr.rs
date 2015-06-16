@@ -596,8 +596,9 @@ fn trans_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                         fty.abi == synabi::RustIntrinsic;
 
                     let needs_drop = type_needs_drop(bcx.tcx(), ret_ty);
+                    let uses_output = type_of::return_uses_outptr(bcx.ccx(), ret_ty);
 
-                    if is_rust_fn && type_is_immediate(bcx.ccx(), ret_ty) && !needs_drop {
+                    if is_rust_fn && !uses_output && !needs_drop {
                         let args = callee::ArgExprs(&args[..]);
                         let result = callee::trans_call_inner(bcx,
                                                               expr.debug_loc(),
