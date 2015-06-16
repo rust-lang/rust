@@ -944,9 +944,20 @@ fn foo<T>(x: T) where T: Debug {
 ```
 
 When a generic function is referenced, its type is instantiated based on the
-context of the reference. For example, calling the `iter` function defined
-above on `[1, 2]` will instantiate type parameter `T` with `i32`, and require
-the closure parameter to have type `Fn(i32)`.
+context of the reference. For example, calling the `foo` function here:
+
+```
+use std::fmt::Debug;
+
+fn foo<T>(x: &[T]) where T: Debug {
+    // details elided
+    # ()
+}
+
+foo(&[1, 2]);
+```
+
+will instantiate type parameter `T` with `i32`.
 
 The type parameters can also be explicitly supplied in a trailing
 [path](#paths) component after the function name. This might be necessary if
