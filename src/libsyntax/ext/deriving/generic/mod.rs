@@ -1042,21 +1042,31 @@ impl<'a> MethodDef<'a> {
     /// variants where all of the variants match, and one catch-all for
     /// when one does not match.
 
+    /// As an optimization we generate code which checks whether all variants
+    /// match first which makes llvm see that C-like enums can be compiled into
+    /// a simple equality check (for PartialEq).
+
     /// The catch-all handler is provided access the variant index values
-    /// for each of the self-args, carried in precomputed variables. (Nota
-    /// bene: the variant index values are not necessarily the
-    /// discriminant values.  See issue #15523.)
+    /// for each of the self-args, carried in precomputed variables.
 
     /// ```{.text}
-    /// match (this, that, ...) {
-    ///   (Variant1, Variant1, Variant1) => ... // delegate Matching on Variant1
-    ///   (Variant2, Variant2, Variant2) => ... // delegate Matching on Variant2
-    ///   ...
-    ///   _ => {
-    ///     let __this_vi = match this { Variant1 => 0, Variant2 => 1, ... };
-    ///     let __that_vi = match that { Variant1 => 0, Variant2 => 1, ... };
+    /// let __self0_vi = unsafe {
+    ///     std::intrinsics::discriminant_value(&self) } as i32;
+    /// let __self1_vi = unsafe {
+    ///     std::intrinsics::discriminant_value(&__arg1) } as i32;
+    /// let __self2_vi = unsafe {
+    ///     std::intrinsics::discriminant_value(&__arg2) } as i32;
+    ///
+    /// if __self0_vi == __self1_vi && __self0_vi == __self2_vi && ... {
+    ///     match (...) {
+    ///         (Variant1, Variant1, ...) => Body1
+    ///         (Variant2, Variant2, ...) => Body2,
+    ///         ...
+    ///         _ => ::core::intrinsics::unreachable()
+    ///     }
+    /// }
+    /// else {
     ///     ... // catch-all remainder can inspect above variant index values.
-    ///   }
     /// }
     /// ```
     fn build_enum_match_tuple<'b>(
@@ -1187,7 +1197,6 @@ impl<'a> MethodDef<'a> {
 
                 cx.arm(sp, vec![single_pat], arm_expr)
             }).collect();
-
         // We will usually need the catch-all after matching the
         // tuples `(VariantK, VariantK, ...)` for each VariantK of the
         // enum.  But:
@@ -1223,9 +1232,14 @@ impl<'a> MethodDef<'a> {
             // ```
             let mut index_let_stmts: Vec<P<ast::Stmt>> = Vec::new();
 
+            //We also build an expression which checks whether all discriminants are equal
+            // discriminant_test = __self0_vi == __self1_vi && __self0_vi == __self2_vi && ...
+            let mut discriminant_test = cx.expr_bool(sp, true);
+
             let target_type_name =
                 find_repr_type_name(&cx.parse_sess.span_diagnostic, type_attrs);
 
+            let mut first_ident = None;
             for (&ident, self_arg) in vi_idents.iter().zip(&self_args) {
                 let path = vec![cx.ident_of_std("core"),
                                 cx.ident_of("intrinsics"),
@@ -1243,32 +1257,64 @@ impl<'a> MethodDef<'a> {
                 let variant_disr = cx.expr_cast(sp, variant_value, target_ty);
                 let let_stmt = cx.stmt_let(sp, false, ident, variant_disr);
                 index_let_stmts.push(let_stmt);
+
+                match first_ident {
+                    Some(first) => {
+                        let first_expr = cx.expr_ident(sp, first);
+                        let id = cx.expr_ident(sp, ident);
+                        let test = cx.expr_binary(sp, ast::BiEq, first_expr, id);
+                        discriminant_test = cx.expr_binary(sp, ast::BiAnd, discriminant_test, test)
+                    }
+                    None => {
+                        first_ident = Some(ident);
+                    }
+                }
             }
 
             let arm_expr = self.call_substructure_method(
                 cx, trait_, type_ident, &self_args[..], nonself_args,
                 &catch_all_substructure);
 
-            // Builds the expression:
-            // {
-            //   let __self0_vi = ...;
-            //   let __self1_vi = ...;
-            //   ...
-            //   <delegated expression referring to __self0_vi, et al.>
-            // }
-            let arm_expr = cx.expr_block(
-                cx.block_all(sp, index_let_stmts, Some(arm_expr)));
+            //Since we know that all the arguments will match if we reach the match expression we
+            //add the unreachable intrinsics as the result of the catch all which should help llvm
+            //in optimizing it
+            let path = vec![cx.ident_of_std("core"),
+                            cx.ident_of("intrinsics"),
+                            cx.ident_of("unreachable")];
+            let call = cx.expr_call_global(
+                sp, path, vec![]);
+            let unreachable = cx.expr_block(P(ast::Block {
+                stmts: vec![],
+                expr: Some(call),
+                id: ast::DUMMY_NODE_ID,
+                rules: ast::UnsafeBlock(ast::CompilerGenerated),
+                span: sp }));
+            match_arms.push(cx.arm(sp, vec![cx.pat_wild(sp)], unreachable));
 
-            // Builds arm:
-            // _ => { let __self0_vi = ...;
-            //        let __self1_vi = ...;
-            //        ...
-            //        <delegated expression as above> }
-            let catch_all_match_arm =
-                cx.arm(sp, vec![cx.pat_wild(sp)], arm_expr);
+            // Final wrinkle: the self_args are expressions that deref
+            // down to desired l-values, but we cannot actually deref
+            // them when they are fed as r-values into a tuple
+            // expression; here add a layer of borrowing, turning
+            // `(*self, *__arg_0, ...)` into `(&*self, &*__arg_0, ...)`.
+            let borrowed_self_args = self_args.move_map(|self_arg| cx.expr_addr_of(sp, self_arg));
+            let match_arg = cx.expr(sp, ast::ExprTup(borrowed_self_args));
 
-            match_arms.push(catch_all_match_arm);
-
+            //Lastly we create an expression which branches on all discriminants being equal
+            //  if discriminant_test {
+            //      match (...) {
+            //          (Variant1, Variant1, ...) => Body1
+            //          (Variant2, Variant2, ...) => Body2,
+            //          ...
+            //          _ => ::core::intrinsics::unreachable()
+            //      }
+            //  }
+            //  else {
+            //      <delegated expression referring to __self0_vi, et al.>
+            //  }
+            let all_match = cx.expr_match(sp, match_arg, match_arms);
+            let arm_expr = cx.expr_if(sp, discriminant_test, all_match, Some(arm_expr));
+            cx.expr_block(
+                cx.block_all(sp, index_let_stmts, Some(arm_expr)))
         } else if variants.is_empty() {
             // As an additional wrinkle, For a zero-variant enum A,
             // currently the compiler
@@ -1319,17 +1365,19 @@ impl<'a> MethodDef<'a> {
             // derive Debug on such a type could here generate code
             // that needs the feature gate enabled.)
 
-            return cx.expr_unreachable(sp);
+            cx.expr_unreachable(sp)
         }
+        else {
 
-        // Final wrinkle: the self_args are expressions that deref
-        // down to desired l-values, but we cannot actually deref
-        // them when they are fed as r-values into a tuple
-        // expression; here add a layer of borrowing, turning
-        // `(*self, *__arg_0, ...)` into `(&*self, &*__arg_0, ...)`.
-        let borrowed_self_args = self_args.move_map(|self_arg| cx.expr_addr_of(sp, self_arg));
-        let match_arg = cx.expr(sp, ast::ExprTup(borrowed_self_args));
-        cx.expr_match(sp, match_arg, match_arms)
+            // Final wrinkle: the self_args are expressions that deref
+            // down to desired l-values, but we cannot actually deref
+            // them when they are fed as r-values into a tuple
+            // expression; here add a layer of borrowing, turning
+            // `(*self, *__arg_0, ...)` into `(&*self, &*__arg_0, ...)`.
+            let borrowed_self_args = self_args.move_map(|self_arg| cx.expr_addr_of(sp, self_arg));
+            let match_arg = cx.expr(sp, ast::ExprTup(borrowed_self_args));
+            cx.expr_match(sp, match_arg, match_arms)
+        }
     }
 
     fn expand_static_enum_method_body(&self,
