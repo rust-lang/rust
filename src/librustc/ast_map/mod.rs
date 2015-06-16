@@ -321,6 +321,34 @@ impl<'ast> Map<'ast> {
         self.find_entry(id).and_then(|x| x.parent_node()).unwrap_or(id)
     }
 
+    /// Returns the nearest enclosing scope. A scope is an item or block.
+    /// FIXME it is not clear to me that all items qualify as scopes - statics
+    /// and associated types probably shouldn't, for example. Behaviour in this
+    /// regard should be expected to be highly unstable.
+    pub fn get_enclosing_scope(&self, id: NodeId) -> Option<NodeId> {
+        let mut last_id = id;
+        // Walk up the chain of parents until we find a 'scope'.
+        loop {
+            let cur_id = self.get_parent_node(last_id);
+            if cur_id == last_id {
+                return None;
+            }
+
+            match self.get(cur_id) {
+                NodeItem(_) |
+                NodeForeignItem(_) |
+                NodeTraitItem(_) |
+                NodeImplItem(_) |
+                NodeBlock(_) => {
+                    return Some(cur_id);
+                }
+                _ => {}
+            }
+
+            last_id = cur_id;
+        }
+    }
+
     pub fn get_parent_did(&self, id: NodeId) -> DefId {
         let parent = self.get_parent(id);
         match self.find_entry(parent) {
