@@ -265,7 +265,7 @@ impl fmt::Display for Type {
         // but just to be safe we write `null` in that case.
         if let Some(ref n) = self.name {
             try!(write!(f, "{{\"name\":\"{}\",", n));
-            try!(write!(f, "\"generic\":\"{}\",", self.generic));
+            try!(write!(f, "\"generic\":{},", self.generic));
             let ty_params: Vec<String> = self.ty_params.iter().map(|ref t| {
                 format!("{}", t)
             }).collect();
