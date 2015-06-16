@@ -300,7 +300,3 @@ let y = TraitObject {
 // y.method();
 (y.vtable.method)(y.data);
 ```
-
-If `b` or `y` were owning trait objects (`Box<Foo>`), there would be a
-`(b.vtable.destructor)(b.data)` (respectively `y`) call when they went out of
-scope.
