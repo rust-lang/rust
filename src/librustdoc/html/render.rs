@@ -2638,7 +2638,7 @@ fn get_generic_index_type(clean_type: &clean::Type) -> Type {
     };
 
     Type {
-        name: Some(segment.name.clone()),
+        name: Some(segment.name.clone().into_ascii_lowercase()),
         generic: true,
         ty_params: Box::new(ty_params),
     }
