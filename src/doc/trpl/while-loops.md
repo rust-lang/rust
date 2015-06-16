@@ -11,7 +11,7 @@ while !done {
 
     println!("{}", x);
     
-    done = x % 5 == 0 
+    done = x % 5 == 0; 
 }
 ```
 
@@ -49,7 +49,7 @@ while !done {
 
     println!("{}", x);
     
-    done = x % 5 == 0
+    done = x % 5 == 0;
 }
 ```
 
