@@ -12,6 +12,7 @@ use self::ImportDirectiveSubclass::*;
 
 use DefModifiers;
 use Module;
+use ModuleKind;
 use Namespace::{self, TypeNS, ValueNS};
 use NameBindings;
 use NamespaceResult::{BoundResult, UnboundResult, UnknownResult};
@@ -980,10 +981,14 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         match import_resolution.type_target {
             Some(ref target) if target.shadowable != Shadowable::Always => {
                 if let Some(ref ty) = *name_bindings.type_def.borrow() {
-                    let (what, note) = if ty.module_def.is_some() {
-                        ("existing submodule", "note conflicting module here")
-                    } else {
-                        ("type in this module", "note conflicting type here")
+                    let (what, note) = match ty.module_def {
+                        Some(ref module)
+                            if module.kind.get() == ModuleKind::NormalModuleKind =>
+                                ("existing submodule", "note conflicting module here"),
+                        Some(ref module)
+                            if module.kind.get() == ModuleKind::TraitModuleKind =>
+                                ("trait in this module", "note conflicting trait here"),
+                        _    => ("type in this module", "note conflicting type here"),
                     };
                     span_err!(self.resolver.session, import_span, E0256,
                               "import `{}` conflicts with {}",
