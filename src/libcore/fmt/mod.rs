@@ -1175,6 +1175,20 @@ impl<T: Debug> Debug for [T] {
     }
 }
 
+#[stable(feature = "rust1", since = "1.2.0")]
+impl<T: LowerHex + Debug> LowerHex for [T] {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        f.debug_list().entries(self.iter()).finish()
+    }
+}
+
+#[stable(feature = "rust1", since = "1.2.0")]
+impl<T: UpperHex + Debug> UpperHex for [T] {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        f.debug_list().entries(self.iter()).finish()
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Debug for () {
     fn fmt(&self, f: &mut Formatter) -> Result {
