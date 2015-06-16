@@ -802,6 +802,128 @@ impl<'tcx> ctxt<'tcx> {
     pub fn free_region_map(&self, id: NodeId) -> FreeRegionMap {
         self.free_region_maps.borrow()[&id].clone()
     }
+
+    pub fn lift<T: Lift<'tcx>>(&self, value: &T) -> Option<T::Lifted> {
+        value.lift_to_tcx(self)
+    }
+}
+
+/// A trait implemented for all X<'a> types which can be safely and
+/// efficiently converted to X<'tcx> as long as they are part of the
+/// provided ty::ctxt<'tcx>.
+/// This can be done, for example, for Ty<'tcx> or &'tcx Substs<'tcx>
+/// by looking them up in their respective interners.
+pub trait Lift<'tcx> {
+    type Lifted;
+    fn lift_to_tcx(&self, tcx: &ctxt<'tcx>) -> Option<Self::Lifted>;
+}
+
+impl<'tcx, A: Lift<'tcx>, B: Lift<'tcx>> Lift<'tcx> for (A, B) {
+    type Lifted = (A::Lifted, B::Lifted);
+    fn lift_to_tcx(&self, tcx: &ctxt<'tcx>) -> Option<Self::Lifted> {
+        tcx.lift(&self.0).and_then(|a| tcx.lift(&self.1).map(|b| (a, b)))
+    }
+}
+
+impl<'tcx, T: Lift<'tcx>> Lift<'tcx> for Vec<T> {
+    type Lifted = Vec<T::Lifted>;
+    fn lift_to_tcx(&self, tcx: &ctxt<'tcx>) -> Option<Self::Lifted> {
+        let mut result = Vec::with_capacity(self.len());
+        for x in self {
+            if let Some(value) = tcx.lift(x) {
+                result.push(value);
+            } else {
+                return None;
+            }
+        }
+        Some(result)
+    }
+}
+
+impl<'tcx> Lift<'tcx> for Region {
+    type Lifted = Self;
+    fn lift_to_tcx(&self, _: &ctxt<'tcx>) -> Option<Region> {
+        Some(*self)
+    }
+}
+
+impl<'a, 'tcx> Lift<'tcx> for Ty<'a> {
+    type Lifted = Ty<'tcx>;
+    fn lift_to_tcx(&self, tcx: &ctxt<'tcx>) -> Option<Ty<'tcx>> {
+        if let Some(&ty) = tcx.interner.borrow().get(&self.sty) {
+            if *self as *const _ == ty as *const _ {
+                return Some(ty);
+            }
+        }
+        None
+    }
+}
+
+impl<'a, 'tcx> Lift<'tcx> for &'a Substs<'a> {
+    type Lifted = &'tcx Substs<'tcx>;
+    fn lift_to_tcx(&self, tcx: &ctxt<'tcx>) -> Option<&'tcx Substs<'tcx>> {
+        if let Some(&substs) = tcx.substs_interner.borrow().get(*self) {
+            if *self as *const _ == substs as *const _ {
+                return Some(substs);
+            }
+        }
+        None
+    }
+}
+
+impl<'a, 'tcx> Lift<'tcx> for TraitRef<'a> {
+    type Lifted = TraitRef<'tcx>;
+    fn lift_to_tcx(&self, tcx: &ctxt<'tcx>) -> Option<TraitRef<'tcx>> {
+        tcx.lift(&self.substs).map(|substs| TraitRef {
+            def_id: self.def_id,
+            substs: substs
+        })
+    }
+}
+
+impl<'a, 'tcx> Lift<'tcx> for TraitPredicate<'a> {
+    type Lifted = TraitPredicate<'tcx>;
+    fn lift_to_tcx(&self, tcx: &ctxt<'tcx>) -> Option<TraitPredicate<'tcx>> {
+        tcx.lift(&self.trait_ref).map(|trait_ref| TraitPredicate {
+            trait_ref: trait_ref
+        })
+    }
+}
+
+impl<'a, 'tcx> Lift<'tcx> for EquatePredicate<'a> {
+    type Lifted = EquatePredicate<'tcx>;
+    fn lift_to_tcx(&self, tcx: &ctxt<'tcx>) -> Option<EquatePredicate<'tcx>> {
+        tcx.lift(&(self.0, self.1)).map(|(a, b)| EquatePredicate(a, b))
+    }
+}
+
+impl<'tcx, A: Copy+Lift<'tcx>, B: Copy+Lift<'tcx>> Lift<'tcx> for OutlivesPredicate<A, B> {
+    type Lifted = OutlivesPredicate<A::Lifted, B::Lifted>;
+    fn lift_to_tcx(&self, tcx: &ctxt<'tcx>) -> Option<Self::Lifted> {
+        tcx.lift(&(self.0, self.1)).map(|(a, b)| OutlivesPredicate(a, b))
+    }
+}
+
+impl<'a, 'tcx> Lift<'tcx> for ProjectionPredicate<'a> {
+    type Lifted = ProjectionPredicate<'tcx>;
+    fn lift_to_tcx(&self, tcx: &ctxt<'tcx>) -> Option<ProjectionPredicate<'tcx>> {
+        tcx.lift(&(self.projection_ty.trait_ref, self.ty)).map(|(trait_ref, ty)| {
+            ProjectionPredicate {
+                projection_ty: ProjectionTy {
+                    trait_ref: trait_ref,
+                    item_name: self.projection_ty.item_name
+                },
+                ty: ty
+            }
+        })
+    }
+}
+
+impl<'tcx, T: Lift<'tcx>> Lift<'tcx> for Binder<T> {
+    type Lifted = Binder<T::Lifted>;
+    fn lift_to_tcx(&self, tcx: &ctxt<'tcx>) -> Option<Self::Lifted> {
+        tcx.lift(&self.0).map(|x| Binder(x))
+    }
 }
 
 pub mod tls {
