@@ -681,7 +681,6 @@ impl<'a> ExtCtxt<'a> {
     pub fn expansion_cause(&self) -> Span {
         let mut expn_id = self.backtrace;
         let mut last_macro = None;
-        let mut current_expn = None;
         loop {
             if self.codemap().with_expn_info(expn_id, |info| {
                 info.map_or(None, |i| {
@@ -690,7 +689,6 @@ impl<'a> ExtCtxt<'a> {
                         return None;
                     }
                     expn_id = i.call_site.expn_id;
-                    current_expn = Some(i.call_site);
                     if i.callee.format != CompilerExpansion {
                         last_macro = Some(i.call_site)
                     }
