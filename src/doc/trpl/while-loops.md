@@ -50,7 +50,6 @@ while !done {
     println!("{}", x);
     
     done = x % 5 == 0
-    
 }
 ```
 
