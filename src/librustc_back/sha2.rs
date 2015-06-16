@@ -482,6 +482,7 @@ pub struct Sha256 {
 
 impl Sha256 {
     /// Construct a new instance of a SHA-256 digest.
+    /// Do not – under any circumstances – use this where timing attacks might be possible!
     pub fn new() -> Sha256 {
         Sha256 {
             engine: Engine256::new(&H256)
