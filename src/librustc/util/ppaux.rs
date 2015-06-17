@@ -45,7 +45,7 @@ pub trait Repr {
 }
 
 /// Produces a string suitable for showing to the user.
-pub trait UserString: Repr {
+pub trait UserString {
     fn user_string(&self) -> String;
 }
 
@@ -296,14 +296,6 @@ impl<'a, T: ?Sized +UserString> UserString for &'a T {
     }
 }
 
-impl<T:UserString> UserString for Vec<T> {
-    fn user_string(&self) -> String {
-        let strs: Vec<String> =
-            self.iter().map(|t| t.user_string()).collect();
-        strs.connect(", ")
-    }
-}
-
 impl Repr for def::Def {
     fn repr(&self) -> String {
         format!("{:?}", *self)
@@ -472,17 +464,6 @@ impl<'tcx> Repr for ty::TraitDef<'tcx> {
         format!("TraitDef(generics={}, trait_ref={})",
                 self.generics.repr(),
                 self.trait_ref.repr())
-    }
-}
-
-impl Repr for ast::TraitItem {
-    fn repr(&self) -> String {
-        let kind = match self.node {
-            ast::ConstTraitItem(..) => "ConstTraitItem",
-            ast::MethodTraitItem(..) => "MethodTraitItem",
-            ast::TypeTraitItem(..) => "TypeTraitItem",
-        };
-        format!("{}({}, id={})", kind, self.ident, self.id)
     }
 }
 
@@ -791,12 +772,6 @@ impl Repr for ast::Name {
 impl UserString for ast::Name {
     fn user_string(&self) -> String {
         token::get_name(*self).to_string()
-    }
-}
-
-impl Repr for ast::Ident {
-    fn repr(&self) -> String {
-        token::get_ident(*self).to_string()
     }
 }
 

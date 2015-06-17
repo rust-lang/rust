@@ -62,7 +62,7 @@ pub fn trans_impl(ccx: &CrateContext,
     let _icx = push_ctxt("meth::trans_impl");
     let tcx = ccx.tcx();
 
-    debug!("trans_impl(name={}, id={})", name.repr(), id);
+    debug!("trans_impl(name={}, id={})", name, id);
 
     let mut v = TransItemVisitor { ccx: ccx };
 
