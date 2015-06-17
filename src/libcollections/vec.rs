@@ -1469,42 +1469,26 @@ impl<T> ops::DerefMut for Vec<T> {
 impl<T> FromIterator<T> for Vec<T> {
     #[inline]
     fn from_iter<I: IntoIterator<Item=T>>(iterable: I) -> Vec<T> {
+        // Unroll the first iteration, as the vector is going to be
+        // expanded on this iteration in every case when the iterable is not
+        // empty, but the loop in extend_desugared() is not going to see the
+        // vector being full in the few subsequent loop iterations.
+        // So we get better branch prediction and the possibility to
+        // construct the vector with initial estimated capacity.
         let mut iterator = iterable.into_iter();
-        let (lower, _) = iterator.size_hint();
-        let mut vector = Vec::with_capacity(lower);
-
-        // This function should be the moral equivalent of:
-        //
-        //      for item in iterator {
-        //          vector.push(item);
-        //      }
-        //
-        // This equivalent crucially runs the iterator precisely once. Below we
-        // actually in theory run the iterator twice (one without bounds checks
-        // and one with). To achieve the "moral equivalent", we use the `if`
-        // statement below to break out early.
-        //
-        // If the first loop has terminated, then we have one of two conditions.
-        //
-        // 1. The underlying iterator returned `None`. In this case we are
-        //    guaranteed that less than `vector.capacity()` elements have been
-        //    returned, so we break out early.
-        // 2. The underlying iterator yielded `vector.capacity()` elements and
-        //    has not yielded `None` yet. In this case we run the iterator to
-        //    its end below.
-        for element in iterator.by_ref().take(vector.capacity()) {
-            let len = vector.len();
-            unsafe {
-                ptr::write(vector.get_unchecked_mut(len), element);
-                vector.set_len(len + 1);
+        let mut vector = match iterator.next() {
+            None => return Vec::new(),
+            Some(element) => {
+                let (lower, _) = iterator.size_hint();
+                let mut vector = Vec::with_capacity(1 + lower);
+                unsafe {
+                    ptr::write(vector.get_unchecked_mut(0), element);
+                    vector.set_len(1);
+                }
+                vector
             }
-        }
-
-        if vector.len() == vector.capacity() {
-            for element in iterator {
-                vector.push(element);
-            }
-        }
+        };
+        vector.extend_desugared(iterator);
         vector
     }
 }
@@ -1569,11 +1553,27 @@ impl<'a, T> IntoIterator for &'a mut Vec<T> {
 impl<T> Extend<T> for Vec<T> {
     #[inline]
     fn extend<I: IntoIterator<Item=T>>(&mut self, iterable: I) {
-        let iterator = iterable.into_iter();
-        let (lower, _) = iterator.size_hint();
-        self.reserve(lower);
-        for element in iterator {
-            self.push(element)
+        self.extend_desugared(iterable.into_iter())
+    }
+}
+
+impl<T> Vec<T> {
+    fn extend_desugared<I: Iterator<Item=T>>(&mut self, mut iterator: I) {
+        // This function should be the moral equivalent of:
+        //
+        //      for item in iterator {
+        //          self.push(item);
+        //      }
+        while let Some(element) = iterator.next() {
+            let len = self.len();
+            if len == self.capacity() {
+                let (lower, _) = iterator.size_hint();
+                self.reserve(lower + 1);
+            }
+            unsafe {
+                ptr::write(self.get_unchecked_mut(len), element);
+                self.set_len(len + 1);
+            }
         }
     }
 }
