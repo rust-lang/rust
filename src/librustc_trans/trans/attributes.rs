@@ -12,6 +12,7 @@
 use libc::{c_uint, c_ulonglong};
 use llvm::{self, ValueRef, AttrHelper};
 use middle::ty::{self, ClosureTyper};
+use session::config::NoDebugInfo;
 use syntax::abi;
 use syntax::ast;
 pub use syntax::attr::InlineAttr;
@@ -105,6 +106,20 @@ pub fn set_optimize_for_size(val: ValueRef, optimize: bool) {
 pub fn from_fn_attrs(ccx: &CrateContext, attrs: &[ast::Attribute], llfn: ValueRef) {
     use syntax::attr::*;
     inline(llfn, find_inline_attr(Some(ccx.sess().diagnostic()), attrs));
+
+    // FIXME: #11906: Omitting frame pointers breaks retrieving the value of a
+    // parameter.
+    let no_fp_elim = (ccx.sess().opts.debuginfo != NoDebugInfo) ||
+                     !ccx.sess().target.target.options.eliminate_frame_pointer;
+    if no_fp_elim {
+        unsafe {
+            let attr = "no-frame-pointer-elim\0".as_ptr() as *const _;
+            let val = "true\0".as_ptr() as *const _;
+            llvm::LLVMAddFunctionAttrStringValue(llfn,
+                                                 llvm::FunctionIndex as c_uint,
+                                                 attr, val);
+        }
+    }
 
     for attr in attrs {
         if attr.check_name("no_stack_check") {

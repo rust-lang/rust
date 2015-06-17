@@ -103,9 +103,6 @@ extern "C" LLVMExecutionEngineRef LLVMBuildExecutionEngine(LLVMModuleRef mod)
     std::string error_str;
     TargetOptions options;
 
-    options.JITEmitDebugInfo = true;
-    options.NoFramePointerElim = true;
-
     RustJITMemoryManager *mm = new RustJITMemoryManager;
 
     ExecutionEngine *ee =

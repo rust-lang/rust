@@ -485,10 +485,10 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 let param_metadata = unsafe {
                     llvm::LLVMDIBuilderCreateTemplateTypeParameter(
                         DIB(cx),
-                        file_metadata,
+                        ptr::null_mut(),
                         name.as_ptr(),
                         actual_self_type_metadata,
-                        ptr::null_mut(),
+                        file_metadata,
                         0,
                         0)
                 };
@@ -519,10 +519,10 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 let param_metadata = unsafe {
                     llvm::LLVMDIBuilderCreateTemplateTypeParameter(
                         DIB(cx),
-                        file_metadata,
+                        ptr::null_mut(),
                         name.as_ptr(),
                         actual_type_metadata,
-                        ptr::null_mut(),
+                        file_metadata,
                         0,
                         0)
                 };
@@ -581,12 +581,14 @@ fn declare_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                                                           loc.line,
                                                                           loc.col.to_usize()));
             unsafe {
+                let debug_loc = llvm::LLVMGetCurrentDebugLocation(cx.raw_builder());
                 let instr = llvm::LLVMDIBuilderInsertDeclareAtEnd(
                     DIB(cx),
                     alloca,
                     metadata,
                     address_operations.as_ptr(),
                     address_operations.len() as c_uint,
+                    debug_loc,
                     bcx.llbb);
 
                 llvm::LLVMSetInstDebugLocation(trans::build::B(bcx).llbuilder, instr);

@@ -22,7 +22,7 @@ pub struct Bytes {
 // dependent alignment
 #[no_mangle]
 pub fn small_array_alignment(x: &mut [i8; 4]) {
-// CHECK: [[VAR:%[0-9]+]] = load [4 x i8]** %x
+// CHECK: [[VAR:%[0-9]+]] = load [4 x i8]*, [4 x i8]** %x
 // CHECK: [[VAR2:%[0-9]+]] = bitcast [4 x i8]* [[VAR]] to i32*
 // CHECK: store i32 %{{.*}}, i32* [[VAR2]], align 1
     *x = [0; 4];
@@ -33,7 +33,7 @@ pub fn small_array_alignment(x: &mut [i8; 4]) {
 // dependent alignment
 #[no_mangle]
 pub fn small_struct_alignment(x: &mut Bytes) {
-// CHECK: [[VAR:%[0-9]+]] = load %Bytes** %x
+// CHECK: [[VAR:%[0-9]+]] = load %Bytes*, %Bytes** %x
 // CHECK: [[VAR2:%[0-9]+]] = bitcast %Bytes* [[VAR]] to i32*
 // CHECK: store i32 %{{.*}}, i32* [[VAR2]], align 1
     *x = Bytes {
