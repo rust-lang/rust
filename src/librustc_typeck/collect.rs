@@ -635,7 +635,7 @@ fn convert_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     let fty = ty::mk_bare_fn(ccx.tcx, Some(def_id),
                              ccx.tcx.mk_bare_fn(ty_method.fty.clone()));
     debug!("method {} (id {}) has type {}",
-            ident.repr(), id, fty.repr());
+            ident, id, fty.repr());
     ccx.tcx.tcache.borrow_mut().insert(def_id,TypeScheme {
         generics: ty_method.generics.clone(),
         ty: fty
