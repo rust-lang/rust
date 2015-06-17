@@ -8,7 +8,7 @@ yielding items of type `A` to produce a collection of `A`:
 fn from_iter<T: Iterator<A>>(iterator: T) -> SomeCollection<A>
 ```
 
-Here, the `Iterator` trait is specifies an interface that a type `T` must
+Here, the `Iterator` trait specifies an interface that a type `T` must
 explicitly implement to be used by this generic function.
 
 **Pros**:
