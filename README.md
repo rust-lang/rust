@@ -4,7 +4,7 @@ Rust is a systems programming language that is fast, memory safe and
 multithreaded, but does not employ a garbage collector or otherwise
 impose significant runtime overhead.
 
-This repo contains the code for `rustc`, the Rust compiler, as well
+This repo contains the code for the compiler (`rustc`), as well
 as standard libraries, tools and documentation for Rust.
 
 ## Quick Start
