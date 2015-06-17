@@ -26,7 +26,6 @@ Lints included in this crate:
  - `len_zero`: Warns on `_.len() == 0` and suggests using `_.is_empty()` (or similar comparisons with `>` or `!=`)
  - `len_without_is_empty`: Warns on traits or impls that have a `.len()` but no `.is_empty()` method
  - `cmp_owned`: Warns on creating owned instances for comparing with others, e.g. `x == "foo".to_string()`
- - `redundant_closure` warns on creating a closure where none is needed, e.g. `|x| foo(x)`, where `foo` can be used directly
  - `inline_always`: Warns on `#[inline(always)]`, because in most cases it is a bad idea
  - `collapsible_if`: Warns on cases where two nested `if`-expressions can be collapsed into one, e.g. `if x { if y { foo() } }` can be written as `if x && y { foo() }`
  - `zero_width_space`: Warns on encountering a unicode zero-width space
