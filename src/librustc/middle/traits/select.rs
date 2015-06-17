@@ -2445,6 +2445,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     region_bound: data_b.bounds.region_bound,
                     builtin_bounds: data_b.bounds.builtin_bounds,
                     projection_bounds: data_a.bounds.projection_bounds.clone(),
+                    region_bound_will_change: data_b.bounds.region_bound_will_change,
                 };
 
                 let new_trait = tcx.mk_trait(data_a.principal.clone(), bounds);
