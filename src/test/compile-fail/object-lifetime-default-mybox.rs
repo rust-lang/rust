@@ -28,6 +28,7 @@ fn deref<T>(ss: &T) -> T {
 
 fn load0(ss: &MyBox<SomeTrait>) -> MyBox<SomeTrait> {
     deref(ss) //~ ERROR cannot infer
+        //~^ WARNING E0398
 }
 
 fn load1<'a,'b>(a: &'a MyBox<SomeTrait>,

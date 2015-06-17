@@ -26,5 +26,5 @@ fn main() {
         std::intrinsics::type_name::<NT>(),
         // DST
         std::intrinsics::type_name::<DST>()
-    )}, ("[u8]", "str", "core::marker::Copy", "NT", "DST"));
+    )}, ("[u8]", "str", "core::marker::Copy + 'static", "NT", "DST"));
 }
