@@ -300,6 +300,10 @@ impl<'tcx> fmt::Display for ty::TraitTy<'tcx> {
             }
         }
 
+        if bounds.region_bound_will_change && tcx.sess.verbose() {
+            components.push(format!("WILL-CHANGE"));
+        }
+
         Ok(())
     }
 }

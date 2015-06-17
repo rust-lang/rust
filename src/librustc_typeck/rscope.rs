@@ -43,6 +43,19 @@ pub trait RegionScope {
     /// computing `object_lifetime_default` (in particular, in legacy
     /// modes, it may not be relevant).
     fn base_object_lifetime_default(&self, span: Span) -> ty::Region;
+
+    /// Used to issue warnings in Rust 1.2, not needed after that.
+    /// True if the result of `object_lifetime_default` will change in 1.3.
+    fn object_lifetime_default_will_change_in_1_3(&self) -> bool {
+        false
+    }
+
+    /// Used to issue warnings in Rust 1.2, not needed after that.
+    /// True if the result of `base_object_lifetime_default` differs
+    /// from the result of `object_lifetime_default`.
+    fn base_object_lifetime_default_differs(&self) -> bool {
+        false
+    }
 }
 
 // A scope in which all regions must be explicitly named. This is used
@@ -210,6 +223,30 @@ impl<'r> RegionScope for ObjectLifetimeDefaultRscope<'r> {
         assert!(false, "this code should not execute until Rust 1.3");
         self.base_scope.base_object_lifetime_default(span)
     }
+
+    fn object_lifetime_default_will_change_in_1_3(&self) -> bool {
+        debug!("object_lifetime_default_will_change_in_1_3: {:?}", self.default);
+
+        match self.default {
+            ty::ObjectLifetimeDefault::Ambiguous |
+            ty::ObjectLifetimeDefault::Specific(_) =>
+                false,
+
+            ty::ObjectLifetimeDefault::BaseDefault =>
+                self.base_scope.base_object_lifetime_default_differs()
+        }
+    }
+
+    fn base_object_lifetime_default_differs(&self) -> bool {
+        debug!("base_object_lifetime_default_differs: {:?}", self.default);
+
+        match self.default {
+            ty::ObjectLifetimeDefault::Ambiguous |
+            ty::ObjectLifetimeDefault::Specific(_) =>
+                true,
+
+            ty::ObjectLifetimeDefault::BaseDefault =>
+                self.base_scope.base_object_lifetime_default_differs(),
         }
     }
 
