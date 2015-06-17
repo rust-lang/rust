@@ -99,7 +99,6 @@ enum CastError {
     NeedViaInt,
     NeedViaUsize,
     NonScalar,
-    RefToMutPtr
 }
 
 impl<'tcx> CastCheck<'tcx> {
@@ -160,11 +159,6 @@ impl<'tcx> CastCheck<'tcx> {
                             actual,
                             fcx.infcx().ty_to_string(self.cast_ty))
                 }, self.expr_ty, None);
-            }
-            CastError::RefToMutPtr => {
-                span_err!(fcx.tcx().sess, self.span, E0188,
-                          "cannot cast an immutable reference to a \
-                           mutable pointer");
             }
         }
     }
