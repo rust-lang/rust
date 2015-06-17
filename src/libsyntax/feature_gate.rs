@@ -430,18 +430,6 @@ pub fn emit_feature_err(diag: &SpanHandler, feature: &str, span: Span, explain: 
                                   feature));
 }
 
-pub fn emit_feature_warn(diag: &SpanHandler, feature: &str, span: Span, explain: &str) {
-    diag.span_warn(span, explain);
-
-    // #23973: do not suggest `#![feature(...)]` if we are in beta/stable
-    if option_env!("CFG_DISABLE_UNSTABLE_FEATURES").is_some() { return; }
-    if diag.handler.can_emit_warnings {
-        diag.fileline_help(span, &format!("add #![feature({})] to the \
-                                       crate attributes to silence this warning",
-                                      feature));
-    }
-}
-
 pub const EXPLAIN_ASM: &'static str =
     "inline assembly is not stable enough for use and is subject to change";
 
