@@ -206,11 +206,19 @@ decades, so it appears the tradeoff has seen some confirmation already.
 
 # Alternatives
 
-* Opt-in and / or opt-out "feature-flags" (e.g. `#[legacy(..)]` for 
-opting out of a change) was suggested. The big problem is that this 
-relies on the user being able to change their dependencies, which may 
-not be possible for legal, organizational or other reasons. In 
-contrast, a defined target version doesn't ever need to change. 
+* Have a flag in `Cargo.toml` instead of the crate root. This however 
+requires an argument to `rustc`, because Cargo (in addition to those 
+not using it) somehow has to pass it to `rustc`. Requiring such an 
+argument on every non-cargoized build would increase room for error and 
+thus pessimize usability. Also apart from availability of dependencies, 
+which arguably is Cargo's main raison d'être, we currently do not have 
+a precedent where Cargo.toml has direct effect on the working of a 
+crate's code.
+* Opt-in and / or opt-out "feature-flags" (e.g. `#[legacy(..)]`) was 
+suggested. The big problem is that this relies on the user being able 
+to change their dependencies, which may not be possible for legal, 
+organizational or other reasons. In contrast, a defined target version 
+doesn't ever need to change. 
 Depending on the specific case, it may be useful to allow a combination 
 of `#![legacy(..)]`, `#![future(..)]` and `#![target(..)]` where each 
 API version can declare the currently active feature and permit or
