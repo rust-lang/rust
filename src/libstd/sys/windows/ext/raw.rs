@@ -10,12 +10,12 @@
 
 //! Windows-specific primitives
 
-#![unstable(feature = "raw_ext", reason = "recently added API")]
+#[stable(feature = "raw_ext", since = "1.1.0")]
 
-use os::raw;
+use os::raw::c_void;
 
-pub type HANDLE = *mut raw::c_void;
+#[stable(feature = "raw_ext", since = "1.1.0")] pub type HANDLE = *mut c_void;
 #[cfg(target_pointer_width = "32")]
-pub type SOCKET = u32;
+#[stable(feature = "raw_ext", since = "1.1.0")] pub type SOCKET = u32;
 #[cfg(target_pointer_width = "64")]
-pub type SOCKET = u64;
+#[stable(feature = "raw_ext", since = "1.1.0")] pub type SOCKET = u64;

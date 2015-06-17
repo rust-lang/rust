@@ -10,10 +10,11 @@
 
 //! Nacl-specific definitions
 
-#![unstable(feature = "raw_ext", reason = "recently added API")]
+#![stable(feature = "raw_ext", since = "1.1.0")]
 
 pub mod raw;
 
 pub mod fs {
+    #![stable(feature = "raw_ext", since = "1.1.0")]
     pub use sys::fs::MetadataExt;
 }

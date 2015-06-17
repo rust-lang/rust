@@ -150,6 +150,7 @@ macro_rules! thread_local {
 #[macro_export]
 #[doc(hidden)]
 #[allow_internal_unstable]
+#[cfg(not(no_elf_tls))]
 macro_rules! __thread_local_inner {
     (static $name:ident: $t:ty = $init:expr) => (
         #[cfg_attr(all(any(target_os = "macos", target_os = "linux"),
@@ -177,6 +178,37 @@ macro_rules! __thread_local_inner {
 
         #[allow(trivial_casts)]
         #[cfg(any(not(any(target_os = "macos", target_os = "linux")), target_arch = "aarch64"))]
+        const _INIT: ::std::thread::__local::KeyInner<$t> = {
+            ::std::thread::__local::KeyInner {
+                inner: ::std::cell::UnsafeCell { value: $init },
+                os: ::std::thread::__local::OsStaticKey {
+                    inner: ::std::thread::__local::OS_INIT_INNER,
+                    dtor: ::std::option::Option::Some(
+                        ::std::thread::__local::destroy_value::<$t>
+                    ),
+                },
+            }
+        };
+
+        _INIT
+    });
+}
+
+#[macro_export]
+#[doc(hidden)]
+#[allow_internal_unstable]
+#[cfg(no_elf_tls)]
+macro_rules! __thread_local_inner {
+    (static $name:ident: $t:ty = $init:expr) => (
+        static $name: ::std::thread::__local::KeyInner<$t> =
+            __thread_local_inner!($init, $t);
+    );
+    (pub static $name:ident: $t:ty = $init:expr) => (
+        pub static $name: ::std::thread::__local::KeyInner<$t> =
+            __thread_local_inner!($init, $t);
+    );
+    ($init:expr, $t:ty) => ({
+        #[allow(trivial_casts)]
         const _INIT: ::std::thread::__local::KeyInner<$t> = {
             ::std::thread::__local::KeyInner {
                 inner: ::std::cell::UnsafeCell { value: $init },
@@ -295,7 +327,9 @@ impl<T: 'static> LocalKey<T> {
     }
 }
 
-#[cfg(all(any(target_os = "macos", target_os = "linux"), not(target_arch = "aarch64")))]
+#[cfg(all(any(target_os = "macos", target_os = "linux"),
+          not(target_arch = "aarch64"),
+          not(no_elf_tls)))]
 #[doc(hidden)]
 mod imp {
     use prelude::v1::*;
@@ -427,7 +461,9 @@ mod imp {
     }
 }
 
-#[cfg(any(not(any(target_os = "macos", target_os = "linux")), target_arch = "aarch64"))]
+#[cfg(any(not(any(target_os = "macos", target_os = "linux")),
+          target_arch = "aarch64",
+          no_elf_tls))]
 #[doc(hidden)]
 mod imp {
     use prelude::v1::*;

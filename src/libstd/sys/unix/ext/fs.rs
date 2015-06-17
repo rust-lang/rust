@@ -16,11 +16,10 @@ use prelude::v1::*;
 
 use fs::{self, Permissions, OpenOptions};
 use io;
-use mem;
 use os::raw::c_long;
 use os::unix::raw;
 use path::Path;
-use sys::platform;
+use sys::fs::MetadataExt as UnixMetadataExt;
 use sys;
 use sys_common::{FromInner, AsInner, AsInnerMut};
 
@@ -64,14 +63,24 @@ pub const SETGID: raw::mode_t = 0o2000;
 pub const STICKY_BIT: raw::mode_t = 0o1000;
 
 /// Unix-specific extensions to `Permissions`
-#[unstable(feature = "fs_ext",
-           reason = "may want a more useful mode abstraction")]
+#[stable(feature = "fs_ext", since = "1.1.0")]
 pub trait PermissionsExt {
+    /// Returns the underlying raw `mode_t` bits that are the standard Unix
+    /// permissions for this file.
+    #[stable(feature = "fs_ext", since = "1.1.0")]
     fn mode(&self) -> raw::mode_t;
+
+    /// Sets the underlying raw `mode_t` bits for this set of permissions.
+    #[stable(feature = "fs_ext", since = "1.1.0")]
     fn set_mode(&mut self, mode: raw::mode_t);
+
+    /// Creates a new instance of `Permissions` from the given set of Unix
+    /// permission bits.
+    #[stable(feature = "fs_ext", since = "1.1.0")]
     fn from_mode(mode: raw::mode_t) -> Self;
 }
 
+#[stable(feature = "fs_ext", since = "1.1.0")]
 impl PermissionsExt for Permissions {
     fn mode(&self) -> raw::mode_t { self.as_inner().mode() }
 
@@ -85,39 +94,21 @@ impl PermissionsExt for Permissions {
 }
 
 /// Unix-specific extensions to `OpenOptions`
-#[unstable(feature = "fs_ext",
-           reason = "may want a more useful mode abstraction")]
+#[stable(feature = "fs_ext", since = "1.1.0")]
 pub trait OpenOptionsExt {
     /// Sets the mode bits that a new file will be created with.
     ///
     /// If a new file is created as part of a `File::open_opts` call then this
     /// specified `mode` will be used as the permission bits for the new file.
+    #[stable(feature = "fs_ext", since = "1.1.0")]
     fn mode(&mut self, mode: raw::mode_t) -> &mut Self;
 }
 
+#[stable(feature = "fs_ext", since = "1.1.0")]
 impl OpenOptionsExt for OpenOptions {
     fn mode(&mut self, mode: raw::mode_t) -> &mut OpenOptions {
         self.as_inner_mut().mode(mode); self
     }
-}
-
-#[unstable(feature = "metadata_ext", reason = "recently added API")]
-pub struct Metadata(sys::fs::FileAttr);
-
-#[unstable(feature = "metadata_ext", reason = "recently added API")]
-pub trait MetadataExt {
-    fn as_raw(&self) -> &Metadata;
-}
-
-impl MetadataExt for fs::Metadata {
-    fn as_raw(&self) -> &Metadata {
-        let inner: &sys::fs::FileAttr = self.as_inner();
-        unsafe { mem::transmute(inner) }
-    }
-}
-
-impl AsInner<platform::raw::stat> for Metadata {
-    fn as_inner(&self) -> &platform::raw::stat { self.0.as_inner() }
 }
 
 // Hm, why are there casts here to the returned type, shouldn't the types always
@@ -127,33 +118,72 @@ impl AsInner<platform::raw::stat> for Metadata {
 //
 // As a result to make sure this compiles for all platforms we do the manual
 // casts and rely on manual lowering to `stat` if the raw type is desired.
-#[unstable(feature = "metadata_ext", reason = "recently added API")]
-impl Metadata {
-    pub fn dev(&self) -> raw::dev_t { self.0.raw().st_dev as raw::dev_t }
-    pub fn ino(&self) -> raw::ino_t { self.0.raw().st_ino as raw::ino_t }
-    pub fn mode(&self) -> raw::mode_t { self.0.raw().st_mode as raw::mode_t }
-    pub fn nlink(&self) -> raw::nlink_t { self.0.raw().st_nlink as raw::nlink_t }
-    pub fn uid(&self) -> raw::uid_t { self.0.raw().st_uid as raw::uid_t }
-    pub fn gid(&self) -> raw::gid_t { self.0.raw().st_gid as raw::gid_t }
-    pub fn rdev(&self) -> raw::dev_t { self.0.raw().st_rdev as raw::dev_t }
-    pub fn size(&self) -> raw::off_t { self.0.raw().st_size as raw::off_t }
-    pub fn atime(&self) -> raw::time_t { self.0.raw().st_atime }
-    pub fn atime_nsec(&self) -> c_long { self.0.raw().st_atime_nsec as c_long }
-    pub fn mtime(&self) -> raw::time_t { self.0.raw().st_mtime }
-    pub fn mtime_nsec(&self) -> c_long { self.0.raw().st_mtime_nsec as c_long }
-    pub fn ctime(&self) -> raw::time_t { self.0.raw().st_ctime }
-    pub fn ctime_nsec(&self) -> c_long { self.0.raw().st_ctime_nsec as c_long }
+#[stable(feature = "metadata_ext", since = "1.1.0")]
+pub trait MetadataExt {
+    #[stable(feature = "metadata_ext", since = "1.1.0")]
+    fn dev(&self) -> raw::dev_t;
+    #[stable(feature = "metadata_ext", since = "1.1.0")]
+    fn ino(&self) -> raw::ino_t;
+    #[stable(feature = "metadata_ext", since = "1.1.0")]
+    fn mode(&self) -> raw::mode_t;
+    #[stable(feature = "metadata_ext", since = "1.1.0")]
+    fn nlink(&self) -> raw::nlink_t;
+    #[stable(feature = "metadata_ext", since = "1.1.0")]
+    fn uid(&self) -> raw::uid_t;
+    #[stable(feature = "metadata_ext", since = "1.1.0")]
+    fn gid(&self) -> raw::gid_t;
+    #[stable(feature = "metadata_ext", since = "1.1.0")]
+    fn rdev(&self) -> raw::dev_t;
+    #[stable(feature = "metadata_ext", since = "1.1.0")]
+    fn size(&self) -> raw::off_t;
+    #[stable(feature = "metadata_ext", since = "1.1.0")]
+    fn atime(&self) -> raw::time_t;
+    #[stable(feature = "metadata_ext", since = "1.1.0")]
+    fn atime_nsec(&self) -> c_long;
+    #[stable(feature = "metadata_ext", since = "1.1.0")]
+    fn mtime(&self) -> raw::time_t;
+    #[stable(feature = "metadata_ext", since = "1.1.0")]
+    fn mtime_nsec(&self) -> c_long;
+    #[stable(feature = "metadata_ext", since = "1.1.0")]
+    fn ctime(&self) -> raw::time_t;
+    #[stable(feature = "metadata_ext", since = "1.1.0")]
+    fn ctime_nsec(&self) -> c_long;
+    #[stable(feature = "metadata_ext", since = "1.1.0")]
+    fn blksize(&self) -> raw::blksize_t;
+    #[stable(feature = "metadata_ext", since = "1.1.0")]
+    fn blocks(&self) -> raw::blkcnt_t;
+}
 
-    pub fn blksize(&self) -> raw::blksize_t {
-        self.0.raw().st_blksize as raw::blksize_t
+impl MetadataExt for fs::Metadata {
+    fn dev(&self) -> raw::dev_t { self.as_raw_stat().st_dev as raw::dev_t }
+    fn ino(&self) -> raw::ino_t { self.as_raw_stat().st_ino as raw::ino_t }
+    fn mode(&self) -> raw::mode_t { self.as_raw_stat().st_mode as raw::mode_t }
+    fn nlink(&self) -> raw::nlink_t { self.as_raw_stat().st_nlink as raw::nlink_t }
+    fn uid(&self) -> raw::uid_t { self.as_raw_stat().st_uid as raw::uid_t }
+    fn gid(&self) -> raw::gid_t { self.as_raw_stat().st_gid as raw::gid_t }
+    fn rdev(&self) -> raw::dev_t { self.as_raw_stat().st_rdev as raw::dev_t }
+    fn size(&self) -> raw::off_t { self.as_raw_stat().st_size as raw::off_t }
+    fn atime(&self) -> raw::time_t { self.as_raw_stat().st_atime }
+    fn atime_nsec(&self) -> c_long { self.as_raw_stat().st_atime_nsec as c_long }
+    fn mtime(&self) -> raw::time_t { self.as_raw_stat().st_mtime }
+    fn mtime_nsec(&self) -> c_long { self.as_raw_stat().st_mtime_nsec as c_long }
+    fn ctime(&self) -> raw::time_t { self.as_raw_stat().st_ctime }
+    fn ctime_nsec(&self) -> c_long { self.as_raw_stat().st_ctime_nsec as c_long }
+
+    fn blksize(&self) -> raw::blksize_t {
+        self.as_raw_stat().st_blksize as raw::blksize_t
     }
-    pub fn blocks(&self) -> raw::blkcnt_t {
-        self.0.raw().st_blocks as raw::blkcnt_t
+    fn blocks(&self) -> raw::blkcnt_t {
+        self.as_raw_stat().st_blocks as raw::blkcnt_t
     }
 }
 
-#[unstable(feature = "dir_entry_ext", reason = "recently added API")]
+/// Unix-specific extension methods for `fs::DirEntry`
+#[stable(feature = "dir_entry_ext", since = "1.1.0")]
 pub trait DirEntryExt {
+    /// Returns the underlying `d_ino` field in the contained `dirent`
+    /// structure.
+    #[stable(feature = "dir_entry_ext", since = "1.1.0")]
     fn ino(&self) -> raw::ino_t;
 }
 
