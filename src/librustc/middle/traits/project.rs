@@ -535,7 +535,7 @@ fn assemble_candidates_from_param_env<'cx,'tcx>(
     obligation_trait_ref: &ty::TraitRef<'tcx>,
     candidate_set: &mut ProjectionTyCandidateSet<'tcx>)
 {
-    let env_predicates = selcx.param_env().caller_bounds.clone();
+    let env_predicates = selcx.param_env().caller_bounds.iter().cloned();
     assemble_candidates_from_predicates(selcx, obligation, obligation_trait_ref,
                                         candidate_set, env_predicates);
 }
@@ -571,22 +571,25 @@ fn assemble_candidates_from_trait_def<'cx,'tcx>(
     // If so, extract what we know from the trait and try to come up with a good answer.
     let trait_predicates = ty::lookup_predicates(selcx.tcx(), trait_ref.def_id);
     let bounds = trait_predicates.instantiate(selcx.tcx(), trait_ref.substs);
+    let bounds = elaborate_predicates(selcx.tcx(), bounds.predicates.into_vec());
     assemble_candidates_from_predicates(selcx, obligation, obligation_trait_ref,
-                                        candidate_set, bounds.predicates.into_vec());
+                                        candidate_set, bounds)
 }
 
-fn assemble_candidates_from_predicates<'cx,'tcx>(
+fn assemble_candidates_from_predicates<'cx,'tcx,I>(
     selcx: &mut SelectionContext<'cx,'tcx>,
     obligation: &ProjectionTyObligation<'tcx>,
     obligation_trait_ref: &ty::TraitRef<'tcx>,
     candidate_set: &mut ProjectionTyCandidateSet<'tcx>,
-    env_predicates: Vec<ty::Predicate<'tcx>>)
+    env_predicates: I)
+    where I: Iterator<Item=ty::Predicate<'tcx>>
 {
-    debug!("assemble_candidates_from_predicates(obligation={}, env_predicates={})",
-           obligation.repr(selcx.tcx()),
-           env_predicates.repr(selcx.tcx()));
+    debug!("assemble_candidates_from_predicates(obligation={})",
+           obligation.repr(selcx.tcx()));
     let infcx = selcx.infcx();
-    for predicate in elaborate_predicates(selcx.tcx(), env_predicates) {
+    for predicate in env_predicates {
+        debug!("assemble_candidates_from_predicates: predicate={}",
+               predicate.repr(selcx.tcx()));
         match predicate {
             ty::Predicate::Projection(ref data) => {
                 let same_name = data.item_name() == obligation.predicate.item_name;
@@ -641,6 +644,7 @@ fn assemble_candidates_from_object_type<'cx,'tcx>(
     let env_predicates = projection_bounds.iter()
                                           .map(|p| p.as_predicate())
                                           .collect();
+    let env_predicates = elaborate_predicates(selcx.tcx(), env_predicates);
     assemble_candidates_from_predicates(selcx, obligation, obligation_trait_ref,
                                         candidate_set, env_predicates)
 }

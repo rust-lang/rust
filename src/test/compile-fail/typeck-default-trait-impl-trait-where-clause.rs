@@ -40,6 +40,6 @@ fn test() {
 }
 
 fn main() {
-    foo::<i32>();
-    //~^ ERROR the trait `NotImplemented` is not implemented for the type `core::option::Option<i32>`
+    foo::<u32>();
+    //~^ ERROR the trait `NotImplemented` is not implemented for the type `core::option::Option<u32>`
 }

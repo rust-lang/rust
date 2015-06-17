@@ -12,6 +12,7 @@
 
 trait Foo { fn foo(&self) {} }
 impl Foo for str {}
+impl Foo for [u8] {}
 
 fn test1<T: ?Sized + Foo>(t: &T) {
     let u: &Foo = t;
@@ -28,9 +29,9 @@ fn test3() {
     //~^ ERROR `core::marker::Sized` is not implemented for the type `str`
 }
 
-fn test4() {
-    let _: &Foo = "hi" as &Foo;
-    //~^ ERROR `core::marker::Sized` is not implemented for the type `str`
+fn test4(x: &[u8]) {
+    let _: &Foo = x as &Foo;
+    //~^ ERROR `core::marker::Sized` is not implemented for the type `[u8]`
 }
 
 fn main() { }

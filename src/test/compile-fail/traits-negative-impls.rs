@@ -19,9 +19,6 @@ use std::marker::Send;
 
 struct Outer<T: Send>(T);
 
-struct TestType;
-impl !Send for TestType {}
-
 struct Outer2<T>(T);
 
 unsafe impl<T: Send> Sync for Outer2<T> {}
@@ -30,29 +27,41 @@ fn is_send<T: Send>(_: T) {}
 fn is_sync<T: Sync>(_: T) {}
 
 fn dummy() {
+    struct TestType;
+    impl !Send for TestType {}
+
     Outer(TestType);
-    //~^ ERROR the trait `core::marker::Send` is not implemented for the type `TestType`
+    //~^ ERROR the trait `core::marker::Send` is not implemented for the type `dummy::TestType`
 
     is_send(TestType);
-    //~^ ERROR the trait `core::marker::Send` is not implemented for the type `TestType`
+    //~^ ERROR the trait `core::marker::Send` is not implemented for the type `dummy::TestType`
 
     is_send((8, TestType));
-    //~^ ERROR the trait `core::marker::Send` is not implemented for the type `TestType`
+    //~^ ERROR the trait `core::marker::Send` is not implemented for the type `dummy::TestType`
 }
 
 fn dummy2() {
+    struct TestType;
+    impl !Send for TestType {}
+
     is_send(Box::new(TestType));
-    //~^ ERROR the trait `core::marker::Send` is not implemented for the type `TestType`
+    //~^ ERROR the trait `core::marker::Send` is not implemented for the type `dummy2::TestType`
 }
 
 fn dummy3() {
+    struct TestType;
+    impl !Send for TestType {}
+
     is_send(Box::new(Outer2(TestType)));
-    //~^ ERROR the trait `core::marker::Send` is not implemented for the type `TestType`
+    //~^ ERROR the trait `core::marker::Send` is not implemented for the type `dummy3::TestType`
 }
 
 fn main() {
+    struct TestType;
+    impl !Send for TestType {}
+
     // This will complain about a missing Send impl because `Sync` is implement *just*
     // for T that are `Send`. Look at #20366 and #19950
     is_sync(Outer2(TestType));
-    //~^ ERROR the trait `core::marker::Send` is not implemented for the type `TestType`
+    //~^ ERROR the trait `core::marker::Send` is not implemented for the type `main::TestType`
 }
