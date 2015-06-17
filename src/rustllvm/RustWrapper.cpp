@@ -141,6 +141,15 @@ extern "C" void LLVMAddFunctionAttrString(LLVMValueRef Fn, unsigned index, const
   F->addAttributes(index, AttributeSet::get(F->getContext(), index, B));
 }
 
+extern "C" void LLVMAddFunctionAttrStringValue(LLVMValueRef Fn, unsigned index,
+                                               const char *Name,
+                                               const char *Value) {
+  Function *F = unwrap<Function>(Fn);
+  AttrBuilder B;
+  B.addAttribute(Name, Value);
+  F->addAttributes(index, AttributeSet::get(F->getContext(), index, B));
+}
+
 extern "C" void LLVMRemoveFunctionAttrString(LLVMValueRef fn, unsigned index, const char *Name) {
   Function *f = unwrap<Function>(fn);
   LLVMContext &C = f->getContext();
@@ -229,9 +238,24 @@ typedef LLVMValueRef LLVMMetadataRef;
 #endif
 
 template<typename DIT>
+DIT* unwrapDIptr(LLVMMetadataRef ref) {
+    return (DIT*) (ref ? unwrap<MDNode>(ref) : NULL);
+}
+
+#if LLVM_VERSION_MINOR <= 6
+template<typename DIT>
 DIT unwrapDI(LLVMMetadataRef ref) {
     return DIT(ref ? unwrap<MDNode>(ref) : NULL);
 }
+#else
+#define DIDescriptor DIScope
+#define DIArray DINodeArray
+#define unwrapDI unwrapDIptr
+#endif
+
+#if LLVM_VERSION_MINOR <= 5
+#define DISubroutineType DICompositeType
+#endif
 
 extern "C" uint32_t LLVMRustDebugMetadataVersion() {
     return DEBUG_METADATA_VERSION;
@@ -296,7 +320,9 @@ extern "C" LLVMMetadataRef LLVMDIBuilderCreateSubroutineType(
     LLVMMetadataRef ParameterTypes) {
     return wrap(Builder->createSubroutineType(
         unwrapDI<DIFile>(File),
-#if LLVM_VERSION_MINOR >= 6
+#if LLVM_VERSION_MINOR >= 7
+        DITypeRefArray(unwrap<MDTuple>(ParameterTypes))));
+#elif LLVM_VERSION_MINOR >= 6
         unwrapDI<DITypeArray>(ParameterTypes)));
 #else
         unwrapDI<DIArray>(ParameterTypes)));
@@ -322,11 +348,11 @@ extern "C" LLVMMetadataRef LLVMDIBuilderCreateFunction(
     return wrap(Builder->createFunction(
         unwrapDI<DIScope>(Scope), Name, LinkageName,
         unwrapDI<DIFile>(File), LineNo,
-        unwrapDI<DICompositeType>(Ty), isLocalToUnit, isDefinition, ScopeLine,
+        unwrapDI<DISubroutineType>(Ty), isLocalToUnit, isDefinition, ScopeLine,
         Flags, isOptimized,
         unwrap<Function>(Fn),
-        unwrapDI<MDNode*>(TParam),
-        unwrapDI<MDNode*>(Decl)));
+        unwrapDIptr<MDNode>(TParam),
+        unwrapDIptr<MDNode>(Decl)));
 }
 
 extern "C" LLVMMetadataRef LLVMDIBuilderCreateBasicType(
@@ -373,7 +399,11 @@ extern "C" LLVMMetadataRef LLVMDIBuilderCreateStructType(
         AlignInBits,
         Flags,
         unwrapDI<DIType>(DerivedFrom),
+#if LLVM_VERSION_MINOR >= 7
+        DINodeArray(unwrapDI<MDTuple>(Elements)),
+#else
         unwrapDI<DIArray>(Elements),
+#endif
         RunTimeLang,
         unwrapDI<DIType>(VTableHolder),
         UniqueId
@@ -436,7 +466,7 @@ extern "C" LLVMMetadataRef LLVMDIBuilderCreateStaticVariable(
         unwrapDI<DIType>(Ty),
         isLocalToUnit,
         cast<Constant>(unwrap(Val)),
-        unwrapDI<MDNode*>(Decl)));
+        unwrapDIptr<MDNode>(Decl)));
 }
 
 extern "C" LLVMMetadataRef LLVMDIBuilderCreateVariable(
@@ -486,7 +516,12 @@ extern "C" LLVMMetadataRef LLVMDIBuilderCreateArrayType(
     LLVMMetadataRef Subscripts) {
     return wrap(Builder->createArrayType(Size, AlignInBits,
         unwrapDI<DIType>(Ty),
-        unwrapDI<DIArray>(Subscripts)));
+#if LLVM_VERSION_MINOR >= 7
+        DINodeArray(unwrapDI<MDTuple>(Subscripts))
+#else
+        unwrapDI<DIArray>(Subscripts)
+#endif
+    ));
 }
 
 extern "C" LLVMMetadataRef LLVMDIBuilderCreateVectorType(
@@ -497,7 +532,12 @@ extern "C" LLVMMetadataRef LLVMDIBuilderCreateVectorType(
     LLVMMetadataRef Subscripts) {
     return wrap(Builder->createVectorType(Size, AlignInBits,
         unwrapDI<DIType>(Ty),
-        unwrapDI<DIArray>(Subscripts)));
+#if LLVM_VERSION_MINOR >= 7
+        DINodeArray(unwrapDI<MDTuple>(Subscripts))
+#else
+        unwrapDI<DIArray>(Subscripts)
+#endif
+    ));
 }
 
 extern "C" LLVMMetadataRef LLVMDIBuilderGetOrCreateSubrange(
@@ -511,11 +551,17 @@ extern "C" LLVMMetadataRef LLVMDIBuilderGetOrCreateArray(
     DIBuilderRef Builder,
     LLVMMetadataRef* Ptr,
     unsigned Count) {
+#if LLVM_VERSION_MINOR >= 7
+    Metadata **DataValue = unwrap(Ptr);
+    return wrap(Builder->getOrCreateArray(
+        ArrayRef<Metadata*>(DataValue, Count)).get());
+#else
     return wrap(Builder->getOrCreateArray(
 #if LLVM_VERSION_MINOR >= 6
         ArrayRef<Metadata*>(unwrap(Ptr), Count)));
 #else
         ArrayRef<Value*>(reinterpret_cast<Value**>(Ptr), Count)));
+#endif
 #endif
 }
 
@@ -525,21 +571,21 @@ extern "C" LLVMValueRef LLVMDIBuilderInsertDeclareAtEnd(
     LLVMMetadataRef VarInfo,
     int64_t* AddrOps,
     unsigned AddrOpsCount,
+    LLVMValueRef DL,
     LLVMBasicBlockRef InsertAtEnd) {
-#if LLVM_VERSION_MINOR >= 6
-    DIExpression Expr;
-    if (AddrOpsCount == 0) {
-      Expr = Builder->createExpression();
-    } else {
-      llvm::ArrayRef<int64_t> addr_ops(AddrOps, AddrOpsCount);
-      Expr = Builder->createExpression(addr_ops);
-    }
-#endif
     return wrap(Builder->insertDeclare(
         unwrap(Val),
+#if LLVM_VERSION_MINOR >= 7
+        unwrap<DILocalVariable>(VarInfo),
+#else
         unwrapDI<DIVariable>(VarInfo),
+#endif
 #if LLVM_VERSION_MINOR >= 6
-        Expr,
+        Builder->createExpression(
+          llvm::ArrayRef<int64_t>(AddrOps, AddrOpsCount)),
+#endif
+#if LLVM_VERSION_MINOR >= 7
+        DebugLoc(cast<MDNode>(unwrap<MetadataAsValue>(DL)->getMetadata())),
 #endif
         unwrap(InsertAtEnd)));
 }
@@ -550,21 +596,23 @@ extern "C" LLVMValueRef LLVMDIBuilderInsertDeclareBefore(
     LLVMMetadataRef VarInfo,
     int64_t* AddrOps,
     unsigned AddrOpsCount,
+    LLVMValueRef DL,
     LLVMValueRef InsertBefore) {
 #if LLVM_VERSION_MINOR >= 6
-    DIExpression Expr;
-    if (AddrOpsCount == 0) {
-      Expr = Builder->createExpression();
-    } else {
-      llvm::ArrayRef<int64_t> addr_ops(AddrOps, AddrOpsCount);
-      Expr = Builder->createExpression(addr_ops);
-    }
 #endif
     return wrap(Builder->insertDeclare(
         unwrap(Val),
+#if LLVM_VERSION_MINOR >= 7
+        unwrap<DILocalVariable>(VarInfo),
+#else
         unwrapDI<DIVariable>(VarInfo),
+#endif
 #if LLVM_VERSION_MINOR >= 6
-        Expr,
+        Builder->createExpression(
+          llvm::ArrayRef<int64_t>(AddrOps, AddrOpsCount)),
+#endif
+#if LLVM_VERSION_MINOR >= 7
+        DebugLoc(cast<MDNode>(unwrap<MetadataAsValue>(DL)->getMetadata())),
 #endif
         unwrap<Instruction>(InsertBefore)));
 }
@@ -595,7 +643,11 @@ extern "C" LLVMMetadataRef LLVMDIBuilderCreateEnumerationType(
         LineNumber,
         SizeInBits,
         AlignInBits,
+#if LLVM_VERSION_MINOR >= 7
+        DINodeArray(unwrapDI<MDTuple>(Elements)),
+#else
         unwrapDI<DIArray>(Elements),
+#endif
         unwrapDI<DIType>(ClassType)));
 }
 
@@ -620,7 +672,11 @@ extern "C" LLVMMetadataRef LLVMDIBuilderCreateUnionType(
         SizeInBits,
         AlignInBits,
         Flags,
+#if LLVM_VERSION_MINOR >= 7
+        DINodeArray(unwrapDI<MDTuple>(Elements)),
+#else
         unwrapDI<DIArray>(Elements),
+#endif
         RunTimeLang,
         UniqueId
         ));
@@ -638,10 +694,14 @@ extern "C" LLVMMetadataRef LLVMDIBuilderCreateTemplateTypeParameter(
     return wrap(Builder->createTemplateTypeParameter(
       unwrapDI<DIDescriptor>(Scope),
       Name,
-      unwrapDI<DIType>(Ty),
+      unwrapDI<DIType>(Ty)
+#if LLVM_VERSION_MINOR <= 6
+      ,
       unwrapDI<MDNode*>(File),
       LineNo,
-      ColumnNo));
+      ColumnNo
+#endif
+      ));
 }
 
 extern "C" int64_t LLVMDIBuilderCreateOpDeref()
@@ -673,7 +733,10 @@ extern "C" void LLVMDICompositeTypeSetTypeArray(
     LLVMMetadataRef CompositeType,
     LLVMMetadataRef TypeArray)
 {
-#if LLVM_VERSION_MINOR >= 6
+#if LLVM_VERSION_MINOR >= 7
+    DICompositeType *tmp = unwrapDI<DICompositeType>(CompositeType);
+    Builder->replaceArrays(tmp, DINodeArray(unwrap<MDTuple>(TypeArray)));
+#elif LLVM_VERSION_MINOR >= 6
     DICompositeType tmp = unwrapDI<DICompositeType>(CompositeType);
     Builder->replaceArrays(tmp, unwrapDI<DIArray>(TypeArray));
 #else
@@ -692,11 +755,15 @@ extern "C" LLVMValueRef LLVMDIBuilderCreateDebugLocation(
 
     DebugLoc debug_loc = DebugLoc::get(Line,
                                        Column,
-                                       unwrapDI<MDNode*>(Scope),
-                                       unwrapDI<MDNode*>(InlinedAt));
+                                       unwrapDIptr<MDNode>(Scope),
+                                       unwrapDIptr<MDNode>(InlinedAt));
 
 #if LLVM_VERSION_MINOR >= 6
-    return wrap(MetadataAsValue::get(context, debug_loc.getAsMDNode(context)));
+    return wrap(MetadataAsValue::get(context, debug_loc.getAsMDNode(
+#if LLVM_VERSION_MINOR <= 6
+            context
+#endif
+        )));
 #else
     return wrap(debug_loc.getAsMDNode(context));
 #endif
@@ -721,7 +788,12 @@ LLVMRustLinkInExternalBitcode(LLVMModuleRef dst, char *bc, size_t len) {
     Module *Dst = unwrap(dst);
 #if LLVM_VERSION_MINOR >= 6
     std::unique_ptr<MemoryBuffer> buf = MemoryBuffer::getMemBufferCopy(StringRef(bc, len));
+#if LLVM_VERSION_MINOR >= 7
+    ErrorOr<std::unique_ptr<Module>> Src =
+        llvm::getLazyBitcodeModule(std::move(buf), Dst->getContext());
+#else
     ErrorOr<Module *> Src = llvm::getLazyBitcodeModule(std::move(buf), Dst->getContext());
+#endif
 #else
     MemoryBuffer* buf = MemoryBuffer::getMemBufferCopy(StringRef(bc, len));
     ErrorOr<Module *> Src = llvm::getLazyBitcodeModule(buf, Dst->getContext());
@@ -739,7 +811,11 @@ LLVMRustLinkInExternalBitcode(LLVMModuleRef dst, char *bc, size_t len) {
 #if LLVM_VERSION_MINOR >= 6
     raw_string_ostream Stream(Err);
     DiagnosticPrinterRawOStream DP(Stream);
+#if LLVM_VERSION_MINOR >= 7
+    if (Linker::LinkModules(Dst, Src->get(), [&](const DiagnosticInfo &DI) { DI.print(DP); })) {
+#else
     if (Linker::LinkModules(Dst, *Src, [&](const DiagnosticInfo &DI) { DI.print(DP); })) {
+#endif
 #else
     if (Linker::LinkModules(Dst, *Src, Linker::DestroySource, &Err)) {
 #endif
@@ -813,8 +889,12 @@ extern "C" const Archive::Child*
 LLVMRustArchiveIteratorCurrent(RustArchiveIterator *rai) {
     if (rai->cur == rai->end)
         return NULL;
+#if LLVM_VERSION_MINOR >= 6
     const Archive::Child &ret = *rai->cur;
     return &ret;
+#else
+    return rai->cur.operator->();
+#endif
 }
 
 extern "C" void
@@ -942,7 +1022,11 @@ extern "C" void LLVMWriteDebugLocToString(
     RustStringRef str)
 {
     raw_rust_string_ostream os(str);
+#if LLVM_VERSION_MINOR >= 7
+    unwrap(dl)->print(os);
+#else
     unwrap(dl)->print(*unwrap(C), os);
+#endif
 }
 
 DEFINE_SIMPLE_CONVERSION_FUNCTIONS(SMDiagnostic, LLVMSMDiagnosticRef)

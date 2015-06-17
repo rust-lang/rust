@@ -1029,11 +1029,26 @@ pub fn fold_variants<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
         }
         General(ity, ref cases, _) => {
             let ccx = bcx.ccx();
-            let unr_cx = fcx.new_temp_block("enum-variant-iter-unr");
-            Unreachable(unr_cx);
+
+            // See the comments in trans/base.rs for more information (inside
+            // iter_structural_ty), but the gist here is that if the enum's
+            // discriminant is *not* in the range that we're expecting (in which
+            // case we'll take the fall-through branch on the switch
+            // instruction) then we can't just optimize this to an Unreachable
+            // block.
+            //
+            // Currently we still have filling drop, so this means that the drop
+            // glue for enums may be called when the enum has been paved over
+            // with the "I've been dropped" value. In this case the default
+            // branch of the switch instruction will actually be taken at
+            // runtime, so the basic block isn't actually unreachable, so we
+            // need to make it do something with defined behavior. In this case
+            // we just return early from the function.
+            let ret_void_cx = fcx.new_temp_block("enum-variant-iter-ret-void");
+            RetVoid(ret_void_cx, DebugLoc::None);
 
             let discr_val = trans_get_discr(bcx, r, value, None);
-            let llswitch = Switch(bcx, discr_val, unr_cx.llbb, cases.len());
+            let llswitch = Switch(bcx, discr_val, ret_void_cx.llbb, cases.len());
             let bcx_next = fcx.new_temp_block("enum-variant-iter-next");
 
             for (discr, case) in cases.iter().enumerate() {

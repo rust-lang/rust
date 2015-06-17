@@ -10,7 +10,7 @@
 
 use back::lto;
 use back::link::{get_cc_prog, remove};
-use session::config::{OutputFilenames, NoDebugInfo, Passes, SomePasses, AllPasses};
+use session::config::{OutputFilenames, Passes, SomePasses, AllPasses};
 use session::Session;
 use session::config;
 use llvm;
@@ -188,10 +188,6 @@ fn create_target_machine(sess: &Session) -> TargetMachineRef {
     let opt_level = get_llvm_opt_level(sess.opts.optimize);
     let use_softfp = sess.opts.cg.soft_float;
 
-    // FIXME: #11906: Omitting frame pointers breaks retrieving the value of a parameter.
-    let no_fp_elim = (sess.opts.debuginfo != NoDebugInfo) ||
-                     !sess.target.target.options.eliminate_frame_pointer;
-
     let any_library = sess.crate_types.borrow().iter().any(|ty| {
         *ty != config::CrateTypeExecutable
     });
@@ -237,7 +233,6 @@ fn create_target_machine(sess: &Session) -> TargetMachineRef {
             opt_level,
             true /* EnableSegstk */,
             use_softfp,
-            no_fp_elim,
             !any_library && reloc_model == llvm::RelocPIC,
             ffunction_sections,
             fdata_sections,
@@ -279,6 +274,9 @@ struct ModuleConfig {
     no_prepopulate_passes: bool,
     no_builtins: bool,
     time_passes: bool,
+    vectorize_loop: bool,
+    vectorize_slp: bool,
+    merge_functions: bool,
 }
 
 unsafe impl Send for ModuleConfig { }
@@ -301,6 +299,9 @@ impl ModuleConfig {
             no_prepopulate_passes: false,
             no_builtins: false,
             time_passes: false,
+            vectorize_loop: false,
+            vectorize_slp: false,
+            merge_functions: false,
         }
     }
 
@@ -309,6 +310,18 @@ impl ModuleConfig {
         self.no_prepopulate_passes = sess.opts.cg.no_prepopulate_passes;
         self.no_builtins = trans.no_builtins;
         self.time_passes = sess.time_passes();
+
+        // Copy what clang does by turning on loop vectorization at O2 and
+        // slp vectorization at O3. Otherwise configure other optimization aspects
+        // of this pass manager builder.
+        self.vectorize_loop = !sess.opts.cg.no_vectorize_loops &&
+                             (sess.opts.optimize == config::Default ||
+                              sess.opts.optimize == config::Aggressive);
+        self.vectorize_slp = !sess.opts.cg.no_vectorize_slp &&
+                            sess.opts.optimize == config::Aggressive;
+
+        self.merge_functions = sess.opts.optimize == config::Default ||
+                               sess.opts.optimize == config::Aggressive;
     }
 }
 
@@ -448,27 +461,26 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
                 let pass = CString::new(pass).unwrap();
                 llvm::LLVMRustAddPass(fpm, pass.as_ptr())
             };
-            if !config.no_verify { assert!(addpass("verify")); }
 
+            if !config.no_verify { assert!(addpass("verify")); }
             if !config.no_prepopulate_passes {
                 llvm::LLVMRustAddAnalysisPasses(tm, fpm, llmod);
                 llvm::LLVMRustAddAnalysisPasses(tm, mpm, llmod);
-                populate_llvm_passes(fpm, mpm, llmod, opt_level,
-                                     config.no_builtins);
+                populate_llvm_passes(fpm, mpm, llmod, opt_level, &config);
             }
 
             for pass in &config.passes {
-                let pass = CString::new(pass.clone()).unwrap();
-                if !llvm::LLVMRustAddPass(mpm, pass.as_ptr()) {
-                    cgcx.handler.warn(&format!("unknown pass {:?}, ignoring", pass));
+                if !addpass(pass) {
+                    cgcx.handler.warn(&format!("unknown pass `{}`, ignoring",
+                                               pass));
                 }
             }
 
             for pass in &cgcx.plugin_passes {
-                let pass = CString::new(pass.clone()).unwrap();
-                if !llvm::LLVMRustAddPass(mpm, pass.as_ptr()) {
-                    cgcx.handler.err(&format!("a plugin asked for LLVM pass {:?} but LLVM \
-                                               does not recognize it", pass));
+                if !addpass(pass) {
+                    cgcx.handler.err(&format!("a plugin asked for LLVM pass \
+                                               `{}` but LLVM does not \
+                                               recognize it", pass));
                 }
             }
 
@@ -520,7 +532,6 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
         llvm::LLVMRustAddAnalysisPasses(tm, cpm, llmod);
         llvm::LLVMRustAddLibraryInfo(cpm, llmod, no_builtins);
         f(cpm);
-        llvm::LLVMDisposePassManager(cpm);
     }
 
     if config.emit_bc {
@@ -537,13 +548,15 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
             let out = path2cstr(&out);
             with_codegen(tm, llmod, config.no_builtins, |cpm| {
                 llvm::LLVMRustPrintModule(cpm, llmod, out.as_ptr());
+                llvm::LLVMDisposePassManager(cpm);
             })
         }
 
         if config.emit_asm {
             let path = output_names.with_extension(&format!("{}.s", name_extra));
             with_codegen(tm, llmod, config.no_builtins, |cpm| {
-                write_output_file(cgcx.handler, tm, cpm, llmod, &path, llvm::AssemblyFileType);
+                write_output_file(cgcx.handler, tm, cpm, llmod, &path,
+                                  llvm::AssemblyFileType);
             });
         }
 
@@ -1008,16 +1021,9 @@ unsafe fn configure_llvm(sess: &Session) {
     use std::sync::Once;
     static INIT: Once = Once::new();
 
-    // Copy what clang does by turning on loop vectorization at O2 and
-    // slp vectorization at O3
-    let vectorize_loop = !sess.opts.cg.no_vectorize_loops &&
-                         (sess.opts.optimize == config::Default ||
-                          sess.opts.optimize == config::Aggressive);
-    let vectorize_slp = !sess.opts.cg.no_vectorize_slp &&
-                        sess.opts.optimize == config::Aggressive;
-
     let mut llvm_c_strs = Vec::new();
     let mut llvm_args = Vec::new();
+
     {
         let mut add = |arg: &str| {
             let s = CString::new(arg).unwrap();
@@ -1025,8 +1031,6 @@ unsafe fn configure_llvm(sess: &Session) {
             llvm_c_strs.push(s);
         };
         add("rustc"); // fake program name
-        if vectorize_loop { add("-vectorize-loops"); }
-        if vectorize_slp  { add("-vectorize-slp");   }
         if sess.time_llvm_passes() { add("-time-passes"); }
         if sess.print_llvm_passes() { add("-debug-pass=Structure"); }
 
@@ -1084,41 +1088,40 @@ unsafe fn populate_llvm_passes(fpm: llvm::PassManagerRef,
                                mpm: llvm::PassManagerRef,
                                llmod: ModuleRef,
                                opt: llvm::CodeGenOptLevel,
-                               no_builtins: bool) {
+                               config: &ModuleConfig) {
     // Create the PassManagerBuilder for LLVM. We configure it with
     // reasonable defaults and prepare it to actually populate the pass
     // manager.
     let builder = llvm::LLVMPassManagerBuilderCreate();
+
+    llvm::LLVMRustConfigurePassManagerBuilder(builder, opt,
+                                              config.merge_functions,
+                                              config.vectorize_slp,
+                                              config.vectorize_loop);
+
+    llvm::LLVMRustAddBuilderLibraryInfo(builder, llmod, config.no_builtins);
+
+    // Here we match what clang does (kinda). For O0 we only inline
+    // always-inline functions (but don't add lifetime intrinsics), at O1 we
+    // inline with lifetime intrinsics, and O2+ we add an inliner with a
+    // thresholds copied from clang.
     match opt {
         llvm::CodeGenLevelNone => {
-            // Don't add lifetime intrinsics at O0
             llvm::LLVMRustAddAlwaysInlinePass(builder, false);
         }
         llvm::CodeGenLevelLess => {
             llvm::LLVMRustAddAlwaysInlinePass(builder, true);
         }
-        // numeric values copied from clang
         llvm::CodeGenLevelDefault => {
-            llvm::LLVMPassManagerBuilderUseInlinerWithThreshold(builder,
-                                                                225);
+            llvm::LLVMPassManagerBuilderUseInlinerWithThreshold(builder, 225);
         }
         llvm::CodeGenLevelAggressive => {
-            llvm::LLVMPassManagerBuilderUseInlinerWithThreshold(builder,
-                                                                275);
+            llvm::LLVMPassManagerBuilderUseInlinerWithThreshold(builder, 275);
         }
     }
-    llvm::LLVMPassManagerBuilderSetOptLevel(builder, opt as c_uint);
-    llvm::LLVMRustAddBuilderLibraryInfo(builder, llmod, no_builtins);
 
     // Use the builder to populate the function/module pass managers.
     llvm::LLVMPassManagerBuilderPopulateFunctionPassManager(builder, fpm);
     llvm::LLVMPassManagerBuilderPopulateModulePassManager(builder, mpm);
     llvm::LLVMPassManagerBuilderDispose(builder);
-
-    match opt {
-        llvm::CodeGenLevelDefault | llvm::CodeGenLevelAggressive => {
-            llvm::LLVMRustAddPass(mpm, "mergefunc\0".as_ptr() as *const _);
-        }
-        _ => {}
-    };
 }

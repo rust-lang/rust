@@ -24,5 +24,5 @@ pub fn plugin_registrar(reg: &mut Registry) {
     // Normally, we would name a pass that was registered through
     // C++ static object constructors in the same .so file as the
     // plugin registrar.
-    reg.register_llvm_pass("inline");
+    reg.register_llvm_pass("gvn");
 }

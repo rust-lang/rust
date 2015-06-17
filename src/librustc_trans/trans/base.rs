@@ -481,9 +481,23 @@ pub fn iter_structural_ty<'blk, 'tcx, F>(cx: Block<'blk, 'tcx>,
               }
               (_match::Switch, Some(lldiscrim_a)) => {
                   cx = f(cx, lldiscrim_a, cx.tcx().types.isize);
-                  let unr_cx = fcx.new_temp_block("enum-iter-unr");
-                  Unreachable(unr_cx);
-                  let llswitch = Switch(cx, lldiscrim_a, unr_cx.llbb,
+
+                  // Create a fall-through basic block for the "else" case of
+                  // the switch instruction we're about to generate. Note that
+                  // we do **not** use an Unreachable instruction here, even
+                  // though most of the time this basic block will never be hit.
+                  //
+                  // When an enum is dropped it's contents are currently
+                  // overwritten to DTOR_DONE, which means the discriminant
+                  // could have changed value to something not within the actual
+                  // range of the discriminant. Currently this function is only
+                  // used for drop glue so in this case we just return quickly
+                  // from the outer function, and any other use case will only
+                  // call this for an already-valid enum in which case the `ret
+                  // void` will never be hit.
+                  let ret_void_cx = fcx.new_temp_block("enum-iter-ret-void");
+                  RetVoid(ret_void_cx, DebugLoc::None);
+                  let llswitch = Switch(cx, lldiscrim_a, ret_void_cx.llbb,
                                         n_variants);
                   let next_cx = fcx.new_temp_block("enum-iter-next");
 
