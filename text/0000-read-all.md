@@ -5,62 +5,95 @@
 
 # Summary
 
-Rust's Write trait has write_all, which attempts to write an entire
-buffer.  This proposal adds two new methods, read_full and read_exact.
-read_full attempts to read a fixed number of bytes into a given
-buffer, and returns Ok(n) if it succeeds or in the event of EOF.
-read_exact attempts to read a fixed number of bytes into a given
-buffer, and returns Ok(n) if it succeeds and Err(ErrorKind::ShortRead)
-if it fails.
+Rust's `Write` trait has `write_all`, which is a convenience method that calls
+`write` repeatedly to write an entire buffer. This proposal adds two similar
+convenience methods to the `Read` trait: `read_full` and `read_exact`.
+`read_full` calls `read` repeatedly until the buffer has been filled, EOF has
+been reached, or an error other than `Interrupted` occurs. `read_exact` is
+similar to `read_full`, except that reaching EOF before filling the buffer is
+considered an error.
 
 # Motivation
 
-The new read_exact method will allow programs to read from disk
-without having to write their own read loops to handle EINTR.  Most
-Rust programs which need to read from disk will prefer this to the
-plain read function.  Many C programs have the same need, and solve it
-the same way (e.g. git has read_in_full).  Here's one example of a
-Rust library doing this:
-https://github.com/BurntSushi/byteorder/blob/master/src/new.rs#L184
-
-The read_full method is useful the common case of implementing
-buffered reads from a file or socket.  In this case, a short read due
-to EOF is an expected outcome, and the caller must check the number of
-bytes returned.
+The `read` method may return fewer bytes than requested, and may fail with an
+`Interrupted` error if a signal is received during the call. This requires
+programs wishing to fill a buffer to call `read` repeatedly in a loop. This is
+a very common need, and it would be nice if this functionality were provided in
+the standard library. Many C and Rust programs have the same need, and solve it
+in the same way. For example, Git has [`read_in_full`][git], which behaves like
+the proposed `read_full`, and the Rust byteorder crate has
+[`read_full`][byteorder], which behaves like the proposed `read_exact`.
+[git]: https://github.com/git/git/blob/16da57c7c6c1fe92b32645202dd19657a89dd67d/wrapper.c#L246
+[byteorder]: https://github.com/BurntSushi/byteorder/blob/2358ace61332e59f596c9006e1344c97295fdf72/src/new.rs#L184
 
 # Detailed design
 
-The read_full function will take a mutable, borrowed slice of u8 to
-read into, and will attempt to fill that entire slice with data.
+The following methods will be added to the `Read` trait:
 
-It will loop, calling read() once per iteration and attempting to read
-the remaining amount of data.  If read returns EINTR, the loop will
-retry.  If there are no more bytes to read (as signalled by a return
-of Ok(0) from read()), the number of bytes read so far
-will be returned.  In the event of another error, that error will be
-returned. After a read call returns having successfully read some
-bytes, the total number of bytes read will be updated.  If that total
-is equal to the size of the buffer, read_full will return successfully.
+``` rust
+fn read_full(&mut self, buf: &mut [u8]) -> Result<usize>;
+fn read_exact(&mut self, buf: &mut [u8]) -> Result<()>;
+```
 
-The read_exact method can be implemented in terms of read_full.
+Additionally, default implementations of these methods will be provided:
+
+``` rust
+fn read_full(&mut self, mut buf: &mut [u8]) -> Result<usize> {
+    let mut read = 0;
+    while buf.len() > 0 {
+        match self.read(buf) {
+            Ok(0) => break,
+            Ok(n) => { read += n; let tmp = buf; buf = &mut tmp[n..]; }
+            Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
+            Err(e) => return Err(e),
+        }
+    }
+    Ok(read)
+}
+
+fn read_exact(&mut self, buf: &mut [u8]) -> Result<()> {
+    if try!(self.read_full(buf)) != buf.len() {
+        Err(Error::new(ErrorKind::UnexpectedEOF, "failed to fill whole buffer"))
+    } else {
+        Ok(())
+    }
+}
+```
+
+Finally, a new `ErrorKind::UnexpectedEOF` will be introduced, which will be
+returned by `read_exact` in the event of a premature EOF.
 
 # Drawbacks
 
-The major weakness of this API (shared with write_all) is that in the
-event of an error, there is no way to return the number of bytes that
-were successfully read before the error.  But returning that data
-would require a much more complicated return type, as well as
-requiring more work on the part of callers.
+Like `write_all`, these APIs are lossy: in the event of an error, there is no
+way to determine the number of bytes that were successfully read before the
+error. However, doing so would complicate the methods, and the caller will want
+to simply fail if an error occurs the vast majority of the time. Situations
+that require lower level control can still use `read` directly.
+
+# Unanswered Questions
+
+Naming. Is `read_full` the best name? Should `UnexpectedEOF` instead be
+`ShortRead` or `ReadZero`?
 
 # Alternatives
 
-One alternative design would return some new kind of Result which
-could report the number of bytes sucessfully read before an error.
+Use a more complicated return type to allow callers to retrieve the number of
+bytes successfully read before an error occurred. As explained above, this
+would complicate the use of these methods for very little gain. It's worth
+noting that git's `read_in_full` is similarly lossy, and just returns an error
+even if some bytes have been read.
 
-If we wanted one method instead of two, ErrorKind::ShortRead could be
-parameterized with the number of bytes read before EOF.  But this
-would increase the size of ErrorKind.
+Only provide `read_exact`, but parameterize the `UnexpectedEOF` or `ShortRead`
+error kind with the number of bytes read to allow it to be used in place of
+`read_full`. This would be less convenient to use in cases where EOF is not an
+error.
 
-Or we could leave this out, and let every Rust user write their own
-read_full or read_exact function, or import a crate of stuff just for
-this one function.
+Only provide `read_full`. This would cover most of the convenience (callers
+could avoid the read loop), but callers requiring a filled buffer would have to
+manually check if all of the desired bytes were read.
+
+Finally, we could leave this out, and let every Rust user needing this
+functionality continue to write their own `read_full` or `read_exact` function,
+or have to track down an external crate just for one straightforward and
+commonly used convenience method.
