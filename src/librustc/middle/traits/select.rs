@@ -435,6 +435,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         debug!("evaluate_predicate_recursively({})",
                obligation.repr(self.tcx()));
 
+        // Check the cache from the tcx of predicates that we know
+        // have been proven elsewhere. This cache only contains
+        // predicates that are global in scope and hence unaffected by
+        // the current environment.
+        if self.tcx().fulfilled_predicates.borrow().is_duplicate(&obligation.predicate) {
+            return EvaluatedToOk;
+        }
+
         match obligation.predicate {
             ty::Predicate::Trait(ref t) => {
                 assert!(!t.has_escaping_regions());
@@ -1075,14 +1083,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         debug!("assemble_candidates_from_caller_bounds({})",
                stack.obligation.repr(self.tcx()));
 
-        let caller_trait_refs: Vec<_> =
-            self.param_env().caller_bounds.iter()
-            .filter_map(|o| o.to_opt_poly_trait_ref())
-            .collect();
-
         let all_bounds =
-            util::transitive_bounds(
-                self.tcx(), &caller_trait_refs[..]);
+            self.param_env().caller_bounds
+                            .iter()
+                            .filter_map(|o| o.to_opt_poly_trait_ref());
 
         let matching_bounds =
             all_bounds.filter(

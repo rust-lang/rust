@@ -50,8 +50,10 @@ fn foo2<'a>() {
 }
 
 fn foo3<'a>() {
-    let t: Box<S<String>> = box S(marker::PhantomData);
-    let a: Box<Gettable<String>> = t;
+    struct Foo; // does not impl Copy
+
+    let t: Box<S<Foo>> = box S(marker::PhantomData);
+    let a: Box<Gettable<Foo>> = t;
     //~^ ERROR the trait `core::marker::Copy` is not implemented
 }
 

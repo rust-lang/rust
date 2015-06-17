@@ -32,7 +32,7 @@ pub use self::error_reporting::suggest_new_overflow_limit;
 pub use self::coherence::orphan_check;
 pub use self::coherence::overlapping_impls;
 pub use self::coherence::OrphanCheckErr;
-pub use self::fulfill::{FulfillmentContext, RegionObligation};
+pub use self::fulfill::{FulfillmentContext, FulfilledPredicates, RegionObligation};
 pub use self::project::MismatchedProjectionTypes;
 pub use self::project::normalize;
 pub use self::project::Normalized;
@@ -315,7 +315,7 @@ pub fn evaluate_builtin_bound<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
            ty.repr(infcx.tcx),
            bound);
 
-    let mut fulfill_cx = FulfillmentContext::new();
+    let mut fulfill_cx = FulfillmentContext::new(false);
 
     // We can use a dummy node-id here because we won't pay any mind
     // to region obligations that arise (there shouldn't really be any
@@ -414,9 +414,27 @@ pub fn normalize_param_env_or_error<'a,'tcx>(unnormalized_env: ty::ParameterEnvi
     debug!("normalize_param_env_or_error(unnormalized_env={})",
            unnormalized_env.repr(tcx));
 
+    let predicates: Vec<_> =
+        util::elaborate_predicates(tcx, unnormalized_env.caller_bounds.clone())
+        .filter(|p| !p.is_global()) // (*)
+        .collect();
+
+    // (*) Any predicate like `i32: Trait<u32>` or whatever doesn't
+    // need to be in the *environment* to be proven, so screen those
+    // out. This is important for the soundness of inter-fn
+    // caching. Note though that we should probably check that these
+    // predicates hold at the point where the environment is
+    // constructed, but I am not currently doing so out of laziness.
+    // -nmatsakis
+
+    debug!("normalize_param_env_or_error: elaborated-predicates={}",
+           predicates.repr(tcx));
+
+    let elaborated_env = unnormalized_env.with_caller_bounds(predicates);
+
     let infcx = infer::new_infer_ctxt(tcx);
-    let predicates = match fully_normalize(&infcx, &unnormalized_env, cause,
-                                           &unnormalized_env.caller_bounds) {
+    let predicates = match fully_normalize(&infcx, &elaborated_env, cause,
+                                           &elaborated_env.caller_bounds) {
         Ok(predicates) => predicates,
         Err(errors) => {
             report_fulfillment_errors(&infcx, &errors);
@@ -438,14 +456,11 @@ pub fn normalize_param_env_or_error<'a,'tcx>(unnormalized_env: ty::ParameterEnvi
             // all things considered.
             let err_msg = fixup_err_to_string(fixup_err);
             tcx.sess.span_err(span, &err_msg);
-            return unnormalized_env; // an unnormalized env is better than nothing
+            return elaborated_env; // an unnormalized env is better than nothing
         }
     };
 
-    debug!("normalize_param_env_or_error: predicates={}",
-           predicates.repr(tcx));
-
-    unnormalized_env.with_caller_bounds(predicates)
+    elaborated_env.with_caller_bounds(predicates)
 }
 
 pub fn fully_normalize<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx>,
@@ -460,7 +475,7 @@ pub fn fully_normalize<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx>,
     debug!("normalize_param_env(value={})", value.repr(tcx));
 
     let mut selcx = &mut SelectionContext::new(infcx, closure_typer);
-    let mut fulfill_cx = FulfillmentContext::new();
+    let mut fulfill_cx = FulfillmentContext::new(false);
     let Normalized { value: normalized_value, obligations } =
         project::normalize(selcx, cause, value);
     debug!("normalize_param_env: normalized_value={} obligations={}",

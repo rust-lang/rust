@@ -285,7 +285,7 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
     fn check_static_type(&self, e: &ast::Expr) {
         let ty = ty::node_id_to_type(self.tcx, e.id);
         let infcx = infer::new_infer_ctxt(self.tcx);
-        let mut fulfill_cx = traits::FulfillmentContext::new();
+        let mut fulfill_cx = traits::FulfillmentContext::new(false);
         let cause = traits::ObligationCause::new(e.span, e.id, traits::SharedStatic);
         fulfill_cx.register_builtin_bound(&infcx, ty, ty::BoundSync, cause);
         let env = ty::empty_parameter_environment(self.tcx);
