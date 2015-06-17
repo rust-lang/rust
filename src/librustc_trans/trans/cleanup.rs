@@ -954,8 +954,15 @@ impl<'blk, 'tcx> CleanupScope<'blk, 'tcx> {
         }
     }
 
+    /// Manipulate cleanup scope for call arguments. Conceptually, each
+    /// argument to a call is an lvalue, and performing the call moves each
+    /// of the arguments into a new rvalue (which gets cleaned up by the
+    /// callee). As an optimization, instead of actually performing all of
+    /// those moves, trans just manipulates the cleanup scope to obtain the
+    /// same effect.
     pub fn drop_non_lifetime_clean(&mut self) {
         self.cleanups.retain(|c| c.is_lifetime_end());
+        self.clear_cached_exits();
     }
 }
 
