@@ -390,6 +390,8 @@ pub fn enc_existential_bounds<'a,'tcx>(w: &mut Encoder,
     }
 
     mywrite!(w, ".");
+
+    mywrite!(w, "{}", if bs.region_bound_will_change {'y'} else {'n'});
 }
 
 pub fn enc_region_bounds<'a, 'tcx>(w: &mut Encoder,

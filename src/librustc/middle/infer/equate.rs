@@ -34,6 +34,11 @@ impl<'a, 'tcx> TypeRelation<'a,'tcx> for Equate<'a, 'tcx> {
 
     fn a_is_expected(&self) -> bool { self.fields.a_is_expected }
 
+    fn will_change(&mut self, a: bool, b: bool) -> bool {
+        // if either side changed from what it was, that could cause equality to fail
+        a || b
+    }
+
     fn relate_with_variance<T:Relate<'a,'tcx>>(&mut self,
                                                _: ty::Variance,
                                                a: &T,
