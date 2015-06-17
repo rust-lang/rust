@@ -1,8 +1,8 @@
 # The Rust Programming Language
 
-Rust is a systems programming language that is fast, memory safe and
-multithreaded, but does not employ a garbage collector or otherwise
-impose significant runtime overhead.
+Rust is a fast systems programming language that guarantees both
+memory and thread safety. It does not employ a garbage collector and
+has minimal runtime overhead.
 
 This repo contains the code for `rustc`, the Rust compiler, as well
 as standard libraries, tools and documentation for Rust.
