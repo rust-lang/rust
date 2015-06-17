@@ -63,8 +63,10 @@ use owned_slice::OwnedSlice;
 use parse::token::{InternedString, str_to_ident};
 use parse::token;
 use parse::lexer;
+use print::pprust;
 use ptr::P;
 
+use std::cell::Cell;
 use std::fmt;
 use std::rc::Rc;
 use serialize::{Encodable, Decodable, Encoder, Decoder};
@@ -200,12 +202,17 @@ impl Decodable for Ident {
 /// Function name (not all functions have names)
 pub type FnIdent = Option<Ident>;
 
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash,
-           Debug, Copy)]
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy)]
 pub struct Lifetime {
     pub id: NodeId,
     pub span: Span,
     pub name: Name
+}
+
+impl fmt::Debug for Lifetime {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "lifetime({}: {})", self.id, pprust::lifetime_to_string(self))
+    }
 }
 
 /// A lifetime definition, eg `'a: 'b+'c+'d`
@@ -218,7 +225,7 @@ pub struct LifetimeDef {
 /// A "Path" is essentially Rust's notion of a name; for instance:
 /// std::cmp::PartialEq  .  It's represented as a sequence of identifiers,
 /// along with a bunch of supporting information.
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash)]
 pub struct Path {
     pub span: Span,
     /// A `::foo` path, is relative to the crate root rather than current
@@ -226,6 +233,18 @@ pub struct Path {
     pub global: bool,
     /// The segments in the path: the things separated by `::`.
     pub segments: Vec<PathSegment>,
+}
+
+impl fmt::Debug for Path {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "path({})", pprust::path_to_string(self))
+    }
+}
+
+impl fmt::Display for Path {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", pprust::path_to_string(self))
+    }
 }
 
 /// A segment of a path: an identifier, an optional lifetime, and a set of
@@ -358,10 +377,23 @@ pub type CrateNum = u32;
 pub type NodeId = u32;
 
 #[derive(Clone, Eq, Ord, PartialOrd, PartialEq, RustcEncodable,
-           RustcDecodable, Hash, Debug, Copy)]
+           RustcDecodable, Hash, Copy)]
 pub struct DefId {
     pub krate: CrateNum,
     pub node: NodeId,
+}
+
+fn default_def_id_debug(_: DefId, _: &mut fmt::Formatter) -> fmt::Result { Ok(()) }
+
+thread_local!(pub static DEF_ID_DEBUG: Cell<fn(DefId, &mut fmt::Formatter) -> fmt::Result> =
+                Cell::new(default_def_id_debug));
+
+impl fmt::Debug for DefId {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        try!(write!(f, "DefId {{ krate: {}, node: {} }}",
+                    self.krate, self.node));
+        DEF_ID_DEBUG.with(|def_id_debug| def_id_debug.get()(*self, f))
+    }
 }
 
 impl DefId {
@@ -539,11 +571,17 @@ pub struct Block {
     pub span: Span,
 }
 
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash)]
 pub struct Pat {
     pub id: NodeId,
     pub node: Pat_,
     pub span: Span,
+}
+
+impl fmt::Debug for Pat {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "pat({}: {})", self.id, pprust::pat_to_string(self))
+    }
 }
 
 /// A single field in a struct pattern
@@ -682,7 +720,16 @@ pub enum UnOp {
 /// A statement
 pub type Stmt = Spanned<Stmt_>;
 
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+impl fmt::Debug for Stmt {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "stmt({}: {})",
+               ast_util::stmt_id(self),
+               pprust::stmt_to_string(self))
+    }
+}
+
+
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash)]
 pub enum Stmt_ {
     /// Could be an item or a local (let) binding:
     StmtDecl(P<Decl>, NodeId),
@@ -695,7 +742,6 @@ pub enum Stmt_ {
 
     StmtMac(P<Mac>, MacStmtStyle),
 }
-
 #[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum MacStmtStyle {
     /// The macro statement had a trailing semicolon, e.g. `foo! { ... };`
@@ -772,11 +818,17 @@ pub enum UnsafeSource {
 }
 
 /// An expression
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash,)]
 pub struct Expr {
     pub id: NodeId,
     pub node: Expr_,
     pub span: Span,
+}
+
+impl fmt::Debug for Expr {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "expr({}: {})", self.id, pprust::expr_to_string(self))
+    }
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
@@ -1357,11 +1409,17 @@ pub struct TypeBinding {
 
 
 // NB PartialEq method appears below.
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash)]
 pub struct Ty {
     pub id: NodeId,
     pub node: Ty_,
     pub span: Span,
+}
+
+impl fmt::Debug for Ty {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "type({})", pprust::ty_to_string(self))
+    }
 }
 
 /// Not represented directly in the AST, referred to by name through a ty_path.

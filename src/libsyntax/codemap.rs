@@ -19,7 +19,7 @@
 
 pub use self::ExpnFormat::*;
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::ops::{Add, Sub};
 use std::path::Path;
 use std::rc::Rc;
@@ -115,7 +115,7 @@ impl Sub for CharPos {
 /// are *absolute* positions from the beginning of the codemap, not positions
 /// relative to FileMaps. Methods on the CodeMap can be used to relate spans back
 /// to the original source.
-#[derive(Clone, Copy, Debug, Hash)]
+#[derive(Clone, Copy, Hash)]
 pub struct Span {
     pub lo: BytePos,
     pub hi: BytePos,
@@ -161,6 +161,20 @@ impl Decodable for Span {
         let lo = BytePos(lo_hi as u32);
         let hi = BytePos((lo_hi >> 32) as u32);
         Ok(mk_sp(lo, hi))
+    }
+}
+
+fn default_span_debug(span: Span, f: &mut fmt::Formatter) -> fmt::Result {
+    write!(f, "Span {{ lo: {:?}, hi: {:?}, expn_id: {:?} }}",
+           span.lo, span.hi, span.expn_id)
+}
+
+thread_local!(pub static SPAN_DEBUG: Cell<fn(Span, &mut fmt::Formatter) -> fmt::Result> =
+                Cell::new(default_span_debug));
+
+impl fmt::Debug for Span {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        SPAN_DEBUG.with(|span_debug| span_debug.get()(*self, f))
     }
 }
 

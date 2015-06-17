@@ -66,7 +66,8 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
             ast::ItemImpl(_, _, _, None, _, _) => {
                 // For inherent impls, self type must be a nominal type
                 // defined in this crate.
-                debug!("coherence2::orphan check: inherent impl {}", item.repr());
+                debug!("coherence2::orphan check: inherent impl {}",
+                       self.tcx.map.node_to_string(item.id));
                 let self_ty = ty::lookup_item_type(self.tcx, def_id).ty;
                 match self_ty.sty {
                     ty::TyEnum(def_id, _) |
@@ -208,7 +209,8 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
             }
             ast::ItemImpl(_, _, _, Some(_), _, _) => {
                 // "Trait" impl
-                debug!("coherence2::orphan check: trait impl {}", item.repr());
+                debug!("coherence2::orphan check: trait impl {}",
+                       self.tcx.map.node_to_string(item.id));
                 let trait_ref = ty::impl_trait_ref(self.tcx, def_id).unwrap();
                 let trait_def_id = trait_ref.def_id;
                 match traits::orphan_check(self.tcx, def_id) {
@@ -329,7 +331,8 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
             }
             ast::ItemDefaultImpl(..) => {
                 // "Trait" impl
-                debug!("coherence2::orphan check: default trait impl {}", item.repr());
+                debug!("coherence2::orphan check: default trait impl {}",
+                       self.tcx.map.node_to_string(item.id));
                 let trait_ref = ty::impl_trait_ref(self.tcx, def_id).unwrap();
                 if trait_ref.def_id.krate != ast::LOCAL_CRATE {
                     span_err!(self.tcx.sess, item.span, E0318,
