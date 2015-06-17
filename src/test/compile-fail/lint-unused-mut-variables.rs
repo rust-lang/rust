@@ -23,6 +23,15 @@ fn main() {
     let mut b = 3; //~ ERROR: variable does not need to be mutable
     let mut a = vec!(3); //~ ERROR: variable does not need to be mutable
     let (mut a, b) = (1, 2); //~ ERROR: variable does not need to be mutable
+    let mut a; //~ ERROR: variable does not need to be mutable
+    a = 3;
+
+    let mut b; //~ ERROR: variable does not need to be mutable
+    if true {
+        b = 3;
+    } else {
+        b = 4;
+    }
 
     match 30 {
         mut x => {} //~ ERROR: variable does not need to be mutable

@@ -182,7 +182,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for CheckLoanCtxt<'a, 'tcx> {
             None => { }
         }
 
-        self.check_assignment(assignment_id, assignment_span, assignee_cmt, mode);
+        self.check_assignment(assignment_id, assignment_span, assignee_cmt);
     }
 
     fn decl_without_init(&mut self, _id: ast::NodeId, _span: Span) { }
@@ -782,15 +782,8 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
     fn check_assignment(&self,
                         assignment_id: ast::NodeId,
                         assignment_span: Span,
-                        assignee_cmt: mc::cmt<'tcx>,
-                        mode: euv::MutateMode) {
+                        assignee_cmt: mc::cmt<'tcx>) {
         debug!("check_assignment(assignee_cmt={:?})", assignee_cmt);
-
-        // Initializations never cause borrow errors as they only
-        // affect a fresh local.
-        if mode == euv::Init {
-            return
-        }
 
         // Check that we don't invalidate any outstanding loans
         if let Some(loan_path) = opt_loan_path(&assignee_cmt) {
@@ -801,17 +794,15 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
             });
         }
 
-        // Local variables can always be assigned to, expect for reassignments
-        // of immutable variables (or assignments that invalidate loans,
-        // of course).
+        // Check for reassignments to (immutable) local variables. This
+        // needs to be done here instead of in check_loans because we
+        // depend on move data.
         if let mc::cat_local(local_id) = assignee_cmt.cat {
-            if assignee_cmt.mutbl.is_mutable() {
-                self.tcx().used_mut_nodes.borrow_mut().insert(local_id);
-            }
-
             let lp = opt_loan_path(&assignee_cmt).unwrap();
             self.move_data.each_assignment_of(assignment_id, &lp, |assign| {
-                if !assignee_cmt.mutbl.is_mutable() {
+                if assignee_cmt.mutbl.is_mutable() {
+                    self.tcx().used_mut_nodes.borrow_mut().insert(local_id);
+                } else {
                     self.bccx.report_reassigned_immutable_variable(
                         assignment_span,
                         &*lp,
