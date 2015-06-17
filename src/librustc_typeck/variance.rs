@@ -518,7 +518,7 @@ impl<'a, 'tcx> TermsContext<'a, 'tcx> {
 
 impl<'a, 'tcx, 'v> Visitor<'v> for TermsContext<'a, 'tcx> {
     fn visit_item(&mut self, item: &ast::Item) {
-        debug!("add_inferreds for item {}", item.repr());
+        debug!("add_inferreds for item {}", self.tcx.map.node_to_string(item.id));
 
         match item.node {
             ast::ItemEnum(_, ref generics) |
@@ -600,8 +600,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ConstraintContext<'a, 'tcx> {
         let did = ast_util::local_def(item.id);
         let tcx = self.terms_cx.tcx;
 
-        debug!("visit_item item={}",
-               item.repr());
+        debug!("visit_item item={}", tcx.map.node_to_string(item.id));
 
         match item.node {
             ast::ItemEnum(ref enum_definition, _) => {

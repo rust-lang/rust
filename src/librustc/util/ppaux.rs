@@ -9,7 +9,6 @@
 // except according to those terms.
 
 
-use ast_map;
 use middle::def;
 use middle::region;
 use middle::subst::{VecPerParamSpace,Subst};
@@ -34,7 +33,6 @@ use std::rc::Rc;
 use syntax::abi;
 use syntax::codemap::Span;
 use syntax::parse::token;
-use syntax::print::pprust;
 use syntax::ptr::P;
 use syntax::{ast, ast_util};
 use syntax::owned_slice::OwnedSlice;
@@ -469,51 +467,43 @@ impl<'tcx> Repr for ty::TraitDef<'tcx> {
 
 impl Repr for ast::Expr {
     fn repr(&self) -> String {
-        format!("expr({}: {})", self.id, pprust::expr_to_string(self))
+        format!("{:?}", *self)
     }
 }
 
 impl Repr for ast::Path {
     fn repr(&self) -> String {
-        format!("path({})", pprust::path_to_string(self))
+        format!("{:?}", *self)
     }
 }
 
 impl UserString for ast::Path {
     fn user_string(&self) -> String {
-        pprust::path_to_string(self)
+        format!("{}", *self)
     }
 }
 
 impl Repr for ast::Ty {
     fn repr(&self) -> String {
-        format!("type({})", pprust::ty_to_string(self))
-    }
-}
-
-impl Repr for ast::Item {
-    fn repr(&self) -> String {
-        format!("item({})", ty::tls::with(|tcx| tcx.map.node_to_string(self.id)))
+        format!("{:?}", *self)
     }
 }
 
 impl Repr for ast::Lifetime {
     fn repr(&self) -> String {
-        format!("lifetime({}: {})", self.id, pprust::lifetime_to_string(self))
+        format!("{:?}", *self)
     }
 }
 
 impl Repr for ast::Stmt {
     fn repr(&self) -> String {
-        format!("stmt({}: {})",
-                ast_util::stmt_id(self),
-                pprust::stmt_to_string(self))
+        format!("{:?}", *self)
     }
 }
 
 impl Repr for ast::Pat {
     fn repr(&self) -> String {
-        format!("pat({}: {})", self.id, pprust::pat_to_string(self))
+        format!("{:?}", *self)
     }
 }
 
@@ -646,27 +636,7 @@ impl Repr for region::DestructionScopeData {
 
 impl Repr for ast::DefId {
     fn repr(&self) -> String {
-        // Unfortunately, there seems to be no way to attempt to print
-        // a path for a def-id, so I'll just make a best effort for now
-        // and otherwise fallback to just printing the crate/node pair
-        ty::tls::with(|tcx| {
-            if self.krate == ast::LOCAL_CRATE {
-                match tcx.map.find(self.node) {
-                    Some(ast_map::NodeItem(..)) |
-                    Some(ast_map::NodeForeignItem(..)) |
-                    Some(ast_map::NodeImplItem(..)) |
-                    Some(ast_map::NodeTraitItem(..)) |
-                    Some(ast_map::NodeVariant(..)) |
-                    Some(ast_map::NodeStructCtor(..)) => {
-                        return format!("{:?}:{}",
-                                       *self,
-                                       ty::item_path_str(tcx, *self));
-                    }
-                    _ => {}
-                }
-            }
-            format!("{:?}", *self)
-        })
+        format!("{:?}", *self)
     }
 }
 
@@ -765,13 +735,13 @@ impl<'tcx> Repr for ty::Method<'tcx> {
 
 impl Repr for ast::Name {
     fn repr(&self) -> String {
-        token::get_name(*self).to_string()
+        format!("{:?}", *self)
     }
 }
 
 impl UserString for ast::Name {
     fn user_string(&self) -> String {
-        token::get_name(*self).to_string()
+        format!("{}", *self)
     }
 }
 
@@ -878,7 +848,7 @@ impl UserString for ty::BuiltinBound {
 
 impl Repr for Span {
     fn repr(&self) -> String {
-        ty::tls::with(|tcx| tcx.sess.codemap().span_to_string(*self).to_string())
+        format!("{:?}", *self)
     }
 }
 
@@ -1163,7 +1133,7 @@ impl<'tcx> UserString for ty::TyS<'tcx> {
 
 impl UserString for ast::Ident {
     fn user_string(&self) -> String {
-        token::get_name(self.name).to_string()
+        format!("{}", *self)
     }
 }
 
