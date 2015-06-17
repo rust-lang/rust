@@ -414,12 +414,12 @@ pub fn enc_type_param_def<'a, 'tcx>(w: &mut Encoder, cx: &ctxt<'a, 'tcx>,
 
 fn enc_object_lifetime_default<'a, 'tcx>(w: &mut Encoder,
                                          cx: &ctxt<'a, 'tcx>,
-                                         default: Option<ty::ObjectLifetimeDefault>)
+                                         default: ty::ObjectLifetimeDefault)
 {
     match default {
-        None => mywrite!(w, "n"),
-        Some(ty::ObjectLifetimeDefault::Ambiguous) => mywrite!(w, "a"),
-        Some(ty::ObjectLifetimeDefault::Specific(r)) => {
+        ty::ObjectLifetimeDefault::Ambiguous => mywrite!(w, "a"),
+        ty::ObjectLifetimeDefault::BaseDefault => mywrite!(w, "b"),
+        ty::ObjectLifetimeDefault::Specific(r) => {
             mywrite!(w, "s");
             enc_region(w, cx, r);
         }

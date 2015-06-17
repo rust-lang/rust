@@ -1779,6 +1779,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
 impl<'a, 'tcx> RegionScope for FnCtxt<'a, 'tcx> {
     fn object_lifetime_default(&self, span: Span) -> Option<ty::Region> {
+        Some(self.base_object_lifetime_default(span))
+    }
+
+    fn base_object_lifetime_default(&self, span: Span) -> ty::Region {
         // RFC #599 specifies that object lifetime defaults take
         // precedence over other defaults. But within a fn body we
         // don't have a *default* region, rather we use inference to
@@ -1786,7 +1790,7 @@ impl<'a, 'tcx> RegionScope for FnCtxt<'a, 'tcx> {
         // (and anyway, within a fn body the right region may not even
         // be something the user can write explicitly, since it might
         // be some expression).
-        Some(self.infcx().next_region_var(infer::MiscVariable(span)))
+        self.infcx().next_region_var(infer::MiscVariable(span))
     }
 
     fn anon_regions(&self, span: Span, count: usize)
