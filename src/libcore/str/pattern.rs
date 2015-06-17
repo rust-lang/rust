@@ -344,23 +344,6 @@ unsafe impl<'a, C: CharEq> ReverseSearcher<'a> for CharEqSearcher<'a, C> {
 impl<'a, C: CharEq> DoubleEndedSearcher<'a> for CharEqSearcher<'a, C> {}
 
 /////////////////////////////////////////////////////////////////////////////
-// Impl for &str
-/////////////////////////////////////////////////////////////////////////////
-
-/// Non-allocating substring search.
-///
-/// Will handle the pattern `""` as returning empty matches at each character
-/// boundary.
-impl<'a, 'b> Pattern<'a> for &'b str {
-    type Searcher = StrSearcher<'a, 'b>;
-
-    #[inline]
-    fn into_searcher(self, haystack: &'a str) -> StrSearcher<'a, 'b> {
-        StrSearcher::new(haystack, self)
-    }
-}
-
-/////////////////////////////////////////////////////////////////////////////
 
 macro_rules! pattern_methods {
     ($t:ty, $pmap:expr, $smap:expr) => {
@@ -509,6 +492,39 @@ impl<'a, F> Pattern<'a> for F where F: FnMut(char) -> bool {
 /// Delegates to the `&str` impl.
 impl<'a, 'b> Pattern<'a> for &'b &'b str {
     pattern_methods!(StrSearcher<'a, 'b>, |&s| s, |s| s);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+// Impl for &str
+/////////////////////////////////////////////////////////////////////////////
+
+/// Non-allocating substring search.
+///
+/// Will handle the pattern `""` as returning empty matches at each character
+/// boundary.
+impl<'a, 'b> Pattern<'a> for &'b str {
+    type Searcher = StrSearcher<'a, 'b>;
+
+    #[inline]
+    fn into_searcher(self, haystack: &'a str) -> StrSearcher<'a, 'b> {
+        StrSearcher::new(haystack, self)
+    }
+
+    /// Checks whether the pattern matches at the front of the haystack
+    #[inline]
+    fn is_prefix_of(self, haystack: &'a str) -> bool {
+        // Use `as_bytes` so that we can slice through a character in the haystack.
+        // Since self is always valid UTF-8, this can't result in a false positive.
+        self.len() <= haystack.len() &&
+            self.as_bytes() == &haystack.as_bytes()[..self.len()]
+    }
+
+    /// Checks whether the pattern matches at the back of the haystack
+    #[inline]
+    fn is_suffix_of(self, haystack: &'a str) -> bool {
+        self.len() <= haystack.len() &&
+            self.as_bytes() == &haystack.as_bytes()[haystack.len() - self.len()..]
+    }
 }
 
 
