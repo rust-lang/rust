@@ -11,10 +11,10 @@
 #![feature(rustc_attrs)]
 
 #[rustc_object_lifetime_default]
-struct A<T>(T); //~ ERROR None
+struct A<T>(T); //~ ERROR BaseDefault
 
 #[rustc_object_lifetime_default]
-struct B<'a,T>(&'a (), T); //~ ERROR None
+struct B<'a,T>(&'a (), T); //~ ERROR BaseDefault
 
 #[rustc_object_lifetime_default]
 struct C<'a,T:'a>(&'a T); //~ ERROR 'a
