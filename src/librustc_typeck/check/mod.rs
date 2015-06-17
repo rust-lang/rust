@@ -1436,6 +1436,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.inh.adjustments.borrow_mut().insert(node_id, adj);
     }
 
+    /// A version of commit_if_ok that allows for registering trait obligations
+    fn select_commit_if_ok<T, E, F>(&self, f: F) -> Result<T, E> where
+        F: FnOnce(&infer::CombinedSnapshot) -> Result<T, E>  {
+        self.inh.fulfillment_cx.borrow_mut().begin_transaction();
+        match self.infcx().commit_if_ok(f) {
+            Ok(o) => {
+                self.inh.fulfillment_cx.borrow_mut().commit();
+                Ok(o)
+            }
+            Err(e) => {
+                self.inh.fulfillment_cx.borrow_mut().rollback();
+                Err(e)
+            }
+        }
+    }
+
     /// Basically whenever we are converting from a type scheme into
     /// the fn body space, we always want to normalize associated
     /// types as well. This function combines the two.
