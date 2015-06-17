@@ -860,13 +860,25 @@ pub fn trans_call_inner<'a, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
                          abi);
         fcx.scopes.borrow_mut().last_mut().unwrap().drop_non_lifetime_clean();
 
-        bcx = foreign::trans_native_call(bcx,
+        let (llret, b) = foreign::trans_native_call(bcx,
                                          callee_ty,
                                          llfn,
                                          opt_llretslot.unwrap(),
                                          &llargs[..],
                                          arg_tys,
                                          debug_loc);
+
+        bcx = b;
+        match (opt_llretslot, ret_ty) {
+            (Some(_), ty::FnConverging(ret_ty)) => {
+                if !type_of::return_uses_outptr(bcx.ccx(), ret_ty) &&
+                    !common::type_is_zero_size(bcx.ccx(), ret_ty)
+                {
+                    llresult = llret;
+                }
+            }
+            (_, _) => {}
+        }
     }
 
     fcx.pop_and_trans_custom_cleanup_scope(bcx, arg_cleanup_scope);

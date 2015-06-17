@@ -82,7 +82,6 @@ use util::ppaux::Repr;
 use trans::machine::{llsize_of, llsize_of_alloc};
 use trans::type_::Type;
 
-use syntax::abi as synabi;
 use syntax::{ast, ast_util, codemap};
 use syntax::parse::token::InternedString;
 use syntax::ptr::P;
@@ -580,42 +579,7 @@ fn trans_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     debuginfo::set_source_location(bcx.fcx, expr.id, expr.span);
 
-    match expr.node {
-        ast::ExprCall(ref f, ref args) if !bcx.tcx().is_method_call(expr.id) => {
-            if let ast::ExprPath(..) = f.node {
-                let fn_ty = expr_ty_adjusted(bcx, f);
-                let (fty, ret_ty) = match fn_ty.sty {
-                    ty::TyBareFn(_, ref fty) => {
-                        (fty, ty::erase_late_bound_regions(bcx.tcx(), &fty.sig.output()))
-                    }
-                    _ => panic!("Not calling a function?!")
-                };
-
-                if let ty::FnConverging(ret_ty) = ret_ty {
-                    let is_rust_fn = fty.abi == synabi::Rust ||
-                        fty.abi == synabi::RustIntrinsic;
-
-                    let needs_drop = type_needs_drop(bcx.tcx(), ret_ty);
-                    let uses_output = type_of::return_uses_outptr(bcx.ccx(), ret_ty);
-
-                    if is_rust_fn && !uses_output && !needs_drop {
-                        let args = callee::ArgExprs(&args[..]);
-                        let result = callee::trans_call_inner(bcx,
-                                                              expr.debug_loc(),
-                                                              fn_ty,
-                                                              |cx, _| callee::trans(cx, f),
-                                                              args, Some(Ignore));
-
-                        return immediate_rvalue_bcx(result.bcx, result.val, ret_ty)
-                            .to_expr_datumblock();
-                    }
-                }
-            }
-        }
-        _ => {}
-    }
-
-    return match ty::expr_kind(bcx.tcx(), expr) {
+    return match expr_kind(bcx, expr) {
         ty::LvalueExpr | ty::RvalueDatumExpr => {
             let datum = unpack_datum!(bcx, {
                 trans_datum_unadjusted(bcx, expr)
@@ -662,6 +626,39 @@ fn trans_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         let datum = immediate_rvalue(llval, ty);
         DatumBlock::new(bcx, datum.to_expr_datum())
     }
+}
+
+// Get the appropriate expression kind for the expression. Most of the time this just uses
+// ty::expr_kind, but `ExprCall`s can be treated as `RvalueDatumExpr`s in some cases.
+fn expr_kind<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr) -> ty::ExprKind {
+    match expr.node {
+        ast::ExprCall(ref f, _) if !bcx.tcx().is_method_call(expr.id) => {
+            if let ast::ExprPath(..) = f.node {
+                let fn_ty = expr_ty_adjusted(bcx, f);
+
+                let ret_ty = match fn_ty.sty {
+                    ty::TyBareFn(_, ref fty) =>
+                        ty::erase_late_bound_regions(bcx.tcx(), &fty.sig.output()),
+                    _ => bcx.tcx().sess.bug("Not calling a function?")
+                };
+
+                let is_datum = if let ty::FnConverging(output) = ret_ty {
+                    !type_of::return_uses_outptr(bcx.ccx(), output) &&
+                        !bcx.fcx.type_needs_drop(output)
+                } else {
+                    true
+                };
+
+
+                if is_datum {
+                    return ty::RvalueDatumExpr;
+                }
+            }
+        }
+        _ => ()
+    }
+
+    return ty::expr_kind(bcx.tcx(), expr);
 }
 
 fn trans_datum_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
@@ -730,6 +727,35 @@ fn trans_datum_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         ast::ExprCast(ref val, _) => {
             // Datum output mode means this is a scalar cast:
             trans_imm_cast(bcx, &**val, expr.id)
+        }
+        ast::ExprCall(ref f, ref args) => {
+            let fn_ty = expr_ty_adjusted(bcx, f);
+
+            let ret_ty = match fn_ty.sty {
+                ty::TyBareFn(_, ref fty) => {
+                    ty::erase_late_bound_regions(bcx.tcx(), &fty.sig.output())
+                }
+                _ => panic!("Not calling a function?!")
+            };
+
+            let args = callee::ArgExprs(&args[..]);
+            let result = callee::trans_call_inner(bcx,
+                                                  expr.debug_loc(),
+                                                  fn_ty,
+                                                  |cx, _| callee::trans(cx, f),
+                                                  args, Some(Ignore));
+
+            if let ty::FnConverging(ret_ty) = ret_ty {
+                immediate_rvalue_bcx(result.bcx, result.val, ret_ty)
+                    .to_expr_datumblock()
+            } else {
+                // We called a diverging function, generate an undef value of the appropriate
+                // type.
+                let ty = expr_ty(bcx, expr);
+                let llval = C_undef(type_of::arg_type_of(bcx.ccx(), ty));
+                let datum = immediate_rvalue(llval, ty);
+                DatumBlock::new(bcx, datum.to_expr_datum())
+            }
         }
         _ => {
             bcx.tcx().sess.span_bug(

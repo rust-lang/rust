@@ -230,7 +230,7 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                      llargs_rust: &[ValueRef],
                                      passed_arg_tys: Vec<Ty<'tcx>>,
                                      call_debug_loc: DebugLoc)
-                                     -> Block<'blk, 'tcx>
+                                     -> (ValueRef, Block<'blk, 'tcx>)
 {
     let ccx = bcx.ccx();
     let tcx = bcx.tcx();
@@ -389,6 +389,7 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     // type to match because some ABIs will use a different type than
     // the Rust type. e.g., a {u32,u32} struct could be returned as
     // u64.
+    let llretval = llforeign_retval;
     if llsig.ret_def && !fn_type.ret_ty.is_indirect() {
         let llrust_ret_ty = llsig.llret_ty;
         let llforeign_ret_ty = match fn_type.ret_ty.cast {
@@ -436,7 +437,7 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         }
     }
 
-    return bcx;
+    return (llretval, bcx);
 }
 
 // feature gate SIMD types in FFI, since I (huonw) am not sure the
