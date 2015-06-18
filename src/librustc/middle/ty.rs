@@ -816,6 +816,12 @@ impl<'tcx> ctxt<'tcx> {
 /// provided ty::ctxt<'tcx>.
 /// This can be done, for example, for Ty<'tcx> or &'tcx Substs<'tcx>
 /// by looking them up in their respective interners.
+/// None is returned if the value or one of the components is not part
+/// of the provided context.
+/// For Ty, None can be returned if either the type interner doesn't
+/// contain the TypeVariants key or if the address of the interned
+/// pointer differs. The latter case is possible if a primitive type,
+/// e.g. `()` or `u8`, was interned in a different context.
 pub trait Lift<'tcx> {
     type Lifted;
     fn lift_to_tcx(&self, tcx: &ctxt<'tcx>) -> Option<Self::Lifted>;
@@ -3016,6 +3022,10 @@ impl<'tcx> CommonTypes<'tcx> {
     }
 }
 
+/// Create a type context and call the closure with a `&ty::ctxt` reference
+/// to the context. The closure enforces that the type context and any interned
+/// value (types, substs, etc.) can only be used while `ty::tls` has a valid
+/// reference to the context, to allow formatting values that need it.
 pub fn with_ctxt<'tcx, F, R>(s: Session,
                              arenas: &'tcx CtxtArenas<'tcx>,
                              def_map: DefMap,
