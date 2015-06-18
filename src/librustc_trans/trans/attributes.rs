@@ -262,41 +262,35 @@ pub fn from_fn_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_type: ty::Ty<'tcx
                      .arg(idx, llvm::DereferenceableAttribute(llsz));
             }
 
-            // `&mut` pointer parameters never alias other parameters, or mutable global data
-            //
-            // `&T` where `T` contains no `UnsafeCell<U>` is immutable, and can be marked as both
-            // `readonly` and `noalias`, as LLVM's definition of `noalias` is based solely on
-            // memory dependencies rather than pointer equality
-            ty::TyRef(b, mt) if mt.mutbl == ast::MutMutable ||
-                                  !ty::type_contents(ccx.tcx(), mt.ty).interior_unsafe() => {
+            ty::TyRef(b, mt) => {
+                // `&mut` pointer parameters never alias other parameters, or mutable global data
+                //
+                // `&T` where `T` contains no `UnsafeCell<U>` is immutable, and can be marked as
+                // both `readonly` and `noalias`, as LLVM's definition of `noalias` is based solely
+                // on memory dependencies rather than pointer equality
+                let interior_unsafe = ty::type_contents(ccx.tcx(), mt.ty).interior_unsafe();
 
-                let llsz = machine::llsize_of_real(ccx, type_of::type_of(ccx, mt.ty));
-                attrs.arg(idx, llvm::Attribute::NoAlias)
-                     .arg(idx, llvm::DereferenceableAttribute(llsz));
+                if mt.mutbl == ast::MutMutable || !interior_unsafe {
+                    attrs.arg(idx, llvm::Attribute::NoAlias);
+                }
 
-                if mt.mutbl == ast::MutImmutable {
+                if mt.mutbl == ast::MutImmutable && !interior_unsafe {
                     attrs.arg(idx, llvm::Attribute::ReadOnly);
                 }
 
+                // & pointer parameters are also never null and we know exactly
+                // how many bytes we can dereference
+                let llsz = machine::llsize_of_real(ccx, type_of::type_of(ccx, mt.ty));
+                attrs.arg(idx, llvm::DereferenceableAttribute(llsz));
+
+                // When a reference in an argument has no named lifetime, it's
+                // impossible for that reference to escape this function
+                // (returned or stored beyond the call by a closure).
                 if let ReLateBound(_, BrAnon(_)) = *b {
                     attrs.arg(idx, llvm::Attribute::NoCapture);
                 }
             }
 
-            // When a reference in an argument has no named lifetime, it's impossible for that
-            // reference to escape this function (returned or stored beyond the call by a closure).
-            ty::TyRef(&ReLateBound(_, BrAnon(_)), mt) => {
-                let llsz = machine::llsize_of_real(ccx, type_of::type_of(ccx, mt.ty));
-                attrs.arg(idx, llvm::Attribute::NoCapture)
-                     .arg(idx, llvm::DereferenceableAttribute(llsz));
-            }
-
-            // & pointer parameters are also never null and we know exactly how
-            // many bytes we can dereference
-            ty::TyRef(_, mt) => {
-                let llsz = machine::llsize_of_real(ccx, type_of::type_of(ccx, mt.ty));
-                attrs.arg(idx, llvm::DereferenceableAttribute(llsz));
-            }
             _ => ()
         }
     }
