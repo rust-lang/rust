@@ -319,20 +319,28 @@ descriptions are equivalent.
 Casting is indicated by the `as` keyword. A cast `e as U` is valid if one of the
 following holds:
 
-* `e` has type `T` and `T` coerces to `U`;
+ * `e` has type `T` and `T` coerces to `U`; *coercion-cast*
+ * `e` has type `*T`, `U` is `*U_0`, and either `U_0: Sized` or
+    unsize_kind(`T`) = unsize_kind(`U_0`); *ptr-ptr-cast*
+ * `e` has type `*T` and `U` is a numeric type, while `T: Sized`; *ptr-addr-cast*
+ * `e` is an integer and `U` is `*U_0`, while `U_0: Sized`; *addr-ptr-cast*
+ * `e` has type `T` and `T` and `U` are any numeric types; *numeric-cast*
+ * `e` is a C-like enum and `U` is an integer type; *enum-cast*
+ * `e` has type `bool` or `char` and `U` is an integer; *prim-int-cast*
+ * `e` has type `u8` and `U` is `char`; *u8-char-cast*
+ * `e` has type `&[T; n]` and `U` is `*const T`; *array-ptr-cast*
+ * `e` is a function pointer type and `U` has type `*T`,
+   while `T: Sized`; *fptr-ptr-cast*
+ * `e` is a function pointer type and `U` is an integer; *fptr-addr-cast*
 
-* `e` has type `*T` and `U` is `*U_0` (i.e., between any raw pointers);
+where `&.T` and `*T` are references of either mutability,
+and where unsize_kind(`T`) is the kind of the unsize info
+in `T` - the vtable for a trait definition (e.g. `fmt::Display` or
+`Iterator`, not `Iterator<Item=u8>`) or a length (or `()` if `T: Sized`).
 
-* `e` has type `*T` and `U` is `uint` , or vice versa;
-
-* `e` has type `T` and `T` and `U` are any numeric types;
-
-* `e` is a C-like enum and `U` is any integer type, `bool`;
-
-* `e` has type `T` and `T == u8` and `U == char`;
-
-* `e` has type `T` and `T == &[V, ..n]` or `T == &V` and `U == *const V`, and
-  similarly for the mutable variants to either `*const V` or `*mut V`.
+Note that lengths are not adjusted when casting raw slices - 
+`T: *const [u16] as *const [u8]` creates a slice that only includes
+half of the original memory.
 
 Casting is not transitive, that is, even if `e as U1 as U2` is a valid
 expression, `e as U2` is not necessarily so (in fact it will only be valid if
