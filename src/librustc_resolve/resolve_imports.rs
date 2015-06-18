@@ -900,7 +900,19 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         match target {
             Some(ref target) if target.shadowable != Shadowable::Always => {
                 let ns_word = match namespace {
-                    TypeNS => "type",
+                    TypeNS => {
+                        if let Some(ref ty_def) = *target.bindings.type_def.borrow() {
+                            match ty_def.module_def {
+                                Some(ref module)
+                                    if module.kind.get() == ModuleKind::NormalModuleKind =>
+                                        "module",
+                                Some(ref module)
+                                    if module.kind.get() == ModuleKind::TraitModuleKind =>
+                                        "trait",
+                                _ => "type",
+                            }
+                        } else { "type" }
+                    },
                     ValueNS => "value",
                 };
                 span_err!(self.resolver.session, import_span, E0252,
