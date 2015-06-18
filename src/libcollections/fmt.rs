@@ -172,9 +172,8 @@
 //! like:
 //!
 //! ```
-//! # #![feature(core, std_misc)]
+//! # #![feature(fmt_flags)]
 //! use std::fmt;
-//! use std::f64;
 //!
 //! #[derive(Debug)]
 //! struct Vector2D {

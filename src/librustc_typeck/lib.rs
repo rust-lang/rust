@@ -75,14 +75,19 @@ This API is completely unstable and subject to change.
 
 #![allow(non_camel_case_types)]
 
+#![feature(append)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
-#![feature(collections, collections_drain)]
-#![feature(core)]
+#![feature(drain)]
+#![feature(iter_cmp)]
+#![feature(iter_arith)]
 #![feature(quote)]
+#![feature(ref_slice)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
+#![feature(slice_extras)]
 #![feature(staged_api)]
+#![feature(vec_push_all)]
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;

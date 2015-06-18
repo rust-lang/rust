@@ -54,7 +54,7 @@ pub trait Sized {
 }
 
 /// Types that can be "unsized" to a dynamically sized type.
-#[unstable(feature = "core")]
+#[unstable(feature = "unsize")]
 #[lang="unsize"]
 pub trait Unsize<T> {
     // Empty.
@@ -223,7 +223,10 @@ impl<T> !Sync for *mut T { }
 /// ensure that they are never copied, even if they lack a destructor.
 #[unstable(feature = "core",
            reason = "likely to change with new variance strategy")]
+#[deprecated(since = "1.2.0",
+             reason = "structs are by default not copyable")]
 #[lang = "no_copy_bound"]
+#[allow(deprecated)]
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct NoCopy;
 
@@ -385,7 +388,7 @@ mod impls {
 /// that function. Here is an example:
 ///
 /// ```
-/// #![feature(core)]
+/// #![feature(reflect_marker)]
 /// use std::marker::Reflect;
 /// use std::any::Any;
 /// fn foo<T:Reflect+'static>(x: &T) {
@@ -410,7 +413,8 @@ mod impls {
 ///
 /// [1]: http://en.wikipedia.org/wiki/Parametricity
 #[rustc_reflect_like]
-#[unstable(feature = "core", reason = "requires RFC and more experience")]
+#[unstable(feature = "reflect_marker",
+           reason = "requires RFC and more experience")]
 #[allow(deprecated)]
 #[rustc_on_unimplemented = "`{Self}` does not implement `Any`; \
                             ensure all type parameters are bounded by `Any`"]

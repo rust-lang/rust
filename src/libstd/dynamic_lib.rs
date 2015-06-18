@@ -12,7 +12,9 @@
 //!
 //! A simple wrapper over the platform's dynamic library facilities
 
-#![unstable(feature = "std_misc")]
+#![unstable(feature = "dynamic_lib",
+            reason = "API has not been scrutinized and is highly likely to \
+                      either disappear or change")]
 #![allow(missing_docs)]
 
 use prelude::v1::*;

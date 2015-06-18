@@ -24,18 +24,24 @@
 #![cfg_attr(stage0, feature(custom_attribute))]
 #![crate_name = "rustc_unicode"]
 #![unstable(feature = "unicode")]
-#![feature(lang_items)]
-#![feature(staged_api)]
 #![staged_api]
 #![crate_type = "rlib"]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/nightly/",
-       html_playground_url = "http://play.rust-lang.org/")]
-#![feature(no_std)]
+       html_playground_url = "http://play.rust-lang.org/",
+       test(no_crate_inject))]
 #![no_std]
+
 #![feature(core)]
-#![doc(test(no_crate_inject))]
+#![feature(core_char_ext)]
+#![feature(core_prelude)]
+#![feature(core_slice_ext)]
+#![feature(core_str_ext)]
+#![feature(iter_arith)]
+#![feature(lang_items)]
+#![feature(no_std)]
+#![feature(staged_api)]
 
 extern crate core;
 

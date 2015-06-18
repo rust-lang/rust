@@ -35,8 +35,6 @@
 //! method, and see the method for more information about it. Due to this
 //! caveat, this queue may not be appropriate for all use-cases.
 
-#![unstable(feature = "std_misc")]
-
 // http://www.1024cores.net/home/lock-free-algorithms
 //                         /queues/non-intrusive-mpsc-node-based-queue
 
@@ -44,7 +42,6 @@ pub use self::PopResult::*;
 
 use core::prelude::*;
 
-use alloc::boxed;
 use alloc::boxed::Box;
 use core::ptr;
 use core::cell::UnsafeCell;
@@ -82,7 +79,7 @@ unsafe impl<T: Send> Sync for Queue<T> { }
 
 impl<T> Node<T> {
     unsafe fn new(v: Option<T>) -> *mut Node<T> {
-        boxed::into_raw(box Node {
+        Box::into_raw(box Node {
             next: AtomicPtr::new(ptr::null_mut()),
             value: v,
         })

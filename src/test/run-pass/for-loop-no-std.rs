@@ -10,7 +10,7 @@
 
 // pretty-expanded FIXME #23616
 
-#![feature(lang_items, start, no_std, core, collections)]
+#![feature(lang_items, start, no_std, core_slice_ext, core, collections)]
 #![no_std]
 
 extern crate std as other;

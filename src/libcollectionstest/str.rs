@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use std::cmp::Ordering::{Equal, Greater, Less};
-use std::str::{Utf8Error, from_utf8};
+use std::str::from_utf8;
 
 #[test]
 fn test_le() {
@@ -1753,6 +1753,7 @@ mod pattern {
 
     macro_rules! make_test {
         ($name:ident, $p:expr, $h:expr, [$($e:expr,)*]) => {
+            #[allow(unused_imports)]
             mod $name {
                 use std::str::pattern::SearchStep::{Match, Reject};
                 use super::{cmp_search_to_vec};

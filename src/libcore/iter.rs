@@ -51,8 +51,8 @@
 //! }
 //! ```
 //!
-//! Because `Iterator`s implement `IntoIterator`, this `for` loop syntax can be applied to any
-//! iterator over any type.
+//! Because `Iterator`s implement `IntoIterator`, this `for` loop syntax can be
+//! applied to any iterator over any type.
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -822,7 +822,7 @@ pub trait Iterator {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(core)]
+    /// # #![feature(iter_min_max)]
     /// use std::iter::MinMaxResult::{NoElements, OneElement, MinMax};
     ///
     /// let a: [i32; 0] = [];
@@ -837,7 +837,9 @@ pub trait Iterator {
     /// let a = [1, 1, 1, 1];
     /// assert_eq!(a.iter().min_max(), MinMax(&1, &1));
     /// ```
-    #[unstable(feature = "core", reason = "return type may change")]
+    #[unstable(feature = "iter_min_max",
+               reason = "return type may change or may wish to have a closure \
+                         based version as well")]
     fn min_max(mut self) -> MinMaxResult<Self::Item> where Self: Sized, Self::Item: Ord
     {
         let (mut min, mut max) = match self.next() {
@@ -892,12 +894,12 @@ pub trait Iterator {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(core)]
+    /// # #![feature(iter_cmp)]
     /// let a = [-3_i32, 0, 1, 5, -10];
     /// assert_eq!(*a.iter().max_by(|x| x.abs()).unwrap(), -10);
     /// ```
     #[inline]
-    #[unstable(feature = "core",
+    #[unstable(feature = "iter_cmp",
                reason = "may want to produce an Ordering directly; see #15311")]
     fn max_by<B: Ord, F>(self, f: F) -> Option<Self::Item> where
         Self: Sized,
@@ -920,12 +922,12 @@ pub trait Iterator {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(core)]
+    /// # #![feature(iter_cmp)]
     /// let a = [-3_i32, 0, 1, 5, -10];
     /// assert_eq!(*a.iter().min_by(|x| x.abs()).unwrap(), 0);
     /// ```
     #[inline]
-    #[unstable(feature = "core",
+    #[unstable(feature = "iter_cmp",
                reason = "may want to produce an Ordering directly; see #15311")]
     fn min_by<B: Ord, F>(self, f: F) -> Option<Self::Item> where
         Self: Sized,
@@ -1041,6 +1043,8 @@ pub trait Iterator {
     /// Use an iterator to reverse a container in place.
     #[unstable(feature = "core",
                reason = "uncertain about placement or widespread use")]
+    #[deprecated(since = "1.2.0",
+                 reason = "not performant enough to justify inclusion")]
     fn reverse_in_place<'a, T: 'a>(&mut self) where
         Self: Sized + Iterator<Item=&'a mut T> + DoubleEndedIterator
     {
@@ -1057,12 +1061,12 @@ pub trait Iterator {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(core)]
+    /// # #![feature(iter_arith)]
     /// let a = [1, 2, 3, 4, 5];
     /// let it = a.iter();
     /// assert_eq!(it.sum::<i32>(), 15);
     /// ```
-    #[unstable(feature="core")]
+    #[unstable(feature="iter_arith", reason = "bounds recently changed")]
     fn sum<S=<Self as Iterator>::Item>(self) -> S where
         S: Add<Self::Item, Output=S> + Zero,
         Self: Sized,
@@ -1075,7 +1079,7 @@ pub trait Iterator {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(core)]
+    /// # #![feature(iter_arith)]
     /// fn factorial(n: u32) -> u32 {
     ///     (1..).take_while(|&i| i <= n).product()
     /// }
@@ -1083,7 +1087,7 @@ pub trait Iterator {
     /// assert_eq!(factorial(1), 1);
     /// assert_eq!(factorial(5), 120);
     /// ```
-    #[unstable(feature="core")]
+    #[unstable(feature="iter_arith", reason = "bounds recently changed")]
     fn product<P=<Self as Iterator>::Item>(self) -> P where
         P: Mul<Self::Item, Output=P> + One,
         Self: Sized,
@@ -1223,9 +1227,14 @@ impl<'a, I: DoubleEndedIterator + ?Sized> DoubleEndedIterator for &'a mut I {
 /// `DoubleEndedIterator`.  Calling `next()` or `next_back()` on a
 /// `RandomAccessIterator` reduces the indexable range accordingly. That is,
 /// `it.idx(1)` will become `it.idx(0)` after `it.next()` is called.
-#[unstable(feature = "core",
+#[unstable(feature = "iter_idx",
            reason = "not widely used, may be better decomposed into Index \
                      and ExactSizeIterator")]
+#[deprecated(since = "1.2.0",
+             reason = "trait has not proven itself as a widely useful \
+                       abstraction for iterators, and more time may be needed \
+                       for iteration on the design")]
+#[allow(deprecated)]
 pub trait RandomAccessIterator: Iterator {
     /// Returns the number of indexable elements. At most `std::usize::MAX`
     /// elements are indexable, even if the iterator represents a longer range.
@@ -1304,7 +1313,8 @@ impl<I> DoubleEndedIterator for Rev<I> where I: DoubleEndedIterator {
     fn next_back(&mut self) -> Option<<I as Iterator>::Item> { self.iter.next() }
 }
 
-#[unstable(feature = "core", reason = "trait is experimental")]
+#[unstable(feature = "iter_idx", reason = "trait is experimental")]
+#[allow(deprecated)]
 impl<I> RandomAccessIterator for Rev<I>
     where I: DoubleEndedIterator + RandomAccessIterator
 {
@@ -1324,7 +1334,7 @@ impl<I> RandomAccessIterator for Rev<I>
 /// `MinMaxResult` is an enum returned by `min_max`. See `Iterator::min_max` for
 /// more detail.
 #[derive(Clone, PartialEq, Debug)]
-#[unstable(feature = "core",
+#[unstable(feature = "iter_min_max",
            reason = "unclear whether such a fine-grained result is widely useful")]
 pub enum MinMaxResult<T> {
     /// Empty iterator
@@ -1338,6 +1348,7 @@ pub enum MinMaxResult<T> {
     MinMax(T, T)
 }
 
+#[unstable(feature = "iter_min_max", reason = "type is unstable")]
 impl<T: Clone> MinMaxResult<T> {
     /// `into_option` creates an `Option` of type `(T,T)`. The returned `Option`
     /// has variant `None` if and only if the `MinMaxResult` has variant
@@ -1348,7 +1359,7 @@ impl<T: Clone> MinMaxResult<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(core)]
+    /// # #![feature(iter_min_max)]
     /// use std::iter::MinMaxResult::{self, NoElements, OneElement, MinMax};
     ///
     /// let r: MinMaxResult<i32> = NoElements;
@@ -1360,7 +1371,6 @@ impl<T: Clone> MinMaxResult<T> {
     /// let r = MinMax(1, 2);
     /// assert_eq!(r.into_option(), Some((1, 2)));
     /// ```
-    #[unstable(feature = "core", reason = "type is unstable")]
     pub fn into_option(self) -> Option<(T,T)> {
         match self {
             NoElements => None,
@@ -1407,7 +1417,8 @@ impl<'a, I, T: 'a> ExactSizeIterator for Cloned<I>
     where I: ExactSizeIterator<Item=&'a T>, T: Clone
 {}
 
-#[unstable(feature = "core", reason = "trait is experimental")]
+#[unstable(feature = "iter_idx", reason = "trait is experimental")]
+#[allow(deprecated)]
 impl<'a, I, T: 'a> RandomAccessIterator for Cloned<I>
     where I: RandomAccessIterator<Item=&'a T>, T: Clone
 {
@@ -1454,7 +1465,8 @@ impl<I> Iterator for Cycle<I> where I: Clone + Iterator {
     }
 }
 
-#[unstable(feature = "core", reason = "trait is experimental")]
+#[unstable(feature = "iter_idx", reason = "trait is experimental")]
+#[allow(deprecated)]
 impl<I> RandomAccessIterator for Cycle<I> where
     I: Clone + RandomAccessIterator,
 {
@@ -1568,7 +1580,8 @@ impl<A, B> DoubleEndedIterator for Chain<A, B> where
     }
 }
 
-#[unstable(feature = "core", reason = "trait is experimental")]
+#[unstable(feature = "iter_idx", reason = "trait is experimental")]
+#[allow(deprecated)]
 impl<A, B> RandomAccessIterator for Chain<A, B> where
     A: RandomAccessIterator,
     B: RandomAccessIterator<Item = A::Item>,
@@ -1656,7 +1669,8 @@ impl<A, B> DoubleEndedIterator for Zip<A, B> where
     }
 }
 
-#[unstable(feature = "core", reason = "trait is experimental")]
+#[unstable(feature = "iter_idx", reason = "trait is experimental")]
+#[allow(deprecated)]
 impl<A, B> RandomAccessIterator for Zip<A, B> where
     A: RandomAccessIterator,
     B: RandomAccessIterator
@@ -1710,7 +1724,8 @@ impl<B, I: DoubleEndedIterator, F> DoubleEndedIterator for Map<I, F> where
     }
 }
 
-#[unstable(feature = "core", reason = "trait is experimental")]
+#[unstable(feature = "iter_idx", reason = "trait is experimental")]
+#[allow(deprecated)]
 impl<B, I: RandomAccessIterator, F> RandomAccessIterator for Map<I, F> where
     F: FnMut(I::Item) -> B,
 {
@@ -1884,7 +1899,8 @@ impl<I> DoubleEndedIterator for Enumerate<I> where
     }
 }
 
-#[unstable(feature = "core", reason = "trait is experimental")]
+#[unstable(feature = "iter_idx", reason = "trait is experimental")]
+#[allow(deprecated)]
 impl<I> RandomAccessIterator for Enumerate<I> where I: RandomAccessIterator {
     #[inline]
     fn indexable(&self) -> usize {
@@ -2134,7 +2150,8 @@ impl<I> Iterator for Skip<I> where I: Iterator {
     }
 }
 
-#[unstable(feature = "core", reason = "trait is experimental")]
+#[unstable(feature = "iter_idx", reason = "trait is experimental")]
+#[allow(deprecated)]
 impl<I> RandomAccessIterator for Skip<I> where I: RandomAccessIterator{
     #[inline]
     fn indexable(&self) -> usize {
@@ -2206,7 +2223,8 @@ impl<I> Iterator for Take<I> where I: Iterator{
     }
 }
 
-#[unstable(feature = "core", reason = "trait is experimental")]
+#[unstable(feature = "iter_idx", reason = "trait is experimental")]
+#[allow(deprecated)]
 impl<I> RandomAccessIterator for Take<I> where I: RandomAccessIterator{
     #[inline]
     fn indexable(&self) -> usize {
@@ -2236,7 +2254,8 @@ pub struct Scan<I, St, F> {
     f: F,
 
     /// The current internal state to be passed to the closure next.
-    #[unstable(feature = "core")]
+    #[unstable(feature = "scan_state",
+               reason = "public fields are otherwise rare in the stdlib")]
     pub state: St,
 }
 
@@ -2406,7 +2425,8 @@ impl<I> DoubleEndedIterator for Fuse<I> where I: DoubleEndedIterator {
 }
 
 // Allow RandomAccessIterators to be fused without affecting random-access behavior
-#[unstable(feature = "core", reason = "trait is experimental")]
+#[unstable(feature = "iter_idx", reason = "trait is experimental")]
+#[allow(deprecated)]
 impl<I> RandomAccessIterator for Fuse<I> where I: RandomAccessIterator {
     #[inline]
     fn indexable(&self) -> usize {
@@ -2427,7 +2447,7 @@ impl<I> Fuse<I> {
     /// `.next_back()` will call the underlying iterator again even if it
     /// previously returned `None`.
     #[inline]
-    #[unstable(feature = "core", reason = "seems marginal")]
+    #[unstable(feature = "iter_reset_fuse", reason = "seems marginal")]
     pub fn reset_fuse(&mut self) {
         self.done = false
     }
@@ -2481,7 +2501,8 @@ impl<I: DoubleEndedIterator, F> DoubleEndedIterator for Inspect<I, F>
     }
 }
 
-#[unstable(feature = "core", reason = "trait is experimental")]
+#[unstable(feature = "iter_idx", reason = "trait is experimental")]
+#[allow(deprecated)]
 impl<I: RandomAccessIterator, F> RandomAccessIterator for Inspect<I, F>
     where F: FnMut(&I::Item),
 {
@@ -2504,7 +2525,7 @@ impl<I: RandomAccessIterator, F> RandomAccessIterator for Inspect<I, F>
 /// An iterator that yields sequential Fibonacci numbers, and stops on overflow.
 ///
 /// ```
-/// #![feature(core)]
+/// #![feature(iter_unfold)]
 /// use std::iter::Unfold;
 ///
 /// // This iterator will yield up to the last Fibonacci number before the max
@@ -2531,16 +2552,24 @@ impl<I: RandomAccessIterator, F> RandomAccessIterator for Inspect<I, F>
 ///     println!("{}", i);
 /// }
 /// ```
-#[unstable(feature = "core")]
+#[unstable(feature = "iter_unfold")]
 #[derive(Clone)]
+#[deprecated(since = "1.2.0",
+             reason = "has gained enough traction to retain its position \
+                       in the standard library")]
+#[allow(deprecated)]
 pub struct Unfold<St, F> {
     f: F,
     /// Internal state that will be passed to the closure on the next iteration
-    #[unstable(feature = "core")]
+    #[unstable(feature = "iter_unfold")]
     pub state: St,
 }
 
-#[unstable(feature = "core")]
+#[unstable(feature = "iter_unfold")]
+#[deprecated(since = "1.2.0",
+             reason = "has gained enough traction to retain its position \
+                       in the standard library")]
+#[allow(deprecated)]
 impl<A, St, F> Unfold<St, F> where F: FnMut(&mut St) -> Option<A> {
     /// Creates a new iterator with the specified closure as the "iterator
     /// function" and an initial state to eventually pass to the closure
@@ -2554,6 +2583,7 @@ impl<A, St, F> Unfold<St, F> where F: FnMut(&mut St) -> Option<A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(deprecated)]
 impl<A, St, F> Iterator for Unfold<St, F> where F: FnMut(&mut St) -> Option<A> {
     type Item = A;
 
@@ -2767,7 +2797,7 @@ impl<A> Iterator for StepBy<A, RangeFrom<A>> where
 
 /// An iterator over the range [start, stop]
 #[derive(Clone)]
-#[unstable(feature = "core",
+#[unstable(feature = "range_inclusive",
            reason = "likely to be replaced by range notation and adapters")]
 pub struct RangeInclusive<A> {
     range: ops::Range<A>,
@@ -2776,7 +2806,7 @@ pub struct RangeInclusive<A> {
 
 /// Returns an iterator over the range [start, stop].
 #[inline]
-#[unstable(feature = "core",
+#[unstable(feature = "range_inclusive",
            reason = "likely to be replaced by range notation and adapters")]
 pub fn range_inclusive<A>(start: A, stop: A) -> RangeInclusive<A>
     where A: Step + One + Clone
@@ -2787,7 +2817,7 @@ pub fn range_inclusive<A>(start: A, stop: A) -> RangeInclusive<A>
     }
 }
 
-#[unstable(feature = "core",
+#[unstable(feature = "range_inclusive",
            reason = "likely to be replaced by range notation and adapters")]
 impl<A> Iterator for RangeInclusive<A> where
     A: PartialEq + Step + One + Clone,
@@ -2820,7 +2850,7 @@ impl<A> Iterator for RangeInclusive<A> where
     }
 }
 
-#[unstable(feature = "core",
+#[unstable(feature = "range_inclusive",
            reason = "likely to be replaced by range notation and adapters")]
 impl<A> DoubleEndedIterator for RangeInclusive<A> where
     A: PartialEq + Step + One + Clone,
@@ -2962,7 +2992,7 @@ impl<A: Clone> Iterator for Repeat<A> {
     type Item = A;
 
     #[inline]
-    fn next(&mut self) -> Option<A> { self.idx(0) }
+    fn next(&mut self) -> Option<A> { Some(self.element.clone()) }
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) { (usize::MAX, None) }
 }
@@ -2970,10 +3000,11 @@ impl<A: Clone> Iterator for Repeat<A> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A: Clone> DoubleEndedIterator for Repeat<A> {
     #[inline]
-    fn next_back(&mut self) -> Option<A> { self.idx(0) }
+    fn next_back(&mut self) -> Option<A> { Some(self.element.clone()) }
 }
 
-#[unstable(feature = "core", reason = "trait is experimental")]
+#[unstable(feature = "iter_idx", reason = "trait is experimental")]
+#[allow(deprecated)]
 impl<A: Clone> RandomAccessIterator for Repeat<A> {
     #[inline]
     fn indexable(&self) -> usize { usize::MAX }
@@ -2985,12 +3016,20 @@ type IterateState<T, F> = (F, Option<T>, bool);
 
 /// An iterator that repeatedly applies a given function, starting
 /// from a given seed value.
-#[unstable(feature = "core")]
+#[unstable(feature = "iter_iterate")]
+#[deprecated(since = "1.2.0",
+             reason = "has gained enough traction to retain its position \
+                       in the standard library")]
+#[allow(deprecated)]
 pub type Iterate<T, F> = Unfold<IterateState<T, F>, fn(&mut IterateState<T, F>) -> Option<T>>;
 
 /// Creates a new iterator that produces an infinite sequence of
 /// repeated applications of the given function `f`.
-#[unstable(feature = "core")]
+#[unstable(feature = "iter_iterate")]
+#[deprecated(since = "1.2.0",
+             reason = "has gained enough traction to retain its position \
+                       in the standard library")]
+#[allow(deprecated)]
 pub fn iterate<T, F>(seed: T, f: F) -> Iterate<T, F> where
     T: Clone,
     F: FnMut(T) -> T,
@@ -3022,10 +3061,10 @@ pub fn repeat<T: Clone>(elt: T) -> Repeat<T> {
 }
 
 /// An iterator that yields nothing.
-#[unstable(feature="iter_empty", reason = "new addition")]
+#[stable(feature = "iter_empty", since = "1.2.0")]
 pub struct Empty<T>(marker::PhantomData<T>);
 
-#[unstable(feature="iter_empty", reason = "new addition")]
+#[stable(feature = "iter_empty", since = "1.2.0")]
 impl<T> Iterator for Empty<T> {
     type Item = T;
 
@@ -3038,14 +3077,14 @@ impl<T> Iterator for Empty<T> {
     }
 }
 
-#[unstable(feature="iter_empty", reason = "new addition")]
+#[stable(feature = "iter_empty", since = "1.2.0")]
 impl<T> DoubleEndedIterator for Empty<T> {
     fn next_back(&mut self) -> Option<T> {
         None
     }
 }
 
-#[unstable(feature="iter_empty", reason = "new addition")]
+#[stable(feature = "iter_empty", since = "1.2.0")]
 impl<T> ExactSizeIterator for Empty<T> {
     fn len(&self) -> usize {
         0
@@ -3054,7 +3093,7 @@ impl<T> ExactSizeIterator for Empty<T> {
 
 // not #[derive] because that adds a Clone bound on T,
 // which isn't necessary.
-#[unstable(feature="iter_empty", reason = "new addition")]
+#[stable(feature = "iter_empty", since = "1.2.0")]
 impl<T> Clone for Empty<T> {
     fn clone(&self) -> Empty<T> {
         Empty(marker::PhantomData)
@@ -3063,7 +3102,7 @@ impl<T> Clone for Empty<T> {
 
 // not #[derive] because that adds a Default bound on T,
 // which isn't necessary.
-#[unstable(feature="iter_empty", reason = "new addition")]
+#[stable(feature = "iter_empty", since = "1.2.0")]
 impl<T> Default for Empty<T> {
     fn default() -> Empty<T> {
         Empty(marker::PhantomData)
@@ -3071,19 +3110,19 @@ impl<T> Default for Empty<T> {
 }
 
 /// Creates an iterator that yields nothing.
-#[unstable(feature="iter_empty", reason = "new addition")]
+#[stable(feature = "iter_empty", since = "1.2.0")]
 pub fn empty<T>() -> Empty<T> {
     Empty(marker::PhantomData)
 }
 
 /// An iterator that yields an element exactly once.
 #[derive(Clone)]
-#[unstable(feature="iter_once", reason = "new addition")]
+#[stable(feature = "iter_once", since = "1.2.0")]
 pub struct Once<T> {
     inner: ::option::IntoIter<T>
 }
 
-#[unstable(feature="iter_once", reason = "new addition")]
+#[stable(feature = "iter_once", since = "1.2.0")]
 impl<T> Iterator for Once<T> {
     type Item = T;
 
@@ -3096,14 +3135,14 @@ impl<T> Iterator for Once<T> {
     }
 }
 
-#[unstable(feature="iter_once", reason = "new addition")]
+#[stable(feature = "iter_once", since = "1.2.0")]
 impl<T> DoubleEndedIterator for Once<T> {
     fn next_back(&mut self) -> Option<T> {
         self.inner.next_back()
     }
 }
 
-#[unstable(feature="iter_once", reason = "new addition")]
+#[stable(feature = "iter_once", since = "1.2.0")]
 impl<T> ExactSizeIterator for Once<T> {
     fn len(&self) -> usize {
         self.inner.len()
@@ -3111,7 +3150,7 @@ impl<T> ExactSizeIterator for Once<T> {
 }
 
 /// Creates an iterator that yields an element exactly once.
-#[unstable(feature="iter_once", reason = "new addition")]
+#[stable(feature = "iter_once", since = "1.2.0")]
 pub fn once<T>(value: T) -> Once<T> {
     Once { inner: Some(value).into_iter() }
 }
@@ -3123,7 +3162,7 @@ pub fn once<T>(value: T) -> Once<T> {
 ///
 /// If two sequences are equal up until the point where one ends,
 /// the shorter sequence compares less.
-#[unstable(feature = "core", reason = "needs review and revision")]
+#[unstable(feature = "iter_order", reason = "needs review and revision")]
 pub mod order {
     use cmp;
     use cmp::{Eq, Ord, PartialOrd, PartialEq};

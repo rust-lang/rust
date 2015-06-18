@@ -134,7 +134,7 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Arc<U>> for Arc<T> {}
 /// Weak pointers will not keep the data inside of the `Arc` alive, and can be
 /// used to break cycles between `Arc` pointers.
 #[unsafe_no_drop_flag]
-#[unstable(feature = "alloc",
+#[unstable(feature = "arc_weak",
            reason = "Weak pointers may not belong in this module.")]
 pub struct Weak<T: ?Sized> {
     // FIXME #12808: strange name to try to avoid interfering with
@@ -191,23 +191,35 @@ impl<T: ?Sized> Arc<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(alloc)]
+    /// # #![feature(arc_weak)]
     /// use std::sync::Arc;
     ///
     /// let five = Arc::new(5);
     ///
     /// let weak_five = five.downgrade();
     /// ```
-    #[unstable(feature = "alloc",
+    #[unstable(feature = "arc_weak",
                reason = "Weak pointers may not belong in this module.")]
     pub fn downgrade(&self) -> Weak<T> {
         // See the clone() impl for why this is relaxed
         self.inner().weak.fetch_add(1, Relaxed);
         Weak { _ptr: self._ptr }
     }
-}
 
-impl<T: ?Sized> Arc<T> {
+    /// Get the number of weak references to this value.
+    #[inline]
+    #[unstable(feature = "arc_counts")]
+    pub fn weak_count(this: &Arc<T>) -> usize {
+        this.inner().weak.load(SeqCst) - 1
+    }
+
+    /// Get the number of strong references to this value.
+    #[inline]
+    #[unstable(feature = "arc_counts")]
+    pub fn strong_count(this: &Arc<T>) -> usize {
+        this.inner().strong.load(SeqCst)
+    }
+
     #[inline]
     fn inner(&self) -> &ArcInner<T> {
         // This unsafety is ok because while this arc is alive we're guaranteed
@@ -236,13 +248,15 @@ impl<T: ?Sized> Arc<T> {
 
 /// Get the number of weak references to this value.
 #[inline]
-#[unstable(feature = "alloc")]
-pub fn weak_count<T: ?Sized>(this: &Arc<T>) -> usize { this.inner().weak.load(SeqCst) - 1 }
+#[unstable(feature = "arc_counts")]
+#[deprecated(since = "1.2.0", reason = "renamed to Arc::weak_count")]
+pub fn weak_count<T: ?Sized>(this: &Arc<T>) -> usize { Arc::weak_count(this) }
 
 /// Get the number of strong references to this value.
 #[inline]
-#[unstable(feature = "alloc")]
-pub fn strong_count<T: ?Sized>(this: &Arc<T>) -> usize { this.inner().strong.load(SeqCst) }
+#[unstable(feature = "arc_counts")]
+#[deprecated(since = "1.2.0", reason = "renamed to Arc::strong_count")]
+pub fn strong_count<T: ?Sized>(this: &Arc<T>) -> usize { Arc::strong_count(this) }
 
 
 /// Returns a mutable reference to the contained value if the `Arc<T>` is unique.
@@ -255,7 +269,7 @@ pub fn strong_count<T: ?Sized>(this: &Arc<T>) -> usize { this.inner().strong.loa
 /// # Examples
 ///
 /// ```
-/// # #![feature(alloc)]
+/// # #![feature(arc_unique, alloc)]
 /// extern crate alloc;
 /// # fn main() {
 /// use alloc::arc::{Arc, get_mut};
@@ -271,10 +285,12 @@ pub fn strong_count<T: ?Sized>(this: &Arc<T>) -> usize { this.inner().strong.loa
 /// # }
 /// ```
 #[inline]
-#[unstable(feature = "alloc")]
+#[unstable(feature = "arc_unique")]
+#[deprecated(since = "1.2.0",
+             reason = "this function is unsafe with weak pointers")]
 pub unsafe fn get_mut<T: ?Sized>(this: &mut Arc<T>) -> Option<&mut T> {
     // FIXME(#24880) potential race with upgraded weak pointers here
-    if strong_count(this) == 1 && weak_count(this) == 0 {
+    if Arc::strong_count(this) == 1 && Arc::weak_count(this) == 0 {
         // This unsafety is ok because we're guaranteed that the pointer
         // returned is the *only* pointer that will ever be returned to T. Our
         // reference count is guaranteed to be 1 at this point, and we required
@@ -342,7 +358,7 @@ impl<T: Clone> Arc<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(alloc)]
+    /// # #![feature(arc_unique)]
     /// use std::sync::Arc;
     ///
     /// # unsafe {
@@ -352,7 +368,9 @@ impl<T: Clone> Arc<T> {
     /// # }
     /// ```
     #[inline]
-    #[unstable(feature = "alloc")]
+    #[unstable(feature = "arc_unique")]
+    #[deprecated(since = "1.2.0",
+                 reason = "this function is unsafe with weak pointers")]
     pub unsafe fn make_unique(&mut self) -> &mut T {
         // FIXME(#24880) potential race with upgraded weak pointers here
         //
@@ -438,7 +456,7 @@ impl<T: ?Sized> Drop for Arc<T> {
     }
 }
 
-#[unstable(feature = "alloc",
+#[unstable(feature = "arc_weak",
            reason = "Weak pointers may not belong in this module.")]
 impl<T: ?Sized> Weak<T> {
     /// Upgrades a weak reference to a strong reference.
@@ -451,7 +469,7 @@ impl<T: ?Sized> Weak<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(alloc)]
+    /// # #![feature(arc_weak)]
     /// use std::sync::Arc;
     ///
     /// let five = Arc::new(5);
@@ -479,7 +497,7 @@ impl<T: ?Sized> Weak<T> {
     }
 }
 
-#[unstable(feature = "alloc",
+#[unstable(feature = "arc_weak",
            reason = "Weak pointers may not belong in this module.")]
 impl<T: ?Sized> Clone for Weak<T> {
     /// Makes a clone of the `Weak<T>`.
@@ -489,7 +507,7 @@ impl<T: ?Sized> Clone for Weak<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(alloc)]
+    /// # #![feature(arc_weak)]
     /// use std::sync::Arc;
     ///
     /// let weak_five = Arc::new(5).downgrade();
@@ -513,7 +531,7 @@ impl<T: ?Sized> Drop for Weak<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(alloc)]
+    /// # #![feature(arc_weak)]
     /// use std::sync::Arc;
     ///
     /// {

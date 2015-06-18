@@ -10,7 +10,7 @@
 
 // pretty-expanded FIXME #23616
 
-#![feature(unboxed_closures, std_misc)]
+#![feature(thunk)]
 
 use std::thunk::Thunk;
 

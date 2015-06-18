@@ -685,10 +685,7 @@ mod stack {
         /// tied to the original tree.
         pub fn into_top(mut self) -> &'a mut V {
             unsafe {
-                mem::copy_mut_lifetime(
-                    self.map,
-                    self.top.from_raw_mut().val_mut()
-                )
+                &mut *(self.top.from_raw_mut().val_mut() as *mut V)
             }
         }
     }
@@ -1151,7 +1148,7 @@ impl<'a, K, V> DoubleEndedIterator for RangeMut<'a, K, V> {
 }
 
 impl<'a, K: Ord, V> Entry<'a, K, V> {
-    #[unstable(feature = "std_misc",
+    #[unstable(feature = "entry",
                reason = "will soon be replaced by or_insert")]
     #[deprecated(since = "1.0",
                 reason = "replaced with more ergonomic `or_insert` and `or_insert_with`")]
@@ -1507,7 +1504,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
+    /// # #![feature(btree_range, collections_bound)]
     /// use std::collections::BTreeMap;
     /// use std::collections::Bound::{Included, Unbounded};
     ///
@@ -1520,7 +1517,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// }
     /// assert_eq!(Some((&5, &"b")), map.range(Included(&4), Unbounded).next());
     /// ```
-    #[unstable(feature = "collections",
+    #[unstable(feature = "btree_range",
                reason = "matches collection reform specification, waiting for dust to settle")]
     pub fn range<'a>(&'a self, min: Bound<&K>, max: Bound<&K>) -> Range<'a, K, V> {
         range_impl!(&self.root, min, max, as_slices_internal, iter, Range, edges, [])
@@ -1534,7 +1531,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
+    /// # #![feature(btree_range, collections_bound)]
     /// use std::collections::BTreeMap;
     /// use std::collections::Bound::{Included, Excluded};
     ///
@@ -1548,7 +1545,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     ///     println!("{} => {}", name, balance);
     /// }
     /// ```
-    #[unstable(feature = "collections",
+    #[unstable(feature = "btree_range",
                reason = "matches collection reform specification, waiting for dust to settle")]
     pub fn range_mut<'a>(&'a mut self, min: Bound<&K>, max: Bound<&K>) -> RangeMut<'a, K, V> {
         range_impl!(&mut self.root, min, max, as_slices_internal_mut, iter_mut, RangeMut,

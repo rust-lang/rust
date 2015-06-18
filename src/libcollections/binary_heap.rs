@@ -10,10 +10,11 @@
 
 //! A priority queue implemented with a binary heap.
 //!
-//! Insertion and popping the largest element have `O(log n)` time complexity. Checking the largest
-//! element is `O(1)`. Converting a vector to a binary heap can be done in-place, and has `O(n)`
-//! complexity. A binary heap can also be converted to a sorted vector in-place, allowing it to
-//! be used for an `O(n log n)` in-place heapsort.
+//! Insertion and popping the largest element have `O(log n)` time complexity.
+//! Checking the largest element is `O(1)`. Converting a vector to a binary heap
+//! can be done in-place, and has `O(n)` complexity. A binary heap can also be
+//! converted to a sorted vector in-place, allowing it to be used for an `O(n
+//! log n)` in-place heapsort.
 //!
 //! # Examples
 //!
@@ -539,8 +540,9 @@ impl<T: Ord> BinaryHeap<T> {
     ///
     /// The elements are removed in arbitrary order.
     #[inline]
-    #[unstable(feature = "collections",
-               reason = "matches collection reform specification, waiting for dust to settle")]
+    #[unstable(feature = "drain",
+               reason = "matches collection reform specification, \
+                         waiting for dust to settle")]
     pub fn drain(&mut self) -> Drain<T> {
         Drain { iter: self.data.drain(..) }
     }
@@ -678,7 +680,7 @@ impl<T> DoubleEndedIterator for IntoIter<T> {
 impl<T> ExactSizeIterator for IntoIter<T> {}
 
 /// An iterator that drains a `BinaryHeap`.
-#[unstable(feature = "collections", reason = "recent addition")]
+#[unstable(feature = "drain", reason = "recent addition")]
 pub struct Drain<'a, T: 'a> {
     iter: vec::Drain<'a, T>,
 }

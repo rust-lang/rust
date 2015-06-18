@@ -16,7 +16,9 @@
 //! and should be considered as private implementation details for the
 //! time being.
 
-#![unstable(feature = "std_misc")]
+#![unstable(feature = "rt",
+            reason = "this public module should not exist and is highly likely \
+                      to disappear")]
 #![allow(missing_docs)]
 
 use prelude::v1::*;
@@ -137,7 +139,9 @@ fn lang_start(main: *const u8, argc: isize, argv: *const *const u8) -> isize {
     if failed {
         rt::DEFAULT_ERROR_CODE
     } else {
-        env::get_exit_status() as isize
+        #[allow(deprecated)]
+        fn exit_status() -> isize { env::get_exit_status() as isize }
+        exit_status()
     }
 }
 

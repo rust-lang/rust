@@ -41,10 +41,7 @@ use str::{FromStr, StrExt};
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug)]
 pub struct Wrapping<T>(#[stable(feature = "rust1", since = "1.0.0")] pub T);
 
-#[unstable(feature = "core", reason = "may be removed or relocated")]
 pub mod wrapping;
-
-#[unstable(feature = "core", reason = "internal routines only exposed for testing")]
 pub mod flt2dec;
 
 /// Types that have a "zero" value.
@@ -471,7 +468,7 @@ macro_rules! int_impl {
         /// to `-MIN`, a positive value that is too large to represent
         /// in the type. In such a case, this function returns `MIN`
         /// itself..
-        #[unstable(feature = "core", since = "1.0.0")]
+        #[stable(feature = "num_wrapping", since = "1.2.0")]
         #[inline(always)]
         pub fn wrapping_div(self, rhs: Self) -> Self {
             self.overflowing_div(rhs).0
@@ -484,7 +481,7 @@ macro_rules! int_impl {
         /// implementation artifacts make `x % y` illegal for `MIN /
         /// -1` on a signed type illegal (where `MIN` is the negative
         /// minimal value). In such a case, this function returns `0`.
-        #[unstable(feature = "core", since = "1.0.0")]
+        #[stable(feature = "num_wrapping", since = "1.2.0")]
         #[inline(always)]
         pub fn wrapping_rem(self, rhs: Self) -> Self {
             self.overflowing_rem(rhs).0
@@ -498,7 +495,7 @@ macro_rules! int_impl {
         /// negative minimal value for the type); this is a positive
         /// value that is too large to represent in the type. In such
         /// a case, this function returns `MIN` itself.
-        #[unstable(feature = "core", since = "1.0.0")]
+        #[stable(feature = "num_wrapping", since = "1.2.0")]
         #[inline(always)]
         pub fn wrapping_neg(self) -> Self {
             self.overflowing_neg().0
@@ -507,7 +504,7 @@ macro_rules! int_impl {
         /// Panic-free bitwise shift-left; yields `self << mask(rhs)`,
         /// where `mask` removes any high-order bits of `rhs` that
         /// would cause the shift to exceed the bitwidth of the type.
-        #[unstable(feature = "core", since = "1.0.0")]
+        #[stable(feature = "num_wrapping", since = "1.2.0")]
         #[inline(always)]
         pub fn wrapping_shl(self, rhs: u32) -> Self {
             self.overflowing_shl(rhs).0
@@ -516,7 +513,7 @@ macro_rules! int_impl {
         /// Panic-free bitwise shift-left; yields `self >> mask(rhs)`,
         /// where `mask` removes any high-order bits of `rhs` that
         /// would cause the shift to exceed the bitwidth of the type.
-        #[unstable(feature = "core", since = "1.0.0")]
+        #[stable(feature = "num_wrapping", since = "1.2.0")]
         #[inline(always)]
         pub fn wrapping_shr(self, rhs: u32) -> Self {
             self.overflowing_shr(rhs).0
@@ -1041,7 +1038,7 @@ macro_rules! uint_impl {
         /// to `-MIN`, a positive value that is too large to represent
         /// in the type. In such a case, this function returns `MIN`
         /// itself..
-        #[unstable(feature = "core", since = "1.0.0")]
+        #[stable(feature = "num_wrapping", since = "1.2.0")]
         #[inline(always)]
         pub fn wrapping_div(self, rhs: Self) -> Self {
             self.overflowing_div(rhs).0
@@ -1054,7 +1051,7 @@ macro_rules! uint_impl {
         /// implementation artifacts make `x % y` illegal for `MIN /
         /// -1` on a signed type illegal (where `MIN` is the negative
         /// minimal value). In such a case, this function returns `0`.
-        #[unstable(feature = "core", since = "1.0.0")]
+        #[stable(feature = "num_wrapping", since = "1.2.0")]
         #[inline(always)]
         pub fn wrapping_rem(self, rhs: Self) -> Self {
             self.overflowing_rem(rhs).0
@@ -1068,7 +1065,7 @@ macro_rules! uint_impl {
         /// negative minimal value for the type); this is a positive
         /// value that is too large to represent in the type. In such
         /// a case, this function returns `MIN` itself.
-        #[unstable(feature = "core", since = "1.0.0")]
+        #[stable(feature = "num_wrapping", since = "1.2.0")]
         #[inline(always)]
         pub fn wrapping_neg(self) -> Self {
             self.overflowing_neg().0
@@ -1077,7 +1074,7 @@ macro_rules! uint_impl {
         /// Panic-free bitwise shift-left; yields `self << mask(rhs)`,
         /// where `mask` removes any high-order bits of `rhs` that
         /// would cause the shift to exceed the bitwidth of the type.
-        #[unstable(feature = "core", since = "1.0.0")]
+        #[stable(feature = "num_wrapping", since = "1.2.0")]
         #[inline(always)]
         pub fn wrapping_shl(self, rhs: u32) -> Self {
             self.overflowing_shl(rhs).0
@@ -1086,7 +1083,7 @@ macro_rules! uint_impl {
         /// Panic-free bitwise shift-left; yields `self >> mask(rhs)`,
         /// where `mask` removes any high-order bits of `rhs` that
         /// would cause the shift to exceed the bitwidth of the type.
-        #[unstable(feature = "core", since = "1.0.0")]
+        #[stable(feature = "num_wrapping", since = "1.2.0")]
         #[inline(always)]
         pub fn wrapping_shr(self, rhs: u32) -> Self {
             self.overflowing_shr(rhs).0
@@ -1262,6 +1259,8 @@ pub enum FpCategory {
 
 /// A built-in floating point number.
 #[doc(hidden)]
+#[unstable(feature = "core_float",
+           reason = "stable interface is via `impl f{32,64}` in later crates")]
 pub trait Float {
     /// Returns the NaN value.
     fn nan() -> Self;
@@ -1512,8 +1511,11 @@ enum IntErrorKind {
 }
 
 impl ParseIntError {
-    #[unstable(feature = "core", reason = "available through Error trait")]
-    pub fn description(&self) -> &str {
+    #[unstable(feature = "int_error_internals",
+               reason = "available through Error trait and this method should \
+                         not be exposed publicly")]
+    #[doc(hidden)]
+    pub fn __description(&self) -> &str {
         match self.kind {
             IntErrorKind::Empty => "cannot parse integer from empty string",
             IntErrorKind::InvalidDigit => "invalid digit found in string",
@@ -1526,7 +1528,7 @@ impl ParseIntError {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for ParseIntError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.description().fmt(f)
+        self.__description().fmt(f)
     }
 }
 
@@ -1535,10 +1537,15 @@ impl fmt::Display for ParseIntError {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct ParseFloatError {
     #[doc(hidden)]
+    #[unstable(feature = "float_error_internals",
+               reason = "should not be exposed publicly")]
     pub __kind: FloatErrorKind
 }
 
 #[derive(Debug, Clone, PartialEq)]
+#[unstable(feature = "float_error_internals",
+           reason = "should not be exposed publicly")]
+#[doc(hidden)]
 pub enum FloatErrorKind {
     Empty,
     Invalid,

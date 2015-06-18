@@ -297,6 +297,9 @@ impl Builder {
     /// the OS level.
     #[unstable(feature = "scoped",
                reason = "memory unsafe if destructor is avoided, see #24292")]
+    #[deprecated(since = "1.2.0",
+                 reason = "this unsafe API is unlikely to ever be stabilized \
+                           in this form")]
     pub fn scoped<'a, T, F>(self, f: F) -> io::Result<JoinGuard<'a, T>> where
         T: Send + 'a, F: FnOnce() -> T, F: Send + 'a
     {
@@ -398,6 +401,10 @@ pub fn spawn<F, T>(f: F) -> JoinHandle<T> where
 /// to recover from such errors.
 #[unstable(feature = "scoped",
            reason = "memory unsafe if destructor is avoided, see #24292")]
+#[deprecated(since = "1.2.0",
+             reason = "this unsafe API is unlikely to ever be stabilized \
+                       in this form")]
+#[allow(deprecated)]
 pub fn scoped<'a, T, F>(f: F) -> JoinGuard<'a, T> where
     T: Send + 'a, F: FnOnce() -> T, F: Send + 'a
 {

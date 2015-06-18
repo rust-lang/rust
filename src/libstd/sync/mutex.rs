@@ -85,7 +85,6 @@ use sys_common::poison::{self, TryLockError, TryLockResult, LockResult};
 /// To recover from a poisoned mutex:
 ///
 /// ```
-/// # #![feature(std_misc)]
 /// use std::sync::{Arc, Mutex};
 /// use std::thread;
 ///
@@ -139,7 +138,7 @@ unsafe impl<T: ?Sized + Send> Sync for Mutex<T> { }
 /// # Examples
 ///
 /// ```
-/// # #![feature(std_misc)]
+/// # #![feature(static_mutex)]
 /// use std::sync::{StaticMutex, MUTEX_INIT};
 ///
 /// static LOCK: StaticMutex = MUTEX_INIT;
@@ -150,7 +149,7 @@ unsafe impl<T: ?Sized + Send> Sync for Mutex<T> { }
 /// }
 /// // lock is unlocked here.
 /// ```
-#[unstable(feature = "std_misc",
+#[unstable(feature = "static_mutex",
            reason = "may be merged with Mutex in the future")]
 pub struct StaticMutex {
     lock: sys::Mutex,
@@ -176,7 +175,7 @@ impl<'a, T: ?Sized> !marker::Send for MutexGuard<'a, T> {}
 
 /// Static initialization of a mutex. This constant can be used to initialize
 /// other mutex constants.
-#[unstable(feature = "std_misc",
+#[unstable(feature = "static_mutex",
            reason = "may be merged with Mutex in the future")]
 pub const MUTEX_INIT: StaticMutex = StaticMutex::new();
 
@@ -237,7 +236,7 @@ impl<T: ?Sized> Mutex<T> {
     /// time.  You should not trust a `false` value for program correctness
     /// without additional synchronization.
     #[inline]
-    #[unstable(feature = "std_misc")]
+    #[stable(feature = "sync_poison", since = "1.2.0")]
     pub fn is_poisoned(&self) -> bool {
         self.inner.poison.get()
     }
@@ -270,10 +269,10 @@ struct Dummy(UnsafeCell<()>);
 unsafe impl Sync for Dummy {}
 static DUMMY: Dummy = Dummy(UnsafeCell::new(()));
 
+#[unstable(feature = "static_mutex",
+           reason = "may be merged with Mutex in the future")]
 impl StaticMutex {
     /// Creates a new mutex in an unlocked state ready for use.
-    #[unstable(feature = "std_misc",
-               reason = "may be merged with Mutex in the future")]
     pub const fn new() -> StaticMutex {
         StaticMutex {
             lock: sys::Mutex::new(),
@@ -283,8 +282,6 @@ impl StaticMutex {
 
     /// Acquires this lock, see `Mutex::lock`
     #[inline]
-    #[unstable(feature = "std_misc",
-               reason = "may be merged with Mutex in the future")]
     pub fn lock(&'static self) -> LockResult<MutexGuard<()>> {
         unsafe { self.lock.lock() }
         MutexGuard::new(self, &DUMMY.0)
@@ -292,8 +289,6 @@ impl StaticMutex {
 
     /// Attempts to grab this lock, see `Mutex::try_lock`
     #[inline]
-    #[unstable(feature = "std_misc",
-               reason = "may be merged with Mutex in the future")]
     pub fn try_lock(&'static self) -> TryLockResult<MutexGuard<()>> {
         if unsafe { self.lock.try_lock() } {
             Ok(try!(MutexGuard::new(self, &DUMMY.0)))
@@ -312,8 +307,6 @@ impl StaticMutex {
     /// *all* platforms. It may be the case that some platforms do not leak
     /// memory if this method is not called, but this is not guaranteed to be
     /// true on all platforms.
-    #[unstable(feature = "std_misc",
-               reason = "may be merged with Mutex in the future")]
     pub unsafe fn destroy(&'static self) {
         self.lock.destroy()
     }

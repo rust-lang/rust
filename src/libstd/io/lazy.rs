@@ -10,7 +10,6 @@
 
 use prelude::v1::*;
 
-use boxed;
 use cell::Cell;
 use rt;
 use sync::{StaticMutex, Arc};
@@ -60,7 +59,7 @@ impl<T: Send + Sync + 'static> Lazy<T> {
         });
         let ret = (self.init)();
         if registered.is_ok() {
-            self.ptr.set(boxed::into_raw(Box::new(ret.clone())));
+            self.ptr.set(Box::into_raw(Box::new(ret.clone())));
         }
         return ret
     }

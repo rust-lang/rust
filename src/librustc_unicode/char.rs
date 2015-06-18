@@ -310,7 +310,9 @@ impl char {
     #[unstable(feature = "unicode",
                reason = "pending decision about Iterator/Writer/Reader")]
     #[inline]
-    pub fn encode_utf8(self, dst: &mut [u8]) -> Option<usize> { C::encode_utf8(self, dst) }
+    pub fn encode_utf8(self, dst: &mut [u8]) -> Option<usize> {
+        C::encode_utf8(self, dst)
+    }
 
     /// Encodes this character as UTF-16 into the provided `u16` buffer, and
     /// then returns the number of `u16`s written.
@@ -345,7 +347,9 @@ impl char {
     #[unstable(feature = "unicode",
                reason = "pending decision about Iterator/Writer/Reader")]
     #[inline]
-    pub fn encode_utf16(self, dst: &mut [u16]) -> Option<usize> { C::encode_utf16(self, dst) }
+    pub fn encode_utf16(self, dst: &mut [u16]) -> Option<usize> {
+        C::encode_utf16(self, dst)
+    }
 
     /// Returns whether the specified character is considered a Unicode
     /// alphabetic code point.
@@ -541,5 +545,7 @@ impl char {
     #[unstable(feature = "unicode",
                reason = "needs expert opinion. is_cjk flag stands out as ugly")]
     #[inline]
-    pub fn width(self, is_cjk: bool) -> Option<usize> { charwidth::width(self, is_cjk) }
+    pub fn width(self, is_cjk: bool) -> Option<usize> {
+        charwidth::width(self, is_cjk)
+    }
 }

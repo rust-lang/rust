@@ -49,7 +49,9 @@
 // Do not remove on snapshot creation. Needed for bootstrap. (Issue #22364)
 #![cfg_attr(stage0, feature(custom_attribute))]
 #![crate_name = "core"]
-#![unstable(feature = "core")]
+#![unstable(feature = "core",
+            reason = "the libcore library has not yet been scrutinized for \
+                      stabilization in terms of structure and naming")]
 #![staged_api]
 #![crate_type = "rlib"]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
@@ -63,7 +65,8 @@
 #![allow(raw_pointer_derive)]
 #![deny(missing_docs)]
 
-#![feature(intrinsics, lang_items)]
+#![feature(intrinsics)]
+#![feature(lang_items)]
 #![feature(on_unimplemented)]
 #![feature(simd)]
 #![feature(staged_api)]
@@ -75,6 +78,7 @@
 #![feature(reflect)]
 #![feature(custom_attribute)]
 #![feature(const_fn)]
+#![feature(allow_internal_unstable)]
 
 #[macro_use]
 mod macros;

@@ -27,10 +27,10 @@
 
 #![feature(associated_consts)]
 #![feature(box_syntax)]
-#![feature(collections)]
 #![feature(libc)]
 #![feature(link_args)]
 #![feature(staged_api)]
+#![feature(vec_push_all)]
 
 extern crate libc;
 #[macro_use] #[no_link] extern crate rustc_bitflags;

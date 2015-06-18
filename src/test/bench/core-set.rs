@@ -11,6 +11,7 @@
 // ignore-pretty very bad with line comments
 
 #![feature(unboxed_closures, rand, std_misc, collections, duration, duration_span)]
+#![feature(bitset)]
 
 extern crate collections;
 extern crate rand;

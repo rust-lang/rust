@@ -10,6 +10,7 @@
 
 #![allow(missing_docs)]
 #![allow(deprecated)]
+#![unstable(feature = "wrapping", reason = "may be removed or relocated")]
 
 use super::Wrapping;
 
@@ -30,7 +31,6 @@ use intrinsics::{i64_mul_with_overflow, u64_mul_with_overflow};
 
 use ::{i8,i16,i32,i64};
 
-#[unstable(feature = "core", reason = "may be removed, renamed, or relocated")]
 pub trait OverflowingOps {
     fn overflowing_add(self, rhs: Self) -> (Self, bool);
     fn overflowing_sub(self, rhs: Self) -> (Self, bool);

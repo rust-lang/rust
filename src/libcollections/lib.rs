@@ -10,37 +10,58 @@
 
 //! Collection types.
 //!
-//! See [std::collections](../std/collections) for a detailed discussion of collections in Rust.
+//! See [std::collections](../std/collections) for a detailed discussion of
+//! collections in Rust.
 
 // Do not remove on snapshot creation. Needed for bootstrap. (Issue #22364)
 #![cfg_attr(stage0, feature(custom_attribute))]
 #![crate_name = "collections"]
-#![unstable(feature = "collections")]
 #![staged_api]
 #![crate_type = "rlib"]
+#![unstable(feature = "collections",
+            reason = "library is unlikely to be stabilized with the current \
+                      layout and name, use std::collections instead")]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/nightly/",
-       html_playground_url = "http://play.rust-lang.org/")]
-#![doc(test(no_crate_inject))]
+       html_playground_url = "http://play.rust-lang.org/",
+       test(no_crate_inject))]
 
 #![allow(trivial_casts)]
+#![cfg_attr(test, allow(deprecated))] // rand
+
 #![feature(alloc)]
-#![feature(box_syntax)]
 #![feature(box_patterns)]
+#![feature(box_raw)]
+#![feature(box_syntax)]
 #![feature(core)]
+#![feature(core_intrinsics)]
+#![feature(core_prelude)]
+#![feature(core_slice_ext)]
+#![feature(core_str_ext)]
+#![feature(heap_api)]
+#![feature(iter_cmp)]
+#![feature(iter_idx)]
+#![feature(iter_order)]
+#![feature(iter_arith)]
+#![feature(iter_arith)]
 #![feature(lang_items)]
+#![feature(num_bits_bytes)]
+#![feature(oom)]
+#![feature(pattern)]
+#![feature(ptr_as_ref)]
+#![feature(raw)]
+#![feature(slice_patterns)]
 #![feature(staged_api)]
+#![feature(step_by)]
+#![feature(str_char)]
+#![feature(str_match_indices)]
 #![feature(unboxed_closures)]
 #![feature(unicode)]
 #![feature(unique)]
 #![feature(unsafe_no_drop_flag, filling_drop)]
-#![feature(step_by)]
-#![feature(str_char)]
-#![feature(slice_patterns)]
 #![feature(utf8_error)]
 #![cfg_attr(test, feature(rand, test))]
-#![cfg_attr(test, allow(deprecated))] // rand
 #![cfg_attr(not(test), feature(str_words))]
 
 #![feature(no_std)]
@@ -88,14 +109,12 @@ pub mod vec;
 pub mod vec_deque;
 pub mod vec_map;
 
-#[unstable(feature = "collections",
-           reason = "RFC 509")]
+#[unstable(feature = "bitvec", reason = "RFC 509")]
 pub mod bit_vec {
     pub use bit::{BitVec, Iter};
 }
 
-#[unstable(feature = "collections",
-           reason = "RFC 509")]
+#[unstable(feature = "bitset", reason = "RFC 509")]
 pub mod bit_set {
     pub use bit::{BitSet, Union, Intersection, Difference, SymmetricDifference};
     pub use bit::SetIter as Iter;
@@ -114,6 +133,7 @@ pub mod btree_set {
 
 // FIXME(#14344) this shouldn't be necessary
 #[doc(hidden)]
+#[unstable(feature = "issue_14344_fixme")]
 pub fn fixme_14344_be_sure_to_link_to_collections() {}
 
 #[cfg(not(test))]
@@ -122,6 +142,7 @@ mod std {
 }
 
 /// An endpoint of a range of keys.
+#[unstable(feature = "collections_bound")]
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
 pub enum Bound<T> {
     /// An inclusive bound.

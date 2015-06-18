@@ -10,7 +10,7 @@
 
 // pretty-expanded FIXME #23616
 
-#![feature(std_misc)]
+#![feature(thunk)]
 
 use std::thread::Builder;
 use std::thunk::Thunk;

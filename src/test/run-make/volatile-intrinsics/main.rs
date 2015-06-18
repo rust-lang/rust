@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(core)]
+#![feature(core_intrinsics)]
 
 use std::intrinsics::{volatile_load, volatile_store};
 

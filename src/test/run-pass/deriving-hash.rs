@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-#![feature(hash)]
+#![feature(hash_default)]
 
 use std::hash::{Hash, SipHasher};
 

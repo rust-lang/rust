@@ -274,7 +274,7 @@ impl<T> Option<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(core)]
+    /// # #![feature(as_slice)]
     /// let mut x = Some("Diamonds");
     /// {
     ///     let v = x.as_mut_slice();
@@ -285,7 +285,7 @@ impl<T> Option<T> {
     /// assert_eq!(x, Some("Dirt"));
     /// ```
     #[inline]
-    #[unstable(feature = "core",
+    #[unstable(feature = "as_slice",
                reason = "waiting for mut conventions")]
     pub fn as_mut_slice<'r>(&'r mut self) -> &'r mut [T] {
         match *self {

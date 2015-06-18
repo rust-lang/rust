@@ -14,6 +14,7 @@
 
 #![allow(non_snake_case)]
 #![doc(primitive = "char")]
+#![stable(feature = "core_char", since = "1.2.0")]
 
 use iter::Iterator;
 use mem::transmute;
@@ -131,6 +132,8 @@ pub fn from_digit(num: u32, radix: u32) -> Option<char> {
 // unicode/char.rs, not here
 #[allow(missing_docs)] // docs in libunicode/u_char.rs
 #[doc(hidden)]
+#[unstable(feature = "core_char_ext",
+           reason = "the stable interface is `impl char` in later crate")]
 pub trait CharExt {
     fn is_digit(self, radix: u32) -> bool;
     fn to_digit(self, radix: u32) -> Option<u32>;
@@ -220,6 +223,9 @@ impl CharExt for char {
 /// If the buffer is not large enough, nothing will be written into it
 /// and a `None` will be returned.
 #[inline]
+#[unstable(feature = "char_internals",
+           reason = "this function should not be exposed publicly")]
+#[doc(hidden)]
 pub fn encode_utf8_raw(code: u32, dst: &mut [u8]) -> Option<usize> {
     // Marked #[inline] to allow llvm optimizing it away
     if code < MAX_ONE_B && !dst.is_empty() {
@@ -251,6 +257,9 @@ pub fn encode_utf8_raw(code: u32, dst: &mut [u8]) -> Option<usize> {
 /// If the buffer is not large enough, nothing will be written into it
 /// and a `None` will be returned.
 #[inline]
+#[unstable(feature = "char_internals",
+           reason = "this function should not be exposed publicly")]
+#[doc(hidden)]
 pub fn encode_utf16_raw(mut ch: u32, dst: &mut [u16]) -> Option<usize> {
     // Marked #[inline] to allow llvm optimizing it away
     if (ch & 0xFFFF) == ch && !dst.is_empty() {

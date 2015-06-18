@@ -71,7 +71,9 @@ pub mod consts {
     pub const PI: f64 = 3.14159265358979323846264338327950288_f64;
 
     /// pi * 2.0
-    #[unstable(feature = "core", reason = "unclear naming convention/usefulness")]
+    #[unstable(feature = "float_consts",
+               reason = "unclear naming convention/usefulness")]
+    #[deprecated(since = "1.2.0", reason = "unclear on usefulness")]
     pub const PI_2: f64 = 6.28318530717958647692528676655900576_f64;
 
     /// pi/2.0
@@ -135,7 +137,6 @@ pub mod consts {
     pub const LN_10: f64 = 2.30258509299404568401799145468436421_f64;
 }
 
-#[unstable(feature = "core", reason = "trait is unstable")]
 impl Float for f64 {
     #[inline]
     fn nan() -> f64 { NAN }

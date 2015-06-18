@@ -14,7 +14,7 @@
 //! # Examples
 //!
 //! ```
-//! # #![feature(std_misc)]
+//! # #![feature(future)]
 //! use std::sync::Future;
 //!
 //! // a fake, for now
@@ -28,10 +28,15 @@
 //! ```
 
 #![allow(missing_docs)]
-#![unstable(feature = "std_misc",
+#![unstable(feature = "future",
             reason = "futures as-is have yet to be deeply reevaluated with recent \
                       core changes to Rust's synchronization story, and will likely \
                       become stable in the future but are unstable until that time")]
+#![deprecated(since = "1.2.0",
+              reason = "implementation does not match the quality of the \
+                        standard library and this will likely be prototyped \
+                        outside in crates.io first")]
+#![allow(deprecated)]
 
 use core::prelude::*;
 use core::mem::replace;

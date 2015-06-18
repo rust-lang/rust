@@ -10,7 +10,7 @@
 
 // Microbenchmarks for various functions in std and extra
 
-#![feature(rand, collections, std_misc, duration, duration_span)]
+#![feature(rand, vec_push_all, duration, duration_span)]
 
 use std::iter::repeat;
 use std::mem::swap;

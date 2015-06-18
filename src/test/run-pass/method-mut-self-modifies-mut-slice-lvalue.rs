@@ -13,7 +13,7 @@
 // temporary. Issue #19147.
 
 
-#![feature(core)]
+#![feature(slice_bytes)]
 
 use std::slice;
 

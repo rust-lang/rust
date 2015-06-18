@@ -221,7 +221,7 @@ impl<T:Copy> Cell<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(core)]
+    /// # #![feature(as_unsafe_cell)]
     /// use std::cell::Cell;
     ///
     /// let c = Cell::new(5);
@@ -229,7 +229,7 @@ impl<T:Copy> Cell<T> {
     /// let uc = unsafe { c.as_unsafe_cell() };
     /// ```
     #[inline]
-    #[unstable(feature = "core")]
+    #[unstable(feature = "as_unsafe_cell")]
     pub unsafe fn as_unsafe_cell<'a>(&'a self) -> &'a UnsafeCell<T> {
         &self.value
     }
@@ -277,7 +277,7 @@ pub struct RefCell<T: ?Sized> {
 
 /// An enumeration of values returned from the `state` method on a `RefCell<T>`.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-#[unstable(feature = "std_misc")]
+#[unstable(feature = "borrow_state")]
 pub enum BorrowState {
     /// The cell is currently being read, there is at least one active `borrow`.
     Reading,
@@ -339,7 +339,7 @@ impl<T: ?Sized> RefCell<T> {
     ///
     /// The returned value can be dispatched on to determine if a call to
     /// `borrow` or `borrow_mut` would succeed.
-    #[unstable(feature = "std_misc")]
+    #[unstable(feature = "borrow_state")]
     #[inline]
     pub fn borrow_state(&self) -> BorrowState {
         match self.borrow.get() {
@@ -448,7 +448,7 @@ impl<T: ?Sized> RefCell<T> {
     ///
     /// This function is `unsafe` because `UnsafeCell`'s field is public.
     #[inline]
-    #[unstable(feature = "core")]
+    #[unstable(feature = "as_unsafe_cell")]
     pub unsafe fn as_unsafe_cell<'a>(&'a self) -> &'a UnsafeCell<T> {
         &self.value
     }
@@ -564,9 +564,10 @@ impl<'b, T: ?Sized> Ref<'b, T> {
     ///
     /// The `RefCell` is already immutably borrowed, so this cannot fail.
     ///
-    /// This is an associated function that needs to be used as `Ref::clone(...)`.
-    /// A `Clone` implementation or a method would interfere with the widespread
-    /// use of `r.borrow().clone()` to clone the contents of a `RefCell`.
+    /// This is an associated function that needs to be used as
+    /// `Ref::clone(...)`.  A `Clone` implementation or a method would interfere
+    /// with the widespread use of `r.borrow().clone()` to clone the contents of
+    /// a `RefCell`.
     #[unstable(feature = "cell_extras",
                reason = "likely to be moved to a method, pending language changes")]
     #[inline]
@@ -582,8 +583,8 @@ impl<'b, T: ?Sized> Ref<'b, T> {
     /// The `RefCell` is already immutably borrowed, so this cannot fail.
     ///
     /// This is an associated function that needs to be used as `Ref::map(...)`.
-    /// A method would interfere with methods of the same name on the contents of a `RefCell`
-    /// used through `Deref`.
+    /// A method would interfere with methods of the same name on the contents
+    /// of a `RefCell` used through `Deref`.
     ///
     /// # Example
     ///
@@ -607,13 +608,14 @@ impl<'b, T: ?Sized> Ref<'b, T> {
         }
     }
 
-    /// Make a new `Ref` for a optional component of the borrowed data, e.g. an enum variant.
+    /// Make a new `Ref` for a optional component of the borrowed data, e.g. an
+    /// enum variant.
     ///
     /// The `RefCell` is already immutably borrowed, so this cannot fail.
     ///
-    /// This is an associated function that needs to be used as `Ref::filter_map(...)`.
-    /// A method would interfere with methods of the same name on the contents of a `RefCell`
-    /// used through `Deref`.
+    /// This is an associated function that needs to be used as
+    /// `Ref::filter_map(...)`.  A method would interfere with methods of the
+    /// same name on the contents of a `RefCell` used through `Deref`.
     ///
     /// # Example
     ///
@@ -639,13 +641,14 @@ impl<'b, T: ?Sized> Ref<'b, T> {
 }
 
 impl<'b, T: ?Sized> RefMut<'b, T> {
-    /// Make a new `RefMut` for a component of the borrowed data, e.g. an enum variant.
+    /// Make a new `RefMut` for a component of the borrowed data, e.g. an enum
+    /// variant.
     ///
     /// The `RefCell` is already mutably borrowed, so this cannot fail.
     ///
-    /// This is an associated function that needs to be used as `RefMut::map(...)`.
-    /// A method would interfere with methods of the same name on the contents of a `RefCell`
-    /// used through `Deref`.
+    /// This is an associated function that needs to be used as
+    /// `RefMut::map(...)`.  A method would interfere with methods of the same
+    /// name on the contents of a `RefCell` used through `Deref`.
     ///
     /// # Example
     ///
@@ -673,13 +676,14 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
         }
     }
 
-    /// Make a new `RefMut` for a optional component of the borrowed data, e.g. an enum variant.
+    /// Make a new `RefMut` for a optional component of the borrowed data, e.g.
+    /// an enum variant.
     ///
     /// The `RefCell` is already mutably borrowed, so this cannot fail.
     ///
-    /// This is an associated function that needs to be used as `RefMut::filter_map(...)`.
-    /// A method would interfere with methods of the same name on the contents of a `RefCell`
-    /// used through `Deref`.
+    /// This is an associated function that needs to be used as
+    /// `RefMut::filter_map(...)`.  A method would interfere with methods of the
+    /// same name on the contents of a `RefCell` used through `Deref`.
     ///
     /// # Example
     ///
@@ -690,7 +694,9 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
     /// let c = RefCell::new(Ok(5));
     /// {
     ///     let b1: RefMut<Result<u32, ()>> = c.borrow_mut();
-    ///     let mut b2: RefMut<u32> = RefMut::filter_map(b1, |o| o.as_mut().ok()).unwrap();
+    ///     let mut b2: RefMut<u32> = RefMut::filter_map(b1, |o| {
+    ///         o.as_mut().ok()
+    ///     }).unwrap();
     ///     assert_eq!(*b2, 5);
     ///     *b2 = 42;
     /// }
