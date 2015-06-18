@@ -235,6 +235,7 @@ pub fn is_test_ignored(config: &Config, testfile: &Path) -> bool {
         !parse_name_directive(ln, &ignore_architecture(config)) &&
         !parse_name_directive(ln, &ignore_stage(config)) &&
         !parse_name_directive(ln, &ignore_env(config)) &&
+        !(config.targeting_pnacl() && parse_name_directive(ln, "ignore-pnacl")) &&
         !(config.mode == common::Pretty && parse_name_directive(ln, "ignore-pretty")) &&
         !(config.target != config.host && parse_name_directive(ln, "ignore-cross-compile")) &&
         !ignore_gdb(config, ln) &&
