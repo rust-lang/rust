@@ -411,7 +411,8 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     let self_scope = fcx.push_custom_cleanup_scope();
     let self_scope_id = CustomScope(self_scope);
     let rvalue_mode = datum::appropriate_rvalue_mode(ccx, closure_ty);
-    let llself = llargs[fcx.arg_pos(0)];
+    let self_idx = fcx.arg_offset();
+    let llself = llargs[self_idx];
     let env_datum = Datum::new(llself, closure_ty, Rvalue::new(rvalue_mode));
     let env_datum = unpack_datum!(bcx,
                                   env_datum.to_lvalue_datum_in_scope(bcx, "self",
@@ -431,7 +432,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
                                    DebugLoc::None,
                                    llref_fn_ty,
                                    |bcx, _| Callee { bcx: bcx, data: callee_data },
-                                   ArgVals(&llargs[fcx.arg_pos(1)..]),
+                                   ArgVals(&llargs[(self_idx + 1)..]),
                                    dest).bcx;
 
     fcx.pop_custom_cleanup_scope(self_scope);

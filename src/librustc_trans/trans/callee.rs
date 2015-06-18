@@ -343,11 +343,12 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
 
     let llargs = get_params(fcx.llfn);
 
+    let self_idx = fcx.arg_offset();
     // the first argument (`self`) will be ptr to the the fn pointer
     let llfnpointer = if is_by_ref {
-        Load(bcx, llargs[fcx.arg_pos(0)])
+        Load(bcx, llargs[self_idx])
     } else {
-        llargs[fcx.arg_pos(0)]
+        llargs[self_idx]
     };
 
     assert!(!fcx.needs_ret_allocas);
@@ -360,7 +361,7 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
                            DebugLoc::None,
                            bare_fn_ty,
                            |bcx, _| Callee { bcx: bcx, data: Fn(llfnpointer) },
-                           ArgVals(&llargs[fcx.arg_pos(1)..]),
+                           ArgVals(&llargs[(self_idx + 1)..]),
                            dest).bcx;
 
     finish_fn(&fcx, bcx, sig.output, DebugLoc::None);
@@ -1129,6 +1130,10 @@ pub fn trans_arg_datum<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 bcx, arg_datum.to_lvalue_datum(bcx, "arg", arg_id));
             val = arg_datum.val;
         }
+        DontAutorefArg if common::type_is_fat_ptr(bcx.tcx(), arg_datum_ty) &&
+                !bcx.fcx.type_needs_drop(arg_datum_ty) => {
+            val = arg_datum.val
+        }
         DontAutorefArg => {
             // Make this an rvalue, since we are going to be
             // passing ownership.
@@ -1147,7 +1152,7 @@ pub fn trans_arg_datum<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         }
     }
 
-    if formal_arg_ty != arg_datum_ty {
+    if type_of::arg_is_indirect(ccx, formal_arg_ty) && formal_arg_ty != arg_datum_ty {
         // this could happen due to e.g. subtyping
         let llformal_arg_ty = type_of::type_of_explicit_arg(ccx, formal_arg_ty);
         debug!("casting actual type ({}) to match formal ({})",
@@ -1159,7 +1164,12 @@ pub fn trans_arg_datum<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     debug!("--- trans_arg_datum passing {}", bcx.val_to_string(val));
 
-    llargs.push(val);
+    if common::type_is_fat_ptr(bcx.tcx(), formal_arg_ty) {
+        llargs.push(Load(bcx, expr::get_dataptr(bcx, val)));
+        llargs.push(Load(bcx, expr::get_len(bcx, val)));
+    } else {
+        llargs.push(val);
+    }
 
     bcx
 }

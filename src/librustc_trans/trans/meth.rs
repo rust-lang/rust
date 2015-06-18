@@ -468,7 +468,9 @@ fn trans_trait_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         self_datum.val
     };
 
-    trans_trait_callee_from_llval(bcx, method_ty, vtable_index, llval)
+    let llself = Load(bcx, GEPi(bcx, llval, &[0, abi::FAT_PTR_ADDR]));
+    let llvtable = Load(bcx, GEPi(bcx, llval, &[0, abi::FAT_PTR_EXTRA]));
+    trans_trait_callee_from_llval(bcx, method_ty, vtable_index, llself, llvtable)
 }
 
 /// Same as `trans_trait_callee()` above, except that it is given a by-ref pointer to the object
@@ -476,19 +478,18 @@ fn trans_trait_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 pub fn trans_trait_callee_from_llval<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                                  callee_ty: Ty<'tcx>,
                                                  vtable_index: usize,
-                                                 llpair: ValueRef)
+                                                 llself: ValueRef,
+                                                 llvtable: ValueRef)
                                                  -> Callee<'blk, 'tcx> {
     let _icx = push_ctxt("meth::trans_trait_callee");
     let ccx = bcx.ccx();
 
     // Load the data pointer from the object.
-    debug!("trans_trait_callee_from_llval(callee_ty={}, vtable_index={}, llpair={})",
+    debug!("trans_trait_callee_from_llval(callee_ty={}, vtable_index={}, llself={}, llvtable={})",
            callee_ty,
            vtable_index,
-           bcx.val_to_string(llpair));
-    let llboxptr = GEPi(bcx, llpair, &[0, abi::FAT_PTR_ADDR]);
-    let llbox = Load(bcx, llboxptr);
-    let llself = PointerCast(bcx, llbox, Type::i8p(ccx));
+           bcx.val_to_string(llself),
+           bcx.val_to_string(llvtable));
 
     // Replace the self type (&Self or Box<Self>) with an opaque pointer.
     let llcallee_ty = match callee_ty.sty {
@@ -505,19 +506,13 @@ pub fn trans_trait_callee_from_llval<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             ccx.sess().bug("meth::trans_trait_callee given non-bare-rust-fn");
         }
     };
-    let llvtable = Load(bcx,
-                        PointerCast(bcx,
-                                    GEPi(bcx, llpair,
-                                         &[0, abi::FAT_PTR_EXTRA]),
-                                    Type::vtable(ccx).ptr_to().ptr_to()));
-    let mptr = Load(bcx, GEPi(bcx, llvtable, &[0, vtable_index + VTABLE_OFFSET]));
-    let mptr = PointerCast(bcx, mptr, llcallee_ty.ptr_to());
+    let mptr = Load(bcx, GEPi(bcx, llvtable, &[vtable_index + VTABLE_OFFSET]));
 
     return Callee {
         bcx: bcx,
         data: TraitItem(MethodData {
-            llfn: mptr,
-            llself: llself,
+            llfn: PointerCast(bcx, mptr, llcallee_ty.ptr_to()),
+            llself: PointerCast(bcx, llself, Type::i8p(ccx)),
         })
     };
 }
@@ -613,11 +608,12 @@ pub fn trans_object_shim<'a, 'tcx>(
 
     let llargs = get_params(fcx.llfn);
 
-    // the first argument (`self`) will be a trait object
-    let llobject = llargs[fcx.arg_pos(0)];
+    let self_idx = fcx.arg_offset();
+    let llself = llargs[self_idx];
+    let llvtable = llargs[self_idx + 1];
 
-    debug!("trans_object_shim: llobject={}",
-           bcx.val_to_string(llobject));
+    debug!("trans_object_shim: llself={}, llvtable={}",
+           bcx.val_to_string(llself), bcx.val_to_string(llvtable));
 
     assert!(!fcx.needs_ret_allocas);
 
@@ -639,8 +635,8 @@ pub fn trans_object_shim<'a, 'tcx>(
                            |bcx, _| trans_trait_callee_from_llval(bcx,
                                                                   method_bare_fn_ty,
                                                                   method_offset_in_vtable,
-                                                                  llobject),
-                           ArgVals(&llargs[fcx.arg_pos(1)..]),
+                                                                  llself, llvtable),
+                           ArgVals(&llargs[(self_idx + 2)..]),
                            dest).bcx;
 
     finish_fn(&fcx, bcx, sig.output, DebugLoc::None);

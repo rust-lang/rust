@@ -275,17 +275,13 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
             } else {
                 (&exprs[0], &exprs[1])
             };
-            let arg_tys = ty::erase_late_bound_regions(bcx.tcx(), &ty::ty_fn_args(callee_ty));
 
             // evaluate destination address
-            let lldest_addr = unpack_result!(bcx, {
-                let dest_datum = unpack_datum!(bcx, expr::trans(bcx, dest_expr));
-                callee::trans_arg_datum(bcx,
-                                        arg_tys[0],
-                                        dest_datum,
-                                        cleanup::CustomScope(cleanup_scope),
-                                        callee::DontAutorefArg)
-            });
+            let dest_datum = unpack_datum!(bcx, expr::trans(bcx, dest_expr));
+            let dest_datum = unpack_datum!(
+                bcx, dest_datum.to_rvalue_datum(bcx, "arg"));
+            let dest_datum = unpack_datum!(
+                bcx, dest_datum.to_appropriate_datum(bcx));
 
             // `expr::trans_into(bcx, expr, dest)` is equiv to
             //
@@ -294,7 +290,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
             // which for `dest == expr::SaveIn(addr)`, is equivalent to:
             //
             //    `trans(bcx, expr).store_to(bcx, addr)`.
-            let lldest = expr::Dest::SaveIn(lldest_addr);
+            let lldest = expr::Dest::SaveIn(dest_datum.val);
             bcx = expr::trans_into(bcx, source_expr, lldest);
 
             let llresult = C_nil(ccx);
@@ -370,8 +366,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         (_, "size_of_val") => {
             let tp_ty = *substs.types.get(FnSpace, 0);
             if !type_is_sized(tcx, tp_ty) {
-                let info = Load(bcx, expr::get_len(bcx, llargs[0]));
-                let (llsize, _) = glue::size_and_align_of_dst(bcx, tp_ty, info);
+                let (llsize, _) = glue::size_and_align_of_dst(bcx, tp_ty, llargs[1]);
                 llsize
             } else {
                 let lltp_ty = type_of::type_of(ccx, tp_ty);
@@ -385,8 +380,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         (_, "min_align_of_val") => {
             let tp_ty = *substs.types.get(FnSpace, 0);
             if !type_is_sized(tcx, tp_ty) {
-                let info = Load(bcx, expr::get_len(bcx, llargs[0]));
-                let (_, llalign) = glue::size_and_align_of_dst(bcx, tp_ty, info);
+                let (_, llalign) = glue::size_and_align_of_dst(bcx, tp_ty, llargs[1]);
                 llalign
             } else {
                 C_uint(ccx, type_of::align_of(ccx, tp_ty))
@@ -399,7 +393,16 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         }
         (_, "drop_in_place") => {
             let tp_ty = *substs.types.get(FnSpace, 0);
-            glue::drop_ty(bcx, llargs[0], tp_ty, call_debug_location);
+            let ptr = if type_is_sized(tcx, tp_ty) {
+                llargs[0]
+            } else {
+                let scratch = rvalue_scratch_datum(bcx, tp_ty, "tmp");
+                Store(bcx, llargs[0], expr::get_dataptr(bcx, scratch.val));
+                Store(bcx, llargs[1], expr::get_len(bcx, scratch.val));
+                fcx.schedule_lifetime_end(cleanup::CustomScope(cleanup_scope), scratch.val);
+                scratch.val
+            };
+            glue::drop_ty(bcx, ptr, tp_ty, call_debug_location);
             C_nil(ccx)
         }
         (_, "type_name") => {
@@ -980,7 +983,7 @@ fn with_overflow_intrinsic<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let ret = C_undef(type_of::type_of(bcx.ccx(), t));
     let ret = InsertValue(bcx, ret, result, 0);
     let ret = InsertValue(bcx, ret, overflow, 1);
-    if type_is_immediate(bcx.ccx(), t) {
+    if !arg_is_indirect(bcx.ccx(), t) {
         let tmp = alloc_ty(bcx, t, "tmp");
         Store(bcx, ret, tmp);
         load_ty(bcx, tmp, t)
