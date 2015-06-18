@@ -25,6 +25,7 @@ use util::ppaux::Repr;
 
 // Helper functions related to manipulating region types.
 
+#[derive(Debug)]
 pub enum Implication<'tcx> {
     RegionSubRegion(Option<Ty<'tcx>>, ty::Region, ty::Region),
     RegionSubGeneric(Option<Ty<'tcx>>, ty::Region, GenericKind<'tcx>),
@@ -400,7 +401,7 @@ impl<'a, 'tcx> Implicator<'a, 'tcx> {
     }
 
     fn fully_normalize<T>(&self, value: &T) -> Result<T,ErrorReported>
-        where T : TypeFoldable<'tcx> + ty::HasProjectionTypes + Clone + Repr
+        where T : TypeFoldable<'tcx> + ty::HasProjectionTypes
     {
         let value =
             traits::fully_normalize(self.infcx,
@@ -453,35 +454,4 @@ pub fn object_region_bounds<'tcx>(
 
     let predicates = ty::predicates(tcx, open_ty, &param_bounds);
     ty::required_region_bounds(tcx, open_ty, predicates)
-}
-
-impl<'tcx> Repr for Implication<'tcx> {
-    fn repr(&self) -> String {
-        match *self {
-            Implication::RegionSubRegion(_, ref r_a, ref r_b) => {
-                format!("RegionSubRegion({}, {})",
-                        r_a.repr(),
-                        r_b.repr())
-            }
-
-            Implication::RegionSubGeneric(_, ref r, ref p) => {
-                format!("RegionSubGeneric({}, {})",
-                        r.repr(),
-                        p.repr())
-            }
-
-            Implication::RegionSubClosure(_, ref a, ref b, ref c) => {
-                format!("RegionSubClosure({}, {}, {})",
-                        a.repr(),
-                        b.repr(),
-                        c.repr())
-            }
-
-            Implication::Predicate(ref def_id, ref p) => {
-                format!("Predicate({}, {})",
-                        def_id.repr(),
-                        p.repr())
-            }
-        }
-    }
 }

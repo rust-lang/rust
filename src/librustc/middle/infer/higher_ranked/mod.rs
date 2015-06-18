@@ -518,7 +518,7 @@ pub fn skolemize_late_bound_regions<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx>,
                                                binder: &ty::Binder<T>,
                                                snapshot: &CombinedSnapshot)
                                                -> (T, SkolemizationMap)
-    where T : TypeFoldable<'tcx> + Repr
+    where T : TypeFoldable<'tcx>
 {
     /*!
      * Replace all regions bound by `binder` with skolemized regions and
@@ -616,7 +616,7 @@ pub fn plug_leaks<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx>,
                              snapshot: &CombinedSnapshot,
                              value: &T)
                              -> T
-    where T : TypeFoldable<'tcx> + Repr
+    where T : TypeFoldable<'tcx>
 {
     debug_assert!(leak_check(infcx, &skol_map, snapshot).is_ok());
 

@@ -27,6 +27,7 @@ use std::rc::Rc;
 use syntax::ast;
 use util::ppaux::Repr;
 
+#[derive(Debug)]
 pub enum ObjectSafetyViolation<'tcx> {
     /// Self : Sized declared on the trait
     SizedSelf,
@@ -350,19 +351,6 @@ fn contains_illegal_self_type_reference<'tcx>(tcx: &ty::ctxt<'tcx>,
     });
 
     error
-}
-
-impl<'tcx> Repr for ObjectSafetyViolation<'tcx> {
-    fn repr(&self) -> String {
-        match *self {
-            ObjectSafetyViolation::SizedSelf =>
-                format!("SizedSelf"),
-            ObjectSafetyViolation::SupertraitSelf =>
-                format!("SupertraitSelf"),
-            ObjectSafetyViolation::Method(ref m, code) =>
-                format!("Method({},{:?})", m.repr(), code),
-        }
-    }
 }
 
 fn is_self<'tcx>(ty: Ty<'tcx>) -> bool {

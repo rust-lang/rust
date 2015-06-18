@@ -24,7 +24,7 @@ pub fn normalize_associated_types_in<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx>,
                                                 body_id: ast::NodeId,
                                                 value: &T)
                                                 -> T
-    where T : TypeFoldable<'tcx> + HasProjectionTypes + Clone + Repr
+    where T : TypeFoldable<'tcx> + HasProjectionTypes
 {
     debug!("normalize_associated_types_in(value={})", value.repr());
     let mut selcx = SelectionContext::new(infcx, typer);

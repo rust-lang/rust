@@ -84,12 +84,12 @@ use syntax::ast::{MutImmutable, MutMutable};
 use syntax::ast;
 use syntax::codemap::Span;
 use syntax::print::pprust;
-use syntax::parse::token;
 
 use std::cell::RefCell;
+use std::fmt;
 use std::rc::Rc;
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq)]
 pub enum categorization<'tcx> {
     cat_rvalue(ty::Region),                    // temporary val, argument is its scope
     cat_static_item,
@@ -103,14 +103,14 @@ pub enum categorization<'tcx> {
 }
 
 // Represents any kind of upvar
-#[derive(Clone, Copy, PartialEq, Debug)]
+#[derive(Clone, Copy, PartialEq)]
 pub struct Upvar {
     pub id: ty::UpvarId,
     pub kind: ty::ClosureKind
 }
 
 // different kinds of pointers:
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PointerKind {
     /// `Box<T>`
     Unique,
@@ -127,7 +127,7 @@ pub enum PointerKind {
 
 // We use the term "interior" to mean "something reachable from the
 // base without a pointer dereference", e.g. a field
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub enum InteriorKind {
     InteriorField(FieldName),
     InteriorElement(InteriorOffsetKind, ElementKind),
@@ -184,7 +184,7 @@ pub enum Note {
 // dereference, but its type is the type *before* the dereference
 // (`@T`). So use `cmt.ty` to find the type of the value in a consistent
 // fashion. For more details, see the method `cat_pattern`
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq)]
 pub struct cmt_<'tcx> {
     pub id: ast::NodeId,           // id of expr/pat producing this value
     pub span: Span,                // span of same expr/pat
@@ -1569,33 +1569,36 @@ impl<'tcx> cmt_<'tcx> {
     }
 }
 
-impl<'tcx> Repr for cmt_<'tcx> {
-    fn repr(&self) -> String {
-        format!("{{{} id:{} m:{:?} ty:{}}}",
-                self.cat.repr(),
-                self.id,
-                self.mutbl,
-                self.ty.repr())
+impl<'tcx> fmt::Debug for cmt_<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{{{:?} id:{} m:{:?} ty:{:?}}}",
+               self.cat,
+               self.id,
+               self.mutbl,
+               self.ty)
     }
 }
 
-impl<'tcx> Repr for categorization<'tcx> {
-    fn repr(&self) -> String {
+impl<'tcx> fmt::Debug for categorization<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            cat_static_item |
-            cat_rvalue(..) |
-            cat_local(..) |
-            cat_upvar(..) => {
-                format!("{:?}", *self)
+            cat_static_item => write!(f, "static"),
+            cat_rvalue(r) => write!(f, "rvalue({:?})", r),
+            cat_local(id) => {
+               let name = ty::tls::with(|tcx| ty::local_var_name_str(tcx, id));
+               write!(f, "local({})", name)
+            }
+            cat_upvar(upvar) => {
+                write!(f, "upvar({:?})", upvar)
             }
             cat_deref(ref cmt, derefs, ptr) => {
-                format!("{}-{}{}->", cmt.cat.repr(), ptr.repr(), derefs)
+                write!(f, "{:?}-{:?}{}->", cmt.cat, ptr, derefs)
             }
             cat_interior(ref cmt, interior) => {
-                format!("{}.{}", cmt.cat.repr(), interior.repr())
+                write!(f, "{:?}.{:?}", cmt.cat, interior)
             }
             cat_downcast(ref cmt, _) => {
-                format!("{}->(enum)", cmt.cat.repr())
+                write!(f, "{:?}->(enum)", cmt.cat)
             }
         }
     }
@@ -1614,39 +1617,33 @@ pub fn ptr_sigil(ptr: PointerKind) -> &'static str {
     }
 }
 
-impl Repr for PointerKind {
-    fn repr(&self) -> String {
+impl fmt::Debug for PointerKind {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            Unique => {
-                format!("Box")
-            }
+            Unique => write!(f, "Box"),
             BorrowedPtr(ty::ImmBorrow, ref r) |
             Implicit(ty::ImmBorrow, ref r) => {
-                format!("&{}", r.repr())
+                write!(f, "&{:?}", r)
             }
             BorrowedPtr(ty::MutBorrow, ref r) |
             Implicit(ty::MutBorrow, ref r) => {
-                format!("&{} mut", r.repr())
+                write!(f, "&{:?} mut", r)
             }
             BorrowedPtr(ty::UniqueImmBorrow, ref r) |
             Implicit(ty::UniqueImmBorrow, ref r) => {
-                format!("&{} uniq", r.repr())
+                write!(f, "&{:?} uniq", r)
             }
-            UnsafePtr(_) => {
-                format!("*")
-            }
+            UnsafePtr(_) => write!(f, "*")
         }
     }
 }
 
-impl Repr for InteriorKind {
-    fn repr(&self) -> String {
+impl fmt::Debug for InteriorKind {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            InteriorField(NamedField(fld)) => {
-                token::get_name(fld).to_string()
-            }
-            InteriorField(PositionalField(i)) => format!("#{}", i),
-            InteriorElement(..) => "[]".to_string(),
+            InteriorField(NamedField(fld)) => write!(f, "{}", fld),
+            InteriorField(PositionalField(i)) => write!(f, "#{}", i),
+            InteriorElement(..) => write!(f, "[]"),
         }
     }
 }
@@ -1663,25 +1660,19 @@ fn element_kind(t: Ty) -> ElementKind {
     }
 }
 
-impl Repr for ty::ClosureKind {
-    fn repr(&self) -> String {
-        format!("Upvar({:?})", self)
+impl fmt::Debug for Upvar {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}/{:?}", self.id, self.kind)
     }
 }
 
-impl Repr for Upvar {
-    fn repr(&self) -> String {
-        format!("Upvar({})", self.kind.repr())
-    }
-}
-
-impl UserString for Upvar {
-    fn user_string(&self) -> String {
+impl fmt::Display for Upvar {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let kind = match self.kind {
             ty::FnClosureKind => "Fn",
             ty::FnMutClosureKind => "FnMut",
             ty::FnOnceClosureKind => "FnOnce",
         };
-        format!("captured outer variable in an `{}` closure", kind)
+        write!(f, "captured outer variable in an `{}` closure", kind)
     }
 }

@@ -302,21 +302,9 @@ pub fn fresh_type_vars_for_impl<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
     infcx.fresh_substs_for_generics(span, &impl_generics)
 }
 
-impl<'tcx, N> fmt::Debug for VtableImplData<'tcx, N> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "VtableImpl({:?})", self.impl_def_id)
-    }
-}
-
 impl<'tcx, N> fmt::Debug for super::VtableClosureData<'tcx, N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "VtableClosure({:?})", self.closure_def_id)
-    }
-}
-
-impl<'tcx> fmt::Debug for super::VtableObjectData<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "VtableObject(...)")
     }
 }
 
@@ -485,118 +473,84 @@ pub fn closure_trait_ref_and_return_type<'tcx>(
     ty::Binder((trait_ref, sig.0.output.unwrap_or(ty::mk_nil(tcx))))
 }
 
-impl<'tcx,O:Repr> Repr for super::Obligation<'tcx, O> {
-    fn repr(&self) -> String {
-        format!("Obligation(predicate={},depth={})",
-                self.predicate.repr(),
-                self.recursion_depth)
+impl<'tcx,O:fmt::Debug> fmt::Debug for super::Obligation<'tcx, O> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Obligation(predicate={:?},depth={})",
+               self.predicate,
+               self.recursion_depth)
     }
 }
 
-impl<'tcx, N:Repr> Repr for super::Vtable<'tcx, N> {
-    fn repr(&self) -> String {
+impl<'tcx, N:fmt::Debug> fmt::Debug for super::Vtable<'tcx, N> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             super::VtableImpl(ref v) =>
-                v.repr(),
+                write!(f, "{:?}", v),
 
             super::VtableDefaultImpl(ref t) =>
-                t.repr(),
+                write!(f, "{:?}", t),
 
             super::VtableClosure(ref d) =>
-                d.repr(),
+                write!(f, "{:?}", d),
 
             super::VtableFnPointer(ref d) =>
-                format!("VtableFnPointer({})",
-                        d.repr()),
+                write!(f, "VtableFnPointer({:?})", d),
 
             super::VtableObject(ref d) =>
-                format!("VtableObject({})",
-                        d.repr()),
+                write!(f, "VtableObject({:?})", d),
 
             super::VtableParam(ref n) =>
-                format!("VtableParam({})",
-                        n.repr()),
+                write!(f, "VtableParam({:?})", n),
 
             super::VtableBuiltin(ref d) =>
-                d.repr()
+                write!(f, "{:?}", d)
         }
     }
 }
 
-impl<'tcx, N:Repr> Repr for super::VtableImplData<'tcx, N> {
-    fn repr(&self) -> String {
-        format!("VtableImpl(impl_def_id={}, substs={}, nested={})",
-                self.impl_def_id.repr(),
-                self.substs.repr(),
-                self.nested.repr())
+impl<'tcx, N:fmt::Debug> fmt::Debug for super::VtableImplData<'tcx, N> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "VtableImpl(impl_def_id={:?}, substs={:?}, nested={:?})",
+               self.impl_def_id,
+               self.substs,
+               self.nested)
     }
 }
 
-impl<'tcx, N:Repr> Repr for super::VtableClosureData<'tcx, N> {
-    fn repr(&self) -> String {
-        format!("VtableClosure(closure_def_id={}, substs={}, nested={})",
-                self.closure_def_id.repr(),
-                self.substs.repr(),
-                self.nested.repr())
+impl<'tcx, N:fmt::Debug> fmt::Debug for super::VtableClosureData<'tcx, N> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "VtableClosure(closure_def_id={:?}, substs={:?}, nested={:?})",
+               self.closure_def_id,
+               self.substs,
+               self.nested)
     }
 }
 
-impl<'tcx, N:Repr> Repr for super::VtableBuiltinData<N> {
-    fn repr(&self) -> String {
-        format!("VtableBuiltin(nested={})",
-                self.nested.repr())
+impl<'tcx, N:fmt::Debug> fmt::Debug for super::VtableBuiltinData<N> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "VtableBuiltin(nested={:?})", self.nested)
     }
 }
 
-impl<'tcx, N:Repr> Repr for super::VtableDefaultImplData<N> {
-    fn repr(&self) -> String {
-        format!("VtableDefaultImplData(trait_def_id={}, nested={})",
-                self.trait_def_id.repr(),
-                self.nested.repr())
+impl<'tcx, N:fmt::Debug> fmt::Debug for super::VtableDefaultImplData<N> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "VtableDefaultImplData(trait_def_id={:?}, nested={:?})",
+               self.trait_def_id,
+               self.nested)
     }
 }
 
-impl<'tcx> Repr for super::VtableObjectData<'tcx> {
-    fn repr(&self) -> String {
-        format!("VtableObject(object_ty={})",
-                self.object_ty.repr())
+impl<'tcx> fmt::Debug for super::VtableObjectData<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "VtableObject(object_ty={:?})", self.object_ty)
     }
 }
 
-impl<'tcx> Repr for super::SelectionError<'tcx> {
-    fn repr(&self) -> String {
-        match *self {
-            super::Unimplemented =>
-                format!("Unimplemented"),
-
-            super::OutputTypeParameterMismatch(ref a, ref b, ref c) =>
-                format!("OutputTypeParameterMismatch({},{},{})",
-                        a.repr(),
-                        b.repr(),
-                        c.repr()),
-
-            super::TraitNotObjectSafe(ref tr) =>
-                format!("TraitNotObjectSafe({})",
-                        tr.repr())
-        }
-    }
-}
-
-impl<'tcx> Repr for super::FulfillmentError<'tcx> {
-    fn repr(&self) -> String {
-        format!("FulfillmentError({},{})",
-                self.obligation.repr(),
-                self.code.repr())
-    }
-}
-
-impl<'tcx> Repr for super::FulfillmentErrorCode<'tcx> {
-    fn repr(&self) -> String {
-        match *self {
-            super::CodeSelectionError(ref o) => o.repr(),
-            super::CodeProjectionError(ref o) => o.repr(),
-            super::CodeAmbiguity => format!("Ambiguity")
-        }
+impl<'tcx> fmt::Debug for super::FulfillmentError<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "FulfillmentError({:?},{:?})",
+               self.obligation,
+               self.code)
     }
 }
 
@@ -610,14 +564,8 @@ impl<'tcx> fmt::Debug for super::FulfillmentErrorCode<'tcx> {
     }
 }
 
-impl<'tcx> Repr for super::MismatchedProjectionTypes<'tcx> {
-    fn repr(&self) -> String {
-        self.err.repr()
-    }
-}
-
 impl<'tcx> fmt::Debug for super::MismatchedProjectionTypes<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "MismatchedProjectionTypes(..)")
+        write!(f, "MismatchedProjectionTypes({:?})", self.err)
     }
 }

@@ -2106,7 +2106,7 @@ pub fn partition_bounds<'a>(tcx: &ty::ctxt,
                             ast_bounds: &'a [ast::TyParamBound])
                             -> PartitionedBounds<'a>
 {
-    let mut builtin_bounds = ty::empty_builtin_bounds();
+    let mut builtin_bounds = ty::BuiltinBounds::empty();
     let mut region_bounds = Vec::new();
     let mut trait_bounds = Vec::new();
     for ast_bound in ast_bounds {

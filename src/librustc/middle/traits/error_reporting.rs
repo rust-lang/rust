@@ -69,7 +69,7 @@ pub fn report_projection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
         span_err!(infcx.tcx.sess, obligation.cause.span, E0271,
                 "type mismatch resolving `{}`: {}",
                 predicate.user_string(),
-                ty::type_err_to_str(infcx.tcx, &error.err));
+                error.err);
         note_obligation_cause(infcx, obligation);
     }
 }
@@ -217,7 +217,7 @@ pub fn report_selection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                             span_err!(infcx.tcx.sess, obligation.cause.span, E0278,
                                     "the requirement `{}` is not satisfied (`{}`)",
                                     predicate.user_string(),
-                                    ty::type_err_to_str(infcx.tcx, &err));
+                                    err);
                         }
 
                         ty::Predicate::RegionOutlives(ref predicate) => {
@@ -227,7 +227,7 @@ pub fn report_selection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                             span_err!(infcx.tcx.sess, obligation.cause.span, E0279,
                                     "the requirement `{}` is not satisfied (`{}`)",
                                     predicate.user_string(),
-                                    ty::type_err_to_str(infcx.tcx, &err));
+                                    err);
                         }
 
                         ty::Predicate::Projection(..) | ty::Predicate::TypeOutlives(..) => {
@@ -252,7 +252,7 @@ pub fn report_selection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                         expected_trait_ref.self_ty().user_string(),
                         expected_trait_ref.user_string(),
                         actual_trait_ref.user_string(),
-                        ty::type_err_to_str(infcx.tcx, e));
+                        e);
                     note_obligation_cause(infcx, obligation);
             }
         }

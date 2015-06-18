@@ -657,7 +657,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
     }
 
     fn replace_late_bound_regions_with_fresh_var<T>(&self, value: &ty::Binder<T>) -> T
-        where T : TypeFoldable<'tcx> + Repr
+        where T : TypeFoldable<'tcx>
     {
         self.infcx().replace_late_bound_regions_with_fresh_var(
             self.span, infer::FnCall, value).0

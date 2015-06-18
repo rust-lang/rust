@@ -12,7 +12,6 @@
 
 pub use self::terr_vstore_kind::*;
 pub use self::type_err::*;
-pub use self::BuiltinBound::*;
 pub use self::InferTy::*;
 pub use self::InferRegion::*;
 pub use self::ImplOrTraitItemId::*;
@@ -34,6 +33,11 @@ pub use self::TypeVariants::*;
 pub use self::IntVarValue::*;
 pub use self::MethodOrigin::*;
 pub use self::CopyImplementationError::*;
+
+pub use self::BuiltinBound::Send as BoundSend;
+pub use self::BuiltinBound::Sized as BoundSized;
+pub use self::BuiltinBound::Copy as BoundCopy;
+pub use self::BuiltinBound::Sync as BoundSync;
 
 use ast_map::{self, LinkedPath};
 use back::svh::Svh;
@@ -78,7 +82,7 @@ use std::mem;
 use std::ops;
 use std::rc::Rc;
 use std::vec::IntoIter;
-use collections::enum_set::{EnumSet, CLike};
+use collections::enum_set::{self, EnumSet, CLike};
 use std::collections::{HashMap, HashSet};
 use syntax::abi;
 use syntax::ast::{CrateNum, DefId, ItemImpl, ItemTrait, LOCAL_CRATE};
@@ -130,7 +134,7 @@ impl ImplOrTraitItemContainer {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub enum ImplOrTraitItem<'tcx> {
     ConstTraitItem(Rc<AssociatedConst<'tcx>>),
     MethodTraitItem(Rc<Method<'tcx>>),
@@ -293,7 +297,7 @@ pub struct ItemVariances {
     pub regions: VecPerParamSpace<Variance>,
 }
 
-#[derive(Clone, PartialEq, RustcDecodable, RustcEncodable, Debug, Copy)]
+#[derive(Clone, PartialEq, RustcDecodable, RustcEncodable, Copy)]
 pub enum Variance {
     Covariant,      // T<A> <: T<B> iff A <: B -- e.g., function return type
     Invariant,      // T<A> <: T<B> iff B == A -- e.g., type of mutable cell
@@ -301,7 +305,7 @@ pub enum Variance {
     Bivariant,      // T<A> <: T<B>            -- e.g., unused type parameter
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone)]
 pub enum AutoAdjustment<'tcx> {
     AdjustReifyFnPointer,   // go from a fn-item type to a fn-pointer type
     AdjustUnsafeFnPointer,  // go from a safe fn pointer to an unsafe fn pointer
@@ -370,7 +374,7 @@ pub enum AutoAdjustment<'tcx> {
 ///     unsize: Some(Box<[i32]>),
 /// }
 /// ```
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone)]
 pub struct AutoDerefRef<'tcx> {
     /// Step 1. Apply a number of dereferences, producing an lvalue.
     pub autoderefs: usize,
@@ -400,7 +404,7 @@ pub enum CustomCoerceUnsized {
     Struct(usize)
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub enum MethodOrigin<'tcx> {
     // fully statically resolved method
     MethodStatic(ast::DefId),
@@ -418,7 +422,7 @@ pub enum MethodOrigin<'tcx> {
 
 // details for a method invoked with a receiver whose type is a type parameter
 // with a bounded trait.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct MethodParam<'tcx> {
     // the precise trait reference that occurs as a bound -- this may
     // be a supertrait of what the user actually typed. Note that it
@@ -439,7 +443,7 @@ pub struct MethodParam<'tcx> {
 }
 
 // details for a method invoked with a receiver whose type is an object
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct MethodObject<'tcx> {
     // the (super)trait containing the method to be invoked
     pub trait_ref: TraitRef<'tcx>,
@@ -803,7 +807,7 @@ impl<'tcx> ctxt<'tcx> {
         self.free_region_maps.borrow()[&id].clone()
     }
 
-    pub fn lift<T: Lift<'tcx>>(&self, value: &T) -> Option<T::Lifted> {
+    pub fn lift<T: ?Sized + Lift<'tcx>>(&self, value: &T) -> Option<T::Lifted> {
         value.lift_to_tcx(self)
     }
 }
@@ -825,7 +829,7 @@ impl<'tcx, A: Lift<'tcx>, B: Lift<'tcx>> Lift<'tcx> for (A, B) {
     }
 }
 
-impl<'tcx, T: Lift<'tcx>> Lift<'tcx> for Vec<T> {
+impl<'tcx, T: Lift<'tcx>> Lift<'tcx> for [T] {
     type Lifted = Vec<T::Lifted>;
     fn lift_to_tcx(&self, tcx: &ctxt<'tcx>) -> Option<Self::Lifted> {
         let mut result = Vec::with_capacity(self.len());
@@ -1115,7 +1119,6 @@ impl<'tcx> ctxt<'tcx> {
     }
 }
 
-#[derive(Debug)]
 pub struct TyS<'tcx> {
     pub sty: TypeVariants<'tcx>,
     pub flags: Cell<TypeFlags>,
@@ -1238,7 +1241,7 @@ pub struct BareFnTy<'tcx> {
     pub sig: PolyFnSig<'tcx>,
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct ClosureTy<'tcx> {
     pub unsafety: ast::Unsafety,
     pub abi: abi::Abi,
@@ -1309,7 +1312,7 @@ impl<'tcx> PolyFnSig<'tcx> {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ParamTy {
     pub space: subst::ParamSpace,
     pub idx: u32,
@@ -1363,7 +1366,7 @@ pub struct DebruijnIndex {
 }
 
 /// Representation of regions:
-#[derive(Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Debug, Copy)]
+#[derive(Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Copy)]
 pub enum Region {
     // Region bound in a type or fn declaration which will be
     // substituted 'early' -- that is, at the same time when type
@@ -1411,7 +1414,7 @@ pub struct EarlyBoundRegion {
 /// Upvars do not get their own node-id. Instead, we use the pair of
 /// the original var id (that is, the root variable that is referenced
 /// by the upvar) and the id of the closure expression.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct UpvarId {
     pub var_id: ast::NodeId,
     pub closure_expr_id: ast::NodeId,
@@ -1476,7 +1479,7 @@ pub enum UpvarCapture {
     ByRef(UpvarBorrow),
 }
 
-#[derive(PartialEq, Clone, RustcEncodable, RustcDecodable, Debug, Copy)]
+#[derive(PartialEq, Clone, RustcEncodable, RustcDecodable, Copy)]
 pub struct UpvarBorrow {
     /// The kind of borrow: by-ref upvars have access to shared
     /// immutable borrows, which are not part of the normal language
@@ -1516,7 +1519,7 @@ impl Region {
 }
 
 #[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash,
-         RustcEncodable, RustcDecodable, Debug, Copy)]
+         RustcEncodable, RustcDecodable, Copy)]
 /// A "free" region `fr` can be interpreted as "some region
 /// at least as big as the scope `fr.scope`".
 pub struct FreeRegion {
@@ -1525,7 +1528,7 @@ pub struct FreeRegion {
 }
 
 #[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash,
-         RustcEncodable, RustcDecodable, Debug, Copy)]
+         RustcEncodable, RustcDecodable, Copy, Debug)]
 pub enum BoundRegion {
     /// An anonymous region parameter for a given fn (&T)
     BrAnon(u32),
@@ -1636,7 +1639,7 @@ pub enum TypeVariants<'tcx> {
     TyError,
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct TraitTy<'tcx> {
     pub principal: ty::PolyTraitRef<'tcx>,
     pub bounds: ExistentialBounds<'tcx>,
@@ -1707,7 +1710,7 @@ impl<'tcx> TraitTy<'tcx> {
 /// Note that a `TraitRef` introduces a level of region binding, to
 /// account for higher-ranked trait bounds like `T : for<'a> Foo<&'a
 /// U>` or higher-ranked object types.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct TraitRef<'tcx> {
     pub def_id: DefId,
     pub substs: &'tcx Substs<'tcx>,
@@ -1842,7 +1845,7 @@ pub enum type_err<'tcx> {
 
 /// Bounds suitable for a named type parameter like `A` in `fn foo<A>`
 /// as well as the existential type parameter in an object type.
-#[derive(PartialEq, Eq, Hash, Clone, Debug)]
+#[derive(PartialEq, Eq, Hash, Clone)]
 pub struct ParamBounds<'tcx> {
     pub region_bounds: Vec<ty::Region>,
     pub builtin_bounds: BuiltinBounds,
@@ -1855,41 +1858,57 @@ pub struct ParamBounds<'tcx> {
 /// major difference between this case and `ParamBounds` is that
 /// general purpose trait bounds are omitted and there must be
 /// *exactly one* region.
-#[derive(PartialEq, Eq, Hash, Clone, Debug)]
+#[derive(PartialEq, Eq, Hash, Clone)]
 pub struct ExistentialBounds<'tcx> {
     pub region_bound: ty::Region,
     pub builtin_bounds: BuiltinBounds,
     pub projection_bounds: Vec<PolyProjectionPredicate<'tcx>>,
 }
 
-pub type BuiltinBounds = EnumSet<BuiltinBound>;
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub struct BuiltinBounds(EnumSet<BuiltinBound>);
+
+impl BuiltinBounds {
+    pub fn empty() -> BuiltinBounds {
+        BuiltinBounds(EnumSet::new())
+    }
+
+    pub fn iter(&self) -> enum_set::Iter<BuiltinBound> {
+        self.into_iter()
+    }
+}
+
+impl ops::Deref for BuiltinBounds {
+    type Target = EnumSet<BuiltinBound>;
+    fn deref(&self) -> &Self::Target { &self.0 }
+}
+
+impl ops::DerefMut for BuiltinBounds {
+    fn deref_mut(&mut self) -> &mut Self::Target { &mut self.0 }
+}
+
+impl<'a> IntoIterator for &'a BuiltinBounds {
+    type Item = BuiltinBound;
+    type IntoIter = enum_set::Iter<BuiltinBound>;
+    fn into_iter(self) -> Self::IntoIter {
+        (**self).into_iter()
+    }
+}
 
 #[derive(Clone, RustcEncodable, PartialEq, Eq, RustcDecodable, Hash,
            Debug, Copy)]
 #[repr(usize)]
 pub enum BuiltinBound {
-    BoundSend,
-    BoundSized,
-    BoundCopy,
-    BoundSync,
-}
-
-pub fn empty_builtin_bounds() -> BuiltinBounds {
-    EnumSet::new()
-}
-
-pub fn all_builtin_bounds() -> BuiltinBounds {
-    let mut set = EnumSet::new();
-    set.insert(BoundSend);
-    set.insert(BoundSized);
-    set.insert(BoundSync);
-    set
+    Send,
+    Sized,
+    Copy,
+    Sync,
 }
 
 /// An existential bound that does not implement any traits.
 pub fn region_existential_bound<'tcx>(r: ty::Region) -> ExistentialBounds<'tcx> {
     ty::ExistentialBounds { region_bound: r,
-                            builtin_bounds: empty_builtin_bounds(),
+                            builtin_bounds: BuiltinBounds::empty(),
                             projection_bounds: Vec::new() }
 }
 
@@ -1968,7 +1987,7 @@ impl cmp::PartialEq for InferRegion {
 }
 
 impl fmt::Debug for TyVid {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "_#{}t", self.index)
     }
 }
@@ -2024,7 +2043,7 @@ impl fmt::Debug for IntVarValue {
 /// from `T:'a` annotations appearing in the type definition.  If
 /// this is `None`, then the default is inherited from the
 /// surrounding context. See RFC #599 for details.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone)]
 pub enum ObjectLifetimeDefault {
     /// Require an explicit annotation. Occurs when multiple
     /// `T:'a` constraints are found.
@@ -2034,7 +2053,7 @@ pub enum ObjectLifetimeDefault {
     Specific(Region),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct TypeParameterDef<'tcx> {
     pub name: ast::Name,
     pub def_id: ast::DefId,
@@ -2097,7 +2116,7 @@ impl<'tcx> Generics<'tcx> {
 }
 
 /// Bounds on generics.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct GenericPredicates<'tcx> {
     pub predicates: VecPerParamSpace<Predicate<'tcx>>,
 }
@@ -2127,7 +2146,7 @@ impl<'tcx> GenericPredicates<'tcx> {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub enum Predicate<'tcx> {
     /// Corresponds to `where Foo : Bar<A,B,C>`. `Foo` here would be
     /// the `Self` type of the trait reference and `A`, `B`, and `C`
@@ -2258,7 +2277,7 @@ impl<'tcx> Predicate<'tcx> {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct TraitPredicate<'tcx> {
     pub trait_ref: TraitRef<'tcx>
 }
@@ -2306,7 +2325,7 @@ pub type PolyTypeOutlivesPredicate<'tcx> = PolyOutlivesPredicate<Ty<'tcx>, ty::R
 /// equality between arbitrary types. Processing an instance of Form
 /// #2 eventually yields one of these `ProjectionPredicate`
 /// instances to normalize the LHS.
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct ProjectionPredicate<'tcx> {
     pub projection_ty: ProjectionTy<'tcx>,
     pub ty: Ty<'tcx>,
@@ -2495,7 +2514,7 @@ impl<'tcx> Predicate<'tcx> {
 /// `[[], [U:Bar<T>]]`.  Now if there were some particular reference
 /// like `Foo<isize,usize>`, then the `InstantiatedPredicates` would be `[[],
 /// [usize:Bar<isize>]]`.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct InstantiatedPredicates<'tcx> {
     pub predicates: VecPerParamSpace<Predicate<'tcx>>,
 }
@@ -3679,7 +3698,7 @@ impl<'tcx> ItemSubsts<'tcx> {
 impl<'tcx> ParamBounds<'tcx> {
     pub fn empty() -> ParamBounds<'tcx> {
         ParamBounds {
-            builtin_bounds: empty_builtin_bounds(),
+            builtin_bounds: BuiltinBounds::empty(),
             trait_bounds: Vec::new(),
             region_bounds: Vec::new(),
             projection_bounds: Vec::new(),
@@ -5316,138 +5335,132 @@ pub fn ty_sort_string(cx: &ctxt, ty: Ty) -> String {
     }
 }
 
-impl<'tcx> Repr for ty::type_err<'tcx> {
-    fn repr(&self) -> String {
-        tls::with(|tcx| ty::type_err_to_str(tcx, self))
-    }
-}
-
 /// Explains the source of a type err in a short, human readable way. This is meant to be placed
 /// in parentheses after some larger message. You should also invoke `note_and_explain_type_err()`
 /// afterwards to present additional details, particularly when it comes to lifetime-related
 /// errors.
-pub fn type_err_to_str(cx: &ctxt, err: &type_err) -> String {
-    match *err {
-        terr_cyclic_ty => "cyclic type of infinite size".to_string(),
-        terr_mismatch => "types differ".to_string(),
-        terr_unsafety_mismatch(values) => {
-            format!("expected {} fn, found {} fn",
-                    values.expected,
-                    values.found)
-        }
-        terr_abi_mismatch(values) => {
-            format!("expected {} fn, found {} fn",
-                    values.expected,
-                    values.found)
-        }
-        terr_mutability => "values differ in mutability".to_string(),
-        terr_box_mutability => {
-            "boxed values differ in mutability".to_string()
-        }
-        terr_vec_mutability => "vectors differ in mutability".to_string(),
-        terr_ptr_mutability => "pointers differ in mutability".to_string(),
-        terr_ref_mutability => "references differ in mutability".to_string(),
-        terr_ty_param_size(values) => {
-            format!("expected a type with {} type params, \
-                     found one with {} type params",
-                    values.expected,
-                    values.found)
-        }
-        terr_fixed_array_size(values) => {
-            format!("expected an array with a fixed size of {} elements, \
-                     found one with {} elements",
-                    values.expected,
-                    values.found)
-        }
-        terr_tuple_size(values) => {
-            format!("expected a tuple with {} elements, \
-                     found one with {} elements",
-                    values.expected,
-                    values.found)
-        }
-        terr_arg_count => {
-            "incorrect number of function parameters".to_string()
-        }
-        terr_regions_does_not_outlive(..) => {
-            "lifetime mismatch".to_string()
-        }
-        terr_regions_not_same(..) => {
-            "lifetimes are not the same".to_string()
-        }
-        terr_regions_no_overlap(..) => {
-            "lifetimes do not intersect".to_string()
-        }
-        terr_regions_insufficiently_polymorphic(br, _) => {
-            format!("expected bound lifetime parameter {}, \
-                     found concrete lifetime",
-                    br.user_string())
-        }
-        terr_regions_overly_polymorphic(br, _) => {
-            format!("expected concrete lifetime, \
-                     found bound lifetime parameter {}",
-                    br.user_string())
-        }
-        terr_sorts(values) => {
-            // A naive approach to making sure that we're not reporting silly errors such as:
-            // (expected closure, found closure).
-            let expected_str = ty_sort_string(cx, values.expected);
-            let found_str = ty_sort_string(cx, values.found);
-            if expected_str == found_str {
-                format!("expected {}, found a different {}", expected_str, found_str)
-            } else {
-                format!("expected {}, found {}", expected_str, found_str)
+impl<'tcx> fmt::Display for type_err<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            terr_cyclic_ty => write!(f, "cyclic type of infinite size"),
+            terr_mismatch => write!(f, "types differ"),
+            terr_unsafety_mismatch(values) => {
+                write!(f, "expected {} fn, found {} fn",
+                       values.expected,
+                       values.found)
             }
-        }
-        terr_traits(values) => {
-            format!("expected trait `{}`, found trait `{}`",
-                    item_path_str(cx, values.expected),
-                    item_path_str(cx, values.found))
-        }
-        terr_builtin_bounds(values) => {
-            if values.expected.is_empty() {
-                format!("expected no bounds, found `{}`",
-                        values.found.user_string())
-            } else if values.found.is_empty() {
-                format!("expected bounds `{}`, found no bounds",
-                        values.expected.user_string())
-            } else {
-                format!("expected bounds `{}`, found bounds `{}`",
-                        values.expected.user_string(),
-                        values.found.user_string())
+            terr_abi_mismatch(values) => {
+                write!(f, "expected {} fn, found {} fn",
+                       values.expected,
+                       values.found)
             }
-        }
-        terr_integer_as_char => {
-            "expected an integral type, found `char`".to_string()
-        }
-        terr_int_mismatch(ref values) => {
-            format!("expected `{:?}`, found `{:?}`",
-                    values.expected,
-                    values.found)
-        }
-        terr_float_mismatch(ref values) => {
-            format!("expected `{:?}`, found `{:?}`",
-                    values.expected,
-                    values.found)
-        }
-        terr_variadic_mismatch(ref values) => {
-            format!("expected {} fn, found {} function",
-                    if values.expected { "variadic" } else { "non-variadic" },
-                    if values.found { "variadic" } else { "non-variadic" })
-        }
-        terr_convergence_mismatch(ref values) => {
-            format!("expected {} fn, found {} function",
-                    if values.expected { "converging" } else { "diverging" },
-                    if values.found { "converging" } else { "diverging" })
-        }
-        terr_projection_name_mismatched(ref values) => {
-            format!("expected {}, found {}",
-                    token::get_name(values.expected),
-                    token::get_name(values.found))
-        }
-        terr_projection_bounds_length(ref values) => {
-            format!("expected {} associated type bindings, found {}",
-                    values.expected,
-                    values.found)
+            terr_mutability => write!(f, "values differ in mutability"),
+            terr_box_mutability => {
+                write!(f, "boxed values differ in mutability")
+            }
+            terr_vec_mutability => write!(f, "vectors differ in mutability"),
+            terr_ptr_mutability => write!(f, "pointers differ in mutability"),
+            terr_ref_mutability => write!(f, "references differ in mutability"),
+            terr_ty_param_size(values) => {
+                write!(f, "expected a type with {} type params, \
+                           found one with {} type params",
+                       values.expected,
+                       values.found)
+            }
+            terr_fixed_array_size(values) => {
+                write!(f, "expected an array with a fixed size of {} elements, \
+                           found one with {} elements",
+                       values.expected,
+                       values.found)
+            }
+            terr_tuple_size(values) => {
+                write!(f, "expected a tuple with {} elements, \
+                           found one with {} elements",
+                       values.expected,
+                       values.found)
+            }
+            terr_arg_count => {
+                write!(f, "incorrect number of function parameters")
+            }
+            terr_regions_does_not_outlive(..) => {
+                write!(f, "lifetime mismatch")
+            }
+            terr_regions_not_same(..) => {
+                write!(f, "lifetimes are not the same")
+            }
+            terr_regions_no_overlap(..) => {
+                write!(f, "lifetimes do not intersect")
+            }
+            terr_regions_insufficiently_polymorphic(br, _) => {
+                write!(f, "expected bound lifetime parameter {}, \
+                           found concrete lifetime", br)
+            }
+            terr_regions_overly_polymorphic(br, _) => {
+                write!(f, "expected concrete lifetime, \
+                           found bound lifetime parameter {}", br)
+            }
+            terr_sorts(values) => tls::with(|tcx| {
+                // A naive approach to making sure that we're not reporting silly errors such as:
+                // (expected closure, found closure).
+                let expected_str = ty_sort_string(tcx, values.expected);
+                let found_str = ty_sort_string(tcx, values.found);
+                if expected_str == found_str {
+                    write!(f, "expected {}, found a different {}", expected_str, found_str)
+                } else {
+                    write!(f, "expected {}, found {}", expected_str, found_str)
+                }
+            }),
+            terr_traits(values) => tls::with(|tcx| {
+                write!(f, "expected trait `{}`, found trait `{}`",
+                       item_path_str(tcx, values.expected),
+                       item_path_str(tcx, values.found))
+            }),
+            terr_builtin_bounds(values) => {
+                if values.expected.is_empty() {
+                    write!(f, "expected no bounds, found `{}`",
+                           values.found)
+                } else if values.found.is_empty() {
+                    write!(f, "expected bounds `{}`, found no bounds",
+                           values.expected)
+                } else {
+                    write!(f, "expected bounds `{}`, found bounds `{}`",
+                           values.expected,
+                           values.found)
+                }
+            }
+            terr_integer_as_char => {
+                write!(f, "expected an integral type, found `char`")
+            }
+            terr_int_mismatch(ref values) => {
+                write!(f, "expected `{:?}`, found `{:?}`",
+                       values.expected,
+                       values.found)
+            }
+            terr_float_mismatch(ref values) => {
+                write!(f, "expected `{:?}`, found `{:?}`",
+                       values.expected,
+                       values.found)
+            }
+            terr_variadic_mismatch(ref values) => {
+                write!(f, "expected {} fn, found {} function",
+                       if values.expected { "variadic" } else { "non-variadic" },
+                       if values.found { "variadic" } else { "non-variadic" })
+            }
+            terr_convergence_mismatch(ref values) => {
+                write!(f, "expected {} fn, found {} function",
+                       if values.expected { "converging" } else { "diverging" },
+                       if values.found { "converging" } else { "diverging" })
+            }
+            terr_projection_name_mismatched(ref values) => {
+                write!(f, "expected {}, found {}",
+                       values.expected,
+                       values.found)
+            }
+            terr_projection_bounds_length(ref values) => {
+                write!(f, "expected {} associated type bindings, found {}",
+                       values.expected,
+                       values.found)
+            }
         }
     }
 }
@@ -6914,14 +6927,14 @@ pub fn hash_crate_independent<'tcx>(tcx: &ctxt<'tcx>, ty: Ty<'tcx>, svh: &Svh) -
     }
 }
 
-impl Variance {
-    pub fn to_string(self) -> &'static str {
-        match self {
+impl fmt::Debug for Variance {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str(match *self {
             Covariant => "+",
             Contravariant => "-",
             Invariant => "o",
             Bivariant => "*",
-        }
+        })
     }
 }
 
@@ -7265,7 +7278,7 @@ pub fn liberate_late_bound_regions<'tcx, T>(
     all_outlive_scope: region::DestructionScopeData,
     value: &Binder<T>)
     -> T
-    where T : TypeFoldable<'tcx> + Repr
+    where T : TypeFoldable<'tcx>
 {
     ty_fold::replace_late_bound_regions(
         tcx, value,
@@ -7276,7 +7289,7 @@ pub fn count_late_bound_regions<'tcx, T>(
     tcx: &ty::ctxt<'tcx>,
     value: &Binder<T>)
     -> usize
-    where T : TypeFoldable<'tcx> + Repr
+    where T : TypeFoldable<'tcx>
 {
     let (_, skol_map) = ty_fold::replace_late_bound_regions(tcx, value, |_| ty::ReStatic);
     skol_map.len()
@@ -7286,7 +7299,7 @@ pub fn binds_late_bound_regions<'tcx, T>(
     tcx: &ty::ctxt<'tcx>,
     value: &Binder<T>)
     -> bool
-    where T : TypeFoldable<'tcx> + Repr
+    where T : TypeFoldable<'tcx>
 {
     count_late_bound_regions(tcx, value) > 0
 }
@@ -7297,7 +7310,7 @@ pub fn flatten_late_bound_regions<'tcx, T>(
     tcx: &ty::ctxt<'tcx>,
     bound2_value: &Binder<Binder<T>>)
     -> Binder<T>
-    where T: TypeFoldable<'tcx> + Repr
+    where T: TypeFoldable<'tcx>
 {
     let bound0_value = bound2_value.skip_binder().skip_binder();
     let value = ty_fold::fold_regions(tcx, bound0_value, |region, current_depth| {
@@ -7319,7 +7332,7 @@ pub fn no_late_bound_regions<'tcx, T>(
     tcx: &ty::ctxt<'tcx>,
     value: &Binder<T>)
     -> Option<T>
-    where T : TypeFoldable<'tcx> + Repr + Clone
+    where T : TypeFoldable<'tcx>
 {
     if binds_late_bound_regions(tcx, value) {
         None
@@ -7334,7 +7347,7 @@ pub fn erase_late_bound_regions<'tcx, T>(
     tcx: &ty::ctxt<'tcx>,
     value: &Binder<T>)
     -> T
-    where T : TypeFoldable<'tcx> + Repr
+    where T : TypeFoldable<'tcx>
 {
     ty_fold::replace_late_bound_regions(tcx, value, |_| ty::ReStatic).0
 }
@@ -7351,7 +7364,7 @@ pub fn anonymize_late_bound_regions<'tcx, T>(
     tcx: &ctxt<'tcx>,
     sig: &Binder<T>)
     -> Binder<T>
-    where T : TypeFoldable<'tcx> + Repr,
+    where T : TypeFoldable<'tcx>,
 {
     let mut counter = 0;
     ty::Binder(ty_fold::replace_late_bound_regions(tcx, sig, |_| {
@@ -7371,58 +7384,45 @@ impl DebruijnIndex {
     }
 }
 
-impl<'tcx> Repr for AutoAdjustment<'tcx> {
-    fn repr(&self) -> String {
+impl<'tcx> fmt::Debug for AutoAdjustment<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             AdjustReifyFnPointer => {
-                format!("AdjustReifyFnPointer")
+                write!(f, "AdjustReifyFnPointer")
             }
             AdjustUnsafeFnPointer => {
-                format!("AdjustUnsafeFnPointer")
+                write!(f, "AdjustUnsafeFnPointer")
             }
             AdjustDerefRef(ref data) => {
-                data.repr()
+                write!(f, "{:?}", data)
             }
         }
     }
 }
 
-impl<'tcx> Repr for AutoDerefRef<'tcx> {
-    fn repr(&self) -> String {
-        format!("AutoDerefRef({}, unsize={}, {})",
-                self.autoderefs, self.unsize.repr(), self.autoref.repr())
+impl<'tcx> fmt::Debug for AutoDerefRef<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "AutoDerefRef({}, unsize={:?}, {:?})",
+               self.autoderefs, self.unsize, self.autoref)
     }
 }
 
-impl<'tcx> Repr for AutoRef<'tcx> {
-    fn repr(&self) -> String {
+impl<'tcx> fmt::Debug for TraitTy<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "TraitTy({:?},{:?})",
+               self.principal,
+               self.bounds)
+    }
+}
+
+impl<'tcx> fmt::Debug for ty::Predicate<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            AutoPtr(a, b) => {
-                format!("AutoPtr({},{:?})", a.repr(), b)
-            }
-            AutoUnsafe(ref a) => {
-                format!("AutoUnsafe({:?})", a)
-            }
-        }
-    }
-}
-
-impl<'tcx> Repr for TraitTy<'tcx> {
-    fn repr(&self) -> String {
-        format!("TraitTy({},{})",
-                self.principal.repr(),
-                self.bounds.repr())
-    }
-}
-
-impl<'tcx> Repr for ty::Predicate<'tcx> {
-    fn repr(&self) -> String {
-        match *self {
-            Predicate::Trait(ref a) => a.repr(),
-            Predicate::Equate(ref pair) => pair.repr(),
-            Predicate::RegionOutlives(ref pair) => pair.repr(),
-            Predicate::TypeOutlives(ref pair) => pair.repr(),
-            Predicate::Projection(ref pair) => pair.repr(),
+            Predicate::Trait(ref a) => write!(f, "{:?}", a),
+            Predicate::Equate(ref pair) => write!(f, "{:?}", pair),
+            Predicate::RegionOutlives(ref pair) => write!(f, "{:?}", pair),
+            Predicate::TypeOutlives(ref pair) => write!(f, "{:?}", pair),
+            Predicate::Projection(ref pair) => write!(f, "{:?}", pair),
         }
     }
 }
@@ -7625,14 +7625,6 @@ impl<'tcx> RegionEscape for ProjectionPredicate<'tcx> {
 impl<'tcx> RegionEscape for ProjectionTy<'tcx> {
     fn has_regions_escaping_depth(&self, depth: u32) -> bool {
         self.trait_ref.has_regions_escaping_depth(depth)
-    }
-}
-
-impl<'tcx> Repr for ty::ProjectionPredicate<'tcx> {
-    fn repr(&self) -> String {
-        format!("ProjectionPredicate({}, {})",
-                self.projection_ty.repr(),
-                self.ty.repr())
     }
 }
 
@@ -7870,48 +7862,46 @@ impl ReferencesError for Region
     }
 }
 
-impl<'tcx> Repr for ClosureTy<'tcx> {
-    fn repr(&self) -> String {
-        format!("ClosureTy({},{},{})",
-                self.unsafety,
-                self.sig.repr(),
-                self.abi)
+impl<'tcx> fmt::Debug for ClosureTy<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "ClosureTy({},{:?},{})",
+               self.unsafety,
+               self.sig,
+               self.abi)
     }
 }
 
-impl<'tcx> Repr for ClosureUpvar<'tcx> {
-    fn repr(&self) -> String {
-        format!("ClosureUpvar({},{})",
-                self.def.repr(),
-                self.ty.repr())
+impl<'tcx> fmt::Debug for ClosureUpvar<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "ClosureUpvar({:?},{:?})",
+               self.def,
+               self.ty)
     }
 }
 
-impl<'tcx> Repr for field<'tcx> {
-    fn repr(&self) -> String {
-        format!("field({},{})",
-                self.name.repr(),
-                self.mt.repr())
+impl<'tcx> fmt::Debug for field<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "field({},{})", self.name, self.mt)
     }
 }
 
-impl<'a, 'tcx> Repr for ParameterEnvironment<'a, 'tcx> {
-    fn repr(&self) -> String {
-        format!("ParameterEnvironment(\
-            free_substs={}, \
-            implicit_region_bound={}, \
-            caller_bounds={})",
-            self.free_substs.repr(),
-            self.implicit_region_bound.repr(),
-            self.caller_bounds.repr())
+impl<'a, 'tcx> fmt::Debug for ParameterEnvironment<'a, 'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "ParameterEnvironment(\
+            free_substs={:?}, \
+            implicit_region_bound={:?}, \
+            caller_bounds={:?})",
+            self.free_substs,
+            self.implicit_region_bound,
+            self.caller_bounds)
     }
 }
 
-impl<'tcx> Repr for ObjectLifetimeDefault {
-    fn repr(&self) -> String {
+impl<'tcx> fmt::Debug for ObjectLifetimeDefault {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            ObjectLifetimeDefault::Ambiguous => format!("Ambiguous"),
-            ObjectLifetimeDefault::Specific(ref r) => r.repr(),
+            ObjectLifetimeDefault::Ambiguous => write!(f, "Ambiguous"),
+            ObjectLifetimeDefault::Specific(ref r) => write!(f, "{:?}", r),
         }
     }
 }

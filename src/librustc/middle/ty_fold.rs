@@ -38,6 +38,8 @@ use middle::subst;
 use middle::subst::VecPerParamSpace;
 use middle::ty::{self, Ty};
 use middle::traits;
+
+use std::fmt;
 use std::rc::Rc;
 use syntax::abi;
 use syntax::ast;
@@ -50,7 +52,7 @@ use util::ppaux::Repr;
 
 /// The TypeFoldable trait is implemented for every type that can be folded.
 /// Basically, every type that has a corresponding method in TypeFolder.
-pub trait TypeFoldable<'tcx>: Repr + Clone {
+pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
     fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self;
 }
 
@@ -74,7 +76,7 @@ pub trait TypeFolder<'tcx> : Sized {
     fn exit_region_binder(&mut self) { }
 
     fn fold_binder<T>(&mut self, t: &ty::Binder<T>) -> ty::Binder<T>
-        where T : TypeFoldable<'tcx> + Repr + Clone
+        where T : TypeFoldable<'tcx>
     {
         // FIXME(#20526) this should replace `enter_region_binder`/`exit_region_binder`.
         super_fold_binder(self, t)
@@ -197,7 +199,7 @@ impl<'tcx, T: TypeFoldable<'tcx>> TypeFoldable<'tcx> for Vec<T> {
     }
 }
 
-impl<'tcx, T:TypeFoldable<'tcx>+Repr+Clone> TypeFoldable<'tcx> for ty::Binder<T> {
+impl<'tcx, T:TypeFoldable<'tcx>> TypeFoldable<'tcx> for ty::Binder<T> {
     fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> ty::Binder<T> {
         folder.fold_binder(self)
     }
@@ -885,7 +887,7 @@ pub fn replace_late_bound_regions<'tcx,T,F>(tcx: &ty::ctxt<'tcx>,
                                             mut f: F)
                                             -> (T, FnvHashMap<ty::BoundRegion, ty::Region>)
     where F : FnMut(ty::BoundRegion) -> ty::Region,
-          T : TypeFoldable<'tcx> + Repr,
+          T : TypeFoldable<'tcx>,
 {
     debug!("replace_late_bound_regions({})", value.repr());
     let mut replacer = RegionReplacer::new(tcx, &mut f);
@@ -994,8 +996,8 @@ pub fn shift_region(region: ty::Region, amount: u32) -> ty::Region {
     }
 }
 
-pub fn shift_regions<'tcx, T:TypeFoldable<'tcx>+Repr>(tcx: &ty::ctxt<'tcx>,
-                                                            amount: u32, value: &T) -> T {
+pub fn shift_regions<'tcx, T:TypeFoldable<'tcx>>(tcx: &ty::ctxt<'tcx>,
+                                                 amount: u32, value: &T) -> T {
     debug!("shift_regions(value={}, amount={})",
            value.repr(), amount);
 

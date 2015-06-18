@@ -219,7 +219,7 @@ pub type SelectionResult<'tcx, T> = Result<Option<T>, SelectionError<'tcx>>;
 /// ### The type parameter `N`
 ///
 /// See explanation on `VtableImplData`.
-#[derive(Debug,Clone)]
+#[derive(Clone)]
 pub enum Vtable<'tcx, N> {
     /// Vtable identifying a particular impl.
     VtableImpl(VtableImplData<'tcx, N>),
@@ -277,13 +277,13 @@ pub struct VtableClosureData<'tcx, N> {
     pub nested: Vec<N>
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct VtableDefaultImplData<N> {
     pub trait_def_id: ast::DefId,
     pub nested: Vec<N>
 }
 
-#[derive(Debug,Clone)]
+#[derive(Clone)]
 pub struct VtableBuiltinData<N> {
     pub nested: Vec<N>
 }
@@ -433,7 +433,7 @@ pub fn fully_normalize<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx>,
                                   cause: ObligationCause<'tcx>,
                                   value: &T)
                                   -> Result<T, Vec<FulfillmentError<'tcx>>>
-    where T : TypeFoldable<'tcx> + HasProjectionTypes + Clone + Repr
+    where T : TypeFoldable<'tcx> + HasProjectionTypes
 {
     debug!("normalize_param_env(value={})", value.repr());
 

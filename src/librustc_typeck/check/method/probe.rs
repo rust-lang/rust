@@ -46,18 +46,21 @@ struct ProbeContext<'a, 'tcx:'a> {
     static_candidates: Vec<CandidateSource>,
 }
 
+#[derive(Debug)]
 struct CandidateStep<'tcx> {
     self_ty: Ty<'tcx>,
     autoderefs: usize,
     unsize: bool
 }
 
+#[derive(Debug)]
 struct Candidate<'tcx> {
     xform_self_ty: Ty<'tcx>,
     item: ty::ImplOrTraitItem<'tcx>,
     kind: CandidateKind<'tcx>,
 }
 
+#[derive(Debug)]
 enum CandidateKind<'tcx> {
     InherentImplCandidate(/* Impl */ ast::DefId, subst::Substs<'tcx>,
                           /* Normalize obligations */ Vec<traits::PredicateObligation<'tcx>>),
@@ -70,6 +73,7 @@ enum CandidateKind<'tcx> {
     ProjectionCandidate(ast::DefId, ItemIndex),
 }
 
+#[derive(Debug)]
 pub struct Pick<'tcx> {
     pub item: ty::ImplOrTraitItem<'tcx>,
     pub kind: PickKind<'tcx>,
@@ -1264,7 +1268,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
     ///    and/or tracking the substitution and
     ///    so forth.
     fn erase_late_bound_regions<T>(&self, value: &ty::Binder<T>) -> T
-        where T : TypeFoldable<'tcx> + Repr
+        where T : TypeFoldable<'tcx>
     {
         ty::erase_late_bound_regions(self.tcx(), value)
     }
@@ -1368,61 +1372,5 @@ impl<'tcx> Candidate<'tcx> {
                 Some((trait_def_id, item_num))
             }
         }
-    }
-}
-
-impl<'tcx> Repr for Candidate<'tcx> {
-    fn repr(&self) -> String {
-        format!("Candidate(xform_self_ty={}, kind={})",
-                self.xform_self_ty.repr(),
-                self.kind.repr())
-    }
-}
-
-impl<'tcx> Repr for CandidateKind<'tcx> {
-    fn repr(&self) -> String {
-        match *self {
-            InherentImplCandidate(ref a, ref b, ref c) =>
-                format!("InherentImplCandidate({},{},{})", a.repr(), b.repr(),
-                        c.repr()),
-            ObjectCandidate(a, b, c) =>
-                format!("ObjectCandidate({},{},{})", a.repr(), b, c),
-            ExtensionImplCandidate(ref a, ref b, ref c, ref d, ref e) =>
-                format!("ExtensionImplCandidate({},{},{},{},{})", a.repr(), b.repr(),
-                        c.repr(), d, e.repr()),
-            ClosureCandidate(ref a, ref b) =>
-                format!("ClosureCandidate({},{})", a.repr(), b),
-            WhereClauseCandidate(ref a, ref b) =>
-                format!("WhereClauseCandidate({},{})", a.repr(), b),
-            ProjectionCandidate(ref a, ref b) =>
-                format!("ProjectionCandidate({},{})", a.repr(), b),
-        }
-    }
-}
-
-impl<'tcx> Repr for CandidateStep<'tcx> {
-    fn repr(&self) -> String {
-        format!("CandidateStep({}, autoderefs={}, unsize={})",
-                self.self_ty.repr(),
-                self.autoderefs,
-                self.unsize)
-    }
-}
-
-impl<'tcx> Repr for PickKind<'tcx> {
-    fn repr(&self) -> String {
-        format!("{:?}", self)
-    }
-}
-
-impl<'tcx> Repr for Pick<'tcx> {
-    fn repr(&self) -> String {
-        format!("Pick(item={}, autoderefs={},
-                 autoref={}, unsize={}, kind={:?})",
-                self.item.repr(),
-                self.autoderefs,
-                self.autoref.repr(),
-                self.unsize.repr(),
-                self.kind)
     }
 }

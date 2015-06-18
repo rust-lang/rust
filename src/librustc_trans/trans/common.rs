@@ -64,7 +64,7 @@ pub use trans::context::CrateContext;
 /// subtyping, but they are anonymized and normalized as well). This
 /// is a stronger, caching version of `ty_fold::erase_regions`.
 pub fn erase_regions<'tcx,T>(cx: &ty::ctxt<'tcx>, value: &T) -> T
-    where T : TypeFoldable<'tcx> + Repr
+    where T : TypeFoldable<'tcx>
 {
     let value1 = value.fold_with(&mut RegionEraser(cx));
     debug!("erase_regions({}) = {}",
@@ -88,7 +88,7 @@ pub fn erase_regions<'tcx,T>(cx: &ty::ctxt<'tcx>, value: &T) -> T
         }
 
         fn fold_binder<T>(&mut self, t: &ty::Binder<T>) -> ty::Binder<T>
-            where T : TypeFoldable<'tcx> + Repr
+            where T : TypeFoldable<'tcx>
         {
             let u = ty::anonymize_late_bound_regions(self.tcx(), t);
             ty_fold::super_fold_binder(self, &u)
@@ -518,7 +518,7 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
     }
 
     pub fn monomorphize<T>(&self, value: &T) -> T
-        where T : TypeFoldable<'tcx> + Repr + HasProjectionTypes + Clone
+        where T : TypeFoldable<'tcx> + HasProjectionTypes
     {
         monomorphize::apply_param_substs(self.ccx.tcx(),
                                          self.param_substs,
@@ -624,7 +624,7 @@ impl<'blk, 'tcx> BlockS<'blk, 'tcx> {
     }
 
     pub fn monomorphize<T>(&self, value: &T) -> T
-        where T : TypeFoldable<'tcx> + Repr + HasProjectionTypes + Clone
+        where T : TypeFoldable<'tcx> + HasProjectionTypes
     {
         monomorphize::apply_param_substs(self.tcx(),
                                          self.fcx.param_substs,
@@ -1135,7 +1135,7 @@ pub fn drain_fulfillment_cx_or_panic<'a,'tcx,T>(span: Span,
                                                 fulfill_cx: &mut traits::FulfillmentContext<'tcx>,
                                                 result: &T)
                                                 -> T
-    where T : TypeFoldable<'tcx> + Repr
+    where T : TypeFoldable<'tcx>
 {
     match drain_fulfillment_cx(infcx, fulfill_cx, result) {
         Ok(v) => v,
@@ -1159,7 +1159,7 @@ pub fn drain_fulfillment_cx<'a,'tcx,T>(infcx: &infer::InferCtxt<'a,'tcx>,
                                        fulfill_cx: &mut traits::FulfillmentContext<'tcx>,
                                        result: &T)
                                        -> StdResult<T,Vec<traits::FulfillmentError<'tcx>>>
-    where T : TypeFoldable<'tcx> + Repr
+    where T : TypeFoldable<'tcx>
 {
     debug!("drain_fulfillment_cx(result={})",
            result.repr());

@@ -30,10 +30,11 @@ use middle::ty::{ReLateBound, ReScope, ReVar, ReSkolemized, BrFresh};
 use middle::ty_relate::RelateResult;
 use util::common::indenter;
 use util::nodemap::{FnvHashMap, FnvHashSet};
-use util::ppaux::{Repr, UserString};
+use util::ppaux::Repr;
 
 use std::cell::{Cell, RefCell};
 use std::cmp::Ordering::{self, Less, Greater, Equal};
+use std::fmt;
 use std::iter::repeat;
 use std::u32;
 use syntax::ast;
@@ -68,7 +69,7 @@ pub enum Verify<'tcx> {
     VerifyGenericBound(GenericKind<'tcx>, SubregionOrigin<'tcx>, Region, Vec<Region>),
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum GenericKind<'tcx> {
     Param(ty::ParamTy),
     Projection(ty::ProjectionTy<'tcx>),
@@ -959,7 +960,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
 #[derive(Copy, Clone, PartialEq, Debug)]
 enum Classification { Expanding, Contracting }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum VarValue { NoValue, Value(Region), ErrorValue }
 
 struct VarData {
@@ -1589,31 +1590,14 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
 
 }
 
-impl Repr for Constraint {
-    fn repr(&self) -> String {
-        match *self {
-            ConstrainVarSubVar(a, b) => {
-                format!("ConstrainVarSubVar({}, {})", a.repr(), b.repr())
-            }
-            ConstrainRegSubVar(a, b) => {
-                format!("ConstrainRegSubVar({}, {})", a.repr(), b.repr())
-            }
-            ConstrainVarSubReg(a, b) => {
-                format!("ConstrainVarSubReg({}, {})", a.repr(), b.repr())
-            }
-        }
-    }
-}
-
-impl<'tcx> Repr for Verify<'tcx> {
-    fn repr(&self) -> String {
+impl<'tcx> fmt::Debug for Verify<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             VerifyRegSubReg(_, ref a, ref b) => {
-                format!("VerifyRegSubReg({}, {})", a.repr(), b.repr())
+                write!(f, "VerifyRegSubReg({:?}, {:?})", a, b)
             }
             VerifyGenericBound(_, ref p, ref a, ref bs) => {
-                format!("VerifyGenericBound({}, {}, {})",
-                        p.repr(), a.repr(), bs.repr())
+                write!(f, "VerifyGenericBound({:?}, {:?}, {:?})", p, a, bs)
             }
         }
     }
@@ -1634,38 +1618,28 @@ fn lookup(values: &Vec<VarValue>, rid: ty::RegionVid) -> ty::Region {
     }
 }
 
-impl Repr for VarValue {
-    fn repr(&self) -> String {
+impl<'tcx> fmt::Debug for RegionAndOrigin<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "RegionAndOrigin({},{})",
+               self.region.repr(),
+               self.origin.repr())
+    }
+}
+
+impl<'tcx> fmt::Debug for GenericKind<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            NoValue => format!("NoValue"),
-            Value(r) => format!("Value({})", r.repr()),
-            ErrorValue => format!("ErrorValue"),
+            GenericKind::Param(ref p) => write!(f, "{:?}", p),
+            GenericKind::Projection(ref p) => write!(f, "{:?}", p),
         }
     }
 }
 
-impl<'tcx> Repr for RegionAndOrigin<'tcx> {
-    fn repr(&self) -> String {
-        format!("RegionAndOrigin({},{})",
-                self.region.repr(),
-                self.origin.repr())
-    }
-}
-
-impl<'tcx> Repr for GenericKind<'tcx> {
-    fn repr(&self) -> String {
+impl<'tcx> fmt::Display for GenericKind<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            GenericKind::Param(ref p) => p.repr(),
-            GenericKind::Projection(ref p) => p.repr(),
-        }
-    }
-}
-
-impl<'tcx> UserString for GenericKind<'tcx> {
-    fn user_string(&self) -> String {
-        match *self {
-            GenericKind::Param(ref p) => p.user_string(),
-            GenericKind::Projection(ref p) => p.user_string(),
+            GenericKind::Param(ref p) => write!(f, "{}", p),
+            GenericKind::Projection(ref p) => write!(f, "{}", p),
         }
     }
 }

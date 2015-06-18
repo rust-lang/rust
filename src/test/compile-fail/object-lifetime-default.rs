@@ -29,6 +29,6 @@ struct E<'a,'b:'a,T:'b>(&'a T, &'b T); //~ ERROR 'b
 struct F<'a,'b,T:'a,U:'b>(&'a T, &'b U); //~ ERROR 'a,'b
 
 #[rustc_object_lifetime_default]
-struct G<'a,'b,T:'a,U:'a+'b>(&'a T, &'b U); //~ ERROR 'a,Ambiguous
+struct G<'a,'b,T:'a,U:'a+'b>(&'a T, &'b U); //~ ERROR 'a,Some(Ambiguous)
 
 fn main() { }

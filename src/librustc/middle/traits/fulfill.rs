@@ -10,8 +10,9 @@
 
 use middle::infer::InferCtxt;
 use middle::ty::{self, RegionEscape, Ty};
+
 use std::collections::HashSet;
-use std::default::Default;
+use std::fmt;
 use syntax::ast;
 use util::common::ErrorReported;
 use util::ppaux::Repr;
@@ -461,11 +462,11 @@ fn process_predicate<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
     }
 }
 
-impl<'tcx> Repr for RegionObligation<'tcx> {
-    fn repr(&self) -> String {
-        format!("RegionObligation(sub_region={}, sup_type={})",
-                self.sub_region.repr(),
-                self.sup_type.repr())
+impl<'tcx> fmt::Debug for RegionObligation<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "RegionObligation(sub_region={:?}, sup_type={:?})",
+               self.sub_region,
+               self.sup_type)
     }
 }
 
