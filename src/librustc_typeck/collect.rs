@@ -2235,7 +2235,7 @@ fn check_method_self_type<'a, 'tcx, RS:RegionScope>(
         scope: region::DestructionScopeData,
         value: &T)
         -> T
-        where T : TypeFoldable<'tcx> + Repr
+        where T : TypeFoldable<'tcx>
     {
         /*!
          * Convert early-bound regions into free regions; normally this is done by

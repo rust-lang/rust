@@ -44,7 +44,9 @@ use middle::infer::{InferCtxt, TypeFreshener};
 use middle::ty_fold::TypeFoldable;
 use middle::ty_match;
 use middle::ty_relate::TypeRelation;
+
 use std::cell::RefCell;
+use std::fmt;
 use std::rc::Rc;
 use syntax::{abi, ast};
 use util::common::ErrorReported;
@@ -2666,14 +2668,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                                   origin,
                                                   impl_trait_ref.value.clone(),
                                                   skol_obligation_trait_ref) {
-            debug!("match_impl: failed sub_trait_refs due to `{}`",
-                   ty::type_err_to_str(self.tcx(), &e));
+            debug!("match_impl: failed sub_trait_refs due to `{}`", e);
             return Err(());
         }
 
         if let Err(e) = self.infcx.leak_check(&skol_map, snapshot) {
-            debug!("match_impl: failed leak check due to `{}`",
-                   ty::type_err_to_str(self.tcx(), &e));
+            debug!("match_impl: failed leak check due to `{}`", e);
             return Err(());
         }
 
@@ -2962,28 +2962,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     }
 }
 
-impl<'tcx> Repr for SelectionCandidate<'tcx> {
-    fn repr(&self) -> String {
-        match *self {
-            PhantomFnCandidate => format!("PhantomFnCandidate"),
-            ErrorCandidate => format!("ErrorCandidate"),
-            BuiltinCandidate(b) => format!("BuiltinCandidate({:?})", b),
-            BuiltinObjectCandidate => format!("BuiltinObjectCandidate"),
-            BuiltinUnsizeCandidate => format!("BuiltinUnsizeCandidate"),
-            ParamCandidate(ref a) => format!("ParamCandidate({})", a.repr()),
-            ImplCandidate(a) => format!("ImplCandidate({})", a.repr()),
-            DefaultImplCandidate(t) => format!("DefaultImplCandidate({:?})", t),
-            DefaultImplObjectCandidate(t) => format!("DefaultImplObjectCandidate({:?})", t),
-            ProjectionCandidate => format!("ProjectionCandidate"),
-            FnPointerCandidate => format!("FnPointerCandidate"),
-            ObjectCandidate => format!("ObjectCandidate"),
-            ClosureCandidate(c, ref s) => {
-                format!("ClosureCandidate({:?},{})", c, s.repr())
-            }
-        }
-    }
-}
-
 impl<'tcx> SelectionCache<'tcx> {
     pub fn new() -> SelectionCache<'tcx> {
         SelectionCache {
@@ -3031,10 +3009,9 @@ impl<'o,'tcx> Iterator for TraitObligationStackList<'o,'tcx>{
     }
 }
 
-impl<'o,'tcx> Repr for TraitObligationStack<'o,'tcx> {
-    fn repr(&self) -> String {
-        format!("TraitObligationStack({})",
-                self.obligation.repr())
+impl<'o,'tcx> fmt::Debug for TraitObligationStack<'o,'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "TraitObligationStack({:?})", self.obligation)
     }
 }
 

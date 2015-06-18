@@ -30,6 +30,8 @@ use syntax::parse::token;
 use util::common::FN_OUTPUT_NAME;
 use util::ppaux::Repr;
 
+use std::fmt;
+
 pub type PolyProjectionObligation<'tcx> =
     Obligation<'tcx, ty::PolyProjectionPredicate<'tcx>>;
 
@@ -40,6 +42,7 @@ pub type ProjectionTyObligation<'tcx> =
     Obligation<'tcx, ty::ProjectionTy<'tcx>>;
 
 /// When attempting to resolve `<T as TraitRef>::Name` ...
+#[derive(Debug)]
 pub enum ProjectionTyError<'tcx> {
     /// ...we found multiple sources of information and couldn't resolve the ambiguity.
     TooManyCandidates,
@@ -53,7 +56,7 @@ pub struct MismatchedProjectionTypes<'tcx> {
     pub err: ty::type_err<'tcx>
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Debug)]
 enum ProjectionTyCandidate<'tcx> {
     ParamEnv(ty::PolyProjectionPredicate<'tcx>),
     Impl(VtableImplData<'tcx, PredicateObligation<'tcx>>),
@@ -193,7 +196,7 @@ pub fn normalize<'a,'b,'tcx,T>(selcx: &'a mut SelectionContext<'b,'tcx>,
                                cause: ObligationCause<'tcx>,
                                value: &T)
                                -> Normalized<'tcx, T>
-    where T : TypeFoldable<'tcx> + HasProjectionTypes + Clone + Repr
+    where T : TypeFoldable<'tcx> + HasProjectionTypes
 {
     normalize_with_depth(selcx, cause, 0, value)
 }
@@ -204,7 +207,7 @@ pub fn normalize_with_depth<'a,'b,'tcx,T>(selcx: &'a mut SelectionContext<'b,'tc
                                           depth: usize,
                                           value: &T)
                                           -> Normalized<'tcx, T>
-    where T : TypeFoldable<'tcx> + HasProjectionTypes + Clone + Repr
+    where T : TypeFoldable<'tcx> + HasProjectionTypes
 {
     let mut normalizer = AssociatedTypeNormalizer::new(selcx, cause, depth);
     let result = normalizer.fold(value);
@@ -236,7 +239,7 @@ impl<'a,'b,'tcx> AssociatedTypeNormalizer<'a,'b,'tcx> {
         }
     }
 
-    fn fold<T:TypeFoldable<'tcx> + HasProjectionTypes + Clone>(&mut self, value: &T) -> T {
+    fn fold<T:TypeFoldable<'tcx> + HasProjectionTypes>(&mut self, value: &T) -> T {
         let value = self.selcx.infcx().resolve_type_vars_if_possible(value);
 
         if !value.has_projection_types() {
@@ -864,7 +867,7 @@ fn confirm_param_env_candidate<'cx,'tcx>(
                 &format!("Failed to unify `{}` and `{}` in projection: {}",
                          obligation.repr(),
                          projection.repr(),
-                         ty::type_err_to_str(selcx.tcx(), &e)));
+                         e));
         }
     }
 
@@ -915,32 +918,6 @@ fn confirm_impl_candidate<'cx,'tcx>(
                                        trait_ref.repr()));
 }
 
-impl<'tcx> Repr for ProjectionTyError<'tcx> {
-    fn repr(&self) -> String {
-        match *self {
-            ProjectionTyError::TooManyCandidates =>
-                format!("NoCandidate"),
-            ProjectionTyError::TraitSelectionError(ref e) =>
-                format!("TraitSelectionError({})", e.repr()),
-        }
-    }
-}
-
-impl<'tcx> Repr for ProjectionTyCandidate<'tcx> {
-    fn repr(&self) -> String {
-        match *self {
-            ProjectionTyCandidate::ParamEnv(ref data) =>
-                format!("ParamEnv({})", data.repr()),
-            ProjectionTyCandidate::Impl(ref data) =>
-                format!("Impl({})", data.repr()),
-            ProjectionTyCandidate::Closure(ref data) =>
-                format!("Closure({})", data.repr()),
-            ProjectionTyCandidate::FnPointer(a) =>
-                format!("FnPointer(({}))", a.repr()),
-        }
-    }
-}
-
 impl<'tcx, T: TypeFoldable<'tcx>> TypeFoldable<'tcx> for Normalized<'tcx, T> {
     fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Normalized<'tcx, T> {
         Normalized {
@@ -950,10 +927,10 @@ impl<'tcx, T: TypeFoldable<'tcx>> TypeFoldable<'tcx> for Normalized<'tcx, T> {
     }
 }
 
-impl<'tcx, T:Repr> Repr for Normalized<'tcx, T> {
-    fn repr(&self) -> String {
-        format!("Normalized({},{})",
-                self.value.repr(),
-                self.obligations.repr())
+impl<'tcx, T:fmt::Debug> fmt::Debug for Normalized<'tcx, T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Normalized({:?},{:?})",
+               self.value,
+               self.obligations)
     }
 }

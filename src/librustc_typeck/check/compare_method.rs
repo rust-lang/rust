@@ -341,7 +341,7 @@ pub fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
             span_err!(tcx.sess, impl_m_span, E0053,
                       "method `{}` has an incompatible type for trait: {}",
                       token::get_name(trait_m.name),
-                      ty::type_err_to_str(tcx, &terr));
+                      terr);
             return;
         }
     }
@@ -487,7 +487,7 @@ pub fn compare_const_impl<'tcx>(tcx: &ty::ctxt<'tcx>,
                       "implemented const `{}` has an incompatible type for \
                       trait: {}",
                       token::get_name(trait_c.name),
-                      ty::type_err_to_str(tcx, &terr));
+                      terr);
             return;
         }
     }

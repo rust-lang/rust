@@ -227,8 +227,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
     pub fn make_subtype(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
         match infer::mk_subty(self.infcx, true, infer::Misc(DUMMY_SP), a, b) {
             Ok(_) => true,
-            Err(ref e) => panic!("Encountered error: {}",
-                                ty::type_err_to_str(self.infcx.tcx, e))
+            Err(ref e) => panic!("Encountered error: {}", e)
         }
     }
 
@@ -376,8 +375,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
     pub fn make_lub_ty(&self, t1: Ty<'tcx>, t2: Ty<'tcx>) -> Ty<'tcx> {
         match self.lub().relate(&t1, &t2) {
             Ok(t) => t,
-            Err(ref e) => panic!("unexpected error computing LUB: {}",
-                                ty::type_err_to_str(self.infcx.tcx, e))
+            Err(ref e) => panic!("unexpected error computing LUB: {}", e)
         }
     }
 
@@ -390,7 +388,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
                 panic!("unexpected error computing sub({},{}): {}",
                        t1.repr(),
                        t2.repr(),
-                       ty::type_err_to_str(self.infcx.tcx, e));
+                       e);
             }
         }
     }
@@ -415,8 +413,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
                 self.assert_eq(t, t_lub);
             }
             Err(ref e) => {
-                panic!("unexpected error in LUB: {}",
-                      ty::type_err_to_str(self.infcx.tcx, e))
+                panic!("unexpected error in LUB: {}", e)
             }
         }
     }

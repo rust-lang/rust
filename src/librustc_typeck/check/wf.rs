@@ -536,7 +536,7 @@ impl<'cx,'tcx> TypeFolder<'tcx> for BoundsChecker<'cx,'tcx> {
     }
 
     fn fold_binder<T>(&mut self, binder: &ty::Binder<T>) -> ty::Binder<T>
-        where T : TypeFoldable<'tcx> + Repr
+        where T : TypeFoldable<'tcx>
     {
         self.binding_count += 1;
         let value = liberate_late_bound_regions(

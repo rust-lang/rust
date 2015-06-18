@@ -193,7 +193,7 @@ type DeferredCallResolutionHandler<'tcx> = Box<DeferredCallResolution<'tcx>+'tcx
 
 /// When type-checking an expression, we propagate downward
 /// whatever type hint we are able in the form of an `Expectation`.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum Expectation<'tcx> {
     /// We know nothing about what type this expression should have.
     NoExpectation,
@@ -398,7 +398,7 @@ impl<'a, 'tcx> Inherited<'a, 'tcx> {
                                         body_id: ast::NodeId,
                                         value: &T)
                                         -> T
-        where T : TypeFoldable<'tcx> + Clone + HasProjectionTypes + Repr
+        where T : TypeFoldable<'tcx> + HasProjectionTypes
     {
         let mut fulfillment_cx = self.fulfillment_cx.borrow_mut();
         assoc::normalize_associated_types_in(&self.infcx,
@@ -1444,7 +1444,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                   substs: &Substs<'tcx>,
                                   value: &T)
                                   -> T
-        where T : TypeFoldable<'tcx> + Clone + HasProjectionTypes + Repr
+        where T : TypeFoldable<'tcx> + HasProjectionTypes
     {
         let value = value.subst(self.tcx(), substs);
         let result = self.normalize_associated_types_in(span, &value);
@@ -1470,7 +1470,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
 
     fn normalize_associated_types_in<T>(&self, span: Span, value: &T) -> T
-        where T : TypeFoldable<'tcx> + Clone + HasProjectionTypes + Repr
+        where T : TypeFoldable<'tcx> + HasProjectionTypes
     {
         self.inh.normalize_associated_types_in(self, span, self.body_id, value)
     }
@@ -3605,8 +3605,6 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                type_and_substs.ty) {
                 Ok(()) => {}
                 Err(type_error) => {
-                    let type_error_description =
-                        ty::type_err_to_str(tcx, &type_error);
                     span_err!(fcx.tcx().sess, path.span, E0235,
                                  "structure constructor specifies a \
                                          structure of type `{}`, but this \
@@ -3616,7 +3614,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                          fcx.infcx()
                                             .ty_to_string(
                                                 actual_structure_type),
-                                         type_error_description);
+                                         type_error);
                     ty::note_and_explain_type_err(tcx, &type_error, path.span);
                 }
             }
@@ -3903,20 +3901,6 @@ impl<'tcx> Expectation<'tcx> {
         match self.resolve(fcx) {
             ExpectHasType(ty) => Some(ty),
             _ => None
-        }
-    }
-}
-
-impl<'tcx> Repr for Expectation<'tcx> {
-    fn repr(&self) -> String {
-        match *self {
-            NoExpectation => format!("NoExpectation"),
-            ExpectHasType(t) => format!("ExpectHasType({})",
-                                        t.repr()),
-            ExpectCastableToType(t) => format!("ExpectCastableToType({})",
-                                               t.repr()),
-            ExpectRvalueLikeUnsized(t) => format!("ExpectRvalueLikeUnsized({})",
-                                                  t.repr()),
         }
     }
 }

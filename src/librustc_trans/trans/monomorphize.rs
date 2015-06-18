@@ -303,7 +303,7 @@ pub fn apply_param_substs<'tcx,T>(tcx: &ty::ctxt<'tcx>,
                                   param_substs: &Substs<'tcx>,
                                   value: &T)
                                   -> T
-    where T : TypeFoldable<'tcx> + Repr + HasProjectionTypes + Clone
+    where T : TypeFoldable<'tcx> + HasProjectionTypes
 {
     let substituted = value.subst(tcx, param_substs);
     normalize_associated_type(tcx, &substituted)
@@ -314,7 +314,7 @@ pub fn apply_param_substs<'tcx,T>(tcx: &ty::ctxt<'tcx>,
 /// and hence we can be sure that all associated types will be
 /// completely normalized away.
 pub fn normalize_associated_type<'tcx,T>(tcx: &ty::ctxt<'tcx>, value: &T) -> T
-    where T : TypeFoldable<'tcx> + Repr + HasProjectionTypes + Clone
+    where T : TypeFoldable<'tcx> + HasProjectionTypes
 {
     debug!("normalize_associated_type(t={})", value.repr());
 

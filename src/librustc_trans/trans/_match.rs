@@ -221,6 +221,7 @@ use util::ppaux::{self, Repr};
 
 use std;
 use std::cmp::Ordering;
+use std::fmt;
 use std::rc::Rc;
 use syntax::ast;
 use syntax::ast::{DUMMY_NODE_ID, NodeId};
@@ -371,13 +372,13 @@ struct Match<'a, 'p: 'a, 'blk: 'a, 'tcx: 'blk> {
     pat_renaming_map: Option<&'a FnvHashMap<(NodeId, Span), NodeId>>
 }
 
-impl<'a, 'p, 'blk, 'tcx> Repr for Match<'a, 'p, 'blk, 'tcx> {
-    fn repr(&self) -> String {
+impl<'a, 'p, 'blk, 'tcx> fmt::Debug for Match<'a, 'p, 'blk, 'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if ppaux::verbose() {
             // for many programs, this just take too long to serialize
-            self.pats.repr()
+            write!(f, "{:?}", self.pats)
         } else {
-            format!("{} pats", self.pats.len())
+            write!(f, "{} pats", self.pats.len())
         }
     }
 }

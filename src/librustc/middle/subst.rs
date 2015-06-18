@@ -29,7 +29,7 @@ use syntax::codemap::{Span, DUMMY_SP};
 /// identify each in-scope parameter by an *index* and a *parameter
 /// space* (which indices where the parameter is defined; see
 /// `ParamSpace`).
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Substs<'tcx> {
     pub types: VecPerParamSpace<Ty<'tcx>>,
     pub regions: RegionSubsts,
@@ -38,7 +38,7 @@ pub struct Substs<'tcx> {
 /// Represents the values to use when substituting lifetime parameters.
 /// If the value is `ErasedRegions`, then this subst is occurring during
 /// trans, and all region parameters will be replaced with `ty::ReStatic`.
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub enum RegionSubsts {
     ErasedRegions,
     NonerasedRegions(VecPerParamSpace<ty::Region>)
@@ -240,13 +240,11 @@ pub struct SeparateVecsPerParamSpace<T> {
 }
 
 impl<T: fmt::Debug> fmt::Debug for VecPerParamSpace<T> {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(fmt, "VecPerParamSpace {{"));
-        for space in &ParamSpace::all() {
-            try!(write!(fmt, "{:?}: {:?}, ", *space, self.get_slice(*space)));
-        }
-        try!(write!(fmt, "}}"));
-        Ok(())
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "[{:?};{:?};{:?}]",
+               self.get_slice(TypeSpace),
+               self.get_slice(SelfSpace),
+               self.get_slice(FnSpace))
     }
 }
 

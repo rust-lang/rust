@@ -16,6 +16,8 @@ use middle::ty::{TransmuteRestriction, ctxt, TyBareFn};
 use middle::ty::{self, Ty};
 use util::ppaux::Repr;
 
+use std::fmt;
+
 use syntax::abi::RustIntrinsic;
 use syntax::ast::DefId;
 use syntax::ast;
@@ -277,13 +279,13 @@ impl<'a, 'tcx, 'v> Visitor<'v> for IntrinsicCheckingVisitor<'a, 'tcx> {
     }
 }
 
-impl<'tcx> Repr for TransmuteRestriction<'tcx> {
-    fn repr(&self) -> String {
-        format!("TransmuteRestriction(id={}, original=({},{}), substituted=({},{}))",
-                self.id,
-                self.original_from.repr(),
-                self.original_to.repr(),
-                self.substituted_from.repr(),
-                self.substituted_to.repr())
+impl<'tcx> fmt::Debug for TransmuteRestriction<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "TransmuteRestriction(id={}, original=({:?},{:?}), substituted=({:?},{:?}))",
+               self.id,
+               self.original_from,
+               self.original_to,
+               self.substituted_from,
+               self.substituted_to)
     }
 }

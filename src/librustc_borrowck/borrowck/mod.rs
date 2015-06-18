@@ -34,9 +34,10 @@ use rustc::middle::mem_categorization as mc;
 use rustc::middle::region;
 use rustc::middle::ty::{self, Ty};
 use rustc::util::ppaux::{Repr, UserString};
+
+use std::fmt;
 use std::mem;
 use std::rc::Rc;
-use std::string::String;
 use syntax::ast;
 use syntax::ast_util;
 use syntax::codemap::Span;
@@ -329,7 +330,7 @@ impl<'tcx> Loan<'tcx> {
     }
 }
 
-#[derive(Eq, Hash, Debug)]
+#[derive(Eq, Hash)]
 pub struct LoanPath<'tcx> {
     kind: LoanPathKind<'tcx>,
     ty: ty::Ty<'tcx>,
@@ -369,7 +370,7 @@ const DOWNCAST_PRINTED_OPERATOR: &'static str = " as ";
 // information that is not relevant to loan-path analysis. (In
 // particular, the distinction between how precisely a array-element
 // is tracked is irrelevant here.)
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub enum InteriorKind {
     InteriorField(mc::FieldName),
     InteriorElement(mc::ElementKind),
@@ -1148,39 +1149,38 @@ impl DataFlowOperator for LoanDataFlowOperator {
     }
 }
 
-impl<'tcx> Repr for InteriorKind {
-    fn repr(&self) -> String {
+impl<'tcx> fmt::Debug for InteriorKind {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            InteriorField(mc::NamedField(fld)) =>
-                format!("{}", token::get_name(fld)),
-            InteriorField(mc::PositionalField(i)) => format!("#{}", i),
-            InteriorElement(..) => "[]".to_string(),
+            InteriorField(mc::NamedField(fld)) => write!(f, "{}", fld),
+            InteriorField(mc::PositionalField(i)) => write!(f, "#{}", i),
+            InteriorElement(..) => write!(f, "[]"),
         }
     }
 }
 
-impl<'tcx> Repr for Loan<'tcx> {
-    fn repr(&self) -> String {
-        format!("Loan_{}({}, {:?}, {:?}-{:?}, {})",
-                 self.index,
-                 self.loan_path.repr(),
-                 self.kind,
-                 self.gen_scope,
-                 self.kill_scope,
-                 self.restricted_paths.repr())
+impl<'tcx> fmt::Debug for Loan<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Loan_{}({:?}, {:?}, {:?}-{:?}, {:?})",
+               self.index,
+               self.loan_path,
+               self.kind,
+               self.gen_scope,
+               self.kill_scope,
+               self.restricted_paths)
     }
 }
 
-impl<'tcx> Repr for LoanPath<'tcx> {
-    fn repr(&self) -> String {
+impl<'tcx> fmt::Debug for LoanPath<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.kind {
             LpVar(id) => {
-                format!("$({})", ty::tls::with(|tcx| tcx.map.node_to_string(id)))
+                write!(f, "$({})", ty::tls::with(|tcx| tcx.map.node_to_string(id)))
             }
 
             LpUpvar(ty::UpvarId{ var_id, closure_expr_id }) => {
                 let s = ty::tls::with(|tcx| tcx.map.node_to_string(var_id));
-                format!("$({} captured by id={})", s, closure_expr_id)
+                write!(f, "$({} captured by id={})", s, closure_expr_id)
             }
 
             LpDowncast(ref lp, variant_def_id) => {
@@ -1189,30 +1189,30 @@ impl<'tcx> Repr for LoanPath<'tcx> {
                 } else {
                     variant_def_id.repr()
                 };
-                format!("({}{}{})", lp.repr(), DOWNCAST_PRINTED_OPERATOR, variant_str)
+                write!(f, "({:?}{}{})", lp, DOWNCAST_PRINTED_OPERATOR, variant_str)
             }
 
             LpExtend(ref lp, _, LpDeref(_)) => {
-                format!("{}.*", lp.repr())
+                write!(f, "{:?}.*", lp)
             }
 
             LpExtend(ref lp, _, LpInterior(ref interior)) => {
-                format!("{}.{}", lp.repr(), interior.repr())
+                write!(f, "{:?}.{:?}", lp, interior)
             }
         }
     }
 }
 
-impl<'tcx> UserString for LoanPath<'tcx> {
-    fn user_string(&self) -> String {
+impl<'tcx> fmt::Display for LoanPath<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.kind {
             LpVar(id) => {
-                format!("$({})", ty::tls::with(|tcx| tcx.map.node_to_user_string(id)))
+                write!(f, "$({})", ty::tls::with(|tcx| tcx.map.node_to_user_string(id)))
             }
 
             LpUpvar(ty::UpvarId{ var_id, closure_expr_id: _ }) => {
                 let s = ty::tls::with(|tcx| tcx.map.node_to_user_string(var_id));
-                format!("$({} captured by closure)", s)
+                write!(f, "$({} captured by closure)", s)
             }
 
             LpDowncast(ref lp, variant_def_id) => {
@@ -1221,15 +1221,15 @@ impl<'tcx> UserString for LoanPath<'tcx> {
                 } else {
                     variant_def_id.repr()
                 };
-                format!("({}{}{})", lp.user_string(), DOWNCAST_PRINTED_OPERATOR, variant_str)
+                write!(f, "({}{}{})", lp, DOWNCAST_PRINTED_OPERATOR, variant_str)
             }
 
             LpExtend(ref lp, _, LpDeref(_)) => {
-                format!("{}.*", lp.user_string())
+                write!(f, "{}.*", lp)
             }
 
             LpExtend(ref lp, _, LpInterior(ref interior)) => {
-                format!("{}.{}", lp.user_string(), interior.repr())
+                write!(f, "{}.{:?}", lp, interior)
             }
         }
     }

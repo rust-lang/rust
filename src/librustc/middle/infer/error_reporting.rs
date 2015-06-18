@@ -480,7 +480,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
             "{}: {} ({})",
                  trace.origin,
                  expected_found_str,
-                 ty::type_err_to_str(self.tcx, terr));
+                 terr);
 
         match trace.origin {
             infer::MatchExpressionArm(_, arm_span) =>

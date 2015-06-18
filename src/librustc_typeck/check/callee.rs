@@ -328,6 +328,7 @@ fn write_overloaded_call_method_map<'a,'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     fcx.inh.method_map.borrow_mut().insert(method_call, method_callee);
 }
 
+#[derive(Debug)]
 struct CallResolution<'tcx> {
     call_expr: &'tcx ast::Expr,
     callee_expr: &'tcx ast::Expr,
@@ -335,19 +336,6 @@ struct CallResolution<'tcx> {
     autoderefs: usize,
     fn_sig: ty::FnSig<'tcx>,
     closure_def_id: ast::DefId,
-}
-
-impl<'tcx> Repr for CallResolution<'tcx> {
-    fn repr(&self) -> String {
-        format!("CallResolution(call_expr={}, callee_expr={}, adjusted_ty={}, \
-                autoderefs={}, fn_sig={}, closure_def_id={})",
-                self.call_expr.repr(),
-                self.callee_expr.repr(),
-                self.adjusted_ty.repr(),
-                self.autoderefs,
-                self.fn_sig.repr(),
-                self.closure_def_id.repr())
-    }
 }
 
 impl<'tcx> DeferredCallResolution<'tcx> for CallResolution<'tcx> {
