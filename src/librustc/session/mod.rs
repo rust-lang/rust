@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use lint;
-use session::config::OutputType;
 use metadata::cstore::CStore;
 use metadata::filesearch;
 use session::search_paths::PathKind;
@@ -31,8 +30,6 @@ use rustc_back::target::Target;
 use std::path::{Path, PathBuf};
 use std::cell::{Cell, RefCell};
 use std::env;
-use std::ffi;
-use std::fmt;
 
 pub mod config;
 pub mod search_paths;
