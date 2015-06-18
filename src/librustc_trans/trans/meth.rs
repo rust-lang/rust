@@ -359,13 +359,13 @@ fn trans_monomorphized_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
             Callee { bcx: bcx, data: Fn(llfn) }
         }
-        traits::VtableClosure(closure_def_id, substs) => {
+        traits::VtableClosure(vtable_closure) => {
             // The substitutions should have no type parameters remaining
             // after passing through fulfill_obligation
             let trait_closure_kind = bcx.tcx().lang_items.fn_trait_kind(trait_id).unwrap();
             let llfn = closure::trans_closure_method(bcx.ccx(),
-                                                     closure_def_id,
-                                                     substs,
+                                                     vtable_closure.closure_def_id,
+                                                     vtable_closure.substs,
                                                      MethodCallKey(method_call),
                                                      bcx.fcx.param_substs,
                                                      trait_closure_kind);
@@ -716,7 +716,11 @@ pub fn get_vtable<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                     nested: _ }) => {
                 emit_vtable_methods(ccx, id, substs, param_substs).into_iter()
             }
-            traits::VtableClosure(closure_def_id, substs) => {
+            traits::VtableClosure(
+                traits::VtableClosureData {
+                    closure_def_id,
+                    substs,
+                    nested: _ }) => {
                 let trait_closure_kind = tcx.lang_items.fn_trait_kind(trait_ref.def_id()).unwrap();
                 let llfn = closure::trans_closure_method(ccx,
                                                          closure_def_id,

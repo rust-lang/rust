@@ -31,7 +31,8 @@ use super::Selection;
 use super::SelectionResult;
 use super::{VtableBuiltin, VtableImpl, VtableParam, VtableClosure,
             VtableFnPointer, VtableObject, VtableDefaultImpl};
-use super::{VtableImplData, VtableObjectData, VtableBuiltinData, VtableDefaultImplData};
+use super::{VtableImplData, VtableObjectData, VtableBuiltinData,
+            VtableClosureData, VtableDefaultImplData};
 use super::object_safety;
 use super::util;
 
@@ -355,7 +356,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         };
         assert!(!substs.has_escaping_regions());
 
-        let closure_trait_ref = self.closure_trait_ref(obligation, closure_def_id, substs);
+        // It is OK to call the unnormalized variant here - this is only
+        // reached for TyClosure: Fn inputs where the closure kind is
+        // still unknown, which should only occur in typeck where the
+        // closure type is already normalized.
+        let closure_trait_ref = self.closure_trait_ref_unnormalized(obligation,
+                                                                    closure_def_id,
+                                                                    substs);
+
         match self.confirm_poly_trait_refs(obligation.cause.clone(),
                                            obligation.predicate.to_poly_trait_ref(),
                                            closure_trait_ref) {
@@ -2001,8 +2009,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             ClosureCandidate(closure_def_id, substs) => {
-                try!(self.confirm_closure_candidate(obligation, closure_def_id, &substs));
-                Ok(VtableClosure(closure_def_id, substs))
+                let vtable_closure =
+                    try!(self.confirm_closure_candidate(obligation, closure_def_id, &substs));
+                Ok(VtableClosure(vtable_closure))
             }
 
             BuiltinObjectCandidate => {
@@ -2343,24 +2352,33 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                  obligation: &TraitObligation<'tcx>,
                                  closure_def_id: ast::DefId,
                                  substs: &Substs<'tcx>)
-                                 -> Result<(),SelectionError<'tcx>>
+                                 -> Result<VtableClosureData<'tcx, PredicateObligation<'tcx>>,
+                                           SelectionError<'tcx>>
     {
         debug!("confirm_closure_candidate({},{},{})",
                obligation.repr(self.tcx()),
                closure_def_id.repr(self.tcx()),
                substs.repr(self.tcx()));
 
-        let trait_ref = self.closure_trait_ref(obligation,
-                                               closure_def_id,
-                                               substs);
+        let Normalized {
+            value: trait_ref,
+            obligations
+        } = self.closure_trait_ref(obligation, closure_def_id, substs);
 
-        debug!("confirm_closure_candidate(closure_def_id={}, trait_ref={})",
+        debug!("confirm_closure_candidate(closure_def_id={}, trait_ref={}, obligations={})",
                closure_def_id.repr(self.tcx()),
-               trait_ref.repr(self.tcx()));
+               trait_ref.repr(self.tcx()),
+               obligations.repr(self.tcx()));
 
-        self.confirm_poly_trait_refs(obligation.cause.clone(),
-                                     obligation.predicate.to_poly_trait_ref(),
-                                     trait_ref)
+        try!(self.confirm_poly_trait_refs(obligation.cause.clone(),
+                                          obligation.predicate.to_poly_trait_ref(),
+                                          trait_ref));
+
+        Ok(VtableClosureData {
+            closure_def_id: closure_def_id,
+            substs: substs.clone(),
+            nested: obligations
+        })
     }
 
     /// In the case of closure types and fn pointers,
@@ -2819,11 +2837,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
     }
 
-    fn closure_trait_ref(&self,
-                         obligation: &TraitObligation<'tcx>,
-                         closure_def_id: ast::DefId,
-                         substs: &Substs<'tcx>)
-                         -> ty::PolyTraitRef<'tcx>
+    fn closure_trait_ref_unnormalized(&mut self,
+                                      obligation: &TraitObligation<'tcx>,
+                                      closure_def_id: ast::DefId,
+                                      substs: &Substs<'tcx>)
+                                      -> ty::PolyTraitRef<'tcx>
     {
         let closure_type = self.closure_typer.closure_type(closure_def_id, substs);
         let ty::Binder((trait_ref, _)) =
@@ -2832,7 +2850,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                                     obligation.predicate.0.self_ty(), // (1)
                                                     &closure_type.sig,
                                                     util::TupleArgumentsFlag::No);
-
         // (1) Feels icky to skip the binder here, but OTOH we know
         // that the self-type is an unboxed closure type and hence is
         // in fact unparameterized (or at least does not reference any
@@ -2840,6 +2857,23 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // refactoring could make this nicer.
 
         ty::Binder(trait_ref)
+    }
+
+    fn closure_trait_ref(&mut self,
+                         obligation: &TraitObligation<'tcx>,
+                         closure_def_id: ast::DefId,
+                         substs: &Substs<'tcx>)
+                         -> Normalized<'tcx, ty::PolyTraitRef<'tcx>>
+    {
+        let trait_ref = self.closure_trait_ref_unnormalized(
+            obligation, closure_def_id, substs);
+
+        // A closure signature can contain associated types which
+        // must be normalized.
+        normalize_with_depth(self,
+                             obligation.cause.clone(),
+                             obligation.recursion_depth+1,
+                             &trait_ref)
     }
 
     /// Returns the obligations that are implied by instantiating an

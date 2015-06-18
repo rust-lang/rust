@@ -479,6 +479,16 @@ impl<'tcx, N: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::VtableImplData<
     }
 }
 
+impl<'tcx, N: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::VtableClosureData<'tcx, N> {
+    fn fold_with<F:TypeFolder<'tcx>>(&self, folder: &mut F) -> traits::VtableClosureData<'tcx, N> {
+        traits::VtableClosureData {
+            closure_def_id: self.closure_def_id,
+            substs: self.substs.fold_with(folder),
+            nested: self.nested.fold_with(folder),
+        }
+    }
+}
+
 impl<'tcx, N: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::VtableDefaultImplData<N> {
     fn fold_with<F:TypeFolder<'tcx>>(&self, folder: &mut F) -> traits::VtableDefaultImplData<N> {
         traits::VtableDefaultImplData {
@@ -501,8 +511,8 @@ impl<'tcx, N: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::Vtable<'tcx, N>
         match *self {
             traits::VtableImpl(ref v) => traits::VtableImpl(v.fold_with(folder)),
             traits::VtableDefaultImpl(ref t) => traits::VtableDefaultImpl(t.fold_with(folder)),
-            traits::VtableClosure(d, ref s) => {
-                traits::VtableClosure(d, s.fold_with(folder))
+            traits::VtableClosure(ref d) => {
+                traits::VtableClosure(d.fold_with(folder))
             }
             traits::VtableFnPointer(ref d) => {
                 traits::VtableFnPointer(d.fold_with(folder))
