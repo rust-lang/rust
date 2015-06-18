@@ -26,7 +26,7 @@ use std::io::BufReader;
 use std::io::prelude::*;
 use std::net::TcpStream;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Output, ExitStatus};
+use std::process::{Command, Output, ExitStatus, Child};
 
 pub fn run(config: Config, testfile: &Path) {
     match &*config.target {
@@ -480,6 +480,147 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
             if process.kill().is_err() {
                 println!("Adb process is already finished.");
             }
+        }
+
+        _ if config.targeting_pnacl() => {
+            use std::env::consts::ARCH;
+            fn make_absolute(p: &Path) -> PathBuf {
+                use std::env;
+                env::current_dir()
+                    .map(|cwd| cwd.join(p) )
+                    .unwrap()
+            }
+
+            let arch_prefix = match ARCH {
+                "x86" => "i686",
+                _ => ARCH,
+            };
+            #[cfg(windows)]
+            fn gdb_suffix() -> &'static str { ".exe" }
+            #[cfg(unix)]
+            fn gdb_suffix() -> &'static str { "" }
+
+            let gdb = format!("{}-nacl-gdb{}", arch_prefix, gdb_suffix());
+
+            let _sel_ldr_process = match pnacl_exec_compiled_test(config,
+                                                                  props,
+                                                                  testfile,
+                                                                  props.exec_env.clone(),
+                                                                  true) {
+                ProcResOrProcessResult::ProcResResult(_) => unreachable!(),
+                ProcResOrProcessResult::ProcessResult(p) => p,
+            };
+
+            cmds = cmds.replace("run", "continue").to_string();
+
+            let pexe_path = make_absolute(&output_base_name(config, testfile));
+            let nexe_path =
+                // add an extension, don't replace it:
+                format!("{:?}.nexe", pexe_path);
+
+            // write debugger script
+            let rust_src_root = find_rust_src_root(config)
+                .expect("Could not find Rust source root");
+            let rust_pp_module_rel_path = Path::new("./src/etc");
+            let rust_pp_module_abs_path = rust_src_root
+                .join(rust_pp_module_rel_path);
+            let rust_pp_module_abs_path = format!("{:?}", rust_pp_module_abs_path);
+
+            // write debugger script
+            let mut script_str = String::with_capacity(2048);
+
+            script_str.push_str("set charset UTF-8\n");
+            script_str.push_str("target remote :4014\n");
+
+
+            // Add the directory containing the pretty printers to
+            // GDB's script auto loading safe path
+            script_str.push_str(
+                &format!("add-auto-load-safe-path {}\n",
+                         rust_pp_module_abs_path.replace("\\", "\\\\"))[..]);
+
+            // The following line actually doesn't have to do anything with
+            // pretty printing, it just tells GDB to print values on one line:
+            script_str.push_str("set print pretty off\n");
+
+            // Add the pretty printer directory to GDB's source-file search path
+            script_str.push_str(&format!("directory {}\n", rust_pp_module_abs_path)[..]);
+
+            // Load the target executable
+            script_str.push_str(&format!("file {}\n",
+                                         nexe_path.replace("\\", "\\\\"))[..]);
+
+            // Add line breakpoints
+            for line in breakpoint_lines.iter() {
+                script_str.push_str(&format!("break '{:?}':{}\n",
+                                             testfile.file_name().unwrap(),
+                                             *line)[..]);
+            }
+
+            script_str.push_str(&cmds[..]);
+            script_str.push_str("quit\n");
+
+            debug!("script_str = {}", script_str);
+            dump_output_file(config,
+                             testfile,
+                             &script_str[..],
+                             "debugger.script");
+
+            let cross_path = config.nacl_cross_path
+                .clone()
+                .expect("need the NaCl SDK path!");
+            let mut gdb_path = cross_path.clone();
+            gdb_path.push("toolchain");
+            gdb_path.push(&({
+                let mut s = pnacl_toolchain_prefix();
+                s.push_str("_x86_newlib");
+                s
+            }));
+            gdb_path.push("bin");
+            gdb_path.push(&gdb);
+            let gdb_path = gdb_path;
+
+            loop {
+                // wait for a quarter second for sel_ldr to start
+                ::std::thread::sleep_ms(250);
+                if TcpStream::connect("127.0.0.1:4014").is_ok() {
+                    break;
+                }
+            }
+
+            let debugger_script = make_out_name(config, testfile, "debugger.script");
+            // FIXME (#9639): This needs to handle non-utf8 paths
+            let debugger_opts =
+                vec!("-quiet".to_string(),
+                     "-batch".to_string(),
+                     "-nx".to_string(),
+                     format!("-command={}", debugger_script.display()));
+
+            let procsrv::Result {
+                out,
+                err,
+                status
+            } = procsrv::run("",
+                             &format!("{}", gdb_path.display())[..],
+                             None,
+                             &debugger_opts[..],
+                             vec!(("".to_string(), "".to_string())),
+                             None)
+                .expect(&format!("failed to exec `{:?}`", gdb_path)[..]);
+            let cmdline = {
+                let cmdline = make_cmdline("",
+                                           &gdb[..],
+                                           &debugger_opts[..]);
+                logv(config, format!("executing {}", cmdline));
+                cmdline
+            };
+
+            debugger_run_result = ProcRes {
+                status: Status::Normal(status),
+                stdout: out,
+                stderr: err,
+                cmdline: cmdline
+            };
         }
 
         _=> {
@@ -1167,6 +1308,14 @@ fn exec_compiled_test(config: &Config, props: &TestProps,
             _arm_exec_compiled_test(config, props, testfile, env)
         }
 
+        "le32-unknown-nacl" => {
+            match pnacl_exec_compiled_test(config, props,
+                                           testfile, env, false) {
+                ProcResOrProcessResult::ProcResResult(p) => p,
+                ProcResOrProcessResult::ProcessResult(_) => unreachable!(),
+            }
+        }
+
         _=> {
             let aux_dir = aux_output_dir_name(config, testfile);
             compose_and_run(config,
@@ -1197,6 +1346,8 @@ fn compose_and_run_compiler(config: &Config, props: &TestProps,
         let aux_props = header::load_props(&abs_ab);
         let mut crate_type = if aux_props.no_prefer_dynamic {
             Vec::new()
+        } else if config.targeting_pnacl() {
+            vec!("--crate-type=rlib".to_string())
         } else {
             // We primarily compile all auxiliary libraries as dynamic libraries
             // to avoid code size bloat and large binaries as much as possible
@@ -1295,7 +1446,7 @@ fn make_compile_args<F>(config: &Config,
                         config.build_base.to_str().unwrap().to_string(),
                         format!("--target={}", target));
     args.push_all(&extras);
-    if !props.no_prefer_dynamic {
+    if !props.no_prefer_dynamic && !config.targeting_pnacl() {
         args.push("-C".to_string());
         args.push("prefer-dynamic".to_string());
     }
@@ -1452,9 +1603,12 @@ fn output_testname(testfile: &Path) -> PathBuf {
 }
 
 fn output_base_name(config: &Config, testfile: &Path) -> PathBuf {
-    config.build_base
+    let p = config.build_base
         .join(&output_testname(testfile))
-        .with_extension(&config.stage_id)
+        .with_extension(&config.stage_id);
+    if config.targeting_pnacl() && config.mode == DebugInfoGdb {
+        p.with_extension("debug.pexe")
+    } else { p }
 }
 
 fn maybe_dump_to_stdout(config: &Config, out: &str, err: &str) {
@@ -1648,6 +1802,173 @@ fn _arm_push_aux_shared_library(config: &Config, testfile: &Path) {
             }
         }
     }
+}
+
+enum ProcResOrProcessResult {
+    ProcResResult(ProcRes),
+    ProcessResult(Child),
+}
+fn pnacl_exec_compiled_test(config: &Config, props: &TestProps,
+                            testfile: &Path, env: Vec<(String, String)>,
+                            run_background: bool) -> ProcResOrProcessResult {
+    fn make_absolute(p: &Path) -> PathBuf {
+        use std::env;
+        env::current_dir()
+            .map(|cwd| cwd.join(p) )
+            .unwrap()
+    }
+
+    let cross_path = config.nacl_cross_path
+        .clone()
+        .expect("need the NaCl SDK path!");
+
+    let pexe_path = make_absolute(&output_base_name(config, testfile));
+    let nexe_path =
+        // add an extension, don't replace it:
+        format!("{}.nexe", pexe_path.display());
+    let nexe_path = Path::new(&nexe_path);
+
+    #[cfg(target_arch = "x86")]
+    fn get_nacl_arch() -> &'static str {
+        "x86"
+    }
+    #[cfg(target_arch = "x86_64")]
+    fn get_nacl_arch() -> &'static str {
+        "x86-64"
+    }
+    #[cfg(target_arch = "arm")]
+    fn get_nacl_arch() -> &'static str {
+        "armv7"
+    }
+    #[cfg(target_arch = "mips")]
+    fn get_nacl_arch() -> &'static str {
+        "mipsel"
+    }
+    #[cfg(not(any(target_arch = "x86",
+                  target_arch = "x86_64",
+                  target_arch = "arm",
+                  target_arch = "mips")))]
+    fn get_nacl_arch() -> &'static str {
+        unreachable!("unknown host arch for NaCl");
+    }
+
+    let pnacl_trans_args = vec!(format!("-o{}", nexe_path.display()),
+                                format!("{}", pexe_path.display()),
+                                "-arch".to_string(), get_nacl_arch().to_string(),
+                                "-O0".to_string(), // TODO: not good for benchmarks.
+                                "-threads=seq".to_string(),
+                                "--allow-llvm-bitcode-input".to_string(),
+                                );
+    let pnacl_trans = {
+        let mut pnacl_trans = cross_path.clone();
+        pnacl_trans.push("toolchain");
+        pnacl_trans.push(&({
+            let mut s = pnacl_toolchain_prefix();
+            s.push_str("_pnacl");
+            s
+        }));
+        pnacl_trans.push("bin");
+        pnacl_trans.push("pnacl-translate");
+        if let Some(str) = config.rustc_path.extension() {
+            pnacl_trans.with_extension(str)
+        } else {
+            pnacl_trans
+        }
+    };
+    match program_output(config,
+                         testfile,
+                         &config.compile_lib_path[..],
+                         pnacl_trans.display().to_string(),
+                         None,
+                         pnacl_trans_args,
+                         env.clone(),
+                         None) {
+        ProcRes { ref status, .. } if status.success() => { }
+        res => {
+            return ProcResOrProcessResult::ProcResResult(res);
+        }
+    }
+
+    let _ = fs::remove_file(&pexe_path);
+
+    let tools = cross_path.join("tools");
+    let nacl_helper_bootstrap = tools.join("nacl_helper_bootstrap_x86_64");
+    let sel_ldr_bin = tools.join("sel_ldr_x86_64");
+    let irt_core = tools.join("irt_core_x86_64.nexe");
+
+    let mut sel_ldr_args = vec!(sel_ldr_bin.display().to_string(),
+                                "--r_debug=0xXXXXXXXXXXXXXXXX".to_string(),
+                                "--reserved_at_zero=0xXXXXXXXXXXXXXXXX".to_string(),
+                                "-a".to_string(),
+                                "-B".to_string(),
+                                irt_core.display().to_string());
+    if run_background && config.mode == DebugInfoGdb {
+        sel_ldr_args.push("-g".to_string());
+    }
+    sel_ldr_args.push(nexe_path.display().to_string());
+
+    let ProcArgs {
+        args: run_args,
+        ..
+    } = make_run_args(config, props, testfile);
+    sel_ldr_args.extend(run_args.into_iter());
+
+    let sel_ldr_dsp = nacl_helper_bootstrap.display().to_string();
+
+    let mut process = procsrv::run_background("",
+                                              &sel_ldr_dsp[..],
+                                              None,
+                                              &sel_ldr_args[..],
+                                              env,
+                                              None)
+        .expect(&format!("failed to exec `{}`", sel_ldr_dsp)[..]);
+
+    if !run_background {
+        let status = process.wait()
+            .unwrap();
+        let mut stdout = String::new();
+        process.stdout
+            .as_mut()
+            .unwrap()
+            .read_to_string(&mut stdout)
+            .unwrap();
+
+        let mut stderr = String::new();
+        process.stderr
+            .as_mut()
+            .unwrap()
+            .read_to_string(&mut stderr)
+            .unwrap();
+        return ProcResOrProcessResult::ProcResResult(ProcRes {
+            status: Status::Normal(status),
+            stdout: stdout,
+            stderr: stderr,
+            cmdline: make_cmdline("",
+                                  &sel_ldr_dsp[..],
+                                  &sel_ldr_args[..]),
+        });
+    } else {
+        return ProcResOrProcessResult::ProcessResult(process);
+    }
+}
+
+#[cfg(target_os = "linux")]
+fn pnacl_toolchain_prefix() -> String {
+    "linux".to_string()
+}
+#[cfg(target_os = "macos")]
+fn pnacl_toolchain_prefix() -> String {
+    "mac".to_string()
+}
+#[cfg(windows)]
+fn pnacl_toolchain_prefix() -> String {
+    "win".to_string()
+}
+#[cfg(all(not(windows),
+          not(target_os = "linux"),
+          not(target_os = "macos")))]
+fn pnacl_toolchain_prefix() -> String {
+    unimplemented!();
 }
 
 // codegen tests (using FileCheck)
