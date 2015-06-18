@@ -1855,7 +1855,7 @@ fn pnacl_exec_compiled_test(config: &Config, props: &TestProps,
     let pnacl_trans_args = vec!(format!("-o{}", nexe_path.display()),
                                 format!("{}", pexe_path.display()),
                                 "-arch".to_string(), get_nacl_arch().to_string(),
-                                "-O0".to_string(), // TODO: not good for benchmarks.
+                                "-O0".to_string(), // FIXME: not good for benchmarks.
                                 "-threads=seq".to_string(),
                                 "--allow-llvm-bitcode-input".to_string(),
                                 );
