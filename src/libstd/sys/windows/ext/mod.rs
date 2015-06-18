@@ -29,6 +29,8 @@ pub mod process;
 pub mod prelude {
     #[doc(no_inline)]
     pub use super::io::{RawSocket, RawHandle, AsRawSocket, AsRawHandle};
+    #[doc(no_inline)]
+    pub use super::io::{FromRawSocket, FromRawHandle};
     #[doc(no_inline)] #[stable(feature = "rust1", since = "1.0.0")]
     pub use super::ffi::{OsStrExt, OsStringExt};
     #[doc(no_inline)]
