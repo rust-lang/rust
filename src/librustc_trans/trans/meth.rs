@@ -11,7 +11,7 @@
 use arena::TypedArena;
 use back::abi;
 use back::link;
-use llvm::{ValueRef, get_param};
+use llvm::{ValueRef, get_params};
 use metadata::csearch;
 use middle::subst::{Subst, Substs};
 use middle::subst::VecPerParamSpace;
@@ -611,42 +611,13 @@ pub fn trans_object_shim<'a, 'tcx>(
                       &block_arena);
     let mut bcx = init_function(&fcx, false, sig.output);
 
+    let llargs = get_params(fcx.llfn);
+
     // the first argument (`self`) will be a trait object
-    let llobject = get_param(fcx.llfn, fcx.arg_pos(0) as u32);
+    let llobject = llargs[fcx.arg_pos(0)];
 
     debug!("trans_object_shim: llobject={}",
            bcx.val_to_string(llobject));
-
-    // the remaining arguments will be, well, whatever they are
-    let input_tys =
-        match fty.abi {
-            RustCall => {
-                // unpack the tuple to extract the input type arguments:
-                match sig.inputs[1].sty {
-                    ty::TyTuple(ref tys) => &**tys,
-                    _ => {
-                        bcx.sess().bug(
-                            &format!("rust-call expects a tuple not {:?}",
-                                     sig.inputs[1]));
-                    }
-                }
-            }
-            _ => {
-                // skip the self parameter:
-                &sig.inputs[1..]
-            }
-        };
-
-    let llargs: Vec<_> =
-        input_tys.iter()
-        .enumerate()
-        .map(|(i, _)| {
-            let llarg = get_param(fcx.llfn, fcx.arg_pos(i+1) as u32);
-            debug!("trans_object_shim: input #{} == {}",
-                   i, bcx.val_to_string(llarg));
-            llarg
-        })
-        .collect();
 
     assert!(!fcx.needs_ret_allocas);
 
@@ -669,7 +640,7 @@ pub fn trans_object_shim<'a, 'tcx>(
                                                                   method_bare_fn_ty,
                                                                   method_offset_in_vtable,
                                                                   llobject),
-                           ArgVals(&llargs),
+                           ArgVals(&llargs[fcx.arg_pos(1)..]),
                            dest).bcx;
 
     finish_fn(&fcx, bcx, sig.output, DebugLoc::None);

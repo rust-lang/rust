@@ -21,9 +21,7 @@ pub use self::CallArgs::*;
 use arena::TypedArena;
 use back::link;
 use session;
-use llvm::ValueRef;
-use llvm::get_param;
-use llvm;
+use llvm::{self, ValueRef, get_params};
 use metadata::csearch;
 use middle::def;
 use middle::subst;
@@ -343,19 +341,15 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
                       &block_arena);
     let mut bcx = init_function(&fcx, false, sig.output);
 
+    let llargs = get_params(fcx.llfn);
+
     // the first argument (`self`) will be ptr to the the fn pointer
     let llfnpointer = if is_by_ref {
-        Load(bcx, get_param(fcx.llfn, fcx.arg_pos(0) as u32))
+        Load(bcx, llargs[fcx.arg_pos(0)])
     } else {
-        get_param(fcx.llfn, fcx.arg_pos(0) as u32)
+        llargs[fcx.arg_pos(0)]
     };
 
-    // the remaining arguments will be the untupled values
-    let llargs: Vec<_> =
-        sig.inputs.iter()
-        .enumerate()
-        .map(|(i, _)| get_param(fcx.llfn, fcx.arg_pos(i+1) as u32))
-        .collect();
     assert!(!fcx.needs_ret_allocas);
 
     let dest = fcx.llretslotptr.get().map(|_|
@@ -366,7 +360,7 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
                            DebugLoc::None,
                            bare_fn_ty,
                            |bcx, _| Callee { bcx: bcx, data: Fn(llfnpointer) },
-                           ArgVals(&llargs[..]),
+                           ArgVals(&llargs[fcx.arg_pos(1)..]),
                            dest).bcx;
 
     finish_fn(&fcx, bcx, sig.output, DebugLoc::None);
