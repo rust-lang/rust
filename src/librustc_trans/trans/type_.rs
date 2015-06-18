@@ -171,10 +171,6 @@ impl Type {
         Type::struct_(ccx, &[], false)
     }
 
-    pub fn vtable(ccx: &CrateContext) -> Type {
-        Type::array(&Type::i8p(ccx).ptr_to(), 1)
-    }
-
     pub fn glue_fn(ccx: &CrateContext, t: Type) -> Type {
         Type::func(&[t], &Type::void(ccx))
     }

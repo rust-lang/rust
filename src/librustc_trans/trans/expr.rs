@@ -293,6 +293,9 @@ pub fn get_dataptr(bcx: Block, fat_ptr: ValueRef) -> ValueRef {
     GEPi(bcx, fat_ptr, &[0, abi::FAT_PTR_ADDR])
 }
 
+pub fn make_fat_ptr(bcx: Block, ty: Type, data: ValueRef, extra: ValueRef) -> ValueRef {
+    InsertValue(bcx, InsertValue(bcx, C_undef(ty), data, 0), extra, 1)
+}
 pub fn copy_fat_ptr(bcx: Block, src_ptr: ValueRef, dst_ptr: ValueRef) {
     Store(bcx, Load(bcx, get_dataptr(bcx, src_ptr)), get_dataptr(bcx, dst_ptr));
     Store(bcx, Load(bcx, get_len(bcx, src_ptr)), get_len(bcx, dst_ptr));

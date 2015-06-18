@@ -97,10 +97,6 @@ fn inner_inlined(counter: &mut i32, main_pos: Pos, outer_pos: Pos) {
     let inner_pos = pos!(); aux::callback_inlined(|aux_pos| {
         check!(counter; main_pos, outer_pos, inner_pos, aux_pos);
     });
-
-    // this tests a distinction between two independent calls to the inlined function.
-    // (un)fortunately, LLVM somehow merges two consecutive such calls into one node.
-    inner_further_inlined(counter, main_pos, outer_pos, pos!());
 }
 
 #[inline(never)]
