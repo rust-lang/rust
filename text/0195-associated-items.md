@@ -9,7 +9,7 @@ more convenient, scalable, and powerful. In particular, traits will consist of a
 set of methods, together with:
 
 * Associated functions (already present as "static" functions)
-* Associated statics
+* Associated consts
 * Associated types
 * Associated lifetimes
 
@@ -19,6 +19,13 @@ functions, and constants into a single package.
 This RFC also provides a mechanism for *multidispatch* traits, where the `impl`
 is selected based on multiple types. The connection to associated items will
 become clear in the detailed text below.
+
+*Note: This RFC was originally accepted before RFC 246 introduced the
+distinction between const and static items. The text has been updated to clarify
+that associated consts will be added rather than statics, and to provide a
+summary of restrictions on the initial implementation of associated
+consts. Other than that modification, the proposal has not been changed to
+reflect newer Rust features or syntax.*
 
 # Motivation
 
@@ -173,7 +180,7 @@ provide a distinct `impl` for every member of this family.
 Associated types, lifetimes, and functions can already be expressed in today's
 Rust, though it is unwieldy to do so (as argued above).
 
-But associated _statics_ cannot be expressed using today's traits.
+But associated _consts_ cannot be expressed using today's traits.
 
 For example, today's Rust includes a variety of numeric traits, including
 `Float`, which must currently expose constants as static functions:
@@ -190,20 +197,20 @@ trait Float {
 }
 ```
 
-Because these functions cannot be used in static initializers, the modules for
-float types _also_ export a separate set of constants as statics, not using
+Because these functions cannot be used in constant expressions, the modules for
+float types _also_ export a separate set of constants as consts, not using
 traits.
 
-Associated constants would allow the statics to live directly on the traits:
+Associated constants would allow the consts to live directly on the traits:
 
 ```rust
 trait Float {
-    static NAN: Self;
-    static INFINITY: Self;
-    static NEG_INFINITY: Self;
-    static NEG_ZERO: Self;
-    static PI: Self;
-    static TWO_PI: Self;
+    const NAN: Self;
+    const INFINITY: Self;
+    const NEG_INFINITY: Self;
+    const NEG_ZERO: Self;
+    const PI: Self;
+    const TWO_PI: Self;
     ...
 }
 ```
@@ -282,14 +289,14 @@ distinction" below.
 
 ## Trait bodies: defining associated items
 
-Trait bodies are expanded to include three new kinds of items: statics, types,
+Trait bodies are expanded to include three new kinds of items: consts, types,
 and lifetimes:
 
 ```
 TRAIT = TRAIT_HEADER '{' TRAIT_ITEM* '}'
 TRAIT_ITEM =
   ... <existing productions>
-  | 'static' IDENT ':' TYPE [ '=' CONST_EXP ] ';'
+  | 'const' IDENT ':' TYPE [ '=' CONST_EXP ] ';'
   | 'type' IDENT [ ':' BOUNDS ] [ WHERE_CLAUSE ] [ '=' TYPE ] ';'
   | 'lifetime' LIFETIME_IDENT ';'
 ```
@@ -352,7 +359,7 @@ external to the trait.
 
 ### Defaults
 
-Notice that associated statics and types both permit defaults, just as trait
+Notice that associated consts and types both permit defaults, just as trait
 methods and functions can provide defaults.
 
 Defaults are useful both as a code reuse mechanism, and as a way to expand the
@@ -424,13 +431,13 @@ We deal with this in a very simple way:
 
 ## Trait implementations
 
-Trait `impl` syntax is much the same as before, except that static, type, and
+Trait `impl` syntax is much the same as before, except that const, type, and
 lifetime items are allowed:
 
 ```
 IMPL_ITEM =
   ... <existing productions>
-  | 'static' IDENT ':' TYPE '=' CONST_EXP ';'
+  | 'const' IDENT ':' TYPE '=' CONST_EXP ';'
   | 'type' IDENT' '=' 'TYPE' ';'
   | 'lifetime' LIFETIME_IDENT '=' LIFETIME_REFERENCE ';'
 ```
@@ -767,7 +774,7 @@ as UFCS-style functions:
 trait Foo {
     type AssocType;
     lifetime 'assoc_lifetime;
-    static ASSOC_STATIC: uint;
+    const ASSOC_CONST: uint;
     fn assoc_fn() -> Self;
 
     // Note: 'assoc_lifetime and AssocType in scope:
@@ -776,7 +783,7 @@ trait Foo {
     fn default_method(&self) -> uint {
         // method in scope UFCS-style, assoc_fn in scope
         let _ = method(self, assoc_fn());
-        ASSOC_STATIC // in scope
+        ASSOC_CONST // in scope
     }
 }
 
@@ -875,6 +882,7 @@ trait Foo<Input1, Input2> {
     type Output1;
     type Output2;
     lifetime 'a;
+    const C: bool;
     ...
 }
 ```
@@ -887,6 +895,7 @@ T: Foo<I1, I2, Output1 = O1>
 T: Foo<I1, I2, Output2 = O2>
 T: Foo<I1, I2, Output1 = O1, Output2 = O2>
 T: Foo<I1, I2, Output1 = O1, 'a = 'b, Output2 = O2>
+T: Foo<I1, I2, Output1 = O1, 'a = 'b, C = true, Output2 = O2>
 ```
 
 The output constraints must come after all input arguments, but can appear in
@@ -947,20 +956,21 @@ trait Foo<Input1, Input2> {
     type Output1;
     type Output2;
     lifetime 'a;
+    const C: bool;
     ...
 }
 ```
 
 Unlike the case for static trait bounds, which do not have to specify any of the
-associated types or lifetimes (but do have to specify the input types), trait
-object types must specify all of the types:
+associated types, lifetimes, or consts, (but do have to specify the input types),
+trait object types must specify all of the types:
 
 ```rust
 fn consume_foo<T: Foo<I1, I2>>(t: T) // this is valid
 fn consume_obj(t: Box<Foo<I1, I2>>)  // this is NOT valid
 
 // but this IS valid:
-fn consume_obj(t: Box<Foo<I1, I2, Output1 = O2, Output2 = O2, 'a = 'static>>)
+fn consume_obj(t: Box<Foo<I1, I2, Output1 = O2, Output2 = O2, 'a = 'static, C = true>>)
 ```
 
 With this design, it is clear that none of the non-`Self` types are erased as
@@ -1190,6 +1200,13 @@ trait Mappable
 While the above demonstrates the versatility of associated types and `where`
 clauses, it is probably too much of a hack to be viable for use in `libstd`.
 
+### Associated consts in generic code
+
+If the value of an associated const depends on a type parameter (including
+`Self`), it cannot be used in a constant expression. This restriction will
+almost certainly be lifted in the future, but this raises questions outside the
+scope of this RFC.
+
 # Staging
 
 Associated lifetimes are probably not necessary for the 1.0 timeframe. While we
@@ -1393,3 +1410,35 @@ This seems like a potentially useful feature, and should be unproblematic for
 bounds, but may have implications for vtables that make it problematic for trait
 objects. Whether or not such trait combinations are allowed will likely depend
 on implementation concerns, which are not yet clear.
+
+## Generic associated consts in match patterns
+
+It seems desirable to allow constants that depend on type parameters in match
+patterns, but it's not clear how to do so while still checking exhaustiveness
+and reachability of the match arms. Most likely this requires new forms of
+where clause, to constrain associated constant values.
+
+For now, we simply defer the question.
+
+## Generic associated consts in array sizes
+
+It would be useful to be able to use trait-associated constants in generic code.
+
+```rust
+// Shouldn't this be OK?
+const ALIAS_N: usize = <T>::N;
+let x: [u8; <T>::N] = [0u8; ALIAS_N];
+// Or...
+let x: [u8; T::N + 1] = [0u8; T::N + 1];
+```
+
+However, this causes some problems. What should we do with the following case in
+type checking, where we need to prove that a generic is valid for any `T`?
+
+```rust
+let x: [u8; T::N + T::N] = [0u8; 2 * T::N];
+```
+
+We would like to handle at least some obvious cases (e.g. proving that
+`T::N == T::N`), but without trying to prove arbitrary statements about
+arithmetic. The question of how to do this is deferred.
