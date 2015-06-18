@@ -301,12 +301,6 @@ pub fn fresh_type_vars_for_impl<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
     infcx.fresh_substs_for_generics(span, &impl_generics)
 }
 
-impl<'tcx, N> fmt::Debug for super::VtableClosureData<'tcx, N> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "VtableClosure({:?})", self.closure_def_id)
-    }
-}
-
 /// See `super::obligations_for_generics`
 pub fn predicates_for_generics<'tcx>(cause: ObligationCause<'tcx>,
                                      recursion_depth: usize,
