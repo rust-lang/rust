@@ -265,7 +265,7 @@ pub fn test_opts(config: &Config) -> test::TestOpts {
         logfile: config.logfile.clone(),
         run_tests: true,
         bench_benchmarks: true,
-        nocapture: env::var("RUST_TEST_NOCAPTURE").is_ok(),
+        no_capture: env::var("RUST_TEST_NO_CAPTURE").is_ok(),
         color: test::AutoColor,
     }
 }

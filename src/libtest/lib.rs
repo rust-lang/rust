@@ -289,7 +289,7 @@ pub struct TestOpts {
     pub run_tests: bool,
     pub bench_benchmarks: bool,
     pub logfile: Option<PathBuf>,
-    pub nocapture: bool,
+    pub no_capture: bool,
     pub color: ColorConfig,
 }
 
@@ -302,7 +302,7 @@ impl TestOpts {
             run_tests: false,
             bench_benchmarks: false,
             logfile: None,
-            nocapture: false,
+            no_capture: false,
             color: AutoColor,
         }
     }
@@ -318,7 +318,8 @@ fn optgroups() -> Vec<getopts::OptGroup> {
       getopts::optflag("h", "help", "Display this message (longer with --help)"),
       getopts::optopt("", "logfile", "Write logs to the specified file instead \
                           of stdout", "PATH"),
-      getopts::optflag("", "nocapture", "don't capture stdout/stderr of each \
+      getopts::optflag("", "nocapture", "Deprecated. Use --no-capture."),
+      getopts::optflag("", "no-capture", "Don't capture stdout/stderr of each \
                                          task, allow printing directly"),
       getopts::optopt("", "color", "Configure coloring of output:
             auto   = colorize if stdout is a tty and tests are run on serially (default);
@@ -337,7 +338,7 @@ By default, all tests are run in parallel. This can be altered with the
 RUST_TEST_THREADS environment variable when running tests (set it to 1).
 
 All tests have their standard output and standard error captured by default.
-This can be overridden with the --nocapture flag or the RUST_TEST_NOCAPTURE=1
+This can be overridden with the --no-capture flag or the RUST_TEST_NO_CAPTURE=1
 environment variable. Logging is not captured by default.
 
 Test Attributes:
@@ -383,9 +384,20 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
     let run_tests = ! bench_benchmarks ||
         matches.opt_present("test");
 
-    let mut nocapture = matches.opt_present("nocapture");
-    if !nocapture {
-        nocapture = env::var("RUST_TEST_NOCAPTURE").is_ok();
+    let mut no_capture = matches.opt_present("no-capture");
+    if !no_capture {
+        no_capture = env::var("RUST_TEST_NO_CAPTURE").is_ok();
+    }
+
+    // Warn on deprecated options but still accept them.
+    if matches.opt_present("nocapture") {
+        warn("--nocapture is deprecated. Use --no-capture instead.");
+        no_capture = true;
+    }
+
+    if env::var("RUST_TEST_NOCAPTURE").is_ok() {
+        warn("RUST_TEST_NOCAPTURE is deprecated. Use RUST_TEST_NO_CAPTURE instead.");
+        no_capture = true;
     }
 
     let color = match matches.opt_str("color").as_ref().map(|s| &**s) {
@@ -404,11 +416,16 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
         run_tests: run_tests,
         bench_benchmarks: bench_benchmarks,
         logfile: logfile,
-        nocapture: nocapture,
+        no_capture: no_capture,
         color: color,
     };
 
     Some(Ok(test_opts))
+}
+
+/// Writes a warning message to stderr.
+fn warn(message: &str) {
+    writeln!(io::stderr(), "WARN: {}", message).unwrap();
 }
 
 #[derive(Clone, PartialEq)]
@@ -958,7 +975,7 @@ pub fn run_test(opts: &TestOpts,
 
     fn run_test_inner(desc: TestDesc,
                       monitor_ch: Sender<MonitorMsg>,
-                      nocapture: bool,
+                      no_capture: bool,
                       testfn: Thunk<'static>) {
         struct Sink(Arc<Mutex<Vec<u8>>>);
         impl Write for Sink {
@@ -977,7 +994,7 @@ pub fn run_test(opts: &TestOpts,
             });
 
             let result_guard = cfg.spawn(move || {
-                if !nocapture {
+                if !no_capture {
                     io::set_print(box Sink(data2.clone()));
                     io::set_panic(box Sink(data2));
                 }
@@ -1012,8 +1029,8 @@ pub fn run_test(opts: &TestOpts,
             monitor_ch.send((desc, TrMetrics(mm), Vec::new())).unwrap();
             return;
         }
-        DynTestFn(f) => run_test_inner(desc, monitor_ch, opts.nocapture, f),
-        StaticTestFn(f) => run_test_inner(desc, monitor_ch, opts.nocapture,
+        DynTestFn(f) => run_test_inner(desc, monitor_ch, opts.no_capture, f),
+        StaticTestFn(f) => run_test_inner(desc, monitor_ch, opts.no_capture,
                                           Box::new(move|| f()))
     }
 }
