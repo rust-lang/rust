@@ -45,7 +45,6 @@ use syntax::abi;
 use syntax::ast;
 use syntax::owned_slice::OwnedSlice;
 use util::nodemap::FnvHashMap;
-use util::ppaux::Repr;
 
 ///////////////////////////////////////////////////////////////////////////
 // Two generic traits
@@ -844,13 +843,13 @@ impl<'a, 'tcx> TypeFolder<'tcx> for RegionFolder<'a, 'tcx>
     fn fold_region(&mut self, r: ty::Region) -> ty::Region {
         match r {
             ty::ReLateBound(debruijn, _) if debruijn.depth < self.current_depth => {
-                debug!("RegionFolder.fold_region({}) skipped bound region (current depth={})",
-                       r.repr(), self.current_depth);
+                debug!("RegionFolder.fold_region({:?}) skipped bound region (current depth={})",
+                       r, self.current_depth);
                 r
             }
             _ => {
-                debug!("RegionFolder.fold_region({}) folding free region (current_depth={})",
-                       r.repr(), self.current_depth);
+                debug!("RegionFolder.fold_region({:?}) folding free region (current_depth={})",
+                       r, self.current_depth);
                 (self.fld_r)(r, self.current_depth)
             }
         }
@@ -889,7 +888,7 @@ pub fn replace_late_bound_regions<'tcx,T,F>(tcx: &ty::ctxt<'tcx>,
     where F : FnMut(ty::BoundRegion) -> ty::Region,
           T : TypeFoldable<'tcx>,
 {
-    debug!("replace_late_bound_regions({})", value.repr());
+    debug!("replace_late_bound_regions({:?})", value);
     let mut replacer = RegionReplacer::new(tcx, &mut f);
     let result = value.skip_binder().fold_with(&mut replacer);
     (result, replacer.map)
@@ -918,8 +917,8 @@ impl<'a, 'tcx> TypeFolder<'tcx> for RegionReplacer<'a, 'tcx>
     fn fold_region(&mut self, r: ty::Region) -> ty::Region {
         match r {
             ty::ReLateBound(debruijn, br) if debruijn.depth == self.current_depth => {
-                debug!("RegionReplacer.fold_region({}) folding region (current_depth={})",
-                       r.repr(), self.current_depth);
+                debug!("RegionReplacer.fold_region({:?}) folding region (current_depth={})",
+                       r, self.current_depth);
                 let fld_r = &mut self.fld_r;
                 let region = *self.map.entry(br).or_insert_with(|| fld_r(br));
                 if let ty::ReLateBound(debruijn1, br) = region {
@@ -998,8 +997,8 @@ pub fn shift_region(region: ty::Region, amount: u32) -> ty::Region {
 
 pub fn shift_regions<'tcx, T:TypeFoldable<'tcx>>(tcx: &ty::ctxt<'tcx>,
                                                  amount: u32, value: &T) -> T {
-    debug!("shift_regions(value={}, amount={})",
-           value.repr(), amount);
+    debug!("shift_regions(value={:?}, amount={})",
+           value, amount);
 
     value.fold_with(&mut RegionFolder::new(tcx, &mut |region, _current_depth| {
         shift_region(region, amount)

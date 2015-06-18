@@ -28,7 +28,6 @@ use syntax::codemap::{Span, DUMMY_SP};
 use std::collections::HashSet;
 use std::mem;
 use std::rc::Rc;
-use util::ppaux::Repr;
 
 use self::CandidateKind::*;
 pub use self::PickKind::*;
@@ -127,8 +126,8 @@ pub fn probe<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                        scope_expr_id: ast::NodeId)
                        -> PickResult<'tcx>
 {
-    debug!("probe(self_ty={}, item_name={}, scope_expr_id={})",
-           self_ty.repr(),
+    debug!("probe(self_ty={:?}, item_name={}, scope_expr_id={})",
+           self_ty,
            item_name,
            scope_expr_id);
 
@@ -167,9 +166,9 @@ pub fn probe<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             Some(simplified_steps)
         };
 
-    debug!("ProbeContext: steps for self_ty={} are {}",
-           self_ty.repr(),
-           steps.repr());
+    debug!("ProbeContext: steps for self_ty={:?} are {:?}",
+           self_ty,
+           steps);
 
     // this creates one big transaction so that all type variables etc
     // that we create during the probe process are removed later
@@ -272,8 +271,8 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
     }
 
     fn assemble_probe(&mut self, self_ty: Ty<'tcx>) {
-        debug!("assemble_probe: self_ty={}",
-               self_ty.repr());
+        debug!("assemble_probe: self_ty={:?}",
+               self_ty);
 
         match self_ty.sty {
             ty::TyTrait(box ref data) => {
@@ -416,7 +415,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         let traits::Normalized { value: xform_self_ty, obligations } =
             traits::normalize(selcx, cause, &xform_self_ty);
         debug!("assemble_inherent_impl_probe: xform_self_ty = {:?}",
-               xform_self_ty.repr());
+               xform_self_ty);
 
         self.inherent_candidates.push(Candidate {
             xform_self_ty: xform_self_ty,
@@ -428,8 +427,8 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
     fn assemble_inherent_candidates_from_object(&mut self,
                                                 self_ty: Ty<'tcx>,
                                                 data: &ty::TraitTy<'tcx>) {
-        debug!("assemble_inherent_candidates_from_object(self_ty={})",
-               self_ty.repr());
+        debug!("assemble_inherent_candidates_from_object(self_ty={:?})",
+               self_ty);
 
         let tcx = self.tcx();
 
@@ -500,10 +499,10 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                                    trait_ref.substs);
 
             if let Some(ref m) = item.as_opt_method() {
-                debug!("found match: trait_ref={} substs={} m={}",
-                       trait_ref.repr(),
-                       trait_ref.substs.repr(),
-                       m.repr());
+                debug!("found match: trait_ref={:?} substs={:?} m={:?}",
+                       trait_ref,
+                       trait_ref.substs,
+                       m);
                 assert_eq!(m.generics.types.get_slice(subst::TypeSpace).len(),
                            trait_ref.substs.types.get_slice(subst::TypeSpace).len());
                 assert_eq!(m.generics.regions.get_slice(subst::TypeSpace).len(),
@@ -543,7 +542,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             usize,
         ),
     {
-        debug!("elaborate_bounds(bounds={})", bounds.repr());
+        debug!("elaborate_bounds(bounds={:?})", bounds);
 
         let tcx = self.tcx();
         for bound_trait_ref in traits::transitive_bounds(tcx, bounds) {
@@ -592,8 +591,8 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                                                trait_def_id: ast::DefId)
                                                -> Result<(),MethodError>
     {
-        debug!("assemble_extension_candidates_for_trait(trait_def_id={})",
-               trait_def_id.repr());
+        debug!("assemble_extension_candidates_for_trait(trait_def_id={:?})",
+               trait_def_id);
 
         // Check whether `trait_def_id` defines a method with suitable name:
         let trait_items =
@@ -642,9 +641,10 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
 
         // FIXME(arielb1): can we use for_each_relevant_impl here?
         trait_def.for_each_impl(self.tcx(), |impl_def_id| {
-            debug!("assemble_extension_candidates_for_trait_impl: trait_def_id={} impl_def_id={}",
-                   trait_def_id.repr(),
-                   impl_def_id.repr());
+            debug!("assemble_extension_candidates_for_trait_impl: trait_def_id={:?} \
+                                                                  impl_def_id={:?}",
+                   trait_def_id,
+                   impl_def_id);
 
             if !self.impl_can_possibly_match(impl_def_id) {
                 return;
@@ -652,14 +652,14 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
 
             let (_, impl_substs) = self.impl_ty_and_substs(impl_def_id);
 
-            debug!("impl_substs={}", impl_substs.repr());
+            debug!("impl_substs={:?}", impl_substs);
 
             let impl_trait_ref =
                 ty::impl_trait_ref(self.tcx(), impl_def_id)
                 .unwrap() // we know this is a trait impl
                 .subst(self.tcx(), &impl_substs);
 
-            debug!("impl_trait_ref={}", impl_trait_ref.repr());
+            debug!("impl_trait_ref={:?}", impl_trait_ref);
 
             // Determine the receiver type that the method itself expects.
             let xform_self_ty =
@@ -675,7 +675,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             let traits::Normalized { value: xform_self_ty, obligations } =
                 traits::normalize(selcx, cause, &xform_self_ty);
 
-            debug!("xform_self_ty={}", xform_self_ty.repr());
+            debug!("xform_self_ty={:?}", xform_self_ty);
 
             self.extension_candidates.push(Candidate {
                 xform_self_ty: xform_self_ty,
@@ -773,31 +773,31 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                                       item_index: usize)
     {
         debug!("assemble_projection_candidates(\
-               trait_def_id={}, \
-               item={}, \
+               trait_def_id={:?}, \
+               item={:?}, \
                item_index={})",
-               trait_def_id.repr(),
-               item.repr(),
+               trait_def_id,
+               item,
                item_index);
 
         for step in self.steps.iter() {
-            debug!("assemble_projection_candidates: step={}",
-                   step.repr());
+            debug!("assemble_projection_candidates: step={:?}",
+                   step);
 
             let projection_trait_ref = match step.self_ty.sty {
                 ty::TyProjection(ref data) => &data.trait_ref,
                 _ => continue,
             };
 
-            debug!("assemble_projection_candidates: projection_trait_ref={}",
-                   projection_trait_ref.repr());
+            debug!("assemble_projection_candidates: projection_trait_ref={:?}",
+                   projection_trait_ref);
 
             let trait_predicates = ty::lookup_predicates(self.tcx(),
                                                          projection_trait_ref.def_id);
             let bounds = trait_predicates.instantiate(self.tcx(), projection_trait_ref.substs);
             let predicates = bounds.predicates.into_vec();
-            debug!("assemble_projection_candidates: predicates={}",
-                   predicates.repr());
+            debug!("assemble_projection_candidates: predicates={:?}",
+                   predicates);
             for poly_bound in
                 traits::elaborate_predicates(self.tcx(), predicates)
                 .filter_map(|p| p.to_opt_poly_trait_ref())
@@ -805,18 +805,18 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             {
                 let bound = self.erase_late_bound_regions(&poly_bound);
 
-                debug!("assemble_projection_candidates: projection_trait_ref={} bound={}",
-                       projection_trait_ref.repr(),
-                       bound.repr());
+                debug!("assemble_projection_candidates: projection_trait_ref={:?} bound={:?}",
+                       projection_trait_ref,
+                       bound);
 
                 if self.infcx().can_equate(&step.self_ty, &bound.self_ty()).is_ok() {
                     let xform_self_ty = self.xform_self_ty(&item,
                                                            bound.self_ty(),
                                                            bound.substs);
 
-                    debug!("assemble_projection_candidates: bound={} xform_self_ty={}",
-                           bound.repr(),
-                           xform_self_ty.repr());
+                    debug!("assemble_projection_candidates: bound={:?} xform_self_ty={:?}",
+                           bound,
+                           xform_self_ty);
 
                     self.extension_candidates.push(Candidate {
                         xform_self_ty: xform_self_ty,
@@ -833,8 +833,8 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                                         item: ty::ImplOrTraitItem<'tcx>,
                                         item_index: usize)
     {
-        debug!("assemble_where_clause_candidates(trait_def_id={})",
-               trait_def_id.repr());
+        debug!("assemble_where_clause_candidates(trait_def_id={:?})",
+               trait_def_id);
 
         let caller_predicates = self.fcx.inh.param_env.caller_bounds.clone();
         for poly_bound in traits::elaborate_predicates(self.tcx(), caller_predicates)
@@ -846,9 +846,9 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                                                    bound.self_ty(),
                                                    bound.substs);
 
-            debug!("assemble_where_clause_candidates: bound={} xform_self_ty={}",
-                   bound.repr(),
-                   xform_self_ty.repr());
+            debug!("assemble_where_clause_candidates: bound={:?} xform_self_ty={:?}",
+                   bound,
+                   xform_self_ty);
 
             self.extension_candidates.push(Candidate {
                 xform_self_ty: xform_self_ty,
@@ -914,7 +914,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
     }
 
     fn pick_step(&mut self, step: &CandidateStep<'tcx>) -> Option<PickResult<'tcx>> {
-        debug!("pick_step: step={}", step.repr());
+        debug!("pick_step: step={:?}", step);
 
         if ty::type_is_error(step.self_ty) {
             return None;
@@ -1012,7 +1012,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                   .filter(|&probe| self.consider_probe(self_ty, probe))
                   .collect();
 
-        debug!("applicable_candidates: {}", applicable_candidates.repr());
+        debug!("applicable_candidates: {:?}", applicable_candidates);
 
         if applicable_candidates.len() > 1 {
             match self.collapse_candidates_to_trait_pick(&applicable_candidates[..]) {
@@ -1033,9 +1033,9 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
     }
 
     fn consider_probe(&self, self_ty: Ty<'tcx>, probe: &Candidate<'tcx>) -> bool {
-        debug!("consider_probe: self_ty={} probe={}",
-               self_ty.repr(),
-               probe.repr());
+        debug!("consider_probe: self_ty={:?} probe={:?}",
+               self_ty,
+               probe);
 
         self.infcx().probe(|_| {
             // First check that the self type can be related.
@@ -1068,7 +1068,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                     let obligations =
                         traits::predicates_for_generics(cause.clone(),
                                                         &impl_bounds);
-                    debug!("impl_obligations={}", obligations.repr());
+                    debug!("impl_obligations={:?}", obligations);
 
                     // Evaluate those obligations to see if they might possibly hold.
                     obligations.iter()
@@ -1180,10 +1180,10 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                             substs: &subst::Substs<'tcx>)
                             -> Ty<'tcx>
     {
-        debug!("xform_self_ty(impl_ty={}, self_ty={}, substs={})",
-               impl_ty.repr(),
-               method.fty.sig.0.inputs.get(0).repr(),
-               substs.repr());
+        debug!("xform_self_ty(impl_ty={:?}, self_ty={:?}, substs={:?})",
+               impl_ty,
+               method.fty.sig.0.inputs.get(0),
+               substs);
 
         assert!(!substs.has_escaping_regions());
 

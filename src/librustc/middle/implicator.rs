@@ -21,7 +21,6 @@ use syntax::codemap::Span;
 
 use util::common::ErrorReported;
 use util::nodemap::FnvHashSet;
-use util::ppaux::Repr;
 
 // Helper functions related to manipulating region types.
 
@@ -54,10 +53,10 @@ pub fn implications<'a,'tcx>(
     span: Span)
     -> Vec<Implication<'tcx>>
 {
-    debug!("implications(body_id={}, ty={}, outer_region={})",
+    debug!("implications(body_id={}, ty={:?}, outer_region={:?})",
            body_id,
-           ty.repr(),
-           outer_region.repr());
+           ty,
+           outer_region);
 
     let mut stack = Vec::new();
     stack.push((outer_region, None));
@@ -69,7 +68,7 @@ pub fn implications<'a,'tcx>(
                               out: Vec::new(),
                               visited: FnvHashSet() };
     wf.accumulate_from_ty(ty);
-    debug!("implications: out={}", wf.out.repr());
+    debug!("implications: out={:?}", wf.out);
     wf.out
 }
 
@@ -79,8 +78,8 @@ impl<'a, 'tcx> Implicator<'a, 'tcx> {
     }
 
     fn accumulate_from_ty(&mut self, ty: Ty<'tcx>) {
-        debug!("accumulate_from_ty(ty={})",
-               ty.repr());
+        debug!("accumulate_from_ty(ty={:?})",
+               ty);
 
         // When expanding out associated types, we can visit a cyclic
         // set of types. Issue #23003.
@@ -313,8 +312,8 @@ impl<'a, 'tcx> Implicator<'a, 'tcx> {
     fn accumulate_from_assoc_types_transitive(&mut self,
                                               data: &ty::PolyTraitPredicate<'tcx>)
     {
-        debug!("accumulate_from_assoc_types_transitive({})",
-               data.repr());
+        debug!("accumulate_from_assoc_types_transitive({:?})",
+               data);
 
         for poly_trait_ref in traits::supertraits(self.tcx(), data.to_poly_trait_ref()) {
             match ty::no_late_bound_regions(self.tcx(), &poly_trait_ref) {
@@ -327,8 +326,8 @@ impl<'a, 'tcx> Implicator<'a, 'tcx> {
     fn accumulate_from_assoc_types(&mut self,
                                    trait_ref: ty::TraitRef<'tcx>)
     {
-        debug!("accumulate_from_assoc_types({})",
-               trait_ref.repr());
+        debug!("accumulate_from_assoc_types({:?})",
+               trait_ref);
 
         let trait_def_id = trait_ref.def_id;
         let trait_def = ty::lookup_trait_def(self.tcx(), trait_def_id);
@@ -337,8 +336,8 @@ impl<'a, 'tcx> Implicator<'a, 'tcx> {
                      .iter()
                      .map(|&name| ty::mk_projection(self.tcx(), trait_ref.clone(), name))
                      .collect();
-        debug!("accumulate_from_assoc_types: assoc_type_projections={}",
-               assoc_type_projections.repr());
+        debug!("accumulate_from_assoc_types: assoc_type_projections={:?}",
+               assoc_type_projections);
         let tys = match self.fully_normalize(&assoc_type_projections) {
             Ok(tys) => { tys }
             Err(ErrorReported) => { return; }

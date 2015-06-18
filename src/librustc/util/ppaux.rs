@@ -28,28 +28,6 @@ use syntax::abi;
 use syntax::parse::token;
 use syntax::{ast, ast_util};
 
-/// Produces a string suitable for debugging output.
-pub trait Repr {
-    fn repr(&self) -> String;
-}
-
-/// Produces a string suitable for showing to the user.
-pub trait UserString {
-    fn user_string(&self) -> String;
-}
-
-impl<T: fmt::Debug> Repr for T {
-    fn repr(&self) -> String {
-        format!("{:?}", *self)
-    }
-}
-
-impl<T: fmt::Display> UserString for T {
-    fn user_string(&self) -> String {
-        format!("{}", *self)
-    }
-}
-
 pub fn verbose() -> bool {
     ty::tls::with(|tcx| tcx.sess.verbose())
 }
@@ -146,7 +124,7 @@ fn parameterized<GG>(f: &mut fmt::Formatter,
         subst::NonerasedRegions(ref regions) => {
             for &r in regions {
                 try!(start_or_continue(f, "<", ", "));
-                let s = r.user_string();
+                let s = r.to_string();
                 if s.is_empty() {
                     // This happens when the value of the region
                     // parameter is not easily serialized. This may be
@@ -316,7 +294,7 @@ impl<'tcx> fmt::Display for ty::TraitTy<'tcx> {
         // Region, if not obviously implied by builtin bounds.
         if bounds.region_bound != ty::ReStatic {
             // Region bound is implied by builtin bounds:
-            let bound = bounds.region_bound.user_string();
+            let bound = bounds.region_bound.to_string();
             if !bound.is_empty() {
                 try!(write!(f, " + {}", bound));
             }
@@ -589,7 +567,7 @@ impl<'tcx> fmt::Debug for ty::ExistentialBounds<'tcx> {
             }
         };
 
-        let region_str = self.region_bound.repr();
+        let region_str = format!("{:?}", self.region_bound);
         if !region_str.is_empty() {
             try!(maybe_continue(f));
             try!(write!(f, "{}", region_str));
@@ -693,7 +671,7 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
             }
             TyRef(r, ref tm) => {
                 try!(write!(f, "&"));
-                let s = r.user_string();
+                let s = r.to_string();
                 try!(write!(f, "{}", s));
                 if !s.is_empty() {
                     try!(write!(f, " "));

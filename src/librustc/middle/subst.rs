@@ -15,7 +15,6 @@ pub use self::RegionSubsts::*;
 
 use middle::ty::{self, Ty};
 use middle::ty_fold::{self, TypeFoldable, TypeFolder};
-use util::ppaux::Repr;
 
 use std::fmt;
 use std::iter::IntoIterator;
@@ -618,10 +617,10 @@ impl<'a, 'tcx> TypeFolder<'tcx> for SubstFolder<'a, 'tcx> {
                                 self.tcx().sess.span_bug(
                                     span,
                                     &format!("Type parameter out of range \
-                                              when substituting in region {} (root type={}) \
+                                              when substituting in region {} (root type={:?}) \
                                               (space={:?}, index={})",
-                                             data.name.as_str(),
-                                             self.root_ty.repr(),
+                                             data.name,
+                                             self.root_ty,
                                              data.space,
                                              data.index));
                             }
@@ -673,14 +672,14 @@ impl<'a,'tcx> SubstFolder<'a,'tcx> {
                 let span = self.span.unwrap_or(DUMMY_SP);
                 self.tcx().sess.span_bug(
                     span,
-                    &format!("Type parameter `{}` ({}/{:?}/{}) out of range \
-                                 when substituting (root type={}) substs={}",
-                            p.repr(),
-                            source_ty.repr(),
+                    &format!("Type parameter `{:?}` ({:?}/{:?}/{}) out of range \
+                                 when substituting (root type={:?}) substs={:?}",
+                            p,
+                            source_ty,
                             p.space,
                             p.idx,
-                            self.root_ty.repr(),
-                            self.substs.repr()));
+                            self.root_ty,
+                            self.substs));
             }
         };
 
@@ -731,14 +730,14 @@ impl<'a,'tcx> SubstFolder<'a,'tcx> {
     /// is that only in the second case have we passed through a fn binder.
     fn shift_regions_through_binders(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
         debug!("shift_regions(ty={:?}, region_binders_passed={:?}, type_has_escaping_regions={:?})",
-               ty.repr(), self.region_binders_passed, ty::type_has_escaping_regions(ty));
+               ty, self.region_binders_passed, ty::type_has_escaping_regions(ty));
 
         if self.region_binders_passed == 0 || !ty::type_has_escaping_regions(ty) {
             return ty;
         }
 
         let result = ty_fold::shift_regions(self.tcx(), self.region_binders_passed, &ty);
-        debug!("shift_regions: shifted result = {:?}", result.repr());
+        debug!("shift_regions: shifted result = {:?}", result);
 
         result
     }

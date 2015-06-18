@@ -28,7 +28,6 @@ use rustc_typeck::middle::infer;
 use rustc_typeck::middle::infer::lub::Lub;
 use rustc_typeck::middle::infer::glb::Glb;
 use rustc_typeck::middle::infer::sub::Sub;
-use rustc_typeck::util::ppaux::{Repr, UserString};
 use rustc::ast_map;
 use rustc::session::{self,config};
 use syntax::{abi, ast};
@@ -188,7 +187,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
                       -> Option<ast::NodeId> {
             assert!(idx < names.len());
             for item in &m.items {
-                if item.ident.user_string() == names[idx] {
+                if item.ident.to_string() == names[idx] {
                     return search(this, &**item, idx+1, names);
                 }
             }
@@ -240,19 +239,13 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
 
     pub fn assert_subtype(&self, a: Ty<'tcx>, b: Ty<'tcx>) {
         if !self.is_subtype(a, b) {
-            panic!("{} is not a subtype of {}, but it should be",
-                  self.ty_to_string(a),
-                  self.ty_to_string(b));
+            panic!("{} is not a subtype of {}, but it should be", a, b);
         }
     }
 
     pub fn assert_eq(&self, a: Ty<'tcx>, b: Ty<'tcx>) {
         self.assert_subtype(a, b);
         self.assert_subtype(b, a);
-    }
-
-    pub fn ty_to_string(&self, a: Ty<'tcx>) -> String {
-         a.user_string()
     }
 
     pub fn t_fn(&self,
@@ -385,9 +378,9 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
         match self.sub().relate(&t1, &t2) {
             Ok(_) => { }
             Err(ref e) => {
-                panic!("unexpected error computing sub({},{}): {}",
-                       t1.repr(),
-                       t2.repr(),
+                panic!("unexpected error computing sub({:?},{:?}): {}",
+                       t1,
+                       t2,
                        e);
             }
         }
@@ -399,9 +392,9 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
         match self.sub().relate(&t1, &t2) {
             Err(_) => { }
             Ok(_) => {
-                panic!("unexpected success computing sub({},{})",
-                       t1.repr(),
-                       t2.repr());
+                panic!("unexpected success computing sub({:?},{:?})",
+                       t1,
+                       t2);
             }
         }
     }
@@ -420,10 +413,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
 
     /// Checks that `GLB(t1,t2) == t_glb`
     pub fn check_glb(&self, t1: Ty<'tcx>, t2: Ty<'tcx>, t_glb: Ty<'tcx>) {
-        debug!("check_glb(t1={}, t2={}, t_glb={})",
-               self.ty_to_string(t1),
-               self.ty_to_string(t2),
-               self.ty_to_string(t_glb));
+        debug!("check_glb(t1={}, t2={}, t_glb={})", t1, t2, t_glb);
         match self.glb().relate(&t1, &t2) {
             Err(e) => {
                 panic!("unexpected error computing LUB: {:?}", e)
@@ -656,7 +646,7 @@ fn glb_bound_free_infer() {
         let t_resolve1 = env.infcx.shallow_resolve(t_infer1);
         match t_resolve1.sty {
             ty::TyRef(..) => { }
-            _ => { panic!("t_resolve1={}", t_resolve1.repr()); }
+            _ => { panic!("t_resolve1={:?}", t_resolve1); }
         }
     })
 }
@@ -698,11 +688,11 @@ fn subst_ty_renumber_bound() {
             env.t_fn(&[t_ptr_bound2], env.t_nil())
         };
 
-        debug!("subst_bound: t_source={} substs={} t_substituted={} t_expected={}",
-               t_source.repr(),
-               substs.repr(),
-               t_substituted.repr(),
-               t_expected.repr());
+        debug!("subst_bound: t_source={:?} substs={:?} t_substituted={:?} t_expected={:?}",
+               t_source,
+               substs,
+               t_substituted,
+               t_expected);
 
         assert_eq!(t_substituted, t_expected);
     })
@@ -735,11 +725,11 @@ fn subst_ty_renumber_some_bounds() {
             env.t_pair(t_rptr_bound1, env.t_fn(&[t_rptr_bound2], env.t_nil()))
         };
 
-        debug!("subst_bound: t_source={} substs={} t_substituted={} t_expected={}",
-               t_source.repr(),
-               substs.repr(),
-               t_substituted.repr(),
-               t_expected.repr());
+        debug!("subst_bound: t_source={:?} substs={:?} t_substituted={:?} t_expected={:?}",
+               t_source,
+               substs,
+               t_substituted,
+               t_expected);
 
         assert_eq!(t_substituted, t_expected);
     })
@@ -796,11 +786,11 @@ fn subst_region_renumber_region() {
             env.t_fn(&[t_rptr_bound2], env.t_nil())
         };
 
-        debug!("subst_bound: t_source={} substs={} t_substituted={} t_expected={}",
-               t_source.repr(),
-               substs.repr(),
-               t_substituted.repr(),
-               t_expected.repr());
+        debug!("subst_bound: t_source={:?} substs={:?} t_substituted={:?} t_expected={:?}",
+               t_source,
+               substs,
+               t_substituted,
+               t_expected);
 
         assert_eq!(t_substituted, t_expected);
     })

@@ -18,7 +18,6 @@ use syntax::ast;
 use syntax::ast_util;
 use syntax::codemap::Span;
 use syntax::visit;
-use util::ppaux::{Repr, UserString};
 
 pub fn check(tcx: &ty::ctxt) {
     let mut orphan = OrphanChecker { tcx: tcx };
@@ -229,7 +228,7 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
                                 "type parameter `{}` must be used as the type parameter for \
                                  some local type (e.g. `MyStruct<T>`); only traits defined in \
                                  the current crate can be implemented for a type parameter",
-                                param_ty.user_string());
+                                param_ty);
                         return;
                     }
                 }
@@ -267,9 +266,9 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
                 // This final impl is legal according to the orpan
                 // rules, but it invalidates the reasoning from
                 // `two_foos` above.
-                debug!("trait_ref={} trait_def_id={} trait_has_default_impl={}",
-                       trait_ref.repr(),
-                       trait_def_id.repr(),
+                debug!("trait_ref={:?} trait_def_id={:?} trait_has_default_impl={}",
+                       trait_ref,
+                       trait_def_id,
                        ty::trait_has_default_impl(self.tcx, trait_def_id));
                 if
                     ty::trait_has_default_impl(self.tcx, trait_def_id) &&
@@ -307,7 +306,7 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
                                  can only be implemented for a struct/enum type, \
                                  not `{}`",
                                 ty::item_path_str(self.tcx, trait_def_id),
-                                self_ty.user_string()))
+                                self_ty))
                         }
                     };
 

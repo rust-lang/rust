@@ -16,7 +16,6 @@ use syntax::ast;
 use syntax::codemap::Span;
 use util::common::ErrorReported;
 use util::nodemap::FnvHashSet;
-use util::ppaux::Repr;
 
 use super::{Obligation, ObligationCause, PredicateObligation,
             VtableImpl, VtableParam, VtableImplData, VtableDefaultImplData};
@@ -125,8 +124,8 @@ impl<'cx, 'tcx> Elaborator<'cx, 'tcx> {
                               .map(|p| p.subst_supertrait(self.tcx, &data.to_poly_trait_ref()))
                               .collect();
 
-                debug!("super_predicates: data={} predicates={}",
-                       data.repr(), predicates.repr());
+                debug!("super_predicates: data={:?} predicates={:?}",
+                       data, predicates);
 
                 // Only keep those bounds that we haven't already
                 // seen.  This is necessary to prevent infinite
@@ -314,8 +313,8 @@ pub fn predicates_for_generics<'tcx>(cause: ObligationCause<'tcx>,
                                      generic_bounds: &ty::InstantiatedPredicates<'tcx>)
                                      -> Vec<PredicateObligation<'tcx>>
 {
-    debug!("predicates_for_generics(generic_bounds={})",
-           generic_bounds.repr());
+    debug!("predicates_for_generics(generic_bounds={:?})",
+           generic_bounds);
 
     generic_bounds.predicates.iter().map(|predicate| {
         Obligation { cause: cause.clone(),

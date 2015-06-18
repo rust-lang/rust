@@ -18,7 +18,6 @@ use middle::traits;
 use middle::ty::{self, Ty};
 use middle::ty::liberate_late_bound_regions;
 use middle::ty_fold::{TypeFolder, TypeFoldable, super_fold_ty};
-use util::ppaux::{Repr, UserString};
 
 use std::collections::HashSet;
 use syntax::ast;
@@ -350,7 +349,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                          param_name: ast::Name)
     {
         span_err!(self.tcx().sess, span, E0392,
-            "parameter `{}` is never used", param_name.user_string());
+            "parameter `{}` is never used", param_name);
 
         let suggested_marker_id = self.tcx().lang_items.phantom_data();
         match suggested_marker_id {
@@ -358,7 +357,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                 self.tcx().sess.fileline_help(
                     span,
                     &format!("consider removing `{}` or using a marker such as `{}`",
-                             param_name.user_string(),
+                             param_name,
                              ty::item_path_str(self.tcx(), def_id)));
             }
             None => {
@@ -395,7 +394,7 @@ fn reject_non_type_param_bounds<'tcx>(tcx: &ty::ctxt<'tcx>,
             "cannot bound type `{}`, where clause \
                 bounds may only be attached to types involving \
                 type parameters",
-                bounded_ty.repr())
+                bounded_ty)
     }
 
     fn is_ty_param(ty: ty::Ty) -> bool {
@@ -543,16 +542,16 @@ impl<'cx,'tcx> TypeFolder<'tcx> for BoundsChecker<'cx,'tcx> {
             self.fcx.tcx(),
             region::DestructionScopeData::new(self.scope),
             binder);
-        debug!("BoundsChecker::fold_binder: late-bound regions replaced: {} at scope: {:?}",
-               value.repr(), self.scope);
+        debug!("BoundsChecker::fold_binder: late-bound regions replaced: {:?} at scope: {:?}",
+               value, self.scope);
         let value = value.fold_with(self);
         self.binding_count -= 1;
         ty::Binder(value)
     }
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-        debug!("BoundsChecker t={}",
-               t.repr());
+        debug!("BoundsChecker t={:?}",
+               t);
 
         match self.cache {
             Some(ref mut cache) => {

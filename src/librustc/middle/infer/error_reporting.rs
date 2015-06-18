@@ -79,9 +79,10 @@ use middle::region;
 use middle::subst;
 use middle::ty::{self, Ty};
 use middle::ty::{Region, ReFree};
+
 use std::cell::{Cell, RefCell};
 use std::char::from_u32;
-use std::string::String;
+use std::fmt;
 use syntax::ast;
 use syntax::ast_util::name_to_dummy_lifetime;
 use syntax::owned_slice::OwnedSlice;
@@ -89,10 +90,6 @@ use syntax::codemap::{Pos, Span};
 use syntax::parse::token;
 use syntax::print::pprust;
 use syntax::ptr::P;
-
-// Note: only import UserString, not Repr, since user-facing error
-// messages shouldn't include debug serializations.
-use util::ppaux::UserString;
 
 pub fn note_and_explain_region(tcx: &ty::ctxt,
                                prefix: &str,
@@ -170,7 +167,7 @@ pub fn note_and_explain_region(tcx: &ty::ctxt,
                 ty::BrFresh(_) => "an anonymous lifetime defined on".to_owned(),
                 _ => {
                     format!("the lifetime {} as defined on",
-                            fr.bound_region.user_string())
+                            fr.bound_region)
                 }
             };
 
@@ -229,7 +226,7 @@ pub trait ErrorReporting<'tcx> {
 
     fn values_str(&self, values: &ValuePairs<'tcx>) -> Option<String>;
 
-    fn expected_found_str<T: UserString + Resolvable<'tcx>>(
+    fn expected_found_str<T: fmt::Display + Resolvable<'tcx>>(
         &self,
         exp_found: &ty::expected_found<T>)
         -> Option<String>;
@@ -507,7 +504,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
         }
     }
 
-    fn expected_found_str<T: UserString + Resolvable<'tcx>>(
+    fn expected_found_str<T: fmt::Display + Resolvable<'tcx>>(
         &self,
         exp_found: &ty::expected_found<T>)
         -> Option<String>
@@ -523,8 +520,8 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
         }
 
         Some(format!("expected `{}`, found `{}`",
-                     expected.user_string(),
-                     found.user_string()))
+                     expected,
+                     found))
     }
 
     fn report_generic_bound_failure(&self,
@@ -540,9 +537,9 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
 
         let labeled_user_string = match bound_kind {
             GenericKind::Param(ref p) =>
-                format!("the parameter type `{}`", p.user_string()),
+                format!("the parameter type `{}`", p),
             GenericKind::Projection(ref p) =>
-                format!("the associated type `{}`", p.user_string()),
+                format!("the associated type `{}`", p),
         };
 
         match sub {
@@ -554,8 +551,8 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                     origin.span(),
                     &format!(
                         "consider adding an explicit lifetime bound `{}: {}`...",
-                        bound_kind.user_string(),
-                        sub.user_string()));
+                        bound_kind,
+                        sub));
             }
 
             ty::ReStatic => {
@@ -566,7 +563,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                     origin.span(),
                     &format!(
                         "consider adding an explicit lifetime bound `{}: 'static`...",
-                        bound_kind.user_string()));
+                        bound_kind));
             }
 
             _ => {
@@ -578,7 +575,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                     origin.span(),
                     &format!(
                         "consider adding an explicit lifetime bound for `{}`",
-                        bound_kind.user_string()));
+                        bound_kind));
                 note_and_explain_region(
                     self.tcx,
                     &format!("{} must be valid for ", labeled_user_string),
@@ -1561,7 +1558,7 @@ impl<'a, 'tcx> ErrorReportingHelpers<'tcx> for InferCtxt<'a, 'tcx> {
     fn report_inference_failure(&self,
                                 var_origin: RegionVariableOrigin) {
         let br_string = |br: ty::BoundRegion| {
-            let mut s = br.user_string();
+            let mut s = br.to_string();
             if !s.is_empty() {
                 s.push_str(" ");
             }
