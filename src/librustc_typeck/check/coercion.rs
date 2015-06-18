@@ -403,8 +403,9 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                a.repr(self.tcx()),
                b.repr(self.tcx()));
 
-        let mt_a = match a.sty {
-            ty::TyRef(_, mt) | ty::TyRawPtr(mt) => mt,
+        let (is_ref, mt_a) = match a.sty {
+            ty::TyRef(_, mt) => (true, mt),
+            ty::TyRawPtr(mt) => (false, mt),
             _ => {
                 return self.subtype(a, b);
             }
@@ -418,11 +419,15 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         // Although references and unsafe ptrs have the same
         // representation, we still register an AutoDerefRef so that
         // regionck knows that the region for `a` must be valid here.
-        Ok(Some(AdjustDerefRef(AutoDerefRef {
-            autoderefs: 1,
-            autoref: Some(ty::AutoUnsafe(mutbl_b)),
-            unsize: None
-        })))
+        if is_ref {
+            Ok(Some(AdjustDerefRef(AutoDerefRef {
+                autoderefs: 1,
+                autoref: Some(ty::AutoUnsafe(mutbl_b)),
+                unsize: None
+            })))
+        } else {
+            Ok(None)
+        }
     }
 }
 
