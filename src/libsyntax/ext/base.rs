@@ -13,7 +13,7 @@ pub use self::SyntaxExtension::*;
 use ast;
 use ast::Name;
 use codemap;
-use codemap::{CodeMap, Span, ExpnId, ExpnInfo, NO_EXPANSION};
+use codemap::{CodeMap, Span, ExpnId, ExpnInfo, NO_EXPANSION, CompilerExpansion};
 use ext;
 use ext::expand;
 use ext::tt::macro_rules;
@@ -658,6 +658,8 @@ impl<'a> ExtCtxt<'a> {
         })
     }
     pub fn backtrace(&self) -> ExpnId { self.backtrace }
+
+    /// Original span that caused the current exapnsion to happen.
     pub fn original_span(&self) -> Span {
         let mut expn_id = self.backtrace;
         let mut call_site = None;
@@ -672,26 +674,31 @@ impl<'a> ExtCtxt<'a> {
         }
         call_site.expect("missing expansion backtrace")
     }
-    pub fn original_span_in_file(&self) -> Span {
+
+    /// Returns span for the macro which originally caused the current expansion to happen.
+    ///
+    /// Stops backtracing at include! boundary.
+    pub fn expansion_cause(&self) -> Span {
         let mut expn_id = self.backtrace;
-        let mut call_site = None;
+        let mut last_macro = None;
         loop {
-            let expn_info = self.codemap().with_expn_info(expn_id, |ei| {
-                ei.map(|ei| (ei.call_site, ei.callee.name == "include"))
-            });
-            match expn_info {
-                None => break,
-                Some((cs, is_include)) => {
-                    if is_include {
-                        // Don't recurse into file using "include!".
-                        break;
+            if self.codemap().with_expn_info(expn_id, |info| {
+                info.map_or(None, |i| {
+                    if i.callee.name == "include" {
+                        // Stop going up the backtrace once include! is encountered
+                        return None;
                     }
-                    call_site = Some(cs);
-                    expn_id = cs.expn_id;
-                }
+                    expn_id = i.call_site.expn_id;
+                    if i.callee.format != CompilerExpansion {
+                        last_macro = Some(i.call_site)
+                    }
+                    return Some(());
+                })
+            }).is_none() {
+                break
             }
         }
-        call_site.expect("missing expansion backtrace")
+        last_macro.expect("missing expansion backtrace")
     }
 
     pub fn mod_push(&mut self, i: ast::Ident) { self.mod_path.push(i); }
