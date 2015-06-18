@@ -23,12 +23,11 @@ impl<T> Foo<T> for () {}
 impl Foo<u32> for u32 { fn foo(&self, _: u32) -> u32 { self+43 } }
 impl Bar for () {}
 
-unsafe fn fool<'a>(t: *const (Foo<u32>+'a)) -> u32 {
-    let bar : *const Bar = t as *const Bar;
+unsafe fn round_trip_and_call<'a>(t: *const (Foo<u32>+'a)) -> u32 {
     let foo_e : *const Foo<u16> = t as *const _;
     let r_1 = foo_e as *mut Foo<u32>;
 
-    (&*r_1).foo(0)*(&*(bar as *const Foo<u32>)).foo(0)
+    (&*r_1).foo(0)
 }
 
 #[repr(C)]
@@ -43,8 +42,8 @@ fn foo_to_bar<T:?Sized>(u: *const FooS<T>) -> *const BarS<T> {
 fn main() {
     let x = 4u32;
     let y : &Foo<u32> = &x;
-    let fl = unsafe { fool(y as *const Foo<u32>) };
-    assert_eq!(fl, (43+4)*(43+4));
+    let fl = unsafe { round_trip_and_call(y as *const Foo<u32>) };
+    assert_eq!(fl, (43+4));
 
     let s = FooS([0,1,2]);
     let u: &FooS<[u32]> = &s;

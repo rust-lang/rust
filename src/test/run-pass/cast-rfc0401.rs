@@ -99,6 +99,12 @@ fn main()
     let l_via_str = unsafe{&*(s as *const [u8])};
     assert_eq!(&l, l_via_str);
 
+    // ptr-ptr-cast (both vk=Length, check length is preserved)
+    let l: [[u8; 3]; 2] = [[3, 2, 6], [4, 5, 1]];
+    let p: *const [[u8; 3]] = &l;
+    let p: &[[u8; 2]] = unsafe {&*(p as *const [[u8; 2]])};
+    assert_eq!(p, [[3, 2], [6, 4]]);
+
     // enum-cast
     assert_eq!(Simple::A as u8, 0);
     assert_eq!(Simple::B as u8, 1);
