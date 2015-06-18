@@ -410,21 +410,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
-    /* Memory */
-    pub fn malloc(&self, ty: Type) -> ValueRef {
-        self.count_insn("malloc");
-        unsafe {
-            llvm::LLVMBuildMalloc(self.llbuilder, ty.to_ref(), noname())
-        }
-    }
-
-    pub fn array_malloc(&self, ty: Type, val: ValueRef) -> ValueRef {
-        self.count_insn("arraymalloc");
-        unsafe {
-            llvm::LLVMBuildArrayMalloc(self.llbuilder, ty.to_ref(), val, noname())
-        }
-    }
-
     pub fn alloca(&self, ty: Type, name: &str) -> ValueRef {
         self.count_insn("alloca");
         unsafe {
@@ -435,13 +420,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 llvm::LLVMBuildAlloca(self.llbuilder, ty.to_ref(),
                                       name.as_ptr())
             }
-        }
-    }
-
-    pub fn array_alloca(&self, ty: Type, val: ValueRef) -> ValueRef {
-        self.count_insn("arrayalloca");
-        unsafe {
-            llvm::LLVMBuildArrayAlloca(self.llbuilder, ty.to_ref(), val, noname())
         }
     }
 
