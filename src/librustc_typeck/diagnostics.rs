@@ -211,6 +211,53 @@ Reference:
 http://doc.rust-lang.org/reference.html#trait-objects
 "##,
 
+E0036: r##"
+This error occurred when you pass too many or not enough type parameters to a
+method. Example:
+
+```
+struct Test;
+
+impl Test {
+    fn method<T>(&self, v: &[T]) -> usize {
+        v.len()
+    }
+}
+
+fn main() {
+    let x = Test;
+    let v = &[0i32];
+
+    x.method::<i32, i32>(v); // error: only one type parameter is expected!
+}
+```
+
+To fix it, just specify a correct number of type parameters:
+
+```
+struct Test;
+
+impl Test {
+    fn method<T>(&self, v: &[T]) -> usize {
+        v.len()
+    }
+}
+
+fn main() {
+    let x = Test;
+    let v = &[0i32];
+
+    x.method::<i32>(v); // OK, we're good!
+}
+```
+
+Please note on the last example that we could have called `method` like this:
+
+```
+x.method(v);
+```
+"##,
+
 E0040: r##"
 It is not allowed to manually call destructors in Rust. It is also not
 necessary to do this since `drop` is called automatically whenever a value goes
@@ -1322,7 +1369,6 @@ For more information see the [opt-in builtin traits RFC](https://github.com/rust
 register_diagnostics! {
     E0034, // multiple applicable methods in scope
     E0035, // does not take type parameters
-    E0036, // incorrect number of type parameters given for this method
     E0044, // foreign items may not have type parameters
     E0045, // variadic function must have C calling convention
     E0068,
