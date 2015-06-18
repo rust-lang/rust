@@ -34,7 +34,7 @@ pub fn expand_line(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                    -> Box<base::MacResult+'static> {
     base::check_zero_tts(cx, sp, tts, "line!");
 
-    let topmost = cx.original_span_in_file();
+    let topmost = cx.expansion_cause();
     let loc = cx.codemap().lookup_char_pos(topmost.lo);
 
     base::MacEager::expr(cx.expr_u32(topmost, loc.line as u32))
@@ -45,7 +45,7 @@ pub fn expand_column(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                   -> Box<base::MacResult+'static> {
     base::check_zero_tts(cx, sp, tts, "column!");
 
-    let topmost = cx.original_span_in_file();
+    let topmost = cx.expansion_cause();
     let loc = cx.codemap().lookup_char_pos(topmost.lo);
 
     base::MacEager::expr(cx.expr_u32(topmost, loc.col.to_usize() as u32))
@@ -58,7 +58,7 @@ pub fn expand_file(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                    -> Box<base::MacResult+'static> {
     base::check_zero_tts(cx, sp, tts, "file!");
 
-    let topmost = cx.original_span_in_file();
+    let topmost = cx.expansion_cause();
     let loc = cx.codemap().lookup_char_pos(topmost.lo);
     let filename = token::intern_and_get_ident(&loc.file.name);
     base::MacEager::expr(cx.expr_str(topmost, filename))
