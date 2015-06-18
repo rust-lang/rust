@@ -36,6 +36,7 @@ use syntax::codemap;
 use syntax::codemap::{Span, CodeMap, DUMMY_SP};
 use syntax::diagnostic::{Level, RenderSpan, Bug, Fatal, Error, Warning, Note, Help};
 use syntax::parse::token;
+use syntax::feature_gate::UnstableFeatures;
 
 struct Env<'a, 'tcx: 'a> {
     infcx: &'a infer::InferCtxt<'a, 'tcx>,
@@ -103,6 +104,7 @@ fn test_env<F>(source_string: &str,
     let mut options =
         config::basic_options();
     options.debugging_opts.verbose = true;
+    options.unstable_features = UnstableFeatures::Allow;
     let codemap =
         CodeMap::new();
     let diagnostic_handler =

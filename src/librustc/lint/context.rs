@@ -28,9 +28,8 @@ use self::TargetLint::*;
 use middle::privacy::ExportedItems;
 use middle::ty::{self, Ty};
 use session::{early_error, Session};
-use session::config::UnstableFeatures;
 use lint::{Level, LevelSource, Lint, LintId, LintArray, LintPass, LintPassObject};
-use lint::{Default, CommandLine, Node, Allow, Warn, Deny, Forbid, ReleaseChannel};
+use lint::{Default, CommandLine, Node, Allow, Warn, Deny, Forbid};
 use lint::builtin;
 use util::nodemap::FnvHashMap;
 
@@ -208,23 +207,6 @@ impl LintStore {
             }
         }
     }
-
-    fn maybe_stage_features(&mut self, sess: &Session) {
-        let lvl = match sess.opts.unstable_features {
-            UnstableFeatures::Default => return,
-            UnstableFeatures::Disallow => Forbid,
-            UnstableFeatures::Cheat => Allow
-        };
-        match self.by_name.get("unstable_features") {
-            Some(&Id(lint_id)) => if self.get_level_source(lint_id).0 != Forbid {
-                self.set_level(lint_id, (lvl, ReleaseChannel))
-            },
-            Some(&Renamed(_, lint_id)) => if self.get_level_source(lint_id).0 != Forbid {
-                self.set_level(lint_id, (lvl, ReleaseChannel))
-            },
-            None => unreachable!()
-        }
-    }
 }
 
 /// Context for lint checking.
@@ -308,7 +290,6 @@ pub fn raw_emit_lint(sess: &Session, lint: &'static Lint,
 
     let name = lint.name_lower();
     let mut def = None;
-    let mut note = None;
     let msg = match source {
         Default => {
             format!("{}, #[{}({})] on by default", msg,
@@ -325,12 +306,6 @@ pub fn raw_emit_lint(sess: &Session, lint: &'static Lint,
             def = Some(src);
             msg.to_string()
         }
-        ReleaseChannel => {
-            let release_channel = option_env!("CFG_RELEASE_CHANNEL").unwrap_or("(unknown)");
-            note = Some(format!("this feature may not be used in the {} release channel",
-                                release_channel));
-            msg.to_string()
-        }
     };
 
     // For purposes of printing, we can treat forbid as deny.
@@ -342,10 +317,6 @@ pub fn raw_emit_lint(sess: &Session, lint: &'static Lint,
         (Deny, Some(sp)) => sess.span_err(sp, &msg[..]),
         (Deny, None)     => sess.err(&msg[..]),
         _ => sess.bug("impossible level in raw_emit_lint"),
-    }
-
-    if let Some(note) = note {
-        sess.note(&note[..]);
     }
 
     if let Some(span) = def {
@@ -688,9 +659,6 @@ impl LintPass for GatherNodeLevels {
 /// Consumes the `lint_store` field of the `Session`.
 pub fn check_crate(tcx: &ty::ctxt,
                    exported_items: &ExportedItems) {
-
-    // If this is a feature-staged build of rustc then flip several lints to 'forbid'
-    tcx.sess.lint_store.borrow_mut().maybe_stage_features(&tcx.sess);
 
     let krate = tcx.map.krate();
     let mut cx = Context::new(tcx, krate, exported_items);
