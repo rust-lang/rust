@@ -2252,6 +2252,18 @@ pub fn get_param(llfn: ValueRef, index: c_uint) -> ValueRef {
     }
 }
 
+pub fn get_params(llfn: ValueRef) -> Vec<ValueRef> {
+    unsafe {
+        let num_params = LLVMCountParams(llfn);
+        let mut params = Vec::with_capacity(num_params as usize);
+        for idx in 0..num_params {
+            params.push(LLVMGetParam(llfn, idx));
+        }
+
+        params
+    }
+}
+
 #[allow(missing_copy_implementations)]
 pub enum RustString_opaque {}
 pub type RustStringRef = *mut RustString_opaque;
