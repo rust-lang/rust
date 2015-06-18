@@ -45,13 +45,12 @@ pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
         output_types.push(type_of::type_of(bcx.ccx(), out_datum.ty));
         let val = out_datum.val;
         if is_rw {
-            ext_inputs.push(unpack_result!(bcx, {
-                callee::trans_arg_datum(bcx,
-                                       expr_ty(bcx, &**out),
-                                       out_datum,
-                                       cleanup::CustomScope(temp_scope),
-                                       callee::DontAutorefArg)
-            }));
+            bcx = callee::trans_arg_datum(bcx,
+                                          expr_ty(bcx, &**out),
+                                          out_datum,
+                                          cleanup::CustomScope(temp_scope),
+                                          callee::DontAutorefArg,
+                                          &mut ext_inputs);
             ext_constraints.push(i.to_string());
         }
         val
@@ -59,18 +58,18 @@ pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
     }).collect::<Vec<_>>();
 
     // Now the input operands
-    let mut inputs = ia.inputs.iter().map(|&(ref c, ref input)| {
+    let mut inputs = Vec::new();
+    for &(ref c, ref input) in &ia.inputs {
         constraints.push((*c).clone());
 
         let in_datum = unpack_datum!(bcx, expr::trans(bcx, &**input));
-        unpack_result!(bcx, {
-            callee::trans_arg_datum(bcx,
+        bcx = callee::trans_arg_datum(bcx,
                                     expr_ty(bcx, &**input),
                                     in_datum,
                                     cleanup::CustomScope(temp_scope),
-                                    callee::DontAutorefArg)
-        })
-    }).collect::<Vec<_>>();
+                                    callee::DontAutorefArg,
+                                    &mut inputs);
+    }
     inputs.push_all(&ext_inputs[..]);
 
     // no failure occurred preparing operands, no need to cleanup
