@@ -296,7 +296,7 @@ impl Test {
 
 fn main() {
     const FOO: Test = Test::V1;
-    
+
     const A: i32 = FOO.test(); // You can't call Test::func() here !
 }
 ```
@@ -307,7 +307,7 @@ expression! However, you can totally use it elsewhere you want:
 ```
 fn main() {
     const FOO: Test = Test::V1;
-    
+
     FOO.func(); // here is good
     let x = FOO.func(); // or even here!
 }
