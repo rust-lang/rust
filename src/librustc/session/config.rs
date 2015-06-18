@@ -32,6 +32,7 @@ use syntax::attr::AttrMetaMethods;
 use syntax::diagnostic::{ColorConfig, Auto, Always, Never, SpanHandler};
 use syntax::parse;
 use syntax::parse::token::InternedString;
+use syntax::feature_gate::UnstableFeatures;
 
 use getopts;
 use std::collections::HashMap;
@@ -117,21 +118,6 @@ pub struct Options {
     pub alt_std_name: Option<String>,
     /// Indicates how the compiler should treat unstable features
     pub unstable_features: UnstableFeatures
-}
-
-#[derive(Clone, Copy)]
-pub enum UnstableFeatures {
-    /// Hard errors for unstable features are active, as on
-    /// beta/stable channels.
-    Disallow,
-    /// Use the default lint levels
-    Default,
-    /// Errors are bypassed for bootstrapping. This is required any time
-    /// during the build that feature-related lints are set to warn or above
-    /// because the build turns on warnings-as-errors and uses lots of unstable
-    /// features. As a result, this this is always required for building Rust
-    /// itself.
-    Cheat
 }
 
 #[derive(Clone, PartialEq, Eq)]
@@ -1074,7 +1060,7 @@ pub fn get_unstable_features_setting() -> UnstableFeatures {
     match (disable_unstable_features, bootstrap_secret_key, bootstrap_provided_key) {
         (_, Some(ref s), Some(ref p)) if s == p => UnstableFeatures::Cheat,
         (true, _, _) => UnstableFeatures::Disallow,
-        (false, _, _) => UnstableFeatures::Default
+        (false, _, _) => UnstableFeatures::Allow
     }
 }
 

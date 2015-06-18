@@ -799,9 +799,46 @@ pub fn check_crate_macros(cm: &CodeMap, span_handler: &SpanHandler, krate: &ast:
 }
 
 pub fn check_crate(cm: &CodeMap, span_handler: &SpanHandler, krate: &ast::Crate,
-                   plugin_attributes: &[(String, AttributeType)]) -> Features
+                   plugin_attributes: &[(String, AttributeType)],
+                   unstable: UnstableFeatures) -> Features
 {
+    maybe_stage_features(span_handler, krate, unstable);
+
     check_crate_inner(cm, span_handler, krate, plugin_attributes,
                       |ctx, krate| visit::walk_crate(&mut PostExpansionVisitor { context: ctx },
                                                      krate))
+}
+
+#[derive(Clone, Copy)]
+pub enum UnstableFeatures {
+    /// Hard errors for unstable features are active, as on
+    /// beta/stable channels.
+    Disallow,
+    /// Allow features to me activated, as on nightly.
+    Allow,
+    /// Errors are bypassed for bootstrapping. This is required any time
+    /// during the build that feature-related lints are set to warn or above
+    /// because the build turns on warnings-as-errors and uses lots of unstable
+    /// features. As a result, this this is always required for building Rust
+    /// itself.
+    Cheat
+}
+
+fn maybe_stage_features(span_handler: &SpanHandler, krate: &ast::Crate,
+                        unstable: UnstableFeatures) {
+    let allow_features = match unstable {
+        UnstableFeatures::Allow => true,
+        UnstableFeatures::Disallow => false,
+        UnstableFeatures::Cheat => true
+    };
+    if !allow_features {
+        for attr in &krate.attrs {
+            if attr.check_name("feature") {
+                let release_channel = option_env!("CFG_RELEASE_CHANNEL").unwrap_or("(unknown)");
+                let ref msg = format!("#[feature] may not be used on the {} release channel",
+                                      release_channel);
+                span_handler.span_err(attr.span, msg);
+            }
+        }
+    }
 }
