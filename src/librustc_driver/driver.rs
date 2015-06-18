@@ -166,7 +166,7 @@ pub fn compile_input(sess: Session,
     };
 
     if !sess.targeting_pnacl() {
-        phase_5_run_llvm_passes(&sess, &trans, &outputs);
+        phase_5_run_llvm_passes(&sess, &mut trans, &outputs);
         controller_entry_point!(after_llvm,
                             sess,
                             CompileState::state_after_llvm(input,

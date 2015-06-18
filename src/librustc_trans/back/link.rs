@@ -726,8 +726,8 @@ pub fn link_pnacl_module(sess: &Session,
     //
     // This function should not be called on non-pexe outputs.
     use libc;
-    use lib::llvm::{ModuleRef, ContextRef};
     use std::env;
+    use std::fmt;
     use std::fs::{File};
     use back::write;
     use back::write::llvm_err;
@@ -735,7 +735,7 @@ pub fn link_pnacl_module(sess: &Session,
     use metadata::cstore;
 
     // Emits a fatal error if path is not writeable.
-    pub fn check_writeable_output<T: ?Sized>(sess: &Session, path: &T, name: &str)
+    fn check_writeable_output<T: ?Sized>(sess: &Session, path: &T, name: &str)
         where T: AsRef<Path> + AsRef<ffi::OsStr> + fmt::Debug
     {
         use std::fs::metadata;
@@ -868,13 +868,14 @@ pub fn link_pnacl_module(sess: &Session,
                 .unwrap();
             unsafe {
                 let cname = format!("{}\0", post_link_path);
-                let llmod = llvm::LLVMRustParseBitcode(ctxt,
+                let llmod = llvm::LLVMRustParseBitcode(llcx,
                                                        cname.as_ptr() as *const i8,
                                                        buf.as_ptr() as *const libc::c_void,
                                                        buf.len() as libc::size_t);
                 if llmod == ptr::null_mut() {
-                    llvm_err(sess, format!("failed to parse external bitcode `{}`",
-                                           post_link_path));
+                    llvm_err(&sess.diagnostic().handler,
+                             format!("failed to parse external bitcode `{}`",
+                                     post_link_path));
                 } else {
                     llmod
                 }
