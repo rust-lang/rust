@@ -537,8 +537,6 @@ fn test_drain() {
 
 #[test]
 fn test_from_iter() {
-    use std::iter;
-
     let v = vec!(1,2,3,4,5,6,7);
     let deq: VecDeque<_> = v.iter().cloned().collect();
     let u: Vec<_> = deq.iter().cloned().collect();

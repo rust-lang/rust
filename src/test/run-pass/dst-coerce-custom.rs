@@ -10,7 +10,7 @@
 
 // Test a very simple custom DST coercion.
 
-#![feature(core)]
+#![feature(unsize, coerce_unsized)]
 
 use std::ops::CoerceUnsized;
 use std::marker::Unsize;

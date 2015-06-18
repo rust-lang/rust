@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![unstable(feature = "std_misc",
+#![unstable(feature = "semaphore",
             reason = "the interaction between semaphores and the acquisition/release \
                       of resources is currently unclear")]
 
@@ -25,7 +25,7 @@ use sync::{Mutex, Condvar};
 /// # Examples
 ///
 /// ```
-/// # #![feature(std_misc)]
+/// # #![feature(semaphore)]
 /// use std::sync::Semaphore;
 ///
 /// // Create a semaphore that represents 5 resources

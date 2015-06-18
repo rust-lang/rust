@@ -10,7 +10,7 @@
 
 // pretty-expanded FIXME #23616
 
-#![feature(collections)]
+#![feature(bitvec)]
 
 use std::collections::BitVec;
 

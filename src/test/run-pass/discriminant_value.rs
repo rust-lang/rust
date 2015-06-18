@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(core)]
+#![feature(core, core_intrinsics)]
 
 extern crate core;
 use core::intrinsics::discriminant_value;

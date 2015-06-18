@@ -14,8 +14,6 @@
 //! library. Each macro is available for use when linking against the standard
 //! library.
 
-#![unstable(feature = "std_misc")]
-
 /// The entry point for panic of Rust threads.
 ///
 /// This macro is used to inject panic into a Rust thread, causing the thread to
@@ -165,7 +163,7 @@ macro_rules! try {
 /// # Examples
 ///
 /// ```
-/// # #![feature(std_misc)]
+/// # #![feature(mpsc_select)]
 /// use std::thread;
 /// use std::sync::mpsc;
 ///
@@ -191,7 +189,7 @@ macro_rules! try {
 ///
 /// For more information about select, see the `std::sync::mpsc::Select` structure.
 #[macro_export]
-#[unstable(feature = "std_misc")]
+#[unstable(feature = "mpsc_select")]
 macro_rules! select {
     (
         $($name:pat = $rx:ident.$meth:ident() => $code:expr),+

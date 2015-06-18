@@ -41,14 +41,11 @@
 // no-pretty-expanded FIXME #15189
 
 #![allow(non_snake_case)]
-#![feature(unboxed_closures, core, os, scoped)]
+#![feature(unboxed_closures, iter_arith, core_simd, scoped)]
 
 use std::iter::repeat;
 use std::thread;
-use std::mem;
-use std::os;
 use std::env;
-use std::raw::Repr;
 use std::simd::f64x2;
 
 fn main() {

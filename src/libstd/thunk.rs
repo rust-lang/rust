@@ -10,7 +10,8 @@
 
 // Because this module is temporary...
 #![allow(missing_docs)]
-#![unstable(feature = "std_misc")]
+#![unstable(feature = "thunk")]
+#![deprecated(since = "1.2.0", reason = "use FnBox instead")]
 
 use alloc::boxed::{Box, FnBox};
 use core::marker::Send;

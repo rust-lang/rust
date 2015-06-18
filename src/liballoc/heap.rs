@@ -8,6 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![unstable(feature = "heap_api",
+            reason = "the precise API and guarantees it provides may be tweaked \
+                      slightly, especially to possibly take into account the \
+                      types being stored to make room for a future \
+                      tracing garbage collector")]
+
 use core::{isize, usize};
 
 #[inline(always)]
@@ -94,7 +100,6 @@ pub fn usable_size(size: usize, align: usize) -> usize {
 ///
 /// These statistics may be inconsistent if other threads use the allocator
 /// during the call.
-#[unstable(feature = "alloc")]
 pub fn stats_print() {
     imp::stats_print();
 }

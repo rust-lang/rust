@@ -10,6 +10,7 @@
 
 use std::iter::{FromIterator, repeat};
 use std::mem::size_of;
+#[allow(deprecated)]
 use std::vec::as_vec;
 
 use test::Bencher;
@@ -25,12 +26,14 @@ impl<'a> Drop for DropCounter<'a> {
 }
 
 #[test]
+#[allow(deprecated)]
 fn test_as_vec() {
     let xs = [1u8, 2u8, 3u8];
     assert_eq!(&**as_vec(&xs), xs);
 }
 
 #[test]
+#[allow(deprecated)]
 fn test_as_vec_dtor() {
     let (mut count_x, mut count_y) = (0, 0);
     {

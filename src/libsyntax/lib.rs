@@ -26,14 +26,17 @@
        html_root_url = "http://doc.rust-lang.org/nightly/")]
 
 #![feature(associated_consts)]
-#![feature(collections)]
-#![feature(collections_drain)]
-#![feature(core)]
+#![feature(bitset)]
+#![feature(drain)]
+#![feature(filling_drop)]
 #![feature(libc)]
+#![feature(ref_slice)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
 #![feature(str_char)]
+#![feature(str_escape)]
 #![feature(unicode)]
+#![feature(vec_push_all)]
 
 extern crate fmt_macros;
 extern crate serialize;

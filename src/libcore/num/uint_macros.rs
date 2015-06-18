@@ -12,9 +12,11 @@
 
 macro_rules! uint_module { ($T:ty, $T_SIGNED:ty, $bits:expr) => (
 
-#[unstable(feature = "core")]
+#[unstable(feature = "num_bits_bytes",
+           reason = "may want to be an associated function")]
 pub const BITS : usize = $bits;
-#[unstable(feature = "core")]
+#[unstable(feature = "num_bits_bytes",
+           reason = "may want to be an associated function")]
 pub const BYTES : usize = ($bits / 8);
 
 #[stable(feature = "rust1", since = "1.0.0")]

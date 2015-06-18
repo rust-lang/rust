@@ -10,7 +10,8 @@
 
 // pretty-expanded FIXME #23616
 
-#![feature(std_misc, alloc, static_condvar)]
+#![feature(static_mutex, static_rwlock, static_condvar)]
+#![feature(arc_weak, semaphore)]
 
 use std::sync;
 

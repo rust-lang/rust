@@ -33,11 +33,8 @@
 //! concurrently between two threads. This data structure is safe to use and
 //! enforces the semantics that there is one pusher and one popper.
 
-#![unstable(feature = "std_misc")]
-
 use core::prelude::*;
 
-use alloc::boxed;
 use alloc::boxed::Box;
 use core::ptr;
 use core::cell::UnsafeCell;
@@ -80,7 +77,7 @@ unsafe impl<T: Send> Sync for Queue<T> { }
 
 impl<T> Node<T> {
     fn new() -> *mut Node<T> {
-        boxed::into_raw(box Node {
+        Box::into_raw(box Node {
             value: None,
             next: AtomicPtr::new(ptr::null_mut::<Node<T>>()),
         })

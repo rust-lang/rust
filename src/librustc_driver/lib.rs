@@ -26,14 +26,13 @@
       html_root_url = "http://doc.rust-lang.org/nightly/")]
 
 #![feature(box_syntax)]
-#![feature(collections)]
 #![feature(libc)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
-#![feature(staged_api)]
-#![feature(exit_status)]
 #![feature(set_stdio)]
+#![feature(staged_api)]
+#![feature(vec_push_all)]
 
 extern crate arena;
 extern crate flate;
@@ -73,6 +72,7 @@ use std::env;
 use std::io::{self, Read, Write};
 use std::iter::repeat;
 use std::path::PathBuf;
+use std::process;
 use std::str;
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -861,5 +861,5 @@ pub fn diagnostics_registry() -> diagnostics::registry::Registry {
 
 pub fn main() {
     let result = run(env::args().collect());
-    std::env::set_exit_status(result as i32);
+    process::exit(result as i32);
 }

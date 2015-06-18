@@ -120,24 +120,24 @@ impl<T: Send + Reflect> Error for PoisonError<T> {
 
 impl<T> PoisonError<T> {
     /// Creates a `PoisonError`.
-    #[unstable(feature = "std_misc")]
+    #[stable(feature = "sync_poison", since = "1.2.0")]
     pub fn new(guard: T) -> PoisonError<T> {
         PoisonError { guard: guard }
     }
 
     /// Consumes this error indicating that a lock is poisoned, returning the
     /// underlying guard to allow access regardless.
-    #[unstable(feature = "std_misc")]
+    #[stable(feature = "sync_poison", since = "1.2.0")]
     pub fn into_inner(self) -> T { self.guard }
 
     /// Reaches into this error indicating that a lock is poisoned, returning a
     /// reference to the underlying guard to allow access regardless.
-    #[unstable(feature = "std_misc")]
+    #[stable(feature = "sync_poison", since = "1.2.0")]
     pub fn get_ref(&self) -> &T { &self.guard }
 
     /// Reaches into this error indicating that a lock is poisoned, returning a
     /// mutable reference to the underlying guard to allow access regardless.
-    #[unstable(feature = "std_misc")]
+    #[stable(feature = "sync_poison", since = "1.2.0")]
     pub fn get_mut(&mut self) -> &mut T { &mut self.guard }
 }
 

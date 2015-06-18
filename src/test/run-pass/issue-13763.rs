@@ -10,7 +10,7 @@
 
 // pretty-expanded FIXME #23616
 
-#![feature(core)]
+#![feature(num_bits_bytes)]
 
 use std::u8;
 

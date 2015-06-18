@@ -19,11 +19,11 @@
       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
       html_root_url = "http://doc.rust-lang.org/nightly/")]
 
-#![feature(alloc)]
 #![feature(associated_consts)]
-#![feature(collections)]
+#![feature(rc_weak)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
+#![feature(slice_extras)]
 #![feature(staged_api)]
 
 #[macro_use] extern crate log;

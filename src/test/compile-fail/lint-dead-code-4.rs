@@ -11,15 +11,10 @@
 #![allow(unused_variables)]
 #![allow(non_camel_case_types)]
 #![deny(dead_code)]
-#![feature(libc)]
-#![feature(core)]
-
-extern crate libc;
 
 struct Foo {
     x: usize,
     b: bool, //~ ERROR: struct field is never used
-    marker: std::marker::NoCopy
 }
 
 fn field_read(f: Foo) -> usize {
@@ -50,7 +45,7 @@ struct Bar {
 
 #[repr(C)]
 struct Baz {
-    x: libc::c_uint
+    x: u32,
 }
 
 fn field_match_in_let(f: Bar) -> bool {
@@ -59,7 +54,7 @@ fn field_match_in_let(f: Bar) -> bool {
 }
 
 fn main() {
-    field_read(Foo { x: 1, b: false, marker: std::marker::NoCopy });
+    field_read(Foo { x: 1, b: false });
     field_match_in_patterns(XYZ::Z);
     field_match_in_let(Bar { x: 42, b: true, _guard: () });
     let _ = Baz { x: 0 };

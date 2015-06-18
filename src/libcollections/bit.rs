@@ -38,7 +38,7 @@
 //! [sieve]: http://en.wikipedia.org/wiki/Sieve_of_Eratosthenes
 //!
 //! ```
-//! # #![feature(collections, core, step_by)]
+//! # #![feature(bitset, bitvec, range_inclusive, step_by)]
 //! use std::collections::{BitSet, BitVec};
 //! use std::iter;
 //!
@@ -86,6 +86,7 @@ use core::cmp::Ordering;
 use core::cmp;
 use core::fmt;
 use core::hash;
+#[allow(deprecated)]
 use core::iter::RandomAccessIterator;
 use core::iter::{Chain, Enumerate, Repeat, Skip, Take, repeat, Cloned};
 use core::iter::{self, FromIterator};
@@ -133,7 +134,7 @@ const FALSE: &'static bool = &false;
 /// # Examples
 ///
 /// ```
-/// # #![feature(collections)]
+/// # #![feature(bitvec)]
 /// use std::collections::BitVec;
 ///
 /// let mut bv = BitVec::from_elem(10, false);
@@ -156,8 +157,7 @@ const FALSE: &'static bool = &false;
 /// println!("{:?}", bv);
 /// println!("total bits set to true: {}", bv.iter().filter(|x| *x).count());
 /// ```
-#[unstable(feature = "collections",
-           reason = "RFC 509")]
+#[unstable(feature = "bitvec", reason = "RFC 509")]
 pub struct BitVec {
     /// Internal representation of the bit vector
     storage: Vec<u32>,
@@ -181,14 +181,16 @@ impl Index<usize> for BitVec {
 
 /// Computes how many blocks are needed to store that many bits
 fn blocks_for_bits(bits: usize) -> usize {
-    // If we want 17 bits, dividing by 32 will produce 0. So we add 1 to make sure we
-    // reserve enough. But if we want exactly a multiple of 32, this will actually allocate
-    // one too many. So we need to check if that's the case. We can do that by computing if
-    // bitwise AND by `32 - 1` is 0. But LLVM should be able to optimize the semantically
-    // superior modulo operator on a power of two to this.
+    // If we want 17 bits, dividing by 32 will produce 0. So we add 1 to make
+    // sure we reserve enough. But if we want exactly a multiple of 32, this
+    // will actually allocate one too many. So we need to check if that's the
+    // case. We can do that by computing if bitwise AND by `32 - 1` is 0. But
+    // LLVM should be able to optimize the semantically superior modulo operator
+    // on a power of two to this.
     //
     // Note that we can technically avoid this branch with the expression
-    // `(nbits + u32::BITS - 1) / 32::BITS`, but if nbits is almost usize::MAX this will overflow.
+    // `(nbits + u32::BITS - 1) / 32::BITS`, but if nbits is almost usize::MAX
+    // this will overflow.
     if bits % u32::BITS == 0 {
         bits / u32::BITS
     } else {
@@ -202,6 +204,7 @@ fn mask_for_bits(bits: usize) -> u32 {
     !0 >> (u32::BITS - bits % u32::BITS) % u32::BITS
 }
 
+#[unstable(feature = "bitvec", reason = "RFC 509")]
 impl BitVec {
     /// Applies the given operation to the blocks of self and other, and sets
     /// self to be the result. This relies on the caller not to corrupt the
@@ -248,7 +251,7 @@ impl BitVec {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
+    /// # #![feature(bitvec)]
     /// use std::collections::BitVec;
     /// let mut bv = BitVec::new();
     /// ```
@@ -263,7 +266,7 @@ impl BitVec {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
+    /// # #![feature(bitvec)]
     /// use std::collections::BitVec;
     ///
     /// let bv = BitVec::from_elem(10, false);
@@ -304,7 +307,7 @@ impl BitVec {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
+    /// # #![feature(bitvec)]
     /// use std::collections::BitVec;
     ///
     /// let bv = BitVec::from_bytes(&[0b10100000, 0b00010010]);
@@ -347,7 +350,7 @@ impl BitVec {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
+    /// # #![feature(bitvec)]
     /// use std::collections::BitVec;
     ///
     /// let bv = BitVec::from_fn(5, |i| { i % 2 == 0 });
@@ -366,7 +369,7 @@ impl BitVec {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
+    /// # #![feature(bitvec)]
     /// use std::collections::BitVec;
     ///
     /// let bv = BitVec::from_bytes(&[0b01100000]);
@@ -399,7 +402,7 @@ impl BitVec {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
+    /// # #![feature(bitvec)]
     /// use std::collections::BitVec;
     ///
     /// let mut bv = BitVec::from_elem(5, false);
@@ -407,8 +410,6 @@ impl BitVec {
     /// assert_eq!(bv[3], true);
     /// ```
     #[inline]
-    #[unstable(feature = "collections",
-               reason = "panic semantics are likely to change in the future")]
     pub fn set(&mut self, i: usize, x: bool) {
         assert!(i < self.nbits);
         let w = i / u32::BITS;
@@ -424,7 +425,7 @@ impl BitVec {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
+    /// # #![feature(bitvec)]
     /// use std::collections::BitVec;
     ///
     /// let before = 0b01100000;
@@ -445,7 +446,7 @@ impl BitVec {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
+    /// # #![feature(bitvec)]
     /// use std::collections::BitVec;
     ///
     /// let before = 0b01100000;
@@ -474,7 +475,7 @@ impl BitVec {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
+    /// # #![feature(bitvec)]
     /// use std::collections::BitVec;
     ///
     /// let a   = 0b01100100;
@@ -505,7 +506,7 @@ impl BitVec {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
+    /// # #![feature(bitvec)]
     /// use std::collections::BitVec;
     ///
     /// let a   = 0b01100100;
@@ -536,7 +537,7 @@ impl BitVec {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
+    /// # #![feature(bitvec)]
     /// use std::collections::BitVec;
     ///
     /// let a   = 0b01100100;
@@ -566,7 +567,7 @@ impl BitVec {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
+    /// # #![feature(bitvec)]
     /// use std::collections::BitVec;
     ///
     /// let mut bv = BitVec::from_elem(5, true);
@@ -591,7 +592,7 @@ impl BitVec {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
+    /// # #![feature(bitvec)]
     /// use std::collections::BitVec;
     ///
     /// let bv = BitVec::from_bytes(&[0b01110100, 0b10010010]);
@@ -608,7 +609,7 @@ impl BitVec {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections, bit_vec_append_split_off)]
+    /// # #![feature(bitvec, append)]
     /// use std::collections::BitVec;
     ///
     /// let mut a = BitVec::from_bytes(&[0b10000000]);
@@ -621,7 +622,7 @@ impl BitVec {
     /// assert!(a.eq_vec(&[true, false, false, false, false, false, false, false,
     ///                    false, true, true, false, false, false, false, true]));
     /// ```
-    #[unstable(feature = "bit_vec_append_split_off",
+    #[unstable(feature = "append",
                reason = "recently added as part of collections reform 2")]
     pub fn append(&mut self, other: &mut Self) {
         let b = self.len() % u32::BITS;
@@ -651,7 +652,7 @@ impl BitVec {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections, bit_vec_append_split_off)]
+    /// # #![feature(bitvec, split_off)]
     /// use std::collections::BitVec;
     /// let mut a = BitVec::new();
     /// a.push(true);
@@ -666,7 +667,7 @@ impl BitVec {
     /// assert!(a.eq_vec(&[true, false]));
     /// assert!(b.eq_vec(&[false, true]));
     /// ```
-    #[unstable(feature = "bit_vec_append_split_off",
+    #[unstable(feature = "split_off",
                reason = "recently added as part of collections reform 2")]
     pub fn split_off(&mut self, at: usize) -> Self {
         assert!(at <= self.len(), "`at` out of bounds");
@@ -712,7 +713,7 @@ impl BitVec {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
+    /// # #![feature(bitvec)]
     /// use std::collections::BitVec;
     ///
     /// let mut bv = BitVec::from_elem(10, false);
@@ -730,7 +731,7 @@ impl BitVec {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
+    /// # #![feature(bitvec)]
     /// use std::collections::BitVec;
     ///
     /// let mut bv = BitVec::from_elem(10, false);
@@ -752,7 +753,7 @@ impl BitVec {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
+    /// # #![feature(bitvec)]
     /// use std::collections::BitVec;
     ///
     /// let mut bv = BitVec::from_elem(3, true);
@@ -800,7 +801,7 @@ impl BitVec {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
+    /// # #![feature(bitvec)]
     /// use std::collections::BitVec;
     ///
     /// let bv = BitVec::from_bytes(&[0b10100000]);
@@ -821,7 +822,7 @@ impl BitVec {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
+    /// # #![feature(bitvec)]
     /// use std::collections::BitVec;
     ///
     /// let mut bv = BitVec::from_bytes(&[0b01001011]);
@@ -848,7 +849,7 @@ impl BitVec {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
+    /// # #![feature(bitvec)]
     /// use std::collections::BitVec;
     ///
     /// let mut bv = BitVec::from_elem(3, false);
@@ -879,7 +880,7 @@ impl BitVec {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
+    /// # #![feature(bitvec)]
     /// use std::collections::BitVec;
     ///
     /// let mut bv = BitVec::from_elem(3, false);
@@ -902,7 +903,7 @@ impl BitVec {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
+    /// # #![feature(bitvec)]
     /// use std::collections::BitVec;
     ///
     /// let mut bv = BitVec::new();
@@ -924,7 +925,7 @@ impl BitVec {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
+    /// # #![feature(bitvec)]
     /// use std::collections::BitVec;
     ///
     /// let mut bv = BitVec::from_bytes(&[0b01001011]);
@@ -975,7 +976,7 @@ impl BitVec {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
+    /// # #![feature(bitvec)]
     /// use std::collections::BitVec;
     ///
     /// let mut bv = BitVec::from_bytes(&[0b01001001]);
@@ -1006,7 +1007,7 @@ impl BitVec {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
+    /// # #![feature(bitvec)]
     /// use std::collections::BitVec;
     ///
     /// let mut bv = BitVec::new();
@@ -1188,6 +1189,7 @@ impl<'a> DoubleEndedIterator for Iter<'a> {
 impl<'a> ExactSizeIterator for Iter<'a> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(deprecated)]
 impl<'a> RandomAccessIterator for Iter<'a> {
     #[inline]
     fn indexable(&self) -> usize {
@@ -1224,7 +1226,7 @@ impl<'a> IntoIterator for &'a BitVec {
 /// # Examples
 ///
 /// ```
-/// # #![feature(collections)]
+/// # #![feature(bitvec, bitset)]
 /// use std::collections::{BitSet, BitVec};
 ///
 /// // It's a regular set
@@ -1254,8 +1256,7 @@ impl<'a> IntoIterator for &'a BitVec {
 /// assert!(bv[3]);
 /// ```
 #[derive(Clone)]
-#[unstable(feature = "collections",
-           reason = "RFC 509")]
+#[unstable(feature = "bitset", reason = "RFC 509")]
 pub struct BitSet {
     bit_vec: BitVec,
 }
@@ -1322,13 +1323,14 @@ impl cmp::PartialEq for BitSet {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl cmp::Eq for BitSet {}
 
+#[unstable(feature = "bitset", reason = "RFC 509")]
 impl BitSet {
     /// Creates a new empty `BitSet`.
     ///
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
+    /// # #![feature(bitset)]
     /// use std::collections::BitSet;
     ///
     /// let mut s = BitSet::new();
@@ -1345,7 +1347,7 @@ impl BitSet {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
+    /// # #![feature(bitset)]
     /// use std::collections::BitSet;
     ///
     /// let mut s = BitSet::with_capacity(100);
@@ -1363,7 +1365,7 @@ impl BitSet {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
+    /// # #![feature(bitset, bitvec)]
     /// use std::collections::{BitVec, BitSet};
     ///
     /// let bv = BitVec::from_bytes(&[0b01100000]);
@@ -1385,7 +1387,7 @@ impl BitSet {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
+    /// # #![feature(bitset)]
     /// use std::collections::BitSet;
     ///
     /// let mut s = BitSet::with_capacity(100);
@@ -1397,9 +1399,9 @@ impl BitSet {
         self.bit_vec.capacity()
     }
 
-    /// Reserves capacity for the given `BitSet` to contain `len` distinct elements. In the case
-    /// of `BitSet` this means reallocations will not occur as long as all inserted elements
-    /// are less than `len`.
+    /// Reserves capacity for the given `BitSet` to contain `len` distinct
+    /// elements. In the case of `BitSet` this means reallocations will not
+    /// occur as long as all inserted elements are less than `len`.
     ///
     /// The collection may reserve more space to avoid frequent reallocations.
     ///
@@ -1407,7 +1409,7 @@ impl BitSet {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
+    /// # #![feature(bitset)]
     /// use std::collections::BitSet;
     ///
     /// let mut s = BitSet::new();
@@ -1422,19 +1424,19 @@ impl BitSet {
         }
     }
 
-    /// Reserves the minimum capacity for the given `BitSet` to contain `len` distinct elements.
-    /// In the case of `BitSet` this means reallocations will not occur as long as all inserted
-    /// elements are less than `len`.
+    /// Reserves the minimum capacity for the given `BitSet` to contain `len`
+    /// distinct elements.  In the case of `BitSet` this means reallocations
+    /// will not occur as long as all inserted elements are less than `len`.
     ///
-    /// Note that the allocator may give the collection more space than it requests. Therefore
-    /// capacity can not be relied upon to be precisely minimal. Prefer `reserve_len` if future
-    /// insertions are expected.
+    /// Note that the allocator may give the collection more space than it
+    /// requests. Therefore capacity can not be relied upon to be precisely
+    /// minimal. Prefer `reserve_len` if future insertions are expected.
     ///
     ///
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
+    /// # #![feature(bitset)]
     /// use std::collections::BitSet;
     ///
     /// let mut s = BitSet::new();
@@ -1455,7 +1457,7 @@ impl BitSet {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
+    /// # #![feature(bitset)]
     /// use std::collections::BitSet;
     ///
     /// let mut s = BitSet::new();
@@ -1476,7 +1478,7 @@ impl BitSet {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
+    /// # #![feature(bitset)]
     /// use std::collections::BitSet;
     ///
     /// let mut s = BitSet::new();
@@ -1523,7 +1525,7 @@ impl BitSet {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
+    /// # #![feature(bitset)]
     /// use std::collections::BitSet;
     ///
     /// let mut s = BitSet::new();
@@ -1556,7 +1558,7 @@ impl BitSet {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
+    /// # #![feature(bitset, bitvec)]
     /// use std::collections::{BitVec, BitSet};
     ///
     /// let s = BitSet::from_bit_vec(BitVec::from_bytes(&[0b01001010]));
@@ -1578,7 +1580,7 @@ impl BitSet {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
+    /// # #![feature(bitset, bitvec)]
     /// use std::collections::{BitVec, BitSet};
     ///
     /// let a = BitSet::from_bit_vec(BitVec::from_bytes(&[0b01101000]));
@@ -1602,12 +1604,13 @@ impl BitSet {
     }
 
     /// Iterator over each usize stored in `self` intersect `other`.
-    /// See [intersect_with](#method.intersect_with) for an efficient in-place version.
+    /// See [intersect_with](#method.intersect_with) for an efficient in-place
+    /// version.
     ///
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
+    /// # #![feature(bitset, bitvec)]
     /// use std::collections::{BitVec, BitSet};
     ///
     /// let a = BitSet::from_bit_vec(BitVec::from_bytes(&[0b01101000]));
@@ -1632,12 +1635,13 @@ impl BitSet {
     }
 
     /// Iterator over each usize stored in the `self` setminus `other`.
-    /// See [difference_with](#method.difference_with) for an efficient in-place version.
+    /// See [difference_with](#method.difference_with) for an efficient in-place
+    /// version.
     ///
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
+    /// # #![feature(bitset, bitvec)]
     /// use std::collections::{BitSet, BitVec};
     ///
     /// let a = BitSet::from_bit_vec(BitVec::from_bytes(&[0b01101000]));
@@ -1667,14 +1671,15 @@ impl BitSet {
         }))
     }
 
-    /// Iterator over each usize stored in the symmetric difference of `self` and `other`.
-    /// See [symmetric_difference_with](#method.symmetric_difference_with) for
-    /// an efficient in-place version.
+    /// Iterator over each usize stored in the symmetric difference of `self`
+    /// and `other`.  See
+    /// [symmetric_difference_with](#method.symmetric_difference_with) for an
+    /// efficient in-place version.
     ///
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
+    /// # #![feature(bitset, bitvec)]
     /// use std::collections::{BitSet, BitVec};
     ///
     /// let a = BitSet::from_bit_vec(BitVec::from_bytes(&[0b01101000]));
@@ -1702,7 +1707,7 @@ impl BitSet {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
+    /// # #![feature(bitset, bitvec)]
     /// use std::collections::{BitSet, BitVec};
     ///
     /// let a   = 0b01101000;
@@ -1726,7 +1731,7 @@ impl BitSet {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
+    /// # #![feature(bitset, bitvec)]
     /// use std::collections::{BitSet, BitVec};
     ///
     /// let a   = 0b01101000;
@@ -1751,7 +1756,7 @@ impl BitSet {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
+    /// # #![feature(bitset, bitvec)]
     /// use std::collections::{BitSet, BitVec};
     ///
     /// let a   = 0b01101000;
@@ -1784,7 +1789,7 @@ impl BitSet {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
+    /// # #![feature(bitset, bitvec)]
     /// use std::collections::{BitSet, BitVec};
     ///
     /// let a   = 0b01101000;
@@ -1808,7 +1813,7 @@ impl BitSet {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections, bit_set_append_split_off)]
+    /// # #![feature(bitset, bitvec, append)]
     /// use std::collections::{BitVec, BitSet};
     ///
     /// let mut a = BitSet::new();
@@ -1826,7 +1831,7 @@ impl BitSet {
     /// assert_eq!(b.len(), 0);
     /// assert_eq!(a, BitSet::from_bit_vec(BitVec::from_bytes(&[0b01110010])));
     /// ```
-    #[unstable(feature = "bit_set_append_split_off",
+    #[unstable(feature = "append",
                reason = "recently added as part of collections reform 2")]
     pub fn append(&mut self, other: &mut Self) {
         self.union_with(other);
@@ -1839,7 +1844,7 @@ impl BitSet {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections, bit_set_append_split_off)]
+    /// # #![feature(bitset, bitvec, split_off)]
     /// use std::collections::{BitSet, BitVec};
     /// let mut a = BitSet::new();
     /// a.insert(2);
@@ -1854,7 +1859,7 @@ impl BitSet {
     /// assert_eq!(a, BitSet::from_bit_vec(BitVec::from_bytes(&[0b01100000])));
     /// assert_eq!(b, BitSet::from_bit_vec(BitVec::from_bytes(&[0b00010010])));
     /// ```
-    #[unstable(feature = "bit_set_append_split_off",
+    #[unstable(feature = "split_off",
                reason = "recently added as part of collections reform 2")]
     pub fn split_off(&mut self, at: usize) -> Self {
         let mut other = BitSet::new();

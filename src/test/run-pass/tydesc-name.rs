@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-#![feature(core)]
+#![feature(core_intrinsics)]
 
 use std::intrinsics::type_name;
 

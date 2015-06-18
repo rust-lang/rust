@@ -102,7 +102,7 @@ impl<T: Ord> BTreeSet<T> {
     /// Makes a new BTreeSet with the given B.
     ///
     /// B cannot be less than 2.
-    #[unstable(feature = "collections",
+    #[unstable(feature = "btree_b",
                reason = "probably want this to be on the type, eventually")]
     pub fn with_b(b: usize) -> BTreeSet<T> {
         BTreeSet { map: BTreeMap::with_b(b) }
@@ -141,7 +141,7 @@ impl<T: Ord> BTreeSet<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
+    /// # #![feature(btree_range, collections_bound)]
     /// use std::collections::BTreeSet;
     /// use std::collections::Bound::{Included, Unbounded};
     ///
@@ -154,7 +154,7 @@ impl<T: Ord> BTreeSet<T> {
     /// }
     /// assert_eq!(Some(&5), set.range(Included(&4), Unbounded).next());
     /// ```
-    #[unstable(feature = "collections",
+    #[unstable(feature = "btree_range",
                reason = "matches collection reform specification, waiting for dust to settle")]
     pub fn range<'a>(&'a self, min: Bound<&T>, max: Bound<&T>) -> Range<'a, T> {
         fn first<A, B>((a, _): (A, B)) -> A { a }

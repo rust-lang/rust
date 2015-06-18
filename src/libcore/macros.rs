@@ -10,6 +10,7 @@
 
 /// Entry point of thread panic, for details, see std::macros
 #[macro_export]
+#[allow_internal_unstable]
 macro_rules! panic {
     () => (
         panic!("explicit panic")

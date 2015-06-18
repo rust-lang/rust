@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-#![feature(rand, core)]
+#![feature(rand, num_bits_bytes)]
 #![feature(const_fn)]
 
 use std::sync::atomic::{AtomicUsize, Ordering};

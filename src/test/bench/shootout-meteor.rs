@@ -40,7 +40,7 @@
 
 // no-pretty-expanded FIXME #15189
 
-#![feature(core)]
+#![feature(iter_cmp)]
 
 use std::iter::repeat;
 use std::sync::Arc;

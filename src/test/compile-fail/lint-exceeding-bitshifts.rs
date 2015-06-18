@@ -12,7 +12,7 @@
 #![deny(exceeding_bitshifts)]
 #![allow(unused_variables)]
 #![allow(dead_code)]
-#![feature(core, negate_unsigned)]
+#![feature(num_bits_bytes, negate_unsigned)]
 
 fn main() {
       let n = 1u8 << 7;

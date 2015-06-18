@@ -28,7 +28,7 @@
 use core::prelude::*;
 
 use core::char::{encode_utf8_raw, encode_utf16_raw};
-use core::str::{char_range_at_raw, next_code_point};
+use core::str::next_code_point;
 
 use ascii::*;
 use borrow::Cow;
@@ -478,31 +478,6 @@ impl Wtf8 {
             ascii_byte @ 0x00 ... 0x7F => ascii_byte,
             _ => 0xFF
         }
-    }
-
-    /// Returns the code point at `position`.
-    ///
-    /// # Panics
-    ///
-    /// Panics if `position` is not at a code point boundary,
-    /// or is beyond the end of the string.
-    #[inline]
-    pub fn code_point_at(&self, position: usize) -> CodePoint {
-        let (code_point, _) = self.code_point_range_at(position);
-        code_point
-    }
-
-    /// Returns the code point at `position`
-    /// and the position of the next code point.
-    ///
-    /// # Panics
-    ///
-    /// Panics if `position` is not at a code point boundary,
-    /// or is beyond the end of the string.
-    #[inline]
-    pub fn code_point_range_at(&self, position: usize) -> (CodePoint, usize) {
-        let (c, n) = char_range_at_raw(&self.bytes, position);
-        (CodePoint { value: c }, n)
     }
 
     /// Returns an iterator for the string’s code points.
@@ -1171,30 +1146,6 @@ mod tests {
         assert_eq!(slice.ascii_byte_at(2), b'\xFF');
         assert_eq!(slice.ascii_byte_at(3), b' ');
         assert_eq!(slice.ascii_byte_at(4), b'\xFF');
-    }
-
-    #[test]
-    fn wtf8_code_point_at() {
-        let mut string = Wtf8Buf::from_str("aé ");
-        string.push(CodePoint::from_u32(0xD83D).unwrap());
-        string.push_char('💩');
-        assert_eq!(string.code_point_at(0), CodePoint::from_char('a'));
-        assert_eq!(string.code_point_at(1), CodePoint::from_char('é'));
-        assert_eq!(string.code_point_at(3), CodePoint::from_char(' '));
-        assert_eq!(string.code_point_at(4), CodePoint::from_u32(0xD83D).unwrap());
-        assert_eq!(string.code_point_at(7), CodePoint::from_char('💩'));
-    }
-
-    #[test]
-    fn wtf8_code_point_range_at() {
-        let mut string = Wtf8Buf::from_str("aé ");
-        string.push(CodePoint::from_u32(0xD83D).unwrap());
-        string.push_char('💩');
-        assert_eq!(string.code_point_range_at(0), (CodePoint::from_char('a'), 1));
-        assert_eq!(string.code_point_range_at(1), (CodePoint::from_char('é'), 3));
-        assert_eq!(string.code_point_range_at(3), (CodePoint::from_char(' '), 4));
-        assert_eq!(string.code_point_range_at(4), (CodePoint::from_u32(0xD83D).unwrap(), 7));
-        assert_eq!(string.code_point_range_at(7), (CodePoint::from_char('💩'), 11));
     }
 
     #[test]

@@ -420,7 +420,7 @@ impl<T, E> Result<T, E> {
     /// Converts from `Result<T, E>` to `&mut [T]` (without copying)
     ///
     /// ```
-    /// # #![feature(core)]
+    /// # #![feature(as_slice)]
     /// let mut x: Result<&str, u32> = Ok("Gold");
     /// {
     ///     let v = x.as_mut_slice();
@@ -434,7 +434,7 @@ impl<T, E> Result<T, E> {
     /// assert!(x.as_mut_slice().is_empty());
     /// ```
     #[inline]
-    #[unstable(feature = "core",
+    #[unstable(feature = "as_slice",
                reason = "waiting for mut conventions")]
     pub fn as_mut_slice(&mut self) -> &mut [T] {
         match *self {
@@ -966,7 +966,11 @@ impl<A, E, V: FromIterator<A>> FromIterator<Result<A, E>> for Result<V, E> {
 /// If an `Err` is encountered, it is immediately returned.
 /// Otherwise, the folded value is returned.
 #[inline]
-#[unstable(feature = "core")]
+#[unstable(feature = "result_fold",
+           reason = "unclear if this function should exist")]
+#[deprecated(since = "1.2.0",
+             reason = "has not seen enough usage to justify its position in \
+                       the standard library")]
 pub fn fold<T,
             V,
             E,

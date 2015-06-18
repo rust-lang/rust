@@ -276,8 +276,10 @@ impl<T> Vec<T> {
     /// the buffer are copied into the vector without cloning, as if
     /// `ptr::read()` were called on them.
     #[inline]
-    #[unstable(feature = "collections",
+    #[unstable(feature = "vec_from_raw_buf",
                reason = "may be better expressed via composition")]
+    #[deprecated(since = "1.2.0",
+                 reason = "use slice::from_raw_parts + .to_vec() instead")]
     pub unsafe fn from_raw_buf(ptr: *const T, elts: usize) -> Vec<T> {
         let mut dst = Vec::with_capacity(elts);
         dst.set_len(elts);
@@ -696,7 +698,7 @@ impl<T> Vec<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
+    /// # #![feature(append)]
     /// let mut vec = vec![1, 2, 3];
     /// let mut vec2 = vec![4, 5, 6];
     /// vec.append(&mut vec2);
@@ -704,7 +706,7 @@ impl<T> Vec<T> {
     /// assert_eq!(vec2, []);
     /// ```
     #[inline]
-    #[unstable(feature = "collections",
+    #[unstable(feature = "append",
                reason = "new API, waiting for dust to settle")]
     pub fn append(&mut self, other: &mut Self) {
         if mem::size_of::<T>() == 0 {
@@ -742,7 +744,7 @@ impl<T> Vec<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections_drain)]
+    /// # #![feature(drain)]
     ///
     /// // Draining using `..` clears the whole vector.
     /// let mut v = vec![1, 2, 3];
@@ -750,7 +752,7 @@ impl<T> Vec<T> {
     /// assert_eq!(v, &[]);
     /// assert_eq!(u, &[1, 2, 3]);
     /// ```
-    #[unstable(feature = "collections_drain",
+    #[unstable(feature = "drain",
                reason = "recently added, matches RFC")]
     pub fn drain<R>(&mut self, range: R) -> Drain<T> where R: RangeArgument<usize> {
         // Memory safety
@@ -840,7 +842,7 @@ impl<T> Vec<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
+    /// # #![feature(map_in_place)]
     /// let v = vec![0, 1, 2];
     /// let w = v.map_in_place(|i| i + 3);
     /// assert_eq!(&w[..], &[3, 4, 5]);
@@ -851,7 +853,7 @@ impl<T> Vec<T> {
     /// let newtyped_bytes = bytes.map_in_place(|x| Newtype(x));
     /// assert_eq!(&newtyped_bytes[..], &[Newtype(0x11), Newtype(0x22)]);
     /// ```
-    #[unstable(feature = "collections",
+    #[unstable(feature = "map_in_place",
                reason = "API may change to provide stronger guarantees")]
     pub fn map_in_place<U, F>(self, mut f: F) -> Vec<U> where F: FnMut(T) -> U {
         // FIXME: Assert statically that the types `T` and `U` have the same
@@ -1043,14 +1045,14 @@ impl<T> Vec<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
+    /// # #![feature(split_off)]
     /// let mut vec = vec![1,2,3];
     /// let vec2 = vec.split_off(1);
     /// assert_eq!(vec, [1]);
     /// assert_eq!(vec2, [2, 3]);
     /// ```
     #[inline]
-    #[unstable(feature = "collections",
+    #[unstable(feature = "split_off",
                reason = "new API, waiting for dust to settle")]
     pub fn split_off(&mut self, at: usize) -> Self {
         assert!(at <= self.len(), "`at` out of bounds");
@@ -1082,7 +1084,7 @@ impl<T: Clone> Vec<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
+    /// # #![feature(vec_resize)]
     /// let mut vec = vec!["hello"];
     /// vec.resize(3, "world");
     /// assert_eq!(vec, ["hello", "world", "world"]);
@@ -1091,7 +1093,7 @@ impl<T: Clone> Vec<T> {
     /// vec.resize(2, 0);
     /// assert_eq!(vec, [1, 2]);
     /// ```
-    #[unstable(feature = "collections",
+    #[unstable(feature = "vec_resize",
                reason = "matches collection reform specification; waiting for dust to settle")]
     pub fn resize(&mut self, new_len: usize, value: T) {
         let len = self.len();
@@ -1111,13 +1113,13 @@ impl<T: Clone> Vec<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
+    /// # #![feature(vec_push_all)]
     /// let mut vec = vec![1];
     /// vec.push_all(&[2, 3, 4]);
     /// assert_eq!(vec, [1, 2, 3, 4]);
     /// ```
     #[inline]
-    #[unstable(feature = "collections",
+    #[unstable(feature = "vec_push_all",
                reason = "likely to be replaced by a more optimized extend")]
     pub fn push_all(&mut self, other: &[T]) {
         self.reserve(other.len());
@@ -1707,12 +1709,14 @@ impl<'a, T> FromIterator<T> for Cow<'a, [T]> where T: Clone {
     }
 }
 
+#[allow(deprecated)]
 impl<'a, T: 'a> IntoCow<'a, [T]> for Vec<T> where T: Clone {
     fn into_cow(self) -> Cow<'a, [T]> {
         Cow::Owned(self)
     }
 }
 
+#[allow(deprecated)]
 impl<'a, T> IntoCow<'a, [T]> for &'a [T] where T: Clone {
     fn into_cow(self) -> Cow<'a, [T]> {
         Cow::Borrowed(self)
@@ -1738,7 +1742,7 @@ unsafe impl<T: Sync> Sync for IntoIter<T> { }
 impl<T> IntoIter<T> {
     #[inline]
     /// Drops all items that have not yet been moved and returns the empty vector.
-    #[unstable(feature = "collections")]
+    #[unstable(feature = "iter_to_vec")]
     pub fn into_inner(mut self) -> Vec<T> {
         unsafe {
             for _x in self.by_ref() { }
@@ -1832,7 +1836,7 @@ impl<T> Drop for IntoIter<T> {
 }
 
 /// A draining iterator for `Vec<T>`.
-#[unstable(feature = "collections_drain", reason = "recently added")]
+#[unstable(feature = "drain", reason = "recently added")]
 pub struct Drain<'a, T: 'a> {
     /// Index of tail to preserve
     tail_start: usize,
@@ -1907,12 +1911,17 @@ impl<'a, T> ExactSizeIterator for Drain<'a, T> {}
 
 /// Wrapper type providing a `&Vec<T>` reference via `Deref`.
 #[unstable(feature = "collections")]
+#[deprecated(since = "1.2.0",
+             reason = "replaced with deref coercions or Borrow")]
 pub struct DerefVec<'a, T:'a> {
     x: Vec<T>,
     l: PhantomData<&'a T>,
 }
 
 #[unstable(feature = "collections")]
+#[deprecated(since = "1.2.0",
+             reason = "replaced with deref coercions or Borrow")]
+#[allow(deprecated)]
 impl<'a, T> Deref for DerefVec<'a, T> {
     type Target = Vec<T>;
 
@@ -1923,6 +1932,9 @@ impl<'a, T> Deref for DerefVec<'a, T> {
 
 // Prevent the inner `Vec<T>` from attempting to deallocate memory.
 #[stable(feature = "rust1", since = "1.0.0")]
+#[deprecated(since = "1.2.0",
+             reason = "replaced with deref coercions or Borrow")]
+#[allow(deprecated)]
 impl<'a, T> Drop for DerefVec<'a, T> {
     fn drop(&mut self) {
         self.x.len = 0;
@@ -1948,6 +1960,9 @@ impl<'a, T> Drop for DerefVec<'a, T> {
 /// vec_consumer(&as_vec(&values));
 /// ```
 #[unstable(feature = "collections")]
+#[deprecated(since = "1.2.0",
+             reason = "replaced with deref coercions or Borrow")]
+#[allow(deprecated)]
 pub fn as_vec<'a, T>(x: &'a [T]) -> DerefVec<'a, T> {
     unsafe {
         DerefVec {

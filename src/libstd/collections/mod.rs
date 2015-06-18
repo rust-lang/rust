@@ -410,7 +410,7 @@ pub mod hash_set {
 
 /// Experimental support for providing custom hash algorithms to a HashMap and
 /// HashSet.
-#[unstable(feature = "std_misc", reason = "module was recently added")]
+#[unstable(feature = "hashmap_hasher", reason = "module was recently added")]
 pub mod hash_state {
     pub use super::hash::state::*;
 }

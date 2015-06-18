@@ -9,7 +9,8 @@
 // except according to those terms.
 
 
-#![feature(collections, rand, into_cow)]
+#![feature(collections, rand, into_cow, map_in_place, bitvec)]
+#![allow(warnings)]
 
 use std::borrow::{Cow, IntoCow};
 use std::collections::BitVec;

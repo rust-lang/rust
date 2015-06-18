@@ -56,12 +56,12 @@
 #![deny(missing_docs)]
 
 #![feature(box_syntax)]
-#![feature(collections)]
+#![feature(owned_ascii_ext)]
+#![feature(path_ext)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
-#![feature(std_misc)]
 #![feature(str_char)]
-#![feature(path_ext)]
+#![feature(vec_push_all)]
 #![cfg_attr(windows, feature(libc))]
 
 #[macro_use] extern crate log;

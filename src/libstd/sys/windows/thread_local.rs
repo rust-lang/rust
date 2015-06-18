@@ -12,7 +12,6 @@ use prelude::v1::*;
 
 use libc::types::os::arch::extra::{DWORD, LPVOID, BOOL};
 
-use boxed;
 use ptr;
 use rt;
 use sys_common::mutex::Mutex;
@@ -143,7 +142,7 @@ unsafe fn init_dtors() {
         DTOR_LOCK.unlock();
     });
     if res.is_ok() {
-        DTORS = boxed::into_raw(dtors);
+        DTORS = Box::into_raw(dtors);
     } else {
         DTORS = 1 as *mut _;
     }

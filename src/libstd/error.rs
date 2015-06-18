@@ -48,7 +48,7 @@
 // reconsider what crate these items belong in.
 
 use any::TypeId;
-use boxed::{self, Box};
+use boxed::Box;
 use convert::From;
 use fmt::{self, Debug, Display};
 use marker::{Send, Sync, Reflect};
@@ -77,7 +77,7 @@ pub trait Error: Debug + Display + Reflect {
 
     /// Get the `TypeId` of `self`
     #[doc(hidden)]
-    #[unstable(feature = "core",
+    #[unstable(feature = "error_type_id",
                reason = "unclear whether to commit to this public implementation detail")]
     fn type_id(&self) -> TypeId where Self: 'static {
         TypeId::of::<Self>()
@@ -140,7 +140,7 @@ impl Error for str::Utf8Error {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Error for num::ParseIntError {
     fn description(&self) -> &str {
-        self.description()
+        self.__description()
     }
 }
 
@@ -249,7 +249,7 @@ impl Error {
         if self.is::<T>() {
             unsafe {
                 // Get the raw representation of the trait object
-                let raw = boxed::into_raw(self);
+                let raw = Box::into_raw(self);
                 let to: TraitObject =
                     transmute::<*mut Error, TraitObject>(raw);
 
