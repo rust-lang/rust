@@ -211,6 +211,40 @@ Reference:
 http://doc.rust-lang.org/reference.html#trait-objects
 "##,
 
+E0035: r##"
+You tried to give a type parameter where it wasn't needed. Bad example:
+
+```
+struct Test;
+
+impl Test {
+    fn method(&self) {}
+}
+
+fn main() {
+    let x = Test;
+    
+    x.method::<i32>(); // Error: Test::method doesn't need type parameter!
+}
+```
+
+To fix this error, just remove the type parameter:
+
+```
+struct Test;
+
+impl Test {
+    fn method(&self) {}
+}
+
+fn main() {
+    let x = Test;
+    
+    x.method(); // OK, we're good!
+}
+```
+"##,
+
 E0040: r##"
 It is not allowed to manually call destructors in Rust. It is also not
 necessary to do this since `drop` is called automatically whenever a value goes
@@ -1321,7 +1355,6 @@ For more information see the [opt-in builtin traits RFC](https://github.com/rust
 
 register_diagnostics! {
     E0034, // multiple applicable methods in scope
-    E0035, // does not take type parameters
     E0036, // incorrect number of type parameters given for this method
     E0044, // foreign items may not have type parameters
     E0045, // variadic function must have C calling convention
