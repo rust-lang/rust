@@ -3787,10 +3787,6 @@ impl fmt::Debug for TypeContents {
     }
 }
 
-pub fn type_interior_is_unsafe<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
-    type_contents(cx, ty).interior_unsafe()
-}
-
 pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
     return memoized(&cx.tc_cache, ty, |ty| {
         tc_ty(cx, ty, &mut FnvHashMap())

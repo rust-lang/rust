@@ -65,7 +65,6 @@ pub use self::InteriorKind::*;
 pub use self::FieldName::*;
 pub use self::ElementKind::*;
 pub use self::MutabilityCategory::*;
-pub use self::InteriorSafety::*;
 pub use self::AliasableReason::*;
 pub use self::Note::*;
 pub use self::deref_kind::*;
@@ -1385,12 +1384,6 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
-pub enum InteriorSafety {
-    InteriorUnsafe,
-    InteriorSafe
-}
-
 #[derive(Clone, Debug)]
 pub enum Aliasability {
     FreelyAliasable(AliasableReason),
@@ -1404,8 +1397,8 @@ pub enum AliasableReason {
     AliasableClosure(ast::NodeId), // Aliasable due to capture Fn closure env
     AliasableOther,
     UnaliasableImmutable, // Created as needed upon seeing ImmutableUnique
-    AliasableStatic(InteriorSafety),
-    AliasableStaticMut(InteriorSafety),
+    AliasableStatic,
+    AliasableStaticMut,
 }
 
 impl<'tcx> cmt_<'tcx> {
@@ -1469,16 +1462,10 @@ impl<'tcx> cmt_<'tcx> {
             }
 
             cat_static_item(..) => {
-                let int_safe = if ty::type_interior_is_unsafe(ctxt, self.ty) {
-                    InteriorUnsafe
-                } else {
-                    InteriorSafe
-                };
-
                 if self.mutbl.is_mutable() {
-                    FreelyAliasable(AliasableStaticMut(int_safe))
+                    FreelyAliasable(AliasableStaticMut)
                 } else {
-                    FreelyAliasable(AliasableStatic(int_safe))
+                    FreelyAliasable(AliasableStatic)
                 }
             }
 

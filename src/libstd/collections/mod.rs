@@ -66,7 +66,7 @@
 //! ### Use a `BTreeMap` when:
 //! * You're interested in what the smallest or largest key-value pair is.
 //! * You want to find the largest or smallest key that is smaller or larger
-//!   than something
+//!   than something.
 //! * You want to be able to get all of the entries in order on-demand.
 //! * You want a sorted map.
 //!
@@ -147,7 +147,7 @@
 //! relation to the number of elements in the collection.  VecMap should only be
 //! seriously considered for small keys.
 //!
-//! Note also that BTreeMap's precise preformance depends on the value of B.
+//! Note also that BTreeMap's precise performance depends on the value of B.
 //!
 //! # Correct and Efficient Usage of Collections
 //!
@@ -309,7 +309,7 @@
 //! If a `Vacant(entry)` is yielded, then the key *was not* found. In this case
 //! the only valid operation is to `insert` a value into the entry. When this is
 //! done, the vacant entry is consumed and converted into a mutable reference to
-//! the the value that was inserted. This allows for further manipulation of the
+//! the value that was inserted. This allows for further manipulation of the
 //! value beyond the lifetime of the search itself. This is useful if complex
 //! logic needs to be performed on the value regardless of whether the value was
 //! just inserted.
