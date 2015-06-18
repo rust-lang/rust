@@ -211,6 +211,47 @@ Reference:
 http://doc.rust-lang.org/reference.html#trait-objects
 "##,
 
+E0034: r##"
+The compiler doesn't know what method to call because more than one does
+have the same prototype. Example:
+
+```
+struct Test;
+
+trait Trait1 {
+    fn foo();
+}
+
+trait Trait2 {
+    fn foo();
+}
+
+impl Trait1 for Test { fn foo() {} }
+impl Trait2 for Test { fn foo() {} }
+
+fn main() {
+    Test::foo() // error, what foo() to call?
+}
+```
+
+To avoid this error, you have to keep only one of them and remove the others.
+So let's take our example and fix it:
+
+```
+struct Test;
+
+trait Trait1 {
+    fn foo();
+}
+
+impl Trait1 for Test { fn foo() {} }
+
+fn main() {
+    Test::foo() // and now that's good!
+}
+```
+"##,
+
 E0040: r##"
 It is not allowed to manually call destructors in Rust. It is also not
 necessary to do this since `drop` is called automatically whenever a value goes
@@ -1320,7 +1361,6 @@ For more information see the [opt-in builtin traits RFC](https://github.com/rust
 }
 
 register_diagnostics! {
-    E0034, // multiple applicable methods in scope
     E0035, // does not take type parameters
     E0036, // incorrect number of type parameters given for this method
     E0044, // foreign items may not have type parameters
