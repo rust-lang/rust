@@ -21,7 +21,6 @@ use syntax::ast_util;
 use syntax::visit;
 use syntax::codemap::Span;
 use util::nodemap::DefIdMap;
-use util::ppaux::{Repr, UserString};
 
 pub fn check(tcx: &ty::ctxt) {
     let mut overlap = OverlapChecker { tcx: tcx, default_impls: DefIdMap() };
@@ -61,8 +60,8 @@ impl<'cx, 'tcx> OverlapChecker<'cx, 'tcx> {
     fn check_for_overlapping_impls_of_trait(&self,
                                             trait_def: &'tcx ty::TraitDef<'tcx>)
     {
-        debug!("check_for_overlapping_impls_of_trait(trait_def={})",
-               trait_def.repr(self.tcx));
+        debug!("check_for_overlapping_impls_of_trait(trait_def={:?})",
+               trait_def);
 
         // We should already know all impls of this trait, so these
         // borrows are safe.
@@ -131,10 +130,10 @@ impl<'cx, 'tcx> OverlapChecker<'cx, 'tcx> {
         if let Some((impl1_def_id, impl2_def_id)) = self.order_impls(
             impl1_def_id, impl2_def_id)
         {
-            debug!("check_if_impls_overlap({}, {}, {})",
-                   trait_def_id.repr(self.tcx),
-                   impl1_def_id.repr(self.tcx),
-                   impl2_def_id.repr(self.tcx));
+            debug!("check_if_impls_overlap({:?}, {:?}, {:?})",
+                   trait_def_id,
+                   impl1_def_id,
+                   impl2_def_id);
 
             let infcx = infer::new_infer_ctxt(self.tcx);
             if traits::overlapping_impls(&infcx, impl1_def_id, impl2_def_id) {
@@ -217,7 +216,7 @@ impl<'cx, 'tcx,'v> visit::Visitor<'v> for OverlapChecker<'cx, 'tcx> {
                                 span_err!(self.tcx.sess, item.span, E0371,
                                           "the object type `{}` automatically \
                                            implements the trait `{}`",
-                                          trait_ref.self_ty().user_string(self.tcx),
+                                          trait_ref.self_ty(),
                                           ty::item_path_str(self.tcx, trait_def_id));
                             }
                         }

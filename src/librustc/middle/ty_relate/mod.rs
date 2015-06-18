@@ -19,7 +19,6 @@ use middle::ty_fold::TypeFoldable;
 use std::rc::Rc;
 use syntax::abi;
 use syntax::ast;
-use util::ppaux::Repr;
 
 pub type RelateResult<'tcx, T> = Result<T, ty::type_err<'tcx>>;
 
@@ -79,10 +78,10 @@ impl<'a,'tcx:'a> Relate<'a,'tcx> for ty::mt<'tcx> {
                  -> RelateResult<'tcx, ty::mt<'tcx>>
         where R: TypeRelation<'a,'tcx>
     {
-        debug!("{}.mts({}, {})",
+        debug!("{}.mts({:?}, {:?})",
                relation.tag(),
-               a.repr(relation.tcx()),
-               b.repr(relation.tcx()));
+               a,
+               b);
         if a.mutbl != b.mutbl {
             Err(ty::terr_mutability)
         } else {
@@ -107,10 +106,10 @@ fn relate_item_substs<'a,'tcx:'a,R>(relation: &mut R,
                                     -> RelateResult<'tcx, Substs<'tcx>>
     where R: TypeRelation<'a,'tcx>
 {
-    debug!("substs: item_def_id={} a_subst={} b_subst={}",
-           item_def_id.repr(relation.tcx()),
-           a_subst.repr(relation.tcx()),
-           b_subst.repr(relation.tcx()));
+    debug!("substs: item_def_id={:?} a_subst={:?} b_subst={:?}",
+           item_def_id,
+           a_subst,
+           b_subst);
 
     let variances;
     let opt_variances = if relation.tcx().variance_computed.get() {
@@ -191,14 +190,13 @@ fn relate_region_params<'a,'tcx:'a,R>(relation: &mut R,
                                       -> RelateResult<'tcx, Vec<ty::Region>>
     where R: TypeRelation<'a,'tcx>
 {
-    let tcx = relation.tcx();
     let num_region_params = a_rs.len();
 
-    debug!("relate_region_params(a_rs={}, \
-            b_rs={}, variances={})",
-           a_rs.repr(tcx),
-           b_rs.repr(tcx),
-           variances.repr(tcx));
+    debug!("relate_region_params(a_rs={:?}, \
+            b_rs={:?}, variances={:?})",
+           a_rs,
+           b_rs,
+           variances);
 
     assert_eq!(num_region_params,
                variances.map_or(num_region_params,

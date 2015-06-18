@@ -21,7 +21,6 @@ use middle::ty_fold::{TypeFolder,TypeFoldable};
 use middle::infer;
 use write_substs_to_tcx;
 use write_ty_to_tcx;
-use util::ppaux::Repr;
 
 use std::cell::Cell;
 
@@ -169,10 +168,10 @@ impl<'cx, 'tcx, 'v> Visitor<'v> for WritebackCx<'cx, 'tcx> {
 
         self.visit_node_id(ResolvingPattern(p.span), p.id);
 
-        debug!("Type for pattern binding {} (id {}) resolved to {}",
+        debug!("Type for pattern binding {} (id {}) resolved to {:?}",
                pat_to_string(p),
                p.id,
-               ty::node_id_to_type(self.tcx(), p.id).repr(self.tcx()));
+               ty::node_id_to_type(self.tcx(), p.id));
 
         visit::walk_pat(self, p);
     }
@@ -215,9 +214,9 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                         ty::UpvarBorrow { kind: upvar_borrow.kind, region: r })
                 }
             };
-            debug!("Upvar capture for {} resolved to {}",
-                   upvar_id.repr(self.tcx()),
-                   new_upvar_capture.repr(self.tcx()));
+            debug!("Upvar capture for {:?} resolved to {:?}",
+                   upvar_id,
+                   new_upvar_capture);
             self.fcx.tcx().upvar_capture_map.borrow_mut().insert(*upvar_id, new_upvar_capture);
         }
     }
@@ -245,7 +244,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         let n_ty = self.fcx.node_ty(id);
         let n_ty = self.resolve(&n_ty, reason);
         write_ty_to_tcx(self.tcx(), id, n_ty);
-        debug!("Node {} has type {}", id, n_ty.repr(self.tcx()));
+        debug!("Node {} has type {:?}", id, n_ty);
 
         // Resolve any substitutions
         self.fcx.opt_node_ty_substs(id, |item_substs| {
@@ -294,9 +293,9 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         // Resolve any method map entry
         match self.fcx.inh.method_map.borrow_mut().remove(&method_call) {
             Some(method) => {
-                debug!("writeback::resolve_method_map_entry(call={:?}, entry={})",
+                debug!("writeback::resolve_method_map_entry(call={:?}, entry={:?})",
                        method_call,
-                       method.repr(self.tcx()));
+                       method);
                 let new_method = MethodCallee {
                     origin: self.resolve(&method.origin, reason),
                     ty: self.resolve(&method.ty, reason),
@@ -427,8 +426,8 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Resolver<'cx, 'tcx> {
         match self.infcx.fully_resolve(&t) {
             Ok(t) => t,
             Err(e) => {
-                debug!("Resolver::fold_ty: input type `{}` not fully resolvable",
-                       t.repr(self.tcx));
+                debug!("Resolver::fold_ty: input type `{:?}` not fully resolvable",
+                       t);
                 self.report_error(e);
                 self.tcx().types.err
             }

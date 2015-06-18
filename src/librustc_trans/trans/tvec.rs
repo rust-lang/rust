@@ -28,7 +28,6 @@ use trans::machine::llsize_of_alloc;
 use trans::type_::Type;
 use trans::type_of;
 use middle::ty::{self, Ty};
-use util::ppaux::ty_to_string;
 
 use syntax::ast;
 use syntax::parse::token::InternedString;
@@ -42,7 +41,7 @@ struct VecTypes<'tcx> {
 impl<'tcx> VecTypes<'tcx> {
     pub fn to_string<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> String {
         format!("VecTypes {{unit_ty={}, llunit_ty={}}}",
-                ty_to_string(ccx.tcx(), self.unit_ty),
+                self.unit_ty,
                 ccx.tn().type_to_string(self.llunit_ty))
     }
 }
@@ -58,8 +57,8 @@ pub fn trans_fixed_vstore<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     // to store the array of the suitable size, so all we have to do is
     // generate the content.
 
-    debug!("trans_fixed_vstore(expr={}, dest={})",
-           bcx.expr_to_string(expr), dest.to_string(bcx.ccx()));
+    debug!("trans_fixed_vstore(expr={:?}, dest={})",
+           expr, dest.to_string(bcx.ccx()));
 
     let vt = vec_types_from_expr(bcx, expr);
 
@@ -85,8 +84,8 @@ pub fn trans_slice_vec<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let ccx = fcx.ccx;
     let mut bcx = bcx;
 
-    debug!("trans_slice_vec(slice_expr={})",
-           bcx.expr_to_string(slice_expr));
+    debug!("trans_slice_vec(slice_expr={:?})",
+           slice_expr);
 
     let vec_ty = node_id_type(bcx, slice_expr.id);
 
@@ -139,8 +138,8 @@ pub fn trans_lit_str<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                  str_lit: InternedString,
                                  dest: Dest)
                                  -> Block<'blk, 'tcx> {
-    debug!("trans_lit_str(lit_expr={}, dest={})",
-           bcx.expr_to_string(lit_expr),
+    debug!("trans_lit_str(lit_expr={:?}, dest={})",
+           lit_expr,
            dest.to_string(bcx.ccx()));
 
     match dest {
@@ -167,10 +166,10 @@ fn write_content<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let fcx = bcx.fcx;
     let mut bcx = bcx;
 
-    debug!("write_content(vt={}, dest={}, vstore_expr={})",
+    debug!("write_content(vt={}, dest={}, vstore_expr={:?})",
            vt.to_string(bcx.ccx()),
            dest.to_string(bcx.ccx()),
-           bcx.expr_to_string(vstore_expr));
+           vstore_expr);
 
     match content_expr.node {
         ast::ExprLit(ref lit) => {

@@ -39,7 +39,6 @@ use trans::type_::Type;
 use trans::type_of::*;
 use middle::ty::{self, Ty};
 use middle::ty::MethodCall;
-use util::ppaux::Repr;
 
 use syntax::abi::{Rust, RustCall};
 use syntax::parse::token;
@@ -62,7 +61,7 @@ pub fn trans_impl(ccx: &CrateContext,
     let _icx = push_ctxt("meth::trans_impl");
     let tcx = ccx.tcx();
 
-    debug!("trans_impl(name={}, id={})", name.repr(tcx), id);
+    debug!("trans_impl(name={}, id={})", name, id);
 
     let mut v = TransItemVisitor { ccx: ccx };
 
@@ -136,15 +135,15 @@ pub fn trans_method_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         }) => {
             let trait_ref = ty::Binder(bcx.monomorphize(trait_ref));
             let span = bcx.tcx().map.span(method_call.expr_id);
-            debug!("method_call={:?} trait_ref={} trait_ref id={:?} substs={:?}",
+            debug!("method_call={:?} trait_ref={:?} trait_ref id={:?} substs={:?}",
                    method_call,
-                   trait_ref.repr(bcx.tcx()),
+                   trait_ref,
                    trait_ref.0.def_id,
                    trait_ref.0.substs);
             let origin = fulfill_obligation(bcx.ccx(),
                                             span,
                                             trait_ref.clone());
-            debug!("origin = {}", origin.repr(bcx.tcx()));
+            debug!("origin = {:?}", origin);
             trans_monomorphized_callee(bcx,
                                        method_call,
                                        trait_ref.def_id(),
@@ -234,7 +233,7 @@ pub fn trans_static_method_callee<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                              rcvr_self,
                                              Vec::new()));
     let trait_substs = tcx.mk_substs(trait_substs);
-    debug!("trait_substs={}", trait_substs.repr(tcx));
+    debug!("trait_substs={:?}", trait_substs);
     let trait_ref = ty::Binder(ty::TraitRef { def_id: trait_id,
                                               substs: trait_substs });
     let vtbl = fulfill_obligation(ccx,
@@ -296,8 +295,8 @@ pub fn trans_static_method_callee<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             immediate_rvalue(llfn, ty)
         }
         _ => {
-            tcx.sess.bug(&format!("static call to invalid vtable: {}",
-                                 vtbl.repr(tcx)));
+            tcx.sess.bug(&format!("static call to invalid vtable: {:?}",
+                                 vtbl));
         }
     }
 }
@@ -390,8 +389,8 @@ fn trans_monomorphized_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         traits::VtableDefaultImpl(..) |
         traits::VtableParam(..) => {
             bcx.sess().bug(
-                &format!("resolved vtable bad vtable {} in trans",
-                        vtable.repr(bcx.tcx())));
+                &format!("resolved vtable bad vtable {:?} in trans",
+                        vtable));
         }
     }
 }
@@ -415,8 +414,8 @@ fn combine_impl_and_methods_tps<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     let node_substs = node_id_substs(ccx, node, bcx.fcx.param_substs);
 
-    debug!("rcvr_substs={}", rcvr_substs.repr(ccx.tcx()));
-    debug!("node_substs={}", node_substs.repr(ccx.tcx()));
+    debug!("rcvr_substs={:?}", rcvr_substs);
+    debug!("node_substs={:?}", node_substs);
 
     // Break apart the type parameters from the node and type
     // parameters from the receiver.
@@ -484,7 +483,7 @@ pub fn trans_trait_callee_from_llval<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     // Load the data pointer from the object.
     debug!("trans_trait_callee_from_llval(callee_ty={}, vtable_index={}, llpair={})",
-           callee_ty.repr(ccx.tcx()),
+           callee_ty,
            vtable_index,
            bcx.val_to_string(llpair));
     let llboxptr = GEPi(bcx, llpair, &[0, abi::FAT_PTR_ADDR]);
@@ -556,9 +555,9 @@ pub fn trans_object_shim<'a, 'tcx>(
     let tcx = ccx.tcx();
     let trait_id = upcast_trait_ref.def_id();
 
-    debug!("trans_object_shim(object_ty={}, upcast_trait_ref={}, method_offset_in_trait={})",
-           object_ty.repr(tcx),
-           upcast_trait_ref.repr(tcx),
+    debug!("trans_object_shim(object_ty={:?}, upcast_trait_ref={:?}, method_offset_in_trait={})",
+           object_ty,
+           upcast_trait_ref,
            method_offset_in_trait);
 
     let object_trait_ref =
@@ -567,15 +566,15 @@ pub fn trans_object_shim<'a, 'tcx>(
                 data.principal_trait_ref_with_self_ty(tcx, object_ty)
             }
             _ => {
-                tcx.sess.bug(&format!("trans_object_shim() called on non-object: {}",
-                                      object_ty.repr(tcx)));
+                tcx.sess.bug(&format!("trans_object_shim() called on non-object: {:?}",
+                                      object_ty));
             }
         };
 
     // Upcast to the trait in question and extract out the substitutions.
     let upcast_trait_ref = ty::erase_late_bound_regions(tcx, &upcast_trait_ref);
     let object_substs = upcast_trait_ref.substs.clone().erase_regions();
-    debug!("trans_object_shim: object_substs={}", object_substs.repr(tcx));
+    debug!("trans_object_shim: object_substs={:?}", object_substs);
 
     // Lookup the type of this method as declared in the trait and apply substitutions.
     let method_ty = match ty::trait_item(tcx, trait_id, method_offset_in_trait) {
@@ -587,7 +586,7 @@ pub fn trans_object_shim<'a, 'tcx>(
     let fty = monomorphize::apply_param_substs(tcx, &object_substs, &method_ty.fty);
     let fty = tcx.mk_bare_fn(fty);
     let method_ty = opaque_method_ty(tcx, fty);
-    debug!("trans_object_shim: fty={} method_ty={}", fty.repr(tcx), method_ty.repr(tcx));
+    debug!("trans_object_shim: fty={:?} method_ty={:?}", fty, method_ty);
 
     //
     let shim_fn_ty = ty::mk_bare_fn(tcx, None, fty);
@@ -627,8 +626,8 @@ pub fn trans_object_shim<'a, 'tcx>(
                     ty::TyTuple(ref tys) => &**tys,
                     _ => {
                         bcx.sess().bug(
-                            &format!("rust-call expects a tuple not {}",
-                                     sig.inputs[1].repr(tcx)));
+                            &format!("rust-call expects a tuple not {:?}",
+                                     sig.inputs[1]));
                     }
                 }
             }
@@ -692,7 +691,7 @@ pub fn get_vtable<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let tcx = ccx.tcx();
     let _icx = push_ctxt("meth::get_vtable");
 
-    debug!("get_vtable(trait_ref={})", trait_ref.repr(tcx));
+    debug!("get_vtable(trait_ref={:?})", trait_ref);
 
     // Check the cache.
     match ccx.vtables().borrow().get(&trait_ref) {
@@ -739,14 +738,14 @@ pub fn get_vtable<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                 // an object type; this cannot happen because we
                 // cannot cast an unsized type into a trait object
                 tcx.sess.bug(
-                    &format!("cannot get vtable for an object type: {}",
-                            data.repr(tcx)));
+                    &format!("cannot get vtable for an object type: {:?}",
+                            data));
             }
             traits::VtableParam(..) => {
                 tcx.sess.bug(
-                    &format!("resolved vtable for {} to bad vtable {} in trans",
-                            trait_ref.repr(tcx),
-                            vtable.repr(tcx)));
+                    &format!("resolved vtable for {:?} to bad vtable {:?} in trans",
+                            trait_ref,
+                            vtable));
             }
         }
     });
@@ -776,10 +775,10 @@ fn emit_vtable_methods<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 {
     let tcx = ccx.tcx();
 
-    debug!("emit_vtable_methods(impl_id={}, substs={}, param_substs={})",
-           impl_id.repr(tcx),
-           substs.repr(tcx),
-           param_substs.repr(tcx));
+    debug!("emit_vtable_methods(impl_id={:?}, substs={:?}, param_substs={:?})",
+           impl_id,
+           substs,
+           param_substs);
 
     let trt_id = match ty::impl_trait_ref(tcx, impl_id) {
         Some(t_id) => t_id.def_id,
@@ -806,8 +805,8 @@ fn emit_vtable_methods<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         // method could never be called from this object, just supply
         // null.
         .map(|trait_method_def_id| {
-            debug!("emit_vtable_methods: trait_method_def_id={}",
-                   trait_method_def_id.repr(tcx));
+            debug!("emit_vtable_methods: trait_method_def_id={:?}",
+                   trait_method_def_id);
 
             let trait_method_type = match ty::impl_or_trait_item(tcx, trait_method_def_id) {
                 ty::MethodTraitItem(m) => m,
@@ -821,8 +820,8 @@ fn emit_vtable_methods<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                 return nullptr;
             }
 
-            debug!("emit_vtable_methods: trait_method_type={}",
-                   trait_method_type.repr(tcx));
+            debug!("emit_vtable_methods: trait_method_type={:?}",
+                   trait_method_type);
 
             // The substitutions we have are on the impl, so we grab
             // the method type from the impl to substitute into.
@@ -832,8 +831,8 @@ fn emit_vtable_methods<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                 _ => ccx.sess().bug("should be a method, not other assoc item"),
             };
 
-            debug!("emit_vtable_methods: impl_method_type={}",
-                   impl_method_type.repr(tcx));
+            debug!("emit_vtable_methods: impl_method_type={:?}",
+                   impl_method_type);
 
             // If this is a default method, it's possible that it
             // relies on where clauses that do not hold for this

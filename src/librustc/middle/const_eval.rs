@@ -23,7 +23,6 @@ use middle::pat_util::def_to_path;
 use middle::ty::{self, Ty};
 use middle::astconv_util::ast_ty_to_prim_ty;
 use util::num::ToPrimitive;
-use util::ppaux::Repr;
 
 use syntax::ast::{self, Expr};
 use syntax::ast_util;
@@ -1030,8 +1029,8 @@ fn resolve_trait_associated_const<'a, 'tcx: 'a>(tcx: &'a ty::ctxt<'tcx>,
                                                            rcvr_self,
                                                            Vec::new()));
     let trait_substs = tcx.mk_substs(trait_substs);
-    debug!("resolve_trait_associated_const: trait_substs={}",
-           trait_substs.repr(tcx));
+    debug!("resolve_trait_associated_const: trait_substs={:?}",
+           trait_substs);
     let trait_ref = ty::Binder(ty::TraitRef { def_id: trait_id,
                                               substs: trait_substs });
 
@@ -1052,10 +1051,10 @@ fn resolve_trait_associated_const<'a, 'tcx: 'a>(tcx: &'a ty::ctxt<'tcx>,
         }
         Err(e) => {
             tcx.sess.span_bug(ti.span,
-                              &format!("Encountered error `{}` when trying \
+                              &format!("Encountered error `{:?}` when trying \
                                         to select an implementation for \
                                         constant trait item reference.",
-                                       e.repr(tcx)))
+                                       e))
         }
     };
 

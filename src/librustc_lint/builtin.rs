@@ -36,7 +36,6 @@ use middle::{def, pat_util, stability};
 use middle::const_eval::{eval_const_expr_partial, const_int, const_uint};
 use middle::cfg;
 use rustc::ast_map;
-use util::ppaux::ty_to_string;
 use util::nodemap::{FnvHashMap, NodeSet};
 use lint::{Level, Context, LintPass, LintArray, Lint};
 
@@ -495,8 +494,7 @@ impl BoxPointers {
         });
 
         if n_uniq > 0 {
-            let s = ty_to_string(cx.tcx, ty);
-            let m = format!("type uses owned (Box type) pointers: {}", s);
+            let m = format!("type uses owned (Box type) pointers: {}", ty);
             cx.span_lint(BOX_POINTERS, span, &m[..]);
         }
     }

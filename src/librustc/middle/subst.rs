@@ -15,7 +15,6 @@ pub use self::RegionSubsts::*;
 
 use middle::ty::{self, Ty};
 use middle::ty_fold::{self, TypeFoldable, TypeFolder};
-use util::ppaux::Repr;
 
 use std::fmt;
 use std::iter::IntoIterator;
@@ -29,7 +28,7 @@ use syntax::codemap::{Span, DUMMY_SP};
 /// identify each in-scope parameter by an *index* and a *parameter
 /// space* (which indices where the parameter is defined; see
 /// `ParamSpace`).
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Substs<'tcx> {
     pub types: VecPerParamSpace<Ty<'tcx>>,
     pub regions: RegionSubsts,
@@ -38,7 +37,7 @@ pub struct Substs<'tcx> {
 /// Represents the values to use when substituting lifetime parameters.
 /// If the value is `ErasedRegions`, then this subst is occurring during
 /// trans, and all region parameters will be replaced with `ty::ReStatic`.
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub enum RegionSubsts {
     ErasedRegions,
     NonerasedRegions(VecPerParamSpace<ty::Region>)
@@ -240,13 +239,11 @@ pub struct SeparateVecsPerParamSpace<T> {
 }
 
 impl<T: fmt::Debug> fmt::Debug for VecPerParamSpace<T> {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(fmt, "VecPerParamSpace {{"));
-        for space in &ParamSpace::all() {
-            try!(write!(fmt, "{:?}: {:?}, ", *space, self.get_slice(*space)));
-        }
-        try!(write!(fmt, "}}"));
-        Ok(())
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "[{:?};{:?};{:?}]",
+               self.get_slice(TypeSpace),
+               self.get_slice(SelfSpace),
+               self.get_slice(FnSpace))
     }
 }
 
@@ -620,10 +617,10 @@ impl<'a, 'tcx> TypeFolder<'tcx> for SubstFolder<'a, 'tcx> {
                                 self.tcx().sess.span_bug(
                                     span,
                                     &format!("Type parameter out of range \
-                                              when substituting in region {} (root type={}) \
+                                              when substituting in region {} (root type={:?}) \
                                               (space={:?}, index={})",
-                                             data.name.as_str(),
-                                             self.root_ty.repr(self.tcx()),
+                                             data.name,
+                                             self.root_ty,
                                              data.space,
                                              data.index));
                             }
@@ -675,14 +672,14 @@ impl<'a,'tcx> SubstFolder<'a,'tcx> {
                 let span = self.span.unwrap_or(DUMMY_SP);
                 self.tcx().sess.span_bug(
                     span,
-                    &format!("Type parameter `{}` ({}/{:?}/{}) out of range \
-                                 when substituting (root type={}) substs={}",
-                            p.repr(self.tcx()),
-                            source_ty.repr(self.tcx()),
+                    &format!("Type parameter `{:?}` ({:?}/{:?}/{}) out of range \
+                                 when substituting (root type={:?}) substs={:?}",
+                            p,
+                            source_ty,
                             p.space,
                             p.idx,
-                            self.root_ty.repr(self.tcx()),
-                            self.substs.repr(self.tcx())));
+                            self.root_ty,
+                            self.substs));
             }
         };
 
@@ -733,14 +730,14 @@ impl<'a,'tcx> SubstFolder<'a,'tcx> {
     /// is that only in the second case have we passed through a fn binder.
     fn shift_regions_through_binders(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
         debug!("shift_regions(ty={:?}, region_binders_passed={:?}, type_has_escaping_regions={:?})",
-               ty.repr(self.tcx()), self.region_binders_passed, ty::type_has_escaping_regions(ty));
+               ty, self.region_binders_passed, ty::type_has_escaping_regions(ty));
 
         if self.region_binders_passed == 0 || !ty::type_has_escaping_regions(ty) {
             return ty;
         }
 
         let result = ty_fold::shift_regions(self.tcx(), self.region_binders_passed, &ty);
-        debug!("shift_regions: shifted result = {:?}", result.repr(self.tcx()));
+        debug!("shift_regions: shifted result = {:?}", result);
 
         result
     }

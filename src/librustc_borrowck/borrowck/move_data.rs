@@ -22,7 +22,7 @@ use rustc::middle::dataflow::KillFrom;
 use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::ty;
 use rustc::util::nodemap::{FnvHashMap, NodeSet};
-use rustc::util::ppaux::Repr;
+
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::usize;
@@ -313,8 +313,8 @@ impl<'tcx> MoveData<'tcx> {
             }
         };
 
-        debug!("move_path(lp={}, index={:?})",
-               lp.repr(tcx),
+        debug!("move_path(lp={:?}, index={:?})",
+               lp,
                index);
 
         assert_eq!(index.get(), self.paths.borrow().len() - 1);
@@ -364,8 +364,8 @@ impl<'tcx> MoveData<'tcx> {
                     lp: Rc<LoanPath<'tcx>>,
                     id: ast::NodeId,
                     kind: MoveKind) {
-        debug!("add_move(lp={}, id={}, kind={:?})",
-               lp.repr(tcx),
+        debug!("add_move(lp={:?}, id={}, kind={:?})",
+               lp,
                id,
                kind);
 
@@ -394,8 +394,8 @@ impl<'tcx> MoveData<'tcx> {
                           span: Span,
                           assignee_id: ast::NodeId,
                           mode: euv::MutateMode) {
-        debug!("add_assignment(lp={}, assign_id={}, assignee_id={}",
-               lp.repr(tcx), assign_id, assignee_id);
+        debug!("add_assignment(lp={:?}, assign_id={}, assignee_id={}",
+               lp, assign_id, assignee_id);
 
         let path_index = self.move_path(tcx, lp.clone());
 
@@ -415,13 +415,13 @@ impl<'tcx> MoveData<'tcx> {
         };
 
         if self.is_var_path(path_index) {
-            debug!("add_assignment[var](lp={}, assignment={}, path_index={:?})",
-                   lp.repr(tcx), self.var_assignments.borrow().len(), path_index);
+            debug!("add_assignment[var](lp={:?}, assignment={}, path_index={:?})",
+                   lp, self.var_assignments.borrow().len(), path_index);
 
             self.var_assignments.borrow_mut().push(assignment);
         } else {
-            debug!("add_assignment[path](lp={}, path_index={:?})",
-                   lp.repr(tcx), path_index);
+            debug!("add_assignment[path](lp={:?}, path_index={:?})",
+                   lp, path_index);
 
             self.path_assignments.borrow_mut().push(assignment);
         }
@@ -437,8 +437,8 @@ impl<'tcx> MoveData<'tcx> {
                              pattern_id: ast::NodeId,
                              base_lp: Rc<LoanPath<'tcx>>,
                              mode: euv::MatchMode) {
-        debug!("add_variant_match(lp={}, pattern_id={})",
-               lp.repr(tcx), pattern_id);
+        debug!("add_variant_match(lp={:?}, pattern_id={})",
+               lp, pattern_id);
 
         let path_index = self.move_path(tcx, lp.clone());
         let base_path_index = self.move_path(tcx, base_lp.clone());

@@ -28,7 +28,6 @@ use trans::type_of::*;
 use middle::ty::{self, ClosureTyper};
 use middle::subst::Substs;
 use session::config::FullDebugInfo;
-use util::ppaux::Repr;
 
 use syntax::abi::RustCall;
 use syntax::ast;
@@ -353,9 +352,9 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     llreffn: ValueRef)
     -> ValueRef
 {
-    debug!("trans_fn_once_adapter_shim(closure_def_id={}, substs={}, llreffn={})",
-           closure_def_id.repr(ccx.tcx()),
-           substs.repr(ccx.tcx()),
+    debug!("trans_fn_once_adapter_shim(closure_def_id={:?}, substs={:?}, llreffn={})",
+           closure_def_id,
+           substs,
            ccx.tn().val_to_string(llreffn));
 
     let tcx = ccx.tcx();
@@ -374,8 +373,8 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
                                                                abi: abi,
                                                                sig: sig.clone() });
     let llref_fn_ty = ty::mk_bare_fn(tcx, None, llref_bare_fn_ty);
-    debug!("trans_fn_once_adapter_shim: llref_fn_ty={}",
-           llref_fn_ty.repr(tcx));
+    debug!("trans_fn_once_adapter_shim: llref_fn_ty={:?}",
+           llref_fn_ty);
 
     // Make a version of the closure type with the same arguments, but
     // with argument #0 being by value.
@@ -423,8 +422,8 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     let input_tys = match sig.inputs[1].sty {
         ty::TyTuple(ref tys) => &**tys,
         _ => bcx.sess().bug(&format!("trans_fn_once_adapter_shim: not rust-call! \
-                                      closure_def_id={}",
-                                     closure_def_id.repr(tcx)))
+                                      closure_def_id={:?}",
+                                     closure_def_id))
     };
     let llargs: Vec<_> =
         input_tys.iter()

@@ -32,7 +32,6 @@ use trans::type_of;
 use middle::cast::{CastTy,IntTy};
 use middle::subst::Substs;
 use middle::ty::{self, Ty};
-use util::ppaux::{Repr, ty_to_string};
 use util::nodemap::NodeMap;
 
 use std::iter::repeat;
@@ -66,9 +65,9 @@ pub fn const_lit(cx: &CrateContext, e: &ast::Expr, lit: &ast::Lit)
                     C_integral(Type::uint_from_ty(cx, t), i as u64, false)
                 }
                 _ => cx.sess().span_bug(lit.span,
-                        &format!("integer literal has type {} (expected int \
+                        &format!("integer literal has type {:?} (expected int \
                                  or usize)",
-                                ty_to_string(cx.tcx(), lit_int_ty)))
+                                lit_int_ty))
             }
         }
         ast::LitFloat(ref fs, t) => {
@@ -160,8 +159,8 @@ fn const_deref<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             }
         }
         None => {
-            cx.sess().bug(&format!("unexpected dereferenceable type {}",
-                                   ty_to_string(cx.tcx(), ty)))
+            cx.sess().bug(&format!("unexpected dereferenceable type {:?}",
+                                   ty))
         }
     }
 }
@@ -368,8 +367,8 @@ pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             llvm::LLVMDumpValue(llconst);
             llvm::LLVMDumpValue(C_undef(llty));
         }
-        cx.sess().bug(&format!("const {} of type {} has size {} instead of {}",
-                         e.repr(cx.tcx()), ty_to_string(cx.tcx(), ety_adjusted),
+        cx.sess().bug(&format!("const {:?} of type {:?} has size {} instead of {}",
+                         e, ety_adjusted,
                          csize, tsize));
     }
     (llconst, ety_adjusted)
@@ -476,10 +475,10 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                    fn_args: FnArgMap)
                                    -> ValueRef
 {
-    debug!("const_expr_unadjusted(e={}, ety={}, param_substs={})",
-           e.repr(cx.tcx()),
-           ety.repr(cx.tcx()),
-           param_substs.repr(cx.tcx()));
+    debug!("const_expr_unadjusted(e={:?}, ety={:?}, param_substs={:?})",
+           e,
+           ety,
+           param_substs);
 
     let map_list = |exprs: &[P<ast::Expr>]| -> Vec<ValueRef> {
         exprs.iter()
@@ -496,9 +495,9 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             /* Neither type is bottom, and we expect them to be unified
              * already, so the following is safe. */
             let (te1, ty) = const_expr(cx, &**e1, param_substs, fn_args);
-            debug!("const_expr_unadjusted: te1={}, ty={}",
+            debug!("const_expr_unadjusted: te1={}, ty={:?}",
                    cx.tn().val_to_string(te1),
-                   ty.repr(cx.tcx()));
+                   ty);
             let is_simd = ty::type_is_simd(cx.tcx(), ty);
             let intype = if is_simd {
                 ty::simd_type(cx.tcx(), ty)
@@ -620,13 +619,13 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                       },
                       _ => cx.sess().span_bug(base.span,
                                               &format!("index-expr base must be a vector \
-                                                       or string type, found {}",
-                                                      ty_to_string(cx.tcx(), bt)))
+                                                       or string type, found {:?}",
+                                                      bt))
                   },
                   _ => cx.sess().span_bug(base.span,
                                           &format!("index-expr base must be a vector \
-                                                   or string type, found {}",
-                                                  ty_to_string(cx.tcx(), bt)))
+                                                   or string type, found {:?}",
+                                                  bt))
               };
 
               let len = llvm::LLVMConstIntGetZExtValue(len) as u64;
@@ -654,7 +653,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             let t_cast = ety;
             let llty = type_of::type_of(cx, t_cast);
             let (v, t_expr) = const_expr(cx, &**base, param_substs, fn_args);
-            debug!("trans_const_cast({} as {})", t_expr.repr(cx.tcx()), t_cast.repr(cx.tcx()));
+            debug!("trans_const_cast({:?} as {:?})", t_expr, t_cast);
             if expr::cast_is_noop(cx.tcx(), base, t_expr, t_cast) {
                 return v;
             }

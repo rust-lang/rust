@@ -10,11 +10,11 @@
 
 use middle::infer::InferCtxt;
 use middle::ty::{self, RegionEscape, Ty};
+
 use std::collections::HashSet;
-use std::default::Default;
+use std::fmt;
 use syntax::ast;
 use util::common::ErrorReported;
-use util::ppaux::Repr;
 use util::nodemap::NodeMap;
 
 use super::CodeAmbiguity;
@@ -137,8 +137,8 @@ impl<'tcx> FulfillmentContext<'tcx> {
                                          cause: ObligationCause<'tcx>)
                                          -> Ty<'tcx>
     {
-        debug!("normalize_associated_type(projection_ty={})",
-               projection_ty.repr(infcx.tcx));
+        debug!("normalize_associated_type(projection_ty={:?})",
+               projection_ty);
 
         assert!(!projection_ty.has_escaping_regions());
 
@@ -151,7 +151,7 @@ impl<'tcx> FulfillmentContext<'tcx> {
             self.register_predicate_obligation(infcx, obligation);
         }
 
-        debug!("normalize_associated_type: result={}", normalized.value.repr(infcx.tcx));
+        debug!("normalize_associated_type: result={:?}", normalized.value);
 
         normalized.value
     }
@@ -171,12 +171,11 @@ impl<'tcx> FulfillmentContext<'tcx> {
     }
 
     pub fn register_region_obligation<'a>(&mut self,
-                                          infcx: &InferCtxt<'a,'tcx>,
                                           t_a: Ty<'tcx>,
                                           r_b: ty::Region,
                                           cause: ObligationCause<'tcx>)
     {
-        register_region_obligation(infcx.tcx, t_a, r_b, cause, &mut self.region_obligations);
+        register_region_obligation(t_a, r_b, cause, &mut self.region_obligations);
     }
 
     pub fn register_predicate_obligation<'a>(&mut self,
@@ -190,11 +189,11 @@ impl<'tcx> FulfillmentContext<'tcx> {
         assert!(!obligation.has_escaping_regions());
 
         if self.is_duplicate_or_add(infcx.tcx, &obligation.predicate) {
-            debug!("register_predicate({}) -- already seen, skip", obligation.repr(infcx.tcx));
+            debug!("register_predicate({:?}) -- already seen, skip", obligation);
             return;
         }
 
-        debug!("register_predicate({})", obligation.repr(infcx.tcx));
+        debug!("register_predicate({:?})", obligation);
         self.predicates.push(obligation);
     }
 
@@ -366,7 +365,6 @@ fn process_predicate<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
      * type inference.
      */
 
-    let tcx = selcx.tcx();
     match obligation.predicate {
         ty::Predicate::Trait(ref data) => {
             let trait_obligation = obligation.with(data.clone());
@@ -379,9 +377,9 @@ fn process_predicate<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
                     true
                 }
                 Err(selection_err) => {
-                    debug!("predicate: {} error: {}",
-                           obligation.repr(tcx),
-                           selection_err.repr(tcx));
+                    debug!("predicate: {:?} error: {:?}",
+                           obligation,
+                           selection_err);
                     errors.push(
                         FulfillmentError::new(
                             obligation.clone(),
@@ -430,7 +428,7 @@ fn process_predicate<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
                         CodeSelectionError(Unimplemented)));
             } else {
                 let ty::OutlivesPredicate(t_a, r_b) = binder.0;
-                register_region_obligation(tcx, t_a, r_b,
+                register_region_obligation(t_a, r_b,
                                            obligation.cause.clone(),
                                            region_obligations);
             }
@@ -440,9 +438,9 @@ fn process_predicate<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
         ty::Predicate::Projection(ref data) => {
             let project_obligation = obligation.with(data.clone());
             let result = project::poly_project_and_unify_type(selcx, &project_obligation);
-            debug!("process_predicate: poly_project_and_unify_type({}) returned {}",
-                   project_obligation.repr(tcx),
-                   result.repr(tcx));
+            debug!("process_predicate: poly_project_and_unify_type({:?}) returned {:?}",
+                   project_obligation,
+                   result);
             match result {
                 Ok(Some(obligations)) => {
                     new_obligations.extend(obligations);
@@ -463,16 +461,15 @@ fn process_predicate<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
     }
 }
 
-impl<'tcx> Repr<'tcx> for RegionObligation<'tcx> {
-    fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
-        format!("RegionObligation(sub_region={}, sup_type={})",
-                self.sub_region.repr(tcx),
-                self.sup_type.repr(tcx))
+impl<'tcx> fmt::Debug for RegionObligation<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "RegionObligation(sub_region={:?}, sup_type={:?})",
+               self.sub_region,
+               self.sup_type)
     }
 }
 
-fn register_region_obligation<'tcx>(tcx: &ty::ctxt<'tcx>,
-                                    t_a: Ty<'tcx>,
+fn register_region_obligation<'tcx>(t_a: Ty<'tcx>,
                                     r_b: ty::Region,
                                     cause: ObligationCause<'tcx>,
                                     region_obligations: &mut NodeMap<Vec<RegionObligation<'tcx>>>)
@@ -481,8 +478,8 @@ fn register_region_obligation<'tcx>(tcx: &ty::ctxt<'tcx>,
                                                sub_region: r_b,
                                                cause: cause };
 
-    debug!("register_region_obligation({})",
-           region_obligation.repr(tcx));
+    debug!("register_region_obligation({:?})",
+           region_obligation);
 
     region_obligations.entry(region_obligation.cause.body_id).or_insert(vec![])
         .push(region_obligation);

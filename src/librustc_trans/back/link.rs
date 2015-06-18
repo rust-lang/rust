@@ -25,7 +25,6 @@ use middle::ty::{self, Ty};
 use rustc::ast_map::{PathElem, PathElems, PathName};
 use trans::{CrateContext, CrateTranslation, gensym_name};
 use util::common::time;
-use util::ppaux;
 use util::sha2::{Digest, Sha256};
 use util::fs::fix_windows_verbatim_for_gcc;
 use rustc_back::tempdir::TempDir;
@@ -347,8 +346,7 @@ pub fn mangle_exported_name<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, path: PathEl
 pub fn mangle_internal_name_by_type_and_seq<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                                       t: Ty<'tcx>,
                                                       name: &str) -> String {
-    let s = ppaux::ty_to_string(ccx.tcx(), t);
-    let path = [PathName(token::intern(&s[..])),
+    let path = [PathName(token::intern(&t.to_string())),
                 gensym_name(name)];
     let hash = get_symbol_hash(ccx, t);
     mangle(path.iter().cloned(), Some(&hash[..]))

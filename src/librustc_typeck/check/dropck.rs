@@ -14,7 +14,6 @@ use middle::infer;
 use middle::region;
 use middle::subst::{self, Subst};
 use middle::ty::{self, Ty};
-use util::ppaux::{Repr, UserString};
 
 use syntax::ast;
 use syntax::codemap::{self, Span};
@@ -38,7 +37,7 @@ use syntax::codemap::{self, Span};
 ///
 pub fn check_drop_impl(tcx: &ty::ctxt, drop_impl_did: ast::DefId) -> Result<(), ()> {
     let ty::TypeScheme { generics: ref dtor_generics,
-                         ty: ref dtor_self_type } = ty::lookup_item_type(tcx, drop_impl_did);
+                         ty: dtor_self_type } = ty::lookup_item_type(tcx, drop_impl_did);
     let dtor_predicates = ty::lookup_predicates(tcx, drop_impl_did);
     match dtor_self_type.sty {
         ty::TyEnum(self_type_did, self_to_impl_substs) |
@@ -47,7 +46,7 @@ pub fn check_drop_impl(tcx: &ty::ctxt, drop_impl_did: ast::DefId) -> Result<(), 
             try!(ensure_drop_params_and_item_params_correspond(tcx,
                                                                drop_impl_did,
                                                                dtor_generics,
-                                                               dtor_self_type,
+                                                               &dtor_self_type,
                                                                self_type_did));
 
             ensure_drop_predicates_are_implied_by_item_defn(tcx,
@@ -62,7 +61,7 @@ pub fn check_drop_impl(tcx: &ty::ctxt, drop_impl_did: ast::DefId) -> Result<(), 
             let span = tcx.map.def_id_span(drop_impl_did, codemap::DUMMY_SP);
             tcx.sess.span_bug(
                 span, &format!("should have been rejected by coherence check: {}",
-                               dtor_self_type.repr(tcx)));
+                               dtor_self_type));
         }
     }
 }
@@ -212,9 +211,8 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
 
         if !assumptions_in_impl_context.contains(&predicate) {
             let item_span = tcx.map.span(self_type_did.node);
-            let req = predicate.user_string(tcx);
             span_err!(tcx.sess, drop_impl_span, E0367,
-                      "The requirement `{}` is added only by the Drop impl.", req);
+                      "The requirement `{}` is added only by the Drop impl.", predicate);
             tcx.sess.span_note(item_span,
                                "The same requirement must be part of \
                                 the struct/enum definition");
@@ -257,8 +255,8 @@ pub fn check_safety_of_destructor_if_necessary<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>
                                                      typ: ty::Ty<'tcx>,
                                                      span: Span,
                                                      scope: region::CodeExtent) {
-    debug!("check_safety_of_destructor_if_necessary typ: {} scope: {:?}",
-           typ.repr(rcx.tcx()), scope);
+    debug!("check_safety_of_destructor_if_necessary typ: {:?} scope: {:?}",
+           typ, scope);
 
     // types that have been traversed so far by `traverse_type_if_unseen`
     let mut breadcrumbs: Vec<Ty<'tcx>> = Vec::new();
@@ -277,8 +275,7 @@ pub fn check_safety_of_destructor_if_necessary<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>
         Err(Error::Overflow(ref ctxt, ref detected_on_typ)) => {
             let tcx = rcx.tcx();
             span_err!(tcx.sess, span, E0320,
-                      "overflow while adding drop-check rules for {}",
-                      typ.user_string(rcx.tcx()));
+                      "overflow while adding drop-check rules for {}", typ);
             match *ctxt {
                 TypeContext::Root => {
                     // no need for an additional note if the overflow
@@ -294,7 +291,7 @@ pub fn check_safety_of_destructor_if_necessary<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>
                         ty::item_path_str(tcx, def_id),
                         variant,
                         arg_index,
-                        detected_on_typ.user_string(rcx.tcx()));
+                        detected_on_typ);
                 }
                 TypeContext::Struct { def_id, field } => {
                     span_note!(
@@ -303,7 +300,7 @@ pub fn check_safety_of_destructor_if_necessary<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>
                         "overflowed on struct {} field {} type: {}",
                         ty::item_path_str(tcx, def_id),
                         field,
-                        detected_on_typ.user_string(rcx.tcx()));
+                        detected_on_typ);
                 }
             }
         }
@@ -372,8 +369,8 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'tcx>(
                     let tp_def = item_type.generics.types
                         .opt_get(subst::TypeSpace, 0).unwrap();
                     let new_typ = substs.type_for_def(tp_def);
-                    debug!("replacing phantom {} with {}",
-                           typ.repr(rcx.tcx()), new_typ.repr(rcx.tcx()));
+                    debug!("replacing phantom {:?} with {:?}",
+                           typ, new_typ);
                     (new_typ, xref_depth_orig + 1)
                 } else {
                     (typ, xref_depth_orig)
@@ -384,8 +381,8 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'tcx>(
             // definition of `Box<T>` must carry a PhantomData that
             // puts us into the previous case.
             ty::TyBox(new_typ) => {
-                debug!("replacing TyBox {} with {}",
-                       typ.repr(rcx.tcx()), new_typ.repr(rcx.tcx()));
+                debug!("replacing TyBox {:?} with {:?}",
+                       typ, new_typ);
                 (new_typ, xref_depth_orig + 1)
             }
 
@@ -411,7 +408,7 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'tcx>(
         debug!("iterate_over_potentially_unsafe_regions_in_type \
                 {}typ: {} scope: {:?} xref: {}",
                (0..depth).map(|_| ' ').collect::<String>(),
-               typ.repr(rcx.tcx()), scope, xref_depth);
+               typ, scope, xref_depth);
 
         // If `typ` has a destructor, then we must ensure that all
         // borrowed data reachable via `typ` must outlive the parent
@@ -467,8 +464,8 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'tcx>(
 
             match typ.sty {
                 ty::TyStruct(struct_did, substs) => {
-                    debug!("typ: {} is struct; traverse structure and not type-expression",
-                           typ.repr(rcx.tcx()));
+                    debug!("typ: {:?} is struct; traverse structure and not type-expression",
+                           typ);
                     // Don't recurse; we extract type's substructure,
                     // so do not process subparts of type expression.
                     walker.skip_current_subtree();
@@ -497,8 +494,8 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'tcx>(
                 }
 
                 ty::TyEnum(enum_did, substs) => {
-                    debug!("typ: {} is enum; traverse structure and not type-expression",
-                           typ.repr(rcx.tcx()));
+                    debug!("typ: {:?} is enum; traverse structure and not type-expression",
+                           typ);
                     // Don't recurse; we extract type's substructure,
                     // so do not process subparts of type expression.
                     walker.skip_current_subtree();
@@ -571,24 +568,24 @@ fn has_dtor_of_interest<'tcx>(tcx: &ty::ctxt<'tcx>,
     match dtor_kind {
         DtorKind::PureRecur => {
             has_dtor_of_interest = false;
-            debug!("typ: {} has no dtor, and thus is uninteresting",
-                   typ.repr(tcx));
+            debug!("typ: {:?} has no dtor, and thus is uninteresting",
+                   typ);
         }
         DtorKind::Unknown(bounds) => {
             match bounds.region_bound {
                 ty::ReStatic => {
-                    debug!("trait: {} has 'static bound, and thus is uninteresting",
-                           typ.repr(tcx));
+                    debug!("trait: {:?} has 'static bound, and thus is uninteresting",
+                           typ);
                     has_dtor_of_interest = false;
                 }
                 ty::ReEmpty => {
-                    debug!("trait: {} has empty region bound, and thus is uninteresting",
-                           typ.repr(tcx));
+                    debug!("trait: {:?} has empty region bound, and thus is uninteresting",
+                           typ);
                     has_dtor_of_interest = false;
                 }
                 r => {
-                    debug!("trait: {} has non-static bound: {}; assumed interesting",
-                           typ.repr(tcx), r.repr(tcx));
+                    debug!("trait: {:?} has non-static bound: {:?}; assumed interesting",
+                           typ, r);
                     has_dtor_of_interest = true;
                 }
             }
@@ -645,8 +642,8 @@ fn has_dtor_of_interest<'tcx>(tcx: &ty::ctxt<'tcx>,
 
                     if result {
                         has_pred_of_interest = true;
-                        debug!("typ: {} has interesting dtor due to generic preds, e.g. {}",
-                               typ.repr(tcx), pred.repr(tcx));
+                        debug!("typ: {:?} has interesting dtor due to generic preds, e.g. {:?}",
+                               typ, pred);
                         break 'items;
                     }
                 }
@@ -670,14 +667,14 @@ fn has_dtor_of_interest<'tcx>(tcx: &ty::ctxt<'tcx>,
                 has_pred_of_interest;
 
             if has_dtor_of_interest {
-                debug!("typ: {} has interesting dtor, due to \
+                debug!("typ: {:?} has interesting dtor, due to \
                         region params: {} or pred: {}",
-                       typ.repr(tcx),
+                       typ,
                        has_region_param_of_interest,
                        has_pred_of_interest);
             } else {
-                debug!("typ: {} has dtor, but it is uninteresting",
-                       typ.repr(tcx));
+                debug!("typ: {:?} has dtor, but it is uninteresting",
+                       typ);
             }
         }
     }

@@ -16,7 +16,7 @@ use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::mem_categorization as mc;
 use rustc::middle::region;
 use rustc::middle::ty;
-use rustc::util::ppaux::Repr;
+
 use syntax::ast;
 use syntax::codemap::Span;
 
@@ -33,8 +33,8 @@ pub fn guarantee_lifetime<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
     //! Reports error if `loan_region` is larger than S
     //! where S is `item_scope` if `cmt` is an upvar,
     //! and is scope of `cmt` otherwise.
-    debug!("guarantee_lifetime(cmt={}, loan_region={})",
-           cmt.repr(bccx.tcx), loan_region.repr(bccx.tcx));
+    debug!("guarantee_lifetime(cmt={:?}, loan_region={:?})",
+           cmt, loan_region);
     let ctxt = GuaranteeLifetimeContext {bccx: bccx,
                                          item_scope: item_scope,
                                          span: span,
@@ -65,9 +65,9 @@ impl<'a, 'tcx> GuaranteeLifetimeContext<'a, 'tcx> {
         //! Main routine. Walks down `cmt` until we find the
         //! "guarantor".  Reports an error if `self.loan_region` is
         //! larger than scope of `cmt`.
-        debug!("guarantee_lifetime.check(cmt={}, loan_region={})",
-               cmt.repr(self.bccx.tcx),
-               self.loan_region.repr(self.bccx.tcx));
+        debug!("guarantee_lifetime.check(cmt={:?}, loan_region={:?})",
+               cmt,
+               self.loan_region);
 
         match cmt.cat {
             mc::cat_rvalue(..) |

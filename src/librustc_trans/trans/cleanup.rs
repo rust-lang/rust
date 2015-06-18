@@ -133,7 +133,6 @@ use trans::type_::Type;
 use middle::ty::{self, Ty};
 use std::fmt;
 use syntax::ast;
-use util::ppaux::Repr;
 
 pub struct CleanupScope<'blk, 'tcx: 'blk> {
     // The id of this cleanup scope. If the id is None,
@@ -397,10 +396,10 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
             skip_dtor: false,
         };
 
-        debug!("schedule_drop_mem({:?}, val={}, ty={}) fill_on_drop={} skip_dtor={}",
+        debug!("schedule_drop_mem({:?}, val={}, ty={:?}) fill_on_drop={} skip_dtor={}",
                cleanup_scope,
                self.ccx.tn().val_to_string(val),
-               ty.repr(self.ccx.tcx()),
+               ty,
                drop.fill_on_drop,
                drop.skip_dtor);
 
@@ -423,10 +422,10 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
             skip_dtor: false,
         };
 
-        debug!("schedule_drop_and_fill_mem({:?}, val={}, ty={}, fill_on_drop={}, skip_dtor={})",
+        debug!("schedule_drop_and_fill_mem({:?}, val={}, ty={:?}, fill_on_drop={}, skip_dtor={})",
                cleanup_scope,
                self.ccx.tn().val_to_string(val),
-               ty.repr(self.ccx.tcx()),
+               ty,
                drop.fill_on_drop,
                drop.skip_dtor);
 
@@ -455,10 +454,10 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
             skip_dtor: true,
         };
 
-        debug!("schedule_drop_adt_contents({:?}, val={}, ty={}) fill_on_drop={} skip_dtor={}",
+        debug!("schedule_drop_adt_contents({:?}, val={}, ty={:?}) fill_on_drop={} skip_dtor={}",
                cleanup_scope,
                self.ccx.tn().val_to_string(val),
-               ty.repr(self.ccx.tcx()),
+               ty,
                drop.fill_on_drop,
                drop.skip_dtor);
 
@@ -484,7 +483,7 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
         debug!("schedule_drop_immediate({:?}, val={}, ty={:?}) fill_on_drop={} skip_dtor={}",
                cleanup_scope,
                self.ccx.tn().val_to_string(val),
-               ty.repr(self.ccx.tcx()),
+               ty,
                drop.fill_on_drop,
                drop.skip_dtor);
 

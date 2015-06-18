@@ -16,7 +16,6 @@ use super::type_variable::{EqTo};
 use middle::ty::{self, Ty};
 use middle::ty::TyVar;
 use middle::ty_relate::{Relate, RelateResult, TypeRelation};
-use util::ppaux::{Repr};
 
 pub struct Equate<'a, 'tcx: 'a> {
     fields: CombineFields<'a, 'tcx>
@@ -45,8 +44,8 @@ impl<'a, 'tcx> TypeRelation<'a,'tcx> for Equate<'a, 'tcx> {
     }
 
     fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
-        debug!("{}.tys({}, {})", self.tag(),
-               a.repr(self.fields.infcx.tcx), b.repr(self.fields.infcx.tcx));
+        debug!("{}.tys({:?}, {:?})", self.tag(),
+               a, b);
         if a == b { return Ok(a); }
 
         let infcx = self.fields.infcx;
@@ -75,10 +74,10 @@ impl<'a, 'tcx> TypeRelation<'a,'tcx> for Equate<'a, 'tcx> {
     }
 
     fn regions(&mut self, a: ty::Region, b: ty::Region) -> RelateResult<'tcx, ty::Region> {
-        debug!("{}.regions({}, {})",
+        debug!("{}.regions({:?}, {:?})",
                self.tag(),
-               a.repr(self.fields.infcx.tcx),
-               b.repr(self.fields.infcx.tcx));
+               a,
+               b);
         let origin = Subtype(self.fields.trace.clone());
         self.fields.infcx.region_vars.make_eqregion(origin, a, b);
         Ok(a)

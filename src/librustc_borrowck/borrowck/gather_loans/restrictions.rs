@@ -16,7 +16,6 @@ use borrowck::*;
 use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::mem_categorization as mc;
 use rustc::middle::ty;
-use rustc::util::ppaux::Repr;
 use syntax::codemap::Span;
 
 use borrowck::ToInteriorKind;
@@ -58,7 +57,7 @@ struct RestrictionsContext<'a, 'tcx: 'a> {
 impl<'a, 'tcx> RestrictionsContext<'a, 'tcx> {
     fn restrict(&self,
                 cmt: mc::cmt<'tcx>) -> RestrictionResult<'tcx> {
-        debug!("restrict(cmt={})", cmt.repr(self.bccx.tcx));
+        debug!("restrict(cmt={:?})", cmt);
 
         let new_lp = |v: LoanPathKind<'tcx>| Rc::new(LoanPath::new(v, cmt.ty));
 

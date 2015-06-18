@@ -15,9 +15,9 @@ use super::namespace::crate_root_namespace;
 use trans::common::CrateContext;
 use middle::subst::{self, Substs};
 use middle::ty::{self, Ty, ClosureTyper};
+
 use syntax::ast;
 use syntax::parse::token;
-use util::ppaux;
 
 
 // Compute the name of the type as it should be stored in debuginfo. Does not do
@@ -162,7 +162,7 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         ty::TyProjection(..) |
         ty::TyParam(_) => {
             cx.sess().bug(&format!("debuginfo: Trying to create type name for \
-                unexpected type: {}", ppaux::ty_to_string(cx.tcx(), t)));
+                unexpected type: {:?}", t));
         }
     }
 

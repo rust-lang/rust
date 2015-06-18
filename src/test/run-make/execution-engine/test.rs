@@ -221,25 +221,26 @@ fn compile_program(input: &str, sysroot: PathBuf)
         let arenas = ty::CtxtArenas::new();
         let ast_map = driver::assign_node_ids_and_map(&sess, &mut forest);
 
-        let analysis = driver::phase_3_run_analysis_passes(
-            sess, ast_map, &arenas, id, MakeGlobMap::No);
+        driver::phase_3_run_analysis_passes(
+            sess, ast_map, &arenas, id, MakeGlobMap::No, |tcx, analysis| {
 
-        let (tcx, trans) = driver::phase_4_translate_to_llvm(analysis);
+            let trans = driver::phase_4_translate_to_llvm(tcx, analysis);
 
-        let crates = tcx.sess.cstore.get_used_crates(RequireDynamic);
+            let crates = tcx.sess.cstore.get_used_crates(RequireDynamic);
 
-        // Collect crates used in the session.
-        // Reverse order finds dependencies first.
-        let deps = crates.into_iter().rev()
-            .filter_map(|(_, p)| p).collect();
+            // Collect crates used in the session.
+            // Reverse order finds dependencies first.
+            let deps = crates.into_iter().rev()
+                .filter_map(|(_, p)| p).collect();
 
-        assert_eq!(trans.modules.len(), 1);
-        let llmod = trans.modules[0].llmod;
+            assert_eq!(trans.modules.len(), 1);
+            let llmod = trans.modules[0].llmod;
 
-        // Workaround because raw pointers do not impl Send
-        let modp = llmod as usize;
+            // Workaround because raw pointers do not impl Send
+            let modp = llmod as usize;
 
-        (modp, deps)
+            (modp, deps)
+        }).1
     }).unwrap();
 
     match handle.join() {

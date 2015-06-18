@@ -24,7 +24,6 @@ use super::Constraint;
 use middle::infer::SubregionOrigin;
 use middle::infer::region_inference::RegionVarBindings;
 use util::nodemap::{FnvHashMap, FnvHashSet};
-use util::ppaux::Repr;
 
 use std::borrow::Cow;
 use std::collections::hash_map::Entry::Vacant;
@@ -191,13 +190,13 @@ impl<'a, 'tcx> dot::Labeller<'a, Node, Edge> for ConstraintGraph<'a, 'tcx> {
             Node::RegionVid(n_vid) =>
                 dot::LabelText::label(format!("{:?}", n_vid)),
             Node::Region(n_rgn) =>
-                dot::LabelText::label(format!("{}", n_rgn.repr(self.tcx))),
+                dot::LabelText::label(format!("{:?}", n_rgn)),
         }
     }
     fn edge_label(&self, e: &Edge) -> dot::LabelText {
         match *e {
             Edge::Constraint(ref c) =>
-                dot::LabelText::label(format!("{}", self.map.get(c).unwrap().repr(self.tcx))),
+                dot::LabelText::label(format!("{:?}", self.map.get(c).unwrap())),
             Edge::EnclScope(..) =>
                 dot::LabelText::label(format!("(enclosed)")),
         }

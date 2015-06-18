@@ -18,7 +18,6 @@ use check::{self, FnCtxt};
 use middle::ty::{self, Ty};
 use middle::def;
 use metadata::{csearch, cstore, decoder};
-use util::ppaux::UserString;
 
 use syntax::{ast, ast_util};
 use syntax::codemap::Span;
@@ -45,7 +44,6 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     match error {
         MethodError::NoMatch(static_sources, out_of_scope_traits, mode) => {
             let cx = fcx.tcx();
-            let item_ustring = item_name.user_string(cx);
 
             fcx.type_error_message(
                 span,
@@ -54,7 +52,7 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                              in the current scope",
                             if mode == Mode::MethodCall { "method" }
                             else { "associated item" },
-                            item_ustring,
+                            item_name,
                             actual)
                 },
                 rcvr_ty,
@@ -66,7 +64,7 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 if fields.iter().any(|f| f.name == item_name) {
                     cx.sess.span_note(span,
                         &format!("use `(s.{0})(...)` if you meant to call the \
-                                 function stored in the `{0}` field", item_ustring));
+                                 function stored in the `{0}` field", item_name));
                 }
             }
 
@@ -93,7 +91,7 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             let msg = format!("the `{}` method from the `{}` trait cannot be explicitly \
                                invoked on this closure as we have not yet inferred what \
                                kind of closure it is",
-                               item_name.user_string(fcx.tcx()),
+                               item_name,
                                ty::item_path_str(fcx.tcx(), trait_def_id));
             let msg = if let Some(callee) = rcvr_expr {
                 format!("{}; use overloaded call notation instead (e.g., `{}()`)",
@@ -134,7 +132,7 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                "candidate #{} is defined in an impl{} for the type `{}`",
                                idx + 1,
                                insertion,
-                               impl_ty.user_string(fcx.tcx()));
+                               impl_ty);
                 }
                 CandidateSource::TraitSource(trait_did) => {
                     let (_, item) = trait_item(fcx.tcx(), trait_did, item_name).unwrap();
@@ -160,7 +158,6 @@ fn suggest_traits_to_import<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                       valid_out_of_scope_traits: Vec<ast::DefId>)
 {
     let tcx = fcx.tcx();
-    let item_ustring = item_name.user_string(tcx);
 
     if !valid_out_of_scope_traits.is_empty() {
         let mut candidates = valid_out_of_scope_traits;
@@ -217,7 +214,7 @@ fn suggest_traits_to_import<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
              perhaps you need to implement {one_of_them}:",
             traits_define = if candidates.len() == 1 {"trait defines"} else {"traits define"},
             one_of_them = if candidates.len() == 1 {"it"} else {"one of them"},
-            name = item_ustring);
+            name = item_name);
 
         fcx.sess().fileline_help(span, &msg[..]);
 

@@ -12,7 +12,6 @@ use borrowck::BorrowckCtxt;
 use rustc::middle::mem_categorization as mc;
 use rustc::middle::mem_categorization::InteriorOffsetKind as Kind;
 use rustc::middle::ty;
-use rustc::util::ppaux::UserString;
 use std::cell::RefCell;
 use syntax::ast;
 use syntax::codemap;
@@ -130,7 +129,7 @@ fn report_cannot_move_out_of<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                 bccx.span_err(move_from.span,
                               &format!("cannot move out of type `{}`, \
                                         a non-copy fixed-size array",
-                                       b.ty.user_string(bccx.tcx)));
+                                       b.ty));
             }
         }
 
@@ -143,7 +142,7 @@ fn report_cannot_move_out_of<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                         move_from.span,
                         &format!("cannot move out of type `{}`, \
                                  which defines the `Drop` trait",
-                                b.ty.user_string(bccx.tcx)));
+                                b.ty));
                 },
                 _ => {
                     bccx.span_bug(move_from.span, "this path should not cause illegal move")

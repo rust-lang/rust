@@ -16,7 +16,6 @@ use super::type_variable::{SubtypeOf, SupertypeOf};
 use middle::ty::{self, Ty};
 use middle::ty::TyVar;
 use middle::ty_relate::{Relate, RelateResult, TypeRelation};
-use util::ppaux::{Repr};
 
 /// "Greatest lower bound" (common subtype)
 pub struct Sub<'a, 'tcx: 'a> {
@@ -49,7 +48,7 @@ impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Sub<'a, 'tcx> {
     }
 
     fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
-        debug!("{}.tys({}, {})", self.tag(), a.repr(self.tcx()), b.repr(self.tcx()));
+        debug!("{}.tys({:?}, {:?})", self.tag(), a, b);
 
         if a == b { return Ok(a); }
 
@@ -85,10 +84,10 @@ impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Sub<'a, 'tcx> {
     }
 
     fn regions(&mut self, a: ty::Region, b: ty::Region) -> RelateResult<'tcx, ty::Region> {
-        debug!("{}.regions({}, {})",
+        debug!("{}.regions({:?}, {:?})",
                self.tag(),
-               a.repr(self.tcx()),
-               b.repr(self.tcx()));
+               a,
+               b);
         let origin = Subtype(self.fields.trace.clone());
         self.fields.infcx.region_vars.make_subregion(origin, a, b);
         Ok(a)
