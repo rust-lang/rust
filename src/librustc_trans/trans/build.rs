@@ -522,30 +522,6 @@ pub fn Not(cx: Block, v: ValueRef, debug_loc: DebugLoc) -> ValueRef {
     B(cx).not(v)
 }
 
-/* Memory */
-pub fn Malloc(cx: Block, ty: Type, debug_loc: DebugLoc) -> ValueRef {
-    unsafe {
-        if cx.unreachable.get() {
-            return llvm::LLVMGetUndef(Type::i8p(cx.ccx()).to_ref());
-        }
-        debug_loc.apply(cx.fcx);
-        B(cx).malloc(ty)
-    }
-}
-
-pub fn ArrayMalloc(cx: Block,
-                   ty: Type,
-                   val: ValueRef,
-                   debug_loc: DebugLoc) -> ValueRef {
-    unsafe {
-        if cx.unreachable.get() {
-            return llvm::LLVMGetUndef(Type::i8p(cx.ccx()).to_ref());
-        }
-        debug_loc.apply(cx.fcx);
-        B(cx).array_malloc(ty, val)
-    }
-}
-
 pub fn Alloca(cx: Block, ty: Type, name: &str) -> ValueRef {
     unsafe {
         if cx.unreachable.get() { return llvm::LLVMGetUndef(ty.ptr_to().to_ref()); }
@@ -558,16 +534,6 @@ pub fn AllocaFcx(fcx: &FunctionContext, ty: Type, name: &str) -> ValueRef {
     b.position_before(fcx.alloca_insert_pt.get().unwrap());
     DebugLoc::None.apply(fcx);
     b.alloca(ty, name)
-}
-
-pub fn ArrayAlloca(cx: Block, ty: Type, val: ValueRef) -> ValueRef {
-    unsafe {
-        if cx.unreachable.get() { return llvm::LLVMGetUndef(ty.ptr_to().to_ref()); }
-        let b = cx.fcx.ccx.builder();
-        b.position_before(cx.fcx.alloca_insert_pt.get().unwrap());
-        DebugLoc::None.apply(cx.fcx);
-        b.array_alloca(ty, val)
-    }
 }
 
 pub fn Free(cx: Block, pointer_val: ValueRef) {

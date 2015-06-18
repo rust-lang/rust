@@ -1300,20 +1300,8 @@ extern {
                         -> ValueRef;
 
     /* Memory */
-    pub fn LLVMBuildMalloc(B: BuilderRef, Ty: TypeRef, Name: *const c_char)
-                           -> ValueRef;
-    pub fn LLVMBuildArrayMalloc(B: BuilderRef,
-                                Ty: TypeRef,
-                                Val: ValueRef,
-                                Name: *const c_char)
-                                -> ValueRef;
     pub fn LLVMBuildAlloca(B: BuilderRef, Ty: TypeRef, Name: *const c_char)
                            -> ValueRef;
-    pub fn LLVMBuildArrayAlloca(B: BuilderRef,
-                                Ty: TypeRef,
-                                Val: ValueRef,
-                                Name: *const c_char)
-                                -> ValueRef;
     pub fn LLVMBuildFree(B: BuilderRef, PointerVal: ValueRef) -> ValueRef;
     pub fn LLVMBuildLoad(B: BuilderRef,
                          PointerVal: ValueRef,
