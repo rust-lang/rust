@@ -80,7 +80,6 @@ use trans::type_of;
 use trans::type_of::*;
 use trans::value::Value;
 use util::common::indenter;
-use util::ppaux::Repr;
 use util::sha2::Sha256;
 use util::nodemap::NodeMap;
 
@@ -250,9 +249,7 @@ fn require_alloc_fn<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     match bcx.tcx().lang_items.require(it) {
         Ok(id) => id,
         Err(s) => {
-            bcx.sess().fatal(&format!("allocation of `{}` {}",
-                                     bcx.ty_to_string(info_ty),
-                                     s));
+            bcx.sess().fatal(&format!("allocation of `{}` {}", info_ty, s));
         }
     }
 }
@@ -530,8 +527,7 @@ pub fn iter_structural_ty<'blk, 'tcx, F>(cx: Block<'blk, 'tcx>,
           }
       }
       _ => {
-          cx.sess().unimpl(&format!("type in iter_structural_ty: {}",
-                                    t.repr()))
+          cx.sess().unimpl(&format!("type in iter_structural_ty: {}", t))
       }
     }
     return cx;
@@ -640,8 +636,7 @@ pub fn fail_if_zero_or_overflows<'blk, 'tcx>(
             (res, false)
         }
         _ => {
-            cx.sess().bug(&format!("fail-if-zero on unexpected type: {}",
-                                   rhs_t.repr()));
+            cx.sess().bug(&format!("fail-if-zero on unexpected type: {}", rhs_t));
         }
     };
     let bcx = with_cond(cx, is_zero, |bcx| {
@@ -1187,13 +1182,13 @@ pub fn new_fn_ctxt<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
                              -> FunctionContext<'a, 'tcx> {
     common::validate_substs(param_substs);
 
-    debug!("new_fn_ctxt(path={}, id={}, param_substs={})",
+    debug!("new_fn_ctxt(path={}, id={}, param_substs={:?})",
            if id == !0 {
                "".to_string()
            } else {
                ccx.tcx().map.path_to_string(id).to_string()
            },
-           id, param_substs.repr());
+           id, param_substs);
 
     let uses_outptr = match output_type {
         ty::FnConverging(output_type) => {
@@ -1510,8 +1505,8 @@ pub fn trans_closure<'a, 'b, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let _icx = push_ctxt("trans_closure");
     attributes::emit_uwtable(llfndecl, true);
 
-    debug!("trans_closure(..., param_substs={})",
-           param_substs.repr());
+    debug!("trans_closure(..., param_substs={:?})",
+           param_substs);
 
     let has_env = match closure_env {
         closure::ClosureEnv::Closure(_) => true,
@@ -1553,8 +1548,8 @@ pub fn trans_closure<'a, 'b, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         }
     };
     for monomorphized_arg_type in &monomorphized_arg_types {
-        debug!("trans_closure: monomorphized_arg_type: {}",
-               monomorphized_arg_type.repr());
+        debug!("trans_closure: monomorphized_arg_type: {:?}",
+               monomorphized_arg_type);
     }
     debug!("trans_closure: function lltype: {}",
            bcx.fcx.ccx.tn().val_to_string(bcx.fcx.llfn));
@@ -1636,7 +1631,7 @@ pub fn trans_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                           id: ast::NodeId,
                           attrs: &[ast::Attribute]) {
     let _s = StatRecorder::new(ccx, ccx.tcx().map.path_to_string(id).to_string());
-    debug!("trans_fn(param_substs={})", param_substs.repr());
+    debug!("trans_fn(param_substs={:?})", param_substs);
     let _icx = push_ctxt("trans_fn");
     let fn_ty = ty::node_id_to_type(ccx.tcx(), id);
     let output_type = ty::erase_late_bound_regions(ccx.tcx(), &ty::ty_fn_ret(fn_ty));
@@ -1679,7 +1674,7 @@ pub fn trans_named_tuple_constructor<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         _ => ccx.sess().bug(
             &format!("trans_enum_variant_constructor: \
                      unexpected ctor return type {}",
-                     ctor_ty.repr()))
+                     ctor_ty))
     };
 
     // Get location to store the result. If the user does not care about
@@ -1757,7 +1752,7 @@ fn trans_enum_variant_or_tuple_like_struct<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx
         _ => ccx.sess().bug(
             &format!("trans_enum_variant_or_tuple_like_struct: \
                      unexpected ctor return type {}",
-                    ctor_ty.repr()))
+                    ctor_ty))
     };
 
     let (arena, fcx): (TypedArena<_>, FunctionContext);

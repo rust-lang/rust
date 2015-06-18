@@ -66,7 +66,6 @@ use middle::traits;
 use middle::ty;
 use middle::ty_fold::{self, TypeFoldable, TypeFolder};
 use middle::ty_walk::{self, TypeWalker};
-use util::ppaux::{Repr, UserString};
 use util::common::{memoized, ErrorReported};
 use util::nodemap::{NodeMap, NodeSet, DefIdMap, DefIdSet};
 use util::nodemap::FnvHashMap;
@@ -2848,8 +2847,8 @@ impl<'tcx> TraitDef<'tcx> {
                        tcx: &ctxt<'tcx>,
                        impl_def_id: DefId,
                        impl_trait_ref: TraitRef<'tcx>) {
-        debug!("TraitDef::record_impl for {}, from {}",
-               self.repr(), impl_trait_ref.repr());
+        debug!("TraitDef::record_impl for {:?}, from {:?}",
+               self, impl_trait_ref);
 
         // We don't want to borrow_mut after we already populated all impls,
         // so check if an impl is present with an immutable borrow first.
@@ -3773,7 +3772,7 @@ pub fn sequence_element_type<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
         TyArray(ty, _) | TySlice(ty) => ty,
         TyStr => mk_mach_uint(cx, ast::TyU8),
         _ => cx.sess.bug(&format!("sequence_element_type called on non-sequence value: {}",
-                                  ty.user_string())),
+                                  ty)),
     }
 }
 
@@ -4242,8 +4241,8 @@ fn type_impls_bound<'a,'tcx>(param_env: Option<&ParameterEnvironment<'a,'tcx>>,
 
     let is_impld = traits::type_known_to_meet_builtin_bound(&infcx, param_env, ty, bound, span);
 
-    debug!("type_impls_bound({}, {:?}) = {:?}",
-           ty.repr(),
+    debug!("type_impls_bound({:?}, {:?}) = {:?}",
+           ty,
            bound,
            is_impld);
 
@@ -4344,20 +4343,20 @@ pub fn is_ffi_safe<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
 pub fn is_instantiable<'tcx>(cx: &ctxt<'tcx>, r_ty: Ty<'tcx>) -> bool {
     fn type_requires<'tcx>(cx: &ctxt<'tcx>, seen: &mut Vec<DefId>,
                            r_ty: Ty<'tcx>, ty: Ty<'tcx>) -> bool {
-        debug!("type_requires({}, {})?",
-               r_ty.repr(), ty.repr());
+        debug!("type_requires({:?}, {:?})?",
+               r_ty, ty);
 
         let r = r_ty == ty || subtypes_require(cx, seen, r_ty, ty);
 
-        debug!("type_requires({}, {})? {:?}",
-               r_ty.repr(), ty.repr(), r);
+        debug!("type_requires({:?}, {:?})? {:?}",
+               r_ty, ty, r);
         return r;
     }
 
     fn subtypes_require<'tcx>(cx: &ctxt<'tcx>, seen: &mut Vec<DefId>,
                               r_ty: Ty<'tcx>, ty: Ty<'tcx>) -> bool {
-        debug!("subtypes_require({}, {})?",
-               r_ty.repr(), ty.repr());
+        debug!("subtypes_require({:?}, {:?})?",
+               r_ty, ty);
 
         let r = match ty.sty {
             // fixed length vectors need special treatment compared to
@@ -4435,8 +4434,8 @@ pub fn is_instantiable<'tcx>(cx: &ctxt<'tcx>, r_ty: Ty<'tcx>) -> bool {
             }
         };
 
-        debug!("subtypes_require({}, {})? {:?}",
-               r_ty.repr(), ty.repr(), r);
+        debug!("subtypes_require({:?}, {:?})? {:?}",
+               r_ty, ty, r);
 
         return r;
     }
@@ -4542,7 +4541,7 @@ pub fn is_type_representable<'tcx>(cx: &ctxt<'tcx>, sp: Span, ty: Ty<'tcx>)
     fn is_type_structurally_recursive<'tcx>(cx: &ctxt<'tcx>, sp: Span,
                                             seen: &mut Vec<Ty<'tcx>>,
                                             ty: Ty<'tcx>) -> Representability {
-        debug!("is_type_structurally_recursive: {}", ty.repr());
+        debug!("is_type_structurally_recursive: {:?}", ty);
 
         match ty.sty {
             TyStruct(did, _) | TyEnum(did, _) => {
@@ -4561,9 +4560,9 @@ pub fn is_type_representable<'tcx>(cx: &ctxt<'tcx>, sp: Span, ty: Ty<'tcx>)
                     match iter.next() {
                         Some(&seen_type) => {
                             if same_struct_or_enum_def_id(seen_type, did) {
-                                debug!("SelfRecursive: {} contains {}",
-                                       seen_type.repr(),
-                                       ty.repr());
+                                debug!("SelfRecursive: {:?} contains {:?}",
+                                       seen_type,
+                                       ty);
                                 return SelfRecursive;
                             }
                         }
@@ -4581,9 +4580,9 @@ pub fn is_type_representable<'tcx>(cx: &ctxt<'tcx>, sp: Span, ty: Ty<'tcx>)
 
                     for &seen_type in iter {
                         if same_type(ty, seen_type) {
-                            debug!("ContainsRecursive: {} contains {}",
-                                   seen_type.repr(),
-                                   ty.repr());
+                            debug!("ContainsRecursive: {:?} contains {:?}",
+                                   seen_type,
+                                   ty);
                             return ContainsRecursive;
                         }
                     }
@@ -4603,14 +4602,14 @@ pub fn is_type_representable<'tcx>(cx: &ctxt<'tcx>, sp: Span, ty: Ty<'tcx>)
         }
     }
 
-    debug!("is_type_representable: {}", ty.repr());
+    debug!("is_type_representable: {:?}", ty);
 
     // To avoid a stack overflow when checking an enum variant or struct that
     // contains a different, structurally recursive type, maintain a stack
     // of seen types and check recursion for each of them (issues #3008, #3779).
     let mut seen: Vec<Ty> = Vec::new();
     let r = is_type_structurally_recursive(cx, sp, &mut seen, ty);
-    debug!("is_type_representable: {} is {:?}", ty.repr(), r);
+    debug!("is_type_representable: {:?} is {:?}", ty, r);
     r
 }
 
@@ -5012,7 +5011,7 @@ pub fn adjust_ty<'tcx, F>(cx: &ctxt<'tcx>,
                         _ => {
                             cx.sess.bug(
                                 &format!("AdjustReifyFnPointer adjustment on non-fn-item: \
-                                          {}", unadjusted_ty.repr()));
+                                          {:?}", unadjusted_ty));
                         }
                     }
                 }
@@ -5053,7 +5052,7 @@ pub fn adjust_ty<'tcx, F>(cx: &ctxt<'tcx>,
                                         span,
                                         &format!("the {}th autoderef failed: {}",
                                                 i,
-                                                 adjusted_ty.user_string())
+                                                 adjusted_ty)
                                         );
                                 }
                             }
@@ -5298,8 +5297,8 @@ pub fn impl_or_trait_item_idx(id: ast::Name, trait_items: &[ImplOrTraitItem])
 pub fn ty_sort_string(cx: &ctxt, ty: Ty) -> String {
     match ty.sty {
         TyBool | TyChar | TyInt(_) |
-        TyUint(_) | TyFloat(_) | TyStr => ty.user_string(),
-        TyTuple(ref tys) if tys.is_empty() => ty.user_string(),
+        TyUint(_) | TyFloat(_) | TyStr => ty.to_string(),
+        TyTuple(ref tys) if tys.is_empty() => ty.to_string(),
 
         TyEnum(id, _) => format!("enum `{}`", item_path_str(cx, id)),
         TyBox(_) => "box".to_string(),
@@ -6067,7 +6066,7 @@ fn report_discrim_overflow(cx: &ctxt,
     let computed_value = repr_type.disr_wrap_incr(Some(prev_val));
     let computed_value = repr_type.disr_string(computed_value);
     let prev_val = repr_type.disr_string(prev_val);
-    let repr_type = repr_type.to_ty(cx).user_string();
+    let repr_type = repr_type.to_ty(cx);
     span_err!(cx.sess, variant_span, E0370,
               "enum discriminant overflowed on value after {}: {}; \
                set explicitly via {} = {} if that is desired outcome",
@@ -6560,8 +6559,8 @@ pub fn required_region_bounds<'tcx>(tcx: &ctxt<'tcx>,
                                     -> Vec<ty::Region>
 {
     debug!("required_region_bounds(erased_self_ty={:?}, predicates={:?})",
-           erased_self_ty.repr(),
-           predicates.repr());
+           erased_self_ty,
+           predicates);
 
     assert!(!erased_self_ty.has_escaping_regions());
 
@@ -6679,7 +6678,7 @@ pub fn populate_implementations_for_trait_if_necessary(tcx: &ctxt, trait_id: ast
         return;
     }
 
-    debug!("populate_implementations_for_trait_if_necessary: searching for {}", def.repr());
+    debug!("populate_implementations_for_trait_if_necessary: searching for {:?}", def);
 
     if csearch::is_defaulted_trait(&tcx.sess.cstore, trait_id) {
         record_trait_has_default_impl(tcx, trait_id);
@@ -6988,7 +6987,7 @@ pub fn construct_free_substs<'a,'tcx>(
                                   defs: &[TypeParameterDef<'tcx>]) {
         for def in defs {
             debug!("construct_parameter_environment(): push_types_from_defs: def={:?}",
-                   def.repr());
+                   def);
             let ty = ty::mk_param_from_def(tcx, def);
             types.push(def.space, ty);
        }
@@ -7021,8 +7020,8 @@ pub fn construct_parameter_environment<'a,'tcx>(
 
     debug!("construct_parameter_environment: free_id={:?} free_subst={:?} predicates={:?}",
            free_id,
-           free_substs.repr(),
-           predicates.repr());
+           free_substs,
+           predicates);
 
     //
     // Finally, we have to normalize the bounds in the environment, in

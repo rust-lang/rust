@@ -52,8 +52,6 @@ use syntax::ptr::P;
 use super::span_utils::SpanUtils;
 use super::recorder::{Recorder, FmtStrs};
 
-use util::ppaux::UserString;
-
 macro_rules! down_cast_data {
     ($id:ident, $kind:ident, $this:ident, $sp:expr) => {
         let $id = if let super::Data::$kind(data) = $id {
@@ -287,7 +285,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
             collector.visit_pat(&arg.pat);
             let span_utils = self.span.clone();
             for &(id, ref p, _, _) in &collector.collected_paths {
-                let typ = self.tcx.node_types().get(&id).unwrap().user_string();
+                let typ = self.tcx.node_types().get(&id).unwrap().to_string();
                 // get the span only for the name of the variable (I hope the path is only ever a
                 // variable name, but who knows?)
                 self.fmt.formal_str(p.span,
@@ -1392,7 +1390,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
                 "<mutable>".to_string()
             };
             let types = self.tcx.node_types();
-            let typ = types.get(&id).unwrap().user_string();
+            let typ = types.get(&id).unwrap().to_string();
             // Get the span only for the name of the variable (I hope the path
             // is only ever a variable name, but who knows?).
             let sub_span = self.span.span_for_last_ident(p.span);

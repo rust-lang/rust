@@ -14,7 +14,6 @@ use middle::implicator::Implication;
 use middle::ty::{self, FreeRegion};
 use util::common::can_reach;
 use util::nodemap::FnvHashMap;
-use util::ppaux::Repr;
 
 #[derive(Clone)]
 pub struct FreeRegionMap {
@@ -32,7 +31,7 @@ impl FreeRegionMap {
                                                        implications: &[Implication<'tcx>])
     {
         for implication in implications {
-            debug!("implication: {}", implication.repr());
+            debug!("implication: {:?}", implication);
             match *implication {
                 Implication::RegionSubRegion(_, ty::ReFree(free_a), ty::ReFree(free_b)) => {
                     self.relate_free_regions(free_a, free_b);
@@ -49,7 +48,7 @@ impl FreeRegionMap {
     pub fn relate_free_regions_from_predicates<'tcx>(&mut self,
                                                      tcx: &ty::ctxt<'tcx>,
                                                      predicates: &[ty::Predicate<'tcx>]) {
-        debug!("relate_free_regions_from_predicates(predicates={})", predicates.repr());
+        debug!("relate_free_regions_from_predicates(predicates={:?})", predicates);
         for predicate in predicates {
             match *predicate {
                 ty::Predicate::Projection(..) |
@@ -67,9 +66,9 @@ impl FreeRegionMap {
                         _ => {
                             // All named regions are instantiated with free regions.
                             tcx.sess.bug(
-                                &format!("record_region_bounds: non free region: {} / {}",
-                                         r_a.repr(),
-                                         r_b.repr()));
+                                &format!("record_region_bounds: non free region: {:?} / {:?}",
+                                         r_a,
+                                         r_b));
                         }
                     }
                 }

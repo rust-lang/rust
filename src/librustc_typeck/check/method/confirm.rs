@@ -24,7 +24,6 @@ use middle::infer::InferCtxt;
 use syntax::ast;
 use syntax::codemap::Span;
 use std::iter::repeat;
-use util::ppaux::Repr;
 
 struct ConfirmContext<'a, 'tcx:'a> {
     fcx: &'a FnCtxt<'a, 'tcx>,
@@ -56,10 +55,10 @@ pub fn confirm<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                          supplied_method_types: Vec<Ty<'tcx>>)
                          -> MethodCallee<'tcx>
 {
-    debug!("confirm(unadjusted_self_ty={}, pick={}, supplied_method_types={})",
-           unadjusted_self_ty.repr(),
-           pick.repr(),
-           supplied_method_types.repr());
+    debug!("confirm(unadjusted_self_ty={:?}, pick={:?}, supplied_method_types={:?})",
+           unadjusted_self_ty,
+           pick,
+           supplied_method_types);
 
     let mut confirm_cx = ConfirmContext::new(fcx, span, self_expr, call_expr);
     confirm_cx.confirm(unadjusted_self_ty, pick, supplied_method_types)
@@ -93,7 +92,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
         let (method_types, method_regions) =
             self.instantiate_method_substs(&pick, supplied_method_types);
         let all_substs = rcvr_substs.with_method(method_types, method_regions);
-        debug!("all_substs={}", all_substs.repr());
+        debug!("all_substs={:?}", all_substs);
 
         // Create the final signature for the method, replacing late-bound regions.
         let InstantiatedMethodSig {
@@ -225,10 +224,10 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                         this.upcast(original_poly_trait_ref.clone(), trait_def_id);
                     let upcast_trait_ref =
                         this.replace_late_bound_regions_with_fresh_var(&upcast_poly_trait_ref);
-                    debug!("original_poly_trait_ref={} upcast_trait_ref={} target_trait={}",
-                           original_poly_trait_ref.repr(),
-                           upcast_trait_ref.repr(),
-                           trait_def_id.repr());
+                    debug!("original_poly_trait_ref={:?} upcast_trait_ref={:?} target_trait={:?}",
+                           original_poly_trait_ref,
+                           upcast_trait_ref,
+                           trait_def_id);
                     let substs = upcast_trait_ref.substs.clone();
                     let origin = MethodTraitObject(MethodObject {
                         trait_ref: upcast_trait_ref,
@@ -322,7 +321,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                 self.tcx().sess.span_bug(
                     self.span,
                     &format!("self-type `{}` for ObjectPick never dereferenced to an object",
-                            self_ty.repr()))
+                            self_ty))
             }
         }
     }
@@ -376,10 +375,8 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
             Err(_) => {
                 self.tcx().sess.span_bug(
                     self.span,
-                    &format!(
-                        "{} was a subtype of {} but now is not?",
-                        self_ty.repr(),
-                        method_self_ty.repr()));
+                    &format!("{} was a subtype of {} but now is not?",
+                             self_ty, method_self_ty));
             }
         }
     }
@@ -392,9 +389,9 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                               all_substs: subst::Substs<'tcx>)
                               -> InstantiatedMethodSig<'tcx>
     {
-        debug!("instantiate_method_sig(pick={}, all_substs={})",
-               pick.repr(),
-               all_substs.repr());
+        debug!("instantiate_method_sig(pick={:?}, all_substs={:?})",
+               pick,
+               all_substs);
 
         // Instantiate the bounds on the method with the
         // type/early-bound-regions substitutions performed. There can
@@ -404,8 +401,8 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
         let method_predicates = self.fcx.normalize_associated_types_in(self.span,
                                                                        &method_predicates);
 
-        debug!("method_predicates after subst = {}",
-               method_predicates.repr());
+        debug!("method_predicates after subst = {:?}",
+               method_predicates);
 
         // Instantiate late-bound regions and substitute the trait
         // parameters into the method type to get the actual method type.
@@ -415,12 +412,12 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
         // may reference those regions.
         let method_sig = self.replace_late_bound_regions_with_fresh_var(
             &pick.item.as_opt_method().unwrap().fty.sig);
-        debug!("late-bound lifetimes from method instantiated, method_sig={}",
-               method_sig.repr());
+        debug!("late-bound lifetimes from method instantiated, method_sig={:?}",
+               method_sig);
 
         let method_sig = self.fcx.instantiate_type_scheme(self.span, &all_substs, &method_sig);
-        debug!("type scheme substituted, method_sig={}",
-               method_sig.repr());
+        debug!("type scheme substituted, method_sig={:?}",
+               method_sig);
 
         InstantiatedMethodSig {
             method_sig: method_sig,
@@ -433,10 +430,10 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                        pick: &probe::Pick<'tcx>,
                        all_substs: &subst::Substs<'tcx>,
                        method_predicates: &ty::InstantiatedPredicates<'tcx>) {
-        debug!("add_obligations: pick={} all_substs={} method_predicates={}",
-               pick.repr(),
-               all_substs.repr(),
-               method_predicates.repr());
+        debug!("add_obligations: pick={:?} all_substs={:?} method_predicates={:?}",
+               pick,
+               all_substs,
+               method_predicates);
 
         self.fcx.add_obligations_for_parameters(
             traits::ObligationCause::misc(self.span, self.fcx.body_id),
@@ -483,8 +480,8 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
             }
         }
 
-        debug!("fixup_derefs_on_method_receiver_if_necessary: exprs={}",
-               exprs.repr());
+        debug!("fixup_derefs_on_method_receiver_if_necessary: exprs={:?}",
+               exprs);
 
         // Fix up autoderefs and derefs.
         for (i, &expr) in exprs.iter().rev().enumerate() {
@@ -498,8 +495,9 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                 Some(_) | None => 0,
             };
 
-            debug!("fixup_derefs_on_method_receiver_if_necessary: i={} expr={} autoderef_count={}",
-                   i, expr.repr(), autoderef_count);
+            debug!("fixup_derefs_on_method_receiver_if_necessary: i={} expr={:?} \
+                                                                  autoderef_count={}",
+                   i, expr, autoderef_count);
 
             if autoderef_count > 0 {
                 check::autoderef(self.fcx,
@@ -545,8 +543,8 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                                 Some(_) => {
                                     self.tcx().sess.span_bug(
                                         base_expr.span,
-                                        &format!("unexpected adjustment autoref {}",
-                                                adr.repr()));
+                                        &format!("unexpected adjustment autoref {:?}",
+                                                adr));
                                 }
                             },
                             None => (0, None),
@@ -647,10 +645,10 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
         if upcast_trait_refs.len() != 1 {
             self.tcx().sess.span_bug(
                 self.span,
-                &format!("cannot uniquely upcast `{}` to `{}`: `{}`",
-                         source_trait_ref.repr(),
-                         target_trait_def_id.repr(),
-                         upcast_trait_refs.repr()));
+                &format!("cannot uniquely upcast `{:?}` to `{:?}`: `{:?}`",
+                         source_trait_ref,
+                         target_trait_def_id,
+                         upcast_trait_refs));
         }
 
         upcast_trait_refs.into_iter().next().unwrap()

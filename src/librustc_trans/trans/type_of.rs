@@ -16,7 +16,6 @@ use trans::common::*;
 use trans::foreign;
 use trans::machine;
 use middle::ty::{self, RegionEscape, Ty};
-use util::ppaux::Repr;
 
 use trans::type_::Type;
 
@@ -99,8 +98,8 @@ pub fn type_of_rust_fn<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                  abi: abi::Abi)
                                  -> Type
 {
-    debug!("type_of_rust_fn(sig={},abi={:?})",
-           sig.repr(),
+    debug!("type_of_rust_fn(sig={:?},abi={:?})",
+           sig,
            abi);
 
     let sig = ty::erase_late_bound_regions(cx.tcx(), sig);
@@ -228,8 +227,8 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
         }
 
         ty::TyProjection(..) | ty::TyInfer(..) | ty::TyParam(..) | ty::TyError(..) => {
-            cx.sess().bug(&format!("fictitious type {} in sizing_type_of()",
-                                   t.repr()))
+            cx.sess().bug(&format!("fictitious type {:?} in sizing_type_of()",
+                                   t))
         }
         ty::TySlice(_) | ty::TyTrait(..) | ty::TyStr => unreachable!()
     };
@@ -298,7 +297,7 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
         None => ()
     }
 
-    debug!("type_of {} {:?}", t.repr(), t.sty);
+    debug!("type_of {:?}", t);
 
     assert!(!t.has_escaping_regions());
 
@@ -311,10 +310,10 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
 
     if t != t_norm {
         let llty = in_memory_type_of(cx, t_norm);
-        debug!("--> normalized {} {:?} to {} {:?} llty={}",
-                t.repr(),
+        debug!("--> normalized {:?} {:?} to {:?} {:?} llty={}",
                 t,
-                t_norm.repr(),
+                t,
+                t_norm,
                 t_norm,
                 cx.tn().type_to_string(llty));
         cx.lltypes().borrow_mut().insert(t, llty);
@@ -363,8 +362,8 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
                       }
                       ty::TyTrait(_) => Type::vtable_ptr(cx),
                       _ => panic!("Unexpected type returned from \
-                                   struct_tail: {} for ty={}",
-                                  unsized_part.repr(), ty.repr())
+                                   struct_tail: {:?} for ty={:?}",
+                                  unsized_part, ty)
                   };
                   Type::struct_(cx, &[ptr_ty, info_ty], false)
               }
@@ -418,8 +417,8 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
       ty::TyError(..) => cx.sess().bug("type_of with TyError"),
     };
 
-    debug!("--> mapped t={} {:?} to llty={}",
-            t.repr(),
+    debug!("--> mapped t={:?} {:?} to llty={}",
+            t,
             t,
             cx.tn().type_to_string(llty));
 
@@ -449,7 +448,7 @@ fn llvm_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                             tps: &[Ty<'tcx>])
                             -> String {
     let base = ty::item_path_str(cx.tcx(), did);
-    let strings: Vec<String> = tps.iter().map(|t| t.repr()).collect();
+    let strings: Vec<String> = tps.iter().map(|t| t.to_string()).collect();
     let tstr = if strings.is_empty() {
         base
     } else {

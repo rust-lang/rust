@@ -47,7 +47,6 @@ use middle::ty::{self, Ty};
 use middle::ty_fold;
 use middle::ty_fold::{TypeFolder, TypeFoldable};
 use middle::ty_relate::{self, Relate, RelateResult, TypeRelation};
-use util::ppaux::Repr;
 
 use syntax::ast;
 use syntax::codemap::Span;
@@ -212,10 +211,10 @@ impl<'a, 'tcx> CombineFields<'a, 'tcx> {
                 Some(e) => e,
             };
 
-            debug!("instantiate(a_ty={} dir={:?} b_vid={})",
-                   a_ty.repr(),
+            debug!("instantiate(a_ty={:?} dir={:?} b_vid={:?})",
+                   a_ty,
                    dir,
-                   b_vid.repr());
+                   b_vid);
 
             // Check whether `vid` has been instantiated yet.  If not,
             // make a generalized form of `ty` and instantiate with
@@ -229,10 +228,10 @@ impl<'a, 'tcx> CombineFields<'a, 'tcx> {
                         EqTo => self.generalize(a_ty, b_vid, false),
                         BiTo | SupertypeOf | SubtypeOf => self.generalize(a_ty, b_vid, true),
                     });
-                    debug!("instantiate(a_ty={}, dir={:?}, \
-                                        b_vid={}, generalized_ty={})",
-                           a_ty.repr(), dir, b_vid.repr(),
-                           generalized_ty.repr());
+                    debug!("instantiate(a_ty={:?}, dir={:?}, \
+                                        b_vid={:?}, generalized_ty={:?})",
+                           a_ty, dir, b_vid,
+                           generalized_ty);
                     self.infcx.type_variables
                         .borrow_mut()
                         .instantiate_and_push(
@@ -334,8 +333,8 @@ impl<'cx, 'tcx> ty_fold::TypeFolder<'tcx> for Generalizer<'cx, 'tcx> {
             ty::ReEarlyBound(..) => {
                 self.tcx().sess.span_bug(
                     self.span,
-                    &format!("Encountered early bound region when generalizing: {}",
-                            r.repr()));
+                    &format!("Encountered early bound region when generalizing: {:?}",
+                            r));
             }
 
             // Always make a fresh region variable for skolemized regions;

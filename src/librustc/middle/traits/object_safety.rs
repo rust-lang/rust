@@ -25,7 +25,6 @@ use middle::traits;
 use middle::ty::{self, ToPolyTraitRef, Ty};
 use std::rc::Rc;
 use syntax::ast;
-use util::ppaux::Repr;
 
 #[derive(Debug)]
 pub enum ObjectSafetyViolation<'tcx> {
@@ -71,7 +70,7 @@ pub fn is_object_safe<'tcx>(tcx: &ty::ctxt<'tcx>,
         result
     });
 
-    debug!("is_object_safe({}) = {}", trait_def_id.repr(), result);
+    debug!("is_object_safe({:?}) = {}", trait_def_id, result);
 
     result
 }
@@ -112,9 +111,9 @@ fn object_safety_violations_for_trait<'tcx>(tcx: &ty::ctxt<'tcx>,
         violations.push(ObjectSafetyViolation::SupertraitSelf);
     }
 
-    debug!("object_safety_violations_for_trait(trait_def_id={}) = {}",
-           trait_def_id.repr(),
-           violations.repr());
+    debug!("object_safety_violations_for_trait(trait_def_id={:?}) = {:?}",
+           trait_def_id,
+           violations);
 
     violations
 }

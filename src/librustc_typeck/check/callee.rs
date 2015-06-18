@@ -32,7 +32,6 @@ use syntax::ast;
 use syntax::codemap::Span;
 use syntax::parse::token;
 use syntax::ptr::P;
-use util::ppaux::Repr;
 
 /// Check that it is legal to call methods of the trait corresponding
 /// to `trait_id` (this only cares about the trait, not the specific
@@ -120,9 +119,9 @@ fn try_overloaded_call_step<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                       autoderefs: usize)
                                       -> Option<CallStep<'tcx>>
 {
-    debug!("try_overloaded_call_step(call_expr={}, adjusted_ty={}, autoderefs={})",
-           call_expr.repr(),
-           adjusted_ty.repr(),
+    debug!("try_overloaded_call_step(call_expr={:?}, adjusted_ty={:?}, autoderefs={})",
+           call_expr,
+           adjusted_ty,
            autoderefs);
 
     // If the callee is a bare function or a closure, then we're all set.
@@ -340,8 +339,8 @@ struct CallResolution<'tcx> {
 
 impl<'tcx> DeferredCallResolution<'tcx> for CallResolution<'tcx> {
     fn resolve<'a>(&mut self, fcx: &FnCtxt<'a,'tcx>) {
-        debug!("DeferredCallResolution::resolve() {}",
-               self.repr());
+        debug!("DeferredCallResolution::resolve() {:?}",
+               self);
 
         // we should not be invoked until the closure kind has been
         // determined by upvar inference
@@ -363,8 +362,8 @@ impl<'tcx> DeferredCallResolution<'tcx> for CallResolution<'tcx> {
                     ty::no_late_bound_regions(fcx.tcx(),
                                               ty::ty_fn_sig(method_callee.ty)).unwrap();
 
-                debug!("attempt_resolution: method_callee={}",
-                       method_callee.repr());
+                debug!("attempt_resolution: method_callee={:?}",
+                       method_callee);
 
                 for (&method_arg_ty, &self_arg_ty) in
                     method_sig.inputs[1..].iter().zip(&self.fn_sig.inputs)

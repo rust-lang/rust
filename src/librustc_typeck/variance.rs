@@ -278,7 +278,6 @@ use syntax::ast_util;
 use syntax::visit;
 use syntax::visit::Visitor;
 use util::nodemap::NodeMap;
-use util::ppaux::Repr;
 
 pub fn infer_variance(tcx: &ty::ctxt) {
     let krate = tcx.map.krate();
@@ -845,8 +844,8 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                                       generics: &ty::Generics<'tcx>,
                                       trait_ref: ty::TraitRef<'tcx>,
                                       variance: VarianceTermPtr<'a>) {
-        debug!("add_constraints_from_trait_ref: trait_ref={} variance={:?}",
-               trait_ref.repr(),
+        debug!("add_constraints_from_trait_ref: trait_ref={:?} variance={:?}",
+               trait_ref,
                variance);
 
         let trait_def = ty::lookup_trait_def(self.tcx(), trait_ref.def_id);
@@ -867,8 +866,8 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                                generics: &ty::Generics<'tcx>,
                                ty: Ty<'tcx>,
                                variance: VarianceTermPtr<'a>) {
-        debug!("add_constraints_from_ty(ty={}, variance={:?})",
-               ty.repr(),
+        debug!("add_constraints_from_ty(ty={:?}, variance={:?})",
+               ty,
                variance);
 
         match ty.sty {
@@ -981,8 +980,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             ty::TyInfer(..) => {
                 self.tcx().sess.bug(
                     &format!("unexpected type encountered in \
-                            variance inference: {}",
-                            ty.repr()));
+                              variance inference: {}", ty));
             }
         }
     }
@@ -997,9 +995,9 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                                    region_param_defs: &[ty::RegionParameterDef],
                                    substs: &subst::Substs<'tcx>,
                                    variance: VarianceTermPtr<'a>) {
-        debug!("add_constraints_from_substs(def_id={}, substs={}, variance={:?})",
-               def_id.repr(),
-               substs.repr(),
+        debug!("add_constraints_from_substs(def_id={:?}, substs={:?}, variance={:?})",
+               def_id,
+               substs,
                variance);
 
         for p in type_param_defs {
@@ -1066,8 +1064,8 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 self.tcx()
                     .sess
                     .bug(&format!("unexpected region encountered in variance \
-                                  inference: {}",
-                                 region.repr()));
+                                  inference: {:?}",
+                                 region));
             }
         }
     }
@@ -1194,17 +1192,16 @@ impl<'a, 'tcx> SolveContext<'a, 'tcx> {
                 types: types,
                 regions: regions
             };
-            debug!("item_id={} item_variances={}",
+            debug!("item_id={} item_variances={:?}",
                     item_id,
-                    item_variances.repr());
+                    item_variances);
 
             let item_def_id = ast_util::local_def(item_id);
 
             // For unit testing: check for a special "rustc_variance"
             // attribute and report an error with various results if found.
             if ty::has_attr(tcx, item_def_id, "rustc_variance") {
-                let found = item_variances.repr();
-                span_err!(tcx.sess, tcx.map.span(item_id), E0208, "{}", &found[..]);
+                span_err!(tcx.sess, tcx.map.span(item_id), E0208, "{:?}", item_variances);
             }
 
             let newly_added = tcx.item_variance_map.borrow_mut()

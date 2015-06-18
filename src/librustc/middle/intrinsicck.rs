@@ -14,7 +14,6 @@ use middle::def::DefFn;
 use middle::subst::{Subst, Substs, EnumeratedItems};
 use middle::ty::{TransmuteRestriction, ctxt, TyBareFn};
 use middle::ty::{self, Ty};
-use util::ppaux::Repr;
 
 use std::fmt;
 
@@ -204,15 +203,15 @@ impl<'a, 'tcx> IntrinsicCheckingVisitor<'a, 'tcx> {
 
         match types_in_scope.next() {
             None => {
-                debug!("with_each_combination(substs={})",
-                       substs.repr());
+                debug!("with_each_combination(substs={:?})",
+                       substs);
 
                 callback(substs);
             }
 
             Some((space, index, &param_ty)) => {
-                debug!("with_each_combination: space={:?}, index={}, param_ty={}",
-                       space, index, param_ty.repr());
+                debug!("with_each_combination: space={:?}, index={}, param_ty={:?}",
+                       space, index, param_ty);
 
                 if !ty::type_is_sized(Some(param_env), self.tcx, span, param_ty) {
                     debug!("with_each_combination: param_ty is not known to be sized");
@@ -230,7 +229,7 @@ impl<'a, 'tcx> IntrinsicCheckingVisitor<'a, 'tcx> {
     }
 
     fn push_transmute_restriction(&self, restriction: TransmuteRestriction<'tcx>) {
-        debug!("Pushing transmute restriction: {}", restriction.repr());
+        debug!("Pushing transmute restriction: {:?}", restriction);
         self.tcx.transmute_restrictions.borrow_mut().push(restriction);
     }
 }

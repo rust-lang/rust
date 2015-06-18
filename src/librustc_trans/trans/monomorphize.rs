@@ -26,7 +26,6 @@ use trans::common::*;
 use trans::declare;
 use trans::foreign;
 use middle::ty::{self, HasProjectionTypes, Ty};
-use util::ppaux::Repr;
 
 use syntax::abi;
 use syntax::ast;
@@ -41,11 +40,11 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                 ref_id: Option<ast::NodeId>)
     -> (ValueRef, Ty<'tcx>, bool) {
     debug!("monomorphic_fn(\
-            fn_id={}, \
-            real_substs={}, \
+            fn_id={:?}, \
+            real_substs={:?}, \
             ref_id={:?})",
-           fn_id.repr(),
-           psubsts.repr(),
+           fn_id,
+           psubsts,
            ref_id);
 
     assert!(psubsts.types.all(|t| {
@@ -61,7 +60,7 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     let item_ty = ty::lookup_item_type(ccx.tcx(), fn_id).ty;
 
-    debug!("monomorphic_fn about to subst into {}", item_ty.repr());
+    debug!("monomorphic_fn about to subst into {:?}", item_ty);
     let mono_ty = item_ty.subst(ccx.tcx(), psubsts);
 
     match ccx.monomorphized().borrow().get(&hash_id) {
@@ -74,11 +73,11 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     }
 
     debug!("monomorphic_fn(\
-            fn_id={}, \
-            psubsts={}, \
+            fn_id={:?}, \
+            psubsts={:?}, \
             hash_id={:?})",
-           fn_id.repr(),
-           psubsts.repr(),
+           fn_id,
+           psubsts,
            hash_id);
 
 
@@ -99,10 +98,10 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         }
     }
 
-    debug!("mono_ty = {} (post-substitution)", mono_ty.repr());
+    debug!("mono_ty = {:?} (post-substitution)", mono_ty);
 
     let mono_ty = normalize_associated_type(ccx.tcx(), &mono_ty);
-    debug!("mono_ty = {} (post-normalization)", mono_ty.repr());
+    debug!("mono_ty = {:?} (post-normalization)", mono_ty);
 
     ccx.stats().n_monos.set(ccx.stats().n_monos.get() + 1);
 
@@ -316,7 +315,7 @@ pub fn apply_param_substs<'tcx,T>(tcx: &ty::ctxt<'tcx>,
 pub fn normalize_associated_type<'tcx,T>(tcx: &ty::ctxt<'tcx>, value: &T) -> T
     where T : TypeFoldable<'tcx> + HasProjectionTypes
 {
-    debug!("normalize_associated_type(t={})", value.repr());
+    debug!("normalize_associated_type(t={:?})", value);
 
     let value = erase_regions(tcx, value);
 
@@ -333,9 +332,9 @@ pub fn normalize_associated_type<'tcx,T>(tcx: &ty::ctxt<'tcx>, value: &T) -> T
     let traits::Normalized { value: result, obligations } =
         traits::normalize(&mut selcx, cause, &value);
 
-    debug!("normalize_associated_type: result={} obligations={}",
-           result.repr(),
-           obligations.repr());
+    debug!("normalize_associated_type: result={:?} obligations={:?}",
+           result,
+           obligations);
 
     let mut fulfill_cx = traits::FulfillmentContext::new(true);
     for obligation in obligations {

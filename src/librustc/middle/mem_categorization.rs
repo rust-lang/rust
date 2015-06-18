@@ -78,12 +78,10 @@ use middle::def;
 use middle::region;
 use middle::ty::{self, Ty};
 use util::nodemap::NodeMap;
-use util::ppaux::{Repr, UserString};
 
 use syntax::ast::{MutImmutable, MutMutable};
 use syntax::ast;
 use syntax::codemap::Span;
-use syntax::print::pprust;
 
 use std::cell::RefCell;
 use std::fmt;
@@ -435,8 +433,8 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
             }
             _ => base_ty,
         };
-        debug!("pat_ty(pat={}) base_ty={} ret_ty={}",
-               pat.repr(), base_ty.repr(), ret_ty.repr());
+        debug!("pat_ty(pat={:?}) base_ty={:?} ret_ty={:?}",
+               pat, base_ty, ret_ty);
         Ok(ret_ty)
     }
 
@@ -459,9 +457,9 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                     ty::AdjustReifyFnPointer |
                     ty::AdjustUnsafeFnPointer |
                     ty::AdjustDerefRef(_) => {
-                        debug!("cat_expr({}): {}",
-                               adjustment.repr(),
-                               expr.repr());
+                        debug!("cat_expr({:?}): {:?}",
+                               adjustment,
+                               expr);
                         // Result is an rvalue.
                         let expr_ty = try!(self.expr_ty_adjusted(expr));
                         Ok(self.cat_rvalue_node(expr.id(), expr.span(), expr_ty))
@@ -476,9 +474,9 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                                autoderefs: usize)
                                -> McResult<cmt<'tcx>> {
         let mut cmt = try!(self.cat_expr_unadjusted(expr));
-        debug!("cat_expr_autoderefd: autoderefs={}, cmt={}",
+        debug!("cat_expr_autoderefd: autoderefs={}, cmt={:?}",
                autoderefs,
-               cmt.repr());
+               cmt);
         for deref in 1..autoderefs + 1 {
             cmt = try!(self.cat_deref(expr, cmt, deref, None));
         }
@@ -486,7 +484,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
     }
 
     pub fn cat_expr_unadjusted(&self, expr: &ast::Expr) -> McResult<cmt<'tcx>> {
-        debug!("cat_expr: id={} expr={}", expr.id, expr.repr());
+        debug!("cat_expr: id={} expr={:?}", expr.id, expr);
 
         let expr_ty = try!(self.expr_ty(expr));
         match expr.node {
@@ -497,10 +495,10 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
 
           ast::ExprField(ref base, f_name) => {
             let base_cmt = try!(self.cat_expr(&**base));
-            debug!("cat_expr(cat_field): id={} expr={} base={}",
+            debug!("cat_expr(cat_field): id={} expr={:?} base={:?}",
                    expr.id,
-                   expr.repr(),
-                   base_cmt.repr());
+                   expr,
+                   base_cmt);
             Ok(self.cat_field(expr, base_cmt, f_name.node.name, expr_ty))
           }
 
@@ -523,8 +521,8 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                     let elem_ty = match ret_ty.sty {
                         ty::TyRef(_, mt) => mt.ty,
                         _ => {
-                            debug!("cat_expr_unadjusted: return type of overloaded index is {}?",
-                                   ret_ty.repr());
+                            debug!("cat_expr_unadjusted: return type of overloaded index is {:?}?",
+                                   ret_ty);
                             return Err(());
                         }
                     };
@@ -582,8 +580,8 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                    expr_ty: Ty<'tcx>,
                    def: def::Def)
                    -> McResult<cmt<'tcx>> {
-        debug!("cat_def: id={} expr={} def={:?}",
-               id, expr_ty.repr(), def);
+        debug!("cat_def: id={} expr={:?} def={:?}",
+               id, expr_ty, def);
 
         match def {
           def::DefStruct(..) | def::DefVariant(..) | def::DefConst(..) |
@@ -634,9 +632,9 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                   _ => {
                       self.tcx().sess.span_bug(
                           span,
-                          &format!("Upvar of non-closure {} - {}",
+                          &format!("Upvar of non-closure {} - {:?}",
                                   fn_node_id,
-                                  ty.repr()));
+                                  ty));
                   }
               }
           }
@@ -745,7 +743,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
         };
 
         let ret = Rc::new(cmt_result);
-        debug!("cat_upvar ret={}", ret.repr());
+        debug!("cat_upvar ret={:?}", ret);
         Ok(ret)
     }
 
@@ -816,7 +814,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
             note: NoteClosureEnv(upvar_id)
         };
 
-        debug!("env_deref ret {}", ret.repr());
+        debug!("env_deref ret {:?}", ret);
 
         ret
     }
@@ -854,7 +852,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
             ty::ReStatic
         };
         let ret = self.cat_rvalue(id, span, re, expr_ty);
-        debug!("cat_rvalue_node ret {}", ret.repr());
+        debug!("cat_rvalue_node ret {:?}", ret);
         ret
     }
 
@@ -871,7 +869,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
             ty:expr_ty,
             note: NoteNone
         });
-        debug!("cat_rvalue ret {}", ret.repr());
+        debug!("cat_rvalue ret {:?}", ret);
         ret
     }
 
@@ -889,7 +887,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
             ty: f_ty,
             note: NoteNone
         });
-        debug!("cat_field ret {}", ret.repr());
+        debug!("cat_field ret {:?}", ret);
         ret
     }
 
@@ -907,7 +905,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
             ty: f_ty,
             note: NoteNone
         });
-        debug!("cat_tup_field ret {}", ret.repr());
+        debug!("cat_tup_field ret {:?}", ret);
         ret
     }
 
@@ -924,7 +922,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
         let method_ty = self.typer.node_method_ty(method_call);
 
         debug!("cat_deref: method_call={:?} method_ty={:?}",
-               method_call, method_ty.map(|ty| ty.repr()));
+               method_call, method_ty.map(|ty| ty));
 
         let base_cmt = match method_ty {
             Some(method_ty) => {
@@ -942,12 +940,12 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                                               mt.ty,
                                               deref_context,
                                                 /* implicit: */ false);
-                debug!("cat_deref ret {}", ret.repr());
+                debug!("cat_deref ret {:?}", ret);
                 ret
             }
             None => {
-                debug!("Explicit deref of non-derefable type: {}",
-                       base_cmt_ty.repr());
+                debug!("Explicit deref of non-derefable type: {:?}",
+                       base_cmt_ty);
                 return Err(());
             }
         }
@@ -990,7 +988,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
             ty: deref_ty,
             note: NoteNone
         });
-        debug!("cat_deref_common ret {}", ret.repr());
+        debug!("cat_deref_common ret {:?}", ret);
         Ok(ret)
     }
 
@@ -1041,7 +1039,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
         let m = base_cmt.mutbl.inherit();
         let ret = interior(elt, base_cmt.clone(), base_cmt.ty,
                            m, context, element_ty);
-        debug!("cat_index ret {}", ret.repr());
+        debug!("cat_index ret {:?}", ret);
         return Ok(ret);
 
         fn interior<'tcx, N: ast_node>(elt: &N,
@@ -1095,7 +1093,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                 base_cmt
             }
         };
-        debug!("deref_vec ret {}", ret.repr());
+        debug!("deref_vec ret {:?}", ret);
         Ok(ret)
     }
 
@@ -1154,7 +1152,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
             ty: interior_ty,
             note: NoteNone
         });
-        debug!("cat_imm_interior ret={}", ret.repr());
+        debug!("cat_imm_interior ret={:?}", ret);
         ret
     }
 
@@ -1172,7 +1170,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
             ty: downcast_ty,
             note: NoteNone
         });
-        debug!("cat_downcast ret={}", ret.repr());
+        debug!("cat_downcast ret={:?}", ret);
         ret
     }
 
@@ -1232,9 +1230,9 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
         // step out of sync again. So you'll see below that we always
         // get the type of the *subpattern* and use that.
 
-        debug!("cat_pattern: id={} pat={} cmt={}",
-               pat.id, pprust::pat_to_string(pat),
-               cmt.repr());
+        debug!("cat_pattern: {:?} cmt={:?}",
+               pat,
+               cmt);
 
         (*op)(self, cmt.clone(), pat);
 
@@ -1520,7 +1518,7 @@ impl<'tcx> cmt_<'tcx> {
                 let upvar = self.upvar();
                 match upvar.as_ref().map(|i| &i.cat) {
                     Some(&cat_upvar(ref var)) => {
-                        var.user_string()
+                        var.to_string()
                     }
                     Some(_) => unreachable!(),
                     None => {
@@ -1560,7 +1558,7 @@ impl<'tcx> cmt_<'tcx> {
                 "pattern-bound indexed content".to_string()
             }
             cat_upvar(ref var) => {
-                var.user_string()
+                var.to_string()
             }
             cat_downcast(ref cmt, _) => {
                 cmt.descriptive_string(tcx)

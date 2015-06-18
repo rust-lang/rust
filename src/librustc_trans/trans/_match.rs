@@ -217,7 +217,7 @@ use middle::ty::{self, Ty};
 use session::config::{NoDebugInfo, FullDebugInfo};
 use util::common::indenter;
 use util::nodemap::FnvHashMap;
-use util::ppaux::{self, Repr};
+use util::ppaux;
 
 use std;
 use std::cmp::Ordering;
@@ -398,9 +398,9 @@ fn expand_nested_bindings<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                               col: usize,
                                               val: ValueRef)
                                               -> Vec<Match<'a, 'p, 'blk, 'tcx>> {
-    debug!("expand_nested_bindings(bcx={}, m={}, col={}, val={})",
+    debug!("expand_nested_bindings(bcx={}, m={:?}, col={}, val={})",
            bcx.to_str(),
-           m.repr(),
+           m,
            col,
            bcx.val_to_string(val));
     let _indenter = indenter();
@@ -438,9 +438,9 @@ fn enter_match<'a, 'b, 'p, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
                                           -> Vec<Match<'a, 'p, 'blk, 'tcx>> where
     F: FnMut(&[&'p ast::Pat]) -> Option<Vec<&'p ast::Pat>>,
 {
-    debug!("enter_match(bcx={}, m={}, col={}, val={})",
+    debug!("enter_match(bcx={}, m={:?}, col={}, val={})",
            bcx.to_str(),
-           m.repr(),
+           m,
            col,
            bcx.val_to_string(val));
     let _indenter = indenter();
@@ -481,9 +481,9 @@ fn enter_default<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                      col: usize,
                                      val: ValueRef)
                                      -> Vec<Match<'a, 'p, 'blk, 'tcx>> {
-    debug!("enter_default(bcx={}, m={}, col={}, val={})",
+    debug!("enter_default(bcx={}, m={:?}, col={}, val={})",
            bcx.to_str(),
-           m.repr(),
+           m,
            col,
            bcx.val_to_string(val));
     let _indenter = indenter();
@@ -538,9 +538,9 @@ fn enter_opt<'a, 'p, 'blk, 'tcx>(
              variant_size: usize,
              val: ValueRef)
              -> Vec<Match<'a, 'p, 'blk, 'tcx>> {
-    debug!("enter_opt(bcx={}, m={}, opt={:?}, col={}, val={})",
+    debug!("enter_opt(bcx={}, m={:?}, opt={:?}, col={}, val={})",
            bcx.to_str(),
-           m.repr(),
+           m,
            *opt,
            col,
            bcx.val_to_string(val));
@@ -826,8 +826,7 @@ fn compare_values<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                                -> Result<'blk, 'tcx> {
         let did = langcall(cx,
                            None,
-                           &format!("comparison of `{}`",
-                                   cx.ty_to_string(rhs_t)),
+                           &format!("comparison of `{}`", rhs_t),
                            StrEqFnLangItem);
         let t = ty::mk_str_slice(cx.tcx(), cx.tcx().mk_region(ty::ReStatic), ast::MutImmutable);
         // The comparison function gets the slices by value, so we have to make copies here. Even
@@ -938,10 +937,10 @@ fn compile_guard<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                      chk: &FailureHandler,
                                      has_genuine_default: bool)
                                      -> Block<'blk, 'tcx> {
-    debug!("compile_guard(bcx={}, guard_expr={}, m={}, vals=[{}])",
+    debug!("compile_guard(bcx={}, guard_expr={:?}, m={:?}, vals=[{}])",
            bcx.to_str(),
-           bcx.expr_to_string(guard_expr),
-           m.repr(),
+           guard_expr,
+           m,
            vals.iter().map(|v| bcx.val_to_string(*v)).collect::<Vec<_>>().connect(", "));
     let _indenter = indenter();
 
@@ -984,9 +983,9 @@ fn compile_submatch<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                         vals: &[ValueRef],
                                         chk: &FailureHandler,
                                         has_genuine_default: bool) {
-    debug!("compile_submatch(bcx={}, m={}, vals=[{}])",
+    debug!("compile_submatch(bcx={}, m={:?}, vals=[{}])",
            bcx.to_str(),
-           m.repr(),
+           m,
            vals.iter().map(|v| bcx.val_to_string(*v)).collect::<Vec<_>>().connect(", "));
     let _indenter = indenter();
     let _icx = push_ctxt("match::compile_submatch");
@@ -1697,13 +1696,13 @@ fn bind_irrefutable_pat<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                     val: ValueRef,
                                     cleanup_scope: cleanup::ScopeId)
                                     -> Block<'blk, 'tcx> {
-    debug!("bind_irrefutable_pat(bcx={}, pat={})",
+    debug!("bind_irrefutable_pat(bcx={}, pat={:?})",
            bcx.to_str(),
-           pat.repr());
+           pat);
 
     if bcx.sess().asm_comments() {
-        add_comment(bcx, &format!("bind_irrefutable_pat(pat={})",
-                                 pat.repr()));
+        add_comment(bcx, &format!("bind_irrefutable_pat(pat={:?})",
+                                 pat));
     }
 
     let _indenter = indenter();

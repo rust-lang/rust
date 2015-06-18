@@ -33,7 +33,6 @@ use rustc::middle::infer::error_reporting::note_and_explain_region;
 use rustc::middle::mem_categorization as mc;
 use rustc::middle::region;
 use rustc::middle::ty::{self, Ty};
-use rustc::util::ppaux::{Repr, UserString};
 
 use std::fmt;
 use std::mem;
@@ -683,7 +682,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                                   which is {}",
                                  ol,
                                  moved_lp_msg,
-                                 expr_ty.user_string(),
+                                 expr_ty,
                                  suggestion));
                 } else {
                     self.tcx.sess.span_note(
@@ -691,7 +690,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                         &format!("`{}` moved here{} because it has type `{}`, which is {}",
                                  ol,
                                  moved_lp_msg,
-                                 expr_ty.user_string(),
+                                 expr_ty,
                                  suggestion));
                 }
             }
@@ -704,7 +703,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                              which is moved by default",
                             ol,
                             moved_lp_msg,
-                            pat_ty.user_string()));
+                            pat_ty));
                 self.tcx.sess.fileline_help(span,
                     "use `ref` to override");
             }
@@ -735,7 +734,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                             has type `{}`, which is {}",
                             ol,
                             moved_lp_msg,
-                            expr_ty.user_string(),
+                            expr_ty,
                             suggestion));
                 self.tcx.sess.fileline_help(expr_span, help);
             }
@@ -1187,7 +1186,7 @@ impl<'tcx> fmt::Debug for LoanPath<'tcx> {
                 let variant_str = if variant_def_id.krate == ast::LOCAL_CRATE {
                     ty::tls::with(|tcx| ty::item_path_str(tcx, variant_def_id))
                 } else {
-                    variant_def_id.repr()
+                    format!("{:?}", variant_def_id)
                 };
                 write!(f, "({:?}{}{})", lp, DOWNCAST_PRINTED_OPERATOR, variant_str)
             }
@@ -1219,7 +1218,7 @@ impl<'tcx> fmt::Display for LoanPath<'tcx> {
                 let variant_str = if variant_def_id.krate == ast::LOCAL_CRATE {
                     ty::tls::with(|tcx| ty::item_path_str(tcx, variant_def_id))
                 } else {
-                    variant_def_id.repr()
+                    format!("{:?}", variant_def_id)
                 };
                 write!(f, "({}{}{})", lp, DOWNCAST_PRINTED_OPERATOR, variant_str)
             }

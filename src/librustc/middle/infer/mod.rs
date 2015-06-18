@@ -36,7 +36,6 @@ use syntax::ast;
 use syntax::codemap;
 use syntax::codemap::Span;
 use util::nodemap::FnvHashMap;
-use util::ppaux::{Repr, UserString};
 
 use self::combine::CombineFields;
 use self::region_inference::{RegionVarBindings, RegionSnapshot};
@@ -330,8 +329,8 @@ pub fn common_supertype<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
                                   b: Ty<'tcx>)
                                   -> Ty<'tcx>
 {
-    debug!("common_supertype({}, {})",
-           a.repr(), b.repr());
+    debug!("common_supertype({:?}, {:?})",
+           a, b);
 
     let trace = TypeTrace {
         origin: origin,
@@ -355,7 +354,7 @@ pub fn mk_subty<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
                           b: Ty<'tcx>)
                           -> UnitResult<'tcx>
 {
-    debug!("mk_subty({} <: {})", a.repr(), b.repr());
+    debug!("mk_subty({:?} <: {:?})", a, b);
     cx.sub_types(a_is_expected, origin, a, b)
 }
 
@@ -363,7 +362,7 @@ pub fn can_mk_subty<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
                               a: Ty<'tcx>,
                               b: Ty<'tcx>)
                               -> UnitResult<'tcx> {
-    debug!("can_mk_subty({} <: {})", a.repr(), b.repr());
+    debug!("can_mk_subty({:?} <: {:?})", a, b);
     cx.probe(|_| {
         let trace = TypeTrace {
             origin: Misc(codemap::DUMMY_SP),
@@ -383,7 +382,7 @@ pub fn mk_subr<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
                          origin: SubregionOrigin<'tcx>,
                          a: ty::Region,
                          b: ty::Region) {
-    debug!("mk_subr({} <: {})", a.repr(), b.repr());
+    debug!("mk_subr({:?} <: {:?})", a, b);
     let snapshot = cx.region_vars.start_snapshot();
     cx.region_vars.make_subregion(origin, a, b);
     cx.region_vars.commit(snapshot);
@@ -396,7 +395,7 @@ pub fn mk_eqty<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
                          b: Ty<'tcx>)
                          -> UnitResult<'tcx>
 {
-    debug!("mk_eqty({} <: {})", a.repr(), b.repr());
+    debug!("mk_eqty({:?} <: {:?})", a, b);
     cx.commit_if_ok(|_| cx.eq_types(a_is_expected, origin, a, b))
 }
 
@@ -407,8 +406,8 @@ pub fn mk_sub_poly_trait_refs<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
                                    b: ty::PolyTraitRef<'tcx>)
                                    -> UnitResult<'tcx>
 {
-    debug!("mk_sub_trait_refs({} <: {})",
-           a.repr(), b.repr());
+    debug!("mk_sub_trait_refs({:?} <: {:?})",
+           a, b);
     cx.commit_if_ok(|_| cx.sub_poly_trait_refs(a_is_expected, origin, a.clone(), b.clone()))
 }
 
@@ -637,7 +636,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                      b: Ty<'tcx>)
                      -> UnitResult<'tcx>
     {
-        debug!("sub_types({} <: {})", a.repr(), b.repr());
+        debug!("sub_types({:?} <: {:?})", a, b);
         self.commit_if_ok(|_| {
             let trace = TypeTrace::types(origin, a_is_expected, a, b);
             self.sub(a_is_expected, trace).relate(&a, &b).map(|_| ())
@@ -664,9 +663,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                           b: ty::TraitRef<'tcx>)
                           -> UnitResult<'tcx>
     {
-        debug!("sub_trait_refs({} <: {})",
-               a.repr(),
-               b.repr());
+        debug!("sub_trait_refs({:?} <: {:?})",
+               a,
+               b);
         self.commit_if_ok(|_| {
             let trace = TypeTrace {
                 origin: origin,
@@ -683,9 +682,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                b: ty::PolyTraitRef<'tcx>)
                                -> UnitResult<'tcx>
     {
-        debug!("sub_poly_trait_refs({} <: {})",
-               a.repr(),
-               b.repr());
+        debug!("sub_poly_trait_refs({:?} <: {:?})",
+               a,
+               b);
         self.commit_if_ok(|_| {
             let trace = TypeTrace {
                 origin: origin,
@@ -861,7 +860,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 
     pub fn ty_to_string(&self, t: Ty<'tcx>) -> String {
-        self.resolve_type_vars_if_possible(&t).user_string()
+        self.resolve_type_vars_if_possible(&t).to_string()
     }
 
     pub fn tys_to_string(&self, ts: &[Ty<'tcx>]) -> String {
@@ -870,8 +869,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 
     pub fn trait_ref_to_string(&self, t: &ty::TraitRef<'tcx>) -> String {
-        let t = self.resolve_type_vars_if_possible(t);
-        t.user_string()
+        self.resolve_type_vars_if_possible(t).to_string()
     }
 
     pub fn shallow_resolve(&self, typ: Ty<'tcx>) -> Ty<'tcx> {
@@ -1047,18 +1045,18 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                 kind: GenericKind<'tcx>,
                                 a: ty::Region,
                                 bs: Vec<ty::Region>) {
-        debug!("verify_generic_bound({}, {} <: {})",
-               kind.repr(),
-               a.repr(),
-               bs.repr());
+        debug!("verify_generic_bound({:?}, {:?} <: {:?})",
+               kind,
+               a,
+               bs);
 
         self.region_vars.verify_generic_bound(origin, kind, a, bs);
     }
 
     pub fn can_equate<'b,T>(&'b self, a: &T, b: &T) -> UnitResult<'tcx>
-        where T: Relate<'b,'tcx> + Repr
+        where T: Relate<'b,'tcx> + fmt::Debug
     {
-        debug!("can_equate({}, {})", a.repr(), b.repr());
+        debug!("can_equate({:?}, {:?})", a, b);
         self.probe(|_| {
             // Gin up a dummy trace, since this won't be committed
             // anyhow. We should make this typetrace stuff more

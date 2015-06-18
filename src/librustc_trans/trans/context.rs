@@ -28,7 +28,6 @@ use middle::subst::Substs;
 use middle::ty::{self, Ty};
 use session::config::NoDebugInfo;
 use session::Session;
-use util::ppaux::Repr;
 use util::sha2::Sha256;
 use util::nodemap::{NodeMap, NodeSet, DefIdMap, FnvHashMap, FnvHashSet};
 
@@ -766,8 +765,8 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
 
     pub fn report_overbig_object(&self, obj: Ty<'tcx>) -> ! {
         self.sess().fatal(
-            &format!("the type `{}` is too big for the current architecture",
-                    obj.repr()))
+            &format!("the type `{:?}` is too big for the current architecture",
+                    obj))
     }
 
     pub fn check_overflow(&self) -> bool {
