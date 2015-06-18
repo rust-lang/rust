@@ -756,7 +756,12 @@ pub fn invoke<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 }
 
 pub fn need_invoke(bcx: Block) -> bool {
-    if bcx.sess().no_landing_pads() {
+    // FIXME(#25869) currently unwinding is not implemented for MSVC and our
+    //               normal unwinding infrastructure ends up just causing linker
+    //               errors with the current LLVM implementation, so landing
+    //               pads are disabled entirely for MSVC targets
+    if bcx.sess().no_landing_pads() ||
+       bcx.sess().target.target.options.is_like_msvc {
         return false;
     }
 
