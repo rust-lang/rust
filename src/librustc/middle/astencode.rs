@@ -31,7 +31,6 @@ use middle::privacy::{AllPublic, LastMod};
 use middle::subst;
 use middle::subst::VecPerParamSpace;
 use middle::ty::{self, Ty, MethodCall, MethodCallee, MethodOrigin};
-use util::ppaux::ty_to_string;
 
 use syntax::{ast, ast_util, codemap, fold};
 use syntax::codemap::Span;
@@ -1623,8 +1622,8 @@ fn decode_side_tables(dcx: &DecodeContext,
                     }
                     c::tag_table_node_type => {
                         let ty = val_dsr.read_ty(dcx);
-                        debug!("inserting ty for node {}: {}",
-                               id, ty_to_string(dcx.tcx, ty));
+                        debug!("inserting ty for node {}: {:?}",
+                               id,  ty);
                         dcx.tcx.node_type_insert(id, ty);
                     }
                     c::tag_table_item_subst => {

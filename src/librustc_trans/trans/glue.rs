@@ -39,8 +39,6 @@ use trans::machine::*;
 use trans::monomorphize;
 use trans::type_of::{type_of, type_of_dtor, sizing_type_of, align_of};
 use trans::type_::Type;
-use util::ppaux;
-use util::ppaux::{ty_to_short_str, Repr};
 
 use arena::TypedArena;
 use libc::c_uint;
@@ -141,7 +139,7 @@ pub fn drop_ty_core<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                 debug_loc: DebugLoc,
                                 skip_dtor: bool) -> Block<'blk, 'tcx> {
     // NB: v is an *alias* of type t here, not a direct value.
-    debug!("drop_ty_core(t={}, skip_dtor={})", t.repr(bcx.tcx()), skip_dtor);
+    debug!("drop_ty_core(t={:?}, skip_dtor={})", t, skip_dtor);
     let _icx = push_ctxt("drop_ty");
     if bcx.fcx.type_needs_drop(t) {
         let ccx = bcx.ccx();
@@ -204,21 +202,13 @@ impl<'tcx> DropGlueKind<'tcx> {
             DropGlueKind::TyContents(t) => DropGlueKind::TyContents(f(t)),
         }
     }
-
-    fn to_string<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> String {
-        let t_str = ppaux::ty_to_string(ccx.tcx(), self.ty());
-        match *self {
-            DropGlueKind::Ty(_) => format!("DropGlueKind::Ty({})", t_str),
-            DropGlueKind::TyContents(_) => format!("DropGlueKind::TyContents({})", t_str),
-        }
-    }
 }
 
 fn get_drop_glue_core<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                 g: DropGlueKind<'tcx>) -> ValueRef {
-    debug!("make drop glue for {}", g.to_string(ccx));
+    debug!("make drop glue for {:?}", g);
     let g = g.map_ty(|t| get_drop_glue_type(ccx, t));
-    debug!("drop glue type {}", g.to_string(ccx));
+    debug!("drop glue type {:?}", g);
     match ccx.drop_glues().borrow().get(&g) {
         Some(&glue) => return glue,
         _ => { }
@@ -247,7 +237,7 @@ fn get_drop_glue_core<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     });
     ccx.available_drop_glues().borrow_mut().insert(g, fn_nm);
 
-    let _s = StatRecorder::new(ccx, format!("drop {}", ty_to_short_str(ccx.tcx(), t)));
+    let _s = StatRecorder::new(ccx, format!("drop {:?}", t));
 
     let empty_substs = ccx.tcx().mk_substs(Substs::trans_empty());
     let (arena, fcx): (TypedArena<_>, FunctionContext);
@@ -355,7 +345,7 @@ fn trans_struct_drop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                  substs: &subst::Substs<'tcx>)
                                  -> Block<'blk, 'tcx>
 {
-    debug!("trans_struct_drop t: {}", bcx.ty_to_string(t));
+    debug!("trans_struct_drop t: {}", t);
 
     // Find and call the actual destructor
     let dtor_addr = get_res_dtor(bcx.ccx(), dtor_did, t, class_did, substs);
@@ -390,7 +380,7 @@ fn trans_struct_drop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 pub fn size_and_align_of_dst<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, info: ValueRef)
                                          -> (ValueRef, ValueRef) {
     debug!("calculate size of DST: {}; with lost info: {}",
-           bcx.ty_to_string(t), bcx.val_to_string(info));
+           t, bcx.val_to_string(info));
     if type_is_sized(bcx.tcx(), t) {
         let sizing_type = sizing_type_of(bcx.ccx(), t);
         let size = C_uint(bcx.ccx(), llsize_of_alloc(bcx.ccx(), sizing_type));
@@ -445,8 +435,7 @@ pub fn size_and_align_of_dst<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, in
             (Mul(bcx, info, C_uint(bcx.ccx(), unit_size), DebugLoc::None),
              C_uint(bcx.ccx(), unit_align))
         }
-        _ => bcx.sess().bug(&format!("Unexpected unsized type, found {}",
-                                    bcx.ty_to_string(t)))
+        _ => bcx.sess().bug(&format!("Unexpected unsized type, found {}", t))
     }
 }
 
@@ -520,8 +509,7 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, g: DropGlueK
                         // stupid and dangerous.
                         bcx.sess().warn(&format!("Ignoring drop flag in destructor for {}\
                                                  because the struct is unsized. See issue\
-                                                 #16758",
-                                                bcx.ty_to_string(t)));
+                                                 #16758", t));
                         trans_struct_drop(bcx, t, v0, dtor, did, substs)
                     }
                 }

@@ -33,7 +33,6 @@ use middle::mem_categorization as mc;
 use middle::traits;
 use middle::ty::{self, Ty};
 use util::nodemap::NodeMap;
-use util::ppaux::Repr;
 
 use syntax::ast;
 use syntax::codemap::Span;
@@ -300,7 +299,7 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
 
 impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
     fn visit_item(&mut self, i: &ast::Item) {
-        debug!("visit_item(item={})", i.repr(self.tcx));
+        debug!("visit_item(item={})", self.tcx.map.node_to_string(i.id));
         match i.node {
             ast::ItemStatic(_, ast::MutImmutable, ref expr) => {
                 self.check_static_type(&**expr);

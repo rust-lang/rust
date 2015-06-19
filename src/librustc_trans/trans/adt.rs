@@ -66,7 +66,6 @@ use trans::machine;
 use trans::monomorphize;
 use trans::type_::Type;
 use trans::type_of;
-use util::ppaux::ty_to_string;
 
 type Hint = attr::ReprAttr;
 
@@ -143,7 +142,7 @@ pub fn represent_node<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 pub fn represent_type<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                 t: Ty<'tcx>)
                                 -> Rc<Repr<'tcx>> {
-    debug!("Representing: {}", ty_to_string(cx.tcx(), t));
+    debug!("Representing: {}", t);
     match cx.adt_reprs().borrow().get(&t) {
         Some(repr) => return repr.clone(),
         None => {}
@@ -381,8 +380,7 @@ fn represent_type_uncached<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
             General(ity, fields, dtor_to_init_u8(dtor))
         }
-        _ => cx.sess().bug(&format!("adt::represent_type called on non-ADT type: {}",
-                           ty_to_string(cx.tcx(), t)))
+        _ => cx.sess().bug(&format!("adt::represent_type called on non-ADT type: {}", t))
     }
 }
 

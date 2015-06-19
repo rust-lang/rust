@@ -28,7 +28,6 @@ use middle::subst::Substs;
 use middle::ty::{self, Ty};
 use session::config::NoDebugInfo;
 use session::Session;
-use util::ppaux::Repr;
 use util::sha2::Sha256;
 use util::nodemap::{NodeMap, NodeSet, DefIdMap, FnvHashMap, FnvHashSet};
 
@@ -57,7 +56,7 @@ pub struct Stats {
 /// per crate.  The data here is shared between all compilation units of the
 /// crate, so it must not contain references to any LLVM data structures
 /// (aside from metadata-related ones).
-pub struct SharedCrateContext<'tcx> {
+pub struct SharedCrateContext<'a, 'tcx: 'a> {
     local_ccxs: Vec<LocalCrateContext<'tcx>>,
 
     metadata_llmod: ModuleRef,
@@ -68,7 +67,7 @@ pub struct SharedCrateContext<'tcx> {
     item_symbols: RefCell<NodeMap<String>>,
     link_meta: LinkMeta,
     symbol_hasher: RefCell<Sha256>,
-    tcx: ty::ctxt<'tcx>,
+    tcx: &'a ty::ctxt<'tcx>,
     stats: Stats,
     check_overflow: bool,
     check_drop_flag_for_sanity: bool,
@@ -159,7 +158,7 @@ pub struct LocalCrateContext<'tcx> {
 }
 
 pub struct CrateContext<'a, 'tcx: 'a> {
-    shared: &'a SharedCrateContext<'tcx>,
+    shared: &'a SharedCrateContext<'a, 'tcx>,
     local: &'a LocalCrateContext<'tcx>,
     /// The index of `local` in `shared.local_ccxs`.  This is used in
     /// `maybe_iter(true)` to identify the original `LocalCrateContext`.
@@ -167,7 +166,7 @@ pub struct CrateContext<'a, 'tcx: 'a> {
 }
 
 pub struct CrateContextIterator<'a, 'tcx: 'a> {
-    shared: &'a SharedCrateContext<'tcx>,
+    shared: &'a SharedCrateContext<'a, 'tcx>,
     index: usize,
 }
 
@@ -192,7 +191,7 @@ impl<'a, 'tcx> Iterator for CrateContextIterator<'a,'tcx> {
 
 /// The iterator produced by `CrateContext::maybe_iter`.
 pub struct CrateContextMaybeIterator<'a, 'tcx: 'a> {
-    shared: &'a SharedCrateContext<'tcx>,
+    shared: &'a SharedCrateContext<'a, 'tcx>,
     index: usize,
     single: bool,
     origin: usize,
@@ -237,17 +236,17 @@ unsafe fn create_context_and_module(sess: &Session, mod_name: &str) -> (ContextR
     (llcx, llmod)
 }
 
-impl<'tcx> SharedCrateContext<'tcx> {
+impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
     pub fn new(crate_name: &str,
                local_count: usize,
-               tcx: ty::ctxt<'tcx>,
+               tcx: &'b ty::ctxt<'tcx>,
                export_map: ExportMap,
                symbol_hasher: Sha256,
                link_meta: LinkMeta,
                reachable: NodeSet,
                check_overflow: bool,
                check_drop_flag_for_sanity: bool)
-               -> SharedCrateContext<'tcx> {
+               -> SharedCrateContext<'b, 'tcx> {
         let (metadata_llcx, metadata_llmod) = unsafe {
             create_context_and_module(&tcx.sess, "metadata")
         };
@@ -397,10 +396,6 @@ impl<'tcx> SharedCrateContext<'tcx> {
     }
 
     pub fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx> {
-        &self.tcx
-    }
-
-    pub fn take_tcx(self) -> ty::ctxt<'tcx> {
         self.tcx
     }
 
@@ -418,7 +413,7 @@ impl<'tcx> SharedCrateContext<'tcx> {
 }
 
 impl<'tcx> LocalCrateContext<'tcx> {
-    fn new(shared: &SharedCrateContext<'tcx>,
+    fn new<'a>(shared: &SharedCrateContext<'a, 'tcx>,
            name: &str)
            -> LocalCrateContext<'tcx> {
         unsafe {
@@ -505,7 +500,7 @@ impl<'tcx> LocalCrateContext<'tcx> {
     /// This is used in the `LocalCrateContext` constructor to allow calling
     /// functions that expect a complete `CrateContext`, even before the local
     /// portion is fully initialized and attached to the `SharedCrateContext`.
-    fn dummy_ccx<'a>(&'a self, shared: &'a SharedCrateContext<'tcx>)
+    fn dummy_ccx<'a>(&'a self, shared: &'a SharedCrateContext<'a, 'tcx>)
                      -> CrateContext<'a, 'tcx> {
         CrateContext {
             shared: shared,
@@ -516,7 +511,7 @@ impl<'tcx> LocalCrateContext<'tcx> {
 }
 
 impl<'b, 'tcx> CrateContext<'b, 'tcx> {
-    pub fn shared(&self) -> &'b SharedCrateContext<'tcx> {
+    pub fn shared(&self) -> &'b SharedCrateContext<'b, 'tcx> {
         self.shared
     }
 
@@ -548,7 +543,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
 
 
     pub fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx> {
-        &self.shared.tcx
+        self.shared.tcx
     }
 
     pub fn sess<'a>(&'a self) -> &'a Session {
@@ -770,8 +765,8 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
 
     pub fn report_overbig_object(&self, obj: Ty<'tcx>) -> ! {
         self.sess().fatal(
-            &format!("the type `{}` is too big for the current architecture",
-                    obj.repr(self.tcx())))
+            &format!("the type `{:?}` is too big for the current architecture",
+                    obj))
     }
 
     pub fn check_overflow(&self) -> bool {

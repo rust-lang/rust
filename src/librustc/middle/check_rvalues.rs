@@ -15,7 +15,6 @@ use middle::expr_use_visitor as euv;
 use middle::mem_categorization as mc;
 use middle::ty::ParameterEnvironment;
 use middle::ty;
-use util::ppaux::ty_to_string;
 
 use syntax::ast;
 use syntax::codemap::Span;
@@ -59,11 +58,11 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for RvalueContextDelegate<'a, 'tcx> {
                span: Span,
                cmt: mc::cmt<'tcx>,
                _: euv::ConsumeMode) {
-        debug!("consume; cmt: {:?}; type: {}", *cmt, ty_to_string(self.tcx, cmt.ty));
+        debug!("consume; cmt: {:?}; type: {:?}", *cmt, cmt.ty);
         if !ty::type_is_sized(Some(self.param_env), self.tcx, span, cmt.ty) {
             span_err!(self.tcx.sess, span, E0161,
                 "cannot move a value of type {0}: the size of {0} cannot be statically determined",
-                ty_to_string(self.tcx, cmt.ty));
+                cmt.ty);
         }
     }
 

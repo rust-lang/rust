@@ -16,7 +16,6 @@ use middle::infer;
 use std::result::Result::{Err, Ok};
 use syntax::ast;
 use syntax::codemap::Span;
-use util::ppaux::Repr;
 
 // Requires that the two types unify, and prints an error message if
 // they don't.
@@ -59,9 +58,9 @@ pub fn coerce<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                         expected: Ty<'tcx>,
                         expr: &ast::Expr) {
     let expr_ty = fcx.expr_ty(expr);
-    debug!("demand::coerce(expected = {}, expr_ty = {})",
-           expected.repr(fcx.ccx.tcx),
-           expr_ty.repr(fcx.ccx.tcx));
+    debug!("demand::coerce(expected = {:?}, expr_ty = {:?})",
+           expected,
+           expr_ty);
     let expr_ty = fcx.resolve_type_vars_if_possible(expr_ty);
     let expected = fcx.resolve_type_vars_if_possible(expected);
     match coercion::mk_assignty(fcx, expr, expr_ty, expected) {

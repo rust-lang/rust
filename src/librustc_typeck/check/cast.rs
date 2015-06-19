@@ -45,7 +45,6 @@ use middle::ty::Ty;
 use syntax::ast;
 use syntax::ast::UintTy::{TyU8};
 use syntax::codemap::Span;
-use util::ppaux::Repr;
 
 /// Reifies a cast check to be checked once we have full type information for
 /// a function context.
@@ -192,8 +191,8 @@ impl<'tcx> CastCheck<'tcx> {
         self.expr_ty = structurally_resolved_type(fcx, self.span, self.expr_ty);
         self.cast_ty = structurally_resolved_type(fcx, self.span, self.cast_ty);
 
-        debug!("check_cast({}, {} as {})", self.expr.id, self.expr_ty.repr(fcx.tcx()),
-               self.cast_ty.repr(fcx.tcx()));
+        debug!("check_cast({}, {:?} as {:?})", self.expr.id, self.expr_ty,
+               self.cast_ty);
 
         if ty::type_is_error(self.expr_ty) || ty::type_is_error(self.cast_ty) {
             // No sense in giving duplicate error messages
@@ -273,8 +272,8 @@ impl<'tcx> CastCheck<'tcx> {
                               m_cast: &'tcx ty::mt<'tcx>)
                               -> Result<CastKind, CastError>
     {
-        debug!("check_ptr_ptr_cast m_expr={} m_cast={}",
-               m_expr.repr(fcx.tcx()), m_cast.repr(fcx.tcx()));
+        debug!("check_ptr_ptr_cast m_expr={:?} m_cast={:?}",
+               m_expr, m_cast);
         // ptr-ptr cast. vtables must match.
 
         // Cast to sized is OK

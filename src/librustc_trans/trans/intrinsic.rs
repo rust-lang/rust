@@ -34,7 +34,6 @@ use middle::ty::{self, Ty};
 use syntax::abi::RustIntrinsic;
 use syntax::ast;
 use syntax::parse::token;
-use util::ppaux::{Repr, ty_to_string};
 
 pub fn get_simple_intrinsic(ccx: &CrateContext, item: &ast::ForeignItem) -> Option<ValueRef> {
     let name = match &token::get_ident(item.ident)[..] {
@@ -102,7 +101,7 @@ pub fn check_intrinsics(ccx: &CrateContext) {
             continue;
         }
 
-        debug!("transmute_restriction: {}", transmute_restriction.repr(ccx.tcx()));
+        debug!("transmute_restriction: {:?}", transmute_restriction);
 
         assert!(!ty::type_has_params(transmute_restriction.substituted_from));
         assert!(!ty::type_has_params(transmute_restriction.substituted_to));
@@ -121,10 +120,10 @@ pub fn check_intrinsics(ccx: &CrateContext) {
                     transmute_restriction.span,
                     &format!("transmute called on types with potentially different sizes: \
                               {} (could be {} bit{}) to {} (could be {} bit{})",
-                             ty_to_string(ccx.tcx(), transmute_restriction.original_from),
+                             transmute_restriction.original_from,
                              from_type_size as usize,
                              if from_type_size == 1 {""} else {"s"},
-                             ty_to_string(ccx.tcx(), transmute_restriction.original_to),
+                             transmute_restriction.original_to,
                              to_type_size as usize,
                              if to_type_size == 1 {""} else {"s"}));
             } else {
@@ -132,10 +131,10 @@ pub fn check_intrinsics(ccx: &CrateContext) {
                     transmute_restriction.span,
                     &format!("transmute called on types with different sizes: \
                               {} ({} bit{}) to {} ({} bit{})",
-                             ty_to_string(ccx.tcx(), transmute_restriction.original_from),
+                             transmute_restriction.original_from,
                              from_type_size as usize,
                              if from_type_size == 1 {""} else {"s"},
-                             ty_to_string(ccx.tcx(), transmute_restriction.original_to),
+                             transmute_restriction.original_to,
                              to_type_size as usize,
                              if to_type_size == 1 {""} else {"s"}));
             }
@@ -405,7 +404,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         }
         (_, "type_name") => {
             let tp_ty = *substs.types.get(FnSpace, 0);
-            let ty_name = token::intern_and_get_ident(&ty_to_string(ccx.tcx(), tp_ty));
+            let ty_name = token::intern_and_get_ident(&tp_ty.to_string());
             C_str_slice(ccx, ty_name)
         }
         (_, "type_id") => {

@@ -36,7 +36,6 @@ use syntax::print::pprust::pat_to_string;
 use syntax::parse::token;
 use syntax::ptr::P;
 use syntax::visit::{self, Visitor, FnKind};
-use util::ppaux::ty_to_string;
 use util::nodemap::FnvHashMap;
 
 pub const DUMMY_WILD_PAT: &'static Pat = &Pat {
@@ -209,9 +208,8 @@ fn check_expr(cx: &mut MatchCheckCtxt, ex: &ast::Expr) {
                 if !type_is_empty(cx.tcx, pat_ty) {
                     // We know the type is inhabited, so this must be wrong
                     span_err!(cx.tcx.sess, ex.span, E0002,
-                        "non-exhaustive patterns: type {} is non-empty",
-                        ty_to_string(cx.tcx, pat_ty)
-                    );
+                              "non-exhaustive patterns: type {} is non-empty",
+                              pat_ty);
                 }
                 // If the type *is* empty, it's vacuously exhaustive
                 return;
@@ -244,11 +242,11 @@ fn check_for_bindings_named_the_same_as_variants(cx: &MatchCheckCtxt, pat: &Pat)
                             span_warn!(cx.tcx.sess, p.span, E0170,
                                 "pattern binding `{}` is named the same as one \
                                  of the variants of the type `{}`",
-                                &token::get_ident(ident.node), ty_to_string(cx.tcx, pat_ty));
+                                &token::get_ident(ident.node), pat_ty);
                             fileline_help!(cx.tcx.sess, p.span,
                                 "if you meant to match on a variant, \
                                  consider making the path in the pattern qualified: `{}::{}`",
-                                ty_to_string(cx.tcx, pat_ty), &token::get_ident(ident.node));
+                                pat_ty, &token::get_ident(ident.node));
                         }
                     }
                 }

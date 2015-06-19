@@ -24,7 +24,6 @@ use trans::debuginfo::{DebugLoc, ToDebugLoc};
 use trans::expr;
 use trans;
 use middle::ty;
-use util::ppaux::Repr;
 
 use syntax::ast;
 use syntax::ast_util;
@@ -36,14 +35,14 @@ pub fn trans_stmt<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                               -> Block<'blk, 'tcx> {
     let _icx = push_ctxt("trans_stmt");
     let fcx = cx.fcx;
-    debug!("trans_stmt({})", s.repr(cx.tcx()));
+    debug!("trans_stmt({:?})", s);
 
     if cx.unreachable.get() {
         return cx;
     }
 
     if cx.sess().asm_comments() {
-        add_span_comment(cx, s.span, &s.repr(cx.tcx()));
+        add_span_comment(cx, s.span, &format!("{:?}", s));
     }
 
     let mut bcx = cx;
@@ -151,8 +150,8 @@ pub fn trans_if<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                             els: Option<&ast::Expr>,
                             dest: expr::Dest)
                             -> Block<'blk, 'tcx> {
-    debug!("trans_if(bcx={}, if_id={}, cond={}, thn={}, dest={})",
-           bcx.to_str(), if_id, bcx.expr_to_string(cond), thn.id,
+    debug!("trans_if(bcx={}, if_id={}, cond={:?}, thn={}, dest={})",
+           bcx.to_str(), if_id, cond, thn.id,
            dest.to_string(bcx.ccx()));
     let _icx = push_ctxt("trans_if");
 

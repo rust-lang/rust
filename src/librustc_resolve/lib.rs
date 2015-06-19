@@ -55,7 +55,6 @@ use rustc::lint;
 use rustc::metadata::csearch;
 use rustc::metadata::decoder::{DefLike, DlDef, DlField, DlImpl};
 use rustc::middle::def::*;
-use rustc::middle::lang_items::LanguageItems;
 use rustc::middle::pat_util::pat_bindings;
 use rustc::middle::privacy::*;
 use rustc::middle::subst::{ParamSpace, FnSpace, TypeSpace};
@@ -3689,10 +3688,9 @@ pub enum MakeGlobMap {
 /// Entry point to crate resolution.
 pub fn resolve_crate<'a, 'tcx>(session: &'a Session,
                                ast_map: &'a ast_map::Map<'tcx>,
-                               _: &LanguageItems,
-                               krate: &Crate,
                                make_glob_map: MakeGlobMap)
                                -> CrateMap {
+    let krate = ast_map.krate();
     let mut resolver = Resolver::new(session, ast_map, krate.span, make_glob_map);
 
     build_reduced_graph::build_reduced_graph(&mut resolver, krate);

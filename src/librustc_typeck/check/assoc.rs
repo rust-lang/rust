@@ -12,10 +12,9 @@ use middle::infer::InferCtxt;
 use middle::traits::{self, FulfillmentContext, Normalized, MiscObligation,
                      SelectionContext, ObligationCause};
 use middle::ty::{self, HasProjectionTypes};
-use middle::ty_fold::{TypeFoldable, TypeFolder};
+use middle::ty_fold::TypeFoldable;
 use syntax::ast;
 use syntax::codemap::Span;
-use util::ppaux::Repr;
 
 pub fn normalize_associated_types_in<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx>,
                                                 typer: &(ty::ClosureTyper<'tcx>+'a),
@@ -24,15 +23,15 @@ pub fn normalize_associated_types_in<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx>,
                                                 body_id: ast::NodeId,
                                                 value: &T)
                                                 -> T
-    where T : TypeFoldable<'tcx> + HasProjectionTypes + Clone + Repr<'tcx>
+    where T : TypeFoldable<'tcx> + HasProjectionTypes
 {
-    debug!("normalize_associated_types_in(value={})", value.repr(infcx.tcx));
+    debug!("normalize_associated_types_in(value={:?})", value);
     let mut selcx = SelectionContext::new(infcx, typer);
     let cause = ObligationCause::new(span, body_id, MiscObligation);
     let Normalized { value: result, obligations } = traits::normalize(&mut selcx, cause, value);
-    debug!("normalize_associated_types_in: result={} predicates={}",
-           result.repr(infcx.tcx),
-           obligations.repr(infcx.tcx));
+    debug!("normalize_associated_types_in: result={:?} predicates={:?}",
+           result,
+           obligations);
     for obligation in obligations {
         fulfillment_cx.register_predicate_obligation(infcx, obligation);
     }

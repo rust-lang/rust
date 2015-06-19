@@ -23,7 +23,6 @@ use middle::infer::{self, fixup_err_to_string, InferCtxt};
 use std::rc::Rc;
 use syntax::ast;
 use syntax::codemap::{Span, DUMMY_SP};
-use util::ppaux::Repr;
 
 pub use self::error_reporting::report_fulfillment_errors;
 pub use self::error_reporting::report_overflow_error;
@@ -219,7 +218,7 @@ pub type SelectionResult<'tcx, T> = Result<Option<T>, SelectionError<'tcx>>;
 /// ### The type parameter `N`
 ///
 /// See explanation on `VtableImplData`.
-#[derive(Debug,Clone)]
+#[derive(Clone)]
 pub enum Vtable<'tcx, N> {
     /// Vtable identifying a particular impl.
     VtableImpl(VtableImplData<'tcx, N>),
@@ -277,13 +276,13 @@ pub struct VtableClosureData<'tcx, N> {
     pub nested: Vec<N>
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct VtableDefaultImplData<N> {
     pub trait_def_id: ast::DefId,
     pub nested: Vec<N>
 }
 
-#[derive(Debug,Clone)]
+#[derive(Clone)]
 pub struct VtableBuiltinData<N> {
     pub nested: Vec<N>
 }
@@ -300,12 +299,11 @@ pub struct VtableObjectData<'tcx> {
 }
 
 /// Creates predicate obligations from the generic bounds.
-pub fn predicates_for_generics<'tcx>(tcx: &ty::ctxt<'tcx>,
-                                     cause: ObligationCause<'tcx>,
+pub fn predicates_for_generics<'tcx>(cause: ObligationCause<'tcx>,
                                      generic_bounds: &ty::InstantiatedPredicates<'tcx>)
                                      -> PredicateObligations<'tcx>
 {
-    util::predicates_for_generics(tcx, cause, 0, generic_bounds)
+    util::predicates_for_generics(cause, 0, generic_bounds)
 }
 
 /// Determines whether the type `ty` is known to meet `bound` and
@@ -320,8 +318,8 @@ pub fn type_known_to_meet_builtin_bound<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
                                                  span: Span)
                                                  -> bool
 {
-    debug!("type_known_to_meet_builtin_bound(ty={}, bound={:?})",
-           ty.repr(infcx.tcx),
+    debug!("type_known_to_meet_builtin_bound(ty={:?}, bound={:?})",
+           ty,
            bound);
 
     let mut fulfill_cx = FulfillmentContext::new(false);
@@ -338,16 +336,16 @@ pub fn type_known_to_meet_builtin_bound<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
     // assume it is move; linear is always ok.
     match fulfill_cx.select_all_or_error(infcx, typer) {
         Ok(()) => {
-            debug!("type_known_to_meet_builtin_bound: ty={} bound={:?} success",
-                   ty.repr(infcx.tcx),
+            debug!("type_known_to_meet_builtin_bound: ty={:?} bound={:?} success",
+                   ty,
                    bound);
             true
         }
         Err(e) => {
-            debug!("type_known_to_meet_builtin_bound: ty={} bound={:?} errors={}",
-                   ty.repr(infcx.tcx),
+            debug!("type_known_to_meet_builtin_bound: ty={:?} bound={:?} errors={:?}",
+                   ty,
                    bound,
-                   e.repr(infcx.tcx));
+                   e);
             false
         }
     }
@@ -377,8 +375,8 @@ pub fn normalize_param_env_or_error<'a,'tcx>(unnormalized_env: ty::ParameterEnvi
     let span = cause.span;
     let body_id = cause.body_id;
 
-    debug!("normalize_param_env_or_error(unnormalized_env={})",
-           unnormalized_env.repr(tcx));
+    debug!("normalize_param_env_or_error(unnormalized_env={:?})",
+           unnormalized_env);
 
     let predicates: Vec<_> =
         util::elaborate_predicates(tcx, unnormalized_env.caller_bounds.clone())
@@ -393,8 +391,8 @@ pub fn normalize_param_env_or_error<'a,'tcx>(unnormalized_env: ty::ParameterEnvi
     // constructed, but I am not currently doing so out of laziness.
     // -nmatsakis
 
-    debug!("normalize_param_env_or_error: elaborated-predicates={}",
-           predicates.repr(tcx));
+    debug!("normalize_param_env_or_error: elaborated-predicates={:?}",
+           predicates);
 
     let elaborated_env = unnormalized_env.with_caller_bounds(predicates);
 
@@ -434,25 +432,23 @@ pub fn fully_normalize<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx>,
                                   cause: ObligationCause<'tcx>,
                                   value: &T)
                                   -> Result<T, Vec<FulfillmentError<'tcx>>>
-    where T : TypeFoldable<'tcx> + HasProjectionTypes + Clone + Repr<'tcx>
+    where T : TypeFoldable<'tcx> + HasProjectionTypes
 {
-    let tcx = closure_typer.tcx();
-
-    debug!("normalize_param_env(value={})", value.repr(tcx));
+    debug!("normalize_param_env(value={:?})", value);
 
     let mut selcx = &mut SelectionContext::new(infcx, closure_typer);
     let mut fulfill_cx = FulfillmentContext::new(false);
     let Normalized { value: normalized_value, obligations } =
         project::normalize(selcx, cause, value);
-    debug!("normalize_param_env: normalized_value={} obligations={}",
-           normalized_value.repr(tcx),
-           obligations.repr(tcx));
+    debug!("normalize_param_env: normalized_value={:?} obligations={:?}",
+           normalized_value,
+           obligations);
     for obligation in obligations {
         fulfill_cx.register_predicate_obligation(selcx.infcx(), obligation);
     }
     try!(fulfill_cx.select_all_or_error(infcx, closure_typer));
     let resolved_value = infcx.resolve_type_vars_if_possible(&normalized_value);
-    debug!("normalize_param_env: resolved_value={}", resolved_value.repr(tcx));
+    debug!("normalize_param_env: resolved_value={:?}", resolved_value);
     Ok(resolved_value)
 }
 

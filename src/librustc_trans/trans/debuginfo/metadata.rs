@@ -34,7 +34,6 @@ use trans::type_::Type;
 use middle::ty::{self, Ty, ClosureTyper};
 use session::config::{self, FullDebugInfo};
 use util::nodemap::FnvHashMap;
-use util::ppaux;
 use util::common::path2cstr;
 
 use libc::{c_uint, c_longlong};
@@ -105,7 +104,7 @@ impl<'tcx> TypeMap<'tcx> {
                                        metadata: DIType) {
         if self.type_to_metadata.insert(type_, metadata).is_some() {
             cx.sess().bug(&format!("Type metadata for Ty '{}' is already in the TypeMap!",
-                                   ppaux::ty_to_string(cx.tcx(), type_)));
+                                   type_));
         }
     }
 
@@ -297,9 +296,8 @@ impl<'tcx> TypeMap<'tcx> {
                                                         &mut unique_type_id);
             },
             _ => {
-                cx.sess().bug(&format!("get_unique_type_id_of_type() - unexpected type: {}, {:?}",
-                                      &ppaux::ty_to_string(cx.tcx(), type_),
-                                      type_.sty))
+                cx.sess().bug(&format!("get_unique_type_id_of_type() - unexpected type: {:?}",
+                                       type_))
             }
         };
 
@@ -489,8 +487,8 @@ impl<'tcx> RecursiveTypeDescription<'tcx> {
                     if type_map.find_metadata_for_unique_id(unique_type_id).is_none() ||
                        type_map.find_metadata_for_type(unfinished_type).is_none() {
                         cx.sess().bug(&format!("Forward declaration of potentially recursive type \
-                                              '{}' was not found in TypeMap!",
-                                              ppaux::ty_to_string(cx.tcx(), unfinished_type))
+                                              '{:?}' was not found in TypeMap!",
+                                              unfinished_type)
                                       );
                     }
                 }
@@ -676,10 +674,9 @@ fn trait_pointer_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     let def_id = match trait_type.sty {
         ty::TyTrait(ref data) => data.principal_def_id(),
         _ => {
-            let pp_type_name = ppaux::ty_to_string(cx.tcx(), trait_type);
             cx.sess().bug(&format!("debuginfo: Unexpected trait-object type in \
-                                   trait_pointer_metadata(): {}",
-                                   &pp_type_name[..]));
+                                   trait_pointer_metadata(): {:?}",
+                                   trait_type));
         }
     };
 
@@ -841,7 +838,7 @@ pub fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                                  the debuginfo::TypeMap but it \
                                                  was not. (Ty = {})",
                                                 &unique_type_id_str[..],
-                                                ppaux::ty_to_string(cx.tcx(), t));
+                                                t);
                     cx.sess().span_bug(usage_site_span, &error_message[..]);
                 }
             };
@@ -856,7 +853,7 @@ pub fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                                      debuginfo::TypeMap. \
                                                      UniqueTypeId={}, Ty={}",
                             &unique_type_id_str[..],
-                            ppaux::ty_to_string(cx.tcx(), t));
+                            t);
                         cx.sess().span_bug(usage_site_span, &error_message[..]);
                     }
                 }

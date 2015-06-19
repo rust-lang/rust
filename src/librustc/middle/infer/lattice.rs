@@ -35,7 +35,6 @@ use super::InferCtxt;
 use middle::ty::TyVar;
 use middle::ty::{self, Ty};
 use middle::ty_relate::{RelateResult, TypeRelation};
-use util::ppaux::Repr;
 
 pub trait LatticeDir<'f,'tcx> : TypeRelation<'f,'tcx> {
     fn infcx(&self) -> &'f InferCtxt<'f, 'tcx>;
@@ -51,10 +50,10 @@ pub fn super_lattice_tys<'a,'tcx,L:LatticeDir<'a,'tcx>>(this: &mut L,
                                                         -> RelateResult<'tcx, Ty<'tcx>>
     where 'tcx: 'a
 {
-    debug!("{}.lattice_tys({}, {})",
+    debug!("{}.lattice_tys({:?}, {:?})",
            this.tag(),
-           a.repr(this.tcx()),
-           b.repr(this.tcx()));
+           a,
+           b);
 
     if a == b {
         return Ok(a);

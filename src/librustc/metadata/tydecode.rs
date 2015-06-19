@@ -898,7 +898,7 @@ fn parse_builtin_bounds<F>(st: &mut PState, mut _conv: F) -> ty::BuiltinBounds w
 fn parse_builtin_bounds_<F>(st: &mut PState, _conv: &mut F) -> ty::BuiltinBounds where
     F: FnMut(DefIdSource, ast::DefId) -> ast::DefId,
 {
-    let mut builtin_bounds = ty::empty_builtin_bounds();
+    let mut builtin_bounds = ty::BuiltinBounds::empty();
 
     loop {
         match next(st) {

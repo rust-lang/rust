@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use session::Session;
 use middle::ty;
 use middle::def;
 
@@ -24,8 +23,6 @@ use syntax::parse::token::{self, get_ident, keywords};
 use syntax::visit::{self, Visitor};
 use syntax::print::pprust::ty_to_string;
 
-use util::ppaux;
-
 use self::span_utils::SpanUtils;
 
 
@@ -35,8 +32,7 @@ mod recorder;
 mod dump_csv;
 
 pub struct SaveContext<'l, 'tcx: 'l> {
-    sess: &'l Session,
-    analysis: &'l ty::CrateAnalysis<'tcx>,
+    tcx: &'l ty::ctxt<'tcx>,
     span_utils: SpanUtils<'l>,
 }
 
@@ -143,13 +139,11 @@ pub struct TypeRefData {
 
 
 impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
-    pub fn new(sess: &'l Session,
-               analysis: &'l ty::CrateAnalysis<'tcx>,
+    pub fn new(tcx: &'l ty::ctxt<'tcx>,
                span_utils: SpanUtils<'l>)
                -> SaveContext<'l, 'tcx> {
         SaveContext {
-            sess: sess,
-            analysis: analysis,
+            tcx: tcx,
             span_utils: span_utils,
         }
     }
@@ -158,7 +152,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
     pub fn get_external_crates(&self) -> Vec<CrateData> {
         let mut result = Vec::new();
 
-        self.sess.cstore.iter_crate_data(|n, cmd| {
+        self.tcx.sess.cstore.iter_crate_data(|n, cmd| {
             result.push(CrateData { name: cmd.name.clone(), number: n });
         });
 
@@ -168,7 +162,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
     pub fn get_item_data(&self, item: &ast::Item) -> Data {
         match item.node {
             ast::ItemFn(..) => {
-                let name = self.analysis.ty_cx.map.path_to_string(item.id);
+                let name = self.tcx.map.path_to_string(item.id);
                 let qualname = format!("::{}", name);
                 let sub_span = self.span_utils.sub_span_after_keyword(item.span, keywords::Fn);
 
@@ -178,11 +172,11 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     qualname: qualname,
                     declaration: None,
                     span: sub_span.unwrap(),
-                    scope: self.analysis.ty_cx.map.get_parent(item.id),
+                    scope: self.tcx.map.get_parent(item.id),
                 })
             }
             ast::ItemStatic(ref typ, mt, ref expr) => {
-                let qualname = format!("::{}", self.analysis.ty_cx.map.path_to_string(item.id));
+                let qualname = format!("::{}", self.tcx.map.path_to_string(item.id));
 
                 // If the variable is immutable, save the initialising expression.
                 let (value, keyword) = match mt {
@@ -197,13 +191,13 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     name: get_ident(item.ident).to_string(),
                     qualname: qualname,
                     span: sub_span.unwrap(),
-                    scope: self.analysis.ty_cx.map.get_parent(item.id),
+                    scope: self.tcx.map.get_parent(item.id),
                     value: value,
                     type_value: ty_to_string(&typ),
                 })
             }
             ast::ItemConst(ref typ, ref expr) => {
-                let qualname = format!("::{}", self.analysis.ty_cx.map.path_to_string(item.id));
+                let qualname = format!("::{}", self.tcx.map.path_to_string(item.id));
                 let sub_span = self.span_utils.sub_span_after_keyword(item.span, keywords::Const);
 
                 Data::VariableData(VariableData {
@@ -211,15 +205,15 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     name: get_ident(item.ident).to_string(),
                     qualname: qualname,
                     span: sub_span.unwrap(),
-                    scope: self.analysis.ty_cx.map.get_parent(item.id),
+                    scope: self.tcx.map.get_parent(item.id),
                     value: self.span_utils.snippet(expr.span),
                     type_value: ty_to_string(&typ),
                 })
             }
             ast::ItemMod(ref m) => {
-                let qualname = format!("::{}", self.analysis.ty_cx.map.path_to_string(item.id));
+                let qualname = format!("::{}", self.tcx.map.path_to_string(item.id));
 
-                let cm = self.sess.codemap();
+                let cm = self.tcx.sess.codemap();
                 let filename = cm.span_to_filename(m.inner);
 
                 let sub_span = self.span_utils.sub_span_after_keyword(item.span, keywords::Mod);
@@ -229,12 +223,12 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     name: get_ident(item.ident).to_string(),
                     qualname: qualname,
                     span: sub_span.unwrap(),
-                    scope: self.analysis.ty_cx.map.get_parent(item.id),
+                    scope: self.tcx.map.get_parent(item.id),
                     filename: filename,
                 })
             },
             ast::ItemEnum(..) => {
-                let enum_name = format!("::{}", self.analysis.ty_cx.map.path_to_string(item.id));
+                let enum_name = format!("::{}", self.tcx.map.path_to_string(item.id));
                 let val = self.span_utils.snippet(item.span);
                 let sub_span = self.span_utils.sub_span_after_keyword(item.span, keywords::Enum);
 
@@ -243,14 +237,14 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     value: val,
                     span: sub_span.unwrap(),
                     qualname: enum_name,
-                    scope: self.analysis.ty_cx.map.get_parent(item.id),
+                    scope: self.tcx.map.get_parent(item.id),
                 })
             },
             ast::ItemImpl(_, _, _, ref trait_ref, ref typ, _) => {
                 let mut type_data = None;
                 let sub_span;
 
-                let parent = self.analysis.ty_cx.map.get_parent(item.id);
+                let parent = self.tcx.map.get_parent(item.id);
 
                 match typ.node {
                     // Common case impl for a struct or something basic.
@@ -294,11 +288,10 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             ast::NamedField(ident, _) => {
                 let name = get_ident(ident);
                 let qualname = format!("::{}::{}",
-                                       self.analysis.ty_cx.map.path_to_string(parent),
+                                       self.tcx.map.path_to_string(parent),
                                        name);
-                let typ = ppaux::ty_to_string(&self.analysis.ty_cx,
-                                              *self.analysis.ty_cx.node_types()
-                                                  .get(&field.node.id).unwrap());
+                let typ = self.tcx.node_types().get(&field.node.id).unwrap()
+                                               .to_string();
                 let sub_span = self.span_utils.sub_span_before_token(field.span, token::Colon);
                 Some(Data::VariableData(VariableData {
                     id: field.node.id,
@@ -334,26 +327,25 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
     pub fn get_expr_data(&self, expr: &ast::Expr) -> Option<Data> {
         match expr.node {
             ast::ExprField(ref sub_ex, ident) => {
-                let ty = &ty::expr_ty_adjusted(&self.analysis.ty_cx, &sub_ex).sty;
+                let ty = &ty::expr_ty_adjusted(self.tcx, &sub_ex).sty;
                 match *ty {
                     ty::TyStruct(def_id, _) => {
-                        let fields = ty::lookup_struct_fields(&self.analysis.ty_cx, def_id);
+                        let fields = ty::lookup_struct_fields(self.tcx, def_id);
                         for f in &fields {
                             if f.name == ident.node.name {
                                 let sub_span = self.span_utils.span_for_last_ident(expr.span);
                                 return Some(Data::VariableRefData(VariableRefData {
                                     name: get_ident(ident.node).to_string(),
                                     span: sub_span.unwrap(),
-                                    scope: self.analysis.ty_cx.map.get_parent(expr.id),
+                                    scope: self.tcx.map.get_parent(expr.id),
                                     ref_id: f.id,
                                 }));
                             }
                         }
 
-                        self.sess.span_bug(expr.span,
-                                           &format!("Couldn't find field {} on {:?}",
-                                                    &get_ident(ident.node),
-                                                    ty))
+                        self.tcx.sess.span_bug(expr.span,
+                                               &format!("Couldn't find field {} on {:?}",
+                                                        &get_ident(ident.node), ty))
                     }
                     _ => {
                         debug!("Expected struct type, found {:?}", ty);
@@ -362,13 +354,13 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 }
             }
             ast::ExprStruct(ref path, _, _) => {
-                let ty = &ty::expr_ty_adjusted(&self.analysis.ty_cx, expr).sty;
+                let ty = &ty::expr_ty_adjusted(&self.tcx, expr).sty;
                 match *ty {
                     ty::TyStruct(def_id, _) => {
                         let sub_span = self.span_utils.span_for_last_ident(path.span);
                         Some(Data::TypeRefData(TypeRefData {
                             span: sub_span.unwrap(),
-                            scope: self.analysis.ty_cx.map.get_parent(expr.id),
+                            scope: self.tcx.map.get_parent(expr.id),
                             ref_id: def_id,
                         }))
                     }
@@ -392,7 +384,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                               struct_id: DefId,
                               parent: NodeId)
                               -> VariableRefData {
-        let fields = ty::lookup_struct_fields(&self.analysis.ty_cx, struct_id);
+        let fields = ty::lookup_struct_fields(&self.tcx, struct_id);
         let field_name = get_ident(field_ref.ident.node).to_string();
         for f in &fields {
             if f.name == field_ref.ident.node.name {
@@ -407,8 +399,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             }
         }
 
-        self.sess.span_bug(field_ref.span,
-                           &format!("Couldn't find field {}", field_name));
+        self.tcx.sess.span_bug(field_ref.span,
+                               &format!("Couldn't find field {}", field_name));
     }
 
     pub fn get_data_for_id(&self, _id: &NodeId) -> Data {
@@ -417,11 +409,11 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
     }
 
     fn lookup_ref_id(&self, ref_id: NodeId) -> Option<DefId> {
-        if !self.analysis.ty_cx.def_map.borrow().contains_key(&ref_id) {
-            self.sess.bug(&format!("def_map has no key for {} in lookup_type_ref",
-                                  ref_id));
+        if !self.tcx.def_map.borrow().contains_key(&ref_id) {
+            self.tcx.sess.bug(&format!("def_map has no key for {} in lookup_type_ref",
+                                       ref_id));
         }
-        let def = self.analysis.ty_cx.def_map.borrow().get(&ref_id).unwrap().full_def();
+        let def = self.tcx.def_map.borrow().get(&ref_id).unwrap().full_def();
         match def {
             def::DefPrimTy(_) => None,
             _ => Some(def.def_id()),
@@ -484,10 +476,10 @@ impl<'v> Visitor<'v> for PathCollector {
 }
 
 #[allow(deprecated)]
-pub fn process_crate(sess: &Session,
-                     krate: &ast::Crate,
+pub fn process_crate(tcx: &ty::ctxt,
                      analysis: &ty::CrateAnalysis,
                      odir: Option<&Path>) {
+    let krate = tcx.map.krate();
     if generated_code(krate.span) {
         return;
     }
@@ -512,10 +504,9 @@ pub fn process_crate(sess: &Session,
         },
     };
 
-    match fs::create_dir_all(&root_path) {
-        Err(e) => sess.err(&format!("Could not create directory {}: {}",
-                           root_path.display(), e)),
-        _ => (),
+    if let Err(e) = fs::create_dir_all(&root_path) {
+        tcx.sess.err(&format!("Could not create directory {}: {}",
+                              root_path.display(), e));
     }
 
     {
@@ -531,12 +522,12 @@ pub fn process_crate(sess: &Session,
         Ok(f) => box f,
         Err(e) => {
             let disp = root_path.display();
-            sess.fatal(&format!("Could not open {}: {}", disp, e));
+            tcx.sess.fatal(&format!("Could not open {}: {}", disp, e));
         }
     };
     root_path.pop();
 
-    let mut visitor = dump_csv::DumpCsvVisitor::new(sess, analysis, output_file);
+    let mut visitor = dump_csv::DumpCsvVisitor::new(tcx, analysis, output_file);
 
     visitor.dump_crate_info(&cratename, krate);
     visit::walk_crate(&mut visitor, krate);

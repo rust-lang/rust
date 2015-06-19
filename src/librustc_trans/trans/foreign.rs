@@ -40,7 +40,6 @@ use syntax::parse::token;
 use syntax::ast;
 use syntax::attr;
 use syntax::print::pprust;
-use util::ppaux::Repr;
 
 ///////////////////////////////////////////////////////////////////////////
 // Type definitions
@@ -183,11 +182,11 @@ pub fn get_extern_fn(ccx: &CrateContext,
 pub fn register_foreign_item_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                           abi: Abi, fty: Ty<'tcx>,
                                           name: &str) -> ValueRef {
-    debug!("register_foreign_item_fn(abi={}, \
-            ty={}, \
+    debug!("register_foreign_item_fn(abi={:?}, \
+            ty={:?}, \
             name={})",
-           abi.repr(ccx.tcx()),
-           fty.repr(ccx.tcx()),
+           abi,
+           fty,
            name);
 
     let cc = llvm_calling_convention(ccx, abi);
@@ -233,12 +232,11 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                      -> Block<'blk, 'tcx>
 {
     let ccx = bcx.ccx();
-    let tcx = bcx.tcx();
 
-    debug!("trans_native_call(callee_ty={}, \
+    debug!("trans_native_call(callee_ty={:?}, \
             llfn={}, \
             llretptr={})",
-           callee_ty.repr(tcx),
+           callee_ty,
            ccx.tn().val_to_string(llfn),
            ccx.tn().val_to_string(llretptr));
 
@@ -610,16 +608,16 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                 assert!(f.abi != Rust && f.abi != RustIntrinsic);
             }
             _ => {
-                ccx.sess().bug(&format!("build_rust_fn: extern fn {} has ty {}, \
+                ccx.sess().bug(&format!("build_rust_fn: extern fn {} has ty {:?}, \
                                         expected a bare fn ty",
                                        ccx.tcx().map.path_to_string(id),
-                                       t.repr(tcx)));
+                                       t));
             }
         };
 
-        debug!("build_rust_fn: path={} id={} t={}",
+        debug!("build_rust_fn: path={} id={} t={:?}",
                ccx.tcx().map.path_to_string(id),
-               id, t.repr(tcx));
+               id, t);
 
         let llfn = declare::define_internal_rust_fn(ccx, &ps[..], t).unwrap_or_else(||{
             ccx.sess().bug(&format!("symbol `{}` already defined", ps));
@@ -636,12 +634,11 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                       t: Ty<'tcx>) {
         let _icx = push_ctxt(
             "foreign::trans_rust_fn_with_foreign_abi::build_wrap_fn");
-        let tcx = ccx.tcx();
 
-        debug!("build_wrap_fn(llrustfn={}, llwrapfn={}, t={})",
+        debug!("build_wrap_fn(llrustfn={}, llwrapfn={}, t={:?})",
                ccx.tn().val_to_string(llrustfn),
                ccx.tn().val_to_string(llwrapfn),
-               t.repr(ccx.tcx()));
+               t);
 
         // Avoid all the Rust generation stuff and just generate raw
         // LLVM here.
@@ -723,10 +720,10 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                     debug!("out pointer, \
                             allocad={}, \
                             llrust_ret_ty={}, \
-                            return_ty={}",
+                            return_ty={:?}",
                            ccx.tn().val_to_string(slot),
                            ccx.tn().type_to_string(llrust_ret_ty),
-                           tys.fn_sig.output.repr(tcx));
+                           tys.fn_sig.output);
                     llrust_args.push(slot);
                     return_alloca = Some(slot);
                 }
@@ -817,8 +814,8 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         }
 
         // Perform the call itself
-        debug!("calling llrustfn = {}, t = {}",
-               ccx.tn().val_to_string(llrustfn), t.repr(ccx.tcx()));
+        debug!("calling llrustfn = {}, t = {:?}",
+               ccx.tn().val_to_string(llrustfn), t);
         let attributes = attributes::from_fn_type(ccx, t);
         let llrust_ret_val = builder.call(llrustfn, &llrust_args, Some(attributes));
 
@@ -936,11 +933,11 @@ fn foreign_types_for_fn_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                        llsig.llret_ty,
                                        llsig.ret_def);
     debug!("foreign_types_for_fn_ty(\
-           ty={}, \
+           ty={:?}, \
            llsig={} -> {}, \
            fn_ty={} -> {}, \
            ret_def={}",
-           ty.repr(ccx.tcx()),
+           ty,
            ccx.tn().types_to_str(&llsig.llarg_tys),
            ccx.tn().type_to_string(llsig.llret_ty),
            ccx.tn().types_to_str(&fn_ty.arg_tys.iter().map(|t| t.ty).collect::<Vec<_>>()),
