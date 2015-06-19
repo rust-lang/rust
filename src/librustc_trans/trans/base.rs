@@ -330,7 +330,7 @@ pub fn compare_scalar_types<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 _ => bcx.sess().bug("compare_scalar_types: must be a comparison operator")
             }
         }
-        ty::TyBareFn(..) | ty::TyBool | ty::TyUint(_) | ty::TyChar => {
+        ty::TyFnDef(..) | ty::TyFnPtr(_) | ty::TyBool | ty::TyUint(_) | ty::TyChar => {
             ICmp(bcx, bin_op_to_icmp_predicate(bcx.ccx(), op, false), lhs, rhs, debug_loc)
         }
         ty::TyRawPtr(mt) if common::type_is_sized(bcx.tcx(), mt.ty) => {
@@ -679,7 +679,7 @@ pub fn trans_external_path<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                      did: ast::DefId, t: Ty<'tcx>) -> ValueRef {
     let name = csearch::get_symbol(&ccx.sess().cstore, did);
     match t.sty {
-        ty::TyBareFn(_, ref fn_ty) => {
+        ty::TyFnDef(_, ref fn_ty) => {
             match ccx.sess().target.target.adjust_abi(fn_ty.abi) {
                 Rust | RustCall => {
                     get_extern_rust_fn(ccx, t, &name[..], did)
@@ -1679,7 +1679,7 @@ pub fn trans_named_tuple_constructor<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     let tcx = ccx.tcx();
 
     let result_ty = match ctor_ty.sty {
-        ty::TyBareFn(_, ref bft) => {
+        ty::TyFnDef(_, ref bft) => {
             ty::erase_late_bound_regions(bcx.tcx(), &bft.sig.output()).unwrap()
         }
         _ => ccx.sess().bug(
@@ -1757,7 +1757,7 @@ fn trans_enum_variant_or_tuple_like_struct<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx
     let ctor_ty = monomorphize::apply_param_substs(ccx.tcx(), param_substs, &ctor_ty);
 
     let result_ty = match ctor_ty.sty {
-        ty::TyBareFn(_, ref bft) => {
+        ty::TyFnDef(_, ref bft) => {
             ty::erase_late_bound_regions(ccx.tcx(), &bft.sig.output())
         }
         _ => ccx.sess().bug(
@@ -2127,7 +2127,7 @@ fn register_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                          node_id: ast::NodeId,
                          node_type: Ty<'tcx>)
                          -> ValueRef {
-    if let ty::TyBareFn(_, ref f) = node_type.sty {
+    if let ty::TyFnDef(_, ref f) = node_type.sty {
         if f.abi != Rust && f.abi != RustCall {
             ccx.sess().span_bug(sp, &format!("only the `{}` or `{}` calling conventions are valid \
                                               for this function; `{}` was specified",
@@ -2483,7 +2483,7 @@ fn register_method(ccx: &CrateContext, id: ast::NodeId,
 
     let sym = exported_name(ccx, id, mty, &attrs);
 
-    if let ty::TyBareFn(_, ref f) = mty.sty {
+    if let ty::TyFnDef(_, ref f) = mty.sty {
         let llfn = if f.abi == Rust || f.abi == RustCall {
             register_fn(ccx, span, sym, id, mty)
         } else {

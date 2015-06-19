@@ -1565,7 +1565,8 @@ fn compute_type_scheme_of_foreign_item<'a, 'tcx>(
 {
     match it.node {
         ast::ForeignItemFn(ref fn_decl, ref generics) => {
-            compute_type_scheme_of_foreign_fn_decl(ccx, fn_decl, generics, abi)
+            compute_type_scheme_of_foreign_fn_decl(
+                ccx, local_def(it.id), fn_decl, generics, abi)
         }
         ast::ForeignItemStatic(ref t, _) => {
             ty::TypeScheme {
@@ -2091,6 +2092,7 @@ fn conv_param_bounds<'a,'tcx>(astconv: &AstConv<'tcx>,
 
 fn compute_type_scheme_of_foreign_fn_decl<'a, 'tcx>(
     ccx: &CrateCtxt<'a, 'tcx>,
+    id: ast::DefId,
     decl: &ast::FnDecl,
     ast_generics: &ast::Generics,
     abi: abi::Abi)
@@ -2126,7 +2128,7 @@ fn compute_type_scheme_of_foreign_fn_decl<'a, 'tcx>(
 
     let t_fn = ty::mk_bare_fn(
         ccx.tcx,
-        None,
+        Some(id),
         ccx.tcx.mk_bare_fn(ty::BareFnTy {
             abi: abi,
             unsafety: ast::Unsafety::Unsafe,

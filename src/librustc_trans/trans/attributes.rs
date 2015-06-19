@@ -143,7 +143,7 @@ pub fn from_fn_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_type: ty::Ty<'tcx
 
     let function_type;
     let (fn_sig, abi, env_ty) = match fn_type.sty {
-        ty::TyBareFn(_, ref f) => (&f.sig, f.abi, None),
+        ty::TyFnDef(_, ref f) | ty::TyFnPtr(ref f) => (&f.sig, f.abi, None),
         ty::TyClosure(closure_did, substs) => {
             let typer = common::NormalizingClosureTyper::new(ccx.tcx());
             function_type = typer.closure_type(closure_did, substs);
@@ -173,7 +173,7 @@ pub fn from_fn_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_type: ty::Ty<'tcx
                 _ => ccx.sess().bug("expected tuple'd inputs")
             }
         },
-        ty::TyBareFn(..) if abi == abi::RustCall => {
+        ty::TyFnDef(..) | ty::TyFnPtr(_) if abi == abi::RustCall => {
             let mut inputs = vec![fn_sig.inputs[0]];
 
             match fn_sig.inputs[1].sty {

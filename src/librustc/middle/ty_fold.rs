@@ -625,9 +625,13 @@ pub fn super_fold_ty<'tcx, T: TypeFolder<'tcx>>(this: &mut T,
         ty::TyTuple(ref ts) => {
             ty::TyTuple(ts.fold_with(this))
         }
-        ty::TyBareFn(opt_def_id, ref f) => {
+        ty::TyFnDef(def_id, ref f) => {
             let bfn = f.fold_with(this);
-            ty::TyBareFn(opt_def_id, this.tcx().mk_bare_fn(bfn))
+            ty::TyFnDef(def_id, this.tcx().mk_bare_fn(bfn))
+        }
+        ty::TyFnPtr(ref f) => {
+            let bfn = f.fold_with(this);
+            ty::TyFnPtr(this.tcx().mk_bare_fn(bfn))
         }
         ty::TyRef(r, ref tm) => {
             let r = r.fold_with(this);

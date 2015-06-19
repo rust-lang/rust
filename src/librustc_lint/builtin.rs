@@ -2183,7 +2183,7 @@ impl LintPass for MutableTransmutes {
                 }
                 let typ = ty::node_id_to_type(cx.tcx, expr.id);
                 match typ.sty {
-                    ty::TyBareFn(_, ref bare_fn) if bare_fn.abi == RustIntrinsic => {
+                    ty::TyFnDef(_, ref bare_fn) if bare_fn.abi == RustIntrinsic => {
                         if let ty::FnConverging(to) = bare_fn.sig.0.output {
                             let from = bare_fn.sig.0.inputs[0];
                             return Some((&from.sty, &to.sty));
@@ -2197,7 +2197,7 @@ impl LintPass for MutableTransmutes {
 
         fn def_id_is_transmute(cx: &Context, def_id: DefId) -> bool {
             match ty::lookup_item_type(cx.tcx, def_id).ty.sty {
-                ty::TyBareFn(_, ref bfty) if bfty.abi == RustIntrinsic => (),
+                ty::TyFnDef(_, ref bfty) if bfty.abi == RustIntrinsic => (),
                 _ => return false
             }
             ty::with_path(cx.tcx, def_id, |path| match path.last() {

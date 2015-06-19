@@ -526,7 +526,8 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'tcx>(
                     }
                 }
 
-                ty::TyRef(..) | ty::TyRawPtr(_) | ty::TyBareFn(..) => {
+                ty::TyRef(..) | ty::TyRawPtr(_) | ty::TyFnDef(..) |
+                ty::TyFnPtr(_) => {
                     // Don't recurse, since references, pointers,
                     // and bare functions don't own instances
                     // of the types appearing within them.

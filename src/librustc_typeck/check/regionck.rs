@@ -801,7 +801,7 @@ fn constrain_callee(rcx: &mut Rcx,
                     _callee_expr: &ast::Expr) {
     let callee_ty = rcx.resolve_node_type(callee_id);
     match callee_ty.sty {
-        ty::TyBareFn(..) => { }
+        ty::TyFnDef(..) | ty::TyFnPtr(_) => { }
         _ => {
             // this should not happen, but it does if the program is
             // erroneous

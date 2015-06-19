@@ -493,7 +493,7 @@ pub fn trans_trait_callee_from_llval<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     // Replace the self type (&Self or Box<Self>) with an opaque pointer.
     let llcallee_ty = match callee_ty.sty {
-        ty::TyBareFn(_, ref f) if f.abi == Rust || f.abi == RustCall => {
+        ty::TyFnPtr(ref f) if f.abi == Rust || f.abi == RustCall => {
             let fake_sig =
                 ty::Binder(ty::FnSig {
                     inputs: f.sig.0.inputs[1..].to_vec(),

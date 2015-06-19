@@ -138,13 +138,13 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
         self.unpack_actual_value(a, |a| {
             match a.sty {
-                ty::TyBareFn(Some(_), a_f) => {
+                ty::TyFnDef(_, a_f) => {
                     // Function items are coercible to any closure
                     // type; function pointers are not (that would
                     // require double indirection).
                     self.coerce_from_fn_item(a, a_f, b)
                 }
-                ty::TyBareFn(None, a_f) => {
+                ty::TyFnPtr(a_f) => {
                     // We permit coercion of fn pointers to drop the
                     // unsafe qualifier.
                     self.coerce_from_fn_pointer(a, a_f, b)
@@ -355,7 +355,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             debug!("coerce_from_fn_pointer(a={}, b={})",
                    a.repr(self.tcx()), b.repr(self.tcx()));
 
-            if let ty::TyBareFn(None, fn_ty_b) = b.sty {
+            if let ty::TyFnPtr(fn_ty_b) = b.sty {
                 match (fn_ty_a.unsafety, fn_ty_b.unsafety) {
                     (ast::Unsafety::Normal, ast::Unsafety::Unsafe) => {
                         let unsafe_a = self.tcx().safe_to_unsafe_fn_ty(fn_ty_a);
@@ -384,7 +384,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                    a.repr(self.tcx()), b.repr(self.tcx()));
 
             match b.sty {
-                ty::TyBareFn(None, _) => {
+                ty::TyFnPtr(_) => {
                     let a_fn_pointer = ty::mk_bare_fn(self.tcx(), None, fn_ty_a);
                     try!(self.subtype(a_fn_pointer, b));
                     Ok(Some(ty::AdjustReifyFnPointer))

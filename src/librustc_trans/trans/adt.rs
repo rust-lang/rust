@@ -408,8 +408,8 @@ fn find_discr_field_candidate<'tcx>(tcx: &ty::ctxt<'tcx>,
         // Regular thin pointer: &T/&mut T/Box<T>
         ty::TyRef(..) | ty::TyBox(..) => Some(path),
 
-        // Functions are just pointers
-        ty::TyBareFn(..) => Some(path),
+        // Function pointer: `fn() -> i32`
+        ty::TyFnPtr(_) => Some(path),
 
         // Is this the NonZero lang item wrapping a pointer or integer type?
         ty::TyStruct(did, substs) if Some(did) == tcx.lang_items.non_zero() => {

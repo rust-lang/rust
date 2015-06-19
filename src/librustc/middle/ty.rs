@@ -918,8 +918,9 @@ impl<'tcx> ctxt<'tcx> {
     pub fn print_debug_stats(&self) {
         sty_debug_print!(
             self,
-            TyEnum, TyBox, TyArray, TySlice, TyRawPtr, TyRef, TyBareFn, TyTrait,
-            TyStruct, TyClosure, TyTuple, TyParam, TyInfer, TyProjection);
+            TyEnum, TyBox, TyArray, TySlice, TyRawPtr, TyRef, TyFnDef, TyFnPtr,
+            TyTrait, TyStruct, TyClosure, TyTuple, TyParam, TyInfer,
+            TyProjection);
 
         println!("Substs interner: #{}", self.substs_interner.borrow().len());
         println!("BareFnTy interner: #{}", self.bare_fn_interner.borrow().len());
@@ -1415,14 +1416,16 @@ pub enum TypeVariants<'tcx> {
     /// `&a mut T` or `&'a T`.
     TyRef(&'tcx Region, mt<'tcx>),
 
-    /// If the def-id is Some(_), then this is the type of a specific
-    /// fn item. Otherwise, if None(_), it a fn pointer type.
-    ///
-    /// FIXME: Conflating function pointers and the type of a
-    /// function is probably a terrible idea; a function pointer is a
-    /// value with a specific type, but a function can be polymorphic
-    /// or dynamically dispatched.
-    TyBareFn(Option<DefId>, &'tcx BareFnTy<'tcx>),
+    /// The anonymous type of a function declaration/definition. Each
+    /// function has a unique type.
+    /// FIXME: Does this need to include substitutions?
+    /// `g::<i32>` and `g::<u32>` should have different types.
+    TyFnDef(DefId, &'tcx BareFnTy<'tcx>),
+
+    /// A pointer to a function.  Written as `fn() -> i32`.
+    /// FIXME: This is currently also used to represent the callee of a method;
+    /// see ty::MethodCallee etc.
+    TyFnPtr(&'tcx BareFnTy<'tcx>),
 
     /// A trait, defined with `trait`.
     TyTrait(Box<TraitTy<'tcx>>),
@@ -3115,7 +3118,7 @@ impl FlagComputation {
                 self.add_tys(&ts[..]);
             }
 
-            &TyBareFn(_, ref f) => {
+            &TyFnDef(_, ref f) | &TyFnPtr(ref f) => {
                 self.add_fn_sig(&f.sig);
             }
         }
@@ -3285,7 +3288,10 @@ pub fn mk_bool<'tcx>(cx: &ctxt<'tcx>) -> Ty<'tcx> {
 pub fn mk_bare_fn<'tcx>(cx: &ctxt<'tcx>,
                         opt_def_id: Option<ast::DefId>,
                         fty: &'tcx BareFnTy<'tcx>) -> Ty<'tcx> {
-    mk_t(cx, TyBareFn(opt_def_id, fty))
+    match opt_def_id {
+        Some(def_id) => mk_t(cx, TyFnDef(def_id, fty)),
+        None => mk_t(cx, TyFnPtr(fty)),
+    }
 }
 
 pub fn mk_ctor_fn<'tcx>(cx: &ctxt<'tcx>,
@@ -3619,7 +3625,7 @@ pub fn type_is_scalar(ty: Ty) -> bool {
     match ty.sty {
       TyBool | TyChar | TyInt(_) | TyFloat(_) | TyUint(_) |
       TyInfer(IntVar(_)) | TyInfer(FloatVar(_)) |
-      TyBareFn(..) | TyRawPtr(_) => true,
+      TyFnDef(..) | TyFnPtr(_) | TyRawPtr(_) => true,
       _ => false
     }
 }
@@ -3836,7 +3842,7 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
             // Scalar and unique types are sendable, and durable
             TyInfer(ty::FreshIntTy(_)) | TyInfer(ty::FreshFloatTy(_)) |
             TyBool | TyInt(_) | TyUint(_) | TyFloat(_) |
-            TyBareFn(..) | ty::TyChar => {
+            TyFnDef(..) | TyFnPtr(_) | ty::TyChar => {
                 TC::None
             }
 
@@ -3944,7 +3950,9 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
 
                                 if variants[data_idx].args.len() == 1 {
                                     match variants[data_idx].args[0].sty {
-                                        TyBareFn(..) => { res = res - TC::ReachesFfiUnsafe; }
+                                        TyFnPtr(_) => {
+                                            res = res - TC::ReachesFfiUnsafe;
+                                        }
                                         _ => { }
                                     }
                                 }
@@ -4056,7 +4064,7 @@ pub fn type_moves_by_default<'a,'tcx>(param_env: &ParameterEnvironment<'a,'tcx>,
     // Fast-path for primitive types
     let result = match ty.sty {
         TyBool | TyChar | TyInt(..) | TyUint(..) | TyFloat(..) |
-        TyRawPtr(..) | TyBareFn(..) | TyRef(_, mt {
+        TyRawPtr(..) | TyFnDef(..) | TyFnPtr(..) | TyRef(_, mt {
             mutbl: ast::MutImmutable, ..
         }) => Some(false),
 
@@ -4108,7 +4116,7 @@ fn type_is_sized_uncached<'a,'tcx>(param_env: Option<&ParameterEnvironment<'a,'t
     // Fast-path for primitive types
     let result = match ty.sty {
         TyBool | TyChar | TyInt(..) | TyUint(..) | TyFloat(..) |
-        TyBox(..) | TyRawPtr(..) | TyRef(..) | TyBareFn(..) |
+        TyBox(..) | TyRawPtr(..) | TyRef(..) | TyFnDef(..) | TyFnPtr(_) |
         TyArray(..) | TyTuple(..) | TyClosure(..) => Some(true),
 
         TyStr | TyTrait(..) | TySlice(_) => Some(false),
@@ -4168,7 +4176,8 @@ pub fn is_instantiable<'tcx>(cx: &ctxt<'tcx>, r_ty: Ty<'tcx>) -> bool {
             TyUint(_) |
             TyFloat(_) |
             TyStr |
-            TyBareFn(..) |
+            TyFnDef(..) |
+            TyFnPtr(_) |
             TyParam(_) |
             TyProjection(_) |
             TySlice(_) => {
@@ -4452,20 +4461,6 @@ pub fn type_is_char(ty: Ty) -> bool {
     }
 }
 
-pub fn type_is_bare_fn(ty: Ty) -> bool {
-    match ty.sty {
-        TyBareFn(..) => true,
-        _ => false
-    }
-}
-
-pub fn type_is_bare_fn_item(ty: Ty) -> bool {
-    match ty.sty {
-        TyBareFn(Some(_), _) => true,
-        _ => false
-    }
-}
-
 pub fn type_is_fp(ty: Ty) -> bool {
     match ty.sty {
       TyInfer(FloatVar(_)) | TyFloat(_) => true,
@@ -4634,7 +4629,7 @@ pub fn node_id_item_substs<'tcx>(cx: &ctxt<'tcx>, id: ast::NodeId) -> ItemSubsts
 
 pub fn fn_is_variadic(fty: Ty) -> bool {
     match fty.sty {
-        TyBareFn(_, ref f) => f.sig.0.variadic,
+        TyFnDef(_, ref f) | TyFnPtr(ref f) => f.sig.0.variadic,
         ref s => {
             panic!("fn_is_variadic() called on non-fn type: {:?}", s)
         }
@@ -4643,7 +4638,7 @@ pub fn fn_is_variadic(fty: Ty) -> bool {
 
 pub fn ty_fn_sig<'tcx>(fty: Ty<'tcx>) -> &'tcx PolyFnSig<'tcx> {
     match fty.sty {
-        TyBareFn(_, ref f) => &f.sig,
+        TyFnDef(_, ref f) | TyFnPtr(ref f) => &f.sig,
         ref s => {
             panic!("ty_fn_sig() called on non-fn type: {:?}", s)
         }
@@ -4653,7 +4648,7 @@ pub fn ty_fn_sig<'tcx>(fty: Ty<'tcx>) -> &'tcx PolyFnSig<'tcx> {
 /// Returns the ABI of the given function.
 pub fn ty_fn_abi(fty: Ty) -> abi::Abi {
     match fty.sty {
-        TyBareFn(_, ref f) => f.abi,
+        TyFnDef(_, ref f) | TyFnPtr(ref f) => f.abi,
         _ => panic!("ty_fn_abi() called on non-fn type"),
     }
 }
@@ -4665,7 +4660,7 @@ pub fn ty_fn_args<'tcx>(fty: Ty<'tcx>) -> ty::Binder<Vec<Ty<'tcx>>> {
 
 pub fn ty_fn_ret<'tcx>(fty: Ty<'tcx>) -> Binder<FnOutput<'tcx>> {
     match fty.sty {
-        TyBareFn(_, ref f) => f.sig.output(),
+        TyFnDef(_, ref f) | TyFnPtr(ref f) => f.sig.output(),
         ref s => {
             panic!("ty_fn_ret() called on non-fn type: {:?}", s)
         }
@@ -4674,7 +4669,7 @@ pub fn ty_fn_ret<'tcx>(fty: Ty<'tcx>) -> Binder<FnOutput<'tcx>> {
 
 pub fn is_fn_ty(fty: Ty) -> bool {
     match fty.sty {
-        TyBareFn(..) => true,
+        TyFnDef(..) | TyFnPtr(_) => true,
         _ => false
     }
 }
@@ -4807,7 +4802,7 @@ pub fn adjust_ty<'tcx, F>(cx: &ctxt<'tcx>,
             match *adjustment {
                AdjustReifyFnPointer => {
                     match unadjusted_ty.sty {
-                        ty::TyBareFn(Some(_), b) => {
+                        ty::TyFnDef(_, b) => {
                             ty::mk_bare_fn(cx, None, b)
                         }
                         _ => {
@@ -4820,7 +4815,7 @@ pub fn adjust_ty<'tcx, F>(cx: &ctxt<'tcx>,
 
                AdjustUnsafeFnPointer => {
                     match unadjusted_ty.sty {
-                        ty::TyBareFn(None, b) => cx.safe_to_unsafe_fn_ty(b),
+                        ty::TyFnPtr(b) => cx.safe_to_unsafe_fn_ty(b),
                         ref b => {
                             cx.sess.bug(
                                 &format!("AdjustReifyFnPointer adjustment on non-fn-item: \
@@ -4954,7 +4949,7 @@ pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
                 def::DefStruct(_) => {
                     match tcx.node_types.borrow().get(&expr.id) {
                         Some(ty) => match ty.sty {
-                            TyBareFn(..) => RvalueDatumExpr,
+                            TyFnDef(..) => RvalueDatumExpr,
                             _ => RvalueDpsExpr
                         },
                         // See ExprCast below for why types might be missing.
@@ -5110,8 +5105,8 @@ pub fn ty_sort_string<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> String {
         TySlice(_) => "slice".to_string(),
         TyRawPtr(_) => "*-ptr".to_string(),
         TyRef(_, _) => "&-ptr".to_string(),
-        TyBareFn(Some(_), _) => format!("fn item"),
-        TyBareFn(None, _) => "fn pointer".to_string(),
+        TyFnDef(_, _) => format!("fn item"),
+        TyFnPtr(_) => "fn pointer".to_string(),
         TyTrait(ref inner) => {
             format!("trait {}", item_path_str(cx, inner.principal_def_id()))
         }
@@ -6685,9 +6680,16 @@ pub fn hash_crate_independent<'tcx>(tcx: &ctxt<'tcx>, ty: Ty<'tcx>, svh: &Svh) -
                     region(state, *r);
                     mt(state, m);
                 }
-                TyBareFn(opt_def_id, ref b) => {
+                TyFnDef(def_id, ref b) => {
                     byte!(14);
-                    hash!(opt_def_id);
+                    hash!(def_id);
+                    hash!(b.unsafety);
+                    hash!(b.abi);
+                    fn_sig(state, &b.sig);
+                    return false;
+                }
+                TyFnPtr(ref b) => {
+                    byte!(14);
                     hash!(b.unsafety);
                     hash!(b.abi);
                     fn_sig(state, &b.sig);
@@ -7012,7 +7014,8 @@ pub fn accumulate_lifetimes_in_type(accumulator: &mut Vec<ty::Region>,
             TyArray(_, _) |
             TySlice(_) |
             TyRawPtr(_) |
-            TyBareFn(..) |
+            TyFnDef(..) |
+            TyFnPtr(_) |
             TyTuple(_) |
             TyProjection(_) |
             TyParam(_) |

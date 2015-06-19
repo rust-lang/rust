@@ -1197,7 +1197,16 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             // provide an impl, but only for suitable `fn` pointers
-            ty::TyBareFn(_, &ty::BareFnTy {
+            ty::TyFnDef(_, &ty::BareFnTy {
+                unsafety: ast::Unsafety::Normal,
+                abi: abi::Rust,
+                sig: ty::Binder(ty::FnSig {
+                    inputs: _,
+                    output: ty::FnConverging(_),
+                    variadic: false
+                })
+            }) |
+            ty::TyFnPtr(&ty::BareFnTy {
                 unsafety: ast::Unsafety::Normal,
                 abi: abi::Rust,
                 sig: ty::Binder(ty::FnSig {
@@ -1597,7 +1606,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::TyInt(_) |
             ty::TyBool |
             ty::TyFloat(_) |
-            ty::TyBareFn(..) |
+            ty::TyFnDef(..) |
+            ty::TyFnPtr(_) |
             ty::TyChar => {
                 // safe for everything
                 ok_if(Vec::new())
@@ -1819,7 +1829,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::TyInt(_) |
             ty::TyBool |
             ty::TyFloat(_) |
-            ty::TyBareFn(..) |
+            ty::TyFnDef(..) |
+            ty::TyFnPtr(_) |
             ty::TyStr |
             ty::TyError |
             ty::TyInfer(ty::IntVar(_)) |

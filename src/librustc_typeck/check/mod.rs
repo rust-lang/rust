@@ -506,7 +506,7 @@ fn check_bare_fn<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                            param_env: ty::ParameterEnvironment<'a, 'tcx>)
 {
     match raw_fty.sty {
-        ty::TyBareFn(_, ref fn_ty) => {
+        ty::TyFnDef(_, ref fn_ty) => {
             let inh = Inherited::new(ccx.tcx, param_env);
 
             // Compute the fty from point of view of inside fn.
@@ -2211,7 +2211,7 @@ fn check_method_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         ty::FnConverging(fcx.tcx().types.err)
     } else {
         match method_fn_ty.sty {
-            ty::TyBareFn(_, ref fty) => {
+            ty::TyFnPtr(ref fty) => {
                 // HACK(eddyb) ignore self in the definition (see above).
                 let expected_arg_tys = expected_types_for_fn_args(fcx,
                                                                   sp,
@@ -2457,7 +2457,7 @@ fn check_lit<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                     ty::TyInt(_) | ty::TyUint(_) => Some(ty),
                     ty::TyChar => Some(tcx.types.u8),
                     ty::TyRawPtr(..) => Some(tcx.types.usize),
-                    ty::TyBareFn(..) => Some(tcx.types.usize),
+                    ty::TyFnDef(..) | ty::TyFnPtr(_) => Some(tcx.types.usize),
                     _ => None
                 }
             });
@@ -5248,7 +5248,8 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
         };
         (n_tps, inputs, ty::FnConverging(output))
     };
-    let fty = ty::mk_bare_fn(tcx, None, tcx.mk_bare_fn(ty::BareFnTy {
+    let i_id = local_def(it.id);
+    let fty = ty::mk_bare_fn(tcx, Some(i_id), tcx.mk_bare_fn(ty::BareFnTy {
         unsafety: ast::Unsafety::Unsafe,
         abi: abi::RustIntrinsic,
         sig: ty::Binder(FnSig {
@@ -5257,7 +5258,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
             variadic: false,
         }),
     }));
-    let i_ty = ty::lookup_item_type(ccx.tcx, local_def(it.id));
+    let i_ty = ty::lookup_item_type(ccx.tcx, i_id);
     let i_n_tps = i_ty.generics.types.len(subst::FnSpace);
     if i_n_tps != n_tps {
         span_err!(tcx.sess, it.span, E0094,

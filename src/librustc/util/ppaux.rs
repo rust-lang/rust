@@ -20,7 +20,7 @@ use middle::ty::{ReFree, ReScope, ReInfer, ReStatic, Region, ReEmpty};
 use middle::ty::{ReSkolemized, ReVar, BrEnv};
 use middle::ty::{mt, Ty, ParamTy};
 use middle::ty::{TyBool, TyChar, TyStruct, TyEnum};
-use middle::ty::{TyError, TyStr, TyArray, TySlice, TyFloat, TyBareFn};
+use middle::ty::{TyError, TyStr, TyArray, TySlice, TyFloat, TyFnDef, TyFnPtr};
 use middle::ty::{TyParam, TyRawPtr, TyRef, TyTuple};
 use middle::ty::TyClosure;
 use middle::ty::{TyBox, TyTrait, TyInt, TyUint, TyInfer};
@@ -390,8 +390,11 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
                 strs => format!("({})", strs.connect(", "))
             }
         }
-        TyBareFn(opt_def_id, ref f) => {
-            bare_fn_to_string(cx, opt_def_id, f.unsafety, f.abi, None, &f.sig)
+        TyFnDef(def_id, ref f) => {
+            bare_fn_to_string(cx, Some(def_id), f.unsafety, f.abi, None, &f.sig)
+        }
+        TyFnPtr(ref f) => {
+            bare_fn_to_string(cx, None, f.unsafety, f.abi, None, &f.sig)
         }
         TyInfer(infer_ty) => infer_ty_to_string(cx, infer_ty),
         TyError => "[type error]".to_string(),
