@@ -281,7 +281,8 @@ println!("{}", Y);
 
 E0019: r##"
 A function call isn't allowed in the const's initialization expression
-because the expression's value must be known at compile-time. Bad example:
+because the expression's value must be known at compile-time. Example of
+erroneous code::
 
 ```
 enum Test {
