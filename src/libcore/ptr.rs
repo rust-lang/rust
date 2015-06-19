@@ -97,7 +97,7 @@ use intrinsics;
 use ops::Deref;
 use core::fmt;
 use option::Option::{self, Some, None};
-use marker::{PhantomData, Send, Sized, Sync};
+use marker::{Send, Sized, Sync};
 use nonzero::NonZero;
 
 use cmp::{PartialEq, Eq, Ord, PartialOrd};
@@ -512,7 +512,6 @@ impl<T: ?Sized> PartialOrd for *mut T {
 #[unstable(feature = "unique", reason = "needs an RFC to flesh out design")]
 pub struct Unique<T: ?Sized> {
     pointer: NonZero<*const T>,
-    _marker: PhantomData<T>,
 }
 
 /// `Unique` pointers are `Send` if `T` is `Send` because the data they
@@ -533,7 +532,7 @@ unsafe impl<T: Sync + ?Sized> Sync for Unique<T> { }
 impl<T: ?Sized> Unique<T> {
     /// Creates a new `Unique`.
     pub unsafe fn new(ptr: *mut T) -> Unique<T> {
-        Unique { pointer: NonZero::new(ptr), _marker: PhantomData }
+        Unique { pointer: NonZero::new(ptr) }
     }
 
     /// Dereferences the content.
