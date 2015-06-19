@@ -380,6 +380,19 @@ fn main() {
 ```
 "##,
 
+E0044: r##"
+You can't use type parameters on foreign items. Example of erroneous code:
+
+```
+extern { fn some_func<T>(); }
+```
+
+Just remove the type parameter to make this code works:
+
+```
+extern { fn some_func(); }
+```
+
 E0045: r##"
 Rust only supports variadic parameters for interoperability with C code in its
 FFI. As such, variadic parameters can only be used with functions which are
@@ -1488,7 +1501,9 @@ For more information see the [opt-in builtin traits RFC](https://github.com/rust
 }
 
 register_diagnostics! {
-    E0044, // foreign items may not have type parameters
+    E0034, // multiple applicable methods in scope
+    E0035, // does not take type parameters
+    E0036, // incorrect number of type parameters given for this method
     E0068,
     E0071,
     E0074,
