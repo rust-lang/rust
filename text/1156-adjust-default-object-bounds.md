@@ -1,7 +1,7 @@
 - Feature Name: N/A
 - Start Date: 2015-06-4
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: https://github.com/rust-lang/rfcs/pull/1156
+- Rust Issue: https://github.com/rust-lang/rust/issues/26438
 
 # Summary
 
@@ -131,7 +131,7 @@ The rules for user-defined types from RFC 599 are altered as follows
   then the default is cleared and explicit lifetiem bounds are
   required. There are no known examples of this in the standard
   library as this situation arises rarely in practice.*
-  
+
 # Timing and breaking change implications
 
 This is a breaking change, and hence it behooves us to evaluate the
