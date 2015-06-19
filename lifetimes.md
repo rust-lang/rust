@@ -447,15 +447,9 @@ The variance of `*const` and `*mut` is basically arbitrary as they're not at all
 type or memory safe, so their variance is determined in analogy to & and &mut
 respectively.
 
-
-
-
-## PhantomData
-
 This is all well and good for the types the standard library provides, but
-how is variance determined for type that *you* define? A struct is, informally
-speaking, covariant over all its fields (and an enum over its variants). This
-basically means that it inherits the variance of its fields. If a struct `Foo`
+how is variance determined for type that *you* define? A struct informally
+speaking inherits the variance of its fields. If a struct `Foo`
 has a generic argument `A` that is used in a field `a`, then Foo's variance
 over `A` is exactly `a`'s variance. However this is complicated if `A` is used
 in multiple fields.
@@ -477,6 +471,17 @@ struct Foo<'a, 'b, A, B, C, D, E, F, G, H> {
     h2: Cell<H>   // invariant over H, because invariance wins
 }
 ```
+
+
+
+
+## Dropck
+
+TODO
+
+
+## PhantomData
+
 
 However when working with unsafe code, we can often end up in a situation where
 types or lifetimes are logically associated with a struct, but not actually
@@ -511,6 +516,8 @@ pub struct Iter<'a, T: 'a> {
 }
 ```
 
+However PhantomData is also necessary to signal important information to
+*dropck*. (TODO)
 
 
 
