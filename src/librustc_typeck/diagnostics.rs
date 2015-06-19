@@ -223,7 +223,7 @@ impl Test {
 
 fn main() {
     let x = Test;
-    
+
     x.method::<i32>(); // Error: Test::method doesn't need type parameter!
 }
 ```
@@ -239,7 +239,7 @@ impl Test {
 
 fn main() {
     let x = Test;
-    
+
     x.method(); // OK, we're good!
 }
 ```
