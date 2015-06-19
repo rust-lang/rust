@@ -256,6 +256,21 @@ See [RFC 911] for more details on the design of `const fn`s.
 [RFC 911]: https://github.com/rust-lang/rfcs/blob/master/text/0911-const-fn.md
 "##,
 
+E0016: r##"
+Blocks in constants may only contain items (such as constant, function
+definition, etc...) and a tail expression. Example:
+
+```
+const FOO: i32 = { let x = 0; x }; // 'x' isn't an item!
+```
+
+To avoid it, you have to replace the non-item object:
+
+```
+const FOO: i32 = { const X : i32 = 0; X };
+```
+"##,
+
 E0018: r##"
 The value of static and const variables must be known at compile time. You
 can't cast a pointer as an integer because we can't know what value the
@@ -276,6 +291,42 @@ in a non-constant integer which lead to this error. Example:
 const X: u32 = 1;
 const Y: usize = &X as *const u32 as usize;
 println!("{}", Y);
+```
+"##,
+
+E0019: r##"
+A function call isn't allowed in the const's initialization expression
+because the expression's value must be known at compile-time. Example of
+erroneous code:
+
+```
+enum Test {
+    V1
+}
+
+impl Test {
+    fn test(&self) -> i32 {
+        12
+    }
+}
+
+fn main() {
+    const FOO: Test = Test::V1;
+
+    const A: i32 = FOO.test(); // You can't call Test::func() here !
+}
+```
+
+Remember: you can't use a function call inside a const's initialization
+expression! However, you can totally use it elsewhere you want:
+
+```
+fn main() {
+    const FOO: Test = Test::V1;
+
+    FOO.func(); // here is good
+    let x = FOO.func(); // or even here!
+}
 ```
 "##,
 
@@ -950,9 +1001,7 @@ static mut BAR: Option<Vec<i32>> = None;
 
 
 register_diagnostics! {
-    E0016,
     E0017,
-    E0019,
     E0022,
     E0038,
     E0109,
