@@ -256,6 +256,21 @@ See [RFC 911] for more details on the design of `const fn`s.
 [RFC 911]: https://github.com/rust-lang/rfcs/blob/master/text/0911-const-fn.md
 "##,
 
+E0016: r##"
+Blocks in constants may only contain items (such as constant, function
+definition, etc...) and a tail expression. Example:
+
+```
+const FOO: i32 = { let x = 0; x }; // 'x' isn't an item!
+```
+
+To avoid it, you have to replace the non-item object:
+
+```
+const FOO: i32 = { const X : i32 = 0; X };
+```
+"##,
+
 E0018: r##"
 The value of static and const variables must be known at compile time. You
 can't cast a pointer as an integer because we can't know what value the
