@@ -294,6 +294,42 @@ println!("{}", Y);
 ```
 "##,
 
+E0019: r##"
+A function call isn't allowed in the const's initialization expression
+because the expression's value must be known at compile-time. Example of
+erroneous code:
+
+```
+enum Test {
+    V1
+}
+
+impl Test {
+    fn test(&self) -> i32 {
+        12
+    }
+}
+
+fn main() {
+    const FOO: Test = Test::V1;
+
+    const A: i32 = FOO.test(); // You can't call Test::func() here !
+}
+```
+
+Remember: you can't use a function call inside a const's initialization
+expression! However, you can totally use it elsewhere you want:
+
+```
+fn main() {
+    const FOO: Test = Test::V1;
+
+    FOO.func(); // here is good
+    let x = FOO.func(); // or even here!
+}
+```
+"##,
+
 E0020: r##"
 This error indicates that an attempt was made to divide by zero (or take the
 remainder of a zero divisor) in a static or constant expression.
@@ -965,9 +1001,7 @@ static mut BAR: Option<Vec<i32>> = None;
 
 
 register_diagnostics! {
-    E0016,
     E0017,
-    E0019,
     E0022,
     E0038,
     E0109,
