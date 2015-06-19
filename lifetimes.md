@@ -1,4 +1,4 @@
-% Ownership
+% Ownership and Lifetimes
 
 Ownership is the breakout feature of Rust. It allows Rust to be completely
 memory-safe and efficient, while avoiding garbage collection. Before getting
@@ -58,6 +58,13 @@ a Cell is to copy the bits in or out.
 manages this through *runtime* checks. It is effectively a thread-unsafe
 read-write lock.
 
+For more details see Dan Grossman's Existential Types for Imperative Languages:
+* [paper][grossman-paper] (Advanced)
+* [slides][grossman-slides] (Simple)
+
+[grossman-paper]: http://homes.cs.washington.edu/~djg/papers/exists_imp.pdf
+[grossman-slides]: https://homes.cs.washington.edu/~djg/slides/esop02_talk.pdf
+
 
 
 
@@ -96,19 +103,49 @@ more than a local lint against incorrect usage of a value.
 
 ## Weird Lifetimes
 
-Almost always, the mutability of a lifetime can be derived from the mutability
-of the reference it is attached to. However this is not necessarily the case.
-For instance in the following code:
+Given the following code:
 
 ```rust
-fn foo<'a>(input: &'a mut u8) -> &'a u8 { &* input }
+struct Foo;
+
+impl Foo {
+    fn mutate_and_share(&mut self) -> &Self { &*self }
+    fn share(&self) {}
+}
+
+fn main() {
+    let mut foo = Foo;
+    let loan = foo.mutate_and_share();
+    foo.share();
+}
 ```
 
-One would expect the output of foo to be an immutable lifetime. However we have
-derived it from the input, which is a mutable lifetime. So although we have a
-shared reference, it will have the much more limited aliasing rules of a mutable
-reference. As a consequence, there is no expressive benefit in a method that
-mutates returning a shared reference.
+One might expect it to compile. We call `mutate_and_share`, which mutably borrows
+`foo` *temporarily*, but then returns *only* a shared reference. Therefore we
+would expect `foo.share()` to succeed as `foo` shouldn't be mutably borrowed.
+
+However when we try to compile it:
+
+```text
+<anon>:11:5: 11:8 error: cannot borrow `foo` as immutable because it is also borrowed as mutable
+<anon>:11     foo.share();
+              ^~~
+<anon>:10:16: 10:19 note: previous borrow of `foo` occurs here; the mutable borrow prevents subsequent moves, borrows, or modification of `foo` until the borrow ends
+<anon>:10     let loan = foo.mutate_and_share();
+                         ^~~
+<anon>:12:2: 12:2 note: previous borrow ends here
+<anon>:8 fn main() {
+<anon>:9     let mut foo = Foo;
+<anon>:10     let loan = foo.mutate_and_share();
+<anon>:11     foo.share();
+<anon>:12 }
+          ^
+```
+
+What happened? Well, the lifetime of `loan` is derived from a *mutable* borrow.
+This makes the type system believe that `foo` is mutably borrowed as long as
+`loan` exists, even though it's a shared reference. To my knowledge, this is not
+a bug.
 
 
 
@@ -413,7 +450,7 @@ respectively.
 
 
 
-## PhantomData and PhantomFn
+## PhantomData
 
 This is all well and good for the types the standard library provides, but
 how is variance determined for type that *you* define? A struct is, informally
@@ -473,6 +510,8 @@ pub struct Iter<'a, T: 'a> {
     _marker: marker::PhantomData<&'a T>,
 }
 ```
+
+
 
 
 ## Splitting Lifetimes
@@ -544,7 +583,76 @@ fn split_at_mut(&mut self, mid: usize) -> (&mut [T], &mut [T]) {
 ```
 
 This is pretty plainly dangerous. We use transmute to duplicate the slice with an
-*unbounded* lifetime, so that it
+*unbounded* lifetime, so that it can be treated as disjoint from the other until
+we unify them when we return.
 
+However more subtle is how iterators that yield mutable references work.
+The iterator trait is defined as follows:
+
+```rust
+trait Iterator {
+    type Item;
+
+    fn next(&mut self) -> Option<Self::Item>;
+}
+```
+
+Given this definition, Self::Item has *no* connection to `self`. This means
+that we can call `next` several times in a row, and hold onto all the results
+*concurrently*. This is perfectly fine for by-value iterators, which have exactly
+these semantics. It's also actually fine for shared references, as it's perfectly
+fine to grab a huge pile of shared references to the same thing (although the
+iterator needs to be a separate object from the thing being shared). But mutable
+references make this a mess. At first glance, they might seem completely
+incompatible with this API, as it would produce multiple mutable references to
+the same object!
+
+However it actually *does* work, exactly because iterators are one-shot objects.
+Everything an IterMut yields will be yielded *at most* once, so we don't *actually*
+ever yield multiple mutable references to the same piece of data.
+
+In general all mutable iterators require *some* unsafe code *somewhere*, though.
+Whether it's raw pointers, or safely composing on top of *another* IterMut.
+
+For instance, VecDeque's IterMut:
+
+```rust
+pub struct IterMut<'a, T:'a> {
+    // The whole backing array. Some of these indices are initialized!
+    ring: &'a mut [T],
+    tail: usize,
+    head: usize,
+}
+
+impl<'a, T> Iterator for IterMut<'a, T> {
+    type Item = &'a mut T;
+
+    fn next(&mut self) -> Option<&'a mut T> {
+        if self.tail == self.head {
+            return None;
+        }
+        let tail = self.tail;
+        self.tail = wrap_index(self.tail.wrapping_add(1), self.ring.len());
+
+        unsafe {
+            // might as well do unchecked indexing since wrap_index has us
+            // in-bounds, and many of the "middle" indices are uninitialized
+            // anyway.
+            let elem = self.ring.get_unchecked_mut(tail);
+
+            // round-trip through a raw pointer to unbound the lifetime from
+            // ourselves
+            Some(&mut *(elem as *mut _))
+        }
+    }
+}
+```
+
+A very subtle but interesting detail in this design is that it *relies on
+privacy to be sound*. Borrowck works on some very simple rules. One of those rules
+is that if we have a live &mut Foo and Foo contains an &mut Bar, then that &mut
+Bar is *also* live. Since IterMut is always live when `next` can be called, if
+`ring` were public then we could mutate `ring` while outstanding mutable borrows
+to it exist!
 
 
