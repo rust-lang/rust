@@ -292,6 +292,16 @@ mod test {
     use error;
     use error::Error as error_Error;
     use fmt;
+    use sys::os::error_string;
+
+    #[test]
+    fn test_debug_error() {
+        let code = 6;
+        let msg = error_string(code);
+        let err = Error { repr: super::Repr::Os(code) };
+        let expected = format!("Error {{ repr: Os {{ code: {:?}, message: {:?} }} }}", code, msg);
+        assert_eq!(format!("{:?}", err), expected);
+    }
 
     #[test]
     fn test_downcasting() {
