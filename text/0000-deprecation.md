@@ -1,252 +1,243 @@
-- Feature Name: A plan for deprecating APIs within Rust
+- Feature Name: Target Version
 - Start Date: 2015-06-03
 - RFC PR: 
 - Rust Issue: 
 
 # Summary
 
-There has been an ongoing [discussion on 
-internals](https://internals.rust-lang.org/t/thoughts-on-aggressive-deprecation-in-libstd/2176/55) 
-about how we are going to evolve the standard library. This RFC tries 
-to condense the consensus.
+This RFC proposes a small number of extensions to improve the user
+experience around different rust versions, while at the same time
+giving Rust developers more freedom to make changes without breaking
+anyones code.
 
-As a starting point, the current deprecation feature allows a developer
-to annotate their API items with `#[deprecated(since="1.1.0")]` and
-have suitable warnings shown if the feature is used.
+Namely the following items:
+
+1. Add a `--target=`*<version string> command line argument to rustc.
+This will be used for deprecation checking and for selecting code paths
+in the compiler.
+2. Add an (optional for now) `rust = "..."` dependency to Cargo.toml,
+which `cargo new` pre-fills with the current rust version
+3. Allow `std` APIs to declare an `#[insecure(level="Warn", reason="...")]` 
+attribute that will produce a warning or error, depending on level,
+that cannot be switched off (even with `-Awarning`)
+4. Add a `removed_at="..."` item to `#[deprecated]` attributes that 
+allows making API items unavailable starting from certain target 
+versions. 
+5. Add a number of warnings to steer users in the direction of using the
+most recent Rust version that makes sense to them, while making it 
+easy for library writers to support a wide range of Rust versions
+
+## Background
+
+A good number of policies and mechanisms around versioning regarding
+the Rust language and APIs have already been submitted, some accepted.
+As a background, in no particular order:
+
+* [#0572 Feature gates](https://github.com/rust-lang/rfcs/blob/master/text/0572-rustc-attribute.md)
+* [#1105 API Evolution](https://github.com/rust-lang/rfcs/blob/master/text/1105-api-evolution.md)
+* [#1122 Language SemVer](https://github.com/rust-lang/rfcs/blob/master/text/1122-language-semver.md)
+* [#1150 Rename Attribute](https://github.com/rust-lang/pull/1150)
+
+In addition, there has been an ongoing [discussion on 
+internals](https://internals.rust-lang.org/t/thoughts-on-aggressive-deprecation-in-libstd/2176/55) 
+about how we are going to evolve the standard library, which this
+proposal is mostly based on.
+
+Finally, the recent discussion on the first breaking change 
+([RFC PR #1156 Adjust default object bounds](https://github.com/rust-lang/rfcs/pull/1156))
+has made it clear that we need a more flexible way of dealing with
+(breaking) changes.
+
+The current setup allows the `std` API to declare `#[unstable]` and
+`#[deprecated]` flags, whereas users can opt-in to unstable features
+with `#![feature]` flags that are customarily added to the crate root.
+On usage of deprecated APIs, a warning is shown unless suppressed.
+`cargo` does this for dependencies by default by calling `rustc` with
+the `-Awarnings` argument.
 
 # Motivation
 
-We want to:
+## 1. Language / `std` Evolution
 
-1. evolve the `std` API, including making items unavailable with new 
-versions
-2. with minimal -- next to no -- breakage
-3. be able to plug security/safety holes
-4. avoid confusing users
-5. stay backwards-compatible so people can continue to use dependencies 
-written for older versions (except where point 3. forbids this)
-6. give users sensible defaults
-7. and an update plan when they want to use a more current version
+The following motivates items 1 and 2 (and to a lesser extent 5)
 
-This was quite short, so let me explain a bit: We want Rust to be
-successful, and since the 1.0.0 release, there is an expectation of
-stability. Therefore the first order of business when evolving the
-`std` API is: **Don't break people's code**. 
+With the current setup, we can already evolve the language and APIs,
+albeit in a very limited way. For example, it is virtually impossible
+to actually remove an API, because that would break code. Even minor
+breaking changes (as [RFC PR #1156](https://github.com/rust-lang/rfcs/pull/1156) 
+cited above) generate huge discussion, because they call the general
+stability of the language and environment into question.
 
-In practice there will be some qualification, e.g. if an API is 
-*inherently* unsafe, it should be acceptable make it completely 
-unavailable, as any code using it was in fact broken to begin with. 
-Therefore it is acceptable to make this code stop working altogether, 
-as long as the resulting error is not too confusing (which again means 
-we should make the item inaccessible instead of removing it).
+The problem with opt-out, as defined by 
+[RFC #1122](https://github.com/rust-lang/rfcs/blob/master/text/1122-language-semver.md)
+is that code which previously compiled without problems stops working
+on a Rust upgrade, and requires manual intervention to get working 
+again.
 
-If an API permits unsafe uses, and a safer alternative is available, we 
-may want to mark it as insecure in addition to deprecating it, so that 
-people will get warnings even if they specified an older target 
-version. We want to have a different kind of warning than the 
-standard deprecation warning, as there are already some crates (e.g. 
-compiletest.rs) on crates.io that declare `#![deny(deprecate)]`, so 
-those warnings would turn to errors.
+This has the long-term potential of fragmenting the Rust ecosystem into
+crates/projects using certain Rust versions and thus should be avoided
+at some (but not all) cost.
 
-We also really want to make features inaccessible in a newer version, 
-not just mark them as deprecated. Otherwise we would bloat our APIs 
-with deprecated features that no one uses (see Java). To do this, it's 
-not enough to hide the feature from the docs, as that would be 
-confusing (see point 4.) to those who encounter a hidden API.
+Note that a similar problem exists with deprecation as defined: People
+may get used to deprecation warnings or just turn them off until their
+build breaks. Worse, the current setup creates a mirror world for
+libraries, in which deprecation doesn't exist!
 
-Not breaking code also mean we do not want to have the deprecation 
-feature interfere with a project's dependencies, which would teach 
-people to disable or ignore the warnings until their builds break. On
-the other hand, we don't want to have all unavailable APIs show up
-for library writers, as that -- apart from defeating the purpose of the
-deprecation feature -- would create a confusing mirror world, 
-which is directly in conflict to point 4.
+## 2. User Experience
 
-We also want the feature to be *usable* to the programmer, therefore
-any additional code we require should be minimal. If the feature is too
-obscure, or too complicated to use, people will just 
-`#![allow(deprecate)]` and complain when their build finally breaks.
+The following motivates items 2, 4 and 5.
 
-Note that we expect many more *users* than *writers* of the `std` APIs,
-so the wants of the former should count higher than those of the latter.
+Currently, there is no way to make an API item unavailable via 
+deprecation. This means the API will only ever expand, with a lot of
+churn (case in point, the Java language has about 20% deprecated API
+surface [citation needed]). To better lead users to the right APIs and
+to allow for more effective language/API evolution, this proposal adds
+the `removed_at="<version>"` item to the `#[deprecated]` attribute.
 
-Ideally, this can be done so that all parts play well together: Cargo 
-could help with setup (and possibly reporting), rustc warnings / error 
-reporting should be extended to inform people of pending or active 
-deprecations, rustdoc needs some way of reflecting the API lifecycle.
+This allows us to effectively remove an API item from a certain target
+version while avoiding breaking code written for older target versions.
+
+Also rustc can emit better error messages than it could were the API
+items actually removed. In the best case, the error messages can steer
+the user to a working replacement.
+
+We want to avoid users setting `#[allow(deprecate)]` on their code to
+get rid of the warnings. On the other hand, there have been instances
+of failing builds because code was marked with `#![deny(deprecate)]`,
+namely `compiletest.rs` and all crates using it. This shows that the
+current system has room for improvement.
+
+We want to avoid failing builds because of wrong or missing target
+version definition. Therefor supplying useful defaults is of the 
+essence.
+
+The documentation can be optionally reduced to items relating to the
+current target version (e.g. by a switch), or deprecated items 
+relegated to a separate space, to reduce clutter and possible user
+confusion.
+
+## 3. Security Considerations
+
+I believe that *should* a security issue in one of our APIs be found,
+a swift and effective response will be required, and the current rules
+make no provisions for it. Thus proposal item 3.
 
 # Detailed design
 
-We already declare deprecation in terms of Rust versions (like "1.0", 
-"1.2"). The current attribute looks like `#[deprecated(since = "1.0.0", 
-reason="foo")]`. This should be extended to add an optional 
-`removed_at` key, to state that the item should be made inaccessible at 
-that version. Note that while this allows for marking items as 
-deprecated, there is purposely no provision to actually *remove* items. 
-In fact this proposal strongly advises not to remove an API type, 
-unless security concerns are deemed more important than the resulting 
-breakage from removing it or the API item has some fault that means it 
-cannot be used correctly at all (thus leaving the API in place would 
-result in the same level of breakage than removing it).
+Cargo parses the additional `rust = "..."` dependency as if it was a 
+library. The usual rules for version parsing apply. If no `rust` 
+dependency is supplied, it can either default to `*`.
 
-Currently every rustc version implements only its own version, having 
-multiple versions is possible using something like multirust, though 
-this does not work within a build. Also currently rustc versions do not 
-guarantee interoperability. This RFC aims to change this situation.
+Cargo should also supply the current Rust version (which can be either
+supplied by calling `rustc -V` or by linking to a rust library defining
+a version object) on `cargo new`. Cargo supplies the given target 
+version to `rustc` via the `--target` command line argument.
 
-First, crates should state their target version using a 
-`#![target(std= "1.2.0"]` attribute on the main module. The version
-string format is the one that cargo currently uses.
+Cargo *may* also warn on `cargo package` if no `rust` version was 
+supplied. [crates.io](https://crates.io) *could* require a version
+attribute on upload and display the required rust version on the site.
 
-Cargo should insert the current rust version by default on `cargo new` 
-and *warn* if no version is defined on all other commands. It may 
-optionally *note* if the specified target version is outdated on `cargo 
-package` or even  `cargo build --release`. To get the current rust 
-version, cargo could query rustc -V (with some postprocessing) or use a 
-symbol exported by the rust libraries (e.g. `rustc::target_version`).
+One nice aspect of this is that `rust` looks just like yet another
+dependency and effectively follows the same rules.
 
-Cargo should also be able to 'hold back' a new library version if its 
-declared target version is newer than the rust version installed on the 
-system. In those cases, cargo should emit a warning urging the user to 
-upgrade their rust installation.
+`rustc` needs to accept the `--target <version>` command line argument.
+If no argument is supplied, `rustc` defaults to its own version. The
+same version syntax as Cargo applies:
 
-In the case of packages on crates.io, we could offer a mapping of 
-target versions to crate versions for each crate, so the corresponding 
-crate version can directly be used without further search.
+* `*` effectively means *any version*. For API items, it means
+deprecation checking is disabled. For language changes, it means using
+the 1.0.0 code paths (for now, we may opt to change this in the 
+future), because anything else would break all current code.
+* `1.x` or e.g. `>=1.2.0` sets the target version to the minor version.
+Deprecation checking and language code path selection occur relative
+to the lowest given version. This might also affect stability handling,
+though this RFC doesn't specify this as of yet.
+* `1.0 - <2.0` as above, the *lowest* supplied version has to be
+assumed for code path selection. However, deprecation checking should
+assume the *highest* supplied version, if any.
 
-In the case of crates from git, the only reliable way to implement it 
-is to search the history for a suitable target version definition. Note 
-that we'd expect the target version to go up monotonously, so a binary 
-search should be possible, also we can filter out all commits that do 
-not touch lib.rs/mod.rs. 
+If the target version is *higher* than the current `rustc` version, 
+`rustc` should show a warning to suggest that it may need to be updated 
+in order to compile the crate and then try to compile the crate on a
+best-effort basis.
 
-This is a very complex feature to implement, so stopping with an error 
-and referring to the user to do the search is an acceptable option.
-
-[crates.io](https://crates.io) may start denying new packages that do 
-not declare a version to give the target version requirement more 
-weight to library authors. 
-
-`rustc` should use this target version definition to check for 
-deprecated items. If the target version is specified, use of API items 
-whose `since` attribute is less or equal to the target version of the 
-crate should trigger a warning, while API items whose `removed_at` 
-attribute is less or equal to the target version should trigger an 
-error.
-
-We can also define a `future deprecation` lint set to `Allow` by 
+Optionally, we can define a `future deprecation` lint set to `Allow` by 
 default to allow people being proactive about items that are going to
-be deprecated. 
+be deprecated.
 
-Also if the target definition has a higher version than `rustc`, it 
-should briefly warn that it probably has to be updated in order to 
-build the crate. However, `rustc` should try to build the code anyway; 
-further errors may give the user additional information.
+`rustc` should also show a warning or error, depending on level, on
+encountering usage of API items marked as `#[insecure]`. The attribute
+has two values:
 
-If *no* target version is defined, deprecation checking is deactivated 
-(as we cannot assume a specific rust version), however a note 
-stating the same should be printed (as with cargo – we should probably 
-make cargo not warn on build to get rid of duplicate warnings). Since
-all current code comes without a target version, we have to assume
-a minimal version 1.0.0.
+* `level` can either be `Warning` or `Error` and default to `Error`
+* `reason` contains a description on why usage of this item was deemed
+  a security risk. This attribute is mandatory.
 
-In addition to the note, the `std` authors could opt to create a new 
-`#[since="1.2.0"]` attribute, which would allow rustc to infer the 
-minimal target version of some code from the API features it uses in 
-absence of a specified version. Deprecation warnings/errors should then 
-refer to the inferred target versions as well as the APIs that led to 
-the inference of the latest version (at least perhaps on calling 
-`rustc` with `-v`).
+While `rustdoc` already parses the deprecation flags, it should in 
+addition relegate items removed in the current version to a separate 
+area below the other documentation and optically mark them as removed. 
+We should not completely remove them, because that would confuse users 
+who see the API items in code written for older target versions.
 
-`rustdoc` should mark deprecated APIs as such (e.g. make them in a 
-lighter gray font) and relegate removed APIs to a section below all 
-others (and that may be hidden via a checkbox). We should not 
-completely remove the documentation, as users of libraries that target 
-old versions may still have a use for them, but neither should we let 
-them clutter the docs. 
+Also, `rustdoc` should show if API items are marked with `#[insecure]`, 
+including displaying the `reason` prominently.
 
-## Dealing with insecure items
+# Optional Extension: Legacy flags
 
-Since just removing insecure items, though tempting, would lead to user 
-confusion, a new `#[insecure(reason = "...")]` attribute should be 
-added to all insecure API items. An `insecure_api` lint that by default 
-raises `Error` can catch all uses of those items. To distinguish 
-between items *some uses of which* may be insecure and *inherently* 
-insecure items, either a second entry `inherent = true` could be added 
-or a `#[maybe_insecure(reason = "...")]` annotation could take the 
-latter part.
+The `#[deprecated]` attribute could get an optional `legacy="xy`
+entry, which could effectively group a set of APIs under the given 
+name. Users can then declare the `#[legacy]` flag as defined in 
+[RFC #1122](https://github.com/rust-lang/rfcs/blob/master/text/1122-language-semver.md)
+to specifically allow usage of the grouped APIs, thus selectively
+removing the deprecation warning.
 
-The rationale for defining a separate attribute is that it avoids 
-mixing separate concerns (versioning and security), and that we want to
-allow warnings/errors on dependencies regardless of specified target
-versions. It also allows us to show the reason (from the attr) in the
-lint message, which will be specific to the insecurity at hand and 
-hopefully be helpful to the user.
-
-## Policy
-
-Even if this proposal reduces breakage arising from new versions
-considerably, we should still exercise some care on evolving the APIs.
-We already have a `beta` and `nightly` release train representing
-future versions, this should be taken into account.
-
-In general, the Tarzan principle should be followed where applicable
-(First grab a vine, *then* let go of the previous vine). In terms of
-API evolution, this means not deprecating a feature before a 
-replacement has been stabilized. It is still possible to deprecate a
-feature in a future version, to inform users of its impending 
-departure.
+This would create a nice feature parity between language code paths and
+`std` API deprecation checking.
 
 # Drawbacks
 
 By requiring full backwards-compatibility, we will never be able to 
 actually remove stuff from the APIs, which will probably lead to some 
-bloat. Other successful languages have lived with this for multiple 
-decades, so it appears the tradeoff has seen some confirmation already. 
+bloat. However, the cost of maintaining the outdated APIs is far 
+outweighted by the benefits. Case in point: Other successful languages 
+have lived with this for multiple decades, so it appears the tradeoff 
+has seen some confirmation already. 
+
+Cargo and `rustc` need some code to manage the additional rules. I
+estimate the effort to be reasonably low.
 
 # Alternatives
 
-* Have a flag in `Cargo.toml` instead of the crate root. This however 
-requires an argument to `rustc`, because Cargo (in addition to those 
-not using it) somehow has to pass it to `rustc`. Requiring such an 
-argument on every non-cargoized build would increase room for error and 
-thus pessimize usability. Also apart from availability of dependencies, 
-which arguably is Cargo's main raison d'être, we currently do not have 
-a precedent where Cargo.toml has direct effect on the working of a 
-crate's code.
-* Opt-in and / or opt-out "feature-flags" (e.g. `#[legacy(..)]`) was 
-suggested. The big problem is that this relies on the user being able 
+* It was suggested that opt-in and opt-out (e.g. by `#[legacy(..)]`)
+could be sufficient to work around any breaking code on API or language
+changes. The big problem here is that this relies on the user being able 
 to change their dependencies, which may not be possible for legal, 
 organizational or other reasons. In contrast, a defined target version 
-doesn't ever need to change. 
+doesn't ever need to change
+
 Depending on the specific case, it may be useful to allow a combination 
-of `#![legacy(..)]`, `#![future(..)]` and `#![target(..)]` where each 
-API version can declare the currently active feature and permit or
-forbid use of the opt-in/out flags.
+of `#![legacy(..)]`, `#![feature(..)]` and the target version where 
+each Rust version can declare the currently active feature set and 
+permit or forbid use of the opt-in/out flags
+
 * Follow a more agressive strategy that actually removes stuff from the 
 API. This would make it easier for the libstd creators at some cost for 
 library and application writers, as they are required to keep up to 
-date or face breakage * Hide deprecated items in the docs: This could 
-be done either by putting them into a linked extra page or by adding a 
-"show deprecated" checkbox that may be default be checked or not, 
-depending on who you ask. This will however confuse people, who see the 
-deprecated APIs in some code, but cannot find them in the docs anymore 
+date or face breakage. The risk of breaking existing code makes this
+strategy very unattractive
+
+* Hide deprecated items in the docs: This could be done either by 
+putting them into a linked extra page or by adding a "show deprecated" 
+checkbox that may be default be checked or not, depending on who you 
+ask. This will however confuse people, who see the deprecated APIs in 
+some code, but cannot find them in the docs anymore 
+
 * Allow to distinguish "soft" and "hard" deprecation, so that an API 
 can be marked as "soft" deprecated to dissuade new uses before hard 
 deprecation is decided. Allowing people to specify deprecation in 
 future version appears to have much of the same benefits without 
-needing a new attribute key. * Decide deprecation on a per-case basis. 
-This is what we do now. The proposal just adds a well-defined process 
-to it * Never deprecate anything. Evolve the API by adding stuff only. 
-Rust would be crushed by the weight of its own cruft before 2.0 even 
-has a chance to land. Users will be uncertain which APIs to use * We 
-could extend the deprecation feature to cover libraries. As Cargo.toml 
-already defines the target versions of dependencies (unless declared as 
-`"*"`), we could use much of the same machinery to allow library 
-authors to join the process
+needing a new attribute key. 
 
 # Unresolved questions
 
-Should we allow library writers to use the same features for 
-deprecating their API items? I think we should at least make sure that
-our design and implementation allow this in the future.
+I no longer have any. Please join the discussion to add yours.
