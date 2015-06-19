@@ -13,18 +13,18 @@ parts and then build a new type out of them. e.g.
 
 ```rust
 struct Foo {
-	x: u32,
-	y: u16,
+    x: u32,
+    y: u16,
 }
 
 struct Bar {
-	a: u32,
-	b: u16,
+    a: u32,
+    b: u16,
 }
 
 fn reinterpret(foo: Foo) -> Bar {
-	let Foo { x, y } = foo;
-	Bar { a: x, b: y }
+    let Foo { x, y } = foo;
+    Bar { a: x, b: y }
 }
 ```
 
@@ -57,18 +57,27 @@ but some changes require a cast. These "true casts" are generally regarded as da
 problematic actions. True casts revolves around raw pointers and the primitive numeric
 types. Here's an exhaustive list of all the true casts:
 
-* rawptr -> rawptr (e.g. `*mut T as *const T` or `*mut T as *mut U`)
-* rawptr <-> usize (e.g. `*mut T as usize` or `usize as *mut T`)
-* number -> number (e.g. `u32 as i8` or `i16 as f64`)
-* c-like enum -> integer/bool (e.g. `DaysOfWeek as u32`)
-* `u8` -> `char`
-* something about arrays?
+TODO: gank the RFC for sweet casts
 
 For number -> number casts, there are quite a few cases to consider:
 
-* unsigned to bigger unsigned will zero-extend losslessly
-* unsigned to smaller unsigned will truncate via wrapping
-* signed to unsigned will  ... TODO rest of this list
+* casting between two integers of the same size (e.g. i32 -> u32) is a no-op
+* casting from a smaller integer to a bigger integer (e.g. u32 -> u8) will truncate
+* casting from a larger integer to a smaller integer (e.g. u8 -> u32) will
+    * zero-extend if unsigned
+    * sign-extend if signed
+* casting from a float to an integer will round the float towards zero.
+    * **NOTE: currently this will cause Undefined Behaviour if the rounded
+      value cannot be represented by the target integer type**. This is a bug
+      and will be fixed.
+* casting from an integer to float will produce the floating point representation
+  of the integer, rounded if necessary (rounding strategy unspecified).
+* casting from an f32 to an f64 is perfect and lossless.
+* casting from an f64 to an f32 will produce the closest possible value
+  (rounding strategy unspecified).
+    * **NOTE: currently this will cause Undefined Behaviour if the value
+      is finite but larger or smaller than the largest or smallest finite
+      value representable by f32**. This is a bug and will be fixed.
 
 The casts involving rawptrs also allow us to completely bypass type-safety
 by re-interpretting a pointer of T to a pointer of U for arbitrary types, as
