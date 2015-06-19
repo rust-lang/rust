@@ -984,14 +984,18 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
 
         // Dorky hack to cause `dump_constraints` to only get called
         // if debug mode is enabled:
-        debug!("----() End constraint listing {:?}---", self.dump_constraints());
+        debug!("----() End constraint listing (subject={}) {:?}---",
+               subject, self.dump_constraints(subject));
         graphviz::maybe_print_constraints_for(self, subject);
 
+        let graph = self.construct_graph();
+        self.expand_givens(&graph);
         self.expansion(free_regions, &mut var_data);
         self.contraction(free_regions, &mut var_data);
         let values =
             self.extract_values_and_collect_conflicts(free_regions,
-                                                      &var_data[..],
+                                                      &var_data,
+                                                      &graph,
                                                       errors);
         self.collect_concrete_region_errors(free_regions, &values, errors);
         values
@@ -1010,10 +1014,35 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         }).collect()
     }
 
-    fn dump_constraints(&self) {
-        debug!("----() Start constraint listing ()----");
+    fn dump_constraints(&self, subject: ast::NodeId) {
+        debug!("----() Start constraint listing (subject={}) ()----", subject);
         for (idx, (constraint, _)) in self.constraints.borrow().iter().enumerate() {
             debug!("Constraint {} => {:?}", idx, constraint);
+        }
+    }
+
+    fn expand_givens(&self, graph: &RegionGraph) {
+        // Givens are a kind of horrible hack to account for
+        // constraints like 'c <= '0 that are known to hold due to
+        // closure signatures (see the comment above on the `givens`
+        // field). They should go away. But until they do, the role
+        // of this fn is to account for the transitive nature:
+        //
+        //     Given 'c <= '0
+        //     and   '0 <= '1
+        //     then  'c <= '1
+
+        let mut givens = self.givens.borrow_mut();
+        let seeds: Vec<_> = givens.iter().cloned().collect();
+        for (fr, vid) in seeds {
+            let seed_index = NodeIndex(vid.index as usize);
+            for succ_index in graph.depth_traverse(seed_index) {
+                let succ_index = succ_index.0 as u32;
+                if succ_index < self.num_vars() {
+                    let succ_vid = RegionVid { index: succ_index };
+                    givens.insert((fr, succ_vid));
+                }
+            }
         }
     }
 
@@ -1258,6 +1287,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         &self,
         free_regions: &FreeRegionMap,
         var_data: &[VarData],
+        graph: &RegionGraph,
         errors: &mut Vec<RegionResolutionError<'tcx>>)
         -> Vec<VarValue>
     {
@@ -1275,8 +1305,6 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         // regions of the graph, but not those that derive from
         // overlapping locations.
         let mut dup_vec: Vec<_> = repeat(u32::MAX).take(self.num_vars() as usize).collect();
-
-        let mut opt_graph = None;
 
         for idx in 0..self.num_vars() as usize {
             match var_data[idx].value {
@@ -1312,11 +1340,6 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                        that is not used is not a problem, so if this rule
                        starts to create problems we'll have to revisit
                        this portion of the code and think hard about it. =) */
-
-                    if opt_graph.is_none() {
-                        opt_graph = Some(self.construct_graph());
-                    }
-                    let graph = opt_graph.as_ref().unwrap();
 
                     let node_vid = RegionVid { index: idx as u32 };
                     match var_data[idx].classification {
