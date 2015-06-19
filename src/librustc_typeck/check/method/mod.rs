@@ -18,7 +18,6 @@ use middle::subst;
 use middle::traits;
 use middle::ty::{self, AsPredicate, ToPolyTraitRef};
 use middle::infer;
-use util::ppaux::Repr;
 
 use syntax::ast::DefId;
 use syntax::ast;
@@ -96,11 +95,11 @@ pub fn lookup<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                         self_expr: &'tcx ast::Expr)
                         -> Result<ty::MethodCallee<'tcx>, MethodError>
 {
-    debug!("lookup(method_name={}, self_ty={}, call_expr={}, self_expr={})",
-           method_name.repr(fcx.tcx()),
-           self_ty.repr(fcx.tcx()),
-           call_expr.repr(fcx.tcx()),
-           self_expr.repr(fcx.tcx()));
+    debug!("lookup(method_name={}, self_ty={:?}, call_expr={:?}, self_expr={:?})",
+           method_name,
+           self_ty,
+           call_expr,
+           self_expr);
 
     let mode = probe::Mode::MethodCall;
     let self_ty = fcx.infcx().resolve_type_vars_if_possible(&self_ty);
@@ -141,11 +140,11 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                           opt_input_types: Option<Vec<ty::Ty<'tcx>>>)
                                           -> Option<ty::MethodCallee<'tcx>>
 {
-    debug!("lookup_in_trait_adjusted(self_ty={}, self_expr={}, m_name={}, trait_def_id={})",
-           self_ty.repr(fcx.tcx()),
-           self_expr.repr(fcx.tcx()),
-           m_name.repr(fcx.tcx()),
-           trait_def_id.repr(fcx.tcx()));
+    debug!("lookup_in_trait_adjusted(self_ty={:?}, self_expr={:?}, m_name={}, trait_def_id={:?})",
+           self_ty,
+           self_expr,
+           m_name,
+           trait_def_id);
 
     let trait_def = ty::lookup_trait_def(fcx.tcx(), trait_def_id);
 
@@ -190,8 +189,8 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     assert_eq!(method_ty.generics.types.len(subst::FnSpace), 0);
     assert_eq!(method_ty.generics.regions.len(subst::FnSpace), 0);
 
-    debug!("lookup_in_trait_adjusted: method_num={} method_ty={}",
-           method_num, method_ty.repr(fcx.tcx()));
+    debug!("lookup_in_trait_adjusted: method_num={} method_ty={:?}",
+           method_num, method_ty);
 
     // Instantiate late-bound regions and substitute the trait
     // parameters into the method type to get the actual method type.
@@ -210,9 +209,9 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         abi: method_ty.fty.abi.clone(),
     }));
 
-    debug!("lookup_in_trait_adjusted: matched method fty={} obligation={}",
-           fty.repr(fcx.tcx()),
-           obligation.repr(fcx.tcx()));
+    debug!("lookup_in_trait_adjusted: matched method fty={:?} obligation={:?}",
+           fty,
+           obligation);
 
     // Register obligations for the parameters.  This will include the
     // `Self` parameter, which in turn has a bound of the main trait,
@@ -272,7 +271,7 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                 span,
                                 &format!(
                                     "trait method is &self but first arg is: {}",
-                                    transformed_self_ty.repr(fcx.tcx())));
+                                    transformed_self_ty));
                         }
                     }
                 }
@@ -296,7 +295,7 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         substs: trait_ref.substs.clone()
     };
 
-    debug!("callee = {}", callee.repr(fcx.tcx()));
+    debug!("callee = {:?}", callee);
 
     Some(callee)
 }

@@ -522,7 +522,7 @@ pub enum TyParamBound {
 impl TyParamBound {
     fn maybe_sized(cx: &DocContext) -> TyParamBound {
         use syntax::ast::TraitBoundModifier as TBM;
-        let mut sized_bound = ty::BuiltinBound::BoundSized.clean(cx);
+        let mut sized_bound = ty::BoundSized.clean(cx);
         if let TyParamBound::TraitBound(_, ref mut tbm) = sized_bound {
             *tbm = TBM::Maybe
         };

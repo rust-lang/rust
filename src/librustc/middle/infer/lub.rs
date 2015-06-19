@@ -16,7 +16,6 @@ use super::Subtype;
 
 use middle::ty::{self, Ty};
 use middle::ty_relate::{Relate, RelateResult, TypeRelation};
-use util::ppaux::Repr;
 
 /// "Least upper bound" (common supertype)
 pub struct Lub<'a, 'tcx: 'a> {
@@ -55,10 +54,10 @@ impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Lub<'a, 'tcx> {
     }
 
     fn regions(&mut self, a: ty::Region, b: ty::Region) -> RelateResult<'tcx, ty::Region> {
-        debug!("{}.regions({}, {})",
+        debug!("{}.regions({:?}, {:?})",
                self.tag(),
-               a.repr(self.tcx()),
-               b.repr(self.tcx()));
+               a,
+               b);
 
         let origin = Subtype(self.fields.trace.clone());
         Ok(self.fields.infcx.region_vars.lub_regions(origin, a, b))

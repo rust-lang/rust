@@ -28,7 +28,6 @@ use syntax::attr::{Stability, AttrMetaMethods};
 use syntax::visit::{FnKind, Visitor};
 use syntax::feature_gate::emit_feature_err;
 use util::nodemap::{DefIdMap, FnvHashSet, FnvHashMap};
-use util::ppaux::Repr;
 
 use std::mem::replace;
 
@@ -450,7 +449,7 @@ pub fn check_expr(tcx: &ty::ctxt, e: &ast::Expr,
                     tcx.sess.span_bug(e.span,
                                       &format!("stability::check_expr: struct construction \
                                                 of non-struct, type {:?}",
-                                               type_.repr(tcx)));
+                                               type_));
                 }
             }
         }
@@ -551,7 +550,7 @@ pub fn lookup<'tcx>(tcx: &ty::ctxt<'tcx>, id: DefId) -> Option<&'tcx Stability> 
 }
 
 fn lookup_uncached<'tcx>(tcx: &ty::ctxt<'tcx>, id: DefId) -> Option<&'tcx Stability> {
-    debug!("lookup(id={})", id.repr(tcx));
+    debug!("lookup(id={:?})", id);
 
     // is this definition the implementation of a trait method?
     match ty::trait_item_of_item(tcx, id) {

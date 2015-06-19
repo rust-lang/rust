@@ -44,7 +44,6 @@ use syntax::codemap::Span;
 use syntax::parse::token;
 use syntax::visit;
 use util::nodemap::{DefIdMap, FnvHashMap};
-use util::ppaux::Repr;
 
 mod orphan;
 mod overlap;
@@ -82,7 +81,7 @@ fn get_base_type_def_id<'a, 'tcx>(inference_context: &InferCtxt<'a, 'tcx>,
             inference_context.tcx.sess.span_bug(
                 span,
                 &format!("coherence encountered unexpected type searching for base type: {}",
-                        ty.repr(inference_context.tcx)));
+                         ty));
         }
     }
 }
@@ -149,9 +148,9 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
 
         if let Some(trait_ref) = ty::impl_trait_ref(self.crate_context.tcx,
                                                     impl_did) {
-            debug!("(checking implementation) adding impl for trait '{}', item '{}'",
-                   trait_ref.repr(self.crate_context.tcx),
-                   token::get_ident(item.ident));
+            debug!("(checking implementation) adding impl for trait '{:?}', item '{}'",
+                   trait_ref,
+                   item.ident);
 
             enforce_trait_manually_implementable(self.crate_context.tcx,
                                                  item.span,
@@ -179,8 +178,8 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
             trait_ref: &ty::TraitRef<'tcx>,
             all_impl_items: &mut Vec<ImplOrTraitItemId>) {
         let tcx = self.crate_context.tcx;
-        debug!("instantiate_default_methods(impl_id={:?}, trait_ref={})",
-               impl_id, trait_ref.repr(tcx));
+        debug!("instantiate_default_methods(impl_id={:?}, trait_ref={:?})",
+               impl_id, trait_ref);
 
         let impl_type_scheme = ty::lookup_item_type(tcx, impl_id);
 
@@ -190,7 +189,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
             let new_id = tcx.sess.next_node_id();
             let new_did = local_def(new_id);
 
-            debug!("new_did={:?} trait_method={}", new_did, trait_method.repr(tcx));
+            debug!("new_did={:?} trait_method={:?}", new_did, trait_method);
 
             // Create substitutions for the various trait parameters.
             let new_method_ty =
@@ -203,7 +202,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
                     &**trait_method,
                     Some(trait_method.def_id)));
 
-            debug!("new_method_ty={}", new_method_ty.repr(tcx));
+            debug!("new_method_ty={:?}", new_method_ty);
             all_impl_items.push(MethodTraitItemId(new_did));
 
             // construct the polytype for the method based on the
@@ -214,7 +213,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
                 ty: ty::mk_bare_fn(tcx, Some(new_did),
                                    tcx.mk_bare_fn(new_method_ty.fty.clone()))
             };
-            debug!("new_polytype={}", new_polytype.repr(tcx));
+            debug!("new_polytype={:?}", new_polytype);
 
             tcx.tcache.borrow_mut().insert(new_did, new_polytype);
             tcx.predicates.borrow_mut().insert(new_did, new_method_ty.predicates.clone());
@@ -360,8 +359,8 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
         let copy_trait = ty::lookup_trait_def(tcx, copy_trait);
 
         copy_trait.for_each_impl(tcx, |impl_did| {
-            debug!("check_implementations_of_copy: impl_did={}",
-                   impl_did.repr(tcx));
+            debug!("check_implementations_of_copy: impl_did={:?}",
+                   impl_did);
 
             if impl_did.krate != ast::LOCAL_CRATE {
                 debug!("check_implementations_of_copy(): impl not in this \
@@ -370,16 +369,16 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
             }
 
             let self_type = ty::lookup_item_type(tcx, impl_did);
-            debug!("check_implementations_of_copy: self_type={} (bound)",
-                   self_type.repr(tcx));
+            debug!("check_implementations_of_copy: self_type={:?} (bound)",
+                   self_type);
 
             let span = tcx.map.span(impl_did.node);
             let param_env = ParameterEnvironment::for_item(tcx, impl_did.node);
             let self_type = self_type.ty.subst(tcx, &param_env.free_substs);
             assert!(!self_type.has_escaping_regions());
 
-            debug!("check_implementations_of_copy: self_type={} (free)",
-                   self_type.repr(tcx));
+            debug!("check_implementations_of_copy: self_type={:?} (free)",
+                   self_type);
 
             match ty::can_type_implement_copy(&param_env, span, self_type) {
                 Ok(()) => {}
@@ -429,8 +428,8 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
         let trait_def = ty::lookup_trait_def(tcx, coerce_unsized_trait);
 
         trait_def.for_each_impl(tcx, |impl_did| {
-            debug!("check_implementations_of_coerce_unsized: impl_did={}",
-                   impl_did.repr(tcx));
+            debug!("check_implementations_of_coerce_unsized: impl_did={:?}",
+                   impl_did);
 
             if impl_did.krate != ast::LOCAL_CRATE {
                 debug!("check_implementations_of_coerce_unsized(): impl not \
@@ -442,8 +441,8 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
             let trait_ref = ty::impl_trait_ref(self.crate_context.tcx,
                                                impl_did).unwrap();
             let target = *trait_ref.substs.types.get(subst::TypeSpace, 0);
-            debug!("check_implementations_of_coerce_unsized: {} -> {} (bound)",
-                   source.repr(tcx), target.repr(tcx));
+            debug!("check_implementations_of_coerce_unsized: {:?} -> {:?} (bound)",
+                   source, target);
 
             let span = tcx.map.span(impl_did.node);
             let param_env = ParameterEnvironment::for_item(tcx, impl_did.node);
@@ -451,8 +450,8 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
             let target = target.subst(tcx, &param_env.free_substs);
             assert!(!source.has_escaping_regions());
 
-            debug!("check_implementations_of_coerce_unsized: {} -> {} (free)",
-                   source.repr(tcx), target.repr(tcx));
+            debug!("check_implementations_of_coerce_unsized: {:?} -> {:?} (free)",
+                   source, target);
 
             let infcx = new_infer_ctxt(tcx);
 
@@ -518,10 +517,8 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
                                                 if name == token::special_names::unnamed_field {
                                                     i.to_string()
                                                 } else {
-                                                    token::get_name(name).to_string()
-                                                },
-                                                a.repr(tcx),
-                                                b.repr(tcx))
+                                                    name.to_string()
+                                                }, a, b)
                                    }).collect::<Vec<_>>().connect(", "));
                         return;
                     }
@@ -597,8 +594,8 @@ fn subst_receiver_types_in_method_ty<'tcx>(tcx: &ty::ctxt<'tcx>,
 {
     let combined_substs = ty::make_substs_for_receiver_types(tcx, trait_ref, method);
 
-    debug!("subst_receiver_types_in_method_ty: combined_substs={}",
-           combined_substs.repr(tcx));
+    debug!("subst_receiver_types_in_method_ty: combined_substs={:?}",
+           combined_substs);
 
     let method_predicates = method.predicates.subst(tcx, &combined_substs);
     let mut method_generics = method.generics.subst(tcx, &combined_substs);
@@ -614,13 +611,13 @@ fn subst_receiver_types_in_method_ty<'tcx>(tcx: &ty::ctxt<'tcx>,
             impl_type_scheme.generics.regions.get_slice(space).to_vec());
     }
 
-    debug!("subst_receiver_types_in_method_ty: method_generics={}",
-           method_generics.repr(tcx));
+    debug!("subst_receiver_types_in_method_ty: method_generics={:?}",
+           method_generics);
 
     let method_fty = method.fty.subst(tcx, &combined_substs);
 
-    debug!("subst_receiver_types_in_method_ty: method_ty={}",
-           method.fty.repr(tcx));
+    debug!("subst_receiver_types_in_method_ty: method_ty={:?}",
+           method.fty);
 
     ty::Method::new(
         method.name,

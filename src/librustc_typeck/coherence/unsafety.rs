@@ -16,7 +16,6 @@ use syntax::ast::{Item, ItemImpl};
 use syntax::ast;
 use syntax::ast_util;
 use syntax::visit;
-use util::ppaux::UserString;
 
 pub fn check(tcx: &ty::ctxt) {
     let mut orphan = UnsafetyChecker { tcx: tcx };
@@ -55,14 +54,14 @@ impl<'cx, 'tcx, 'v> UnsafetyChecker<'cx, 'tcx> {
                     (ast::Unsafety::Normal, ast::Unsafety::Unsafe, _) => {
                         span_err!(self.tcx.sess, item.span, E0199,
                                   "implementing the trait `{}` is not unsafe",
-                                  trait_ref.user_string(self.tcx));
+                                  trait_ref);
                     }
 
                     (ast::Unsafety::Unsafe,
                      ast::Unsafety::Normal, ast::ImplPolarity::Positive) => {
                         span_err!(self.tcx.sess, item.span, E0200,
                                   "the trait `{}` requires an `unsafe impl` declaration",
-                                  trait_ref.user_string(self.tcx));
+                                  trait_ref);
                     }
 
                     (ast::Unsafety::Unsafe,

@@ -15,7 +15,6 @@ use self::UnsafeContext::*;
 use middle::def;
 use middle::ty::{self, Ty};
 use middle::ty::MethodCall;
-use util::ppaux;
 
 use syntax::ast;
 use syntax::codemap::Span;
@@ -66,8 +65,8 @@ impl<'a, 'tcx> EffectCheckVisitor<'a, 'tcx> {
             ast::ExprIndex(ref base, _) => ty::node_id_to_type(self.tcx, base.id),
             _ => return
         };
-        debug!("effect: checking index with base type {}",
-                ppaux::ty_to_string(self.tcx, base_type));
+        debug!("effect: checking index with base type {:?}",
+                 base_type);
         match base_type.sty {
             ty::TyBox(ty) | ty::TyRef(_, ty::mt{ty, ..}) => if ty::TyStr == ty.sty {
                 span_err!(self.tcx.sess, e.span, E0134,
@@ -142,8 +141,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EffectCheckVisitor<'a, 'tcx> {
             ast::ExprMethodCall(_, _, _) => {
                 let method_call = MethodCall::expr(expr.id);
                 let base_type = self.tcx.method_map.borrow().get(&method_call).unwrap().ty;
-                debug!("effect: method call case, base type is {}",
-                       ppaux::ty_to_string(self.tcx, base_type));
+                debug!("effect: method call case, base type is {:?}",
+                        base_type);
                 if type_is_unsafe_function(base_type) {
                     self.require_unsafe(expr.span,
                                         "invocation of unsafe method")
@@ -151,16 +150,16 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EffectCheckVisitor<'a, 'tcx> {
             }
             ast::ExprCall(ref base, _) => {
                 let base_type = ty::node_id_to_type(self.tcx, base.id);
-                debug!("effect: call case, base type is {}",
-                       ppaux::ty_to_string(self.tcx, base_type));
+                debug!("effect: call case, base type is {:?}",
+                        base_type);
                 if type_is_unsafe_function(base_type) {
                     self.require_unsafe(expr.span, "call to unsafe function")
                 }
             }
             ast::ExprUnary(ast::UnDeref, ref base) => {
                 let base_type = ty::node_id_to_type(self.tcx, base.id);
-                debug!("effect: unary case, base type is {}",
-                       ppaux::ty_to_string(self.tcx, base_type));
+                debug!("effect: unary case, base type is {:?}",
+                        base_type);
                 if let ty::TyRawPtr(_) = base_type.sty {
                     self.require_unsafe(expr.span, "dereference of raw pointer")
                 }

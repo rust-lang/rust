@@ -80,8 +80,6 @@ use rscope::*;
 use rustc::ast_map;
 use util::common::{ErrorReported, memoized};
 use util::nodemap::{FnvHashMap, FnvHashSet};
-use util::ppaux;
-use util::ppaux::{Repr,UserString};
 use write_ty_to_tcx;
 
 use std::cell::{Cell, RefCell};
@@ -256,7 +254,7 @@ impl<'a,'tcx> CrateCtxt<'a,'tcx> {
                 tcx.sess.note(
                     &format!("the cycle begins when computing the bounds \
                               for type parameter `{}`...",
-                             def.name.user_string(tcx)));
+                             def.name));
             }
         }
 
@@ -278,7 +276,7 @@ impl<'a,'tcx> CrateCtxt<'a,'tcx> {
                     tcx.sess.note(
                         &format!("...which then requires computing the bounds \
                                   for type parameter `{}`...",
-                                 def.name.user_string(tcx)));
+                                 def.name));
                 }
             }
         }
@@ -301,7 +299,7 @@ impl<'a,'tcx> CrateCtxt<'a,'tcx> {
                 tcx.sess.note(
                     &format!("...which then again requires computing the bounds \
                               for type parameter `{}`, completing the cycle.",
-                             def.name.user_string(tcx)));
+                             def.name));
             }
         }
     }
@@ -318,7 +316,7 @@ impl<'a,'tcx> CrateCtxt<'a,'tcx> {
 
         let item = match tcx.map.get(trait_id.node) {
             ast_map::NodeItem(item) => item,
-            _ => tcx.sess.bug(&format!("get_trait_def({}): not an item", trait_id.repr(tcx)))
+            _ => tcx.sess.bug(&format!("get_trait_def({:?}): not an item", trait_id))
         };
 
         trait_def_of_item(self, &*item)
@@ -372,8 +370,8 @@ impl<'a, 'tcx> AstConv<'tcx> for ItemCtxt<'a, 'tcx> {
                                trait_def_id: ast::DefId)
                                -> Result<(), ErrorReported>
     {
-        debug!("ensure_super_predicates(trait_def_id={})",
-               trait_def_id.repr(self.tcx()));
+        debug!("ensure_super_predicates(trait_def_id={:?})",
+               trait_def_id);
 
         self.ccx.ensure_super_predicates(span, trait_def_id)
     }
@@ -635,8 +633,8 @@ fn convert_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
     let fty = ty::mk_bare_fn(ccx.tcx, Some(def_id),
                              ccx.tcx.mk_bare_fn(ty_method.fty.clone()));
-    debug!("method {} (id {}) has type {}",
-            ident.repr(ccx.tcx), id, fty.repr(ccx.tcx));
+    debug!("method {} (id {}) has type {:?}",
+            ident, id, fty);
     ccx.tcx.tcache.borrow_mut().insert(def_id,TypeScheme {
         generics: ty_method.generics.clone(),
         ty: fty
@@ -645,8 +643,8 @@ fn convert_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
     write_ty_to_tcx(ccx.tcx, id, fty);
 
-    debug!("writing method type: def_id={:?} mty={}",
-            def_id, ty_method.repr(ccx.tcx));
+    debug!("writing method type: def_id={:?} mty={:?}",
+            def_id, ty_method);
 
     ccx.tcx.impl_or_trait_items.borrow_mut().insert(def_id,
         ty::MethodTraitItem(Rc::new(ty_method)));
@@ -743,10 +741,11 @@ fn convert_methods<'a,'tcx,'i,I>(ccx: &CrateCtxt<'a, 'tcx>,
                                  rcvr_ty_predicates: &ty::GenericPredicates<'tcx>)
     where I: Iterator<Item=(&'i ast::MethodSig, ast::NodeId, ast::Ident, ast::Visibility, Span)>
 {
-    debug!("convert_methods(untransformed_rcvr_ty={}, rcvr_ty_generics={}, rcvr_ty_predicates={})",
-           untransformed_rcvr_ty.repr(ccx.tcx),
-           rcvr_ty_generics.repr(ccx.tcx),
-           rcvr_ty_predicates.repr(ccx.tcx));
+    debug!("convert_methods(untransformed_rcvr_ty={:?}, rcvr_ty_generics={:?}, \
+                            rcvr_ty_predicates={:?})",
+           untransformed_rcvr_ty,
+           rcvr_ty_generics,
+           rcvr_ty_predicates);
 
     let tcx = ccx.tcx;
     let mut seen_methods = FnvHashSet();
@@ -1140,7 +1139,7 @@ fn ensure_super_predicates_step(ccx: &CrateCtxt,
 {
     let tcx = ccx.tcx;
 
-    debug!("ensure_super_predicates_step(trait_def_id={})", trait_def_id.repr(tcx));
+    debug!("ensure_super_predicates_step(trait_def_id={:?})", trait_def_id);
 
     if trait_def_id.krate != ast::LOCAL_CRATE {
         // If this trait comes from an external crate, then all of the
@@ -1192,9 +1191,9 @@ fn ensure_super_predicates_step(ccx: &CrateCtxt,
         let superpredicates = ty::GenericPredicates {
             predicates: VecPerParamSpace::new(superbounds, vec![], vec![])
         };
-        debug!("superpredicates for trait {} = {}",
-               local_def(item.id).repr(ccx.tcx),
-               superpredicates.repr(ccx.tcx));
+        debug!("superpredicates for trait {:?} = {:?}",
+               local_def(item.id),
+               superpredicates);
 
         tcx.super_predicates.borrow_mut().insert(trait_def_id, superpredicates.clone());
 
@@ -1207,7 +1206,7 @@ fn ensure_super_predicates_step(ccx: &CrateCtxt,
                                          .map(|tr| tr.def_id())
                                          .collect();
 
-    debug!("ensure_super_predicates_step: def_ids={}", def_ids.repr(tcx));
+    debug!("ensure_super_predicates_step: def_ids={:?}", def_ids);
 
     def_ids
 }
@@ -1533,9 +1532,8 @@ fn convert_typed_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             scheme.generics.types.iter()
                                  .map(|t| match t.object_lifetime_default {
                                      Some(ty::ObjectLifetimeDefault::Specific(r)) =>
-                                         r.user_string(tcx),
-                                     d =>
-                                         d.repr(ccx.tcx),
+                                         r.to_string(),
+                                     d => format!("{:?}", d),
                                  })
                                  .collect::<Vec<String>>()
                                  .connect(",");
@@ -1621,8 +1619,8 @@ fn ty_generics_for_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                    ast_generics: &ast::Generics)
                                    -> ty::Generics<'tcx>
 {
-    debug!("ty_generics_for_trait(trait_id={}, substs={})",
-           local_def(trait_id).repr(ccx.tcx), substs.repr(ccx.tcx));
+    debug!("ty_generics_for_trait(trait_id={:?}, substs={:?})",
+           local_def(trait_id), substs);
 
     let mut generics = ty_generics_for_type_or_impl(ccx, ast_generics);
 
@@ -2201,12 +2199,12 @@ fn check_method_self_type<'a, 'tcx, RS:RegionScope>(
                 &ty::liberate_late_bound_regions(
                     tcx, body_scope, &ty::Binder(base_type)));
 
-        debug!("required_type={} required_type_free={} \
-                base_type={} base_type_free={}",
-               required_type.repr(tcx),
-               required_type_free.repr(tcx),
-               base_type.repr(tcx),
-               base_type_free.repr(tcx));
+        debug!("required_type={:?} required_type_free={:?} \
+                base_type={:?} base_type_free={:?}",
+               required_type,
+               required_type_free,
+               base_type,
+               base_type_free);
 
         let infcx = infer::new_infer_ctxt(tcx);
         drop(::require_same_types(tcx,
@@ -2217,7 +2215,7 @@ fn check_method_self_type<'a, 'tcx, RS:RegionScope>(
                                   required_type_free,
                                   || {
                 format!("mismatched self type: expected `{}`",
-                        ppaux::ty_to_string(tcx, required_type))
+                         required_type)
         }));
 
         // We could conceviably add more free-region relations here,
@@ -2236,7 +2234,7 @@ fn check_method_self_type<'a, 'tcx, RS:RegionScope>(
         scope: region::DestructionScopeData,
         value: &T)
         -> T
-        where T : TypeFoldable<'tcx> + Repr<'tcx>
+        where T : TypeFoldable<'tcx>
     {
         /*!
          * Convert early-bound regions into free regions; normally this is done by
@@ -2287,7 +2285,7 @@ fn enforce_impl_params_are_constrained<'tcx>(tcx: &ty::ctxt<'tcx>,
                                      idx: index as u32,
                                      name: ty_param.ident.name };
         if !input_parameters.contains(&ctp::Parameter::Type(param_ty)) {
-            report_unused_parameter(tcx, ty_param.span, "type", &param_ty.user_string(tcx));
+            report_unused_parameter(tcx, ty_param.span, "type", &param_ty.to_string());
         }
     }
 
@@ -2317,7 +2315,7 @@ fn enforce_impl_params_are_constrained<'tcx>(tcx: &ty::ctxt<'tcx>,
             !input_parameters.contains(&ctp::Parameter::Region(region))
         {
             report_unused_parameter(tcx, lifetime_def.lifetime.span,
-                                    "lifetime", &region.name.user_string(tcx));
+                                    "lifetime", &region.name.to_string());
         }
     }
 

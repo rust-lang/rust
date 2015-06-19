@@ -22,7 +22,7 @@ use borrowck::move_data::InvalidMovePathIndex;
 use borrowck::move_data::{MoveData, MovePathIndex};
 use rustc::middle::ty;
 use rustc::middle::mem_categorization as mc;
-use rustc::util::ppaux::{Repr, UserString};
+
 use std::mem;
 use std::rc::Rc;
 use syntax::ast;
@@ -42,21 +42,19 @@ enum Fragment {
 }
 
 impl Fragment {
-    fn loan_path_repr<'tcx>(&self, move_data: &MoveData<'tcx>, tcx: &ty::ctxt<'tcx>) -> String {
-        let repr = |mpi| move_data.path_loan_path(mpi).repr(tcx);
+    fn loan_path_repr(&self, move_data: &MoveData) -> String {
+        let lp = |mpi| move_data.path_loan_path(mpi);
         match *self {
-            Just(mpi) => repr(mpi),
-            AllButOneFrom(mpi) => format!("$(allbutone {})", repr(mpi)),
+            Just(mpi) => format!("{:?}", lp(mpi)),
+            AllButOneFrom(mpi) => format!("$(allbutone {:?})", lp(mpi)),
         }
     }
 
-    fn loan_path_user_string<'tcx>(&self,
-                                   move_data: &MoveData<'tcx>,
-                                   tcx: &ty::ctxt<'tcx>) -> String {
-        let user_string = |mpi| move_data.path_loan_path(mpi).user_string(tcx);
+    fn loan_path_user_string(&self, move_data: &MoveData) -> String {
+        let lp = |mpi| move_data.path_loan_path(mpi);
         match *self {
-            Just(mpi) => user_string(mpi),
-            AllButOneFrom(mpi) => format!("$(allbutone {})", user_string(mpi)),
+            Just(mpi) => lp(mpi).to_string(),
+            AllButOneFrom(mpi) => format!("$(allbutone {})", lp(mpi)),
         }
     }
 }
@@ -126,19 +124,19 @@ pub fn instrument_move_fragments<'tcx>(this: &MoveData<'tcx>,
 
     let instrument_all_paths = |kind, vec_rc: &Vec<MovePathIndex>| {
         for (i, mpi) in vec_rc.iter().enumerate() {
-            let render = || this.path_loan_path(*mpi).user_string(tcx);
+            let lp = || this.path_loan_path(*mpi);
             if span_err {
-                tcx.sess.span_err(sp, &format!("{}: `{}`", kind, render()));
+                tcx.sess.span_err(sp, &format!("{}: `{}`", kind, lp()));
             }
             if print {
-                println!("id:{} {}[{}] `{}`", id, kind, i, render());
+                println!("id:{} {}[{}] `{}`", id, kind, i, lp());
             }
         }
     };
 
     let instrument_all_fragments = |kind, vec_rc: &Vec<Fragment>| {
         for (i, f) in vec_rc.iter().enumerate() {
-            let render = || f.loan_path_user_string(this, tcx);
+            let render = || f.loan_path_user_string(this);
             if span_err {
                 tcx.sess.span_err(sp, &format!("{}: `{}`", kind, render()));
             }
@@ -172,11 +170,11 @@ pub fn fixup_fragment_sets<'tcx>(this: &MoveData<'tcx>, tcx: &ty::ctxt<'tcx>) {
     let mut assigned = mem::replace(&mut fragments.assigned_leaf_paths, vec![]);
 
     let path_lps = |mpis: &[MovePathIndex]| -> Vec<String> {
-        mpis.iter().map(|mpi| this.path_loan_path(*mpi).repr(tcx)).collect()
+        mpis.iter().map(|mpi| format!("{:?}", this.path_loan_path(*mpi))).collect()
     };
 
     let frag_lps = |fs: &[Fragment]| -> Vec<String> {
-        fs.iter().map(|f| f.loan_path_repr(this, tcx)).collect()
+        fs.iter().map(|f| f.loan_path_repr(this)).collect()
     };
 
     // First, filter out duplicates
@@ -343,8 +341,8 @@ fn add_fragment_siblings_for_extension<'tcx>(this: &MoveData<'tcx>,
             let tuple_idx = match *origin_field_name {
                 mc::PositionalField(tuple_idx) => tuple_idx,
                 mc::NamedField(_) =>
-                    panic!("tuple type {} should not have named fields.",
-                           parent_ty.repr(tcx)),
+                    panic!("tuple type {:?} should not have named fields.",
+                           parent_ty),
             };
             let tuple_len = v.len();
             for i in 0..tuple_len {
@@ -418,8 +416,8 @@ fn add_fragment_siblings_for_extension<'tcx>(this: &MoveData<'tcx>,
         }
 
         ref sty_and_variant_info => {
-            let msg = format!("type {} ({:?}) is not fragmentable",
-                              parent_ty.repr(tcx), sty_and_variant_info);
+            let msg = format!("type {:?} ({:?}) is not fragmentable",
+                              parent_ty, sty_and_variant_info);
             let opt_span = origin_id.and_then(|id|tcx.map.opt_span(id));
             tcx.sess.opt_span_bug(opt_span, &msg[..])
         }
@@ -450,8 +448,8 @@ fn add_fragment_sibling_core<'tcx>(this: &MoveData<'tcx>,
     };
     let new_lp_variant = LpExtend(parent, mc, loan_path_elem);
     let new_lp = LoanPath::new(new_lp_variant, new_lp_type.unwrap());
-    debug!("add_fragment_sibling_core(new_lp={}, origin_lp={})",
-           new_lp.repr(tcx), origin_lp.repr(tcx));
+    debug!("add_fragment_sibling_core(new_lp={:?}, origin_lp={:?})",
+           new_lp, origin_lp);
     let mp = this.move_path(tcx, Rc::new(new_lp));
 
     // Do not worry about checking for duplicates here; we will sort

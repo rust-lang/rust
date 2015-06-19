@@ -22,7 +22,6 @@ use check::{check_expr_with_lvalue_pref, LvaluePreference};
 use check::{instantiate_path, resolve_ty_and_def_ufcs, structurally_resolved_type};
 use require_same_types;
 use util::nodemap::FnvHashMap;
-use util::ppaux::Repr;
 
 use std::cmp::{self, Ordering};
 use std::collections::hash_map::Entry::{Occupied, Vacant};
@@ -40,9 +39,9 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
     let fcx = pcx.fcx;
     let tcx = pcx.fcx.ccx.tcx;
 
-    debug!("check_pat(pat={},expected={})",
-           pat.repr(tcx),
-           expected.repr(tcx));
+    debug!("check_pat(pat={:?},expected={:?})",
+           pat,
+           expected);
 
     match pat.node {
         ast::PatWild(_) => {
@@ -222,7 +221,7 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                 }
             } else {
                 tcx.sess.span_bug(pat.span,
-                                  &format!("unbound path {}", pat.repr(tcx)))
+                                  &format!("unbound path {:?}", pat))
             };
             if let Some((opt_ty, segments, def)) =
                     resolve_ty_and_def_ufcs(fcx, path_res, Some(self_ty),
