@@ -282,7 +282,7 @@ println!("{}", Y);
 E0019: r##"
 A function call isn't allowed in the const's initialization expression
 because the expression's value must be known at compile-time. Example of
-erroneous code::
+erroneous code:
 
 ```
 enum Test {
@@ -311,6 +311,28 @@ fn main() {
 
     FOO.func(); // here is good
     let x = FOO.func(); // or even here!
+}
+```
+
+It's important to note that it is possible to use const fn feature in
+Nightly. You can use them like this:
+
+```
+#![feature(const_fn)]
+
+const fn foo() -> i32 { 3 }
+
+enum Test { V1, V2(i32) }
+impl Test {
+    const fn foo(&self) -> i32 { 4 }
+}
+
+const A: i32 = foo(); // we can initialize const with a function!
+const B: i32 = Test::V1.foo(); // and even with a method!
+const C: i32 = Test::V2(5).foo();
+
+pub fn main() {
+    println!("A: {} B: {} C: {}", A, B, C);
 }
 ```
 "##,
