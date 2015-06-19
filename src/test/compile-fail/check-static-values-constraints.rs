@@ -137,6 +137,9 @@ static STATIC19: Box<isize> =
     box 3;
 //~^ ERROR allocations are not allowed in statics
 
+static BLOCK_UNSAFE_SAFE_PTR: &'static int = &*(0xdeadbeef as *int);
+//~^ ERROR raw pointers cannot be dereferenced in statics
+
 pub fn main() {
     let y = { static x: Box<isize> = box 3; x };
     //~^ ERROR allocations are not allowed in statics
