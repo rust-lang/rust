@@ -9,8 +9,9 @@
 // except according to those terms.
 
 use super::MethodError;
+use super::NoMatchData;
 use super::ItemIndex;
-use super::{CandidateSource,ImplSource,TraitSource};
+use super::{CandidateSource, ImplSource, TraitSource};
 use super::suggest;
 
 use check;
@@ -19,7 +20,7 @@ use middle::fast_reject;
 use middle::subst;
 use middle::subst::Subst;
 use middle::traits;
-use middle::ty::{self, RegionEscape, Ty, ToPolyTraitRef};
+use middle::ty::{self, RegionEscape, Ty, ToPolyTraitRef, TraitRef};
 use middle::ty_fold::TypeFoldable;
 use middle::infer;
 use middle::infer::InferCtxt;
@@ -42,7 +43,14 @@ struct ProbeContext<'a, 'tcx:'a> {
     inherent_candidates: Vec<Candidate<'tcx>>,
     extension_candidates: Vec<Candidate<'tcx>>,
     impl_dups: HashSet<ast::DefId>,
+
+    /// Collects near misses when the candidate functions are missing a `self` keyword and is only
+    /// used for error reporting
     static_candidates: Vec<CandidateSource>,
+
+    /// Collects near misses when trait bounds for type parameters are unsatisfied and is only used
+    /// for error reporting
+    unsatisfied_predicates: Vec<TraitRef<'tcx>>
 }
 
 #[derive(Debug)]
@@ -104,7 +112,7 @@ pub enum PickKind<'tcx> {
     WhereClausePick(/* Trait */ ty::PolyTraitRef<'tcx>, ItemIndex),
 }
 
-pub type PickResult<'tcx> = Result<Pick<'tcx>, MethodError>;
+pub type PickResult<'tcx> = Result<Pick<'tcx>, MethodError<'tcx>>;
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub enum Mode {
@@ -141,7 +149,8 @@ pub fn probe<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     let steps = if mode == Mode::MethodCall {
         match create_steps(fcx, span, self_ty) {
             Some(steps) => steps,
-            None => return Err(MethodError::NoMatch(Vec::new(), Vec::new(), mode)),
+            None =>return Err(MethodError::NoMatch(NoMatchData::new(Vec::new(), Vec::new(),
+                                                                    Vec::new(), mode))),
         }
     } else {
         vec![CandidateStep {
@@ -242,6 +251,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             steps: Rc::new(steps),
             opt_simplified_steps: opt_simplified_steps,
             static_candidates: Vec::new(),
+            unsatisfied_predicates: Vec::new(),
         }
     }
 
@@ -563,7 +573,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
 
     fn assemble_extension_candidates_for_traits_in_scope(&mut self,
                                                          expr_id: ast::NodeId)
-                                                         -> Result<(),MethodError>
+                                                         -> Result<(), MethodError<'tcx>>
     {
         let mut duplicates = HashSet::new();
         let opt_applicable_traits = self.fcx.ccx.trait_map.get(&expr_id);
@@ -577,7 +587,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         Ok(())
     }
 
-    fn assemble_extension_candidates_for_all_traits(&mut self) -> Result<(),MethodError> {
+    fn assemble_extension_candidates_for_all_traits(&mut self) -> Result<(), MethodError<'tcx>> {
         let mut duplicates = HashSet::new();
         for trait_info in suggest::all_traits(self.fcx.ccx) {
             if duplicates.insert(trait_info.def_id) {
@@ -589,7 +599,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
 
     fn assemble_extension_candidates_for_trait(&mut self,
                                                trait_def_id: ast::DefId)
-                                               -> Result<(),MethodError>
+                                               -> Result<(), MethodError<'tcx>>
     {
         debug!("assemble_extension_candidates_for_trait(trait_def_id={:?})",
                trait_def_id);
@@ -709,7 +719,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                                    trait_def_id: ast::DefId,
                                    item: ty::ImplOrTraitItem<'tcx>,
                                    item_index: usize)
-                                   -> Result<(),MethodError>
+                                   -> Result<(), MethodError<'tcx>>
     {
         // Check if this is one of the Fn,FnMut,FnOnce traits.
         let tcx = self.tcx();
@@ -868,6 +878,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         }
 
         let static_candidates = mem::replace(&mut self.static_candidates, vec![]);
+        let unsatisfied_predicates = mem::replace(&mut self.unsatisfied_predicates, vec![]);
 
         // things failed, so lets look at all traits, for diagnostic purposes now:
         self.reset();
@@ -892,7 +903,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                     }
                 }
             }).collect(),
-            Some(Err(MethodError::NoMatch(_, others, _))) => {
+            Some(Err(MethodError::NoMatch(NoMatchData { out_of_scope_traits: others, .. }))) => {
                 assert!(others.is_empty());
                 vec![]
             }
@@ -903,7 +914,8 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             None => vec![],
         };
 
-        Err(MethodError::NoMatch(static_candidates, out_of_scope_traits, self.mode))
+        Err(MethodError::NoMatch(NoMatchData::new(static_candidates, unsatisfied_predicates,
+                                                  out_of_scope_traits, self.mode)))
     }
 
     fn pick_core(&mut self) -> Option<PickResult<'tcx>> {
@@ -991,8 +1003,11 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
     fn pick_method(&mut self, self_ty: Ty<'tcx>) -> Option<PickResult<'tcx>> {
         debug!("pick_method(self_ty={})", self.infcx().ty_to_string(self_ty));
 
+        let mut possibly_unsatisfied_predicates = Vec::new();
+
         debug!("searching inherent candidates");
-        match self.consider_candidates(self_ty, &self.inherent_candidates) {
+        match self.consider_candidates(self_ty, &self.inherent_candidates,
+                                       &mut possibly_unsatisfied_predicates) {
             None => {}
             Some(pick) => {
                 return Some(pick);
@@ -1000,16 +1015,23 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         }
 
         debug!("searching extension candidates");
-        self.consider_candidates(self_ty, &self.extension_candidates)
+        let res = self.consider_candidates(self_ty, &self.extension_candidates,
+                                           &mut possibly_unsatisfied_predicates);
+        if let None = res {
+            self.unsatisfied_predicates.extend(possibly_unsatisfied_predicates);
+        }
+        res
     }
 
     fn consider_candidates(&self,
                            self_ty: Ty<'tcx>,
-                           probes: &[Candidate<'tcx>])
+                           probes: &[Candidate<'tcx>],
+                           possibly_unsatisfied_predicates: &mut Vec<TraitRef<'tcx>>)
                            -> Option<PickResult<'tcx>> {
         let mut applicable_candidates: Vec<_> =
             probes.iter()
-                  .filter(|&probe| self.consider_probe(self_ty, probe))
+                  .filter(|&probe| self.consider_probe(self_ty,
+                                                       probe,possibly_unsatisfied_predicates))
                   .collect();
 
         debug!("applicable_candidates: {:?}", applicable_candidates);
@@ -1032,7 +1054,8 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         })
     }
 
-    fn consider_probe(&self, self_ty: Ty<'tcx>, probe: &Candidate<'tcx>) -> bool {
+    fn consider_probe(&self, self_ty: Ty<'tcx>, probe: &Candidate<'tcx>,
+                      possibly_unsatisfied_predicates: &mut Vec<TraitRef<'tcx>>) -> bool {
         debug!("consider_probe: self_ty={:?} probe={:?}",
                self_ty,
                probe);
@@ -1071,10 +1094,18 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                     debug!("impl_obligations={:?}", obligations);
 
                     // Evaluate those obligations to see if they might possibly hold.
-                    obligations.iter()
-                        .chain(norm_obligations.iter()).chain(ref_obligations.iter())
-                        .all(|o| selcx.evaluate_obligation(o))
-
+                    let mut all_true = true;
+                    for o in obligations.iter()
+                        .chain(norm_obligations.iter())
+                        .chain(ref_obligations.iter()) {
+                        if !selcx.evaluate_obligation(o) {
+                            all_true = false;
+                            if let &ty::Predicate::Trait(ref pred) = &o.predicate {
+                                possibly_unsatisfied_predicates.push(pred.0.trait_ref);
+                            }
+                        }
+                    }
+                    all_true
                 }
 
                 ProjectionCandidate(..) |

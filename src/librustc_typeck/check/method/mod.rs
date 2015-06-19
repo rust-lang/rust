@@ -16,7 +16,7 @@ use middle::def;
 use middle::privacy::{AllPublic, DependsOn, LastPrivate, LastMod};
 use middle::subst;
 use middle::traits;
-use middle::ty::{self, AsPredicate, ToPolyTraitRef};
+use middle::ty::{self, AsPredicate, ToPolyTraitRef, TraitRef};
 use middle::infer;
 
 use syntax::ast::DefId;
@@ -32,11 +32,9 @@ mod confirm;
 mod probe;
 mod suggest;
 
-pub enum MethodError {
-    // Did not find an applicable method, but we did find various
-    // static methods that may apply, as well as a list of
-    // not-in-scope traits which may work.
-    NoMatch(Vec<CandidateSource>, Vec<ast::DefId>, probe::Mode),
+pub enum MethodError<'tcx> {
+    // Did not find an applicable method, but we did find various near-misses that may work.
+    NoMatch(NoMatchData<'tcx>),
 
     // Multiple methods might apply.
     Ambiguity(Vec<CandidateSource>),
@@ -45,9 +43,32 @@ pub enum MethodError {
     ClosureAmbiguity(/* DefId of fn trait */ ast::DefId),
 }
 
+// Contains a list of static methods that may apply, a list of unsatisfied trait predicates which
+// could lead to matches if satisfied, and a list of not-in-scope traits which may work.
+pub struct NoMatchData<'tcx> {
+    pub static_candidates: Vec<CandidateSource>,
+    pub unsatisfied_predicates: Vec<TraitRef<'tcx>>,
+    pub out_of_scope_traits: Vec<ast::DefId>,
+    pub mode: probe::Mode
+}
+
+impl<'tcx> NoMatchData<'tcx> {
+    pub fn new(static_candidates: Vec<CandidateSource>,
+               unsatisfied_predicates: Vec<TraitRef<'tcx>>,
+               out_of_scope_traits: Vec<ast::DefId>,
+               mode: probe::Mode) -> Self {
+        NoMatchData {
+            static_candidates: static_candidates,
+            unsatisfied_predicates: unsatisfied_predicates,
+            out_of_scope_traits: out_of_scope_traits,
+            mode: mode
+        }
+    }
+}
+
 // A pared down enum describing just the places from which a method
 // candidate can arise. Used for error reporting only.
-#[derive(Copy, Clone, PartialOrd, Ord, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum CandidateSource {
     ImplSource(ast::DefId),
     TraitSource(/* trait id */ ast::DefId),
@@ -93,7 +114,7 @@ pub fn lookup<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                         supplied_method_types: Vec<ty::Ty<'tcx>>,
                         call_expr: &'tcx ast::Expr,
                         self_expr: &'tcx ast::Expr)
-                        -> Result<ty::MethodCallee<'tcx>, MethodError>
+                        -> Result<ty::MethodCallee<'tcx>, MethodError<'tcx>>
 {
     debug!("lookup(method_name={}, self_ty={:?}, call_expr={:?}, self_expr={:?})",
            method_name,
@@ -305,7 +326,7 @@ pub fn resolve_ufcs<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                               method_name: ast::Name,
                               self_ty: ty::Ty<'tcx>,
                               expr_id: ast::NodeId)
-                              -> Result<(def::Def, LastPrivate), MethodError>
+                              -> Result<(def::Def, LastPrivate), MethodError<'tcx>>
 {
     let mode = probe::Mode::Path;
     let pick = try!(probe::probe(fcx, span, mode, method_name, self_ty, expr_id));
