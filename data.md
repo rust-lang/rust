@@ -4,7 +4,10 @@ Low-level programming cares a lot about data layout. It's a big deal. It also pe
 influences the rest of the language, so we're going to start by digging into how data is
 represented in Rust.
 
-## The rust repr
+
+
+
+# The rust repr
 
 Rust gives you the following ways to lay out composite data:
 
@@ -124,7 +127,7 @@ In principle enums can use fairly elaborate algorithms to cache bits throughout 
 with special constrained representations. As such it is *especially* desirable that we leave
 enum layout unspecified today.
 
-## Dynamically Sized Types (DSTs)
+# Dynamically Sized Types (DSTs)
 
 Rust also supports types without a statically known size. On the surface,
 this is a bit nonsensical: Rust must know the size of something in order to
@@ -149,6 +152,9 @@ struct Foo {
     data: [u8],
 }
 ```
+
+
+
 
 # Zero Sized Types (ZSTs)
 
@@ -182,6 +188,9 @@ consequence of types with no size. In particular, pointer offsets are no-ops, an
 standard allocators (including jemalloc, the one used by Rust) generally consider
 passing in `0` as Undefined Behaviour.
 
+
+
+
 # Drop Flags
 
 For unfortunate legacy implementation reasons, Rust as of 1.0.0 will do a nasty trick to
@@ -212,12 +221,17 @@ struct Foo {
 For details as to *why* this is done, and how to make it not happen, check out
 [SOME OTHER SECTION].
 
-## Alternative representations
+
+
+
+# Alternative representations
 
 Rust allows you to specify alternative data layout strategies from the default Rust
 one.
 
-### repr(C)
+
+
+## repr(C)
 
 This is the most important `repr`. It has fairly simple intent: do what C does.
 The order, size, and alignment of fields is exactly what you would expect from
@@ -241,14 +255,18 @@ still consumes a byte of space.
 
 * This is equivalent to repr(u32) for enums (see below)
 
-### repr(packed)
+
+
+## repr(packed)
 
 `repr(packed)` forces rust to strip any padding it would normally apply.
 This may improve the memory footprint of a type, but will have negative
 side-effects from "field access is heavily penalized" to "completely breaks
 everything" based on target platform.
 
-### repr(u8), repr(u16), repr(u32), repr(u64)
+
+
+## repr(u8), repr(u16), repr(u32), repr(u64)
 
 These specify the size to make a c-like enum (one which has no values in its variants).
 

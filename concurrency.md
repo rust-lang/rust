@@ -1,16 +1,8 @@
 % Concurrency and Paralellism
 
-```Not sure if I want this
-Safe Rust features *a ton* of tooling to make concurrency and parallelism totally
-safe, easy, and fearless. This is a case where we'll really just
-[defer to TRPL][trpl-conc] for the basics.
 
-TL;DR: The `Send` and `Sync` traits in conjunction with Rust's ownership model and
-normal generic bounds make using concurrent APIs really easy and painless for
-a user of Safe Rust.
-```
 
-## Data Races and Race Conditions
+# Data Races and Race Conditions
 
 Safe Rust guarantees an absence of data races, which are defined as:
 
@@ -77,7 +69,10 @@ if idx.load(Ordering::SeqCst) < data.len() {
 }
 ```
 
-## Send and Sync
+
+
+
+# Send and Sync
 
 Not everything obeys inherited mutability, though. Some types allow you to multiply
 alias a location in memory while mutating it. Unless these types use synchronization
@@ -153,7 +148,10 @@ into the collection.
 TODO: better explain what can or can't be Send or Sync. Sufficient to appeal
 only to data races?
 
-## Atomics
+
+
+
+# Atomics
 
 Rust pretty blatantly just inherits LLVM's model for atomics, which in turn is
 largely based off of the C11 model for atomics. This is not due these models
@@ -165,7 +163,10 @@ least, we can benefit from existing tooling and research around C's model.
 Trying to fully explain these models is fairly hopeless, so we're just going to
 drop that problem in LLVM's lap.
 
-## Actually Doing Things Concurrently
+
+
+
+# Actually Doing Things Concurrently
 
 Rust as a language doesn't *really* have an opinion on how to do concurrency or
 parallelism. The standard library exposes OS threads and blocking sys-calls

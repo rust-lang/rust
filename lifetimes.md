@@ -7,7 +7,7 @@ language-design problem.
 
 
 
-## The Tagged Union Problem
+# The Tagged Union Problem
 
 The core of the lifetime and mutability system derives from a simple problem:
 internal pointers to tagged unions. For instance, consider the following code:
@@ -68,7 +68,7 @@ For more details see Dan Grossman's Existential Types for Imperative Languages:
 
 
 
-## Lifetimes
+# Lifetimes
 
 Rust's static checks are managed by the *borrow checker* (borrowck), which tracks
 mutability and outstanding loans. This analysis can in principle be done without
@@ -101,7 +101,7 @@ more than a local lint against incorrect usage of a value.
 
 
 
-## Weird Lifetimes
+# Weird Lifetimes
 
 Given the following code:
 
@@ -150,7 +150,7 @@ a bug.
 
 
 
-## Lifetime Elision
+# Lifetime Elision
 
 In order to make common patterns more ergonomic, Rust allows lifetimes to be
 *elided* in function, impl, and type signatures.
@@ -217,7 +217,7 @@ fn new<'a>(buf: &'a mut [u8]) -> BufWriter<'a>          // expanded
 
 
 
-## Unbounded Lifetimes
+# Unbounded Lifetimes
 
 Unsafe code can often end up producing references or lifetimes out of thin air.
 Such lifetimes come into the world as *unbounded*. The most common source of this
@@ -258,7 +258,7 @@ these are unstable due to their awkward nature and questionable utility.
 
 
 
-## Higher-Rank Lifetimes
+# Higher-Rank Lifetimes
 
 Generics in Rust generally allow types to be instantiated with arbitrary
 associated lifetimes, but this fixes the lifetimes they work with once
@@ -328,7 +328,7 @@ maximally useful outside of the Fn traits.
 
 
 
-## Subtyping and Variance
+# Subtyping and Variance
 
 Although Rust doesn't have any notion of inheritance, it *does* include subtyping.
 In Rust, subtyping derives entirely from *lifetimes*. Since lifetimes are derived
@@ -474,7 +474,7 @@ struct Foo<'a, 'b, A, B, C, D, E, F, G, H> {
 
 
 
-## PhantomData
+# PhantomData
 
 When working with unsafe code, we can often end up in a situation where
 types or lifetimes are logically associated with a struct, but not actually
@@ -513,7 +513,7 @@ pub struct Iter<'a, T: 'a> {
 
 
 
-## Dropck
+# Dropck
 
 When a type is going out of scope, Rust will try to Drop it. Drop executes
 arbitrary code, and in fact allows us to "smuggle" arbitrary code execution
@@ -557,7 +557,7 @@ standard library made a utility for itself called `Unique<T>` which:
 
 
 
-## Splitting Lifetimes
+# Splitting Lifetimes
 
 The mutual exclusion property of mutable references can be very limiting when
 working with a composite structure. Borrowck understands some basic stuff, but

@@ -176,4 +176,4 @@ On balance this is an ok choice. Certainly if you're just getting started.
 In the future, we expect there to be a first-class way to announce that a field
 should be automatically dropped.
 
-[uninit]:
+[uninit]: uninitialized.html

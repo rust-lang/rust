@@ -7,7 +7,10 @@ Unsafe Rust. TURPL does not assume you have read TRPL, but does assume you know
 the basics of the language and systems programming. We will not explain the
 stack or heap, we will not explain the syntax.
 
-## Sections
+
+
+
+# Sections
 
 * [Data Layout](data.html)
 * [Ownership and Lifetimes](lifetimes.html)
@@ -16,7 +19,10 @@ stack or heap, we will not explain the syntax.
 * [Ownership-oriented resource management (RAII)](raii.html)
 * [Concurrency](concurrency.html)
 
-## A Tale Of Two Languages
+
+
+
+# A Tale Of Two Languages
 
 Rust can be thought of as two different languages: Safe Rust, and Unsafe Rust.
 Any time someone opines the guarantees of Rust, they are almost surely talking about
@@ -60,7 +66,10 @@ The fact that Rust is written with a healthy spoonful of Unsafe Rust is no diffe
 However it *does* mean that Rust doesn't need to fall back to the pervasive unsafety of
 C to do the nasty things that need to get done.
 
-## What does `unsafe` mean?
+
+
+
+# What does `unsafe` mean?
 
 Rust tries to model memory safety through the `unsafe` keyword. Interestingly,
 the meaning of `unsafe` largely revolves around what
