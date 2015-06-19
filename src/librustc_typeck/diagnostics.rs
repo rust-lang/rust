@@ -211,6 +211,47 @@ Reference:
 http://doc.rust-lang.org/reference.html#trait-objects
 "##,
 
+E0034: r##"
+The compiler doesn't know what method to call because more than one does
+have the same prototype. Example:
+
+```
+struct Test;
+
+trait Trait1 {
+    fn foo();
+}
+
+trait Trait2 {
+    fn foo();
+}
+
+impl Trait1 for Test { fn foo() {} }
+impl Trait2 for Test { fn foo() {} }
+
+fn main() {
+    Test::foo() // error, what foo() to call?
+}
+```
+
+To avoid this error, you have to keep only one of them and remove the others.
+So let's take our example and fix it:
+
+```
+struct Test;
+
+trait Trait1 {
+    fn foo();
+}
+
+impl Trait1 for Test { fn foo() {} }
+
+fn main() {
+    Test::foo() // and now that's good!
+}
+```
+"##,
+
 E0035: r##"
 You tried to give a type parameter where it wasn't needed. Bad example:
 
