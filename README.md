@@ -58,6 +58,7 @@ the direction the language is evolving in.
 * [1096-remove-static-assert.md](text/1096-remove-static-assert.md)
 * [1122-language-semver.md](text/1122-language-semver.md)
 * [1131-likely-intrinsic.md](text/1131-likely-intrinsic.md)
+* [1156-adjust-default-object-bounds.md](text/1156-adjust-default-object-bounds.md)
 
 ## Table of Contents
 [Table of Contents]: #table-of-contents
