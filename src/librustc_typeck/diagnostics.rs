@@ -211,6 +211,40 @@ Reference:
 http://doc.rust-lang.org/reference.html#trait-objects
 "##,
 
+E0035: r##"
+You tried to give a type parameter where it wasn't needed. Bad example:
+
+```
+struct Test;
+
+impl Test {
+    fn method(&self) {}
+}
+
+fn main() {
+    let x = Test;
+    
+    x.method::<i32>(); // Error: Test::method doesn't need type parameter!
+}
+```
+
+To fix this error, just remove the type parameter:
+
+```
+struct Test;
+
+impl Test {
+    fn method(&self) {}
+}
+
+fn main() {
+    let x = Test;
+    
+    x.method(); // OK, we're good!
+}
+```
+"##,
+
 E0036: r##"
 This error occurrs when you pass too many or not enough type parameters to
 a method. Example:
