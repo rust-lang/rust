@@ -2,7 +2,7 @@ use syntax::ptr::P;
 use syntax::ast::*;
 use rustc::lint::{Context, LintPass, LintArray, Lint};
 use rustc::middle::ty::{expr_ty, TypeVariants, mt, TyRef};
-use syntax::codemap::{BytePos, ExpnInfo, MacroFormat, Span};
+use syntax::codemap::{BytePos, ExpnInfo, Span};
 use utils::in_macro;
 
 declare_lint!(pub MUT_MUT, Warn,
