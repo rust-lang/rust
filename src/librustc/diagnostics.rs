@@ -279,6 +279,64 @@ println!("{}", Y);
 ```
 "##,
 
+E0019: r##"
+A function call isn't allowed in the const's initialization expression
+because the expression's value must be known at compile-time. Example of
+erroneous code:
+
+```
+enum Test {
+    V1
+}
+
+impl Test {
+    fn test(&self) -> i32 {
+        12
+    }
+}
+
+fn main() {
+    const FOO: Test = Test::V1;
+
+    const A: i32 = FOO.test(); // You can't call Test::func() here !
+}
+```
+
+Remember: you can't use a function call inside a const's initialization
+expression! However, you can totally use it elsewhere you want:
+
+```
+fn main() {
+    const FOO: Test = Test::V1;
+
+    FOO.func(); // here is good
+    let x = FOO.func(); // or even here!
+}
+```
+
+It's important to note that it is possible to use const fn feature in
+Nightly. You can use them like this:
+
+```
+#![feature(const_fn)]
+
+const fn foo() -> i32 { 3 }
+
+enum Test { V1, V2(i32) }
+impl Test {
+    const fn foo(&self) -> i32 { 4 }
+}
+
+const A: i32 = foo(); // we can initialize const with a function!
+const B: i32 = Test::V1.foo(); // and even with a method!
+const C: i32 = Test::V2(5).foo();
+
+pub fn main() {
+    println!("A: {} B: {} C: {}", A, B, C);
+}
+```
+"##,
+
 E0020: r##"
 This error indicates that an attempt was made to divide by zero (or take the
 remainder of a zero divisor) in a static or constant expression.
@@ -952,7 +1010,6 @@ static mut BAR: Option<Vec<i32>> = None;
 register_diagnostics! {
     E0016,
     E0017,
-    E0019,
     E0022,
     E0038,
     E0109,
