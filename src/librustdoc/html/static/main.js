@@ -571,6 +571,9 @@
                 return;
             }
 
+            // Update document title to maintain a meaningful browser history
+            $(document).prop("title", "Results for " + query.query + " - Rust");
+
             // Because searching is incremental by character, only the most
             // recent search query is added to the browser history.
             if (browserSupportsHistoryApi()) {
