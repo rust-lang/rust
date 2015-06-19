@@ -60,6 +60,7 @@ read-write lock.
 
 
 
+
 ## Lifetimes
 
 Rust's static checks are managed by the *borrow checker* (borrowck), which tracks
@@ -219,6 +220,77 @@ these are unstable due to their awkward nature and questionable utility.
 
 
 
+
+## Higher-Rank Lifetimes
+
+Generics in Rust generally allow types to be instantiated with arbitrary
+associated lifetimes, but this fixes the lifetimes they work with once
+instantiated. For almost all types, this is exactly the desired behaviour.
+For example slice::Iter can work with arbitrary lifetimes, determined by the
+slice that instantiates it. However *once* Iter is instantiated the lifetimes
+it works with cannot be changed. It returns references that live for some
+particular `'a`.
+
+However some types are more flexible than this. In particular, a single
+instantiation of a function can process arbitrary lifetimes:
+
+```rust
+fn identity(input: &u8) -> &u8 { input }
+```
+
+What is *the* lifetime that identity works with? There is none. If you think
+this is "cheating" because functions are statically instantiated, then you need
+only consider the equivalent closure:
+
+```rust
+let identity = |input: &u8| input;
+```
+
+These functions are *higher ranked* over the lifetimes they work with. This means
+that they're generic over what they handle *after instantiation*. For most things
+this would pose a massive problem, but because lifetimes don't *exist* at runtime,
+this is really just a compile-time mechanism. The Fn traits contain sugar that
+allows higher-rank lifetimes to simply be expressed by simply omitting lifetimes:
+
+
+```rust
+fn main() {
+    foo(|input| input);
+}
+
+fn foo<F>(f: F)
+    // F is higher-ranked over the lifetime these references have
+    where F: Fn(&u8) -> &u8
+{
+    f(&0);
+    f(&1);
+}
+```
+
+The desugaring of this is actually unstable:
+
+```
+#![feature(unboxed_closures)]
+
+fn main() {
+    foo(|input| input);
+}
+
+fn foo<F>(f: F)
+    where F: for<'a> Fn<(&'a u8,), Output=&'a u8>
+{
+    f(&0);
+    f(&1);
+}
+```
+
+`for<'a>` is how we declare a higher-ranked lifetime. Unfortunately higher-ranked
+lifetimes are still fairly new, and are missing a few features to make them
+maximally useful outside of the Fn traits.
+
+
+
+
 ## Subtyping and Variance
 
 Although Rust doesn't have any notion of inheritance, it *does* include subtyping.
@@ -227,11 +299,14 @@ from scopes, we can partially order them based on an *outlives* relationship. We
 can even express this as a generic bound: `T: 'a` specifies that `T` *outlives* `'a`.
 
 We can then define subtyping on lifetimes in terms of lifetimes: `'a : 'b` implies
-`'a <: b` -- if `'a' outlives `'b`, then `'a` is a subtype of `'b`. This is a very
+`'a <: b` -- if `'a` outlives `'b`, then `'a` is a subtype of `'b`. This is a very
 large source of confusion, because a bigger scope is a *sub type* of a smaller scope.
 This does in fact make sense. The intuitive reason for this is that if you expect an
 `&'a u8`, then it's totally fine for me to hand you an `&'static u8`, in the same way
 that if you expect an Animal in Java, it's totally fine for me to hand you a Cat.
+
+(Note, the subtyping relationship and typed-ness of lifetimes is a fairly arbitrary
+construct that some disagree with. I just find that it simplifies this analysis.)
 
 Variance is where things get really harsh.
 
@@ -278,7 +353,7 @@ fn overwrite<T: Copy>(input: &mut T, new: &mut T) {
 
 The signature of `overwrite` is clearly valid: it takes mutable references to two values
 of the same type, and replaces one with the other. We have seen already that `&` is
-covariant, and `'static` is a subtype of *any* `'a', so `&'static str` is a
+covariant, and `'static` is a subtype of *any* `'a`, so `&'static str` is a
 subtype of `&'a str`. Therefore, if `&mut` was
 *also* covariant, then the lifetime of the `&'static str` would successfully be
 "shrunk" down to the shorter lifetime of the string, and `replace` would be
@@ -341,8 +416,16 @@ respectively.
 ## PhantomData and PhantomFn
 
 This is all well and good for the types the standard library provides, but
-how is variance determined for type that *you* define? The variance of a type
-over its generic arguments is determined by how they're stored.
+how is variance determined for type that *you* define? A struct is, informally
+speaking, covariant over all its fields (and an enum over its variants). This
+basically means that it inherits the variance of its fields. If a struct `Foo`
+has a generic argument `A` that is used in a field `a`, then Foo's variance
+over `A` is exactly `a`'s variance. However this is complicated if `A` is used
+in multiple fields.
+
+* If all uses of A are covariant, then Foo is covariant over A
+* If all uses of A are contravariant, then Foo is contravariant over A
+* Otherwise, Foo is invariant over A
 
 ```rust
 struct Foo<'a, 'b, A, B, C, D, E, F, G, H> {
@@ -360,7 +443,7 @@ struct Foo<'a, 'b, A, B, C, D, E, F, G, H> {
 
 However when working with unsafe code, we can often end up in a situation where
 types or lifetimes are logically associated with a struct, but not actually
-reachable. This most commonly occurs with lifetimes. For instance, the `Iter`
+part of a field. This most commonly occurs with lifetimes. For instance, the `Iter`
 for `&'a [T]` is (approximately) defined as follows:
 
 ```
