@@ -35,15 +35,6 @@ use std::sync::mpsc::channel;
 use std::thread;
 use libc::{self, c_uint, c_int, c_void};
 
-#[derive(Clone, Copy, PartialEq, PartialOrd, Ord, Eq)]
-pub enum OutputType {
-    OutputTypeBitcode,
-    OutputTypeAssembly,
-    OutputTypeLlvmAssembly,
-    OutputTypeObject,
-    OutputTypeExe,
-}
-
 pub fn llvm_err(handler: &diagnostic::Handler, msg: String) -> ! {
     unsafe {
         let cstr = llvm::LLVMRustGetLastError();
@@ -641,7 +632,8 @@ pub fn run_passes(sess: &Session,
                 modules_config.emit_obj = true;
                 metadata_config.emit_obj = true;
             },
-            config::OutputTypeDepInfo => {}
+            config::OutputTypeDepInfo |
+            config::OutputTypeRlibMeta => {}
         }
     }
 
@@ -814,7 +806,8 @@ pub fn run_passes(sess: &Session,
                     link_obj(&crate_output.temp_path(config::OutputTypeObject));
                 }
             }
-            config::OutputTypeDepInfo => {}
+            config::OutputTypeDepInfo |
+            config::OutputTypeRlibMeta => {}
         }
     }
     let user_wants_bitcode = user_wants_bitcode;

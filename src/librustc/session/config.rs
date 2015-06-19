@@ -70,6 +70,7 @@ pub enum OutputType {
     OutputTypeObject,
     OutputTypeExe,
     OutputTypeDepInfo,
+    OutputTypeRlibMeta,
 }
 
 #[derive(Clone)]
@@ -183,6 +184,7 @@ impl OutputFilenames {
             OutputTypeLlvmAssembly => base.with_extension("ll"),
             OutputTypeObject => base.with_extension("o"),
             OutputTypeDepInfo => base.with_extension("d"),
+            OutputTypeRlibMeta => base.with_extension("rmeta"),
             OutputTypeExe => base,
         }
     }
@@ -785,7 +787,7 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
                "NAME"),
         opt::multi("", "emit", "Comma separated list of types of output for \
                               the compiler to emit",
-                 "[asm|llvm-bc|llvm-ir|obj|link|dep-info]"),
+                 "[asm|llvm-bc|llvm-ir|obj|link|dep-info|rlibmeta]"),
         opt::multi("", "print", "Comma separated list of compiler information to \
                                print on stdout",
                  "[crate-name|file-names|sysroot]"),
@@ -886,29 +888,33 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
     }
 
     let mut output_types = Vec::new();
-    if !debugging_opts.parse_only && !no_trans {
-        let unparsed_output_types = matches.opt_strs("emit");
-        for unparsed_output_type in &unparsed_output_types {
-            for part in unparsed_output_type.split(',') {
-                let output_type = match part {
-                    "asm" => OutputTypeAssembly,
-                    "llvm-ir" => OutputTypeLlvmAssembly,
-                    "llvm-bc" => OutputTypeBitcode,
-                    "obj" => OutputTypeObject,
-                    "link" => OutputTypeExe,
-                    "dep-info" => OutputTypeDepInfo,
-                    _ => {
-                        early_error(&format!("unknown emission type: `{}`",
-                                            part))
-                    }
-                };
-                output_types.push(output_type)
-            }
+    let unparsed_output_types = matches.opt_strs("emit");
+    for unparsed_output_type in &unparsed_output_types {
+        for part in unparsed_output_type.split(',') {
+            let output_type = match part {
+                "asm" => OutputTypeAssembly,
+                "llvm-ir" => OutputTypeLlvmAssembly,
+                "llvm-bc" => OutputTypeBitcode,
+                "obj" => OutputTypeObject,
+                "link" => OutputTypeExe,
+                "dep-info" => OutputTypeDepInfo,
+                "rlibmeta" => OutputTypeRlibMeta,
+                _ => {
+                    early_error(&format!("unknown emission type: `{}`",
+                                        part))
+                }
+            };
+            output_types.push(output_type)
         }
-    };
+    }
     output_types.sort();
     output_types.dedup();
-    if output_types.is_empty() {
+
+    if debugging_opts.parse_only {
+        output_types = vec![];
+    } else if no_trans {
+        output_types.retain(|&x| x == OutputTypeRlibMeta);
+    } else if output_types.is_empty() {
         output_types.push(OutputTypeExe);
     }
 

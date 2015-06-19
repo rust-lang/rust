@@ -389,23 +389,37 @@ pub fn link_binary(sess: &Session,
                    outputs: &OutputFilenames,
                    crate_name: &str) -> Vec<PathBuf> {
     let mut out_filenames = Vec::new();
-    for &crate_type in sess.crate_types.borrow().iter() {
-        if invalid_output_for_target(sess, crate_type) {
-            sess.bug(&format!("invalid output type `{:?}` for target os `{}`",
-                             crate_type, sess.opts.target_triple));
+    if sess.opts.output_types.contains(&config::OutputTypeExe) {
+        for &crate_type in sess.crate_types.borrow().iter() {
+            if invalid_output_for_target(sess, crate_type) {
+                sess.bug(&format!("invalid output type `{:?}` for target os `{}`",
+                                crate_type, sess.opts.target_triple));
+            }
+            let out_file = link_binary_output(sess, trans, crate_type, outputs,
+                                            crate_name, None);
+            out_filenames.push(out_file);
         }
-        let out_file = link_binary_output(sess, trans, crate_type, outputs,
-                                          crate_name);
-        out_filenames.push(out_file);
+
+        // Remove the temporary object file and metadata if we aren't saving temps
+        if !sess.opts.cg.save_temps {
+            let obj_filename = outputs.temp_path(OutputTypeObject);
+            if !sess.opts.output_types.contains(&OutputTypeObject) {
+                remove(sess, &obj_filename);
+            }
+            remove(sess, &obj_filename.with_extension("metadata.o"));
+        }
     }
 
-    // Remove the temporary object file and metadata if we aren't saving temps
-    if !sess.opts.cg.save_temps {
-        let obj_filename = outputs.temp_path(OutputTypeObject);
-        if !sess.opts.output_types.contains(&OutputTypeObject) {
-            remove(sess, &obj_filename);
+    // Attempt to output an rlib with just metadata, if that was requested.
+    if sess.opts.output_types.contains(&config::OutputTypeRlibMeta) {
+        let crate_type = config::CrateTypeRlib;
+        if invalid_output_for_target(sess, crate_type) {
+            sess.bug(&format!("invalid output type `{:?}` for target os `{}`",
+                            crate_type, sess.opts.target_triple));
         }
-        remove(sess, &obj_filename.with_extension("metadata.o"));
+        let out_file = link_binary_output(sess, trans, crate_type, outputs,
+                                          crate_name, Some(config::OutputTypeRlibMeta));
+        out_filenames.push(out_file);
     }
 
     out_filenames
@@ -449,12 +463,18 @@ fn is_writeable(p: &Path) -> bool {
 
 pub fn filename_for_input(sess: &Session,
                           crate_type: config::CrateType,
+                          output_type: config::OutputType,
                           name: &str,
                           out_filename: &Path) -> PathBuf {
     let libname = format!("{}{}", name, sess.opts.cg.extra_filename);
     match crate_type {
         config::CrateTypeRlib => {
-            out_filename.with_file_name(&format!("lib{}.rlib", libname))
+            let suffix = if output_type == config::OutputTypeRlibMeta {
+                ".rmeta"
+            } else {
+                ""
+            };
+            out_filename.with_file_name(&format!("lib{}{}.rlib", libname, suffix))
         }
         config::CrateTypeDylib => {
             let (prefix, suffix) = (&sess.target.target.options.dll_prefix,
@@ -482,13 +502,16 @@ fn link_binary_output(sess: &Session,
                       trans: &CrateTranslation,
                       crate_type: config::CrateType,
                       outputs: &OutputFilenames,
-                      crate_name: &str) -> PathBuf {
+                      crate_name: &str,
+                      custom_rlib_emission: Option<config::OutputType>)
+                      -> PathBuf {
     let obj_filename = outputs.temp_path(OutputTypeObject);
     let out_filename = match outputs.single_output_file {
         Some(ref file) => file.clone(),
         None => {
-            let out_filename = outputs.path(OutputTypeExe);
-            filename_for_input(sess, crate_type, crate_name, &out_filename)
+            let output_type = custom_rlib_emission.unwrap_or(OutputTypeExe);
+            let out_filename = outputs.path(output_type);
+            filename_for_input(sess, crate_type, output_type, crate_name, &out_filename)
         }
     };
 
@@ -511,7 +534,12 @@ fn link_binary_output(sess: &Session,
 
     match crate_type {
         config::CrateTypeRlib => {
-            link_rlib(sess, Some(trans), &obj_filename, &out_filename).build();
+            let obj_filename = if custom_rlib_emission.is_some() {
+                None
+            } else {
+                Some(&*obj_filename)
+            };
+            link_rlib(sess, Some(trans), obj_filename, &out_filename).build();
         }
         config::CrateTypeStaticlib => {
             link_staticlib(sess, &obj_filename, &out_filename);
@@ -544,7 +572,7 @@ fn archive_search_paths(sess: &Session) -> Vec<PathBuf> {
 // native libraries and inserting all of the contents into this archive.
 fn link_rlib<'a>(sess: &'a Session,
                  trans: Option<&CrateTranslation>, // None == no metadata/bytecode
-                 obj_filename: &Path,
+                 obj_filename: Option<&Path>,
                  out_filename: &Path) -> ArchiveBuilder<'a> {
     info!("preparing rlib from {:?} to {:?}", obj_filename, out_filename);
     let handler = &sess.diagnostic().handler;
@@ -557,7 +585,7 @@ fn link_rlib<'a>(sess: &'a Session,
         ar_prog: get_ar_prog(sess),
     };
     let mut ab = ArchiveBuilder::create(config);
-    ab.add_file(obj_filename).unwrap();
+    obj_filename.map(|file| ab.add_file(file).unwrap());
 
     for &(ref l, kind) in sess.cstore.get_used_libraries().borrow().iter() {
         match kind {
@@ -618,6 +646,13 @@ fn link_rlib<'a>(sess: &'a Session,
             }
             ab.add_file(&metadata).unwrap();
             remove(sess, &metadata);
+
+            // Nothing else to add if we have no code.
+            let obj_filename = if let Some(file) = obj_filename {
+                file
+            } else {
+                return ab;
+            };
 
             // For LTO purposes, the bytecode of this library is also inserted
             // into the archive.  If codegen_units > 1, we insert each of the
@@ -734,7 +769,7 @@ fn write_rlib_bytecode_object_v1(writer: &mut Write,
 // link in the metadata object file (and also don't prepare the archive with a
 // metadata file).
 fn link_staticlib(sess: &Session, obj_filename: &Path, out_filename: &Path) {
-    let ab = link_rlib(sess, None, obj_filename, out_filename);
+    let ab = link_rlib(sess, None, Some(obj_filename), out_filename);
     let mut ab = match sess.target.target.options.is_like_osx {
         true => ab.build().extend(),
         false => ab,

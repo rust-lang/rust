@@ -60,9 +60,6 @@ pub struct Stats {
 pub struct SharedCrateContext<'tcx> {
     local_ccxs: Vec<LocalCrateContext<'tcx>>,
 
-    metadata_llmod: ModuleRef,
-    metadata_llcx: ContextRef,
-
     export_map: ExportMap,
     reachable: NodeSet,
     item_symbols: RefCell<NodeMap<String>>,
@@ -221,20 +218,21 @@ impl<'a, 'tcx> Iterator for CrateContextMaybeIterator<'a, 'tcx> {
     }
 }
 
+pub fn create_context_and_module(sess: &Session, mod_name: &str) -> (ContextRef, ModuleRef) {
+    unsafe {
+        let llcx = llvm::LLVMContextCreate();
+        let mod_name = CString::new(mod_name).unwrap();
+        let llmod = llvm::LLVMModuleCreateWithNameInContext(mod_name.as_ptr(), llcx);
 
-unsafe fn create_context_and_module(sess: &Session, mod_name: &str) -> (ContextRef, ModuleRef) {
-    let llcx = llvm::LLVMContextCreate();
-    let mod_name = CString::new(mod_name).unwrap();
-    let llmod = llvm::LLVMModuleCreateWithNameInContext(mod_name.as_ptr(), llcx);
+        let data_layout = sess.target.target.data_layout.as_bytes();
+        let data_layout = CString::new(data_layout).unwrap();
+        llvm::LLVMSetDataLayout(llmod, data_layout.as_ptr());
 
-    let data_layout = sess.target.target.data_layout.as_bytes();
-    let data_layout = CString::new(data_layout).unwrap();
-    llvm::LLVMSetDataLayout(llmod, data_layout.as_ptr());
-
-    let llvm_target = sess.target.target.llvm_target.as_bytes();
-    let llvm_target = CString::new(llvm_target).unwrap();
-    llvm::LLVMRustSetNormalizedTarget(llmod, llvm_target.as_ptr());
-    (llcx, llmod)
+        let llvm_target = sess.target.target.llvm_target.as_bytes();
+        let llvm_target = CString::new(llvm_target).unwrap();
+        llvm::LLVMRustSetNormalizedTarget(llmod, llvm_target.as_ptr());
+        (llcx, llmod)
+    }
 }
 
 impl<'tcx> SharedCrateContext<'tcx> {
@@ -248,10 +246,6 @@ impl<'tcx> SharedCrateContext<'tcx> {
                check_overflow: bool,
                check_drop_flag_for_sanity: bool)
                -> SharedCrateContext<'tcx> {
-        let (metadata_llcx, metadata_llmod) = unsafe {
-            create_context_and_module(&tcx.sess, "metadata")
-        };
-
         // An interesting part of Windows which MSVC forces our hand on (and
         // apparently MinGW didn't) is the usage of `dllimport` and `dllexport`
         // attributes in LLVM IR as well as native dependencies (in C these
@@ -299,8 +293,6 @@ impl<'tcx> SharedCrateContext<'tcx> {
 
         let mut shared_ccx = SharedCrateContext {
             local_ccxs: Vec::with_capacity(local_count),
-            metadata_llmod: metadata_llmod,
-            metadata_llcx: metadata_llcx,
             export_map: export_map,
             reachable: reachable,
             item_symbols: RefCell::new(NodeMap()),
@@ -372,14 +364,6 @@ impl<'tcx> SharedCrateContext<'tcx> {
     }
 
 
-    pub fn metadata_llmod(&self) -> ModuleRef {
-        self.metadata_llmod
-    }
-
-    pub fn metadata_llcx(&self) -> ContextRef {
-        self.metadata_llcx
-    }
-
     pub fn export_map<'a>(&'a self) -> &'a ExportMap {
         &self.export_map
     }
@@ -390,10 +374,6 @@ impl<'tcx> SharedCrateContext<'tcx> {
 
     pub fn item_symbols<'a>(&'a self) -> &'a RefCell<NodeMap<String>> {
         &self.item_symbols
-    }
-
-    pub fn link_meta<'a>(&'a self) -> &'a LinkMeta {
-        &self.link_meta
     }
 
     pub fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx> {
@@ -421,9 +401,8 @@ impl<'tcx> LocalCrateContext<'tcx> {
     fn new(shared: &SharedCrateContext<'tcx>,
            name: &str)
            -> LocalCrateContext<'tcx> {
+        let (llcx, llmod) = create_context_and_module(&shared.tcx.sess, name);
         unsafe {
-            let (llcx, llmod) = create_context_and_module(&shared.tcx.sess, name);
-
             let td = mk_target_data(&shared.tcx
                                           .sess
                                           .target

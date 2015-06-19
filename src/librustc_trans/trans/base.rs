@@ -35,6 +35,7 @@ use lint;
 use llvm::{BasicBlockRef, Linkage, ValueRef, Vector, get_param};
 use llvm;
 use metadata::{csearch, encoder, loader};
+use metadata::common::LinkMeta;
 use middle::astencode;
 use middle::cfg;
 use middle::lang_items::{LangItem, ExchangeMallocFnLangItem, StartFnLangItem};
@@ -61,7 +62,7 @@ use trans::common::{node_id_type, return_type_is_void};
 use trans::common::{type_is_immediate, type_is_zero_size, val_ty};
 use trans::common;
 use trans::consts;
-use trans::context::SharedCrateContext;
+use trans::context::{self, SharedCrateContext};
 use trans::controlflow;
 use trans::datum;
 use trans::debuginfo::{self, DebugLoc, ToDebugLoc};
@@ -82,7 +83,7 @@ use trans::value::Value;
 use util::common::indenter;
 use util::ppaux::{Repr, ty_to_string};
 use util::sha2::Sha256;
-use util::nodemap::NodeMap;
+use util::nodemap::{NodeMap, NodeSet, FnvHashMap};
 
 use arena::TypedArena;
 use libc::c_uint;
@@ -2496,55 +2497,57 @@ fn register_method(ccx: &CrateContext, id: ast::NodeId,
     }
 }
 
-pub fn crate_ctxt_to_encode_parms<'a, 'tcx>(cx: &'a SharedCrateContext<'tcx>,
-                                            ie: encoder::EncodeInlinedItem<'a>)
-                                            -> encoder::EncodeParams<'a, 'tcx> {
-    encoder::EncodeParams {
-        diag: cx.sess().diagnostic(),
-        tcx: cx.tcx(),
-        reexports: cx.export_map(),
-        item_symbols: cx.item_symbols(),
-        link_meta: cx.link_meta(),
-        cstore: &cx.sess().cstore,
-        encode_inlined_item: ie,
-        reachable: cx.reachable(),
-    }
-}
-
-pub fn write_metadata(cx: &SharedCrateContext, krate: &ast::Crate) -> Vec<u8> {
+pub fn write_metadata(tcx: &ty::ctxt, link_meta: &LinkMeta,
+                      ccx: Option<&SharedCrateContext>)
+                      -> (Vec<u8>, ModuleTranslation) {
     use flate;
 
-    let any_library = cx.sess().crate_types.borrow().iter().any(|ty| {
+    let any_library = tcx.sess.crate_types.borrow().iter().any(|ty| {
         *ty != config::CrateTypeExecutable
     });
+
+    let (llcx, llmod) = context::create_context_and_module(&tcx.sess, "metadata");
+    let module = ModuleTranslation {
+        llcx: llcx,
+        llmod: llmod
+    };
     if !any_library {
-        return Vec::new()
+        return (vec![], module);
     }
 
-    let encode_inlined_item: encoder::EncodeInlinedItem =
-        Box::new(|ecx, rbml_w, ii| astencode::encode_inlined_item(ecx, rbml_w, ii));
-
-    let encode_parms = crate_ctxt_to_encode_parms(cx, encode_inlined_item);
-    let metadata = encoder::encode_metadata(encode_parms, krate);
+    let empty_reexports = FnvHashMap();
+    let empty_item_symbols = RefCell::new(NodeMap());
+    let empty_reachable = NodeSet();
+    let encode_parms = encoder::EncodeParams {
+        diag: tcx.sess.diagnostic(),
+        tcx: tcx,
+        reexports: ccx.map_or(&empty_reexports, |cx| cx.export_map()),
+        item_symbols: ccx.map_or(&empty_item_symbols, |cx| cx.item_symbols()),
+        link_meta: link_meta,
+        cstore: &tcx.sess.cstore,
+        encode_inlined_item: box astencode::encode_inlined_item,
+        reachable: ccx.map_or(&empty_reachable, |cx| cx.reachable()),
+    };
+    let metadata = encoder::encode_metadata(encode_parms, tcx.map.krate());
     let mut compressed = encoder::metadata_encoding_version.to_vec();
     compressed.push_all(&flate::deflate_bytes(&metadata));
-    let llmeta = C_bytes_in_context(cx.metadata_llcx(), &compressed[..]);
-    let llconst = C_struct_in_context(cx.metadata_llcx(), &[llmeta], false);
+
+    let llmeta = C_bytes_in_context(llcx, &compressed[..]);
+    let llconst = C_struct_in_context(llcx, &[llmeta], false);
     let name = format!("rust_metadata_{}_{}",
-                       cx.link_meta().crate_name,
-                       cx.link_meta().crate_hash);
+                       link_meta.crate_name,
+                       link_meta.crate_hash);
     let buf = CString::new(name).unwrap();
     let llglobal = unsafe {
-        llvm::LLVMAddGlobal(cx.metadata_llmod(), val_ty(llconst).to_ref(),
-                            buf.as_ptr())
+        llvm::LLVMAddGlobal(llmod, val_ty(llconst).to_ref(), buf.as_ptr())
     };
     unsafe {
         llvm::LLVMSetInitializer(llglobal, llconst);
-        let name = loader::meta_section_name(&cx.sess().target.target);
+        let name = loader::meta_section_name(&tcx.sess.target.target);
         let name = CString::new(name).unwrap();
         llvm::LLVMSetSection(llglobal, name.as_ptr())
     }
-    return metadata;
+    (metadata, module)
 }
 
 /// Find any symbols that are defined in one compilation unit, but not declared
@@ -2632,6 +2635,26 @@ fn internalize_symbols(cx: &SharedCrateContext, reachable: &HashSet<String>) {
     }
 }
 
+fn initialize_llvm(sess: &Session) {
+    // Before we touch LLVM, make sure that multithreading is enabled.
+    unsafe {
+        use std::sync::Once;
+        static INIT: Once = Once::new();
+        static mut POISONED: bool = false;
+        INIT.call_once(|| {
+            if llvm::LLVMStartMultithreaded() != 1 {
+                // use an extra bool to make sure that all future usage of LLVM
+                // cannot proceed despite the Once not running more than once.
+                POISONED = true;
+            }
+        });
+
+        if POISONED {
+            sess.bug("couldn't enable multi-threaded LLVM");
+        }
+    }
+}
+
 pub fn trans_crate<'tcx>(analysis: ty::CrateAnalysis<'tcx>)
                          -> (ty::ctxt<'tcx>, CrateTranslation) {
     let ty::CrateAnalysis { ty_cx: tcx, export_map, reachable, name, .. } = analysis;
@@ -2649,24 +2672,7 @@ pub fn trans_crate<'tcx>(analysis: ty::CrateAnalysis<'tcx>)
         tcx.sess.opts.debug_assertions
     };
 
-    // Before we touch LLVM, make sure that multithreading is enabled.
-    unsafe {
-        use std::sync::Once;
-        static INIT: Once = Once::new();
-        static mut POISONED: bool = false;
-        INIT.call_once(|| {
-            if llvm::LLVMStartMultithreaded() != 1 {
-                // use an extra bool to make sure that all future usage of LLVM
-                // cannot proceed despite the Once not running more than once.
-                POISONED = true;
-            }
-        });
-
-        if POISONED {
-            tcx.sess.bug("couldn't enable multi-threaded LLVM");
-        }
-    }
-
+    initialize_llvm(&tcx.sess);
     let link_meta = link::build_link_meta(&tcx.sess, krate, name);
 
     let codegen_units = tcx.sess.opts.cg.codegen_units;
@@ -2700,7 +2706,8 @@ pub fn trans_crate<'tcx>(analysis: ty::CrateAnalysis<'tcx>)
     }
 
     // Translate the metadata.
-    let metadata = write_metadata(&shared_ccx, krate);
+    let (metadata, metadata_module) = write_metadata(shared_ccx.tcx(), &link_meta,
+                                                     Some(&shared_ccx));
 
     if shared_ccx.sess().trans_stats() {
         let stats = shared_ccx.stats();
@@ -2767,10 +2774,6 @@ pub fn trans_crate<'tcx>(analysis: ty::CrateAnalysis<'tcx>)
         internalize_symbols(&shared_ccx, &reachable.iter().cloned().collect());
     }
 
-    let metadata_module = ModuleTranslation {
-        llcx: shared_ccx.metadata_llcx(),
-        llmod: shared_ccx.metadata_llmod(),
-    };
     let formats = shared_ccx.tcx().dependency_formats.borrow().clone();
     let no_builtins = attr::contains_name(&krate.attrs, "no_builtins");
 
@@ -2785,4 +2788,19 @@ pub fn trans_crate<'tcx>(analysis: ty::CrateAnalysis<'tcx>)
     };
 
     (shared_ccx.take_tcx(), translation)
+}
+
+pub fn trans_only_metadata(tcx: &ty::ctxt, name: String) -> CrateTranslation {
+    initialize_llvm(&tcx.sess);
+    let link_meta = link::build_link_meta(&tcx.sess, tcx.map.krate(), name);
+    let (metadata, metadata_module) = write_metadata(tcx, &link_meta, None);
+    CrateTranslation {
+        modules: vec![],
+        metadata_module: metadata_module,
+        link: link_meta,
+        metadata: metadata,
+        reachable: vec![],
+        crate_formats: tcx.dependency_formats.borrow().clone(),
+        no_builtins: true
+    }
 }

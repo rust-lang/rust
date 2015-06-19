@@ -251,8 +251,10 @@ fn encode_symbol(ecx: &EncodeContext,
             rbml_w.wr_tagged_str(tag_items_data_item_symbol, x);
         }
         None => {
-            ecx.diag.handler().bug(
-                &format!("encode_symbol: id not found {}", id));
+            if !ecx.tcx.sess.opts.no_trans {
+                ecx.diag.handler().bug(
+                    &format!("encode_symbol: id not found {}", id));
+            }
         }
     }
 }

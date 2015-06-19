@@ -101,6 +101,7 @@ pub fn compile_input(sess: Session,
                                 CompileState::state_after_expand(input,
                                                                  &sess,
                                                                  outdir,
+                                                                 &outputs,
                                                                  &expanded_crate,
                                                                  &id[..]));
 
@@ -115,6 +116,7 @@ pub fn compile_input(sess: Session,
                                 CompileState::state_after_write_deps(input,
                                                                      &sess,
                                                                      outdir,
+                                                                     &outputs,
                                                                      &ast_map,
                                                                      &ast_map.krate(),
                                                                      &id[..]));
@@ -130,6 +132,7 @@ pub fn compile_input(sess: Session,
                                 CompileState::state_after_analysis(input,
                                                                    &analysis.ty_cx.sess,
                                                                    outdir,
+                                                                   &outputs,
                                                                    analysis.ty_cx.map.krate(),
                                                                    &analysis,
                                                                    &analysis.ty_cx));
@@ -157,6 +160,7 @@ pub fn compile_input(sess: Session,
                             CompileState::state_after_llvm(input,
                                                            &sess,
                                                            outdir,
+                                                           &outputs,
                                                            &trans));
 
     phase_6_link_output(&sess, &trans, &outputs);
@@ -280,12 +284,14 @@ impl<'a, 'ast, 'tcx> CompileState<'a, 'ast, 'tcx> {
     fn state_after_expand(input: &'a Input,
                           session: &'a Session,
                           out_dir: &'a Option<PathBuf>,
+                          outputs: &'a OutputFilenames,
                           expanded_crate: &'a ast::Crate,
                           crate_name: &'a str)
                           -> CompileState<'a, 'ast, 'tcx> {
         CompileState {
             crate_name: Some(crate_name),
             expanded_crate: Some(expanded_crate),
+            output_filenames: Some(outputs),
             .. CompileState::empty(input, session, out_dir)
         }
     }
@@ -293,6 +299,7 @@ impl<'a, 'ast, 'tcx> CompileState<'a, 'ast, 'tcx> {
     fn state_after_write_deps(input: &'a Input,
                               session: &'a Session,
                               out_dir: &'a Option<PathBuf>,
+                              outputs: &'a OutputFilenames,
                               ast_map: &'a ast_map::Map<'ast>,
                               expanded_crate: &'a ast::Crate,
                               crate_name: &'a str)
@@ -301,6 +308,7 @@ impl<'a, 'ast, 'tcx> CompileState<'a, 'ast, 'tcx> {
             crate_name: Some(crate_name),
             ast_map: Some(ast_map),
             expanded_crate: Some(expanded_crate),
+            output_filenames: Some(outputs),
             .. CompileState::empty(input, session, out_dir)
         }
     }
@@ -308,6 +316,7 @@ impl<'a, 'ast, 'tcx> CompileState<'a, 'ast, 'tcx> {
     fn state_after_analysis(input: &'a Input,
                             session: &'a Session,
                             out_dir: &'a Option<PathBuf>,
+                            outputs: &'a OutputFilenames,
                             expanded_crate: &'a ast::Crate,
                             analysis: &'a ty::CrateAnalysis<'tcx>,
                             tcx: &'a ty::ctxt<'tcx>)
@@ -316,6 +325,7 @@ impl<'a, 'ast, 'tcx> CompileState<'a, 'ast, 'tcx> {
             analysis: Some(analysis),
             tcx: Some(tcx),
             expanded_crate: Some(expanded_crate),
+            output_filenames: Some(outputs),
             .. CompileState::empty(input, session, out_dir)
         }
     }
@@ -324,10 +334,12 @@ impl<'a, 'ast, 'tcx> CompileState<'a, 'ast, 'tcx> {
     fn state_after_llvm(input: &'a Input,
                         session: &'a Session,
                         out_dir: &'a Option<PathBuf>,
+                        outputs: &'a OutputFilenames,
                         trans: &'a trans::CrateTranslation)
                         -> CompileState<'a, 'ast, 'tcx> {
         CompileState {
             trans: Some(trans),
+            output_filenames: Some(outputs),
             .. CompileState::empty(input, session, out_dir)
         }
     }
@@ -788,12 +800,13 @@ fn write_out_deps(sess: &Session,
                   id: &str) {
 
     let mut out_filenames = Vec::new();
-    for output_type in &sess.opts.output_types {
-        let file = outputs.path(*output_type);
-        match *output_type {
+    for &output_type in &sess.opts.output_types {
+        let file = outputs.path(output_type);
+        match output_type {
             config::OutputTypeExe => {
-                for output in sess.crate_types.borrow().iter() {
-                    let p = link::filename_for_input(sess, *output,
+                for &output in sess.crate_types.borrow().iter() {
+                    let p = link::filename_for_input(sess, output,
+                                                     output_type,
                                                      id, &file);
                     out_filenames.push(p);
                 }

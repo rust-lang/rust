@@ -12,7 +12,7 @@ use llvm::{ContextRef, ModuleRef};
 use metadata::common::LinkMeta;
 use middle::dependency_format;
 
-pub use self::base::trans_crate;
+pub use self::base::{trans_crate, trans_only_metadata};
 pub use self::context::CrateContext;
 pub use self::common::gensym_name;
 
