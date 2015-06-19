@@ -474,16 +474,9 @@ struct Foo<'a, 'b, A, B, C, D, E, F, G, H> {
 
 
 
-
-## Dropck
-
-TODO
-
-
 ## PhantomData
 
-
-However when working with unsafe code, we can often end up in a situation where
+When working with unsafe code, we can often end up in a situation where
 types or lifetimes are logically associated with a struct, but not actually
 part of a field. This most commonly occurs with lifetimes. For instance, the `Iter`
 for `&'a [T]` is (approximately) defined as follows:
@@ -498,7 +491,8 @@ pub struct Iter<'a, T: 'a> {
 However because `'a` is unused within the struct's body, it's *unbound*.
 Because of the troubles this has historically caused, unbound lifetimes and
 types are *illegal* in struct definitions. Therefore we must somehow refer
-to these types in the body.
+to these types in the body. Correctly doing this is necessary to have
+correct variance and drop checking.
 
 We do this using *PhantomData*, which is a special marker type. PhantomData
 consumes no space, but simulates a field of the given type for the purpose of
@@ -516,8 +510,50 @@ pub struct Iter<'a, T: 'a> {
 }
 ```
 
-However PhantomData is also necessary to signal important information to
-*dropck*. (TODO)
+
+
+
+## Dropck
+
+When a type is going out of scope, Rust will try to Drop it. Drop executes
+arbitrary code, and in fact allows us to "smuggle" arbitrary code execution
+into many places. As such additional soundness checks (dropck) are necessary to
+ensure that a type T can be safely instantiated and dropped. It turns out that we
+*really* don't need to care about dropck in practice, as it often "just works".
+
+However the one exception is with PhantomData. Given a struct like Vec:
+
+```
+struct Vec<T> {
+    data: *const T, // *const for covariance!
+    len: usize,
+    cap: usize,
+}
+```
+
+dropck will generously determine that Vec<T> does not contain any values of
+type T. This will unfortunately allow people to construct unsound Drop
+implementations that access data that has already been dropped. In order to
+tell dropck that we *do* own values of type T and may call destructors of that
+type, we must add extra PhantomData:
+
+```
+struct Vec<T> {
+    data: *const T, // *const for covariance!
+    len: usize,
+    cap: usize,
+    _marker: marker::PhantomData<T>,
+}
+```
+
+Raw pointers that own an allocation is such a pervasive pattern that the
+standard library made a utility for itself called `Unique<T>` which:
+
+* wraps a `*const T`,
+* includes a PhantomData<T>,
+* auto-derives Send/Sync as if T was contained
+* marks the pointer as NonZero for the null-pointer optimization
+
 
 
 
