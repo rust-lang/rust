@@ -212,8 +212,8 @@ http://doc.rust-lang.org/reference.html#trait-objects
 "##,
 
 E0036: r##"
-This error occurred when you pass too many or not enough type parameters to a
-method. Example:
+This error occurrs when you pass too many or not enough type parameters to
+a method. Example:
 
 ```
 struct Test;
