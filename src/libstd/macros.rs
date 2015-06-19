@@ -331,7 +331,7 @@ pub mod builtin {
 
     /// A macro which expands to the line number on which it was invoked.
     ///
-    /// The expanded expression has type `usize`, and the returned line is not
+    /// The expanded expression has type `u32`, and the returned line is not
     /// the invocation of the `line!()` macro itself, but rather the first macro
     /// invocation leading up to the invocation of the `line!()` macro.
     ///
@@ -346,7 +346,7 @@ pub mod builtin {
 
     /// A macro which expands to the column number on which it was invoked.
     ///
-    /// The expanded expression has type `usize`, and the returned column is not
+    /// The expanded expression has type `u32`, and the returned column is not
     /// the invocation of the `column!()` macro itself, but rather the first macro
     /// invocation leading up to the invocation of the `column!()` macro.
     ///
