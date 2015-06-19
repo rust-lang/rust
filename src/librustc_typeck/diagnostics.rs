@@ -1464,9 +1464,6 @@ For more information see the [opt-in builtin traits RFC](https://github.com/rust
 }
 
 register_diagnostics! {
-    E0034, // multiple applicable methods in scope
-    E0035, // does not take type parameters
-    E0036, // incorrect number of type parameters given for this method
     E0044, // foreign items may not have type parameters
     E0045, // variadic function must have C calling convention
     E0068,
