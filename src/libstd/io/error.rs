@@ -37,7 +37,6 @@ pub struct Error {
     repr: Repr,
 }
 
-#[derive(Debug)]
 enum Repr {
     Os(i32),
     Custom(Box<Custom>),
@@ -236,6 +235,17 @@ impl Error {
         match self.repr {
             Repr::Os(code) => sys::decode_error_kind(code),
             Repr::Custom(ref c) => c.kind,
+        }
+    }
+}
+
+impl fmt::Debug for Repr {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            &Repr::Os(ref code) =>
+                fmt.debug_struct("Os").field("code", code)
+                   .field("message", &sys::os::error_string(*code)).finish(),
+            &Repr::Custom(ref c) => fmt.debug_tuple("Custom").field(c).finish(),
         }
     }
 }
