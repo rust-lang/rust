@@ -15,8 +15,6 @@ stack or heap, we will not explain the syntax.
 * [Uninitialized Memory](uninitialized.html)
 * [Ownership-oriented resource management (RAII)](raii.html)
 * [Concurrency](concurrency.html)
-* [Interfacing with other languages (FFI)](ffi.html)
-* [Eliminating the Runtime (no_std)](no_std.html)
 
 ## A Tale Of Two Languages
 
