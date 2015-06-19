@@ -579,6 +579,8 @@ fn trans_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     debuginfo::set_source_location(bcx.fcx, expr.id, expr.span);
 
+    let ty = expr_ty(bcx, expr);
+
     return match expr_kind(bcx, expr) {
         ty::LvalueExpr | ty::RvalueDatumExpr => {
             let datum = unpack_datum!(bcx, {
@@ -590,11 +592,10 @@ fn trans_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
         ty::RvalueStmtExpr => {
             bcx = trans_rvalue_stmt_unadjusted(bcx, expr);
-            nil(bcx, expr_ty(bcx, expr))
+            nil(bcx, ty)
         }
 
         ty::RvalueDpsExpr => {
-            let ty = expr_ty(bcx, expr);
             if type_is_zero_size(bcx.ccx(), ty) {
                 bcx = trans_rvalue_dps_unadjusted(bcx, expr, Ignore);
                 nil(bcx, ty)
@@ -631,6 +632,7 @@ fn trans_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 // Get the appropriate expression kind for the expression. Most of the time this just uses
 // ty::expr_kind, but `ExprCall`s can be treated as `RvalueDatumExpr`s in some cases.
 fn expr_kind<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr) -> ty::ExprKind {
+    let ty = expr_ty(bcx, expr);
     match expr.node {
         ast::ExprCall(ref f, _) if !bcx.tcx().is_method_call(expr.id) => {
             if let ast::ExprPath(..) = f.node {
@@ -652,6 +654,21 @@ fn expr_kind<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr) -> ty::ExprKi
 
                 if is_datum {
                     return ty::RvalueDatumExpr;
+                }
+            }
+        }
+        ast::ExprBlock(ref b) if !bcx.fcx.type_needs_drop(ty) => {
+            // Only consider the final expression if it's reachable
+            let reachable = if let Some(ref cfg) = bcx.fcx.cfg {
+                cfg.node_is_reachable(expr.id)
+            } else {
+                true
+            };
+            // Use the kind of the last expression in the block, since
+            // it's the only one that actually matters
+            if let Some(ref expr) = b.expr {
+                if reachable {
+                    return expr_kind(bcx, expr);
                 }
             }
         }
@@ -756,6 +773,9 @@ fn trans_datum_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 let datum = immediate_rvalue(llval, ty);
                 DatumBlock::new(bcx, datum.to_expr_datum())
             }
+        }
+        ast::ExprBlock(ref b) => {
+            controlflow::trans_block_datum(bcx, b)
         }
         _ => {
             bcx.tcx().sess.span_bug(
@@ -1079,6 +1099,9 @@ fn trans_rvalue_stmt_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         ast::ExprInlineAsm(ref a) => {
             asm::trans_inline_asm(bcx, a)
         }
+        ast::ExprBlock(ref b) => {
+            controlflow::trans_block(bcx, b, Ignore)
+        }
         _ => {
             bcx.tcx().sess.span_bug(
                 expr.span,
@@ -1096,6 +1119,10 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let _icx = push_ctxt("trans_rvalue_dps_unadjusted");
     let mut bcx = bcx;
     let tcx = bcx.tcx();
+
+    if bcx.unreachable.get() {
+        return bcx;
+    }
 
     debuginfo::set_source_location(bcx.fcx, expr.id, expr.span);
 
@@ -2479,13 +2506,10 @@ impl OverflowOpViaIntrinsic {
 
         let val = Call(bcx, llfn, &[lhs, rhs], None, binop_debug_loc);
         let result = ExtractValue(bcx, val, 0); // iN operation result
-        let overflow = ExtractValue(bcx, val, 1); // i1 "did it overflow?"
-
-        let cond = ICmp(bcx, llvm::IntEQ, overflow, C_integral(Type::i1(bcx.ccx()), 1, false),
-                        binop_debug_loc);
+        let cond = ExtractValue(bcx, val, 1); // i1 "did it overflow?"
 
         let expect = bcx.ccx().get_intrinsic(&"llvm.expect.i1");
-        Call(bcx, expect, &[cond, C_integral(Type::i1(bcx.ccx()), 0, false)],
+        let cond = Call(bcx, expect, &[cond, C_integral(Type::i1(bcx.ccx()), 0, false)],
              None, binop_debug_loc);
 
         let bcx =
