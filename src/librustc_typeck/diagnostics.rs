@@ -746,6 +746,38 @@ fn some_func(x: &mut i32) {
 ```
 "##,
 
+E0071: r##"
+You tried to use a structure initialization with a non-structure type.
+Example of erroneous code:
+
+```
+enum Foo { f };
+
+let u = Foo::f { value: 0i32 }; // error: Foo:f isn't a structure!
+// or even more simple:
+let u = t { random_field: 0i32 }; //error: t isn't a structure!
+```
+
+To fix this error, please declare the structure with the given name
+first:
+
+```
+struct Inner {
+    value: i32
+}
+
+enum Foo {
+    f(Inner)
+}
+
+fn main() {
+    let u = Foo::f(Inner { value: 0i32 });
+    // or even more simple:
+    let t = Inner { value: 0i32 };
+}
+```
+"##,
+
 E0072: r##"
 When defining a recursive struct or enum, any use of the type being defined
 from inside the definition must occur behind a pointer (like `Box` or `&`).
@@ -1505,7 +1537,6 @@ register_diagnostics! {
     E0035, // does not take type parameters
     E0036, // incorrect number of type parameters given for this method
     E0068,
-    E0071,
     E0074,
     E0075,
     E0076,
