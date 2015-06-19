@@ -856,18 +856,36 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
         // this function, so we just codegen a generic reference to it. We don't
         // specify any of the types for the function, we just make it a symbol
         // that LLVM can later use.
+        //
+        // Note that MSVC is a little special here in that we don't use the
+        // `eh_personality` lang item at all. Currently LLVM has support for
+        // both Dwarf and SEH unwind mechanisms for MSVC targets and uses the
+        // *name of the personality function* to decide what kind of unwind side
+        // tables/landing pads to emit. It looks like Dwarf is used by default,
+        // injecting a dependency on the `_Unwind_Resume` symbol for resuming
+        // an "exception", but for MSVC we want to force SEH. This means that we
+        // can't actually have the personality function be our standard
+        // `rust_eh_personality` function, but rather we wired it up to the
+        // CRT's custom `__C_specific_handler` personality funciton, which
+        // forces LLVM to consider landing pads as "landing pads for SEH".
+        let target = &self.ccx.sess().target.target;
         let llpersonality = match pad_bcx.tcx().lang_items.eh_personality() {
-            Some(def_id) => {
+            Some(def_id) if !target.options.is_like_msvc => {
                 callee::trans_fn_ref(pad_bcx.ccx(), def_id, ExprId(0),
                                      pad_bcx.fcx.param_substs).val
             }
-            None => {
+            _ => {
                 let mut personality = self.ccx.eh_personality().borrow_mut();
                 match *personality {
                     Some(llpersonality) => llpersonality,
                     None => {
+                        let name = if target.options.is_like_msvc {
+                            "__C_specific_handler"
+                        } else {
+                            "rust_eh_personality"
+                        };
                         let fty = Type::variadic_func(&[], &Type::i32(self.ccx));
-                        let f = declare::declare_cfn(self.ccx, "rust_eh_personality", fty,
+                        let f = declare::declare_cfn(self.ccx, name, fty,
                                                      self.ccx.tcx().types.i32);
                         *personality = Some(f);
                         f
