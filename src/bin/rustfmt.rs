@@ -9,7 +9,6 @@
 // except according to those terms.
 
 #![cfg(not(test))]
-#![feature(exit_status)]
 
 extern crate rustfmt;
 
@@ -24,28 +23,7 @@ fn main() {
     let mut def_config = String::new();
     def_config_file.read_to_string(&mut def_config).unwrap();
 
-    //run(args, WriteMode::Display, &def_config);
     run(args, WriteMode::Overwrite, &def_config);
 
-    std::env::set_exit_status(0);
-
-    // TODO unit tests
-    // let fmt = ListFormatting {
-    //     tactic: ListTactic::Horizontal,
-    //     separator: ",",
-    //     trailing_separator: SeparatorTactic::Vertical,
-    //     indent: 2,
-    //     h_width: 80,
-    //     v_width: 100,
-    // };
-    // let inputs = vec![(format!("foo"), String::new()),
-    //                   (format!("foo"), String::new()),
-    //                   (format!("foo"), String::new()),
-    //                   (format!("foo"), String::new()),
-    //                   (format!("foo"), String::new()),
-    //                   (format!("foo"), String::new()),
-    //                   (format!("foo"), String::new()),
-    //                   (format!("foo"), String::new())];
-    // let s = write_list(&inputs, &fmt);
-    // println!("  {}", s);
+    std::process::exit(0);
 }

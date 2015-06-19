@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #![feature(rustc_private)]
-#![feature(collections)]
+#![feature(str_escape)]
 #![feature(str_char)]
 
 // TODO we're going to allocate a whole bunch of temp Strings, is it worth
