@@ -41,7 +41,7 @@ pub mod raw;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub mod prelude {
     #[doc(no_inline)]
-    pub use super::io::{RawFd, AsRawFd};
+    pub use super::io::{RawFd, AsRawFd, FromRawFd};
     #[doc(no_inline)] #[stable(feature = "rust1", since = "1.0.0")]
     pub use super::ffi::{OsStrExt, OsStringExt};
     #[doc(no_inline)]
