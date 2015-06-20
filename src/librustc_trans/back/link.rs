@@ -594,12 +594,50 @@ fn gold_plugin_path(sess: &Session) -> PathBuf {
     s
 }
 
+pub fn link_outputs_for_pnacl(sess: &Session,
+                              trans: &CrateTranslation,
+                              outputs: &OutputFilenames) {
+    // Rlibs and statics first, then exes.
+    for &crate_type in sess.crate_types.borrow().iter() {
+        match crate_type {
+            config::CrateTypeDylib => unreachable!(),
+            config::CrateTypeRlib => link_pnacl_rlib(sess, trans, outputs),
+            config::CrateTypeExecutable => {}
+            config::CrateTypeStaticlib => unimplemented!(),
+        }
+    }
+
+    for &crate_type in sess.crate_types.borrow().iter() {
+        match crate_type {
+            config::CrateTypeExecutable => link_pnacl_binary(sess, trans,
+                                                             outputs),
+            _ => (),
+        }
+    }
+
+    // cleanup:
+    if !sess.opts.cg.save_temps {
+        for (index, mtrans) in trans.modules.iter().enumerate() {
+            let f = match mtrans.name {
+                Some(ref name) => outputs
+                    .with_extension(&format!("{}.bc",
+                                             name)[..]),
+                None => outputs
+                    .with_extension(&format!("{}.bc",
+                                             index)[..]),
+            };
+            remove(sess, &f);
+        }
+
+        remove(sess, &outputs.with_extension("metadata.bc"));
+    }
+}
+
 fn link_pnacl_rlib(sess: &Session,
                    trans: &CrateTranslation,
-                   outputs: &OutputFilenames,
-                   crate_name: &str) {
+                   outputs: &OutputFilenames) {
     let (_, out_filename) = check_outputs(sess, config::CrateTypeRlib,
-                                          outputs, crate_name);
+                                          outputs, &trans.link.crate_name[..]);
 
     #[cfg(not(target_os = "nacl"))]
     fn create_archive_config(sess: &Session, out_filename: PathBuf) -> ArchiveBuilder {
@@ -682,56 +720,9 @@ fn link_pnacl_rlib(sess: &Session,
     sess.abort_if_errors();
 }
 
-pub fn link_outputs_for_pnacl(sess: &Session,
-                              trans: &mut CrateTranslation,
-                              outputs: &OutputFilenames,
-                              crate_name: &str) {
-    use super::write;
-
-    write::run_passes(sess, trans,
-                      &sess.opts.output_types[..],
-                      outputs);
-
-    // Rlibs and statics first, then exes.
-    for &crate_type in sess.crate_types.borrow().iter() {
-        match crate_type {
-            config::CrateTypeDylib => unreachable!(),
-            config::CrateTypeRlib => link_pnacl_rlib(sess, trans, outputs, crate_name),
-            config::CrateTypeExecutable => {}
-            config::CrateTypeStaticlib => unimplemented!(),
-        }
-    }
-
-    for &crate_type in sess.crate_types.borrow().iter() {
-        match crate_type {
-            config::CrateTypeExecutable => link_pnacl_module(sess, trans,
-                                                             outputs, crate_name),
-            _ => (),
-        }
-    }
-
-    // cleanup:
-    if !sess.opts.cg.save_temps {
-        for (index, mtrans) in trans.modules.iter().enumerate() {
-            let f = match mtrans.name {
-                Some(ref name) => outputs
-                    .with_extension(&format!("{}.bc",
-                                             name)[..]),
-                None => outputs
-                    .with_extension(&format!("{}.bc",
-                                             index)[..]),
-            };
-            remove(sess, &f);
-        }
-
-        remove(sess, &outputs.with_extension("metadata.bc"));
-    }
-}
-
-pub fn link_pnacl_module(sess: &Session,
-                         trans: &mut CrateTranslation,
-                         outputs: &OutputFilenames,
-                         crate_name: &str) {
+pub fn link_pnacl_binary(sess: &Session,
+                         trans: &CrateTranslation,
+                         outputs: &OutputFilenames) {
     // Note that we don't use pnacl-ld here. We want to avoid the costly post-link
     // simplification passes pnacl-ld runs (it runs -O *post link*). Instead,
     // since pnacl-ld's output is just bitcode, what we do here is pull all of
@@ -1066,7 +1057,8 @@ pub fn link_pnacl_module(sess: &Session,
         Some(ref file) => file.clone(),
         None => {
             let out_filename = outputs.path(OutputTypeExe);
-            filename_for_input(sess, config::CrateTypeExecutable, crate_name, &out_filename)
+            filename_for_input(sess, config::CrateTypeExecutable,
+                               &trans.link.crate_name[..], &out_filename)
         }
     };
     let out_cstr = format!("{}\0", out.display().to_string());

@@ -150,7 +150,6 @@ pub fn compile_input(sess: Session,
 
         (outputs, trans, tcx.sess)
     };
-    if !sess.target.target.options.is_like_pnacl {
         phase_5_run_llvm_passes(&sess, &mut trans, &outputs);
         controller_entry_point!(after_llvm,
                             sess,
@@ -160,13 +159,6 @@ pub fn compile_input(sess: Session,
                                                            &trans));
 
         phase_6_link_output(&sess, &trans, &outputs);
-    } else {
-        let cid = trans.link.crate_name.clone();
-        link::link_outputs_for_pnacl(&sess,
-                                     &mut trans,
-                                     &outputs,
-                                     &cid[..]);
-    }
 }
 
 /// The name used for source code that doesn't originate in a file
@@ -744,7 +736,7 @@ pub fn phase_4_translate_to_llvm<'tcx>(analysis: ty::CrateAnalysis<'tcx>)
 pub fn phase_5_run_llvm_passes(sess: &Session,
                                trans: &mut trans::CrateTranslation,
                                outputs: &OutputFilenames) {
-    if sess.opts.cg.no_integrated_as {
+    if sess.opts.cg.no_integrated_as && !sess.target.target.options.is_like_pnacl {
         let output_type = config::OutputTypeAssembly;
 
         time(sess.time_passes(), "LLVM passes", (), |_|
@@ -777,11 +769,18 @@ pub fn phase_6_link_output(sess: &Session,
     new_path.extend(env::split_paths(&old_path));
     env::set_var("PATH", &env::join_paths(new_path.iter()).unwrap());
 
-    time(sess.time_passes(), "linking", (), |_|
-         link::link_binary(sess,
-                           trans,
-                           outputs,
-                           &trans.link.crate_name));
+    time(sess.time_passes(), "linking", (), |_| {
+        if !sess.target.target.options.is_like_pnacl {
+            link::link_binary(sess,
+                              trans,
+                              outputs,
+                              &trans.link.crate_name);
+        } else {
+            link::link_outputs_for_pnacl(&sess,
+                                         &trans,
+                                         &outputs);
+        }
+    });
 
     env::set_var("PATH", &old_path);
 }

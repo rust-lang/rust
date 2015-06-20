@@ -623,7 +623,7 @@ pub fn run_passes(sess: &Session,
     let needs_crate_bitcode =
             sess.crate_types.borrow().contains(&config::CrateTypeRlib) &&
             sess.opts.output_types.contains(&config::OutputTypeExe);
-    if needs_crate_bitcode || sess.target.target.options.is_like_pnacl {
+    if needs_crate_bitcode {
         modules_config.emit_bc = true;
     }
 
@@ -653,7 +653,7 @@ pub fn run_passes(sess: &Session,
     metadata_config.set_flags(sess, trans);
 
     if sess.target.target.options.is_like_pnacl {
-        // If targeting PNaCl, never try to run codegen.
+        // If targeting PNaCl, we only want to emit bitcode.
         metadata_config.emit_bc = true;
         metadata_config.emit_no_opt_bc = false;
         metadata_config.emit_lto_bc = false;
