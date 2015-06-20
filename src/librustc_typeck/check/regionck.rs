@@ -95,6 +95,7 @@ use middle::ty::{self, ClosureTyper, ReScope, Ty, MethodCall};
 use middle::infer::{self, GenericKind};
 use middle::pat_util;
 
+use std::collections::HashSet;
 use std::mem;
 use syntax::{ast, ast_util};
 use syntax::codemap::Span;
@@ -1397,115 +1398,133 @@ pub fn type_must_outlive<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
                                ty: Ty<'tcx>,
                                region: ty::Region)
 {
-    debug!("type_must_outlive(ty={:?}, region={:?})",
+    type_must_outlive_inner(rcx, origin, ty, region, &mut HashSet::new());
+
+    fn type_must_outlive_inner<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
+                                   origin: infer::SubregionOrigin<'tcx>,
+                                   ty: Ty<'tcx>,
+                                   region: ty::Region,
+                                   visited: &mut HashSet<(Ty<'tcx>, ty::Region, Span)>) {
+        debug!("type_must_outlive(ty={:?}, region={:?})",
            ty,
            region);
 
-    let implications = implicator::implications(rcx.fcx.infcx(), rcx.fcx, rcx.body_id,
-                                                ty, region, origin.span());
-    for implication in implications {
-        debug!("implication: {:?}", implication);
-        match implication {
-            implicator::Implication::RegionSubRegion(None, r_a, r_b) => {
-                rcx.fcx.mk_subr(origin.clone(), r_a, r_b);
-            }
-            implicator::Implication::RegionSubRegion(Some(ty), r_a, r_b) => {
-                let o1 = infer::ReferenceOutlivesReferent(ty, origin.span());
-                rcx.fcx.mk_subr(o1, r_a, r_b);
-            }
-            implicator::Implication::RegionSubGeneric(None, r_a, ref generic_b) => {
-                generic_must_outlive(rcx, origin.clone(), r_a, generic_b);
-            }
-            implicator::Implication::RegionSubGeneric(Some(ty), r_a, ref generic_b) => {
-                let o1 = infer::ReferenceOutlivesReferent(ty, origin.span());
-                generic_must_outlive(rcx, o1, r_a, generic_b);
-            }
-            implicator::Implication::RegionSubClosure(_, r_a, def_id, substs) => {
-                closure_must_outlive(rcx, origin.clone(), r_a, def_id, substs);
-            }
-            implicator::Implication::Predicate(def_id, predicate) => {
-                let cause = traits::ObligationCause::new(origin.span(),
-                                                         rcx.body_id,
-                                                         traits::ItemObligation(def_id));
-                let obligation = traits::Obligation::new(cause, predicate);
-                rcx.fcx.register_predicate(obligation);
+        let implications = implicator::implications(rcx.fcx.infcx(), rcx.fcx, rcx.body_id,
+                                                    ty, region, origin.span());
+
+        let candidate = (ty, region, origin.span());
+        if visited.contains(&candidate) {
+            span_err!(rcx.tcx().sess, origin.span(), E0399,
+                      "recursive overflow detected while checking type lifetime rules for {}", ty);
+            return;
+        }
+        visited.insert(candidate);
+
+        for implication in implications {
+            debug!("implication: {:?}", implication);
+            match implication {
+                implicator::Implication::RegionSubRegion(None, r_a, r_b) => {
+                    rcx.fcx.mk_subr(origin.clone(), r_a, r_b);
+                }
+                implicator::Implication::RegionSubRegion(Some(ty), r_a, r_b) => {
+                    let o1 = infer::ReferenceOutlivesReferent(ty, origin.span());
+                    rcx.fcx.mk_subr(o1, r_a, r_b);
+                }
+                implicator::Implication::RegionSubGeneric(None, r_a, ref generic_b) => {
+                    generic_must_outlive_inner(rcx, origin.clone(), r_a, generic_b);
+                }
+                implicator::Implication::RegionSubGeneric(Some(ty), r_a, ref generic_b) => {
+                    let o1 = infer::ReferenceOutlivesReferent(ty, origin.span());
+                    generic_must_outlive_inner(rcx, o1, r_a, generic_b);
+                }
+                implicator::Implication::RegionSubClosure(_, r_a, def_id, substs) => {
+                    closure_must_outlive_inner(rcx, origin.clone(), r_a, def_id, substs, visited);
+                }
+                implicator::Implication::Predicate(def_id, predicate) => {
+                    let cause = traits::ObligationCause::new(origin.span(),
+                                                             rcx.body_id,
+                                                             traits::ItemObligation(def_id));
+                    let obligation = traits::Obligation::new(cause, predicate);
+                    rcx.fcx.register_predicate(obligation);
+                }
             }
         }
     }
-}
 
-fn closure_must_outlive<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
+    fn closure_must_outlive_inner<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
                                   origin: infer::SubregionOrigin<'tcx>,
                                   region: ty::Region,
                                   def_id: ast::DefId,
-                                  substs: &'tcx Substs<'tcx>) {
-    debug!("closure_must_outlive(region={:?}, def_id={:?}, substs={:?})",
+                                  substs: &'tcx Substs<'tcx>,
+                                  visited: &mut HashSet<(Ty<'tcx>, ty::Region, Span)>) {
+        debug!("closure_must_outlive(region={:?}, def_id={:?}, substs={:?})",
            region, def_id, substs);
 
-    let upvars = rcx.fcx.closure_upvars(def_id, substs).unwrap();
-    for upvar in upvars {
-        let var_id = upvar.def.def_id().local_id();
-        type_must_outlive(
-            rcx, infer::FreeVariable(origin.span(), var_id),
-            upvar.ty, region);
+        let upvars = rcx.fcx.closure_upvars(def_id, substs).unwrap();
+        for upvar in upvars {
+            let var_id = upvar.def.def_id().local_id();
+            type_must_outlive_inner(
+                rcx, infer::FreeVariable(origin.span(), var_id),
+                upvar.ty, region, &mut visited.clone());
+        }
     }
-}
 
-fn generic_must_outlive<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
+    fn generic_must_outlive_inner<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
                                   origin: infer::SubregionOrigin<'tcx>,
                                   region: ty::Region,
                                   generic: &GenericKind<'tcx>) {
-    let param_env = &rcx.fcx.inh.param_env;
+        let param_env = &rcx.fcx.inh.param_env;
 
-    debug!("param_must_outlive(region={:?}, generic={:?})",
+        debug!("param_must_outlive(region={:?}, generic={:?})",
            region,
            generic);
 
-    // To start, collect bounds from user:
-    let mut param_bounds =
-        ty::required_region_bounds(rcx.tcx(),
-                                   generic.to_ty(rcx.tcx()),
-                                   param_env.caller_bounds.clone());
+        // To start, collect bounds from user:
+        let mut param_bounds =
+            ty::required_region_bounds(rcx.tcx(),
+                                       generic.to_ty(rcx.tcx()),
+                                       param_env.caller_bounds.clone());
 
-    // In the case of a projection T::Foo, we may be able to extract bounds from the trait def:
-    match *generic {
-        GenericKind::Param(..) => { }
-        GenericKind::Projection(ref projection_ty) => {
-            param_bounds.push_all(
-                &projection_bounds(rcx, origin.span(), projection_ty));
+        // In the case of a projection T::Foo, we may be able to extract bounds from the trait def:
+        match *generic {
+            GenericKind::Param(..) => { }
+            GenericKind::Projection(ref projection_ty) => {
+                param_bounds.push_all(
+                    &projection_bounds(rcx, origin.span(), projection_ty));
+            }
         }
-    }
 
-    // Add in the default bound of fn body that applies to all in
-    // scope type parameters:
-    param_bounds.push(param_env.implicit_region_bound);
+        // Add in the default bound of fn body that applies to all in
+        // scope type parameters:
+        param_bounds.push(param_env.implicit_region_bound);
 
-    // Finally, collect regions we scraped from the well-formedness
-    // constraints in the fn signature. To do that, we walk the list
-    // of known relations from the fn ctxt.
-    //
-    // This is crucial because otherwise code like this fails:
-    //
-    //     fn foo<'a, A>(x: &'a A) { x.bar() }
-    //
-    // The problem is that the type of `x` is `&'a A`. To be
-    // well-formed, then, A must be lower-generic by `'a`, but we
-    // don't know that this holds from first principles.
-    for &(ref r, ref p) in &rcx.region_bound_pairs {
-        debug!("generic={:?} p={:?}",
+        // Finally, collect regions we scraped from the well-formedness
+        // constraints in the fn signature. To do that, we walk the list
+        // of known relations from the fn ctxt.
+        //
+        // This is crucial because otherwise code like this fails:
+        //
+        //     fn foo<'a, A>(x: &'a A) { x.bar() }
+        //
+        // The problem is that the type of `x` is `&'a A`. To be
+        // well-formed, then, A must be lower-generic by `'a`, but we
+        // don't know that this holds from first principles.
+        for &(ref r, ref p) in &rcx.region_bound_pairs {
+            debug!("generic={:?} p={:?}",
                generic,
                p);
-        if generic == p {
-            param_bounds.push(*r);
+            if generic == p {
+                param_bounds.push(*r);
+            }
         }
-    }
 
-    // Inform region inference that this generic must be properly
-    // bounded.
-    rcx.fcx.infcx().verify_generic_bound(origin,
-                                         generic.clone(),
-                                         region,
-                                         param_bounds);
+        // Inform region inference that this generic must be properly
+        // bounded.
+        rcx.fcx.infcx().verify_generic_bound(origin,
+                                             generic.clone(),
+                                             region,
+                                             param_bounds);
+    }
 }
 
 fn projection_bounds<'a,'tcx>(rcx: &Rcx<'a, 'tcx>,
