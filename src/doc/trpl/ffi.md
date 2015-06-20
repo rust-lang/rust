@@ -530,3 +530,37 @@ The `extern` makes this function adhere to the C calling convention, as
 discussed above in "[Foreign Calling
 Conventions](ffi.html#foreign-calling-conventions)". The `no_mangle`
 attribute turns off Rust's name mangling, so that it is easier to link to.
+
+# FFI and panics
+
+It’s important to be mindful of `panic!`s when working with FFI. This code,
+when called from C, will `abort`:
+
+```rust
+#[no_mangle]
+pub extern fn oh_no() -> ! {
+    panic!("Oops!");
+}
+# fn main() {}
+```
+
+If you’re writing code that may panic, you should run it in another thread,
+so that the panic doesn’t bubble up to C:
+
+```rust
+use std::thread;
+
+#[no_mangle]
+pub extern fn oh_no() -> i32 {
+    let h = thread::spawn(|| {
+        panic!("Oops!");
+    });
+
+    match h.join() {
+        Ok(_) => 1,
+        Err(_) => 0,
+    }
+}
+# fn main() {}
+```
+
