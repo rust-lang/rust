@@ -36,12 +36,12 @@ fn ensure_array_fits_in_address_space<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
 pub fn arg_is_indirect<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                  arg_ty: Ty<'tcx>) -> bool {
-    !type_is_immediate(ccx, arg_ty)
+    !type_is_immediate(ccx, arg_ty) && !type_is_fat_ptr(ccx.tcx(), arg_ty)
 }
 
 pub fn return_uses_outptr<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                     ty: Ty<'tcx>) -> bool {
-    !type_is_immediate(ccx, ty)
+    arg_is_indirect(ccx, ty)
 }
 
 pub fn type_of_explicit_arg<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
@@ -136,8 +136,15 @@ pub fn type_of_rust_fn<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     }
 
     // ... then explicit args.
-    let input_tys = inputs.iter().map(|&arg_ty| type_of_explicit_arg(cx, arg_ty));
-    atys.extend(input_tys);
+    for input in &inputs {
+        let arg_ty = type_of_explicit_arg(cx, input);
+
+        if type_is_fat_ptr(cx.tcx(), input) {
+            atys.extend(arg_ty.field_types());
+        } else {
+            atys.push(arg_ty);
+        }
+    }
 
     Type::func(&atys[..], &lloutputtype)
 }

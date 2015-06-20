@@ -259,7 +259,7 @@ fn get_drop_glue_core<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     // llfn is expected be declared to take a parameter of the appropriate
     // type, so we don't need to explicitly cast the function parameter.
 
-    let llrawptr0 = get_param(llfn, fcx.arg_pos(0) as c_uint);
+    let llrawptr0 = get_param(llfn, fcx.arg_offset() as c_uint);
     let bcx = make_drop_glue(bcx, llrawptr0, g);
     finish_fn(&fcx, bcx, ty::FnConverging(ty::mk_nil(ccx.tcx())), DebugLoc::None);
 

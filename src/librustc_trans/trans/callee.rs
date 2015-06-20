@@ -21,9 +21,7 @@ pub use self::CallArgs::*;
 use arena::TypedArena;
 use back::link;
 use session;
-use llvm::ValueRef;
-use llvm::get_param;
-use llvm;
+use llvm::{self, ValueRef, get_params};
 use metadata::csearch;
 use middle::def;
 use middle::subst;
@@ -343,19 +341,16 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
                       &block_arena);
     let mut bcx = init_function(&fcx, false, sig.output);
 
+    let llargs = get_params(fcx.llfn);
+
+    let self_idx = fcx.arg_offset();
     // the first argument (`self`) will be ptr to the the fn pointer
     let llfnpointer = if is_by_ref {
-        Load(bcx, get_param(fcx.llfn, fcx.arg_pos(0) as u32))
+        Load(bcx, llargs[self_idx])
     } else {
-        get_param(fcx.llfn, fcx.arg_pos(0) as u32)
+        llargs[self_idx]
     };
 
-    // the remaining arguments will be the untupled values
-    let llargs: Vec<_> =
-        sig.inputs.iter()
-        .enumerate()
-        .map(|(i, _)| get_param(fcx.llfn, fcx.arg_pos(i+1) as u32))
-        .collect();
     assert!(!fcx.needs_ret_allocas);
 
     let dest = fcx.llretslotptr.get().map(|_|
@@ -366,7 +361,7 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
                            DebugLoc::None,
                            bare_fn_ty,
                            |bcx, _| Callee { bcx: bcx, data: Fn(llfnpointer) },
-                           ArgVals(&llargs[..]),
+                           ArgVals(&llargs[(self_idx + 1)..]),
                            dest).bcx;
 
     finish_fn(&fcx, bcx, sig.output, DebugLoc::None);
@@ -927,13 +922,12 @@ fn trans_args_under_call_abi<'blk, 'tcx>(
     // Translate the `self` argument first.
     if !ignore_self {
         let arg_datum = unpack_datum!(bcx, expr::trans(bcx, &*arg_exprs[0]));
-        llargs.push(unpack_result!(bcx, {
-            trans_arg_datum(bcx,
-                            args[0],
-                            arg_datum,
-                            arg_cleanup_scope,
-                            DontAutorefArg)
-        }))
+        bcx = trans_arg_datum(bcx,
+                              args[0],
+                              arg_datum,
+                              arg_cleanup_scope,
+                              DontAutorefArg,
+                              llargs);
     }
 
     // Now untuple the rest of the arguments.
@@ -951,21 +945,20 @@ fn trans_args_under_call_abi<'blk, 'tcx>(
                                                           tuple_expr.id));
             let repr = adt::represent_type(bcx.ccx(), tuple_type);
             let repr_ptr = &*repr;
-            llargs.extend(field_types.iter().enumerate().map(|(i, field_type)| {
+            for (i, field_type) in field_types.iter().enumerate() {
                 let arg_datum = tuple_lvalue_datum.get_element(
                     bcx,
                     field_type,
                     |srcval| {
                         adt::trans_field_ptr(bcx, repr_ptr, srcval, 0, i)
                     }).to_expr_datum();
-                unpack_result!(bcx, trans_arg_datum(
-                    bcx,
-                    field_type,
-                    arg_datum,
-                    arg_cleanup_scope,
-                    DontAutorefArg)
-                )
-            }));
+                bcx = trans_arg_datum(bcx,
+                                      field_type,
+                                      arg_datum,
+                                      arg_cleanup_scope,
+                                      DontAutorefArg,
+                                      llargs);
+            }
         }
         _ => {
             bcx.sess().span_bug(tuple_expr.span,
@@ -988,13 +981,12 @@ fn trans_overloaded_call_args<'blk, 'tcx>(
     let arg_tys = ty::erase_late_bound_regions(bcx.tcx(),  &ty::ty_fn_args(fn_ty));
     if !ignore_self {
         let arg_datum = unpack_datum!(bcx, expr::trans(bcx, arg_exprs[0]));
-        llargs.push(unpack_result!(bcx, {
-            trans_arg_datum(bcx,
-                            arg_tys[0],
-                            arg_datum,
-                            arg_cleanup_scope,
-                            DontAutorefArg)
-        }))
+        bcx = trans_arg_datum(bcx,
+                              arg_tys[0],
+                              arg_datum,
+                              arg_cleanup_scope,
+                              DontAutorefArg,
+                              llargs);
     }
 
     // Now untuple the rest of the arguments.
@@ -1004,13 +996,12 @@ fn trans_overloaded_call_args<'blk, 'tcx>(
             for (i, &field_type) in field_types.iter().enumerate() {
                 let arg_datum =
                     unpack_datum!(bcx, expr::trans(bcx, arg_exprs[i + 1]));
-                llargs.push(unpack_result!(bcx, {
-                    trans_arg_datum(bcx,
-                                    field_type,
-                                    arg_datum,
-                                    arg_cleanup_scope,
-                                    DontAutorefArg)
-                }))
+                bcx = trans_arg_datum(bcx,
+                                      field_type,
+                                      arg_datum,
+                                      arg_cleanup_scope,
+                                      DontAutorefArg,
+                                      llargs);
             }
         }
         _ => {
@@ -1067,11 +1058,10 @@ pub fn trans_args<'a, 'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                 };
 
                 let arg_datum = unpack_datum!(bcx, expr::trans(bcx, &**arg_expr));
-                llargs.push(unpack_result!(bcx, {
-                    trans_arg_datum(bcx, arg_ty, arg_datum,
-                                    arg_cleanup_scope,
-                                    DontAutorefArg)
-                }));
+                bcx = trans_arg_datum(bcx, arg_ty, arg_datum,
+                                      arg_cleanup_scope,
+                                      DontAutorefArg,
+                                      llargs);
             }
         }
         ArgOverloadedCall(arg_exprs) => {
@@ -1085,19 +1075,17 @@ pub fn trans_args<'a, 'blk, 'tcx>(cx: Block<'blk, 'tcx>,
         ArgOverloadedOp(lhs, rhs, autoref) => {
             assert!(!variadic);
 
-            llargs.push(unpack_result!(bcx, {
-                trans_arg_datum(bcx, arg_tys[0], lhs,
-                                arg_cleanup_scope,
-                                DontAutorefArg)
-            }));
+            bcx = trans_arg_datum(bcx, arg_tys[0], lhs,
+                                  arg_cleanup_scope,
+                                  DontAutorefArg,
+                                  llargs);
 
             assert_eq!(arg_tys.len(), 1 + rhs.len());
             for (rhs, rhs_id) in rhs {
-                llargs.push(unpack_result!(bcx, {
-                    trans_arg_datum(bcx, arg_tys[1], rhs,
-                                    arg_cleanup_scope,
-                                    if autoref { DoAutorefArg(rhs_id) } else { DontAutorefArg })
-                }));
+                bcx = trans_arg_datum(bcx, arg_tys[1], rhs,
+                                      arg_cleanup_scope,
+                                      if autoref { DoAutorefArg(rhs_id) } else { DontAutorefArg },
+                                      llargs);
             }
         }
         ArgVals(vs) => {
@@ -1118,8 +1106,9 @@ pub fn trans_arg_datum<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                    formal_arg_ty: Ty<'tcx>,
                                    arg_datum: Datum<'tcx, Expr>,
                                    arg_cleanup_scope: cleanup::ScopeId,
-                                   autoref_arg: AutorefArg)
-                                   -> Result<'blk, 'tcx> {
+                                   autoref_arg: AutorefArg,
+                                   llargs: &mut Vec<ValueRef>)
+                                   -> Block<'blk, 'tcx> {
     let _icx = push_ctxt("trans_arg_datum");
     let mut bcx = bcx;
     let ccx = bcx.ccx();
@@ -1141,6 +1130,10 @@ pub fn trans_arg_datum<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 bcx, arg_datum.to_lvalue_datum(bcx, "arg", arg_id));
             val = arg_datum.val;
         }
+        DontAutorefArg if common::type_is_fat_ptr(bcx.tcx(), arg_datum_ty) &&
+                !bcx.fcx.type_needs_drop(arg_datum_ty) => {
+            val = arg_datum.val
+        }
         DontAutorefArg => {
             // Make this an rvalue, since we are going to be
             // passing ownership.
@@ -1159,7 +1152,7 @@ pub fn trans_arg_datum<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         }
     }
 
-    if formal_arg_ty != arg_datum_ty {
+    if type_of::arg_is_indirect(ccx, formal_arg_ty) && formal_arg_ty != arg_datum_ty {
         // this could happen due to e.g. subtyping
         let llformal_arg_ty = type_of::type_of_explicit_arg(ccx, formal_arg_ty);
         debug!("casting actual type ({}) to match formal ({})",
@@ -1170,5 +1163,13 @@ pub fn trans_arg_datum<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }
 
     debug!("--- trans_arg_datum passing {}", bcx.val_to_string(val));
-    Result::new(bcx, val)
+
+    if common::type_is_fat_ptr(bcx.tcx(), formal_arg_ty) {
+        llargs.push(Load(bcx, expr::get_dataptr(bcx, val)));
+        llargs.push(Load(bcx, expr::get_len(bcx, val)));
+    } else {
+        llargs.push(val);
+    }
+
+    bcx
 }

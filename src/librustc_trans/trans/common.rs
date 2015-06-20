@@ -421,13 +421,8 @@ pub struct FunctionContext<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
-    pub fn arg_pos(&self, arg: usize) -> usize {
-        let arg = self.env_arg_pos() + arg;
-        if self.llenv.is_some() {
-            arg + 1
-        } else {
-            arg
-        }
+    pub fn arg_offset(&self) -> usize {
+        self.env_arg_pos() + if self.llenv.is_some() { 1 } else { 0 }
     }
 
     pub fn env_arg_pos(&self) -> usize {
