@@ -990,30 +990,6 @@ LLVMRustArrayType(LLVMTypeRef ElementType, uint64_t ElementCount) {
     return wrap(ArrayType::get(unwrap(ElementType), ElementCount));
 }
 
-static void ignore_debug_metadata_diagnostic_handler(const DiagnosticInfo& di, void* _context) {
-  switch(di.getSeverity()) {
-  case DS_Error:
-    if(!isa<DiagnosticInfoDebugMetadataVersion>(di)) {
-      raw_fd_ostream stdout_(fileno(stdout), false);
-      DiagnosticPrinterRawOStream diag(stdout_);
-      di.print(diag);
-    }
-  default:
-    return;
-  }
-}
-
-extern "C" void
-LLVMRustSetContextIgnoreDebugMetadataVersionDiagnostics(LLVMContextRef C) {
-  LLVMContext* Context = unwrap(C);
-  Context->setDiagnosticHandler(ignore_debug_metadata_diagnostic_handler);
-}
-extern "C" void
-LLVMRustResetContextIgnoreDebugMetadataVersionDiagnostics(LLVMContextRef C) {
-  LLVMContext* Context = unwrap(C);
-  Context->setDiagnosticHandler(nullptr);
-}
-
 DEFINE_SIMPLE_CONVERSION_FUNCTIONS(Twine, LLVMTwineRef)
 DEFINE_SIMPLE_CONVERSION_FUNCTIONS(DebugLoc, LLVMDebugLocRef)
 
