@@ -892,7 +892,7 @@ pub fn link_pnacl_module(sess: &Session,
         remove(sess, &post_link_path);
     }
 
-    // # Run LTO passes:
+    // Run LTO passes:
 
     // Internalize everything.
     unsafe {
