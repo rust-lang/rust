@@ -32,6 +32,12 @@ endif
 
 Makefile config.mk: config.stamp
 
+ifeq ($(SREL),)
+SREL_ROOT := ./
+else
+SREL_ROOT := $(SREL)
+endif
+
 config.stamp: $(S)configure $(S)Makefile.in $(S)src/snapshots.txt
 	@$(call E, cfg: reconfiguring)
-	$(SREL)configure $(CFG_CONFIGURE_ARGS)
+	$(SREL_ROOT)configure $(CFG_CONFIGURE_ARGS)
