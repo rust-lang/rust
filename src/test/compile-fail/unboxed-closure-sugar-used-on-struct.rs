@@ -16,7 +16,6 @@ struct Bar<A> {
 
 fn foo(b: Box<Bar()>) {
     //~^ ERROR parenthesized parameters may only be used with a trait
-    //~^^ ERROR associated type bindings are not allowed here
 }
 
 fn main() { }
