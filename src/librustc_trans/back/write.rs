@@ -749,15 +749,16 @@ pub fn run_passes(sess: &Session,
                             .to_path_buf()
                     })
             }
+
             use rustc::session::search_paths::PathKind;
             let native_dep_lib_path = {
-                make_absolute(&sess.pnacl_toolchain()
+                make_absolute(&super::pnacl_toolchain(sess)
                               .join("le32-nacl")
                               .join("lib"))
                     .unwrap()
             };
             let builtin_ports_lib_path = {
-                make_absolute(&sess.expect_cross_path()
+                make_absolute(&super::expect_nacl_cross_path(sess)
                               .join("lib")
                               .join("pnacl")
                               .join(if sess.opts.optimize == config::No {
@@ -767,8 +768,9 @@ pub fn run_passes(sess: &Session,
                               }))
                     .unwrap()
             };
+            // NaClports installs here:
             let ports_lib_path = {
-                make_absolute(&sess.pnacl_toolchain()
+                make_absolute(&super::pnacl_toolchain(sess)
                               .join("le32-nacl/usr/lib"))
                     .unwrap()
             };
