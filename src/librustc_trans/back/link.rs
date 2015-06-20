@@ -29,6 +29,7 @@ use util::sha2::{Digest, Sha256};
 use util::fs::fix_windows_verbatim_for_gcc;
 use rustc_back::tempdir::TempDir;
 
+use std::env;
 use std::fs::{self, PathExt};
 use std::io::{self, Read, Write};
 use std::mem;
@@ -794,7 +795,16 @@ fn link_natively(sess: &Session, trans: &CrateTranslation, dylib: bool,
 
     // The invocations of cc share some flags across platforms
     let pname = get_cc_prog(sess);
-    let mut cmd = Command::new(&pname[..]);
+    let mut cmd = Command::new(&pname);
+
+    // The compiler's sysroot often has some bundled tools, so add it to the
+    // PATH for the child.
+    let mut new_path = sess.host_filesearch(PathKind::All)
+                           .get_tools_search_paths();
+    if let Some(path) = env::var_os("PATH") {
+        new_path.extend(env::split_paths(&path));
+    }
+    cmd.env("PATH", env::join_paths(new_path).unwrap());
 
     let root = sess.target_filesearch(PathKind::Native).get_lib_path();
     cmd.args(&sess.target.target.options.pre_link_args);
