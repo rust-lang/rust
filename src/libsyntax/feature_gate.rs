@@ -430,18 +430,6 @@ pub fn emit_feature_err(diag: &SpanHandler, feature: &str, span: Span, explain: 
                                   feature));
 }
 
-pub fn emit_feature_warn(diag: &SpanHandler, feature: &str, span: Span, explain: &str) {
-    diag.span_warn(span, explain);
-
-    // #23973: do not suggest `#![feature(...)]` if we are in beta/stable
-    if option_env!("CFG_DISABLE_UNSTABLE_FEATURES").is_some() { return; }
-    if diag.handler.can_emit_warnings {
-        diag.fileline_help(span, &format!("add #![feature({})] to the \
-                                       crate attributes to silence this warning",
-                                      feature));
-    }
-}
-
 pub const EXPLAIN_ASM: &'static str =
     "inline assembly is not stable enough for use and is subject to change";
 
@@ -811,9 +799,46 @@ pub fn check_crate_macros(cm: &CodeMap, span_handler: &SpanHandler, krate: &ast:
 }
 
 pub fn check_crate(cm: &CodeMap, span_handler: &SpanHandler, krate: &ast::Crate,
-                   plugin_attributes: &[(String, AttributeType)]) -> Features
+                   plugin_attributes: &[(String, AttributeType)],
+                   unstable: UnstableFeatures) -> Features
 {
+    maybe_stage_features(span_handler, krate, unstable);
+
     check_crate_inner(cm, span_handler, krate, plugin_attributes,
                       |ctx, krate| visit::walk_crate(&mut PostExpansionVisitor { context: ctx },
                                                      krate))
+}
+
+#[derive(Clone, Copy)]
+pub enum UnstableFeatures {
+    /// Hard errors for unstable features are active, as on
+    /// beta/stable channels.
+    Disallow,
+    /// Allow features to me activated, as on nightly.
+    Allow,
+    /// Errors are bypassed for bootstrapping. This is required any time
+    /// during the build that feature-related lints are set to warn or above
+    /// because the build turns on warnings-as-errors and uses lots of unstable
+    /// features. As a result, this this is always required for building Rust
+    /// itself.
+    Cheat
+}
+
+fn maybe_stage_features(span_handler: &SpanHandler, krate: &ast::Crate,
+                        unstable: UnstableFeatures) {
+    let allow_features = match unstable {
+        UnstableFeatures::Allow => true,
+        UnstableFeatures::Disallow => false,
+        UnstableFeatures::Cheat => true
+    };
+    if !allow_features {
+        for attr in &krate.attrs {
+            if attr.check_name("feature") {
+                let release_channel = option_env!("CFG_RELEASE_CHANNEL").unwrap_or("(unknown)");
+                let ref msg = format!("#[feature] may not be used on the {} release channel",
+                                      release_channel);
+                span_handler.span_err(attr.span, msg);
+            }
+        }
+    }
 }

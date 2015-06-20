@@ -528,7 +528,8 @@ pub fn phase_2_configure_and_expand(sess: &Session,
         let features =
             syntax::feature_gate::check_crate(sess.codemap(),
                                               &sess.parse_sess.span_diagnostic,
-                                              &krate, &attributes);
+                                              &krate, &attributes,
+                                              sess.opts.unstable_features);
         *sess.features.borrow_mut() = features;
         sess.abort_if_errors();
     });
@@ -558,7 +559,8 @@ pub fn phase_2_configure_and_expand(sess: &Session,
         let features =
             syntax::feature_gate::check_crate(sess.codemap(),
                                               &sess.parse_sess.span_diagnostic,
-                                              &krate, &attributes);
+                                              &krate, &attributes,
+                                              sess.opts.unstable_features);
         *sess.features.borrow_mut() = features;
         sess.abort_if_errors();
     });

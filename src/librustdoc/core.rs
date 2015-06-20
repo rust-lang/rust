@@ -12,7 +12,6 @@ pub use self::MaybeTyped::*;
 use rustc_lint;
 use rustc_driver::driver;
 use rustc::session::{self, config};
-use rustc::session::config::UnstableFeatures;
 use rustc::middle::{privacy, ty};
 use rustc::ast_map;
 use rustc::lint;
@@ -20,6 +19,7 @@ use rustc_trans::back::link;
 use rustc_resolve as resolve;
 
 use syntax::{ast, codemap, diagnostic};
+use syntax::feature_gate::UnstableFeatures;
 
 use std::cell::{RefCell, Cell};
 use std::collections::{HashMap, HashSet};
@@ -106,7 +106,7 @@ pub fn run_core(search_paths: SearchPaths, cfgs: Vec<String>, externs: Externs,
         target_triple: triple.unwrap_or(config::host_triple().to_string()),
         cfg: config::parse_cfgspecs(cfgs),
         // Ensure that rustdoc works even if rustc is feature-staged
-        unstable_features: UnstableFeatures::Default,
+        unstable_features: UnstableFeatures::Allow,
         ..config::basic_options().clone()
     };
 
