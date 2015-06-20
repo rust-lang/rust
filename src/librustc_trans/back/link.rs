@@ -515,7 +515,7 @@ fn link_binary_output(sess: &Session,
                       crate_name: &str) -> PathBuf {
     let (obj_filename, out_filename) = check_outputs(sess, crate_type,
                                                      outputs, crate_name);
-    assert!(!sess.targeting_pnacl());
+    assert!(!sess.target.target.options.is_like_pnacl);
     match crate_type {
         config::CrateTypeRlib => {
             link_rlib(sess, Some(trans), &obj_filename, &out_filename).build();

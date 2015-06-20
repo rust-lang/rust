@@ -150,7 +150,7 @@ pub fn compile_input(sess: Session,
 
         (outputs, trans, tcx.sess)
     };
-    if !sess.targeting_pnacl() {
+    if !sess.target.target.options.is_like_pnacl {
         phase_5_run_llvm_passes(&sess, &mut trans, &outputs);
         controller_entry_point!(after_llvm,
                             sess,
@@ -803,7 +803,8 @@ fn write_out_deps(sess: &Session,
         match *output_type {
             config::OutputTypeExe => {
                 for output in &*sess.crate_types.borrow() {
-                    if sess.targeting_pnacl() && *output == config::CrateTypeDylib {
+                    if !sess.target.target.options.dynamic_linking &&
+                        *output == config::CrateTypeDylib {
                         continue;
                     }
                     let p = link::filename_for_input(sess, *output,

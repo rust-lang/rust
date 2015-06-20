@@ -220,7 +220,7 @@ pub fn create_target_machine(sess: &Session) -> TargetMachineRef {
         }
     };
 
-    let triple = if sess.targeting_pnacl() {
+    let triple = if sess.target.target.options.is_like_pnacl {
         // Pretend that we are ARM for name mangling and assembly conventions.
         // https://code.google.com/p/nativeclient/issues/detail?id=2554
         "armv7a-none-nacl-gnueabi"
@@ -584,7 +584,8 @@ pub fn run_passes(sess: &Session,
     // `-Z lto -C codegen-units=2` depend on details of the crate being
     // compiled, so we complain regardless.
     // PNaCl uses a bitcode linker, so this isn't an issue.
-    if sess.lto() && sess.opts.cg.codegen_units > 1 && !sess.targeting_pnacl() {
+    if sess.lto() && sess.opts.cg.codegen_units > 1 &&
+        !sess.target.target.options.is_like_pnacl {
         // This case is impossible to handle because LTO expects to be able
         // to combine the entire crate and all its dependencies into a
         // single compilation unit, but each codegen unit is in a separate
@@ -622,7 +623,7 @@ pub fn run_passes(sess: &Session,
     let needs_crate_bitcode =
             sess.crate_types.borrow().contains(&config::CrateTypeRlib) &&
             sess.opts.output_types.contains(&config::OutputTypeExe);
-    if needs_crate_bitcode || sess.targeting_pnacl() {
+    if needs_crate_bitcode || sess.target.target.options.is_like_pnacl {
         modules_config.emit_bc = true;
     }
 
@@ -651,7 +652,7 @@ pub fn run_passes(sess: &Session,
     modules_config.set_flags(sess, trans);
     metadata_config.set_flags(sess, trans);
 
-    if sess.targeting_pnacl() {
+    if sess.target.target.options.is_like_pnacl {
         // If targeting PNaCl, never try to run codegen.
         metadata_config.emit_bc = true;
         metadata_config.emit_no_opt_bc = false;
@@ -692,7 +693,7 @@ pub fn run_passes(sess: &Session,
         work_items.push(work);
     }
 
-    if sess.targeting_pnacl() {
+    if sess.target.target.options.is_like_pnacl {
 
         // In contrast to the NaCl SDK PNaCl toolchain, we do things a little
         // differently.
@@ -946,7 +947,7 @@ pub fn run_passes(sess: &Session,
         run_work_multithreaded(sess, work_items, sess.opts.cg.codegen_units);
     }
 
-    if sess.targeting_pnacl() {
+    if sess.target.target.options.is_like_pnacl {
         // PNaCl targets (ie PNaCl/ASM.js) use a separate tool for native/js codegen.
         // Therefore we just return.
         unsafe {
@@ -1300,11 +1301,9 @@ unsafe fn configure_llvm(sess: &Session) {
     // slp vectorization at O3
     let vectorize_loop = !sess.opts.cg.no_vectorize_loops &&
                          (sess.opts.optimize == config::Default ||
-                          sess.opts.optimize == config::Aggressive) &&
-                         !sess.targeting_pnacl();
+                          sess.opts.optimize == config::Aggressive);
     let vectorize_slp = !sess.opts.cg.no_vectorize_slp &&
-                        sess.opts.optimize == config::Aggressive &&
-                        !sess.targeting_pnacl();
+                        sess.opts.optimize == config::Aggressive;
 
     let mut llvm_c_strs = Vec::new();
     let mut llvm_args = Vec::new();

@@ -57,7 +57,6 @@ mod bitrig_base;
 mod dragonfly_base;
 mod freebsd_base;
 mod linux_base;
-mod nacl_base;
 mod openbsd_base;
 mod windows_base;
 mod windows_msvc_base;
@@ -153,6 +152,8 @@ pub struct TargetOptions {
     /// Whether the target toolchain is like Android's. Only useful for compiling against Android.
     /// Defaults to false.
     pub is_like_android: bool,
+    /// Whether the target is like PNaCl/JS. Defaults to false.
+    pub is_like_pnacl: bool,
     /// Whether the linker support GNU-like arguments such as -O. Defaults to false.
     pub linker_is_gnu: bool,
     /// Whether the linker support rpaths or not. Defaults to false.
@@ -166,7 +167,7 @@ pub struct TargetOptions {
     /// the functions in the executable are not randomized and can be used
     /// during an exploit of a vulnerability in any code.
     pub position_independent_executables: bool,
-    /// Is asm!() allowed?
+    /// Is asm!() not allowed? Defaults to false
     pub no_asm: bool,
 }
 
@@ -198,6 +199,7 @@ impl Default for TargetOptions {
             is_like_windows: false,
             is_like_android: false,
             is_like_msvc: false,
+            is_like_pnacl: false,
             linker_is_gnu: false,
             has_rpath: false,
             no_compiler_rt: false,
@@ -294,6 +296,7 @@ impl Target {
         key!(function_sections, bool);
         key!(is_like_osx, bool);
         key!(is_like_windows, bool);
+        key!(is_like_pnacl, bool);
         key!(linker_is_gnu, bool);
         key!(has_rpath, bool);
         key!(no_compiler_rt, bool);

@@ -43,7 +43,8 @@ pub fn arg_is_indirect<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
 pub fn return_uses_outptr<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                     ty: Ty<'tcx>) -> bool {
-    if ccx.sess().targeting_pnacl() && return_type_is_void(ccx, ty) {
+    if ccx.sess().target.target.options.is_like_pnacl &&
+        return_type_is_void(ccx, ty) {
         false
     } else {
         !type_is_immediate(ccx, ty)
@@ -258,8 +259,10 @@ pub fn arg_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
         // We want to pass small aggregates as immediate values, but using an aggregate LLVM type
         // for this leads to bad optimizations, so its arg type is an appropriately sized integer
         match machine::llsize_of_alloc(cx, sizing_type_of(cx, t)) {
-            n if n == 0 || (cx.sess().targeting_pnacl() && n > 8) => type_of(cx, t),
-            n if !cx.sess().targeting_pnacl() || n <= 8 => Type::ix(cx, n * 8),
+            n if n == 0 || (cx.sess().target.target.options.is_like_pnacl && n > 8) =>
+                type_of(cx, t),
+            n if !cx.sess().target.target.options.is_like_pnacl || n <= 8 =>
+                Type::ix(cx, n * 8),
             _ => unreachable!(),
         }
     } else {
