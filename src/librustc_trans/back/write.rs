@@ -891,11 +891,6 @@ pub fn run_passes(sess: &Session,
                     let bc = object.data();
                     debug!("processing object `{}`", name);
                     let llctx = unsafe { llvm::LLVMContextCreate() };
-                    // Ignore all messages about invalid debug versions (toolchain libraries
-                    // cause an abundance of these):
-                    unsafe {
-                        llvm::LLVMRustSetContextIgnoreDebugMetadataVersionDiagnostics(llctx);
-                    }
                     let llmod = unsafe {
                         let name = format!("{}\0", name);
                         llvm::LLVMRustParseBitcode(llctx,
@@ -903,9 +898,6 @@ pub fn run_passes(sess: &Session,
                                                    bc.as_ptr() as *const libc::c_void,
                                                    bc.len() as libc::size_t)
                     };
-                    unsafe {
-                        llvm::LLVMRustResetContextIgnoreDebugMetadataVersionDiagnostics(llctx);
-                    }
                     if llmod == ptr::null_mut() {
                         let msg = format!("failed to parse external bitcode
                                               `{}` in archive `{:?}`",

@@ -2120,8 +2120,6 @@ extern {
                                      Path: *const c_char,
                                      AcceptSupportedOnly: bool) -> bool;
     pub fn LLVMRustStripDebugInfo(M: ModuleRef);
-    pub fn LLVMRustSetContextIgnoreDebugMetadataVersionDiagnostics(C: ContextRef);
-    pub fn LLVMRustResetContextIgnoreDebugMetadataVersionDiagnostics(C: ContextRef);
 
     pub fn LLVMSetInlineAsmDiagnosticHandler(C: ContextRef,
                                              H: InlineAsmDiagHandler,
