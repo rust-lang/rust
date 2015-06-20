@@ -14,24 +14,18 @@
 //! currently always a crate name.
 
 use std::collections::BTreeMap;
-use std::env;
 use std::path::PathBuf;
-use std::fs::{read_dir, create_dir_all, OpenOptions, File};
-use std::io::{Read, Write};
+use std::fs::{remove_file, create_dir_all, File};
+use std::io::Write;
 use std::error::Error;
-use rustc_serialize::json::{self, as_json};
+use rustc_serialize::json::as_json;
 
 use codemap::Span;
 use ext::base::ExtCtxt;
 use diagnostics::plugin::{ErrorMap, ErrorInfo};
 
-pub use self::Uniqueness::*;
-
 // Default metadata directory to use for extended error JSON.
-const ERROR_METADATA_DIR_DEFAULT: &'static str = "tmp/extended-errors";
-
-// The name of the environment variable that sets the metadata dir.
-const ERROR_METADATA_VAR: &'static str = "ERROR_METADATA_DIR";
+const ERROR_METADATA_PREFIX: &'static str = "tmp/extended-errors";
 
 /// JSON encodable/decodable version of `ErrorInfo`.
 #[derive(PartialEq, RustcDecodable, RustcEncodable)]
@@ -61,84 +55,32 @@ impl ErrorLocation {
     }
 }
 
-/// Type for describing the uniqueness of a set of error codes, as returned by `check_uniqueness`.
-pub enum Uniqueness {
-    /// All errors in the set checked are unique according to the metadata files checked.
-    Unique,
-    /// One or more errors in the set occur in another metadata file.
-    /// This variant contains the first duplicate error code followed by the name
-    /// of the metadata file where the duplicate appears.
-    Duplicate(String, String)
+/// Get the directory where metadata for a given `prefix` should be stored.
+///
+/// See `output_metadata`.
+pub fn get_metadata_dir(prefix: &str) -> PathBuf {
+    PathBuf::from(ERROR_METADATA_PREFIX).join(prefix)
 }
 
-/// Get the directory where metadata files should be stored.
-pub fn get_metadata_dir() -> PathBuf {
-    match env::var(ERROR_METADATA_VAR) {
-        Ok(v) => From::from(v),
-        Err(_) => From::from(ERROR_METADATA_DIR_DEFAULT)
-    }
+/// Map `name` to a path in the given directory: <directory>/<name>.json
+fn get_metadata_path(directory: PathBuf, name: &str) -> PathBuf {
+    directory.join(format!("{}.json", name))
 }
 
-/// Get the path where error metadata for the set named by `name` should be stored.
-fn get_metadata_path(name: &str) -> PathBuf {
-    get_metadata_dir().join(format!("{}.json", name))
-}
-
-/// Check that the errors in `err_map` aren't present in any metadata files in the
-/// metadata directory except the metadata file corresponding to `name`.
-pub fn check_uniqueness(name: &str, err_map: &ErrorMap) -> Result<Uniqueness, Box<Error>> {
-    let metadata_dir = get_metadata_dir();
-    let metadata_path = get_metadata_path(name);
-
-    // Create the error directory if it does not exist.
-    try!(create_dir_all(&metadata_dir));
-
-    // Check each file in the metadata directory.
-    for entry in try!(read_dir(&metadata_dir)) {
-        let path = try!(entry).path();
-
-        // Skip any existing file for this set.
-        if path == metadata_path {
-            continue;
-        }
-
-        // Read the metadata file into a string.
-        let mut metadata_str = String::new();
-        try!(
-            File::open(&path).and_then(|mut f|
-            f.read_to_string(&mut metadata_str))
-        );
-
-        // Parse the JSON contents.
-        let metadata: ErrorMetadataMap = try!(json::decode(&metadata_str));
-
-        // Check for duplicates.
-        for err in err_map.keys() {
-            let err_code = err.as_str();
-            if metadata.contains_key(err_code) {
-                return Ok(Duplicate(
-                    err_code.to_string(),
-                    path.to_string_lossy().into_owned()
-                ));
-            }
-        }
-    }
-
-    Ok(Unique)
-}
-
-/// Write metadata for the errors in `err_map` to disk, to a file corresponding to `name`.
-pub fn output_metadata(ecx: &ExtCtxt, name: &str, err_map: &ErrorMap)
+/// Write metadata for the errors in `err_map` to disk, to a file corresponding to `prefix/name`.
+///
+/// For our current purposes the prefix is the target architecture and the name is a crate name.
+/// If an error occurs steps will be taken to ensure that no file is created.
+pub fn output_metadata(ecx: &ExtCtxt, prefix: &str, name: &str, err_map: &ErrorMap)
     -> Result<(), Box<Error>>
 {
-    let metadata_path = get_metadata_path(name);
+    // Create the directory to place the file in.
+    let metadata_dir = get_metadata_dir(prefix);
+    try!(create_dir_all(&metadata_dir));
 
-    // Open the dump file.
-    let mut dump_file = try!(OpenOptions::new()
-        .write(true)
-        .create(true)
-        .open(&metadata_path)
-    );
+    // Open the metadata file.
+    let metadata_path = get_metadata_path(metadata_dir, name);
+    let mut metadata_file = try!(File::create(&metadata_path));
 
     // Construct a serializable map.
     let json_map = err_map.iter().map(|(k, &ErrorInfo { description, use_site })| {
@@ -150,6 +92,10 @@ pub fn output_metadata(ecx: &ExtCtxt, name: &str, err_map: &ErrorMap)
         (key, value)
     }).collect::<ErrorMetadataMap>();
 
-    try!(write!(&mut dump_file, "{}", as_json(&json_map)));
-    Ok(())
+    // Write the data to the file, deleting it if the write fails.
+    let result = write!(&mut metadata_file, "{}", as_json(&json_map));
+    if result.is_err() {
+        try!(remove_file(&metadata_path));
+    }
+    Ok(try!(result))
 }
