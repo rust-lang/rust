@@ -798,7 +798,9 @@ fn declare_intrinsic(ccx: &CrateContext, key: & &'static str) -> Option<ValueRef
                 let name = $name;
                 let f = declare::declare_cfn(ccx, name, Type::func(&[], &$ret),
                                              ccx.tcx().mk_nil());
-                if ccx.sess().target.target.options.is_like_pnacl { llvm::SetUnnamedAddr(f, false); }
+                if ccx.sess().target.target.options.is_like_pnacl {
+                    llvm::SetUnnamedAddr(f, false);
+                }
                 ccx.intrinsics().borrow_mut().insert(name, f);
                 return Some(f);
             } else if is_key { return None; }
@@ -812,7 +814,9 @@ fn declare_intrinsic(ccx: &CrateContext, key: & &'static str) -> Option<ValueRef
                  let f = declare::declare_cfn(ccx, name,
                                               Type::func(&[$($arg),*], &$ret),
                                               ccx.tcx().mk_nil());
-                 if ccx.sess().target.target.options.is_like_pnacl { llvm::SetUnnamedAddr(f, false); }
+                 if ccx.sess().target.target.options.is_like_pnacl {
+                     llvm::SetUnnamedAddr(f, false);
+                 }
                  ccx.intrinsics().borrow_mut().insert(name, f);
                  return Some(f);
              } else if is_key { return None; }
