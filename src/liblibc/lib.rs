@@ -5493,17 +5493,17 @@ pub mod funcs {
                 pub fn dup2(src: c_int, dst: c_int) -> c_int;
                 #[link_name = "_execv"]
                 pub fn execv(prog: *const c_char,
-                             argv: *mut *const c_char) -> intptr_t;
+                             argv: *const *const c_char) -> intptr_t;
                 #[link_name = "_execve"]
-                pub fn execve(prog: *const c_char, argv: *mut *const c_char,
-                              envp: *mut *const c_char)
+                pub fn execve(prog: *const c_char, argv: *const *const c_char,
+                              envp: *const *const c_char)
                               -> c_int;
                 #[link_name = "_execvp"]
                 pub fn execvp(c: *const c_char,
-                              argv: *mut *const c_char) -> c_int;
+                              argv: *const *const c_char) -> c_int;
                 #[link_name = "_execvpe"]
-                pub fn execvpe(c: *const c_char, argv: *mut *const c_char,
-                               envp: *mut *const c_char) -> c_int;
+                pub fn execvpe(c: *const c_char, argv: *const *const c_char,
+                               envp: *const *const c_char) -> c_int;
                 #[link_name = "_getcwd"]
                 pub fn getcwd(buf: *mut c_char, size: size_t) -> *mut c_char;
                 #[link_name = "_getpid"]
@@ -5687,12 +5687,12 @@ pub mod funcs {
                 pub fn dup(fd: c_int) -> c_int;
                 pub fn dup2(src: c_int, dst: c_int) -> c_int;
                 pub fn execv(prog: *const c_char,
-                             argv: *mut *const c_char) -> c_int;
-                pub fn execve(prog: *const c_char, argv: *mut *const c_char,
-                              envp: *mut *const c_char)
+                             argv: *const *const c_char) -> c_int;
+                pub fn execve(prog: *const c_char, argv: *const *const c_char,
+                              envp: *const *const c_char)
                               -> c_int;
                 pub fn execvp(c: *const c_char,
-                              argv: *mut *const c_char) -> c_int;
+                              argv: *const *const c_char) -> c_int;
                 pub fn fork() -> pid_t;
                 pub fn fpathconf(filedes: c_int, name: c_int) -> c_long;
                 pub fn getcwd(buf: *mut c_char, size: size_t) -> *mut c_char;
@@ -5702,7 +5702,9 @@ pub mod funcs {
                 pub fn getgroups(ngroups_max: c_int, groups: *mut gid_t)
                                  -> c_int;
                 pub fn getlogin() -> *mut c_char;
-                pub fn getopt(argc: c_int, argv: *mut *const c_char,
+                // GNU getopt(3) modifies its arguments despite the
+                // char * const [] prototype; see the manpage.
+                pub fn getopt(argc: c_int, argv: *mut *mut c_char,
                               optstr: *const c_char) -> c_int;
                 pub fn getpgrp() -> pid_t;
                 pub fn getpid() -> pid_t;
@@ -5752,19 +5754,19 @@ pub mod funcs {
                 pub fn dup(fd: c_int) -> c_int;
                 pub fn dup2(src: c_int, dst: c_int) -> c_int;
                 pub fn execv(prog: *const c_char,
-                             argv: *mut *const c_char) -> c_int;
-                pub fn execve(prog: *const c_char, argv: *mut *const c_char,
-                              envp: *mut *const c_char)
+                             argv: *const *const c_char) -> c_int;
+                pub fn execve(prog: *const c_char, argv: *const *const c_char,
+                              envp: *const *const c_char)
                               -> c_int;
                 pub fn execvp(c: *const c_char,
-                              argv: *mut *const c_char) -> c_int;
+                              argv: *const *const c_char) -> c_int;
                 pub fn fork() -> pid_t;
                 pub fn getcwd(buf: *mut c_char, size: size_t) -> *mut c_char;
                 pub fn getegid() -> gid_t;
                 pub fn geteuid() -> uid_t;
                 pub fn getgid() -> gid_t;
                 pub fn getlogin() -> *mut c_char;
-                pub fn getopt(argc: c_int, argv: *mut *const c_char,
+                pub fn getopt(argc: c_int, argv: *const *const c_char,
                               optstr: *const c_char) -> c_int;
                 pub fn getuid() -> uid_t;
                 pub fn getsid(pid: pid_t) -> pid_t;
