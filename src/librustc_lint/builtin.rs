@@ -2213,7 +2213,7 @@ pub struct UnstableFeatures;
 declare_lint! {
     UNSTABLE_FEATURES,
     Allow,
-    "enabling unstable features"
+    "enabling unstable features (deprecated. do not use)"
 }
 
 impl LintPass for UnstableFeatures {
