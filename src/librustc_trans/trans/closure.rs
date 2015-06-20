@@ -10,7 +10,7 @@
 
 use arena::TypedArena;
 use back::link::{self, mangle_internal_name_by_path_and_seq};
-use llvm::{ValueRef, get_param};
+use llvm::{ValueRef, get_params};
 use middle::mem_categorization::Typer;
 use trans::adt;
 use trans::attributes;
@@ -405,11 +405,14 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
                       &block_arena);
     let mut bcx = init_function(&fcx, false, sig.output);
 
+    let llargs = get_params(fcx.llfn);
+
     // the first argument (`self`) will be the (by value) closure env.
     let self_scope = fcx.push_custom_cleanup_scope();
     let self_scope_id = CustomScope(self_scope);
     let rvalue_mode = datum::appropriate_rvalue_mode(ccx, closure_ty);
-    let llself = get_param(lloncefn, fcx.arg_pos(0) as u32);
+    let self_idx = fcx.arg_offset();
+    let llself = llargs[self_idx];
     let env_datum = Datum::new(llself, closure_ty, Rvalue::new(rvalue_mode));
     let env_datum = unpack_datum!(bcx,
                                   env_datum.to_lvalue_datum_in_scope(bcx, "self",
@@ -417,19 +420,6 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
 
     debug!("trans_fn_once_adapter_shim: env_datum={}",
            bcx.val_to_string(env_datum.val));
-
-    // the remaining arguments will be packed up in a tuple.
-    let input_tys = match sig.inputs[1].sty {
-        ty::TyTuple(ref tys) => &**tys,
-        _ => bcx.sess().bug(&format!("trans_fn_once_adapter_shim: not rust-call! \
-                                      closure_def_id={:?}",
-                                     closure_def_id))
-    };
-    let llargs: Vec<_> =
-        input_tys.iter()
-                 .enumerate()
-                 .map(|(i, _)| get_param(lloncefn, fcx.arg_pos(i+1) as u32))
-                 .collect();
 
     let dest =
         fcx.llretslotptr.get().map(
@@ -442,7 +432,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
                                    DebugLoc::None,
                                    llref_fn_ty,
                                    |bcx, _| Callee { bcx: bcx, data: callee_data },
-                                   ArgVals(&llargs),
+                                   ArgVals(&llargs[(self_idx + 1)..]),
                                    dest).bcx;
 
     fcx.pop_custom_cleanup_scope(self_scope);

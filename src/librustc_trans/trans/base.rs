@@ -1297,16 +1297,28 @@ pub type RvalueDatum<'tcx> = datum::Datum<'tcx, datum::Rvalue>;
 // create_datums_for_fn_args: creates rvalue datums for each of the
 // incoming function arguments. These will later be stored into
 // appropriate lvalue datums.
-pub fn create_datums_for_fn_args<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
+pub fn create_datums_for_fn_args<'a, 'tcx>(bcx: Block<'a, 'tcx>,
                                            arg_tys: &[Ty<'tcx>])
                                            -> Vec<RvalueDatum<'tcx>> {
     let _icx = push_ctxt("create_datums_for_fn_args");
+    let fcx = bcx.fcx;
 
     // Return an array wrapping the ValueRefs that we get from `get_param` for
     // each argument into datums.
-    arg_tys.iter().enumerate().map(|(i, &arg_ty)| {
-        let llarg = get_param(fcx.llfn, fcx.arg_pos(i) as c_uint);
-        datum::Datum::new(llarg, arg_ty, arg_kind(fcx, arg_ty))
+    let mut i = fcx.arg_offset() as c_uint;
+    arg_tys.iter().map(|&arg_ty| {
+        if common::type_is_fat_ptr(bcx.tcx(), arg_ty) {
+            let llty = type_of::type_of(bcx.ccx(), arg_ty);
+            let data = get_param(fcx.llfn, i);
+            let extra = get_param(fcx.llfn, i + 1);
+            let fat_ptr = expr::make_fat_ptr(bcx, llty, data, extra);
+            i += 2;
+            datum::Datum::new(fat_ptr, arg_ty, datum::Rvalue { mode: datum::ByValue })
+        } else {
+            let llarg = get_param(fcx.llfn, i);
+            i += 1;
+            datum::Datum::new(llarg, arg_ty, arg_kind(fcx, arg_ty))
+        }
     }).collect()
 }
 
@@ -1321,12 +1333,23 @@ fn create_datums_for_fn_args_under_call_abi<'blk, 'tcx>(
         arg_tys: &[Ty<'tcx>])
         -> Vec<RvalueDatum<'tcx>> {
     let mut result = Vec::new();
+    let mut idx = bcx.fcx.arg_offset() as c_uint;
     for (i, &arg_ty) in arg_tys.iter().enumerate() {
         if i < arg_tys.len() - 1 {
             // Regular argument.
-            let llarg = get_param(bcx.fcx.llfn, bcx.fcx.arg_pos(i) as c_uint);
-            result.push(datum::Datum::new(llarg, arg_ty, arg_kind(bcx.fcx,
-                                                                  arg_ty)));
+            result.push(if common::type_is_fat_ptr(bcx.tcx(), arg_ty) {
+                let llty = type_of::type_of(bcx.ccx(), arg_ty);
+                let data = get_param(bcx.fcx.llfn, idx);
+                let extra = get_param(bcx.fcx.llfn, idx + 1);
+                idx += 2;
+                let fat_ptr = expr::make_fat_ptr(bcx, llty, data, extra);
+                datum::Datum::new(fat_ptr, arg_ty, datum::Rvalue { mode: datum::ByValue })
+            } else {
+                let val = get_param(bcx.fcx.llfn, idx);
+                idx += 1;
+                datum::Datum::new(val, arg_ty, arg_kind(bcx.fcx, arg_ty))
+            });
+
             continue
         }
 
@@ -1346,15 +1369,21 @@ fn create_datums_for_fn_args_under_call_abi<'blk, 'tcx>(
                                                                llval| {
                         for (j, &tupled_arg_ty) in
                                     tupled_arg_tys.iter().enumerate() {
-                            let llarg =
-                                get_param(bcx.fcx.llfn,
-                                          bcx.fcx.arg_pos(i + j) as c_uint);
                             let lldest = GEPi(bcx, llval, &[0, j]);
-                            let datum = datum::Datum::new(
-                                llarg,
-                                tupled_arg_ty,
-                                arg_kind(bcx.fcx, tupled_arg_ty));
-                            bcx = datum.store_to(bcx, lldest);
+                            if common::type_is_fat_ptr(bcx.tcx(), tupled_arg_ty) {
+                                let data = get_param(bcx.fcx.llfn, idx);
+                                let extra = get_param(bcx.fcx.llfn, idx + 1);
+                                Store(bcx, data, expr::get_dataptr(bcx, lldest));
+                                Store(bcx, extra, expr::get_len(bcx, lldest));
+                                idx += 2;
+                            } else {
+                                let datum = datum::Datum::new(
+                                    get_param(bcx.fcx.llfn, idx),
+                                    tupled_arg_ty,
+                                    arg_kind(bcx.fcx, tupled_arg_ty));
+                                idx += 1;
+                                bcx = datum.store_to(bcx, lldest);
+                            };
                         }
                         bcx
                     }));
@@ -1566,7 +1595,7 @@ pub fn trans_closure<'a, 'b, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         }
         _ => {
             let arg_tys = untuple_arguments_if_necessary(ccx, &monomorphized_arg_types, abi);
-            create_datums_for_fn_args(&fcx, &arg_tys)
+            create_datums_for_fn_args(bcx, &arg_tys)
         }
     };
 
@@ -1773,7 +1802,7 @@ fn trans_enum_variant_or_tuple_like_struct<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx
         ty::erase_late_bound_regions(
             ccx.tcx(), &ty::ty_fn_args(ctor_ty));
 
-    let arg_datums = create_datums_for_fn_args(&fcx, &arg_tys[..]);
+    let arg_datums = create_datums_for_fn_args(bcx, &arg_tys[..]);
 
     if !type_is_zero_size(fcx.ccx, result_ty.unwrap()) {
         let dest = fcx.get_ret_slot(bcx, result_ty, "eret_slot");

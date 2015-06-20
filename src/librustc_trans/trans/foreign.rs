@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-use back::link;
+use back::{abi, link};
 use llvm::{ValueRef, CallConv, get_param};
 use llvm;
 use middle::weak_lang_items;
@@ -22,6 +22,7 @@ use trans::cabi;
 use trans::common::*;
 use trans::debuginfo::DebugLoc;
 use trans::declare;
+use trans::expr;
 use trans::machine;
 use trans::monomorphize;
 use trans::type_::Type;
@@ -272,10 +273,11 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         }
     }
 
-    for (i, &llarg_rust) in llargs_rust.iter().enumerate() {
-        let mut llarg_rust = llarg_rust;
+    let mut offset = 0;
+    for (i, arg_ty) in arg_tys.iter().enumerate() {
+        let mut llarg_rust = llargs_rust[i + offset];
 
-        if arg_tys[i].is_ignore() {
+        if arg_ty.is_ignore() {
             continue;
         }
 
@@ -286,7 +288,7 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                i,
                ccx.tn().val_to_string(llarg_rust),
                rust_indirect,
-               ccx.tn().type_to_string(arg_tys[i].ty));
+               ccx.tn().type_to_string(arg_ty.ty));
 
         // Ensure that we always have the Rust value indirectly,
         // because it makes bitcasting easier.
@@ -295,7 +297,13 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 base::alloca(bcx,
                              type_of::type_of(ccx, passed_arg_tys[i]),
                              "__arg");
-            base::store_ty(bcx, llarg_rust, scratch, passed_arg_tys[i]);
+            if type_is_fat_ptr(ccx.tcx(), passed_arg_tys[i]) {
+                Store(bcx, llargs_rust[i + offset], expr::get_dataptr(bcx, scratch));
+                Store(bcx, llargs_rust[i + offset + 1], expr::get_len(bcx, scratch));
+                offset += 1;
+            } else {
+                base::store_ty(bcx, llarg_rust, scratch, passed_arg_tys[i]);
+            }
             llarg_rust = scratch;
         }
 
@@ -303,7 +311,7 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                ccx.tn().val_to_string(llarg_rust));
 
         // Check whether we need to do any casting
-        match arg_tys[i].cast {
+        match arg_ty.cast {
             Some(ty) => llarg_rust = BitCast(bcx, llarg_rust, ty.ptr_to()),
             None => ()
         }
@@ -312,7 +320,7 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                ccx.tn().val_to_string(llarg_rust));
 
         // Finally, load the value if needed for the foreign ABI
-        let foreign_indirect = arg_tys[i].is_indirect();
+        let foreign_indirect = arg_ty.is_indirect();
         let llarg_foreign = if foreign_indirect {
             llarg_rust
         } else {
@@ -328,7 +336,7 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                i, ccx.tn().val_to_string(llarg_foreign));
 
         // fill padding with undef value
-        match arg_tys[i].pad {
+        match arg_ty.pad {
             Some(ty) => llargs_foreign.push(C_undef(ty)),
             None => ()
         }
@@ -783,12 +791,12 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             // If the types in the ABI and the Rust types don't match,
             // bitcast the llforeign_arg pointer so it matches the types
             // Rust expects.
-            if llforeign_arg_ty.cast.is_some() {
+            if llforeign_arg_ty.cast.is_some() && !type_is_fat_ptr(ccx.tcx(), rust_ty){
                 assert!(!foreign_indirect);
                 llforeign_arg = builder.bitcast(llforeign_arg, llrust_ty.ptr_to());
             }
 
-            let llrust_arg = if rust_indirect {
+            let llrust_arg = if rust_indirect || type_is_fat_ptr(ccx.tcx(), rust_ty) {
                 llforeign_arg
             } else {
                 if ty::type_is_bool(rust_ty) {
@@ -810,7 +818,15 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
             debug!("llrust_arg {}{}: {}", "#",
                    i, ccx.tn().val_to_string(llrust_arg));
-            llrust_args.push(llrust_arg);
+            if type_is_fat_ptr(ccx.tcx(), rust_ty) {
+                let next_llrust_ty = rust_param_tys.next().expect("Not enough parameter types!");
+                llrust_args.push(builder.load(builder.bitcast(builder.gepi(
+                                llrust_arg, &[0, abi::FAT_PTR_ADDR]), llrust_ty.ptr_to())));
+                llrust_args.push(builder.load(builder.bitcast(builder.gepi(
+                                llrust_arg, &[0, abi::FAT_PTR_EXTRA]), next_llrust_ty.ptr_to())));
+            } else {
+                llrust_args.push(llrust_arg);
+            }
         }
 
         // Perform the call itself
