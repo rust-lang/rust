@@ -255,7 +255,7 @@ struct Type {
     name: Option<String>,
     // true both for Option<T> and T, false otherwise.
     generic: bool,
-    ty_params: Box<Vec<Type>>,
+    ty_params: Vec<Type>,
 }
 
 impl fmt::Display for Type {
@@ -2579,7 +2579,7 @@ fn get_index_search_type(item: &clean::Item,
         inputs.push(Type {
             name: Some(name.into_ascii_lowercase()),
             generic: false,
-            ty_params: Box::new(vec![]),
+            ty_params: vec![],
         });
     }
 
@@ -2617,7 +2617,7 @@ fn get_index_type(clean_type: &clean::Type) -> Type {
         Type {
             name: get_index_type_name(clean_type).map(|s| s.into_ascii_lowercase()),
             generic: false,
-            ty_params: Box::new(vec![]),
+            ty_params: vec![],
         }
     }
 }
@@ -2640,7 +2640,7 @@ fn get_generic_index_type(clean_type: &clean::Type) -> Type {
     Type {
         name: Some(segment.name.clone().into_ascii_lowercase()),
         generic: true,
-        ty_params: Box::new(ty_params),
+        ty_params: ty_params,
     }
 }
 
