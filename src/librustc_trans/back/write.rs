@@ -662,7 +662,7 @@ pub fn run_passes(sess: &Session,
     metadata_config.set_flags(sess, trans);
 
     if sess.target.target.options.is_like_pnacl {
-        // If targeting PNaCl, never try to run codegen.
+        // If targeting PNaCl, we only want to emit bitcode.
         metadata_config.emit_bc = true;
         metadata_config.emit_no_opt_bc = false;
         metadata_config.emit_lto_bc = false;

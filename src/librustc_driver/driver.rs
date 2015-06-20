@@ -165,7 +165,6 @@ pub fn compile_input(sess: Session,
         return;
     };
 
-    if !sess.target.target.options.is_like_pnacl {
         phase_5_run_llvm_passes(&sess, &mut trans, &outputs);
         controller_entry_point!(after_llvm,
                             sess,
@@ -175,13 +174,6 @@ pub fn compile_input(sess: Session,
                                                            &trans));
 
         phase_6_link_output(&sess, &trans, &outputs);
-    } else {
-        let cid = trans.link.crate_name.clone();
-        link::link_outputs_for_pnacl(&sess,
-                                     &mut trans,
-                                     &outputs,
-                                     &cid[..]);
-    }
 }
 
 /// The name used for source code that doesn't originate in a file
@@ -762,7 +754,7 @@ pub fn phase_4_translate_to_llvm(tcx: &ty::ctxt, analysis: ty::CrateAnalysis)
 pub fn phase_5_run_llvm_passes(sess: &Session,
                                trans: &mut trans::CrateTranslation,
                                outputs: &OutputFilenames) {
-    if sess.opts.cg.no_integrated_as {
+    if sess.opts.cg.no_integrated_as && !sess.target.target.options.is_like_pnacl {
         let output_type = config::OutputTypeAssembly;
 
         time(sess.time_passes(), "LLVM passes", (), |_|
@@ -790,11 +782,18 @@ pub fn phase_5_run_llvm_passes(sess: &Session,
 pub fn phase_6_link_output(sess: &Session,
                            trans: &trans::CrateTranslation,
                            outputs: &OutputFilenames) {
-    time(sess.time_passes(), "linking", (), |_|
-         link::link_binary(sess,
-                           trans,
-                           outputs,
-                           &trans.link.crate_name));
+    time(sess.time_passes(), "linking", (), |_| {
+        if !sess.target.target.options.is_like_pnacl {
+            link::link_binary(sess,
+                              trans,
+                              outputs,
+                              &trans.link.crate_name);
+        } else {
+            link::link_outputs_for_pnacl(&sess,
+                                         &trans,
+                                         &outputs);
+        }
+    });
 }
 
 fn escape_dep_filename(filename: &str) -> String {
