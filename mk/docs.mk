@@ -77,8 +77,7 @@ ERR_IDX_GEN = $(RPATH_VAR2_T_$(CFG_BUILD)_H_$(CFG_BUILD)) $(ERR_IDX_GEN_EXE)
 
 D := $(S)src/doc
 
-# FIXME (#25705) eventually may want to put error-index target back here.
-DOC_TARGETS := trpl style
+DOC_TARGETS := trpl style error-index
 COMPILER_DOC_TARGETS :=
 DOC_L10N_TARGETS :=
 
