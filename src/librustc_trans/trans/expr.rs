@@ -52,7 +52,7 @@ pub use self::Dest::*;
 use self::lazy_binop_ty::*;
 
 use back::abi;
-use llvm::{self, ValueRef};
+use llvm::{self, ValueRef, TypeKind};
 use middle::check_const;
 use middle::def;
 use middle::lang_items::CoerceUnsizedTraitLangItem;
@@ -2458,12 +2458,10 @@ impl OverflowOpViaInputCheck {
         // (since that is where the 32/64 distinction is relevant) but
         // the mask's type must match the RHS type (since they will
         // both be fed into a and-binop)
-        let invert_mask = !shift_mask_val(lhs_llty);
-        let invert_mask = C_integral(rhs_llty, invert_mask, true);
+        let invert_mask = shift_mask_val(bcx, lhs_llty, rhs_llty, true);
 
         let outer_bits = And(bcx, rhs, invert_mask, binop_debug_loc);
-        let cond = ICmp(bcx, llvm::IntNE, outer_bits,
-                        C_integral(rhs_llty, 0, false), binop_debug_loc);
+        let cond = build_nonzero_check(bcx, outer_bits, binop_debug_loc);
         let result = match *self {
             OverflowOpViaInputCheck::Shl =>
                 build_unchecked_lshift(bcx, lhs, rhs, binop_debug_loc),
@@ -2479,9 +2477,46 @@ impl OverflowOpViaInputCheck {
     }
 }
 
-fn shift_mask_val(llty: Type) -> u64 {
-    // i8/u8 can shift by at most 7, i16/u16 by at most 15, etc.
-    llty.int_width() - 1
+fn shift_mask_val<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                              llty: Type,
+                              mask_llty: Type,
+                              invert: bool) -> ValueRef {
+    let kind = llty.kind();
+    match kind {
+        TypeKind::Integer => {
+            // i8/u8 can shift by at most 7, i16/u16 by at most 15, etc.
+            let val = llty.int_width() - 1;
+            if invert {
+                C_integral(mask_llty, !val, true)
+            } else {
+                C_integral(mask_llty, val, false)
+            }
+        },
+        TypeKind::Vector => {
+            let mask = shift_mask_val(bcx, llty.element_type(), mask_llty.element_type(), invert);
+            VectorSplat(bcx, mask_llty.vector_length(), mask)
+        },
+        _ => panic!("shift_mask_val: expected Integer or Vector, found {:?}", kind),
+    }
+}
+
+// Check if an integer or vector contains a nonzero element.
+fn build_nonzero_check<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                                   value: ValueRef,
+                                   binop_debug_loc: DebugLoc) -> ValueRef {
+    let llty = val_ty(value);
+    let kind = llty.kind();
+    match kind {
+        TypeKind::Integer => ICmp(bcx, llvm::IntNE, value, C_null(llty), binop_debug_loc),
+        TypeKind::Vector => {
+            // Check if any elements of the vector are nonzero by treating
+            // it as a wide integer and checking if the integer is nonzero.
+            let width = llty.vector_length() as u64 * llty.element_type().int_width();
+            let int_value = BitCast(bcx, value, Type::ix(bcx.ccx(), width));
+            build_nonzero_check(bcx, int_value, binop_debug_loc)
+        },
+        _ => panic!("build_nonzero_check: expected Integer or Vector, found {:?}", kind),
+    }
 }
 
 // To avoid UB from LLVM, these two functions mask RHS with an
@@ -2507,7 +2542,14 @@ fn build_unchecked_rshift<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let rhs = base::cast_shift_expr_rhs(bcx, ast::BinOp_::BiShr, lhs, rhs);
     // #1877, #10183: Ensure that input is always valid
     let rhs = shift_mask_rhs(bcx, rhs, binop_debug_loc);
-    let is_signed = ty::type_is_signed(lhs_t);
+    let tcx = bcx.tcx();
+    let is_simd = ty::type_is_simd(tcx, lhs_t);
+    let intype = if is_simd {
+        ty::simd_type(tcx, lhs_t)
+    } else {
+        lhs_t
+    };
+    let is_signed = ty::type_is_signed(intype);
     if is_signed {
         AShr(bcx, lhs, rhs, binop_debug_loc)
     } else {
@@ -2519,8 +2561,7 @@ fn shift_mask_rhs<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                               rhs: ValueRef,
                               debug_loc: DebugLoc) -> ValueRef {
     let rhs_llty = val_ty(rhs);
-    let mask = shift_mask_val(rhs_llty);
-    And(bcx, rhs, C_integral(rhs_llty, mask, false), debug_loc)
+    And(bcx, rhs, shift_mask_val(bcx, rhs_llty, rhs_llty, false), debug_loc)
 }
 
 fn with_overflow_check<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, oop: OverflowOp, info: NodeIdAndSpan,
