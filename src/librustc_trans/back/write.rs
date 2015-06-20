@@ -1348,6 +1348,12 @@ unsafe fn configure_llvm(sess: &Session) {
         llvm::LLVMInitializeARMAsmPrinter();
         llvm::LLVMInitializeARMAsmParser();
 
+        llvm::LLVMInitializeMipsTargetInfo();
+        llvm::LLVMInitializeMipsTarget();
+        llvm::LLVMInitializeMipsTargetMC();
+        llvm::LLVMInitializeMipsAsmPrinter();
+        llvm::LLVMInitializeMipsAsmParser();
+
         #[cfg(not(target_os = "nacl"))]
         unsafe fn init() {
             llvm::LLVMInitializeAArch64TargetInfo();
@@ -1355,12 +1361,6 @@ unsafe fn configure_llvm(sess: &Session) {
             llvm::LLVMInitializeAArch64TargetMC();
             llvm::LLVMInitializeAArch64AsmPrinter();
             llvm::LLVMInitializeAArch64AsmParser();
-
-            llvm::LLVMInitializeMipsTargetInfo();
-            llvm::LLVMInitializeMipsTarget();
-            llvm::LLVMInitializeMipsTargetMC();
-            llvm::LLVMInitializeMipsAsmPrinter();
-            llvm::LLVMInitializeMipsAsmParser();
 
             llvm::LLVMInitializePowerPCTargetInfo();
             llvm::LLVMInitializePowerPCTarget();
