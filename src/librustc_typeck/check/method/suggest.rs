@@ -15,8 +15,11 @@ use CrateCtxt;
 
 use astconv::AstConv;
 use check::{self, FnCtxt};
-use middle::ty::{self, Ty};
+use middle::ty::{self, Ty, ToPolyTraitRef, AsPredicate};
 use middle::def;
+use middle::lang_items::FnOnceTraitLangItem;
+use middle::subst::Substs;
+use middle::traits::{Obligation, SelectionContext};
 use metadata::{csearch, cstore, decoder};
 
 use syntax::{ast, ast_util};
@@ -59,12 +62,58 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 None);
 
             // If the item has the name of a field, give a help note
-            if let (&ty::TyStruct(did, _), Some(_)) = (&rcvr_ty.sty, rcvr_expr) {
+            if let (&ty::TyStruct(did, substs), Some(expr)) = (&rcvr_ty.sty, rcvr_expr) {
                 let fields = ty::lookup_struct_fields(cx, did);
-                if fields.iter().any(|f| f.name == item_name) {
-                    cx.sess.span_note(span,
-                        &format!("use `(s.{0})(...)` if you meant to call the \
-                                 function stored in the `{0}` field", item_name));
+
+                if let Some(field) = fields.iter().find(|f| f.name == item_name) {
+                    let expr_string = match cx.sess.codemap().span_to_snippet(expr.span) {
+                        Ok(expr_string) => expr_string,
+                        _ => "s".into() // Default to a generic placeholder for the
+                                        // expression when we can't generate a string
+                                        // snippet
+                    };
+
+                    let span_stored_function = || {
+                        cx.sess.span_note(span,
+                                          &format!("use `({0}.{1})(...)` if you meant to call \
+                                                    the function stored in the `{1}` field",
+                                                   expr_string, item_name));
+                    };
+
+                    let span_did_you_mean = || {
+                        cx.sess.span_note(span, &format!("did you mean to write `{0}.{1}`?",
+                                                         expr_string, item_name));
+                    };
+
+                    // Determine if the field can be used as a function in some way
+                    let field_ty = ty::lookup_field_type(cx, did, field.id, substs);
+                    if let Ok(fn_once_trait_did) = cx.lang_items.require(FnOnceTraitLangItem) {
+                        let infcx = fcx.infcx();
+                        infcx.probe(|_| {
+                            let fn_once_substs = Substs::new_trait(vec![infcx.next_ty_var()],
+                                                                   Vec::new(),
+                                                                   field_ty);
+                            let trait_ref = ty::TraitRef::new(fn_once_trait_did,
+                                                              cx.mk_substs(fn_once_substs));
+                            let poly_trait_ref = trait_ref.to_poly_trait_ref();
+                            let obligation = Obligation::misc(span,
+                                                              fcx.body_id,
+                                                              poly_trait_ref.as_predicate());
+                            let mut selcx = SelectionContext::new(infcx, fcx);
+
+                            if selcx.evaluate_obligation(&obligation) {
+                                span_stored_function();
+                            } else {
+                                span_did_you_mean();
+                            }
+                        });
+                    } else {
+                        match field_ty.sty {
+                            // fallback to matching a closure or function pointer
+                            ty::TyClosure(..) | ty::TyBareFn(..) => span_stored_function(),
+                            _ => span_did_you_mean(),
+                        }
+                    }
                 }
             }
 
