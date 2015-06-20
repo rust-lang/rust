@@ -65,25 +65,7 @@ pub use rustc::lint;
 pub use rustc::plugin;
 pub use rustc::util;
 
-pub mod back {
-    pub use rustc_back::abi;
-    pub use rustc_back::archive;
-    pub use rustc_back::arm;
-    pub use rustc_back::mips;
-    pub use rustc_back::mipsel;
-    pub use rustc_back::rpath;
-    pub use rustc_back::svh;
-    pub use rustc_back::target_strs;
-    pub use rustc_back::x86;
-    pub use rustc_back::x86_64;
-
-    pub mod linker;
-    pub mod link;
-    pub mod lto;
-    pub mod write;
-
-}
-
+pub mod back;
 pub mod trans;
 pub mod save;
 

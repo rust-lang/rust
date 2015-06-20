@@ -569,7 +569,7 @@ pub fn check_outputs(sess: &Session,
 fn pnacl_host_tool(sess: &Session, tool: &str) -> PathBuf {
     use std::env::consts;
     let tool = format!("le32-nacl-{}{}", tool, consts::EXE_SUFFIX);
-    sess.pnacl_toolchain()
+    super::pnacl_toolchain(sess)
         .join("bin")
         .join(&tool)
 }
