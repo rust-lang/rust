@@ -529,6 +529,7 @@ fn link_binary_output(sess: &Session,
                       crate_name: &str) -> PathBuf {
     let objects = object_filenames(sess, outputs);
 
+    assert!(!sess.target.target.options.is_like_pnacl);
     let tmpdir = TempDir::new("rustc").ok().expect("needs a temp dir");
     match crate_type {
         config::CrateTypeRlib => {

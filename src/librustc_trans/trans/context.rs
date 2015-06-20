@@ -570,7 +570,6 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
 
     pub fn is_split_stack_supported(&self) -> bool {
         self.sess().target.target.options.morestack
-            && !self.sess().targeting_pnacl()
     }
 
 
@@ -799,7 +798,7 @@ fn declare_intrinsic(ccx: &CrateContext, key: & &'static str) -> Option<ValueRef
                 let name = $name;
                 let f = declare::declare_cfn(ccx, name, Type::func(&[], &$ret),
                                              ccx.tcx().mk_nil());
-                if ccx.sess().targeting_pnacl() { llvm::SetUnnamedAddr(f, false); }
+                if ccx.sess().target.target.options.is_like_pnacl { llvm::SetUnnamedAddr(f, false); }
                 ccx.intrinsics().borrow_mut().insert(name, f);
                 return Some(f);
             } else if is_key { return None; }
@@ -813,7 +812,7 @@ fn declare_intrinsic(ccx: &CrateContext, key: & &'static str) -> Option<ValueRef
                  let f = declare::declare_cfn(ccx, name,
                                               Type::func(&[$($arg),*], &$ret),
                                               ccx.tcx().mk_nil());
-                 if ccx.sess().targeting_pnacl() { llvm::SetUnnamedAddr(f, false); }
+                 if ccx.sess().target.target.options.is_like_pnacl { llvm::SetUnnamedAddr(f, false); }
                  ccx.intrinsics().borrow_mut().insert(name, f);
                  return Some(f);
              } else if is_key { return None; }
@@ -845,34 +844,34 @@ fn declare_intrinsic(ccx: &CrateContext, key: & &'static str) -> Option<ValueRef
     ifn!("llvm.trap", fn() -> void);
     ifn!("llvm.debugtrap", fn() -> void);
     ifn!("llvm.frameaddress", fn(t_i32) -> i8p,
-         if (!ccx.sess().targeting_pnacl()));
+         if (!ccx.sess().target.target.options.is_like_pnacl));
 
     ifn!("llvm.powi.f32", fn(t_f32, t_i32) -> t_f32,
-         if (!ccx.sess().targeting_pnacl()));
+         if (!ccx.sess().target.target.options.is_like_pnacl));
     ifn!("llvm.powi.f64", fn(t_f64, t_i32) -> t_f64,
-         if (!ccx.sess().targeting_pnacl()));
+         if (!ccx.sess().target.target.options.is_like_pnacl));
 
     ifn!("llvm.sqrt.f32", fn(t_f32) -> t_f32);
     ifn!("llvm.sqrt.f64", fn(t_f64) -> t_f64);
 
     ifn!("llvm.ctpop.i8", fn(t_i8) -> t_i8,
-         if (!ccx.sess().targeting_pnacl()));
+         if (!ccx.sess().target.target.options.is_like_pnacl));
     ifn!("llvm.ctpop.i16", fn(t_i16) -> t_i16,
-         if (!ccx.sess().targeting_pnacl()));
+         if (!ccx.sess().target.target.options.is_like_pnacl));
     ifn!("llvm.ctpop.i32", fn(t_i32) -> t_i32);
     ifn!("llvm.ctpop.i64", fn(t_i64) -> t_i64);
 
     ifn!("llvm.ctlz.i8", fn(t_i8 , i1) -> t_i8,
-         if (!ccx.sess().targeting_pnacl()));
+         if (!ccx.sess().target.target.options.is_like_pnacl));
     ifn!("llvm.ctlz.i16", fn(t_i16, i1) -> t_i16,
-         if (!ccx.sess().targeting_pnacl()));
+         if (!ccx.sess().target.target.options.is_like_pnacl));
     ifn!("llvm.ctlz.i32", fn(t_i32, i1) -> t_i32);
     ifn!("llvm.ctlz.i64", fn(t_i64, i1) -> t_i64);
 
     ifn!("llvm.cttz.i8", fn(t_i8 , i1) -> t_i8,
-         if (!ccx.sess().targeting_pnacl()));
+         if (!ccx.sess().target.target.options.is_like_pnacl));
     ifn!("llvm.cttz.i16", fn(t_i16, i1) -> t_i16,
-         if (!ccx.sess().targeting_pnacl()));
+         if (!ccx.sess().target.target.options.is_like_pnacl));
     ifn!("llvm.cttz.i32", fn(t_i32, i1) -> t_i32);
     ifn!("llvm.cttz.i64", fn(t_i64, i1) -> t_i64);
 
@@ -946,7 +945,7 @@ fn declare_intrinsic(ccx: &CrateContext, key: & &'static str) -> Option<ValueRef
         );
         ($name:expr, $cname:ident ($($arg:expr),*) -> $ret:expr, $llvm_version:expr) => (
             if unsafe { llvm::LLVMVersionMinor() >= $llvm_version } &&
-                !ccx.sess().targeting_pnacl() {
+                !ccx.sess().target.target.options.is_like_pnacl {
                 // The `if key == $name` is already in ifn!
                 ifn!($name, fn($($arg),*) -> $ret);
             } else if *key == $name {
@@ -958,7 +957,7 @@ fn declare_intrinsic(ccx: &CrateContext, key: & &'static str) -> Option<ValueRef
             }
         );
         ($name:expr, $cname:ident ($($arg:expr),*) -> $ret:expr) => (
-            if !ccx.sess().targeting_pnacl() {
+            if !ccx.sess().target.target.options.is_like_pnacl {
                 // The `if key == $name` is already in ifn!
                 ifn!($name, fn($($arg),*) -> $ret);
             } else if *key == $name {

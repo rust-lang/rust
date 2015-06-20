@@ -735,7 +735,7 @@ fn generic_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             //
             // FIXME #10604: this breaks when vector types are present.
             let (size, align) = union_size_and_align(&sts[..]);
-            let align_s = if align > 8 && cx.sess().targeting_pnacl() {
+            let align_s = if align > 8 && cx.sess().target.target.options.is_like_pnacl {
                 // On PNaCl, we have no way to represent any alignment larger
                 // than 8 (well, we do, but the common 16 byte vector is out).
                 // Fortunately, due to PNaCl's restricted IR, we don't have to

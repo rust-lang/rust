@@ -8,21 +8,28 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use super::Target;
-use super::nacl_base;
+use super::{Target, TargetOptions};
 
 pub fn target() -> Target {
-    let mut b = nacl_base::base_target();
-
-    b.data_layout = "e-i1:8:8-i8:8:8-i16:16:16-i32:32:32-\
-                     i64:64:64-f32:32:32-f64:64:64-p:32:32:32-v128:32:32".to_string();
-    b.llvm_target = "le32-unknown-nacl".to_string();
-    b.target_endian = "little".to_string();
-    b.target_pointer_width = "32".to_string();
-    b.arch = "le32".to_string();
-
-    b.options.morestack = false;
-    b.options.exe_suffix = ".pexe".to_string();
-    b.options.no_compiler_rt = true;
-    b
+    let opts = TargetOptions {
+        dynamic_linking: false,
+        executables: true,
+        morestack: false,
+        exe_suffix: ".pexe".to_string(),
+        no_compiler_rt: true,
+        is_like_pnacl: true,
+        no_asm: true,
+        .. Default::default()
+    };
+    Target {
+        data_layout: "e-i1:8:8-i8:8:8-i16:16:16-i32:32:32-\
+                     i64:64:64-f32:32:32-f64:64:64-p:32:32:32-v128:32:32".to_string(),
+        llvm_target: "le32-unknown-nacl".to_string(),
+        target_endian: "little".to_string(),
+        target_pointer_width: "32".to_string(),
+        target_os: "nacl".to_string(),
+        target_env: "".to_string(),
+        arch: "le32".to_string(),
+        options: opts,
+    }
 }
