@@ -290,10 +290,13 @@ pub fn ast_path_substs_for_ty<'tcx>(
         ast::AngleBracketedParameters(ref data) => {
             convert_angle_bracketed_parameters(this, rscope, span, decl_generics, data)
         }
-        ast::ParenthesizedParameters(ref data) => {
+        ast::ParenthesizedParameters(..) => {
             span_err!(tcx.sess, span, E0214,
-                "parenthesized parameters may only be used with a trait");
-            convert_parenthesized_parameters(this, rscope, span, decl_generics, data)
+                      "parenthesized parameters may only be used with a trait");
+            let ty_param_defs = decl_generics.types.get_slice(TypeSpace);
+            (Substs::empty(),
+             ty_param_defs.iter().map(|_| tcx.types.err).collect(),
+             vec![])
         }
     };
 
