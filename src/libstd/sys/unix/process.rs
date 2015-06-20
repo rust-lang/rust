@@ -313,7 +313,7 @@ impl Process {
         if !envp.is_null() {
             *sys::os::environ() = envp as *const _;
         }
-        let _ = libc::execvp(*argv, argv as *mut _);
+        let _ = libc::execvp(*argv, argv);
         fail(&mut output)
     }
 
