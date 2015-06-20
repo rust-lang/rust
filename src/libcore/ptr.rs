@@ -512,6 +512,11 @@ impl<T: ?Sized> PartialOrd for *mut T {
 #[unstable(feature = "unique", reason = "needs an RFC to flesh out design")]
 pub struct Unique<T: ?Sized> {
     pointer: NonZero<*const T>,
+    // NOTE: this marker has no consequences for variance, but is necessary
+    // for dropck to understand that we logically own a `T`.
+    //
+    // For details, see:
+    // https://github.com/rust-lang/rfcs/blob/master/text/0769-sound-generic-drop.md#phantom-data
     _marker: PhantomData<T>,
 }
 
