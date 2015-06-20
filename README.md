@@ -173,7 +173,7 @@ to the pull request number), at which point the RFC is 'active', or
 reject it by closing the pull request.
 
 ## The role of the shepherd
-[The role of the shepherd]: the-role-of-the-shepherd
+[The role of the shepherd]: #the-role-of-the-shepherd
 
 During triage, every RFC will either be closed or assigned a shepherd.
 The role of the shepherd is to move the RFC through the process. This
