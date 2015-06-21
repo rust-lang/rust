@@ -168,6 +168,8 @@ applied.
 
 
 
+TODO: receiver coercions?
+
 
 # Casts
 
@@ -212,11 +214,10 @@ For numeric casts, there are quite a few cases to consider:
 * casting from a larger integer to a smaller integer (e.g. u8 -> u32) will
     * zero-extend if the target is unsigned
     * sign-extend if the target is signed
-* casting from a float to an integer will:
-    * round the float towards zero if finite
+* casting from a float to an integer will round the float towards zero
     * **NOTE: currently this will cause Undefined Behaviour if the rounded
       value cannot be represented by the target integer type**. This is a bug
-      and will be fixed.
+      and will be fixed. (TODO: figure out what Inf and NaN do)
 * casting from an integer to float will produce the floating point representation
   of the integer, rounded if necessary (rounding strategy unspecified).
 * casting from an f32 to an f64 is perfect and lossless.
@@ -226,21 +227,41 @@ For numeric casts, there are quite a few cases to consider:
       is finite but larger or smaller than the largest or smallest finite
       value representable by f32**. This is a bug and will be fixed.
 
-The casts involving rawptrs also allow us to completely bypass type-safety
-by re-interpretting a pointer of T to a pointer of U for arbitrary types, as
-well as interpret integers as addresses. However it is impossible to actually
-*capitalize* on this violation in Safe Rust, because derefencing a raw ptr is
-`unsafe`.
-
-
 
 
 # Conversion Traits
 
-TODO
+TODO?
 
 
 
 
 # Transmuting Types
 
+Get out of our way type system! We're going to reinterpret these bits or die
+trying! Even though this book is all about doing things that are unsafe, I really
+can't emphasize that you should deeply think about finding Another Way than the
+operations covered in this section. This is really, truly, the most horribly
+unsafe thing you can do in Rust. The railguards here are dental floss.
+
+`mem::transmute<T, U>` takes a value of type `T` and reinterprets it to have
+type `U`. The only restriction is that the `T` and `U` are verified to have the
+same size. The ways to cause Undefined Behaviour with this are mind boggling.
+
+* First and foremost, creating an instance of *any* type with an invalid state
+  is going to cause arbitrary chaos that can't really be predicted.
+* Transmute has an overloaded return type. If you do not specify the return type
+  it may produce a surprising type to satisfy inference.
+* Making a primitive with an invalid value is UB
+* Transmuting between non-repr(C) types is UB
+* Transmuting an & to &mut is UB
+* Transmuting to a reference without an explicitly provided lifetime
+  produces an [unbound lifetime](lifetimes.html#unbounded-lifetimes)
+
+`mem::transmute_copy<T, U>` somehow manages to be *even more* wildly unsafe than
+this. It copies `size_of<U>` bytes out of an `&T` and interprets them as a `U`.
+The size check that `mem::transmute` has is gone (as it may be valid to copy
+out a prefix), though it is Undefined Behaviour for `U` to be larger than `T`.
+
+Also of course you can get most of the functionality of these functions using
+pointer casts.

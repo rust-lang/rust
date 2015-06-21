@@ -23,6 +23,7 @@ stack or heap, we will not explain the syntax.
 * [Uninitialized Memory](uninitialized.html)
 * [Ownership-oriented resource management (RAII)](raii.html)
 * [Concurrency](concurrency.html)
+* [Example: Implementing Vec](vec.html)
 
 
 
@@ -232,10 +233,6 @@ struct Vec<T> {
 // We currently live in a nice imaginary world of only postive fixed-size
 // types.
 impl<T> Vec<T> {
-    fn new() -> Self {
-        Vec { ptr: heap::EMPTY, len: 0, cap: 0 }
-    }
-
     fn push(&mut self, elem: T) {
         if self.len == self.cap {
             // not important for this example
@@ -244,17 +241,6 @@ impl<T> Vec<T> {
         unsafe {
             ptr::write(self.ptr.offset(len as isize), elem);
             self.len += 1;
-        }
-    }
-
-    fn pop(&mut self) -> Option<T> {
-        if self.len > 0 {
-            self.len -= 1;
-            unsafe {
-                Some(ptr::read(self.ptr.offset(self.len as isize)))
-            }
-        } else {
-            None
         }
     }
 }
