@@ -247,11 +247,11 @@ Of course, it might be bounded by the *wrong* lifetime, but this will usually
 just cause a compiler error, rather than allow memory safety to be trivially
 violated.
 
-Within a function, bounding lifetimes is more error-prone. The safest route
-is to just use a small function to ensure the lifetime is bound. However if
-this is unacceptable, the reference can be placed in a location with a specific
-lifetime. Unfortunately it's impossible to name all lifetimes involved in a
-function. To get around this, you can in principle use `copy_lifetime`, though
+Within a function, bounding lifetimes is more error-prone. The safest and easiest
+way to bound a lifetime is to return it from a function with a bound lifetime.
+However if this is unacceptable, the reference can be placed in a location with
+a specific lifetime. Unfortunately it's impossible to name all lifetimes involved
+in a function. To get around this, you can in principle use `copy_lifetime`, though
 these are unstable due to their awkward nature and questionable utility.
 
 
@@ -425,7 +425,7 @@ must be invariant to avoid lifetime smuggling.
 
 `Fn` is the most confusing case, largely because contravariance is easily the
 most confusing kind of variance, and basically never comes up. To understand it,
-consider a function that *takes* a function `len` that takes a function `F`.
+consider a function `len` that takes a function `F`.
 
 ```rust
 fn len<F>(func: F) -> usize
@@ -435,8 +435,8 @@ fn len<F>(func: F) -> usize
 }
 ```
 
-We require that F is a Fn that can take an `&'static str` and print a usize. Now
-say we have a function that can take an `&'a str` (for *some* 'a). Such a function actually
+We require that F is a Fn that can take an `&'static str` and returns a usize. Now
+say we have a function that can take an `&'a str` (for *some* `'a`). Such a function actually
 accepts *more* inputs, since `&'static str` is a subtype of `&'a str`. Therefore
 `len` should happily accept such a function!
 
@@ -643,8 +643,8 @@ trait Iterator {
 Given this definition, Self::Item has *no* connection to `self`. This means
 that we can call `next` several times in a row, and hold onto all the results
 *concurrently*. This is perfectly fine for by-value iterators, which have exactly
-these semantics. It's also actually fine for shared references, as it's perfectly
-fine to grab a huge pile of shared references to the same thing (although the
+these semantics. It's also actually fine for shared references, as they admit
+arbitrarily many references to the same thing (although the
 iterator needs to be a separate object from the thing being shared). But mutable
 references make this a mess. At first glance, they might seem completely
 incompatible with this API, as it would produce multiple mutable references to
