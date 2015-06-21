@@ -230,7 +230,7 @@ struct Vec<T> {
 }
 
 // Note this implementation does not correctly handle zero-sized types.
-// We currently live in a nice imaginary world of only postive fixed-size
+// We currently live in a nice imaginary world of only positive fixed-size
 // types.
 impl<T> Vec<T> {
     fn push(&mut self, elem: T) {
