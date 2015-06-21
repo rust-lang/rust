@@ -152,6 +152,7 @@ pub fn stderr() -> Option<Box<Terminal<WriterWrapper> + Send>> {
 
 
 /// Terminal color definitions
+#[allow(missing_docs)]
 pub mod color {
     /// Number for a terminal color
     pub type Color = u16;
