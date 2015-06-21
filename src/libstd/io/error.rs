@@ -37,7 +37,6 @@ pub struct Error {
     repr: Repr,
 }
 
-#[derive(Debug)]
 enum Repr {
     Os(i32),
     Custom(Box<Custom>),
@@ -240,6 +239,17 @@ impl Error {
     }
 }
 
+impl fmt::Debug for Repr {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            &Repr::Os(ref code) =>
+                fmt.debug_struct("Os").field("code", code)
+                   .field("message", &sys::os::error_string(*code)).finish(),
+            &Repr::Custom(ref c) => fmt.debug_tuple("Custom").field(c).finish(),
+        }
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for Error {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
@@ -282,6 +292,16 @@ mod test {
     use error;
     use error::Error as error_Error;
     use fmt;
+    use sys::os::error_string;
+
+    #[test]
+    fn test_debug_error() {
+        let code = 6;
+        let msg = error_string(code);
+        let err = Error { repr: super::Repr::Os(code) };
+        let expected = format!("Error {{ repr: Os {{ code: {:?}, message: {:?} }} }}", code, msg);
+        assert_eq!(format!("{:?}", err), expected);
+    }
 
     #[test]
     fn test_downcasting() {
