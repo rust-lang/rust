@@ -1372,14 +1372,13 @@ macro_rules! from_str_float_impl {
             /// This function accepts strings such as
             ///
             /// * '3.14'
-            /// * '+3.14', equivalent to '3.14'
             /// * '-3.14'
             /// * '2.5E10', or equivalently, '2.5e10'
             /// * '2.5E-10'
             /// * '.' (understood as 0)
             /// * '5.'
             /// * '.5', or, equivalently,  '0.5'
-            /// * '+inf', 'inf', '-inf', 'NaN'
+            /// * 'inf', '-inf', 'NaN'
             ///
             /// Leading and trailing whitespace represent an error.
             ///
