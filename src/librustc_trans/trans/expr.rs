@@ -188,15 +188,15 @@ pub fn trans_into<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                                                           false);
     bcx.fcx.push_ast_cleanup_scope(cleanup_debug_loc);
 
-    let kind = ty::expr_kind(bcx.tcx(), expr);
+    let kind = expr_kind(bcx.tcx(), expr);
     bcx = match kind {
-        ty::LvalueExpr | ty::RvalueDatumExpr => {
+        ExprKind::Lvalue | ExprKind::RvalueDatum => {
             trans_unadjusted(bcx, expr).store_to_dest(dest, expr.id)
         }
-        ty::RvalueDpsExpr => {
+        ExprKind::RvalueDps => {
             trans_rvalue_dps_unadjusted(bcx, expr, dest)
         }
-        ty::RvalueStmtExpr => {
+        ExprKind::RvalueStmt => {
             trans_rvalue_stmt_unadjusted(bcx, expr)
         }
     };
@@ -582,8 +582,8 @@ fn trans_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     debuginfo::set_source_location(bcx.fcx, expr.id, expr.span);
 
-    return match ty::expr_kind(bcx.tcx(), expr) {
-        ty::LvalueExpr | ty::RvalueDatumExpr => {
+    return match expr_kind(bcx.tcx(), expr) {
+        ExprKind::Lvalue | ExprKind::RvalueDatum => {
             let datum = unpack_datum!(bcx, {
                 trans_datum_unadjusted(bcx, expr)
             });
@@ -591,12 +591,12 @@ fn trans_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             DatumBlock {bcx: bcx, datum: datum}
         }
 
-        ty::RvalueStmtExpr => {
+        ExprKind::RvalueStmt => {
             bcx = trans_rvalue_stmt_unadjusted(bcx, expr);
             nil(bcx, expr_ty(bcx, expr))
         }
 
-        ty::RvalueDpsExpr => {
+        ExprKind::RvalueDps => {
             let ty = expr_ty(bcx, expr);
             if type_is_zero_size(bcx.ccx(), ty) {
                 bcx = trans_rvalue_dps_unadjusted(bcx, expr, Ignore);
@@ -1531,11 +1531,13 @@ pub fn trans_adt<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         // Second, trans the base to the dest.
         assert_eq!(discr, 0);
 
-        match ty::expr_kind(bcx.tcx(), &*base.expr) {
-            ty::RvalueDpsExpr | ty::RvalueDatumExpr if !bcx.fcx.type_needs_drop(ty) => {
+        match expr_kind(bcx.tcx(), &*base.expr) {
+            ExprKind::RvalueDps | ExprKind::RvalueDatum if !bcx.fcx.type_needs_drop(ty) => {
                 bcx = trans_into(bcx, &*base.expr, SaveIn(addr));
             },
-            ty::RvalueStmtExpr => bcx.tcx().sess.bug("unexpected expr kind for struct base expr"),
+            ExprKind::RvalueStmt => {
+                bcx.tcx().sess.bug("unexpected expr kind for struct base expr")
+            }
             _ => {
                 let base_datum = unpack_datum!(bcx, trans_to_lvalue(bcx, &*base.expr, "base"));
                 for &(i, t) in &base.fields {
@@ -2590,5 +2592,157 @@ fn with_overflow_check<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, oop: OverflowOp, info
                 build_unchecked_rshift(bcx, lhs_t, lhs, rhs, binop_debug_loc),
         };
         (bcx, res)
+    }
+}
+
+/// We categorize expressions into three kinds.  The distinction between
+/// lvalue/rvalue is fundamental to the language.  The distinction between the
+/// two kinds of rvalues is an artifact of trans which reflects how we will
+/// generate code for that kind of expression.  See trans/expr.rs for more
+/// information.
+#[derive(Copy, Clone)]
+enum ExprKind {
+    Lvalue,
+    RvalueDps,
+    RvalueDatum,
+    RvalueStmt
+}
+
+fn expr_kind(tcx: &ty::ctxt, expr: &ast::Expr) -> ExprKind {
+    if tcx.method_map.borrow().contains_key(&MethodCall::expr(expr.id)) {
+        // Overloaded operations are generally calls, and hence they are
+        // generated via DPS, but there are a few exceptions:
+        return match expr.node {
+            // `a += b` has a unit result.
+            ast::ExprAssignOp(..) => ExprKind::RvalueStmt,
+
+            // the deref method invoked for `*a` always yields an `&T`
+            ast::ExprUnary(ast::UnDeref, _) => ExprKind::Lvalue,
+
+            // the index method invoked for `a[i]` always yields an `&T`
+            ast::ExprIndex(..) => ExprKind::Lvalue,
+
+            // in the general case, result could be any type, use DPS
+            _ => ExprKind::RvalueDps
+        };
+    }
+
+    match expr.node {
+        ast::ExprPath(..) => {
+            match ty::resolve_expr(tcx, expr) {
+                def::DefStruct(_) | def::DefVariant(..) => {
+                    if let ty::TyBareFn(..) = ty::node_id_to_type(tcx, expr.id).sty {
+                        // ctor function
+                        ExprKind::RvalueDatum
+                    } else {
+                        ExprKind::RvalueDps
+                    }
+                }
+
+                // Special case: A unit like struct's constructor must be called without () at the
+                // end (like `UnitStruct`) which means this is an ExprPath to a DefFn. But in case
+                // of unit structs this is should not be interpreted as function pointer but as
+                // call to the constructor.
+                def::DefFn(_, true) => ExprKind::RvalueDps,
+
+                // Fn pointers are just scalar values.
+                def::DefFn(..) | def::DefMethod(..) => ExprKind::RvalueDatum,
+
+                // Note: there is actually a good case to be made that
+                // DefArg's, particularly those of immediate type, ought to
+                // considered rvalues.
+                def::DefStatic(..) |
+                def::DefUpvar(..) |
+                def::DefLocal(..) => ExprKind::Lvalue,
+
+                def::DefConst(..) |
+                def::DefAssociatedConst(..) => ExprKind::RvalueDatum,
+
+                def => {
+                    tcx.sess.span_bug(
+                        expr.span,
+                        &format!("uncategorized def for expr {}: {:?}",
+                                expr.id,
+                                def));
+                }
+            }
+        }
+
+        ast::ExprUnary(ast::UnDeref, _) |
+        ast::ExprField(..) |
+        ast::ExprTupField(..) |
+        ast::ExprIndex(..) => {
+            ExprKind::Lvalue
+        }
+
+        ast::ExprCall(..) |
+        ast::ExprMethodCall(..) |
+        ast::ExprStruct(..) |
+        ast::ExprRange(..) |
+        ast::ExprTup(..) |
+        ast::ExprIf(..) |
+        ast::ExprMatch(..) |
+        ast::ExprClosure(..) |
+        ast::ExprBlock(..) |
+        ast::ExprRepeat(..) |
+        ast::ExprVec(..) => {
+            ExprKind::RvalueDps
+        }
+
+        ast::ExprIfLet(..) => {
+            tcx.sess.span_bug(expr.span, "non-desugared ExprIfLet");
+        }
+        ast::ExprWhileLet(..) => {
+            tcx.sess.span_bug(expr.span, "non-desugared ExprWhileLet");
+        }
+
+        ast::ExprForLoop(..) => {
+            tcx.sess.span_bug(expr.span, "non-desugared ExprForLoop");
+        }
+
+        ast::ExprLit(ref lit) if ast_util::lit_is_str(&**lit) => {
+            ExprKind::RvalueDps
+        }
+
+        ast::ExprBreak(..) |
+        ast::ExprAgain(..) |
+        ast::ExprRet(..) |
+        ast::ExprWhile(..) |
+        ast::ExprLoop(..) |
+        ast::ExprAssign(..) |
+        ast::ExprInlineAsm(..) |
+        ast::ExprAssignOp(..) => {
+            ExprKind::RvalueStmt
+        }
+
+        ast::ExprLit(_) | // Note: LitStr is carved out above
+        ast::ExprUnary(..) |
+        ast::ExprBox(None, _) |
+        ast::ExprAddrOf(..) |
+        ast::ExprBinary(..) |
+        ast::ExprCast(..) => {
+            ExprKind::RvalueDatum
+        }
+
+        ast::ExprBox(Some(ref place), _) => {
+            // Special case `Box<T>` for now:
+            let def_id = match tcx.def_map.borrow().get(&place.id) {
+                Some(def) => def.def_id(),
+                None => panic!("no def for place"),
+            };
+            if tcx.lang_items.exchange_heap() == Some(def_id) {
+                ExprKind::RvalueDatum
+            } else {
+                ExprKind::RvalueDps
+            }
+        }
+
+        ast::ExprParen(ref e) => expr_kind(tcx, &**e),
+
+        ast::ExprMac(..) => {
+            tcx.sess.span_bug(
+                expr.span,
+                "macro expression remains after expansion");
+        }
     }
 }
