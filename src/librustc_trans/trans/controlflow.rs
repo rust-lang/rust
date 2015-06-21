@@ -19,6 +19,7 @@ use trans::cleanup::CleanupMethods;
 use trans::cleanup;
 use trans::common::*;
 use trans::consts;
+use trans::datum;
 use trans::debuginfo;
 use trans::debuginfo::{DebugLoc, ToDebugLoc};
 use trans::expr;
@@ -142,6 +143,48 @@ pub fn trans_block<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     return bcx;
 }
+
+/// Same as `trans_block` except it returns a `DatumBlock` instead of storing the
+/// the result to a destination. This avoids going through a temporary when it's
+/// not needed, primarily to ensure that `unsafe { likely(cond) }` and similar patterns
+/// work.
+pub fn trans_block_datum<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                                     b: &ast::Block)
+                                     -> datum::DatumBlock<'blk, 'tcx, datum::Expr> {
+    let _icx = push_ctxt("trans_block_datum");
+
+    if bcx.unreachable.get() {
+        let llval = C_nil(bcx.ccx());
+        let datum = datum::immediate_rvalue(llval, ty::mk_nil(bcx.tcx()));
+        return datum::DatumBlock {bcx: bcx, datum: datum.to_expr_datum()};
+    }
+
+    let fcx = bcx.fcx;
+    let mut bcx = bcx;
+
+    let cleanup_debug_loc =
+        debuginfo::get_cleanup_debug_loc_for_ast_node(bcx.ccx(), b.id, b.span, true);
+    fcx.push_ast_cleanup_scope(cleanup_debug_loc);
+
+    for s in &b.stmts {
+        bcx = trans_stmt(bcx, &**s);
+    }
+
+    let datum = match b.expr {
+        Some(ref e) if !bcx.unreachable.get() => {
+            unpack_datum!(bcx, expr::trans(bcx, &**e))
+        }
+        _ => {
+            let llval = C_nil(bcx.ccx());
+            datum::immediate_rvalue(llval, ty::mk_nil(bcx.tcx())).to_expr_datum()
+        }
+    };
+
+    bcx = fcx.pop_and_trans_ast_cleanup_scope(bcx, b.id);
+
+    datum::DatumBlock {bcx: bcx, datum: datum}
+}
+
 
 pub fn trans_if<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                             if_id: ast::NodeId,

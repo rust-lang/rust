@@ -306,7 +306,7 @@ pub unsafe fn register(f: Callback) -> bool {
         // been incremented, but the callback has not been stored. We're
         // guaranteed that the slot we're storing into is 0.
         n if n < MAX_CALLBACKS => {
-            let prev = CALLBACKS[n].swap(mem::transmute(f), Ordering::SeqCst);
+            let prev = CALLBACKS[n].swap(f as usize, Ordering::SeqCst);
             rtassert!(prev == 0);
             true
         }

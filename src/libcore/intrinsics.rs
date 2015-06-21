@@ -602,4 +602,24 @@ extern "rust-intrinsic" {
     /// Returns the value of the discriminant for the variant in 'v',
     /// cast to a `u64`; if `T` has no discriminant, returns 0.
     pub fn discriminant_value<T>(v: &T) -> u64;
+
+    /// Hints to the compiler that a branch is likely to be taken. Returns the value
+    /// passed to it. In order for the hint to take effect, it should be used as follows:
+    ///
+    /// ```
+    /// unsafe fn foo(a: i32, b: i32) -> i32 {
+    ///     if likely(a == b) {
+    ///         1
+    ///     } else {
+    ///         2
+    ///     }
+    /// }
+    /// ```
+    #[cfg(not(stage0))]
+    pub fn likely(v: bool) -> bool;
+
+    /// Hints to the compiler that a branch is not likely to be taken. See `likely` for
+    /// more details
+    #[cfg(not(stage0))]
+    pub fn unlikely(v: bool) -> bool;
 }

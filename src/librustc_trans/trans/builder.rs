@@ -718,6 +718,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub fn icmp(&self, op: IntPredicate, lhs: ValueRef, rhs: ValueRef) -> ValueRef {
         self.count_insn("icmp");
         unsafe {
+            assert!(val_ty(lhs) == val_ty(rhs), "Cannot compare {} and {}",
+                    self.ccx.tn().val_to_string(lhs),
+                    self.ccx.tn().val_to_string(rhs));
             llvm::LLVMBuildICmp(self.llbuilder, op as c_uint, lhs, rhs, noname())
         }
     }

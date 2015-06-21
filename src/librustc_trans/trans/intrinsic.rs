@@ -170,6 +170,8 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     let foreign_item = tcx.map.expect_foreign_item(node);
     let name = token::get_ident(foreign_item.ident);
 
+    let call_debug_location = DebugLoc::At(call_info.id, call_info.span);
+
     // For `transmute` we can just trans the input expr directly into dest
     if &name[..] == "transmute" {
         let llret_ty = type_of::type_of(ccx, ret_ty.unwrap());
@@ -198,16 +200,16 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                 };
 
                 // An approximation to which types can be directly cast via
-                // LLVM's bitcast.  This doesn't cover pointer -> pointer casts,
-                // but does, importantly, cover SIMD types.
+                // LLVM's bitcast.
                 let in_kind = llintype.kind();
                 let ret_kind = llret_ty.kind();
                 let bitcast_compatible =
-                    (nonpointer_nonaggregate(in_kind) && nonpointer_nonaggregate(ret_kind)) || {
-                        in_kind == TypeKind::Pointer && ret_kind == TypeKind::Pointer
-                    };
+                    (nonpointer_nonaggregate(in_kind) && nonpointer_nonaggregate(ret_kind)) ||
+                    (in_kind == TypeKind::Pointer && ret_kind == TypeKind::Pointer) ||
+                    (in_kind == TypeKind::Pointer && ret_kind == TypeKind::Integer) ||
+                    (in_kind == TypeKind::Integer && ret_kind == TypeKind::Pointer);
 
-                let dest = if bitcast_compatible {
+                let val = if bitcast_compatible {
                     // if we're here, the type is scalar-like (a primitive, a
                     // SIMD type or a pointer), and so can be handled as a
                     // by-value ValueRef and can also be directly bitcast to the
@@ -225,7 +227,13 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                         from_arg_ty(bcx, datum.val, datum.ty)
                     };
 
-                    let cast_val = BitCast(bcx, val, llret_ty);
+                    // Do the appropriate cast type
+                    let cast_val = match (in_kind, ret_kind) {
+                        (TypeKind::Pointer, TypeKind::Pointer) => PointerCast(bcx, val, llret_ty),
+                        (TypeKind::Pointer, TypeKind::Integer) => PtrToInt(bcx, val, llret_ty),
+                        (TypeKind::Integer, TypeKind::Pointer) => IntToPtr(bcx, val, llret_ty),
+                        _ => BitCast(bcx, val, llret_ty)
+                    };
 
                     match dest {
                         expr::SaveIn(d) => {
@@ -235,26 +243,54 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                         }
                         expr::Ignore => {}
                     }
-                    dest
+                    cast_val
                 } else {
                     // The types are too complicated to do with a by-value
                     // bitcast, so pointer cast instead. We need to cast the
                     // dest so the types work out.
-                    let dest = match dest {
+
+                    // Create the destination, if we were passed a destination, bitcast it to the
+                    // appropriate type. Otherwise, create a temporary destination for immediate
+                    // types and just ignore non-immediate types. This is because we return the
+                    // result for immediate values.
+                    let tmp_dest = match dest {
                         expr::SaveIn(d) => expr::SaveIn(PointerCast(bcx, d, llintype.ptr_to())),
-                        expr::Ignore => expr::Ignore
+                        expr::Ignore => if type_is_immediate(bcx.ccx(), out_type) {
+                            expr::SaveIn(alloc_ty(bcx, in_type, "intrinsic_result"))
+                        } else {
+                            expr::Ignore
+                        }
                     };
-                    bcx = expr::trans_into(bcx, &*arg_exprs[0], dest);
-                    dest
+                    bcx = expr::trans_into(bcx, &*arg_exprs[0], tmp_dest);
+                    match dest {
+                        expr::SaveIn(d) => d,
+                        expr::Ignore => {
+                            // We weren't passed a destination to save to, if we made a temporary
+                            // destination, load the immediate value stored and clean up the type.
+                            // Otherwise return ().
+                            if let expr::SaveIn(d) = tmp_dest {
+                                let val = if type_is_immediate(bcx.ccx(), out_type) {
+                                    let d = PointerCast(bcx, d, llouttype.ptr_to());
+                                    load_ty(bcx, d, out_type)
+                                } else {
+                                    C_nil(bcx.ccx())
+                                };
+
+                                bcx = glue::drop_ty(bcx, d, out_type, call_debug_location);
+
+                                val
+                            } else {
+                                C_nil(bcx.ccx())
+                            }
+                        }
+                    }
                 };
 
                 fcx.scopes.borrow_mut().last_mut().unwrap().drop_non_lifetime_clean();
                 fcx.pop_and_trans_custom_cleanup_scope(bcx, cleanup_scope);
 
-                return match dest {
-                    expr::SaveIn(d) => Result::new(bcx, d),
-                    expr::Ignore => Result::new(bcx, C_undef(llret_ty.ptr_to()))
-                };
+                return Result::new(bcx, val);
+
 
             }
 
@@ -313,8 +349,6 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                              RustIntrinsic);
 
     fcx.scopes.borrow_mut().last_mut().unwrap().drop_non_lifetime_clean();
-
-    let call_debug_location = DebugLoc::At(call_info.id, call_info.span);
 
     // These are the only intrinsic functions that diverge.
     if &name[..] == "abort" {
@@ -765,6 +799,17 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
             }
         }
 
+        (_, "likely") => {
+            let llfn = ccx.get_intrinsic(&("llvm.expect.i1"));
+            let expected = C_bool(ccx, true);
+            Call(bcx, llfn, &[llargs[0], expected], None, call_debug_location)
+        }
+        (_, "unlikely") => {
+            let llfn = ccx.get_intrinsic(&("llvm.expect.i1"));
+            let expected = C_bool(ccx, false);
+            Call(bcx, llfn, &[llargs[0], expected], None, call_debug_location)
+        }
+
         // This requires that atomic intrinsics follow a specific naming pattern:
         // "atomic_<operation>[_<ordering>]", and no ordering means SeqCst
         (_, name) if name.starts_with("atomic_") => {
@@ -879,7 +924,14 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
 
     fcx.pop_and_trans_custom_cleanup_scope(bcx, cleanup_scope);
 
-    Result::new(bcx, llresult)
+    match dest {
+        expr::Ignore => {
+            Result::new(bcx, llval)
+        }
+        expr::SaveIn(_) => {
+            Result::new(bcx, llresult)
+        }
+    }
 }
 
 fn copy_intrinsic<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,

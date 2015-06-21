@@ -1697,8 +1697,7 @@ pub fn trans_named_tuple_constructor<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                                  disr: ty::Disr,
                                                  args: callee::CallArgs,
                                                  dest: expr::Dest,
-                                                 debug_loc: DebugLoc)
-                                                 -> Result<'blk, 'tcx> {
+                                                 debug_loc: DebugLoc) -> Result<'blk, 'tcx> {
 
     let ccx = bcx.fcx.ccx;
 
@@ -1741,6 +1740,12 @@ pub fn trans_named_tuple_constructor<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         }
     }
 
+    let val = if type_is_immediate(ccx, result_ty) && !type_is_zero_size(ccx, result_ty) {
+        load_ty(bcx, llresult, result_ty)
+    } else {
+        common::C_nil(ccx)
+    };
+
     // If the caller doesn't care about the result
     // drop the temporary we made
     let bcx = match dest {
@@ -1754,7 +1759,7 @@ pub fn trans_named_tuple_constructor<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         }
     };
 
-    Result::new(bcx, llresult)
+    Result::new(bcx, val)
 }
 
 pub fn trans_tuple_struct<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,

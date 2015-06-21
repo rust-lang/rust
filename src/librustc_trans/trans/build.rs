@@ -31,7 +31,14 @@ pub fn terminate(cx: Block, _: &str) {
 
 pub fn check_not_terminated(cx: Block) {
     if cx.terminated.get() {
-        panic!("already terminated!");
+        let fcx = cx.fcx;
+        if let Some(span) = fcx.span {
+            cx.tcx().sess.span_bug(
+                span,
+                "already terminated!");
+        } else {
+            cx.tcx().sess.bug("already terminated!");
+        }
     }
 }
 
