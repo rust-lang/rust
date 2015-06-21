@@ -31,15 +31,12 @@ pub fn on_panic(obj: &(Any+Send), file: &'static str, line: u32) {
             None => "Box<Any>",
         }
     };
-    let mut err = match Stderr::new() {
-        Ok(err) => err,
-        _ => return,
-    };
+    let mut err = Stderr::new().ok();
     let thread = thread_info::current_thread();
     let name = thread.as_ref().and_then(|t| t.name()).unwrap_or("<unnamed>");
     let prev = LOCAL_STDERR.with(|s| s.borrow_mut().take());
-    match prev {
-        Some(mut stderr) => {
+    match (prev, err.as_mut()) {
+        (Some(mut stderr), _) => {
             // FIXME: what to do when the thread printing panics?
             let _ = writeln!(stderr,
                              "thread '{}' panicked at '{}', {}:{}\n",
@@ -52,18 +49,22 @@ pub fn on_panic(obj: &(Any+Send), file: &'static str, line: u32) {
                 *slot.borrow_mut() = s.take();
             });
         }
-        None => {
-            let _ = writeln!(&mut err, "thread '{}' panicked at '{}', {}:{}",
+        (None, Some(ref mut err)) => {
+            let _ = writeln!(err, "thread '{}' panicked at '{}', {}:{}",
                              name, msg, file, line);
             if backtrace::log_enabled() {
-                let _ = backtrace::write(&mut err);
+                let _ = backtrace::write(err);
             }
         }
+        _ => {}
     }
 
     // If this is a double panic, make sure that we printed a backtrace
     // for this panic.
-    if unwind::panicking() && !backtrace::log_enabled() {
-        let _ = backtrace::write(&mut err);
+    match err {
+        Some(ref mut err) if unwind::panicking() && !backtrace::log_enabled() => {
+            let _ = backtrace::write(err);
+        }
+        _ => {}
     }
 }
