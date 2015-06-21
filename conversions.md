@@ -210,10 +210,10 @@ expression, `e as U2` is not necessarily so (in fact it will only be valid if
 For numeric casts, there are quite a few cases to consider:
 
 * casting between two integers of the same size (e.g. i32 -> u32) is a no-op
-* casting from a smaller integer to a bigger integer (e.g. u32 -> u8) will truncate
-* casting from a larger integer to a smaller integer (e.g. u8 -> u32) will
-    * zero-extend if the target is unsigned
-    * sign-extend if the target is signed
+* casting from a larger integer to a smaller integer (e.g. u32 -> u8) will truncate
+* casting from a smaller integer to a larger integer (e.g. u8 -> u32) will
+    * zero-extend if the source is unsigned
+    * sign-extend if the source is signed
 * casting from a float to an integer will round the float towards zero
     * **NOTE: currently this will cause Undefined Behaviour if the rounded
       value cannot be represented by the target integer type**. This is a bug
