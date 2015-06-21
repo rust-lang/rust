@@ -58,7 +58,8 @@ a Cell is to copy the bits in or out.
 manages this through *runtime* checks. It is effectively a thread-unsafe
 read-write lock.
 
-For more details see Dan Grossman's Existential Types for Imperative Languages:
+For more details see Dan Grossman's *Existential Types for Imperative Languages*:
+
 * [paper][grossman-paper] (Advanced)
 * [slides][grossman-slides] (Simple)
 
