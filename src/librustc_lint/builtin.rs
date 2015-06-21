@@ -1612,6 +1612,8 @@ impl LintPass for MissingDoc {
                 }
                 return
             },
+            ast::ItemConst(..) => "a constant",
+            ast::ItemStatic(..) => "a static",
             _ => return
         };
 
