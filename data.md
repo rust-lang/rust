@@ -236,7 +236,7 @@ one.
 This is the most important `repr`. It has fairly simple intent: do what C does.
 The order, size, and alignment of fields is exactly what you would expect from
 C or C++. Any type you expect to pass through an FFI boundary should have `repr(C)`,
-as C is the lingua-franca of the programming world. However this is also necessary
+as C is the lingua-franca of the programming world. This is also necessary
 to soundly do more elaborate tricks with data layout such as reintepretting values
 as a different type.
 
