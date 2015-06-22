@@ -125,19 +125,16 @@ fn rewrite_string_lit(context: &RewriteContext, s: &str, span: Span, width: usiz
 }
 
 fn rewrite_call(context: &RewriteContext,
-                    callee: &ast::Expr,
-                    args: &[ptr::P<ast::Expr>],
-                    width: usize,
-                    offset: usize)
+                callee: &ast::Expr,
+                args: &[ptr::P<ast::Expr>],
+                width: usize,
+                offset: usize)
         -> Option<String>
 {
     debug!("rewrite_call, width: {}, offset: {}", width, offset);
 
     // TODO using byte lens instead of char lens (and probably all over the place too)
-    let callee_str = match callee.rewrite(context, width, offset) {
-        Some(s) => s,
-        None => { return None; }
-    };
+    let callee_str = try_opt!(callee.rewrite(context, width, offset));
     debug!("rewrite_call, callee_str: `{:?}`", callee_str);
     // 2 is for parens.
     let remaining_width = width - callee_str.len() - 2;
@@ -147,10 +144,8 @@ fn rewrite_call(context: &RewriteContext,
     let args_str = if arg_count > 0 {
         let mut args_rewritten = Vec::with_capacity(args.len());
         for arg in args.iter() {
-            match arg.rewrite(context, remaining_width, offset) {
-                Some(s) => { args_rewritten.push((s, String::new())); }
-                None => { return None; }
-            }
+            args_rewritten.push((try_opt!(arg.rewrite(context, remaining_width, offset)),
+                                 String::new()));
         }
         let fmt = ListFormatting {
             tactic: ListTactic::HorizontalVertical,
@@ -178,11 +173,11 @@ fn rewrite_paren(context: &RewriteContext, subexpr: &ast::Expr, width: usize, of
 }
 
 fn rewrite_struct_lit(context: &RewriteContext,
-                          path: &ast::Path,
-                          fields: &[ast::Field],
-                          base: Option<&ast::Expr>,
-                          width: usize,
-                          offset: usize)
+                      path: &ast::Path,
+                      fields: &[ast::Field],
+                      base: Option<&ast::Expr>,
+                      width: usize,
+                      offset: usize)
         -> Option<String>
 {
     debug!("rewrite_struct_lit: width {}, offset {}", width, offset);
@@ -195,17 +190,11 @@ fn rewrite_struct_lit(context: &RewriteContext,
 
     let mut field_strs = Vec::with_capacity(fields.len());
     for field in fields.iter() {
-        match rewrite_field(context, field, budget, indent) {
-            Some(s) => { field_strs.push(s); }
-            None => { return None; }
-        }
+        field_strs.push(try_opt!(rewrite_field(context, field, budget, indent)));
     }
     if let Some(expr) = base {
         // Another 2 on the width/indent for the ..
-        field_strs.push(match expr.rewrite(context, budget - 2, indent + 2) {
-            Some(s) => format!("..{}", s),
-            None => { return None; }
-        });
+        field_strs.push(format!("..{}", try_opt!(expr.rewrite(context, budget - 2, indent + 2))));
     }
 
     // FIXME comments
@@ -238,7 +227,10 @@ fn rewrite_field(context: &RewriteContext, field: &ast::Field, width: usize, off
     expr.map(|s| format!("{}: {}", name, s))
 }
 
-fn rewrite_tuple_lit(context: &RewriteContext, items: &[ptr::P<ast::Expr>], width: usize, offset: usize)
+fn rewrite_tuple_lit(context: &RewriteContext,
+                     items: &[ptr::P<ast::Expr>],
+                     width: usize,
+                     offset: usize)
     -> Option<String> {
         // opening paren
         let indent = offset + 1;
@@ -254,10 +246,7 @@ fn rewrite_tuple_lit(context: &RewriteContext, items: &[ptr::P<ast::Expr>], widt
             } else {
                 config!(max_width) - indent - 2
             };
-            match item.rewrite(context, rem_width, indent) {
-                Some(s) => { item_strs.push(s); }
-                None => {return None; }
-            }
+            item_strs.push(try_opt!(item.rewrite(context, rem_width, indent)));
         }
         let tactics = if item_strs.iter().any(|s| s.contains('\n')) {
             ListTactic::Vertical
