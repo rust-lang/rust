@@ -1469,7 +1469,7 @@ pub fn type_must_outlive<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
         }
     }
 
-    fn generic_must_outlive_inner<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
+    fn generic_must_outlive_inner<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
                                   origin: infer::SubregionOrigin<'tcx>,
                                   region: ty::Region,
                                   generic: &GenericKind<'tcx>) {
