@@ -156,24 +156,24 @@ pub fn compile_input(sess: Session,
             token::get_ident_interner().clear();
 
             Ok((outputs, trans))
-        })
-    if !sess.target.target.options.is_like_pnacl {
+        });
+    };
 
-    let (outputs, trans) = if let Ok(out) = result {
+    let (outputs, mut trans) = if let Ok(out) = result {
         out
     } else {
         return;
     };
 
-        phase_5_run_llvm_passes(&sess, &mut trans, &outputs);
-        controller_entry_point!(after_llvm,
+    phase_5_run_llvm_passes(&sess, &mut trans, &outputs);
+    controller_entry_point!(after_llvm,
                             sess,
                             CompileState::state_after_llvm(input,
                                                            &sess,
                                                            outdir,
                                                            &trans));
 
-        phase_6_link_output(&sess, &trans, &outputs);
+    phase_6_link_output(&sess, &trans, &outputs);
 }
 
 /// The name used for source code that doesn't originate in a file
