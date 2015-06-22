@@ -729,18 +729,18 @@ impl<'a> StringReader<'a> {
                             'n' | 'r' | 't' | '\\' | '\'' | '"' | '0' => true,
                             'x' => self.scan_byte_escape(delim, !ascii_only),
                             'u' if self.curr_is('{') => {
-                            let valid = self.scan_unicode_escape(delim);
-                            if valid && ascii_only {
-                                self.err_span_(
-                                    escaped_pos,
-                                    self.last_pos,
-                                    "unicode escape sequences cannot be used as a byte or in \
-                                    a byte string"
-                                );
-                                false
-                            } else {
-                               valid
-                            }
+                                let valid = self.scan_unicode_escape(delim);
+                                if valid && ascii_only {
+                                    self.err_span_(
+                                        escaped_pos,
+                                        self.last_pos,
+                                        "unicode escape sequences cannot be used as a byte or in \
+                                        a byte string"
+                                    );
+                                    false
+                                } else {
+                                   valid
+                                }
                             }
                             '\n' if delim == '"' => {
                                 self.consume_whitespace();
@@ -852,7 +852,7 @@ impl<'a> StringReader<'a> {
 
         if valid && (char::from_u32(accum_int).is_none() || count == 0) {
             self.err_span_(start_bpos, self.last_pos, "illegal unicode character escape");
-            valid= false;
+            valid = false;
         }
 
 
