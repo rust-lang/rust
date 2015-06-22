@@ -243,9 +243,29 @@ inline Metadata **unwrap(LLVMMetadataRef *Vals) {
 typedef LLVMValueRef LLVMMetadataRef;
 #endif
 
+// Allows us to override return types for select types:
+template <typename DIT, bool is_pointer = std::is_pointer<DIT>::value> struct UnwrapDI;
+template <typename DIT>
+struct UnwrapDI<DIT, true> {
+  static DIT unwrap(LLVMMetadataRef ref) {
+    MDNode* node = nullptr;
+    if(ref != nullptr) { node = llvm::unwrap<MDNode>(ref); }
+
+    return cast_or_null<typename std::remove_pointer<DIT>::type>(node);
+  }
+};
+template <typename DIT>
+struct UnwrapDI<DIT, false> {
+  typedef typename std::remove_reference<decltype(DIT(nullptr).operator*())>::type* NodePtrTy;
+  static DIT unwrap(LLVMMetadataRef ref) {
+    NodePtrTy node = UnwrapDI<NodePtrTy>::unwrap(ref);
+    return DIT(node);
+  }
+};
+
 template<typename DIT>
 DIT* unwrapDIptr(LLVMMetadataRef ref) {
-    return (DIT*) (ref ? unwrap<MDNode>(ref) : NULL);
+    return UnwrapDI<DIT*>::unwrap(ref);
 }
 
 #if LLVM_VERSION_MINOR <= 6
@@ -255,8 +275,43 @@ DIT unwrapDI(LLVMMetadataRef ref) {
 }
 #else
 #define DIDescriptor DIScope
-#define DIArray DINodeArray
-#define unwrapDI unwrapDIptr
+
+# if LLVM_VERSION_MINOR >= 7
+
+#  define SPECIALIZE_UNWRAP(type, to) template <>       \
+  struct UnwrapDI<type, std::is_pointer<type>::value> { \
+    static to unwrap(LLVMMetadataRef ref) {             \
+      return UnwrapDI<to>::unwrap(ref);                 \
+    }                                                   \
+  }
+
+#  if ENABLE_PNACL
+// the NaCl SDK uses 3.7, whereas Rust, annoyingly, uses 3.7+.
+// In the small space between these two revisions, LLVM has managed to modify
+// just about every DIBuilder function.
+// But more appropriately, why aren't these APIs in LLVM?
+
+SPECIALIZE_UNWRAP(DICompositeType, MDCompositeType*);
+
+#  else
+
+SPECIALIZE_UNWRAP(DIFile, DIFile*);
+SPECIALIZE_UNWRAP(DIScope, DIScope*);
+SPECIALIZE_UNWRAP(DISubroutineType, DISubroutineType*);
+SPECIALIZE_UNWRAP(DIType, DIType*);
+SPECIALIZE_UNWRAP(DICompositeType, DICompositeType*);
+
+#   define DIArray DINodeArray
+
+#  endif
+
+# endif
+
+ template<typename DIT>
+ auto unwrapDI(LLVMMetadataRef ref) -> decltype(UnwrapDI<DIT>::unwrap(ref)) {
+    return UnwrapDI<DIT>::unwrap(ref);
+ }
+
 #endif
 
 #if LLVM_VERSION_MINOR <= 5
@@ -326,9 +381,9 @@ extern "C" LLVMMetadataRef LLVMDIBuilderCreateSubroutineType(
     LLVMMetadataRef ParameterTypes) {
     return wrap(Builder->createSubroutineType(
         unwrapDI<DIFile>(File),
-#if LLVM_VERSION_MINOR >= 7
+#if LLVM_VERSION_MINOR >= 7 && !ENABLE_PNACL
         DITypeRefArray(unwrap<MDTuple>(ParameterTypes))));
-#elif LLVM_VERSION_MINOR >= 6
+#elif LLVM_VERSION_MINOR >= 6 || ENABLE_PNACL
         unwrapDI<DITypeArray>(ParameterTypes)));
 #else
         unwrapDI<DIArray>(ParameterTypes)));
@@ -405,11 +460,7 @@ extern "C" LLVMMetadataRef LLVMDIBuilderCreateStructType(
         AlignInBits,
         Flags,
         unwrapDI<DIType>(DerivedFrom),
-#if LLVM_VERSION_MINOR >= 7
-        DINodeArray(unwrapDI<MDTuple>(Elements)),
-#else
         unwrapDI<DIArray>(Elements),
-#endif
         RunTimeLang,
         unwrapDI<DIType>(VTableHolder),
         UniqueId
@@ -522,11 +573,7 @@ extern "C" LLVMMetadataRef LLVMDIBuilderCreateArrayType(
     LLVMMetadataRef Subscripts) {
     return wrap(Builder->createArrayType(Size, AlignInBits,
         unwrapDI<DIType>(Ty),
-#if LLVM_VERSION_MINOR >= 7
-        DINodeArray(unwrapDI<MDTuple>(Subscripts))
-#else
         unwrapDI<DIArray>(Subscripts)
-#endif
     ));
 }
 
@@ -538,11 +585,7 @@ extern "C" LLVMMetadataRef LLVMDIBuilderCreateVectorType(
     LLVMMetadataRef Subscripts) {
     return wrap(Builder->createVectorType(Size, AlignInBits,
         unwrapDI<DIType>(Ty),
-#if LLVM_VERSION_MINOR >= 7
-        DINodeArray(unwrapDI<MDTuple>(Subscripts))
-#else
         unwrapDI<DIArray>(Subscripts)
-#endif
     ));
 }
 
@@ -581,7 +624,7 @@ extern "C" LLVMValueRef LLVMDIBuilderInsertDeclareAtEnd(
     LLVMBasicBlockRef InsertAtEnd) {
     return wrap(Builder->insertDeclare(
         unwrap(Val),
-#if LLVM_VERSION_MINOR >= 7
+#if LLVM_VERSION_MINOR >= 7 && !ENABLE_PNACL
         unwrap<DILocalVariable>(VarInfo),
 #else
         unwrapDI<DIVariable>(VarInfo),
@@ -608,7 +651,7 @@ extern "C" LLVMValueRef LLVMDIBuilderInsertDeclareBefore(
 #endif
     return wrap(Builder->insertDeclare(
         unwrap(Val),
-#if LLVM_VERSION_MINOR >= 7
+#if LLVM_VERSION_MINOR >= 7 && !ENABLE_PNACL
         unwrap<DILocalVariable>(VarInfo),
 #else
         unwrapDI<DIVariable>(VarInfo),
@@ -649,11 +692,7 @@ extern "C" LLVMMetadataRef LLVMDIBuilderCreateEnumerationType(
         LineNumber,
         SizeInBits,
         AlignInBits,
-#if LLVM_VERSION_MINOR >= 7
-        DINodeArray(unwrapDI<MDTuple>(Elements)),
-#else
         unwrapDI<DIArray>(Elements),
-#endif
         unwrapDI<DIType>(ClassType)));
 }
 
@@ -678,11 +717,7 @@ extern "C" LLVMMetadataRef LLVMDIBuilderCreateUnionType(
         SizeInBits,
         AlignInBits,
         Flags,
-#if LLVM_VERSION_MINOR >= 7
-        DINodeArray(unwrapDI<MDTuple>(Elements)),
-#else
         unwrapDI<DIArray>(Elements),
-#endif
         RunTimeLang,
         UniqueId
         ));
@@ -740,8 +775,8 @@ extern "C" void LLVMDICompositeTypeSetTypeArray(
     LLVMMetadataRef TypeArray)
 {
 #if LLVM_VERSION_MINOR >= 7
-    DICompositeType *tmp = unwrapDI<DICompositeType>(CompositeType);
-    Builder->replaceArrays(tmp, DINodeArray(unwrap<MDTuple>(TypeArray)));
+    auto *tmp = unwrapDI<DICompositeType>(CompositeType);
+    Builder->replaceArrays(tmp, unwrapDI<DIArray>(TypeArray));
 #elif LLVM_VERSION_MINOR >= 6
     DICompositeType tmp = unwrapDI<DICompositeType>(CompositeType);
     Builder->replaceArrays(tmp, unwrapDI<DIArray>(TypeArray));
@@ -807,7 +842,7 @@ LLVMRustLinkInExternalBitcode(LLVMModuleRef dst, char *bc, size_t len) {
     Module *Dst = unwrap(dst);
 #if LLVM_VERSION_MINOR >= 6
     std::unique_ptr<MemoryBuffer> buf = MemoryBuffer::getMemBufferCopy(StringRef(bc, len));
-#if LLVM_VERSION_MINOR >= 7
+#if LLVM_VERSION_MINOR >= 7 && !ENABLE_PNACL
     ErrorOr<std::unique_ptr<Module>> Src =
         llvm::getLazyBitcodeModule(std::move(buf), Dst->getContext());
 #else
@@ -834,7 +869,7 @@ LLVMRustLinkInExternalBitcode(LLVMModuleRef dst, char *bc, size_t len) {
 #if LLVM_VERSION_MINOR >= 6
     raw_string_ostream Stream(Err);
     DiagnosticPrinterRawOStream DP(Stream);
-#if LLVM_VERSION_MINOR >= 7
+#if LLVM_VERSION_MINOR >= 7 && !ENABLE_PNACL
     if (Linker::LinkModules(Dst, Src->get(), [&](const DiagnosticInfo &DI) { DI.print(DP); })) {
 #else
     if (Linker::LinkModules(Dst, *Src, [&](const DiagnosticInfo &DI) { DI.print(DP); })) {
@@ -945,10 +980,11 @@ static inline bool isNaClBitcode(const MemoryBuffer *Buffer) {
  static inline bool isNaClBitcode(const MemoryBuffer *_Buffer) {
   return false;
  }
- static inline ErrorOr<Module*> NaClParseBitcodeFile(MemoryBufferRef _Buffer,
-                                                     LLVMContext &_Context,
-                                                     raw_ostream *_Verbose = nullptr,
-                                                     bool _AcceptSupportedOnly = true) {
+ static inline ErrorOr<std::unique_ptr<Module>>
+   NaClParseBitcodeFile(MemoryBufferRef _Buffer,
+                        LLVMContext &_Context,
+                        raw_ostream *_Verbose = nullptr,
+                        bool _AcceptSupportedOnly = true) {
    __builtin_unreachable();
  }
 #endif
@@ -962,7 +998,11 @@ LLVMRustParseBitcode(LLVMContextRef ctxt, const char* name, const void* bc, size
                                false);
 
   LLVMModuleRef Mod = wrap(static_cast<Module*>(nullptr));
-  ErrorOr<Module *> Src(nullptr);
+#if !ENABLE_PNACL
+  ErrorOr<std::unique_ptr<Module>> Src(nullptr);
+#else
+  ErrorOr<Module*> Src(nullptr);
+#endif
   if (isNaClBitcode(buf.get())) {
     Src = NaClParseBitcodeFile(buf->getMemBufferRef(), *unwrap(ctxt),
                                nullptr, false);
@@ -974,7 +1014,11 @@ LLVMRustParseBitcode(LLVMContextRef ctxt, const char* name, const void* bc, size
   if (!Src) {
     LLVMRustSetLastError(Src.getError().message().c_str());
   } else {
+#if !ENABLE_PNACL
+    Mod = wrap(Src.get().release());
+#else
     Mod = wrap(Src.get());
+#endif
   }
 
   return Mod;
