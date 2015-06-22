@@ -142,11 +142,11 @@ fn rewrite_call(context: &RewriteContext,
     let arg_count = args.len();
 
     let args_str = if arg_count > 0 {
-        let mut args_rewritten = Vec::with_capacity(args.len());
-        for arg in args.iter() {
-            args_rewritten.push((try_opt!(arg.rewrite(context, remaining_width, offset)),
-                                 String::new()));
-        }
+        let args_rewritten: Vec<_> =
+            try_opt!(args.iter()
+                         .map(|arg| arg.rewrite(context, remaining_width, offset)
+                                       .map(|arg_str| (arg_str, String::new())))
+                         .collect());
         let fmt = ListFormatting {
             tactic: ListTactic::HorizontalVertical,
             separator: ",",
@@ -188,15 +188,16 @@ fn rewrite_struct_lit(context: &RewriteContext,
     let indent = offset + path_str.len() + 3;
     let budget = width - (path_str.len() + 5);
 
-    let mut field_strs = Vec::with_capacity(fields.len());
-    for field in fields.iter() {
-        field_strs.push(try_opt!(rewrite_field(context, field, budget, indent)));
-    }
-    if let Some(expr) = base {
-        // Another 2 on the width/indent for the ..
-        field_strs.push(format!("..{}", try_opt!(expr.rewrite(context, budget - 2, indent + 2))));
-    }
-
+    let field_strs: Vec<_> =
+        try_opt!(fields.iter()
+                       .map(|field| rewrite_field(context, field, budget, indent))
+                       .chain(base.iter()
+                                  .map(|expr| expr.rewrite(context,
+                                                           // 2 = ".."
+                                                           budget - 2,
+                                                           indent + 2)
+                                                  .map(|s| format!("..{}", s))))
+                       .collect());
     // FIXME comments
     let field_strs: Vec<_> = field_strs.into_iter().map(|s| (s, String::new())).collect();
     let fmt = ListFormatting {
@@ -239,15 +240,18 @@ fn rewrite_tuple_lit(context: &RewriteContext,
             return items[0].rewrite(context, width - 3, indent).map(|s| format!("({},)", s));
         }
         // Only last line has width-1 as budget, other may take max_width
-        let mut item_strs = Vec::with_capacity(items.len());
-        for (i, item) in items.iter().enumerate() {
-            let rem_width = if i == items.len() - 1 {
-                width - 2
-            } else {
-                config!(max_width) - indent - 2
-            };
-            item_strs.push(try_opt!(item.rewrite(context, rem_width, indent)));
-        }
+        let item_strs: Vec<_> =
+            try_opt!(items.iter()
+                          .enumerate()
+                          .map(|(i, item)| {
+                              let rem_width = if i == items.len() - 1 {
+                                  width - 2
+                              } else {
+                                  config!(max_width) - indent - 2
+                              };
+                              item.rewrite(context, rem_width, indent)
+                          })
+                          .collect());
         let tactics = if item_strs.iter().any(|s| s.contains('\n')) {
             ListTactic::Vertical
         } else {

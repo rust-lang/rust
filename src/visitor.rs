@@ -37,7 +37,6 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
                          config!(max_width) - offset,
                          offset) {
             Some(new_str) => {
-                //let new_str = self.rewrite_expr(ex, config!(max_width) - offset, offset);
                 self.changes.push_str_span(ex.span, &new_str);
                 self.last_pos = ex.span.hi;
             }
