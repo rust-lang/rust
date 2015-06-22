@@ -172,6 +172,9 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
         };
         let fields = ty::lookup_struct_fields(self.tcx, id);
         for pat in pats {
+            if let ast::PatWild(ast::PatWildSingle) = pat.node.pat.node {
+                continue;
+            }
             let field_id = fields.iter()
                 .find(|field| field.name == pat.node.ident.name).unwrap().id;
             self.live_symbols.insert(field_id.node);
