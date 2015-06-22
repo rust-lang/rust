@@ -770,24 +770,6 @@ mod tests {
     }
 
     #[cfg(all(unix, not(target_os="android")))]
-    pub fn pwd_cmd() -> Command {
-        Command::new("pwd")
-    }
-    #[cfg(target_os="android")]
-    pub fn pwd_cmd() -> Command {
-        let mut cmd = Command::new("/system/bin/sh");
-        cmd.arg("-c").arg("pwd");
-        cmd
-    }
-
-    #[cfg(windows)]
-    pub fn pwd_cmd() -> Command {
-        let mut cmd = Command::new("cmd");
-        cmd.arg("/c").arg("cd");
-        cmd
-    }
-
-    #[cfg(all(unix, not(target_os="android")))]
     pub fn env_cmd() -> Command {
         Command::new("env")
     }
