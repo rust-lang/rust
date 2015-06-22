@@ -381,8 +381,9 @@ fn main() {
 "##,
 
 E0045: r##"
-Variadic parameters are only allowed in extern "C" code. Examples of
-erroneous code:
+Rust only supports variadic parameters for interoperability with C code in its
+FFI. As such, variadic parameters can only be used with functions which are
+using the C ABI. Examples of erroneous code:
 
 ```
 extern "rust-call" { fn foo(x: u8, ...); }
@@ -390,10 +391,14 @@ extern "rust-call" { fn foo(x: u8, ...); }
 fn foo(x: u8, ...) {}
 ```
 
-To fix such code, put them in extern "C" block:
+To fix such code, put them in an extern "C" block:
 
 ```
 extern "C" fn foo (x: u8, ...);
+// or:
+extern "C" {
+    fn foo (x: u8, ...);
+}
 ```
 "##,
 
