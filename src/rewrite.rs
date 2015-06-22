@@ -8,9 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// A generic trait to abstract the rewriting of an element (of the AST).
+
 use syntax::codemap::CodeMap;
 
 pub trait Rewrite {
+    /// Rewrite self into offset and width.
+    /// `offset` is the indentation of the first line. The next lines
+    /// should begin with a least `offset` spaces (except backwards
+    /// indentation). The first line should not begin with indentation.
+    /// `width` is the maximum number of characters on the last line
+    /// (excluding offset). The width of other lines is not limited by
+    /// `width`.
     fn rewrite(&self, context: &RewriteContext, width: usize, offset: usize) -> Option<String>;
 }
 
