@@ -17,6 +17,7 @@ use ffi::{OsString, OsStr, CString, CStr};
 use fmt;
 use io::{self, Error, ErrorKind};
 use libc::{self, pid_t, c_void, c_int, gid_t, uid_t};
+use mem;
 use ptr;
 use sys::fd::FileDesc;
 use sys::fs::{File, OpenOptions};
@@ -313,6 +314,23 @@ impl Process {
         if !envp.is_null() {
             *sys::os::environ() = envp as *const _;
         }
+
+        // Reset signal handling so the child process starts in a
+        // standardized state. libstd ignores SIGPIPE, and signal-handling
+        // libraries often set a mask. Child processes inherit ignored
+        // signals and the signal mask from their parent, but most
+        // UNIX programs do not reset these things on their own, so we
+        // need to clean things up now to avoid confusing the program
+        // we're about to run.
+        let mut set: c::sigset_t = mem::uninitialized();
+        if c::sigemptyset(&mut set) != 0 ||
+           c::pthread_sigmask(c::SIG_SETMASK, &set, ptr::null_mut()) != 0 ||
+           libc::funcs::posix01::signal::signal(
+               libc::SIGPIPE, mem::transmute(c::SIG_DFL)
+           ) == mem::transmute(c::SIG_ERR) {
+            fail(&mut output);
+        }
+
         let _ = libc::execvp(*argv, argv);
         fail(&mut output)
     }
@@ -416,5 +434,71 @@ fn translate_status(status: c_int) -> ExitStatus {
         ExitStatus::Code(imp::WEXITSTATUS(status))
     } else {
         ExitStatus::Signal(imp::WTERMSIG(status))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use prelude::v1::*;
+
+    use ffi::OsStr;
+    use mem;
+    use ptr;
+    use libc;
+    use slice;
+    use sys::{self, c, cvt, pipe};
+
+    #[cfg(not(target_os = "android"))]
+    extern {
+        fn sigaddset(set: *mut c::sigset_t, signum: libc::c_int) -> libc::c_int;
+    }
+
+    #[cfg(target_os = "android")]
+    unsafe fn sigaddset(set: *mut c::sigset_t, signum: libc::c_int) -> libc::c_int {
+        let raw = slice::from_raw_parts_mut(set as *mut u8, mem::size_of::<c::sigset_t>());
+        let bit = (signum - 1) as usize;
+        raw[bit / 8] |= 1 << (bit % 8);
+        return 0;
+    }
+
+    #[test]
+    fn test_process_mask() {
+        unsafe {
+            // Test to make sure that a signal mask does not get inherited.
+            let cmd = Command::new(OsStr::new("cat"));
+            let (stdin_read, stdin_write) = sys::pipe::anon_pipe().unwrap();
+            let (stdout_read, stdout_write) = sys::pipe::anon_pipe().unwrap();
+
+            let mut set: c::sigset_t = mem::uninitialized();
+            let mut old_set: c::sigset_t = mem::uninitialized();
+            cvt(c::sigemptyset(&mut set)).unwrap();
+            cvt(sigaddset(&mut set, libc::SIGINT)).unwrap();
+            cvt(c::pthread_sigmask(c::SIG_SETMASK, &set, &mut old_set)).unwrap();
+
+            let cat = Process::spawn(&cmd, Stdio::Raw(stdin_read.raw()),
+                                           Stdio::Raw(stdout_write.raw()),
+                                           Stdio::None).unwrap();
+            drop(stdin_read);
+            drop(stdout_write);
+
+            cvt(c::pthread_sigmask(c::SIG_SETMASK, &old_set, ptr::null_mut())).unwrap();
+
+            cvt(libc::funcs::posix88::signal::kill(cat.id() as libc::pid_t, libc::SIGINT)).unwrap();
+            // We need to wait until SIGINT is definitely delivered. The
+            // easiest way is to write something to cat, and try to read it
+            // back: if SIGINT is unmasked, it'll get delivered when cat is
+            // next scheduled.
+            let _ = stdin_write.write(b"Hello");
+            drop(stdin_write);
+
+            // Either EOF or failure (EPIPE) is okay.
+            let mut buf = [0; 5];
+            if let Ok(ret) = stdout_read.read(&mut buf) {
+                assert!(ret == 0);
+            }
+
+            cat.wait().unwrap();
+        }
     }
 }
