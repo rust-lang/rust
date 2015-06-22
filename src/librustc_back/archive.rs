@@ -11,6 +11,7 @@
 //! A helper class for dealing with static archives
 
 use std::env;
+use std::ffi::OsString;
 use std::fs::{self, File};
 use std::io::prelude::*;
 use std::io;
@@ -30,7 +31,8 @@ pub struct ArchiveConfig<'a> {
     pub lib_search_paths: Vec<PathBuf>,
     pub slib_prefix: String,
     pub slib_suffix: String,
-    pub ar_prog: String
+    pub ar_prog: String,
+    pub command_path: OsString,
 }
 
 pub struct Archive<'a> {
@@ -114,6 +116,7 @@ impl<'a> Archive<'a> {
         let abs_dst = env::current_dir().unwrap().join(&self.config.dst);
         let ar = &self.config.ar_prog;
         let mut cmd = Command::new(ar);
+        cmd.env("PATH", &self.config.command_path);
         cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
         self.prepare_ar_action(&mut cmd, &abs_dst, action);
         info!("{:?}", cmd);
