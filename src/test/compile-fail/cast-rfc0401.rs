@@ -21,6 +21,9 @@ fn illegal_cast_2<U:?Sized>(u: *const U) -> *const str
 trait Foo { fn foo(&self) {} }
 impl<T> Foo for T {}
 
+trait Bar { fn foo(&self) {} }
+impl<T> Bar for T {}
+
 enum E {
     A, B
 }
@@ -72,4 +75,7 @@ fn main()
     // check no error cascade
     let _ = main.f as *const u32; //~ ERROR attempted access of field
 
+    let cf: *const Foo = &0;
+    let _ = cf as *const [u8]; //~ ERROR vtable kinds
+    let _ = cf as *const Bar; //~ ERROR vtable kinds
 }
