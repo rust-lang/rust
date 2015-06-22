@@ -29,3 +29,5 @@ else ifeq ($(CFG_OSTYPE),apple-darwin)
 else
   NACL_TOOLCHAIN_OS_PATH:=linux
 endif
+
+CFG_PNACL_TOOLCHAIN:=$(CFG_NACL_CROSS_PATH)/toolchain/$(NACL_TOOLCHAIN_OS_PATH)_pnacl

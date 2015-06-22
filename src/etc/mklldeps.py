@@ -62,9 +62,6 @@ for lib in out.strip().replace("\n", ' ').split(' '):
     elif lib[0] == '-':
         lib = lib.strip()[1:]
     f.write("#[link(name = \"" + lib + "\"")
-    # LLVM libraries are all static libraries
-    if 'LLVM' in lib:
-        f.write(", kind = \"static\"")
     f.write(")]\n")
 
 # LLVM ldflags

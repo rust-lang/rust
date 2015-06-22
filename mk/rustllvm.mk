@@ -39,7 +39,9 @@ EXTRA_RUSTLLVM_CXXFLAGS_$(1) := //EHsc
 else
 
 ifneq ($(filter-out le32-unknown-nacl,$(CFG_TARGET)),$(CFG_TARGET))
-EXTRA_RUSTLLVM_CXXFLAGS_$(1) := -DENABLE_PNACL=1
+# The toolchain's LLVM is built against a version of libc++ that might be
+# different than the host libc++:
+EXTRA_RUSTLLVM_CXXFLAGS_$(1) := -DENABLE_PNACL=1 -nostdinc++ -isystem$$(CFG_PNACL_TOOLCHAIN)/include/c++/v1
 else
 EXTRA_RUSTLLVM_CXXFLAGS_$(1) := -DENABLE_PNACL=0
 endif

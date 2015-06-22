@@ -57,6 +57,13 @@ pub use self::DiagnosticSeverity::*;
 pub use self::Linkage::*;
 pub use self::DLLStorageClassTypes::*;
 
+// target machine initialization functions:
+pub use self::init_x86::*;
+pub use self::init_arm::*;
+pub use self::init_aarch64::*;
+pub use self::init_mips::*;
+pub use self::init_powerpc::*;
+
 use std::ffi::CString;
 use std::cell::RefCell;
 use std::{slice, mem};
@@ -2007,32 +2014,6 @@ extern {
     pub fn LLVMIsAAllocaInst(value_ref: ValueRef) -> ValueRef;
     pub fn LLVMIsAConstantInt(value_ref: ValueRef) -> ValueRef;
 
-    pub fn LLVMInitializeX86TargetInfo();
-    pub fn LLVMInitializeX86Target();
-    pub fn LLVMInitializeX86TargetMC();
-    pub fn LLVMInitializeX86AsmPrinter();
-    pub fn LLVMInitializeX86AsmParser();
-    pub fn LLVMInitializeARMTargetInfo();
-    pub fn LLVMInitializeARMTarget();
-    pub fn LLVMInitializeARMTargetMC();
-    pub fn LLVMInitializeARMAsmPrinter();
-    pub fn LLVMInitializeARMAsmParser();
-    pub fn LLVMInitializeAArch64TargetInfo();
-    pub fn LLVMInitializeAArch64Target();
-    pub fn LLVMInitializeAArch64TargetMC();
-    pub fn LLVMInitializeAArch64AsmPrinter();
-    pub fn LLVMInitializeAArch64AsmParser();
-    pub fn LLVMInitializeMipsTargetInfo();
-    pub fn LLVMInitializeMipsTarget();
-    pub fn LLVMInitializeMipsTargetMC();
-    pub fn LLVMInitializeMipsAsmPrinter();
-    pub fn LLVMInitializeMipsAsmParser();
-    pub fn LLVMInitializePowerPCTargetInfo();
-    pub fn LLVMInitializePowerPCTarget();
-    pub fn LLVMInitializePowerPCTargetMC();
-    pub fn LLVMInitializePowerPCAsmPrinter();
-    pub fn LLVMInitializePowerPCAsmParser();
-
     pub fn LLVMRustAddPass(PM: PassManagerRef, Pass: *const c_char) -> bool;
     pub fn LLVMRustCreateTargetMachine(Triple: *const c_char,
                                        CPU: *const c_char,
@@ -2335,6 +2316,101 @@ pub unsafe fn twine_to_string(tr: TwineRef) -> String {
 pub unsafe fn debug_loc_to_string(c: ContextRef, tr: DebugLocRef) -> String {
     build_string(|s| LLVMWriteDebugLocToString(c, tr, s))
         .expect("got a non-UTF8 DebugLoc from LLVM")
+}
+
+#[cfg(have_component_x86)]
+mod init_x86 {
+    extern {
+        pub fn LLVMInitializeX86TargetInfo();
+        pub fn LLVMInitializeX86Target();
+        pub fn LLVMInitializeX86TargetMC();
+        pub fn LLVMInitializeX86AsmPrinter();
+        pub fn LLVMInitializeX86AsmParser();
+    }
+}
+#[cfg(not(have_component_x86))]
+mod init_x86 {
+    pub unsafe fn LLVMInitializeX86TargetInfo() { }
+    pub unsafe fn LLVMInitializeX86Target() { }
+    pub unsafe fn LLVMInitializeX86TargetMC() { }
+    pub unsafe fn LLVMInitializeX86AsmPrinter() { }
+    pub unsafe fn LLVMInitializeX86AsmParser() { }
+}
+
+#[cfg(have_component_arm)]
+mod init_arm {
+    extern {
+        pub fn LLVMInitializeARMTargetInfo();
+        pub fn LLVMInitializeARMTarget();
+        pub fn LLVMInitializeARMTargetMC();
+        pub fn LLVMInitializeARMAsmPrinter();
+        pub fn LLVMInitializeARMAsmParser();
+    }
+}
+#[cfg(not(have_component_arm))]
+mod init_arm {
+    pub unsafe fn LLVMInitializeARMTargetInfo() { }
+    pub unsafe fn LLVMInitializeARMTarget() { }
+    pub unsafe fn LLVMInitializeARMTargetMC() { }
+    pub unsafe fn LLVMInitializeARMAsmPrinter() { }
+    pub unsafe fn LLVMInitializeARMAsmParser() { }
+}
+
+#[cfg(have_component_aarch64)]
+mod init_aarch64 {
+    extern {
+        pub fn LLVMInitializeAArch64TargetInfo();
+        pub fn LLVMInitializeAArch64Target();
+        pub fn LLVMInitializeAArch64TargetMC();
+        pub fn LLVMInitializeAArch64AsmPrinter();
+        pub fn LLVMInitializeAArch64AsmParser();
+    }
+}
+#[cfg(not(have_component_aarch64))]
+mod init_aarch64 {
+    pub unsafe fn LLVMInitializeAArch64TargetInfo() { }
+    pub unsafe fn LLVMInitializeAArch64Target() { }
+    pub unsafe fn LLVMInitializeAArch64TargetMC() { }
+    pub unsafe fn LLVMInitializeAArch64AsmPrinter() { }
+    pub unsafe fn LLVMInitializeAArch64AsmParser() { }
+}
+
+#[cfg(have_component_mips)]
+mod init_mips {
+    extern {
+        pub fn LLVMInitializeMipsTargetInfo();
+        pub fn LLVMInitializeMipsTarget();
+        pub fn LLVMInitializeMipsTargetMC();
+        pub fn LLVMInitializeMipsAsmPrinter();
+        pub fn LLVMInitializeMipsAsmParser();
+    }
+}
+#[cfg(not(have_component_mips))]
+mod init_mips {
+    pub unsafe fn LLVMInitializeMipsTargetInfo() { }
+    pub unsafe fn LLVMInitializeMipsTarget() { }
+    pub unsafe fn LLVMInitializeMipsTargetMC() { }
+    pub unsafe fn LLVMInitializeMipsAsmPrinter() { }
+    pub unsafe fn LLVMInitializeMipsAsmParser() { }
+}
+
+#[cfg(have_component_powerpc)]
+mod init_powerpc {
+    extern {
+        pub fn LLVMInitializePowerPCTargetInfo();
+        pub fn LLVMInitializePowerPCTarget();
+        pub fn LLVMInitializePowerPCTargetMC();
+        pub fn LLVMInitializePowerPCAsmPrinter();
+        pub fn LLVMInitializePowerPCAsmParser();
+    }
+}
+#[cfg(not(have_component_powerpc))]
+mod init_powerpc {
+    pub unsafe fn LLVMInitializePowerPCTargetInfo() { }
+    pub unsafe fn LLVMInitializePowerPCTarget() { }
+    pub unsafe fn LLVMInitializePowerPCTargetMC() { }
+    pub unsafe fn LLVMInitializePowerPCAsmPrinter() { }
+    pub unsafe fn LLVMInitializePowerPCAsmParser() { }
 }
 
 // The module containing the native LLVM dependencies, generated by the build system

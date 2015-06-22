@@ -1262,35 +1262,23 @@ pub unsafe fn configure_llvm(sess: &Session) {
     llvm::LLVMInitializeARMAsmPrinter();
     llvm::LLVMInitializeARMAsmParser();
 
-        llvm::LLVMInitializeMipsTargetInfo();
-        llvm::LLVMInitializeMipsTarget();
-        llvm::LLVMInitializeMipsTargetMC();
-        llvm::LLVMInitializeMipsAsmPrinter();
-        llvm::LLVMInitializeMipsAsmParser();
+    llvm::LLVMInitializeMipsTargetInfo();
+    llvm::LLVMInitializeMipsTarget();
+    llvm::LLVMInitializeMipsTargetMC();
+    llvm::LLVMInitializeMipsAsmPrinter();
+    llvm::LLVMInitializeMipsAsmParser();
 
-    #[cfg(not(target_os = "nacl"))]
-    unsafe fn init() {
-        llvm::LLVMInitializeAArch64TargetInfo();
-        llvm::LLVMInitializeAArch64Target();
-        llvm::LLVMInitializeAArch64TargetMC();
-        llvm::LLVMInitializeAArch64AsmPrinter();
-        llvm::LLVMInitializeAArch64AsmParser();
+    llvm::LLVMInitializeAArch64TargetInfo();
+    llvm::LLVMInitializeAArch64Target();
+    llvm::LLVMInitializeAArch64TargetMC();
+    llvm::LLVMInitializeAArch64AsmPrinter();
+    llvm::LLVMInitializeAArch64AsmParser();
 
-        llvm::LLVMInitializeMipsTargetInfo();
-        llvm::LLVMInitializeMipsTarget();
-        llvm::LLVMInitializeMipsTargetMC();
-        llvm::LLVMInitializeMipsAsmPrinter();
-        llvm::LLVMInitializeMipsAsmParser();
-        llvm::LLVMInitializePowerPCTargetInfo();
-        llvm::LLVMInitializePowerPCTarget();
-        llvm::LLVMInitializePowerPCTargetMC();
-        llvm::LLVMInitializePowerPCAsmPrinter();
-        llvm::LLVMInitializePowerPCAsmParser();
-    }
-    #[cfg(target_os = "nacl")]
-    unsafe fn init() { }
-
-    init();
+    llvm::LLVMInitializePowerPCTargetInfo();
+    llvm::LLVMInitializePowerPCTarget();
+    llvm::LLVMInitializePowerPCTargetMC();
+    llvm::LLVMInitializePowerPCAsmPrinter();
+    llvm::LLVMInitializePowerPCAsmParser();
 
     llvm::LLVMRustSetLLVMOptions(llvm_args.len() as c_int,
                                  llvm_args.as_ptr());

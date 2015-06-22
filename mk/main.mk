@@ -283,6 +283,12 @@ $(foreach target,$(CFG_TARGET), \
 # deduplicate components:
 LLVM_COMPONENTS:=$(shell echo $(LLVM_COMPONENTS) | tr ' ' '\n' | awk '!a[$$0]++' | tr '\n' ' ')
 
+ifneq ($(CFG_LLVM_ROOT),)
+# Ensure we only try to link components that the installed LLVM actually has:
+LLVM_COMPONENTS:=$(filter $(shell $(CFG_LLVM_ROOT)/bin/llvm-config$(X_$(CFG_BUILD)) --components),\
+			$(LLVM_COMPONENTS))
+endif
+
 # Only build these LLVM tools
 LLVM_TOOLS=bugpoint llc llvm-ar llvm-as llvm-dis llvm-mc opt llvm-extract
 
@@ -486,9 +492,9 @@ endif
 endif
 
 LD_LIBRARY_PATH_ENV_HOSTDIR$(1)_T_$(2)_H_$(3) := \
-    $$(CURDIR)/$$(HLIB$(1)_H_$(3))
+    $$(CURDIR)/$$(HLIB$(1)_H_$(3)):$$(CFG_LLVM_INST_DIR_$(3))/lib
 LD_LIBRARY_PATH_ENV_TARGETDIR$(1)_T_$(2)_H_$(3) := \
-    $$(CURDIR)/$$(TLIB1_T_$(2)_H_$(CFG_BUILD))
+    $$(CURDIR)/$$(TLIB1_T_$(2)_H_$(CFG_BUILD)):$$(CFG_LLVM_INST_DIR_$(CFG_BUILD))/lib
 
 HOST_RPATH_VAR$(1)_T_$(2)_H_$(3) := \
   $$(LD_LIBRARY_PATH_ENV_NAME$(1)_T_$(2)_H_$(3))=$$(LD_LIBRARY_PATH_ENV_HOSTDIR$(1)_T_$(2)_H_$(3)):$$$$$$(LD_LIBRARY_PATH_ENV_NAME$(1)_T_$(2)_H_$(3))
