@@ -381,8 +381,8 @@ fn main() {
 "##,
 
 E0045: r##"
-Variadic parameters are only allowed in extern "C" code. Example of
-erroneous codes:
+Variadic parameters are only allowed in extern "C" code. Examples of
+erroneous code:
 
 ```
 extern "rust-call" { fn foo(x: u8, ...); }
@@ -390,10 +390,10 @@ extern "rust-call" { fn foo(x: u8, ...); }
 fn foo(x: u8, ...) {}
 ```
 
-To fix these codes, put them in extern "C" block:
+To fix such code, put them in extern "C" block:
 
 ```
-extern "C" { fn foo(x: u8, ...); }
+extern "C" fn foo (x: u8, ...);
 ```
 "##,
 
@@ -1551,7 +1551,6 @@ register_diagnostics! {
     E0219, // associated type defined in higher-ranked supertrait
     E0220, // associated type not found for type parameter
     E0221, // ambiguous associated type in bounds
-    E0222, // variadic function must have C calling convention
     E0223, // ambiguous associated type
     E0224, // at least one non-builtin train is required for an object type
     E0225, // only the builtin traits can be used as closure or object bounds
