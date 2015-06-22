@@ -119,26 +119,26 @@ pub fn format_visibility(vis: Visibility) -> &'static str {
 // Based on the trick layed out at
 // http://graphics.stanford.edu/~seander/bithacks.html#RoundUpPowerOf2
 pub fn round_up_to_power_of_two(mut x: usize) -> usize {
-    x -= 1;
+    x = x.wrapping_sub(1);
     x |= x >> 1;
     x |= x >> 2;
     x |= x >> 4;
     x |= x >> 8;
     x |= x >> 16;
     x |= x >> 32;
-    x + 1
+    x.wrapping_add(1)
 }
 
 #[inline]
 #[cfg(target_pointer_width="32")]
 pub fn round_up_to_power_of_two(mut x: usize) -> usize {
-    x -= 1;
+    x = x.wrapping_sub(1);
     x |= x >> 1;
     x |= x >> 2;
     x |= x >> 4;
     x |= x >> 8;
     x |= x >> 16;
-    x + 1
+    x.wrapping_add(1)
 }
 
 // Macro for deriving implementations of Decodable for enums
@@ -161,6 +161,7 @@ macro_rules! impl_enum_decodable {
 
 #[test]
 fn power_rounding() {
+    assert_eq!(0, round_up_to_power_of_two(0));
     assert_eq!(1, round_up_to_power_of_two(1));
     assert_eq!(64, round_up_to_power_of_two(33));
     assert_eq!(256, round_up_to_power_of_two(256));
