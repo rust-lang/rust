@@ -1037,6 +1037,14 @@ for target_file in ${CFG_SRC_DIR}mk/cfg/*.mk; do
   CFG_SUPPORTED_TARGET="${CFG_SUPPORTED_TARGET} $(basename "$target_file" .mk)"
 done
 
+# copy build-triples to host-triples so that builds are a subset of hosts
+V_TEMP=""
+for i in $CFG_BUILD $CFG_HOST;
+do
+   echo "$V_TEMP" | grep -qF $i || V_TEMP="$V_TEMP${V_TEMP:+ }$i"
+done
+CFG_HOST=$V_TEMP
+
 # copy host-triples to target-triples so that hosts are a subset of targets
 V_TEMP=""
 for i in $CFG_HOST $CFG_TARGET;
