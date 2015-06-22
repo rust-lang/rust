@@ -380,6 +380,23 @@ fn main() {
 ```
 "##,
 
+E0045: r##"
+Variadic parameters are only allowed in extern "C" code. Example of
+erroneous codes:
+
+```
+extern "rust-call" { fn foo(x: u8, ...); }
+// or
+fn foo(x: u8, ...) {}
+```
+
+To fix these codes, put them in extern "C" block:
+
+```
+extern "C" { fn foo(x: u8, ...); }
+```
+"##,
+
 E0046: r##"
 When trying to make some type implement a trait `Foo`, you must, at minimum,
 provide implementations for all of `Foo`'s required methods (meaning the
@@ -1467,7 +1484,6 @@ For more information see the [opt-in builtin traits RFC](https://github.com/rust
 
 register_diagnostics! {
     E0044, // foreign items may not have type parameters
-    E0045, // variadic function must have C calling convention
     E0068,
     E0071,
     E0074,
