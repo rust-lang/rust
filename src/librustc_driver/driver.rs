@@ -156,7 +156,7 @@ pub fn compile_input(sess: Session,
             token::get_ident_interner().clear();
 
             Ok((outputs, trans))
-        });
+        })
     };
 
     let (outputs, mut trans) = if let Ok(out) = result {
