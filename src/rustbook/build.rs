@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -158,10 +158,7 @@ fn render(book: &Book, tgt: &Path) -> CliResult<()> {
     // create index.html from the root README
     try!(fs::copy(&tgt.join("README.html"), &tgt.join("index.html")));
 
-    // Copy some js for playpen
-    let mut jquery = try!(File::create(tgt.join("jquery.js")));
-    let js = include_bytes!("../librustdoc/html/static/jquery-2.1.0.min.js");
-    try!(jquery.write_all(js));
+    // Copy js for playpen
     let mut playpen = try!(File::create(tgt.join("playpen.js")));
     let js = include_bytes!("../librustdoc/html/static/playpen.js");
     try!(playpen.write_all(js));
