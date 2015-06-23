@@ -386,7 +386,8 @@ impl char {
     pub fn is_xid_continue(self) -> bool { derived_property::XID_Continue(self) }
 
     /// Returns whether the specified `char` is a superscript character in the
-    /// ['Superscripts and Subscripts' unicode block](https://en.wikipedia.org/wiki/Superscripts_and_Subscripts)
+    /// ['Superscripts and Subscripts' unicode block]
+    /// (https://en.wikipedia.org/wiki/Superscripts_and_Subscripts)
     #[unstable(feature = "unicode",
                reason = "mainly needed for compiler internals")]
     #[inline]
