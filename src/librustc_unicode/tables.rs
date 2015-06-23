@@ -1148,7 +1148,8 @@ pub mod derived_property {
     }
 
     pub const Superscript_table: &'static [(char, char)] = &[
-        ('\u{2070}', '\u{2071}'), ('\u{2074}', '\u{207f}')
+        ('\u{b2}', '\u{b3}'), ('\u{b9}', '\u{b9}'), ('\u{2070}', '\u{2071}'),
+        ('\u{2074}', '\u{207f}')
     ];
 
     pub fn Superscript(c: char) -> bool {
