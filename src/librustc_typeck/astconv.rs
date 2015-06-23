@@ -49,7 +49,7 @@
 //! an rptr (`&r.T`) use the region `r` that appears in the rptr.
 
 use middle::astconv_util::{prim_ty_to_ty, check_path_args, NO_TPS, NO_REGIONS};
-use middle::const_eval;
+use middle::const_eval::{self, ConstVal};
 use middle::def;
 use middle::implicator::object_region_bounds;
 use middle::resolve_lifetime as rl;
@@ -1601,10 +1601,10 @@ pub fn ast_ty_to_ty<'tcx>(this: &AstConv<'tcx>,
             match const_eval::eval_const_expr_partial(tcx, &**e, Some(tcx.types.usize)) {
                 Ok(r) => {
                     match r {
-                        const_eval::const_int(i) =>
+                        ConstVal::Int(i) =>
                             ty::mk_vec(tcx, ast_ty_to_ty(this, rscope, &**ty),
                                         Some(i as usize)),
-                        const_eval::const_uint(i) =>
+                        ConstVal::Uint(i) =>
                             ty::mk_vec(tcx, ast_ty_to_ty(this, rscope, &**ty),
                                         Some(i as usize)),
                         _ => {

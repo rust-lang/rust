@@ -12,7 +12,7 @@ pub use self::Constructor::*;
 use self::Usefulness::*;
 use self::WitnessPreference::*;
 
-use middle::const_eval::{compare_const_vals, const_bool, const_float, const_val};
+use middle::const_eval::{compare_const_vals, ConstVal};
 use middle::const_eval::{eval_const_expr, eval_const_expr_partial};
 use middle::const_eval::{const_expr_to_pat, lookup_const_by_id};
 use middle::def::*;
@@ -111,9 +111,9 @@ pub enum Constructor {
     /// Enum variants.
     Variant(ast::DefId),
     /// Literal values.
-    ConstantValue(const_val),
+    ConstantValue(ConstVal),
     /// Ranges of literal values (2..5).
-    ConstantRange(const_val, const_val),
+    ConstantRange(ConstVal, ConstVal),
     /// Array patterns of length n.
     Slice(usize),
     /// Array patterns with a subslice.
@@ -262,7 +262,7 @@ fn check_for_static_nan(cx: &MatchCheckCtxt, pat: &Pat) {
     ast_util::walk_pat(pat, |p| {
         if let ast::PatLit(ref expr) = p.node {
             match eval_const_expr_partial(cx.tcx, &**expr, None) {
-                Ok(const_float(f)) if f.is_nan() => {
+                Ok(ConstVal::Float(f)) if f.is_nan() => {
                     span_warn!(cx.tcx.sess, p.span, E0003,
                                "unmatchable NaN in pattern, \
                                 use the is_nan method in a guard instead");
@@ -391,9 +391,9 @@ fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, matrix: &Matrix, source: ast:
     }
 }
 
-fn const_val_to_expr(value: &const_val) -> P<ast::Expr> {
+fn const_val_to_expr(value: &ConstVal) -> P<ast::Expr> {
     let node = match value {
-        &const_bool(b) => ast::LitBool(b),
+        &ConstVal::Bool(b) => ast::LitBool(b),
         _ => unreachable!()
     };
     P(ast::Expr {
@@ -596,7 +596,7 @@ fn all_constructors(cx: &MatchCheckCtxt, left_ty: Ty,
                     max_slice_length: usize) -> Vec<Constructor> {
     match left_ty.sty {
         ty::TyBool =>
-            [true, false].iter().map(|b| ConstantValue(const_bool(*b))).collect(),
+            [true, false].iter().map(|b| ConstantValue(ConstVal::Bool(*b))).collect(),
 
         ty::TyRef(_, ty::mt { ty, .. }) => match ty.sty {
             ty::TySlice(_) =>
@@ -826,7 +826,7 @@ pub fn constructor_arity(cx: &MatchCheckCtxt, ctor: &Constructor, ty: Ty) -> usi
 }
 
 fn range_covered_by_constructor(ctor: &Constructor,
-                                from: &const_val, to: &const_val) -> Option<bool> {
+                                from: &ConstVal, to: &ConstVal) -> Option<bool> {
     let (c_from, c_to) = match *ctor {
         ConstantValue(ref value)        => (value, value),
         ConstantRange(ref from, ref to) => (from, to),
