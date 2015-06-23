@@ -13,7 +13,8 @@ use back::abi;
 use llvm;
 use llvm::{ConstFCmp, ConstICmp, SetLinkage, SetUnnamedAddr};
 use llvm::{InternalLinkage, ValueRef, Bool, True};
-use middle::{check_const, const_eval, def};
+use middle::{check_const, def};
+use middle::const_eval::{self, ConstVal};
 use middle::const_eval::{const_int_checked_neg, const_uint_checked_neg};
 use middle::const_eval::{const_int_checked_add, const_uint_checked_add};
 use middle::const_eval::{const_int_checked_sub, const_uint_checked_sub};
@@ -602,8 +603,8 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
           ast::ExprIndex(ref base, ref index) => {
               let (bv, bt) = const_expr(cx, &**base, param_substs, fn_args);
               let iv = match const_eval::eval_const_expr_partial(cx.tcx(), &**index, None) {
-                  Ok(const_eval::const_int(i)) => i as u64,
-                  Ok(const_eval::const_uint(u)) => u,
+                  Ok(ConstVal::Int(i)) => i as u64,
+                  Ok(ConstVal::Uint(u)) => u,
                   _ => cx.sess().span_bug(index.span,
                                           "index is not an integer-constant expression")
               };
