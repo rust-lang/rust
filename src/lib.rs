@@ -41,10 +41,12 @@ use syntax::visit;
 use std::path::PathBuf;
 use std::collections::HashMap;
 use std::fmt;
+use std::mem::swap;
 
 use issues::{BadIssueSeeker, Issue};
 use changes::ChangeSet;
 use visitor::FmtVisitor;
+use config::Config;
 
 #[macro_use]
 mod config;
@@ -64,8 +66,6 @@ mod rewrite;
 const MIN_STRING: usize = 10;
 // When we get scoped annotations, we should have rustfmt::skip.
 const SKIP_ANNOTATION: &'static str = "rustfmt_skip";
-
-static mut CONFIG: Option<config::Config> = None;
 
 #[derive(Copy, Clone)]
 pub enum WriteMode {
@@ -109,7 +109,7 @@ pub enum ReturnIndent {
 impl_enum_decodable!(ReturnIndent, WithArgs, WithWhereClause);
 
 enum ErrorKind {
-    // Line has more than config!(max_width) characters
+    // Line has exceeded character limit
     LineOverflow,
     // Line ends in whitespace
     TrailingWhitespace,
@@ -161,8 +161,8 @@ impl fmt::Display for FormatReport {
 }
 
 // Formatting which depends on the AST.
-fn fmt_ast<'a>(krate: &ast::Crate, codemap: &'a CodeMap) -> ChangeSet<'a> {
-    let mut visitor = FmtVisitor::from_codemap(codemap);
+fn fmt_ast<'a>(krate: &ast::Crate, codemap: &'a CodeMap, config: &'a Config) -> ChangeSet<'a> {
+    let mut visitor = FmtVisitor::from_codemap(codemap, config);
     visit::walk_crate(&mut visitor, krate);
     let files = codemap.files.borrow();
     if let Some(last) = files.last() {
@@ -175,7 +175,7 @@ fn fmt_ast<'a>(krate: &ast::Crate, codemap: &'a CodeMap) -> ChangeSet<'a> {
 // Formatting done on a char by char or line by line basis.
 // TODO warn on bad license
 // TODO other stuff for parity with make tidy
-fn fmt_lines(changes: &mut ChangeSet) -> FormatReport {
+fn fmt_lines(changes: &mut ChangeSet, config: &Config) -> FormatReport {
     let mut truncate_todo = Vec::new();
     let mut report = FormatReport { file_error_map: HashMap::new() };
 
@@ -187,8 +187,8 @@ fn fmt_lines(changes: &mut ChangeSet) -> FormatReport {
         let mut cur_line = 1;
         let mut newline_count = 0;
         let mut errors = vec![];
-        let mut issue_seeker = BadIssueSeeker::new(config!(report_todo),
-                                                   config!(report_fixme));
+        let mut issue_seeker = BadIssueSeeker::new(config.report_todo,
+                                                   config.report_fixme);
 
         for (c, b) in text.chars() {
             if c == '\r' { continue; }
@@ -208,7 +208,7 @@ fn fmt_lines(changes: &mut ChangeSet) -> FormatReport {
                     line_len -= b - lw;
                 }
                 // Check for any line width errors we couldn't correct.
-                if line_len > config!(max_width) {
+                if line_len > config.max_width {
                     errors.push(FormattingError {
                         line: cur_line,
                         kind: ErrorKind::LineOverflow
@@ -256,6 +256,7 @@ fn fmt_lines(changes: &mut ChangeSet) -> FormatReport {
 struct RustFmtCalls {
     input_path: Option<PathBuf>,
     write_mode: WriteMode,
+    config: Option<Box<config::Config>>,
 }
 
 impl<'a> CompilerCalls<'a> for RustFmtCalls {
@@ -302,18 +303,23 @@ impl<'a> CompilerCalls<'a> for RustFmtCalls {
 
     fn build_controller(&mut self, _: &Session) -> driver::CompileController<'a> {
         let write_mode = self.write_mode;
+
+        let mut config_option = None;
+        swap(&mut self.config, &mut config_option);
+        let config = config_option.unwrap();
+
         let mut control = driver::CompileController::basic();
         control.after_parse.stop = Compilation::Stop;
         control.after_parse.callback = Box::new(move |state| {
             let krate = state.krate.unwrap();
             let codemap = state.session.codemap();
-            let mut changes = fmt_ast(krate, codemap);
+            let mut changes = fmt_ast(krate, codemap, &*config);
             // For some reason, the codemap does not include terminating newlines
             // so we must add one on for each file. This is sad.
             changes.append_newlines();
-            println!("{}", fmt_lines(&mut changes));
+            println!("{}", fmt_lines(&mut changes, &*config));
 
-            let result = changes.write_all_files(write_mode);
+            let result = changes.write_all_files(write_mode, &*config);
 
             match result {
                 Err(msg) => println!("Error writing files: {}", msg),
@@ -335,8 +341,7 @@ impl<'a> CompilerCalls<'a> for RustFmtCalls {
 // WriteMode.
 // default_config is a string of toml data to be used to configure rustfmt.
 pub fn run(args: Vec<String>, write_mode: WriteMode, default_config: &str) {
-    config::set_config(default_config);
-
-    let mut call_ctxt = RustFmtCalls { input_path: None, write_mode: write_mode };
+    let config = Some(Box::new(config::Config::from_toml(default_config)));
+    let mut call_ctxt = RustFmtCalls { input_path: None, write_mode: write_mode, config: config };
     rustc_driver::run_compiler(&args, &mut call_ctxt);
 }

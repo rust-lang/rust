@@ -14,7 +14,7 @@ use {NewlineStyle, BraceStyle, ReturnIndent};
 use lists::SeparatorTactic;
 use issues::ReportTactic;
 
-#[derive(RustcDecodable)]
+#[derive(RustcDecodable, Clone)]
 pub struct Config {
     pub max_width: usize,
     pub ideal_width: usize,
@@ -32,20 +32,8 @@ pub struct Config {
 }
 
 impl Config {
-    fn from_toml(toml: &str) -> Config {
+    pub fn from_toml(toml: &str) -> Config {
         let parsed = toml.parse().unwrap();
         toml::decode(parsed).unwrap()
     }
-}
-
-pub fn set_config(toml: &str) {
-    unsafe {
-        ::CONFIG = Some(Config::from_toml(toml));
-    }
-}
-
-macro_rules! config {
-    ($name: ident) => {
-        unsafe { ::CONFIG.as_ref().unwrap().$name }
-    };
 }

@@ -21,6 +21,7 @@ use std::fs::File;
 use std::io::{Write, stdout};
 use WriteMode;
 use NewlineStyle;
+use config::Config;
 use utils::round_up_to_power_of_two;
 
 // This is basically a wrapper around a bunch of Ropes which makes it convenient
@@ -130,11 +131,12 @@ impl<'a> ChangeSet<'a> {
     }
 
     pub fn write_all_files(&self,
-                           mode: WriteMode)
+                           mode: WriteMode,
+                           config: &Config)
                            -> Result<(HashMap<String, String>), ::std::io::Error> {
         let mut result = HashMap::new();
         for filename in self.file_map.keys() {
-            let one_result = try!(self.write_file(filename, mode));
+            let one_result = try!(self.write_file(filename, mode, config));
             if let Some(r) = one_result {
                 result.insert(filename.clone(), r);
             }
@@ -145,18 +147,20 @@ impl<'a> ChangeSet<'a> {
 
     pub fn write_file(&self,
                       filename: &str,
-                      mode: WriteMode)
+                      mode: WriteMode,
+                      config: &Config)
                       -> Result<Option<String>, ::std::io::Error> {
         let text = &self.file_map[filename];
 
         // prints all newlines either as `\n` or as `\r\n`
         fn write_system_newlines<T>(
             mut writer: T,
-            text: &StringBuffer)
+            text: &StringBuffer,
+            config: &Config)
             -> Result<(), ::std::io::Error>
             where T: Write,
         {
-            match config!(newline_style) {
+            match config.newline_style {
                 NewlineStyle::Unix => write!(writer, "{}", text),
                 NewlineStyle::Windows => {
                     for (c, _) in text.chars() {
@@ -181,7 +185,7 @@ impl<'a> ChangeSet<'a> {
                 {
                     // Write text to temp file
                     let tmp_file = try!(File::create(&tmp_name));
-                    try!(write_system_newlines(tmp_file, text));
+                    try!(write_system_newlines(tmp_file, text, config));
                 }
 
                 try!(::std::fs::rename(filename, bk_name));
@@ -190,18 +194,18 @@ impl<'a> ChangeSet<'a> {
             WriteMode::NewFile(extn) => {
                 let filename = filename.to_owned() + "." + extn;
                 let file = try!(File::create(&filename));
-                try!(write_system_newlines(file, text));
+                try!(write_system_newlines(file, text, config));
             }
             WriteMode::Display => {
                 println!("{}:\n", filename);
                 let stdout = stdout();
                 let stdout_lock = stdout.lock();
-                try!(write_system_newlines(stdout_lock, text));
+                try!(write_system_newlines(stdout_lock, text, config));
             }
             WriteMode::Return(_) => {
                 // io::Write is not implemented for String, working around with Vec<u8>
                 let mut v = Vec::new();
-                try!(write_system_newlines(&mut v, text));
+                try!(write_system_newlines(&mut v, text, config));
                 // won't panic, we are writing correct utf8
                 return Ok(Some(String::from_utf8(v).unwrap()));
             }
