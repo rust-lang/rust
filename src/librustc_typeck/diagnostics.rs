@@ -384,13 +384,15 @@ E0044: r##"
 You can't use type parameters on foreign items. Example of erroneous code:
 
 ```
-extern { fn some_func<T>(); }
+extern { fn some_func<T>(x: T); }
 ```
 
-Just remove the type parameter to make this code works:
+To fix this, replace the type parameter with the specializations that you
+need:
 
 ```
-extern { fn some_func(); }
+extern { fn some_func_i32(x: i32); }
+extern { fn some_func_i64(x: i64); }
 ```
 
 E0045: r##"
@@ -754,7 +756,7 @@ Example of erroneous code:
 enum Foo { f };
 
 let u = Foo::f { value: 0i32 }; // error: Foo:f isn't a structure!
-// or even more simple:
+// or even simpler:
 let u = t { random_field: 0i32 }; //error: t isn't a structure!
 ```
 
@@ -772,7 +774,7 @@ enum Foo {
 
 fn main() {
     let u = Foo::f(Inner { value: 0i32 });
-    // or even more simple:
+    // or even simpler:
     let t = Inner { value: 0i32 };
 }
 ```
@@ -1533,9 +1535,6 @@ For more information see the [opt-in builtin traits RFC](https://github.com/rust
 }
 
 register_diagnostics! {
-    E0034, // multiple applicable methods in scope
-    E0035, // does not take type parameters
-    E0036, // incorrect number of type parameters given for this method
     E0068,
     E0074,
     E0075,
