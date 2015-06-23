@@ -96,7 +96,7 @@ use middle::subst::{self, Subst, Substs, VecPerParamSpace, ParamSpace, TypeSpace
 use middle::traits::{self, report_fulfillment_errors};
 use middle::ty::{FnSig, GenericPredicates, TypeScheme};
 use middle::ty::{Disr, ParamTy, ParameterEnvironment};
-use middle::ty::{self, HasProjectionTypes, RegionEscape, ToPolyTraitRef, Ty};
+use middle::ty::{self, HasTypeFlags, RegionEscape, ToPolyTraitRef, Ty};
 use middle::ty::liberate_late_bound_regions;
 use middle::ty::{MethodCall, MethodCallee, MethodMap};
 use middle::ty_fold::{TypeFolder, TypeFoldable};
@@ -397,7 +397,7 @@ impl<'a, 'tcx> Inherited<'a, 'tcx> {
                                         body_id: ast::NodeId,
                                         value: &T)
                                         -> T
-        where T : TypeFoldable<'tcx> + HasProjectionTypes
+        where T : TypeFoldable<'tcx> + HasTypeFlags
     {
         let mut fulfillment_cx = self.fulfillment_cx.borrow_mut();
         assoc::normalize_associated_types_in(&self.infcx,
@@ -1296,15 +1296,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn resolve_type_vars_if_possible(&self, mut ty: Ty<'tcx>) -> Ty<'tcx> {
         debug!("resolve_type_vars_if_possible(ty={:?})", ty);
 
-        // No ty::infer()? Nothing needs doing.
-        if !ty::type_has_ty_infer(ty) {
+        // No TyInfer()? Nothing needs doing.
+        if !ty.has_infer_types() {
             debug!("resolve_type_vars_if_possible: ty={:?}", ty);
             return ty;
         }
 
         // If `ty` is a type variable, see whether we already know what it is.
         ty = self.infcx().resolve_type_vars_if_possible(&ty);
-        if !ty::type_has_ty_infer(ty) {
+        if !ty.has_infer_types() {
             debug!("resolve_type_vars_if_possible: ty={:?}", ty);
             return ty;
         }
@@ -1312,7 +1312,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // If not, try resolving any new fcx obligations that have cropped up.
         self.select_new_obligations();
         ty = self.infcx().resolve_type_vars_if_possible(&ty);
-        if !ty::type_has_ty_infer(ty) {
+        if !ty.has_infer_types() {
             debug!("resolve_type_vars_if_possible: ty={:?}", ty);
             return ty;
         }
@@ -1333,9 +1333,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// main checking when doing a second pass before writeback. The
     /// justification is that writeback will produce an error for
     /// these unconstrained type variables.
-    fn resolve_type_vars_or_error(&self, t: &Ty<'tcx>) -> mc::McResult<Ty<'tcx>> {
-        let t = self.infcx().resolve_type_vars_if_possible(t);
-        if ty::type_has_ty_infer(t) || ty::type_is_error(t) { Err(()) } else { Ok(t) }
+    fn resolve_type_vars_or_error(&self, ty: &Ty<'tcx>) -> mc::McResult<Ty<'tcx>> {
+        let ty = self.infcx().resolve_type_vars_if_possible(ty);
+        if ty.has_infer_types() || ty.references_error() { Err(()) } else { Ok(ty) }
     }
 
     fn record_deferred_call_resolution(&self,
@@ -1443,7 +1443,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                   substs: &Substs<'tcx>,
                                   value: &T)
                                   -> T
-        where T : TypeFoldable<'tcx> + HasProjectionTypes
+        where T : TypeFoldable<'tcx> + HasTypeFlags
     {
         let value = value.subst(self.tcx(), substs);
         let result = self.normalize_associated_types_in(span, &value);
@@ -1469,7 +1469,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
 
     fn normalize_associated_types_in<T>(&self, span: Span, value: &T) -> T
-        where T : TypeFoldable<'tcx> + HasProjectionTypes
+        where T : TypeFoldable<'tcx> + HasTypeFlags
     {
         self.inh.normalize_associated_types_in(self, span, self.body_id, value)
     }
@@ -1954,7 +1954,7 @@ pub fn autoderef<'a, 'tcx, T, F>(fcx: &FnCtxt<'a, 'tcx>,
                 fcx.resolve_type_vars_if_possible(t)
             }
         };
-        if ty::type_is_error(resolved_t) {
+        if resolved_t.references_error() {
             return (resolved_t, autoderefs, None);
         }
 
@@ -2186,7 +2186,7 @@ fn check_method_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                          tuple_arguments: TupleArgumentsFlag,
                                          expected: Expectation<'tcx>)
                                          -> ty::FnOutput<'tcx> {
-    if ty::type_is_error(method_fn_ty) {
+    if method_fn_ty.references_error() {
         let err_inputs = err_args(fcx.tcx(), args_no_rcvr.len());
 
         let err_inputs = match tuple_arguments {
@@ -2607,7 +2607,7 @@ fn expected_types_for_fn_args<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
 /// Invariant:
 /// If an expression has any sub-expressions that result in a type error,
-/// inspecting that expression's type with `ty::type_is_error` will return
+/// inspecting that expression's type with `ty.references_error()` will return
 /// true. Likewise, if an expression is known to diverge, inspecting its
 /// type with `ty::type_is_bot` will return true (n.b.: since Rust is
 /// strict, _|_ can appear in the type of an expression that does not,
@@ -2710,7 +2710,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         };
 
         let cond_ty = fcx.expr_ty(cond_expr);
-        let if_ty = if ty::type_is_error(cond_ty) {
+        let if_ty = if cond_ty.references_error() {
             fcx.tcx().types.err
         } else {
             branches_ty
@@ -3022,7 +3022,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                        fields,
                                        base_expr.is_none(),
                                        None);
-        if ty::type_is_error(fcx.node_ty(id)) {
+        if fcx.node_ty(id).references_error() {
             struct_type = tcx.types.err;
         }
 
@@ -3153,7 +3153,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
             fcx, &**oprnd, expected_inner, lvalue_pref);
         let mut oprnd_t = fcx.expr_ty(&**oprnd);
 
-        if !ty::type_is_error(oprnd_t) {
+        if !oprnd_t.references_error() {
             match unop {
                 ast::UnUniq => {
                     oprnd_t = ty::mk_uniq(tcx, oprnd_t);
@@ -3232,7 +3232,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                                     lvalue_pref);
 
         let tm = ty::mt { ty: fcx.expr_ty(&**oprnd), mutbl: mutbl };
-        let oprnd_t = if ty::type_is_error(tm.ty) {
+        let oprnd_t = if tm.ty.references_error() {
             tcx.types.err
         } else {
             // Note: at this point, we cannot say what the best lifetime
@@ -3352,7 +3352,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
 
         fcx.require_expr_have_sized_type(&**lhs, traits::AssignmentLhsSized);
 
-        if ty::type_is_error(lhs_ty) || ty::type_is_error(rhs_ty) {
+        if lhs_ty.references_error() || rhs_ty.references_error() {
             fcx.write_error(id);
         } else {
             fcx.write_nil(id);
@@ -3370,7 +3370,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         check_block_no_value(fcx, &**body);
         let cond_ty = fcx.expr_ty(&**cond);
         let body_ty = fcx.node_ty(body.id);
-        if ty::type_is_error(cond_ty) || ty::type_is_error(body_ty) {
+        if cond_ty.references_error() || body_ty.references_error() {
             fcx.write_error(id);
         }
         else {
@@ -3409,7 +3409,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         let arg_tys = args.iter().map(|a| fcx.expr_ty(&**a));
         let  args_err = arg_tys.fold(false,
              |rest_err, a| {
-              rest_err || ty::type_is_error(a)});
+              rest_err || a.references_error()});
         if args_err {
             fcx.write_error(id);
         }
@@ -3427,7 +3427,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         let t_expr = fcx.expr_ty(e);
 
         // Eagerly check for some obvious errors.
-        if ty::type_is_error(t_expr) {
+        if t_expr.references_error() {
             fcx.write_error(id);
         } else if !fcx.type_is_known_to_be_sized(t_cast, expr.span) {
             report_cast_to_unsized_type(fcx, expr.span, t.span, e.span, t_cast, t_expr, id);
@@ -3504,7 +3504,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                 ty::BoundCopy);
         }
 
-        if ty::type_is_error(element_ty) {
+        if element_ty.references_error() {
             fcx.write_error(id);
         } else {
             let t = ty::mk_vec(tcx, t, Some(count));
@@ -3532,7 +3532,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                     fcx.expr_ty(&**e)
                 }
             };
-            err_field = err_field || ty::type_is_error(t);
+            err_field = err_field || t.references_error();
             t
         }).collect();
         if err_field {
@@ -3592,7 +3592,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         // the resulting structure type. This is needed to handle type
         // parameters correctly.
         let actual_structure_type = fcx.expr_ty(&*expr);
-        if !ty::type_is_error(actual_structure_type) {
+        if !actual_structure_type.references_error() {
             let type_and_substs = fcx.instantiate_struct_literal_ty(struct_id, path);
             match fcx.mk_subty(false,
                                infer::Misc(path.span),
@@ -3630,9 +3630,9 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
           let base_t = fcx.expr_ty(&**base);
           let idx_t = fcx.expr_ty(&**idx);
 
-          if ty::type_is_error(base_t) {
+          if base_t.references_error() {
               fcx.write_ty(id, base_t);
-          } else if ty::type_is_error(idx_t) {
+          } else if idx_t.references_error() {
               fcx.write_ty(id, idx_t);
           } else {
               let base_t = structurally_resolved_type(fcx, expr.span, base_t);
@@ -3671,8 +3671,8 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
               (Some(ty), None) | (None, Some(ty)) => {
                   Some(ty)
               }
-              (Some(t_start), Some(t_end)) if (ty::type_is_error(t_start) ||
-                                               ty::type_is_error(t_end)) => {
+              (Some(t_start), Some(t_end)) if (t_start.references_error() ||
+                                               t_end.references_error()) => {
                   Some(fcx.tcx().types.err)
               }
               (Some(t_start), Some(t_end)) => {
@@ -3690,7 +3690,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
           // some bounds, then we'll need to check `t_start` against them here.
 
           let range_type = match idx_type {
-            Some(idx_type) if ty::type_is_error(idx_type) => {
+            Some(idx_type) if idx_type.references_error() => {
                 fcx.tcx().types.err
             }
             Some(idx_type) => {
@@ -3765,7 +3765,7 @@ pub fn resolve_ty_and_def_ufcs<'a, 'b, 'tcx>(fcx: &FnCtxt<'b, 'tcx>,
                                                 node_id: ast::NodeId) -> bool {
         match def {
             def::DefAssociatedConst(..) => {
-                if ty::type_has_params(ty) || ty::type_has_self(ty) {
+                if ty.has_param_types() || ty.has_self_ty() {
                     span_err!(fcx.sess(), span, E0329,
                               "Associated consts cannot depend \
                                on type parameters or Self.");
@@ -3933,7 +3933,7 @@ pub fn check_decl_local<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>, local: &'tcx ast::Local)
     if let Some(ref init) = local.init {
         check_decl_initializer(fcx, local, &**init);
         let init_ty = fcx.expr_ty(&**init);
-        if ty::type_is_error(init_ty) {
+        if init_ty.references_error() {
             fcx.write_ty(local.id, init_ty);
         }
     }
@@ -3944,7 +3944,7 @@ pub fn check_decl_local<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>, local: &'tcx ast::Local)
     };
     _match::check_pat(&pcx, &*local.pat, t);
     let pat_ty = fcx.node_ty(local.pat.id);
-    if ty::type_is_error(pat_ty) {
+    if pat_ty.references_error() {
         fcx.write_ty(local.id, pat_ty);
     }
 }
@@ -3961,7 +3961,7 @@ pub fn check_stmt<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>, stmt: &'tcx ast::Stmt)  {
               check_decl_local(fcx, &**l);
               let l_t = fcx.node_ty(l.id);
               saw_bot = saw_bot || fcx.infcx().type_var_diverges(l_t);
-              saw_err = saw_err || ty::type_is_error(l_t);
+              saw_err = saw_err || l_t.references_error();
           }
           ast::DeclItem(_) => {/* ignore for now */ }
         }
@@ -3972,14 +3972,14 @@ pub fn check_stmt<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>, stmt: &'tcx ast::Stmt)  {
         check_expr_has_type(fcx, &**expr, ty::mk_nil(fcx.tcx()));
         let expr_ty = fcx.expr_ty(&**expr);
         saw_bot = saw_bot || fcx.infcx().type_var_diverges(expr_ty);
-        saw_err = saw_err || ty::type_is_error(expr_ty);
+        saw_err = saw_err || expr_ty.references_error();
       }
       ast::StmtSemi(ref expr, id) => {
         node_id = id;
         check_expr(fcx, &**expr);
         let expr_ty = fcx.expr_ty(&**expr);
         saw_bot |= fcx.infcx().type_var_diverges(expr_ty);
-        saw_err |= ty::type_is_error(expr_ty);
+        saw_err |= expr_ty.references_error();
       }
       ast::StmtMac(..) => fcx.ccx.tcx.sess.bug("unexpanded macro")
     }
@@ -3997,7 +3997,7 @@ pub fn check_stmt<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>, stmt: &'tcx ast::Stmt)  {
 pub fn check_block_no_value<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>, blk: &'tcx ast::Block)  {
     check_block_with_expected(fcx, blk, ExpectHasType(ty::mk_nil(fcx.tcx())));
     let blkty = fcx.node_ty(blk.id);
-    if ty::type_is_error(blkty) {
+    if blkty.references_error() {
         fcx.write_error(blk.id);
     } else {
         let nilty = ty::mk_nil(fcx.tcx());
@@ -4041,7 +4041,7 @@ fn check_block_with_expected<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             warned = true;
         }
         any_diverges = any_diverges || fcx.infcx().type_var_diverges(s_ty);
-        any_err = any_err || ty::type_is_error(s_ty);
+        any_err = any_err || s_ty.references_error();
     }
     match blk.expr {
         None => if any_err {
@@ -4184,7 +4184,7 @@ pub fn check_instantiable(tcx: &ty::ctxt,
 
 pub fn check_simd(tcx: &ty::ctxt, sp: Span, id: ast::NodeId) {
     let t = ty::node_id_to_type(tcx, id);
-    if ty::type_needs_subst(t) {
+    if t.needs_subst() {
         span_err!(tcx.sess, sp, E0074, "SIMD vector cannot be generic");
         return;
     }
@@ -4874,7 +4874,7 @@ fn structurally_resolve_type_or_else<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         let alternative = f();
 
         // If not, error.
-        if ty::type_is_ty_var(alternative) || ty::type_is_error(alternative) {
+        if ty::type_is_ty_var(alternative) || alternative.references_error() {
             fcx.type_error_message(sp, |_actual| {
                 "the type of this value must be known in this context".to_string()
             }, ty, None);

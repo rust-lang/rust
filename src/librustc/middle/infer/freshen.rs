@@ -30,7 +30,7 @@
 //! variable only once, and it does so as soon as it can, so it is reasonable to ask what the type
 //! inferencer knows "so far".
 
-use middle::ty::{self, Ty};
+use middle::ty::{self, Ty, HasTypeFlags};
 use middle::ty_fold;
 use middle::ty_fold::TypeFoldable;
 use middle::ty_fold::TypeFolder;
@@ -104,7 +104,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
     }
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-        if !ty::type_needs_infer(t) && !ty::type_has_erasable_regions(t) {
+        if !t.needs_infer() && !t.has_erasable_regions() {
             return t;
         }
 

@@ -25,7 +25,7 @@ use super::{
 
 use fmt_macros::{Parser, Piece, Position};
 use middle::infer::InferCtxt;
-use middle::ty::{self, ToPredicate, ReferencesError, ToPolyTraitRef, TraitRef};
+use middle::ty::{self, ToPredicate, HasTypeFlags, ToPolyTraitRef, TraitRef};
 use middle::ty_fold::TypeFoldable;
 use std::collections::HashMap;
 use std::fmt;
@@ -245,7 +245,7 @@ pub fn report_selection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
         OutputTypeParameterMismatch(ref expected_trait_ref, ref actual_trait_ref, ref e) => {
             let expected_trait_ref = infcx.resolve_type_vars_if_possible(&*expected_trait_ref);
             let actual_trait_ref = infcx.resolve_type_vars_if_possible(&*actual_trait_ref);
-            if !ty::type_is_error(actual_trait_ref.self_ty()) {
+            if !actual_trait_ref.self_ty().references_error() {
                 span_err!(infcx.tcx.sess, obligation.cause.span, E0281,
                         "type mismatch: the type `{}` implements the trait `{}`, \
                         but the trait `{}` is required ({})",
@@ -325,8 +325,8 @@ pub fn maybe_report_ambiguity<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
             let trait_ref = data.to_poly_trait_ref();
             let self_ty = trait_ref.self_ty();
             let all_types = &trait_ref.substs().types;
-            if all_types.iter().any(|&t| ty::type_is_error(t)) {
-            } else if all_types.iter().any(|&t| ty::type_needs_infer(t)) {
+            if all_types.references_error() {
+            } else if all_types.needs_infer() {
                 // This is kind of a hack: it frequently happens that some earlier
                 // error prevents types from being fully inferred, and then we get
                 // a bunch of uninteresting errors saying something like "<generic

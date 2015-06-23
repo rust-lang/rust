@@ -105,7 +105,7 @@ pub use rustc::util;
 use middle::def;
 use middle::infer;
 use middle::subst;
-use middle::ty::{self, Ty};
+use middle::ty::{self, Ty, HasTypeFlags};
 use rustc::ast_map;
 use session::config;
 use util::common::time;
@@ -148,7 +148,7 @@ pub struct CrateCtxt<'a, 'tcx: 'a> {
 // Functions that write types into the node type table
 fn write_ty_to_tcx<'tcx>(tcx: &ty::ctxt<'tcx>, node_id: ast::NodeId, ty: Ty<'tcx>) {
     debug!("write_ty_to_tcx({}, {:?})", node_id,  ty);
-    assert!(!ty::type_needs_infer(ty));
+    assert!(!ty.needs_infer());
     tcx.node_type_insert(node_id, ty);
 }
 
@@ -160,7 +160,7 @@ fn write_substs_to_tcx<'tcx>(tcx: &ty::ctxt<'tcx>,
                node_id,
                item_substs);
 
-        assert!(item_substs.substs.types.all(|t| !ty::type_needs_infer(*t)));
+        assert!(!item_substs.substs.types.needs_infer());
 
         tcx.item_substs.borrow_mut().insert(node_id, item_substs);
     }

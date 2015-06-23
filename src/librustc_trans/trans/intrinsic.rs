@@ -30,7 +30,7 @@ use trans::type_of;
 use trans::machine;
 use trans::machine::llsize_of;
 use trans::type_::Type;
-use middle::ty::{self, Ty};
+use middle::ty::{self, Ty, HasTypeFlags};
 use syntax::abi::RustIntrinsic;
 use syntax::ast;
 use syntax::parse::token;
@@ -103,8 +103,8 @@ pub fn check_intrinsics(ccx: &CrateContext) {
 
         debug!("transmute_restriction: {:?}", transmute_restriction);
 
-        assert!(!ty::type_has_params(transmute_restriction.substituted_from));
-        assert!(!ty::type_has_params(transmute_restriction.substituted_to));
+        assert!(!transmute_restriction.substituted_from.has_param_types());
+        assert!(!transmute_restriction.substituted_to.has_param_types());
 
         let llfromtype = type_of::sizing_type_of(ccx,
                                                  transmute_restriction.substituted_from);

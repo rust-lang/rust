@@ -37,7 +37,7 @@ use trans::monomorphize;
 use trans::type_::Type;
 use trans::type_of;
 use middle::traits;
-use middle::ty::{self, HasProjectionTypes, Ty};
+use middle::ty::{self, HasTypeFlags, Ty};
 use middle::ty_fold;
 use middle::ty_fold::{TypeFolder, TypeFoldable};
 use rustc::ast_map::{PathElem, PathName};
@@ -336,7 +336,7 @@ pub fn BuilderRef_res(b: BuilderRef) -> BuilderRef_res {
 pub type ExternMap = FnvHashMap<String, ValueRef>;
 
 pub fn validate_substs(substs: &Substs) {
-    assert!(substs.types.all(|t| !ty::type_needs_infer(*t)));
+    assert!(!substs.types.needs_infer());
 }
 
 // work around bizarre resolve errors
@@ -512,7 +512,7 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
     }
 
     pub fn monomorphize<T>(&self, value: &T) -> T
-        where T : TypeFoldable<'tcx> + HasProjectionTypes
+        where T : TypeFoldable<'tcx> + HasTypeFlags
     {
         monomorphize::apply_param_substs(self.ccx.tcx(),
                                          self.param_substs,
@@ -610,7 +610,7 @@ impl<'blk, 'tcx> BlockS<'blk, 'tcx> {
     }
 
     pub fn monomorphize<T>(&self, value: &T) -> T
-        where T : TypeFoldable<'tcx> + HasProjectionTypes
+        where T : TypeFoldable<'tcx> + HasTypeFlags
     {
         monomorphize::apply_param_substs(self.tcx(),
                                          self.fcx.param_substs,
@@ -1194,7 +1194,7 @@ pub fn node_id_substs<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         }
     };
 
-    if substs.types.any(|t| ty::type_needs_infer(*t)) {
+    if substs.types.needs_infer() {
             tcx.sess.bug(&format!("type parameters for node {:?} include inference types: {:?}",
                                  node, substs));
         }

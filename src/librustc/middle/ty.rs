@@ -1180,64 +1180,6 @@ impl<'tcx> Borrow<TypeVariants<'tcx>> for InternedTy<'tcx> {
     }
 }
 
-pub fn type_has_params(ty: Ty) -> bool {
-    ty.flags.get().intersects(TypeFlags::HAS_PARAMS)
-}
-pub fn type_has_self(ty: Ty) -> bool {
-    ty.flags.get().intersects(TypeFlags::HAS_SELF)
-}
-pub fn type_has_ty_infer(ty: Ty) -> bool {
-    ty.flags.get().intersects(TypeFlags::HAS_TY_INFER)
-}
-pub fn type_needs_infer(ty: Ty) -> bool {
-    ty.flags.get().intersects(TypeFlags::HAS_TY_INFER | TypeFlags::HAS_RE_INFER)
-}
-pub fn type_is_global(ty: Ty) -> bool {
-    !ty.flags.get().intersects(TypeFlags::HAS_LOCAL_NAMES)
-}
-pub fn type_has_projection(ty: Ty) -> bool {
-    ty.flags.get().intersects(TypeFlags::HAS_PROJECTION)
-}
-pub fn type_has_ty_closure(ty: Ty) -> bool {
-    ty.flags.get().intersects(TypeFlags::HAS_TY_CLOSURE)
-}
-
-pub fn type_has_erasable_regions(ty: Ty) -> bool {
-    ty.flags.get().intersects(TypeFlags::HAS_RE_EARLY_BOUND |
-                              TypeFlags::HAS_RE_INFER |
-                              TypeFlags::HAS_FREE_REGIONS)
-}
-
-/// An "escaping region" is a bound region whose binder is not part of `t`.
-///
-/// So, for example, consider a type like the following, which has two binders:
-///
-///    for<'a> fn(x: for<'b> fn(&'a isize, &'b isize))
-///    ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ outer scope
-///                  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~  inner scope
-///
-/// This type has *bound regions* (`'a`, `'b`), but it does not have escaping regions, because the
-/// binders of both `'a` and `'b` are part of the type itself. However, if we consider the *inner
-/// fn type*, that type has an escaping region: `'a`.
-///
-/// Note that what I'm calling an "escaping region" is often just called a "free region". However,
-/// we already use the term "free region". It refers to the regions that we use to represent bound
-/// regions on a fn definition while we are typechecking its body.
-///
-/// To clarify, conceptually there is no particular difference between an "escaping" region and a
-/// "free" region. However, there is a big difference in practice. Basically, when "entering" a
-/// binding level, one is generally required to do some sort of processing to a bound region, such
-/// as replacing it with a fresh/skolemized region, or making an entry in the environment to
-/// represent the scope to which it is attached, etc. An escaping region represents a bound region
-/// for which this processing has not yet been done.
-pub fn type_has_escaping_regions(ty: Ty) -> bool {
-    type_escapes_depth(ty, 0)
-}
-
-pub fn type_escapes_depth(ty: Ty, depth: u32) -> bool {
-    ty.region_depth > depth
-}
-
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct BareFnTy<'tcx> {
     pub unsafety: ast::Unsafety,
@@ -1497,15 +1439,6 @@ pub struct UpvarBorrow {
 pub type UpvarCaptureMap = FnvHashMap<UpvarId, UpvarCapture>;
 
 impl Region {
-    pub fn is_global(&self) -> bool {
-        // does this represent a region that can be named in a global
-        // way? used in fulfillment caching.
-        match *self {
-            ty::ReStatic | ty::ReEmpty => true,
-            _ => false,
-        }
-    }
-
     pub fn is_bound(&self) -> bool {
         match *self {
             ty::ReEarlyBound(..) => true,
@@ -2252,29 +2185,6 @@ impl<'tcx> Predicate<'tcx> {
                 Predicate::TypeOutlives(ty::Binder(data.subst(tcx, substs))),
             Predicate::Projection(ty::Binder(ref data)) =>
                 Predicate::Projection(ty::Binder(data.subst(tcx, substs))),
-        }
-    }
-
-    // Indicates whether this predicate references only 'global'
-    // types/lifetimes that are the same regardless of what fn we are
-    // in. This is used for caching. Errs on the side of returning
-    // false.
-    pub fn is_global(&self) -> bool {
-        match *self {
-            ty::Predicate::Trait(ref data) => {
-                let substs = data.skip_binder().trait_ref.substs;
-
-                substs.types.iter().all(|t| ty::type_is_global(t)) && {
-                    match substs.regions {
-                        subst::ErasedRegions => true,
-                        subst::NonerasedRegions(ref r) => r.iter().all(|r| r.is_global()),
-                    }
-                }
-            }
-
-            _ => {
-                false
-            }
         }
     }
 }
@@ -3711,18 +3621,6 @@ pub fn type_is_nil(ty: Ty) -> bool {
     }
 }
 
-pub fn type_is_error(ty: Ty) -> bool {
-    ty.flags.get().intersects(TypeFlags::HAS_TY_ERR)
-}
-
-pub fn type_needs_subst(ty: Ty) -> bool {
-    ty.flags.get().intersects(TypeFlags::NEEDS_SUBST)
-}
-
-pub fn trait_ref_contains_error(tref: &ty::TraitRef) -> bool {
-    tref.substs.types.any(|&ty| type_is_error(ty))
-}
-
 pub fn type_is_ty_var(ty: Ty) -> bool {
     match ty.sty {
         TyInfer(TyVar(_)) => true,
@@ -4255,7 +4153,7 @@ pub fn type_moves_by_default<'a,'tcx>(param_env: &ParameterEnvironment<'a,'tcx>,
         return ty.flags.get().intersects(TypeFlags::MOVES_BY_DEFAULT);
     }
 
-    assert!(!ty::type_needs_infer(ty));
+    assert!(!ty.needs_infer());
 
     // Fast-path for primitive types
     let result = match ty.sty {
@@ -4277,7 +4175,7 @@ pub fn type_moves_by_default<'a,'tcx>(param_env: &ParameterEnvironment<'a,'tcx>,
                                           ty::BoundCopy,
                                           span));
 
-    if !type_has_params(ty) && !type_has_self(ty) {
+    if !ty.has_param_types() && !ty.has_self_ty() {
         ty.flags.set(ty.flags.get() | if result {
             TypeFlags::MOVENESS_CACHED | TypeFlags::MOVES_BY_DEFAULT
         } else {
@@ -4307,7 +4205,7 @@ fn type_is_sized_uncached<'a,'tcx>(param_env: Option<&ParameterEnvironment<'a,'t
                                    tcx: &ty::ctxt<'tcx>,
                                    span: Span,
                                    ty: Ty<'tcx>) -> bool {
-    assert!(!ty::type_needs_infer(ty));
+    assert!(!ty.needs_infer());
 
     // Fast-path for primitive types
     let result = match ty.sty {
@@ -4321,7 +4219,7 @@ fn type_is_sized_uncached<'a,'tcx>(param_env: Option<&ParameterEnvironment<'a,'t
         TyInfer(..) | TyError => None
     }.unwrap_or_else(|| type_impls_bound(param_env, tcx, ty, ty::BoundSized, span));
 
-    if !type_has_params(ty) && !type_has_self(ty) {
+    if !ty.has_param_types() && !ty.has_self_ty() {
         ty.flags.set(ty.flags.get() | if result {
             TypeFlags::SIZEDNESS_CACHED | TypeFlags::IS_SIZED
         } else {
@@ -5028,7 +4926,7 @@ pub fn adjust_ty<'tcx, F>(cx: &ctxt<'tcx>,
                 AdjustDerefRef(ref adj) => {
                     let mut adjusted_ty = unadjusted_ty;
 
-                    if !ty::type_is_error(adjusted_ty) {
+                    if !adjusted_ty.references_error() {
                         for i in 0..adj.autoderefs {
                             let method_call = MethodCall::autoderef(expr_id, i as u32);
                             match method_type(method_call) {
@@ -7362,11 +7260,33 @@ pub fn can_type_implement_copy<'a,'tcx>(param_env: &ParameterEnvironment<'a, 'tc
     Ok(())
 }
 
-// FIXME(#20298) -- all of these types basically walk various
+// FIXME(#20298) -- all of these traits basically walk various
 // structures to test whether types/regions are reachable with various
 // properties. It should be possible to express them in terms of one
 // common "walker" trait or something.
 
+/// An "escaping region" is a bound region whose binder is not part of `t`.
+///
+/// So, for example, consider a type like the following, which has two binders:
+///
+///    for<'a> fn(x: for<'b> fn(&'a isize, &'b isize))
+///    ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ outer scope
+///                  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~  inner scope
+///
+/// This type has *bound regions* (`'a`, `'b`), but it does not have escaping regions, because the
+/// binders of both `'a` and `'b` are part of the type itself. However, if we consider the *inner
+/// fn type*, that type has an escaping region: `'a`.
+///
+/// Note that what I'm calling an "escaping region" is often just called a "free region". However,
+/// we already use the term "free region". It refers to the regions that we use to represent bound
+/// regions on a fn definition while we are typechecking its body.
+///
+/// To clarify, conceptually there is no particular difference between an "escaping" region and a
+/// "free" region. However, there is a big difference in practice. Basically, when "entering" a
+/// binding level, one is generally required to do some sort of processing to a bound region, such
+/// as replacing it with a fresh/skolemized region, or making an entry in the environment to
+/// represent the scope to which it is attached, etc. An escaping region represents a bound region
+/// for which this processing has not yet been done.
 pub trait RegionEscape {
     fn has_escaping_regions(&self) -> bool {
         self.has_regions_escaping_depth(0)
@@ -7377,7 +7297,7 @@ pub trait RegionEscape {
 
 impl<'tcx> RegionEscape for Ty<'tcx> {
     fn has_regions_escaping_depth(&self, depth: u32) -> bool {
-        ty::type_escapes_depth(*self, depth)
+        self.region_depth > depth
     }
 }
 
@@ -7491,237 +7411,221 @@ impl<'tcx> RegionEscape for ProjectionTy<'tcx> {
     }
 }
 
-pub trait HasProjectionTypes {
-    fn has_projection_types(&self) -> bool;
-}
-
-impl<'tcx,T:HasProjectionTypes> HasProjectionTypes for Vec<T> {
+pub trait HasTypeFlags {
+    fn has_type_flags(&self, flags: TypeFlags) -> bool;
     fn has_projection_types(&self) -> bool {
-        self.iter().any(|p| p.has_projection_types())
+        self.has_type_flags(TypeFlags::HAS_PROJECTION)
+    }
+    fn references_error(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_TY_ERR)
+    }
+    fn has_param_types(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_PARAMS)
+    }
+    fn has_self_ty(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_SELF)
+    }
+    fn has_infer_types(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_TY_INFER)
+    }
+    fn needs_infer(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_TY_INFER | TypeFlags::HAS_RE_INFER)
+    }
+    fn needs_subst(&self) -> bool {
+        self.has_type_flags(TypeFlags::NEEDS_SUBST)
+    }
+    fn has_closure_types(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_TY_CLOSURE)
+    }
+    fn has_erasable_regions(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_RE_EARLY_BOUND |
+                            TypeFlags::HAS_RE_INFER |
+                            TypeFlags::HAS_FREE_REGIONS)
+    }
+    /// Indicates whether this value references only 'global'
+    /// types/lifetimes that are the same regardless of what fn we are
+    /// in. This is used for caching. Errs on the side of returning
+    /// false.
+    fn is_global(&self) -> bool {
+        !self.has_type_flags(TypeFlags::HAS_LOCAL_NAMES)
     }
 }
 
-impl<'tcx,T:HasProjectionTypes> HasProjectionTypes for VecPerParamSpace<T> {
-    fn has_projection_types(&self) -> bool {
-        self.iter().any(|p| p.has_projection_types())
+impl<'tcx,T:HasTypeFlags> HasTypeFlags for Vec<T> {
+    fn has_type_flags(&self, flags: TypeFlags) -> bool {
+        self[..].has_type_flags(flags)
     }
 }
 
-impl<'tcx> HasProjectionTypes for ClosureTy<'tcx> {
-    fn has_projection_types(&self) -> bool {
-        self.sig.has_projection_types()
+impl<'tcx,T:HasTypeFlags> HasTypeFlags for [T] {
+    fn has_type_flags(&self, flags: TypeFlags) -> bool {
+        self.iter().any(|p| p.has_type_flags(flags))
     }
 }
 
-impl<'tcx> HasProjectionTypes for ClosureUpvar<'tcx> {
-    fn has_projection_types(&self) -> bool {
-        self.ty.has_projection_types()
+impl<'tcx,T:HasTypeFlags> HasTypeFlags for VecPerParamSpace<T> {
+    fn has_type_flags(&self, flags: TypeFlags) -> bool {
+        self.iter().any(|p| p.has_type_flags(flags))
     }
 }
 
-impl<'tcx> HasProjectionTypes for ty::InstantiatedPredicates<'tcx> {
-    fn has_projection_types(&self) -> bool {
-        self.predicates.has_projection_types()
+impl<'tcx> HasTypeFlags for ClosureTy<'tcx> {
+    fn has_type_flags(&self, flags: TypeFlags) -> bool {
+        self.sig.has_type_flags(flags)
     }
 }
 
-impl<'tcx> HasProjectionTypes for Predicate<'tcx> {
-    fn has_projection_types(&self) -> bool {
+impl<'tcx> HasTypeFlags for ClosureUpvar<'tcx> {
+    fn has_type_flags(&self, flags: TypeFlags) -> bool {
+        self.ty.has_type_flags(flags)
+    }
+}
+
+impl<'tcx> HasTypeFlags for ty::InstantiatedPredicates<'tcx> {
+    fn has_type_flags(&self, flags: TypeFlags) -> bool {
+        self.predicates.has_type_flags(flags)
+    }
+}
+
+impl<'tcx> HasTypeFlags for Predicate<'tcx> {
+    fn has_type_flags(&self, flags: TypeFlags) -> bool {
         match *self {
-            Predicate::Trait(ref data) => data.has_projection_types(),
-            Predicate::Equate(ref data) => data.has_projection_types(),
-            Predicate::RegionOutlives(ref data) => data.has_projection_types(),
-            Predicate::TypeOutlives(ref data) => data.has_projection_types(),
-            Predicate::Projection(ref data) => data.has_projection_types(),
+            Predicate::Trait(ref data) => data.has_type_flags(flags),
+            Predicate::Equate(ref data) => data.has_type_flags(flags),
+            Predicate::RegionOutlives(ref data) => data.has_type_flags(flags),
+            Predicate::TypeOutlives(ref data) => data.has_type_flags(flags),
+            Predicate::Projection(ref data) => data.has_type_flags(flags),
         }
     }
 }
 
-impl<'tcx> HasProjectionTypes for TraitPredicate<'tcx> {
-    fn has_projection_types(&self) -> bool {
-        self.trait_ref.has_projection_types()
+impl<'tcx> HasTypeFlags for TraitPredicate<'tcx> {
+    fn has_type_flags(&self, flags: TypeFlags) -> bool {
+        self.trait_ref.has_type_flags(flags)
     }
 }
 
-impl<'tcx> HasProjectionTypes for EquatePredicate<'tcx> {
-    fn has_projection_types(&self) -> bool {
-        self.0.has_projection_types() || self.1.has_projection_types()
+impl<'tcx> HasTypeFlags for EquatePredicate<'tcx> {
+    fn has_type_flags(&self, flags: TypeFlags) -> bool {
+        self.0.has_type_flags(flags) || self.1.has_type_flags(flags)
     }
 }
 
-impl HasProjectionTypes for Region {
-    fn has_projection_types(&self) -> bool {
+impl HasTypeFlags for Region {
+    fn has_type_flags(&self, flags: TypeFlags) -> bool {
+        if flags.intersects(TypeFlags::HAS_LOCAL_NAMES) {
+            // does this represent a region that cannot be named in a global
+            // way? used in fulfillment caching.
+            match *self {
+                ty::ReStatic | ty::ReEmpty => {}
+                _ => return true
+            }
+        }
+        if flags.intersects(TypeFlags::HAS_RE_INFER) {
+            if let ty::ReInfer(_) = *self {
+                return true;
+            }
+        }
         false
     }
 }
 
-impl<T:HasProjectionTypes,U:HasProjectionTypes> HasProjectionTypes for OutlivesPredicate<T,U> {
-    fn has_projection_types(&self) -> bool {
-        self.0.has_projection_types() || self.1.has_projection_types()
+impl<T:HasTypeFlags,U:HasTypeFlags> HasTypeFlags for OutlivesPredicate<T,U> {
+    fn has_type_flags(&self, flags: TypeFlags) -> bool {
+        self.0.has_type_flags(flags) || self.1.has_type_flags(flags)
     }
 }
 
-impl<'tcx> HasProjectionTypes for ProjectionPredicate<'tcx> {
-    fn has_projection_types(&self) -> bool {
-        self.projection_ty.has_projection_types() || self.ty.has_projection_types()
+impl<'tcx> HasTypeFlags for ProjectionPredicate<'tcx> {
+    fn has_type_flags(&self, flags: TypeFlags) -> bool {
+        self.projection_ty.has_type_flags(flags) || self.ty.has_type_flags(flags)
     }
 }
 
-impl<'tcx> HasProjectionTypes for ProjectionTy<'tcx> {
-    fn has_projection_types(&self) -> bool {
-        self.trait_ref.has_projection_types()
+impl<'tcx> HasTypeFlags for ProjectionTy<'tcx> {
+    fn has_type_flags(&self, flags: TypeFlags) -> bool {
+        self.trait_ref.has_type_flags(flags)
     }
 }
 
-impl<'tcx> HasProjectionTypes for Ty<'tcx> {
-    fn has_projection_types(&self) -> bool {
-        ty::type_has_projection(*self)
+impl<'tcx> HasTypeFlags for Ty<'tcx> {
+    fn has_type_flags(&self, flags: TypeFlags) -> bool {
+        self.flags.get().intersects(flags)
     }
 }
 
-impl<'tcx> HasProjectionTypes for TraitRef<'tcx> {
-    fn has_projection_types(&self) -> bool {
-        self.substs.has_projection_types()
+impl<'tcx> HasTypeFlags for TraitRef<'tcx> {
+    fn has_type_flags(&self, flags: TypeFlags) -> bool {
+        self.substs.has_type_flags(flags)
     }
 }
 
-impl<'tcx> HasProjectionTypes for subst::Substs<'tcx> {
-    fn has_projection_types(&self) -> bool {
-        self.types.iter().any(|t| t.has_projection_types())
+impl<'tcx> HasTypeFlags for subst::Substs<'tcx> {
+    fn has_type_flags(&self, flags: TypeFlags) -> bool {
+        self.types.has_type_flags(flags) || match self.regions {
+            subst::ErasedRegions => false,
+            subst::NonerasedRegions(ref r) => r.has_type_flags(flags)
+        }
     }
 }
 
-impl<'tcx,T> HasProjectionTypes for Option<T>
-    where T : HasProjectionTypes
+impl<'tcx,T> HasTypeFlags for Option<T>
+    where T : HasTypeFlags
 {
-    fn has_projection_types(&self) -> bool {
-        self.iter().any(|t| t.has_projection_types())
+    fn has_type_flags(&self, flags: TypeFlags) -> bool {
+        self.iter().any(|t| t.has_type_flags(flags))
     }
 }
 
-impl<'tcx,T> HasProjectionTypes for Rc<T>
-    where T : HasProjectionTypes
+impl<'tcx,T> HasTypeFlags for Rc<T>
+    where T : HasTypeFlags
 {
-    fn has_projection_types(&self) -> bool {
-        (**self).has_projection_types()
+    fn has_type_flags(&self, flags: TypeFlags) -> bool {
+        (**self).has_type_flags(flags)
     }
 }
 
-impl<'tcx,T> HasProjectionTypes for Box<T>
-    where T : HasProjectionTypes
+impl<'tcx,T> HasTypeFlags for Box<T>
+    where T : HasTypeFlags
 {
-    fn has_projection_types(&self) -> bool {
-        (**self).has_projection_types()
+    fn has_type_flags(&self, flags: TypeFlags) -> bool {
+        (**self).has_type_flags(flags)
     }
 }
 
-impl<T> HasProjectionTypes for Binder<T>
-    where T : HasProjectionTypes
+impl<T> HasTypeFlags for Binder<T>
+    where T : HasTypeFlags
 {
-    fn has_projection_types(&self) -> bool {
-        self.0.has_projection_types()
+    fn has_type_flags(&self, flags: TypeFlags) -> bool {
+        self.0.has_type_flags(flags)
     }
 }
 
-impl<'tcx> HasProjectionTypes for FnOutput<'tcx> {
-    fn has_projection_types(&self) -> bool {
+impl<'tcx> HasTypeFlags for FnOutput<'tcx> {
+    fn has_type_flags(&self, flags: TypeFlags) -> bool {
         match *self {
-            FnConverging(t) => t.has_projection_types(),
+            FnConverging(t) => t.has_type_flags(flags),
             FnDiverging => false,
         }
     }
 }
 
-impl<'tcx> HasProjectionTypes for FnSig<'tcx> {
-    fn has_projection_types(&self) -> bool {
-        self.inputs.iter().any(|t| t.has_projection_types()) ||
-            self.output.has_projection_types()
+impl<'tcx> HasTypeFlags for FnSig<'tcx> {
+    fn has_type_flags(&self, flags: TypeFlags) -> bool {
+        self.inputs.iter().any(|t| t.has_type_flags(flags)) ||
+            self.output.has_type_flags(flags)
     }
 }
 
-impl<'tcx> HasProjectionTypes for field<'tcx> {
-    fn has_projection_types(&self) -> bool {
-        self.mt.ty.has_projection_types()
+impl<'tcx> HasTypeFlags for field<'tcx> {
+    fn has_type_flags(&self, flags: TypeFlags) -> bool {
+        self.mt.ty.has_type_flags(flags)
     }
 }
 
-impl<'tcx> HasProjectionTypes for BareFnTy<'tcx> {
-    fn has_projection_types(&self) -> bool {
-        self.sig.has_projection_types()
-    }
-}
-
-pub trait ReferencesError {
-    fn references_error(&self) -> bool;
-}
-
-impl<T:ReferencesError> ReferencesError for Binder<T> {
-    fn references_error(&self) -> bool {
-        self.0.references_error()
-    }
-}
-
-impl<T:ReferencesError> ReferencesError for Rc<T> {
-    fn references_error(&self) -> bool {
-        (&**self).references_error()
-    }
-}
-
-impl<'tcx> ReferencesError for TraitPredicate<'tcx> {
-    fn references_error(&self) -> bool {
-        self.trait_ref.references_error()
-    }
-}
-
-impl<'tcx> ReferencesError for ProjectionPredicate<'tcx> {
-    fn references_error(&self) -> bool {
-        self.projection_ty.trait_ref.references_error() || self.ty.references_error()
-    }
-}
-
-impl<'tcx> ReferencesError for TraitRef<'tcx> {
-    fn references_error(&self) -> bool {
-        self.input_types().iter().any(|t| t.references_error())
-    }
-}
-
-impl<'tcx> ReferencesError for Ty<'tcx> {
-    fn references_error(&self) -> bool {
-        type_is_error(*self)
-    }
-}
-
-impl<'tcx> ReferencesError for Predicate<'tcx> {
-    fn references_error(&self) -> bool {
-        match *self {
-            Predicate::Trait(ref data) => data.references_error(),
-            Predicate::Equate(ref data) => data.references_error(),
-            Predicate::RegionOutlives(ref data) => data.references_error(),
-            Predicate::TypeOutlives(ref data) => data.references_error(),
-            Predicate::Projection(ref data) => data.references_error(),
-        }
-    }
-}
-
-impl<A,B> ReferencesError for OutlivesPredicate<A,B>
-    where A : ReferencesError, B : ReferencesError
-{
-    fn references_error(&self) -> bool {
-        self.0.references_error() || self.1.references_error()
-    }
-}
-
-impl<'tcx> ReferencesError for EquatePredicate<'tcx>
-{
-    fn references_error(&self) -> bool {
-        self.0.references_error() || self.1.references_error()
-    }
-}
-
-impl ReferencesError for Region
-{
-    fn references_error(&self) -> bool {
-        false
+impl<'tcx> HasTypeFlags for BareFnTy<'tcx> {
+    fn has_type_flags(&self, flags: TypeFlags) -> bool {
+        self.sig.has_type_flags(flags)
     }
 }
 

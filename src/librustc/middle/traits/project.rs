@@ -23,8 +23,7 @@ use super::util;
 
 use middle::infer;
 use middle::subst::Subst;
-use middle::ty::{self, ToPredicate, ReferencesError, RegionEscape,
-                 HasProjectionTypes, ToPolyTraitRef, Ty};
+use middle::ty::{self, ToPredicate, RegionEscape, HasTypeFlags, ToPolyTraitRef, Ty};
 use middle::ty_fold::{self, TypeFoldable, TypeFolder};
 use syntax::parse::token;
 use util::common::FN_OUTPUT_NAME;
@@ -195,7 +194,7 @@ pub fn normalize<'a,'b,'tcx,T>(selcx: &'a mut SelectionContext<'b,'tcx>,
                                cause: ObligationCause<'tcx>,
                                value: &T)
                                -> Normalized<'tcx, T>
-    where T : TypeFoldable<'tcx> + HasProjectionTypes
+    where T : TypeFoldable<'tcx> + HasTypeFlags
 {
     normalize_with_depth(selcx, cause, 0, value)
 }
@@ -206,7 +205,7 @@ pub fn normalize_with_depth<'a,'b,'tcx,T>(selcx: &'a mut SelectionContext<'b,'tc
                                           depth: usize,
                                           value: &T)
                                           -> Normalized<'tcx, T>
-    where T : TypeFoldable<'tcx> + HasProjectionTypes
+    where T : TypeFoldable<'tcx> + HasTypeFlags
 {
     let mut normalizer = AssociatedTypeNormalizer::new(selcx, cause, depth);
     let result = normalizer.fold(value);
@@ -238,7 +237,7 @@ impl<'a,'b,'tcx> AssociatedTypeNormalizer<'a,'b,'tcx> {
         }
     }
 
-    fn fold<T:TypeFoldable<'tcx> + HasProjectionTypes>(&mut self, value: &T) -> T {
+    fn fold<T:TypeFoldable<'tcx> + HasTypeFlags>(&mut self, value: &T) -> T {
         let value = self.selcx.infcx().resolve_type_vars_if_possible(value);
 
         if !value.has_projection_types() {
@@ -374,7 +373,7 @@ fn opt_normalize_projection_type<'a,'b,'tcx>(
                    depth,
                    obligations);
 
-            if ty::type_has_projection(projected_ty) {
+            if projected_ty.has_projection_types() {
                 let mut normalizer = AssociatedTypeNormalizer::new(selcx, cause, depth);
                 let normalized_ty = normalizer.fold(&projected_ty);
 

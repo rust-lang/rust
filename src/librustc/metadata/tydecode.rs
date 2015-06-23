@@ -21,7 +21,7 @@ pub use self::DefIdSource::*;
 use middle::region;
 use middle::subst;
 use middle::subst::VecPerParamSpace;
-use middle::ty::{self, ToPredicate, Ty};
+use middle::ty::{self, ToPredicate, Ty, HasTypeFlags};
 
 use std::str;
 use syntax::abi;
@@ -534,7 +534,7 @@ fn parse_ty_<'a, 'tcx, F>(st: &mut PState<'a, 'tcx>, conv: &mut F) -> Ty<'tcx> w
             // If there is a closure buried in the type some where, then we
             // need to re-convert any def ids (see case 'k', below). That means
             // we can't reuse the cached version.
-            if !ty::type_has_ty_closure(tt) {
+            if !tt.has_closure_types() {
                 return tt;
             }
           }

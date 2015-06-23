@@ -22,7 +22,7 @@ use rustc_typeck::middle::resolve_lifetime;
 use rustc_typeck::middle::stability;
 use rustc_typeck::middle::subst;
 use rustc_typeck::middle::subst::Subst;
-use rustc_typeck::middle::ty::{self, Ty};
+use rustc_typeck::middle::ty::{self, Ty, RegionEscape};
 use rustc_typeck::middle::ty_relate::TypeRelation;
 use rustc_typeck::middle::infer;
 use rustc_typeck::middle::infer::lub::Lub;
@@ -745,22 +745,22 @@ fn escaping() {
         // Situation:
         // Theta = [A -> &'a foo]
 
-        assert!(!ty::type_has_escaping_regions(env.t_nil()));
+        assert!(!env.t_nil().has_escaping_regions());
 
         let t_rptr_free1 = env.t_rptr_free(0, 1);
-        assert!(!ty::type_has_escaping_regions(t_rptr_free1));
+        assert!(!t_rptr_free1.has_escaping_regions());
 
         let t_rptr_bound1 = env.t_rptr_late_bound_with_debruijn(1, ty::DebruijnIndex::new(1));
-        assert!(ty::type_has_escaping_regions(t_rptr_bound1));
+        assert!(t_rptr_bound1.has_escaping_regions());
 
         let t_rptr_bound2 = env.t_rptr_late_bound_with_debruijn(1, ty::DebruijnIndex::new(2));
-        assert!(ty::type_has_escaping_regions(t_rptr_bound2));
+        assert!(t_rptr_bound2.has_escaping_regions());
 
         // t_fn = fn(A)
         let t_param = env.t_param(subst::TypeSpace, 0);
-        assert!(!ty::type_has_escaping_regions(t_param));
+        assert!(!t_param.has_escaping_regions());
         let t_fn = env.t_fn(&[t_param], env.t_nil());
-        assert!(!ty::type_has_escaping_regions(t_fn));
+        assert!(!t_fn.has_escaping_regions());
     })
 }
 

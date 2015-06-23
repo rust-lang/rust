@@ -21,6 +21,7 @@ use middle::subst;
 use middle::subst::Subst;
 use middle::traits;
 use middle::ty::{self, RegionEscape, Ty, ToPolyTraitRef, TraitRef};
+use middle::ty::HasTypeFlags;
 use middle::ty_fold::TypeFoldable;
 use middle::infer;
 use middle::infer::InferCtxt;
@@ -528,7 +529,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             // artifacts. This means it is safe to put into the
             // `WhereClauseCandidate` and (eventually) into the
             // `WhereClausePick`.
-            assert!(trait_ref.substs.types.iter().all(|&t| !ty::type_needs_infer(t)));
+            assert!(!trait_ref.substs.types.needs_infer());
 
             this.inherent_candidates.push(Candidate {
                 xform_self_ty: xform_self_ty,
@@ -928,7 +929,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
     fn pick_step(&mut self, step: &CandidateStep<'tcx>) -> Option<PickResult<'tcx>> {
         debug!("pick_step: step={:?}", step);
 
-        if ty::type_is_error(step.self_ty) {
+        if step.self_ty.references_error() {
             return None;
         }
 
@@ -1357,7 +1358,7 @@ impl<'tcx> Candidate<'tcx> {
                     // inference variables or other artifacts. This
                     // means they are safe to put into the
                     // `WhereClausePick`.
-                    assert!(trait_ref.substs().types.iter().all(|&t| !ty::type_needs_infer(t)));
+                    assert!(!trait_ref.substs().types.needs_infer());
 
                     WhereClausePick((*trait_ref).clone(), index)
                 }
