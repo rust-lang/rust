@@ -10,7 +10,7 @@
 
 use middle::subst::Substs;
 use middle::infer::InferCtxt;
-use middle::ty::{self, Ty, AsPredicate, ToPolyTraitRef};
+use middle::ty::{self, Ty, ToPredicate, ToPolyTraitRef};
 use std::fmt;
 use syntax::ast;
 use syntax::codemap::Span;
@@ -83,7 +83,7 @@ pub fn elaborate_trait_ref<'cx, 'tcx>(
     trait_ref: ty::PolyTraitRef<'tcx>)
     -> Elaborator<'cx, 'tcx>
 {
-    elaborate_predicates(tcx, vec![trait_ref.as_predicate()])
+    elaborate_predicates(tcx, vec![trait_ref.to_predicate()])
 }
 
 pub fn elaborate_trait_refs<'cx, 'tcx>(
@@ -92,7 +92,7 @@ pub fn elaborate_trait_refs<'cx, 'tcx>(
     -> Elaborator<'cx, 'tcx>
 {
     let predicates = trait_refs.iter()
-                               .map(|trait_ref| trait_ref.as_predicate())
+                               .map(|trait_ref| trait_ref.to_predicate())
                                .collect();
     elaborate_predicates(tcx, predicates)
 }
@@ -347,7 +347,7 @@ pub fn predicate_for_trait_ref<'tcx>(
     Obligation {
         cause: cause,
         recursion_depth: recursion_depth,
-        predicate: trait_ref.as_predicate(),
+        predicate: trait_ref.to_predicate(),
     }
 }
 

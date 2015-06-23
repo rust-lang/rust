@@ -13,7 +13,7 @@
 use middle::infer::{InferCtxt, GenericKind};
 use middle::subst::Substs;
 use middle::traits;
-use middle::ty::{self, RegionEscape, ToPolyTraitRef, AsPredicate, Ty};
+use middle::ty::{self, RegionEscape, ToPolyTraitRef, ToPredicate, Ty};
 use middle::ty_fold::{TypeFoldable, TypeFolder};
 
 use syntax::ast;
@@ -445,7 +445,7 @@ pub fn object_region_bounds<'tcx>(
     let trait_refs = vec!(ty::Binder(ty::TraitRef::new(principal.0.def_id, substs)));
 
     let mut predicates = others.to_predicates(tcx, open_ty);
-    predicates.extend(trait_refs.iter().map(|t| t.as_predicate()));
+    predicates.extend(trait_refs.iter().map(|t| t.to_predicate()));
 
     ty::required_region_bounds(tcx, open_ty, predicates)
 }

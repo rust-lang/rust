@@ -56,7 +56,7 @@ use middle::resolve_lifetime as rl;
 use middle::privacy::{AllPublic, LastMod};
 use middle::subst::{FnSpace, TypeSpace, SelfSpace, Subst, Substs};
 use middle::traits;
-use middle::ty::{self, RegionEscape, Ty, AsPredicate};
+use middle::ty::{self, RegionEscape, Ty, ToPredicate};
 use middle::ty_fold;
 use rscope::{self, UnelidableRscope, RegionScope, ElidableRscope, ExplicitRscope,
              ObjectLifetimeDefaultRscope, ShiftedRscope, BindingRscope};
@@ -2213,7 +2213,7 @@ impl<'tcx> Bounds<'tcx> {
 
         for builtin_bound in &self.builtin_bounds {
             match traits::trait_ref_for_builtin_bound(tcx, builtin_bound, param_ty) {
-                Ok(trait_ref) => { vec.push(trait_ref.as_predicate()); }
+                Ok(trait_ref) => { vec.push(trait_ref.to_predicate()); }
                 Err(ErrorReported) => { }
             }
         }
@@ -2222,15 +2222,15 @@ impl<'tcx> Bounds<'tcx> {
             // account for the binder being introduced below; no need to shift `param_ty`
             // because, at present at least, it can only refer to early-bound regions
             let region_bound = ty_fold::shift_region(region_bound, 1);
-            vec.push(ty::Binder(ty::OutlivesPredicate(param_ty, region_bound)).as_predicate());
+            vec.push(ty::Binder(ty::OutlivesPredicate(param_ty, region_bound)).to_predicate());
         }
 
         for bound_trait_ref in &self.trait_bounds {
-            vec.push(bound_trait_ref.as_predicate());
+            vec.push(bound_trait_ref.to_predicate());
         }
 
         for projection in &self.projection_bounds {
-            vec.push(projection.as_predicate());
+            vec.push(projection.to_predicate());
         }
 
         vec

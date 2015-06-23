@@ -25,7 +25,7 @@ use super::{
 
 use fmt_macros::{Parser, Piece, Position};
 use middle::infer::InferCtxt;
-use middle::ty::{self, AsPredicate, ReferencesError, ToPolyTraitRef, TraitRef};
+use middle::ty::{self, ToPredicate, ReferencesError, ToPolyTraitRef, TraitRef};
 use middle::ty_fold::TypeFoldable;
 use std::collections::HashMap;
 use std::fmt;
@@ -464,7 +464,7 @@ fn note_obligation_cause_code<'a, 'tcx, T>(infcx: &InferCtxt<'a, 'tcx>,
             span_note!(tcx.sess, cause_span,
                        "required because it appears within the type `{}`",
                        parent_trait_ref.0.self_ty());
-            let parent_predicate = parent_trait_ref.as_predicate();
+            let parent_predicate = parent_trait_ref.to_predicate();
             note_obligation_cause_code(infcx, &parent_predicate, cause_span, &*data.parent_code);
         }
         ObligationCauseCode::ImplDerivedObligation(ref data) => {
@@ -473,7 +473,7 @@ fn note_obligation_cause_code<'a, 'tcx, T>(infcx: &InferCtxt<'a, 'tcx>,
                        "required because of the requirements on the impl of `{}` for `{}`",
                        parent_trait_ref,
                        parent_trait_ref.0.self_ty());
-            let parent_predicate = parent_trait_ref.as_predicate();
+            let parent_predicate = parent_trait_ref.to_predicate();
             note_obligation_cause_code(infcx, &parent_predicate, cause_span, &*data.parent_code);
         }
         ObligationCauseCode::CompareImplMethodObligation => {
