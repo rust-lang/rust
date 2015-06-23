@@ -9,8 +9,18 @@
 // except according to those terms.
 
 use syntax::ast::{Visibility, Attribute, MetaItem, MetaItem_};
+use syntax::codemap::{CodeMap, Span, BytePos};
+
+use comment::FindUncommented;
 
 use SKIP_ANNOTATION;
+
+#[inline]
+pub fn span_after(original: Span, needle: &str, codemap: &CodeMap) -> BytePos {
+    let snippet = codemap.span_to_snippet(original).unwrap();
+
+    original.lo + BytePos(snippet.find_uncommented(needle).unwrap() as u32 + 1)
+}
 
 #[inline]
 pub fn prev_char(s: &str, mut i: usize) -> usize {

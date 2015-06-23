@@ -203,10 +203,11 @@ pub fn write_list<'b>(items: &[ListItem], formatting: &ListFormatting<'b>) -> St
         }
 
         if tactic == ListTactic::Vertical && item.post_comment.is_some() {
-            let width = formatting.v_width - item_width - 1; // Space between item and comment
+            // 1 = space between item and comment.
+            let width = formatting.v_width.checked_sub(item_width + 1).unwrap_or(1);
             let offset = formatting.indent + item_width + 1;
             let comment = item.post_comment.as_ref().unwrap();
-            // Use block-style only for the last item or multiline comments
+            // Use block-style only for the last item or multiline comments.
             let block_style = formatting.is_expression && last ||
                               comment.trim().contains('\n') ||
                               comment.trim().len() > width;
@@ -241,7 +242,7 @@ pub fn itemize_list<T, I, F1, F2, F3>(codemap: &CodeMap,
                                       terminator: &str,
                                       get_lo: F1,
                                       get_hi: F2,
-                                      get_item: F3,
+                                      get_item_string: F3,
                                       mut prev_span_end: BytePos,
                                       next_span_start: BytePos)
     -> Vec<ListItem>
@@ -306,7 +307,7 @@ pub fn itemize_list<T, I, F1, F2, F3>(codemap: &CodeMap,
 
         result.push(ListItem {
             pre_comment: pre_comment,
-            item: get_item(&item),
+            item: get_item_string(&item),
             post_comment: if post_snippet.len() > 0 {
                 Some(post_snippet.to_owned())
             } else {

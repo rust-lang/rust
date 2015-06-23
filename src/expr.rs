@@ -9,8 +9,9 @@
 // except according to those terms.
 
 use rewrite::{Rewrite, RewriteContext};
-use lists::{write_list, itemize_list, ListItem, ListFormatting, SeparatorTactic, ListTactic};
+use lists::{write_list, itemize_list, ListFormatting, SeparatorTactic, ListTactic};
 use string::{StringFormat, rewrite_string};
+use utils::span_after;
 
 use syntax::{ast, ptr};
 use syntax::codemap::{Pos, Span, BytePos};
@@ -37,11 +38,13 @@ impl Rewrite for ast::Expr {
                 return rewrite_paren(context, subexpr, width, offset);
             }
             ast::Expr_::ExprStruct(ref path, ref fields, ref base) => {
-                return rewrite_struct_lit(context, path,
-                                               fields,
-                                               base.as_ref().map(|e| &**e),
-                                               width,
-                                               offset);
+                return rewrite_struct_lit(context,
+                                          path,
+                                          fields,
+                                          base.as_ref().map(|e| &**e),
+                                          self.span,
+                                          width,
+                                          offset);
             }
             ast::Expr_::ExprTup(ref items) => {
                 return rewrite_tuple_lit(context, items, self.span, width, offset);
@@ -107,8 +110,10 @@ fn rewrite_call(context: &RewriteContext,
                              ")",
                              |item| item.span.lo,
                              |item| item.span.hi,
+                             // Take old span when rewrite fails.
                              |item| item.rewrite(context, remaining_width, offset)
-                                        .unwrap(), // FIXME: don't unwrap, take span literal
+                                        .unwrap_or(context.codemap.span_to_snippet(item.span)
+                                                                  .unwrap()),
                              callee.span.hi + BytePos(1),
                              span.hi);
 
@@ -134,35 +139,68 @@ fn rewrite_paren(context: &RewriteContext, subexpr: &ast::Expr, width: usize, of
     subexpr_str.map(|s| format!("({})", s))
 }
 
-fn rewrite_struct_lit(context: &RewriteContext,
-                      path: &ast::Path,
-                      fields: &[ast::Field],
-                      base: Option<&ast::Expr>,
-                      width: usize,
-                      offset: usize)
+fn rewrite_struct_lit<'a>(context: &RewriteContext,
+                          path: &ast::Path,
+                          fields: &'a [ast::Field],
+                          base: Option<&'a ast::Expr>,
+                          span: Span,
+                          width: usize,
+                          offset: usize)
         -> Option<String>
 {
     debug!("rewrite_struct_lit: width {}, offset {}", width, offset);
     assert!(fields.len() > 0 || base.is_some());
+
+    enum StructLitField<'a> {
+        Regular(&'a ast::Field),
+        Base(&'a ast::Expr)
+    }
 
     let path_str = pprust::path_to_string(path);
     // Foo { a: Foo } - indent is +3, width is -5.
     let indent = offset + path_str.len() + 3;
     let budget = width - (path_str.len() + 5);
 
-    let field_strs: Vec<_> =
-        try_opt!(fields.iter()
-                       .map(|field| rewrite_field(context, field, budget, indent))
-                       .chain(base.iter()
-                                  .map(|expr| expr.rewrite(context,
-                                                           // 2 = ".."
-                                                           budget - 2,
-                                                           indent + 2)
-                                                  .map(|s| format!("..{}", s))))
-                       .collect());
+    let field_iter = fields.into_iter().map(StructLitField::Regular)
+                           .chain(base.into_iter().map(StructLitField::Base));
 
-    // FIXME comments
-    let field_strs: Vec<_> = field_strs.into_iter().map(ListItem::from_str).collect();
+    let items = itemize_list(context.codemap,
+                             Vec::new(),
+                             field_iter,
+                             ",",
+                             "}",
+                             |item| {
+                                 match *item {
+                                     StructLitField::Regular(ref field) => field.span.lo,
+                                     // 2 = ..
+                                     StructLitField::Base(ref expr) => expr.span.lo - BytePos(2)
+                                 }
+                             },
+                             |item| {
+                                 match *item {
+                                     StructLitField::Regular(ref field) => field.span.hi,
+                                     StructLitField::Base(ref expr) => expr.span.hi
+                                 }
+                             },
+                             |item| {
+                                 match *item {
+                                     StructLitField::Regular(ref field) => {
+                                         rewrite_field(context, &field, budget, indent)
+                                            .unwrap_or(context.codemap.span_to_snippet(field.span)
+                                                                      .unwrap())
+                                     },
+                                     StructLitField::Base(ref expr) => {
+                                         // 2 = ..
+                                         expr.rewrite(context, budget - 2, indent + 2)
+                                             .map(|s| format!("..{}", s))
+                                             .unwrap_or(context.codemap.span_to_snippet(expr.span)
+                                                                       .unwrap())
+                                     }
+                                 }
+                             },
+                             span_after(span, "{", context.codemap),
+                             span.hi);
+
     let fmt = ListFormatting {
         tactic: ListTactic::HorizontalVertical,
         separator: ",",
@@ -176,7 +214,7 @@ fn rewrite_struct_lit(context: &RewriteContext,
         v_width: budget,
         is_expression: true,
     };
-    let fields_str = write_list(&field_strs, &fmt);
+    let fields_str = write_list(&items, &fmt);
     Some(format!("{} {{ {} }}", path_str, fields_str))
 
     // FIXME if the usual multi-line layout is too wide, we should fall back to
@@ -210,7 +248,8 @@ fn rewrite_tuple_lit(context: &RewriteContext,
                              |item| item.rewrite(context,
                                                  context.config.max_width - indent - 2,
                                                  indent)
-                                        .unwrap(), // FIXME: don't unwrap, take span literal
+                                        .unwrap_or(context.codemap.span_to_snippet(item.span)
+                                                                  .unwrap()),
                              span.lo + BytePos(1), // Remove parens
                              span.hi - BytePos(1));
 

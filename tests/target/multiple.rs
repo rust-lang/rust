@@ -145,11 +145,28 @@ fn struct_lits() {
     let x = Bar;
     // Comment
     let y = Foo { a: x };
-    Foo { a: foo(), b: bar(), ..something };
+    Foo { a: foo(), // comment
+          // comment
+          b: bar(),
+          ..something };
     Fooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo { a: foo(),
                                                                                b: bar(), };
-    Fooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo { a: foo(),
-                                                                                         b: bar(), };
+    Fooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo { // Comment
+                                                                                         a: foo(), /* C
+                                                                                                    * o
+                                                                                                    * m
+                                                                                                    * m
+                                                                                                    * e
+                                                                                                    * n
+                                                                                                    * t */
+                                                                                         // Comment
+                                                                                         b: bar(), /* C
+                                                                                                    * o
+                                                                                                    * m
+                                                                                                    * m
+                                                                                                    * e
+                                                                                                    * n
+                                                                                                    * t */ };
 
     Foo { a: Bar, b: foo() };
 }

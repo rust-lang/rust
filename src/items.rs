@@ -11,7 +11,7 @@
 // Formatting top-level items - functions, structs, enums, traits, impls.
 
 use {ReturnIndent, BraceStyle};
-use utils::{format_visibility, make_indent, contains_skip};
+use utils::{format_visibility, make_indent, contains_skip, span_after};
 use lists::{write_list, itemize_list, ListItem, ListFormatting, SeparatorTactic, ListTactic};
 use comment::FindUncommented;
 use visitor::FmtVisitor;
@@ -165,7 +165,7 @@ impl<'a> FmtVisitor<'a> {
                                            one_line_budget,
                                            multi_line_budget,
                                            arg_indent,
-                                           codemap::mk_sp(self.span_after(span, "("),
+                                           codemap::mk_sp(span_after(span, "(", self.codemap),
                                                           span_for_return(&fd.output).lo)));
         result.push(')');
 
@@ -278,7 +278,7 @@ impl<'a> FmtVisitor<'a> {
         // You also don't get to put a comment on self, unless it is explicit.
         if args.len() >= min_args {
             let comment_span_start = if min_args == 2 {
-                self.span_after(span, ",")
+                span_after(span, ",", self.codemap)
             } else {
                 span.lo
             };
@@ -438,7 +438,7 @@ impl<'a> FmtVisitor<'a> {
                                              |arg| arg.ty.span.lo,
                                              |arg| arg.ty.span.hi,
                                              |arg| pprust::ty_to_string(&arg.ty),
-                                             self.span_after(field.span, "("),
+                                             span_after(field.span, "(", self.codemap),
                                              next_span_start);
 
                     result.push('(');
@@ -549,7 +549,7 @@ impl<'a> FmtVisitor<'a> {
                                  },
                                  |field| field.node.ty.span.hi,
                                  |field| self.format_field(field),
-                                 self.span_after(span, opener.trim()),
+                                 span_after(span, opener.trim(), self.codemap),
                                  span.hi);
 
         // 2 terminators and a semicolon
@@ -714,7 +714,7 @@ impl<'a> FmtVisitor<'a> {
                                      |sp| sp.lo,
                                      |sp| sp.hi,
                                      |_| String::new(),
-                                     self.span_after(span, "<"),
+                                     span_after(span, "<", self.codemap),
                                      span.hi);
 
         for (item, ty) in items.iter_mut().zip(lt_strs.chain(ty_strs)) {
@@ -792,12 +792,6 @@ impl<'a> FmtVisitor<'a> {
         format!("{}: {}",
                 pprust::pat_to_string(&arg.pat),
                 pprust::ty_to_string(&arg.ty))
-    }
-
-    fn span_after(&self, original: Span, needle: &str) -> BytePos {
-        let snippet = self.snippet(original);
-
-        original.lo + BytePos(snippet.find_uncommented(needle).unwrap() as u32 + 1)
     }
 }
 
