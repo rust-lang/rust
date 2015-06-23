@@ -228,6 +228,40 @@ impl<K: Ord, V> BTreeMap<K, V> {
         }
     }
 
+    /// Returns a reference to the key and the value corresponding to the key.
+    ///
+    /// The key may be any borrowed form of the map's key type, but the ordering
+    /// on the borrowed form *must* match the ordering on the key type.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(collection_member)]
+    /// use std::collections::BTreeMap;
+    ///
+    /// let mut map = BTreeMap::new();
+    /// map.insert(1, "a");
+    /// assert_eq!(map.get_member(&1), Some((&1, &"a")));
+    /// assert_eq!(map.get(&2), None);
+    /// ```
+    #[unstable(feature = "collection_member",
+            reason="member stuff is unclear")]
+    pub fn get_member<Q: ?Sized>(&self, key: &Q) -> Option<(&K, &V)> where K: Borrow<Q>, Q: Ord {
+        let mut cur_node = &self.root;
+        loop {
+            match Node::search(cur_node, key) {
+                Found(handle) => return Some(handle.into_kv()),
+                GoDown(handle) => match handle.force() {
+                    Leaf(_) => return None,
+                    Internal(internal_handle) => {
+                        cur_node = internal_handle.into_edge();
+                        continue;
+                    }
+                }
+            }
+        }
+    }
+
     /// Returns true if the map contains a value for the specified key.
     ///
     /// The key may be any borrowed form of the map's key type, but the ordering
@@ -385,6 +419,84 @@ impl<K: Ord, V> BTreeMap<K, V> {
         }
     }
 
+    /// Inserts a key-value pair into the map. If the key already had a value
+    /// present in the map, that key and value are returned. Otherwise,
+    /// `None` is returned.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(collection_member)]
+    /// use std::collections::BTreeMap;
+    ///
+    /// let mut map = BTreeMap::new();
+    /// assert_eq!(map.insert_member(37, "a"), None);
+    /// assert_eq!(map.is_empty(), false);
+    ///
+    /// map.insert(37, "b");
+    /// assert_eq!(map.insert_member(37, "c"), Some((37, "b")));
+    /// assert_eq!(map[&37], "c");
+    /// ```
+    #[unstable(feature = "collection_member",
+            reason="member stuff is unclear")]
+    pub fn insert_member(&mut self, mut key: K, mut value: V) -> Option<(K, V)> {
+        // This is a stack of rawptrs to nodes paired with indices, respectively
+        // representing the nodes and edges of our search path. We have to store rawptrs
+        // because as far as Rust is concerned, we can mutate aliased data with such a
+        // stack. It is of course correct, but what it doesn't know is that we will only
+        // be popping and using these ptrs one at a time in child-to-parent order. The alternative
+        // to doing this is to take the Nodes from their parents. This actually makes
+        // borrowck *really* happy and everything is pretty smooth. However, this creates
+        // *tons* of pointless writes, and requires us to always walk all the way back to
+        // the root after an insertion, even if we only needed to change a leaf. Therefore,
+        // we accept this potential unsafety and complexity in the name of performance.
+        //
+        // Regardless, the actual dangerous logic is completely abstracted away from BTreeMap
+        // by the stack module. All it can do is immutably read nodes, and ask the search stack
+        // to proceed down some edge by index. This makes the search logic we'll be reusing in a
+        // few different methods much neater, and of course drastically improves safety.
+        let mut stack = stack::PartialSearchStack::new(self);
+
+        loop {
+            let result = stack.with(move |pusher, node| {
+                // Same basic logic as found in `find`, but with PartialSearchStack mediating the
+                // actual nodes for us
+                match Node::search(node, &key) {
+                    Found(mut handle) => {
+                        // Perfect match, swap the values and return the old one
+                        mem::swap(handle.val_mut(), &mut value);
+                        mem::swap(handle.key_mut(), &mut key);
+                        Finished(Some((key, value)))
+                    },
+                    GoDown(handle) => {
+                        // We need to keep searching, try to get the search stack
+                        // to go down further
+                        match handle.force() {
+                            Leaf(leaf_handle) => {
+                                // We've reached a leaf, perform the insertion here
+                                pusher.seal(leaf_handle).insert(key, value);
+                                Finished(None)
+                            }
+                            Internal(internal_handle) => {
+                                // We've found the subtree to insert this key/value pair in,
+                                // keep searching
+                                Continue((pusher.push(internal_handle), key, value))
+                            }
+                        }
+                    }
+                }
+            });
+            match result {
+                Finished(ret) => return ret,
+                Continue((new_stack, renewed_key, renewed_val)) => {
+                    stack = new_stack;
+                    key = renewed_key;
+                    value = renewed_val;
+                }
+            }
+        }
+    }
+
     // Deletion is the most complicated operation for a B-Tree.
     //
     // First we do the same kind of search described in
@@ -446,6 +558,52 @@ impl<K: Ord, V> BTreeMap<K, V> {
                     Found(handle) => {
                         // Perfect match. Terminate the stack here, and remove the entry
                         Finished(Some(pusher.seal(handle).remove()))
+                    },
+                    GoDown(handle) => {
+                        // We need to keep searching, try to go down the next edge
+                        match handle.force() {
+                            // We're at a leaf; the key isn't in here
+                            Leaf(_) => Finished(None),
+                            Internal(internal_handle) => Continue(pusher.push(internal_handle))
+                        }
+                    }
+                }
+            });
+            match result {
+                Finished(ret) => return ret,
+                Continue(new_stack) => stack = new_stack
+            }
+        }
+    }
+
+    /// Removes a key from the map, returning the key and the value at the key
+    /// if the key was previously in the map.
+    ///
+    /// The key may be any borrowed form of the map's key type, but the ordering
+    /// on the borrowed form *must* match the ordering on the key type.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(collection_member)]
+    /// use std::collections::BTreeMap;
+    ///
+    /// let mut map = BTreeMap::new();
+    /// map.insert(1, "a");
+    /// assert_eq!(map.remove_member(&1), Some((1, "a")));
+    /// assert_eq!(map.remove_member(&1), None);
+    /// ```
+    #[unstable(feature = "collection_member",
+            reason="member stuff is unclear")]
+    pub fn remove_member<Q: ?Sized>(&mut self, key: &Q) -> Option<(K, V)> where K: Borrow<Q>, Q: Ord {
+        // See `swap` for a more thorough description of the stuff going on in here
+        let mut stack = stack::PartialSearchStack::new(self);
+        loop {
+            let result = stack.with(move |pusher, node| {
+                match Node::search(node, key) {
+                    Found(handle) => {
+                        // Perfect match. Terminate the stack here, and remove the entry
+                        Finished(Some(pusher.seal(handle).remove_member()))
                     },
                     GoDown(handle) => {
                         // We need to keep searching, try to go down the next edge
@@ -693,16 +851,16 @@ mod stack {
     impl<'a, K, V> SearchStack<'a, K, V, handle::KV, handle::Leaf> {
         /// Removes the key and value in the top element of the stack, then handles underflows as
         /// described in BTree's pop function.
-        fn remove_leaf(mut self) -> V {
+        fn remove_leaf(mut self) -> (K, V) {
             self.map.length -= 1;
 
             // Remove the key-value pair from the leaf that this search stack points to.
             // Then, note if the leaf is underfull, and promptly forget the leaf and its ptr
             // to avoid ownership issues.
-            let (value, mut underflow) = unsafe {
-                let (_, value) = self.top.from_raw_mut().remove_as_leaf();
+            let (key, value, mut underflow) = unsafe {
+                let (key, value) = self.top.from_raw_mut().remove_as_leaf();
                 let underflow = self.top.from_raw().node().is_underfull();
-                (value, underflow)
+                (key, value, underflow)
             };
 
             loop {
@@ -717,7 +875,7 @@ mod stack {
                             self.map.depth -= 1;
                             self.map.root.hoist_lone_child();
                         }
-                        return value;
+                        return (key, value);
                     }
                     Some(mut handle) => {
                         if underflow {
@@ -728,7 +886,7 @@ mod stack {
                             }
                         } else {
                             // All done!
-                            return value;
+                            return (key, value);
                         }
                     }
                 }
@@ -740,6 +898,16 @@ mod stack {
         /// Removes the key and value in the top element of the stack, then handles underflows as
         /// described in BTree's pop function.
         pub fn remove(self) -> V {
+            // Ensure that the search stack goes to a leaf. This is necessary to perform deletion
+            // in a BTree. Note that this may put the tree in an inconsistent state (further
+            // described in into_leaf's comments), but this is immediately fixed by the
+            // removing the value we want to remove
+            self.into_leaf().remove_leaf().1
+        }
+
+        /// Removes the key and value in the top element of the stack, then handles underflows as
+        /// described in BTree's pop function.
+        pub fn remove_member(self) -> (K, V) {
             // Ensure that the search stack goes to a leaf. This is necessary to perform deletion
             // in a BTree. Note that this may put the tree in an inconsistent state (further
             // described in into_leaf's comments), but this is immediately fixed by the

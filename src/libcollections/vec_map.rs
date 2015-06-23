@@ -500,6 +500,33 @@ impl<V> VecMap<V> {
         }
     }
 
+    /// Returns a reference to the key and the value corresponding to the key.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(vecmap)]
+    /// # #![feature(collection_member)]
+    /// use std::collections::VecMap;
+    ///
+    /// let mut map = VecMap::new();
+    /// map.insert(1, "a");
+    /// assert_eq!(map.get_member(&1), Some((&1, &"a")));
+    /// assert_eq!(map.get_member(&2), None);
+    /// ```
+    #[unstable(feature = "collection_member",
+            reason="member stuff is unclear")]
+    pub fn get_member<'a>(&self, key: &'a usize) -> Option<(&'a usize, &V)> {
+        if *key < self.v.len() {
+            match self.v[*key] {
+              Some(ref value) => Some((key, value)),
+              None => None
+            }
+        } else {
+            None
+        }
+    }
+
     /// Returns true if the map contains a value for the specified key.
     ///
     /// # Examples
@@ -572,6 +599,35 @@ impl<V> VecMap<V> {
         replace(&mut self.v[key], Some(value))
     }
 
+    /// Inserts a key-value pair into the map. If the key already had a value
+    /// present in the map, that key and value are returned. Otherwise,
+    /// `None` is returned.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(vecmap)]
+    /// # #![feature(collection_member)]
+    /// use std::collections::VecMap;
+    ///
+    /// let mut map = VecMap::new();
+    /// assert_eq!(map.insert_member(37, "a"), None);
+    /// assert_eq!(map.is_empty(), false);
+    ///
+    /// map.insert(37, "b");
+    /// assert_eq!(map.insert_member(37, "c"), Some((37, "b")));
+    /// assert_eq!(map[37], "c");
+    /// ```
+    #[unstable(feature = "collection_member",
+            reason="member stuff is unclear")]
+    pub fn insert_member(&mut self, key: usize, value: V) -> Option<(usize, V)> {
+        let len = self.v.len();
+        if len <= key {
+            self.v.extend((0..key - len + 1).map(|_| None));
+        }
+        replace(&mut self.v[key], Some(value)).map(|x| (key, x))
+    }
+
     /// Removes a key from the map, returning the value at the key if the key
     /// was previously in the map.
     ///
@@ -593,6 +649,30 @@ impl<V> VecMap<V> {
         }
         let result = &mut self.v[*key];
         result.take()
+    }
+
+    /// Removes a key from the map, returning the key and value at the key if
+    /// it was previously in the map.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(vecmap)]
+    /// # #![feature(collection_member)]
+    /// use std::collections::VecMap;
+    ///
+    /// let mut map = VecMap::new();
+    /// map.insert(1, "a");
+    /// assert_eq!(map.remove_member(&1), Some((1, "a")));
+    /// assert_eq!(map.remove_member(&1), None);
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn remove_member(&mut self, key: &usize) -> Option<(usize, V)> {
+        if *key >= self.v.len() {
+            return None;
+        }
+        let result = &mut self.v[*key];
+        result.take().map(|x| (*key, x))
     }
 
     /// Gets the given key's corresponding entry in the map for in-place manipulation.
