@@ -753,15 +753,21 @@ You tried to use a structure initialization with a non-structure type.
 Example of erroneous code:
 
 ```
-enum Foo { f };
+enum Foo { FirstValue };
 
-let u = Foo::f { value: 0i32 }; // error: Foo:f isn't a structure!
-// or even simpler:
-let u = t { random_field: 0i32 }; //error: t isn't a structure!
+let u = Foo::FirstValue { value: 0i32 }; // error: Foo::FirstValue
+                                         // isn't a structure!
+// or even simpler, if the structure wasn't defined at all:
+let u = RandomName { random_field: 0i32 }; // error: RandomName
+                                           // isn't a structure!
 ```
 
-To fix this error, please declare the structure with the given name
-first:
+To fix this, please check:
+ * Did you spell it right?
+ * Did you accidentaly used an enum as a struct?
+ * Did you accidentaly make an enum when you intended to use a struct?
+
+Here is the previous code with all missing information:
 
 ```
 struct Inner {
@@ -769,12 +775,12 @@ struct Inner {
 }
 
 enum Foo {
-    f(Inner)
+    FirstValue(Inner)
 }
 
 fn main() {
-    let u = Foo::f(Inner { value: 0i32 });
-    // or even simpler:
+    let u = Foo::FirstValue(Inner { value: 0i32 });
+
     let t = Inner { value: 0i32 };
 }
 ```
