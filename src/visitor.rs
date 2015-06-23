@@ -159,19 +159,30 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
 
         match item.node {
             ast::Item_::ItemUse(ref vp) => {
-                self.format_missing_with_indent(item.span.lo);
                 match vp.node {
                     ast::ViewPath_::ViewPathList(ref path, ref path_list) => {
                         let block_indent = self.block_indent;
                         let one_line_budget = config!(max_width) - block_indent;
                         let multi_line_budget = config!(ideal_width) - block_indent;
-                        let new_str = self.rewrite_use_list(block_indent,
-                                                            one_line_budget,
-                                                            multi_line_budget,
-                                                            path,
-                                                            path_list,
-                                                            item.vis);
-                        self.changes.push_str_span(item.span, &new_str);
+                        let formatted = self.rewrite_use_list(block_indent,
+                                                              one_line_budget,
+                                                              multi_line_budget,
+                                                              path,
+                                                              path_list,
+                                                              item.vis);
+
+                        if let Some(new_str) = formatted {
+                            self.format_missing_with_indent(item.span.lo);
+                            self.changes.push_str_span(item.span, &new_str);
+                        } else {
+                            // Format up to last newline
+                            let span = codemap::mk_sp(self.last_pos, item.span.lo);
+                            let span_end = match self.snippet(span).rfind('\n') {
+                                Some(offset) => self.last_pos + BytePos(offset as u32),
+                                None => item.span.lo
+                            };
+                            self.format_missing(span_end);
+                        }
                         self.last_pos = item.span.hi;
                     }
                     ast::ViewPath_::ViewPathGlob(_) => {
