@@ -30,6 +30,7 @@ use syntax::feature_gate::emit_feature_err;
 use util::nodemap::{DefIdMap, FnvHashSet, FnvHashMap};
 
 use std::mem::replace;
+use std::cmp::Ordering;
 
 /// A stability index, giving the stability level for items and methods.
 pub struct Index<'tcx> {
@@ -59,9 +60,57 @@ impl<'a, 'tcx: 'a> Annotator<'a, 'tcx> {
         if self.index.staged_api[&ast::LOCAL_CRATE] {
             debug!("annotate(id = {:?}, attrs = {:?})", id, attrs);
             match attr::find_stability(self.tcx.sess.diagnostic(), attrs, item_sp) {
-                Some(stab) => {
+                Some(mut stab) => {
                     debug!("annotate: found {:?}", stab);
+                    // if parent is deprecated and we're not, inherit this by merging
+                    // deprecated_since and its reason.
+                    if let Some(parent_stab) = self.parent {
+                        if parent_stab.deprecated_since.is_some()
+                        && stab.deprecated_since.is_none() {
+                            stab.deprecated_since = parent_stab.deprecated_since.clone();
+                            stab.reason = parent_stab.reason.clone();
+                        }
+                    }
+
                     let stab = self.tcx.intern_stability(stab);
+
+                    // Check if deprecated_since < stable_since. If it is,
+                    // this is *almost surely* an accident.
+                    let deprecated_predates_stable = match (stab.deprecated_since.as_ref(),
+                                                            stab.since.as_ref()) {
+                        (Some(dep_since), Some(stab_since)) => {
+                            // explicit version of iter::order::lt to handle parse errors properly
+                            let mut is_less = false;
+                            for (dep_v, stab_v) in dep_since.split(".").zip(stab_since.split(".")) {
+                                match (dep_v.parse::<u64>(), stab_v.parse::<u64>()) {
+                                    (Ok(dep_v), Ok(stab_v)) => match dep_v.cmp(&stab_v) {
+                                        Ordering::Less => {
+                                            is_less = true;
+                                            break;
+                                        }
+                                        Ordering::Equal => { continue; }
+                                        Ordering::Greater => { break; }
+                                    },
+                                    _ => {
+                                        self.tcx.sess.span_err(item_sp,
+                                            "Invalid stability or deprecation version found");
+                                        // act like it isn't less because the question is now
+                                        // nonsensical, and this makes us not do anything else
+                                        // interesting.
+                                        break;
+                                    }
+                                }
+                            }
+                            is_less
+                        },
+                        _ => false,
+                    };
+
+                    if deprecated_predates_stable {
+                        self.tcx.sess.span_err(item_sp,
+                            "An API can't be stabilized after it is deprecated");
+                    }
+
                     self.index.map.insert(local_def(id), Some(stab));
 
                     // Don't inherit #[stable(feature = "rust1", since = "1.0.0")]

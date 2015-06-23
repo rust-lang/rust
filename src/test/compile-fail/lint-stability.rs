@@ -128,8 +128,11 @@ mod cross_crate {
         <Foo as Trait>::trait_stable_text(&foo);
 
         let _ = DeprecatedStruct { i: 0 }; //~ ERROR use of deprecated item
-        let _ = DeprecatedUnstableStruct { i: 0 }; //~ ERROR use of deprecated item
-        //~^ ERROR use of unstable library feature
+        let _ = DeprecatedUnstableStruct {
+            //~^ ERROR use of deprecated item
+            //~^^ ERROR use of unstable library feature
+            i: 0 //~ ERROR use of deprecated item
+        };
         let _ = UnstableStruct { i: 0 }; //~ ERROR use of unstable library feature
         let _ = StableStruct { i: 0 };
 
@@ -417,7 +420,10 @@ mod this_crate {
         <Foo>::trait_stable_text(&foo);
         <Foo as Trait>::trait_stable_text(&foo);
 
-        let _ = DeprecatedStruct { i: 0 }; //~ ERROR use of deprecated item
+        let _ = DeprecatedStruct {
+            //~^ ERROR use of deprecated item
+            i: 0 //~ ERROR use of deprecated item
+        };
         let _ = UnstableStruct { i: 0 };
         let _ = StableStruct { i: 0 };
 
