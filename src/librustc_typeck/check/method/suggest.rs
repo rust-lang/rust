@@ -15,7 +15,7 @@ use CrateCtxt;
 
 use astconv::AstConv;
 use check::{self, FnCtxt};
-use middle::ty::{self, Ty, ToPolyTraitRef, ToPredicate};
+use middle::ty::{self, Ty, ToPolyTraitRef, ToPredicate, HasTypeFlags};
 use middle::def;
 use middle::lang_items::FnOnceTraitLangItem;
 use middle::subst::Substs;
@@ -40,7 +40,7 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                               error: MethodError<'tcx>)
 {
     // avoid suggestions when we don't know what's going on.
-    if ty::type_is_error(rcvr_ty) {
+    if rcvr_ty.references_error() {
         return
     }
 

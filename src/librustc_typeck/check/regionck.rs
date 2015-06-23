@@ -91,7 +91,7 @@ use middle::mem_categorization as mc;
 use middle::region::CodeExtent;
 use middle::subst::Substs;
 use middle::traits;
-use middle::ty::{self, ClosureTyper, ReScope, Ty, MethodCall};
+use middle::ty::{self, ClosureTyper, ReScope, Ty, MethodCall, HasTypeFlags};
 use middle::infer::{self, GenericKind};
 use middle::pat_util;
 
@@ -262,7 +262,7 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
     /// Try to resolve the type for the given node.
     pub fn resolve_expr_type_adjusted(&mut self, expr: &ast::Expr) -> Ty<'tcx> {
         let ty_unadjusted = self.resolve_node_type(expr.id);
-        if ty::type_is_error(ty_unadjusted) {
+        if ty_unadjusted.references_error() {
             ty_unadjusted
         } else {
             let tcx = self.fcx.tcx();
@@ -1172,7 +1172,7 @@ fn link_region_from_node_type<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
            id, mutbl, cmt_borrowed);
 
     let rptr_ty = rcx.resolve_node_type(id);
-    if !ty::type_is_error(rptr_ty) {
+    if !rptr_ty.references_error() {
         let tcx = rcx.fcx.ccx.tcx;
         debug!("rptr_ty={}",  rptr_ty);
         let r = ty::ty_region(tcx, span, rptr_ty);

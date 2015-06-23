@@ -15,7 +15,7 @@ use middle::pat_util::{PatIdMap, pat_id_map, pat_is_binding};
 use middle::pat_util::pat_is_resolved_const;
 use middle::privacy::{AllPublic, LastMod};
 use middle::subst::Substs;
-use middle::ty::{self, Ty};
+use middle::ty::{self, Ty, HasTypeFlags};
 use check::{check_expr, check_expr_has_type, check_expr_with_expectation};
 use check::{check_expr_coercable_to_type, demand, FnCtxt, Expectation};
 use check::{check_expr_with_lvalue_pref, LvaluePreference};
@@ -499,7 +499,7 @@ pub fn check_match<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             check_expr_has_type(fcx, &**e, tcx.types.bool);
         }
 
-        if ty::type_is_error(result_ty) || ty::type_is_error(bty) {
+        if result_ty.references_error() || bty.references_error() {
             tcx.types.err
         } else {
             let (origin, expected, found) = match match_src {

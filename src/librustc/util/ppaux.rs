@@ -14,13 +14,12 @@ use middle::ty::{BoundRegion, BrAnon, BrNamed};
 use middle::ty::{ReEarlyBound, BrFresh, ctxt};
 use middle::ty::{ReFree, ReScope, ReInfer, ReStatic, Region, ReEmpty};
 use middle::ty::{ReSkolemized, ReVar, BrEnv};
-use middle::ty::{mt, Ty};
 use middle::ty::{TyBool, TyChar, TyStruct, TyEnum};
 use middle::ty::{TyError, TyStr, TyArray, TySlice, TyFloat, TyBareFn};
 use middle::ty::{TyParam, TyRawPtr, TyRef, TyTuple};
 use middle::ty::TyClosure;
 use middle::ty::{TyBox, TyTrait, TyInt, TyUint, TyInfer};
-use middle::ty;
+use middle::ty::{self, mt, Ty, HasTypeFlags};
 use middle::ty_fold::{self, TypeFoldable};
 
 use std::fmt;
@@ -155,7 +154,7 @@ fn parameterized<GG>(f: &mut fmt::Formatter,
             ty_params.iter().zip(tps).rev().take_while(|&(def, &actual)| {
                 match def.default {
                     Some(default) => {
-                        if !has_self && ty::type_has_self(default) {
+                        if !has_self && default.has_self_ty() {
                             // In an object type, there is no `Self`, and
                             // thus if the default value references Self,
                             // the user will be required to give an

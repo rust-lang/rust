@@ -13,7 +13,7 @@ use metadata::csearch;
 use middle::def::DefFn;
 use middle::subst::{Subst, Substs, EnumeratedItems};
 use middle::ty::{TransmuteRestriction, ctxt, TyBareFn};
-use middle::ty::{self, Ty};
+use middle::ty::{self, Ty, HasTypeFlags};
 
 use std::fmt;
 
@@ -92,8 +92,8 @@ impl<'a, 'tcx> IntrinsicCheckingVisitor<'a, 'tcx> {
 
         // Simple case: no type parameters involved.
         if
-            !ty::type_has_params(from) && !ty::type_has_self(from) &&
-            !ty::type_has_params(to) && !ty::type_has_self(to)
+            !from.has_param_types() && !from.has_self_ty() &&
+            !to.has_param_types() && !to.has_self_ty()
         {
             let restriction = TransmuteRestriction {
                 span: span,

@@ -37,7 +37,7 @@ use trans::machine;
 use trans::monomorphize;
 use trans::type_::Type;
 use trans::type_of::*;
-use middle::ty::{self, Ty};
+use middle::ty::{self, Ty, HasTypeFlags};
 use middle::ty::MethodCall;
 
 use syntax::abi::{Rust, RustCall};
@@ -248,7 +248,7 @@ pub fn trans_static_method_callee<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             substs: impl_substs,
             nested: _ }) =>
         {
-            assert!(impl_substs.types.all(|t| !ty::type_needs_infer(*t)));
+            assert!(!impl_substs.types.needs_infer());
 
             // Create the substitutions that are in scope. This combines
             // the type parameters from the impl with those declared earlier.

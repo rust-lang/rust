@@ -40,7 +40,7 @@ use middle::cfg;
 use middle::lang_items::{LangItem, ExchangeMallocFnLangItem, StartFnLangItem};
 use middle::weak_lang_items;
 use middle::subst::Substs;
-use middle::ty::{self, Ty, ClosureTyper, type_is_simd, simd_size};
+use middle::ty::{self, Ty, ClosureTyper, type_is_simd, simd_size, HasTypeFlags};
 use rustc::ast_map;
 use session::config::{self, NoDebugInfo};
 use session::Session;
@@ -1007,7 +1007,7 @@ pub fn alloc_ty<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, name: &str) -> 
     let _icx = push_ctxt("alloc_ty");
     let ccx = bcx.ccx();
     let ty = type_of::type_of(ccx, t);
-    assert!(!ty::type_has_params(t));
+    assert!(!t.has_param_types());
     let val = alloca(bcx, ty, name);
     return val;
 }

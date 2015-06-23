@@ -56,7 +56,7 @@ use middle::resolve_lifetime as rl;
 use middle::privacy::{AllPublic, LastMod};
 use middle::subst::{FnSpace, TypeSpace, SelfSpace, Subst, Substs};
 use middle::traits;
-use middle::ty::{self, RegionEscape, Ty, ToPredicate};
+use middle::ty::{self, RegionEscape, Ty, ToPredicate, HasTypeFlags};
 use middle::ty_fold;
 use rscope::{self, UnelidableRscope, RegionScope, ElidableRscope, ExplicitRscope,
              ObjectLifetimeDefaultRscope, ShiftedRscope, BindingRscope};
@@ -439,7 +439,7 @@ fn create_substs_for_ast_path<'tcx>(
             // other type parameters may reference `Self` in their
             // defaults. This will lead to an ICE if we are not
             // careful!
-            if self_ty.is_none() && ty::type_has_self(default) {
+            if self_ty.is_none() && default.has_self_ty() {
                 span_err!(tcx.sess, span, E0393,
                           "the type parameter `{}` must be explicitly specified \
                            in an object type because its default value `{}` references \

@@ -49,7 +49,7 @@ use trans::meth;
 use trans::monomorphize;
 use trans::type_::Type;
 use trans::type_of;
-use middle::ty::{self, Ty};
+use middle::ty::{self, Ty, HasTypeFlags, RegionEscape};
 use middle::ty::MethodCall;
 use rustc::ast_map;
 
@@ -402,8 +402,8 @@ pub fn trans_fn_ref_with_substs<'a, 'tcx>(
            param_substs,
            substs);
 
-    assert!(substs.types.all(|t| !ty::type_needs_infer(*t)));
-    assert!(substs.types.all(|t| !ty::type_has_escaping_regions(*t)));
+    assert!(!substs.types.needs_infer());
+    assert!(!substs.types.has_escaping_regions());
     let substs = substs.erase_regions();
 
     // Load the info for the appropriate trait if necessary.

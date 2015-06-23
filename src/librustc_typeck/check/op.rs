@@ -21,7 +21,7 @@ use super::{
     structurally_resolved_type,
 };
 use middle::traits;
-use middle::ty::{self, Ty};
+use middle::ty::{self, Ty, HasTypeFlags};
 use syntax::ast;
 use syntax::ast_util;
 use syntax::parse::token;
@@ -46,7 +46,7 @@ pub fn check_binop_assign<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
         fcx.write_nil(expr.id);
     } else {
         // error types are considered "builtin"
-        assert!(!ty::type_is_error(lhs_ty) || !ty::type_is_error(rhs_ty));
+        assert!(!lhs_ty.references_error() || !rhs_ty.references_error());
         span_err!(tcx.sess, lhs_expr.span, E0368,
                   "binary assignment operation `{}=` cannot be applied to types `{}` and `{}`",
                   ast_util::binop_to_string(op.node),
@@ -228,7 +228,7 @@ fn check_overloaded_binop<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         Ok(return_ty) => return_ty,
         Err(()) => {
             // error types are considered "builtin"
-            if !ty::type_is_error(lhs_ty) {
+            if !lhs_ty.references_error() {
                 span_err!(fcx.tcx().sess, lhs_expr.span, E0369,
                           "binary operation `{}` cannot be applied to type `{}`",
                           ast_util::binop_to_string(op.node),
@@ -428,20 +428,20 @@ fn is_builtin_binop<'tcx>(cx: &ty::ctxt<'tcx>,
         }
 
         BinOpCategory::Shift => {
-            ty::type_is_error(lhs) || ty::type_is_error(rhs) ||
+            lhs.references_error() || rhs.references_error() ||
                 ty::type_is_integral(lhs) && ty::type_is_integral(rhs) ||
                 ty::type_is_simd(cx, lhs) && ty::type_is_simd(cx, rhs)
         }
 
         BinOpCategory::Math => {
-            ty::type_is_error(lhs) || ty::type_is_error(rhs) ||
+            lhs.references_error() || rhs.references_error() ||
                 ty::type_is_integral(lhs) && ty::type_is_integral(rhs) ||
                 ty::type_is_floating_point(lhs) && ty::type_is_floating_point(rhs) ||
                 ty::type_is_simd(cx, lhs) && ty::type_is_simd(cx, rhs)
         }
 
         BinOpCategory::Bitwise => {
-            ty::type_is_error(lhs) || ty::type_is_error(rhs) ||
+            lhs.references_error() || rhs.references_error() ||
                 ty::type_is_integral(lhs) && ty::type_is_integral(rhs) ||
                 ty::type_is_floating_point(lhs) && ty::type_is_floating_point(rhs) ||
                 ty::type_is_simd(cx, lhs) && ty::type_is_simd(cx, rhs) ||
@@ -449,7 +449,7 @@ fn is_builtin_binop<'tcx>(cx: &ty::ctxt<'tcx>,
         }
 
         BinOpCategory::Comparison => {
-            ty::type_is_error(lhs) || ty::type_is_error(rhs) ||
+            lhs.references_error() || rhs.references_error() ||
                 ty::type_is_scalar(lhs) && ty::type_is_scalar(rhs) ||
                 ty::type_is_simd(cx, lhs) && ty::type_is_simd(cx, rhs)
         }

@@ -77,7 +77,7 @@ use middle::def;
 use middle::infer;
 use middle::region;
 use middle::subst;
-use middle::ty::{self, Ty};
+use middle::ty::{self, Ty, HasTypeFlags};
 use middle::ty::{Region, ReFree};
 
 use std::cell::{Cell, RefCell};
@@ -226,7 +226,7 @@ pub trait ErrorReporting<'tcx> {
 
     fn values_str(&self, values: &ValuePairs<'tcx>) -> Option<String>;
 
-    fn expected_found_str<T: fmt::Display + Resolvable<'tcx>>(
+    fn expected_found_str<T: fmt::Display + Resolvable<'tcx> + HasTypeFlags>(
         &self,
         exp_found: &ty::expected_found<T>)
         -> Option<String>;
@@ -504,18 +504,18 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
         }
     }
 
-    fn expected_found_str<T: fmt::Display + Resolvable<'tcx>>(
+    fn expected_found_str<T: fmt::Display + Resolvable<'tcx> + HasTypeFlags>(
         &self,
         exp_found: &ty::expected_found<T>)
         -> Option<String>
     {
         let expected = exp_found.expected.resolve(self);
-        if expected.contains_error() {
+        if expected.references_error() {
             return None;
         }
 
         let found = exp_found.found.resolve(self);
-        if found.contains_error() {
+        if found.references_error() {
             return None;
         }
 
@@ -1793,15 +1793,11 @@ impl<'a, 'tcx> ErrorReportingHelpers<'tcx> for InferCtxt<'a, 'tcx> {
 
 pub trait Resolvable<'tcx> {
     fn resolve<'a>(&self, infcx: &InferCtxt<'a, 'tcx>) -> Self;
-    fn contains_error(&self) -> bool;
 }
 
 impl<'tcx> Resolvable<'tcx> for Ty<'tcx> {
     fn resolve<'a>(&self, infcx: &InferCtxt<'a, 'tcx>) -> Ty<'tcx> {
         infcx.resolve_type_vars_if_possible(self)
-    }
-    fn contains_error(&self) -> bool {
-        ty::type_is_error(*self)
     }
 }
 
@@ -1809,9 +1805,6 @@ impl<'tcx> Resolvable<'tcx> for ty::TraitRef<'tcx> {
     fn resolve<'a>(&self, infcx: &InferCtxt<'a, 'tcx>)
                    -> ty::TraitRef<'tcx> {
         infcx.resolve_type_vars_if_possible(self)
-    }
-    fn contains_error(&self) -> bool {
-        ty::trait_ref_contains_error(self)
     }
 }
 
@@ -1821,10 +1814,6 @@ impl<'tcx> Resolvable<'tcx> for ty::PolyTraitRef<'tcx> {
                    -> ty::PolyTraitRef<'tcx>
     {
         infcx.resolve_type_vars_if_possible(self)
-    }
-
-    fn contains_error(&self) -> bool {
-        ty::trait_ref_contains_error(&self.0)
     }
 }
 

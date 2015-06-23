@@ -25,7 +25,7 @@ use trans::base;
 use trans::common::*;
 use trans::declare;
 use trans::foreign;
-use middle::ty::{self, HasProjectionTypes, Ty};
+use middle::ty::{self, HasTypeFlags, Ty};
 
 use syntax::abi;
 use syntax::ast;
@@ -47,9 +47,7 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
            psubsts,
            ref_id);
 
-    assert!(psubsts.types.all(|t| {
-        !ty::type_needs_infer(*t) && !ty::type_has_params(*t)
-    }));
+    assert!(!psubsts.types.needs_infer() && !psubsts.types.has_param_types());
 
     let _icx = push_ctxt("monomorphic_fn");
 
@@ -302,7 +300,7 @@ pub fn apply_param_substs<'tcx,T>(tcx: &ty::ctxt<'tcx>,
                                   param_substs: &Substs<'tcx>,
                                   value: &T)
                                   -> T
-    where T : TypeFoldable<'tcx> + HasProjectionTypes
+    where T : TypeFoldable<'tcx> + HasTypeFlags
 {
     let substituted = value.subst(tcx, param_substs);
     normalize_associated_type(tcx, &substituted)
@@ -313,7 +311,7 @@ pub fn apply_param_substs<'tcx,T>(tcx: &ty::ctxt<'tcx>,
 /// and hence we can be sure that all associated types will be
 /// completely normalized away.
 pub fn normalize_associated_type<'tcx,T>(tcx: &ty::ctxt<'tcx>, value: &T) -> T
-    where T : TypeFoldable<'tcx> + HasProjectionTypes
+    where T : TypeFoldable<'tcx> + HasTypeFlags
 {
     debug!("normalize_associated_type(t={:?})", value);
 

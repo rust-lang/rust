@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use middle::infer::InferCtxt;
-use middle::ty::{self, RegionEscape, Ty};
+use middle::ty::{self, RegionEscape, Ty, HasTypeFlags};
 
 use std::collections::HashSet;
 use std::fmt;

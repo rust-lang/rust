@@ -45,8 +45,7 @@ use super::structurally_resolved_type;
 
 use lint;
 use middle::cast::{CastKind, CastTy};
-use middle::ty;
-use middle::ty::Ty;
+use middle::ty::{self, Ty, HasTypeFlags};
 use syntax::ast;
 use syntax::ast::UintTy::{TyU8};
 use syntax::codemap::Span;
@@ -199,7 +198,7 @@ impl<'tcx> CastCheck<'tcx> {
         debug!("check_cast({}, {:?} as {:?})", self.expr.id, self.expr_ty,
                self.cast_ty);
 
-        if ty::type_is_error(self.expr_ty) || ty::type_is_error(self.cast_ty) {
+        if self.expr_ty.references_error() || self.cast_ty.references_error() {
             // No sense in giving duplicate error messages
         } else if self.try_coercion_cast(fcx) {
             self.trivial_cast_lint(fcx);

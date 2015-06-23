@@ -38,7 +38,7 @@ use super::util;
 
 use middle::fast_reject;
 use middle::subst::{Subst, Substs, TypeSpace};
-use middle::ty::{self, ToPredicate, RegionEscape, ToPolyTraitRef, Ty};
+use middle::ty::{self, ToPredicate, RegionEscape, ToPolyTraitRef, Ty, HasTypeFlags};
 use middle::infer;
 use middle::infer::{InferCtxt, TypeFreshener};
 use middle::ty_fold::TypeFoldable;
@@ -675,7 +675,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                               stack: &TraitObligationStack<'o, 'tcx>)
                                               -> SelectionResult<'tcx, SelectionCandidate<'tcx>>
     {
-        if ty::type_is_error(stack.obligation.predicate.0.self_ty()) {
+        if stack.obligation.predicate.0.self_ty().references_error() {
             return Ok(Some(ErrorCandidate));
         }
 
@@ -886,7 +886,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         match *candidate {
             Ok(Some(_)) | Err(_) => true,
             Ok(None) => {
-                cache_fresh_trait_pred.0.input_types().iter().any(|&t| ty::type_has_ty_infer(t))
+                cache_fresh_trait_pred.0.input_types().has_infer_types()
             }
         }
     }
@@ -2558,7 +2558,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     new_substs.types.get_mut_slice(TypeSpace)[i] = tcx.types.err;
                 }
                 for &ty in fields.init() {
-                    if ty::type_is_error(ty.subst(tcx, &new_substs)) {
+                    if ty.subst(tcx, &new_substs).references_error() {
                         return Err(Unimplemented);
                     }
                 }
