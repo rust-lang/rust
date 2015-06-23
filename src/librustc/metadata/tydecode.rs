@@ -195,15 +195,6 @@ pub fn parse_substs_data<'tcx, F>(data: &[u8], crate_num: ast::CrateNum, pos: us
     parse_substs(&mut st, conv)
 }
 
-pub fn parse_bounds_data<'tcx, F>(data: &[u8], crate_num: ast::CrateNum,
-                                  pos: usize, tcx: &ty::ctxt<'tcx>, conv: F)
-                                  -> ty::ParamBounds<'tcx> where
-    F: FnMut(DefIdSource, ast::DefId) -> ast::DefId,
-{
-    let mut st = parse_state_from_data(data, crate_num, pos, tcx);
-    parse_bounds(&mut st, conv)
-}
-
 pub fn parse_existential_bounds_data<'tcx, F>(data: &[u8], crate_num: ast::CrateNum,
                                               pos: usize, tcx: &ty::ctxt<'tcx>, conv: F)
                                               -> ty::ExistentialBounds<'tcx> where
@@ -879,11 +870,23 @@ fn parse_existential_bounds_<'a,'tcx, F>(st: &mut PState<'a,'tcx>,
                                         -> ty::ExistentialBounds<'tcx> where
     F: FnMut(DefIdSource, ast::DefId) -> ast::DefId,
 {
-    let ty::ParamBounds { trait_bounds, mut region_bounds, builtin_bounds, projection_bounds } =
-         parse_bounds_(st, conv);
-    assert_eq!(region_bounds.len(), 1);
-    assert_eq!(trait_bounds.len(), 0);
-    let region_bound = region_bounds.pop().unwrap();
+    let builtin_bounds = parse_builtin_bounds_(st, conv);
+    let region_bound = parse_region_(st, conv);
+    let mut projection_bounds = Vec::new();
+
+    loop {
+        match next(st) {
+            'P' => {
+                projection_bounds.push(
+                    ty::Binder(parse_projection_predicate_(st, conv)));
+                }
+            '.' => { break; }
+            c => {
+                panic!("parse_bounds: bad bounds ('{}')", c)
+            }
+        }
+    }
+
     return ty::ExistentialBounds { region_bound: region_bound,
                                    builtin_bounds: builtin_bounds,
                                    projection_bounds: projection_bounds };
@@ -920,63 +923,6 @@ fn parse_builtin_bounds_<F>(st: &mut PState, _conv: &mut F) -> ty::BuiltinBounds
             c => {
                 panic!("parse_bounds: bad builtin bounds ('{}')", c)
             }
-        }
-    }
-}
-
-fn parse_bounds<'a, 'tcx, F>(st: &mut PState<'a, 'tcx>, mut conv: F)
-                             -> ty::ParamBounds<'tcx> where
-    F: FnMut(DefIdSource, ast::DefId) -> ast::DefId,
-{
-    parse_bounds_(st, &mut conv)
-}
-
-fn parse_bounds_<'a, 'tcx, F>(st: &mut PState<'a, 'tcx>, conv: &mut F)
-                              -> ty::ParamBounds<'tcx> where
-    F: FnMut(DefIdSource, ast::DefId) -> ast::DefId,
-{
-    let builtin_bounds = parse_builtin_bounds_(st, conv);
-
-    let region_bounds = parse_region_bounds_(st, conv);
-
-    let mut param_bounds = ty::ParamBounds {
-        region_bounds: region_bounds,
-        builtin_bounds: builtin_bounds,
-        trait_bounds: Vec::new(),
-        projection_bounds: Vec::new(),
-    };
-
-
-    loop {
-        match next(st) {
-            'I' => {
-                param_bounds.trait_bounds.push(
-                    ty::Binder(parse_trait_ref_(st, conv)));
-            }
-            'P' => {
-                param_bounds.projection_bounds.push(
-                    ty::Binder(parse_projection_predicate_(st, conv)));
-            }
-            '.' => {
-                return param_bounds;
-            }
-            c => {
-                panic!("parse_bounds: bad bounds ('{}')", c)
-            }
-        }
-    }
-}
-
-fn parse_region_bounds_<'a, 'tcx, F>(st: &mut PState<'a, 'tcx>, conv: &mut F)
-                              -> Vec<ty::Region> where
-    F: FnMut(DefIdSource, ast::DefId) -> ast::DefId,
-{
-    let mut region_bounds = Vec::new();
-    loop {
-        match next(st) {
-            'R' => { region_bounds.push(parse_region_(st, conv)); }
-            '.' => { return region_bounds; }
-            c => { panic!("parse_bounds: bad bounds ('{}')", c); }
         }
     }
 }
