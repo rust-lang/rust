@@ -159,6 +159,15 @@ macro_rules! impl_enum_decodable {
     };
 }
 
+// Same as try!, but for Option
+#[macro_export]
+macro_rules! try_opt {
+    ($expr:expr) => (match $expr {
+        Some(val) => val,
+        None => { return None; }
+    })
+}
+
 #[test]
 fn power_rounding() {
     assert_eq!(0, round_up_to_power_of_two(0));
