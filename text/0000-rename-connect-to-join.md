@@ -41,6 +41,10 @@ all functional-ish languages.
 Note that Rust also has `.concat()` in `SliceConcatExt`, which is a specialized
 version of `.connect()` that uses an empty string as a separator.
 
+Another reason is that the term "join" already has similar usage in the standard
+library. There are `std::path::Path::join` and `std::env::join_paths` which are
+used to join the paths.
+
 # Detailed design
 
 While the `SliceConcatExt` trait is unstable, the `.connect()` method itself is
