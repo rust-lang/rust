@@ -402,7 +402,7 @@ impl<'a> Parser<'a> {
         let mut end;
         loop {
             match self.cur.clone().next() {
-                Some((_, c)) if c.is_xid_continue() => {
+                Some((_, c)) if c.is_xid_continue() || c.is_superscript() => {
                     self.cur.next();
                 }
                 Some((pos, _)) => { end = pos; break }

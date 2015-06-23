@@ -108,7 +108,7 @@ the following form:
   gated. This is expected to improve soon.
 
 - The first character has property `XID_start`
-- The remaining characters have property `XID_continue`
+- The remaining characters have property `XID_continue` or is a superscript
 
 that does _not_ occur in the set of [keywords](#keywords).
 
@@ -281,7 +281,7 @@ type_path_tail : '<' type_expr [ ',' type_expr ] + '>'
 ## Macros
 
 ```antlr
-expr_macro_rules : "macro_rules" '!' ident '(' macro_rule * ')' ';' 
+expr_macro_rules : "macro_rules" '!' ident '(' macro_rule * ')' ';'
                  | "macro_rules" '!' ident '{' macro_rule * '}' ;
 macro_rule : '(' matcher * ')' "=>" '(' transcriber * ')' ';' ;
 matcher : '(' matcher * ')' | '[' matcher * ']'
