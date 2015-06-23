@@ -101,11 +101,6 @@ we could have added more explanation in a new paragraph.
 
 #### Special sections
 
-```rust
-/// # Examples
-# fn foo() {}
-```
-
 Next, are special sections. These are indicated with a header, `#`. There
 are three kinds of headers that are commonly used. They aren't special syntax,
 just convention, for now.
