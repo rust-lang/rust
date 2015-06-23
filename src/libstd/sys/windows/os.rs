@@ -311,6 +311,8 @@ impl ExactSizeIterator for Args {
 
 impl Drop for Args {
     fn drop(&mut self) {
+        // self.cur can be null if CommandLineToArgvW previously failed,
+        // but LocalFree ignores NULL pointers
         unsafe { c::LocalFree(self.cur as *mut c_void); }
     }
 }
@@ -321,6 +323,9 @@ pub fn args() -> Args {
         let lpCmdLine = c::GetCommandLineW();
         let szArgList = c::CommandLineToArgvW(lpCmdLine, &mut nArgs);
 
+        // szArcList can be NULL if CommandLinToArgvW failed,
+        // but in that case nArgs is 0 so we won't actually
+        // try to read a null pointer
         Args { cur: szArgList, range: 0..(nArgs as isize) }
     }
 }
