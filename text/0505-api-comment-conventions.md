@@ -113,15 +113,15 @@ it's important to mark what is not Rust so your tests don't fail.
 References and citation should be linked 'reference style.' Prefer
 
 ```
-[some paper][something]
+[Rust website][1]
 
-[something]: http://www.foo.edu/something.pdf)
+[1]: http://www.rust-lang.org
 ```
 
 to
 
 ```
-[some paper][http://www.foo.edu/something.pdf]
+[Rust website](http://www.rust-lang.org)
 ```
 
 ## English
