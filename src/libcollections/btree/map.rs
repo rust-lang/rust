@@ -595,7 +595,8 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// ```
     #[unstable(feature = "collection_member",
             reason="member stuff is unclear")]
-    pub fn remove_member<Q: ?Sized>(&mut self, key: &Q) -> Option<(K, V)> where K: Borrow<Q>, Q: Ord {
+    pub fn remove_member<Q: ?Sized>(&mut self, key: &Q) -> Option<(K, V)> where
+            K: Borrow<Q>, Q: Ord {
         // See `swap` for a more thorough description of the stuff going on in here
         let mut stack = stack::PartialSearchStack::new(self);
         loop {

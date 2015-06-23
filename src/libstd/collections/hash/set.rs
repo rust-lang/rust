@@ -575,7 +575,9 @@ impl<T, S> HashSet<T, S>
     /// ```
     #[unstable(feature = "collection_member",
             reason="member stuff is unclear")]
-    pub fn insert_member(&mut self, value: T) -> Option<T> { self.map.insert_member(value, ()).map(|x| x.0) }
+    pub fn insert_member(&mut self, value: T) -> Option<T> {
+        self.map.insert_member(value, ()).map(|x| x.0)
+    }
 
     /// Removes a value from the set. Returns `true` if the value was
     /// present in the set.
