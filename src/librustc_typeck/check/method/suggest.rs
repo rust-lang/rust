@@ -29,7 +29,7 @@ use syntax::print::pprust;
 use std::cell;
 use std::cmp::Ordering;
 
-use super::{MethodError, CandidateSource, impl_item, trait_item};
+use super::{MethodError, NoMatchData, CandidateSource, impl_item, trait_item};
 use super::probe::Mode;
 
 pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
@@ -37,7 +37,7 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                               rcvr_ty: Ty<'tcx>,
                               item_name: ast::Name,
                               rcvr_expr: Option<&ast::Expr>,
-                              error: MethodError)
+                              error: MethodError<'tcx>)
 {
     // avoid suggestions when we don't know what's going on.
     if ty::type_is_error(rcvr_ty) {
@@ -45,7 +45,10 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     }
 
     match error {
-        MethodError::NoMatch(static_sources, out_of_scope_traits, mode) => {
+        MethodError::NoMatch(NoMatchData { static_candidates: static_sources,
+                                           unsatisfied_predicates,
+                                           out_of_scope_traits,
+                                           mode }) => {
             let cx = fcx.tcx();
 
             fcx.type_error_message(
@@ -118,11 +121,26 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             }
 
             if !static_sources.is_empty() {
-                fcx.tcx().sess.fileline_note(
+                cx.sess.fileline_note(
                     span,
                     "found defined static methods, maybe a `self` is missing?");
 
                 report_candidates(fcx, span, item_name, static_sources);
+            }
+
+            if !unsatisfied_predicates.is_empty() {
+                let bound_list = unsatisfied_predicates.iter()
+                    .map(|p| format!("`{} : {}`",
+                                     p.self_ty(),
+                                     p))
+                    .collect::<Vec<_>>()
+                    .connect(", ");
+                cx.sess.fileline_note(
+                    span,
+                    &format!("the method `{}` exists but the \
+                             following trait bounds were not satisfied: {}",
+                             item_name,
+                             bound_list));
             }
 
             suggest_traits_to_import(fcx, span, rcvr_ty, item_name,
