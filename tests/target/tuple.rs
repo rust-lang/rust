@@ -8,4 +8,8 @@ fn foo() {
                                   aaaaaaaaaaaaaaaaaaaaaaaaa,
                                   aaaa);
     let a = (a,);
+
+    let b = (// This is a comment
+             b, // Comment
+             b /* Trailing comment */);
 }

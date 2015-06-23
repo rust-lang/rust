@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use visitor::FmtVisitor;
-use lists::{write_list, ListFormatting, SeparatorTactic, ListTactic};
+use lists::{write_list, ListItem, ListFormatting, SeparatorTactic, ListTactic};
 use utils::format_visibility;
 
 use syntax::ast;
@@ -65,16 +65,8 @@ impl<'a> FmtVisitor<'a> {
         let used_width = indent + 2;
 
         // Break as early as possible when we've blown our budget.
-        let remaining_line_budget = if used_width > one_line_budget {
-            0
-        } else {
-            one_line_budget - used_width
-        };
-        let remaining_multi_budget = if used_width > multi_line_budget {
-            0
-        } else {
-            multi_line_budget - used_width
-        };
+        let remaining_line_budget = one_line_budget.checked_sub(used_width).unwrap_or(0);
+        let remaining_multi_budget = multi_line_budget.checked_sub(used_width).unwrap_or(0);
 
         let fmt = ListFormatting {
             tactic: ListTactic::Mixed,
@@ -83,6 +75,7 @@ impl<'a> FmtVisitor<'a> {
             indent: block_indent + indent,
             h_width: remaining_line_budget,
             v_width: remaining_multi_budget,
+            is_expression: true,
         };
 
         // TODO handle any comments inbetween items.
@@ -94,7 +87,7 @@ impl<'a> FmtVisitor<'a> {
                 false
             }
         ) {
-            Some(("self".to_owned(), String::new()))
+            Some(ListItem::from_str("self"))
         } else {
             None
         };
@@ -102,12 +95,13 @@ impl<'a> FmtVisitor<'a> {
         let items: Vec<_> = head.into_iter().chain(path_list.iter().filter_map(|vpi| {
             match vpi.node {
                 ast::PathListItem_::PathListIdent{ name, .. } => {
-                    Some((token::get_ident(name).to_string(), String::new()))
+                    Some(ListItem::from_str(token::get_ident(name).to_string()))
                 }
                 // Skip `self`, because we added it above.
                 ast::PathListItem_::PathListMod{ .. } => None,
             }
         })).collect();
+
         Some(if path_str.len() == 0 {
             format!("{}use {{{}}};", vis, write_list(&items, &fmt))
         } else {

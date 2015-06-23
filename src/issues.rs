@@ -223,7 +223,6 @@ impl BadIssueSeeker {
 #[test]
 fn find_unnumbered_issue() {
     fn check_fail(text: &str, failing_pos: usize) {
-        println!("{:?}", text);
         let mut seeker = BadIssueSeeker::new(ReportTactic::Unnumbered, ReportTactic::Unnumbered);
         assert_eq!(Some(failing_pos), text.chars().position(|c| seeker.inspect(c).is_some()));
     }

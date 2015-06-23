@@ -8,73 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use syntax::ast::Visibility;
+use syntax::ast::{Visibility, Attribute, MetaItem, MetaItem_};
 
-pub trait FindUncommented {
-    fn find_uncommented(&self, pat: &str) -> Option<usize>;
-}
-
-impl FindUncommented for str {
-    fn find_uncommented(&self, pat: &str) -> Option<usize> {
-        let mut needle_iter = pat.chars();
-        let mut possible_comment = false;
-
-        for (i, b) in self.char_indices() {
-            match needle_iter.next() {
-                Some(c) => {
-                    if b != c {
-                        needle_iter = pat.chars();
-                    }
-                },
-                None => return Some(i - pat.len())
-            }
-
-            if possible_comment {
-                if b == '/' {
-                    return self[(i+1)..].find('\n')
-                                        .and_then(|end| {
-                                            self[(end + i + 2)..].find_uncommented(pat)
-                                                                 .map(|idx| idx + end + i + 2)
-                                        });
-                } else if b == '*' {
-                    return self[(i+1)..].find("*/")
-                                        .and_then(|end| {
-                                            self[(end + i + 3)..].find_uncommented(pat)
-                                                                 .map(|idx| idx + end + i + 3)
-                                        });
-                } else {
-                    possible_comment = false;
-                }
-            } else {
-                possible_comment = b == '/';
-            }
-        }
-
-        // Handle case where the pattern is a suffix of the search string
-        match needle_iter.next() {
-            Some(_) => None,
-            None => Some(self.len() - pat.len())
-        }
-    }
-}
-
-#[test]
-fn test_find_uncommented() {
-    fn check(haystack: &str, needle: &str, expected: Option<usize>) {
-        assert_eq!(expected, haystack.find_uncommented(needle));
-    }
-
-    check("/*//*/test", "test", Some(6));
-    check("//test\ntest", "test", Some(7));
-    check("/* comment only */", "whatever", None);
-    check("/* comment */ some text /* more commentary */ result", "result", Some(46));
-    check("sup // sup", "p", Some(2));
-    check("sup", "x", None);
-    check("π? /**/ π is nice!", "π is nice", Some(9));
-    check("/*sup yo? \n sup*/ sup", "p", Some(20));
-    check("hel/*lohello*/lo", "hello", None);
-    check("acb", "ab", None);
-}
+use SKIP_ANNOTATION;
 
 #[inline]
 pub fn prev_char(s: &str, mut i: usize) -> usize {
@@ -112,6 +48,18 @@ pub fn format_visibility(vis: Visibility) -> &'static str {
         Visibility::Public => "pub ",
         Visibility::Inherited => ""
     }
+}
+
+fn is_skip(meta_item: &MetaItem) -> bool {
+    match meta_item.node {
+        MetaItem_::MetaWord(ref s) => *s == SKIP_ANNOTATION,
+        _ => false,
+    }
+}
+
+#[inline]
+pub fn contains_skip(attrs: &[Attribute]) -> bool {
+    attrs.iter().any(|a| is_skip(&a.node.value))
 }
 
 #[inline]

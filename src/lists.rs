@@ -8,7 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use utils::make_indent;
+use std::cmp;
+
+use syntax::codemap::{self, CodeMap, BytePos};
+
+use utils::{round_up_to_power_of_two, make_indent};
+use comment::{FindUncommented, rewrite_comment, find_comment_end};
+use string::before;
 
 #[derive(Eq, PartialEq, Debug, Copy, Clone)]
 pub enum ListTactic {
@@ -41,11 +47,38 @@ pub struct ListFormatting<'a> {
     pub h_width: usize,
     // Available width if we layout vertically
     pub v_width: usize,
+    // Non-expressions, e.g. items, will have a new line at the end of the list.
+    // Important for comment styles.
+    pub is_expression: bool
 }
 
-// Format a list of strings into a string.
-// Precondition: all strings in items are trimmed.
-pub fn write_list<'b>(items: &[(String, String)], formatting: &ListFormatting<'b>) -> String {
+pub struct ListItem {
+    pub pre_comment: Option<String>,
+    // Item should include attributes and doc comments
+    pub item: String,
+    pub post_comment: Option<String>
+}
+
+impl ListItem {
+    pub fn is_multiline(&self) -> bool {
+        self.item.contains('\n') ||
+        self.pre_comment.is_some() ||
+        self.post_comment.as_ref().map(|s| s.contains('\n')).unwrap_or(false)
+    }
+
+    pub fn from_str<S: Into<String>>(s: S) -> ListItem {
+        ListItem {
+            pre_comment: None,
+            item: s.into(),
+            post_comment: None
+        }
+    }
+}
+
+// Format a list of commented items into a string.
+// FIXME: this has grown into a monstrosity
+// TODO: add unit tests
+pub fn write_list<'b>(items: &[ListItem], formatting: &ListFormatting<'b>) -> String {
     if items.len() == 0 {
         return String::new();
     }
@@ -68,7 +101,7 @@ pub fn write_list<'b>(items: &[(String, String)], formatting: &ListFormatting<'b
         debug!("write_list: total_width: {}, total_sep_len: {}, h_width: {}",
                total_width, total_sep_len, formatting.h_width);
         tactic = if fits_single &&
-                    !items.iter().any(|&(ref s, _)| s.contains('\n')) {
+                    !items.iter().any(ListItem::is_multiline) {
             ListTactic::Horizontal
         } else {
             ListTactic::Vertical
@@ -79,6 +112,11 @@ pub fn write_list<'b>(items: &[(String, String)], formatting: &ListFormatting<'b
     // The horizontal tactic does not break after v_width columns.
     if tactic == ListTactic::Mixed && fits_single {
         tactic = ListTactic::Horizontal;
+    }
+
+    // Switch to vertical mode if we find non-block comments.
+    if items.iter().any(has_line_pre_comment) {
+        tactic = ListTactic::Vertical;
     }
 
     // Now that we know how we will layout, we can decide for sure if there
@@ -92,13 +130,16 @@ pub fn write_list<'b>(items: &[(String, String)], formatting: &ListFormatting<'b
     } else {
         total_width + items.len() * (formatting.indent + 1)
     };
-    let mut result = String::with_capacity(alloc_width);
+    let mut result = String::with_capacity(round_up_to_power_of_two(alloc_width));
 
     let mut line_len = 0;
     let indent_str = &make_indent(formatting.indent);
-    for (i, &(ref item, ref comment)) in items.iter().enumerate() {
+    for (i, item) in items.iter().enumerate() {
         let first = i == 0;
-        let separate = i != items.len() - 1 || trailing_separator;
+        let last = i == items.len() - 1;
+        let separate = !last || trailing_separator;
+        let item_sep_len = if separate { sep_len } else { 0 };
+        let item_width = item.item.len() + item_sep_len;
 
         match tactic {
             ListTactic::Horizontal if !first => {
@@ -109,12 +150,9 @@ pub fn write_list<'b>(items: &[(String, String)], formatting: &ListFormatting<'b
                 result.push_str(indent_str);
             }
             ListTactic::Mixed => {
-                let mut item_width = item.len();
-                if separate {
-                    item_width += sep_len;
-                }
+                let total_width = total_item_width(item) + item_sep_len;
 
-                if line_len > 0 && line_len + item_width > formatting.v_width {
+                if line_len > 0 && line_len + total_width > formatting.v_width {
                     result.push('\n');
                     result.push_str(indent_str);
                     line_len = 0;
@@ -125,30 +163,156 @@ pub fn write_list<'b>(items: &[(String, String)], formatting: &ListFormatting<'b
                     line_len += 1;
                 }
 
-                line_len += item_width;
+                line_len += total_width;
             }
             _ => {}
         }
 
-        result.push_str(item);
+        // Pre-comments
+        if let Some(ref comment) = item.pre_comment {
+            result.push_str(&rewrite_comment(comment,
+                                             // Block style in non-vertical mode
+                                             tactic != ListTactic::Vertical,
+                                             1000,
+                                             formatting.indent));
 
-        if tactic != ListTactic::Vertical && comment.len() > 0 {
-            if !comment.starts_with('\n') {
+            if tactic == ListTactic::Vertical {
+                result.push('\n');
+                result.push_str(indent_str);
+            } else {
                 result.push(' ');
             }
-            result.push_str(comment);
+        }
+
+        result.push_str(&item.item);
+
+        // Post-comments
+        if tactic != ListTactic::Vertical && item.post_comment.is_some() {
+            // We'll assume it'll fit on one line at this point
+            let formatted_comment = rewrite_comment(item.post_comment.as_ref().unwrap(),
+                                                    true,
+                                                    1000,
+                                                    0);
+
+            result.push(' ');
+            result.push_str(&formatted_comment);
         }
 
         if separate {
             result.push_str(formatting.separator);
         }
 
-        if tactic == ListTactic::Vertical && comment.len() > 0 {
-            if !comment.starts_with('\n') {
-                result.push(' ');
-            }
-            result.push_str(comment);
+        if tactic == ListTactic::Vertical && item.post_comment.is_some() {
+            let width = formatting.v_width - item_width - 1; // Space between item and comment
+            let offset = formatting.indent + item_width + 1;
+            let comment = item.post_comment.as_ref().unwrap();
+            // Use block-style only for the last item or multiline comments
+            let block_style = formatting.is_expression && last ||
+                              comment.trim().contains('\n') ||
+                              comment.trim().len() > width;
+
+            let formatted_comment = rewrite_comment(comment,
+                                                    block_style,
+                                                    width,
+                                                    offset);
+
+            result.push(' ');
+            result.push_str(&formatted_comment);
         }
+    }
+
+    result
+}
+
+fn has_line_pre_comment(item: &ListItem) -> bool {
+    match item.pre_comment {
+        Some(ref comment) => comment.starts_with("//"),
+        None => false
+    }
+}
+
+// Turns a list into a vector of items with associated comments.
+// TODO: we probably do not want to take a terminator any more. Instead, we
+// should demand a proper span end.
+pub fn itemize_list<T, I, F1, F2, F3>(codemap: &CodeMap,
+                                      prefix: Vec<ListItem>,
+                                      it: I,
+                                      separator: &str,
+                                      terminator: &str,
+                                      get_lo: F1,
+                                      get_hi: F2,
+                                      get_item: F3,
+                                      mut prev_span_end: BytePos,
+                                      next_span_start: BytePos)
+    -> Vec<ListItem>
+    where I: Iterator<Item=T>,
+          F1: Fn(&T) -> BytePos,
+          F2: Fn(&T) -> BytePos,
+          F3: Fn(&T) -> String
+{
+    let mut result = prefix;
+    let mut new_it = it.peekable();
+    let white_space: &[_] = &[' ', '\t'];
+
+    while let Some(item) = new_it.next() {
+        // Pre-comment
+        let pre_snippet = codemap.span_to_snippet(codemap::mk_sp(prev_span_end,
+                                                                get_lo(&item)))
+                                 .unwrap();
+        let pre_snippet = pre_snippet.trim();
+        let pre_comment = if pre_snippet.len() > 0 {
+            Some(pre_snippet.to_owned())
+        } else {
+            None
+        };
+
+        // Post-comment
+        let next_start = match new_it.peek() {
+            Some(ref next_item) => get_lo(next_item),
+            None => next_span_start
+        };
+        let post_snippet = codemap.span_to_snippet(codemap::mk_sp(get_hi(&item),
+                                                                  next_start))
+                                  .unwrap();
+
+        let comment_end = match new_it.peek() {
+            Some(..) => {
+                if let Some(start) = before(&post_snippet, "/*", "\n") {
+                    // Block-style post-comment. Either before or after the separator.
+                    cmp::max(find_comment_end(&post_snippet[start..]).unwrap() + start,
+                             post_snippet.find_uncommented(separator).unwrap() + separator.len())
+                } else if let Some(idx) = post_snippet.find('\n') {
+                    idx + 1
+                } else {
+                    post_snippet.len()
+                }
+            },
+            None => {
+                post_snippet.find_uncommented(terminator)
+                            .unwrap_or(post_snippet.len())
+            }
+        };
+
+        prev_span_end = get_hi(&item) + BytePos(comment_end as u32);
+        let mut post_snippet = post_snippet[..comment_end].trim();
+
+        if post_snippet.starts_with(separator) {
+            post_snippet = post_snippet[separator.len()..]
+                .trim_matches(white_space);
+        } else if post_snippet.ends_with(separator) {
+            post_snippet = post_snippet[..post_snippet.len()-separator.len()]
+                .trim_matches(white_space);
+        }
+
+        result.push(ListItem {
+            pre_comment: pre_comment,
+            item: get_item(&item),
+            post_comment: if post_snippet.len() > 0 {
+                Some(post_snippet.to_owned())
+            } else {
+                None
+            }
+        });
     }
 
     result
@@ -162,16 +326,25 @@ fn needs_trailing_separator(separator_tactic: SeparatorTactic, list_tactic: List
     }
 }
 
-fn calculate_width(items:&[(String, String)]) -> usize {
-    let missed_width = items.iter().map(|&(_, ref s)| {
-        let text_len = s.trim().len();
-        if text_len > 0 {
-            // We'll put a space before any comment.
-            text_len + 1
-        } else {
-            text_len
-        }
-    }).fold(0, |a, l| a + l);
-    let item_width = items.iter().map(|&(ref s, _)| s.len()).fold(0, |a, l| a + l);
-    missed_width + item_width
+fn calculate_width(items: &[ListItem]) -> usize {
+    items.iter().map(total_item_width).fold(0, |a, l| a + l)
+}
+
+fn total_item_width(item: &ListItem) -> usize {
+    comment_len(&item.pre_comment) + comment_len(&item.post_comment) + item.item.len()
+}
+
+fn comment_len(comment: &Option<String>) -> usize {
+    match comment {
+        &Some(ref s) => {
+            let text_len = s.trim().len();
+            if text_len > 0 {
+                // We'll put " /*" before and " */" after inline comments.
+                text_len + 6
+            } else {
+                text_len
+            }
+        },
+        &None => 0
+    }
 }

@@ -43,7 +43,7 @@ fn qux(a: dadsfa,   // Comment 1
 
 /// Blah blah blah.
 impl Bar {
-    fn foo(&mut self, a: sdfsdfcccccccccccccccccccccccccccccccccccccccccccccccccccccccc, // comment on a
+    fn foo(&mut self, a: sdfsdfcccccccccccccccccccccccccccccccccccccccccccccccccc, // comment on a
            b: sdfasdfsdfasfs /*closing comment*/ ) -> isize {}
 
     /// Blah blah blah.

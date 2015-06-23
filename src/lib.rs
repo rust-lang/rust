@@ -62,6 +62,8 @@ mod expr;
 mod imports;
 mod issues;
 mod rewrite;
+mod string;
+mod comment;
 
 const MIN_STRING: usize = 10;
 // When we get scoped annotations, we should have rustfmt::skip.
