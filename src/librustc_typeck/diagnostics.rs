@@ -380,6 +380,28 @@ fn main() {
 ```
 "##,
 
+E0045: r##"
+Rust only supports variadic parameters for interoperability with C code in its
+FFI. As such, variadic parameters can only be used with functions which are
+using the C ABI. Examples of erroneous code:
+
+```
+extern "rust-call" { fn foo(x: u8, ...); }
+// or
+fn foo(x: u8, ...) {}
+```
+
+To fix such code, put them in an extern "C" block:
+
+```
+extern "C" fn foo (x: u8, ...);
+// or:
+extern "C" {
+    fn foo (x: u8, ...);
+}
+```
+"##,
+
 E0046: r##"
 When trying to make some type implement a trait `Foo`, you must, at minimum,
 provide implementations for all of `Foo`'s required methods (meaning the
@@ -1467,7 +1489,6 @@ For more information see the [opt-in builtin traits RFC](https://github.com/rust
 
 register_diagnostics! {
     E0044, // foreign items may not have type parameters
-    E0045, // variadic function must have C calling convention
     E0068,
     E0071,
     E0074,
@@ -1535,7 +1556,8 @@ register_diagnostics! {
     E0219, // associated type defined in higher-ranked supertrait
     E0220, // associated type not found for type parameter
     E0221, // ambiguous associated type in bounds
-    E0222, // variadic function must have C calling convention
+    //E0222, // Error code E0045 (variadic function must have C calling
+             // convention) duplicate
     E0223, // ambiguous associated type
     E0224, // at least one non-builtin train is required for an object type
     E0225, // only the builtin traits can be used as closure or object bounds
