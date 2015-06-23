@@ -38,7 +38,7 @@ use super::util;
 
 use middle::fast_reject;
 use middle::subst::{Subst, Substs, TypeSpace};
-use middle::ty::{self, AsPredicate, RegionEscape, ToPolyTraitRef, Ty};
+use middle::ty::{self, ToPredicate, RegionEscape, ToPolyTraitRef, Ty};
 use middle::infer;
 use middle::infer::{InferCtxt, TypeFreshener};
 use middle::ty_fold::TypeFoldable;
@@ -2465,7 +2465,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                                      data_b.bounds.region_bound);
                 nested.push(Obligation::with_depth(cause,
                                                    obligation.recursion_depth + 1,
-                                                   ty::Binder(outlives).as_predicate()));
+                                                   ty::Binder(outlives).to_predicate()));
             }
 
             // T -> Trait.
@@ -2485,7 +2485,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 };
 
                 // Create the obligation for casting from T to Trait.
-                push(data.principal_trait_ref_with_self_ty(tcx, source).as_predicate());
+                push(data.principal_trait_ref_with_self_ty(tcx, source).to_predicate());
 
                 // We can only make objects from sized types.
                 let mut builtin_bounds = data.bounds.builtin_bounds;
@@ -2497,7 +2497,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // for the Send check.)
                 for bound in &builtin_bounds {
                     if let Ok(tr) = util::trait_ref_for_builtin_bound(tcx, bound, source) {
-                        push(tr.as_predicate());
+                        push(tr.to_predicate());
                     } else {
                         return Err(Unimplemented);
                     }
@@ -2505,14 +2505,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
                 // Create obligations for the projection predicates.
                 for bound in data.projection_bounds_with_self_ty(tcx, source) {
-                    push(bound.as_predicate());
+                    push(bound.to_predicate());
                 }
 
                 // If the type is `Foo+'a`, ensures that the type
                 // being cast to `Foo+'a` outlives `'a`:
                 let outlives = ty::OutlivesPredicate(source,
                                                      data.bounds.region_bound);
-                push(ty::Binder(outlives).as_predicate());
+                push(ty::Binder(outlives).to_predicate());
             }
 
             // [T; n] -> [T].

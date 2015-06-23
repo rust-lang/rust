@@ -1873,7 +1873,7 @@ impl BuiltinBounds {
                                self_ty: Ty<'tcx>) -> Vec<Predicate<'tcx>> {
         self.iter().filter_map(|builtin_bound|
             match traits::trait_ref_for_builtin_bound(tcx, builtin_bound, self_ty) {
-                Ok(trait_ref) => Some(trait_ref.as_predicate()),
+                Ok(trait_ref) => Some(trait_ref.to_predicate()),
                 Err(ErrorReported) => { None }
             }
         ).collect()
@@ -2390,12 +2390,12 @@ impl<'tcx> ToPolyTraitRef<'tcx> for PolyProjectionPredicate<'tcx> {
     }
 }
 
-pub trait AsPredicate<'tcx> {
-    fn as_predicate(&self) -> Predicate<'tcx>;
+pub trait ToPredicate<'tcx> {
+    fn to_predicate(&self) -> Predicate<'tcx>;
 }
 
-impl<'tcx> AsPredicate<'tcx> for TraitRef<'tcx> {
-    fn as_predicate(&self) -> Predicate<'tcx> {
+impl<'tcx> ToPredicate<'tcx> for TraitRef<'tcx> {
+    fn to_predicate(&self) -> Predicate<'tcx> {
         // we're about to add a binder, so let's check that we don't
         // accidentally capture anything, or else that might be some
         // weird debruijn accounting.
@@ -2407,32 +2407,32 @@ impl<'tcx> AsPredicate<'tcx> for TraitRef<'tcx> {
     }
 }
 
-impl<'tcx> AsPredicate<'tcx> for PolyTraitRef<'tcx> {
-    fn as_predicate(&self) -> Predicate<'tcx> {
+impl<'tcx> ToPredicate<'tcx> for PolyTraitRef<'tcx> {
+    fn to_predicate(&self) -> Predicate<'tcx> {
         ty::Predicate::Trait(self.to_poly_trait_predicate())
     }
 }
 
-impl<'tcx> AsPredicate<'tcx> for PolyEquatePredicate<'tcx> {
-    fn as_predicate(&self) -> Predicate<'tcx> {
+impl<'tcx> ToPredicate<'tcx> for PolyEquatePredicate<'tcx> {
+    fn to_predicate(&self) -> Predicate<'tcx> {
         Predicate::Equate(self.clone())
     }
 }
 
-impl<'tcx> AsPredicate<'tcx> for PolyRegionOutlivesPredicate {
-    fn as_predicate(&self) -> Predicate<'tcx> {
+impl<'tcx> ToPredicate<'tcx> for PolyRegionOutlivesPredicate {
+    fn to_predicate(&self) -> Predicate<'tcx> {
         Predicate::RegionOutlives(self.clone())
     }
 }
 
-impl<'tcx> AsPredicate<'tcx> for PolyTypeOutlivesPredicate<'tcx> {
-    fn as_predicate(&self) -> Predicate<'tcx> {
+impl<'tcx> ToPredicate<'tcx> for PolyTypeOutlivesPredicate<'tcx> {
+    fn to_predicate(&self) -> Predicate<'tcx> {
         Predicate::TypeOutlives(self.clone())
     }
 }
 
-impl<'tcx> AsPredicate<'tcx> for PolyProjectionPredicate<'tcx> {
-    fn as_predicate(&self) -> Predicate<'tcx> {
+impl<'tcx> ToPredicate<'tcx> for PolyProjectionPredicate<'tcx> {
+    fn to_predicate(&self) -> Predicate<'tcx> {
         Predicate::Projection(self.clone())
     }
 }

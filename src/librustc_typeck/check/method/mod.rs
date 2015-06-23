@@ -16,7 +16,7 @@ use middle::def;
 use middle::privacy::{AllPublic, DependsOn, LastPrivate, LastMod};
 use middle::subst;
 use middle::traits;
-use middle::ty::{self, AsPredicate, ToPolyTraitRef, TraitRef};
+use middle::ty::{self, ToPredicate, ToPolyTraitRef, TraitRef};
 use middle::infer;
 
 use syntax::ast::DefId;
@@ -192,7 +192,7 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     let poly_trait_ref = trait_ref.to_poly_trait_ref();
     let obligation = traits::Obligation::misc(span,
                                               fcx.body_id,
-                                              poly_trait_ref.as_predicate());
+                                              poly_trait_ref.to_predicate());
 
     // Now we want to know if this can be matched
     let mut selcx = traits::SelectionContext::new(fcx.infcx(), fcx);

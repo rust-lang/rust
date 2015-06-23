@@ -15,7 +15,7 @@ use CrateCtxt;
 
 use astconv::AstConv;
 use check::{self, FnCtxt};
-use middle::ty::{self, Ty, ToPolyTraitRef, AsPredicate};
+use middle::ty::{self, Ty, ToPolyTraitRef, ToPredicate};
 use middle::def;
 use middle::lang_items::FnOnceTraitLangItem;
 use middle::subst::Substs;
@@ -101,7 +101,7 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                             let poly_trait_ref = trait_ref.to_poly_trait_ref();
                             let obligation = Obligation::misc(span,
                                                               fcx.body_id,
-                                                              poly_trait_ref.as_predicate());
+                                                              poly_trait_ref.to_predicate());
                             let mut selcx = SelectionContext::new(infcx, fcx);
 
                             if selcx.evaluate_obligation(&obligation) {
