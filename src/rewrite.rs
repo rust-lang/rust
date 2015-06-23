@@ -12,6 +12,8 @@
 
 use syntax::codemap::CodeMap;
 
+use config::Config;
+
 pub trait Rewrite {
     /// Rewrite self into offset and width.
     /// `offset` is the indentation of the first line. The next lines
@@ -25,4 +27,5 @@ pub trait Rewrite {
 
 pub struct RewriteContext<'a> {
     pub codemap: &'a CodeMap,
+    pub config: &'a Config,
 }

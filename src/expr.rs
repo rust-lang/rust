@@ -62,7 +62,7 @@ fn rewrite_string_lit(context: &RewriteContext, s: &str, span: Span, width: usiz
     // strings, or if the string is too long for the line.
     let l_loc = context.codemap.lookup_char_pos(span.lo);
     let r_loc = context.codemap.lookup_char_pos(span.hi);
-    if l_loc.line == r_loc.line && r_loc.col.to_usize() <= config!(max_width) {
+    if l_loc.line == r_loc.line && r_loc.col.to_usize() <= context.config.max_width {
         return context.codemap.span_to_snippet(span).ok();
     }
 
@@ -82,7 +82,7 @@ fn rewrite_string_lit(context: &RewriteContext, s: &str, span: Span, width: usiz
             // First line.
             width - 2 // 2 = " + \
         } else {
-            config!(max_width) - offset - 1 // 1 = either \ or ;
+            context.config.max_width - offset - 1 // 1 = either \ or ;
         };
 
         let mut cur_end = cur_start + max_chars;
@@ -206,7 +206,7 @@ fn rewrite_struct_lit(context: &RewriteContext,
         trailing_separator: if base.is_some() {
             SeparatorTactic::Never
         } else {
-            config!(struct_lit_trailing_comma)
+            context.config.struct_lit_trailing_comma
         },
         indent: indent,
         h_width: budget,
@@ -247,7 +247,7 @@ fn rewrite_tuple_lit(context: &RewriteContext,
                               let rem_width = if i == items.len() - 1 {
                                   width - 2
                               } else {
-                                  config!(max_width) - indent - 2
+                                  context.config.max_width - indent - 2
                               };
                               item.rewrite(context, rem_width, indent)
                           })

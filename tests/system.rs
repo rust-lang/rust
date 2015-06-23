@@ -26,18 +26,34 @@ fn get_path_string(dir_entry: io::Result<fs::DirEntry>) -> String {
     path.to_str().expect("Couldn't stringify path.").to_owned()
 }
 
-// Integration tests and idempotence tests. The files in the tests/source are
-// formatted and compared to their equivalent in tests/target. The target file
-// and config can be overriden by annotations in the source file. The input and
-// output must match exactly.
-// Files in tests/target are checked to be unaltered by rustfmt.
-// FIXME(#28) would be good to check for error messages and fail on them, or at least report.
+// Integration tests. The files in the tests/source are formatted and compared
+// to their equivalent in tests/target. The target file and config can be
+// overriden by annotations in the source file. The input and output must match
+// exactly.
+// FIXME(#28) would be good to check for error messages and fail on them, or at
+// least report.
 #[test]
 fn system_tests() {
+    // Get all files in the tests/source directory
+    let files = fs::read_dir("tests/source").ok().expect("Couldn't read source dir.");
+    // turn a DirEntry into a String that represents the relative path to the file
+    let files = files.map(get_path_string);
+
+    let (count, fails) = check_files(files);
+
+    // Display results
+    println!("Ran {} system tests.", count);
+    assert!(fails == 0, "{} system tests failed", fails);
+}
+
+// Idempotence tests. Files in tests/target are checked to be unaltered by
+// rustfmt.
+#[test]
+fn idempotence_tests() {
     // Get all files in the tests/target directory
-    let files = fs::read_dir("tests/target").ok().expect("Couldn't read dir 1.");
-    let files = files.chain(fs::read_dir("tests").ok().expect("Couldn't read dir 2."));
-    let files = files.chain(fs::read_dir("src/bin").ok().expect("Couldn't read dir 3."));
+    let files = fs::read_dir("tests/target").ok().expect("Couldn't read target dir.");
+    let files = files.chain(fs::read_dir("tests").ok().expect("Couldn't read tests dir."));
+    let files = files.chain(fs::read_dir("src/bin").ok().expect("Couldn't read src dir."));
     // turn a DirEntry into a String that represents the relative path to the file
     let files = files.map(get_path_string);
     // hack because there's no `IntoIterator` impl for `[T; N]`
@@ -48,17 +64,6 @@ fn system_tests() {
     // Display results
     println!("Ran {} idempotent tests.", count);
     assert!(fails == 0, "{} idempotent tests failed", fails);
-
-    // Get all files in the tests/source directory
-    let files = fs::read_dir("tests/source").ok().expect("Couldn't read dir 4.");
-    // turn a DirEntry into a String that represents the relative path to the file
-    let files = files.map(get_path_string);
-
-    let (count, fails) = check_files(files);
-
-    // Display results
-    println!("Ran {} system tests.", count);
-    assert!(fails == 0, "{} system tests failed", fails);
 }
 
 // For each file, run rustfmt and collect the output.
@@ -71,12 +76,9 @@ fn check_files<I>(files: I) -> (u32, u32)
 
     for file_name in files.filter(|f| f.ends_with(".rs")) {
         println!("Testing '{}'...", file_name);
-        match idempotent_check(file_name) {
-            Ok(()) => {},
-            Err(m) => {
-                print_mismatches(m);
-                fails += 1;
-            },
+        if let Err(msg) = idempotent_check(file_name) {
+            print_mismatches(msg);
+            fails += 1;
         }
         count += 1;
     }

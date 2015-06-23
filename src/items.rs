@@ -144,7 +144,7 @@ impl<'a> FmtVisitor<'a> {
 
         // Check if vertical layout was forced by compute_budget_for_args.
         if one_line_budget <= 0 {
-            if config!(fn_args_paren_newline) {
+            if self.config.fn_args_paren_newline {
                 result.push('\n');
                 result.push_str(&make_indent(arg_indent));
                 arg_indent = arg_indent + 1; // extra space for `(`
@@ -170,8 +170,8 @@ impl<'a> FmtVisitor<'a> {
             // If we've already gone multi-line, or the return type would push
             // over the max width, then put the return type on a new line.
             if result.contains("\n") ||
-               result.len() + indent + ret_str.len() > config!(max_width) {
-                let indent = match config!(fn_return_indent) {
+               result.len() + indent + ret_str.len() > self.config.max_width {
+                let indent = match self.config.fn_return_indent {
                     ReturnIndent::WithWhereClause => indent + 4,
                     // TODO we might want to check that using the arg indent doesn't
                     // blow our budget, and if it does, then fallback to the where
@@ -363,15 +363,15 @@ impl<'a> FmtVisitor<'a> {
             if !newline_brace {
                 used_space += 2;
             }
-            let one_line_budget = if used_space > config!(max_width) {
+            let one_line_budget = if used_space > self.config.max_width {
                 0
             } else {
-                config!(max_width) - used_space
+                self.config.max_width - used_space
             };
 
             // 2 = `()`
             let used_space = indent + result.len() + 2;
-            let max_space = config!(ideal_width) + config!(leeway);
+            let max_space = self.config.ideal_width + self.config.leeway;
             debug!("compute_budgets_for_args: used_space: {}, max_space: {}",
                    used_space, max_space);
             if used_space < max_space {
@@ -383,9 +383,9 @@ impl<'a> FmtVisitor<'a> {
 
         // Didn't work. we must force vertical layout and put args on a newline.
         if let None = budgets {
-            let new_indent = indent + config!(tab_spaces);
+            let new_indent = indent + self.config.tab_spaces;
             let used_space = new_indent + 2; // account for `(` and `)`
-            let max_space = config!(ideal_width) + config!(leeway);
+            let max_space = self.config.ideal_width + self.config.leeway;
             if used_space > max_space {
                 // Whoops! bankrupt.
                 // TODO take evasive action, perhaps kill the indent or something.
@@ -398,7 +398,7 @@ impl<'a> FmtVisitor<'a> {
     }
 
     fn newline_for_brace(&self, where_clause: &ast::WhereClause) -> bool {
-        match config!(fn_brace_style) {
+        match self.config.fn_brace_style {
             BraceStyle::AlwaysNextLine => true,
             BraceStyle::SameLineWhere if where_clause.predicates.len() > 0 => true,
             _ => false,
@@ -421,7 +421,7 @@ impl<'a> FmtVisitor<'a> {
         self.changes.push_str_span(span, &generics_str);
 
         self.last_pos = body_start;
-        self.block_indent += config!(tab_spaces);
+        self.block_indent += self.config.tab_spaces;
         for (i, f) in enum_def.variants.iter().enumerate() {
             let next_span_start: BytePos = if i == enum_def.variants.len() - 1 {
                 span.hi
@@ -431,7 +431,7 @@ impl<'a> FmtVisitor<'a> {
 
             self.visit_variant(f, i == enum_def.variants.len() - 1, next_span_start);
         }
-        self.block_indent -= config!(tab_spaces);
+        self.block_indent -= self.config.tab_spaces;
 
         self.format_missing_with_indent(span.lo + BytePos(enum_snippet.rfind('}').unwrap() as u32));
         self.changes.push_str_span(span, "}");
@@ -478,8 +478,8 @@ impl<'a> FmtVisitor<'a> {
                              + field.node.name.to_string().len()
                              + 1; // 1 = (
 
-                let comma_cost = if config!(enum_trailing_comma) { 1 } else { 0 };
-                let budget = config!(ideal_width) - indent - comma_cost - 1; // 1 = )
+                let comma_cost = if self.config.enum_trailing_comma { 1 } else { 0 };
+                let budget = self.config.ideal_width - indent - comma_cost - 1; // 1 = )
 
                 let fmt = ListFormatting {
                     tactic: ListTactic::HorizontalVertical,
@@ -500,13 +500,13 @@ impl<'a> FmtVisitor<'a> {
 
                 // Make sure we do not exceed column limit
                 // 4 = " = ,"
-                assert!(config!(max_width) >= vis.len() + name.len() + expr_snippet.len() + 4,
+                assert!(self.config.max_width >= vis.len() + name.len() + expr_snippet.len() + 4,
                         "Enum variant exceeded column limit");
             }
 
             self.changes.push_str_span(field.span, &result);
 
-            if !last_field || config!(enum_trailing_comma) {
+            if !last_field || self.config.enum_trailing_comma {
                 self.changes.push_str_span(field.span, ",");
             }
         }
@@ -543,11 +543,11 @@ impl<'a> FmtVisitor<'a> {
         // This will drop the comment in between the header and body.
         self.last_pos = span.lo + BytePos(struct_snippet.find_uncommented("{").unwrap() as u32 + 1);
 
-        self.block_indent += config!(tab_spaces);
+        self.block_indent += self.config.tab_spaces;
         for (i, f) in struct_def.fields.iter().enumerate() {
             self.visit_field(f, i == struct_def.fields.len() - 1, span.lo, &struct_snippet);
         }
-        self.block_indent -= config!(tab_spaces);
+        self.block_indent -= self.config.tab_spaces;
 
         self.format_missing_with_indent(span.lo + BytePos(struct_snippet.rfind('}').unwrap() as u32));
         self.changes.push_str_span(span, "}");
@@ -608,13 +608,13 @@ impl<'a> FmtVisitor<'a> {
 
         let mut field_str = match name {
             Some(name) => {
-                let budget = config!(ideal_width) - self.block_indent;
+                let budget = self.config.ideal_width - self.block_indent;
                 // 3 is being conservative and assuming that there will be a trailing comma.
                 if self.block_indent + vis.len() + name.len() + typ.len() + 3 > budget {
                     format!("{}{}:\n{}{}",
                             vis,
                             name,
-                            &make_indent(self.block_indent + config!(tab_spaces)),
+                            &make_indent(self.block_indent + self.config.tab_spaces),
                             typ)
                 } else {
                     format!("{}{}: {}", vis, name, typ)
@@ -622,7 +622,7 @@ impl<'a> FmtVisitor<'a> {
             }
             None => format!("{}{}", vis, typ),
         };
-        if !last_field || config!(struct_trailing_comma) {
+        if !last_field || self.config.struct_trailing_comma {
             field_str.push(',');
         }
         self.changes.push_str_span(field.span, &field_str);
@@ -647,7 +647,7 @@ impl<'a> FmtVisitor<'a> {
             return result;
         }
 
-        let budget = config!(max_width) - indent - 2;
+        let budget = self.config.max_width - indent - 2;
         // TODO might need to insert a newline if the generics are really long
         result.push('<');
 
@@ -723,7 +723,7 @@ impl<'a> FmtVisitor<'a> {
                                                         .zip(comments.into_iter())
                                                         .collect();
 
-        let budget = config!(ideal_width) + config!(leeway) - indent - 10;
+        let budget = self.config.ideal_width + self.config.leeway - indent - 10;
         let fmt = ListFormatting {
             tactic: ListTactic::Vertical,
             separator: ",",

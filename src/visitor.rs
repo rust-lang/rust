@@ -13,6 +13,7 @@ use syntax::codemap::{self, CodeMap, Span, BytePos};
 use syntax::visit;
 
 use utils;
+use config::Config;
 
 use SKIP_ANNOTATION;
 use changes::ChangeSet;
@@ -24,6 +25,7 @@ pub struct FmtVisitor<'a> {
     pub last_pos: BytePos,
     // TODO RAII util for indenting
     pub block_indent: usize,
+    pub config: &'a Config,
 }
 
 impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
@@ -33,14 +35,12 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
                self.codemap.lookup_char_pos(ex.span.hi));
         self.format_missing(ex.span.lo);
         let offset = self.changes.cur_offset_span(ex.span);
-        match ex.rewrite(&RewriteContext { codemap: self.codemap },
-                         config!(max_width) - offset,
-                         offset) {
-            Some(new_str) => {
-                self.changes.push_str_span(ex.span, &new_str);
-                self.last_pos = ex.span.hi;
-            }
-            None => { self.last_pos = ex.span.lo; }
+        let context = RewriteContext { codemap: self.codemap, config: self.config };
+        let rewrite = ex.rewrite(&context, self.config.max_width - offset, offset);
+
+        if let Some(new_str) = rewrite {
+            self.changes.push_str_span(ex.span, &new_str);
+            self.last_pos = ex.span.hi;
         }
     }
 
@@ -72,7 +72,7 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
 
         self.changes.push_str_span(b.span, "{");
         self.last_pos = self.last_pos + BytePos(1);
-        self.block_indent += config!(tab_spaces);
+        self.block_indent += self.config.tab_spaces;
 
         for stmt in &b.stmts {
             self.visit_stmt(&stmt)
@@ -85,7 +85,7 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
             None => {}
         }
 
-        self.block_indent -= config!(tab_spaces);
+        self.block_indent -= self.config.tab_spaces;
         // TODO we should compress any newlines here to just one
         self.format_missing_with_indent(b.span.hi - BytePos(1));
         self.changes.push_str_span(b.span, "}");
@@ -162,8 +162,8 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
                 match vp.node {
                     ast::ViewPath_::ViewPathList(ref path, ref path_list) => {
                         let block_indent = self.block_indent;
-                        let one_line_budget = config!(max_width) - block_indent;
-                        let multi_line_budget = config!(ideal_width) - block_indent;
+                        let one_line_budget = self.config.max_width - block_indent;
+                        let multi_line_budget = self.config.ideal_width - block_indent;
                         let formatted = self.rewrite_use_list(block_indent,
                                                               one_line_budget,
                                                               multi_line_budget,
@@ -183,6 +183,7 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
                             };
                             self.format_missing(span_end);
                         }
+
                         self.last_pos = item.span.hi;
                     }
                     ast::ViewPath_::ViewPathGlob(_) => {
@@ -195,9 +196,9 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
             ast::Item_::ItemImpl(..) |
             ast::Item_::ItemMod(_) |
             ast::Item_::ItemTrait(..) => {
-                self.block_indent += config!(tab_spaces);
+                self.block_indent += self.config.tab_spaces;
                 visit::walk_item(self, item);
-                self.block_indent -= config!(tab_spaces);
+                self.block_indent -= self.config.tab_spaces;
             }
             ast::Item_::ItemExternCrate(_) => {
                 self.format_missing_with_indent(item.span.lo);
@@ -273,12 +274,13 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
 }
 
 impl<'a> FmtVisitor<'a> {
-    pub fn from_codemap<'b>(codemap: &'b CodeMap) -> FmtVisitor<'b> {
+    pub fn from_codemap<'b>(codemap: &'b CodeMap, config: &'b Config) -> FmtVisitor<'b> {
         FmtVisitor {
             codemap: codemap,
             changes: ChangeSet::from_codemap(codemap),
             last_pos: BytePos(0),
             block_indent: 0,
+            config: config
         }
     }
 
