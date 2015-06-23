@@ -30,6 +30,7 @@ use util::fs::fix_windows_verbatim_for_gcc;
 use rustc_back::tempdir::TempDir;
 
 use std::env;
+use std::ffi::OsString;
 use std::fs::{self, PathExt};
 use std::io::{self, Read, Write};
 use std::mem;
@@ -370,6 +371,17 @@ pub fn get_ar_prog(sess: &Session) -> String {
     })
 }
 
+fn command_path(sess: &Session) -> OsString {
+    // The compiler's sysroot often has some bundled tools, so add it to the
+    // PATH for the child.
+    let mut new_path = sess.host_filesearch(PathKind::All)
+                           .get_tools_search_paths();
+    if let Some(path) = env::var_os("PATH") {
+        new_path.extend(env::split_paths(&path));
+    }
+    env::join_paths(new_path).unwrap()
+}
+
 pub fn remove(sess: &Session, path: &Path) {
     match fs::remove_file(path) {
         Ok(..) => {}
@@ -554,6 +566,7 @@ fn link_rlib<'a>(sess: &'a Session,
         slib_prefix: sess.target.target.options.staticlib_prefix.clone(),
         slib_suffix: sess.target.target.options.staticlib_suffix.clone(),
         ar_prog: get_ar_prog(sess),
+        command_path: command_path(sess),
     };
     let mut ab = ArchiveBuilder::create(config);
     ab.add_file(obj_filename).unwrap();
@@ -796,15 +809,7 @@ fn link_natively(sess: &Session, trans: &CrateTranslation, dylib: bool,
     // The invocations of cc share some flags across platforms
     let pname = get_cc_prog(sess);
     let mut cmd = Command::new(&pname);
-
-    // The compiler's sysroot often has some bundled tools, so add it to the
-    // PATH for the child.
-    let mut new_path = sess.host_filesearch(PathKind::All)
-                           .get_tools_search_paths();
-    if let Some(path) = env::var_os("PATH") {
-        new_path.extend(env::split_paths(&path));
-    }
-    cmd.env("PATH", env::join_paths(new_path).unwrap());
+    cmd.env("PATH", command_path(sess));
 
     let root = sess.target_filesearch(PathKind::Native).get_lib_path();
     cmd.args(&sess.target.target.options.pre_link_args);
@@ -1187,6 +1192,7 @@ fn add_upstream_rust_crates(cmd: &mut Linker, sess: &Session,
                     slib_prefix: sess.target.target.options.staticlib_prefix.clone(),
                     slib_suffix: sess.target.target.options.staticlib_suffix.clone(),
                     ar_prog: get_ar_prog(sess),
+                    command_path: command_path(sess),
                 };
                 let mut archive = Archive::open(config);
                 archive.remove_file(&format!("{}.o", name));
