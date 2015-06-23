@@ -46,7 +46,7 @@ use metadata::csearch;
 use middle;
 use middle::cast;
 use middle::check_const;
-use middle::const_eval;
+use middle::const_eval::{self, ConstVal};
 use middle::def::{self, DefMap, ExportMap};
 use middle::dependency_format;
 use middle::fast_reject;
@@ -6026,8 +6026,8 @@ fn compute_enum_variants<'tcx>(cx: &ctxt<'tcx>,
                 // more robust (on case-by-case basis).
 
                 match const_eval::eval_const_expr_partial(cx, &**e, Some(repr_type_ty)) {
-                    Ok(const_eval::const_int(val)) => current_disr_val = val as Disr,
-                    Ok(const_eval::const_uint(val)) => current_disr_val = val as Disr,
+                    Ok(ConstVal::Int(val)) => current_disr_val = val as Disr,
+                    Ok(ConstVal::Uint(val)) => current_disr_val = val as Disr,
                     Ok(_) => {
                         let sign_desc = if repr_type.is_signed() { "signed" } else { "unsigned" };
                         span_err!(cx.sess, e.span, E0079,
@@ -6400,15 +6400,15 @@ pub fn eval_repeat_count(tcx: &ctxt, count_expr: &ast::Expr) -> usize {
     match const_eval::eval_const_expr_partial(tcx, count_expr, Some(tcx.types.usize)) {
         Ok(val) => {
             let found = match val {
-                const_eval::const_uint(count) => return count as usize,
-                const_eval::const_int(count) if count >= 0 => return count as usize,
-                const_eval::const_int(_) => "negative integer",
-                const_eval::const_float(_) => "float",
-                const_eval::const_str(_) => "string",
-                const_eval::const_bool(_) => "boolean",
-                const_eval::const_binary(_) => "binary array",
-                const_eval::Struct(..) => "struct",
-                const_eval::Tuple(_) => "tuple"
+                ConstVal::Uint(count) => return count as usize,
+                ConstVal::Int(count) if count >= 0 => return count as usize,
+                ConstVal::Int(_) => "negative integer",
+                ConstVal::Float(_) => "float",
+                ConstVal::Str(_) => "string",
+                ConstVal::Bool(_) => "boolean",
+                ConstVal::Binary(_) => "binary array",
+                ConstVal::Struct(..) => "struct",
+                ConstVal::Tuple(_) => "tuple"
             };
             span_err!(tcx.sess, count_expr.span, E0306,
                 "expected positive integer for repeat count, found {}",

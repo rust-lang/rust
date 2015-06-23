@@ -33,7 +33,7 @@ use middle::def::*;
 use middle::subst::Substs;
 use middle::ty::{self, Ty};
 use middle::{def, pat_util, stability};
-use middle::const_eval::{eval_const_expr_partial, const_int, const_uint};
+use middle::const_eval::{eval_const_expr_partial, ConstVal};
 use middle::cfg;
 use rustc::ast_map;
 use util::nodemap::{FnvHashMap, NodeSet};
@@ -180,8 +180,8 @@ impl LintPass for TypeLimits {
                             else { false }
                         } else {
                             match eval_const_expr_partial(cx.tcx, &**r, Some(cx.tcx.types.usize)) {
-                                Ok(const_int(shift)) => { shift as u64 >= bits },
-                                Ok(const_uint(shift)) => { shift >= bits },
+                                Ok(ConstVal::Int(shift)) => { shift as u64 >= bits },
+                                Ok(ConstVal::Uint(shift)) => { shift >= bits },
                                 _ => { false }
                             }
                         };
