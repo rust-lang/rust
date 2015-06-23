@@ -97,6 +97,7 @@ Almost all primitives are Send and Sync, and as a consequence pretty much
 all types you'll ever interact with are Send and Sync.
 
 Major exceptions include:
+
 * raw pointers are neither Send nor Sync (because they have no safety guards)
 * `UnsafeCell` isn't Sync (and therefore `Cell` and `RefCell` aren't)
 * `Rc` isn't Send or Sync (because the refcount is shared and unsynchronized)
