@@ -313,6 +313,10 @@ pub struct TcpListener {
 
 impl TcpListener {
     pub fn bind(addr: &SocketAddr) -> io::Result<TcpListener> {
+        self.bind_backlog(addr, 128)
+    }
+
+    pub fn bind_backlog(addr: &SocketAddr, tcp_backlog: i32) -> io::Result<TcpListener> {
         init();
 
         let sock = try!(Socket::new(addr, libc::SOCK_STREAM));
@@ -330,7 +334,7 @@ impl TcpListener {
         try!(cvt(unsafe { libc::bind(*sock.as_inner(), addrp, len) }));
 
         // Start listening
-        try!(cvt(unsafe { libc::listen(*sock.as_inner(), 128) }));
+        try!(cvt(unsafe { libc::listen(*sock.as_inner(), tcp_backlog as c_int) }));
         Ok(TcpListener { inner: sock })
     }
 
