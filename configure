@@ -903,7 +903,7 @@ fi
 # on clang as a backup.
 if [ -z "$CFG_ENABLE_CLANG" ]
 then
-  CFG_GCC_VERSION=$("CFG_GCC" --version 2>&1)
+  CFG_GCC_VERSION=$("$CFG_GCC" --version 2>&1)
   if [ $? -ne 0 ]
   then
     step_msg "GCC not installed, will try using Clang"
