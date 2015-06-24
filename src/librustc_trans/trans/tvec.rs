@@ -253,7 +253,7 @@ fn write_content<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 fn vec_types_from_expr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, vec_expr: &ast::Expr)
                                    -> VecTypes<'tcx> {
     let vec_ty = node_id_type(bcx, vec_expr.id);
-    vec_types(bcx, ty::sequence_element_type(bcx.tcx(), vec_ty))
+    vec_types(bcx, vec_ty.sequence_element_type(bcx.tcx()))
 }
 
 fn vec_types<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, unit_ty: Ty<'tcx>)

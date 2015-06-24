@@ -169,7 +169,7 @@ impl<'tcx> CastCheck<'tcx> {
     fn trivial_cast_lint<'a>(&self, fcx: &FnCtxt<'a, 'tcx>) {
         let t_cast = self.cast_ty;
         let t_expr = self.expr_ty;
-        if ty::type_is_numeric(t_cast) && ty::type_is_numeric(t_expr) {
+        if t_cast.is_numeric() && t_expr.is_numeric() {
             fcx.tcx().sess.add_lint(lint::builtin::TRIVIAL_NUMERIC_CASTS,
                                     self.expr.id,
                                     self.span,

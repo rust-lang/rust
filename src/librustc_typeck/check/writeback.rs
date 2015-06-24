@@ -95,7 +95,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             let rhs_ty = self.fcx.node_ty(rhs.id);
             let rhs_ty = self.fcx.infcx().resolve_type_vars_if_possible(&rhs_ty);
 
-            if ty::type_is_scalar(lhs_ty) && ty::type_is_scalar(rhs_ty) {
+            if lhs_ty.is_scalar() && rhs_ty.is_scalar() {
                 self.fcx.inh.method_map.borrow_mut().remove(&MethodCall::expr(e.id));
 
                 // weird but true: the by-ref binops put an

@@ -662,7 +662,7 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
                     constrain_call(rcx, expr, Some(&**base),
                                    None::<ast::Expr>.iter(), true);
                     let fn_ret = // late-bound regions in overloaded method calls are instantiated
-                        ty::no_late_bound_regions(rcx.tcx(), &ty::ty_fn_ret(method.ty)).unwrap();
+                        ty::no_late_bound_regions(rcx.tcx(), &method.ty.fn_ret()).unwrap();
                     fn_ret.unwrap()
                 }
                 None => rcx.resolve_node_type(base.id)
@@ -891,7 +891,7 @@ fn constrain_autoderefs<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
 
                 // Treat overloaded autoderefs as if an AutoRef adjustment
                 // was applied on the base type, as that is always the case.
-                let fn_sig = ty::ty_fn_sig(method.ty);
+                let fn_sig = method.ty.fn_sig();
                 let fn_sig = // late-bound regions should have been instantiated
                     ty::no_late_bound_regions(rcx.tcx(), fn_sig).unwrap();
                 let self_ty = fn_sig.inputs[0];
@@ -937,7 +937,7 @@ fn constrain_autoderefs<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
                                             r_deref_expr, *r_ptr);
         }
 
-        match ty::deref(derefd_ty, true) {
+        match derefd_ty.builtin_deref(true) {
             Some(mt) => derefd_ty = mt.ty,
             /* if this type can't be dereferenced, then there's already an error
                in the session saying so. Just bail out for now */

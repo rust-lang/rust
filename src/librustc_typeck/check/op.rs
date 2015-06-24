@@ -86,7 +86,7 @@ pub fn check_binop<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     // traits, because their return type is not bool. Perhaps this
     // should change, but for now if LHS is SIMD we go down a
     // different path that bypassess all traits.
-    if ty::type_is_simd(fcx.tcx(), lhs_ty) {
+    if lhs_ty.is_simd(fcx.tcx()) {
         check_expr_coercable_to_type(fcx, rhs_expr, lhs_ty);
         let rhs_ty = fcx.resolve_type_vars_if_possible(fcx.expr_ty(lhs_expr));
         let return_ty = enforce_builtin_binop_types(fcx, lhs_expr, lhs_ty, rhs_expr, rhs_ty, op);
@@ -122,8 +122,7 @@ pub fn check_binop<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             // can't pin this down to a specific impl.
             let rhs_ty = fcx.resolve_type_vars_if_possible(rhs_ty);
             if
-                !ty::type_is_ty_var(lhs_ty) &&
-                !ty::type_is_ty_var(rhs_ty) &&
+                !lhs_ty.is_ty_var() && !rhs_ty.is_ty_var() &&
                 is_builtin_binop(fcx.tcx(), lhs_ty, rhs_ty, op)
             {
                 let builtin_return_ty =
@@ -157,7 +156,7 @@ fn enforce_builtin_binop_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         BinOpCategory::Shift => {
             // For integers, the shift amount can be of any integral
             // type. For simd, the type must match exactly.
-            if ty::type_is_simd(tcx, lhs_ty) {
+            if lhs_ty.is_simd(tcx) {
                 demand::suptype(fcx, rhs_expr.span, lhs_ty, rhs_ty);
             }
 
@@ -177,12 +176,12 @@ fn enforce_builtin_binop_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             demand::suptype(fcx, rhs_expr.span, lhs_ty, rhs_ty);
 
             // if this is simd, result is same as lhs, else bool
-            if ty::type_is_simd(tcx, lhs_ty) {
-                let unit_ty = ty::simd_type(tcx, lhs_ty);
+            if lhs_ty.is_simd(tcx) {
+                let unit_ty = lhs_ty.simd_type(tcx);
                 debug!("enforce_builtin_binop_types: lhs_ty={:?} unit_ty={:?}",
                        lhs_ty,
                        unit_ty);
-                if !ty::type_is_integral(unit_ty) {
+                if !unit_ty.is_integral() {
                     tcx.sess.span_err(
                         lhs_expr.span,
                         &format!("binary comparison operation `{}` not supported \
@@ -335,7 +334,7 @@ fn lookup_op_method<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
 
             // extract return type for method; all late bound regions
             // should have been instantiated by now
-            let ret_ty = ty::ty_fn_ret(method_ty);
+            let ret_ty = method_ty.fn_ret();
             Ok(ty::no_late_bound_regions(fcx.tcx(), &ret_ty).unwrap().unwrap())
         }
         None => {
@@ -429,29 +428,29 @@ fn is_builtin_binop<'tcx>(cx: &ty::ctxt<'tcx>,
 
         BinOpCategory::Shift => {
             lhs.references_error() || rhs.references_error() ||
-                ty::type_is_integral(lhs) && ty::type_is_integral(rhs) ||
-                ty::type_is_simd(cx, lhs) && ty::type_is_simd(cx, rhs)
+                lhs.is_integral() && rhs.is_integral() ||
+                lhs.is_simd(cx) && rhs.is_simd(cx)
         }
 
         BinOpCategory::Math => {
             lhs.references_error() || rhs.references_error() ||
-                ty::type_is_integral(lhs) && ty::type_is_integral(rhs) ||
-                ty::type_is_floating_point(lhs) && ty::type_is_floating_point(rhs) ||
-                ty::type_is_simd(cx, lhs) && ty::type_is_simd(cx, rhs)
+                lhs.is_integral() && rhs.is_integral() ||
+                lhs.is_floating_point() && rhs.is_floating_point() ||
+                lhs.is_simd(cx) && rhs.is_simd(cx)
         }
 
         BinOpCategory::Bitwise => {
             lhs.references_error() || rhs.references_error() ||
-                ty::type_is_integral(lhs) && ty::type_is_integral(rhs) ||
-                ty::type_is_floating_point(lhs) && ty::type_is_floating_point(rhs) ||
-                ty::type_is_simd(cx, lhs) && ty::type_is_simd(cx, rhs) ||
-                ty::type_is_bool(lhs) && ty::type_is_bool(rhs)
+                lhs.is_integral() && rhs.is_integral() ||
+                lhs.is_floating_point() && rhs.is_floating_point() ||
+                lhs.is_simd(cx) && rhs.is_simd(cx) ||
+                lhs.is_bool() && rhs.is_bool()
         }
 
         BinOpCategory::Comparison => {
             lhs.references_error() || rhs.references_error() ||
-                ty::type_is_scalar(lhs) && ty::type_is_scalar(rhs) ||
-                ty::type_is_simd(cx, lhs) && ty::type_is_simd(cx, rhs)
+                lhs.is_scalar() && rhs.is_scalar() ||
+                lhs.is_simd(cx) && rhs.is_simd(cx)
         }
     }
 }

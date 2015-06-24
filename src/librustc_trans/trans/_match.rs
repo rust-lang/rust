@@ -662,7 +662,12 @@ fn bind_subslice_pat(bcx: Block,
                      offset_right: usize) -> ValueRef {
     let _icx = push_ctxt("match::bind_subslice_pat");
     let vec_ty = node_id_type(bcx, pat_id);
-    let unit_ty = ty::sequence_element_type(bcx.tcx(), ty::type_content(vec_ty));
+    let vec_ty_contents = match vec_ty.sty {
+        ty::TyBox(ty) => ty,
+        ty::TyRef(_, mt) | ty::TyRawPtr(mt) => mt.ty,
+        _ => vec_ty
+    };
+    let unit_ty = vec_ty_contents.sequence_element_type(bcx.tcx());
     let vec_datum = match_datum(val, vec_ty);
     let (base, len) = vec_datum.get_vec_base_and_len(bcx);
 
@@ -836,7 +841,7 @@ fn compare_values<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
     }
 
     let _icx = push_ctxt("compare_values");
-    if ty::type_is_scalar(rhs_t) {
+    if rhs_t.is_scalar() {
         let cmp = compare_scalar_types(cx, lhs, rhs, rhs_t, ast::BiEq, debug_loc);
         return Result::new(cx, cmp);
     }
@@ -1140,7 +1145,7 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         match opts[0] {
             ConstantValue(..) | ConstantRange(..) => {
                 test_val = load_if_immediate(bcx, val, left_ty);
-                kind = if ty::type_is_integral(left_ty) {
+                kind = if left_ty.is_integral() {
                     Switch
                 } else {
                     Compare

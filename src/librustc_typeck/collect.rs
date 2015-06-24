@@ -1882,16 +1882,15 @@ fn get_or_create_type_parameter_def<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
             let ty = ast_ty_to_ty(&ccx.icx(&()), &ExplicitRscope, &**path);
             let cur_idx = index;
 
-            ty::walk_ty(ty, |t| {
-                match t.sty {
-                    ty::TyParam(p) => if p.idx > cur_idx {
+            for leaf_ty in ty.walk() {
+                if let ty::TyParam(p) = leaf_ty.sty {
+                    if p.idx > cur_idx {
                         span_err!(tcx.sess, path.span, E0128,
                                   "type parameters with a default cannot use \
                                    forward declared identifiers");
-                        },
-                        _ => {}
                     }
-            });
+                }
+            }
 
             Some(ty)
         }

@@ -324,7 +324,7 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         let llarg_foreign = if foreign_indirect {
             llarg_rust
         } else {
-            if ty::type_is_bool(passed_arg_tys[i]) {
+            if passed_arg_tys[i].is_bool() {
                 let val = LoadRangeAssert(bcx, llarg_rust, 0, 2, llvm::False);
                 Trunc(bcx, val, Type::i1(bcx.ccx()))
             } else {
@@ -450,7 +450,7 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 fn gate_simd_ffi(tcx: &ty::ctxt, decl: &ast::FnDecl, ty: &ty::BareFnTy) {
     if !tcx.sess.features.borrow().simd_ffi {
         let check = |ast_ty: &ast::Ty, ty: ty::Ty| {
-            if ty::type_is_simd(tcx, ty) {
+            if ty.is_simd(tcx) {
                 tcx.sess.span_err(ast_ty.span,
                               &format!("use of SIMD type `{}` in FFI is highly experimental and \
                                         may result in invalid code",
@@ -777,7 +777,7 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             // pointer).  It makes adapting types easier, since we can
             // always just bitcast pointers.
             if !foreign_indirect {
-                llforeign_arg = if ty::type_is_bool(rust_ty) {
+                llforeign_arg = if rust_ty.is_bool() {
                     let lltemp = builder.alloca(Type::bool(ccx), "");
                     builder.store(builder.zext(llforeign_arg, Type::bool(ccx)), lltemp);
                     lltemp
@@ -799,7 +799,7 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             let llrust_arg = if rust_indirect || type_is_fat_ptr(ccx.tcx(), rust_ty) {
                 llforeign_arg
             } else {
-                if ty::type_is_bool(rust_ty) {
+                if rust_ty.is_bool() {
                     let tmp = builder.load_range_assert(llforeign_arg, 0, 2, llvm::False);
                     builder.trunc(tmp, Type::i1(ccx))
                 } else if type_of::type_of(ccx, rust_ty).is_aggregate() {

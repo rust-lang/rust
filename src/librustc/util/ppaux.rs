@@ -51,7 +51,7 @@ fn fn_sig(f: &mut fmt::Formatter,
 
     match output {
         ty::FnConverging(ty) => {
-            if !ty::type_is_nil(ty) {
+            if !ty.is_nil() {
                 try!(write!(f, " -> {}", ty));
             }
             Ok(())

@@ -3541,28 +3541,20 @@ impl<'tcx> TyS<'tcx> {
             _ => false,
         }
     }
-}
 
-pub fn walk_ty<'tcx, F>(ty_root: Ty<'tcx>, mut f: F)
-    where F: FnMut(Ty<'tcx>),
-{
-    for ty in ty_root.walk() {
-        f(ty);
-    }
-}
-
-/// Walks `ty` and any types appearing within `ty`, invoking the
-/// callback `f` on each type. If the callback returns false, then the
-/// children of the current type are ignored.
-///
-/// Note: prefer `ty.walk()` where possible.
-pub fn maybe_walk_ty<'tcx,F>(ty_root: Ty<'tcx>, mut f: F)
-    where F : FnMut(Ty<'tcx>) -> bool
-{
-    let mut walker = ty_root.walk();
-    while let Some(ty) = walker.next() {
-        if !f(ty) {
-            walker.skip_current_subtree();
+    /// Walks `ty` and any types appearing within `ty`, invoking the
+    /// callback `f` on each type. If the callback returns false, then the
+    /// children of the current type are ignored.
+    ///
+    /// Note: prefer `ty.walk()` where possible.
+    pub fn maybe_walk<F>(&'tcx self, mut f: F)
+        where F : FnMut(Ty<'tcx>) -> bool
+    {
+        let mut walker = self.walk();
+        while let Some(ty) = walker.next() {
+            if !f(ty) {
+                walker.skip_current_subtree();
+            }
         }
     }
 }
@@ -3613,128 +3605,126 @@ impl<'tcx> ItemSubsts<'tcx> {
 }
 
 // Type utilities
-
-pub fn type_is_nil(ty: Ty) -> bool {
-    match ty.sty {
-        TyTuple(ref tys) => tys.is_empty(),
-        _ => false
+impl<'tcx> TyS<'tcx> {
+    pub fn is_nil(&self) -> bool {
+        match self.sty {
+            TyTuple(ref tys) => tys.is_empty(),
+            _ => false
+        }
     }
-}
 
-pub fn type_is_ty_var(ty: Ty) -> bool {
-    match ty.sty {
-        TyInfer(TyVar(_)) => true,
-        _ => false
+    pub fn is_ty_var(&self) -> bool {
+        match self.sty {
+            TyInfer(TyVar(_)) => true,
+            _ => false
+        }
     }
-}
 
-pub fn type_is_bool(ty: Ty) -> bool { ty.sty == TyBool }
+    pub fn is_bool(&self) -> bool { self.sty == TyBool }
 
-pub fn type_is_self(ty: Ty) -> bool {
-    match ty.sty {
-        TyParam(ref p) => p.space == subst::SelfSpace,
-        _ => false
+    pub fn is_self(&self) -> bool {
+        match self.sty {
+            TyParam(ref p) => p.space == subst::SelfSpace,
+            _ => false
+        }
     }
-}
 
-fn type_is_slice(ty: Ty) -> bool {
-    match ty.sty {
-        TyRawPtr(mt) | TyRef(_, mt) => match mt.ty.sty {
-            TySlice(_) | TyStr => true,
+    fn is_slice(&self) -> bool {
+        match self.sty {
+            TyRawPtr(mt) | TyRef(_, mt) => match mt.ty.sty {
+                TySlice(_) | TyStr => true,
+                _ => false,
+            },
+            _ => false
+        }
+    }
+
+    pub fn is_structural(&self) -> bool {
+        match self.sty {
+            TyStruct(..) | TyTuple(_) | TyEnum(..) |
+            TyArray(..) | TyClosure(..) => true,
+            _ => self.is_slice() | self.is_trait()
+        }
+    }
+
+    pub fn is_simd(&self, cx: &ctxt) -> bool {
+        match self.sty {
+            TyStruct(did, _) => lookup_simd(cx, did),
+            _ => false
+        }
+    }
+
+    pub fn sequence_element_type(&self, cx: &ctxt<'tcx>) -> Ty<'tcx> {
+        match self.sty {
+            TyArray(ty, _) | TySlice(ty) => ty,
+            TyStr => mk_mach_uint(cx, ast::TyU8),
+            _ => cx.sess.bug(&format!("sequence_element_type called on non-sequence value: {}",
+                                      self)),
+        }
+    }
+
+    pub fn simd_type(&self, cx: &ctxt<'tcx>) -> Ty<'tcx> {
+        match self.sty {
+            TyStruct(did, substs) => {
+                let fields = lookup_struct_fields(cx, did);
+                lookup_field_type(cx, did, fields[0].id, substs)
+            }
+            _ => panic!("simd_type called on invalid type")
+        }
+    }
+
+    pub fn simd_size(&self, cx: &ctxt) -> usize {
+        match self.sty {
+            TyStruct(did, _) => {
+                let fields = lookup_struct_fields(cx, did);
+                fields.len()
+            }
+            _ => panic!("simd_size called on invalid type")
+        }
+    }
+
+    pub fn is_region_ptr(&self) -> bool {
+        match self.sty {
+            TyRef(..) => true,
+            _ => false
+        }
+    }
+
+    pub fn is_unsafe_ptr(&self) -> bool {
+        match self.sty {
+            TyRawPtr(_) => return true,
+            _ => return false
+        }
+    }
+
+    pub fn is_unique(&self) -> bool {
+        match self.sty {
+            TyBox(_) => true,
+            _ => false
+        }
+    }
+
+    /*
+     A scalar type is one that denotes an atomic datum, with no sub-components.
+     (A TyRawPtr is scalar because it represents a non-managed pointer, so its
+     contents are abstract to rustc.)
+    */
+    pub fn is_scalar(&self) -> bool {
+        match self.sty {
+            TyBool | TyChar | TyInt(_) | TyFloat(_) | TyUint(_) |
+            TyInfer(IntVar(_)) | TyInfer(FloatVar(_)) |
+            TyBareFn(..) | TyRawPtr(_) => true,
+            _ => false
+        }
+    }
+
+    /// Returns true if this type is a floating point type and false otherwise.
+    pub fn is_floating_point(&self) -> bool {
+        match self.sty {
+            TyFloat(_) |
+            TyInfer(FloatVar(_)) => true,
             _ => false,
-        },
-        _ => false
-    }
-}
-
-pub fn type_is_structural(ty: Ty) -> bool {
-    match ty.sty {
-      TyStruct(..) | TyTuple(_) | TyEnum(..) |
-      TyArray(..) | TyClosure(..) => true,
-      _ => type_is_slice(ty) | type_is_trait(ty)
-    }
-}
-
-pub fn type_is_simd(cx: &ctxt, ty: Ty) -> bool {
-    match ty.sty {
-        TyStruct(did, _) => lookup_simd(cx, did),
-        _ => false
-    }
-}
-
-pub fn sequence_element_type<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
-    match ty.sty {
-        TyArray(ty, _) | TySlice(ty) => ty,
-        TyStr => mk_mach_uint(cx, ast::TyU8),
-        _ => cx.sess.bug(&format!("sequence_element_type called on non-sequence value: {}",
-                                  ty)),
-    }
-}
-
-pub fn simd_type<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
-    match ty.sty {
-        TyStruct(did, substs) => {
-            let fields = lookup_struct_fields(cx, did);
-            lookup_field_type(cx, did, fields[0].id, substs)
         }
-        _ => panic!("simd_type called on invalid type")
-    }
-}
-
-pub fn simd_size(cx: &ctxt, ty: Ty) -> usize {
-    match ty.sty {
-        TyStruct(did, _) => {
-            let fields = lookup_struct_fields(cx, did);
-            fields.len()
-        }
-        _ => panic!("simd_size called on invalid type")
-    }
-}
-
-pub fn type_is_region_ptr(ty: Ty) -> bool {
-    match ty.sty {
-        TyRef(..) => true,
-        _ => false
-    }
-}
-
-pub fn type_is_unsafe_ptr(ty: Ty) -> bool {
-    match ty.sty {
-      TyRawPtr(_) => return true,
-      _ => return false
-    }
-}
-
-pub fn type_is_unique(ty: Ty) -> bool {
-    match ty.sty {
-        TyBox(_) => true,
-        _ => false
-    }
-}
-
-/*
- A scalar type is one that denotes an atomic datum, with no sub-components.
- (A TyRawPtr is scalar because it represents a non-managed pointer, so its
- contents are abstract to rustc.)
-*/
-pub fn type_is_scalar(ty: Ty) -> bool {
-    match ty.sty {
-      TyBool | TyChar | TyInt(_) | TyFloat(_) | TyUint(_) |
-      TyInfer(IntVar(_)) | TyInfer(FloatVar(_)) |
-      TyBareFn(..) | TyRawPtr(_) => true,
-      _ => false
-    }
-}
-
-/// Returns true if this type is a floating point type and false otherwise.
-pub fn type_is_floating_point(ty: Ty) -> bool {
-    match ty.sty {
-        TyFloat(_) |
-        TyInfer(FloatVar(_)) =>
-            true,
-
-        _ =>
-            false,
     }
 }
 
@@ -4508,141 +4498,124 @@ pub fn is_type_representable<'tcx>(cx: &ctxt<'tcx>, sp: Span, ty: Ty<'tcx>)
     r
 }
 
-pub fn type_is_trait(ty: Ty) -> bool {
-    match ty.sty {
-        TyTrait(..) => true,
-        _ => false
-    }
-}
-
-pub fn type_is_integral(ty: Ty) -> bool {
-    match ty.sty {
-      TyInfer(IntVar(_)) | TyInt(_) | TyUint(_) => true,
-      _ => false
-    }
-}
-
-pub fn type_is_fresh(ty: Ty) -> bool {
-    match ty.sty {
-      TyInfer(FreshTy(_)) => true,
-      TyInfer(FreshIntTy(_)) => true,
-      TyInfer(FreshFloatTy(_)) => true,
-      _ => false
-    }
-}
-
-pub fn type_is_uint(ty: Ty) -> bool {
-    match ty.sty {
-      TyInfer(IntVar(_)) | TyUint(ast::TyUs) => true,
-      _ => false
-    }
-}
-
-pub fn type_is_char(ty: Ty) -> bool {
-    match ty.sty {
-        TyChar => true,
-        _ => false
-    }
-}
-
-pub fn type_is_bare_fn(ty: Ty) -> bool {
-    match ty.sty {
-        TyBareFn(..) => true,
-        _ => false
-    }
-}
-
-pub fn type_is_bare_fn_item(ty: Ty) -> bool {
-    match ty.sty {
-        TyBareFn(Some(_), _) => true,
-        _ => false
-    }
-}
-
-pub fn type_is_fp(ty: Ty) -> bool {
-    match ty.sty {
-      TyInfer(FloatVar(_)) | TyFloat(_) => true,
-      _ => false
-    }
-}
-
-pub fn type_is_numeric(ty: Ty) -> bool {
-    return type_is_integral(ty) || type_is_fp(ty);
-}
-
-pub fn type_is_signed(ty: Ty) -> bool {
-    match ty.sty {
-      TyInt(_) => true,
-      _ => false
-    }
-}
-
-pub fn type_is_machine(ty: Ty) -> bool {
-    match ty.sty {
-        TyInt(ast::TyIs) | TyUint(ast::TyUs) => false,
-        TyInt(..) | TyUint(..) | TyFloat(..) => true,
-        _ => false
-    }
-}
-
-// Whether a type is enum like, that is an enum type with only nullary
-// constructors
-pub fn type_is_c_like_enum(cx: &ctxt, ty: Ty) -> bool {
-    match ty.sty {
-        TyEnum(did, _) => {
-            let variants = enum_variants(cx, did);
-            if variants.is_empty() {
-                false
-            } else {
-                variants.iter().all(|v| v.args.is_empty())
-            }
+impl<'tcx> TyS<'tcx> {
+    pub fn is_trait(&self) -> bool {
+        match self.sty {
+            TyTrait(..) => true,
+            _ => false
         }
-        _ => false
     }
-}
 
-// Returns the type and mutability of *ty.
-//
-// The parameter `explicit` indicates if this is an *explicit* dereference.
-// Some types---notably unsafe ptrs---can only be dereferenced explicitly.
-pub fn deref<'tcx>(ty: Ty<'tcx>, explicit: bool) -> Option<mt<'tcx>> {
-    match ty.sty {
-        TyBox(ty) => {
-            Some(mt {
-                ty: ty,
-                mutbl: ast::MutImmutable,
-            })
-        },
-        TyRef(_, mt) => Some(mt),
-        TyRawPtr(mt) if explicit => Some(mt),
-        _ => None
+    pub fn is_integral(&self) -> bool {
+        match self.sty {
+            TyInfer(IntVar(_)) | TyInt(_) | TyUint(_) => true,
+            _ => false
+        }
     }
-}
 
-pub fn type_content<'tcx>(ty: Ty<'tcx>) -> Ty<'tcx> {
-    match ty.sty {
-        TyBox(ty) => ty,
-        TyRef(_, mt) | TyRawPtr(mt) => mt.ty,
-        _ => ty
+    pub fn is_fresh(&self) -> bool {
+        match self.sty {
+            TyInfer(FreshTy(_)) => true,
+            TyInfer(FreshIntTy(_)) => true,
+            TyInfer(FreshFloatTy(_)) => true,
+            _ => false
+        }
     }
-}
 
-// Returns the type of ty[i]
-pub fn index<'tcx>(ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
-    match ty.sty {
-        TyArray(ty, _) | TySlice(ty) => Some(ty),
-        _ => None
+    pub fn is_uint(&self) -> bool {
+        match self.sty {
+            TyInfer(IntVar(_)) | TyUint(ast::TyUs) => true,
+            _ => false
+        }
     }
-}
 
-// Returns the type of elements contained within an 'array-like' type.
-// This is exactly the same as the above, except it supports strings,
-// which can't actually be indexed.
-pub fn array_element_ty<'tcx>(tcx: &ctxt<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
-    match ty.sty {
-        TyArray(ty, _) | TySlice(ty) => Some(ty),
-        TyStr => Some(tcx.types.u8),
-        _ => None
+    pub fn is_char(&self) -> bool {
+        match self.sty {
+            TyChar => true,
+            _ => false
+        }
+    }
+
+    pub fn is_bare_fn(&self) -> bool {
+        match self.sty {
+            TyBareFn(..) => true,
+            _ => false
+        }
+    }
+
+    pub fn is_bare_fn_item(&self) -> bool {
+        match self.sty {
+            TyBareFn(Some(_), _) => true,
+            _ => false
+        }
+    }
+
+    pub fn is_fp(&self) -> bool {
+        match self.sty {
+            TyInfer(FloatVar(_)) | TyFloat(_) => true,
+            _ => false
+        }
+    }
+
+    pub fn is_numeric(&self) -> bool {
+        self.is_integral() || self.is_fp()
+    }
+
+    pub fn is_signed(&self) -> bool {
+        match self.sty {
+            TyInt(_) => true,
+            _ => false
+        }
+    }
+
+    pub fn is_machine(&self) -> bool {
+        match self.sty {
+            TyInt(ast::TyIs) | TyUint(ast::TyUs) => false,
+            TyInt(..) | TyUint(..) | TyFloat(..) => true,
+            _ => false
+        }
+    }
+
+    // Whether a type is enum like, that is an enum type with only nullary
+    // constructors
+    pub fn is_c_like_enum(&self, cx: &ctxt) -> bool {
+        match self.sty {
+            TyEnum(did, _) => {
+                let variants = enum_variants(cx, did);
+                if variants.is_empty() {
+                    false
+                } else {
+                    variants.iter().all(|v| v.args.is_empty())
+                }
+            }
+            _ => false
+        }
+    }
+
+    // Returns the type and mutability of *ty.
+    //
+    // The parameter `explicit` indicates if this is an *explicit* dereference.
+    // Some types---notably unsafe ptrs---can only be dereferenced explicitly.
+    pub fn builtin_deref(&self, explicit: bool) -> Option<mt<'tcx>> {
+        match self.sty {
+            TyBox(ty) => {
+                Some(mt {
+                    ty: ty,
+                    mutbl: ast::MutImmutable,
+                })
+            },
+            TyRef(_, mt) => Some(mt),
+            TyRawPtr(mt) if explicit => Some(mt),
+            _ => None
+        }
+    }
+
+    // Returns the type of ty[i]
+    pub fn builtin_index(&self) -> Option<Ty<'tcx>> {
+        match self.sty {
+            TyArray(ty, _) | TySlice(ty) => Some(ty),
+            _ => None
+        }
     }
 }
 
@@ -4725,50 +4698,36 @@ pub fn node_id_item_substs<'tcx>(cx: &ctxt<'tcx>, id: ast::NodeId) -> ItemSubsts
     }
 }
 
-pub fn fn_is_variadic(fty: Ty) -> bool {
-    match fty.sty {
-        TyBareFn(_, ref f) => f.sig.0.variadic,
-        ref s => {
-            panic!("fn_is_variadic() called on non-fn type: {:?}", s)
+impl<'tcx> TyS<'tcx> {
+    pub fn fn_sig(&self) -> &'tcx PolyFnSig<'tcx> {
+        match self.sty {
+            TyBareFn(_, ref f) => &f.sig,
+            _ => panic!("Ty::fn_sig() called on non-fn type: {:?}", self)
         }
     }
-}
 
-pub fn ty_fn_sig<'tcx>(fty: Ty<'tcx>) -> &'tcx PolyFnSig<'tcx> {
-    match fty.sty {
-        TyBareFn(_, ref f) => &f.sig,
-        ref s => {
-            panic!("ty_fn_sig() called on non-fn type: {:?}", s)
+    /// Returns the ABI of the given function.
+    pub fn fn_abi(&self) -> abi::Abi {
+        match self.sty {
+            TyBareFn(_, ref f) => f.abi,
+            _ => panic!("Ty::fn_abi() called on non-fn type"),
         }
     }
-}
 
-/// Returns the ABI of the given function.
-pub fn ty_fn_abi(fty: Ty) -> abi::Abi {
-    match fty.sty {
-        TyBareFn(_, ref f) => f.abi,
-        _ => panic!("ty_fn_abi() called on non-fn type"),
+    // Type accessors for substructures of types
+    pub fn fn_args(&self) -> ty::Binder<Vec<Ty<'tcx>>> {
+        self.fn_sig().inputs()
     }
-}
 
-// Type accessors for substructures of types
-pub fn ty_fn_args<'tcx>(fty: Ty<'tcx>) -> ty::Binder<Vec<Ty<'tcx>>> {
-    ty_fn_sig(fty).inputs()
-}
+    pub fn fn_ret(&self) -> Binder<FnOutput<'tcx>> {
+        self.fn_sig().output()
+    }
 
-pub fn ty_fn_ret<'tcx>(fty: Ty<'tcx>) -> Binder<FnOutput<'tcx>> {
-    match fty.sty {
-        TyBareFn(_, ref f) => f.sig.output(),
-        ref s => {
-            panic!("ty_fn_ret() called on non-fn type: {:?}", s)
+    pub fn is_fn(&self) -> bool {
+        match self.sty {
+            TyBareFn(..) => true,
+            _ => false
         }
-    }
-}
-
-pub fn is_fn_ty(fty: Ty) -> bool {
-    match fty.sty {
-        TyBareFn(..) => true,
-        _ => false
     }
 }
 
@@ -4935,12 +4894,12 @@ pub fn adjust_ty<'tcx, F>(cx: &ctxt<'tcx>,
                                     // regions fully instantiated and coverge.
                                     let fn_ret =
                                         ty::no_late_bound_regions(cx,
-                                                                  &ty_fn_ret(method_ty)).unwrap();
+                                                                  &method_ty.fn_ret()).unwrap();
                                     adjusted_ty = fn_ret.unwrap();
                                 }
                                 None => {}
                             }
-                            match deref(adjusted_ty, true) {
+                            match adjusted_ty.builtin_deref(true) {
                                 Some(mt) => { adjusted_ty = mt.ty; }
                                 None => {
                                     cx.sess.span_bug(
@@ -5578,7 +5537,7 @@ impl<'tcx> VariantInfo<'tcx> {
                 let arg_tys = if !args.is_empty() {
                     // the regions in the argument types come from the
                     // enum def'n, and hence will all be early bound
-                    ty::no_late_bound_regions(cx, &ty_fn_args(ctor_ty)).unwrap()
+                    ty::no_late_bound_regions(cx, &ctor_ty.fn_args()).unwrap()
                 } else {
                     Vec::new()
                 };
@@ -6595,7 +6554,7 @@ pub fn hash_crate_independent<'tcx>(tcx: &ctxt<'tcx>, ty: Ty<'tcx>, svh: &Svh) -
                 helper(tcx, output, svh, state);
             }
         };
-        maybe_walk_ty(ty, |ty| {
+        ty.maybe_walk(|ty| {
             match ty.sty {
                 TyBool => byte!(2),
                 TyChar => byte!(3),
@@ -6939,7 +6898,7 @@ pub enum ExplicitSelfCategory {
 /// types, nor does it resolve fictitious types.
 pub fn accumulate_lifetimes_in_type(accumulator: &mut Vec<ty::Region>,
                                     ty: Ty) {
-    walk_ty(ty, |ty| {
+    for ty in ty.walk() {
         match ty.sty {
             TyRef(region, _) => {
                 accumulator.push(*region)
@@ -6972,7 +6931,7 @@ pub fn accumulate_lifetimes_in_type(accumulator: &mut Vec<ty::Region>,
             TyError => {
             }
         }
-    });
+    }
 
     fn accum_substs(accumulator: &mut Vec<Region>, substs: &Substs) {
         match substs.regions {

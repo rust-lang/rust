@@ -24,7 +24,7 @@ pub enum Parameter {
 /// by `ty` (see RFC 447).
 pub fn parameters_for_type<'tcx>(ty: Ty<'tcx>) -> Vec<Parameter> {
     let mut result = vec![];
-    ty::maybe_walk_ty(ty, |t| {
+    ty.maybe_walk(|t| {
         if let ty::TyProjection(..) = t.sty {
             false // projections are not injective.
         } else {

@@ -144,7 +144,7 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             output.push(')');
 
             match sig.output {
-                ty::FnConverging(result_type) if ty::type_is_nil(result_type) => {}
+                ty::FnConverging(result_type) if result_type.is_nil() => {}
                 ty::FnConverging(result_type) => {
                     output.push_str(" -> ");
                     push_debuginfo_type_name(cx, result_type, true, output);

@@ -540,7 +540,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // terms of `Fn` etc, but we could probably make this more
         // precise still.
         let input_types = stack.fresh_trait_ref.0.input_types();
-        let unbound_input_types = input_types.iter().any(|&t| ty::type_is_fresh(t));
+        let unbound_input_types = input_types.iter().any(|ty| ty.is_fresh());
         if
             unbound_input_types &&
              (self.intercrate ||
@@ -2334,7 +2334,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         // ok to skip binder; it is reintroduced below
         let self_ty = self.infcx.shallow_resolve(*obligation.self_ty().skip_binder());
-        let sig = ty::ty_fn_sig(self_ty);
+        let sig = self_ty.fn_sig();
         let trait_ref =
             util::closure_trait_ref_and_return_type(self.tcx(),
                                                     obligation.predicate.def_id(),
@@ -2536,7 +2536,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     return Err(Unimplemented);
                 };
                 let mut ty_params = vec![];
-                ty::walk_ty(field, |ty| {
+                for ty in field.walk() {
                     if let ty::TyParam(p) = ty.sty {
                         assert!(p.space == TypeSpace);
                         let idx = p.idx as usize;
@@ -2544,7 +2544,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             ty_params.push(idx);
                         }
                     }
-                });
+                }
                 if ty_params.is_empty() {
                     return Err(Unimplemented);
                 }

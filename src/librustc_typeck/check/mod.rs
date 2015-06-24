@@ -229,7 +229,7 @@ impl<'tcx> Expectation<'tcx> {
         match *self {
             ExpectHasType(ety) => {
                 let ety = fcx.infcx().shallow_resolve(ety);
-                if !ty::type_is_ty_var(ety) {
+                if !ety.is_ty_var() {
                     ExpectHasType(ety)
                 } else {
                     NoExpectation
@@ -1146,7 +1146,7 @@ fn report_cast_to_unsized_type<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 ast::MutMutable => "mut ",
                 ast::MutImmutable => ""
             };
-            if ty::type_is_trait(t_cast) {
+            if t_cast.is_trait() {
                 match fcx.tcx().sess.codemap().span_to_snippet(t_span) {
                     Ok(s) => {
                         fcx.tcx().sess.span_suggestion(t_span,
@@ -1948,7 +1948,7 @@ pub fn autoderef<'a, 'tcx, T, F>(fcx: &FnCtxt<'a, 'tcx>,
             }
             UnresolvedTypeAction::Ignore => {
                 // We can continue even when the type cannot be resolved
-                // (i.e. it is an inference variable) because `ty::deref`
+                // (i.e. it is an inference variable) because `Ty::builtin_deref`
                 // and `try_overloaded_deref` both simply return `None`
                 // in such a case without producing spurious errors.
                 fcx.resolve_type_vars_if_possible(t)
@@ -1964,7 +1964,7 @@ pub fn autoderef<'a, 'tcx, T, F>(fcx: &FnCtxt<'a, 'tcx>,
         }
 
         // Otherwise, deref if type is derefable:
-        let mt = match ty::deref(resolved_t, false) {
+        let mt = match resolved_t.builtin_deref(false) {
             Some(mt) => Some(mt),
             None => {
                 let method_call =
@@ -2045,7 +2045,7 @@ fn make_overloaded_lvalue_return_type<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         Some(method) => {
             // extract method method return type, which will be &T;
             // all LB regions should have been instantiated during method lookup
-            let ret_ty = ty::ty_fn_ret(method.ty);
+            let ret_ty = method.ty.fn_ret();
             let ret_ty = ty::no_late_bound_regions(fcx.tcx(), &ret_ty).unwrap().unwrap();
 
             if let Some(method_call) = method_call {
@@ -2053,7 +2053,7 @@ fn make_overloaded_lvalue_return_type<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             }
 
             // method returns &T, but the type as visible to user is T, so deref
-            ty::deref(ret_ty, true)
+            ret_ty.builtin_deref(true)
         }
         None => None,
     }
@@ -2125,7 +2125,7 @@ fn try_index_step<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     let input_ty = fcx.infcx().next_ty_var();
 
     // First, try built-in indexing.
-    match (ty::index(adjusted_ty), &index_ty.sty) {
+    match (adjusted_ty.builtin_index(), &index_ty.sty) {
         (Some(ty), &ty::TyUint(ast::TyUs)) | (Some(ty), &ty::TyInfer(ty::IntVar(_))) => {
             debug!("try_index_step: success, using built-in indexing");
             // If we had `[T; N]`, we should've caught it before unsizing to `[T]`.
@@ -3160,7 +3160,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                 }
                 ast::UnDeref => {
                     oprnd_t = structurally_resolved_type(fcx, expr.span, oprnd_t);
-                    oprnd_t = match ty::deref(oprnd_t, true) {
+                    oprnd_t = match oprnd_t.builtin_deref(true) {
                         Some(mt) => mt.ty,
                         None => match try_overloaded_deref(fcx, expr.span,
                                                            Some(MethodCall::expr(expr.id)),
@@ -3179,8 +3179,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                 ast::UnNot => {
                     oprnd_t = structurally_resolved_type(fcx, oprnd.span,
                                                          oprnd_t);
-                    if !(ty::type_is_integral(oprnd_t) ||
-                         oprnd_t.sty == ty::TyBool) {
+                    if !(oprnd_t.is_integral() || oprnd_t.sty == ty::TyBool) {
                         oprnd_t = op::check_user_unop(fcx, "!", "not",
                                                       tcx.lang_items.not_trait(),
                                                       expr, &**oprnd, oprnd_t, unop);
@@ -3189,8 +3188,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                 ast::UnNeg => {
                     oprnd_t = structurally_resolved_type(fcx, oprnd.span,
                                                          oprnd_t);
-                    if !(ty::type_is_integral(oprnd_t) ||
-                         ty::type_is_fp(oprnd_t)) {
+                    if !(oprnd_t.is_integral() || oprnd_t.is_fp()) {
                         oprnd_t = op::check_user_unop(fcx, "-", "neg",
                                                       tcx.lang_items.neg_trait(),
                                                       expr, &**oprnd, oprnd_t, unop);
@@ -4201,7 +4199,7 @@ pub fn check_simd(tcx: &ty::ctxt, sp: Span, id: ast::NodeId) {
                 span_err!(tcx.sess, sp, E0076, "SIMD vector should be homogeneous");
                 return;
             }
-            if !ty::type_is_machine(e) {
+            if !e.is_machine() {
                 span_err!(tcx.sess, sp, E0077,
                     "SIMD vector element type should be machine type");
                 return;
@@ -4870,11 +4868,11 @@ fn structurally_resolve_type_or_else<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
 {
     let mut ty = fcx.resolve_type_vars_if_possible(ty);
 
-    if ty::type_is_ty_var(ty) {
+    if ty.is_ty_var() {
         let alternative = f();
 
         // If not, error.
-        if ty::type_is_ty_var(alternative) || alternative.references_error() {
+        if alternative.is_ty_var() || alternative.references_error() {
             fcx.type_error_message(sp, |_actual| {
                 "the type of this value must be known in this context".to_string()
             }, ty, None);
@@ -4933,15 +4931,12 @@ pub fn check_bounds_are_used<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     if tps.is_empty() { return; }
     let mut tps_used: Vec<_> = repeat(false).take(tps.len()).collect();
 
-    ty::walk_ty(ty, |t| {
-            match t.sty {
-                ty::TyParam(ParamTy {idx, ..}) => {
-                    debug!("Found use of ty param num {}", idx);
-                    tps_used[idx as usize] = true;
-                }
-                _ => ()
-            }
-        });
+    for leaf_ty in ty.walk() {
+        if let ty::TyParam(ParamTy {idx, ..}) = leaf_ty.sty {
+            debug!("Found use of ty param num {}", idx);
+            tps_used[idx as usize] = true;
+        }
+    }
 
     for (i, b) in tps_used.iter().enumerate() {
         if !*b {

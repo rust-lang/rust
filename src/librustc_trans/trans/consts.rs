@@ -149,7 +149,7 @@ fn const_deref<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                          v: ValueRef,
                          ty: Ty<'tcx>)
                          -> (ValueRef, Ty<'tcx>) {
-    match ty::deref(ty, true) {
+    match ty.builtin_deref(true) {
         Some(mt) => {
             if type_is_sized(cx.tcx(), mt.ty) {
                 (const_deref_ptr(cx, v), mt.ty)
@@ -323,7 +323,7 @@ pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                                               param_substs,
                                                               &target);
 
-                let pointee_ty = ty::deref(ty, true)
+                let pointee_ty = ty.builtin_deref(true)
                     .expect("consts: unsizing got non-pointer type").ty;
                 let (base, old_info) = if !type_is_sized(cx.tcx(), pointee_ty) {
                     // Normally, the source is a thin pointer and we are
@@ -338,7 +338,7 @@ pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                     (llconst, None)
                 };
 
-                let unsized_ty = ty::deref(target, true)
+                let unsized_ty = target.builtin_deref(true)
                     .expect("consts: unsizing got non-pointer target type").ty;
                 let ptr_ty = type_of::in_memory_type_of(cx, unsized_ty).ptr_to();
                 let base = ptrcast(base, ptr_ty);
@@ -499,14 +499,14 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             debug!("const_expr_unadjusted: te1={}, ty={:?}",
                    cx.tn().val_to_string(te1),
                    ty);
-            let is_simd = ty::type_is_simd(cx.tcx(), ty);
+            let is_simd = ty.is_simd(cx.tcx());
             let intype = if is_simd {
-                ty::simd_type(cx.tcx(), ty)
+                ty.simd_type(cx.tcx())
             } else {
                 ty
             };
-            let is_float = ty::type_is_fp(intype);
-            let signed = ty::type_is_signed(intype);
+            let is_float = intype.is_fp();
+            let signed = intype.is_signed();
 
             let (te2, _) = const_expr(cx, &**e2, param_substs, fn_args);
 
@@ -572,7 +572,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
             check_unary_expr_validity(cx, e, ty, te);
 
-            let is_float = ty::type_is_fp(ty);
+            let is_float = ty.is_fp();
             match u {
               ast::UnUniq | ast::UnDeref => {
                 const_deref(cx, te, ty).0
@@ -660,7 +660,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             }
             if type_is_fat_ptr(cx.tcx(), t_expr) {
                 // Fat pointer casts.
-                let t_cast_inner = ty::deref(t_cast, true).expect("cast to non-pointer").ty;
+                let t_cast_inner = t_cast.builtin_deref(true).expect("cast to non-pointer").ty;
                 let ptr_ty = type_of::in_memory_type_of(cx, t_cast_inner).ptr_to();
                 let addr = ptrcast(const_get_elt(cx, v, &[abi::FAT_PTR_ADDR as u32]),
                                    ptr_ty);
@@ -681,11 +681,11 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 llvm::LLVMConstIntCast(iv, llty.to_ref(), s)
               }
               (CastTy::Int(_), CastTy::Int(_)) => {
-                let s = ty::type_is_signed(t_expr) as Bool;
+                let s = t_expr.is_signed() as Bool;
                 llvm::LLVMConstIntCast(v, llty.to_ref(), s)
               }
               (CastTy::Int(_), CastTy::Float) => {
-                if ty::type_is_signed(t_expr) {
+                if t_expr.is_signed() {
                     llvm::LLVMConstSIToFP(v, llty.to_ref())
                 } else {
                     llvm::LLVMConstUIToFP(v, llty.to_ref())
@@ -781,7 +781,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                           }
                       }
                   }).collect::<Vec<_>>();
-                  if ty::type_is_simd(cx.tcx(), ety) {
+                  if ety.is_simd(cx.tcx()) {
                       C_vector(&cs[..])
                   } else {
                       adt::trans_const(cx, &*repr, discr, &cs[..])
@@ -789,7 +789,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
               })
           }
           ast::ExprVec(ref es) => {
-            let unit_ty = ty::sequence_element_type(cx.tcx(), ety);
+            let unit_ty = ety.sequence_element_type(cx.tcx());
             let llunitty = type_of::type_of(cx, unit_ty);
             let vs = es.iter().map(|e| const_expr(cx, &**e, param_substs, fn_args).0)
                               .collect::<Vec<_>>();
@@ -801,7 +801,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             }
           }
           ast::ExprRepeat(ref elem, ref count) => {
-            let unit_ty = ty::sequence_element_type(cx.tcx(), ety);
+            let unit_ty = ety.sequence_element_type(cx.tcx());
             let llunitty = type_of::type_of(cx, unit_ty);
             let n = ty::eval_repeat_count(cx.tcx(), count);
             let unit_val = const_expr(cx, &**elem, param_substs, fn_args).0;
@@ -875,7 +875,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                       const_fn_call(cx, ExprId(callee.id), did, &arg_vals, param_substs)
                   }
                   def::DefStruct(_) => {
-                      if ty::type_is_simd(cx.tcx(), ety) {
+                      if ety.is_simd(cx.tcx()) {
                           C_vector(&arg_vals[..])
                       } else {
                           let repr = adt::represent_type(cx, ety);

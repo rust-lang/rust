@@ -222,9 +222,9 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
         }
 
         ty::TyStruct(..) => {
-            if ty::type_is_simd(cx.tcx(), t) {
-                let llet = type_of(cx, ty::simd_type(cx.tcx(), t));
-                let n = ty::simd_size(cx.tcx(), t) as u64;
+            if t.is_simd(cx.tcx()) {
+                let llet = type_of(cx, t.simd_type(cx.tcx()));
+                let n = t.simd_size(cx.tcx()) as u64;
                 ensure_array_fits_in_address_space(cx, llet, n, t);
                 Type::vector(&llet, n)
             } else {
@@ -245,7 +245,7 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
 }
 
 pub fn foreign_arg_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
-    if ty::type_is_bool(t) {
+    if t.is_bool() {
         Type::i1(cx)
     } else {
         type_of(cx, t)
@@ -253,7 +253,7 @@ pub fn foreign_arg_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -
 }
 
 pub fn arg_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
-    if ty::type_is_bool(t) {
+    if t.is_bool() {
         Type::i1(cx)
     } else if type_is_immediate(cx, t) && type_of(cx, t).is_aggregate() {
         // We want to pass small aggregates as immediate values, but using an aggregate LLVM type
@@ -402,9 +402,9 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
           adt::type_of(cx, &*repr)
       }
       ty::TyStruct(did, ref substs) => {
-          if ty::type_is_simd(cx.tcx(), t) {
-              let llet = in_memory_type_of(cx, ty::simd_type(cx.tcx(), t));
-              let n = ty::simd_size(cx.tcx(), t) as u64;
+          if t.is_simd(cx.tcx()) {
+              let llet = in_memory_type_of(cx, t.simd_type(cx.tcx()));
+              let n = t.simd_size(cx.tcx()) as u64;
               ensure_array_fits_in_address_space(cx, llet, n, t);
               Type::vector(&llet, n)
           } else {
@@ -434,7 +434,7 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
     // If this was an enum or struct, fill in the type now.
     match t.sty {
         ty::TyEnum(..) | ty::TyStruct(..) | ty::TyClosure(..)
-                if !ty::type_is_simd(cx.tcx(), t) => {
+                if !t.is_simd(cx.tcx()) => {
             let repr = adt::represent_type(cx, t);
             adt::finish_type_of(cx, &*repr, &mut llty);
         }

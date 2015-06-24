@@ -536,8 +536,8 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                                 }
                                 Some(ty::AutoPtr(_, _)) => {
                                     (adr.autoderefs, adr.unsize.map(|target| {
-                                        ty::deref(target, false)
-                                            .expect("fixup: AutoPtr is not &T").ty
+                                        target.builtin_deref(false)
+                                              .expect("fixup: AutoPtr is not &T").ty
                                     }))
                                 }
                                 Some(_) => {

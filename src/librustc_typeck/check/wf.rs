@@ -661,7 +661,7 @@ fn enum_variants<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                     // enum def'n, and hence will all be early bound
                     let arg_tys =
                         ty::no_late_bound_regions(
-                            fcx.tcx(), &ty::ty_fn_args(ctor_ty)).unwrap();
+                            fcx.tcx(), &ctor_ty.fn_args()).unwrap();
                     AdtVariant {
                         fields: args.iter().enumerate().map(|(index, arg)| {
                             let arg_ty = arg_tys[index];

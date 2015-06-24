@@ -656,7 +656,9 @@ fn is_useful(cx: &MatchCheckCtxt,
         let left_ty = ty::pat_ty(cx.tcx, &*real_pat);
 
         match real_pat.node {
-            ast::PatIdent(ast::BindByRef(..), _, _) => ty::deref(left_ty, false).unwrap().ty,
+            ast::PatIdent(ast::BindByRef(..), _, _) => {
+                left_ty.builtin_deref(false).unwrap().ty
+            }
             _ => left_ty,
         }
     };

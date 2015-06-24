@@ -917,7 +917,7 @@ fn trans_args_under_call_abi<'blk, 'tcx>(
 {
     let args =
         ty::erase_late_bound_regions(
-            bcx.tcx(), &ty::ty_fn_args(fn_ty));
+            bcx.tcx(), &fn_ty.fn_args());
 
     // Translate the `self` argument first.
     if !ignore_self {
@@ -978,7 +978,7 @@ fn trans_overloaded_call_args<'blk, 'tcx>(
                               ignore_self: bool)
                               -> Block<'blk, 'tcx> {
     // Translate the `self` argument first.
-    let arg_tys = ty::erase_late_bound_regions(bcx.tcx(),  &ty::ty_fn_args(fn_ty));
+    let arg_tys = ty::erase_late_bound_regions(bcx.tcx(),  &fn_ty.fn_args());
     if !ignore_self {
         let arg_datum = unpack_datum!(bcx, expr::trans(bcx, arg_exprs[0]));
         bcx = trans_arg_datum(bcx,
@@ -1024,8 +1024,8 @@ pub fn trans_args<'a, 'blk, 'tcx>(cx: Block<'blk, 'tcx>,
     debug!("trans_args(abi={})", abi);
 
     let _icx = push_ctxt("trans_args");
-    let arg_tys = ty::erase_late_bound_regions(cx.tcx(), &ty::ty_fn_args(fn_ty));
-    let variadic = ty::fn_is_variadic(fn_ty);
+    let arg_tys = ty::erase_late_bound_regions(cx.tcx(), &fn_ty.fn_args());
+    let variadic = fn_ty.fn_sig().0.variadic;
 
     let mut bcx = cx;
 
