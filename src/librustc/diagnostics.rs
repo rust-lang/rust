@@ -1018,7 +1018,7 @@ const foo: i32 = 42;
 const baz: *const i32 = (&foo as *const i32);
 
 const deref: i32 = *baz;
-// error: raw pointers cannot be dereferenced in constants!
+// error: raw pointers cannot be dereferenced in constants
 ```
 
 To fix this error, please do not assign this value to a constant expression.
