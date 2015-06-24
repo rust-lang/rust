@@ -315,7 +315,8 @@ impl<K: Ord, V> BTreeMap<K, V> {
     // See `keyed_get` for implementation notes, this is basically a copy-paste with mut's added
     #[unstable(feature = "collection_keyed",
             reason="keyed was recently added")]
-    pub fn keyed_get_mut<Q: ?Sized>(&mut self, key: &Q) -> Option<(&K, &mut V)> where K: Borrow<Q>, Q: Ord {
+    pub fn keyed_get_mut<Q: ?Sized>(&mut self, key: &Q) -> Option<(&K, &mut V)> where
+            K: Borrow<Q>, Q: Ord {
         // temp_node is a Borrowck hack for having a mutable value outlive a loop iteration
         let mut temp_node = &mut self.root;
         loop {
