@@ -920,7 +920,7 @@ then
     LLVM_VERSION=$($LLVM_CONFIG --version)
 
     case $LLVM_VERSION in
-        (3.[5-6]*)
+        (3.[5-7]*)
             msg "found ok version of LLVM: $LLVM_VERSION"
             ;;
         (*)
