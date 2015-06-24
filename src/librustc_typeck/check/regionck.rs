@@ -124,7 +124,7 @@ pub fn regionck_expr(fcx: &FnCtxt, e: &ast::Expr) {
 pub fn regionck_item(fcx: &FnCtxt, item: &ast::Item) {
     let mut rcx = Rcx::new(fcx, RepeatingScope(item.id), item.id, Subject(item.id));
     let tcx = fcx.tcx();
-    rcx.free_region_map.relate_free_regions_from_predicates(tcx, &fcx.inh.param_env.caller_bounds);
+    rcx.free_region_map.relate_free_regions_from_predicates(tcx, &fcx.inh.infcx.parameter_environment.caller_bounds);
     rcx.visit_region_obligations(item.id);
     rcx.resolve_regions_and_report_errors();
 }
@@ -143,7 +143,7 @@ pub fn regionck_fn(fcx: &FnCtxt,
     }
 
     let tcx = fcx.tcx();
-    rcx.free_region_map.relate_free_regions_from_predicates(tcx, &fcx.inh.param_env.caller_bounds);
+    rcx.free_region_map.relate_free_regions_from_predicates(tcx, &fcx.inh.infcx.parameter_environment.caller_bounds);
 
     rcx.resolve_regions_and_report_errors();
 
@@ -254,7 +254,7 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
     }
 
     fn resolve_method_type(&self, method_call: MethodCall) -> Option<Ty<'tcx>> {
-        let method_ty = self.fcx.inh.method_map.borrow()
+        let method_ty = self.fcx.inh.tables.borrow().method_map
                             .get(&method_call).map(|method| method.ty);
         method_ty.map(|method_ty| self.resolve_type(method_ty))
     }
@@ -267,7 +267,7 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
         } else {
             ty_unadjusted.adjust(
                 self.fcx.tcx(), expr.span, expr.id,
-                self.fcx.inh.adjustments.borrow().get(&expr.id),
+                self.fcx.inh.tables.borrow().adjustments.get(&expr.id),
                 |method_call| self.resolve_method_type(method_call))
         }
     }
@@ -511,12 +511,13 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
                       expr_ty, ty::ReScope(CodeExtent::from_node_id(expr.id)));
 
     let method_call = MethodCall::expr(expr.id);
-    let has_method_map = rcx.fcx.inh.method_map.borrow().contains_key(&method_call);
+    let has_method_map = rcx.fcx.inh.tables.borrow().method_map.contains_key(&method_call);
 
     // Check any autoderefs or autorefs that appear.
-    if let Some(adjustment) = rcx.fcx.inh.adjustments.borrow().get(&expr.id) {
+    let adjustment = rcx.fcx.inh.tables.borrow().adjustments.get(&expr.id).map(|a| a.clone());
+    if let Some(adjustment) = adjustment {
         debug!("adjustment={:?}", adjustment);
-        match *adjustment {
+        match adjustment {
             ty::AdjustDerefRef(ty::AutoDerefRef {autoderefs, ref autoref, ..}) => {
                 let expr_ty = rcx.resolve_node_type(expr.id);
                 constrain_autoderefs(rcx, expr, autoderefs, expr_ty);
@@ -657,7 +658,7 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
         ast::ExprUnary(ast::UnDeref, ref base) => {
             // For *a, the lifetime of a must enclose the deref
             let method_call = MethodCall::expr(expr.id);
-            let base_ty = match rcx.fcx.inh.method_map.borrow().get(&method_call) {
+            let base_ty = match rcx.fcx.inh.tables.borrow().method_map.get(&method_call) {
                 Some(method) => {
                     constrain_call(rcx, expr, Some(&**base),
                                    None::<ast::Expr>.iter(), true);
@@ -884,7 +885,9 @@ fn constrain_autoderefs<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
         let method_call = MethodCall::autoderef(deref_expr.id, i as u32);
         debug!("constrain_autoderefs: method_call={:?} (of {:?} total)", method_call, derefs);
 
-        derefd_ty = match rcx.fcx.inh.method_map.borrow().get(&method_call) {
+        let method = rcx.fcx.inh.tables.borrow().method_map.get(&method_call).map(|m| m.clone());
+
+        derefd_ty = match method {
             Some(method) => {
                 debug!("constrain_autoderefs: #{} is overloaded, method={:?}",
                        i, method);
@@ -1018,7 +1021,7 @@ fn type_of_node_must_outlive<'a, 'tcx>(
     // report errors later on in the writeback phase.
     let ty0 = rcx.resolve_node_type(id);
     let ty = ty0.adjust(tcx, origin.span(), id,
-                        rcx.fcx.inh.adjustments.borrow().get(&id),
+                        rcx.fcx.inh.tables.borrow().adjustments.get(&id),
                         |method_call| rcx.resolve_method_type(method_call));
     debug!("constrain_regions_in_type_of_node(\
             ty={}, ty0={}, id={}, minimum_lifetime={:?})",
@@ -1292,7 +1295,7 @@ fn link_reborrowed_region<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
     // Detect by-ref upvar `x`:
     let cause = match note {
         mc::NoteUpvarRef(ref upvar_id) => {
-            let upvar_capture_map = rcx.fcx.inh.upvar_capture_map.borrow_mut();
+            let upvar_capture_map = &rcx.fcx.inh.tables.borrow_mut().upvar_capture_map;
             match upvar_capture_map.get(upvar_id) {
                 Some(&ty::UpvarCapture::ByRef(ref upvar_borrow)) => {
                     // The mutability of the upvar may have been modified
@@ -1453,7 +1456,7 @@ fn generic_must_outlive<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
                                   origin: infer::SubregionOrigin<'tcx>,
                                   region: ty::Region,
                                   generic: &GenericKind<'tcx>) {
-    let param_env = &rcx.fcx.inh.param_env;
+    let param_env = &rcx.fcx.inh.infcx.parameter_environment;
 
     debug!("param_must_outlive(region={:?}, generic={:?})",
            region,

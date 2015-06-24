@@ -1446,7 +1446,7 @@ impl LintPass for UnusedAllocation {
             _ => return
         }
 
-        if let Some(adjustment) = cx.tcx.adjustments.borrow().get(&e.id) {
+        if let Some(adjustment) = cx.tcx.tables.borrow().adjustments.get(&e.id) {
             if let ty::AdjustDerefRef(ty::AutoDerefRef { ref autoref, .. }) = *adjustment {
                 match autoref {
                     &Some(ty::AutoPtr(_, ast::MutImmutable)) => {
@@ -1984,7 +1984,7 @@ impl LintPass for UnconditionalRecursion {
                                           method_id: ast::NodeId,
                                           method_name: ast::Ident,
                                           id: ast::NodeId) -> bool {
-            let did = match tcx.method_map.borrow().get(&ty::MethodCall::expr(id)) {
+            let did = match tcx.tables.borrow().method_map.get(&ty::MethodCall::expr(id)) {
                 None => return false,
                 Some(m) => match m.origin {
                     // There's no way to know if a method call via a

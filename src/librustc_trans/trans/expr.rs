@@ -117,7 +117,7 @@ pub fn trans_into<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     debuginfo::set_source_location(bcx.fcx, expr.id, expr.span);
 
-    if bcx.tcx().adjustments.borrow().contains_key(&expr.id) {
+    if bcx.tcx().tables.borrow().adjustments.contains_key(&expr.id) {
         // use trans, which may be less efficient but
         // which will perform the adjustments:
         let datum = unpack_datum!(bcx, trans(bcx, expr));
@@ -345,7 +345,7 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 {
     let mut bcx = bcx;
     let mut datum = datum;
-    let adjustment = match bcx.tcx().adjustments.borrow().get(&expr.id).cloned() {
+    let adjustment = match bcx.tcx().tables.borrow().adjustments.get(&expr.id).cloned() {
         None => {
             return DatumBlock::new(bcx, datum);
         }
@@ -372,7 +372,7 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                     // Don't skip a conversion from Box<T> to &T, etc.
                     ty::TyRef(..) => {
                         let method_call = MethodCall::autoderef(expr.id, 0);
-                        if bcx.tcx().method_map.borrow().contains_key(&method_call) {
+                        if bcx.tcx().tables.borrow().method_map.contains_key(&method_call) {
                             // Don't skip an overloaded deref.
                             0
                         } else {
@@ -774,8 +774,9 @@ fn trans_index<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     // Check for overloaded index.
     let method_ty = ccx.tcx()
-                       .method_map
+                       .tables
                        .borrow()
+                       .method_map
                        .get(&method_call)
                        .map(|method| method.ty);
     let elt_datum = match method_ty {
@@ -1617,7 +1618,7 @@ fn trans_unary<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     // Otherwise, we should be in the RvalueDpsExpr path.
     assert!(
         op == ast::UnDeref ||
-        !ccx.tcx().method_map.borrow().contains_key(&method_call));
+        !ccx.tcx().tables.borrow().method_map.contains_key(&method_call));
 
     let un_ty = expr_ty(bcx, expr);
 
@@ -1910,7 +1911,7 @@ fn trans_binary<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let ccx = bcx.ccx();
 
     // if overloaded, would be RvalueDpsExpr
-    assert!(!ccx.tcx().method_map.borrow().contains_key(&MethodCall::expr(expr.id)));
+    assert!(!ccx.tcx().tables.borrow().method_map.contains_key(&MethodCall::expr(expr.id)));
 
     match op.node {
         ast::BiAnd => {
@@ -1950,7 +1951,12 @@ fn trans_overloaded_op<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                    dest: Option<Dest>,
                                    autoref: bool)
                                    -> Result<'blk, 'tcx> {
-    let method_ty = bcx.tcx().method_map.borrow().get(&method_call).unwrap().ty;
+    let method_ty = bcx.tcx()
+                       .tables
+                       .borrow()
+                       .method_map
+                       .get(&method_call).unwrap().ty;
+
     callee::trans_call_inner(bcx,
                              expr.debug_loc(),
                              monomorphize_type(bcx, method_ty),
@@ -1973,8 +1979,9 @@ fn trans_overloaded_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     debug!("trans_overloaded_call {}", expr.id);
     let method_call = MethodCall::expr(expr.id);
     let method_type = bcx.tcx()
-                         .method_map
+                         .tables
                          .borrow()
+                         .method_map
                          .get(&method_call)
                          .unwrap()
                          .ty;
@@ -2154,7 +2161,7 @@ fn trans_assign_op<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     debug!("trans_assign_op(expr={:?})", expr);
 
     // User-defined operator methods cannot be used with `+=` etc right now
-    assert!(!bcx.tcx().method_map.borrow().contains_key(&MethodCall::expr(expr.id)));
+    assert!(!bcx.tcx().tables.borrow().method_map.contains_key(&MethodCall::expr(expr.id)));
 
     // Evaluate LHS (destination), which should be an lvalue
     let dst_datum = unpack_datum!(bcx, trans_to_lvalue(bcx, dst, "assign_op"));
@@ -2229,8 +2236,12 @@ fn deref_once<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let mut bcx = bcx;
 
     // Check for overloaded deref.
-    let method_ty = ccx.tcx().method_map.borrow()
+    let method_ty = ccx.tcx()
+                       .tables
+                       .borrow()
+                       .method_map
                        .get(&method_call).map(|method| method.ty);
+
     let datum = match method_ty {
         Some(method_ty) => {
             let method_ty = monomorphize_type(bcx, method_ty);
@@ -2615,7 +2626,7 @@ enum ExprKind {
 }
 
 fn expr_kind(tcx: &ty::ctxt, expr: &ast::Expr) -> ExprKind {
-    if tcx.method_map.borrow().contains_key(&MethodCall::expr(expr.id)) {
+    if tcx.tables.borrow().method_map.contains_key(&MethodCall::expr(expr.id)) {
         // Overloaded operations are generally calls, and hence they are
         // generated via DPS, but there are a few exceptions:
         return match expr.node {

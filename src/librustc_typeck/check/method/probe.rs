@@ -477,7 +477,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         // FIXME -- Do we want to commit to this behavior for param bounds?
 
         let bounds: Vec<_> =
-            self.fcx.inh.param_env.caller_bounds
+            self.fcx.inh.infcx.parameter_environment.caller_bounds
             .iter()
             .filter_map(|predicate| {
                 match *predicate {
@@ -742,7 +742,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                 _ => continue,
             };
 
-            let closure_kinds = self.fcx.inh.closure_kinds.borrow();
+            let closure_kinds = &self.fcx.inh.tables.borrow().closure_kinds;
             let closure_kind = match closure_kinds.get(&closure_def_id) {
                 Some(&k) => k,
                 None => {
@@ -845,7 +845,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         debug!("assemble_where_clause_candidates(trait_def_id={:?})",
                trait_def_id);
 
-        let caller_predicates = self.fcx.inh.param_env.caller_bounds.clone();
+        let caller_predicates = self.fcx.inh.infcx.parameter_environment.caller_bounds.clone();
         for poly_bound in traits::elaborate_predicates(self.tcx(), caller_predicates)
                           .filter_map(|p| p.to_opt_poly_trait_ref())
                           .filter(|b| b.def_id() == trait_def_id)
