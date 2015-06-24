@@ -360,7 +360,7 @@ impl<'tcx> DeferredCallResolution<'tcx> for CallResolution<'tcx> {
                 // refactor it.)
                 let method_sig =
                     ty::no_late_bound_regions(fcx.tcx(),
-                                              ty::ty_fn_sig(method_callee.ty)).unwrap();
+                                              method_callee.ty.fn_sig()).unwrap();
 
                 debug!("attempt_resolution: method_callee={:?}",
                        method_callee);

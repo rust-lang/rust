@@ -640,7 +640,7 @@ impl<'tcx, K: KindOps + fmt::Debug> Datum<'tcx, K> {
     }
 
     pub fn to_llbool<'blk>(self, bcx: Block<'blk, 'tcx>) -> ValueRef {
-        assert!(ty::type_is_bool(self.ty));
+        assert!(self.ty.is_bool());
         self.to_llscalarish(bcx)
     }
 }

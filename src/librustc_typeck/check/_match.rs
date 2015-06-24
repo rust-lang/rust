@@ -90,7 +90,7 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
             let rhs_ty = fcx.expr_ty(end);
 
             // Check that both end-points are of numeric or char type.
-            let numeric_or_char = |t| ty::type_is_numeric(t) || ty::type_is_char(t);
+            let numeric_or_char = |ty: Ty| ty.is_numeric() || ty.is_char();
             let lhs_compat = numeric_or_char(lhs_ty);
             let rhs_compat = numeric_or_char(rhs_ty);
 
@@ -303,8 +303,8 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                     let region = fcx.infcx().next_region_var(infer::PatternRegion(pat.span));
                     ty::mk_slice(tcx, tcx.mk_region(region), ty::mt {
                         ty: inner_ty,
-                        mutbl: ty::deref(expected_ty, true).map(|mt| mt.mutbl)
-                                                           .unwrap_or(ast::MutImmutable)
+                        mutbl: expected_ty.builtin_deref(true).map(|mt| mt.mutbl)
+                                                              .unwrap_or(ast::MutImmutable)
                     })
                 }
             };
@@ -321,7 +321,7 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
             }
             if let Some(ref slice) = *slice {
                 let region = fcx.infcx().next_region_var(infer::PatternRegion(pat.span));
-                let mutbl = ty::deref(expected_ty, true)
+                let mutbl = expected_ty.builtin_deref(true)
                     .map_or(ast::MutImmutable, |mt| mt.mutbl);
 
                 let slice_ty = ty::mk_slice(tcx, tcx.mk_region(region), ty::mt {
@@ -411,7 +411,7 @@ pub fn check_dereferencable<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
     let tcx = pcx.fcx.ccx.tcx;
     if pat_is_binding(&tcx.def_map, inner) {
         let expected = fcx.infcx().shallow_resolve(expected);
-        ty::deref(expected, true).map_or(true, |mt| match mt.ty.sty {
+        expected.builtin_deref(true).map_or(true, |mt| match mt.ty.sty {
             ty::TyTrait(_) => {
                 // This is "x = SomeTrait" being reduced from
                 // "let &x = &SomeTrait" or "let box x = Box<SomeTrait>", an error.
@@ -633,8 +633,8 @@ pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
 
     let ctor_scheme = ty::lookup_item_type(tcx, enum_def);
     let ctor_predicates = ty::lookup_predicates(tcx, enum_def);
-    let path_scheme = if ty::is_fn_ty(ctor_scheme.ty) {
-        let fn_ret = ty::no_late_bound_regions(tcx, &ty::ty_fn_ret(ctor_scheme.ty)).unwrap();
+    let path_scheme = if ctor_scheme.ty.is_fn() {
+        let fn_ret = ty::no_late_bound_regions(tcx, &ctor_scheme.ty.fn_ret()).unwrap();
         ty::TypeScheme {
             ty: fn_ret.unwrap(),
             generics: ctor_scheme.generics,

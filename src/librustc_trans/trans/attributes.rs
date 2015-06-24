@@ -262,7 +262,7 @@ pub fn from_fn_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_type: ty::Ty<'tcx
                     attrs.arg(idx, llvm::DereferenceableAttribute(llsz));
                 } else {
                     attrs.arg(idx, llvm::NonNullAttribute);
-                    if ty::type_is_trait(inner) {
+                    if inner.is_trait() {
                         attrs.arg(idx + 1, llvm::NonNullAttribute);
                     }
                 }
@@ -291,7 +291,7 @@ pub fn from_fn_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_type: ty::Ty<'tcx
                     attrs.arg(idx, llvm::DereferenceableAttribute(llsz));
                 } else {
                     attrs.arg(idx, llvm::NonNullAttribute);
-                    if ty::type_is_trait(mt.ty) {
+                    if mt.ty.is_trait() {
                         attrs.arg(idx + 1, llvm::NonNullAttribute);
                     }
                 }

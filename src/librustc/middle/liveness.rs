@@ -1137,9 +1137,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
           }
 
           ast::ExprCall(ref f, ref args) => {
-            let diverges = !self.ir.tcx.is_method_call(expr.id) && {
-                ty::ty_fn_ret(ty::expr_ty_adjusted(self.ir.tcx, &**f)).diverges()
-            };
+            let diverges = !self.ir.tcx.is_method_call(expr.id) &&
+                ty::expr_ty_adjusted(self.ir.tcx, &**f).fn_ret().diverges();
             let succ = if diverges {
                 self.s.exit_ln
             } else {
@@ -1152,8 +1151,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
           ast::ExprMethodCall(_, _, ref args) => {
             let method_call = ty::MethodCall::expr(expr.id);
             let method_ty = self.ir.tcx.method_map.borrow().get(&method_call).unwrap().ty;
-            let diverges = ty::ty_fn_ret(method_ty).diverges();
-            let succ = if diverges {
+            let succ = if method_ty.fn_ret().diverges() {
                 self.s.exit_ln
             } else {
                 succ
@@ -1500,8 +1498,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         match fn_ty.sty {
             ty::TyClosure(closure_def_id, substs) =>
                 self.ir.tcx.closure_type(closure_def_id, substs).sig.output(),
-            _ =>
-                ty::ty_fn_ret(fn_ty),
+            _ => fn_ty.fn_ret()
         }
     }
 
@@ -1523,7 +1520,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             ty::FnConverging(t_ret)
                 if self.live_on_entry(entry_ln, self.s.no_ret_var).is_some() => {
 
-                if ty::type_is_nil(t_ret) {
+                if t_ret.is_nil() {
                     // for nil return types, it is ok to not return a value expl.
                 } else {
                     let ends_with_stmt = match body.expr {

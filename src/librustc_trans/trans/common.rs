@@ -155,7 +155,7 @@ pub fn type_needs_unwind_cleanup<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<
         }
 
         let mut needs_unwind_cleanup = false;
-        ty::maybe_walk_ty(ty, |ty| {
+        ty.maybe_walk(|ty| {
             needs_unwind_cleanup |= match ty.sty {
                 ty::TyBool | ty::TyInt(_) | ty::TyUint(_) |
                 ty::TyFloat(_) | ty::TyTuple(_) | ty::TyRawPtr(_) => false,
@@ -234,10 +234,10 @@ pub fn type_is_immediate<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -
     use trans::type_of::sizing_type_of;
 
     let tcx = ccx.tcx();
-    let simple = ty::type_is_scalar(ty) ||
-        ty::type_is_unique(ty) || ty::type_is_region_ptr(ty) ||
+    let simple = ty.is_scalar() ||
+        ty.is_unique() || ty.is_region_ptr() ||
         type_is_newtype_immediate(ccx, ty) ||
-        ty::type_is_simd(tcx, ty);
+        ty.is_simd(tcx);
     if simple && !type_is_fat_ptr(tcx, ty) {
         return true;
     }
@@ -267,7 +267,7 @@ pub fn type_is_zero_size<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -
 /// zero-size, but not all zero-size types use a `void` return type (in order to aid with C ABI
 /// compatibility).
 pub fn return_type_is_void(ccx: &CrateContext, ty: Ty) -> bool {
-    ty::type_is_nil(ty) || ty::type_is_empty(ccx.tcx(), ty)
+    ty.is_nil() || ty::type_is_empty(ccx.tcx(), ty)
 }
 
 /// Generates a unique symbol based off the name given. This is used to create

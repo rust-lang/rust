@@ -1192,7 +1192,7 @@ fn prepare_struct_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         struct_llvm_type,
         StructMDF(StructMemberDescriptionFactory {
             fields: fields,
-            is_simd: ty::type_is_simd(cx.tcx(), struct_type),
+            is_simd: struct_type.is_simd(cx.tcx()),
             span: span,
         })
     )

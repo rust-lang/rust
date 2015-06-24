@@ -416,7 +416,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         let return_type = monomorphize::apply_param_substs(cx.tcx(),
                                                            param_substs,
                                                            &return_type);
-        if ty::type_is_nil(return_type) {
+        if return_type.is_nil() {
             signature.push(ptr::null_mut())
         } else {
             signature.push(type_metadata(cx, return_type, codemap::DUMMY_SP));

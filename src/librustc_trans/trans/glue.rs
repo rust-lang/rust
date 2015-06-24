@@ -392,7 +392,7 @@ pub fn size_and_align_of_dst<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, in
             let ccx = bcx.ccx();
             // First get the size of all statically known fields.
             // Don't use type_of::sizing_type_of because that expects t to be sized.
-            assert!(!ty::type_is_simd(bcx.tcx(), t));
+            assert!(!t.is_simd(bcx.tcx()));
             let repr = adt::represent_type(ccx, t);
             let sizing_type = adt::sizing_type_of(ccx, &*repr, true);
             let sized_size = C_uint(ccx, llsize_of_alloc(ccx, sizing_type));
@@ -426,7 +426,7 @@ pub fn size_and_align_of_dst<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, in
             (Load(bcx, size_ptr), Load(bcx, align_ptr))
         }
         ty::TySlice(_) | ty::TyStr => {
-            let unit_ty = ty::sequence_element_type(bcx.tcx(), t);
+            let unit_ty = t.sequence_element_type(bcx.tcx());
             // The info in this case is the length of the str, so the size is that
             // times the unit size.
             let llunit_ty = sizing_type_of(bcx.ccx(), unit_ty);

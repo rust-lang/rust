@@ -306,7 +306,7 @@ fn contains_illegal_self_type_reference<'tcx>(tcx: &ty::ctxt<'tcx>,
 
     let mut supertraits: Option<Vec<ty::PolyTraitRef<'tcx>>> = None;
     let mut error = false;
-    ty::maybe_walk_ty(ty, |ty| {
+    ty.maybe_walk(|ty| {
         match ty.sty {
             ty::TyParam(ref param_ty) => {
                 if param_ty.space == SelfSpace {

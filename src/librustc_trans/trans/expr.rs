@@ -252,7 +252,7 @@ pub fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             let llty = type_of::type_of(bcx.ccx(), const_ty);
             // HACK(eddyb) get around issues with lifetime intrinsics.
             let scratch = alloca_no_lifetime(bcx, llty, "const");
-            let lldest = if !ty::type_is_structural(const_ty) {
+            let lldest = if !const_ty.is_structural() {
                 // Cast pointer to slot, because constants have different types.
                 PointerCast(bcx, scratch, val_ty(global))
             } else {
@@ -790,8 +790,8 @@ fn trans_index<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
             let ref_ty = // invoked methods have LB regions instantiated:
                 ty::no_late_bound_regions(
-                    bcx.tcx(), &ty::ty_fn_ret(method_ty)).unwrap().unwrap();
-            let elt_ty = match ty::deref(ref_ty, true) {
+                    bcx.tcx(), &method_ty.fn_ret()).unwrap().unwrap();
+            let elt_ty = match ref_ty.builtin_deref(true) {
                 None => {
                     bcx.tcx().sess.span_bug(index_expr.span,
                                             "index method didn't return a \
@@ -835,7 +835,7 @@ fn trans_index<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                                       ccx.int_type());
             let ix_val = {
                 if ix_size < int_size {
-                    if ty::type_is_signed(expr_ty(bcx, idx)) {
+                    if expr_ty(bcx, idx).is_signed() {
                         SExt(bcx, ix_val, ccx.int_type())
                     } else { ZExt(bcx, ix_val, ccx.int_type()) }
                 } else if ix_size > int_size {
@@ -845,7 +845,7 @@ fn trans_index<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 }
             };
 
-            let unit_ty = ty::sequence_element_type(bcx.tcx(), base_datum.ty);
+            let unit_ty = base_datum.ty.sequence_element_type(bcx.tcx());
 
             let (base, len) = base_datum.get_vec_base_and_len(bcx);
 
@@ -1490,7 +1490,7 @@ pub fn trans_adt<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     // panic occur before the ADT as a whole is ready.
     let custom_cleanup_scope = fcx.push_custom_cleanup_scope();
 
-    if ty::type_is_simd(bcx.tcx(), ty) {
+    if ty.is_simd(bcx.tcx()) {
         // Issue 23112: The original logic appeared vulnerable to same
         // order-of-eval bug. But, SIMD values are tuple-structs;
         // i.e. functional record update (FRU) syntax is unavailable.
@@ -1626,11 +1626,11 @@ fn trans_unary<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             let datum = unpack_datum!(bcx, trans(bcx, sub_expr));
             let val = datum.to_llscalarish(bcx);
             let (bcx, llneg) = {
-                if ty::type_is_fp(un_ty) {
+                if un_ty.is_fp() {
                     let result = FNeg(bcx, val, debug_loc);
                     (bcx, result)
                 } else {
-                    let is_signed = ty::type_is_signed(un_ty);
+                    let is_signed = un_ty.is_signed();
                     let result = Neg(bcx, val, debug_loc);
                     let bcx = if bcx.ccx().check_overflow() && is_signed {
                         let (llty, min) = base::llty_and_min_for_signed_ty(bcx, un_ty);
@@ -1735,14 +1735,14 @@ fn trans_eager_binop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let _icx = push_ctxt("trans_eager_binop");
 
     let tcx = bcx.tcx();
-    let is_simd = ty::type_is_simd(tcx, lhs_t);
+    let is_simd = lhs_t.is_simd(tcx);
     let intype = if is_simd {
-        ty::simd_type(tcx, lhs_t)
+        lhs_t.simd_type(tcx)
     } else {
         lhs_t
     };
-    let is_float = ty::type_is_fp(intype);
-    let is_signed = ty::type_is_signed(intype);
+    let is_float = intype.is_fp();
+    let is_signed = intype.is_signed();
     let info = expr_info(binop_expr);
 
     let binop_debug_loc = binop_expr.debug_loc();
@@ -1999,7 +1999,7 @@ pub fn cast_is_noop<'tcx>(tcx: &ty::ctxt<'tcx>,
         return true;
     }
 
-    match (ty::deref(t_in, true), ty::deref(t_out, true)) {
+    match (t_in.builtin_deref(true), t_out.builtin_deref(true)) {
         (Some(ty::mt{ ty: t_in, .. }), Some(ty::mt{ ty: t_out, .. })) => {
             t_in == t_out
         }
@@ -2108,7 +2108,7 @@ fn trans_imm_cast<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         ll_t_in = val_ty(discr);
         (discr, adt::is_discr_signed(&*repr))
     } else {
-        (datum.to_llscalarish(bcx), ty::type_is_signed(t_in))
+        (datum.to_llscalarish(bcx), t_in.is_signed())
     };
 
     let newval = match (r_t_in, r_t_out) {
@@ -2242,7 +2242,7 @@ fn deref_once<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
             let ref_ty = // invoked methods have their LB regions instantiated
                 ty::no_late_bound_regions(
-                    ccx.tcx(), &ty::ty_fn_ret(method_ty)).unwrap().unwrap();
+                    ccx.tcx(), &method_ty.fn_ret()).unwrap().unwrap();
             let scratch = rvalue_scratch_datum(bcx, ref_ty, "overloaded_deref");
 
             unpack_result!(bcx, trans_overloaded_op(bcx, expr, method_call,
@@ -2545,13 +2545,13 @@ fn build_unchecked_rshift<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     // #1877, #10183: Ensure that input is always valid
     let rhs = shift_mask_rhs(bcx, rhs, binop_debug_loc);
     let tcx = bcx.tcx();
-    let is_simd = ty::type_is_simd(tcx, lhs_t);
+    let is_simd = lhs_t.is_simd(tcx);
     let intype = if is_simd {
-        ty::simd_type(tcx, lhs_t)
+        lhs_t.simd_type(tcx)
     } else {
         lhs_t
     };
-    let is_signed = ty::type_is_signed(intype);
+    let is_signed = intype.is_signed();
     if is_signed {
         AShr(bcx, lhs, rhs, binop_debug_loc)
     } else {

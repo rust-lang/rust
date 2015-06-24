@@ -40,7 +40,7 @@ use middle::cfg;
 use middle::lang_items::{LangItem, ExchangeMallocFnLangItem, StartFnLangItem};
 use middle::weak_lang_items;
 use middle::subst::Substs;
-use middle::ty::{self, Ty, ClosureTyper, type_is_simd, simd_size, HasTypeFlags};
+use middle::ty::{self, Ty, ClosureTyper, HasTypeFlags};
 use rustc::ast_map;
 use session::config::{self, NoDebugInfo};
 use session::Session;
@@ -443,11 +443,11 @@ pub fn iter_structural_ty<'blk, 'tcx, F>(cx: Block<'blk, 'tcx>,
       }
       ty::TyArray(_, n) => {
         let (base, len) = tvec::get_fixed_base_and_len(cx, data_ptr, n);
-        let unit_ty = ty::sequence_element_type(cx.tcx(), t);
+        let unit_ty = t.sequence_element_type(cx.tcx());
         cx = tvec::iter_vec_raw(cx, base, unit_ty, len, f);
       }
       ty::TySlice(_) | ty::TyStr => {
-        let unit_ty = ty::sequence_element_type(cx.tcx(), t);
+        let unit_ty = t.sequence_element_type(cx.tcx());
         cx = tvec::iter_vec_raw(cx, data_ptr, unit_ty, info.unwrap(), f);
       }
       ty::TyTuple(ref args) => {
@@ -626,9 +626,9 @@ pub fn fail_if_zero_or_overflows<'blk, 'tcx>(
             let zero = C_integral(Type::uint_from_ty(cx.ccx(), t), 0, false);
             (ICmp(cx, llvm::IntEQ, rhs, zero, debug_loc), false)
         }
-        ty::TyStruct(_, _) if type_is_simd(cx.tcx(), rhs_t) => {
+        ty::TyStruct(_, _) if rhs_t.is_simd(cx.tcx()) => {
             let mut res = C_bool(cx.ccx(), false);
-            for i in 0 .. simd_size(cx.tcx(), rhs_t) {
+            for i in 0 .. rhs_t.simd_size(cx.tcx()) {
                 res = Or(cx, res,
                          IsNull(cx,
                                 ExtractElement(cx, rhs, C_int(cx.ccx(), i as i64))), debug_loc);
@@ -805,13 +805,13 @@ pub fn load_ty<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
         }
     }
 
-    let val =  if ty::type_is_bool(t) {
+    let val =  if t.is_bool() {
         LoadRangeAssert(cx, ptr, 0, 2, llvm::False)
-    } else if ty::type_is_char(t) {
+    } else if t.is_char() {
         // a char is a Unicode codepoint, and so takes values from 0
         // to 0x10FFFF inclusive only.
         LoadRangeAssert(cx, ptr, 0, 0x10FFFF + 1, llvm::False)
-    } else if (ty::type_is_region_ptr(t) || ty::type_is_unique(t))
+    } else if (t.is_region_ptr() || t.is_unique())
         && !common::type_is_fat_ptr(cx.tcx(), t) {
             LoadNonNull(cx, ptr)
     } else {
@@ -839,7 +839,7 @@ pub fn store_ty<'blk, 'tcx>(cx: Block<'blk, 'tcx>, v: ValueRef, dst: ValueRef, t
 }
 
 pub fn from_arg_ty(bcx: Block, val: ValueRef, ty: Ty) -> ValueRef {
-    if ty::type_is_bool(ty) {
+    if ty.is_bool() {
         ZExt(bcx, val, Type::i8(bcx.ccx()))
     } else {
         val
@@ -847,7 +847,7 @@ pub fn from_arg_ty(bcx: Block, val: ValueRef, ty: Ty) -> ValueRef {
 }
 
 pub fn to_arg_ty(bcx: Block, val: ValueRef, ty: Ty) -> ValueRef {
-    if ty::type_is_bool(ty) {
+    if ty.is_bool() {
         Trunc(bcx, val, Type::i1(bcx.ccx()))
     } else {
         val
@@ -953,7 +953,7 @@ pub fn memcpy_ty<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                              t: Ty<'tcx>) {
     let _icx = push_ctxt("memcpy_ty");
     let ccx = bcx.ccx();
-    if ty::type_is_structural(t) {
+    if t.is_structural() {
         let llty = type_of::type_of(ccx, t);
         let llsz = llsize_of(ccx, llty);
         let llalign = type_of::align_of(ccx, t);
@@ -1669,8 +1669,8 @@ pub fn trans_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     debug!("trans_fn(param_substs={:?})", param_substs);
     let _icx = push_ctxt("trans_fn");
     let fn_ty = ty::node_id_to_type(ccx.tcx(), id);
-    let output_type = ty::erase_late_bound_regions(ccx.tcx(), &ty::ty_fn_ret(fn_ty));
-    let abi = ty::ty_fn_abi(fn_ty);
+    let output_type = ty::erase_late_bound_regions(ccx.tcx(), &fn_ty.fn_ret());
+    let abi = fn_ty.fn_abi();
     trans_closure(ccx, decl, body, llfndecl, param_substs, id, attrs, output_type, abi,
                   closure::ClosureEnv::NotClosure);
 }
@@ -1800,7 +1800,7 @@ fn trans_enum_variant_or_tuple_like_struct<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx
 
     let arg_tys =
         ty::erase_late_bound_regions(
-            ccx.tcx(), &ty::ty_fn_args(ctor_ty));
+            ccx.tcx(), &ctor_ty.fn_args());
 
     let arg_datums = create_datums_for_fn_args(bcx, &arg_tys[..]);
 
@@ -2334,7 +2334,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
                     unsafe {
                         // boolean SSA values are i1, but they have to be stored in i8 slots,
                         // otherwise some LLVM optimization passes don't work as expected
-                        let llty = if ty::type_is_bool(ty) {
+                        let llty = if ty.is_bool() {
                             llvm::LLVMInt8TypeInContext(ccx.llcx())
                         } else {
                             llvm::LLVMTypeOf(v)

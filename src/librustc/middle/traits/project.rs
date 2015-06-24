@@ -773,7 +773,7 @@ fn confirm_fn_pointer_candidate<'cx,'tcx>(
     -> (Ty<'tcx>, Vec<PredicateObligation<'tcx>>)
 {
     let fn_type = selcx.infcx().shallow_resolve(fn_type);
-    let sig = ty::ty_fn_sig(fn_type);
+    let sig = fn_type.fn_sig();
     confirm_callable_candidate(selcx, obligation, sig, util::TupleArgumentsFlag::Yes)
 }
 
