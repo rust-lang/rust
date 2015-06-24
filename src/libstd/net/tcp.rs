@@ -249,7 +249,8 @@ impl TcpListener {
     /// its documentation for concrete examples.
     #[unstable(feature = "tcp_backlog", reason = "recently added")]
     pub fn bind_backlog<A: ToSocketAddrs>(addr: A, tcp_backlog: i32) -> io::Result<TcpListener> {
-        super::each_addr(addr, |x| net_imp::TcpListener::bind_backlog(x, tcp_backlog)).map(TcpListener)
+        super::each_addr(addr, |x| net_imp::TcpListener::bind_backlog(x, tcp_backlog)
+                ).map(TcpListener)
     }
 
     /// Returns the local socket address of this listener.
