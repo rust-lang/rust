@@ -7772,7 +7772,7 @@ impl<'tcx> fmt::Debug for ObjectLifetimeDefault {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             ObjectLifetimeDefault::Ambiguous => write!(f, "Ambiguous"),
-            ObjectLifetimeDefault::BaseDefault => format!("BaseDefault"),
+            ObjectLifetimeDefault::BaseDefault => write!(f, "BaseDefault"),
             ObjectLifetimeDefault::Specific(ref r) => write!(f, "{:?}", r),
         }
     }
