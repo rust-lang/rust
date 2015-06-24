@@ -1641,6 +1641,7 @@ register_diagnostics! {
     E0324, // implemented a method when another trait item expected
     E0325, // implemented an associated type when another trait item expected
     E0327, // referred to method instead of constant in match pattern
+           // this error is unreachable
     E0328, // cannot implement Unsize explicitly
     E0329, // associated const depends on type parameter or Self.
     E0366, // dropck forbid specialization to concrete type or region
