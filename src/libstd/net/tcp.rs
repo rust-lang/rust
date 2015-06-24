@@ -236,6 +236,22 @@ impl TcpListener {
         super::each_addr(addr, net_imp::TcpListener::bind).map(TcpListener)
     }
 
+    /// Creates a new `TcpListener` which will be bound to the specified
+    /// address with the specific tcp backlog.
+    ///
+    /// The returned listener is ready for accepting connections.
+    ///
+    /// Binding with a port number of 0 will request that the OS assigns a port
+    /// to this listener. The port allocated can be queried via the
+    /// `socket_addr` function.
+    ///
+    /// The address type can be any implementer of `ToSocketAddrs` trait. See
+    /// its documentation for concrete examples.
+    #[unstable(feature = "tcp_backlog", reason = "recently added")]
+    pub fn bind_backlog<A: ToSocketAddrs>(addr: A, tcp_backlog: i32) -> io::Result<TcpListener> {
+        super::each_addr(addr, |x| net_imp::TcpListener::bind_backlog(x, tcp_backlog)).map(TcpListener)
+    }
+
     /// Returns the local socket address of this listener.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn local_addr(&self) -> io::Result<SocketAddr> {
@@ -270,6 +286,13 @@ impl TcpListener {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn incoming(&self) -> Incoming {
         Incoming { listener: self }
+    }
+
+    /// Sets the tcp backlog that defines the maximum length for the queue of
+    /// pending connections.
+    #[unstable(feature = "tcp_backlog", reason = "recently added")]
+    pub fn set_backlog(&self, backlog: i32) -> io::Result<()> {
+        self.0.set_backlog(backlog)
     }
 }
 
@@ -968,5 +991,87 @@ mod tests {
         });
         assert!(wait > Duration::from_millis(400));
         assert!(wait < Duration::from_millis(1600));
+    }
+
+    #[test]
+    fn listen_backlog_low() {
+        let socket_addr = next_test_ip4();
+        let len = 30;
+        let backlog = len / 10;
+        let listener = t!(TcpListener::bind_backlog(&socket_addr, backlog));
+
+        let (tx, rx) = channel();
+
+        for _ in 0..len {
+            let tx2 = tx.clone();
+            let _t = thread::spawn(move || {
+                tx2.send(TcpStream::connect(&("localhost", socket_addr.port())).is_ok());
+            });
+        }
+
+        let mut successes = 0;
+        for _ in 0..len {
+            if rx.recv().unwrap() { successes += 1; }
+        }
+
+        assert!(successes >= backlog);
+        // From BSD `listen(2)`
+        // The real maximum queue length will be 1.5 times more than the
+        // value specified in the backlog argument
+        assert!(successes <= backlog * 3 / 2 + 1);
+    }
+
+    #[test]
+    fn listen_backlog_high() {
+        let socket_addr = next_test_ip4();
+        let len = 30;
+        let backlog = len * 2;
+        let listener = t!(TcpListener::bind_backlog(&socket_addr, backlog));
+
+        let (tx, rx) = channel();
+
+        for _ in 0..len {
+            let tx2 = tx.clone();
+            let _t = thread::spawn(move || {
+                tx2.send(TcpStream::connect(&("localhost", socket_addr.port())).is_ok());
+            });
+        }
+
+        let mut successes = 0;
+        for _ in 0..len {
+            if rx.recv().unwrap() { successes += 1; }
+        }
+
+        assert_eq!(successes, len);
+    }
+
+    #[test]
+    fn listen_backlog_update() {
+        let socket_addr = next_test_ip4();
+        let len = 30;
+        let backlog = len / 10;
+
+        let listener = t!(TcpListener::bind(&socket_addr));
+        listener.set_backlog(backlog);
+
+        let (tx, rx) = channel();
+
+        for _ in 0..len {
+            let tx2 = tx.clone();
+            let _t = thread::spawn(move || {
+                tx2.send(TcpStream::connect(&("localhost", socket_addr.port())).is_ok());
+            });
+        }
+
+        let mut successes = 0;
+        for _ in 0..len {
+            if rx.recv().unwrap() { successes += 1; }
+        }
+
+        assert!(successes >= backlog);
+        // From BSD `listen(2)`
+        // The real maximum queue length will be 1.5 times more than the
+        // value specified in the backlog argument
+        assert!(successes <= backlog * 3 / 2 + 1);
     }
 }
