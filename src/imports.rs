@@ -75,7 +75,7 @@ impl<'a> FmtVisitor<'a> {
             indent: block_indent + indent,
             h_width: remaining_line_budget,
             v_width: remaining_multi_budget,
-            is_expression: true,
+            ends_with_newline: true,
         };
 
         // TODO handle any comments inbetween items.

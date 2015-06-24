@@ -107,21 +107,3 @@ fn main() {
       let x = "Hello!!!!!!!!! abcd  abcd abcd abcd abcd abcd\n abcd abcd abcd abcd abcd abcd abcd abcd abcd \
                    abcd  abcd abcd abcd abcd abcd abcd abcd abcd abcd \
                     abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd";  }
-
-
-fn struct_lits() {
-    let x = Bar;
-    // Comment
-    let y = Foo { a: x };
-    Foo { a: foo() /* comment*/, /* comment*/ b: bar(), ..something };
-    Fooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo { a: foo(), b: bar(), };
-    Fooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo {
-        // Comment
-        a: foo(), // Comment
-        // Comment
-        b: bar(), // Comment
-    };
-
-    Foo { a: Bar,
-          b: foo() };
-}

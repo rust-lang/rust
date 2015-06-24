@@ -49,7 +49,7 @@ pub struct ListFormatting<'a> {
     pub v_width: usize,
     // Non-expressions, e.g. items, will have a new line at the end of the list.
     // Important for comment styles.
-    pub is_expression: bool
+    pub ends_with_newline: bool
 }
 
 pub struct ListItem {
@@ -173,7 +173,9 @@ pub fn write_list<'b>(items: &[ListItem], formatting: &ListFormatting<'b>) -> St
             result.push_str(&rewrite_comment(comment,
                                              // Block style in non-vertical mode
                                              tactic != ListTactic::Vertical,
-                                             1000,
+                                             // Width restriction is only
+                                             // relevant in vertical mode.
+                                             formatting.v_width,
                                              formatting.indent));
 
             if tactic == ListTactic::Vertical {
@@ -188,10 +190,9 @@ pub fn write_list<'b>(items: &[ListItem], formatting: &ListFormatting<'b>) -> St
 
         // Post-comments
         if tactic != ListTactic::Vertical && item.post_comment.is_some() {
-            // We'll assume it'll fit on one line at this point
             let formatted_comment = rewrite_comment(item.post_comment.as_ref().unwrap(),
                                                     true,
-                                                    1000,
+                                                    formatting.v_width,
                                                     0);
 
             result.push(' ');
@@ -208,14 +209,11 @@ pub fn write_list<'b>(items: &[ListItem], formatting: &ListFormatting<'b>) -> St
             let offset = formatting.indent + item_width + 1;
             let comment = item.post_comment.as_ref().unwrap();
             // Use block-style only for the last item or multiline comments.
-            let block_style = formatting.is_expression && last ||
+            let block_style = formatting.ends_with_newline && last ||
                               comment.trim().contains('\n') ||
                               comment.trim().len() > width;
 
-            let formatted_comment = rewrite_comment(comment,
-                                                    block_style,
-                                                    width,
-                                                    offset);
+            let formatted_comment = rewrite_comment(comment, block_style, width, offset);
 
             result.push(' ');
             result.push_str(&formatted_comment);

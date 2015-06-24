@@ -308,7 +308,7 @@ impl<'a> FmtVisitor<'a> {
             indent: arg_indent,
             h_width: one_line_budget,
             v_width: multi_line_budget,
-            is_expression: true,
+            ends_with_newline: true,
         };
 
         write_list(&arg_items, &fmt)
@@ -458,7 +458,7 @@ impl<'a> FmtVisitor<'a> {
                         indent: indent,
                         h_width: budget,
                         v_width: budget,
-                        is_expression: false,
+                        ends_with_newline: false,
                     };
                     result.push_str(&write_list(&items, &fmt));
                     result.push(')');
@@ -578,7 +578,7 @@ impl<'a> FmtVisitor<'a> {
             indent: offset + self.config.tab_spaces,
             h_width: self.config.max_width,
             v_width: budget,
-            is_expression: false,
+            ends_with_newline: false,
         };
 
         result.push_str(&write_list(&items, &fmt));
@@ -728,7 +728,7 @@ impl<'a> FmtVisitor<'a> {
             indent: offset + 1,
             h_width: budget,
             v_width: budget,
-            is_expression: true,
+            ends_with_newline: true,
         };
         result.push_str(&write_list(&items, &fmt));
 
@@ -772,7 +772,7 @@ impl<'a> FmtVisitor<'a> {
             indent: indent + 10,
             h_width: budget,
             v_width: budget,
-            is_expression: true,
+            ends_with_newline: true,
         };
         result.push_str(&write_list(&items, &fmt));
 

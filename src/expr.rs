@@ -124,7 +124,7 @@ fn rewrite_call(context: &RewriteContext,
         indent: offset,
         h_width: remaining_width,
         v_width: remaining_width,
-        is_expression: true,
+        ends_with_newline: true,
     };
 
     Some(format!("{}({})", callee_str, write_list(&items, &fmt)))
@@ -212,7 +212,7 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
         indent: indent,
         h_width: budget,
         v_width: budget,
-        is_expression: true,
+        ends_with_newline: true,
     };
     let fields_str = write_list(&items, &fmt);
     Some(format!("{} {{ {} }}", path_str, fields_str))
@@ -267,7 +267,7 @@ fn rewrite_tuple_lit(context: &RewriteContext,
         indent: indent,
         h_width: width - 2,
         v_width: width - 2,
-        is_expression: true,
+        ends_with_newline: true,
     };
 
     Some(format!("({})", write_list(&items, &fmt)))

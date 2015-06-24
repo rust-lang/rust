@@ -6,19 +6,45 @@ fn main() {
     // Comment
     let y = Foo { a: x };
 
-    Foo { a: Bar, b: foo() };
+    Foo { a: foo(), // comment
+          // comment
+          b: bar(),
+          ..something };
 
-    Foo { a: foo(), b: bar(), ..something };
-
-    Foooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo { a: foo(), b: bar() };
     Fooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo { a: foo(),
                                                                                b: bar(), };
 
-    Fooooooooooooooooooooooooooooooooooooooooooooooooooooo { a: foo(),
-                                                             b: bar(),
-                                                             c: bar(),
-                                                             d: bar(),
-                                                             e: bar(),
-                                                             f: bar(),
-                                                             ..baz() };
+    Foooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo { // Comment
+                                                                                        a: foo(), /* C
+                                                                                                   * o
+                                                                                                   * m
+                                                                                                   * m
+                                                                                                   * e
+                                                                                                   * n
+                                                                                                   * t */
+                                                                                        // Comment
+                                                                                        b: bar(), /* C
+                                                                                                   * o
+                                                                                                   * m
+                                                                                                   * m
+                                                                                                   * e
+                                                                                                   * n
+                                                                                                   * t */ };
+
+    Foo { a: Bar, b: foo() };
+
+    A { // Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec a diam lectus. Sed sit
+        // amet ipsum mauris. Maecenas congue ligula ac quam viverra nec consectetur ante
+        // hendrerit. Donec et mollis dolor.
+        first: item(),
+        // Praesent et diam eget libero egestas mattis sit amet vitae augue.
+        // Nam tincidunt congue enim, ut porta lorem lacinia consectetur.
+        second: Item, };
+
+    Diagram { //                 o        This graph demonstrates how
+              //                / \       significant whitespace is
+              //               o   o      preserved.
+              //              /|\   \
+              //             o o o   o
+              graph: G, }
 }
