@@ -490,7 +490,7 @@ impl<V> VecMap<V> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get(&self, key: &usize) -> Option<&V> {
-        self.get_member(key).map(|x| x.1)
+        self.keyed_get(key).map(|x| x.1)
     }
 
     /// Returns a reference to the key and the value corresponding to the key.
@@ -499,17 +499,17 @@ impl<V> VecMap<V> {
     ///
     /// ```
     /// # #![feature(vecmap)]
-    /// # #![feature(collection_member)]
+    /// # #![feature(collection_keyed)]
     /// use std::collections::VecMap;
     ///
     /// let mut map = VecMap::new();
     /// map.insert(1, "a");
-    /// assert_eq!(map.get_member(&1), Some((&1, &"a")));
-    /// assert_eq!(map.get_member(&2), None);
+    /// assert_eq!(map.keyed_get(&1), Some((&1, &"a")));
+    /// assert_eq!(map.keyed_get(&2), None);
     /// ```
-    #[unstable(feature = "collection_member",
-            reason="member stuff is unclear")]
-    pub fn get_member<'a>(&self, key: &'a usize) -> Option<(&'a usize, &V)> {
+    #[unstable(feature = "collection_keyed",
+            reason="keyed was recently added")]
+    pub fn keyed_get<'a>(&self, key: &'a usize) -> Option<(&'a usize, &V)> {
         if *key < self.v.len() {
             match self.v[*key] {
               Some(ref value) => Some((key, value)),
@@ -556,9 +556,32 @@ impl<V> VecMap<V> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get_mut(&mut self, key: &usize) -> Option<&mut V> {
+        self.keyed_get_mut(key).map(|x| x.1)
+    }
+
+    /// Returns a mutable reference to the value corresponding to the key.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(collection_keyed)]
+    /// # #![feature(vecmap)]
+    /// use std::collections::VecMap;
+    ///
+    /// let mut map = VecMap::new();
+    /// map.insert(1, "a");
+    /// if let Some((key, x)) = map.keyed_get_mut(&1) {
+    ///     assert_eq!(key, &1);
+    ///     *x = "b";
+    /// }
+    /// assert_eq!(map[1], "b");
+    /// ```
+    #[unstable(feature = "collection_keyed",
+            reason="keyed was recently added")]
+    pub fn keyed_get_mut<'a>(&mut self, key: &'a usize) -> Option<(&'a usize, &mut V)> {
         if *key < self.v.len() {
             match *(&mut self.v[*key]) {
-              Some(ref mut value) => Some(value),
+              Some(ref mut value) => Some((key, value)),
               None => None
             }
         } else {
@@ -585,7 +608,7 @@ impl<V> VecMap<V> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn insert(&mut self, key: usize, value: V) -> Option<V> {
-        self.insert_member(key, value).map(|x| x.1)
+        self.keyed_insert(key, value).map(|x| x.1)
     }
 
     /// Inserts a key-value pair into the map. If the key already had a value
@@ -596,20 +619,20 @@ impl<V> VecMap<V> {
     ///
     /// ```
     /// # #![feature(vecmap)]
-    /// # #![feature(collection_member)]
+    /// # #![feature(collection_keyed)]
     /// use std::collections::VecMap;
     ///
     /// let mut map = VecMap::new();
-    /// assert_eq!(map.insert_member(37, "a"), None);
+    /// assert_eq!(map.keyed_insert(37, "a"), None);
     /// assert_eq!(map.is_empty(), false);
     ///
     /// map.insert(37, "b");
-    /// assert_eq!(map.insert_member(37, "c"), Some((37, "b")));
+    /// assert_eq!(map.keyed_insert(37, "c"), Some((37, "b")));
     /// assert_eq!(map[37], "c");
     /// ```
-    #[unstable(feature = "collection_member",
-            reason="member stuff is unclear")]
-    pub fn insert_member(&mut self, key: usize, value: V) -> Option<(usize, V)> {
+    #[unstable(feature = "collection_keyed",
+            reason="keyed was recently added")]
+    pub fn keyed_insert(&mut self, key: usize, value: V) -> Option<(usize, V)> {
         let len = self.v.len();
         if len <= key {
             self.v.extend((0..key - len + 1).map(|_| None));
@@ -633,7 +656,7 @@ impl<V> VecMap<V> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn remove(&mut self, key: &usize) -> Option<V> {
-        self.remove_member(key).map(|x| x.1)
+        self.keyed_remove(key).map(|x| x.1)
     }
 
     /// Removes a key from the map, returning the key and value at the key if
@@ -643,16 +666,16 @@ impl<V> VecMap<V> {
     ///
     /// ```
     /// # #![feature(vecmap)]
-    /// # #![feature(collection_member)]
+    /// # #![feature(collection_keyed)]
     /// use std::collections::VecMap;
     ///
     /// let mut map = VecMap::new();
     /// map.insert(1, "a");
-    /// assert_eq!(map.remove_member(&1), Some((1, "a")));
-    /// assert_eq!(map.remove_member(&1), None);
+    /// assert_eq!(map.keyed_remove(&1), Some((1, "a")));
+    /// assert_eq!(map.keyed_remove(&1), None);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn remove_member(&mut self, key: &usize) -> Option<(usize, V)> {
+    pub fn keyed_remove(&mut self, key: &usize) -> Option<(usize, V)> {
         if *key >= self.v.len() {
             return None;
         }

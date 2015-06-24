@@ -459,18 +459,18 @@ impl<T, S> HashSet<T, S>
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collection_member)]
+    /// # #![feature(collection_keyed)]
     /// use std::collections::HashSet;
     ///
     /// let mut set = HashSet::new();
     ///
     /// assert_eq!(set.insert(2), true);
-    /// assert_eq!(set.get_member(&2), Some(&2));
+    /// assert_eq!(set.get(&2), Some(&2));
     /// ```
-    #[unstable(feature = "collection_member",
-            reason="member stuff is unclear")]
-    pub fn get_member(&mut self, value: &T) -> Option<&T> {
-        self.map.get_member(value).map(|x| x.0)
+    #[unstable(feature = "collection_keyed",
+            reason="keyed was recently added")]
+    pub fn get(&mut self, value: &T) -> Option<&T> {
+        self.map.keyed_get(value).map(|x| x.0)
     }
 
     /// Returns `true` if the set has no elements in common with `other`.
@@ -564,19 +564,19 @@ impl<T, S> HashSet<T, S>
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collection_member)]
+    /// # #![feature(collection_keyed)]
     /// use std::collections::HashSet;
     ///
     /// let mut set = HashSet::new();
     ///
-    /// assert_eq!(set.insert_member(2), None);
-    /// assert_eq!(set.insert_member(2), Some(2));
+    /// assert_eq!(set.insert_item(2), None);
+    /// assert_eq!(set.insert_item(2), Some(2));
     /// assert_eq!(set.len(), 1);
     /// ```
-    #[unstable(feature = "collection_member",
-            reason="member stuff is unclear")]
-    pub fn insert_member(&mut self, value: T) -> Option<T> {
-        self.map.insert_member(value, ()).map(|x| x.0)
+    #[unstable(feature = "collection_keyed",
+            reason="keyed was recently added")]
+    pub fn insert_item(&mut self, value: T) -> Option<T> {
+        self.map.keyed_insert(value, ()).map(|x| x.0)
     }
 
     /// Removes a value from the set. Returns `true` if the value was
@@ -614,21 +614,21 @@ impl<T, S> HashSet<T, S>
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collection_member)]
+    /// # #![feature(collection_keyed)]
     /// use std::collections::HashSet;
     ///
     /// let mut set = HashSet::new();
     ///
     /// set.insert(2);
-    /// assert_eq!(set.remove_member(&2), Some(2));
-    /// assert_eq!(set.remove_member(&2), None);
+    /// assert_eq!(set.remove_item(&2), Some(2));
+    /// assert_eq!(set.remove_item(&2), None);
     /// ```
-    #[unstable(feature = "collection_member",
-            reason="member stuff is unclear")]
-    pub fn remove_member<Q: ?Sized>(&mut self, value: &Q) -> Option<T>
+    #[unstable(feature = "collection_keyed",
+            reason="keyed was recently added")]
+    pub fn remove_item<Q: ?Sized>(&mut self, value: &Q) -> Option<T>
         where T: Borrow<Q>, Q: Hash + Eq
     {
-        self.map.remove_member(value).map(|x| x.0)
+        self.map.keyed_remove(value).map(|x| x.0)
     }
 }
 

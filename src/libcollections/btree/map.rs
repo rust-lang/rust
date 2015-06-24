@@ -213,7 +213,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get<Q: ?Sized>(&self, key: &Q) -> Option<&V> where K: Borrow<Q>, Q: Ord {
-        self.get_member(key).map(|x| x.1)
+        self.keyed_get(key).map(|x| x.1)
     }
 
     /// Returns a reference to the key and the value corresponding to the key.
@@ -224,17 +224,17 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collection_member)]
+    /// # #![feature(collection_keyed)]
     /// use std::collections::BTreeMap;
     ///
     /// let mut map = BTreeMap::new();
     /// map.insert(1, "a");
-    /// assert_eq!(map.get_member(&1), Some((&1, &"a")));
+    /// assert_eq!(map.keyed_get(&1), Some((&1, &"a")));
     /// assert_eq!(map.get(&2), None);
     /// ```
-    #[unstable(feature = "collection_member",
-            reason="member stuff is unclear")]
-    pub fn get_member<Q: ?Sized>(&self, key: &Q) -> Option<(&K, &V)> where K: Borrow<Q>, Q: Ord {
+    #[unstable(feature = "collection_keyed",
+            reason="keyed was recently added")]
+    pub fn keyed_get<Q: ?Sized>(&self, key: &Q) -> Option<(&K, &V)> where K: Borrow<Q>, Q: Ord {
         let mut cur_node = &self.root;
         loop {
             match Node::search(cur_node, key) {
@@ -290,12 +290,41 @@ impl<K: Ord, V> BTreeMap<K, V> {
     // See `get` for implementation notes, this is basically a copy-paste with mut's added
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get_mut<Q: ?Sized>(&mut self, key: &Q) -> Option<&mut V> where K: Borrow<Q>, Q: Ord {
+        self.keyed_get_mut(key).map(|x| x.1)
+    }
+
+    /// Returns a mutable reference to the value corresponding to the key.
+    ///
+    /// The key may be any borrowed form of the map's key type, but the ordering
+    /// on the borrowed form *must* match the ordering on the key type.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(collection_keyed)]
+    /// use std::collections::BTreeMap;
+    ///
+    /// let mut map = BTreeMap::new();
+    /// map.insert(1, "a");
+    /// if let Some((key, x)) = map.keyed_get_mut(&1) {
+    ///     assert_eq!(key, &1);
+    ///     *x = "b";
+    /// }
+    /// assert_eq!(map[&1], "b");
+    /// ```
+    // See `keyed_get` for implementation notes, this is basically a copy-paste with mut's added
+    #[unstable(feature = "collection_keyed",
+            reason="keyed was recently added")]
+    pub fn keyed_get_mut<Q: ?Sized>(&mut self, key: &Q) -> Option<(&K, &mut V)> where K: Borrow<Q>, Q: Ord {
         // temp_node is a Borrowck hack for having a mutable value outlive a loop iteration
         let mut temp_node = &mut self.root;
         loop {
             let cur_node = temp_node;
             match Node::search(cur_node, key) {
-                Found(handle) => return Some(handle.into_kv_mut().1),
+                Found(handle) => {
+                    let (key, value) = handle.into_kv_mut();
+                    return Some((&*key, value));
+                },
                 GoDown(handle) => match handle.force() {
                     Leaf(_) => return None,
                     Internal(internal_handle) => {
@@ -351,7 +380,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn insert(&mut self, key: K, value: V) -> Option<V> {
-        self.insert_member(key, value).map(|x| x.1)
+        self.keyed_insert(key, value).map(|x| x.1)
     }
 
     /// Inserts a key-value pair into the map. If the key already had a value
@@ -361,20 +390,20 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collection_member)]
+    /// # #![feature(collection_keyed)]
     /// use std::collections::BTreeMap;
     ///
     /// let mut map = BTreeMap::new();
-    /// assert_eq!(map.insert_member(37, "a"), None);
+    /// assert_eq!(map.keyed_insert(37, "a"), None);
     /// assert_eq!(map.is_empty(), false);
     ///
     /// map.insert(37, "b");
-    /// assert_eq!(map.insert_member(37, "c"), Some((37, "b")));
+    /// assert_eq!(map.keyed_insert(37, "c"), Some((37, "b")));
     /// assert_eq!(map[&37], "c");
     /// ```
-    #[unstable(feature = "collection_member",
-            reason="member stuff is unclear")]
-    pub fn insert_member(&mut self, mut key: K, mut value: V) -> Option<(K, V)> {
+    #[unstable(feature = "collection_keyed",
+            reason="keyed was recently added")]
+    pub fn keyed_insert(&mut self, mut key: K, mut value: V) -> Option<(K, V)> {
         // This is a stack of rawptrs to nodes paired with indices, respectively
         // representing the nodes and edges of our search path. We have to store rawptrs
         // because as far as Rust is concerned, we can mutate aliased data with such a
@@ -485,7 +514,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn remove<Q: ?Sized>(&mut self, key: &Q) -> Option<V> where K: Borrow<Q>, Q: Ord {
-        self.remove_member(key).map(|x| x.1)
+        self.keyed_remove(key).map(|x| x.1)
     }
 
     /// Removes a key from the map, returning the key and the value at the key
@@ -497,17 +526,17 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collection_member)]
+    /// # #![feature(collection_keyed)]
     /// use std::collections::BTreeMap;
     ///
     /// let mut map = BTreeMap::new();
     /// map.insert(1, "a");
-    /// assert_eq!(map.remove_member(&1), Some((1, "a")));
-    /// assert_eq!(map.remove_member(&1), None);
+    /// assert_eq!(map.keyed_remove(&1), Some((1, "a")));
+    /// assert_eq!(map.keyed_remove(&1), None);
     /// ```
-    #[unstable(feature = "collection_member",
-            reason="member stuff is unclear")]
-    pub fn remove_member<Q: ?Sized>(&mut self, key: &Q) -> Option<(K, V)> where
+    #[unstable(feature = "collection_keyed",
+            reason="keyed was recently added")]
+    pub fn keyed_remove<Q: ?Sized>(&mut self, key: &Q) -> Option<(K, V)> where
             K: Borrow<Q>, Q: Ord {
         // See `swap` for a more thorough description of the stuff going on in here
         let mut stack = stack::PartialSearchStack::new(self);
@@ -516,7 +545,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
                 match Node::search(node, key) {
                     Found(handle) => {
                         // Perfect match. Terminate the stack here, and remove the entry
-                        Finished(Some(pusher.seal(handle).remove_member()))
+                        Finished(Some(pusher.seal(handle).keyed_remove()))
                     },
                     GoDown(handle) => {
                         // We need to keep searching, try to go down the next edge
@@ -820,7 +849,7 @@ mod stack {
 
         /// Removes the key and value in the top element of the stack, then handles underflows as
         /// described in BTree's pop function.
-        pub fn remove_member(self) -> (K, V) {
+        pub fn keyed_remove(self) -> (K, V) {
             // Ensure that the search stack goes to a leaf. This is necessary to perform deletion
             // in a BTree. Note that this may put the tree in an inconsistent state (further
             // described in into_leaf's comments), but this is immediately fixed by the
