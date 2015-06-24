@@ -1538,57 +1538,6 @@ For more information see the [opt-in builtin traits RFC](https://github.com/rust
 -lang/rfcs/blob/master/text/0019-opt-in-builtin-traits.md).
 "##
 
-E0395: r##"
-The value assigned to a constant expression must be known at compile time,
-which is not the case when comparing raw pointers. Erroneous code example:
-
-```
-static foo: i32 = 42;
-static bar: i32 = 43;
-
-static baz: bool = { (&foo as *const i32) == (&bar as *const i32) };
-// error: raw pointers cannot be compared in statics!
-```
-
-To fix this error, please not assign this value to a constant expression.
-Example:
-
-```
-static foo: i32 = 42;
-static bar: i32 = 43;
-
-let baz: bool = { (&foo as *const i32) == (&bar as *const i32) };
-// baz isn't a constant expression so it's ok
-```
-"##,
-
-E0396: r##"
-The value assigned to a constant expression must be known at compile time,
-which is not the case when dereferencing raw pointers. Erroneous code
-example:
-
-```
-const foo: i32 = 42;
-const baz: *const i32 = (&foo as *const i32);
-
-const deref: i32 = *baz;
-// error: raw pointers cannot be dereferenced in constants!
-```
-
-To fix this error, please not assign this value to a constant expression.
-Example:
-
-```
-const foo: i32 = 42;
-const baz: *const i32 = (&foo as *const i32);
-
-unsafe { let deref: i32 = *baz; }
-// baz isn't a constant expression so it's ok
-```
-
-You'll also note that this assignation must be done in an unsafe block!
-"##
-
 }
 
 
