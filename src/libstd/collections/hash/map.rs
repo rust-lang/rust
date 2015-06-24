@@ -1069,7 +1069,7 @@ impl<K, V, S> HashMap<K, V, S>
     pub fn get<Q: ?Sized>(&self, k: &Q) -> Option<&V>
         where K: Borrow<Q>, Q: Hash + Eq
     {
-        self.search(k).map(|bucket| bucket.into_refs().1)
+        self.get_member(k).map(|x| x.1)
     }
 
     /// Returns true if the map contains a value for the specified key.
@@ -1138,14 +1138,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn insert(&mut self, k: K, v: V) -> Option<V> {
-        let hash = self.make_hash(&k);
-        self.reserve(1);
-
-        let mut retval = None;
-        self.insert_or_replace_with(hash, k, v, |_, _, val_ref, val| {
-            retval = Some(replace(val_ref, val));
-        });
-        retval
+        self.insert_member(k, v).map(|x| x.1)
     }
 
     /// Inserts a key-value pair into the map. If the key already had a value
@@ -1200,11 +1193,7 @@ impl<K, V, S> HashMap<K, V, S>
     pub fn remove<Q: ?Sized>(&mut self, k: &Q) -> Option<V>
         where K: Borrow<Q>, Q: Hash + Eq
     {
-        if self.table.size() == 0 {
-            return None
-        }
-
-        self.search_mut(k).map(|bucket| pop_internal(bucket).1)
+        self.remove_member(k).map(|x| x.1)
     }
 
     /// Removes a key from the map, returning the key and the value at the key

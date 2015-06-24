@@ -213,19 +213,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get<Q: ?Sized>(&self, key: &Q) -> Option<&V> where K: Borrow<Q>, Q: Ord {
-        let mut cur_node = &self.root;
-        loop {
-            match Node::search(cur_node, key) {
-                Found(handle) => return Some(handle.into_kv().1),
-                GoDown(handle) => match handle.force() {
-                    Leaf(_) => return None,
-                    Internal(internal_handle) => {
-                        cur_node = internal_handle.into_edge();
-                        continue;
-                    }
-                }
-            }
-        }
+        self.get_member(key).map(|x| x.1)
     }
 
     /// Returns a reference to the key and the value corresponding to the key.
@@ -362,61 +350,8 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// assert_eq!(map[&37], "c");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn insert(&mut self, mut key: K, mut value: V) -> Option<V> {
-        // This is a stack of rawptrs to nodes paired with indices, respectively
-        // representing the nodes and edges of our search path. We have to store rawptrs
-        // because as far as Rust is concerned, we can mutate aliased data with such a
-        // stack. It is of course correct, but what it doesn't know is that we will only
-        // be popping and using these ptrs one at a time in child-to-parent order. The alternative
-        // to doing this is to take the Nodes from their parents. This actually makes
-        // borrowck *really* happy and everything is pretty smooth. However, this creates
-        // *tons* of pointless writes, and requires us to always walk all the way back to
-        // the root after an insertion, even if we only needed to change a leaf. Therefore,
-        // we accept this potential unsafety and complexity in the name of performance.
-        //
-        // Regardless, the actual dangerous logic is completely abstracted away from BTreeMap
-        // by the stack module. All it can do is immutably read nodes, and ask the search stack
-        // to proceed down some edge by index. This makes the search logic we'll be reusing in a
-        // few different methods much neater, and of course drastically improves safety.
-        let mut stack = stack::PartialSearchStack::new(self);
-
-        loop {
-            let result = stack.with(move |pusher, node| {
-                // Same basic logic as found in `find`, but with PartialSearchStack mediating the
-                // actual nodes for us
-                match Node::search(node, &key) {
-                    Found(mut handle) => {
-                        // Perfect match, swap the values and return the old one
-                        mem::swap(handle.val_mut(), &mut value);
-                        Finished(Some(value))
-                    },
-                    GoDown(handle) => {
-                        // We need to keep searching, try to get the search stack
-                        // to go down further
-                        match handle.force() {
-                            Leaf(leaf_handle) => {
-                                // We've reached a leaf, perform the insertion here
-                                pusher.seal(leaf_handle).insert(key, value);
-                                Finished(None)
-                            }
-                            Internal(internal_handle) => {
-                                // We've found the subtree to insert this key/value pair in,
-                                // keep searching
-                                Continue((pusher.push(internal_handle), key, value))
-                            }
-                        }
-                    }
-                }
-            });
-            match result {
-                Finished(ret) => return ret,
-                Continue((new_stack, renewed_key, renewed_val)) => {
-                    stack = new_stack;
-                    key = renewed_key;
-                    value = renewed_val;
-                }
-            }
-        }
+    pub fn insert(&mut self, key: K, value: V) -> Option<V> {
+        self.insert_member(key, value).map(|x| x.1)
     }
 
     /// Inserts a key-value pair into the map. If the key already had a value
@@ -550,30 +485,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn remove<Q: ?Sized>(&mut self, key: &Q) -> Option<V> where K: Borrow<Q>, Q: Ord {
-        // See `swap` for a more thorough description of the stuff going on in here
-        let mut stack = stack::PartialSearchStack::new(self);
-        loop {
-            let result = stack.with(move |pusher, node| {
-                match Node::search(node, key) {
-                    Found(handle) => {
-                        // Perfect match. Terminate the stack here, and remove the entry
-                        Finished(Some(pusher.seal(handle).remove()))
-                    },
-                    GoDown(handle) => {
-                        // We need to keep searching, try to go down the next edge
-                        match handle.force() {
-                            // We're at a leaf; the key isn't in here
-                            Leaf(_) => Finished(None),
-                            Internal(internal_handle) => Continue(pusher.push(internal_handle))
-                        }
-                    }
-                }
-            });
-            match result {
-                Finished(ret) => return ret,
-                Continue(new_stack) => stack = new_stack
-            }
-        }
+        self.remove_member(key).map(|x| x.1)
     }
 
     /// Removes a key from the map, returning the key and the value at the key

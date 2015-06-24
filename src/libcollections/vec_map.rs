@@ -490,14 +490,7 @@ impl<V> VecMap<V> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get(&self, key: &usize) -> Option<&V> {
-        if *key < self.v.len() {
-            match self.v[*key] {
-              Some(ref value) => Some(value),
-              None => None
-            }
-        } else {
-            None
-        }
+        self.get_member(key).map(|x| x.1)
     }
 
     /// Returns a reference to the key and the value corresponding to the key.
@@ -592,11 +585,7 @@ impl<V> VecMap<V> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn insert(&mut self, key: usize, value: V) -> Option<V> {
-        let len = self.v.len();
-        if len <= key {
-            self.v.extend((0..key - len + 1).map(|_| None));
-        }
-        replace(&mut self.v[key], Some(value))
+        self.insert_member(key, value).map(|x| x.1)
     }
 
     /// Inserts a key-value pair into the map. If the key already had a value
@@ -644,11 +633,7 @@ impl<V> VecMap<V> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn remove(&mut self, key: &usize) -> Option<V> {
-        if *key >= self.v.len() {
-            return None;
-        }
-        let result = &mut self.v[*key];
-        result.take()
+        self.remove_member(key).map(|x| x.1)
     }
 
     /// Removes a key from the map, returning the key and value at the key if
