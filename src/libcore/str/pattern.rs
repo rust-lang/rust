@@ -628,7 +628,7 @@ unsafe impl<'a, 'b> Searcher<'a> for StrSearcher<'a, 'b> {
         }
     }
 
-    #[inline]
+    #[inline(always)]
     fn next_match(&mut self) -> Option<(usize, usize)> {
         match self.searcher {
             StrSearcherImpl::Empty(..) => {
@@ -642,9 +642,15 @@ unsafe impl<'a, 'b> Searcher<'a> for StrSearcher<'a, 'b> {
             }
             StrSearcherImpl::TwoWay(ref mut searcher) => {
                 let is_long = searcher.memory == usize::MAX;
-                searcher.next::<MatchOnly>(self.haystack.as_bytes(),
-                                           self.needle.as_bytes(),
-                                           is_long)
+                if is_long {
+                    searcher.next::<MatchOnly>(self.haystack.as_bytes(),
+                                               self.needle.as_bytes(),
+                                               true)
+                } else {
+                    searcher.next::<MatchOnly>(self.haystack.as_bytes(),
+                                               self.needle.as_bytes(),
+                                               false)
+                }
             }
         }
     }
@@ -854,7 +860,7 @@ impl TwoWaySearcher {
     // left to right. If v matches, we try to match u by scanning right to left.
     // How far we can jump when we encounter a mismatch is all based on the fact
     // that (u, v) is a critical factorization for the needle.
-    #[inline]
+    #[inline(always)]
     fn next<S>(&mut self, haystack: &[u8], needle: &[u8], long_period: bool)
         -> S::Output
         where S: TwoWayStrategy
