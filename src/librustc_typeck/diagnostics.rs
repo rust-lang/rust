@@ -380,6 +380,22 @@ fn main() {
 ```
 "##,
 
+E0044: r##"
+You can't use type parameters on foreign items. Example of erroneous code:
+
+```
+extern { fn some_func<T>(x: T); }
+```
+
+To fix this, replace the type parameter with the specializations that you
+need:
+
+```
+extern { fn some_func_i32(x: i32); }
+extern { fn some_func_i64(x: i64); }
+```
+"##,
+
 E0045: r##"
 Rust only supports variadic parameters for interoperability with C code in its
 FFI. As such, variadic parameters can only be used with functions which are
@@ -729,6 +745,44 @@ s.x = 3; // that's good !
 
 fn some_func(x: &mut i32) {
     *x = 12; // that's good !
+}
+```
+"##,
+
+E0071: r##"
+You tried to use a structure initialization with a non-structure type.
+Example of erroneous code:
+
+```
+enum Foo { FirstValue };
+
+let u = Foo::FirstValue { value: 0i32 }; // error: Foo::FirstValue
+                                         // isn't a structure!
+// or even simpler, if the structure wasn't defined at all:
+let u = RandomName { random_field: 0i32 }; // error: RandomName
+                                           // isn't a structure!
+```
+
+To fix this, please check:
+ * Did you spell it right?
+ * Did you accidentaly used an enum as a struct?
+ * Did you accidentaly make an enum when you intended to use a struct?
+
+Here is the previous code with all missing information:
+
+```
+struct Inner {
+    value: i32
+}
+
+enum Foo {
+    FirstValue(Inner)
+}
+
+fn main() {
+    let u = Foo::FirstValue(Inner { value: 0i32 });
+
+    let t = Inner { value: 0i32 };
 }
 ```
 "##,
@@ -1488,9 +1542,7 @@ For more information see the [opt-in builtin traits RFC](https://github.com/rust
 }
 
 register_diagnostics! {
-    E0044, // foreign items may not have type parameters
     E0068,
-    E0071,
     E0074,
     E0075,
     E0076,
