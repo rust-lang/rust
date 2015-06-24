@@ -29,7 +29,7 @@ explicitly implement to be used by this generic function.
   explicit conversions or other method calls would usually be necessary. See the
   [overloading/implicits use case](#use-case:-limited-overloading-and/or-implicit-conversions)
   below.
-* _Precise types_. Because generic give a _name_ to the specific type
+* _Precise types_. Because generics give a _name_ to the specific type
   implementing a trait, it is possible to be precise about places where that
   exact type is required or produced. For example, a function
 
