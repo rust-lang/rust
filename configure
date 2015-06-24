@@ -899,6 +899,18 @@ then
     fi
 fi
 
+# If the clang isn't already enabled, check for GCC, and if it is missing, turn
+# on clang as a backup.
+if [ -z "$CFG_ENABLE_CLANG" ]
+then
+  CFG_GCC_VERSION=$("$CFG_GCC" --version 2>&1)
+  if [ $? -ne 0 ]
+  then
+    step_msg "GCC not installed, will try using Clang"
+    CFG_ENABLE_CLANG=1
+  fi
+fi
+
 # Okay, at this point, we have made up our minds about whether we are
 # going to force CFG_ENABLE_CLANG or not; save the setting if so.
 if [ ! -z "$CFG_ENABLE_CLANG" ]
