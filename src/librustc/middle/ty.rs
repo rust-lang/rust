@@ -2063,7 +2063,7 @@ impl<'tcx> GenericPredicates<'tcx> {
         }
     }
 
-    pub fn instantiate(&self, tcx: &ty::ctxt<'tcx>, substs: &Substs<'tcx>)
+    pub fn instantiate(&self, tcx: &ctxt<'tcx>, substs: &Substs<'tcx>)
                        -> InstantiatedPredicates<'tcx> {
         InstantiatedPredicates {
             predicates: self.predicates.subst(tcx, substs),
@@ -2071,7 +2071,7 @@ impl<'tcx> GenericPredicates<'tcx> {
     }
 
     pub fn instantiate_supertrait(&self,
-                                  tcx: &ty::ctxt<'tcx>,
+                                  tcx: &ctxt<'tcx>,
                                   poly_trait_ref: &ty::PolyTraitRef<'tcx>)
                                   -> InstantiatedPredicates<'tcx>
     {
@@ -2109,7 +2109,7 @@ impl<'tcx> Predicate<'tcx> {
     /// substitution in terms of what happens with bound regions.  See
     /// lengthy comment below for details.
     pub fn subst_supertrait(&self,
-                            tcx: &ty::ctxt<'tcx>,
+                            tcx: &ctxt<'tcx>,
                             trait_ref: &ty::PolyTraitRef<'tcx>)
                             -> ty::Predicate<'tcx>
     {
@@ -2876,7 +2876,7 @@ impl ClosureKind {
 }
 
 pub trait ClosureTyper<'tcx> {
-    fn tcx(&self) -> &ty::ctxt<'tcx> {
+    fn tcx(&self) -> &ctxt<'tcx> {
         self.param_env().tcx
     }
 
@@ -3585,7 +3585,7 @@ impl ParamTy {
         ParamTy::new(def.space, def.index, def.name)
     }
 
-    pub fn to_ty<'tcx>(self, tcx: &ty::ctxt<'tcx>) -> Ty<'tcx> {
+    pub fn to_ty<'tcx>(self, tcx: &ctxt<'tcx>) -> Ty<'tcx> {
         ty::mk_param(tcx, self.space, self.idx, self.name)
     }
 
@@ -4108,7 +4108,7 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
 }
 
 fn type_impls_bound<'a,'tcx>(param_env: Option<&ParameterEnvironment<'a,'tcx>>,
-                             tcx: &ty::ctxt<'tcx>,
+                             tcx: &ctxt<'tcx>,
                              ty: Ty<'tcx>,
                              bound: ty::BuiltinBound,
                              span: Span)
@@ -4178,7 +4178,7 @@ pub fn type_moves_by_default<'a,'tcx>(param_env: &ParameterEnvironment<'a,'tcx>,
 
 #[inline]
 pub fn type_is_sized<'a,'tcx>(param_env: Option<&ParameterEnvironment<'a,'tcx>>,
-                              tcx: &ty::ctxt<'tcx>,
+                              tcx: &ctxt<'tcx>,
                               span: Span,
                               ty: Ty<'tcx>)
                               -> bool
@@ -4192,7 +4192,7 @@ pub fn type_is_sized<'a,'tcx>(param_env: Option<&ParameterEnvironment<'a,'tcx>>,
 }
 
 fn type_is_sized_uncached<'a,'tcx>(param_env: Option<&ParameterEnvironment<'a,'tcx>>,
-                                   tcx: &ty::ctxt<'tcx>,
+                                   tcx: &ctxt<'tcx>,
                                    span: Span,
                                    ty: Ty<'tcx>) -> bool {
     assert!(!ty.needs_infer());
@@ -6703,7 +6703,7 @@ pub fn construct_free_substs<'a,'tcx>(
         }
     }
 
-    fn push_types_from_defs<'tcx>(tcx: &ty::ctxt<'tcx>,
+    fn push_types_from_defs<'tcx>(tcx: &ctxt<'tcx>,
                                   types: &mut VecPerParamSpace<Ty<'tcx>>,
                                   defs: &[TypeParameterDef<'tcx>]) {
         for def in defs {
@@ -6966,7 +6966,7 @@ pub type TraitMap = NodeMap<Vec<DefId>>;
 // imported.
 pub type GlobMap = HashMap<NodeId, HashSet<Name>>;
 
-pub fn with_freevars<T, F>(tcx: &ty::ctxt, fid: ast::NodeId, f: F) -> T where
+pub fn with_freevars<T, F>(tcx: &ctxt, fid: ast::NodeId, f: F) -> T where
     F: FnOnce(&[Freevar]) -> T,
 {
     match tcx.freevars.borrow().get(&fid) {
@@ -6994,7 +6994,7 @@ impl<'tcx> AutoDerefRef<'tcx> {
 /// Replace any late-bound regions bound in `value` with free variants attached to scope-id
 /// `scope_id`.
 pub fn liberate_late_bound_regions<'tcx, T>(
-    tcx: &ty::ctxt<'tcx>,
+    tcx: &ctxt<'tcx>,
     all_outlive_scope: region::DestructionScopeData,
     value: &Binder<T>)
     -> T
@@ -7006,7 +7006,7 @@ pub fn liberate_late_bound_regions<'tcx, T>(
 }
 
 pub fn count_late_bound_regions<'tcx, T>(
-    tcx: &ty::ctxt<'tcx>,
+    tcx: &ctxt<'tcx>,
     value: &Binder<T>)
     -> usize
     where T : TypeFoldable<'tcx>
@@ -7016,7 +7016,7 @@ pub fn count_late_bound_regions<'tcx, T>(
 }
 
 pub fn binds_late_bound_regions<'tcx, T>(
-    tcx: &ty::ctxt<'tcx>,
+    tcx: &ctxt<'tcx>,
     value: &Binder<T>)
     -> bool
     where T : TypeFoldable<'tcx>
@@ -7027,7 +7027,7 @@ pub fn binds_late_bound_regions<'tcx, T>(
 /// Flattens two binding levels into one. So `for<'a> for<'b> Foo`
 /// becomes `for<'a,'b> Foo`.
 pub fn flatten_late_bound_regions<'tcx, T>(
-    tcx: &ty::ctxt<'tcx>,
+    tcx: &ctxt<'tcx>,
     bound2_value: &Binder<Binder<T>>)
     -> Binder<T>
     where T: TypeFoldable<'tcx>
@@ -7049,7 +7049,7 @@ pub fn flatten_late_bound_regions<'tcx, T>(
 }
 
 pub fn no_late_bound_regions<'tcx, T>(
-    tcx: &ty::ctxt<'tcx>,
+    tcx: &ctxt<'tcx>,
     value: &Binder<T>)
     -> Option<T>
     where T : TypeFoldable<'tcx>
@@ -7064,7 +7064,7 @@ pub fn no_late_bound_regions<'tcx, T>(
 /// Replace any late-bound regions bound in `value` with `'static`. Useful in trans but also
 /// method lookup and a few other places where precise region relationships are not required.
 pub fn erase_late_bound_regions<'tcx, T>(
-    tcx: &ty::ctxt<'tcx>,
+    tcx: &ctxt<'tcx>,
     value: &Binder<T>)
     -> T
     where T : TypeFoldable<'tcx>
@@ -7147,7 +7147,7 @@ impl<'tcx> fmt::Debug for ty::Predicate<'tcx> {
     }
 }
 
-pub fn make_substs_for_receiver_types<'tcx>(tcx: &ty::ctxt<'tcx>,
+pub fn make_substs_for_receiver_types<'tcx>(tcx: &ctxt<'tcx>,
                                             trait_ref: &ty::TraitRef<'tcx>,
                                             method: &ty::Method<'tcx>)
                                             -> subst::Substs<'tcx>
