@@ -11,7 +11,7 @@ project will only work on nightly (as of Rust 1.2.0).
 First off, we need to come up with the struct layout. Naively we want this
 design:
 
-```
+```rust
 struct Vec<T> {
     ptr: *mut T,
     cap: usize,
@@ -30,7 +30,7 @@ As we saw in the lifetimes chapter, we should use `Unique<T>` in place of `*mut 
 when we have a raw pointer to an allocation we own:
 
 
-```
+```rust
 #![feature(unique)]
 
 use std::ptr::{Unique, self};
@@ -474,6 +474,7 @@ impl<T> DoubleEndedIterator for IntoIter<T> {
         }
     }
 }
+```
 
 Because IntoIter takes ownership of its allocation, it needs to implement Drop
 to free it. However it *also* wants to implement Drop to drop any elements it

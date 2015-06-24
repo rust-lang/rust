@@ -1,0 +1,407 @@
+/**
+ * Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
+ * file at the top-level directory of this distribution and at
+ * http://rust-lang.org/COPYRIGHT.
+ * With elements taken from Bootstrap v3.0.2 (MIT licensed).
+ *
+ * Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+ * http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+ * <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+ * option. This file may not be copied, modified, or distributed
+ * except according to those terms.
+ */
+@font-face {
+    font-family: 'Fira Sans';
+    font-style: normal;
+    font-weight: 400;
+    src: local('Fira Sans'), url("FiraSans-Regular.woff") format('woff');
+}
+@font-face {
+    font-family: 'Fira Sans';
+    font-style: normal;
+    font-weight: 500;
+    src: local('Fira Sans Medium'), url("FiraSans-Medium.woff") format('woff');
+}
+@font-face {
+    font-family: 'Source Serif Pro';
+    font-style: normal;
+    font-weight: 400;
+    src: local('Source Serif Pro'), url("SourceSerifPro-Regular.woff") format('woff');
+}
+@font-face {
+    font-family: 'Source Serif Pro';
+    font-style: italic;
+    font-weight: 400;
+    src: url("Heuristica-Italic.woff") format('woff');
+}
+@font-face {
+    font-family: 'Source Serif Pro';
+    font-style: normal;
+    font-weight: 700;
+    src: local('Source Serif Pro Bold'), url("SourceSerifPro-Bold.woff") format('woff');
+}
+@font-face {
+    font-family: 'Source Code Pro';
+    font-style: normal;
+    font-weight: 400;
+    src: local('Source Code Pro'), url("SourceCodePro-Regular.woff") format('woff');
+}
+
+*:not(body) {
+  -webkit-box-sizing: border-box;
+     -moz-box-sizing: border-box;
+          box-sizing: border-box;
+}
+
+/* General structure */
+
+body {
+    background-color: white;
+    margin: 0 auto;
+    padding: 0 15px;
+    font-family: "Source Serif Pro", Georgia, Times, "Times New Roman", serif;
+    font-size: 18px;
+    color: #333;
+    line-height: 1.428571429;
+
+    -webkit-font-feature-settings: "kern", "liga";
+    -moz-font-feature-settings: "kern", "liga";
+    font-feature-settings: "kern", "liga";
+}
+@media (min-width: 768px) {
+    body {
+        max-width: 750px;
+    }
+}
+
+h1, h2, h3, h4, h5, h6, nav, #versioninfo {
+    font-family: "Fira Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+h1, h2, h3, h4, h5, h6 {
+    color: black;
+    font-weight: 400;
+    line-height: 1.1;
+}
+h1, h2, h3 {
+    margin-top: 20px;
+    margin-bottom: 15px;
+}
+h1 {
+    margin-bottom: 20px;
+}
+h4, h5, h6 {
+    margin-top: 12px;
+    margin-bottom: 10px;
+    padding: 5px 10px;
+}
+h5, h6 {
+    text-decoration: underline;
+}
+
+h1 {
+    font-size: 28px;
+    font-weight: 500;
+    padding: .1em .4em;
+    border-bottom: 2px solid #ddd;
+}
+h1.title {
+    line-height: 1.5em;
+}
+h2 {
+    font-size: 26px;
+    padding: .2em .5em;
+    border-bottom: 1px solid #ddd;
+}
+h3 {
+    font-size: 24px;
+    padding: .2em .7em;
+    border-bottom: 1px solid #DDE8FC;
+}
+h4 {
+    font-size: 22px;
+}
+h5 {
+    font-size: 20px;
+}
+h6 {
+    font-size: 18px;
+}
+@media (min-width: 992px) {
+    h1 {
+        font-size: 36px;
+    }
+    h2 {
+        font-size: 30px;
+    }
+    h3 {
+        font-size: 26px;
+    }
+}
+
+nav {
+    column-count: 2;
+    -moz-column-count: 2;
+    -webkit-column-count: 2;
+    font-size: 15px;
+    margin: 0 0 1em 0;
+}
+p {
+    margin: 0 0 1em 0;
+}
+
+strong {
+    font-weight: bold;
+}
+
+em {
+    font-style: italic;
+}
+
+footer {
+    border-top: 1px solid #ddd;
+    font-size: 14.3px;
+    font-style: italic;
+    padding-top: 5px;
+    margin-top: 3em;
+    margin-bottom: 1em;
+}
+
+/* Links layout */
+
+a {
+    text-decoration: none;
+    color: #428BCA;
+    background: transparent;
+}
+a:hover, a:focus {
+    color: #2A6496;
+    text-decoration: underline;
+}
+a:focus {
+    outline: thin dotted #333;
+    outline: 5px auto -webkit-focus-ring-color;
+    outline-offset: -2px;
+}
+a:hover, a:active {
+    outline: 0;
+}
+
+h1 a:link, h1 a:visited, h2 a:link, h2 a:visited,
+h3 a:link, h3 a:visited, h4 a:link, h4 a:visited,
+h5 a:link, h5 a:visited {color: black;}
+h1 a:hover, h2 a:hover, h3 a:hover, h4 a:hover,
+h5 a:hover {text-decoration: none;}
+
+/* Code */
+
+pre, code {
+    font-family: "Source Code Pro", Menlo, Monaco, Consolas, "DejaVu Sans Mono", monospace;
+    word-wrap: break-word;
+}
+pre {
+    border-left: 2px solid #eee;
+    white-space: pre-wrap;
+    padding: 14px;
+    padding-right: 0;
+    margin: 20px 0;
+    font-size: 13px;
+    word-break: break-all;
+}
+code {
+    padding: 0 2px;
+    color: #8D1A38;
+}
+pre code {
+    padding: 0;
+    font-size: inherit;
+    color: inherit;
+}
+
+a > code {
+    color: #428BCA;
+}
+
+/* Code highlighting */
+pre.rust .kw { color: #8959A8; }
+pre.rust .kw-2, pre.rust .prelude-ty { color: #4271AE; }
+pre.rust .number, pre.rust .string { color: #718C00; }
+pre.rust .self, pre.rust .boolval, pre.rust .prelude-val,
+pre.rust .attribute, pre.rust .attribute .ident { color: #C82829; }
+pre.rust .comment { color: #8E908C; }
+pre.rust .doccomment { color: #4D4D4C; }
+pre.rust .macro, pre.rust .macro-nonterminal { color: #3E999F; }
+pre.rust .lifetime { color: #B76514; }
+
+/* The rest */
+
+#versioninfo {
+    text-align: center;
+    margin: 0.5em;
+    font-size: 1.1em;
+}
+@media (min-width: 992px) {
+    #versioninfo {
+        font-size: 0.8em;
+        position: fixed;
+        bottom: 0px;
+        right: 0px;
+    }
+    .white-sticker {
+        background-color: #fff;
+        margin: 2px;
+        padding: 0 2px;
+        border-radius: .2em;
+    }
+}
+#versioninfo a.hash {
+    color: gray;
+    font-size: 80%;
+}
+
+blockquote {
+    color: #000;
+    margin: 20px 0;
+    padding: 15px 20px;
+    background-color: #f2f7f9;
+    border-top: .1em solid #e5eef2;
+    border-bottom: .1em solid #e5eef2;
+}
+blockquote p {
+    font-size: 17px;
+    font-weight: 300;
+    line-height: 1.4;
+}
+blockquote p:last-child {
+    margin-bottom: 0;
+}
+
+ul, ol {
+    padding-left: 25px;
+}
+ul ul, ol ul, ul ol, ol ol {
+    margin-bottom: 0;
+}
+dl {
+    margin-bottom: 20px;
+}
+dd {
+    margin-left: 0;
+}
+
+nav ul {
+    list-style-type: none;
+    margin: 0;
+    padding-left: 0px;
+}
+
+/* Only display one level of hierarchy in the TOC */
+nav ul ul {
+    display: none;
+}
+
+sub,
+sup {
+    font-size: 75%;
+    line-height: 0;
+    position: relative;
+}
+
+hr {
+    margin-top: 20px;
+    margin-bottom: 20px;
+    border: 0;
+    border-top: 1px solid #eeeeee;
+}
+
+table {
+    border-collapse: collapse;
+    border-spacing: 0;
+    overflow-x: auto;
+    display: block;
+}
+
+table tr.odd {
+    background: #eee;
+}
+
+table td,
+table th {
+    border: 1px solid #ddd;
+    padding: 5px;
+}
+
+/* Code snippets */
+
+.rusttest { display: none; }
+pre.rust { position: relative; }
+.test-arrow {
+    display: inline-block;
+    position: absolute;
+    top: 0;
+    right: 10px;
+    font-size: 150%;
+    -webkit-transform: scaleX(-1);
+    transform: scaleX(-1);
+}
+
+.unstable-feature {
+    border: 2px solid red;
+    padding: 5px;
+}
+
+@media (min-width: 1170px) {
+    pre {
+        font-size: 15px;
+    }
+}
+
+@media print {
+    * {
+        text-shadow: none !important;
+        color: #000 !important;
+        background: transparent !important;
+        box-shadow: none !important;
+    }
+    a, a:visited {
+        text-decoration: underline;
+    }
+    p a[href]:after {
+        content: " (" attr(href) ")";
+    }
+    footer a[href]:after {
+        content: "";
+    }
+    a[href^="javascript:"]:after, a[href^="#"]:after {
+        content: "";
+    }
+    pre, blockquote {
+        border: 1px solid #999;
+        page-break-inside: avoid;
+    }
+    @page {
+        margin: 2cm .5cm;
+    }
+    h1:not(.title), h2, h3 {
+        border-bottom: 0px none;
+    }
+    p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+    }
+    h2, h3 {
+        page-break-after: avoid;
+    }
+    table {
+        border-collapse: collapse !important;
+    }
+    table td, table th {
+        background-color: #fff !important;
+    }
+}
+
+#keyword-table-marker + table thead { display: none; }
+#keyword-table-marker + table td { border: none; }
+#keyword-table-marker + table {
+    margin-left: 2em;
+    margin-bottom: 1em;
+}
