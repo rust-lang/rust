@@ -228,7 +228,7 @@ pub fn get_const_expr_as_global<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             let def = ccx.tcx().def_map.borrow().get(&expr.id).unwrap().full_def();
             match def {
                 def::DefConst(def_id) | def::DefAssociatedConst(def_id, _) => {
-                    if !ccx.tcx().adjustments.borrow().contains_key(&expr.id) {
+                    if !ccx.tcx().tables.borrow().adjustments.contains_key(&expr.id) {
                         debug!("get_const_expr_as_global ({:?}): found const {:?}",
                                expr.id, def_id);
                         return get_const_val(ccx, def_id, expr);
@@ -281,7 +281,7 @@ pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     let mut llconst = llconst;
     let mut ety_adjusted = monomorphize::apply_param_substs(cx.tcx(), param_substs,
                                                             &cx.tcx().expr_ty_adjusted(e));
-    let opt_adj = cx.tcx().adjustments.borrow().get(&e.id).cloned();
+    let opt_adj = cx.tcx().tables.borrow().adjustments.get(&e.id).cloned();
     match opt_adj {
         Some(ty::AdjustReifyFnPointer) => {
             // FIXME(#19925) once fn item types are
@@ -894,7 +894,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
           ast::ExprMethodCall(_, _, ref args) => {
               let arg_vals = map_list(args);
               let method_call = ty::MethodCall::expr(e.id);
-              let method_did = match cx.tcx().method_map.borrow()[&method_call].origin {
+              let method_did = match cx.tcx().tables.borrow().method_map[&method_call].origin {
                   ty::MethodStatic(did) => did,
                   _ => cx.sess().span_bug(e.span, "expected a const method def")
               };

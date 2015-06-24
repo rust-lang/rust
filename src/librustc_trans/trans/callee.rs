@@ -518,7 +518,7 @@ pub fn trans_fn_ref_with_substs<'a, 'tcx>(
             let ref_ty = match node {
                 ExprId(id) => tcx.node_id_to_type(id),
                 MethodCallKey(method_call) => {
-                    tcx.method_map.borrow().get(&method_call).unwrap().ty
+                    tcx.tables.borrow().method_map.get(&method_call).unwrap().ty
                 }
             };
             let ref_ty = monomorphize::apply_param_substs(tcx,
@@ -610,7 +610,7 @@ pub fn trans_method_call<'a, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let _icx = push_ctxt("trans_method_call");
     debug!("trans_method_call(call_expr={:?})", call_expr);
     let method_call = MethodCall::expr(call_expr.id);
-    let method_ty = match bcx.tcx().method_map.borrow().get(&method_call) {
+    let method_ty = match bcx.tcx().tables.borrow().method_map.get(&method_call) {
         Some(method) => match method.origin {
             ty::MethodTraitObject(_) => match method.ty.sty {
                 ty::TyBareFn(_, ref fty) => {

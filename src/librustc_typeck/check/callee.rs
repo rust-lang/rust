@@ -324,7 +324,7 @@ fn write_overloaded_call_method_map<'a,'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                              call_expr: &ast::Expr,
                                              method_callee: ty::MethodCallee<'tcx>) {
     let method_call = ty::MethodCall::expr(call_expr.id);
-    fcx.inh.method_map.borrow_mut().insert(method_call, method_callee);
+    fcx.inh.tables.borrow_mut().method_map.insert(method_call, method_callee);
 }
 
 #[derive(Debug)]

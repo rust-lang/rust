@@ -77,6 +77,10 @@ pub struct InferCtxt<'a, 'tcx: 'a> {
 
     // For region variables.
     region_vars: RegionVarBindings<'a, 'tcx>,
+
+    pub parameter_environment: ty::ParameterEnvironment<'a, 'tcx>,
+
+    // pub tables: &'a RefCell<ty::Tables<'tcx>>
 }
 
 /// A map returned by `skolemize_late_bound_regions()` indicating the skolemized
@@ -309,7 +313,8 @@ pub fn fixup_err_to_string(f: fixup_err) -> String {
     }
 }
 
-pub fn new_infer_ctxt<'a, 'tcx>(tcx: &'a ty::ctxt<'tcx>)
+pub fn new_infer_ctxt<'a, 'tcx>(tcx: &'a ty::ctxt<'tcx>,
+                                param_env: Option<ty::ParameterEnvironment<'a, 'tcx>>)
                                 -> InferCtxt<'a, 'tcx> {
     InferCtxt {
         tcx: tcx,
@@ -317,6 +322,7 @@ pub fn new_infer_ctxt<'a, 'tcx>(tcx: &'a ty::ctxt<'tcx>)
         int_unification_table: RefCell::new(UnificationTable::new()),
         float_unification_table: RefCell::new(UnificationTable::new()),
         region_vars: RegionVarBindings::new(tcx),
+        parameter_environment: param_env.unwrap_or(tcx.empty_parameter_environment())
     }
 }
 
