@@ -3600,6 +3600,11 @@ pub mod consts {
             pub const SHUT_RD: c_int = 0;
             pub const SHUT_WR: c_int = 1;
             pub const SHUT_RDWR: c_int = 2;
+
+            pub const LOCK_SH: c_int = 1;
+            pub const LOCK_EX: c_int = 2;
+            pub const LOCK_NB: c_int = 4;
+            pub const LOCK_UN: c_int = 8;
         }
         #[cfg(any(target_arch = "mips",
                   target_arch = "mipsel"))]
@@ -3684,6 +3689,11 @@ pub mod consts {
             pub const SHUT_RD: c_int = 0;
             pub const SHUT_WR: c_int = 1;
             pub const SHUT_RDWR: c_int = 2;
+
+            pub const LOCK_SH: c_int = 1;
+            pub const LOCK_EX: c_int = 2;
+            pub const LOCK_NB: c_int = 4;
+            pub const LOCK_UN: c_int = 8;
         }
         #[cfg(any(target_arch = "x86",
                   target_arch = "x86_64",
@@ -4227,6 +4237,11 @@ pub mod consts {
             pub const SHUT_RD: c_int = 0;
             pub const SHUT_WR: c_int = 1;
             pub const SHUT_RDWR: c_int = 2;
+
+            pub const LOCK_SH: c_int = 1;
+            pub const LOCK_EX: c_int = 2;
+            pub const LOCK_NB: c_int = 4;
+            pub const LOCK_UN: c_int = 8;
         }
         pub mod extra {
             use types::os::arch::c95::c_int;
@@ -4651,6 +4666,11 @@ pub mod consts {
             pub const SHUT_RD: c_int = 0;
             pub const SHUT_WR: c_int = 1;
             pub const SHUT_RDWR: c_int = 2;
+
+            pub const LOCK_SH: c_int = 1;
+            pub const LOCK_EX: c_int = 2;
+            pub const LOCK_NB: c_int = 4;
+            pub const LOCK_UN: c_int = 8;
         }
         pub mod extra {
             use types::os::arch::c95::c_int;
@@ -5092,6 +5112,11 @@ pub mod consts {
             pub const SHUT_RD: c_int = 0;
             pub const SHUT_WR: c_int = 1;
             pub const SHUT_RDWR: c_int = 2;
+
+            pub const LOCK_SH: c_int = 1;
+            pub const LOCK_EX: c_int = 2;
+            pub const LOCK_NB: c_int = 4;
+            pub const LOCK_UN: c_int = 8;
         }
         pub mod extra {
             use types::os::arch::c95::c_int;
@@ -6121,6 +6146,7 @@ pub mod funcs {
                            -> c_int;
             pub fn realpath(pathname: *const c_char, resolved: *mut c_char)
                             -> *mut c_char;
+            pub fn flock(fd: c_int, operation: c_int) -> c_int;
         }
     }
 
@@ -6137,6 +6163,7 @@ pub mod funcs {
                            -> c_int;
             pub fn mincore(addr: *mut c_void, len: size_t, vec: *mut c_uchar)
                            -> c_int;
+            pub fn flock(fd: c_int, operation: c_int) -> c_int;
         }
     }
 
