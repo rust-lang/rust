@@ -734,7 +734,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                             has type `{}`, which is {}",
                             ol,
                             moved_lp_msg,
-                            expr_ty,
+                            moved_lp.ty,
                             suggestion));
                 self.tcx.sess.fileline_help(expr_span, help);
             }
