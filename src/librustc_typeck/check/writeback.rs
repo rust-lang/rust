@@ -128,7 +128,7 @@ impl<'cx, 'tcx, 'v> Visitor<'v> for WritebackCx<'cx, 'tcx> {
             return;
         }
 
-        self.visit_node_id(ResolvingExpr(s.span), ty::stmt_node_id(s));
+        self.visit_node_id(ResolvingExpr(s.span), ast_util::stmt_id(s));
         visit::walk_stmt(self, s);
     }
 
