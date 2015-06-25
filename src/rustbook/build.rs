@@ -145,9 +145,6 @@ fn render(book: &Book, tgt: &Path) -> CliResult<()> {
             format!("--html-after-content={}", postlude.display()),
             format!("--markdown-playground-url=http://play.rust-lang.org"),
             format!("--markdown-css={}", item.path_to_root.join("rust-book.css").display()),
-            format!("--markdown-css={}",
-                "http://fonts.googleapis.com/css?family&#61;Open+Sans:400italic,700italic,400,700"
-                ),
             "--markdown-no-toc".to_string(),
         ];
         let output_result = rustdoc::main_args(rustdoc_args);
