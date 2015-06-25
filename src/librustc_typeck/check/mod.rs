@@ -382,7 +382,7 @@ impl<'a, 'tcx> Inherited<'a, 'tcx> {
            -> Inherited<'a, 'tcx> {
 
         Inherited {
-            infcx: infer::new_infer_ctxt(tcx, Some(param_env)),
+            infcx: infer::new_infer_ctxt(tcx, tables, Some(param_env)),
             locals: RefCell::new(NodeMap()),
             tables: tables,
             fn_sig_map: RefCell::new(NodeMap()),

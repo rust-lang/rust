@@ -4468,7 +4468,8 @@ impl<'tcx> TyS<'tcx> {
                        span: Span)
                        -> bool
     {
-        let infcx = infer::new_infer_ctxt(param_env.tcx(), Some(param_env.clone()));
+        let tcx = param_env.tcx();
+        let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, Some(param_env.clone()));
 
         let is_impld = traits::type_known_to_meet_builtin_bound(&infcx, param_env,
                                                                 self, bound, span);
