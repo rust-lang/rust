@@ -47,7 +47,6 @@ use middle::check_const;
 use middle::const_eval::{self, ConstVal, ErrKind};
 use middle::const_eval::EvalHint::UncheckedExprHint;
 use middle::def::{self, DefMap, ExportMap};
-use middle::dependency_format;
 use middle::fast_reject;
 use middle::free_region::FreeRegionMap;
 use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem, FnOnceTraitLangItem};
@@ -839,8 +838,6 @@ pub struct ctxt<'tcx> {
     pub extern_const_statics: RefCell<DefIdMap<ast::NodeId>>,
     pub extern_const_variants: RefCell<DefIdMap<ast::NodeId>>,
     pub extern_const_fns: RefCell<DefIdMap<ast::NodeId>>,
-
-    pub dependency_formats: RefCell<dependency_format::Dependencies>,
 
     pub node_lint_levels: RefCell<FnvHashMap<(ast::NodeId, lint::LintId),
                                               lint::LevelSource>>,
@@ -3837,7 +3834,6 @@ impl<'tcx> ctxt<'tcx> {
             extern_const_statics: RefCell::new(DefIdMap()),
             extern_const_variants: RefCell::new(DefIdMap()),
             extern_const_fns: RefCell::new(DefIdMap()),
-            dependency_formats: RefCell::new(FnvHashMap()),
             node_lint_levels: RefCell::new(FnvHashMap()),
             transmute_restrictions: RefCell::new(Vec::new()),
             stability: RefCell::new(stability),

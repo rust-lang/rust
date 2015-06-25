@@ -1174,6 +1174,7 @@ pub struct CrateDep {
     pub cnum: ast::CrateNum,
     pub name: String,
     pub hash: Svh,
+    pub explicitly_linked: bool,
 }
 
 pub fn get_crate_deps(data: &[u8]) -> Vec<CrateDep> {
@@ -1188,10 +1189,13 @@ pub fn get_crate_deps(data: &[u8]) -> Vec<CrateDep> {
     reader::tagged_docs(depsdoc, tag_crate_dep).enumerate().map(|(crate_num, depdoc)| {
         let name = docstr(depdoc, tag_crate_dep_crate_name);
         let hash = Svh::new(&docstr(depdoc, tag_crate_dep_hash));
+        let doc = reader::get_doc(depdoc, tag_crate_dep_explicitly_linked);
+        let explicitly_linked = reader::doc_as_u8(doc) != 0;
         CrateDep {
             cnum: crate_num as u32 + 1,
             name: name,
             hash: hash,
+            explicitly_linked: explicitly_linked,
         }
     }).collect()
 }
@@ -1252,7 +1256,7 @@ pub fn translate_def_id(cdata: Cmd, did: ast::DefId) -> ast::DefId {
         return ast::DefId { krate: cdata.cnum, node: did.node };
     }
 
-    match cdata.cnum_map.get(&did.krate) {
+    match cdata.cnum_map.borrow().get(&did.krate) {
         Some(&n) => {
             ast::DefId {
                 krate: n,
@@ -1270,7 +1274,7 @@ fn reverse_translate_def_id(cdata: Cmd, did: ast::DefId) -> Option<ast::DefId> {
         return Some(ast::DefId { krate: ast::LOCAL_CRATE, node: did.node });
     }
 
-    for (&local, &global) in &cdata.cnum_map {
+    for (&local, &global) in cdata.cnum_map.borrow().iter() {
         if global == did.krate {
             return Some(ast::DefId { krate: local, node: did.node });
         }
@@ -1385,7 +1389,7 @@ pub fn get_dylib_dependency_formats(cdata: Cmd)
         let cnum = spec.split(':').nth(0).unwrap();
         let link = spec.split(':').nth(1).unwrap();
         let cnum: ast::CrateNum = cnum.parse().unwrap();
-        let cnum = match cdata.cnum_map.get(&cnum) {
+        let cnum = match cdata.cnum_map.borrow().get(&cnum) {
             Some(&n) => n,
             None => panic!("didn't find a crate in the cnum_map")
         };
