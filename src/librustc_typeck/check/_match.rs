@@ -147,7 +147,7 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
         }
         ast::PatEnum(..) | ast::PatIdent(..) if pat_is_resolved_const(&tcx.def_map, pat) => {
             let const_did = tcx.def_map.borrow().get(&pat.id).unwrap().def_id();
-            let const_scheme = ty::lookup_item_type(tcx, const_did);
+            let const_scheme = tcx.lookup_item_type(const_did);
             assert!(const_scheme.generics.is_empty());
             let const_ty = pcx.fcx.instantiate_type_scheme(pat.span,
                                                            &Substs::empty(),
@@ -227,8 +227,8 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                     resolve_ty_and_def_ufcs(fcx, path_res, Some(self_ty),
                                             path, pat.span, pat.id) {
                 if check_assoc_item_is_const(pcx, def, pat.span) {
-                    let scheme = ty::lookup_item_type(tcx, def.def_id());
-                    let predicates = ty::lookup_predicates(tcx, def.def_id());
+                    let scheme = tcx.lookup_item_type(def.def_id());
+                    let predicates = tcx.lookup_predicates(def.def_id());
                     instantiate_path(fcx, segments,
                                      scheme, &predicates,
                                      opt_ty, def, pat.span, pat.id);
@@ -555,7 +555,7 @@ pub fn check_pat_struct<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>, pat: &'tcx ast::Pat,
             return;
         },
         _ => {
-            let def_type = ty::lookup_item_type(tcx, def.def_id());
+            let def_type = tcx.lookup_item_type(def.def_id());
             match def_type.ty.sty {
                 ty::TyStruct(struct_def_id, _) =>
                     (struct_def_id, struct_def_id),
@@ -579,8 +579,8 @@ pub fn check_pat_struct<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>, pat: &'tcx ast::Pat,
 
     instantiate_path(pcx.fcx,
                      &path.segments,
-                     ty::lookup_item_type(tcx, enum_def_id),
-                     &ty::lookup_predicates(tcx, enum_def_id),
+                     tcx.lookup_item_type(enum_def_id),
+                     &tcx.lookup_predicates(enum_def_id),
                      None,
                      def,
                      pat.span,
@@ -595,7 +595,7 @@ pub fn check_pat_struct<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>, pat: &'tcx ast::Pat,
         .map(|substs| substs.substs.clone())
         .unwrap_or_else(|| Substs::empty());
 
-    let struct_fields = ty::struct_fields(tcx, variant_def_id, &item_substs);
+    let struct_fields = tcx.struct_fields(variant_def_id, &item_substs);
     check_struct_pat_fields(pcx, pat.span, fields, &struct_fields,
                             variant_def_id, etc);
 }
@@ -631,10 +631,10 @@ pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
     let enum_def = def.variant_def_ids()
         .map_or_else(|| def.def_id(), |(enum_def, _)| enum_def);
 
-    let ctor_scheme = ty::lookup_item_type(tcx, enum_def);
-    let ctor_predicates = ty::lookup_predicates(tcx, enum_def);
+    let ctor_scheme = tcx.lookup_item_type(enum_def);
+    let ctor_predicates = tcx.lookup_predicates(enum_def);
     let path_scheme = if ctor_scheme.ty.is_fn() {
-        let fn_ret = ty::no_late_bound_regions(tcx, &ctor_scheme.ty.fn_ret()).unwrap();
+        let fn_ret = tcx.no_late_bound_regions(&ctor_scheme.ty.fn_ret()).unwrap();
         ty::TypeScheme {
             ty: fn_ret.unwrap(),
             generics: ctor_scheme.generics,
@@ -664,14 +664,14 @@ pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
         ty::TyEnum(enum_def_id, expected_substs)
             if def == def::DefVariant(enum_def_id, def.def_id(), false) =>
         {
-            let variant = ty::enum_variant_with_id(tcx, enum_def_id, def.def_id());
+            let variant = tcx.enum_variant_with_id(enum_def_id, def.def_id());
             (variant.args.iter()
                          .map(|t| fcx.instantiate_type_scheme(pat.span, expected_substs, t))
                          .collect(),
              "variant")
         }
         ty::TyStruct(struct_def_id, expected_substs) => {
-            let struct_fields = ty::struct_fields(tcx, struct_def_id, expected_substs);
+            let struct_fields = tcx.struct_fields(struct_def_id, expected_substs);
             (struct_fields.iter()
                           .map(|field| fcx.instantiate_type_scheme(pat.span,
                                                                    expected_substs,
@@ -761,7 +761,7 @@ pub fn check_struct_pat_fields<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                     .unwrap_or_else(|| {
                         span_err!(tcx.sess, span, E0026,
                             "struct `{}` does not have a field named `{}`",
-                            ty::item_path_str(tcx, struct_id),
+                            tcx.item_path_str(struct_id),
                             token::get_ident(field.ident));
                         tcx.types.err
                     })

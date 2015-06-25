@@ -109,7 +109,7 @@ pub fn llvm_calling_convention(ccx: &CrateContext,
 
 pub fn register_static(ccx: &CrateContext,
                        foreign_item: &ast::ForeignItem) -> ValueRef {
-    let ty = ty::node_id_to_type(ccx.tcx(), foreign_item.id);
+    let ty = ccx.tcx().node_id_to_type(foreign_item.id);
     let llty = type_of::type_of(ccx, ty);
 
     let ident = link_name(foreign_item);
@@ -245,7 +245,7 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         ty::TyBareFn(_, ref fn_ty) => (fn_ty.abi, &fn_ty.sig),
         _ => ccx.sess().bug("trans_native_call called on non-function type")
     };
-    let fn_sig = ty::erase_late_bound_regions(ccx.tcx(), fn_sig);
+    let fn_sig = ccx.tcx().erase_late_bound_regions(fn_sig);
     let llsig = foreign_signature(ccx, &fn_sig, &passed_arg_tys[..]);
     let fn_type = cabi::compute_abi_info(ccx,
                                          &llsig.llarg_tys,
@@ -478,7 +478,7 @@ pub fn trans_foreign_mod(ccx: &CrateContext, foreign_mod: &ast::ForeignMod) {
             match foreign_mod.abi {
                 Rust | RustIntrinsic => {}
                 abi => {
-                    let ty = ty::node_id_to_type(ccx.tcx(), foreign_item.id);
+                    let ty = ccx.tcx().node_id_to_type(foreign_item.id);
                     match ty.sty {
                         ty::TyBareFn(_, bft) => gate_simd_ffi(ccx.tcx(), &**decl, bft),
                         _ => ccx.tcx().sess.span_bug(foreign_item.span,
@@ -554,7 +554,7 @@ pub fn register_rust_fn_with_foreign_abi(ccx: &CrateContext,
 
     let tys = foreign_types_for_id(ccx, node_id);
     let llfn_ty = lltype_for_fn_from_foreign_types(ccx, &tys);
-    let t = ty::node_id_to_type(ccx.tcx(), node_id);
+    let t = ccx.tcx().node_id_to_type(node_id);
     let cconv = match t.sty {
         ty::TyBareFn(_, ref fn_ty) => {
             llvm_calling_convention(ccx, fn_ty.abi)
@@ -578,7 +578,7 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                                 hash: Option<&str>) {
     let _icx = push_ctxt("foreign::build_foreign_fn");
 
-    let fnty = ty::node_id_to_type(ccx.tcx(), id);
+    let fnty = ccx.tcx().node_id_to_type(id);
     let mty = monomorphize::apply_param_substs(ccx.tcx(), param_substs, &fnty);
     let tys = foreign_types_for_fn_ty(ccx, mty);
 
@@ -601,7 +601,7 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     {
         let _icx = push_ctxt("foreign::foreign::build_rust_fn");
         let tcx = ccx.tcx();
-        let t = ty::node_id_to_type(tcx, id);
+        let t = tcx.node_id_to_type(id);
         let t = monomorphize::apply_param_substs(tcx, param_substs, &t);
 
         let ps = ccx.tcx().map.with_path(id, |path| {
@@ -933,7 +933,7 @@ fn foreign_signature<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
 fn foreign_types_for_id<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                   id: ast::NodeId) -> ForeignTypes<'tcx> {
-    foreign_types_for_fn_ty(ccx, ty::node_id_to_type(ccx.tcx(), id))
+    foreign_types_for_fn_ty(ccx, ccx.tcx().node_id_to_type(id))
 }
 
 fn foreign_types_for_fn_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
@@ -942,7 +942,7 @@ fn foreign_types_for_fn_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         ty::TyBareFn(_, ref fn_ty) => &fn_ty.sig,
         _ => ccx.sess().bug("foreign_types_for_fn_ty called on non-function type")
     };
-    let fn_sig = ty::erase_late_bound_regions(ccx.tcx(), fn_sig);
+    let fn_sig = ccx.tcx().erase_late_bound_regions(fn_sig);
     let llsig = foreign_signature(ccx, &fn_sig, &fn_sig.inputs);
     let fn_ty = cabi::compute_abi_info(ccx,
                                        &llsig.llarg_tys,

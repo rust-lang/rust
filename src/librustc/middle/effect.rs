@@ -62,7 +62,7 @@ impl<'a, 'tcx> EffectCheckVisitor<'a, 'tcx> {
 
     fn check_str_index(&mut self, e: &ast::Expr) {
         let base_type = match e.node {
-            ast::ExprIndex(ref base, _) => ty::node_id_to_type(self.tcx, base.id),
+            ast::ExprIndex(ref base, _) => self.tcx.node_id_to_type(base.id),
             _ => return
         };
         debug!("effect: checking index with base type {:?}",
@@ -149,7 +149,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EffectCheckVisitor<'a, 'tcx> {
                 }
             }
             ast::ExprCall(ref base, _) => {
-                let base_type = ty::node_id_to_type(self.tcx, base.id);
+                let base_type = self.tcx.node_id_to_type(base.id);
                 debug!("effect: call case, base type is {:?}",
                         base_type);
                 if type_is_unsafe_function(base_type) {
@@ -157,7 +157,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EffectCheckVisitor<'a, 'tcx> {
                 }
             }
             ast::ExprUnary(ast::UnDeref, ref base) => {
-                let base_type = ty::node_id_to_type(self.tcx, base.id);
+                let base_type = self.tcx.node_id_to_type(base.id);
                 debug!("effect: unary case, base type is {:?}",
                         base_type);
                 if let ty::TyRawPtr(_) = base_type.sty {
@@ -174,7 +174,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EffectCheckVisitor<'a, 'tcx> {
                 self.require_unsafe(expr.span, "use of inline assembly");
             }
             ast::ExprPath(..) => {
-                if let def::DefStatic(_, true) = ty::resolve_expr(self.tcx, expr) {
+                if let def::DefStatic(_, true) = self.tcx.resolve_expr(expr) {
                     self.require_unsafe(expr.span, "use of mutable static");
                 }
             }

@@ -100,7 +100,7 @@ pub fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
             token::get_name(trait_m.name),
             impl_m.fty.sig.0.inputs.len(),
             if impl_m.fty.sig.0.inputs.len() == 1 {""} else {"s"},
-            ty::item_path_str(tcx, trait_m.def_id),
+            tcx.item_path_str(trait_m.def_id),
             trait_m.fty.sig.0.inputs.len());
         return;
     }

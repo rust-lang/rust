@@ -102,7 +102,7 @@ pub fn type_of_rust_fn<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
            sig,
            abi);
 
-    let sig = ty::erase_late_bound_regions(cx.tcx(), sig);
+    let sig = cx.tcx().erase_late_bound_regions(sig);
     assert!(!sig.variadic); // rust fns are never variadic
 
     let mut atys: Vec<Type> = Vec::new();
@@ -362,7 +362,7 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
                   cx.tn().find_type("str_slice").unwrap()
               } else {
                   let ptr_ty = in_memory_type_of(cx, ty).ptr_to();
-                  let unsized_part = ty::struct_tail(cx.tcx(), ty);
+                  let unsized_part = cx.tcx().struct_tail(ty);
                   let info_ty = match unsized_part.sty {
                       ty::TyStr | ty::TyArray(..) | ty::TySlice(_) => {
                           Type::uint_from_ty(cx, ast::TyUs)
@@ -454,7 +454,7 @@ fn llvm_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                             did: ast::DefId,
                             tps: &[Ty<'tcx>])
                             -> String {
-    let base = ty::item_path_str(cx.tcx(), did);
+    let base = cx.tcx().item_path_str(did);
     let strings: Vec<String> = tps.iter().map(|t| t.to_string()).collect();
     let tstr = if strings.is_empty() {
         base

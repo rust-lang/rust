@@ -171,7 +171,7 @@ impl<'cx, 'tcx, 'v> Visitor<'v> for WritebackCx<'cx, 'tcx> {
         debug!("Type for pattern binding {} (id {}) resolved to {:?}",
                pat_to_string(p),
                p.id,
-               ty::node_id_to_type(self.tcx(), p.id));
+               self.tcx().node_id_to_type(p.id));
 
         visit::walk_pat(self, p);
     }
@@ -334,11 +334,11 @@ impl ResolveReason {
             ResolvingLocal(s) => s,
             ResolvingPattern(s) => s,
             ResolvingUpvar(upvar_id) => {
-                ty::expr_span(tcx, upvar_id.closure_expr_id)
+                tcx.expr_span(upvar_id.closure_expr_id)
             }
             ResolvingClosure(did) => {
                 if did.krate == ast::LOCAL_CRATE {
-                    ty::expr_span(tcx, did.node)
+                    tcx.expr_span(did.node)
                 } else {
                     DUMMY_SP
                 }
@@ -403,7 +403,7 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
                     let span = self.reason.span(self.tcx);
                     span_err!(self.tcx.sess, span, E0104,
                         "cannot resolve lifetime for captured variable `{}`: {}",
-                        ty::local_var_name_str(self.tcx, upvar_id.var_id).to_string(),
+                        self.tcx.local_var_name_str(upvar_id.var_id).to_string(),
                         infer::fixup_err_to_string(e));
                 }
 

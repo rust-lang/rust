@@ -124,7 +124,7 @@ pub trait AstConv<'tcx> {
                                         item_name: ast::Name)
                                         -> Ty<'tcx>
     {
-        if ty::binds_late_bound_regions(self.tcx(), &poly_trait_ref) {
+        if self.tcx().binds_late_bound_regions(&poly_trait_ref) {
             span_err!(self.tcx().sess, span, E0212,
                 "cannot extract an associated type from a higher-ranked trait bound \
                  in this context");
@@ -513,7 +513,7 @@ fn find_implied_output_region(input_tys: &[Ty], input_pats: Vec<String>)
 
     for (input_type, input_pat) in input_tys.iter().zip(input_pats) {
         let mut accumulator = Vec::new();
-        ty::accumulate_lifetimes_in_type(&mut accumulator, *input_type);
+        input_type.accumulate_lifetimes_in_type(&mut accumulator);
 
         if accumulator.len() == 1 {
             // there's a chance that the unique lifetime of this
@@ -1060,7 +1060,7 @@ fn make_object_type<'tcx>(this: &AstConv<'tcx>,
     let mut associated_types: FnvHashSet<(ast::DefId, ast::Name)> =
         traits::supertraits(tcx, object_trait_ref)
         .flat_map(|tr| {
-            let trait_def = ty::lookup_trait_def(tcx, tr.def_id());
+            let trait_def = tcx.lookup_trait_def(tr.def_id());
             trait_def.associated_type_names
                 .clone()
                 .into_iter()
@@ -1078,7 +1078,7 @@ fn make_object_type<'tcx>(this: &AstConv<'tcx>,
         span_err!(tcx.sess, span, E0191,
             "the value of the associated type `{}` (from the trait `{}`) must be specified",
                     name,
-                    ty::item_path_str(tcx, trait_def_id));
+                    tcx.item_path_str(trait_def_id));
     }
 
     tcx.mk_trait(object.principal, object.bounds)
@@ -1265,7 +1265,7 @@ fn associated_path_def_to_ty<'tcx>(this: &AstConv<'tcx>,
             _ => unreachable!()
         }
     } else {
-        let trait_items = ty::trait_items(tcx, trait_did);
+        let trait_items = tcx.trait_items(trait_did);
         let item = trait_items.iter().find(|i| i.name() == assoc_name);
         item.expect("missing associated type").def_id()
     };
@@ -1290,7 +1290,7 @@ fn qpath_to_ty<'tcx>(this: &AstConv<'tcx>,
     let self_ty = if let Some(ty) = opt_self_ty {
         ty
     } else {
-        let path_str = ty::item_path_str(tcx, trait_def_id);
+        let path_str = tcx.item_path_str(trait_def_id);
         report_ambiguous_associated_type(tcx,
                                          span,
                                          "Type",
@@ -2116,8 +2116,7 @@ pub fn partition_bounds<'a>(tcx: &ty::ctxt,
             ast::TraitTyParamBound(ref b, ast::TraitBoundModifier::None) => {
                 match ::lookup_full_def(tcx, b.trait_ref.path.span, b.trait_ref.ref_id) {
                     def::DefTrait(trait_did) => {
-                        if ty::try_add_builtin_trait(tcx,
-                                                     trait_did,
+                        if tcx.try_add_builtin_trait(trait_did,
                                                      &mut builtin_bounds) {
                             let segments = &b.trait_ref.path.segments;
                             let parameters = &segments[segments.len() - 1].parameters;

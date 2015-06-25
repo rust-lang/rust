@@ -56,7 +56,7 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         params: &psubsts.types
     };
 
-    let item_ty = ty::lookup_item_type(ccx.tcx(), fn_id).ty;
+    let item_ty = ccx.tcx().lookup_item_type(fn_id).ty;
 
     debug!("monomorphic_fn about to subst into {:?}", item_ty);
     let mono_ty = item_ty.subst(ccx.tcx(), psubsts);
@@ -64,7 +64,7 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     match ccx.monomorphized().borrow().get(&hash_id) {
         Some(&val) => {
             debug!("leaving monomorphic fn {}",
-            ty::item_path_str(ccx.tcx(), fn_id));
+            ccx.tcx().item_path_str(fn_id));
             return (val, mono_ty, false);
         }
         None => ()
@@ -198,7 +198,7 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         }
         ast_map::NodeVariant(v) => {
             let parent = ccx.tcx().map.get_parent(fn_id.node);
-            let tvs = ty::enum_variants(ccx.tcx(), local_def(parent));
+            let tvs = ccx.tcx().enum_variants(local_def(parent));
             let this_tv = tvs.iter().find(|tv| { tv.id.node == fn_id.node}).unwrap();
             let d = mk_lldecl(abi::Rust);
             attributes::inline(d, attributes::InlineAttr::Hint);
@@ -284,7 +284,7 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     ccx.monomorphizing().borrow_mut().insert(fn_id, depth);
 
-    debug!("leaving monomorphic fn {}", ty::item_path_str(ccx.tcx(), fn_id));
+    debug!("leaving monomorphic fn {}", ccx.tcx().item_path_str(fn_id));
     (lldecl, mono_ty, true)
 }
 

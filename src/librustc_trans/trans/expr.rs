@@ -73,7 +73,6 @@ use trans::monomorphize;
 use trans::tvec;
 use trans::type_of;
 use middle::cast::{CastKind, CastTy};
-use middle::ty::{struct_fields, tup_fields};
 use middle::ty::{AdjustDerefRef, AdjustReifyFnPointer, AdjustUnsafeFnPointer};
 use middle::ty::{self, Ty};
 use middle::ty::MethodCall;
@@ -313,7 +312,7 @@ pub fn unsized_info<'ccx, 'tcx>(ccx: &CrateContext<'ccx, 'tcx>,
                                 old_info: Option<ValueRef>,
                                 param_substs: &'tcx Substs<'tcx>)
                                 -> ValueRef {
-    let (source, target) = ty::struct_lockstep_tails(ccx.tcx(), source, target);
+    let (source, target) = ccx.tcx().struct_lockstep_tails(source, target);
     match (&source.sty, &target.sty) {
         (&ty::TyArray(_, len), &ty::TySlice(_)) => C_uint(ccx, len),
         (&ty::TyTrait(_), &ty::TyTrait(_)) => {
@@ -500,7 +499,7 @@ fn coerce_unsized<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
             let kind = match fulfill_obligation(bcx.ccx(), span, trait_ref) {
                 traits::VtableImpl(traits::VtableImplData { impl_def_id, .. }) => {
-                    ty::custom_coerce_unsized_kind(bcx.tcx(), impl_def_id)
+                    bcx.tcx().custom_coerce_unsized_kind(impl_def_id)
                 }
                 vtable => {
                     bcx.sess().span_bug(span, &format!("invalid CoerceUnsized vtable: {:?}",
@@ -748,7 +747,7 @@ fn trans_rec_field<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                base: &ast::Expr,
                                field: ast::Name)
                                -> DatumBlock<'blk, 'tcx, Expr> {
-    trans_field(bcx, base, |tcx, field_tys| ty::field_idx_strict(tcx, field, field_tys))
+    trans_field(bcx, base, |tcx, field_tys| tcx.field_idx_strict(field, field_tys))
 }
 
 /// Translates `base.<idx>`.
@@ -789,8 +788,7 @@ fn trans_index<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             let ix_datum = unpack_datum!(bcx, trans(bcx, idx));
 
             let ref_ty = // invoked methods have LB regions instantiated:
-                ty::no_late_bound_regions(
-                    bcx.tcx(), &method_ty.fn_ret()).unwrap().unwrap();
+                bcx.tcx().no_late_bound_regions(&method_ty.fn_ret()).unwrap().unwrap();
             let elt_ty = match ref_ty.builtin_deref(true) {
                 None => {
                     bcx.tcx().sess.span_bug(index_expr.span,
@@ -1227,7 +1225,7 @@ fn trans_def_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     match def {
         def::DefVariant(tid, vid, _) => {
-            let variant_info = ty::enum_variant_with_id(bcx.tcx(), tid, vid);
+            let variant_info = bcx.tcx().enum_variant_with_id(tid, vid);
             if !variant_info.args.is_empty() {
                 // N-ary variant.
                 let llfn = callee::trans_fn_ref(bcx.ccx(), vid,
@@ -1247,7 +1245,7 @@ fn trans_def_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         def::DefStruct(_) => {
             let ty = expr_ty(bcx, ref_expr);
             match ty.sty {
-                ty::TyStruct(did, _) if ty::has_dtor(bcx.tcx(), did) => {
+                ty::TyStruct(did, _) if bcx.tcx().has_dtor(did) => {
                     let repr = adt::represent_type(bcx.ccx(), ty);
                     adt::trans_set_discr(bcx, &*repr, lldest, 0);
                 }
@@ -1342,13 +1340,22 @@ pub fn with_field_tys<'tcx, R, F>(tcx: &ty::ctxt<'tcx>,
 {
     match ty.sty {
         ty::TyStruct(did, substs) => {
-            let fields = struct_fields(tcx, did, substs);
+            let fields = tcx.struct_fields(did, substs);
             let fields = monomorphize::normalize_associated_type(tcx, &fields);
             op(0, &fields[..])
         }
 
         ty::TyTuple(ref v) => {
-            op(0, &tup_fields(&v[..]))
+            let fields: Vec<_> = v.iter().enumerate().map(|(i, &f)| {
+                ty::field {
+                    name: token::intern(&i.to_string()),
+                    mt: ty::mt {
+                        ty: f,
+                        mutbl: ast::MutImmutable
+                    }
+                }
+            }).collect();
+            op(0, &fields)
         }
 
         ty::TyEnum(_, substs) => {
@@ -1364,8 +1371,8 @@ pub fn with_field_tys<'tcx, R, F>(tcx: &ty::ctxt<'tcx>,
                     let def = tcx.def_map.borrow().get(&node_id).unwrap().full_def();
                     match def {
                         def::DefVariant(enum_id, variant_id, _) => {
-                            let variant_info = ty::enum_variant_with_id(tcx, enum_id, variant_id);
-                            let fields = struct_fields(tcx, variant_id, substs);
+                            let variant_info = tcx.enum_variant_with_id(enum_id, variant_id);
+                            let fields = tcx.struct_fields(variant_id, substs);
                             let fields = monomorphize::normalize_associated_type(tcx, &fields);
                             op(variant_info.disr_val, &fields[..])
                         }
@@ -2241,8 +2248,7 @@ fn deref_once<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             };
 
             let ref_ty = // invoked methods have their LB regions instantiated
-                ty::no_late_bound_regions(
-                    ccx.tcx(), &method_ty.fn_ret()).unwrap().unwrap();
+                ccx.tcx().no_late_bound_regions(&method_ty.fn_ret()).unwrap().unwrap();
             let scratch = rvalue_scratch_datum(bcx, ref_ty, "overloaded_deref");
 
             unpack_result!(bcx, trans_overloaded_op(bcx, expr, method_call,
@@ -2629,9 +2635,9 @@ fn expr_kind(tcx: &ty::ctxt, expr: &ast::Expr) -> ExprKind {
 
     match expr.node {
         ast::ExprPath(..) => {
-            match ty::resolve_expr(tcx, expr) {
+            match tcx.resolve_expr(expr) {
                 def::DefStruct(_) | def::DefVariant(..) => {
-                    if let ty::TyBareFn(..) = ty::node_id_to_type(tcx, expr.id).sty {
+                    if let ty::TyBareFn(..) = tcx.node_id_to_type(expr.id).sty {
                         // ctor function
                         ExprKind::RvalueDatum
                     } else {

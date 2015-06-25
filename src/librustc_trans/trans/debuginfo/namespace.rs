@@ -16,7 +16,7 @@ use llvm;
 use llvm::debuginfo::DIScope;
 use rustc::ast_map;
 use trans::common::CrateContext;
-use middle::ty::{self, ClosureTyper};
+use middle::ty::ClosureTyper;
 
 use std::ffi::CString;
 use std::ptr;
@@ -56,7 +56,7 @@ pub fn crate_root_namespace<'a>(cx: &'a CrateContext) -> &'a str {
 }
 
 pub fn namespace_for_item(cx: &CrateContext, def_id: ast::DefId) -> Rc<NamespaceTreeNode> {
-    ty::with_path(cx.tcx(), def_id, |path| {
+    cx.tcx().with_path(def_id, |path| {
         // prepend crate name if not already present
         let krate = if def_id.krate == ast::LOCAL_CRATE {
             let crate_namespace_name = token::intern(crate_root_namespace(cx));

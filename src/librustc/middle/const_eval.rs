@@ -126,9 +126,9 @@ pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: &'a ty::ctxt<'tcx>,
                         // `resolve_trait_associated_const` will select an impl
                         // or the default.
                         Some(ref_id) => {
-                            let trait_id = ty::trait_of_item(tcx, def_id)
+                            let trait_id = tcx.trait_of_item(def_id)
                                               .unwrap();
-                            let substs = ty::node_id_item_substs(tcx, ref_id)
+                            let substs = tcx.node_id_item_substs(ref_id)
                                             .substs;
                             resolve_trait_associated_const(tcx, ti, trait_id,
                                                            substs)
@@ -176,7 +176,7 @@ pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: &'a ty::ctxt<'tcx>,
                         // a trait-associated const if the caller gives us
                         // the expression that refers to it.
                         Some(ref_id) => {
-                            let substs = ty::node_id_item_substs(tcx, ref_id)
+                            let substs = tcx.node_id_item_substs(ref_id)
                                             .substs;
                             resolve_trait_associated_const(tcx, ti, trait_id,
                                                            substs).map(|e| e.id)
@@ -714,7 +714,7 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
                                      e: &Expr,
                                      ty_hint: Option<Ty<'tcx>>) -> EvalResult {
     eval_const_expr_with_substs(tcx, e, ty_hint, |id| {
-        ty::node_id_item_substs(tcx, id).substs
+        tcx.node_id_item_substs(id).substs
     })
 }
 
@@ -725,7 +725,7 @@ pub fn eval_const_expr_with_substs<'tcx, S>(tcx: &ty::ctxt<'tcx>,
         where S: Fn(ast::NodeId) -> subst::Substs<'tcx> {
     fn fromb(b: bool) -> ConstVal { Int(b as i64) }
 
-    let ety = ty_hint.or_else(|| ty::expr_ty_opt(tcx, e));
+    let ety = ty_hint.or_else(|| tcx.expr_ty_opt(e));
 
     // If type of expression itself is int or uint, normalize in these
     // bindings so that isize/usize is mapped to a type with an
@@ -882,7 +882,7 @@ pub fn eval_const_expr_with_substs<'tcx, S>(tcx: &ty::ctxt<'tcx>,
         // FIXME (#23833): the type-hint can cause problems,
         // e.g. `(i8::MAX + 1_i8) as u32` feeds in `u32` as result
         // type to the sum, and thus no overflow is signaled.
-        let base_hint = ty::expr_ty_opt(tcx, &**base).unwrap_or(ety);
+        let base_hint = tcx.expr_ty_opt(&**base).unwrap_or(ety);
         let val = try!(eval_const_expr_partial(tcx, &**base, Some(base_hint)));
         match cast_const(tcx, val, ety) {
             Ok(val) => val,
@@ -1030,10 +1030,10 @@ fn resolve_trait_associated_const<'a, 'tcx: 'a>(tcx: &'a ty::ctxt<'tcx>,
     let trait_ref = ty::Binder(ty::TraitRef { def_id: trait_id,
                                               substs: trait_substs });
 
-    ty::populate_implementations_for_trait_if_necessary(tcx, trait_ref.def_id());
+    tcx.populate_implementations_for_trait_if_necessary(trait_ref.def_id());
     let infcx = infer::new_infer_ctxt(tcx);
 
-    let param_env = ty::empty_parameter_environment(tcx);
+    let param_env = tcx.empty_parameter_environment();
     let mut selcx = traits::SelectionContext::new(&infcx, &param_env);
     let obligation = traits::Obligation::new(traits::ObligationCause::dummy(),
                                              trait_ref.to_poly_trait_predicate());
@@ -1056,7 +1056,7 @@ fn resolve_trait_associated_const<'a, 'tcx: 'a>(tcx: &'a ty::ctxt<'tcx>,
 
     match selection {
         traits::VtableImpl(ref impl_data) => {
-            match ty::associated_consts(tcx, impl_data.impl_def_id)
+            match tcx.associated_consts(impl_data.impl_def_id)
                      .iter().find(|ic| ic.name == ti.ident.name) {
                 Some(ic) => lookup_const_by_id(tcx, ic.def_id, None),
                 None => match ti.node {

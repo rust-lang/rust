@@ -232,7 +232,7 @@ pub fn get_extern_const<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, did: ast::DefId,
     // don't do this then linker errors can be generated where the linker
     // complains that one object files has a thread local version of the
     // symbol and another one doesn't.
-    for attr in ty::get_attrs(ccx.tcx(), did).iter() {
+    for attr in ccx.tcx().get_attrs(did).iter() {
         if attr.check_name("thread_local") {
             llvm::set_thread_local(c, true);
         }
@@ -462,7 +462,7 @@ pub fn iter_structural_ty<'blk, 'tcx, F>(cx: Block<'blk, 'tcx>,
           let ccx = fcx.ccx;
 
           let repr = adt::represent_type(ccx, t);
-          let variants = ty::enum_variants(ccx.tcx(), tid);
+          let variants = ccx.tcx().enum_variants(tid);
           let n_variants = (*variants).len();
 
           // NB: we must hit the discriminant first so that structural
@@ -1216,7 +1216,7 @@ pub fn new_fn_ctxt<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
           llfn: llfndecl,
           llenv: None,
           llretslotptr: Cell::new(None),
-          param_env: ty::empty_parameter_environment(ccx.tcx()),
+          param_env: ccx.tcx().empty_parameter_environment(),
           alloca_insert_pt: Cell::new(None),
           llreturn: Cell::new(None),
           needs_ret_allocas: nested_returns,
@@ -1668,8 +1668,8 @@ pub fn trans_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let _s = StatRecorder::new(ccx, ccx.tcx().map.path_to_string(id).to_string());
     debug!("trans_fn(param_substs={:?})", param_substs);
     let _icx = push_ctxt("trans_fn");
-    let fn_ty = ty::node_id_to_type(ccx.tcx(), id);
-    let output_type = ty::erase_late_bound_regions(ccx.tcx(), &fn_ty.fn_ret());
+    let fn_ty = ccx.tcx().node_id_to_type(id);
+    let output_type = ccx.tcx().erase_late_bound_regions(&fn_ty.fn_ret());
     let abi = fn_ty.fn_abi();
     trans_closure(ccx, decl, body, llfndecl, param_substs, id, attrs, output_type, abi,
                   closure::ClosureEnv::NotClosure);
@@ -1704,7 +1704,7 @@ pub fn trans_named_tuple_constructor<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
 
     let result_ty = match ctor_ty.sty {
         ty::TyBareFn(_, ref bft) => {
-            ty::erase_late_bound_regions(bcx.tcx(), &bft.sig.output()).unwrap()
+            bcx.tcx().erase_late_bound_regions(&bft.sig.output()).unwrap()
         }
         _ => ccx.sess().bug(
             &format!("trans_enum_variant_constructor: \
@@ -1777,12 +1777,12 @@ fn trans_enum_variant_or_tuple_like_struct<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx
                                                      disr: ty::Disr,
                                                      param_substs: &'tcx Substs<'tcx>,
                                                      llfndecl: ValueRef) {
-    let ctor_ty = ty::node_id_to_type(ccx.tcx(), ctor_id);
+    let ctor_ty = ccx.tcx().node_id_to_type(ctor_id);
     let ctor_ty = monomorphize::apply_param_substs(ccx.tcx(), param_substs, &ctor_ty);
 
     let result_ty = match ctor_ty.sty {
         ty::TyBareFn(_, ref bft) => {
-            ty::erase_late_bound_regions(ccx.tcx(), &bft.sig.output())
+            ccx.tcx().erase_late_bound_regions(&bft.sig.output())
         }
         _ => ccx.sess().bug(
             &format!("trans_enum_variant_or_tuple_like_struct: \
@@ -1798,9 +1798,7 @@ fn trans_enum_variant_or_tuple_like_struct<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx
 
     assert!(!fcx.needs_ret_allocas);
 
-    let arg_tys =
-        ty::erase_late_bound_regions(
-            ccx.tcx(), &ctor_ty.fn_args());
+    let arg_tys = ccx.tcx().erase_late_bound_regions(&ctor_ty.fn_args());
 
     let arg_datums = create_datums_for_fn_args(bcx, &arg_tys[..]);
 
@@ -1836,7 +1834,7 @@ fn enum_variant_size_lint(ccx: &CrateContext, enum_def: &ast::EnumDef, sp: Span,
         return
     }
 
-    let ty = ty::node_id_to_type(ccx.tcx(), id);
+    let ty = ccx.tcx().node_id_to_type(id);
     let avar = adt::represent_type(ccx, ty);
     match *avar {
         adt::General(_, ref variants, _) => {
@@ -2035,7 +2033,7 @@ pub fn trans_item(ccx: &CrateContext, item: &ast::Item) {
                     // error in trans. This is used to write compile-fail tests
                     // that actually test that compilation succeeds without
                     // reporting an error.
-                    if ty::has_attr(ccx.tcx(), local_def(item.id), "rustc_error") {
+                    if ccx.tcx().has_attr(local_def(item.id), "rustc_error") {
                         ccx.tcx().sess.span_fatal(item.span, "compilation successful");
                     }
                 }
@@ -2314,7 +2312,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
     debug!("get_item_val: id={} item={:?}", id, item);
     let val = match item {
         ast_map::NodeItem(i) => {
-            let ty = ty::node_id_to_type(ccx.tcx(), i.id);
+            let ty = ccx.tcx().node_id_to_type(i.id);
             let sym = || exported_name(ccx, id, ty, &i.attrs);
 
             let v = match i.node {
@@ -2421,7 +2419,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
             match ni.node {
                 ast::ForeignItemFn(..) => {
                     let abi = ccx.tcx().map.get_foreign_abi(id);
-                    let ty = ty::node_id_to_type(ccx.tcx(), ni.id);
+                    let ty = ccx.tcx().node_id_to_type(ni.id);
                     let name = foreign::link_name(&*ni);
                     let llfn = foreign::register_foreign_item_fn(ccx, abi, ty, &name);
                     attributes::from_fn_attrs(ccx, &ni.attrs, llfn);
@@ -2442,7 +2440,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
                 }
             };
             assert!(!args.is_empty());
-            let ty = ty::node_id_to_type(ccx.tcx(), id);
+            let ty = ccx.tcx().node_id_to_type(id);
             let parent = ccx.tcx().map.get_parent(id);
             let enm = ccx.tcx().map.expect_item(parent);
             let sym = exported_name(ccx,
@@ -2471,7 +2469,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
             };
             let parent = ccx.tcx().map.get_parent(id);
             let struct_item = ccx.tcx().map.expect_item(parent);
-            let ty = ty::node_id_to_type(ccx.tcx(), ctor_id);
+            let ty = ccx.tcx().node_id_to_type(ctor_id);
             let sym = exported_name(ccx,
                                     id,
                                     ty,
@@ -2503,7 +2501,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
 
 fn register_method(ccx: &CrateContext, id: ast::NodeId,
                    attrs: &[ast::Attribute], span: Span) -> ValueRef {
-    let mty = ty::node_id_to_type(ccx.tcx(), id);
+    let mty = ccx.tcx().node_id_to_type(id);
 
     let sym = exported_name(ccx, id, mty, &attrs);
 

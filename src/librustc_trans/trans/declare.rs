@@ -128,7 +128,7 @@ pub fn declare_rust_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, name: &str,
         _ => ccx.sess().bug("expected closure or fn")
     };
 
-    let sig = ty::Binder(ty::erase_late_bound_regions(ccx.tcx(), sig));
+    let sig = ty::Binder(ccx.tcx().erase_late_bound_regions(sig));
     debug!("declare_rust_fn (after region erasure) sig={:?}", sig);
     let llfty = type_of::type_of_rust_fn(ccx, env, &sig, abi);
     debug!("declare_rust_fn llfty={}", ccx.tn().type_to_string(llfty));

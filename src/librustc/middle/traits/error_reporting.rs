@@ -79,14 +79,14 @@ fn report_on_unimplemented<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                                      span: Span) -> Option<String> {
     let def_id = trait_ref.def_id;
     let mut report = None;
-    for item in ty::get_attrs(infcx.tcx, def_id).iter() {
+    for item in infcx.tcx.get_attrs(def_id).iter() {
         if item.check_name("rustc_on_unimplemented") {
             let err_sp = if item.meta().span == DUMMY_SP {
                 span
             } else {
                 item.meta().span
             };
-            let def = ty::lookup_trait_def(infcx.tcx, def_id);
+            let def = infcx.tcx.lookup_trait_def(def_id);
             let trait_str = def.trait_ref.to_string();
             if let Some(ref istring) = item.value_str() {
                 let mut generic_map = def.generics.types.iter_enumerated()
@@ -260,7 +260,7 @@ pub fn report_selection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
         TraitNotObjectSafe(did) => {
             span_err!(infcx.tcx.sess, obligation.cause.span, E0038,
                 "cannot convert to a trait object because trait `{}` is not object-safe",
-                ty::item_path_str(infcx.tcx, did));
+                infcx.tcx.item_path_str(did));
 
             for violation in object_safety_violations(infcx.tcx, did) {
                 match violation {
@@ -401,7 +401,7 @@ fn note_obligation_cause_code<'a, 'tcx, T>(infcx: &InferCtxt<'a, 'tcx>,
     match *cause_code {
         ObligationCauseCode::MiscObligation => { }
         ObligationCauseCode::ItemObligation(item_def_id) => {
-            let item_name = ty::item_path_str(tcx, item_def_id);
+            let item_name = tcx.item_path_str(item_def_id);
             tcx.sess.span_note(
                 cause_span,
                 &format!("required by `{}`", item_name));
@@ -442,8 +442,8 @@ fn note_obligation_cause_code<'a, 'tcx, T>(infcx: &InferCtxt<'a, 'tcx>,
         }
         ObligationCauseCode::ClosureCapture(var_id, closure_span, builtin_bound) => {
             let def_id = tcx.lang_items.from_builtin_kind(builtin_bound).unwrap();
-            let trait_name = ty::item_path_str(tcx, def_id);
-            let name = ty::local_var_name_str(tcx, var_id);
+            let trait_name = tcx.item_path_str(def_id);
+            let name = tcx.local_var_name_str(var_id);
             span_note!(tcx.sess, closure_span,
                        "the closure that captures `{}` requires that all captured variables \
                        implement the trait `{}`",

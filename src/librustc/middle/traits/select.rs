@@ -773,7 +773,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         match candidate {
             ImplCandidate(def_id) => {
-                match ty::trait_impl_polarity(self.tcx(), def_id) {
+                match self.tcx().trait_impl_polarity(def_id) {
                     Some(ast::ImplPolarity::Negative) => return Err(Unimplemented),
                     _ => {}
                 }
@@ -1024,7 +1024,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 projection_trait_ref={:?}",
                projection_trait_ref);
 
-        let trait_predicates = ty::lookup_predicates(self.tcx(), projection_trait_ref.def_id);
+        let trait_predicates = self.tcx().lookup_predicates(projection_trait_ref.def_id);
         let bounds = trait_predicates.instantiate(self.tcx(), projection_trait_ref.substs);
         debug!("match_projection_obligation_against_bounds_from_trait: \
                 bounds={:?}",
@@ -1224,7 +1224,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     {
         debug!("assemble_candidates_from_impls(obligation={:?})", obligation);
 
-        let def = ty::lookup_trait_def(self.tcx(), obligation.predicate.def_id());
+        let def = self.tcx().lookup_trait_def(obligation.predicate.def_id());
 
         def.for_each_relevant_impl(
             self.tcx(),
@@ -1252,7 +1252,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let def_id = obligation.predicate.def_id();
 
-        if ty::trait_has_default_impl(self.tcx(), def_id) {
+        if self.tcx().trait_has_default_impl(def_id) {
             match self_ty.sty {
                 ty::TyTrait(..) => {
                     // For object types, we don't know what the closed
@@ -1264,7 +1264,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     // object types, because it just lets you reflect
                     // onto the object type, not into the object's
                     // interior.
-                    if ty::has_attr(self.tcx(), def_id, "rustc_reflect_like") {
+                    if self.tcx().has_attr(def_id, "rustc_reflect_like") {
                         candidates.vec.push(DefaultImplObjectCandidate(def_id));
                     }
                 }
@@ -1397,7 +1397,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         //     T: Trait
         // so it seems ok if we (conservatively) fail to accept that `Unsize`
         // obligation above. Should be possible to extend this in the future.
-        let self_ty = match ty::no_late_bound_regions(self.tcx(), &obligation.self_ty()) {
+        let self_ty = match self.tcx().no_late_bound_regions(&obligation.self_ty()) {
             Some(t) => t,
             None => {
                 // Don't add any candidates if there are bound regions.
@@ -1736,7 +1736,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             ty::TyStruct(def_id, substs) => {
                 let types: Vec<Ty> =
-                    ty::struct_fields(self.tcx(), def_id, substs).iter()
+                    self.tcx().struct_fields(def_id, substs).iter()
                                                                  .map(|f| f.mt.ty)
                                                                  .collect();
                 nominal(bound, types)
@@ -1744,7 +1744,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             ty::TyEnum(def_id, substs) => {
                 let types: Vec<Ty> =
-                    ty::substd_enum_variants(self.tcx(), def_id, substs)
+                    self.tcx().substd_enum_variants(def_id, substs)
                     .iter()
                     .flat_map(|variant| &variant.args)
                     .cloned()
@@ -1881,13 +1881,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             ty::TyStruct(def_id, substs) => {
-                Some(ty::struct_fields(self.tcx(), def_id, substs).iter()
+                Some(self.tcx().struct_fields(def_id, substs).iter()
                      .map(|f| f.mt.ty)
                      .collect())
             }
 
             ty::TyEnum(def_id, substs) => {
-                Some(ty::substd_enum_variants(self.tcx(), def_id, substs)
+                Some(self.tcx().substd_enum_variants(def_id, substs)
                      .iter()
                      .flat_map(|variant| &variant.args)
                      .map(|&ty| ty)
@@ -2161,7 +2161,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                obligation,
                trait_def_id);
 
-        assert!(ty::has_attr(self.tcx(), trait_def_id, "rustc_reflect_like"));
+        assert!(self.tcx().has_attr(trait_def_id, "rustc_reflect_like"));
 
         // OK to skip binder, it is reintroduced below
         let self_ty = self.infcx.shallow_resolve(obligation.predicate.skip_binder().self_ty());
@@ -2178,7 +2178,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
                 // reintroduce the two binding levels we skipped, then flatten into one
                 let all_types = ty::Binder(ty::Binder(all_types));
-                let all_types = ty::flatten_late_bound_regions(self.tcx(), &all_types);
+                let all_types = self.tcx().flatten_late_bound_regions(&all_types);
 
                 self.vtable_default_impl(obligation, trait_def_id, all_types)
             }
@@ -2434,7 +2434,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // assemble_candidates_for_unsizing should ensure there are no late bound
         // regions here. See the comment there for more details.
         let source = self.infcx.shallow_resolve(
-            ty::no_late_bound_regions(tcx, &obligation.self_ty()).unwrap());
+            tcx.no_late_bound_regions(&obligation.self_ty()).unwrap());
         let target = self.infcx.shallow_resolve(obligation.predicate.0.input_types()[0]);
 
         debug!("confirm_builtin_unsize_candidate(source={:?}, target={:?})",
@@ -2525,8 +2525,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             // Struct<T> -> Struct<U>.
             (&ty::TyStruct(def_id, substs_a), &ty::TyStruct(_, substs_b)) => {
-                let fields = ty::lookup_struct_fields(tcx, def_id).iter().map(|f| {
-                    ty::lookup_field_type_unsubstituted(tcx, def_id, f.id)
+                let fields = tcx.lookup_struct_fields(def_id).iter().map(|f| {
+                    tcx.lookup_field_type_unsubstituted(def_id, f.id)
                 }).collect::<Vec<_>>();
 
                 // The last field of the structure has to exist and contain type parameters.
@@ -2628,7 +2628,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                   -> Result<(Normalized<'tcx, Substs<'tcx>>,
                              infer::SkolemizationMap), ()>
     {
-        let impl_trait_ref = ty::impl_trait_ref(self.tcx(), impl_def_id).unwrap();
+        let impl_trait_ref = self.tcx().impl_trait_ref(impl_def_id).unwrap();
 
         // Before we create the substitutions and everything, first
         // consider a "quick reject". This avoids creating more types
@@ -2765,7 +2765,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                                          impl_def_id);
 
         // Find the self type for the impl.
-        let impl_self_ty = ty::lookup_item_type(self.tcx(), impl_def_id).ty;
+        let impl_self_ty = self.tcx().lookup_item_type(impl_def_id).ty;
         let impl_self_ty = impl_self_ty.subst(self.tcx(), &impl_substs);
 
         debug!("match_impl_self_types(obligation_self_ty={:?}, impl_self_ty={:?})",
@@ -2890,7 +2890,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     {
         debug!("impl_or_trait_obligations(def_id={:?})", def_id);
 
-        let predicates = ty::lookup_predicates(self.tcx(), def_id);
+        let predicates = self.tcx().lookup_predicates(def_id);
         let predicates = predicates.instantiate(self.tcx(), substs);
         let predicates = normalize_with_depth(self, cause.clone(), recursion_depth, &predicates);
         let mut predicates = self.infcx().plug_leaks(skol_map, snapshot, &predicates);
