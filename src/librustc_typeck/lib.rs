@@ -199,7 +199,7 @@ fn require_same_types<'a, 'tcx, M>(tcx: &ty::ctxt<'tcx>,
         Ok(_) => true,
         Err(ref terr) => {
             span_err!(tcx.sess, span, E0211, "{}: {}", msg(), terr);
-            ty::note_and_explain_type_err(tcx, terr, span);
+            tcx.note_and_explain_type_err(terr, span);
             false
         }
     }
@@ -209,7 +209,7 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
                     main_id: ast::NodeId,
                     main_span: Span) {
     let tcx = ccx.tcx;
-    let main_t = ty::node_id_to_type(tcx, main_id);
+    let main_t = tcx.node_id_to_type(main_id);
     match main_t.sty {
         ty::TyBareFn(..) => {
             match tcx.map.find(main_id) {
@@ -254,7 +254,7 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
                      start_id: ast::NodeId,
                      start_span: Span) {
     let tcx = ccx.tcx;
-    let start_t = ty::node_id_to_type(tcx, start_id);
+    let start_t = tcx.node_id_to_type(start_id);
     match start_t.sty {
         ty::TyBareFn(..) => {
             match tcx.map.find(start_id) {

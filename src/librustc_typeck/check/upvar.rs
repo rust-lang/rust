@@ -136,7 +136,7 @@ impl<'a,'tcx> SeedBorrowKind<'a,'tcx> {
                    closure_def_id);
         }
 
-        ty::with_freevars(self.tcx(), expr.id, |freevars| {
+        self.tcx().with_freevars(expr.id, |freevars| {
             for freevar in freevars {
                 let var_node_id = freevar.def.local_node_id();
                 let upvar_id = ty::UpvarId { var_id: var_node_id,

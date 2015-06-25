@@ -225,7 +225,7 @@ fn write_content<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                     return expr::trans_into(bcx, &**element, Ignore);
                 }
                 SaveIn(lldest) => {
-                    match ty::eval_repeat_count(bcx.tcx(), &**count_expr) {
+                    match bcx.tcx().eval_repeat_count(&**count_expr) {
                         0 => expr::trans_into(bcx, &**element, Ignore),
                         1 => expr::trans_into(bcx, &**element, SaveIn(lldest)),
                         count => {
@@ -277,7 +277,7 @@ fn elements_required(bcx: Block, content_expr: &ast::Expr) -> usize {
         },
         ast::ExprVec(ref es) => es.len(),
         ast::ExprRepeat(_, ref count_expr) => {
-            ty::eval_repeat_count(bcx.tcx(), &**count_expr)
+            bcx.tcx().eval_repeat_count(&**count_expr)
         }
         _ => bcx.tcx().sess.span_bug(content_expr.span,
                                      "unexpected vec content")

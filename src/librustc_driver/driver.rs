@@ -648,16 +648,16 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: Session,
     time(time_passes, "static item recursion checking", (), |_|
          middle::check_static_recursion::check_crate(&sess, krate, &def_map, &ast_map));
 
-    ty::with_ctxt(sess,
-                  arenas,
-                  def_map,
-                  named_region_map,
-                  ast_map,
-                  freevars,
-                  region_map,
-                  lang_items,
-                  stability::Index::new(krate),
-                  |tcx| {
+    ty::ctxt::create_and_enter(sess,
+                               arenas,
+                               def_map,
+                               named_region_map,
+                               ast_map,
+                               freevars,
+                               region_map,
+                               lang_items,
+                               stability::Index::new(krate),
+                               |tcx| {
 
         // passes are timed inside typeck
         typeck::check_crate(tcx, trait_map);

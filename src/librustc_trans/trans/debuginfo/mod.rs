@@ -30,7 +30,7 @@ use rustc::ast_map;
 use trans::common::{NodeIdAndSpan, CrateContext, FunctionContext, Block};
 use trans;
 use trans::monomorphize;
-use middle::ty::{self, Ty, ClosureTyper};
+use middle::ty::{Ty, ClosureTyper};
 use session::config::{self, FullDebugInfo, LimitedDebugInfo, NoDebugInfo};
 use util::nodemap::{DefIdMap, NodeMap, FnvHashMap, FnvHashSet};
 
@@ -412,7 +412,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
         // Return type -- llvm::DIBuilder wants this at index 0
         assert_type_for_node_id(cx, fn_ast_id, error_reporting_span);
-        let return_type = ty::node_id_to_type(cx.tcx(), fn_ast_id);
+        let return_type = cx.tcx().node_id_to_type(fn_ast_id);
         let return_type = monomorphize::apply_param_substs(cx.tcx(),
                                                            param_substs,
                                                            &return_type);
@@ -425,7 +425,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         // Arguments types
         for arg in &fn_decl.inputs {
             assert_type_for_node_id(cx, arg.pat.id, arg.pat.span);
-            let arg_type = ty::node_id_to_type(cx.tcx(), arg.pat.id);
+            let arg_type = cx.tcx().node_id_to_type(arg.pat.id);
             let arg_type = monomorphize::apply_param_substs(cx.tcx(),
                                                             param_substs,
                                                             &arg_type);

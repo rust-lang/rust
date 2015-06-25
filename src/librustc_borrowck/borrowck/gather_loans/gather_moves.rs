@@ -35,7 +35,7 @@ pub fn gather_decl<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                              decl_id: ast::NodeId,
                              _decl_span: Span,
                              var_id: ast::NodeId) {
-    let ty = ty::node_id_to_type(bccx.tcx, var_id);
+    let ty = bccx.tcx.node_id_to_type(var_id);
     let loan_path = Rc::new(LoanPath::new(LpVar(var_id), ty));
     move_data.add_move(bccx.tcx, loan_path, decl_id, Declared);
 }
@@ -180,7 +180,7 @@ fn check_and_get_illegal_move_origin<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
         mc::cat_interior(ref b, mc::InteriorElement(Kind::Pattern, _)) => {
             match b.ty.sty {
                 ty::TyStruct(did, _) | ty::TyEnum(did, _) => {
-                    if ty::has_dtor(bccx.tcx, did) {
+                    if bccx.tcx.has_dtor(did) {
                         Some(cmt.clone())
                     } else {
                         check_and_get_illegal_move_origin(bccx, b)

@@ -153,7 +153,7 @@ pub fn from_fn_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_type: ty::Ty<'tcx
         _ => ccx.sess().bug("expected closure or function.")
     };
 
-    let fn_sig = ty::erase_late_bound_regions(ccx.tcx(), fn_sig);
+    let fn_sig = ccx.tcx().erase_late_bound_regions(fn_sig);
 
     let mut attrs = llvm::AttrBuilder::new();
     let ret_ty = fn_sig.output;
@@ -274,7 +274,7 @@ pub fn from_fn_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_type: ty::Ty<'tcx
                 // `&T` where `T` contains no `UnsafeCell<U>` is immutable, and can be marked as
                 // both `readonly` and `noalias`, as LLVM's definition of `noalias` is based solely
                 // on memory dependencies rather than pointer equality
-                let interior_unsafe = ty::type_contents(ccx.tcx(), mt.ty).interior_unsafe();
+                let interior_unsafe = mt.ty.type_contents(ccx.tcx()).interior_unsafe();
 
                 if mt.mutbl == ast::MutMutable || !interior_unsafe {
                     attrs.arg(idx, llvm::Attribute::NoAlias);

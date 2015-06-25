@@ -465,7 +465,7 @@ fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
         // in better error messages than just pointing at the closure
         // construction site.
         let mut call_caps = Vec::new();
-        ty::with_freevars(ir.tcx, expr.id, |freevars| {
+        ir.tcx.with_freevars(expr.id, |freevars| {
             for fv in freevars {
                 if let DefLocal(rv) = fv.def {
                     let fv_ln = ir.add_live_node(FreeVarNode(fv.span));
@@ -1138,7 +1138,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
           ast::ExprCall(ref f, ref args) => {
             let diverges = !self.ir.tcx.is_method_call(expr.id) &&
-                ty::expr_ty_adjusted(self.ir.tcx, &**f).fn_ret().diverges();
+                self.ir.tcx.expr_ty_adjusted(&**f).fn_ret().diverges();
             let succ = if diverges {
                 self.s.exit_ln
             } else {
@@ -1494,7 +1494,7 @@ fn check_fn(_v: &Liveness,
 
 impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn fn_ret(&self, id: NodeId) -> ty::PolyFnOutput<'tcx> {
-        let fn_ty = ty::node_id_to_type(self.ir.tcx, id);
+        let fn_ty = self.ir.tcx.node_id_to_type(id);
         match fn_ty.sty {
             ty::TyClosure(closure_def_id, substs) =>
                 self.ir.tcx.closure_type(closure_def_id, substs).sig.output(),
@@ -1511,8 +1511,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     {
         // within the fn body, late-bound regions are liberated:
         let fn_ret =
-            ty::liberate_late_bound_regions(
-                self.ir.tcx,
+            self.ir.tcx.liberate_late_bound_regions(
                 region::DestructionScopeData::new(body.id),
                 &self.fn_ret(id));
 
@@ -1527,7 +1526,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                         None if !body.stmts.is_empty() =>
                             match body.stmts.first().unwrap().node {
                                 ast::StmtSemi(ref e, _) => {
-                                    ty::expr_ty(self.ir.tcx, &**e) == t_ret
+                                    self.ir.tcx.expr_ty(&**e) == t_ret
                                 },
                                 _ => false
                             },

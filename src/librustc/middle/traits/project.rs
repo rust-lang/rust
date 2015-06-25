@@ -574,7 +574,7 @@ fn assemble_candidates_from_trait_def<'cx,'tcx>(
     };
 
     // If so, extract what we know from the trait and try to come up with a good answer.
-    let trait_predicates = ty::lookup_predicates(selcx.tcx(), trait_ref.def_id);
+    let trait_predicates = selcx.tcx().lookup_predicates(trait_ref.def_id);
     let bounds = trait_predicates.instantiate(selcx.tcx(), trait_ref.substs);
     let bounds = elaborate_predicates(selcx.tcx(), bounds.predicates.into_vec());
     assemble_candidates_from_predicates(selcx, obligation, obligation_trait_ref,
@@ -892,7 +892,7 @@ fn confirm_impl_candidate<'cx,'tcx>(
 
     // It is not in the impl - get the default from the trait.
     let trait_ref = obligation.predicate.trait_ref;
-    for trait_item in ty::trait_items(selcx.tcx(), trait_ref.def_id).iter() {
+    for trait_item in selcx.tcx().trait_items(trait_ref.def_id).iter() {
         if let &ty::TypeTraitItem(ref assoc_ty) = trait_item {
             if assoc_ty.name == obligation.predicate.item_name {
                 if let Some(ty) = assoc_ty.ty {

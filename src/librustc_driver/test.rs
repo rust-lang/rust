@@ -130,16 +130,16 @@ fn test_env<F>(source_string: &str,
         resolve::resolve_crate(&sess, &ast_map, resolve::MakeGlobMap::No);
     let named_region_map = resolve_lifetime::krate(&sess, krate, &def_map);
     let region_map = region::resolve_crate(&sess, krate);
-    ty::with_ctxt(sess,
-                  &arenas,
-                  def_map,
-                  named_region_map,
-                  ast_map,
-                  freevars,
-                  region_map,
-                  lang_items,
-                  stability::Index::new(krate),
-                  |tcx| {
+    ty::ctxt::create_and_enter(sess,
+                               &arenas,
+                               def_map,
+                               named_region_map,
+                               ast_map,
+                               freevars,
+                               region_map,
+                               lang_items,
+                               stability::Index::new(krate),
+                               |tcx| {
         let infcx = infer::new_infer_ctxt(tcx);
         body(Env { infcx: &infcx });
         let free_regions = FreeRegionMap::new();

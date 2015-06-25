@@ -326,7 +326,7 @@ pub fn get_res_dtor<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     } else {
         let tcx = ccx.tcx();
         let name = csearch::get_symbol(&ccx.sess().cstore, did);
-        let class_ty = ty::lookup_item_type(tcx, parent_id).ty.subst(tcx, substs);
+        let class_ty = tcx.lookup_item_type(parent_id).ty.subst(tcx, substs);
         let llty = type_of_dtor(ccx, class_ty);
         let dtor_ty = ccx.tcx().mk_ctor_fn(did,
                                            &[get_drop_glue_type(ccx, t)],
@@ -399,7 +399,7 @@ pub fn size_and_align_of_dst<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, in
 
             // Recurse to get the size of the dynamically sized field (must be
             // the last field).
-            let fields = ty::struct_fields(bcx.tcx(), id, substs);
+            let fields = bcx.tcx().struct_fields(id, substs);
             let last_field = fields[fields.len()-1];
             let field_ty = last_field.mt.ty;
             let (unsized_size, unsized_align) = size_and_align_of_dst(bcx, field_ty, info);
@@ -495,7 +495,7 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, g: DropGlueK
         }
         ty::TyStruct(did, substs) | ty::TyEnum(did, substs) => {
             let tcx = bcx.tcx();
-            match (ty::ty_dtor(tcx, did), skip_dtor) {
+            match (tcx.ty_dtor(did), skip_dtor) {
                 (ty::TraitDtor(dtor, true), false) => {
                     // FIXME(16758) Since the struct is unsized, it is hard to
                     // find the drop flag (which is at the end of the struct).

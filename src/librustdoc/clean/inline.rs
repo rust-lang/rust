@@ -150,9 +150,9 @@ pub fn record_extern_fqn(cx: &DocContext, did: ast::DefId, kind: clean::TypeKind
 
 pub fn build_external_trait(cx: &DocContext, tcx: &ty::ctxt,
                             did: ast::DefId) -> clean::Trait {
-    let def = ty::lookup_trait_def(tcx, did);
-    let trait_items = ty::trait_items(tcx, did).clean(cx);
-    let predicates = ty::lookup_predicates(tcx, did);
+    let def = tcx.lookup_trait_def(did);
+    let trait_items = tcx.trait_items(did).clean(cx);
+    let predicates = tcx.lookup_predicates(did);
     let generics = (&def.generics, &predicates, subst::TypeSpace).clean(cx);
     let generics = filter_non_trait_generics(did, generics);
     let (generics, supertrait_bounds) = separate_supertrait_bounds(generics);
@@ -165,12 +165,12 @@ pub fn build_external_trait(cx: &DocContext, tcx: &ty::ctxt,
 }
 
 fn build_external_function(cx: &DocContext, tcx: &ty::ctxt, did: ast::DefId) -> clean::Function {
-    let t = ty::lookup_item_type(tcx, did);
+    let t = tcx.lookup_item_type(did);
     let (decl, style, abi) = match t.ty.sty {
         ty::TyBareFn(_, ref f) => ((did, &f.sig).clean(cx), f.unsafety, f.abi),
         _ => panic!("bad function"),
     };
-    let predicates = ty::lookup_predicates(tcx, did);
+    let predicates = tcx.lookup_predicates(did);
     clean::Function {
         decl: decl,
         generics: (&t.generics, &predicates, subst::FnSpace).clean(cx),
@@ -183,9 +183,9 @@ fn build_external_function(cx: &DocContext, tcx: &ty::ctxt, did: ast::DefId) -> 
 fn build_struct(cx: &DocContext, tcx: &ty::ctxt, did: ast::DefId) -> clean::Struct {
     use syntax::parse::token::special_idents::unnamed_field;
 
-    let t = ty::lookup_item_type(tcx, did);
-    let predicates = ty::lookup_predicates(tcx, did);
-    let fields = ty::lookup_struct_fields(tcx, did);
+    let t = tcx.lookup_item_type(did);
+    let predicates = tcx.lookup_predicates(did);
+    let fields = tcx.lookup_struct_fields(did);
 
     clean::Struct {
         struct_type: match &*fields {
@@ -201,14 +201,14 @@ fn build_struct(cx: &DocContext, tcx: &ty::ctxt, did: ast::DefId) -> clean::Stru
 }
 
 fn build_type(cx: &DocContext, tcx: &ty::ctxt, did: ast::DefId) -> clean::ItemEnum {
-    let t = ty::lookup_item_type(tcx, did);
-    let predicates = ty::lookup_predicates(tcx, did);
+    let t = tcx.lookup_item_type(did);
+    let predicates = tcx.lookup_predicates(did);
     match t.ty.sty {
         ty::TyEnum(edid, _) if !csearch::is_typedef(&tcx.sess.cstore, did) => {
             return clean::EnumItem(clean::Enum {
                 generics: (&t.generics, &predicates, subst::TypeSpace).clean(cx),
                 variants_stripped: false,
-                variants: ty::enum_variants(tcx, edid).clean(cx),
+                variants: tcx.enum_variants(edid).clean(cx),
             })
         }
         _ => {}
@@ -222,7 +222,7 @@ fn build_type(cx: &DocContext, tcx: &ty::ctxt, did: ast::DefId) -> clean::ItemEn
 
 pub fn build_impls(cx: &DocContext, tcx: &ty::ctxt,
                    did: ast::DefId) -> Vec<clean::Item> {
-    ty::populate_inherent_implementations_for_type_if_necessary(tcx, did);
+    tcx.populate_inherent_implementations_for_type_if_necessary(did);
     let mut impls = Vec::new();
 
     match tcx.inherent_impls.borrow().get(&did) {
@@ -307,16 +307,16 @@ pub fn build_impl(cx: &DocContext,
         });
     }
 
-    let predicates = ty::lookup_predicates(tcx, did);
+    let predicates = tcx.lookup_predicates(did);
     let trait_items = csearch::get_impl_items(&tcx.sess.cstore, did)
             .iter()
             .filter_map(|did| {
         let did = did.def_id();
-        let impl_item = ty::impl_or_trait_item(tcx, did);
+        let impl_item = tcx.impl_or_trait_item(did);
         match impl_item {
             ty::ConstTraitItem(ref assoc_const) => {
                 let did = assoc_const.def_id;
-                let type_scheme = ty::lookup_item_type(tcx, did);
+                let type_scheme = tcx.lookup_item_type(did);
                 let default = match assoc_const.default {
                     Some(_) => Some(const_eval::lookup_const_by_id(tcx, did, None)
                                                .unwrap().span.to_src(cx)),
@@ -383,7 +383,7 @@ pub fn build_impl(cx: &DocContext,
         }
     }).collect::<Vec<_>>();
     let polarity = csearch::get_impl_polarity(tcx, did);
-    let ty = ty::lookup_item_type(tcx, did);
+    let ty = tcx.lookup_item_type(did);
     let trait_ = associated_trait.clean(cx).map(|bound| {
         match bound {
             clean::TraitBound(polyt, _) => polyt.trait_,
@@ -477,7 +477,7 @@ fn build_const(cx: &DocContext, tcx: &ty::ctxt,
     debug!("got snippet {}", sn);
 
     clean::Constant {
-        type_: ty::lookup_item_type(tcx, did).ty.clean(cx),
+        type_: tcx.lookup_item_type(did).ty.clean(cx),
         expr: sn
     }
 }
@@ -486,7 +486,7 @@ fn build_static(cx: &DocContext, tcx: &ty::ctxt,
                 did: ast::DefId,
                 mutable: bool) -> clean::Static {
     clean::Static {
-        type_: ty::lookup_item_type(tcx, did).ty.clean(cx),
+        type_: tcx.lookup_item_type(did).ty.clean(cx),
         mutability: if mutable {clean::Mutable} else {clean::Immutable},
         expr: "\n\n\n".to_string(), // trigger the "[definition]" links
     }

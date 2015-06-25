@@ -311,7 +311,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
         let mut scope_id;
         // The qualname for a method is the trait name or name of the struct in an impl in
         // which the method is declared in, followed by the method's name.
-        let qualname = match ty::impl_of_method(self.tcx, ast_util::local_def(id)) {
+        let qualname = match self.tcx.impl_of_method(ast_util::local_def(id)) {
             Some(impl_id) => match self.tcx.map.get(impl_id.node) {
                 NodeItem(item) => {
                     scope_id = item.id;
@@ -320,11 +320,11 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
                             let mut result = String::from("<");
                             result.push_str(&ty_to_string(&**ty));
 
-                            match ty::trait_of_item(self.tcx, ast_util::local_def(id)) {
+                            match self.tcx.trait_of_item(ast_util::local_def(id)) {
                                 Some(def_id) => {
                                     result.push_str(" as ");
                                     result.push_str(
-                                        &ty::item_path_str(self.tcx, def_id));
+                                        &self.tcx.item_path_str(def_id));
                                 },
                                 None => {}
                             }
@@ -344,12 +344,12 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
                                  impl_id.node, id, self.tcx.map.get(impl_id.node)));
                 },
             },
-            None => match ty::trait_of_item(self.tcx, ast_util::local_def(id)) {
+            None => match self.tcx.trait_of_item(ast_util::local_def(id)) {
                 Some(def_id) => {
                     scope_id = def_id.node;
                     match self.tcx.map.get(def_id.node) {
                         NodeItem(_) => {
-                            format!("::{}", ty::item_path_str(self.tcx, def_id))
+                            format!("::{}", self.tcx.item_path_str(def_id))
                         }
                         _ => {
                             self.sess.span_bug(span,
@@ -368,7 +368,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
         let qualname = &format!("{}::{}", qualname, &token::get_name(name));
 
         // record the decl for this def (if it has one)
-        let decl_id = ty::trait_item_of_item(self.tcx, ast_util::local_def(id))
+        let decl_id = self.tcx.trait_item_of_item(ast_util::local_def(id))
             .and_then(|new_id| {
                 let def_id = new_id.def_id();
                 if def_id.node != 0 && def_id != ast_util::local_def(id) {
@@ -776,10 +776,10 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
             def::DefMethod(declid, provenence) => {
                 let sub_span = self.span.sub_span_for_meth_name(span);
                 let defid = if declid.krate == ast::LOCAL_CRATE {
-                    let ti = ty::impl_or_trait_item(self.tcx, declid);
+                    let ti = self.tcx.impl_or_trait_item(declid);
                     match provenence {
                         def::FromTrait(def_id) => {
-                            Some(ty::trait_items(self.tcx, def_id)
+                            Some(self.tcx.trait_items(def_id)
                                     .iter()
                                     .find(|mr| {
                                         mr.name() == ti.name()
@@ -793,10 +793,8 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
                                            .unwrap()
                                            .iter()
                                            .find(|mr| {
-                                                ty::impl_or_trait_item(
-                                                    self.tcx,
-                                                    mr.def_id()
-                                                ).name() == ti.name()
+                                                self.tcx.impl_or_trait_item(mr.def_id()).name()
+                                                    == ti.name()
                                             })
                                            .unwrap()
                                            .def_id())
@@ -826,7 +824,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
         // modules or types in the path prefix
         match def {
             def::DefMethod(did, _) => {
-                let ti = ty::impl_or_trait_item(self.tcx, did);
+                let ti = self.tcx.impl_or_trait_item(did);
                 if let ty::MethodTraitItem(m) = ti {
                     if m.explicit_self == ty::StaticExplicitSelfCategory {
                         self.write_sub_path_trait_truncated(path);
@@ -895,14 +893,14 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
             ty::MethodStaticClosure(def_id) => {
                 // method invoked on an object with a concrete type (not a static method)
                 let decl_id =
-                    match ty::trait_item_of_item(self.tcx, def_id) {
+                    match self.tcx.trait_item_of_item(def_id) {
                         None => None,
                         Some(decl_id) => Some(decl_id.def_id()),
                     };
 
                 // This incantation is required if the method referenced is a
                 // trait's default implementation.
-                let def_id = match ty::impl_or_trait_item(self.tcx, def_id) {
+                let def_id = match self.tcx.impl_or_trait_item(def_id) {
                     ty::MethodTraitItem(method) => {
                         method.provided_source.unwrap_or(def_id)
                     }
@@ -915,16 +913,14 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
             }
             ty::MethodTypeParam(ref mp) => {
                 // method invoked on a type parameter
-                let trait_item = ty::trait_item(self.tcx,
-                                                mp.trait_ref.def_id,
-                                                mp.method_num);
+                let trait_item = self.tcx.trait_item(mp.trait_ref.def_id,
+                                                     mp.method_num);
                 (None, Some(trait_item.def_id()))
             }
             ty::MethodTraitObject(ref mo) => {
                 // method invoked on a trait instance
-                let trait_item = ty::trait_item(self.tcx,
-                                                mo.trait_ref.def_id,
-                                                mo.method_num);
+                let trait_item = self.tcx.trait_item(mo.trait_ref.def_id,
+                                                     mo.method_num);
                 (None, Some(trait_item.def_id()))
             }
         };
@@ -953,7 +949,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
                     def::DefConst(..) | def::DefAssociatedConst(..) => None,
                     def::DefVariant(_, variant_id, _) => Some(variant_id),
                     _ => {
-                        match ty::ty_to_def_id(ty::node_id_to_type(self.tcx, p.id)) {
+                        match self.tcx.node_id_to_type(p.id).ty_to_def_id() {
                             None => {
                                 self.sess.span_bug(p.span,
                                                    &format!("Could not find struct_def for `{}`",
@@ -965,7 +961,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
                 };
 
                 if let Some(struct_def) = struct_def {
-                    let struct_fields = ty::lookup_struct_fields(self.tcx, struct_def);
+                    let struct_fields = self.tcx.lookup_struct_fields(struct_def);
                     for &Spanned { node: ref field, span } in fields {
                         let sub_span = self.span.span_for_first_ident(span);
                         for f in &struct_fields {
@@ -1252,10 +1248,10 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
 
                 self.visit_expr(&**sub_ex);
 
-                let ty = &ty::expr_ty_adjusted(self.tcx, &**sub_ex).sty;
+                let ty = &self.tcx.expr_ty_adjusted(&**sub_ex).sty;
                 match *ty {
                     ty::TyStruct(def_id, _) => {
-                        let fields = ty::lookup_struct_fields(self.tcx, def_id);
+                        let fields = self.tcx.lookup_struct_fields(def_id);
                         for (i, f) in fields.iter().enumerate() {
                             if i == idx.node {
                                 let sub_span = self.span.sub_span_after_token(ex.span, token::Dot);

@@ -135,7 +135,7 @@ pub fn get_or_create_declaration_if_closure<'a, 'tcx>(ccx: &CrateContext<'a, 'tc
         return None
     }
 
-    let function_type = ty::node_id_to_type(ccx.tcx(), closure_id.node);
+    let function_type = ccx.tcx().node_id_to_type(closure_id.node);
     let function_type = monomorphize::apply_param_substs(ccx.tcx(), substs, &function_type);
 
     // Normalize type so differences in regions and typedefs don't cause
@@ -218,9 +218,9 @@ pub fn trans_closure_expr<'a, 'tcx>(dest: Dest<'a, 'tcx>,
     let function_type = typer.closure_type(closure_id, param_substs);
 
     let freevars: Vec<ty::Freevar> =
-        ty::with_freevars(tcx, id, |fv| fv.iter().cloned().collect());
+        tcx.with_freevars(id, |fv| fv.iter().cloned().collect());
 
-    let sig = ty::erase_late_bound_regions(tcx, &function_type.sig);
+    let sig = tcx.erase_late_bound_regions(&function_type.sig);
 
     trans_closure(ccx,
                   decl,
@@ -392,7 +392,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
             ccx.sess().bug(&format!("symbol `{}` already defined", function_name));
         });
 
-    let sig = ty::erase_late_bound_regions(tcx, &llonce_bare_fn_ty.sig);
+    let sig = tcx.erase_late_bound_regions(&llonce_bare_fn_ty.sig);
     let (block_arena, fcx): (TypedArena<_>, FunctionContext);
     block_arena = TypedArena::new();
     fcx = new_fn_ctxt(ccx,

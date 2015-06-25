@@ -353,7 +353,7 @@ fn add_fragment_siblings_for_extension<'tcx>(this: &MoveData<'tcx>,
         }
 
         (&ty::TyStruct(def_id, ref _substs), None) => {
-            let fields = ty::lookup_struct_fields(tcx, def_id);
+            let fields = tcx.lookup_struct_fields(def_id);
             match *origin_field_name {
                 mc::NamedField(ast_name) => {
                     for f in &fields {
@@ -378,7 +378,7 @@ fn add_fragment_siblings_for_extension<'tcx>(this: &MoveData<'tcx>,
 
         (&ty::TyEnum(enum_def_id, substs), ref enum_variant_info) => {
             let variant_info = {
-                let mut variants = ty::substd_enum_variants(tcx, enum_def_id, substs);
+                let mut variants = tcx.substd_enum_variants(enum_def_id, substs);
                 match *enum_variant_info {
                     Some((variant_def_id, ref _lp2)) =>
                         variants.iter()
@@ -442,9 +442,9 @@ fn add_fragment_sibling_core<'tcx>(this: &MoveData<'tcx>,
     let loan_path_elem = LpInterior(InteriorField(new_field_name));
     let new_lp_type = match new_field_name {
         mc::NamedField(ast_name) =>
-            ty::named_element_ty(tcx, parent.to_type(), ast_name, opt_variant_did),
+            tcx.named_element_ty(parent.to_type(), ast_name, opt_variant_did),
         mc::PositionalField(idx) =>
-            ty::positional_element_ty(tcx, parent.to_type(), idx, opt_variant_did),
+            tcx.positional_element_ty(parent.to_type(), idx, opt_variant_did),
     };
     let new_lp_variant = LpExtend(parent, mc, loan_path_elem);
     let new_lp = LoanPath::new(new_lp_variant, new_lp_type.unwrap());

@@ -71,7 +71,7 @@ fn parameterized<GG>(f: &mut fmt::Formatter,
     where GG: for<'tcx> FnOnce(&ty::ctxt<'tcx>) -> ty::Generics<'tcx>
 {
     let (fn_trait_kind, verbose) = try!(ty::tls::with(|tcx| {
-        try!(write!(f, "{}", ty::item_path_str(tcx, did)));
+        try!(write!(f, "{}", tcx.item_path_str(did)));
         Ok((tcx.lang_items.fn_trait_kind(did), tcx.sess.verbose()))
     }));
 
@@ -265,7 +265,7 @@ impl<'tcx> fmt::Display for TraitAndProjections<'tcx> {
         parameterized(f, trait_ref.substs,
                       trait_ref.def_id,
                       projection_bounds,
-                      |tcx| ty::lookup_trait_def(tcx, trait_ref.def_id).generics.clone())
+                      |tcx| tcx.lookup_trait_def(trait_ref.def_id).generics.clone())
     }
 }
 
@@ -616,7 +616,7 @@ impl fmt::Display for ty::Binder<ty::OutlivesPredicate<ty::Region, ty::Region>> 
 impl<'tcx> fmt::Display for ty::TraitRef<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         parameterized(f, self.substs, self.def_id, &[],
-                      |tcx| ty::lookup_trait_def(tcx, self.def_id).generics.clone())
+                      |tcx| tcx.lookup_trait_def(self.def_id).generics.clone())
     }
 }
 
@@ -671,7 +671,7 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
 
                 if let Some(def_id) = opt_def_id {
                     try!(write!(f, " {{{}}}", ty::tls::with(|tcx| {
-                        ty::item_path_str(tcx, def_id)
+                        tcx.item_path_str(def_id)
                     })));
                 }
                 Ok(())
@@ -681,7 +681,7 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
             TyParam(ref param_ty) => write!(f, "{}", param_ty),
             TyEnum(did, substs) | TyStruct(did, substs) => {
                 parameterized(f, substs, did, &[],
-                              |tcx| ty::lookup_item_type(tcx, did).generics)
+                              |tcx| tcx.lookup_item_type(did).generics)
             }
             TyTrait(ref data) => write!(f, "{}", data),
             ty::TyProjection(ref data) => write!(f, "{}", data),
@@ -720,7 +720,7 @@ impl fmt::Debug for ty::UpvarId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "UpvarId({};`{}`;{})",
                self.var_id,
-               ty::tls::with(|tcx| ty::local_var_name_str(tcx, self.var_id)),
+               ty::tls::with(|tcx| tcx.local_var_name_str(self.var_id)),
                self.closure_expr_id)
     }
 }

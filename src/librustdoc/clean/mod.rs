@@ -1332,7 +1332,7 @@ impl<'tcx> Clean<Item> for ty::Method<'tcx> {
         let provided = match self.container {
             ty::ImplContainer(..) => false,
             ty::TraitContainer(did) => {
-                ty::provided_trait_methods(cx.tcx(), did).iter().any(|m| {
+                cx.tcx().provided_trait_methods(did).iter().any(|m| {
                     m.def_id == self.def_id
                 })
             }
@@ -1742,7 +1742,7 @@ impl Clean<Item> for ty::field_ty {
             (Some(self.name), Some(attr_map.get(&self.id.node).unwrap()))
         };
 
-        let ty = ty::lookup_item_type(cx.tcx(), self.id);
+        let ty = cx.tcx().lookup_item_type(self.id);
 
         Item {
             name: name.clean(cx),
@@ -2731,8 +2731,8 @@ impl<'tcx> Clean<Item> for ty::AssociatedType<'tcx> {
             // are actually located on the trait/impl itself, so we need to load
             // all of the generics from there and then look for bounds that are
             // applied to this associated type in question.
-            let def = ty::lookup_trait_def(cx.tcx(), did);
-            let predicates = ty::lookup_predicates(cx.tcx(), did);
+            let def = cx.tcx().lookup_trait_def(did);
+            let predicates = cx.tcx().lookup_predicates(did);
             let generics = (&def.generics, &predicates, subst::TypeSpace).clean(cx);
             generics.where_predicates.iter().filter_map(|pred| {
                 let (name, self_type, trait_, bounds) = match *pred {

@@ -271,7 +271,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             }
             _ => (source, None)
         };
-        let source = ty::adjust_ty_for_autoref(self.tcx(), source, reborrow);
+        let source = source.adjust_for_autoref(self.tcx(), reborrow);
 
         let mut selcx = traits::SelectionContext::new(self.fcx.infcx(), self.fcx);
 

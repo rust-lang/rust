@@ -358,9 +358,8 @@ impl<'tcx> DeferredCallResolution<'tcx> for CallResolution<'tcx> {
                 // can't because of the annoying need for a TypeTrace.
                 // (This always bites me, should find a way to
                 // refactor it.)
-                let method_sig =
-                    ty::no_late_bound_regions(fcx.tcx(),
-                                              method_callee.ty.fn_sig()).unwrap();
+                let method_sig = fcx.tcx().no_late_bound_regions(method_callee.ty.fn_sig())
+                                          .unwrap();
 
                 debug!("attempt_resolution: method_callee={:?}",
                        method_callee);

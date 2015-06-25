@@ -100,7 +100,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
             Some(method) => {
                 match method.origin {
                     ty::MethodStatic(def_id) => {
-                        match ty::provided_source(self.tcx, def_id) {
+                        match self.tcx.provided_source(def_id) {
                             Some(p_did) => self.check_def_id(p_did),
                             None => self.check_def_id(def_id)
                         }
@@ -116,9 +116,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
                         method_num: index,
                         ..
                     }) => {
-                        let trait_item = ty::trait_item(self.tcx,
-                                                        trait_ref.def_id,
-                                                        index);
+                        let trait_item = self.tcx.trait_item(trait_ref.def_id, index);
                         self.check_def_id(trait_item.def_id());
                     }
                 }
@@ -132,9 +130,9 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
     }
 
     fn handle_field_access(&mut self, lhs: &ast::Expr, name: ast::Name) {
-        match ty::expr_ty_adjusted(self.tcx, lhs).sty {
+        match self.tcx.expr_ty_adjusted(lhs).sty {
             ty::TyStruct(id, _) => {
-                let fields = ty::lookup_struct_fields(self.tcx, id);
+                let fields = self.tcx.lookup_struct_fields(id);
                 let field_id = fields.iter()
                     .find(|field| field.name == name).unwrap().id;
                 self.live_symbols.insert(field_id.node);
@@ -144,9 +142,9 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
     }
 
     fn handle_tup_field_access(&mut self, lhs: &ast::Expr, idx: usize) {
-        match ty::expr_ty_adjusted(self.tcx, lhs).sty {
+        match self.tcx.expr_ty_adjusted(lhs).sty {
             ty::TyStruct(id, _) => {
-                let fields = ty::lookup_struct_fields(self.tcx, id);
+                let fields = self.tcx.lookup_struct_fields(id);
                 let field_id = fields[idx].id;
                 self.live_symbols.insert(field_id.node);
             },
@@ -159,8 +157,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
         let id = match self.tcx.def_map.borrow().get(&lhs.id).unwrap().full_def() {
             def::DefVariant(_, id, _) => id,
             _ => {
-                match ty::ty_to_def_id(ty::node_id_to_type(self.tcx,
-                                                           lhs.id)) {
+                match self.tcx.node_id_to_type(lhs.id).ty_to_def_id() {
                     None => {
                         self.tcx.sess.span_bug(lhs.span,
                                                "struct pattern wasn't of a \
@@ -170,7 +167,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
                 }
             }
         };
-        let fields = ty::lookup_struct_fields(self.tcx, id);
+        let fields = self.tcx.lookup_struct_fields(id);
         for pat in pats {
             if let ast::PatWild(ast::PatWildSingle) = pat.node.pat.node {
                 continue;
@@ -480,8 +477,8 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
 
     fn should_warn_about_field(&mut self, node: &ast::StructField_) -> bool {
         let is_named = node.ident().is_some();
-        let field_type = ty::node_id_to_type(self.tcx, node.id);
-        let is_marker_field = match ty::ty_to_def_id(field_type) {
+        let field_type = self.tcx.node_id_to_type(node.id);
+        let is_marker_field = match field_type.ty_to_def_id() {
             Some(def_id) => self.tcx.lang_items.items().any(|(_, item)| *item == Some(def_id)),
             _ => false
         };

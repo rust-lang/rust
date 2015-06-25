@@ -113,7 +113,7 @@ fn relate_item_substs<'a,'tcx:'a,R>(relation: &mut R,
 
     let variances;
     let opt_variances = if relation.tcx().variance_computed.get() {
-        variances = ty::item_variances(relation.tcx(), item_def_id);
+        variances = relation.tcx().item_variances(item_def_id);
         Some(&*variances)
     } else {
         None

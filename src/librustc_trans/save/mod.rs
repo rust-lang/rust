@@ -327,10 +327,10 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
     pub fn get_expr_data(&self, expr: &ast::Expr) -> Option<Data> {
         match expr.node {
             ast::ExprField(ref sub_ex, ident) => {
-                let ty = &ty::expr_ty_adjusted(self.tcx, &sub_ex).sty;
+                let ty = &self.tcx.expr_ty_adjusted(&sub_ex).sty;
                 match *ty {
                     ty::TyStruct(def_id, _) => {
-                        let fields = ty::lookup_struct_fields(self.tcx, def_id);
+                        let fields = self.tcx.lookup_struct_fields(def_id);
                         for f in &fields {
                             if f.name == ident.node.name {
                                 let sub_span = self.span_utils.span_for_last_ident(expr.span);
@@ -354,7 +354,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 }
             }
             ast::ExprStruct(ref path, _, _) => {
-                let ty = &ty::expr_ty_adjusted(&self.tcx, expr).sty;
+                let ty = &self.tcx.expr_ty_adjusted(expr).sty;
                 match *ty {
                     ty::TyStruct(def_id, _) => {
                         let sub_span = self.span_utils.span_for_last_ident(path.span);
@@ -384,7 +384,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                               struct_id: DefId,
                               parent: NodeId)
                               -> VariableRefData {
-        let fields = ty::lookup_struct_fields(&self.tcx, struct_id);
+        let fields = self.tcx.lookup_struct_fields(struct_id);
         let field_name = get_ident(field_ref.ident.node).to_string();
         for f in &fields {
             if f.name == field_ref.ident.node.name {
