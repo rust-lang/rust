@@ -13,10 +13,9 @@ Highlights
   * A `symlink_metadata` function has been added.
   * The `fs::Metadata` structure now lowers to its OS counterpart, providing
     access to all underlying information.
-* The compiler contains extended explanations of many errors.  When it
-  emits such an error it also suggests using the `--explain` flag to
-  read the extended explanations, which are also [cataloged on the web
-  site][err].
+* The compiler now contains extended explanations of many errors. When an error
+  with an explanation occurs the compiler suggests using the `--explain` flag
+  to read the explanation. Error explanations are also [available online][err-index].
 * Thanks to multiple [improvements][sk] to [type checking][pre], as
   well as other work, the time to bootstrap the compiler decreased by
   32%.
@@ -88,7 +87,7 @@ Misc
 [`IntoIterator`]: http://doc.rust-lang.org/nightly/std/iter/trait.IntoIterator.html
 [`From`]: http://doc.rust-lang.org/nightly/std/convert/trait.From.html
 [rf]: https://github.com/rust-lang/rust/pull/24491
-[err]: http://doc.rust-lang.org/error-index.html
+[err-index]: http://doc.rust-lang.org/error-index.html
 [sk]: https://github.com/rust-lang/rust/pull/24615
 [pre]: https://github.com/rust-lang/rust/pull/25323
 [file]: https://github.com/rust-lang/rust/pull/24598
