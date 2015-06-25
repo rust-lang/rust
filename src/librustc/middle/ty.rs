@@ -85,7 +85,7 @@ use std::collections::{HashMap, HashSet};
 use syntax::abi;
 use syntax::ast::{CrateNum, DefId, ItemImpl, ItemTrait, LOCAL_CRATE};
 use syntax::ast::{MutImmutable, MutMutable, Name, NamedField, NodeId};
-use syntax::ast::{StmtExpr, StmtSemi, StructField, UnnamedField, Visibility};
+use syntax::ast::{StructField, UnnamedField, Visibility};
 use syntax::ast_util::{self, is_local, local_def};
 use syntax::attr::{self, AttrMetaMethods, SignedInt, UnsignedInt};
 use syntax::codemap::Span;
@@ -1838,13 +1838,6 @@ pub enum BuiltinBound {
     Sized,
     Copy,
     Sync,
-}
-
-/// An existential bound that does not implement any traits.
-pub fn region_existential_bound<'tcx>(r: ty::Region) -> ExistentialBounds<'tcx> {
-    ty::ExistentialBounds { region_bound: r,
-                            builtin_bounds: BuiltinBounds::empty(),
-                            projection_bounds: Vec::new() }
 }
 
 impl CLike for BuiltinBound {
@@ -5004,15 +4997,6 @@ pub fn expr_is_lval(tcx: &ctxt, expr: &ast::Expr) -> bool {
     }
 }
 
-pub fn stmt_node_id(s: &ast::Stmt) -> ast::NodeId {
-    match s.node {
-      ast::StmtDecl(_, id) | StmtExpr(_, id) | StmtSemi(_, id) => {
-        return id;
-      }
-      ast::StmtMac(..) => panic!("unexpanded macro in trans")
-    }
-}
-
 pub fn field_idx_strict(tcx: &ctxt, name: ast::Name, fields: &[field])
                      -> usize {
     let mut i = 0;
@@ -5023,11 +5007,6 @@ pub fn field_idx_strict(tcx: &ctxt, name: ast::Name, fields: &[field])
         fields.iter()
               .map(|f| token::get_name(f.name).to_string())
               .collect::<Vec<String>>()));
-}
-
-pub fn impl_or_trait_item_idx(id: ast::Name, trait_items: &[ImplOrTraitItem])
-                              -> Option<usize> {
-    trait_items.iter().position(|m| m.name() == id)
 }
 
 pub fn ty_sort_string(cx: &ctxt, ty: Ty) -> String {
