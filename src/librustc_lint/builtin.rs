@@ -32,23 +32,21 @@
 #![allow(deprecated)]
 
 use metadata::{csearch, decoder};
+use middle::{cfg, def, infer, pat_util, stability, traits};
 use middle::def::*;
-use middle::infer;
 use middle::subst::Substs;
 use middle::ty::{self, Ty};
-use middle::traits;
-use middle::{def, pat_util, stability};
 use middle::const_eval::{eval_const_expr_partial, ConstVal};
 use middle::const_eval::EvalHint::ExprTypeChecked;
-use middle::cfg;
 use rustc::ast_map;
-use util::nodemap::{FnvHashMap, NodeSet};
+use util::nodemap::{FnvHashMap, FnvHashSet, NodeSet};
 use lint::{Level, Context, LintPass, LintArray, Lint};
 
 use std::collections::{HashSet, BitSet};
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::{cmp, slice};
 use std::{i8, i16, i32, i64, u8, u16, u32, u64, f32, f64};
+use std::rc::Rc;
 
 use syntax::{abi, ast};
 use syntax::ast_util::{self, is_shift_binop, local_def};
@@ -405,43 +403,288 @@ struct ImproperCTypesVisitor<'a, 'tcx: 'a> {
     cx: &'a Context<'a, 'tcx>
 }
 
-impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
-    fn check_def(&mut self, sp: Span, id: ast::NodeId) {
-        match self.cx.tcx.def_map.borrow().get(&id).unwrap().full_def() {
-            def::DefPrimTy(ast::TyInt(ast::TyIs)) => {
-                self.cx.span_lint(IMPROPER_CTYPES, sp,
-                                  "found rust type `isize` in foreign module, while \
-                                   libc::c_int or libc::c_long should be used");
-            }
-            def::DefPrimTy(ast::TyUint(ast::TyUs)) => {
-                self.cx.span_lint(IMPROPER_CTYPES, sp,
-                                  "found rust type `usize` in foreign module, while \
-                                   libc::c_uint or libc::c_ulong should be used");
-            }
-            def::DefTy(..) => {
-                let tty = match self.cx.tcx.ast_ty_to_ty_cache.borrow().get(&id) {
-                    Some(&t) => t,
-                    None => panic!("ast_ty_to_ty_cache was incomplete after typeck!")
-                };
+enum FfiResult {
+    FfiSafe,
+    FfiUnsafe(&'static str),
+    FfiBadStruct(ast::DefId, &'static str),
+    FfiBadEnum(ast::DefId, &'static str)
+}
 
-                if !tty.is_ffi_safe(self.cx.tcx) {
-                    self.cx.span_lint(IMPROPER_CTYPES, sp,
-                                      "found type without foreign-function-safe \
-                                       representation annotation in foreign module, consider \
-                                       adding a #[repr(...)] attribute to the type");
-                }
+/// Check if this enum can be safely exported based on the
+/// "nullable pointer optimization". Currently restricted
+/// to function pointers and references, but could be
+/// expanded to cover NonZero raw pointers and newtypes.
+/// FIXME: This duplicates code in trans.
+fn is_repr_nullable_ptr<'tcx>(variants: &Vec<Rc<ty::VariantInfo<'tcx>>>) -> bool {
+    if variants.len() == 2 {
+        let mut data_idx = 0;
+
+        if variants[0].args.is_empty() {
+            data_idx = 1;
+        } else if !variants[1].args.is_empty() {
+            return false;
+        }
+
+        if variants[data_idx].args.len() == 1 {
+            match variants[data_idx].args[0].sty {
+                ty::TyBareFn(None, _) => { return true; }
+                ty::TyRef(..) => { return true; }
+                _ => { }
             }
-            _ => ()
+        }
+    }
+    false
+}
+
+impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
+    /// Check if the given type is "ffi-safe" (has a stable, well-defined
+    /// representation which can be exported to C code).
+    fn check_type_for_ffi(&self,
+                          cache: &mut FnvHashSet<Ty<'tcx>>,
+                          ty: Ty<'tcx>)
+                          -> FfiResult {
+        use self::FfiResult::*;
+        let cx = &self.cx.tcx;
+
+        // Protect against infinite recursion, for example
+        // `struct S(*mut S);`.
+        // FIXME: A recursion limit is necessary as well, for irregular
+        // recusive types.
+        if !cache.insert(ty) {
+            return FfiSafe;
+        }
+
+        match ty.sty {
+            ty::TyStruct(did, substs) => {
+                if !cx.lookup_repr_hints(did).contains(&attr::ReprExtern) {
+                    return FfiUnsafe(
+                        "found struct without foreign-function-safe \
+                         representation annotation in foreign module, \
+                         consider adding a #[repr(C)] attribute to \
+                         the type");
+                }
+
+                // We can't completely trust repr(C) markings; make sure the
+                // fields are actually safe.
+                let fields = cx.struct_fields(did, substs);
+
+                if fields.is_empty() {
+                    return FfiUnsafe(
+                        "found zero-size struct in foreign module, consider \
+                         adding a member to this struct");
+                }
+
+                for field in fields {
+                    let field_ty = infer::normalize_associated_type(cx, &field.mt.ty);
+                    let r = self.check_type_for_ffi(cache, field_ty);
+                    match r {
+                        FfiSafe => {}
+                        FfiBadStruct(..) | FfiBadEnum(..) => { return r; }
+                        FfiUnsafe(s) => { return FfiBadStruct(did, s); }
+                    }
+                }
+                FfiSafe
+            }
+            ty::TyEnum(did, substs) => {
+                let variants = cx.substd_enum_variants(did, substs);
+                if variants.is_empty() {
+                    // Empty enums are okay... although sort of useless.
+                    return FfiSafe
+                }
+
+                // Check for a repr() attribute to specify the size of the
+                // discriminant.
+                let repr_hints = cx.lookup_repr_hints(did);
+                match &**repr_hints {
+                    [] => {
+                        // Special-case types like `Option<extern fn()>`.
+                        if !is_repr_nullable_ptr(&variants) {
+                            return FfiUnsafe(
+                                "found enum without foreign-function-safe \
+                                 representation annotation in foreign module, \
+                                 consider adding a #[repr(...)] attribute to \
+                                 the type")
+                        }
+                    }
+                    [ref hint] => {
+                        if !hint.is_ffi_safe() {
+                            // FIXME: This shouldn't be reachable: we should check
+                            // this earlier.
+                            return FfiUnsafe(
+                                "enum has unexpected #[repr(...)] attribute")
+                        }
+
+                        // Enum with an explicitly sized discriminant; either
+                        // a C-style enum or a discriminated union.
+
+                        // The layout of enum variants is implicitly repr(C).
+                        // FIXME: Is that correct?
+                    }
+                    _ => {
+                        // FIXME: This shouldn't be reachable: we should check
+                        // this earlier.
+                        return FfiUnsafe(
+                            "enum has too many #[repr(...)] attributes");
+                    }
+                }
+
+                // Check the contained variants.
+                for variant in variants {
+                    for arg in &variant.args {
+                        let arg = infer::normalize_associated_type(cx, arg);
+                        let r = self.check_type_for_ffi(cache, arg);
+                        match r {
+                            FfiSafe => {}
+                            FfiBadStruct(..) | FfiBadEnum(..) => { return r; }
+                            FfiUnsafe(s) => { return FfiBadEnum(did, s); }
+                        }
+                    }
+                }
+                FfiSafe
+            }
+
+            ty::TyInt(ast::TyIs) => {
+                FfiUnsafe("found Rust type `isize` in foreign module, while \
+                          `libc::c_int` or `libc::c_long` should be used")
+            }
+            ty::TyUint(ast::TyUs) => {
+                FfiUnsafe("found Rust type `usize` in foreign module, while \
+                          `libc::c_uint` or `libc::c_ulong` should be used")
+            }
+            ty::TyChar => {
+                FfiUnsafe("found Rust type `char` in foreign module, while \
+                           `u32` or `libc::wchar_t` should be used")
+            }
+
+            // Primitive types with a stable representation.
+            ty::TyBool | ty::TyInt(..) | ty::TyUint(..) |
+            ty::TyFloat(..) => FfiSafe,
+
+            ty::TyBox(..) => {
+                FfiUnsafe("found Rust type Box<_> in foreign module, \
+                           consider using a raw pointer instead")
+            }
+
+            ty::TySlice(_) => {
+                FfiUnsafe("found Rust slice type in foreign module, \
+                           consider using a raw pointer instead")
+            }
+
+            ty::TyTrait(..) => {
+                FfiUnsafe("found Rust trait type in foreign module, \
+                           consider using a raw pointer instead")
+            }
+
+            ty::TyStr => {
+                FfiUnsafe("found Rust type `str` in foreign module; \
+                           consider using a `*const libc::c_char`")
+            }
+
+            ty::TyTuple(_) => {
+                FfiUnsafe("found Rust tuple type in foreign module; \
+                           consider using a struct instead`")
+            }
+
+            ty::TyRawPtr(ref m) | ty::TyRef(_, ref m) => {
+                self.check_type_for_ffi(cache, m.ty)
+            }
+
+            ty::TyArray(ty, _) => {
+                self.check_type_for_ffi(cache, ty)
+            }
+
+            ty::TyBareFn(None, bare_fn) => {
+                match bare_fn.abi {
+                    abi::Rust |
+                    abi::RustIntrinsic |
+                    abi::RustCall => {
+                        return FfiUnsafe(
+                            "found function pointer with Rust calling \
+                             convention in foreign module; consider using an \
+                             `extern` function pointer")
+                    }
+                    _ => {}
+                }
+
+                let sig = cx.erase_late_bound_regions(&bare_fn.sig);
+                match sig.output {
+                    ty::FnDiverging => {}
+                    ty::FnConverging(output) => {
+                        if !output.is_nil() {
+                            let r = self.check_type_for_ffi(cache, output);
+                            match r {
+                                FfiSafe => {}
+                                _ => { return r; }
+                            }
+                        }
+                    }
+                }
+                for arg in sig.inputs {
+                    let r = self.check_type_for_ffi(cache, arg);
+                    match r {
+                        FfiSafe => {}
+                        _ => { return r; }
+                    }
+                }
+                FfiSafe
+            }
+
+            ty::TyParam(..) | ty::TyInfer(..) | ty::TyError |
+            ty::TyClosure(..) | ty::TyProjection(..) |
+            ty::TyBareFn(Some(_), _) => {
+                panic!("Unexpected type in foreign function")
+            }
+        }
+    }
+
+    fn check_def(&mut self, sp: Span, id: ast::NodeId) {
+        let tty = match self.cx.tcx.ast_ty_to_ty_cache.borrow().get(&id) {
+            Some(&t) => t,
+            None => panic!("ast_ty_to_ty_cache was incomplete after typeck!")
+        };
+        let tty = infer::normalize_associated_type(self.cx.tcx, &tty);
+
+        match ImproperCTypesVisitor::check_type_for_ffi(self, &mut FnvHashSet(), tty) {
+            FfiResult::FfiSafe => {}
+            FfiResult::FfiUnsafe(s) => {
+                self.cx.span_lint(IMPROPER_CTYPES, sp, s);
+            }
+            FfiResult::FfiBadStruct(_, s) => {
+                // FIXME: This diagnostic is difficult to read, and doesn't
+                // point at the relevant field.
+                self.cx.span_lint(IMPROPER_CTYPES, sp,
+                    &format!("found non-foreign-function-safe member in \
+                              struct marked #[repr(C)]: {}", s));
+            }
+            FfiResult::FfiBadEnum(_, s) => {
+                // FIXME: This diagnostic is difficult to read, and doesn't
+                // point at the relevant variant.
+                self.cx.span_lint(IMPROPER_CTYPES, sp,
+                    &format!("found non-foreign-function-safe member in \
+                              enum: {}", s));
+            }
         }
     }
 }
 
 impl<'a, 'tcx, 'v> Visitor<'v> for ImproperCTypesVisitor<'a, 'tcx> {
     fn visit_ty(&mut self, ty: &ast::Ty) {
-        if let ast::TyPath(..) = ty.node {
-            self.check_def(ty.span, ty.id);
+        match ty.node {
+            ast::TyPath(..) |
+            ast::TyBareFn(..) => self.check_def(ty.span, ty.id),
+            ast::TyVec(..) => {
+                self.cx.span_lint(IMPROPER_CTYPES, ty.span,
+                    "found Rust slice type in foreign module, consider \
+                     using a raw pointer instead");
+            }
+            ast::TyFixedLengthVec(ref ty, _) => self.visit_ty(ty),
+            ast::TyTup(..) => {
+                self.cx.span_lint(IMPROPER_CTYPES, ty.span,
+                    "found Rust tuple type in foreign module; \
+                     consider using a struct instead`")
+            }
+            _ => visit::walk_ty(self, ty)
         }
-        visit::walk_ty(self, ty);
     }
 }
 

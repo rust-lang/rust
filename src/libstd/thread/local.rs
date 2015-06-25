@@ -335,13 +335,13 @@ mod imp {
             #[linkage = "extern_weak"]
             static __dso_handle: *mut u8;
             #[linkage = "extern_weak"]
-            static __cxa_thread_atexit_impl: *const ();
+            static __cxa_thread_atexit_impl: *const libc::c_void;
         }
         if !__cxa_thread_atexit_impl.is_null() {
             type F = unsafe extern fn(dtor: unsafe extern fn(*mut u8),
                                       arg: *mut u8,
                                       dso_handle: *mut u8) -> libc::c_int;
-            mem::transmute::<*const (), F>(__cxa_thread_atexit_impl)
+            mem::transmute::<*const libc::c_void, F>(__cxa_thread_atexit_impl)
             (dtor, t, &__dso_handle as *const _ as *mut _);
             return
         }
