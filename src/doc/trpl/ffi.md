@@ -309,8 +309,8 @@ and invokes callbacks from there.
 In these cases access to Rust data structures inside the callbacks is
 especially unsafe and proper synchronization mechanisms must be used.
 Besides classical synchronization mechanisms like mutexes, one possibility in
-Rust is to use channels (in `std::comm`) to forward data from the C thread
-that invoked the callback into a Rust thread.
+Rust is to use channels (in `std::sync::mpsc`) to forward data from the C
+thread that invoked the callback into a Rust thread.
 
 If an asynchronous callback targets a special object in the Rust address space
 it is also absolutely necessary that no more callbacks are performed by the
