@@ -6,7 +6,7 @@ Version 1.1.0 (June 2015)
 Highlights
 ----------
 
-* The [`std::fs` module has been expanded][fs-expand] to expand the set of
+* The [`std::fs` module has been expanded][fs] to expand the set of
   functionality exposed:
   * `DirEntry` now supports optimizations like `file_type` and `metadata` which
     don't incur a syscall on some platforms.
@@ -28,7 +28,7 @@ Libraries
   whitespace boundaries.
 * On both Windows and Unix, new extension traits provide conversion of
   I/O types to and from the underlying system handles. On Unix, these
-  traits are [`FrowRawFd`] and [`AsRawFd`], on Windows `FromRawHandle`
+  traits are [`FromRawFd`] and [`AsRawFd`], on Windows `FromRawHandle`
   and `AsRawHandle`. These are implemented for `File`, `TcpStream`,
   `TcpListener`, and `UpdSocket`. Further implementations for
   `std::process` will be stabilized later.
