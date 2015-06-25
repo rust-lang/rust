@@ -1482,7 +1482,7 @@ impl<T> FromIterator<T> for Vec<T> {
             None => return Vec::new(),
             Some(element) => {
                 let (lower, _) = iterator.size_hint();
-                let mut vector = Vec::with_capacity(1 + lower);
+                let mut vector = Vec::with_capacity(lower.saturating_add(1));
                 unsafe {
                     ptr::write(vector.get_unchecked_mut(0), element);
                     vector.set_len(1);
@@ -1570,10 +1570,11 @@ impl<T> Vec<T> {
             let len = self.len();
             if len == self.capacity() {
                 let (lower, _) = iterator.size_hint();
-                self.reserve(lower + 1);
+                self.reserve(lower.saturating_add(1));
             }
             unsafe {
                 ptr::write(self.get_unchecked_mut(len), element);
+                // NB can't overflow since we would have had to alloc the address space
                 self.set_len(len + 1);
             }
         }
