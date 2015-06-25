@@ -416,7 +416,7 @@ impl<'a, 'tcx> AstConv<'tcx> for ItemCtxt<'a, 'tcx> {
                     item_name: ast::Name)
                     -> Ty<'tcx>
     {
-        ty::mk_projection(self.tcx(), trait_ref, item_name)
+        self.tcx().mk_projection(trait_ref, item_name)
     }
 }
 
@@ -508,7 +508,7 @@ impl<'tcx> GetTypeParameterBounds<'tcx> for ast::Generics {
         // `where T:Foo`.
 
         let def = astconv.tcx().type_parameter_def(node_id);
-        let ty = ty::mk_param_from_def(astconv.tcx(), &def);
+        let ty = astconv.tcx().mk_param_from_def(&def);
 
         let from_ty_params =
             self.ty_params
@@ -577,7 +577,7 @@ fn get_enum_variant_types<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             ast::TupleVariantKind(ref args) if !args.is_empty() => {
                 let rs = ExplicitRscope;
                 let input_tys: Vec<_> = args.iter().map(|va| icx.to_ty(&rs, &*va.ty)).collect();
-                ty::mk_ctor_fn(tcx, variant_def_id, &input_tys, enum_scheme.ty)
+                tcx.mk_ctor_fn(variant_def_id, &input_tys, enum_scheme.ty)
             }
 
             ast::TupleVariantKind(_) => {
@@ -631,8 +631,8 @@ fn convert_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                     container,
                                     None);
 
-    let fty = ty::mk_bare_fn(ccx.tcx, Some(def_id),
-                             ccx.tcx.mk_bare_fn(ty_method.fty.clone()));
+    let fty = ccx.tcx.mk_fn(Some(def_id),
+                            ccx.tcx.mk_bare_fn(ty_method.fty.clone()));
     debug!("method {} (id {}) has type {:?}",
             ident, id, fty);
     ccx.tcx.tcache.borrow_mut().insert(def_id,TypeScheme {
@@ -995,7 +995,7 @@ fn convert_item(ccx: &CrateCtxt, it: &ast::Item) {
             convert_methods(ccx,
                             TraitContainer(local_def(it.id)),
                             methods,
-                            ty::mk_self_type(tcx),
+                            tcx.mk_self_type(),
                             &trait_def.generics,
                             &trait_predicates);
 
@@ -1026,7 +1026,7 @@ fn convert_item(ccx: &CrateCtxt, it: &ast::Item) {
                 check_method_self_type(ccx,
                                        &BindingRscope::new(),
                                        ccx.method_ty(trait_item.id),
-                                       ty::mk_self_type(tcx),
+                                       tcx.mk_self_type(),
                                        &sig.explicit_self,
                                        it.id)
             }
@@ -1088,7 +1088,7 @@ fn convert_struct<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     tcx.struct_fields.borrow_mut().insert(local_def(id), Rc::new(field_tys));
 
     let substs = mk_item_substs(ccx, &scheme.generics);
-    let selfty = ty::mk_struct(tcx, local_def(id), tcx.mk_substs(substs));
+    let selfty = tcx.mk_struct(local_def(id), tcx.mk_substs(substs));
 
     // If this struct is enum-like or tuple-like, create the type of its
     // constructor.
@@ -1110,8 +1110,7 @@ fn convert_struct<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                                               .unwrap()
                                                               .ty)
                               .collect();
-                let ctor_fn_ty = ty::mk_ctor_fn(tcx,
-                                                local_def(ctor_id),
+                let ctor_fn_ty = tcx.mk_ctor_fn(local_def(ctor_id),
                                                 &inputs[..],
                                                 selfty);
                 write_ty_to_tcx(tcx, ctor_id, ctor_fn_ty);
@@ -1177,7 +1176,7 @@ fn ensure_super_predicates_step(ccx: &CrateCtxt,
         let scope = &(generics, &self_predicate);
 
         // Convert the bounds that follow the colon, e.g. `Bar+Zed` in `trait Foo : Bar+Zed`.
-        let self_param_ty = ty::mk_self_type(tcx);
+        let self_param_ty = tcx.mk_self_type();
         let superbounds1 = compute_bounds(&ccx.icx(scope),
                                     self_param_ty,
                                     bounds,
@@ -1295,12 +1294,12 @@ fn trait_def_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             generics.ty_params
                     .iter()
                     .enumerate()
-                    .map(|(i, def)| ty::mk_param(tcx, TypeSpace,
+                    .map(|(i, def)| tcx.mk_param(TypeSpace,
                                                  i as u32, def.ident.name))
                     .collect();
 
         // ...and also create the `Self` parameter.
-        let self_ty = ty::mk_self_type(tcx);
+        let self_ty = tcx.mk_self_type();
 
         Substs::new_trait(types, regions, self_ty)
     }
@@ -1389,9 +1388,8 @@ fn convert_trait_predicates<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, it: &ast::Item)
                 }
             };
 
-            let assoc_ty = ty::mk_projection(ccx.tcx,
-                                             self_trait_ref,
-                                             trait_item.ident.name);
+            let assoc_ty = ccx.tcx.mk_projection(self_trait_ref,
+                                                 trait_item.ident.name);
 
             let bounds = compute_bounds(&ccx.icx(&(ast_generics, trait_predicates)),
                                         assoc_ty,
@@ -1450,7 +1448,7 @@ fn compute_type_scheme_of_item<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
         ast::ItemFn(ref decl, unsafety, _, abi, ref generics, _) => {
             let ty_generics = ty_generics_for_fn(ccx, generics, &ty::Generics::empty());
             let tofd = astconv::ty_of_bare_fn(&ccx.icx(generics), unsafety, abi, &**decl);
-            let ty = ty::mk_bare_fn(tcx, Some(local_def(it.id)), tcx.mk_bare_fn(tofd));
+            let ty = tcx.mk_fn(Some(local_def(it.id)), tcx.mk_bare_fn(tofd));
             ty::TypeScheme { ty: ty, generics: ty_generics }
         }
         ast::ItemTy(ref t, ref generics) => {
@@ -1462,13 +1460,13 @@ fn compute_type_scheme_of_item<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
             // Create a new generic polytype.
             let ty_generics = ty_generics_for_type_or_impl(ccx, generics);
             let substs = mk_item_substs(ccx, &ty_generics);
-            let t = ty::mk_enum(tcx, local_def(it.id), tcx.mk_substs(substs));
+            let t = tcx.mk_enum(local_def(it.id), tcx.mk_substs(substs));
             ty::TypeScheme { ty: t, generics: ty_generics }
         }
         ast::ItemStruct(_, ref generics) => {
             let ty_generics = ty_generics_for_type_or_impl(ccx, generics);
             let substs = mk_item_substs(ccx, &ty_generics);
-            let t = ty::mk_struct(tcx, local_def(it.id), tcx.mk_substs(substs));
+            let t = tcx.mk_struct(local_def(it.id), tcx.mk_substs(substs));
             ty::TypeScheme { ty: t, generics: ty_generics }
         }
         ast::ItemDefaultImpl(..) |
@@ -2121,14 +2119,12 @@ fn compute_type_scheme_of_foreign_fn_decl<'a, 'tcx>(
         ast::Return(ref ty) =>
             ty::FnConverging(ast_ty_to_ty(&ccx.icx(ast_generics), &rb, &**ty)),
         ast::DefaultReturn(..) =>
-            ty::FnConverging(ty::mk_nil(ccx.tcx)),
+            ty::FnConverging(ccx.tcx.mk_nil()),
         ast::NoReturn(..) =>
             ty::FnDiverging
     };
 
-    let t_fn = ty::mk_bare_fn(
-        ccx.tcx,
-        None,
+    let t_fn = ccx.tcx.mk_fn(None,
         ccx.tcx.mk_bare_fn(ty::BareFnTy {
             abi: abi,
             unsafety: ast::Unsafety::Unsafe,
@@ -2149,7 +2145,7 @@ fn mk_item_substs<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 {
     let types =
         ty_generics.types.map(
-            |def| ty::mk_param_from_def(ccx.tcx, def));
+            |def| ccx.tcx.mk_param_from_def(def));
 
     let regions =
         ty_generics.regions.map(

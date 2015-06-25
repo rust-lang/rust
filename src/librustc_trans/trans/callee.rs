@@ -277,7 +277,7 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
         ty::FnOnceClosureKind => false,
     };
     let bare_fn_ty_maybe_ref = if is_by_ref {
-        ty::mk_imm_rptr(tcx, tcx.mk_region(ty::ReStatic), bare_fn_ty)
+        tcx.mk_imm_ref(tcx.mk_region(ty::ReStatic), bare_fn_ty)
     } else {
         bare_fn_ty
     };
@@ -308,18 +308,17 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
             }
         };
     let sig = ty::erase_late_bound_regions(tcx, sig);
-    let tuple_input_ty = ty::mk_tup(tcx, sig.inputs.to_vec());
-    let tuple_fn_ty = ty::mk_bare_fn(tcx,
-                                     opt_def_id,
-                                     tcx.mk_bare_fn(ty::BareFnTy {
-                                         unsafety: ast::Unsafety::Normal,
-                                         abi: synabi::RustCall,
-                                         sig: ty::Binder(ty::FnSig {
-                                             inputs: vec![bare_fn_ty_maybe_ref,
-                                                          tuple_input_ty],
-                                             output: sig.output,
-                                             variadic: false
-                                         })}));
+    let tuple_input_ty = tcx.mk_tup(sig.inputs.to_vec());
+    let tuple_fn_ty = tcx.mk_fn(opt_def_id,
+        tcx.mk_bare_fn(ty::BareFnTy {
+            unsafety: ast::Unsafety::Normal,
+            abi: synabi::RustCall,
+            sig: ty::Binder(ty::FnSig {
+                inputs: vec![bare_fn_ty_maybe_ref,
+                             tuple_input_ty],
+                output: sig.output,
+                variadic: false
+            })}));
     debug!("tuple_fn_ty: {:?}", tuple_fn_ty);
 
     //
@@ -615,7 +614,7 @@ pub fn trans_method_call<'a, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         Some(method) => match method.origin {
             ty::MethodTraitObject(_) => match method.ty.sty {
                 ty::TyBareFn(_, ref fty) => {
-                    ty::mk_bare_fn(bcx.tcx(), None, meth::opaque_method_ty(bcx.tcx(), fty))
+                    bcx.tcx().mk_fn(None, meth::opaque_method_ty(bcx.tcx(), fty))
                 }
                 _ => method.ty
             },
@@ -749,7 +748,7 @@ pub fn trans_call_inner<'a, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
         expr::Ignore => {
             let ret_ty = match ret_ty {
                 ty::FnConverging(ret_ty) => ret_ty,
-                ty::FnDiverging => ty::mk_nil(ccx.tcx())
+                ty::FnDiverging => ccx.tcx().mk_nil()
             };
             if !is_rust_fn ||
               type_of::return_uses_outptr(ccx, ret_ty) ||

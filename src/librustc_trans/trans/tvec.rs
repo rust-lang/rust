@@ -106,9 +106,7 @@ pub fn trans_slice_vec<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let count = elements_required(bcx, content_expr);
     debug!("    vt={}, count={}", vt.to_string(ccx), count);
 
-    let fixed_ty = ty::mk_vec(bcx.tcx(),
-                              vt.unit_ty,
-                              Some(count));
+    let fixed_ty = bcx.tcx().mk_array(vt.unit_ty, count);
     let llfixed_ty = type_of::type_of(bcx.ccx(), fixed_ty);
 
     // Always create an alloca even if zero-sized, to preserve

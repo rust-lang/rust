@@ -3034,7 +3034,7 @@ impl<'tcx> ctxt<'tcx> {
             abi: bare_fn.abi,
             sig: bare_fn.sig.clone()
         });
-        ty::mk_bare_fn(self, None, unsafe_fn_ty_a)
+        self.mk_fn(None, unsafe_fn_ty_a)
     }
 
     pub fn mk_bare_fn(&self, bare_fn: BareFnTy<'tcx>) -> &'tcx BareFnTy<'tcx> {
@@ -3083,13 +3083,6 @@ impl<'tcx> ctxt<'tcx> {
     pub fn arm_contains_ref_binding(&self, arm: &ast::Arm) -> Option<ast::Mutability> {
         pat_util::arm_contains_ref_binding(&self.def_map, arm)
     }
-}
-
-// Interns a type/name combination, stores the resulting box in cx.interner,
-// and returns the box as cast to an unsafe ptr (see comments for Ty above).
-pub fn mk_t<'tcx>(cx: &ctxt<'tcx>, st: TypeVariants<'tcx>) -> Ty<'tcx> {
-    let mut interner = cx.interner.borrow_mut();
-    intern_ty(&cx.arenas.type_, &mut *interner, st)
 }
 
 fn intern_ty<'tcx>(type_arena: &'tcx TypedArena<TyS<'tcx>>,
@@ -3309,140 +3302,192 @@ impl FlagComputation {
     }
 }
 
-pub fn mk_mach_int<'tcx>(tcx: &ctxt<'tcx>, tm: ast::IntTy) -> Ty<'tcx> {
-    match tm {
-        ast::TyIs   => tcx.types.isize,
-        ast::TyI8   => tcx.types.i8,
-        ast::TyI16  => tcx.types.i16,
-        ast::TyI32  => tcx.types.i32,
-        ast::TyI64  => tcx.types.i64,
+impl<'tcx> ctxt<'tcx> {
+    // Interns a type/name combination, stores the resulting box in cx.interner,
+    // and returns the box as cast to an unsafe ptr (see comments for Ty above).
+    pub fn mk_ty(&self, st: TypeVariants<'tcx>) -> Ty<'tcx> {
+        let mut interner = self.interner.borrow_mut();
+        intern_ty(&self.arenas.type_, &mut *interner, st)
     }
-}
 
-pub fn mk_mach_uint<'tcx>(tcx: &ctxt<'tcx>, tm: ast::UintTy) -> Ty<'tcx> {
-    match tm {
-        ast::TyUs   => tcx.types.usize,
-        ast::TyU8   => tcx.types.u8,
-        ast::TyU16  => tcx.types.u16,
-        ast::TyU32  => tcx.types.u32,
-        ast::TyU64  => tcx.types.u64,
+    pub fn mk_mach_int(&self, tm: ast::IntTy) -> Ty<'tcx> {
+        match tm {
+            ast::TyIs   => self.types.isize,
+            ast::TyI8   => self.types.i8,
+            ast::TyI16  => self.types.i16,
+            ast::TyI32  => self.types.i32,
+            ast::TyI64  => self.types.i64,
+        }
     }
-}
 
-pub fn mk_mach_float<'tcx>(tcx: &ctxt<'tcx>, tm: ast::FloatTy) -> Ty<'tcx> {
-    match tm {
-        ast::TyF32  => tcx.types.f32,
-        ast::TyF64  => tcx.types.f64,
+    pub fn mk_mach_uint(&self, tm: ast::UintTy) -> Ty<'tcx> {
+        match tm {
+            ast::TyUs   => self.types.usize,
+            ast::TyU8   => self.types.u8,
+            ast::TyU16  => self.types.u16,
+            ast::TyU32  => self.types.u32,
+            ast::TyU64  => self.types.u64,
+        }
     }
-}
 
-pub fn mk_str<'tcx>(cx: &ctxt<'tcx>) -> Ty<'tcx> {
-    mk_t(cx, TyStr)
-}
+    pub fn mk_mach_float(&self, tm: ast::FloatTy) -> Ty<'tcx> {
+        match tm {
+            ast::TyF32  => self.types.f32,
+            ast::TyF64  => self.types.f64,
+        }
+    }
 
-pub fn mk_str_slice<'tcx>(cx: &ctxt<'tcx>, r: &'tcx Region, m: ast::Mutability) -> Ty<'tcx> {
-    mk_rptr(cx, r,
-            mt {
-                ty: mk_t(cx, TyStr),
-                mutbl: m
+    pub fn mk_str(&self) -> Ty<'tcx> {
+        self.mk_ty(TyStr)
+    }
+
+    pub fn mk_static_str(&self) -> Ty<'tcx> {
+        self.mk_imm_ref(self.mk_region(ty::ReStatic), self.mk_str())
+    }
+
+    pub fn mk_enum(&self, did: ast::DefId, substs: &'tcx Substs<'tcx>) -> Ty<'tcx> {
+        // take a copy of substs so that we own the vectors inside
+        self.mk_ty(TyEnum(did, substs))
+    }
+
+    pub fn mk_box(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        self.mk_ty(TyBox(ty))
+    }
+
+    pub fn mk_ptr(&self, tm: mt<'tcx>) -> Ty<'tcx> {
+        self.mk_ty(TyRawPtr(tm))
+    }
+
+    pub fn mk_ref(&self, r: &'tcx Region, tm: mt<'tcx>) -> Ty<'tcx> {
+        self.mk_ty(TyRef(r, tm))
+    }
+
+    pub fn mk_mut_ref(&self, r: &'tcx Region, ty: Ty<'tcx>) -> Ty<'tcx> {
+        self.mk_ref(r, mt {ty: ty, mutbl: ast::MutMutable})
+    }
+
+    pub fn mk_imm_ref(&self, r: &'tcx Region, ty: Ty<'tcx>) -> Ty<'tcx> {
+        self.mk_ref(r, mt {ty: ty, mutbl: ast::MutImmutable})
+    }
+
+    pub fn mk_mut_ptr(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        self.mk_ptr(mt {ty: ty, mutbl: ast::MutMutable})
+    }
+
+    pub fn mk_imm_ptr(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        self.mk_ptr(mt {ty: ty, mutbl: ast::MutImmutable})
+    }
+
+    pub fn mk_nil_ptr(&self) -> Ty<'tcx> {
+        self.mk_imm_ptr(self.mk_nil())
+    }
+
+    pub fn mk_array(&self, ty: Ty<'tcx>, n: usize) -> Ty<'tcx> {
+        self.mk_ty(TyArray(ty, n))
+    }
+
+    pub fn mk_slice(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        self.mk_ty(TySlice(ty))
+    }
+
+    pub fn mk_tup(&self, ts: Vec<Ty<'tcx>>) -> Ty<'tcx> {
+        self.mk_ty(TyTuple(ts))
+    }
+
+    pub fn mk_nil(&self) -> Ty<'tcx> {
+        self.mk_tup(Vec::new())
+    }
+
+    pub fn mk_bool(&self) -> Ty<'tcx> {
+        self.mk_ty(TyBool)
+    }
+
+    pub fn mk_fn(&self,
+                 opt_def_id: Option<ast::DefId>,
+                 fty: &'tcx BareFnTy<'tcx>) -> Ty<'tcx> {
+        self.mk_ty(TyBareFn(opt_def_id, fty))
+    }
+
+    pub fn mk_ctor_fn(&self,
+                      def_id: ast::DefId,
+                      input_tys: &[Ty<'tcx>],
+                      output: Ty<'tcx>) -> Ty<'tcx> {
+        let input_args = input_tys.iter().cloned().collect();
+        self.mk_fn(Some(def_id), self.mk_bare_fn(BareFnTy {
+            unsafety: ast::Unsafety::Normal,
+            abi: abi::Rust,
+            sig: ty::Binder(FnSig {
+                inputs: input_args,
+                output: ty::FnConverging(output),
+                variadic: false
             })
-}
-
-pub fn mk_enum<'tcx>(cx: &ctxt<'tcx>, did: ast::DefId, substs: &'tcx Substs<'tcx>) -> Ty<'tcx> {
-    // take a copy of substs so that we own the vectors inside
-    mk_t(cx, TyEnum(did, substs))
-}
-
-pub fn mk_uniq<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> { mk_t(cx, TyBox(ty)) }
-
-pub fn mk_ptr<'tcx>(cx: &ctxt<'tcx>, tm: mt<'tcx>) -> Ty<'tcx> { mk_t(cx, TyRawPtr(tm)) }
-
-pub fn mk_rptr<'tcx>(cx: &ctxt<'tcx>, r: &'tcx Region, tm: mt<'tcx>) -> Ty<'tcx> {
-    mk_t(cx, TyRef(r, tm))
-}
-
-pub fn mk_mut_rptr<'tcx>(cx: &ctxt<'tcx>, r: &'tcx Region, ty: Ty<'tcx>) -> Ty<'tcx> {
-    mk_rptr(cx, r, mt {ty: ty, mutbl: ast::MutMutable})
-}
-pub fn mk_imm_rptr<'tcx>(cx: &ctxt<'tcx>, r: &'tcx Region, ty: Ty<'tcx>) -> Ty<'tcx> {
-    mk_rptr(cx, r, mt {ty: ty, mutbl: ast::MutImmutable})
-}
-
-pub fn mk_mut_ptr<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
-    mk_ptr(cx, mt {ty: ty, mutbl: ast::MutMutable})
-}
-
-pub fn mk_imm_ptr<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
-    mk_ptr(cx, mt {ty: ty, mutbl: ast::MutImmutable})
-}
-
-pub fn mk_nil_ptr<'tcx>(cx: &ctxt<'tcx>) -> Ty<'tcx> {
-    mk_ptr(cx, mt {ty: mk_nil(cx), mutbl: ast::MutImmutable})
-}
-
-pub fn mk_vec<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>, sz: Option<usize>) -> Ty<'tcx> {
-    match sz {
-        Some(n) => mk_t(cx, TyArray(ty, n)),
-        None => mk_t(cx, TySlice(ty))
+        }))
     }
-}
 
-pub fn mk_slice<'tcx>(cx: &ctxt<'tcx>, r: &'tcx Region, tm: mt<'tcx>) -> Ty<'tcx> {
-    mk_rptr(cx, r,
-            mt {
-                ty: mk_vec(cx, tm.ty, None),
-                mutbl: tm.mutbl
-            })
-}
+    pub fn mk_trait(&self,
+                    principal: ty::PolyTraitRef<'tcx>,
+                    bounds: ExistentialBounds<'tcx>)
+                    -> Ty<'tcx>
+    {
+        assert!(bound_list_is_sorted(&bounds.projection_bounds));
 
-pub fn mk_tup<'tcx>(cx: &ctxt<'tcx>, ts: Vec<Ty<'tcx>>) -> Ty<'tcx> {
-    mk_t(cx, TyTuple(ts))
-}
+        let inner = box TraitTy {
+            principal: principal,
+            bounds: bounds
+        };
+        self.mk_ty(TyTrait(inner))
+    }
 
-pub fn mk_nil<'tcx>(cx: &ctxt<'tcx>) -> Ty<'tcx> {
-    mk_tup(cx, Vec::new())
-}
+    pub fn mk_projection(&self,
+                         trait_ref: TraitRef<'tcx>,
+                         item_name: ast::Name)
+                         -> Ty<'tcx> {
+        // take a copy of substs so that we own the vectors inside
+        let inner = ProjectionTy { trait_ref: trait_ref, item_name: item_name };
+        self.mk_ty(TyProjection(inner))
+    }
 
-pub fn mk_bool<'tcx>(cx: &ctxt<'tcx>) -> Ty<'tcx> {
-    mk_t(cx, TyBool)
-}
+    pub fn mk_struct(&self, struct_id: ast::DefId,
+                     substs: &'tcx Substs<'tcx>) -> Ty<'tcx> {
+        // take a copy of substs so that we own the vectors inside
+        self.mk_ty(TyStruct(struct_id, substs))
+    }
 
-pub fn mk_bare_fn<'tcx>(cx: &ctxt<'tcx>,
-                        opt_def_id: Option<ast::DefId>,
-                        fty: &'tcx BareFnTy<'tcx>) -> Ty<'tcx> {
-    mk_t(cx, TyBareFn(opt_def_id, fty))
-}
+    pub fn mk_closure(&self, closure_id: ast::DefId, substs: &'tcx Substs<'tcx>)
+                      -> Ty<'tcx> {
+        self.mk_ty(TyClosure(closure_id, substs))
+    }
 
-pub fn mk_ctor_fn<'tcx>(cx: &ctxt<'tcx>,
-                        def_id: ast::DefId,
-                        input_tys: &[Ty<'tcx>],
-                        output: Ty<'tcx>) -> Ty<'tcx> {
-    let input_args = input_tys.iter().cloned().collect();
-    mk_bare_fn(cx,
-               Some(def_id),
-               cx.mk_bare_fn(BareFnTy {
-                   unsafety: ast::Unsafety::Normal,
-                   abi: abi::Rust,
-                   sig: ty::Binder(FnSig {
-                    inputs: input_args,
-                    output: ty::FnConverging(output),
-                    variadic: false
-                   })
-                }))
-}
+    pub fn mk_var(&self, v: TyVid) -> Ty<'tcx> {
+        self.mk_infer(TyVar(v))
+    }
 
-pub fn mk_trait<'tcx>(cx: &ctxt<'tcx>,
-                      principal: ty::PolyTraitRef<'tcx>,
-                      bounds: ExistentialBounds<'tcx>)
-                      -> Ty<'tcx>
-{
-    assert!(bound_list_is_sorted(&bounds.projection_bounds));
+    pub fn mk_int_var(&self, v: IntVid) -> Ty<'tcx> {
+        self.mk_infer(IntVar(v))
+    }
 
-    let inner = box TraitTy {
-        principal: principal,
-        bounds: bounds
-    };
-    mk_t(cx, TyTrait(inner))
+    pub fn mk_float_var(&self, v: FloatVid) -> Ty<'tcx> {
+        self.mk_infer(FloatVar(v))
+    }
+
+    pub fn mk_infer(&self, it: InferTy) -> Ty<'tcx> {
+        self.mk_ty(TyInfer(it))
+    }
+
+    pub fn mk_param(&self,
+                    space: subst::ParamSpace,
+                    index: u32,
+                    name: ast::Name) -> Ty<'tcx> {
+        self.mk_ty(TyParam(ParamTy { space: space, idx: index, name: name }))
+    }
+
+    pub fn mk_self_type(&self) -> Ty<'tcx> {
+        self.mk_param(subst::SelfSpace, 0, special_idents::type_self.name)
+    }
+
+    pub fn mk_param_from_def(&self, def: &TypeParameterDef) -> Ty<'tcx> {
+        self.mk_param(def.space, def.index, def.name)
+    }
 }
 
 fn bound_list_is_sorted(bounds: &[ty::PolyProjectionPredicate]) -> bool {
@@ -3453,57 +3498,6 @@ fn bound_list_is_sorted(bounds: &[ty::PolyProjectionPredicate]) -> bool {
 
 pub fn sort_bounds_list(bounds: &mut [ty::PolyProjectionPredicate]) {
     bounds.sort_by(|a, b| a.sort_key().cmp(&b.sort_key()))
-}
-
-pub fn mk_projection<'tcx>(cx: &ctxt<'tcx>,
-                           trait_ref: TraitRef<'tcx>,
-                           item_name: ast::Name)
-                           -> Ty<'tcx> {
-    // take a copy of substs so that we own the vectors inside
-    let inner = ProjectionTy { trait_ref: trait_ref, item_name: item_name };
-    mk_t(cx, TyProjection(inner))
-}
-
-pub fn mk_struct<'tcx>(cx: &ctxt<'tcx>, struct_id: ast::DefId,
-                       substs: &'tcx Substs<'tcx>) -> Ty<'tcx> {
-    // take a copy of substs so that we own the vectors inside
-    mk_t(cx, TyStruct(struct_id, substs))
-}
-
-pub fn mk_closure<'tcx>(cx: &ctxt<'tcx>, closure_id: ast::DefId, substs: &'tcx Substs<'tcx>)
-                        -> Ty<'tcx> {
-    mk_t(cx, TyClosure(closure_id, substs))
-}
-
-pub fn mk_var<'tcx>(cx: &ctxt<'tcx>, v: TyVid) -> Ty<'tcx> {
-    mk_infer(cx, TyVar(v))
-}
-
-pub fn mk_int_var<'tcx>(cx: &ctxt<'tcx>, v: IntVid) -> Ty<'tcx> {
-    mk_infer(cx, IntVar(v))
-}
-
-pub fn mk_float_var<'tcx>(cx: &ctxt<'tcx>, v: FloatVid) -> Ty<'tcx> {
-    mk_infer(cx, FloatVar(v))
-}
-
-pub fn mk_infer<'tcx>(cx: &ctxt<'tcx>, it: InferTy) -> Ty<'tcx> {
-    mk_t(cx, TyInfer(it))
-}
-
-pub fn mk_param<'tcx>(cx: &ctxt<'tcx>,
-                      space: subst::ParamSpace,
-                      index: u32,
-                      name: ast::Name) -> Ty<'tcx> {
-    mk_t(cx, TyParam(ParamTy { space: space, idx: index, name: name }))
-}
-
-pub fn mk_self_type<'tcx>(cx: &ctxt<'tcx>) -> Ty<'tcx> {
-    mk_param(cx, subst::SelfSpace, 0, special_idents::type_self.name)
-}
-
-pub fn mk_param_from_def<'tcx>(cx: &ctxt<'tcx>, def: &TypeParameterDef) -> Ty<'tcx> {
-    mk_param(cx, def.space, def.index, def.name)
 }
 
 impl<'tcx> TyS<'tcx> {
@@ -3586,7 +3580,7 @@ impl ParamTy {
     }
 
     pub fn to_ty<'tcx>(self, tcx: &ctxt<'tcx>) -> Ty<'tcx> {
-        ty::mk_param(tcx, self.space, self.idx, self.name)
+        tcx.mk_param(self.space, self.idx, self.name)
     }
 
     pub fn is_self(&self) -> bool {
@@ -3657,7 +3651,7 @@ impl<'tcx> TyS<'tcx> {
     pub fn sequence_element_type(&self, cx: &ctxt<'tcx>) -> Ty<'tcx> {
         match self.sty {
             TyArray(ty, _) | TySlice(ty) => ty,
-            TyStr => mk_mach_uint(cx, ast::TyU8),
+            TyStr => cx.mk_mach_uint(ast::TyU8),
             _ => cx.sess.bug(&format!("sequence_element_type called on non-sequence value: {}",
                                       self)),
         }
@@ -4745,18 +4739,6 @@ pub fn ty_region(tcx: &ctxt,
     }
 }
 
-pub fn free_region_from_def(outlives_extent: region::DestructionScopeData,
-                            def: &RegionParameterDef)
-    -> ty::Region
-{
-    let ret =
-        ty::ReFree(ty::FreeRegion { scope: outlives_extent,
-                                    bound_region: ty::BrNamed(def.def_id,
-                                                              def.name) });
-    debug!("free_region_from_def returns {:?}", ret);
-    ret
-}
-
 // Returns the type of a pattern as a monotype. Like @expr_ty, this function
 // doesn't provide type parameter substitutions.
 pub fn pat_ty<'tcx>(cx: &ctxt<'tcx>, pat: &ast::Pat) -> Ty<'tcx> {
@@ -4860,7 +4842,7 @@ pub fn adjust_ty<'tcx, F>(cx: &ctxt<'tcx>,
                AdjustReifyFnPointer => {
                     match unadjusted_ty.sty {
                         ty::TyBareFn(Some(_), b) => {
-                            ty::mk_bare_fn(cx, None, b)
+                            cx.mk_fn(None, b)
                         }
                         _ => {
                             cx.sess.bug(
@@ -4932,10 +4914,10 @@ pub fn adjust_ty_for_autoref<'tcx>(cx: &ctxt<'tcx>,
     match autoref {
         None => ty,
         Some(AutoPtr(r, m)) => {
-            mk_rptr(cx, r, mt { ty: ty, mutbl: m })
+            cx.mk_ref(r, mt { ty: ty, mutbl: m })
         }
         Some(AutoUnsafe(m)) => {
-            mk_ptr(cx, mt { ty: ty, mutbl: m })
+            cx.mk_ptr(mt { ty: ty, mutbl: m })
         }
     }
 }
@@ -6185,12 +6167,11 @@ pub fn closure_upvars<'tcx>(typer: &mc::Typer<'tcx>,
                                     freevar_ty
                                 }
                                 UpvarCapture::ByRef(borrow) => {
-                                    mk_rptr(tcx,
-                                            tcx.mk_region(borrow.region),
-                                            ty::mt {
-                                                ty: freevar_ty,
-                                                mutbl: borrow.kind.to_mutbl_lossy(),
-                                            })
+                                    tcx.mk_ref(tcx.mk_region(borrow.region),
+                                        ty::mt {
+                                            ty: freevar_ty,
+                                            mutbl: borrow.kind.to_mutbl_lossy(),
+                                        })
                                 }
                             };
 
@@ -6698,8 +6679,12 @@ pub fn construct_free_substs<'a,'tcx>(
                           all_outlive_extent: region::DestructionScopeData,
                           region_params: &[RegionParameterDef])
     {
-        for r in region_params {
-            regions.push(r.space, ty::free_region_from_def(all_outlive_extent, r));
+        for def in region_params {
+            let region =
+                ReFree(FreeRegion { scope: all_outlive_extent,
+                                    bound_region: BrNamed(def.def_id, def.name) });
+            debug!("push_region_params {:?}", region);
+            regions.push(def.space, region);
         }
     }
 
@@ -6709,7 +6694,7 @@ pub fn construct_free_substs<'a,'tcx>(
         for def in defs {
             debug!("construct_parameter_environment(): push_types_from_defs: def={:?}",
                    def);
-            let ty = ty::mk_param_from_def(tcx, def);
+            let ty = tcx.mk_param_from_def(def);
             types.push(def.space, ty);
        }
     }
@@ -7161,7 +7146,7 @@ pub fn make_substs_for_receiver_types<'tcx>(tcx: &ctxt<'tcx>,
     let meth_tps: Vec<Ty> =
         method.generics.types.get_slice(subst::FnSpace)
               .iter()
-              .map(|def| ty::mk_param_from_def(tcx, def))
+              .map(|def| tcx.mk_param_from_def(def))
               .collect();
     let meth_regions: Vec<ty::Region> =
         method.generics.regions.get_slice(subst::FnSpace)

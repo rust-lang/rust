@@ -674,9 +674,8 @@ fn bind_subslice_pat(bcx: Block,
     let slice_begin = InBoundsGEP(bcx, base, &[C_uint(bcx.ccx(), offset_left)]);
     let slice_len_offset = C_uint(bcx.ccx(), offset_left + offset_right);
     let slice_len = Sub(bcx, len, slice_len_offset, DebugLoc::None);
-    let slice_ty = ty::mk_slice(bcx.tcx(),
-                                bcx.tcx().mk_region(ty::ReStatic),
-                                ty::mt {ty: unit_ty, mutbl: ast::MutImmutable});
+    let slice_ty = bcx.tcx().mk_imm_ref(bcx.tcx().mk_region(ty::ReStatic),
+                                         bcx.tcx().mk_slice(unit_ty));
     let scratch = rvalue_scratch_datum(bcx, slice_ty, "");
     Store(bcx, slice_begin,
           GEPi(bcx, scratch.val, &[0, abi::FAT_PTR_ADDR]));
@@ -854,9 +853,7 @@ fn compare_values<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                     // NOTE: cast &[u8] and &[u8; N] to &str and abuse the str_eq lang item,
                     // which calls memcmp().
                     let pat_len = val_ty(rhs).element_type().array_length();
-                    let ty_str_slice = ty::mk_str_slice(cx.tcx(),
-                                                        cx.tcx().mk_region(ty::ReStatic),
-                                                        ast::MutImmutable);
+                    let ty_str_slice = cx.tcx().mk_static_str();
 
                     let rhs_str = alloc_ty(cx, ty_str_slice, "rhs_str");
                     Store(cx, GEPi(cx, rhs, &[0, 0]), expr::get_dataptr(cx, rhs_str));
@@ -1063,7 +1060,7 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                          .unwrap_or(DUMMY_NODE_ID);
 
     let left_ty = if pat_id == DUMMY_NODE_ID {
-        ty::mk_nil(tcx)
+        tcx.mk_nil()
     } else {
         node_id_type(bcx, pat_id)
     };

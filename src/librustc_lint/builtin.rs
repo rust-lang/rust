@@ -1699,15 +1699,15 @@ impl LintPass for MissingCopyImplementations {
                 if ast_generics.is_parameterized() {
                     return;
                 }
-                ty::mk_struct(cx.tcx, local_def(item.id),
-                              cx.tcx.mk_substs(Substs::empty()))
+                cx.tcx.mk_struct(local_def(item.id),
+                                 cx.tcx.mk_substs(Substs::empty()))
             }
             ast::ItemEnum(_, ref ast_generics) => {
                 if ast_generics.is_parameterized() {
                     return;
                 }
-                ty::mk_enum(cx.tcx, local_def(item.id),
-                            cx.tcx.mk_substs(Substs::empty()))
+                cx.tcx.mk_enum(local_def(item.id),
+                               cx.tcx.mk_substs(Substs::empty()))
             }
             _ => return,
         };

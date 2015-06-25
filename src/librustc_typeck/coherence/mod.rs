@@ -210,8 +210,8 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
             // impl, plus its own.
             let new_polytype = ty::TypeScheme {
                 generics: new_method_ty.generics.clone(),
-                ty: ty::mk_bare_fn(tcx, Some(new_did),
-                                   tcx.mk_bare_fn(new_method_ty.fty.clone()))
+                ty: tcx.mk_fn(Some(new_did),
+                              tcx.mk_bare_fn(new_method_ty.fty.clone()))
             };
             debug!("new_polytype={:?}", new_polytype);
 
@@ -468,12 +468,12 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
 
                 (&ty::TyRef(r_a, mt_a), &ty::TyRef(r_b, mt_b)) => {
                     infer::mk_subr(&infcx, infer::RelateObjectBound(span), *r_b, *r_a);
-                    check_mutbl(mt_a, mt_b, &|ty| ty::mk_imm_rptr(tcx, r_b, ty))
+                    check_mutbl(mt_a, mt_b, &|ty| tcx.mk_imm_ref(r_b, ty))
                 }
 
                 (&ty::TyRef(_, mt_a), &ty::TyRawPtr(mt_b)) |
                 (&ty::TyRawPtr(mt_a), &ty::TyRawPtr(mt_b)) => {
-                    check_mutbl(mt_a, mt_b, &|ty| ty::mk_imm_ptr(tcx, ty))
+                    check_mutbl(mt_a, mt_b, &|ty| tcx.mk_imm_ptr(ty))
                 }
 
                 (&ty::TyStruct(def_id_a, substs_a), &ty::TyStruct(def_id_b, substs_b)) => {

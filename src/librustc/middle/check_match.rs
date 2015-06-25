@@ -651,7 +651,7 @@ fn is_useful(cx: &MatchCheckCtxt,
         None => v[0]
     };
     let left_ty = if real_pat.id == DUMMY_NODE_ID {
-        ty::mk_nil(cx.tcx)
+        cx.tcx.mk_nil()
     } else {
         let left_ty = ty::pat_ty(cx.tcx, &*real_pat);
 

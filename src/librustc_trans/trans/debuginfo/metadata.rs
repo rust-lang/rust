@@ -562,7 +562,7 @@ fn vec_slice_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                 unique_type_id: UniqueTypeId,
                                 span: Span)
                                 -> MetadataCreationResult {
-    let data_ptr_type = ty::mk_ptr(cx.tcx(), ty::mt {
+    let data_ptr_type = cx.tcx().mk_ptr(ty::mt {
         ty: element_type,
         mutbl: ast::MutImmutable
     });

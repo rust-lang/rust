@@ -1110,7 +1110,7 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                              None,
                              expr.span,
                              expr.id,
-                             ty::mk_struct(tcx, did, tcx.mk_substs(substs)),
+                             tcx.mk_struct(did, tcx.mk_substs(substs)),
                              dest)
             } else {
                 tcx.sess.span_bug(expr.span,
@@ -1697,7 +1697,7 @@ fn trans_uniq_expr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 fn ref_fat_ptr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                            lval: Datum<'tcx, Lvalue>)
                            -> DatumBlock<'blk, 'tcx, Expr> {
-    let dest_ty = ty::mk_imm_rptr(bcx.tcx(), bcx.tcx().mk_region(ty::ReStatic), lval.ty);
+    let dest_ty = bcx.tcx().mk_imm_ref(bcx.tcx().mk_region(ty::ReStatic), lval.ty);
     let scratch = rvalue_scratch_datum(bcx, dest_ty, "__fat_ptr");
     memcpy_ty(bcx, scratch.val, lval.val, scratch.ty);
 
@@ -2180,7 +2180,7 @@ fn auto_ref<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     // Compute final type. Note that we are loose with the region and
     // mutability, since those things don't matter in trans.
     let referent_ty = lv_datum.ty;
-    let ptr_ty = ty::mk_imm_rptr(bcx.tcx(), bcx.tcx().mk_region(ty::ReStatic), referent_ty);
+    let ptr_ty = bcx.tcx().mk_imm_ref(bcx.tcx().mk_region(ty::ReStatic), referent_ty);
 
     // Get the pointer.
     let llref = lv_datum.to_llref();

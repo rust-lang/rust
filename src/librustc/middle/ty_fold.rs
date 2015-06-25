@@ -641,7 +641,7 @@ pub fn super_fold_ty<'tcx, T: TypeFolder<'tcx>>(this: &mut T,
             ty.sty.clone()
         }
     };
-    ty::mk_t(this.tcx(), sty)
+    this.tcx().mk_ty(sty)
 }
 
 pub fn super_fold_substs<'tcx, T: TypeFolder<'tcx>>(this: &mut T,

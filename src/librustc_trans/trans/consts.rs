@@ -306,7 +306,7 @@ pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                     // Don't copy data to do a deref+ref
                     // (i.e., skip the last auto-deref).
                     llconst = addr_of(cx, llconst, "autoref");
-                    ty = ty::mk_imm_rptr(cx.tcx(), cx.tcx().mk_region(ty::ReStatic), ty);
+                    ty = cx.tcx().mk_imm_ref(cx.tcx().mk_region(ty::ReStatic), ty);
                 }
             } else {
                 let (dv, dt) = const_deref(cx, llconst, ty);

@@ -278,7 +278,7 @@ pub fn arg_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
 /// For the raw type without far pointer indirection, see `in_memory_type_of`.
 pub fn type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> Type {
     let ty = if !type_is_sized(cx.tcx(), ty) {
-        ty::mk_imm_ptr(cx.tcx(), ty)
+        cx.tcx().mk_imm_ptr(ty)
     } else {
         ty
     };
