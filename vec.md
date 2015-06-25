@@ -253,7 +253,7 @@ pub fn pop(&mut self) -> Option<T> {
 
 # Deallocating
 
-Next we should implement Drop so that we don't massively leaks tons of resources.
+Next we should implement Drop so that we don't massively leak tons of resources.
 The easiest way is to just call `pop` until it yields None, and then deallocate
 our buffer. Note that calling `pop` is uneeded if `T: !Drop`. In theory we can
 ask Rust if T needs_drop and omit the calls to `pop`. However in practice LLVM
@@ -442,9 +442,9 @@ end = ptr.offset(len)
 ```
 
 However because `offset` is marked as a GEP inbounds instruction, this will tell
-llVM that ptr is allocated and won't alias other allocated memory. This is fine
+LLVM that ptr is allocated and won't alias other allocated memory. This is fine
 for zero-sized types, as they can't alias anything. However if we're using
-heap::EMPTY as a sentinel for a non-allocation for a *non-zero-sized* type,
+`heap::EMPTY` as a sentinel for a non-allocation for a *non-zero-sized* type,
 this can cause undefined behaviour. Alas, we must therefore special case either
 cap or len being 0 to not do the offset.
 
