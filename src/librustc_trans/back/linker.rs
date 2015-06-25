@@ -11,6 +11,7 @@
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::fs;
 
 use rustc_back::archive;
 use session::Session;
@@ -25,6 +26,7 @@ use session::config;
 /// MSVC linker (e.g. `link.exe`) is being used.
 pub trait Linker {
     fn link_dylib(&mut self, lib: &str);
+    fn link_rust_dylib(&mut self, lib: &str, path: &Path);
     fn link_framework(&mut self, framework: &str);
     fn link_staticlib(&mut self, lib: &str);
     fn link_rlib(&mut self, lib: &Path);
@@ -66,6 +68,10 @@ impl<'a> Linker for GnuLinker<'a> {
     fn add_object(&mut self, path: &Path) { self.cmd.arg(path); }
     fn position_independent_executable(&mut self) { self.cmd.arg("-pie"); }
     fn args(&mut self, args: &[String]) { self.cmd.args(args); }
+
+    fn link_rust_dylib(&mut self, lib: &str, _path: &Path) {
+        self.cmd.arg("-l").arg(lib);
+    }
 
     fn link_framework(&mut self, framework: &str) {
         self.cmd.arg("-framework").arg(framework);
@@ -189,6 +195,18 @@ impl<'a> Linker for MsvcLinker<'a> {
     fn link_dylib(&mut self, lib: &str) {
         self.cmd.arg(&format!("{}.lib", lib));
     }
+
+    fn link_rust_dylib(&mut self, lib: &str, path: &Path) {
+        // When producing a dll, the MSVC linker may not actually emit a
+        // `foo.lib` file if the dll doesn't actually export any symbols, so we
+        // check to see if the file is there and just omit linking to it if it's
+        // not present.
+        let name = format!("{}.lib", lib);
+        if fs::metadata(&path.join(&name)).is_ok() {
+            self.cmd.arg(name);
+        }
+    }
+
     fn link_staticlib(&mut self, lib: &str) {
         self.cmd.arg(&format!("{}.lib", lib));
     }
