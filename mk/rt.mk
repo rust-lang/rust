@@ -55,7 +55,11 @@ NATIVE_DEPS_rust_builtin_$(1) := rust_builtin.c \
 			rust_android_dummy.c
 NATIVE_DEPS_rustrt_native_$(1) := arch/$$(HOST_$(1))/record_sp.S
 ifeq ($$(findstring msvc,$(1)),msvc)
+ifeq ($$(findstring i686,$(1)),i686)
+NATIVE_DEPS_rustrt_native_$(1) += rust_try_msvc_32.ll
+else
 NATIVE_DEPS_rustrt_native_$(1) += rust_try_msvc_64.ll
+endif
 else
 NATIVE_DEPS_rustrt_native_$(1) += rust_try.ll
 endif
@@ -93,6 +97,17 @@ $$(RT_OUTPUT_DIR_$(1))/%.o: $(S)src/rt/%.S $$(MKFILE_DEPS) \
 	@mkdir -p $$(@D)
 	@$$(call E, compile: $$@)
 	$$(Q)$$(call CFG_ASSEMBLE_$(1),$$@,$$<)
+
+# On MSVC targets the compiler's default include path (e.g. where to find system
+# headers) is specified by the INCLUDE environment variable. This may not be set
+# so the ./configure script scraped the relevant values and this is the location
+# that we put them into cl.exe's environment.
+ifeq ($$(findstring msvc,$(1)),msvc)
+$$(RT_OUTPUT_DIR_$(1))/%.o: \
+	export INCLUDE := $$(CFG_MSVC_INCLUDE_PATH_$$(HOST_$(1)))
+$(1)/rustllvm/%.o: \
+	export INCLUDE := $$(CFG_MSVC_INCLUDE_PATH_$$(HOST_$(1)))
+endif
 endef
 
 $(foreach target,$(CFG_TARGET),$(eval $(call NATIVE_LIBRARIES,$(target))))
@@ -240,7 +255,11 @@ COMPRT_CFLAGS_$(1) := $$(CFG_GCCISH_CFLAGS_$(1))
 ifeq ($$(findstring msvc,$(1)),msvc)
 COMPRT_CC_$(1) := gcc
 COMPRT_AR_$(1) := ar
+ifeq ($$(findstring i686,$(1)),i686)
+COMPRT_CFLAGS_$(1) := $$(CFG_GCCISH_CFLAGS_$(1)) -m32
+else
 COMPRT_CFLAGS_$(1) := $$(CFG_GCCISH_CFLAGS_$(1)) -m64
+endif
 endif
 
 $$(COMPRT_LIB_$(1)): $$(COMPRT_DEPS) $$(MKFILE_DEPS)
