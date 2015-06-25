@@ -24,7 +24,7 @@ pub struct Config {
     pub fn_brace_style: BraceStyle,
     pub fn_return_indent: ReturnIndent,
     pub fn_args_paren_newline: bool,
-    pub struct_trailing_comma: bool,
+    pub struct_trailing_comma: SeparatorTactic,
     pub struct_lit_trailing_comma: SeparatorTactic,
     pub enum_trailing_comma: bool,
     pub report_todo: ReportTactic,

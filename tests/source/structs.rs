@@ -1,5 +1,5 @@
 
-/// A Doc comment
+                                                                       /// A Doc comment
 #[AnAttribute]
 pub struct Foo {
     #[rustfmt_skip]
@@ -8,16 +8,20 @@ pub struct Foo {
     // Comment on a field
     #[AnAttribute]
     g: SomeOtherType,
-    /// A doc comment on a field
+      /// A doc comment on a field
     h: AThirdType,
-    pub i: TypeForPublicField,
+    pub i: TypeForPublicField
 }
 
 struct Bar;
 
-struct NewType(Type, OtherType);
+struct NewType(Type,       OtherType);
 
-struct NewInt<T: Copy>(pub i32, SomeType /* inline comment */, T /* sup */);
+struct
+NewInt     <T: Copy>(pub i32, SomeType /* inline comment */, T /* sup */
+
+
+    );
 
 struct Qux<'a,
            N: Clone + 'a,
@@ -27,19 +31,15 @@ struct Qux<'a,
 (
     AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA, // Comment
     BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB,
-    #[AnAttr]
+    #[AnAttr]    
     // Comment
     /// Testdoc
     G,
     pub W,
 );
 
-struct Tuple(
-    // Comment 1
-    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA,
-    // Comment 2
-    BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB,
-);
+struct Tuple(/*Comment 1*/ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA,
+             /* Comment 2   */ BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB,);
 
 // With a where clause and generics.
 pub struct Foo<'a, Y: Baz>
@@ -49,19 +49,22 @@ pub struct Foo<'a, Y: Baz>
 }
 
 struct Baz {
-    a: A, // Comment A
+    a: A,  // Comment A
     b: B, // Comment B
-    c: C, // Comment C
+    c: C,   // Comment C
 }
 
-struct Baz {
+struct Baz
+{
     // Comment A
     a: A,
     // Comment B
-    b: B,
+b: B,
     // Comment C
-    c: C,
-}
+      c: C,}
 
 // Will this be a one-liner?
-struct Tuple(A /* Comment */, B);
+struct Tuple(
+    A, //Comment
+    B
+);

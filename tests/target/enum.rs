@@ -3,7 +3,7 @@
 #[atrr]
 pub enum Test {
     A,
-    B(u32, A /* comment */),
+    B(u32, A /* comment */, SomeType),
     /// Doc comment
     C,
 }
@@ -27,8 +27,18 @@ enum Bar {
 }
 
 enum LongVariants {
-    First(LOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOONG, // small comment
+    First(LOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOONG, // comment
           VARIANT),
     // This is the second variant
     Second,
+}
+
+enum StructLikeVariants {
+    Normal(u32, String),
+    StructLike {
+        x: i32, // Test comment
+        // Pre-comment
+        #[Attr50]
+        y: SomeType, // Aanother Comment
+    }
 }

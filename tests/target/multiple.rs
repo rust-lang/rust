@@ -36,10 +36,10 @@ fn foo()
     hello!()
 }
 
-fn baz<'a: 'b, /* comment on 'a */
+fn baz<'a: 'b, // comment on 'a
        T: SomsssssssssssssssssssssssssssssssssssssssssssssssssssssseType /* comment on T */>
     (a: A,
-     b: B, /* comment on b */
+     b: B, // comment on b
      c: C)
      -> Bob {
     #[attr1]
@@ -65,8 +65,9 @@ fn qux(a: dadsfa,   // Comment 1
 /// Blah blah blah.
 impl Bar {
     fn foo(&mut self,
-           a: sdfsdfcccccccccccccccccccccccccccccccccccccccccccccccccccccccc, // comment on a
-           b: sdfasdfsdfasfs /*closing comment*/)
+           a: sdfsdfcccccccccccccccccccccccccccccccccccccccccccccccccc, /* commen
+                                                                         * t on a */
+           b: sdfasdfsdfasfs /* closing comment */)
            -> isize {
     }
 
@@ -137,18 +138,4 @@ fn main() {
              abcd abcd abcd  abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd \
              abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd abcd \
              abcd";
-}
-
-
-fn struct_lits() {
-    let x = Bar;
-    // Comment
-    let y = Foo { a: x };
-    Foo { a: foo(), b: bar(), ..something };
-    Fooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo { a: foo(),
-                                                                               b: bar(), };
-    Fooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo { a: foo(),
-                                                                                         b: bar(), };
-
-    Foo { a: Bar, b: foo() };
 }

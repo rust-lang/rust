@@ -15,7 +15,6 @@ use syntax::visit;
 use utils;
 use config::Config;
 
-use SKIP_ANNOTATION;
 use changes::ChangeSet;
 use rewrite::{Rewrite, RewriteContext};
 
@@ -120,7 +119,7 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
                                              constness,
                                              abi,
                                              vis,
-                                             b.span.lo);
+                                             codemap::mk_sp(s.lo, b.span.lo));
                 self.changes.push_str_span(s, &new_fn);
             }
             visit::FkMethod(ident, ref sig, vis) => {
@@ -133,7 +132,7 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
                                              &sig.constness,
                                              &sig.abi,
                                              vis.unwrap_or(ast::Visibility::Inherited),
-                                             b.span.lo);
+                                             codemap::mk_sp(s.lo, b.span.lo));
                 self.changes.push_str_span(s, &new_fn);
             }
             visit::FkFnBlock(..) => {}
@@ -305,26 +304,22 @@ impl<'a> FmtVisitor<'a> {
         let first = &attrs[0];
         self.format_missing_with_indent(first.span.lo);
 
-        match self.rewrite_attrs(attrs, self.block_indent) {
-            Some(s) => {
-                self.changes.push_str_span(first.span, &s);
-                let last = attrs.last().unwrap();
-                self.last_pos = last.span.hi;
-                false
-            }
-            None => true
+        if utils::contains_skip(attrs) {
+            true
+        } else {
+            let rewrite = self.rewrite_attrs(attrs, self.block_indent);
+            self.changes.push_str_span(first.span, &rewrite);
+            let last = attrs.last().unwrap();
+            self.last_pos = last.span.hi;
+            false
         }
     }
 
-    fn rewrite_attrs(&self, attrs: &[ast::Attribute], indent: usize) -> Option<String> {
+    pub fn rewrite_attrs(&self, attrs: &[ast::Attribute], indent: usize) -> String {
         let mut result = String::new();
         let indent = utils::make_indent(indent);
 
         for (i, a) in attrs.iter().enumerate() {
-            if is_skip(&a.node.value) {
-                return None;
-            }
-
             let a_str = self.snippet(a.span);
 
             if i > 0 {
@@ -351,13 +346,6 @@ impl<'a> FmtVisitor<'a> {
             }
         }
 
-        Some(result)
-    }
-}
-
-fn is_skip(meta_item: &ast::MetaItem) -> bool {
-    match meta_item.node {
-        ast::MetaItem_::MetaWord(ref s) => *s == SKIP_ANNOTATION,
-        _ => false,
+        result
     }
 }
