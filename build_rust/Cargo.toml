@@ -1,0 +1,14 @@
+[package]
+name = "build-rust"
+version = "0.1.0"
+authors = ["Chang Liu <cliu712@aucklanduni.ac.nz>"]
+
+build = "build.rs"
+
+[[bin]]
+name = "build-rust"
+path = "src/main.rs"
+
+[dependencies]
+getopts = "*"
+regex = "*"
