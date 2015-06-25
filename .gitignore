@@ -19,6 +19,7 @@
 *.exe
 *.fn
 *.html
+*.kdev4
 *.ky
 *.ll
 *.llvm
