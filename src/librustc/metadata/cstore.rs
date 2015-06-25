@@ -22,11 +22,12 @@ use metadata::{creader, decoder, loader};
 use session::search_paths::PathKind;
 use util::nodemap::{FnvHashMap, NodeMap, NodeSet};
 
-use std::cell::{RefCell, Ref};
+use std::cell::{RefCell, Ref, Cell};
 use std::rc::Rc;
 use std::path::PathBuf;
 use flate::Bytes;
 use syntax::ast;
+use syntax::attr;
 use syntax::codemap;
 use syntax::parse::token;
 use syntax::parse::token::IdentInterner;
@@ -59,11 +60,17 @@ pub struct crate_metadata {
     pub name: String,
     pub local_path: RefCell<SmallVector<ast_map::PathElem>>,
     pub data: MetadataBlob,
-    pub cnum_map: cnum_map,
+    pub cnum_map: RefCell<cnum_map>,
     pub cnum: ast::CrateNum,
     pub codemap_import_info: RefCell<Vec<ImportedFileMap>>,
     pub span: codemap::Span,
-    pub staged_api: bool
+    pub staged_api: bool,
+
+    /// Flag if this crate is required by an rlib version of this crate, or in
+    /// other words whether it was explicitly linked to. An example of a crate
+    /// where this is false is when an allocator crate is injected into the
+    /// dependency list, and therefore isn't actually needed to link an rlib.
+    pub explicitly_linked: Cell<bool>,
 }
 
 #[derive(Copy, Debug, PartialEq, Clone)]
@@ -132,10 +139,10 @@ impl CStore {
     }
 
     pub fn iter_crate_data<I>(&self, mut i: I) where
-        I: FnMut(ast::CrateNum, &crate_metadata),
+        I: FnMut(ast::CrateNum, &Rc<crate_metadata>),
     {
         for (&k, v) in self.metas.borrow().iter() {
-            i(k, &**v);
+            i(k, v);
         }
     }
 
@@ -188,7 +195,7 @@ impl CStore {
                  ordering: &mut Vec<ast::CrateNum>) {
             if ordering.contains(&cnum) { return }
             let meta = cstore.get_crate_data(cnum);
-            for (_, &dep) in &meta.cnum_map {
+            for (_, &dep) in meta.cnum_map.borrow().iter() {
                 visit(cstore, dep, ordering);
             }
             ordering.push(cnum);
@@ -196,6 +203,7 @@ impl CStore {
         for (&num, _) in self.metas.borrow().iter() {
             visit(self, num, &mut ordering);
         }
+        info!("topological ordering: {:?}", ordering);
         ordering.reverse();
         let mut libs = self.used_crate_sources.borrow()
             .iter()
@@ -271,8 +279,10 @@ impl crate_metadata {
             filemaps
         }
     }
+
     pub fn with_local_path<T, F>(&self, f: F) -> T
-    where F: Fn(&[ast_map::PathElem]) -> T {
+        where F: Fn(&[ast_map::PathElem]) -> T
+    {
         let cpath = self.local_path.borrow();
         if cpath.is_empty() {
             let name = ast_map::PathMod(token::intern(&self.name));
@@ -281,6 +291,7 @@ impl crate_metadata {
             f(cpath.as_slice())
         }
     }
+
     pub fn update_local_path<'a, 'b>(&self, candidate: ast_map::PathElems<'a, 'b>) {
         let mut cpath = self.local_path.borrow_mut();
         let cap = cpath.len();
@@ -294,6 +305,16 @@ impl crate_metadata {
                 }
             },
         }
+    }
+
+    pub fn is_allocator(&self) -> bool {
+        let attrs = decoder::get_crate_attributes(self.data());
+        attr::contains_name(&attrs, "allocator")
+    }
+
+    pub fn needs_allocator(&self) -> bool {
+        let attrs = decoder::get_crate_attributes(self.data());
+        attr::contains_name(&attrs, "needs_allocator")
     }
 }
 

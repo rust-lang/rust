@@ -17,7 +17,7 @@ use std::process::Command;
 
 use back::archive;
 use metadata::csearch;
-use metadata::cstore;
+use middle::dependency_format::Linkage;
 use session::Session;
 use session::config::DebugInfoLevel::{NoDebugInfo, LimitedDebugInfo, FullDebugInfo};
 use session::config::CrateTypeDylib;
@@ -347,9 +347,10 @@ impl<'a> Linker for MsvcLinker<'a> {
             // dynamic library. For all statically linked libraries we take all
             // their reachable symbols and emit them as well.
             let cstore = &sess.cstore;
-            let symbols = trans.crate_formats[&CrateTypeDylib].iter();
+            let formats = sess.dependency_formats.borrow();
+            let symbols = formats[&CrateTypeDylib].iter();
             let symbols = symbols.enumerate().filter_map(|(i, f)| {
-                if let Some(cstore::RequireStatic) = *f {
+                if *f == Linkage::Static {
                     Some((i + 1) as ast::CrateNum)
                 } else {
                     None

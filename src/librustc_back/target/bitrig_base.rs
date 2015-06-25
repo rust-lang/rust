@@ -20,6 +20,7 @@ pub fn opts() -> TargetOptions {
         has_rpath: true,
         position_independent_executables: true,
         archive_format: "gnu".to_string(),
+        exe_allocation_crate: super::best_allocator(),
 
         .. Default::default()
     }

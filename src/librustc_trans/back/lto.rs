@@ -14,7 +14,6 @@ use rustc::session::{self, config};
 use llvm;
 use llvm::archive_ro::ArchiveRO;
 use llvm::{ModuleRef, TargetMachineRef, True, False};
-use rustc::metadata::cstore;
 use rustc::util::common::time;
 use back::write::{ModuleConfig, with_llvm_pmb};
 
@@ -46,17 +45,7 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
     // For each of our upstream dependencies, find the corresponding rlib and
     // load the bitcode from the archive. Then merge it into the current LLVM
     // module that we've got.
-    let crates = sess.cstore.get_used_crates(cstore::RequireStatic);
-    for (cnum, path) in crates {
-        let name = sess.cstore.get_crate_data(cnum).name.clone();
-        let path = match path {
-            Some(p) => p,
-            None => {
-                sess.fatal(&format!("could not find rlib for: `{}`",
-                                   name));
-            }
-        };
-
+    link::each_linked_rlib(sess, &mut |_, path| {
         let archive = ArchiveRO::open(&path).expect("wanted an rlib");
         let bytecodes = archive.iter().filter_map(|child| {
             child.name().map(|name| (name, child))
@@ -65,7 +54,7 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
             let bc_encoded = data.data();
 
             let bc_decoded = if is_versioned_bytecode_format(bc_encoded) {
-                time(sess.time_passes(), &format!("decode {}", name), (), |_| {
+                time(sess.time_passes(), &format!("decode {}", name), || {
                     // Read the version
                     let version = extract_bytecode_format_version(bc_encoded);
 
@@ -89,9 +78,10 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
                     }
                 })
             } else {
-                time(sess.time_passes(), &format!("decode {}", name), (), |_| {
-                // the object must be in the old, pre-versioning format, so simply
-                // inflate everything and let LLVM decide if it can make sense of it
+                time(sess.time_passes(), &format!("decode {}", name), || {
+                    // the object must be in the old, pre-versioning format, so
+                    // simply inflate everything and let LLVM decide if it can
+                    // make sense of it
                     match flate::inflate_bytes(bc_encoded) {
                         Ok(bc) => bc,
                         Err(_) => {
@@ -104,8 +94,7 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
 
             let ptr = bc_decoded.as_ptr();
             debug!("linking {}", name);
-            time(sess.time_passes(), &format!("ll link {}", name), (),
-                 |()| unsafe {
+            time(sess.time_passes(), &format!("ll link {}", name), || unsafe {
                 if !llvm::LLVMRustLinkInExternalBitcode(llmod,
                                                         ptr as *const libc::c_char,
                                                         bc_decoded.len() as libc::size_t) {
@@ -115,7 +104,7 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
                 }
             });
         }
-    }
+    });
 
     // Internalize everything but the reachable symbols of the current module
     let cstrs: Vec<CString> = reachable.iter().map(|s| {
@@ -154,7 +143,7 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
 
         llvm::LLVMRustAddPass(pm, "verify\0".as_ptr() as *const _);
 
-        time(sess.time_passes(), "LTO passes", (), |()|
+        time(sess.time_passes(), "LTO passes", ||
              llvm::LLVMRunPassManager(pm, llmod));
 
         llvm::LLVMDisposePassManager(pm);
