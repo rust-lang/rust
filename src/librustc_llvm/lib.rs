@@ -685,7 +685,7 @@ extern {
     pub fn LLVMGetArrayLength(ArrayTy: TypeRef) -> c_uint;
     pub fn LLVMGetPointerAddressSpace(PointerTy: TypeRef) -> c_uint;
     pub fn LLVMGetPointerToGlobal(EE: ExecutionEngineRef, V: ValueRef)
-                                  -> *const ();
+                                  -> *const c_void;
     pub fn LLVMGetVectorSize(VectorTy: TypeRef) -> c_uint;
 
     /* Operations on other types */

@@ -251,12 +251,11 @@ pub mod eabi {
     use rt::libunwind as uw;
     use libc::{c_void, c_int};
 
-    #[repr(C)]
-    pub struct EXCEPTION_RECORD;
-    #[repr(C)]
-    pub struct CONTEXT;
-    #[repr(C)]
-    pub struct DISPATCHER_CONTEXT;
+    // Fake definitions; these are actually complicated structs,
+    // but we don't use the contents here.
+    pub type EXCEPTION_RECORD = c_void;
+    pub type CONTEXT = c_void;
+    pub type DISPATCHER_CONTEXT = c_void;
 
     #[repr(C)]
     #[derive(Copy, Clone)]

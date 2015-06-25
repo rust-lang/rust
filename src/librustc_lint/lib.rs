@@ -38,6 +38,7 @@
 #![feature(ref_slice)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
+#![feature(slice_patterns)]
 #![feature(staged_api)]
 #![feature(str_char)]
 

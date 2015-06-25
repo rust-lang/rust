@@ -3967,7 +3967,6 @@ def_type_content_sets! {
         None                                = 0b0000_0000__0000_0000__0000,
 
         // Things that are interior to the value (first nibble):
-        InteriorUnsized                     = 0b0000_0000__0000_0000__0001,
         InteriorUnsafe                      = 0b0000_0000__0000_0000__0010,
         InteriorParam                       = 0b0000_0000__0000_0000__0100,
         // InteriorAll                         = 0b00000000__00000000__1111,
@@ -3977,17 +3976,8 @@ def_type_content_sets! {
         OwnsDtor                            = 0b0000_0000__0000_0010__0000,
         OwnsAll                             = 0b0000_0000__1111_1111__0000,
 
-        // Things that are reachable by the value in any way (fourth nibble):
-        ReachesBorrowed                     = 0b0000_0010__0000_0000__0000,
-        ReachesMutable                      = 0b0000_1000__0000_0000__0000,
-        ReachesFfiUnsafe                    = 0b0010_0000__0000_0000__0000,
-        ReachesAll                          = 0b0011_1111__0000_0000__0000,
-
         // Things that mean drop glue is necessary
         NeedsDrop                           = 0b0000_0000__0000_0111__0000,
-
-        // Things that prevent values from being considered sized
-        Nonsized                            = 0b0000_0000__0000_0000__0001,
 
         // All bits
         All                                 = 0b1111_1111__1111_1111__1111
@@ -4007,10 +3997,6 @@ impl TypeContents {
         self.intersects(TC::OwnsOwned)
     }
 
-    pub fn is_sized(&self, _: &ctxt) -> bool {
-        !self.intersects(TC::Nonsized)
-    }
-
     pub fn interior_param(&self) -> bool {
         self.intersects(TC::InteriorParam)
     }
@@ -4019,29 +4005,13 @@ impl TypeContents {
         self.intersects(TC::InteriorUnsafe)
     }
 
-    pub fn interior_unsized(&self) -> bool {
-        self.intersects(TC::InteriorUnsized)
-    }
-
     pub fn needs_drop(&self, _: &ctxt) -> bool {
         self.intersects(TC::NeedsDrop)
     }
 
     /// Includes only those bits that still apply when indirected through a `Box` pointer
     pub fn owned_pointer(&self) -> TypeContents {
-        TC::OwnsOwned | (
-            *self & (TC::OwnsAll | TC::ReachesAll))
-    }
-
-    /// Includes only those bits that still apply when indirected through a reference (`&`)
-    pub fn reference(&self, bits: TypeContents) -> TypeContents {
-        bits | (
-            *self & TC::ReachesAll)
-    }
-
-    /// Includes only those bits that still apply when indirected through a raw pointer (`*`)
-    pub fn unsafe_pointer(&self) -> TypeContents {
-        *self & TC::ReachesAll
+        TC::OwnsOwned | (*self & TC::OwnsAll)
     }
 
     pub fn union<T, F>(v: &[T], mut f: F) -> TypeContents where
@@ -4129,7 +4099,7 @@ impl<'tcx> TyS<'tcx> {
             let result = match ty.sty {
                 // usize and isize are ffi-unsafe
                 TyUint(ast::TyUs) | TyInt(ast::TyIs) => {
-                    TC::ReachesFfiUnsafe
+                    TC::None
                 }
 
                 // Scalar and unique types are sendable, and durable
@@ -4140,20 +4110,19 @@ impl<'tcx> TyS<'tcx> {
                 }
 
                 TyBox(typ) => {
-                    TC::ReachesFfiUnsafe | tc_ty(cx, typ, cache).owned_pointer()
+                    tc_ty(cx, typ, cache).owned_pointer()
                 }
 
-                TyTrait(box TraitTy { ref bounds, .. }) => {
-                    object_contents(bounds) | TC::ReachesFfiUnsafe | TC::Nonsized
+                TyTrait(_) => {
+                    TC::All - TC::InteriorParam
                 }
 
-                TyRawPtr(ref mt) => {
-                    tc_ty(cx, mt.ty, cache).unsafe_pointer()
+                TyRawPtr(_) => {
+                    TC::None
                 }
 
-                TyRef(r, ref mt) => {
-                    tc_ty(cx, mt.ty, cache).reference(borrowed_contents(*r, mt.mutbl)) |
-                        TC::ReachesFfiUnsafe
+                TyRef(_, _) => {
+                    TC::None
                 }
 
                 TyArray(ty, _) => {
@@ -4161,19 +4130,15 @@ impl<'tcx> TyS<'tcx> {
                 }
 
                 TySlice(ty) => {
-                    tc_ty(cx, ty, cache) | TC::Nonsized
+                    tc_ty(cx, ty, cache)
                 }
-                TyStr => TC::Nonsized,
+                TyStr => TC::None,
 
                 TyStruct(did, substs) => {
                     let flds = cx.struct_fields(did, substs);
                     let mut res =
                         TypeContents::union(&flds[..],
-                                            |f| tc_mt(cx, f.mt, cache));
-
-                    if !cx.lookup_repr_hints(did).contains(&attr::ReprExtern) {
-                        res = res | TC::ReachesFfiUnsafe;
-                    }
+                                            |f| tc_ty(cx, f.mt.ty, cache));
 
                     if cx.has_dtor(did) {
                         res = res | TC::OwnsDtor;
@@ -4182,7 +4147,6 @@ impl<'tcx> TyS<'tcx> {
                 }
 
                 TyClosure(did, substs) => {
-                    // FIXME(#14449): `borrowed_contents` below assumes `&mut` closure.
                     let param_env = cx.empty_parameter_environment();
                     let infcx = infer::new_infer_ctxt(cx, &cx.tables, Some(param_env), false);
                     let upvars = infcx.closure_upvars(did, substs).unwrap();
@@ -4208,44 +4172,6 @@ impl<'tcx> TyS<'tcx> {
                         res = res | TC::OwnsDtor;
                     }
 
-                    if !variants.is_empty() {
-                        let repr_hints = cx.lookup_repr_hints(did);
-                        if repr_hints.len() > 1 {
-                            // this is an error later on, but this type isn't safe
-                            res = res | TC::ReachesFfiUnsafe;
-                        }
-
-                        match repr_hints.get(0) {
-                            Some(h) => if !h.is_ffi_safe() {
-                                res = res | TC::ReachesFfiUnsafe;
-                            },
-                            // ReprAny
-                            None => {
-                                res = res | TC::ReachesFfiUnsafe;
-
-                                // We allow ReprAny enums if they are eligible for
-                                // the nullable pointer optimization and the
-                                // contained type is an `extern fn`
-
-                                if variants.len() == 2 {
-                                    let mut data_idx = 0;
-
-                                    if variants[0].args.is_empty() {
-                                        data_idx = 1;
-                                    }
-
-                                    if variants[data_idx].args.len() == 1 {
-                                        match variants[data_idx].args[0].sty {
-                                            TyBareFn(..) => { res = res - TC::ReachesFfiUnsafe; }
-                                            _ => { }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-
                     apply_lang_items(cx, did, res)
                 }
 
@@ -4264,14 +4190,6 @@ impl<'tcx> TyS<'tcx> {
             result
         }
 
-        fn tc_mt<'tcx>(cx: &ctxt<'tcx>,
-                       mt: TypeAndMut<'tcx>,
-                       cache: &mut FnvHashMap<Ty<'tcx>, TypeContents>) -> TypeContents
-        {
-            let mc = TC::ReachesMutable.when(mt.mutbl == MutMutable);
-            mc | tc_ty(cx, mt.ty, cache)
-        }
-
         fn apply_lang_items(cx: &ctxt, did: ast::DefId, tc: TypeContents)
                             -> TypeContents {
             if Some(did) == cx.lang_items.unsafe_cell_type() {
@@ -4279,32 +4197,6 @@ impl<'tcx> TyS<'tcx> {
             } else {
                 tc
             }
-        }
-
-        /// Type contents due to containing a reference with
-        /// the region `region` and borrow kind `bk`.
-        fn borrowed_contents(region: ty::Region,
-                             mutbl: ast::Mutability)
-                             -> TypeContents {
-            let b = match mutbl {
-                ast::MutMutable => TC::ReachesMutable,
-                ast::MutImmutable => TC::None,
-            };
-            b | (TC::ReachesBorrowed).when(region != ty::ReStatic)
-        }
-
-        fn object_contents(bounds: &ExistentialBounds) -> TypeContents {
-            // These are the type contents of the (opaque) interior. We
-            // make no assumptions (other than that it cannot have an
-            // in-scope type parameter within, which makes no sense).
-            let mut tc = TC::All - TC::InteriorParam;
-            for bound in &bounds.builtin_bounds {
-                tc = tc - match bound {
-                    BoundSync | BoundSend | BoundCopy => TC::None,
-                    BoundSized => TC::Nonsized,
-                };
-            }
-            return tc;
         }
     }
 
@@ -4397,10 +4289,6 @@ impl<'tcx> TyS<'tcx> {
         }
 
         result
-    }
-
-    pub fn is_ffi_safe(&'tcx self, cx: &ctxt<'tcx>) -> bool {
-        !self.type_contents(cx).intersects(TC::ReachesFfiUnsafe)
     }
 
     // True if instantiating an instance of `r_ty` requires an instance of `r_ty`.

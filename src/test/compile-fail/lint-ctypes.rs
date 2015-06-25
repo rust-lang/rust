@@ -13,14 +13,45 @@
 
 extern crate libc;
 
+trait Mirror { type It; }
+impl<T> Mirror for T { type It = Self; }
+#[repr(C)]
+pub struct StructWithProjection(*mut <StructWithProjection as Mirror>::It);
+#[repr(C)]
+pub struct StructWithProjectionAndLifetime<'a>(
+    &'a mut <StructWithProjectionAndLifetime<'a> as Mirror>::It
+);
+pub type I32Pair = (i32, i32);
+#[repr(C)]
+pub struct ZeroSize;
+pub type RustFn = fn();
+pub type RustBadRet = extern fn() -> Box<u32>;
+
 extern {
-    pub fn bare_type1(size: isize); //~ ERROR: found rust type
-    pub fn bare_type2(size: usize); //~ ERROR: found rust type
-    pub fn ptr_type1(size: *const isize); //~ ERROR: found rust type
-    pub fn ptr_type2(size: *const usize); //~ ERROR: found rust type
+    pub fn bare_type1(size: isize); //~ ERROR: found Rust type
+    pub fn bare_type2(size: usize); //~ ERROR: found Rust type
+    pub fn ptr_type1(size: *const isize); //~ ERROR: found Rust type
+    pub fn ptr_type2(size: *const usize); //~ ERROR: found Rust type
+    pub fn slice_type(p: &[u32]); //~ ERROR: found Rust slice type
+    pub fn str_type(p: &str); //~ ERROR: found Rust type
+    pub fn box_type(p: Box<u32>); //~ ERROR found Rust type
+    pub fn char_type(p: char); //~ ERROR found Rust type
+    pub fn trait_type(p: &Clone); //~ ERROR found Rust trait type
+    pub fn tuple_type(p: (i32, i32)); //~ ERROR found Rust tuple type
+    pub fn tuple_type2(p: I32Pair); //~ ERROR found Rust tuple type
+    pub fn zero_size(p: ZeroSize); //~ ERROR found zero-size struct
+    pub fn fn_type(p: RustFn); //~ ERROR found function pointer with Rust
+    pub fn fn_type2(p: fn()); //~ ERROR found function pointer with Rust
+    pub fn fn_contained(p: RustBadRet); //~ ERROR: found Rust type
 
     pub fn good1(size: *const libc::c_int);
     pub fn good2(size: *const libc::c_uint);
+    pub fn good3(fptr: Option<extern fn()>);
+    pub fn good4(aptr: &[u8; 4 as usize]);
+    pub fn good5(s: StructWithProjection);
+    pub fn good6(s: StructWithProjectionAndLifetime);
+    pub fn good7(fptr: extern fn() -> ());
+    pub fn good8(fptr: extern fn() -> !);
 }
 
 fn main() {

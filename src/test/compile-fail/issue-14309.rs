@@ -37,7 +37,7 @@ struct D {
 }
 
 extern "C" {
-    fn foo(x: A); //~ ERROR found type without foreign-function-safe
+    fn foo(x: A); //~ ERROR found struct without foreign-function-safe
     fn bar(x: B); //~ ERROR foreign-function-safe
     fn baz(x: C);
     fn qux(x: A2); //~ ERROR foreign-function-safe

@@ -13,6 +13,7 @@ use std::ffi::{OsString, OsStr};
 use std::os::windows::prelude::*;
 use std::ops::RangeFrom;
 use libc::{DWORD, LPCWSTR, LONG, LPDWORD, LPBYTE, ERROR_SUCCESS};
+use libc::c_void;
 
 const HKEY_LOCAL_MACHINE: HKEY = 0x80000002 as HKEY;
 const KEY_WOW64_32KEY: REGSAM = 0x0200;
@@ -32,7 +33,7 @@ pub type HKEY = *mut __HKEY__;
 pub type PHKEY = *mut HKEY;
 pub type REGSAM = DWORD;
 pub type LPWSTR = *mut u16;
-pub type PFILETIME = *mut ();
+pub type PFILETIME = *mut c_void;
 
 #[link(name = "advapi32")]
 extern "system" {
