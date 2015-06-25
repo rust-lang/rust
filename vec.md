@@ -253,7 +253,7 @@ pub fn pop(&mut self) -> Option<T> {
 
 # Deallocating
 
-Next we should implement Drop so that we don't massively leaks tons of resources.
+Next we should implement Drop so that we don't massively leak tons of resources.
 The easiest way is to just call `pop` until it yields None, and then deallocate
 our buffer. Note that calling `pop` is uneeded if `T: !Drop`. In theory we can
 ask Rust if T needs_drop and omit the calls to `pop`. However in practice LLVM
