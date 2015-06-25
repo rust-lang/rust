@@ -419,26 +419,40 @@ macro_rules! rem_impl {
     )*)
 }
 
-macro_rules! rem_float_impl {
-    ($t:ty, $fmod:ident) => {
-        #[stable(feature = "rust1", since = "1.0.0")]
-        impl Rem for $t {
-            type Output = $t;
+rem_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
 
-            #[inline]
-            fn rem(self, other: $t) -> $t {
-                extern { fn $fmod(a: $t, b: $t) -> $t; }
-                unsafe { $fmod(self, other) }
-            }
-        }
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Rem for f32 {
+    type Output = f32;
 
-        forward_ref_binop! { impl Rem, rem for $t, $t }
+    // see notes in `core::f32::Float::floor`
+    #[inline]
+    #[cfg(target_env = "msvc")]
+    fn rem(self, other: f32) -> f32 {
+        (self as f64).rem(other as f64) as f32
+    }
+
+    #[inline]
+    #[cfg(not(target_env = "msvc"))]
+    fn rem(self, other: f32) -> f32 {
+        extern { fn fmodf(a: f32, b: f32) -> f32; }
+        unsafe { fmodf(self, other) }
     }
 }
 
-rem_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
-rem_float_impl! { f32, fmodf }
-rem_float_impl! { f64, fmod }
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Rem for f64 {
+    type Output = f64;
+
+    #[inline]
+    fn rem(self, other: f64) -> f64 {
+        extern { fn fmod(a: f64, b: f64) -> f64; }
+        unsafe { fmod(self, other) }
+    }
+}
+
+forward_ref_binop! { impl Rem, rem for f64, f64 }
+forward_ref_binop! { impl Rem, rem for f32, f32 }
 
 /// The `Neg` trait is used to specify the functionality of unary `-`.
 ///
