@@ -226,12 +226,12 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
                 }
                 _ => ()
             }
-            let se_ty = ty::mk_bare_fn(tcx, Some(local_def(main_id)), tcx.mk_bare_fn(ty::BareFnTy {
+            let se_ty = tcx.mk_fn(Some(local_def(main_id)), tcx.mk_bare_fn(ty::BareFnTy {
                 unsafety: ast::Unsafety::Normal,
                 abi: abi::Rust,
                 sig: ty::Binder(ty::FnSig {
                     inputs: Vec::new(),
-                    output: ty::FnConverging(ty::mk_nil(tcx)),
+                    output: ty::FnConverging(tcx.mk_nil()),
                     variadic: false
                 })
             }));
@@ -272,13 +272,13 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
                 _ => ()
             }
 
-            let se_ty = ty::mk_bare_fn(tcx, Some(local_def(start_id)), tcx.mk_bare_fn(ty::BareFnTy {
+            let se_ty = tcx.mk_fn(Some(local_def(start_id)), tcx.mk_bare_fn(ty::BareFnTy {
                 unsafety: ast::Unsafety::Normal,
                 abi: abi::Rust,
                 sig: ty::Binder(ty::FnSig {
                     inputs: vec!(
                         tcx.types.isize,
-                        ty::mk_imm_ptr(tcx, ty::mk_imm_ptr(tcx, tcx.types.u8))
+                        tcx.mk_imm_ptr(tcx.mk_imm_ptr(tcx.types.u8))
                     ),
                     output: ty::FnConverging(tcx.types.isize),
                     variadic: false,

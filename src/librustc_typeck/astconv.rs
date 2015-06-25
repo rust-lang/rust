@@ -579,7 +579,7 @@ fn convert_parenthesized_parameters<'tcx>(this: &AstConv<'tcx>,
     let (implied_output_region,
          params_lifetimes) = find_implied_output_region(&*inputs, input_params);
 
-    let input_ty = ty::mk_tup(this.tcx(), inputs);
+    let input_ty = this.tcx().mk_tup(inputs);
 
     let (output, output_span) = match data.output {
         Some(ref output_ty) => {
@@ -590,7 +590,7 @@ fn convert_parenthesized_parameters<'tcx>(this: &AstConv<'tcx>,
              output_ty.span)
         }
         None => {
-            (ty::mk_nil(this.tcx()), data.span)
+            (this.tcx().mk_nil(), data.span)
         }
     };
 
@@ -852,7 +852,7 @@ fn ast_type_binding_to_poly_projection_predicate<'tcx>(
     // this, we currently insert a dummy type and then remove it
     // later. Yuck.
 
-    let dummy_self_ty = ty::mk_infer(tcx, ty::FreshTy(0));
+    let dummy_self_ty = tcx.mk_infer(ty::FreshTy(0));
     if self_ty.is_none() { // if converting for an object type
         let mut dummy_substs = trait_ref.skip_binder().substs.clone(); // binder moved here -+
         assert!(dummy_substs.self_ty().is_none());                     //                    |
@@ -924,7 +924,7 @@ fn ast_path_to_ty<'tcx>(
     // FIXME(#12938): This is a hack until we have full support for DST.
     if Some(did) == this.tcx().lang_items.owned_box() {
         assert_eq!(substs.types.len(TypeSpace), 1);
-        return ty::mk_uniq(this.tcx(), *substs.types.get(TypeSpace, 0));
+        return this.tcx().mk_box(*substs.types.get(TypeSpace, 0));
     }
 
     decl_ty.subst(this.tcx(), &substs)
@@ -1081,7 +1081,7 @@ fn make_object_type<'tcx>(this: &AstConv<'tcx>,
                     ty::item_path_str(tcx, trait_def_id));
     }
 
-    ty::mk_trait(tcx, object.principal, object.bounds)
+    tcx.mk_trait(object.principal, object.bounds)
 }
 
 fn report_ambiguous_associated_type(tcx: &ty::ctxt,
@@ -1393,7 +1393,7 @@ fn base_def_to_ty<'tcx>(this: &AstConv<'tcx>,
         }
         def::DefTyParam(space, index, _, name) => {
             check_path_args(tcx, base_segments, NO_TPS | NO_REGIONS);
-            ty::mk_param(tcx, space, index, name)
+            tcx.mk_param(space, index, name)
         }
         def::DefSelfTy(_, Some((_, self_ty_id))) => {
             // Self in impl (we know the concrete type).
@@ -1411,7 +1411,7 @@ fn base_def_to_ty<'tcx>(this: &AstConv<'tcx>,
         def::DefSelfTy(Some(_), None) => {
             // Self in trait.
             check_path_args(tcx, base_segments, NO_TPS | NO_REGIONS);
-            ty::mk_self_type(tcx)
+            tcx.mk_self_type()
         }
         def::DefAssociatedTy(trait_did, _) => {
             check_path_args(tcx, &base_segments[..base_segments.len()-2], NO_TPS | NO_REGIONS);
@@ -1509,7 +1509,7 @@ pub fn ast_ty_to_ty<'tcx>(this: &AstConv<'tcx>,
 
     let typ = match ast_ty.node {
         ast::TyVec(ref ty) => {
-            ty::mk_vec(tcx, ast_ty_to_ty(this, rscope, &**ty), None)
+            tcx.mk_slice(ast_ty_to_ty(this, rscope, &**ty))
         }
         ast::TyObjectSum(ref ty, ref bounds) => {
             match ast_ty_to_trait_ref(this, rscope, &**ty, bounds) {
@@ -1527,7 +1527,7 @@ pub fn ast_ty_to_ty<'tcx>(this: &AstConv<'tcx>,
             }
         }
         ast::TyPtr(ref mt) => {
-            ty::mk_ptr(tcx, ty::mt {
+            tcx.mk_ptr(ty::mt {
                 ty: ast_ty_to_ty(this, rscope, &*mt.ty),
                 mutbl: mt.mutbl
             })
@@ -1540,13 +1540,13 @@ pub fn ast_ty_to_ty<'tcx>(this: &AstConv<'tcx>,
                     rscope,
                     Some(ty::ObjectLifetimeDefault::Specific(r)));
             let t = ast_ty_to_ty(this, rscope1, &*mt.ty);
-            ty::mk_rptr(tcx, tcx.mk_region(r), ty::mt {ty: t, mutbl: mt.mutbl})
+            tcx.mk_ref(tcx.mk_region(r), ty::mt {ty: t, mutbl: mt.mutbl})
         }
         ast::TyTup(ref fields) => {
             let flds = fields.iter()
                              .map(|t| ast_ty_to_ty(this, rscope, &**t))
                              .collect();
-            ty::mk_tup(tcx, flds)
+            tcx.mk_tup(flds)
         }
         ast::TyParen(ref typ) => ast_ty_to_ty(this, rscope, &**typ),
         ast::TyBareFn(ref bf) => {
@@ -1555,7 +1555,7 @@ pub fn ast_ty_to_ty<'tcx>(this: &AstConv<'tcx>,
                           "variadic function must have C calling convention");
             }
             let bare_fn = ty_of_bare_fn(this, bf.unsafety, bf.abi, &*bf.decl);
-            ty::mk_bare_fn(tcx, None, tcx.mk_bare_fn(bare_fn))
+            tcx.mk_fn(None, tcx.mk_bare_fn(bare_fn))
         }
         ast::TyPolyTraitRef(ref bounds) => {
             conv_ty_poly_trait_ref(this, rscope, ast_ty.span, bounds)
@@ -1603,11 +1603,11 @@ pub fn ast_ty_to_ty<'tcx>(this: &AstConv<'tcx>,
                 Ok(r) => {
                     match r {
                         ConstVal::Int(i) =>
-                            ty::mk_vec(tcx, ast_ty_to_ty(this, rscope, &**ty),
-                                        Some(i as usize)),
+                            tcx.mk_array(ast_ty_to_ty(this, rscope, &**ty),
+                                         i as usize),
                         ConstVal::Uint(i) =>
-                            ty::mk_vec(tcx, ast_ty_to_ty(this, rscope, &**ty),
-                                        Some(i as usize)),
+                            tcx.mk_array(ast_ty_to_ty(this, rscope, &**ty),
+                                         i as usize),
                         _ => {
                             span_err!(tcx.sess, ast_ty.span, E0249,
                                       "expected constant integer expression \
@@ -1724,7 +1724,7 @@ fn ty_of_method_or_bare_fn<'a, 'tcx>(this: &AstConv<'tcx>,
                     (Some(self_info.untransformed_self_ty), None)
                 }
                 ty::ByReferenceExplicitSelfCategory(region, mutability) => {
-                    (Some(ty::mk_rptr(this.tcx(),
+                    (Some(this.tcx().mk_ref(
                                       this.tcx().mk_region(region),
                                       ty::mt {
                                         ty: self_info.untransformed_self_ty,
@@ -1733,7 +1733,7 @@ fn ty_of_method_or_bare_fn<'a, 'tcx>(this: &AstConv<'tcx>,
                      Some(region))
                 }
                 ty::ByBoxExplicitSelfCategory => {
-                    (Some(ty::mk_uniq(this.tcx(), self_info.untransformed_self_ty)), None)
+                    (Some(this.tcx().mk_box(self_info.untransformed_self_ty)), None)
                 }
             }
         }
@@ -1779,7 +1779,7 @@ fn ty_of_method_or_bare_fn<'a, 'tcx>(this: &AstConv<'tcx>,
                                                               implied_output_region,
                                                               lifetimes_for_params,
                                                               &**output)),
-        ast::DefaultReturn(..) => ty::FnConverging(ty::mk_nil(this.tcx())),
+        ast::DefaultReturn(..) => ty::FnConverging(this.tcx().mk_nil()),
         ast::NoReturn(..) => ty::FnDiverging
     };
 

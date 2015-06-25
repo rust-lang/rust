@@ -524,9 +524,9 @@ fn project_type<'cx,'tcx>(
             Ok(ProjectedTy::Progress(ty, obligations))
         }
         None => {
-            Ok(ProjectedTy::NoProgress(ty::mk_projection(selcx.tcx(),
-                                                         obligation.predicate.trait_ref.clone(),
-                                                         obligation.predicate.item_name)))
+            Ok(ProjectedTy::NoProgress(selcx.tcx().mk_projection(
+                obligation.predicate.trait_ref.clone(),
+                obligation.predicate.item_name)))
         }
     }
 }

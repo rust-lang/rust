@@ -256,30 +256,29 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
                 -> Ty<'tcx>
     {
         let input_args = input_tys.iter().cloned().collect();
-        ty::mk_bare_fn(self.infcx.tcx,
-                       None,
-                       self.infcx.tcx.mk_bare_fn(ty::BareFnTy {
-                           unsafety: ast::Unsafety::Normal,
-                           abi: abi::Rust,
-                           sig: ty::Binder(ty::FnSig {
-                               inputs: input_args,
-                               output: ty::FnConverging(output_ty),
-                               variadic: false
-                           })
-                       }))
+        self.infcx.tcx.mk_fn(None,
+            self.infcx.tcx.mk_bare_fn(ty::BareFnTy {
+                unsafety: ast::Unsafety::Normal,
+                abi: abi::Rust,
+                sig: ty::Binder(ty::FnSig {
+                    inputs: input_args,
+                    output: ty::FnConverging(output_ty),
+                    variadic: false
+                })
+            }))
     }
 
     pub fn t_nil(&self) -> Ty<'tcx> {
-        ty::mk_nil(self.infcx.tcx)
+        self.infcx.tcx.mk_nil()
     }
 
     pub fn t_pair(&self, ty1: Ty<'tcx>, ty2: Ty<'tcx>) -> Ty<'tcx> {
-        ty::mk_tup(self.infcx.tcx, vec![ty1, ty2])
+        self.infcx.tcx.mk_tup(vec![ty1, ty2])
     }
 
     pub fn t_param(&self, space: subst::ParamSpace, index: u32) -> Ty<'tcx> {
         let name = format!("T{}", index);
-        ty::mk_param(self.infcx.tcx, space, index, token::intern(&name[..]))
+        self.infcx.tcx.mk_param(space, index, token::intern(&name[..]))
     }
 
     pub fn re_early_bound(&self,
@@ -302,16 +301,14 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
     }
 
     pub fn t_rptr(&self, r: ty::Region) -> Ty<'tcx> {
-        ty::mk_imm_rptr(self.infcx.tcx,
-                        self.infcx.tcx.mk_region(r),
-                        self.tcx().types.isize)
+        self.infcx.tcx.mk_imm_ref(self.infcx.tcx.mk_region(r),
+                                   self.tcx().types.isize)
     }
 
     pub fn t_rptr_late_bound(&self, id: u32) -> Ty<'tcx> {
         let r = self.re_late_bound_with_debruijn(id, ty::DebruijnIndex::new(1));
-        ty::mk_imm_rptr(self.infcx.tcx,
-                        self.infcx.tcx.mk_region(r),
-                        self.tcx().types.isize)
+        self.infcx.tcx.mk_imm_ref(self.infcx.tcx.mk_region(r),
+                                   self.tcx().types.isize)
     }
 
     pub fn t_rptr_late_bound_with_debruijn(&self,
@@ -319,15 +316,14 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
                                            debruijn: ty::DebruijnIndex)
                                            -> Ty<'tcx> {
         let r = self.re_late_bound_with_debruijn(id, debruijn);
-        ty::mk_imm_rptr(self.infcx.tcx,
-                        self.infcx.tcx.mk_region(r),
-                        self.tcx().types.isize)
+        self.infcx.tcx.mk_imm_ref(self.infcx.tcx.mk_region(r),
+                                   self.tcx().types.isize)
     }
 
     pub fn t_rptr_scope(&self, id: ast::NodeId) -> Ty<'tcx> {
         let r = ty::ReScope(CodeExtent::from_node_id(id));
-        ty::mk_imm_rptr(self.infcx.tcx, self.infcx.tcx.mk_region(r),
-                        self.tcx().types.isize)
+        self.infcx.tcx.mk_imm_ref(self.infcx.tcx.mk_region(r),
+                                   self.tcx().types.isize)
     }
 
     pub fn re_free(&self, nid: ast::NodeId, id: u32) -> ty::Region {
@@ -337,15 +333,13 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
 
     pub fn t_rptr_free(&self, nid: ast::NodeId, id: u32) -> Ty<'tcx> {
         let r = self.re_free(nid, id);
-        ty::mk_imm_rptr(self.infcx.tcx,
-                        self.infcx.tcx.mk_region(r),
-                        self.tcx().types.isize)
+        self.infcx.tcx.mk_imm_ref(self.infcx.tcx.mk_region(r),
+                                   self.tcx().types.isize)
     }
 
     pub fn t_rptr_static(&self) -> Ty<'tcx> {
-        ty::mk_imm_rptr(self.infcx.tcx,
-                        self.infcx.tcx.mk_region(ty::ReStatic),
-                        self.tcx().types.isize)
+        self.infcx.tcx.mk_imm_ref(self.infcx.tcx.mk_region(ty::ReStatic),
+                                   self.tcx().types.isize)
     }
 
     pub fn dummy_type_trace(&self) -> infer::TypeTrace<'tcx> {
@@ -804,9 +798,9 @@ fn walk_ty() {
         let tcx = env.infcx.tcx;
         let int_ty = tcx.types.isize;
         let uint_ty = tcx.types.usize;
-        let tup1_ty = ty::mk_tup(tcx, vec!(int_ty, uint_ty, int_ty, uint_ty));
-        let tup2_ty = ty::mk_tup(tcx, vec!(tup1_ty, tup1_ty, uint_ty));
-        let uniq_ty = ty::mk_uniq(tcx, tup2_ty);
+        let tup1_ty = tcx.mk_tup(vec!(int_ty, uint_ty, int_ty, uint_ty));
+        let tup2_ty = tcx.mk_tup(vec!(tup1_ty, tup1_ty, uint_ty));
+        let uniq_ty = tcx.mk_box(tup2_ty);
         let walked: Vec<_> = uniq_ty.walk().collect();
         assert_eq!(walked, [uniq_ty,
                             tup2_ty,
@@ -822,9 +816,9 @@ fn walk_ty_skip_subtree() {
         let tcx = env.infcx.tcx;
         let int_ty = tcx.types.isize;
         let uint_ty = tcx.types.usize;
-        let tup1_ty = ty::mk_tup(tcx, vec!(int_ty, uint_ty, int_ty, uint_ty));
-        let tup2_ty = ty::mk_tup(tcx, vec!(tup1_ty, tup1_ty, uint_ty));
-        let uniq_ty = ty::mk_uniq(tcx, tup2_ty);
+        let tup1_ty = tcx.mk_tup(vec!(int_ty, uint_ty, int_ty, uint_ty));
+        let tup2_ty = tcx.mk_tup(vec!(tup1_ty, tup1_ty, uint_ty));
+        let uniq_ty = tcx.mk_box(tup2_ty);
 
         // types we expect to see (in order), plus a boolean saying
         // whether to skip the subtree.

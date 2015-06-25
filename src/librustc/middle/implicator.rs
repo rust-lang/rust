@@ -334,7 +334,7 @@ impl<'a, 'tcx> Implicator<'a, 'tcx> {
         let assoc_type_projections: Vec<_> =
             trait_def.associated_type_names
                      .iter()
-                     .map(|&name| ty::mk_projection(self.tcx(), trait_ref.clone(), name))
+                     .map(|&name| self.tcx().mk_projection(trait_ref.clone(), name))
                      .collect();
         debug!("accumulate_from_assoc_types: assoc_type_projections={:?}",
                assoc_type_projections);
@@ -437,7 +437,7 @@ pub fn object_region_bounds<'tcx>(
     // Since we don't actually *know* the self type for an object,
     // this "open(err)" serves as a kind of dummy standin -- basically
     // a skolemized type.
-    let open_ty = ty::mk_infer(tcx, ty::FreshTy(0));
+    let open_ty = tcx.mk_infer(ty::FreshTy(0));
 
     // Note that we preserve the overall binding levels here.
     assert!(!open_ty.has_escaping_regions());

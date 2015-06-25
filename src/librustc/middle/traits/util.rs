@@ -456,14 +456,14 @@ pub fn closure_trait_ref_and_return_type<'tcx>(
 {
     let arguments_tuple = match tuple_arguments {
         TupleArgumentsFlag::No => sig.0.inputs[0],
-        TupleArgumentsFlag::Yes => ty::mk_tup(tcx, sig.0.inputs.to_vec()),
+        TupleArgumentsFlag::Yes => tcx.mk_tup(sig.0.inputs.to_vec()),
     };
     let trait_substs = Substs::new_trait(vec![arguments_tuple], vec![], self_ty);
     let trait_ref = ty::TraitRef {
         def_id: fn_trait_def_id,
         substs: tcx.mk_substs(trait_substs),
     };
-    ty::Binder((trait_ref, sig.0.output.unwrap_or(ty::mk_nil(tcx))))
+    ty::Binder((trait_ref, sig.0.output.unwrap_or(tcx.mk_nil())))
 }
 
 impl<'tcx,O:fmt::Debug> fmt::Debug for super::Obligation<'tcx, O> {

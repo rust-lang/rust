@@ -30,7 +30,7 @@ pub fn check_crate(tcx: &ctxt) {
         tcx: tcx,
         param_envs: Vec::new(),
         dummy_sized_ty: tcx.types.isize,
-        dummy_unsized_ty: ty::mk_vec(tcx, tcx.types.isize, None),
+        dummy_unsized_ty: tcx.mk_slice(tcx.types.isize),
     };
     visit::walk_crate(&mut visitor, tcx.map.krate());
 }

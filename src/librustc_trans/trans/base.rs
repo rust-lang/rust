@@ -202,10 +202,10 @@ pub fn self_type_for_closure<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let closure_kind = ccx.tcx().closure_kind(closure_id);
     match closure_kind {
         ty::FnClosureKind => {
-            ty::mk_imm_rptr(ccx.tcx(), ccx.tcx().mk_region(ty::ReStatic), fn_ty)
+            ccx.tcx().mk_imm_ref(ccx.tcx().mk_region(ty::ReStatic), fn_ty)
         }
         ty::FnMutClosureKind => {
-            ty::mk_mut_rptr(ccx.tcx(), ccx.tcx().mk_region(ty::ReStatic), fn_ty)
+            ccx.tcx().mk_mut_ref(ccx.tcx().mk_region(ty::ReStatic), fn_ty)
         }
         ty::FnOnceClosureKind => fn_ty
     }
@@ -1579,7 +1579,7 @@ pub fn trans_closure<'a, 'b, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
         // Tuple up closure argument types for the "rust-call" ABI.
         closure::ClosureEnv::Closure(_) => {
-            vec![ty::mk_tup(ccx.tcx(), monomorphized_arg_types)]
+            vec![ccx.tcx().mk_tup(monomorphized_arg_types)]
         }
     };
     for monomorphized_arg_type in &monomorphized_arg_types {
@@ -2115,7 +2115,7 @@ pub fn register_fn_llvmty(ccx: &CrateContext,
     debug!("register_fn_llvmty id={} sym={}", node_id, sym);
 
     let llfn = declare::define_fn(ccx, &sym[..], cc, llfty,
-                                   ty::FnConverging(ty::mk_nil(ccx.tcx()))).unwrap_or_else(||{
+                                   ty::FnConverging(ccx.tcx().mk_nil())).unwrap_or_else(||{
         ccx.sess().span_fatal(sp, &format!("symbol `{}` is already defined", sym));
     });
     finish_register_fn(ccx, sym, node_id, llfn);
@@ -2197,7 +2197,7 @@ pub fn create_entry_wrapper(ccx: &CrateContext,
                                &ccx.int_type());
 
         let llfn = declare::define_cfn(ccx, "main", llfty,
-                                       ty::mk_nil(ccx.tcx())).unwrap_or_else(||{
+                                       ccx.tcx().mk_nil()).unwrap_or_else(||{
             ccx.sess().span_err(sp, "entry symbol `main` defined multiple times");
             // FIXME: We should be smart and show a better diagnostic here.
             ccx.sess().help("did you use #[no_mangle] on `fn main`? Use #[start] instead");

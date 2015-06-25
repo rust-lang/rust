@@ -1520,7 +1520,7 @@ fn projection_bounds<'a,'tcx>(rcx: &Rcx<'a, 'tcx>,
     debug!("projection_bounds(projection_ty={:?})",
            projection_ty);
 
-    let ty = ty::mk_projection(tcx, projection_ty.trait_ref.clone(), projection_ty.item_name);
+    let ty = tcx.mk_projection(projection_ty.trait_ref.clone(), projection_ty.item_name);
 
     // Say we have a projection `<T as SomeTrait<'a>>::SomeType`. We are interested
     // in looking for a trait definition like:

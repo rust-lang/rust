@@ -623,8 +623,8 @@ fn bounds_usable(cx: &CrateContext, ity: IntType, bounds: &IntBounds) -> bool {
 
 pub fn ty_of_inttype<'tcx>(tcx: &ty::ctxt<'tcx>, ity: IntType) -> Ty<'tcx> {
     match ity {
-        attr::SignedInt(t) => ty::mk_mach_int(tcx, t),
-        attr::UnsignedInt(t) => ty::mk_mach_uint(tcx, t)
+        attr::SignedInt(t) => tcx.mk_mach_int(t),
+        attr::UnsignedInt(t) => tcx.mk_mach_uint(t)
     }
 }
 
@@ -1078,7 +1078,7 @@ pub fn trans_drop_flag_ptr<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                        -> datum::DatumBlock<'blk, 'tcx, datum::Expr>
 {
     let tcx = bcx.tcx();
-    let ptr_ty = ty::mk_imm_ptr(bcx.tcx(), tcx.dtor_type());
+    let ptr_ty = bcx.tcx().mk_imm_ptr(tcx.dtor_type());
     match *r {
         Univariant(ref st, dtor) if dtor_active(dtor) => {
             let flag_ptr = GEPi(bcx, val, &[0, st.fields.len() - 1]);

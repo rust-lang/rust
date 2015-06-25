@@ -224,7 +224,7 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                                                        &method_ty.fty.sig).0;
     let fn_sig = fcx.instantiate_type_scheme(span, trait_ref.substs, &fn_sig);
     let transformed_self_ty = fn_sig.inputs[0];
-    let fty = ty::mk_bare_fn(tcx, None, tcx.mk_bare_fn(ty::BareFnTy {
+    let fty = tcx.mk_fn(None, tcx.mk_bare_fn(ty::BareFnTy {
         sig: ty::Binder(fn_sig),
         unsafety: method_ty.fty.unsafety,
         abi: method_ty.fty.abi.clone(),

@@ -108,7 +108,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
 
         // Create the final `MethodCallee`.
         let method_ty = pick.item.as_opt_method().unwrap();
-        let fty = ty::mk_bare_fn(self.tcx(), None, self.tcx().mk_bare_fn(ty::BareFnTy {
+        let fty = self.tcx().mk_fn(None, self.tcx().mk_bare_fn(ty::BareFnTy {
             sig: ty::Binder(method_sig),
             unsafety: method_ty.fty.unsafety,
             abi: method_ty.fty.abi.clone(),

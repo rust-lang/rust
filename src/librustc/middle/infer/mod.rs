@@ -772,11 +772,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 
     pub fn next_ty_var(&self) -> Ty<'tcx> {
-        ty::mk_var(self.tcx, self.next_ty_var_id(false))
+        self.tcx.mk_var(self.next_ty_var_id(false))
     }
 
     pub fn next_diverging_ty_var(&self) -> Ty<'tcx> {
-        ty::mk_var(self.tcx, self.next_ty_var_id(true))
+        self.tcx.mk_var(self.next_ty_var_id(true))
     }
 
     pub fn next_ty_vars(&self, n: usize) -> Vec<Ty<'tcx>> {

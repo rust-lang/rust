@@ -2451,7 +2451,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     projection_bounds: data_a.bounds.projection_bounds.clone(),
                 };
 
-                let new_trait = ty::mk_trait(tcx, data_a.principal.clone(), bounds);
+                let new_trait = tcx.mk_trait(data_a.principal.clone(), bounds);
                 let origin = infer::Misc(obligation.cause.span);
                 if self.infcx.sub_types(false, origin, new_trait, target).is_err() {
                     return Err(Unimplemented);
@@ -2573,7 +2573,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     let param_b = *substs_b.types.get(TypeSpace, i);
                     new_substs.types.get_mut_slice(TypeSpace)[i] = param_b;
                 }
-                let new_struct = ty::mk_struct(tcx, def_id, tcx.mk_substs(new_substs));
+                let new_struct = tcx.mk_struct(def_id, tcx.mk_substs(new_substs));
                 let origin = infer::Misc(obligation.cause.span);
                 if self.infcx.sub_types(false, origin, new_struct, target).is_err() {
                     return Err(Unimplemented);

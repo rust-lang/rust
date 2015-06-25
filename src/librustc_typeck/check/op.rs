@@ -97,9 +97,9 @@ pub fn check_binop<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     match BinOpCategory::from(op) {
         BinOpCategory::Shortcircuit => {
             // && and || are a simple case.
-            demand::suptype(fcx, lhs_expr.span, ty::mk_bool(tcx), lhs_ty);
-            check_expr_coercable_to_type(fcx, rhs_expr, ty::mk_bool(tcx));
-            fcx.write_ty(expr.id, ty::mk_bool(tcx));
+            demand::suptype(fcx, lhs_expr.span, tcx.mk_bool(), lhs_ty);
+            check_expr_coercable_to_type(fcx, rhs_expr, tcx.mk_bool());
+            fcx.write_ty(expr.id, tcx.mk_bool());
         }
         _ => {
             // Otherwise, we always treat operators as if they are
@@ -148,9 +148,9 @@ fn enforce_builtin_binop_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     let tcx = fcx.tcx();
     match BinOpCategory::from(op) {
         BinOpCategory::Shortcircuit => {
-            demand::suptype(fcx, lhs_expr.span, ty::mk_bool(tcx), lhs_ty);
-            demand::suptype(fcx, rhs_expr.span, ty::mk_bool(tcx), rhs_ty);
-            ty::mk_bool(tcx)
+            demand::suptype(fcx, lhs_expr.span, tcx.mk_bool(), lhs_ty);
+            demand::suptype(fcx, rhs_expr.span, tcx.mk_bool(), rhs_ty);
+            tcx.mk_bool()
         }
 
         BinOpCategory::Shift => {
@@ -193,7 +193,7 @@ fn enforce_builtin_binop_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                     lhs_ty
                 }
             } else {
-                ty::mk_bool(tcx)
+                tcx.mk_bool()
             }
         }
     }

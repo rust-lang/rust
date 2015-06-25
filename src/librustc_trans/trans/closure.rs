@@ -363,8 +363,8 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     // Find a version of the closure type. Substitute static for the
     // region since it doesn't really matter.
     let substs = tcx.mk_substs(substs);
-    let closure_ty = ty::mk_closure(tcx, closure_def_id, substs);
-    let ref_closure_ty = ty::mk_imm_rptr(tcx, tcx.mk_region(ty::ReStatic), closure_ty);
+    let closure_ty = tcx.mk_closure(closure_def_id, substs);
+    let ref_closure_ty = tcx.mk_imm_ref(tcx.mk_region(ty::ReStatic), closure_ty);
 
     // Make a version with the type of by-ref closure.
     let ty::ClosureTy { unsafety, abi, mut sig } = typer.closure_type(closure_def_id, substs);
@@ -372,7 +372,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     let llref_bare_fn_ty = tcx.mk_bare_fn(ty::BareFnTy { unsafety: unsafety,
                                                                abi: abi,
                                                                sig: sig.clone() });
-    let llref_fn_ty = ty::mk_bare_fn(tcx, None, llref_bare_fn_ty);
+    let llref_fn_ty = tcx.mk_fn(None, llref_bare_fn_ty);
     debug!("trans_fn_once_adapter_shim: llref_fn_ty={:?}",
            llref_fn_ty);
 
@@ -383,7 +383,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     let llonce_bare_fn_ty = tcx.mk_bare_fn(ty::BareFnTy { unsafety: unsafety,
                                                                 abi: abi,
                                                                 sig: sig });
-    let llonce_fn_ty = ty::mk_bare_fn(tcx, None, llonce_bare_fn_ty);
+    let llonce_fn_ty = tcx.mk_fn(None, llonce_bare_fn_ty);
 
     // Create the by-value helper.
     let function_name = link::mangle_internal_name_by_type_and_seq(ccx, llonce_fn_ty, "once_shim");

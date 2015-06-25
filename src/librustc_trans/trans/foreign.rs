@@ -538,7 +538,7 @@ pub fn decl_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         _ => panic!("expected bare fn in decl_rust_fn_with_foreign_abi")
     };
     let llfn = declare::declare_fn(ccx, name, cconv, llfn_ty,
-                                   ty::FnConverging(ty::mk_nil(ccx.tcx())));
+                                   ty::FnConverging(ccx.tcx().mk_nil()));
     add_argument_attributes(&tys, llfn);
     debug!("decl_rust_fn_with_foreign_abi(llfn_ty={}, llfn={})",
            ccx.tn().type_to_string(llfn_ty), ccx.tn().val_to_string(llfn));

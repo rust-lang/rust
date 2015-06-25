@@ -218,9 +218,8 @@ fn create_steps<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
     match final_ty.sty {
         ty::TyArray(elem_ty, _) => {
-            let slice_ty = ty::mk_vec(fcx.tcx(), elem_ty, None);
             steps.push(CandidateStep {
-                self_ty: slice_ty,
+                self_ty: fcx.tcx().mk_slice(elem_ty),
                 autoderefs: dereferences,
                 unsize: true
             });
@@ -984,7 +983,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
 
         // Search through mutabilities in order to find one where pick works:
         [ast::MutImmutable, ast::MutMutable].iter().filter_map(|&m| {
-            let autoref_ty = ty::mk_rptr(tcx, region, ty::mt {
+            let autoref_ty = tcx.mk_ref(region, ty::mt {
                 ty: step.self_ty,
                 mutbl: m
             });
