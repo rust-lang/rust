@@ -13,7 +13,7 @@
 //! The Rust Standard Library provides the essential runtime
 //! functionality for building portable Rust software.
 //!
-//! The rust standard library is available to all rust crates by
+//! The Rust Standard Library is available to all Rust crates by
 //! default, just as if contained an `extern crate std` import at the
 //! crate root. Therefore the standard library can be accessed in
 //! `use` statements through the path `std`, as in `use std::thread`,
