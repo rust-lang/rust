@@ -12,14 +12,15 @@ anyones code.
 
 Namely the following items:
 
-1. Add a `--target=`*<version string> command line argument to rustc.
+1. Add a `--target-version=`*<version string> command line argument to rustc.
 This will be used for deprecation checking and for selecting code paths
 in the compiler.
 2. Add an (optional for now) `rust = "..."` dependency to Cargo.toml,
 which `cargo new` pre-fills with the current rust version
-3. Allow `std` APIs to declare an `#[insecure(level="Warn", reason="...")]` 
-attribute that will produce a warning or error, depending on level,
-that cannot be switched off (even with `-Awarning`)
+3. Allow `std` APIs to declare an 
+`#[insecure(level="Warn", reason="...")]`  attribute that will produce 
+a warning or error, depending on level, that cannot be switched off 
+(even with `-Awarning`)
 4. Add a `removed_at="..."` item to `#[deprecated]` attributes that 
 allows making API items unavailable starting from certain target 
 versions. 
@@ -126,12 +127,12 @@ make no provisions for it. Thus proposal item 3.
 
 Cargo parses the additional `rust = "..."` dependency as if it was a 
 library. The usual rules for version parsing apply. If no `rust` 
-dependency is supplied, it can either default to `*`.
+dependency is supplied, it defaults to `*`.
 
 Cargo should also supply the current Rust version (which can be either
 supplied by calling `rustc -V` or by linking to a rust library defining
 a version object) on `cargo new`. Cargo supplies the given target 
-version to `rustc` via the `--target` command line argument.
+version to `rustc` via the `--target-version` command line argument.
 
 Cargo *may* also warn on `cargo package` if no `rust` version was 
 supplied. [crates.io](https://crates.io) *could* require a version
@@ -140,9 +141,9 @@ attribute on upload and display the required rust version on the site.
 One nice aspect of this is that `rust` looks just like yet another
 dependency and effectively follows the same rules.
 
-`rustc` needs to accept the `--target <version>` command line argument.
-If no argument is supplied, `rustc` defaults to its own version. The
-same version syntax as Cargo applies:
+`rustc` needs to accept the `--target-version <version>` command line 
+argument. If no argument is supplied, `rustc` defaults to its own 
+version. The same version syntax as Cargo applies:
 
 * `*` effectively means *any version*. For API items, it means
 deprecation checking is disabled. For language changes, it means using
