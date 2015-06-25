@@ -444,7 +444,7 @@ end = ptr.offset(len)
 However because `offset` is marked as a GEP inbounds instruction, this will tell
 LLVM that ptr is allocated and won't alias other allocated memory. This is fine
 for zero-sized types, as they can't alias anything. However if we're using
-heap::EMPTY as a sentinel for a non-allocation for a *non-zero-sized* type,
+`heap::EMPTY` as a sentinel for a non-allocation for a *non-zero-sized* type,
 this can cause undefined behaviour. Alas, we must therefore special case either
 cap or len being 0 to not do the offset.
 
