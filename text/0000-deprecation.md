@@ -12,11 +12,12 @@ anyones code.
 
 Namely the following items:
 
-1. Add a `--target-version=`*<version string> command line argument to rustc.
-This will be used for deprecation checking and for selecting code paths
-in the compiler.
+1. Add a `--target-version=`*<version string>* command line argument to 
+rustc. This will be used for deprecation checking and for selecting 
+code paths in the compiler.
 2. Add an (optional for now) `rust = "..."` dependency to Cargo.toml,
-which `cargo new` pre-fills with the current rust version
+which `cargo new` pre-fills with the current rust version 
+(alternatively this could be a package attribute)
 3. Allow `std` APIs to declare an 
 `#[insecure(level="Warn", reason="...")]`  attribute that will produce 
 a warning or error, depending on level, that cannot be switched off 
@@ -24,8 +25,8 @@ a warning or error, depending on level, that cannot be switched off
 4. Add a `removed_at="..."` item to `#[deprecated]` attributes that 
 allows making API items unavailable starting from certain target 
 versions. 
-5. Add a number of warnings to steer users in the direction of using the
-most recent Rust version that makes sense to them, while making it 
+5. Add a number of warnings to steer users in the direction of using 
+the most recent Rust version that makes sense to them, while making it 
 easy for library writers to support a wide range of Rust versions
 
 ## Background
@@ -39,8 +40,8 @@ As a background, in no particular order:
 * [#1122 Language SemVer](https://github.com/rust-lang/rfcs/blob/master/text/1122-language-semver.md)
 * [#1150 Rename Attribute](https://github.com/rust-lang/pull/1150)
 
-In addition, there has been an ongoing [discussion on 
-internals](https://internals.rust-lang.org/t/thoughts-on-aggressive-deprecation-in-libstd/2176/55) 
+In addition, there has been an ongoing 
+[discussion on internals](https://internals.rust-lang.org/t/thoughts-on-aggressive-deprecation-in-libstd/2176/55) 
 about how we are going to evolve the standard library, which this
 proposal is mostly based on.
 
@@ -90,10 +91,13 @@ The following motivates items 2, 4 and 5.
 
 Currently, there is no way to make an API item unavailable via 
 deprecation. This means the API will only ever expand, with a lot of
-churn (case in point, the Java language has about 20% deprecated API
-surface [citation needed]). To better lead users to the right APIs and
-to allow for more effective language/API evolution, this proposal adds
-the `removed_at="<version>"` item to the `#[deprecated]` attribute.
+churn (case in point, the Java language as of Version 8 lists 462
+deprecated constructs, including methods, constants and complete 
+classes, in relation to 4241 classes, this makes for about 10% of
+deprecated API surface. Note that this is but a rough estimate). To 
+better lead users to the right APIs and to allow for more effective 
+language/API evolution, this proposal adds the `removed_at="<version>"`
+item to the `#[deprecated]` attribute.
 
 This allows us to effectively remove an API item from a certain target
 version while avoiding breaking code written for older target versions.
@@ -104,7 +108,7 @@ the user to a working replacement.
 
 We want to avoid users setting `#[allow(deprecate)]` on their code to
 get rid of the warnings. On the other hand, there have been instances
-of failing builds because code was marked with `#![deny(deprecate)]`,
+of failing builds because code was marked with `#![deny(warnings)]`,
 namely `compiletest.rs` and all crates using it. This shows that the
 current system has room for improvement.
 
@@ -147,7 +151,7 @@ version. The same version syntax as Cargo applies:
 
 * `*` effectively means *any version*. For API items, it means
 deprecation checking is disabled. For language changes, it means using
-the 1.0.0 code paths (for now, we may opt to change this in the 
+the `1.0.0` code paths (for now, we may opt to change this in the 
 future), because anything else would break all current code.
 * `1.x` or e.g. `>=1.2.0` sets the target version to the minor version.
 Deprecation checking and language code path selection occur relative
@@ -165,6 +169,11 @@ best-effort basis.
 Optionally, we can define a `future deprecation` lint set to `Allow` by 
 default to allow people being proactive about items that are going to
 be deprecated.
+
+`rustc` should resolve the `#[feature]` flags against the upper bound 
+of the specified target version instead the current version, but 
+default to the current version if no target version is specified or the 
+specified version has no upper bound.
 
 `rustc` should also show a warning or error, depending on level, on
 encountering usage of API items marked as `#[insecure]`. The attribute
@@ -185,7 +194,7 @@ including displaying the `reason` prominently.
 
 # Optional Extension: Legacy flags
 
-The `#[deprecated]` attribute could get an optional `legacy="xy`
+The `#[deprecated]` attribute could get an optional `legacy="xy"`
 entry, which could effectively group a set of APIs under the given 
 name. Users can then declare the `#[legacy]` flag as defined in 
 [RFC #1122](https://github.com/rust-lang/rfcs/blob/master/text/1122-language-semver.md)
@@ -241,4 +250,4 @@ needing a new attribute key.
 
 # Unresolved questions
 
-I no longer have any. Please join the discussion to add yours.
+Should the rust = "<version>" be a *dependency* or a package attribute?
