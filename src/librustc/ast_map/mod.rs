@@ -130,19 +130,19 @@ enum MapEntry<'ast> {
     NotPresent,
 
     /// All the node types, with a parent and scope ID.
-    EntryItem(NodeId, NodeId, &'ast Item),
-    EntryForeignItem(NodeId, NodeId, &'ast ForeignItem),
-    EntryTraitItem(NodeId, NodeId, &'ast TraitItem),
-    EntryImplItem(NodeId, NodeId, &'ast ImplItem),
-    EntryVariant(NodeId, NodeId, &'ast Variant),
-    EntryExpr(NodeId, NodeId, &'ast Expr),
-    EntryStmt(NodeId, NodeId, &'ast Stmt),
-    EntryArg(NodeId, NodeId, &'ast Pat),
-    EntryLocal(NodeId, NodeId, &'ast Pat),
-    EntryPat(NodeId, NodeId, &'ast Pat),
-    EntryBlock(NodeId, NodeId, &'ast Block),
-    EntryStructCtor(NodeId, NodeId, &'ast StructDef),
-    EntryLifetime(NodeId, NodeId, &'ast Lifetime),
+    EntryItem(NodeId, &'ast Item),
+    EntryForeignItem(NodeId, &'ast ForeignItem),
+    EntryTraitItem(NodeId, &'ast TraitItem),
+    EntryImplItem(NodeId, &'ast ImplItem),
+    EntryVariant(NodeId, &'ast Variant),
+    EntryExpr(NodeId, &'ast Expr),
+    EntryStmt(NodeId, &'ast Stmt),
+    EntryArg(NodeId, &'ast Pat),
+    EntryLocal(NodeId, &'ast Pat),
+    EntryPat(NodeId, &'ast Pat),
+    EntryBlock(NodeId, &'ast Block),
+    EntryStructCtor(NodeId, &'ast StructDef),
+    EntryLifetime(NodeId, &'ast Lifetime),
 
     /// Roots for node trees.
     RootCrate,
@@ -162,77 +162,58 @@ struct InlinedParent {
 }
 
 impl<'ast> MapEntry<'ast> {
-    fn from_node(p: NodeId, s: NodeId, node: Node<'ast>) -> MapEntry<'ast> {
+    fn from_node(s: NodeId, node: Node<'ast>) -> MapEntry<'ast> {
         match node {
-            NodeItem(n) => EntryItem(p, s, n),
-            NodeForeignItem(n) => EntryForeignItem(p, s, n),
-            NodeTraitItem(n) => EntryTraitItem(p, s, n),
-            NodeImplItem(n) => EntryImplItem(p, s, n),
-            NodeVariant(n) => EntryVariant(p, s, n),
-            NodeExpr(n) => EntryExpr(p, s, n),
-            NodeStmt(n) => EntryStmt(p, s, n),
-            NodeArg(n) => EntryArg(p, s, n),
-            NodeLocal(n) => EntryLocal(p, s, n),
-            NodePat(n) => EntryPat(p, s, n),
-            NodeBlock(n) => EntryBlock(p, s, n),
-            NodeStructCtor(n) => EntryStructCtor(p, s, n),
-            NodeLifetime(n) => EntryLifetime(p, s, n)
+            NodeItem(n) => EntryItem(s, n),
+            NodeForeignItem(n) => EntryForeignItem(s, n),
+            NodeTraitItem(n) => EntryTraitItem(s, n),
+            NodeImplItem(n) => EntryImplItem(s, n),
+            NodeVariant(n) => EntryVariant(s, n),
+            NodeExpr(n) => EntryExpr(s, n),
+            NodeStmt(n) => EntryStmt(s, n),
+            NodeArg(n) => EntryArg(s, n),
+            NodeLocal(n) => EntryLocal(s, n),
+            NodePat(n) => EntryPat(s, n),
+            NodeBlock(n) => EntryBlock(s, n),
+            NodeStructCtor(n) => EntryStructCtor(s, n),
+            NodeLifetime(n) => EntryLifetime(s, n)
         }
-    }
-
-    fn parent(self) -> Option<NodeId> {
-        Some(match self {
-            EntryItem(id, _, _) => id,
-            EntryForeignItem(id, _, _) => id,
-            EntryTraitItem(id, _, _) => id,
-            EntryImplItem(id, _, _) => id,
-            EntryVariant(id, _, _) => id,
-            EntryExpr(id, _, _) => id,
-            EntryStmt(id, _, _) => id,
-            EntryArg(id, _, _) => id,
-            EntryLocal(id, _, _) => id,
-            EntryPat(id, _, _) => id,
-            EntryBlock(id, _, _) => id,
-            EntryStructCtor(id, _, _) => id,
-            EntryLifetime(id, _, _) => id,
-            _ => return None
-        })
     }
 
     fn parent_node(self) -> Option<NodeId> {
         Some(match self {
-            EntryItem(_, id, _) => id,
-            EntryForeignItem(_, id, _) => id,
-            EntryTraitItem(_, id, _) => id,
-            EntryImplItem(_, id, _) => id,
-            EntryVariant(_, id, _) => id,
-            EntryExpr(_, id, _) => id,
-            EntryStmt(_, id, _) => id,
-            EntryArg(_, id, _) => id,
-            EntryLocal(_, id, _) => id,
-            EntryPat(_, id, _) => id,
-            EntryBlock(_, id, _) => id,
-            EntryStructCtor(_, id, _) => id,
-            EntryLifetime(_, id, _) => id,
+            EntryItem(id, _) => id,
+            EntryForeignItem(id, _) => id,
+            EntryTraitItem(id, _) => id,
+            EntryImplItem(id, _) => id,
+            EntryVariant(id, _) => id,
+            EntryExpr(id, _) => id,
+            EntryStmt(id, _) => id,
+            EntryArg(id, _) => id,
+            EntryLocal(id, _) => id,
+            EntryPat(id, _) => id,
+            EntryBlock(id, _) => id,
+            EntryStructCtor(id, _) => id,
+            EntryLifetime(id, _) => id,
             _ => return None
         })
     }
 
     fn to_node(self) -> Option<Node<'ast>> {
         Some(match self {
-            EntryItem(_, _, n) => NodeItem(n),
-            EntryForeignItem(_, _, n) => NodeForeignItem(n),
-            EntryTraitItem(_, _, n) => NodeTraitItem(n),
-            EntryImplItem(_, _, n) => NodeImplItem(n),
-            EntryVariant(_, _, n) => NodeVariant(n),
-            EntryExpr(_, _, n) => NodeExpr(n),
-            EntryStmt(_, _, n) => NodeStmt(n),
-            EntryArg(_, _, n) => NodeArg(n),
-            EntryLocal(_, _, n) => NodeLocal(n),
-            EntryPat(_, _, n) => NodePat(n),
-            EntryBlock(_, _, n) => NodeBlock(n),
-            EntryStructCtor(_, _, n) => NodeStructCtor(n),
-            EntryLifetime(_, _, n) => NodeLifetime(n),
+            EntryItem(_, n) => NodeItem(n),
+            EntryForeignItem(_, n) => NodeForeignItem(n),
+            EntryTraitItem(_, n) => NodeTraitItem(n),
+            EntryImplItem(_, n) => NodeImplItem(n),
+            EntryVariant(_, n) => NodeVariant(n),
+            EntryExpr(_, n) => NodeExpr(n),
+            EntryStmt(_, n) => NodeStmt(n),
+            EntryArg(_, n) => NodeArg(n),
+            EntryLocal(_, n) => NodeLocal(n),
+            EntryPat(_, n) => NodePat(n),
+            EntryBlock(_, n) => NodeBlock(n),
+            EntryStructCtor(_, n) => NodeStructCtor(n),
+            EntryLifetime(_, n) => NodeLifetime(n),
             _ => return None
         })
     }
@@ -306,7 +287,37 @@ impl<'ast> Map<'ast> {
     /// Retrieve the parent NodeId for `id`, or `id` itself if no
     /// parent is registered in this map.
     pub fn get_parent(&self, id: NodeId) -> NodeId {
-        self.find_entry(id).and_then(|x| x.parent()).unwrap_or(id)
+        let mut id = id;
+        loop {
+            let parent_node = self.get_parent_node(id);
+            if parent_node == 0 {
+                return parent_node;
+            }
+            if parent_node == id {
+                return id;
+            }
+
+            let node = self.find_entry(parent_node);
+            if node.is_none() {
+                return id;
+            }
+            let node = node.unwrap().to_node();
+            match node {
+                Some(node) => match node {
+                    NodeItem(_) |
+                    NodeForeignItem(_) |
+                    NodeTraitItem(_) |
+                    NodeImplItem(_) => {
+                        return parent_node;
+                    }
+                    _ => {}
+                },
+                None => {
+                    return parent_node;
+                }
+            }
+            id = parent_node;
+        }
     }
 
     /// Similar to get_parent, returns the parent node id or id if there is no
@@ -332,6 +343,10 @@ impl<'ast> Map<'ast> {
             let cur_id = self.get_parent_node(last_id);
             if cur_id == last_id {
                 return None;
+            }
+
+            if cur_id == 0 {
+                return Some(0);
             }
 
             match self.get(cur_id) {
@@ -361,7 +376,7 @@ impl<'ast> Map<'ast> {
     pub fn get_foreign_abi(&self, id: NodeId) -> abi::Abi {
         let parent = self.get_parent(id);
         let abi = match self.find_entry(parent) {
-            Some(EntryItem(_, _, i)) => {
+            Some(EntryItem(_, i)) => {
                 match i.node {
                     ItemForeignMod(ref nm) => Some(nm.abi),
                     _ => None
@@ -650,15 +665,15 @@ impl<'a, 'ast> Iterator for NodesMatchingSuffix<'a, 'ast> {
                 return None;
             }
             self.idx += 1;
-            let (p, name) = match self.map.find_entry(idx) {
-                Some(EntryItem(p, _, n))       => (p, n.name()),
-                Some(EntryForeignItem(p, _, n))=> (p, n.name()),
-                Some(EntryTraitItem(p, _, n))  => (p, n.name()),
-                Some(EntryImplItem(p, _, n))   => (p, n.name()),
-                Some(EntryVariant(p, _, n))    => (p, n.name()),
+            let name = match self.map.find_entry(idx) {
+                Some(EntryItem(_, n))       => n.name(),
+                Some(EntryForeignItem(_, n))=> n.name(),
+                Some(EntryTraitItem(_, n))  => n.name(),
+                Some(EntryImplItem(_, n))   => n.name(),
+                Some(EntryVariant(_, n))    => n.name(),
                 _ => continue,
             };
-            if self.matches_names(p, name) {
+            if self.matches_names(self.map.get_parent(idx), name) {
                 return Some(idx)
             }
         }
@@ -707,8 +722,6 @@ impl<F: FoldOps> Folder for IdAndSpanUpdater<F> {
 /// A Visitor that walks over an AST and collects Node's into an AST Map.
 struct NodeCollector<'ast> {
     map: Vec<MapEntry<'ast>>,
-    /// The node in which we are currently mapping (an item or a method).
-    parent: NodeId,
     parent_node: NodeId,
 }
 
@@ -723,7 +736,7 @@ impl<'ast> NodeCollector<'ast> {
     }
 
     fn insert(&mut self, id: NodeId, node: Node<'ast>) {
-        let entry = MapEntry::from_node(self.parent, self.parent_node, node);
+        let entry = MapEntry::from_node(self.parent_node, node);
         self.insert_entry(id, entry);
     }
 
@@ -737,10 +750,10 @@ impl<'ast> NodeCollector<'ast> {
 impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
     fn visit_item(&mut self, i: &'ast Item) {
         self.insert(i.id, NodeItem(i));
-        let parent = self.parent;
-        self.parent = i.id;
+
         let parent_node = self.parent_node;
         self.parent_node = i.id;
+
         match i.node {
             ItemImpl(_, _, _, _, _, ref impl_items) => {
                 for ii in impl_items {
@@ -790,55 +803,51 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
             _ => {}
         }
         visit::walk_item(self, i);
-        self.parent = parent;
         self.parent_node = parent_node;
     }
 
     fn visit_trait_item(&mut self, ti: &'ast TraitItem) {
-        let parent = self.parent;
-        self.parent = ti.id;
         let parent_node = self.parent_node;
         self.parent_node = ti.id;
         visit::walk_trait_item(self, ti);
-        self.parent = parent;
         self.parent_node = parent_node;
     }
 
     fn visit_impl_item(&mut self, ii: &'ast ImplItem) {
-        let parent = self.parent;
-        self.parent = ii.id;
         let parent_node = self.parent_node;
         self.parent_node = ii.id;
+
         visit::walk_impl_item(self, ii);
-        self.parent = parent;
+
         self.parent_node = parent_node;
     }
 
     fn visit_pat(&mut self, pat: &'ast Pat) {
-        let parent_node = self.parent_node;
-        self.parent_node = pat.id;
         self.insert(pat.id, match pat.node {
             // Note: this is at least *potentially* a pattern...
             PatIdent(..) => NodeLocal(pat),
             _ => NodePat(pat)
         });
+
+        let parent_node = self.parent_node;
+        self.parent_node = pat.id;
         visit::walk_pat(self, pat);
         self.parent_node = parent_node;
     }
 
     fn visit_expr(&mut self, expr: &'ast Expr) {
+        self.insert(expr.id, NodeExpr(expr));
         let parent_node = self.parent_node;
         self.parent_node = expr.id;
-        self.insert(expr.id, NodeExpr(expr));
         visit::walk_expr(self, expr);
         self.parent_node = parent_node;
     }
 
     fn visit_stmt(&mut self, stmt: &'ast Stmt) {
         let id = ast_util::stmt_id(stmt);
+        self.insert(id, NodeStmt(stmt));
         let parent_node = self.parent_node;
         self.parent_node = id;
-        self.insert(id, NodeStmt(stmt));
         visit::walk_stmt(self, stmt);
         self.parent_node = parent_node;
     }
@@ -866,18 +875,15 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
     }
 
     fn visit_block(&mut self, block: &'ast Block) {
+        self.insert(block.id, NodeBlock(block));
         let parent_node = self.parent_node;
         self.parent_node = block.id;
-        self.insert(block.id, NodeBlock(block));
         visit::walk_block(self, block);
         self.parent_node = parent_node;
     }
 
     fn visit_lifetime_ref(&mut self, lifetime: &'ast Lifetime) {
-        let parent_node = self.parent_node;
-        self.parent_node = lifetime.id;
         self.insert(lifetime.id, NodeLifetime(lifetime));
-        self.parent_node = parent_node;
     }
 
     fn visit_lifetime_def(&mut self, def: &'ast LifetimeDef) {
@@ -901,7 +907,6 @@ pub fn map_crate<'ast, F: FoldOps>(forest: &'ast mut Forest, fold_ops: F) -> Map
 
     let mut collector = NodeCollector {
         map: vec![],
-        parent: CRATE_NODE_ID,
         parent_node: CRATE_NODE_ID,
     };
     collector.insert_entry(CRATE_NODE_ID, RootCrate);
@@ -957,12 +962,11 @@ pub fn map_decoded_item<'ast, F: FoldOps>(map: &Map<'ast>,
         ii: ii
     });
 
+    let ii_parent_id = fld.new_id(DUMMY_NODE_ID);
     let mut collector = NodeCollector {
         map: mem::replace(&mut *map.map.borrow_mut(), vec![]),
-        parent: fld.new_id(DUMMY_NODE_ID),
-        parent_node: fld.new_id(DUMMY_NODE_ID),
+        parent_node: ii_parent_id,
     };
-    let ii_parent_id = collector.parent;
     collector.insert_entry(ii_parent_id, RootInlinedParent(ii_parent));
     visit::walk_inlined_item(&mut collector, &ii_parent.ii);
 
