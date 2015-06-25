@@ -496,7 +496,8 @@ impl<T> Iterator for IntoIter<T> {
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let len = self.end as usize - self.start as usize;
+        let len = (self.end as usize - self.start as usize)
+                  / mem::size_of::<T>();
         (len, Some(len))
     }
 }
@@ -949,7 +950,10 @@ impl<T> RawValIter<T> {
 ```
 
 Now we have a different bug. Instead of our iterators not running at all, our
-iterators now run *forever*. We need to do the same trick in our iterator impls:
+iterators now run *forever*. We need to do the same trick in our iterator impls.
+Also, our size_hint computation code will divide by 0 for ZSTs. Since we'll
+basically be treating the two pointers as if they point to bytes, we'll just
+map size 0 to divide by 1.
 
 ```
 impl<T> Iterator for RawValIter<T> {
@@ -971,7 +975,9 @@ impl<T> Iterator for RawValIter<T> {
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let len = self.end as usize - self.start as usize;
+        let elem_size = mem::size_of::<T>();
+        let len = (self.end as usize - self.start as usize)
+                  / if elem_size == 0 { 1 } else { elem_size };
         (len, Some(len))
     }
 }
@@ -1017,6 +1023,10 @@ use std::rt::heap;
 use std::mem;
 use std::ops::{Deref, DerefMut};
 use std::marker::PhantomData;
+
+
+
+
 
 struct RawVec<T> {
     ptr: Unique<T>,
@@ -1078,6 +1088,10 @@ impl<T> Drop for RawVec<T> {
         }
     }
 }
+
+
+
+
 
 pub struct Vec<T> {
     buf: RawVec<T>,
@@ -1231,7 +1245,9 @@ impl<T> Iterator for RawValIter<T> {
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let len = self.end as usize - self.start as usize;
+        let elem_size = mem::size_of::<T>();
+        let len = (self.end as usize - self.start as usize)
+                  / if elem_size == 0 { 1 } else { elem_size };
         (len, Some(len))
     }
 }
