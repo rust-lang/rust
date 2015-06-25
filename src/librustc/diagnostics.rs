@@ -984,6 +984,57 @@ From [RFC 246]:
 [RFC 246]: https://github.com/rust-lang/rfcs/pull/246
 "##,
 
+E0395: r##"
+The value assigned to a constant expression must be known at compile time,
+which is not the case when comparing raw pointers. Erroneous code example:
+
+```
+static foo: i32 = 42;
+static bar: i32 = 43;
+
+static baz: bool = { (&foo as *const i32) == (&bar as *const i32) };
+// error: raw pointers cannot be compared in statics!
+```
+
+Please check that the result of the comparison can be determined at compile time
+or isn't assigned to a constant expression. Example:
+
+```
+static foo: i32 = 42;
+static bar: i32 = 43;
+
+let baz: bool = { (&foo as *const i32) == (&bar as *const i32) };
+// baz isn't a constant expression so it's ok
+```
+"##,
+
+E0396: r##"
+The value assigned to a constant expression must be known at compile time,
+which is not the case when dereferencing raw pointers. Erroneous code
+example:
+
+```
+const foo: i32 = 42;
+const baz: *const i32 = (&foo as *const i32);
+
+const deref: i32 = *baz;
+// error: raw pointers cannot be dereferenced in constants
+```
+
+To fix this error, please do not assign this value to a constant expression.
+Example:
+
+```
+const foo: i32 = 42;
+const baz: *const i32 = (&foo as *const i32);
+
+unsafe { let deref: i32 = *baz; }
+// baz isn't a constant expression so it's ok
+```
+
+You'll also note that this assignment must be done in an unsafe block!
+"##,
+
 E0397: r##"
 It is not allowed for a mutable static to allocate or have destructors. For
 example:
@@ -1039,7 +1090,5 @@ register_diagnostics! {
     E0314, // closure outlives stack frame
     E0315, // cannot invoke closure outside of its lifetime
     E0316, // nested quantification of lifetimes
-    E0370, // discriminant overflow
-    E0395, // pointer comparison in const-expr
-    E0396  // pointer dereference in const-expr
+    E0370  // discriminant overflow
 }

@@ -1458,6 +1458,42 @@ impl Foo for Bar {
 ```
 "##,
 
+E0327: r##"
+You cannot use associated items other than constant items as patterns. This
+includes method items. Example of erroneous code:
+
+```
+enum B {}
+
+impl B {
+    fn bb() -> i32 { 0 }
+}
+
+fn main() {
+    match 0 {
+        B::bb => {} // error: associated items in match patterns must
+                    // be constants
+    }
+}
+```
+
+Please check that you're not using a method as a pattern. Example:
+
+```
+enum B {
+    ba,
+    bb
+}
+
+fn main() {
+    match B::ba {
+        B::bb => {} // ok!
+        _ => {}
+    }
+}
+```
+"##,
+
 E0368: r##"
 This error indicates that a binary assignment operator like `+=` or `^=` was
 applied to the wrong types. For example:
@@ -1640,7 +1676,6 @@ register_diagnostics! {
     E0323, // implemented an associated const when another trait item expected
     E0324, // implemented a method when another trait item expected
     E0325, // implemented an associated type when another trait item expected
-    E0327, // referred to method instead of constant in match pattern
     E0328, // cannot implement Unsize explicitly
     E0329, // associated const depends on type parameter or Self.
     E0366, // dropck forbid specialization to concrete type or region
