@@ -15,19 +15,21 @@ Namely the following items:
 1. Add a `--target-version=`*<version string>* command line argument to 
 rustc. This will be used for deprecation checking and for selecting 
 code paths in the compiler.
-2. Add an (optional for now) `rust = "..."` dependency to Cargo.toml,
-which `cargo new` pre-fills with the current rust version 
-(alternatively this could be a package attribute)
+2. Add an optional `rust = "..."` package attribute to Cargo.toml, 
+which `cargo new` pre-fills with the current rust version.
 3. Allow `std` APIs to declare an 
 `#[insecure(level="Warn", reason="...")]`  attribute that will produce 
 a warning or error, depending on level, that cannot be switched off 
 (even with `-Awarning`)
 4. Add a `removed_at="..."` item to `#[deprecated]` attributes that 
 allows making API items unavailable starting from certain target 
-versions. 
+versions.
 5. Add a number of warnings to steer users in the direction of using 
 the most recent Rust version that makes sense to them, while making it 
 easy for library writers to support a wide range of Rust versions
+6. (optional) add a `legacy="..."` item to `#[deprecated]` attributes
+that allows grouping API items under a legacy flag that is already 
+defined in RFC #1122 (see below)
 
 ## Background
 
@@ -129,9 +131,9 @@ make no provisions for it. Thus proposal item 3.
 
 # Detailed design
 
-Cargo parses the additional `rust = "..."` dependency as if it was a 
-library. The usual rules for version parsing apply. If no `rust` 
-dependency is supplied, it defaults to `*`.
+Cargo parses the additional `rust = "..."` package attribute. The usual 
+rules for version parsing apply. If no `rust` attribute is supplied, it 
+defaults to `*`.
 
 Cargo should also supply the current Rust version (which can be either
 supplied by calling `rustc -V` or by linking to a rust library defining
@@ -139,11 +141,12 @@ a version object) on `cargo new`. Cargo supplies the given target
 version to `rustc` via the `--target-version` command line argument.
 
 Cargo *may* also warn on `cargo package` if no `rust` version was 
-supplied. [crates.io](https://crates.io) *could* require a version
-attribute on upload and display the required rust version on the site.
+supplied. A few versions in the future, Cargo could also warn of 
+missing version attributes on build or other actions, at least if the 
+crate is a library.
 
-One nice aspect of this is that `rust` looks just like yet another
-dependency and effectively follows the same rules.
+[crates.io](https://crates.io) *could* require a version attribute on 
+upload and display the required rust version on the site.
 
 `rustc` needs to accept the `--target-version <version>` command line 
 argument. If no argument is supplied, `rustc` defaults to its own 
@@ -202,7 +205,9 @@ to specifically allow usage of the grouped APIs, thus selectively
 removing the deprecation warning.
 
 This would create a nice feature parity between language code paths and
-`std` API deprecation checking.
+`std` API deprecation checking. Also it would lessen the pain for users
+who want to upgrade their systems one feature at a time and can use the
+legacy flags to effectively manage their usage of deprecated items.
 
 # Drawbacks
 
@@ -250,4 +255,4 @@ needing a new attribute key.
 
 # Unresolved questions
 
-Should the rust = "<version>" be a *dependency* or a package attribute?
+None
