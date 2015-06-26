@@ -934,6 +934,51 @@ The number of supplied parameters much exactly match the number of defined type
 parameters.
 "##,
 
+E0088: r##"
+You gave too many lifetime parameters. Erroneous code example:
+
+```
+fn f() {}
+
+fn main() {
+    f::<'static>() // error: too many lifetime parameters provided
+}
+```
+
+Please check you give the right number of lifetime parameters. Example:
+
+```
+fn f() {}
+
+fn main() {
+    f() // ok!
+}
+```
+
+It's also important to note that the Rust compiler can generally
+determine the lifetime by itself. Example:
+
+```
+struct Foo {
+    value: String
+}
+
+impl Foo {
+    // it can be written like this
+    fn get_value<'a>(&'a self) -> &'a str { &self.value }
+    // but the compiler works fine with this too:
+    fn without_lifetime(&self) -> &str { &self.value }
+}
+
+fn main() {
+    let f = Foo { value: "hello".to_owned() };
+
+    println!("{}", f.get_value());
+    println!("{}", f.without_lifetime());
+}
+```
+"##,
+
 E0089: r##"
 Not enough type parameters were supplied for a function. For example:
 
@@ -960,13 +1005,14 @@ fn main() {
 "##,
 
 E0091: r##"
-You gave an unnecessary type parameter. Erroneous code example:
+You gave an unnecessary type parameter in a type alias. Erroneous code
+example:
 
 ```
 type Foo<T> = u32; // error: type parameter `T` is unused
 ```
 
-Please check you didn't write to many type parameter. Example:
+Please check you didn't write too many type parameters. Example:
 
 ```
 type Foo = u32; // ok!
@@ -1599,7 +1645,6 @@ register_diagnostics! {
     E0077,
     E0085,
     E0086,
-    E0088,
     E0090,
     E0092,
     E0093,
