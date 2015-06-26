@@ -13,7 +13,6 @@ use core::prelude::*;
 use io;
 use libc::{self, c_int, size_t, c_void};
 use mem;
-use sys::c;
 use sys::cvt;
 use sys_common::AsInner;
 
@@ -55,6 +54,7 @@ impl FileDesc {
 
     #[cfg(not(target_os = "nacl"))]
     pub fn set_cloexec(&self) {
+        use sys::c;
         unsafe {
             let ret = c::ioctl(self.fd, c::FIOCLEX);
             debug_assert_eq!(ret, 0);

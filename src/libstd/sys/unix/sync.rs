@@ -252,7 +252,6 @@ mod os {
 #[cfg(target_os = "nacl")]
 mod os {
     use libc;
-    use ptr;
 
     #[repr(C)]
     pub struct __nc_basic_thread_data;

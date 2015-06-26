@@ -14,6 +14,7 @@ use prelude::v1::*;
 
 use alloc::boxed::FnBox;
 use cmp;
+#[cfg(not(target_os = "nacl"))]
 use ffi::CString;
 use io;
 use libc::consts::os::posix01::PTHREAD_STACK_MIN;

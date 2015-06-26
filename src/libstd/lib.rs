@@ -389,13 +389,9 @@ pub mod sync;
 pub mod time;
 
 #[macro_use]
-#[cfg_attr(target_os = "nacl", allow(dead_code))]
-#[cfg_attr(target_os = "nacl", allow(unused_imports))]
 #[path = "sys/common/mod.rs"] mod sys_common;
 
 #[cfg(unix)]
-#[cfg_attr(target_os = "nacl", allow(dead_code))]
-#[cfg_attr(target_os = "nacl", allow(unused_imports))]
 #[path = "sys/unix/mod.rs"] mod sys;
 #[cfg(windows)]
 #[path = "sys/windows/mod.rs"] mod sys;
