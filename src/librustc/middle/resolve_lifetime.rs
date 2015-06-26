@@ -37,6 +37,7 @@ use util::nodemap::NodeMap;
 #[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Debug)]
 pub enum DefRegion {
     DefStaticRegion,
+    DefAnonRegion,
     DefEarlyBoundRegion(/* space */ subst::ParamSpace,
                         /* index */ u32,
                         /* lifetime decl */ ast::NodeId),
@@ -72,6 +73,9 @@ struct LifetimeContext<'a> {
     // I'm sorry.
     trait_ref_hack: bool,
 
+    // Pre-interned "'_", if #[feature(anon_lifetime)] is enabled.
+    anon_lifetime_name: Option<ast::Name>,
+
     // List of labels in the function/method currently under analysis.
     labels_in_fn: Vec<(ast::Ident, Span)>,
 }
@@ -95,12 +99,18 @@ static ROOT_SCOPE: ScopeChain<'static> = RootScope;
 
 pub fn krate(sess: &Session, krate: &ast::Crate, def_map: &DefMap) -> NamedRegionMap {
     let mut named_region_map = NodeMap();
+    let anon_lifetime_name = if sess.features.borrow().anon_lifetime {
+        Some(token::intern("'_"))
+    } else {
+        None
+    };
     visit::walk_crate(&mut LifetimeContext {
         sess: sess,
         named_region_map: &mut named_region_map,
         scope: &ROOT_SCOPE,
         def_map: def_map,
         trait_ref_hack: false,
+        anon_lifetime_name: anon_lifetime_name,
         labels_in_fn: vec![],
     }, krate);
     sess.abort_if_errors();
@@ -224,11 +234,28 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
     }
 
     fn visit_lifetime_ref(&mut self, lifetime_ref: &ast::Lifetime) {
-        if lifetime_ref.name == special_idents::static_lifetime.name {
-            self.insert_lifetime(lifetime_ref, DefStaticRegion);
-            return;
+        if lifetime_ref.id == ast::DUMMY_NODE_ID {
+            self.sess.span_bug(lifetime_ref.span,
+                               "lifetime reference not renumbered, \
+                                probably a bug in syntax::fold");
         }
-        self.resolve_lifetime_ref(lifetime_ref);
+
+        let def = if lifetime_ref.name == special_idents::static_lifetime.name {
+            DefStaticRegion
+        } else if let Ok(def) = self.resolve_lifetime_ref(lifetime_ref) {
+            def
+        } else if Some(lifetime_ref.name) == self.anon_lifetime_name {
+            DefAnonRegion
+        } else {
+            self.unresolved_lifetime_ref(lifetime_ref);
+            return;
+        };
+
+        debug!("lifetime_ref={:?} id={:?} resolved to {:?}",
+                lifetime_to_string(lifetime_ref),
+                lifetime_ref.id,
+                def);
+        self.named_region_map.insert(lifetime_ref.id, def);
     }
 
     fn visit_generics(&mut self, generics: &ast::Generics) {
@@ -478,6 +505,7 @@ impl<'a> LifetimeContext<'a> {
             scope: &wrap_scope,
             def_map: self.def_map,
             trait_ref_hack: self.trait_ref_hack,
+            anon_lifetime_name: self.anon_lifetime_name,
             labels_in_fn: self.labels_in_fn.clone(),
         };
         debug!("entering scope {:?}", this.scope);
@@ -525,7 +553,8 @@ impl<'a> LifetimeContext<'a> {
         });
     }
 
-    fn resolve_lifetime_ref(&mut self, lifetime_ref: &ast::Lifetime) {
+    fn resolve_lifetime_ref(&mut self, lifetime_ref: &ast::Lifetime)
+                            -> Result<DefRegion, ()> {
         // Walk up the scope chain, tracking the number of fn scopes
         // that we pass through, until we find a lifetime with the
         // given name or we run out of scopes. If we encounter a code
@@ -548,9 +577,7 @@ impl<'a> LifetimeContext<'a> {
                     match search_lifetimes(lifetimes, lifetime_ref) {
                         Some((index, lifetime_def)) => {
                             let decl_id = lifetime_def.id;
-                            let def = DefEarlyBoundRegion(space, index, decl_id);
-                            self.insert_lifetime(lifetime_ref, def);
-                            return;
+                            return Ok(DefEarlyBoundRegion(space, index, decl_id));
                         }
                         None => {
                             scope = s;
@@ -563,9 +590,7 @@ impl<'a> LifetimeContext<'a> {
                         Some((_index, lifetime_def)) => {
                             let decl_id = lifetime_def.id;
                             let debruijn = ty::DebruijnIndex::new(late_depth + 1);
-                            let def = DefLateBoundRegion(debruijn, decl_id);
-                            self.insert_lifetime(lifetime_ref, def);
-                            return;
+                            return Ok(DefLateBoundRegion(debruijn, decl_id));
                         }
 
                         None => {
@@ -577,13 +602,13 @@ impl<'a> LifetimeContext<'a> {
             }
         }
 
-        self.unresolved_lifetime_ref(lifetime_ref);
+        Err(())
     }
 
     fn resolve_free_lifetime_ref(&mut self,
                                  scope_data: region::DestructionScopeData,
                                  lifetime_ref: &ast::Lifetime,
-                                 scope: Scope) {
+                                 scope: Scope) -> Result<DefRegion, ()> {
         debug!("resolve_free_lifetime_ref \
                 scope_data: {:?} lifetime_ref: {:?} scope: {:?}",
                scope_data, lifetime_ref, scope);
@@ -621,13 +646,10 @@ impl<'a> LifetimeContext<'a> {
 
         match search_result {
             Some((_depth, lifetime)) => {
-                let def = DefFreeRegion(scope_data, lifetime.id);
-                self.insert_lifetime(lifetime_ref, def);
+                Ok(DefFreeRegion(scope_data, lifetime.id))
             }
 
-            None => {
-                self.unresolved_lifetime_ref(lifetime_ref);
-            }
+            None => Err(())
         }
 
     }
@@ -667,7 +689,7 @@ impl<'a> LifetimeContext<'a> {
             self.check_lifetime_def_for_shadowing(old_scope, &lifetime_i.lifetime);
 
             for bound in &lifetime_i.bounds {
-                self.resolve_lifetime_ref(bound);
+                self.visit_lifetime_ref(bound);
             }
         }
     }
@@ -712,22 +734,6 @@ impl<'a> LifetimeContext<'a> {
                 }
             }
         }
-    }
-
-    fn insert_lifetime(&mut self,
-                       lifetime_ref: &ast::Lifetime,
-                       def: DefRegion) {
-        if lifetime_ref.id == ast::DUMMY_NODE_ID {
-            self.sess.span_bug(lifetime_ref.span,
-                               "lifetime reference not renumbered, \
-                               probably a bug in syntax::fold");
-        }
-
-        debug!("lifetime_ref={:?} id={:?} resolved to {:?}",
-                lifetime_to_string(lifetime_ref),
-                lifetime_ref.id,
-                def);
-        self.named_region_map.insert(lifetime_ref.id, def);
     }
 }
 
