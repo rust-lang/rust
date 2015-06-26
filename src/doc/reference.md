@@ -1047,11 +1047,8 @@ This is a list of behavior not considered *unsafe* in Rust terms, but that may
 be undesired.
 
 * Deadlocks
-* Reading data from private fields (`std::repr`)
 * Leaks of memory and other resources
 * Exiting without calling destructors
-* Sending signals
-* Accessing/modifying the file system
 * Integer overflow
   - Overflow is considered "unexpected" behavior and is always user-error,
     unless the `wrapping` primitives are used. In non-optimized builds, the compiler
