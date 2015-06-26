@@ -863,8 +863,8 @@ method of RawVec.
 impl<T> RawVec<T> {
     fn new() -> Self {
         unsafe {
-            // -1 is usize::MAX. This branch should be stripped at compile time.
-            let cap = if mem::size_of::<T>() == 0 { -1 } else { 0 };
+            // !0 is usize::MAX. This branch should be stripped at compile time.
+            let cap = if mem::size_of::<T>() == 0 { !0 } else { 0 };
 
             // heap::EMPTY doubles as "unallocated" and "zero-sized allocation"
             RawVec { ptr: Unique::new(heap::EMPTY as *mut T), cap: cap }
@@ -1036,8 +1036,8 @@ struct RawVec<T> {
 impl<T> RawVec<T> {
     fn new() -> Self {
         unsafe {
-            // -1 is usize::MAX. This branch should be stripped at compile time.
-            let cap = if mem::size_of::<T>() == 0 { -1 } else { 0 };
+            // !0 is usize::MAX. This branch should be stripped at compile time.
+            let cap = if mem::size_of::<T>() == 0 { !0 } else { 0 };
 
             // heap::EMPTY doubles as "unallocated" and "zero-sized allocation"
             RawVec { ptr: Unique::new(heap::EMPTY as *mut T), cap: cap }
