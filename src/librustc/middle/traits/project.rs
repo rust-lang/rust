@@ -23,7 +23,7 @@ use super::util;
 
 use middle::infer;
 use middle::subst::Subst;
-use middle::ty::{self, AsPredicate, ReferencesError, RegionEscape,
+use middle::ty::{self, ToPredicate, ReferencesError, RegionEscape,
                  HasProjectionTypes, ToPolyTraitRef, Ty};
 use middle::ty_fold::{self, TypeFoldable, TypeFolder};
 use syntax::parse::token;
@@ -336,7 +336,7 @@ pub fn normalize_projection_type<'a,'b,'tcx>(
                 projection_ty: projection_ty,
                 ty: ty_var
             });
-            let obligation = Obligation::with_depth(cause, depth+1, projection.as_predicate());
+            let obligation = Obligation::with_depth(cause, depth+1, projection.to_predicate());
             Normalized {
                 value: ty_var,
                 obligations: vec!(obligation)
@@ -432,7 +432,7 @@ fn normalize_to_error<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
     let trait_ref = projection_ty.trait_ref.to_poly_trait_ref();
     let trait_obligation = Obligation { cause: cause,
                                         recursion_depth: depth,
-                                        predicate: trait_ref.as_predicate() };
+                                        predicate: trait_ref.to_predicate() };
     Normalized {
         value: selcx.tcx().types.err,
         obligations: vec!(trait_obligation)
@@ -646,7 +646,7 @@ fn assemble_candidates_from_object_type<'cx,'tcx>(
     };
     let projection_bounds = data.projection_bounds_with_self_ty(selcx.tcx(), object_ty);
     let env_predicates = projection_bounds.iter()
-                                          .map(|p| p.as_predicate())
+                                          .map(|p| p.to_predicate())
                                           .collect();
     let env_predicates = elaborate_predicates(selcx.tcx(), env_predicates);
     assemble_candidates_from_predicates(selcx, obligation, obligation_trait_ref,

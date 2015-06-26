@@ -72,7 +72,7 @@ use middle::free_region::FreeRegionMap;
 use middle::region;
 use middle::resolve_lifetime;
 use middle::subst::{Substs, FnSpace, ParamSpace, SelfSpace, TypeSpace, VecPerParamSpace};
-use middle::ty::{AsPredicate, ImplContainer, ImplOrTraitItemContainer, TraitContainer};
+use middle::ty::{ToPredicate, ImplContainer, ImplOrTraitItemContainer, TraitContainer};
 use middle::ty::{self, RegionEscape, ToPolyTraitRef, Ty, TypeScheme};
 use middle::ty_fold::{self, TypeFolder, TypeFoldable};
 use middle::infer;
@@ -1171,7 +1171,7 @@ fn ensure_super_predicates_step(ccx: &CrateCtxt,
         let trait_def = trait_def_of_item(ccx, item);
         let self_predicate = ty::GenericPredicates {
             predicates: VecPerParamSpace::new(vec![],
-                                              vec![trait_def.trait_ref.as_predicate()],
+                                              vec![trait_def.trait_ref.to_predicate()],
                                               vec![])
         };
         let scope = &(generics, &self_predicate);
@@ -1355,7 +1355,7 @@ fn convert_trait_predicates<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, it: &ast::Item)
 
     // Add in a predicate that `Self:Trait` (where `Trait` is the
     // current trait).  This is needed for builtin bounds.
-    let self_predicate = trait_def.trait_ref.to_poly_trait_ref().as_predicate();
+    let self_predicate = trait_def.trait_ref.to_poly_trait_ref().to_predicate();
     base_predicates.predicates.push(SelfSpace, self_predicate);
 
     // add in the explicit where-clauses
@@ -1767,7 +1767,7 @@ fn ty_generic_predicates<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
         for bound in &param.bounds {
             let bound_region = ast_region_to_region(ccx.tcx, bound);
             let outlives = ty::Binder(ty::OutlivesPredicate(region, bound_region));
-            result.predicates.push(space, outlives.as_predicate());
+            result.predicates.push(space, outlives.to_predicate());
         }
     }
 
@@ -1791,10 +1791,10 @@ fn ty_generic_predicates<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                                                     poly_trait_ref,
                                                     &mut projections);
 
-                            result.predicates.push(space, trait_ref.as_predicate());
+                            result.predicates.push(space, trait_ref.to_predicate());
 
                             for projection in &projections {
-                                result.predicates.push(space, projection.as_predicate());
+                                result.predicates.push(space, projection.to_predicate());
                             }
                         }
 
@@ -2028,8 +2028,8 @@ fn predicates_from_bound<'tcx>(astconv: &AstConv<'tcx>,
             let mut projections = Vec::new();
             let pred = conv_poly_trait_ref(astconv, param_ty, tr, &mut projections);
             projections.into_iter()
-                       .map(|p| p.as_predicate())
-                       .chain(Some(pred.as_predicate()))
+                       .map(|p| p.to_predicate())
+                       .chain(Some(pred.to_predicate()))
                        .collect()
         }
         ast::RegionTyParamBound(ref lifetime) => {
