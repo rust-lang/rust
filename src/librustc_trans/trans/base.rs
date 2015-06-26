@@ -832,9 +832,14 @@ pub fn store_ty<'blk, 'tcx>(cx: Block<'blk, 'tcx>, v: ValueRef, dst: ValueRef, t
         return;
     }
 
-    let store = Store(cx, from_arg_ty(cx, v, t), to_arg_ty_ptr(cx, dst, t));
-    unsafe {
-        llvm::LLVMSetAlignment(store, type_of::align_of(cx.ccx(), t));
+    if common::type_is_fat_ptr(cx.tcx(), t) {
+        Store(cx, ExtractValue(cx, v, abi::FAT_PTR_ADDR), expr::get_dataptr(cx, dst));
+        Store(cx, ExtractValue(cx, v, abi::FAT_PTR_EXTRA), expr::get_len(cx, dst));
+    } else {
+        let store = Store(cx, from_arg_ty(cx, v, t), to_arg_ty_ptr(cx, dst, t));
+        unsafe {
+            llvm::LLVMSetAlignment(store, type_of::align_of(cx.ccx(), t));
+        }
     }
 }
 
