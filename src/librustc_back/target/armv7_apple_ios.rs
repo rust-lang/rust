@@ -22,6 +22,7 @@ pub fn target() -> Target {
         options: TargetOptions {
             features: "+v7,+vfp3,+neon".to_string(),
             .. opts(Arch::Armv7)
-        }
+        },
+        cross: Default::default(),
     }
 }

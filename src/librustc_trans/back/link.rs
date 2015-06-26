@@ -1193,54 +1193,56 @@ fn link_rlib<'a>(sess: &'a Session,
             // For LTO purposes, the bytecode of this library is also inserted
             // into the archive.  If codegen_units > 1, we insert each of the
             // bitcode files.
-            for obj in objects {
-                // Note that we make sure that the bytecode filename in the
-                // archive is never exactly 16 bytes long by adding a 16 byte
-                // extension to it. This is to work around a bug in LLDB that
-                // would cause it to crash if the name of a file in an archive
-                // was exactly 16 bytes.
-                let bc_filename = obj.with_extension("bc");
-                let bc_deflated_filename = tmpdir.join({
-                    obj.with_extension("bytecode.deflate").file_name().unwrap()
-                });
+            if !sess.target.target.options.is_like_pnacl {
+                for obj in objects {
+                    // Note that we make sure that the bytecode filename in the
+                    // archive is never exactly 16 bytes long by adding a 16 byte
+                    // extension to it. This is to work around a bug in LLDB that
+                    // would cause it to crash if the name of a file in an archive
+                    // was exactly 16 bytes.
+                    let bc_filename = obj.with_extension("bc");
+                    let bc_deflated_filename = tmpdir.join({
+                        obj.with_extension("bytecode.deflate").file_name().unwrap()
+                    });
 
-                let mut bc_data = Vec::new();
-                match fs::File::open(&bc_filename).and_then(|mut f| {
-                    f.read_to_end(&mut bc_data)
-                }) {
-                    Ok(..) => {}
-                    Err(e) => sess.fatal(&format!("failed to read bytecode: {}",
-                                                 e))
-                }
-
-                let bc_data_deflated = flate::deflate_bytes(&bc_data[..]);
-
-                let mut bc_file_deflated = match fs::File::create(&bc_deflated_filename) {
-                    Ok(file) => file,
-                    Err(e) => {
-                        sess.fatal(&format!("failed to create compressed \
-                                             bytecode file: {}", e))
+                    let mut bc_data = Vec::new();
+                    match fs::File::open(&bc_filename).and_then(|mut f| {
+                        f.read_to_end(&mut bc_data)
+                    }) {
+                        Ok(..) => {}
+                        Err(e) => sess.fatal(&format!("failed to read bytecode: {}",
+                                                      e))
                     }
-                };
 
-                match write_rlib_bytecode_object_v1(&mut bc_file_deflated,
-                                                    &bc_data_deflated) {
-                    Ok(()) => {}
-                    Err(e) => {
-                        sess.fatal(&format!("failed to write compressed \
-                                             bytecode: {}", e));
-                    }
-                };
+                    let bc_data_deflated = flate::deflate_bytes(&bc_data[..]);
 
-                ab.add_file(&bc_deflated_filename);
+                    let mut bc_file_deflated = match fs::File::create(&bc_deflated_filename) {
+                        Ok(file) => file,
+                        Err(e) => {
+                            sess.fatal(&format!("failed to create compressed \
+                                                 bytecode file: {}", e))
+                        }
+                    };
 
-                // See the bottom of back::write::run_passes for an explanation
-                // of when we do and don't keep .0.bc files around.
-                let user_wants_numbered_bitcode =
+                    match write_rlib_bytecode_object_v1(&mut bc_file_deflated,
+                                                        &bc_data_deflated) {
+                        Ok(()) => {}
+                        Err(e) => {
+                            sess.fatal(&format!("failed to write compressed \
+                                                 bytecode: {}", e));
+                        }
+                    };
+
+                    ab.add_file(&bc_deflated_filename);
+
+                    // See the bottom of back::write::run_passes for an explanation
+                    // of when we do and don't keep .0.bc files around.
+                    let user_wants_numbered_bitcode =
                         sess.opts.output_types.contains(&OutputTypeBitcode) &&
                         sess.opts.cg.codegen_units > 1;
-                if !sess.opts.cg.save_temps && !user_wants_numbered_bitcode {
-                    remove(sess, &bc_filename);
+                    if !sess.opts.cg.save_temps && !user_wants_numbered_bitcode {
+                        remove(sess, &bc_filename);
+                    }
                 }
             }
 
@@ -1369,6 +1371,18 @@ fn link_natively(sess: &Session, trans: &CrateTranslation, dylib: bool,
     // The invocations of cc share some flags across platforms
     let (pname, mut cmd) = get_linker(sess);
     cmd.env("PATH", command_path(sess));
+
+    // The compiler's sysroot often has some bundled tools, so add it to the
+    // PATH for the child.
+    let mut new_path = sess.host_filesearch(PathKind::All)
+        .get_tools_search_paths();
+
+    match sess.target.cross_bin_path {
+        Some(ref path) => {
+            new_path.push(path.clone());
+        },
+        None => {},
+    }
 
     let root = sess.target_filesearch(PathKind::Native).get_lib_path();
     cmd.args(&sess.target.target.options.pre_link_args);

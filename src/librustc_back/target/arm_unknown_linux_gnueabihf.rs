@@ -23,6 +23,7 @@ pub fn target() -> Target {
         options: TargetOptions {
             features: "+v6,+vfp2".to_string(),
             .. base
-        }
+        },
+        cross: Default::default(),
     }
 }

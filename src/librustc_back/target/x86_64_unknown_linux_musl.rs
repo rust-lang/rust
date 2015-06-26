@@ -77,5 +77,6 @@ pub fn target() -> Target {
         target_os: "linux".to_string(),
         target_env: "musl".to_string(),
         options: base,
+        cross: Default::default(),
     }
 }

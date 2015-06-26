@@ -31,5 +31,6 @@ pub fn target() -> Target {
         target_os: "windows".to_string(),
         target_env: "gnu".to_string(),
         options: options,
+        cross: Default::default(),
     }
 }

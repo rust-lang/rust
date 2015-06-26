@@ -24,5 +24,6 @@ pub fn target() -> Target {
             features: "+v6".to_string(),
             .. base
         },
+        cross: Default::default(),
     }
 }

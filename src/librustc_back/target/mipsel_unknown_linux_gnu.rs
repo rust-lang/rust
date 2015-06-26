@@ -19,6 +19,7 @@ pub fn target() -> Target {
         target_os: "linux".to_string(),
         target_env: "gnu".to_string(),
 
-        options: super::linux_base::opts()
+        options: super::linux_base::opts(),
+        cross: Default::default(),
     }
 }

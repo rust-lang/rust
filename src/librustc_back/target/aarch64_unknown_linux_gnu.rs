@@ -20,5 +20,6 @@ pub fn target() -> Target {
         arch: "aarch64".to_string(),
         target_os: "linux".to_string(),
         options: base,
+        cross: Default::default(),
     }
 }

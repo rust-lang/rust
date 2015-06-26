@@ -24,5 +24,6 @@ pub fn target() -> Target {
         target_os: "macos".to_string(),
         target_env: "".to_string(),
         options: base,
+        cross: Default::default(),
     }
 }

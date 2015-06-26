@@ -23,5 +23,6 @@ pub fn target() -> Target {
         target_os: "dragonfly".to_string(),
         target_env: "".to_string(),
         options: base,
+        cross: Default::default(),
     }
 }
