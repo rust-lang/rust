@@ -88,16 +88,3 @@ pub fn rewrite_string<'a>(s: &str, fmt: &StringFormat<'a>) -> String {
 
     result
 }
-
-#[inline]
-// Checks if a appears before b in given string and, if so, returns the index of
-// a.
-// FIXME: could be more generic
-pub fn before<'x>(s: &'x str, a: &str, b: &str) -> Option<usize> {
-    s.find(a).and_then(|i| {
-        match s.find(b) {
-            Some(j) if j <= i => None,
-            _ => Some(i)
-        }
-    })
-}

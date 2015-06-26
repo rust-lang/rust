@@ -168,7 +168,8 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
                                                               multi_line_budget,
                                                               path,
                                                               path_list,
-                                                              item.vis);
+                                                              item.vis,
+                                                              item.span);
 
                         if let Some(new_str) = formatted {
                             self.format_missing_with_indent(item.span.lo);
@@ -186,9 +187,12 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
                         self.last_pos = item.span.hi;
                     }
                     ast::ViewPath_::ViewPathGlob(_) => {
+                        self.format_missing_with_indent(item.span.lo);
                         // FIXME convert to list?
                     }
-                    ast::ViewPath_::ViewPathSimple(_,_) => {}
+                    ast::ViewPath_::ViewPathSimple(_,_) => {
+                        self.format_missing_with_indent(item.span.lo);
+                    }
                 }
                 visit::walk_item(self, item);
             }

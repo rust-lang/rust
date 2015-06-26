@@ -14,7 +14,6 @@ use syntax::codemap::{self, CodeMap, BytePos};
 
 use utils::{round_up_to_power_of_two, make_indent};
 use comment::{FindUncommented, rewrite_comment, find_comment_end};
-use string::before;
 
 #[derive(Eq, PartialEq, Debug, Copy, Clone)]
 pub enum ListTactic {
@@ -66,6 +65,10 @@ impl ListItem {
         self.post_comment.as_ref().map(|s| s.contains('\n')).unwrap_or(false)
     }
 
+    pub fn has_line_pre_comment(&self) -> bool {
+        self.pre_comment.as_ref().map_or(false, |comment| comment.starts_with("//"))
+    }
+
     pub fn from_str<S: Into<String>>(s: S) -> ListItem {
         ListItem {
             pre_comment: None,
@@ -115,7 +118,7 @@ pub fn write_list<'b>(items: &[ListItem], formatting: &ListFormatting<'b>) -> St
     }
 
     // Switch to vertical mode if we find non-block comments.
-    if items.iter().any(has_line_pre_comment) {
+    if items.iter().any(ListItem::has_line_pre_comment) {
         tactic = ListTactic::Vertical;
     }
 
@@ -223,13 +226,6 @@ pub fn write_list<'b>(items: &[ListItem], formatting: &ListFormatting<'b>) -> St
     result
 }
 
-fn has_line_pre_comment(item: &ListItem) -> bool {
-    match item.pre_comment {
-        Some(ref comment) => comment.starts_with("//"),
-        None => false
-    }
-}
-
 // Turns a list into a vector of items with associated comments.
 // TODO: we probably do not want to take a terminator any more. Instead, we
 // should demand a proper span end.
@@ -250,6 +246,8 @@ pub fn itemize_list<T, I, F1, F2, F3>(codemap: &CodeMap,
           F3: Fn(&T) -> String
 {
     let mut result = prefix;
+    result.reserve(it.size_hint().0);
+
     let mut new_it = it.peekable();
     let white_space: &[_] = &[' ', '\t'];
 
@@ -276,14 +274,27 @@ pub fn itemize_list<T, I, F1, F2, F3>(codemap: &CodeMap,
 
         let comment_end = match new_it.peek() {
             Some(..) => {
-                if let Some(start) = before(&post_snippet, "/*", "\n") {
+                let block_open_index = post_snippet.find("/*");
+                let newline_index = post_snippet.find('\n');
+                let separator_index = post_snippet.find_uncommented(separator).unwrap();
+
+                match (block_open_index, newline_index) {
+                    // Separator before comment, with the next item on same line.
+                    // Comment belongs to next item.
+                    (Some(i), None) if i > separator_index => { separator_index + separator.len() }
+                    // Block-style post-comment before the separator.
+                    (Some(i), None) => {
+                        cmp::max(find_comment_end(&post_snippet[i..]).unwrap() + i,
+                                 separator_index + separator.len())
+                    }
                     // Block-style post-comment. Either before or after the separator.
-                    cmp::max(find_comment_end(&post_snippet[start..]).unwrap() + start,
-                             post_snippet.find_uncommented(separator).unwrap() + separator.len())
-                } else if let Some(idx) = post_snippet.find('\n') {
-                    idx + 1
-                } else {
-                    post_snippet.len()
+                    (Some(i), Some(j)) if i < j => {
+                        cmp::max(find_comment_end(&post_snippet[i..]).unwrap() + i,
+                                 separator_index + separator.len())
+                    }
+                    // Potential *single* line comment.
+                    (_, Some(j)) => { j + 1 }
+                    _ => post_snippet.len()
                 }
             },
             None => {
@@ -292,6 +303,7 @@ pub fn itemize_list<T, I, F1, F2, F3>(codemap: &CodeMap,
             }
         };
 
+        // Cleanup post-comment: strip separators and whitespace.
         prev_span_end = get_hi(&item) + BytePos(comment_end as u32);
         let mut post_snippet = post_snippet[..comment_end].trim();
 

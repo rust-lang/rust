@@ -46,9 +46,16 @@ pub fn rewrite_comment(orig: &str, block_style: bool, width: usize, offset: usiz
                 line = &line[..(line.len() - 2)];
             }
 
-            line.trim_right_matches(' ')
+            line.trim_right()
         })
         .map(left_trim_comment_line)
+        .map(|line| {
+            if line_breaks == 0 {
+                line.trim_left()
+            } else {
+                line
+            }
+        })
         .fold((true, opener.to_owned()), |(first, mut acc), line| {
             if !first {
                 acc.push('\n');
@@ -98,6 +105,8 @@ fn format_comments() {
                             * men\n                                                                      \
                             * t */";
     assert_eq!(expected_output, rewrite_comment(input, true, 9, 69));
+
+    assert_eq!("/* trimmed */", rewrite_comment("/*   trimmed    */", true, 100, 100));
 }
 
 
@@ -156,6 +165,7 @@ fn test_find_uncommented() {
     check("/*sup yo? \n sup*/ sup", "p", Some(20));
     check("hel/*lohello*/lo", "hello", None);
     check("acb", "ab", None);
+    check(",/*A*/ ", ",", Some(0));
 }
 
 // Returns the first byte position after the first comment. The given string

@@ -11,6 +11,7 @@
 #![feature(rustc_private)]
 #![feature(str_escape)]
 #![feature(str_char)]
+#![feature(slice_extras)]
 
 // TODO we're going to allocate a whole bunch of temp Strings, is it worth
 // keeping some scratch mem for this and running our own StrPool?
