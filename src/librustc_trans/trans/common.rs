@@ -185,28 +185,9 @@ fn type_is_newtype_immediate<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx
     }
 }
 
-// Does this type need to be passed as a ptr for PNaCl?
-pub fn pnacl_type_needs_indirection<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
-    use llvm::{Struct, Array};
-    ccx.sess().target.target.options.is_like_pnacl && {
-        match type_of::arg_type_of(ccx, ty).kind() {
-            Struct | Array => true,
-            _ => false,
-        }
-    }
-}
-#[inline]
 pub fn type_is_immediate<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
-    type_is_immediate_pnacl_check(ccx, ty, true)
-}
-pub fn type_is_immediate_pnacl_check<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>,
-                                               check: bool) -> bool {
     use trans::machine::llsize_of_alloc;
     use trans::type_of::sizing_type_of;
-
-    if check && pnacl_type_needs_indirection(ccx, ty) {
-        return false;
-    }
 
     let tcx = ccx.tcx();
     let simple = ty.is_scalar() ||

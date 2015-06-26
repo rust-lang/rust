@@ -41,12 +41,7 @@ pub fn arg_is_indirect<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
 pub fn return_uses_outptr<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                     ty: Ty<'tcx>) -> bool {
-    if ccx.sess().target.target.options.is_like_pnacl &&
-        return_type_is_void(ccx, ty) {
-        false
-    } else {
-        arg_is_indirect(ccx, ty)
-    }
+    arg_is_indirect(ccx, ty)
 }
 
 pub fn type_of_explicit_arg<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
@@ -260,15 +255,12 @@ pub fn foreign_arg_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -
 pub fn arg_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
     if t.is_bool() {
         Type::i1(cx)
-    } else if type_is_immediate_pnacl_check(cx, t, false) && type_of(cx, t).is_aggregate() {
+    } else if type_is_immediate(cx, t) && type_of(cx, t).is_aggregate() {
         // We want to pass small aggregates as immediate values, but using an aggregate LLVM type
         // for this leads to bad optimizations, so its arg type is an appropriately sized integer
         match machine::llsize_of_alloc(cx, sizing_type_of(cx, t)) {
-            n if n == 0 || (cx.sess().target.target.options.is_like_pnacl && n > 8) =>
-                type_of(cx, t),
-            n if !cx.sess().target.target.options.is_like_pnacl || n <= 8 =>
-                Type::ix(cx, n * 8),
-            _ => unreachable!(),
+            0 => type_of(cx, t),
+            n => Type::ix(cx, n * 8),
         }
     } else {
         type_of(cx, t)
