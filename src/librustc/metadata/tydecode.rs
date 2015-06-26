@@ -21,7 +21,7 @@ pub use self::DefIdSource::*;
 use middle::region;
 use middle::subst;
 use middle::subst::VecPerParamSpace;
-use middle::ty::{self, AsPredicate, Ty};
+use middle::ty::{self, ToPredicate, Ty};
 
 use std::str;
 use syntax::abi;
@@ -775,14 +775,14 @@ fn parse_predicate_<'a,'tcx, F>(st: &mut PState<'a, 'tcx>,
     F: FnMut(DefIdSource, ast::DefId) -> ast::DefId,
 {
     match next(st) {
-        't' => ty::Binder(parse_trait_ref_(st, conv)).as_predicate(),
+        't' => ty::Binder(parse_trait_ref_(st, conv)).to_predicate(),
         'e' => ty::Binder(ty::EquatePredicate(parse_ty_(st, conv),
-                                              parse_ty_(st, conv))).as_predicate(),
+                                              parse_ty_(st, conv))).to_predicate(),
         'r' => ty::Binder(ty::OutlivesPredicate(parse_region_(st, conv),
-                                                parse_region_(st, conv))).as_predicate(),
+                                                parse_region_(st, conv))).to_predicate(),
         'o' => ty::Binder(ty::OutlivesPredicate(parse_ty_(st, conv),
-                                                parse_region_(st, conv))).as_predicate(),
-        'p' => ty::Binder(parse_projection_predicate_(st, conv)).as_predicate(),
+                                                parse_region_(st, conv))).to_predicate(),
+        'p' => ty::Binder(parse_projection_predicate_(st, conv)).to_predicate(),
         c => panic!("Encountered invalid character in metadata: {}", c)
     }
 }
