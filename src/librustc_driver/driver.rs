@@ -783,16 +783,10 @@ pub fn phase_6_link_output(sess: &Session,
                            trans: &trans::CrateTranslation,
                            outputs: &OutputFilenames) {
     time(sess.time_passes(), "linking", (), |_| {
-        if !sess.target.target.options.is_like_pnacl {
-            link::link_binary(sess,
-                              trans,
-                              outputs,
-                              &trans.link.crate_name);
-        } else {
-            link::link_outputs_for_pnacl(&sess,
-                                         &trans,
-                                         &outputs);
-        }
+        link::link_binary(sess,
+                          trans,
+                          outputs,
+                          &trans.link.crate_name);
     });
 }
 

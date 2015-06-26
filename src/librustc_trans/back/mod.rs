@@ -8,10 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use session::Session;
-
-use std::path::{PathBuf, Path};
-
 pub use rustc_back::abi;
 pub use rustc_back::rpath;
 pub use rustc_back::svh;
