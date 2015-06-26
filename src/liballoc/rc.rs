@@ -162,7 +162,7 @@ use core::fmt;
 use core::hash::{Hasher, Hash};
 use core::intrinsics::{assume, drop_in_place};
 use core::marker::{self, Unsize};
-use core::mem::{self, min_align_of, size_of, min_align_of_val, size_of_val, forget};
+use core::mem::{self, align_of, size_of, align_of_val, size_of_val, forget};
 use core::nonzero::NonZero;
 use core::ops::{CoerceUnsized, Deref};
 use core::ptr;
@@ -246,7 +246,7 @@ impl<T> Rc<T> {
                 // destruct the box and skip our Drop
                 // we can ignore the refcounts because we know we're unique
                 deallocate(*rc._ptr as *mut u8, size_of::<RcBox<T>>(),
-                            min_align_of::<RcBox<T>>());
+                            align_of::<RcBox<T>>());
                 forget(rc);
                 Ok(val)
             }
@@ -496,7 +496,7 @@ impl<T: ?Sized> Drop for Rc<T> {
                     if self.weak() == 0 {
                         deallocate(ptr as *mut u8,
                                    size_of_val(&*ptr),
-                                   min_align_of_val(&*ptr))
+                                   align_of_val(&*ptr))
                     }
                 }
             }
@@ -805,7 +805,7 @@ impl<T: ?Sized> Drop for Weak<T> {
                 // the strong pointers have disappeared.
                 if self.weak() == 0 {
                     deallocate(ptr as *mut u8, size_of_val(&*ptr),
-                               min_align_of_val(&*ptr))
+                               align_of_val(&*ptr))
                 }
             }
         }
