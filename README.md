@@ -92,7 +92,6 @@ quite permisive with respect to other dubious operations. Rust considers it
 * Deadlock
 * Leak memory
 * Fail to call destructors
-* Access private fields
 * Overflow integers
 * Delete the production database
 
