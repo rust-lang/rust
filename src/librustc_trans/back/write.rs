@@ -214,13 +214,7 @@ pub fn create_target_machine(sess: &Session) -> TargetMachineRef {
         }
     };
 
-    let triple = if sess.target.target.options.is_like_pnacl {
-        // Pretend that we are ARM for name mangling and assembly conventions.
-        // https://code.google.com/p/nativeclient/issues/detail?id=2554
-        "armv7a-none-nacl-gnueabi"
-    } else {
-        &sess.target.target.llvm_target[..]
-    };
+    let triple = &sess.target.target.llvm_target[..];
 
     let tm = unsafe {
         let triple = CString::new(triple.as_bytes()).unwrap();
