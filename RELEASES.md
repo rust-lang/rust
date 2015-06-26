@@ -6,7 +6,7 @@ Version 1.1.0 (June 2015)
 Highlights
 ----------
 
-* The [`std::fs` module has been expanded][fs-expand] to expand the set of
+* The [`std::fs` module has been expanded][fs] to expand the set of
   functionality exposed:
   * `DirEntry` now supports optimizations like `file_type` and `metadata` which
     don't incur a syscall on some platforms.
