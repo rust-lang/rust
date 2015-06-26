@@ -116,7 +116,7 @@ impl<T : ?Sized> Box<T> {
     /// of `T` and releases memory. Since the way `Box` allocates and
     /// releases memory is unspecified, the only valid pointer to pass
     /// to this function is the one taken from another `Box` with
-    /// `boxed::into_raw` function.
+    /// `Box::into_raw` function.
     ///
     /// Function is unsafe, because improper use of this function may
     /// lead to memory problems like double-free, for example if the
@@ -140,10 +140,8 @@ impl<T : ?Sized> Box<T> {
     /// # Examples
     /// ```
     /// # #![feature(box_raw)]
-    /// use std::boxed;
-    ///
     /// let seventeen = Box::new(17u32);
-    /// let raw = boxed::into_raw(seventeen);
+    /// let raw = Box::into_raw(seventeen);
     /// let boxed_again = unsafe { Box::from_raw(raw) };
     /// ```
     #[unstable(feature = "box_raw", reason = "may be renamed")]
