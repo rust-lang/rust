@@ -186,7 +186,7 @@ impl<'a,'tcx> AdjustBorrowKind<'a,'tcx> {
 
         debug!("analyzing closure `{}` with fn body id `{}`", id, body.id);
 
-        let mut euv = euv::ExprUseVisitor::new(self, self.fcx);
+        let mut euv = euv::ExprUseVisitor::new(self, self.fcx.infcx());
         euv.walk_fn(decl, body);
 
         // If we had not yet settled on a closure kind for this closure,

@@ -25,7 +25,7 @@ pub use self::region_inference::GenericKind;
 use middle::free_region::FreeRegionMap;
 use middle::mem_categorization as mc;
 use middle::mem_categorization::McResult;
-use middle::region::{self, CodeExtent};
+use middle::region::CodeExtent;
 use middle::subst;
 use middle::subst::Substs;
 use middle::subst::Subst;
@@ -40,7 +40,7 @@ use std::fmt;
 use syntax::ast;
 use syntax::codemap;
 use syntax::codemap::Span;
-use util::nodemap::{DefIdMap, FnvHashMap, NodeMap};
+use util::nodemap::{FnvHashMap, NodeMap};
 
 use self::combine::CombineFields;
 use self::region_inference::{RegionVarBindings, RegionSnapshot};
@@ -524,7 +524,21 @@ impl<'a, 'tcx> ty::ClosureTyper<'tcx> for InferCtxt<'a, 'tcx> {
                     substs: &subst::Substs<'tcx>)
                     -> ty::ClosureTy<'tcx>
     {
-        self.tables.borrow().closure_tys.get(&def_id).unwrap().subst(self.tcx, substs)
+        // the substitutions in `substs` are already monomorphized,
+        // but we still must normalize associated types
+        let closure_ty = self.tables
+                             .borrow()
+                             .closure_tys
+                             .get(&def_id)
+                             .unwrap()
+                             .subst(self.tcx, substs);
+
+        if self.normalize {
+            // NOTE: this flag is *always* set to false currently
+            panic!("issue XXXX: must finish fulfill refactor") // normalize_associated_type(self.param_env.tcx, &closure_ty)
+        } else {
+            closure_ty
+        }
     }
 
     fn closure_upvars(&self,
@@ -532,7 +546,16 @@ impl<'a, 'tcx> ty::ClosureTyper<'tcx> for InferCtxt<'a, 'tcx> {
                       substs: &Substs<'tcx>)
                       -> Option<Vec<ty::ClosureUpvar<'tcx>>>
     {
-        ty::ctxt::closure_upvars(self, def_id, substs)
+        // the substitutions in `substs` are already monomorphized,
+        // but we still must normalize associated types
+        let result = ty::ctxt::closure_upvars(self, def_id, substs)
+
+        if self.normalize {
+            // NOTE: this flag is *always* set to false currently
+            panic!("issue XXXX: must finish fulfill refactor") // monomorphize::normalize_associated_type(self.param_env.tcx, &result)
+        } else {
+            result
+        }
     }
 }
 
@@ -1073,6 +1096,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         value.fold_with(&mut r)
     }
 
+    /// Resolves all type variables in `t` and then, if any were left
+    /// unresolved, substitutes an error type. This is used after the
+    /// main checking when doing a second pass before writeback. The
+    /// justification is that writeback will produce an error for
+    /// these unconstrained type variables.
     fn resolve_type_vars_or_error(&self, t: &Ty<'tcx>) -> mc::McResult<Ty<'tcx>> {
         let ty = self.resolve_type_vars_if_possible(t);
         if ty.has_infer_types() || ty.references_error() { Err(()) } else { Ok(ty) }
