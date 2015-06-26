@@ -126,6 +126,14 @@ impl Svh {
     }
 }
 
+impl Hash for Svh {
+    fn hash<H>(&self, state: &mut H) where H: Hasher {
+        // We have to hash a &str since that's what the old implementations did, and otherwise we
+        // break the abi
+        &self.to_string()[..].hash(state);
+    }
+}
+
 impl fmt::Display for Svh {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad(&self.as_string())
