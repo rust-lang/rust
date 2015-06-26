@@ -497,12 +497,11 @@ pub fn symlink(src: &Path, dst: &Path) -> io::Result<()> {
 }
 
 pub fn symlink_inner(src: &Path, dst: &Path, dir: bool) -> io::Result<()> {
-    use sys::c::compat::kernel32::CreateSymbolicLinkW;
     let src = to_utf16(src);
     let dst = to_utf16(dst);
     let flags = if dir { c::SYMBOLIC_LINK_FLAG_DIRECTORY } else { 0 };
     try!(cvt(unsafe {
-        CreateSymbolicLinkW(dst.as_ptr(), src.as_ptr(), flags) as libc::BOOL
+        c::CreateSymbolicLinkW(dst.as_ptr(), src.as_ptr(), flags) as libc::BOOL
     }));
     Ok(())
 }
@@ -565,14 +564,13 @@ pub fn utimes(p: &Path, atime: u64, mtime: u64) -> io::Result<()> {
 }
 
 pub fn canonicalize(p: &Path) -> io::Result<PathBuf> {
-    use sys::c::compat::kernel32::GetFinalPathNameByHandleW;
 
     let mut opts = OpenOptions::new();
     opts.read(true);
     let f = try!(File::open(p, &opts));
     super::fill_utf16_buf(|buf, sz| unsafe {
-        GetFinalPathNameByHandleW(f.handle.raw(), buf, sz,
-                                  libc::VOLUME_NAME_DOS)
+        c::GetFinalPathNameByHandleW(f.handle.raw(), buf, sz,
+                                     libc::VOLUME_NAME_DOS)
     }, |buf| {
         PathBuf::from(OsString::from_wide(buf))
     })
