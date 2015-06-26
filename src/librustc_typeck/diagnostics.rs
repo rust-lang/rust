@@ -959,6 +959,20 @@ fn main() {
 ```
 "##,
 
+E0091: r##"
+You gave an unnecessary type parameter. Erroneous code example:
+
+```
+type Foo<T> = u32; // error: type parameter `T` is unused
+```
+
+Please check you didn't write to many type parameter. Example:
+
+```
+type Foo = u32; // ok!
+```
+"##,
+
 E0106: r##"
 This error indicates that a lifetime is missing from a type. If it is an error
 inside a function signature, the problem may be with failing to adhere to the
@@ -1587,7 +1601,6 @@ register_diagnostics! {
     E0086,
     E0088,
     E0090,
-    E0091,
     E0092,
     E0093,
     E0094,
