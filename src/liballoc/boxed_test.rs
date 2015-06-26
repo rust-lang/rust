@@ -76,9 +76,9 @@ fn deref() {
 
 #[test]
 fn raw_sized() {
+    let x = Box::new(17);
+    let p = Box::into_raw(x);
     unsafe {
-        let x = Box::new(17);
-        let p = boxed::into_raw(x);
         assert_eq!(17, *p);
         *p = 19;
         let y = Box::from_raw(p);
@@ -105,9 +105,9 @@ fn raw_trait() {
         }
     }
 
+    let x: Box<Foo> = Box::new(Bar(17));
+    let p = Box::into_raw(x);
     unsafe {
-        let x: Box<Foo> = Box::new(Bar(17));
-        let p = boxed::into_raw(x);
         assert_eq!(17, (*p).get());
         (*p).set(19);
         let y: Box<Foo> = Box::from_raw(p);
