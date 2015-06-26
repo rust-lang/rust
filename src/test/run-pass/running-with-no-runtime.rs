@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(catch_panic, start)]
+#![feature(start)]
 
 use std::ffi::CStr;
 use std::process::{Command, Output};

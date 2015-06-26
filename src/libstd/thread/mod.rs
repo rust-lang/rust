@@ -456,7 +456,6 @@ pub fn panicking() -> bool {
 /// # Examples
 ///
 /// ```
-/// # #![feature(catch_panic)]
 /// use std::thread;
 ///
 /// let result = thread::catch_panic(|| {
@@ -469,7 +468,7 @@ pub fn panicking() -> bool {
 /// });
 /// assert!(result.is_err());
 /// ```
-#[unstable(feature = "catch_panic", reason = "recent API addition")]
+#[stable(feature = "catch_panic", since = "1.3.0")]
 pub fn catch_panic<F, R>(f: F) -> Result<R>
     where F: FnOnce() -> R + Send + 'static
 {
