@@ -159,7 +159,7 @@ pub struct Inherited<'a, 'tcx: 'a> {
     fn_sig_map: RefCell<NodeMap<Vec<Ty<'tcx>>>>,
 
     // Tracks trait obligations incurred during this function body.
-    fulfillment_cx: RefCell<traits::FulfillmentContext<'tcx>>,
+    // fulfillment_cx: RefCell<traits::FulfillmentContext<'tcx>>,
 
     // When we process a call like `c()` where `c` is a closure type,
     // we may not have decided yet whether `c` is a `Fn`, `FnMut`, or
@@ -295,11 +295,11 @@ impl<'a, 'tcx> Inherited<'a, 'tcx> {
            -> Inherited<'a, 'tcx> {
 
         Inherited {
-            infcx: infer::new_infer_ctxt(tcx, tables, Some(param_env)),
+            // I'm probably screwed here ... more boolean prop ... 
+            infcx: infer::new_infer_ctxt(tcx, tables, Some(param_env), false),
             locals: RefCell::new(NodeMap()),
             tables: tables,
             fn_sig_map: RefCell::new(NodeMap()),
-            fulfillment_cx: RefCell::new(traits::FulfillmentContext::new(true)),
             deferred_call_resolutions: RefCell::new(DefIdMap()),
             deferred_cast_checks: RefCell::new(Vec::new()),
         }
@@ -313,7 +313,7 @@ impl<'a, 'tcx> Inherited<'a, 'tcx> {
                                         -> T
         where T : TypeFoldable<'tcx> + HasTypeFlags
     {
-        let mut fulfillment_cx = self.fulfillment_cx.borrow_mut();
+        let mut fulfillment_cx = self.infcx.fulfillment_cx.borrow_mut();
         assoc::normalize_associated_types_in(&self.infcx,
                                              typer,
                                              &mut *fulfillment_cx, span,
@@ -1389,7 +1389,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let cause = traits::ObligationCause::new(span,
                                                  self.body_id,
                                                  traits::ObligationCauseCode::MiscObligation);
-        self.inh.fulfillment_cx
+        self.inh
+            .infcx
+            .fulfillment_cx
             .borrow_mut()
             .normalize_projection_type(self.infcx(),
                                        self.infcx(),
@@ -1513,7 +1515,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                   builtin_bound: ty::BuiltinBound,
                                   cause: traits::ObligationCause<'tcx>)
     {
-        self.inh.fulfillment_cx.borrow_mut()
+        self.inh.infcx.fulfillment_cx.borrow_mut()
             .register_builtin_bound(self.infcx(), ty, builtin_bound, cause);
     }
 
@@ -1522,7 +1524,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     {
         debug!("register_predicate({:?})",
                obligation);
-        self.inh.fulfillment_cx
+        self.inh.infcx.fulfillment_cx
             .borrow_mut()
             .register_predicate_obligation(self.infcx(), obligation);
     }
@@ -1558,6 +1560,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let raw_ty = self.infcx().shallow_resolve(raw_ty);
         let resolve_ty = |ty: Ty<'tcx>| self.infcx().resolve_type_vars_if_possible(&ty);
         raw_ty.adjust(self.tcx(), expr.span, expr.id, adjustment, |method_call| {
+                                                   .method_map
             self.inh.tables.borrow().method_map.get(&method_call)
                                         .map(|method| resolve_ty(method.ty))
         })
@@ -1648,7 +1651,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                       region: ty::Region,
                                       cause: traits::ObligationCause<'tcx>)
     {
-        let mut fulfillment_cx = self.inh.fulfillment_cx.borrow_mut();
+        let mut fulfillment_cx = self.inh.infcx.fulfillment_cx.borrow_mut();
         fulfillment_cx.register_region_obligation(ty, region, cause);
     }
 
@@ -1747,7 +1750,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         assert!(self.inh.deferred_call_resolutions.borrow().is_empty());
 
         self.select_all_obligations_and_apply_defaults();
-        let mut fulfillment_cx = self.inh.fulfillment_cx.borrow_mut();
+        let mut fulfillment_cx = self.inh.infcx.fulfillment_cx.borrow_mut();
         match fulfillment_cx.select_all_or_error(self.infcx(), self.infcx()) {
             Ok(()) => { }
             Err(errors) => { report_fulfillment_errors(self.infcx(), &errors); }
@@ -1757,7 +1760,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Select as many obligations as we can at present.
     fn select_obligations_where_possible(&self) {
         match
-            self.inh.fulfillment_cx
+            self.inh.infcx.fulfillment_cx
             .borrow_mut()
             .select_where_possible(self.infcx(), self.infcx())
         {
@@ -1772,7 +1775,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// work.
     fn select_new_obligations(&self) {
         match
-            self.inh.fulfillment_cx
+            self.inh.infcx.fulfillment_cx
             .borrow_mut()
             .select_new_obligations(self.infcx(), self.infcx())
         {

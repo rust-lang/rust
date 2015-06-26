@@ -93,7 +93,7 @@ fn ensure_drop_params_and_item_params_correspond<'tcx>(
                          ty: named_type } =
         tcx.lookup_item_type(self_type_did);
 
-    let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, None);
+    let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, None, false);
 
     infcx.commit_if_ok(|snapshot| {
         let (named_type_to_skolem, skol_map) =

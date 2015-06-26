@@ -87,6 +87,8 @@ pub struct InferCtxt<'a, 'tcx: 'a> {
 
     pub parameter_environment: ty::ParameterEnvironment<'a, 'tcx>,
 
+    pub fulfillment_cx: RefCell<traits::FulfillmentContext<'tcx>>,
+
     // This is a temporary field used for toggling on normalization in the inference context,
     // as we move towards the approach described here:
     // https://internals.rust-lang.org/t/flattening-the-contexts-for-fun-and-profit/2293
@@ -327,9 +329,16 @@ pub fn fixup_err_to_string(f: fixup_err) -> String {
     }
 }
 
+/// errors_will_be_reported is required to proxy to the fulfillment context
+/// FIXME -- a better option would be to hold back on modifying
+/// the global cache until we know that all dependent obligations
+/// are also satisfied. In that case, we could actually remove
+/// this boolean flag, and we'd also avoid the problem of squelching
+/// duplicate errors that occur across fns.
 pub fn new_infer_ctxt<'a, 'tcx>(tcx: &'a ty::ctxt<'tcx>,
                                 tables: &'a RefCell<ty::Tables<'tcx>>,
-                                param_env: Option<ty::ParameterEnvironment<'a, 'tcx>>)
+                                param_env: Option<ty::ParameterEnvironment<'a, 'tcx>>,
+                                errors_will_be_reported: bool)
                                 -> InferCtxt<'a, 'tcx> {
     InferCtxt {
         tcx: tcx,
@@ -339,6 +348,7 @@ pub fn new_infer_ctxt<'a, 'tcx>(tcx: &'a ty::ctxt<'tcx>,
         float_unification_table: RefCell::new(UnificationTable::new()),
         region_vars: RegionVarBindings::new(tcx),
         parameter_environment: param_env.unwrap_or(tcx.empty_parameter_environment()),
+        fulfillment_cx: RefCell::new(traits::FulfillmentContext::new(errors_will_be_reported)),
         normalize: false,
         err_count_on_creation: tcx.sess.err_count()
     }
@@ -1009,6 +1019,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         raw_ty.adjust(self.tcx,
                       expr.span,
                       expr.id,
+                      raw_ty,
                       adjustment,
                       |method_call| self.tables
                                         .borrow()
