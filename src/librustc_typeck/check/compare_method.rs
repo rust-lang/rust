@@ -240,7 +240,7 @@ pub fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
     let trait_param_env = impl_param_env.with_caller_bounds(hybrid_preds.into_vec());
     let trait_param_env = traits::normalize_param_env_or_error(trait_param_env,
                                                                normalize_cause.clone());
-    // TODO (@jroesch) this seems ugly, but is a temporary change
+    // FIXME(@jroesch) this seems ugly, but is a temporary change
     infcx.parameter_environment = trait_param_env;
 
     debug!("compare_impl_method: trait_bounds={:?}",
@@ -362,7 +362,8 @@ pub fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
     // anyway, so it shouldn't be needed there either. Anyway, we can
     // always add more relations later (it's backwards compat).
     let mut free_regions = FreeRegionMap::new();
-    free_regions.relate_free_regions_from_predicates(tcx, &infcx.parameter_environment.caller_bounds);
+    free_regions.relate_free_regions_from_predicates(tcx,
+                                                     &infcx.parameter_environment.caller_bounds);
 
     infcx.resolve_regions_and_report_errors(&free_regions, impl_m_body_id);
 

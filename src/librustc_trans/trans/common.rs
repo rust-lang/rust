@@ -649,7 +649,10 @@ impl<'blk, 'tcx> mc::Typer<'tcx> for BlockS<'blk, 'tcx> {
     }
 
     fn adjustments<'a>(&'a self) -> Ref<NodeMap<ty::AutoAdjustment<'tcx>>> {
-        fn project_adjustments<'a, 'tcx>(tables: &'a ty::Tables<'tcx>) -> &'a NodeMap<ty::AutoAdjustment<'tcx>> {
+        // FIXME (@jroesch): this is becuase we currently have a HR inference problem
+        // in the snapshot that causes this code not to work.
+        fn project_adjustments<'a, 'tcx>(tables: &'a ty::Tables<'tcx>) ->
+            &'a NodeMap<ty::AutoAdjustment<'tcx>> {
             &tables.adjustments
         }
 

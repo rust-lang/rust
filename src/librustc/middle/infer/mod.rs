@@ -87,6 +87,11 @@ pub struct InferCtxt<'a, 'tcx: 'a> {
 
     pub parameter_environment: ty::ParameterEnvironment<'a, 'tcx>,
 
+    // This is a temporary field used for toggling on normalization in the inference context,
+    // as we move towards the approach described here:
+    // https://internals.rust-lang.org/t/flattening-the-contexts-for-fun-and-profit/2293
+    // At a point sometime in the future normalization will be done by the typing context
+    // directly.
     normalize: bool,
 
     err_count_on_creation: usize,
@@ -334,7 +339,7 @@ pub fn new_infer_ctxt<'a, 'tcx>(tcx: &'a ty::ctxt<'tcx>,
         float_unification_table: RefCell::new(UnificationTable::new()),
         region_vars: RegionVarBindings::new(tcx),
         parameter_environment: param_env.unwrap_or(tcx.empty_parameter_environment()),
-        normalize: true,
+        normalize: false,
         err_count_on_creation: tcx.sess.err_count()
     }
 }
@@ -487,7 +492,8 @@ impl<'a, 'tcx> mc::Typer<'tcx> for InferCtxt<'a, 'tcx> {
     }
 
     fn adjustments(&self) -> Ref<NodeMap<ty::AutoAdjustment<'tcx>>> {
-        fn project_adjustments<'a, 'tcx>(tables: &'a ty::Tables<'tcx>) -> &'a NodeMap<ty::AutoAdjustment<'tcx>> {
+        fn project_adjustments<'a, 'tcx>(tables: &'a ty::Tables<'tcx>)
+                                        -> &'a NodeMap<ty::AutoAdjustment<'tcx>> {
             &tables.adjustments
         }
 
@@ -524,8 +530,7 @@ impl<'a, 'tcx> ty::ClosureTyper<'tcx> for InferCtxt<'a, 'tcx> {
                     substs: &subst::Substs<'tcx>)
                     -> ty::ClosureTy<'tcx>
     {
-        // the substitutions in `substs` are already monomorphized,
-        // but we still must normalize associated types
+
         let closure_ty = self.tables
                              .borrow()
                              .closure_tys
@@ -534,8 +539,15 @@ impl<'a, 'tcx> ty::ClosureTyper<'tcx> for InferCtxt<'a, 'tcx> {
                              .subst(self.tcx, substs);
 
         if self.normalize {
-            // NOTE: this flag is *always* set to false currently
-            panic!("issue XXXX: must finish fulfill refactor") // normalize_associated_type(self.param_env.tcx, &closure_ty)
+            // NOTE: this flag is currently *always* set to false, we are slowly folding
+            // normalization into this trait and will come back to remove this in the near
+            // future.
+
+            // code from NormalizingClosureTyper:
+            // the substitutions in `substs` are already monomorphized,
+            // but we still must normalize associated types
+            // normalize_associated_type(self.param_env.tcx, &closure_ty)
+            panic!("see issue 26597: fufillment context refactor must occur")
         } else {
             closure_ty
         }
@@ -546,13 +558,18 @@ impl<'a, 'tcx> ty::ClosureTyper<'tcx> for InferCtxt<'a, 'tcx> {
                       substs: &Substs<'tcx>)
                       -> Option<Vec<ty::ClosureUpvar<'tcx>>>
     {
-        // the substitutions in `substs` are already monomorphized,
-        // but we still must normalize associated types
-        let result = ty::ctxt::closure_upvars(self, def_id, substs)
+        let result = ty::ctxt::closure_upvars(self, def_id, substs);
 
         if self.normalize {
-            // NOTE: this flag is *always* set to false currently
-            panic!("issue XXXX: must finish fulfill refactor") // monomorphize::normalize_associated_type(self.param_env.tcx, &result)
+            // NOTE: this flag is currently *always* set to false, we are slowly folding
+            // normalization into this trait and will come back to remove this in the near
+            // future.
+
+            // code from NormalizingClosureTyper:
+            // the substitutions in `substs` are already monomorphized,
+            // but we still must normalize associated types
+            // monomorphize::normalize_associated_type(self.param_env.tcx, &result)
+            panic!("see issue 26597: fufillment context refactor must occur")
         } else {
             result
         }
@@ -1004,7 +1021,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         match self.tables.borrow().node_types.get(&id) {
             Some(&t) => t,
             // FIXME
-            None if self.tcx.sess.err_count() - self.err_count_on_creation != 0 => self.tcx.types.err,
+            None if self.tcx.sess.err_count() - self.err_count_on_creation != 0 =>
+                self.tcx.types.err,
             None => {
                 self.tcx.sess.bug(
                     &format!("no type for node {}: {} in fcx",
