@@ -52,11 +52,6 @@ extern {}
 #[link(name = "pthread", kind = "static")]
 extern {}
 
-
-#[cfg(all(target_os = "nacl", not(test)))]
-#[link(name = "c++", kind = "static")]
-extern {}
-
 #[cfg(target_os = "macos")]
 #[link(name = "System")]
 extern {}
