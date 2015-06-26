@@ -602,7 +602,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: Session,
                                                make_glob_map: resolve::MakeGlobMap,
                                                f: F)
                                                -> (Session, R)
-                                               where F: FnOnce(&ty::ctxt<'tcx>,
+                                               where F: for<'a> FnOnce(&'a ty::ctxt<'tcx>,
                                                                ty::CrateAnalysis) -> R
 {
     let time_passes = sess.time_passes();

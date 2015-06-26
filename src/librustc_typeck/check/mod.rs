@@ -87,8 +87,6 @@ use fmt_macros::{Parser, Piece, Position};
 use middle::astconv_util::{check_path_args, NO_TPS, NO_REGIONS};
 use middle::def;
 use middle::infer;
-use middle::mem_categorization as mc;
-use middle::mem_categorization::McResult;
 use middle::pat_util::{self, pat_id_map};
 use middle::privacy::{AllPublic, LastMod};
 use middle::region::{self, CodeExtent};
@@ -290,32 +288,6 @@ pub struct FnCtxt<'a, 'tcx: 'a> {
     ccx: &'a CrateCtxt<'a, 'tcx>,
 }
 
-impl<'a, 'tcx> mc::Typer<'tcx> for FnCtxt<'a, 'tcx> {
-    fn node_ty(&self, id: ast::NodeId) -> McResult<Ty<'tcx>> {
-        let ty = self.node_ty(id);
-        self.resolve_type_vars_or_error(&ty)
-    }
-
-    fn expr_ty_adjusted(&self, expr: &ast::Expr) -> McResult<Ty<'tcx>> {
-        let ty = self.adjust_expr_ty(expr, self.inh.tables.borrow().adjustments.get(&expr.id));
-        self.resolve_type_vars_or_error(&ty)
-    }
-
-    fn type_moves_by_default(&self, ty: Ty<'tcx>, span: Span) -> bool {
-        let ty = self.infcx().resolve_type_vars_if_possible(&ty);
-        !traits::type_known_to_meet_builtin_bound(self.infcx(), self, ty, ty::BoundCopy, span)
-    }
-
-    fn node_method_ty(&self, method_call: ty::MethodCall)
-                      -> Option<Ty<'tcx>> {
-        self.inh.tables
-                .borrow()
-                .method_map
-                .get(&method_call)
-                .map(|method| method.ty)
-                .map(|ty| self.infcx().resolve_type_vars_if_possible(&ty))
-    }
-
 impl<'a, 'tcx> Inherited<'a, 'tcx> {
     fn new(tcx: &'a ty::ctxt<'tcx>,
            tables: &'a RefCell<ty::Tables<'tcx>>,
@@ -368,7 +340,8 @@ pub fn blank_fn_ctxt<'a, 'tcx>(ccx: &'a CrateCtxt<'a, 'tcx>,
     }
 }
 
-fn static_inherited_fields<'a, 'tcx>(ccx: &'a CrateCtxt<'a, 'tcx>, tables: &'a RefCell<ty::Tables<'tcx>>)
+fn static_inherited_fields<'a, 'tcx>(ccx: &'a CrateCtxt<'a, 'tcx>,
+                                     tables: &'a RefCell<ty::Tables<'tcx>>)
                                     -> Inherited<'a, 'tcx> {
     // It's kind of a kludge to manufacture a fake function context
     // and statement context, but we might as well do write the code only once
@@ -1271,16 +1244,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ty
     }
 
-    /// Resolves all type variables in `t` and then, if any were left
-    /// unresolved, substitutes an error type. This is used after the
-    /// main checking when doing a second pass before writeback. The
-    /// justification is that writeback will produce an error for
-    /// these unconstrained type variables.
-    fn resolve_type_vars_or_error(&self, ty: &Ty<'tcx>) -> mc::McResult<Ty<'tcx>> {
-        let ty = self.infcx().resolve_type_vars_if_possible(ty);
-        if ty.has_infer_types() || ty.references_error() { Err(()) } else { Ok(ty) }
-    }
-
     fn record_deferred_call_resolution(&self,
                                        closure_def_id: ast::DefId,
                                        r: DeferredCallResolutionHandler<'tcx>) {
@@ -1614,9 +1577,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     pub fn item_substs(&self) -> Ref<NodeMap<ty::ItemSubsts<'tcx>>> {
-        // NOTE: @jroesch this is hack that appears to be fixed on nightly, will monitor if it changes
-        // when we upgrade the snapshot compiler
-        fn project_item_susbts<'a, 'tcx>(tables: &'a ty::Tables<'tcx>) -> &'a NodeMap<ty::ItemSubsts<'tcx>> {
+        // NOTE: @jroesch this is hack that appears to be fixed on nightly, will monitor if
+        // it changes when we upgrade the snapshot compiler
+        fn project_item_susbts<'a, 'tcx>(tables: &'a ty::Tables<'tcx>)
+                                        -> &'a NodeMap<ty::ItemSubsts<'tcx>> {
             &tables.item_substs
         }
 

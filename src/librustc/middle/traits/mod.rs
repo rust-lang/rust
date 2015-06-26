@@ -351,7 +351,7 @@ pub fn type_known_to_meet_builtin_bound<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
     }
 }
 
-// TODO: this is gonna need to be removed ...
+// FIXME: this is gonna need to be removed ...
 /// Normalizes the parameter environment, reporting errors if they occur.
 pub fn normalize_param_env_or_error<'a,'tcx>(unnormalized_env: ty::ParameterEnvironment<'a,'tcx>,
                                              cause: ObligationCause<'tcx>)

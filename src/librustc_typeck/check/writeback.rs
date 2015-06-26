@@ -217,7 +217,11 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             debug!("Upvar capture for {:?} resolved to {:?}",
                    upvar_id,
                    new_upvar_capture);
-            self.fcx.tcx().tables.borrow_mut().upvar_capture_map.insert(*upvar_id, new_upvar_capture);
+            self.fcx.tcx()
+                    .tables
+                    .borrow_mut()
+                    .upvar_capture_map
+                    .insert(*upvar_id, new_upvar_capture);
         }
     }
 

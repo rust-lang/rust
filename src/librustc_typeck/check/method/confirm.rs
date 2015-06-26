@@ -528,7 +528,8 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                         // expects. This is annoying and horrible. We
                         // ought to recode this routine so it doesn't
                         // (ab)use the normal type checking paths.
-                        let adj = self.fcx.inh.tables.borrow().adjustments.get(&base_expr.id).cloned();
+                        let adj = self.fcx.inh.tables.borrow().adjustments.get(&base_expr.id)
+                                                                          .cloned();
                         let (autoderefs, unsize) = match adj {
                             Some(ty::AdjustDerefRef(adr)) => match adr.autoref {
                                 None => {

@@ -540,13 +540,15 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
             fulfill_cx.register_predicate_obligation(&infcx, predicate);
 
             // Check that all transitive obligations are satisfied.
-            if let Err(errors) = fulfill_cx.select_all_or_error(&infcx, &infcx.parameter_environment) {
+            if let Err(errors) = fulfill_cx.select_all_or_error(&infcx,
+                                                                &infcx.parameter_environment) {
                 traits::report_fulfillment_errors(&infcx, &errors);
             }
 
             // Finally, resolve all regions.
             let mut free_regions = FreeRegionMap::new();
-            free_regions.relate_free_regions_from_predicates(tcx, &infcx.parameter_environment.caller_bounds);
+            free_regions.relate_free_regions_from_predicates(tcx, &infcx.parameter_environment
+                                                                        .caller_bounds);
             infcx.resolve_regions_and_report_errors(&free_regions, impl_did.node);
 
             if let Some(kind) = kind {

@@ -1051,7 +1051,12 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
                     var_id: var_id,
                     closure_expr_id: id
                 };
-                let upvar_capture = tcx.tables.borrow().upvar_capture_map.get(&upvar_id).unwrap().clone();
+                let upvar_capture = tcx.tables
+                                       .borrow()
+                                       .upvar_capture_map
+                                       .get(&upvar_id)
+                                       .unwrap()
+                                       .clone();
                 var_id.encode(rbml_w);
                 upvar_capture.encode(rbml_w);
             })

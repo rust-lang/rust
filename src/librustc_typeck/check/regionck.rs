@@ -125,7 +125,8 @@ pub fn regionck_expr(fcx: &FnCtxt, e: &ast::Expr) {
 pub fn regionck_item(fcx: &FnCtxt, item: &ast::Item) {
     let mut rcx = Rcx::new(fcx, RepeatingScope(item.id), item.id, Subject(item.id));
     let tcx = fcx.tcx();
-    rcx.free_region_map.relate_free_regions_from_predicates(tcx, &fcx.inh.infcx.parameter_environment.caller_bounds);
+    rcx.free_region_map
+       .relate_free_regions_from_predicates(tcx, &fcx.infcx().parameter_environment.caller_bounds);
     rcx.visit_region_obligations(item.id);
     rcx.resolve_regions_and_report_errors();
 }
@@ -144,7 +145,8 @@ pub fn regionck_fn(fcx: &FnCtxt,
     }
 
     let tcx = fcx.tcx();
-    rcx.free_region_map.relate_free_regions_from_predicates(tcx, &fcx.inh.infcx.parameter_environment.caller_bounds);
+    rcx.free_region_map
+       .relate_free_regions_from_predicates(tcx, &fcx.infcx().parameter_environment.caller_bounds);
 
     rcx.resolve_regions_and_report_errors();
 

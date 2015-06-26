@@ -201,7 +201,10 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
 
             let type_scheme = fcx.tcx().lookup_item_type(local_def(item.id));
             let item_ty = fcx.instantiate_type_scheme(item.span,
-                                                      &fcx.inh.infcx.parameter_environment.free_substs,
+                                                      &fcx.inh
+                                                          .infcx
+                                                          .parameter_environment
+                                                          .free_substs,
                                                       &type_scheme.ty);
 
             bounds_checker.check_traits_in_ty(item_ty, item.span);
@@ -222,7 +225,10 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
             // to free.
             let self_ty = fcx.tcx().node_id_to_type(item.id);
             let self_ty = fcx.instantiate_type_scheme(item.span,
-                                                      &fcx.inh.infcx.parameter_environment.free_substs,
+                                                      &fcx.inh
+                                                          .infcx
+                                                          .parameter_environment
+                                                          .free_substs,
                                                       &self_ty);
 
             bounds_checker.check_traits_in_ty(self_ty, item.span);
@@ -235,7 +241,10 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
             };
 
             let trait_ref = fcx.instantiate_type_scheme(item.span,
-                                                        &fcx.inh.infcx.parameter_environment.free_substs,
+                                                        &fcx.inh
+                                                            .infcx
+                                                            .parameter_environment
+                                                            .free_substs,
                                                         &trait_ref);
 
             // We are stricter on the trait-ref in an impl than the
@@ -637,7 +646,10 @@ fn struct_variant<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         .map(|field| {
             let field_ty = fcx.tcx().node_id_to_type(field.node.id);
             let field_ty = fcx.instantiate_type_scheme(field.span,
-                                                       &fcx.inh.infcx.parameter_environment.free_substs,
+                                                       &fcx.inh
+                                                           .infcx
+                                                           .parameter_environment
+                                                           .free_substs,
                                                        &field_ty);
             AdtField { ty: field_ty, span: field.span }
         })
@@ -662,7 +674,10 @@ fn enum_variants<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                             let arg_ty = arg_tys[index];
                             let arg_ty =
                                 fcx.instantiate_type_scheme(variant.span,
-                                                            &fcx.inh.infcx.parameter_environment.free_substs,
+                                                            &fcx.inh
+                                                                .infcx
+                                                                .parameter_environment
+                                                                .free_substs,
                                                             &arg_ty);
                             AdtField {
                                 ty: arg_ty,

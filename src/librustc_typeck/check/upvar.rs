@@ -131,7 +131,8 @@ impl<'a,'tcx> SeedBorrowKind<'a,'tcx> {
         let closure_def_id = ast_util::local_def(expr.id);
         if !self.fcx.inh.tables.borrow().closure_kinds.contains_key(&closure_def_id) {
             self.closures_with_inferred_kinds.insert(expr.id);
-            self.fcx.inh.tables.borrow_mut().closure_kinds.insert(closure_def_id, ty::FnClosureKind);
+            self.fcx.inh.tables.borrow_mut().closure_kinds
+                                            .insert(closure_def_id, ty::FnClosureKind);
             debug!("check_closure: adding closure_id={:?} to closures_with_inferred_kinds",
                    closure_def_id);
         }
@@ -267,7 +268,10 @@ impl<'a,'tcx> AdjustBorrowKind<'a,'tcx> {
                         // to move out of an upvar, this must be a FnOnce closure
                         self.adjust_closure_kind(upvar_id.closure_expr_id, ty::FnOnceClosureKind);
 
-                        let upvar_capture_map = &mut self.fcx.inh.tables.borrow_mut().upvar_capture_map;
+                        let upvar_capture_map = &mut self.fcx
+                                                         .inh
+                                                         .tables.borrow_mut()
+                                                         .upvar_capture_map;
                         upvar_capture_map.insert(upvar_id, ty::UpvarCapture::ByValue);
                     }
                     mc::NoteClosureEnv(upvar_id) => {
