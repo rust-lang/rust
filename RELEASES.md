@@ -6,7 +6,7 @@ Version 1.1.0 (June 2015)
 Highlights
 ----------
 
-* The [`std::fs` module has been expanded][fs-expand] to expand the set of
+* The [`std::fs` module has been expanded][fs] to expand the set of
   functionality exposed:
   * `DirEntry` now supports optimizations like `file_type` and `metadata` which
     don't incur a syscall on some platforms.
@@ -23,11 +23,11 @@ Highlights
 Libraries
 ---------
 
-* The `str::split_whitespace` method splits a string on unicode
+* The [`str::split_whitespace`] method splits a string on unicode
   whitespace boundaries.
 * On both Windows and Unix, new extension traits provide conversion of
   I/O types to and from the underlying system handles. On Unix, these
-  traits are [`FrowRawFd`] and [`AsRawFd`], on Windows `FromRawHandle`
+  traits are [`FromRawFd`] and [`AsRawFd`], on Windows `FromRawHandle`
   and `AsRawHandle`. These are implemented for `File`, `TcpStream`,
   `TcpListener`, and `UpdSocket`. Further implementations for
   `std::process` will be stabilized later.
@@ -79,8 +79,7 @@ Misc
 * [The `drop_with_repr_extern` lint warns about mixing `repr(C)`
   with `Drop`][drop].
 
-[`split_whitespace`]: http://doc.rust-lang.org/nightly/std/primitive.str.html#method.split_whitespace
-[`Iterator::cloned`]: http://doc.rust-lang.org/nightly/core/iter/trait.Iterator.html#method.cloned
+[`str::split_whitespace`]: http://doc.rust-lang.org/nightly/std/primitive.str.html#method.split_whitespace
 [`FromRawFd`]: http://doc.rust-lang.org/nightly/std/os/unix/io/trait.FromRawFd.html
 [`AsRawFd`]: http://doc.rust-lang.org/nightly/std/os/unix/io/trait.AsRawFd.html
 [`std::os::unix::symlink`]: http://doc.rust-lang.org/nightly/std/os/unix/fs/fn.symlink.html
@@ -250,7 +249,6 @@ Misc
 [sw]: https://github.com/rust-lang/rfcs/blob/master/text/1054-str-words.md
 [th]: https://github.com/rust-lang/rfcs/blob/master/text/0909-move-thread-local-to-std-thread.md
 [send-rfc]: https://github.com/rust-lang/rfcs/blob/master/text/0458-send-improvements.md
-[scoped]: http://static.rust-lang.org/doc/master/std/thread/fn.scoped.html
 [moar-ufcs]: https://github.com/rust-lang/rust/pull/22172
 [prim-inherent]: https://github.com/rust-lang/rust/pull/23104
 [overflow]: https://github.com/rust-lang/rfcs/blob/master/text/0560-integer-overflow.md
@@ -260,12 +258,10 @@ Misc
 [string-pattern]: https://github.com/rust-lang/rust/pull/22466
 [oibit-final]: https://github.com/rust-lang/rust/pull/21689
 [reflect]: https://github.com/rust-lang/rust/pull/23712
-[debug-builder]: https://github.com/rust-lang/rfcs/blob/master/text/0640-debug-improvements.md
 [conversion]: https://github.com/rust-lang/rfcs/pull/529
 [num-traits]: https://github.com/rust-lang/rust/pull/23549
 [index-value]: https://github.com/rust-lang/rust/pull/23601
 [dropck]: https://github.com/rust-lang/rfcs/pull/769
-[fundamental]: https://github.com/rust-lang/rfcs/pull/1023
 [ci-compare]: https://gist.github.com/brson/a30a77836fbec057cbee
 [fn-inherit]: https://github.com/rust-lang/rust/pull/23282
 [fn-blanket]: https://github.com/rust-lang/rust/pull/23895
@@ -368,7 +364,6 @@ Version 1.0.0-alpha.2 (February 2015)
 [osstr]: https://github.com/rust-lang/rust/pull/21488
 [osstr-rfc]: https://github.com/rust-lang/rfcs/blob/master/text/0517-io-os-reform.md
 [Self]: https://github.com/rust-lang/rust/pull/22158
-[ufcs]: https://github.com/rust-lang/rust/pull/21077
 [ufcs-rfc]: https://github.com/rust-lang/rfcs/blob/master/text/0132-ufcs.md
 [un]: https://github.com/rust-lang/rust/pull/22256
 
