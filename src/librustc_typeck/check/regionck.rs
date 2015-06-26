@@ -86,6 +86,7 @@ use astconv::AstConv;
 use check::dropck;
 use check::FnCtxt;
 use middle::free_region::FreeRegionMap;
+use middle::infer::InferCtxt;
 use middle::implicator;
 use middle::mem_categorization as mc;
 use middle::region::CodeExtent;
@@ -353,7 +354,7 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
             debug!("relate_free_regions(t={:?})", ty);
             let body_scope = CodeExtent::from_node_id(body_id);
             let body_scope = ty::ReScope(body_scope);
-            let implications = implicator::implications(self.fcx.infcx(), self.fcx, body_id,
+            let implications = implicator::implications(self.fcx.infcx(), self.fcx.infcx(), body_id,
                                                         ty, body_scope, span);
 
             // Record any relations between free regions that we observe into the free-region-map.
@@ -549,7 +550,7 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
         // If necessary, constrain destructors in the unadjusted form of this
         // expression.
         let cmt_result = {
-            let mc = mc::MemCategorizationContext::new(rcx.fcx);
+            let mc = mc::MemCategorizationContext::new(rcx.fcx.infcx());
             mc.cat_expr_unadjusted(expr)
         };
         match cmt_result {
@@ -568,7 +569,7 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
     // If necessary, constrain destructors in this expression. This will be
     // the adjusted form if there is an adjustment.
     let cmt_result = {
-        let mc = mc::MemCategorizationContext::new(rcx.fcx);
+        let mc = mc::MemCategorizationContext::new(rcx.fcx.infcx());
         mc.cat_expr(expr)
     };
     match cmt_result {
@@ -912,7 +913,7 @@ fn constrain_autoderefs<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
                        r, m);
 
                 {
-                    let mc = mc::MemCategorizationContext::new(rcx.fcx);
+                    let mc = mc::MemCategorizationContext::new(rcx.fcx.infcx());
                     let self_cmt = ignore_err!(mc.cat_expr_autoderefd(deref_expr, i));
                     debug!("constrain_autoderefs: self_cmt={:?}",
                            self_cmt);
@@ -1037,7 +1038,7 @@ fn link_addr_of(rcx: &mut Rcx, expr: &ast::Expr,
     debug!("link_addr_of(expr={:?}, base={:?})", expr, base);
 
     let cmt = {
-        let mc = mc::MemCategorizationContext::new(rcx.fcx);
+        let mc = mc::MemCategorizationContext::new(rcx.fcx.infcx());
         ignore_err!(mc.cat_expr(base))
     };
 
@@ -1055,7 +1056,7 @@ fn link_local(rcx: &Rcx, local: &ast::Local) {
         None => { return; }
         Some(ref expr) => &**expr,
     };
-    let mc = mc::MemCategorizationContext::new(rcx.fcx);
+    let mc = mc::MemCategorizationContext::new(rcx.fcx.infcx());
     let discr_cmt = ignore_err!(mc.cat_expr(init_expr));
     link_pattern(rcx, mc, discr_cmt, &*local.pat);
 }
@@ -1065,7 +1066,7 @@ fn link_local(rcx: &Rcx, local: &ast::Local) {
 /// linked to the lifetime of its guarantor (if any).
 fn link_match(rcx: &Rcx, discr: &ast::Expr, arms: &[ast::Arm]) {
     debug!("regionck::for_match()");
-    let mc = mc::MemCategorizationContext::new(rcx.fcx);
+    let mc = mc::MemCategorizationContext::new(rcx.fcx.infcx());
     let discr_cmt = ignore_err!(mc.cat_expr(discr));
     debug!("discr_cmt={:?}", discr_cmt);
     for arm in arms {
@@ -1080,7 +1081,7 @@ fn link_match(rcx: &Rcx, discr: &ast::Expr, arms: &[ast::Arm]) {
 /// linked to the lifetime of its guarantor (if any).
 fn link_fn_args(rcx: &Rcx, body_scope: CodeExtent, args: &[ast::Arg]) {
     debug!("regionck::link_fn_args(body_scope={:?})", body_scope);
-    let mc = mc::MemCategorizationContext::new(rcx.fcx);
+    let mc = mc::MemCategorizationContext::new(rcx.fcx.infcx());
     for arg in args {
         let arg_ty = rcx.fcx.node_ty(arg.id);
         let re_scope = ty::ReScope(body_scope);
@@ -1095,7 +1096,7 @@ fn link_fn_args(rcx: &Rcx, body_scope: CodeExtent, args: &[ast::Arg]) {
 /// Link lifetimes of any ref bindings in `root_pat` to the pointers found in the discriminant, if
 /// needed.
 fn link_pattern<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
-                          mc: mc::MemCategorizationContext<FnCtxt<'a, 'tcx>>,
+                          mc: mc::MemCategorizationContext<InferCtxt<'a, 'tcx>>,
                           discr_cmt: mc::cmt<'tcx>,
                           root_pat: &ast::Pat) {
     debug!("link_pattern(discr_cmt={:?}, root_pat={:?})",
@@ -1134,7 +1135,7 @@ fn link_autoref(rcx: &Rcx,
                 autoref: &ty::AutoRef)
 {
     debug!("link_autoref(autoref={:?})", autoref);
-    let mc = mc::MemCategorizationContext::new(rcx.fcx);
+    let mc = mc::MemCategorizationContext::new(rcx.fcx.infcx());
     let expr_cmt = ignore_err!(mc.cat_expr_autoderefd(expr, autoderefs));
     debug!("expr_cmt={:?}", expr_cmt);
 
@@ -1158,7 +1159,7 @@ fn link_by_ref(rcx: &Rcx,
                callee_scope: CodeExtent) {
     debug!("link_by_ref(expr={:?}, callee_scope={:?})",
            expr, callee_scope);
-    let mc = mc::MemCategorizationContext::new(rcx.fcx);
+    let mc = mc::MemCategorizationContext::new(rcx.fcx.infcx());
     let expr_cmt = ignore_err!(mc.cat_expr(expr));
     let borrow_region = ty::ReScope(callee_scope);
     link_region(rcx, expr.span, &borrow_region, ty::ImmBorrow, expr_cmt);
@@ -1402,7 +1403,7 @@ pub fn type_must_outlive<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
            ty,
            region);
 
-    let implications = implicator::implications(rcx.fcx.infcx(), rcx.fcx, rcx.body_id,
+    let implications = implicator::implications(rcx.fcx.infcx(), rcx.fcx.infcx(), rcx.body_id,
                                                 ty, region, origin.span());
     for implication in implications {
         debug!("implication: {:?}", implication);
@@ -1443,7 +1444,7 @@ fn closure_must_outlive<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
     debug!("closure_must_outlive(region={:?}, def_id={:?}, substs={:?})",
            region, def_id, substs);
 
-    let upvars = rcx.fcx.closure_upvars(def_id, substs).unwrap();
+    let upvars = rcx.fcx.infcx().closure_upvars(def_id, substs).unwrap();
     for upvar in upvars {
         let var_id = upvar.def.def_id().local_id();
         type_must_outlive(

@@ -316,65 +316,6 @@ impl<'a, 'tcx> mc::Typer<'tcx> for FnCtxt<'a, 'tcx> {
                 .map(|ty| self.infcx().resolve_type_vars_if_possible(&ty))
     }
 
-    fn node_method_origin(&self, method_call: ty::MethodCall)
-                          -> Option<ty::MethodOrigin<'tcx>>
-    {
-        self.inh.tables
-                .borrow()
-                .method_map
-                .get(&method_call)
-                .map(|method| method.origin.clone())
-    }
-
-    fn adjustments(&self) -> Ref<NodeMap<ty::AutoAdjustment<'tcx>>> {
-        fn project_adjustments<'a, 'tcx>(tables: &'a ty::Tables<'tcx>) -> &'a NodeMap<ty::AutoAdjustment<'tcx>> {
-            &tables.adjustments
-        }
-
-        Ref::map(self.inh.tables.borrow(), project_adjustments)
-    }
-
-    fn is_method_call(&self, id: ast::NodeId) -> bool {
-        self.inh.tables.borrow().method_map.contains_key(&ty::MethodCall::expr(id))
-    }
-
-    fn temporary_scope(&self, rvalue_id: ast::NodeId) -> Option<CodeExtent> {
-        self.param_env().temporary_scope(rvalue_id)
-    }
-
-    fn upvar_capture(&self, upvar_id: ty::UpvarId) -> Option<ty::UpvarCapture> {
-        self.inh.tables.borrow().upvar_capture_map.get(&upvar_id).cloned()
-    }
-}
-
-impl<'a, 'tcx> ty::ClosureTyper<'tcx> for FnCtxt<'a, 'tcx> {
-    fn param_env<'b>(&'b self) -> &'b ty::ParameterEnvironment<'b,'tcx> {
-        &self.inh.infcx.parameter_environment
-    }
-
-    fn closure_kind(&self,
-                    def_id: ast::DefId)
-                    -> Option<ty::ClosureKind>
-    {
-        self.inh.tables.borrow().closure_kinds.get(&def_id).cloned()
-    }
-
-    fn closure_type(&self,
-                    def_id: ast::DefId,
-                    substs: &subst::Substs<'tcx>)
-                    -> ty::ClosureTy<'tcx>
-    {
-        self.inh.tables.borrow().closure_tys.get(&def_id).unwrap().subst(self.tcx(), substs)
-    }
-
-    fn closure_upvars(&self,
-                      def_id: ast::DefId,
-                      substs: &Substs<'tcx>)
-                      -> Option<Vec<ty::ClosureUpvar<'tcx>>> {
-        ty::ctxt::closure_upvars(self, def_id, substs)
-    }
-}
-
 impl<'a, 'tcx> Inherited<'a, 'tcx> {
     fn new(tcx: &'a ty::ctxt<'tcx>,
            tables: &'a RefCell<ty::Tables<'tcx>>,
@@ -1473,7 +1414,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn normalize_associated_types_in<T>(&self, span: Span, value: &T) -> T
         where T : TypeFoldable<'tcx> + HasTypeFlags
     {
-        self.inh.normalize_associated_types_in(self, span, self.body_id, value)
+        self.inh.normalize_associated_types_in(self.infcx(), span, self.body_id, value)
     }
 
     fn normalize_associated_type(&self,
@@ -1488,7 +1429,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.inh.fulfillment_cx
             .borrow_mut()
             .normalize_projection_type(self.infcx(),
-                                       self,
+                                       self.infcx(),
                                        ty::ProjectionTy {
                                            trait_ref: trait_ref,
                                            item_name: item_name,
@@ -1843,7 +1784,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         self.select_all_obligations_and_apply_defaults();
         let mut fulfillment_cx = self.inh.fulfillment_cx.borrow_mut();
-        match fulfillment_cx.select_all_or_error(self.infcx(), self) {
+        match fulfillment_cx.select_all_or_error(self.infcx(), self.infcx()) {
             Ok(()) => { }
             Err(errors) => { report_fulfillment_errors(self.infcx(), &errors); }
         }
@@ -1854,7 +1795,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         match
             self.inh.fulfillment_cx
             .borrow_mut()
-            .select_where_possible(self.infcx(), self)
+            .select_where_possible(self.infcx(), self.infcx())
         {
             Ok(()) => { }
             Err(errors) => { report_fulfillment_errors(self.infcx(), &errors); }
@@ -1869,7 +1810,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         match
             self.inh.fulfillment_cx
             .borrow_mut()
-            .select_new_obligations(self.infcx(), self)
+            .select_new_obligations(self.infcx(), self.infcx())
         {
             Ok(()) => { }
             Err(errors) => { report_fulfillment_errors(self.infcx(), &errors); }

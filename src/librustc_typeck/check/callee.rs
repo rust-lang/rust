@@ -137,9 +137,9 @@ fn try_overloaded_call_step<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             // Check whether this is a call to a closure where we
             // haven't yet decided on whether the closure is fn vs
             // fnmut vs fnonce. If so, we have to defer further processing.
-            if fcx.closure_kind(def_id).is_none() {
+            if fcx.infcx().closure_kind(def_id).is_none() {
                 let closure_ty =
-                    fcx.closure_type(def_id, substs);
+                    fcx.infcx().closure_type(def_id, substs);
                 let fn_sig =
                     fcx.infcx().replace_late_bound_regions_with_fresh_var(call_expr.span,
                                                                           infer::FnCall,
@@ -344,7 +344,7 @@ impl<'tcx> DeferredCallResolution<'tcx> for CallResolution<'tcx> {
 
         // we should not be invoked until the closure kind has been
         // determined by upvar inference
-        assert!(fcx.closure_kind(self.closure_def_id).is_some());
+        assert!(fcx.infcx().closure_kind(self.closure_def_id).is_some());
 
         // We may now know enough to figure out fn vs fnmut etc.
         match try_overloaded_call_traits(fcx, self.call_expr, self.callee_expr,
