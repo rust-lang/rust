@@ -137,6 +137,17 @@ impl<'a> Linker for GnuLinker<'a> {
     fn optimize(&mut self) {
         if !self.sess.target.target.options.linker_is_gnu { return }
 
+        if self.sess.target.target.options.is_like_pnacl {
+            let arg = match self.sess.opts.optimize {
+                config::OptLevel::No => "-O0",
+                config::OptLevel::Less => "-O1",
+                config::OptLevel::Default => "-O2",
+                config::OptLevel::Aggressive => "-O3",
+            };
+            self.cmd.arg(arg);
+            return;
+        }
+
         // GNU-style linkers support optimization with -O. GNU ld doesn't
         // need a numeric argument, but other linkers do.
         if self.sess.opts.optimize == config::Default ||
