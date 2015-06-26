@@ -324,7 +324,7 @@ pub fn normalize_associated_type<'tcx,T>(tcx: &ty::ctxt<'tcx>, value: &T) -> T
     // FIXME(#20304) -- cache
     // NOTE: @jroesch
     // Here is of an example where we do not use a param_env but use a typer instead.
-    let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, None);
+    let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, None, true);
     let typer = NormalizingClosureTyper::new(tcx);
     let mut selcx = traits::SelectionContext::new(&infcx, &typer);
     let cause = traits::ObligationCause::dummy();

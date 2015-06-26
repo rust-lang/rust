@@ -448,7 +448,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
             debug!("check_implementations_of_coerce_unsized: {:?} -> {:?} (free)",
                    source, target);
 
-            let infcx = new_infer_ctxt(tcx, &tcx.tables, Some(param_env));
+            let infcx = new_infer_ctxt(tcx, &tcx.tables, Some(param_env), true);
 
             let check_mutbl = |mt_a: ty::mt<'tcx>, mt_b: ty::mt<'tcx>,
                                mk_ptr: &Fn(Ty<'tcx>) -> Ty<'tcx>| {
@@ -632,7 +632,8 @@ fn subst_receiver_types_in_method_ty<'tcx>(tcx: &ty::ctxt<'tcx>,
 pub fn check_coherence(crate_context: &CrateCtxt) {
     CoherenceChecker {
         crate_context: crate_context,
-        inference_context: new_infer_ctxt(crate_context.tcx, &crate_context.tcx.tables, None),
+        // XXXJAREDXXX: not sure if the bool is right here?
+        inference_context: new_infer_ctxt(crate_context.tcx, &crate_context.tcx.tables, None, false),
         inherent_impls: RefCell::new(FnvHashMap()),
     }.check(crate_context.tcx.map.krate());
     unsafety::check(crate_context.tcx);
