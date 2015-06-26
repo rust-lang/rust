@@ -109,7 +109,7 @@ pub fn krate(sess: &Session, krate: &ast::Crate, def_map: &DefMap) -> NamedRegio
 
 impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
     fn visit_item(&mut self, item: &ast::Item) {
-        // Items save/restore the set of labels. This way innner items
+        // Items save/restore the set of labels. This way inner items
         // can freely reuse names, be they loop labels or lifetimes.
         let saved = replace(&mut self.labels_in_fn, vec![]);
 
@@ -143,6 +143,29 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
                         this.check_lifetime_defs(old_scope, lifetimes);
                         visit::walk_item(this, item);
                     });
+                }
+            }
+        });
+
+        // Done traversing the item; restore saved set of labels.
+        replace(&mut self.labels_in_fn, saved);
+    }
+
+    fn visit_foreign_item(&mut self, item: &ast::ForeignItem) {
+        // Items save/restore the set of labels. This way inner items
+        // can freely reuse names, be they loop labels or lifetimes.
+        let saved = replace(&mut self.labels_in_fn, vec![]);
+
+        // Items always introduce a new root scope
+        self.with(RootScope, |_, this| {
+            match item.node {
+                ast::ForeignItemFn(_, ref generics) => {
+                    this.visit_early_late(subst::FnSpace, generics, |this| {
+                        visit::walk_foreign_item(this, item);
+                    })
+                }
+                ast::ForeignItemStatic(..) => {
+                    visit::walk_foreign_item(this, item);
                 }
             }
         });
