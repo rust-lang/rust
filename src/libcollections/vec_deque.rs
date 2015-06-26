@@ -67,7 +67,7 @@ impl<T> Drop for VecDeque<T> {
             if mem::size_of::<T>() != 0 {
                 heap::deallocate(*self.ptr as *mut u8,
                                  self.cap * mem::size_of::<T>(),
-                                 mem::min_align_of::<T>())
+                                 mem::align_of::<T>())
             }
         }
     }
@@ -172,7 +172,7 @@ impl<T> VecDeque<T> {
 
         let ptr = unsafe {
             if mem::size_of::<T>() != 0 {
-                let ptr = heap::allocate(size, mem::min_align_of::<T>())  as *mut T;;
+                let ptr = heap::allocate(size, mem::align_of::<T>())  as *mut T;;
                 if ptr.is_null() { ::alloc::oom() }
                 Unique::new(ptr)
             } else {
@@ -340,7 +340,7 @@ impl<T> VecDeque<T> {
                     let ptr = heap::reallocate(*self.ptr as *mut u8,
                                                old,
                                                new,
-                                               mem::min_align_of::<T>()) as *mut T;
+                                               mem::align_of::<T>()) as *mut T;
                     if ptr.is_null() { ::alloc::oom() }
                     self.ptr = Unique::new(ptr);
                 }
@@ -460,7 +460,7 @@ impl<T> VecDeque<T> {
                     let ptr = heap::reallocate(*self.ptr as *mut u8,
                                                old,
                                                new_size,
-                                               mem::min_align_of::<T>()) as *mut T;
+                                               mem::align_of::<T>()) as *mut T;
                     if ptr.is_null() { ::alloc::oom() }
                     self.ptr = Unique::new(ptr);
                 }
