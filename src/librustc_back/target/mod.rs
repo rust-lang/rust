@@ -175,6 +175,8 @@ pub struct TargetOptions {
     pub archive_format: String,
     /// Is asm!() not allowed? Defaults to false
     pub no_asm: bool,
+    /// Is LTO allowed? Defaults to true.
+    pub lto_supported: bool,
 }
 
 impl Default for TargetOptions {
@@ -215,6 +217,7 @@ impl Default for TargetOptions {
             post_link_objects: Vec::new(),
             archive_format: String::new(),
             no_asm: false,
+            lto_supported: true,
         }
     }
 }

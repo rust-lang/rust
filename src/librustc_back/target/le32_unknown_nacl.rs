@@ -19,6 +19,7 @@ pub fn target() -> Target {
         no_compiler_rt: true,
         is_like_pnacl: true,
         no_asm: true,
+        lto_supported: false, // `pnacl-ld` runs "LTO".
         .. Default::default()
     };
     Target {
