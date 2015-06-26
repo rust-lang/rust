@@ -707,7 +707,7 @@ pub fn build_target_config(opts: &Options, sp: &SpanHandler) -> Config {
                             .ok()
                     })
                     .or_else(|| {
-                        let p: Path = From::from(p.clone());
+                        let p: PathBuf = From::from(p.clone());
                         Some(p.join("bin").to_path_buf())
                     })
             },
