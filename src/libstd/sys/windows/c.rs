@@ -13,6 +13,9 @@
 #![allow(bad_style, dead_code, overflowing_literals)]
 
 use libc;
+use libc::{c_uint, c_ulong};
+use libc::{DWORD, BOOL, BOOLEAN, ERROR_CALL_NOT_IMPLEMENTED, LPVOID, HANDLE};
+use libc::{LPCWSTR, LONG};
 
 pub use self::GET_FILEEX_INFO_LEVELS::*;
 pub use self::FILE_INFO_BY_HANDLE_CLASS::*;
@@ -240,7 +243,32 @@ pub struct SYMBOLIC_LINK_REPARSE_BUFFER {
     pub PathBuffer: libc::WCHAR,
 }
 
+pub type PCONDITION_VARIABLE = *mut CONDITION_VARIABLE;
+pub type PSRWLOCK = *mut SRWLOCK;
+pub type ULONG = c_ulong;
+pub type ULONG_PTR = c_ulong;
+
+#[repr(C)]
+pub struct CONDITION_VARIABLE { pub ptr: LPVOID }
+#[repr(C)]
+pub struct SRWLOCK { pub ptr: LPVOID }
+#[repr(C)]
+pub struct CRITICAL_SECTION {
+    CriticalSectionDebug: LPVOID,
+    LockCount: LONG,
+    RecursionCount: LONG,
+    OwningThread: HANDLE,
+    LockSemaphore: HANDLE,
+    SpinCount: ULONG_PTR
+}
+
+pub const CONDITION_VARIABLE_INIT: CONDITION_VARIABLE = CONDITION_VARIABLE {
+    ptr: 0 as *mut _,
+};
+pub const SRWLOCK_INIT: SRWLOCK = SRWLOCK { ptr: 0 as *mut _ };
+
 #[link(name = "ws2_32")]
+#[link(name = "userenv")]
 extern "system" {
     pub fn WSAStartup(wVersionRequested: libc::WORD,
                       lpWSAData: LPWSADATA) -> libc::c_int;
@@ -295,115 +323,13 @@ extern "system" {
     pub fn CancelIo(hFile: libc::HANDLE) -> libc::BOOL;
     pub fn CancelIoEx(hFile: libc::HANDLE,
                       lpOverlapped: libc::LPOVERLAPPED) -> libc::BOOL;
-}
 
-pub mod compat {
-    use prelude::v1::*;
+    pub fn InitializeCriticalSection(CriticalSection: *mut CRITICAL_SECTION);
+    pub fn EnterCriticalSection(CriticalSection: *mut CRITICAL_SECTION);
+    pub fn TryEnterCriticalSection(CriticalSection: *mut CRITICAL_SECTION) -> BOOLEAN;
+    pub fn LeaveCriticalSection(CriticalSection: *mut CRITICAL_SECTION);
+    pub fn DeleteCriticalSection(CriticalSection: *mut CRITICAL_SECTION);
 
-    use ffi::CString;
-    use libc::types::os::arch::extra::{LPCWSTR, HMODULE, LPCSTR, LPVOID};
-    use sync::atomic::{AtomicUsize, Ordering};
-
-    extern "system" {
-        fn GetModuleHandleW(lpModuleName: LPCWSTR) -> HMODULE;
-        fn GetProcAddress(hModule: HMODULE, lpProcName: LPCSTR) -> LPVOID;
-    }
-
-    fn store_func(ptr: &AtomicUsize, module: &str, symbol: &str,
-                  fallback: usize) -> usize {
-        let mut module: Vec<u16> = module.utf16_units().collect();
-        module.push(0);
-        let symbol = CString::new(symbol).unwrap();
-        let func = unsafe {
-            let handle = GetModuleHandleW(module.as_ptr());
-            GetProcAddress(handle, symbol.as_ptr()) as usize
-        };
-        let value = if func == 0 {fallback} else {func};
-        ptr.store(value, Ordering::SeqCst);
-        value
-    }
-
-    /// Macro for creating a compatibility fallback for a Windows function
-    ///
-    /// # Examples
-    /// ```
-    /// compat_fn!(adll32::SomeFunctionW(_arg: LPCWSTR) {
-    ///     // Fallback implementation
-    /// })
-    /// ```
-    ///
-    /// Note that arguments unused by the fallback implementation should not be
-    /// called `_` as they are used to be passed to the real function if
-    /// available.
-    macro_rules! compat_fn {
-        ($module:ident::$symbol:ident($($argname:ident: $argtype:ty),*)
-                                      -> $rettype:ty { $fallback:expr }) => (
-            #[inline(always)]
-            pub unsafe fn $symbol($($argname: $argtype),*) -> $rettype {
-                use sync::atomic::{AtomicUsize, Ordering};
-                use mem;
-
-                static PTR: AtomicUsize = AtomicUsize::new(0);
-
-                fn load() -> usize {
-                    ::sys::c::compat::store_func(&PTR,
-                                                 stringify!($module),
-                                                 stringify!($symbol),
-                                                 fallback as usize)
-                }
-
-                extern "system" fn fallback($($argname: $argtype),*)
-                                            -> $rettype { $fallback }
-
-                let addr = match PTR.load(Ordering::SeqCst) {
-                    0 => load(),
-                    n => n,
-                };
-                let f: extern "system" fn($($argtype),*) -> $rettype =
-                    mem::transmute(addr);
-                f($($argname),*)
-            }
-        )
-    }
-
-    /// Compatibility layer for functions in `kernel32.dll`
-    ///
-    /// Latest versions of Windows this is needed for:
-    ///
-    /// * `CreateSymbolicLinkW`: Windows XP, Windows Server 2003
-    /// * `GetFinalPathNameByHandleW`: Windows XP, Windows Server 2003
-    pub mod kernel32 {
-        use libc::c_uint;
-        use libc::types::os::arch::extra::{DWORD, LPCWSTR, BOOLEAN, HANDLE};
-        use libc::consts::os::extra::ERROR_CALL_NOT_IMPLEMENTED;
-        use sys::c::SetLastError;
-
-        compat_fn! {
-            kernel32::CreateSymbolicLinkW(_lpSymlinkFileName: LPCWSTR,
-                                          _lpTargetFileName: LPCWSTR,
-                                          _dwFlags: DWORD) -> BOOLEAN {
-                unsafe { SetLastError(ERROR_CALL_NOT_IMPLEMENTED as DWORD); 0 }
-            }
-        }
-
-        compat_fn! {
-            kernel32::GetFinalPathNameByHandleW(_hFile: HANDLE,
-                                                _lpszFilePath: LPCWSTR,
-                                                _cchFilePath: DWORD,
-                                                _dwFlags: DWORD) -> DWORD {
-                unsafe { SetLastError(ERROR_CALL_NOT_IMPLEMENTED as DWORD); 0 }
-            }
-        }
-
-        compat_fn! {
-            kernel32::SetThreadErrorMode(_dwNewMode: DWORD, _lpOldMode: *mut DWORD) -> c_uint {
-                unsafe { SetLastError(ERROR_CALL_NOT_IMPLEMENTED as DWORD); 0 }
-            }
-        }
-    }
-}
-
-extern "system" {
     // FIXME - pInputControl should be PCONSOLE_READCONSOLE_CONTROL
     pub fn ReadConsoleW(hConsoleInput: libc::HANDLE,
                         lpBuffer: libc::LPVOID,
@@ -447,10 +373,6 @@ extern "system" {
                        lpCreationTime: *const libc::FILETIME,
                        lpLastAccessTime: *const libc::FILETIME,
                        lpLastWriteTime: *const libc::FILETIME) -> libc::BOOL;
-    pub fn SetFileInformationByHandle(hFile: libc::HANDLE,
-                    FileInformationClass: FILE_INFO_BY_HANDLE_CLASS,
-                    lpFileInformation: libc::LPVOID,
-                    dwBufferSize: libc::DWORD) -> libc::BOOL;
     pub fn GetTempPathW(nBufferLength: libc::DWORD,
                         lpBuffer: libc::LPCWSTR) -> libc::DWORD;
     pub fn OpenProcessToken(ProcessHandle: libc::HANDLE,
@@ -483,11 +405,70 @@ extern "system" {
     pub fn SwitchToThread() -> libc::BOOL;
     pub fn Sleep(dwMilliseconds: libc::DWORD);
     pub fn GetProcessId(handle: libc::HANDLE) -> libc::DWORD;
-}
-
-#[link(name = "userenv")]
-extern "system" {
     pub fn GetUserProfileDirectoryW(hToken: libc::HANDLE,
                                     lpProfileDir: libc::LPCWSTR,
                                     lpcchSize: *mut libc::DWORD) -> libc::BOOL;
+}
+
+// Functions that aren't available on Windows XP, but we still use them and just
+// provide some form of a fallback implementation.
+compat_fn! {
+    kernel32:
+
+    pub fn CreateSymbolicLinkW(_lpSymlinkFileName: LPCWSTR,
+                               _lpTargetFileName: LPCWSTR,
+                               _dwFlags: DWORD) -> BOOLEAN {
+        SetLastError(ERROR_CALL_NOT_IMPLEMENTED as DWORD); 0
+    }
+    pub fn GetFinalPathNameByHandleW(_hFile: HANDLE,
+                                     _lpszFilePath: LPCWSTR,
+                                     _cchFilePath: DWORD,
+                                     _dwFlags: DWORD) -> DWORD {
+        SetLastError(ERROR_CALL_NOT_IMPLEMENTED as DWORD); 0
+    }
+    pub fn SetThreadErrorMode(_dwNewMode: DWORD,
+                              _lpOldMode: *mut DWORD) -> c_uint {
+        SetLastError(ERROR_CALL_NOT_IMPLEMENTED as DWORD); 0
+    }
+    pub fn SetThreadStackGuarantee(_size: *mut c_ulong) -> BOOL {
+        SetLastError(ERROR_CALL_NOT_IMPLEMENTED as DWORD); 0
+    }
+    pub fn SetFileInformationByHandle(_hFile: HANDLE,
+                    _FileInformationClass: FILE_INFO_BY_HANDLE_CLASS,
+                    _lpFileInformation: LPVOID,
+                    _dwBufferSize: DWORD) -> BOOL {
+        SetLastError(ERROR_CALL_NOT_IMPLEMENTED as DWORD); 0
+    }
+    pub fn SleepConditionVariableSRW(ConditionVariable: PCONDITION_VARIABLE,
+                                     SRWLock: PSRWLOCK,
+                                     dwMilliseconds: DWORD,
+                                     Flags: ULONG) -> BOOL {
+        panic!("condition variables not available")
+    }
+    pub fn WakeConditionVariable(ConditionVariable: PCONDITION_VARIABLE)
+                                 -> () {
+        panic!("condition variables not available")
+    }
+    pub fn WakeAllConditionVariable(ConditionVariable: PCONDITION_VARIABLE)
+                                    -> () {
+        panic!("condition variables not available")
+    }
+    pub fn AcquireSRWLockExclusive(SRWLock: PSRWLOCK) -> () {
+        panic!("rwlocks not available")
+    }
+    pub fn AcquireSRWLockShared(SRWLock: PSRWLOCK) -> () {
+        panic!("rwlocks not available")
+    }
+    pub fn ReleaseSRWLockExclusive(SRWLock: PSRWLOCK) -> () {
+        panic!("rwlocks not available")
+    }
+    pub fn ReleaseSRWLockShared(SRWLock: PSRWLOCK) -> () {
+        panic!("rwlocks not available")
+    }
+    pub fn TryAcquireSRWLockExclusive(SRWLock: PSRWLOCK) -> BOOLEAN {
+        panic!("rwlocks not available")
+    }
+    pub fn TryAcquireSRWLockShared(SRWLock: PSRWLOCK) -> BOOLEAN {
+        panic!("rwlocks not available")
+    }
 }

@@ -8,57 +8,154 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! System Mutexes
+//!
+//! The Windows implementation of mutexes is a little odd and it may not be
+//! immediately obvious what's going on. The primary oddness is that SRWLock is
+//! used instead of CriticalSection, and this is done because:
+//!
+//! 1. SRWLock is several times faster than CriticalSection according to
+//!    benchmarks performed on both Windows 8 and Windows 7.
+//!
+//! 2. CriticalSection allows recursive locking while SRWLock deadlocks. The
+//!    Unix implementation deadlocks so consistency is preferred. See #19962 for
+//!    more details.
+//!
+//! 3. While CriticalSection is fair and SRWLock is not, the current Rust policy
+//!    is there there are no guarantees of fairness.
+//!
+//! The downside of this approach, however, is that SRWLock is not available on
+//! Windows XP, so we continue to have a fallback implementation where
+//! CriticalSection is used and we keep track of who's holding the mutex to
+//! detect recursive locks.
+
 use prelude::v1::*;
 
 use cell::UnsafeCell;
-use sys::sync as ffi;
 use mem;
+use sync::atomic::{AtomicUsize, Ordering};
+use sys::c;
+use sys::compat;
 
-pub struct Mutex { inner: UnsafeCell<ffi::SRWLOCK> }
+pub struct Mutex {
+    lock: AtomicUsize,
+    held: UnsafeCell<bool>,
+}
 
 unsafe impl Send for Mutex {}
 unsafe impl Sync for Mutex {}
 
-#[inline]
-pub unsafe fn raw(m: &Mutex) -> ffi::PSRWLOCK {
-    m.inner.get()
+#[derive(Clone, Copy)]
+enum Kind {
+    SRWLock = 1,
+    CriticalSection = 2,
 }
 
-// So you might be asking why we're using SRWLock instead of CriticalSection?
-//
-// 1. SRWLock is several times faster than CriticalSection according to
-//    benchmarks performed on both Windows 8 and Windows 7.
-//
-// 2. CriticalSection allows recursive locking while SRWLock deadlocks. The Unix
-//    implementation deadlocks so consistency is preferred. See #19962 for more
-//    details.
-//
-// 3. While CriticalSection is fair and SRWLock is not, the current Rust policy
-//    is there there are no guarantees of fairness.
+#[inline]
+pub unsafe fn raw(m: &Mutex) -> c::PSRWLOCK {
+    debug_assert!(mem::size_of::<c::SRWLOCK>() <= mem::size_of_val(&m.lock));
+    &m.lock as *const _ as *mut _
+}
 
 impl Mutex {
     pub const fn new() -> Mutex {
-        Mutex { inner: UnsafeCell::new(ffi::SRWLOCK_INIT) }
+        Mutex {
+            lock: AtomicUsize::new(0),
+            held: UnsafeCell::new(false),
+        }
     }
-    #[inline]
     pub unsafe fn lock(&self) {
-        ffi::AcquireSRWLockExclusive(self.inner.get())
+        match kind() {
+            Kind::SRWLock => c::AcquireSRWLockExclusive(raw(self)),
+            Kind::CriticalSection => {
+                let re = self.remutex();
+                (*re).lock();
+                if !self.flag_locked() {
+                    (*re).unlock();
+                    panic!("cannot recursively lock a mutex");
+                }
+            }
+        }
     }
-    #[inline]
     pub unsafe fn try_lock(&self) -> bool {
-        ffi::TryAcquireSRWLockExclusive(self.inner.get()) != 0
+        match kind() {
+            Kind::SRWLock => c::TryAcquireSRWLockExclusive(raw(self)) != 0,
+            Kind::CriticalSection => {
+                let re = self.remutex();
+                if !(*re).try_lock() {
+                    false
+                } else if self.flag_locked() {
+                    true
+                } else {
+                    (*re).unlock();
+                    false
+                }
+            }
+        }
     }
-    #[inline]
     pub unsafe fn unlock(&self) {
-        ffi::ReleaseSRWLockExclusive(self.inner.get())
+        *self.held.get() = false;
+        match kind() {
+            Kind::SRWLock => c::ReleaseSRWLockExclusive(raw(self)),
+            Kind::CriticalSection => (*self.remutex()).unlock(),
+        }
     }
-    #[inline]
     pub unsafe fn destroy(&self) {
-        // ...
+        match kind() {
+            Kind::SRWLock => {}
+            Kind::CriticalSection => {
+                match self.lock.load(Ordering::SeqCst) {
+                    0 => {}
+                    n => { Box::from_raw(n as *mut ReentrantMutex).destroy(); }
+                }
+            }
+        }
+    }
+
+    unsafe fn remutex(&self) -> *mut ReentrantMutex {
+        match self.lock.load(Ordering::SeqCst) {
+            0 => {}
+            n => return n as *mut _,
+        }
+        let mut re = Box::new(ReentrantMutex::uninitialized());
+        re.init();
+        let re = Box::into_raw(re);
+        match self.lock.compare_and_swap(0, re as usize, Ordering::SeqCst) {
+            0 => re,
+            n => { Box::from_raw(re).destroy(); n as *mut _ }
+        }
+    }
+
+    unsafe fn flag_locked(&self) -> bool {
+        if *self.held.get() {
+            false
+        } else {
+            *self.held.get() = true;
+            true
+        }
+
     }
 }
 
-pub struct ReentrantMutex { inner: UnsafeCell<ffi::CRITICAL_SECTION> }
+fn kind() -> Kind {
+    static KIND: AtomicUsize = AtomicUsize::new(0);
+
+    let val = KIND.load(Ordering::SeqCst);
+    if val == Kind::SRWLock as usize {
+        return Kind::SRWLock
+    } else if val == Kind::CriticalSection as usize {
+        return Kind::CriticalSection
+    }
+
+    let ret = match compat::lookup("kernel32", "AcquireSRWLockExclusive") {
+        None => Kind::CriticalSection,
+        Some(..) => Kind::SRWLock,
+    };
+    KIND.store(ret as usize, Ordering::SeqCst);
+    return ret;
+}
+
+pub struct ReentrantMutex { inner: UnsafeCell<c::CRITICAL_SECTION> }
 
 unsafe impl Send for ReentrantMutex {}
 unsafe impl Sync for ReentrantMutex {}
@@ -69,23 +166,23 @@ impl ReentrantMutex {
     }
 
     pub unsafe fn init(&mut self) {
-        ffi::InitializeCriticalSection(self.inner.get());
+        c::InitializeCriticalSection(self.inner.get());
     }
 
     pub unsafe fn lock(&self) {
-        ffi::EnterCriticalSection(self.inner.get());
+        c::EnterCriticalSection(self.inner.get());
     }
 
     #[inline]
     pub unsafe fn try_lock(&self) -> bool {
-        ffi::TryEnterCriticalSection(self.inner.get()) != 0
+        c::TryEnterCriticalSection(self.inner.get()) != 0
     }
 
     pub unsafe fn unlock(&self) {
-        ffi::LeaveCriticalSection(self.inner.get());
+        c::LeaveCriticalSection(self.inner.get());
     }
 
     pub unsafe fn destroy(&self) {
-        ffi::DeleteCriticalSection(self.inner.get());
+        c::DeleteCriticalSection(self.inner.get());
     }
 }
