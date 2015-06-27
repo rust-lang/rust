@@ -1214,11 +1214,13 @@ fn add_upstream_rust_crates(cmd: &mut Linker, sess: &Session,
 
         // Just need to tell the linker about where the library lives and
         // what its name is
-        if let Some(dir) = cratepath.parent() {
+        let parent = cratepath.parent();
+        if let Some(dir) = parent {
             cmd.include_path(&fix_windows_verbatim_for_gcc(dir));
         }
         let filestem = cratepath.file_stem().unwrap().to_str().unwrap();
-        cmd.link_dylib(&unlib(&sess.target, filestem));
+        cmd.link_rust_dylib(&unlib(&sess.target, filestem),
+                            parent.unwrap_or(Path::new("")));
     }
 }
 
