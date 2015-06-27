@@ -36,28 +36,6 @@
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow_internal_unstable]
-/// The entry point for panic of Rust threads.
-///
-/// This macro is used to inject panic into a Rust thread, causing the thread to
-/// unwind and panic entirely. Each thread's panic can be reaped as the
-/// `Box<Any>` type, and the single-argument form of the `panic!` macro will be
-/// the value which is transmitted.
-///
-/// The multi-argument form of this macro panics with a string and has the
-/// `format!` syntax for building a string.
-///
-/// # Examples
-///
-/// ```should_panic
-/// # #![allow(unreachable_code)]
-/// panic!();
-/// panic!("this is a terrible mistake!");
-/// panic!(4); // panic with the value of 4 to be collected elsewhere
-/// panic!("this is a {} {message}", "fancy", message = "message");
-/// ```
-#[macro_export]
-#[stable(feature = "rust1", since = "1.0.0")]
-#[allow_internal_unstable]
 macro_rules! panic {
     () => ({
         panic!("explicit panic")
