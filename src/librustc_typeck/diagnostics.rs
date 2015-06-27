@@ -1010,12 +1010,15 @@ example:
 
 ```
 type Foo<T> = u32; // error: type parameter `T` is unused
+// or:
+type Foo<A,B> = Box<A>; // error: type parameter `B` is unused
 ```
 
 Please check you didn't write too many type parameters. Example:
 
 ```
 type Foo = u32; // ok!
+type Foo<A> = Box<A>; // ok!
 ```
 "##,
 
