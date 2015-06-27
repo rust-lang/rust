@@ -741,6 +741,7 @@ mod tests {
     // This is just here to make sure that we don't infinite loop in the
     // newtype struct autoderef weirdness
     #[test]
+    #[allow(deprecated)]
     fn test_buffered_stream() {
         struct S;
 
@@ -892,6 +893,7 @@ mod tests {
     }
 
     #[bench]
+    #[allow(deprecated)]
     fn bench_buffered_stream(b: &mut test::Bencher) {
         let mut buf = Cursor::new(Vec::new());
         b.iter(|| {

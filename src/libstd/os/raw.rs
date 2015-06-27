@@ -83,6 +83,7 @@ mod tests {
     }
 
     #[cfg(unix)]
+    #[test]
     fn unix() {
         {
             use os::unix::raw;

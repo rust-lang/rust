@@ -14,12 +14,11 @@
 #![allow(missing_docs)]
 #![doc(primitive = "f64")]
 
-use prelude::v1::*;
-
-use core::num;
-use intrinsics;
-use libc::c_int;
-use num::{FpCategory, ParseFloatError};
+#[cfg(not(test))] use prelude::v1::*;
+#[cfg(not(test))] use core::num;
+#[cfg(not(test))] use intrinsics;
+#[cfg(not(test))] use libc::c_int;
+#[cfg(not(test))] use num::{FpCategory, ParseFloatError};
 
 pub use core::f64::{RADIX, MANTISSA_DIGITS, DIGITS, EPSILON};
 pub use core::f64::{MIN_EXP, MAX_EXP, MIN_10_EXP};
@@ -1646,6 +1645,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn test_real_consts() {
         use super::consts;
         let pi: f64 = consts::PI;

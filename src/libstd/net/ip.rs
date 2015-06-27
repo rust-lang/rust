@@ -514,7 +514,6 @@ impl FromInner<libc::in6_addr> for Ipv6Addr {
 #[cfg(test)]
 mod tests {
     use prelude::v1::*;
-    use io;
     use net::*;
     use net::Ipv6MulticastScope::*;
     use net::test::{tsa, sa6, sa4};

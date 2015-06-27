@@ -15,12 +15,11 @@
 #![allow(unsigned_negation)]
 #![doc(primitive = "f32")]
 
-use prelude::v1::*;
-
-use core::num;
-use intrinsics;
-use libc::c_int;
-use num::{FpCategory, ParseFloatError};
+#[cfg(not(test))] use prelude::v1::*;
+#[cfg(not(test))] use core::num;
+#[cfg(not(test))] use intrinsics;
+#[cfg(not(test))] use libc::c_int;
+#[cfg(not(test))] use num::{FpCategory, ParseFloatError};
 
 pub use core::f32::{RADIX, MANTISSA_DIGITS, DIGITS, EPSILON};
 pub use core::f32::{MIN_EXP, MAX_EXP, MIN_10_EXP};
@@ -1690,6 +1689,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn test_real_consts() {
         use super::consts;
 

@@ -272,7 +272,6 @@ mod imp {
 #[cfg(test)]
 mod tests {
     use cell::Cell;
-    use prelude::v1::*;
 
     scoped_thread_local!(static FOO: u32);
 

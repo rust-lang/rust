@@ -446,8 +446,7 @@ mod tests {
     use mem;
     use ptr;
     use libc;
-    use slice;
-    use sys::{self, c, cvt, pipe};
+    use sys::{self, c, cvt};
 
     #[cfg(not(target_os = "android"))]
     extern {

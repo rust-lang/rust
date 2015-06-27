@@ -1311,7 +1311,6 @@ mod tests {
     use io::{ErrorKind, SeekFrom};
     use path::PathBuf;
     use path::Path as Path2;
-    use os;
     use rand::{self, StdRng, Rng};
     use str;
 
