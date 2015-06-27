@@ -1998,12 +1998,12 @@ fn encode_crate_dep(rbml_w: &mut Encoder,
                     dep: decoder::CrateDep) {
     rbml_w.start_tag(tag_crate_dep);
     rbml_w.wr_tagged_str(tag_crate_dep_crate_name, &dep.name);
-    rbml_w.wr_tagged_str(tag_crate_dep_hash, dep.hash.as_str());
+    rbml_w.wr_tagged_str(tag_crate_dep_hash, &dep.hash.to_string());
     rbml_w.end_tag();
 }
 
 fn encode_hash(rbml_w: &mut Encoder, hash: &Svh) {
-    rbml_w.wr_tagged_str(tag_crate_hash, hash.as_str());
+    rbml_w.wr_tagged_str(tag_crate_hash, &hash.to_string());
 }
 
 fn encode_crate_name(rbml_w: &mut Encoder, crate_name: &str) {
