@@ -27,6 +27,7 @@ use core::ptr::Unique;
 use core::{slice, mem, ptr, cmp, raw};
 use alloc::heap::{self, EMPTY};
 
+use vec::Vec;
 use borrow::Borrow;
 
 /// Represents the result of an Insertion: either the item fit, or the node had to split
@@ -904,6 +905,17 @@ impl<'a, K: 'a, V: 'a, NodeType> Handle<&'a mut Node<K, V>, handle::KV, NodeType
             marker: PhantomData,
         }
     }
+
+    /// Convert this handle into one pointing at the edge immediately to the right of the key/value
+    /// pair pointed-to by this handle. This is useful because it returns a reference with larger
+    /// lifetime than `right_edge`.
+    pub fn into_right_edge(self) -> Handle<&'a mut Node<K, V>, handle::Edge, NodeType> {
+        Handle {
+            node: &mut *self.node,
+            index: self.index + 1,
+            marker: PhantomData,
+        }
+    }
 }
 
 impl<'a, K: 'a, V: 'a, NodeRef: Deref<Target=Node<K, V>> + 'a, NodeType> Handle<NodeRef, handle::KV,
@@ -1227,6 +1239,163 @@ impl<K, V> Node<K, V> {
         );
 
         edge
+    }
+}
+
+impl<K, V> Node<K, V> {
+    pub fn from_sorted_iter<I>(iter: I, b: usize) -> (usize, usize, Option<Node<K, V>>)
+            where I: Iterator<Item=(K, V)> {
+        let capacity = capacity_from_b(b);
+        let minimum = min_load_from_capacity(capacity);
+
+        // Holds the current level.
+        let mut num_level = 0;
+        // Needed to count the number of key-value pairs in `iter`.
+        let mut length = 0;
+        // `levels` contains the current node on every level, going from the leaves level to the
+        // root level.
+        let mut levels: Vec<Option<Node<K, V>>> = Vec::new();
+
+        // Iterate through all key-value pairs, pushing them into nodes of appropriate size at the
+        // right level.
+        for (key, value) in iter {
+            // Always go down to a leaf after inserting an element into an internal node.
+            if num_level > 0 {
+                num_level = 0;
+            }
+
+            loop {
+                // If we are in an internal node, extract node from the level below to insert it as
+                // edge on the level above; `unsafe` is needed for unchecked access.
+                let new_edge = unsafe {
+                    if num_level > 0 {
+                        levels.get_unchecked_mut(num_level - 1).take()
+                    } else {
+                        None
+                    }
+                };
+
+                // Get current node on current level.
+                // If we are past the top-most level, insert a new level.
+                if num_level == levels.len() {
+                    levels.push(None);
+                }
+                // If there is no node on this level, create a new node. `unsafe`
+                // is needed for unchecked access.
+                let level = unsafe { levels.get_unchecked_mut(num_level) };
+                if level.is_none() {
+                    *level = if num_level == 0 {
+                        Some(Node::new_leaf(capacity))
+                    } else {
+                        // `unsafe` is needed for `new_internal`.
+                        unsafe {
+                            Some(Node::new_internal(capacity))
+                        }
+                    };
+                }
+                let node = level.as_mut().unwrap();
+
+                // Insert edge from the level below; `unsafe` is needed for `push_edge`.
+                if let Some(edge) = new_edge {
+                    unsafe {
+                        node.push_edge(edge);
+                    }
+                }
+
+                // If node is already full, we have to go up one level before we can insert the
+                // key-value pair.
+                if !node.is_full() {
+                    // Insert key-value pair into node; `unsafe` is needed for `push_kv`.
+                    unsafe {
+                        node.push_kv(key, value);
+                    }
+                    break;
+                }
+                num_level += 1;
+            }
+
+            length += 1;
+        }
+
+        // Fix "right edge" of the tree.
+        if levels.len() > 1 {
+
+            num_level = 0;
+            while num_level < levels.len() - 1 {
+                // Extract node from this level or create a new one if there isn't any. `unsafe` is
+                // needed for unchecked access and `new_internal`.
+                let edge = unsafe {
+                    match levels.get_unchecked_mut(num_level).take() {
+                        Some(n) => n,
+                        None => {
+                            if num_level == 0 {
+                                Node::new_leaf(capacity)
+                            } else {
+                                Node::new_internal(capacity)
+                            }
+                        },
+                    }
+                };
+
+                // Go to the level above.
+                num_level += 1;
+
+                // Get node on this level, create one if there isn't any; `unsafe` is needed for
+                // unchecked access.
+                let level = unsafe { levels.get_unchecked_mut(num_level) };
+                if level.is_none() {
+                    // `unsafe` is needed for `new_internal`.
+                    unsafe {
+                        *level = Some(Node::new_internal(capacity));
+                    }
+                }
+                let mut node = level.as_mut().unwrap();
+
+                // Insert `edge` as new edge in `node`; `unsafe` is needed for `push_edge`.
+                unsafe {
+                    node.push_edge(edge);
+                }
+            }
+
+            // Start at the root and steal to fix underfull nodes on the "right edge" of the tree.
+            let root_index = levels.len() - 1;
+            let mut node = unsafe { levels.get_unchecked_mut(root_index).as_mut().unwrap() };
+
+            loop {
+                let mut temp_node = node;
+                let index = temp_node.len() - 1;
+                let mut handle = match temp_node.kv_handle(index).force() {
+                    ForceResult::Internal(h) => h,
+                    ForceResult::Leaf(_) => break,
+                };
+
+                // Check if we need to steal, i.e. is the length of the right edge less than
+                // `minimum`?
+                let right_len = handle.right_edge().node().len();
+                if  right_len < minimum {
+                    // Steal!
+                    let num_steals = minimum - right_len;
+                    for _ in 0..num_steals {
+                        // `unsafe` is needed for stealing.
+                        unsafe {
+                            handle.steal_rightward();
+                        }
+                    }
+                }
+
+                // Go down the right edge.
+                node = handle.into_right_edge().into_edge_mut();
+            }
+        }
+
+        // Get root node from `levels`.
+        let root = match levels.pop() {
+            Some(option) => option,
+            _ => None,
+        };
+
+        // Return (length, depth, root_node).
+        (length, levels.len(), root)
     }
 }
 

@@ -294,29 +294,49 @@ fn test_extend_ref() {
     assert_eq!(a[&3], "three");
 }
 
-#[test]
-fn test_append() {
-    let mut a = BTreeMap::new();
-    a.insert(1, "a");
-    a.insert(2, "b");
-    a.insert(3, "c");
+macro_rules! create_append_test {
+    ($name:ident, $len:expr) => {
+        #[test]
+        fn $name() {
+            let mut a = BTreeMap::with_b(6);
+            for i in 0..8 {
+                a.insert(i, i);
+            }
 
-    let mut b = BTreeMap::new();
-    b.insert(3, "d");  // Overwrite element from a
-    b.insert(4, "e");
-    b.insert(5, "f");
+            let mut b = BTreeMap::with_b(6);
+            for i in 5..$len {
+                b.insert(i, 2*i);
+            }
 
-    a.append(&mut b);
+            a.append(&mut b);
 
-    assert_eq!(a.len(), 5);
-    assert_eq!(b.len(), 0);
+            assert_eq!(a.len(), $len);
+            assert_eq!(b.len(), 0);
 
-    assert_eq!(a[&1], "a");
-    assert_eq!(a[&2], "b");
-    assert_eq!(a[&3], "d");
-    assert_eq!(a[&4], "e");
-    assert_eq!(a[&5], "f");
+            for i in 0..$len {
+                if i < 5 {
+                    assert_eq!(a[&i], i);
+                } else {
+                    assert_eq!(a[&i], 2*i);
+                }
+            }
+        }
+    };
 }
+
+// These are mostly for testing the algorithm that "fixes" the right edge after insertion.
+// Single node.
+create_append_test!(test_append_9, 9);
+// Two leafs that don't need fixing.
+create_append_test!(test_append_17, 17);
+// Two leafs where the second one ends up underfull and needs stealing at the end.
+create_append_test!(test_append_14, 14);
+// Two leafs where the first one isn't full; finish insertion at root.
+create_append_test!(test_append_12, 12);
+// Three levels; finish insertion at root.
+create_append_test!(test_append_144, 144);
+// Three levels; finish insertion at leaf without a node on the second level.
+create_append_test!(test_append_145, 145);
 
 #[test]
 fn test_split_off() {

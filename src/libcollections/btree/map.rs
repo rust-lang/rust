@@ -148,6 +148,13 @@ pub struct OccupiedEntry<'a, K:'a, V:'a> {
     stack: stack::SearchStack<'a, K, V, node::handle::KV, node::handle::LeafOrInternal>,
 }
 
+struct MergeIter<K, V, I: Iterator<Item=(K, V)>> {
+    left: I,
+    right: I,
+    left_cur: Option<(K, V)>,
+    right_cur: Option<(K, V)>,
+}
+
 impl<K: Ord, V> BTreeMap<K, V> {
     /// Makes a new empty BTreeMap with a reasonable choice for B.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -496,10 +503,36 @@ impl<K: Ord, V> BTreeMap<K, V> {
     #[unstable(feature = "append",
                reason = "recently added as part of collections reform 2")]
     pub fn append(&mut self, other: &mut Self) {
-        let b = other.b;
-        for (key, value) in mem::replace(other, BTreeMap::with_b(b)) {
-            self.insert(key, value);
+        // Do we have to append anything at all?
+        if other.len() == 0 {
+            return;
         }
+
+        // If the values of `b` of `self` and `other` are equal, we can just swap them if `self` is
+        // empty.
+        if self.len() == 0 && self.b == other.b {
+            mem::swap(self, other);
+        }
+
+        // First, we merge `self` and `other` into a sorted sequence in linear time.
+        let self_b = self.b;
+        let other_b = other.b;
+        let mut self_iter = mem::replace(self, BTreeMap::with_b(self_b)).into_iter();
+        let mut other_iter = mem::replace(other, BTreeMap::with_b(other_b)).into_iter();
+        let self_cur = self_iter.next();
+        let other_cur = other_iter.next();
+
+        // Second, we build a tree from the sorted sequence in linear time.
+        let (length, depth, root) = Node::from_sorted_iter(MergeIter {
+            left: self_iter,
+            right: other_iter,
+            left_cur: self_cur,
+            right_cur: other_cur,
+        }, self_b);
+
+        self.length = length;
+        self.depth = depth;
+        self.root = root.unwrap(); // `unwrap` won't panic because length can't be zero.
     }
 
     /// Splits the map into two at the given key,
@@ -643,6 +676,56 @@ impl<'a, K, V> IntoIterator for &'a mut BTreeMap<K, V> {
         self.iter_mut()
     }
 }
+
+// Helper enum for MergeIter
+enum MergeResult {
+    Left,
+    Right,
+    Both,
+    None,
+}
+
+impl<K: Ord, V, I: Iterator<Item=(K, V)>> Iterator for MergeIter<K, V, I> {
+    type Item = (K, V);
+
+    fn next(&mut self) -> Option<(K, V)> {
+        let res = match (&self.left_cur, &self.right_cur) {
+            (&Some((ref left_key, _)), &Some((ref right_key, _))) => {
+                match left_key.cmp(right_key) {
+                    Ordering::Less => MergeResult::Left,
+                    Ordering::Equal => MergeResult::Both,
+                    Ordering::Greater => MergeResult::Right,
+                }
+            },
+            (&Some(_), &None) => MergeResult::Left,
+            (&None, &Some(_)) => MergeResult::Right,
+            (&None, &None) => MergeResult::None,
+        };
+
+        // Check which elements comes first and only advance the corresponding iterator.
+        // If two keys are equal, take the value from `right`.
+        match res {
+            MergeResult::Left => {
+                let ret = self.left_cur.take();
+                self.left_cur = self.left.next();
+                ret
+            },
+            MergeResult::Right => {
+                let ret = self.right_cur.take();
+                self.right_cur = self.right.next();
+                ret
+            },
+            MergeResult::Both => {
+                let ret = self.right_cur.take();
+                self.left_cur = self.left.next();
+                self.right_cur = self.right.next();
+                ret
+            },
+            MergeResult::None => None,
+        }
+    }
+}
+
 
 /// A helper enum useful for deciding whether to continue a loop since we can't
 /// return from a closure
