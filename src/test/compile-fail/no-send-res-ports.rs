@@ -20,7 +20,7 @@ fn main() {
       _x: Port<()>,
     }
 
-        impl Drop for foo {
+    impl Drop for foo {
         fn drop(&mut self) {}
     }
 
