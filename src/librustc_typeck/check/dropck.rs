@@ -37,8 +37,8 @@ use syntax::codemap::{self, Span};
 ///
 pub fn check_drop_impl(tcx: &ty::ctxt, drop_impl_did: ast::DefId) -> Result<(), ()> {
     let ty::TypeScheme { generics: ref dtor_generics,
-                         ty: dtor_self_type } = ty::lookup_item_type(tcx, drop_impl_did);
-    let dtor_predicates = ty::lookup_predicates(tcx, drop_impl_did);
+                         ty: dtor_self_type } = tcx.lookup_item_type(drop_impl_did);
+    let dtor_predicates = tcx.lookup_predicates(drop_impl_did);
     match dtor_self_type.sty {
         ty::TyEnum(self_type_did, self_to_impl_substs) |
         ty::TyStruct(self_type_did, self_to_impl_substs) |
@@ -91,7 +91,7 @@ fn ensure_drop_params_and_item_params_correspond<'tcx>(
 
     let ty::TypeScheme { generics: ref named_type_generics,
                          ty: named_type } =
-        ty::lookup_item_type(tcx, self_type_did);
+        tcx.lookup_item_type(self_type_did);
 
     let infcx = infer::new_infer_ctxt(tcx);
     infcx.commit_if_ok(|snapshot| {
@@ -179,7 +179,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
 
     // We can assume the predicates attached to struct/enum definition
     // hold.
-    let generic_assumptions = ty::lookup_predicates(tcx, self_type_did);
+    let generic_assumptions = tcx.lookup_predicates(self_type_did);
 
     let assumptions_in_impl_context = generic_assumptions.instantiate(tcx, &self_to_impl_substs);
     assert!(assumptions_in_impl_context.predicates.is_empty_in(subst::SelfSpace));
@@ -288,7 +288,7 @@ pub fn check_safety_of_destructor_if_necessary<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>
                         rcx.tcx().sess,
                         span,
                         "overflowed on enum {} variant {} argument {} type: {}",
-                        ty::item_path_str(tcx, def_id),
+                        tcx.item_path_str(def_id),
                         variant,
                         arg_index,
                         detected_on_typ);
@@ -298,7 +298,7 @@ pub fn check_safety_of_destructor_if_necessary<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>
                         rcx.tcx().sess,
                         span,
                         "overflowed on struct {} field {} type: {}",
-                        ty::item_path_str(tcx, def_id),
+                        tcx.item_path_str(def_id),
                         field,
                         detected_on_typ);
                 }
@@ -365,7 +365,7 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'tcx>(
         let (typ, xref_depth) = match typ.sty {
             ty::TyStruct(struct_did, substs) => {
                 if opt_phantom_data_def_id == Some(struct_did) {
-                    let item_type = ty::lookup_item_type(rcx.tcx(), struct_did);
+                    let item_type = rcx.tcx().lookup_item_type(struct_did);
                     let tp_def = item_type.generics.types
                         .opt_get(subst::TypeSpace, 0).unwrap();
                     let new_typ = substs.type_for_def(tp_def);
@@ -471,13 +471,11 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'tcx>(
                     walker.skip_current_subtree();
 
                     let fields =
-                        ty::lookup_struct_fields(rcx.tcx(), struct_did);
+                        rcx.tcx().lookup_struct_fields(struct_did);
                     for field in &fields {
-                        let field_type =
-                            ty::lookup_field_type(rcx.tcx(),
-                                                  struct_did,
-                                                  field.id,
-                                                  substs);
+                        let field_type = rcx.tcx().lookup_field_type(struct_did,
+                                                                     field.id,
+                                                                     substs);
                         try!(iterate_over_potentially_unsafe_regions_in_type(
                             rcx,
                             breadcrumbs,
@@ -501,9 +499,7 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'tcx>(
                     walker.skip_current_subtree();
 
                     let all_variant_info =
-                        ty::substd_enum_variants(rcx.tcx(),
-                                                 enum_did,
-                                                 substs);
+                        rcx.tcx().substd_enum_variants(enum_did, substs);
                     for variant_info in &all_variant_info {
                         for (i, arg_type) in variant_info.args.iter().enumerate() {
                             try!(iterate_over_potentially_unsafe_regions_in_type(
@@ -591,13 +587,13 @@ fn has_dtor_of_interest<'tcx>(tcx: &ty::ctxt<'tcx>,
             }
         }
         DtorKind::KnownDropMethod(dtor_method_did) => {
-            let impl_did = ty::impl_of_method(tcx, dtor_method_did)
+            let impl_did = tcx.impl_of_method(dtor_method_did)
                 .unwrap_or_else(|| {
                     tcx.sess.span_bug(
                         span, "no Drop impl found for drop method")
                 });
 
-            let dtor_typescheme = ty::lookup_item_type(tcx, impl_did);
+            let dtor_typescheme = tcx.lookup_item_type(impl_did);
             let dtor_generics = dtor_typescheme.generics;
 
             let mut has_pred_of_interest = false;
@@ -609,7 +605,7 @@ fn has_dtor_of_interest<'tcx>(tcx: &ty::ctxt<'tcx>,
                     continue;
                 }
 
-                for pred in ty::lookup_predicates(tcx, item_def_id).predicates {
+                for pred in tcx.lookup_predicates(item_def_id).predicates {
                     let result = match pred {
                         ty::Predicate::Equate(..) |
                         ty::Predicate::RegionOutlives(..) |
@@ -623,7 +619,7 @@ fn has_dtor_of_interest<'tcx>(tcx: &ty::ctxt<'tcx>,
 
                         ty::Predicate::Trait(ty::Binder(ref t_pred)) => {
                             let def_id = t_pred.trait_ref.def_id;
-                            if ty::trait_items(tcx, def_id).len() != 0 {
+                            if tcx.trait_items(def_id).len() != 0 {
                                 // If trait has items, assume it adds
                                 // capability to access borrowed data.
                                 true

@@ -105,7 +105,7 @@ pub use rustc::util;
 use middle::def;
 use middle::infer;
 use middle::subst;
-use middle::ty::{self, Ty};
+use middle::ty::{self, Ty, HasTypeFlags};
 use rustc::ast_map;
 use session::config;
 use util::common::time;
@@ -148,7 +148,7 @@ pub struct CrateCtxt<'a, 'tcx: 'a> {
 // Functions that write types into the node type table
 fn write_ty_to_tcx<'tcx>(tcx: &ty::ctxt<'tcx>, node_id: ast::NodeId, ty: Ty<'tcx>) {
     debug!("write_ty_to_tcx({}, {:?})", node_id,  ty);
-    assert!(!ty::type_needs_infer(ty));
+    assert!(!ty.needs_infer());
     tcx.node_type_insert(node_id, ty);
 }
 
@@ -160,7 +160,7 @@ fn write_substs_to_tcx<'tcx>(tcx: &ty::ctxt<'tcx>,
                node_id,
                item_substs);
 
-        assert!(item_substs.substs.types.all(|t| !ty::type_needs_infer(*t)));
+        assert!(!item_substs.substs.types.needs_infer());
 
         tcx.item_substs.borrow_mut().insert(node_id, item_substs);
     }
@@ -199,7 +199,7 @@ fn require_same_types<'a, 'tcx, M>(tcx: &ty::ctxt<'tcx>,
         Ok(_) => true,
         Err(ref terr) => {
             span_err!(tcx.sess, span, E0211, "{}: {}", msg(), terr);
-            ty::note_and_explain_type_err(tcx, terr, span);
+            tcx.note_and_explain_type_err(terr, span);
             false
         }
     }
@@ -209,7 +209,7 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
                     main_id: ast::NodeId,
                     main_span: Span) {
     let tcx = ccx.tcx;
-    let main_t = ty::node_id_to_type(tcx, main_id);
+    let main_t = tcx.node_id_to_type(main_id);
     match main_t.sty {
         ty::TyBareFn(..) => {
             match tcx.map.find(main_id) {
@@ -226,12 +226,12 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
                 }
                 _ => ()
             }
-            let se_ty = ty::mk_bare_fn(tcx, Some(local_def(main_id)), tcx.mk_bare_fn(ty::BareFnTy {
+            let se_ty = tcx.mk_fn(Some(local_def(main_id)), tcx.mk_bare_fn(ty::BareFnTy {
                 unsafety: ast::Unsafety::Normal,
                 abi: abi::Rust,
                 sig: ty::Binder(ty::FnSig {
                     inputs: Vec::new(),
-                    output: ty::FnConverging(ty::mk_nil(tcx)),
+                    output: ty::FnConverging(tcx.mk_nil()),
                     variadic: false
                 })
             }));
@@ -254,7 +254,7 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
                      start_id: ast::NodeId,
                      start_span: Span) {
     let tcx = ccx.tcx;
-    let start_t = ty::node_id_to_type(tcx, start_id);
+    let start_t = tcx.node_id_to_type(start_id);
     match start_t.sty {
         ty::TyBareFn(..) => {
             match tcx.map.find(start_id) {
@@ -272,13 +272,13 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
                 _ => ()
             }
 
-            let se_ty = ty::mk_bare_fn(tcx, Some(local_def(start_id)), tcx.mk_bare_fn(ty::BareFnTy {
+            let se_ty = tcx.mk_fn(Some(local_def(start_id)), tcx.mk_bare_fn(ty::BareFnTy {
                 unsafety: ast::Unsafety::Normal,
                 abi: abi::Rust,
                 sig: ty::Binder(ty::FnSig {
                     inputs: vec!(
                         tcx.types.isize,
-                        ty::mk_imm_ptr(tcx, ty::mk_imm_ptr(tcx, tcx.types.u8))
+                        tcx.mk_imm_ptr(tcx.mk_imm_ptr(tcx.types.u8))
                     ),
                     output: ty::FnConverging(tcx.types.isize),
                     variadic: false,

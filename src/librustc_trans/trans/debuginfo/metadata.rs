@@ -242,9 +242,7 @@ impl<'tcx> TypeMap<'tcx> {
             ty::TyTrait(ref trait_data) => {
                 unique_type_id.push_str("trait ");
 
-                let principal =
-                    ty::erase_late_bound_regions(cx.tcx(),
-                                                 &trait_data.principal);
+                let principal = cx.tcx().erase_late_bound_regions(&trait_data.principal);
 
                 from_def_id_and_substs(self,
                                        cx,
@@ -261,7 +259,7 @@ impl<'tcx> TypeMap<'tcx> {
 
                 unique_type_id.push_str(" fn(");
 
-                let sig = ty::erase_late_bound_regions(cx.tcx(), sig);
+                let sig = cx.tcx().erase_late_bound_regions(sig);
 
                 for &parameter_type in &sig.inputs {
                     let parameter_type_id =
@@ -376,7 +374,7 @@ impl<'tcx> TypeMap<'tcx> {
 
         unique_type_id.push_str("|");
 
-        let sig = ty::erase_late_bound_regions(cx.tcx(), sig);
+        let sig = cx.tcx().erase_late_bound_regions(sig);
 
         for &parameter_type in &sig.inputs {
             let parameter_type_id =
@@ -562,7 +560,7 @@ fn vec_slice_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                 unique_type_id: UniqueTypeId,
                                 span: Span)
                                 -> MetadataCreationResult {
-    let data_ptr_type = ty::mk_ptr(cx.tcx(), ty::mt {
+    let data_ptr_type = cx.tcx().mk_ptr(ty::mt {
         ty: element_type,
         mutbl: ast::MutImmutable
     });
@@ -626,7 +624,7 @@ fn subroutine_type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                       span: Span)
                                       -> MetadataCreationResult
 {
-    let signature = ty::erase_late_bound_regions(cx.tcx(), signature);
+    let signature = cx.tcx().erase_late_bound_regions(signature);
 
     let mut signature_metadata: Vec<DIType> = Vec::with_capacity(signature.inputs.len() + 1);
 
@@ -1176,7 +1174,7 @@ fn prepare_struct_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                                   unique_type_id,
                                                   containing_scope);
 
-    let mut fields = ty::struct_fields(cx.tcx(), def_id, substs);
+    let mut fields = cx.tcx().struct_fields(def_id, substs);
 
     // The `Ty` values returned by `ty::struct_fields` can still contain
     // `TyProjection` variants, so normalize those away.
@@ -1192,7 +1190,7 @@ fn prepare_struct_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         struct_llvm_type,
         StructMDF(StructMemberDescriptionFactory {
             fields: fields,
-            is_simd: ty::type_is_simd(cx.tcx(), struct_type),
+            is_simd: struct_type.is_simd(cx.tcx()),
             span: span,
         })
     )
@@ -1588,7 +1586,7 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     let loc = span_start(cx, definition_span);
     let file_metadata = file_metadata(cx, &loc.file.name);
 
-    let variants = ty::enum_variants(cx.tcx(), enum_def_id);
+    let variants = cx.tcx().enum_variants(enum_def_id);
 
     let enumerators_metadata: Vec<DIDescriptor> = variants
         .iter()
@@ -1891,7 +1889,7 @@ pub fn create_global_var_metadata(cx: &CrateContext,
     };
 
     let is_local_to_unit = is_node_local_to_unit(cx, node_id);
-    let variable_type = ty::node_id_to_type(cx.tcx(), node_id);
+    let variable_type = cx.tcx().node_id_to_type(node_id);
     let type_metadata = type_metadata(cx, variable_type, span);
     let namespace_node = namespace_for_item(cx, ast_util::local_def(node_id));
     let var_name = token::get_name(name).to_string();

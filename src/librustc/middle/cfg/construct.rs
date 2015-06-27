@@ -411,14 +411,14 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
             func_or_rcvr: &ast::Expr,
             args: I) -> CFGIndex {
         let method_call = ty::MethodCall::expr(call_expr.id);
-        let return_ty = ty::ty_fn_ret(match self.tcx.method_map.borrow().get(&method_call) {
+        let fn_ty = match self.tcx.method_map.borrow().get(&method_call) {
             Some(method) => method.ty,
-            None => ty::expr_ty_adjusted(self.tcx, func_or_rcvr)
-        });
+            None => self.tcx.expr_ty_adjusted(func_or_rcvr)
+        };
 
         let func_or_rcvr_exit = self.expr(func_or_rcvr, pred);
         let ret = self.straightline(call_expr, func_or_rcvr_exit, args);
-        if return_ty.diverges() {
+        if fn_ty.fn_ret().diverges() {
             self.add_unreachable_node()
         } else {
             ret

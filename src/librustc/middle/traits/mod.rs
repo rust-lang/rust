@@ -17,7 +17,7 @@ pub use self::ObligationCauseCode::*;
 
 use middle::free_region::FreeRegionMap;
 use middle::subst;
-use middle::ty::{self, HasProjectionTypes, Ty};
+use middle::ty::{self, HasTypeFlags, Ty};
 use middle::ty_fold::TypeFoldable;
 use middle::infer::{self, fixup_err_to_string, InferCtxt};
 use std::rc::Rc;
@@ -432,7 +432,7 @@ pub fn fully_normalize<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx>,
                                   cause: ObligationCause<'tcx>,
                                   value: &T)
                                   -> Result<T, Vec<FulfillmentError<'tcx>>>
-    where T : TypeFoldable<'tcx> + HasProjectionTypes
+    where T : TypeFoldable<'tcx> + HasTypeFlags
 {
     debug!("normalize_param_env(value={:?})", value);
 

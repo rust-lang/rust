@@ -112,7 +112,7 @@ impl<'a, 'tcx> Implicator<'a, 'tcx> {
 
             ty::TyEnum(def_id, substs) |
             ty::TyStruct(def_id, substs) => {
-                let item_scheme = ty::lookup_item_type(self.tcx(), def_id);
+                let item_scheme = self.tcx().lookup_item_type(def_id);
                 self.accumulate_from_adt(ty, def_id, &item_scheme.generics, substs)
             }
 
@@ -236,7 +236,7 @@ impl<'a, 'tcx> Implicator<'a, 'tcx> {
                            substs: &Substs<'tcx>)
     {
         let predicates =
-            ty::lookup_predicates(self.tcx(), def_id).instantiate(self.tcx(), substs);
+            self.tcx().lookup_predicates(def_id).instantiate(self.tcx(), substs);
         let predicates = match self.fully_normalize(&predicates) {
             Ok(predicates) => predicates,
             Err(ErrorReported) => { return; }
@@ -250,7 +250,7 @@ impl<'a, 'tcx> Implicator<'a, 'tcx> {
                 ty::Predicate::Equate(..) => { }
                 ty::Predicate::Projection(..) => { }
                 ty::Predicate::RegionOutlives(ref data) => {
-                    match ty::no_late_bound_regions(self.tcx(), data) {
+                    match self.tcx().no_late_bound_regions(data) {
                         None => { }
                         Some(ty::OutlivesPredicate(r_a, r_b)) => {
                             self.push_sub_region_constraint(Some(ty), r_b, r_a);
@@ -258,7 +258,7 @@ impl<'a, 'tcx> Implicator<'a, 'tcx> {
                     }
                 }
                 ty::Predicate::TypeOutlives(ref data) => {
-                    match ty::no_late_bound_regions(self.tcx(), data) {
+                    match self.tcx().no_late_bound_regions(data) {
                         None => { }
                         Some(ty::OutlivesPredicate(ty_a, r_b)) => {
                             self.stack.push((r_b, Some(ty)));
@@ -275,7 +275,7 @@ impl<'a, 'tcx> Implicator<'a, 'tcx> {
                                     .map(|pred| Implication::Predicate(def_id, pred));
         self.out.extend(obligations);
 
-        let variances = ty::item_variances(self.tcx(), def_id);
+        let variances = self.tcx().item_variances(def_id);
 
         for (&region, &variance) in substs.regions().iter().zip(&variances.regions) {
             match variance {
@@ -316,7 +316,7 @@ impl<'a, 'tcx> Implicator<'a, 'tcx> {
                data);
 
         for poly_trait_ref in traits::supertraits(self.tcx(), data.to_poly_trait_ref()) {
-            match ty::no_late_bound_regions(self.tcx(), &poly_trait_ref) {
+            match self.tcx().no_late_bound_regions(&poly_trait_ref) {
                 Some(trait_ref) => { self.accumulate_from_assoc_types(trait_ref); }
                 None => { }
             }
@@ -330,11 +330,11 @@ impl<'a, 'tcx> Implicator<'a, 'tcx> {
                trait_ref);
 
         let trait_def_id = trait_ref.def_id;
-        let trait_def = ty::lookup_trait_def(self.tcx(), trait_def_id);
+        let trait_def = self.tcx().lookup_trait_def(trait_def_id);
         let assoc_type_projections: Vec<_> =
             trait_def.associated_type_names
                      .iter()
-                     .map(|&name| ty::mk_projection(self.tcx(), trait_ref.clone(), name))
+                     .map(|&name| self.tcx().mk_projection(trait_ref.clone(), name))
                      .collect();
         debug!("accumulate_from_assoc_types: assoc_type_projections={:?}",
                assoc_type_projections);
@@ -400,7 +400,7 @@ impl<'a, 'tcx> Implicator<'a, 'tcx> {
     }
 
     fn fully_normalize<T>(&self, value: &T) -> Result<T,ErrorReported>
-        where T : TypeFoldable<'tcx> + ty::HasProjectionTypes
+        where T : TypeFoldable<'tcx> + ty::HasTypeFlags
     {
         let value =
             traits::fully_normalize(self.infcx,
@@ -437,7 +437,7 @@ pub fn object_region_bounds<'tcx>(
     // Since we don't actually *know* the self type for an object,
     // this "open(err)" serves as a kind of dummy standin -- basically
     // a skolemized type.
-    let open_ty = ty::mk_infer(tcx, ty::FreshTy(0));
+    let open_ty = tcx.mk_infer(ty::FreshTy(0));
 
     // Note that we preserve the overall binding levels here.
     assert!(!open_ty.has_escaping_regions());
@@ -447,5 +447,5 @@ pub fn object_region_bounds<'tcx>(
     let mut predicates = others.to_predicates(tcx, open_ty);
     predicates.extend(trait_refs.iter().map(|t| t.to_predicate()));
 
-    ty::required_region_bounds(tcx, open_ty, predicates)
+    tcx.required_region_bounds(open_ty, predicates)
 }

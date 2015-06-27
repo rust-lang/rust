@@ -101,7 +101,8 @@ use trans::cleanup::CleanupMethods;
 use trans::expr;
 use trans::tvec;
 use trans::type_of;
-use middle::ty::{self, Ty};
+use middle::mem_categorization::Typer;
+use middle::ty::Ty;
 
 use std::fmt;
 use syntax::ast;
@@ -605,9 +606,8 @@ impl<'tcx, K: KindOps + fmt::Debug> Datum<'tcx, K> {
          * affine values (since they must never be duplicated).
          */
 
-        assert!(!ty::type_moves_by_default(&ty::empty_parameter_environment(bcx.tcx()),
-                                           DUMMY_SP,
-                                           self.ty));
+        assert!(!bcx.tcx().empty_parameter_environment()
+                          .type_moves_by_default(self.ty, DUMMY_SP));
         self.shallow_copy_raw(bcx, dst)
     }
 
@@ -640,7 +640,7 @@ impl<'tcx, K: KindOps + fmt::Debug> Datum<'tcx, K> {
     }
 
     pub fn to_llbool<'blk>(self, bcx: Block<'blk, 'tcx>) -> ValueRef {
-        assert!(ty::type_is_bool(self.ty));
+        assert!(self.ty.is_bool());
         self.to_llscalarish(bcx)
     }
 }

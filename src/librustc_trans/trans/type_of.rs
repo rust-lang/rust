@@ -102,7 +102,7 @@ pub fn type_of_rust_fn<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
            sig,
            abi);
 
-    let sig = ty::erase_late_bound_regions(cx.tcx(), sig);
+    let sig = cx.tcx().erase_late_bound_regions(sig);
     assert!(!sig.variadic); // rust fns are never variadic
 
     let mut atys: Vec<Type> = Vec::new();
@@ -222,9 +222,9 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
         }
 
         ty::TyStruct(..) => {
-            if ty::type_is_simd(cx.tcx(), t) {
-                let llet = type_of(cx, ty::simd_type(cx.tcx(), t));
-                let n = ty::simd_size(cx.tcx(), t) as u64;
+            if t.is_simd(cx.tcx()) {
+                let llet = type_of(cx, t.simd_type(cx.tcx()));
+                let n = t.simd_size(cx.tcx()) as u64;
                 ensure_array_fits_in_address_space(cx, llet, n, t);
                 Type::vector(&llet, n)
             } else {
@@ -245,7 +245,7 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
 }
 
 pub fn foreign_arg_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
-    if ty::type_is_bool(t) {
+    if t.is_bool() {
         Type::i1(cx)
     } else {
         type_of(cx, t)
@@ -253,7 +253,7 @@ pub fn foreign_arg_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -
 }
 
 pub fn arg_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
-    if ty::type_is_bool(t) {
+    if t.is_bool() {
         Type::i1(cx)
     } else if type_is_immediate(cx, t) && type_of(cx, t).is_aggregate() {
         // We want to pass small aggregates as immediate values, but using an aggregate LLVM type
@@ -278,7 +278,7 @@ pub fn arg_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
 /// For the raw type without far pointer indirection, see `in_memory_type_of`.
 pub fn type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> Type {
     let ty = if !type_is_sized(cx.tcx(), ty) {
-        ty::mk_imm_ptr(cx.tcx(), ty)
+        cx.tcx().mk_imm_ptr(ty)
     } else {
         ty
     };
@@ -362,7 +362,7 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
                   cx.tn().find_type("str_slice").unwrap()
               } else {
                   let ptr_ty = in_memory_type_of(cx, ty).ptr_to();
-                  let unsized_part = ty::struct_tail(cx.tcx(), ty);
+                  let unsized_part = cx.tcx().struct_tail(ty);
                   let info_ty = match unsized_part.sty {
                       ty::TyStr | ty::TyArray(..) | ty::TySlice(_) => {
                           Type::uint_from_ty(cx, ast::TyUs)
@@ -402,9 +402,9 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
           adt::type_of(cx, &*repr)
       }
       ty::TyStruct(did, ref substs) => {
-          if ty::type_is_simd(cx.tcx(), t) {
-              let llet = in_memory_type_of(cx, ty::simd_type(cx.tcx(), t));
-              let n = ty::simd_size(cx.tcx(), t) as u64;
+          if t.is_simd(cx.tcx()) {
+              let llet = in_memory_type_of(cx, t.simd_type(cx.tcx()));
+              let n = t.simd_size(cx.tcx()) as u64;
               ensure_array_fits_in_address_space(cx, llet, n, t);
               Type::vector(&llet, n)
           } else {
@@ -434,7 +434,7 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
     // If this was an enum or struct, fill in the type now.
     match t.sty {
         ty::TyEnum(..) | ty::TyStruct(..) | ty::TyClosure(..)
-                if !ty::type_is_simd(cx.tcx(), t) => {
+                if !t.is_simd(cx.tcx()) => {
             let repr = adt::represent_type(cx, t);
             adt::finish_type_of(cx, &*repr, &mut llty);
         }
@@ -454,7 +454,7 @@ fn llvm_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                             did: ast::DefId,
                             tps: &[Ty<'tcx>])
                             -> String {
-    let base = ty::item_path_str(cx.tcx(), did);
+    let base = cx.tcx().item_path_str(did);
     let strings: Vec<String> = tps.iter().map(|t| t.to_string()).collect();
     let tstr = if strings.is_empty() {
         base

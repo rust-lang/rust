@@ -490,7 +490,7 @@ struct StaticInitializerCtxt<'a, 'tcx: 'a> {
 impl<'a, 'tcx, 'v> Visitor<'v> for StaticInitializerCtxt<'a, 'tcx> {
     fn visit_expr(&mut self, ex: &Expr) {
         if let ast::ExprAddrOf(mutbl, ref base) = ex.node {
-            let param_env = ty::empty_parameter_environment(self.bccx.tcx);
+            let param_env = self.bccx.tcx.empty_parameter_environment();
             let mc = mc::MemCategorizationContext::new(&param_env);
             let base_cmt = mc.cat_expr(&**base).unwrap();
             let borrow_kind = ty::BorrowKind::from_mutbl(mutbl);

@@ -95,7 +95,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             let rhs_ty = self.fcx.node_ty(rhs.id);
             let rhs_ty = self.fcx.infcx().resolve_type_vars_if_possible(&rhs_ty);
 
-            if ty::type_is_scalar(lhs_ty) && ty::type_is_scalar(rhs_ty) {
+            if lhs_ty.is_scalar() && rhs_ty.is_scalar() {
                 self.fcx.inh.method_map.borrow_mut().remove(&MethodCall::expr(e.id));
 
                 // weird but true: the by-ref binops put an
@@ -128,7 +128,7 @@ impl<'cx, 'tcx, 'v> Visitor<'v> for WritebackCx<'cx, 'tcx> {
             return;
         }
 
-        self.visit_node_id(ResolvingExpr(s.span), ty::stmt_node_id(s));
+        self.visit_node_id(ResolvingExpr(s.span), ast_util::stmt_id(s));
         visit::walk_stmt(self, s);
     }
 
@@ -171,7 +171,7 @@ impl<'cx, 'tcx, 'v> Visitor<'v> for WritebackCx<'cx, 'tcx> {
         debug!("Type for pattern binding {} (id {}) resolved to {:?}",
                pat_to_string(p),
                p.id,
-               ty::node_id_to_type(self.tcx(), p.id));
+               self.tcx().node_id_to_type(p.id));
 
         visit::walk_pat(self, p);
     }
@@ -334,11 +334,11 @@ impl ResolveReason {
             ResolvingLocal(s) => s,
             ResolvingPattern(s) => s,
             ResolvingUpvar(upvar_id) => {
-                ty::expr_span(tcx, upvar_id.closure_expr_id)
+                tcx.expr_span(upvar_id.closure_expr_id)
             }
             ResolvingClosure(did) => {
                 if did.krate == ast::LOCAL_CRATE {
-                    ty::expr_span(tcx, did.node)
+                    tcx.expr_span(did.node)
                 } else {
                     DUMMY_SP
                 }
@@ -403,7 +403,7 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
                     let span = self.reason.span(self.tcx);
                     span_err!(self.tcx.sess, span, E0104,
                         "cannot resolve lifetime for captured variable `{}`: {}",
-                        ty::local_var_name_str(self.tcx, upvar_id.var_id).to_string(),
+                        self.tcx.local_var_name_str(upvar_id.var_id).to_string(),
                         infer::fixup_err_to_string(e));
                 }
 

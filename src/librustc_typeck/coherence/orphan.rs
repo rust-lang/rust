@@ -67,7 +67,7 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
                 // defined in this crate.
                 debug!("coherence2::orphan check: inherent impl {}",
                        self.tcx.map.node_to_string(item.id));
-                let self_ty = ty::lookup_item_type(self.tcx, def_id).ty;
+                let self_ty = self.tcx.lookup_item_type(def_id).ty;
                 match self_ty.sty {
                     ty::TyEnum(def_id, _) |
                     ty::TyStruct(def_id, _) => {
@@ -210,7 +210,7 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
                 // "Trait" impl
                 debug!("coherence2::orphan check: trait impl {}",
                        self.tcx.map.node_to_string(item.id));
-                let trait_ref = ty::impl_trait_ref(self.tcx, def_id).unwrap();
+                let trait_ref = self.tcx.impl_trait_ref(def_id).unwrap();
                 let trait_def_id = trait_ref.def_id;
                 match traits::orphan_check(self.tcx, def_id) {
                     Ok(()) => { }
@@ -269,9 +269,9 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
                 debug!("trait_ref={:?} trait_def_id={:?} trait_has_default_impl={}",
                        trait_ref,
                        trait_def_id,
-                       ty::trait_has_default_impl(self.tcx, trait_def_id));
+                       self.tcx.trait_has_default_impl(trait_def_id));
                 if
-                    ty::trait_has_default_impl(self.tcx, trait_def_id) &&
+                    self.tcx.trait_has_default_impl(trait_def_id) &&
                     trait_def_id.krate != ast::LOCAL_CRATE
                 {
                     let self_ty = trait_ref.self_ty();
@@ -297,7 +297,7 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
                                     "cross-crate traits with a default impl, like `{}`, \
                                      can only be implemented for a struct/enum type \
                                      defined in the current crate",
-                                    ty::item_path_str(self.tcx, trait_def_id)))
+                                    self.tcx.item_path_str(trait_def_id)))
                             }
                         }
                         _ => {
@@ -305,7 +305,7 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
                                 "cross-crate traits with a default impl, like `{}`, \
                                  can only be implemented for a struct/enum type, \
                                  not `{}`",
-                                ty::item_path_str(self.tcx, trait_def_id),
+                                self.tcx.item_path_str(trait_def_id),
                                 self_ty))
                         }
                     };
@@ -332,7 +332,7 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
                 // "Trait" impl
                 debug!("coherence2::orphan check: default trait impl {}",
                        self.tcx.map.node_to_string(item.id));
-                let trait_ref = ty::impl_trait_ref(self.tcx, def_id).unwrap();
+                let trait_ref = self.tcx.impl_trait_ref(def_id).unwrap();
                 if trait_ref.def_id.krate != ast::LOCAL_CRATE {
                     span_err!(self.tcx.sess, item.span, E0318,
                               "cannot create default implementations for traits outside the \

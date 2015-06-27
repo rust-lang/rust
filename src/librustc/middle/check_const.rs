@@ -115,7 +115,7 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
     {
         let param_env = match item_id {
             Some(item_id) => ty::ParameterEnvironment::for_item(self.tcx, item_id),
-            None => ty::empty_parameter_environment(self.tcx)
+            None => self.tcx.empty_parameter_environment()
         };
         f(&mut euv::ExprUseVisitor::new(self, &param_env))
     }
@@ -231,7 +231,7 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
                                       fn_like.id());
             self.add_qualif(qualif);
 
-            if ty::type_contents(self.tcx, ret_ty).interior_unsafe() {
+            if ret_ty.type_contents(self.tcx).interior_unsafe() {
                 self.add_qualif(ConstQualif::MUTABLE_MEM);
             }
 
@@ -266,8 +266,8 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
     }
 
     fn check_static_mut_type(&self, e: &ast::Expr) {
-        let node_ty = ty::node_id_to_type(self.tcx, e.id);
-        let tcontents = ty::type_contents(self.tcx, node_ty);
+        let node_ty = self.tcx.node_id_to_type(e.id);
+        let tcontents = node_ty.type_contents(self.tcx);
 
         let suffix = if tcontents.has_dtor() {
             "destructors"
@@ -282,12 +282,12 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
     }
 
     fn check_static_type(&self, e: &ast::Expr) {
-        let ty = ty::node_id_to_type(self.tcx, e.id);
+        let ty = self.tcx.node_id_to_type(e.id);
         let infcx = infer::new_infer_ctxt(self.tcx);
         let mut fulfill_cx = traits::FulfillmentContext::new(false);
         let cause = traits::ObligationCause::new(e.span, e.id, traits::SharedStatic);
         fulfill_cx.register_builtin_bound(&infcx, ty, ty::BoundSync, cause);
-        let env = ty::empty_parameter_environment(self.tcx);
+        let env = self.tcx.empty_parameter_environment();
         match fulfill_cx.select_all_or_error(&infcx, &env) {
             Ok(()) => { },
             Err(ref errors) => {
@@ -402,7 +402,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
         let mut outer = self.qualif;
         self.qualif = ConstQualif::empty();
 
-        let node_ty = ty::node_id_to_type(self.tcx, ex.id);
+        let node_ty = self.tcx.node_id_to_type(ex.id);
         check_expr(self, ex, node_ty);
 
         // Special-case some expressions to avoid certain flags bubbling up.
@@ -479,7 +479,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
                 // initializer values (very bad).
                 // If the type doesn't have interior mutability, then `ConstQualif::MUTABLE_MEM` has
                 // propagated from another error, so erroring again would be just noise.
-                let tc = ty::type_contents(self.tcx, node_ty);
+                let tc = node_ty.type_contents(self.tcx);
                 if self.qualif.intersects(ConstQualif::MUTABLE_MEM) && tc.interior_unsafe() {
                     outer = outer | ConstQualif::NOT_CONST;
                     if self.mode != Mode::Var {
@@ -529,7 +529,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
                         e: &ast::Expr, node_ty: Ty<'tcx>) {
     match node_ty.sty {
         ty::TyStruct(did, _) |
-        ty::TyEnum(did, _) if ty::has_dtor(v.tcx, did) => {
+        ty::TyEnum(did, _) if v.tcx.has_dtor(did) => {
             v.add_qualif(ConstQualif::NEEDS_DROP);
             if v.mode != Mode::Var {
                 v.tcx.sess.span_err(e.span,
@@ -560,7 +560,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
             }
         }
         ast::ExprUnary(op, ref inner) => {
-            match ty::node_id_to_type(v.tcx, inner.id).sty {
+            match v.tcx.node_id_to_type(inner.id).sty {
                 ty::TyRawPtr(_) => {
                     assert!(op == ast::UnDeref);
 
@@ -574,7 +574,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
             }
         }
         ast::ExprBinary(op, ref lhs, _) => {
-            match ty::node_id_to_type(v.tcx, lhs.id).sty {
+            match v.tcx.node_id_to_type(lhs.id).sty {
                 ty::TyRawPtr(_) => {
                     assert!(op.node == ast::BiEq || op.node == ast::BiNe ||
                             op.node == ast::BiLe || op.node == ast::BiLt ||
@@ -731,7 +731,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
         ast::ExprClosure(..) => {
             // Paths in constant contexts cannot refer to local variables,
             // as there are none, and thus closures can't have upvars there.
-            if ty::with_freevars(v.tcx, e.id, |fv| !fv.is_empty()) {
+            if v.tcx.with_freevars(e.id, |fv| !fv.is_empty()) {
                 assert!(v.mode == Mode::Var,
                         "global closures can't capture anything");
                 v.add_qualif(ConstQualif::NOT_CONST);

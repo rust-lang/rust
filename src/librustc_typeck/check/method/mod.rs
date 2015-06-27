@@ -167,7 +167,7 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
            m_name,
            trait_def_id);
 
-    let trait_def = ty::lookup_trait_def(fcx.tcx(), trait_def_id);
+    let trait_def = fcx.tcx().lookup_trait_def(trait_def_id);
 
     let expected_number_of_input_types = trait_def.generics.types.len(subst::TypeSpace);
     let input_types = match opt_input_types {
@@ -224,7 +224,7 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                                                        &method_ty.fty.sig).0;
     let fn_sig = fcx.instantiate_type_scheme(span, trait_ref.substs, &fn_sig);
     let transformed_self_ty = fn_sig.inputs[0];
-    let fty = ty::mk_bare_fn(tcx, None, tcx.mk_bare_fn(ty::BareFnTy {
+    let fty = tcx.mk_fn(None, tcx.mk_bare_fn(ty::BareFnTy {
         sig: ty::Binder(fn_sig),
         unsafety: method_ty.fty.unsafety,
         abi: method_ty.fty.abi.clone(),
@@ -359,7 +359,7 @@ fn trait_item<'tcx>(tcx: &ty::ctxt<'tcx>,
                     item_name: ast::Name)
                     -> Option<(usize, ty::ImplOrTraitItem<'tcx>)>
 {
-    let trait_items = ty::trait_items(tcx, trait_def_id);
+    let trait_items = tcx.trait_items(trait_def_id);
     trait_items
         .iter()
         .enumerate()
@@ -376,6 +376,6 @@ fn impl_item<'tcx>(tcx: &ty::ctxt<'tcx>,
     let impl_items = impl_items.get(&impl_def_id).unwrap();
     impl_items
         .iter()
-        .map(|&did| ty::impl_or_trait_item(tcx, did.def_id()))
+        .map(|&did| tcx.impl_or_trait_item(did.def_id()))
         .find(|m| m.name() == item_name)
 }

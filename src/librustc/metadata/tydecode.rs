@@ -21,7 +21,7 @@ pub use self::DefIdSource::*;
 use middle::region;
 use middle::subst;
 use middle::subst::VecPerParamSpace;
-use middle::ty::{self, ToPredicate, Ty};
+use middle::ty::{self, ToPredicate, Ty, HasTypeFlags};
 
 use std::str;
 use syntax::abi;
@@ -471,14 +471,14 @@ fn parse_ty_<'a, 'tcx, F>(st: &mut PState<'a, 'tcx>, conv: &mut F) -> Ty<'tcx> w
         let def = parse_def_(st, NominalType, conv);
         let substs = parse_substs_(st, conv);
         assert_eq!(next(st), ']');
-        return ty::mk_enum(tcx, def, st.tcx.mk_substs(substs));
+        return tcx.mk_enum(def, st.tcx.mk_substs(substs));
       }
       'x' => {
         assert_eq!(next(st), '[');
         let trait_ref = ty::Binder(parse_trait_ref_(st, conv));
         let bounds = parse_existential_bounds_(st, conv);
         assert_eq!(next(st), ']');
-        return ty::mk_trait(tcx, trait_ref, bounds);
+        return tcx.mk_trait(trait_ref, bounds);
       }
       'p' => {
         assert_eq!(next(st), '[');
@@ -487,38 +487,38 @@ fn parse_ty_<'a, 'tcx, F>(st: &mut PState<'a, 'tcx>, conv: &mut F) -> Ty<'tcx> w
         let space = parse_param_space(st);
         assert_eq!(next(st), '|');
         let name = token::intern(&parse_str(st, ']'));
-        return ty::mk_param(tcx, space, index, name);
+        return tcx.mk_param(space, index, name);
       }
-      '~' => return ty::mk_uniq(tcx, parse_ty_(st, conv)),
-      '*' => return ty::mk_ptr(tcx, parse_mt_(st, conv)),
+      '~' => return tcx.mk_box(parse_ty_(st, conv)),
+      '*' => return tcx.mk_ptr(parse_mt_(st, conv)),
       '&' => {
         let r = parse_region_(st, conv);
         let mt = parse_mt_(st, conv);
-        return ty::mk_rptr(tcx, tcx.mk_region(r), mt);
+        return tcx.mk_ref(tcx.mk_region(r), mt);
       }
       'V' => {
         let t = parse_ty_(st, conv);
-        let sz = parse_size(st);
-        return ty::mk_vec(tcx, t, sz);
+        return match parse_size(st) {
+            Some(n) => tcx.mk_array(t, n),
+            None => tcx.mk_slice(t)
+        };
       }
       'v' => {
-        return ty::mk_str(tcx);
+        return tcx.mk_str();
       }
       'T' => {
         assert_eq!(next(st), '[');
         let mut params = Vec::new();
         while peek(st) != ']' { params.push(parse_ty_(st, conv)); }
         st.pos = st.pos + 1;
-        return ty::mk_tup(tcx, params);
+        return tcx.mk_tup(params);
       }
       'F' => {
           let def_id = parse_def_(st, NominalType, conv);
-          return ty::mk_bare_fn(tcx, Some(def_id),
-                                tcx.mk_bare_fn(parse_bare_fn_ty_(st, conv)));
+          return tcx.mk_fn(Some(def_id), tcx.mk_bare_fn(parse_bare_fn_ty_(st, conv)));
       }
       'G' => {
-          return ty::mk_bare_fn(tcx, None,
-                                tcx.mk_bare_fn(parse_bare_fn_ty_(st, conv)));
+          return tcx.mk_fn(None, tcx.mk_bare_fn(parse_bare_fn_ty_(st, conv)));
       }
       '#' => {
         let pos = parse_hex(st);
@@ -534,7 +534,7 @@ fn parse_ty_<'a, 'tcx, F>(st: &mut PState<'a, 'tcx>, conv: &mut F) -> Ty<'tcx> w
             // If there is a closure buried in the type some where, then we
             // need to re-convert any def ids (see case 'k', below). That means
             // we can't reuse the cached version.
-            if !ty::type_has_ty_closure(tt) {
+            if !tt.has_closure_types() {
                 return tt;
             }
           }
@@ -558,20 +558,20 @@ fn parse_ty_<'a, 'tcx, F>(st: &mut PState<'a, 'tcx>, conv: &mut F) -> Ty<'tcx> w
           let did = parse_def_(st, NominalType, conv);
           let substs = parse_substs_(st, conv);
           assert_eq!(next(st), ']');
-          return ty::mk_struct(st.tcx, did, st.tcx.mk_substs(substs));
+          return st.tcx.mk_struct(did, st.tcx.mk_substs(substs));
       }
       'k' => {
           assert_eq!(next(st), '[');
           let did = parse_def_(st, ClosureSource, conv);
           let substs = parse_substs_(st, conv);
           assert_eq!(next(st), ']');
-          return ty::mk_closure(st.tcx, did, st.tcx.mk_substs(substs));
+          return st.tcx.mk_closure(did, st.tcx.mk_substs(substs));
       }
       'P' => {
           assert_eq!(next(st), '[');
           let trait_ref = parse_trait_ref_(st, conv);
           let name = token::intern(&parse_str(st, ']'));
-          return ty::mk_projection(tcx, trait_ref, name);
+          return tcx.mk_projection(trait_ref, name);
       }
       'e' => {
           return tcx.types.err;

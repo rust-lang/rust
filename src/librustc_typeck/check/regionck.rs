@@ -91,7 +91,7 @@ use middle::mem_categorization as mc;
 use middle::region::CodeExtent;
 use middle::subst::Substs;
 use middle::traits;
-use middle::ty::{self, ClosureTyper, ReScope, Ty, MethodCall};
+use middle::ty::{self, ClosureTyper, ReScope, Ty, MethodCall, HasTypeFlags};
 use middle::infer::{self, GenericKind};
 use middle::pat_util;
 
@@ -262,13 +262,13 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
     /// Try to resolve the type for the given node.
     pub fn resolve_expr_type_adjusted(&mut self, expr: &ast::Expr) -> Ty<'tcx> {
         let ty_unadjusted = self.resolve_node_type(expr.id);
-        if ty::type_is_error(ty_unadjusted) {
+        if ty_unadjusted.references_error() {
             ty_unadjusted
         } else {
-            let tcx = self.fcx.tcx();
-            ty::adjust_ty(tcx, expr.span, expr.id, ty_unadjusted,
-                          self.fcx.inh.adjustments.borrow().get(&expr.id),
-                          |method_call| self.resolve_method_type(method_call))
+            ty_unadjusted.adjust(
+                self.fcx.tcx(), expr.span, expr.id,
+                self.fcx.inh.adjustments.borrow().get(&expr.id),
+                |method_call| self.resolve_method_type(method_call))
         }
     }
 
@@ -662,7 +662,7 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
                     constrain_call(rcx, expr, Some(&**base),
                                    None::<ast::Expr>.iter(), true);
                     let fn_ret = // late-bound regions in overloaded method calls are instantiated
-                        ty::no_late_bound_regions(rcx.tcx(), &ty::ty_fn_ret(method.ty)).unwrap();
+                        rcx.tcx().no_late_bound_regions(&method.ty.fn_ret()).unwrap();
                     fn_ret.unwrap()
                 }
                 None => rcx.resolve_node_type(base.id)
@@ -891,9 +891,9 @@ fn constrain_autoderefs<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
 
                 // Treat overloaded autoderefs as if an AutoRef adjustment
                 // was applied on the base type, as that is always the case.
-                let fn_sig = ty::ty_fn_sig(method.ty);
+                let fn_sig = method.ty.fn_sig();
                 let fn_sig = // late-bound regions should have been instantiated
-                    ty::no_late_bound_regions(rcx.tcx(), fn_sig).unwrap();
+                    rcx.tcx().no_late_bound_regions(fn_sig).unwrap();
                 let self_ty = fn_sig.inputs[0];
                 let (m, r) = match self_ty.sty {
                     ty::TyRef(r, ref m) => (m.mutbl, r),
@@ -937,7 +937,7 @@ fn constrain_autoderefs<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
                                             r_deref_expr, *r_ptr);
         }
 
-        match ty::deref(derefd_ty, true) {
+        match derefd_ty.builtin_deref(true) {
             Some(mt) => derefd_ty = mt.ty,
             /* if this type can't be dereferenced, then there's already an error
                in the session saying so. Just bail out for now */
@@ -1017,9 +1017,9 @@ fn type_of_node_must_outlive<'a, 'tcx>(
     // is going to fail anyway, so just stop here and let typeck
     // report errors later on in the writeback phase.
     let ty0 = rcx.resolve_node_type(id);
-    let ty = ty::adjust_ty(tcx, origin.span(), id, ty0,
-                           rcx.fcx.inh.adjustments.borrow().get(&id),
-                           |method_call| rcx.resolve_method_type(method_call));
+    let ty = ty0.adjust(tcx, origin.span(), id,
+                        rcx.fcx.inh.adjustments.borrow().get(&id),
+                        |method_call| rcx.resolve_method_type(method_call));
     debug!("constrain_regions_in_type_of_node(\
             ty={}, ty0={}, id={}, minimum_lifetime={:?})",
             ty,  ty0,
@@ -1172,10 +1172,8 @@ fn link_region_from_node_type<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
            id, mutbl, cmt_borrowed);
 
     let rptr_ty = rcx.resolve_node_type(id);
-    if !ty::type_is_error(rptr_ty) {
-        let tcx = rcx.fcx.ccx.tcx;
+    if let ty::TyRef(&r, _) = rptr_ty.sty {
         debug!("rptr_ty={}",  rptr_ty);
-        let r = ty::ty_region(tcx, span, rptr_ty);
         link_region(rcx, span, &r, ty::BorrowKind::from_mutbl(mutbl),
                     cmt_borrowed);
     }
@@ -1462,10 +1460,8 @@ fn generic_must_outlive<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
            generic);
 
     // To start, collect bounds from user:
-    let mut param_bounds =
-        ty::required_region_bounds(rcx.tcx(),
-                                   generic.to_ty(rcx.tcx()),
-                                   param_env.caller_bounds.clone());
+    let mut param_bounds = rcx.tcx().required_region_bounds(generic.to_ty(rcx.tcx()),
+                                                            param_env.caller_bounds.clone());
 
     // In the case of a projection T::Foo, we may be able to extract bounds from the trait def:
     match *generic {
@@ -1520,7 +1516,7 @@ fn projection_bounds<'a,'tcx>(rcx: &Rcx<'a, 'tcx>,
     debug!("projection_bounds(projection_ty={:?})",
            projection_ty);
 
-    let ty = ty::mk_projection(tcx, projection_ty.trait_ref.clone(), projection_ty.item_name);
+    let ty = tcx.mk_projection(projection_ty.trait_ref.clone(), projection_ty.item_name);
 
     // Say we have a projection `<T as SomeTrait<'a>>::SomeType`. We are interested
     // in looking for a trait definition like:
@@ -1532,7 +1528,7 @@ fn projection_bounds<'a,'tcx>(rcx: &Rcx<'a, 'tcx>,
     // ```
     //
     // we can thus deduce that `<T as SomeTrait<'a>>::SomeType : 'a`.
-    let trait_predicates = ty::lookup_predicates(tcx, projection_ty.trait_ref.def_id);
+    let trait_predicates = tcx.lookup_predicates(projection_ty.trait_ref.def_id);
     let predicates = trait_predicates.predicates.as_slice().to_vec();
     traits::elaborate_predicates(tcx, predicates)
         .filter_map(|predicate| {

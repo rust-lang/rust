@@ -30,6 +30,7 @@
 
 use metadata::{csearch, decoder};
 use middle::def::*;
+use middle::mem_categorization::Typer;
 use middle::subst::Substs;
 use middle::ty::{self, Ty};
 use middle::{def, pat_util, stability};
@@ -142,7 +143,7 @@ impl LintPass for TypeLimits {
                         }
                     },
                     _ => {
-                        let t = ty::expr_ty(cx.tcx, &**expr);
+                        let t = cx.tcx.expr_ty(&**expr);
                         match t.sty {
                             ty::TyUint(_) => {
                                 cx.span_lint(UNSIGNED_NEGATION, e.span,
@@ -168,7 +169,7 @@ impl LintPass for TypeLimits {
                 }
 
                 if is_shift_binop(binop.node) {
-                    let opt_ty_bits = match ty::expr_ty(cx.tcx, &**l).sty {
+                    let opt_ty_bits = match cx.tcx.expr_ty(&**l).sty {
                         ty::TyInt(t) => Some(int_ty_bits(t, cx.sess().target.int_type)),
                         ty::TyUint(t) => Some(uint_ty_bits(t, cx.sess().target.uint_type)),
                         _ => None
@@ -193,7 +194,7 @@ impl LintPass for TypeLimits {
                 }
             },
             ast::ExprLit(ref lit) => {
-                match ty::expr_ty(cx.tcx, e).sty {
+                match cx.tcx.expr_ty(e).sty {
                     ty::TyInt(t) => {
                         match lit.node {
                             ast::LitInt(v, ast::SignedIntLit(_, ast::Plus)) |
@@ -343,7 +344,7 @@ impl LintPass for TypeLimits {
             } else {
                 binop
             };
-            match ty::expr_ty(tcx, expr).sty {
+            match tcx.expr_ty(expr).sty {
                 ty::TyInt(int_ty) => {
                     let (min, max) = int_ty_range(int_ty);
                     let lit_val: i64 = match lit.node {
@@ -412,7 +413,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                     None => panic!("ast_ty_to_ty_cache was incomplete after typeck!")
                 };
 
-                if !ty::is_ffi_safe(self.cx.tcx, tty) {
+                if !tty.is_ffi_safe(self.cx.tcx) {
                     self.cx.span_lint(IMPROPER_CTYPES, sp,
                                       "found type without foreign-function-safe \
                                        representation annotation in foreign module, consider \
@@ -482,20 +483,11 @@ pub struct BoxPointers;
 impl BoxPointers {
     fn check_heap_type<'a, 'tcx>(&self, cx: &Context<'a, 'tcx>,
                                  span: Span, ty: Ty<'tcx>) {
-        let mut n_uniq: usize = 0;
-        ty::fold_ty(cx.tcx, ty, |t| {
-            match t.sty {
-                ty::TyBox(_) => {
-                    n_uniq += 1;
-                }
-                _ => ()
-            };
-            t
-        });
-
-        if n_uniq > 0 {
-            let m = format!("type uses owned (Box type) pointers: {}", ty);
-            cx.span_lint(BOX_POINTERS, span, &m[..]);
+        for leaf_ty in ty.walk() {
+            if let ty::TyBox(_) = leaf_ty.sty {
+                let m = format!("type uses owned (Box type) pointers: {}", ty);
+                cx.span_lint(BOX_POINTERS, span, &m);
+            }
         }
     }
 }
@@ -512,7 +504,7 @@ impl LintPass for BoxPointers {
             ast::ItemEnum(..) |
             ast::ItemStruct(..) =>
                 self.check_heap_type(cx, it.span,
-                                     ty::node_id_to_type(cx.tcx, it.id)),
+                                     cx.tcx.node_id_to_type(it.id)),
             _ => ()
         }
 
@@ -521,7 +513,7 @@ impl LintPass for BoxPointers {
             ast::ItemStruct(ref struct_def, _) => {
                 for struct_field in &struct_def.fields {
                     self.check_heap_type(cx, struct_field.span,
-                                         ty::node_id_to_type(cx.tcx, struct_field.node.id));
+                                         cx.tcx.node_id_to_type(struct_field.node.id));
                 }
             }
             _ => ()
@@ -529,7 +521,7 @@ impl LintPass for BoxPointers {
     }
 
     fn check_expr(&mut self, cx: &Context, e: &ast::Expr) {
-        let ty = ty::expr_ty(cx.tcx, e);
+        let ty = cx.tcx.expr_ty(e);
         self.check_heap_type(cx, e.span, ty);
     }
 }
@@ -582,13 +574,13 @@ impl LintPass for RawPointerDerive {
             ast::ItemImpl(_, _, _, ref t_ref_opt, _, _) => {
                 // Deriving the Copy trait does not cause a warning
                 if let &Some(ref trait_ref) = t_ref_opt {
-                    let def_id = ty::trait_ref_to_def_id(cx.tcx, trait_ref);
+                    let def_id = cx.tcx.trait_ref_to_def_id(trait_ref);
                     if Some(def_id) == cx.tcx.lang_items.copy_trait() {
                         return;
                     }
                 }
 
-                match ty::node_id_to_type(cx.tcx, item.id).sty {
+                match cx.tcx.node_id_to_type(item.id).sty {
                     ty::TyEnum(did, _) => did,
                     ty::TyStruct(did, _) => did,
                     _ => return,
@@ -732,7 +724,7 @@ impl LintPass for UnusedResults {
             return;
         }
 
-        let t = ty::expr_ty(cx.tcx, expr);
+        let t = cx.tcx.expr_ty(expr);
         let warned = match t.sty {
             ty::TyTuple(ref tys) if tys.is_empty() => return,
             ty::TyBool => return,
@@ -877,7 +869,7 @@ fn method_context(cx: &Context, id: ast::NodeId, span: Span) -> MethodContext {
         Some(item) => match item.container() {
             ty::TraitContainer(..) => MethodContext::TraitDefaultImpl,
             ty::ImplContainer(cid) => {
-                match ty::impl_trait_ref(cx.tcx, cid) {
+                match cx.tcx.impl_trait_ref(cid) {
                     Some(_) => MethodContext::TraitImpl,
                     None => MethodContext::PlainImpl
                 }
@@ -1601,7 +1593,7 @@ impl LintPass for MissingDoc {
             ast::ItemImpl(_, _, _, Some(ref trait_ref), _, ref impl_items) => {
                 // If the trait is private, add the impl items to private_traits so they don't get
                 // reported for missing docs.
-                let real_trait = ty::trait_ref_to_def_id(cx.tcx, trait_ref);
+                let real_trait = cx.tcx.trait_ref_to_def_id(trait_ref);
                 match cx.tcx.map.find(real_trait.node) {
                     Some(ast_map::NodeItem(item)) => if item.vis == ast::Visibility::Inherited {
                         for itm in impl_items {
@@ -1699,23 +1691,23 @@ impl LintPass for MissingCopyImplementations {
                 if ast_generics.is_parameterized() {
                     return;
                 }
-                ty::mk_struct(cx.tcx, local_def(item.id),
-                              cx.tcx.mk_substs(Substs::empty()))
+                cx.tcx.mk_struct(local_def(item.id),
+                                 cx.tcx.mk_substs(Substs::empty()))
             }
             ast::ItemEnum(_, ref ast_generics) => {
                 if ast_generics.is_parameterized() {
                     return;
                 }
-                ty::mk_enum(cx.tcx, local_def(item.id),
-                            cx.tcx.mk_substs(Substs::empty()))
+                cx.tcx.mk_enum(local_def(item.id),
+                               cx.tcx.mk_substs(Substs::empty()))
             }
             _ => return,
         };
-        let parameter_environment = ty::empty_parameter_environment(cx.tcx);
-        if !ty::type_moves_by_default(&parameter_environment, item.span, ty) {
+        let parameter_environment = cx.tcx.empty_parameter_environment();
+        if !parameter_environment.type_moves_by_default(ty, item.span) {
             return;
         }
-        if ty::can_type_implement_copy(&parameter_environment, item.span, ty).is_ok() {
+        if parameter_environment.can_type_implement_copy(ty, item.span).is_ok() {
             cx.span_lint(MISSING_COPY_IMPLEMENTATIONS,
                          item.span,
                          "type could implement `Copy`; consider adding `impl \
@@ -1763,11 +1755,11 @@ impl LintPass for MissingDebugImplementations {
         };
 
         if self.impling_types.is_none() {
-            let debug_def = ty::lookup_trait_def(cx.tcx, debug);
+            let debug_def = cx.tcx.lookup_trait_def(debug);
             let mut impls = NodeSet();
             debug_def.for_each_impl(cx.tcx, |d| {
                 if d.krate == ast::LOCAL_CRATE {
-                    if let Some(ty_def) = ty::ty_to_def_id(ty::node_id_to_type(cx.tcx, d.node)) {
+                    if let Some(ty_def) = cx.tcx.node_id_to_type(d.node).ty_to_def_id() {
                         impls.insert(ty_def.node);
                     }
                 }
@@ -1878,7 +1870,7 @@ impl LintPass for UnconditionalRecursion {
             visit::FkFnBlock => return
         };
 
-        let impl_def_id = ty::impl_of_method(cx.tcx, local_def(id))
+        let impl_def_id = cx.tcx.impl_of_method(local_def(id))
             .unwrap_or(local_def(ast::DUMMY_NODE_ID));
         assert!(ast_util::is_local(impl_def_id));
         let impl_node_id = impl_def_id.node;
@@ -2010,7 +2002,7 @@ impl LintPass for UnconditionalRecursion {
                     // method instead.
                     ty::MethodTypeParam(
                         ty::MethodParam { ref trait_ref, method_num, impl_def_id: None, }) => {
-                        ty::trait_item(tcx, trait_ref.def_id, method_num).def_id()
+                        tcx.trait_item(trait_ref.def_id, method_num).def_id()
                     }
 
                     // The `impl` is known, so we check that with a
@@ -2175,11 +2167,11 @@ impl LintPass for MutableTransmutes {
                 ast::ExprPath(..) => (),
                 _ => return None
             }
-            if let DefFn(did, _) = ty::resolve_expr(cx.tcx, expr) {
+            if let DefFn(did, _) = cx.tcx.resolve_expr(expr) {
                 if !def_id_is_transmute(cx, did) {
                     return None;
                 }
-                let typ = ty::node_id_to_type(cx.tcx, expr.id);
+                let typ = cx.tcx.node_id_to_type(expr.id);
                 match typ.sty {
                     ty::TyBareFn(_, ref bare_fn) if bare_fn.abi == RustIntrinsic => {
                         if let ty::FnConverging(to) = bare_fn.sig.0.output {
@@ -2194,11 +2186,11 @@ impl LintPass for MutableTransmutes {
         }
 
         fn def_id_is_transmute(cx: &Context, def_id: DefId) -> bool {
-            match ty::lookup_item_type(cx.tcx, def_id).ty.sty {
+            match cx.tcx.lookup_item_type(def_id).ty.sty {
                 ty::TyBareFn(_, ref bfty) if bfty.abi == RustIntrinsic => (),
                 _ => return false
             }
-            ty::with_path(cx.tcx, def_id, |path| match path.last() {
+            cx.tcx.with_path(def_id, |path| match path.last() {
                 Some(ref last) => last.name().as_str() == "transmute",
                 _ => false
             })
@@ -2251,7 +2243,7 @@ impl LintPass for DropWithReprExtern {
             let (drop_impl_did, dtor_self_type) =
                 if dtor_did.krate == ast::LOCAL_CRATE {
                     let impl_did = ctx.tcx.map.get_parent_did(dtor_did.node);
-                    let ty = ty::lookup_item_type(ctx.tcx, impl_did).ty;
+                    let ty = ctx.tcx.lookup_item_type(impl_did).ty;
                     (impl_did, ty)
                 } else {
                     continue;
@@ -2261,9 +2253,9 @@ impl LintPass for DropWithReprExtern {
                 ty::TyEnum(self_type_did, _) |
                 ty::TyStruct(self_type_did, _) |
                 ty::TyClosure(self_type_did, _) => {
-                    let hints = ty::lookup_repr_hints(ctx.tcx, self_type_did);
+                    let hints = ctx.tcx.lookup_repr_hints(self_type_did);
                     if hints.iter().any(|attr| *attr == attr::ReprExtern) &&
-                        ty::ty_dtor(ctx.tcx, self_type_did).has_drop_flag() {
+                        ctx.tcx.ty_dtor(self_type_did).has_drop_flag() {
                         let drop_impl_span = ctx.tcx.map.def_id_span(drop_impl_did,
                                                                      codemap::DUMMY_SP);
                         let self_defn_span = ctx.tcx.map.def_id_span(self_type_did,

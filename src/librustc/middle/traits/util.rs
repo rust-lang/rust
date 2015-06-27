@@ -43,19 +43,19 @@ impl<'a,'tcx> PredicateSet<'a,'tcx> {
         // regions before we throw things into the underlying set.
         let normalized_pred = match *pred {
             ty::Predicate::Trait(ref data) =>
-                ty::Predicate::Trait(ty::anonymize_late_bound_regions(self.tcx, data)),
+                ty::Predicate::Trait(self.tcx.anonymize_late_bound_regions(data)),
 
             ty::Predicate::Equate(ref data) =>
-                ty::Predicate::Equate(ty::anonymize_late_bound_regions(self.tcx, data)),
+                ty::Predicate::Equate(self.tcx.anonymize_late_bound_regions(data)),
 
             ty::Predicate::RegionOutlives(ref data) =>
-                ty::Predicate::RegionOutlives(ty::anonymize_late_bound_regions(self.tcx, data)),
+                ty::Predicate::RegionOutlives(self.tcx.anonymize_late_bound_regions(data)),
 
             ty::Predicate::TypeOutlives(ref data) =>
-                ty::Predicate::TypeOutlives(ty::anonymize_late_bound_regions(self.tcx, data)),
+                ty::Predicate::TypeOutlives(self.tcx.anonymize_late_bound_regions(data)),
 
             ty::Predicate::Projection(ref data) =>
-                ty::Predicate::Projection(ty::anonymize_late_bound_regions(self.tcx, data)),
+                ty::Predicate::Projection(self.tcx.anonymize_late_bound_regions(data)),
         };
         self.set.insert(normalized_pred)
     }
@@ -116,7 +116,7 @@ impl<'cx, 'tcx> Elaborator<'cx, 'tcx> {
         match *predicate {
             ty::Predicate::Trait(ref data) => {
                 // Predicates declared on the trait.
-                let predicates = ty::lookup_super_predicates(self.tcx, data.def_id());
+                let predicates = self.tcx.lookup_super_predicates(data.def_id());
 
                 let mut predicates: Vec<_> =
                     predicates.predicates
@@ -236,7 +236,7 @@ impl<'cx, 'tcx> Iterator for SupertraitDefIds<'cx, 'tcx> {
             None => { return None; }
         };
 
-        let predicates = ty::lookup_super_predicates(self.tcx, def_id);
+        let predicates = self.tcx.lookup_super_predicates(def_id);
         let visited = &mut self.visited;
         self.stack.extend(
             predicates.predicates
@@ -297,7 +297,7 @@ pub fn fresh_type_vars_for_impl<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                                           -> Substs<'tcx>
 {
     let tcx = infcx.tcx;
-    let impl_generics = ty::lookup_item_type(tcx, impl_def_id).generics;
+    let impl_generics = tcx.lookup_item_type(impl_def_id).generics;
     infcx.fresh_substs_for_generics(span, &impl_generics)
 }
 
@@ -416,7 +416,7 @@ pub fn get_vtable_index_of_object_method<'tcx>(tcx: &ty::ctxt<'tcx>,
             break;
         }
 
-        let trait_items = ty::trait_items(tcx, bound_ref.def_id());
+        let trait_items = tcx.trait_items(bound_ref.def_id());
         for trait_item in trait_items.iter() {
             match *trait_item {
                 ty::MethodTraitItem(_) => method_count += 1,
@@ -427,7 +427,7 @@ pub fn get_vtable_index_of_object_method<'tcx>(tcx: &ty::ctxt<'tcx>,
 
     // count number of methods preceding the one we are selecting and
     // add them to the total offset; skip over associated types.
-    let trait_items = ty::trait_items(tcx, trait_def_id);
+    let trait_items = tcx.trait_items(trait_def_id);
     for trait_item in trait_items.iter().take(method_offset_in_trait) {
         match *trait_item {
             ty::MethodTraitItem(_) => method_count += 1,
@@ -456,14 +456,14 @@ pub fn closure_trait_ref_and_return_type<'tcx>(
 {
     let arguments_tuple = match tuple_arguments {
         TupleArgumentsFlag::No => sig.0.inputs[0],
-        TupleArgumentsFlag::Yes => ty::mk_tup(tcx, sig.0.inputs.to_vec()),
+        TupleArgumentsFlag::Yes => tcx.mk_tup(sig.0.inputs.to_vec()),
     };
     let trait_substs = Substs::new_trait(vec![arguments_tuple], vec![], self_ty);
     let trait_ref = ty::TraitRef {
         def_id: fn_trait_def_id,
         substs: tcx.mk_substs(trait_substs),
     };
-    ty::Binder((trait_ref, sig.0.output.unwrap_or(ty::mk_nil(tcx))))
+    ty::Binder((trait_ref, sig.0.output.unwrap_or(tcx.mk_nil())))
 }
 
 impl<'tcx,O:fmt::Debug> fmt::Debug for super::Obligation<'tcx, O> {

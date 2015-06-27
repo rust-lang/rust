@@ -108,7 +108,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
 
         // Create the final `MethodCallee`.
         let method_ty = pick.item.as_opt_method().unwrap();
-        let fty = ty::mk_bare_fn(self.tcx(), None, self.tcx().mk_bare_fn(ty::BareFnTy {
+        let fty = self.tcx().mk_fn(None, self.tcx().mk_bare_fn(ty::BareFnTy {
             sig: ty::Binder(method_sig),
             unsafety: method_ty.fty.unsafety,
             abi: method_ty.fty.abi.clone(),
@@ -139,7 +139,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
             let region = self.infcx().next_region_var(infer::Autoref(self.span));
             let autoref = ty::AutoPtr(self.tcx().mk_region(region), mutbl);
             (Some(autoref), pick.unsize.map(|target| {
-                ty::adjust_ty_for_autoref(self.tcx(), target, Some(autoref))
+                target.adjust_for_autoref(self.tcx(), Some(autoref))
             }))
         } else {
             // No unsizing should be performed without autoref (at
@@ -179,7 +179,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
         if let Some(target) = unsize {
             target
         } else {
-            ty::adjust_ty_for_autoref(self.tcx(), autoderefd_ty, autoref)
+            autoderefd_ty.adjust_for_autoref(self.tcx(), autoref)
         }
     }
 
@@ -199,7 +199,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
     {
         match pick.kind {
             probe::InherentImplPick(impl_def_id) => {
-                assert!(ty::impl_trait_ref(self.tcx(), impl_def_id).is_none(),
+                assert!(self.tcx().impl_trait_ref(impl_def_id).is_none(),
                         "impl {:?} is not an inherent impl", impl_def_id);
                 let impl_polytype = check::impl_self_ty(self.fcx, self.span, impl_def_id);
 
@@ -254,7 +254,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                     self.fcx.instantiate_type_scheme(
                         self.span,
                         &impl_polytype.substs,
-                        &ty::impl_trait_ref(self.tcx(), impl_def_id).unwrap());
+                        &self.tcx().impl_trait_ref(impl_def_id).unwrap());
                 let origin = MethodTypeParam(MethodParam { trait_ref: impl_trait_ref.clone(),
                                                            method_num: method_num,
                                                            impl_def_id: Some(impl_def_id) });
@@ -262,7 +262,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
             }
 
             probe::TraitPick(trait_def_id, method_num) => {
-                let trait_def = ty::lookup_trait_def(self.tcx(), trait_def_id);
+                let trait_def = self.tcx().lookup_trait_def(trait_def_id);
 
                 // Make a trait reference `$0 : Trait<$1...$n>`
                 // consisting entirely of type variables. Later on in
@@ -536,8 +536,8 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                                 }
                                 Some(ty::AutoPtr(_, _)) => {
                                     (adr.autoderefs, adr.unsize.map(|target| {
-                                        ty::deref(target, false)
-                                            .expect("fixup: AutoPtr is not &T").ty
+                                        target.builtin_deref(false)
+                                              .expect("fixup: AutoPtr is not &T").ty
                                     }))
                                 }
                                 Some(_) => {

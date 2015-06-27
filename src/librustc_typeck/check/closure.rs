@@ -60,17 +60,13 @@ fn check_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
         abi::RustCall,
         expected_sig);
 
-    let closure_type = ty::mk_closure(fcx.ccx.tcx,
-                                      expr_def_id,
-                                      fcx.ccx.tcx.mk_substs(
-                                        fcx.inh.param_env.free_substs.clone()));
+    let closure_type = fcx.ccx.tcx.mk_closure(expr_def_id,
+        fcx.ccx.tcx.mk_substs(fcx.inh.param_env.free_substs.clone()));
 
     fcx.write_ty(expr.id, closure_type);
 
-    let fn_sig =
-        ty::liberate_late_bound_regions(fcx.tcx(),
-                                        region::DestructionScopeData::new(body.id),
-                                        &fn_ty.sig);
+    let fn_sig = fcx.tcx().liberate_late_bound_regions(
+        region::DestructionScopeData::new(body.id), &fn_ty.sig);
 
     check_fn(fcx.ccx,
              ast::Unsafety::Normal,
@@ -83,7 +79,7 @@ fn check_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
 
     // Tuple up the arguments and insert the resulting function type into
     // the `closures` table.
-    fn_ty.sig.0.inputs = vec![ty::mk_tup(fcx.tcx(), fn_ty.sig.0.inputs)];
+    fn_ty.sig.0.inputs = vec![fcx.tcx().mk_tup(fn_ty.sig.0.inputs)];
 
     debug!("closure for {:?} --> sig={:?} opt_kind={:?}",
            expr_def_id,

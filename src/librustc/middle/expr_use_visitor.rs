@@ -229,7 +229,7 @@ impl OverloadedCallType {
 
     fn from_method_id(tcx: &ty::ctxt, method_id: ast::DefId)
                       -> OverloadedCallType {
-        let method_descriptor = match ty::impl_or_trait_item(tcx, method_id) {
+        let method_descriptor = match tcx.impl_or_trait_item(method_id) {
             ty::MethodTraitItem(ref method_descriptor) => {
                 (*method_descriptor).clone()
             }
@@ -244,7 +244,7 @@ impl OverloadedCallType {
             }
             ty::ImplContainer(impl_id) => impl_id,
         };
-        let trait_ref = match ty::impl_trait_ref(tcx, impl_id) {
+        let trait_ref = match tcx.impl_trait_ref(impl_id) {
             None => {
                 tcx.sess.bug("statically resolved overloaded call impl \
                               didn't implement a trait?!")
@@ -502,9 +502,10 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                 // make sure that the thing we are pointing out stays valid
                 // for the lifetime `scope_r` of the resulting ptr:
                 let expr_ty = return_if_err!(self.typer.node_ty(expr.id));
-                let r = ty::ty_region(self.tcx(), expr.span, expr_ty);
-                let bk = ty::BorrowKind::from_mutbl(m);
-                self.borrow_expr(&**base, r, bk, AddrOf);
+                if let ty::TyRef(&r, _) = expr_ty.sty {
+                    let bk = ty::BorrowKind::from_mutbl(m);
+                    self.borrow_expr(&**base, r, bk, AddrOf);
+                }
             }
 
             ast::ExprInlineAsm(ref ia) => {
@@ -740,7 +741,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
         // expression that will actually be used
         let with_fields = match with_cmt.ty.sty {
             ty::TyStruct(did, substs) => {
-                ty::struct_fields(self.tcx(), did, substs)
+                self.tcx().struct_fields(did, substs)
             }
             _ => {
                 // the base expression should always evaluate to a
@@ -821,8 +822,8 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
 
                     // the method call infrastructure should have
                     // replaced all late-bound regions with variables:
-                    let self_ty = ty::ty_fn_sig(method_ty).input(0);
-                    let self_ty = ty::no_late_bound_regions(self.tcx(), &self_ty).unwrap();
+                    let self_ty = method_ty.fn_sig().input(0);
+                    let self_ty = self.tcx().no_late_bound_regions(&self_ty).unwrap();
 
                     let (m, r) = match self_ty.sty {
                         ty::TyRef(r, ref m) => (m.mutbl, r),
@@ -922,10 +923,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
         // This is always an rvalue, since we are producing a new
         // (temporary) indirection.
 
-        let adj_ty =
-            ty::adjust_ty_for_autoref(self.tcx(),
-                                      cmt_base_ty,
-                                      opt_autoref);
+        let adj_ty = cmt_base_ty.adjust_for_autoref(self.tcx(), opt_autoref);
 
         self.mc.cat_rvalue_node(expr.id, expr.span, adj_ty)
     }
@@ -1074,12 +1072,11 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                 // It is also a borrow or copy/move of the value being matched.
                 match pat.node {
                     ast::PatIdent(ast::BindByRef(m), _, _) => {
-                        let (r, bk) = {
-                            (ty::ty_region(tcx, pat.span, pat_ty),
-                             ty::BorrowKind::from_mutbl(m))
-                        };
-                        delegate.borrow(pat.id, pat.span, cmt_pat,
-                                             r, bk, RefBinding);
+                        if let ty::TyRef(&r, _) = pat_ty.sty {
+                            let bk = ty::BorrowKind::from_mutbl(m);
+                            delegate.borrow(pat.id, pat.span, cmt_pat,
+                                            r, bk, RefBinding);
+                        }
                     }
                     ast::PatIdent(ast::BindByValue(_), _, _) => {
                         let mode = copy_or_move(typer, &cmt_pat, PatBindingMove);
@@ -1152,7 +1149,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
 
                         Some(def::DefVariant(enum_did, variant_did, _is_struct)) => {
                             let downcast_cmt =
-                                if ty::enum_is_univariant(tcx, enum_did) {
+                                if tcx.enum_is_univariant(enum_did) {
                                     cmt_pat
                                 } else {
                                     let cmt_pat_ty = cmt_pat.ty;
@@ -1238,7 +1235,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
     fn walk_captures(&mut self, closure_expr: &ast::Expr) {
         debug!("walk_captures({:?})", closure_expr);
 
-        ty::with_freevars(self.tcx(), closure_expr.id, |freevars| {
+        self.tcx().with_freevars(closure_expr.id, |freevars| {
             for freevar in freevars {
                 let id_var = freevar.def.def_id().node;
                 let upvar_id = ty::UpvarId { var_id: id_var,
@@ -1283,7 +1280,7 @@ fn copy_or_move<'tcx>(typer: &mc::Typer<'tcx>,
                       move_reason: MoveReason)
                       -> ConsumeMode
 {
-    if typer.type_moves_by_default(cmt.span, cmt.ty) {
+    if typer.type_moves_by_default(cmt.ty, cmt.span) {
         Move(move_reason)
     } else {
         Copy
