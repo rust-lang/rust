@@ -11,6 +11,7 @@ use libc;
 use ops::Sub;
 use time::Duration;
 use sync::Once;
+use sys::c;
 
 const NANOS_PER_SEC: u64 = 1_000_000_000;
 
@@ -21,7 +22,7 @@ pub struct SteadyTime {
 impl SteadyTime {
     pub fn now() -> SteadyTime {
         let mut t = SteadyTime { t: 0 };
-        unsafe { libc::QueryPerformanceCounter(&mut t.t); }
+        unsafe { c::QueryPerformanceCounter(&mut t.t); }
         t
     }
 }
@@ -32,7 +33,7 @@ fn frequency() -> libc::LARGE_INTEGER {
 
     unsafe {
         ONCE.call_once(|| {
-            libc::QueryPerformanceFrequency(&mut FREQUENCY);
+            c::QueryPerformanceFrequency(&mut FREQUENCY);
         });
         FREQUENCY
     }

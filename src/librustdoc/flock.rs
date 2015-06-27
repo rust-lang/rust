@@ -165,12 +165,11 @@ mod imp {
 #[cfg(windows)]
 mod imp {
     use libc;
+    use std::fs::File;
     use std::io;
     use std::mem;
-    use std::ffi::OsStr;
     use std::os::windows::prelude::*;
     use std::path::Path;
-    use std::ptr;
 
     const LOCKFILE_EXCLUSIVE_LOCK: libc::DWORD = 0x00000002;
 
@@ -190,40 +189,22 @@ mod imp {
     }
 
     pub struct Lock {
-        handle: libc::HANDLE,
+        file: File,
     }
 
     impl Lock {
         pub fn new(p: &Path) -> Lock {
-            let os: &OsStr = p.as_ref();
-            let mut p_16: Vec<_> = os.encode_wide().collect();
-            p_16.push(0);
-            let handle = unsafe {
-                libc::CreateFileW(p_16.as_ptr(),
-                                  libc::FILE_GENERIC_READ |
-                                    libc::FILE_GENERIC_WRITE,
-                                  libc::FILE_SHARE_READ |
-                                    libc::FILE_SHARE_DELETE |
-                                    libc::FILE_SHARE_WRITE,
-                                  ptr::null_mut(),
-                                  libc::CREATE_ALWAYS,
-                                  libc::FILE_ATTRIBUTE_NORMAL,
-                                  ptr::null_mut())
-            };
-            if handle == libc::INVALID_HANDLE_VALUE {
-                panic!("create file error: {}", io::Error::last_os_error());
-            }
+            let file = File::create(p).unwrap();
             let mut overlapped: libc::OVERLAPPED = unsafe { mem::zeroed() };
             let ret = unsafe {
-                LockFileEx(handle, LOCKFILE_EXCLUSIVE_LOCK, 0, 100, 0,
-                           &mut overlapped)
+                LockFileEx(file.as_raw_handle() as libc::HANDLE, LOCKFILE_EXCLUSIVE_LOCK,
+                           0, 100, 0, &mut overlapped)
             };
             if ret == 0 {
                 let err = io::Error::last_os_error();
-                unsafe { libc::CloseHandle(handle); }
                 panic!("could not lock `{}`: {}", p.display(), err);
             }
-            Lock { handle: handle }
+            Lock { file: file }
         }
     }
 
@@ -231,8 +212,8 @@ mod imp {
         fn drop(&mut self) {
             let mut overlapped: libc::OVERLAPPED = unsafe { mem::zeroed() };
             unsafe {
-                UnlockFileEx(self.handle, 0, 100, 0, &mut overlapped);
-                libc::CloseHandle(self.handle);
+                UnlockFileEx(self.file.as_raw_handle() as libc::HANDLE,
+                             0, 100, 0, &mut overlapped);
             }
         }
     }

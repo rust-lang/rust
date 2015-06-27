@@ -30,13 +30,8 @@ use slice;
 use sys::c;
 use sys::handle::Handle;
 
-use libc::funcs::extra::kernel32::{
-    GetEnvironmentStringsW,
-    FreeEnvironmentStringsW
-};
-
 pub fn errno() -> i32 {
-    unsafe { libc::GetLastError() as i32 }
+    unsafe { c::GetLastError() as i32 }
 }
 
 /// Gets a detailed string description for the given error number.
@@ -124,13 +119,13 @@ impl Iterator for Env {
 
 impl Drop for Env {
     fn drop(&mut self) {
-        unsafe { FreeEnvironmentStringsW(self.base); }
+        unsafe { c::FreeEnvironmentStringsW(self.base); }
     }
 }
 
 pub fn env() -> Env {
     unsafe {
-        let ch = GetEnvironmentStringsW();
+        let ch = c::GetEnvironmentStringsW();
         if ch as usize == 0 {
             panic!("failure getting env string from OS: {}",
                    io::Error::last_os_error());
@@ -231,13 +226,13 @@ impl StdError for JoinPathsError {
 
 pub fn current_exe() -> io::Result<PathBuf> {
     super::fill_utf16_buf(|buf, sz| unsafe {
-        libc::GetModuleFileNameW(ptr::null_mut(), buf, sz)
+        c::GetModuleFileNameW(ptr::null_mut(), buf, sz)
     }, super::os2path)
 }
 
 pub fn getcwd() -> io::Result<PathBuf> {
     super::fill_utf16_buf(|buf, sz| unsafe {
-        libc::GetCurrentDirectoryW(sz, buf)
+        c::GetCurrentDirectoryW(sz, buf)
     }, super::os2path)
 }
 
@@ -247,7 +242,7 @@ pub fn chdir(p: &path::Path) -> io::Result<()> {
     p.push(0);
 
     unsafe {
-        match libc::SetCurrentDirectoryW(p.as_ptr()) != (0 as libc::BOOL) {
+        match c::SetCurrentDirectoryW(p.as_ptr()) != (0 as libc::BOOL) {
             true => Ok(()),
             false => Err(io::Error::last_os_error()),
         }
@@ -257,7 +252,7 @@ pub fn chdir(p: &path::Path) -> io::Result<()> {
 pub fn getenv(k: &OsStr) -> Option<OsString> {
     let k = super::to_utf16_os(k);
     super::fill_utf16_buf(|buf, sz| unsafe {
-        libc::GetEnvironmentVariableW(k.as_ptr(), buf, sz)
+        c::GetEnvironmentVariableW(k.as_ptr(), buf, sz)
     }, |buf| {
         OsStringExt::from_wide(buf)
     }).ok()
@@ -268,7 +263,7 @@ pub fn setenv(k: &OsStr, v: &OsStr) {
     let v = super::to_utf16_os(v);
 
     unsafe {
-        if libc::SetEnvironmentVariableW(k.as_ptr(), v.as_ptr()) == 0 {
+        if c::SetEnvironmentVariableW(k.as_ptr(), v.as_ptr()) == 0 {
             panic!("failed to set env: {}", io::Error::last_os_error());
         }
     }
@@ -277,7 +272,7 @@ pub fn setenv(k: &OsStr, v: &OsStr) {
 pub fn unsetenv(n: &OsStr) {
     let v = super::to_utf16_os(n);
     unsafe {
-        if libc::SetEnvironmentVariableW(v.as_ptr(), ptr::null()) == 0 {
+        if c::SetEnvironmentVariableW(v.as_ptr(), ptr::null()) == 0 {
             panic!("failed to unset env: {}", io::Error::last_os_error());
         }
     }
@@ -333,7 +328,7 @@ pub fn args() -> Args {
 pub fn page_size() -> usize {
     unsafe {
         let mut info = mem::zeroed();
-        libc::GetSystemInfo(&mut info);
+        c::GetSystemInfo(&mut info);
         return info.dwPageSize as usize;
     }
 }
@@ -356,7 +351,7 @@ pub fn home_dir() -> Option<PathBuf> {
         let _handle = Handle::new(token);
         super::fill_utf16_buf(|buf, mut sz| {
             match c::GetUserProfileDirectoryW(token, buf, &mut sz) {
-                0 if libc::GetLastError() != 0 => 0,
+                0 if c::GetLastError() != 0 => 0,
                 0 => sz,
                 n => n as libc::DWORD,
             }
