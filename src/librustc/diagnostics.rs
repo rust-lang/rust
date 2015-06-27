@@ -360,6 +360,22 @@ integer type:
 http://doc.rust-lang.org/reference.html#ffi-attributes
 "##,
 
+E0109: r##"
+You tried to give type parameter to a type which doesn't need it. Erroneous
+code example:
+
+```
+type X = u32<i32>; // error: type parameters are not allowed on this type
+```
+
+Please check you actually used the good type or check again its definition.
+Example:
+
+```
+type X = u32; // ok!
+```
+"##,
+
 E0133: r##"
 Using unsafe functionality, such as dereferencing raw pointers and calling
 functions via FFI or marked as unsafe, is potentially dangerous and disallowed
@@ -1055,7 +1071,6 @@ register_diagnostics! {
     E0017,
     E0022,
     E0038,
-    E0109,
     E0110,
     E0134,
     E0135,
