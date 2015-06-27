@@ -204,6 +204,28 @@ impl Stdin {
     ///
     /// For detailed semantics of this method, see the documentation on
     /// `BufRead::read_line`.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::io;
+    ///
+    /// let mut input = String::new();
+    /// match io::stdin().read_line(&mut input) {
+    ///     Ok(n) => {
+    ///         println!("{} bytes read", n);
+    ///         println!("{}", input);
+    ///     }
+    ///     Err(error) => println!("error: {}", error),
+    /// }
+    /// ```
+    ///
+    /// You can run the example one of two ways:
+    ///
+    /// - Pipe some text to it, e.g. `printf foo | path/to/executable`
+    /// - Give it text interactively by running the executable directly,
+    //    in which case it will wait for the Enter key to be pressed before
+    ///   continuing
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn read_line(&mut self, buf: &mut String) -> io::Result<usize> {
         self.lock().read_line(buf)
