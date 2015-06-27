@@ -53,9 +53,12 @@ NATIVE_DEPS_hoedown_$(1) := hoedown/src/autolink.c \
 NATIVE_DEPS_miniz_$(1) = miniz.c
 NATIVE_DEPS_rust_builtin_$(1) := rust_builtin.c \
 			rust_android_dummy.c
-NATIVE_DEPS_rustrt_native_$(1) := \
-			rust_try.ll \
-			arch/$$(HOST_$(1))/record_sp.S
+NATIVE_DEPS_rustrt_native_$(1) := arch/$$(HOST_$(1))/record_sp.S
+ifeq ($$(findstring msvc,$(1)),msvc)
+NATIVE_DEPS_rustrt_native_$(1) += rust_try_msvc_64.ll
+else
+NATIVE_DEPS_rustrt_native_$(1) += rust_try.ll
+endif
 NATIVE_DEPS_rust_test_helpers_$(1) := rust_test_helpers.c
 NATIVE_DEPS_morestack_$(1) := arch/$$(HOST_$(1))/morestack.S
 

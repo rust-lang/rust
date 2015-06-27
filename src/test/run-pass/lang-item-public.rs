@@ -11,38 +11,10 @@
 // aux-build:lang-item-public.rs
 // ignore-android
 
-#![feature(lang_items, start, no_std)]
+#![feature(start, no_std)]
 #![no_std]
 
 extern crate lang_item_public as lang_lib;
-
-#[cfg(target_os = "linux")]
-#[link(name = "c")]
-extern {}
-
-#[cfg(target_os = "android")]
-#[link(name = "c")]
-extern {}
-
-#[cfg(target_os = "freebsd")]
-#[link(name = "execinfo")]
-extern {}
-
-#[cfg(target_os = "freebsd")]
-#[link(name = "c")]
-extern {}
-
-#[cfg(target_os = "dragonfly")]
-#[link(name = "c")]
-extern {}
-
-#[cfg(any(target_os = "bitrig", target_os = "openbsd"))]
-#[link(name = "c")]
-extern {}
-
-#[cfg(target_os = "macos")]
-#[link(name = "System")]
-extern {}
 
 #[start]
 fn main(_: isize, _: *const *const u8) -> isize {
