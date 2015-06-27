@@ -870,6 +870,254 @@ macro_rules! shr_impl_all {
 
 shr_impl_all! { u8 u16 u32 u64 usize i8 i16 i32 i64 isize }
 
+/// TODO(japaric) docs
+#[cfg(not(stage0))]
+#[lang = "add_assign"]
+pub trait AddAssign<Rhs=Self> {
+    /// TODO(japaric) docs
+    fn add_assign(&mut self, Rhs);
+}
+
+#[cfg(not(stage0))]
+macro_rules! add_assign_impl {
+    ($($t:ty)+) => ($(
+        impl AddAssign for $t {
+            #[inline]
+            fn add_assign(&mut self, other: $t) { *self += other }
+        }
+    )+)
+}
+
+#[cfg(not(stage0))]
+add_assign_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
+
+/// TODO(japaric) docs
+#[cfg(not(stage0))]
+#[lang = "sub_assign"]
+pub trait SubAssign<Rhs=Self> {
+    /// TODO(japaric) docs
+    fn sub_assign(&mut self, Rhs);
+}
+
+#[cfg(not(stage0))]
+macro_rules! sub_assign_impl {
+    ($($t:ty)+) => ($(
+        impl SubAssign for $t {
+            #[inline]
+            fn sub_assign(&mut self, other: $t) { *self -= other }
+        }
+    )+)
+}
+
+#[cfg(not(stage0))]
+sub_assign_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
+
+/// TODO(japaric) docs
+#[cfg(not(stage0))]
+#[lang = "mul_assign"]
+pub trait MulAssign<Rhs=Self> {
+    /// TODO(japaric) docs
+    fn mul_assign(&mut self, Rhs);
+}
+
+#[cfg(not(stage0))]
+macro_rules! mul_assign_impl {
+    ($($t:ty)+) => ($(
+        impl MulAssign for $t {
+            #[inline]
+            fn mul_assign(&mut self, other: $t) { *self *= other }
+        }
+    )+)
+}
+
+#[cfg(not(stage0))]
+mul_assign_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
+
+/// TODO(japaric) docs
+#[cfg(not(stage0))]
+#[lang = "div_assign"]
+pub trait DivAssign<Rhs=Self> {
+    /// TODO(japaric) docs
+    fn div_assign(&mut self, Rhs);
+}
+
+#[cfg(not(stage0))]
+macro_rules! div_assign_impl {
+    ($($t:ty)+) => ($(
+        impl DivAssign for $t {
+            #[inline]
+            fn div_assign(&mut self, other: $t) { *self /= other }
+        }
+    )+)
+}
+
+#[cfg(not(stage0))]
+div_assign_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
+
+/// TODO(japaric) docs
+#[cfg(not(stage0))]
+#[lang = "rem_assign"]
+pub trait RemAssign<Rhs=Self> {
+    /// TODO(japaric) docs
+    fn rem_assign(&mut self, Rhs);
+}
+
+#[cfg(not(stage0))]
+macro_rules! rem_assign_impl {
+    ($($t:ty)+) => ($(
+        impl RemAssign for $t {
+            #[inline]
+            fn rem_assign(&mut self, other: $t) { *self %= other }
+        }
+    )+)
+}
+
+#[cfg(not(stage0))]
+rem_assign_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
+
+/// TODO(japaric) docs
+#[cfg(not(stage0))]
+#[lang = "bitand_assign"]
+pub trait BitAndAssign<Rhs=Self> {
+    /// TODO(japaric) docs
+    fn bitand_assign(&mut self, Rhs);
+}
+
+#[cfg(not(stage0))]
+macro_rules! bitand_assign_impl {
+    ($($t:ty)+) => ($(
+        impl BitAndAssign for $t {
+            #[inline]
+            fn bitand_assign(&mut self, other: $t) { *self &= other }
+        }
+    )+)
+}
+
+#[cfg(not(stage0))]
+bitand_assign_impl! { bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
+
+/// TODO(japaric) docs
+#[cfg(not(stage0))]
+#[lang = "bitor_assign"]
+pub trait BitOrAssign<Rhs=Self> {
+    /// TODO(japaric) docs
+    fn bitor_assign(&mut self, Rhs);
+}
+
+#[cfg(not(stage0))]
+macro_rules! bitor_assign_impl {
+    ($($t:ty)+) => ($(
+        impl BitOrAssign for $t {
+            #[inline]
+            fn bitor_assign(&mut self, other: $t) { *self |= other }
+        }
+    )+)
+}
+
+#[cfg(not(stage0))]
+bitor_assign_impl! { bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
+
+/// TODO(japaric) docs
+#[cfg(not(stage0))]
+#[lang = "bitxor_assign"]
+pub trait BitXorAssign<Rhs=Self> {
+    /// TODO(japaric) docs
+    fn bitxor_assign(&mut self, Rhs);
+}
+
+#[cfg(not(stage0))]
+macro_rules! bitxor_assign_impl {
+    ($($t:ty)+) => ($(
+        impl BitXorAssign for $t {
+            #[inline]
+            fn bitxor_assign(&mut self, other: $t) { *self ^= other }
+        }
+    )+)
+}
+
+#[cfg(not(stage0))]
+bitxor_assign_impl! { bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
+
+/// TODO(japaric) docs
+#[cfg(not(stage0))]
+#[lang = "shl_assign"]
+pub trait ShlAssign<Rhs=Self> {
+    /// TODO(japaric) docs
+    fn shl_assign(&mut self, Rhs);
+}
+
+#[cfg(not(stage0))]
+macro_rules! shl_assign_impl {
+    ($t:ty, $f:ty) => (
+        impl ShlAssign<$f> for $t {
+            #[inline]
+            fn shl_assign(&mut self, other: $f) {
+                *self <<= other
+            }
+        }
+    )
+}
+
+#[cfg(not(stage0))]
+macro_rules! shl_assign_impl_all {
+    ($($t:ty)*) => ($(
+        shl_assign_impl! { $t, u8 }
+        shl_assign_impl! { $t, u16 }
+        shl_assign_impl! { $t, u32 }
+        shl_assign_impl! { $t, u64 }
+        shl_assign_impl! { $t, usize }
+
+        shl_assign_impl! { $t, i8 }
+        shl_assign_impl! { $t, i16 }
+        shl_assign_impl! { $t, i32 }
+        shl_assign_impl! { $t, i64 }
+        shl_assign_impl! { $t, isize }
+    )*)
+}
+
+#[cfg(not(stage0))]
+shl_assign_impl_all! { u8 u16 u32 u64 usize i8 i16 i32 i64 isize }
+
+/// TODO(japaric) docs
+#[cfg(not(stage0))]
+#[lang = "shr_assign"]
+pub trait ShrAssign<Rhs=Self> {
+    /// TODO(japaric) docs
+    fn shr_assign(&mut self, Rhs);
+}
+
+#[cfg(not(stage0))]
+macro_rules! shr_assign_impl {
+    ($t:ty, $f:ty) => (
+        impl ShrAssign<$f> for $t {
+            #[inline]
+            fn shr_assign(&mut self, other: $f) {
+                *self >>= other
+            }
+        }
+    )
+}
+
+#[cfg(not(stage0))]
+macro_rules! shr_assign_impl_all {
+    ($($t:ty)*) => ($(
+        shr_assign_impl! { $t, u8 }
+        shr_assign_impl! { $t, u16 }
+        shr_assign_impl! { $t, u32 }
+        shr_assign_impl! { $t, u64 }
+        shr_assign_impl! { $t, usize }
+
+        shr_assign_impl! { $t, i8 }
+        shr_assign_impl! { $t, i16 }
+        shr_assign_impl! { $t, i32 }
+        shr_assign_impl! { $t, i64 }
+        shr_assign_impl! { $t, isize }
+    )*)
+}
+
+#[cfg(not(stage0))]
+shr_assign_impl_all! { u8 u16 u32 u64 usize i8 i16 i32 i64 isize }
+
 /// The `Index` trait is used to specify the functionality of indexing operations
 /// like `arr[idx]` when used in an immutable context.
 ///
