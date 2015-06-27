@@ -12,7 +12,7 @@ two contexts. The first one is to mark a function as unsafe:
 
 ```rust
 unsafe fn danger_will_robinson() {
-    // scary stuff 
+    // scary stuff
 }
 ```
 
@@ -68,11 +68,8 @@ Whew! That’s a bunch of stuff. It’s also important to notice all kinds of
 behaviors that are certainly bad, but are expressly _not_ unsafe:
 
 * Deadlocks
-* Reading data from private fields
-* Leaks due to reference count cycles
+* Leaks of memory or other resources
 * Exiting without calling destructors
-* Sending signals
-* Accessing/modifying the file system
 * Integer overflow
 
 Rust cannot prevent all kinds of software problems. Buggy code can and will be
