@@ -20,7 +20,7 @@ use middle::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor, Init};
 use middle::expr_use_visitor::{JustWrite, LoanCause, MutateMode};
 use middle::expr_use_visitor::WriteAndRead;
 use middle::expr_use_visitor as euv;
-use middle::mem_categorization::cmt;
+use middle::mem_categorization::{cmt, Typer};
 use middle::pat_util::*;
 use middle::ty::*;
 use middle::ty;
@@ -149,7 +149,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for MatchCheckCtxt<'a, 'tcx> {
 pub fn check_crate(tcx: &ty::ctxt) {
     visit::walk_crate(&mut MatchCheckCtxt {
         tcx: tcx,
-        param_env: ty::empty_parameter_environment(tcx),
+        param_env: tcx.empty_parameter_environment(),
     }, tcx.map.krate());
     tcx.sess.abort_if_errors();
 }
@@ -203,9 +203,9 @@ fn check_expr(cx: &mut MatchCheckCtxt, ex: &ast::Expr) {
 
             // Finally, check if the whole match expression is exhaustive.
             // Check for empty enum, because is_useful only works on inhabited types.
-            let pat_ty = node_id_to_type(cx.tcx, scrut.id);
+            let pat_ty = cx.tcx.node_id_to_type(scrut.id);
             if inlined_arms.is_empty() {
-                if !type_is_empty(cx.tcx, pat_ty) {
+                if !pat_ty.is_empty(cx.tcx) {
                     // We know the type is inhabited, so this must be wrong
                     span_err!(cx.tcx.sess, ex.span, E0002,
                               "non-exhaustive patterns: type {} is non-empty",
@@ -231,11 +231,11 @@ fn check_for_bindings_named_the_same_as_variants(cx: &MatchCheckCtxt, pat: &Pat)
     ast_util::walk_pat(pat, |p| {
         match p.node {
             ast::PatIdent(ast::BindByValue(ast::MutImmutable), ident, None) => {
-                let pat_ty = ty::pat_ty(cx.tcx, p);
+                let pat_ty = cx.tcx.pat_ty(p);
                 if let ty::TyEnum(def_id, _) = pat_ty.sty {
                     let def = cx.tcx.def_map.borrow().get(&p.id).map(|d| d.full_def());
                     if let Some(DefLocal(_)) = def {
-                        if ty::enum_variants(cx.tcx, def_id).iter().any(|variant|
+                        if cx.tcx.enum_variants(def_id).iter().any(|variant|
                             token::get_name(variant.name) == token::get_name(ident.node.name)
                                 && variant.args.is_empty()
                         ) {
@@ -509,12 +509,12 @@ fn construct_witness(cx: &MatchCheckCtxt, ctor: &Constructor,
         ty::TyEnum(cid, _) | ty::TyStruct(cid, _)  => {
             let (vid, is_structure) = match ctor {
                 &Variant(vid) =>
-                    (vid, ty::enum_variant_with_id(cx.tcx, cid, vid).arg_names.is_some()),
+                    (vid, cx.tcx.enum_variant_with_id(cid, vid).arg_names.is_some()),
                 _ =>
-                    (cid, !ty::is_tuple_struct(cx.tcx, cid))
+                    (cid, !cx.tcx.is_tuple_struct(cid))
             };
             if is_structure {
-                let fields = ty::lookup_struct_fields(cx.tcx, vid);
+                let fields = cx.tcx.lookup_struct_fields(vid);
                 let field_pats: Vec<_> = fields.into_iter()
                     .zip(pats)
                     .filter(|&(_, ref pat)| pat.node != ast::PatWild(ast::PatWildSingle))
@@ -605,7 +605,7 @@ fn all_constructors(cx: &MatchCheckCtxt, left_ty: Ty,
         },
 
         ty::TyEnum(eid, _) =>
-            ty::enum_variants(cx.tcx, eid)
+            cx.tcx.enum_variants(eid)
                 .iter()
                 .map(|va| Variant(va.id))
                 .collect(),
@@ -651,12 +651,14 @@ fn is_useful(cx: &MatchCheckCtxt,
         None => v[0]
     };
     let left_ty = if real_pat.id == DUMMY_NODE_ID {
-        ty::mk_nil(cx.tcx)
+        cx.tcx.mk_nil()
     } else {
-        let left_ty = ty::pat_ty(cx.tcx, &*real_pat);
+        let left_ty = cx.tcx.pat_ty(&*real_pat);
 
         match real_pat.node {
-            ast::PatIdent(ast::BindByRef(..), _, _) => ty::deref(left_ty, false).unwrap().ty,
+            ast::PatIdent(ast::BindByRef(..), _, _) => {
+                left_ty.builtin_deref(false).unwrap().ty
+            }
             _ => left_ty,
         }
     };
@@ -815,11 +817,11 @@ pub fn constructor_arity(cx: &MatchCheckCtxt, ctor: &Constructor, ty: Ty) -> usi
         },
         ty::TyEnum(eid, _) => {
             match *ctor {
-                Variant(id) => enum_variant_with_id(cx.tcx, eid, id).args.len(),
+                Variant(id) => cx.tcx.enum_variant_with_id(eid, id).args.len(),
                 _ => unreachable!()
             }
         }
-        ty::TyStruct(cid, _) => ty::lookup_struct_fields(cx.tcx, cid).len(),
+        ty::TyStruct(cid, _) => cx.tcx.lookup_struct_fields(cid).len(),
         ty::TyArray(_, n) => n,
         _ => 0
     }
@@ -911,7 +913,7 @@ pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat],
                 },
                 _ => {
                     // Assume this is a struct.
-                    match ty::ty_to_def_id(node_id_to_type(cx.tcx, pat_id)) {
+                    match cx.tcx.node_id_to_type(pat_id).ty_to_def_id() {
                         None => {
                             cx.tcx.sess.span_bug(pat_span,
                                                  "struct pattern wasn't of a \
@@ -922,7 +924,7 @@ pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat],
                 }
             };
             class_id.map(|variant_id| {
-                let struct_fields = ty::lookup_struct_fields(cx.tcx, variant_id);
+                let struct_fields = cx.tcx.lookup_struct_fields(variant_id);
                 let args = struct_fields.iter().map(|sf| {
                     match pattern_fields.iter().find(|f| f.node.ident.name == sf.name) {
                         Some(ref f) => &*f.node.pat,
@@ -1107,8 +1109,8 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
             if pat_is_binding(def_map, &*p) {
                 match p.node {
                     ast::PatIdent(ast::BindByValue(_), _, ref sub) => {
-                        let pat_ty = ty::node_id_to_type(tcx, p.id);
-                        if ty::type_moves_by_default(&cx.param_env, pat.span, pat_ty) {
+                        let pat_ty = tcx.node_id_to_type(p.id);
+                        if cx.param_env.type_moves_by_default(pat_ty, pat.span) {
                             check_move(p, sub.as_ref().map(|p| &**p));
                         }
                     }

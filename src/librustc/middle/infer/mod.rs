@@ -26,7 +26,7 @@ use middle::free_region::FreeRegionMap;
 use middle::subst;
 use middle::subst::Substs;
 use middle::ty::{TyVid, IntVid, FloatVid, RegionVid, UnconstrainedNumeric};
-use middle::ty::{self, Ty};
+use middle::ty::{self, Ty, HasTypeFlags};
 use middle::ty_fold::{self, TypeFolder, TypeFoldable};
 use middle::ty_relate::{Relate, RelateResult, TypeRelation};
 use rustc_data_structures::unify::{self, UnificationTable};
@@ -772,11 +772,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 
     pub fn next_ty_var(&self) -> Ty<'tcx> {
-        ty::mk_var(self.tcx, self.next_ty_var_id(false))
+        self.tcx.mk_var(self.next_ty_var_id(false))
     }
 
     pub fn next_diverging_ty_var(&self) -> Ty<'tcx> {
-        ty::mk_var(self.tcx, self.next_ty_var_id(true))
+        self.tcx.mk_var(self.next_ty_var_id(true))
     }
 
     pub fn next_ty_vars(&self, n: usize) -> Vec<Ty<'tcx>> {
@@ -973,20 +973,17 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         let resolved_expected = expected_ty.map(|e_ty| self.resolve_type_vars_if_possible(&e_ty));
 
-        match resolved_expected {
-            Some(t) if ty::type_is_error(t) => (),
-            _ => {
-                let error_str = err.map_or("".to_string(), |t_err| {
-                    format!(" ({})", t_err)
-                });
+        if !resolved_expected.references_error() {
+            let error_str = err.map_or("".to_string(), |t_err| {
+                format!(" ({})", t_err)
+            });
 
-                self.tcx.sess.span_err(sp, &format!("{}{}",
-                    mk_msg(resolved_expected.map(|t| self.ty_to_string(t)), actual_ty),
-                    error_str));
+            self.tcx.sess.span_err(sp, &format!("{}{}",
+                mk_msg(resolved_expected.map(|t| self.ty_to_string(t)), actual_ty),
+                error_str));
 
-                if let Some(err) = err {
-                    ty::note_and_explain_type_err(self.tcx, err, sp)
-                }
+            if let Some(err) = err {
+                self.tcx.note_and_explain_type_err(err, sp)
             }
         }
     }
@@ -1001,7 +998,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let actual_ty = self.resolve_type_vars_if_possible(&actual_ty);
 
         // Don't report an error if actual type is TyError.
-        if ty::type_is_error(actual_ty) {
+        if actual_ty.references_error() {
             return;
         }
 

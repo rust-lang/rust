@@ -37,7 +37,7 @@ use trans::machine;
 use trans::monomorphize;
 use trans::type_::Type;
 use trans::type_of::*;
-use middle::ty::{self, Ty};
+use middle::ty::{self, Ty, HasTypeFlags};
 use middle::ty::MethodCall;
 
 use syntax::abi::{Rust, RustCall};
@@ -182,7 +182,7 @@ pub fn trans_static_method_callee<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     debug!("trans_static_method_callee(method_id={:?}, trait_id={}, \
             expr_id={})",
            method_id,
-           ty::item_path_str(tcx, trait_id),
+           tcx.item_path_str(trait_id),
            expr_id);
 
     let mname = if method_id.krate == ast::LOCAL_CRATE {
@@ -248,7 +248,7 @@ pub fn trans_static_method_callee<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             substs: impl_substs,
             nested: _ }) =>
         {
-            assert!(impl_substs.types.all(|t| !ty::type_needs_infer(*t)));
+            assert!(!impl_substs.types.needs_infer());
 
             // Create the substitutions that are in scope. This combines
             // the type parameters from the impl with those declared earlier.
@@ -282,7 +282,7 @@ pub fn trans_static_method_callee<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         }
         traits::VtableObject(ref data) => {
             let trait_item_def_ids =
-                ty::trait_item_def_ids(ccx.tcx(), trait_id);
+                ccx.tcx().trait_item_def_ids(trait_id);
             let method_offset_in_trait =
                 trait_item_def_ids.iter()
                                   .position(|item| item.def_id() == method_id)
@@ -314,7 +314,7 @@ fn method_with_name(ccx: &CrateContext, impl_id: ast::DefId, name: ast::Name)
                   .expect("could not find impl while translating");
     let meth_did = impl_items.iter()
                              .find(|&did| {
-                                ty::impl_or_trait_item(ccx.tcx(), did.def_id()).name() == name
+                                ccx.tcx().impl_or_trait_item(did.def_id()).name() == name
                              }).expect("could not find method while \
                                         translating");
 
@@ -334,7 +334,7 @@ fn trans_monomorphized_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         traits::VtableImpl(vtable_impl) => {
             let ccx = bcx.ccx();
             let impl_did = vtable_impl.impl_def_id;
-            let mname = match ty::trait_item(ccx.tcx(), trait_id, n_method) {
+            let mname = match ccx.tcx().trait_item(trait_id, n_method) {
                 ty::MethodTraitItem(method) => method.name,
                 _ => {
                     bcx.tcx().sess.bug("can't monomorphize a non-method trait \
@@ -567,12 +567,12 @@ pub fn trans_object_shim<'a, 'tcx>(
         };
 
     // Upcast to the trait in question and extract out the substitutions.
-    let upcast_trait_ref = ty::erase_late_bound_regions(tcx, &upcast_trait_ref);
+    let upcast_trait_ref = tcx.erase_late_bound_regions(&upcast_trait_ref);
     let object_substs = upcast_trait_ref.substs.clone().erase_regions();
     debug!("trans_object_shim: object_substs={:?}", object_substs);
 
     // Lookup the type of this method as declared in the trait and apply substitutions.
-    let method_ty = match ty::trait_item(tcx, trait_id, method_offset_in_trait) {
+    let method_ty = match tcx.trait_item(trait_id, method_offset_in_trait) {
         ty::MethodTraitItem(method) => method,
         _ => {
             tcx.sess.bug("can't create a method shim for a non-method item")
@@ -584,14 +584,14 @@ pub fn trans_object_shim<'a, 'tcx>(
     debug!("trans_object_shim: fty={:?} method_ty={:?}", fty, method_ty);
 
     //
-    let shim_fn_ty = ty::mk_bare_fn(tcx, None, fty);
-    let method_bare_fn_ty = ty::mk_bare_fn(tcx, None, method_ty);
+    let shim_fn_ty = tcx.mk_fn(None, fty);
+    let method_bare_fn_ty = tcx.mk_fn(None, method_ty);
     let function_name = link::mangle_internal_name_by_type_and_seq(ccx, shim_fn_ty, "object_shim");
     let llfn = declare::define_internal_rust_fn(ccx, &function_name, shim_fn_ty).unwrap_or_else(||{
         ccx.sess().bug(&format!("symbol `{}` already defined", function_name));
     });
 
-    let sig = ty::erase_late_bound_regions(ccx.tcx(), &fty.sig);
+    let sig = ccx.tcx().erase_late_bound_regions(&fty.sig);
 
     let empty_substs = tcx.mk_substs(Substs::trans_empty());
     let (block_arena, fcx): (TypedArena<_>, FunctionContext);
@@ -747,16 +747,16 @@ fn emit_vtable_methods<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
            substs,
            param_substs);
 
-    let trt_id = match ty::impl_trait_ref(tcx, impl_id) {
+    let trt_id = match tcx.impl_trait_ref(impl_id) {
         Some(t_id) => t_id.def_id,
         None       => ccx.sess().bug("make_impl_vtable: don't know how to \
                                       make a vtable for a type impl!")
     };
 
-    ty::populate_implementations_for_trait_if_necessary(tcx, trt_id);
+    tcx.populate_implementations_for_trait_if_necessary(trt_id);
 
     let nullptr = C_null(Type::nil(ccx).ptr_to());
-    let trait_item_def_ids = ty::trait_item_def_ids(tcx, trt_id);
+    let trait_item_def_ids = tcx.trait_item_def_ids(trt_id);
     trait_item_def_ids
         .iter()
 
@@ -775,7 +775,7 @@ fn emit_vtable_methods<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             debug!("emit_vtable_methods: trait_method_def_id={:?}",
                    trait_method_def_id);
 
-            let trait_method_type = match ty::impl_or_trait_item(tcx, trait_method_def_id) {
+            let trait_method_type = match tcx.impl_or_trait_item(trait_method_def_id) {
                 ty::MethodTraitItem(m) => m,
                 _ => ccx.sess().bug("should be a method, not other assoc item"),
             };
@@ -793,7 +793,7 @@ fn emit_vtable_methods<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             // The substitutions we have are on the impl, so we grab
             // the method type from the impl to substitute into.
             let impl_method_def_id = method_with_name(ccx, impl_id, name);
-            let impl_method_type = match ty::impl_or_trait_item(tcx, impl_method_def_id) {
+            let impl_method_type = match tcx.impl_or_trait_item(impl_method_def_id) {
                 ty::MethodTraitItem(m) => m,
                 _ => ccx.sess().bug("should be a method, not other assoc item"),
             };
@@ -806,7 +806,7 @@ fn emit_vtable_methods<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             // particular set of type parameters. Note that this
             // method could then never be called, so we do not want to
             // try and trans it, in that case. Issue #23435.
-            if ty::provided_source(tcx, impl_method_def_id).is_some() {
+            if tcx.provided_source(impl_method_def_id).is_some() {
                 let predicates = impl_method_type.predicates.predicates.subst(tcx, &substs);
                 if !normalize_and_test_predicates(ccx, predicates.into_vec()) {
                     debug!("emit_vtable_methods: predicates do not hold");
@@ -827,7 +827,7 @@ fn emit_vtable_methods<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 pub fn opaque_method_ty<'tcx>(tcx: &ty::ctxt<'tcx>, method_ty: &ty::BareFnTy<'tcx>)
         -> &'tcx ty::BareFnTy<'tcx> {
     let mut inputs = method_ty.sig.0.inputs.clone();
-    inputs[0] = ty::mk_mut_ptr(tcx, ty::mk_mach_int(tcx, ast::TyI8));
+    inputs[0] = tcx.mk_mut_ptr(tcx.mk_mach_int(ast::TyI8));
 
     tcx.mk_bare_fn(ty::BareFnTy {
         unsafety: method_ty.unsafety,

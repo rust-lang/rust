@@ -465,7 +465,7 @@ fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
         // in better error messages than just pointing at the closure
         // construction site.
         let mut call_caps = Vec::new();
-        ty::with_freevars(ir.tcx, expr.id, |freevars| {
+        ir.tcx.with_freevars(expr.id, |freevars| {
             for fv in freevars {
                 if let DefLocal(rv) = fv.def {
                     let fv_ln = ir.add_live_node(FreeVarNode(fv.span));
@@ -1137,9 +1137,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
           }
 
           ast::ExprCall(ref f, ref args) => {
-            let diverges = !self.ir.tcx.is_method_call(expr.id) && {
-                ty::ty_fn_ret(ty::expr_ty_adjusted(self.ir.tcx, &**f)).diverges()
-            };
+            let diverges = !self.ir.tcx.is_method_call(expr.id) &&
+                self.ir.tcx.expr_ty_adjusted(&**f).fn_ret().diverges();
             let succ = if diverges {
                 self.s.exit_ln
             } else {
@@ -1152,8 +1151,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
           ast::ExprMethodCall(_, _, ref args) => {
             let method_call = ty::MethodCall::expr(expr.id);
             let method_ty = self.ir.tcx.method_map.borrow().get(&method_call).unwrap().ty;
-            let diverges = ty::ty_fn_ret(method_ty).diverges();
-            let succ = if diverges {
+            let succ = if method_ty.fn_ret().diverges() {
                 self.s.exit_ln
             } else {
                 succ
@@ -1496,12 +1494,11 @@ fn check_fn(_v: &Liveness,
 
 impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn fn_ret(&self, id: NodeId) -> ty::PolyFnOutput<'tcx> {
-        let fn_ty = ty::node_id_to_type(self.ir.tcx, id);
+        let fn_ty = self.ir.tcx.node_id_to_type(id);
         match fn_ty.sty {
             ty::TyClosure(closure_def_id, substs) =>
                 self.ir.tcx.closure_type(closure_def_id, substs).sig.output(),
-            _ =>
-                ty::ty_fn_ret(fn_ty),
+            _ => fn_ty.fn_ret()
         }
     }
 
@@ -1514,8 +1511,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     {
         // within the fn body, late-bound regions are liberated:
         let fn_ret =
-            ty::liberate_late_bound_regions(
-                self.ir.tcx,
+            self.ir.tcx.liberate_late_bound_regions(
                 region::DestructionScopeData::new(body.id),
                 &self.fn_ret(id));
 
@@ -1523,14 +1519,14 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             ty::FnConverging(t_ret)
                 if self.live_on_entry(entry_ln, self.s.no_ret_var).is_some() => {
 
-                if ty::type_is_nil(t_ret) {
+                if t_ret.is_nil() {
                     // for nil return types, it is ok to not return a value expl.
                 } else {
                     let ends_with_stmt = match body.expr {
                         None if !body.stmts.is_empty() =>
                             match body.stmts.first().unwrap().node {
                                 ast::StmtSemi(ref e, _) => {
-                                    ty::expr_ty(self.ir.tcx, &**e) == t_ret
+                                    self.ir.tcx.expr_ty(&**e) == t_ret
                                 },
                                 _ => false
                             },

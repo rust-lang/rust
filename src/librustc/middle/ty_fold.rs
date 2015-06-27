@@ -36,7 +36,7 @@
 
 use middle::subst;
 use middle::subst::VecPerParamSpace;
-use middle::ty::{self, Ty};
+use middle::ty::{self, Ty, HasTypeFlags, RegionEscape};
 use middle::traits;
 
 use std::fmt;
@@ -641,7 +641,7 @@ pub fn super_fold_ty<'tcx, T: TypeFolder<'tcx>>(this: &mut T,
             ty.sty.clone()
         }
     };
-    ty::mk_t(this.tcx(), sty)
+    this.tcx().mk_ty(sty)
 }
 
 pub fn super_fold_substs<'tcx, T: TypeFolder<'tcx>>(this: &mut T,
@@ -896,7 +896,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for RegionReplacer<'a, 'tcx>
     }
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-        if !ty::type_escapes_depth(t, self.current_depth-1) {
+        if !t.has_regions_escaping_depth(self.current_depth-1) {
             return t;
         }
 
@@ -946,7 +946,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for RegionEraser<'a, 'tcx> {
     fn tcx(&self) -> &ty::ctxt<'tcx> { self.tcx }
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-        if !ty::type_has_erasable_regions(t) {
+        if !t.has_erasable_regions() {
             return t;
         }
 

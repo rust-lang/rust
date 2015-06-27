@@ -25,7 +25,7 @@ use trans::base;
 use trans::common::*;
 use trans::declare;
 use trans::foreign;
-use middle::ty::{self, HasProjectionTypes, Ty};
+use middle::ty::{self, HasTypeFlags, Ty};
 
 use syntax::abi;
 use syntax::ast;
@@ -47,9 +47,7 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
            psubsts,
            ref_id);
 
-    assert!(psubsts.types.all(|t| {
-        !ty::type_needs_infer(*t) && !ty::type_has_params(*t)
-    }));
+    assert!(!psubsts.types.needs_infer() && !psubsts.types.has_param_types());
 
     let _icx = push_ctxt("monomorphic_fn");
 
@@ -58,7 +56,7 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         params: &psubsts.types
     };
 
-    let item_ty = ty::lookup_item_type(ccx.tcx(), fn_id).ty;
+    let item_ty = ccx.tcx().lookup_item_type(fn_id).ty;
 
     debug!("monomorphic_fn about to subst into {:?}", item_ty);
     let mono_ty = item_ty.subst(ccx.tcx(), psubsts);
@@ -66,7 +64,7 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     match ccx.monomorphized().borrow().get(&hash_id) {
         Some(&val) => {
             debug!("leaving monomorphic fn {}",
-            ty::item_path_str(ccx.tcx(), fn_id));
+            ccx.tcx().item_path_str(fn_id));
             return (val, mono_ty, false);
         }
         None => ()
@@ -200,7 +198,7 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         }
         ast_map::NodeVariant(v) => {
             let parent = ccx.tcx().map.get_parent(fn_id.node);
-            let tvs = ty::enum_variants(ccx.tcx(), local_def(parent));
+            let tvs = ccx.tcx().enum_variants(local_def(parent));
             let this_tv = tvs.iter().find(|tv| { tv.id.node == fn_id.node}).unwrap();
             let d = mk_lldecl(abi::Rust);
             attributes::inline(d, attributes::InlineAttr::Hint);
@@ -286,7 +284,7 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     ccx.monomorphizing().borrow_mut().insert(fn_id, depth);
 
-    debug!("leaving monomorphic fn {}", ty::item_path_str(ccx.tcx(), fn_id));
+    debug!("leaving monomorphic fn {}", ccx.tcx().item_path_str(fn_id));
     (lldecl, mono_ty, true)
 }
 
@@ -302,7 +300,7 @@ pub fn apply_param_substs<'tcx,T>(tcx: &ty::ctxt<'tcx>,
                                   param_substs: &Substs<'tcx>,
                                   value: &T)
                                   -> T
-    where T : TypeFoldable<'tcx> + HasProjectionTypes
+    where T : TypeFoldable<'tcx> + HasTypeFlags
 {
     let substituted = value.subst(tcx, param_substs);
     normalize_associated_type(tcx, &substituted)
@@ -313,7 +311,7 @@ pub fn apply_param_substs<'tcx,T>(tcx: &ty::ctxt<'tcx>,
 /// and hence we can be sure that all associated types will be
 /// completely normalized away.
 pub fn normalize_associated_type<'tcx,T>(tcx: &ty::ctxt<'tcx>, value: &T) -> T
-    where T : TypeFoldable<'tcx> + HasProjectionTypes
+    where T : TypeFoldable<'tcx> + HasTypeFlags
 {
     debug!("normalize_associated_type(t={:?})", value);
 

@@ -49,7 +49,7 @@ use trans::meth;
 use trans::monomorphize;
 use trans::type_::Type;
 use trans::type_of;
-use middle::ty::{self, Ty};
+use middle::ty::{self, Ty, HasTypeFlags, RegionEscape};
 use middle::ty::MethodCall;
 use rustc::ast_map;
 
@@ -173,7 +173,7 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
                                                                 bcx.fcx.param_substs).val)
             }
             def::DefVariant(tid, vid, _) => {
-                let vinfo = ty::enum_variant_with_id(bcx.tcx(), tid, vid);
+                let vinfo = bcx.tcx().enum_variant_with_id(tid, vid);
                 let substs = common::node_id_substs(bcx.ccx(),
                                                     ExprId(ref_expr.id),
                                                     bcx.fcx.param_substs);
@@ -277,7 +277,7 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
         ty::FnOnceClosureKind => false,
     };
     let bare_fn_ty_maybe_ref = if is_by_ref {
-        ty::mk_imm_rptr(tcx, tcx.mk_region(ty::ReStatic), bare_fn_ty)
+        tcx.mk_imm_ref(tcx.mk_region(ty::ReStatic), bare_fn_ty)
     } else {
         bare_fn_ty
     };
@@ -307,19 +307,18 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
                                       bare_fn_ty));
             }
         };
-    let sig = ty::erase_late_bound_regions(tcx, sig);
-    let tuple_input_ty = ty::mk_tup(tcx, sig.inputs.to_vec());
-    let tuple_fn_ty = ty::mk_bare_fn(tcx,
-                                     opt_def_id,
-                                     tcx.mk_bare_fn(ty::BareFnTy {
-                                         unsafety: ast::Unsafety::Normal,
-                                         abi: synabi::RustCall,
-                                         sig: ty::Binder(ty::FnSig {
-                                             inputs: vec![bare_fn_ty_maybe_ref,
-                                                          tuple_input_ty],
-                                             output: sig.output,
-                                             variadic: false
-                                         })}));
+    let sig = tcx.erase_late_bound_regions(sig);
+    let tuple_input_ty = tcx.mk_tup(sig.inputs.to_vec());
+    let tuple_fn_ty = tcx.mk_fn(opt_def_id,
+        tcx.mk_bare_fn(ty::BareFnTy {
+            unsafety: ast::Unsafety::Normal,
+            abi: synabi::RustCall,
+            sig: ty::Binder(ty::FnSig {
+                inputs: vec![bare_fn_ty_maybe_ref,
+                             tuple_input_ty],
+                output: sig.output,
+                variadic: false
+            })}));
     debug!("tuple_fn_ty: {:?}", tuple_fn_ty);
 
     //
@@ -402,22 +401,22 @@ pub fn trans_fn_ref_with_substs<'a, 'tcx>(
            param_substs,
            substs);
 
-    assert!(substs.types.all(|t| !ty::type_needs_infer(*t)));
-    assert!(substs.types.all(|t| !ty::type_has_escaping_regions(*t)));
+    assert!(!substs.types.needs_infer());
+    assert!(!substs.types.has_escaping_regions());
     let substs = substs.erase_regions();
 
     // Load the info for the appropriate trait if necessary.
-    match ty::trait_of_item(tcx, def_id) {
+    match tcx.trait_of_item(def_id) {
         None => {}
         Some(trait_id) => {
-            ty::populate_implementations_for_trait_if_necessary(tcx, trait_id)
+            tcx.populate_implementations_for_trait_if_necessary(trait_id)
         }
     }
 
     // We need to do a bunch of special handling for default methods.
     // We need to modify the def_id and our substs in order to monomorphize
     // the function.
-    let (is_default, def_id, substs) = match ty::provided_source(tcx, def_id) {
+    let (is_default, def_id, substs) = match tcx.provided_source(def_id) {
         None => {
             (false, def_id, tcx.mk_substs(substs))
         }
@@ -435,16 +434,16 @@ pub fn trans_fn_ref_with_substs<'a, 'tcx>(
             // So, what we need to do is find this substitution and
             // compose it with the one we already have.
 
-            let impl_id = ty::impl_or_trait_item(tcx, def_id).container()
+            let impl_id = tcx.impl_or_trait_item(def_id).container()
                                                              .id();
-            let impl_or_trait_item = ty::impl_or_trait_item(tcx, source_id);
+            let impl_or_trait_item = tcx.impl_or_trait_item(source_id);
             match impl_or_trait_item {
                 ty::MethodTraitItem(method) => {
-                    let trait_ref = ty::impl_trait_ref(tcx, impl_id).unwrap();
+                    let trait_ref = tcx.impl_trait_ref(impl_id).unwrap();
 
                     // Compute the first substitution
                     let first_subst =
-                        ty::make_substs_for_receiver_types(tcx, &trait_ref, &*method)
+                        tcx.make_substs_for_receiver_types(&trait_ref, &*method)
                         .erase_regions();
 
                     // And compose them
@@ -517,7 +516,7 @@ pub fn trans_fn_ref_with_substs<'a, 'tcx>(
             // Monotype of the REFERENCE to the function (type params
             // are subst'd)
             let ref_ty = match node {
-                ExprId(id) => ty::node_id_to_type(tcx, id),
+                ExprId(id) => tcx.node_id_to_type(id),
                 MethodCallKey(method_call) => {
                     tcx.method_map.borrow().get(&method_call).unwrap().ty
                 }
@@ -535,7 +534,7 @@ pub fn trans_fn_ref_with_substs<'a, 'tcx>(
     }
 
     // Type scheme of the function item (may have type params)
-    let fn_type_scheme = ty::lookup_item_type(tcx, def_id);
+    let fn_type_scheme = tcx.lookup_item_type(def_id);
     let fn_type = monomorphize::normalize_associated_type(tcx, &fn_type_scheme.ty);
 
     // Find the actual function pointer.
@@ -615,7 +614,7 @@ pub fn trans_method_call<'a, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         Some(method) => match method.origin {
             ty::MethodTraitObject(_) => match method.ty.sty {
                 ty::TyBareFn(_, ref fty) => {
-                    ty::mk_bare_fn(bcx.tcx(), None, meth::opaque_method_ty(bcx.tcx(), fty))
+                    bcx.tcx().mk_fn(None, meth::opaque_method_ty(bcx.tcx(), fty))
                 }
                 _ => method.ty
             },
@@ -641,7 +640,7 @@ pub fn trans_lang_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                    debug_loc: DebugLoc)
                                    -> Result<'blk, 'tcx> {
     let fty = if did.krate == ast::LOCAL_CRATE {
-        ty::node_id_to_type(bcx.tcx(), did.node)
+        bcx.tcx().node_id_to_type(did.node)
     } else {
         csearch::get_type(bcx.tcx(), did).ty
     };
@@ -693,7 +692,7 @@ pub fn trans_call_inner<'a, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
 
     let (abi, ret_ty) = match callee_ty.sty {
         ty::TyBareFn(_, ref f) => {
-            let output = ty::erase_late_bound_regions(bcx.tcx(), &f.sig.output());
+            let output = bcx.tcx().erase_late_bound_regions(&f.sig.output());
             (f.abi, output)
         }
         _ => panic!("expected bare rust fn or closure in trans_call_inner")
@@ -749,7 +748,7 @@ pub fn trans_call_inner<'a, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
         expr::Ignore => {
             let ret_ty = match ret_ty {
                 ty::FnConverging(ret_ty) => ret_ty,
-                ty::FnDiverging => ty::mk_nil(ccx.tcx())
+                ty::FnDiverging => ccx.tcx().mk_nil()
             };
             if !is_rust_fn ||
               type_of::return_uses_outptr(ccx, ret_ty) ||
@@ -915,9 +914,7 @@ fn trans_args_under_call_abi<'blk, 'tcx>(
                              ignore_self: bool)
                              -> Block<'blk, 'tcx>
 {
-    let args =
-        ty::erase_late_bound_regions(
-            bcx.tcx(), &ty::ty_fn_args(fn_ty));
+    let args = bcx.tcx().erase_late_bound_regions(&fn_ty.fn_args());
 
     // Translate the `self` argument first.
     if !ignore_self {
@@ -978,7 +975,7 @@ fn trans_overloaded_call_args<'blk, 'tcx>(
                               ignore_self: bool)
                               -> Block<'blk, 'tcx> {
     // Translate the `self` argument first.
-    let arg_tys = ty::erase_late_bound_regions(bcx.tcx(),  &ty::ty_fn_args(fn_ty));
+    let arg_tys = bcx.tcx().erase_late_bound_regions( &fn_ty.fn_args());
     if !ignore_self {
         let arg_datum = unpack_datum!(bcx, expr::trans(bcx, arg_exprs[0]));
         bcx = trans_arg_datum(bcx,
@@ -1024,8 +1021,8 @@ pub fn trans_args<'a, 'blk, 'tcx>(cx: Block<'blk, 'tcx>,
     debug!("trans_args(abi={})", abi);
 
     let _icx = push_ctxt("trans_args");
-    let arg_tys = ty::erase_late_bound_regions(cx.tcx(), &ty::ty_fn_args(fn_ty));
-    let variadic = ty::fn_is_variadic(fn_ty);
+    let arg_tys = cx.tcx().erase_late_bound_regions(&fn_ty.fn_args());
+    let variadic = fn_ty.fn_sig().0.variadic;
 
     let mut bcx = cx;
 

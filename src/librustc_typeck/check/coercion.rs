@@ -201,8 +201,8 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 // &T to autoref to &&T.
                 return None;
             }
-            let ty = ty::mk_rptr(self.tcx(), r_borrow,
-                                 mt {ty: inner_ty, mutbl: mutbl_b});
+            let ty = self.tcx().mk_ref(r_borrow,
+                                        mt {ty: inner_ty, mutbl: mutbl_b});
             if let Err(err) = self.subtype(ty, b) {
                 if first_error.is_none() {
                     first_error = Some(err);
@@ -271,7 +271,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             }
             _ => (source, None)
         };
-        let source = ty::adjust_ty_for_autoref(self.tcx(), source, reborrow);
+        let source = source.adjust_for_autoref(self.tcx(), reborrow);
 
         let mut selcx = traits::SelectionContext::new(self.fcx.infcx(), self.fcx);
 
@@ -384,7 +384,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
             match b.sty {
                 ty::TyBareFn(None, _) => {
-                    let a_fn_pointer = ty::mk_bare_fn(self.tcx(), None, fn_ty_a);
+                    let a_fn_pointer = self.tcx().mk_fn(None, fn_ty_a);
                     try!(self.subtype(a_fn_pointer, b));
                     Ok(Some(ty::AdjustReifyFnPointer))
                 }
@@ -411,7 +411,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         };
 
         // Check that the types which they point at are compatible.
-        let a_unsafe = ty::mk_ptr(self.tcx(), ty::mt{ mutbl: mutbl_b, ty: mt_a.ty });
+        let a_unsafe = self.tcx().mk_ptr(ty::mt{ mutbl: mutbl_b, ty: mt_a.ty });
         try!(self.subtype(a_unsafe, b));
         try!(coerce_mutbls(mt_a.mutbl, mutbl_b));
 

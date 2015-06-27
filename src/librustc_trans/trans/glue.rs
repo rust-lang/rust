@@ -218,7 +218,7 @@ fn get_drop_glue_core<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let llty = if type_is_sized(ccx.tcx(), t) {
         type_of(ccx, t).ptr_to()
     } else {
-        type_of(ccx, ty::mk_uniq(ccx.tcx(), t)).ptr_to()
+        type_of(ccx, ccx.tcx().mk_box(t)).ptr_to()
     };
 
     let llfnty = Type::glue_fn(ccx, llty);
@@ -226,13 +226,13 @@ fn get_drop_glue_core<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     // To avoid infinite recursion, don't `make_drop_glue` until after we've
     // added the entry to the `drop_glues` cache.
     if let Some(old_sym) = ccx.available_drop_glues().borrow().get(&g) {
-        let llfn = declare::declare_cfn(ccx, &old_sym, llfnty, ty::mk_nil(ccx.tcx()));
+        let llfn = declare::declare_cfn(ccx, &old_sym, llfnty, ccx.tcx().mk_nil());
         ccx.drop_glues().borrow_mut().insert(g, llfn);
         return llfn;
     };
 
     let fn_nm = mangle_internal_name_by_type_and_seq(ccx, t, "drop");
-    let llfn = declare::define_cfn(ccx, &fn_nm, llfnty, ty::mk_nil(ccx.tcx())).unwrap_or_else(||{
+    let llfn = declare::define_cfn(ccx, &fn_nm, llfnty, ccx.tcx().mk_nil()).unwrap_or_else(||{
        ccx.sess().bug(&format!("symbol `{}` already defined", fn_nm));
     });
     ccx.available_drop_glues().borrow_mut().insert(g, fn_nm);
@@ -243,10 +243,10 @@ fn get_drop_glue_core<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let (arena, fcx): (TypedArena<_>, FunctionContext);
     arena = TypedArena::new();
     fcx = new_fn_ctxt(ccx, llfn, ast::DUMMY_NODE_ID, false,
-                      ty::FnConverging(ty::mk_nil(ccx.tcx())),
+                      ty::FnConverging(ccx.tcx().mk_nil()),
                       empty_substs, None, &arena);
 
-    let bcx = init_function(&fcx, false, ty::FnConverging(ty::mk_nil(ccx.tcx())));
+    let bcx = init_function(&fcx, false, ty::FnConverging(ccx.tcx().mk_nil()));
 
     update_linkage(ccx, llfn, None, OriginalTranslation);
 
@@ -261,7 +261,7 @@ fn get_drop_glue_core<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     let llrawptr0 = get_param(llfn, fcx.arg_offset() as c_uint);
     let bcx = make_drop_glue(bcx, llrawptr0, g);
-    finish_fn(&fcx, bcx, ty::FnConverging(ty::mk_nil(ccx.tcx())), DebugLoc::None);
+    finish_fn(&fcx, bcx, ty::FnConverging(ccx.tcx().mk_nil()), DebugLoc::None);
 
     llfn
 }
@@ -326,12 +326,11 @@ pub fn get_res_dtor<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     } else {
         let tcx = ccx.tcx();
         let name = csearch::get_symbol(&ccx.sess().cstore, did);
-        let class_ty = ty::lookup_item_type(tcx, parent_id).ty.subst(tcx, substs);
+        let class_ty = tcx.lookup_item_type(parent_id).ty.subst(tcx, substs);
         let llty = type_of_dtor(ccx, class_ty);
-        let dtor_ty = ty::mk_ctor_fn(ccx.tcx(),
-                                     did,
-                                     &[get_drop_glue_type(ccx, t)],
-                                     ty::mk_nil(ccx.tcx()));
+        let dtor_ty = ccx.tcx().mk_ctor_fn(did,
+                                           &[get_drop_glue_type(ccx, t)],
+                                           ccx.tcx().mk_nil());
         foreign::get_extern_fn(ccx, &mut *ccx.externs().borrow_mut(), &name[..], llvm::CCallConv,
                                llty, dtor_ty)
     }
@@ -371,7 +370,7 @@ fn trans_struct_drop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     bcx.fcx.schedule_drop_adt_contents(cleanup::CustomScope(contents_scope), v0, t);
 
     let glue_type = get_drop_glue_type(bcx.ccx(), t);
-    let dtor_ty = ty::mk_ctor_fn(bcx.tcx(), class_did, &[glue_type], ty::mk_nil(bcx.tcx()));
+    let dtor_ty = bcx.tcx().mk_ctor_fn(class_did, &[glue_type], bcx.tcx().mk_nil());
     let (_, bcx) = invoke(bcx, dtor_addr, &[v0], dtor_ty, DebugLoc::None);
 
     bcx.fcx.pop_and_trans_custom_cleanup_scope(bcx, contents_scope)
@@ -392,7 +391,7 @@ pub fn size_and_align_of_dst<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, in
             let ccx = bcx.ccx();
             // First get the size of all statically known fields.
             // Don't use type_of::sizing_type_of because that expects t to be sized.
-            assert!(!ty::type_is_simd(bcx.tcx(), t));
+            assert!(!t.is_simd(bcx.tcx()));
             let repr = adt::represent_type(ccx, t);
             let sizing_type = adt::sizing_type_of(ccx, &*repr, true);
             let sized_size = C_uint(ccx, llsize_of_alloc(ccx, sizing_type));
@@ -400,7 +399,7 @@ pub fn size_and_align_of_dst<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, in
 
             // Recurse to get the size of the dynamically sized field (must be
             // the last field).
-            let fields = ty::struct_fields(bcx.tcx(), id, substs);
+            let fields = bcx.tcx().struct_fields(id, substs);
             let last_field = fields[fields.len()-1];
             let field_ty = last_field.mt.ty;
             let (unsized_size, unsized_align) = size_and_align_of_dst(bcx, field_ty, info);
@@ -426,7 +425,7 @@ pub fn size_and_align_of_dst<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, in
             (Load(bcx, size_ptr), Load(bcx, align_ptr))
         }
         ty::TySlice(_) | ty::TyStr => {
-            let unit_ty = ty::sequence_element_type(bcx.tcx(), t);
+            let unit_ty = t.sequence_element_type(bcx.tcx());
             // The info in this case is the length of the str, so the size is that
             // times the unit size.
             let llunit_ty = sizing_type_of(bcx.ccx(), unit_ty);
@@ -496,7 +495,7 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, g: DropGlueK
         }
         ty::TyStruct(did, substs) | ty::TyEnum(did, substs) => {
             let tcx = bcx.tcx();
-            match (ty::ty_dtor(tcx, did), skip_dtor) {
+            match (tcx.ty_dtor(did), skip_dtor) {
                 (ty::TraitDtor(dtor, true), false) => {
                     // FIXME(16758) Since the struct is unsized, it is hard to
                     // find the drop flag (which is at the end of the struct).

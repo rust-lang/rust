@@ -15,7 +15,7 @@ use CrateCtxt;
 
 use astconv::AstConv;
 use check::{self, FnCtxt};
-use middle::ty::{self, Ty, ToPolyTraitRef, ToPredicate};
+use middle::ty::{self, Ty, ToPolyTraitRef, ToPredicate, HasTypeFlags};
 use middle::def;
 use middle::lang_items::FnOnceTraitLangItem;
 use middle::subst::Substs;
@@ -40,7 +40,7 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                               error: MethodError<'tcx>)
 {
     // avoid suggestions when we don't know what's going on.
-    if ty::type_is_error(rcvr_ty) {
+    if rcvr_ty.references_error() {
         return
     }
 
@@ -66,7 +66,7 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
             // If the item has the name of a field, give a help note
             if let (&ty::TyStruct(did, substs), Some(expr)) = (&rcvr_ty.sty, rcvr_expr) {
-                let fields = ty::lookup_struct_fields(cx, did);
+                let fields = cx.lookup_struct_fields(did);
 
                 if let Some(field) = fields.iter().find(|f| f.name == item_name) {
                     let expr_string = match cx.sess.codemap().span_to_snippet(expr.span) {
@@ -89,7 +89,7 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                     };
 
                     // Determine if the field can be used as a function in some way
-                    let field_ty = ty::lookup_field_type(cx, did, field.id, substs);
+                    let field_ty = cx.lookup_field_type(did, field.id, substs);
                     if let Ok(fn_once_trait_did) = cx.lang_items.require(FnOnceTraitLangItem) {
                         let infcx = fcx.infcx();
                         infcx.probe(|_| {
@@ -159,7 +159,7 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                invoked on this closure as we have not yet inferred what \
                                kind of closure it is",
                                item_name,
-                               ty::item_path_str(fcx.tcx(), trait_def_id));
+                               fcx.tcx().item_path_str(trait_def_id));
             let msg = if let Some(callee) = rcvr_expr {
                 format!("{}; use overloaded call notation instead (e.g., `{}()`)",
                         msg, pprust::expr_to_string(callee))
@@ -188,11 +188,12 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
                     let impl_ty = check::impl_self_ty(fcx, span, impl_did).ty;
 
-                    let insertion = match ty::impl_trait_ref(fcx.tcx(), impl_did) {
+                    let insertion = match fcx.tcx().impl_trait_ref(impl_did) {
                         None => format!(""),
-                        Some(trait_ref) => format!(" of the trait `{}`",
-                                                   ty::item_path_str(fcx.tcx(),
-                                                                     trait_ref.def_id)),
+                        Some(trait_ref) => {
+                            format!(" of the trait `{}`",
+                                    fcx.tcx().item_path_str(trait_ref.def_id))
+                        }
                     };
 
                     span_note!(fcx.sess(), item_span,
@@ -207,7 +208,7 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                     span_note!(fcx.sess(), item_span,
                                "candidate #{} is defined in the trait `{}`",
                                idx + 1,
-                               ty::item_path_str(fcx.tcx(), trait_did));
+                               fcx.tcx().item_path_str(trait_did));
                 }
             }
         }
@@ -243,7 +244,7 @@ fn suggest_traits_to_import<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             fcx.sess().fileline_help(span,
                                      &*format!("candidate #{}: use `{}`",
                                                i + 1,
-                                               ty::item_path_str(fcx.tcx(), *trait_did)))
+                                               fcx.tcx().item_path_str(*trait_did)))
 
         }
         return
@@ -289,7 +290,7 @@ fn suggest_traits_to_import<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             fcx.sess().fileline_help(span,
                                      &*format!("candidate #{}: `{}`",
                                                i + 1,
-                                               ty::item_path_str(fcx.tcx(), trait_info.def_id)))
+                                               fcx.tcx().item_path_str(trait_info.def_id)))
         }
     }
 }

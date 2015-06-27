@@ -38,7 +38,7 @@ pub fn overlapping_impls(infcx: &InferCtxt,
            impl1_def_id,
            impl2_def_id);
 
-    let param_env = &ty::empty_parameter_environment(infcx.tcx);
+    let param_env = &infcx.tcx.empty_parameter_environment();
     let selcx = &mut SelectionContext::intercrate(infcx, param_env);
     infcx.probe(|_| {
         overlap(selcx, impl1_def_id, impl2_def_id) || overlap(selcx, impl2_def_id, impl1_def_id)
@@ -111,7 +111,7 @@ pub fn trait_ref_is_knowable<'tcx>(tcx: &ty::ctxt<'tcx>, trait_ref: &ty::TraitRe
     // already
     if
         trait_ref.def_id.krate != ast::LOCAL_CRATE &&
-        !ty::has_attr(tcx, trait_ref.def_id, "fundamental")
+        !tcx.has_attr(trait_ref.def_id, "fundamental")
     {
         debug!("trait_ref_is_knowable: trait is neither local nor fundamental");
         return false;
@@ -142,13 +142,13 @@ fn impl_trait_ref_and_oblig<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
     let impl_substs =
         &substs_fn(selcx.infcx(), DUMMY_SP, impl_def_id);
     let impl_trait_ref =
-        ty::impl_trait_ref(selcx.tcx(), impl_def_id).unwrap();
+        selcx.tcx().impl_trait_ref(impl_def_id).unwrap();
     let impl_trait_ref =
         impl_trait_ref.subst(selcx.tcx(), impl_substs);
     let Normalized { value: impl_trait_ref, obligations: normalization_obligations1 } =
         project::normalize(selcx, ObligationCause::dummy(), &impl_trait_ref);
 
-    let predicates = ty::lookup_predicates(selcx.tcx(), impl_def_id);
+    let predicates = selcx.tcx().lookup_predicates(impl_def_id);
     let predicates = predicates.instantiate(selcx.tcx(), impl_substs);
     let Normalized { value: predicates, obligations: normalization_obligations2 } =
         project::normalize(selcx, ObligationCause::dummy(), &predicates);
@@ -183,7 +183,7 @@ pub fn orphan_check<'tcx>(tcx: &ty::ctxt<'tcx>,
 
     // We only except this routine to be invoked on implementations
     // of a trait, not inherent implementations.
-    let trait_ref = ty::impl_trait_ref(tcx, impl_def_id).unwrap();
+    let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
     debug!("orphan_check: trait_ref={:?}", trait_ref);
 
     // If the *trait* is local to the crate, ok.
@@ -280,9 +280,9 @@ fn fundamental_ty<'tcx>(tcx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> bool
         ty::TyBox(..) | ty::TyRef(..) =>
             true,
         ty::TyEnum(def_id, _) | ty::TyStruct(def_id, _) =>
-            ty::has_attr(tcx, def_id, "fundamental"),
+            tcx.has_attr(def_id, "fundamental"),
         ty::TyTrait(ref data) =>
-            ty::has_attr(tcx, data.principal_def_id(), "fundamental"),
+            tcx.has_attr(data.principal_def_id(), "fundamental"),
         _ =>
             false
     }

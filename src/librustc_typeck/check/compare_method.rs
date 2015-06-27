@@ -100,7 +100,7 @@ pub fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
             token::get_name(trait_m.name),
             impl_m.fty.sig.0.inputs.len(),
             if impl_m.fty.sig.0.inputs.len() == 1 {""} else {"s"},
-            ty::item_path_str(tcx, trait_m.def_id),
+            tcx.item_path_str(trait_m.def_id),
             trait_m.fty.sig.0.inputs.len());
         return;
     }
@@ -275,9 +275,9 @@ pub fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
     // type.
 
     // Compute skolemized form of impl and trait method tys.
-    let impl_fty = ty::mk_bare_fn(tcx, None, tcx.mk_bare_fn(impl_m.fty.clone()));
+    let impl_fty = tcx.mk_fn(None, tcx.mk_bare_fn(impl_m.fty.clone()));
     let impl_fty = impl_fty.subst(tcx, impl_to_skol_substs);
-    let trait_fty = ty::mk_bare_fn(tcx, None, tcx.mk_bare_fn(trait_m.fty.clone()));
+    let trait_fty = tcx.mk_fn(None, tcx.mk_bare_fn(trait_m.fty.clone()));
     let trait_fty = trait_fty.subst(tcx, &trait_to_skol_substs);
 
     let err = infcx.commit_if_ok(|snapshot| {
@@ -296,12 +296,11 @@ pub fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
                                                  impl_m_span,
                                                  impl_m_body_id,
                                                  &impl_sig);
-        let impl_fty =
-            ty::mk_bare_fn(tcx,
-                           None,
-                           tcx.mk_bare_fn(ty::BareFnTy { unsafety: impl_m.fty.unsafety,
-                                                         abi: impl_m.fty.abi,
-                                                         sig: ty::Binder(impl_sig) }));
+        let impl_fty = tcx.mk_fn(None, tcx.mk_bare_fn(ty::BareFnTy {
+            unsafety: impl_m.fty.unsafety,
+            abi: impl_m.fty.abi,
+            sig: ty::Binder(impl_sig)
+        }));
         debug!("compare_impl_method: impl_fty={:?}",
                impl_fty);
 
@@ -316,12 +315,11 @@ pub fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
                                                  impl_m_span,
                                                  impl_m_body_id,
                                                  &trait_sig);
-        let trait_fty =
-            ty::mk_bare_fn(tcx,
-                           None,
-                           tcx.mk_bare_fn(ty::BareFnTy { unsafety: trait_m.fty.unsafety,
-                                                         abi: trait_m.fty.abi,
-                                                         sig: ty::Binder(trait_sig) }));
+        let trait_fty = tcx.mk_fn(None, tcx.mk_bare_fn(ty::BareFnTy {
+            unsafety: trait_m.fty.unsafety,
+            abi: trait_m.fty.abi,
+            sig: ty::Binder(trait_sig)
+        }));
 
         debug!("compare_impl_method: trait_fty={:?}",
                trait_fty);

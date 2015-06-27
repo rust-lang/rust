@@ -507,7 +507,7 @@ pub fn construct_skolemized_substs<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
                                   types: &mut subst::VecPerParamSpace<ty::Ty<'tcx>>,
                                   defs: &[ty::TypeParameterDef<'tcx>]) {
         for def in defs {
-            let ty = ty::mk_param_from_def(tcx, def);
+            let ty = tcx.mk_param_from_def(def);
             types.push(def.space, ty);
         }
     }

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use middle::infer::InferCtxt;
-use middle::ty::{self, RegionEscape, Ty};
+use middle::ty::{self, RegionEscape, Ty, HasTypeFlags};
 
 use std::collections::HashSet;
 use std::fmt;
@@ -421,7 +421,7 @@ fn process_predicate<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
             // regions.  If there are, we will call this obligation an
             // error. Eventually we should be able to support some
             // cases here, I imagine (e.g., `for<'a> int : 'a`).
-            if ty::count_late_bound_regions(selcx.tcx(), binder) != 0 {
+            if selcx.tcx().count_late_bound_regions(binder) != 0 {
                 errors.push(
                     FulfillmentError::new(
                         obligation.clone(),

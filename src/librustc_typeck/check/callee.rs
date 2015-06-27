@@ -358,9 +358,8 @@ impl<'tcx> DeferredCallResolution<'tcx> for CallResolution<'tcx> {
                 // can't because of the annoying need for a TypeTrace.
                 // (This always bites me, should find a way to
                 // refactor it.)
-                let method_sig =
-                    ty::no_late_bound_regions(fcx.tcx(),
-                                              ty::ty_fn_sig(method_callee.ty)).unwrap();
+                let method_sig = fcx.tcx().no_late_bound_regions(method_callee.ty.fn_sig())
+                                          .unwrap();
 
                 debug!("attempt_resolution: method_callee={:?}",
                        method_callee);
@@ -371,7 +370,7 @@ impl<'tcx> DeferredCallResolution<'tcx> for CallResolution<'tcx> {
                     demand::eqtype(fcx, self.call_expr.span, self_arg_ty, method_arg_ty);
                 }
 
-                let nilty = ty::mk_nil(fcx.tcx());
+                let nilty = fcx.tcx().mk_nil();
                 demand::eqtype(fcx,
                                self.call_expr.span,
                                method_sig.output.unwrap_or(nilty),
