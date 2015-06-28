@@ -115,6 +115,7 @@ use syntax::attr::AttrMetaMethods;
 use syntax::ast::{self, DefId, Visibility};
 use syntax::ast_util::{self, local_def};
 use syntax::codemap::{self, Span};
+use syntax::feature_gate::emit_feature_err;
 use syntax::owned_slice::OwnedSlice;
 use syntax::parse::token;
 use syntax::print::pprust;
@@ -4009,9 +4010,7 @@ fn check_const_with_ty<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
 /// Checks whether a type can be represented in memory. In particular, it
 /// identifies types that contain themselves without indirection through a
-/// pointer, which would mean their size is unbounded. This is different from
-/// the question of whether a type can be instantiated. See the definition of
-/// `check_instantiable`.
+/// pointer, which would mean their size is unbounded.
 pub fn check_representable(tcx: &ty::ctxt,
                            sp: Span,
                            item_id: ast::NodeId,
@@ -4036,31 +4035,19 @@ pub fn check_representable(tcx: &ty::ctxt,
     return true
 }
 
-/// Checks whether a type can be created without an instance of itself.
-/// This is similar but different from the question of whether a type
-/// can be represented.  For example, the following type:
-///
-///     enum foo { None, Some(foo) }
-///
-/// is instantiable but is not representable.  Similarly, the type
-///
-///     enum foo { Some(@foo) }
-///
-/// is representable, but not instantiable.
+/// Checks whether a type can be constructed at runtime without
+/// an existing instance of that type.
 pub fn check_instantiable(tcx: &ty::ctxt,
                           sp: Span,
-                          item_id: ast::NodeId)
-                          -> bool {
+                          item_id: ast::NodeId) {
     let item_ty = tcx.node_id_to_type(item_id);
-    if !item_ty.is_instantiable(tcx) {
-        span_err!(tcx.sess, sp, E0073,
-            "this type cannot be instantiated without an \
-             instance of itself");
-        fileline_help!(tcx.sess, sp, "consider using `Option<{:?}>`",
-             item_ty);
-        false
-    } else {
-        true
+    if !item_ty.is_instantiable(tcx) &&
+            !tcx.sess.features.borrow().static_recursion {
+        emit_feature_err(&tcx.sess.parse_sess.span_diagnostic,
+                         "static_recursion",
+                         sp,
+                         "this type cannot be instantiated at runtime \
+                          without an instance of itself");
     }
 }
 
@@ -4199,11 +4186,6 @@ pub fn check_enum_variants<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
     do_check(ccx, vs, id, hint);
 
     check_representable(ccx.tcx, sp, id, "enum");
-
-    // Check that it is possible to instantiate this enum:
-    //
-    // This *sounds* like the same that as representable, but it's
-    // not.  See def'n of `check_instantiable()` for details.
     check_instantiable(ccx.tcx, sp, id);
 }
 
