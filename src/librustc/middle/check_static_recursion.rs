@@ -13,7 +13,7 @@
 
 use ast_map;
 use session::Session;
-use middle::def::{DefStatic, DefConst, DefAssociatedConst, DefVariant, DefMap};
+use middle::def::{DefConst, DefAssociatedConst, DefVariant, DefMap};
 use util::nodemap::NodeMap;
 
 use syntax::{ast, ast_util};
@@ -37,7 +37,6 @@ struct CheckCrateVisitor<'a, 'ast: 'a> {
 impl<'a, 'ast: 'a> Visitor<'ast> for CheckCrateVisitor<'a, 'ast> {
     fn visit_item(&mut self, it: &'ast ast::Item) {
         match it.node {
-            ast::ItemStatic(..) |
             ast::ItemConst(..) => {
                 let mut recursion_visitor =
                     CheckItemRecursionVisitor::new(self, &it.span);
@@ -217,7 +216,6 @@ impl<'a, 'ast: 'a> Visitor<'ast> for CheckItemRecursionVisitor<'a, 'ast> {
         match e.node {
             ast::ExprPath(..) => {
                 match self.def_map.borrow().get(&e.id).map(|d| d.base_def) {
-                    Some(DefStatic(def_id, _)) |
                     Some(DefAssociatedConst(def_id, _)) |
                     Some(DefConst(def_id))
                            if ast_util::is_local(def_id) => {

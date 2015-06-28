@@ -2090,7 +2090,7 @@ pub fn trans_item(ccx: &CrateContext, item: &ast::Item) {
           let mut v = TransItemVisitor{ ccx: ccx };
           v.visit_expr(&**expr);
 
-          let g = consts::trans_static(ccx, m, item.id);
+          let g = consts::trans_static(ccx, m, expr, item.id, &item.attrs);
           update_linkage(ccx, g, Some(item.id), OriginalTranslation);
       },
       ast::ItemForeignMod(ref foreign_mod) => {
@@ -2334,7 +2334,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
             let sym = || exported_name(ccx, id, ty, &i.attrs);
 
             let v = match i.node {
-                ast::ItemStatic(_, _, ref expr) => {
+                ast::ItemStatic(..) => {
                     // If this static came from an external crate, then
                     // we need to get the symbol from csearch instead of
                     // using the current crate's name/version
@@ -2342,36 +2342,17 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
                     let sym = sym();
                     debug!("making {}", sym);
 
-                    // We need the translated value here, because for enums the
-                    // LLVM type is not fully determined by the Rust type.
-                    let empty_substs = ccx.tcx().mk_substs(Substs::trans_empty());
-                    let (v, ty) = consts::const_expr(ccx, &**expr, empty_substs, None);
-                    ccx.static_values().borrow_mut().insert(id, v);
-                    unsafe {
-                        // boolean SSA values are i1, but they have to be stored in i8 slots,
-                        // otherwise some LLVM optimization passes don't work as expected
-                        let llty = if ty.is_bool() {
-                            llvm::LLVMInt8TypeInContext(ccx.llcx())
-                        } else {
-                            llvm::LLVMTypeOf(v)
-                        };
+                    // Create the global before evaluating the initializer;
+                    // this is necessary to allow recursive statics.
+                    let llty = type_of(ccx, ty);
+                    let g = declare::define_global(ccx, &sym[..],
+                                                   llty).unwrap_or_else(|| {
+                        ccx.sess().span_fatal(i.span, &format!("symbol `{}` is already defined",
+                                                                sym))
+                    });
 
-                        // FIXME(nagisa): probably should be declare_global, because no definition
-                        // is happening here, but we depend on it being defined here from
-                        // const::trans_static. This all logic should be replaced.
-                        let g = declare::define_global(ccx, &sym[..],
-                                                       Type::from_ref(llty)).unwrap_or_else(||{
-                            ccx.sess().span_fatal(i.span, &format!("symbol `{}` is already defined",
-                                                                   sym))
-                        });
-
-                        if attr::contains_name(&i.attrs,
-                                               "thread_local") {
-                            llvm::set_thread_local(g, true);
-                        }
-                        ccx.item_symbols().borrow_mut().insert(i.id, sym);
-                        g
-                    }
+                    ccx.item_symbols().borrow_mut().insert(i.id, sym);
+                    g
                 }
 
                 ast::ItemFn(_, _, _, abi, _, _) => {
@@ -2737,6 +2718,13 @@ pub fn trans_crate(tcx: &ty::ctxt, analysis: ty::CrateAnalysis) -> CrateTranslat
     for ccx in shared_ccx.iter() {
         if ccx.sess().opts.debuginfo != NoDebugInfo {
             debuginfo::finalize(&ccx);
+        }
+        for &(old_g, new_g) in ccx.statics_to_rauw().borrow().iter() {
+            unsafe {
+                let bitcast = llvm::LLVMConstPointerCast(new_g, llvm::LLVMTypeOf(old_g));
+                llvm::LLVMReplaceAllUsesWith(old_g, bitcast);
+                llvm::LLVMDeleteGlobal(old_g);
+            }
         }
     }
 
