@@ -1019,7 +1019,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         raw_ty.adjust(self.tcx,
                       expr.span,
                       expr.id,
-                      raw_ty,
                       adjustment,
                       |method_call| self.tables
                                         .borrow()

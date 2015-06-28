@@ -85,7 +85,7 @@ pub struct FulfillmentContext<'tcx> {
     // particular node-id).
     region_obligations: NodeMap<Vec<RegionObligation<'tcx>>>,
 
-    errors_will_be_reported: bool,
+    pub errors_will_be_reported: bool,
 }
 
 #[derive(Clone)]
