@@ -19,6 +19,7 @@ pub use self::TypeOrigin::*;
 pub use self::ValuePairs::*;
 pub use self::fixup_err::*;
 pub use middle::ty::IntVarValue;
+use middle::ty::ClosureTyper;
 pub use self::freshen::TypeFreshener;
 pub use self::region_inference::GenericKind;
 
@@ -29,7 +30,8 @@ use middle::region::CodeExtent;
 use middle::subst;
 use middle::subst::Substs;
 use middle::subst::Subst;
-use middle::traits;
+use middle::traits::{self, FulfillmentContext, Normalized, MiscObligation,
+                     SelectionContext, ObligationCause};
 use middle::ty::{TyVid, IntVid, FloatVid, RegionVid, UnconstrainedNumeric};
 use middle::ty::{self, Ty, HasTypeFlags};
 use middle::ty_fold::{self, TypeFolder, TypeFoldable};
@@ -39,7 +41,7 @@ use std::cell::{RefCell, Ref};
 use std::fmt;
 use syntax::ast;
 use syntax::codemap;
-use syntax::codemap::Span;
+use syntax::codemap::{Span, DUMMY_SP};
 use util::nodemap::{FnvHashMap, NodeMap};
 
 use self::combine::CombineFields;
@@ -354,6 +356,14 @@ pub fn new_infer_ctxt<'a, 'tcx>(tcx: &'a ty::ctxt<'tcx>,
     }
 }
 
+pub fn normalizing_infer_ctxt<'a, 'tcx>(tcx: &'a ty::ctxt<'tcx>,
+                                        tables: &'a RefCell<ty::Tables<'tcx>>)
+                                        -> InferCtxt<'a, 'tcx> {
+    let mut infcx = new_infer_ctxt(tcx, tables, None, false);
+    infcx.normalize = true;
+    infcx
+}
+
 /// Computes the least upper-bound of `a` and `b`. If this is not possible, reports an error and
 /// returns ty::err.
 pub fn common_supertype<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
@@ -557,7 +567,8 @@ impl<'a, 'tcx> ty::ClosureTyper<'tcx> for InferCtxt<'a, 'tcx> {
             // the substitutions in `substs` are already monomorphized,
             // but we still must normalize associated types
             // normalize_associated_type(self.param_env.tcx, &closure_ty)
-            panic!("see issue 26597: fufillment context refactor must occur")
+            normalize_associated_type(&self.tcx, &closure_ty)
+            // panic!("see issue 26597: fufillment context refactor must occur")
         } else {
             closure_ty
         }
@@ -579,9 +590,154 @@ impl<'a, 'tcx> ty::ClosureTyper<'tcx> for InferCtxt<'a, 'tcx> {
             // the substitutions in `substs` are already monomorphized,
             // but we still must normalize associated types
             // monomorphize::normalize_associated_type(self.param_env.tcx, &result)
-            panic!("see issue 26597: fufillment context refactor must occur")
+            // panic!("see issue 26597: fufillment context refactor must occur")
+            normalize_associated_type(&self.tcx, &result)
         } else {
             result
+        }
+    }
+}
+
+pub fn normalize_associated_type<'tcx,T>(tcx: &ty::ctxt<'tcx>, value: &T) -> T
+    where T : TypeFoldable<'tcx> + HasTypeFlags
+{
+    debug!("normalize_associated_type(t={:?})", value);
+
+    let value = erase_regions(tcx, value);
+
+    if !value.has_projection_types() {
+        return value;
+    }
+
+    let infcx = new_infer_ctxt(tcx, &tcx.tables, None, true);
+    let mut selcx = traits::SelectionContext::new(&infcx, &infcx);
+    let cause = traits::ObligationCause::dummy();
+    let traits::Normalized { value: result, obligations } =
+        traits::normalize(&mut selcx, cause, &value);
+
+    debug!("normalize_associated_type: result={:?} obligations={:?}",
+           result,
+           obligations);
+
+    let mut fulfill_cx = infcx.fulfillment_cx.borrow_mut();
+
+    for obligation in obligations {
+        fulfill_cx.register_predicate_obligation(&infcx, obligation);
+    }
+
+    let result = drain_fulfillment_cx_or_panic(DUMMY_SP, &infcx, &mut fulfill_cx, &result);
+
+    result
+}
+
+pub fn drain_fulfillment_cx_or_panic<'a,'tcx,T>(span: Span,
+                                                infcx: &InferCtxt<'a,'tcx>,
+                                                fulfill_cx: &mut traits::FulfillmentContext<'tcx>,
+                                                result: &T)
+                                                -> T
+    where T : TypeFoldable<'tcx>
+{
+    match drain_fulfillment_cx(infcx, fulfill_cx, result) {
+        Ok(v) => v,
+        Err(errors) => {
+            infcx.tcx.sess.span_bug(
+                span,
+                &format!("Encountered errors `{:?}` fulfilling during trans",
+                         errors));
+        }
+    }
+}
+
+/// Finishes processes any obligations that remain in the fulfillment
+/// context, and then "freshens" and returns `result`. This is
+/// primarily used during normalization and other cases where
+/// processing the obligations in `fulfill_cx` may cause type
+/// inference variables that appear in `result` to be unified, and
+/// hence we need to process those obligations to get the complete
+/// picture of the type.
+pub fn drain_fulfillment_cx<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx>,
+                                       fulfill_cx: &mut traits::FulfillmentContext<'tcx>,
+                                       result: &T)
+                                       -> Result<T,Vec<traits::FulfillmentError<'tcx>>>
+    where T : TypeFoldable<'tcx>
+{
+    debug!("drain_fulfillment_cx(result={:?})",
+           result);
+    // this is stupid but temporary
+    let typer: &ClosureTyper<'tcx> = infcx;
+    // In principle, we only need to do this so long as `result`
+    // contains unbound type parameters. It could be a slight
+    // optimization to stop iterating early.
+    match fulfill_cx.select_all_or_error(infcx, typer) {
+        Ok(()) => { }
+        Err(errors) => {
+            return Err(errors);
+        }
+    }
+
+    // Use freshen to simultaneously replace all type variables with
+    // their bindings and replace all regions with 'static.  This is
+    // sort of overkill because we do not expect there to be any
+    // unbound type variables, hence no `TyFresh` types should ever be
+    // inserted.
+    Ok(result.fold_with(&mut infcx.freshener()))
+}
+
+/// Returns an equivalent value with all free regions removed (note
+/// that late-bound regions remain, because they are important for
+/// subtyping, but they are anonymized and normalized as well). This
+/// is a stronger, caching version of `ty_fold::erase_regions`.
+pub fn erase_regions<'tcx,T>(cx: &ty::ctxt<'tcx>, value: &T) -> T
+    where T : TypeFoldable<'tcx>
+{
+    let value1 = value.fold_with(&mut RegionEraser(cx));
+    debug!("erase_regions({:?}) = {:?}",
+           value, value1);
+    return value1;
+
+    struct RegionEraser<'a, 'tcx: 'a>(&'a ty::ctxt<'tcx>);
+
+    impl<'a, 'tcx> TypeFolder<'tcx> for RegionEraser<'a, 'tcx> {
+        fn tcx(&self) -> &ty::ctxt<'tcx> { self.0 }
+
+        fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+            match self.tcx().normalized_cache.borrow().get(&ty).cloned() {
+                None => {}
+                Some(u) => return u
+            }
+
+            let t_norm = ty_fold::super_fold_ty(self, ty);
+            self.tcx().normalized_cache.borrow_mut().insert(ty, t_norm);
+            return t_norm;
+        }
+
+        fn fold_binder<T>(&mut self, t: &ty::Binder<T>) -> ty::Binder<T>
+            where T : TypeFoldable<'tcx>
+        {
+            let u = self.tcx().anonymize_late_bound_regions(t);
+            ty_fold::super_fold_binder(self, &u)
+        }
+
+        fn fold_region(&mut self, r: ty::Region) -> ty::Region {
+            // because late-bound regions affect subtyping, we can't
+            // erase the bound/free distinction, but we can replace
+            // all free regions with 'static.
+            //
+            // Note that we *CAN* replace early-bound regions -- the
+            // type system never "sees" those, they get substituted
+            // away. In trans, they will always be erased to 'static
+            // whenever a substitution occurs.
+            match r {
+                ty::ReLateBound(..) => r,
+                _ => ty::ReStatic
+            }
+        }
+
+        fn fold_substs(&mut self,
+                       substs: &subst::Substs<'tcx>)
+                       -> subst::Substs<'tcx> {
+            subst::Substs { regions: subst::ErasedRegions,
+                            types: substs.types.fold_with(self) }
         }
     }
 }
