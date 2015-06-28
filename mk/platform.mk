@@ -239,23 +239,6 @@ endef
 $(foreach target,$(CFG_TARGET), \
   $(eval $(call CFG_MAKE_TOOLCHAIN,$(target))))
 
-# These two environment variables are scraped by the `./configure` script and
-# are necessary for `cl.exe` to find standard headers (the INCLUDE variable) and
-# for `link.exe` to find standard libraries (the LIB variable).
-ifdef CFG_MSVC_INCLUDE_PATH
-export INCLUDE := $(CFG_MSVC_INCLUDE_PATH)
-endif
-ifdef CFG_MSVC_LIB_PATH
-export LIB := $(CFG_MSVC_LIB_PATH)
-endif
-
-# Unfortunately `link.exe` is also a program in `/usr/bin` on MinGW installs,
-# but it's not the one that we want. As a result we make sure that our detected
-# `link.exe` shows up in PATH first.
-ifdef CFG_MSVC_LINK
-export PATH := $(CFG_MSVC_ROOT)/VC/bin/amd64:$(PATH)
-endif
-
 # There are more comments about this available in the target specification for
 # Windows MSVC in the compiler, but the gist of it is that we use `llvm-ar.exe`
 # instead of `lib.exe` for assembling archives, so we need to inject this custom
@@ -307,3 +290,4 @@ endef
 
 $(foreach target,$(CFG_TARGET), \
   $(eval $(call ADD_RUSTC_LLVM_DEF_TO_MSVC,$(target))))
+

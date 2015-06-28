@@ -220,3 +220,40 @@ $(foreach target,$(CFG_TARGET), \
  $(foreach crate,$(CRATES), \
   $(foreach tool,$(NATIVE_TOOL_DEPS_$(crate)_T_$(target)), \
    $(eval $(call MOVE_TOOLS_TO_SNAPSHOT_HOST_DIR,0,$(target),$(BOOTSTRAP_FROM_$(target)),$(crate),$(tool))))))
+
+# For MSVC targets we need to set up some environment variables for the linker
+# to work correctly when building Rust crates. These two variables are:
+#
+# - LIB tells the linker the default search path for finding system libraries,
+#   for example kernel32.dll
+# - PATH needs to be modified to ensure that MSVC's link.exe is first in the
+#   path instead of MinGW's /usr/bin/link.exe (entirely unrelated)
+#
+# The values for these variables are detected by the configure script.
+define SETUP_LIB_MSVC_ENV_VARS
+ifeq ($$(findstring msvc,$(2)),msvc)
+$$(TLIB$(1)_T_$(2)_H_$(3))/stamp.$(4): \
+	export LIB := $$(CFG_MSVC_LIB_PATH_$$(HOST_$(2)))
+$$(TLIB$(1)_T_$(2)_H_$(3))/stamp.$(4): \
+	export PATH := $$(CFG_MSVC_BINDIR_$$(HOST_$(2))):$$(PATH)
+endif
+endef
+define SETUP_TOOL_MSVC_ENV_VARS
+ifeq ($$(findstring msvc,$(2)),msvc)
+$$(TBIN$(1)_T_$(2)_H_$(3))/$(4)$$(X_$(2)): \
+	export LIB := $$(CFG_MSVC_LIB_PATH_$$(HOST_$(2)))
+$$(TBIN$(1)_T_$(2)_H_$(3))/$(4)$$(X_$(2)): \
+	export PATH := $$(CFG_MSVC_BINDIR_$$(HOST_$(2))):$$(PATH)
+endif
+endef
+
+$(foreach host,$(CFG_HOST), \
+ $(foreach target,$(CFG_TARGET), \
+  $(foreach stage,$(STAGES), \
+   $(foreach crate,$(CRATES), \
+    $(eval $(call SETUP_LIB_MSVC_ENV_VARS,$(stage),$(target),$(host),$(crate)))))))
+$(foreach host,$(CFG_HOST), \
+ $(foreach target,$(CFG_TARGET), \
+  $(foreach stage,$(STAGES), \
+   $(foreach tool,$(TOOLS), \
+    $(eval $(call SETUP_TOOL_MSVC_ENV_VARS,$(stage),$(target),$(host),$(tool)))))))
