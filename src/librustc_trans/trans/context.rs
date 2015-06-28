@@ -118,9 +118,6 @@ pub struct LocalCrateContext<'tcx> {
     /// Cache of emitted const values
     const_values: RefCell<FnvHashMap<(ast::NodeId, &'tcx Substs<'tcx>), ValueRef>>,
 
-    /// Cache of emitted static values
-    static_values: RefCell<NodeMap<ValueRef>>,
-
     /// Cache of external const values
     extern_const_values: RefCell<DefIdMap<ValueRef>>,
 
@@ -128,6 +125,12 @@ pub struct LocalCrateContext<'tcx> {
 
     /// Cache of closure wrappers for bare fn's.
     closure_bare_wrapper_cache: RefCell<FnvHashMap<ValueRef, ValueRef>>,
+
+    /// List of globals for static variables which need to be passed to the
+    /// LLVM function ReplaceAllUsesWith (RAUW) when translation is complete.
+    /// (We have to make sure we don't invalidate any ValueRefs referring
+    /// to constants.)
+    statics_to_rauw: RefCell<Vec<(ValueRef, ValueRef)>>,
 
     lltypes: RefCell<FnvHashMap<Ty<'tcx>, Type>>,
     llsizingtypes: RefCell<FnvHashMap<Ty<'tcx>, Type>>,
@@ -449,10 +452,10 @@ impl<'tcx> LocalCrateContext<'tcx> {
                 const_unsized: RefCell::new(FnvHashMap()),
                 const_globals: RefCell::new(FnvHashMap()),
                 const_values: RefCell::new(FnvHashMap()),
-                static_values: RefCell::new(NodeMap()),
                 extern_const_values: RefCell::new(DefIdMap()),
                 impl_method_cache: RefCell::new(FnvHashMap()),
                 closure_bare_wrapper_cache: RefCell::new(FnvHashMap()),
+                statics_to_rauw: RefCell::new(Vec::new()),
                 lltypes: RefCell::new(FnvHashMap()),
                 llsizingtypes: RefCell::new(FnvHashMap()),
                 adt_reprs: RefCell::new(FnvHashMap()),
@@ -660,10 +663,6 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         &self.local.const_values
     }
 
-    pub fn static_values<'a>(&'a self) -> &'a RefCell<NodeMap<ValueRef>> {
-        &self.local.static_values
-    }
-
     pub fn extern_const_values<'a>(&'a self) -> &'a RefCell<DefIdMap<ValueRef>> {
         &self.local.extern_const_values
     }
@@ -675,6 +674,10 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
 
     pub fn closure_bare_wrapper_cache<'a>(&'a self) -> &'a RefCell<FnvHashMap<ValueRef, ValueRef>> {
         &self.local.closure_bare_wrapper_cache
+    }
+
+    pub fn statics_to_rauw<'a>(&'a self) -> &'a RefCell<Vec<(ValueRef, ValueRef)>> {
+        &self.local.statics_to_rauw
     }
 
     pub fn lltypes<'a>(&'a self) -> &'a RefCell<FnvHashMap<Ty<'tcx>, Type>> {
