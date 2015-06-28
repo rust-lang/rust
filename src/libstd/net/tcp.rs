@@ -908,7 +908,7 @@ mod tests {
     #[test]
     fn timeouts() {
         let addr = next_test_ip4();
-        let listener = t!(TcpListener::bind(&addr));
+        let _listener = t!(TcpListener::bind(&addr));
 
         let stream = t!(TcpStream::connect(&("localhost", addr.port())));
         let dur = Duration::new(15410, 0);
@@ -933,7 +933,7 @@ mod tests {
     #[test]
     fn test_read_timeout() {
         let addr = next_test_ip4();
-        let listener = t!(TcpListener::bind(&addr));
+        let _listener = t!(TcpListener::bind(&addr));
 
         let mut stream = t!(TcpStream::connect(&("localhost", addr.port())));
         t!(stream.set_read_timeout(Some(Duration::from_millis(1000))));

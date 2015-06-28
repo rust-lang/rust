@@ -23,7 +23,6 @@
 
 use prelude::v1::*;
 use sys;
-use usize;
 
 // Reexport some of our utilities which are expected by other crates.
 pub use self::util::{min_stack, running_on_valgrind};
@@ -51,15 +50,16 @@ mod libunwind;
 /// of exiting cleanly.
 pub const DEFAULT_ERROR_CODE: isize = 101;
 
-#[cfg(any(windows, android))]
+#[cfg(all(any(windows, android), not(test)))]
 const OS_DEFAULT_STACK_ESTIMATE: usize = 1 << 20;
-#[cfg(all(unix, not(android)))]
+#[cfg(all(unix, not(android), not(test)))]
 const OS_DEFAULT_STACK_ESTIMATE: usize = 2 * (1 << 20);
 
 #[cfg(not(test))]
 #[lang = "start"]
 fn lang_start(main: *const u8, argc: isize, argv: *const *const u8) -> isize {
     use prelude::v1::*;
+    use usize;
 
     use mem;
     use env;

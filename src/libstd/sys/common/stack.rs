@@ -216,6 +216,7 @@ pub unsafe fn record_sp_limit(limit: usize) {
 /// As with the setter, this function does not have a __morestack header and can
 /// therefore be called in a "we're out of stack" situation.
 #[inline(always)]
+#[cfg(not(test))]
 pub unsafe fn get_sp_limit() -> usize {
     return target_get_sp_limit();
 

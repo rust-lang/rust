@@ -391,7 +391,7 @@ mod tests {
     fn test_read_timeout() {
         let addr = next_test_ip4();
 
-        let mut stream = t!(UdpSocket::bind(&addr));
+        let stream = t!(UdpSocket::bind(&addr));
         t!(stream.set_read_timeout(Some(Duration::from_millis(1000))));
 
         let mut buf = [0; 10];
@@ -407,7 +407,7 @@ mod tests {
     fn test_read_with_timeout() {
         let addr = next_test_ip4();
 
-        let mut stream = t!(UdpSocket::bind(&addr));
+        let stream = t!(UdpSocket::bind(&addr));
         t!(stream.set_read_timeout(Some(Duration::from_millis(1000))));
 
         t!(stream.send_to(b"hello world", &addr));

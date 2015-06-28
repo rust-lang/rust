@@ -452,6 +452,7 @@ fn test_inspect() {
 }
 
 #[test]
+#[allow(deprecated)]
 fn test_unfoldr() {
     fn count(st: &mut usize) -> Option<usize> {
         if *st < 10 {
@@ -782,6 +783,7 @@ fn test_rposition_panic() {
 
 
 #[cfg(test)]
+#[allow(deprecated)]
 fn check_randacc_iter<A, T>(a: T, len: usize) where
     A: PartialEq,
     T: Clone + RandomAccessIterator + Iterator<Item=A>,
@@ -821,6 +823,7 @@ fn test_double_ended_flat_map() {
 }
 
 #[test]
+#[allow(deprecated)]
 fn test_random_access_chain() {
     let xs = [1, 2, 3, 4, 5];
     let ys = [7, 9, 11];
@@ -884,6 +887,7 @@ fn test_random_access_skip() {
 }
 
 #[test]
+#[allow(deprecated)]
 fn test_random_access_inspect() {
     let xs = [1, 2, 3, 4, 5];
 
@@ -897,6 +901,7 @@ fn test_random_access_inspect() {
 }
 
 #[test]
+#[allow(deprecated)]
 fn test_random_access_map() {
     let xs = [1, 2, 3, 4, 5];
 
@@ -985,10 +990,17 @@ fn test_range_step() {
 }
 
 #[test]
-fn test_reverse() {
+#[allow(deprecated)]
+fn test_reverse_in_place() {
     let mut ys = [1, 2, 3, 4, 5];
     ys.iter_mut().reverse_in_place();
     assert!(ys == [5, 4, 3, 2, 1]);
+}
+
+#[test]
+fn test_reverse() {
+    let ys = [1, 2, 3, 4, 5].iter().cloned().rev().collect::<Vec<_>>();
+    assert_eq!(&ys, &[5, 4, 3, 2, 1]);
 }
 
 #[test]
@@ -1031,6 +1043,7 @@ fn test_min_max_result() {
 }
 
 #[test]
+#[allow(deprecated)]
 fn test_iterate() {
     let mut it = iterate(1, |x| x * 2);
     assert_eq!(it.next(), Some(1));

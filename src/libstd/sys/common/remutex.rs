@@ -158,7 +158,6 @@ mod tests {
     use sys_common::remutex::{ReentrantMutex, ReentrantMutexGuard};
     use cell::RefCell;
     use sync::Arc;
-    use boxed;
     use thread;
 
     #[test]
@@ -180,10 +179,11 @@ mod tests {
 
     #[test]
     fn is_mutex() {
-        let m = ReentrantMutex::new(RefCell::new(0));
+        let m = Arc::new(ReentrantMutex::new(RefCell::new(0)));
         let lock = m.lock().unwrap();
-        let handle = thread::scoped(|| {
-            let lock = m.lock().unwrap();
+        let mc = m.clone();
+        let handle = thread::spawn(move || {
+            let lock = mc.lock().unwrap();
             assert_eq!(*lock.borrow(), 4950);
         });
         for i in 0..100 {
@@ -191,21 +191,20 @@ mod tests {
             *lock.borrow_mut() += i;
         }
         drop(lock);
-        drop(handle);
+        handle.join().unwrap();
     }
 
     #[test]
     fn trylock_works() {
-        let m = ReentrantMutex::new(());
-        let lock = m.try_lock().unwrap();
-        let lock2 = m.try_lock().unwrap();
-        {
-            thread::scoped(|| {
-                let lock = m.try_lock();
-                assert!(lock.is_err());
-            });
-        }
-        let lock3 = m.try_lock().unwrap();
+        let m = Arc::new(ReentrantMutex::new(()));
+        let _lock = m.try_lock().unwrap();
+        let _lock2 = m.try_lock().unwrap();
+        let mc = m.clone();
+        thread::spawn(move || {
+            let lock = mc.try_lock();
+            assert!(lock.is_err());
+        }).join().unwrap();
+        let _lock3 = m.try_lock().unwrap();
     }
 
     pub struct Answer<'a>(pub ReentrantMutexGuard<'a, RefCell<u32>>);
@@ -224,9 +223,8 @@ mod tests {
             *lock.borrow_mut() = 1;
             let lock2 = mc.lock().unwrap();
             *lock.borrow_mut() = 2;
-            let answer = Answer(lock2);
+            let _answer = Answer(lock2);
             panic!("What the answer to my lifetimes dilemma is?");
-            drop(answer);
         }).join();
         assert!(result.is_err());
         let r = m.lock().err().unwrap().into_inner();

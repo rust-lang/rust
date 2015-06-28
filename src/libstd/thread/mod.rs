@@ -769,12 +769,11 @@ mod tests {
     use prelude::v1::*;
 
     use any::Any;
+    use boxed::FnBox;
     use sync::mpsc::{channel, Sender};
     use result;
     use super::{Builder};
     use thread;
-    use thunk::Thunk;
-    use time::Duration;
     use u32;
 
     // !!! These tests are dangerous. If something is buggy, they will hang, !!!
@@ -789,9 +788,9 @@ mod tests {
 
     #[test]
     fn test_named_thread() {
-        Builder::new().name("ada lovelace".to_string()).scoped(move|| {
+        Builder::new().name("ada lovelace".to_string()).spawn(move|| {
             assert!(thread::current().name().unwrap() == "ada lovelace".to_string());
-        }).unwrap().join();
+        }).unwrap().join().unwrap();
     }
 
     #[test]
@@ -805,9 +804,9 @@ mod tests {
 
     #[test]
     fn test_join_success() {
-        assert!(thread::scoped(move|| -> String {
+        assert!(thread::spawn(move|| -> String {
             "Success!".to_string()
-        }).join() == "Success!");
+        }).join().unwrap() == "Success!");
     }
 
     #[test]
@@ -821,6 +820,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn test_scoped_success() {
         let res = thread::scoped(move|| -> String {
             "Success!".to_string()
@@ -830,12 +830,14 @@ mod tests {
 
     #[test]
     #[should_panic]
+    #[allow(deprecated)]
     fn test_scoped_panic() {
         thread::scoped(|| panic!()).join();
     }
 
     #[test]
     #[should_panic]
+    #[allow(deprecated)]
     fn test_scoped_implicit_panic() {
         let _ = thread::scoped(|| panic!());
     }
@@ -874,7 +876,7 @@ mod tests {
         rx.recv().unwrap();
     }
 
-    fn avoid_copying_the_body<F>(spawnfn: F) where F: FnOnce(Thunk<'static>) {
+    fn avoid_copying_the_body<F>(spawnfn: F) where F: FnOnce(Box<FnBox() + Send>) {
         let (tx, rx) = channel();
 
         let x: Box<_> = box 1;
@@ -921,7 +923,7 @@ mod tests {
         // (well, it would if the constant were 8000+ - I lowered it to be more
         // valgrind-friendly. try this at home, instead..!)
         const GENERATIONS: u32 = 16;
-        fn child_no(x: u32) -> Thunk<'static> {
+        fn child_no(x: u32) -> Box<FnBox()> {
             return Box::new(move|| {
                 if x < GENERATIONS {
                     thread::spawn(move|| child_no(x+1)());
