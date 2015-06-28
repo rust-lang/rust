@@ -1,9 +1,9 @@
 # x86_64-pc-windows-msvc configuration
-CC_x86_64-pc-windows-msvc="$(CFG_MSVC_CL)" -nologo
-LINK_x86_64-pc-windows-msvc="$(CFG_MSVC_LINK)" -nologo
-CXX_x86_64-pc-windows-msvc="$(CFG_MSVC_CL)" -nologo
-CPP_x86_64-pc-windows-msvc="$(CFG_MSVC_CL)" -nologo
-AR_x86_64-pc-windows-msvc="$(CFG_MSVC_LIB)" -nologo
+CC_x86_64-pc-windows-msvc="$(CFG_MSVC_CL_x86_64)" -nologo
+LINK_x86_64-pc-windows-msvc="$(CFG_MSVC_LINK_x86_64)" -nologo
+CXX_x86_64-pc-windows-msvc="$(CFG_MSVC_CL_x86_64)" -nologo
+CPP_x86_64-pc-windows-msvc="$(CFG_MSVC_CL_x86_64)" -nologo
+AR_x86_64-pc-windows-msvc="$(CFG_MSVC_LIB_x86_64)" -nologo
 CFG_LIB_NAME_x86_64-pc-windows-msvc=$(1).dll
 CFG_STATIC_LIB_NAME_x86_64-pc-windows-msvc=$(1).lib
 CFG_LIB_GLOB_x86_64-pc-windows-msvc=$(1)-*.{dll,lib}

@@ -1114,7 +1114,7 @@ do
             fi
             ;;
 
-        x86_64-*-msvc)
+        *-msvc)
             # Currently the build system is not configured to build jemalloc
             # with MSVC, so we omit this optional dependency.
             step_msg "targeting MSVC, disabling jemalloc"
@@ -1154,22 +1154,45 @@ do
             CFG_MSVC_ROOT=$(echo "$install" | grep InstallDir | sed 's/.*REG_SZ[ ]*//')
             CFG_MSVC_ROOT=$(dirname "$CFG_MSVC_ROOT")
             CFG_MSVC_ROOT=$(dirname "$CFG_MSVC_ROOT")
-            CFG_MSVC_CL="${CFG_MSVC_ROOT}/VC/bin/amd64/cl.exe"
-            CFG_MSVC_LIB="${CFG_MSVC_ROOT}/VC/bin/amd64/lib.exe"
-            CFG_MSVC_LINK="${CFG_MSVC_ROOT}/VC/bin/amd64/link.exe"
+            putvar CFG_MSVC_ROOT
+
+            case $i in
+                x86_64-*)
+                    bits=x86_64
+                    msvc_part=amd64
+                    ;;
+                i686-*)
+                    bits=i386
+                    msvc_part=
+                    ;;
+                *)
+                    err "can only target x86 targets for MSVC"
+                    ;;
+            esac
+            bindir="${CFG_MSVC_ROOT}/VC/bin"
+            if [ ! -z "$msvc_part" ]; then
+                bindir="$bindir/$msvc_part"
+            fi
+            eval CFG_MSVC_BINDIR_$bits="\"$bindir\""
+            eval CFG_MSVC_CL_$bits="\"$bindir/cl.exe\""
+            eval CFG_MSVC_LIB_$bits="\"$bindir/lib.exe\""
+            eval CFG_MSVC_LINK_$bits="\"$bindir/link.exe\""
 
             vcvarsall="${CFG_MSVC_ROOT}/VC/vcvarsall.bat"
-            CFG_MSVC_INCLUDE_PATH=$(cmd /c "\"$vcvarsall\" amd64 && cmd /c echo %INCLUDE%")
+            include_path=$(cmd /c "\"$vcvarsall\" $msvc_part && cmd /c echo %INCLUDE%")
             need_ok "failed to learn about MSVC's INCLUDE"
-            CFG_MSVC_LIB_PATH=$(cmd /c "\"$vcvarsall\" amd64 && cmd /c echo %LIB%")
+            lib_path=$(cmd /c "\"$vcvarsall\" $msvc_part && cmd /c echo %LIB%")
             need_ok "failed to learn about MSVC's LIB"
 
-            putvar CFG_MSVC_ROOT
-            putvar CFG_MSVC_CL
-            putvar CFG_MSVC_LIB
-            putvar CFG_MSVC_LINK
-            putvar CFG_MSVC_INCLUDE_PATH
-            putvar CFG_MSVC_LIB_PATH
+            eval CFG_MSVC_INCLUDE_PATH_${bits}="\"$include_path\""
+            eval CFG_MSVC_LIB_PATH_${bits}="\"$lib_path\""
+
+            putvar CFG_MSVC_BINDIR_${bits}
+            putvar CFG_MSVC_CL_${bits}
+            putvar CFG_MSVC_LIB_${bits}
+            putvar CFG_MSVC_LINK_${bits}
+            putvar CFG_MSVC_INCLUDE_PATH_${bits}
+            putvar CFG_MSVC_LIB_PATH_${bits}
             ;;
 
         *)
@@ -1408,8 +1431,19 @@ do
 
         msg "configuring LLVM with:"
         msg "$CMAKE_ARGS"
+        case "$t" in
+            x86_64-*)
+                generator="Visual Studio 12 2013 Win64"
+                ;;
+            i686-*)
+                generator="Visual Studio 12 2013"
+                ;;
+            *)
+                err "can only build LLVM for x86 platforms"
+                ;;
+        esac
         (cd $LLVM_BUILD_DIR && "$CFG_CMAKE" $CFG_LLVM_SRC_DIR \
-                                            -G "Visual Studio 12 2013 Win64" \
+                                            -G "$generator" \
                                             $CMAKE_ARGS)
         need_ok "LLVM cmake configure failed"
     fi
