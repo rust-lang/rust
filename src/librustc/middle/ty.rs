@@ -4401,7 +4401,7 @@ impl<'tcx> TyS<'tcx> {
                        -> bool
     {
         let tcx = param_env.tcx();
-        let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, Some(param_env.clone()));
+        let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, Some(param_env.clone()), false);
 
         let is_impld = traits::type_known_to_meet_builtin_bound(&infcx, param_env,
                                                                 self, bound, span);

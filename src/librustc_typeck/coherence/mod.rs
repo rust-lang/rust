@@ -531,7 +531,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
                 }
             };
 
-            let mut fulfill_cx = infcx.fulfillment_cx.borrow_mut(); 
+            let mut fulfill_cx = infcx.fulfillment_cx.borrow_mut();
 
             // Register an obligation for `A: Trait<B>`.
             let cause = traits::ObligationCause::misc(span, impl_did.node);
@@ -633,7 +633,7 @@ pub fn check_coherence(crate_context: &CrateCtxt) {
     CoherenceChecker {
         crate_context: crate_context,
         // XXXJAREDXXX: not sure if the bool is right here?
-        inference_context: new_infer_ctxt(crate_context.tcx, &crate_context.tcx.tables, None, false),
+        inference_context: new_infer_ctxt(crate_context.tcx, &crate_context.tcx.tables, None, true),
         inherent_impls: RefCell::new(FnvHashMap()),
     }.check(crate_context.tcx.map.krate());
     unsafety::check(crate_context.tcx);

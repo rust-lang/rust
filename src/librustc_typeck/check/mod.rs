@@ -295,8 +295,7 @@ impl<'a, 'tcx> Inherited<'a, 'tcx> {
            -> Inherited<'a, 'tcx> {
 
         Inherited {
-            // I'm probably screwed here ... more boolean prop ... 
-            infcx: infer::new_infer_ctxt(tcx, tables, Some(param_env), false),
+            infcx: infer::new_infer_ctxt(tcx, tables, Some(param_env), true),
             locals: RefCell::new(NodeMap()),
             tables: tables,
             fn_sig_map: RefCell::new(NodeMap()),
@@ -316,7 +315,8 @@ impl<'a, 'tcx> Inherited<'a, 'tcx> {
         let mut fulfillment_cx = self.infcx.fulfillment_cx.borrow_mut();
         assoc::normalize_associated_types_in(&self.infcx,
                                              typer,
-                                             &mut *fulfillment_cx, span,
+                                             &mut fulfillment_cx,
+                                             span,
                                              body_id,
                                              value)
     }
@@ -1560,7 +1560,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let raw_ty = self.infcx().shallow_resolve(raw_ty);
         let resolve_ty = |ty: Ty<'tcx>| self.infcx().resolve_type_vars_if_possible(&ty);
         raw_ty.adjust(self.tcx(), expr.span, expr.id, adjustment, |method_call| {
-                                                   .method_map
             self.inh.tables.borrow().method_map.get(&method_call)
                                         .map(|method| resolve_ty(method.ty))
         })

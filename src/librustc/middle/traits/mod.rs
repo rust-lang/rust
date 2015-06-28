@@ -322,7 +322,7 @@ pub fn type_known_to_meet_builtin_bound<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
            ty,
            bound);
 
-    let mut fulfill_cx = infcx.fulfillment_cx.borrow_mut();
+    let mut fulfill_cx = FulfillmentContext::new(false);
 
     // We can use a dummy node-id here because we won't pay any mind
     // to region obligations that arise (there shouldn't really be any
@@ -438,7 +438,17 @@ pub fn fully_normalize<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx>,
     debug!("normalize_param_env(value={:?})", value);
 
     let mut selcx = &mut SelectionContext::new(infcx, closure_typer);
-    let mut fulfill_cx = infcx.fulfillment_cx.borrow_mut();
+    // FIXME (@jroesch): I'm not sure if this is a bug or not, needs
+    // further investigation. It appears that by reusing the fulfillment_cx
+    // here we incur more obligations and later trip an asssertion on
+    // regionck.rs line 337. The two possibilities I see is that
+    // normalization is not actually fully happening and we
+    // have a bug else where or that we are adding a duplicate
+    // bound into the list causing its size to change. I think
+    // we should probably land this refactor and then come
+    // back to this is a follow-up patch.
+    let mut fulfill_cx = FulfillmentContext::new(false);
+    // let mut fulfill_cx = infcx.fulfillment_cx.borrow_mut();
 
     let Normalized { value: normalized_value, obligations } =
         project::normalize(selcx, cause, value);
