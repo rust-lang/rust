@@ -419,7 +419,7 @@ impl OpenOptions {
     /// ```no_run
     /// use std::fs::OpenOptions;
     ///
-    /// let file = OpenOptions::new().append(true).open("foo.txt");
+    /// let file = OpenOptions::new().write(true).append(true).open("foo.txt");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn append(&mut self, append: bool) -> &mut OpenOptions {
@@ -436,7 +436,7 @@ impl OpenOptions {
     /// ```no_run
     /// use std::fs::OpenOptions;
     ///
-    /// let file = OpenOptions::new().truncate(true).open("foo.txt");
+    /// let file = OpenOptions::new().write(true).truncate(true).open("foo.txt");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn truncate(&mut self, truncate: bool) -> &mut OpenOptions {
