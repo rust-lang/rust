@@ -8,15 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(static_recursion)]
 
 // test that autoderef of a type like this does not
 // cause compiler to loop.  Note that no instances
 // of such a type could ever be constructed.
-struct S { //~ ERROR this type cannot be instantiated
+
+struct S {
   x: X,
   to_str: (),
 }
 
-struct X(Box<S>); //~ ERROR this type cannot be instantiated
+struct X(Box<S>);
 
 fn main() {}
