@@ -59,12 +59,48 @@ pub fn time<T, U, F>(do_it: bool, what: &str, u: U, f: F) -> T where
     const NANOS_PER_SEC: f64 = 1_000_000_000.0;
     let secs = dur.secs() as f64;
     let secs = secs + dur.extra_nanos() as f64 / NANOS_PER_SEC;
-    println!("{}time: {:.3} \t{}", repeat("  ").take(old).collect::<String>(),
-             secs, what);
+
+    let mem_string = match get_resident() {
+        Some(n) => {
+            let mb = n as f64 / 1_000_000.0;
+            format!("; rss: {}MB", mb.round() as usize)
+        }
+        None => "".to_owned(),
+    };
+    println!("{}time: {:.3}{}\t{}", repeat("  ").take(old).collect::<String>(),
+             secs, mem_string, what);
 
     DEPTH.with(|slot| slot.set(old));
 
     rv
+}
+
+// Memory reporting
+fn get_resident() -> Option<usize> {
+    if cfg!(unix) {
+        get_proc_self_statm_field(1)
+    } else {
+        None
+    }
+}
+
+// Like std::macros::try!, but for Option<>.
+macro_rules! option_try(
+    ($e:expr) => (match $e { Some(e) => e, None => return None })
+);
+
+fn get_proc_self_statm_field(field: usize) -> Option<usize> {
+    use std::fs::File;
+    use std::io::Read;
+
+    assert!(cfg!(unix));
+
+    let mut f = option_try!(File::open("/proc/self/statm").ok());
+    let mut contents = String::new();
+    option_try!(f.read_to_string(&mut contents).ok());
+    let s = option_try!(contents.split_whitespace().nth(field));
+    let npages = option_try!(s.parse::<usize>().ok());
+    Some(npages * ::std::env::page_size())
 }
 
 pub fn indent<R, F>(op: F) -> R where
