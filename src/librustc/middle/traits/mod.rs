@@ -322,7 +322,7 @@ pub fn type_known_to_meet_builtin_bound<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
            ty,
            bound);
 
-    let mut fulfill_cx = FulfillmentContext::new(false);
+    let mut fulfill_cx = infcx.fulfillment_cx.borrow_mut();
 
     // We can use a dummy node-id here because we won't pay any mind
     // to region obligations that arise (there shouldn't really be any
@@ -438,7 +438,8 @@ pub fn fully_normalize<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx>,
     debug!("normalize_param_env(value={:?})", value);
 
     let mut selcx = &mut SelectionContext::new(infcx, closure_typer);
-    let mut fulfill_cx = FulfillmentContext::new(false);
+    let mut fulfill_cx = infcx.fulfillment_cx.borrow_mut();
+
     let Normalized { value: normalized_value, obligations } =
         project::normalize(selcx, cause, value);
     debug!("normalize_param_env: normalized_value={:?} obligations={:?}",
