@@ -13,23 +13,23 @@ anyones code.
 Namely the following items:
 
 1. Add a `--target-version=`*<version string>* command line argument to 
-rustc. This will be used for deprecation checking and for selecting 
-code paths in the compiler.
+   rustc. This will be used for deprecation checking and for selecting 
+   code paths in the compiler.
 2. Add an optional `rust = "..."` package attribute to Cargo.toml, 
-which `cargo new` pre-fills with the current rust version.
+   which `cargo new` pre-fills with the current rust version.
 3. Allow `std` APIs to declare an 
-`#[insecure(level="Warn", reason="...")]`  attribute that will produce 
-a warning or error, depending on level, that cannot be switched off 
-(even with `-Awarning`)
+   `#[insecure(level="Warn", reason="...")]`  attribute that will 
+   produce a warning or error, depending on level, that cannot be 
+   switched off (even with `-Awarning`)
 4. Add a `removed_at="..."` item to `#[deprecated]` attributes that 
-allows making API items unavailable starting from certain target 
-versions.
+   allows making API items unavailable starting from certain target 
+   versions.
 5. Add a number of warnings to steer users in the direction of using 
-the most recent Rust version that makes sense to them, while making it 
-easy for library writers to support a wide range of Rust versions
+   the most recent Rust version that makes sense to them, while making 
+   it easy for library writers to support a wide range of Rust versions
 6. (optional) add a `legacy="..."` item to `#[deprecated]` attributes
-that allows grouping API items under a legacy flag that is already 
-defined in RFC #1122 (see below)
+   that allows grouping API items under a legacy flag that is already 
+   defined in RFC #1122 (see below)
 
 ## Background
 
@@ -153,16 +153,16 @@ argument. If no argument is supplied, `rustc` defaults to its own
 version. The same version syntax as Cargo applies:
 
 * `*` effectively means *any version*. For API items, it means
-deprecation checking is disabled. For language changes, it means using
-the `1.0.0` code paths (for now, we may opt to change this in the 
-future), because anything else would break all current code.
-* `1.x` or e.g. `>=1.2.0` sets the target version to the minor version.
-Deprecation checking and language code path selection occur relative
-to the lowest given version. This might also affect stability handling,
-though this RFC doesn't specify this as of yet.
+  deprecation checking is disabled. For language changes, it means 
+  using the `1.0.0` code paths (for now, we may opt to change this in 
+  the future), because anything else would break all current code.
+* `1.x` or e.g. `>=1.2.0` sets the target version to the minor version. 
+  Deprecation checking and language code path selection occur relative 
+  to the lowest given version. This might also affect stability 
+  handling, though this RFC doesn't specify this as of yet.
 * `1.0 - <2.0` as above, the *lowest* supplied version has to be
-assumed for code path selection. However, deprecation checking should
-assume the *highest* supplied version, if any.
+  assumed for code path selection. However, deprecation checking should
+  assume the *highest* supplied version, if any.
 
 If the target version is *higher* than the current `rustc` version, 
 `rustc` should show a warning to suggest that it may need to be updated 
@@ -224,34 +224,35 @@ estimate the effort to be reasonably low.
 # Alternatives
 
 * It was suggested that opt-in and opt-out (e.g. by `#[legacy(..)]`)
-could be sufficient to work around any breaking code on API or language
-changes. The big problem here is that this relies on the user being able 
-to change their dependencies, which may not be possible for legal, 
-organizational or other reasons. In contrast, a defined target version 
-doesn't ever need to change
+  could be sufficient to work around any breaking code on API or 
+  language changes. The big problem here is that this relies on the 
+  user being able to change their dependencies, which may not be 
+  possible for legal, organizational or other reasons. In contrast, a 
+  defined target version doesn't ever need to change
 
-Depending on the specific case, it may be useful to allow a combination 
-of `#![legacy(..)]`, `#![feature(..)]` and the target version where 
-each Rust version can declare the currently active feature set and 
-permit or forbid use of the opt-in/out flags
+  Depending on the specific case, it may be useful to allow a 
+  combination of `#![legacy(..)]`, `#![feature(..)]` and the target 
+  version where each Rust version can declare the currently active 
+  feature set and permit or forbid use of the opt-in/out flags
 
 * Follow a more agressive strategy that actually removes stuff from the 
-API. This would make it easier for the libstd creators at some cost for 
-library and application writers, as they are required to keep up to 
-date or face breakage. The risk of breaking existing code makes this
-strategy very unattractive
+  API. This would make it easier for the libstd creators at some cost 
+  for library and application writers, as they are required to keep up 
+  to date or face breakage. The risk of breaking existing code makes 
+  this strategy very unattractive
 
 * Hide deprecated items in the docs: This could be done either by 
-putting them into a linked extra page or by adding a "show deprecated" 
-checkbox that may be default be checked or not, depending on who you 
-ask. This will however confuse people, who see the deprecated APIs in 
-some code, but cannot find them in the docs anymore 
+  putting them into a linked extra page or by adding a "show 
+  deprecated" checkbox that may be default be checked or not, depending 
+  on who you ask. This will however confuse people, who see the 
+  deprecated APIs in some code, but cannot find them in the docs 
+  anymore 
 
 * Allow to distinguish "soft" and "hard" deprecation, so that an API 
-can be marked as "soft" deprecated to dissuade new uses before hard 
-deprecation is decided. Allowing people to specify deprecation in 
-future version appears to have much of the same benefits without 
-needing a new attribute key. 
+  can be marked as "soft" deprecated to dissuade new uses before hard 
+  deprecation is decided. Allowing people to specify deprecation in 
+  future version appears to have much of the same benefits without 
+  needing a new attribute key. 
 
 # Unresolved questions
 
