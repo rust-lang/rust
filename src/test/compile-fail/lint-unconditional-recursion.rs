@@ -63,4 +63,8 @@ impl Baz {
     }
 }
 
+fn all_fine() {
+    let _f = all_fine;
+}
+
 fn main() {}
