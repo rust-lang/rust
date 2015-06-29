@@ -90,7 +90,7 @@
 #
 # # Rust recipes for build system success
 #
-#     // Modifying libstd? Use this comment to run unit tests just on your change
+#     // Modifying libstd? Use this command to run unit tests just on your change
 #     make check-stage1-std NO_REBUILD=1 NO_BENCH=1
 #
 #     // Added a run-pass test? Use this to test running your test
