@@ -109,11 +109,13 @@ pub fn trans_method_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let _icx = push_ctxt("meth::trans_method_callee");
 
     let (origin, method_ty) =
-        bcx.tcx().method_map
-                 .borrow()
-                 .get(&method_call)
-                 .map(|method| (method.origin.clone(), method.ty))
-                 .unwrap();
+        bcx.tcx()
+           .tables
+           .borrow()
+           .method_map
+           .get(&method_call)
+           .map(|method| (method.origin.clone(), method.ty))
+           .unwrap();
 
     match origin {
         ty::MethodStatic(did) |

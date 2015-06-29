@@ -133,7 +133,7 @@ impl<'cx, 'tcx> OverlapChecker<'cx, 'tcx> {
                    impl1_def_id,
                    impl2_def_id);
 
-            let infcx = infer::new_infer_ctxt(self.tcx);
+            let infcx = infer::new_infer_ctxt(self.tcx, &self.tcx.tables, None);
             if traits::overlapping_impls(&infcx, impl1_def_id, impl2_def_id) {
                 self.report_overlap_error(trait_def_id, impl1_def_id, impl2_def_id);
             }

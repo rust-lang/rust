@@ -904,7 +904,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
             }
             ast::ExprMethodCall(ident, _, _) => {
                 let method_call = MethodCall::expr(expr.id);
-                match self.tcx.method_map.borrow().get(&method_call) {
+                match self.tcx.tables.borrow().method_map.get(&method_call) {
                     None => {
                         self.tcx.sess.span_bug(expr.span,
                                                 "method call not in \

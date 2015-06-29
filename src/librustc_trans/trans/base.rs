@@ -212,7 +212,7 @@ pub fn self_type_for_closure<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 }
 
 pub fn kind_for_closure(ccx: &CrateContext, closure_id: ast::DefId) -> ty::ClosureKind {
-    *ccx.tcx().closure_kinds.borrow().get(&closure_id).unwrap()
+    *ccx.tcx().tables.borrow().closure_kinds.get(&closure_id).unwrap()
 }
 
 pub fn get_extern_const<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, did: ast::DefId,

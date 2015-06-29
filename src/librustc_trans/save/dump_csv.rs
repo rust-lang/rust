@@ -886,7 +886,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
     fn process_method_call(&mut self,
                            ex: &ast::Expr,
                            args: &Vec<P<ast::Expr>>) {
-        let method_map = self.tcx.method_map.borrow();
+        let method_map = &self.tcx.tables.borrow().method_map;
         let method_callee = method_map.get(&ty::MethodCall::expr(ex.id)).unwrap();
         let (def_id, decl_id) = match method_callee.origin {
             ty::MethodStatic(def_id) |

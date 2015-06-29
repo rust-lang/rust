@@ -257,8 +257,9 @@ impl OverloadedCallType {
     fn from_closure(tcx: &ty::ctxt, closure_did: ast::DefId)
                     -> OverloadedCallType {
         let trait_did =
-            tcx.closure_kinds
+            tcx.tables
                .borrow()
+               .closure_kinds
                .get(&closure_did)
                .expect("OverloadedCallType::from_closure: didn't find closure id")
                .trait_did(tcx);
@@ -787,8 +788,10 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
     // process.
     fn walk_adjustment(&mut self, expr: &ast::Expr) {
         let typer = self.typer;
-        if let Some(adjustment) = typer.adjustments().borrow().get(&expr.id) {
-            match *adjustment {
+        //NOTE(@jroesch): mixed RefCell borrow causes crash
+        let adj = typer.adjustments().get(&expr.id).map(|x| x.clone());
+        if let Some(adjustment) = adj {
+            match adjustment {
                 ty::AdjustReifyFnPointer |
                 ty::AdjustUnsafeFnPointer => {
                     // Creating a closure/fn-pointer or unsizing consumes

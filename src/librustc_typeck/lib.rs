@@ -88,6 +88,7 @@ This API is completely unstable and subject to change.
 #![feature(slice_extras)]
 #![feature(staged_api)]
 #![feature(vec_push_all)]
+#![feature(cell_extras)]
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;
@@ -162,7 +163,7 @@ fn write_substs_to_tcx<'tcx>(tcx: &ty::ctxt<'tcx>,
 
         assert!(!item_substs.substs.types.needs_infer());
 
-        tcx.item_substs.borrow_mut().insert(node_id, item_substs);
+        tcx.tables.borrow_mut().item_substs.insert(node_id, item_substs);
     }
 }
 
@@ -187,7 +188,7 @@ fn require_same_types<'a, 'tcx, M>(tcx: &ty::ctxt<'tcx>,
 {
     let result = match maybe_infcx {
         None => {
-            let infcx = infer::new_infer_ctxt(tcx);
+            let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, None);
             infer::mk_eqty(&infcx, t1_is_expected, infer::Misc(span), t1, t2)
         }
         Some(infcx) => {

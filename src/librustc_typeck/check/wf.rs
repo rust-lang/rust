@@ -18,6 +18,7 @@ use middle::traits;
 use middle::ty::{self, Ty};
 use middle::ty_fold::{TypeFolder, TypeFoldable, super_fold_ty};
 
+use std::cell::RefCell;
 use std::collections::HashSet;
 use syntax::ast;
 use syntax::ast_util::local_def;
@@ -143,7 +144,8 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                                                                 &type_scheme.generics,
                                                                 &type_predicates,
                                                                 item.id);
-        let inh = Inherited::new(ccx.tcx, param_env);
+        let tables = RefCell::new(ty::Tables::empty());
+        let inh = Inherited::new(ccx.tcx, &tables, param_env);
         let fcx = blank_fn_ctxt(ccx, &inh, ty::FnConverging(type_scheme.ty), item.id);
         f(self, &fcx);
         fcx.select_all_obligations_or_error();
@@ -199,7 +201,10 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
 
             let type_scheme = fcx.tcx().lookup_item_type(local_def(item.id));
             let item_ty = fcx.instantiate_type_scheme(item.span,
-                                                      &fcx.inh.param_env.free_substs,
+                                                      &fcx.inh
+                                                          .infcx
+                                                          .parameter_environment
+                                                          .free_substs,
                                                       &type_scheme.ty);
 
             bounds_checker.check_traits_in_ty(item_ty, item.span);
@@ -220,7 +225,10 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
             // to free.
             let self_ty = fcx.tcx().node_id_to_type(item.id);
             let self_ty = fcx.instantiate_type_scheme(item.span,
-                                                      &fcx.inh.param_env.free_substs,
+                                                      &fcx.inh
+                                                          .infcx
+                                                          .parameter_environment
+                                                          .free_substs,
                                                       &self_ty);
 
             bounds_checker.check_traits_in_ty(self_ty, item.span);
@@ -233,7 +241,10 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
             };
 
             let trait_ref = fcx.instantiate_type_scheme(item.span,
-                                                        &fcx.inh.param_env.free_substs,
+                                                        &fcx.inh
+                                                            .infcx
+                                                            .parameter_environment
+                                                            .free_substs,
                                                         &trait_ref);
 
             // We are stricter on the trait-ref in an impl than the
@@ -257,7 +268,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
             let predicates = fcx.tcx().lookup_super_predicates(poly_trait_ref.def_id());
             let predicates = predicates.instantiate_supertrait(fcx.tcx(), &poly_trait_ref);
             let predicates = {
-                let selcx = &mut traits::SelectionContext::new(fcx.infcx(), fcx);
+                let selcx = &mut traits::SelectionContext::new(fcx.infcx(), fcx.infcx());
                 traits::normalize(selcx, cause.clone(), &predicates)
             };
             for predicate in predicates.value.predicates {
@@ -635,7 +646,10 @@ fn struct_variant<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         .map(|field| {
             let field_ty = fcx.tcx().node_id_to_type(field.node.id);
             let field_ty = fcx.instantiate_type_scheme(field.span,
-                                                       &fcx.inh.param_env.free_substs,
+                                                       &fcx.inh
+                                                           .infcx
+                                                           .parameter_environment
+                                                           .free_substs,
                                                        &field_ty);
             AdtField { ty: field_ty, span: field.span }
         })
@@ -660,7 +674,10 @@ fn enum_variants<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                             let arg_ty = arg_tys[index];
                             let arg_ty =
                                 fcx.instantiate_type_scheme(variant.span,
-                                                            &fcx.inh.param_env.free_substs,
+                                                            &fcx.inh
+                                                                .infcx
+                                                                .parameter_environment
+                                                                .free_substs,
                                                             &arg_ty);
                             AdtField {
                                 ty: arg_ty,

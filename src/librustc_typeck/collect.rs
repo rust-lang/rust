@@ -2204,7 +2204,7 @@ fn check_method_self_type<'a, 'tcx, RS:RegionScope>(
                base_type,
                base_type_free);
 
-        let infcx = infer::new_infer_ctxt(tcx);
+        let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, None);
         drop(::require_same_types(tcx,
                                   Some(&infcx),
                                   false,

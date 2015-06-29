@@ -488,8 +488,9 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
             // Count autoderefs.
             let autoderef_count = match self.fcx
                                             .inh
-                                            .adjustments
+                                            .tables
                                             .borrow()
+                                            .adjustments
                                             .get(&expr.id) {
                 Some(&ty::AdjustDerefRef(ref adj)) => adj.autoderefs,
                 Some(_) | None => 0,
@@ -527,7 +528,8 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                         // expects. This is annoying and horrible. We
                         // ought to recode this routine so it doesn't
                         // (ab)use the normal type checking paths.
-                        let adj = self.fcx.inh.adjustments.borrow().get(&base_expr.id).cloned();
+                        let adj = self.fcx.inh.tables.borrow().adjustments.get(&base_expr.id)
+                                                                          .cloned();
                         let (autoderefs, unsize) = match adj {
                             Some(ty::AdjustDerefRef(adr)) => match adr.autoref {
                                 None => {
@@ -589,7 +591,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                         // if this is an overloaded deref, then re-evaluate with
                         // a preference for mut
                         let method_call = MethodCall::expr(expr.id);
-                        if self.fcx.inh.method_map.borrow().contains_key(&method_call) {
+                        if self.fcx.inh.tables.borrow().method_map.contains_key(&method_call) {
                             check::try_overloaded_deref(
                                 self.fcx,
                                 expr.span,

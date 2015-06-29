@@ -1031,10 +1031,9 @@ fn resolve_trait_associated_const<'a, 'tcx: 'a>(tcx: &'a ty::ctxt<'tcx>,
                                               substs: trait_substs });
 
     tcx.populate_implementations_for_trait_if_necessary(trait_ref.def_id());
-    let infcx = infer::new_infer_ctxt(tcx);
+    let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, None);
 
-    let param_env = tcx.empty_parameter_environment();
-    let mut selcx = traits::SelectionContext::new(&infcx, &param_env);
+    let mut selcx = traits::SelectionContext::new(&infcx, &infcx.parameter_environment);
     let obligation = traits::Obligation::new(traits::ObligationCause::dummy(),
                                              trait_ref.to_poly_trait_predicate());
     let selection = match selcx.select(&obligation) {

@@ -351,6 +351,7 @@ pub fn type_known_to_meet_builtin_bound<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
     }
 }
 
+// FIXME: this is gonna need to be removed ...
 /// Normalizes the parameter environment, reporting errors if they occur.
 pub fn normalize_param_env_or_error<'a,'tcx>(unnormalized_env: ty::ParameterEnvironment<'a,'tcx>,
                                              cause: ObligationCause<'tcx>)
@@ -396,13 +397,13 @@ pub fn normalize_param_env_or_error<'a,'tcx>(unnormalized_env: ty::ParameterEnvi
 
     let elaborated_env = unnormalized_env.with_caller_bounds(predicates);
 
-    let infcx = infer::new_infer_ctxt(tcx);
-    let predicates = match fully_normalize(&infcx, &elaborated_env, cause,
-                                           &elaborated_env.caller_bounds) {
+    let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, Some(elaborated_env));
+    let predicates = match fully_normalize(&infcx, &infcx.parameter_environment, cause,
+                                           &infcx.parameter_environment.caller_bounds) {
         Ok(predicates) => predicates,
         Err(errors) => {
             report_fulfillment_errors(&infcx, &errors);
-            return unnormalized_env; // an unnormalized env is better than nothing
+            return infcx.parameter_environment; // an unnormalized env is better than nothing
         }
     };
 
@@ -420,11 +421,11 @@ pub fn normalize_param_env_or_error<'a,'tcx>(unnormalized_env: ty::ParameterEnvi
             // all things considered.
             let err_msg = fixup_err_to_string(fixup_err);
             tcx.sess.span_err(span, &err_msg);
-            return elaborated_env; // an unnormalized env is better than nothing
+            return infcx.parameter_environment; // an unnormalized env is better than nothing
         }
     };
 
-    elaborated_env.with_caller_bounds(predicates)
+    infcx.parameter_environment.with_caller_bounds(predicates)
 }
 
 pub fn fully_normalize<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx>,

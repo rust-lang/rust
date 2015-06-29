@@ -96,7 +96,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
     fn lookup_and_handle_method(&mut self, id: ast::NodeId,
                                 span: codemap::Span) {
         let method_call = ty::MethodCall::expr(id);
-        match self.tcx.method_map.borrow().get(&method_call) {
+        match self.tcx.tables.borrow().method_map.get(&method_call) {
             Some(method) => {
                 match method.origin {
                     ty::MethodStatic(def_id) => {

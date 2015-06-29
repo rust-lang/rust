@@ -87,8 +87,6 @@ use fmt_macros::{Parser, Piece, Position};
 use middle::astconv_util::{check_path_args, NO_TPS, NO_REGIONS};
 use middle::def;
 use middle::infer;
-use middle::mem_categorization as mc;
-use middle::mem_categorization::McResult;
 use middle::pat_util::{self, pat_id_map};
 use middle::privacy::{AllPublic, LastMod};
 use middle::region::{self, CodeExtent};
@@ -97,7 +95,7 @@ use middle::traits::{self, report_fulfillment_errors};
 use middle::ty::{FnSig, GenericPredicates, TypeScheme};
 use middle::ty::{Disr, ParamTy, ParameterEnvironment};
 use middle::ty::{self, HasTypeFlags, RegionEscape, ToPolyTraitRef, Ty};
-use middle::ty::{MethodCall, MethodCallee, MethodMap};
+use middle::ty::{MethodCall, MethodCallee};
 use middle::ty_fold::{TypeFolder, TypeFoldable};
 use rscope::RegionScope;
 use session::Session;
@@ -152,16 +150,8 @@ mod op;
 pub struct Inherited<'a, 'tcx: 'a> {
     infcx: infer::InferCtxt<'a, 'tcx>,
     locals: RefCell<NodeMap<Ty<'tcx>>>,
-    param_env: ty::ParameterEnvironment<'a, 'tcx>,
 
-    // Temporary tables:
-    node_types: RefCell<NodeMap<Ty<'tcx>>>,
-    item_substs: RefCell<NodeMap<ty::ItemSubsts<'tcx>>>,
-    adjustments: RefCell<NodeMap<ty::AutoAdjustment<'tcx>>>,
-    method_map: MethodMap<'tcx>,
-    upvar_capture_map: RefCell<ty::UpvarCaptureMap>,
-    closure_tys: RefCell<DefIdMap<ty::ClosureTy<'tcx>>>,
-    closure_kinds: RefCell<DefIdMap<ty::ClosureKind>>,
+    tables: &'a RefCell<ty::Tables<'tcx>>,
 
     // A mapping from each fn's id to its signature, with all bound
     // regions replaced with free ones. Unlike the other tables, this
@@ -298,90 +288,16 @@ pub struct FnCtxt<'a, 'tcx: 'a> {
     ccx: &'a CrateCtxt<'a, 'tcx>,
 }
 
-impl<'a, 'tcx> mc::Typer<'tcx> for FnCtxt<'a, 'tcx> {
-    fn node_ty(&self, id: ast::NodeId) -> McResult<Ty<'tcx>> {
-        let ty = self.node_ty(id);
-        self.resolve_type_vars_or_error(&ty)
-    }
-    fn expr_ty_adjusted(&self, expr: &ast::Expr) -> McResult<Ty<'tcx>> {
-        let ty = self.adjust_expr_ty(expr, self.inh.adjustments.borrow().get(&expr.id));
-        self.resolve_type_vars_or_error(&ty)
-    }
-    fn type_moves_by_default(&self, ty: Ty<'tcx>, span: Span) -> bool {
-        let ty = self.infcx().resolve_type_vars_if_possible(&ty);
-        !traits::type_known_to_meet_builtin_bound(self.infcx(), self, ty, ty::BoundCopy, span)
-    }
-    fn node_method_ty(&self, method_call: ty::MethodCall)
-                      -> Option<Ty<'tcx>> {
-        self.inh.method_map.borrow()
-                           .get(&method_call)
-                           .map(|method| method.ty)
-                           .map(|ty| self.infcx().resolve_type_vars_if_possible(&ty))
-    }
-    fn node_method_origin(&self, method_call: ty::MethodCall)
-                          -> Option<ty::MethodOrigin<'tcx>>
-    {
-        self.inh.method_map.borrow()
-                           .get(&method_call)
-                           .map(|method| method.origin.clone())
-    }
-    fn adjustments(&self) -> &RefCell<NodeMap<ty::AutoAdjustment<'tcx>>> {
-        &self.inh.adjustments
-    }
-    fn is_method_call(&self, id: ast::NodeId) -> bool {
-        self.inh.method_map.borrow().contains_key(&ty::MethodCall::expr(id))
-    }
-    fn temporary_scope(&self, rvalue_id: ast::NodeId) -> Option<CodeExtent> {
-        self.param_env().temporary_scope(rvalue_id)
-    }
-    fn upvar_capture(&self, upvar_id: ty::UpvarId) -> Option<ty::UpvarCapture> {
-        self.inh.upvar_capture_map.borrow().get(&upvar_id).cloned()
-    }
-}
-
-impl<'a, 'tcx> ty::ClosureTyper<'tcx> for FnCtxt<'a, 'tcx> {
-    fn param_env<'b>(&'b self) -> &'b ty::ParameterEnvironment<'b,'tcx> {
-        &self.inh.param_env
-    }
-
-    fn closure_kind(&self,
-                    def_id: ast::DefId)
-                    -> Option<ty::ClosureKind>
-    {
-        self.inh.closure_kinds.borrow().get(&def_id).cloned()
-    }
-
-    fn closure_type(&self,
-                    def_id: ast::DefId,
-                    substs: &subst::Substs<'tcx>)
-                    -> ty::ClosureTy<'tcx>
-    {
-        self.inh.closure_tys.borrow().get(&def_id).unwrap().subst(self.tcx(), substs)
-    }
-
-    fn closure_upvars(&self,
-                      def_id: ast::DefId,
-                      substs: &Substs<'tcx>)
-                      -> Option<Vec<ty::ClosureUpvar<'tcx>>> {
-        ty::ctxt::closure_upvars(self, def_id, substs)
-    }
-}
-
 impl<'a, 'tcx> Inherited<'a, 'tcx> {
     fn new(tcx: &'a ty::ctxt<'tcx>,
+           tables: &'a RefCell<ty::Tables<'tcx>>,
            param_env: ty::ParameterEnvironment<'a, 'tcx>)
            -> Inherited<'a, 'tcx> {
+
         Inherited {
-            infcx: infer::new_infer_ctxt(tcx),
+            infcx: infer::new_infer_ctxt(tcx, tables, Some(param_env)),
             locals: RefCell::new(NodeMap()),
-            param_env: param_env,
-            node_types: RefCell::new(NodeMap()),
-            item_substs: RefCell::new(NodeMap()),
-            adjustments: RefCell::new(NodeMap()),
-            method_map: RefCell::new(FnvHashMap()),
-            upvar_capture_map: RefCell::new(FnvHashMap()),
-            closure_tys: RefCell::new(DefIdMap()),
-            closure_kinds: RefCell::new(DefIdMap()),
+            tables: tables,
             fn_sig_map: RefCell::new(NodeMap()),
             fulfillment_cx: RefCell::new(traits::FulfillmentContext::new(true)),
             deferred_call_resolutions: RefCell::new(DefIdMap()),
@@ -424,12 +340,13 @@ pub fn blank_fn_ctxt<'a, 'tcx>(ccx: &'a CrateCtxt<'a, 'tcx>,
     }
 }
 
-fn static_inherited_fields<'a, 'tcx>(ccx: &'a CrateCtxt<'a, 'tcx>)
+fn static_inherited_fields<'a, 'tcx>(ccx: &'a CrateCtxt<'a, 'tcx>,
+                                     tables: &'a RefCell<ty::Tables<'tcx>>)
                                     -> Inherited<'a, 'tcx> {
     // It's kind of a kludge to manufacture a fake function context
     // and statement context, but we might as well do write the code only once
     let param_env = ccx.tcx.empty_parameter_environment();
-    Inherited::new(ccx.tcx, param_env)
+    Inherited::new(ccx.tcx, &tables, param_env)
 }
 
 struct CheckItemTypesVisitor<'a, 'tcx: 'a> { ccx: &'a CrateCtxt<'a, 'tcx> }
@@ -504,16 +421,20 @@ fn check_bare_fn<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 {
     match raw_fty.sty {
         ty::TyBareFn(_, ref fn_ty) => {
-            let inh = Inherited::new(ccx.tcx, param_env);
+            let tables = RefCell::new(ty::Tables::empty());
+            let inh = Inherited::new(ccx.tcx, &tables, param_env);
 
             // Compute the fty from point of view of inside fn.
             let fn_sig =
-                fn_ty.sig.subst(ccx.tcx, &inh.param_env.free_substs);
+                fn_ty.sig.subst(ccx.tcx, &inh.infcx.parameter_environment.free_substs);
             let fn_sig =
                 ccx.tcx.liberate_late_bound_regions(region::DestructionScopeData::new(body.id),
                                                     &fn_sig);
             let fn_sig =
-                inh.normalize_associated_types_in(&inh.param_env, body.span, body.id, &fn_sig);
+                inh.normalize_associated_types_in(&inh.infcx.parameter_environment,
+                                                  body.span,
+                                                  body.id,
+                                                  &fn_sig);
 
             let fcx = check_fn(ccx, fn_ty.unsafety, fn_id, &fn_sig,
                                decl, fn_id, body, &inh);
@@ -1198,7 +1119,7 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
     }
 
     fn get_free_substs(&self) -> Option<&Substs<'tcx>> {
-        Some(&self.inh.param_env.free_substs)
+        Some(&self.inh.infcx.parameter_environment.free_substs)
     }
 
     fn get_type_parameter_bounds(&self,
@@ -1207,7 +1128,8 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
                                  -> Result<Vec<ty::PolyTraitRef<'tcx>>, ErrorReported>
     {
         let def = self.tcx().type_parameter_def(node_id);
-        let r = self.inh.param_env.caller_bounds
+        let r = self.inh.infcx.parameter_environment
+                                  .caller_bounds
                                   .iter()
                                   .filter_map(|predicate| {
                                       match *predicate {
@@ -1273,7 +1195,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     pub fn param_env(&self) -> &ty::ParameterEnvironment<'a,'tcx> {
-        &self.inh.param_env
+        &self.inh.infcx.parameter_environment
     }
 
     pub fn sess(&self) -> &Session {
@@ -1322,16 +1244,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ty
     }
 
-    /// Resolves all type variables in `t` and then, if any were left
-    /// unresolved, substitutes an error type. This is used after the
-    /// main checking when doing a second pass before writeback. The
-    /// justification is that writeback will produce an error for
-    /// these unconstrained type variables.
-    fn resolve_type_vars_or_error(&self, ty: &Ty<'tcx>) -> mc::McResult<Ty<'tcx>> {
-        let ty = self.infcx().resolve_type_vars_if_possible(ty);
-        if ty.has_infer_types() || ty.references_error() { Err(()) } else { Ok(ty) }
-    }
-
     fn record_deferred_call_resolution(&self,
                                        closure_def_id: ast::DefId,
                                        r: DeferredCallResolutionHandler<'tcx>) {
@@ -1368,7 +1280,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// ! gets replaced with (), unconstrained ints with i32, and unconstrained floats with f64.
     pub fn default_type_parameters(&self) {
         use middle::ty::UnconstrainedNumeric::{UnconstrainedInt, UnconstrainedFloat, Neither};
-        for (_, &mut ref ty) in &mut *self.inh.node_types.borrow_mut() {
+        for (_, &mut ref ty) in &mut self.inh.tables.borrow_mut().node_types {
             let resolved = self.infcx().resolve_type_vars_if_possible(ty);
             if self.infcx().type_var_diverges(resolved) {
                 demand::eqtype(self, codemap::DUMMY_SP, *ty, self.tcx().mk_nil());
@@ -1390,7 +1302,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn write_ty(&self, node_id: ast::NodeId, ty: Ty<'tcx>) {
         debug!("write_ty({}, {:?}) in fcx {}",
                node_id, ty, self.tag());
-        self.inh.node_types.borrow_mut().insert(node_id, ty);
+        self.inh.tables.borrow_mut().node_types.insert(node_id, ty);
     }
 
     pub fn write_substs(&self, node_id: ast::NodeId, substs: ty::ItemSubsts<'tcx>) {
@@ -1400,7 +1312,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                    substs,
                    self.tag());
 
-            self.inh.item_substs.borrow_mut().insert(node_id, substs);
+            self.inh.tables.borrow_mut().item_substs.insert(node_id, substs);
         }
     }
 
@@ -1426,7 +1338,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         }
 
-        self.inh.adjustments.borrow_mut().insert(node_id, adj);
+        self.inh.tables.borrow_mut().adjustments.insert(node_id, adj);
     }
 
     /// Basically whenever we are converting from a type scheme into
@@ -1465,7 +1377,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn normalize_associated_types_in<T>(&self, span: Span, value: &T) -> T
         where T : TypeFoldable<'tcx> + HasTypeFlags
     {
-        self.inh.normalize_associated_types_in(self, span, self.body_id, value)
+        self.inh.normalize_associated_types_in(self.infcx(), span, self.body_id, value)
     }
 
     fn normalize_associated_type(&self,
@@ -1480,7 +1392,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.inh.fulfillment_cx
             .borrow_mut()
             .normalize_projection_type(self.infcx(),
-                                       self,
+                                       self.infcx(),
                                        ty::ProjectionTy {
                                            trait_ref: trait_ref,
                                            item_name: item_name,
@@ -1627,7 +1539,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     pub fn expr_ty(&self, ex: &ast::Expr) -> Ty<'tcx> {
-        match self.inh.node_types.borrow().get(&ex.id) {
+        match self.inh.tables.borrow().node_types.get(&ex.id) {
             Some(&t) => t,
             None => {
                 self.tcx().sess.bug(&format!("no type for expr in fcx {}",
@@ -1646,13 +1558,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let raw_ty = self.infcx().shallow_resolve(raw_ty);
         let resolve_ty = |ty: Ty<'tcx>| self.infcx().resolve_type_vars_if_possible(&ty);
         raw_ty.adjust(self.tcx(), expr.span, expr.id, adjustment, |method_call| {
-            self.inh.method_map.borrow().get(&method_call)
+            self.inh.tables.borrow().method_map.get(&method_call)
                                         .map(|method| resolve_ty(method.ty))
         })
     }
 
     pub fn node_ty(&self, id: ast::NodeId) -> Ty<'tcx> {
-        match self.inh.node_types.borrow().get(&id) {
+        match self.inh.tables.borrow().node_types.get(&id) {
             Some(&t) => t,
             None if self.err_count_since_creation() != 0 => self.tcx().types.err,
             None => {
@@ -1665,7 +1577,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     pub fn item_substs(&self) -> Ref<NodeMap<ty::ItemSubsts<'tcx>>> {
-        self.inh.item_substs.borrow()
+        // NOTE: @jroesch this is hack that appears to be fixed on nightly, will monitor if
+        // it changes when we upgrade the snapshot compiler
+        fn project_item_susbts<'a, 'tcx>(tables: &'a ty::Tables<'tcx>)
+                                        -> &'a NodeMap<ty::ItemSubsts<'tcx>> {
+            &tables.item_substs
+        }
+
+        Ref::map(self.inh.tables.borrow(), project_item_susbts)
     }
 
     pub fn opt_node_ty_substs<F>(&self,
@@ -1673,7 +1592,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                  f: F) where
         F: FnOnce(&ty::ItemSubsts<'tcx>),
     {
-        match self.inh.item_substs.borrow().get(&id) {
+        match self.inh.tables.borrow().item_substs.get(&id) {
             Some(s) => { f(s) }
             None => { }
         }
@@ -1829,7 +1748,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         self.select_all_obligations_and_apply_defaults();
         let mut fulfillment_cx = self.inh.fulfillment_cx.borrow_mut();
-        match fulfillment_cx.select_all_or_error(self.infcx(), self) {
+        match fulfillment_cx.select_all_or_error(self.infcx(), self.infcx()) {
             Ok(()) => { }
             Err(errors) => { report_fulfillment_errors(self.infcx(), &errors); }
         }
@@ -1840,7 +1759,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         match
             self.inh.fulfillment_cx
             .borrow_mut()
-            .select_where_possible(self.infcx(), self)
+            .select_where_possible(self.infcx(), self.infcx())
         {
             Ok(()) => { }
             Err(errors) => { report_fulfillment_errors(self.infcx(), &errors); }
@@ -1855,7 +1774,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         match
             self.inh.fulfillment_cx
             .borrow_mut()
-            .select_new_obligations(self.infcx(), self)
+            .select_new_obligations(self.infcx(), self.infcx())
         {
             Ok(()) => { }
             Err(errors) => { report_fulfillment_errors(self.infcx(), &errors); }
@@ -2039,7 +1958,7 @@ fn make_overloaded_lvalue_return_type<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             let ret_ty = fcx.tcx().no_late_bound_regions(&ret_ty).unwrap().unwrap();
 
             if let Some(method_call) = method_call {
-                fcx.inh.method_map.borrow_mut().insert(method_call, method);
+                fcx.inh.tables.borrow_mut().method_map.insert(method_call, method);
             }
 
             // method returns &T, but the type as visible to user is T, so deref
@@ -2640,7 +2559,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
             Ok(method) => {
                 let method_ty = method.ty;
                 let method_call = MethodCall::expr(expr.id);
-                fcx.inh.method_map.borrow_mut().insert(method_call, method);
+                fcx.inh.tables.borrow_mut().method_map.insert(method_call, method);
                 method_ty
             }
             Err(error) => {
@@ -4074,7 +3993,8 @@ fn check_block_with_expected<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 fn check_const_in_type<'a,'tcx>(ccx: &'a CrateCtxt<'a,'tcx>,
                                 expr: &'tcx ast::Expr,
                                 expected_type: Ty<'tcx>) {
-    let inh = static_inherited_fields(ccx);
+    let tables = RefCell::new(ty::Tables::empty());
+    let inh = static_inherited_fields(ccx, &tables);
     let fcx = blank_fn_ctxt(ccx, &inh, ty::FnConverging(expected_type), expr.id);
     check_const_with_ty(&fcx, expr.span, expr, expected_type);
 }
@@ -4083,7 +4003,8 @@ fn check_const<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                         sp: Span,
                         e: &'tcx ast::Expr,
                         id: ast::NodeId) {
-    let inh = static_inherited_fields(ccx);
+    let tables = RefCell::new(ty::Tables::empty());
+    let inh = static_inherited_fields(ccx, &tables);
     let rty = ccx.tcx.node_id_to_type(id);
     let fcx = blank_fn_ctxt(ccx, &inh, ty::FnConverging(rty), e.id);
     let declty = fcx.ccx.tcx.tcache.borrow().get(&local_def(id)).unwrap().ty;
@@ -4235,7 +4156,8 @@ pub fn check_enum_variants<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
         let rty = ccx.tcx.node_id_to_type(id);
         let mut disr_vals: Vec<ty::Disr> = Vec::new();
 
-        let inh = static_inherited_fields(ccx);
+        let tables = RefCell::new(ty::Tables::empty());
+        let inh = static_inherited_fields(ccx, &tables);
         let fcx = blank_fn_ctxt(ccx, &inh, ty::FnConverging(rty), id);
 
         let (_, repr_type_ty) = ccx.tcx.enum_repr_type(Some(&hint));

@@ -448,7 +448,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
             debug!("check_implementations_of_coerce_unsized: {:?} -> {:?} (free)",
                    source, target);
 
-            let infcx = new_infer_ctxt(tcx);
+            let infcx = new_infer_ctxt(tcx, &tcx.tables, Some(param_env));
 
             let check_mutbl = |mt_a: ty::mt<'tcx>, mt_b: ty::mt<'tcx>,
                                mk_ptr: &Fn(Ty<'tcx>) -> Ty<'tcx>| {
@@ -540,13 +540,15 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
             fulfill_cx.register_predicate_obligation(&infcx, predicate);
 
             // Check that all transitive obligations are satisfied.
-            if let Err(errors) = fulfill_cx.select_all_or_error(&infcx, &param_env) {
+            if let Err(errors) = fulfill_cx.select_all_or_error(&infcx,
+                                                                &infcx.parameter_environment) {
                 traits::report_fulfillment_errors(&infcx, &errors);
             }
 
             // Finally, resolve all regions.
             let mut free_regions = FreeRegionMap::new();
-            free_regions.relate_free_regions_from_predicates(tcx, &param_env.caller_bounds);
+            free_regions.relate_free_regions_from_predicates(tcx, &infcx.parameter_environment
+                                                                        .caller_bounds);
             infcx.resolve_regions_and_report_errors(&free_regions, impl_did.node);
 
             if let Some(kind) = kind {
@@ -630,7 +632,7 @@ fn subst_receiver_types_in_method_ty<'tcx>(tcx: &ty::ctxt<'tcx>,
 pub fn check_coherence(crate_context: &CrateCtxt) {
     CoherenceChecker {
         crate_context: crate_context,
-        inference_context: new_infer_ctxt(crate_context.tcx),
+        inference_context: new_infer_ctxt(crate_context.tcx, &crate_context.tcx.tables, None),
         inherent_impls: RefCell::new(FnvHashMap()),
     }.check(crate_context.tcx.map.krate());
     unsafety::check(crate_context.tcx);

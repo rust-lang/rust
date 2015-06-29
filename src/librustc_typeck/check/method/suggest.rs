@@ -102,7 +102,7 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                             let obligation = Obligation::misc(span,
                                                               fcx.body_id,
                                                               poly_trait_ref.to_predicate());
-                            let mut selcx = SelectionContext::new(infcx, fcx);
+                            let mut selcx = SelectionContext::new(infcx, fcx.infcx());
 
                             if selcx.evaluate_obligation(&obligation) {
                                 span_stored_function();
