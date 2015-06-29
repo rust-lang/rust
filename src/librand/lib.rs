@@ -66,6 +66,7 @@ pub mod reseeding;
 mod rand_impls;
 
 /// A type that can be randomly generated using an `Rng`.
+#[doc(hidden)]
 pub trait Rand : Sized {
     /// Generates a random instance of this type using the specified source of
     /// randomness.
