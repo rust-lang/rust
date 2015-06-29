@@ -431,7 +431,7 @@ fn check_bare_fn<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                 ccx.tcx.liberate_late_bound_regions(region::DestructionScopeData::new(body.id),
                                                     &fn_sig);
             let fn_sig =
-                inh.normalize_associated_types_in(&inh.infcx.parameter_environment,
+                inh.normalize_associated_types_in(&inh.infcx,
                                                   body.span,
                                                   body.id,
                                                   &fn_sig);
@@ -1504,7 +1504,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                      -> bool
     {
         traits::type_known_to_meet_builtin_bound(self.infcx(),
-                                                 self.param_env(),
+                                                 self.infcx(),
                                                  ty,
                                                  ty::BoundSized,
                                                  span)

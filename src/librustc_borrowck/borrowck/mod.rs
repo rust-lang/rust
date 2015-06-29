@@ -747,7 +747,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                                     -> (&'static str, &'static str) {
             match ty.sty {
                 _ => {
-                    if param_env.type_moves_by_default(ty, span) {
+                    if ty.moves_by_default(param_env, span) {
                         ("non-copyable",
                          "perhaps you meant to use `clone()`?")
                     } else {

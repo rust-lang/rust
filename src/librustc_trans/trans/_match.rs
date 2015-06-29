@@ -197,7 +197,6 @@ use middle::def::{self, DefMap};
 use middle::expr_use_visitor as euv;
 use middle::lang_items::StrEqFnLangItem;
 use middle::mem_categorization as mc;
-use middle::mem_categorization::Typer;
 use middle::pat_util::*;
 use trans::adt;
 use trans::base::*;
@@ -1416,7 +1415,7 @@ fn create_bindings_map<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, pat: &ast::Pat,
         let trmode;
         match bm {
             ast::BindByValue(_)
-                if !param_env.type_moves_by_default(variable_ty, span) || reassigned =>
+                if !variable_ty.moves_by_default(&param_env, span) || reassigned =>
             {
                 llmatch = alloca_no_lifetime(bcx,
                                  llvariable_ty.ptr_to(),

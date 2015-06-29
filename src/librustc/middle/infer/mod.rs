@@ -525,7 +525,7 @@ impl<'a, 'tcx> mc::Typer<'tcx> for InferCtxt<'a, 'tcx> {
     }
 
     fn temporary_scope(&self, rvalue_id: ast::NodeId) -> Option<CodeExtent> {
-        self.parameter_environment.temporary_scope(rvalue_id)
+        self.tcx.region_maps.temporary_scope(rvalue_id)
     }
 
     fn upvar_capture(&self, upvar_id: ty::UpvarId) -> Option<ty::UpvarCapture> {

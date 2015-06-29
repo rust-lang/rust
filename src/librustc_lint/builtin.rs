@@ -1704,7 +1704,9 @@ impl LintPass for MissingCopyImplementations {
             _ => return,
         };
         let parameter_environment = cx.tcx.empty_parameter_environment();
-        if !parameter_environment.type_moves_by_default(ty, item.span) {
+        // FIXME (@jroesch) should probably inver this so that the parameter env still impls this
+        // method
+        if !ty.moves_by_default(&parameter_environment, item.span) {
             return;
         }
         if parameter_environment.can_type_implement_copy(ty, item.span).is_ok() {

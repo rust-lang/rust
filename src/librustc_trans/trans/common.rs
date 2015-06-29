@@ -154,7 +154,7 @@ fn type_needs_drop_given_env<'a,'tcx>(cx: &ty::ctxt<'tcx>,
     // normalized version of the type, and therefore will definitely
     // know whether the type implements Copy (and thus needs no
     // cleanup/drop/zeroing) ...
-    let implements_copy = !param_env.type_moves_by_default(ty, DUMMY_SP);
+    let implements_copy = !ty.moves_by_default(param_env, DUMMY_SP);
 
     if implements_copy { return false; }
 
@@ -630,7 +630,7 @@ impl<'blk, 'tcx> mc::Typer<'tcx> for BlockS<'blk, 'tcx> {
     }
 
     fn type_moves_by_default(&self, ty: Ty<'tcx>, span: Span) -> bool {
-        self.fcx.param_env.type_moves_by_default(ty, span)
+        ty.moves_by_default(&self.fcx.param_env, span)
     }
 }
 
