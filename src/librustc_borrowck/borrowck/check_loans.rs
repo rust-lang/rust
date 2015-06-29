@@ -21,6 +21,7 @@ use self::UseError::*;
 use borrowck::*;
 use borrowck::InteriorKind::{InteriorElement, InteriorField};
 use rustc::middle::expr_use_visitor as euv;
+use rustc::middle::infer;
 use rustc::middle::mem_categorization as mc;
 use rustc::middle::region;
 use rustc::middle::ty;
@@ -198,17 +199,18 @@ pub fn check_loans<'a, 'b, 'c, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
     debug!("check_loans(body id={})", body.id);
 
     let param_env = ty::ParameterEnvironment::for_item(bccx.tcx, fn_id);
+    let infcx = infer::new_infer_ctxt(bccx.tcx, &bccx.tcx.tables, Some(param_env), false);
 
     let mut clcx = CheckLoanCtxt {
         bccx: bccx,
         dfcx_loans: dfcx_loans,
         move_data: move_data,
         all_loans: all_loans,
-        param_env: &param_env,
+        param_env: &infcx.parameter_environment
     };
 
     {
-        let mut euv = euv::ExprUseVisitor::new(&mut clcx, &param_env);
+        let mut euv = euv::ExprUseVisitor::new(&mut clcx, &infcx);
         euv.walk_fn(decl, body);
     }
 }

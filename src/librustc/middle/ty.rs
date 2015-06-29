@@ -52,7 +52,6 @@ use middle::dependency_format;
 use middle::fast_reject;
 use middle::free_region::FreeRegionMap;
 use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem, FnOnceTraitLangItem};
-use middle::mem_categorization as mc;
 use middle::mem_categorization::Typer;
 use middle::region;
 use middle::resolve_lifetime;
@@ -2919,11 +2918,14 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                                    -> Result<(),CopyImplementationError> {
         let tcx = self.tcx;
 
+        // FIXME: (@jroesch) float this code up
+        let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, Some(self.clone()), false);
+
         let did = match self_type.sty {
             ty::TyStruct(struct_did, substs) => {
                 let fields = tcx.struct_fields(struct_did, substs);
                 for field in &fields {
-                    if self.type_moves_by_default(field.mt.ty, span) {
+                    if infcx.type_moves_by_default(field.mt.ty, span) {
                         return Err(FieldDoesNotImplementCopy(field.name))
                     }
                 }
@@ -2935,7 +2937,7 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                     for variant_arg_type in &variant.args {
                         let substd_arg_type =
                             variant_arg_type.subst(tcx, substs);
-                        if self.type_moves_by_default(substd_arg_type, span) {
+                        if infcx.type_moves_by_default(substd_arg_type, span) {
                             return Err(VariantDoesNotImplementCopy(variant.name))
                         }
                     }
@@ -4272,7 +4274,8 @@ impl<'tcx> TyS<'tcx> {
                 TyClosure(did, substs) => {
                     // FIXME(#14449): `borrowed_contents` below assumes `&mut` closure.
                     let param_env = cx.empty_parameter_environment();
-                    let upvars = param_env.closure_upvars(did, substs).unwrap();
+                    let infcx = infer::new_infer_ctxt(cx, &cx.tables, Some(param_env), false);
+                    let upvars = infcx.closure_upvars(did, substs).unwrap();
                     TypeContents::union(&upvars, |f| tc_ty(cx, &f.ty, cache))
                 }
 
@@ -4400,10 +4403,10 @@ impl<'tcx> TyS<'tcx> {
                        span: Span)
                        -> bool
     {
-        let tcx = param_env.tcx();
+        let tcx = param_env.tcx;
         let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, Some(param_env.clone()), false);
 
-        let is_impld = traits::type_known_to_meet_builtin_bound(&infcx, param_env,
+        let is_impld = traits::type_known_to_meet_builtin_bound(&infcx, &infcx,
                                                                 self, bound, span);
 
         debug!("Ty::impls_bound({:?}, {:?}) = {:?}",
@@ -4412,7 +4415,8 @@ impl<'tcx> TyS<'tcx> {
         is_impld
     }
 
-    fn moves_by_default<'a>(&'tcx self, param_env: &ParameterEnvironment<'a,'tcx>,
+    // temp hack, probably should be private
+    pub fn moves_by_default<'a>(&'tcx self, param_env: &ParameterEnvironment<'a,'tcx>,
                            span: Span) -> bool {
         if self.flags.get().intersects(TypeFlags::MOVENESS_CACHED) {
             return self.flags.get().intersects(TypeFlags::MOVES_BY_DEFAULT);
@@ -6710,79 +6714,6 @@ impl<'tcx> ctxt<'tcx> {
         Some(self.tables.borrow().upvar_capture_map.get(&upvar_id).unwrap().clone())
     }
 }
-
-impl<'a,'tcx> Typer<'tcx> for ParameterEnvironment<'a,'tcx> {
-    fn node_ty(&self, id: ast::NodeId) -> mc::McResult<Ty<'tcx>> {
-        Ok(self.tcx.node_id_to_type(id))
-    }
-
-    fn expr_ty_adjusted(&self, expr: &ast::Expr) -> mc::McResult<Ty<'tcx>> {
-        Ok(self.tcx.expr_ty_adjusted(expr))
-    }
-
-    fn node_method_ty(&self, method_call: ty::MethodCall) -> Option<Ty<'tcx>> {
-        self.tcx.tables.borrow().method_map.get(&method_call).map(|method| method.ty)
-    }
-
-    fn node_method_origin(&self, method_call: ty::MethodCall)
-                          -> Option<ty::MethodOrigin<'tcx>>
-    {
-        self.tcx.tables.borrow().method_map.get(&method_call).map(|method| method.origin.clone())
-    }
-
-    fn adjustments(&self) -> Ref<NodeMap<ty::AutoAdjustment<'tcx>>> {
-        fn projection<'a, 'tcx>(tables: &'a Tables<'tcx>) -> &'a NodeMap<ty::AutoAdjustment<'tcx>> {
-            &tables.adjustments
-        }
-
-        Ref::map(self.tcx.tables.borrow(), projection)
-    }
-
-    fn is_method_call(&self, id: ast::NodeId) -> bool {
-        self.tcx.is_method_call(id)
-    }
-
-    fn temporary_scope(&self, rvalue_id: ast::NodeId) -> Option<region::CodeExtent> {
-        self.tcx.region_maps.temporary_scope(rvalue_id)
-    }
-
-    fn upvar_capture(&self, upvar_id: ty::UpvarId) -> Option<ty::UpvarCapture> {
-        self.tcx.upvar_capture(upvar_id)
-    }
-
-    fn type_moves_by_default(&self, ty: Ty<'tcx>, span: Span) -> bool {
-        ty.moves_by_default(self, span)
-    }
-}
-
-impl<'a,'tcx> ClosureTyper<'tcx> for ty::ParameterEnvironment<'a,'tcx> {
-    fn param_env<'b>(&'b self) -> &'b ty::ParameterEnvironment<'b,'tcx> {
-        self
-    }
-
-    fn closure_kind(&self,
-                    def_id: ast::DefId)
-                    -> Option<ty::ClosureKind>
-    {
-        Some(self.tcx.closure_kind(def_id))
-    }
-
-    fn closure_type(&self,
-                    def_id: ast::DefId,
-                    substs: &subst::Substs<'tcx>)
-                    -> ty::ClosureTy<'tcx>
-    {
-        self.tcx.closure_type(def_id, substs)
-    }
-
-    fn closure_upvars(&self,
-                      def_id: ast::DefId,
-                      substs: &Substs<'tcx>)
-                      -> Option<Vec<ClosureUpvar<'tcx>>> {
-        ctxt::closure_upvars(self, def_id, substs)
-    }
-}
-
 
 /// The category of explicit self.
 #[derive(Clone, Copy, Eq, PartialEq, Debug)]

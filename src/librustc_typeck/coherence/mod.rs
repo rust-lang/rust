@@ -541,7 +541,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
 
             // Check that all transitive obligations are satisfied.
             if let Err(errors) = fulfill_cx.select_all_or_error(&infcx,
-                                                                &infcx.parameter_environment) {
+                                                                &infcx) {
                 traits::report_fulfillment_errors(&infcx, &errors);
             }
 
