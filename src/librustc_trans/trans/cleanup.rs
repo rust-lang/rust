@@ -389,7 +389,6 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
         if !self.type_needs_drop(ty) { return; }
         let drop = box DropValue {
             is_immediate: false,
-            must_unwind: common::type_needs_unwind_cleanup(self.ccx, ty),
             val: val,
             ty: ty,
             fill_on_drop: false,
@@ -415,7 +414,6 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
 
         let drop = box DropValue {
             is_immediate: false,
-            must_unwind: common::type_needs_unwind_cleanup(self.ccx, ty),
             val: val,
             ty: ty,
             fill_on_drop: true,
@@ -447,7 +445,6 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
 
         let drop = box DropValue {
             is_immediate: false,
-            must_unwind: common::type_needs_unwind_cleanup(self.ccx, ty),
             val: val,
             ty: ty,
             fill_on_drop: false,
@@ -473,7 +470,6 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
         if !self.type_needs_drop(ty) { return; }
         let drop = box DropValue {
             is_immediate: true,
-            must_unwind: common::type_needs_unwind_cleanup(self.ccx, ty),
             val: val,
             ty: ty,
             fill_on_drop: false,
@@ -1031,7 +1027,6 @@ impl EarlyExitLabel {
 #[derive(Copy, Clone)]
 pub struct DropValue<'tcx> {
     is_immediate: bool,
-    must_unwind: bool,
     val: ValueRef,
     ty: Ty<'tcx>,
     fill_on_drop: bool,
@@ -1040,11 +1035,11 @@ pub struct DropValue<'tcx> {
 
 impl<'tcx> Cleanup<'tcx> for DropValue<'tcx> {
     fn must_unwind(&self) -> bool {
-        self.must_unwind
+        true
     }
 
     fn clean_on_unwind(&self) -> bool {
-        self.must_unwind
+        true
     }
 
     fn is_lifetime_end(&self) -> bool {
