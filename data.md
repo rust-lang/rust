@@ -21,23 +21,25 @@ An enum is said to be *C-like* if none of its variants have associated data.
 For all these, individual fields are aligned to their preferred alignment. For
 primitives this is usually equal to their size. For instance, a u32 will be
 aligned to a multiple of 32 bits, and a u16 will be aligned to a multiple of 16
-bits. Composite structures will have their size rounded up to be a multiple of
-the highest alignment required by their fields, and an alignment requirement
-equal to the highest alignment required by their fields. So for instance,
+bits. Composite structures will have a preferred alignment equal to the maximum
+of their fields' preferred alignment, and a size equal to a multiple of their
+preferred alignment. This ensures that arrays of T can be correctly iterated
+by offsetting by their size. So for instance,
 
 ```rust
 struct A {
     a: u8,
-    c: u64,
-    b: u32,
+    c: u32,
+    b: u16,
 }
 ```
 
-will have a size that is a multiple of 64-bits, and 64-bit alignment.
+will have a size that is a multiple of 32-bits, and 32-bit alignment.
 
 There is *no indirection* for these types; all data is stored contiguously as you would
-expect in C. However with the exception of arrays, the layout of data is not by
-default specified in Rust. Given the two following struct definitions:
+expect in C. However with the exception of arrays (which are densely packed and
+in-order), the layout of data is not by default specified in Rust. Given the two
+following struct definitions:
 
 ```rust
 struct A {
@@ -91,9 +93,9 @@ struct Foo<u32, u16> {
 ```
 
 The latter case quite simply wastes space. An optimal use of space therefore requires
-different monomorphizations to *have different field orderings*.
+different monomorphizations to have *different field orderings*.
 
-**Note: this is a hypothetical optimization that is not yet implemented in Rust 1.0.0**
+**Note: this is a hypothetical optimization that is not yet implemented in Rust 1.0**
 
 Enums make this consideration even more complicated. Naively, an enum such as:
 
@@ -120,14 +122,15 @@ such a representation is ineffiecient. The classic case of this is Rust's
 "null pointer optimization". Given a pointer that is known to not be null
 (e.g. `&u32`), an enum can *store* a discriminant bit *inside* the pointer
 by using null as a special value. The net result is that
-`sizeof(Option<&T>) == sizeof<&T>`
+`size_of::<Option<&T>>() == size_of::<&T>()`
 
-There are many types in Rust that are, or contain, "not null" pointers such as `Box<T>`, `Vec<T>`,
-`String`, `&T`, and `&mut T`. Similarly, one can imagine nested enums pooling their tags into
-a single descriminant, as they are by definition known to have a limited range of valid values.
-In principle enums can use fairly elaborate algorithms to cache bits throughout nested types
-with special constrained representations. As such it is *especially* desirable that we leave
-enum layout unspecified today.
+There are many types in Rust that are, or contain, "not null" pointers such as
+`Box<T>`, `Vec<T>`, `String`, `&T`, and `&mut T`. Similarly, one can imagine
+nested enums pooling their tags into a single descriminant, as they are by
+definition known to have a limited range of valid values. In principle enums can
+use fairly elaborate algorithms to cache bits throughout nested types with
+special constrained representations. As such it is *especially* desirable that
+we leave enum layout unspecified today.
 
 
 
@@ -135,8 +138,8 @@ enum layout unspecified today.
 # Dynamically Sized Types (DSTs)
 
 Rust also supports types without a statically known size. On the surface,
-this is a bit nonsensical: Rust must know the size of something in order to
-work with it. DSTs are generally produced as views, or through type-erasure
+this is a bit nonsensical: Rust *must* know the size of something in order to
+work with it! DSTs are generally produced as views, or through type-erasure
 of types that *do* have a known size. Due to their lack of a statically known
 size, these types can only exist *behind* some kind of pointer. They consequently
 produce a *fat* pointer consisting of the pointer and the information that
@@ -144,7 +147,7 @@ produce a *fat* pointer consisting of the pointer and the information that
 
 For instance, the slice type, `[T]`, is some statically unknown number of elements
 stored contiguously. `&[T]` consequently consists of a `(&T, usize)` pair that specifies
-where the slice starts, and how many elements it contains. Similarly Trait Objects
+where the slice starts, and how many elements it contains. Similarly, Trait Objects
 support interface-oriented type erasure through a `(data_ptr, vtable_ptr)` pair.
 
 Structs can actually store a single DST directly as their last field, but this
@@ -158,6 +161,8 @@ struct Foo {
 }
 ```
 
+**NOTE: As of Rust 1.0 struct DSTs are broken if the last field has
+a variable position based on its alignment.**
 
 
 
@@ -235,6 +240,7 @@ Rust allows you to specify alternative data layout strategies from the default.
 
 
 
+
 ## repr(C)
 
 This is the most important `repr`. It has fairly simple intent: do what C does.
@@ -262,6 +268,7 @@ the FFI boundary.
 
 
 
+
 ## repr(packed)
 
 `repr(packed)` forces rust to strip any padding, and only align the type to a
@@ -278,6 +285,8 @@ this should not be used.
 This repr is a modifier on `repr(C)` and `repr(rust)`.
 
 
+
+
 ## repr(u8), repr(u16), repr(u32), repr(u64)
 
 These specify the size to make a C-like enum. If the discriminant overflows the
@@ -285,4 +294,4 @@ integer it has to fit in, it will be an error. You can manually ask Rust to
 allow this by setting the overflowing element to explicitly be 0. However Rust
 will not allow you to create an enum where two variants.
 
-These reprs have no affect on struct or non-C-like enum.
+These reprs have no affect on a struct or non-C-like enum.
