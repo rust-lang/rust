@@ -9,6 +9,7 @@
 // except according to those terms.
 
 //! An iterator over the type substructure.
+//! WARNING: this does not keep track of the region depth.
 
 use middle::ty::{self, Ty};
 use std::iter::Iterator;
