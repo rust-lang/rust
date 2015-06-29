@@ -227,7 +227,7 @@ What’s that mean? Check out the chapter on [trait objects][to] for more detail
 
 [to]: trait-objects.html
 
-# Multiple trait bounds
+## Multiple trait bounds
 
 You’ve seen that you can bound a generic type parameter with a trait:
 
@@ -250,7 +250,7 @@ fn foo<T: Clone + Debug>(x: T) {
 
 `T` now needs to be both `Clone` as well as `Debug`.
 
-# Where clause
+## Where clause
 
 Writing functions with only a few generic types and a small number of trait
 bounds isn’t too bad, but as the number increases, the syntax gets increasingly
@@ -342,7 +342,8 @@ plain type parameter (like `T`).
 
 ## Default methods
 
-There’s one last feature of traits we should cover: default methods. It’s
+There’s one important feature of traits distinguishing them from "interfaces",
+familiar to many from languages like Java, C# or Go: *default methods*. It’s
 easiest just to show an example:
 
 ```rust
@@ -354,8 +355,8 @@ trait Foo {
 ```
 
 Implementors of the `Foo` trait need to implement `bar()`, but they don’t
-need to implement `baz()`. They’ll get this default behavior. They can
-override the default if they so choose:
+need to implement `baz()`. They’ll get this default behavior. However, they
+can override the default if they so choose:
 
 ```rust
 # trait Foo {
@@ -383,7 +384,115 @@ let over = OverrideDefault;
 over.baz(); // prints "Override baz!"
 ```
 
-# Inheritance
+The default method implementation can't assume anything about the
+actual struct it gets called for – the struct could be of any size or it could
+have any kind of fields after all! However, there's one thing we can do
+without worry: the struct always implements the trait the default method is
+part of, so default methods can call other methods of the same trait freely.
+
+The `Iterator` trait from the standard library, for instance, relies heavily on
+this. It requires implementors to implement just one method, `next()`, which
+returns the next item in an iterable sequence:
+
+```rust
+fn next(&mut self) -> Option<Self::Item>;
+```
+
+The `next()` method is specific to each struct, so it can access the
+struct fields and call inherent methods. All the other methods on `Iterator`
+just implement additional, general functionality on top of the `next()` method,
+managing to avoid struct-specific details.
+
+### Conditional default methods
+
+One last detail: there are times when the trait itself isn't quite enough to
+provide sufficient base to implement some generic functionality onto. For
+example, it would be very convenient to have a generic method `rev()` that
+would reverse the order of an `Iterator`, and return us another one that
+iterates backwards from end to beginning. However, this functionality is very
+hard to provide using `next()` only! If the iterator is finite, we could
+iterate and save the values along the way, and when we reach the end, we could
+"play back" our saved values in reverse order. This would totally kill
+the performance, though! We have to iterate O(end) times just to return the first
+value, not to even mention the extra memory allocation needed.
+
+Fortunately, there's an trait that provides the means to iterate backwards
+efficiently: `DoubleEndedIterator`. This enables us to define our `rev()`
+method, by specifying an additional generic bound to `Self`:
+
+```rust
+fn rev(self) -> Rev<Self> 
+where Self: DoubleEndedIterator
+```
+
+Now we have a default method `rev()` on `Iterator` that is callable only in the case
+the struct implementing `Iterator` also implements `DoubleEndedIterator`.
+Problem solved!
+
+What happens if we try to call a conditional default method when the trait
+bounds are not fulfilled? Let's see!
+
+```should_panic
+trait IntField {
+    fn get(&self) -> i32;
+}
+
+trait Printer {
+    fn print_hello(&self) {
+        println!("Hello!");
+    }
+
+    fn print_field(&self) where Self : IntField {
+        println!("Hello, my field is {:?}", self.get());
+    }
+}
+
+
+struct IntContainer {
+    field : i32,
+}
+
+impl Printer for IntContainer {}
+
+fn main() {
+    let p = IntContainer { field: 4 };
+    p.print_hello();
+    p.print_field();
+}
+```
+
+We have two traits defined: `IntField` that allows us to access an inner `i32`
+field, and `Printer` that allows us to print a hello message. Additionally,
+`Printer` allows us to print the field provided by `IntField`. But
+`IntContainer` doesn't implement `IntField`! And indeed, calling
+`p.print_field()` results to an error:
+
+```text
+src/main.rs:25:7: 25:20 error: the trait `IntField` is not implemented forthe type `PrinterStruct` [E0277]
+src/main.rs:25     p.print_field();
+                     ^~~~~~~~~~~~~
+```
+
+We can fix this either by removing the call `p.print_field()` or by implementing
+`IntField` for `IntContainer`:
+
+```rust
+impl IntField for PrinterStruct {
+    fn get(&self) -> i32 {
+        self.field
+    }
+}
+```
+
+And lo, it runs!
+
+```text
+Hello!
+Hello, my field is 4
+```
+
+
+## Inheritance
 
 Sometimes, implementing a trait requires implementing another trait:
 
