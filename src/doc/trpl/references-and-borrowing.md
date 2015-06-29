@@ -336,7 +336,9 @@ In other words, `y` is only valid for the scope where `x` exists. As soon as
 the borrow ‘doesn’t live long enough’ because it’s not valid for the right
 amount of time.
 
-The same problem occurs when the reference is declared _before_ the variable it refers to:
+The same problem occurs when the reference is declared _before_ the variable it
+refers to. This is because resources within the same scope are freed in the
+opposite order they were declared:
 
 ```rust,ignore
 let y: &i32;
@@ -369,3 +371,6 @@ statement 1 at 3:14
     println!("{}", y);
 }
 ```
+
+In the above example, `y` is declared before `x`, meaning that `y` lives longer
+than `x`, which is not allowed.
