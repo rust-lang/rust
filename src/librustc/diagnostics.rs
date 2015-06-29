@@ -386,8 +386,8 @@ type X = u32<'static>; // error: lifetime parameters are not allowed on
                        //        this type
 ```
 
-Please check you actually used the good type or check again its definition.
-Example:
+Please check that you used the correct type and recheck its definition,
+perhaps it doesn't need the lifetime parameter. Example:
 
 ```
 type X = u32; // ok!
