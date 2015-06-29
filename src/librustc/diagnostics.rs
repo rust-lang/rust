@@ -361,7 +361,7 @@ http://doc.rust-lang.org/reference.html#ffi-attributes
 "##,
 
 E0109: r##"
-You tried to give    type parameter to a type which doesn't need it. Erroneous
+You tried to give a type parameter to a type which doesn't need it. Erroneous
 code example:
 
 ```
