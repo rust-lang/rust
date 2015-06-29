@@ -2007,6 +2007,15 @@ impl LintPass for UnconditionalRecursion {
                     // method instead.
                     ty::MethodTypeParam(
                         ty::MethodParam { ref trait_ref, method_num, impl_def_id: None, }) => {
+
+                        let on_self = m.substs.self_ty().map_or(false, |t| t.is_self());
+                        if !on_self {
+                            // we can only be recurring in a default
+                            // method if we're being called literally
+                            // on the `Self` type.
+                            return false
+                        }
+
                         tcx.trait_item(trait_ref.def_id, method_num).def_id()
                     }
 
