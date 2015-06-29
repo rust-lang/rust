@@ -272,13 +272,13 @@ impl AtomicBool {
         unsafe { atomic_swap(self.v.get(), val, order) > 0 }
     }
 
-    /// Stores a value into the bool if the current value is the same as the expected value.
+    /// Stores a value into the `bool` if the current value is the same as the `current` value.
     ///
-    /// The return value is always the previous value. If it is equal to `old`, then the value was
-    /// updated.
+    /// The return value is always the previous value. If it is equal to `current`, then the value
+    /// was updated.
     ///
-    /// `swap` also takes an `Ordering` argument which describes the memory ordering of this
-    /// operation.
+    /// `compare_and_swap` also takes an `Ordering` argument which describes the memory ordering of
+    /// this operation.
     ///
     /// # Examples
     ///
@@ -295,11 +295,11 @@ impl AtomicBool {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn compare_and_swap(&self, old: bool, new: bool, order: Ordering) -> bool {
-        let old = if old { UINT_TRUE } else { 0 };
+    pub fn compare_and_swap(&self, current: bool, new: bool, order: Ordering) -> bool {
+        let current = if current { UINT_TRUE } else { 0 };
         let new = if new { UINT_TRUE } else { 0 };
 
-        unsafe { atomic_compare_and_swap(self.v.get(), old, new, order) > 0 }
+        unsafe { atomic_compare_and_swap(self.v.get(), current, new, order) > 0 }
     }
 
     /// Logical "and" with a boolean value.
@@ -515,10 +515,10 @@ impl AtomicIsize {
         unsafe { atomic_swap(self.v.get(), val, order) }
     }
 
-    /// Stores a value into the isize if the current value is the same as the expected value.
+    /// Stores a value into the `isize` if the current value is the same as the `current` value.
     ///
-    /// The return value is always the previous value. If it is equal to `old`, then the value was
-    /// updated.
+    /// The return value is always the previous value. If it is equal to `current`, then the value
+    /// was updated.
     ///
     /// `compare_and_swap` also takes an `Ordering` argument which describes the memory ordering of
     /// this operation.
@@ -538,8 +538,8 @@ impl AtomicIsize {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn compare_and_swap(&self, old: isize, new: isize, order: Ordering) -> isize {
-        unsafe { atomic_compare_and_swap(self.v.get(), old, new, order) }
+    pub fn compare_and_swap(&self, current: isize, new: isize, order: Ordering) -> isize {
+        unsafe { atomic_compare_and_swap(self.v.get(), current, new, order) }
     }
 
     /// Add an isize to the current value, returning the previous value.
@@ -709,10 +709,10 @@ impl AtomicUsize {
         unsafe { atomic_swap(self.v.get(), val, order) }
     }
 
-    /// Stores a value into the usize if the current value is the same as the expected value.
+    /// Stores a value into the `usize` if the current value is the same as the `current` value.
     ///
-    /// The return value is always the previous value. If it is equal to `old`, then the value was
-    /// updated.
+    /// The return value is always the previous value. If it is equal to `current`, then the value
+    /// was updated.
     ///
     /// `compare_and_swap` also takes an `Ordering` argument which describes the memory ordering of
     /// this operation.
@@ -732,8 +732,8 @@ impl AtomicUsize {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn compare_and_swap(&self, old: usize, new: usize, order: Ordering) -> usize {
-        unsafe { atomic_compare_and_swap(self.v.get(), old, new, order) }
+    pub fn compare_and_swap(&self, current: usize, new: usize, order: Ordering) -> usize {
+        unsafe { atomic_compare_and_swap(self.v.get(), current, new, order) }
     }
 
     /// Add to the current usize, returning the previous value.
@@ -910,10 +910,10 @@ impl<T> AtomicPtr<T> {
         unsafe { atomic_swap(self.p.get() as *mut usize, ptr as usize, order) as *mut T }
     }
 
-    /// Stores a value into the pointer if the current value is the same as the expected value.
+    /// Stores a value into the pointer if the current value is the same as the `current` value.
     ///
-    /// The return value is always the previous value. If it is equal to `old`, then the value was
-    /// updated.
+    /// The return value is always the previous value. If it is equal to `current`, then the value
+    /// was updated.
     ///
     /// `compare_and_swap` also takes an `Ordering` argument which describes the memory ordering of
     /// this operation.
@@ -933,9 +933,9 @@ impl<T> AtomicPtr<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn compare_and_swap(&self, old: *mut T, new: *mut T, order: Ordering) -> *mut T {
+    pub fn compare_and_swap(&self, current: *mut T, new: *mut T, order: Ordering) -> *mut T {
         unsafe {
-            atomic_compare_and_swap(self.p.get() as *mut usize, old as usize,
+            atomic_compare_and_swap(self.p.get() as *mut usize, current as usize,
                                     new as usize, order) as *mut T
         }
     }
