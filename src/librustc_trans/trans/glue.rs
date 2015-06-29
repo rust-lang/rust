@@ -22,8 +22,9 @@ use middle::lang_items::ExchangeFreeFnLangItem;
 use middle::subst;
 use middle::subst::{Subst, Substs};
 use middle::ty::{self, Ty};
-use trans::adt;
 use trans::adt::GetDtorType; // for tcx.dtor_type()
+use trans::adt;
+use trans::attributes;
 use trans::base::*;
 use trans::build::*;
 use trans::callee;
@@ -43,6 +44,7 @@ use trans::type_::Type;
 use arena::TypedArena;
 use libc::c_uint;
 use syntax::ast;
+use syntax::attr::InlineAttr;
 
 pub fn trans_exchange_free_dyn<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                                            v: ValueRef,
@@ -249,6 +251,25 @@ fn get_drop_glue_core<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let bcx = init_function(&fcx, false, ty::FnConverging(ccx.tcx().mk_nil()));
 
     update_linkage(ccx, llfn, None, OriginalTranslation);
+
+    // FIXME: Currently LLVM has a bug where if an SSA value is created in one
+    //        landing pad and then used in another it will abort during
+    //        compilation. The compiler never actually generates nested landing
+    //        pads, but this often arises when destructors are inlined into
+    //        other functions. To prevent this inlining from happening (and thus
+    //        preventing the LLVM abort) we mark all drop glue as inline(never)
+    //        on MSVC.
+    //
+    //        For more information about the bug, see:
+    //
+    //            https://llvm.org/bugs/show_bug.cgi?id=23884
+    //
+    //        This is clearly not the ideal solution to the problem (due to the
+    //        perf hits), so this should be removed once the upstream bug is
+    //        fixed.
+    if ccx.sess().target.target.options.is_like_msvc {
+        attributes::inline(llfn, InlineAttr::Never);
+    }
 
     ccx.stats().n_glues_created.set(ccx.stats().n_glues_created.get() + 1);
     // All glue functions take values passed *by alias*; this is a
