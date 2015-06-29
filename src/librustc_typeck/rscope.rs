@@ -16,6 +16,15 @@ use std::cell::Cell;
 use std::iter::repeat;
 use syntax::codemap::Span;
 
+#[derive(Clone)]
+pub struct ElisionFailureInfo {
+    pub name: String,
+    pub lifetime_count: usize,
+    pub have_bound_regions: bool
+}
+
+pub type ElidedLifetime = Result<ty::Region, Option<Vec<ElisionFailureInfo>>>;
+
 /// Defines strategies for handling regions that are omitted.  For
 /// example, if one writes the type `&Foo`, then the lifetime of
 /// this reference has been omitted. When converting this
@@ -30,7 +39,7 @@ pub trait RegionScope {
     fn anon_regions(&self,
                     span: Span,
                     count: usize)
-                    -> Result<Vec<ty::Region>, Option<Vec<(String, usize)>>>;
+                    -> Result<Vec<ty::Region>, Option<Vec<ElisionFailureInfo>>>;
 
     /// If an object omits any explicit lifetime bound, and none can
     /// be derived from the object traits, what should we use? If
@@ -51,16 +60,16 @@ impl RegionScope for ExplicitRscope {
     fn anon_regions(&self,
                     _span: Span,
                     _count: usize)
-                    -> Result<Vec<ty::Region>, Option<Vec<(String, usize)>>> {
+                    -> Result<Vec<ty::Region>, Option<Vec<ElisionFailureInfo>>> {
         Err(None)
     }
 }
 
 // Same as `ExplicitRscope`, but provides some extra information for diagnostics
-pub struct UnelidableRscope(Vec<(String, usize)>);
+pub struct UnelidableRscope(Option<Vec<ElisionFailureInfo>>);
 
 impl UnelidableRscope {
-    pub fn new(v: Vec<(String, usize)>) -> UnelidableRscope {
+    pub fn new(v: Option<Vec<ElisionFailureInfo>>) -> UnelidableRscope {
         UnelidableRscope(v)
     }
 }
@@ -73,9 +82,9 @@ impl RegionScope for UnelidableRscope {
     fn anon_regions(&self,
                     _span: Span,
                     _count: usize)
-                    -> Result<Vec<ty::Region>, Option<Vec<(String, usize)>>> {
+                    -> Result<Vec<ty::Region>, Option<Vec<ElisionFailureInfo>>> {
         let UnelidableRscope(ref v) = *self;
-        Err(Some(v.clone()))
+        Err(v.clone())
     }
 }
 
@@ -104,7 +113,7 @@ impl RegionScope for ElidableRscope {
     fn anon_regions(&self,
                     _span: Span,
                     count: usize)
-                    -> Result<Vec<ty::Region>, Option<Vec<(String, usize)>>>
+                    -> Result<Vec<ty::Region>, Option<Vec<ElisionFailureInfo>>>
     {
         Ok(repeat(self.default).take(count).collect())
     }
@@ -141,7 +150,7 @@ impl RegionScope for BindingRscope {
     fn anon_regions(&self,
                     _: Span,
                     count: usize)
-                    -> Result<Vec<ty::Region>, Option<Vec<(String, usize)>>>
+                    -> Result<Vec<ty::Region>, Option<Vec<ElisionFailureInfo>>>
     {
         Ok((0..count).map(|_| self.next_region()).collect())
     }
@@ -177,7 +186,7 @@ impl<'r> RegionScope for ObjectLifetimeDefaultRscope<'r> {
     fn anon_regions(&self,
                     span: Span,
                     count: usize)
-                    -> Result<Vec<ty::Region>, Option<Vec<(String, usize)>>>
+                    -> Result<Vec<ty::Region>, Option<Vec<ElisionFailureInfo>>>
     {
         self.base_scope.anon_regions(span, count)
     }
@@ -204,7 +213,7 @@ impl<'r> RegionScope for ShiftedRscope<'r> {
     fn anon_regions(&self,
                     span: Span,
                     count: usize)
-                    -> Result<Vec<ty::Region>, Option<Vec<(String, usize)>>>
+                    -> Result<Vec<ty::Region>, Option<Vec<ElisionFailureInfo>>>
     {
         match self.base_scope.anon_regions(span, count) {
             Ok(mut v) => {
