@@ -22,6 +22,22 @@ matched, one of the preceding patterns will match.
 
 This means that perhaps some of the preceding patterns are too general, this one
 is too specific or the ordering is incorrect.
+
+For example, the following `match` block has too many arms:
+
+```
+match foo {
+    Some(bar) => {/* ... */}
+    None => {/* ... */}
+    _ => {/* ... */} // All possible cases have already been handled
+}
+```
+
+`match` blocks have their patterns matched in order, so, for example, putting
+a wildcard arm above a more specific arm will make the latter arm irrelevant.
+
+Ensure the ordering of the match arm is correct and remove any superfluous
+checks.
 "##,
 
 E0002: r##"
@@ -31,13 +47,40 @@ it is impossible to create an instance of an empty type, so empty match
 expressions are almost never desired.  This error is typically fixed by adding
 one or more cases to the match expression.
 
-An example of an empty type is `enum Empty { }`.
+An example of an empty type is `enum Empty { }`. So, the following will work:
+
+```
+fn foo(x: Empty) {
+    match x {
+        // empty
+    }
+}
+
+```
+
+but this won't:
+
+```
+fn foo(x: Option<String>) {
+    match x {
+        // empty
+    }
+}
+```
 "##,
 
 E0003: r##"
 Not-a-Number (NaN) values cannot be compared for equality and hence can never
 match the input to a match expression. To match against NaN values, you should
-instead use the `is_nan` method in a guard, as in: `x if x.is_nan() => ...`
+instead use the `is_nan()` method in a guard, like so: 
+
+```
+match number {
+    // ...
+    x if x.is_nan() => { /* ... */ }
+    // ...
+}
+```
 "##,
 
 E0004: r##"
