@@ -72,7 +72,7 @@ fn foo(x: Option<String>) {
 E0003: r##"
 Not-a-Number (NaN) values cannot be compared for equality and hence can never
 match the input to a match expression. To match against NaN values, you should
-instead use the `is_nan()` method in a guard, like so: 
+instead use the `is_nan()` method in a guard, like so:
 
 ```
 match number {
@@ -96,15 +96,7 @@ underscore `_` wildcard pattern can be added after all other patterns to match
 "anything else".
 "##,
 
-// FIXME: Remove duplication here?
 E0005: r##"
-Patterns used to bind names must be irrefutable, that is, they must guarantee
-that a name will be extracted in all cases. If you encounter this error you
-probably need to use a `match` or `if let` to deal with the possibility of
-failure.
-"##,
-
-E0006: r##"
 Patterns used to bind names must be irrefutable, that is, they must guarantee
 that a name will be extracted in all cases. If you encounter this error you
 probably need to use a `match` or `if let` to deal with the possibility of
@@ -1262,6 +1254,7 @@ contain references (with a maximum lifetime of `'a`).
 
 
 register_diagnostics! {
+    // E0006 // merged with E0005
     E0017,
     E0022,
     E0038,
