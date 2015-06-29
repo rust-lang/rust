@@ -1250,6 +1250,44 @@ information see the [opt-in builtin traits RFC](https://github.com/rust-lang/
 rfcs/blob/master/text/0019-opt-in-builtin-traits.md).
 "##,
 
+E0195: r##"
+Your method's lifetime parameters do not match the trait declaration.
+Erroneous code example:
+
+```
+trait Trait {
+    fn t<'a,'b:'a>(x: &'a str, y: &'b str);
+}
+
+struct Foo;
+
+impl Trait for Foo {
+    fn t<'a,'b>(x: &'a str, y: &'b str) { // error: lifetime parameters
+                                          //        or bounds on method `t`
+                                          //        do not match the trait
+                                          //        declaration
+    }
+}
+```
+
+The 'b lifetime constraints for `t` implementation does not match the
+trait declaration. Ensure lifetime declarations match exactly in both trait
+declaration and implementation. Example:
+
+```
+trait Trait {
+    fn t<'a,'b:'a>(x: &'a str, y: &'b str);
+}
+
+struct Foo;
+
+impl Trait for Foo {
+    fn t<'a,'b:'a>(x: &'a str, y: &'b str) { // ok!
+    }
+}
+```
+"##,
+
 E0197: r##"
 Inherent implementations (one that do not implement a trait but provide
 methods associated with a type) are always safe because they are not
@@ -1686,7 +1724,6 @@ register_diagnostics! {
     E0193, // cannot bound type where clause bounds may only be attached to types
            // involving type parameters
     E0194,
-    E0195, // lifetime parameters or bounds on method do not match the trait declaration
     E0196, // cannot determine a type for this closure
     E0203, // type parameter has more than one relaxed default bound,
            // and only one is supported
