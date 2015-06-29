@@ -20,6 +20,13 @@ series of small examples.
 
 [rbe]: http://rustbyexample.com/
 
+# The Standard Library
+
+We have [API documentation for the entire standard
+library](std/index.html). There's a list of crates on the left with more
+specific sections, or you can use the search bar at the top to search for
+something if you know its name.
+
 # Community & Getting Help
 
 If you need help with something, or just want to talk about Rust with others,
@@ -74,13 +81,6 @@ There are questions that are asked quite often, so we've made FAQs for them:
 * [Language FAQ](complement-lang-faq.html)
 * [Project FAQ](complement-project-faq.html)
 * [How to submit a bug report](https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.md#bug-reports)
-
-# The Standard Library
-
-We have [API documentation for the entire standard
-library](std/index.html). There's a list of crates on the left with more
-specific sections, or you can use the search bar at the top to search for
-something if you know its name.
 
 # The Error Index
 
