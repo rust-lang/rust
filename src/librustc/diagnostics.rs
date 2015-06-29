@@ -360,6 +360,40 @@ integer type:
 http://doc.rust-lang.org/reference.html#ffi-attributes
 "##,
 
+E0109: r##"
+You tried to give a type parameter to a type which doesn't need it. Erroneous
+code example:
+
+```
+type X = u32<i32>; // error: type parameters are not allowed on this type
+```
+
+Please check that you used the correct type and recheck its definition. Perhaps
+it doesn't need the type parameter.
+Example:
+
+```
+type X = u32; // ok!
+```
+"##,
+
+E0110: r##"
+You tried to give a lifetime parameter to a type which doesn't need it.
+Erroneous code example:
+
+```
+type X = u32<'static>; // error: lifetime parameters are not allowed on
+                       //        this type
+```
+
+Please check that you used the correct type and recheck its definition,
+perhaps it doesn't need the lifetime parameter. Example:
+
+```
+type X = u32; // ok!
+```
+"##,
+
 E0133: r##"
 Using unsafe functionality, such as dereferencing raw pointers and calling
 functions via FFI or marked as unsafe, is potentially dangerous and disallowed
@@ -1055,8 +1089,6 @@ register_diagnostics! {
     E0017,
     E0022,
     E0038,
-    E0109,
-    E0110,
     E0134,
     E0135,
     E0136,
