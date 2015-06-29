@@ -2,8 +2,8 @@
 
 For our second project, let’s look at a classic concurrency problem. It’s
 called ‘the dining philosophers’. It was originally conceived by Dijkstra in
-1965, but we’ll use a lightly adapted version from [this paper][paper] by Tony
-Hoare in 1985.
+1965, but we’ll use a version from [this paper][paper] by Tony
+Hoare in 1985, adjusted to use gender-neutral language.
 
 [paper]: http://www.usingcsp.com/cspbook.pdf
 
