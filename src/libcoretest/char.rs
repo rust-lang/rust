@@ -103,29 +103,6 @@ fn test_to_uppercase() {
 }
 
 #[test]
-fn test_to_titlecase() {
-    fn title(c: char) -> Vec<char> {
-        c.to_titlecase().collect()
-    }
-    assert_eq!(title('a'), ['A']);
-    assert_eq!(title('ö'), ['Ö']);
-    assert_eq!(title('ß'), ['S', 's']); // not ẞ: Latin capital letter sharp s
-    assert_eq!(title('ü'), ['Ü']);
-    assert_eq!(title('💩'), ['💩']);
-
-    assert_eq!(title('σ'), ['Σ']);
-    assert_eq!(title('τ'), ['Τ']);
-    assert_eq!(title('ι'), ['Ι']);
-    assert_eq!(title('γ'), ['Γ']);
-    assert_eq!(title('μ'), ['Μ']);
-    assert_eq!(title('α'), ['Α']);
-    assert_eq!(title('ς'), ['Σ']);
-    assert_eq!(title('Ǆ'), ['ǅ']);
-    assert_eq!(title('ﬁ'), ['F', 'i']);
-    assert_eq!(title('ᾀ'), ['ᾈ']);
-}
-
-#[test]
 fn test_is_control() {
     assert!('\u{0}'.is_control());
     assert!('\u{3}'.is_control());

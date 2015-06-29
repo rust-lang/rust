@@ -43,7 +43,7 @@ pub fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
     debug!("compare_impl_method: impl_trait_ref (liberated) = {:?}",
            impl_trait_ref);
 
-    let infcx = infer::new_infer_ctxt(tcx);
+    let mut infcx = infer::new_infer_ctxt(tcx, &tcx.tables, None);
     let mut fulfillment_cx = traits::FulfillmentContext::new(true);
 
     let trait_to_impl_substs = &impl_trait_ref.substs;
@@ -100,7 +100,7 @@ pub fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
             token::get_name(trait_m.name),
             impl_m.fty.sig.0.inputs.len(),
             if impl_m.fty.sig.0.inputs.len() == 1 {""} else {"s"},
-            ty::item_path_str(tcx, trait_m.def_id),
+            tcx.item_path_str(trait_m.def_id),
             trait_m.fty.sig.0.inputs.len());
         return;
     }
@@ -240,11 +240,13 @@ pub fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
     let trait_param_env = impl_param_env.with_caller_bounds(hybrid_preds.into_vec());
     let trait_param_env = traits::normalize_param_env_or_error(trait_param_env,
                                                                normalize_cause.clone());
+    // FIXME(@jroesch) this seems ugly, but is a temporary change
+    infcx.parameter_environment = trait_param_env;
 
     debug!("compare_impl_method: trait_bounds={:?}",
-        trait_param_env.caller_bounds);
+        infcx.parameter_environment.caller_bounds);
 
-    let mut selcx = traits::SelectionContext::new(&infcx, &trait_param_env);
+    let mut selcx = traits::SelectionContext::new(&infcx, &infcx.parameter_environment);
 
     for predicate in impl_pred.fns {
         let traits::Normalized { value: predicate, .. } =
@@ -275,9 +277,9 @@ pub fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
     // type.
 
     // Compute skolemized form of impl and trait method tys.
-    let impl_fty = ty::mk_bare_fn(tcx, None, tcx.mk_bare_fn(impl_m.fty.clone()));
+    let impl_fty = tcx.mk_fn(None, tcx.mk_bare_fn(impl_m.fty.clone()));
     let impl_fty = impl_fty.subst(tcx, impl_to_skol_substs);
-    let trait_fty = ty::mk_bare_fn(tcx, None, tcx.mk_bare_fn(trait_m.fty.clone()));
+    let trait_fty = tcx.mk_fn(None, tcx.mk_bare_fn(trait_m.fty.clone()));
     let trait_fty = trait_fty.subst(tcx, &trait_to_skol_substs);
 
     let err = infcx.commit_if_ok(|snapshot| {
@@ -296,12 +298,11 @@ pub fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
                                                  impl_m_span,
                                                  impl_m_body_id,
                                                  &impl_sig);
-        let impl_fty =
-            ty::mk_bare_fn(tcx,
-                           None,
-                           tcx.mk_bare_fn(ty::BareFnTy { unsafety: impl_m.fty.unsafety,
-                                                         abi: impl_m.fty.abi,
-                                                         sig: ty::Binder(impl_sig) }));
+        let impl_fty = tcx.mk_fn(None, tcx.mk_bare_fn(ty::BareFnTy {
+            unsafety: impl_m.fty.unsafety,
+            abi: impl_m.fty.abi,
+            sig: ty::Binder(impl_sig)
+        }));
         debug!("compare_impl_method: impl_fty={:?}",
                impl_fty);
 
@@ -316,12 +317,11 @@ pub fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
                                                  impl_m_span,
                                                  impl_m_body_id,
                                                  &trait_sig);
-        let trait_fty =
-            ty::mk_bare_fn(tcx,
-                           None,
-                           tcx.mk_bare_fn(ty::BareFnTy { unsafety: trait_m.fty.unsafety,
-                                                         abi: trait_m.fty.abi,
-                                                         sig: ty::Binder(trait_sig) }));
+        let trait_fty = tcx.mk_fn(None, tcx.mk_bare_fn(ty::BareFnTy {
+            unsafety: trait_m.fty.unsafety,
+            abi: trait_m.fty.abi,
+            sig: ty::Binder(trait_sig)
+        }));
 
         debug!("compare_impl_method: trait_fty={:?}",
                trait_fty);
@@ -347,7 +347,7 @@ pub fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
 
     // Check that all obligations are satisfied by the implementation's
     // version.
-    match fulfillment_cx.select_all_or_error(&infcx, &trait_param_env) {
+    match fulfillment_cx.select_all_or_error(&infcx, &infcx.parameter_environment) {
         Err(ref errors) => { traits::report_fulfillment_errors(&infcx, errors) }
         Ok(_) => {}
     }
@@ -362,7 +362,8 @@ pub fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
     // anyway, so it shouldn't be needed there either. Anyway, we can
     // always add more relations later (it's backwards compat).
     let mut free_regions = FreeRegionMap::new();
-    free_regions.relate_free_regions_from_predicates(tcx, &trait_param_env.caller_bounds);
+    free_regions.relate_free_regions_from_predicates(tcx,
+                                                     &infcx.parameter_environment.caller_bounds);
 
     infcx.resolve_regions_and_report_errors(&free_regions, impl_m_body_id);
 
@@ -418,7 +419,7 @@ pub fn compare_const_impl<'tcx>(tcx: &ty::ctxt<'tcx>,
     debug!("compare_const_impl(impl_trait_ref={:?})",
            impl_trait_ref);
 
-    let infcx = infer::new_infer_ctxt(tcx);
+    let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, None);
     let mut fulfillment_cx = traits::FulfillmentContext::new(true);
 
     // The below is for the most part highly similar to the procedure

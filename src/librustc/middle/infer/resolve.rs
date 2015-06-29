@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use super::{InferCtxt, fixup_err, fres, unresolved_ty, unresolved_int_ty, unresolved_float_ty};
-use middle::ty::{self, Ty};
+use middle::ty::{self, Ty, HasTypeFlags};
 use middle::ty_fold::{self, TypeFoldable};
 
 ///////////////////////////////////////////////////////////////////////////
@@ -36,7 +36,7 @@ impl<'a, 'tcx> ty_fold::TypeFolder<'tcx> for OpportunisticTypeResolver<'a, 'tcx>
     }
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-        if !ty::type_has_ty_infer(t) {
+        if !t.has_infer_types() {
             t // micro-optimize -- if there is nothing in this type that this fold affects...
         } else {
             let t0 = self.infcx.shallow_resolve(t);
@@ -75,7 +75,7 @@ impl<'a, 'tcx> ty_fold::TypeFolder<'tcx> for FullTypeResolver<'a, 'tcx> {
     }
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-        if !ty::type_needs_infer(t) {
+        if !t.needs_infer() {
             t // micro-optimize -- if there is nothing in this type that this fold affects...
         } else {
             let t = self.infcx.shallow_resolve(t);

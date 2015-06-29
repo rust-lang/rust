@@ -129,8 +129,8 @@ fn unify_integral_variable<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
          .unify_var_value(vid, val)
          .map_err(|e| int_unification_error(vid_is_expected, e)));
     match val {
-        IntType(v) => Ok(ty::mk_mach_int(infcx.tcx, v)),
-        UintType(v) => Ok(ty::mk_mach_uint(infcx.tcx, v)),
+        IntType(v) => Ok(infcx.tcx.mk_mach_int(v)),
+        UintType(v) => Ok(infcx.tcx.mk_mach_uint(v)),
     }
 }
 
@@ -145,7 +145,7 @@ fn unify_float_variable<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
          .borrow_mut()
          .unify_var_value(vid, val)
          .map_err(|e| float_unification_error(vid_is_expected, e)));
-    Ok(ty::mk_mach_float(infcx.tcx, val))
+    Ok(infcx.tcx.mk_mach_float(val))
 }
 
 impl<'a, 'tcx> CombineFields<'a, 'tcx> {

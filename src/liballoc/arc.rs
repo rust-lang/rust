@@ -77,7 +77,7 @@ use core::atomic;
 use core::atomic::Ordering::{Relaxed, Release, Acquire, SeqCst};
 use core::fmt;
 use core::cmp::Ordering;
-use core::mem::{min_align_of_val, size_of_val};
+use core::mem::{align_of_val, size_of_val};
 use core::intrinsics::drop_in_place;
 use core::mem;
 use core::nonzero::NonZero;
@@ -241,7 +241,7 @@ impl<T: ?Sized> Arc<T> {
 
         if self.inner().weak.fetch_sub(1, Release) == 1 {
             atomic::fence(Acquire);
-            deallocate(ptr as *mut u8, size_of_val(&*ptr), min_align_of_val(&*ptr))
+            deallocate(ptr as *mut u8, size_of_val(&*ptr), align_of_val(&*ptr))
         }
     }
 }
@@ -565,7 +565,7 @@ impl<T: ?Sized> Drop for Weak<T> {
             atomic::fence(Acquire);
             unsafe { deallocate(ptr as *mut u8,
                                 size_of_val(&*ptr),
-                                min_align_of_val(&*ptr)) }
+                                align_of_val(&*ptr)) }
         }
     }
 }

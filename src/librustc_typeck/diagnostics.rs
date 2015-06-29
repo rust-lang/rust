@@ -380,6 +380,44 @@ fn main() {
 ```
 "##,
 
+E0044: r##"
+You can't use type parameters on foreign items. Example of erroneous code:
+
+```
+extern { fn some_func<T>(x: T); }
+```
+
+To fix this, replace the type parameter with the specializations that you
+need:
+
+```
+extern { fn some_func_i32(x: i32); }
+extern { fn some_func_i64(x: i64); }
+```
+"##,
+
+E0045: r##"
+Rust only supports variadic parameters for interoperability with C code in its
+FFI. As such, variadic parameters can only be used with functions which are
+using the C ABI. Examples of erroneous code:
+
+```
+extern "rust-call" { fn foo(x: u8, ...); }
+// or
+fn foo(x: u8, ...) {}
+```
+
+To fix such code, put them in an extern "C" block:
+
+```
+extern "C" fn foo (x: u8, ...);
+// or:
+extern "C" {
+    fn foo (x: u8, ...);
+}
+```
+"##,
+
 E0046: r##"
 When trying to make some type implement a trait `Foo`, you must, at minimum,
 provide implementations for all of `Foo`'s required methods (meaning the
@@ -711,6 +749,44 @@ fn some_func(x: &mut i32) {
 ```
 "##,
 
+E0071: r##"
+You tried to use a structure initialization with a non-structure type.
+Example of erroneous code:
+
+```
+enum Foo { FirstValue };
+
+let u = Foo::FirstValue { value: 0i32 }; // error: Foo::FirstValue
+                                         // isn't a structure!
+// or even simpler, if the structure wasn't defined at all:
+let u = RandomName { random_field: 0i32 }; // error: RandomName
+                                           // isn't a structure!
+```
+
+To fix this, please check:
+ * Did you spell it right?
+ * Did you accidentaly used an enum as a struct?
+ * Did you accidentaly make an enum when you intended to use a struct?
+
+Here is the previous code with all missing information:
+
+```
+struct Inner {
+    value: i32
+}
+
+enum Foo {
+    FirstValue(Inner)
+}
+
+fn main() {
+    let u = Foo::FirstValue(Inner { value: 0i32 });
+
+    let t = Inner { value: 0i32 };
+}
+```
+"##,
+
 E0072: r##"
 When defining a recursive struct or enum, any use of the type being defined
 from inside the definition must occur behind a pointer (like `Box` or `&`).
@@ -858,6 +934,51 @@ The number of supplied parameters much exactly match the number of defined type
 parameters.
 "##,
 
+E0088: r##"
+You gave too many lifetime parameters. Erroneous code example:
+
+```
+fn f() {}
+
+fn main() {
+    f::<'static>() // error: too many lifetime parameters provided
+}
+```
+
+Please check you give the right number of lifetime parameters. Example:
+
+```
+fn f() {}
+
+fn main() {
+    f() // ok!
+}
+```
+
+It's also important to note that the Rust compiler can generally
+determine the lifetime by itself. Example:
+
+```
+struct Foo {
+    value: String
+}
+
+impl Foo {
+    // it can be written like this
+    fn get_value<'a>(&'a self) -> &'a str { &self.value }
+    // but the compiler works fine with this too:
+    fn without_lifetime(&self) -> &str { &self.value }
+}
+
+fn main() {
+    let f = Foo { value: "hello".to_owned() };
+
+    println!("{}", f.get_value());
+    println!("{}", f.without_lifetime());
+}
+```
+"##,
+
 E0089: r##"
 Not enough type parameters were supplied for a function. For example:
 
@@ -880,6 +1001,24 @@ fn main() {
     foo::<f64>(x);    // error, expected 2 parameters, found 1 parameter
     foo::<_, f64>(x); // same as `foo::<bool, f64>(x)`
 }
+```
+"##,
+
+E0091: r##"
+You gave an unnecessary type parameter in a type alias. Erroneous code
+example:
+
+```
+type Foo<T> = u32; // error: type parameter `T` is unused
+// or:
+type Foo<A,B> = Box<A>; // error: type parameter `B` is unused
+```
+
+Please check you didn't write too many type parameters. Example:
+
+```
+type Foo = u32; // ok!
+type Foo<A> = Box<A>; // ok!
 ```
 "##,
 
@@ -1382,6 +1521,42 @@ impl Foo for Bar {
 ```
 "##,
 
+E0327: r##"
+You cannot use associated items other than constant items as patterns. This
+includes method items. Example of erroneous code:
+
+```
+enum B {}
+
+impl B {
+    fn bb() -> i32 { 0 }
+}
+
+fn main() {
+    match 0 {
+        B::bb => {} // error: associated items in match patterns must
+                    // be constants
+    }
+}
+```
+
+Please check that you're not using a method as a pattern. Example:
+
+```
+enum B {
+    ba,
+    bb
+}
+
+fn main() {
+    match B::ba {
+        B::bb => {} // ok!
+        _ => {}
+    }
+}
+```
+"##,
+
 E0368: r##"
 This error indicates that a binary assignment operator like `+=` or `^=` was
 applied to the wrong types. For example:
@@ -1466,19 +1641,14 @@ For more information see the [opt-in builtin traits RFC](https://github.com/rust
 }
 
 register_diagnostics! {
-    E0044, // foreign items may not have type parameters
-    E0045, // variadic function must have C calling convention
     E0068,
-    E0071,
     E0074,
     E0075,
     E0076,
     E0077,
     E0085,
     E0086,
-    E0088,
     E0090,
-    E0091,
     E0092,
     E0093,
     E0094,
@@ -1535,7 +1705,8 @@ register_diagnostics! {
     E0219, // associated type defined in higher-ranked supertrait
     E0220, // associated type not found for type parameter
     E0221, // ambiguous associated type in bounds
-    E0222, // variadic function must have C calling convention
+    //E0222, // Error code E0045 (variadic function must have C calling
+             // convention) duplicate
     E0223, // ambiguous associated type
     E0224, // at least one non-builtin train is required for an object type
     E0225, // only the builtin traits can be used as closure or object bounds
@@ -1566,7 +1737,6 @@ register_diagnostics! {
     E0323, // implemented an associated const when another trait item expected
     E0324, // implemented a method when another trait item expected
     E0325, // implemented an associated type when another trait item expected
-    E0327, // referred to method instead of constant in match pattern
     E0328, // cannot implement Unsize explicitly
     E0329, // associated const depends on type parameter or Self.
     E0366, // dropck forbid specialization to concrete type or region

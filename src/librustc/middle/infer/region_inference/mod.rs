@@ -1672,7 +1672,7 @@ impl<'tcx> GenericKind<'tcx> {
             GenericKind::Param(ref p) =>
                 p.to_ty(tcx),
             GenericKind::Projection(ref p) =>
-                ty::mk_projection(tcx, p.trait_ref.clone(), p.item_name),
+                tcx.mk_projection(p.trait_ref.clone(), p.item_name),
         }
     }
 }

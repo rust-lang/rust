@@ -441,12 +441,12 @@ pub mod types {
                 pub type intmax_t = i64;
                 pub type uintmax_t = u64;
             }
-            #[cfg(any(target_arch = "x86",
-                      target_arch = "mips",
+            #[cfg(any(target_arch = "mips",
                       target_arch = "mipsel",
                       target_arch = "powerpc",
                       target_arch = "le32",
-                      all(target_arch = "arm", not(target_os = "android"))))]
+                      all(any(target_arch = "arm", target_arch = "x86"),
+                          not(target_os = "android"))))]
             pub mod posix88 {
                 pub type off_t = i32;
                 pub type dev_t = u64;
@@ -458,7 +458,8 @@ pub mod types {
                 pub type mode_t = u32;
                 pub type ssize_t = i32;
             }
-            #[cfg(all(target_arch = "arm", target_os = "android"))]
+            #[cfg(all(any(target_arch = "arm", target_arch = "x86"),
+                      target_os = "android"))]
             pub mod posix88 {
                 pub type off_t = i32;
                 pub type dev_t = u32;
@@ -473,7 +474,8 @@ pub mod types {
             #[cfg(any(target_arch = "x86",
                       target_arch = "le32",
                       target_arch = "powerpc",
-                      all(target_arch = "arm", not(target_os = "android"))))]
+                      all(any(target_arch = "arm", target_arch = "x86"),
+                          not(target_os = "android"))))]
             pub mod posix01 {
                 use types::os::arch::c95::{c_short, c_long, time_t};
                 use types::os::arch::posix88::{dev_t, gid_t, ino_t};
@@ -519,7 +521,8 @@ pub mod types {
                     pub __size: [u32; 9]
                 }
             }
-            #[cfg(all(target_arch = "arm", target_os = "android"))]
+            #[cfg(all(any(target_arch = "arm", target_arch = "x86"),
+                          target_os = "android"))]
             pub mod posix01 {
                 use types::os::arch::c95::{c_uchar, c_uint, c_ulong, time_t};
                 use types::os::arch::c99::{c_longlong, c_ulonglong};
@@ -3597,6 +3600,11 @@ pub mod consts {
             pub const SHUT_RD: c_int = 0;
             pub const SHUT_WR: c_int = 1;
             pub const SHUT_RDWR: c_int = 2;
+
+            pub const LOCK_SH: c_int = 1;
+            pub const LOCK_EX: c_int = 2;
+            pub const LOCK_NB: c_int = 4;
+            pub const LOCK_UN: c_int = 8;
         }
         #[cfg(any(target_arch = "mips",
                   target_arch = "mipsel"))]
@@ -3681,6 +3689,11 @@ pub mod consts {
             pub const SHUT_RD: c_int = 0;
             pub const SHUT_WR: c_int = 1;
             pub const SHUT_RDWR: c_int = 2;
+
+            pub const LOCK_SH: c_int = 1;
+            pub const LOCK_EX: c_int = 2;
+            pub const LOCK_NB: c_int = 4;
+            pub const LOCK_UN: c_int = 8;
         }
         #[cfg(any(target_arch = "x86",
                   target_arch = "x86_64",
@@ -4224,6 +4237,11 @@ pub mod consts {
             pub const SHUT_RD: c_int = 0;
             pub const SHUT_WR: c_int = 1;
             pub const SHUT_RDWR: c_int = 2;
+
+            pub const LOCK_SH: c_int = 1;
+            pub const LOCK_EX: c_int = 2;
+            pub const LOCK_NB: c_int = 4;
+            pub const LOCK_UN: c_int = 8;
         }
         pub mod extra {
             use types::os::arch::c95::c_int;
@@ -4648,6 +4666,11 @@ pub mod consts {
             pub const SHUT_RD: c_int = 0;
             pub const SHUT_WR: c_int = 1;
             pub const SHUT_RDWR: c_int = 2;
+
+            pub const LOCK_SH: c_int = 1;
+            pub const LOCK_EX: c_int = 2;
+            pub const LOCK_NB: c_int = 4;
+            pub const LOCK_UN: c_int = 8;
         }
         pub mod extra {
             use types::os::arch::c95::c_int;
@@ -5089,6 +5112,11 @@ pub mod consts {
             pub const SHUT_RD: c_int = 0;
             pub const SHUT_WR: c_int = 1;
             pub const SHUT_RDWR: c_int = 2;
+
+            pub const LOCK_SH: c_int = 1;
+            pub const LOCK_EX: c_int = 2;
+            pub const LOCK_NB: c_int = 4;
+            pub const LOCK_UN: c_int = 8;
         }
         pub mod extra {
             use types::os::arch::c95::c_int;
@@ -5916,13 +5944,15 @@ pub mod funcs {
             use types::os::arch::c95::c_int;
             use types::os::common::posix01::sighandler_t;
 
-            #[cfg(not(all(target_os = "android", target_arch = "arm")))]
+            #[cfg(not(all(target_os = "android", any(target_arch = "arm",
+                                                     target_arch = "x86"))))]
             extern {
                 pub fn signal(signum: c_int,
                               handler: sighandler_t) -> sighandler_t;
             }
 
-            #[cfg(all(target_os = "android", target_arch = "arm"))]
+            #[cfg(all(target_os = "android", any(target_arch = "arm",
+                                                 target_arch = "x86")))]
             extern {
                 #[link_name = "bsd_signal"]
                 pub fn signal(signum: c_int,
@@ -6116,6 +6146,7 @@ pub mod funcs {
                            -> c_int;
             pub fn realpath(pathname: *const c_char, resolved: *mut c_char)
                             -> *mut c_char;
+            pub fn flock(fd: c_int, operation: c_int) -> c_int;
         }
     }
 
@@ -6132,6 +6163,7 @@ pub mod funcs {
                            -> c_int;
             pub fn mincore(addr: *mut c_void, len: size_t, vec: *mut c_uchar)
                            -> c_int;
+            pub fn flock(fd: c_int, operation: c_int) -> c_int;
         }
     }
 

@@ -215,13 +215,37 @@ impl Float for f32 {
     /// Rounds towards minus infinity.
     #[inline]
     fn floor(self) -> f32 {
-        unsafe { intrinsics::floorf32(self) }
+        return floorf(self);
+
+        // On MSVC LLVM will lower many math intrinsics to a call to the
+        // corresponding function. On MSVC, however, many of these functions
+        // aren't actually available as symbols to call, but rather they are all
+        // `static inline` functions in header files. This means that from a C
+        // perspective it's "compatible", but not so much from an ABI
+        // perspective (which we're worried about).
+        //
+        // The inline header functions always just cast to a f64 and do their
+        // operation, so we do that here as well, but only for MSVC targets.
+        //
+        // Note that there are many MSVC-specific float operations which
+        // redirect to this comment, so `floorf` is just one case of a missing
+        // function on MSVC, but there are many others elsewhere.
+        #[cfg(target_env = "msvc")]
+        fn floorf(f: f32) -> f32 { (f as f64).floor() as f32 }
+        #[cfg(not(target_env = "msvc"))]
+        fn floorf(f: f32) -> f32 { unsafe { intrinsics::floorf32(f) } }
     }
 
     /// Rounds towards plus infinity.
     #[inline]
     fn ceil(self) -> f32 {
-        unsafe { intrinsics::ceilf32(self) }
+        return ceilf(self);
+
+        // see notes above in `floor`
+        #[cfg(target_env = "msvc")]
+        fn ceilf(f: f32) -> f32 { (f as f64).ceil() as f32 }
+        #[cfg(not(target_env = "msvc"))]
+        fn ceilf(f: f32) -> f32 { unsafe { intrinsics::ceilf32(f) } }
     }
 
     /// Rounds to nearest integer. Rounds half-way cases away from zero.
@@ -299,7 +323,13 @@ impl Float for f32 {
 
     #[inline]
     fn powf(self, n: f32) -> f32 {
-        unsafe { intrinsics::powf32(self, n) }
+        return powf(self, n);
+
+        // see notes above in `floor`
+        #[cfg(target_env = "msvc")]
+        fn powf(f: f32, n: f32) -> f32 { (f as f64).powf(n as f64) as f32 }
+        #[cfg(not(target_env = "msvc"))]
+        fn powf(f: f32, n: f32) -> f32 { unsafe { intrinsics::powf32(f, n) } }
     }
 
     #[inline]
@@ -317,7 +347,13 @@ impl Float for f32 {
     /// Returns the exponential of the number.
     #[inline]
     fn exp(self) -> f32 {
-        unsafe { intrinsics::expf32(self) }
+        return expf(self);
+
+        // see notes above in `floor`
+        #[cfg(target_env = "msvc")]
+        fn expf(f: f32) -> f32 { (f as f64).exp() as f32 }
+        #[cfg(not(target_env = "msvc"))]
+        fn expf(f: f32) -> f32 { unsafe { intrinsics::expf32(f) } }
     }
 
     /// Returns 2 raised to the power of the number.
@@ -329,7 +365,13 @@ impl Float for f32 {
     /// Returns the natural logarithm of the number.
     #[inline]
     fn ln(self) -> f32 {
-        unsafe { intrinsics::logf32(self) }
+        return logf(self);
+
+        // see notes above in `floor`
+        #[cfg(target_env = "msvc")]
+        fn logf(f: f32) -> f32 { (f as f64).ln() as f32 }
+        #[cfg(not(target_env = "msvc"))]
+        fn logf(f: f32) -> f32 { unsafe { intrinsics::logf32(f) } }
     }
 
     /// Returns the logarithm of the number with respect to an arbitrary base.
@@ -345,7 +387,13 @@ impl Float for f32 {
     /// Returns the base 10 logarithm of the number.
     #[inline]
     fn log10(self) -> f32 {
-        unsafe { intrinsics::log10f32(self) }
+        return log10f(self);
+
+        // see notes above in `floor`
+        #[cfg(target_env = "msvc")]
+        fn log10f(f: f32) -> f32 { (f as f64).log10() as f32 }
+        #[cfg(not(target_env = "msvc"))]
+        fn log10f(f: f32) -> f32 { unsafe { intrinsics::log10f32(f) } }
     }
 
     /// Converts to degrees, assuming the number is in radians.

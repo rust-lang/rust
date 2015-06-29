@@ -317,7 +317,7 @@ impl<'a, 'tcx> pprust::PpAnn for TypedAnnotation<'a, 'tcx> {
                 try!(pp::word(&mut s.s, "as"));
                 try!(pp::space(&mut s.s));
                 try!(pp::word(&mut s.s,
-                              &ty::expr_ty(self.tcx, expr).to_string()));
+                              &self.tcx.expr_ty(expr).to_string()));
                 s.pclose()
             }
             _ => Ok(())

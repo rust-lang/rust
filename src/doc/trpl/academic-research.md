@@ -42,5 +42,32 @@ Recommended for inspiration and a better understanding of Rust's background.
 
 ### Papers *about* Rust
 
-* [GPU programming in Rust](http://www.cs.indiana.edu/~eholk/papers/hips2013.pdf)
-* [Parallel closures: a new twist on an old idea](https://www.usenix.org/conference/hotpar12/parallel-closures-new-twist-old-idea) - not exactly about rust, but by nmatsakis
+* [GPU Programming in Rust: Implementing High Level Abstractions in a
+Systems Level
+Language](http://www.cs.indiana.edu/~eholk/papers/hips2013.pdf). Early GPU work by Eric Holk.
+* [Parallel closures: a new twist on an old
+  idea](https://www.usenix.org/conference/hotpar12/parallel-closures-new-twist-old-idea)
+  - not exactly about rust, but by nmatsakis
+* [Patina: A Formalization of the Rust Programming
+  Language](ftp://ftp.cs.washington.edu/tr/2015/03/UW-CSE-15-03-02.pdf). Early
+  formalization of a subset of the type system, by Eric Reed.
+* [Experience Report: Developing the Servo Web Browser Engine using
+  Rust](http://arxiv.org/abs/1505.07383). By Lars Bergstrom.
+* [Implementing a Generic Radix Trie in
+  Rust](https://michaelsproul.github.io/rust_radix_paper/rust-radix-sproul.pdf). Undergrad
+  paper by Michael Sproul.
+* [Reenix: Implementing a Unix-Like Operating System in
+  Rust](http://scialex.github.io/reenix.pdf). Undergrad paper by Alex
+  Light.
+* [Evaluation of performance and productivity metrics of potential
+  programming languages in the HPC environment](). Bachelor's thesis by
+  Florian Wilkens. Compares C, Go and Rust.
+* [Nom, a byte oriented, streaming, zero copy, parser combinators library
+  in Rust](http://spw15.langsec.org/papers/couprie-nom.pdf). By
+  Geoffroy Couprie, research for VLC.
+* [Graph-Based Higher-Order Intermediate
+  Representation](http://compilers.cs.uni-saarland.de/papers/lkh15_cgo.pdf). An
+  experimental IR implemented in Impala, a Rust-like language.
+* [Code Refinement of Stencil
+  Codes](http://compilers.cs.uni-saarland.de/papers/ppl14_web.pdf). Another
+  paper using Impala.

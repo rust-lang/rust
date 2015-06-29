@@ -25,7 +25,9 @@
 //! * `Eq`
 //! * `PartialOrd`
 //! * `Ord`
+//! * `Debug`
 //! * `Default`
+//! * `Hash`
 //!
 //! # Examples
 //!

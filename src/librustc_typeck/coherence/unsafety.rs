@@ -30,7 +30,7 @@ impl<'cx, 'tcx, 'v> UnsafetyChecker<'cx, 'tcx> {
     fn check_unsafety_coherence(&mut self, item: &'v ast::Item,
                                 unsafety: ast::Unsafety,
                                 polarity: ast::ImplPolarity) {
-        match ty::impl_trait_ref(self.tcx, ast_util::local_def(item.id)) {
+        match self.tcx.impl_trait_ref(ast_util::local_def(item.id)) {
             None => {
                 // Inherent impl.
                 match unsafety {
@@ -43,7 +43,7 @@ impl<'cx, 'tcx, 'v> UnsafetyChecker<'cx, 'tcx> {
             }
 
             Some(trait_ref) => {
-                let trait_def = ty::lookup_trait_def(self.tcx, trait_ref.def_id);
+                let trait_def = self.tcx.lookup_trait_def(trait_ref.def_id);
                 match (trait_def.unsafety, unsafety, polarity) {
                     (ast::Unsafety::Unsafe,
                      ast::Unsafety::Unsafe, ast::ImplPolarity::Negative) => {

@@ -101,13 +101,8 @@ we could have added more explanation in a new paragraph.
 
 #### Special sections
 
-```rust
-/// # Examples
-# fn foo() {}
-```
-
 Next, are special sections. These are indicated with a header, `#`. There
-are three kinds of headers that are commonly used. They aren't special syntax,
+are four kinds of headers that are commonly used. They aren't special syntax,
 just convention, for now.
 
 ```rust
@@ -149,7 +144,7 @@ responsible for upholding.
 # fn foo() {}
 ```
 
-Third, `Examples`. Include one or more examples of using your function or
+Fourth, `Examples`. Include one or more examples of using your function or
 method, and your users will love you for it. These examples go inside of
 code block annotations, which we'll talk about in a moment, and can have
 more than one section:

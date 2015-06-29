@@ -8,15 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(no_std)]
+#![feature(no_std, core, libc)]
 #![no_std]
 #![feature(lang_items)]
 
-#[lang="sized"]
-pub trait Sized { }
-
-#[lang="panic"]
-fn panic(_: &(&'static str, &'static str, usize)) -> ! { loop {} }
+extern crate core;
+extern crate libc;
 
 #[lang = "stack_exhausted"]
 extern fn stack_exhausted() {}
@@ -24,26 +21,8 @@ extern fn stack_exhausted() {}
 #[lang = "eh_personality"]
 extern fn eh_personality() {}
 
-#[lang="copy"]
-pub trait Copy {
-    // Empty.
-}
-
-#[lang="rem"]
-pub trait Rem<RHS=Self> {
-    type Output = Self;
-    fn rem(self, rhs: RHS) -> Self::Output;
-}
-
-impl Rem for isize {
-    type Output = isize;
-
-    #[inline]
-    fn rem(self, other: isize) -> isize {
-        // if you use `self % other` here, as one would expect, you
-        // get back an error because of potential failure/overflow,
-        // which tries to invoke error fns that don't have the
-        // appropriate signatures anymore. So...just return 0.
-        0
-    }
+#[lang = "panic_fmt"]
+extern fn rust_begin_unwind(msg: core::fmt::Arguments, file: &'static str,
+                            line: u32) -> ! {
+    loop {}
 }

@@ -397,7 +397,7 @@ fn find_stability_generic<'a,
                              -> (Option<Stability>, Vec<&'a AM>) {
 
     let mut stab: Option<Stability> = None;
-    let mut deprecated: Option<(InternedString, Option<InternedString>)> = None;
+    let mut deprecated: Option<(Option<InternedString>, Option<InternedString>)> = None;
     let mut used_attrs: Vec<&'a AM> = vec![];
 
     'outer: for attr in attrs {
@@ -484,7 +484,7 @@ fn find_stability_generic<'a,
                 diagnostic.span_err(item_sp, "multiple deprecated attributes");
             }
 
-            deprecated = Some((since.unwrap_or(intern_and_get_ident("bogus")), reason));
+            deprecated = Some((since, reason));
         }
     }
 
@@ -493,7 +493,7 @@ fn find_stability_generic<'a,
         match stab {
             Some(ref mut s) => {
                 let (since, reason) = deprecated.unwrap();
-                s.deprecated_since = Some(since);
+                s.deprecated_since = since;
                 s.reason = reason;
             }
             None => {

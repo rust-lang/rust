@@ -113,7 +113,7 @@ fn relate_item_substs<'a,'tcx:'a,R>(relation: &mut R,
 
     let variances;
     let opt_variances = if relation.tcx().variance_computed.get() {
-        variances = ty::item_variances(relation.tcx(), item_def_id);
+        variances = relation.tcx().item_variances(item_def_id);
         Some(&*variances)
     } else {
         None
@@ -469,21 +469,21 @@ pub fn super_relate_tys<'a,'tcx:'a,R>(relation: &mut R,
             if a_id == b_id =>
         {
             let substs = try!(relate_item_substs(relation, a_id, a_substs, b_substs));
-            Ok(ty::mk_enum(tcx, a_id, tcx.mk_substs(substs)))
+            Ok(tcx.mk_enum(a_id, tcx.mk_substs(substs)))
         }
 
         (&ty::TyTrait(ref a_), &ty::TyTrait(ref b_)) =>
         {
             let principal = try!(relation.relate(&a_.principal, &b_.principal));
             let bounds = try!(relation.relate(&a_.bounds, &b_.bounds));
-            Ok(ty::mk_trait(tcx, principal, bounds))
+            Ok(tcx.mk_trait(principal, bounds))
         }
 
         (&ty::TyStruct(a_id, a_substs), &ty::TyStruct(b_id, b_substs))
             if a_id == b_id =>
         {
             let substs = try!(relate_item_substs(relation, a_id, a_substs, b_substs));
-            Ok(ty::mk_struct(tcx, a_id, tcx.mk_substs(substs)))
+            Ok(tcx.mk_struct(a_id, tcx.mk_substs(substs)))
         }
 
         (&ty::TyClosure(a_id, a_substs),
@@ -494,33 +494,33 @@ pub fn super_relate_tys<'a,'tcx:'a,R>(relation: &mut R,
             // the (anonymous) type of the same closure expression. So
             // all of their regions should be equated.
             let substs = try!(relate_substs(relation, None, a_substs, b_substs));
-            Ok(ty::mk_closure(tcx, a_id, tcx.mk_substs(substs)))
+            Ok(tcx.mk_closure(a_id, tcx.mk_substs(substs)))
         }
 
         (&ty::TyBox(a_inner), &ty::TyBox(b_inner)) =>
         {
             let typ = try!(relation.relate(&a_inner, &b_inner));
-            Ok(ty::mk_uniq(tcx, typ))
+            Ok(tcx.mk_box(typ))
         }
 
         (&ty::TyRawPtr(ref a_mt), &ty::TyRawPtr(ref b_mt)) =>
         {
             let mt = try!(relation.relate(a_mt, b_mt));
-            Ok(ty::mk_ptr(tcx, mt))
+            Ok(tcx.mk_ptr(mt))
         }
 
         (&ty::TyRef(a_r, ref a_mt), &ty::TyRef(b_r, ref b_mt)) =>
         {
             let r = try!(relation.relate_with_variance(ty::Contravariant, a_r, b_r));
             let mt = try!(relation.relate(a_mt, b_mt));
-            Ok(ty::mk_rptr(tcx, tcx.mk_region(r), mt))
+            Ok(tcx.mk_ref(tcx.mk_region(r), mt))
         }
 
         (&ty::TyArray(a_t, sz_a), &ty::TyArray(b_t, sz_b)) =>
         {
             let t = try!(relation.relate(&a_t, &b_t));
             if sz_a == sz_b {
-                Ok(ty::mk_vec(tcx, t, Some(sz_a)))
+                Ok(tcx.mk_array(t, sz_a))
             } else {
                 Err(ty::terr_fixed_array_size(expected_found(relation, &sz_a, &sz_b)))
             }
@@ -529,7 +529,7 @@ pub fn super_relate_tys<'a,'tcx:'a,R>(relation: &mut R,
         (&ty::TySlice(a_t), &ty::TySlice(b_t)) =>
         {
             let t = try!(relation.relate(&a_t, &b_t));
-            Ok(ty::mk_vec(tcx, t, None))
+            Ok(tcx.mk_slice(t))
         }
 
         (&ty::TyTuple(ref as_), &ty::TyTuple(ref bs)) =>
@@ -538,7 +538,7 @@ pub fn super_relate_tys<'a,'tcx:'a,R>(relation: &mut R,
                 let ts = try!(as_.iter().zip(bs)
                                  .map(|(a, b)| relation.relate(a, b))
                                  .collect::<Result<_, _>>());
-                Ok(ty::mk_tup(tcx, ts))
+                Ok(tcx.mk_tup(ts))
             } else if !(as_.is_empty() || bs.is_empty()) {
                 Err(ty::terr_tuple_size(
                     expected_found(relation, &as_.len(), &bs.len())))
@@ -551,13 +551,13 @@ pub fn super_relate_tys<'a,'tcx:'a,R>(relation: &mut R,
             if a_opt_def_id == b_opt_def_id =>
         {
             let fty = try!(relation.relate(a_fty, b_fty));
-            Ok(ty::mk_bare_fn(tcx, a_opt_def_id, tcx.mk_bare_fn(fty)))
+            Ok(tcx.mk_fn(a_opt_def_id, tcx.mk_bare_fn(fty)))
         }
 
         (&ty::TyProjection(ref a_data), &ty::TyProjection(ref b_data)) =>
         {
             let projection_ty = try!(relation.relate(a_data, b_data));
-            Ok(ty::mk_projection(tcx, projection_ty.trait_ref, projection_ty.item_name))
+            Ok(tcx.mk_projection(projection_ty.trait_ref, projection_ty.item_name))
         }
 
         _ =>

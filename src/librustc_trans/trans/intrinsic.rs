@@ -30,7 +30,7 @@ use trans::type_of;
 use trans::machine;
 use trans::machine::llsize_of;
 use trans::type_::Type;
-use middle::ty::{self, Ty};
+use middle::ty::{self, Ty, HasTypeFlags};
 use syntax::abi::RustIntrinsic;
 use syntax::ast;
 use syntax::parse::token;
@@ -103,8 +103,8 @@ pub fn check_intrinsics(ccx: &CrateContext) {
 
         debug!("transmute_restriction: {:?}", transmute_restriction);
 
-        assert!(!ty::type_has_params(transmute_restriction.substituted_from));
-        assert!(!ty::type_has_params(transmute_restriction.substituted_to));
+        assert!(!transmute_restriction.substituted_from.has_param_types());
+        assert!(!transmute_restriction.substituted_to.has_param_types());
 
         let llfromtype = type_of::sizing_type_of(ccx,
                                                  transmute_restriction.substituted_from);
@@ -163,7 +163,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
 
     let ret_ty = match callee_ty.sty {
         ty::TyBareFn(_, ref f) => {
-            ty::erase_late_bound_regions(bcx.tcx(), &f.sig.output())
+            bcx.tcx().erase_late_bound_regions(&f.sig.output())
         }
         _ => panic!("expected bare_fn in trans_intrinsic_call")
     };
@@ -411,10 +411,8 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
             C_str_slice(ccx, ty_name)
         }
         (_, "type_id") => {
-            let hash = ty::hash_crate_independent(
-                ccx.tcx(),
-                *substs.types.get(FnSpace, 0),
-                &ccx.link_meta().crate_hash);
+            let hash = ccx.tcx().hash_crate_independent(*substs.types.get(FnSpace, 0),
+                                                        &ccx.link_meta().crate_hash);
             C_u64(ccx, hash)
         }
         (_, "init_dropped") => {

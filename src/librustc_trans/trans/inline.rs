@@ -14,7 +14,6 @@ use middle::astencode;
 use middle::subst::Substs;
 use trans::base::{push_ctxt, trans_item, get_item_val, trans_fn};
 use trans::common::*;
-use middle::ty;
 
 use syntax::ast;
 use syntax::ast_util::local_def;
@@ -28,7 +27,7 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
         Some(&Some(node_id)) => {
             // Already inline
             debug!("instantiate_inline({}): already inline as node id {}",
-                   ty::item_path_str(ccx.tcx(), fn_id), node_id);
+                   ccx.tcx().item_path_str(fn_id), node_id);
             return Some(local_def(node_id));
         }
         Some(&None) => {
@@ -104,8 +103,8 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
           let mut my_id = 0;
           match item.node {
             ast::ItemEnum(_, _) => {
-              let vs_here = ty::enum_variants(ccx.tcx(), local_def(item.id));
-              let vs_there = ty::enum_variants(ccx.tcx(), parent_id);
+              let vs_here = ccx.tcx().enum_variants(local_def(item.id));
+              let vs_there = ccx.tcx().enum_variants(parent_id);
               for (here, there) in vs_here.iter().zip(vs_there.iter()) {
                   if there.id == fn_id { my_id = here.id.node; }
                   ccx.external().borrow_mut().insert(there.id, Some(here.id.node));
@@ -140,7 +139,7 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
             // the logic to do that already exists in `middle`. In order to
             // reuse that code, it needs to be able to look up the traits for
             // inlined items.
-            let ty_trait_item = ty::impl_or_trait_item(ccx.tcx(), fn_id).clone();
+            let ty_trait_item = ccx.tcx().impl_or_trait_item(fn_id).clone();
             ccx.tcx().impl_or_trait_items.borrow_mut()
                      .insert(local_def(trait_item.id), ty_trait_item);
 
@@ -157,7 +156,7 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
 
             // Translate monomorphic impl methods immediately.
             if let ast::MethodImplItem(ref sig, ref body) = impl_item.node {
-                let impl_tpt = ty::lookup_item_type(ccx.tcx(), impl_did);
+                let impl_tpt = ccx.tcx().lookup_item_type(impl_did);
                 if impl_tpt.generics.types.is_empty() &&
                         sig.generics.ty_params.is_empty() {
                     let empty_substs = ccx.tcx().mk_substs(Substs::trans_empty());

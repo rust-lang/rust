@@ -263,7 +263,7 @@ mod dl {
     use sys::os;
     use os::windows::prelude::*;
     use ptr;
-    use sys::c::compat::kernel32::SetThreadErrorMode;
+    use sys::c::SetThreadErrorMode;
 
     pub fn open(filename: Option<&OsStr>) -> Result<*mut u8, String> {
         // disable "dll load failed" error dialog.
