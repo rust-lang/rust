@@ -125,14 +125,14 @@ pub trait AstConv<'tcx> {
                                         item_name: ast::Name)
                                         -> Ty<'tcx>
     {
-        if self.tcx().binds_late_bound_regions(&poly_trait_ref) {
+        if let Some(trait_ref) = self.tcx().no_late_bound_regions(&poly_trait_ref) {
+            self.projected_ty(span, trait_ref, item_name)
+        } else {
+            // no late-bound regions, we can just ignore the binder
             span_err!(self.tcx().sess, span, E0212,
                 "cannot extract an associated type from a higher-ranked trait bound \
                  in this context");
             self.tcx().types.err
-        } else {
-            // no late-bound regions, we can just ignore the binder
-            self.projected_ty(span, poly_trait_ref.0.clone(), item_name)
         }
     }
 

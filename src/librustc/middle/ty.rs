@@ -6853,19 +6853,6 @@ impl<'tcx> ctxt<'tcx> {
             |br| ty::ReFree(ty::FreeRegion{scope: all_outlive_scope, bound_region: br})).0
     }
 
-    pub fn count_late_bound_regions<T>(&self, value: &Binder<T>) -> usize
-        where T : TypeFoldable<'tcx>
-    {
-        let (_, skol_map) = ty_fold::replace_late_bound_regions(self, value, |_| ty::ReStatic);
-        skol_map.len()
-    }
-
-    pub fn binds_late_bound_regions<T>(&self, value: &Binder<T>) -> bool
-        where T : TypeFoldable<'tcx>
-    {
-        self.count_late_bound_regions(value) > 0
-    }
-
     /// Flattens two binding levels into one. So `for<'a> for<'b> Foo`
     /// becomes `for<'a,'b> Foo`.
     pub fn flatten_late_bound_regions<T>(&self, bound2_value: &Binder<Binder<T>>)
@@ -6890,9 +6877,9 @@ impl<'tcx> ctxt<'tcx> {
     }
 
     pub fn no_late_bound_regions<T>(&self, value: &Binder<T>) -> Option<T>
-        where T : TypeFoldable<'tcx>
+        where T : TypeFoldable<'tcx> + RegionEscape
     {
-        if self.binds_late_bound_regions(value) {
+        if value.0.has_escaping_regions() {
             None
         } else {
             Some(value.0.clone())
@@ -7052,6 +7039,19 @@ impl<'tcx> RegionEscape for Substs<'tcx> {
     }
 }
 
+impl<T:RegionEscape> RegionEscape for Vec<T> {
+    fn has_regions_escaping_depth(&self, depth: u32) -> bool {
+        self.iter().any(|t| t.has_regions_escaping_depth(depth))
+    }
+}
+
+impl<'tcx> RegionEscape for FnSig<'tcx> {
+    fn has_regions_escaping_depth(&self, depth: u32) -> bool {
+        self.inputs.has_regions_escaping_depth(depth) ||
+            self.output.has_regions_escaping_depth(depth)
+    }
+}
+
 impl<'tcx,T:RegionEscape> RegionEscape for VecPerParamSpace<T> {
     fn has_regions_escaping_depth(&self, depth: u32) -> bool {
         self.iter_enumerated().any(|(space, _, t)| {
@@ -7121,6 +7121,15 @@ impl<'tcx> RegionEscape for subst::RegionSubsts {
 impl<'tcx,T:RegionEscape> RegionEscape for Binder<T> {
     fn has_regions_escaping_depth(&self, depth: u32) -> bool {
         self.0.has_regions_escaping_depth(depth + 1)
+    }
+}
+
+impl<'tcx> RegionEscape for FnOutput<'tcx> {
+    fn has_regions_escaping_depth(&self, depth: u32) -> bool {
+        match *self {
+            FnConverging(t) => t.has_regions_escaping_depth(depth),
+            FnDiverging => false
+        }
     }
 }
 
