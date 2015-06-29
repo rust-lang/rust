@@ -62,6 +62,7 @@
 #   * tidy-basic - show file / line stats
 #   * tidy-errors - show the highest rustc error code
 #   * tidy-features - show the status of language and lib features
+#   * rustc-stage$(stage) - Only build up to a specific stage
 #
 # Then mix in some of these environment variables to harness the
 # ultimate power of The Rust Build System.
@@ -90,7 +91,7 @@
 #
 # # Rust recipes for build system success
 #
-#     // Modifying libstd? Use this comment to run unit tests just on your change
+#     // Modifying libstd? Use this command to run unit tests just on your change
 #     make check-stage1-std NO_REBUILD=1 NO_BENCH=1
 #
 #     // Added a run-pass test? Use this to test running your test
