@@ -32,21 +32,6 @@ more ergonomic alternatives.
 
 
 
-# Auto-Deref
-
-(Maybe nix this in favour of receiver coercions)
-
-Deref is a trait that allows you to overload the unary `*` to specify a type
-you dereference to. This is largely only intended to be implemented by pointer
-types like `&`, `Box`, and `Rc`. The dot operator will automatically perform
-automatic dereferencing, so that foo.bar() will work uniformly on `Foo`, `&Foo`, `
-&&Foo`, `&Rc<Box<&mut&Box<Foo>>>` and so-on. Search bottoms out on the *first* match,
-so implementing methods on pointers is generally to be avoided, as it will shadow
-"actual" methods.
-
-
-
-
 # Coercions
 
 Types can implicitly be coerced to change in certain contexts. These changes are
@@ -58,88 +43,42 @@ Here's all the kinds of coercion:
 
 Coercion is allowed between the following types:
 
-* `T` to `U` if `T` is a [subtype](lifetimes.html#subtyping-and-variance)
-  of `U` (the 'identity' case);
+* Subtyping: `T` to `U` if `T` is a [subtype](lifetimes.html#subtyping-and-variance)
+  of `U`
+* Transitivity: `T_1` to `T_3` where `T_1` coerces to `T_2` and `T_2` coerces to `T_3`
+* Pointer Weakening:
+    * `&mut T` to `&T`
+    * `*mut T` to `*const T`
+    * `&T` to `*const T`
+    * `&mut T` to `*mut T`
+* Unsizing: `T` to `U` if `T` implements `CoerceUnsized<U>`
 
-* `T_1` to `T_3` where `T_1` coerces to `T_2` and `T_2` coerces to `T_3`
-  (transitivity case);
+`CoerceUnsized<Pointer<U>> for Pointer<T>` where T: Unsize<U> is implemented
+for all pointer types (including smart pointers like Box and Rc). Unsize is
+only implemented automatically, and enables the following transformations:
 
-* `&mut T` to `&T`;
+* `[T, ..n]` => `[T]`
+* `T` => `Trait` where `T: Trait`
+* `SubTrait` => `Trait` where `SubTrait: Trait` (TODO: is this now implied by the previous?)
+* `Foo<..., T, ...>` => `Foo<..., U, ...>` where:
+    * T: Unsize<U>
+    * `Foo` is a struct
+    * Only the last field has type `T`
+    * `T` is not part of the type of any other fields
+  (note that this also applies to to tuples as an anonymous struct `Tuple3<T, U, V>`)
 
-* `*mut T` to `*const T`;
+Coercions occur at a *coercion site*. Any location that is explicitly typed
+will cause a coercion to its type. If inference is necessary, the coercion will
+not be performed. Exhaustively, the coercion sites for an expression `e` to
+type `U` are:
 
-* `&T` to `*const T`;
-
-* `&mut T` to `*mut T`;
-
-* `T` to `U` if `T` implements `CoerceUnsized<U>` (see below) and `T = Foo<...>`
-  and `U = Foo<...>`;
-
-* From TyCtor(`T`) to TyCtor(coerce_inner(`T`));
-
-where TyCtor(`T`) is one of `&T`, `&mut T`, `*const T`, `*mut T`, or `Box<T>`.
-And where coerce_inner is defined as
-
-* coerce_inner(`[T, ..n]`) = `[T]`;
-
-* coerce_inner(`T`) = `U` where `T` is a concrete type which implements the
-  trait `U`;
-
-* coerce_inner(`T`) = `U` where `T` is a sub-trait of `U`;
-
-* coerce_inner(`Foo<..., T, ...>`) = `Foo<..., coerce_inner(T), ...>` where
-  `Foo` is a struct and only the last field has type `T` and `T` is not part of
-  the type of any other fields;
-
-* coerce_inner(`(..., T)`) = `(..., coerce_inner(T))`.
-
-Coercions only occur at a *coercion site*. Exhaustively, the coercion sites
-are:
-
-* In `let` statements where an explicit type is given: in `let _: U = e;`, `e`
-  is coerced to to have type `U`;
-
-* In statics and consts, similarly to `let` statements;
-
-* In argument position for function calls. The value being coerced is the actual
-  parameter and it is coerced to the type of the formal parameter. For example,
-  where `foo` is defined as `fn foo(x: U) { ... }` and is called with `foo(e);`,
-  `e` is coerced to have type `U`;
-
-* Where a field of a struct or variant is instantiated. E.g., where `struct Foo
-  { x: U }` and the instantiation is `Foo { x: e }`, `e` is coerced to to have
-  type `U`;
-
-* The result of a function, either the final line of a block if it is not semi-
-  colon terminated or any expression in a `return` statement. For example, for
-  `fn foo() -> U { e }`, `e` is coerced to to have type `U`;
-
-If the expression in one of these coercion sites is a coercion-propagating
-expression, then the relevant sub-expressions in that expression are also
-coercion sites. Propagation recurses from these new coercion sites. Propagating
-expressions and their relevant sub-expressions are:
-
-* array literals, where the array has type `[U, ..n]`, each sub-expression in
-  the array literal is a coercion site for coercion to type `U`;
-
-* array literals with repeating syntax, where the array has type `[U, ..n]`, the
-  repeated sub-expression is a coercion site for coercion to type `U`;
-
-* tuples, where a tuple is a coercion site to type `(U_0, U_1, ..., U_n)`, each
-  sub-expression is a coercion site for the respective type, e.g., the zero-th
-  sub-expression is a coercion site to `U_0`;
-
-* the box expression, if the expression has type `Box<U>`, the sub-expression is
-  a coercion site to `U`;
-
-* parenthesised sub-expressions (`(e)`), if the expression has type `U`, then
-  the sub-expression is a coercion site to `U`;
-
-* blocks, if a block has type `U`, then the last expression in the block (if it
-  is not semicolon-terminated) is a coercion site to `U`. This includes blocks
-  which are part of control flow statements, such as `if`/`else`, if the block
-  has a known type.
-
+* let statements, statics, and consts: `let x: U = e`
+* Arguments to functions: `takes_a_U(e)`
+* Any expression that will be returned: `fn foo() -> U { e }`
+* Struct literals: `Foo { some_u: e }`
+* Array literals: `let x: [U; 10] = [e, ..]`
+* Tuple literals: `let x: (U, ..) = (e, ..)`
+* The last expression in a block: `let x: U = { ..; e }`
 
 Note that we do not perform coercions when matching traits (except for
 receivers, see below). If there is an impl for some type `U` and `T` coerces to
@@ -147,29 +86,32 @@ receivers, see below). If there is an impl for some type `U` and `T` coerces to
 following will not type check, even though it is OK to coerce `t` to `&T` and
 there is an impl for `&T`:
 
-```
-struct T;
+```rust
 trait Trait {}
 
 fn foo<X: Trait>(t: X) {}
 
-impl<'a> Trait for &'a T {}
+impl<'a> Trait for &'a i32 {}
 
 
 fn main() {
-    let t: &mut T = &mut T;
-    foo(t); //~ ERROR failed to find an implementation of trait Trait for &mut T
+    let t: &mut i32 = &mut 0;
+    foo(t);
 }
 ```
 
-In a cast expression, `e as U`, the compiler will first attempt to coerce `e` to
-`U`, only if that fails will the conversion rules for casts (see below) be
-applied.
+```text
+<anon>:10:5: 10:8 error: the trait `Trait` is not implemented for the type `&mut i32` [E0277]
+<anon>:10     foo(t);
+              ^~~
+```
 
+# The Dot Operator
 
+The dot operator will perform a lot of magic to convert types. It will perform
+auto-referencing, auto-dereferencing, and coercion until types match.
 
-TODO: receiver coercions?
-
+TODO: steal information from http://stackoverflow.com/questions/28519997/what-are-rusts-exact-auto-dereferencing-rules/28552082#28552082
 
 # Casts
 
@@ -178,21 +120,21 @@ cast, but some conversions *require* a cast. These "true casts" are generally re
 as dangerous or problematic actions. True casts revolve around raw pointers and
 the primitive numeric types. True casts aren't checked.
 
-Here's an exhaustive list of all the true casts:
+Here's an exhaustive list of all the true casts. For brevity, we will use `*`
+to denote either a `*const` or `*mut`, and `integer` to denote any integral primitive:
 
- * `e` has type `T` and `T` coerces to `U`; *coercion-cast*
- * `e` has type `*T`, `U` is `*U_0`, and either `U_0: Sized` or
-    unsize_kind(`T`) = unsize_kind(`U_0`); *ptr-ptr-cast*
- * `e` has type `*T` and `U` is a numeric type, while `T: Sized`; *ptr-addr-cast*
- * `e` is an integer and `U` is `*U_0`, while `U_0: Sized`; *addr-ptr-cast*
- * `e` has type `T` and `T` and `U` are any numeric types; *numeric-cast*
- * `e` is a C-like enum and `U` is an integer type; *enum-cast*
- * `e` has type `bool` or `char` and `U` is an integer; *prim-int-cast*
- * `e` has type `u8` and `U` is `char`; *u8-char-cast*
- * `e` has type `&[T; n]` and `U` is `*const T`; *array-ptr-cast*
- * `e` is a function pointer type and `U` has type `*T`,
-   while `T: Sized`; *fptr-ptr-cast*
- * `e` is a function pointer type and `U` is an integer; *fptr-addr-cast*
+ * `*T as *U` where `T, U: Sized`
+ * `*T as *U` TODO: explain unsized situation
+ * `*T as integer`
+ * `integer as *T`
+ * `number as number`
+ * `C-like-enum as integer`
+ * `bool as integer`
+ * `char as integer`
+ * `u8 as char`
+ * `&[T; n] as *const T`
+ * `fn as *T` where `T: Sized`
+ * `fn as integer`
 
 where `&.T` and `*T` are references of either mutability,
 and where unsize_kind(`T`) is the kind of the unsize info

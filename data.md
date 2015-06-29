@@ -7,7 +7,7 @@ represented in Rust.
 
 
 
-# The rust repr
+# The Rust repr
 
 Rust gives you the following ways to lay out composite data:
 
@@ -16,12 +16,14 @@ Rust gives you the following ways to lay out composite data:
 * arrays (homogeneous product types)
 * enums (named sum types -- tagged unions)
 
-For all these, individual fields are aligned to their preferred alignment.
-For primitives this is equal to
-their size. For instance, a u32 will be aligned to a multiple of 32 bits, and a u16 will
-be aligned to a multiple of 16 bits. Composite structures will have their size rounded
-up to be a multiple of the highest alignment required by their fields, and an alignment
-requirement equal to the highest alignment required by their fields. So for instance,
+An enum is said to be *C-like* if none of its variants have associated data.
+
+For all these, individual fields are aligned to their preferred alignment. For
+primitives this is usually equal to their size. For instance, a u32 will be
+aligned to a multiple of 32 bits, and a u16 will be aligned to a multiple of 16
+bits. Composite structures will have their size rounded up to be a multiple of
+the highest alignment required by their fields, and an alignment requirement
+equal to the highest alignment required by their fields. So for instance,
 
 ```rust
 struct A {
@@ -127,6 +129,9 @@ In principle enums can use fairly elaborate algorithms to cache bits throughout 
 with special constrained representations. As such it is *especially* desirable that we leave
 enum layout unspecified today.
 
+
+
+
 # Dynamically Sized Types (DSTs)
 
 Rust also supports types without a statically known size. On the surface,
@@ -219,15 +224,14 @@ struct Foo {
 ```
 
 For details as to *why* this is done, and how to make it not happen, check out
-[SOME OTHER SECTION].
+[TODO: SOME OTHER SECTION].
 
 
 
 
 # Alternative representations
 
-Rust allows you to specify alternative data layout strategies from the default Rust
-one.
+Rust allows you to specify alternative data layout strategies from the default.
 
 
 
@@ -241,32 +245,44 @@ to soundly do more elaborate tricks with data layout such as reintepretting valu
 as a different type.
 
 However, the interaction with Rust's more exotic data layout features must be kept
-in mind. Due to its dual purpose as a "for FFI" and "for layout control", repr(C)
+in mind. Due to its dual purpose as "for FFI" and "for layout control", `repr(C)`
 can be applied to types that will be nonsensical or problematic if passed through
 the FFI boundary.
 
 * ZSTs are still zero-sized, even though this is not a standard behaviour
-in C, and is explicitly contrary to the behaviour of an empty type in C++, which
-still consumes a byte of space.
+  in C, and is explicitly contrary to the behaviour of an empty type in C++, which
+  still consumes a byte of space.
 
-* DSTs are not a concept in C
+* DSTs, tuples, and tagged unions are not a concept in C and as such are never
+  FFI safe.
 
 * **The drop flag will still be added**
 
-* This is equivalent to repr(u32) for enums (see below)
+* This is equivalent to `repr(u32)` for enums (see below)
 
 
 
 ## repr(packed)
 
-`repr(packed)` forces rust to strip any padding it would normally apply.
-This may improve the memory footprint of a type, but will have negative
-side-effects from "field access is heavily penalized" to "completely breaks
-everything" based on target platform.
+`repr(packed)` forces rust to strip any padding, and only align the type to a
+byte. This may improve the memory footprint, but will likely have other
+negative side-effects.
 
+In particular, most architectures *strongly* prefer values to be aligned. This
+may mean the unaligned loads are penalized (x86), or even fault (ARM). In
+particular, the compiler may have trouble with references to unaligned fields.
+
+`repr(packed)` is not to be used lightly. Unless you have extreme requirements,
+this should not be used.
+
+This repr is a modifier on `repr(C)` and `repr(rust)`.
 
 
 ## repr(u8), repr(u16), repr(u32), repr(u64)
 
-These specify the size to make a c-like enum (one which has no values in its variants).
+These specify the size to make a C-like enum. If the discriminant overflows the
+integer it has to fit in, it will be an error. You can manually ask Rust to
+allow this by setting the overflowing element to explicitly be 0. However Rust
+will not allow you to create an enum where two variants.
 
+These reprs have no affect on struct or non-C-like enum.
