@@ -330,7 +330,7 @@ fn lookup_op_method<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
 
             // HACK(eddyb) Fully qualified path to work around a resolve bug.
             let method_call = ::middle::ty::MethodCall::expr(expr.id);
-            fcx.inh.method_map.borrow_mut().insert(method_call, method);
+            fcx.inh.tables.borrow_mut().method_map.insert(method_call, method);
 
             // extract return type for method; all late bound regions
             // should have been instantiated by now
@@ -454,4 +454,3 @@ fn is_builtin_binop<'tcx>(cx: &ty::ctxt<'tcx>,
         }
     }
 }
-

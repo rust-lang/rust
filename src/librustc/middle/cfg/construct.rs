@@ -411,7 +411,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
             func_or_rcvr: &ast::Expr,
             args: I) -> CFGIndex {
         let method_call = ty::MethodCall::expr(call_expr.id);
-        let fn_ty = match self.tcx.method_map.borrow().get(&method_call) {
+        let fn_ty = match self.tcx.tables.borrow().method_map.get(&method_call) {
             Some(method) => method.ty,
             None => self.tcx.expr_ty_adjusted(func_or_rcvr)
         };
@@ -634,6 +634,6 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
 
     fn is_method_call(&self, expr: &ast::Expr) -> bool {
         let method_call = ty::MethodCall::expr(expr.id);
-        self.tcx.method_map.borrow().contains_key(&method_call)
+        self.tcx.tables.borrow().method_map.contains_key(&method_call)
     }
 }

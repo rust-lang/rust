@@ -728,7 +728,7 @@ impl MethodCall {
 
 // maps from an expression id that corresponds to a method call to the details
 // of the method to be invoked
-pub type MethodMap<'tcx> = RefCell<FnvHashMap<MethodCall, MethodCallee<'tcx>>>;
+pub type MethodMap<'tcx> = FnvHashMap<MethodCall, MethodCallee<'tcx>>;
 
 // Contains information needed to resolve types and (in the future) look up
 // the types of AST nodes.
@@ -815,6 +815,48 @@ pub struct CommonTypes<'tcx> {
     pub err: Ty<'tcx>,
 }
 
+pub struct Tables<'tcx> {
+    /// Stores the types for various nodes in the AST.  Note that this table
+    /// is not guaranteed to be populated until after typeck.  See
+    /// typeck::check::fn_ctxt for details.
+    pub node_types: NodeMap<Ty<'tcx>>,
+
+    /// Stores the type parameters which were substituted to obtain the type
+    /// of this node.  This only applies to nodes that refer to entities
+    /// parameterized by type parameters, such as generic fns, types, or
+    /// other items.
+    pub item_substs: NodeMap<ItemSubsts<'tcx>>,
+
+    pub adjustments: NodeMap<ty::AutoAdjustment<'tcx>>,
+
+    pub method_map: MethodMap<'tcx>,
+
+    /// Borrows
+    pub upvar_capture_map: UpvarCaptureMap,
+
+    /// Records the type of each closure. The def ID is the ID of the
+    /// expression defining the closure.
+    pub closure_tys: DefIdMap<ClosureTy<'tcx>>,
+
+    /// Records the type of each closure. The def ID is the ID of the
+    /// expression defining the closure.
+    pub closure_kinds: DefIdMap<ClosureKind>,
+}
+
+impl<'tcx> Tables<'tcx> {
+    pub fn empty() -> Tables<'tcx> {
+        Tables {
+            node_types: FnvHashMap(),
+            item_substs: NodeMap(),
+            adjustments: NodeMap(),
+            method_map: FnvHashMap(),
+            upvar_capture_map: FnvHashMap(),
+            closure_tys: DefIdMap(),
+            closure_kinds: DefIdMap(),
+        }
+    }
+}
+
 /// The data structure to keep track of all the information that typechecker
 /// generates so that so that it can be reused and doesn't have to be redone
 /// later on.
@@ -850,17 +892,9 @@ pub struct ctxt<'tcx> {
     // borrowck. (They are not used during trans, and hence are not
     // serialized or needed for cross-crate fns.)
     free_region_maps: RefCell<NodeMap<FreeRegionMap>>,
+    // FIXME: jroesch make this a refcell
 
-    /// Stores the types for various nodes in the AST.  Note that this table
-    /// is not guaranteed to be populated until after typeck.  See
-    /// typeck::check::fn_ctxt for details.
-    node_types: RefCell<NodeMap<Ty<'tcx>>>,
-
-    /// Stores the type parameters which were substituted to obtain the type
-    /// of this node.  This only applies to nodes that refer to entities
-    /// parameterized by type parameters, such as generic fns, types, or
-    /// other items.
-    pub item_substs: RefCell<NodeMap<ItemSubsts<'tcx>>>,
+    pub tables: RefCell<Tables<'tcx>>,
 
     /// Maps from a trait item to the trait item "descriptor"
     pub impl_or_trait_items: RefCell<DefIdMap<ImplOrTraitItem<'tcx>>>,
@@ -894,7 +928,6 @@ pub struct ctxt<'tcx> {
     pub ast_ty_to_ty_cache: RefCell<NodeMap<Ty<'tcx>>>,
     pub enum_var_cache: RefCell<DefIdMap<Rc<Vec<Rc<VariantInfo<'tcx>>>>>>,
     pub ty_param_defs: RefCell<NodeMap<TypeParameterDef<'tcx>>>,
-    pub adjustments: RefCell<NodeMap<AutoAdjustment<'tcx>>>,
     pub normalized_cache: RefCell<FnvHashMap<Ty<'tcx>, Ty<'tcx>>>,
     pub lang_items: middle::lang_items::LanguageItems,
     /// A mapping of fake provided method def_ids to the default implementation
@@ -944,25 +977,12 @@ pub struct ctxt<'tcx> {
     /// FIXME(arielb1): why is this separate from populated_external_types?
     pub populated_external_primitive_impls: RefCell<DefIdSet>,
 
-    /// Borrows
-    pub upvar_capture_map: RefCell<UpvarCaptureMap>,
-
     /// These caches are used by const_eval when decoding external constants.
     pub extern_const_statics: RefCell<DefIdMap<ast::NodeId>>,
     pub extern_const_variants: RefCell<DefIdMap<ast::NodeId>>,
     pub extern_const_fns: RefCell<DefIdMap<ast::NodeId>>,
 
-    pub method_map: MethodMap<'tcx>,
-
     pub dependency_formats: RefCell<dependency_format::Dependencies>,
-
-    /// Records the type of each closure. The def ID is the ID of the
-    /// expression defining the closure.
-    pub closure_kinds: RefCell<DefIdMap<ClosureKind>>,
-
-    /// Records the type of each closure. The def ID is the ID of the
-    /// expression defining the closure.
-    pub closure_tys: RefCell<DefIdMap<ClosureTy<'tcx>>>,
 
     pub node_lint_levels: RefCell<FnvHashMap<(ast::NodeId, lint::LintId),
                                               lint::LevelSource>>,
@@ -1000,9 +1020,16 @@ pub struct ctxt<'tcx> {
 }
 
 impl<'tcx> ctxt<'tcx> {
-    pub fn node_types(&self) -> Ref<NodeMap<Ty<'tcx>>> { self.node_types.borrow() }
+    pub fn node_types(&self) -> Ref<NodeMap<Ty<'tcx>>> {
+        fn projection<'a, 'tcx>(tables: &'a Tables<'tcx>) ->  &'a NodeMap<Ty<'tcx>> {
+            &tables.node_types
+        }
+
+        Ref::map(self.tables.borrow(), projection)
+    }
+
     pub fn node_type_insert(&self, id: NodeId, ty: Ty<'tcx>) {
-        self.node_types.borrow_mut().insert(id, ty);
+        self.tables.borrow_mut().node_types.insert(id, ty);
     }
 
     pub fn intern_trait_def(&self, def: TraitDef<'tcx>) -> &'tcx TraitDef<'tcx> {
@@ -3421,8 +3448,7 @@ impl<'tcx> ctxt<'tcx> {
             variance_computed: Cell::new(false),
             sess: s,
             def_map: def_map,
-            node_types: RefCell::new(FnvHashMap()),
-            item_substs: RefCell::new(NodeMap()),
+            tables: RefCell::new(Tables::empty()),
             impl_trait_refs: RefCell::new(DefIdMap()),
             trait_defs: RefCell::new(DefIdMap()),
             predicates: RefCell::new(DefIdMap()),
@@ -3439,7 +3465,6 @@ impl<'tcx> ctxt<'tcx> {
             trait_item_def_ids: RefCell::new(DefIdMap()),
             trait_items_cache: RefCell::new(DefIdMap()),
             ty_param_defs: RefCell::new(NodeMap()),
-            adjustments: RefCell::new(NodeMap()),
             normalized_cache: RefCell::new(FnvHashMap()),
             lang_items: lang_items,
             provided_method_sources: RefCell::new(DefIdMap()),
@@ -3452,14 +3477,10 @@ impl<'tcx> ctxt<'tcx> {
             used_mut_nodes: RefCell::new(NodeSet()),
             populated_external_types: RefCell::new(DefIdSet()),
             populated_external_primitive_impls: RefCell::new(DefIdSet()),
-            upvar_capture_map: RefCell::new(FnvHashMap()),
             extern_const_statics: RefCell::new(DefIdMap()),
             extern_const_variants: RefCell::new(DefIdMap()),
             extern_const_fns: RefCell::new(DefIdMap()),
-            method_map: RefCell::new(FnvHashMap()),
             dependency_formats: RefCell::new(FnvHashMap()),
-            closure_kinds: RefCell::new(DefIdMap()),
-            closure_tys: RefCell::new(DefIdMap()),
             node_lint_levels: RefCell::new(FnvHashMap()),
             transmute_restrictions: RefCell::new(Vec::new()),
             stability: RefCell::new(stability),
@@ -3515,7 +3536,7 @@ impl<'tcx> ctxt<'tcx> {
     }
 
     pub fn closure_kind(&self, def_id: ast::DefId) -> ty::ClosureKind {
-        *self.closure_kinds.borrow().get(&def_id).unwrap()
+        *self.tables.borrow().closure_kinds.get(&def_id).unwrap()
     }
 
     pub fn closure_type(&self,
@@ -3523,7 +3544,7 @@ impl<'tcx> ctxt<'tcx> {
                         substs: &subst::Substs<'tcx>)
                         -> ty::ClosureTy<'tcx>
     {
-        self.closure_tys.borrow().get(&def_id).unwrap().subst(self, substs)
+        self.tables.borrow().closure_tys.get(&def_id).unwrap().subst(self, substs)
     }
 
     pub fn type_parameter_def(&self,
@@ -4369,7 +4390,8 @@ impl<'tcx> TyS<'tcx> {
                        span: Span)
                        -> bool
     {
-        let infcx = infer::new_infer_ctxt(param_env.tcx());
+        let tcx = param_env.tcx();
+        let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, Some(param_env.clone()));
 
         let is_impld = traits::type_known_to_meet_builtin_bound(&infcx, param_env,
                                                                 self, bound, span);
@@ -5276,11 +5298,11 @@ impl<'tcx> ctxt<'tcx> {
     }
 
     pub fn node_id_to_type_opt(&self, id: ast::NodeId) -> Option<Ty<'tcx>> {
-        self.node_types.borrow().get(&id).cloned()
+        self.tables.borrow().node_types.get(&id).cloned()
     }
 
     pub fn node_id_item_substs(&self, id: ast::NodeId) -> ItemSubsts<'tcx> {
-        match self.item_substs.borrow().get(&id) {
+        match self.tables.borrow().item_substs.get(&id) {
             None => ItemSubsts::empty(),
             Some(ts) => ts.clone(),
         }
@@ -5325,9 +5347,9 @@ impl<'tcx> ctxt<'tcx> {
     pub fn expr_ty_adjusted(&self, expr: &ast::Expr) -> Ty<'tcx> {
         self.expr_ty(expr)
             .adjust(self, expr.span, expr.id,
-                    self.adjustments.borrow().get(&expr.id),
+                    self.tables.borrow().adjustments.get(&expr.id),
                     |method_call| {
-            self.method_map.borrow().get(&method_call).map(|method| method.ty)
+            self.tables.borrow().method_map.get(&method_call).map(|method| method.ty)
         })
     }
 
@@ -6671,11 +6693,11 @@ impl<'tcx> ctxt<'tcx> {
     }
 
     pub fn is_method_call(&self, expr_id: ast::NodeId) -> bool {
-        self.method_map.borrow().contains_key(&MethodCall::expr(expr_id))
+        self.tables.borrow().method_map.contains_key(&MethodCall::expr(expr_id))
     }
 
     pub fn upvar_capture(&self, upvar_id: ty::UpvarId) -> Option<ty::UpvarCapture> {
-        Some(self.upvar_capture_map.borrow().get(&upvar_id).unwrap().clone())
+        Some(self.tables.borrow().upvar_capture_map.get(&upvar_id).unwrap().clone())
     }
 }
 
@@ -6689,17 +6711,21 @@ impl<'a,'tcx> Typer<'tcx> for ParameterEnvironment<'a,'tcx> {
     }
 
     fn node_method_ty(&self, method_call: ty::MethodCall) -> Option<Ty<'tcx>> {
-        self.tcx.method_map.borrow().get(&method_call).map(|method| method.ty)
+        self.tcx.tables.borrow().method_map.get(&method_call).map(|method| method.ty)
     }
 
     fn node_method_origin(&self, method_call: ty::MethodCall)
                           -> Option<ty::MethodOrigin<'tcx>>
     {
-        self.tcx.method_map.borrow().get(&method_call).map(|method| method.origin.clone())
+        self.tcx.tables.borrow().method_map.get(&method_call).map(|method| method.origin.clone())
     }
 
-    fn adjustments(&self) -> &RefCell<NodeMap<ty::AutoAdjustment<'tcx>>> {
-        &self.tcx.adjustments
+    fn adjustments(&self) -> Ref<NodeMap<ty::AutoAdjustment<'tcx>>> {
+        fn projection<'a, 'tcx>(tables: &'a Tables<'tcx>) -> &'a NodeMap<ty::AutoAdjustment<'tcx>> {
+            &tables.adjustments
+        }
+
+        Ref::map(self.tcx.tables.borrow(), projection)
     }
 
     fn is_method_call(&self, id: ast::NodeId) -> bool {

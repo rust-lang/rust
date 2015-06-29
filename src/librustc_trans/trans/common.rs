@@ -47,7 +47,7 @@ use util::nodemap::{FnvHashMap, NodeMap};
 use arena::TypedArena;
 use libc::{c_uint, c_char};
 use std::ffi::CString;
-use std::cell::{Cell, RefCell};
+use std::cell::{Cell, RefCell, Ref};
 use std::result::Result as StdResult;
 use std::vec::Vec;
 use syntax::ast;
@@ -353,7 +353,7 @@ pub struct FunctionContext<'a, 'tcx: 'a> {
     // section of the executable we're generating.
     pub llfn: ValueRef,
 
-    // always an empty parameter-environment
+    // always an empty parameter-environment NOTE: @jroesch another use of ParamEnv
     pub param_env: ty::ParameterEnvironment<'a, 'tcx>,
 
     // The environment argument in a closure.
@@ -630,8 +630,9 @@ impl<'blk, 'tcx> mc::Typer<'tcx> for BlockS<'blk, 'tcx> {
 
     fn node_method_ty(&self, method_call: ty::MethodCall) -> Option<Ty<'tcx>> {
         self.tcx()
-            .method_map
+            .tables
             .borrow()
+            .method_map
             .get(&method_call)
             .map(|method| monomorphize_type(self, method.ty))
     }
@@ -640,18 +641,26 @@ impl<'blk, 'tcx> mc::Typer<'tcx> for BlockS<'blk, 'tcx> {
                           -> Option<ty::MethodOrigin<'tcx>>
     {
         self.tcx()
-            .method_map
+            .tables
             .borrow()
+            .method_map
             .get(&method_call)
             .map(|method| method.origin.clone())
     }
 
-    fn adjustments<'a>(&'a self) -> &'a RefCell<NodeMap<ty::AutoAdjustment<'tcx>>> {
-        &self.tcx().adjustments
+    fn adjustments<'a>(&'a self) -> Ref<NodeMap<ty::AutoAdjustment<'tcx>>> {
+        // FIXME (@jroesch): this is becuase we currently have a HR inference problem
+        // in the snapshot that causes this code not to work.
+        fn project_adjustments<'a, 'tcx>(tables: &'a ty::Tables<'tcx>) ->
+            &'a NodeMap<ty::AutoAdjustment<'tcx>> {
+            &tables.adjustments
+        }
+
+        Ref::map(self.tcx().tables.borrow(), project_adjustments)
     }
 
     fn is_method_call(&self, id: ast::NodeId) -> bool {
-        self.tcx().method_map.borrow().contains_key(&ty::MethodCall::expr(id))
+        self.tcx().tables.borrow().method_map.contains_key(&ty::MethodCall::expr(id))
     }
 
     fn temporary_scope(&self, rvalue_id: ast::NodeId) -> Option<region::CodeExtent> {
@@ -659,7 +668,7 @@ impl<'blk, 'tcx> mc::Typer<'tcx> for BlockS<'blk, 'tcx> {
     }
 
     fn upvar_capture(&self, upvar_id: ty::UpvarId) -> Option<ty::UpvarCapture> {
-        Some(self.tcx().upvar_capture_map.borrow().get(&upvar_id).unwrap().clone())
+        Some(self.tcx().tables.borrow().upvar_capture_map.get(&upvar_id).unwrap().clone())
     }
 
     fn type_moves_by_default(&self, ty: Ty<'tcx>, span: Span) -> bool {
@@ -991,7 +1000,7 @@ pub fn fulfill_obligation<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
            trait_ref, trait_ref.def_id());
 
     tcx.populate_implementations_for_trait_if_necessary(trait_ref.def_id());
-    let infcx = infer::new_infer_ctxt(tcx);
+    let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, None);
 
     // Do the initial selection for the obligation. This yields the
     // shallow result we are looking for -- that is, what specific impl.
@@ -1053,7 +1062,7 @@ pub fn normalize_and_test_predicates<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
            predicates);
 
     let tcx = ccx.tcx();
-    let infcx = infer::new_infer_ctxt(tcx);
+    let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, None);
     let typer = NormalizingClosureTyper::new(tcx);
     let mut selcx = traits::SelectionContext::new(&infcx, &typer);
     let mut fulfill_cx = traits::FulfillmentContext::new(false);
@@ -1070,6 +1079,10 @@ pub fn normalize_and_test_predicates<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     drain_fulfillment_cx(&infcx, &mut fulfill_cx, &()).is_ok()
 }
 
+// NOTE: here is another use of parameter environment without an InferCtxt,
+// this is obviously related to the typer interface requiring a parameter env.
+// We should pay attention to this when refactoring
+// - @jroesch
 pub struct NormalizingClosureTyper<'a,'tcx:'a> {
     param_env: ty::ParameterEnvironment<'a, 'tcx>
 }
@@ -1191,7 +1204,7 @@ pub fn node_id_substs<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             tcx.node_id_item_substs(id).substs
         }
         MethodCallKey(method_call) => {
-            tcx.method_map.borrow().get(&method_call).unwrap().substs.clone()
+            tcx.tables.borrow().method_map.get(&method_call).unwrap().substs.clone()
         }
     };
 

@@ -283,12 +283,11 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
 
     fn check_static_type(&self, e: &ast::Expr) {
         let ty = self.tcx.node_id_to_type(e.id);
-        let infcx = infer::new_infer_ctxt(self.tcx);
+        let infcx = infer::new_infer_ctxt(self.tcx, &self.tcx.tables, None);
         let mut fulfill_cx = traits::FulfillmentContext::new(false);
         let cause = traits::ObligationCause::new(e.span, e.id, traits::SharedStatic);
         fulfill_cx.register_builtin_bound(&infcx, ty, ty::BoundSync, cause);
-        let env = self.tcx.empty_parameter_environment();
-        match fulfill_cx.select_all_or_error(&infcx, &env) {
+        match fulfill_cx.select_all_or_error(&infcx, &infcx.parameter_environment) {
             Ok(()) => { },
             Err(ref errors) => {
                 traits::report_fulfillment_errors(&infcx, errors);
@@ -544,7 +543,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
     match e.node {
         ast::ExprUnary(..) |
         ast::ExprBinary(..) |
-        ast::ExprIndex(..) if v.tcx.method_map.borrow().contains_key(&method_call) => {
+        ast::ExprIndex(..) if v.tcx.tables.borrow().method_map.contains_key(&method_call) => {
             v.add_qualif(ConstQualif::NOT_CONST);
             if v.mode != Mode::Var {
                 span_err!(v.tcx.sess, e.span, E0011,
@@ -695,7 +694,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
             }
         }
         ast::ExprMethodCall(..) => {
-            let method_did = match v.tcx.method_map.borrow()[&method_call].origin {
+            let method_did = match v.tcx.tables.borrow().method_map[&method_call].origin {
                 ty::MethodStatic(did) => Some(did),
                 _ => None
             };

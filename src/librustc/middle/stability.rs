@@ -406,7 +406,7 @@ pub fn check_expr(tcx: &ty::ctxt, e: &ast::Expr,
         ast::ExprMethodCall(i, _, _) => {
             span = i.span;
             let method_call = ty::MethodCall::expr(e.id);
-            match tcx.method_map.borrow().get(&method_call) {
+            match tcx.tables.borrow().method_map.get(&method_call) {
                 Some(method) => {
                     match method.origin {
                         ty::MethodStatic(def_id) => {

@@ -23,19 +23,24 @@ pub use self::freshen::TypeFreshener;
 pub use self::region_inference::GenericKind;
 
 use middle::free_region::FreeRegionMap;
+use middle::mem_categorization as mc;
+use middle::mem_categorization::McResult;
+use middle::region::CodeExtent;
 use middle::subst;
 use middle::subst::Substs;
+use middle::subst::Subst;
+use middle::traits;
 use middle::ty::{TyVid, IntVid, FloatVid, RegionVid, UnconstrainedNumeric};
 use middle::ty::{self, Ty, HasTypeFlags};
 use middle::ty_fold::{self, TypeFolder, TypeFoldable};
 use middle::ty_relate::{Relate, RelateResult, TypeRelation};
 use rustc_data_structures::unify::{self, UnificationTable};
-use std::cell::{RefCell};
+use std::cell::{RefCell, Ref};
 use std::fmt;
 use syntax::ast;
 use syntax::codemap;
 use syntax::codemap::Span;
-use util::nodemap::FnvHashMap;
+use util::nodemap::{FnvHashMap, NodeMap};
 
 use self::combine::CombineFields;
 use self::region_inference::{RegionVarBindings, RegionSnapshot};
@@ -64,6 +69,8 @@ pub type fres<T> = Result<T, fixup_err>; // "fixup result"
 pub struct InferCtxt<'a, 'tcx: 'a> {
     pub tcx: &'a ty::ctxt<'tcx>,
 
+    pub tables: &'a RefCell<ty::Tables<'tcx>>,
+
     // We instantiate UnificationTable with bounds<Ty> because the
     // types that might instantiate a general type variable have an
     // order, represented by its upper and lower bounds.
@@ -77,6 +84,17 @@ pub struct InferCtxt<'a, 'tcx: 'a> {
 
     // For region variables.
     region_vars: RegionVarBindings<'a, 'tcx>,
+
+    pub parameter_environment: ty::ParameterEnvironment<'a, 'tcx>,
+
+    // This is a temporary field used for toggling on normalization in the inference context,
+    // as we move towards the approach described here:
+    // https://internals.rust-lang.org/t/flattening-the-contexts-for-fun-and-profit/2293
+    // At a point sometime in the future normalization will be done by the typing context
+    // directly.
+    normalize: bool,
+
+    err_count_on_creation: usize,
 }
 
 /// A map returned by `skolemize_late_bound_regions()` indicating the skolemized
@@ -309,14 +327,20 @@ pub fn fixup_err_to_string(f: fixup_err) -> String {
     }
 }
 
-pub fn new_infer_ctxt<'a, 'tcx>(tcx: &'a ty::ctxt<'tcx>)
+pub fn new_infer_ctxt<'a, 'tcx>(tcx: &'a ty::ctxt<'tcx>,
+                                tables: &'a RefCell<ty::Tables<'tcx>>,
+                                param_env: Option<ty::ParameterEnvironment<'a, 'tcx>>)
                                 -> InferCtxt<'a, 'tcx> {
     InferCtxt {
         tcx: tcx,
+        tables: tables,
         type_variables: RefCell::new(type_variable::TypeVariableTable::new()),
         int_unification_table: RefCell::new(UnificationTable::new()),
         float_unification_table: RefCell::new(UnificationTable::new()),
         region_vars: RegionVarBindings::new(tcx),
+        parameter_environment: param_env.unwrap_or(tcx.empty_parameter_environment()),
+        normalize: false,
+        err_count_on_creation: tcx.sess.err_count()
     }
 }
 
@@ -429,6 +453,127 @@ pub struct CombinedSnapshot {
     int_snapshot: unify::Snapshot<ty::IntVid>,
     float_snapshot: unify::Snapshot<ty::FloatVid>,
     region_vars_snapshot: RegionSnapshot,
+}
+
+impl<'a, 'tcx> mc::Typer<'tcx> for InferCtxt<'a, 'tcx> {
+    fn node_ty(&self, id: ast::NodeId) -> McResult<Ty<'tcx>> {
+        let ty = self.node_ty(id);
+        self.resolve_type_vars_or_error(&ty)
+    }
+
+    fn expr_ty_adjusted(&self, expr: &ast::Expr) -> McResult<Ty<'tcx>> {
+        let ty = self.adjust_expr_ty(expr, self.tables.borrow().adjustments.get(&expr.id));
+        self.resolve_type_vars_or_error(&ty)
+    }
+
+    fn type_moves_by_default(&self, ty: Ty<'tcx>, span: Span) -> bool {
+        let ty = self.resolve_type_vars_if_possible(&ty);
+        !traits::type_known_to_meet_builtin_bound(self, self, ty, ty::BoundCopy, span)
+    }
+
+    fn node_method_ty(&self, method_call: ty::MethodCall)
+                      -> Option<Ty<'tcx>> {
+        self.tables
+            .borrow()
+            .method_map
+            .get(&method_call)
+            .map(|method| method.ty)
+            .map(|ty| self.resolve_type_vars_if_possible(&ty))
+    }
+
+    fn node_method_origin(&self, method_call: ty::MethodCall)
+                          -> Option<ty::MethodOrigin<'tcx>>
+    {
+        self.tables
+            .borrow()
+            .method_map
+            .get(&method_call)
+            .map(|method| method.origin.clone())
+    }
+
+    fn adjustments(&self) -> Ref<NodeMap<ty::AutoAdjustment<'tcx>>> {
+        fn project_adjustments<'a, 'tcx>(tables: &'a ty::Tables<'tcx>)
+                                        -> &'a NodeMap<ty::AutoAdjustment<'tcx>> {
+            &tables.adjustments
+        }
+
+        Ref::map(self.tables.borrow(), project_adjustments)
+    }
+
+    fn is_method_call(&self, id: ast::NodeId) -> bool {
+        self.tables.borrow().method_map.contains_key(&ty::MethodCall::expr(id))
+    }
+
+    fn temporary_scope(&self, rvalue_id: ast::NodeId) -> Option<CodeExtent> {
+        self.parameter_environment.temporary_scope(rvalue_id)
+    }
+
+    fn upvar_capture(&self, upvar_id: ty::UpvarId) -> Option<ty::UpvarCapture> {
+        self.tables.borrow().upvar_capture_map.get(&upvar_id).cloned()
+    }
+}
+
+impl<'a, 'tcx> ty::ClosureTyper<'tcx> for InferCtxt<'a, 'tcx> {
+    fn param_env<'b>(&'b self) -> &'b ty::ParameterEnvironment<'b,'tcx> {
+        &self.parameter_environment
+    }
+
+    fn closure_kind(&self,
+                    def_id: ast::DefId)
+                    -> Option<ty::ClosureKind>
+    {
+        self.tables.borrow().closure_kinds.get(&def_id).cloned()
+    }
+
+    fn closure_type(&self,
+                    def_id: ast::DefId,
+                    substs: &subst::Substs<'tcx>)
+                    -> ty::ClosureTy<'tcx>
+    {
+
+        let closure_ty = self.tables
+                             .borrow()
+                             .closure_tys
+                             .get(&def_id)
+                             .unwrap()
+                             .subst(self.tcx, substs);
+
+        if self.normalize {
+            // NOTE: this flag is currently *always* set to false, we are slowly folding
+            // normalization into this trait and will come back to remove this in the near
+            // future.
+
+            // code from NormalizingClosureTyper:
+            // the substitutions in `substs` are already monomorphized,
+            // but we still must normalize associated types
+            // normalize_associated_type(self.param_env.tcx, &closure_ty)
+            panic!("see issue 26597: fufillment context refactor must occur")
+        } else {
+            closure_ty
+        }
+    }
+
+    fn closure_upvars(&self,
+                      def_id: ast::DefId,
+                      substs: &Substs<'tcx>)
+                      -> Option<Vec<ty::ClosureUpvar<'tcx>>>
+    {
+        let result = ty::ctxt::closure_upvars(self, def_id, substs);
+
+        if self.normalize {
+            // NOTE: this flag is currently *always* set to false, we are slowly folding
+            // normalization into this trait and will come back to remove this in the near
+            // future.
+
+            // code from NormalizingClosureTyper:
+            // the substitutions in `substs` are already monomorphized,
+            // but we still must normalize associated types
+            // monomorphize::normalize_associated_type(self.param_env.tcx, &result)
+            panic!("see issue 26597: fufillment context refactor must occur")
+        } else {
+            result
+        }
+    }
 }
 
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
@@ -852,6 +997,49 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         self.region_vars.new_bound(debruijn)
     }
 
+    /// Apply `adjustment` to the type of `expr`
+    pub fn adjust_expr_ty(&self,
+                          expr: &ast::Expr,
+                          adjustment: Option<&ty::AutoAdjustment<'tcx>>)
+                          -> Ty<'tcx>
+    {
+        let raw_ty = self.expr_ty(expr);
+        let raw_ty = self.shallow_resolve(raw_ty);
+        let resolve_ty = |ty: Ty<'tcx>| self.resolve_type_vars_if_possible(&ty);
+        raw_ty.adjust(self.tcx,
+                      expr.span,
+                      expr.id,
+                      adjustment,
+                      |method_call| self.tables
+                                        .borrow()
+                                        .method_map
+                                        .get(&method_call)
+                                        .map(|method| resolve_ty(method.ty)))
+    }
+
+    pub fn node_ty(&self, id: ast::NodeId) -> Ty<'tcx> {
+        match self.tables.borrow().node_types.get(&id) {
+            Some(&t) => t,
+            // FIXME
+            None if self.tcx.sess.err_count() - self.err_count_on_creation != 0 =>
+                self.tcx.types.err,
+            None => {
+                self.tcx.sess.bug(
+                    &format!("no type for node {}: {} in fcx",
+                            id, self.tcx.map.node_to_string(id)));
+            }
+        }
+    }
+
+    pub fn expr_ty(&self, ex: &ast::Expr) -> Ty<'tcx> {
+        match self.tables.borrow().node_types.get(&ex.id) {
+            Some(&t) => t,
+            None => {
+                self.tcx.sess.bug(&format!("no type for expr in fcx"));
+            }
+        }
+    }
+
     pub fn resolve_regions_and_report_errors(&self,
                                              free_regions: &FreeRegionMap,
                                              subject_node_id: ast::NodeId) {
@@ -924,6 +1112,16 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         let mut r = resolve::OpportunisticTypeResolver::new(self);
         value.fold_with(&mut r)
+    }
+
+    /// Resolves all type variables in `t` and then, if any were left
+    /// unresolved, substitutes an error type. This is used after the
+    /// main checking when doing a second pass before writeback. The
+    /// justification is that writeback will produce an error for
+    /// these unconstrained type variables.
+    fn resolve_type_vars_or_error(&self, t: &Ty<'tcx>) -> mc::McResult<Ty<'tcx>> {
+        let ty = self.resolve_type_vars_if_possible(t);
+        if ty.has_infer_types() || ty.references_error() { Err(()) } else { Ok(ty) }
     }
 
     pub fn fully_resolve<T:TypeFoldable<'tcx>>(&self, value: &T) -> fres<T> {

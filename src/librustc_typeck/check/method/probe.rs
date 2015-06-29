@@ -421,7 +421,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         // We can't use normalize_associated_types_in as it will pollute the
         // fcx's fulfillment context after this probe is over.
         let cause = traits::ObligationCause::misc(self.span, self.fcx.body_id);
-        let mut selcx = &mut traits::SelectionContext::new(self.fcx.infcx(), self.fcx);
+        let mut selcx = &mut traits::SelectionContext::new(self.fcx.infcx(), self.fcx.infcx());
         let traits::Normalized { value: xform_self_ty, obligations } =
             traits::normalize(selcx, cause, &xform_self_ty);
         debug!("assemble_inherent_impl_probe: xform_self_ty = {:?}",
@@ -477,7 +477,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         // FIXME -- Do we want to commit to this behavior for param bounds?
 
         let bounds: Vec<_> =
-            self.fcx.inh.param_env.caller_bounds
+            self.fcx.inh.infcx.parameter_environment.caller_bounds
             .iter()
             .filter_map(|predicate| {
                 match *predicate {
@@ -681,7 +681,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             // as it will pollute the fcx's fulfillment context after this probe
             // is over.
             let cause = traits::ObligationCause::misc(self.span, self.fcx.body_id);
-            let mut selcx = &mut traits::SelectionContext::new(self.fcx.infcx(), self.fcx);
+            let mut selcx = &mut traits::SelectionContext::new(self.fcx.infcx(), self.fcx.infcx());
             let traits::Normalized { value: xform_self_ty, obligations } =
                 traits::normalize(selcx, cause, &xform_self_ty);
 
@@ -742,7 +742,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                 _ => continue,
             };
 
-            let closure_kinds = self.fcx.inh.closure_kinds.borrow();
+            let closure_kinds = &self.fcx.inh.tables.borrow().closure_kinds;
             let closure_kind = match closure_kinds.get(&closure_def_id) {
                 Some(&k) => k,
                 None => {
@@ -845,7 +845,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         debug!("assemble_where_clause_candidates(trait_def_id={:?})",
                trait_def_id);
 
-        let caller_predicates = self.fcx.inh.param_env.caller_bounds.clone();
+        let caller_predicates = self.fcx.inh.infcx.parameter_environment.caller_bounds.clone();
         for poly_bound in traits::elaborate_predicates(self.tcx(), caller_predicates)
                           .filter_map(|p| p.to_opt_poly_trait_ref())
                           .filter(|b| b.def_id() == trait_def_id)
@@ -1076,7 +1076,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             match probe.kind {
                 InherentImplCandidate(impl_def_id, ref substs, ref ref_obligations) |
                 ExtensionImplCandidate(impl_def_id, _, ref substs, _, ref ref_obligations) => {
-                    let selcx = &mut traits::SelectionContext::new(self.infcx(), self.fcx);
+                    let selcx = &mut traits::SelectionContext::new(self.infcx(), self.fcx.infcx());
                     let cause = traits::ObligationCause::misc(self.span, self.fcx.body_id);
 
                     // Check whether the impl imposes obligations we have to worry about.

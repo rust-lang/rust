@@ -61,7 +61,7 @@ fn check_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
         expected_sig);
 
     let closure_type = fcx.ccx.tcx.mk_closure(expr_def_id,
-        fcx.ccx.tcx.mk_substs(fcx.inh.param_env.free_substs.clone()));
+        fcx.ccx.tcx.mk_substs(fcx.inh.infcx.parameter_environment.free_substs.clone()));
 
     fcx.write_ty(expr.id, closure_type);
 
@@ -86,9 +86,9 @@ fn check_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
            fn_ty.sig,
            opt_kind);
 
-    fcx.inh.closure_tys.borrow_mut().insert(expr_def_id, fn_ty);
+    fcx.inh.tables.borrow_mut().closure_tys.insert(expr_def_id, fn_ty);
     match opt_kind {
-        Some(kind) => { fcx.inh.closure_kinds.borrow_mut().insert(expr_def_id, kind); }
+        Some(kind) => { fcx.inh.tables.borrow_mut().closure_kinds.insert(expr_def_id, kind); }
         None => { }
     }
 }

@@ -83,7 +83,7 @@ use syntax::ast::{MutImmutable, MutMutable};
 use syntax::ast;
 use syntax::codemap::Span;
 
-use std::cell::RefCell;
+use std::cell::Ref;
 use std::fmt;
 use std::rc::Rc;
 
@@ -289,7 +289,7 @@ pub trait Typer<'tcx> : ty::ClosureTyper<'tcx> {
     fn node_method_ty(&self, method_call: ty::MethodCall) -> Option<Ty<'tcx>>;
     fn node_method_origin(&self, method_call: ty::MethodCall)
                           -> Option<ty::MethodOrigin<'tcx>>;
-    fn adjustments<'a>(&'a self) -> &'a RefCell<NodeMap<ty::AutoAdjustment<'tcx>>>;
+    fn adjustments(&self) -> Ref<NodeMap<ty::AutoAdjustment<'tcx>>>;
     fn is_method_call(&self, id: ast::NodeId) -> bool;
     fn temporary_scope(&self, rvalue_id: ast::NodeId) -> Option<region::CodeExtent>;
     fn upvar_capture(&self, upvar_id: ty::UpvarId) -> Option<ty::UpvarCapture>;
@@ -408,7 +408,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
         let unadjusted_ty = try!(self.expr_ty(expr));
         Ok(unadjusted_ty.adjust(
             self.tcx(), expr.span, expr.id,
-            self.typer.adjustments().borrow().get(&expr.id),
+            self.typer.adjustments().get(&expr.id),
             |method_call| self.typer.node_method_ty(method_call)))
     }
 
@@ -440,7 +440,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
     }
 
     pub fn cat_expr(&self, expr: &ast::Expr) -> McResult<cmt<'tcx>> {
-        match self.typer.adjustments().borrow().get(&expr.id) {
+        match self.typer.adjustments().get(&expr.id) {
             None => {
                 // No adjustments.
                 self.cat_expr_unadjusted(expr)

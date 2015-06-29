@@ -96,14 +96,14 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             let rhs_ty = self.fcx.infcx().resolve_type_vars_if_possible(&rhs_ty);
 
             if lhs_ty.is_scalar() && rhs_ty.is_scalar() {
-                self.fcx.inh.method_map.borrow_mut().remove(&MethodCall::expr(e.id));
+                self.fcx.inh.tables.borrow_mut().method_map.remove(&MethodCall::expr(e.id));
 
                 // weird but true: the by-ref binops put an
                 // adjustment on the lhs but not the rhs; the
                 // adjustment for rhs is kind of baked into the
                 // system.
                 if !ast_util::is_by_value_binop(op.node) {
-                    self.fcx.inh.adjustments.borrow_mut().remove(&lhs.id);
+                    self.fcx.inh.tables.borrow_mut().adjustments.remove(&lhs.id);
                 }
             }
         }
@@ -204,7 +204,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             return;
         }
 
-        for (upvar_id, upvar_capture) in self.fcx.inh.upvar_capture_map.borrow().iter() {
+        for (upvar_id, upvar_capture) in self.fcx.inh.tables.borrow().upvar_capture_map.iter() {
             let new_upvar_capture = match *upvar_capture {
                 ty::UpvarCapture::ByValue => ty::UpvarCapture::ByValue,
                 ty::UpvarCapture::ByRef(ref upvar_borrow) => {
@@ -217,7 +217,11 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             debug!("Upvar capture for {:?} resolved to {:?}",
                    upvar_id,
                    new_upvar_capture);
-            self.fcx.tcx().upvar_capture_map.borrow_mut().insert(*upvar_id, new_upvar_capture);
+            self.fcx.tcx()
+                    .tables
+                    .borrow_mut()
+                    .upvar_capture_map
+                    .insert(*upvar_id, new_upvar_capture);
         }
     }
 
@@ -226,13 +230,13 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             return
         }
 
-        for (def_id, closure_ty) in self.fcx.inh.closure_tys.borrow().iter() {
+        for (def_id, closure_ty) in self.fcx.inh.tables.borrow().closure_tys.iter() {
             let closure_ty = self.resolve(closure_ty, ResolvingClosure(*def_id));
-            self.fcx.tcx().closure_tys.borrow_mut().insert(*def_id, closure_ty);
+            self.fcx.tcx().tables.borrow_mut().closure_tys.insert(*def_id, closure_ty);
         }
 
-        for (def_id, &closure_kind) in self.fcx.inh.closure_kinds.borrow().iter() {
-            self.fcx.tcx().closure_kinds.borrow_mut().insert(*def_id, closure_kind);
+        for (def_id, &closure_kind) in self.fcx.inh.tables.borrow().closure_kinds.iter() {
+            self.fcx.tcx().tables.borrow_mut().closure_kinds.insert(*def_id, closure_kind);
         }
     }
 
@@ -254,7 +258,8 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     }
 
     fn visit_adjustments(&self, reason: ResolveReason, id: ast::NodeId) {
-        match self.fcx.inh.adjustments.borrow_mut().remove(&id) {
+        let adjustments = self.fcx.inh.tables.borrow_mut().adjustments.remove(&id);
+        match adjustments {
             None => {
                 debug!("No adjustments for node {}", id);
             }
@@ -281,7 +286,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                     }
                 };
                 debug!("Adjustments for node {}: {:?}", id, resolved_adjustment);
-                self.tcx().adjustments.borrow_mut().insert(
+                self.tcx().tables.borrow_mut().adjustments.insert(
                     id, resolved_adjustment);
             }
         }
@@ -291,7 +296,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                               reason: ResolveReason,
                               method_call: MethodCall) {
         // Resolve any method map entry
-        match self.fcx.inh.method_map.borrow_mut().remove(&method_call) {
+        let new_method = match self.fcx.inh.tables.borrow_mut().method_map.remove(&method_call) {
             Some(method) => {
                 debug!("writeback::resolve_method_map_entry(call={:?}, entry={:?})",
                        method_call,
@@ -302,9 +307,17 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                     substs: self.resolve(&method.substs, reason),
                 };
 
-                self.tcx().method_map.borrow_mut().insert(
+                Some(new_method)
+            }
+            None => None
+        };
+
+        //NB(jroesch): We need to match twice to avoid a double borrow which would cause an ICE
+        match new_method {
+            Some(method) => {
+                self.tcx().tables.borrow_mut().method_map.insert(
                     method_call,
-                    new_method);
+                    method);
             }
             None => {}
         }
