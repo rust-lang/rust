@@ -1973,8 +1973,13 @@ impl LintPass for UnconditionalRecursion {
                                       fn_id: ast::NodeId,
                                       _: ast::Ident,
                                       id: ast::NodeId) -> bool {
-            tcx.def_map.borrow().get(&id)
-               .map_or(false, |def| def.def_id() == local_def(fn_id))
+            match tcx.map.get(id) {
+                ast_map::NodeExpr(&ast::Expr { node: ast::ExprCall(ref callee, _), .. }) => {
+                    tcx.def_map.borrow().get(&callee.id)
+                        .map_or(false, |def| def.def_id() == local_def(fn_id))
+                }
+                _ => false
+            }
         }
 
         // check if the method call `id` refers to method `method_id`
