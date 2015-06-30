@@ -1039,7 +1039,7 @@ pub fn LandingPad(cx: Block, ty: Type, pers_fn: ValueRef,
                   num_clauses: usize) -> ValueRef {
     check_not_terminated(cx);
     assert!(!cx.unreachable.get());
-    B(cx).landing_pad(ty, pers_fn, num_clauses)
+    B(cx).landing_pad(ty, pers_fn, num_clauses, cx.fcx.llfn)
 }
 
 pub fn SetCleanup(cx: Block, landing_pad: ValueRef) {
