@@ -277,6 +277,18 @@ impl OsStr {
         self.to_bytes().and_then(|b| CString::new(b).ok())
     }
 
+    /// Returns true if the `other` is a prefix of the `OsStr`.
+    #[unstable(feature = "os_str_compare", reason = "recently added")]
+    pub fn starts_with<S: AsRef<OsStr>>(&self, other: S) -> bool {
+        self.bytes().starts_with(other.as_ref().bytes())
+    }
+
+    /// Returns true if the `other` is a suffix of the `OsStr`.
+    #[unstable(feature = "os_str_compare", reason = "recently added")]
+    pub fn ends_with<S: AsRef<OsStr>>(&self, other: S) -> bool {
+        self.bytes().ends_with(other.as_ref().bytes())
+    }
+
     /// Gets the underlying byte representation.
     ///
     /// Note: it is *crucial* that this API is private, to avoid
@@ -412,5 +424,37 @@ impl IntoInner<Buf> for OsString {
 impl AsInner<Slice> for OsStr {
     fn as_inner(&self) -> &Slice {
         &self.inner
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::OsStr;
+    #[test]
+    fn starts_with() {
+        assert!(OsStr::new("abcde").starts_with(OsStr::new("abcde")));
+        assert!(OsStr::new("abcde").starts_with(OsStr::new("abc")));
+        assert!(!OsStr::new("abcde").starts_with(OsStr::new("abde")));
+        assert!(!OsStr::new("abcde").starts_with(OsStr::new("abcdef")));
+        assert!(OsStr::new("").starts_with(OsStr::new("")));
+        assert!(OsStr::new("anything").starts_with(OsStr::new("")));
+        assert!(!OsStr::new("").starts_with(OsStr::new("anything")));
+
+        // test as_ref
+        assert!(OsStr::new("abcde").starts_with("abc"));
+    }
+
+    #[test]
+    fn ends_with() {
+        assert!(OsStr::new("abcde").ends_with(OsStr::new("abcde")));
+        assert!(OsStr::new("abcde").ends_with(OsStr::new("cde")));
+        assert!(!OsStr::new("abcde").ends_with(OsStr::new("abde")));
+        assert!(!OsStr::new("bcde").ends_with(OsStr::new("abcde")));
+        assert!(OsStr::new("").ends_with(OsStr::new("")));
+        assert!(OsStr::new("anything").ends_with(OsStr::new("")));
+        assert!(!OsStr::new("").ends_with(OsStr::new("anything")));
+
+        // test as_ref
+        assert!(OsStr::new("abcde").ends_with("cde"));
     }
 }
