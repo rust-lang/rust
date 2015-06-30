@@ -166,6 +166,9 @@ fn borrowck_fn(this: &mut BorrowckCtxt,
                                                     this.tcx,
                                                     sp,
                                                     id);
+    move_data::fragments::build_unfragmented_map(this,
+                                                 &flowed_moves.move_data,
+                                                 id);
 
     check_loans::check_loans(this,
                              &loan_dfcx,
@@ -174,10 +177,6 @@ fn borrowck_fn(this: &mut BorrowckCtxt,
                              id,
                              decl,
                              body);
-
-    move_data::fragments::build_unfragmented_map(this,
-                                                 &flowed_moves.move_data,
-                                                 id);
 
     visit::walk_fn(this, fk, decl, body, sp);
 }
