@@ -821,10 +821,12 @@ impl LintPass for NonCamelCaseTypes {
     }
 
     fn check_item(&mut self, cx: &Context, it: &ast::Item) {
-        let has_extern_repr = it.attrs.iter().any(|attr| {
+        let extern_repr_count = it.attrs.iter().filter(|attr| {
             attr::find_repr_attrs(cx.tcx.sess.diagnostic(), attr).iter()
                 .any(|r| r == &attr::ReprExtern)
-        });
+        }).count();
+        let has_extern_repr = extern_repr_count > 0;
+
         if has_extern_repr {
             return;
         }
