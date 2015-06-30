@@ -1245,21 +1245,91 @@ impl Bytes { ... } // error, same as above
 "##,
 
 E0117: r##"
-You tried to implement a trait on a type which isn't defined in your crate.
-Erroneous code example:
+You got this error because because you tried to implement a foreign
+trait for a foreign type (with maybe a foreign type parameter). Erroneous
+code example:
 
 ```
 impl Drop for u32 {}
 ```
 
-The type on which you want to implement the trait has to be defined in
-your crate. Example:
+The type, trait or the type parameter (or all of them) has to be defined
+in your crate. Example:
 
 ```
 pub struct Foo; // you define your type in your crate
 
 impl Drop for Foo { // and you can implement the trait on it!
     // code of trait implementation here
+}
+
+trait Bar { // or define your trait in your crate
+    fn get(&self) -> usize;
+}
+
+impl Bar for u32 { // and then you implement it on a foreign type
+    fn get(&self) -> usize { 0 }
+}
+
+impl From<Foo> for i32 { // or you use a type from your crate as
+                         // a type parameter
+    fn from(i: Foo) -> i32 {
+        0
+    }
+}
+```
+"##,
+
+E0119: r##"
+There are conflicting trait implementations for the same type.
+Erroneous code example:
+
+```
+trait MyTrait {
+    fn get(&self) -> usize;
+}
+
+impl<T> MyTrait for T {
+    fn get(&self) -> usize { 0 }
+}
+
+struct Foo {
+    value: usize
+}
+
+impl MyTrait for Foo { // error: conflicting implementations for trait
+                       //        `MyTrait`
+    fn get(&self) -> usize { self.value }
+}
+```
+
+When you write:
+
+```
+impl<T> MyTrait for T {
+    fn get(&self) -> usize { 0 }
+}
+```
+
+This makes the trait implemented on all types in the scope. So if you
+try to implement it on another one after that, the implementations will
+conflict. Example:
+
+```
+trait MyTrait {
+    fn get(&self) -> usize;
+}
+
+impl<T> MyTrait for T {
+    fn get(&self) -> usize { 0 }
+}
+
+struct Foo;
+
+fn main() {
+    let f = Foo;
+
+    f.get(); // the trait is implemented so we can use it
 }
 ```
 "##,
@@ -1403,7 +1473,7 @@ impl Trait for Foo {
 }
 ```
 
-The `'b` lifetime constraint for bar() implementation does not match the
+The lifetime constraint `'b` for bar() implementation does not match the
 trait declaration. Ensure lifetime declarations match exactly in both trait
 declaration and implementation. Example:
 
@@ -1601,8 +1671,8 @@ impl Copy for &'static Bar { } // error
 "##,
 
 E0207: r##"
-You passed an unused type parameter when implementing a trait
-on an object. Erroneous code example:
+You declared an unused type parameter when implementing a trait on an object.
+Erroneous code example:
 
 ```
 trait MyTrait {
@@ -1883,7 +1953,6 @@ register_diagnostics! {
     E0103,
     E0104,
     E0118,
-    E0119,
     E0120,
     E0122,
     E0123,
