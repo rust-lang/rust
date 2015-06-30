@@ -11,6 +11,7 @@
 // Test a foreign function that accepts empty struct.
 
 // pretty-expanded FIXME #23616
+// ignore-msvc
 
 struct TwoU8s {
     one: u8,
