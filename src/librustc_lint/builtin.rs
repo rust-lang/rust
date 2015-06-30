@@ -1973,8 +1973,13 @@ impl LintPass for UnconditionalRecursion {
                                       fn_id: ast::NodeId,
                                       _: ast::Ident,
                                       id: ast::NodeId) -> bool {
-            tcx.def_map.borrow().get(&id)
-               .map_or(false, |def| def.def_id() == local_def(fn_id))
+            match tcx.map.get(id) {
+                ast_map::NodeExpr(&ast::Expr { node: ast::ExprCall(ref callee, _), .. }) => {
+                    tcx.def_map.borrow().get(&callee.id)
+                        .map_or(false, |def| def.def_id() == local_def(fn_id))
+                }
+                _ => false
+            }
         }
 
         // check if the method call `id` refers to method `method_id`
@@ -2002,6 +2007,15 @@ impl LintPass for UnconditionalRecursion {
                     // method instead.
                     ty::MethodTypeParam(
                         ty::MethodParam { ref trait_ref, method_num, impl_def_id: None, }) => {
+
+                        let on_self = m.substs.self_ty().map_or(false, |t| t.is_self());
+                        if !on_self {
+                            // we can only be recurring in a default
+                            // method if we're being called literally
+                            // on the `Self` type.
+                            return false
+                        }
+
                         tcx.trait_item(trait_ref.def_id, method_num).def_id()
                     }
 
