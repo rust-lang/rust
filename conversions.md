@@ -53,7 +53,7 @@ Coercion is allowed between the following types:
     * `&mut T` to `*mut T`
 * Unsizing: `T` to `U` if `T` implements `CoerceUnsized<U>`
 
-`CoerceUnsized<Pointer<U>> for Pointer<T>` where T: Unsize<U> is implemented
+`CoerceUnsized<Pointer<U>> for Pointer<T> where T: Unsize<U>` is implemented
 for all pointer types (including smart pointers like Box and Rc). Unsize is
 only implemented automatically, and enables the following transformations:
 
@@ -65,7 +65,6 @@ only implemented automatically, and enables the following transformations:
     * `Foo` is a struct
     * Only the last field has type `T`
     * `T` is not part of the type of any other fields
-  (note that this also applies to to tuples as an anonymous struct `Tuple3<T, U, V>`)
 
 Coercions occur at a *coercion site*. Any location that is explicitly typed
 will cause a coercion to its type. If inference is necessary, the coercion will
@@ -106,12 +105,18 @@ fn main() {
               ^~~
 ```
 
+
+
+
 # The Dot Operator
 
 The dot operator will perform a lot of magic to convert types. It will perform
 auto-referencing, auto-dereferencing, and coercion until types match.
 
 TODO: steal information from http://stackoverflow.com/questions/28519997/what-are-rusts-exact-auto-dereferencing-rules/28552082#28552082
+
+
+
 
 # Casts
 
@@ -168,6 +173,8 @@ For numeric casts, there are quite a few cases to consider:
     * **NOTE: currently this will cause Undefined Behaviour if the value
       is finite but larger or smaller than the largest or smallest finite
       value representable by f32**. This is a bug and will be fixed.
+
+
 
 
 
