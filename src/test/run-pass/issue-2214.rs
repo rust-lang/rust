@@ -37,7 +37,7 @@ mod m {
         #[link_name="lgamma_r"]
         pub fn lgamma(n: c_double, sign: &mut c_int) -> c_double;
         #[cfg(windows)]
-        #[link_name="__lgamma_r"]
+        #[link_name="lgamma"]
         pub fn lgamma(n: c_double, sign: &mut c_int) -> c_double;
     }
 }
