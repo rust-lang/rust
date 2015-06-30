@@ -1600,6 +1600,42 @@ impl Copy for &'static Bar { } // error
 ```
 "##,
 
+E0207: r##"
+You passed an unused type parameter when implementing a trait
+on an object. Erroneous code example:
+
+```
+trait MyTrait {
+    fn get(&self) -> usize;
+}
+
+struct Foo;
+
+impl<T> MyTrait for Foo {
+    fn get(&self) -> usize {
+        0
+    }
+}
+```
+
+Please check your object definition and remove unused type
+parameter(s). Example:
+
+```
+trait MyTrait {
+    fn get(&self) -> usize;
+}
+
+struct Foo;
+
+impl MyTrait for Foo {
+    fn get(&self) -> usize {
+        0
+    }
+}
+```
+"##,
+
 E0211: r##"
 You used an intrinsic function which doesn't correspond to its
 definition. Erroneous code example:
@@ -1878,7 +1914,6 @@ register_diagnostics! {
     E0196, // cannot determine a type for this closure
     E0203, // type parameter has more than one relaxed default bound,
            // and only one is supported
-    E0207, // type parameter is not constrained by the impl trait, self type, or predicate
     E0208,
     E0209, // builtin traits can only be implemented on structs or enums
     E0210, // type parameter is not constrained by any local type
