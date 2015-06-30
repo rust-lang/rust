@@ -165,7 +165,7 @@ pub mod pipes {
         p: Option<*const packet<T>>,
     }
 
-        impl<T:Send> Drop for send_packet<T> {
+    impl<T:Send> Drop for send_packet<T> {
         fn drop(&mut self) {
             unsafe {
                 if self.p != None {
@@ -194,7 +194,7 @@ pub mod pipes {
         p: Option<*const packet<T>>,
     }
 
-        impl<T:Send> Drop for recv_packet<T> {
+    impl<T:Send> Drop for recv_packet<T> {
         fn drop(&mut self) {
             unsafe {
                 if self.p != None {

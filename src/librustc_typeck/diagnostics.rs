@@ -1022,6 +1022,120 @@ type Foo<A> = Box<A>; // ok!
 ```
 "##,
 
+E0092: r##"
+You tried to declare an undefined atomic operation function.
+Erroneous code example:
+
+```
+#![feature(intrinsics)]
+
+extern "rust-intrinsic" {
+    fn atomic_foo(); // error: unrecognized atomic operation
+                     //        function
+}
+```
+
+Please check you didn't make a mistake in the function's name. All intrinsic
+functions are defined in librustc_trans/trans/intrinsic.rs and in
+libcore/intrinsics.rs in the Rust source code. Example:
+
+```
+#![feature(intrinsics)]
+
+extern "rust-intrinsic" {
+    fn atomic_fence(); // ok!
+}
+```
+"##,
+
+E0093: r##"
+You declared an unknown intrinsic function. Erroneous code example:
+
+```
+#![feature(intrinsics)]
+
+extern "rust-intrinsic" {
+    fn foo(); // error: unrecognized intrinsic function: `foo`
+}
+
+fn main() {
+    unsafe {
+        foo();
+    }
+}
+```
+
+Please check you didn't make a mistake in the function's name. All intrinsic
+functions are defined in librustc_trans/trans/intrinsic.rs and in
+libcore/intrinsics.rs in the Rust source code. Example:
+
+```
+#![feature(intrinsics)]
+
+extern "rust-intrinsic" {
+    fn atomic_fence(); // ok!
+}
+
+fn main() {
+    unsafe {
+        atomic_fence();
+    }
+}
+```
+"##,
+
+E0094: r##"
+You gave an invalid number of type parameters to an intrinsic function.
+Erroneous code example:
+
+```
+#![feature(intrinsics)]
+
+extern "rust-intrinsic" {
+    fn size_of<T, U>() -> usize; // error: intrinsic has wrong number
+                                 //        of type parameters
+}
+```
+
+Please check that you provided the right number of lifetime parameters
+and verify with the function declaration in the Rust source code.
+Example:
+
+```
+#![feature(intrinsics)]
+
+extern "rust-intrinsic" {
+    fn size_of<T>() -> usize; // ok!
+}
+```
+"##,
+
+E0101: r##"
+You hit this error because the compiler the compiler lacks information
+to determine a type for this expression. Erroneous code example:
+
+```
+fn main() {
+    let x = |_| {}; // error: cannot determine a type for this expression
+}
+```
+
+You have two possibilities to solve this situation:
+ * Give an explicit definition of the expression
+ * Infer the expression
+
+Examples:
+
+```
+fn main() {
+    let x = |_ : u32| {}; // ok!
+    // or:
+    let x = |_| {};
+    x(0u32);
+}
+```
+"##,
+
 E0106: r##"
 This error indicates that a lifetime is missing from a type. If it is an error
 inside a function signature, the problem may be with failing to adhere to the
@@ -1127,6 +1241,96 @@ introduces a type alias:
 type Bytes = Vec<u8>;
 
 impl Bytes { ... } // error, same as above
+```
+"##,
+
+E0117: r##"
+You got this error because because you tried to implement a foreign
+trait for a foreign type (with maybe a foreign type parameter). Erroneous
+code example:
+
+```
+impl Drop for u32 {}
+```
+
+The type, trait or the type parameter (or all of them) has to be defined
+in your crate. Example:
+
+```
+pub struct Foo; // you define your type in your crate
+
+impl Drop for Foo { // and you can implement the trait on it!
+    // code of trait implementation here
+}
+
+trait Bar { // or define your trait in your crate
+    fn get(&self) -> usize;
+}
+
+impl Bar for u32 { // and then you implement it on a foreign type
+    fn get(&self) -> usize { 0 }
+}
+
+impl From<Foo> for i32 { // or you use a type from your crate as
+                         // a type parameter
+    fn from(i: Foo) -> i32 {
+        0
+    }
+}
+```
+"##,
+
+E0119: r##"
+There are conflicting trait implementations for the same type.
+Erroneous code example:
+
+```
+trait MyTrait {
+    fn get(&self) -> usize;
+}
+
+impl<T> MyTrait for T {
+    fn get(&self) -> usize { 0 }
+}
+
+struct Foo {
+    value: usize
+}
+
+impl MyTrait for Foo { // error: conflicting implementations for trait
+                       //        `MyTrait`
+    fn get(&self) -> usize { self.value }
+}
+```
+
+When you write:
+
+```
+impl<T> MyTrait for T {
+    fn get(&self) -> usize { 0 }
+}
+```
+
+This makes the trait implemented on all types in the scope. So if you
+try to implement it on another one after that, the implementations will
+conflict. Example:
+
+```
+trait MyTrait {
+    fn get(&self) -> usize;
+}
+
+impl<T> MyTrait for T {
+    fn get(&self) -> usize { 0 }
+}
+
+struct Foo;
+
+fn main() {
+    let f = Foo;
+
+    f.get(); // the trait is implemented so we can use it
+}
 ```
 "##,
 
@@ -1248,6 +1452,43 @@ E0192: r##"
 Negative impls are only allowed for traits with default impls. For more
 information see the [opt-in builtin traits RFC](https://github.com/rust-lang/
 rfcs/blob/master/text/0019-opt-in-builtin-traits.md).
+"##,
+
+E0195: r##"
+Your method's lifetime parameters do not match the trait declaration.
+Erroneous code example:
+
+```
+trait Trait {
+    fn bar<'a,'b:'a>(x: &'a str, y: &'b str);
+}
+
+struct Foo;
+
+impl Trait for Foo {
+    fn bar<'a,'b>(x: &'a str, y: &'b str) {
+    // error: lifetime parameters or bounds on method `bar`
+    // do not match the trait declaration
+    }
+}
+```
+
+The lifetime constraint `'b` for bar() implementation does not match the
+trait declaration. Ensure lifetime declarations match exactly in both trait
+declaration and implementation. Example:
+
+```
+trait Trait {
+    fn t<'a,'b:'a>(x: &'a str, y: &'b str);
+}
+
+struct Foo;
+
+impl Trait for Foo {
+    fn t<'a,'b:'a>(x: &'a str, y: &'b str) { // ok!
+    }
+}
+```
 "##,
 
 E0197: r##"
@@ -1426,6 +1667,65 @@ impl Copy for Foo { } // error
 #[derive(Copy, Clone)]
 struct Bar;
 impl Copy for &'static Bar { } // error
+```
+"##,
+
+E0207: r##"
+You declared an unused type parameter when implementing a trait on an object.
+Erroneous code example:
+
+```
+trait MyTrait {
+    fn get(&self) -> usize;
+}
+
+struct Foo;
+
+impl<T> MyTrait for Foo {
+    fn get(&self) -> usize {
+        0
+    }
+}
+```
+
+Please check your object definition and remove unused type
+parameter(s). Example:
+
+```
+trait MyTrait {
+    fn get(&self) -> usize;
+}
+
+struct Foo;
+
+impl MyTrait for Foo {
+    fn get(&self) -> usize {
+        0
+    }
+}
+```
+"##,
+
+E0211: r##"
+You used an intrinsic function which doesn't correspond to its
+definition. Erroneous code example:
+
+```
+#![feature(intrinsics)]
+
+extern "rust-intrinsic" {
+    fn size_of<T>(); // error: intrinsic has wrong type
+}
+```
+
+Please check the function definition. Example:
+
+```
+#![feature(intrinsics)]
+
+extern "rust-intrinsic" {
+    fn size_of<T>() -> usize;
+}
 ```
 "##,
 
@@ -1649,16 +1949,10 @@ register_diagnostics! {
     E0085,
     E0086,
     E0090,
-    E0092,
-    E0093,
-    E0094,
-    E0101,
     E0102,
     E0103,
     E0104,
-    E0117,
     E0118,
-    E0119,
     E0120,
     E0122,
     E0123,
@@ -1686,15 +1980,12 @@ register_diagnostics! {
     E0193, // cannot bound type where clause bounds may only be attached to types
            // involving type parameters
     E0194,
-    E0195, // lifetime parameters or bounds on method do not match the trait declaration
     E0196, // cannot determine a type for this closure
     E0203, // type parameter has more than one relaxed default bound,
            // and only one is supported
-    E0207, // type parameter is not constrained by the impl trait, self type, or predicate
     E0208,
     E0209, // builtin traits can only be implemented on structs or enums
     E0210, // type parameter is not constrained by any local type
-    E0211,
     E0212, // cannot extract an associated type from a higher-ranked trait bound
     E0213, // associated types are not accepted in this context
     E0214, // parenthesized parameters may only be used with a trait
