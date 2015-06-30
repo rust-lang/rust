@@ -1244,6 +1244,26 @@ impl Bytes { ... } // error, same as above
 ```
 "##,
 
+E0117: r##"
+You tried to implement a trait on a type which isn't defined in your crate.
+Erroneous code example:
+
+```
+impl Drop for u32 {}
+```
+
+The type on which you want to implement the trait has to be defined in
+your crate. Example:
+
+```
+pub struct Foo; // you define your type in your crate
+
+impl Drop for Foo { // and you can implement the trait on it!
+    // code of trait implementation here
+}
+```
+"##,
+
 E0121: r##"
 In order to be consistent with Rust's lack of global type inference, type
 placeholders are disallowed by design in item signatures.
@@ -1826,7 +1846,6 @@ register_diagnostics! {
     E0102,
     E0103,
     E0104,
-    E0117,
     E0118,
     E0119,
     E0120,
