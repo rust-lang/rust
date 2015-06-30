@@ -16,7 +16,6 @@ use llvm::ValueRef;
 use trans::common::{C_bytes, CrateContext};
 use trans::declare;
 use trans::type_::Type;
-use middle::ty::ClosureTyper;
 use session::config::NoDebugInfo;
 
 use std::ffi::CString;

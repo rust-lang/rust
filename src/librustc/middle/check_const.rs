@@ -289,7 +289,7 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
         let cause = traits::ObligationCause::new(e.span, e.id, traits::SharedStatic);
         let mut fulfill_cx = infcx.fulfillment_cx.borrow_mut();
         fulfill_cx.register_builtin_bound(&infcx, ty, ty::BoundSync, cause);
-        match fulfill_cx.select_all_or_error(&infcx, &infcx) {
+        match fulfill_cx.select_all_or_error(&infcx) {
             Ok(()) => { },
             Err(ref errors) => {
                 traits::report_fulfillment_errors(&infcx, errors);

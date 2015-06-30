@@ -22,8 +22,6 @@ use middle::cfg;
 use middle::def;
 use middle::infer;
 use middle::lang_items::LangItem;
-use middle::mem_categorization::Typer;
-use middle::ty::ClosureTyper;
 use middle::region;
 use middle::subst::{self, Substs};
 use trans::base;
@@ -872,7 +870,7 @@ pub fn fulfill_obligation<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     // Do the initial selection for the obligation. This yields the
     // shallow result we are looking for -- that is, what specific impl.
     let infcx = infer::normalizing_infer_ctxt(tcx, &tcx.tables);
-    let mut selcx = traits::SelectionContext::new(&infcx, &infcx);
+    let mut selcx = traits::SelectionContext::new(&infcx);
 
     let obligation =
         traits::Obligation::new(traits::ObligationCause::misc(span, ast::DUMMY_NODE_ID),
@@ -931,7 +929,7 @@ pub fn normalize_and_test_predicates<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     let tcx = ccx.tcx();
     let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, None, true);
-    let mut selcx = traits::SelectionContext::new(&infcx, &infcx);
+    let mut selcx = traits::SelectionContext::new(&infcx);
     let mut fulfill_cx = infcx.fulfillment_cx.borrow_mut();
     let cause = traits::ObligationCause::dummy();
     let traits::Normalized { value: predicates, obligations } =
@@ -979,12 +977,11 @@ pub fn drain_fulfillment_cx<'a,'tcx,T>(infcx: &infer::InferCtxt<'a,'tcx>,
 {
     debug!("drain_fulfillment_cx(result={:?})",
            result);
-    // this is stupid but temporary
-    let typer: &ClosureTyper<'tcx> = infcx;
+
     // In principle, we only need to do this so long as `result`
     // contains unbound type parameters. It could be a slight
     // optimization to stop iterating early.
-    match fulfill_cx.select_all_or_error(infcx, typer) {
+    match fulfill_cx.select_all_or_error(infcx) {
         Ok(()) => { }
         Err(errors) => {
             return Err(errors);

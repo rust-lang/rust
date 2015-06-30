@@ -52,7 +52,6 @@ use middle::dependency_format;
 use middle::fast_reject;
 use middle::free_region::FreeRegionMap;
 use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem, FnOnceTraitLangItem};
-use middle::mem_categorization::Typer;
 use middle::region;
 use middle::resolve_lifetime;
 use middle::infer;
@@ -3179,35 +3178,6 @@ impl ClosureKind {
     }
 }
 
-pub trait ClosureTyper<'tcx> {
-    fn tcx(&self) -> &ctxt<'tcx> {
-        self.param_env().tcx
-    }
-
-    fn param_env<'a>(&'a self) -> &'a ty::ParameterEnvironment<'a, 'tcx>;
-
-    /// Is this a `Fn`, `FnMut` or `FnOnce` closure? During typeck,
-    /// returns `None` if the kind of this closure has not yet been
-    /// inferred.
-    fn closure_kind(&self,
-                    def_id: ast::DefId)
-                    -> Option<ty::ClosureKind>;
-
-    /// Returns the argument/return types of this closure.
-    fn closure_type(&self,
-                    def_id: ast::DefId,
-                    substs: &subst::Substs<'tcx>)
-                    -> ty::ClosureTy<'tcx>;
-
-    /// Returns the set of all upvars and their transformed
-    /// types. During typeck, maybe return `None` if the upvar types
-    /// have not yet been inferred.
-    fn closure_upvars(&self,
-                      def_id: ast::DefId,
-                      substs: &Substs<'tcx>)
-                      -> Option<Vec<ClosureUpvar<'tcx>>>;
-}
-
 impl<'tcx> CommonTypes<'tcx> {
     fn new(arena: &'tcx TypedArena<TyS<'tcx>>,
            interner: &mut FnvHashMap<InternedTy<'tcx>, Ty<'tcx>>)
@@ -4406,7 +4376,7 @@ impl<'tcx> TyS<'tcx> {
         let tcx = param_env.tcx;
         let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, Some(param_env.clone()), false);
 
-        let is_impld = traits::type_known_to_meet_builtin_bound(&infcx, &infcx,
+        let is_impld = traits::type_known_to_meet_builtin_bound(&infcx,
                                                                 self, bound, span);
 
         debug!("Ty::impls_bound({:?}, {:?}) = {:?}",
@@ -6116,7 +6086,7 @@ impl<'tcx> ctxt<'tcx> {
     }
 
     // Returns a list of `ClosureUpvar`s for each upvar.
-    pub fn closure_upvars(typer: &Typer<'tcx>,
+    pub fn closure_upvars<'a>(typer: &infer::InferCtxt<'a, 'tcx>,
                           closure_id: ast::DefId,
                           substs: &Substs<'tcx>)
                           -> Option<Vec<ClosureUpvar<'tcx>>>
@@ -6127,7 +6097,7 @@ impl<'tcx> ctxt<'tcx> {
         // This may change if abstract return types of some sort are
         // implemented.
         assert!(closure_id.krate == ast::LOCAL_CRATE);
-        let tcx = typer.tcx();
+        let tcx = typer.tcx;
         match tcx.freevars.borrow().get(&closure_id.node) {
             None => Some(vec![]),
             Some(ref freevars) => {

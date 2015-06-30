@@ -17,7 +17,6 @@ use middle::subst::{Subst, Substs};
 use middle::subst::VecPerParamSpace;
 use middle::subst;
 use middle::traits;
-use middle::ty::ClosureTyper;
 use rustc::ast_map;
 use trans::base::*;
 use trans::build::*;

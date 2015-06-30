@@ -56,7 +56,6 @@ use llvm::{self, ValueRef, TypeKind};
 use middle::check_const;
 use middle::def;
 use middle::lang_items::CoerceUnsizedTraitLangItem;
-use middle::mem_categorization::Typer;
 use middle::subst::{Substs, VecPerParamSpace};
 use middle::traits;
 use trans::{_match, adt, asm, base, callee, closure, consts, controlflow};

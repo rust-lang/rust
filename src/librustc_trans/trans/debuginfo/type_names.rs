@@ -14,7 +14,7 @@ use super::namespace::crate_root_namespace;
 
 use trans::common::CrateContext;
 use middle::subst::{self, Substs};
-use middle::ty::{self, Ty, ClosureTyper};
+use middle::ty::{self, Ty};
 
 use syntax::ast;
 use syntax::parse::token;
@@ -225,4 +225,3 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         output.push('>');
     }
 }
-

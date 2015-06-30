@@ -86,13 +86,12 @@ use astconv::AstConv;
 use check::dropck;
 use check::FnCtxt;
 use middle::free_region::FreeRegionMap;
-use middle::infer::InferCtxt;
 use middle::implicator;
 use middle::mem_categorization as mc;
 use middle::region::CodeExtent;
 use middle::subst::Substs;
 use middle::traits;
-use middle::ty::{self, ClosureTyper, ReScope, Ty, MethodCall, HasTypeFlags};
+use middle::ty::{self, ReScope, Ty, MethodCall, HasTypeFlags};
 use middle::infer::{self, GenericKind};
 use middle::pat_util;
 
@@ -360,7 +359,7 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
             debug!("relate_free_regions(t={:?})", ty);
             let body_scope = CodeExtent::from_node_id(body_id);
             let body_scope = ty::ReScope(body_scope);
-            let implications = implicator::implications(self.fcx.infcx(), self.fcx.infcx(), body_id,
+            let implications = implicator::implications(self.fcx.infcx(), body_id,
                                                         ty, body_scope, span);
 
             // Record any relations between free regions that we observe into the free-region-map.
@@ -1409,7 +1408,7 @@ pub fn type_must_outlive<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
            ty,
            region);
 
-    let implications = implicator::implications(rcx.fcx.infcx(), rcx.fcx.infcx(), rcx.body_id,
+    let implications = implicator::implications(rcx.fcx.infcx(), rcx.body_id,
                                                 ty, region, origin.span());
     for implication in implications {
         debug!("implication: {:?}", implication);

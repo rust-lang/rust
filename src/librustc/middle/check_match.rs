@@ -21,7 +21,7 @@ use middle::expr_use_visitor::{JustWrite, LoanCause, MutateMode};
 use middle::expr_use_visitor::WriteAndRead;
 use middle::expr_use_visitor as euv;
 use middle::infer;
-use middle::mem_categorization::{cmt, Typer};
+use middle::mem_categorization::{cmt};
 use middle::pat_util::*;
 use middle::ty::*;
 use middle::ty;

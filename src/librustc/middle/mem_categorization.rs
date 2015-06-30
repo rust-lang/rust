@@ -77,14 +77,12 @@ use middle::infer;
 use middle::check_const;
 use middle::def;
 use middle::region;
-use middle::ty::{self, Ty, ClosureTyper};
-use util::nodemap::NodeMap;
+use middle::ty::{self, Ty};
 
 use syntax::ast::{MutImmutable, MutMutable};
 use syntax::ast;
 use syntax::codemap::Span;
 
-use std::cell::Ref;
 use std::fmt;
 use std::rc::Rc;
 
@@ -263,35 +261,6 @@ pub struct MemCategorizationContext<'t, 'a: 't, 'tcx : 'a> {
 }
 
 pub type McResult<T> = Result<T, ()>;
-
-/// The `Typer` trait provides the interface for the mem-categorization
-/// module to the results of the type check. It can be used to query
-/// the type assigned to an expression node, to inquire after adjustments,
-/// and so on.
-///
-/// This interface is needed because mem-categorization is used from
-/// two places: `regionck` and `borrowck`. `regionck` executes before
-/// type inference is complete, and hence derives types and so on from
-/// intermediate tables.  This also implies that type errors can occur,
-/// and hence `node_ty()` and friends return a `Result` type -- any
-/// error will propagate back up through the mem-categorization
-/// routines.
-///
-/// In the borrow checker, in contrast, type checking is complete and we
-/// know that no errors have occurred, so we simply consult the tcx and we
-/// can be sure that only `Ok` results will occur.
-pub trait Typer<'tcx> : ty::ClosureTyper<'tcx> {
-    fn node_ty(&self, id: ast::NodeId) -> McResult<Ty<'tcx>>;
-    fn expr_ty_adjusted(&self, expr: &ast::Expr) -> McResult<Ty<'tcx>>;
-    fn type_moves_by_default(&self, ty: Ty<'tcx>, span: Span) -> bool;
-    fn node_method_ty(&self, method_call: ty::MethodCall) -> Option<Ty<'tcx>>;
-    fn node_method_origin(&self, method_call: ty::MethodCall)
-                          -> Option<ty::MethodOrigin<'tcx>>;
-    fn adjustments(&self) -> Ref<NodeMap<ty::AutoAdjustment<'tcx>>>;
-    fn is_method_call(&self, id: ast::NodeId) -> bool;
-    fn temporary_scope(&self, rvalue_id: ast::NodeId) -> Option<region::CodeExtent>;
-    fn upvar_capture(&self, upvar_id: ty::UpvarId) -> Option<ty::UpvarCapture>;
-}
 
 impl MutabilityCategory {
     pub fn from_mutbl(m: ast::Mutability) -> MutabilityCategory {

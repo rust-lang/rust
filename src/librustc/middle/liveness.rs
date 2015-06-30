@@ -110,11 +110,9 @@ use self::LiveNodeKind::*;
 use self::VarKind::*;
 
 use middle::def::*;
-use middle::mem_categorization::Typer;
 use middle::pat_util;
 use middle::region;
 use middle::ty;
-use middle::ty::ClosureTyper;
 use lint;
 use util::nodemap::NodeMap;
 
