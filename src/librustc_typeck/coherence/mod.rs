@@ -631,7 +631,6 @@ fn subst_receiver_types_in_method_ty<'tcx>(tcx: &ty::ctxt<'tcx>,
 pub fn check_coherence(crate_context: &CrateCtxt) {
     CoherenceChecker {
         crate_context: crate_context,
-        // XXXJAREDXXX: not sure if the bool is right here?
         inference_context: new_infer_ctxt(crate_context.tcx, &crate_context.tcx.tables, None, true),
         inherent_impls: RefCell::new(FnvHashMap()),
     }.check(crate_context.tcx.map.krate());

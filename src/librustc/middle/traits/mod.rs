@@ -436,17 +436,20 @@ pub fn fully_normalize<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx>,
     debug!("normalize_param_env(value={:?})", value);
 
     let mut selcx = &mut SelectionContext::new(infcx);
-    // FIXME (@jroesch): I'm not sure if this is a bug or not, needs
-    // further investigation. It appears that by reusing the fulfillment_cx
-    // here we incur more obligations and later trip an asssertion on
-    // regionck.rs line 337. The two possibilities I see is that
-    // normalization is not actually fully happening and we
-    // have a bug else where or that we are adding a duplicate
-    // bound into the list causing its size to change. I think
-    // we should probably land this refactor and then come
+    // FIXME (@jroesch):
+    // I'm not sure if this is a bug or not, needs further investigation.
+    // It appears that by reusing the fulfillment_cx here we incur more
+    // obligations and later trip an asssertion on regionck.rs line 337.
+    //
+    // The two possibilities I see is:
+    //      - normalization is not actually fully happening and we
+    //        have a bug else where
+    //      - we are adding a duplicate bound into the list causing
+    //        its size to change.
+    //
+    // I think we should probably land this refactor and then come
     // back to this is a follow-up patch.
     let mut fulfill_cx = FulfillmentContext::new(false);
-    // let mut fulfill_cx = infcx.fulfillment_cx.borrow_mut();
 
     let Normalized { value: normalized_value, obligations } =
         project::normalize(selcx, cause, value);
@@ -456,6 +459,7 @@ pub fn fully_normalize<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx>,
     for obligation in obligations {
         fulfill_cx.register_predicate_obligation(selcx.infcx(), obligation);
     }
+    
     try!(fulfill_cx.select_all_or_error(infcx));
     let resolved_value = infcx.resolve_type_vars_if_possible(&normalized_value);
     debug!("normalize_param_env: resolved_value={:?}", resolved_value);

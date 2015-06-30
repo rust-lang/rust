@@ -16,7 +16,7 @@ use middle::ty_fold::TypeFoldable;
 use syntax::ast;
 use syntax::codemap::Span;
 
-//FIME(@jroesch): Refactor this
+//FIXME(@jroesch): Ideally we should be able to drop the fulfillment_cx argument.
 pub fn normalize_associated_types_in<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx>,
                                                 fulfillment_cx: &mut FulfillmentContext<'tcx>,
                                                 span: Span,
