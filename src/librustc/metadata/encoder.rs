@@ -1451,6 +1451,10 @@ fn encode_info_for_item(ecx: &EncodeContext,
                     encode_item_sort(rbml_w, 't');
                     encode_family(rbml_w, 'y');
 
+                    if let Some(ty) = associated_type.ty {
+                        encode_type(ecx, rbml_w, ty);
+                    }
+
                     is_nonstatic_method = false;
                 }
             }
