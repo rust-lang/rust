@@ -77,7 +77,9 @@ extern crate alloc;
 #[cfg(test)] extern crate test;
 
 pub use binary_heap::BinaryHeap;
+#[allow(deprecated)]
 pub use bit_vec::BitVec;
+#[allow(deprecated)]
 pub use bit_set::BitSet;
 pub use btree_map::BTreeMap;
 pub use btree_set::BTreeSet;
@@ -111,11 +113,13 @@ pub mod vec_map;
 
 #[unstable(feature = "bitvec", reason = "RFC 509")]
 pub mod bit_vec {
+    #![allow(deprecated)]
     pub use bit::{BitVec, Iter};
 }
 
 #[unstable(feature = "bitset", reason = "RFC 509")]
 pub mod bit_set {
+    #![allow(deprecated)]
     pub use bit::{BitSet, Union, Intersection, Difference, SymmetricDifference};
     pub use bit::SetIter as Iter;
 }
