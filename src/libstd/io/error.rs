@@ -280,6 +280,7 @@ impl error::Error for Error {
     }
 }
 
+#[allow(unused_type_parameters)]
 fn _assert_error_is_sync_send() {
     fn _is_sync_send<T: Sync+Send>() {}
     _is_sync_send::<Error>();

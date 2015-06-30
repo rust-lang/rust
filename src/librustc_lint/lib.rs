@@ -123,7 +123,8 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
                     NON_CAMEL_CASE_TYPES, NON_SNAKE_CASE, NON_UPPER_CASE_GLOBALS);
 
     add_lint_group!(sess, "unused",
-                    UNUSED_IMPORTS, UNUSED_VARIABLES, UNUSED_ASSIGNMENTS, DEAD_CODE,
+                    UNUSED_IMPORTS, UNUSED_TYPE_PARAMETERS,
+                    UNUSED_VARIABLES, UNUSED_ASSIGNMENTS, DEAD_CODE,
                     UNUSED_MUT, UNREACHABLE_CODE, UNUSED_MUST_USE,
                     UNUSED_UNSAFE, PATH_STATEMENTS);
 

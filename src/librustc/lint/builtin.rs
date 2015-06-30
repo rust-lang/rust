@@ -23,6 +23,12 @@ declare_lint! {
 }
 
 declare_lint! {
+    pub UNUSED_TYPE_PARAMETERS,
+    Warn,
+    "type parameters that are never used"
+}
+
+declare_lint! {
     pub UNUSED_EXTERN_CRATES,
     Allow,
     "extern crates that are never used"
@@ -120,6 +126,7 @@ impl LintPass for HardwiredLints {
     fn get_lints(&self) -> LintArray {
         lint_array!(
             UNUSED_IMPORTS,
+            UNUSED_TYPE_PARAMETERS,
             UNUSED_EXTERN_CRATES,
             UNUSED_QUALIFICATIONS,
             UNKNOWN_LINTS,

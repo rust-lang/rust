@@ -753,6 +753,7 @@ impl<'a, T: Send + 'a> Drop for JoinGuard<'a, T> {
     }
 }
 
+#[allow(unused_type_parameters)]
 fn _assert_sync_and_send() {
     fn _assert_both<T: Send + Sync>() {}
     _assert_both::<JoinHandle<()>>();

@@ -63,6 +63,7 @@
 #![feature(no_std)]
 #![no_std]
 #![allow(raw_pointer_derive)]
+#![allow(unused_type_parameters)]
 #![deny(missing_docs)]
 
 #![feature(intrinsics)]

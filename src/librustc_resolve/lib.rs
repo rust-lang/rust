@@ -91,6 +91,7 @@ use syntax::visit::{self, Visitor};
 use std::collections::{HashMap, HashSet};
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::cell::{Cell, RefCell};
+use std::default::Default;
 use std::fmt;
 use std::mem::replace;
 use std::rc::{Rc, Weak};
@@ -363,14 +364,34 @@ enum BareIdentifierPatternResolution {
 struct Rib {
     bindings: HashMap<Name, DefLike>,
     kind: RibKind,
+    sources: HashMap<Name, (NodeId, Span)>,
+    used_names: RefCell<HashSet<Name>>,
 }
 
 impl Rib {
     fn new(kind: RibKind) -> Rib {
         Rib {
             bindings: HashMap::new(),
-            kind: kind
+            kind: kind,
+            sources: Default::default(),
+            used_names: Default::default(),
         }
+    }
+
+    fn insert(&mut self, name: Name, def: DefLike) {
+        self.bindings.insert(name, def);
+    }
+
+    fn insert_with_source(&mut self, name: Name, id: NodeId, span: Span, def: DefLike) {
+        self.bindings.insert(name, def);
+        self.sources.insert(name, (id, span));
+    }
+
+    fn get(&self, name: Name) -> Option<DefLike> {
+        self.bindings.get(&name).map(|def| {
+            self.used_names.borrow_mut().insert(name);
+            def.clone()
+        })
     }
 }
 
@@ -1749,7 +1770,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         // FIXME #4950: Try caching?
 
         for (i, rib) in ribs.iter().enumerate().rev() {
-            if let Some(def_like) = rib.bindings.get(&name).cloned() {
+            if let Some(def_like) = rib.get(name) {
                 return self.upvarify(&ribs[i + 1..], def_like, span);
             }
         }
@@ -1770,7 +1791,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     return None
                 }
             }
-            let result = rib.bindings.get(&name).cloned();
+            let result = rib.get(name);
             if result.is_some() {
                 return result
             }
@@ -1919,7 +1940,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     {
         match type_parameters {
             HasTypeParameters(generics, space, rib_kind) => {
-                let mut function_type_rib = Rib::new(rib_kind);
+                let mut type_rib = Rib::new(rib_kind);
                 let mut seen_bindings = HashSet::new();
                 for (index, type_parameter) in generics.ty_params.iter().enumerate() {
                     let name = type_parameter.ident.name;
@@ -1936,13 +1957,13 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     seen_bindings.insert(name);
 
                     // plain insert (no renaming)
-                    function_type_rib.bindings.insert(name,
+                    type_rib.insert_with_source(name, type_parameter.id, type_parameter.span,
                         DlDef(DefTyParam(space,
                                          index as u32,
                                          local_def(type_parameter.id),
                                          name)));
                 }
-                self.type_ribs.push(function_type_rib);
+                self.type_ribs.push(type_rib);
             }
 
             NoTypeParameters => {
@@ -1953,7 +1974,20 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         f(self);
 
         match type_parameters {
-            HasTypeParameters(..) => { self.type_ribs.pop(); }
+            HasTypeParameters(..) => {
+                {
+                    let type_rib = self.type_ribs.last().unwrap();
+                    for (&name, &(id, span)) in &type_rib.sources {
+                        if !type_rib.used_names.borrow().contains(&name) {
+                            self.session.add_lint(lint::builtin::UNUSED_TYPE_PARAMETERS,
+                                                  id, span,
+                                                  "unused type parameter".to_string());
+                        }
+                    }
+                }
+
+                self.type_ribs.pop();
+            }
             NoTypeParameters => { }
         }
     }
@@ -2099,7 +2133,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         // plain insert (no renaming, types are not currently hygienic....)
         let name = special_names::type_self;
-        self_type_rib.bindings.insert(name, DlDef(self_def));
+        self_type_rib.insert(name, DlDef(self_def));
         self.type_ribs.push(self_type_rib);
         f(self);
         self.type_ribs.pop();
@@ -2474,7 +2508,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             if !bindings_list.contains_key(&renamed) {
                                 let this = &mut *self;
                                 let last_rib = this.value_ribs.last_mut().unwrap();
-                                last_rib.bindings.insert(renamed, DlDef(def));
+                                last_rib.insert(renamed, DlDef(def));
                                 bindings_list.insert(renamed, pat_id);
                             } else if mode == ArgumentIrrefutableMode &&
                                     bindings_list.contains_key(&renamed) {
@@ -3409,7 +3443,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     {
                         let rib = this.label_ribs.last_mut().unwrap();
                         let renamed = mtwt::resolve(label);
-                        rib.bindings.insert(renamed, def_like);
+                        rib.insert(renamed, def_like);
                     }
 
                     visit::walk_expr(this, expr);
