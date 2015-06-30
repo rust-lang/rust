@@ -1029,7 +1029,7 @@ You called an unknown intrinsic function. Erroneous code example:
 #![feature(intrinsics)]
 
 extern "rust-intrinsic" {
-    fn foo();
+    fn foo(); // error: unrecognized intrinsic function: `foo`
 }
 
 fn main() {
@@ -1047,13 +1047,38 @@ libcore/intrinsics.rs. Example:
 #![feature(intrinsics)]
 
 extern "rust-intrinsic" {
-    fn atomic_fence();
+    fn atomic_fence(); // ok!
 }
 
 fn main() {
     unsafe {
         atomic_fence();
     }
+}
+```
+"##,
+
+E0094: r##"
+You gave an invalid number of type parameters to an intrinsic function.
+Erroneous code example:
+
+```
+#![feature(intrinsics)]
+
+extern "rust-intrinsic" {
+    fn size_of<T, U>() -> usize; // error: intrinsic has wrong number
+                                 //        of type parameters
+}
+```
+
+Please check you give the right number of lifetime parameters and/or the
+function definition. Example:
+
+```
+#![feature(intrinsics)]
+
+extern "rust-intrinsic" {
+    fn size_of<T>() -> usize; // ok!
 }
 ```
 "##,
@@ -1724,7 +1749,6 @@ register_diagnostics! {
     E0086,
     E0090,
     E0092,
-    E0094,
     E0101,
     E0102,
     E0103,
