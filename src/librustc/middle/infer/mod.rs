@@ -1386,16 +1386,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                              .subst(self.tcx, substs);
 
         if self.normalize {
-            // NOTE: this flag is currently *always* set to false, we are slowly folding
-            // normalization into this trait and will come back to remove this in the near
-            // future.
-
-            // code from NormalizingClosureTyper:
-            // the substitutions in `substs` are already monomorphized,
-            // but we still must normalize associated types
-            // normalize_associated_type(self.param_env.tcx, &closure_ty)
             normalize_associated_type(&self.tcx, &closure_ty)
-            // panic!("see issue 26597: fufillment context refactor must occur")
         } else {
             closure_ty
         }
@@ -1409,15 +1400,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let result = ty::ctxt::closure_upvars(self, def_id, substs);
 
         if self.normalize {
-            // NOTE: this flag is currently *always* set to false, we are slowly folding
-            // normalization into this trait and will come back to remove this in the near
-            // future.
-
-            // code from NormalizingClosureTyper:
-            // the substitutions in `substs` are already monomorphized,
-            // but we still must normalize associated types
-            // monomorphize::normalize_associated_type(self.param_env.tcx, &result)
-            // panic!("see issue 26597: fufillment context refactor must occur")
             normalize_associated_type(&self.tcx, &result)
         } else {
             result

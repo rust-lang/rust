@@ -257,7 +257,6 @@ impl ast_node for ast::Pat {
 #[derive(Copy, Clone)]
 pub struct MemCategorizationContext<'t, 'a: 't, 'tcx : 'a> {
     pub typer: &'t infer::InferCtxt<'a, 'tcx>,
-    // pub monomorphize: bool,
 }
 
 pub type McResult<T> = Result<T, ()>;

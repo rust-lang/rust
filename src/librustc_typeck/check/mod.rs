@@ -158,9 +158,6 @@ pub struct Inherited<'a, 'tcx: 'a> {
     // one is never copied into the tcx: it is only used by regionck.
     fn_sig_map: RefCell<NodeMap<Vec<Ty<'tcx>>>>,
 
-    // Tracks trait obligations incurred during this function body.
-    // fulfillment_cx: RefCell<traits::FulfillmentContext<'tcx>>,
-
     // When we process a call like `c()` where `c` is a closure type,
     // we may not have decided yet whether `c` is a `Fn`, `FnMut`, or
     // `FnOnce` closure. In that case, we defer full resolution of the
