@@ -121,15 +121,14 @@ pub enum Node<'ast> {
     NodeLifetime(&'ast Lifetime),
 }
 
-/// Represents an entry and its parent NodeID and parent_node NodeID, see
-/// get_parent_node for the distinction.
+/// Represents an entry and its parent NodeID.
 /// The odd layout is to bring down the total size.
 #[derive(Copy, Debug)]
 enum MapEntry<'ast> {
     /// Placeholder for holes in the map.
     NotPresent,
 
-    /// All the node types, with a parent and scope ID.
+    /// All the node types, with a parent ID.
     EntryItem(NodeId, &'ast Item),
     EntryForeignItem(NodeId, &'ast ForeignItem),
     EntryTraitItem(NodeId, &'ast TraitItem),
@@ -162,21 +161,21 @@ struct InlinedParent {
 }
 
 impl<'ast> MapEntry<'ast> {
-    fn from_node(s: NodeId, node: Node<'ast>) -> MapEntry<'ast> {
+    fn from_node(p: NodeId, node: Node<'ast>) -> MapEntry<'ast> {
         match node {
-            NodeItem(n) => EntryItem(s, n),
-            NodeForeignItem(n) => EntryForeignItem(s, n),
-            NodeTraitItem(n) => EntryTraitItem(s, n),
-            NodeImplItem(n) => EntryImplItem(s, n),
-            NodeVariant(n) => EntryVariant(s, n),
-            NodeExpr(n) => EntryExpr(s, n),
-            NodeStmt(n) => EntryStmt(s, n),
-            NodeArg(n) => EntryArg(s, n),
-            NodeLocal(n) => EntryLocal(s, n),
-            NodePat(n) => EntryPat(s, n),
-            NodeBlock(n) => EntryBlock(s, n),
-            NodeStructCtor(n) => EntryStructCtor(s, n),
-            NodeLifetime(n) => EntryLifetime(s, n)
+            NodeItem(n) => EntryItem(p, n),
+            NodeForeignItem(n) => EntryForeignItem(p, n),
+            NodeTraitItem(n) => EntryTraitItem(p, n),
+            NodeImplItem(n) => EntryImplItem(p, n),
+            NodeVariant(n) => EntryVariant(p, n),
+            NodeExpr(n) => EntryExpr(p, n),
+            NodeStmt(n) => EntryStmt(p, n),
+            NodeArg(n) => EntryArg(p, n),
+            NodeLocal(n) => EntryLocal(p, n),
+            NodePat(n) => EntryPat(p, n),
+            NodeBlock(n) => EntryBlock(p, n),
+            NodeStructCtor(n) => EntryStructCtor(p, n),
+            NodeLifetime(n) => EntryLifetime(p, n)
         }
     }
 
@@ -284,45 +283,9 @@ impl<'ast> Map<'ast> {
         self.find_entry(id).and_then(|x| x.to_node())
     }
 
-    /// Retrieve the parent NodeId for `id`, or `id` itself if no
-    /// parent is registered in this map.
-    pub fn get_parent(&self, id: NodeId) -> NodeId {
-        let mut id = id;
-        loop {
-            let parent_node = self.get_parent_node(id);
-            if parent_node == 0 {
-                return parent_node;
-            }
-            if parent_node == id {
-                return id;
-            }
-
-            let node = self.find_entry(parent_node);
-            if node.is_none() {
-                return id;
-            }
-            let node = node.unwrap().to_node();
-            match node {
-                Some(node) => match node {
-                    NodeItem(_) |
-                    NodeForeignItem(_) |
-                    NodeTraitItem(_) |
-                    NodeImplItem(_) => {
-                        return parent_node;
-                    }
-                    _ => {}
-                },
-                None => {
-                    return parent_node;
-                }
-            }
-            id = parent_node;
-        }
-    }
-
     /// Similar to get_parent, returns the parent node id or id if there is no
     /// parent.
-    /// This function returns the most direct parent in the AST, whereas get_parent
+    /// This function returns the immediate parent in the AST, whereas get_parent
     /// returns the enclosing item. Note that this might not be the actual parent
     /// node in the AST - some kinds of nodes are not in the map and these will
     /// never appear as the parent_node. So you can always walk the parent_nodes
@@ -332,35 +295,75 @@ impl<'ast> Map<'ast> {
         self.find_entry(id).and_then(|x| x.parent_node()).unwrap_or(id)
     }
 
+    /// If there is some error when walking the parents (e.g., a node does not
+    /// have a parent in the map or a node can't be found), then we return the
+    /// last good node id we found. Note that reaching the crate root (id == 0),
+    /// is not an error, since items in the crate module have the crate root as
+    /// parent.
+    fn walk_parent_nodes<F>(&self, start_id: NodeId, found: F) -> Result<NodeId, NodeId>
+        where F: Fn(&Node<'ast>) -> bool
+    {
+        let mut id = start_id;
+        loop {
+            let parent_node = self.get_parent_node(id);
+            if parent_node == 0 {
+                return Ok(0);
+            }
+            if parent_node == id {
+                return Err(id);
+            }
+
+            let node = self.find_entry(parent_node);
+            if node.is_none() {
+                return Err(id);
+            }
+            let node = node.unwrap().to_node();
+            match node {
+                Some(ref node) => {
+                    if found(node) {
+                        return Ok(parent_node);
+                    }
+                }
+                None => {
+                    return Err(parent_node);
+                }
+            }
+            id = parent_node;
+        }
+    }
+
+    /// Retrieve the NodeId for `id`'s parent item, or `id` itself if no
+    /// parent item is in this map. The "parent item" is the closest parent node
+    /// in the AST which is recorded by the map and is an item, either an item
+    /// in a module, trait, or impl.
+    pub fn get_parent(&self, id: NodeId) -> NodeId {
+        match self.walk_parent_nodes(id, |node| match *node {
+            NodeItem(_) |
+            NodeForeignItem(_) |
+            NodeTraitItem(_) |
+            NodeImplItem(_) => true,
+            _ => false,
+        }) {
+            Ok(id) => id,
+            Err(id) => id,
+        }
+    }
+
     /// Returns the nearest enclosing scope. A scope is an item or block.
     /// FIXME it is not clear to me that all items qualify as scopes - statics
     /// and associated types probably shouldn't, for example. Behaviour in this
     /// regard should be expected to be highly unstable.
     pub fn get_enclosing_scope(&self, id: NodeId) -> Option<NodeId> {
-        let mut last_id = id;
-        // Walk up the chain of parents until we find a 'scope'.
-        loop {
-            let cur_id = self.get_parent_node(last_id);
-            if cur_id == last_id {
-                return None;
-            }
-
-            if cur_id == 0 {
-                return Some(0);
-            }
-
-            match self.get(cur_id) {
-                NodeItem(_) |
-                NodeForeignItem(_) |
-                NodeTraitItem(_) |
-                NodeImplItem(_) |
-                NodeBlock(_) => {
-                    return Some(cur_id);
-                }
-                _ => {}
-            }
-
-            last_id = cur_id;
+        match self.walk_parent_nodes(id, |node| match *node {
+            NodeItem(_) |
+            NodeForeignItem(_) |
+            NodeTraitItem(_) |
+            NodeImplItem(_) |
+            NodeBlock(_) => true,
+            _ => false,
+        }) {
+            Ok(id) => Some(id),
+            Err(_) => None,
         }
     }
 
