@@ -365,10 +365,47 @@ pub fn replace<T>(dest: &mut T, mut src: T) -> T {
 
 /// Disposes of a value.
 ///
-/// This function can be used to destroy any value by allowing `drop` to take ownership of its
-/// argument.
+/// While this does call the argument's implementation of `Drop`, it will not
+/// release any borrows, as borrows are based on lexical scope.
 ///
 /// # Examples
+///
+/// Basic usage:
+///
+/// ```
+/// let v = vec![1, 2, 3];
+///
+/// drop(v); // explicitly drop the vector
+/// ```
+///
+/// Borrows are based on lexical scope, so this produces an error:
+///
+/// ```ignore
+/// let mut v = vec![1, 2, 3];
+/// let x = &v[0];
+///
+/// drop(x); // explicitly drop the reference, but the borrow still exists
+///
+/// v.push(4); // error: cannot borrow `v` as mutable because it is also
+///            // borrowed as immutable
+/// ```
+///
+/// An inner scope is needed to fix this:
+///
+/// ```
+/// let mut v = vec![1, 2, 3];
+///
+/// {
+///     let x = &v[0];
+///
+///     drop(x); // this is now redundant, as `x` is going out of scope anyway
+/// }
+///
+/// v.push(4); // no problems
+/// ```
+///
+/// Since `RefCell` enforces the borrow rules at runtime, `drop()` can
+/// seemingly release a borrow of one:
 ///
 /// ```
 /// use std::cell::RefCell;
