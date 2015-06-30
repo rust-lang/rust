@@ -316,9 +316,6 @@ impl<'tcx> TypeFoldable<'tcx> for ty::MethodOrigin<'tcx> {
             ty::MethodStatic(def_id) => {
                 ty::MethodStatic(def_id)
             }
-            ty::MethodStaticClosure(def_id) => {
-                ty::MethodStaticClosure(def_id)
-            }
             ty::MethodTypeParam(ref param) => {
                 ty::MethodTypeParam(ty::MethodParam {
                     trait_ref: param.trait_ref.fold_with(folder),

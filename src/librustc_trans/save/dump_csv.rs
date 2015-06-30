@@ -889,8 +889,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
         let method_map = &self.tcx.tables.borrow().method_map;
         let method_callee = method_map.get(&ty::MethodCall::expr(ex.id)).unwrap();
         let (def_id, decl_id) = match method_callee.origin {
-            ty::MethodStatic(def_id) |
-            ty::MethodStaticClosure(def_id) => {
+            ty::MethodStatic(def_id) => {
                 // method invoked on an object with a concrete type (not a static method)
                 let decl_id =
                     match self.tcx.trait_item_of_item(def_id) {
@@ -907,7 +906,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
                     _ => self.sess
                              .span_bug(ex.span,
                                        "save::process_method_call: non-method \
-                                        DefId in MethodStatic or MethodStaticClosure"),
+                                        DefId in MethodStatic"),
                 };
                 (Some(def_id), decl_id)
             }

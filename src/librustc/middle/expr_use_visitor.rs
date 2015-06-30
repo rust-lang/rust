@@ -254,26 +254,11 @@ impl OverloadedCallType {
         OverloadedCallType::from_trait_id(tcx, trait_ref.def_id)
     }
 
-    fn from_closure(tcx: &ty::ctxt, closure_did: ast::DefId)
-                    -> OverloadedCallType {
-        let trait_did =
-            tcx.tables
-               .borrow()
-               .closure_kinds
-               .get(&closure_did)
-               .expect("OverloadedCallType::from_closure: didn't find closure id")
-               .trait_did(tcx);
-        OverloadedCallType::from_trait_id(tcx, trait_did)
-    }
-
     fn from_method_origin(tcx: &ty::ctxt, origin: &MethodOrigin)
                           -> OverloadedCallType {
         match *origin {
             MethodStatic(def_id) => {
                 OverloadedCallType::from_method_id(tcx, def_id)
-            }
-            MethodStaticClosure(def_id) => {
-                OverloadedCallType::from_closure(tcx, def_id)
             }
             MethodTypeParam(MethodParam { ref trait_ref, .. }) |
             MethodTraitObject(MethodObject { ref trait_ref, .. }) => {

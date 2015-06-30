@@ -755,14 +755,8 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
                     })
                 }
 
-                ty::MethodStaticClosure(def_id) => {
-                    this.emit_enum_variant("MethodStaticClosure", 1, 1, |this| {
-                        Ok(this.emit_def_id(def_id))
-                    })
-                }
-
                 ty::MethodTypeParam(ref p) => {
-                    this.emit_enum_variant("MethodTypeParam", 2, 1, |this| {
+                    this.emit_enum_variant("MethodTypeParam", 1, 1, |this| {
                         this.emit_struct("MethodParam", 2, |this| {
                             try!(this.emit_struct_field("trait_ref", 0, |this| {
                                 Ok(this.emit_trait_ref(ecx, &p.trait_ref))
@@ -786,7 +780,7 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
                 }
 
                 ty::MethodTraitObject(ref o) => {
-                    this.emit_enum_variant("MethodTraitObject", 3, 1, |this| {
+                    this.emit_enum_variant("MethodTraitObject", 2, 1, |this| {
                         this.emit_struct("MethodObject", 2, |this| {
                             try!(this.emit_struct_field("trait_ref", 0, |this| {
                                 Ok(this.emit_trait_ref(ecx, &o.trait_ref))
@@ -1239,8 +1233,7 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
                                   -> ty::MethodOrigin<'tcx>
     {
         self.read_enum("MethodOrigin", |this| {
-            let variants = &["MethodStatic", "MethodStaticClosure",
-                             "MethodTypeParam", "MethodTraitObject"];
+            let variants = &["MethodStatic", "MethodTypeParam", "MethodTraitObject"];
             this.read_enum_variant(variants, |this, i| {
                 Ok(match i {
                     0 => {
@@ -1249,11 +1242,6 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
                     }
 
                     1 => {
-                        let def_id = this.read_def_id(dcx);
-                        ty::MethodStaticClosure(def_id)
-                    }
-
-                    2 => {
                         this.read_struct("MethodTypeParam", 2, |this| {
                             Ok(ty::MethodTypeParam(
                                 ty::MethodParam {
@@ -1282,7 +1270,7 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
                         }).unwrap()
                     }
 
-                    3 => {
+                    2 => {
                         this.read_struct("MethodTraitObject", 2, |this| {
                             Ok(ty::MethodTraitObject(
                                 ty::MethodObject {

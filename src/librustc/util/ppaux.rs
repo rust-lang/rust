@@ -500,9 +500,6 @@ impl<'tcx> fmt::Debug for ty::MethodOrigin<'tcx> {
             ty::MethodStatic(def_id) => {
                 write!(f, "MethodStatic({:?})", def_id)
             }
-            ty::MethodStaticClosure(def_id) => {
-                write!(f, "MethodStaticClosure({:?})", def_id)
-            }
             ty::MethodTypeParam(ref p) => write!(f, "{:?}", p),
             ty::MethodTraitObject(ref p) => write!(f, "{:?}", p)
         }
