@@ -1,6 +1,6 @@
 % The Perils Of RAII
 
-Ownership Based Resource Management (AKA RAII: Resource Acquisition is Initialization) is
+Ownership Based Resource Management (AKA RAII: Resource Acquisition Is Initialization) is
 something you'll interact with a lot in Rust. Especially if you use the standard library.
 
 Roughly speaking the pattern is as follows: to acquire a resource, you create an object that
@@ -38,10 +38,8 @@ treating the old copy as uninitialized -- a no-op.
 
 While Rust provides a `Default` trait for specifying the moral equivalent of a default
 constructor, it's incredibly rare for this trait to be used. This is because variables
-aren't implicitly initialized (see [working with uninitialized memory][uninit] for details).
-Default is basically only useful for generic programming.
-
-In concrete contexts, a type will provide a static `new` method for any
+[aren't implicitly initialized][uninit]. Default is basically only useful for generic
+programming. In concrete contexts, a type will provide a static `new` method for any
 kind of "default" constructor. This has no relation to `new` in other
 languages and has no special meaning. It's just a naming convention.
 
@@ -59,20 +57,16 @@ fn drop(&mut self);
 ```
 
 This method gives the type time to somehow finish what it was doing. **After `drop` is run,
-Rust will recursively try to drop all of the fields of the `self` struct**. This is a
+Rust will recursively try to drop all of the fields of `self`**. This is a
 convenience feature so that you don't have to write "destructor boilerplate" to drop
 children. If a struct has no special logic for being dropped other than dropping its
 children, then it means `Drop` doesn't need to be implemented at all!
 
-**There is no way to prevent this behaviour in Rust 1.0**.
+**There is no stable way to prevent this behaviour in Rust 1.0**.
 
 Note that taking `&mut self` means that even if you *could* suppress recursive Drop,
 Rust will prevent you from e.g. moving fields out of self. For most types, this
-is totally fine:
-
-* They own all their data (they don't contain pointers to elsewhere).
-* There's no additional state passed into drop to try to send things.
-* `self` is about to be marked as uninitialized (and therefore inaccessible).
+is totally fine.
 
 For instance, a custom implementation of `Box` might write `Drop` like this:
 
@@ -120,7 +114,7 @@ impl<T> Drop for SuperBox<T> {
 }
 ```
 
-because after we deallocate the `box`'s ptr in SuperBox's destructor, Rust will
+After we deallocate the `box`'s ptr in SuperBox's destructor, Rust will
 happily proceed to tell the box to Drop itself and everything will blow up with
 use-after-frees and double-frees.
 
@@ -216,7 +210,7 @@ refers to it. The collection will sit around uselessly, holding on to its
 precious resources until the program terminates (at which point all those
 resources would have been reclaimed by the OS anyway).
 
-We may consider a more restricted form of leak: failing to free memory that
+We may consider a more restricted form of leak: failing to drop a value that
 is unreachable. Rust also doesn't prevent this. In fact Rust has a *function
 for doing this*: `mem::forget`. This function consumes the value it is passed
 *and then doesn't run its destructor*.
@@ -232,18 +226,18 @@ It is reasonable for safe code to assume that destructor leaks do not happen,
 as any program that leaks destructors is probably wrong. However *unsafe* code
 cannot rely on destructors to be run to be *safe*. For most types this doesn't
 matter: if you leak the destructor then the type is *by definition* inaccessible,
-so it doesn't matter, right? e.g. if you leak a `Box<u8>` then you waste some
-memory but that's hardly going to violate memory-safety.
+so it doesn't matter, right? For instance, if you leak a `Box<u8>` then you
+waste some memory but that's hardly going to violate memory-safety.
 
 However where we must be careful with destructor leaks are *proxy* types.
 These are types which manage access to a distinct object, but don't actually
 own it. Proxy objects are quite rare. Proxy objects you'll need to care about
-are even rarer. However we'll focus on two interesting examples in the
+are even rarer. However we'll focus on three interesting examples in the
 standard library:
 
 * `vec::Drain`
 * `Rc`
-
+* `thread::scoped::JoinGuard`
 
 
 
@@ -251,7 +245,7 @@ standard library:
 
 `drain` is a collections API that moves data out of the container without
 consuming the container. This enables us to reuse the allocation of a `Vec`
-after claiming ownership over all of its contents. drain produces an iterator
+after claiming ownership over all of its contents. It produces an iterator
 (Drain) that returns the contents of the Vec by-value.
 
 Now, consider Drain in the middle of iteration: some values have been moved out,
@@ -376,7 +370,7 @@ in memory.
 
 
 
-## thread::scoped
+## thread::scoped::JoinGuard
 
 The thread::scoped API intends to allow threads to be spawned that reference
 data on the stack without any synchronization over that data. Usage looked like:
