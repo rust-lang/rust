@@ -942,3 +942,18 @@ extern "C" void LLVMWriteSMDiagnosticToString(LLVMSMDiagnosticRef d, RustStringR
     raw_rust_string_ostream os(str);
     unwrap(d)->print("", os);
 }
+
+extern "C" LLVMValueRef
+LLVMRustBuildLandingPad(LLVMBuilderRef Builder,
+                        LLVMTypeRef Ty,
+                        LLVMValueRef PersFn,
+                        unsigned NumClauses,
+                        const char* Name,
+                        LLVMValueRef F) {
+#if LLVM_VERSION_MINOR >= 7
+    unwrap<Function>(F)->setPersonalityFn(unwrap<Constant>(PersFn));
+    return LLVMBuildLandingPad(Builder, Ty, NumClauses, Name);
+#else
+    return LLVMBuildLandingPad(Builder, Ty, PersFn, NumClauses, Name);
+#endif
+}

@@ -1136,12 +1136,13 @@ extern {
                            Catch: BasicBlockRef,
                            Name: *const c_char)
                            -> ValueRef;
-    pub fn LLVMBuildLandingPad(B: BuilderRef,
-                               Ty: TypeRef,
-                               PersFn: ValueRef,
-                               NumClauses: c_uint,
-                               Name: *const c_char)
-                               -> ValueRef;
+    pub fn LLVMRustBuildLandingPad(B: BuilderRef,
+                                   Ty: TypeRef,
+                                   PersFn: ValueRef,
+                                   NumClauses: c_uint,
+                                   Name: *const c_char,
+                                   F: ValueRef)
+                                   -> ValueRef;
     pub fn LLVMBuildResume(B: BuilderRef, Exn: ValueRef) -> ValueRef;
     pub fn LLVMBuildUnreachable(B: BuilderRef) -> ValueRef;
 
