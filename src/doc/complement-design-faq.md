@@ -99,7 +99,7 @@ Second, it makes cost explicit. In general, the only safe way to have a
 non-exhaustive match would be to panic the thread if nothing is matched, though
 it could fall through if the type of the `match` expression is `()`. This sort
 of hidden cost and special casing is against the language's philosophy. It's
-easy to ignore certain cases by using the `_` wildcard:
+easy to ignore all unspecified cases by using the `_` wildcard:
 
 ```rust,ignore
 match val.do_something() {
