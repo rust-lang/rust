@@ -5,5 +5,6 @@
 * [Conversions](conversions.md)
 * [Uninitialized Memory](uninitialized.md)
 * [Ownership-oriented resource management (RAII)](raii.md)
+* [Unwinding](unwinding.md)
 * [Concurrency](concurrency.md)
 * [Example: Implementing Vec](vec.md)
