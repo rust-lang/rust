@@ -752,7 +752,14 @@ pub fn invoke<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
 pub fn need_invoke(bcx: Block) -> bool {
     if bcx.sess().no_landing_pads() {
-        return false;
+        return false
+    }
+
+    // Currently 32-bit MSVC unwinding is not super well implemented in LLVM, so
+    // we avoid it entirely.
+    if bcx.sess().target.target.options.is_like_msvc &&
+       bcx.sess().target.target.arch == "x86" {
+        return false
     }
 
     // Avoid using invoke if we are already inside a landing pad.
