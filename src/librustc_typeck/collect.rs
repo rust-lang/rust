@@ -1860,6 +1860,29 @@ fn ty_generics<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
     result
 }
 
+fn convert_default_type_parameter<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
+                                            path: &P<ast::Ty>,
+                                            space: ParamSpace,
+                                            index: u32)
+                                            -> Ty<'tcx>
+{
+    let ty = ast_ty_to_ty(&ccx.icx(&()), &ExplicitRscope, &path);
+
+    for leaf_ty in ty.walk() {
+        if let ty::TyParam(p) = leaf_ty.sty {
+            if p.space == space && p.idx >= index {
+                span_err!(ccx.tcx.sess, path.span, E0128,
+                          "type parameters with a default cannot use \
+                           forward declared identifiers");
+
+                return ccx.tcx.types.err
+            }
+        }
+    }
+
+    ty
+}
+
 fn get_or_create_type_parameter_def<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                                              ast_generics: &ast::Generics,
                                              space: ParamSpace,
@@ -1874,25 +1897,9 @@ fn get_or_create_type_parameter_def<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
         None => { }
     }
 
-    let default = match param.default {
-        None => None,
-        Some(ref path) => {
-            let ty = ast_ty_to_ty(&ccx.icx(&()), &ExplicitRscope, &**path);
-            let cur_idx = index;
-
-            for leaf_ty in ty.walk() {
-                if let ty::TyParam(p) = leaf_ty.sty {
-                    if p.idx > cur_idx {
-                        span_err!(tcx.sess, path.span, E0128,
-                                  "type parameters with a default cannot use \
-                                   forward declared identifiers");
-                    }
-                }
-            }
-
-            Some(ty)
-        }
-    };
+    let default = param.default.as_ref().map(
+        |def| convert_default_type_parameter(ccx, def, space, index)
+    );
 
     let object_lifetime_default =
         compute_object_lifetime_default(ccx, param.id,
@@ -2241,7 +2248,7 @@ fn check_method_self_type<'a, 'tcx, RS:RegionScope>(
          * before we really have a `ParameterEnvironment` to check.
          */
 
-        ty_fold::fold_regions(tcx, value, |region, _| {
+        ty_fold::fold_regions(tcx, value, &mut false, |region, _| {
             match region {
                 ty::ReEarlyBound(data) => {
                     let def_id = local_def(data.param_id);

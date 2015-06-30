@@ -1713,6 +1713,16 @@ impl Region {
             _ => false,
         }
     }
+
+    /// Returns the depth of `self` from the (1-based) binding level `depth`
+    pub fn from_depth(&self, depth: u32) -> Region {
+        match *self {
+            ty::ReLateBound(debruijn, r) => ty::ReLateBound(DebruijnIndex {
+                depth: debruijn.depth - (depth - 1)
+            }, r),
+            r => r
+        }
+    }
 }
 
 #[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash,
@@ -6783,60 +6793,6 @@ pub enum ExplicitSelfCategory {
     ByBoxExplicitSelfCategory,
 }
 
-impl<'tcx> TyS<'tcx> {
-    /// Pushes all the lifetimes in the given type onto the given list. A
-    /// "lifetime in a type" is a lifetime specified by a reference or a lifetime
-    /// in a list of type substitutions. This does *not* traverse into nominal
-    /// types, nor does it resolve fictitious types.
-    pub fn accumulate_lifetimes_in_type(&self, accumulator: &mut Vec<ty::Region>) {
-        for ty in self.walk() {
-            match ty.sty {
-                TyRef(region, _) => {
-                    accumulator.push(*region)
-                }
-                TyTrait(ref t) => {
-                    accumulator.push_all(t.principal.0.substs.regions().as_slice());
-                }
-                TyEnum(_, substs) |
-                TyStruct(_, substs) => {
-                    accum_substs(accumulator, substs);
-                }
-                TyClosure(_, substs) => {
-                    accum_substs(accumulator, substs);
-                }
-                TyBool |
-                TyChar |
-                TyInt(_) |
-                TyUint(_) |
-                TyFloat(_) |
-                TyBox(_) |
-                TyStr |
-                TyArray(_, _) |
-                TySlice(_) |
-                TyRawPtr(_) |
-                TyBareFn(..) |
-                TyTuple(_) |
-                TyProjection(_) |
-                TyParam(_) |
-                TyInfer(_) |
-                TyError => {
-                }
-            }
-        }
-
-        fn accum_substs(accumulator: &mut Vec<Region>, substs: &Substs) {
-            match substs.regions {
-                subst::ErasedRegions => {}
-                subst::NonerasedRegions(ref regions) => {
-                    for region in regions {
-                        accumulator.push(*region)
-                    }
-                }
-            }
-        }
-    }
-}
-
 /// A free variable referred to in a function.
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable)]
 pub struct Freevar {
@@ -6897,19 +6853,6 @@ impl<'tcx> ctxt<'tcx> {
             |br| ty::ReFree(ty::FreeRegion{scope: all_outlive_scope, bound_region: br})).0
     }
 
-    pub fn count_late_bound_regions<T>(&self, value: &Binder<T>) -> usize
-        where T : TypeFoldable<'tcx>
-    {
-        let (_, skol_map) = ty_fold::replace_late_bound_regions(self, value, |_| ty::ReStatic);
-        skol_map.len()
-    }
-
-    pub fn binds_late_bound_regions<T>(&self, value: &Binder<T>) -> bool
-        where T : TypeFoldable<'tcx>
-    {
-        self.count_late_bound_regions(value) > 0
-    }
-
     /// Flattens two binding levels into one. So `for<'a> for<'b> Foo`
     /// becomes `for<'a,'b> Foo`.
     pub fn flatten_late_bound_regions<T>(&self, bound2_value: &Binder<Binder<T>>)
@@ -6917,7 +6860,8 @@ impl<'tcx> ctxt<'tcx> {
         where T: TypeFoldable<'tcx>
     {
         let bound0_value = bound2_value.skip_binder().skip_binder();
-        let value = ty_fold::fold_regions(self, bound0_value, |region, current_depth| {
+        let value = ty_fold::fold_regions(self, bound0_value, &mut false,
+                                          |region, current_depth| {
             match region {
                 ty::ReLateBound(debruijn, br) if debruijn.depth >= current_depth => {
                     // should be true if no escaping regions from bound2_value
@@ -6933,9 +6877,9 @@ impl<'tcx> ctxt<'tcx> {
     }
 
     pub fn no_late_bound_regions<T>(&self, value: &Binder<T>) -> Option<T>
-        where T : TypeFoldable<'tcx>
+        where T : TypeFoldable<'tcx> + RegionEscape
     {
-        if self.binds_late_bound_regions(value) {
+        if value.0.has_escaping_regions() {
             None
         } else {
             Some(value.0.clone())
@@ -7095,6 +7039,19 @@ impl<'tcx> RegionEscape for Substs<'tcx> {
     }
 }
 
+impl<T:RegionEscape> RegionEscape for Vec<T> {
+    fn has_regions_escaping_depth(&self, depth: u32) -> bool {
+        self.iter().any(|t| t.has_regions_escaping_depth(depth))
+    }
+}
+
+impl<'tcx> RegionEscape for FnSig<'tcx> {
+    fn has_regions_escaping_depth(&self, depth: u32) -> bool {
+        self.inputs.has_regions_escaping_depth(depth) ||
+            self.output.has_regions_escaping_depth(depth)
+    }
+}
+
 impl<'tcx,T:RegionEscape> RegionEscape for VecPerParamSpace<T> {
     fn has_regions_escaping_depth(&self, depth: u32) -> bool {
         self.iter_enumerated().any(|(space, _, t)| {
@@ -7164,6 +7121,15 @@ impl<'tcx> RegionEscape for subst::RegionSubsts {
 impl<'tcx,T:RegionEscape> RegionEscape for Binder<T> {
     fn has_regions_escaping_depth(&self, depth: u32) -> bool {
         self.0.has_regions_escaping_depth(depth + 1)
+    }
+}
+
+impl<'tcx> RegionEscape for FnOutput<'tcx> {
+    fn has_regions_escaping_depth(&self, depth: u32) -> bool {
+        match *self {
+            FnConverging(t) => t.has_regions_escaping_depth(depth),
+            FnDiverging => false
+        }
     }
 }
 
