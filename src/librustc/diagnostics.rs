@@ -335,6 +335,24 @@ This error indicates that an attempt was made to divide by zero (or take the
 remainder of a zero divisor) in a static or constant expression.
 "##,
 
+E0030: r##"
+When matching against a range, the compiler verifies that the range is
+non-empty.  Range patterns include both end-points, so this is equivalent to
+requiring the start of the range to be less than or equal to the end of the
+range.
+
+For example:
+
+```
+match 5u32 {
+    // This range is ok, albeit pointless.
+    1 ... 1 => ...
+    // This range is empty, and the compiler can tell.
+    1000 ... 5 => ...
+}
+```
+"##,
+
 E0079: r##"
 Enum variants which contain no data can be given a custom integer
 representation. This error indicates that the value provided is not an
