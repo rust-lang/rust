@@ -537,7 +537,7 @@ Generally, you should prefer stack allocation, and so, Rust stack-allocates by
 default. The LIFO model of the stack is simpler, at a fundamental level. This
 has two big impacts: runtime efficiency and semantic impact.
 
-## Runtime Efficiency.
+## Runtime Efficiency
 
 Managing the memory for the stack is trivial: The machine just
 increments or decrements a single value, the so-called “stack pointer”.
