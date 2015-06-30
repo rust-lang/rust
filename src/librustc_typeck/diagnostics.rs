@@ -1022,6 +1022,42 @@ type Foo<A> = Box<A>; // ok!
 ```
 "##,
 
+E0093: r##"
+You called an unknown intrinsic function. Erroneous code example:
+
+```
+#![feature(intrinsics)]
+
+extern "rust-intrinsic" {
+    fn foo();
+}
+
+fn main() {
+    unsafe {
+        foo();
+    }
+}
+```
+
+Please check you didn't make a mistake in the function's name. All intrinsic
+functions are defined in librustc_trans/trans/intrinsic.rs and in
+libcore/intrinsics.rs. Example:
+
+```
+#![feature(intrinsics)]
+
+extern "rust-intrinsic" {
+    fn atomic_fence();
+}
+
+fn main() {
+    unsafe {
+        atomic_fence();
+    }
+}
+```
+"##,
+
 E0106: r##"
 This error indicates that a lifetime is missing from a type. If it is an error
 inside a function signature, the problem may be with failing to adhere to the
@@ -1688,7 +1724,6 @@ register_diagnostics! {
     E0086,
     E0090,
     E0092,
-    E0093,
     E0094,
     E0101,
     E0102,
