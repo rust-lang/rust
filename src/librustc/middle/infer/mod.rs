@@ -30,7 +30,7 @@ use middle::region::CodeExtent;
 use middle::subst;
 use middle::subst::Substs;
 use middle::subst::Subst;
-use middle::traits::{self, FulfillmentContext, Normalized, MiscObligation,
+use middle::traits::{self, FulfillmentContext, Normalized,
                      SelectionContext, ObligationCause};
 use middle::ty::{TyVid, IntVid, FloatVid, RegionVid, UnconstrainedNumeric};
 use middle::ty::{self, Ty, HasTypeFlags};
@@ -477,7 +477,7 @@ pub struct CombinedSnapshot {
 
 impl<'a, 'tcx> mc::Typer<'tcx> for InferCtxt<'a, 'tcx> {
     fn node_ty(&self, id: ast::NodeId) -> McResult<Ty<'tcx>> {
-        let ty = self.node_ty(id);
+        let ty = self.node_type(id);
         self.resolve_type_vars_or_error(&ty)
     }
 
@@ -1183,7 +1183,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                         .map(|method| resolve_ty(method.ty)))
     }
 
-    pub fn node_ty(&self, id: ast::NodeId) -> Ty<'tcx> {
+    pub fn node_type(&self, id: ast::NodeId) -> Ty<'tcx> {
         match self.tables.borrow().node_types.get(&id) {
             Some(&t) => t,
             // FIXME
