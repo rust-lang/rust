@@ -322,10 +322,8 @@ pub fn normalize_associated_type<'tcx,T>(tcx: &ty::ctxt<'tcx>, value: &T) -> T
     }
 
     // FIXME(#20304) -- cache
-    // NOTE: @jroesch
-    // Here is of an example where we do not use a param_env but use a typer instead.
     let infcx = infer::normalizing_infer_ctxt(tcx, &tcx.tables);
-    let mut selcx = traits::SelectionContext::new(&infcx, &infcx);
+    let mut selcx = traits::SelectionContext::new(&infcx);
     let cause = traits::ObligationCause::dummy();
     let traits::Normalized { value: result, obligations } =
         traits::normalize(&mut selcx, cause, &value);

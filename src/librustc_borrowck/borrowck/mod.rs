@@ -30,7 +30,6 @@ use rustc::middle::dataflow::KillFrom;
 use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::free_region::FreeRegionMap;
 use rustc::middle::mem_categorization as mc;
-use rustc::middle::mem_categorization::Typer;
 use rustc::middle::region;
 use rustc::middle::ty::{self, Ty};
 

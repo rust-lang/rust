@@ -32,7 +32,7 @@ use trans::{type_of, adt, machine, monomorphize};
 use trans::common::{self, CrateContext, FunctionContext, Block};
 use trans::_match::{BindingInfo, TrByCopy, TrByMove, TrByRef};
 use trans::type_::Type;
-use middle::ty::{self, Ty, ClosureTyper};
+use middle::ty::{self, Ty};
 use session::config::{self, FullDebugInfo};
 use util::nodemap::FnvHashMap;
 use util::common::path2cstr;

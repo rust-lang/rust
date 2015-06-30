@@ -11,7 +11,7 @@
 
 use libc::{c_uint, c_ulonglong};
 use llvm::{self, ValueRef, AttrHelper};
-use middle::ty::{self, ClosureTyper};
+use middle::ty;
 use middle::infer;
 use session::config::NoDebugInfo;
 use syntax::abi;

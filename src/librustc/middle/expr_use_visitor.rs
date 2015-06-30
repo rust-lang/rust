@@ -23,8 +23,7 @@ use self::OverloadedCallType::*;
 use middle::{def, region, pat_util};
 use middle::infer;
 use middle::mem_categorization as mc;
-use middle::mem_categorization::Typer;
-use middle::ty::{self, ClosureTyper};
+use middle::ty::{self};
 use middle::ty::{MethodCall, MethodObject, MethodTraitObject};
 use middle::ty::{MethodOrigin, MethodParam, MethodTypeParam};
 use middle::ty::{MethodStatic, MethodStaticClosure};
@@ -356,7 +355,7 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
     }
 
     fn tcx(&self) -> &'t ty::ctxt<'tcx> {
-        self.typer.tcx()
+        self.typer.tcx
     }
 
     fn delegate_consume(&mut self,
@@ -691,7 +690,7 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
         match local.init {
             None => {
                 let delegate = &mut self.delegate;
-                pat_util::pat_bindings(&self.typer.tcx().def_map, &*local.pat,
+                pat_util::pat_bindings(&self.typer.tcx.def_map, &*local.pat,
                                        |_, id, span, _| {
                     delegate.decl_without_init(id, span);
                 })
@@ -1053,7 +1052,7 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
         let delegate = &mut self.delegate;
         return_if_err!(mc.cat_pattern(cmt_discr.clone(), pat, |mc, cmt_pat, pat| {
             if pat_util::pat_is_binding(def_map, pat) {
-                let tcx = typer.tcx();
+                let tcx = typer.tcx;
 
                 debug!("binding cmt_pat={:?} pat={:?} match_mode={:?}",
                        cmt_pat,
@@ -1140,7 +1139,7 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
         // the leaves of the pattern tree structure.
         return_if_err!(mc.cat_pattern(cmt_discr, pat, |mc, cmt_pat, pat| {
             let def_map = def_map.borrow();
-            let tcx = typer.tcx();
+            let tcx = typer.tcx;
 
             match pat.node {
                 ast::PatEnum(_, _) | ast::PatQPath(..) |
@@ -1279,7 +1278,7 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
     }
 }
 
-fn copy_or_move<'tcx>(typer: &mc::Typer<'tcx>,
+fn copy_or_move<'a, 'tcx>(typer: &infer::InferCtxt<'a, 'tcx>,
                       cmt: &mc::cmt<'tcx>,
                       move_reason: MoveReason)
                       -> ConsumeMode

@@ -11,7 +11,6 @@
 use arena::TypedArena;
 use back::link::{self, mangle_internal_name_by_path_and_seq};
 use llvm::{ValueRef, get_params};
-use middle::mem_categorization::Typer;
 use middle::infer;
 use trans::adt;
 use trans::attributes;
@@ -26,7 +25,7 @@ use trans::declare;
 use trans::expr;
 use trans::monomorphize::{self, MonoId};
 use trans::type_of::*;
-use middle::ty::{self, ClosureTyper};
+use middle::ty;
 use middle::subst::Substs;
 use session::config::FullDebugInfo;
 

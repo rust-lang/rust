@@ -540,8 +540,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
             fulfill_cx.register_predicate_obligation(&infcx, predicate);
 
             // Check that all transitive obligations are satisfied.
-            if let Err(errors) = fulfill_cx.select_all_or_error(&infcx,
-                                                                &infcx) {
+            if let Err(errors) = fulfill_cx.select_all_or_error(&infcx) {
                 traits::report_fulfillment_errors(&infcx, &errors);
             }
 

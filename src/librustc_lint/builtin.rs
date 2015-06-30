@@ -30,7 +30,6 @@
 
 use metadata::{csearch, decoder};
 use middle::def::*;
-use middle::mem_categorization::Typer;
 use middle::subst::Substs;
 use middle::ty::{self, Ty};
 use middle::{def, pat_util, stability};

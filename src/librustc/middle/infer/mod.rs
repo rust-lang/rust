@@ -19,7 +19,6 @@ pub use self::TypeOrigin::*;
 pub use self::ValuePairs::*;
 pub use self::fixup_err::*;
 pub use middle::ty::IntVarValue;
-use middle::ty::ClosureTyper;
 pub use self::freshen::TypeFreshener;
 pub use self::region_inference::GenericKind;
 
@@ -475,129 +474,6 @@ pub struct CombinedSnapshot {
     region_vars_snapshot: RegionSnapshot,
 }
 
-impl<'a, 'tcx> mc::Typer<'tcx> for InferCtxt<'a, 'tcx> {
-    fn node_ty(&self, id: ast::NodeId) -> McResult<Ty<'tcx>> {
-        let ty = self.node_type(id);
-        self.resolve_type_vars_or_error(&ty)
-    }
-
-    fn expr_ty_adjusted(&self, expr: &ast::Expr) -> McResult<Ty<'tcx>> {
-        let ty = self.adjust_expr_ty(expr, self.tables.borrow().adjustments.get(&expr.id));
-        self.resolve_type_vars_or_error(&ty)
-    }
-
-    fn type_moves_by_default(&self, ty: Ty<'tcx>, span: Span) -> bool {
-        let ty = self.resolve_type_vars_if_possible(&ty);
-        !traits::type_known_to_meet_builtin_bound(self, self, ty, ty::BoundCopy, span)
-    }
-
-    fn node_method_ty(&self, method_call: ty::MethodCall)
-                      -> Option<Ty<'tcx>> {
-        self.tables
-            .borrow()
-            .method_map
-            .get(&method_call)
-            .map(|method| method.ty)
-            .map(|ty| self.resolve_type_vars_if_possible(&ty))
-    }
-
-    fn node_method_origin(&self, method_call: ty::MethodCall)
-                          -> Option<ty::MethodOrigin<'tcx>>
-    {
-        self.tables
-            .borrow()
-            .method_map
-            .get(&method_call)
-            .map(|method| method.origin.clone())
-    }
-
-    fn adjustments(&self) -> Ref<NodeMap<ty::AutoAdjustment<'tcx>>> {
-        fn project_adjustments<'a, 'tcx>(tables: &'a ty::Tables<'tcx>)
-                                        -> &'a NodeMap<ty::AutoAdjustment<'tcx>> {
-            &tables.adjustments
-        }
-
-        Ref::map(self.tables.borrow(), project_adjustments)
-    }
-
-    fn is_method_call(&self, id: ast::NodeId) -> bool {
-        self.tables.borrow().method_map.contains_key(&ty::MethodCall::expr(id))
-    }
-
-    fn temporary_scope(&self, rvalue_id: ast::NodeId) -> Option<CodeExtent> {
-        self.tcx.region_maps.temporary_scope(rvalue_id)
-    }
-
-    fn upvar_capture(&self, upvar_id: ty::UpvarId) -> Option<ty::UpvarCapture> {
-        self.tables.borrow().upvar_capture_map.get(&upvar_id).cloned()
-    }
-}
-
-impl<'a, 'tcx> ty::ClosureTyper<'tcx> for InferCtxt<'a, 'tcx> {
-    fn param_env<'b>(&'b self) -> &'b ty::ParameterEnvironment<'b,'tcx> {
-        &self.parameter_environment
-    }
-
-    fn closure_kind(&self,
-                    def_id: ast::DefId)
-                    -> Option<ty::ClosureKind>
-    {
-        self.tables.borrow().closure_kinds.get(&def_id).cloned()
-    }
-
-    fn closure_type(&self,
-                    def_id: ast::DefId,
-                    substs: &subst::Substs<'tcx>)
-                    -> ty::ClosureTy<'tcx>
-    {
-
-        let closure_ty = self.tables
-                             .borrow()
-                             .closure_tys
-                             .get(&def_id)
-                             .unwrap()
-                             .subst(self.tcx, substs);
-
-        if self.normalize {
-            // NOTE: this flag is currently *always* set to false, we are slowly folding
-            // normalization into this trait and will come back to remove this in the near
-            // future.
-
-            // code from NormalizingClosureTyper:
-            // the substitutions in `substs` are already monomorphized,
-            // but we still must normalize associated types
-            // normalize_associated_type(self.param_env.tcx, &closure_ty)
-            normalize_associated_type(&self.tcx, &closure_ty)
-            // panic!("see issue 26597: fufillment context refactor must occur")
-        } else {
-            closure_ty
-        }
-    }
-
-    fn closure_upvars(&self,
-                      def_id: ast::DefId,
-                      substs: &Substs<'tcx>)
-                      -> Option<Vec<ty::ClosureUpvar<'tcx>>>
-    {
-        let result = ty::ctxt::closure_upvars(self, def_id, substs);
-
-        if self.normalize {
-            // NOTE: this flag is currently *always* set to false, we are slowly folding
-            // normalization into this trait and will come back to remove this in the near
-            // future.
-
-            // code from NormalizingClosureTyper:
-            // the substitutions in `substs` are already monomorphized,
-            // but we still must normalize associated types
-            // monomorphize::normalize_associated_type(self.param_env.tcx, &result)
-            // panic!("see issue 26597: fufillment context refactor must occur")
-            normalize_associated_type(&self.tcx, &result)
-        } else {
-            result
-        }
-    }
-}
-
 pub fn normalize_associated_type<'tcx,T>(tcx: &ty::ctxt<'tcx>, value: &T) -> T
     where T : TypeFoldable<'tcx> + HasTypeFlags
 {
@@ -610,7 +486,7 @@ pub fn normalize_associated_type<'tcx,T>(tcx: &ty::ctxt<'tcx>, value: &T) -> T
     }
 
     let infcx = new_infer_ctxt(tcx, &tcx.tables, None, true);
-    let mut selcx = traits::SelectionContext::new(&infcx, &infcx);
+    let mut selcx = traits::SelectionContext::new(&infcx);
     let cause = traits::ObligationCause::dummy();
     let traits::Normalized { value: result, obligations } =
         traits::normalize(&mut selcx, cause, &value);
@@ -663,12 +539,11 @@ pub fn drain_fulfillment_cx<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx>,
 {
     debug!("drain_fulfillment_cx(result={:?})",
            result);
-    // this is stupid but temporary
-    let typer: &ClosureTyper<'tcx> = infcx;
+
     // In principle, we only need to do this so long as `result`
     // contains unbound type parameters. It could be a slight
     // optimization to stop iterating early.
-    match fulfill_cx.select_all_or_error(infcx, typer) {
+    match fulfill_cx.select_all_or_error(infcx) {
         Ok(()) => { }
         Err(errors) => {
             return Err(errors);
@@ -1428,6 +1303,125 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                     values: Types(expected_found(true, e, e)) };
             self.equate(true, trace).relate(a, b)
         }).map(|_| ())
+    }
+
+    pub fn node_ty(&self, id: ast::NodeId) -> McResult<Ty<'tcx>> {
+        let ty = self.node_type(id);
+        self.resolve_type_vars_or_error(&ty)
+    }
+
+    pub fn expr_ty_adjusted(&self, expr: &ast::Expr) -> McResult<Ty<'tcx>> {
+        let ty = self.adjust_expr_ty(expr, self.tables.borrow().adjustments.get(&expr.id));
+        self.resolve_type_vars_or_error(&ty)
+    }
+
+    pub fn type_moves_by_default(&self, ty: Ty<'tcx>, span: Span) -> bool {
+        let ty = self.resolve_type_vars_if_possible(&ty);
+        !traits::type_known_to_meet_builtin_bound(self, ty, ty::BoundCopy, span)
+    }
+
+    pub fn node_method_ty(&self, method_call: ty::MethodCall)
+                      -> Option<Ty<'tcx>> {
+        self.tables
+            .borrow()
+            .method_map
+            .get(&method_call)
+            .map(|method| method.ty)
+            .map(|ty| self.resolve_type_vars_if_possible(&ty))
+    }
+
+    pub fn node_method_origin(&self, method_call: ty::MethodCall)
+                          -> Option<ty::MethodOrigin<'tcx>>
+    {
+        self.tables
+            .borrow()
+            .method_map
+            .get(&method_call)
+            .map(|method| method.origin.clone())
+    }
+
+    pub fn adjustments(&self) -> Ref<NodeMap<ty::AutoAdjustment<'tcx>>> {
+        fn project_adjustments<'a, 'tcx>(tables: &'a ty::Tables<'tcx>)
+                                        -> &'a NodeMap<ty::AutoAdjustment<'tcx>> {
+            &tables.adjustments
+        }
+
+        Ref::map(self.tables.borrow(), project_adjustments)
+    }
+
+    pub fn is_method_call(&self, id: ast::NodeId) -> bool {
+        self.tables.borrow().method_map.contains_key(&ty::MethodCall::expr(id))
+    }
+
+    pub fn temporary_scope(&self, rvalue_id: ast::NodeId) -> Option<CodeExtent> {
+        self.tcx.region_maps.temporary_scope(rvalue_id)
+    }
+
+    pub fn upvar_capture(&self, upvar_id: ty::UpvarId) -> Option<ty::UpvarCapture> {
+        self.tables.borrow().upvar_capture_map.get(&upvar_id).cloned()
+    }
+
+    pub fn param_env<'b>(&'b self) -> &'b ty::ParameterEnvironment<'b,'tcx> {
+        &self.parameter_environment
+    }
+
+    pub fn closure_kind(&self,
+                        def_id: ast::DefId)
+                        -> Option<ty::ClosureKind>
+    {
+        self.tables.borrow().closure_kinds.get(&def_id).cloned()
+    }
+
+    pub fn closure_type(&self,
+                    def_id: ast::DefId,
+                    substs: &subst::Substs<'tcx>)
+                    -> ty::ClosureTy<'tcx>
+    {
+
+        let closure_ty = self.tables
+                             .borrow()
+                             .closure_tys
+                             .get(&def_id)
+                             .unwrap()
+                             .subst(self.tcx, substs);
+
+        if self.normalize {
+            // NOTE: this flag is currently *always* set to false, we are slowly folding
+            // normalization into this trait and will come back to remove this in the near
+            // future.
+
+            // code from NormalizingClosureTyper:
+            // the substitutions in `substs` are already monomorphized,
+            // but we still must normalize associated types
+            // normalize_associated_type(self.param_env.tcx, &closure_ty)
+            normalize_associated_type(&self.tcx, &closure_ty)
+            // panic!("see issue 26597: fufillment context refactor must occur")
+        } else {
+            closure_ty
+        }
+    }
+
+    pub fn closure_upvars(&self,
+                          def_id: ast::DefId,
+                          substs: &Substs<'tcx>)
+                          -> Option<Vec<ty::ClosureUpvar<'tcx>>>
+    {
+        let result = ty::ctxt::closure_upvars(self, def_id, substs);
+
+        if self.normalize {
+            // NOTE: this flag is currently *always* set to false, we are slowly folding
+            // normalization into this trait and will come back to remove this in the near
+            // future.
+
+            // code from NormalizingClosureTyper:
+            // the substitutions in `substs` are already monomorphized,
+            // but we still must normalize associated types
+            // monomorphize::normalize_associated_type(self.param_env.tcx, &result)
+            // panic!("see issue 26597: fufillment context refactor must occur")
+            normalize_associated_type(&self.tcx, &result)
+        } else {
+            result
+        }
     }
 }
 

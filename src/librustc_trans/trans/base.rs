@@ -41,7 +41,7 @@ use middle::infer;
 use middle::lang_items::{LangItem, ExchangeMallocFnLangItem, StartFnLangItem};
 use middle::weak_lang_items;
 use middle::subst::Substs;
-use middle::ty::{self, Ty, ClosureTyper, HasTypeFlags};
+use middle::ty::{self, Ty, HasTypeFlags};
 use rustc::ast_map;
 use session::config::{self, NoDebugInfo};
 use session::Session;
