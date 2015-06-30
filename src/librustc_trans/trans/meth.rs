@@ -117,8 +117,7 @@ pub fn trans_method_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
            .unwrap();
 
     match origin {
-        ty::MethodStatic(did) |
-        ty::MethodStaticClosure(did) => {
+        ty::MethodStatic(did) => {
             debug!("trans_method_callee: static, {:?}", did);
             Callee {
                 bcx: bcx,

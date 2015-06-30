@@ -854,7 +854,6 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
             MethodStatic(method_id) => {
                 self.check_static_method(span, method_id, name)
             }
-            MethodStaticClosure(_) => {}
             // Trait methods are always all public. The only controlling factor
             // is whether the trait itself is accessible or not.
             MethodTypeParam(MethodParam { ref trait_ref, .. }) |

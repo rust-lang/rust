@@ -2003,7 +2003,7 @@ impl LintPass for UnconditionalRecursion {
                     ty::MethodTraitObject(_) => return false,
 
                     // This `did` refers directly to the method definition.
-                    ty::MethodStatic(did) | ty::MethodStaticClosure(did) => did,
+                    ty::MethodStatic(did) => did,
 
                     // MethodTypeParam are methods from traits:
 

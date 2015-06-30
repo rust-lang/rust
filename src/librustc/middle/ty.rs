@@ -631,9 +631,6 @@ pub enum MethodOrigin<'tcx> {
     // fully statically resolved method
     MethodStatic(ast::DefId),
 
-    // fully statically resolved closure invocation
-    MethodStaticClosure(ast::DefId),
-
     // method invoked on a type parameter with a bounded trait
     MethodTypeParam(MethodParam<'tcx>),
 
