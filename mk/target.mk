@@ -249,11 +249,9 @@ endef
 
 $(foreach host,$(CFG_HOST), \
  $(foreach target,$(CFG_TARGET), \
-  $(foreach stage,$(STAGES), \
-   $(foreach crate,$(CRATES), \
-    $(eval $(call SETUP_LIB_MSVC_ENV_VARS,$(stage),$(target),$(host),$(crate)))))))
+  $(foreach crate,$(CRATES), \
+   $(eval $(call SETUP_LIB_MSVC_ENV_VARS,0,$(target),$(host),$(crate))))))
 $(foreach host,$(CFG_HOST), \
  $(foreach target,$(CFG_TARGET), \
-  $(foreach stage,$(STAGES), \
-   $(foreach tool,$(TOOLS), \
-    $(eval $(call SETUP_TOOL_MSVC_ENV_VARS,$(stage),$(target),$(host),$(tool)))))))
+  $(foreach tool,$(TOOLS), \
+   $(eval $(call SETUP_TOOL_MSVC_ENV_VARS,0,$(target),$(host),$(tool))))))
