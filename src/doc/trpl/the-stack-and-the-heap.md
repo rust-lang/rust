@@ -176,7 +176,7 @@ After `bar()` is over, its frame is deallocated, leaving just `foo()` and
 | 1       | a    | 5     |
 | 0       | x    | 42    |
 
-And then `foo()` ends, leaving just `main()`
+And then `foo()` ends, leaving just `main()`:
 
 | Address | Name | Value |
 |---------|------|-------|
