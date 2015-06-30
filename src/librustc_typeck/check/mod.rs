@@ -97,7 +97,7 @@ use middle::ty::{Disr, ParamTy, ParameterEnvironment};
 use middle::ty::{self, HasTypeFlags, RegionEscape, ToPolyTraitRef, Ty};
 use middle::ty::{MethodCall, MethodCallee};
 use middle::ty_fold::{TypeFolder, TypeFoldable};
-use rscope::RegionScope;
+use rscope::{ElisionFailureInfo, RegionScope};
 use session::Session;
 use {CrateCtxt, lookup_full_def, require_same_types};
 use TypeAndSubsts;
@@ -1796,7 +1796,7 @@ impl<'a, 'tcx> RegionScope for FnCtxt<'a, 'tcx> {
     }
 
     fn anon_regions(&self, span: Span, count: usize)
-                    -> Result<Vec<ty::Region>, Option<Vec<(String, usize)>>> {
+                    -> Result<Vec<ty::Region>, Option<Vec<ElisionFailureInfo>>> {
         Ok((0..count).map(|_| {
             self.infcx().next_region_var(infer::MiscVariable(span))
         }).collect())

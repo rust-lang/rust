@@ -25,7 +25,7 @@ use middle::lang_items::LangItem;
 use middle::mem_categorization as mc;
 use middle::mem_categorization::Typer;
 use middle::region;
-use middle::subst::{self, Subst, Substs};
+use middle::subst::{self, Substs};
 use trans::base;
 use trans::build;
 use trans::cleanup;
@@ -54,8 +54,6 @@ use syntax::ast;
 use syntax::codemap::{DUMMY_SP, Span};
 use syntax::parse::token::InternedString;
 use syntax::parse::token;
-use util::common::memoized;
-use util::nodemap::FnvHashSet;
 
 pub use trans::context::CrateContext;
 
@@ -133,47 +131,6 @@ pub fn type_is_fat_ptr<'tcx>(cx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
         _ => {
             false
         }
-    }
-}
-
-// Some things don't need cleanups during unwinding because the
-// thread can free them all at once later. Currently only things
-// that only contain scalars and shared boxes can avoid unwind
-// cleanups.
-pub fn type_needs_unwind_cleanup<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
-    return memoized(ccx.needs_unwind_cleanup_cache(), ty, |ty| {
-        type_needs_unwind_cleanup_(ccx.tcx(), ty, &mut FnvHashSet())
-    });
-
-    fn type_needs_unwind_cleanup_<'tcx>(tcx: &ty::ctxt<'tcx>,
-                                        ty: Ty<'tcx>,
-                                        tycache: &mut FnvHashSet<Ty<'tcx>>)
-                                        -> bool
-    {
-        // Prevent infinite recursion
-        if !tycache.insert(ty) {
-            return false;
-        }
-
-        let mut needs_unwind_cleanup = false;
-        ty.maybe_walk(|ty| {
-            needs_unwind_cleanup |= match ty.sty {
-                ty::TyBool | ty::TyInt(_) | ty::TyUint(_) |
-                ty::TyFloat(_) | ty::TyTuple(_) | ty::TyRawPtr(_) => false,
-
-                ty::TyEnum(did, substs) =>
-                    tcx.enum_variants(did).iter().any(|v|
-                        v.args.iter().any(|&aty| {
-                            let t = aty.subst(tcx, substs);
-                            type_needs_unwind_cleanup_(tcx, t, tycache)
-                        })
-                    ),
-
-                _ => true
-            };
-            !needs_unwind_cleanup
-        });
-        needs_unwind_cleanup
     }
 }
 
