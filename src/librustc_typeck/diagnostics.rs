@@ -1023,7 +1023,7 @@ type Foo<A> = Box<A>; // ok!
 "##,
 
 E0092: r##"
-You tried to call an undefined atomic operation function.
+You tried to declare an undefined atomic operation function.
 Erroneous code example:
 
 ```
@@ -1037,7 +1037,7 @@ extern "rust-intrinsic" {
 
 Please check you didn't make a mistake in the function's name. All intrinsic
 functions are defined in librustc_trans/trans/intrinsic.rs and in
-libcore/intrinsics.rs. Example:
+libcore/intrinsics.rs in the Rust source code. Example:
 
 ```
 #![feature(intrinsics)]
@@ -1049,7 +1049,7 @@ extern "rust-intrinsic" {
 "##,
 
 E0093: r##"
-You called an unknown intrinsic function. Erroneous code example:
+You declared an unknown intrinsic function. Erroneous code example:
 
 ```
 #![feature(intrinsics)]
@@ -1067,7 +1067,7 @@ fn main() {
 
 Please check you didn't make a mistake in the function's name. All intrinsic
 functions are defined in librustc_trans/trans/intrinsic.rs and in
-libcore/intrinsics.rs. Example:
+libcore/intrinsics.rs in the Rust source code. Example:
 
 ```
 #![feature(intrinsics)]
@@ -1097,14 +1097,41 @@ extern "rust-intrinsic" {
 }
 ```
 
-Please check you give the right number of lifetime parameters and/or the
-function definition. Example:
+Please check that you provided the right number of lifetime parameters
+and verify with the function declaration in the Rust source code.
+Example:
 
 ```
 #![feature(intrinsics)]
 
 extern "rust-intrinsic" {
     fn size_of<T>() -> usize; // ok!
+}
+```
+"##,
+
+E0101: r##"
+You hit this error because the compiler the compiler lacks information
+to determine a type for this expression. Erroneous code example:
+
+```
+fn main() {
+    let x = |_| {}; // error: cannot determine a type for this expression
+}
+```
+
+You have two possibilities to solve this situation:
+ * Give an explicit definition of the expression
+ * Infer the expression
+
+Examples:
+
+```
+fn main() {
+    let x = |_ : u32| {}; // ok!
+    // or:
+    let x = |_| {};
+    x(0u32);
 }
 ```
 "##,
@@ -1343,21 +1370,20 @@ Erroneous code example:
 
 ```
 trait Trait {
-    fn t<'a,'b:'a>(x: &'a str, y: &'b str);
+    fn bar<'a,'b:'a>(x: &'a str, y: &'b str);
 }
 
 struct Foo;
 
 impl Trait for Foo {
-    fn t<'a,'b>(x: &'a str, y: &'b str) { // error: lifetime parameters
-                                          //        or bounds on method `t`
-                                          //        do not match the trait
-                                          //        declaration
+    fn bar<'a,'b>(x: &'a str, y: &'b str) {
+    // error: lifetime parameters or bounds on method `bar`
+    // do not match the trait declaration
     }
 }
 ```
 
-The 'b lifetime constraints for `t` implementation does not match the
+The `'b` lifetime constraint for bar() implementation does not match the
 trait declaration. Ensure lifetime declarations match exactly in both trait
 declaration and implementation. Example:
 
@@ -1797,7 +1823,6 @@ register_diagnostics! {
     E0085,
     E0086,
     E0090,
-    E0101,
     E0102,
     E0103,
     E0104,
