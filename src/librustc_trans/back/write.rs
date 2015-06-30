@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use back::lto;
-use back::link::{get_cc_prog, remove};
+use back::link::{get_linker, remove};
 use session::config::{OutputFilenames, Passes, SomePasses, AllPasses};
 use session::Session;
 use session::config;
@@ -27,7 +27,7 @@ use std::ffi::{CStr, CString};
 use std::fs;
 use std::mem;
 use std::path::Path;
-use std::process::{Command, Stdio};
+use std::process::Stdio;
 use std::ptr;
 use std::str;
 use std::sync::{Arc, Mutex};
@@ -737,8 +737,7 @@ pub fn run_passes(sess: &Session,
                 None
             };
 
-        let pname = get_cc_prog(sess);
-        let mut cmd = Command::new(&pname[..]);
+        let (pname, mut cmd) = get_linker(sess);
 
         cmd.args(&sess.target.target.options.pre_link_args);
         cmd.arg("-nostdlib");
@@ -767,8 +766,7 @@ pub fn run_passes(sess: &Session,
             },
             Err(e) => {
                 sess.err(&format!("could not exec the linker `{}`: {}",
-                                 pname,
-                                 e));
+                                 pname, e));
                 sess.abort_if_errors();
             },
         }
@@ -986,8 +984,7 @@ fn run_work_multithreaded(sess: &Session,
 }
 
 pub fn run_assembler(sess: &Session, outputs: &OutputFilenames) {
-    let pname = get_cc_prog(sess);
-    let mut cmd = Command::new(&pname[..]);
+    let (pname, mut cmd) = get_linker(sess);
 
     cmd.arg("-c").arg("-o").arg(&outputs.path(config::OutputTypeObject))
                            .arg(&outputs.temp_path(config::OutputTypeAssembly));
@@ -1007,9 +1004,7 @@ pub fn run_assembler(sess: &Session, outputs: &OutputFilenames) {
             }
         },
         Err(e) => {
-            sess.err(&format!("could not exec the linker `{}`: {}",
-                             pname,
-                             e));
+            sess.err(&format!("could not exec the linker `{}`: {}", pname, e));
             sess.abort_if_errors();
         }
     }
