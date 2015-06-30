@@ -1528,6 +1528,29 @@ impl Copy for &'static Bar { } // error
 ```
 "##,
 
+E0211: r##"
+You used an intrinsic function which doesn't correspond to its
+definition. Erroneous code example:
+
+```
+#![feature(intrinsics)]
+
+extern "rust-intrinsic" {
+    fn size_of<T>(); // error: intrinsic has wrong type
+}
+```
+
+Please check the function definition. Example:
+
+```
+#![feature(intrinsics)]
+
+extern "rust-intrinsic" {
+    fn size_of<T>() -> usize;
+}
+```
+"##,
+
 E0243: r##"
 This error indicates that not enough type parameters were found in a type or
 trait.
@@ -1790,7 +1813,6 @@ register_diagnostics! {
     E0208,
     E0209, // builtin traits can only be implemented on structs or enums
     E0210, // type parameter is not constrained by any local type
-    E0211,
     E0212, // cannot extract an associated type from a higher-ranked trait bound
     E0213, // associated types are not accepted in this context
     E0214, // parenthesized parameters may only be used with a trait
