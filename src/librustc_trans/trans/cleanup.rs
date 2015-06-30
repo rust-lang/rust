@@ -851,8 +851,8 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
         // an "exception", but for MSVC we want to force SEH. This means that we
         // can't actually have the personality function be our standard
         // `rust_eh_personality` function, but rather we wired it up to the
-        // CRT's custom `__C_specific_handler` personality funciton, which
-        // forces LLVM to consider landing pads as "landing pads for SEH".
+        // CRT's custom personality function, which forces LLVM to consider
+        // landing pads as "landing pads for SEH".
         let target = &self.ccx.sess().target.target;
         let llpersonality = match pad_bcx.tcx().lang_items.eh_personality() {
             Some(def_id) if !target.options.is_like_msvc => {
@@ -864,10 +864,12 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
                 match *personality {
                     Some(llpersonality) => llpersonality,
                     None => {
-                        let name = if target.options.is_like_msvc {
-                            "__C_specific_handler"
-                        } else {
+                        let name = if !target.options.is_like_msvc {
                             "rust_eh_personality"
+                        } else if target.arch == "x86" {
+                            "_except_handler3"
+                        } else {
+                            "__C_specific_handler"
                         };
                         let fty = Type::variadic_func(&[], &Type::i32(self.ccx));
                         let f = declare::declare_cfn(self.ccx, name, fty,
