@@ -1022,6 +1022,32 @@ type Foo<A> = Box<A>; // ok!
 ```
 "##,
 
+E0092: r##"
+You tried to call an undefined atomic operation function.
+Erroneous code example:
+
+```
+#![feature(intrinsics)]
+
+extern "rust-intrinsic" {
+    fn atomic_foo(); // error: unrecognized atomic operation
+                     //        function
+}
+```
+
+Please check you didn't make a mistake in the function's name. All intrinsic
+functions are defined in librustc_trans/trans/intrinsic.rs and in
+libcore/intrinsics.rs. Example:
+
+```
+#![feature(intrinsics)]
+
+extern "rust-intrinsic" {
+    fn atomic_fence(); // ok!
+}
+```
+"##,
+
 E0093: r##"
 You called an unknown intrinsic function. Erroneous code example:
 
@@ -1771,7 +1797,6 @@ register_diagnostics! {
     E0085,
     E0086,
     E0090,
-    E0092,
     E0101,
     E0102,
     E0103,
