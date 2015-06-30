@@ -454,6 +454,25 @@ impl<T, S> HashSet<T, S>
         self.map.contains_key(value)
     }
 
+    /// Gets a value from a set.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(collection_keyed)]
+    /// use std::collections::HashSet;
+    ///
+    /// let mut set = HashSet::new();
+    ///
+    /// assert_eq!(set.insert(2), true);
+    /// assert_eq!(set.get(&2), Some(&2));
+    /// ```
+    #[unstable(feature = "collection_keyed",
+            reason="keyed was recently added")]
+    pub fn get(&mut self, value: &T) -> Option<&T> {
+        self.map.keyed_get(value).map(|x| x.0)
+    }
+
     /// Returns `true` if the set has no elements in common with `other`.
     /// This is equivalent to checking for an empty intersection.
     ///
@@ -539,6 +558,27 @@ impl<T, S> HashSet<T, S>
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn insert(&mut self, value: T) -> bool { self.map.insert(value, ()).is_none() }
 
+    /// Adds a value to the set. Returns the value that was already in the set,
+    /// if any.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(collection_keyed)]
+    /// use std::collections::HashSet;
+    ///
+    /// let mut set = HashSet::new();
+    ///
+    /// assert_eq!(set.insert_item(2), None);
+    /// assert_eq!(set.insert_item(2), Some(2));
+    /// assert_eq!(set.len(), 1);
+    /// ```
+    #[unstable(feature = "collection_keyed",
+            reason="keyed was recently added")]
+    pub fn insert_item(&mut self, value: T) -> Option<T> {
+        self.map.keyed_insert(value, ()).map(|x| x.0)
+    }
+
     /// Removes a value from the set. Returns `true` if the value was
     /// present in the set.
     ///
@@ -562,6 +602,33 @@ impl<T, S> HashSet<T, S>
         where T: Borrow<Q>, Q: Hash + Eq
     {
         self.map.remove(value).is_some()
+    }
+
+    /// Removes a value from the set. Returns the value if it was
+    /// present in the set.
+    ///
+    /// The value may be any borrowed form of the set's value type, but
+    /// `Hash` and `Eq` on the borrowed form *must* match those for
+    /// the value type.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(collection_keyed)]
+    /// use std::collections::HashSet;
+    ///
+    /// let mut set = HashSet::new();
+    ///
+    /// set.insert(2);
+    /// assert_eq!(set.remove_item(&2), Some(2));
+    /// assert_eq!(set.remove_item(&2), None);
+    /// ```
+    #[unstable(feature = "collection_keyed",
+            reason="keyed was recently added")]
+    pub fn remove_item<Q: ?Sized>(&mut self, value: &Q) -> Option<T>
+        where T: Borrow<Q>, Q: Hash + Eq
+    {
+        self.map.keyed_remove(value).map(|x| x.0)
     }
 }
 

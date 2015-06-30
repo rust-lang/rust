@@ -765,7 +765,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// If the key already exists, the hashtable will be returned untouched
     /// and a reference to the existing element will be returned.
     fn insert_hashed_nocheck(&mut self, hash: SafeHash, k: K, v: V) -> &mut V {
-        self.insert_or_replace_with(hash, k, v, |_, _, _| ())
+        self.insert_or_replace_with(hash, k, v, |_, _, _, _| ())
     }
 
     fn insert_or_replace_with<'a, F>(&'a mut self,
@@ -774,7 +774,7 @@ impl<K, V, S> HashMap<K, V, S>
                                      v: V,
                                      mut found_existing: F)
                                      -> &'a mut V where
-        F: FnMut(&mut K, &mut V, V),
+        F: FnMut(&mut K, K, &mut V, V),
     {
         // Worst case, we'll find one empty bucket among `size + 1` buckets.
         let size = self.table.size();
@@ -797,7 +797,7 @@ impl<K, V, S> HashMap<K, V, S>
                     let (bucket_k, bucket_v) = bucket.into_mut_refs();
                     debug_assert!(k == *bucket_k);
                     // Key already exists. Get its reference.
-                    found_existing(bucket_k, bucket_v, v);
+                    found_existing(bucket_k, k, bucket_v, v);
                     return bucket_v;
                 }
             }
@@ -1024,6 +1024,31 @@ impl<K, V, S> HashMap<K, V, S>
         self.drain();
     }
 
+    /// Returns a reference to the key and value value corresponding to the key.
+    ///
+    /// The key may be any borrowed form of the map's key type, but
+    /// `Hash` and `Eq` on the borrowed form *must* match those for
+    /// the key type.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(collection_keyed)]
+    /// use std::collections::HashMap;
+    ///
+    /// let mut map = HashMap::new();
+    /// map.insert(1, "a");
+    /// assert_eq!(map.keyed_get(&1), Some((&1, &"a")));
+    /// assert_eq!(map.keyed_get(&2), None);
+    /// ```
+    #[unstable(feature = "collection_keyed",
+            reason="keyed was recently added")]
+    pub fn keyed_get<Q: ?Sized>(&self, k: &Q) -> Option<(&K, &V)>
+        where K: Borrow<Q>, Q: Hash + Eq
+    {
+        self.search(k).map(|bucket| bucket.into_refs())
+    }
+
     /// Returns a reference to the value corresponding to the key.
     ///
     /// The key may be any borrowed form of the map's key type, but
@@ -1044,7 +1069,7 @@ impl<K, V, S> HashMap<K, V, S>
     pub fn get<Q: ?Sized>(&self, k: &Q) -> Option<&V>
         where K: Borrow<Q>, Q: Hash + Eq
     {
-        self.search(k).map(|bucket| bucket.into_refs().1)
+        self.keyed_get(k).map(|x| x.1)
     }
 
     /// Returns true if the map contains a value for the specified key.
@@ -1092,7 +1117,38 @@ impl<K, V, S> HashMap<K, V, S>
     pub fn get_mut<Q: ?Sized>(&mut self, k: &Q) -> Option<&mut V>
         where K: Borrow<Q>, Q: Hash + Eq
     {
-        self.search_mut(k).map(|bucket| bucket.into_mut_refs().1)
+        self.keyed_get_mut(k).map(|x| x.1)
+    }
+
+    /// Returns a mutable reference to the value corresponding to the key.
+    ///
+    /// The key may be any borrowed form of the map's key type, but
+    /// `Hash` and `Eq` on the borrowed form *must* match those for
+    /// the key type.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(collection_keyed)]
+    /// use std::collections::HashMap;
+    ///
+    /// let mut map = HashMap::new();
+    /// map.insert(1, "a");
+    /// if let Some((key, x)) = map.keyed_get_mut(&1) {
+    ///     assert_eq!(key, &1);
+    ///     *x = "b";
+    /// }
+    /// assert_eq!(map[&1], "b");
+    /// ```
+    #[unstable(feature = "collection_keyed",
+            reason="keyed was recently added")]
+    pub fn keyed_get_mut<Q: ?Sized>(&mut self, k: &Q) -> Option<(&K, &mut V)>
+        where K: Borrow<Q>, Q: Hash + Eq
+    {
+        self.search_mut(k).map(|bucket| {
+            let (k, v) = bucket.into_mut_refs();
+            (&*k, v)
+        })
     }
 
     /// Inserts a key-value pair into the map. If the key already had a value
@@ -1113,12 +1169,36 @@ impl<K, V, S> HashMap<K, V, S>
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn insert(&mut self, k: K, v: V) -> Option<V> {
+        self.keyed_insert(k, v).map(|x| x.1)
+    }
+
+    /// Inserts a key-value pair into the map. If the key already had a value
+    /// present in the map, that old key and value are returned. Otherwise,
+    /// `None` is returned.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(collection_keyed)]
+    /// use std::collections::HashMap;
+    ///
+    /// let mut map = HashMap::new();
+    /// assert_eq!(map.keyed_insert(37, "a"), None);
+    /// assert_eq!(map.is_empty(), false);
+    ///
+    /// map.insert(37, "b");
+    /// assert_eq!(map.keyed_insert(37, "c"), Some((37, "b")));
+    /// assert_eq!(map[&37], "c");
+    /// ```
+    #[unstable(feature = "collection_keyed",
+            reason="keyed was recently added")]
+    pub fn keyed_insert(&mut self, k: K, v: V) -> Option<(K, V)> {
         let hash = self.make_hash(&k);
         self.reserve(1);
 
         let mut retval = None;
-        self.insert_or_replace_with(hash, k, v, |_, val_ref, val| {
-            retval = Some(replace(val_ref, val));
+        self.insert_or_replace_with(hash, k, v, |key_ref, key, val_ref, val| {
+            retval = Some((replace(key_ref, key), replace(val_ref, val)));
         });
         retval
     }
@@ -1144,11 +1224,37 @@ impl<K, V, S> HashMap<K, V, S>
     pub fn remove<Q: ?Sized>(&mut self, k: &Q) -> Option<V>
         where K: Borrow<Q>, Q: Hash + Eq
     {
+        self.keyed_remove(k).map(|x| x.1)
+    }
+
+    /// Removes a key from the map, returning the key and the value at the key
+    /// if the key was previously in the map.
+    ///
+    /// The key may be any borrowed form of the map's key type, but
+    /// `Hash` and `Eq` on the borrowed form *must* match those for
+    /// the key type.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(collection_keyed)]
+    /// use std::collections::HashMap;
+    ///
+    /// let mut map = HashMap::new();
+    /// map.insert(1, "a");
+    /// assert_eq!(map.keyed_remove(&1), Some((1, "a")));
+    /// assert_eq!(map.keyed_remove(&1), None);
+    /// ```
+    #[unstable(feature = "collection_keyed",
+            reason="keyed was recently added")]
+    pub fn keyed_remove<Q: ?Sized>(&mut self, k: &Q) -> Option<(K, V)>
+        where K: Borrow<Q>, Q: Hash + Eq
+    {
         if self.table.size() == 0 {
             return None
         }
 
-        self.search_mut(k).map(|bucket| pop_internal(bucket).1)
+        self.search_mut(k).map(|bucket| pop_internal(bucket))
     }
 }
 
