@@ -15,6 +15,7 @@ use self::WitnessPreference::*;
 use middle::const_eval::{compare_const_vals, ConstVal};
 use middle::const_eval::{eval_const_expr, eval_const_expr_partial};
 use middle::const_eval::{const_expr_to_pat, lookup_const_by_id};
+use middle::const_eval::EvalHint::ExprTypeChecked;
 use middle::def::*;
 use middle::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor, Init};
 use middle::expr_use_visitor::{JustWrite, LoanCause, MutateMode};
@@ -263,7 +264,7 @@ fn check_for_bindings_named_the_same_as_variants(cx: &MatchCheckCtxt, pat: &Pat)
 fn check_for_static_nan(cx: &MatchCheckCtxt, pat: &Pat) {
     ast_util::walk_pat(pat, |p| {
         if let ast::PatLit(ref expr) = p.node {
-            match eval_const_expr_partial(cx.tcx, &**expr, None) {
+            match eval_const_expr_partial(cx.tcx, &**expr, ExprTypeChecked) {
                 Ok(ConstVal::Float(f)) if f.is_nan() => {
                     span_warn!(cx.tcx.sess, p.span, E0003,
                                "unmatchable NaN in pattern, \

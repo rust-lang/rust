@@ -45,6 +45,7 @@ use middle;
 use middle::cast;
 use middle::check_const;
 use middle::const_eval::{self, ConstVal};
+use middle::const_eval::EvalHint::UncheckedExprHint;
 use middle::def::{self, DefMap, ExportMap};
 use middle::dependency_format;
 use middle::fast_reject;
@@ -5758,20 +5759,8 @@ impl<'tcx> ctxt<'tcx> {
                 Some(ref e) => {
                     debug!("disr expr, checking {}", pprust::expr_to_string(&**e));
 
-                    // check_expr (from check_const pass) doesn't guarantee
-                    // that the expression is in a form that eval_const_expr can
-                    // handle, so we may still get an internal compiler error
-                    //
-                    // pnkfelix: The above comment was transcribed from
-                    // the version of this code taken from rustc_typeck.
-                    // Presumably the implication is that we need to deal
-                    // with such ICE's as they arise.
-                    //
-                    // Since this can be called from `ty::enum_variants`
-                    // anyway, best thing is to make `eval_const_expr`
-                    // more robust (on case-by-case basis).
-
-                    match const_eval::eval_const_expr_partial(self, &**e, Some(repr_type_ty)) {
+                    let hint = UncheckedExprHint(repr_type_ty);
+                    match const_eval::eval_const_expr_partial(self, &**e, hint) {
                         Ok(ConstVal::Int(val)) => current_disr_val = val as Disr,
                         Ok(ConstVal::Uint(val)) => current_disr_val = val as Disr,
                         Ok(_) => {
@@ -6086,7 +6075,8 @@ impl<'tcx> ctxt<'tcx> {
 
     // Returns the repeat count for a repeating vector expression.
     pub fn eval_repeat_count(&self, count_expr: &ast::Expr) -> usize {
-        match const_eval::eval_const_expr_partial(self, count_expr, Some(self.types.usize)) {
+        let hint = UncheckedExprHint(self.types.usize);
+        match const_eval::eval_const_expr_partial(self, count_expr, hint) {
             Ok(val) => {
                 let found = match val {
                     ConstVal::Uint(count) => return count as usize,
