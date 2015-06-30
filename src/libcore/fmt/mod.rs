@@ -267,7 +267,7 @@ impl<'a> Display for Arguments<'a> {
     }
 }
 
-/// Format trait for the `:?` format. Useful for debugging, all types
+/// Format trait for the `?` character. Useful for debugging, all types
 /// should implement this.
 ///
 /// Generally speaking, you should just `derive` a `Debug` implementation.
@@ -311,6 +311,9 @@ impl<'a> Display for Arguments<'a> {
 ///
 /// There are a number of `debug_*` methods on `Formatter` to help you with manual
 /// implementations, such as [`debug_struct`][debug_struct].
+///
+/// `Debug` implementations using either `derive` or the debug builder API
+/// on `Formatter` support pretty printing using the alternate flag: `{:#?}`.
 ///
 /// [debug_struct]: ../std/fmt/struct.Formatter.html#method.debug_struct
 #[stable(feature = "rust1", since = "1.0.0")]

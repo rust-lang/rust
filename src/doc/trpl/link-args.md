@@ -17,7 +17,7 @@ Note that this feature is currently hidden behind the `feature(link_args)` gate
 because this is not a sanctioned way of performing linking. Right now rustc
 shells out to the system linker, so it makes sense to provide extra command line
 arguments, but this will not always be the case. In the future rustc may use
-LLVM directly to link native libraries in which case `link_args` will have no
+LLVM directly to link native libraries, in which case `link_args` will have no
 meaning.
 
 It is highly recommended to *not* use this attribute, and rather use the more
