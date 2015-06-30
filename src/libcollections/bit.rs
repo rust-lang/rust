@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #![deprecated(reason = "BitVec and BitSet have been migrated to cargo as bit-vec and bit-set",
-              since = "1.2.0")]
+              since = "1.3.0")]
 #![unstable(feature = "collections", reason = "deprecated")]
 #![allow(deprecated)]
 

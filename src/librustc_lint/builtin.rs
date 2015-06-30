@@ -28,6 +28,9 @@
 //! Use the former for unit-like structs and the latter for structs with
 //! a `pub fn new()`.
 
+// BitSet
+#![allow(deprecated)]
+
 use metadata::{csearch, decoder};
 use middle::def::*;
 use middle::mem_categorization::Typer;
