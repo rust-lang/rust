@@ -904,6 +904,9 @@ fn confirm_impl_candidate<'cx,'tcx>(
                     // ought to be reported by the type checker method
                     // `check_impl_items_against_trait`, so here we
                     // just return TyError.
+                    debug!("confirm_impl_candidate: no associated type {:?} for {:?}",
+                           assoc_ty.name,
+                           trait_ref);
                     return (selcx.tcx().types.err, vec!());
                 }
             }
