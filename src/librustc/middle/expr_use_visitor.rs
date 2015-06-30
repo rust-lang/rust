@@ -21,9 +21,10 @@ use self::TrackMatchMode::*;
 use self::OverloadedCallType::*;
 
 use middle::{def, region, pat_util};
+use middle::infer;
 use middle::mem_categorization as mc;
 use middle::mem_categorization::Typer;
-use middle::ty::{self};
+use middle::ty::{self, ClosureTyper};
 use middle::ty::{MethodCall, MethodObject, MethodTraitObject};
 use middle::ty::{MethodOrigin, MethodParam, MethodTypeParam};
 use middle::ty::{MethodStatic, MethodStaticClosure};
@@ -291,9 +292,9 @@ impl OverloadedCallType {
 // supplies types from the tree. After type checking is complete, you
 // can just use the tcx as the typer.
 
-pub struct ExprUseVisitor<'d,'t,'tcx:'t,TYPER:'t> {
-    typer: &'t TYPER,
-    mc: mc::MemCategorizationContext<'t,TYPER>,
+pub struct ExprUseVisitor<'d,'t,'a: 't, 'tcx:'a> {
+    typer: &'t infer::InferCtxt<'a, 'tcx>,
+    mc: mc::MemCategorizationContext<'t, 'a, 'tcx>,
     delegate: &'d mut (Delegate<'tcx>+'d),
 }
 
@@ -319,10 +320,10 @@ enum PassArgs {
     ByRef,
 }
 
-impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
+impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
     pub fn new(delegate: &'d mut Delegate<'tcx>,
-               typer: &'t TYPER)
-               -> ExprUseVisitor<'d,'t,'tcx,TYPER> {
+               typer: &'t infer::InferCtxt<'a, 'tcx>)
+               -> ExprUseVisitor<'d,'t,'a, 'tcx> {
         ExprUseVisitor {
             typer: typer,
             mc: mc::MemCategorizationContext::new(typer),

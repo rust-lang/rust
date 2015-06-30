@@ -1101,8 +1101,8 @@ fn link_fn_args(rcx: &Rcx, body_scope: CodeExtent, args: &[ast::Arg]) {
 
 /// Link lifetimes of any ref bindings in `root_pat` to the pointers found in the discriminant, if
 /// needed.
-fn link_pattern<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
-                          mc: mc::MemCategorizationContext<InferCtxt<'a, 'tcx>>,
+fn link_pattern<'t, 'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
+                          mc: mc::MemCategorizationContext<'t, 'a, 'tcx>,
                           discr_cmt: mc::cmt<'tcx>,
                           root_pat: &ast::Pat) {
     debug!("link_pattern(discr_cmt={:?}, root_pat={:?})",

@@ -195,6 +195,7 @@ use middle::check_match;
 use middle::const_eval;
 use middle::def::{self, DefMap};
 use middle::expr_use_visitor as euv;
+use middle::infer;
 use middle::lang_items::StrEqFnLangItem;
 use middle::mem_categorization as mc;
 use middle::pat_util::*;
@@ -1350,7 +1351,8 @@ fn is_discr_reassigned(bcx: Block, discr: &ast::Expr, body: &ast::Expr) -> bool 
         reassigned: false
     };
     {
-        let mut visitor = euv::ExprUseVisitor::new(&mut rc, bcx);
+        let infcx = infer::new_infer_ctxt(bcx.tcx(), &bcx.tcx().tables, None, false);
+        let mut visitor = euv::ExprUseVisitor::new(&mut rc, &infcx);
         visitor.walk_expr(body);
     }
     rc.reassigned

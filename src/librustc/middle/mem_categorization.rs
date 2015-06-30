@@ -73,10 +73,11 @@ pub use self::categorization::*;
 use self::Aliasability::*;
 
 use ast_map;
+use middle::infer;
 use middle::check_const;
 use middle::def;
 use middle::region;
-use middle::ty::{self, Ty};
+use middle::ty::{self, Ty, ClosureTyper};
 use util::nodemap::NodeMap;
 
 use syntax::ast::{MutImmutable, MutMutable};
@@ -255,13 +256,10 @@ impl ast_node for ast::Pat {
     fn span(&self) -> Span { self.span }
 }
 
-pub struct MemCategorizationContext<'t,TYPER:'t> {
-    typer: &'t TYPER
-}
-
-impl<'t,TYPER:'t> Copy for MemCategorizationContext<'t,TYPER> {}
-impl<'t,TYPER:'t> Clone for MemCategorizationContext<'t,TYPER> {
-    fn clone(&self) -> MemCategorizationContext<'t,TYPER> { *self }
+#[derive(Copy, Clone)]
+pub struct MemCategorizationContext<'t, 'a: 't, 'tcx : 'a> {
+    pub typer: &'t infer::InferCtxt<'a, 'tcx>,
+    // pub monomorphize: bool,
 }
 
 pub type McResult<T> = Result<T, ()>;
@@ -391,13 +389,13 @@ impl MutabilityCategory {
     }
 }
 
-impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
-    pub fn new(typer: &'t TYPER) -> MemCategorizationContext<'t,TYPER> {
+impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
+    pub fn new(typer: &'t infer::InferCtxt<'a, 'tcx>) -> MemCategorizationContext<'t, 'a, 'tcx> {
         MemCategorizationContext { typer: typer }
     }
 
-    fn tcx(&self) -> &'t ty::ctxt<'tcx> {
-        self.typer.tcx()
+    fn tcx(&self) -> &'a ty::ctxt<'tcx> {
+        self.typer.tcx
     }
 
     fn expr_ty(&self, expr: &ast::Expr) -> McResult<Ty<'tcx>> {
@@ -1175,7 +1173,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
     }
 
     pub fn cat_pattern<F>(&self, cmt: cmt<'tcx>, pat: &ast::Pat, mut op: F) -> McResult<()>
-        where F: FnMut(&MemCategorizationContext<'t, TYPER>, cmt<'tcx>, &ast::Pat),
+        where F: FnMut(&MemCategorizationContext<'t, 'a, 'tcx>, cmt<'tcx>, &ast::Pat),
     {
         self.cat_pattern_(cmt, pat, &mut op)
     }
@@ -1183,7 +1181,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
     // FIXME(#19596) This is a workaround, but there should be a better way to do this
     fn cat_pattern_<F>(&self, cmt: cmt<'tcx>, pat: &ast::Pat, op: &mut F)
                        -> McResult<()>
-        where F : FnMut(&MemCategorizationContext<'t, TYPER>, cmt<'tcx>, &ast::Pat),
+        where F : FnMut(&MemCategorizationContext<'t, 'a, 'tcx>, cmt<'tcx>, &ast::Pat),
     {
         // Here, `cmt` is the categorization for the value being
         // matched and pat is the pattern it is being matched against.

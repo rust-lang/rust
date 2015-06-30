@@ -22,7 +22,6 @@ use middle::cfg;
 use middle::def;
 use middle::infer;
 use middle::lang_items::LangItem;
-use middle::mem_categorization as mc;
 use middle::mem_categorization::Typer;
 use middle::ty::ClosureTyper;
 use middle::region;
@@ -48,7 +47,7 @@ use util::nodemap::{FnvHashMap, NodeMap};
 use arena::TypedArena;
 use libc::{c_uint, c_char};
 use std::ffi::CString;
-use std::cell::{Cell, RefCell, Ref};
+use std::cell::{Cell, RefCell};
 use std::result::Result as StdResult;
 use std::vec::Vec;
 use syntax::ast;
@@ -574,95 +573,6 @@ impl<'blk, 'tcx> BlockS<'blk, 'tcx> {
         monomorphize::apply_param_substs(self.tcx(),
                                          self.fcx.param_substs,
                                          value)
-    }
-}
-
-impl<'blk, 'tcx> mc::Typer<'tcx> for BlockS<'blk, 'tcx> {
-    fn node_ty(&self, id: ast::NodeId) -> mc::McResult<Ty<'tcx>> {
-        Ok(node_id_type(self, id))
-    }
-
-    fn expr_ty_adjusted(&self, expr: &ast::Expr) -> mc::McResult<Ty<'tcx>> {
-        Ok(expr_ty_adjusted(self, expr))
-    }
-
-    fn node_method_ty(&self, method_call: ty::MethodCall) -> Option<Ty<'tcx>> {
-        self.tcx()
-            .tables
-            .borrow()
-            .method_map
-            .get(&method_call)
-            .map(|method| monomorphize_type(self, method.ty))
-    }
-
-    fn node_method_origin(&self, method_call: ty::MethodCall)
-                          -> Option<ty::MethodOrigin<'tcx>>
-    {
-        self.tcx()
-            .tables
-            .borrow()
-            .method_map
-            .get(&method_call)
-            .map(|method| method.origin.clone())
-    }
-
-    fn adjustments<'a>(&'a self) -> Ref<NodeMap<ty::AutoAdjustment<'tcx>>> {
-        // FIXME (@jroesch): this is becuase we currently have a HR inference problem
-        // in the snapshot that causes this code not to work.
-        fn project_adjustments<'a, 'tcx>(tables: &'a ty::Tables<'tcx>) ->
-            &'a NodeMap<ty::AutoAdjustment<'tcx>> {
-            &tables.adjustments
-        }
-
-        Ref::map(self.tcx().tables.borrow(), project_adjustments)
-    }
-
-    fn is_method_call(&self, id: ast::NodeId) -> bool {
-        self.tcx().tables.borrow().method_map.contains_key(&ty::MethodCall::expr(id))
-    }
-
-    fn temporary_scope(&self, rvalue_id: ast::NodeId) -> Option<region::CodeExtent> {
-        self.tcx().region_maps.temporary_scope(rvalue_id)
-    }
-
-    fn upvar_capture(&self, upvar_id: ty::UpvarId) -> Option<ty::UpvarCapture> {
-        Some(self.tcx().tables.borrow().upvar_capture_map.get(&upvar_id).unwrap().clone())
-    }
-
-    fn type_moves_by_default(&self, ty: Ty<'tcx>, span: Span) -> bool {
-        ty.moves_by_default(&self.fcx.param_env, span)
-    }
-}
-
-impl<'blk, 'tcx> ty::ClosureTyper<'tcx> for BlockS<'blk, 'tcx> {
-    fn param_env<'a>(&'a self) -> &'a ty::ParameterEnvironment<'a, 'tcx> {
-        &self.fcx.param_env
-    }
-
-    fn closure_kind(&self,
-                    def_id: ast::DefId)
-                    -> Option<ty::ClosureKind>
-    {
-        let infcx = infer::normalizing_infer_ctxt(self.tcx(), &self.tcx().tables);
-        infcx.closure_kind(def_id)
-    }
-
-    fn closure_type(&self,
-                    def_id: ast::DefId,
-                    substs: &subst::Substs<'tcx>)
-                    -> ty::ClosureTy<'tcx>
-    {
-        let infcx = infer::normalizing_infer_ctxt(self.tcx(), &self.tcx().tables);
-        infcx.closure_type(def_id, substs)
-    }
-
-    fn closure_upvars(&self,
-                      def_id: ast::DefId,
-                      substs: &Substs<'tcx>)
-                      -> Option<Vec<ty::ClosureUpvar<'tcx>>>
-    {
-        let infcx = infer::new_infer_ctxt(self.tcx(), &self.tcx().tables, None, true);
-        infcx.closure_upvars(def_id, substs)
     }
 }
 
