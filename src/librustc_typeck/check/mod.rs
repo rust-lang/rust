@@ -934,6 +934,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     // Locate trait methods
     let tcx = ccx.tcx;
     let trait_items = ty::trait_items(tcx, impl_trait_ref.def_id);
+    let mut overridden_associated_type = None;
 
     // Check existing impl methods to see if they are both present in trait
     // and compatible with trait signature
@@ -999,8 +1000,10 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                     _ => tcx.sess.span_bug(impl_item.span, "non-type impl-item for type")
                 };
 
-                if let &ty::TypeTraitItem(..) = ty_trait_item {
-                    // ...
+                if let &ty::TypeTraitItem(ref at) = ty_trait_item {
+                    if let Some(_) = at.ty {
+                        overridden_associated_type = Some(impl_item);
+                    }
                 } else {
                     span_err!(tcx.sess, impl_item.span, E0325,
                               "item `{}` is an associated type, \
@@ -1018,6 +1021,8 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     let provided_methods = ty::provided_trait_methods(tcx, impl_trait_ref.def_id);
     let associated_consts = ty::associated_consts(tcx, impl_trait_ref.def_id);
     let mut missing_items = Vec::new();
+    let mut invalidated_items = Vec::new();
+    let associated_type_overridden = overridden_associated_type.is_some();
     for trait_item in trait_items.iter() {
         match *trait_item {
             ty::ConstTraitItem(ref associated_const) => {
@@ -1032,9 +1037,12 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                 let is_provided =
                     associated_consts.iter().any(|ac| ac.default.is_some() &&
                                                  ac.name == associated_const.name);
-                if !is_implemented && !is_provided {
-                    missing_items.push(format!("`{}`",
-                                               token::get_name(associated_const.name)));
+                if !is_implemented {
+                    if !is_provided {
+                        missing_items.push(associated_const.name);
+                    } else if associated_type_overridden {
+                        invalidated_items.push(associated_const.name);
+                    }
                 }
             }
             ty::MethodTraitItem(ref trait_method) => {
@@ -1049,8 +1057,12 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                     });
                 let is_provided =
                     provided_methods.iter().any(|m| m.name == trait_method.name);
-                if !is_implemented && !is_provided {
-                    missing_items.push(format!("`{}`", token::get_name(trait_method.name)));
+                if !is_implemented {
+                    if !is_provided {
+                        missing_items.push(trait_method.name);
+                    } else if associated_type_overridden {
+                        invalidated_items.push(trait_method.name);
+                    }
                 }
             }
             ty::TypeTraitItem(ref associated_type) => {
@@ -1063,8 +1075,12 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                     }
                 });
                 let is_provided = associated_type.ty.is_some();
-                if !is_implemented && !is_provided {
-                    missing_items.push(format!("`{}`", token::get_name(associated_type.name)));
+                if !is_implemented {
+                    if !is_provided {
+                        missing_items.push(associated_type.name);
+                    } else if associated_type_overridden {
+                        invalidated_items.push(associated_type.name);
+                    }
                 }
             }
         }
@@ -1072,8 +1088,21 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
     if !missing_items.is_empty() {
         span_err!(tcx.sess, impl_span, E0046,
-            "not all trait items implemented, missing: {}",
-            missing_items.connect(", "));
+            "not all trait items implemented, missing: `{}`",
+            missing_items.iter()
+                  .map(<ast::Name>::as_str)
+                  .collect::<Vec<_>>().connect("`, `"))
+    }
+
+    if !invalidated_items.is_empty() {
+        let invalidator = overridden_associated_type.unwrap();
+        span_err!(tcx.sess, invalidator.span, E0399,
+                  "the following trait items need to be reimplemented \
+                   as `{}` was overridden: `{}`",
+                  invalidator.ident.as_str(),
+                  invalidated_items.iter()
+                                   .map(<ast::Name>::as_str)
+                                   .collect::<Vec<_>>().connect("`, `"))
     }
 }
 
