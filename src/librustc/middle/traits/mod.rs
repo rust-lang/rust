@@ -436,7 +436,7 @@ pub fn fully_normalize<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx>,
     debug!("normalize_param_env(value={:?})", value);
 
     let mut selcx = &mut SelectionContext::new(infcx);
-    // FIXME (@jroesch):
+    // FIXME (@jroesch) ISSUE 26721
     // I'm not sure if this is a bug or not, needs further investigation.
     // It appears that by reusing the fulfillment_cx here we incur more
     // obligations and later trip an asssertion on regionck.rs line 337.
@@ -459,7 +459,7 @@ pub fn fully_normalize<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx>,
     for obligation in obligations {
         fulfill_cx.register_predicate_obligation(selcx.infcx(), obligation);
     }
-    
+
     try!(fulfill_cx.select_all_or_error(infcx));
     let resolved_value = infcx.resolve_type_vars_if_possible(&normalized_value);
     debug!("normalize_param_env: resolved_value={:?}", resolved_value);

@@ -4385,7 +4385,7 @@ impl<'tcx> TyS<'tcx> {
         is_impld
     }
 
-    // temp hack, probably should be private
+    // FIXME (@jroesch): I made this public to use it, not sure if should be private
     pub fn moves_by_default<'a>(&'tcx self, param_env: &ParameterEnvironment<'a,'tcx>,
                            span: Span) -> bool {
         if self.flags.get().intersects(TypeFlags::MOVENESS_CACHED) {
