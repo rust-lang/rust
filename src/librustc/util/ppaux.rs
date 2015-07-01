@@ -680,8 +680,15 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
             TyError => write!(f, "[type error]"),
             TyParam(ref param_ty) => write!(f, "{}", param_ty),
             TyEnum(did, substs) | TyStruct(did, substs) => {
-                parameterized(f, substs, did, &[],
-                              |tcx| tcx.lookup_item_type(did).generics)
+                ty::tls::with(|tcx| {
+                    if did.krate == ast::LOCAL_CRATE &&
+                          !tcx.tcache.borrow().contains_key(&did) {
+                        write!(f, "{}<..>", tcx.item_path_str(did))
+                    } else {
+                        parameterized(f, substs, did, &[],
+                                      |tcx| tcx.lookup_item_type(did).generics)
+                    }
+                })
             }
             TyTrait(ref data) => write!(f, "{}", data),
             ty::TyProjection(ref data) => write!(f, "{}", data),
