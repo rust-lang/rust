@@ -734,6 +734,8 @@ pub struct Weak<T: ?Sized> {
 impl<T: ?Sized> !marker::Send for Weak<T> {}
 impl<T: ?Sized> !marker::Sync for Weak<T> {}
 
+impl<T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<Weak<U>> for Weak<T> {}
+
 #[unstable(feature = "rc_weak",
            reason = "Weak pointers may not belong in this module.")]
 impl<T: ?Sized> Weak<T> {
