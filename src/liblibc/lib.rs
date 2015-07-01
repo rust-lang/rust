@@ -1322,7 +1322,7 @@ pub mod types {
         }
     }
 
-    #[cfg(any(target_os = "bitrig", target_os = "openbsd"))]
+    #[cfg(any(target_os = "bitrig", target_os = "netbsd", target_os ="openbsd"))]
     pub mod os {
         pub mod common {
             pub mod posix01 {
@@ -1351,7 +1351,7 @@ pub mod types {
                     pub __unused7: *mut c_void,
                 }
 
-                #[cfg(target_os = "openbsd")]
+                #[cfg(any(target_os = "netbsd", target_os="openbsd"))]
                 #[repr(C)]
                 #[derive(Copy, Clone)] pub struct glob_t {
                     pub gl_pathc:  c_int,
@@ -4323,7 +4323,7 @@ pub mod consts {
         }
     }
 
-    #[cfg(any(target_os = "bitrig", target_os = "openbsd"))]
+    #[cfg(any(target_os = "bitrig", target_os = "netbsd", target_os = "openbsd"))]
     pub mod os {
         pub mod c95 {
             use types::os::arch::c95::{c_int, c_uint};
@@ -5568,6 +5568,7 @@ pub mod funcs {
               target_os = "freebsd",
               target_os = "dragonfly",
               target_os = "bitrig",
+              target_os = "netbsd",
               target_os = "openbsd",
               target_os = "nacl"))]
     pub mod posix88 {
@@ -5584,6 +5585,7 @@ pub mod funcs {
                           target_os = "freebsd",
                           target_os = "dragonfly",
                           target_os = "bitrig",
+                          target_os = "netbsd",
                           target_os = "openbsd",
                           target_os = "android",
                           target_os = "ios",
@@ -5602,6 +5604,7 @@ pub mod funcs {
                           target_os = "freebsd",
                           target_os = "dragonfly",
                           target_os = "bitrig",
+                          target_os = "netbsd",
                           target_os = "openbsd",
                           target_os = "android",
                           target_os = "ios",
@@ -5889,6 +5892,7 @@ pub mod funcs {
               target_os = "freebsd",
               target_os = "dragonfly",
               target_os = "bitrig",
+              target_os = "netbsd",
               target_os = "openbsd",
               target_os = "nacl"))]
     pub mod posix01 {
@@ -5901,6 +5905,7 @@ pub mod funcs {
                           target_os = "freebsd",
                           target_os = "dragonfly",
                           target_os = "bitrig",
+                          target_os = "netbsd",
                           target_os = "openbsd",
                           target_os = "android",
                           target_os = "ios",
@@ -6019,16 +6024,17 @@ pub mod funcs {
     }
 
 
-    #[cfg(any(target_os = "windows",
-              target_os = "linux",
-              target_os = "android",
-              target_os = "macos",
+    #[cfg(any(target_os = "android",
+              target_os = "bitrig",
+              target_os = "dragonfly",
               target_os = "ios",
               target_os = "freebsd",
-              target_os = "dragonfly",
-              target_os = "bitrig",
+              target_os = "linux",
+              target_os = "macos",
+              target_os = "nacl",
+              target_os = "netbsd",
               target_os = "openbsd",
-              target_os = "nacl"))]
+              target_os = "windows"))]
     pub mod posix08 {
         pub mod unistd {
         }
@@ -6115,6 +6121,7 @@ pub mod funcs {
               target_os = "freebsd",
               target_os = "dragonfly",
               target_os = "bitrig",
+              target_os = "netbsd",
               target_os = "openbsd"))]
     pub mod bsd44 {
         use types::common::c95::{c_void};
@@ -6192,6 +6199,7 @@ pub mod funcs {
     #[cfg(any(target_os = "freebsd",
               target_os = "dragonfly",
               target_os = "bitrig",
+              target_os = "netbsd",
               target_os = "openbsd"))]
     pub mod extra {
     }

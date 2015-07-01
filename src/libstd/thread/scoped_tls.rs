@@ -104,6 +104,7 @@ macro_rules! __scoped_thread_local_inner {
         #[cfg_attr(not(any(windows,
                            target_os = "android",
                            target_os = "ios",
+                           target_os = "netbsd",
                            target_os = "openbsd",
                            target_arch = "aarch64")),
                    thread_local)]
@@ -215,6 +216,7 @@ impl<T> ScopedKey<T> {
 #[cfg(not(any(windows,
               target_os = "android",
               target_os = "ios",
+              target_os = "netbsd",
               target_os = "openbsd",
               target_arch = "aarch64",
               no_elf_tls)))]
@@ -238,6 +240,7 @@ mod imp {
 #[cfg(any(windows,
           target_os = "android",
           target_os = "ios",
+          target_os = "netbsd",
           target_os = "openbsd",
           target_arch = "aarch64",
           no_elf_tls))]
