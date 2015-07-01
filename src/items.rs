@@ -11,7 +11,7 @@
 // Formatting top-level items - functions, structs, enums, traits, impls.
 
 use {ReturnIndent, BraceStyle};
-use utils::{format_visibility, make_indent, contains_skip, span_after};
+use utils::{format_visibility, make_indent, contains_skip, span_after, end_typaram};
 use lists::{write_list, itemize_list, ListItem, ListFormatting, SeparatorTactic, ListTactic};
 use comment::FindUncommented;
 use visitor::FmtVisitor;
@@ -160,13 +160,20 @@ impl<'a> FmtVisitor<'a> {
             result.push('(');
         }
 
+        // A conservative estimation, to goal is to be over all parens in generics
+        let args_start = generics.ty_params
+                                 .last()
+                                 .map(|tp| end_typaram(tp))
+                                 .unwrap_or(span.lo);
+        let args_span = codemap::mk_sp(
+            span_after(codemap::mk_sp(args_start, span.hi), "(", self.codemap),
+            span_for_return(&fd.output).lo);
         result.push_str(&self.rewrite_args(&fd.inputs,
                                            explicit_self,
                                            one_line_budget,
                                            multi_line_budget,
                                            arg_indent,
-                                           codemap::mk_sp(span_after(span, "(", self.codemap),
-                                                          span_for_return(&fd.output).lo)));
+                                           args_span));
         result.push(')');
 
         // Return type.
