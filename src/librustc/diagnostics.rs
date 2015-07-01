@@ -602,15 +602,47 @@ const Y: u32 = X;
 
 E0267: r##"
 This error indicates the use of a loop keyword (`break` or `continue`) inside a
-closure but outside of any loop. Break and continue can be used as normal inside
-closures as long as they are also contained within a loop. To halt the execution
-of a closure you should instead use a return statement.
+closure but outside of any loop. Erroneous code example:
+
+```
+let w = || { break; }; // error: `break` inside of a closure
+```
+
+`break` and `continue` keywords can be used as normal inside closures as long as
+they are also contained within a loop. To halt the execution of a closure you
+should instead use a return statement. Example:
+
+```
+let w = || {
+    for _ in 0..10 {
+        break;
+    }
+};
+
+w();
+```
 "##,
 
 E0268: r##"
 This error indicates the use of a loop keyword (`break` or `continue`) outside
 of a loop. Without a loop to break out of or continue in, no sensible action can
-be taken.
+be taken. Erroneous code example:
+
+```
+fn some_func() {
+    break; // error: `break` outside of loop
+}
+```
+
+Please verify that you are using `break` and `continue` only in loops. Example:
+
+```
+fn some_func() {
+    for _ in 0..10 {
+        break; // ok!
+    }
+}
+```
 "##,
 
 E0271: r##"
