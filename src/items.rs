@@ -427,7 +427,7 @@ impl<'a> FmtVisitor<'a> {
 
         self.format_missing_with_indent(field.span.lo);
 
-        match field.node.kind {
+        let result = match field.node.kind {
             ast::VariantKind::TupleVariantKind(ref types) => {
                 let vis = format_visibility(field.node.vis);
                 self.changes.push_str_span(field.span, vis);
@@ -482,23 +482,23 @@ impl<'a> FmtVisitor<'a> {
                             "Enum variant exceeded column limit");
                 }
 
-                self.changes.push_str_span(field.span, &result);
-
-                if !last_field || self.config.enum_trailing_comma {
-                    self.changes.push_str_span(field.span, ",");
-                }
+                result
             },
             ast::VariantKind::StructVariantKind(ref struct_def) => {
-                let result = self.format_struct("",
-                                                field.node.name,
-                                                field.node.vis,
-                                                struct_def,
-                                                None,
-                                                field.span,
-                                                self.block_indent);
-
-                self.changes.push_str_span(field.span, &result)
+                // TODO Should limit the width, as we have a trailing comma
+                self.format_struct("",
+                                   field.node.name,
+                                   field.node.vis,
+                                   struct_def,
+                                   None,
+                                   field.span,
+                                   self.block_indent)
             }
+        };
+        self.changes.push_str_span(field.span, &result);
+
+        if !last_field || self.config.enum_trailing_comma {
+            self.changes.push_str_span(field.span, ",");
         }
 
         self.last_pos = field.span.hi + BytePos(1);
