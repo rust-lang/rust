@@ -10,6 +10,9 @@
 
 // Functions dealing with attributes and meta items
 
+// BitSet
+#![allow(deprecated)]
+
 pub use self::StabilityLevel::*;
 pub use self::ReprAttr::*;
 pub use self::IntType::*;
