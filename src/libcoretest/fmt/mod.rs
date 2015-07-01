@@ -16,4 +16,6 @@ fn test_format_flags() {
     // No residual flags left by pointer formatting
     let p = "".as_ptr();
     assert_eq!(format!("{:p} {:x}", p, 16), format!("{:p} 10", p));
+
+    assert_eq!(format!("{: >3}", 'a'), "  a");
 }
