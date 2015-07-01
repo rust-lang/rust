@@ -1318,6 +1318,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn type_moves_by_default(&self, ty: Ty<'tcx>, span: Span) -> bool {
         let ty = self.resolve_type_vars_if_possible(&ty);
         !traits::type_known_to_meet_builtin_bound(self, ty, ty::BoundCopy, span)
+        // FIXME(@jroesch): should be able to use:
+        // ty.moves_by_default(&self.parameter_environment, span)
     }
 
     pub fn node_method_ty(&self, method_call: ty::MethodCall)

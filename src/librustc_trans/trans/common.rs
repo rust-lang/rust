@@ -22,7 +22,6 @@ use middle::cfg;
 use middle::def;
 use middle::infer;
 use middle::lang_items::LangItem;
-use middle::region;
 use middle::subst::{self, Substs};
 use trans::base;
 use trans::build;
