@@ -145,6 +145,8 @@ pub struct Weak<T: ?Sized> {
 unsafe impl<T: ?Sized + Sync + Send> Send for Weak<T> { }
 unsafe impl<T: ?Sized + Sync + Send> Sync for Weak<T> { }
 
+impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Weak<U>> for Weak<T> {}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + fmt::Debug> fmt::Debug for Weak<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
