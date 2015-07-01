@@ -214,7 +214,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
             };
             debug!("new_polytype={:?}", new_polytype);
 
-            tcx.tcache.borrow_mut().insert(new_did, new_polytype);
+            tcx.register_item_type(new_did, new_polytype);
             tcx.predicates.borrow_mut().insert(new_did, new_method_ty.predicates.clone());
             tcx.impl_or_trait_items
                .borrow_mut()
