@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Traits for dynamic typing of any `'static` type (through runtime reflection)
-//!
 //! This module implements the `Any` trait, which enables dynamic typing
 //! of any `'static` type through runtime reflection.
 //!
