@@ -254,6 +254,9 @@ happen:
   `eh_personality` and `stack_exhausted` lang items to immediately abort. This
   would avoid us having to stabilize their signatures as we could stabilize just
   this attribute and not their definitions.
+* The various language items could not be stabilized at this time, allowing
+  stable libraries that leverage `#![no_std]` but not stable final artifacts
+  (e.g. staticlibs, dylibs, or binaries).
 
 # Unresolved Questions
 
