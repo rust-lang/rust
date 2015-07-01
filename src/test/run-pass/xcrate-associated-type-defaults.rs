@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,14 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-mod num;
-mod builders;
+// aux-build:xcrate_associated_type_defaults.rs
 
-#[test]
-fn test_format_flags() {
-    // No residual flags left by pointer formatting
-    let p = "".as_ptr();
-    assert_eq!(format!("{:p} {:x}", p, 16), format!("{:p} 10", p));
+extern crate xcrate_associated_type_defaults;
+use xcrate_associated_type_defaults::Foo;
 
-    assert_eq!(format!("{: >3}", 'a'), "  a");
+fn main() {
+    ().bar(5);
 }

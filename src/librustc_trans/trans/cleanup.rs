@@ -199,7 +199,6 @@ pub struct CachedEarlyExit {
 
 pub trait Cleanup<'tcx> {
     fn must_unwind(&self) -> bool;
-    fn clean_on_unwind(&self) -> bool;
     fn is_lifetime_end(&self) -> bool;
     fn trans<'blk>(&self,
                    bcx: Block<'blk, 'tcx>,
@@ -389,7 +388,6 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
         if !self.type_needs_drop(ty) { return; }
         let drop = box DropValue {
             is_immediate: false,
-            must_unwind: common::type_needs_unwind_cleanup(self.ccx, ty),
             val: val,
             ty: ty,
             fill_on_drop: false,
@@ -415,7 +413,6 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
 
         let drop = box DropValue {
             is_immediate: false,
-            must_unwind: common::type_needs_unwind_cleanup(self.ccx, ty),
             val: val,
             ty: ty,
             fill_on_drop: true,
@@ -447,7 +444,6 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
 
         let drop = box DropValue {
             is_immediate: false,
-            must_unwind: common::type_needs_unwind_cleanup(self.ccx, ty),
             val: val,
             ty: ty,
             fill_on_drop: false,
@@ -473,7 +469,6 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
         if !self.type_needs_drop(ty) { return; }
         let drop = box DropValue {
             is_immediate: true,
-            must_unwind: common::type_needs_unwind_cleanup(self.ccx, ty),
             val: val,
             ty: ty,
             fill_on_drop: false,
@@ -780,29 +775,19 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
         //
         // At this point, `popped_scopes` is empty, and so the final block
         // that we return to the user is `Cleanup(AST 24)`.
-        while !popped_scopes.is_empty() {
-            let mut scope = popped_scopes.pop().unwrap();
-
-            if scope.cleanups.iter().any(|c| cleanup_is_suitable_for(&**c, label))
-            {
-                let name = scope.block_name("clean");
-                debug!("generating cleanups for {}", name);
-                let bcx_in = self.new_block(label.is_unwind(),
-                                            &name[..],
-                                            None);
-                let mut bcx_out = bcx_in;
-                for cleanup in scope.cleanups.iter().rev() {
-                    if cleanup_is_suitable_for(&**cleanup, label) {
-                        bcx_out = cleanup.trans(bcx_out,
-                                                scope.debug_loc);
-                    }
-                }
-                build::Br(bcx_out, prev_llbb, DebugLoc::None);
-                prev_llbb = bcx_in.llbb;
-            } else {
-                debug!("no suitable cleanups in {}",
-                       scope.block_name("clean"));
+        while let Some(mut scope) = popped_scopes.pop() {
+            let name = scope.block_name("clean");
+            debug!("generating cleanups for {}", name);
+            let bcx_in = self.new_block(label.is_unwind(),
+                                        &name[..],
+                                        None);
+            let mut bcx_out = bcx_in;
+            for cleanup in scope.cleanups.iter().rev() {
+                bcx_out = cleanup.trans(bcx_out,
+                                        scope.debug_loc);
             }
+            build::Br(bcx_out, prev_llbb, DebugLoc::None);
+            prev_llbb = bcx_in.llbb;
 
             scope.add_cached_early_exit(label, prev_llbb);
             self.push_scope(scope);
@@ -1031,7 +1016,6 @@ impl EarlyExitLabel {
 #[derive(Copy, Clone)]
 pub struct DropValue<'tcx> {
     is_immediate: bool,
-    must_unwind: bool,
     val: ValueRef,
     ty: Ty<'tcx>,
     fill_on_drop: bool,
@@ -1040,11 +1024,7 @@ pub struct DropValue<'tcx> {
 
 impl<'tcx> Cleanup<'tcx> for DropValue<'tcx> {
     fn must_unwind(&self) -> bool {
-        self.must_unwind
-    }
-
-    fn clean_on_unwind(&self) -> bool {
-        self.must_unwind
+        true
     }
 
     fn is_lifetime_end(&self) -> bool {
@@ -1090,10 +1070,6 @@ impl<'tcx> Cleanup<'tcx> for FreeValue<'tcx> {
         true
     }
 
-    fn clean_on_unwind(&self) -> bool {
-        true
-    }
-
     fn is_lifetime_end(&self) -> bool {
         false
     }
@@ -1121,10 +1097,6 @@ pub struct LifetimeEnd {
 impl<'tcx> Cleanup<'tcx> for LifetimeEnd {
     fn must_unwind(&self) -> bool {
         false
-    }
-
-    fn clean_on_unwind(&self) -> bool {
-        true
     }
 
     fn is_lifetime_end(&self) -> bool {
@@ -1163,11 +1135,6 @@ pub fn var_scope(tcx: &ty::ctxt,
     let r = AstScope(tcx.region_maps.var_scope(id).node_id());
     debug!("var_scope({}) = {:?}", id, r);
     r
-}
-
-fn cleanup_is_suitable_for(c: &Cleanup,
-                           label: EarlyExitLabel) -> bool {
-    !label.is_unwind() || c.clean_on_unwind()
 }
 
 ///////////////////////////////////////////////////////////////////////////

@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,14 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-mod num;
-mod builders;
+fn parse_type(iter: Box<Iterator<Item=&str>+'static>) -> &str { iter.next() }
+//~^ ERROR missing lifetime specifier [E0106]
+//~^^ HELP 2 elided lifetimes
 
-#[test]
-fn test_format_flags() {
-    // No residual flags left by pointer formatting
-    let p = "".as_ptr();
-    assert_eq!(format!("{:p} {:x}", p, 16), format!("{:p} 10", p));
+fn parse_type_2(iter: fn(&u8)->&u8) -> &str { iter() }
+//~^ ERROR missing lifetime specifier [E0106]
+//~^^ HELP 0 elided free lifetimes
 
-    assert_eq!(format!("{: >3}", 'a'), "  a");
-}
+fn main() {}

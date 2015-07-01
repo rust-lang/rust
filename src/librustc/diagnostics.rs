@@ -357,7 +357,7 @@ Ensure that the expressions given can be evaluated as the desired integer type.
 See the FFI section of the Reference for more information about using a custom
 integer type:
 
-http://doc.rust-lang.org/reference.html#ffi-attributes
+https://doc.rust-lang.org/reference.html#ffi-attributes
 "##,
 
 E0109: r##"
@@ -408,7 +408,7 @@ fn main() {
 }
 ```
 
-See also http://doc.rust-lang.org/book/unsafe.html
+See also https://doc.rust-lang.org/book/unsafe.html
 "##,
 
 E0137: r##"

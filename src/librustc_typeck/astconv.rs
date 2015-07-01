@@ -59,7 +59,8 @@ use middle::traits;
 use middle::ty::{self, RegionEscape, Ty, ToPredicate, HasTypeFlags};
 use middle::ty_fold;
 use rscope::{self, UnelidableRscope, RegionScope, ElidableRscope, ExplicitRscope,
-             ObjectLifetimeDefaultRscope, ShiftedRscope, BindingRscope};
+             ObjectLifetimeDefaultRscope, ShiftedRscope, BindingRscope,
+             ElisionFailureInfo, ElidedLifetime};
 use util::common::{ErrorReported, FN_OUTPUT_NAME};
 use util::nodemap::FnvHashSet;
 
@@ -124,14 +125,14 @@ pub trait AstConv<'tcx> {
                                         item_name: ast::Name)
                                         -> Ty<'tcx>
     {
-        if self.tcx().binds_late_bound_regions(&poly_trait_ref) {
+        if let Some(trait_ref) = self.tcx().no_late_bound_regions(&poly_trait_ref) {
+            self.projected_ty(span, trait_ref, item_name)
+        } else {
+            // no late-bound regions, we can just ignore the binder
             span_err!(self.tcx().sess, span, E0212,
                 "cannot extract an associated type from a higher-ranked trait bound \
                  in this context");
             self.tcx().types.err
-        } else {
-            // no late-bound regions, we can just ignore the binder
-            self.projected_ty(span, poly_trait_ref.0.clone(), item_name)
         }
     }
 
@@ -186,6 +187,58 @@ pub fn ast_region_to_region(tcx: &ty::ctxt, lifetime: &ast::Lifetime)
     r
 }
 
+fn report_elision_failure(
+    tcx: &ty::ctxt,
+    default_span: Span,
+    params: Vec<ElisionFailureInfo>)
+{
+    let mut m = String::new();
+    let len = params.len();
+    for (i, info) in params.into_iter().enumerate() {
+        let ElisionFailureInfo {
+            name, lifetime_count: n, have_bound_regions
+        } = info;
+
+        let help_name = if name.is_empty() {
+            format!("argument {}", i + 1)
+        } else {
+            format!("`{}`", name)
+        };
+
+        m.push_str(&(if n == 1 {
+            help_name
+        } else {
+            format!("one of {}'s {} elided {}lifetimes", help_name, n,
+                    if have_bound_regions { "free " } else { "" } )
+        })[..]);
+
+        if len == 2 && i == 0 {
+            m.push_str(" or ");
+        } else if i + 2 == len {
+            m.push_str(", or ");
+        } else if i + 1 != len {
+            m.push_str(", ");
+        }
+    }
+    if len == 1 {
+        fileline_help!(tcx.sess, default_span,
+                       "this function's return type contains a borrowed value, but \
+                        the signature does not say which {} it is borrowed from",
+                       m);
+    } else if len == 0 {
+        fileline_help!(tcx.sess, default_span,
+                       "this function's return type contains a borrowed value, but \
+                        there is no value for it to be borrowed from");
+        fileline_help!(tcx.sess, default_span,
+                       "consider giving it a 'static lifetime");
+    } else {
+        fileline_help!(tcx.sess, default_span,
+                       "this function's return type contains a borrowed value, but \
+                        the signature does not say whether it is borrowed from {}",
+                       m);
+    }
+}
+
 pub fn opt_ast_region_to_region<'tcx>(
     this: &AstConv<'tcx>,
     rscope: &RegionScope,
@@ -197,61 +250,15 @@ pub fn opt_ast_region_to_region<'tcx>(
             ast_region_to_region(this.tcx(), lifetime)
         }
 
-        None => {
-            match rscope.anon_regions(default_span, 1) {
-                Err(v) => {
-                    debug!("optional region in illegal location");
-                    span_err!(this.tcx().sess, default_span, E0106,
-                        "missing lifetime specifier");
-                    match v {
-                        Some(v) => {
-                            let mut m = String::new();
-                            let len = v.len();
-                            for (i, (name, n)) in v.into_iter().enumerate() {
-                                let help_name = if name.is_empty() {
-                                    format!("argument {}", i + 1)
-                                } else {
-                                    format!("`{}`", name)
-                                };
-
-                                m.push_str(&(if n == 1 {
-                                    help_name
-                                } else {
-                                    format!("one of {}'s {} elided lifetimes", help_name, n)
-                                })[..]);
-
-                                if len == 2 && i == 0 {
-                                    m.push_str(" or ");
-                                } else if i + 2 == len {
-                                    m.push_str(", or ");
-                                } else if i + 1 != len {
-                                    m.push_str(", ");
-                                }
-                            }
-                            if len == 1 {
-                                fileline_help!(this.tcx().sess, default_span,
-                                    "this function's return type contains a borrowed value, but \
-                                     the signature does not say which {} it is borrowed from",
-                                    m);
-                            } else if len == 0 {
-                                fileline_help!(this.tcx().sess, default_span,
-                                    "this function's return type contains a borrowed value, but \
-                                     there is no value for it to be borrowed from");
-                                fileline_help!(this.tcx().sess, default_span,
-                                    "consider giving it a 'static lifetime");
-                            } else {
-                                fileline_help!(this.tcx().sess, default_span,
-                                    "this function's return type contains a borrowed value, but \
-                                     the signature does not say whether it is borrowed from {}",
-                                    m);
-                            }
-                        }
-                        None => {},
-                    }
-                    ty::ReStatic
+        None => match rscope.anon_regions(default_span, 1) {
+            Ok(rs) => rs[0],
+            Err(params) => {
+                span_err!(this.tcx().sess, default_span, E0106,
+                          "missing lifetime specifier");
+                if let Some(params) = params {
+                    report_elision_failure(this.tcx(), default_span, params);
                 }
-
-                Ok(rs) => rs[0],
+                ty::ReStatic
             }
         }
     };
@@ -505,48 +512,54 @@ fn convert_angle_bracketed_parameters<'tcx>(this: &AstConv<'tcx>,
 /// Returns the appropriate lifetime to use for any output lifetimes
 /// (if one exists) and a vector of the (pattern, number of lifetimes)
 /// corresponding to each input type/pattern.
-fn find_implied_output_region(input_tys: &[Ty], input_pats: Vec<String>)
-                              -> (Option<ty::Region>, Vec<(String, usize)>)
+fn find_implied_output_region<'tcx>(tcx: &ty::ctxt<'tcx>,
+                                    input_tys: &[Ty<'tcx>],
+                                    input_pats: Vec<String>) -> ElidedLifetime
 {
-    let mut lifetimes_for_params: Vec<(String, usize)> = Vec::new();
+    let mut lifetimes_for_params = Vec::new();
     let mut possible_implied_output_region = None;
 
     for (input_type, input_pat) in input_tys.iter().zip(input_pats) {
-        let mut accumulator = Vec::new();
-        input_type.accumulate_lifetimes_in_type(&mut accumulator);
+        let mut regions = FnvHashSet();
+        let have_bound_regions = ty_fold::collect_regions(tcx,
+                                                          input_type,
+                                                          &mut regions);
 
-        if accumulator.len() == 1 {
+        debug!("find_implied_output_regions: collected {:?} from {:?} \
+                have_bound_regions={:?}", &regions, input_type, have_bound_regions);
+
+        if regions.len() == 1 {
             // there's a chance that the unique lifetime of this
             // iteration will be the appropriate lifetime for output
             // parameters, so lets store it.
-            possible_implied_output_region = Some(accumulator[0])
+            possible_implied_output_region = regions.iter().cloned().next();
         }
 
-        lifetimes_for_params.push((input_pat, accumulator.len()));
+        lifetimes_for_params.push(ElisionFailureInfo {
+            name: input_pat,
+            lifetime_count: regions.len(),
+            have_bound_regions: have_bound_regions
+        });
     }
 
-    let implied_output_region =
-        if lifetimes_for_params.iter().map(|&(_, n)| n).sum::<usize>() == 1 {
-            assert!(possible_implied_output_region.is_some());
-            possible_implied_output_region
-        } else {
-            None
-        };
-    (implied_output_region, lifetimes_for_params)
+    if lifetimes_for_params.iter().map(|e| e.lifetime_count).sum::<usize>() == 1 {
+        Ok(possible_implied_output_region.unwrap())
+    } else {
+        Err(Some(lifetimes_for_params))
+    }
 }
 
 fn convert_ty_with_lifetime_elision<'tcx>(this: &AstConv<'tcx>,
-                                          implied_output_region: Option<ty::Region>,
-                                          param_lifetimes: Vec<(String, usize)>,
+                                          elided_lifetime: ElidedLifetime,
                                           ty: &ast::Ty)
                                           -> Ty<'tcx>
 {
-    match implied_output_region {
-        Some(implied_output_region) => {
+    match elided_lifetime {
+        Ok(implied_output_region) => {
             let rb = ElidableRscope::new(implied_output_region);
             ast_ty_to_ty(this, &rb, ty)
         }
-        None => {
+        Err(param_lifetimes) => {
             // All regions must be explicitly specified in the output
             // if the lifetime elision rules do not apply. This saves
             // the user from potentially-confusing errors.
@@ -576,8 +589,7 @@ fn convert_parenthesized_parameters<'tcx>(this: &AstConv<'tcx>,
                    .collect::<Vec<Ty<'tcx>>>();
 
     let input_params: Vec<_> = repeat(String::new()).take(inputs.len()).collect();
-    let (implied_output_region,
-         params_lifetimes) = find_implied_output_region(&*inputs, input_params);
+    let implied_output_region = find_implied_output_region(this.tcx(), &inputs, input_params);
 
     let input_ty = this.tcx().mk_tup(inputs);
 
@@ -585,8 +597,7 @@ fn convert_parenthesized_parameters<'tcx>(this: &AstConv<'tcx>,
         Some(ref output_ty) => {
             (convert_ty_with_lifetime_elision(this,
                                               implied_output_region,
-                                              params_lifetimes,
-                                              &**output_ty),
+                                              &output_ty),
              output_ty.span)
         }
         None => {
@@ -1705,7 +1716,7 @@ fn ty_of_method_or_bare_fn<'a, 'tcx>(this: &AstConv<'tcx>,
     // here), if self is by-reference, then the implied output region is the
     // region of the self parameter.
     let mut explicit_self_category_result = None;
-    let (self_ty, mut implied_output_region) = match opt_self_info {
+    let (self_ty, implied_output_region) = match opt_self_info {
         None => (None, None),
         Some(self_info) => {
             // This type comes from an impl or trait; no late-bound
@@ -1756,19 +1767,18 @@ fn ty_of_method_or_bare_fn<'a, 'tcx>(this: &AstConv<'tcx>,
     // Second, if there was exactly one lifetime (either a substitution or a
     // reference) in the arguments, then any anonymous regions in the output
     // have that lifetime.
-    let lifetimes_for_params = if implied_output_region.is_none() {
-        let input_tys = if self_ty.is_some() {
-            // Skip the first argument if `self` is present.
-            &self_and_input_tys[1..]
-        } else {
-            &self_and_input_tys[..]
-        };
+    let implied_output_region = match implied_output_region {
+        Some(r) => Ok(r),
+        None => {
+            let input_tys = if self_ty.is_some() {
+                // Skip the first argument if `self` is present.
+                &self_and_input_tys[1..]
+            } else {
+                &self_and_input_tys[..]
+            };
 
-        let (ior, lfp) = find_implied_output_region(input_tys, input_pats);
-        implied_output_region = ior;
-        lfp
-    } else {
-        vec![]
+            find_implied_output_region(this.tcx(), input_tys, input_pats)
+        }
     };
 
     let output_ty = match decl.output {
@@ -1777,8 +1787,7 @@ fn ty_of_method_or_bare_fn<'a, 'tcx>(this: &AstConv<'tcx>,
         ast::Return(ref output) =>
             ty::FnConverging(convert_ty_with_lifetime_elision(this,
                                                               implied_output_region,
-                                                              lifetimes_for_params,
-                                                              &**output)),
+                                                              &output)),
         ast::DefaultReturn(..) => ty::FnConverging(this.tcx().mk_nil()),
         ast::NoReturn(..) => ty::FnDiverging
     };
