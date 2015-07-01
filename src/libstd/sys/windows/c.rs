@@ -64,6 +64,8 @@ pub const STD_INPUT_HANDLE: libc::DWORD = -10i32 as libc::DWORD;
 pub const STD_OUTPUT_HANDLE: libc::DWORD = -11i32 as libc::DWORD;
 pub const STD_ERROR_HANDLE: libc::DWORD = -12i32 as libc::DWORD;
 
+pub const HANDLE_FLAG_INHERIT: libc::DWORD = 0x00000001;
+
 #[repr(C)]
 #[cfg(target_arch = "x86")]
 pub struct WSADATA {
@@ -408,6 +410,9 @@ extern "system" {
     pub fn GetUserProfileDirectoryW(hToken: libc::HANDLE,
                                     lpProfileDir: libc::LPCWSTR,
                                     lpcchSize: *mut libc::DWORD) -> libc::BOOL;
+    pub fn SetHandleInformation(hObject: libc::HANDLE,
+                                dwMask: libc::DWORD,
+                                dwFlags: libc::DWORD) -> libc::BOOL;
 }
 
 // Functions that aren't available on Windows XP, but we still use them and just
