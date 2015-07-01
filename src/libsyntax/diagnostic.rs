@@ -594,12 +594,22 @@ fn highlight_lines(err: &mut EmitterWriter,
     let display_line_infos = &lines.lines[..display_lines];
     let display_line_strings = &line_strings[..display_lines];
 
+    // Calculate the widest number to format evenly and fix #11715
+    assert!(display_line_infos.len() > 0);
+    let mut max_line_num = display_line_infos[display_line_infos.len() - 1].line_index + 1;
+    let mut digits = 0;
+    while max_line_num > 0 {
+        max_line_num /= 10;
+        digits += 1;
+    }
+
     // Print the offending lines
     for (line_info, line) in display_line_infos.iter().zip(display_line_strings) {
-        try!(write!(&mut err.dst, "{}:{} {}\n",
+        try!(write!(&mut err.dst, "{}:{:>width$} {}\n",
                     fm.name,
                     line_info.line_index + 1,
-                    line));
+                    line,
+                    width=digits));
     }
 
     // If we elided something, put an ellipsis.
@@ -793,5 +803,66 @@ pub fn expect<T, M>(diag: &SpanHandler, opt: Option<T>, msg: M) -> T where
     match opt {
         Some(t) => t,
         None => diag.handler().bug(&msg()),
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::{EmitterWriter, highlight_lines, Level};
+    use codemap::{mk_sp, CodeMap, BytePos};
+    use std::sync::{Arc, Mutex};
+    use std::io::{self, Write};
+    use std::str::from_utf8;
+
+    // Diagnostic doesn't align properly in span where line number increases by one digit
+    #[test]
+    fn test_hilight_suggestion_issue_11715() {
+        struct Sink(Arc<Mutex<Vec<u8>>>);
+        impl Write for Sink {
+            fn write(&mut self, data: &[u8]) -> io::Result<usize> {
+                Write::write(&mut *self.0.lock().unwrap(), data)
+            }
+            fn flush(&mut self) -> io::Result<()> { Ok(()) }
+        }
+        let data = Arc::new(Mutex::new(Vec::new()));
+        let mut ew = EmitterWriter::new(Box::new(Sink(data.clone())), None);
+        let cm = CodeMap::new();
+        let content = "abcdefg
+        koksi
+        line3
+        line4
+        cinq
+        line6
+        line7
+        line8
+        line9
+        line10
+        e-lä-vän
+        tolv
+        dreizehn
+        ";
+        let file = cm.new_filemap("dummy.txt".to_string(), content.to_string());
+        for (i, b) in content.bytes().enumerate() {
+            if b == b'\n' {
+                file.next_line(BytePos(i as u32));
+            }
+        }
+        let start = file.lines.borrow()[7];
+        let end = file.lines.borrow()[11];
+        let sp = mk_sp(start, end);
+        let lvl = Level::Error;
+        println!("span_to_lines");
+        let lines = cm.span_to_lines(sp);
+        println!("highlight_lines");
+        highlight_lines(&mut ew, &cm, sp, lvl, lines).unwrap();
+        println!("done");
+        let vec = data.lock().unwrap().clone();
+        let vec: &[u8] = &vec;
+        println!("{}", from_utf8(vec).unwrap());
+        assert_eq!(vec, "dummy.txt: 8 \n\
+                         dummy.txt: 9 \n\
+                         dummy.txt:10 \n\
+                         dummy.txt:11 \n\
+                         dummy.txt:12 \n".as_bytes());
     }
 }
