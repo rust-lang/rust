@@ -1358,7 +1358,7 @@ struct Foo {
 }
 ```
 
-Please check you didn't mispelled one field. Example:
+Please verify that the field names have been correctly spelled. Example:
 
 ```
 struct Foo {
