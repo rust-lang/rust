@@ -549,7 +549,7 @@ impl str {
     /// Takes a bytewise mutable slice from a string.
     ///
     /// Same as `slice_unchecked`, but works with `&mut str` instead of `&str`.
-    #[stable(feature = "derefmut_for_string", since = "1.2.0")]
+    #[unstable(feature = "str_slice_mut", reason = "recently added")]
     pub unsafe fn slice_mut_unchecked(&mut self, begin: usize, end: usize) -> &mut str {
         core_str::StrExt::slice_mut_unchecked(self, begin, end)
     }
@@ -789,12 +789,14 @@ impl str {
     /// assert_eq!(b, " 老虎 Léopard");
     /// ```
     #[inline]
+    #[unstable(feature = "str_split_at", reason = "recently added")]
     pub fn split_at(&self, mid: usize) -> (&str, &str) {
         core_str::StrExt::split_at(self, mid)
     }
 
     /// Divide one mutable string slice into two at an index.
     #[inline]
+    #[unstable(feature = "str_split_at", reason = "recently added")]
     pub fn split_at_mut(&mut self, mid: usize) -> (&mut str, &mut str) {
         core_str::StrExt::split_at_mut(self, mid)
     }
