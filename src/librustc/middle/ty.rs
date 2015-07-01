@@ -76,11 +76,9 @@ use std::cell::{Cell, RefCell, Ref};
 use std::cmp;
 use std::fmt;
 use std::hash::{Hash, SipHasher, Hasher};
-use std::mem;
 use std::ops;
 use std::rc::Rc;
 use std::vec::IntoIter;
-use collections::enum_set::{self, EnumSet, CLike};
 use std::collections::{HashMap, HashSet};
 use syntax::abi;
 use syntax::ast::{CrateNum, DefId, ItemImpl, ItemTrait, LOCAL_CRATE};
@@ -2059,16 +2057,42 @@ pub struct ExistentialBounds<'tcx> {
     pub projection_bounds: Vec<PolyProjectionPredicate<'tcx>>,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-pub struct BuiltinBounds(EnumSet<BuiltinBound>);
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+pub struct BuiltinBounds {
+    bits: u8
+}
 
 impl BuiltinBounds {
-       pub fn empty() -> BuiltinBounds {
-        BuiltinBounds(EnumSet::new())
+    pub fn empty() -> BuiltinBounds {
+        BuiltinBounds { bits: 0 }
     }
 
-    pub fn iter(&self) -> enum_set::Iter<BuiltinBound> {
+    pub fn insert(&mut self, bound: BuiltinBound) {
+        self.bits = match bound {
+            BuiltinBound::Send  => self.bits | 0b0000_0001,
+            BuiltinBound::Sized => self.bits | 0b0000_0010,
+            BuiltinBound::Copy  => self.bits | 0b0000_0100,
+            BuiltinBound::Sync  => self.bits | 0b0000_1000,
+        }
+    }
+
+    pub fn contains(&self, bound: BuiltinBound) -> bool {
+        let bit = match bound {
+            BuiltinBound::Send  => self.bits,
+            BuiltinBound::Sized => self.bits >> 1,
+            BuiltinBound::Copy  => self.bits >> 2,
+            BuiltinBound::Sync  => self.bits >> 3
+        };
+
+        (bit & 0b0000_0001) == 1
+    }
+
+    pub fn iter(&self) -> BuiltinBoundsIter {
         self.into_iter()
+    }
+
+    fn is_empty(&self) -> bool {
+        self.bits == 0
     }
 
     pub fn to_predicates<'tcx>(&self,
@@ -2081,42 +2105,56 @@ impl BuiltinBounds {
             }
         ).collect()
     }
+
+    pub fn is_superset(&self, other: &BuiltinBounds) -> bool {
+        (self.bits & other.bits) == other.bits
+    }
 }
 
-impl ops::Deref for BuiltinBounds {
-    type Target = EnumSet<BuiltinBound>;
-    fn deref(&self) -> &Self::Target { &self.0 }
+pub struct BuiltinBoundsIter {
+    bounds: BuiltinBounds,
+    index: u8
 }
 
-impl ops::DerefMut for BuiltinBounds {
-    fn deref_mut(&mut self) -> &mut Self::Target { &mut self.0 }
+impl Iterator for BuiltinBoundsIter {
+    type Item = BuiltinBound;
+
+    fn next(&mut self) -> Option<BuiltinBound> {
+        while self.index < 4 {
+            let result = match self.index {
+                0 if self.bounds.contains(BuiltinBound::Send) => Some(BuiltinBound::Send),
+                1 if self.bounds.contains(BuiltinBound::Sized) => Some(BuiltinBound::Sized),
+                2 if self.bounds.contains(BuiltinBound::Copy) => Some(BuiltinBound::Copy),
+                3 if self.bounds.contains(BuiltinBound::Sync) => Some(BuiltinBound::Sync),
+                _ => None
+            };
+
+            self.index += 1;
+
+            if result.is_some() {
+                return result;
+            }
+        }
+
+        return None;
+    }
 }
 
 impl<'a> IntoIterator for &'a BuiltinBounds {
     type Item = BuiltinBound;
-    type IntoIter = enum_set::Iter<BuiltinBound>;
-    fn into_iter(self) -> Self::IntoIter {
-        (**self).into_iter()
+    type IntoIter = BuiltinBoundsIter;
+
+    fn into_iter(self) -> BuiltinBoundsIter {
+        BuiltinBoundsIter { bounds: self.clone(), index: 0 }
     }
 }
 
-#[derive(Clone, RustcEncodable, PartialEq, Eq, RustcDecodable, Hash,
-           Debug, Copy)]
-#[repr(usize)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, RustcDecodable, RustcEncodable, Hash, Debug)]
 pub enum BuiltinBound {
     Send,
     Sized,
     Copy,
     Sync,
-}
-
-impl CLike for BuiltinBound {
-    fn to_usize(&self) -> usize {
-        *self as usize
-    }
-    fn from_usize(v: usize) -> BuiltinBound {
-        unsafe { mem::transmute(v) }
-    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
@@ -5707,7 +5745,7 @@ impl<'tcx> ctxt<'tcx> {
 
     pub fn try_add_builtin_trait(&self,
                                  trait_def_id: ast::DefId,
-                                 builtin_bounds: &mut EnumSet<BuiltinBound>)
+                                 builtin_bounds: &mut BuiltinBounds)
                                  -> bool
     {
         //! Checks whether `trait_ref` refers to one of the builtin

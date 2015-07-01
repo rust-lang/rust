@@ -82,6 +82,7 @@ pub use bit_set::BitSet;
 pub use btree_map::BTreeMap;
 pub use btree_set::BTreeSet;
 pub use linked_list::LinkedList;
+#[allow(deprecated)]
 pub use enum_set::EnumSet;
 pub use vec_deque::VecDeque;
 pub use string::String;

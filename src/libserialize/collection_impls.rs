@@ -17,6 +17,7 @@ use std::collections::hash_state::HashState;
 
 use {Decodable, Encodable, Decoder, Encoder};
 use std::collections::{LinkedList, VecDeque, BTreeMap, BTreeSet, HashMap, HashSet, VecMap};
+#[allow(deprecated)]
 use collections::enum_set::{EnumSet, CLike};
 
 impl<
@@ -130,6 +131,7 @@ impl<
     }
 }
 
+#[allow(deprecated)]
 impl<
     T: Encodable + CLike
 > Encodable for EnumSet<T> {
@@ -142,6 +144,7 @@ impl<
     }
 }
 
+#[allow(deprecated)]
 impl<
     T: Decodable + CLike
 > Decodable for EnumSet<T> {

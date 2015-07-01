@@ -13,10 +13,11 @@
 //! This module defines a container which uses an efficient bit mask
 //! representation to hold C-like enum variants.
 
+#![deprecated(reason = "EnumSet has been deprecated",
+              since = "1.2.0")]
 #![unstable(feature = "enumset",
-            reason = "matches collection reform specification, \
-                      waiting for dust to settle")]
-
+            reason = "deprecated")]
+#![allow(deprecated)]
 use core::prelude::*;
 use core::marker;
 use core::fmt;

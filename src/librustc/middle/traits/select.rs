@@ -1343,7 +1343,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ty::TyTrait(ref data) => {
                     match self.tcx().lang_items.to_builtin_kind(obligation.predicate.def_id()) {
                         Some(bound @ ty::BoundSend) | Some(bound @ ty::BoundSync) => {
-                            if data.bounds.builtin_bounds.contains(&bound) {
+                            if data.bounds.builtin_bounds.contains(bound) {
                                 debug!("assemble_candidates_from_object_ty: matched builtin bound, \
                                         pushing candidate");
                                 candidates.vec.push(BuiltinObjectCandidate);
@@ -1632,7 +1632,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 match bound {
                     ty::BoundSized => Err(Unimplemented),
                     ty::BoundCopy => {
-                        if data.bounds.builtin_bounds.contains(&bound) {
+                        if data.bounds.builtin_bounds.contains(bound) {
                             ok_if(Vec::new())
                         } else {
                             // Recursively check all supertraits to find out if any further
