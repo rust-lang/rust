@@ -9,6 +9,8 @@ language-design problem.
 
 # The Tagged Union Problem
 
+TODO: rewrite this to use Box instead?
+
 The core of the lifetime and mutability system derives from a simple problem:
 internal pointers to tagged unions. For instance, consider the following code:
 
