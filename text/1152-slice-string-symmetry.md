@@ -1,7 +1,7 @@
 - Feature Name: `slice_string_symmetry`
 - Start Date: 2015-06-06
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#1152](https://github.com/rust-lang/rfcs/pull/1152)
+- Rust Issue: [rust-lang/rust#26697](https://github.com/rust-lang/rust/issues/26697)
 
 # Summary
 
