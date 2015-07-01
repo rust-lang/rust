@@ -155,6 +155,9 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Status)] = &[
 
     // Allows the definition of `const fn` functions.
     ("const_fn", "1.2.0", Active),
+
+    // Allows using #[prelude_import] on glob `use` items.
+    ("prelude_import", "1.2.0", Active),
 ];
 // (changing above list without updating src/doc/reference.md makes @cmr sad)
 
@@ -265,7 +268,8 @@ pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType)] = &[
                                    and may be removed in the future")),
 
     // used in resolve
-    ("prelude_import", Whitelisted),
+    ("prelude_import", Gated("prelude_import",
+                             "`#[prelude_import]` is for use by rustc only")),
 
     // FIXME: #14407 these are only looked at on-demand so we can't
     // guarantee they'll have already been checked
