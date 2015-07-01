@@ -40,9 +40,9 @@ fn shift_last_mut(&mut self) -> Option<(&mut T, &mut [T])>;
 
 Existing code using `tail()` or `init()` could be translated as follows:
 
-* `slice.tail()` becomes `slice.shift_first().unwrap().1` or `&slice[1..]`
-* `slice.init()` becomes `slice.shift_last().unwrap().1` or
-  `&slice[..slice.len()-1]`
+* `slice.tail()` becomes `&slice[1..]`
+* `slice.init()` becomes `&slice[..slice.len()-1]` or
+  `slice.shift_last().unwrap().1`
 
 It is expected that a lot of code using `tail()` or `init()` is already either
 testing `len()` explicitly or using `first()` / `last()` and could be refactored
@@ -78,10 +78,12 @@ let (argv0, args_) = args.shift_first().unwrap();
 
 # Drawbacks
 
-The expression `slice.shift_last().unwrap.1` is more cumbersome than
+The expression `slice.shift_last().unwrap().1` is more cumbersome than
 `slice.init()`. However, this is primarily due to the need for `.unwrap()`
 rather than the need for `.1`, and would affect the more conservative solution
-(of making the return type `Option<&[T]>`) as well.
+(of making the return type `Option<&[T]>`) as well. Furthermore, the more
+idiomatic translation is `&slice[..slice.len()-1]`, which can be used any time
+the slice is already stored in a local variable.
 
 # Alternatives
 
@@ -89,6 +91,10 @@ Only change the return type to `Option` without adding the tuple. This is the
 more conservative change mentioned above. It still has the same drawback of
 requiring `.unwrap()` when translating existing code. And it's unclear what the
 function names should be (the current names are considered suboptimal).
+
+Just deprecate the current methods without adding replacements. This gets rid of
+the odd methods today, but it doesn't do anything to make it easier to safely
+perform these operations.
 
 # Unresolved questions
 
