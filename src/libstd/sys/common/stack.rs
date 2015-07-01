@@ -202,6 +202,7 @@ pub unsafe fn record_sp_limit(limit: usize) {
               target_arch = "powerpc",
               all(target_arch = "arm", target_os = "ios"),
               target_os = "bitrig",
+              target_os = "netbsd",
               target_os = "openbsd"))]
     unsafe fn target_record_sp_limit(_: usize) {
     }
@@ -299,6 +300,7 @@ pub unsafe fn get_sp_limit() -> usize {
               target_arch = "powerpc",
               all(target_arch = "arm", target_os = "ios"),
               target_os = "bitrig",
+              target_os = "netbsd",
               target_os = "openbsd"))]
     #[inline(always)]
     unsafe fn target_get_sp_limit() -> usize {

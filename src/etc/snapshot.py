@@ -41,13 +41,14 @@ download_dir_base = "dl"
 download_unpack_base = os.path.join(download_dir_base, "unpack")
 
 snapshot_files = {
+        "bitrig": ["bin/rustc"],
+        "dragonfly": ["bin/rustc"],
+        "freebsd": ["bin/rustc"],
         "linux": ["bin/rustc"],
         "macos": ["bin/rustc"],
-        "winnt": ["bin/rustc.exe"],
-        "freebsd": ["bin/rustc"],
-        "dragonfly": ["bin/rustc"],
-        "bitrig": ["bin/rustc"],
+        "netbsd": ["bin/rustc"],
         "openbsd": ["bin/rustc"],
+        "winnt": ["bin/rustc.exe"],
         }
 
 winnt_runtime_deps_32 = ["libgcc_s_dw2-1.dll", "libstdc++-6.dll"]
@@ -103,6 +104,8 @@ def get_kernel(triple):
         return "dragonfly"
     if os_name == "bitrig":
         return "bitrig"
+    if os_name == "netbsd":
+        return "netbsd"
     if os_name == "openbsd":
         return "openbsd"
     return "linux"
