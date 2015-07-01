@@ -82,26 +82,31 @@ impl Socket {
             SocketAddr::V4(..) => libc::AF_INET,
             SocketAddr::V6(..) => libc::AF_INET6,
         };
-        let socket = unsafe {
-            c::WSASocketW(fam, ty, 0, 0 as *mut _, 0,
-                          c::WSA_FLAG_OVERLAPPED | c::WSA_FLAG_NO_HANDLE_INHERIT)
-        };
-        match socket {
-            INVALID_SOCKET => Err(last_error()),
-            n => Ok(Socket(n)),
-        }
+        let socket = try!(unsafe {
+            match c::WSASocketW(fam, ty, 0, 0 as *mut _, 0,
+                                c::WSA_FLAG_OVERLAPPED) {
+                INVALID_SOCKET => Err(last_error()),
+                n => Ok(Socket(n)),
+            }
+        });
+        try!(socket.set_no_inherit());
+        Ok(socket)
     }
 
     pub fn accept(&self, storage: *mut libc::sockaddr,
                   len: *mut libc::socklen_t) -> io::Result<Socket> {
-        match unsafe { libc::accept(self.0, storage, len) } {
-            INVALID_SOCKET => Err(last_error()),
-            n => Ok(Socket(n)),
-        }
+        let socket = try!(unsafe {
+            match libc::accept(self.0, storage, len) {
+                INVALID_SOCKET => Err(last_error()),
+                n => Ok(Socket(n)),
+            }
+        });
+        try!(socket.set_no_inherit());
+        Ok(socket)
     }
 
     pub fn duplicate(&self) -> io::Result<Socket> {
-        unsafe {
+        let socket = try!(unsafe {
             let mut info: c::WSAPROTOCOL_INFO = mem::zeroed();
             try!(cvt(c::WSADuplicateSocketW(self.0,
                                             c::GetCurrentProcessId(),
@@ -110,12 +115,13 @@ impl Socket {
                                 info.iSocketType,
                                 info.iProtocol,
                                 &mut info, 0,
-                                c::WSA_FLAG_OVERLAPPED |
-                                    c::WSA_FLAG_NO_HANDLE_INHERIT) {
+                                c::WSA_FLAG_OVERLAPPED) {
                 INVALID_SOCKET => Err(last_error()),
                 n => Ok(Socket(n)),
             }
-        }
+        });
+        try!(socket.set_no_inherit());
+        Ok(socket)
     }
 
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
@@ -155,6 +161,13 @@ impl Socket {
             let nsec = (raw % 1000) * 1000000;
             Ok(Some(Duration::new(secs as u64, nsec as u32)))
         }
+    }
+
+    fn set_no_inherit(&self) -> io::Result<()> {
+        sys::cvt(unsafe {
+            c::SetHandleInformation(self.0 as libc::HANDLE,
+                                    c::HANDLE_FLAG_INHERIT, 0)
+        }).map(|_| ())
     }
 }
 
