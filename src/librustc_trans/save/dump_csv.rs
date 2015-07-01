@@ -937,7 +937,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
 
     fn process_pat(&mut self, p:&ast::Pat) {
         if generated_code(p.span) {
-            return
+            return;
         }
 
         match p.node {
@@ -963,6 +963,10 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
                 if let Some(struct_def) = struct_def {
                     let struct_fields = self.tcx.lookup_struct_fields(struct_def);
                     for &Spanned { node: ref field, span } in fields {
+                        if generated_code(span) {
+                            continue;
+                        }
+
                         let sub_span = self.span.span_for_first_ident(span);
                         for f in &struct_fields {
                             if f.name == field.ident.name {
@@ -974,7 +978,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
                                 break;
                             }
                         }
-                        self.visit_pat(&*field.pat);
+                        self.visit_pat(&field.pat);
                     }
                 }
             }
