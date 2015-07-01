@@ -167,11 +167,6 @@ impl fmt::Display for FormatReport {
 fn fmt_ast<'a>(krate: &ast::Crate, codemap: &'a CodeMap, config: &'a Config) -> ChangeSet<'a> {
     let mut visitor = FmtVisitor::from_codemap(codemap, config);
     visit::walk_crate(&mut visitor, krate);
-    let files = codemap.files.borrow();
-    if let Some(last) = files.last() {
-        visitor.format_missing(last.end_pos);
-    }
-
     visitor.changes
 }
 

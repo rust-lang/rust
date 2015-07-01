@@ -213,6 +213,10 @@ impl<'a> ChangeSet<'a> {
 
         Ok(None)
     }
+
+    pub fn is_changed(&self, filename: &str) -> bool {
+        self.file_map.get(filename).expect("Unknown filename").len != 0
+    }
 }
 
 // Iterates over each file in the ChangSet. Yields the filename and the changed
