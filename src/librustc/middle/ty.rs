@@ -2068,23 +2068,11 @@ impl BuiltinBounds {
     }
 
     pub fn insert(&mut self, bound: BuiltinBound) {
-        self.bits = match bound {
-            BuiltinBound::Send  => self.bits | 0b0000_0001,
-            BuiltinBound::Sized => self.bits | 0b0000_0010,
-            BuiltinBound::Copy  => self.bits | 0b0000_0100,
-            BuiltinBound::Sync  => self.bits | 0b0000_1000,
-        }
+        self.bits |= 1 << (bound as u8);
     }
 
     pub fn contains(&self, bound: BuiltinBound) -> bool {
-        let bit = match bound {
-            BuiltinBound::Send  => self.bits,
-            BuiltinBound::Sized => self.bits >> 1,
-            BuiltinBound::Copy  => self.bits >> 2,
-            BuiltinBound::Sync  => self.bits >> 3
-        };
-
-        (bit & 0b0000_0001) == 1
+        ((self.bits >> (bound as u8)) & 1) == 1
     }
 
     pub fn iter(&self) -> BuiltinBoundsIter {

@@ -12,14 +12,13 @@
 
 #![allow(warnings)]
 #![feature(collections)]
-#![feature(drain, enumset, collections_bound, btree_range, vecmap)]
+#![feature(drain, collections_bound, btree_range, vecmap)]
 
 extern crate collections;
 
 use collections::BinaryHeap;
 use collections::{BitSet, BitVec};
 use collections::{BTreeMap, BTreeSet};
-use collections::EnumSet;
 use collections::LinkedList;
 use collections::String;
 use collections::Vec;
@@ -27,7 +26,6 @@ use collections::VecDeque;
 use collections::VecMap;
 
 use collections::Bound::Included;
-use collections::enum_set::CLike;
 use std::mem;
 
 fn is_sync<T>(_: T) where T: Sync {}
@@ -92,7 +90,6 @@ fn main() {
             unsafe { mem::transmute(v) }
         }
     }
-    all_sync_send!(EnumSet::<Foo>::new(), iter);
 
     all_sync_send!(VecDeque::<usize>::new(), iter, iter_mut, drain, into_iter);
 
