@@ -89,7 +89,9 @@ This section will describe the purpose for each lang item currently required in
 addition to the interface that it will be stabilized with. Each lang item will
 no longer be defined with the `#[lang = "..."]` syntax but will instead receive
 a dedicated attribute (e.g. `#[panic_fmt]`) to be attached to functions to
-identify an implementation.
+identify an implementation. It should be noted that these language items are
+already not quite the same as other `#[lang]` items due to the ability to rely
+on them in a "weak" fashion.
 
 Like lang items each of these will only allow one implementor in any crate
 dependency graph which will be verified at compile time. Also like today, none
@@ -213,7 +215,7 @@ reasons:
   in the future if we, for example, provide multiple binary copies of libcore in
   the standard distribution.
 
-The final drawback of this RFC is the overall stabilization of the `#![no_std]`
+Another drawback of this RFC is the overall stabilization of the `#![no_std]`
 attribute, meaning that the compiler will no longer be able to make assumptions
 in the future about a function being defined. Put another way, the `panic_fmt`,
 `eh_personality`, and `stack_exhausted` lang items are the only three that will
@@ -222,6 +224,13 @@ as too strong of a drawback as it's not clear that the compiler will need to
 assume more functions exist. Additionally, the compiler will likely be able to
 provide or emit a stub implementation for any future symbol it does need to
 exist.
+
+In stabilizing the `#![no_std]` attribute it's likely that a whole ecosystem of
+crates will arise which work with `#![no_std]`, but in theory all of these
+crates should also interoperate with the rest of the ecosystem using `std`.
+Unfortunately, however, there are known cases where this is not possible. For
+example if a macro is exported from a `#![no_std]` crate which references items
+from `core` it won't work by default with a `std` library.
 
 # Alternatives
 
