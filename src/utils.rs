@@ -30,7 +30,7 @@ pub fn in_external_macro(cx: &Context, span: Span) -> bool {
 /// usage e.g. with
 /// `match_def_path(cx, id, &["core", "option", "Option"])`
 pub fn match_def_path(cx: &Context, def_id: DefId, path: &[&str]) -> bool {
-	ty::with_path(cx.tcx, def_id, |iter| iter.map(|elem| elem.name())
+	cx.tcx.with_path(def_id, |iter| iter.map(|elem| elem.name())
 		.zip(path.iter()).all(|(nm, p)| &nm.as_str() == p))
 }
 

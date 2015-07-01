@@ -4,7 +4,7 @@ use syntax::ast::*;
 use syntax::ast_util::{is_comparison_binop, binop_to_string};
 use syntax::visit::{FnKind};
 use rustc::lint::{Context, LintPass, LintArray, Lint, Level};
-use rustc::middle::ty::{self, expr_ty};
+use rustc::middle::ty;
 use syntax::codemap::{Span, Spanned};
 
 use types::span_note_and_lint;
@@ -79,7 +79,7 @@ impl LintPass for StrToStringPass {
         }
 
         fn is_str(cx: &Context, expr: &ast::Expr) -> bool {
-            match walk_ty(expr_ty(cx.tcx, expr)).sty { 
+            match walk_ty(cx.tcx.expr_ty(expr)).sty { 
 				ty::TyStr => true,
 				_ => false
 			}
@@ -167,7 +167,7 @@ impl LintPass for FloatCmp {
 }
 
 fn is_float(cx: &Context, expr: &Expr) -> bool {
-	if let ty::TyFloat(_) = walk_ty(expr_ty(cx.tcx, expr)).sty { 
+	if let ty::TyFloat(_) = walk_ty(cx.tcx.expr_ty(expr)).sty { 
 		true
 	} else { 
 		false 
@@ -268,5 +268,5 @@ fn check_to_owned(cx: &Context, expr: &Expr, other_span: Span) {
 
 fn is_str_arg(cx: &Context, args: &[P<Expr>]) -> bool {
 	args.len() == 1 && if let ty::TyStr = 
-		walk_ty(expr_ty(cx.tcx, &*args[0])).sty { true } else { false }
+		walk_ty(cx.tcx.expr_ty(&*args[0])).sty { true } else { false }
 }
