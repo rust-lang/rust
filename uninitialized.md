@@ -6,7 +6,7 @@ of bits that may or may not even reflect a valid state for the type that is
 supposed to inhabit that location of memory. Attempting to interpret this memory
 as a value of *any* type will cause Undefined Behaviour. Do Not Do This.
 
-Like C, all stack variables in Rust begin their life as uninitialized until a
+Like C, all stack variables in Rust are uninitialized until a
 value is explicitly assigned to them. Unlike C, Rust statically prevents you
 from ever reading them until you do:
 
@@ -32,9 +32,6 @@ or anything like that. So this compiles:
 ```rust
 fn main() {
 	let x: i32;
-	let y: i32;
-
-	y = 1;
 
 	if true {
 		x = 1;
@@ -42,7 +39,7 @@ fn main() {
 		x = 2;
 	}
 
-    println!("{} {}", x, y);
+    println!("{}", x);
 }
 ```
 
@@ -98,13 +95,13 @@ to call the destructor of a variable that is conditionally initialized? It turns
 out that Rust actually tracks whether a type should be dropped or not *at
 runtime*. As a variable becomes initialized and uninitialized, a *drop flag* for
 that variable is set and unset. When a variable goes out of scope or is assigned
-it evaluates whether the current value of the variable should be dropped. Of
-course, static analysis can remove these checks. If the compiler can prove that
+a value, it evaluates whether the current value of the variable should be dropped.
+Of course, static analysis can remove these checks. If the compiler can prove that
 a value is guaranteed to be either initialized or not, then it can theoretically
 generate more efficient code! As such it may be desirable to structure code to
 have *static drop semantics* when possible.
 
-As of Rust 1.0, the drop flags are actually not-so-secretly stashed in a secret
+As of Rust 1.0, the drop flags are actually not-so-secretly stashed in a hidden
 field of any type that implements Drop. The language sets the drop flag by
 overwriting the entire struct with a particular value. This is pretty obviously
 Not The Fastest and causes a bunch of trouble with optimizing code. As such work
@@ -115,7 +112,7 @@ requires fairly substantial changes to the compiler.
 So in general, Rust programs don't need to worry about uninitialized values on
 the stack for correctness. Although they might care for performance. Thankfully,
 Rust makes it easy to take control here! Uninitialized values are there, and
-Safe Rust lets you work with them, but you're never in trouble.
+Safe Rust lets you work with them, but you're never in danger.
 
 One interesting exception to this rule is working with arrays. Safe Rust doesn't
 permit you to partially initialize an array. When you initialize an array, you
@@ -125,23 +122,23 @@ Unfortunately this is pretty rigid, especially if you need to initialize your
 array in a more incremental or dynamic way.
 
 Unsafe Rust gives us a powerful tool to handle this problem:
-`std::mem::uninitialized`. This function pretends to return a value when really
+`mem::uninitialized`. This function pretends to return a value when really
 it does nothing at all. Using it, we can convince Rust that we have initialized
 a variable, allowing us to do trickier things with conditional and incremental
 initialization.
 
-Unfortunately, this raises a tricky problem. Assignment has a different meaning
-to Rust based on whether it believes that a variable is initialized or not. If
-it's uninitialized, then Rust will semantically just memcopy the bits over the
-uninit ones, and do nothing else. However if Rust believes a value to be
-initialized, it will try to `Drop` the old value! Since we've tricked Rust into
-believing that the value is initialized, we can no longer safely use normal
-assignment.
+Unfortunately, this opens us up to all kinds of problems. Assignment has a
+different meaning to Rust based on whether it believes that a variable is
+initialized or not. If it's uninitialized, then Rust will semantically just
+memcopy the bits over the uninitialized ones, and do nothing else. However if Rust
+believes a value to be initialized, it will try to `Drop` the old value!
+Since we've tricked Rust into believing that the value is initialized, we
+can no longer safely use normal assignment.
 
-This is also a problem if you're working with a raw system allocator, which of
-course returns a pointer to uninitialized memory.
+This is also a problem if you're working with a raw system allocator, which
+returns a pointer to uninitialized memory.
 
-To handle this, we must use the `std::ptr` module. In particular, it provides
+To handle this, we must use the `ptr` module. In particular, it provides
 three functions that allow us to assign bytes to a location in memory without
 evaluating the old value: `write`, `copy`, and `copy_nonoverlapping`.
 
@@ -157,7 +154,7 @@ evaluating the old value: `write`, `copy`, and `copy_nonoverlapping`.
 It should go without saying that these functions, if misused, will cause serious
 havoc or just straight up Undefined Behaviour. The only things that these
 functions *themselves* require is that the locations you want to read and write
-are allocated. However the ways writing arbitrary bit patterns to arbitrary
+are allocated. However the ways writing arbitrary bits to arbitrary
 locations of memory can break things are basically uncountable!
 
 Putting this all together, we get the following:
@@ -177,6 +174,7 @@ fn main() {
 		x = mem::uninitialized();
 		for i in 0..SIZE {
 			// very carefully overwrite each index without reading it
+			// NOTE: exception safety is not a concern; Box can't panic
 			ptr::write(&mut x[i], Box::new(i));
 		}
 	}
@@ -186,15 +184,16 @@ fn main() {
 ```
 
 It's worth noting that you don't need to worry about ptr::write-style
-shenanigans with Plain Old Data (POD; types which don't implement Drop, nor
-contain Drop types), because Rust knows not to try to Drop them. Similarly you
-should be able to assign the POD fields of partially initialized structs
-directly.
+shenanigans with types which don't implement Drop or
+contain Drop types, because Rust knows not to try to Drop them. Similarly you
+should be able to assign to fields of partially initialized structs
+directly if those fields don't contain any Drop types.
 
-However when working with uninitialized memory you need to be ever vigilant for
+However when working with uninitialized memory you need to be ever-vigilant for
 Rust trying to Drop values you make like this before they're fully initialized.
-So every control path through that variable's scope must initialize the value
-before it ends. *This includes code panicking*. Again, POD types need not worry.
+Every control path through that variable's scope must initialize the value
+before it ends, if has a destructor.
+*[This includes code panicking](unwinding.html)*.
 
 And that's about it for working with uninitialized memory! Basically nothing
 anywhere expects to be handed uninitialized memory, so if you're going to pass
