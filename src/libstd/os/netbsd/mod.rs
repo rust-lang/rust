@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-windows
-// ignore-freebsd
-// ignore-openbsd
-// ignore-netbsd
-// ignore-bitrig
+//! OpenBSD-specific definitions
 
-// compile-flags: -Z parse-only
+#![stable(feature = "raw_ext", since = "1.1.0")]
 
-#[path = "../compile-fail"]
-mod foo; //~ ERROR: a directory
+pub mod raw;
 
-fn main() {}
+pub mod fs {
+    #![stable(feature = "raw_ext", since = "1.1.0")]
+    pub use sys::fs::MetadataExt;
+}

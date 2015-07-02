@@ -80,6 +80,7 @@ mod inner {
     // OpenBSD provide it via libc
     #[cfg(not(any(target_os = "android",
                   target_os = "bitrig",
+                  target_os = "netbsd",
                   target_os = "openbsd",
                   target_env = "musl")))]
     #[link(name = "rt")]
