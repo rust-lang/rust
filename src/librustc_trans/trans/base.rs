@@ -1578,16 +1578,6 @@ pub fn trans_closure<'a, 'b, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         decl.inputs.iter()
                    .map(|arg| node_id_type(bcx, arg.id))
                    .collect::<Vec<_>>();
-    let monomorphized_arg_types = match closure_env {
-        closure::ClosureEnv::NotClosure => {
-            monomorphized_arg_types
-        }
-
-        // Tuple up closure argument types for the "rust-call" ABI.
-        closure::ClosureEnv::Closure(_) => {
-            vec![ccx.tcx().mk_tup(monomorphized_arg_types)]
-        }
-    };
     for monomorphized_arg_type in &monomorphized_arg_types {
         debug!("trans_closure: monomorphized_arg_type: {:?}",
                monomorphized_arg_type);
@@ -1600,8 +1590,7 @@ pub fn trans_closure<'a, 'b, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             create_datums_for_fn_args_under_call_abi(bcx, arg_scope, &monomorphized_arg_types[..])
         }
         _ => {
-            let arg_tys = untuple_arguments_if_necessary(ccx, &monomorphized_arg_types, abi);
-            create_datums_for_fn_args(bcx, &arg_tys)
+            create_datums_for_fn_args(bcx, &monomorphized_arg_types)
         }
     };
 
