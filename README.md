@@ -1,13 +1,15 @@
 # The Rust Programming Language
 
-Rust is a fast systems programming language that guarantees
+[(Rust)] is a fast systems programming language that guarantees
 memory safety and offers painless concurrency ([no data races]).
-It does not employ a garbage collector and has minimal runtime overhead.
+It does not employ a garbage collector and has minimal runtime overhead. If you haven't seen Rust at all yet, the first thing you should read is the introduction to ([The Rust programming Language]). It'll give you a good idea of what Rust is like.
 
 This repo contains the code for the compiler (`rustc`), as well
 as standard libraries, tools and documentation for Rust.
 
+[Rust]: http://www.rust-lang.org/
 [no data races]: http://blog.rust-lang.org/2015/04/10/Fearless-Concurrency.html
+[The Rust Programming Language]: https://doc.rust-lang.org/stable/book/
 
 ## Quick Start
 
@@ -114,10 +116,13 @@ The Rust community congregates in a few places:
 * [Stack Overflow] - Direct questions about using the language.
 * [users.rust-lang.org] - General discussion and broader questions.
 * [/r/rust] - News and general discussion.
+* [developer forum] - Development of Rust
 
 [Stack Overflow]: http://stackoverflow.com/questions/tagged/rust
 [/r/rust]: http://reddit.com/r/rust
 [users.rust-lang.org]: http://users.rust-lang.org/
+[developer forum]: http://internals.rust-lang.org/
+
 
 ## Contributing
 
