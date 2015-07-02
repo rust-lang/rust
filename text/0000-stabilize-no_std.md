@@ -44,7 +44,7 @@ must be available in a stable fashion.
 This RFC proposes a nuber of changes:
 
 * Stabilize the `#![no_std]` attribute after tweaking its behavior slightly
-* Stabilize a `#![no_core]` attribute.
+* Introduce a `#![no_core]` attribute.
 * Stabilize the name "core" in libcore.
 * Stabilize required language items by the core library.
 
