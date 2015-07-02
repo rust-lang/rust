@@ -40,10 +40,6 @@ use rustc::middle::privacy::ImportUse::*;
 use rustc::middle::privacy::LastPrivate::*;
 use rustc::middle::privacy::PrivateDep::*;
 use rustc::middle::privacy::{ExternalExports, ExportedItems, PublicItems};
-use rustc::middle::ty::{MethodTypeParam, MethodStatic};
-use rustc::middle::ty::{MethodCall, MethodMap, MethodOrigin, MethodParam};
-use rustc::middle::ty::{MethodStaticClosure, MethodObject};
-use rustc::middle::ty::MethodTraitObject;
 use rustc::middle::ty::{self, Ty};
 use rustc::util::nodemap::{NodeMap, NodeSet};
 
@@ -53,7 +49,7 @@ use syntax::codemap::Span;
 use syntax::parse::token;
 use syntax::visit::{self, Visitor};
 
-type Context<'a, 'tcx> = (&'a MethodMap<'tcx>, &'a def::ExportMap);
+type Context<'a, 'tcx> = (&'a ty::MethodMap<'tcx>, &'a def::ExportMap);
 
 /// Result of a checking operation - None => no errors were found. Some => an
 /// error and contains the span and message for reporting that error and
@@ -848,17 +844,17 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
     }
 
     // Checks that a method is in scope.
-    fn check_method(&mut self, span: Span, origin: &MethodOrigin,
+    fn check_method(&mut self, span: Span, callee: &ty::MethodCallee,
                     name: ast::Name) {
-        match *origin {
-            MethodStatic(method_id) => {
-                self.check_static_method(span, method_id, name)
+        match callee.origin {
+            ty::MethodOrigin::Inherent => {
+                self.check_static_method(span, callee.def_id, name)
             }
             // Trait methods are always all public. The only controlling factor
             // is whether the trait itself is accessible or not.
-            MethodTypeParam(MethodParam { ref trait_ref, .. }) |
-            MethodTraitObject(MethodObject { ref trait_ref, .. }) => {
-                self.report_error(self.ensure_public(span, trait_ref.def_id,
+            ty::MethodOrigin::Trait(_) | ty::MethodOrigin::Object(_) => {
+                let method = self.tcx.impl_or_trait_item(callee.def_id);
+                self.report_error(self.ensure_public(span, method.container().id(),
                                                      None, "source trait"));
             }
         }
@@ -902,7 +898,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
                 }
             }
             ast::ExprMethodCall(ident, _, _) => {
-                let method_call = MethodCall::expr(expr.id);
+                let method_call = ty::MethodCall::expr(expr.id);
                 match self.tcx.tables.borrow().method_map.get(&method_call) {
                     None => {
                         self.tcx.sess.span_bug(expr.span,
@@ -911,7 +907,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
                     }
                     Some(method) => {
                         debug!("(privacy checking) checking impl method");
-                        self.check_method(expr.span, &method.origin, ident.node.name);
+                        self.check_method(expr.span, method, ident.node.name);
                     }
                 }
             }

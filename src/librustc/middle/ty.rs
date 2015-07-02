@@ -30,7 +30,6 @@ pub use self::ImplOrTraitItem::*;
 pub use self::BoundRegion::*;
 pub use self::TypeVariants::*;
 pub use self::IntVarValue::*;
-pub use self::MethodOrigin::*;
 pub use self::CopyImplementationError::*;
 
 pub use self::BuiltinBound::Send as BoundSend;
@@ -330,7 +329,7 @@ impl IntTypeExt for attr::IntType {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum ImplOrTraitItemContainer {
     TraitContainer(ast::DefId),
     ImplContainer(ast::DefId),
@@ -626,65 +625,33 @@ pub enum CustomCoerceUnsized {
     Struct(usize)
 }
 
-#[derive(Clone)]
-pub enum MethodOrigin<'tcx> {
-    // fully statically resolved method
-    MethodStatic(ast::DefId),
+#[derive(Clone, Copy, Debug)]
+pub enum MethodOrigin {
+    /// Inherent impl method call.
+    Inherent,
 
-    // method invoked on a type parameter with a bounded trait
-    MethodTypeParam(MethodParam<'tcx>),
+    /// Statically dispatched trait method call.
+    /// The DefId is the impl for the trait from which the method comes.
+    /// This should only be used for certain linting/heuristic purposes
+    /// since there is no guarantee that this is Some in every situation
+    /// that it could/should be.
+    Trait(Option<ast::DefId>),
 
-    // method invoked on a trait instance
-    MethodTraitObject(MethodObject<'tcx>),
-
-}
-
-// details for a method invoked with a receiver whose type is a type parameter
-// with a bounded trait.
-#[derive(Clone)]
-pub struct MethodParam<'tcx> {
-    // the precise trait reference that occurs as a bound -- this may
-    // be a supertrait of what the user actually typed. Note that it
-    // never contains bound regions; those regions should have been
-    // instantiated with fresh variables at this point.
-    pub trait_ref: ty::TraitRef<'tcx>,
-
-    // index of usize in the list of trait items. Note that this is NOT
-    // the index into the vtable, because the list of trait items
-    // includes associated types.
-    pub method_num: usize,
-
-    /// The impl for the trait from which the method comes. This
-    /// should only be used for certain linting/heuristic purposes
-    /// since there is no guarantee that this is Some in every
-    /// situation that it could/should be.
-    pub impl_def_id: Option<ast::DefId>,
-}
-
-// details for a method invoked with a receiver whose type is an object
-#[derive(Clone)]
-pub struct MethodObject<'tcx> {
-    // the (super)trait containing the method to be invoked
-    pub trait_ref: TraitRef<'tcx>,
-
-    // the actual base trait id of the object
-    pub object_trait_id: ast::DefId,
-
-    // index of the method to be invoked amongst the trait's items
-    pub method_num: usize,
-
-    // index into the actual runtime vtable.
-    // the vtable is formed by concatenating together the method lists of
-    // the base object trait and all supertraits; this is the index into
-    // that vtable
-    pub vtable_index: usize,
+    /// Dynamically dispatched trait method call.
+    /// The usize is the index into the actual runtime vtable.
+    /// The vtable is formed by concatenating together the method lists of
+    /// the base object trait and all supertraits; this is the index into
+    /// that vtable.
+    Object(usize)
 }
 
 #[derive(Clone, Debug)]
 pub struct MethodCallee<'tcx> {
-    pub origin: MethodOrigin<'tcx>,
+    /// Impl method ID, for inherent methods, or trait method ID, otherwise.
+    pub def_id: ast::DefId,
+    pub origin: MethodOrigin,
     pub ty: Ty<'tcx>,
-    pub substs: subst::Substs<'tcx>
+    pub substs: &'tcx subst::Substs<'tcx>
 }
 
 /// With method calls, we store some extra information in
@@ -5592,11 +5559,6 @@ impl<'tcx> ctxt<'tcx> {
         }
     }
 
-    pub fn trait_item(&self, trait_did: ast::DefId, idx: usize) -> ImplOrTraitItem<'tcx> {
-        let method_def_id = self.trait_item_def_ids(trait_did)[idx].def_id();
-        self.impl_or_trait_item(method_def_id)
-    }
-
     pub fn trait_items(&self, trait_did: ast::DefId) -> Rc<Vec<ImplOrTraitItem<'tcx>>> {
         let mut trait_items = self.trait_items_cache.borrow_mut();
         match trait_items.get(&trait_did).cloned() {
@@ -6440,10 +6402,9 @@ impl<'tcx> ctxt<'tcx> {
         let name = impl_item.name();
         match self.trait_of_item(def_id) {
             Some(trait_did) => {
-                let trait_items = self.trait_items(trait_did);
-                trait_items.iter()
-                    .position(|m| m.name() == name)
-                    .map(|idx| self.trait_item(trait_did, idx).id())
+                self.trait_items(trait_did).iter()
+                    .find(|item| item.name() == name)
+                    .map(|item| item.id())
             }
             None => None
         }
