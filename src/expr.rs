@@ -11,7 +11,7 @@
 use rewrite::{Rewrite, RewriteContext};
 use lists::{write_list, itemize_list, ListFormatting, SeparatorTactic, ListTactic};
 use string::{StringFormat, rewrite_string};
-use utils::span_after;
+use utils::{span_after, make_indent};
 
 use syntax::{ast, ptr};
 use syntax::codemap::{Pos, Span, BytePos};
@@ -24,35 +24,37 @@ impl Rewrite for ast::Expr {
             ast::Expr_::ExprLit(ref l) => {
                 match l.node {
                     ast::Lit_::LitStr(ref is, _) => {
-                        let result = rewrite_string_lit(context, &is, l.span, width, offset);
-                        debug!("string lit: `{:?}`", result);
-                        return result;
+                        rewrite_string_lit(context, &is, l.span, width, offset)
                     }
-                    _ => {}
+                    _ => context.codemap.span_to_snippet(self.span).ok()
                 }
             }
             ast::Expr_::ExprCall(ref callee, ref args) => {
-                return rewrite_call(context, callee, args, self.span, width, offset);
+                rewrite_call(context, callee, args, self.span, width, offset)
             }
             ast::Expr_::ExprParen(ref subexpr) => {
-                return rewrite_paren(context, subexpr, width, offset);
+                rewrite_paren(context, subexpr, width, offset)
+            }
+            ast::Expr_::ExprBinary(ref op, ref lhs, ref rhs) => {
+                rewrite_binary_op(context, op, lhs, rhs, width, offset)
+            }
+            ast::Expr_::ExprUnary(ref op, ref subexpr) => {
+                rewrite_unary_op(context, op, subexpr, width, offset)
             }
             ast::Expr_::ExprStruct(ref path, ref fields, ref base) => {
-                return rewrite_struct_lit(context,
-                                          path,
-                                          fields,
-                                          base.as_ref().map(|e| &**e),
-                                          self.span,
-                                          width,
-                                          offset);
+                rewrite_struct_lit(context,
+                                   path,
+                                   fields,
+                                   base.as_ref().map(|e| &**e),
+                                   self.span,
+                                   width,
+                                   offset)
             }
             ast::Expr_::ExprTup(ref items) => {
-                return rewrite_tuple_lit(context, items, self.span, width, offset);
+                rewrite_tuple_lit(context, items, self.span, width, offset)
             }
-            _ => {}
+            _ => context.codemap.span_to_snippet(self.span).ok()
         }
-
-        context.codemap.span_to_snippet(self.span).ok()
     }
 }
 
@@ -235,7 +237,7 @@ fn rewrite_tuple_lit(context: &RewriteContext,
                      span: Span,
                      width: usize,
                      offset: usize)
-    -> Option<String> {
+                     -> Option<String> {
     let indent = offset + 1;
 
     let items = itemize_list(context.codemap,
@@ -271,4 +273,59 @@ fn rewrite_tuple_lit(context: &RewriteContext,
     };
 
     Some(format!("({})", write_list(&items, &fmt)))
+}
+
+fn rewrite_binary_op(context: &RewriteContext,
+                     op: &ast::BinOp,
+                     lhs: &ast::Expr,
+                     rhs: &ast::Expr,
+                     width: usize,
+                     offset: usize)
+                     -> Option<String> {
+    // FIXME: format comments between operands and operator
+
+    let operator_str = context.codemap.span_to_snippet(op.span).unwrap();
+
+    // 1 = space between lhs expr and operator
+    let mut result = try_opt!(lhs.rewrite(context, width - 1 - operator_str.len(), offset));
+
+    result.push(' ');
+    result.push_str(&operator_str);
+
+    let remaining_width = match result.rfind('\n') {
+        Some(idx) => (context.config.max_width + idx).checked_sub(result.len()).unwrap_or(0),
+        None => width.checked_sub(result.len()).unwrap_or(0)
+    };
+
+    // Get "full width" rhs and see if it fits on the current line. This
+    // usually works fairly well since it tends to place operands of
+    // operations with high precendence close together.
+    let rhs_result = try_opt!(rhs.rewrite(context, width, offset));
+
+    if rhs_result.len() > remaining_width {
+        result.push('\n');
+        result.push_str(&make_indent(offset));
+    } else {
+        result.push(' ');
+    };
+
+    result.push_str(&rhs_result);
+    Some(result)
+}
+
+fn rewrite_unary_op(context: &RewriteContext,
+                    op: &ast::UnOp,
+                    expr: &ast::Expr,
+                    width: usize,
+                    offset: usize)
+                    -> Option<String> {
+    // For some reason, an UnOp is not spanned like BinOp!
+    let operator_str = match *op {
+        ast::UnOp::UnUniq => "&",
+        ast::UnOp::UnDeref => "*",
+        ast::UnOp::UnNot => "!",
+        ast::UnOp::UnNeg => "-"
+    };
+
+    Some(format!("{}{}", operator_str, try_opt!(expr.rewrite(context, width - 1, offset))))
 }
