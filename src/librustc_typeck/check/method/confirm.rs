@@ -255,7 +255,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                         &impl_polytype.substs,
                         &self.tcx().impl_trait_ref(impl_def_id).unwrap());
                 let substs = impl_trait_ref.substs.clone();
-                (substs, ty::MethodOrigin::Trait(Some(impl_def_id)))
+                (substs, ty::MethodOrigin::Trait)
             }
 
             probe::TraitPick => {
@@ -271,7 +271,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                                                                  &trait_def.generics,
                                                                  self.infcx().next_ty_var());
 
-                (substs, ty::MethodOrigin::Trait(None))
+                (substs, ty::MethodOrigin::Trait)
             }
 
             probe::WhereClausePick(ref poly_trait_ref) => {
@@ -279,7 +279,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                 // those to convert from a poly-trait-ref to a trait-ref.
                 let trait_ref = self.replace_late_bound_regions_with_fresh_var(&*poly_trait_ref);
                 let substs = trait_ref.substs.clone();
-                (substs, ty::MethodOrigin::Trait(None))
+                (substs, ty::MethodOrigin::Trait)
             }
         }
     }

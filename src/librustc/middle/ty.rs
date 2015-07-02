@@ -625,17 +625,13 @@ pub enum CustomCoerceUnsized {
     Struct(usize)
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, RustcEncodable, RustcDecodable, Debug)]
 pub enum MethodOrigin {
     /// Inherent impl method call.
     Inherent,
 
     /// Statically dispatched trait method call.
-    /// The DefId is the impl for the trait from which the method comes.
-    /// This should only be used for certain linting/heuristic purposes
-    /// since there is no guarantee that this is Some in every situation
-    /// that it could/should be.
-    Trait(Option<ast::DefId>),
+    Trait,
 
     /// Dynamically dispatched trait method call.
     /// The usize is the index into the actual runtime vtable.

@@ -128,7 +128,7 @@ pub fn trans_method_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             }
         }
 
-        ty::MethodOrigin::Trait(_) => {
+        ty::MethodOrigin::Trait => {
             let method_item = bcx.tcx().impl_or_trait_item(method_id);
             let trait_def_id = method_item.container().id();
 
