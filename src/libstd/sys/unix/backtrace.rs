@@ -251,7 +251,6 @@ fn print(w: &mut Write, idx: isize, addr: *mut libc::c_void,
 fn print(w: &mut Write, idx: isize, addr: *mut libc::c_void,
          symaddr: *mut libc::c_void) -> io::Result<()> {
     use env;
-    use os::unix::prelude::*;
     use ptr;
 
     ////////////////////////////////////////////////////////////////////////
@@ -370,7 +369,8 @@ fn print(w: &mut Write, idx: isize, addr: *mut libc::c_void,
         };
         let filename = match selfname {
             Some(path) => {
-                let bytes = path.as_os_str().as_bytes();
+                // to_bytes() never returns None on unix
+                let bytes = path.as_os_str().to_bytes().unwrap();
                 if bytes.len() < LAST_FILENAME.len() {
                     let i = bytes.iter();
                     for (slot, val) in LAST_FILENAME.iter_mut().zip(i) {

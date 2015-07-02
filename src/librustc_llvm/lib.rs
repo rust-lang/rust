@@ -27,6 +27,7 @@
 
 #![feature(associated_consts)]
 #![feature(box_syntax)]
+#![feature(convert)]
 #![feature(libc)]
 #![feature(link_args)]
 #![feature(staged_api)]

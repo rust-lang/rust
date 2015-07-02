@@ -47,16 +47,10 @@ impl ArchiveRO {
             }
         };
 
-        #[cfg(unix)]
         fn path2cstr(p: &Path) -> CString {
-            use std::os::unix::prelude::*;
             use std::ffi::OsStr;
             let p: &OsStr = p.as_ref();
-            CString::new(p.as_bytes()).unwrap()
-        }
-        #[cfg(windows)]
-        fn path2cstr(p: &Path) -> CString {
-            CString::new(p.to_str().unwrap()).unwrap()
+            CString::new(p.to_bytes().unwrap()).unwrap()
         }
     }
 

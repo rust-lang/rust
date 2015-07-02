@@ -31,6 +31,7 @@
 #![feature(box_syntax)]
 #![feature(clone_from_slice)]
 #![feature(collections)]
+#![feature(convert)]
 #![feature(const_fn)]
 #![feature(duration)]
 #![feature(duration_span)]

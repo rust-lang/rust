@@ -12,10 +12,10 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use ffi::{OsStr, OsString};
+use ffi::OsString;
 use prelude::v1::*;
 use sys::os_str::Buf;
-use sys_common::{FromInner, IntoInner, AsInner};
+use sys_common::{FromInner, IntoInner};
 
 /// Unix-specific extensions to `OsString`.
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -36,20 +36,5 @@ impl OsStringExt for OsString {
     }
     fn into_vec(self) -> Vec<u8> {
         self.into_inner().inner
-    }
-}
-
-/// Unix-specific extensions to `OsStr`.
-#[stable(feature = "rust1", since = "1.0.0")]
-pub trait OsStrExt {
-    /// Gets the underlying byte view of the `OsStr` slice.
-    #[stable(feature = "rust1", since = "1.0.0")]
-    fn as_bytes(&self) -> &[u8];
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl OsStrExt for OsStr {
-    fn as_bytes(&self) -> &[u8] {
-        &self.as_inner().inner
     }
 }

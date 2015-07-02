@@ -166,7 +166,7 @@ impl Drop for Dir {
 
 impl DirEntry {
     pub fn path(&self) -> PathBuf {
-        // from_bytes() never returns None on unix
+        // to_bytes() never returns None on unix
         self.root.join(OsStr::from_bytes(self.name_bytes()).unwrap())
     }
 
@@ -506,7 +506,8 @@ pub fn utimes(p: &Path, atime: u64, mtime: u64) -> io::Result<()> {
 }
 
 pub fn canonicalize(p: &Path) -> io::Result<PathBuf> {
-    let path = try!(CString::new(p.as_os_str().as_bytes()));
+    // from_bytes() never returns None on unix
+    let path = try!(CString::new(p.as_os_str().to_bytes().unwrap()));
     let mut buf = vec![0u8; 16 * 1024];
     unsafe {
         let r = c::realpath(path.as_ptr(), buf.as_mut_ptr() as *mut _);
