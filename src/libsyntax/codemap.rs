@@ -642,6 +642,21 @@ impl CodeMap {
         filemap
     }
 
+    /// Creates a new filemap and sets its line information.
+    pub fn new_filemap_and_lines(&self, filename: &str, src: &str) -> Rc<FileMap> {
+        let fm = self.new_filemap(filename.to_string(), src.to_owned());
+        let mut byte_pos: u32 = 0;
+        for line in src.lines() {
+            // register the start of this line
+            fm.next_line(BytePos(byte_pos));
+
+            // update byte_pos to include this line and the \n at the end
+            byte_pos += line.len() as u32 + 1;
+        }
+        fm
+    }
+
+
     /// Allocates a new FileMap representing a source file from an external
     /// crate. The source code of such an "imported filemap" is not available,
     /// but we still know enough to generate accurate debuginfo location
@@ -1190,19 +1205,6 @@ mod tests {
         Span { lo: BytePos(left_index), hi: BytePos(right_index + 1), expn_id: NO_EXPANSION }
     }
 
-    fn new_filemap_and_lines(cm: &CodeMap, filename: &str, input: &str) -> Rc<FileMap> {
-        let fm = cm.new_filemap(filename.to_string(), input.to_string());
-        let mut byte_pos: u32 = 0;
-        for line in input.lines() {
-            // register the start of this line
-            fm.next_line(BytePos(byte_pos));
-
-            // update byte_pos to include this line and the \n at the end
-            byte_pos += line.len() as u32 + 1;
-        }
-        fm
-    }
-
     /// Test span_to_snippet and span_to_lines for a span coverting 3
     /// lines in the middle of a file.
     #[test]
@@ -1210,7 +1212,7 @@ mod tests {
         let cm = CodeMap::new();
         let inputtext = "aaaaa\nbbbbBB\nCCC\nDDDDDddddd\neee\n";
         let selection = "     \n    ^~\n~~~\n~~~~~     \n   \n";
-        new_filemap_and_lines(&cm, "blork.rs", inputtext);
+        cm.new_filemap_and_lines("blork.rs", inputtext);
         let span = span_from_selection(inputtext, selection);
 
         // check that we are extracting the text we thought we were extracting
