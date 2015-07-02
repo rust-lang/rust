@@ -14,7 +14,7 @@
 //! `Any` itself can be used to get a `TypeId`, and has more features when used
 //! as a trait object. As `&Any` (a borrowed trait object), it has the `is` and
 //! `as_ref` methods, to test if the contained value is of a given type, and to
-//! get a reference to the inner value as a type. As`&mut Any`, there is also
+//! get a reference to the inner value as a type. As `&mut Any`, there is also
 //! the `as_mut` method, for getting a mutable reference to the inner value.
 //! `Box<Any>` adds the `move` method, which will unwrap a `Box<T>` from the
 //! object.  See the extension traits (`*Ext`) for the full details.
