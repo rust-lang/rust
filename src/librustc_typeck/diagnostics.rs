@@ -1378,12 +1378,41 @@ pub struct Foo<SomeType=SomeType>;
 // identifiers
 ```
 
-Please verify you used the good type or change the type parameter identifier.
-Example:
+Please verify that a name clash hasn't been accidentally introduced, and rename
+the type parameter if so. Example:
 
 ```
 pub struct Foo<T=SomeType> {
     value: T
+}
+```
+"##,
+
+E0130: r##"
+You declared a pattern as an argument in a foreign function declaration.
+Erroneous code example:
+
+```
+extern {
+    fn foo((a, b): (u32, u32)); // error: patterns aren't allowed in foreign
+                                //        function declarations
+}
+```
+
+Please replace the pattern argument with a regular one. Example:
+
+```
+struct SomeStruct {
+    a: u32,
+    b: u32,
+}
+
+extern {
+    fn foo(s: SomeStruct); // ok!
+}
+// or
+extern {
+    fn foo(a: (u32, u32)); // ok!
 }
 ```
 "##,
@@ -1999,7 +2028,6 @@ register_diagnostics! {
     E0123,
     E0127,
     E0129,
-    E0130,
     E0141,
     E0159,
     E0163,
