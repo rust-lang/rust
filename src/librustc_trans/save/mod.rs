@@ -172,7 +172,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     qualname: qualname,
                     declaration: None,
                     span: sub_span.unwrap(),
-                    scope: self.tcx.map.get_parent(item.id),
+                    scope: self.tcx.map.get_enclosing_scope(item.id).unwrap_or(0),
                 })
             }
             ast::ItemStatic(ref typ, mt, ref expr) => {
@@ -191,7 +191,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     name: get_ident(item.ident).to_string(),
                     qualname: qualname,
                     span: sub_span.unwrap(),
-                    scope: self.tcx.map.get_parent(item.id),
+                    scope: self.tcx.map.get_enclosing_scope(item.id).unwrap_or(0),
                     value: value,
                     type_value: ty_to_string(&typ),
                 })
@@ -205,7 +205,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     name: get_ident(item.ident).to_string(),
                     qualname: qualname,
                     span: sub_span.unwrap(),
-                    scope: self.tcx.map.get_parent(item.id),
+                    scope: self.tcx.map.get_enclosing_scope(item.id).unwrap_or(0),
                     value: self.span_utils.snippet(expr.span),
                     type_value: ty_to_string(&typ),
                 })
@@ -223,7 +223,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     name: get_ident(item.ident).to_string(),
                     qualname: qualname,
                     span: sub_span.unwrap(),
-                    scope: self.tcx.map.get_parent(item.id),
+                    scope: self.tcx.map.get_enclosing_scope(item.id).unwrap_or(0),
                     filename: filename,
                 })
             },
@@ -237,14 +237,14 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     value: val,
                     span: sub_span.unwrap(),
                     qualname: enum_name,
-                    scope: self.tcx.map.get_parent(item.id),
+                    scope: self.tcx.map.get_enclosing_scope(item.id).unwrap_or(0),
                 })
             },
             ast::ItemImpl(_, _, _, ref trait_ref, ref typ, _) => {
                 let mut type_data = None;
                 let sub_span;
 
-                let parent = self.tcx.map.get_parent(item.id);
+                let parent = self.tcx.map.get_enclosing_scope(item.id).unwrap_or(0);
 
                 match typ.node {
                     // Common case impl for a struct or something basic.
@@ -337,7 +337,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                                 return Some(Data::VariableRefData(VariableRefData {
                                     name: get_ident(ident.node).to_string(),
                                     span: sub_span.unwrap(),
-                                    scope: self.tcx.map.get_parent(expr.id),
+                                    scope: self.tcx.map.get_enclosing_scope(expr.id).unwrap_or(0),
                                     ref_id: f.id,
                                 }));
                             }
@@ -360,7 +360,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                         let sub_span = self.span_utils.span_for_last_ident(path.span);
                         Some(Data::TypeRefData(TypeRefData {
                             span: sub_span.unwrap(),
-                            scope: self.tcx.map.get_parent(expr.id),
+                            scope: self.tcx.map.get_enclosing_scope(expr.id).unwrap_or(0),
                             ref_id: def_id,
                         }))
                     }
