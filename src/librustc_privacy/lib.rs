@@ -852,7 +852,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
             }
             // Trait methods are always all public. The only controlling factor
             // is whether the trait itself is accessible or not.
-            ty::MethodOrigin::Trait(_) | ty::MethodOrigin::Object(_) => {
+            ty::MethodOrigin::Trait | ty::MethodOrigin::Object(_) => {
                 let method = self.tcx.impl_or_trait_item(callee.def_id);
                 self.report_error(self.ensure_public(span, method.container().id(),
                                                      None, "source trait"));

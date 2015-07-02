@@ -617,7 +617,7 @@ fn encode_method_callee<'a, 'tcx>(ecx: &e::EncodeContext<'a, 'tcx>,
             Ok(rbml_w.emit_def_id(method.def_id))
         });
         rbml_w.emit_struct_field("origin", 2, |rbml_w| {
-            Ok(rbml_w.emit_method_origin(method.origin))
+            method.origin.encode(rbml_w)
         });
         rbml_w.emit_struct_field("ty", 3, |rbml_w| {
             Ok(rbml_w.emit_ty(ecx, method.ty))
@@ -633,16 +633,14 @@ impl<'a, 'tcx> read_method_callee_helper<'tcx> for reader::Decoder<'a> {
                                   -> (u32, ty::MethodCallee<'tcx>) {
 
         self.read_struct("MethodCallee", 5, |this| {
-            let autoderef = this.read_struct_field("autoderef", 0, |this| {
-                Decodable::decode(this)
-            }).unwrap();
+            let autoderef = this.read_struct_field("autoderef", 0,
+                                                   Decodable::decode).unwrap();
             Ok((autoderef, ty::MethodCallee {
                 def_id: this.read_struct_field("def_id", 1, |this| {
                     Ok(this.read_def_id(dcx))
                 }).unwrap(),
-                origin: this.read_struct_field("origin", 2, |this| {
-                    Ok(this.read_method_origin(dcx))
-                }).unwrap(),
+                origin: this.read_struct_field("origin", 2,
+                                               Decodable::decode).unwrap(),
                 ty: this.read_struct_field("ty", 3, |this| {
                     Ok(this.read_ty(dcx))
                 }).unwrap(),
@@ -713,7 +711,6 @@ impl<'a, 'tcx> get_ty_str_ctxt<'tcx> for e::EncodeContext<'a, 'tcx> {
 trait rbml_writer_helpers<'tcx> {
     fn emit_closure_type<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>,
                              closure_type: &ty::ClosureTy<'tcx>);
-    fn emit_method_origin(&mut self, method_origin: ty::MethodOrigin);
     fn emit_ty<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>, ty: Ty<'tcx>);
     fn emit_tys<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>, tys: &[Ty<'tcx>]);
     fn emit_type_param_def<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>,
@@ -742,37 +739,6 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
                              closure_type: &ty::ClosureTy<'tcx>) {
         self.emit_opaque(|this| {
             Ok(e::write_closure_type(ecx, this, closure_type))
-        });
-    }
-
-    fn emit_method_origin(&mut self, method_origin: ty::MethodOrigin) {
-        use serialize::Encoder;
-
-        self.emit_enum("MethodOrigin", |this| {
-            match method_origin {
-                ty::MethodOrigin::Inherent => {
-                    this.emit_enum_variant("Inherent", 0, 0, |_| Ok(()))
-                }
-
-                ty::MethodOrigin::Trait(impl_def_id) => {
-                    this.emit_enum_variant("Trait", 1, 1, |this| {
-                        this.emit_option(|this| {
-                            match impl_def_id {
-                                None => this.emit_option_none(),
-                                Some(did) => this.emit_option_some(|this| {
-                                    Ok(this.emit_def_id(did))
-                                })
-                            }
-                        })
-                    })
-                }
-
-                ty::MethodOrigin::Object(vtable_index) => {
-                    this.emit_enum_variant("Object", 2, 1, |this| {
-                        this.emit_uint(vtable_index)
-                    })
-                }
-            }
         });
     }
 
@@ -1118,7 +1084,6 @@ impl<'a> doc_decoder_helpers for rbml::Doc<'a> {
 }
 
 trait rbml_decoder_decoder_helpers<'tcx> {
-    fn read_method_origin(&mut self, dcx: &DecodeContext) -> ty::MethodOrigin;
     fn read_ty<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>) -> Ty<'tcx>;
     fn read_tys<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>) -> Vec<Ty<'tcx>>;
     fn read_trait_ref<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
@@ -1201,30 +1166,6 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
                 |_, id| decoder::translate_def_id(cdata, id)))
         }).unwrap()
     }
-
-    fn read_method_origin(&mut self, dcx: &DecodeContext) -> ty::MethodOrigin {
-        self.read_enum("MethodOrigin", |this| {
-            let variants = &["Inherent", "Trait", "Object"];
-            this.read_enum_variant(variants, |this, i| {
-                match i {
-                    0 => Ok(ty::MethodOrigin::Inherent),
-
-                    1 => this.read_option(|this, b| {
-                        Ok(ty::MethodOrigin::Trait(if b {
-                            Some(this.read_def_id(dcx))
-                        } else {
-                            None
-                        }))
-                    }),
-
-                    2 => this.read_uint().map(|idx| ty::MethodOrigin::Object(idx)),
-
-                    _ => panic!("..")
-                }
-            })
-        }).unwrap()
-    }
-
 
     fn read_ty<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>) -> Ty<'tcx> {
         // Note: regions types embed local node ids.  In principle, we
