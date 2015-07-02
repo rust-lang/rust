@@ -749,6 +749,54 @@ for v in &vs {
 ```
 "##,
 
+E0277: r##"
+You tried to use a type which doesn't implement some trait in a place which
+expected that trait. Erroneous code example:
+
+```
+// here we declare the Foo trait with a bar method
+trait Foo {
+    fn bar(&self);
+}
+
+// we now declare a function which takes an object with Foo trait implemented
+// as parameter
+fn some_func<T: Foo>(foo: T) {
+    foo.bar();
+}
+
+fn main() {
+    // we now call the method with the i32 type, which doesn't implement
+    // the Foo trait
+    some_func(5i32); // error: the trait `Foo` is not implemented for the
+                     //     type `i32`
+}
+```
+
+In order to fix this error, verify that the type you're using does implement
+the trait. Example:
+
+```
+trait Foo {
+    fn bar(&self);
+}
+
+fn some_func<T: Foo>(foo: T) {
+    foo.bar(); // we can now use this method since i32 implements the
+               // Foo trait
+}
+
+// we implement the trait on the i32 type
+impl Foo for i32 {
+    fn bar(&self) {}
+}
+
+fn main() {
+    some_func(5i32); // ok!
+}
+```
+"##,
+
 E0282: r##"
 This error indicates that type inference did not result in one unique possible
 type, and extra information is required. In most cases this can be provided
@@ -1103,7 +1151,6 @@ register_diagnostics! {
     E0274, // rustc_on_unimplemented must have a value
     E0275, // overflow evaluating requirement
     E0276, // requirement appears on impl method but not on corresponding trait method
-    E0277, // trait is not implemented for type
     E0278, // requirement is not satisfied
     E0279, // requirement is not satisfied
     E0280, // requirement is not satisfied
