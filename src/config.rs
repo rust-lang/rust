@@ -29,6 +29,7 @@ pub struct Config {
     pub enum_trailing_comma: bool,
     pub report_todo: ReportTactic,
     pub report_fixme: ReportTactic,
+    pub reorder_imports: bool, // Alphabetically, case sensitive.
 }
 
 impl Config {

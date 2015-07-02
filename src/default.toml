@@ -11,3 +11,4 @@ struct_lit_trailing_comma = "Vertical"
 enum_trailing_comma = true
 report_todo = "Always"
 report_fixme = "Never"
+reorder_imports = false

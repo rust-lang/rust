@@ -9,12 +9,13 @@
 // except according to those terms.
 
 use visitor::FmtVisitor;
-use lists::{write_list, ListItem, ListFormatting, SeparatorTactic, ListTactic};
-use utils::format_visibility;
+use lists::{write_list, itemize_list, ListItem, ListFormatting, SeparatorTactic, ListTactic};
+use utils::{span_after, format_visibility};
 
 use syntax::ast;
 use syntax::parse::token;
 use syntax::print::pprust;
+use syntax::codemap::Span;
 
 // TODO (some day) remove unused imports, expand globs, compress many single imports into a list import
 
@@ -40,13 +41,14 @@ fn rewrite_single_use_list(path_str: String, vpi: ast::PathListItem, vis: &str) 
 impl<'a> FmtVisitor<'a> {
     // Basically just pretty prints a multi-item import.
     // Returns None when the import can be removed.
-    pub fn rewrite_use_list(&mut self,
+    pub fn rewrite_use_list(&self,
                             block_indent: usize,
                             one_line_budget: usize, // excluding indentation
                             multi_line_budget: usize,
                             path: &ast::Path,
                             path_list: &[ast::PathListItem],
-                            visibility: ast::Visibility) -> Option<String> {
+                            visibility: ast::Visibility,
+                            span: Span) -> Option<String> {
         let path_str = pprust::path_to_string(path);
         let vis = format_visibility(visibility);
 
@@ -78,34 +80,53 @@ impl<'a> FmtVisitor<'a> {
             ends_with_newline: true,
         };
 
-        // TODO handle any comments inbetween items.
-        // If `self` is in the list, put it first.
-        let head = if path_list.iter().any(|vpi|
-            if let ast::PathListItem_::PathListMod{ .. } = vpi.node {
-                true
-            } else {
-                false
-            }
-        ) {
-            Some(ListItem::from_str("self"))
-        } else {
-            None
-        };
+        let mut items = itemize_list(self.codemap,
+                                     vec![ListItem::from_str("")], // Dummy value, explanation below
+                                     path_list.iter(),
+                                     ",",
+                                     "}",
+                                     |vpi| vpi.span.lo,
+                                     |vpi| vpi.span.hi,
+                                     |vpi| match vpi.node {
+                                         ast::PathListItem_::PathListIdent{ name, .. } => {
+                                             token::get_ident(name).to_string()
+                                         }
+                                         ast::PathListItem_::PathListMod{ .. } => {
+                                             "self".to_owned()
+                                         }
+                                     },
+                                     span_after(span, "{", self.codemap),
+                                     span.hi);
 
-        let items: Vec<_> = head.into_iter().chain(path_list.iter().filter_map(|vpi| {
-            match vpi.node {
-                ast::PathListItem_::PathListIdent{ name, .. } => {
-                    Some(ListItem::from_str(token::get_ident(name).to_string()))
-                }
-                // Skip `self`, because we added it above.
-                ast::PathListItem_::PathListMod{ .. } => None,
-            }
-        })).collect();
+        // We prefixed the item list with a dummy value so that we can
+        // potentially move "self" to the front of the vector without touching
+        // the rest of the items.
+        // FIXME: Make more efficient by using a linked list? That would
+        // require changes to the signatures of itemize_list and write_list.
+        let has_self = move_self_to_front(&mut items);
+        let first_index = if has_self { 0 } else { 1 };
+
+        if self.config.reorder_imports {
+            items.tail_mut().sort_by(|a, b| a.item.cmp(&b.item));
+        }
+
+        let list = write_list(&items[first_index..], &fmt);
 
         Some(if path_str.len() == 0 {
-            format!("{}use {{{}}};", vis, write_list(&items, &fmt))
+            format!("{}use {{{}}};", vis, list)
         } else {
-            format!("{}use {}::{{{}}};", vis, path_str, write_list(&items, &fmt))
+            format!("{}use {}::{{{}}};", vis, path_str, list)
         })
+    }
+}
+
+// Returns true when self item was found.
+fn move_self_to_front(items: &mut Vec<ListItem>) -> bool {
+    match items.iter().position(|item| item.item == "self") {
+        Some(pos) => {
+            items[0] = items.remove(pos);
+            true
+        },
+        None => false
     }
 }
