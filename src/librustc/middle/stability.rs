@@ -407,25 +407,7 @@ pub fn check_expr(tcx: &ty::ctxt, e: &ast::Expr,
             span = i.span;
             let method_call = ty::MethodCall::expr(e.id);
             match tcx.tables.borrow().method_map.get(&method_call) {
-                Some(method) => {
-                    match method.origin {
-                        ty::MethodStatic(def_id) => {
-                            def_id
-                        }
-                        ty::MethodTypeParam(ty::MethodParam {
-                            ref trait_ref,
-                            method_num: index,
-                            ..
-                        }) |
-                        ty::MethodTraitObject(ty::MethodObject {
-                            ref trait_ref,
-                            method_num: index,
-                            ..
-                        }) => {
-                            tcx.trait_item(trait_ref.def_id, index).def_id()
-                        }
-                    }
-                }
+                Some(method) => method.def_id,
                 None => return
             }
         }

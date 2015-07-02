@@ -612,7 +612,7 @@ pub fn trans_method_call<'a, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let method_call = MethodCall::expr(call_expr.id);
     let method_ty = match bcx.tcx().tables.borrow().method_map.get(&method_call) {
         Some(method) => match method.origin {
-            ty::MethodTraitObject(_) => match method.ty.sty {
+            ty::MethodOrigin::Object(_) => match method.ty.sty {
                 ty::TyBareFn(_, ref fty) => {
                     bcx.tcx().mk_fn(None, meth::opaque_method_ty(bcx.tcx(), fty))
                 }

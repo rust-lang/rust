@@ -2000,20 +2000,16 @@ impl LintPass for UnconditionalRecursion {
                 Some(m) => match m.origin {
                     // There's no way to know if a method call via a
                     // vtable is recursion, so we assume it's not.
-                    ty::MethodTraitObject(_) => return false,
+                    ty::MethodOrigin::Object(_) => return false,
 
                     // This `did` refers directly to the method definition.
-                    ty::MethodStatic(did) => did,
-
-                    // MethodTypeParam are methods from traits:
+                    ty::MethodOrigin::Inherent => m.def_id,
 
                     // The `impl ... for ...` of this method call
                     // isn't known, e.g. it might be a default method
                     // in a trait, so we get the def-id of the trait
                     // method instead.
-                    ty::MethodTypeParam(
-                        ty::MethodParam { ref trait_ref, method_num, impl_def_id: None, }) => {
-
+                    ty::MethodOrigin::Trait(None) => {
                         let on_self = m.substs.self_ty().map_or(false, |t| t.is_self());
                         if !on_self {
                             // we can only be recurring in a default
@@ -2021,14 +2017,13 @@ impl LintPass for UnconditionalRecursion {
                             // on the `Self` type.
                             return false
                         }
-
-                        tcx.trait_item(trait_ref.def_id, method_num).def_id()
+                        m.def_id
                     }
+
 
                     // The `impl` is known, so we check that with a
                     // special case:
-                    ty::MethodTypeParam(
-                        ty::MethodParam { impl_def_id: Some(impl_def_id), .. }) => {
+                    ty::MethodOrigin::Trait(Some(impl_def_id)) => {
 
                         let name = match tcx.map.expect_expr(id).node {
                             ast::ExprMethodCall(ref sp_ident, _, _) => sp_ident.node,

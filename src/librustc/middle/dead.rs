@@ -97,29 +97,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
                                 span: codemap::Span) {
         let method_call = ty::MethodCall::expr(id);
         match self.tcx.tables.borrow().method_map.get(&method_call) {
-            Some(method) => {
-                match method.origin {
-                    ty::MethodStatic(def_id) => {
-                        match self.tcx.provided_source(def_id) {
-                            Some(p_did) => self.check_def_id(p_did),
-                            None => self.check_def_id(def_id)
-                        }
-                    }
-                    ty::MethodTypeParam(ty::MethodParam {
-                        ref trait_ref,
-                        method_num: index,
-                        ..
-                    }) |
-                    ty::MethodTraitObject(ty::MethodObject {
-                        ref trait_ref,
-                        method_num: index,
-                        ..
-                    }) => {
-                        let trait_item = self.tcx.trait_item(trait_ref.def_id, index);
-                        self.check_def_id(trait_item.def_id());
-                    }
-                }
-            }
+            Some(method) => self.check_def_id(method.def_id),
             None => {
                 self.tcx.sess.span_bug(span,
                                        "method call expression not \

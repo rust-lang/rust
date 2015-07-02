@@ -107,33 +107,36 @@ pub fn trans_method_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                        -> Callee<'blk, 'tcx> {
     let _icx = push_ctxt("meth::trans_method_callee");
 
-    let (origin, method_ty) =
+    let (method_id, origin, method_substs, method_ty) =
         bcx.tcx()
            .tables
            .borrow()
            .method_map
            .get(&method_call)
-           .map(|method| (method.origin.clone(), method.ty))
+           .map(|method| (method.def_id, method.origin, method.substs, method.ty))
            .unwrap();
 
     match origin {
-        ty::MethodStatic(did) => {
-            debug!("trans_method_callee: static, {:?}", did);
+        ty::MethodOrigin::Inherent => {
+            debug!("trans_method_callee: static, {:?}", method_id);
             Callee {
                 bcx: bcx,
                 data: Fn(callee::trans_fn_ref(bcx.ccx(),
-                                              did,
+                                              method_id,
                                               MethodCallKey(method_call),
                                               bcx.fcx.param_substs).val),
             }
         }
 
-        ty::MethodTypeParam(ty::MethodParam {
-            ref trait_ref,
-            method_num,
-            impl_def_id: _
-        }) => {
-            let trait_ref = ty::Binder(bcx.monomorphize(trait_ref));
+        ty::MethodOrigin::Trait(_) => {
+            let method_item = bcx.tcx().impl_or_trait_item(method_id);
+            let trait_def_id = method_item.container().id();
+
+            let trait_substs = method_substs.clone().method_to_trait();
+            let trait_substs = bcx.tcx().mk_substs(trait_substs);
+            let trait_ref = ty::TraitRef::new(trait_def_id, trait_substs);
+
+            let trait_ref = ty::Binder(bcx.monomorphize(&trait_ref));
             let span = bcx.tcx().map.span(method_call.expr_id);
             debug!("method_call={:?} trait_ref={:?} trait_ref id={:?} substs={:?}",
                    method_call,
@@ -146,12 +149,12 @@ pub fn trans_method_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             debug!("origin = {:?}", origin);
             trans_monomorphized_callee(bcx,
                                        method_call,
-                                       trait_ref.def_id(),
-                                       method_num,
+                                       trait_def_id,
+                                       method_id,
                                        origin)
         }
 
-        ty::MethodTraitObject(ref mt) => {
+        ty::MethodOrigin::Object(vtable_index) => {
             let self_expr = match self_expr {
                 Some(self_expr) => self_expr,
                 None => {
@@ -162,7 +165,7 @@ pub fn trans_method_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             };
             trans_trait_callee(bcx,
                                monomorphize_type(bcx, method_ty),
-                               mt.vtable_index,
+                               vtable_index,
                                self_expr,
                                arg_cleanup_scope)
         }
@@ -281,17 +284,11 @@ pub fn trans_static_method_callee<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                      callee_substs)
         }
         traits::VtableObject(ref data) => {
-            let trait_item_def_ids =
-                ccx.tcx().trait_item_def_ids(trait_id);
-            let method_offset_in_trait =
-                trait_item_def_ids.iter()
-                                  .position(|item| item.def_id() == method_id)
-                                  .unwrap();
             let (llfn, ty) =
                 trans_object_shim(ccx,
                                   data.object_ty,
                                   data.upcast_trait_ref.clone(),
-                                  method_offset_in_trait);
+                                  method_id);
             immediate_rvalue(llfn, ty)
         }
         _ => {
@@ -326,7 +323,7 @@ fn method_with_name(ccx: &CrateContext, impl_id: ast::DefId, name: ast::Name)
 fn trans_monomorphized_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                           method_call: MethodCall,
                                           trait_id: ast::DefId,
-                                          n_method: usize,
+                                          method_id: ast::DefId,
                                           vtable: traits::Vtable<'tcx, ()>)
                                           -> Callee<'blk, 'tcx> {
     let _icx = push_ctxt("meth::trans_monomorphized_callee");
@@ -334,7 +331,7 @@ fn trans_monomorphized_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         traits::VtableImpl(vtable_impl) => {
             let ccx = bcx.ccx();
             let impl_did = vtable_impl.impl_def_id;
-            let mname = match ccx.tcx().trait_item(trait_id, n_method) {
+            let mname = match ccx.tcx().impl_or_trait_item(method_id) {
                 ty::MethodTraitItem(method) => method.name,
                 _ => {
                     bcx.tcx().sess.bug("can't monomorphize a non-method trait \
@@ -382,7 +379,7 @@ fn trans_monomorphized_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             let (llfn, _) = trans_object_shim(bcx.ccx(),
                                               data.object_ty,
                                               data.upcast_trait_ref.clone(),
-                                              n_method);
+                                              method_id);
             Callee { bcx: bcx, data: Fn(llfn) }
         }
         traits::VtableBuiltin(..) |
@@ -539,21 +536,20 @@ pub fn trans_trait_callee_from_llval<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 ///
 /// In fact, all virtual calls can be thought of as normal trait calls
 /// that go through this shim function.
-pub fn trans_object_shim<'a, 'tcx>(
+fn trans_object_shim<'a, 'tcx>(
     ccx: &'a CrateContext<'a, 'tcx>,
     object_ty: Ty<'tcx>,
     upcast_trait_ref: ty::PolyTraitRef<'tcx>,
-    method_offset_in_trait: usize)
+    method_id: ast::DefId)
     -> (ValueRef, Ty<'tcx>)
 {
     let _icx = push_ctxt("trans_object_shim");
     let tcx = ccx.tcx();
-    let trait_id = upcast_trait_ref.def_id();
 
-    debug!("trans_object_shim(object_ty={:?}, upcast_trait_ref={:?}, method_offset_in_trait={})",
+    debug!("trans_object_shim(object_ty={:?}, upcast_trait_ref={:?}, method_id={:?})",
            object_ty,
            upcast_trait_ref,
-           method_offset_in_trait);
+           method_id);
 
     let object_trait_ref =
         match object_ty.sty {
@@ -572,7 +568,7 @@ pub fn trans_object_shim<'a, 'tcx>(
     debug!("trans_object_shim: object_substs={:?}", object_substs);
 
     // Lookup the type of this method as declared in the trait and apply substitutions.
-    let method_ty = match tcx.trait_item(trait_id, method_offset_in_trait) {
+    let method_ty = match tcx.impl_or_trait_item(method_id) {
         ty::MethodTraitItem(method) => method,
         _ => {
             tcx.sess.bug("can't create a method shim for a non-method item")
@@ -624,8 +620,7 @@ pub fn trans_object_shim<'a, 'tcx>(
     let method_offset_in_vtable =
         traits::get_vtable_index_of_object_method(bcx.tcx(),
                                                   object_trait_ref.clone(),
-                                                  trait_id,
-                                                  method_offset_in_trait);
+                                                  method_id);
     debug!("trans_object_shim: method_offset_in_vtable={}",
            method_offset_in_vtable);
 

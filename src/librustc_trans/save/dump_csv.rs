@@ -889,38 +889,12 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
         let method_map = &self.tcx.tables.borrow().method_map;
         let method_callee = method_map.get(&ty::MethodCall::expr(ex.id)).unwrap();
         let (def_id, decl_id) = match method_callee.origin {
-            ty::MethodStatic(def_id) => {
-                // method invoked on an object with a concrete type (not a static method)
-                let decl_id =
-                    match self.tcx.trait_item_of_item(def_id) {
-                        None => None,
-                        Some(decl_id) => Some(decl_id.def_id()),
-                    };
-
-                // This incantation is required if the method referenced is a
-                // trait's default implementation.
-                let def_id = match self.tcx.impl_or_trait_item(def_id) {
-                    ty::MethodTraitItem(method) => {
-                        method.provided_source.unwrap_or(def_id)
-                    }
-                    _ => self.sess
-                             .span_bug(ex.span,
-                                       "save::process_method_call: non-method \
-                                        DefId in MethodStatic"),
-                };
-                (Some(def_id), decl_id)
+            ty::MethodOrigin::Inherent => {
+                (Some(method_callee.def_id), None)
             }
-            ty::MethodTypeParam(ref mp) => {
-                // method invoked on a type parameter
-                let trait_item = self.tcx.trait_item(mp.trait_ref.def_id,
-                                                     mp.method_num);
-                (None, Some(trait_item.def_id()))
-            }
-            ty::MethodTraitObject(ref mo) => {
-                // method invoked on a trait instance
-                let trait_item = self.tcx.trait_item(mo.trait_ref.def_id,
-                                                     mo.method_num);
-                (None, Some(trait_item.def_id()))
+            ty::MethodOrigin::Trait(_) |
+            ty::MethodOrigin::Object(_) => {
+                (None, Some(method_callee.def_id))
             }
         };
         let sub_span = self.span.sub_span_for_meth_name(ex.span);
