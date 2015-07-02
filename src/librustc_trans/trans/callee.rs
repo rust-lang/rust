@@ -698,12 +698,12 @@ pub fn trans_call_inner<'a, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
         _ => panic!("expected bare rust fn or closure in trans_call_inner")
     };
 
-    let (llfn, llenv, llself) = match callee.data {
+    let (llfn, llself) = match callee.data {
         Fn(llfn) => {
-            (llfn, None, None)
+            (llfn, None)
         }
         TraitItem(d) => {
-            (d.llfn, None, Some(d.llself))
+            (d.llfn, Some(d.llself))
         }
         Intrinsic(node, substs) => {
             assert!(abi == synabi::RustIntrinsic);
@@ -794,11 +794,9 @@ pub fn trans_call_inner<'a, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
             }
         }
 
-        // Push the environment (or a trait object's self).
-        match (llenv, llself) {
-            (Some(llenv), None) => llargs.push(llenv),
-            (None, Some(llself)) => llargs.push(llself),
-            _ => {}
+        // Push a trait object's self.
+        if let Some(llself) = llself {
+            llargs.push(llself);
         }
 
         // Push the arguments.
@@ -894,11 +892,11 @@ pub enum CallArgs<'a, 'tcx> {
     // value.
     ArgVals(&'a [ValueRef]),
 
-    // For overloaded operators: `(lhs, Vec(rhs, rhs_id), autoref)`. `lhs`
+    // For overloaded operators: `(lhs, Option(rhs, rhs_id), autoref)`. `lhs`
     // is the left-hand-side and `rhs/rhs_id` is the datum/expr-id of
-    // the right-hand-side arguments (if any). `autoref` indicates whether the `rhs`
+    // the right-hand-side argument (if any). `autoref` indicates whether the `rhs`
     // arguments should be auto-referenced
-    ArgOverloadedOp(Datum<'tcx, Expr>, Vec<(Datum<'tcx, Expr>, ast::NodeId)>, bool),
+    ArgOverloadedOp(Datum<'tcx, Expr>, Option<(Datum<'tcx, Expr>, ast::NodeId)>, bool),
 
     // Supply value of arguments as a list of expressions that must be
     // translated, for overloaded call operators.
@@ -1077,12 +1075,14 @@ pub fn trans_args<'a, 'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                                   DontAutorefArg,
                                   llargs);
 
-            assert_eq!(arg_tys.len(), 1 + rhs.len());
-            for (rhs, rhs_id) in rhs {
+            if let Some((rhs, rhs_id)) = rhs {
+                assert_eq!(arg_tys.len(), 2);
                 bcx = trans_arg_datum(bcx, arg_tys[1], rhs,
                                       arg_cleanup_scope,
                                       if autoref { DoAutorefArg(rhs_id) } else { DontAutorefArg },
                                       llargs);
+            } else {
+                assert_eq!(arg_tys.len(), 1);
             }
         }
         ArgVals(vs) => {
