@@ -54,17 +54,11 @@ pub fn type_of_explicit_arg<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     }
 }
 
-/// Yields the types of the "real" arguments for this function. For most
-/// functions, these are simply the types of the arguments. For functions with
-/// the `RustCall` ABI, however, this untuples the arguments of the function.
-pub fn untuple_arguments_if_necessary<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                                inputs: &[Ty<'tcx>],
-                                                abi: abi::Abi)
-                                                -> Vec<Ty<'tcx>> {
-    if abi != abi::RustCall {
-        return inputs.iter().cloned().collect()
-    }
-
+/// Yields the types of the "real" arguments for a function using the `RustCall`
+/// ABI by untupling the arguments of the function.
+pub fn untuple_arguments<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                                   inputs: &[Ty<'tcx>])
+                                   -> Vec<Ty<'tcx>> {
     if inputs.is_empty() {
         return Vec::new()
     }
@@ -78,7 +72,7 @@ pub fn untuple_arguments_if_necessary<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     match inputs[inputs.len() - 1].sty {
         ty::TyTuple(ref tupled_arguments) => {
-            debug!("untuple_arguments_if_necessary(): untupling arguments");
+            debug!("untuple_arguments(): untupling arguments");
             for &tupled_argument in tupled_arguments {
                 result.push(tupled_argument);
             }
@@ -108,7 +102,11 @@ pub fn type_of_rust_fn<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     let mut atys: Vec<Type> = Vec::new();
 
     // First, munge the inputs, if this has the `rust-call` ABI.
-    let inputs = untuple_arguments_if_necessary(cx, &sig.inputs, abi);
+    let inputs = &if abi == abi::RustCall {
+        untuple_arguments(cx, &sig.inputs)
+    } else {
+        sig.inputs
+    };
 
     // Arg 0: Output pointer.
     // (if the output type is non-immediate)
@@ -136,7 +134,7 @@ pub fn type_of_rust_fn<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     }
 
     // ... then explicit args.
-    for input in &inputs {
+    for input in inputs {
         let arg_ty = type_of_explicit_arg(cx, input);
 
         if type_is_fat_ptr(cx.tcx(), input) {
