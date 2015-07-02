@@ -4001,7 +4001,7 @@ fn check_const<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
     let inh = static_inherited_fields(ccx, &tables);
     let rty = ccx.tcx.node_id_to_type(id);
     let fcx = blank_fn_ctxt(ccx, &inh, ty::FnConverging(rty), e.id);
-    let declty = fcx.ccx.tcx.tcache.borrow().get(&local_def(id)).unwrap().ty;
+    let declty = fcx.ccx.tcx.lookup_item_type(local_def(id)).ty;
     check_const_with_ty(&fcx, sp, e, declty);
 }
 

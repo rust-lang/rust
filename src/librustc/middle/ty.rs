@@ -3180,10 +3180,10 @@ impl ClosureKind {
 
 impl<'tcx> CommonTypes<'tcx> {
     fn new(arena: &'tcx TypedArena<TyS<'tcx>>,
-           interner: &mut FnvHashMap<InternedTy<'tcx>, Ty<'tcx>>)
+           interner: &RefCell<FnvHashMap<InternedTy<'tcx>, Ty<'tcx>>>)
            -> CommonTypes<'tcx>
     {
-        let mut mk = |sty| ctxt::intern_ty(arena, interner, sty);
+        let mk = |sty| ctxt::intern_ty(arena, interner, sty);
         CommonTypes {
             bool: mk(TyBool),
             char: mk(TyChar),
@@ -3412,12 +3412,12 @@ impl<'tcx> ctxt<'tcx> {
                                  f: F) -> (Session, R)
                                  where F: FnOnce(&ctxt<'tcx>) -> R
     {
-        let mut interner = FnvHashMap();
-        let common_types = CommonTypes::new(&arenas.type_, &mut interner);
+        let interner = RefCell::new(FnvHashMap());
+        let common_types = CommonTypes::new(&arenas.type_, &interner);
 
         tls::enter(ctxt {
             arenas: arenas,
-            interner: RefCell::new(interner),
+            interner: interner,
             substs_interner: RefCell::new(FnvHashMap()),
             bare_fn_interner: RefCell::new(FnvHashMap()),
             region_interner: RefCell::new(FnvHashMap()),
@@ -3545,35 +3545,37 @@ impl<'tcx> ctxt<'tcx> {
     }
 
     fn intern_ty(type_arena: &'tcx TypedArena<TyS<'tcx>>,
-                 interner: &mut FnvHashMap<InternedTy<'tcx>, Ty<'tcx>>,
+                 interner: &RefCell<FnvHashMap<InternedTy<'tcx>, Ty<'tcx>>>,
                  st: TypeVariants<'tcx>)
                  -> Ty<'tcx> {
-        match interner.get(&st) {
-            Some(ty) => return *ty,
-            _ => ()
-        }
+        let ty: Ty /* don't be &mut TyS */ = {
+            let mut interner = interner.borrow_mut();
+            match interner.get(&st) {
+                Some(ty) => return *ty,
+                _ => ()
+            }
 
-        let flags = FlagComputation::for_sty(&st);
+            let flags = FlagComputation::for_sty(&st);
 
-        let ty = match () {
-            () => type_arena.alloc(TyS { sty: st,
-                                        flags: Cell::new(flags.flags),
-                                        region_depth: flags.depth, }),
+            let ty = match () {
+                () => type_arena.alloc(TyS { sty: st,
+                                             flags: Cell::new(flags.flags),
+                                             region_depth: flags.depth, }),
+            };
+
+            interner.insert(InternedTy { ty: ty }, ty);
+            ty
         };
 
         debug!("Interned type: {:?} Pointer: {:?}",
             ty, ty as *const TyS);
-
-        interner.insert(InternedTy { ty: ty }, ty);
-
         ty
     }
 
     // Interns a type/name combination, stores the resulting box in cx.interner,
     // and returns the box as cast to an unsafe ptr (see comments for Ty above).
     pub fn mk_ty(&self, st: TypeVariants<'tcx>) -> Ty<'tcx> {
-        let mut interner = self.interner.borrow_mut();
-        ctxt::intern_ty(&self.arenas.type_, &mut *interner, st)
+        ctxt::intern_ty(&self.arenas.type_, &self.interner, st)
     }
 
     pub fn mk_mach_int(&self, tm: ast::IntTy) -> Ty<'tcx> {
@@ -5914,6 +5916,10 @@ impl<'tcx> ctxt<'tcx> {
                                    .clone()
     }
 
+    // Register a given item type
+    pub fn register_item_type(&self, did: ast::DefId, ty: TypeScheme<'tcx>) {
+        self.tcache.borrow_mut().insert(did, ty);
+    }
 
     // If the given item is in an external crate, looks up its type and adds it to
     // the type cache. Returns the type parameters and type.
@@ -5990,8 +5996,8 @@ impl<'tcx> ctxt<'tcx> {
         if id.krate == ast::LOCAL_CRATE {
             self.node_id_to_type(id.node)
         } else {
-            let mut tcache = self.tcache.borrow_mut();
-            tcache.entry(id).or_insert_with(|| csearch::get_field_type(self, struct_id, id)).ty
+            memoized(&self.tcache, id,
+                     |id| csearch::get_field_type(self, struct_id, id)).ty
         }
     }
 
