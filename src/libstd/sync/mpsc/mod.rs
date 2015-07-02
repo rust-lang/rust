@@ -768,6 +768,48 @@ impl<T> Receiver<T> {
     /// If the corresponding `Sender` has disconnected, or it disconnects while
     /// this call is blocking, this call will wake up and return `Err` to
     /// indicate that no more messages can ever be received on this channel.
+    /// However, since channels are buffered, messages sent before the disconnect
+    /// will still be properly received.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::mpsc;
+    /// use std::thread;
+    ///
+    /// let (send, recv) = mpsc::channel();
+    /// let handle = thread::spawn(move || {
+    ///     send.send(1u8).unwrap();
+    /// });
+    ///
+    /// handle.join().unwrap();
+    ///
+    /// assert_eq!(Ok(1), recv.recv());
+    /// ```
+    ///
+    /// Buffering behavior:
+    ///
+    /// ```
+    /// use std::sync::mpsc;
+    /// use std::thread;
+    /// use std::sync::mpsc::RecvError;
+    ///
+    /// let (send, recv) = mpsc::channel();
+    /// let handle = thread::spawn(move || {
+    ///     send.send(1u8).unwrap();
+    ///     send.send(2).unwrap();
+    ///     send.send(3).unwrap();
+    ///     drop(send);
+    /// });
+    ///
+    /// // wait for the thread to join so we ensure the sender is dropped
+    /// handle.join().unwrap();
+    ///
+    /// assert_eq!(Ok(1), recv.recv());
+    /// assert_eq!(Ok(2), recv.recv());
+    /// assert_eq!(Ok(3), recv.recv());
+    /// assert_eq!(Err(RecvError), recv.recv());
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn recv(&self) -> Result<T, RecvError> {
         loop {
