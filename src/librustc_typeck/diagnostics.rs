@@ -1347,6 +1347,27 @@ static BAR: _ = "test"; // error, explicitly write out the type instead
 ```
 "##,
 
+E0124: r##"
+You declared two fields of a struct with the same name. Erroneous code
+example:
+
+```
+struct Foo {
+    field1: i32,
+    field1: i32 // error: field is already declared
+}
+```
+
+Please verify that the field names have been correctly spelled. Example:
+
+```
+struct Foo {
+    field1: i32,
+    field2: i32 // ok!
+}
+```
+"##,
+
 E0131: r##"
 It is not possible to define `main` with type parameters, or even with function
 parameters. When `main` is present, it must take no arguments and return `()`.
@@ -1956,7 +1977,6 @@ register_diagnostics! {
     E0120,
     E0122,
     E0123,
-    E0124,
     E0127,
     E0128,
     E0129,
