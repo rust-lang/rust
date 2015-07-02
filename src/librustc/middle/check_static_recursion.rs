@@ -8,16 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// This compiler pass detects static items that refer to themselves
+// This compiler pass detects constants that refer to themselves
 // recursively.
 
 use ast_map;
 use session::Session;
-use middle::def::{DefConst, DefAssociatedConst, DefVariant, DefMap};
+use middle::def::{DefStatic, DefConst, DefAssociatedConst, DefVariant, DefMap};
 use util::nodemap::NodeMap;
 
 use syntax::{ast, ast_util};
 use syntax::codemap::Span;
+use syntax::feature_gate::emit_feature_err;
 use syntax::visit::Visitor;
 use syntax::visit;
 
@@ -37,6 +38,7 @@ struct CheckCrateVisitor<'a, 'ast: 'a> {
 impl<'a, 'ast: 'a> Visitor<'ast> for CheckCrateVisitor<'a, 'ast> {
     fn visit_item(&mut self, it: &'ast ast::Item) {
         match it.node {
+            ast::ItemStatic(..) |
             ast::ItemConst(..) => {
                 let mut recursion_visitor =
                     CheckItemRecursionVisitor::new(self, &it.span);
@@ -124,8 +126,27 @@ impl<'a, 'ast: 'a> CheckItemRecursionVisitor<'a, 'ast> {
     }
     fn with_item_id_pushed<F>(&mut self, id: ast::NodeId, f: F)
           where F: Fn(&mut Self) {
-        if self.idstack.iter().any(|x| *x == id) {
-            span_err!(self.sess, *self.root_span, E0265, "recursive constant");
+        if self.idstack.iter().any(|&x| x == id) {
+            let any_static = self.idstack.iter().any(|&x| {
+                if let ast_map::NodeItem(item) = self.ast_map.get(x) {
+                    if let ast::ItemStatic(..) = item.node {
+                        true
+                    } else {
+                        false
+                    }
+                } else {
+                    false
+                }
+            });
+            if any_static {
+                if !self.sess.features.borrow().static_recursion {
+                    emit_feature_err(&self.sess.parse_sess.span_diagnostic,
+                                     "static_recursion",
+                                     *self.root_span, "recursive static");
+                }
+            } else {
+                span_err!(self.sess, *self.root_span, E0265, "recursive constant");
+            }
             return;
         }
         self.idstack.push(id);
@@ -216,6 +237,7 @@ impl<'a, 'ast: 'a> Visitor<'ast> for CheckItemRecursionVisitor<'a, 'ast> {
         match e.node {
             ast::ExprPath(..) => {
                 match self.def_map.borrow().get(&e.id).map(|d| d.base_def) {
+                    Some(DefStatic(def_id, _)) |
                     Some(DefAssociatedConst(def_id, _)) |
                     Some(DefConst(def_id))
                            if ast_util::is_local(def_id) => {
