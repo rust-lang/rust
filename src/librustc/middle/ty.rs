@@ -70,12 +70,15 @@ use util::nodemap::{NodeMap, NodeSet, DefIdMap, DefIdSet};
 use util::nodemap::FnvHashMap;
 use util::num::ToPrimitive;
 
+use rustc_data_structures::bitset::{U8BitSet, BitSet, BitSetIter};
+
 use arena::TypedArena;
 use std::borrow::{Borrow, Cow};
 use std::cell::{Cell, RefCell, Ref};
 use std::cmp;
 use std::fmt;
 use std::hash::{Hash, SipHasher, Hasher};
+use std::mem;
 use std::ops;
 use std::rc::Rc;
 use std::vec::IntoIter;
@@ -2059,20 +2062,20 @@ pub struct ExistentialBounds<'tcx> {
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct BuiltinBounds {
-    bits: u8
+    bit_set: U8BitSet
 }
 
 impl BuiltinBounds {
     pub fn empty() -> BuiltinBounds {
-        BuiltinBounds { bits: 0 }
+        BuiltinBounds { bit_set: BitSet::empty() }
     }
 
     pub fn insert(&mut self, bound: BuiltinBound) {
-        self.bits |= 1 << (bound as u8);
+        self.bit_set.insert(bound as u8)
     }
 
     pub fn contains(&self, bound: BuiltinBound) -> bool {
-        ((self.bits >> (bound as u8)) & 1) == 1
+        self.bit_set.contains(bound as u8)
     }
 
     pub fn iter(&self) -> BuiltinBoundsIter {
@@ -2080,7 +2083,7 @@ impl BuiltinBounds {
     }
 
     fn is_empty(&self) -> bool {
-        self.bits == 0
+        self.bit_set.is_empty()
     }
 
     pub fn to_predicates<'tcx>(&self,
@@ -2095,36 +2098,19 @@ impl BuiltinBounds {
     }
 
     pub fn is_superset(&self, other: &BuiltinBounds) -> bool {
-        (self.bits & other.bits) == other.bits
+        self.bit_set.is_superset(other.bit_set)
     }
 }
 
 pub struct BuiltinBoundsIter {
-    bounds: BuiltinBounds,
-    index: u8
+    bit_set: BitSetIter<u8>
 }
 
 impl Iterator for BuiltinBoundsIter {
     type Item = BuiltinBound;
 
     fn next(&mut self) -> Option<BuiltinBound> {
-        while self.index < 4 {
-            let result = match self.index {
-                0 if self.bounds.contains(BuiltinBound::Send) => Some(BuiltinBound::Send),
-                1 if self.bounds.contains(BuiltinBound::Sized) => Some(BuiltinBound::Sized),
-                2 if self.bounds.contains(BuiltinBound::Copy) => Some(BuiltinBound::Copy),
-                3 if self.bounds.contains(BuiltinBound::Sync) => Some(BuiltinBound::Sync),
-                _ => None
-            };
-
-            self.index += 1;
-
-            if result.is_some() {
-                return result;
-            }
-        }
-
-        return None;
+        self.bit_set.next().map(|b| unsafe { mem::transmute(b) })
     }
 }
 
@@ -2133,10 +2119,11 @@ impl<'a> IntoIterator for &'a BuiltinBounds {
     type IntoIter = BuiltinBoundsIter;
 
     fn into_iter(self) -> BuiltinBoundsIter {
-        BuiltinBoundsIter { bounds: self.clone(), index: 0 }
+        BuiltinBoundsIter { bit_set: self.bit_set.into_iter() }
     }
 }
 
+#[repr(u8)]
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, RustcDecodable, RustcEncodable, Hash, Debug)]
 pub enum BuiltinBound {
     Send,
