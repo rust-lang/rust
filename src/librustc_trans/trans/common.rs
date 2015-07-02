@@ -874,7 +874,6 @@ pub fn fulfill_obligation<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     debug!("trans fulfill_obligation: trait_ref={:?} def_id={:?}",
            trait_ref, trait_ref.def_id());
 
-    tcx.populate_implementations_for_trait_if_necessary(trait_ref.def_id());
 
     // Do the initial selection for the obligation. This yields the
     // shallow result we are looking for -- that is, what specific impl.
