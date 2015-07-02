@@ -227,7 +227,17 @@ impl<T> Vec<T> {
 
     /// Creates a `Vec<T>` directly from the raw components of another vector.
     ///
-    /// This is highly unsafe, due to the number of invariants that aren't checked.
+    /// # Unsafety
+    ///
+    /// This is highly unsafe, due to the number of invariants that aren't
+    /// checked:
+    ///
+    /// * `ptr` needs to have been previously allocated via `String`/`Vec<T>`
+    ///   (at least, it's highly likely to be incorrect if it wasn't).
+    /// * `capacity` needs to be the capacity that the pointer was allocated with.
+    ///
+    /// Violating these may cause problems like corrupting the allocator's
+    /// internal datastructures.
     ///
     /// # Examples
     ///
