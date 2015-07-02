@@ -1,4 +1,4 @@
-// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -552,7 +552,7 @@ fn write_shared(cx: &Context,
     // Add all the static files. These may already exist, but we just
     // overwrite them anyway to make sure that they're fresh and up-to-date.
     try!(write(cx.dst.join("jquery.js"),
-               include_bytes!("static/jquery-2.1.0.min.js")));
+               include_bytes!("static/jquery-2.1.4.min.js")));
     try!(write(cx.dst.join("main.js"), include_bytes!("static/main.js")));
     try!(write(cx.dst.join("playpen.js"), include_bytes!("static/playpen.js")));
     try!(write(cx.dst.join("main.css"), include_bytes!("static/main.css")));
