@@ -1368,6 +1368,26 @@ struct Foo {
 ```
 "##,
 
+E0128: r##"
+You declared a type parameter with a default which has the same identifier as
+the type parameter. Erroneous code example:
+
+```
+pub struct Foo<SomeType=SomeType>;
+// error: type parameters with a default cannot use forward declared
+// identifiers
+```
+
+Please verify you used the good type or change the type parameter identifier.
+Example:
+
+```
+pub struct Foo<T=SomeType> {
+    value: T
+}
+```
+"##,
+
 E0131: r##"
 It is not possible to define `main` with type parameters, or even with function
 parameters. When `main` is present, it must take no arguments and return `()`.
@@ -1978,7 +1998,6 @@ register_diagnostics! {
     E0122,
     E0123,
     E0127,
-    E0128,
     E0129,
     E0130,
     E0141,
