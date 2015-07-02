@@ -8,9 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(static_recursion)]
-
 static mut S: *const u8 = unsafe { &S as *const *const u8 as *const u8 };
+//~^ ERROR recursive static
 
 pub fn main() {
     unsafe { assert_eq!(S, *(S as *const *const u8)); }
