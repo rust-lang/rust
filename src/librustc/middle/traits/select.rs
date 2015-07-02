@@ -55,8 +55,6 @@ use util::nodemap::FnvHashMap;
 pub struct SelectionContext<'cx, 'tcx:'cx> {
     infcx: &'cx InferCtxt<'cx, 'tcx>,
 
-    closure_typer: &'cx (ty::ClosureTyper<'tcx>+'cx),
-
     /// Freshener used specifically for skolemizing entries on the
     /// obligation stack. This ensures that all entries on the stack
     /// at one time will have the same set of skolemized entries,
@@ -244,23 +242,19 @@ enum EvaluationResult<'tcx> {
 }
 
 impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
-    pub fn new(infcx: &'cx InferCtxt<'cx, 'tcx>,
-               closure_typer: &'cx ty::ClosureTyper<'tcx>)
+    pub fn new(infcx: &'cx InferCtxt<'cx, 'tcx>)
                -> SelectionContext<'cx, 'tcx> {
         SelectionContext {
             infcx: infcx,
-            closure_typer: closure_typer,
             freshener: infcx.freshener(),
             intercrate: false,
         }
     }
 
-    pub fn intercrate(infcx: &'cx InferCtxt<'cx, 'tcx>,
-                      closure_typer: &'cx ty::ClosureTyper<'tcx>)
+    pub fn intercrate(infcx: &'cx InferCtxt<'cx, 'tcx>)
                       -> SelectionContext<'cx, 'tcx> {
         SelectionContext {
             infcx: infcx,
-            closure_typer: closure_typer,
             freshener: infcx.freshener(),
             intercrate: true,
         }
@@ -275,11 +269,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     }
 
     pub fn param_env(&self) -> &'cx ty::ParameterEnvironment<'cx, 'tcx> {
-        self.closure_typer.param_env()
+        self.infcx.param_env()
     }
 
-    pub fn closure_typer(&self) -> &'cx (ty::ClosureTyper<'tcx>+'cx) {
-        self.closure_typer
+    pub fn closure_typer(&self) -> &'cx InferCtxt<'cx, 'tcx> {
+        self.infcx
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -1163,7 +1157,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                kind,
                obligation);
 
-        match self.closure_typer.closure_kind(closure_def_id) {
+        match self.infcx.closure_kind(closure_def_id) {
             Some(closure_kind) => {
                 debug!("assemble_unboxed_candidates: closure_kind = {:?}", closure_kind);
                 if closure_kind.extends(kind) {
@@ -1727,7 +1721,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     return ok_if(Vec::new());
                 }
 
-                match self.closure_typer.closure_upvars(def_id, substs) {
+                match self.infcx.closure_upvars(def_id, substs) {
                     Some(upvars) => ok_if(upvars.iter().map(|c| c.ty).collect()),
                     None => {
                         debug!("assemble_builtin_bound_candidates: no upvar types available yet");
@@ -1865,7 +1859,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::TyClosure(def_id, substs) => {
                 assert_eq!(def_id.krate, ast::LOCAL_CRATE);
 
-                match self.closure_typer.closure_upvars(def_id, substs) {
+                match self.infcx.closure_upvars(def_id, substs) {
                     Some(upvars) => {
                         Some(upvars.iter().map(|c| c.ty).collect())
                     }
@@ -2844,7 +2838,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                       substs: &Substs<'tcx>)
                                       -> ty::PolyTraitRef<'tcx>
     {
-        let closure_type = self.closure_typer.closure_type(closure_def_id, substs);
+        let closure_type = self.infcx.closure_type(closure_def_id, substs);
         let ty::Binder((trait_ref, _)) =
             util::closure_trait_ref_and_return_type(self.tcx(),
                                                     obligation.predicate.def_id(),

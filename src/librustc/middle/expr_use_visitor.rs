@@ -21,8 +21,8 @@ use self::TrackMatchMode::*;
 use self::OverloadedCallType::*;
 
 use middle::{def, region, pat_util};
+use middle::infer;
 use middle::mem_categorization as mc;
-use middle::mem_categorization::Typer;
 use middle::ty::{self};
 use middle::ty::{MethodCall, MethodObject, MethodTraitObject};
 use middle::ty::{MethodOrigin, MethodParam, MethodTypeParam};
@@ -291,9 +291,9 @@ impl OverloadedCallType {
 // supplies types from the tree. After type checking is complete, you
 // can just use the tcx as the typer.
 
-pub struct ExprUseVisitor<'d,'t,'tcx:'t,TYPER:'t> {
-    typer: &'t TYPER,
-    mc: mc::MemCategorizationContext<'t,TYPER>,
+pub struct ExprUseVisitor<'d,'t,'a: 't, 'tcx:'a> {
+    typer: &'t infer::InferCtxt<'a, 'tcx>,
+    mc: mc::MemCategorizationContext<'t, 'a, 'tcx>,
     delegate: &'d mut (Delegate<'tcx>+'d),
 }
 
@@ -319,10 +319,10 @@ enum PassArgs {
     ByRef,
 }
 
-impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
+impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
     pub fn new(delegate: &'d mut Delegate<'tcx>,
-               typer: &'t TYPER)
-               -> ExprUseVisitor<'d,'t,'tcx,TYPER> {
+               typer: &'t infer::InferCtxt<'a, 'tcx>)
+               -> ExprUseVisitor<'d,'t,'a, 'tcx> {
         ExprUseVisitor {
             typer: typer,
             mc: mc::MemCategorizationContext::new(typer),
@@ -355,7 +355,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
     }
 
     fn tcx(&self) -> &'t ty::ctxt<'tcx> {
-        self.typer.tcx()
+        self.typer.tcx
     }
 
     fn delegate_consume(&mut self,
@@ -690,7 +690,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
         match local.init {
             None => {
                 let delegate = &mut self.delegate;
-                pat_util::pat_bindings(&self.typer.tcx().def_map, &*local.pat,
+                pat_util::pat_bindings(&self.typer.tcx.def_map, &*local.pat,
                                        |_, id, span, _| {
                     delegate.decl_without_init(id, span);
                 })
@@ -1052,7 +1052,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
         let delegate = &mut self.delegate;
         return_if_err!(mc.cat_pattern(cmt_discr.clone(), pat, |mc, cmt_pat, pat| {
             if pat_util::pat_is_binding(def_map, pat) {
-                let tcx = typer.tcx();
+                let tcx = typer.tcx;
 
                 debug!("binding cmt_pat={:?} pat={:?} match_mode={:?}",
                        cmt_pat,
@@ -1139,7 +1139,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
         // the leaves of the pattern tree structure.
         return_if_err!(mc.cat_pattern(cmt_discr, pat, |mc, cmt_pat, pat| {
             let def_map = def_map.borrow();
-            let tcx = typer.tcx();
+            let tcx = typer.tcx;
 
             match pat.node {
                 ast::PatEnum(_, _) | ast::PatQPath(..) |
@@ -1278,7 +1278,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
     }
 }
 
-fn copy_or_move<'tcx>(typer: &mc::Typer<'tcx>,
+fn copy_or_move<'a, 'tcx>(typer: &infer::InferCtxt<'a, 'tcx>,
                       cmt: &mc::cmt<'tcx>,
                       move_reason: MoveReason)
                       -> ConsumeMode

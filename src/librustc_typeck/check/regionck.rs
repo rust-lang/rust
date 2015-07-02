@@ -86,13 +86,12 @@ use astconv::AstConv;
 use check::dropck;
 use check::FnCtxt;
 use middle::free_region::FreeRegionMap;
-use middle::infer::InferCtxt;
 use middle::implicator;
 use middle::mem_categorization as mc;
 use middle::region::CodeExtent;
 use middle::subst::Substs;
 use middle::traits;
-use middle::ty::{self, ClosureTyper, ReScope, Ty, MethodCall, HasTypeFlags};
+use middle::ty::{self, ReScope, Ty, MethodCall, HasTypeFlags};
 use middle::infer::{self, GenericKind};
 use middle::pat_util;
 
@@ -318,9 +317,13 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
         // Make a copy of the region obligations vec because we'll need
         // to be able to borrow the fulfillment-cx below when projecting.
         let region_obligations =
-            self.fcx.inh.fulfillment_cx.borrow()
-                                       .region_obligations(node_id)
-                                       .to_vec();
+            self.fcx
+                .inh
+                .infcx
+                .fulfillment_cx
+                .borrow()
+                .region_obligations(node_id)
+                .to_vec();
 
         for r_o in &region_obligations {
             debug!("visit_region_obligations: r_o={:?}",
@@ -332,7 +335,7 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
 
         // Processing the region obligations should not cause the list to grow further:
         assert_eq!(region_obligations.len(),
-                   self.fcx.inh.fulfillment_cx.borrow().region_obligations(node_id).len());
+                   self.fcx.inh.infcx.fulfillment_cx.borrow().region_obligations(node_id).len());
     }
 
     /// This method populates the region map's `free_region_map`. It walks over the transformed
@@ -356,7 +359,7 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
             debug!("relate_free_regions(t={:?})", ty);
             let body_scope = CodeExtent::from_node_id(body_id);
             let body_scope = ty::ReScope(body_scope);
-            let implications = implicator::implications(self.fcx.infcx(), self.fcx.infcx(), body_id,
+            let implications = implicator::implications(self.fcx.infcx(), body_id,
                                                         ty, body_scope, span);
 
             // Record any relations between free regions that we observe into the free-region-map.
@@ -1097,8 +1100,8 @@ fn link_fn_args(rcx: &Rcx, body_scope: CodeExtent, args: &[ast::Arg]) {
 
 /// Link lifetimes of any ref bindings in `root_pat` to the pointers found in the discriminant, if
 /// needed.
-fn link_pattern<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
-                          mc: mc::MemCategorizationContext<InferCtxt<'a, 'tcx>>,
+fn link_pattern<'t, 'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
+                          mc: mc::MemCategorizationContext<'t, 'a, 'tcx>,
                           discr_cmt: mc::cmt<'tcx>,
                           root_pat: &ast::Pat) {
     debug!("link_pattern(discr_cmt={:?}, root_pat={:?})",
@@ -1405,7 +1408,7 @@ pub fn type_must_outlive<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
            ty,
            region);
 
-    let implications = implicator::implications(rcx.fcx.infcx(), rcx.fcx.infcx(), rcx.body_id,
+    let implications = implicator::implications(rcx.fcx.infcx(), rcx.body_id,
                                                 ty, region, origin.span());
     for implication in implications {
         debug!("implication: {:?}", implication);

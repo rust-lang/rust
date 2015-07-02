@@ -110,14 +110,16 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
     }
 
     fn with_euv<'b, F, R>(&'b mut self, item_id: Option<ast::NodeId>, f: F) -> R where
-        F: for<'t> FnOnce(&mut euv::ExprUseVisitor<'b, 't, 'tcx,
-                                    ty::ParameterEnvironment<'a, 'tcx>>) -> R,
+        F: for<'t> FnOnce(&mut euv::ExprUseVisitor<'b, 't, 'b, 'tcx>) -> R,
     {
         let param_env = match item_id {
             Some(item_id) => ty::ParameterEnvironment::for_item(self.tcx, item_id),
             None => self.tcx.empty_parameter_environment()
         };
-        f(&mut euv::ExprUseVisitor::new(self, &param_env))
+
+        let infcx = infer::new_infer_ctxt(self.tcx, &self.tcx.tables, Some(param_env), false);
+
+        f(&mut euv::ExprUseVisitor::new(self, &infcx))
     }
 
     fn global_expr(&mut self, mode: Mode, expr: &ast::Expr) -> ConstQualif {
@@ -283,11 +285,11 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
 
     fn check_static_type(&self, e: &ast::Expr) {
         let ty = self.tcx.node_id_to_type(e.id);
-        let infcx = infer::new_infer_ctxt(self.tcx, &self.tcx.tables, None);
-        let mut fulfill_cx = traits::FulfillmentContext::new(false);
+        let infcx = infer::new_infer_ctxt(self.tcx, &self.tcx.tables, None, false);
         let cause = traits::ObligationCause::new(e.span, e.id, traits::SharedStatic);
+        let mut fulfill_cx = infcx.fulfillment_cx.borrow_mut();
         fulfill_cx.register_builtin_bound(&infcx, ty, ty::BoundSync, cause);
-        match fulfill_cx.select_all_or_error(&infcx, &infcx.parameter_environment) {
+        match fulfill_cx.select_all_or_error(&infcx) {
             Ok(()) => { },
             Err(ref errors) => {
                 traits::report_fulfillment_errors(&infcx, errors);

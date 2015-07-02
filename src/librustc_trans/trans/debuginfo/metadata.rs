@@ -26,12 +26,13 @@ use llvm::debuginfo::{DIType, DIFile, DIScope, DIDescriptor, DICompositeType};
 use metadata::csearch;
 use middle::pat_util;
 use middle::subst::{self, Substs};
+use middle::infer;
 use rustc::ast_map;
 use trans::{type_of, adt, machine, monomorphize};
-use trans::common::{self, CrateContext, FunctionContext, NormalizingClosureTyper, Block};
+use trans::common::{self, CrateContext, FunctionContext, Block};
 use trans::_match::{BindingInfo, TrByCopy, TrByMove, TrByRef};
 use trans::type_::Type;
-use middle::ty::{self, Ty, ClosureTyper};
+use middle::ty::{self, Ty};
 use session::config::{self, FullDebugInfo};
 use util::nodemap::FnvHashMap;
 use util::common::path2cstr;
@@ -287,8 +288,8 @@ impl<'tcx> TypeMap<'tcx> {
                 }
             },
             ty::TyClosure(def_id, substs) => {
-                let typer = NormalizingClosureTyper::new(cx.tcx());
-                let closure_ty = typer.closure_type(def_id, substs);
+                let infcx = infer::normalizing_infer_ctxt(cx.tcx(), &cx.tcx().tables);
+                let closure_ty = infcx.closure_type(def_id, substs);
                 self.get_unique_type_id_of_closure_type(cx,
                                                         closure_ty,
                                                         &mut unique_type_id);
@@ -796,8 +797,8 @@ pub fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             subroutine_type_metadata(cx, unique_type_id, &barefnty.sig, usage_site_span)
         }
         ty::TyClosure(def_id, substs) => {
-            let typer = NormalizingClosureTyper::new(cx.tcx());
-            let sig = typer.closure_type(def_id, substs).sig;
+            let infcx = infer::normalizing_infer_ctxt(cx.tcx(), &cx.tcx().tables);
+            let sig = infcx.closure_type(def_id, substs).sig;
             subroutine_type_metadata(cx, unique_type_id, &sig, usage_site_span)
         }
         ty::TyStruct(def_id, substs) => {

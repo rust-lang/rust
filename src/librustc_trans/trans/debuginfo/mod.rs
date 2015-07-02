@@ -30,7 +30,7 @@ use rustc::ast_map;
 use trans::common::{NodeIdAndSpan, CrateContext, FunctionContext, Block};
 use trans;
 use trans::monomorphize;
-use middle::ty::{Ty, ClosureTyper};
+use middle::ty::Ty;
 use session::config::{self, FullDebugInfo, LimitedDebugInfo, NoDebugInfo};
 use util::nodemap::{DefIdMap, NodeMap, FnvHashMap, FnvHashSet};
 

@@ -195,9 +195,9 @@ use middle::check_match;
 use middle::const_eval;
 use middle::def::{self, DefMap};
 use middle::expr_use_visitor as euv;
+use middle::infer;
 use middle::lang_items::StrEqFnLangItem;
 use middle::mem_categorization as mc;
-use middle::mem_categorization::Typer;
 use middle::pat_util::*;
 use trans::adt;
 use trans::base::*;
@@ -1351,7 +1351,8 @@ fn is_discr_reassigned(bcx: Block, discr: &ast::Expr, body: &ast::Expr) -> bool 
         reassigned: false
     };
     {
-        let mut visitor = euv::ExprUseVisitor::new(&mut rc, bcx);
+        let infcx = infer::new_infer_ctxt(bcx.tcx(), &bcx.tcx().tables, None, false);
+        let mut visitor = euv::ExprUseVisitor::new(&mut rc, &infcx);
         visitor.walk_expr(body);
     }
     rc.reassigned
@@ -1416,7 +1417,7 @@ fn create_bindings_map<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, pat: &ast::Pat,
         let trmode;
         match bm {
             ast::BindByValue(_)
-                if !param_env.type_moves_by_default(variable_ty, span) || reassigned =>
+                if !variable_ty.moves_by_default(&param_env, span) || reassigned =>
             {
                 llmatch = alloca_no_lifetime(bcx,
                                  llvariable_ty.ptr_to(),

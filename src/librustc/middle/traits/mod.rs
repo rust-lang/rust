@@ -312,7 +312,6 @@ pub fn predicates_for_generics<'tcx>(cause: ObligationCause<'tcx>,
 /// conservative towards *no impl*, which is the opposite of the
 /// `evaluate` methods).
 pub fn type_known_to_meet_builtin_bound<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
-                                                 typer: &ty::ClosureTyper<'tcx>,
                                                  ty: Ty<'tcx>,
                                                  bound: ty::BuiltinBound,
                                                  span: Span)
@@ -334,7 +333,7 @@ pub fn type_known_to_meet_builtin_bound<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
     // Note: we only assume something is `Copy` if we can
     // *definitively* show that it implements `Copy`. Otherwise,
     // assume it is move; linear is always ok.
-    match fulfill_cx.select_all_or_error(infcx, typer) {
+    match fulfill_cx.select_all_or_error(infcx) {
         Ok(()) => {
             debug!("type_known_to_meet_builtin_bound: ty={:?} bound={:?} success",
                    ty,
@@ -397,8 +396,8 @@ pub fn normalize_param_env_or_error<'a,'tcx>(unnormalized_env: ty::ParameterEnvi
 
     let elaborated_env = unnormalized_env.with_caller_bounds(predicates);
 
-    let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, Some(elaborated_env));
-    let predicates = match fully_normalize(&infcx, &infcx.parameter_environment, cause,
+    let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, Some(elaborated_env), false);
+    let predicates = match fully_normalize(&infcx, cause,
                                            &infcx.parameter_environment.caller_bounds) {
         Ok(predicates) => predicates,
         Err(errors) => {
@@ -429,7 +428,6 @@ pub fn normalize_param_env_or_error<'a,'tcx>(unnormalized_env: ty::ParameterEnvi
 }
 
 pub fn fully_normalize<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx>,
-                                  closure_typer: &ty::ClosureTyper<'tcx>,
                                   cause: ObligationCause<'tcx>,
                                   value: &T)
                                   -> Result<T, Vec<FulfillmentError<'tcx>>>
@@ -437,8 +435,22 @@ pub fn fully_normalize<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx>,
 {
     debug!("normalize_param_env(value={:?})", value);
 
-    let mut selcx = &mut SelectionContext::new(infcx, closure_typer);
+    let mut selcx = &mut SelectionContext::new(infcx);
+    // FIXME (@jroesch) ISSUE 26721
+    // I'm not sure if this is a bug or not, needs further investigation.
+    // It appears that by reusing the fulfillment_cx here we incur more
+    // obligations and later trip an asssertion on regionck.rs line 337.
+    //
+    // The two possibilities I see is:
+    //      - normalization is not actually fully happening and we
+    //        have a bug else where
+    //      - we are adding a duplicate bound into the list causing
+    //        its size to change.
+    //
+    // I think we should probably land this refactor and then come
+    // back to this is a follow-up patch.
     let mut fulfill_cx = FulfillmentContext::new(false);
+
     let Normalized { value: normalized_value, obligations } =
         project::normalize(selcx, cause, value);
     debug!("normalize_param_env: normalized_value={:?} obligations={:?}",
@@ -447,7 +459,8 @@ pub fn fully_normalize<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx>,
     for obligation in obligations {
         fulfill_cx.register_predicate_obligation(selcx.infcx(), obligation);
     }
-    try!(fulfill_cx.select_all_or_error(infcx, closure_typer));
+
+    try!(fulfill_cx.select_all_or_error(infcx));
     let resolved_value = infcx.resolve_type_vars_if_possible(&normalized_value);
     debug!("normalize_param_env: resolved_value={:?}", resolved_value);
     Ok(resolved_value)

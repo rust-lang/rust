@@ -448,7 +448,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
             debug!("check_implementations_of_coerce_unsized: {:?} -> {:?} (free)",
                    source, target);
 
-            let infcx = new_infer_ctxt(tcx, &tcx.tables, Some(param_env));
+            let infcx = new_infer_ctxt(tcx, &tcx.tables, Some(param_env), true);
 
             let check_mutbl = |mt_a: ty::mt<'tcx>, mt_b: ty::mt<'tcx>,
                                mk_ptr: &Fn(Ty<'tcx>) -> Ty<'tcx>| {
@@ -531,7 +531,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
                 }
             };
 
-            let mut fulfill_cx = traits::FulfillmentContext::new(true);
+            let mut fulfill_cx = infcx.fulfillment_cx.borrow_mut();
 
             // Register an obligation for `A: Trait<B>`.
             let cause = traits::ObligationCause::misc(span, impl_did.node);
@@ -540,8 +540,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
             fulfill_cx.register_predicate_obligation(&infcx, predicate);
 
             // Check that all transitive obligations are satisfied.
-            if let Err(errors) = fulfill_cx.select_all_or_error(&infcx,
-                                                                &infcx.parameter_environment) {
+            if let Err(errors) = fulfill_cx.select_all_or_error(&infcx) {
                 traits::report_fulfillment_errors(&infcx, &errors);
             }
 
@@ -632,7 +631,7 @@ fn subst_receiver_types_in_method_ty<'tcx>(tcx: &ty::ctxt<'tcx>,
 pub fn check_coherence(crate_context: &CrateCtxt) {
     CoherenceChecker {
         crate_context: crate_context,
-        inference_context: new_infer_ctxt(crate_context.tcx, &crate_context.tcx.tables, None),
+        inference_context: new_infer_ctxt(crate_context.tcx, &crate_context.tcx.tables, None, true),
         inherent_impls: RefCell::new(FnvHashMap()),
     }.check(crate_context.tcx.map.krate());
     unsafety::check(crate_context.tcx);
