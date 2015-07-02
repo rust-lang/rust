@@ -40,10 +40,11 @@ use middle::cfg;
 use middle::infer;
 use middle::lang_items::{LangItem, ExchangeMallocFnLangItem, StartFnLangItem};
 use middle::weak_lang_items;
+use middle::pat_util::simple_identifier;
 use middle::subst::Substs;
 use middle::ty::{self, Ty, HasTypeFlags};
 use rustc::ast_map;
-use session::config::{self, NoDebugInfo};
+use session::config::{self, NoDebugInfo, FullDebugInfo};
 use session::Session;
 use trans::_match;
 use trans::adt;
@@ -1035,6 +1036,13 @@ pub fn alloca_no_lifetime(cx: Block, ty: Type, name: &str) -> ValueRef {
     Alloca(cx, ty, name)
 }
 
+pub fn set_value_name(val: ValueRef, name: &str) {
+    unsafe {
+        let name = CString::new(name).unwrap();
+        llvm::LLVMSetValueName(val, name.as_ptr());
+    }
+}
+
 // Creates the alloca slot which holds the pointer to the slot for the final return value
 pub fn make_return_slot_pointer<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
                                           output_type: Ty<'tcx>) -> ValueRef {
@@ -1297,78 +1305,70 @@ pub fn arg_kind<'a, 'tcx>(cx: &FunctionContext<'a, 'tcx>, t: Ty<'tcx>)
     }
 }
 
-// work around bizarre resolve errors
-pub type RvalueDatum<'tcx> = datum::Datum<'tcx, datum::Rvalue>;
-
-// create_datums_for_fn_args: creates rvalue datums for each of the
-// incoming function arguments. These will later be stored into
-// appropriate lvalue datums.
-pub fn create_datums_for_fn_args<'a, 'tcx>(bcx: Block<'a, 'tcx>,
-                                           arg_tys: &[Ty<'tcx>])
-                                           -> Vec<RvalueDatum<'tcx>> {
+// create_datums_for_fn_args: creates lvalue datums for each of the
+// incoming function arguments.
+pub fn create_datums_for_fn_args<'a, 'tcx>(mut bcx: Block<'a, 'tcx>,
+                                           args: &[ast::Arg],
+                                           arg_tys: &[Ty<'tcx>],
+                                           has_tupled_arg: bool,
+                                           arg_scope: cleanup::CustomScopeIndex)
+                                           -> Block<'a, 'tcx> {
     let _icx = push_ctxt("create_datums_for_fn_args");
     let fcx = bcx.fcx;
+    let arg_scope_id = cleanup::CustomScope(arg_scope);
 
     // Return an array wrapping the ValueRefs that we get from `get_param` for
     // each argument into datums.
-    let mut i = fcx.arg_offset() as c_uint;
-    arg_tys.iter().map(|&arg_ty| {
-        if common::type_is_fat_ptr(bcx.tcx(), arg_ty) {
-            let llty = type_of::type_of(bcx.ccx(), arg_ty);
-            let data = get_param(fcx.llfn, i);
-            let extra = get_param(fcx.llfn, i + 1);
-            let fat_ptr = expr::make_fat_ptr(bcx, llty, data, extra);
-            i += 2;
-            datum::Datum::new(fat_ptr, arg_ty, datum::Rvalue { mode: datum::ByValue })
-        } else {
-            let llarg = get_param(fcx.llfn, i);
-            i += 1;
-            datum::Datum::new(llarg, arg_ty, arg_kind(fcx, arg_ty))
-        }
-    }).collect()
-}
-
-/// Creates rvalue datums for each of the incoming function arguments and
-/// tuples the arguments. These will later be stored into appropriate lvalue
-/// datums.
-///
-/// FIXME(pcwalton): Reduce the amount of code bloat this is responsible for.
-fn create_datums_for_fn_args_under_call_abi<'blk, 'tcx>(
-        mut bcx: Block<'blk, 'tcx>,
-        arg_scope: cleanup::CustomScopeIndex,
-        arg_tys: &[Ty<'tcx>])
-        -> Vec<RvalueDatum<'tcx>> {
-    let mut result = Vec::new();
-    let mut idx = bcx.fcx.arg_offset() as c_uint;
+    //
+    // For certain mode/type combinations, the raw llarg values are passed
+    // by value.  However, within the fn body itself, we want to always
+    // have all locals and arguments be by-ref so that we can cancel the
+    // cleanup and for better interaction with LLVM's debug info.  So, if
+    // the argument would be passed by value, we store it into an alloca.
+    // This alloca should be optimized away by LLVM's mem-to-reg pass in
+    // the event it's not truly needed.
+    let mut idx = fcx.arg_offset() as c_uint;
     for (i, &arg_ty) in arg_tys.iter().enumerate() {
-        if i < arg_tys.len() - 1 {
-            // Regular argument.
-            result.push(if common::type_is_fat_ptr(bcx.tcx(), arg_ty) {
-                let llty = type_of::type_of(bcx.ccx(), arg_ty);
-                let data = get_param(bcx.fcx.llfn, idx);
-                let extra = get_param(bcx.fcx.llfn, idx + 1);
-                idx += 2;
-                let fat_ptr = expr::make_fat_ptr(bcx, llty, data, extra);
-                datum::Datum::new(fat_ptr, arg_ty, datum::Rvalue { mode: datum::ByValue })
-            } else {
-                let val = get_param(bcx.fcx.llfn, idx);
+        let arg_datum = if !has_tupled_arg || i < arg_tys.len() - 1 {
+            if type_of::arg_is_indirect(bcx.ccx(), arg_ty)
+                    && bcx.sess().opts.debuginfo != FullDebugInfo {
+                // Don't copy an indirect argument to an alloca, the caller
+                // already put it in a temporary alloca and gave it up, unless
+                // we emit extra-debug-info, which requires local allocas :(.
+                let llarg = get_param(fcx.llfn, idx);
                 idx += 1;
-                datum::Datum::new(val, arg_ty, arg_kind(bcx.fcx, arg_ty))
-            });
+                bcx.fcx.schedule_lifetime_end(arg_scope_id, llarg);
+                bcx.fcx.schedule_drop_mem(arg_scope_id, llarg, arg_ty);
 
-            continue
-        }
-
-        // This is the last argument. Tuple it.
-        match arg_ty.sty {
-            ty::TyTuple(ref tupled_arg_tys) => {
-                let tuple_args_scope_id = cleanup::CustomScope(arg_scope);
-                let tuple =
+                datum::Datum::new(llarg, arg_ty, datum::Lvalue)
+            } else if common::type_is_fat_ptr(bcx.tcx(), arg_ty) {
+                let data = get_param(fcx.llfn, idx);
+                let extra = get_param(fcx.llfn, idx + 1);
+                idx += 2;
+                unpack_datum!(bcx, datum::lvalue_scratch_datum(bcx, arg_ty, "",
+                                                        arg_scope_id, (data, extra),
+                                                        |(data, extra), bcx, dst| {
+                    Store(bcx, data, expr::get_dataptr(bcx, dst));
+                    Store(bcx, extra, expr::get_len(bcx, dst));
+                    bcx
+                }))
+            } else {
+                let llarg = get_param(fcx.llfn, idx);
+                idx += 1;
+                let tmp = datum::Datum::new(llarg, arg_ty, arg_kind(fcx, arg_ty));
+                unpack_datum!(bcx, datum::lvalue_scratch_datum(bcx, arg_ty, "",
+                                                           arg_scope_id, tmp,
+                                                           |tmp, bcx, dst| tmp.store_to(bcx, dst)))
+            }
+        } else {
+            // FIXME(pcwalton): Reduce the amount of code bloat this is responsible for.
+            match arg_ty.sty {
+                ty::TyTuple(ref tupled_arg_tys) => {
                     unpack_datum!(bcx,
                                   datum::lvalue_scratch_datum(bcx,
                                                               arg_ty,
                                                               "tupled_args",
-                                                              tuple_args_scope_id,
+                                                              arg_scope_id,
                                                               (),
                                                               |(),
                                                                mut bcx,
@@ -1392,46 +1392,27 @@ fn create_datums_for_fn_args_under_call_abi<'blk, 'tcx>(
                             };
                         }
                         bcx
-                    }));
-                let tuple = unpack_datum!(bcx,
-                                          tuple.to_expr_datum()
-                                               .to_rvalue_datum(bcx,
-                                                                "argtuple"));
-                result.push(tuple);
-            }
-            _ => {
-                bcx.tcx().sess.bug("last argument of a function with \
-                                    `rust-call` ABI isn't a tuple?!")
+                    }))
+                }
+                _ => {
+                    bcx.tcx().sess.bug("last argument of a function with \
+                                        `rust-call` ABI isn't a tuple?!")
+                }
             }
         };
 
-    }
-
-    result
-}
-
-fn copy_args_to_allocas<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                    arg_scope: cleanup::CustomScopeIndex,
-                                    args: &[ast::Arg],
-                                    arg_datums: Vec<RvalueDatum<'tcx>>)
-                                    -> Block<'blk, 'tcx> {
-    debug!("copy_args_to_allocas");
-
-    let _icx = push_ctxt("copy_args_to_allocas");
-    let mut bcx = bcx;
-
-    let arg_scope_id = cleanup::CustomScope(arg_scope);
-
-    for (i, arg_datum) in arg_datums.into_iter().enumerate() {
-        // For certain mode/type combinations, the raw llarg values are passed
-        // by value.  However, within the fn body itself, we want to always
-        // have all locals and arguments be by-ref so that we can cancel the
-        // cleanup and for better interaction with LLVM's debug info.  So, if
-        // the argument would be passed by value, we store it into an alloca.
-        // This alloca should be optimized away by LLVM's mem-to-reg pass in
-        // the event it's not truly needed.
-
-        bcx = _match::store_arg(bcx, &*args[i].pat, arg_datum, arg_scope_id);
+        let pat = &*args[i].pat;
+        bcx = if let Some(ident) = simple_identifier(&*pat) {
+            // Generate nicer LLVM for the common case of fn a pattern
+            // like `x: T`
+            set_value_name(arg_datum.val, &bcx.name(ident.name));
+            bcx.fcx.lllocals.borrow_mut().insert(pat.id, arg_datum);
+            bcx
+        } else {
+            // General path. Copy out the values that are used in the
+            // pattern.
+            _match::bind_irrefutable_pat(bcx, pat, arg_datum.val, arg_scope_id)
+        };
         debuginfo::create_argument_metadata(bcx, &args[i]);
     }
 
@@ -1578,16 +1559,6 @@ pub fn trans_closure<'a, 'b, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         decl.inputs.iter()
                    .map(|arg| node_id_type(bcx, arg.id))
                    .collect::<Vec<_>>();
-    let monomorphized_arg_types = match closure_env {
-        closure::ClosureEnv::NotClosure => {
-            monomorphized_arg_types
-        }
-
-        // Tuple up closure argument types for the "rust-call" ABI.
-        closure::ClosureEnv::Closure(_) => {
-            vec![ccx.tcx().mk_tup(monomorphized_arg_types)]
-        }
-    };
     for monomorphized_arg_type in &monomorphized_arg_types {
         debug!("trans_closure: monomorphized_arg_type: {:?}",
                monomorphized_arg_type);
@@ -1595,17 +1566,13 @@ pub fn trans_closure<'a, 'b, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     debug!("trans_closure: function lltype: {}",
            bcx.fcx.ccx.tn().val_to_string(bcx.fcx.llfn));
 
-    let arg_datums = match closure_env {
-        closure::ClosureEnv::NotClosure if abi == RustCall => {
-            create_datums_for_fn_args_under_call_abi(bcx, arg_scope, &monomorphized_arg_types[..])
-        }
-        _ => {
-            let arg_tys = untuple_arguments_if_necessary(ccx, &monomorphized_arg_types, abi);
-            create_datums_for_fn_args(bcx, &arg_tys)
-        }
+    let has_tupled_arg = match closure_env {
+        closure::ClosureEnv::NotClosure => abi == RustCall,
+        _ => false
     };
 
-    bcx = copy_args_to_allocas(bcx, arg_scope, &decl.inputs, arg_datums);
+    bcx = create_datums_for_fn_args(bcx, &decl.inputs, &monomorphized_arg_types,
+                                    has_tupled_arg, arg_scope);
 
     bcx = closure_env.load(bcx, cleanup::CustomScope(arg_scope));
 
@@ -1806,18 +1773,30 @@ fn trans_enum_variant_or_tuple_like_struct<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx
 
     let arg_tys = ccx.tcx().erase_late_bound_regions(&ctor_ty.fn_args());
 
-    let arg_datums = create_datums_for_fn_args(bcx, &arg_tys[..]);
-
     if !type_is_zero_size(fcx.ccx, result_ty.unwrap()) {
         let dest = fcx.get_ret_slot(bcx, result_ty, "eret_slot");
         let repr = adt::represent_type(ccx, result_ty.unwrap());
-        for (i, arg_datum) in arg_datums.into_iter().enumerate() {
+        let mut llarg_idx = fcx.arg_offset() as c_uint;
+        for (i, arg_ty) in arg_tys.into_iter().enumerate() {
             let lldestptr = adt::trans_field_ptr(bcx,
                                                  &*repr,
                                                  dest,
                                                  disr,
                                                  i);
-            arg_datum.store_to(bcx, lldestptr);
+            if common::type_is_fat_ptr(bcx.tcx(), arg_ty) {
+                Store(bcx, get_param(fcx.llfn, llarg_idx), expr::get_dataptr(bcx, lldestptr));
+                Store(bcx, get_param(fcx.llfn, llarg_idx + 1), expr::get_len(bcx, lldestptr));
+                llarg_idx += 2;
+            } else {
+                let arg = get_param(fcx.llfn, llarg_idx);
+                llarg_idx += 1;
+
+                if arg_is_indirect(ccx, arg_ty) {
+                    memcpy_ty(bcx, lldestptr, arg, arg_ty);
+                } else {
+                    store_ty(bcx, arg, lldestptr, arg_ty);
+                }
+            }
         }
         adt::trans_set_discr(bcx, &*repr, dest, disr);
     }
