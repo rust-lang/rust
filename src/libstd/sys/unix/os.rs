@@ -34,7 +34,8 @@ const BUF_BYTES: usize = 2048;
 const TMPBUF_SZ: usize = 128;
 
 fn bytes2path(b: &[u8]) -> PathBuf {
-    PathBuf::from(<OsStr as OsStrExt>::from_bytes(b))
+    // from_bytes() never returns None on unix
+    PathBuf::from(OsStr::from_bytes(b).unwrap())
 }
 
 fn os2path(os: OsString) -> PathBuf {

@@ -166,11 +166,13 @@ impl Drop for Dir {
 
 impl DirEntry {
     pub fn path(&self) -> PathBuf {
-        self.root.join(<OsStr as OsStrExt>::from_bytes(self.name_bytes()))
+        // from_bytes() never returns None on unix
+        self.root.join(OsStr::from_bytes(self.name_bytes()).unwrap())
     }
 
     pub fn file_name(&self) -> OsString {
-        OsStr::from_bytes(self.name_bytes()).to_os_string()
+        // from_bytes() never returns None on unix
+        OsStr::from_bytes(self.name_bytes()).unwrap().to_os_string()
     }
 
     pub fn metadata(&self) -> io::Result<FileAttr> {
