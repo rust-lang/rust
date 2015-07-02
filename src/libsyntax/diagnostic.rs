@@ -837,12 +837,7 @@ mod test {
         tolv
         dreizehn
         ";
-        let file = cm.new_filemap("dummy.txt".to_string(), content.to_string());
-        for (i, b) in content.bytes().enumerate() {
-            if b == b'\n' {
-                file.next_line(BytePos(i as u32));
-            }
-        }
+        let file = cm.new_filemap_and_lines("dummy.txt", content);
         let start = file.lines.borrow()[7];
         let end = file.lines.borrow()[11];
         let sp = mk_sp(start, end);
