@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// VecMap
+#![allow(deprecated)]
+
 //! Implementations of serialization for structures found in libcollections
 
 use std::usize;
