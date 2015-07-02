@@ -4045,7 +4045,6 @@ pub fn resolve_crate<'a, 'tcx>(session: &'a Session,
 
 pub fn create_resolver<'a, 'tcx>(session: &'a Session,
                                  ast_map: &'a ast_map::Map<'tcx>,
-                                 _: &LanguageItems,
                                  krate: &'a Crate,
                                  make_glob_map: MakeGlobMap,
                                  callback: Option<Box<Fn(ast_map::Node, &mut bool) -> bool>>)
