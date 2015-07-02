@@ -232,10 +232,10 @@ pub fn memoized<T, U, S, F>(cache: &RefCell<HashMap<T, U, S>>, arg: T, f: F) -> 
 
 #[cfg(unix)]
 pub fn path2cstr(p: &Path) -> CString {
-    use std::os::unix::prelude::*;
     use std::ffi::OsStr;
     let p: &OsStr = p.as_ref();
-    CString::new(p.as_bytes()).unwrap()
+    // to_bytes() never returns None on unix
+    CString::new(p.to_bytes().unwrap()).unwrap()
 }
 #[cfg(windows)]
 pub fn path2cstr(p: &Path) -> CString {

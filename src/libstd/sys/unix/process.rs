@@ -390,9 +390,10 @@ fn make_envp(env: Option<&HashMap<OsString, OsString>>)
 
         for pair in env {
             let mut kv = Vec::new();
-            kv.push_all(pair.0.as_bytes());
+            // to_bytes() never returns None on unix
+            kv.push_all(pair.0.to_bytes().unwrap());
             kv.push('=' as u8);
-            kv.push_all(pair.1.as_bytes());
+            kv.push_all(pair.1.to_bytes().unwrap());
             kv.push(0); // terminating null
             tmps.push(kv);
         }

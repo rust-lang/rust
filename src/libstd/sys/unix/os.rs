@@ -34,11 +34,13 @@ const BUF_BYTES: usize = 2048;
 const TMPBUF_SZ: usize = 128;
 
 fn bytes2path(b: &[u8]) -> PathBuf {
-    PathBuf::from(<OsStr as OsStrExt>::from_bytes(b))
+    // from_bytes() never returns None on unix
+    PathBuf::from(OsStr::from_bytes(b).unwrap())
 }
 
 fn os2path(os: OsString) -> PathBuf {
-    bytes2path(os.as_bytes())
+    // to_bytes() never returns None on unix
+    bytes2path(os.to_bytes().unwrap())
 }
 
 /// Returns the platform-specific value of errno
@@ -124,7 +126,8 @@ pub fn getcwd() -> io::Result<PathBuf> {
 
 pub fn chdir(p: &path::Path) -> io::Result<()> {
     let p: &OsStr = p.as_ref();
-    let p = try!(CString::new(p.as_bytes()));
+    // to_bytes() never returns None on unix
+    let p = try!(CString::new(p.to_bytes().unwrap()));
     unsafe {
         match libc::chdir(p.as_ptr()) == (0 as c_int) {
             true => Ok(()),
@@ -140,7 +143,8 @@ pub struct SplitPaths<'a> {
 
 pub fn split_paths<'a>(unparsed: &'a OsStr) -> SplitPaths<'a> {
     fn is_colon(b: &u8) -> bool { *b == b':' }
-    let unparsed = unparsed.as_bytes();
+    // to_bytes() never returns None on unix
+    let unparsed = unparsed.to_bytes().unwrap();
     SplitPaths {
         iter: unparsed.split(is_colon as fn(&u8) -> bool)
                       .map(bytes2path as fn(&'a [u8]) -> PathBuf)
@@ -163,7 +167,8 @@ pub fn join_paths<I, T>(paths: I) -> Result<OsString, JoinPathsError>
     let sep = b':';
 
     for (i, path) in paths.enumerate() {
-        let path = path.as_ref().as_bytes();
+        // to_bytes() never returns None on unix
+        let path = path.as_ref().to_bytes().unwrap();
         if i > 0 { joined.push(sep) }
         if path.contains(&sep) {
             return Err(JoinPathsError)
