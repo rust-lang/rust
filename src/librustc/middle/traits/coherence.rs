@@ -38,8 +38,7 @@ pub fn overlapping_impls(infcx: &InferCtxt,
            impl1_def_id,
            impl2_def_id);
 
-    let param_env = &infcx.tcx.empty_parameter_environment();
-    let selcx = &mut SelectionContext::intercrate(infcx, param_env);
+    let selcx = &mut SelectionContext::intercrate(infcx);
     infcx.probe(|_| {
         overlap(selcx, impl1_def_id, impl2_def_id) || overlap(selcx, impl2_def_id, impl1_def_id)
     })

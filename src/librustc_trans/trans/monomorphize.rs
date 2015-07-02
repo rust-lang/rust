@@ -322,11 +322,8 @@ pub fn normalize_associated_type<'tcx,T>(tcx: &ty::ctxt<'tcx>, value: &T) -> T
     }
 
     // FIXME(#20304) -- cache
-    // NOTE: @jroesch
-    // Here is of an example where we do not use a param_env but use a typer instead.
-    let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, None);
-    let typer = NormalizingClosureTyper::new(tcx);
-    let mut selcx = traits::SelectionContext::new(&infcx, &typer);
+    let infcx = infer::normalizing_infer_ctxt(tcx, &tcx.tables);
+    let mut selcx = traits::SelectionContext::new(&infcx);
     let cause = traits::ObligationCause::dummy();
     let traits::Normalized { value: result, obligations } =
         traits::normalize(&mut selcx, cause, &value);
@@ -335,7 +332,8 @@ pub fn normalize_associated_type<'tcx,T>(tcx: &ty::ctxt<'tcx>, value: &T) -> T
            result,
            obligations);
 
-    let mut fulfill_cx = traits::FulfillmentContext::new(true);
+    let mut fulfill_cx = infcx.fulfillment_cx.borrow_mut();
+
     for obligation in obligations {
         fulfill_cx.register_predicate_obligation(&infcx, obligation);
     }

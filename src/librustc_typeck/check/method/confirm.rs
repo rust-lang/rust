@@ -12,7 +12,6 @@ use super::probe;
 
 use check::{self, FnCtxt, NoPreference, PreferMutLvalue, callee, demand};
 use check::UnresolvedTypeAction;
-use middle::mem_categorization::Typer;
 use middle::subst::{self};
 use middle::traits;
 use middle::ty::{self, Ty};

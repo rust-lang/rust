@@ -37,10 +37,11 @@ use llvm;
 use metadata::{csearch, encoder, loader};
 use middle::astencode;
 use middle::cfg;
+use middle::infer;
 use middle::lang_items::{LangItem, ExchangeMallocFnLangItem, StartFnLangItem};
 use middle::weak_lang_items;
 use middle::subst::Substs;
-use middle::ty::{self, Ty, ClosureTyper, HasTypeFlags};
+use middle::ty::{self, Ty, HasTypeFlags};
 use rustc::ast_map;
 use session::config::{self, NoDebugInfo};
 use session::Session;
@@ -434,8 +435,8 @@ pub fn iter_structural_ty<'blk, 'tcx, F>(cx: Block<'blk, 'tcx>,
       }
       ty::TyClosure(def_id, substs) => {
           let repr = adt::represent_type(cx.ccx(), t);
-          let typer = common::NormalizingClosureTyper::new(cx.tcx());
-          let upvars = typer.closure_upvars(def_id, substs).unwrap();
+          let infcx = infer::normalizing_infer_ctxt(cx.tcx(), &cx.tcx().tables);
+          let upvars = infcx.closure_upvars(def_id, substs).unwrap();
           for (i, upvar) in upvars.iter().enumerate() {
               let llupvar = adt::trans_field_ptr(cx, &*repr, data_ptr, 0, i);
               cx = f(cx, llupvar, upvar.ty);

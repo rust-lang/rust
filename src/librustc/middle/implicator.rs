@@ -34,7 +34,6 @@ pub enum Implication<'tcx> {
 
 struct Implicator<'a, 'tcx: 'a> {
     infcx: &'a InferCtxt<'a,'tcx>,
-    closure_typer: &'a (ty::ClosureTyper<'tcx>+'a),
     body_id: ast::NodeId,
     stack: Vec<(ty::Region, Option<Ty<'tcx>>)>,
     span: Span,
@@ -46,7 +45,6 @@ struct Implicator<'a, 'tcx: 'a> {
 /// appear in a context with lifetime `outer_region`
 pub fn implications<'a,'tcx>(
     infcx: &'a InferCtxt<'a,'tcx>,
-    closure_typer: &ty::ClosureTyper<'tcx>,
     body_id: ast::NodeId,
     ty: Ty<'tcx>,
     outer_region: ty::Region,
@@ -60,8 +58,7 @@ pub fn implications<'a,'tcx>(
 
     let mut stack = Vec::new();
     stack.push((outer_region, None));
-    let mut wf = Implicator { closure_typer: closure_typer,
-                              infcx: infcx,
+    let mut wf = Implicator { infcx: infcx,
                               body_id: body_id,
                               span: span,
                               stack: stack,
@@ -404,7 +401,6 @@ impl<'a, 'tcx> Implicator<'a, 'tcx> {
     {
         let value =
             traits::fully_normalize(self.infcx,
-                                    self.closure_typer,
                                     traits::ObligationCause::misc(self.span, self.body_id),
                                     value);
         match value {

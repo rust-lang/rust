@@ -22,9 +22,6 @@ use middle::cfg;
 use middle::def;
 use middle::infer;
 use middle::lang_items::LangItem;
-use middle::mem_categorization as mc;
-use middle::mem_categorization::Typer;
-use middle::region;
 use middle::subst::{self, Substs};
 use trans::base;
 use trans::build;
@@ -47,7 +44,7 @@ use util::nodemap::{FnvHashMap, NodeMap};
 use arena::TypedArena;
 use libc::{c_uint, c_char};
 use std::ffi::CString;
-use std::cell::{Cell, RefCell, Ref};
+use std::cell::{Cell, RefCell};
 use std::result::Result as StdResult;
 use std::vec::Vec;
 use syntax::ast;
@@ -153,7 +150,7 @@ fn type_needs_drop_given_env<'a,'tcx>(cx: &ty::ctxt<'tcx>,
     // normalized version of the type, and therefore will definitely
     // know whether the type implements Copy (and thus needs no
     // cleanup/drop/zeroing) ...
-    let implements_copy = !param_env.type_moves_by_default(ty, DUMMY_SP);
+    let implements_copy = !ty.moves_by_default(param_env, DUMMY_SP);
 
     if implements_copy { return false; }
 
@@ -576,95 +573,6 @@ impl<'blk, 'tcx> BlockS<'blk, 'tcx> {
     }
 }
 
-impl<'blk, 'tcx> mc::Typer<'tcx> for BlockS<'blk, 'tcx> {
-    fn node_ty(&self, id: ast::NodeId) -> mc::McResult<Ty<'tcx>> {
-        Ok(node_id_type(self, id))
-    }
-
-    fn expr_ty_adjusted(&self, expr: &ast::Expr) -> mc::McResult<Ty<'tcx>> {
-        Ok(expr_ty_adjusted(self, expr))
-    }
-
-    fn node_method_ty(&self, method_call: ty::MethodCall) -> Option<Ty<'tcx>> {
-        self.tcx()
-            .tables
-            .borrow()
-            .method_map
-            .get(&method_call)
-            .map(|method| monomorphize_type(self, method.ty))
-    }
-
-    fn node_method_origin(&self, method_call: ty::MethodCall)
-                          -> Option<ty::MethodOrigin<'tcx>>
-    {
-        self.tcx()
-            .tables
-            .borrow()
-            .method_map
-            .get(&method_call)
-            .map(|method| method.origin.clone())
-    }
-
-    fn adjustments<'a>(&'a self) -> Ref<NodeMap<ty::AutoAdjustment<'tcx>>> {
-        // FIXME (@jroesch): this is becuase we currently have a HR inference problem
-        // in the snapshot that causes this code not to work.
-        fn project_adjustments<'a, 'tcx>(tables: &'a ty::Tables<'tcx>) ->
-            &'a NodeMap<ty::AutoAdjustment<'tcx>> {
-            &tables.adjustments
-        }
-
-        Ref::map(self.tcx().tables.borrow(), project_adjustments)
-    }
-
-    fn is_method_call(&self, id: ast::NodeId) -> bool {
-        self.tcx().tables.borrow().method_map.contains_key(&ty::MethodCall::expr(id))
-    }
-
-    fn temporary_scope(&self, rvalue_id: ast::NodeId) -> Option<region::CodeExtent> {
-        self.tcx().region_maps.temporary_scope(rvalue_id)
-    }
-
-    fn upvar_capture(&self, upvar_id: ty::UpvarId) -> Option<ty::UpvarCapture> {
-        Some(self.tcx().tables.borrow().upvar_capture_map.get(&upvar_id).unwrap().clone())
-    }
-
-    fn type_moves_by_default(&self, ty: Ty<'tcx>, span: Span) -> bool {
-        self.fcx.param_env.type_moves_by_default(ty, span)
-    }
-}
-
-impl<'blk, 'tcx> ty::ClosureTyper<'tcx> for BlockS<'blk, 'tcx> {
-    fn param_env<'a>(&'a self) -> &'a ty::ParameterEnvironment<'a, 'tcx> {
-        &self.fcx.param_env
-    }
-
-    fn closure_kind(&self,
-                    def_id: ast::DefId)
-                    -> Option<ty::ClosureKind>
-    {
-        let typer = NormalizingClosureTyper::new(self.tcx());
-        typer.closure_kind(def_id)
-    }
-
-    fn closure_type(&self,
-                    def_id: ast::DefId,
-                    substs: &subst::Substs<'tcx>)
-                    -> ty::ClosureTy<'tcx>
-    {
-        let typer = NormalizingClosureTyper::new(self.tcx());
-        typer.closure_type(def_id, substs)
-    }
-
-    fn closure_upvars(&self,
-                      def_id: ast::DefId,
-                      substs: &Substs<'tcx>)
-                      -> Option<Vec<ty::ClosureUpvar<'tcx>>>
-    {
-        let typer = NormalizingClosureTyper::new(self.tcx());
-        typer.closure_upvars(def_id, substs)
-    }
-}
-
 pub struct Result<'blk, 'tcx: 'blk> {
     pub bcx: Block<'blk, 'tcx>,
     pub val: ValueRef
@@ -957,12 +865,12 @@ pub fn fulfill_obligation<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
            trait_ref, trait_ref.def_id());
 
     tcx.populate_implementations_for_trait_if_necessary(trait_ref.def_id());
-    let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, None);
 
     // Do the initial selection for the obligation. This yields the
     // shallow result we are looking for -- that is, what specific impl.
-    let typer = NormalizingClosureTyper::new(tcx);
-    let mut selcx = traits::SelectionContext::new(&infcx, &typer);
+    let infcx = infer::normalizing_infer_ctxt(tcx, &tcx.tables);
+    let mut selcx = traits::SelectionContext::new(&infcx);
+
     let obligation =
         traits::Obligation::new(traits::ObligationCause::misc(span, ast::DUMMY_NODE_ID),
                                 trait_ref.to_poly_trait_predicate());
@@ -994,7 +902,7 @@ pub fn fulfill_obligation<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     // Currently, we use a fulfillment context to completely resolve
     // all nested obligations. This is because they can inform the
     // inference of the impl's type parameters.
-    let mut fulfill_cx = traits::FulfillmentContext::new(true);
+    let mut fulfill_cx = infcx.fulfillment_cx.borrow_mut();
     let vtable = selection.map(|predicate| {
         fulfill_cx.register_predicate_obligation(&infcx, predicate);
     });
@@ -1019,10 +927,9 @@ pub fn normalize_and_test_predicates<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
            predicates);
 
     let tcx = ccx.tcx();
-    let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, None);
-    let typer = NormalizingClosureTyper::new(tcx);
-    let mut selcx = traits::SelectionContext::new(&infcx, &typer);
-    let mut fulfill_cx = traits::FulfillmentContext::new(false);
+    let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, None, true);
+    let mut selcx = traits::SelectionContext::new(&infcx);
+    let mut fulfill_cx = infcx.fulfillment_cx.borrow_mut();
     let cause = traits::ObligationCause::dummy();
     let traits::Normalized { value: predicates, obligations } =
         traits::normalize(&mut selcx, cause.clone(), &predicates);
@@ -1034,57 +941,6 @@ pub fn normalize_and_test_predicates<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         fulfill_cx.register_predicate_obligation(&infcx, obligation);
     }
     drain_fulfillment_cx(&infcx, &mut fulfill_cx, &()).is_ok()
-}
-
-// NOTE: here is another use of parameter environment without an InferCtxt,
-// this is obviously related to the typer interface requiring a parameter env.
-// We should pay attention to this when refactoring
-// - @jroesch
-pub struct NormalizingClosureTyper<'a,'tcx:'a> {
-    param_env: ty::ParameterEnvironment<'a, 'tcx>
-}
-
-impl<'a,'tcx> NormalizingClosureTyper<'a,'tcx> {
-    pub fn new(tcx: &'a ty::ctxt<'tcx>) -> NormalizingClosureTyper<'a,'tcx> {
-        // Parameter environment is used to give details about type parameters,
-        // but since we are in trans, everything is fully monomorphized.
-        NormalizingClosureTyper { param_env: tcx.empty_parameter_environment() }
-    }
-}
-
-impl<'a,'tcx> ty::ClosureTyper<'tcx> for NormalizingClosureTyper<'a,'tcx> {
-    fn param_env<'b>(&'b self) -> &'b ty::ParameterEnvironment<'b,'tcx> {
-        &self.param_env
-    }
-
-    fn closure_kind(&self,
-                    def_id: ast::DefId)
-                    -> Option<ty::ClosureKind>
-    {
-        self.param_env.closure_kind(def_id)
-    }
-
-    fn closure_type(&self,
-                    def_id: ast::DefId,
-                    substs: &subst::Substs<'tcx>)
-                    -> ty::ClosureTy<'tcx>
-    {
-        // the substitutions in `substs` are already monomorphized,
-        // but we still must normalize associated types
-        let closure_ty = self.param_env.tcx.closure_type(def_id, substs);
-        monomorphize::normalize_associated_type(self.param_env.tcx, &closure_ty)
-    }
-
-    fn closure_upvars(&self,
-                      def_id: ast::DefId,
-                      substs: &Substs<'tcx>)
-                      -> Option<Vec<ty::ClosureUpvar<'tcx>>>
-    {
-        // the substitutions in `substs` are already monomorphized,
-        // but we still must normalize associated types
-        let result = self.param_env.closure_upvars(def_id, substs);
-        monomorphize::normalize_associated_type(self.param_env.tcx, &result)
-    }
 }
 
 pub fn drain_fulfillment_cx_or_panic<'a,'tcx,T>(span: Span,
@@ -1124,8 +980,7 @@ pub fn drain_fulfillment_cx<'a,'tcx,T>(infcx: &infer::InferCtxt<'a,'tcx>,
     // In principle, we only need to do this so long as `result`
     // contains unbound type parameters. It could be a slight
     // optimization to stop iterating early.
-    let typer = NormalizingClosureTyper::new(infcx.tcx);
-    match fulfill_cx.select_all_or_error(infcx, &typer) {
+    match fulfill_cx.select_all_or_error(infcx) {
         Ok(()) => { }
         Err(errors) => {
             return Err(errors);

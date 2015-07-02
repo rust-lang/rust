@@ -421,7 +421,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         // We can't use normalize_associated_types_in as it will pollute the
         // fcx's fulfillment context after this probe is over.
         let cause = traits::ObligationCause::misc(self.span, self.fcx.body_id);
-        let mut selcx = &mut traits::SelectionContext::new(self.fcx.infcx(), self.fcx.infcx());
+        let mut selcx = &mut traits::SelectionContext::new(self.fcx.infcx());
         let traits::Normalized { value: xform_self_ty, obligations } =
             traits::normalize(selcx, cause, &xform_self_ty);
         debug!("assemble_inherent_impl_probe: xform_self_ty = {:?}",
@@ -681,7 +681,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             // as it will pollute the fcx's fulfillment context after this probe
             // is over.
             let cause = traits::ObligationCause::misc(self.span, self.fcx.body_id);
-            let mut selcx = &mut traits::SelectionContext::new(self.fcx.infcx(), self.fcx.infcx());
+            let mut selcx = &mut traits::SelectionContext::new(self.fcx.infcx());
             let traits::Normalized { value: xform_self_ty, obligations } =
                 traits::normalize(selcx, cause, &xform_self_ty);
 
@@ -1076,7 +1076,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             match probe.kind {
                 InherentImplCandidate(impl_def_id, ref substs, ref ref_obligations) |
                 ExtensionImplCandidate(impl_def_id, _, ref substs, _, ref ref_obligations) => {
-                    let selcx = &mut traits::SelectionContext::new(self.infcx(), self.fcx.infcx());
+                    let selcx = &mut traits::SelectionContext::new(self.infcx());
                     let cause = traits::ObligationCause::misc(self.span, self.fcx.body_id);
 
                     // Check whether the impl imposes obligations we have to worry about.

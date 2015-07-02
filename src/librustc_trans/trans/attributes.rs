@@ -11,7 +11,8 @@
 
 use libc::{c_uint, c_ulonglong};
 use llvm::{self, ValueRef, AttrHelper};
-use middle::ty::{self, ClosureTyper};
+use middle::ty;
+use middle::infer;
 use session::config::NoDebugInfo;
 use syntax::abi;
 use syntax::ast;
@@ -145,8 +146,8 @@ pub fn from_fn_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_type: ty::Ty<'tcx
     let (fn_sig, abi, env_ty) = match fn_type.sty {
         ty::TyBareFn(_, ref f) => (&f.sig, f.abi, None),
         ty::TyClosure(closure_did, substs) => {
-            let typer = common::NormalizingClosureTyper::new(ccx.tcx());
-            function_type = typer.closure_type(closure_did, substs);
+            let infcx = infer::normalizing_infer_ctxt(ccx.tcx(), &ccx.tcx().tables);
+            function_type = infcx.closure_type(closure_did, substs);
             let self_type = base::self_type_for_closure(ccx, closure_did, fn_type);
             (&function_type.sig, abi::RustCall, Some(self_type))
         }

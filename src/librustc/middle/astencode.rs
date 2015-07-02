@@ -26,7 +26,6 @@ use metadata::tydecode::{RegionParameter, ClosureSource};
 use metadata::tyencode;
 use middle::cast;
 use middle::check_const::ConstQualif;
-use middle::mem_categorization::Typer;
 use middle::privacy::{AllPublic, LastMod};
 use middle::subst;
 use middle::subst::VecPerParamSpace;

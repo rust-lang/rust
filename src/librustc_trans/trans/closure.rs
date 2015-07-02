@@ -11,7 +11,7 @@
 use arena::TypedArena;
 use back::link::{self, mangle_internal_name_by_path_and_seq};
 use llvm::{ValueRef, get_params};
-use middle::mem_categorization::Typer;
+use middle::infer;
 use trans::adt;
 use trans::attributes;
 use trans::base::*;
@@ -25,7 +25,7 @@ use trans::declare;
 use trans::expr;
 use trans::monomorphize::{self, MonoId};
 use trans::type_of::*;
-use middle::ty::{self, ClosureTyper};
+use middle::ty;
 use middle::subst::Substs;
 use session::config::FullDebugInfo;
 
@@ -214,8 +214,9 @@ pub fn trans_closure_expr<'a, 'tcx>(dest: Dest<'a, 'tcx>,
     // takes the same set of type arguments as the enclosing fn, and
     // this function (`trans_closure`) is invoked at the point
     // of the closure expression.
-    let typer = NormalizingClosureTyper::new(tcx);
-    let function_type = typer.closure_type(closure_id, param_substs);
+
+    let infcx = infer::normalizing_infer_ctxt(ccx.tcx(), &ccx.tcx().tables);
+    let function_type = infcx.closure_type(closure_id, param_substs);
 
     let freevars: Vec<ty::Freevar> =
         tcx.with_freevars(id, |fv| fv.iter().cloned().collect());
@@ -358,7 +359,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
            ccx.tn().val_to_string(llreffn));
 
     let tcx = ccx.tcx();
-    let typer = NormalizingClosureTyper::new(tcx);
+    let infcx = infer::normalizing_infer_ctxt(ccx.tcx(), &ccx.tcx().tables);
 
     // Find a version of the closure type. Substitute static for the
     // region since it doesn't really matter.
@@ -367,7 +368,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     let ref_closure_ty = tcx.mk_imm_ref(tcx.mk_region(ty::ReStatic), closure_ty);
 
     // Make a version with the type of by-ref closure.
-    let ty::ClosureTy { unsafety, abi, mut sig } = typer.closure_type(closure_def_id, substs);
+    let ty::ClosureTy { unsafety, abi, mut sig } = infcx.closure_type(closure_def_id, substs);
     sig.0.inputs.insert(0, ref_closure_ty); // sig has no self type as of yet
     let llref_bare_fn_ty = tcx.mk_bare_fn(ty::BareFnTy { unsafety: unsafety,
                                                                abi: abi,

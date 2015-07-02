@@ -30,7 +30,6 @@ use rustc::middle::dataflow::KillFrom;
 use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::free_region::FreeRegionMap;
 use rustc::middle::mem_categorization as mc;
-use rustc::middle::mem_categorization::Typer;
 use rustc::middle::region;
 use rustc::middle::ty::{self, Ty};
 
@@ -747,7 +746,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                                     -> (&'static str, &'static str) {
             match ty.sty {
                 _ => {
-                    if param_env.type_moves_by_default(ty, span) {
+                    if ty.moves_by_default(param_env, span) {
                         ("non-copyable",
                          "perhaps you meant to use `clone()`?")
                     } else {

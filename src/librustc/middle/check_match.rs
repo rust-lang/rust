@@ -20,7 +20,8 @@ use middle::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor, Init};
 use middle::expr_use_visitor::{JustWrite, LoanCause, MutateMode};
 use middle::expr_use_visitor::WriteAndRead;
 use middle::expr_use_visitor as euv;
-use middle::mem_categorization::{cmt, Typer};
+use middle::infer;
+use middle::mem_categorization::{cmt};
 use middle::pat_util::*;
 use middle::ty::*;
 use middle::ty;
@@ -1111,7 +1112,12 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
                 match p.node {
                     ast::PatIdent(ast::BindByValue(_), _, ref sub) => {
                         let pat_ty = tcx.node_id_to_type(p.id);
-                        if cx.param_env.type_moves_by_default(pat_ty, pat.span) {
+                        //FIXME: (@jroesch) this code should be floated up as well
+                        let infcx = infer::new_infer_ctxt(cx.tcx,
+                                                          &cx.tcx.tables,
+                                                          Some(cx.param_env.clone()),
+                                                          false);
+                        if infcx.type_moves_by_default(pat_ty, pat.span) {
                             check_move(p, sub.as_ref().map(|p| &**p));
                         }
                     }
@@ -1139,8 +1145,13 @@ fn check_for_mutation_in_guard<'a, 'tcx>(cx: &'a MatchCheckCtxt<'a, 'tcx>,
     let mut checker = MutationChecker {
         cx: cx,
     };
-    let mut visitor = ExprUseVisitor::new(&mut checker,
-                                          &checker.cx.param_env);
+
+    let infcx = infer::new_infer_ctxt(cx.tcx,
+                                      &cx.tcx.tables,
+                                      Some(checker.cx.param_env.clone()),
+                                      false);
+
+    let mut visitor = ExprUseVisitor::new(&mut checker, &infcx);
     visitor.walk_expr(guard);
 }
 

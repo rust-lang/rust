@@ -43,8 +43,8 @@ pub fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
     debug!("compare_impl_method: impl_trait_ref (liberated) = {:?}",
            impl_trait_ref);
 
-    let mut infcx = infer::new_infer_ctxt(tcx, &tcx.tables, None);
-    let mut fulfillment_cx = traits::FulfillmentContext::new(true);
+    let mut infcx = infer::new_infer_ctxt(tcx, &tcx.tables, None, true);
+    let mut fulfillment_cx = infcx.fulfillment_cx.borrow_mut();
 
     let trait_to_impl_substs = &impl_trait_ref.substs;
 
@@ -246,7 +246,7 @@ pub fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
     debug!("compare_impl_method: trait_bounds={:?}",
         infcx.parameter_environment.caller_bounds);
 
-    let mut selcx = traits::SelectionContext::new(&infcx, &infcx.parameter_environment);
+    let mut selcx = traits::SelectionContext::new(&infcx);
 
     for predicate in impl_pred.fns {
         let traits::Normalized { value: predicate, .. } =
@@ -293,7 +293,6 @@ pub fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
             impl_sig.subst(tcx, impl_to_skol_substs);
         let impl_sig =
             assoc::normalize_associated_types_in(&infcx,
-                                                 &impl_param_env,
                                                  &mut fulfillment_cx,
                                                  impl_m_span,
                                                  impl_m_body_id,
@@ -312,7 +311,6 @@ pub fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
             trait_sig.subst(tcx, &trait_to_skol_substs);
         let trait_sig =
             assoc::normalize_associated_types_in(&infcx,
-                                                 &impl_param_env,
                                                  &mut fulfillment_cx,
                                                  impl_m_span,
                                                  impl_m_body_id,
@@ -347,7 +345,7 @@ pub fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
 
     // Check that all obligations are satisfied by the implementation's
     // version.
-    match fulfillment_cx.select_all_or_error(&infcx, &infcx.parameter_environment) {
+    match fulfillment_cx.select_all_or_error(&infcx) {
         Err(ref errors) => { traits::report_fulfillment_errors(&infcx, errors) }
         Ok(_) => {}
     }
@@ -419,8 +417,8 @@ pub fn compare_const_impl<'tcx>(tcx: &ty::ctxt<'tcx>,
     debug!("compare_const_impl(impl_trait_ref={:?})",
            impl_trait_ref);
 
-    let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, None);
-    let mut fulfillment_cx = traits::FulfillmentContext::new(true);
+    let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, None, true);
+    let mut fulfillment_cx = infcx.fulfillment_cx.borrow_mut();
 
     // The below is for the most part highly similar to the procedure
     // for methods above. It is simpler in many respects, especially
@@ -456,21 +454,21 @@ pub fn compare_const_impl<'tcx>(tcx: &ty::ctxt<'tcx>,
         // There is no "body" here, so just pass dummy id.
         let impl_ty =
             assoc::normalize_associated_types_in(&infcx,
-                                                 &impl_param_env,
                                                  &mut fulfillment_cx,
                                                  impl_c_span,
                                                  0,
                                                  &impl_ty);
+
         debug!("compare_const_impl: impl_ty={:?}",
                impl_ty);
 
         let trait_ty =
             assoc::normalize_associated_types_in(&infcx,
-                                                 &impl_param_env,
                                                  &mut fulfillment_cx,
                                                  impl_c_span,
                                                  0,
                                                  &trait_ty);
+
         debug!("compare_const_impl: trait_ty={:?}",
                trait_ty);
 
