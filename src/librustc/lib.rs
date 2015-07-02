@@ -62,6 +62,7 @@
 #![feature(vec_push_all)]
 #![feature(wrapping)]
 #![feature(cell_extras)]
+#![feature(page_size)]
 #![cfg_attr(test, feature(test))]
 
 #![allow(trivial_casts)]
