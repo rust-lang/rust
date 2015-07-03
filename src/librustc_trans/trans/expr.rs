@@ -1947,15 +1947,8 @@ fn trans_overloaded_op<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                    dest: Option<Dest>,
                                    autoref: bool)
                                    -> Result<'blk, 'tcx> {
-    let method_ty = bcx.tcx()
-                       .tables
-                       .borrow()
-                       .method_map
-                       .get(&method_call).unwrap().ty;
-
     callee::trans_call_inner(bcx,
                              expr.debug_loc(),
-                             monomorphize_type(bcx, method_ty),
                              |bcx, arg_cleanup_scope| {
                                 meth::trans_method_callee(bcx,
                                                           method_call,
@@ -1974,20 +1967,11 @@ fn trans_overloaded_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                          -> Block<'blk, 'tcx> {
     debug!("trans_overloaded_call {}", expr.id);
     let method_call = MethodCall::expr(expr.id);
-    let method_type = bcx.tcx()
-                         .tables
-                         .borrow()
-                         .method_map
-                         .get(&method_call)
-                         .unwrap()
-                         .ty;
     let mut all_args = vec!(callee);
     all_args.extend(args.iter().map(|e| &**e));
     unpack_result!(bcx,
                    callee::trans_call_inner(bcx,
                                             expr.debug_loc(),
-                                            monomorphize_type(bcx,
-                                                              method_type),
                                             |bcx, arg_cleanup_scope| {
                                                 meth::trans_method_callee(
                                                     bcx,

@@ -429,12 +429,13 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     let callee_data = TraitItem(MethodData { llfn: llreffn,
                                              llself: env_datum.val });
 
-    bcx = callee::trans_call_inner(bcx,
-                                   DebugLoc::None,
-                                   llref_fn_ty,
-                                   |bcx, _| Callee { bcx: bcx, data: callee_data },
-                                   ArgVals(&llargs[(self_idx + 1)..]),
-                                   dest).bcx;
+    bcx = callee::trans_call_inner(bcx, DebugLoc::None, |bcx, _| {
+        Callee {
+            bcx: bcx,
+            data: callee_data,
+            ty: llref_fn_ty
+        }
+    }, ArgVals(&llargs[(self_idx + 1)..]), dest).bcx;
 
     fcx.pop_custom_cleanup_scope(self_scope);
 

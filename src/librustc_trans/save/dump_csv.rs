@@ -892,7 +892,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
             ty::MethodOrigin::Inherent => {
                 (Some(method_callee.def_id), None)
             }
-            ty::MethodOrigin::Trait | ty::MethodOrigin::Object(_) => {
+            ty::MethodOrigin::Trait => {
                 (None, Some(method_callee.def_id))
             }
         };

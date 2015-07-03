@@ -230,11 +230,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                            trait_def_id);
                     let substs = upcast_trait_ref.substs.clone();
 
-                    let vtable_index =
-                        traits::get_vtable_index_of_object_method(this.tcx(),
-                                                                  original_poly_trait_ref,
-                                                                  pick.item.def_id());
-                    (substs, ty::MethodOrigin::Object(vtable_index))
+                    (substs, ty::MethodOrigin::Trait)
                 })
             }
 
