@@ -545,12 +545,12 @@ pub enum bckerr_code {
 #[derive(PartialEq)]
 pub struct BckError<'tcx> {
     span: Span,
-    cause: euv::LoanCause,
+    cause: AliasableViolationKind,
     cmt: mc::cmt<'tcx>,
     code: bckerr_code
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum AliasableViolationKind {
     MutabilityViolation,
     BorrowViolation(euv::LoanCause)
@@ -575,8 +575,10 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
     pub fn report(&self, err: BckError<'tcx>) {
         // Catch and handle some particular cases.
         match (&err.code, &err.cause) {
-            (&err_out_of_scope(ty::ReScope(_), ty::ReStatic), &euv::ClosureCapture(span)) |
-            (&err_out_of_scope(ty::ReScope(_), ty::ReFree(..)), &euv::ClosureCapture(span)) => {
+            (&err_out_of_scope(ty::ReScope(_), ty::ReStatic),
+             &BorrowViolation(euv::ClosureCapture(span))) |
+            (&err_out_of_scope(ty::ReScope(_), ty::ReFree(..)),
+             &BorrowViolation(euv::ClosureCapture(span))) => {
                 return self.report_out_of_scope_escaping_closure_capture(&err, span);
             }
             _ => { }
@@ -795,10 +797,6 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
         self.tcx.sess.span_end_note(s, m);
     }
 
-    pub fn span_help(&self, s: Span, m: &str) {
-        self.tcx.sess.span_help(s, m);
-    }
-
     pub fn fileline_help(&self, s: Span, m: &str) {
         self.tcx.sess.fileline_help(s, m);
     }
@@ -826,19 +824,22 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 };
 
                 match err.cause {
-                    euv::ClosureCapture(_) => {
+                    MutabilityViolation => {
+                        format!("cannot assign to {}", descr)
+                    }
+                    BorrowViolation(euv::ClosureCapture(_)) => {
                         format!("closure cannot assign to {}", descr)
                     }
-                    euv::OverloadedOperator |
-                    euv::AddrOf |
-                    euv::RefBinding |
-                    euv::AutoRef |
-                    euv::AutoUnsafe |
-                    euv::ForLoop |
-                    euv::MatchDiscriminant => {
+                    BorrowViolation(euv::OverloadedOperator) |
+                    BorrowViolation(euv::AddrOf) |
+                    BorrowViolation(euv::RefBinding) |
+                    BorrowViolation(euv::AutoRef) |
+                    BorrowViolation(euv::AutoUnsafe) |
+                    BorrowViolation(euv::ForLoop) |
+                    BorrowViolation(euv::MatchDiscriminant) => {
                         format!("cannot borrow {} as mutable", descr)
                     }
-                    euv::ClosureInvocation => {
+                    BorrowViolation(euv::ClosureInvocation) => {
                         self.tcx.sess.span_bug(err.span,
                             "err_mutbl with a closure invocation");
                     }

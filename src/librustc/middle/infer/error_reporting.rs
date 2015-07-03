@@ -1854,7 +1854,7 @@ impl LifeGiver {
     }
 
     fn give_lifetime(&self) -> ast::Lifetime {
-        let mut lifetime;
+        let lifetime;
         loop {
             let mut s = String::from("'");
             s.push_str(&num_to_string(self.counter.get()));
