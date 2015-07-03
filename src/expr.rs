@@ -287,13 +287,14 @@ fn rewrite_binary_op(context: &RewriteContext,
     let operator_str = context.codemap.span_to_snippet(op.span).unwrap();
 
     // 1 = space between lhs expr and operator
-    let mut result = try_opt!(lhs.rewrite(context, width - 1 - operator_str.len(), offset));
+    let mut result =
+        try_opt!(lhs.rewrite(context, context.config.max_width - offset - 1 - operator_str.len(), offset));
 
     result.push(' ');
     result.push_str(&operator_str);
 
     let remaining_width = match result.rfind('\n') {
-        Some(idx) => (context.config.max_width + idx).checked_sub(result.len()).unwrap_or(0),
+        Some(idx) => (offset + width + idx).checked_sub(result.len()).unwrap_or(0),
         None => width.checked_sub(result.len()).unwrap_or(0)
     };
 
@@ -302,7 +303,9 @@ fn rewrite_binary_op(context: &RewriteContext,
     // operations with high precendence close together.
     let rhs_result = try_opt!(rhs.rewrite(context, width, offset));
 
-    if rhs_result.len() > remaining_width {
+    // Second condition is needed in case of line break not caused by a
+    // shortage of space, but by end-of-line comments, for example.
+    if rhs_result.len() > remaining_width || rhs_result.contains('\n') {
         result.push('\n');
         result.push_str(&make_indent(offset));
     } else {

@@ -10,5 +10,8 @@ fn foo() -> bool {
 
     some_ridiculously_loooooooooooooooooooooong_function(10000 * 30000000000 +
                                                          40000 / 1002200000000 - 50000 * sqrt(-1),
-                                                         trivial_value)
+                                                         trivial_value);
+    (((((((((aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa +
+             a + aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa +
+             aaaaa)))))))))
 }
