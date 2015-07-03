@@ -355,7 +355,7 @@ fn trans_struct_drop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         let ty = Type::from_ref(llvm::LLVMTypeOf(dtor_addr));
         ty.element_type().func_params()
     };
-    assert_eq!(params.len(), 1);
+    assert_eq!(params.len(), if type_is_sized(bcx.tcx(), t) { 1 } else { 2 });
 
     // Be sure to put the contents into a scope so we can use an invoke
     // instruction to call the user destructor but still call the field
@@ -371,7 +371,12 @@ fn trans_struct_drop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     let glue_type = get_drop_glue_type(bcx.ccx(), t);
     let dtor_ty = bcx.tcx().mk_ctor_fn(class_did, &[glue_type], bcx.tcx().mk_nil());
-    let (_, bcx) = invoke(bcx, dtor_addr, &[v0], dtor_ty, DebugLoc::None);
+    let (_, bcx) = if type_is_sized(bcx.tcx(), t) {
+        invoke(bcx, dtor_addr, &[v0], dtor_ty, DebugLoc::None)
+    } else {
+        let args = [Load(bcx, expr::get_dataptr(bcx, v0)), Load(bcx, expr::get_len(bcx, v0))];
+        invoke(bcx, dtor_addr, &args, dtor_ty, DebugLoc::None)
+    };
 
     bcx.fcx.pop_and_trans_custom_cleanup_scope(bcx, contents_scope)
 }
