@@ -411,6 +411,24 @@ fn main() {
 See also https://doc.rust-lang.org/book/unsafe.html
 "##,
 
+E0134: r##"
+You tried to modify the str type, which isn't allowed. Erroneous code
+example:
+
+```
+let s = "salut";
+let c = &mut s[0..1]; // error: modification of string types is not
+                      //        allowed
+```
+
+I you want to modify an str, please use the String type. Example:
+
+```
+let mut s = "salut";
+let mut c = s[0..1].to_owned(); // ok!
+```
+"##,
+
 E0135: r##"
 You tried to modify the str type, which isn't allowed. Erroneous code
 example:
@@ -421,7 +439,7 @@ let c = &mut (*s)[0..1]; // error: modification of string types is not
                          //        allowed
 ```
 
-I you want to modify an str, please use the String type. Example:
+If you want to modify an str, please use the String type. Example:
 
 ```
 let mut s = "salut";
