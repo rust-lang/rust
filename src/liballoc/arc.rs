@@ -211,7 +211,7 @@ impl<T: ?Sized> Arc<T> {
                reason = "Weak pointers may not belong in this module.")]
     pub fn downgrade(&self) -> Weak<T> {
         loop {
-            // This Relaaxed is OK because we're checking the value in the CAS
+            // This Relaxed is OK because we're checking the value in the CAS
             // below.
             let cur = self.inner().weak.load(Relaxed);
 
