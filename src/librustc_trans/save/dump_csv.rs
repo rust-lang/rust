@@ -308,7 +308,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
 
         debug!("process_method: {}:{}", id, token::get_name(name));
 
-        let mut scope_id;
+        let scope_id;
         // The qualname for a method is the trait name or name of the struct in an impl in
         // which the method is declared in, followed by the method's name.
         let qualname = match self.tcx.impl_of_method(ast_util::local_def(id)) {

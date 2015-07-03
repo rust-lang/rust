@@ -183,7 +183,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for CheckLoanCtxt<'a, 'tcx> {
             None => { }
         }
 
-        self.check_assignment(assignment_id, assignment_span, assignee_cmt, mode);
+        self.check_assignment(assignment_id, assignment_span, assignee_cmt);
     }
 
     fn decl_without_init(&mut self, _id: ast::NodeId, _span: Span) { }
@@ -567,13 +567,6 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
         true
     }
 
-    fn is_local_variable_or_arg(&self, cmt: mc::cmt<'tcx>) -> bool {
-        match cmt.cat {
-          mc::cat_local(_) => true,
-          _ => false
-        }
-    }
-
     fn consume_common(&self,
                       id: ast::NodeId,
                       span: Span,
@@ -791,202 +784,35 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
     fn check_assignment(&self,
                         assignment_id: ast::NodeId,
                         assignment_span: Span,
-                        assignee_cmt: mc::cmt<'tcx>,
-                        mode: euv::MutateMode) {
+                        assignee_cmt: mc::cmt<'tcx>) {
         debug!("check_assignment(assignee_cmt={:?})", assignee_cmt);
 
-        // Mutable values can be assigned, as long as they obey loans
-        // and aliasing restrictions:
-        if assignee_cmt.mutbl.is_mutable() {
-            if check_for_aliasable_mutable_writes(self, assignment_span, assignee_cmt.clone()) {
-                if mode != euv::Init {
-                    check_for_assignment_to_borrowed_path(
-                        self, assignment_id, assignment_span, assignee_cmt.clone());
-                    mark_variable_as_used_mut(self, assignee_cmt);
-                }
-            }
-
-            return;
+        // Check that we don't invalidate any outstanding loans
+        if let Some(loan_path) = opt_loan_path(&assignee_cmt) {
+            let scope = region::CodeExtent::from_node_id(assignment_id);
+            self.each_in_scope_loan_affecting_path(scope, &*loan_path, |loan| {
+                self.report_illegal_mutation(assignment_span, &*loan_path, loan);
+                false
+            });
         }
 
-        // Initializations are OK if and only if they aren't partial
-        // reinitialization of a partially-uninitialized structure.
-        if mode == euv::Init {
-            return
-        }
-
-        // For immutable local variables, assignments are legal
-        // if they cannot already have been assigned
-        if self.is_local_variable_or_arg(assignee_cmt.clone()) {
-            assert!(assignee_cmt.mutbl.is_immutable()); // no "const" locals
+        // Check for reassignments to (immutable) local variables. This
+        // needs to be done here instead of in check_loans because we
+        // depend on move data.
+        if let mc::cat_local(local_id) = assignee_cmt.cat {
             let lp = opt_loan_path(&assignee_cmt).unwrap();
             self.move_data.each_assignment_of(assignment_id, &lp, |assign| {
-                self.bccx.report_reassigned_immutable_variable(
-                    assignment_span,
-                    &*lp,
-                    assign);
-                false
-            });
-            return;
-        }
-
-        // Otherwise, just a plain error.
-        match assignee_cmt.note {
-            mc::NoteClosureEnv(upvar_id) => {
-                // If this is an `Fn` closure, it simply can't mutate upvars.
-                // If it's an `FnMut` closure, the original variable was declared immutable.
-                // We need to determine which is the case here.
-                let kind = match assignee_cmt.upvar().unwrap().cat {
-                    mc::cat_upvar(mc::Upvar { kind, .. }) => kind,
-                    _ => unreachable!()
-                };
-                if kind == ty::FnClosureKind {
-                    self.bccx.span_err(
-                        assignment_span,
-                        &format!("cannot assign to {}",
-                                self.bccx.cmt_to_string(&*assignee_cmt)));
-                    self.bccx.span_help(
-                        self.tcx().map.span(upvar_id.closure_expr_id),
-                        "consider changing this closure to take self by mutable reference");
+                if assignee_cmt.mutbl.is_mutable() {
+                    self.tcx().used_mut_nodes.borrow_mut().insert(local_id);
                 } else {
-                    self.bccx.span_err(
+                    self.bccx.report_reassigned_immutable_variable(
                         assignment_span,
-                        &format!("cannot assign to {} {}",
-                                assignee_cmt.mutbl.to_user_str(),
-                                self.bccx.cmt_to_string(&*assignee_cmt)));
+                        &*lp,
+                        assign);
                 }
-            }
-            _ => match opt_loan_path(&assignee_cmt) {
-                Some(lp) => {
-                    self.bccx.span_err(
-                        assignment_span,
-                        &format!("cannot assign to {} {} `{}`",
-                                assignee_cmt.mutbl.to_user_str(),
-                                self.bccx.cmt_to_string(&*assignee_cmt),
-                                self.bccx.loan_path_to_string(&*lp)));
-                }
-                None => {
-                    self.bccx.span_err(
-                        assignment_span,
-                        &format!("cannot assign to {} {}",
-                                assignee_cmt.mutbl.to_user_str(),
-                                self.bccx.cmt_to_string(&*assignee_cmt)));
-                }
-            }
-        }
-        return;
-
-        fn mark_variable_as_used_mut<'a, 'tcx>(this: &CheckLoanCtxt<'a, 'tcx>,
-                                               mut cmt: mc::cmt<'tcx>) {
-            //! If the mutability of the `cmt` being written is inherited
-            //! from a local variable, liveness will
-            //! not have been able to detect that this variable's mutability
-            //! is important, so we must add the variable to the
-            //! `used_mut_nodes` table here.
-
-            loop {
-                debug!("mark_variable_as_used_mut(cmt={:?})", cmt);
-                match cmt.cat.clone() {
-                    mc::cat_upvar(mc::Upvar { id: ty::UpvarId { var_id: id, .. }, .. }) |
-                    mc::cat_local(id) => {
-                        this.tcx().used_mut_nodes.borrow_mut().insert(id);
-                        return;
-                    }
-
-                    mc::cat_rvalue(..) |
-                    mc::cat_static_item |
-                    mc::cat_deref(_, _, mc::UnsafePtr(..)) |
-                    mc::cat_deref(_, _, mc::Implicit(..)) => {
-                        assert_eq!(cmt.mutbl, mc::McDeclared);
-                        return;
-                    }
-
-                    mc::cat_deref(_, _, mc::BorrowedPtr(..)) => {
-                        assert_eq!(cmt.mutbl, mc::McDeclared);
-                        // We need to drill down to upvar if applicable
-                        match cmt.upvar() {
-                            Some(b) => cmt = b,
-                            None => return
-                        }
-                    }
-
-                    mc::cat_deref(b, _, mc::Unique) => {
-                        assert_eq!(cmt.mutbl, mc::McInherited);
-                        cmt = b;
-                    }
-
-                    mc::cat_downcast(b, _) |
-                    mc::cat_interior(b, _) => {
-                        assert_eq!(cmt.mutbl, mc::McInherited);
-                        cmt = b;
-                    }
-                }
-            }
-        }
-
-        fn check_for_aliasable_mutable_writes<'a, 'tcx>(this: &CheckLoanCtxt<'a, 'tcx>,
-                                                        span: Span,
-                                                        cmt: mc::cmt<'tcx>) -> bool {
-            //! Safety checks related to writes to aliasable, mutable locations
-
-            let guarantor = cmt.guarantor();
-            debug!("check_for_aliasable_mutable_writes(cmt={:?}, guarantor={:?})",
-                   cmt, guarantor);
-            if let mc::cat_deref(ref b, _, mc::BorrowedPtr(ty::MutBorrow, _)) = guarantor.cat {
-                // Statically prohibit writes to `&mut` when aliasable
-                check_for_aliasability_violation(this, span, b.clone());
-            }
-
-            return true; // no errors reported
-        }
-
-        fn check_for_aliasability_violation<'a, 'tcx>(this: &CheckLoanCtxt<'a, 'tcx>,
-                                                      span: Span,
-                                                      cmt: mc::cmt<'tcx>)
-                                                      -> bool {
-            match cmt.freely_aliasable(this.tcx()) {
-                mc::Aliasability::NonAliasable => {
-                    return true;
-                }
-                mc::Aliasability::FreelyAliasable(mc::AliasableStaticMut(..)) => {
-                    return true;
-                }
-                mc::Aliasability::ImmutableUnique(_) => {
-                    this.bccx.report_aliasability_violation(
-                        span,
-                        MutabilityViolation,
-                        mc::AliasableReason::UnaliasableImmutable);
-                    return false;
-                }
-                mc::Aliasability::FreelyAliasable(cause) => {
-                    this.bccx.report_aliasability_violation(
-                        span,
-                        MutabilityViolation,
-                        cause);
-                    return false;
-                }
-            }
-        }
-
-        fn check_for_assignment_to_borrowed_path<'a, 'tcx>(
-            this: &CheckLoanCtxt<'a, 'tcx>,
-            assignment_id: ast::NodeId,
-            assignment_span: Span,
-            assignee_cmt: mc::cmt<'tcx>)
-        {
-            //! Check for assignments that violate the terms of an
-            //! outstanding loan.
-
-            let loan_path = match opt_loan_path(&assignee_cmt) {
-                Some(lp) => lp,
-                None => { return; /* no loan path, can't be any loans */ }
-            };
-
-            let scope = region::CodeExtent::from_node_id(assignment_id);
-            this.each_in_scope_loan_affecting_path(scope, &*loan_path, |loan| {
-                this.report_illegal_mutation(assignment_span, &*loan_path, loan);
                 false
             });
+            return
         }
     }
 

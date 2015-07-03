@@ -137,7 +137,7 @@ impl<'a, 'tcx> GuaranteeLifetimeContext<'a, 'tcx> {
     fn report_error(&self, code: bckerr_code) {
         self.bccx.report(BckError { cmt: self.cmt_original.clone(),
                                     span: self.span,
-                                    cause: self.cause,
+                                    cause: BorrowViolation(self.cause),
                                     code: code });
     }
 }
