@@ -2,106 +2,360 @@
 
 Ownership is the breakout feature of Rust. It allows Rust to be completely
 memory-safe and efficient, while avoiding garbage collection. Before getting
-into the ownership system in detail, we will consider a simple but *fundamental*
-language-design problem.
+into the ownership system in detail, we will consider the motivation of this
+design.
+
+TODO: Interior Mutability section
 
 
 
-# The Tagged Union Problem
 
-TODO: rewrite this to use Box instead?
+# Living Without Garbage Collection
 
-The core of the lifetime and mutability system derives from a simple problem:
-internal pointers to tagged unions. For instance, consider the following code:
+We will assume that you accept that garbage collection is not always an optimal
+solution, and that it is desirable to manually manage memory to some extent.
+If you do not accept this, might I interest you in a different language?
 
-```rust
-enum Foo {
-    A(u32),
-    B(f64),
-}
+Regardless of your feelings on GC, it is pretty clearly a *massive* boon to
+making code safe. You never have to worry about things going away *too soon*
+(although whether you still *wanted* to be pointing at that thing is a different
+issue...). This is a pervasive problem that C and C++ need to deal with.
+Consider this simple mistake that all of us who have used a non-GC'd language
+have made at one point:
 
-let mut x = B(2.0);
-if let B(ref mut y) = x {
-    *x = A(7);
-    // OH NO! a u32 has been interpretted as an f64! Type-safety hole!
-    // (this does not actually compile)
-    println!("{}", y);
+```rust,ignore
+fn as_str(data: &u32) -> &str {
+    // compute the string
+    let s = format!("{}", data);
 
+    // OH NO! We returned a reference to something that
+    // exists only in this function!
+    // Dangling pointer! Use after free! Alas!
+    // (this does not compile in Rust)
+    &s
 }
 ```
 
-The problem here is an intersection of 3 choices:
+This is exactly what Rust's ownership system was built to solve.
+Rust knows the scope in which the `&s` lives, and as such can prevent it from
+escaping. However this is a simple case that even a C compiler could plausibly
+catch. Things get more complicated as code gets bigger and pointers get fed through
+various functions. Eventually, a C compiler will fall down and won't be able to
+perform sufficient escape analysis to prove your code unsound. It will consequently
+be forced to accept your program on the assumption that it is correct.
 
-* data in a tagged union is inline with the tag
-* tagged unions are mutable
-* being able to take a pointer into a tagged union
+This will never happen to Rust. It's up to the programmer to prove to the
+compiler that everything is sound.
 
-Remove *any* of these 3 and the problem goes away. Traditionally, functional
-languages have avoided this problem by removing the mutable
-option. This means that they can in principle keep their data inline (ghc has
-a pragma for this). A garbage collected imperative language like Java could alternatively
-solve this problem by just keeping all variants elsewhere, so that changing the
-variant of a tagged union just overwrites a pointer, and anyone with an outstanding
-pointer to the inner data is unaffected thanks to The Magic Of Garbage Collection.
+Of course, rust's story around ownership is much more complicated than just
+verifying that references don't escape the scope of their referrent. That's
+because ensuring pointers are always valid is much more complicated than this.
+For instance in this code,
 
-Rust, by contrast, takes a subtler approach. Rust allows mutation,
-allows pointers to inner data, and its enums have their data allocated inline.
-However it prevents anything from being mutated while there are outstanding
-pointers to it! And this is all done at compile time.
+```rust,ignore
+let mut data = vec![1, 2, 3];
+// get an internal reference
+let x = &data[0];
 
-Interestingly, Rust's `std::cell` module exposes two types that offer an alternative
-approach to this problem:
+// OH NO! `push` causes the backing storage of `data` to be reallocated.
+// Dangling pointer! User after free! Alas!
+// (this does not compile in Rust)
+data.push(4);
 
-* The `Cell` type allows mutation of aliased data, but
-instead forbids internal pointers to that data. The only way to read or write
-a Cell is to copy the bits in or out.
+println!("{}", x);
+```
 
-* The `RefCell` type allows mutation of aliased data *and* internal pointers, but
-manages this through *runtime* checks. It is effectively a thread-unsafe
-read-write lock.
+naive scope analysis would be insufficient to prevent this bug, because `data`
+does in fact live as long as we needed. However it was *changed* while we had
+a reference into it. This is why Rust requires any references to freeze the
+referrent and its owners.
 
-For more details see Dan Grossman's *Existential Types for Imperative Languages*:
 
-* [paper][grossman-paper] (Advanced)
-* [slides][grossman-slides] (Simple)
 
-[grossman-paper]: http://homes.cs.washington.edu/~djg/papers/exists_imp.pdf
-[grossman-slides]: https://homes.cs.washington.edu/~djg/slides/esop02_talk.pdf
+# References
+
+There are two kinds of reference:
+
+* Shared reference: `&`
+* Mutable reference: `&mut`
+
+Which obey the following rules:
+
+* A reference cannot outlive its referrent
+* A mutable reference cannot be aliased
+
+To define aliasing, we must define the notion of *paths* and *liveness*.
+
+
+
+
+## Paths
+
+If all Rust had were values, then every value would be uniquely owned
+by a variable or composite structure. From this we naturally derive a *tree*
+of ownership. The stack itself is the root of the tree, with every variable
+as its direct children. Each variable's direct children would be their fields
+(if any), and so on.
+
+From this view, every value in Rust has a unique *path* in the tree of ownership.
+References to a value can subsequently be interpretted as a path in this tree.
+Of particular interest are *prefixes*: `x` is a prefix of `y` if `x` owns `y`
+
+However much data doesn't reside on the stack, and we must also accomodate this.
+Globals and thread-locals are simple enough to model as residing at the bottom
+of the stack. However data on the heap poses a different problem.
+
+If all Rust had on the heap was data uniquely by a pointer on the stack,
+then we can just treat that pointer as a struct that owns the value on
+the heap. Box, Vec, String, and HashMap, are examples of types which uniquely
+own data on the heap.
+
+Unfortunately, data on the heap is not *always* uniquely owned. Rc for instance
+introduces a notion of *shared* ownership. Shared ownership means there is no
+unique path. A value with no unique path limits what we can do with it. In general, only
+shared references can be created to these values. However mechanisms which ensure
+mutual exclusion may establish One True Owner temporarily, establishing a unique path
+to that value (and therefore all its children).
+
+The most common way to establish such a path is through *interior mutability*,
+in contrast to the *inherited mutability* that everything in Rust normally uses.
+Cell, RefCell, Mutex, and RWLock are all examples of interior mutability types. These
+types provide exclusive access through runtime restrictions. However it is also
+possible to establish unique ownership without interior mutability. For instance,
+if an Rc has refcount 1, then it is safe to mutate or move its internals.
+
+
+
+
+## Liveness
+
+Roughly, a reference is *live* at some point in a program if it can be
+dereferenced. Shared references are always live unless they are literally unreachable
+(for instance, they reside in freed or leaked memory). Mutable references can be
+reachable but *not* live through the process of *reborrowing*.
+
+A mutable reference can be reborrowed to either a shared or mutable reference.
+Further, the reborrow can produce exactly the same reference, or point to a
+path it is a prefix of. For instance, a mutable reference can be reborrowed
+to point to a field of its referrent:
+
+```rust
+let x = &mut (1, 2);
+{
+    // reborrow x to a subfield
+    let y = &mut x.0;
+    // y is now live, but x isn't
+    *y = 3;
+}
+// y goes out of scope, so x is live again
+*x = (5, 7);
+```
+
+It is also possible to reborrow into *multiple* mutable references, as long as
+they are to *disjoint*: no reference is a prefix of another. Rust
+explicitly enables this to be done with disjoint struct fields, because
+disjointness can be statically proven:
+
+```
+let x = &mut (1, 2);
+{
+    // reborrow x to two disjoint subfields
+    let y = &mut x.0;
+    let z = &mut x.1;
+    // y and z are now live, but x isn't
+    *y = 3;
+    *z = 4;
+}
+// y and z go out of scope, so x is live again
+*x = (5, 7);
+```
+
+However it's often the case that Rust isn't sufficiently smart to prove that
+multiple borrows are disjoint. *This does not mean it is fundamentally illegal
+to make such a borrow*, just that Rust isn't as smart as you want.
+
+To simplify things, we can model variables as a fake type of reference: *owned*
+references. Owned references have much the same semantics as mutable references:
+they can be re-borrowed in a mutable or shared manner, which makes them no longer
+live. Live owned references have the unique property that they can be moved
+out of (though mutable references *can* be swapped out of). This is
+only given to *live* owned references because moving its referrent would of
+course invalidate all outstanding references prematurely.
+
+As a local lint against inappropriate mutation, only variables that are marked
+as `mut` can be borrowed mutably.
+
+It is also interesting to note that Box behaves exactly like an owned
+reference. It can be moved out of, and Rust understands it sufficiently to
+reason about its paths like a normal variable.
+
+
+
+
+## Aliasing
+
+With liveness and paths defined, we can now properly define *aliasing*:
+
+**A mutable reference is aliased if there exists another live reference to it or
+one of its prefixes.**
+
+That's it. Super simple right? Except for the fact that it took us two pages
+to define all of the terms in that defintion. You know: Super. Simple.
+
+Actually it's a bit more complicated than that. In addition to references,
+Rust has *raw pointers*: `*const T` and `*mut T`. Raw pointers have no inherent
+ownership or aliasing semantics. As a result, Rust makes absolutely no effort
+to track that they are used correctly, and they are wildly unsafe.
+
+**It is an open question to what degree raw pointers have alias semantics.
+However it is important for these definitions to be sound that the existence
+of a raw pointer does not imply some kind of live path.**
 
 
 
 
 # Lifetimes
 
-Rust's static checks are managed by the *borrow checker* (borrowck), which tracks
-mutability and outstanding loans. This analysis can in principle be done without
-any help locally. However as soon as data starts crossing the function boundary,
-we have some serious trouble. In principle, borrowck could be a massive
-whole-program analysis engine to handle this problem, but this would be an
-atrocious solution. It would be terribly slow, and errors would be horribly
-non-local.
+Rust enforces these rules through *lifetimes*. Lifetimes are effectively
+just names for scopes on the stack, somewhere in the program. Each reference,
+and anything that contains a reference, is tagged with a lifetime specifying
+the scope it's valid for.
 
-Instead, Rust tracks ownership through *lifetimes*. Every single reference and value
-in Rust is tagged with a lifetime that indicates the scope it is valid for.
-Rust has two kinds of reference:
+Within a function body, Rust generally doesn't let you explicitly name the
+lifetimes involved. This is because it's generally not really *necessary*
+to talk about lifetimes in a local context; rust has all the information and
+can work out everything.
 
-* Shared reference: `&`
-* Mutable reference: `&mut`
+However once you cross the function boundary, you need to start talking about
+lifetimes. Lifetimes are denoted with an apostrophe: `'a`, `'static`. To dip
+our toes with lifetimes, we're going to pretend that we're actually allowed
+to label scopes with lifetimes, and desugar the examples from the start of
+this chapter.
 
-The main rules are as follows:
+Our examples made use of *aggressive* sugar around scopes and lifetimes,
+because writing everything out explicitly is *extremely noisy*. All rust code
+relies on aggressive inference and elision of "obvious" things.
 
-* A shared reference can be aliased
-* A mutable reference cannot be aliased
-* A reference cannot outlive its referrent (`&'a T -> T: 'a`)
+One particularly interesting piece of sugar is that each `let` statement implicitly
+introduces a scope. For the most part, this doesn't really matter. However it
+does matter for variables that refer to each other. As a simple example, let's
+completely desugar this simple piece of Rust code:
 
-However non-mutable variables have some special rules:
+```rust
+let x = 0;
+let y = &x;
+let z = &y;
+```
 
-* You cannot mutate or mutably borrow a non-mut variable,
+becomes:
 
-Only variables marked as mutable can be borrowed mutably, though this is little
-more than a local lint against incorrect usage of a value.
+```rust,ignore
+// NOTE: `'a:` and `&'a x` is not valid syntax!
+'a: {
+    let x: i32 = 0;
+    'b: {
+        let y: &'a i32 = &'a x;
+        'c: {
+            let z: &'b &'a i32 = &'b y;
+        }
+    }
+}
+```
 
+Wow. That's... awful. Let's all take a moment to thank Rust for being a huge
+pile of sugar with sugar on top.
 
+Anyway, let's look at some of those examples from before:
+
+```rust,ignore
+fn as_str(data: &u32) -> &str {
+    let s = format!("{}", data);
+    &s
+}
+```
+
+desugars to:
+
+```rust,ignore
+fn as_str<'a>(data: &'a u32) -> &'a str {
+    'b: {
+        let s = format!("{}", data);
+        return &'b s
+    }
+}
+```
+
+This signature of `as_str` takes a reference to a u32 with *some* lifetime, and
+promises that it can produce a reference to a str that can live *just as long*.
+Already we can see why this signature might be trouble. That basically implies
+that we're going to *find* a str somewhere in the scope that u32 originated in,
+or somewhere *even* earlier. That's uh... a big ask.
+
+We then proceed to compute the string `s`, and return a reference to it.
+Unfortunately, since `s` was defined in the scope `'b`, the reference we're
+returning can only live for that long. From the perspective of the compiler,
+we've failed *twice* here. We've failed to fulfill the contract we were asked
+to fulfill (`'b` is unrelated to `'a`); and we've also tried to make a reference
+outlive its referrent by returning an `&'b`, where `'b` is in our function.
+
+Shoot!
+
+Of course, the right way to right this function is as follows:
+
+```rust
+fn to_string(data: &u32) -> String {
+    format!("{}", data)
+}
+```
+
+We must produce an owned value inside the function to return it! The only way
+we could have returned an `&'a str` would have been if it was in a field of the
+`&'a u32`, which is obviously not the case.
+
+(Actually we could have also just returned a string literal, though this limits
+the behaviour of our function *just a bit*.)
+
+How about the other example:
+
+```rust,ignore
+let mut data = vec![1, 2, 3];
+let x = &data[0];
+data.push(4);
+println!("{}", x);
+```
+
+```rust,ignore
+'a: {
+    let mut data: Vec<i32> = vec![1, 2, 3];
+    'b: {
+        let x: &'a i32 = Index::index(&'a data, 0);
+        'c: {
+            // Exactly what the desugar for Vec::push is is up to Rust.
+            // This particular desugar is a decent approximation for our
+            // purpose. In particular methods oft invoke a temporary borrow.
+            let temp: &'c mut Vec = &'c mut data;
+            // NOTE: Vec::push is not valid syntax
+            Vec::push(temp, 4);
+        }
+        println!("{}", x);
+    }
+}
+```
+
+Here the problem is that we're trying to mutably borrow the `data` path, while
+we have a reference into something it's a prefix of. Rust subsequently throws
+up its hands in disgust and rejects our program. The correct way to write this
+is to just re-order the code so that we make `x` *after* we push:
+
+TODO: convince myself of this.
+
+```rust
+let mut data = vec![1, 2, 3];
+data.push(4);
+
+let x = &data[0];
+println!("{}", x);
+```
 
 
 
@@ -213,7 +467,9 @@ these are unstable due to their awkward nature and questionable utility.
 
 
 
-# Higher-Rank Lifetimes
+# Higher-Rank Trait Bounds
+
+// TODO: make aturon less mad
 
 Generics in Rust generally allow types to be instantiated with arbitrary
 associated lifetimes, but this fixes the lifetimes they work with once

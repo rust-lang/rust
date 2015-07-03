@@ -61,7 +61,7 @@ only implemented automatically, and enables the following transformations:
 * `T` => `Trait` where `T: Trait`
 * `SubTrait` => `Trait` where `SubTrait: Trait` (TODO: is this now implied by the previous?)
 * `Foo<..., T, ...>` => `Foo<..., U, ...>` where:
-    * T: Unsize<U>
+    * `T: Unsize<U>`
     * `Foo` is a struct
     * Only the last field has type `T`
     * `T` is not part of the type of any other fields
