@@ -630,15 +630,8 @@ pub enum MethodOrigin {
     /// Inherent impl method call.
     Inherent,
 
-    /// Statically dispatched trait method call.
-    Trait,
-
-    /// Dynamically dispatched trait method call.
-    /// The usize is the index into the actual runtime vtable.
-    /// The vtable is formed by concatenating together the method lists of
-    /// the base object trait and all supertraits; this is the index into
-    /// that vtable.
-    Object(usize)
+    /// Trait method call.
+    Trait
 }
 
 #[derive(Clone, Debug)]
