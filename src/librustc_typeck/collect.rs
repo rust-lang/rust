@@ -1762,7 +1762,7 @@ fn ty_generic_predicates<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                 name: param.lifetime.name
             });
         for bound in &param.bounds {
-            let bound_region = ast_region_to_region(ccx.tcx, bound);
+            let bound_region = ast_region_to_region(tcx, &ExplicitRscope, bound);
             let outlives = ty::Binder(ty::OutlivesPredicate(region, bound_region));
             result.predicates.push(space, outlives.to_predicate());
         }
@@ -1796,7 +1796,7 @@ fn ty_generic_predicates<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                         }
 
                         &ast::TyParamBound::RegionTyParamBound(ref lifetime) => {
-                            let region = ast_region_to_region(tcx, lifetime);
+                            let region = ast_region_to_region(tcx, &ExplicitRscope, lifetime);
                             let pred = ty::Binder(ty::OutlivesPredicate(ty, region));
                             result.predicates.push(space, ty::Predicate::TypeOutlives(pred))
                         }
@@ -1805,9 +1805,9 @@ fn ty_generic_predicates<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
             }
 
             &ast::WherePredicate::RegionPredicate(ref region_pred) => {
-                let r1 = ast_region_to_region(tcx, &region_pred.lifetime);
+                let r1 = ast_region_to_region(tcx, &ExplicitRscope, &region_pred.lifetime);
                 for bound in &region_pred.bounds {
-                    let r2 = ast_region_to_region(tcx, bound);
+                    let r2 = ast_region_to_region(tcx, &ExplicitRscope, bound);
                     let pred = ty::Binder(ty::OutlivesPredicate(r1, r2));
                     result.predicates.push(space, ty::Predicate::RegionOutlives(pred))
                 }
@@ -1837,7 +1837,7 @@ fn ty_generics<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
     let early_lifetimes = early_bound_lifetimes_from_generics(space, ast_generics);
     for (i, l) in early_lifetimes.iter().enumerate() {
         let bounds = l.bounds.iter()
-                             .map(|l| ast_region_to_region(tcx, l))
+                             .map(|l| ast_region_to_region(tcx, &ExplicitRscope, l))
                              .collect();
         let def = ty::RegionParameterDef { name: l.lifetime.name,
                                            space: space,
@@ -1953,7 +1953,7 @@ fn compute_object_lifetime_default<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                       ast::TraitTyParamBound(..) =>
                           None,
                       ast::RegionTyParamBound(ref lifetime) =>
-                          Some(astconv::ast_region_to_region(ccx.tcx, lifetime)),
+                          Some(ast_region_to_region(ccx.tcx, &ExplicitRscope, lifetime)),
                   }
               })
               .collect()
@@ -2036,7 +2036,7 @@ fn predicates_from_bound<'tcx>(astconv: &AstConv<'tcx>,
                        .collect()
         }
         ast::RegionTyParamBound(ref lifetime) => {
-            let region = ast_region_to_region(astconv.tcx(), lifetime);
+            let region = ast_region_to_region(astconv.tcx(), &ExplicitRscope, lifetime);
             let pred = ty::Binder(ty::OutlivesPredicate(param_ty, region));
             vec![ty::Predicate::TypeOutlives(pred)]
         }
@@ -2084,7 +2084,7 @@ fn conv_param_bounds<'a,'tcx>(astconv: &AstConv<'tcx>,
 
     let region_bounds: Vec<ty::Region> =
         region_bounds.into_iter()
-                     .map(|r| ast_region_to_region(tcx, r))
+                     .map(|r| ast_region_to_region(tcx, &ExplicitRscope, r))
                      .collect();
 
     astconv::Bounds {

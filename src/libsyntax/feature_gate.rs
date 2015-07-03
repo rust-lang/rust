@@ -155,6 +155,9 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Status)] = &[
 
     // Allows the definition of `const fn` functions.
     ("const_fn", "1.2.0", Active),
+
+    // Allows the usage of `'_` for function arguments and inference.
+    ("anon_lifetime", "1.2.0", Active),
 ];
 // (changing above list without updating src/doc/reference.md makes @cmr sad)
 
@@ -329,6 +332,7 @@ pub struct Features {
     /// #![feature] attrs for non-language (library) features
     pub declared_lib_features: Vec<(InternedString, Span)>,
     pub const_fn: bool,
+    pub anon_lifetime: bool,
 }
 
 impl Features {
@@ -350,6 +354,7 @@ impl Features {
             declared_stable_lang_features: Vec::new(),
             declared_lib_features: Vec::new(),
             const_fn: false,
+            anon_lifetime: false,
         }
     }
 }
@@ -789,6 +794,7 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &SpanHandler,
         declared_stable_lang_features: accepted_features,
         declared_lib_features: unknown_features,
         const_fn: cx.has_feature("const_fn"),
+        anon_lifetime: cx.has_feature("anon_lifetime"),
     }
 }
 

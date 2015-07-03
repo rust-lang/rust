@@ -145,7 +145,9 @@ pub trait AstConv<'tcx> {
                     -> Ty<'tcx>;
 }
 
-pub fn ast_region_to_region(tcx: &ty::ctxt, lifetime: &ast::Lifetime)
+pub fn ast_region_to_region(tcx: &ty::ctxt,
+                            rscope: &RegionScope,
+                            lifetime: &ast::Lifetime)
                             -> ty::Region {
     let r = match tcx.named_region_map.get(&lifetime.id) {
         None => {
@@ -155,6 +157,10 @@ pub fn ast_region_to_region(tcx: &ty::ctxt, lifetime: &ast::Lifetime)
 
         Some(&rl::DefStaticRegion) => {
             ty::ReStatic
+        }
+
+        Some(&rl::DefAnonRegion) => {
+            opt_ast_region_to_region(tcx, rscope, lifetime.span, &None)
         }
 
         Some(&rl::DefLateBoundRegion(debruijn, id)) => {
@@ -239,24 +245,23 @@ fn report_elision_failure(
     }
 }
 
-pub fn opt_ast_region_to_region<'tcx>(
-    this: &AstConv<'tcx>,
-    rscope: &RegionScope,
-    default_span: Span,
-    opt_lifetime: &Option<ast::Lifetime>) -> ty::Region
-{
+pub fn opt_ast_region_to_region(tcx: &ty::ctxt,
+                                rscope: &RegionScope,
+                                default_span: Span,
+                                opt_lifetime: &Option<ast::Lifetime>)
+                                -> ty::Region {
     let r = match *opt_lifetime {
         Some(ref lifetime) => {
-            ast_region_to_region(this.tcx(), lifetime)
+            ast_region_to_region(tcx, rscope, lifetime)
         }
 
         None => match rscope.anon_regions(default_span, 1) {
             Ok(rs) => rs[0],
             Err(params) => {
-                span_err!(this.tcx().sess, default_span, E0106,
+                span_err!(tcx.sess, default_span, E0106,
                           "missing lifetime specifier");
                 if let Some(params) = params {
-                    report_elision_failure(this.tcx(), default_span, params);
+                    report_elision_failure(tcx, default_span, params);
                 }
                 ty::ReStatic
             }
@@ -486,7 +491,7 @@ fn convert_angle_bracketed_parameters<'tcx>(this: &AstConv<'tcx>,
 {
     let regions: Vec<_> =
         data.lifetimes.iter()
-                      .map(|l| ast_region_to_region(this.tcx(), l))
+                      .map(|l| ast_region_to_region(this.tcx(), rscope, l))
                       .collect();
 
     let region_substs =
@@ -1544,7 +1549,7 @@ pub fn ast_ty_to_ty<'tcx>(this: &AstConv<'tcx>,
             })
         }
         ast::TyRptr(ref region, ref mt) => {
-            let r = opt_ast_region_to_region(this, rscope, ast_ty.span, region);
+            let r = opt_ast_region_to_region(tcx, rscope, ast_ty.span, region);
             debug!("TyRef r={:?}", r);
             let rscope1 =
                 &ObjectLifetimeDefaultRscope::new(
@@ -1813,7 +1818,7 @@ fn determine_explicit_self_category<'a, 'tcx>(this: &AstConv<'tcx>,
         ast::SelfValue(_) => ty::ByValueExplicitSelfCategory,
         ast::SelfRegion(ref lifetime, mutability, _) => {
             let region =
-                opt_ast_region_to_region(this,
+                opt_ast_region_to_region(this.tcx(),
                                          rscope,
                                          self_info.explicit_self.span,
                                          lifetime);
@@ -2061,7 +2066,7 @@ fn compute_object_lifetime_bound<'tcx>(
     if !explicit_region_bounds.is_empty() {
         // Explicitly specified region bound. Use that.
         let r = explicit_region_bounds[0];
-        return ast_region_to_region(tcx, r);
+        return ast_region_to_region(tcx, &ExplicitRscope, r);
     }
 
     if let Err(ErrorReported) = this.ensure_super_predicates(span,principal_trait_ref.def_id()) {

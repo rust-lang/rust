@@ -4592,7 +4592,7 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             let region_count = region_defs.len(space);
             assert_eq!(substs.regions().len(space), 0);
             for (i, lifetime) in data.lifetimes.iter().enumerate() {
-                let r = ast_region_to_region(fcx.tcx(), lifetime);
+                let r = ast_region_to_region(fcx.tcx(), fcx, lifetime);
                 if i < region_count {
                     substs.mut_regions().push(space, r);
                 } else if i == region_count {
