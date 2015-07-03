@@ -92,6 +92,7 @@ macro_rules! zero_one_impl_float {
         }
     )*)
 }
+#[cfg(not(disable_float))]
 zero_one_impl_float! { f32 f64 }
 
 macro_rules! checked_op {
@@ -1399,7 +1400,9 @@ macro_rules! from_str_float_impl {
         }
     }
 }
+#[cfg(not(disable_float))]
 from_str_float_impl!(f32);
+#[cfg(not(disable_float))]
 from_str_float_impl!(f64);
 
 macro_rules! from_str_radix_int_impl {

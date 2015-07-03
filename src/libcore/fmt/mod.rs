@@ -1131,7 +1131,9 @@ macro_rules! floating { ($ty:ident) => {
         }
     }
 } }
+#[cfg(not(disable_float))]
 floating! { f32 }
+#[cfg(not(disable_float))]
 floating! { f64 }
 
 // Implementation of Display/Debug for various core types
