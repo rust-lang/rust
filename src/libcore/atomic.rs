@@ -942,6 +942,7 @@ impl<T> AtomicPtr<T> {
 }
 
 #[inline]
+#[stable(feature = "rust1", since = "1.0.0")]
 unsafe fn atomic_store<T>(dst: *mut T, val: T, order:Ordering) {
     match order {
         Release => intrinsics::atomic_store_rel(dst, val),
