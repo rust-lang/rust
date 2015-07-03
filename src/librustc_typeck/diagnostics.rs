@@ -1431,6 +1431,30 @@ fn(isize, *const *const u8) -> isize
 ```
 "##,
 
+E0159: r##"
+You tried to use a trait as a struct constructor. Erroneous code example:
+
+```
+trait TraitNotAStruct {}
+
+TraitNotAStruct{ value: 0 }; // error: use of trait `TraitNotAStruct` as a
+                             //        struct constructor
+```
+
+Please verify you used the correct type name or please implement the trait
+on a struct and use this struct constructor. Example:
+
+```
+trait TraitNotAStruct {}
+
+struct Foo {
+    value: i32
+}
+
+Foo{ value: 0 }; // ok!
+```
+"##,
+
 E0166: r##"
 This error means that the compiler found a return expression in a function
 marked as diverging. A function diverges if it has `!` in the place of the
@@ -2029,7 +2053,6 @@ register_diagnostics! {
     E0127,
     E0129,
     E0141,
-    E0159,
     E0163,
     E0164,
     E0167,
