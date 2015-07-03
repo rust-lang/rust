@@ -282,13 +282,11 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
 
 impl<'a> FmtVisitor<'a> {
     pub fn from_codemap<'b>(codemap: &'b CodeMap, config: &'b Config) -> FmtVisitor<'b> {
-        FmtVisitor {
-            codemap: codemap,
-            changes: ChangeSet::from_codemap(codemap),
-            last_pos: BytePos(0),
-            block_indent: 0,
-            config: config
-        }
+        FmtVisitor { codemap: codemap,
+                     changes: ChangeSet::from_codemap(codemap),
+                     last_pos: BytePos(0),
+                     block_indent: 0,
+                     config: config, }
     }
 
     pub fn snippet(&self, span: Span) -> String {
