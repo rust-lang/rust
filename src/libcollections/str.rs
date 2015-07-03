@@ -1859,8 +1859,6 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// #![feature(str_casing)]
-    ///
     /// let s = "HELLO";
     /// assert_eq!(s.to_lowercase(), "hello");
     /// ```
@@ -1905,8 +1903,6 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// #![feature(str_casing)]
-    ///
     /// let s = "hello";
     /// assert_eq!(s.to_uppercase(), "HELLO");
     /// ```
