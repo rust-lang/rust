@@ -954,6 +954,9 @@ fn link_args(cmd: &mut Linker,
     // Pass optimization flags down to the linker.
     cmd.optimize();
 
+    // Pass debuginfo flags down to the linker.
+    cmd.debuginfo();
+
     // We want to prevent the compiler from accidentally leaking in any system
     // libraries, so we explicitly ask gcc to not link to any libraries by
     // default. Note that this does not happen for windows because windows pulls
