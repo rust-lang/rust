@@ -179,8 +179,9 @@ impl OpenOptions {
             let mut base = if self.read {libc::FILE_GENERIC_READ} else {0} |
                            if self.write {libc::FILE_GENERIC_WRITE} else {0};
             if self.append {
+                /* append has the same bits set as write, but without FILE_WRITE_DATA */
+                base |= libc::FILE_GENERIC_WRITE;
                 base &= !libc::FILE_WRITE_DATA;
-                base |= libc::FILE_APPEND_DATA;
             }
             base
         })
