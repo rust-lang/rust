@@ -6175,17 +6175,16 @@ impl<'tcx> ctxt<'tcx> {
                     found);
             }
             Err(err) => {
-                let err_description = err.description();
                 let err_msg = match count_expr.node {
                     ast::ExprPath(None, ast::Path {
                         global: false,
                         ref segments,
                         ..
                     }) if segments.len() == 1 =>
-                        format!("found variable, expected constant integer for repeat count"),
-                    _ => format!("{}, expected constant integer for repeat count", err.description()),
+                        format!("found variable"),
+                    _ => format!("{}", err.description()),
                 };
-                span_err!(tcx.sess, count_expr.span, E0307, "{}", err_msg);
+                span_err!(tcx.sess, count_expr.span, E0307, "{}, expected valid constant integer for repeat count", err_msg);
             }
         }
         0
