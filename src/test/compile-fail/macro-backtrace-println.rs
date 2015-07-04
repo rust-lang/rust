@@ -16,14 +16,14 @@
 
 fn print(_args: std::fmt::Arguments) {}
 
-macro_rules! myprint { //~ NOTE in expansion of
+macro_rules! myprint { //~ NOTE in expansion of `myprint!`, defined at <>
     ($($arg:tt)*) => (print(format_args!($($arg)*)));
 }
 
-macro_rules! myprintln { //~ NOTE in expansion of
+macro_rules! myprintln { //~ NOTE in expansion of `myprintln!`, defined at <>
     ($fmt:expr) => (myprint!(concat!($fmt, "\n"))); //~ ERROR invalid reference to argument `0`
 }
 
 fn main() {
-    myprintln!("{}"); //~ NOTE expansion site
+    myprintln!("{}"); //~ NOTE expansion site: <>
 }

@@ -94,5 +94,5 @@ fn parse_expected(last_nonfollow_error: Option<usize>,
     debug!("line={} which={:?} kind={:?} msg={:?}", line_num, which, kind, msg);
     Some((which, ExpectedError { line: line,
                                  kind: kind,
-                                 msg: msg, }))
+                                 msg: msg }))
 }

@@ -974,9 +974,13 @@ fn check_expected_errors(expected_errors: Vec<errors::ExpectedError>,
                         break;
                     }
                 }
-                if (prefix_matches(line, &prefixes[i]) || continuation(line)) &&
-                    line.contains(&ee.kind) &&
-                    line.contains(&ee.msg) {
+                if line.contains(&ee.kind) && (
+                       ee.msg.contains("<>") &&
+                       line.contains(&ee.msg.replace("<>", &prefixes[i].trim_right_matches(':')))
+                   ||
+                       (prefix_matches(line, &prefixes[i]) || continuation(line)) &&
+                       line.contains(&ee.msg)
+                ) {
                     found_flags[i] = true;
                     was_expected = true;
                     break;

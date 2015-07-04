@@ -777,18 +777,24 @@ fn print_macro_backtrace(w: &mut EmitterWriter,
                 let ss = ei.callee.span.map_or(String::new(),
                                                |span| cm.span_to_string(span));
                 let (pre, post) = match ei.callee.format {
-                    codemap::MacroAttribute => ("#[", "]"),
-                    codemap::MacroBang => ("", "!"),
+                    codemap::MacroAttribute => ("`#[", "]`"),
+                    codemap::MacroBang => ("`", "!`"),
                     codemap::CompilerExpansion => ("", ""),
                 };
-                try!(print_diagnostic(w, &ss, Note,
-                                      &format!("in expansion of {}{}{}",
+                try!(print_diagnostic(w, "", Note,
+                                      &format!("in expansion of {}{}{}{}",
                                                pre,
                                                ei.callee.name,
-                                               post),
+                                               post,
+                                               if ss.is_empty() { "".into() } else {
+                                                   format!(", defined at {}", ss)
+                                               }),
                                       None));
                 let ss = cm.span_to_string(ei.call_site);
-                try!(print_diagnostic(w, &ss, Note, "expansion site", None));
+                try!(print_diagnostic(w, "", Note,
+                                      &format!("expansion site: {}",
+                                               ss),
+                                      None));
                 Ok(Some(ei.call_site))
             }
             None => Ok(None)
