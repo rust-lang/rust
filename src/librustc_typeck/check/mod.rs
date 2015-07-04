@@ -846,128 +846,82 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     // Locate trait methods
     let tcx = ccx.tcx;
     let trait_items = tcx.trait_items(impl_trait_ref.def_id);
+    let mut overridden_associated_type = None;
 
     // Check existing impl methods to see if they are both present in trait
     // and compatible with trait signature
     for impl_item in impl_items {
+        let ty_impl_item = ccx.tcx.impl_or_trait_item(local_def(impl_item.id));
+        let ty_trait_item = trait_items.iter()
+            .find(|ac| ac.name() == ty_impl_item.name())
+            .unwrap_or_else(|| {
+                // This is checked by resolve
+                tcx.sess.span_bug(impl_item.span,
+                                  &format!("impl-item `{}` is not a member of `{:?}`",
+                                           token::get_name(ty_impl_item.name()),
+                                           impl_trait_ref));
+            });
         match impl_item.node {
             ast::ConstImplItem(..) => {
-                let impl_const_def_id = local_def(impl_item.id);
-                let impl_const_ty = ccx.tcx.impl_or_trait_item(impl_const_def_id);
+                let impl_const = match ty_impl_item {
+                    ty::ConstTraitItem(ref cti) => cti,
+                    _ => tcx.sess.span_bug(impl_item.span, "non-const impl-item for const")
+                };
 
                 // Find associated const definition.
-                let opt_associated_const =
-                    trait_items.iter()
-                               .find(|ac| ac.name() == impl_const_ty.name());
-                match opt_associated_const {
-                    Some(associated_const) => {
-                        match (associated_const, &impl_const_ty) {
-                            (&ty::ConstTraitItem(ref const_trait),
-                             &ty::ConstTraitItem(ref const_impl)) => {
-                                compare_const_impl(ccx.tcx,
-                                                   &const_impl,
-                                                   impl_item.span,
-                                                   &const_trait,
-                                                   &*impl_trait_ref);
-                            }
-                            _ => {
-                                span_err!(tcx.sess, impl_item.span, E0323,
-                                          "item `{}` is an associated const, \
-                                          which doesn't match its trait `{:?}`",
-                                          token::get_name(impl_const_ty.name()),
-                                          impl_trait_ref)
-                            }
-                        }
-                    }
-                    None => {
-                        // This is `span_bug` as it should have already been
-                        // caught in resolve.
-                        tcx.sess.span_bug(
-                            impl_item.span,
-                            &format!(
-                                "associated const `{}` is not a member of \
-                                 trait `{:?}`",
-                                token::get_name(impl_const_ty.name()),
-                                impl_trait_ref));
-                    }
+                if let &ty::ConstTraitItem(ref trait_const) = ty_trait_item {
+                    compare_const_impl(ccx.tcx,
+                                       &impl_const,
+                                       impl_item.span,
+                                       trait_const,
+                                       &*impl_trait_ref);
+                } else {
+                    span_err!(tcx.sess, impl_item.span, E0323,
+                              "item `{}` is an associated const, \
+                              which doesn't match its trait `{:?}`",
+                              token::get_name(impl_const.name),
+                              impl_trait_ref)
                 }
             }
             ast::MethodImplItem(ref sig, ref body) => {
                 check_trait_fn_not_const(ccx, impl_item.span, sig.constness);
 
-                let impl_method_def_id = local_def(impl_item.id);
-                let impl_item_ty = ccx.tcx.impl_or_trait_item(impl_method_def_id);
+                let impl_method = match ty_impl_item {
+                    ty::MethodTraitItem(ref mti) => mti,
+                    _ => tcx.sess.span_bug(impl_item.span, "non-method impl-item for method")
+                };
 
-                // If this is an impl of a trait method, find the
-                // corresponding method definition in the trait.
-                let opt_trait_method_ty =
-                    trait_items.iter()
-                               .find(|ti| ti.name() == impl_item_ty.name());
-                match opt_trait_method_ty {
-                    Some(trait_method_ty) => {
-                        match (trait_method_ty, &impl_item_ty) {
-                            (&ty::MethodTraitItem(ref trait_method_ty),
-                             &ty::MethodTraitItem(ref impl_method_ty)) => {
-                                compare_impl_method(ccx.tcx,
-                                                    &**impl_method_ty,
-                                                    impl_item.span,
-                                                    body.id,
-                                                    &**trait_method_ty,
-                                                    &*impl_trait_ref);
-                            }
-                            _ => {
-                                span_err!(tcx.sess, impl_item.span, E0324,
-                                          "item `{}` is an associated method, \
-                                          which doesn't match its trait `{:?}`",
-                                          token::get_name(impl_item_ty.name()),
-                                          impl_trait_ref)
-                            }
-                        }
-                    }
-                    None => {
-                        // This is span_bug as it should have already been
-                        // caught in resolve.
-                        tcx.sess.span_bug(
-                            impl_item.span,
-                            &format!("method `{}` is not a member of trait `{:?}`",
-                                     token::get_name(impl_item_ty.name()),
-                                     impl_trait_ref));
-                    }
+                if let &ty::MethodTraitItem(ref trait_method) = ty_trait_item {
+                    compare_impl_method(ccx.tcx,
+                                        &impl_method,
+                                        impl_item.span,
+                                        body.id,
+                                        &trait_method,
+                                        &impl_trait_ref);
+                } else {
+                    span_err!(tcx.sess, impl_item.span, E0324,
+                              "item `{}` is an associated method, \
+                              which doesn't match its trait `{:?}`",
+                              token::get_name(impl_method.name),
+                              impl_trait_ref)
                 }
             }
             ast::TypeImplItem(_) => {
-                let typedef_def_id = local_def(impl_item.id);
-                let typedef_ty = ccx.tcx.impl_or_trait_item(typedef_def_id);
+                let impl_type = match ty_impl_item {
+                    ty::TypeTraitItem(ref tti) => tti,
+                    _ => tcx.sess.span_bug(impl_item.span, "non-type impl-item for type")
+                };
 
-                // If this is an impl of an associated type, find the
-                // corresponding type definition in the trait.
-                let opt_associated_type =
-                    trait_items.iter()
-                               .find(|ti| ti.name() == typedef_ty.name());
-                match opt_associated_type {
-                    Some(associated_type) => {
-                        match (associated_type, &typedef_ty) {
-                            (&ty::TypeTraitItem(_), &ty::TypeTraitItem(_)) => {}
-                            _ => {
-                                span_err!(tcx.sess, impl_item.span, E0325,
-                                          "item `{}` is an associated type, \
-                                          which doesn't match its trait `{:?}`",
-                                          token::get_name(typedef_ty.name()),
-                                          impl_trait_ref)
-                            }
-                        }
+                if let &ty::TypeTraitItem(ref at) = ty_trait_item {
+                    if let Some(_) = at.ty {
+                        overridden_associated_type = Some(impl_item);
                     }
-                    None => {
-                        // This is `span_bug` as it should have already been
-                        // caught in resolve.
-                        tcx.sess.span_bug(
-                            impl_item.span,
-                            &format!(
-                                "associated type `{}` is not a member of \
-                                 trait `{:?}`",
-                                token::get_name(typedef_ty.name()),
-                                impl_trait_ref));
-                    }
+                } else {
+                    span_err!(tcx.sess, impl_item.span, E0325,
+                              "item `{}` is an associated type, \
+                              which doesn't match its trait `{:?}`",
+                              token::get_name(impl_type.name),
+                              impl_trait_ref)
                 }
             }
             ast::MacImplItem(_) => tcx.sess.span_bug(impl_item.span,
@@ -979,6 +933,8 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     let provided_methods = tcx.provided_trait_methods(impl_trait_ref.def_id);
     let associated_consts = tcx.associated_consts(impl_trait_ref.def_id);
     let mut missing_items = Vec::new();
+    let mut invalidated_items = Vec::new();
+    let associated_type_overridden = overridden_associated_type.is_some();
     for trait_item in trait_items.iter() {
         match *trait_item {
             ty::ConstTraitItem(ref associated_const) => {
@@ -993,9 +949,12 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                 let is_provided =
                     associated_consts.iter().any(|ac| ac.default.is_some() &&
                                                  ac.name == associated_const.name);
-                if !is_implemented && !is_provided {
-                    missing_items.push(format!("`{}`",
-                                               token::get_name(associated_const.name)));
+                if !is_implemented {
+                    if !is_provided {
+                        missing_items.push(associated_const.name);
+                    } else if associated_type_overridden {
+                        invalidated_items.push(associated_const.name);
+                    }
                 }
             }
             ty::MethodTraitItem(ref trait_method) => {
@@ -1010,8 +969,12 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                     });
                 let is_provided =
                     provided_methods.iter().any(|m| m.name == trait_method.name);
-                if !is_implemented && !is_provided {
-                    missing_items.push(format!("`{}`", token::get_name(trait_method.name)));
+                if !is_implemented {
+                    if !is_provided {
+                        missing_items.push(trait_method.name);
+                    } else if associated_type_overridden {
+                        invalidated_items.push(trait_method.name);
+                    }
                 }
             }
             ty::TypeTraitItem(ref associated_type) => {
@@ -1024,8 +987,12 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                     }
                 });
                 let is_provided = associated_type.ty.is_some();
-                if !is_implemented && !is_provided {
-                    missing_items.push(format!("`{}`", token::get_name(associated_type.name)));
+                if !is_implemented {
+                    if !is_provided {
+                        missing_items.push(associated_type.name);
+                    } else if associated_type_overridden {
+                        invalidated_items.push(associated_type.name);
+                    }
                 }
             }
         }
@@ -1033,8 +1000,21 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
     if !missing_items.is_empty() {
         span_err!(tcx.sess, impl_span, E0046,
-            "not all trait items implemented, missing: {}",
-            missing_items.connect(", "));
+            "not all trait items implemented, missing: `{}`",
+            missing_items.iter()
+                  .map(<ast::Name>::as_str)
+                  .collect::<Vec<_>>().connect("`, `"))
+    }
+
+    if !invalidated_items.is_empty() {
+        let invalidator = overridden_associated_type.unwrap();
+        span_err!(tcx.sess, invalidator.span, E0399,
+                  "the following trait items need to be reimplemented \
+                   as `{}` was overridden: `{}`",
+                  invalidator.ident.as_str(),
+                  invalidated_items.iter()
+                                   .map(<ast::Name>::as_str)
+                                   .collect::<Vec<_>>().connect("`, `"))
     }
 }
 

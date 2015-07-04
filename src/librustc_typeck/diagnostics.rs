@@ -2066,6 +2066,8 @@ register_diagnostics! {
            // `#[lang = \"{}\"]` is allowed for the `{}` primitive
     E0391, // unsupported cyclic reference between types/traits detected
     E0392, // parameter `{}` is never used
-    E0393  // the type parameter `{}` must be explicitly specified in an object
+    E0393, // the type parameter `{}` must be explicitly specified in an object
            // type because its default value `{}` references the type `Self`"
+    E0399  // trait items need to be implemented because the associated
+           // type `{}` was overridden
 }
