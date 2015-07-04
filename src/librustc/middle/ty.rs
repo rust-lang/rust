@@ -2055,6 +2055,11 @@ pub struct ExistentialBounds<'tcx> {
     pub region_bound: ty::Region,
     pub builtin_bounds: BuiltinBounds,
     pub projection_bounds: Vec<PolyProjectionPredicate<'tcx>>,
+
+    // If true, this TyTrait used a "default bound" in the surface
+    // syntax.  This makes no difference to the type system but is
+    // handy for error reporting.
+    pub region_bound_will_change: bool,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
@@ -2245,6 +2250,9 @@ pub enum ObjectLifetimeDefault {
     /// `T:'a` constraints are found.
     Ambiguous,
 
+    /// Use the base default, typically 'static, but in a fn body it is a fresh variable
+    BaseDefault,
+
     /// Use the given region as the default.
     Specific(Region),
 }
@@ -2256,7 +2264,7 @@ pub struct TypeParameterDef<'tcx> {
     pub space: subst::ParamSpace,
     pub index: u32,
     pub default: Option<Ty<'tcx>>,
-    pub object_lifetime_default: Option<ObjectLifetimeDefault>,
+    pub object_lifetime_default: ObjectLifetimeDefault,
 }
 
 #[derive(RustcEncodable, RustcDecodable, Clone, Debug)]
@@ -7328,6 +7336,7 @@ impl<'tcx> fmt::Debug for ObjectLifetimeDefault {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             ObjectLifetimeDefault::Ambiguous => write!(f, "Ambiguous"),
+            ObjectLifetimeDefault::BaseDefault => write!(f, "BaseDefault"),
             ObjectLifetimeDefault::Specific(ref r) => write!(f, "{:?}", r),
         }
     }

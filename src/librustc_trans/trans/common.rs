@@ -82,6 +82,16 @@ pub fn erase_regions<'tcx,T>(cx: &ty::ctxt<'tcx>, value: &T) -> T
             return t_norm;
         }
 
+        fn fold_existential_bounds(&mut self, s: &ty::ExistentialBounds<'tcx>)
+                                   -> ty::ExistentialBounds<'tcx> {
+            let mut s = ty_fold::super_fold_existential_bounds(self, s);
+
+            // this annoying flag messes up trans normalization
+            s.region_bound_will_change = false;
+
+            s
+        }
+
         fn fold_binder<T>(&mut self, t: &ty::Binder<T>) -> ty::Binder<T>
             where T : TypeFoldable<'tcx>
         {

@@ -593,7 +593,8 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                                sub: Region,
                                sup: Region) {
         match origin {
-            infer::Subtype(trace) => {
+            infer::Subtype(trace) |
+            infer::DefaultExistentialBound(trace) => {
                 let terr = ty::terr_regions_does_not_outlive(sup, sub);
                 self.report_and_explain_type_error(trace, &terr);
             }
@@ -1569,7 +1570,8 @@ impl<'a, 'tcx> ErrorReportingHelpers<'tcx> for InferCtxt<'a, 'tcx> {
 
     fn note_region_origin(&self, origin: &SubregionOrigin<'tcx>) {
         match *origin {
-            infer::Subtype(ref trace) => {
+            infer::Subtype(ref trace) |
+            infer::DefaultExistentialBound(ref trace) => {
                 let desc = match trace.origin {
                     infer::Misc(_) => {
                         "types are compatible"

@@ -1358,7 +1358,54 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
             }
         }
 
+        // Check for future hostile edges tied to a bad default
+        self.report_future_hostility(&graph);
+
         (0..self.num_vars() as usize).map(|idx| var_data[idx].value).collect()
+    }
+
+    fn report_future_hostility(&self, graph: &RegionGraph) {
+        let constraints = self.constraints.borrow();
+        for edge in graph.all_edges() {
+            match constraints[&edge.data] {
+                SubregionOrigin::DefaultExistentialBound(_) => {
+                    // this will become 'static in the future
+                }
+                _ => { continue; }
+            }
+
+            // this constraint will become a 'static constraint in the
+            // future, so walk outward and see if we have any hard
+            // bounds that could not be inferred to 'static
+            for nid in graph.depth_traverse(edge.target()) {
+                for (_, succ) in graph.outgoing_edges(nid) {
+                    match succ.data {
+                        ConstrainVarSubReg(_, r) => {
+                            match r {
+                                ty::ReStatic | ty::ReInfer(_) => {
+                                    /* OK */
+                                }
+                                ty::ReFree(_) | ty::ReScope(_) | ty::ReEmpty => {
+                                    span_warn!(
+                                        self.tcx.sess,
+                                        constraints[&edge.data].span(),
+                                        E0398,
+                                        "this code may fail to compile in Rust 1.3 due to \
+                                         the proposed change in object lifetime bound defaults");
+                                    return; // only issue the warning once per fn
+                                }
+                                ty::ReEarlyBound(..) | ty::ReLateBound(..) => {
+                                    self.tcx.sess.span_bug(
+                                        constraints[&succ.data].span(),
+                                        "relation to bound region");
+                                }
+                            }
+                        }
+                        _ => { }
+                    }
+                }
+            }
+        }
     }
 
     fn construct_graph(&self) -> RegionGraph {
