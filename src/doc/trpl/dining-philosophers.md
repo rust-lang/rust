@@ -511,13 +511,12 @@ impl Philosopher {
     }
 
     fn eat(&self, table: &Table) {
-        let _left = table.forks[self.left].lock().unwrap();
-        let _right = table.forks[self.right].lock().unwrap();
-
         println!("{} is eating.", self.name);
-
+        
+        let _left = table.forks[self.left].lock().unwrap();
         thread::sleep_ms(1000);
-
+        let _right = table.forks[self.right].lock().unwrap();
+        
         println!("{} is done eating.", self.name);
     }
 }
@@ -596,13 +595,12 @@ We now need to construct those `left` and `right` values, so we add them to
 
 ```rust,ignore
 fn eat(&self, table: &Table) {
-    let _left = table.forks[self.left].lock().unwrap();
-    let _right = table.forks[self.right].lock().unwrap();
-
     println!("{} is eating.", self.name);
-
+    
+    let _left = table.forks[self.left].lock().unwrap();
     thread::sleep_ms(1000);
-
+    let _right = table.forks[self.right].lock().unwrap();
+    
     println!("{} is done eating.", self.name);
 }
 ```
@@ -660,7 +658,9 @@ We need to pass in our `left` and `right` values to the constructors for our
 you look at the pattern, it’s all consistent until the very end. Monsieur
 Foucault should have `4, 0` as arguments, but instead, has `0, 4`. This is what
 prevents deadlock, actually: one of our philosophers is left handed! This is
-one way to solve the problem, and in my opinion, it’s the simplest.
+one way to solve the problem, and in my opinion, it’s the simplest. If you
+switched these round and caused a deadlock you can use `Ctrl-C` to interrupt
+execution of the program.
 
 ```rust,ignore
 let handles: Vec<_> = philosophers.into_iter().map(|p| {
