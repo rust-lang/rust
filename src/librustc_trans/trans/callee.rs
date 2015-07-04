@@ -499,7 +499,7 @@ pub fn trans_fn_ref_with_substs<'a, 'tcx>(
             let ref_ty = match node {
                 ExprId(id) => tcx.node_id_to_type(id),
                 MethodCallKey(method_call) => {
-                    tcx.tables.borrow().method_map.get(&method_call).unwrap().ty
+                    tcx.tables.borrow().method_map[&method_call].ty
                 }
             };
             let ref_ty = monomorphize::apply_param_substs(tcx,

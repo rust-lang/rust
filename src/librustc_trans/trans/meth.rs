@@ -106,20 +106,13 @@ pub fn trans_method_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                        -> Callee<'blk, 'tcx> {
     let _icx = push_ctxt("meth::trans_method_callee");
 
-    let (method_id, origin, method_substs, method_ty) =
-        bcx.tcx()
-           .tables
-           .borrow()
-           .method_map
-           .get(&method_call)
-           .map(|method| (method.def_id, method.origin, method.substs, method.ty))
-           .unwrap();
+    let method = bcx.tcx().tables.borrow().method_map[&method_call];
 
-    match origin {
-        ty::MethodOrigin::Inherent => {
-            debug!("trans_method_callee: static, {:?}", method_id);
+    match bcx.tcx().impl_or_trait_item(method.def_id).container() {
+        ty::ImplContainer(_) => {
+            debug!("trans_method_callee: static, {:?}", method.def_id);
             let datum = callee::trans_fn_ref(bcx.ccx(),
-                                             method_id,
+                                             method.def_id,
                                              MethodCallKey(method_call),
                                              bcx.fcx.param_substs);
             Callee {
@@ -129,11 +122,8 @@ pub fn trans_method_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             }
         }
 
-        ty::MethodOrigin::Trait => {
-            let method_item = bcx.tcx().impl_or_trait_item(method_id);
-            let trait_def_id = method_item.container().id();
-
-            let trait_substs = method_substs.clone().method_to_trait();
+        ty::TraitContainer(trait_def_id) => {
+            let trait_substs = method.substs.clone().method_to_trait();
             let trait_substs = bcx.tcx().mk_substs(trait_substs);
             let trait_ref = ty::TraitRef::new(trait_def_id, trait_substs);
 
@@ -152,8 +142,8 @@ pub fn trans_method_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                        method_call,
                                        self_expr,
                                        trait_def_id,
-                                       method_id,
-                                       method_ty,
+                                       method.def_id,
+                                       method.ty,
                                        origin,
                                        arg_cleanup_scope)
         }

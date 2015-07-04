@@ -1025,7 +1025,7 @@ pub fn node_id_substs<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             tcx.node_id_item_substs(id).substs
         }
         MethodCallKey(method_call) => {
-            tcx.tables.borrow().method_map.get(&method_call).unwrap().substs.clone()
+            tcx.tables.borrow().method_map[&method_call].substs.clone()
         }
     };
 

@@ -844,17 +844,16 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
     }
 
     // Checks that a method is in scope.
-    fn check_method(&mut self, span: Span, callee: &ty::MethodCallee,
+    fn check_method(&mut self, span: Span, method_def_id: ast::DefId,
                     name: ast::Name) {
-        match callee.origin {
-            ty::MethodOrigin::Inherent => {
-                self.check_static_method(span, callee.def_id, name)
+        match self.tcx.impl_or_trait_item(method_def_id).container() {
+            ty::ImplContainer(_) => {
+                self.check_static_method(span, method_def_id, name)
             }
             // Trait methods are always all public. The only controlling factor
             // is whether the trait itself is accessible or not.
-            ty::MethodOrigin::Trait => {
-                let method = self.tcx.impl_or_trait_item(callee.def_id);
-                self.report_error(self.ensure_public(span, method.container().id(),
+            ty::TraitContainer(trait_def_id) => {
+                self.report_error(self.ensure_public(span, trait_def_id,
                                                      None, "source trait"));
             }
         }
@@ -899,17 +898,9 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
             }
             ast::ExprMethodCall(ident, _, _) => {
                 let method_call = ty::MethodCall::expr(expr.id);
-                match self.tcx.tables.borrow().method_map.get(&method_call) {
-                    None => {
-                        self.tcx.sess.span_bug(expr.span,
-                                                "method call not in \
-                                                method map");
-                    }
-                    Some(method) => {
-                        debug!("(privacy checking) checking impl method");
-                        self.check_method(expr.span, method, ident.node.name);
-                    }
-                }
+                let method = self.tcx.tables.borrow().method_map[&method_call];
+                debug!("(privacy checking) checking impl method");
+                self.check_method(expr.span, method.def_id, ident.node.name);
             }
             ast::ExprStruct(_, ref fields, _) => {
                 match self.tcx.expr_ty(expr).sty {

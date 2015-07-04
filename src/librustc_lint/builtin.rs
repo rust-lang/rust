@@ -1995,9 +1995,9 @@ impl LintPass for UnconditionalRecursion {
         fn expr_refers_to_this_method(tcx: &ty::ctxt,
                                       method: &ty::Method,
                                       id: ast::NodeId) -> bool {
-            let tables = tcx.tables.borrow();
-            let callee = match tables.method_map.get(&ty::MethodCall::expr(id)) {
-                Some(m) => m,
+            let method_call = ty::MethodCall::expr(id);
+            let callee = match tcx.tables.borrow().method_map.get(&method_call) {
+                Some(&m) => m,
                 None => return false
             };
             let callee_item = tcx.impl_or_trait_item(callee.def_id);

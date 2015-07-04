@@ -625,20 +625,10 @@ pub enum CustomCoerceUnsized {
     Struct(usize)
 }
 
-#[derive(Clone, Copy, RustcEncodable, RustcDecodable, Debug)]
-pub enum MethodOrigin {
-    /// Inherent impl method call.
-    Inherent,
-
-    /// Trait method call.
-    Trait
-}
-
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct MethodCallee<'tcx> {
     /// Impl method ID, for inherent methods, or trait method ID, otherwise.
     pub def_id: ast::DefId,
-    pub origin: MethodOrigin,
     pub ty: Ty<'tcx>,
     pub substs: &'tcx subst::Substs<'tcx>
 }
