@@ -668,10 +668,12 @@ macro_rules! uint_impl {
      $mul_with_overflow:path) => {
         /// Returns the smallest value that can be represented by this integer type.
         #[stable(feature = "rust1", since = "1.0.0")]
+        #[inline]
         pub fn min_value() -> Self { 0 }
 
         /// Returns the largest value that can be represented by this integer type.
         #[stable(feature = "rust1", since = "1.0.0")]
+        #[inline]
         pub fn max_value() -> Self { !0 }
 
         /// Converts a string slice in a given base to an integer.
