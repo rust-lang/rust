@@ -359,7 +359,7 @@ impl<'a> Seek for &'a File {
 }
 
 impl OpenOptions {
-    /// Creates a blank net set of options ready for configuration.
+    /// Creates a blank new set of options ready for configuration.
     ///
     /// All options are initially set to `false`.
     ///
@@ -368,7 +368,8 @@ impl OpenOptions {
     /// ```no_run
     /// use std::fs::OpenOptions;
     ///
-    /// let file = OpenOptions::new().open("foo.txt");
+    /// let mut options = OpenOptions::new();
+    /// let file = options.read(true).open("foo.txt");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new() -> OpenOptions {
@@ -419,7 +420,7 @@ impl OpenOptions {
     /// ```no_run
     /// use std::fs::OpenOptions;
     ///
-    /// let file = OpenOptions::new().write(true).append(true).open("foo.txt");
+    /// let file = OpenOptions::new().append(true).open("foo.txt");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn append(&mut self, append: bool) -> &mut OpenOptions {
@@ -430,6 +431,8 @@ impl OpenOptions {
     ///
     /// If a file is successfully opened with this option set it will truncate
     /// the file to 0 length if it already exists.
+    ///
+    /// The file must be opened with write access for truncate to work.
     ///
     /// # Examples
     ///
@@ -453,7 +456,7 @@ impl OpenOptions {
     /// ```no_run
     /// use std::fs::OpenOptions;
     ///
-    /// let file = OpenOptions::new().create(true).open("foo.txt");
+    /// let file = OpenOptions::new().write(true).create(true).open("foo.txt");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn create(&mut self, create: bool) -> &mut OpenOptions {
