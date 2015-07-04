@@ -89,6 +89,7 @@ pub mod test;
 
 pub mod driver;
 pub mod pretty;
+pub mod explain;
 
 
 const BUG_REPORT_URL: &'static str =
@@ -276,7 +277,13 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                 match descriptions.find_description(&code[..]) {
                     Some(ref description) => {
                         // Slice off the leading newline and print.
-                        print!("{}", &description[1..]);
+                        let tmp_print : Vec<&str> = (&description[1..]).split("```\n").collect();
+
+                        if tmp_print.len() < 2 {
+                            print!("{}", tmp_print[0]);
+                        } else {
+                            explain::beautiful_error_printing(&tmp_print)
+                        }
                     }
                     None => {
                         early_error(&format!("no extended information for {}", code));
