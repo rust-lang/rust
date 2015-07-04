@@ -3181,7 +3181,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
           }
           fcx.write_nil(id);
       }
-      ast::ExprMac(_) => tcx.sess.bug("unexpanded macro"),
+      ast::ExprMac(..) => tcx.sess.bug("unexpanded macro"),
       ast::ExprBreak(_) => { fcx.write_ty(id, fcx.infcx().next_diverging_ty_var()); }
       ast::ExprAgain(_) => { fcx.write_ty(id, fcx.infcx().next_diverging_ty_var()); }
       ast::ExprRet(ref expr_opt) => {

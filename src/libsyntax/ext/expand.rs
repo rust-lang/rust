@@ -49,7 +49,7 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
     e.and_then(|ast::Expr {id, node, span}| match node {
         // expr_mac should really be expr_ext or something; it's the
         // entry-point for all syntax extensions.
-        ast::ExprMac(mac) => {
+        ast::ExprMac(mac, _) => {
             let expanded_expr = match expand_mac_invoc(mac, span,
                                                        |r| r.make_expr(),
                                                        mark_expr, fld) {

@@ -507,8 +507,8 @@ impl<'a> State<'a> {
                    indented: usize) -> io::Result<()> {
         self.bclose_maybe_open(span, indented, true)
     }
-    pub fn bclose_maybe_open (&mut self, span: codemap::Span,
-                              indented: usize, close_box: bool) -> io::Result<()> {
+    pub fn bclose_maybe_open(&mut self, span: codemap::Span,
+                             indented: usize, close_box: bool) -> io::Result<()> {
         try!(self.maybe_print_comment(span.hi));
         try!(self.break_offset_if_not_bol(1, -(indented as isize)));
         try!(word(&mut self.s, "}"));
@@ -1531,7 +1531,12 @@ impl<'a> State<'a> {
                 match delim {
                     token::Paren => try!(self.popen()),
                     token::Bracket => try!(word(&mut self.s, "[")),
-                    token::Brace => try!(self.bopen()),
+                    token::Brace => {
+                        // We need to create some boxes because `bopen` and `bclose` close boxes.
+                        // Using `head` here takes care of setting this up for us.
+                        try!(self.head(""));
+                        try!(self.bopen())
+                    }
                 }
                 try!(self.print_tts(tts));
                 match delim {
@@ -1964,7 +1969,7 @@ impl<'a> State<'a> {
 
                 try!(self.pclose());
             }
-            ast::ExprMac(ref m) => try!(self.print_mac(m, token::Paren)),
+            ast::ExprMac(ref m, delim) => try!(self.print_mac(m, delim)),
             ast::ExprParen(ref e) => {
                 try!(self.popen());
                 try!(self.print_expr(&**e));

@@ -767,7 +767,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
         ast::ExprAssign(..) |
         ast::ExprAssignOp(..) |
         ast::ExprInlineAsm(_) |
-        ast::ExprMac(_) => {
+        ast::ExprMac(_, _) => {
             v.add_qualif(ConstQualif::NOT_CONST);
             if v.mode != Mode::Var {
                 span_err!(v.tcx.sess, e.span, E0019,
