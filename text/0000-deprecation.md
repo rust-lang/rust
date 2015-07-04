@@ -223,6 +223,14 @@ estimate the effort to be reasonably low.
 
 # Alternatives
 
+* An earlier version of this proposal suggested using a crate attribute
+  instead of a cargo package attribute and a compiler option, to also 
+  allow cargo-less use cases without manual interaction. However it was 
+  determined that those cases usually target the current Rust version 
+  anyway, and the current proposal allows us to default to the current 
+  version for rustc, while the earlier proposal would have defaulted to 
+  1.0.0 by necessity of not breaking existing code
+
 * It was suggested that opt-in and opt-out (e.g. by `#[legacy(..)]`)
   could be sufficient to work around any breaking code on API or 
   language changes. The big problem here is that this relies on the 
@@ -252,8 +260,10 @@ estimate the effort to be reasonably low.
   can be marked as "soft" deprecated to dissuade new uses before hard 
   deprecation is decided. Allowing people to specify deprecation in 
   future version appears to have much of the same benefits without 
-  needing a new attribute key. 
+  requiring a new attribute key
 
 # Unresolved questions
 
-None
+The names for the cargo package attribute and the rustc compiler option
+are still subject to bikeshedding (however, discussion has stalled,
+suggesting the current names are good enough).
