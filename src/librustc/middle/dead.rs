@@ -93,17 +93,10 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
         });
     }
 
-    fn lookup_and_handle_method(&mut self, id: ast::NodeId,
-                                span: codemap::Span) {
+    fn lookup_and_handle_method(&mut self, id: ast::NodeId) {
         let method_call = ty::MethodCall::expr(id);
-        match self.tcx.tables.borrow().method_map.get(&method_call) {
-            Some(method) => self.check_def_id(method.def_id),
-            None => {
-                self.tcx.sess.span_bug(span,
-                                       "method call expression not \
-                                        in method map?!")
-            }
-        }
+        let method = self.tcx.tables.borrow().method_map[&method_call];
+        self.check_def_id(method.def_id);
     }
 
     fn handle_field_access(&mut self, lhs: &ast::Expr, name: ast::Name) {
@@ -239,7 +232,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for MarkSymbolVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &ast::Expr) {
         match expr.node {
             ast::ExprMethodCall(..) => {
-                self.lookup_and_handle_method(expr.id, expr.span);
+                self.lookup_and_handle_method(expr.id);
             }
             ast::ExprField(ref lhs, ref ident) => {
                 self.handle_field_access(&**lhs, ident.node.name);

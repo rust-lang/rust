@@ -609,20 +609,17 @@ fn encode_method_callee<'a, 'tcx>(ecx: &e::EncodeContext<'a, 'tcx>,
                                   method: &ty::MethodCallee<'tcx>) {
     use serialize::Encoder;
 
-    rbml_w.emit_struct("MethodCallee", 5, |rbml_w| {
+    rbml_w.emit_struct("MethodCallee", 4, |rbml_w| {
         rbml_w.emit_struct_field("autoderef", 0, |rbml_w| {
             autoderef.encode(rbml_w)
         });
         rbml_w.emit_struct_field("def_id", 1, |rbml_w| {
             Ok(rbml_w.emit_def_id(method.def_id))
         });
-        rbml_w.emit_struct_field("origin", 2, |rbml_w| {
-            method.origin.encode(rbml_w)
-        });
-        rbml_w.emit_struct_field("ty", 3, |rbml_w| {
+        rbml_w.emit_struct_field("ty", 2, |rbml_w| {
             Ok(rbml_w.emit_ty(ecx, method.ty))
         });
-        rbml_w.emit_struct_field("substs", 4, |rbml_w| {
+        rbml_w.emit_struct_field("substs", 3, |rbml_w| {
             Ok(rbml_w.emit_substs(ecx, &method.substs))
         })
     }).unwrap();
@@ -632,19 +629,17 @@ impl<'a, 'tcx> read_method_callee_helper<'tcx> for reader::Decoder<'a> {
     fn read_method_callee<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
                                   -> (u32, ty::MethodCallee<'tcx>) {
 
-        self.read_struct("MethodCallee", 5, |this| {
+        self.read_struct("MethodCallee", 4, |this| {
             let autoderef = this.read_struct_field("autoderef", 0,
                                                    Decodable::decode).unwrap();
             Ok((autoderef, ty::MethodCallee {
                 def_id: this.read_struct_field("def_id", 1, |this| {
                     Ok(this.read_def_id(dcx))
                 }).unwrap(),
-                origin: this.read_struct_field("origin", 2,
-                                               Decodable::decode).unwrap(),
-                ty: this.read_struct_field("ty", 3, |this| {
+                ty: this.read_struct_field("ty", 2, |this| {
                     Ok(this.read_ty(dcx))
                 }).unwrap(),
-                substs: this.read_struct_field("substs", 4, |this| {
+                substs: this.read_struct_field("substs", 3, |this| {
                     Ok(dcx.tcx.mk_substs(this.read_substs(dcx)))
                 }).unwrap()
             }))

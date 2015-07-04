@@ -696,11 +696,10 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
             }
         }
         ast::ExprMethodCall(..) => {
-            let is_const = match v.tcx.tables.borrow().method_map[&method_call] {
-                ty::MethodCallee { def_id, origin: ty::MethodOrigin::Inherent, .. } => {
-                    v.handle_const_fn_call(e, def_id, node_ty)
-                }
-                _ => false
+            let method = v.tcx.tables.borrow().method_map[&method_call];
+            let is_const = match v.tcx.impl_or_trait_item(method.def_id).container() {
+                ty::ImplContainer(_) => v.handle_const_fn_call(e, method.def_id, node_ty),
+                ty::TraitContainer(_) => false
             };
             if !is_const {
                 v.add_qualif(ConstQualif::NOT_CONST);

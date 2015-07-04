@@ -307,7 +307,6 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
     let callee = ty::MethodCallee {
         def_id: method_item.def_id(),
-        origin: ty::MethodOrigin::Trait,
         ty: fty,
         substs: trait_ref.substs
     };

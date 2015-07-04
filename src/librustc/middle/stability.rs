@@ -406,10 +406,7 @@ pub fn check_expr(tcx: &ty::ctxt, e: &ast::Expr,
         ast::ExprMethodCall(i, _, _) => {
             span = i.span;
             let method_call = ty::MethodCall::expr(e.id);
-            match tcx.tables.borrow().method_map.get(&method_call) {
-                Some(method) => method.def_id,
-                None => return
-            }
+            tcx.tables.borrow().method_map[&method_call].def_id
         }
         ast::ExprField(ref base_e, ref field) => {
             span = field.span;

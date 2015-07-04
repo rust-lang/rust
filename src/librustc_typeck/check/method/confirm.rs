@@ -84,8 +84,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
         self.enforce_illegal_method_limitations(&pick);
 
         // Create substitutions for the method's type parameters.
-        let (rcvr_substs, method_origin) =
-            self.fresh_receiver_substs(self_ty, &pick);
+        let rcvr_substs = self.fresh_receiver_substs(self_ty, &pick);
         let (method_types, method_regions) =
             self.instantiate_method_substs(&pick, supplied_method_types);
         let all_substs = rcvr_substs.with_method(method_types, method_regions);
@@ -112,7 +111,6 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
         }));
         let callee = ty::MethodCallee {
             def_id: pick.item.def_id(),
-            origin: method_origin,
             ty: fty,
             substs: self.tcx().mk_substs(all_substs)
         };
@@ -193,16 +191,14 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
     fn fresh_receiver_substs(&mut self,
                              self_ty: Ty<'tcx>,
                              pick: &probe::Pick<'tcx>)
-                             -> (subst::Substs<'tcx>, ty::MethodOrigin)
+                             -> subst::Substs<'tcx>
     {
         match pick.kind {
             probe::InherentImplPick => {
                 let impl_def_id = pick.item.container().id();
                 assert!(self.tcx().impl_trait_ref(impl_def_id).is_none(),
                         "impl {:?} is not an inherent impl", impl_def_id);
-                let impl_polytype = check::impl_self_ty(self.fcx, self.span, impl_def_id);
-
-                (impl_polytype.substs, ty::MethodOrigin::Inherent)
+                check::impl_self_ty(self.fcx, self.span, impl_def_id).substs
             }
 
             probe::ObjectPick => {
@@ -228,9 +224,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                            original_poly_trait_ref,
                            upcast_trait_ref,
                            trait_def_id);
-                    let substs = upcast_trait_ref.substs.clone();
-
-                    (substs, ty::MethodOrigin::Trait)
+                    upcast_trait_ref.substs.clone()
                 })
             }
 
@@ -250,8 +244,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                         self.span,
                         &impl_polytype.substs,
                         &self.tcx().impl_trait_ref(impl_def_id).unwrap());
-                let substs = impl_trait_ref.substs.clone();
-                (substs, ty::MethodOrigin::Trait)
+                impl_trait_ref.substs.clone()
             }
 
             probe::TraitPick => {
@@ -263,19 +256,15 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                 // the process we will unify the transformed-self-type
                 // of the method with the actual type in order to
                 // unify some of these variables.
-                let substs = self.infcx().fresh_substs_for_trait(self.span,
-                                                                 &trait_def.generics,
-                                                                 self.infcx().next_ty_var());
-
-                (substs, ty::MethodOrigin::Trait)
+                self.infcx().fresh_substs_for_trait(self.span,
+                                                    &trait_def.generics,
+                                                    self.infcx().next_ty_var())
             }
 
             probe::WhereClausePick(ref poly_trait_ref) => {
                 // Where clauses can have bound regions in them. We need to instantiate
                 // those to convert from a poly-trait-ref to a trait-ref.
-                let trait_ref = self.replace_late_bound_regions_with_fresh_var(&*poly_trait_ref);
-                let substs = trait_ref.substs.clone();
-                (substs, ty::MethodOrigin::Trait)
+                self.replace_late_bound_regions_with_fresh_var(&*poly_trait_ref).substs.clone()
             }
         }
     }
