@@ -629,9 +629,10 @@ fn assemble_candidates_from_object_type<'cx,'tcx>(
     selcx: &mut SelectionContext<'cx,'tcx>,
     obligation:  &ProjectionTyObligation<'tcx>,
     obligation_trait_ref: &ty::TraitRef<'tcx>,
-    candidate_set: &mut ProjectionTyCandidateSet<'tcx>,
-    object_ty: Ty<'tcx>)
+    candidate_set: &mut ProjectionTyCandidateSet<'tcx>)
 {
+    let self_ty = obligation_trait_ref.self_ty();
+    let object_ty = selcx.infcx().shallow_resolve(self_ty);
     debug!("assemble_candidates_from_object_type(object_ty={:?})",
            object_ty);
     let data = match object_ty.sty {
@@ -684,10 +685,9 @@ fn assemble_candidates_from_impls<'cx,'tcx>(
             candidate_set.vec.push(
                 ProjectionTyCandidate::Impl(data));
         }
-        super::VtableObject(data) => {
+        super::VtableObject(_) => {
             assemble_candidates_from_object_type(
-                selcx, obligation, obligation_trait_ref, candidate_set,
-                data.object_ty);
+                selcx, obligation, obligation_trait_ref, candidate_set);
         }
         super::VtableClosure(data) => {
             candidate_set.vec.push(

@@ -291,11 +291,13 @@ pub struct VtableBuiltinData<N> {
 /// for the object type `Foo`.
 #[derive(PartialEq,Eq,Clone)]
 pub struct VtableObjectData<'tcx> {
-    /// the object type `Foo`.
-    pub object_ty: Ty<'tcx>,
-
     /// `Foo` upcast to the obligation trait. This will be some supertrait of `Foo`.
     pub upcast_trait_ref: ty::PolyTraitRef<'tcx>,
+
+    /// The vtable is formed by concatenating together the method lists of
+    /// the base object trait and all supertraits; this is the start of
+    /// `upcast_trait_ref`'s methods in that vtable.
+    pub vtable_base: usize
 }
 
 /// Creates predicate obligations from the generic bounds.
