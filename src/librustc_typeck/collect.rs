@@ -596,7 +596,7 @@ fn get_enum_variant_types<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             ty: result_ty
         };
 
-        tcx.tcache.borrow_mut().insert(variant_def_id, variant_scheme.clone());
+        tcx.register_item_type(variant_def_id, variant_scheme.clone());
         tcx.predicates.borrow_mut().insert(variant_def_id, enum_predicates.clone());
         write_ty_to_tcx(tcx, variant.node.id, result_ty);
     }
@@ -635,7 +635,7 @@ fn convert_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                             ccx.tcx.mk_bare_fn(ty_method.fty.clone()));
     debug!("method {} (id {}) has type {:?}",
             ident, id, fty);
-    ccx.tcx.tcache.borrow_mut().insert(def_id,TypeScheme {
+    ccx.tcx.register_item_type(def_id, TypeScheme {
         generics: ty_method.generics.clone(),
         ty: fty
     });
@@ -661,11 +661,11 @@ fn convert_field<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     write_ty_to_tcx(ccx.tcx, v.node.id, tt);
 
     /* add the field to the tcache */
-    ccx.tcx.tcache.borrow_mut().insert(local_def(v.node.id),
-                                       ty::TypeScheme {
-                                           generics: struct_generics.clone(),
-                                           ty: tt
-                                       });
+    ccx.tcx.register_item_type(local_def(v.node.id),
+                               ty::TypeScheme {
+                                   generics: struct_generics.clone(),
+                                   ty: tt
+                               });
     ccx.tcx.predicates.borrow_mut().insert(local_def(v.node.id),
                                            struct_predicates.clone());
 
@@ -841,9 +841,9 @@ fn convert_item(ccx: &CrateCtxt, it: &ast::Item) {
             let selfty = ccx.icx(&ty_predicates).to_ty(&ExplicitRscope, &**selfty);
             write_ty_to_tcx(tcx, it.id, selfty);
 
-            tcx.tcache.borrow_mut().insert(local_def(it.id),
-                                           TypeScheme { generics: ty_generics.clone(),
-                                                        ty: selfty });
+            tcx.register_item_type(local_def(it.id),
+                                   TypeScheme { generics: ty_generics.clone(),
+                                                ty: selfty });
             tcx.predicates.borrow_mut().insert(local_def(it.id),
                                                ty_predicates.clone());
 
@@ -863,11 +863,11 @@ fn convert_item(ccx: &CrateCtxt, it: &ast::Item) {
                 if let ast::ConstImplItem(ref ty, ref expr) = impl_item.node {
                     let ty = ccx.icx(&ty_predicates)
                                 .to_ty(&ExplicitRscope, &*ty);
-                    tcx.tcache.borrow_mut().insert(local_def(impl_item.id),
-                                                   TypeScheme {
-                                                       generics: ty_generics.clone(),
-                                                       ty: ty,
-                                                   });
+                    tcx.register_item_type(local_def(impl_item.id),
+                                           TypeScheme {
+                                               generics: ty_generics.clone(),
+                                               ty: ty,
+                                           });
                     convert_associated_const(ccx, ImplContainer(local_def(it.id)),
                                              impl_item.ident, impl_item.id,
                                              impl_item.vis.inherit_from(parent_visibility),
@@ -954,11 +954,11 @@ fn convert_item(ccx: &CrateCtxt, it: &ast::Item) {
                     ast::ConstTraitItem(ref ty, ref default) => {
                         let ty = ccx.icx(&trait_predicates)
                                     .to_ty(&ExplicitRscope, ty);
-                        tcx.tcache.borrow_mut().insert(local_def(trait_item.id),
-                                                       TypeScheme {
-                                                           generics: trait_def.generics.clone(),
-                                                           ty: ty,
-                                                       });
+                        tcx.register_item_type(local_def(trait_item.id),
+                                               TypeScheme {
+                                                   generics: trait_def.generics.clone(),
+                                                   ty: ty,
+                                               });
                         convert_associated_const(ccx, TraitContainer(local_def(it.id)),
                                                  trait_item.ident, trait_item.id,
                                                  ast::Public, ty, default.as_ref().map(|d| &**d));
@@ -1099,26 +1099,25 @@ fn convert_struct<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                 // Enum-like.
                 write_ty_to_tcx(tcx, ctor_id, selfty);
 
-                tcx.tcache.borrow_mut().insert(local_def(ctor_id), scheme);
+                tcx.register_item_type(local_def(ctor_id), scheme);
                 tcx.predicates.borrow_mut().insert(local_def(ctor_id), predicates);
             } else if struct_def.fields[0].node.kind.is_unnamed() {
                 // Tuple-like.
                 let inputs: Vec<_> =
                     struct_def.fields
                               .iter()
-                              .map(|field| tcx.tcache.borrow().get(&local_def(field.node.id))
-                                                              .unwrap()
-                                                              .ty)
+                              .map(|field| tcx.lookup_item_type(
+                                  local_def(field.node.id)).ty)
                               .collect();
                 let ctor_fn_ty = tcx.mk_ctor_fn(local_def(ctor_id),
                                                 &inputs[..],
                                                 selfty);
                 write_ty_to_tcx(tcx, ctor_id, ctor_fn_ty);
-                tcx.tcache.borrow_mut().insert(local_def(ctor_id),
-                                               TypeScheme {
-                                                   generics: scheme.generics,
-                                                   ty: ctor_fn_ty
-                                               });
+                tcx.register_item_type(local_def(ctor_id),
+                                       TypeScheme {
+                                           generics: scheme.generics,
+                                           ty: ctor_fn_ty
+                                       });
                 tcx.predicates.borrow_mut().insert(local_def(ctor_id), predicates);
             }
         }
@@ -1533,8 +1532,7 @@ fn convert_typed_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         let object_lifetime_default_reprs: String =
             scheme.generics.types.iter()
                                  .map(|t| match t.object_lifetime_default {
-                                     Some(ty::ObjectLifetimeDefault::Specific(r)) =>
-                                         r.to_string(),
+                                     ty::ObjectLifetimeDefault::Specific(r) => r.to_string(),
                                      d => format!("{:?}", d),
                                  })
                                  .collect::<Vec<String>>()
@@ -1638,7 +1636,7 @@ fn ty_generics_for_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         name: special_idents::type_self.name,
         def_id: local_def(param_id),
         default: None,
-        object_lifetime_default: None,
+        object_lifetime_default: ty::ObjectLifetimeDefault::BaseDefault,
     };
 
     ccx.tcx.ty_param_defs.borrow_mut().insert(param_id, def.clone());
@@ -1929,7 +1927,7 @@ fn compute_object_lifetime_default<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                                             param_id: ast::NodeId,
                                             param_bounds: &[ast::TyParamBound],
                                             where_clause: &ast::WhereClause)
-                                            -> Option<ty::ObjectLifetimeDefault>
+                                            -> ty::ObjectLifetimeDefault
 {
     let inline_bounds = from_bounds(ccx, param_bounds);
     let where_bounds = from_predicates(ccx, param_id, &where_clause.predicates);
@@ -1937,11 +1935,12 @@ fn compute_object_lifetime_default<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                                               .chain(where_bounds)
                                               .collect();
     return if all_bounds.len() > 1 {
-        Some(ty::ObjectLifetimeDefault::Ambiguous)
+        ty::ObjectLifetimeDefault::Ambiguous
+    } else if all_bounds.len() == 0 {
+        ty::ObjectLifetimeDefault::BaseDefault
     } else {
-        all_bounds.into_iter()
-                  .next()
-                  .map(ty::ObjectLifetimeDefault::Specific)
+        ty::ObjectLifetimeDefault::Specific(
+            all_bounds.into_iter().next().unwrap())
     };
 
     fn from_bounds<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
@@ -2211,7 +2210,7 @@ fn check_method_self_type<'a, 'tcx, RS:RegionScope>(
                base_type,
                base_type_free);
 
-        let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, None);
+        let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, None, false);
         drop(::require_same_types(tcx,
                                   Some(&infcx),
                                   false,

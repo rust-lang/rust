@@ -598,7 +598,7 @@ impl<'a> StringReader<'a> {
 
     /// Lex a LIT_INTEGER or a LIT_FLOAT
     fn scan_number(&mut self, c: char) -> token::Lit {
-        let mut num_digits;
+        let num_digits;
         let mut base = 10;
         let start_bpos = self.last_pos;
 

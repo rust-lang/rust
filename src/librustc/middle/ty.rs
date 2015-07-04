@@ -30,7 +30,6 @@ pub use self::ImplOrTraitItem::*;
 pub use self::BoundRegion::*;
 pub use self::TypeVariants::*;
 pub use self::IntVarValue::*;
-pub use self::MethodOrigin::*;
 pub use self::CopyImplementationError::*;
 
 pub use self::BuiltinBound::Send as BoundSend;
@@ -52,8 +51,6 @@ use middle::dependency_format;
 use middle::fast_reject;
 use middle::free_region::FreeRegionMap;
 use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem, FnOnceTraitLangItem};
-use middle::mem_categorization as mc;
-use middle::mem_categorization::Typer;
 use middle::region;
 use middle::resolve_lifetime;
 use middle::infer;
@@ -332,7 +329,7 @@ impl IntTypeExt for attr::IntType {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum ImplOrTraitItemContainer {
     TraitContainer(ast::DefId),
     ImplContainer(ast::DefId),
@@ -628,68 +625,12 @@ pub enum CustomCoerceUnsized {
     Struct(usize)
 }
 
-#[derive(Clone)]
-pub enum MethodOrigin<'tcx> {
-    // fully statically resolved method
-    MethodStatic(ast::DefId),
-
-    // fully statically resolved closure invocation
-    MethodStaticClosure(ast::DefId),
-
-    // method invoked on a type parameter with a bounded trait
-    MethodTypeParam(MethodParam<'tcx>),
-
-    // method invoked on a trait instance
-    MethodTraitObject(MethodObject<'tcx>),
-
-}
-
-// details for a method invoked with a receiver whose type is a type parameter
-// with a bounded trait.
-#[derive(Clone)]
-pub struct MethodParam<'tcx> {
-    // the precise trait reference that occurs as a bound -- this may
-    // be a supertrait of what the user actually typed. Note that it
-    // never contains bound regions; those regions should have been
-    // instantiated with fresh variables at this point.
-    pub trait_ref: ty::TraitRef<'tcx>,
-
-    // index of usize in the list of trait items. Note that this is NOT
-    // the index into the vtable, because the list of trait items
-    // includes associated types.
-    pub method_num: usize,
-
-    /// The impl for the trait from which the method comes. This
-    /// should only be used for certain linting/heuristic purposes
-    /// since there is no guarantee that this is Some in every
-    /// situation that it could/should be.
-    pub impl_def_id: Option<ast::DefId>,
-}
-
-// details for a method invoked with a receiver whose type is an object
-#[derive(Clone)]
-pub struct MethodObject<'tcx> {
-    // the (super)trait containing the method to be invoked
-    pub trait_ref: TraitRef<'tcx>,
-
-    // the actual base trait id of the object
-    pub object_trait_id: ast::DefId,
-
-    // index of the method to be invoked amongst the trait's items
-    pub method_num: usize,
-
-    // index into the actual runtime vtable.
-    // the vtable is formed by concatenating together the method lists of
-    // the base object trait and all supertraits; this is the index into
-    // that vtable
-    pub vtable_index: usize,
-}
-
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct MethodCallee<'tcx> {
-    pub origin: MethodOrigin<'tcx>,
+    /// Impl method ID, for inherent methods, or trait method ID, otherwise.
+    pub def_id: ast::DefId,
     pub ty: Ty<'tcx>,
-    pub substs: subst::Substs<'tcx>
+    pub substs: &'tcx subst::Substs<'tcx>
 }
 
 /// With method calls, we store some extra information in
@@ -2057,6 +1998,11 @@ pub struct ExistentialBounds<'tcx> {
     pub region_bound: ty::Region,
     pub builtin_bounds: BuiltinBounds,
     pub projection_bounds: Vec<PolyProjectionPredicate<'tcx>>,
+
+    // If true, this TyTrait used a "default bound" in the surface
+    // syntax.  This makes no difference to the type system but is
+    // handy for error reporting.
+    pub region_bound_will_change: bool,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
@@ -2247,6 +2193,9 @@ pub enum ObjectLifetimeDefault {
     /// `T:'a` constraints are found.
     Ambiguous,
 
+    /// Use the base default, typically 'static, but in a fn body it is a fresh variable
+    BaseDefault,
+
     /// Use the given region as the default.
     Specific(Region),
 }
@@ -2258,7 +2207,7 @@ pub struct TypeParameterDef<'tcx> {
     pub space: subst::ParamSpace,
     pub index: u32,
     pub default: Option<Ty<'tcx>>,
-    pub object_lifetime_default: Option<ObjectLifetimeDefault>,
+    pub object_lifetime_default: ObjectLifetimeDefault,
 }
 
 #[derive(RustcEncodable, RustcDecodable, Clone, Debug)]
@@ -2919,11 +2868,14 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                                    -> Result<(),CopyImplementationError> {
         let tcx = self.tcx;
 
+        // FIXME: (@jroesch) float this code up
+        let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, Some(self.clone()), false);
+
         let did = match self_type.sty {
             ty::TyStruct(struct_did, substs) => {
                 let fields = tcx.struct_fields(struct_did, substs);
                 for field in &fields {
-                    if self.type_moves_by_default(field.mt.ty, span) {
+                    if infcx.type_moves_by_default(field.mt.ty, span) {
                         return Err(FieldDoesNotImplementCopy(field.name))
                     }
                 }
@@ -2935,7 +2887,7 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                     for variant_arg_type in &variant.args {
                         let substd_arg_type =
                             variant_arg_type.subst(tcx, substs);
-                        if self.type_moves_by_default(substd_arg_type, span) {
+                        if infcx.type_moves_by_default(substd_arg_type, span) {
                             return Err(VariantDoesNotImplementCopy(variant.name))
                         }
                     }
@@ -3177,41 +3129,12 @@ impl ClosureKind {
     }
 }
 
-pub trait ClosureTyper<'tcx> {
-    fn tcx(&self) -> &ctxt<'tcx> {
-        self.param_env().tcx
-    }
-
-    fn param_env<'a>(&'a self) -> &'a ty::ParameterEnvironment<'a, 'tcx>;
-
-    /// Is this a `Fn`, `FnMut` or `FnOnce` closure? During typeck,
-    /// returns `None` if the kind of this closure has not yet been
-    /// inferred.
-    fn closure_kind(&self,
-                    def_id: ast::DefId)
-                    -> Option<ty::ClosureKind>;
-
-    /// Returns the argument/return types of this closure.
-    fn closure_type(&self,
-                    def_id: ast::DefId,
-                    substs: &subst::Substs<'tcx>)
-                    -> ty::ClosureTy<'tcx>;
-
-    /// Returns the set of all upvars and their transformed
-    /// types. During typeck, maybe return `None` if the upvar types
-    /// have not yet been inferred.
-    fn closure_upvars(&self,
-                      def_id: ast::DefId,
-                      substs: &Substs<'tcx>)
-                      -> Option<Vec<ClosureUpvar<'tcx>>>;
-}
-
 impl<'tcx> CommonTypes<'tcx> {
     fn new(arena: &'tcx TypedArena<TyS<'tcx>>,
-           interner: &mut FnvHashMap<InternedTy<'tcx>, Ty<'tcx>>)
+           interner: &RefCell<FnvHashMap<InternedTy<'tcx>, Ty<'tcx>>>)
            -> CommonTypes<'tcx>
     {
-        let mut mk = |sty| ctxt::intern_ty(arena, interner, sty);
+        let mk = |sty| ctxt::intern_ty(arena, interner, sty);
         CommonTypes {
             bool: mk(TyBool),
             char: mk(TyChar),
@@ -3440,12 +3363,12 @@ impl<'tcx> ctxt<'tcx> {
                                  f: F) -> (Session, R)
                                  where F: FnOnce(&ctxt<'tcx>) -> R
     {
-        let mut interner = FnvHashMap();
-        let common_types = CommonTypes::new(&arenas.type_, &mut interner);
+        let interner = RefCell::new(FnvHashMap());
+        let common_types = CommonTypes::new(&arenas.type_, &interner);
 
         tls::enter(ctxt {
             arenas: arenas,
-            interner: RefCell::new(interner),
+            interner: interner,
             substs_interner: RefCell::new(FnvHashMap()),
             bare_fn_interner: RefCell::new(FnvHashMap()),
             region_interner: RefCell::new(FnvHashMap()),
@@ -3573,35 +3496,37 @@ impl<'tcx> ctxt<'tcx> {
     }
 
     fn intern_ty(type_arena: &'tcx TypedArena<TyS<'tcx>>,
-                 interner: &mut FnvHashMap<InternedTy<'tcx>, Ty<'tcx>>,
+                 interner: &RefCell<FnvHashMap<InternedTy<'tcx>, Ty<'tcx>>>,
                  st: TypeVariants<'tcx>)
                  -> Ty<'tcx> {
-        match interner.get(&st) {
-            Some(ty) => return *ty,
-            _ => ()
-        }
+        let ty: Ty /* don't be &mut TyS */ = {
+            let mut interner = interner.borrow_mut();
+            match interner.get(&st) {
+                Some(ty) => return *ty,
+                _ => ()
+            }
 
-        let flags = FlagComputation::for_sty(&st);
+            let flags = FlagComputation::for_sty(&st);
 
-        let ty = match () {
-            () => type_arena.alloc(TyS { sty: st,
-                                        flags: Cell::new(flags.flags),
-                                        region_depth: flags.depth, }),
+            let ty = match () {
+                () => type_arena.alloc(TyS { sty: st,
+                                             flags: Cell::new(flags.flags),
+                                             region_depth: flags.depth, }),
+            };
+
+            interner.insert(InternedTy { ty: ty }, ty);
+            ty
         };
 
         debug!("Interned type: {:?} Pointer: {:?}",
             ty, ty as *const TyS);
-
-        interner.insert(InternedTy { ty: ty }, ty);
-
         ty
     }
 
     // Interns a type/name combination, stores the resulting box in cx.interner,
     // and returns the box as cast to an unsafe ptr (see comments for Ty above).
     pub fn mk_ty(&self, st: TypeVariants<'tcx>) -> Ty<'tcx> {
-        let mut interner = self.interner.borrow_mut();
-        ctxt::intern_ty(&self.arenas.type_, &mut *interner, st)
+        ctxt::intern_ty(&self.arenas.type_, &self.interner, st)
     }
 
     pub fn mk_mach_int(&self, tm: ast::IntTy) -> Ty<'tcx> {
@@ -4272,7 +4197,8 @@ impl<'tcx> TyS<'tcx> {
                 TyClosure(did, substs) => {
                     // FIXME(#14449): `borrowed_contents` below assumes `&mut` closure.
                     let param_env = cx.empty_parameter_environment();
-                    let upvars = param_env.closure_upvars(did, substs).unwrap();
+                    let infcx = infer::new_infer_ctxt(cx, &cx.tables, Some(param_env), false);
+                    let upvars = infcx.closure_upvars(did, substs).unwrap();
                     TypeContents::union(&upvars, |f| tc_ty(cx, &f.ty, cache))
                 }
 
@@ -4400,10 +4326,10 @@ impl<'tcx> TyS<'tcx> {
                        span: Span)
                        -> bool
     {
-        let tcx = param_env.tcx();
-        let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, Some(param_env.clone()));
+        let tcx = param_env.tcx;
+        let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, Some(param_env.clone()), false);
 
-        let is_impld = traits::type_known_to_meet_builtin_bound(&infcx, param_env,
+        let is_impld = traits::type_known_to_meet_builtin_bound(&infcx,
                                                                 self, bound, span);
 
         debug!("Ty::impls_bound({:?}, {:?}) = {:?}",
@@ -4412,7 +4338,8 @@ impl<'tcx> TyS<'tcx> {
         is_impld
     }
 
-    fn moves_by_default<'a>(&'tcx self, param_env: &ParameterEnvironment<'a,'tcx>,
+    // FIXME (@jroesch): I made this public to use it, not sure if should be private
+    pub fn moves_by_default<'a>(&'tcx self, param_env: &ParameterEnvironment<'a,'tcx>,
                            span: Span) -> bool {
         if self.flags.get().intersects(TypeFlags::MOVENESS_CACHED) {
             return self.flags.get().intersects(TypeFlags::MOVES_BY_DEFAULT);
@@ -5611,11 +5538,6 @@ impl<'tcx> ctxt<'tcx> {
         }
     }
 
-    pub fn trait_item(&self, trait_did: ast::DefId, idx: usize) -> ImplOrTraitItem<'tcx> {
-        let method_def_id = self.trait_item_def_ids(trait_did)[idx].def_id();
-        self.impl_or_trait_item(method_def_id)
-    }
-
     pub fn trait_items(&self, trait_did: ast::DefId) -> Rc<Vec<ImplOrTraitItem<'tcx>>> {
         let mut trait_items = self.trait_items_cache.borrow_mut();
         match trait_items.get(&trait_did).cloned() {
@@ -5940,6 +5862,10 @@ impl<'tcx> ctxt<'tcx> {
                                    .clone()
     }
 
+    // Register a given item type
+    pub fn register_item_type(&self, did: ast::DefId, ty: TypeScheme<'tcx>) {
+        self.tcache.borrow_mut().insert(did, ty);
+    }
 
     // If the given item is in an external crate, looks up its type and adds it to
     // the type cache. Returns the type parameters and type.
@@ -6016,8 +5942,8 @@ impl<'tcx> ctxt<'tcx> {
         if id.krate == ast::LOCAL_CRATE {
             self.node_id_to_type(id.node)
         } else {
-            let mut tcache = self.tcache.borrow_mut();
-            tcache.entry(id).or_insert_with(|| csearch::get_field_type(self, struct_id, id)).ty
+            memoized(&self.tcache, id,
+                     |id| csearch::get_field_type(self, struct_id, id)).ty
         }
     }
 
@@ -6112,7 +6038,7 @@ impl<'tcx> ctxt<'tcx> {
     }
 
     // Returns a list of `ClosureUpvar`s for each upvar.
-    pub fn closure_upvars(typer: &Typer<'tcx>,
+    pub fn closure_upvars<'a>(typer: &infer::InferCtxt<'a, 'tcx>,
                           closure_id: ast::DefId,
                           substs: &Substs<'tcx>)
                           -> Option<Vec<ClosureUpvar<'tcx>>>
@@ -6123,7 +6049,7 @@ impl<'tcx> ctxt<'tcx> {
         // This may change if abstract return types of some sort are
         // implemented.
         assert!(closure_id.krate == ast::LOCAL_CRATE);
-        let tcx = typer.tcx();
+        let tcx = typer.tcx;
         match tcx.freevars.borrow().get(&closure_id.node) {
             None => Some(vec![]),
             Some(ref freevars) => {
@@ -6455,10 +6381,9 @@ impl<'tcx> ctxt<'tcx> {
         let name = impl_item.name();
         match self.trait_of_item(def_id) {
             Some(trait_did) => {
-                let trait_items = self.trait_items(trait_did);
-                trait_items.iter()
-                    .position(|m| m.name() == name)
-                    .map(|idx| self.trait_item(trait_did, idx).id())
+                self.trait_items(trait_did).iter()
+                    .find(|item| item.name() == name)
+                    .map(|item| item.id())
             }
             None => None
         }
@@ -6710,79 +6635,6 @@ impl<'tcx> ctxt<'tcx> {
         Some(self.tables.borrow().upvar_capture_map.get(&upvar_id).unwrap().clone())
     }
 }
-
-impl<'a,'tcx> Typer<'tcx> for ParameterEnvironment<'a,'tcx> {
-    fn node_ty(&self, id: ast::NodeId) -> mc::McResult<Ty<'tcx>> {
-        Ok(self.tcx.node_id_to_type(id))
-    }
-
-    fn expr_ty_adjusted(&self, expr: &ast::Expr) -> mc::McResult<Ty<'tcx>> {
-        Ok(self.tcx.expr_ty_adjusted(expr))
-    }
-
-    fn node_method_ty(&self, method_call: ty::MethodCall) -> Option<Ty<'tcx>> {
-        self.tcx.tables.borrow().method_map.get(&method_call).map(|method| method.ty)
-    }
-
-    fn node_method_origin(&self, method_call: ty::MethodCall)
-                          -> Option<ty::MethodOrigin<'tcx>>
-    {
-        self.tcx.tables.borrow().method_map.get(&method_call).map(|method| method.origin.clone())
-    }
-
-    fn adjustments(&self) -> Ref<NodeMap<ty::AutoAdjustment<'tcx>>> {
-        fn projection<'a, 'tcx>(tables: &'a Tables<'tcx>) -> &'a NodeMap<ty::AutoAdjustment<'tcx>> {
-            &tables.adjustments
-        }
-
-        Ref::map(self.tcx.tables.borrow(), projection)
-    }
-
-    fn is_method_call(&self, id: ast::NodeId) -> bool {
-        self.tcx.is_method_call(id)
-    }
-
-    fn temporary_scope(&self, rvalue_id: ast::NodeId) -> Option<region::CodeExtent> {
-        self.tcx.region_maps.temporary_scope(rvalue_id)
-    }
-
-    fn upvar_capture(&self, upvar_id: ty::UpvarId) -> Option<ty::UpvarCapture> {
-        self.tcx.upvar_capture(upvar_id)
-    }
-
-    fn type_moves_by_default(&self, ty: Ty<'tcx>, span: Span) -> bool {
-        ty.moves_by_default(self, span)
-    }
-}
-
-impl<'a,'tcx> ClosureTyper<'tcx> for ty::ParameterEnvironment<'a,'tcx> {
-    fn param_env<'b>(&'b self) -> &'b ty::ParameterEnvironment<'b,'tcx> {
-        self
-    }
-
-    fn closure_kind(&self,
-                    def_id: ast::DefId)
-                    -> Option<ty::ClosureKind>
-    {
-        Some(self.tcx.closure_kind(def_id))
-    }
-
-    fn closure_type(&self,
-                    def_id: ast::DefId,
-                    substs: &subst::Substs<'tcx>)
-                    -> ty::ClosureTy<'tcx>
-    {
-        self.tcx.closure_type(def_id, substs)
-    }
-
-    fn closure_upvars(&self,
-                      def_id: ast::DefId,
-                      substs: &Substs<'tcx>)
-                      -> Option<Vec<ClosureUpvar<'tcx>>> {
-        ctxt::closure_upvars(self, def_id, substs)
-    }
-}
-
 
 /// The category of explicit self.
 #[derive(Clone, Copy, Eq, PartialEq, Debug)]
@@ -7421,6 +7273,7 @@ impl<'tcx> fmt::Debug for ObjectLifetimeDefault {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             ObjectLifetimeDefault::Ambiguous => write!(f, "Ambiguous"),
+            ObjectLifetimeDefault::BaseDefault => write!(f, "BaseDefault"),
             ObjectLifetimeDefault::Specific(ref r) => write!(f, "{:?}", r),
         }
     }

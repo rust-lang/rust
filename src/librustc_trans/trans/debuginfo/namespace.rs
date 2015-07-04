@@ -16,7 +16,6 @@ use llvm;
 use llvm::debuginfo::DIScope;
 use rustc::ast_map;
 use trans::common::CrateContext;
-use middle::ty::ClosureTyper;
 
 use std::ffi::CString;
 use std::ptr;

@@ -21,6 +21,7 @@ const OS_TABLE: &'static [(&'static str, &'static str)] = &[
     ("ios", "ios"),
     ("linux", "linux"),
     ("mingw32", "windows"),
+    ("netbsd", "netbsd"),
     ("openbsd", "openbsd"),
     ("win32", "windows"),
     ("windows", "windows"),

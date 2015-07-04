@@ -85,7 +85,7 @@ pub struct FulfillmentContext<'tcx> {
     // particular node-id).
     region_obligations: NodeMap<Vec<RegionObligation<'tcx>>>,
 
-    errors_will_be_reported: bool,
+    pub errors_will_be_reported: bool,
 }
 
 #[derive(Clone)]
@@ -132,7 +132,6 @@ impl<'tcx> FulfillmentContext<'tcx> {
     /// `projection_ty` again.
     pub fn normalize_projection_type<'a>(&mut self,
                                          infcx: &InferCtxt<'a,'tcx>,
-                                         typer: &ty::ClosureTyper<'tcx>,
                                          projection_ty: ty::ProjectionTy<'tcx>,
                                          cause: ObligationCause<'tcx>)
                                          -> Ty<'tcx>
@@ -144,7 +143,7 @@ impl<'tcx> FulfillmentContext<'tcx> {
 
         // FIXME(#20304) -- cache
 
-        let mut selcx = SelectionContext::new(infcx, typer);
+        let mut selcx = SelectionContext::new(infcx);
         let normalized = project::normalize_projection_type(&mut selcx, projection_ty, cause, 0);
 
         for obligation in normalized.obligations {
@@ -208,11 +207,10 @@ impl<'tcx> FulfillmentContext<'tcx> {
     }
 
     pub fn select_all_or_error<'a>(&mut self,
-                                   infcx: &InferCtxt<'a,'tcx>,
-                                   typer: &ty::ClosureTyper<'tcx>)
+                                   infcx: &InferCtxt<'a,'tcx>)
                                    -> Result<(),Vec<FulfillmentError<'tcx>>>
     {
-        try!(self.select_where_possible(infcx, typer));
+        try!(self.select_where_possible(infcx));
 
         // Anything left is ambiguous.
         let errors: Vec<FulfillmentError> =
@@ -233,20 +231,18 @@ impl<'tcx> FulfillmentContext<'tcx> {
     /// gaining type information. It'd be equally valid to use `select_where_possible` but it
     /// results in `O(n^2)` performance (#18208).
     pub fn select_new_obligations<'a>(&mut self,
-                                      infcx: &InferCtxt<'a,'tcx>,
-                                      typer: &ty::ClosureTyper<'tcx>)
+                                      infcx: &InferCtxt<'a,'tcx>)
                                       -> Result<(),Vec<FulfillmentError<'tcx>>>
     {
-        let mut selcx = SelectionContext::new(infcx, typer);
+        let mut selcx = SelectionContext::new(infcx);
         self.select(&mut selcx, true)
     }
 
     pub fn select_where_possible<'a>(&mut self,
-                                     infcx: &InferCtxt<'a,'tcx>,
-                                     typer: &ty::ClosureTyper<'tcx>)
+                                     infcx: &InferCtxt<'a,'tcx>)
                                      -> Result<(),Vec<FulfillmentError<'tcx>>>
     {
-        let mut selcx = SelectionContext::new(infcx, typer);
+        let mut selcx = SelectionContext::new(infcx);
         self.select(&mut selcx, false)
     }
 

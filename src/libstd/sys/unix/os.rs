@@ -51,23 +51,13 @@ pub fn errno() -> i32 {
         __error()
     }
 
-    #[cfg(target_os = "bitrig")]
-    fn errno_location() -> *const c_int {
-        extern {
-            fn __errno() -> *const c_int;
-        }
-        unsafe {
-            __errno()
-        }
-    }
-
     #[cfg(target_os = "dragonfly")]
     unsafe fn errno_location() -> *const c_int {
         extern { fn __dfly_error() -> *const c_int; }
         __dfly_error()
     }
 
-    #[cfg(target_os = "openbsd")]
+    #[cfg(any(target_os = "bitrig", target_os = "netbsd", target_os = "openbsd"))]
     unsafe fn errno_location() -> *const c_int {
         extern { fn __errno() -> *const c_int; }
         __errno()
@@ -214,7 +204,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
     ::fs::read_link("/proc/curproc/file")
 }
 
-#[cfg(any(target_os = "bitrig", target_os = "openbsd"))]
+#[cfg(any(target_os = "bitrig", target_os = "netbsd", target_os = "openbsd"))]
 pub fn current_exe() -> io::Result<PathBuf> {
     use sync::StaticMutex;
     static LOCK: StaticMutex = StaticMutex::new();
@@ -356,6 +346,7 @@ pub fn args() -> Args {
           target_os = "freebsd",
           target_os = "dragonfly",
           target_os = "bitrig",
+          target_os = "netbsd",
           target_os = "openbsd"))]
 pub fn args() -> Args {
     use rt;

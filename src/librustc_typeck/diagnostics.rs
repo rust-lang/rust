@@ -1347,6 +1347,27 @@ static BAR: _ = "test"; // error, explicitly write out the type instead
 ```
 "##,
 
+E0124: r##"
+You declared two fields of a struct with the same name. Erroneous code
+example:
+
+```
+struct Foo {
+    field1: i32,
+    field1: i32 // error: field is already declared
+}
+```
+
+Please verify that the field names have been correctly spelled. Example:
+
+```
+struct Foo {
+    field1: i32,
+    field2: i32 // ok!
+}
+```
+"##,
+
 E0131: r##"
 It is not possible to define `main` with type parameters, or even with function
 parameters. When `main` is present, it must take no arguments and return `()`.
@@ -1956,7 +1977,6 @@ register_diagnostics! {
     E0120,
     E0122,
     E0123,
-    E0124,
     E0127,
     E0128,
     E0129,
@@ -2046,6 +2066,8 @@ register_diagnostics! {
            // `#[lang = \"{}\"]` is allowed for the `{}` primitive
     E0391, // unsupported cyclic reference between types/traits detected
     E0392, // parameter `{}` is never used
-    E0393  // the type parameter `{}` must be explicitly specified in an object
+    E0393, // the type parameter `{}` must be explicitly specified in an object
            // type because its default value `{}` references the type `Self`"
+    E0399  // trait items need to be implemented because the associated
+           // type `{}` was overridden
 }

@@ -268,7 +268,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
             let predicates = fcx.tcx().lookup_super_predicates(poly_trait_ref.def_id());
             let predicates = predicates.instantiate_supertrait(fcx.tcx(), &poly_trait_ref);
             let predicates = {
-                let selcx = &mut traits::SelectionContext::new(fcx.infcx(), fcx.infcx());
+                let selcx = &mut traits::SelectionContext::new(fcx.infcx());
                 traits::normalize(selcx, cause.clone(), &predicates)
             };
             for predicate in predicates.value.predicates {

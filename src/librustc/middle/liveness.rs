@@ -110,11 +110,9 @@ use self::LiveNodeKind::*;
 use self::VarKind::*;
 
 use middle::def::*;
-use middle::mem_categorization::Typer;
 use middle::pat_util;
 use middle::region;
 use middle::ty;
-use middle::ty::ClosureTyper;
 use lint;
 use util::nodemap::NodeMap;
 
@@ -1150,7 +1148,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
           ast::ExprMethodCall(_, _, ref args) => {
             let method_call = ty::MethodCall::expr(expr.id);
-            let method_ty = self.ir.tcx.tables.borrow().method_map.get(&method_call).unwrap().ty;
+            let method_ty = self.ir.tcx.tables.borrow().method_map[&method_call].ty;
             let succ = if method_ty.fn_ret().diverges() {
                 self.s.exit_ln
             } else {

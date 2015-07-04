@@ -73,17 +73,16 @@ pub use self::categorization::*;
 use self::Aliasability::*;
 
 use ast_map;
+use middle::infer;
 use middle::check_const;
 use middle::def;
 use middle::region;
 use middle::ty::{self, Ty};
-use util::nodemap::NodeMap;
 
 use syntax::ast::{MutImmutable, MutMutable};
 use syntax::ast;
 use syntax::codemap::Span;
 
-use std::cell::Ref;
 use std::fmt;
 use std::rc::Rc;
 
@@ -255,45 +254,12 @@ impl ast_node for ast::Pat {
     fn span(&self) -> Span { self.span }
 }
 
-pub struct MemCategorizationContext<'t,TYPER:'t> {
-    typer: &'t TYPER
-}
-
-impl<'t,TYPER:'t> Copy for MemCategorizationContext<'t,TYPER> {}
-impl<'t,TYPER:'t> Clone for MemCategorizationContext<'t,TYPER> {
-    fn clone(&self) -> MemCategorizationContext<'t,TYPER> { *self }
+#[derive(Copy, Clone)]
+pub struct MemCategorizationContext<'t, 'a: 't, 'tcx : 'a> {
+    pub typer: &'t infer::InferCtxt<'a, 'tcx>,
 }
 
 pub type McResult<T> = Result<T, ()>;
-
-/// The `Typer` trait provides the interface for the mem-categorization
-/// module to the results of the type check. It can be used to query
-/// the type assigned to an expression node, to inquire after adjustments,
-/// and so on.
-///
-/// This interface is needed because mem-categorization is used from
-/// two places: `regionck` and `borrowck`. `regionck` executes before
-/// type inference is complete, and hence derives types and so on from
-/// intermediate tables.  This also implies that type errors can occur,
-/// and hence `node_ty()` and friends return a `Result` type -- any
-/// error will propagate back up through the mem-categorization
-/// routines.
-///
-/// In the borrow checker, in contrast, type checking is complete and we
-/// know that no errors have occurred, so we simply consult the tcx and we
-/// can be sure that only `Ok` results will occur.
-pub trait Typer<'tcx> : ty::ClosureTyper<'tcx> {
-    fn node_ty(&self, id: ast::NodeId) -> McResult<Ty<'tcx>>;
-    fn expr_ty_adjusted(&self, expr: &ast::Expr) -> McResult<Ty<'tcx>>;
-    fn type_moves_by_default(&self, ty: Ty<'tcx>, span: Span) -> bool;
-    fn node_method_ty(&self, method_call: ty::MethodCall) -> Option<Ty<'tcx>>;
-    fn node_method_origin(&self, method_call: ty::MethodCall)
-                          -> Option<ty::MethodOrigin<'tcx>>;
-    fn adjustments(&self) -> Ref<NodeMap<ty::AutoAdjustment<'tcx>>>;
-    fn is_method_call(&self, id: ast::NodeId) -> bool;
-    fn temporary_scope(&self, rvalue_id: ast::NodeId) -> Option<region::CodeExtent>;
-    fn upvar_capture(&self, upvar_id: ty::UpvarId) -> Option<ty::UpvarCapture>;
-}
 
 impl MutabilityCategory {
     pub fn from_mutbl(m: ast::Mutability) -> MutabilityCategory {
@@ -391,13 +357,13 @@ impl MutabilityCategory {
     }
 }
 
-impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
-    pub fn new(typer: &'t TYPER) -> MemCategorizationContext<'t,TYPER> {
+impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
+    pub fn new(typer: &'t infer::InferCtxt<'a, 'tcx>) -> MemCategorizationContext<'t, 'a, 'tcx> {
         MemCategorizationContext { typer: typer }
     }
 
-    fn tcx(&self) -> &'t ty::ctxt<'tcx> {
-        self.typer.tcx()
+    fn tcx(&self) -> &'a ty::ctxt<'tcx> {
+        self.typer.tcx
     }
 
     fn expr_ty(&self, expr: &ast::Expr) -> McResult<Ty<'tcx>> {
@@ -1175,7 +1141,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
     }
 
     pub fn cat_pattern<F>(&self, cmt: cmt<'tcx>, pat: &ast::Pat, mut op: F) -> McResult<()>
-        where F: FnMut(&MemCategorizationContext<'t, TYPER>, cmt<'tcx>, &ast::Pat),
+        where F: FnMut(&MemCategorizationContext<'t, 'a, 'tcx>, cmt<'tcx>, &ast::Pat),
     {
         self.cat_pattern_(cmt, pat, &mut op)
     }
@@ -1183,7 +1149,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
     // FIXME(#19596) This is a workaround, but there should be a better way to do this
     fn cat_pattern_<F>(&self, cmt: cmt<'tcx>, pat: &ast::Pat, op: &mut F)
                        -> McResult<()>
-        where F : FnMut(&MemCategorizationContext<'t, TYPER>, cmt<'tcx>, &ast::Pat),
+        where F : FnMut(&MemCategorizationContext<'t, 'a, 'tcx>, cmt<'tcx>, &ast::Pat),
     {
         // Here, `cmt` is the categorization for the value being
         // matched and pat is the pattern it is being matched against.

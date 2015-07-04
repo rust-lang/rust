@@ -20,11 +20,11 @@
 //! * Use define_* family of methods when you might be defining the ValueRef.
 //! * When in doubt, define.
 use llvm::{self, ValueRef};
-use middle::ty::{self, ClosureTyper};
+use middle::ty;
+use middle::infer;
 use syntax::abi;
 use trans::attributes;
 use trans::base;
-use trans::common;
 use trans::context::CrateContext;
 use trans::monomorphize;
 use trans::type_::Type;
@@ -117,8 +117,8 @@ pub fn declare_rust_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, name: &str,
             (&f.sig, f.abi, None)
         }
         ty::TyClosure(closure_did, substs) => {
-            let typer = common::NormalizingClosureTyper::new(ccx.tcx());
-            function_type = typer.closure_type(closure_did, substs);
+            let infcx = infer::normalizing_infer_ctxt(ccx.tcx(), &ccx.tcx().tables);
+            function_type = infcx.closure_type(closure_did, substs);
             let self_type = base::self_type_for_closure(ccx, closure_did, fn_type);
             let llenvironment_type = type_of::type_of_explicit_arg(ccx, self_type);
             debug!("declare_rust_fn function_type={:?} self_type={:?}",

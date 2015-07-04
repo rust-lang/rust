@@ -483,9 +483,7 @@ impl str {
     /// considered to be
     /// boundaries.
     ///
-    /// # Panics
-    ///
-    /// Panics if `index` is greater than `self.len()`.
+    /// Returns `false` if `index` is greater than `self.len()`.
     ///
     /// # Examples
     ///
@@ -1859,8 +1857,6 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// #![feature(str_casing)]
-    ///
     /// let s = "HELLO";
     /// assert_eq!(s.to_lowercase(), "hello");
     /// ```
@@ -1905,8 +1901,6 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// #![feature(str_casing)]
-    ///
     /// let s = "hello";
     /// assert_eq!(s.to_uppercase(), "HELLO");
     /// ```

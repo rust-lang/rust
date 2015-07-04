@@ -141,19 +141,25 @@ impl<'tcx> Substs<'tcx> {
     {
         let Substs { types, regions } = self;
         let types = types.with_vec(FnSpace, m_types);
-        let regions = regions.map(m_regions,
-                                  |r, m_regions| r.with_vec(FnSpace, m_regions));
+        let regions = regions.map(|r| r.with_vec(FnSpace, m_regions));
+        Substs { types: types, regions: regions }
+    }
+
+    pub fn method_to_trait(self) -> Substs<'tcx> {
+        let Substs { mut types, regions } = self;
+        types.truncate(FnSpace, 0);
+        let regions = regions.map(|mut r| { r.truncate(FnSpace, 0); r });
         Substs { types: types, regions: regions }
     }
 }
 
 impl RegionSubsts {
-    fn map<A, F>(self, a: A, op: F) -> RegionSubsts where
-        F: FnOnce(VecPerParamSpace<ty::Region>, A) -> VecPerParamSpace<ty::Region>,
+    fn map<F>(self, op: F) -> RegionSubsts where
+        F: FnOnce(VecPerParamSpace<ty::Region>) -> VecPerParamSpace<ty::Region>,
     {
         match self {
             ErasedRegions => ErasedRegions,
-            NonerasedRegions(r) => NonerasedRegions(op(r, a))
+            NonerasedRegions(r) => NonerasedRegions(op(r))
         }
     }
 

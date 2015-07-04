@@ -27,7 +27,7 @@ use super::write_call;
 
 use CrateCtxt;
 use middle::infer;
-use middle::ty::{self, Ty, ClosureTyper};
+use middle::ty::{self, Ty};
 use syntax::ast;
 use syntax::codemap::Span;
 use syntax::parse::token;

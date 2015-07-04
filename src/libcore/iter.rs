@@ -2655,8 +2655,8 @@ macro_rules! step_impl_signed {
             #[allow(trivial_numeric_casts)]
             fn steps_between(start: &$t, end: &$t, by: &$t) -> Option<usize> {
                 if *by == 0 { return None; }
-                let mut diff: usize;
-                let mut by_u: usize;
+                let diff: usize;
+                let by_u: usize;
                 if *by > 0 {
                     if *start >= *end {
                         return Some(0);

@@ -1549,7 +1549,7 @@ pub fn ast_ty_to_ty<'tcx>(this: &AstConv<'tcx>,
             let rscope1 =
                 &ObjectLifetimeDefaultRscope::new(
                     rscope,
-                    Some(ty::ObjectLifetimeDefault::Specific(r)));
+                    ty::ObjectLifetimeDefault::Specific(r));
             let t = ast_ty_to_ty(this, rscope1, &*mt.ty);
             tcx.mk_ref(tcx.mk_region(r), ty::mt {ty: t, mutbl: mt.mutbl})
         }
@@ -2016,12 +2016,30 @@ pub fn conv_existential_bounds_from_partitioned_bounds<'tcx>(
                   "only the builtin traits can be used as closure or object bounds");
     }
 
-    let region_bound = compute_object_lifetime_bound(this,
-                                                     rscope,
-                                                     span,
-                                                     &region_bounds,
-                                                     principal_trait_ref,
-                                                     builtin_bounds);
+    let region_bound =
+        compute_object_lifetime_bound(this,
+                                      span,
+                                      &region_bounds,
+                                      principal_trait_ref,
+                                      builtin_bounds);
+
+    let (region_bound, will_change) = match region_bound {
+        Some(r) => (r, false),
+        None => {
+            match rscope.object_lifetime_default(span) {
+                Some(r) => (r, rscope.object_lifetime_default_will_change_in_1_3()),
+                None => {
+                    span_err!(this.tcx().sess, span, E0228,
+                              "the lifetime bound for this object type cannot be deduced \
+                               from context; please supply an explicit bound");
+                    (ty::ReStatic, false)
+                }
+            }
+        }
+    };
+
+    debug!("region_bound: {:?} will_change: {:?}",
+           region_bound, will_change);
 
     ty::sort_bounds_list(&mut projection_bounds);
 
@@ -2029,6 +2047,7 @@ pub fn conv_existential_bounds_from_partitioned_bounds<'tcx>(
         region_bound: region_bound,
         builtin_bounds: builtin_bounds,
         projection_bounds: projection_bounds,
+        region_bound_will_change: will_change,
     }
 }
 
@@ -2038,12 +2057,11 @@ pub fn conv_existential_bounds_from_partitioned_bounds<'tcx>(
 /// region bounds. It may be that we can derive no bound at all, in which case we return `None`.
 fn compute_object_lifetime_bound<'tcx>(
     this: &AstConv<'tcx>,
-    rscope: &RegionScope,
     span: Span,
     explicit_region_bounds: &[&ast::Lifetime],
     principal_trait_ref: ty::PolyTraitRef<'tcx>,
     builtin_bounds: ty::BuiltinBounds)
-    -> ty::Region
+    -> Option<ty::Region> // if None, use the default
 {
     let tcx = this.tcx();
 
@@ -2061,11 +2079,11 @@ fn compute_object_lifetime_bound<'tcx>(
     if !explicit_region_bounds.is_empty() {
         // Explicitly specified region bound. Use that.
         let r = explicit_region_bounds[0];
-        return ast_region_to_region(tcx, r);
+        return Some(ast_region_to_region(tcx, r));
     }
 
     if let Err(ErrorReported) = this.ensure_super_predicates(span,principal_trait_ref.def_id()) {
-        return ty::ReStatic;
+        return Some(ty::ReStatic);
     }
 
     // No explicit region bound specified. Therefore, examine trait
@@ -2074,23 +2092,15 @@ fn compute_object_lifetime_bound<'tcx>(
         object_region_bounds(tcx, &principal_trait_ref, builtin_bounds);
 
     // If there are no derived region bounds, then report back that we
-    // can find no region bound.
+    // can find no region bound. The caller will use the default.
     if derived_region_bounds.is_empty() {
-        match rscope.object_lifetime_default(span) {
-            Some(r) => { return r; }
-            None => {
-                span_err!(this.tcx().sess, span, E0228,
-                          "the lifetime bound for this object type cannot be deduced \
-                           from context; please supply an explicit bound");
-                return ty::ReStatic;
-            }
-        }
+        return None;
     }
 
     // If any of the derived region bounds are 'static, that is always
     // the best choice.
     if derived_region_bounds.iter().any(|r| ty::ReStatic == *r) {
-        return ty::ReStatic;
+        return Some(ty::ReStatic);
     }
 
     // Determine whether there is exactly one unique region in the set
@@ -2101,7 +2111,7 @@ fn compute_object_lifetime_bound<'tcx>(
         span_err!(tcx.sess, span, E0227,
                   "ambiguous lifetime bound, explicit lifetime bound required");
     }
-    return r;
+    return Some(r);
 }
 
 pub struct PartitionedBounds<'a> {

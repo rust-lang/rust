@@ -195,9 +195,9 @@ use middle::check_match;
 use middle::const_eval;
 use middle::def::{self, DefMap};
 use middle::expr_use_visitor as euv;
+use middle::infer;
 use middle::lang_items::StrEqFnLangItem;
 use middle::mem_categorization as mc;
-use middle::mem_categorization::Typer;
 use middle::pat_util::*;
 use trans::adt;
 use trans::base::*;
@@ -215,7 +215,7 @@ use trans::monomorphize;
 use trans::tvec;
 use trans::type_of;
 use middle::ty::{self, Ty};
-use session::config::{NoDebugInfo, FullDebugInfo};
+use session::config::NoDebugInfo;
 use util::common::indenter;
 use util::nodemap::FnvHashMap;
 use util::ppaux;
@@ -1351,7 +1351,8 @@ fn is_discr_reassigned(bcx: Block, discr: &ast::Expr, body: &ast::Expr) -> bool 
         reassigned: false
     };
     {
-        let mut visitor = euv::ExprUseVisitor::new(&mut rc, bcx);
+        let infcx = infer::new_infer_ctxt(bcx.tcx(), &bcx.tcx().tables, None, false);
+        let mut visitor = euv::ExprUseVisitor::new(&mut rc, &infcx);
         visitor.walk_expr(body);
     }
     rc.reassigned
@@ -1416,7 +1417,7 @@ fn create_bindings_map<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, pat: &ast::Pat,
         let trmode;
         match bm {
             ast::BindByValue(_)
-                if !param_env.type_moves_by_default(variable_ty, span) || reassigned =>
+                if !variable_ty.moves_by_default(&param_env, span) || reassigned =>
             {
                 llmatch = alloca_no_lifetime(bcx,
                                  llvariable_ty.ptr_to(),
@@ -1599,54 +1600,6 @@ pub fn store_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }
 }
 
-/// Generates code for argument patterns like `fn foo(<pat>: T)`.
-/// Creates entries in the `lllocals` map for each of the bindings
-/// in `pat`.
-///
-/// # Arguments
-///
-/// - `pat` is the argument pattern
-/// - `llval` is a pointer to the argument value (in other words,
-///   if the argument type is `T`, then `llval` is a `T*`). In some
-///   cases, this code may zero out the memory `llval` points at.
-pub fn store_arg<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
-                             pat: &ast::Pat,
-                             arg: Datum<'tcx, Rvalue>,
-                             arg_scope: cleanup::ScopeId)
-                             -> Block<'blk, 'tcx> {
-    let _icx = push_ctxt("match::store_arg");
-
-    match simple_identifier(&*pat) {
-        Some(ident) => {
-            // Generate nicer LLVM for the common case of fn a pattern
-            // like `x: T`
-            let arg_ty = node_id_type(bcx, pat.id);
-            if type_of::arg_is_indirect(bcx.ccx(), arg_ty)
-                && bcx.sess().opts.debuginfo != FullDebugInfo {
-                // Don't copy an indirect argument to an alloca, the caller
-                // already put it in a temporary alloca and gave it up, unless
-                // we emit extra-debug-info, which requires local allocas :(.
-                let arg_val = arg.add_clean(bcx.fcx, arg_scope);
-                bcx.fcx.lllocals.borrow_mut()
-                   .insert(pat.id, Datum::new(arg_val, arg_ty, Lvalue));
-                bcx
-            } else {
-                mk_binding_alloca(
-                    bcx, pat.id, ident.name, arg_scope, arg,
-                    |arg, bcx, llval, _| arg.store_to(bcx, llval))
-            }
-        }
-
-        None => {
-            // General path. Copy out the values that are used in the
-            // pattern.
-            let arg = unpack_datum!(
-                bcx, arg.to_lvalue_datum_in_scope(bcx, "__arg", arg_scope));
-            bind_irrefutable_pat(bcx, pat, arg.val, arg_scope)
-        }
-    }
-}
-
 fn mk_binding_alloca<'blk, 'tcx, A, F>(bcx: Block<'blk, 'tcx>,
                                        p_id: ast::NodeId,
                                        name: ast::Name,
@@ -1686,7 +1639,7 @@ fn mk_binding_alloca<'blk, 'tcx, A, F>(bcx: Block<'blk, 'tcx>,
 /// - bcx: starting basic block context
 /// - pat: the irrefutable pattern being matched.
 /// - val: the value being matched -- must be an lvalue (by ref, with cleanup)
-fn bind_irrefutable_pat<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+pub fn bind_irrefutable_pat<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                     pat: &ast::Pat,
                                     val: ValueRef,
                                     cleanup_scope: cleanup::ScopeId)

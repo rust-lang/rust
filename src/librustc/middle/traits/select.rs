@@ -55,8 +55,6 @@ use util::nodemap::FnvHashMap;
 pub struct SelectionContext<'cx, 'tcx:'cx> {
     infcx: &'cx InferCtxt<'cx, 'tcx>,
 
-    closure_typer: &'cx (ty::ClosureTyper<'tcx>+'cx),
-
     /// Freshener used specifically for skolemizing entries on the
     /// obligation stack. This ensures that all entries on the stack
     /// at one time will have the same set of skolemized entries,
@@ -244,23 +242,19 @@ enum EvaluationResult<'tcx> {
 }
 
 impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
-    pub fn new(infcx: &'cx InferCtxt<'cx, 'tcx>,
-               closure_typer: &'cx ty::ClosureTyper<'tcx>)
+    pub fn new(infcx: &'cx InferCtxt<'cx, 'tcx>)
                -> SelectionContext<'cx, 'tcx> {
         SelectionContext {
             infcx: infcx,
-            closure_typer: closure_typer,
             freshener: infcx.freshener(),
             intercrate: false,
         }
     }
 
-    pub fn intercrate(infcx: &'cx InferCtxt<'cx, 'tcx>,
-                      closure_typer: &'cx ty::ClosureTyper<'tcx>)
+    pub fn intercrate(infcx: &'cx InferCtxt<'cx, 'tcx>)
                       -> SelectionContext<'cx, 'tcx> {
         SelectionContext {
             infcx: infcx,
-            closure_typer: closure_typer,
             freshener: infcx.freshener(),
             intercrate: true,
         }
@@ -275,11 +269,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     }
 
     pub fn param_env(&self) -> &'cx ty::ParameterEnvironment<'cx, 'tcx> {
-        self.closure_typer.param_env()
+        self.infcx.param_env()
     }
 
-    pub fn closure_typer(&self) -> &'cx (ty::ClosureTyper<'tcx>+'cx) {
-        self.closure_typer
+    pub fn closure_typer(&self) -> &'cx InferCtxt<'cx, 'tcx> {
+        self.infcx
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -1163,7 +1157,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                kind,
                obligation);
 
-        match self.closure_typer.closure_kind(closure_def_id) {
+        match self.infcx.closure_kind(closure_def_id) {
             Some(closure_kind) => {
                 debug!("assemble_unboxed_candidates: closure_kind = {:?}", closure_kind);
                 if closure_kind.extends(kind) {
@@ -1368,12 +1362,21 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             debug!("assemble_candidates_from_object_ty: poly_trait_ref={:?}",
                    poly_trait_ref);
 
-            // see whether the object trait can be upcast to the trait we are looking for
-            let upcast_trait_refs = self.upcast(poly_trait_ref, obligation);
-            if upcast_trait_refs.len() > 1 {
+            // Count only those upcast versions that match the trait-ref
+            // we are looking for. Specifically, do not only check for the
+            // correct trait, but also the correct type parameters.
+            // For example, we may be trying to upcast `Foo` to `Bar<i32>`,
+            // but `Foo` is declared as `trait Foo : Bar<u32>`.
+            let upcast_trait_refs = util::supertraits(self.tcx(), poly_trait_ref)
+                .filter(|upcast_trait_ref| self.infcx.probe(|_| {
+                    let upcast_trait_ref = upcast_trait_ref.clone();
+                    self.match_poly_trait_ref(obligation, upcast_trait_ref).is_ok()
+                })).count();
+
+            if upcast_trait_refs > 1 {
                 // can be upcast in many ways; need more type information
                 candidates.ambiguous = true;
-            } else if upcast_trait_refs.len() == 1 {
+            } else if upcast_trait_refs == 1 {
                 candidates.vec.push(ObjectCandidate);
             }
 
@@ -1727,7 +1730,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     return ok_if(Vec::new());
                 }
 
-                match self.closure_typer.closure_upvars(def_id, substs) {
+                match self.infcx.closure_upvars(def_id, substs) {
                     Some(upvars) => ok_if(upvars.iter().map(|c| c.ty).collect()),
                     None => {
                         debug!("assemble_builtin_bound_candidates: no upvar types available yet");
@@ -1865,7 +1868,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::TyClosure(def_id, substs) => {
                 assert_eq!(def_id.krate, ast::LOCAL_CRATE);
 
-                match self.closure_typer.closure_upvars(def_id, substs) {
+                match self.infcx.closure_upvars(def_id, substs) {
                     Some(upvars) => {
                         Some(upvars.iter().map(|c| c.ty).collect())
                     }
@@ -2311,20 +2314,28 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // be exactly one applicable trait-reference; if this were not
         // the case, we would have reported an ambiguity error rather
         // than successfully selecting one of the candidates.
-        let upcast_trait_refs = self.upcast(poly_trait_ref.clone(), obligation);
-        assert_eq!(upcast_trait_refs.len(), 1);
-        let upcast_trait_ref = upcast_trait_refs.into_iter().next().unwrap();
+        let mut upcast_trait_refs = util::supertraits(self.tcx(), poly_trait_ref)
+            .map(|upcast_trait_ref| {
+                (upcast_trait_ref.clone(), self.infcx.probe(|_| {
+                    self.match_poly_trait_ref(obligation, upcast_trait_ref)
+                }).is_ok())
+            });
+        let mut upcast_trait_ref = None;
+        let mut vtable_base = 0;
 
-        match self.match_poly_trait_ref(obligation, upcast_trait_ref.clone()) {
-            Ok(()) => { }
-            Err(()) => {
-                self.tcx().sess.span_bug(obligation.cause.span,
-                                         "failed to match trait refs");
+        while let Some((supertrait, matches)) = upcast_trait_refs.next() {
+            if matches {
+                upcast_trait_ref = Some(supertrait);
+                break;
             }
+            vtable_base += util::count_own_vtable_entries(self.tcx(), supertrait);
         }
+        assert!(upcast_trait_refs.all(|(_, matches)| !matches));
 
-        VtableObjectData { object_ty: self_ty,
-                           upcast_trait_ref: upcast_trait_ref }
+        VtableObjectData {
+            upcast_trait_ref: upcast_trait_ref.unwrap(),
+            vtable_base: vtable_base
+        }
     }
 
     fn confirm_fn_pointer_candidate(&mut self,
@@ -2451,6 +2462,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     region_bound: data_b.bounds.region_bound,
                     builtin_bounds: data_b.bounds.builtin_bounds,
                     projection_bounds: data_a.bounds.projection_bounds.clone(),
+                    region_bound_will_change: data_b.bounds.region_bound_will_change,
                 };
 
                 let new_trait = tcx.mk_trait(data_a.principal.clone(), bounds);
@@ -2724,7 +2736,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     /// Returns `Ok` if `poly_trait_ref` being true implies that the
     /// obligation is satisfied.
-    fn match_poly_trait_ref(&mut self,
+    fn match_poly_trait_ref(&self,
                             obligation: &TraitObligation<'tcx>,
                             poly_trait_ref: ty::PolyTraitRef<'tcx>)
                             -> Result<(),()>
@@ -2844,7 +2856,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                       substs: &Substs<'tcx>)
                                       -> ty::PolyTraitRef<'tcx>
     {
-        let closure_type = self.closure_typer.closure_type(closure_def_id, substs);
+        let closure_type = self.infcx.closure_type(closure_def_id, substs);
         let ty::Binder((trait_ref, _)) =
             util::closure_trait_ref_and_return_type(self.tcx(),
                                                     obligation.predicate.def_id(),
@@ -2934,32 +2946,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         } else {
             obligation.cause.clone()
         }
-    }
-
-    /// Upcasts an object trait-reference into those that match the obligation.
-    fn upcast(&mut self, obj_trait_ref: ty::PolyTraitRef<'tcx>, obligation: &TraitObligation<'tcx>)
-              -> Vec<ty::PolyTraitRef<'tcx>>
-    {
-        debug!("upcast(obj_trait_ref={:?}, obligation={:?})",
-               obj_trait_ref,
-               obligation);
-
-        let obligation_def_id = obligation.predicate.def_id();
-        let mut upcast_trait_refs = util::upcast(self.tcx(), obj_trait_ref, obligation_def_id);
-
-        // Retain only those upcast versions that match the trait-ref
-        // we are looking for.  In particular, we know that all of
-        // `upcast_trait_refs` apply to the correct trait, but
-        // possibly with incorrect type parameters. For example, we
-        // may be trying to upcast `Foo` to `Bar<i32>`, but `Foo` is
-        // declared as `trait Foo : Bar<u32>`.
-        upcast_trait_refs.retain(|upcast_trait_ref| {
-            let upcast_trait_ref = upcast_trait_ref.clone();
-            self.infcx.probe(|_| self.match_poly_trait_ref(obligation, upcast_trait_ref)).is_ok()
-        });
-
-        debug!("upcast: upcast_trait_refs={:?}", upcast_trait_refs);
-        upcast_trait_refs
     }
 }
 

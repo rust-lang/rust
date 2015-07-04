@@ -317,9 +317,14 @@ impl String {
 
     /// Creates a new `String` from a length, capacity, and pointer.
     ///
-    /// This is unsafe because:
+    /// # Unsafety
     ///
-    /// * We call `Vec::from_raw_parts` to get a `Vec<u8>`;
+    /// This is _very_ unsafe because:
+    ///
+    /// * We call `Vec::from_raw_parts` to get a `Vec<u8>`. Therefore, this
+    ///   function inherits all of its unsafety, see [its
+    ///   documentation](../vec/struct.Vec.html#method.from_raw_parts)
+    ///   for the invariants it expects, they also apply to this function.
     /// * We assume that the `Vec` contains valid UTF-8.
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]

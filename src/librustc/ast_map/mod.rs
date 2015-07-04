@@ -121,7 +121,7 @@ pub enum Node<'ast> {
     NodeLifetime(&'ast Lifetime),
 }
 
-/// Represents an entry and its parent Node ID
+/// Represents an entry and its parent NodeID.
 /// The odd layout is to bring down the total size.
 #[derive(Copy, Debug)]
 enum MapEntry<'ast> {
@@ -179,7 +179,7 @@ impl<'ast> MapEntry<'ast> {
         }
     }
 
-    fn parent(self) -> Option<NodeId> {
+    fn parent_node(self) -> Option<NodeId> {
         Some(match self {
             EntryItem(id, _) => id,
             EntryForeignItem(id, _) => id,
@@ -283,10 +283,88 @@ impl<'ast> Map<'ast> {
         self.find_entry(id).and_then(|x| x.to_node())
     }
 
-    /// Retrieve the parent NodeId for `id`, or `id` itself if no
-    /// parent is registered in this map.
+    /// Similar to get_parent, returns the parent node id or id if there is no
+    /// parent.
+    /// This function returns the immediate parent in the AST, whereas get_parent
+    /// returns the enclosing item. Note that this might not be the actual parent
+    /// node in the AST - some kinds of nodes are not in the map and these will
+    /// never appear as the parent_node. So you can always walk the parent_nodes
+    /// from a node to the root of the ast (unless you get the same id back here
+    /// that can happen if the id is not in the map itself or is just weird).
+    pub fn get_parent_node(&self, id: NodeId) -> NodeId {
+        self.find_entry(id).and_then(|x| x.parent_node()).unwrap_or(id)
+    }
+
+    /// If there is some error when walking the parents (e.g., a node does not
+    /// have a parent in the map or a node can't be found), then we return the
+    /// last good node id we found. Note that reaching the crate root (id == 0),
+    /// is not an error, since items in the crate module have the crate root as
+    /// parent.
+    fn walk_parent_nodes<F>(&self, start_id: NodeId, found: F) -> Result<NodeId, NodeId>
+        where F: Fn(&Node<'ast>) -> bool
+    {
+        let mut id = start_id;
+        loop {
+            let parent_node = self.get_parent_node(id);
+            if parent_node == 0 {
+                return Ok(0);
+            }
+            if parent_node == id {
+                return Err(id);
+            }
+
+            let node = self.find_entry(parent_node);
+            if node.is_none() {
+                return Err(id);
+            }
+            let node = node.unwrap().to_node();
+            match node {
+                Some(ref node) => {
+                    if found(node) {
+                        return Ok(parent_node);
+                    }
+                }
+                None => {
+                    return Err(parent_node);
+                }
+            }
+            id = parent_node;
+        }
+    }
+
+    /// Retrieve the NodeId for `id`'s parent item, or `id` itself if no
+    /// parent item is in this map. The "parent item" is the closest parent node
+    /// in the AST which is recorded by the map and is an item, either an item
+    /// in a module, trait, or impl.
     pub fn get_parent(&self, id: NodeId) -> NodeId {
-        self.find_entry(id).and_then(|x| x.parent()).unwrap_or(id)
+        match self.walk_parent_nodes(id, |node| match *node {
+            NodeItem(_) |
+            NodeForeignItem(_) |
+            NodeTraitItem(_) |
+            NodeImplItem(_) => true,
+            _ => false,
+        }) {
+            Ok(id) => id,
+            Err(id) => id,
+        }
+    }
+
+    /// Returns the nearest enclosing scope. A scope is an item or block.
+    /// FIXME it is not clear to me that all items qualify as scopes - statics
+    /// and associated types probably shouldn't, for example. Behaviour in this
+    /// regard should be expected to be highly unstable.
+    pub fn get_enclosing_scope(&self, id: NodeId) -> Option<NodeId> {
+        match self.walk_parent_nodes(id, |node| match *node {
+            NodeItem(_) |
+            NodeForeignItem(_) |
+            NodeTraitItem(_) |
+            NodeImplItem(_) |
+            NodeBlock(_) => true,
+            _ => false,
+        }) {
+            Ok(id) => Some(id),
+            Err(_) => None,
+        }
     }
 
     pub fn get_parent_did(&self, id: NodeId) -> DefId {
@@ -590,15 +668,15 @@ impl<'a, 'ast> Iterator for NodesMatchingSuffix<'a, 'ast> {
                 return None;
             }
             self.idx += 1;
-            let (p, name) = match self.map.find_entry(idx) {
-                Some(EntryItem(p, n))       => (p, n.name()),
-                Some(EntryForeignItem(p, n))=> (p, n.name()),
-                Some(EntryTraitItem(p, n))  => (p, n.name()),
-                Some(EntryImplItem(p, n))   => (p, n.name()),
-                Some(EntryVariant(p, n))    => (p, n.name()),
+            let name = match self.map.find_entry(idx) {
+                Some(EntryItem(_, n))       => n.name(),
+                Some(EntryForeignItem(_, n))=> n.name(),
+                Some(EntryTraitItem(_, n))  => n.name(),
+                Some(EntryImplItem(_, n))   => n.name(),
+                Some(EntryVariant(_, n))    => n.name(),
                 _ => continue,
             };
-            if self.matches_names(p, name) {
+            if self.matches_names(self.map.get_parent(idx), name) {
                 return Some(idx)
             }
         }
@@ -647,8 +725,7 @@ impl<F: FoldOps> Folder for IdAndSpanUpdater<F> {
 /// A Visitor that walks over an AST and collects Node's into an AST Map.
 struct NodeCollector<'ast> {
     map: Vec<MapEntry<'ast>>,
-    /// The node in which we are currently mapping (an item or a method).
-    parent: NodeId
+    parent_node: NodeId,
 }
 
 impl<'ast> NodeCollector<'ast> {
@@ -662,7 +739,7 @@ impl<'ast> NodeCollector<'ast> {
     }
 
     fn insert(&mut self, id: NodeId, node: Node<'ast>) {
-        let entry = MapEntry::from_node(self.parent, node);
+        let entry = MapEntry::from_node(self.parent_node, node);
         self.insert_entry(id, entry);
     }
 
@@ -676,8 +753,10 @@ impl<'ast> NodeCollector<'ast> {
 impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
     fn visit_item(&mut self, i: &'ast Item) {
         self.insert(i.id, NodeItem(i));
-        let parent = self.parent;
-        self.parent = i.id;
+
+        let parent_node = self.parent_node;
+        self.parent_node = i.id;
+
         match i.node {
             ItemImpl(_, _, _, _, _, ref impl_items) => {
                 for ii in impl_items {
@@ -727,21 +806,23 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
             _ => {}
         }
         visit::walk_item(self, i);
-        self.parent = parent;
+        self.parent_node = parent_node;
     }
 
     fn visit_trait_item(&mut self, ti: &'ast TraitItem) {
-        let parent = self.parent;
-        self.parent = ti.id;
+        let parent_node = self.parent_node;
+        self.parent_node = ti.id;
         visit::walk_trait_item(self, ti);
-        self.parent = parent;
+        self.parent_node = parent_node;
     }
 
     fn visit_impl_item(&mut self, ii: &'ast ImplItem) {
-        let parent = self.parent;
-        self.parent = ii.id;
+        let parent_node = self.parent_node;
+        self.parent_node = ii.id;
+
         visit::walk_impl_item(self, ii);
-        self.parent = parent;
+
+        self.parent_node = parent_node;
     }
 
     fn visit_pat(&mut self, pat: &'ast Pat) {
@@ -750,26 +831,42 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
             PatIdent(..) => NodeLocal(pat),
             _ => NodePat(pat)
         });
+
+        let parent_node = self.parent_node;
+        self.parent_node = pat.id;
         visit::walk_pat(self, pat);
+        self.parent_node = parent_node;
     }
 
     fn visit_expr(&mut self, expr: &'ast Expr) {
         self.insert(expr.id, NodeExpr(expr));
+        let parent_node = self.parent_node;
+        self.parent_node = expr.id;
         visit::walk_expr(self, expr);
+        self.parent_node = parent_node;
     }
 
     fn visit_stmt(&mut self, stmt: &'ast Stmt) {
-        self.insert(ast_util::stmt_id(stmt), NodeStmt(stmt));
+        let id = ast_util::stmt_id(stmt);
+        self.insert(id, NodeStmt(stmt));
+        let parent_node = self.parent_node;
+        self.parent_node = id;
         visit::walk_stmt(self, stmt);
+        self.parent_node = parent_node;
     }
 
     fn visit_fn(&mut self, fk: visit::FnKind<'ast>, fd: &'ast FnDecl,
-                b: &'ast Block, s: Span, _: NodeId) {
+                b: &'ast Block, s: Span, id: NodeId) {
+        let parent_node = self.parent_node;
+        self.parent_node = id;
         self.visit_fn_decl(fd);
         visit::walk_fn(self, fk, fd, b, s);
+        self.parent_node = parent_node;
     }
 
     fn visit_ty(&mut self, ty: &'ast Ty) {
+        let parent_node = self.parent_node;
+        self.parent_node = ty.id;
         match ty.node {
             TyBareFn(ref fd) => {
                 self.visit_fn_decl(&*fd.decl);
@@ -777,11 +874,15 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
             _ => {}
         }
         visit::walk_ty(self, ty);
+        self.parent_node = parent_node;
     }
 
     fn visit_block(&mut self, block: &'ast Block) {
         self.insert(block.id, NodeBlock(block));
+        let parent_node = self.parent_node;
+        self.parent_node = block.id;
         visit::walk_block(self, block);
+        self.parent_node = parent_node;
     }
 
     fn visit_lifetime_ref(&mut self, lifetime: &'ast Lifetime) {
@@ -809,7 +910,7 @@ pub fn map_crate<'ast, F: FoldOps>(forest: &'ast mut Forest, fold_ops: F) -> Map
 
     let mut collector = NodeCollector {
         map: vec![],
-        parent: CRATE_NODE_ID
+        parent_node: CRATE_NODE_ID,
     };
     collector.insert_entry(CRATE_NODE_ID, RootCrate);
     visit::walk_crate(&mut collector, &forest.krate);
@@ -864,11 +965,11 @@ pub fn map_decoded_item<'ast, F: FoldOps>(map: &Map<'ast>,
         ii: ii
     });
 
+    let ii_parent_id = fld.new_id(DUMMY_NODE_ID);
     let mut collector = NodeCollector {
         map: mem::replace(&mut *map.map.borrow_mut(), vec![]),
-        parent: fld.new_id(DUMMY_NODE_ID)
+        parent_node: ii_parent_id,
     };
-    let ii_parent_id = collector.parent;
     collector.insert_entry(ii_parent_id, RootInlinedParent(ii_parent));
     visit::walk_inlined_item(&mut collector, &ii_parent.ii);
 
