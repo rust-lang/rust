@@ -805,7 +805,7 @@ fn trans_index<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                                index_expr,
                                                method_call,
                                                base_datum,
-                                               vec![(ix_datum, idx.id)],
+                                               Some((ix_datum, idx.id)),
                                                Some(SaveIn(scratch.val)),
                                                false));
             let datum = scratch.to_expr_datum();
@@ -1175,21 +1175,21 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             let lhs = unpack_datum!(bcx, trans(bcx, &**lhs));
             let rhs_datum = unpack_datum!(bcx, trans(bcx, &**rhs));
             trans_overloaded_op(bcx, expr, MethodCall::expr(expr.id), lhs,
-                                vec![(rhs_datum, rhs.id)], Some(dest),
+                                Some((rhs_datum, rhs.id)), Some(dest),
                                 !ast_util::is_by_value_binop(op.node)).bcx
         }
         ast::ExprUnary(op, ref subexpr) => {
             // if not overloaded, would be RvalueDatumExpr
             let arg = unpack_datum!(bcx, trans(bcx, &**subexpr));
             trans_overloaded_op(bcx, expr, MethodCall::expr(expr.id),
-                                arg, Vec::new(), Some(dest), !ast_util::is_by_value_unop(op)).bcx
+                                arg, None, Some(dest), !ast_util::is_by_value_unop(op)).bcx
         }
         ast::ExprIndex(ref base, ref idx) => {
             // if not overloaded, would be RvalueDatumExpr
             let base = unpack_datum!(bcx, trans(bcx, &**base));
             let idx_datum = unpack_datum!(bcx, trans(bcx, &**idx));
             trans_overloaded_op(bcx, expr, MethodCall::expr(expr.id), base,
-                                vec![(idx_datum, idx.id)], Some(dest), true).bcx
+                                Some((idx_datum, idx.id)), Some(dest), true).bcx
         }
         ast::ExprCast(..) => {
             // Trait casts used to come this way, now they should be coercions.
@@ -1943,19 +1943,12 @@ fn trans_overloaded_op<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                    expr: &ast::Expr,
                                    method_call: MethodCall,
                                    lhs: Datum<'tcx, Expr>,
-                                   rhs: Vec<(Datum<'tcx, Expr>, ast::NodeId)>,
+                                   rhs: Option<(Datum<'tcx, Expr>, ast::NodeId)>,
                                    dest: Option<Dest>,
                                    autoref: bool)
                                    -> Result<'blk, 'tcx> {
-    let method_ty = bcx.tcx()
-                       .tables
-                       .borrow()
-                       .method_map
-                       .get(&method_call).unwrap().ty;
-
     callee::trans_call_inner(bcx,
                              expr.debug_loc(),
-                             monomorphize_type(bcx, method_ty),
                              |bcx, arg_cleanup_scope| {
                                 meth::trans_method_callee(bcx,
                                                           method_call,
@@ -1974,20 +1967,11 @@ fn trans_overloaded_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                          -> Block<'blk, 'tcx> {
     debug!("trans_overloaded_call {}", expr.id);
     let method_call = MethodCall::expr(expr.id);
-    let method_type = bcx.tcx()
-                         .tables
-                         .borrow()
-                         .method_map
-                         .get(&method_call)
-                         .unwrap()
-                         .ty;
     let mut all_args = vec!(callee);
     all_args.extend(args.iter().map(|e| &**e));
     unpack_result!(bcx,
                    callee::trans_call_inner(bcx,
                                             expr.debug_loc(),
-                                            monomorphize_type(bcx,
-                                                              method_type),
                                             |bcx, arg_cleanup_scope| {
                                                 meth::trans_method_callee(
                                                     bcx,
@@ -2259,7 +2243,7 @@ fn deref_once<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             let scratch = rvalue_scratch_datum(bcx, ref_ty, "overloaded_deref");
 
             unpack_result!(bcx, trans_overloaded_op(bcx, expr, method_call,
-                                                    datum, Vec::new(), Some(SaveIn(scratch.val)),
+                                                    datum, None, Some(SaveIn(scratch.val)),
                                                     false));
             scratch.to_expr_datum()
         }

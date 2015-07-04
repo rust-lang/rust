@@ -1327,7 +1327,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 
     pub fn node_method_ty(&self, method_call: ty::MethodCall)
-                      -> Option<Ty<'tcx>> {
+                          -> Option<Ty<'tcx>> {
         self.tables
             .borrow()
             .method_map
@@ -1336,14 +1336,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             .map(|ty| self.resolve_type_vars_if_possible(&ty))
     }
 
-    pub fn node_method_origin(&self, method_call: ty::MethodCall)
-                          -> Option<ty::MethodOrigin<'tcx>>
-    {
+    pub fn node_method_id(&self, method_call: ty::MethodCall)
+                          -> Option<ast::DefId> {
         self.tables
             .borrow()
             .method_map
             .get(&method_call)
-            .map(|method| method.origin.clone())
+            .map(|method| method.def_id)
     }
 
     pub fn adjustments(&self) -> Ref<NodeMap<ty::AutoAdjustment<'tcx>>> {

@@ -894,10 +894,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
           ast::ExprMethodCall(_, _, ref args) => {
               let arg_vals = map_list(args);
               let method_call = ty::MethodCall::expr(e.id);
-              let method_did = match cx.tcx().tables.borrow().method_map[&method_call].origin {
-                  ty::MethodStatic(did) => did,
-                  _ => cx.sess().span_bug(e.span, "expected a const method def")
-              };
+              let method_did = cx.tcx().tables.borrow().method_map[&method_call].def_id;
               const_fn_call(cx, MethodCallKey(method_call),
                             method_did, &arg_vals, param_substs)
           }

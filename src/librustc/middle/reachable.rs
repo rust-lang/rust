@@ -128,8 +128,9 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ReachableContext<'a, 'tcx> {
             }
             ast::ExprMethodCall(..) => {
                 let method_call = ty::MethodCall::expr(expr.id);
-                match self.tcx.tables.borrow().method_map.get(&method_call).unwrap().origin {
-                    ty::MethodStatic(def_id) => {
+                let def_id = self.tcx.tables.borrow().method_map[&method_call].def_id;
+                match self.tcx.impl_or_trait_item(def_id).container() {
+                    ty::ImplContainer(_) => {
                         if is_local(def_id) {
                             if self.def_id_represents_local_inlined_item(def_id) {
                                 self.worklist.push(def_id.node)
@@ -137,7 +138,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ReachableContext<'a, 'tcx> {
                             self.reachable_symbols.insert(def_id.node);
                         }
                     }
-                    _ => {}
+                    ty::TraitContainer(_) => {}
                 }
             }
             _ => {}

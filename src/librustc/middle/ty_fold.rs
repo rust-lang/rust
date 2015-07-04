@@ -310,34 +310,6 @@ impl<'tcx> TypeFoldable<'tcx> for ty::AutoRef<'tcx> {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for ty::MethodOrigin<'tcx> {
-    fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> ty::MethodOrigin<'tcx> {
-        match *self {
-            ty::MethodStatic(def_id) => {
-                ty::MethodStatic(def_id)
-            }
-            ty::MethodStaticClosure(def_id) => {
-                ty::MethodStaticClosure(def_id)
-            }
-            ty::MethodTypeParam(ref param) => {
-                ty::MethodTypeParam(ty::MethodParam {
-                    trait_ref: param.trait_ref.fold_with(folder),
-                    method_num: param.method_num,
-                    impl_def_id: param.impl_def_id,
-                })
-            }
-            ty::MethodTraitObject(ref object) => {
-                ty::MethodTraitObject(ty::MethodObject {
-                    trait_ref: object.trait_ref.fold_with(folder),
-                    object_trait_id: object.object_trait_id,
-                    method_num: object.method_num,
-                    vtable_index: object.vtable_index,
-                })
-            }
-        }
-    }
-}
-
 impl<'tcx> TypeFoldable<'tcx> for ty::BuiltinBounds {
     fn fold_with<F: TypeFolder<'tcx>>(&self, _folder: &mut F) -> ty::BuiltinBounds {
         *self
@@ -520,8 +492,8 @@ impl<'tcx, N: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::Vtable<'tcx, N>
 impl<'tcx> TypeFoldable<'tcx> for traits::VtableObjectData<'tcx> {
     fn fold_with<F:TypeFolder<'tcx>>(&self, folder: &mut F) -> traits::VtableObjectData<'tcx> {
         traits::VtableObjectData {
-            object_ty: self.object_ty.fold_with(folder),
             upcast_trait_ref: self.upcast_trait_ref.fold_with(folder),
+            vtable_base: self.vtable_base
         }
     }
 }

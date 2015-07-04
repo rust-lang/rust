@@ -33,8 +33,10 @@
 
 use metadata::{csearch, decoder};
 use middle::def::*;
+use middle::infer;
 use middle::subst::Substs;
 use middle::ty::{self, Ty};
+use middle::traits;
 use middle::{def, pat_util, stability};
 use middle::const_eval::{eval_const_expr_partial, ConstVal};
 use middle::cfg;
@@ -1863,23 +1865,17 @@ impl LintPass for UnconditionalRecursion {
 
     fn check_fn(&mut self, cx: &Context, fn_kind: visit::FnKind, _: &ast::FnDecl,
                 blk: &ast::Block, sp: Span, id: ast::NodeId) {
-        // FIXME(#23542) Replace with type ascription.
-        #![allow(trivial_casts)]
-
         type F = for<'tcx> fn(&ty::ctxt<'tcx>,
                               ast::NodeId, ast::NodeId, ast::Ident, ast::NodeId) -> bool;
 
-        let (name, checker) = match fn_kind {
-            visit::FkItemFn(name, _, _, _, _, _) => (name, id_refers_to_this_fn as F),
-            visit::FkMethod(name, _, _) => (name, id_refers_to_this_method as F),
+        let method = match fn_kind {
+            visit::FkItemFn(..) => None,
+            visit::FkMethod(..) => {
+                cx.tcx.impl_or_trait_item(local_def(id)).as_opt_method()
+            }
             // closures can't recur, so they don't matter.
             visit::FkFnBlock => return
         };
-
-        let impl_def_id = cx.tcx.impl_of_method(local_def(id))
-            .unwrap_or(local_def(ast::DUMMY_NODE_ID));
-        assert!(ast_util::is_local(impl_def_id));
-        let impl_node_id = impl_def_id.node;
 
         // Walk through this function (say `f`) looking to see if
         // every possible path references itself, i.e. the function is
@@ -1931,7 +1927,17 @@ impl LintPass for UnconditionalRecursion {
             let node_id = cfg.graph.node_data(idx).id();
 
             // is this a recursive call?
-            if node_id != ast::DUMMY_NODE_ID && checker(cx.tcx, impl_node_id, id, name, node_id) {
+            let self_recursive = if node_id != ast::DUMMY_NODE_ID {
+                match method {
+                    Some(ref method) => {
+                        expr_refers_to_this_method(cx.tcx, method, node_id)
+                    }
+                    None => expr_refers_to_this_fn(cx.tcx, id, node_id)
+                }
+            } else {
+                false
+            };
+            if self_recursive {
                 self_call_spans.push(cx.tcx.map.span(node_id));
                 // this is a self call, so we shouldn't explore past
                 // this node in the CFG.
@@ -1970,15 +1976,12 @@ impl LintPass for UnconditionalRecursion {
         // all done
         return;
 
-        // Functions for identifying if the given NodeId `id`
-        // represents a call to the function `fn_id`/method
-        // `method_id`.
+        // Functions for identifying if the given Expr NodeId `id`
+        // represents a call to the function `fn_id`/method `method`.
 
-        fn id_refers_to_this_fn<'tcx>(tcx: &ty::ctxt<'tcx>,
-                                      _: ast::NodeId,
-                                      fn_id: ast::NodeId,
-                                      _: ast::Ident,
-                                      id: ast::NodeId) -> bool {
+        fn expr_refers_to_this_fn(tcx: &ty::ctxt,
+                                  fn_id: ast::NodeId,
+                                  id: ast::NodeId) -> bool {
             match tcx.map.get(id) {
                 ast_map::NodeExpr(&ast::Expr { node: ast::ExprCall(ref callee, _), .. }) => {
                     tcx.def_map.borrow().get(&callee.id)
@@ -1988,64 +1991,68 @@ impl LintPass for UnconditionalRecursion {
             }
         }
 
-        // check if the method call `id` refers to method `method_id`
-        // (with name `method_name` contained in impl `impl_id`).
-        fn id_refers_to_this_method<'tcx>(tcx: &ty::ctxt<'tcx>,
-                                          impl_id: ast::NodeId,
-                                          method_id: ast::NodeId,
-                                          method_name: ast::Ident,
-                                          id: ast::NodeId) -> bool {
-            let did = match tcx.tables.borrow().method_map.get(&ty::MethodCall::expr(id)) {
-                None => return false,
-                Some(m) => match m.origin {
-                    // There's no way to know if a method call via a
-                    // vtable is recursion, so we assume it's not.
-                    ty::MethodTraitObject(_) => return false,
+        // Check if the method call `id` refers to method `method`.
+        fn expr_refers_to_this_method(tcx: &ty::ctxt,
+                                      method: &ty::Method,
+                                      id: ast::NodeId) -> bool {
+            let method_call = ty::MethodCall::expr(id);
+            let callee = match tcx.tables.borrow().method_map.get(&method_call) {
+                Some(&m) => m,
+                None => return false
+            };
+            let callee_item = tcx.impl_or_trait_item(callee.def_id);
 
-                    // This `did` refers directly to the method definition.
-                    ty::MethodStatic(did) | ty::MethodStaticClosure(did) => did,
+            match callee_item.container() {
+                // This is an inherent method, so the `def_id` refers
+                // directly to the method definition.
+                ty::ImplContainer(_) => {
+                    callee.def_id == method.def_id
+                }
 
-                    // MethodTypeParam are methods from traits:
+                // A trait method, from any number of possible sources.
+                // Attempt to select a concrete impl before checking.
+                ty::TraitContainer(trait_def_id) => {
+                    let trait_substs = callee.substs.clone().method_to_trait();
+                    let trait_substs = tcx.mk_substs(trait_substs);
+                    let trait_ref = ty::TraitRef::new(trait_def_id, trait_substs);
+                    let trait_ref = ty::Binder(trait_ref);
+                    let span = tcx.map.span(id);
+                    let obligation =
+                        traits::Obligation::new(traits::ObligationCause::misc(span, id),
+                                                trait_ref.to_poly_trait_predicate());
 
-                    // The `impl ... for ...` of this method call
-                    // isn't known, e.g. it might be a default method
-                    // in a trait, so we get the def-id of the trait
-                    // method instead.
-                    ty::MethodTypeParam(
-                        ty::MethodParam { ref trait_ref, method_num, impl_def_id: None, }) => {
-
-                        let on_self = m.substs.self_ty().map_or(false, |t| t.is_self());
-                        if !on_self {
-                            // we can only be recurring in a default
+                    let param_env = ty::ParameterEnvironment::for_item(tcx, method.def_id.node);
+                    let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, Some(param_env), false);
+                    let mut selcx = traits::SelectionContext::new(&infcx);
+                    match selcx.select(&obligation) {
+                        // The method comes from a `T: Trait` bound.
+                        // If `T` is `Self`, then this call is inside
+                        // a default method definition.
+                        Ok(Some(traits::VtableParam(_))) => {
+                            let self_ty = callee.substs.self_ty();
+                            let on_self = self_ty.map_or(false, |t| t.is_self());
+                            // We can only be recurring in a default
                             // method if we're being called literally
                             // on the `Self` type.
-                            return false
+                            on_self && callee.def_id == method.def_id
                         }
 
-                        tcx.trait_item(trait_ref.def_id, method_num).def_id()
-                    }
+                        // The `impl` is known, so we check that with a
+                        // special case:
+                        Ok(Some(traits::VtableImpl(vtable_impl))) => {
+                            let container = ty::ImplContainer(vtable_impl.impl_def_id);
+                            // It matches if it comes from the same impl,
+                            // and has the same method name.
+                            container == method.container
+                                && callee_item.name() == method.name
+                        }
 
-                    // The `impl` is known, so we check that with a
-                    // special case:
-                    ty::MethodTypeParam(
-                        ty::MethodParam { impl_def_id: Some(impl_def_id), .. }) => {
-
-                        let name = match tcx.map.expect_expr(id).node {
-                            ast::ExprMethodCall(ref sp_ident, _, _) => sp_ident.node,
-                            _ => tcx.sess.span_bug(
-                                tcx.map.span(id),
-                                "non-method call expr behaving like a method call?")
-                        };
-                        // It matches if it comes from the same impl,
-                        // and has the same method name.
-                        return ast_util::is_local(impl_def_id)
-                            && impl_def_id.node == impl_id
-                            && method_name.name == name.name
+                        // There's no way to know if this call is
+                        // recursive, so we assume it's not.
+                        _ => return false
                     }
                 }
-            };
-
-            ast_util::is_local(did) && did.node == method_id
+            }
         }
     }
 }
