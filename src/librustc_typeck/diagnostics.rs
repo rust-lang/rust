@@ -1369,23 +1369,30 @@ struct Foo {
 "##,
 
 E0128: r##"
-You declared a type parameter with a default which has the same identifier as
-the type parameter. Erroneous code example:
+Type parameter defaults can only use parameters that occur before them.
+Erroneous code example:
 
 ```
-pub struct Foo<SomeType=SomeType>;
+pub struct Foo<T=U, U=()> {
+    field1: T,
+    filed2: U,
+}
 // error: type parameters with a default cannot use forward declared
 // identifiers
 ```
 
-Please verify that a name clash hasn't been accidentally introduced, and rename
-the type parameter if so. Example:
+Since type parameters are evaluated in-order, you may be able to fix this issue
+by doing:
 
 ```
-pub struct Foo<T=SomeType> {
-    value: T
+pub struct Foo<U=(), T=U> {
+    field1: T,
+    filed2: U,
 }
 ```
+
+Please also verify that this wasn't because of a name-clash and rename the type
+parameter if so.
 "##,
 
 E0130: r##"
