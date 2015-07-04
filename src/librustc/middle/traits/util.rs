@@ -396,52 +396,50 @@ pub fn upcast<'tcx>(tcx: &ty::ctxt<'tcx>,
         .collect()
 }
 
-/// Given an object of type `object_trait_ref`, returns the index of
-/// the method `n_method` found in the trait `trait_def_id` (which
-/// should be a supertrait of `object_trait_ref`) within the vtable
-/// for `object_trait_ref`.
+/// Given an trait `trait_ref`, returns the number of vtable entries
+/// that come from `trait_ref`, excluding its supertraits. Used in
+/// computing the vtable base for an upcast trait of a trait object.
+pub fn count_own_vtable_entries<'tcx>(tcx: &ty::ctxt<'tcx>,
+                                      trait_ref: ty::PolyTraitRef<'tcx>)
+                                      -> usize {
+    let mut entries = 0;
+    // Count number of methods and add them to the total offset.
+    // Skip over associated types and constants.
+    for trait_item in &tcx.trait_items(trait_ref.def_id())[..] {
+        if let ty::MethodTraitItem(_) = *trait_item {
+            entries += 1;
+        }
+    }
+    entries
+}
+
+/// Given an upcast trait object described by `object`, returns the
+/// index of the method `method_def_id` (which should be part of
+/// `object.upcast_trait_ref`) within the vtable for `object`.
 pub fn get_vtable_index_of_object_method<'tcx>(tcx: &ty::ctxt<'tcx>,
-                                               object_trait_ref: ty::PolyTraitRef<'tcx>,
-                                               trait_def_id: ast::DefId,
-                                               method_offset_in_trait: usize) -> usize {
-    // We need to figure the "real index" of the method in a
-    // listing of all the methods of an object. We do this by
-    // iterating down the supertraits of the object's trait until
-    // we find the trait the method came from, counting up the
-    // methods from them.
-    let mut method_count = 0;
+                                               object: &super::VtableObjectData<'tcx>,
+                                               method_def_id: ast::DefId) -> usize {
+    // Count number of methods preceding the one we are selecting and
+    // add them to the total offset.
+    // Skip over associated types and constants.
+    let mut entries = object.vtable_base;
+    for trait_item in &tcx.trait_items(object.upcast_trait_ref.def_id())[..] {
+        if trait_item.def_id() == method_def_id {
+            // The item with the ID we were given really ought to be a method.
+            assert!(match *trait_item {
+                ty::MethodTraitItem(_) => true,
+                _ => false
+            });
 
-    for bound_ref in transitive_bounds(tcx, &[object_trait_ref]) {
-        if bound_ref.def_id() == trait_def_id {
-            break;
+            return entries;
         }
-
-        let trait_items = tcx.trait_items(bound_ref.def_id());
-        for trait_item in trait_items.iter() {
-            match *trait_item {
-                ty::MethodTraitItem(_) => method_count += 1,
-                _ => {}
-            }
+        if let ty::MethodTraitItem(_) = *trait_item {
+            entries += 1;
         }
     }
 
-    // count number of methods preceding the one we are selecting and
-    // add them to the total offset; skip over associated types.
-    let trait_items = tcx.trait_items(trait_def_id);
-    for trait_item in trait_items.iter().take(method_offset_in_trait) {
-        match *trait_item {
-            ty::MethodTraitItem(_) => method_count += 1,
-            _ => {}
-        }
-    }
-
-    // the item at the offset we were given really ought to be a method
-    assert!(match trait_items[method_offset_in_trait] {
-        ty::MethodTraitItem(_) => true,
-        _ => false
-    });
-
-    method_count
+    tcx.sess.bug(&format!("get_vtable_index_of_object_method: {:?} was not found",
+                          method_def_id));
 }
 
 pub enum TupleArgumentsFlag { Yes, No }
@@ -490,7 +488,7 @@ impl<'tcx, N:fmt::Debug> fmt::Debug for super::Vtable<'tcx, N> {
                 write!(f, "VtableFnPointer({:?})", d),
 
             super::VtableObject(ref d) =>
-                write!(f, "VtableObject({:?})", d),
+                write!(f, "{:?}", d),
 
             super::VtableParam(ref n) =>
                 write!(f, "VtableParam({:?})", n),
@@ -535,7 +533,9 @@ impl<'tcx, N:fmt::Debug> fmt::Debug for super::VtableDefaultImplData<N> {
 
 impl<'tcx> fmt::Debug for super::VtableObjectData<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "VtableObject(object_ty={:?})", self.object_ty)
+        write!(f, "VtableObject(upcast={:?}, vtable_base={})",
+               self.upcast_trait_ref,
+               self.vtable_base)
     }
 }
 

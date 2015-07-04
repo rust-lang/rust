@@ -23,10 +23,7 @@ use self::OverloadedCallType::*;
 use middle::{def, region, pat_util};
 use middle::infer;
 use middle::mem_categorization as mc;
-use middle::ty::{self};
-use middle::ty::{MethodCall, MethodObject, MethodTraitObject};
-use middle::ty::{MethodOrigin, MethodParam, MethodTypeParam};
-use middle::ty::{MethodStatic, MethodStaticClosure};
+use middle::ty;
 
 use syntax::{ast, ast_util};
 use syntax::ptr::P;
@@ -229,57 +226,8 @@ impl OverloadedCallType {
 
     fn from_method_id(tcx: &ty::ctxt, method_id: ast::DefId)
                       -> OverloadedCallType {
-        let method_descriptor = match tcx.impl_or_trait_item(method_id) {
-            ty::MethodTraitItem(ref method_descriptor) => {
-                (*method_descriptor).clone()
-            }
-            _ => {
-                tcx.sess.bug("overloaded call method wasn't in method map")
-            }
-        };
-        let impl_id = match method_descriptor.container {
-            ty::TraitContainer(_) => {
-                tcx.sess.bug("statically resolved overloaded call method \
-                              belonged to a trait?!")
-            }
-            ty::ImplContainer(impl_id) => impl_id,
-        };
-        let trait_ref = match tcx.impl_trait_ref(impl_id) {
-            None => {
-                tcx.sess.bug("statically resolved overloaded call impl \
-                              didn't implement a trait?!")
-            }
-            Some(ref trait_ref) => (*trait_ref).clone(),
-        };
-        OverloadedCallType::from_trait_id(tcx, trait_ref.def_id)
-    }
-
-    fn from_closure(tcx: &ty::ctxt, closure_did: ast::DefId)
-                    -> OverloadedCallType {
-        let trait_did =
-            tcx.tables
-               .borrow()
-               .closure_kinds
-               .get(&closure_did)
-               .expect("OverloadedCallType::from_closure: didn't find closure id")
-               .trait_did(tcx);
-        OverloadedCallType::from_trait_id(tcx, trait_did)
-    }
-
-    fn from_method_origin(tcx: &ty::ctxt, origin: &MethodOrigin)
-                          -> OverloadedCallType {
-        match *origin {
-            MethodStatic(def_id) => {
-                OverloadedCallType::from_method_id(tcx, def_id)
-            }
-            MethodStaticClosure(def_id) => {
-                OverloadedCallType::from_closure(tcx, def_id)
-            }
-            MethodTypeParam(MethodParam { ref trait_ref, .. }) |
-            MethodTraitObject(MethodObject { ref trait_ref, .. }) => {
-                OverloadedCallType::from_trait_id(tcx, trait_ref.def_id)
-            }
-        }
+        let method = tcx.impl_or_trait_item(method_id);
+        OverloadedCallType::from_trait_id(tcx, method.container().id())
     }
 }
 
@@ -629,11 +577,9 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
             ty::TyError => { }
             _ => {
                 let overloaded_call_type =
-                    match self.typer.node_method_origin(MethodCall::expr(call.id)) {
-                        Some(method_origin) => {
-                            OverloadedCallType::from_method_origin(
-                                self.tcx(),
-                                &method_origin)
+                    match self.typer.node_method_id(ty::MethodCall::expr(call.id)) {
+                        Some(method_id) => {
+                            OverloadedCallType::from_method_id(self.tcx(), method_id)
                         }
                         None => {
                             self.tcx().sess.span_bug(

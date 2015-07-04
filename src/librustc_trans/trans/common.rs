@@ -874,7 +874,6 @@ pub fn fulfill_obligation<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     debug!("trans fulfill_obligation: trait_ref={:?} def_id={:?}",
            trait_ref, trait_ref.def_id());
 
-    tcx.populate_implementations_for_trait_if_necessary(trait_ref.def_id());
 
     // Do the initial selection for the obligation. This yields the
     // shallow result we are looking for -- that is, what specific impl.
@@ -1026,7 +1025,7 @@ pub fn node_id_substs<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             tcx.node_id_item_substs(id).substs
         }
         MethodCallKey(method_call) => {
-            tcx.tables.borrow().method_map.get(&method_call).unwrap().substs.clone()
+            tcx.tables.borrow().method_map[&method_call].substs.clone()
         }
     };
 

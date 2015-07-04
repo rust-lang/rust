@@ -494,38 +494,6 @@ impl<'tcx> fmt::Display for ty::FnSig<'tcx> {
     }
 }
 
-impl<'tcx> fmt::Debug for ty::MethodOrigin<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            ty::MethodStatic(def_id) => {
-                write!(f, "MethodStatic({:?})", def_id)
-            }
-            ty::MethodStaticClosure(def_id) => {
-                write!(f, "MethodStaticClosure({:?})", def_id)
-            }
-            ty::MethodTypeParam(ref p) => write!(f, "{:?}", p),
-            ty::MethodTraitObject(ref p) => write!(f, "{:?}", p)
-        }
-    }
-}
-
-impl<'tcx> fmt::Debug for ty::MethodParam<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "MethodParam({:?},{})",
-               self.trait_ref,
-               self.method_num)
-    }
-}
-
-impl<'tcx> fmt::Debug for ty::MethodObject<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "MethodObject({:?},{},{})",
-               self.trait_ref,
-               self.method_num,
-               self.vtable_index)
-    }
-}
-
 impl<'tcx> fmt::Debug for ty::ExistentialBounds<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut empty = true;

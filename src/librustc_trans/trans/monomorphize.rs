@@ -59,7 +59,8 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let item_ty = ccx.tcx().lookup_item_type(fn_id).ty;
 
     debug!("monomorphic_fn about to subst into {:?}", item_ty);
-    let mono_ty = item_ty.subst(ccx.tcx(), psubsts);
+    let mono_ty = apply_param_substs(ccx.tcx(), psubsts, &item_ty);
+    debug!("mono_ty = {:?} (post-substitution)", mono_ty);
 
     match ccx.monomorphized().borrow().get(&hash_id) {
         Some(&val) => {
@@ -95,11 +96,6 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             return (get_item_val(ccx, fn_id.node), mono_ty, true);
         }
     }
-
-    debug!("mono_ty = {:?} (post-substitution)", mono_ty);
-
-    let mono_ty = normalize_associated_type(ccx.tcx(), &mono_ty);
-    debug!("mono_ty = {:?} (post-normalization)", mono_ty);
 
     ccx.stats().n_monos.set(ccx.stats().n_monos.get() + 1);
 

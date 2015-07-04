@@ -120,7 +120,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EffectCheckVisitor<'a, 'tcx> {
         match expr.node {
             ast::ExprMethodCall(_, _, _) => {
                 let method_call = MethodCall::expr(expr.id);
-                let base_type = self.tcx.tables.borrow().method_map.get(&method_call).unwrap().ty;
+                let base_type = self.tcx.tables.borrow().method_map[&method_call].ty;
                 debug!("effect: method call case, base type is {:?}",
                         base_type);
                 if type_is_unsafe_function(base_type) {

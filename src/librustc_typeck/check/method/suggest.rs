@@ -203,7 +203,7 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                impl_ty);
                 }
                 CandidateSource::TraitSource(trait_did) => {
-                    let (_, item) = trait_item(fcx.tcx(), trait_did, item_name).unwrap();
+                    let item = trait_item(fcx.tcx(), trait_did, item_name).unwrap();
                     let item_span = fcx.tcx().map.def_id_span(item.def_id(), span);
                     span_note!(fcx.sess(), item_span,
                                "candidate #{} is defined in the trait `{}`",
