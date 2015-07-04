@@ -194,6 +194,9 @@ pub enum SubregionOrigin<'tcx> {
     // Arose from a subtyping relation
     Subtype(TypeTrace<'tcx>),
 
+    // Arose from a subtyping relation
+    DefaultExistentialBound(TypeTrace<'tcx>),
+
     // Stack-allocated closures cannot outlive innermost loop
     // or function so as to ensure we only require finite stack
     InfStackClosure(Span),
@@ -658,7 +661,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                       -> CombineFields<'a, 'tcx> {
         CombineFields {infcx: self,
                        a_is_expected: a_is_expected,
-                       trace: trace}
+                       trace: trace,
+                       cause: None}
     }
 
     // public so that it can be used from the rustc_driver unit tests
@@ -1464,6 +1468,7 @@ impl<'tcx> SubregionOrigin<'tcx> {
     pub fn span(&self) -> Span {
         match *self {
             Subtype(ref a) => a.span(),
+            DefaultExistentialBound(ref a) => a.span(),
             InfStackClosure(a) => a,
             InvokeClosure(a) => a,
             DerefPointer(a) => a,

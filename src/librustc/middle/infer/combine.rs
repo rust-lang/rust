@@ -56,6 +56,7 @@ pub struct CombineFields<'a, 'tcx: 'a> {
     pub infcx: &'a InferCtxt<'a, 'tcx>,
     pub a_is_expected: bool,
     pub trace: TypeTrace<'tcx>,
+    pub cause: Option<ty_relate::Cause>,
 }
 
 pub fn super_combine_tys<'a,'tcx:'a,R>(infcx: &InferCtxt<'a, 'tcx>,

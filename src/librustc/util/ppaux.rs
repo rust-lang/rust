@@ -290,13 +290,18 @@ impl<'tcx> fmt::Display for ty::TraitTy<'tcx> {
             try!(write!(f, " + {:?}", bound));
         }
 
-        // Region, if not obviously implied by builtin bounds.
-        if bounds.region_bound != ty::ReStatic {
-            // Region bound is implied by builtin bounds:
-            let bound = bounds.region_bound.to_string();
-            if !bound.is_empty() {
-                try!(write!(f, " + {}", bound));
-            }
+        // FIXME: It'd be nice to compute from context when this bound
+        // is implied, but that's non-trivial -- we'd perhaps have to
+        // use thread-local data of some kind? There are also
+        // advantages to just showing the region, since it makes
+        // people aware that it's there.
+        let bound = bounds.region_bound.to_string();
+        if !bound.is_empty() {
+            try!(write!(f, " + {}", bound));
+        }
+
+        if bounds.region_bound_will_change && verbose() {
+            try!(write!(f, " [WILL-CHANGE]"));
         }
 
         Ok(())

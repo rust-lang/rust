@@ -1532,8 +1532,7 @@ fn convert_typed_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         let object_lifetime_default_reprs: String =
             scheme.generics.types.iter()
                                  .map(|t| match t.object_lifetime_default {
-                                     Some(ty::ObjectLifetimeDefault::Specific(r)) =>
-                                         r.to_string(),
+                                     ty::ObjectLifetimeDefault::Specific(r) => r.to_string(),
                                      d => format!("{:?}", d),
                                  })
                                  .collect::<Vec<String>>()
@@ -1637,7 +1636,7 @@ fn ty_generics_for_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         name: special_idents::type_self.name,
         def_id: local_def(param_id),
         default: None,
-        object_lifetime_default: None,
+        object_lifetime_default: ty::ObjectLifetimeDefault::BaseDefault,
     };
 
     ccx.tcx.ty_param_defs.borrow_mut().insert(param_id, def.clone());
@@ -1928,7 +1927,7 @@ fn compute_object_lifetime_default<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                                             param_id: ast::NodeId,
                                             param_bounds: &[ast::TyParamBound],
                                             where_clause: &ast::WhereClause)
-                                            -> Option<ty::ObjectLifetimeDefault>
+                                            -> ty::ObjectLifetimeDefault
 {
     let inline_bounds = from_bounds(ccx, param_bounds);
     let where_bounds = from_predicates(ccx, param_id, &where_clause.predicates);
@@ -1936,11 +1935,12 @@ fn compute_object_lifetime_default<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                                               .chain(where_bounds)
                                               .collect();
     return if all_bounds.len() > 1 {
-        Some(ty::ObjectLifetimeDefault::Ambiguous)
+        ty::ObjectLifetimeDefault::Ambiguous
+    } else if all_bounds.len() == 0 {
+        ty::ObjectLifetimeDefault::BaseDefault
     } else {
-        all_bounds.into_iter()
-                  .next()
-                  .map(ty::ObjectLifetimeDefault::Specific)
+        ty::ObjectLifetimeDefault::Specific(
+            all_bounds.into_iter().next().unwrap())
     };
 
     fn from_bounds<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,

@@ -843,15 +843,15 @@ fn parse_type_param_def_<'a, 'tcx, F>(st: &mut PState<'a, 'tcx>, conv: &mut F)
 
 fn parse_object_lifetime_default<'a,'tcx, F>(st: &mut PState<'a,'tcx>,
                                              conv: &mut F)
-                                             -> Option<ty::ObjectLifetimeDefault>
+                                             -> ty::ObjectLifetimeDefault
     where F: FnMut(DefIdSource, ast::DefId) -> ast::DefId,
 {
     match next(st) {
-        'n' => None,
-        'a' => Some(ty::ObjectLifetimeDefault::Ambiguous),
+        'a' => ty::ObjectLifetimeDefault::Ambiguous,
+        'b' => ty::ObjectLifetimeDefault::BaseDefault,
         's' => {
             let region = parse_region_(st, conv);
-            Some(ty::ObjectLifetimeDefault::Specific(region))
+            ty::ObjectLifetimeDefault::Specific(region)
         }
         _ => panic!("parse_object_lifetime_default: bad input")
     }
@@ -887,9 +887,16 @@ fn parse_existential_bounds_<'a,'tcx, F>(st: &mut PState<'a,'tcx>,
         }
     }
 
+    let region_bound_will_change = match next(st) {
+        'y' => true,
+        'n' => false,
+        c => panic!("parse_ty: expected y/n not '{}'", c)
+    };
+
     return ty::ExistentialBounds { region_bound: region_bound,
                                    builtin_bounds: builtin_bounds,
-                                   projection_bounds: projection_bounds };
+                                   projection_bounds: projection_bounds,
+                                   region_bound_will_change: region_bound_will_change };
 }
 
 fn parse_builtin_bounds<F>(st: &mut PState, mut _conv: F) -> ty::BuiltinBounds where
