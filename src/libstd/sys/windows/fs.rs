@@ -201,13 +201,7 @@ impl OpenOptions {
                 (true, true) => libc::CREATE_ALWAYS,
                 (true, false) => libc::OPEN_ALWAYS,
                 (false, false) => libc::OPEN_EXISTING,
-                (false, true) => {
-                    if self.write && !self.append {
-                        libc::CREATE_ALWAYS
-                    } else {
-                        libc::TRUNCATE_EXISTING
-                    }
-                }
+                (false, true) => libc::TRUNCATE_EXISTING,
             }
         })
     }
