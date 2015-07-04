@@ -36,7 +36,7 @@
 
 use middle::subst;
 use middle::subst::VecPerParamSpace;
-use middle::ty::{self, Ty};
+use middle::ty::{self, Ty, HasTypeFlags, RegionEscape};
 use middle::traits;
 
 use std::fmt;
@@ -44,7 +44,7 @@ use std::rc::Rc;
 use syntax::abi;
 use syntax::ast;
 use syntax::owned_slice::OwnedSlice;
-use util::nodemap::FnvHashMap;
+use util::nodemap::{FnvHashMap, FnvHashSet};
 
 ///////////////////////////////////////////////////////////////////////////
 // Two generic traits
@@ -350,17 +350,6 @@ impl<'tcx> TypeFoldable<'tcx> for ty::ExistentialBounds<'tcx> {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for ty::ParamBounds<'tcx> {
-    fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> ty::ParamBounds<'tcx> {
-        ty::ParamBounds {
-            region_bounds: self.region_bounds.fold_with(folder),
-            builtin_bounds: self.builtin_bounds.fold_with(folder),
-            trait_bounds: self.trait_bounds.fold_with(folder),
-            projection_bounds: self.projection_bounds.fold_with(folder),
-        }
-    }
-}
-
 impl<'tcx> TypeFoldable<'tcx> for ty::TypeParameterDef<'tcx> {
     fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> ty::TypeParameterDef<'tcx> {
         ty::TypeParameterDef {
@@ -379,6 +368,9 @@ impl<'tcx> TypeFoldable<'tcx> for ty::ObjectLifetimeDefault {
         match *self {
             ty::ObjectLifetimeDefault::Ambiguous =>
                 ty::ObjectLifetimeDefault::Ambiguous,
+
+            ty::ObjectLifetimeDefault::BaseDefault =>
+                ty::ObjectLifetimeDefault::BaseDefault,
 
             ty::ObjectLifetimeDefault::Specific(r) =>
                 ty::ObjectLifetimeDefault::Specific(r.fold_with(folder)),
@@ -652,7 +644,7 @@ pub fn super_fold_ty<'tcx, T: TypeFolder<'tcx>>(this: &mut T,
             ty.sty.clone()
         }
     };
-    ty::mk_t(this.tcx(), sty)
+    this.tcx().mk_ty(sty)
 }
 
 pub fn super_fold_substs<'tcx, T: TypeFolder<'tcx>>(this: &mut T,
@@ -736,6 +728,7 @@ pub fn super_fold_existential_bounds<'tcx, T: TypeFolder<'tcx>>(
         region_bound: bounds.region_bound.fold_with(this),
         builtin_bounds: bounds.builtin_bounds,
         projection_bounds: bounds.projection_bounds.fold_with(this),
+        region_bound_will_change: bounds.region_bound_will_change,
     }
 }
 
@@ -794,38 +787,51 @@ impl<'a, 'tcx, F> TypeFolder<'tcx> for BottomUpFolder<'a, 'tcx, F> where
 
 pub struct RegionFolder<'a, 'tcx: 'a> {
     tcx: &'a ty::ctxt<'tcx>,
+    skipped_regions: &'a mut bool,
     current_depth: u32,
     fld_r: &'a mut (FnMut(ty::Region, u32) -> ty::Region + 'a),
 }
 
 impl<'a, 'tcx> RegionFolder<'a, 'tcx> {
-    pub fn new<F>(tcx: &'a ty::ctxt<'tcx>, fld_r: &'a mut F) -> RegionFolder<'a, 'tcx>
+    pub fn new<F>(tcx: &'a ty::ctxt<'tcx>,
+                  skipped_regions: &'a mut bool,
+                  fld_r: &'a mut F) -> RegionFolder<'a, 'tcx>
         where F : FnMut(ty::Region, u32) -> ty::Region
     {
         RegionFolder {
             tcx: tcx,
+            skipped_regions: skipped_regions,
             current_depth: 1,
             fld_r: fld_r,
         }
     }
 }
 
-pub fn collect_regions<'tcx,T>(tcx: &ty::ctxt<'tcx>, value: &T) -> Vec<ty::Region>
+/// Collects the free and escaping regions in `value` into `region_set`. Returns
+/// whether any late-bound regions were skipped
+pub fn collect_regions<'tcx,T>(tcx: &ty::ctxt<'tcx>,
+                               value: &T,
+                               region_set: &mut FnvHashSet<ty::Region>) -> bool
     where T : TypeFoldable<'tcx>
 {
-    let mut vec = Vec::new();
-    fold_regions(tcx, value, |r, _| { vec.push(r); r });
-    vec
+    let mut have_bound_regions = false;
+    fold_regions(tcx, value, &mut have_bound_regions,
+                 |r, d| { region_set.insert(r.from_depth(d)); r });
+    have_bound_regions
 }
 
+/// Folds the escaping and free regions in `value` using `f`, and
+/// sets `skipped_regions` to true if any late-bound region was found
+/// and skipped.
 pub fn fold_regions<'tcx,T,F>(tcx: &ty::ctxt<'tcx>,
                               value: &T,
+                              skipped_regions: &mut bool,
                               mut f: F)
                               -> T
     where F : FnMut(ty::Region, u32) -> ty::Region,
           T : TypeFoldable<'tcx>,
 {
-    value.fold_with(&mut RegionFolder::new(tcx, &mut f))
+    value.fold_with(&mut RegionFolder::new(tcx, skipped_regions, &mut f))
 }
 
 impl<'a, 'tcx> TypeFolder<'tcx> for RegionFolder<'a, 'tcx>
@@ -845,6 +851,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for RegionFolder<'a, 'tcx>
             ty::ReLateBound(debruijn, _) if debruijn.depth < self.current_depth => {
                 debug!("RegionFolder.fold_region({:?}) skipped bound region (current depth={})",
                        r, self.current_depth);
+                *self.skipped_regions = true;
                 r
             }
             _ => {
@@ -907,7 +914,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for RegionReplacer<'a, 'tcx>
     }
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-        if !ty::type_escapes_depth(t, self.current_depth-1) {
+        if !t.has_regions_escaping_depth(self.current_depth-1) {
             return t;
         }
 
@@ -957,7 +964,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for RegionEraser<'a, 'tcx> {
     fn tcx(&self) -> &ty::ctxt<'tcx> { self.tcx }
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-        if !ty::type_has_erasable_regions(t) {
+        if !t.has_erasable_regions() {
             return t;
         }
 
@@ -1000,7 +1007,7 @@ pub fn shift_regions<'tcx, T:TypeFoldable<'tcx>>(tcx: &ty::ctxt<'tcx>,
     debug!("shift_regions(value={:?}, amount={})",
            value, amount);
 
-    value.fold_with(&mut RegionFolder::new(tcx, &mut |region, _current_depth| {
+    value.fold_with(&mut RegionFolder::new(tcx, &mut false, &mut |region, _current_depth| {
         shift_region(region, amount)
     }))
 }

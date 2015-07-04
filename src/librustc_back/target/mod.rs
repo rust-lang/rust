@@ -58,6 +58,7 @@ mod dragonfly_base;
 mod freebsd_base;
 mod linux_base;
 mod openbsd_base;
+mod netbsd_base;
 mod windows_base;
 mod windows_msvc_base;
 
@@ -368,6 +369,7 @@ impl Target {
 
             x86_64_unknown_bitrig,
             x86_64_unknown_openbsd,
+            x86_64_unknown_netbsd,
 
             x86_64_apple_darwin,
             i686_apple_darwin,
@@ -381,7 +383,8 @@ impl Target {
             x86_64_pc_windows_gnu,
             i686_pc_windows_gnu,
 
-            x86_64_pc_windows_msvc
+            x86_64_pc_windows_msvc,
+            i686_pc_windows_msvc
         );
 
 

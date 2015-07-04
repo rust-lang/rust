@@ -481,8 +481,7 @@ pub fn commit_date_str() -> Option<&'static str> {
     option_env!("CFG_VER_DATE")
 }
 
-/// Prints version information and returns None on success or an error
-/// message on panic.
+/// Prints version information
 pub fn version(binary: &str, matches: &getopts::Matches) {
     let verbose = matches.opt_present("verbose");
 

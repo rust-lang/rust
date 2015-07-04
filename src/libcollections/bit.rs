@@ -8,6 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![deprecated(reason = "BitVec and BitSet have been migrated to cargo as bit-vec and bit-set",
+              since = "1.3.0")]
+#![unstable(feature = "collections", reason = "deprecated")]
+#![allow(deprecated)]
+
 // FIXME(Gankro): BitVec and BitSet are very tightly coupled. Ideally (for
 // maintenance), they should be in separate files/modules, with BitSet only
 // using BitVec's public API. This will be hard for performance though, because

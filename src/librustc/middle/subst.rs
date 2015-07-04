@@ -13,7 +13,7 @@
 pub use self::ParamSpace::*;
 pub use self::RegionSubsts::*;
 
-use middle::ty::{self, Ty};
+use middle::ty::{self, Ty, HasTypeFlags, RegionEscape};
 use middle::ty_fold::{self, TypeFoldable, TypeFolder};
 
 use std::fmt;
@@ -98,17 +98,6 @@ impl<'tcx> Substs<'tcx> {
 
     pub fn type_for_def(&self, ty_param_def: &ty::TypeParameterDef) -> Ty<'tcx> {
         *self.types.get(ty_param_def.space, ty_param_def.index as usize)
-    }
-
-    pub fn has_regions_escaping_depth(&self, depth: u32) -> bool {
-        self.types.iter().any(|&t| ty::type_escapes_depth(t, depth)) || {
-            match self.regions {
-                ErasedRegions =>
-                    false,
-                NonerasedRegions(ref regions) =>
-                    regions.iter().any(|r| r.escapes_depth(depth)),
-            }
-        }
     }
 
     pub fn self_ty(&self) -> Option<Ty<'tcx>> {
@@ -632,7 +621,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for SubstFolder<'a, 'tcx> {
     }
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-        if !ty::type_needs_subst(t) {
+        if !t.needs_subst() {
             return t;
         }
 
@@ -729,10 +718,10 @@ impl<'a,'tcx> SubstFolder<'a,'tcx> {
     /// first case we do not increase the Debruijn index and in the second case we do. The reason
     /// is that only in the second case have we passed through a fn binder.
     fn shift_regions_through_binders(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        debug!("shift_regions(ty={:?}, region_binders_passed={:?}, type_has_escaping_regions={:?})",
-               ty, self.region_binders_passed, ty::type_has_escaping_regions(ty));
+        debug!("shift_regions(ty={:?}, region_binders_passed={:?}, has_escaping_regions={:?})",
+               ty, self.region_binders_passed, ty.has_escaping_regions());
 
-        if self.region_binders_passed == 0 || !ty::type_has_escaping_regions(ty) {
+        if self.region_binders_passed == 0 || !ty.has_escaping_regions() {
             return ty;
         }
 

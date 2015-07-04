@@ -225,9 +225,9 @@ There's another way of doing this that's a bit nicer than `unwrap()`:
 
 ```rust,ignore
 let mut buffer = String::new();
-let input = io::stdin().read_line(&mut buffer)
-                       .ok()
-                       .expect("Failed to read line");
+let num_bytes_read = io::stdin().read_line(&mut buffer)
+                                .ok()
+                                .expect("Failed to read line");
 ```
 
 `ok()` converts the `Result` into an `Option`, and `expect()` does the same

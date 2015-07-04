@@ -1047,11 +1047,8 @@ This is a list of behavior not considered *unsafe* in Rust terms, but that may
 be undesired.
 
 * Deadlocks
-* Reading data from private fields (`std::repr`)
 * Leaks of memory and other resources
 * Exiting without calling destructors
-* Sending signals
-* Accessing/modifying the file system
 * Integer overflow
   - Overflow is considered "unexpected" behavior and is always user-error,
     unless the `wrapping` primitives are used. In non-optimized builds, the compiler
@@ -2026,7 +2023,7 @@ The following configurations must be defined by the implementation:
   as a configuration itself, like `unix` or `windows`.
 * `target_os = "..."`. Operating system of the target, examples include
   `"windows"`, `"macos"`, `"ios"`, `"linux"`, `"android"`, `"freebsd"`, `"dragonfly"`,
-  `"bitrig"` or `"openbsd"`.
+  `"bitrig"` , `"openbsd"` or `"netbsd"`.
 * `target_pointer_width = "..."`. Target pointer width in bits. This is set
   to `"32"` for targets with 32-bit pointers, and likewise set to `"64"` for
   64-bit pointers.

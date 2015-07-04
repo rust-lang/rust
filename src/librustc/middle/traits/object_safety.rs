@@ -57,7 +57,7 @@ pub fn is_object_safe<'tcx>(tcx: &ty::ctxt<'tcx>,
                             -> bool
 {
     // Because we query yes/no results frequently, we keep a cache:
-    let def = ty::lookup_trait_def(tcx, trait_def_id);
+    let def = tcx.lookup_trait_def(trait_def_id);
 
     let result = def.object_safety().unwrap_or_else(|| {
         let result = object_safety_violations(tcx, trait_def_id).is_empty();
@@ -90,7 +90,7 @@ fn object_safety_violations_for_trait<'tcx>(tcx: &ty::ctxt<'tcx>,
 {
     // Check methods for violations.
     let mut violations: Vec<_> =
-        ty::trait_items(tcx, trait_def_id).iter()
+        tcx.trait_items(trait_def_id).iter()
         .flat_map(|item| {
             match *item {
                 ty::MethodTraitItem(ref m) => {
@@ -122,10 +122,10 @@ fn supertraits_reference_self<'tcx>(tcx: &ty::ctxt<'tcx>,
                                     trait_def_id: ast::DefId)
                                     -> bool
 {
-    let trait_def = ty::lookup_trait_def(tcx, trait_def_id);
+    let trait_def = tcx.lookup_trait_def(trait_def_id);
     let trait_ref = trait_def.trait_ref.clone();
     let trait_ref = trait_ref.to_poly_trait_ref();
-    let predicates = ty::lookup_super_predicates(tcx, trait_def_id);
+    let predicates = tcx.lookup_super_predicates(trait_def_id);
     predicates
         .predicates
         .into_iter()
@@ -153,8 +153,8 @@ fn trait_has_sized_self<'tcx>(tcx: &ty::ctxt<'tcx>,
                               trait_def_id: ast::DefId)
                               -> bool
 {
-    let trait_def = ty::lookup_trait_def(tcx, trait_def_id);
-    let trait_predicates = ty::lookup_predicates(tcx, trait_def_id);
+    let trait_def = tcx.lookup_trait_def(trait_def_id);
+    let trait_predicates = tcx.lookup_predicates(trait_def_id);
     generics_require_sized_self(tcx, &trait_def.generics, &trait_predicates)
 }
 
@@ -169,7 +169,7 @@ fn generics_require_sized_self<'tcx>(tcx: &ty::ctxt<'tcx>,
     };
 
     // Search for a predicate like `Self : Sized` amongst the trait bounds.
-    let free_substs = ty::construct_free_substs(tcx, generics, ast::DUMMY_NODE_ID);
+    let free_substs = tcx.construct_free_substs(generics, ast::DUMMY_NODE_ID);
     let predicates = predicates.instantiate(tcx, &free_substs).predicates.into_vec();
     elaborate_predicates(tcx, predicates)
         .any(|predicate| {
@@ -306,7 +306,7 @@ fn contains_illegal_self_type_reference<'tcx>(tcx: &ty::ctxt<'tcx>,
 
     let mut supertraits: Option<Vec<ty::PolyTraitRef<'tcx>>> = None;
     let mut error = false;
-    ty::maybe_walk_ty(ty, |ty| {
+    ty.maybe_walk(|ty| {
         match ty.sty {
             ty::TyParam(ref param_ty) => {
                 if param_ty.space == SelfSpace {
@@ -321,7 +321,7 @@ fn contains_illegal_self_type_reference<'tcx>(tcx: &ty::ctxt<'tcx>,
 
                 // Compute supertraits of current trait lazily.
                 if supertraits.is_none() {
-                    let trait_def = ty::lookup_trait_def(tcx, trait_def_id);
+                    let trait_def = tcx.lookup_trait_def(trait_def_id);
                     let trait_ref = ty::Binder(trait_def.trait_ref.clone());
                     supertraits = Some(traits::supertraits(tcx, trait_ref).collect());
                 }

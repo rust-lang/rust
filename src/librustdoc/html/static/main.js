@@ -76,17 +76,46 @@
     highlightSourceLines(null);
     $(window).on('hashchange', highlightSourceLines);
 
-    $(document).on('keyup', function handleKeyboardShortcut(e) {
+    // Helper function for Keyboard events,
+    // Get's the char from the keypress event
+    //
+    // This method is used because e.wich === x is not
+    // compatible with non-english keyboard layouts
+    //
+    // Note: event.type must be keypress !
+    function getChar(event) {
+      if (event.which == null) {
+        return String.fromCharCode(event.keyCode) // IE
+      } else if (event.which!=0 && event.charCode!=0) {
+        return String.fromCharCode(event.which)   // the rest
+      } else {
+        return null // special key
+      }
+    }
+
+    $(document).on('keypress', function handleKeyboardShortcut(e) {
         if (document.activeElement.tagName === 'INPUT') {
             return;
         }
 
-        if (e.which === 191) { // question mark
+        if (getChar(e) === '?') {
             if (e.shiftKey && $('#help').hasClass('hidden')) {
                 e.preventDefault();
                 $('#help').removeClass('hidden');
             }
-        } else if (e.which === 27) { // esc
+        } else if (getChar(e) === 's' || getChar(e) === 'S') {
+            e.preventDefault();
+            $('.search-input').focus();
+        }
+    }).on('keydown', function(e) {
+        // The escape key event has to be captured with the keydown event.
+        // Because keypressed has no keycode for the escape key
+        // (and other special keys in general)...
+        if (document.activeElement.tagName === 'INPUT') {
+            return;
+        }
+
+        if (e.keyCode === 27) { // escape key
             if (!$('#help').hasClass('hidden')) {
                 e.preventDefault();
                 $('#help').addClass('hidden');
@@ -95,15 +124,13 @@
                 $('#search').addClass('hidden');
                 $('#main').removeClass('hidden');
             }
-        } else if (e.which === 83) { // S
-            e.preventDefault();
-            $('.search-input').focus();
         }
     }).on('click', function(e) {
         if (!$(e.target).closest('#help').length) {
             $('#help').addClass('hidden');
         }
     });
+
 
     $('.version-selector').on('change', function() {
         var i, match,

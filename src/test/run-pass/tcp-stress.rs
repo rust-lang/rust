@@ -9,8 +9,9 @@
 // except according to those terms.
 
 // ignore-android needs extra network permissions
-// ignore-openbsd system ulimit (Too many open files)
 // ignore-bitrig system ulimit (Too many open files)
+// ignore-netbsd system ulimit (Too many open files)
+// ignore-openbsd system ulimit (Too many open files)
 
 use std::io::prelude::*;
 use std::net::{TcpListener, TcpStream};

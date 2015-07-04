@@ -30,6 +30,7 @@ use syntax::feature_gate::emit_feature_err;
 use util::nodemap::{DefIdMap, FnvHashSet, FnvHashMap};
 
 use std::mem::replace;
+use std::cmp::Ordering;
 
 /// A stability index, giving the stability level for items and methods.
 pub struct Index<'tcx> {
@@ -59,9 +60,57 @@ impl<'a, 'tcx: 'a> Annotator<'a, 'tcx> {
         if self.index.staged_api[&ast::LOCAL_CRATE] {
             debug!("annotate(id = {:?}, attrs = {:?})", id, attrs);
             match attr::find_stability(self.tcx.sess.diagnostic(), attrs, item_sp) {
-                Some(stab) => {
+                Some(mut stab) => {
                     debug!("annotate: found {:?}", stab);
+                    // if parent is deprecated and we're not, inherit this by merging
+                    // deprecated_since and its reason.
+                    if let Some(parent_stab) = self.parent {
+                        if parent_stab.deprecated_since.is_some()
+                        && stab.deprecated_since.is_none() {
+                            stab.deprecated_since = parent_stab.deprecated_since.clone();
+                            stab.reason = parent_stab.reason.clone();
+                        }
+                    }
+
                     let stab = self.tcx.intern_stability(stab);
+
+                    // Check if deprecated_since < stable_since. If it is,
+                    // this is *almost surely* an accident.
+                    let deprecated_predates_stable = match (stab.deprecated_since.as_ref(),
+                                                            stab.since.as_ref()) {
+                        (Some(dep_since), Some(stab_since)) => {
+                            // explicit version of iter::order::lt to handle parse errors properly
+                            let mut is_less = false;
+                            for (dep_v, stab_v) in dep_since.split(".").zip(stab_since.split(".")) {
+                                match (dep_v.parse::<u64>(), stab_v.parse::<u64>()) {
+                                    (Ok(dep_v), Ok(stab_v)) => match dep_v.cmp(&stab_v) {
+                                        Ordering::Less => {
+                                            is_less = true;
+                                            break;
+                                        }
+                                        Ordering::Equal => { continue; }
+                                        Ordering::Greater => { break; }
+                                    },
+                                    _ => {
+                                        self.tcx.sess.span_err(item_sp,
+                                            "Invalid stability or deprecation version found");
+                                        // act like it isn't less because the question is now
+                                        // nonsensical, and this makes us not do anything else
+                                        // interesting.
+                                        break;
+                                    }
+                                }
+                            }
+                            is_less
+                        },
+                        _ => false,
+                    };
+
+                    if deprecated_predates_stable {
+                        self.tcx.sess.span_err(item_sp,
+                            "An API can't be stabilized after it is deprecated");
+                    }
+
                     self.index.map.insert(local_def(id), Some(stab));
 
                     // Don't inherit #[stable(feature = "rust1", since = "1.0.0")]
@@ -333,7 +382,7 @@ pub fn check_item(tcx: &ty::ctxt, item: &ast::Item, warn_about_defns: bool,
         // items.
         ast::ItemImpl(_, _, _, Some(ref t), _, ref impl_items) => {
             let trait_did = tcx.def_map.borrow().get(&t.ref_id).unwrap().def_id();
-            let trait_items = ty::trait_items(tcx, trait_did);
+            let trait_items = tcx.trait_items(trait_did);
 
             for impl_item in impl_items {
                 let item = trait_items.iter().find(|item| {
@@ -357,7 +406,7 @@ pub fn check_expr(tcx: &ty::ctxt, e: &ast::Expr,
         ast::ExprMethodCall(i, _, _) => {
             span = i.span;
             let method_call = ty::MethodCall::expr(e.id);
-            match tcx.method_map.borrow().get(&method_call) {
+            match tcx.tables.borrow().method_map.get(&method_call) {
                 Some(method) => {
                     match method.origin {
                         ty::MethodStatic(def_id) => {
@@ -376,7 +425,7 @@ pub fn check_expr(tcx: &ty::ctxt, e: &ast::Expr,
                             method_num: index,
                             ..
                         }) => {
-                            ty::trait_item(tcx, trait_ref.def_id, index).def_id()
+                            tcx.trait_item(trait_ref.def_id, index).def_id()
                         }
                     }
                 }
@@ -385,9 +434,9 @@ pub fn check_expr(tcx: &ty::ctxt, e: &ast::Expr,
         }
         ast::ExprField(ref base_e, ref field) => {
             span = field.span;
-            match ty::expr_ty_adjusted(tcx, base_e).sty {
+            match tcx.expr_ty_adjusted(base_e).sty {
                 ty::TyStruct(did, _) => {
-                    ty::lookup_struct_fields(tcx, did)
+                    tcx.lookup_struct_fields(did)
                         .iter()
                         .find(|f| f.name == field.node.name)
                         .unwrap_or_else(|| {
@@ -402,9 +451,9 @@ pub fn check_expr(tcx: &ty::ctxt, e: &ast::Expr,
         }
         ast::ExprTupField(ref base_e, ref field) => {
             span = field.span;
-            match ty::expr_ty_adjusted(tcx, base_e).sty {
+            match tcx.expr_ty_adjusted(base_e).sty {
                 ty::TyStruct(did, _) => {
-                    ty::lookup_struct_fields(tcx, did)
+                    tcx.lookup_struct_fields(did)
                         .get(field.node)
                         .unwrap_or_else(|| {
                             tcx.sess.span_bug(field.span,
@@ -419,10 +468,10 @@ pub fn check_expr(tcx: &ty::ctxt, e: &ast::Expr,
             }
         }
         ast::ExprStruct(_, ref expr_fields, _) => {
-            let type_ = ty::expr_ty(tcx, e);
+            let type_ = tcx.expr_ty(e);
             match type_.sty {
                 ty::TyStruct(did, _) => {
-                    let struct_fields = ty::lookup_struct_fields(tcx, did);
+                    let struct_fields = tcx.lookup_struct_fields(did);
                     // check the stability of each field that appears
                     // in the construction expression.
                     for field in expr_fields {
@@ -476,11 +525,11 @@ pub fn check_pat(tcx: &ty::ctxt, pat: &ast::Pat,
     debug!("check_pat(pat = {:?})", pat);
     if is_internal(tcx, pat.span) { return; }
 
-    let did = match ty::pat_ty_opt(tcx, pat) {
+    let did = match tcx.pat_ty_opt(pat) {
         Some(&ty::TyS { sty: ty::TyStruct(did, _), .. }) => did,
         Some(_) | None => return,
     };
-    let struct_fields = ty::lookup_struct_fields(tcx, did);
+    let struct_fields = tcx.lookup_struct_fields(did);
     match pat.node {
         // Foo(a, b, c)
         ast::PatEnum(_, Some(ref pat_fields)) => {
@@ -525,7 +574,7 @@ fn is_internal(tcx: &ty::ctxt, span: Span) -> bool {
 }
 
 fn is_staged_api(tcx: &ty::ctxt, id: DefId) -> bool {
-    match ty::trait_item_of_item(tcx, id) {
+    match tcx.trait_item_of_item(id) {
         Some(ty::MethodTraitItemId(trait_method_id))
             if trait_method_id != id => {
                 is_staged_api(tcx, trait_method_id)
@@ -553,7 +602,7 @@ fn lookup_uncached<'tcx>(tcx: &ty::ctxt<'tcx>, id: DefId) -> Option<&'tcx Stabil
     debug!("lookup(id={:?})", id);
 
     // is this definition the implementation of a trait method?
-    match ty::trait_item_of_item(tcx, id) {
+    match tcx.trait_item_of_item(id) {
         Some(ty::MethodTraitItemId(trait_method_id)) if trait_method_id != id => {
             debug!("lookup: trait_method_id={:?}", trait_method_id);
             return lookup(tcx, trait_method_id)
@@ -568,8 +617,8 @@ fn lookup_uncached<'tcx>(tcx: &ty::ctxt<'tcx>, id: DefId) -> Option<&'tcx Stabil
     };
 
     item_stab.or_else(|| {
-        if ty::is_impl(tcx, id) {
-            if let Some(trait_id) = ty::trait_id_of_impl(tcx, id) {
+        if tcx.is_impl(id) {
+            if let Some(trait_id) = tcx.trait_id_of_impl(id) {
                 // FIXME (#18969): for the time being, simply use the
                 // stability of the trait to determine the stability of any
                 // unmarked impls for it. See FIXME above for more details.

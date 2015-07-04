@@ -485,7 +485,7 @@ impl<'a, 'tcx> TermsContext<'a, 'tcx> {
                 param_id={}, \
                 inf_index={:?}, \
                 initial_variance={:?})",
-               ty::item_path_str(self.tcx, ast_util::local_def(item_id)),
+               self.tcx.item_path_str(ast_util::local_def(item_id)),
                item_id, kind, space, index, param_id, inf_index,
                initial_variance);
     }
@@ -603,7 +603,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ConstraintContext<'a, 'tcx> {
 
         match item.node {
             ast::ItemEnum(ref enum_definition, _) => {
-                let scheme = ty::lookup_item_type(tcx, did);
+                let scheme = tcx.lookup_item_type(did);
 
                 // Not entirely obvious: constraints on structs/enums do not
                 // affect the variance of their type parameters. See discussion
@@ -633,7 +633,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ConstraintContext<'a, 'tcx> {
             }
 
             ast::ItemStruct(..) => {
-                let scheme = ty::lookup_item_type(tcx, did);
+                let scheme = tcx.lookup_item_type(did);
 
                 // Not entirely obvious: constraints on structs/enums do not
                 // affect the variance of their type parameters. See discussion
@@ -641,16 +641,16 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ConstraintContext<'a, 'tcx> {
                 //
                 // self.add_constraints_from_generics(&scheme.generics);
 
-                let struct_fields = ty::lookup_struct_fields(tcx, did);
+                let struct_fields = tcx.lookup_struct_fields(did);
                 for field_info in &struct_fields {
                     assert_eq!(field_info.id.krate, ast::LOCAL_CRATE);
-                    let field_ty = ty::node_id_to_type(tcx, field_info.id.node);
+                    let field_ty = tcx.node_id_to_type(field_info.id.node);
                     self.add_constraints_from_ty(&scheme.generics, field_ty, self.covariant);
                 }
             }
 
             ast::ItemTrait(..) => {
-                let trait_def = ty::lookup_trait_def(tcx, did);
+                let trait_def = tcx.lookup_trait_def(did);
                 self.add_constraints_from_trait_ref(&trait_def.generics,
                                                     trait_def.trait_ref,
                                                     self.invariant);
@@ -781,7 +781,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
         } else {
             // Parameter on an item defined within another crate:
             // variance already inferred, just look it up.
-            let variances = ty::item_variances(self.tcx(), item_def_id);
+            let variances = self.tcx().item_variances(item_def_id);
             let variance = match kind {
                 TypeParam => *variances.types.get(space, index),
                 RegionParam => *variances.regions.get(space, index),
@@ -848,7 +848,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                trait_ref,
                variance);
 
-        let trait_def = ty::lookup_trait_def(self.tcx(), trait_ref.def_id);
+        let trait_def = self.tcx().lookup_trait_def(trait_ref.def_id);
 
         self.add_constraints_from_substs(
             generics,
@@ -904,7 +904,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
 
             ty::TyEnum(def_id, substs) |
             ty::TyStruct(def_id, substs) => {
-                let item_type = ty::lookup_item_type(self.tcx(), def_id);
+                let item_type = self.tcx().lookup_item_type(def_id);
 
                 // All type parameters on enums and structs should be
                 // in the TypeSpace.
@@ -924,7 +924,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
 
             ty::TyProjection(ref data) => {
                 let trait_ref = &data.trait_ref;
-                let trait_def = ty::lookup_trait_def(self.tcx(), trait_ref.def_id);
+                let trait_def = self.tcx().lookup_trait_def(trait_ref.def_id);
                 self.add_constraints_from_substs(
                     generics,
                     trait_ref.def_id,
@@ -1200,7 +1200,7 @@ impl<'a, 'tcx> SolveContext<'a, 'tcx> {
 
             // For unit testing: check for a special "rustc_variance"
             // attribute and report an error with various results if found.
-            if ty::has_attr(tcx, item_def_id, "rustc_variance") {
+            if tcx.has_attr(item_def_id, "rustc_variance") {
                 span_err!(tcx.sess, tcx.map.span(item_id), E0208, "{:?}", item_variances);
             }
 

@@ -11,7 +11,7 @@
 fn main() {
     static foo: Fn() -> u32 = || -> u32 {
         //~^ ERROR: mismatched types:
-        //~| expected `core::ops::Fn() -> u32`,
+        //~| expected `core::ops::Fn() -> u32 + 'static`,
         //~| found closure
         //~| (expected trait core::ops::Fn,
         //~| found closure)

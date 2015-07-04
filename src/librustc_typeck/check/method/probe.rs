@@ -9,8 +9,9 @@
 // except according to those terms.
 
 use super::MethodError;
+use super::NoMatchData;
 use super::ItemIndex;
-use super::{CandidateSource,ImplSource,TraitSource};
+use super::{CandidateSource, ImplSource, TraitSource};
 use super::suggest;
 
 use check;
@@ -19,7 +20,8 @@ use middle::fast_reject;
 use middle::subst;
 use middle::subst::Subst;
 use middle::traits;
-use middle::ty::{self, RegionEscape, Ty, ToPolyTraitRef};
+use middle::ty::{self, RegionEscape, Ty, ToPolyTraitRef, TraitRef};
+use middle::ty::HasTypeFlags;
 use middle::ty_fold::TypeFoldable;
 use middle::infer;
 use middle::infer::InferCtxt;
@@ -42,7 +44,14 @@ struct ProbeContext<'a, 'tcx:'a> {
     inherent_candidates: Vec<Candidate<'tcx>>,
     extension_candidates: Vec<Candidate<'tcx>>,
     impl_dups: HashSet<ast::DefId>,
+
+    /// Collects near misses when the candidate functions are missing a `self` keyword and is only
+    /// used for error reporting
     static_candidates: Vec<CandidateSource>,
+
+    /// Collects near misses when trait bounds for type parameters are unsatisfied and is only used
+    /// for error reporting
+    unsatisfied_predicates: Vec<TraitRef<'tcx>>
 }
 
 #[derive(Debug)]
@@ -104,7 +113,7 @@ pub enum PickKind<'tcx> {
     WhereClausePick(/* Trait */ ty::PolyTraitRef<'tcx>, ItemIndex),
 }
 
-pub type PickResult<'tcx> = Result<Pick<'tcx>, MethodError>;
+pub type PickResult<'tcx> = Result<Pick<'tcx>, MethodError<'tcx>>;
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub enum Mode {
@@ -141,7 +150,8 @@ pub fn probe<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     let steps = if mode == Mode::MethodCall {
         match create_steps(fcx, span, self_ty) {
             Some(steps) => steps,
-            None => return Err(MethodError::NoMatch(Vec::new(), Vec::new(), mode)),
+            None =>return Err(MethodError::NoMatch(NoMatchData::new(Vec::new(), Vec::new(),
+                                                                    Vec::new(), mode))),
         }
     } else {
         vec![CandidateStep {
@@ -208,9 +218,8 @@ fn create_steps<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
     match final_ty.sty {
         ty::TyArray(elem_ty, _) => {
-            let slice_ty = ty::mk_vec(fcx.tcx(), elem_ty, None);
             steps.push(CandidateStep {
-                self_ty: slice_ty,
+                self_ty: fcx.tcx().mk_slice(elem_ty),
                 autoderefs: dereferences,
                 unsize: true
             });
@@ -242,6 +251,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             steps: Rc::new(steps),
             opt_simplified_steps: opt_simplified_steps,
             static_candidates: Vec::new(),
+            unsatisfied_predicates: Vec::new(),
         }
     }
 
@@ -367,7 +377,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
 
     fn assemble_inherent_impl_for_primitive(&mut self, lang_def_id: Option<ast::DefId>) {
         if let Some(impl_def_id) = lang_def_id {
-            ty::populate_implementations_for_primitive_if_necessary(self.tcx(), impl_def_id);
+            self.tcx().populate_implementations_for_primitive_if_necessary(impl_def_id);
 
             self.assemble_inherent_impl_probe(impl_def_id);
         }
@@ -376,7 +386,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
     fn assemble_inherent_impl_candidates_for_type(&mut self, def_id: ast::DefId) {
         // Read the inherent implementation candidates for this type from the
         // metadata if necessary.
-        ty::populate_inherent_implementations_for_type_if_necessary(self.tcx(), def_id);
+        self.tcx().populate_inherent_implementations_for_type_if_necessary(def_id);
 
         if let Some(impl_infos) = self.tcx().inherent_impls.borrow().get(&def_id) {
             for &impl_def_id in impl_infos.iter() {
@@ -411,7 +421,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         // We can't use normalize_associated_types_in as it will pollute the
         // fcx's fulfillment context after this probe is over.
         let cause = traits::ObligationCause::misc(self.span, self.fcx.body_id);
-        let mut selcx = &mut traits::SelectionContext::new(self.fcx.infcx(), self.fcx);
+        let mut selcx = &mut traits::SelectionContext::new(self.fcx.infcx());
         let traits::Normalized { value: xform_self_ty, obligations } =
             traits::normalize(selcx, cause, &xform_self_ty);
         debug!("assemble_inherent_impl_probe: xform_self_ty = {:?}",
@@ -467,7 +477,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         // FIXME -- Do we want to commit to this behavior for param bounds?
 
         let bounds: Vec<_> =
-            self.fcx.inh.param_env.caller_bounds
+            self.fcx.inh.infcx.parameter_environment.caller_bounds
             .iter()
             .filter_map(|predicate| {
                 match *predicate {
@@ -518,7 +528,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             // artifacts. This means it is safe to put into the
             // `WhereClauseCandidate` and (eventually) into the
             // `WhereClausePick`.
-            assert!(trait_ref.substs.types.iter().all(|&t| !ty::type_needs_infer(t)));
+            assert!(!trait_ref.substs.types.needs_infer());
 
             this.inherent_candidates.push(Candidate {
                 xform_self_ty: xform_self_ty,
@@ -563,7 +573,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
 
     fn assemble_extension_candidates_for_traits_in_scope(&mut self,
                                                          expr_id: ast::NodeId)
-                                                         -> Result<(),MethodError>
+                                                         -> Result<(), MethodError<'tcx>>
     {
         let mut duplicates = HashSet::new();
         let opt_applicable_traits = self.fcx.ccx.trait_map.get(&expr_id);
@@ -577,7 +587,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         Ok(())
     }
 
-    fn assemble_extension_candidates_for_all_traits(&mut self) -> Result<(),MethodError> {
+    fn assemble_extension_candidates_for_all_traits(&mut self) -> Result<(), MethodError<'tcx>> {
         let mut duplicates = HashSet::new();
         for trait_info in suggest::all_traits(self.fcx.ccx) {
             if duplicates.insert(trait_info.def_id) {
@@ -589,14 +599,14 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
 
     fn assemble_extension_candidates_for_trait(&mut self,
                                                trait_def_id: ast::DefId)
-                                               -> Result<(),MethodError>
+                                               -> Result<(), MethodError<'tcx>>
     {
         debug!("assemble_extension_candidates_for_trait(trait_def_id={:?})",
                trait_def_id);
 
         // Check whether `trait_def_id` defines a method with suitable name:
         let trait_items =
-            ty::trait_items(self.tcx(), trait_def_id);
+            self.tcx().trait_items(trait_def_id);
         let matching_index =
             trait_items.iter()
                        .position(|item| item.name() == self.item_name);
@@ -637,7 +647,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                                                      item: ty::ImplOrTraitItem<'tcx>,
                                                      item_index: usize)
     {
-        let trait_def = ty::lookup_trait_def(self.tcx(), trait_def_id);
+        let trait_def = self.tcx().lookup_trait_def(trait_def_id);
 
         // FIXME(arielb1): can we use for_each_relevant_impl here?
         trait_def.for_each_impl(self.tcx(), |impl_def_id| {
@@ -655,7 +665,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             debug!("impl_substs={:?}", impl_substs);
 
             let impl_trait_ref =
-                ty::impl_trait_ref(self.tcx(), impl_def_id)
+                self.tcx().impl_trait_ref(impl_def_id)
                 .unwrap() // we know this is a trait impl
                 .subst(self.tcx(), &impl_substs);
 
@@ -671,7 +681,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             // as it will pollute the fcx's fulfillment context after this probe
             // is over.
             let cause = traits::ObligationCause::misc(self.span, self.fcx.body_id);
-            let mut selcx = &mut traits::SelectionContext::new(self.fcx.infcx(), self.fcx);
+            let mut selcx = &mut traits::SelectionContext::new(self.fcx.infcx());
             let traits::Normalized { value: xform_self_ty, obligations } =
                 traits::normalize(selcx, cause, &xform_self_ty);
 
@@ -695,7 +705,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             None => { return true; }
         };
 
-        let impl_type = ty::lookup_item_type(self.tcx(), impl_def_id);
+        let impl_type = self.tcx().lookup_item_type(impl_def_id);
         let impl_simplified_type =
             match fast_reject::simplify_type(self.tcx(), impl_type.ty, false) {
                 Some(simplified_type) => simplified_type,
@@ -709,7 +719,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                                    trait_def_id: ast::DefId,
                                    item: ty::ImplOrTraitItem<'tcx>,
                                    item_index: usize)
-                                   -> Result<(),MethodError>
+                                   -> Result<(), MethodError<'tcx>>
     {
         // Check if this is one of the Fn,FnMut,FnOnce traits.
         let tcx = self.tcx();
@@ -732,7 +742,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                 _ => continue,
             };
 
-            let closure_kinds = self.fcx.inh.closure_kinds.borrow();
+            let closure_kinds = &self.fcx.inh.tables.borrow().closure_kinds;
             let closure_kind = match closure_kinds.get(&closure_def_id) {
                 Some(&k) => k,
                 None => {
@@ -749,7 +759,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             // for the purposes of our method lookup, we only take
             // receiver type into account, so we can just substitute
             // fresh types here to use during substitution and subtyping.
-            let trait_def = ty::lookup_trait_def(self.tcx(), trait_def_id);
+            let trait_def = self.tcx().lookup_trait_def(trait_def_id);
             let substs = self.infcx().fresh_substs_for_trait(self.span,
                                                              &trait_def.generics,
                                                              step.self_ty);
@@ -792,8 +802,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             debug!("assemble_projection_candidates: projection_trait_ref={:?}",
                    projection_trait_ref);
 
-            let trait_predicates = ty::lookup_predicates(self.tcx(),
-                                                         projection_trait_ref.def_id);
+            let trait_predicates = self.tcx().lookup_predicates(projection_trait_ref.def_id);
             let bounds = trait_predicates.instantiate(self.tcx(), projection_trait_ref.substs);
             let predicates = bounds.predicates.into_vec();
             debug!("assemble_projection_candidates: predicates={:?}",
@@ -836,7 +845,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         debug!("assemble_where_clause_candidates(trait_def_id={:?})",
                trait_def_id);
 
-        let caller_predicates = self.fcx.inh.param_env.caller_bounds.clone();
+        let caller_predicates = self.fcx.inh.infcx.parameter_environment.caller_bounds.clone();
         for poly_bound in traits::elaborate_predicates(self.tcx(), caller_predicates)
                           .filter_map(|p| p.to_opt_poly_trait_ref())
                           .filter(|b| b.def_id() == trait_def_id)
@@ -868,6 +877,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         }
 
         let static_candidates = mem::replace(&mut self.static_candidates, vec![]);
+        let unsatisfied_predicates = mem::replace(&mut self.unsatisfied_predicates, vec![]);
 
         // things failed, so lets look at all traits, for diagnostic purposes now:
         self.reset();
@@ -883,7 +893,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                 match source {
                     TraitSource(id) => id,
                     ImplSource(impl_id) => {
-                        match ty::trait_id_of_impl(tcx, impl_id) {
+                        match tcx.trait_id_of_impl(impl_id) {
                             Some(id) => id,
                             None =>
                                 tcx.sess.span_bug(span,
@@ -892,7 +902,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                     }
                 }
             }).collect(),
-            Some(Err(MethodError::NoMatch(_, others, _))) => {
+            Some(Err(MethodError::NoMatch(NoMatchData { out_of_scope_traits: others, .. }))) => {
                 assert!(others.is_empty());
                 vec![]
             }
@@ -903,7 +913,8 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             None => vec![],
         };
 
-        Err(MethodError::NoMatch(static_candidates, out_of_scope_traits, self.mode))
+        Err(MethodError::NoMatch(NoMatchData::new(static_candidates, unsatisfied_predicates,
+                                                  out_of_scope_traits, self.mode)))
     }
 
     fn pick_core(&mut self) -> Option<PickResult<'tcx>> {
@@ -916,7 +927,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
     fn pick_step(&mut self, step: &CandidateStep<'tcx>) -> Option<PickResult<'tcx>> {
         debug!("pick_step: step={:?}", step);
 
-        if ty::type_is_error(step.self_ty) {
+        if step.self_ty.references_error() {
             return None;
         }
 
@@ -971,7 +982,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
 
         // Search through mutabilities in order to find one where pick works:
         [ast::MutImmutable, ast::MutMutable].iter().filter_map(|&m| {
-            let autoref_ty = ty::mk_rptr(tcx, region, ty::mt {
+            let autoref_ty = tcx.mk_ref(region, ty::mt {
                 ty: step.self_ty,
                 mutbl: m
             });
@@ -991,8 +1002,11 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
     fn pick_method(&mut self, self_ty: Ty<'tcx>) -> Option<PickResult<'tcx>> {
         debug!("pick_method(self_ty={})", self.infcx().ty_to_string(self_ty));
 
+        let mut possibly_unsatisfied_predicates = Vec::new();
+
         debug!("searching inherent candidates");
-        match self.consider_candidates(self_ty, &self.inherent_candidates) {
+        match self.consider_candidates(self_ty, &self.inherent_candidates,
+                                       &mut possibly_unsatisfied_predicates) {
             None => {}
             Some(pick) => {
                 return Some(pick);
@@ -1000,16 +1014,23 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         }
 
         debug!("searching extension candidates");
-        self.consider_candidates(self_ty, &self.extension_candidates)
+        let res = self.consider_candidates(self_ty, &self.extension_candidates,
+                                           &mut possibly_unsatisfied_predicates);
+        if let None = res {
+            self.unsatisfied_predicates.extend(possibly_unsatisfied_predicates);
+        }
+        res
     }
 
     fn consider_candidates(&self,
                            self_ty: Ty<'tcx>,
-                           probes: &[Candidate<'tcx>])
+                           probes: &[Candidate<'tcx>],
+                           possibly_unsatisfied_predicates: &mut Vec<TraitRef<'tcx>>)
                            -> Option<PickResult<'tcx>> {
         let mut applicable_candidates: Vec<_> =
             probes.iter()
-                  .filter(|&probe| self.consider_probe(self_ty, probe))
+                  .filter(|&probe| self.consider_probe(self_ty,
+                                                       probe,possibly_unsatisfied_predicates))
                   .collect();
 
         debug!("applicable_candidates: {:?}", applicable_candidates);
@@ -1032,7 +1053,8 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         })
     }
 
-    fn consider_probe(&self, self_ty: Ty<'tcx>, probe: &Candidate<'tcx>) -> bool {
+    fn consider_probe(&self, self_ty: Ty<'tcx>, probe: &Candidate<'tcx>,
+                      possibly_unsatisfied_predicates: &mut Vec<TraitRef<'tcx>>) -> bool {
         debug!("consider_probe: self_ty={:?} probe={:?}",
                self_ty,
                probe);
@@ -1054,11 +1076,11 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             match probe.kind {
                 InherentImplCandidate(impl_def_id, ref substs, ref ref_obligations) |
                 ExtensionImplCandidate(impl_def_id, _, ref substs, _, ref ref_obligations) => {
-                    let selcx = &mut traits::SelectionContext::new(self.infcx(), self.fcx);
+                    let selcx = &mut traits::SelectionContext::new(self.infcx());
                     let cause = traits::ObligationCause::misc(self.span, self.fcx.body_id);
 
                     // Check whether the impl imposes obligations we have to worry about.
-                    let impl_bounds = ty::lookup_predicates(self.tcx(), impl_def_id);
+                    let impl_bounds = self.tcx().lookup_predicates(impl_def_id);
                     let impl_bounds = impl_bounds.instantiate(self.tcx(), substs);
                     let traits::Normalized { value: impl_bounds,
                                              obligations: norm_obligations } =
@@ -1071,10 +1093,18 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                     debug!("impl_obligations={:?}", obligations);
 
                     // Evaluate those obligations to see if they might possibly hold.
-                    obligations.iter()
-                        .chain(norm_obligations.iter()).chain(ref_obligations.iter())
-                        .all(|o| selcx.evaluate_obligation(o))
-
+                    let mut all_true = true;
+                    for o in obligations.iter()
+                        .chain(norm_obligations.iter())
+                        .chain(ref_obligations.iter()) {
+                        if !selcx.evaluate_obligation(o) {
+                            all_true = false;
+                            if let &ty::Predicate::Trait(ref pred) = &o.predicate {
+                                possibly_unsatisfied_predicates.push(pred.0.trait_ref);
+                            }
+                        }
+                    }
+                    all_true
                 }
 
                 ProjectionCandidate(..) |
@@ -1235,7 +1265,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                           impl_def_id: ast::DefId)
                           -> (Ty<'tcx>, subst::Substs<'tcx>)
     {
-        let impl_pty = ty::lookup_item_type(self.tcx(), impl_def_id);
+        let impl_pty = self.tcx().lookup_item_type(impl_def_id);
 
         let type_vars =
             impl_pty.generics.types.map(
@@ -1270,7 +1300,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
     fn erase_late_bound_regions<T>(&self, value: &ty::Binder<T>) -> T
         where T : TypeFoldable<'tcx>
     {
-        ty::erase_late_bound_regions(self.tcx(), value)
+        self.tcx().erase_late_bound_regions(value)
     }
 }
 
@@ -1283,7 +1313,7 @@ fn impl_item<'tcx>(tcx: &ty::ctxt<'tcx>,
     let impl_items = impl_items.get(&impl_def_id).unwrap();
     impl_items
         .iter()
-        .map(|&did| ty::impl_or_trait_item(tcx, did.def_id()))
+        .map(|&did| tcx.impl_or_trait_item(did.def_id()))
         .find(|item| item.name() == item_name)
 }
 
@@ -1294,7 +1324,7 @@ fn trait_item<'tcx>(tcx: &ty::ctxt<'tcx>,
                     item_name: ast::Name)
                     -> Option<(usize, ty::ImplOrTraitItem<'tcx>)>
 {
-    let trait_items = ty::trait_items(tcx, trait_def_id);
+    let trait_items = tcx.trait_items(trait_def_id);
     debug!("trait_method; items: {:?}", trait_items);
     trait_items
         .iter()
@@ -1326,7 +1356,7 @@ impl<'tcx> Candidate<'tcx> {
                     // inference variables or other artifacts. This
                     // means they are safe to put into the
                     // `WhereClausePick`.
-                    assert!(trait_ref.substs().types.iter().all(|&t| !ty::type_needs_infer(t)));
+                    assert!(!trait_ref.substs().types.needs_infer());
 
                     WhereClausePick((*trait_ref).clone(), index)
                 }

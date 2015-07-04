@@ -18,6 +18,7 @@
 use prelude::v1::*;
 
 use core::num;
+#[cfg(not(target_env = "msvc"))]
 use intrinsics;
 use libc::c_int;
 use num::{FpCategory, ParseFloatError};
@@ -33,12 +34,7 @@ mod cmath {
     use libc::{c_float, c_int};
 
     extern {
-        pub fn acosf(n: c_float) -> c_float;
-        pub fn asinf(n: c_float) -> c_float;
-        pub fn atanf(n: c_float) -> c_float;
-        pub fn atan2f(a: c_float, b: c_float) -> c_float;
         pub fn cbrtf(n: c_float) -> c_float;
-        pub fn coshf(n: c_float) -> c_float;
         pub fn erff(n: c_float) -> c_float;
         pub fn erfcf(n: c_float) -> c_float;
         pub fn expm1f(n: c_float) -> c_float;
@@ -51,32 +47,77 @@ mod cmath {
         pub fn log1pf(n: c_float) -> c_float;
         pub fn ilogbf(n: c_float) -> c_int;
         pub fn modff(n: c_float, iptr: &mut c_float) -> c_float;
-        pub fn sinhf(n: c_float) -> c_float;
-        pub fn tanf(n: c_float) -> c_float;
-        pub fn tanhf(n: c_float) -> c_float;
         pub fn tgammaf(n: c_float) -> c_float;
 
         #[cfg_attr(all(windows, target_env = "msvc"), link_name = "__lgammaf_r")]
         pub fn lgammaf_r(n: c_float, sign: &mut c_int) -> c_float;
         #[cfg_attr(all(windows, target_env = "msvc"), link_name = "_hypotf")]
         pub fn hypotf(x: c_float, y: c_float) -> c_float;
+    }
 
-        #[cfg(any(unix, all(windows, not(target_env = "msvc"))))]
+    // See the comments in `core::float::Float::floor` for why MSVC is special
+    // here.
+    #[cfg(not(target_env = "msvc"))]
+    extern {
+        pub fn acosf(n: c_float) -> c_float;
+        pub fn asinf(n: c_float) -> c_float;
+        pub fn atan2f(a: c_float, b: c_float) -> c_float;
+        pub fn atanf(n: c_float) -> c_float;
+        pub fn coshf(n: c_float) -> c_float;
         pub fn frexpf(n: c_float, value: &mut c_int) -> c_float;
-        #[cfg(any(unix, all(windows, not(target_env = "msvc"))))]
         pub fn ldexpf(x: c_float, n: c_int) -> c_float;
+        pub fn sinhf(n: c_float) -> c_float;
+        pub fn tanf(n: c_float) -> c_float;
+        pub fn tanhf(n: c_float) -> c_float;
     }
 
-    #[cfg(all(windows, target_env = "msvc"))]
-    pub unsafe fn ldexpf(x: c_float, n: c_int) -> c_float {
-        f64::ldexp(x as f64, n as isize) as c_float
-    }
+    #[cfg(target_env = "msvc")]
+    pub use self::shims::*;
+    #[cfg(target_env = "msvc")]
+    mod shims {
+        use libc::{c_float, c_int};
 
-    #[cfg(all(windows, target_env = "msvc"))]
-    pub unsafe fn frexpf(x: c_float, value: &mut c_int) -> c_float {
-        let (a, b) = f64::frexp(x as f64);
-        *value = b as c_int;
-        a as c_float
+        pub unsafe fn acosf(n: c_float) -> c_float {
+            f64::acos(n as f64) as c_float
+        }
+
+        pub unsafe fn asinf(n: c_float) -> c_float {
+            f64::asin(n as f64) as c_float
+        }
+
+        pub unsafe fn atan2f(n: c_float, b: c_float) -> c_float {
+            f64::atan2(n as f64, b as f64) as c_float
+        }
+
+        pub unsafe fn atanf(n: c_float) -> c_float {
+            f64::atan(n as f64) as c_float
+        }
+
+        pub unsafe fn coshf(n: c_float) -> c_float {
+            f64::cosh(n as f64) as c_float
+        }
+
+        pub unsafe fn frexpf(x: c_float, value: &mut c_int) -> c_float {
+            let (a, b) = f64::frexp(x as f64);
+            *value = b as c_int;
+            a as c_float
+        }
+
+        pub unsafe fn ldexpf(x: c_float, n: c_int) -> c_float {
+            f64::ldexp(x as f64, n as isize) as c_float
+        }
+
+        pub unsafe fn sinhf(n: c_float) -> c_float {
+            f64::sinh(n as f64) as c_float
+        }
+
+        pub unsafe fn tanf(n: c_float) -> c_float {
+            f64::tan(n as f64) as c_float
+        }
+
+        pub unsafe fn tanhf(n: c_float) -> c_float {
+            f64::tanh(n as f64) as c_float
+        }
     }
 }
 
@@ -761,7 +802,13 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn sin(self) -> f32 {
-        unsafe { intrinsics::sinf32(self) }
+        return sinf(self);
+
+        // see notes in `core::f32::Float::floor`
+        #[cfg(target_env = "msvc")]
+        fn sinf(f: f32) -> f32 { (f as f64).sin() as f32 }
+        #[cfg(not(target_env = "msvc"))]
+        fn sinf(f: f32) -> f32 { unsafe { intrinsics::sinf32(f) } }
     }
 
     /// Computes the cosine of a number (in radians).
@@ -778,7 +825,13 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn cos(self) -> f32 {
-        unsafe { intrinsics::cosf32(self) }
+        return cosf(self);
+
+        // see notes in `core::f32::Float::floor`
+        #[cfg(target_env = "msvc")]
+        fn cosf(f: f32) -> f32 { (f as f64).cos() as f32 }
+        #[cfg(not(target_env = "msvc"))]
+        fn cosf(f: f32) -> f32 { unsafe { intrinsics::cosf32(f) } }
     }
 
     /// Computes the tangent of a number (in radians).

@@ -49,6 +49,11 @@ impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Bivariate<'a, 'tcx> {
 
     fn a_is_expected(&self) -> bool { self.fields.a_is_expected }
 
+    fn will_change(&mut self, _: bool, _: bool) -> bool {
+        // since we are not comparing regions, we don't care
+        false
+    }
+
     fn relate_with_variance<T:Relate<'a,'tcx>>(&mut self,
                                                variance: ty::Variance,
                                                a: &T,
@@ -109,8 +114,8 @@ impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Bivariate<'a, 'tcx> {
                   -> RelateResult<'tcx, ty::Binder<T>>
         where T: Relate<'a,'tcx>
     {
-        let a1 = ty::erase_late_bound_regions(self.tcx(), a);
-        let b1 = ty::erase_late_bound_regions(self.tcx(), b);
+        let a1 = self.tcx().erase_late_bound_regions(a);
+        let b1 = self.tcx().erase_late_bound_regions(b);
         let c = try!(self.relate(&a1, &b1));
         Ok(ty::Binder(c))
     }

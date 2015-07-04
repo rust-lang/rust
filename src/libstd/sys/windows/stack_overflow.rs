@@ -8,12 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rt::util::report_overflow;
 use core::prelude::*;
-use ptr;
-use mem;
+
+use libc::types::os::arch::extra::{LPVOID, DWORD, LONG};
 use libc;
-use libc::types::os::arch::extra::{LPVOID, DWORD, LONG, BOOL};
+use mem;
+use ptr;
+use rt::util::report_overflow;
+use sys::c;
 use sys_common::stack;
 
 pub struct Handler {
@@ -69,8 +71,12 @@ pub unsafe fn cleanup() {
 }
 
 pub unsafe fn make_handler() -> Handler {
-    if SetThreadStackGuarantee(&mut 0x5000) == 0 {
-        panic!("failed to reserve stack space for exception handling");
+    // This API isn't available on XP, so don't panic in that case and just pray
+    // it works out ok.
+    if c::SetThreadStackGuarantee(&mut 0x5000) == 0 {
+        if libc::GetLastError() as u32 != libc::ERROR_CALL_NOT_IMPLEMENTED as u32 {
+            panic!("failed to reserve stack space for exception handling");
+        }
     }
 
     Handler { _data: 0 as *mut libc::c_void }
@@ -103,5 +109,4 @@ extern "system" {
     fn AddVectoredExceptionHandler(FirstHandler: ULONG,
                                    VectoredHandler: PVECTORED_EXCEPTION_HANDLER)
                                   -> LPVOID;
-    fn SetThreadStackGuarantee(StackSizeInBytes: *mut ULONG) -> BOOL;
 }

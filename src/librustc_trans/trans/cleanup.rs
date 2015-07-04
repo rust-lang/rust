@@ -199,7 +199,6 @@ pub struct CachedEarlyExit {
 
 pub trait Cleanup<'tcx> {
     fn must_unwind(&self) -> bool;
-    fn clean_on_unwind(&self) -> bool;
     fn is_lifetime_end(&self) -> bool;
     fn trans<'blk>(&self,
                    bcx: Block<'blk, 'tcx>,
@@ -389,7 +388,6 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
         if !self.type_needs_drop(ty) { return; }
         let drop = box DropValue {
             is_immediate: false,
-            must_unwind: common::type_needs_unwind_cleanup(self.ccx, ty),
             val: val,
             ty: ty,
             fill_on_drop: false,
@@ -415,7 +413,6 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
 
         let drop = box DropValue {
             is_immediate: false,
-            must_unwind: common::type_needs_unwind_cleanup(self.ccx, ty),
             val: val,
             ty: ty,
             fill_on_drop: true,
@@ -447,7 +444,6 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
 
         let drop = box DropValue {
             is_immediate: false,
-            must_unwind: common::type_needs_unwind_cleanup(self.ccx, ty),
             val: val,
             ty: ty,
             fill_on_drop: false,
@@ -473,7 +469,6 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
         if !self.type_needs_drop(ty) { return; }
         let drop = box DropValue {
             is_immediate: true,
-            must_unwind: common::type_needs_unwind_cleanup(self.ccx, ty),
             val: val,
             ty: ty,
             fill_on_drop: false,
@@ -780,29 +775,19 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
         //
         // At this point, `popped_scopes` is empty, and so the final block
         // that we return to the user is `Cleanup(AST 24)`.
-        while !popped_scopes.is_empty() {
-            let mut scope = popped_scopes.pop().unwrap();
-
-            if scope.cleanups.iter().any(|c| cleanup_is_suitable_for(&**c, label))
-            {
-                let name = scope.block_name("clean");
-                debug!("generating cleanups for {}", name);
-                let bcx_in = self.new_block(label.is_unwind(),
-                                            &name[..],
-                                            None);
-                let mut bcx_out = bcx_in;
-                for cleanup in scope.cleanups.iter().rev() {
-                    if cleanup_is_suitable_for(&**cleanup, label) {
-                        bcx_out = cleanup.trans(bcx_out,
-                                                scope.debug_loc);
-                    }
-                }
-                build::Br(bcx_out, prev_llbb, DebugLoc::None);
-                prev_llbb = bcx_in.llbb;
-            } else {
-                debug!("no suitable cleanups in {}",
-                       scope.block_name("clean"));
+        while let Some(mut scope) = popped_scopes.pop() {
+            let name = scope.block_name("clean");
+            debug!("generating cleanups for {}", name);
+            let bcx_in = self.new_block(label.is_unwind(),
+                                        &name[..],
+                                        None);
+            let mut bcx_out = bcx_in;
+            for cleanup in scope.cleanups.iter().rev() {
+                bcx_out = cleanup.trans(bcx_out,
+                                        scope.debug_loc);
             }
+            build::Br(bcx_out, prev_llbb, DebugLoc::None);
+            prev_llbb = bcx_in.llbb;
 
             scope.add_cached_early_exit(label, prev_llbb);
             self.push_scope(scope);
@@ -856,18 +841,36 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
         // this function, so we just codegen a generic reference to it. We don't
         // specify any of the types for the function, we just make it a symbol
         // that LLVM can later use.
+        //
+        // Note that MSVC is a little special here in that we don't use the
+        // `eh_personality` lang item at all. Currently LLVM has support for
+        // both Dwarf and SEH unwind mechanisms for MSVC targets and uses the
+        // *name of the personality function* to decide what kind of unwind side
+        // tables/landing pads to emit. It looks like Dwarf is used by default,
+        // injecting a dependency on the `_Unwind_Resume` symbol for resuming
+        // an "exception", but for MSVC we want to force SEH. This means that we
+        // can't actually have the personality function be our standard
+        // `rust_eh_personality` function, but rather we wired it up to the
+        // CRT's custom `__C_specific_handler` personality funciton, which
+        // forces LLVM to consider landing pads as "landing pads for SEH".
+        let target = &self.ccx.sess().target.target;
         let llpersonality = match pad_bcx.tcx().lang_items.eh_personality() {
-            Some(def_id) => {
+            Some(def_id) if !target.options.is_like_msvc => {
                 callee::trans_fn_ref(pad_bcx.ccx(), def_id, ExprId(0),
                                      pad_bcx.fcx.param_substs).val
             }
-            None => {
+            _ => {
                 let mut personality = self.ccx.eh_personality().borrow_mut();
                 match *personality {
                     Some(llpersonality) => llpersonality,
                     None => {
+                        let name = if target.options.is_like_msvc {
+                            "__C_specific_handler"
+                        } else {
+                            "rust_eh_personality"
+                        };
                         let fty = Type::variadic_func(&[], &Type::i32(self.ccx));
-                        let f = declare::declare_cfn(self.ccx, "rust_eh_personality", fty,
+                        let f = declare::declare_cfn(self.ccx, name, fty,
                                                      self.ccx.tcx().types.i32);
                         *personality = Some(f);
                         f
@@ -1013,7 +1016,6 @@ impl EarlyExitLabel {
 #[derive(Copy, Clone)]
 pub struct DropValue<'tcx> {
     is_immediate: bool,
-    must_unwind: bool,
     val: ValueRef,
     ty: Ty<'tcx>,
     fill_on_drop: bool,
@@ -1022,11 +1024,7 @@ pub struct DropValue<'tcx> {
 
 impl<'tcx> Cleanup<'tcx> for DropValue<'tcx> {
     fn must_unwind(&self) -> bool {
-        self.must_unwind
-    }
-
-    fn clean_on_unwind(&self) -> bool {
-        self.must_unwind
+        true
     }
 
     fn is_lifetime_end(&self) -> bool {
@@ -1072,10 +1070,6 @@ impl<'tcx> Cleanup<'tcx> for FreeValue<'tcx> {
         true
     }
 
-    fn clean_on_unwind(&self) -> bool {
-        true
-    }
-
     fn is_lifetime_end(&self) -> bool {
         false
     }
@@ -1103,10 +1097,6 @@ pub struct LifetimeEnd {
 impl<'tcx> Cleanup<'tcx> for LifetimeEnd {
     fn must_unwind(&self) -> bool {
         false
-    }
-
-    fn clean_on_unwind(&self) -> bool {
-        true
     }
 
     fn is_lifetime_end(&self) -> bool {
@@ -1145,11 +1135,6 @@ pub fn var_scope(tcx: &ty::ctxt,
     let r = AstScope(tcx.region_maps.var_scope(id).node_id());
     debug!("var_scope({}) = {:?}", id, r);
     r
-}
-
-fn cleanup_is_suitable_for(c: &Cleanup,
-                           label: EarlyExitLabel) -> bool {
-    !label.is_unwind() || c.clean_on_unwind()
 }
 
 ///////////////////////////////////////////////////////////////////////////

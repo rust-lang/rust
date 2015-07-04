@@ -22,6 +22,7 @@ mod rusti {
           target_os = "macos",
           target_os = "freebsd",
           target_os = "dragonfly",
+          target_os = "netbsd",
           target_os = "openbsd"))]
 mod m {
     #[main]

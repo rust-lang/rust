@@ -244,7 +244,7 @@ impl<'longer_than_self> Arena<'longer_than_self> {
     fn alloc_copy<T, F>(&self, op: F) -> &mut T where F: FnOnce() -> T {
         unsafe {
             let ptr = self.alloc_copy_inner(mem::size_of::<T>(),
-                                            mem::min_align_of::<T>());
+                                            mem::align_of::<T>());
             let ptr = ptr as *mut T;
             ptr::write(&mut (*ptr), op());
             return &mut *ptr;
@@ -300,7 +300,7 @@ impl<'longer_than_self> Arena<'longer_than_self> {
             let tydesc = get_tydesc::<T>();
             let (ty_ptr, ptr) =
                 self.alloc_noncopy_inner(mem::size_of::<T>(),
-                                         mem::min_align_of::<T>());
+                                         mem::align_of::<T>());
             let ty_ptr = ty_ptr as *mut usize;
             let ptr = ptr as *mut T;
             // Write in our tydesc along with a bit indicating that it
@@ -393,7 +393,7 @@ struct TypedArenaChunk<T> {
 
 fn calculate_size<T>(capacity: usize) -> usize {
     let mut size = mem::size_of::<TypedArenaChunk<T>>();
-    size = round_up(size, mem::min_align_of::<T>());
+    size = round_up(size, mem::align_of::<T>());
     let elem_size = mem::size_of::<T>();
     let elems_size = elem_size.checked_mul(capacity).unwrap();
     size = size.checked_add(elems_size).unwrap();
@@ -405,7 +405,7 @@ impl<T> TypedArenaChunk<T> {
     unsafe fn new(next: *mut TypedArenaChunk<T>, capacity: usize)
            -> *mut TypedArenaChunk<T> {
         let size = calculate_size::<T>(capacity);
-        let chunk = allocate(size, mem::min_align_of::<TypedArenaChunk<T>>())
+        let chunk = allocate(size, mem::align_of::<TypedArenaChunk<T>>())
                     as *mut TypedArenaChunk<T>;
         if chunk.is_null() { alloc::oom() }
         (*chunk).next = next;
@@ -431,7 +431,7 @@ impl<T> TypedArenaChunk<T> {
         let size = calculate_size::<T>(self.capacity);
         let self_ptr: *mut TypedArenaChunk<T> = self;
         deallocate(self_ptr as *mut u8, size,
-                   mem::min_align_of::<TypedArenaChunk<T>>());
+                   mem::align_of::<TypedArenaChunk<T>>());
         if !next.is_null() {
             let capacity = (*next).capacity;
             (*next).destroy(capacity);
@@ -444,7 +444,7 @@ impl<T> TypedArenaChunk<T> {
         let this: *const TypedArenaChunk<T> = self;
         unsafe {
             mem::transmute(round_up(this.offset(1) as usize,
-                                    mem::min_align_of::<T>()))
+                                    mem::align_of::<T>()))
         }
     }
 

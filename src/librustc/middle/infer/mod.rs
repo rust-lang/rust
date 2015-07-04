@@ -23,19 +23,25 @@ pub use self::freshen::TypeFreshener;
 pub use self::region_inference::GenericKind;
 
 use middle::free_region::FreeRegionMap;
+use middle::mem_categorization as mc;
+use middle::mem_categorization::McResult;
+use middle::region::CodeExtent;
 use middle::subst;
 use middle::subst::Substs;
+use middle::subst::Subst;
+use middle::traits::{self, FulfillmentContext, Normalized,
+                     SelectionContext, ObligationCause};
 use middle::ty::{TyVid, IntVid, FloatVid, RegionVid, UnconstrainedNumeric};
-use middle::ty::{self, Ty};
+use middle::ty::{self, Ty, HasTypeFlags};
 use middle::ty_fold::{self, TypeFolder, TypeFoldable};
 use middle::ty_relate::{Relate, RelateResult, TypeRelation};
 use rustc_data_structures::unify::{self, UnificationTable};
-use std::cell::{RefCell};
+use std::cell::{RefCell, Ref};
 use std::fmt;
 use syntax::ast;
 use syntax::codemap;
-use syntax::codemap::Span;
-use util::nodemap::FnvHashMap;
+use syntax::codemap::{Span, DUMMY_SP};
+use util::nodemap::{FnvHashMap, NodeMap};
 
 use self::combine::CombineFields;
 use self::region_inference::{RegionVarBindings, RegionSnapshot};
@@ -64,6 +70,8 @@ pub type fres<T> = Result<T, fixup_err>; // "fixup result"
 pub struct InferCtxt<'a, 'tcx: 'a> {
     pub tcx: &'a ty::ctxt<'tcx>,
 
+    pub tables: &'a RefCell<ty::Tables<'tcx>>,
+
     // We instantiate UnificationTable with bounds<Ty> because the
     // types that might instantiate a general type variable have an
     // order, represented by its upper and lower bounds.
@@ -77,6 +85,19 @@ pub struct InferCtxt<'a, 'tcx: 'a> {
 
     // For region variables.
     region_vars: RegionVarBindings<'a, 'tcx>,
+
+    pub parameter_environment: ty::ParameterEnvironment<'a, 'tcx>,
+
+    pub fulfillment_cx: RefCell<traits::FulfillmentContext<'tcx>>,
+
+    // This is a temporary field used for toggling on normalization in the inference context,
+    // as we move towards the approach described here:
+    // https://internals.rust-lang.org/t/flattening-the-contexts-for-fun-and-profit/2293
+    // At a point sometime in the future normalization will be done by the typing context
+    // directly.
+    normalize: bool,
+
+    err_count_on_creation: usize,
 }
 
 /// A map returned by `skolemize_late_bound_regions()` indicating the skolemized
@@ -172,6 +193,9 @@ pub struct TypeTrace<'tcx> {
 pub enum SubregionOrigin<'tcx> {
     // Arose from a subtyping relation
     Subtype(TypeTrace<'tcx>),
+
+    // Arose from a subtyping relation
+    DefaultExistentialBound(TypeTrace<'tcx>),
 
     // Stack-allocated closures cannot outlive innermost loop
     // or function so as to ensure we only require finite stack
@@ -309,15 +333,37 @@ pub fn fixup_err_to_string(f: fixup_err) -> String {
     }
 }
 
-pub fn new_infer_ctxt<'a, 'tcx>(tcx: &'a ty::ctxt<'tcx>)
+/// errors_will_be_reported is required to proxy to the fulfillment context
+/// FIXME -- a better option would be to hold back on modifying
+/// the global cache until we know that all dependent obligations
+/// are also satisfied. In that case, we could actually remove
+/// this boolean flag, and we'd also avoid the problem of squelching
+/// duplicate errors that occur across fns.
+pub fn new_infer_ctxt<'a, 'tcx>(tcx: &'a ty::ctxt<'tcx>,
+                                tables: &'a RefCell<ty::Tables<'tcx>>,
+                                param_env: Option<ty::ParameterEnvironment<'a, 'tcx>>,
+                                errors_will_be_reported: bool)
                                 -> InferCtxt<'a, 'tcx> {
     InferCtxt {
         tcx: tcx,
+        tables: tables,
         type_variables: RefCell::new(type_variable::TypeVariableTable::new()),
         int_unification_table: RefCell::new(UnificationTable::new()),
         float_unification_table: RefCell::new(UnificationTable::new()),
         region_vars: RegionVarBindings::new(tcx),
+        parameter_environment: param_env.unwrap_or(tcx.empty_parameter_environment()),
+        fulfillment_cx: RefCell::new(traits::FulfillmentContext::new(errors_will_be_reported)),
+        normalize: false,
+        err_count_on_creation: tcx.sess.err_count()
     }
+}
+
+pub fn normalizing_infer_ctxt<'a, 'tcx>(tcx: &'a ty::ctxt<'tcx>,
+                                        tables: &'a RefCell<ty::Tables<'tcx>>)
+                                        -> InferCtxt<'a, 'tcx> {
+    let mut infcx = new_infer_ctxt(tcx, tables, None, false);
+    infcx.normalize = true;
+    infcx
 }
 
 /// Computes the least upper-bound of `a` and `b`. If this is not possible, reports an error and
@@ -431,6 +477,149 @@ pub struct CombinedSnapshot {
     region_vars_snapshot: RegionSnapshot,
 }
 
+pub fn normalize_associated_type<'tcx,T>(tcx: &ty::ctxt<'tcx>, value: &T) -> T
+    where T : TypeFoldable<'tcx> + HasTypeFlags
+{
+    debug!("normalize_associated_type(t={:?})", value);
+
+    let value = erase_regions(tcx, value);
+
+    if !value.has_projection_types() {
+        return value;
+    }
+
+    let infcx = new_infer_ctxt(tcx, &tcx.tables, None, true);
+    let mut selcx = traits::SelectionContext::new(&infcx);
+    let cause = traits::ObligationCause::dummy();
+    let traits::Normalized { value: result, obligations } =
+        traits::normalize(&mut selcx, cause, &value);
+
+    debug!("normalize_associated_type: result={:?} obligations={:?}",
+           result,
+           obligations);
+
+    let mut fulfill_cx = infcx.fulfillment_cx.borrow_mut();
+
+    for obligation in obligations {
+        fulfill_cx.register_predicate_obligation(&infcx, obligation);
+    }
+
+    let result = drain_fulfillment_cx_or_panic(DUMMY_SP, &infcx, &mut fulfill_cx, &result);
+
+    result
+}
+
+pub fn drain_fulfillment_cx_or_panic<'a,'tcx,T>(span: Span,
+                                                infcx: &InferCtxt<'a,'tcx>,
+                                                fulfill_cx: &mut traits::FulfillmentContext<'tcx>,
+                                                result: &T)
+                                                -> T
+    where T : TypeFoldable<'tcx>
+{
+    match drain_fulfillment_cx(infcx, fulfill_cx, result) {
+        Ok(v) => v,
+        Err(errors) => {
+            infcx.tcx.sess.span_bug(
+                span,
+                &format!("Encountered errors `{:?}` fulfilling during trans",
+                         errors));
+        }
+    }
+}
+
+/// Finishes processes any obligations that remain in the fulfillment
+/// context, and then "freshens" and returns `result`. This is
+/// primarily used during normalization and other cases where
+/// processing the obligations in `fulfill_cx` may cause type
+/// inference variables that appear in `result` to be unified, and
+/// hence we need to process those obligations to get the complete
+/// picture of the type.
+pub fn drain_fulfillment_cx<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx>,
+                                       fulfill_cx: &mut traits::FulfillmentContext<'tcx>,
+                                       result: &T)
+                                       -> Result<T,Vec<traits::FulfillmentError<'tcx>>>
+    where T : TypeFoldable<'tcx>
+{
+    debug!("drain_fulfillment_cx(result={:?})",
+           result);
+
+    // In principle, we only need to do this so long as `result`
+    // contains unbound type parameters. It could be a slight
+    // optimization to stop iterating early.
+    match fulfill_cx.select_all_or_error(infcx) {
+        Ok(()) => { }
+        Err(errors) => {
+            return Err(errors);
+        }
+    }
+
+    // Use freshen to simultaneously replace all type variables with
+    // their bindings and replace all regions with 'static.  This is
+    // sort of overkill because we do not expect there to be any
+    // unbound type variables, hence no `TyFresh` types should ever be
+    // inserted.
+    Ok(result.fold_with(&mut infcx.freshener()))
+}
+
+/// Returns an equivalent value with all free regions removed (note
+/// that late-bound regions remain, because they are important for
+/// subtyping, but they are anonymized and normalized as well). This
+/// is a stronger, caching version of `ty_fold::erase_regions`.
+pub fn erase_regions<'tcx,T>(cx: &ty::ctxt<'tcx>, value: &T) -> T
+    where T : TypeFoldable<'tcx>
+{
+    let value1 = value.fold_with(&mut RegionEraser(cx));
+    debug!("erase_regions({:?}) = {:?}",
+           value, value1);
+    return value1;
+
+    struct RegionEraser<'a, 'tcx: 'a>(&'a ty::ctxt<'tcx>);
+
+    impl<'a, 'tcx> TypeFolder<'tcx> for RegionEraser<'a, 'tcx> {
+        fn tcx(&self) -> &ty::ctxt<'tcx> { self.0 }
+
+        fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+            match self.tcx().normalized_cache.borrow().get(&ty).cloned() {
+                None => {}
+                Some(u) => return u
+            }
+
+            let t_norm = ty_fold::super_fold_ty(self, ty);
+            self.tcx().normalized_cache.borrow_mut().insert(ty, t_norm);
+            return t_norm;
+        }
+
+        fn fold_binder<T>(&mut self, t: &ty::Binder<T>) -> ty::Binder<T>
+            where T : TypeFoldable<'tcx>
+        {
+            let u = self.tcx().anonymize_late_bound_regions(t);
+            ty_fold::super_fold_binder(self, &u)
+        }
+
+        fn fold_region(&mut self, r: ty::Region) -> ty::Region {
+            // because late-bound regions affect subtyping, we can't
+            // erase the bound/free distinction, but we can replace
+            // all free regions with 'static.
+            //
+            // Note that we *CAN* replace early-bound regions -- the
+            // type system never "sees" those, they get substituted
+            // away. In trans, they will always be erased to 'static
+            // whenever a substitution occurs.
+            match r {
+                ty::ReLateBound(..) => r,
+                _ => ty::ReStatic
+            }
+        }
+
+        fn fold_substs(&mut self,
+                       substs: &subst::Substs<'tcx>)
+                       -> subst::Substs<'tcx> {
+            subst::Substs { regions: subst::ErasedRegions,
+                            types: substs.types.fold_with(self) }
+        }
+    }
+}
+
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn freshen<T:TypeFoldable<'tcx>>(&self, t: T) -> T {
         t.fold_with(&mut self.freshener())
@@ -472,7 +661,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                       -> CombineFields<'a, 'tcx> {
         CombineFields {infcx: self,
                        a_is_expected: a_is_expected,
-                       trace: trace}
+                       trace: trace,
+                       cause: None}
     }
 
     // public so that it can be used from the rustc_driver unit tests
@@ -772,11 +962,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 
     pub fn next_ty_var(&self) -> Ty<'tcx> {
-        ty::mk_var(self.tcx, self.next_ty_var_id(false))
+        self.tcx.mk_var(self.next_ty_var_id(false))
     }
 
     pub fn next_diverging_ty_var(&self) -> Ty<'tcx> {
-        ty::mk_var(self.tcx, self.next_ty_var_id(true))
+        self.tcx.mk_var(self.next_ty_var_id(true))
     }
 
     pub fn next_ty_vars(&self, n: usize) -> Vec<Ty<'tcx>> {
@@ -850,6 +1040,49 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
     pub fn fresh_bound_region(&self, debruijn: ty::DebruijnIndex) -> ty::Region {
         self.region_vars.new_bound(debruijn)
+    }
+
+    /// Apply `adjustment` to the type of `expr`
+    pub fn adjust_expr_ty(&self,
+                          expr: &ast::Expr,
+                          adjustment: Option<&ty::AutoAdjustment<'tcx>>)
+                          -> Ty<'tcx>
+    {
+        let raw_ty = self.expr_ty(expr);
+        let raw_ty = self.shallow_resolve(raw_ty);
+        let resolve_ty = |ty: Ty<'tcx>| self.resolve_type_vars_if_possible(&ty);
+        raw_ty.adjust(self.tcx,
+                      expr.span,
+                      expr.id,
+                      adjustment,
+                      |method_call| self.tables
+                                        .borrow()
+                                        .method_map
+                                        .get(&method_call)
+                                        .map(|method| resolve_ty(method.ty)))
+    }
+
+    pub fn node_type(&self, id: ast::NodeId) -> Ty<'tcx> {
+        match self.tables.borrow().node_types.get(&id) {
+            Some(&t) => t,
+            // FIXME
+            None if self.tcx.sess.err_count() - self.err_count_on_creation != 0 =>
+                self.tcx.types.err,
+            None => {
+                self.tcx.sess.bug(
+                    &format!("no type for node {}: {} in fcx",
+                            id, self.tcx.map.node_to_string(id)));
+            }
+        }
+    }
+
+    pub fn expr_ty(&self, ex: &ast::Expr) -> Ty<'tcx> {
+        match self.tables.borrow().node_types.get(&ex.id) {
+            Some(&t) => t,
+            None => {
+                self.tcx.sess.bug(&format!("no type for expr in fcx"));
+            }
+        }
     }
 
     pub fn resolve_regions_and_report_errors(&self,
@@ -926,6 +1159,16 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         value.fold_with(&mut r)
     }
 
+    /// Resolves all type variables in `t` and then, if any were left
+    /// unresolved, substitutes an error type. This is used after the
+    /// main checking when doing a second pass before writeback. The
+    /// justification is that writeback will produce an error for
+    /// these unconstrained type variables.
+    fn resolve_type_vars_or_error(&self, t: &Ty<'tcx>) -> mc::McResult<Ty<'tcx>> {
+        let ty = self.resolve_type_vars_if_possible(t);
+        if ty.has_infer_types() || ty.references_error() { Err(()) } else { Ok(ty) }
+    }
+
     pub fn fully_resolve<T:TypeFoldable<'tcx>>(&self, value: &T) -> fres<T> {
         /*!
          * Attempts to resolve all type/region variables in
@@ -973,20 +1216,17 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         let resolved_expected = expected_ty.map(|e_ty| self.resolve_type_vars_if_possible(&e_ty));
 
-        match resolved_expected {
-            Some(t) if ty::type_is_error(t) => (),
-            _ => {
-                let error_str = err.map_or("".to_string(), |t_err| {
-                    format!(" ({})", t_err)
-                });
+        if !resolved_expected.references_error() {
+            let error_str = err.map_or("".to_string(), |t_err| {
+                format!(" ({})", t_err)
+            });
 
-                self.tcx.sess.span_err(sp, &format!("{}{}",
-                    mk_msg(resolved_expected.map(|t| self.ty_to_string(t)), actual_ty),
-                    error_str));
+            self.tcx.sess.span_err(sp, &format!("{}{}",
+                mk_msg(resolved_expected.map(|t| self.ty_to_string(t)), actual_ty),
+                error_str));
 
-                if let Some(err) = err {
-                    ty::note_and_explain_type_err(self.tcx, err, sp)
-                }
+            if let Some(err) = err {
+                self.tcx.note_and_explain_type_err(err, sp)
             }
         }
     }
@@ -1001,7 +1241,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let actual_ty = self.resolve_type_vars_if_possible(&actual_ty);
 
         // Don't report an error if actual type is TyError.
-        if ty::type_is_error(actual_ty) {
+        if actual_ty.references_error() {
             return;
         }
 
@@ -1068,6 +1308,109 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             self.equate(true, trace).relate(a, b)
         }).map(|_| ())
     }
+
+    pub fn node_ty(&self, id: ast::NodeId) -> McResult<Ty<'tcx>> {
+        let ty = self.node_type(id);
+        self.resolve_type_vars_or_error(&ty)
+    }
+
+    pub fn expr_ty_adjusted(&self, expr: &ast::Expr) -> McResult<Ty<'tcx>> {
+        let ty = self.adjust_expr_ty(expr, self.tables.borrow().adjustments.get(&expr.id));
+        self.resolve_type_vars_or_error(&ty)
+    }
+
+    pub fn type_moves_by_default(&self, ty: Ty<'tcx>, span: Span) -> bool {
+        let ty = self.resolve_type_vars_if_possible(&ty);
+        !traits::type_known_to_meet_builtin_bound(self, ty, ty::BoundCopy, span)
+        // FIXME(@jroesch): should be able to use:
+        // ty.moves_by_default(&self.parameter_environment, span)
+    }
+
+    pub fn node_method_ty(&self, method_call: ty::MethodCall)
+                      -> Option<Ty<'tcx>> {
+        self.tables
+            .borrow()
+            .method_map
+            .get(&method_call)
+            .map(|method| method.ty)
+            .map(|ty| self.resolve_type_vars_if_possible(&ty))
+    }
+
+    pub fn node_method_origin(&self, method_call: ty::MethodCall)
+                          -> Option<ty::MethodOrigin<'tcx>>
+    {
+        self.tables
+            .borrow()
+            .method_map
+            .get(&method_call)
+            .map(|method| method.origin.clone())
+    }
+
+    pub fn adjustments(&self) -> Ref<NodeMap<ty::AutoAdjustment<'tcx>>> {
+        fn project_adjustments<'a, 'tcx>(tables: &'a ty::Tables<'tcx>)
+                                        -> &'a NodeMap<ty::AutoAdjustment<'tcx>> {
+            &tables.adjustments
+        }
+
+        Ref::map(self.tables.borrow(), project_adjustments)
+    }
+
+    pub fn is_method_call(&self, id: ast::NodeId) -> bool {
+        self.tables.borrow().method_map.contains_key(&ty::MethodCall::expr(id))
+    }
+
+    pub fn temporary_scope(&self, rvalue_id: ast::NodeId) -> Option<CodeExtent> {
+        self.tcx.region_maps.temporary_scope(rvalue_id)
+    }
+
+    pub fn upvar_capture(&self, upvar_id: ty::UpvarId) -> Option<ty::UpvarCapture> {
+        self.tables.borrow().upvar_capture_map.get(&upvar_id).cloned()
+    }
+
+    pub fn param_env<'b>(&'b self) -> &'b ty::ParameterEnvironment<'b,'tcx> {
+        &self.parameter_environment
+    }
+
+    pub fn closure_kind(&self,
+                        def_id: ast::DefId)
+                        -> Option<ty::ClosureKind>
+    {
+        self.tables.borrow().closure_kinds.get(&def_id).cloned()
+    }
+
+    pub fn closure_type(&self,
+                    def_id: ast::DefId,
+                    substs: &subst::Substs<'tcx>)
+                    -> ty::ClosureTy<'tcx>
+    {
+
+        let closure_ty = self.tables
+                             .borrow()
+                             .closure_tys
+                             .get(&def_id)
+                             .unwrap()
+                             .subst(self.tcx, substs);
+
+        if self.normalize {
+            normalize_associated_type(&self.tcx, &closure_ty)
+        } else {
+            closure_ty
+        }
+    }
+
+    pub fn closure_upvars(&self,
+                          def_id: ast::DefId,
+                          substs: &Substs<'tcx>)
+                          -> Option<Vec<ty::ClosureUpvar<'tcx>>>
+    {
+        let result = ty::ctxt::closure_upvars(self, def_id, substs);
+
+        if self.normalize {
+            normalize_associated_type(&self.tcx, &result)
+        } else {
+            result
+        }
+    }
 }
 
 impl<'tcx> TypeTrace<'tcx> {
@@ -1125,6 +1468,7 @@ impl<'tcx> SubregionOrigin<'tcx> {
     pub fn span(&self) -> Span {
         match *self {
             Subtype(ref a) => a.span(),
+            DefaultExistentialBound(ref a) => a.span(),
             InfStackClosure(a) => a,
             InvokeClosure(a) => a,
             DerefPointer(a) => a,

@@ -9,7 +9,6 @@
 // except according to those terms.
 
 #![feature(append)]
-#![feature(bit_vec_append_split_off)]
 #![feature(bitset)]
 #![feature(bitvec)]
 #![feature(box_syntax)]

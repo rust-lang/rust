@@ -11,40 +11,40 @@
 use prelude::v1::*;
 
 use cell::UnsafeCell;
-use sys::sync as ffi;
+use sys::c;
 
-pub struct RWLock { inner: UnsafeCell<ffi::SRWLOCK> }
+pub struct RWLock { inner: UnsafeCell<c::SRWLOCK> }
 
 unsafe impl Send for RWLock {}
 unsafe impl Sync for RWLock {}
 
 impl RWLock {
     pub const fn new() -> RWLock {
-        RWLock { inner: UnsafeCell::new(ffi::SRWLOCK_INIT) }
+        RWLock { inner: UnsafeCell::new(c::SRWLOCK_INIT) }
     }
     #[inline]
     pub unsafe fn read(&self) {
-        ffi::AcquireSRWLockShared(self.inner.get())
+        c::AcquireSRWLockShared(self.inner.get())
     }
     #[inline]
     pub unsafe fn try_read(&self) -> bool {
-        ffi::TryAcquireSRWLockShared(self.inner.get()) != 0
+        c::TryAcquireSRWLockShared(self.inner.get()) != 0
     }
     #[inline]
     pub unsafe fn write(&self) {
-        ffi::AcquireSRWLockExclusive(self.inner.get())
+        c::AcquireSRWLockExclusive(self.inner.get())
     }
     #[inline]
     pub unsafe fn try_write(&self) -> bool {
-        ffi::TryAcquireSRWLockExclusive(self.inner.get()) != 0
+        c::TryAcquireSRWLockExclusive(self.inner.get()) != 0
     }
     #[inline]
     pub unsafe fn read_unlock(&self) {
-        ffi::ReleaseSRWLockShared(self.inner.get())
+        c::ReleaseSRWLockShared(self.inner.get())
     }
     #[inline]
     pub unsafe fn write_unlock(&self) {
-        ffi::ReleaseSRWLockExclusive(self.inner.get())
+        c::ReleaseSRWLockExclusive(self.inner.get())
     }
 
     #[inline]

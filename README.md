@@ -4,7 +4,7 @@ Rust is a fast systems programming language that guarantees
 memory safety and offers painless concurrency ([no data races]).
 It does not employ a garbage collector and has minimal runtime overhead.
 
-This repo contains the code for `rustc`, the Rust compiler, as well
+This repo contains the code for the compiler (`rustc`), as well
 as standard libraries, tools and documentation for Rust.
 
 [no data races]: http://blog.rust-lang.org/2015/04/10/Fearless-Concurrency.html
@@ -73,7 +73,7 @@ Read ["Installing Rust"] from [The Book].
    ```
 
 3. Run `mingw32_shell.bat` or `mingw64_shell.bat` from wherever you installed
-   MYSY2 (i.e. `C:\msys`), depending on whether you want 32-bit or 64-bit Rust.
+   MSYS2 (i.e. `C:\msys`), depending on whether you want 32-bit or 64-bit Rust.
 
 4. Navigate to Rust's source code, configure and build it:
 

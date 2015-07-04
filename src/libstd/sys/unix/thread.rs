@@ -105,6 +105,7 @@ impl Thread {
     #[cfg(any(target_os = "freebsd",
               target_os = "dragonfly",
               target_os = "bitrig",
+              target_os = "netbsd",
               target_os = "openbsd"))]
     pub fn set_name(name: &str) {
         extern {
@@ -162,6 +163,7 @@ impl Drop for Thread {
 #[cfg(all(not(target_os = "linux"),
           not(target_os = "macos"),
           not(target_os = "bitrig"),
+          not(target_os = "netbsd"),
           not(target_os = "openbsd")))]
 pub mod guard {
     pub unsafe fn current() -> usize { 0 }
@@ -173,6 +175,7 @@ pub mod guard {
 #[cfg(any(target_os = "linux",
           target_os = "macos",
           target_os = "bitrig",
+          target_os = "netbsd",
           target_os = "openbsd"))]
 #[allow(unused_imports)]
 pub mod guard {
@@ -193,6 +196,7 @@ pub mod guard {
 
     #[cfg(any(target_os = "macos",
               target_os = "bitrig",
+              target_os = "netbsd",
               target_os = "openbsd"))]
     unsafe fn get_stack_start() -> *mut libc::c_void {
         current() as *mut libc::c_void
@@ -258,7 +262,7 @@ pub mod guard {
          pthread_get_stacksize_np(pthread_self())) as usize
     }
 
-    #[cfg(any(target_os = "openbsd", target_os = "bitrig"))]
+    #[cfg(any(target_os = "openbsd", target_os = "netbsd", target_os = "bitrig"))]
     pub unsafe fn current() -> usize {
         #[repr(C)]
         struct stack_t {
