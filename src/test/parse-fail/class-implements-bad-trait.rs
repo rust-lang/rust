@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -10,8 +10,8 @@
 
 // compile-flags: -Z parse-only
 
-// error-pattern:nonexistent
 class cat : nonexistent {
+//~^ ERROR expected item, found `class`
   let meows: usize;
   new(in_x : usize) { self.meows = in_x; }
 }

@@ -24,7 +24,7 @@ const NEG_NEG_128: i8 = -NEG_128;
 
 fn main() {
     match -128i8 {
-        NEG_NEG_128 => println!("A"),
+        NEG_NEG_128 => println!("A"), //~ NOTE in pattern here
         _ => println!("B"),
     }
 }

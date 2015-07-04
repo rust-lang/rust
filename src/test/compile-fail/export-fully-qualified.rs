@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,14 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: unresolved name
-
 // In this test baz isn't resolved when called as foo.baz even though
 // it's called from inside foo. This is somewhat surprising and may
 // want to change eventually.
 
 mod foo {
-    pub fn bar() { foo::baz(); }
+    pub fn bar() {
+        foo::baz();
+        //~^ ERROR failed to resolve. Use of undeclared type or module `foo`
+        //~| ERROR unresolved name `foo::baz`
+    }
 
     fn baz() { }
 }

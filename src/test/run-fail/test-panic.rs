@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -10,6 +10,10 @@
 
 // check-stdout
 // error-pattern:thread 'test_foo' panicked at
+// error-pattern:failures:
+// error-pattern:    test_foo
+// error-pattern:test result: FAILED
+// error-pattern:thread '<main>' panicked at
 // compile-flags: --test
 // ignore-pretty: does not work well with `--test`
 

@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,10 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:wrong number of type arguments
-
 enum quux<T> { bar }
 
 fn foo(c: quux) { assert!((false)); }
+//~^ ERROR wrong number of type arguments: expected 1, found 0
 
 fn main() { panic!(); }

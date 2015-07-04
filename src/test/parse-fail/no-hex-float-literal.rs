@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -10,10 +10,8 @@
 
 // compile-flags: -Z parse-only
 
-// error-pattern:hexadecimal float literal is not supported
-
 fn main() {
     0xABC.Df;
-    0x567.89;
-    0xDEAD.BEEFp-2f;
+    0x567.89; //~ ERROR hexadecimal float literal is not supported
+    0xDEAD.BEEFp-2f; //~ ERROR illegal suffix
 }

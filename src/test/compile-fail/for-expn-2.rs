@@ -10,9 +10,7 @@
 
 // Test that we get an expansion stack for `for` loops.
 
-// error-pattern:in expansion of for loop expansion
-
 fn main() {
-    for t in &foo {
+    for t in &foo { //~ ERROR unresolved name `foo`
     }
 }

@@ -79,9 +79,15 @@ pub fn object_safety_violations<'tcx>(tcx: &ty::ctxt<'tcx>,
                                       trait_def_id: ast::DefId)
                                       -> Vec<ObjectSafetyViolation<'tcx>>
 {
-    traits::supertrait_def_ids(tcx, trait_def_id)
+    let mut violations: Vec<_> = traits::supertrait_def_ids(tcx, trait_def_id)
         .flat_map(|def_id| object_safety_violations_for_trait(tcx, def_id))
-        .collect()
+        .collect();
+
+    if trait_has_sized_self(tcx, trait_def_id) {
+        violations.push(ObjectSafetyViolation::SizedSelf);
+    }
+
+    violations
 }
 
 fn object_safety_violations_for_trait<'tcx>(tcx: &ty::ctxt<'tcx>,
@@ -104,9 +110,6 @@ fn object_safety_violations_for_trait<'tcx>(tcx: &ty::ctxt<'tcx>,
         .collect();
 
     // Check the trait itself.
-    if trait_has_sized_self(tcx, trait_def_id) {
-        violations.push(ObjectSafetyViolation::SizedSelf);
-    }
     if supertraits_reference_self(tcx, trait_def_id) {
         violations.push(ObjectSafetyViolation::SupertraitSelf);
     }

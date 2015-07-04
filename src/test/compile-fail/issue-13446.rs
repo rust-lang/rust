@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -11,8 +11,6 @@
 
 // Used to cause ICE
 
-// error-pattern: mismatched types
-
-static VEC: [u32; 256] = vec!();
+static VEC: [u32; 256] = vec!(); //~ ERROR mismatched types
 
 fn main() {}

@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -10,9 +10,8 @@
 
 // compile-flags: -Z parse-only
 
-// error-pattern:expected
-
 use foo::* as baz;
+//~^ ERROR expected `;`
 
 mod foo {
     pub fn bar() {}

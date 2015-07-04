@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:Ensure that the child thread runs by panicking
+// error-pattern:thread '<unnamed>' panicked at 'assertion failed: "Not empty".is_empty()'
+// error-pattern:thread '<main>' panicked at 'explicit panic'
 
 use std::thread;
 
@@ -22,5 +23,7 @@ fn main() {
 }
 
 fn startfn() {
-    assert!("Ensure that the child thread runs by panicking".is_empty());
+    // Ensure that the child thread runs by panicking
+    assert!("Not empty".is_empty());
+    panic!();
 }

@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -13,9 +13,9 @@
 // the error points to the start of the file, not the line with the
 // transmute
 
-// error-pattern: transmute called on types with different size
-
 use std::mem;
+
+#[allow(unused)]
 
 #[repr(packed)]
 struct Foo {
@@ -33,6 +33,8 @@ fn main() {
     let foo = Foo { bar: 1, baz: 10 };
     unsafe {
         let oof: Oof = mem::transmute(foo);
+        //~^ ERROR transmute called on types with different sizes: Foo (72 bits) to Oof (128 bits)
+
         println!("{:?}", oof);
     }
 }

@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -12,6 +12,7 @@
 // error-pattern: language item required, but not found: `panic_fmt`
 // error-pattern: language item required, but not found: `stack_exhausted`
 // error-pattern: language item required, but not found: `eh_personality`
+// error-pattern: aborting due to 3 previous errors
 
 #![feature(no_std)]
 #![no_std]

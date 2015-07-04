@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,8 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:this type cannot be instantiated
 struct t1 {
+//~^ ERROR illegal recursive struct type; wrap the inner value in a box to make it representable
+//~| ERROR this type cannot be instantiated without an instance of itself
     foo: isize,
     foolish: t1
 }

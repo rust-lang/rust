@@ -8,8 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 //
-// error-pattern: entry symbol `main` defined multiple times
 #![allow(warnings)]
 
 #[no_mangle]
-fn main(){}
+fn main(){} //~ ERROR entry symbol `main` defined multiple times

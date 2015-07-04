@@ -10,9 +10,8 @@
 
 // compile-flags: -Z parse-only
 
-// error-pattern:expected
-
 use foo::{bar} as baz;
+//~^ ERROR expected `;`
 
 mod foo {
     pub fn bar() {}

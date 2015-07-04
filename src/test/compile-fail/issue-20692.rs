@@ -1,4 +1,4 @@
-// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,10 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z parse-only
+trait Foo: Sized { }
+trait Bar: Foo { }
 
+fn foo<T: Bar>(x: &T) {
+    let _ = x as &Bar;
+    //~^ ERROR cannot convert to a trait object because trait `Bar` is not object-safe
+    //~| NOTE the trait cannot require that `Self : Sized`
+}
 
-// asterisk is bogus
-#[attr*]
-//~^ ERROR expected `]`
-mod m {}
+fn main() {}

@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -11,7 +11,9 @@
 // aux-build:crateresolve1-1.rs
 // aux-build:crateresolve1-2.rs
 // aux-build:crateresolve1-3.rs
-// error-pattern:multiple matching crates for `crateresolve1`
+// error-pattern: multiple matching crates for `crateresolve1`
+// error-pattern: can't find crate for `crateresolve1`
+// error-pattern: aborting due to 2 previous errors
 
 extern crate crateresolve1;
 

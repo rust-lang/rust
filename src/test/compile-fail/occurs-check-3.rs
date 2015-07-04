@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,7 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:mismatched types
 // From Issue #778
 enum clam<T> { a(T), }
-fn main() { let c; c = clam::a(c); match c { clam::a::<isize>(_) => { } } }
+fn main() {
+    let c; c = clam::a(c); //~ ERROR mismatched types
+    match c { clam::a::<isize>(_) => { } }
+}

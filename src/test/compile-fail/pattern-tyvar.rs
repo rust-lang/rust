@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,13 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: mismatched types
-
 enum bar { t1((), Option<Vec<isize> >), t2, }
 
 fn foo(t: bar) {
     match t {
-      bar::t1(_, Some::<isize>(x)) => {
+      bar::t1(_, Some::<isize>(x)) => { //~ ERROR mismatched types
         println!("{}", x);
       }
       _ => { panic!(); }

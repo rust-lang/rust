@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -10,10 +10,9 @@
 
 // compile-flags: -Z parse-only
 
-// error-pattern: expected
-
 fn main() {
   let isize x = 5;
+  //~^ ERROR expected one of
   match x;
 }
 
