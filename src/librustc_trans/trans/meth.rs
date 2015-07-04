@@ -160,20 +160,6 @@ pub fn trans_method_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }
 }
 
-fn method_offset_in_object_vtable<'tcx>(tcx: &ty::ctxt<'tcx>,
-                                        object_ty: Ty<'tcx>,
-                                        method_id: ast::DefId)
-                                        -> usize {
-    if let ty::TyTrait(ref data) = object_ty.sty {
-        let trait_ref = data.principal_trait_ref_with_self_ty(tcx, object_ty);
-        traits::get_vtable_index_of_object_method(tcx, trait_ref, method_id)
-    } else {
-        tcx.sess.bug(&format!(
-            "trans::methd::object_ty_to_trait_ref() called on non-object: {:?}",
-            object_ty));
-    }
-}
-
 pub fn trans_static_method_callee<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                             method_id: ast::DefId,
                                             trait_id: ast::DefId,
@@ -285,7 +271,7 @@ pub fn trans_static_method_callee<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                      callee_substs)
         }
         traits::VtableObject(ref data) => {
-            let idx = method_offset_in_object_vtable(tcx, data.object_ty, method_id);
+            let idx = traits::get_vtable_index_of_object_method(tcx, data, method_id);
             trans_object_shim(ccx,
                               data.upcast_trait_ref.clone(),
                               method_id,
@@ -384,7 +370,7 @@ fn trans_monomorphized_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             }
         }
         traits::VtableObject(ref data) => {
-            let idx = method_offset_in_object_vtable(bcx.tcx(), data.object_ty, method_id);
+            let idx = traits::get_vtable_index_of_object_method(bcx.tcx(), data, method_id);
             if let Some(self_expr) = self_expr {
                 if let ty::TyBareFn(_, ref fty) = monomorphize_type(bcx, method_ty).sty {
                     let ty = bcx.tcx().mk_fn(None, opaque_method_ty(bcx.tcx(), fty));
