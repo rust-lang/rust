@@ -659,7 +659,7 @@ you look at the pattern, it’s all consistent until the very end. Monsieur
 Foucault should have `4, 0` as arguments, but instead, has `0, 4`. This is what
 prevents deadlock, actually: one of our philosophers is left handed! This is
 one way to solve the problem, and in my opinion, it’s the simplest. If you
-switched these round and caused a deadlock you can use `Ctrl-C` to interrupt
+switched these around and caused a deadlock you can use `Ctrl-C` to interrupt
 execution of the program.
 
 ```rust,ignore
