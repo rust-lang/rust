@@ -251,6 +251,24 @@ impl OpenOptions {
             self.flags &= !bit;
         }
     }
+
+    fn get_flags(&self) -> io::Result<c_int> {
+        let append = (self.flags & libc::O_APPEND) == libc::O_APPEND;
+        let truncate = (self.flags & libc::O_TRUNC) == libc::O_TRUNC;
+
+        if truncate && !(self.write || append) {
+            // The result of using O_TRUNC with O_RDONLY is undefined.
+            // Not allowed, for consistency with Windows.
+            Err(Error::from_raw_os_error(libc::EINVAL))
+        } else {
+            match (self.read, self.write | append) {
+                (true, true) => Ok(libc::O_RDWR | self.flags),
+                (false, true) => Ok(libc::O_WRONLY | self.flags),
+                (true, false) => Ok(libc::O_RDONLY | self.flags),
+                (false, false) => Err(Error::from_raw_os_error(libc::EINVAL)),
+            }
+        }
+    }
 }
 
 impl File {
@@ -260,12 +278,7 @@ impl File {
     }
 
     pub fn open_c(path: &CStr, opts: &OpenOptions) -> io::Result<File> {
-        let flags = opts.flags | match (opts.read, opts.write) {
-            (true, true) => libc::O_RDWR,
-            (false, true) => libc::O_WRONLY,
-            (true, false) |
-            (false, false) => libc::O_RDONLY,
-        };
+        let flags = try!(opts.get_flags());
         let fd = try!(cvt_r(|| unsafe {
             libc::open(path.as_ptr(), flags, opts.mode)
         }));
