@@ -513,17 +513,16 @@ impl<'a, 'b> Pattern<'a> for &'b str {
     /// Checks whether the pattern matches at the front of the haystack
     #[inline]
     fn is_prefix_of(self, haystack: &'a str) -> bool {
-        // Use `as_bytes` so that we can slice through a character in the haystack.
-        // Since self is always valid UTF-8, this can't result in a false positive.
-        self.len() <= haystack.len() &&
-            self.as_bytes() == &haystack.as_bytes()[..self.len()]
+        haystack.is_char_boundary(self.len()) &&
+            self == &haystack[..self.len()]
     }
 
     /// Checks whether the pattern matches at the back of the haystack
     #[inline]
     fn is_suffix_of(self, haystack: &'a str) -> bool {
         self.len() <= haystack.len() &&
-            self.as_bytes() == &haystack.as_bytes()[haystack.len() - self.len()..]
+            haystack.is_char_boundary(haystack.len() - self.len()) &&
+            self == &haystack[haystack.len() - self.len()..]
     }
 }
 

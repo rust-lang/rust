@@ -483,9 +483,7 @@ impl str {
     /// considered to be
     /// boundaries.
     ///
-    /// # Panics
-    ///
-    /// Panics if `index` is greater than `self.len()`.
+    /// Returns `false` if `index` is greater than `self.len()`.
     ///
     /// # Examples
     ///
