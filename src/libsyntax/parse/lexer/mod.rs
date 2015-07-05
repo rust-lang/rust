@@ -742,6 +742,16 @@ impl<'a> StringReader<'a> {
                                    valid
                                 }
                             }
+                            'u' => {
+                                self.err_span_(
+                                    escaped_pos,
+                                    self.last_pos,
+                                    "`\\u` in string literals start unicode escape sequences; \
+                                    for example, use `\\u{30a2}` to specify codepoint U+30A2, \
+                                    or did you mean `\\\\u`?"
+                                );
+                                false
+                            }
                             '\n' if delim == '"' => {
                                 self.consume_whitespace();
                                 true
