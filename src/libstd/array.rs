@@ -9,5 +9,18 @@
 // except according to those terms.
 
 //! The fixed-size array type (`[T; n]`).
+//!
+//! Some usage examples:
+//!
+//! ```
+//! let array: [i32; 3] = [0, 1, 2];
+//!
+//! assert_eq!(0, array[0]);
+//! assert_eq!([0, 1], &array[..2]);
+//!
+//! for x in &array {
+//!     println!("{}", x);
+//! }
+//! ```
 
 #![doc(primitive = "array")]
