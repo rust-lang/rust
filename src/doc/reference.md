@@ -3344,8 +3344,8 @@ is often called ‘unit’ or ‘the unit type’.
 
 Rust has two different types for a list of items:
 
-* `[T; N]`, an 'array'.
-* `&[T]`, a 'slice'.
+* `[T; N]`, an 'array'
+* `&[T]`, a 'slice'
 
 An array has a fixed size, and can be allocated on either the stack or the
 heap.
