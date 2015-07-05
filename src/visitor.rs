@@ -11,9 +11,13 @@
 use syntax::ast;
 use syntax::codemap::{self, CodeMap, Span, BytePos};
 use syntax::visit;
+use syntax::parse::token;
+use syntax::attr;
+use std::path::PathBuf;
 
 use utils;
 use config::Config;
+use comment::FindUncommented;
 
 use changes::ChangeSet;
 use rewrite::{Rewrite, RewriteContext};
@@ -197,7 +201,6 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
                 visit::walk_item(self, item);
             }
             ast::Item_::ItemImpl(..) |
-            ast::Item_::ItemMod(_) |
             ast::Item_::ItemTrait(..) => {
                 self.block_indent += self.config.tab_spaces;
                 visit::walk_item(self, item);
@@ -226,6 +229,10 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
                                 generics,
                                 item.span);
                 self.last_pos = item.span.hi;
+            }
+            ast::Item_::ItemMod(ref module) => {
+                self.format_missing_with_indent(item.span.lo);
+                self.format_mod(module, item.span, item.ident, &item.attrs);
             }
             _ => {
                 visit::walk_item(self, item);
@@ -267,24 +274,19 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
     }
 
     fn visit_mod(&mut self, m: &'v ast::Mod, s: Span, _: ast::NodeId) {
-        // Only visit inline mods here.
-        if self.codemap.lookup_char_pos(s.lo).file.name !=
-           self.codemap.lookup_char_pos(m.inner.lo).file.name {
-            return;
-        }
-        visit::walk_mod(self, m);
+        // This is only called for the root module
+        let filename = self.codemap.span_to_filename(s);
+        self.format_separate_mod(m, &filename);
     }
 }
 
 impl<'a> FmtVisitor<'a> {
     pub fn from_codemap<'b>(codemap: &'b CodeMap, config: &'b Config) -> FmtVisitor<'b> {
-        FmtVisitor {
-            codemap: codemap,
-            changes: ChangeSet::from_codemap(codemap),
-            last_pos: BytePos(0),
-            block_indent: 0,
-            config: config
-        }
+        FmtVisitor { codemap: codemap,
+                     changes: ChangeSet::from_codemap(codemap),
+                     last_pos: BytePos(0),
+                     block_indent: 0,
+                     config: config, }
     }
 
     pub fn snippet(&self, span: Span) -> String {
@@ -351,5 +353,83 @@ impl<'a> FmtVisitor<'a> {
         }
 
         result
+    }
+
+    fn format_mod(&mut self, m: &ast::Mod, s: Span, ident: ast::Ident, attrs: &[ast::Attribute]) {
+        debug!("FmtVisitor::format_mod: ident: {:?}, span: {:?}", ident, s);
+        // Decide whether this is an inline mod or an external mod.
+        // There isn't any difference between inline and external mod in AST,
+        // so we use the trick of searching for an opening brace.
+        // We can't use the inner span of the mod since it is weird when it
+        // is empty (no items).
+        // FIXME Use the inner span once rust-lang/rust#26755 is fixed.
+        let open_brace = self.codemap.span_to_snippet(s).unwrap().find_uncommented("{");
+        match open_brace {
+            None => {
+                debug!("FmtVisitor::format_mod: external mod");
+                let file_path = self.module_file(ident, attrs, s);
+                let filename = file_path.to_str().unwrap();
+                if self.changes.is_changed(filename) {
+                    // The file has already been reformatted, do nothing
+                } else {
+                    self.format_separate_mod(m, filename);
+                }
+                // TODO Should rewrite properly `mod X;`
+            }
+            Some(open_brace) => {
+                debug!("FmtVisitor::format_mod: internal mod");
+                debug!("... open_brace: {}, str: {:?}", open_brace, self.codemap.span_to_snippet(s));
+                // Format everything until opening brace
+                // TODO Shoud rewrite properly
+                self.format_missing(s.lo + BytePos(open_brace as u32));
+                self.block_indent += self.config.tab_spaces;
+                visit::walk_mod(self, m);
+                debug!("... last_pos after: {:?}", self.last_pos);
+                self.block_indent -= self.config.tab_spaces;
+            }
+        }
+        self.format_missing(s.hi);
+        debug!("FmtVisitor::format_mod: exit");
+    }
+
+    /// Find the file corresponding to an external mod
+    /// Same algorithm as syntax::parse::eval_src_mod
+    fn module_file(&self, id: ast::Ident, outer_attrs: &[ast::Attribute], id_sp: Span) -> PathBuf {
+        // FIXME use libsyntax once rust-lang/rust#26750 is merged
+        let mut prefix = PathBuf::from(&self.codemap.span_to_filename(id_sp));
+        prefix.pop();
+        let mod_string = token::get_ident(id);
+        match attr::first_attr_value_str_by_name(outer_attrs, "path") {
+            Some(d) => prefix.join(&*d),
+            None => {
+                let default_path_str = format!("{}.rs", mod_string);
+                let secondary_path_str = format!("{}/mod.rs", mod_string);
+                let default_path = prefix.join(&default_path_str);
+                let secondary_path = prefix.join(&secondary_path_str);
+                let default_exists = self.codemap.file_exists(&default_path);
+                let secondary_exists = self.codemap.file_exists(&secondary_path);
+                if default_exists {
+                    default_path
+                } else if secondary_exists {
+                    secondary_path
+                } else {
+                    // Should never appens since rustc parsed everything sucessfully
+                    panic!("Didn't found module {}", mod_string);
+                }
+            }
+        }
+    }
+
+    /// Format the content of a module into a separate file
+    fn format_separate_mod(&mut self, m: &ast::Mod, filename: &str) {
+        let last_pos = self.last_pos;
+        let block_indent = self.block_indent;
+        let filemap = self.codemap.get_filemap(filename);
+        self.last_pos = filemap.start_pos;
+        self.block_indent = 0;
+        visit::walk_mod(self, m);
+        self.format_missing(filemap.end_pos);
+        self.last_pos = last_pos;
+        self.block_indent = block_indent;
     }
 }

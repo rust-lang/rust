@@ -15,8 +15,7 @@ use syntax::parse::token;
 use syntax::print::pprust;
 
 impl<'a> FmtVisitor<'a> {
-    pub fn rewrite_pred(&self, predicate: &ast::WherePredicate) -> String
-    {
+    pub fn rewrite_pred(&self, predicate: &ast::WherePredicate) -> String {
         // TODO dead spans
         // TODO assumes we'll always fit on one line...
         match predicate {
@@ -49,8 +48,7 @@ impl<'a> FmtVisitor<'a> {
         }
     }
 
-    pub fn rewrite_lifetime_def(&self, lifetime: &ast::LifetimeDef) -> String
-    {
+    pub fn rewrite_lifetime_def(&self, lifetime: &ast::LifetimeDef) -> String {
         if lifetime.bounds.len() == 0 {
             return pprust::lifetime_to_string(&lifetime.lifetime);
         }
@@ -60,8 +58,7 @@ impl<'a> FmtVisitor<'a> {
                 lifetime.bounds.iter().map(|l| pprust::lifetime_to_string(l)).collect::<Vec<_>>().connect(" + "))
     }
 
-    pub fn rewrite_ty_bound(&self, bound: &ast::TyParamBound) -> String
-    {
+    pub fn rewrite_ty_bound(&self, bound: &ast::TyParamBound) -> String {
         match *bound {
             ast::TyParamBound::TraitTyParamBound(ref tref, ast::TraitBoundModifier::None) => {
                 self.rewrite_poly_trait_ref(tref)
@@ -75,8 +72,7 @@ impl<'a> FmtVisitor<'a> {
         }
     }
 
-    pub fn rewrite_ty_param(&self, ty_param: &ast::TyParam) -> String
-    {
+    pub fn rewrite_ty_param(&self, ty_param: &ast::TyParam) -> String {
         let mut result = String::with_capacity(128);
         result.push_str(&token::get_ident(ty_param.ident));
         if ty_param.bounds.len() > 0 {
@@ -91,8 +87,7 @@ impl<'a> FmtVisitor<'a> {
         result
     }
 
-    fn rewrite_poly_trait_ref(&self, t: &ast::PolyTraitRef) -> String
-    {
+    fn rewrite_poly_trait_ref(&self, t: &ast::PolyTraitRef) -> String {
         if t.bound_lifetimes.len() > 0 {
             format!("for<{}> {}",
                     t.bound_lifetimes.iter().map(|l| self.rewrite_lifetime_def(l)).collect::<Vec<_>>().connect(", "),

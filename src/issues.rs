@@ -21,7 +21,7 @@ static FIX_ME_CHARS: &'static [char] = &['F', 'I', 'X', 'M', 'E'];
 pub enum ReportTactic {
     Always,
     Unnumbered,
-    Never
+    Never,
 }
 
 impl ReportTactic {
@@ -40,12 +40,12 @@ impl_enum_decodable!(ReportTactic, Always, Unnumbered, Never);
 enum Seeking {
     Issue {
         todo_idx: usize,
-        fixme_idx: usize
+        fixme_idx: usize,
     },
     Number {
         issue: Issue,
-        part: NumberPart
-    }
+        part: NumberPart,
+    },
 }
 
 #[derive(Clone, Copy)]
@@ -53,7 +53,7 @@ enum NumberPart {
     OpenParen,
     Pound,
     Number,
-    CloseParen
+    CloseParen,
 }
 
 #[derive(PartialEq, Eq, Debug, Clone, Copy)]
@@ -79,13 +79,13 @@ impl fmt::Display for Issue {
 #[derive(PartialEq, Eq, Debug, Clone, Copy)]
 enum IssueType {
     Todo,
-    Fixme
+    Fixme,
 }
 
 enum IssueClassification {
     Good,
     Bad(Issue),
-    None
+    None,
 }
 
 pub struct BadIssueSeeker {
@@ -96,11 +96,9 @@ pub struct BadIssueSeeker {
 
 impl BadIssueSeeker {
     pub fn new(report_todo: ReportTactic, report_fixme: ReportTactic) -> BadIssueSeeker {
-        BadIssueSeeker {
-            state: Seeking::Issue { todo_idx: 0, fixme_idx: 0 },
-            report_todo: report_todo,
-            report_fixme: report_fixme,
-        }
+        BadIssueSeeker { state: Seeking::Issue { todo_idx: 0, fixme_idx: 0 },
+                         report_todo: report_todo,
+                         report_fixme: report_fixme, }
     }
 
     // Check whether or not the current char is conclusive evidence for an
@@ -176,8 +174,7 @@ impl BadIssueSeeker {
                       c: char,
                       issue: Issue,
                       mut part: NumberPart)
-        -> IssueClassification
-    {
+                      -> IssueClassification {
         if ! issue.missing_number || c == '\n' {
             return IssueClassification::Bad(issue);
         } else if c == ')' {
@@ -272,10 +269,7 @@ fn find_issue() {
 #[test]
 fn issue_type() {
     let mut seeker = BadIssueSeeker::new(ReportTactic::Always, ReportTactic::Never);
-    let expected = Some(Issue {
-        issue_type: IssueType::Todo,
-        missing_number: false
-    });
+    let expected = Some(Issue { issue_type: IssueType::Todo, missing_number: false });
 
     assert_eq!(expected,
                "TODO(#100): more awesomeness".chars()
@@ -284,10 +278,7 @@ fn issue_type() {
                                        .unwrap());
 
     let mut seeker = BadIssueSeeker::new(ReportTactic::Never, ReportTactic::Unnumbered);
-    let expected = Some(Issue {
-        issue_type: IssueType::Fixme,
-        missing_number: true
-    });
+    let expected = Some(Issue { issue_type: IssueType::Fixme, missing_number: true });
 
     assert_eq!(expected,
                "Test. FIXME: bad, bad, not good".chars()

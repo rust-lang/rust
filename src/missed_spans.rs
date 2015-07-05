@@ -36,8 +36,7 @@ impl<'a> FmtVisitor<'a> {
 
     fn format_missing_inner<F: Fn(&mut FmtVisitor, &str, &str, &str)>(&mut self,
                                                                       end: BytePos,
-                                                                      process_last_snippet: F)
-    {
+                                                                      process_last_snippet: F) {
         let start = self.last_pos;
         debug!("format_missing_inner: {:?} to {:?}",
                self.codemap.lookup_char_pos(start),

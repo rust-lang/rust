@@ -34,6 +34,9 @@ fn foo<U, T>(a: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA,
 
 }
 
+fn foo<U: Fn(A) -> B /* paren inside generics */>() {
+}
+
 impl Foo {
     fn with_no_errors<T, F>(&mut self, f: F) -> T
         where F: FnOnce(&mut Resolver) -> T

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use syntax::ast::{Visibility, Attribute, MetaItem, MetaItem_};
+use syntax::ast::{self, Visibility, Attribute, MetaItem, MetaItem_};
 use syntax::codemap::{CodeMap, Span, BytePos};
 
 use comment::FindUncommented;
@@ -70,6 +70,14 @@ fn is_skip(meta_item: &MetaItem) -> bool {
 #[inline]
 pub fn contains_skip(attrs: &[Attribute]) -> bool {
     attrs.iter().any(|a| is_skip(&a.node.value))
+}
+
+// Find the end of a TyParam
+pub fn end_typaram(typaram: &ast::TyParam) -> BytePos {
+    typaram.bounds.last().map(|bound| match *bound {
+        ast::RegionTyParamBound(ref lt) => lt.span,
+        ast::TraitTyParamBound(ref prt, _) => prt.span,
+    }).unwrap_or(typaram.span).hi
 }
 
 #[inline]

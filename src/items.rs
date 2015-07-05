@@ -11,7 +11,7 @@
 // Formatting top-level items - functions, structs, enums, traits, impls.
 
 use {ReturnIndent, BraceStyle};
-use utils::{format_visibility, make_indent, contains_skip, span_after};
+use utils::{format_visibility, make_indent, contains_skip, span_after, end_typaram};
 use lists::{write_list, itemize_list, ListItem, ListFormatting, SeparatorTactic, ListTactic};
 use comment::FindUncommented;
 use visitor::FmtVisitor;
@@ -33,8 +33,7 @@ impl<'a> FmtVisitor<'a> {
                       abi: &abi::Abi,
                       vis: ast::Visibility,
                       span: Span)
-        -> String
-    {
+                      -> String {
         let newline_brace = self.newline_for_brace(&generics.where_clause);
 
         let mut result = self.rewrite_fn_base(indent,
@@ -67,8 +66,7 @@ impl<'a> FmtVisitor<'a> {
                                ident: ast::Ident,
                                sig: &ast::MethodSig,
                                span: Span)
-        -> String
-    {
+                               -> String {
         // Drop semicolon or it will be interpreted as comment
         let span = codemap::mk_sp(span.lo, span.hi - BytePos(1));
 
@@ -102,8 +100,7 @@ impl<'a> FmtVisitor<'a> {
                        vis: ast::Visibility,
                        span: Span,
                        newline_brace: bool)
-        -> String
-    {
+                       -> String {
         // FIXME we'll lose any comments in between parts of the function decl, but anyone
         // who comments there probably deserves what they get.
 
@@ -160,13 +157,21 @@ impl<'a> FmtVisitor<'a> {
             result.push('(');
         }
 
+        // A conservative estimation, to goal is to be over all parens in generics
+        let args_start = generics.ty_params
+                                 .last()
+                                 .map(|tp| end_typaram(tp))
+                                 .unwrap_or(span.lo);
+        let args_span = codemap::mk_sp(span_after(codemap::mk_sp(args_start, span.hi),
+                                                  "(",
+                                                  self.codemap),
+                                       span_for_return(&fd.output).lo);
         result.push_str(&self.rewrite_args(&fd.inputs,
                                            explicit_self,
                                            one_line_budget,
                                            multi_line_budget,
                                            arg_indent,
-                                           codemap::mk_sp(span_after(span, "(", self.codemap),
-                                                          span_for_return(&fd.output).lo)));
+                                           args_span));
         result.push(')');
 
         // Return type.
@@ -222,8 +227,7 @@ impl<'a> FmtVisitor<'a> {
                     multi_line_budget: usize,
                     arg_indent: usize,
                     span: Span)
-        -> String
-    {
+                    -> String {
         let mut arg_item_strs: Vec<_> = args.iter().map(|a| self.rewrite_fn_input(a)).collect();
         // Account for sugary self.
         let mut min_args = 1;
@@ -301,15 +305,13 @@ impl<'a> FmtVisitor<'a> {
             item.item = arg;
         }
 
-        let fmt = ListFormatting {
-            tactic: ListTactic::HorizontalVertical,
-            separator: ",",
-            trailing_separator: SeparatorTactic::Never,
-            indent: arg_indent,
-            h_width: one_line_budget,
-            v_width: multi_line_budget,
-            ends_with_newline: true,
-        };
+        let fmt = ListFormatting { tactic: ListTactic::HorizontalVertical,
+                                   separator: ",",
+                                   trailing_separator: SeparatorTactic::Never,
+                                   indent: arg_indent,
+                                   h_width: one_line_budget,
+                                   v_width: multi_line_budget,
+                                   ends_with_newline: true, };
 
         write_list(&arg_items, &fmt)
     }
@@ -319,8 +321,7 @@ impl<'a> FmtVisitor<'a> {
                                 indent: usize,
                                 ret_str_len: usize,
                                 newline_brace: bool)
-        -> (usize, usize, usize)
-    {
+                                -> (usize, usize, usize) {
         let mut budgets = None;
 
         // Try keeping everything on the same line
@@ -377,8 +378,7 @@ impl<'a> FmtVisitor<'a> {
                       vis: ast::Visibility,
                       enum_def: &ast::EnumDef,
                       generics: &ast::Generics,
-                      span: Span)
-    {
+                      span: Span) {
         let header_str = self.format_header("enum ", ident, vis);
         self.changes.push_str_span(span, &header_str);
 
@@ -409,18 +409,14 @@ impl<'a> FmtVisitor<'a> {
     }
 
     // Variant of an enum
-    fn visit_variant(&mut self,
-                     field: &ast::Variant,
-                     last_field: bool,
-                     next_span_start: BytePos)
-    {
+    fn visit_variant(&mut self, field: &ast::Variant, last_field: bool, next_span_start: BytePos) {
         if self.visit_attrs(&field.node.attrs) {
             return;
         }
 
         self.format_missing_with_indent(field.span.lo);
 
-        match field.node.kind {
+        let result = match field.node.kind {
             ast::VariantKind::TupleVariantKind(ref types) => {
                 let vis = format_visibility(field.node.vis);
                 self.changes.push_str_span(field.span, vis);
@@ -475,23 +471,23 @@ impl<'a> FmtVisitor<'a> {
                             "Enum variant exceeded column limit");
                 }
 
-                self.changes.push_str_span(field.span, &result);
-
-                if !last_field || self.config.enum_trailing_comma {
-                    self.changes.push_str_span(field.span, ",");
-                }
+                result
             },
             ast::VariantKind::StructVariantKind(ref struct_def) => {
-                let result = self.format_struct("",
-                                                field.node.name,
-                                                field.node.vis,
-                                                struct_def,
-                                                None,
-                                                field.span,
-                                                self.block_indent);
-
-                self.changes.push_str_span(field.span, &result)
+                // TODO Should limit the width, as we have a trailing comma
+                self.format_struct("",
+                                   field.node.name,
+                                   field.node.vis,
+                                   struct_def,
+                                   None,
+                                   field.span,
+                                   self.block_indent)
             }
+        };
+        self.changes.push_str_span(field.span, &result);
+
+        if !last_field || self.config.enum_trailing_comma {
+            self.changes.push_str_span(field.span, ",");
         }
 
         self.last_pos = field.span.hi + BytePos(1);
@@ -504,8 +500,8 @@ impl<'a> FmtVisitor<'a> {
                      struct_def: &ast::StructDef,
                      generics: Option<&ast::Generics>,
                      span: Span,
-                     offset: usize) -> String
-    {
+                     offset: usize)
+                     -> String {
         let mut result = String::with_capacity(1024);
 
         let header_str = self.format_header(item_name, ident, vis);
@@ -557,8 +553,7 @@ impl<'a> FmtVisitor<'a> {
 
         // Conservative approximation
         let single_line_cost = (span.hi - struct_def.fields[0].span.lo).0;
-        let break_line = !is_tuple ||
-                         generics_str.contains('\n') ||
+        let break_line = !is_tuple || generics_str.contains('\n') ||
                          single_line_cost as usize + used_budget > self.config.max_width;
 
         if break_line {
@@ -571,15 +566,13 @@ impl<'a> FmtVisitor<'a> {
 
         // 1 = ,
         let budget = self.config.ideal_width - offset + self.config.tab_spaces - 1;
-        let fmt = ListFormatting {
-            tactic: tactic,
-            separator: ",",
-            trailing_separator: self.config.struct_trailing_comma,
-            indent: offset + self.config.tab_spaces,
-            h_width: self.config.max_width,
-            v_width: budget,
-            ends_with_newline: false,
-        };
+        let fmt = ListFormatting { tactic: tactic,
+                                   separator: ",",
+                                   trailing_separator: self.config.struct_trailing_comma,
+                                   indent: offset + self.config.tab_spaces,
+                                   h_width: self.config.max_width,
+                                   v_width: budget,
+                                   ends_with_newline: false, };
 
         result.push_str(&write_list(&items, &fmt));
 
@@ -602,8 +595,7 @@ impl<'a> FmtVisitor<'a> {
                         vis: ast::Visibility,
                         struct_def: &ast::StructDef,
                         generics: &ast::Generics,
-                        span: Span)
-    {
+                        span: Span) {
         let indent = self.block_indent;
         let result = self.format_struct("struct ",
                                         ident,
@@ -616,12 +608,7 @@ impl<'a> FmtVisitor<'a> {
         self.last_pos = span.hi;
     }
 
-    fn format_header(&self,
-                     item_name: &str,
-                     ident: ast::Ident,
-                     vis: ast::Visibility)
-        -> String
-    {
+    fn format_header(&self, item_name: &str, ident: ast::Ident, vis: ast::Visibility) -> String {
         format!("{}{}{}", format_visibility(vis), item_name, &token::get_ident(ident))
     }
 
@@ -630,8 +617,7 @@ impl<'a> FmtVisitor<'a> {
                        opener: &str,
                        offset: usize,
                        span: Span)
-        -> String
-    {
+                       -> String {
         let mut result = self.rewrite_generics(generics, offset, span);
 
         if generics.where_clause.predicates.len() > 0 || result.contains('\n') {
@@ -721,15 +707,13 @@ impl<'a> FmtVisitor<'a> {
             item.item = ty;
         }
 
-        let fmt = ListFormatting {
-            tactic: ListTactic::HorizontalVertical,
-            separator: ",",
-            trailing_separator: SeparatorTactic::Never,
-            indent: offset + 1,
-            h_width: budget,
-            v_width: budget,
-            ends_with_newline: true,
-        };
+        let fmt = ListFormatting { tactic: ListTactic::HorizontalVertical,
+                                   separator: ",",
+                                   trailing_separator: SeparatorTactic::Never,
+                                   indent: offset + 1,
+                                   h_width: budget,
+                                   v_width: budget,
+                                   ends_with_newline: true, };
         result.push_str(&write_list(&items, &fmt));
 
         result.push('>');
@@ -741,8 +725,7 @@ impl<'a> FmtVisitor<'a> {
                             where_clause: &ast::WhereClause,
                             indent: usize,
                             span_end: BytePos)
-        -> String
-    {
+                            -> String {
         let mut result = String::new();
         if where_clause.predicates.len() == 0 {
             return result;
@@ -765,15 +748,13 @@ impl<'a> FmtVisitor<'a> {
                                  span_end);
 
         let budget = self.config.ideal_width + self.config.leeway - indent - 10;
-        let fmt = ListFormatting {
-            tactic: ListTactic::Vertical,
-            separator: ",",
-            trailing_separator: SeparatorTactic::Never,
-            indent: indent + 10,
-            h_width: budget,
-            v_width: budget,
-            ends_with_newline: true,
-        };
+        let fmt = ListFormatting { tactic: ListTactic::Vertical,
+                                   separator: ",",
+                                   trailing_separator: SeparatorTactic::Never,
+                                   indent: indent + 10,
+                                   h_width: budget,
+                                   v_width: budget,
+                                   ends_with_newline: true, };
         result.push_str(&write_list(&items, &fmt));
 
         result

@@ -35,11 +35,9 @@ pub struct ChangeSet<'a> {
 impl<'a> ChangeSet<'a> {
     // Create a new ChangeSet for a given libsyntax CodeMap.
     pub fn from_codemap(codemap: &'a CodeMap) -> ChangeSet<'a> {
-        let mut result = ChangeSet {
-            file_map: HashMap::new(),
-            codemap: codemap,
-            file_spans: Vec::with_capacity(codemap.files.borrow().len()),
-        };
+        let mut result = ChangeSet { file_map: HashMap::new(),
+                                     codemap: codemap,
+                                     file_spans: Vec::with_capacity(codemap.files.borrow().len()), };
 
         for f in codemap.files.borrow().iter() {
             // Use the length of the file as a heuristic for how much space we
@@ -116,11 +114,7 @@ impl<'a> ChangeSet<'a> {
 
     // Return an iterator over the entire changed text.
     pub fn text<'c>(&'c self) -> FileIterator<'c, 'a> {
-        FileIterator {
-            change_set: self,
-            keys: self.file_map.keys().collect(),
-            cur_key: 0,
-        }
+        FileIterator { change_set: self, keys: self.file_map.keys().collect(), cur_key: 0 }
     }
 
     // Append a newline to the end of each file.
@@ -153,12 +147,11 @@ impl<'a> ChangeSet<'a> {
         let text = &self.file_map[filename];
 
         // prints all newlines either as `\n` or as `\r\n`
-        fn write_system_newlines<T>(
-            mut writer: T,
-            text: &StringBuffer,
-            config: &Config)
-            -> Result<(), ::std::io::Error>
-            where T: Write,
+        fn write_system_newlines<T>(mut writer: T,
+                                    text: &StringBuffer,
+                                    config: &Config)
+                                    -> Result<(), ::std::io::Error>
+            where T: Write
         {
             match config.newline_style {
                 NewlineStyle::Unix => write!(writer, "{}", text),
@@ -212,6 +205,10 @@ impl<'a> ChangeSet<'a> {
         }
 
         Ok(None)
+    }
+
+    pub fn is_changed(&self, filename: &str) -> bool {
+        self.file_map.get(filename).expect("Unknown filename").len != 0
     }
 }
 

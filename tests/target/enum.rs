@@ -40,5 +40,8 @@ enum StructLikeVariants {
         // Pre-comment
         #[Attr50]
         y: SomeType, // Aanother Comment
-    }
+    },
+    SL {
+        a: A,
+    },
 }

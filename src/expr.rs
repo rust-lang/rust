@@ -63,7 +63,7 @@ fn rewrite_string_lit(context: &RewriteContext,
                       span: Span,
                       width: usize,
                       offset: usize)
-    -> Option<String> {
+                      -> Option<String> {
     // Check if there is anything to fix: we always try to fixup multi-line
     // strings, or if the string is too long for the line.
     let l_loc = context.codemap.lookup_char_pos(span.lo);
@@ -71,15 +71,13 @@ fn rewrite_string_lit(context: &RewriteContext,
     if l_loc.line == r_loc.line && r_loc.col.to_usize() <= context.config.max_width {
         return context.codemap.span_to_snippet(span).ok();
     }
-    let fmt = StringFormat {
-        opener: "\"",
-        closer: "\"",
-        line_start: " ",
-        line_end: "\\",
-        width: width,
-        offset: offset,
-        trim_end: false
-    };
+    let fmt = StringFormat { opener: "\"",
+                             closer: "\"",
+                             line_start: " ",
+                             line_end: "\\",
+                             width: width,
+                             offset: offset,
+                             trim_end: false, };
 
     Some(rewrite_string(&s.escape_default(), &fmt))
 }
@@ -90,7 +88,7 @@ fn rewrite_call(context: &RewriteContext,
                 span: Span,
                 width: usize,
                 offset: usize)
-        -> Option<String> {
+                -> Option<String> {
     debug!("rewrite_call, width: {}, offset: {}", width, offset);
 
     // TODO using byte lens instead of char lens (and probably all over the place too)
@@ -119,20 +117,22 @@ fn rewrite_call(context: &RewriteContext,
                              callee.span.hi + BytePos(1),
                              span.hi);
 
-    let fmt = ListFormatting {
-        tactic: ListTactic::HorizontalVertical,
-        separator: ",",
-        trailing_separator: SeparatorTactic::Never,
-        indent: offset,
-        h_width: remaining_width,
-        v_width: remaining_width,
-        ends_with_newline: true,
-    };
+    let fmt = ListFormatting { tactic: ListTactic::HorizontalVertical,
+                               separator: ",",
+                               trailing_separator: SeparatorTactic::Never,
+                               indent: offset,
+                               h_width: remaining_width,
+                               v_width: remaining_width,
+                               ends_with_newline: true, };
 
     Some(format!("{}({})", callee_str, write_list(&items, &fmt)))
 }
 
-fn rewrite_paren(context: &RewriteContext, subexpr: &ast::Expr, width: usize, offset: usize) -> Option<String> {
+fn rewrite_paren(context: &RewriteContext,
+                 subexpr: &ast::Expr,
+                 width: usize,
+                 offset: usize)
+                 -> Option<String> {
     debug!("rewrite_paren, width: {}, offset: {}", width, offset);
     // 1 is for opening paren, 2 is for opening+closing, we want to keep the closing
     // paren on the same line as the subexpr
@@ -148,14 +148,13 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
                           span: Span,
                           width: usize,
                           offset: usize)
-        -> Option<String>
-{
+                          -> Option<String> {
     debug!("rewrite_struct_lit: width {}, offset {}", width, offset);
     assert!(fields.len() > 0 || base.is_some());
 
     enum StructLitField<'a> {
         Regular(&'a ast::Field),
-        Base(&'a ast::Expr)
+        Base(&'a ast::Expr),
     }
 
     let path_str = pprust::path_to_string(path);
@@ -203,19 +202,17 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
                              span_after(span, "{", context.codemap),
                              span.hi);
 
-    let fmt = ListFormatting {
-        tactic: ListTactic::HorizontalVertical,
-        separator: ",",
-        trailing_separator: if base.is_some() {
+    let fmt = ListFormatting { tactic: ListTactic::HorizontalVertical,
+                               separator: ",",
+                               trailing_separator: if base.is_some() {
             SeparatorTactic::Never
         } else {
             context.config.struct_lit_trailing_comma
         },
-        indent: indent,
-        h_width: budget,
-        v_width: budget,
-        ends_with_newline: true,
-    };
+                               indent: indent,
+                               h_width: budget,
+                               v_width: budget,
+                               ends_with_newline: true, };
     let fields_str = write_list(&items, &fmt);
     Some(format!("{} {{ {} }}", path_str, fields_str))
 
@@ -225,7 +222,11 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
     // }
 }
 
-fn rewrite_field(context: &RewriteContext, field: &ast::Field, width: usize, offset: usize) -> Option<String> {
+fn rewrite_field(context: &RewriteContext,
+                 field: &ast::Field,
+                 width: usize,
+                 offset: usize)
+                 -> Option<String> {
     let name = &token::get_ident(field.ident.node);
     let overhead = name.len() + 2;
     let expr = field.expr.rewrite(context, width - overhead, offset + overhead);
@@ -262,15 +263,13 @@ fn rewrite_tuple_lit(context: &RewriteContext,
         SeparatorTactic::Never
     };
 
-    let fmt = ListFormatting {
-        tactic: ListTactic::HorizontalVertical,
-        separator: ",",
-        trailing_separator: trailing_separator_tactic,
-        indent: indent,
-        h_width: width - 2,
-        v_width: width - 2,
-        ends_with_newline: true,
-    };
+    let fmt = ListFormatting { tactic: ListTactic::HorizontalVertical,
+                               separator: ",",
+                               trailing_separator: trailing_separator_tactic,
+                               indent: indent,
+                               h_width: width - 2,
+                               v_width: width - 2,
+                               ends_with_newline: true, };
 
     Some(format!("({})", write_list(&items, &fmt)))
 }

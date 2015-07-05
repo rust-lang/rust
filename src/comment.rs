@@ -24,15 +24,13 @@ pub fn rewrite_comment(orig: &str, block_style: bool, width: usize, offset: usiz
     let max_chars = width.checked_sub(closer.len()).unwrap_or(1)
                          .checked_sub(opener.len()).unwrap_or(1);
 
-    let fmt = StringFormat {
-        opener: "",
-        closer: "",
-        line_start: line_start,
-        line_end: "",
-        width: max_chars,
-        offset: offset + opener.len() - line_start.len(),
-        trim_end: true
-    };
+    let fmt = StringFormat { opener: "",
+                             closer: "",
+                             line_start: line_start,
+                             line_end: "",
+                             width: max_chars,
+                             offset: offset + opener.len() - line_start.len(),
+                             trim_end: true, };
 
     let indent_str = make_indent(offset);
     let line_breaks = s.chars().filter(|&c| c == '\n').count();
@@ -102,8 +100,8 @@ fn format_comments() {
 
     let input = "// comment";
     let expected_output = "/* com\n                                                                      \
-                            * men\n                                                                      \
-                            * t */";
+                           * men\n                                                                      \
+                           * t */";
     assert_eq!(expected_output, rewrite_comment(input, true, 9, 69));
 
     assert_eq!("/* trimmed */", rewrite_comment("/*   trimmed    */", true, 100, 100));

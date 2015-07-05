@@ -48,20 +48,19 @@ pub struct ListFormatting<'a> {
     pub v_width: usize,
     // Non-expressions, e.g. items, will have a new line at the end of the list.
     // Important for comment styles.
-    pub ends_with_newline: bool
+    pub ends_with_newline: bool,
 }
 
 pub struct ListItem {
     pub pre_comment: Option<String>,
     // Item should include attributes and doc comments
     pub item: String,
-    pub post_comment: Option<String>
+    pub post_comment: Option<String>,
 }
 
 impl ListItem {
     pub fn is_multiline(&self) -> bool {
-        self.item.contains('\n') ||
-        self.pre_comment.is_some() ||
+        self.item.contains('\n') || self.pre_comment.is_some() ||
         self.post_comment.as_ref().map(|s| s.contains('\n')).unwrap_or(false)
     }
 
@@ -70,11 +69,7 @@ impl ListItem {
     }
 
     pub fn from_str<S: Into<String>>(s: S) -> ListItem {
-        ListItem {
-            pre_comment: None,
-            item: s.into(),
-            post_comment: None
-        }
+        ListItem { pre_comment: None, item: s.into(), post_comment: None }
     }
 }
 
@@ -239,8 +234,8 @@ pub fn itemize_list<T, I, F1, F2, F3>(codemap: &CodeMap,
                                       get_item_string: F3,
                                       mut prev_span_end: BytePos,
                                       next_span_start: BytePos)
-    -> Vec<ListItem>
-    where I: Iterator<Item=T>,
+                                      -> Vec<ListItem>
+    where I: Iterator<Item = T>,
           F1: Fn(&T) -> BytePos,
           F2: Fn(&T) -> BytePos,
           F3: Fn(&T) -> String
