@@ -43,7 +43,7 @@ pub struct VecDeque<T> {
     // tail and head are pointers into the buffer. Tail always points
     // to the first element that could be read, Head always points
     // to where data should be written.
-    // If tail == head the buffer is empty. The length of the ringbuf
+    // If tail == head the buffer is empty. The length of the ringbuffer
     // is defined as the distance between the two.
 
     tail: usize,
@@ -309,7 +309,7 @@ impl<T> VecDeque<T> {
     }
 
     /// Reserves capacity for at least `additional` more elements to be inserted in the given
-    /// `Ringbuf`. The collection may reserve more space to avoid frequent reallocations.
+    /// `VecDeque`. The collection may reserve more space to avoid frequent reallocations.
     ///
     /// # Panics
     ///
@@ -385,10 +385,10 @@ impl<T> VecDeque<T> {
         }
     }
 
-    /// Shrinks the capacity of the ringbuf as much as possible.
+    /// Shrinks the capacity of the `VecDeque` as much as possible.
     ///
     /// It will drop down as close as possible to the length but the allocator may still inform the
-    /// ringbuf that there is space for a few more elements.
+    /// `VecDeque` that there is space for a few more elements.
     ///
     /// # Examples
     ///
@@ -404,7 +404,7 @@ impl<T> VecDeque<T> {
     /// ```
     pub fn shrink_to_fit(&mut self) {
         // +1 since the ringbuffer always leaves one space empty
-        // len + 1 can't overflow for an existing, well-formed ringbuf.
+        // len + 1 can't overflow for an existing, well-formed ringbuffer.
         let target_cap = cmp::max(self.len() + 1, MINIMUM_CAPACITY + 1).next_power_of_two();
         if target_cap < self.cap {
             // There are three cases of interest:
@@ -472,9 +472,9 @@ impl<T> VecDeque<T> {
         }
     }
 
-    /// Shortens a ringbuf, dropping excess elements from the back.
+    /// Shortens a `VecDeque`, dropping excess elements from the back.
     ///
-    /// If `len` is greater than the ringbuf's current length, this has no
+    /// If `len` is greater than the `VecDeque`'s current length, this has no
     /// effect.
     ///
     /// # Examples
@@ -858,8 +858,8 @@ impl<T> VecDeque<T> {
         self.tail <= self.head
     }
 
-    /// Removes an element from anywhere in the ringbuf and returns it, replacing it with the last
-    /// element.
+    /// Removes an element from anywhere in the `VecDeque` and returns it, replacing it with the
+    /// last element.
     ///
     /// This does not preserve ordering, but is O(1).
     ///
@@ -892,7 +892,7 @@ impl<T> VecDeque<T> {
         self.pop_back()
     }
 
-    /// Removes an element from anywhere in the ringbuf and returns it,
+    /// Removes an element from anywhere in the `VecDeque` and returns it,
     /// replacing it with the first element.
     ///
     /// This does not preserve ordering, but is O(1).
@@ -926,13 +926,13 @@ impl<T> VecDeque<T> {
         self.pop_front()
     }
 
-    /// Inserts an element at position `i` within the ringbuf. Whichever
+    /// Inserts an element at position `i` within the `VecDeque`. Whichever
     /// end is closer to the insertion point will be moved to make room,
     /// and all the affected elements will be moved to new positions.
     ///
     /// # Panics
     ///
-    /// Panics if `i` is greater than ringbuf's length
+    /// Panics if `i` is greater than `VecDeque`'s length
     ///
     /// # Examples
     /// ```
@@ -1132,7 +1132,7 @@ impl<T> VecDeque<T> {
         }
     }
 
-    /// Removes and returns the element at position `i` from the ringbuf.
+    /// Removes and returns the element at position `i` from the `VecDeque`.
     /// Whichever end is closer to the removal point will be moved to make
     /// room, and all the affected elements will be moved to new positions.
     /// Returns `None` if `i` is out of bounds.
@@ -1428,7 +1428,7 @@ impl<T> VecDeque<T> {
 }
 
 impl<T: Clone> VecDeque<T> {
-    /// Modifies the ringbuf in-place so that `len()` is equal to new_len,
+    /// Modifies the `VecDeque` in-place so that `len()` is equal to new_len,
     /// either by removing excess elements or by appending copies of a value to the back.
     ///
     /// # Examples
