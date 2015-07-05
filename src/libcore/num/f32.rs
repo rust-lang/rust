@@ -24,14 +24,18 @@ use num::{Float, ParseFloatError};
 use num::FpCategory as Fp;
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(missing_docs)]
 pub const RADIX: u32 = 2;
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(missing_docs)]
 pub const MANTISSA_DIGITS: u32 = 24;
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(missing_docs)]
 pub const DIGITS: u32 = 6;
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(missing_docs)]
 pub const EPSILON: f32 = 1.19209290e-07_f32;
 
 /// Smallest finite f32 value
@@ -45,20 +49,27 @@ pub const MIN_POSITIVE: f32 = 1.17549435e-38_f32;
 pub const MAX: f32 = 3.40282347e+38_f32;
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(missing_docs)]
 pub const MIN_EXP: i32 = -125;
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(missing_docs)]
 pub const MAX_EXP: i32 = 128;
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(missing_docs)]
 pub const MIN_10_EXP: i32 = -37;
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(missing_docs)]
 pub const MAX_10_EXP: i32 = 38;
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(missing_docs)]
 pub const NAN: f32 = 0.0_f32/0.0_f32;
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(missing_docs)]
 pub const INFINITY: f32 = 1.0_f32/0.0_f32;
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(missing_docs)]
 pub const NEG_INFINITY: f32 = -1.0_f32/0.0_f32;
 
 /// Basic mathematial constants.
