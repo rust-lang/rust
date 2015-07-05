@@ -38,6 +38,10 @@ const MINIMUM_CAPACITY: usize = 1; // 2 - 1
 
 /// `VecDeque` is a growable ring buffer, which can be used as a
 /// double-ended queue efficiently.
+///
+/// The "default" usage of this type as a queue is to use `push_back` to add to the queue, and
+/// `pop_front` to remove from the queue. `extend` and `append` push onto the back in this manner,
+/// and iterating over `VecDeque` goes front to back.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct VecDeque<T> {
     // tail and head are pointers into the buffer. Tail always points
