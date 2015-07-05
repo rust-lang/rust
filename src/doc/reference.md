@@ -338,12 +338,16 @@ type of the literal. The integer suffix must be the name of one of the
 integral types: `u8`, `i8`, `u16`, `i16`, `u32`, `i32`, `u64`, `i64`,
 `isize`, or `usize`.
 
-The type of an _unsuffixed_ integer literal is determined by type inference.
-If an integer type can be _uniquely_ determined from the surrounding program
-context, the unsuffixed integer literal has that type. If the program context
-underconstrains the type, it defaults to the signed 32-bit integer `i32`; if
-the program context overconstrains the type, it is considered a static type
-error.
+The type of an _unsuffixed_ integer literal is determined by type inference:
+
+* If an integer type can be _uniquely_ determined from the surrounding
+  program context, the unsuffixed integer literal has that type.
+
+* If the program context underconstrains the type, it defaults to the
+  signed 32-bit integer `i32`.
+
+* If the program context overconstrains the type, it is considered a
+  static type error.
 
 Examples of integer literals of various forms:
 
@@ -371,12 +375,17 @@ The suffix forcibly sets the type of the literal. There are two valid
 _floating-point suffixes_, `f32` and `f64` (the 32-bit and 64-bit floating point
 types), which explicitly determine the type of the literal.
 
-The type of an _unsuffixed_ floating-point literal is determined by type
-inference. If a floating-point type can be _uniquely_ determined from the
-surrounding program context, the unsuffixed floating-point literal has that type.
-If the program context underconstrains the type, it defaults to double-precision `f64`;
-if the program context overconstrains the type, it is considered a static type
-error.
+The type of an _unsuffixed_ floating-point literal is determined by
+type inference:
+
+* If a floating-point type can be _uniquely_ determined from the
+  surrounding program context, the unsuffixed floating-point literal
+  has that type.
+
+* If the program context underconstrains the type, it defaults to `f64`.
+
+* If the program context overconstrains the type, it is considered a
+  static type error.
 
 Examples of floating-point literals of various forms:
 
