@@ -41,6 +41,7 @@ use mem;
 use string::String;
 use ops;
 use cmp;
+use str;
 use hash::{Hash, Hasher};
 use vec::Vec;
 
@@ -262,6 +263,23 @@ impl OsStr {
             self.to_str().map(|s| s.as_bytes())
         } else {
             Some(self.bytes())
+        }
+    }
+
+    /// Converts a byte slice to an `OsStr` slice.
+    ///
+    /// # Platform behavior
+    ///
+    /// On Unix systems, this is a no-op.
+    ///
+    /// On Windows systems, only UTF-8 byte sequences will successfully
+    /// convert; non UTF-8 data will produce `None`.
+    #[unstable(feature = "convert", reason = "recently added")]
+    pub fn from_bytes_slice(bytes: &[u8]) -> Option<&OsStr> {
+        if cfg!(windows) {
+            str::from_utf8(bytes).ok().map(|s| s.as_ref())
+        } else {
+            Some(unsafe { mem::transmute(bytes) })
         }
     }
 
