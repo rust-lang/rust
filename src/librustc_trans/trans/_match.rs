@@ -1351,7 +1351,7 @@ fn is_discr_reassigned(bcx: Block, discr: &ast::Expr, body: &ast::Expr) -> bool 
         reassigned: false
     };
     {
-        let infcx = infer::new_infer_ctxt(bcx.tcx(), &bcx.tcx().tables, None, false);
+        let infcx = infer::normalizing_infer_ctxt(bcx.tcx(), &bcx.tcx().tables);
         let mut visitor = euv::ExprUseVisitor::new(&mut rc, &infcx);
         visitor.walk_expr(body);
     }
