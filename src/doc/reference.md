@@ -381,7 +381,7 @@ error.
 Examples of floating-point literals of various forms:
 
 ```
-123.0f64;        // type f64
+123_f64;         // type f64
 0.1f64;          // type f64
 0.1f32;          // type f32
 12E+99_f64;      // type f64
