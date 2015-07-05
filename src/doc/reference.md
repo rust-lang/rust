@@ -3351,12 +3351,17 @@ heap.
 A slice is a 'view' into an array. It doesn't own the data it points
 to, it borrows it.
 
-An example of each kind:
+Examples:
 
 ```{rust}
-let vec: Vec<i32> = vec![1, 2, 3];
-let arr: [i32; 3] = [1, 2, 3];
-let s: &[i32] = &vec[..];
+// A stack-allocated array
+let array: [i32; 3] = [1, 2, 3];
+
+// A heap-allocated array
+let vector: Vec<i32> = vec![1, 2, 3];
+
+// A slice into an array
+let slice: &[i32] = &vector[..];
 ```
 
 As you can see, the `vec!` macro allows you to create a `Vec<T>` easily. The
