@@ -2972,7 +2972,7 @@ move values (depending on their type) from the environment into the lambda
 expression's captured environment.
 
 In this example, we define a function `ten_times` that takes a higher-order
-function argument, and call it with a lambda expression as an argument:
+function argument, and we then call it with a lambda expression as an argument:
 
 ```
 fn ten_times<F>(f: F) where F: Fn(i32) {
@@ -3498,7 +3498,7 @@ x = bo(5,7);
 
 #### Function types for specific items
 
-Internally to the compiler, there are also function types that are specific to a particular
+Internal to the compiler, there are also function types that are specific to a particular
 function item. In the following snippet, for example, the internal types of the functions
 `foo` and `bar` are different, despite the fact that they have the same signature:
 
