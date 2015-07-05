@@ -3351,18 +3351,23 @@ heap.
 A slice is a 'view' into an array. It doesn't own the data it points
 to, it borrows it.
 
-An example of each kind:
+Examples:
 
 ```{rust}
-let vec: Vec<i32> = vec![1, 2, 3];
-let arr: [i32; 3] = [1, 2, 3];
-let s: &[i32] = &vec[..];
+// A stack-allocated array
+let array: [i32; 3] = [1, 2, 3];
+
+// A heap-allocated array
+let vector: Vec<i32> = vec![1, 2, 3];
+
+// A slice into an array
+let slice: &[i32] = &vector[..];
 ```
 
 As you can see, the `vec!` macro allows you to create a `Vec<T>` easily. The
 `vec!` macro is also part of the standard library, rather than the language.
 
-All in-bounds elements of arrays, and slices are always initialized, and access
+All in-bounds elements of arrays and slices are always initialized, and access
 to an array or slice is always bounds-checked.
 
 ### Structure types
@@ -3524,13 +3529,14 @@ more of the closure traits:
 
 * `FnMut`
   : The closure can be called multiple times as mutable. A closure called as
-    `FnMut` can mutate values from its environment. `FnMut` implies
-    `FnOnce`.
+    `FnMut` can mutate values from its environment. `FnMut` inherits from
+    `FnOnce` (i.e. anything implementing `FnMut` also implements `FnOnce`).
 
 * `Fn`
   : The closure can be called multiple times through a shared reference.
     A closure called as `Fn` can neither move out from nor mutate values
-    from its environment. `Fn` implies `FnMut` and `FnOnce`.
+    from its environment. `Fn` inherits from `FnMut`, which itself
+    inherits from `FnOnce`.
 
 
 ### Trait objects
