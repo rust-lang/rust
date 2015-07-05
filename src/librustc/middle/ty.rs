@@ -6184,7 +6184,7 @@ impl<'tcx> ctxt<'tcx> {
                         format!("found variable"),
                     _ => format!("{}", err.description()),
                 };
-                span_err!(tcx.sess, count_expr.span, E0307,
+                span_err!(self.sess, count_expr.span, E0307,
                     "{}, expected valid constant integer for repeat count",
                     err_msg);
             }
