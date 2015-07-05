@@ -1526,6 +1526,22 @@ macro_rules! node_slice_impl {
                 (self.keys.len(), false)
             }
 
+            /// Performs linear search in a slice, from the back. Returns a tuple of
+            /// (index, is_exact_match).
+            fn search_linear_rev<Q: ?Sized>(&self, key: &Q) -> (usize, bool)
+                    where K: Borrow<Q>, Q: Ord {
+                let mut i = self.keys.len();
+                for k in self.keys.iter().rev() {
+                    match key.cmp(k.borrow()) {
+                        Less => {},
+                        Equal => return (i - 1, true),
+                        Greater => break,
+                    }
+                    i -= 1;
+                }
+                (i, false)
+            }
+
             /// Returns a sub-slice with elements starting with `min_key`.
             pub fn slice_from(self, min_key: &K) -> $NodeSlice<'a, K, V> {
                 //  _______________
@@ -1567,7 +1583,11 @@ macro_rules! node_slice_impl {
                 // \___|___/   |   |  slice_to(&4); pos = 2
                 // \___|___|___/   |  slice_to(&6); pos = 3
                 // \___|___|___|___/  slice_to(&999); pos = 4
-                let (pos, pos_is_kv) = self.search_linear(max_key);
+                //
+                // Search for the maximum from the back. In the common case,
+                // the last key is less than the maximum and only one comparison
+                // is needed.
+                let (pos, pos_is_kv) = self.search_linear_rev(max_key);
                 let pos = pos + if pos_is_kv { 1 } else { 0 };
                 $NodeSlice {
                     has_edges: self.has_edges,
