@@ -3355,7 +3355,7 @@ let s: &[i32] = &vec[..];
 As you can see, the `vec!` macro allows you to create a `Vec<T>` easily. The
 `vec!` macro is also part of the standard library, rather than the language.
 
-All in-bounds elements of arrays, and slices are always initialized, and access
+All in-bounds elements of arrays are always initialized, and access
 to an array or slice is always bounds-checked.
 
 ### Structure types
