@@ -113,7 +113,7 @@ impl FileType {
     pub fn is_file(&self) -> bool { self.is(libc::S_IFREG) }
     pub fn is_symlink(&self) -> bool { self.is(libc::S_IFLNK) }
 
-    fn is(&self, mode: mode_t) -> bool { self.mode & libc::S_IFMT == mode }
+    pub fn is(&self, mode: mode_t) -> bool { self.mode & libc::S_IFMT == mode }
 }
 
 impl FromInner<raw::mode_t> for FilePermissions {
