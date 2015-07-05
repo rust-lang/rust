@@ -338,12 +338,16 @@ type of the literal. The integer suffix must be the name of one of the
 integral types: `u8`, `i8`, `u16`, `i16`, `u32`, `i32`, `u64`, `i64`,
 `isize`, or `usize`.
 
-The type of an _unsuffixed_ integer literal is determined by type inference.
-If an integer type can be _uniquely_ determined from the surrounding program
-context, the unsuffixed integer literal has that type. If the program context
-underconstrains the type, it defaults to the signed 32-bit integer `i32`; if
-the program context overconstrains the type, it is considered a static type
-error.
+The type of an _unsuffixed_ integer literal is determined by type inference:
+
+* If an integer type can be _uniquely_ determined from the surrounding
+  program context, the unsuffixed integer literal has that type.
+
+* If the program context underconstrains the type, it defaults to the
+  signed 32-bit integer `i32`.
+
+* If the program context overconstrains the type, it is considered a
+  static type error.
 
 Examples of integer literals of various forms:
 
@@ -371,12 +375,17 @@ The suffix forcibly sets the type of the literal. There are two valid
 _floating-point suffixes_, `f32` and `f64` (the 32-bit and 64-bit floating point
 types), which explicitly determine the type of the literal.
 
-The type of an _unsuffixed_ floating-point literal is determined by type
-inference. If a floating-point type can be _uniquely_ determined from the
-surrounding program context, the unsuffixed floating-point literal has that type.
-If the program context underconstrains the type, it defaults to double-precision `f64`;
-if the program context overconstrains the type, it is considered a static type
-error.
+The type of an _unsuffixed_ floating-point literal is determined by
+type inference:
+
+* If a floating-point type can be _uniquely_ determined from the
+  surrounding program context, the unsuffixed floating-point literal
+  has that type.
+
+* If the program context underconstrains the type, it defaults to `f64`.
+
+* If the program context overconstrains the type, it is considered a
+  static type error.
 
 Examples of floating-point literals of various forms:
 
@@ -2963,14 +2972,12 @@ move values (depending on their type) from the environment into the lambda
 expression's captured environment.
 
 In this example, we define a function `ten_times` that takes a higher-order
-function argument, and call it with a lambda expression as an argument:
+function argument, and we then call it with a lambda expression as an argument:
 
 ```
 fn ten_times<F>(f: F) where F: Fn(i32) {
-    let mut i = 0i32;
-    while i < 10 {
-        f(i);
-        i += 1;
+    for index in 0..10 {
+        f(index);
     }
 }
 
@@ -3319,10 +3326,13 @@ An example of a tuple type and its use:
 
 ```
 type Pair<'a> = (i32, &'a str);
-let p: Pair<'static> = (10, "hello");
+let p: Pair<'static> = (10, "ten");
 let (a, b) = p;
-assert!(b != "world");
-assert!(p.0 == 10);
+
+assert_eq!(a, 10);
+assert_eq!(b, "ten");
+assert_eq!(p.0, 10);
+assert_eq!(p.1, "ten");
 ```
 
 For historical reasons and convenience, the tuple type with no elements (`()`)
@@ -3332,8 +3342,8 @@ is often called ‘unit’ or ‘the unit type’.
 
 Rust has two different types for a list of items:
 
-* `[T; N]`, an 'array'.
-* `&[T]`, a 'slice'.
+* `[T; N]`, an 'array'
+* `&[T]`, a 'slice'
 
 An array has a fixed size, and can be allocated on either the stack or the
 heap.
@@ -3486,7 +3496,7 @@ x = bo(5,7);
 
 #### Function types for specific items
 
-Internally to the compiler, there are also function types that are specific to a particular
+Internal to the compiler, there are also function types that are specific to a particular
 function item. In the following snippet, for example, the internal types of the functions
 `foo` and `bar` are different, despite the fact that they have the same signature:
 
@@ -3643,7 +3653,7 @@ Coercions are defined in [RFC401]. A coercion is implicit and has no syntax.
 ### Coercion sites
 
 A coercion can only occur at certain coercion sites in a program; these are
-typically places where the desired type is explicit or can be dervied by
+typically places where the desired type is explicit or can be derived by
 propagation from explicit types (without type inference). Possible coercion
 sites are:
 
