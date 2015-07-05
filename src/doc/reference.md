@@ -3653,7 +3653,7 @@ Coercions are defined in [RFC401]. A coercion is implicit and has no syntax.
 ### Coercion sites
 
 A coercion can only occur at certain coercion sites in a program; these are
-typically places where the desired type is explicit or can be dervied by
+typically places where the desired type is explicit or can be derived by
 propagation from explicit types (without type inference). Possible coercion
 sites are:
 
