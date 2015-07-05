@@ -2976,10 +2976,8 @@ function argument, and we then call it with a lambda expression as an argument:
 
 ```
 fn ten_times<F>(f: F) where F: Fn(i32) {
-    let mut i = 0i32;
-    while i < 10 {
-        f(i);
-        i += 1;
+    for index in 0..10 {
+        f(index);
     }
 }
 
