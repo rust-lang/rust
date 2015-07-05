@@ -445,17 +445,22 @@ macro_rules! repeat_u8_as_u64 {
 //
 // And of course, 0x00 brings back the old world of zero'ing on drop.
 #[unstable(feature = "filling_drop")]
+#[allow(missing_docs)]
 pub const POST_DROP_U8: u8 = 0x1d;
 #[unstable(feature = "filling_drop")]
+#[allow(missing_docs)]
 pub const POST_DROP_U32: u32 = repeat_u8_as_u32!(POST_DROP_U8);
 #[unstable(feature = "filling_drop")]
+#[allow(missing_docs)]
 pub const POST_DROP_U64: u64 = repeat_u8_as_u64!(POST_DROP_U8);
 
 #[cfg(target_pointer_width = "32")]
 #[unstable(feature = "filling_drop")]
+#[allow(missing_docs)]
 pub const POST_DROP_USIZE: usize = POST_DROP_U32 as usize;
 #[cfg(target_pointer_width = "64")]
 #[unstable(feature = "filling_drop")]
+#[allow(missing_docs)]
 pub const POST_DROP_USIZE: usize = POST_DROP_U64 as usize;
 
 /// Interprets `src` as `&U`, and then reads `src` without moving the contained
