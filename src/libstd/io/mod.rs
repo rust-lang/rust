@@ -626,7 +626,7 @@ pub trait BufRead: Read {
     /// The iterator returned from this function will yield instances of
     /// `io::Result<String>`. Each string returned will *not* have the newline
     /// separator at the end.
-    #[unstable(feature = "io", reason = "Just recently added.")]
+    #[unstable(feature = "lines_any", reason = "Just recently added.")]
     fn lines_any(self) -> LinesAny<Self> where Self: Sized {
         LinesAny { buf: self }
     }
