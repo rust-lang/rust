@@ -38,7 +38,7 @@ pub trait HashState {
 /// A structure which is a factory for instances of `Hasher` which implement the
 /// default trait.
 ///
-/// This struct has is 0-sized and does not need construction.
+/// This struct is 0-sized and does not need construction.
 pub struct DefaultState<H>(marker::PhantomData<H>);
 
 impl<H: Default + hash::Hasher> HashState for DefaultState<H> {
