@@ -275,7 +275,7 @@ impl OsStr {
     /// On Windows systems, only UTF-8 byte sequences will successfully
     /// convert; non UTF-8 data will produce `None`.
     #[unstable(feature = "convert", reason = "recently added")]
-    pub fn from_bytes_slice(bytes: &[u8]) -> Option<&OsStr> {
+    pub fn from_bytes_opt(bytes: &[u8]) -> Option<&OsStr> {
         if cfg!(windows) {
             str::from_utf8(bytes).ok().map(|s| s.as_ref())
         } else {
