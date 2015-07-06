@@ -481,6 +481,17 @@ pub fn commit_date_str() -> Option<&'static str> {
     option_env!("CFG_VER_DATE")
 }
 
+/// Returns a stage string, such as "stage0".
+pub fn stage_str() -> Option<&'static str> {
+    if cfg!(stage0) {
+        Some("stage0")
+    } else if cfg!(stage1) {
+        Some("stage1")
+    } else {
+        None
+    }
+}
+
 /// Prints version information
 pub fn version(binary: &str, matches: &getopts::Matches) {
     let verbose = matches.opt_present("verbose");
@@ -493,6 +504,9 @@ pub fn version(binary: &str, matches: &getopts::Matches) {
         println!("commit-date: {}", unw(commit_date_str()));
         println!("host: {}", config::host_triple());
         println!("release: {}", unw(release_str()));
+        if let Some(stage) = stage_str() {
+            println!("stage: {}", stage);
+        }
     }
 }
 
