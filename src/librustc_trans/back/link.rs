@@ -12,6 +12,7 @@ use super::archive::{Archive, ArchiveBuilder, ArchiveConfig, METADATA_FILENAME};
 use super::linker::{Linker, GnuLinker, MsvcLinker};
 use super::rpath::RPathConfig;
 use super::rpath;
+use super::msvc;
 use super::svh::Svh;
 use session::config;
 use session::config::NoDebugInfo;
@@ -358,10 +359,14 @@ pub fn mangle_internal_name_by_path_and_seq(path: PathElems, flav: &str) -> Stri
     mangle(path.chain(Some(gensym_name(flav))), None)
 }
 
-pub fn get_cc_prog(sess: &Session) -> String {
-    match sess.opts.cg.linker {
-        Some(ref linker) => return linker.to_string(),
-        None => sess.target.target.options.linker.clone(),
+pub fn get_linker(sess: &Session) -> (String, Command) {
+    if let Some(ref linker) = sess.opts.cg.linker {
+        (linker.clone(), Command::new(linker))
+    } else if sess.target.target.options.is_like_msvc {
+        ("link.exe".to_string(), msvc::link_exe_cmd(sess))
+    } else {
+        (sess.target.target.options.linker.clone(),
+         Command::new(&sess.target.target.options.linker))
     }
 }
 
@@ -807,8 +812,7 @@ fn link_natively(sess: &Session, trans: &CrateTranslation, dylib: bool,
     let tmpdir = TempDir::new("rustc").ok().expect("needs a temp dir");
 
     // The invocations of cc share some flags across platforms
-    let pname = get_cc_prog(sess);
-    let mut cmd = Command::new(&pname);
+    let (pname, mut cmd) = get_linker(sess);
     cmd.env("PATH", command_path(sess));
 
     let root = sess.target_filesearch(PathKind::Native).get_lib_path();
