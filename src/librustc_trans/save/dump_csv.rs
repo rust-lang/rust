@@ -886,18 +886,14 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
     fn process_method_call(&mut self,
                            ex: &ast::Expr,
                            args: &Vec<P<ast::Expr>>) {
-        let method_call = ty::MethodCall::expr(ex.id);
-        let method_id = self.tcx.tables.borrow().method_map[&method_call].def_id;
-        let (def_id, decl_id) = match self.tcx.impl_or_trait_item(method_id).container() {
-            ty::ImplContainer(_) => (Some(method_id), None),
-            ty::TraitContainer(_) => (None, Some(method_id))
-        };
-        let sub_span = self.span.sub_span_for_meth_name(ex.span);
-        self.fmt.meth_call_str(ex.span,
-                               sub_span,
-                               def_id,
-                               decl_id,
-                               self.cur_scope);
+        if let Some(call_data) = self.save_ctxt.get_expr_data(ex) {
+            down_cast_data!(call_data, MethodCallData, self, ex.span);
+            self.fmt.meth_call_str(ex.span,
+                                   Some(call_data.span),
+                                   call_data.ref_id,
+                                   call_data.decl_id,
+                                   call_data.scope);
+        }
 
         // walk receiver and args
         visit::walk_exprs(self, &args);
