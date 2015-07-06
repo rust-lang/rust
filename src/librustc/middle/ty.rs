@@ -1916,7 +1916,8 @@ pub enum BuiltinBound {
 pub fn region_existential_bound<'tcx>(r: ty::Region) -> ExistentialBounds<'tcx> {
     ty::ExistentialBounds { region_bound: r,
                             builtin_bounds: BuiltinBounds::empty(),
-                            projection_bounds: Vec::new() }
+                            projection_bounds: Vec::new(),
+                            region_bound_will_change: false, }
 }
 
 impl CLike for BuiltinBound {
