@@ -79,19 +79,19 @@ impl Socket {
     pub fn set_timeout(&self, dur: Option<Duration>, kind: libc::c_int) -> io::Result<()> {
         let timeout = match dur {
             Some(dur) => {
-                if dur.secs() == 0 && dur.extra_nanos() == 0 {
+                if dur.as_secs() == 0 && dur.subsec_nanos() == 0 {
                     return Err(io::Error::new(io::ErrorKind::InvalidInput,
                                               "cannot set a 0 duration timeout"));
                 }
 
-                let secs = if dur.secs() > libc::time_t::max_value() as u64 {
+                let secs = if dur.as_secs() > libc::time_t::max_value() as u64 {
                     libc::time_t::max_value()
                 } else {
-                    dur.secs() as libc::time_t
+                    dur.as_secs() as libc::time_t
                 };
                 let mut timeout = libc::timeval {
                     tv_sec: secs,
-                    tv_usec: (dur.extra_nanos() / 1000) as libc::suseconds_t,
+                    tv_usec: (dur.subsec_nanos() / 1000) as libc::suseconds_t,
                 };
                 if timeout.tv_sec == 0 && timeout.tv_usec == 0 {
                     timeout.tv_usec = 1;

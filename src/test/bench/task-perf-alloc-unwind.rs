@@ -36,7 +36,7 @@ fn run(repeat: isize, depth: isize) {
                 recurse_or_panic(depth, None)
             }).join();
         });
-        println!("iter: {}", dur);
+        println!("iter: {:?}", dur);
     }
 }
 

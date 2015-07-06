@@ -153,7 +153,7 @@ fn write_header(header: &str) {
 }
 
 fn write_row(label: &str, value: Duration) {
-    println!("{:30} {} s\n", label, value);
+    println!("{:30} {:?} s\n", label, value);
 }
 
 fn write_results(label: &str, results: &Results) {

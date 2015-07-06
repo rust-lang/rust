@@ -114,7 +114,7 @@ fn main() {
                 let dur = Duration::span(|| fibn = Some(fib(n)));
                 let fibn = fibn.unwrap();
 
-                println!("{}\t{}\t{}", n, fibn, dur);
+                println!("{}\t{}\t{:?}", n, fibn, dur);
             }
         }
     }
