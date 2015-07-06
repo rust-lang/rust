@@ -219,7 +219,7 @@ impl<T> Vec<T> {
         } else {
             let size = capacity.checked_mul(mem::size_of::<T>())
                                .expect("capacity overflow");
-            let ptr = unsafe { allocate(size, mem::min_align_of::<T>()) };
+            let ptr = unsafe { allocate(size, mem::align_of::<T>()) };
             if ptr.is_null() { ::alloc::oom() }
             unsafe { Vec::from_raw_parts(ptr as *mut T, 0, capacity) }
         }
@@ -393,7 +393,7 @@ impl<T> Vec<T> {
                 let ptr = reallocate(*self.ptr as *mut u8,
                                      self.cap * mem::size_of::<T>(),
                                      self.len * mem::size_of::<T>(),
-                                     mem::min_align_of::<T>()) as *mut T;
+                                     mem::align_of::<T>()) as *mut T;
                 if ptr.is_null() { ::alloc::oom() }
                 self.ptr = Unique::new(ptr);
             }
@@ -866,9 +866,9 @@ impl<T> Vec<T> {
             // FIXME: Assert statically that the types `T` and `U` have the
             // same minimal alignment in case they are not zero-sized.
 
-            // These asserts are necessary because the `min_align_of` of the
+            // These asserts are necessary because the `align_of` of the
             // types are passed to the allocator by `Vec`.
-            assert!(mem::min_align_of::<T>() == mem::min_align_of::<U>());
+            assert!(mem::align_of::<T>() == mem::align_of::<U>());
 
             // This `as isize` cast is safe, because the size of the elements of the
             // vector is not 0, and:
@@ -1269,9 +1269,9 @@ impl<T> Vec<T> {
 #[inline(never)]
 unsafe fn alloc_or_realloc<T>(ptr: *mut T, old_size: usize, size: usize) -> *mut T {
     if old_size == 0 {
-        allocate(size, mem::min_align_of::<T>()) as *mut T
+        allocate(size, mem::align_of::<T>()) as *mut T
     } else {
-        reallocate(ptr as *mut u8, old_size, size, mem::min_align_of::<T>()) as *mut T
+        reallocate(ptr as *mut u8, old_size, size, mem::align_of::<T>()) as *mut T
     }
 }
 
@@ -1280,7 +1280,7 @@ unsafe fn dealloc<T>(ptr: *mut T, len: usize) {
     if mem::size_of::<T>() != 0 {
         deallocate(ptr as *mut u8,
                    len * mem::size_of::<T>(),
-                   mem::min_align_of::<T>())
+                   mem::align_of::<T>())
     }
 }
 
@@ -1482,7 +1482,7 @@ impl<T> FromIterator<T> for Vec<T> {
             None => return Vec::new(),
             Some(element) => {
                 let (lower, _) = iterator.size_hint();
-                let mut vector = Vec::with_capacity(1 + lower);
+                let mut vector = Vec::with_capacity(lower.saturating_add(1));
                 unsafe {
                     ptr::write(vector.get_unchecked_mut(0), element);
                     vector.set_len(1);
@@ -1570,10 +1570,11 @@ impl<T> Vec<T> {
             let len = self.len();
             if len == self.capacity() {
                 let (lower, _) = iterator.size_hint();
-                self.reserve(lower + 1);
+                self.reserve(lower.saturating_add(1));
             }
             unsafe {
                 ptr::write(self.get_unchecked_mut(len), element);
+                // NB can't overflow since we would have had to alloc the address space
                 self.set_len(len + 1);
             }
         }
