@@ -2486,9 +2486,35 @@ declaration, however, the temporary is created with the lifetime of
 the enclosing block instead, as using the enclosing statement (the
 `let` declaration) would be a guaranteed error (since a pointer to the
 temporary would be stored into a variable, but the temporary would be
-freed before the variable could be used). The compiler uses simple
-syntactic rules to decide which values are being assigned into a `let`
-binding, and therefore deserve a longer temporary lifetime.
+freed before the variable could be used).
+
+The compiler uses simple syntactic rules to decide which values are being
+assigned into a `let` binding, and therefore deserve a longer temporary
+lifetime. We express them more formally based on three grammars:
+
+1. `E&`, which matches expressions like `&<rvalue>` that
+own a pointer into the stack.
+
+2. `P&`, which matches patterns like `ref x` or `(ref x, ref
+y)` that produce ref bindings into the value they are
+matched against or something (at least partially) owned by
+the value they are matched against. (By partially owned,
+I mean that creating a binding into a ref-counted or managed value
+would still count.)
+
+3. `ET`, which matches both rvalues like `foo()` as well as lvalues
+based on rvalues like `foo().x[2].y`.
+
+With these grammers, a subexpression `<rvalue>` that appears in a let
+initializer `let pat [: ty] = expr` has an extended temporary lifetime if any
+of the following conditions are met:
+
+1. `pat` matches `P&` and `expr` matches `ET` (covers cases where `pat` creates
+   ref bindings into an rvalue produced by `expr`)
+2. `ty` is a borrowed pointer and `expr` matches `ET` (covers cases where
+   coercion creates a borrow)
+3. `expr` matches `E&` (covers cases `expr` borrows an rvalue that is then
+   assigned to memory (at least partially) owned by the binding)
 
 Here are some examples:
 
