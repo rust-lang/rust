@@ -231,6 +231,7 @@ impl<'a> StringReader<'a> {
             None => {
                 if self.is_eof() {
                     self.peek_tok = token::Eof;
+                    self.peek_span = codemap::mk_sp(self.filemap.end_pos, self.filemap.end_pos);
                 } else {
                     let start_bytepos = self.last_pos;
                     self.peek_tok = self.next_token_inner();

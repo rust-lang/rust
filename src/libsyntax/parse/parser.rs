@@ -4824,8 +4824,14 @@ impl<'a> Parser<'a> {
             return Err(self.fatal(&format!("expected item, found `{}`", token_str)));
         }
 
+        let hi = if self.span == codemap::DUMMY_SP {
+            inner_lo
+        } else {
+            self.span.lo
+        };
+
         Ok(ast::Mod {
-            inner: mk_sp(inner_lo, self.span.lo),
+            inner: mk_sp(inner_lo, hi),
             items: items
         })
     }
@@ -4869,8 +4875,7 @@ impl<'a> Parser<'a> {
 
     fn push_mod_path(&mut self, id: Ident, attrs: &[Attribute]) {
         let default_path = self.id_to_interned_str(id);
-        let file_path = match ::attr::first_attr_value_str_by_name(attrs,
-                                                                   "path") {
+        let file_path = match ::attr::first_attr_value_str_by_name(attrs, "path") {
             Some(d) => d,
             None => default_path,
         };
@@ -5003,13 +5008,12 @@ impl<'a> Parser<'a> {
         included_mod_stack.push(path.clone());
         drop(included_mod_stack);
 
-        let mut p0 =
-            new_sub_parser_from_file(self.sess,
-                                     self.cfg.clone(),
-                                     &path,
-                                     owns_directory,
-                                     Some(name),
-                                     id_sp);
+        let mut p0 = new_sub_parser_from_file(self.sess,
+                                              self.cfg.clone(),
+                                              &path,
+                                              owns_directory,
+                                              Some(name),
+                                              id_sp);
         let mod_inner_lo = p0.span.lo;
         let mod_attrs = p0.parse_inner_attributes();
         let m0 = try!(p0.parse_mod_items(&token::Eof, mod_inner_lo));
