@@ -107,9 +107,9 @@ fn main() {
 
     // all done, report stats.
     let num_msgs = num_tasks * msg_per_task;
-    let rate = (num_msgs as f64) / (dur.secs() as f64);
+    let rate = (num_msgs as f64) / (dur.as_secs() as f64);
 
-    println!("Sent {} messages in {}", num_msgs, dur);
+    println!("Sent {} messages in {:?}", num_msgs, dur);
     println!("  {} messages / second", rate);
     println!("  {} μs / message", 1000000. / rate);
 }
