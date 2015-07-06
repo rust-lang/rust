@@ -913,12 +913,12 @@ impl<B: BufRead> Iterator for Lines<B> {
 /// An iterator over the lines of an instance of `BufRead` split on either `\n` or `\r\n`.
 ///
 /// See `BufRead::lines_any` for more information.
-#[unstable(feature = "io", reason = "Just recently added.")]
+#[unstable(feature = "lines_any", reason = "Just recently added.")]
 pub struct LinesAny<B> {
     buf: B,
 }
 
-#[unstable(feature = "io", reason = "Just recently added.")]
+#[unstable(feature = "lines_any", reason = "Just recently added.")]
 impl<B: BufRead> Iterator for LinesAny<B> {
     type Item = Result<String>;
 
