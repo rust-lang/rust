@@ -936,7 +936,7 @@ pub fn normalize_and_test_predicates<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
            predicates);
 
     let tcx = ccx.tcx();
-    let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, None, true);
+    let infcx = infer::normalizing_infer_ctxt(tcx, &tcx.tables);
     let mut selcx = traits::SelectionContext::new(&infcx);
     let mut fulfill_cx = infcx.fulfillment_cx.borrow_mut();
     let cause = traits::ObligationCause::dummy();
