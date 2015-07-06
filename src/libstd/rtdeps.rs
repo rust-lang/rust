@@ -12,8 +12,8 @@
 //! the standard library This varies per-platform, but these libraries are
 //! necessary for running libstd.
 
-// All platforms need to link to rustrt
-#[cfg(not(test))]
+// A few small shims in C that haven't been translated to Rust yet
+#[cfg(all(not(test), not(windows)))]
 #[link(name = "rust_builtin", kind = "static")]
 extern {}
 
