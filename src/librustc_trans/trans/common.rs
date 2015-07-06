@@ -905,11 +905,13 @@ pub fn fulfill_obligation<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let vtable = selection.map(|predicate| {
         fulfill_cx.register_predicate_obligation(&infcx, predicate);
     });
-    let vtable = drain_fulfillment_cx_or_panic(span, &infcx, &mut fulfill_cx, &vtable);
+    let vtable = erase_regions(tcx,
+        &drain_fulfillment_cx_or_panic(span, &infcx, &mut fulfill_cx, &vtable)
+    );
 
-    info!("Cache miss: {:?}", trait_ref);
-    ccx.trait_cache().borrow_mut().insert(trait_ref,
-                                          vtable.clone());
+    info!("Cache miss: {:?} => {:?}", trait_ref, vtable);
+
+    ccx.trait_cache().borrow_mut().insert(trait_ref, vtable.clone());
 
     vtable
 }
