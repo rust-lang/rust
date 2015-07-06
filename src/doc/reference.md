@@ -2505,6 +2505,8 @@ would still count.)
 3. `ET`, which matches both rvalues like `foo()` as well as lvalues
 based on rvalues like `foo().x[2].y`.
 
+You can see these grammars in the [grammar reference](grammar.html).
+
 With these grammers, a subexpression `<rvalue>` that appears in a let
 initializer `let pat [: ty] = expr` has an extended temporary lifetime if any
 of the following conditions are met:
