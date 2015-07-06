@@ -33,7 +33,6 @@
 #![feature(collections)]
 #![feature(const_fn)]
 #![feature(core)]
-#![feature(duration)]
 #![feature(duration_span)]
 #![feature(dynamic_lib)]
 #![feature(enumset)]

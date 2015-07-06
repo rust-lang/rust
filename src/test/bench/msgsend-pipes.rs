@@ -95,8 +95,8 @@ fn run(args: &[String]) {
     });
     let result = result.unwrap();
     print!("Count is {}\n", result);
-    print!("Test took {}\n", dur);
-    let thruput = ((size / workers * workers) as f64) / (dur.secs() as f64);
+    print!("Test took {:?}\n", dur);
+    let thruput = ((size / workers * workers) as f64) / (dur.as_secs() as f64);
     print!("Throughput={} per sec\n", thruput);
     assert_eq!(result, num_bytes * size);
 }

@@ -54,8 +54,8 @@ fn main() {
 
     let maxf = max as f64;
 
-    println!("insert(): {} seconds\n", checkf);
-    println!("        : {} op/s\n", maxf / checkf.secs() as f64);
-    println!("get()   : {} seconds\n", appendf);
-    println!("        : {} op/s\n", maxf / appendf.secs() as f64);
+    println!("insert(): {:?} seconds\n", checkf);
+    println!("        : {} op/s\n", maxf / checkf.as_secs() as f64);
+    println!("get()   : {:?} seconds\n", appendf);
+    println!("        : {} op/s\n", maxf / appendf.as_secs() as f64);
 }
