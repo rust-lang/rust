@@ -108,6 +108,10 @@ will run all the tests on every platform we support. If it all works out,
 
 [merge-queue]: http://buildbot.rust-lang.org/homu/queue/rust
 
+Speaking of tests, Rust has a comprehensive test suite. More information about
+it can be found
+[here](https://github.com/rust-lang/rust-wiki-backup/blob/master/Note-testsuite.md).
+
 ## Writing Documentation
 
 Documentation improvements are very welcome. The source of `doc.rust-lang.org`
