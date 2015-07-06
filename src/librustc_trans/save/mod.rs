@@ -61,6 +61,8 @@ pub enum Data {
     VariableRefData(VariableRefData),
     /// Data for a reference to a type or trait.
     TypeRefData(TypeRefData),
+    /// Data about a method call.
+    MethodCallData(MethodCallData),
 }
 
 /// Data for all kinds of functions and methods.
@@ -136,6 +138,16 @@ pub struct TypeRefData {
     pub scope: NodeId,
     pub ref_id: DefId,
 }
+
+/// Data about a method call.
+#[derive(Debug)]
+pub struct MethodCallData {
+    pub span: Span,
+    pub scope: NodeId,
+    pub ref_id: Option<DefId>,
+    pub decl_id: Option<DefId>,
+}
+
 
 
 impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
@@ -371,6 +383,21 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                         None
                     }
                 }
+            }
+            ast::ExprMethodCall(..) => {
+                let method_call = ty::MethodCall::expr(expr.id);
+                let method_id = self.tcx.tables.borrow().method_map[&method_call].def_id;
+                let (def_id, decl_id) = match self.tcx.impl_or_trait_item(method_id).container() {
+                    ty::ImplContainer(_) => (Some(method_id), None),
+                    ty::TraitContainer(_) => (None, Some(method_id))
+                };
+                let sub_span = self.span_utils.sub_span_for_meth_name(expr.span);
+                Some(Data::MethodCallData(MethodCallData {
+                    span: sub_span.unwrap(),
+                    scope: self.tcx.map.get_enclosing_scope(expr.id).unwrap_or(0),
+                    ref_id: def_id,
+                    decl_id: decl_id,                    
+                }))
             }
             _ => {
                 // FIXME
