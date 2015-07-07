@@ -3,6 +3,10 @@
 Most of the time, we think in terms of types with a fixed, positive size. This
 is not always the case, however.
 
+
+
+
+
 # Dynamically Sized Types (DSTs)
 
 Rust also supports types without a statically known size. On the surface,
@@ -34,19 +38,20 @@ a variable position based on its alignment.**
 
 
 
+
+
 # Zero Sized Types (ZSTs)
 
 Rust actually allows types to be specified that occupy *no* space:
 
 ```rust
 struct Foo; // No fields = no size
-enum Bar; // No variants = no size
 
 // All fields have no size = no size
 struct Baz {
     foo: Foo,
-    bar: Bar,
-    qux: (), // empty tuple has no size
+    qux: (), 	  // empty tuple has no size
+    baz: [u8; 0], // empty array has no size
 }
 ```
 
@@ -67,3 +72,16 @@ standard allocators (including jemalloc, the one used by Rust) generally conside
 passing in `0` as Undefined Behaviour.
 
 
+
+
+
+# Void Types
+
+Rust also enables types to be declared that *cannot even be instantiated*. These
+types can only be talked about at the type level, and never at the value level.
+
+```rust
+enum Foo { } // No variants = VOID
+```
+
+TODO: WHY?!
