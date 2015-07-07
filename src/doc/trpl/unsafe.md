@@ -8,7 +8,7 @@ this, Rust has a keyword, `unsafe`. Code using `unsafe` has less restrictions
 than normal code does.
 
 Let’s go over the syntax, and then we’ll talk semantics. `unsafe` is used in
-two contexts. The first one is to mark a function as unsafe:
+four contexts. The first one is to mark a function as unsafe:
 
 ```rust
 unsafe fn danger_will_robinson() {
@@ -25,6 +25,19 @@ The second use of `unsafe` is an unsafe block:
 unsafe {
     // scary stuff
 }
+```
+
+The third is for unsafe traits:
+
+```rust
+unsafe trait Scary { }
+```
+
+And the fourth is for `impl`ementing one of those traits:
+
+```rust
+# unsafe trait Scary { }
+unsafe impl Scary for i32 {}
 ```
 
 It’s important to be able to explicitly delineate code that may have bugs that
