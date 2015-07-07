@@ -101,6 +101,8 @@ the lifetime `'a` has snuck in between the `&` and the `mut i32`. We read `&mut
 i32` as ‘a mutable reference to an i32’ and `&'a mut i32` as ‘a mutable
 reference to an `i32` with the lifetime `'a`’.
 
+# In `struct`s
+
 You’ll also need explicit lifetimes when working with [`struct`][structs]s:
 
 ```rust
@@ -136,6 +138,33 @@ x: &'a i32,
 
 uses it. So why do we need a lifetime here? We need to ensure that any reference
 to a `Foo` cannot outlive the reference to an `i32` it contains.
+
+## `impl` blocks
+
+Let’s implement a method on `Foo`:
+
+```rust
+struct Foo<'a> {
+    x: &'a i32,
+}
+
+impl<'a> Foo<'a> {
+    fn x(&self) -> &'a i32 { self.x }
+}
+
+fn main() {
+    let y = &5; // this is the same as `let _y = 5; let y = &_y;`
+    let f = Foo { x: y };
+
+    println!("x is: {}", f.x());
+}
+```
+
+As you can see, we need to declare a lifetime for `Foo` in the `impl` line. We repeat
+`'a` twice, just like on functions: `impl<'a>` defines a lifetime `'a`, and `Foo<'a>`
+uses it.
+
+## Multiple lifetimes
 
 If you have multiple references, you can use the same lifetime multiple times:
 
