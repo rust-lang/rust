@@ -417,11 +417,10 @@ pub fn link_binary(sess: &Session,
 
     // Remove the temporary object file and metadata if we aren't saving temps
     if !sess.opts.cg.save_temps {
-        let obj_filename = outputs.temp_path(OutputTypeObject);
-        if !sess.opts.output_types.contains(&OutputTypeObject) {
-            remove(sess, &obj_filename);
+        for obj in object_filenames(sess, outputs) {
+            remove(sess, &obj);
         }
-        remove(sess, &obj_filename.with_extension("metadata.o"));
+        remove(sess, &outputs.with_extension("metadata.o"));
     }
 
     out_filenames
@@ -499,7 +498,7 @@ fn link_binary_output(sess: &Session,
                       crate_type: config::CrateType,
                       outputs: &OutputFilenames,
                       crate_name: &str) -> PathBuf {
-    let obj_filename = outputs.temp_path(OutputTypeObject);
+    let objects = object_filenames(sess, outputs);
     let out_filename = match outputs.single_output_file {
         Some(ref file) => file.clone(),
         None => {
@@ -508,39 +507,39 @@ fn link_binary_output(sess: &Session,
         }
     };
 
-    // Make sure the output and obj_filename are both writeable.
-    // Mac, FreeBSD, and Windows system linkers check this already --
-    // however, the Linux linker will happily overwrite a read-only file.
-    // We should be consistent.
-    let obj_is_writeable = is_writeable(&obj_filename);
-    let out_is_writeable = is_writeable(&out_filename);
-    if !out_is_writeable {
-        sess.fatal(&format!("output file {} is not writeable -- check its \
-                            permissions.",
-                           out_filename.display()));
-    }
-    else if !obj_is_writeable {
-        sess.fatal(&format!("object file {} is not writeable -- check its \
-                            permissions.",
-                           obj_filename.display()));
+    // Make sure files are writeable.  Mac, FreeBSD, and Windows system linkers
+    // check this already -- however, the Linux linker will happily overwrite a
+    // read-only file.  We should be consistent.
+    for file in objects.iter().chain(Some(&out_filename)) {
+        if !is_writeable(file) {
+            sess.fatal(&format!("output file {} is not writeable -- check its \
+                                permissions", file.display()));
+        }
     }
 
     match crate_type {
         config::CrateTypeRlib => {
-            link_rlib(sess, Some(trans), &obj_filename, &out_filename).build();
+            link_rlib(sess, Some(trans), &objects, &out_filename).build();
         }
         config::CrateTypeStaticlib => {
-            link_staticlib(sess, &obj_filename, &out_filename);
+            link_staticlib(sess, &objects, &out_filename);
         }
         config::CrateTypeExecutable => {
-            link_natively(sess, trans, false, &obj_filename, &out_filename);
+            link_natively(sess, trans, false, &objects, &out_filename, outputs);
         }
         config::CrateTypeDylib => {
-            link_natively(sess, trans, true, &obj_filename, &out_filename);
+            link_natively(sess, trans, true, &objects, &out_filename, outputs);
         }
     }
 
     out_filename
+}
+
+fn object_filenames(sess: &Session, outputs: &OutputFilenames) -> Vec<PathBuf> {
+    (0..sess.opts.cg.codegen_units).map(|i| {
+        let ext = format!("{}.o", i);
+        outputs.temp_path(OutputTypeObject).with_extension(&ext)
+    }).collect()
 }
 
 fn archive_search_paths(sess: &Session) -> Vec<PathBuf> {
@@ -560,9 +559,9 @@ fn archive_search_paths(sess: &Session) -> Vec<PathBuf> {
 // native libraries and inserting all of the contents into this archive.
 fn link_rlib<'a>(sess: &'a Session,
                  trans: Option<&CrateTranslation>, // None == no metadata/bytecode
-                 obj_filename: &Path,
+                 objects: &[PathBuf],
                  out_filename: &Path) -> ArchiveBuilder<'a> {
-    info!("preparing rlib from {:?} to {:?}", obj_filename, out_filename);
+    info!("preparing rlib from {:?} to {:?}", objects, out_filename);
     let handler = &sess.diagnostic().handler;
     let config = ArchiveConfig {
         handler: handler,
@@ -574,7 +573,9 @@ fn link_rlib<'a>(sess: &'a Session,
         command_path: command_path(sess),
     };
     let mut ab = ArchiveBuilder::create(config);
-    ab.add_file(obj_filename).unwrap();
+    for obj in objects {
+        ab.add_file(obj).unwrap();
+    }
 
     for &(ref l, kind) in sess.cstore.get_used_libraries().borrow().iter() {
         match kind {
@@ -600,7 +601,7 @@ fn link_rlib<'a>(sess: &'a Session,
     // this is as follows:
     //
     // * When performing LTO, this archive will be modified to remove
-    //   obj_filename from above. The reason for this is described below.
+    //   objects from above. The reason for this is described below.
     //
     // * When the system linker looks at an archive, it will attempt to
     //   determine the architecture of the archive in order to see whether its
@@ -639,15 +640,14 @@ fn link_rlib<'a>(sess: &'a Session,
             // For LTO purposes, the bytecode of this library is also inserted
             // into the archive.  If codegen_units > 1, we insert each of the
             // bitcode files.
-            for i in 0..sess.opts.cg.codegen_units {
+            for obj in objects {
                 // Note that we make sure that the bytecode filename in the
                 // archive is never exactly 16 bytes long by adding a 16 byte
                 // extension to it. This is to work around a bug in LLDB that
                 // would cause it to crash if the name of a file in an archive
                 // was exactly 16 bytes.
-                let bc_filename = obj_filename.with_extension(&format!("{}.bc", i));
-                let bc_deflated_filename = obj_filename.with_extension(
-                    &format!("{}.bytecode.deflate", i));
+                let bc_filename = obj.with_extension("bc");
+                let bc_deflated_filename = obj.with_extension("bytecode.deflate");
 
                 let mut bc_data = Vec::new();
                 match fs::File::open(&bc_filename).and_then(|mut f| {
@@ -750,8 +750,8 @@ fn write_rlib_bytecode_object_v1(writer: &mut Write,
 // There's no need to include metadata in a static archive, so ensure to not
 // link in the metadata object file (and also don't prepare the archive with a
 // metadata file).
-fn link_staticlib(sess: &Session, obj_filename: &Path, out_filename: &Path) {
-    let ab = link_rlib(sess, None, obj_filename, out_filename);
+fn link_staticlib(sess: &Session, objects: &[PathBuf], out_filename: &Path) {
+    let ab = link_rlib(sess, None, objects, out_filename);
     let mut ab = match sess.target.target.options.is_like_osx {
         true => ab.build().extend(),
         false => ab,
@@ -806,8 +806,9 @@ fn link_staticlib(sess: &Session, obj_filename: &Path, out_filename: &Path) {
 // This will invoke the system linker/cc to create the resulting file. This
 // links to all upstream files as well.
 fn link_natively(sess: &Session, trans: &CrateTranslation, dylib: bool,
-                 obj_filename: &Path, out_filename: &Path) {
-    info!("preparing dylib? ({}) from {:?} to {:?}", dylib, obj_filename,
+                 objects: &[PathBuf], out_filename: &Path,
+                 outputs: &OutputFilenames) {
+    info!("preparing dylib? ({}) from {:?} to {:?}", dylib, objects,
           out_filename);
     let tmpdir = TempDir::new("rustc").ok().expect("needs a temp dir");
 
@@ -828,7 +829,7 @@ fn link_natively(sess: &Session, trans: &CrateTranslation, dylib: bool,
             Box::new(GnuLinker { cmd: &mut cmd, sess: &sess }) as Box<Linker>
         };
         link_args(&mut *linker, sess, dylib, tmpdir.path(),
-                  trans, obj_filename, out_filename);
+                  trans, objects, out_filename, outputs);
         if !sess.target.target.options.no_compiler_rt {
             linker.link_staticlib("compiler-rt");
         }
@@ -884,8 +885,9 @@ fn link_args(cmd: &mut Linker,
              dylib: bool,
              tmpdir: &Path,
              trans: &CrateTranslation,
-             obj_filename: &Path,
-             out_filename: &Path) {
+             objects: &[PathBuf],
+             out_filename: &Path,
+             outputs: &OutputFilenames) {
 
     // The default library location, we need this to find the runtime.
     // The location of crates will be determined as needed.
@@ -895,7 +897,9 @@ fn link_args(cmd: &mut Linker,
     let t = &sess.target.target;
 
     cmd.include_path(&fix_windows_verbatim_for_gcc(&lib_path));
-    cmd.add_object(obj_filename);
+    for obj in objects {
+        cmd.add_object(obj);
+    }
     cmd.output_filename(out_filename);
 
     // Stack growth requires statically linking a __morestack function. Note
@@ -922,7 +926,7 @@ fn link_args(cmd: &mut Linker,
     // executable. This metadata is in a separate object file from the main
     // object file, so we link that in here.
     if dylib {
-        cmd.add_object(&obj_filename.with_extension("metadata.o"));
+        cmd.add_object(&outputs.with_extension("metadata.o"));
     }
 
     // Try to strip as much out of the generated object by removing unused
