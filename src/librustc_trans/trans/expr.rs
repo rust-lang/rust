@@ -367,8 +367,7 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 match datum.ty.sty {
                     // Don't skip a conversion from Box<T> to &T, etc.
                     ty::TyRef(..) => {
-                        let method_call = MethodCall::autoderef(expr.id, 0);
-                        if bcx.tcx().tables.borrow().method_map.contains_key(&method_call) {
+                        if bcx.tcx().is_overloaded_autoderef(expr.id, 0) {
                             // Don't skip an overloaded deref.
                             0
                         } else {
@@ -1612,9 +1611,7 @@ fn trans_unary<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     // The only overloaded operator that is translated to a datum
     // is an overloaded deref, since it is always yields a `&T`.
     // Otherwise, we should be in the RvalueDpsExpr path.
-    assert!(
-        op == ast::UnDeref ||
-        !ccx.tcx().tables.borrow().method_map.contains_key(&method_call));
+    assert!(op == ast::UnDeref || !ccx.tcx().is_method_call(expr.id));
 
     let un_ty = expr_ty(bcx, expr);
 
@@ -1907,7 +1904,7 @@ fn trans_binary<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let ccx = bcx.ccx();
 
     // if overloaded, would be RvalueDpsExpr
-    assert!(!ccx.tcx().tables.borrow().method_map.contains_key(&MethodCall::expr(expr.id)));
+    assert!(!ccx.tcx().is_method_call(expr.id));
 
     match op.node {
         ast::BiAnd => {
@@ -2141,7 +2138,7 @@ fn trans_assign_op<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     debug!("trans_assign_op(expr={:?})", expr);
 
     // User-defined operator methods cannot be used with `+=` etc right now
-    assert!(!bcx.tcx().tables.borrow().method_map.contains_key(&MethodCall::expr(expr.id)));
+    assert!(!bcx.tcx().is_method_call(expr.id));
 
     // Evaluate LHS (destination), which should be an lvalue
     let dst_datum = unpack_datum!(bcx, trans_to_lvalue(bcx, dst, "assign_op"));
@@ -2606,7 +2603,7 @@ enum ExprKind {
 }
 
 fn expr_kind(tcx: &ty::ctxt, expr: &ast::Expr) -> ExprKind {
-    if tcx.tables.borrow().method_map.contains_key(&MethodCall::expr(expr.id)) {
+    if tcx.is_method_call(expr.id) {
         // Overloaded operations are generally calls, and hence they are
         // generated via DPS, but there are a few exceptions:
         return match expr.node {
