@@ -145,12 +145,7 @@ impl<'a, 'b: 'a> DebugTuple<'a, 'b> {
                 ("(", "")
             };
 
-            if self.is_pretty() {
-                let mut writer = PadAdapter::new(self.fmt);
-                fmt::write(&mut writer, format_args!("{}\n{:#?}", prefix, value))
-            } else {
-                write!(self.fmt, "{}{}{:?}", prefix, space, value)
-            }
+            write!(self.fmt, "{}{}{:?}", prefix, space, value)
         });
 
         self.has_fields = true;
@@ -162,18 +157,10 @@ impl<'a, 'b: 'a> DebugTuple<'a, 'b> {
     pub fn finish(&mut self) -> fmt::Result {
         if self.has_fields {
             self.result = self.result.and_then(|_| {
-                if self.is_pretty() {
-                    self.fmt.write_str("\n)")
-                } else {
-                    self.fmt.write_str(")")
-                }
+                self.fmt.write_str(")")
             });
         }
         self.result
-    }
-
-    fn is_pretty(&self) -> bool {
-        self.fmt.flags() & (1 << (FlagV1::Alternate as usize)) != 0
     }
 }
 

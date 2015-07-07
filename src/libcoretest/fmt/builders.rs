@@ -120,6 +120,9 @@ mod debug_tuple {
 
         assert_eq!("Foo", format!("{:?}", Foo));
         assert_eq!("Foo", format!("{:#?}", Foo));
+
+        assert_eq!("None", format!("{:?}", None::<Foo>));
+        assert_eq!("None", format!("{:#?}", None::<Foo>));
     }
 
     #[test]
@@ -135,11 +138,13 @@ mod debug_tuple {
         }
 
         assert_eq!("Foo(true)", format!("{:?}", Foo));
-        assert_eq!(
-"Foo(
-    true
-)",
-                   format!("{:#?}", Foo));
+        assert_eq!("Foo(true)", format!("{:#?}", Foo));
+
+        assert_eq!("Some(1)", format!("{:?}", Some(1)));
+        assert_eq!("Some(1)", format!("{:#?}", Some(1)));
+
+        assert_eq!("(true,)", format!("{:?}", (true,)));
+        assert_eq!("(true,)", format!("{:#?}", (true,)));
     }
 
     #[test]
@@ -156,12 +161,10 @@ mod debug_tuple {
         }
 
         assert_eq!("Foo(true, 10/20)", format!("{:?}", Foo));
-        assert_eq!(
-"Foo(
-    true,
-    10/20
-)",
-                   format!("{:#?}", Foo));
+        assert_eq!("Foo(true, 10/20)", format!("{:#?}", Foo));
+
+        assert_eq!("(true, 123)", format!("{:?}", (true, 123)));
+        assert_eq!("(true, 123)", format!("{:#?}", (true, 123)));
     }
 
     #[test]
@@ -190,15 +193,16 @@ mod debug_tuple {
 
         assert_eq!("Bar(Foo(true, 10/20), \"world\")",
                    format!("{:?}", Bar));
-        assert_eq!(
-"Bar(
-    Foo(
-        true,
-        10/20
-    ),
-    \"world\"
-)",
+        assert_eq!("Bar(Foo(true, 10/20), \"world\")",
                    format!("{:#?}", Bar));
+
+        #[derive(Debug)]
+        struct Baz {
+            value: i32
+        }
+
+        assert_eq!("(true, Baz { value: 1 })", format!("{:?}", (true, Baz { value: 1 })));
+        assert_eq!("(true, Baz { value: 1 })", format!("{:#?}", (true, Baz { value: 1 })));
     }
 }
 
