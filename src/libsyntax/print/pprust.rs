@@ -120,11 +120,13 @@ pub fn print_crate<'a>(cm: &'a CodeMap,
         // of the feature gate, so we fake them up here.
 
         let no_std_meta = attr::mk_word_item(InternedString::new("no_std"));
+        let prelude_import_meta = attr::mk_word_item(InternedString::new("prelude_import"));
 
         // #![feature(no_std)]
         let fake_attr = attr::mk_attr_inner(attr::mk_attr_id(),
                                             attr::mk_list_item(InternedString::new("feature"),
-                                                               vec![no_std_meta.clone()]));
+                                                               vec![no_std_meta.clone(),
+                                                                    prelude_import_meta]));
         try!(s.print_attribute(&fake_attr));
 
         // #![no_std]
