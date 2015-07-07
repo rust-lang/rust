@@ -10,15 +10,34 @@
 
 use ast;
 use attr;
-use codemap::DUMMY_SP;
+use codemap::{DUMMY_SP, Span, ExpnInfo, NameAndSpan, MacroAttribute};
 use codemap;
 use fold::Folder;
 use fold;
 use parse::token::InternedString;
 use parse::token::special_idents;
-use parse::token;
+use parse::{token, ParseSess};
 use ptr::P;
 use util::small_vector::SmallVector;
+
+/// Craft a span that will be ignored by the stability lint's
+/// call to codemap's is_internal check.
+/// The expanded code uses the unstable `#[prelude_import]` attribute.
+fn ignored_span(sess: &ParseSess, sp: Span) -> Span {
+    let info = ExpnInfo {
+        call_site: DUMMY_SP,
+        callee: NameAndSpan {
+            name: "std_inject".to_string(),
+            format: MacroAttribute,
+            span: None,
+            allow_internal_unstable: true,
+        }
+    };
+    let expn_id = sess.codemap().record_expansion(info);
+    let mut sp = sp;
+    sp.expn_id = expn_id;
+    return sp;
+}
 
 pub fn maybe_inject_crates_ref(krate: ast::Crate, alt_std_name: Option<String>)
                                -> ast::Crate {
@@ -29,9 +48,12 @@ pub fn maybe_inject_crates_ref(krate: ast::Crate, alt_std_name: Option<String>)
     }
 }
 
-pub fn maybe_inject_prelude(krate: ast::Crate) -> ast::Crate {
+pub fn maybe_inject_prelude(sess: &ParseSess, krate: ast::Crate) -> ast::Crate {
     if use_std(&krate) {
-        inject_prelude(krate)
+        let mut fold = PreludeInjector {
+            span: ignored_span(sess, DUMMY_SP)
+        };
+        fold.fold_crate(krate)
     } else {
         krate
     }
@@ -80,8 +102,9 @@ fn inject_crates_ref(krate: ast::Crate, alt_std_name: Option<String>) -> ast::Cr
     fold.fold_crate(krate)
 }
 
-struct PreludeInjector;
-
+struct PreludeInjector {
+    span: Span
+}
 
 impl fold::Folder for PreludeInjector {
     fn fold_crate(&mut self, mut krate: ast::Crate) -> ast::Crate {
@@ -107,7 +130,7 @@ impl fold::Folder for PreludeInjector {
 
     fn fold_mod(&mut self, mut mod_: ast::Mod) -> ast::Mod {
         let prelude_path = ast::Path {
-            span: DUMMY_SP,
+            span: self.span,
             global: false,
             segments: vec![
                 ast::PathSegment {
@@ -131,12 +154,12 @@ impl fold::Folder for PreludeInjector {
             ident: special_idents::invalid,
             node: ast::ItemUse(vp),
             attrs: vec![ast::Attribute {
-                span: DUMMY_SP,
+                span: self.span,
                 node: ast::Attribute_ {
                     id: attr::mk_attr_id(),
                     style: ast::AttrOuter,
                     value: P(ast::MetaItem {
-                        span: DUMMY_SP,
+                        span: self.span,
                         node: ast::MetaWord(token::get_name(
                                 special_idents::prelude_import.name)),
                     }),
@@ -144,14 +167,9 @@ impl fold::Folder for PreludeInjector {
                 },
             }],
             vis: ast::Inherited,
-            span: DUMMY_SP,
+            span: self.span,
         }));
 
         fold::noop_fold_mod(mod_, self)
     }
-}
-
-fn inject_prelude(krate: ast::Crate) -> ast::Crate {
-    let mut fold = PreludeInjector;
-    fold.fold_crate(krate)
 }

@@ -1113,6 +1113,7 @@ fn report_ambiguous_associated_type(tcx: &ty::ctxt,
 // any ambiguity.
 fn find_bound_for_assoc_item<'tcx>(this: &AstConv<'tcx>,
                                    ty_param_node_id: ast::NodeId,
+                                   ty_param_name: Option<ast::Name>,
                                    assoc_name: ast::Name,
                                    span: Span)
                                    -> Result<ty::PolyTraitRef<'tcx>, ErrorReported>
@@ -1138,12 +1139,21 @@ fn find_bound_for_assoc_item<'tcx>(this: &AstConv<'tcx>,
         .filter(|b| this.trait_defines_associated_type_named(b.def_id(), assoc_name))
         .collect();
 
-    let ty_param_name = tcx.type_parameter_def(ty_param_node_id).name;
-    one_bound_for_assoc_type(tcx,
-                             suitable_bounds,
-                             &token::get_name(ty_param_name),
-                             &token::get_name(assoc_name),
-                             span)
+    if let Some(s) = ty_param_name {
+        // borrowck doesn't like this any other way
+        one_bound_for_assoc_type(tcx,
+                                 suitable_bounds,
+                                 &token::get_name(s),
+                                 &token::get_name(assoc_name),
+                                 span)
+    } else {
+        one_bound_for_assoc_type(tcx,
+                                 suitable_bounds,
+                                 "Self",
+                                 &token::get_name(assoc_name),
+                                 span)
+
+    }
 }
 
 
@@ -1240,12 +1250,20 @@ fn associated_path_def_to_ty<'tcx>(this: &AstConv<'tcx>,
                 _ => unreachable!()
             }
         }
-        (&ty::TyParam(_), def::DefTyParam(..)) |
-        (&ty::TyParam(_), def::DefSelfTy(Some(_), None)) => {
-            // A type parameter or Self, we need to find the associated item from
-            // a bound.
-            let ty_param_node_id = ty_path_def.local_node_id();
-            match find_bound_for_assoc_item(this, ty_param_node_id, assoc_name, span) {
+        (&ty::TyParam(_), def::DefSelfTy(Some(trait_did),  None)) => {
+            assert_eq!(trait_did.krate, ast::LOCAL_CRATE);
+            match find_bound_for_assoc_item(this, trait_did.node, None, assoc_name, span) {
+                Ok(bound) => bound,
+                Err(ErrorReported) => return (tcx.types.err, ty_path_def),
+            }
+        }
+        (&ty::TyParam(_), def::DefTyParam(_, _, param_did, param_name)) => {
+            assert_eq!(param_did.krate, ast::LOCAL_CRATE);
+            match find_bound_for_assoc_item(this,
+                                            param_did.node,
+                                            Some(param_name),
+                                            assoc_name,
+                                            span) {
                 Ok(bound) => bound,
                 Err(ErrorReported) => return (tcx.types.err, ty_path_def),
             }

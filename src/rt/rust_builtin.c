@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#if !defined(_WIN32)
+
 #include <stdint.h>
 #include <time.h>
 #include <string.h>
@@ -15,7 +17,6 @@
 #include <stdlib.h>
 
 
-#if !defined(_WIN32)
 #include <dirent.h>
 #include <pthread.h>
 #include <signal.h>
@@ -23,12 +24,6 @@
 #include <sys/time.h>
 #include <sys/types.h>
 #include <unistd.h>
-#else
-#include <windows.h>
-#include <wincrypt.h>
-#include <stdio.h>
-#include <tchar.h>
-#endif
 
 #ifdef __APPLE__
 #include <TargetConditionals.h>
@@ -41,17 +36,8 @@
 
 /* Foreign builtins. */
 //include valgrind.h after stdint.h so that uintptr_t is defined for msys2 w64
-#ifndef _WIN32
 #include "valgrind/valgrind.h"
-#endif
 
-#if defined(_MSC_VER)
-# define RUST_BUILTIN_API __declspec(dllexport)
-#else
-# define RUST_BUILTIN_API
-#endif
-
-#ifndef _WIN32
 char*
 rust_list_dir_val(struct dirent* entry_ptr) {
     return entry_ptr->d_name;
@@ -92,17 +78,8 @@ int
 rust_dirent_t_size() {
     return sizeof(struct dirent);
 }
-#endif
 
-#if defined(_WIN32)
-int
-get_num_cpus() {
-    SYSTEM_INFO sysinfo;
-    GetSystemInfo(&sysinfo);
-
-    return (int) sysinfo.dwNumberOfProcessors;
-}
-#elif defined(__BSD__)
+#if defined(__BSD__)
 int
 get_num_cpus() {
     /* swiped from http://stackoverflow.com/questions/150355/
@@ -136,7 +113,6 @@ get_num_cpus() {
 }
 #endif
 
-RUST_BUILTIN_API
 uintptr_t
 rust_get_num_cpus() {
     return get_num_cpus();
@@ -144,11 +120,7 @@ rust_get_num_cpus() {
 
 uintptr_t
 rust_running_on_valgrind() {
-#ifdef _WIN32
-    return 0;
-#else
     return RUNNING_ON_VALGRIND;
-#endif
 }
 
 #if defined(__DragonFly__)
@@ -483,6 +455,8 @@ const char * rust_current_exe() {
 }
 
 #endif
+
+#endif // !defined(_WIN32)
 
 //
 // Local Variables:
