@@ -1368,6 +1368,62 @@ struct Foo {
 ```
 "##,
 
+E0128: r##"
+Type parameter defaults can only use parameters that occur before them.
+Erroneous code example:
+
+```
+pub struct Foo<T=U, U=()> {
+    field1: T,
+    filed2: U,
+}
+// error: type parameters with a default cannot use forward declared
+// identifiers
+```
+
+Since type parameters are evaluated in-order, you may be able to fix this issue
+by doing:
+
+```
+pub struct Foo<U=(), T=U> {
+    field1: T,
+    filed2: U,
+}
+```
+
+Please also verify that this wasn't because of a name-clash and rename the type
+parameter if so.
+"##,
+
+E0130: r##"
+You declared a pattern as an argument in a foreign function declaration.
+Erroneous code example:
+
+```
+extern {
+    fn foo((a, b): (u32, u32)); // error: patterns aren't allowed in foreign
+                                //        function declarations
+}
+```
+
+Please replace the pattern argument with a regular one. Example:
+
+```
+struct SomeStruct {
+    a: u32,
+    b: u32,
+}
+
+extern {
+    fn foo(s: SomeStruct); // ok!
+}
+// or
+extern {
+    fn foo(a: (u32, u32)); // ok!
+}
+```
+"##,
+
 E0131: r##"
 It is not possible to define `main` with type parameters, or even with function
 parameters. When `main` is present, it must take no arguments and return `()`.
@@ -1379,6 +1435,30 @@ attribute. Such a function must have the following type signature:
 
 ```
 fn(isize, *const *const u8) -> isize
+```
+"##,
+
+E0159: r##"
+You tried to use a trait as a struct constructor. Erroneous code example:
+
+```
+trait TraitNotAStruct {}
+
+TraitNotAStruct{ value: 0 }; // error: use of trait `TraitNotAStruct` as a
+                             //        struct constructor
+```
+
+Please verify you used the correct type name or please implement the trait
+on a struct and use this struct constructor. Example:
+
+```
+trait TraitNotAStruct {}
+
+struct Foo {
+    value: i32
+}
+
+Foo{ value: 0 }; // ok!
 ```
 "##,
 
@@ -1467,6 +1547,7 @@ impl Foo for Bar {
     // the impl
     fn foo() {}
 }
+```
 "##,
 
 E0192: r##"
@@ -1978,11 +2059,8 @@ register_diagnostics! {
     E0122,
     E0123,
     E0127,
-    E0128,
     E0129,
-    E0130,
     E0141,
-    E0159,
     E0163,
     E0164,
     E0167,
