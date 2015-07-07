@@ -289,15 +289,19 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
         if !cross_crate { return }
 
         match *stab {
-            Some(&Stability { level: attr::Unstable, ref feature, ref reason, .. }) => {
+            Some(&Stability { level: attr::Unstable, ref feature, ref reason, issue, .. }) => {
                 self.used_features.insert(feature.clone(), attr::Unstable);
 
                 if !self.active_features.contains(feature) {
-                    let msg = match *reason {
+                    let mut msg = match *reason {
                         Some(ref r) => format!("use of unstable library feature '{}': {}",
                                                &feature, &r),
                         None => format!("use of unstable library feature '{}'", &feature)
                     };
+                    if let Some(n) = issue {
+                        use std::fmt::Write;
+                        write!(&mut msg, " (see issue #{})", n).unwrap();
+                    }
 
                     emit_feature_err(&self.tcx.sess.parse_sess.span_diagnostic,
                                       &feature, span, &msg);
