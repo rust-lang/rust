@@ -195,6 +195,15 @@ impl<'tcx> TypeVariableTable<'tcx> {
 
         escaping_types
     }
+
+    pub fn unsolved_variables(&self) -> Vec<ty::TyVid> {
+        self.values.iter().enumerate().filter_map(|(i, value)|
+            match &value.value {
+                &TypeVariableValue::Known(_) => None,
+                &TypeVariableValue::Bounded(_) => Some(ty::TyVid { index: i as u32 })
+            }
+        ).collect()
+    }
 }
 
 impl<'tcx> sv::SnapshotVecDelegate for Delegate<'tcx> {

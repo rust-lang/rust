@@ -95,6 +95,9 @@ pub struct InferCtxt<'a, 'tcx: 'a> {
     normalize: bool,
 
     err_count_on_creation: usize,
+
+    // Default Type Parameter fallbacks
+    pub defaults: RefCell<FnvHashMap<Ty<'tcx>, Ty<'tcx>>>,
 }
 
 /// A map returned by `skolemize_late_bound_regions()` indicating the skolemized
@@ -350,7 +353,8 @@ pub fn new_infer_ctxt<'a, 'tcx>(tcx: &'a ty::ctxt<'tcx>,
         parameter_environment: param_env.unwrap_or(tcx.empty_parameter_environment()),
         fulfillment_cx: RefCell::new(traits::FulfillmentContext::new(errors_will_be_reported)),
         normalize: false,
-        err_count_on_creation: tcx.sess.err_count()
+        err_count_on_creation: tcx.sess.err_count(),
+        defaults: RefCell::new(FnvHashMap()),
     }
 }
 
@@ -651,6 +655,30 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             },
             _ => Neither,
         }
+    }
+
+    pub fn unsolved_variables(&self) -> Vec<ty::Ty<'tcx>> {
+        let mut variables = Vec::new();
+
+        let unbound_ty_vars = self.type_variables
+                                  .borrow()
+                                  .unsolved_variables()
+                                  .into_iter().map(|t| self.tcx.mk_var(t));
+
+        let unbound_int_vars = self.int_unification_table
+                                   .borrow_mut()
+                                   .unsolved_variables()
+                                   .into_iter().map(|v| self.tcx.mk_int_var(v));
+
+        let unbound_float_vars = self.float_unification_table
+                                     .borrow_mut()
+                                     .unsolved_variables()
+                                     .into_iter().map(|v| self.tcx.mk_float_var(v));
+
+        variables.extend(unbound_ty_vars);
+        variables.extend(unbound_int_vars);
+        variables.extend(unbound_float_vars);
+        return variables;
     }
 
     fn combine_fields(&'a self, a_is_expected: bool, trace: TypeTrace<'tcx>)
@@ -996,6 +1024,23 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             .collect()
     }
 
+    pub fn type_vars_for_defs(&self,
+                              defs: &[ty::TypeParameterDef<'tcx>])
+                              -> Vec<ty::Ty<'tcx>> {
+        let mut vars = Vec::with_capacity(defs.len());
+
+        for def in defs.iter() {
+            let ty_var = self.next_ty_var();
+            match def.default {
+                None => {},
+                Some(default) => { self.defaults.borrow_mut().insert(ty_var, default); }
+            }
+            vars.push(ty_var)
+        }
+
+        vars
+    }
+
     /// Given a set of generics defined on a type or impl, returns a substitution mapping each
     /// type/region parameter to a fresh inference variable.
     pub fn fresh_substs_for_generics(&self,
@@ -1003,9 +1048,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                      generics: &ty::Generics<'tcx>)
                                      -> subst::Substs<'tcx>
     {
-        let type_params =
-            generics.types.map(
-                |_| self.next_ty_var());
+        let mut type_params = subst::VecPerParamSpace::empty();
+
+        for space in subst::ParamSpace::all().iter() {
+            type_params.replace(*space, self.type_vars_for_defs(generics.types.get_slice(*space)))
+        }
+
         let region_params =
             generics.regions.map(
                 |d| self.next_region_var(EarlyBoundRegion(span, d.name)));
@@ -1027,8 +1075,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         assert!(generics.regions.len(subst::SelfSpace) == 0);
         assert!(generics.regions.len(subst::FnSpace) == 0);
 
-        let type_parameter_count = generics.types.len(subst::TypeSpace);
-        let type_parameters = self.next_ty_vars(type_parameter_count);
+        let type_parameter_defs = generics.types.get_slice(subst::TypeSpace);
+        let type_parameters = self.type_vars_for_defs(type_parameter_defs);
 
         let region_param_defs = generics.regions.get_slice(subst::TypeSpace);
         let regions = self.region_vars_for_defs(span, region_param_defs);
@@ -1266,6 +1314,24 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             })
         };
         self.report_and_explain_type_error(trace, err);
+    }
+
+    pub fn report_conflicting_default_types(&self,
+                                   span: Span,
+                                   expected: Ty<'tcx>,
+                                   actual: Ty<'tcx>) {
+        let trace = TypeTrace {
+            origin: Misc(span),
+            values: Types(ty::expected_found {
+                expected: expected,
+                found: actual
+            })
+        };
+
+        self.report_and_explain_type_error(trace, &ty::type_err::terr_ty_param_default_mismatch(ty::expected_found {
+            expected: expected,
+            found: actual
+        }));
     }
 
     pub fn replace_late_bound_regions_with_fresh_var<T>(

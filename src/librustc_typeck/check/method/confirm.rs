@@ -309,15 +309,17 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
         // If they were not explicitly supplied, just construct fresh
         // variables.
         let num_supplied_types = supplied_method_types.len();
-        let num_method_types = pick.item.as_opt_method().unwrap()
-                                   .generics.types.len(subst::FnSpace);
+        let method = pick.item.as_opt_method().unwrap();
+        let method_types = method.generics.types.get_slice(subst::FnSpace);
+        let num_method_types = method_types.len();
+
         let method_types = {
             if num_supplied_types == 0 {
-                self.fcx.infcx().next_ty_vars(num_method_types)
+                self.fcx.infcx().type_vars_for_defs(method_types)
             } else if num_method_types == 0 {
                 span_err!(self.tcx().sess, self.span, E0035,
                     "does not take type parameters");
-                self.fcx.infcx().next_ty_vars(num_method_types)
+                self.fcx.infcx().type_vars_for_defs(method_types)
             } else if num_supplied_types != num_method_types {
                 span_err!(self.tcx().sess, self.span, E0036,
                     "incorrect number of type parameters given for this method");

@@ -108,6 +108,7 @@ use util::nodemap::{DefIdMap, FnvHashMap, NodeMap};
 use util::lev_distance::lev_distance;
 
 use std::cell::{Cell, Ref, RefCell};
+use std::collections::HashSet;
 use std::mem::replace;
 use std::slice;
 use syntax::{self, abi, attr};
@@ -1255,28 +1256,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    /// Apply "fallbacks" to some types
-    /// ! gets replaced with (), unconstrained ints with i32, and unconstrained floats with f64.
-    pub fn default_type_parameters(&self) {
-        use middle::ty::UnconstrainedNumeric::{UnconstrainedInt, UnconstrainedFloat, Neither};
-        for (_, &mut ref ty) in &mut self.inh.tables.borrow_mut().node_types {
-            let resolved = self.infcx().resolve_type_vars_if_possible(ty);
-            if self.infcx().type_var_diverges(resolved) {
-                demand::eqtype(self, codemap::DUMMY_SP, *ty, self.tcx().mk_nil());
-            } else {
-                match self.infcx().type_is_unconstrained_numeric(resolved) {
-                    UnconstrainedInt => {
-                        demand::eqtype(self, codemap::DUMMY_SP, *ty, self.tcx().types.i32)
-                    },
-                    UnconstrainedFloat => {
-                        demand::eqtype(self, codemap::DUMMY_SP, *ty, self.tcx().types.f64)
-                    }
-                    Neither => { }
-                }
-            }
-        }
-    }
-
     #[inline]
     pub fn write_ty(&self, node_id: ast::NodeId, ty: Ty<'tcx>) {
         debug!("write_ty({}, {:?}) in fcx {}",
@@ -1711,11 +1690,98 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     fn select_all_obligations_and_apply_defaults(&self) {
-        debug!("select_all_obligations_and_apply_defaults");
+        use middle::ty::UnconstrainedNumeric::{UnconstrainedInt, UnconstrainedFloat, Neither};
 
-        self.select_obligations_where_possible();
-        self.default_type_parameters();
-        self.select_obligations_where_possible();
+        debug!("select_all_obligations_and_apply_defaults: defaults={:?}", self.infcx().defaults);
+
+        for _ in (0..self.tcx().sess.recursion_limit.get()) {
+            self.select_obligations_where_possible();
+
+            let unsolved_variables = self.inh.infcx.unsolved_variables();
+            let mut unbound_tyvars = HashSet::new();
+
+            // Gather all unconstrainted integer and float variables
+            for ty in &unsolved_variables {
+                let resolved = self.infcx().resolve_type_vars_if_possible(ty);
+                if self.infcx().type_var_diverges(resolved) {
+                    demand::eqtype(self, codemap::DUMMY_SP, *ty, self.tcx().mk_nil());
+                } else {
+                    match self.infcx().type_is_unconstrained_numeric(resolved) {
+                        UnconstrainedInt => {
+                            unbound_tyvars.insert(resolved);
+                        },
+                        UnconstrainedFloat => {
+                            unbound_tyvars.insert(resolved);
+                        }
+                        Neither => {}
+                    }
+                }
+            }
+
+            // Collect the set of variables that need fallback applied
+            for ty in &unsolved_variables {
+                if self.inh.infcx.defaults.borrow().contains_key(ty) {
+                    let resolved = self.infcx().resolve_type_vars_if_possible(ty);
+
+                    debug!("select_all_obligations_and_apply_defaults: ty: {:?} with default: {:?}",
+                            ty, self.inh.infcx.defaults.borrow().get(ty));
+
+                    match resolved.sty {
+                        ty::TyInfer(ty::TyVar(_)) => {
+                            unbound_tyvars.insert(ty);
+                        }
+
+                        ty::TyInfer(ty::IntVar(_)) | ty::TyInfer(ty::FloatVar(_)) => {
+                            unbound_tyvars.insert(ty);
+                            if unbound_tyvars.contains(resolved) {
+                                unbound_tyvars.remove(resolved);
+                            }
+                        }
+
+                        _ => {}
+                    }
+                }
+            }
+
+            if unbound_tyvars.is_empty() {
+                break;
+            }
+
+            // Go through the unbound variables and unify them with the proper fallbacks
+            for ty in &unbound_tyvars {
+                // let resolved = self.infcx().resolve_type_vars_if_possible(ty);
+                if self.infcx().type_var_diverges(ty) {
+                    demand::eqtype(self, codemap::DUMMY_SP, *ty, self.tcx().mk_nil());
+                } else {
+                    match self.infcx().type_is_unconstrained_numeric(ty) {
+                        UnconstrainedInt => {
+                            demand::eqtype(self, codemap::DUMMY_SP, *ty, self.tcx().types.i32)
+                        },
+                        UnconstrainedFloat => {
+                            demand::eqtype(self, codemap::DUMMY_SP, *ty, self.tcx().types.f64)
+                        }
+                        Neither => {
+                            let default_map = self.inh.infcx.defaults.borrow();
+                            if let Some(default) = default_map.get(ty) {
+                                match infer::mk_eqty(self.infcx(), false,
+                                                     infer::Misc(codemap::DUMMY_SP),
+                                                     ty, default) {
+                                    Ok(()) => { /* ok */ }
+                                    Err(_) => {
+                                        self.infcx().report_conflicting_default_types(
+                                            codemap::DUMMY_SP,
+                                            ty,
+                                            default)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            self.select_obligations_where_possible();
+        }
     }
 
     fn select_all_obligations_or_error(&self) {
@@ -2421,13 +2487,15 @@ pub fn impl_self_ty<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     let tcx = fcx.tcx();
 
     let ity = tcx.lookup_item_type(did);
-    let (n_tps, rps, raw_ty) =
-        (ity.generics.types.len(subst::TypeSpace),
+    let (tps, rps, raw_ty) =
+        (ity.generics.types.get_slice(subst::TypeSpace),
          ity.generics.regions.get_slice(subst::TypeSpace),
          ity.ty);
 
+    debug!("impl_self_ty: tps={:?} rps={:?} raw_ty={:?}", tps, rps, raw_ty);
+
     let rps = fcx.inh.infcx.region_vars_for_defs(span, rps);
-    let tps = fcx.inh.infcx.next_ty_vars(n_tps);
+    let tps = fcx.inh.infcx.type_vars_for_defs(tps);
     let substs = subst::Substs::new_type(tps, rps);
     let substd_ty = fcx.instantiate_type_scheme(span, &substs, &raw_ty);
 
@@ -4647,7 +4715,7 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         // Nothing specified at all: supply inference variables for
         // everything.
         if provided_len == 0 && !(require_type_space && space == subst::TypeSpace) {
-            substs.types.replace(space, fcx.infcx().next_ty_vars(desired.len()));
+            substs.types.replace(space, fcx.infcx().type_vars_for_defs(&desired[..]));
             return;
         }
 

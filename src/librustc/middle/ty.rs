@@ -2068,6 +2068,7 @@ pub enum TypeError<'tcx> {
     ConvergenceMismatch(ExpectedFound<bool>),
     ProjectionNameMismatched(ExpectedFound<ast::Name>),
     ProjectionBoundsLength(ExpectedFound<usize>),
+    terr_ty_param_default_mismatch(expected_found<Ty<'tcx>>)
 }
 
 /// Bounds suitable for an existentially quantified type parameter
@@ -5080,6 +5081,11 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
                 write!(f, "expected {} associated type bindings, found {}",
                        values.expected,
                        values.found)
+            },
+            terr_ty_param_default_mismatch(ref values) => {
+                write!(f, "conflicting type parameter defaults {} {}",
+                       values.expected,
+                       values.found)
             }
         }
     }
@@ -5437,6 +5443,11 @@ impl<'tcx> ctxt<'tcx> {
                         &format!("consider boxing your closure and/or \
                                   using it as a trait object"));
                 }
+            },
+            terr_ty_param_default_mismatch(expected) => {
+                self.sess.span_note(sp,
+                    &format!("found conflicting defaults {:?} {:?}",
+                             expected.expected, expected.found))
             }
             _ => {}
         }
