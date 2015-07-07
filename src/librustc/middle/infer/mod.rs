@@ -1328,9 +1328,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             })
         };
 
-        self.report_and_explain_type_error(trace, &ty::type_err::terr_ty_param_default_mismatch(ty::expected_found {
-            expected: expected,
-            found: actual
+        self.report_and_explain_type_error(trace,
+            &ty::type_err::terr_ty_param_default_mismatch(ty::expected_found {
+                expected: expected,
+                found: actual
         }));
     }
 
