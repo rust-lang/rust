@@ -2515,9 +2515,8 @@ Here are some examples:
 #### Moved and copied types
 
 When a [local variable](#variables) is used as an
-[rvalue](#lvalues,-rvalues-and-temporaries) the variable will either be moved
-or copied, depending on its type. All values whose type implements `Copy` are
-copied, all others are moved.
+[rvalue](#lvalues,-rvalues-and-temporaries), the variable will be copied
+if its type implements `Copy`. All others are moved.
 
 ### Literal expressions
 
@@ -2882,7 +2881,6 @@ operand.
 ```
 # let mut x = 0;
 # let y = 0;
-
 x = y;
 ```
 
