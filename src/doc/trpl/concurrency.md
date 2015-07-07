@@ -10,11 +10,12 @@ system is up to the task, and gives you powerful ways to reason about
 concurrent code at compile time.
 
 Before we talk about the concurrency features that come with Rust, it's important
-to understand something: Rust is low-level enough that all of this is provided
-by the standard library, not by the language. This means that if you don't like
-some aspect of the way Rust handles concurrency, you can implement an alternative
-way of doing things. [mio](https://github.com/carllerche/mio) is a real-world
-example of this principle in action.
+to understand something: Rust is low-level enough that the vast majority of
+this is provided by the standard library, not by the language. This means that
+if you don't like some aspect of the way Rust handles concurrency, you can
+implement an alternative way of doing things.
+[mio](https://github.com/carllerche/mio) is a real-world example of this
+principle in action.
 
 ## Background: `Send` and `Sync`
 
