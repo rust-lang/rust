@@ -1467,6 +1467,7 @@ impl Foo for Bar {
     // the impl
     fn foo() {}
 }
+```
 "##,
 
 E0192: r##"
