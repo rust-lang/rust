@@ -98,7 +98,7 @@ destructors will be successfully called! Hooray!
 
 However BTreeMap is implemented using a modest spoonful of Unsafe (most collections
 are). That means that it is not necessarily *trivially true* that a bad Ord
-implementation will make BTreeMap behave safely. Unsafe most be sure not to rely
+implementation will make BTreeMap behave safely. Unsafe must be sure not to rely
 on Ord *where safety is at stake*, because Ord is provided by Safe, and memory
 safety is not Safe's responsibility to uphold. *It must be impossible for Safe
 code to violate memory safety*.
