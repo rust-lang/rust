@@ -405,6 +405,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
 
         let node_ty = self.tcx.node_id_to_type(ex.id);
         check_expr(self, ex, node_ty);
+        check_adjustments(self, ex);
 
         // Special-case some expressions to avoid certain flags bubbling up.
         match ex.node {
@@ -772,6 +773,25 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
             if v.mode != Mode::Var {
                 span_err!(v.tcx.sess, e.span, E0019,
                           "{} contains unimplemented expression type", v.msg());
+            }
+        }
+    }
+}
+
+/// Check the adjustments of an expression
+fn check_adjustments<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &ast::Expr) {
+    match v.tcx.tables.borrow().adjustments.get(&e.id) {
+        None | Some(&ty::AdjustReifyFnPointer) | Some(&ty::AdjustUnsafeFnPointer) => {}
+        Some(&ty::AdjustDerefRef(ty::AutoDerefRef { autoderefs, .. })) => {
+            if (0..autoderefs as u32).any(|autoderef| {
+                    v.tcx.is_overloaded_autoderef(e.id, autoderef)
+            }) {
+                v.add_qualif(ConstQualif::NOT_CONST);
+                if v.mode != Mode::Var {
+                    span_err!(v.tcx.sess, e.span, E0400,
+                              "user-defined dereference operators are not allowed in {}s",
+                              v.msg());
+                }
             }
         }
     }
