@@ -146,6 +146,7 @@
 #![feature(unique)]
 #![feature(unsafe_no_drop_flag, filling_drop)]
 #![feature(vec_push_all)]
+#![feature(vec_resize)]
 #![feature(wrapping)]
 #![feature(zero_one)]
 #![cfg_attr(windows, feature(str_utf16))]
