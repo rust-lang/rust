@@ -167,7 +167,8 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
     let trait_def = fcx.tcx().lookup_trait_def(trait_def_id);
 
-    let expected_number_of_input_types = trait_def.generics.types.len(subst::TypeSpace);
+    let type_parameter_defs = trait_def.generics.types.get_slice(subst::TypeSpace);
+    let expected_number_of_input_types = type_parameter_defs.len();
     let input_types = match opt_input_types {
         Some(input_types) => {
             assert_eq!(expected_number_of_input_types, input_types.len());
@@ -175,7 +176,7 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         }
 
         None => {
-            fcx.inh.infcx.next_ty_vars(expected_number_of_input_types)
+            fcx.inh.infcx.type_vars_for_defs(type_parameter_defs)
         }
     };
 
