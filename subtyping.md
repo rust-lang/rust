@@ -2,22 +2,23 @@
 
 Although Rust doesn't have any notion of inheritance, it *does* include subtyping.
 In Rust, subtyping derives entirely from *lifetimes*. Since lifetimes are scopes,
-we can partially order them based on a *contains* (outlives) relationship. We
-can even express this as a generic bound: `T: 'a` specifies that whatever scope `T`
-is valid for must contain the scope `'a` ("T outlives `'a`").
+we can partially order them based on the *contains* (outlives) relationship. We
+can even express this as a generic bound.
 
-We can then define subtyping on lifetimes in terms of that relationship: if `'a: 'b`
+Subtyping on lifetimes in terms of that relationship: if `'a: 'b`
 ("a contains b" or "a outlives b"), then `'a` is a subtype of `'b`. This is a
 large source of confusion, because it seems intuitively backwards to many:
 the bigger scope is a *sub type* of the smaller scope.
 
-This does in fact make sense. The intuitive reason for this is that if you expect an
-`&'a u8`, then it's totally fine for me to hand you an `&'static u8`, in the same way
-that if you expect an Animal in Java, it's totally fine for me to hand you a Cat.
-Cats are just Animals *and more*, just as `'static` is just `'a` *and more*.
+This does in fact make sense, though. The intuitive reason for this is that if
+you expect an `&'a u8`, then it's totally fine for me to hand you an `&'static u8`,
+in the same way that if you expect an Animal in Java, it's totally fine for me to
+hand you a Cat. Cats are just Animals *and more*, just as `'static` is just `'a`
+*and more*.
 
 (Note, the subtyping relationship and typed-ness of lifetimes is a fairly arbitrary
-construct that some disagree with. I just find that it simplifies this analysis.)
+construct that some disagree with. However it simplifies our analysis to treat
+lifetimes and types uniformly.)
 
 Higher-ranked lifetimes are also subtypes of every concrete lifetime. This is because
 taking an arbitrary lifetime is strictly more general than taking a specific one.
@@ -26,15 +27,15 @@ taking an arbitrary lifetime is strictly more general than taking a specific one
 
 # Variance
 
-Variance is where things get really harsh.
+Variance is where things get a bit complicated.
 
 Variance is a property that *type constructors* have. A type constructor in Rust
 is a generic type with unbound arguments. For instance `Vec` is a type constructor
 that takes a `T` and returns a `Vec<T>`. `&` and `&mut` are type constructors that
-take a lifetime and a type.
+take a two types: a lifetime, and a type to point to.
 
-A type constructor's *variance* is how the subtypes of its inputs affects the
-subtypes of its outputs. There are three kinds of variance:
+A type constructor's *variance* is how the subtyping of its inputs affects the
+subtyping of its outputs. There are two kinds of variance in Rust:
 
 * F is *variant* if `T` being a subtype of `U` implies `F<T>` is a subtype of `F<U>`
 * F is *invariant* otherwise (no subtyping relation can be derived)
@@ -60,42 +61,47 @@ needed.
 
 To see why `&mut` should be invariant, consider the following code:
 
-```rust
+```rust,ignore
+fn overwrite<T: Copy>(input: &mut T, new: &mut T) {
+    *input = *new;
+}
+
 fn main() {
     let mut forever_str: &'static str = "hello";
     {
         let string = String::from("world");
         overwrite(&mut forever_str, &mut &*string);
     }
+    // Oops, printing free'd memory
     println!("{}", forever_str);
-}
-
-fn overwrite<T: Copy>(input: &mut T, new: &mut T) {
-    *input = *new;
 }
 ```
 
-The signature of `overwrite` is clearly valid: it takes mutable references to two values
-of the same type, and overwrites one with the other. We have seen already that `&` is
-variant, and `'static` is a subtype of *any* `'a`, so `&'static str` is a
-subtype of `&'a str`. Therefore, if `&mut` was
-*also* variant, then the lifetime of the `&'static str` would successfully be
-"shrunk" down to the shorter lifetime of the string, and `overwrite` would be
-called successfully. The string would subsequently be dropped, and `forever_str`
-would point to freed memory when we print it!
+The signature of `overwrite` is clearly valid: it takes mutable references to
+two values of the same type, and overwrites one with the other. If `&mut` was
+variant, then `&mut &'a str` would be a subtype of `&mut &'static str`, since
+`&'a str` is a subtype of `&'static str`. Therefore the lifetime of
+`forever_str` would successfully be "shrunk" down to the shorter lifetime of
+`string`, and `overwrite` would be called successfully. `string` would
+subsequently be dropped, and `forever_str` would point to freed memory when we
+print it! Therefore `&mut` should be invariant.
 
-Therefore `&mut` should be invariant. This is the general theme of variance vs
+This is the general theme of variance vs
 invariance: if variance would allow you to *store* a short-lived value in a
 longer-lived slot, then you must be invariant.
 
 `Box` and `Vec` are interesting cases because they're variant, but you can
-definitely store values in them! This is fine because *you can only store values
-in them through a mutable reference*! The mutable reference makes the whole type
-invariant, and therefore prevents you from getting in trouble.
+definitely store values in them! This is where Rust gets really clever: it's
+fine for them to be variant because you can only store values
+in them *via a mutable reference*! The mutable reference makes the whole type
+invariant, and therefore prevents you from smuggling a short-lived type into
+them.
 
-Being variant allows them to be variant when shared immutably (so you can pass
-a `&Box<&'static str>` where a `&Box<&'a str>` is expected). It also allows you to
-forever weaken the type by moving it into a weaker slot. That is, you can do:
+Being variant *does* allows them to be weakened when shared immutably.
+So you can pass a `&Box<&'static str>` where a `&Box<&'a str>` is expected.
+
+However what should happen when passing *by-value* is less obvious. It turns out
+that, yes, you can use subtyping when passing by-value. That is, this works:
 
 ```rust
 fn get_box<'a>(&'a u8) -> Box<&'a str> {
@@ -104,14 +110,16 @@ fn get_box<'a>(&'a u8) -> Box<&'a str> {
 }
 ```
 
-which is fine because unlike the mutable borrow case, there's no one else who
-"remembers" the old lifetime in the box.
+Weakening when you pass by-value is fine because there's no one else who
+"remembers" the old lifetime in the Box. The reason a variant `&mut` was
+trouble was because there's always someone else who remembers the original
+subtype: the actual owner.
 
-The variance of the cell types similarly follows. `&` is like an `&mut` for a
+The invariance of the cell types can be seen as follows: `&` is like an `&mut` for a
 cell, because you can still store values in them through an `&`. Therefore cells
 must be invariant to avoid lifetime smuggling.
 
-`Fn` is the most subtle case, because it has mixed variance. To see why
+`Fn` is the most subtle case because it has mixed variance. To see why
 `Fn(T) -> U` should be invariant over T, consider the following function
 signature:
 
@@ -120,7 +128,7 @@ signature:
 fn foo(&'a str) -> usize;
 ```
 
-This signature claims that it can handle any &str that lives *at least* as long
+This signature claims that it can handle any `&str` that lives *at least* as long
 as `'a`. Now if this signature was variant with respect to `&str`, that would mean
 
 ```rust

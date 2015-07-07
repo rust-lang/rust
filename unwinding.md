@@ -263,17 +263,18 @@ impl<T: Ord> BinaryHeap<T> {
 
 Although all unsafe code *must* ensure some minimal level of exception safety,
 some types may choose to explicitly *poison* themselves if they witness a panic.
-The most notable example of this is the standard library's Mutex type. A Mutex
-will poison itself if one of its MutexGuards (the thing it returns when a lock
-is obtained) is dropped during a panic. Any future attempts to lock the Mutex
-will return an `Err`.
+Poisoning doesn't entail anything in particular. Generally it just means
+preventing normal usage from proceeding. The most notable example of this is the
+standard library's Mutex type. A Mutex will poison itself if one of its
+MutexGuards (the thing it returns when a lock is obtained) is dropped during a
+panic. Any future attempts to lock the Mutex will return an `Err`.
 
 Mutex poisons not for *true* safety in the sense that Rust normally cares about. It
 poisons as a safety-guard against blindly using the data that comes out of a Mutex
 that has witnessed a panic while locked. The data in such a Mutex was likely in the
 middle of being modified, and as such may be in an inconsistent or incomplete state.
 It is important to note that one cannot violate memory safety with such a type
-if it is correctly written. After all, it must be exception safe!
+if it is correctly written. After all, it must be minimally exception safe!
 
 However if the Mutex contained, say, a BinaryHeap that does not actually have the
 heap property, it's unlikely that any code that uses it will do
@@ -288,7 +289,7 @@ the Err exposes a method to get the lock anyway. It *is* safe, after all.
 Rust's unwinding strategy is not specified to be fundamentally compatible
 with any other language's unwinding. As such, unwinding into Rust from another
 language, or unwinding into another language from Rust is Undefined Behaviour.
-What you do at that point is up to you, but you must *absolutely* catch any
-panics at the FFI boundary! At best, your application will crash and burn. At
-worst, your application *won't* crash and burn, and will proceed with completely
-clobbered state.
+You must *absolutely* catch any panics at the FFI boundary! What you do at that
+point is up to you, but *something* must be done. If you fail to do this,
+at best, your application will crash and burn. At worst, your application *won't*
+crash and burn, and will proceed with completely clobbered state.
