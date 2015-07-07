@@ -273,6 +273,8 @@ impl<'a> Display for Arguments<'a> {
 ///
 /// Generally speaking, you should just `derive` a `Debug` implementation.
 ///
+/// When used with the alternate format specifier `#?`, the output is pretty-printed.
+///
 /// For more information on formatters, see [the module-level documentation][module].
 ///
 /// [module]: ../index.html
@@ -314,6 +316,12 @@ impl<'a> Display for Arguments<'a> {
 /// println!("The origin is: {:?}", origin);
 /// ```
 ///
+/// This outputs:
+///
+/// ```text
+/// The origin is: Point { x: 0, y: 0 }
+/// ```
+///
 /// There are a number of `debug_*` methods on `Formatter` to help you with manual
 /// implementations, such as [`debug_struct`][debug_struct].
 ///
@@ -321,6 +329,29 @@ impl<'a> Display for Arguments<'a> {
 /// on `Formatter` support pretty printing using the alternate flag: `{:#?}`.
 ///
 /// [debug_struct]: ../std/fmt/struct.Formatter.html#method.debug_struct
+///
+/// Pretty printing with `#?`:
+///
+/// ```
+/// #[derive(Debug)]
+/// struct Point {
+///     x: i32,
+///     y: i32,
+/// }
+///
+/// let origin = Point { x: 0, y: 0 };
+///
+/// println!("The origin is: {:#?}", origin);
+/// ```
+///
+/// This outputs:
+///
+/// ```text
+/// The origin is: Point {
+///     x: 0,
+///     y: 0
+/// }
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented = "`{Self}` cannot be formatted using `:?`; if it is \
                             defined in your crate, add `#[derive(Debug)]` or \
@@ -379,6 +410,8 @@ pub trait Display {
 ///
 /// The `Octal` trait should format its output as a number in base-8.
 ///
+/// The alternate flag, `#`, adds a `0o` in front of the output.
+///
 /// For more information on formatters, see [the module-level documentation][module].
 ///
 /// [module]: ../index.html
@@ -391,6 +424,7 @@ pub trait Display {
 /// let x = 42; // 42 is '52' in octal
 ///
 /// assert_eq!(format!("{:o}", x), "52");
+/// assert_eq!(format!("{:#o}", x), "0o52");
 /// ```
 ///
 /// Implementing `Octal` on a type:
@@ -423,6 +457,8 @@ pub trait Octal {
 ///
 /// The `Binary` trait should format its output as a number in binary.
 ///
+/// The alternate flag, `#`, adds a `0b` in front of the output.
+///
 /// For more information on formatters, see [the module-level documentation][module].
 ///
 /// [module]: ../index.html
@@ -435,6 +471,7 @@ pub trait Octal {
 /// let x = 42; // 42 is '101010' in binary
 ///
 /// assert_eq!(format!("{:b}", x), "101010");
+/// assert_eq!(format!("{:#b}", x), "0b101010");
 /// ```
 ///
 /// Implementing `Binary` on a type:
@@ -468,6 +505,8 @@ pub trait Binary {
 /// The `LowerHex` trait should format its output as a number in hexidecimal, with `a` through `f`
 /// in lower case.
 ///
+/// The alternate flag, `#`, adds a `0x` in front of the output.
+///
 /// For more information on formatters, see [the module-level documentation][module].
 ///
 /// [module]: ../index.html
@@ -480,6 +519,7 @@ pub trait Binary {
 /// let x = 42; // 42 is '2a' in hex
 ///
 /// assert_eq!(format!("{:x}", x), "2a");
+/// assert_eq!(format!("{:#x}", x), "0x2a");
 /// ```
 ///
 /// Implementing `LowerHex` on a type:
@@ -513,6 +553,8 @@ pub trait LowerHex {
 /// The `UpperHex` trait should format its output as a number in hexidecimal, with `A` through `F`
 /// in upper case.
 ///
+/// The alternate flag, `#`, adds a `0x` in front of the output.
+///
 /// For more information on formatters, see [the module-level documentation][module].
 ///
 /// [module]: ../index.html
@@ -525,6 +567,7 @@ pub trait LowerHex {
 /// let x = 42; // 42 is '2A' in hex
 ///
 /// assert_eq!(format!("{:X}", x), "2A");
+/// assert_eq!(format!("{:#X}", x), "0x2A");
 /// ```
 ///
 /// Implementing `UpperHex` on a type:
