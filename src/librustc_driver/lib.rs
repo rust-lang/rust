@@ -487,6 +487,10 @@ pub fn stage_str() -> Option<&'static str> {
         Some("stage0")
     } else if cfg!(stage1) {
         Some("stage1")
+    } else if cfg!(stage2) {
+        Some("stage2")
+    } else if cfg!(stage3) {
+        Some("stage3")
     } else {
         None
     }
@@ -504,9 +508,7 @@ pub fn version(binary: &str, matches: &getopts::Matches) {
         println!("commit-date: {}", unw(commit_date_str()));
         println!("host: {}", config::host_triple());
         println!("release: {}", unw(release_str()));
-        if let Some(stage) = stage_str() {
-            println!("stage: {}", stage);
-        }
+        println!("stage: {}", unw(stage_str()));
     }
 }
 
