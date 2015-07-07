@@ -16,7 +16,7 @@ use cmp;
 use rustc_unicode::str as core_str;
 use error as std_error;
 use fmt;
-use iter::{self, Iterator, Extend};
+use iter::{Iterator};
 use marker::Sized;
 use ops::{Drop, FnOnce};
 use option::Option::{self, Some, None};
@@ -106,7 +106,7 @@ fn read_to_end<R: Read + ?Sized>(r: &mut R, buf: &mut Vec<u8>) -> Result<usize> 
             if new_write_size < DEFAULT_BUF_SIZE {
                 new_write_size *= 2;
             }
-            buf.extend(iter::repeat(0).take(new_write_size));
+            buf.resize(len + new_write_size, 0);
         }
 
         match r.read(&mut buf[len..]) {
@@ -984,6 +984,14 @@ mod tests {
         let mut v = Vec::new();
         assert_eq!(c.read_to_end(&mut v).unwrap(), 1);
         assert_eq!(v, b"1");
+
+        let cap = 1024 * 1024;
+        let data = (0..cap).map(|i| (i / 3) as u8).collect::<Vec<_>>();
+        let mut v = Vec::new();
+        let (a, b) = data.split_at(data.len() / 2);
+        assert_eq!(Cursor::new(a).read_to_end(&mut v).unwrap(), a.len());
+        assert_eq!(Cursor::new(b).read_to_end(&mut v).unwrap(), b.len());
+        assert_eq!(v, data);
     }
 
     #[test]

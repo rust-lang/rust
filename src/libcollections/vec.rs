@@ -67,7 +67,7 @@ use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{self, Hash};
 use core::intrinsics::{arith_offset, assume};
-use core::iter::{repeat, FromIterator};
+use core::iter::FromIterator;
 use core::marker::PhantomData;
 use core::mem;
 use core::ops::{Index, IndexMut, Deref};
@@ -1106,9 +1106,32 @@ impl<T: Clone> Vec<T> {
         let len = self.len();
 
         if new_len > len {
-            self.extend(repeat(value).take(new_len - len));
+            self.extend_with_element(new_len - len, value);
         } else {
             self.truncate(new_len);
+        }
+    }
+
+    /// Extend the vector by `n` additional clones of `value`.
+    fn extend_with_element(&mut self, n: usize, value: T) {
+        self.reserve(n);
+
+        unsafe {
+            let len = self.len();
+            let mut ptr = self.as_mut_ptr().offset(len as isize);
+            // Write all elements except the last one
+            for i in 1..n {
+                ptr::write(ptr, value.clone());
+                ptr = ptr.offset(1);
+                // Increment the length in every step in case clone() panics
+                self.set_len(len + i);
+            }
+
+            if n > 0 {
+                // We can write the last element directly without cloning needlessly
+                ptr::write(ptr, value);
+                self.set_len(len + n);
+            }
         }
     }
 
@@ -1294,25 +1317,9 @@ unsafe fn dealloc<T>(ptr: *mut T, len: usize) {
 #[doc(hidden)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn from_elem<T: Clone>(elem: T, n: usize) -> Vec<T> {
-    unsafe {
-        let mut v = Vec::with_capacity(n);
-        let mut ptr = v.as_mut_ptr();
-
-        // Write all elements except the last one
-        for i in 1..n {
-            ptr::write(ptr, Clone::clone(&elem));
-            ptr = ptr.offset(1);
-            v.set_len(i); // Increment the length in every step in case Clone::clone() panics
-        }
-
-        if n > 0 {
-            // We can write the last element directly without cloning needlessly
-            ptr::write(ptr, elem);
-            v.set_len(n);
-        }
-
-        v
-    }
+    let mut v = Vec::with_capacity(n);
+    v.extend_with_element(n, elem);
+    v
 }
 
 ////////////////////////////////////////////////////////////////////////////////
