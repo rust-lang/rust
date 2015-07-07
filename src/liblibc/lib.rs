@@ -6128,7 +6128,7 @@ pub mod funcs {
         use types::os::arch::c95::{c_char, c_uchar, c_int, c_uint, c_ulong, size_t};
 
         extern {
-            pub fn ioctl(d: c_int, request: c_ulong, ...) -> c_int;
+            pub fn ioctl(fd: c_int, request: c_ulong, ...) -> c_int;
             pub fn sysctl(name: *mut c_int,
                           namelen: c_uint,
                           oldp: *mut c_void,
@@ -6160,12 +6160,12 @@ pub mod funcs {
     #[cfg(any(target_os = "linux", target_os = "android"))]
     pub mod bsd44 {
         use types::common::c95::{c_void};
-        use types::os::arch::c95::{c_uchar, c_int, size_t};
+        use types::os::arch::c95::{c_uchar, c_int, c_ulong, size_t};
 
         extern {
             #[cfg(not(all(target_os = "android", target_arch = "aarch64")))]
             pub fn getdtablesize() -> c_int;
-            pub fn ioctl(d: c_int, request: c_int, ...) -> c_int;
+            pub fn ioctl(fd: c_int, request: c_ulong, ...) -> c_int;
             pub fn madvise(addr: *mut c_void, len: size_t, advice: c_int)
                            -> c_int;
             pub fn mincore(addr: *mut c_void, len: size_t, vec: *mut c_uchar)

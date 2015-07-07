@@ -282,6 +282,38 @@ This ‘destructuring’ behavior works on any compound data type, like
 [tuples]: primitive-types.html#tuples
 [enums]: enums.html
 
+# Ignoring bindings
+
+You can use `_` in a pattern to disregard the value. For example, here’s a
+`match` against a `Result<T, E>`:
+
+```rust
+# let some_value: Result<i32, &'static str> = Err("There was an error");
+match some_value {
+    Ok(value) => println!("got a value: {}", value),
+    Err(_) => println!("an error occurred"),
+}
+```
+
+In the first arm, we bind the value inside the `Ok` variant to `value`. But
+in the `Err` arm, we use `_` to disregard the specific error, and just print
+a general error message.
+
+`_` is valid in any pattern that creates a binding. This can be useful to
+ignore parts of a larger structure:
+
+```rust
+fn coordinate() -> (i32, i32, i32) {
+    // generate and return some sort of triple tuple
+# (1, 2, 3)
+}
+
+let (x, _, z) = coordinate();
+```
+
+Here, we bind the first and last element of the tuple to `x` and `z`, but
+ignore the middle element.
+
 # Mix and Match
 
 Whew! That’s a lot of different ways to match things, and they can all be
