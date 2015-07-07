@@ -48,11 +48,11 @@ interactions with other features.)
 Some important variances:
 
 * `&` is variant (as is `*const` by metaphor)
-* `&mut` is invariant (as is `*mut` by metaphor)
+* `&mut` is invariant
 * `Fn(T) -> U` is invariant with respect to `T`, but variant with respect to `U`
 * `Box`, `Vec`, and all other collections are variant
 * `UnsafeCell`, `Cell`, `RefCell`, `Mutex` and all "interior mutability"
-  types are invariant
+  types are invariant (as is `*mut` by metaphor)
 
 To understand why these variances are correct and desirable, we will consider several
 examples. We have already covered why `&` should be variant when introducing subtyping:
@@ -158,7 +158,7 @@ in its place. Therefore functions *are* variant over their return type.
 
 `*const` has the exact same semantics as `&`, so variance follows. `*mut` on the
 other hand can dereference to an &mut whether shared or not, so it is marked
-as invariant in analogy to cells.
+as invariant just like cells.
 
 This is all well and good for the types the standard library provides, but
 how is variance determined for type that *you* define? A struct, informally
