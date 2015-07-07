@@ -378,6 +378,8 @@ pub struct Stability {
     // The reason for the current stability level. If deprecated, the
     // reason for deprecation.
     pub reason: Option<InternedString>,
+    // The relevant rust-lang issue
+    pub issue: Option<u32>
 }
 
 /// The available stability levels.
@@ -412,41 +414,54 @@ fn find_stability_generic<'a,
 
         used_attrs.push(attr);
 
-        let (feature, since, reason) = match attr.meta_item_list() {
+        let (feature, since, reason, issue) = match attr.meta_item_list() {
             Some(metas) => {
                 let mut feature = None;
                 let mut since = None;
                 let mut reason = None;
+                let mut issue = None;
                 for meta in metas {
-                    if meta.name() == "feature" {
-                        match meta.value_str() {
-                            Some(v) => feature = Some(v),
-                            None => {
-                                diagnostic.span_err(meta.span, "incorrect meta item");
-                                continue 'outer;
+                    match &*meta.name() {
+                        "feature" => {
+                            match meta.value_str() {
+                                Some(v) => feature = Some(v),
+                                None => {
+                                    diagnostic.span_err(meta.span, "incorrect meta item");
+                                    continue 'outer;
+                                }
                             }
                         }
-                    }
-                    if &meta.name()[..] == "since" {
-                        match meta.value_str() {
-                            Some(v) => since = Some(v),
-                            None => {
-                                diagnostic.span_err(meta.span, "incorrect meta item");
-                                continue 'outer;
+                        "since" => {
+                            match meta.value_str() {
+                                Some(v) => since = Some(v),
+                                None => {
+                                    diagnostic.span_err(meta.span, "incorrect meta item");
+                                    continue 'outer;
+                                }
                             }
                         }
-                    }
-                    if &meta.name()[..] == "reason" {
-                        match meta.value_str() {
-                            Some(v) => reason = Some(v),
-                            None => {
-                                diagnostic.span_err(meta.span, "incorrect meta item");
-                                continue 'outer;
+                        "reason" => {
+                            match meta.value_str() {
+                                Some(v) => reason = Some(v),
+                                None => {
+                                    diagnostic.span_err(meta.span, "incorrect meta item");
+                                    continue 'outer;
+                                }
                             }
                         }
+                        "issue" => {
+                            match meta.value_str().and_then(|s| s.parse().ok()) {
+                                Some(v) => issue = Some(v),
+                                None => {
+                                    diagnostic.span_err(meta.span, "incorrect meta item");
+                                    continue 'outer;
+                                }
+                            }
+                        }
+                        _ => {}
                     }
                 }
-                (feature, since, reason)
+                (feature, since, reason, issue)
             }
             None => {
                 diagnostic.span_err(attr.span(), "incorrect stability attribute type");
@@ -480,7 +495,8 @@ fn find_stability_generic<'a,
                 feature: feature.unwrap_or(intern_and_get_ident("bogus")),
                 since: since,
                 deprecated_since: None,
-                reason: reason
+                reason: reason,
+                issue: issue,
             });
         } else { // "deprecated"
             if deprecated.is_some() {
@@ -504,6 +520,12 @@ fn find_stability_generic<'a,
                                               either stable or unstable attribute");
             }
         }
+    } else if stab.as_ref().map_or(false, |s| s.level == Unstable && s.issue.is_none()) {
+        // non-deprecated unstable items need to point to issues.
+        // FIXME: uncomment this error
+        // diagnostic.span_err(item_sp,
+        //                     "non-deprecated unstable items need to point \
+        //                      to an issue with `issue = \"NNN\"`");
     }
 
     (stab, used_attrs)
