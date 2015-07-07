@@ -10,4 +10,4 @@ them tends to involve trade-offs that we weren't willing to commit to for 1.0.
 However the way Rust models concurrency makes it relatively easy design your own
 concurrency paradigm as a library and have *everyone else's* code Just Work
 with yours. Just require the right lifetimes and Send and Sync where appropriate
-and you're off to the races. Or rather, not having races. Races are bad.
+and you're off to the races. Or rather, off to the... not... having... races.
