@@ -547,7 +547,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
                                                   sess.diagnostic()));
 
     krate = time(time_passes, "prelude injection", krate, |krate|
-                 syntax::std_inject::maybe_inject_prelude(krate));
+                 syntax::std_inject::maybe_inject_prelude(&sess.parse_sess, krate));
 
     time(time_passes, "checking that all macro invocations are gone", &krate, |krate|
          syntax::ext::expand::check_for_macros(&sess.parse_sess, krate));
