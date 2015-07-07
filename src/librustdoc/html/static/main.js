@@ -76,61 +76,64 @@
     highlightSourceLines(null);
     $(window).on('hashchange', highlightSourceLines);
 
-    // Helper function for Keyboard events,
-    // Get's the char from the keypress event
+    // Gets the human-readable string for the virtual-key code of the
+    // given KeyboardEvent, ev.
     //
-    // This method is used because e.wich === x is not
-    // compatible with non-english keyboard layouts
+    // This function is meant as a polyfill for KeyboardEvent#key,
+    // since it is not supported in Trident.  We also test for
+    // KeyboardEvent#keyCode because the handleShortcut handler is
+    // also registered for the keydown event, because Blink doesn't fire
+    // keypress on hitting the Escape key.
     //
-    // Note: event.type must be keypress !
-    function getChar(event) {
-      if (event.which == null) {
-        return String.fromCharCode(event.keyCode) // IE
-      } else if (event.which!=0 && event.charCode!=0) {
-        return String.fromCharCode(event.which)   // the rest
-      } else {
-        return null // special key
-      }
+    // So I guess you could say things are getting pretty interoperable.
+    function getVirtualKey(ev) {
+        if ("key" in ev && typeof ev.key != "undefined")
+            return ev.key;
+
+        var c = ev.charCode || ev.keyCode;
+        if (c == 27)
+            return "Escape";
+        return String.fromCharCode(c);
     }
 
-    $(document).on('keypress', function handleKeyboardShortcut(e) {
-        if (document.activeElement.tagName === 'INPUT') {
+    function handleShortcut(ev) {
+        if (document.activeElement.tagName == "INPUT")
             return;
-        }
 
-        if (getChar(e) === '?') {
-            if (e.shiftKey && $('#help').hasClass('hidden')) {
-                e.preventDefault();
-                $('#help').removeClass('hidden');
+        switch (getVirtualKey(ev)) {
+        case "Escape":
+            if (!$("#help").hasClass("hidden")) {
+                ev.preventDefault();
+                $("#help").addClass("hidden");
+            } else if (!$("#search").hasClass("hidden")) {
+                ev.preventDefault();
+                $("#search").addClass("hidden");
+                $("#main").removeClass("hidden");
             }
-        } else if (getChar(e) === 's' || getChar(e) === 'S') {
-            e.preventDefault();
-            $('.search-input').focus();
-        }
-    }).on('keydown', function(e) {
-        // The escape key event has to be captured with the keydown event.
-        // Because keypressed has no keycode for the escape key
-        // (and other special keys in general)...
-        if (document.activeElement.tagName === 'INPUT') {
-            return;
-        }
+            break;
 
-        if (e.keyCode === 27) { // escape key
-            if (!$('#help').hasClass('hidden')) {
-                e.preventDefault();
-                $('#help').addClass('hidden');
-            } else if (!$('#search').hasClass('hidden')) {
-                e.preventDefault();
-                $('#search').addClass('hidden');
-                $('#main').removeClass('hidden');
+        case "s":
+        case "S":
+            ev.preventDefault();
+            $(".search-input").focus();
+            break;
+
+        case "?":
+            if (ev.shiftKey && $("#help").hasClass("hidden")) {
+                ev.preventDefault();
+                $("#help").removeClass("hidden");
             }
+            break;
         }
-    }).on('click', function(e) {
-        if (!$(e.target).closest('#help').length) {
-            $('#help').addClass('hidden');
+    }
+
+    $(document).on("keypress", handleShortcut);
+    $(document).on("keydown", handleShortcut);
+    $(document).on("click", function(ev) {
+        if (!$(ev.target).closest("#help").length) {
+            $("#help").addClass("hidden");
         }
     });
-
 
     $('.version-selector').on('change', function() {
         var i, match,
@@ -150,6 +153,7 @@
 
         document.location.href = url;
     });
+
     /**
      * A function to compute the Levenshtein distance between two strings
      * Licensed under the Creative Commons Attribution-ShareAlike 3.0 Unported
