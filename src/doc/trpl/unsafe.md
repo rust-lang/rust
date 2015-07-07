@@ -33,9 +33,21 @@ in the sections marked `unsafe`.
 
 # What does ‘safe’ mean?
 
-Safe, in the context of Rust, means “doesn’t do anything unsafe.” Easy!
+Safe, in the context of Rust, means ‘doesn’t do anything unsafe’. It’s also
+important to know that there are certain behaviors that are probably not
+desirable in your code, but are expressly _not_ unsafe:
 
-Okay, let’s try again: what is not safe to do? Here’s a list:
+* Deadlocks
+* Leaks of memory or other resources
+* Exiting without calling destructors
+* Integer overflow
+
+Rust cannot prevent all kinds of software problems. Buggy code can and will be
+written in Rust. These things aren’t great, but they don’t qualify as `unsafe`
+specifically.
+
+In addition, the following are all undefined behaviors in Rust, and must be
+avoided, even when writing `unsafe` code:
 
 * Data races
 * Dereferencing a null/dangling raw pointer
@@ -63,18 +75,6 @@ Okay, let’s try again: what is not safe to do? Here’s a list:
 [noalias]: http://llvm.org/docs/LangRef.html#noalias
 [undef]: http://llvm.org/docs/LangRef.html#undefined-values
 [aliasing]: http://llvm.org/docs/LangRef.html#pointer-aliasing-rules
-
-Whew! That’s a bunch of stuff. It’s also important to notice all kinds of
-behaviors that are certainly bad, but are expressly _not_ unsafe:
-
-* Deadlocks
-* Leaks of memory or other resources
-* Exiting without calling destructors
-* Integer overflow
-
-Rust cannot prevent all kinds of software problems. Buggy code can and will be
-written in Rust. These things aren’t great, but they don’t qualify as `unsafe`
-specifically.
 
 # Unsafe Superpowers
 
