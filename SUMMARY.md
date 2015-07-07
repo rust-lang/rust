@@ -23,6 +23,7 @@
 	* [Transmutes](transmutes.md)
 * [Uninitialized Memory](uninitialized.md)
 	* [Checked](checked-uninit.md)
+	* [Drop Flags](drop-flags.md)
 	* [Unchecked](unchecked-uninit.md)
 * [Ownership-Oriented Resource Management](raii.md)
 	* [Constructors](constructors.md)

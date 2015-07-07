@@ -83,27 +83,3 @@ fn main() {
 However reassigning `y` in this example *would* require `y` to be marked as
 mutable, as a Safe Rust program could observe that the value of `y` changed.
 Otherwise the variable is exactly like new.
-
-This raises an interesting question with respect to `Drop`: where does Rust try
-to call the destructor of a variable that is conditionally initialized? It turns
-out that Rust actually tracks whether a type should be dropped or not *at
-runtime*. As a variable becomes initialized and uninitialized, a *drop flag* for
-that variable is set and unset. When a variable goes out of scope or is assigned
-a value, it evaluates whether the current value of the variable should be dropped.
-Of course, static analysis can remove these checks. If the compiler can prove that
-a value is guaranteed to be either initialized or not, then it can theoretically
-generate more efficient code! As such it may be desirable to structure code to
-have *static drop semantics* when possible.
-
-As of Rust 1.0, the drop flags are actually not-so-secretly stashed in a hidden
-field of any type that implements Drop. The language sets the drop flag by
-overwriting the entire struct with a particular value. This is pretty obviously
-Not The Fastest and causes a bunch of trouble with optimizing code. As such work
-is currently under way to move the flags out onto the stack frame where they
-more reasonably belong. Unfortunately this work will take some time as it
-requires fairly substantial changes to the compiler.
-
-So in general, Rust programs don't need to worry about uninitialized values on
-the stack for correctness. Although they might care for performance. Thankfully,
-Rust makes it easy to take control here! Uninitialized values are there, and
-Safe Rust lets you work with them, but you're never in danger.
