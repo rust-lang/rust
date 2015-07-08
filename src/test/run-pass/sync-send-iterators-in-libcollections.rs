@@ -81,15 +81,6 @@ fn main() {
     #[repr(usize)]
     #[allow(dead_code)]
     enum Foo { A, B, C }
-    impl CLike for Foo {
-        fn to_usize(&self) -> usize {
-            *self as usize
-        }
-
-        fn from_usize(v: usize) -> Foo {
-            unsafe { mem::transmute(v) }
-        }
-    }
 
     all_sync_send!(VecDeque::<usize>::new(), iter, iter_mut, drain, into_iter);
 
