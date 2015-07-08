@@ -739,7 +739,7 @@ struct TwoWaySearcher {
     (We also allow for the possibility of the *empty word*, a word of length zero).
 
     If x is any non-empty word, then an integer p with 0 < p <= |x| is said to be a
-    *period* for x iff for all i with 0 <= i <= |x| - p - 1, we have x[i] == x[i+p].
+    *period* for x if for all i with 0 <= i <= |x| - p - 1, we have x[i] == x[i+p].
     For example, both 1 and 2 are periods for the string "aa". As another example,
     the only period of the string "abcd" is 4.
 

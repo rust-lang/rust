@@ -1319,7 +1319,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
 
                 // miscellaneous info about the impl
 
-                // `true` iff this is `impl Private for ...`.
+                // `true` if this is `impl Private for ...`.
                 let not_private_trait =
                     trait_ref.as_ref().map_or(true, // no trait counts as public trait
                                               |tr| {
@@ -1328,7 +1328,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
                         !is_local(did) || self.trait_is_public(did.node)
                     });
 
-                // `true` iff this is a trait impl or at least one method is public.
+                // `true` if this is a trait impl or at least one method is public.
                 //
                 // `impl Public { $( fn ...() {} )* }` is not visible.
                 //

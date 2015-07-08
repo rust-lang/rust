@@ -69,7 +69,7 @@ typedef void (*htab_del) (void *);
 typedef int (*htab_trav) (void **, void *);
 
 /* Memory-allocation function, with the same functionality as calloc().
-   Iff it returns NULL, the hash table implementation will pass an error
+   If it returns NULL, the hash table implementation will pass an error
    code back to the user, so if your code doesn't handle errors,
    best if you use xcalloc instead.  */
 typedef void *(*htab_alloc) (size_t, size_t);

@@ -147,7 +147,7 @@ impl IndependentSample<f64> for GammaLargeShape {
         loop {
             let StandardNormal(x) = rng.gen::<StandardNormal>();
             let v_cbrt = 1.0 + self.c * x;
-            if v_cbrt <= 0.0 { // a^3 <= 0 iff a <= 0
+            if v_cbrt <= 0.0 { // a^3 <= 0 if a <= 0
                 continue
             }
 
