@@ -19,6 +19,24 @@ This RFC lays the ground-work for building nice SIMD functionality,
 but doesn't fill everything out. The goal here is to provide the raw
 types and access to the raw instructions on each platform.
 
+## Where does this code go? Aka. why not in `std`?
+
+This RFC is focused on building stable, powerful SIMD functionality in
+external crates, not `std`.
+
+This makes it much easier to support functionality only "occasionally"
+available with Rust's preexisting `cfg` system. If it were in `std`,
+there would need to be some highly delayed `cfg` system so that
+functions that only work with (say) AVX-2 support:
+
+- don't break compilation on systems that don't support it, but
+- are still usable on systems that do support it.
+
+With an external crate, we can leverage `cargo`'s existing build
+infrastructure: compiling with some target features will rebuild with
+those features enabled.
+
+
 # Detailed design
 
 The design comes in three parts:
@@ -39,113 +57,42 @@ There is definitely a common core of SIMD functionality shared across
 many platforms, but this RFC doesn't try to extract that, it is just
 building tools that can be wrapped into a more uniform API later.
 
-## Background: Where does this code go?
-
-This RFC is focused on building stable, powerful SIMD functionality in
-external crates, not `std`. This makes it much easier to support
-functionality only "occasionally" available with Rust's preexisting
-`cfg` system. If it were in `std`, there would need to be some highly
-delayed `cfg` system so that functions that only work with AVX-2
-support:
-
-- don't break compilation on systems that don't support it, but
-- are still usable on systems that do support it.
 
 ## Types & traits
 
-A type designed to be used as a SIMD vector is indicated by the
-`repr(simd)` attribute. A type marked as such will be compiled to
-behave like a SIMD register (as well as the target platform can
-support it).
-
-The types/traits will be defined as follows:
+There are two new attributes: `repr(simd)` and `simd_primitive_trait`
 
 ```rust
 #[repr(simd)]
-struct Simd2<T: SimdPrim>(T, T);
+struct f32x4(f32, f32, f23, f23);
+
 #[repr(simd)]
-struct Simd4<T: SimdPrim>(T, T, T, T);
-#[repr(simd)]
-struct Simd8<T: SimdPrim>(T, T, T, T, T, T, T, T);
-#[repr(simd)]
-struct Simd16<T: SimdPrim>(T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T);
-#[repr(simd)]
-struct Simd32<T: SimdPrim>(T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T,
-                           T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T);
-#[repr(simd)]
-struct Simd64<T: SimdPrim>(T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T,
-                           T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T,
-                           T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T,
-                           T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T);
+struct Simd2<T>(T, T);
 
-trait SimdVector {
-    type Elem: SimdPrim;
-    type Bool: SimdVector<Elem = <Self::Elem as SimdPrim>::Bool>;
-}
-
-impl<T: SimdPrim> for Simd2<T> {
-    type Elem = T;
-    type Bool = Simd2<T::Bool>;
-}
-impl<T: SimdPrim> for Simd4<T> {
-    type Elem = T;
-    type Bool = Simd4<T::Bool>;
-}
-// ...
-impl<T: SimdPrim> for Simd64<T> {
-    type Elem = T;
-    type Bool = Simd64<T::Bool>;
-}
-
-#[simd_prim_trait]
-trait SimdPrim {
-    type Bool: SimdPrim;
-}
-
-// boolean types, see below
-struct bool8i(...);
-struct bool16i(...);
-struct bool32i(...);
-struct bool64i(...);
-struct bool32f(...);
-struct bool64f(...);
-
-// specifying what types are SIMD-able.
-impl SimdPrim for u8 { type Bool = bool8i; }
-impl SimdPrim for i8 { type Bool = bool8i; }
-impl SimdPrim for u16 { type Bool = bool16i; }
-// ...
-impl SimdPrim for i64 { type Bool = bool64i; }
-
-impl SimdPrim for f32 { type Bool = bool32f; }
-impl SimdPrim for f64 { type Bool = bool64f; }
-
-impl SimdPrim for bool8i { type Bool = bool8i; }
-// ...
-impl SimdPrim for bool64i { type Bool = bool64i; }
-
-impl SimdPrim for bool32f { type Bool = bool32f; }
-impl SimdPrim for bool64f { type Bool = bool64f; }
+#[simd_primitive_trait]
+trait SimdPrim {}
 ```
-
-It is illegal to take an internal reference to the fields of a
-`repr(simd)` type.
 
 ### `repr(simd)`
 
 The `simd` `repr` can be attached to a struct and will cause such a
-struct to be compiled to a SIMD vector. It is required that the
-monomorphised vector consist of only a single "primitive" type,
-repeated some number of times. The restrictions on the element type
-are exactly the same restrictions as `#[simd_primitive_trait]` traits
-impose on their implementing types.
+struct to be compiled to a SIMD vector. It can be generic, but it is
+required that any fully monomorphised instance of the type consist of
+only a single "primitive" type, repeated some number of times. The
+restrictions on the element type are exactly the same restrictions as
+`#[simd_primitive_trait]` traits impose on their implementing types.
 
 The `repr(simd)` may not enforce that the trait bound exists/does the
 right thing at the type checking level for generic `repr(simd)`
 types. As such, it will be possible to get the code-generator to error
 out (ala the old `transmute` size errosr), however, this shouldn't
 cause problems in practice: libraries wrapping this functionality
-would layer type-safety on top (i.e. the `SimdPrim` trait).
+would layer type-safety on top (i.e. generic `repr(simd)` types would
+use the `SimdPrim` trait as a bound).
+
+It is illegal to take an internal reference to the fields of a
+`repr(simd)` type, because the representation of booleans may require
+to change, so that booleans are bit-packed.
 
 ### `simd_primitive_trait`
 
@@ -159,35 +106,6 @@ distinct traits in a compilation. The attribute just adds the
 restriction and possibly tweaks type's internal representation (as
 such, it's legal for a single type to implement multiple traits with
 the attribute, if a bit pointless).
-
-### Booleans
-
-SIMD booleans are non-trivial. Many conventional APIs e.g. SSE, and
-NEON, use "wide booleans": a large number of bits set to all-zeros
-(false) or all-ones, e.g. equality between `Simd4(0_u32, 1, 2, 3)` and
-`Simd4(0_u32, 0, 2, 3)` gives (on the CPU) `Simd4(!0_u32, 0, !0,
-!0)`. Hence, the boolean types need to have width. It's tempting to
-just use the integer types of the appropriate width, but this falls
-down for two reasons:
-
-1. booleans aren't always this format
-2. the source of the boolean matters
-
-The second is easiest: CPUs are complicated beasts, and the hardware
-that handles floating point vector operations may be very different to
-the hardware that handles integer ones: instructions use different
-execution units. It can take several cycles to transfer data between
-them. Encoding the provenance/execution unit of the value in the type
-makes costs explicit.
-
-The first is much harder to solve. Some architectures/instruction sets
-model booleans as single bits. For example, equality between
-`Simd4(0_u32, 1, 2, 3)` and `Simd(0_u32, 0, 2, 3)` gives `1 + 4 + 8 ==
-0b1101`. One example is AVX-512 which essentially replaces all of the
-older SSE through AVX2 boolean-returning instructions with versions
-that return those. Using separate types for booleans (and restricting
-their API) allows for some serious magic: `Simd4<bool32>` becomes
-`u4`. (This is where the reference-restriction above comes in.)
 
 ## Operations
 
@@ -295,19 +213,23 @@ Comparisons are implemented via intrinsics, because the current
 comparison operator infrastructure doesn't easily lend itself to
 return vectors, as required.
 
-A library could give signatures like:
+The raw signatures would look like:
 
 ```rust
 extern "rust-intrinsic" {
-    fn simd_eq<T: SimdVector>(v: T, w: T) -> T::Bool;
-    fn simd_ne<T: SimdVector>(v: T, w: T) -> T::Bool;
-    fn simd_lt<T: SimdVector>(v: T, w: T) -> T::Bool;
-    fn simd_le<T: SimdVector>(v: T, w: T) -> T::Bool;
-    fn simd_gt<T: SimdVector>(v: T, w: T) -> T::Bool;
-    fn simd_ge<T: SimdVector>(v: T, w: T) -> T::Bool;
+    fn simd_eq<T, U>(v: T, w: T) -> U;
+    fn simd_ne<T, U>(v: T, w: T) -> U;
+    fn simd_lt<T, U>(v: T, w: T) -> U;
+    fn simd_le<T, U>(v: T, w: T) -> U;
+    fn simd_gt<T, U>(v: T, w: T) -> U;
+    fn simd_ge<T, U>(v: T, w: T) -> U;
 }
 ```
 
+However, these will be type checked, to ensure that `T` and `U` are
+the same length, and that `U` is appropriately shaped for a boolean. A
+library actually importing them might use some trait bounds to get
+actual type-safety.
 
 ### Built-in functionality
 
@@ -340,8 +262,10 @@ exact target e.g.
 - compiling with `-C target-cpu=native` on a modern CPU might set
   `target_feature = "avx2"`, `target_feature = "avx"`, ...
 
-(There are other non-SIMD features that might have `target_feature`s
-set too, such as `popcnt` and `rdrnd` on x86/x86-64.)
+The possible values of `target_feature` will be a selected whitelist,
+not necessarily just everything LLVM understands. There are other
+non-SIMD features that might have `target_feature`s set too, such as
+`popcnt` and `rdrnd` on x86/x86-64.)
 
 With a `cfg_if_else!` macro that expands to the first `cfg` that is
 satisfied (ala [@alexcrichton's cascade][cascade]), code might look
