@@ -404,7 +404,7 @@ impl<'a, 'tcx> AstConv<'tcx> for ItemCtxt<'a, 'tcx> {
         }
     }
 
-    fn ty_infer(&self, span: Span) -> Ty<'tcx> {
+    fn ty_infer(&self, _default: Option<Ty<'tcx>>, span: Span) -> Ty<'tcx> {
         span_err!(self.tcx().sess, span, E0121,
                   "the type placeholder `_` is not allowed within types on item signatures");
         self.tcx().types.err

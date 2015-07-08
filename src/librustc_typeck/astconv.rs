@@ -111,7 +111,7 @@ pub trait AstConv<'tcx> {
     }
 
     /// What type should we use when a type is omitted?
-    fn ty_infer(&self, span: Span) -> Ty<'tcx>;
+    fn ty_infer(&self, default: Option<Ty<'tcx>>, span: Span) -> Ty<'tcx>;
 
     /// Projecting an associated type from a (potentially)
     /// higher-ranked trait reference is more complicated, because of
@@ -403,7 +403,7 @@ fn create_substs_for_ast_path<'tcx>(
     // they were optional (e.g. paths inside expressions).
     let mut type_substs = if param_mode == PathParamMode::Optional &&
                              types_provided.is_empty() {
-        (0..formal_ty_param_count).map(|_| this.ty_infer(span)).collect()
+        ty_param_defs.iter().map(|p| this.ty_infer(p.default, span)).collect()
     } else {
         types_provided
     };
@@ -1661,7 +1661,7 @@ pub fn ast_ty_to_ty<'tcx>(this: &AstConv<'tcx>,
             // values in a ExprClosure, or as
             // the type of local variables. Both of these cases are
             // handled specially and will not descend into this routine.
-            this.ty_infer(ast_ty.span)
+            this.ty_infer(None, ast_ty.span)
         }
     };
 
@@ -1677,7 +1677,7 @@ pub fn ty_of_arg<'tcx>(this: &AstConv<'tcx>,
 {
     match a.ty.node {
         ast::TyInfer if expected_ty.is_some() => expected_ty.unwrap(),
-        ast::TyInfer => this.ty_infer(a.ty.span),
+        ast::TyInfer => this.ty_infer(None, a.ty.span),
         _ => ast_ty_to_ty(this, rscope, &*a.ty),
     }
 }
@@ -1796,7 +1796,7 @@ fn ty_of_method_or_bare_fn<'a, 'tcx>(this: &AstConv<'tcx>,
 
     let output_ty = match decl.output {
         ast::Return(ref output) if output.node == ast::TyInfer =>
-            ty::FnConverging(this.ty_infer(output.span)),
+            ty::FnConverging(this.ty_infer(None, output.span)),
         ast::Return(ref output) =>
             ty::FnConverging(convert_ty_with_lifetime_elision(this,
                                                               implied_output_region,
@@ -1936,7 +1936,7 @@ pub fn ty_of_closure<'tcx>(
         _ if is_infer && expected_ret_ty.is_some() =>
             expected_ret_ty.unwrap(),
         _ if is_infer =>
-            ty::FnConverging(this.ty_infer(decl.output.span())),
+            ty::FnConverging(this.ty_infer(None, decl.output.span())),
         ast::Return(ref output) =>
             ty::FnConverging(ast_ty_to_ty(this, &rb, &**output)),
         ast::DefaultReturn(..) => unreachable!(),
