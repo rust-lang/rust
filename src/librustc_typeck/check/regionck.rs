@@ -516,8 +516,7 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
     type_must_outlive(rcx, infer::ExprTypeIsNotInScope(expr_ty, expr.span),
                       expr_ty, ty::ReScope(CodeExtent::from_node_id(expr.id)));
 
-    let method_call = MethodCall::expr(expr.id);
-    let has_method_map = rcx.fcx.inh.tables.borrow().method_map.contains_key(&method_call);
+    let has_method_map = rcx.fcx.infcx().is_method_call(expr.id);
 
     // Check any autoderefs or autorefs that appear.
     let adjustment = rcx.fcx.inh.tables.borrow().adjustments.get(&expr.id).map(|a| a.clone());
