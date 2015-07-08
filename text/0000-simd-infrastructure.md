@@ -1,4 +1,4 @@
-- Feature Name: simd_basics
+- Feature Name: simd_basics, cfg_target_feature
 - Start Date: 2015-06-02
 - RFC PR: (leave this empty)
 - Rust Issue: (leave this empty)
@@ -25,12 +25,12 @@ This RFC is focused on building stable, powerful SIMD functionality in
 external crates, not `std`.
 
 This makes it much easier to support functionality only "occasionally"
-available with Rust's preexisting `cfg` system. If it were in `std`,
-there would need to be some highly delayed `cfg` system so that
-functions that only work with (say) AVX-2 support:
-
-- don't break compilation on systems that don't support it, but
-- are still usable on systems that do support it.
+available with Rust's preexisting `cfg` system. There's no way for
+`std` to conditionally provide an API based on the target features
+used for the final artifact. Building `std` in every configuration is
+certainly untenable. Hence, if it were to be in `std`, there would
+need to be some highly delayed `cfg` system to support that sort of
+conditional API exposure.
 
 With an external crate, we can leverage `cargo`'s existing build
 infrastructure: compiling with some target features will rebuild with
@@ -39,11 +39,11 @@ those features enabled.
 
 # Detailed design
 
-The design comes in three parts:
+The design comes in three parts, all on the path to stabilisation:
 
-- types
-- operations
-- platform detection
+- types (`feature(simd_basics)`)
+- operations (`feature(simd_basics)`)
+- platform detection (`feature(cfg_target_feature)`)
 
 The general idea is to avoid bad performance cliffs, so that an
 intrinsic call in Rust maps to preferably one CPU instruction, or, if
@@ -92,7 +92,9 @@ use the `SimdPrim` trait as a bound).
 
 It is illegal to take an internal reference to the fields of a
 `repr(simd)` type, because the representation of booleans may require
-to change, so that booleans are bit-packed.
+to change, so that booleans are bit-packed. The official external
+library providing SIMD support will have private fields so this will
+not be generally observable.
 
 ### `simd_primitive_trait`
 
@@ -107,6 +109,13 @@ restriction and possibly tweaks type's internal representation (as
 such, it's legal for a single type to implement multiple traits with
 the attribute, if a bit pointless).
 
+This trait exists to allow new-type wrappers around primitives to also
+be usable in a SIMD context. However, this only works in limited
+scenarios (i.e. when the type wraps a single primitive) and so needs
+to be an explicit part of every type's API: type authors opt-in to
+being designed-for-SIMD. If it was implicit, changes to private fields
+may break downstream code.
+
 ## Operations
 
 CPU vendors usually offer "standard" C headers for their CPU specific
@@ -116,10 +125,13 @@ x86(-64)][x86].
 [armneon]: http://infocenter.arm.com/help/topic/com.arm.doc.ihi0073a/IHI0073A_arm_neon_intrinsics_ref.pdf
 [x86]: https://software.intel.com/sites/landingpage/IntrinsicsGuide
 
-All of these would be exposed as (eventually) stable intrinsics with
-names very similar to those that the vendor suggests (only difference
-would be some form of manual namespacing, e.g. prefixing with the CPU
-target), loadable via an `extern` block with an appropriate ABI.
+All of these would be exposed as compiler intrinsics with names very
+similar to those that the vendor suggests (only difference would be
+some form of manual namespacing, e.g. prefixing with the CPU target),
+loadable via an `extern` block with an appropriate ABI. This subset of
+intrinsics would be on the path to stabilisation (that is, one can
+"import" them with `extern` in stable code), and would not be exported
+by `std`.
 
 ```rust
 extern "rust-intrinsic" {
@@ -164,18 +176,23 @@ platform specific intrinsic for shuffling.
 
 ```rust
 extern "rust-intrinsic" {
-    fn simd_shuffle2<T: SimdVector>(v: T, w: T, i0: u32, i1: u32) -> Simd2<T::Elem>;
-    fn simd_shuffle4<T: SimdVector>(v: T, w: T, i0: u32, i1: u32, i2: u32, i3: u32) -> Simd4<T::Elem>;
-    fn simd_shuffle8<T: SimdVector>(v: T, w: T,
-                                    i0: u32, i1: u32, i2: u32, i3: u32,
-                                    i4: u32, i5: u32, i6: u32, i7: u32) -> Simd8<T::Elem>;
-    fn simd_shuffle16<T: SimdVector>(v: T, w: T,
-                                     i0: u32, i1: u32, i2: u32, i3: u32,
-                                     i4: u32, i5: u32, i6: u32, i7: u32
-                                     i8: u32, i9: u32, i10: u32, i11: u32,
-                                     i12: u32, i13: u32, i14: u32, i15: u32) -> Simd16<T::Elem>;
+    fn simd_shuffle2<T, Elem>(v: T, w: T, i0: u32, i1: u32) -> Simd2<Elem>;
+    fn simd_shuffle4<T, Elem>(v: T, w: T, i0: u32, i1: u32, i2: u32, i3: u32) -> Sidm4<Elem>;
+    fn simd_shuffle8<T, Elem>(v: T, w: T,
+                              i0: u32, i1: u32, i2: u32, i3: u32,
+                              i4: u32, i5: u32, i6: u32, i7: u32) -> Simd8<Elem>;
+    fn simd_shuffle16<T, Elem>(v: T, w: T,
+                               i0: u32, i1: u32, i2: u32, i3: u32,
+                               i4: u32, i5: u32, i6: u32, i7: u32
+                               i8: u32, i9: u32, i10: u32, i11: u32,
+                               i12: u32, i13: u32, i14: u32, i15: u32) -> Simd16<Elem>;
 }
 ```
+
+The raw definitions are only checked for validity at monomorphisation
+time, ensure that `T` is a SIMD vector, `U` is the element type of `T`
+etc. Libraries can use traits to ensure that these will be enforced by
+the type checker too.
 
 This approach has some downsides: `simd_shuffle32` (e.g. `Simd32<u8>`
 on AVX, and `Simd32<u16>` on AVX-512) and especially `simd_shuffle64`
@@ -191,7 +208,8 @@ let z = concat(v, w);
 return [z[i0], z[i1], z[i2], ...]
 ```
 
-The indices `iN` have to be compile time constants.
+The indices `iN` have to be compile time constants. Out of bounds
+indices yield unspecified results.
 
 Similarly, intrinsics for inserting/extracting elements into/out of
 vectors are provided, to allow modelling the SIMD vectors as actual
@@ -199,13 +217,14 @@ CPU registers as much as possible:
 
 ```rust
 extern "rust-intrinsic" {
-    fn simd_insert<T: SimdVector>(v: T, i0: u32, elem: T::Elem) -> T;
-    fn simd_extract<T: SimdVector>(v: T, i0: u32) -> T::Elem;
+    fn simd_insert<T, Elem>(v: T, i0: u32, elem: Elem) -> T;
+    fn simd_extract<T, Elem>(v: T, i0: u32) -> Elem;
 }
 ```
 
 The `i0` indices do not have to be constant. These are equivalent to
-`v[i0] = elem` and `v[i0]` respectively.
+`v[i0] = elem` and `v[i0]` respectively. They are type checked
+similarly to the shuffles.
 
 ### Comparisons
 
@@ -226,10 +245,10 @@ extern "rust-intrinsic" {
 }
 ```
 
-However, these will be type checked, to ensure that `T` and `U` are
-the same length, and that `U` is appropriately shaped for a boolean. A
-library actually importing them might use some trait bounds to get
-actual type-safety.
+These are type checked during code-generation similarly to the
+shuffles. Ensuring that `T` and `U` has the same length, and that `U`
+is appropriately "boolean"-y. Libraries can use traits to ensure that
+these will be enforced by the type checker too.
 
 ### Built-in functionality
 
@@ -333,3 +352,4 @@ cfg_if_else! {
 
 - Should integer vectors get `/` and `%` automatically? Most CPUs
   don't support them for vectors.
+- How should out-of-bounds shuffle and insert/extract indices be handled?
