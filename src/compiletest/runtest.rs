@@ -1702,8 +1702,11 @@ fn run_codegen_test(config: &Config, props: &TestProps, testfile: &Path) {
 }
 
 fn charset() -> &'static str {
-    if cfg!(any(target_os = "bitrig", target_os = "freebsd")) {
+    // FreeBSD 10.1 defaults to GDB 6.1.1 which doesn't support "auto" charset
+    if cfg!(target_os = "bitrig") {
         "auto"
+    } else if cfg!(target_os = "freebsd") {
+        "ISO-8859-1"
     } else {
         "UTF-8"
     }
