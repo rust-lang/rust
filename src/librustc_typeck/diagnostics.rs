@@ -1551,7 +1551,8 @@ impl Foo for Bar {
 "##,
 
 E0191: r##"
-You have to specify all the associated types. Erroneous code example:
+Trait objects need to have all associated types specified. Erroneous code
+example:
 
 ```
 trait Trait {
@@ -1563,7 +1564,7 @@ type Foo = Trait; // error: the value of the associated type `Bar` (from
 ```
 
 Please verify you specified all associated types of the trait or that you
-used the good trait. Example:
+used the right trait. Example:
 
 ```
 trait Trait {
@@ -1855,6 +1856,31 @@ extern "rust-intrinsic" {
 ```
 "##,
 
+E0220: r##"
+You used an associated type which isn't defined in the trait.
+Erroneous code example:
+
+```
+trait Trait {
+    type Bar;
+}
+
+type Foo = Trait<F=i32>; // error: associated type `F` not found for
+                         //        `Trait`
+```
+
+Please verify you used the good trait or you didn't mispelled the
+associated type name. Example:
+
+```
+trait Trait {
+    type Bar;
+}
+
+type Foo = Trait<Bar=i32>; // ok!
+```
+"##,
+
 E0243: r##"
 This error indicates that not enough type parameters were found in a type or
 trait.
@@ -2115,7 +2141,6 @@ register_diagnostics! {
     E0217, // ambiguous associated type, defined in multiple supertraits
     E0218, // no associated type defined
     E0219, // associated type defined in higher-ranked supertrait
-    E0220, // associated type not found for type parameter
     E0221, // ambiguous associated type in bounds
     //E0222, // Error code E0045 (variadic function must have C calling
              // convention) duplicate
