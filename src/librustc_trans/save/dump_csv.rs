@@ -28,7 +28,7 @@
 //! DumpCsvVisitor walks the AST and processes it.
 
 
-use super::{escape, generated_code, recorder, SaveContext, PathCollector};
+use super::{escape, generated_code, recorder, SaveContext, PathCollector, Data};
 
 use session::Session;
 
@@ -738,90 +738,51 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
 
     fn process_path(&mut self,
                     id: NodeId,
-                    span: Span,
                     path: &ast::Path,
                     ref_kind: Option<recorder::Row>) {
-        if generated_code(span) {
-            return
+        if generated_code(path.span) {
+            return;
         }
 
-        let def_map = self.tcx.def_map.borrow();
-        if !def_map.contains_key(&id) {
-            self.sess.span_bug(span,
-                               &format!("def_map has no key for {} in visit_expr", id));
-        }
-        let def = def_map.get(&id).unwrap().full_def();
-        let sub_span = self.span.span_for_last_ident(span);
-        match def {
-            def::DefUpvar(..) |
-            def::DefLocal(..) |
-            def::DefStatic(..) |
-            def::DefConst(..) |
-            def::DefAssociatedConst(..) |
-            def::DefVariant(..) => self.fmt.ref_str(ref_kind.unwrap_or(recorder::VarRef),
-                                                    span,
-                                                    sub_span,
-                                                    def.def_id(),
-                                                    self.cur_scope),
-            def::DefStruct(def_id) => self.fmt.ref_str(recorder::TypeRef,
-                                                       span,
-                                                       sub_span,
-                                                       def_id,
-                                                       self.cur_scope),
-            def::DefTy(def_id, _) => self.fmt.ref_str(recorder::TypeRef,
-                                                      span,
-                                                      sub_span,
-                                                      def_id,
-                                                      self.cur_scope),
-            def::DefMethod(declid, provenence) => {
-                let sub_span = self.span.sub_span_for_meth_name(span);
-                let defid = if declid.krate == ast::LOCAL_CRATE {
-                    let ti = self.tcx.impl_or_trait_item(declid);
-                    match provenence {
-                        def::FromTrait(def_id) => {
-                            Some(self.tcx.trait_items(def_id)
-                                    .iter()
-                                    .find(|mr| {
-                                        mr.name() == ti.name()
-                                    })
-                                    .unwrap()
-                                    .def_id())
-                        }
-                        def::FromImpl(def_id) => {
-                            let impl_items = self.tcx.impl_items.borrow();
-                            Some(impl_items.get(&def_id)
-                                           .unwrap()
-                                           .iter()
-                                           .find(|mr| {
-                                                self.tcx.impl_or_trait_item(mr.def_id()).name()
-                                                    == ti.name()
-                                            })
-                                           .unwrap()
-                                           .def_id())
-                        }
-                    }
-                } else {
-                    None
-                };
-                self.fmt.meth_call_str(span,
-                                       sub_span,
-                                       defid,
-                                       Some(declid),
-                                       self.cur_scope);
-            },
-            def::DefFn(def_id, _) => {
-                self.fmt.fn_call_str(span,
-                                     sub_span,
-                                     def_id,
-                                     self.cur_scope)
+        let path_data = self.save_ctxt.get_path_data(id, path);
+        match path_data {
+            Data::VariableRefData(ref vrd) => {
+                self.fmt.ref_str(ref_kind.unwrap_or(recorder::VarRef),
+                                                    path.span,
+                                                    Some(vrd.span),
+                                                    vrd.ref_id,
+                                                    vrd.scope);
+
             }
-            _ => self.sess.span_bug(span,
-                                    &format!("Unexpected def kind while looking \
-                                              up path in `{}`: `{:?}`",
-                                             self.span.snippet(span),
-                                             def)),
+            Data::TypeRefData(ref trd) => {
+                self.fmt.ref_str(recorder::TypeRef,
+                                 path.span,
+                                 Some(trd.span),
+                                 trd.ref_id,
+                                 trd.scope);
+            }
+            Data::MethodCallData(ref mcd) => {
+                self.fmt.meth_call_str(path.span,
+                                       Some(mcd.span),
+                                       mcd.ref_id,
+                                       mcd.decl_id,
+                                       mcd.scope);
+            }
+            Data::FunctionCallData(fcd) => {
+                self.fmt.fn_call_str(path.span,
+                                     Some(fcd.span),
+                                     fcd.ref_id,
+                                     fcd.scope);
+            }
+            _ => {
+                self.sess.span_bug(path.span,
+                                   &format!("Unexpected data: {:?}", path_data));
+            }
         }
-        // modules or types in the path prefix
+
+        // Modules or types in the path prefix.
+        let def_map = self.tcx.def_map.borrow();
+        let def = def_map.get(&id).unwrap().full_def();
         match def {
             def::DefMethod(did, _) => {
                 let ti = self.tcx.impl_or_trait_item(did);
@@ -1187,7 +1148,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
                 visit::walk_expr(self, ex);
             }
             ast::ExprPath(_, ref path) => {
-                self.process_path(ex.id, path.span, path, None);
+                self.process_path(ex.id, path, None);
                 visit::walk_expr(self, ex);
             }
             ast::ExprStruct(ref path, ref fields, ref base) =>
@@ -1283,6 +1244,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
 
         // This is to get around borrow checking, because we need mut self to call process_path.
         let mut paths_to_process = vec![];
+
         // process collected paths
         for &(id, ref p, immut, ref_kind) in &collector.collected_paths {
             let def_map = self.tcx.def_map.borrow();
@@ -1319,11 +1281,12 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
                             def)
             }
         }
+
         for &(id, ref path, ref_kind) in &paths_to_process {
-            self.process_path(id, path.span, path, ref_kind);
+            self.process_path(id, path, ref_kind);
         }
         visit::walk_expr_opt(self, &arm.guard);
-        self.visit_expr(&*arm.body);
+        self.visit_expr(&arm.body);
     }
 
     fn visit_stmt(&mut self, s: &ast::Stmt) {
