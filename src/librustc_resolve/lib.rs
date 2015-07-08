@@ -109,6 +109,14 @@ mod record_exports;
 mod build_reduced_graph;
 mod resolve_imports;
 
+macro_rules! resolve_err {
+    ($this:expr, $($rest:tt)*) => {
+        if $this.emit_errors {
+            span_err!($this.session, $($rest)*);
+        }
+    }
+}
+
 #[derive(Copy, Clone)]
 struct BindingInfo {
     span: Span,
@@ -947,8 +955,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         if module.external_module_children.borrow().contains_key(&name) {
                 span_err!(self.session, span, E0259,
                           "an external crate named `{}` has already \
-                                   been imported into this module",
-                                  &token::get_name(name));
+                           been imported into this module",
+                          name);
         }
     }
 
@@ -960,9 +968,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         if module.external_module_children.borrow().contains_key(&name) {
                 span_err!(self.session, span, E0260,
                           "the name `{}` conflicts with an external \
-                                   crate that has been imported into this \
-                                   module",
-                                  &token::get_name(name));
+                           crate that has been imported into this \
+                           module",
+                           name);
         }
     }
 
@@ -1041,7 +1049,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 Indeterminate => {
                     debug!("(resolving module path for import) module \
                             resolution is indeterminate: {}",
-                            token::get_name(name));
+                            name);
                     return Indeterminate;
                 }
                 Success((target, used_proxy)) => {
@@ -1052,7 +1060,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             match type_def.module_def {
                                 None => {
                                     let msg = format!("Not a module `{}`",
-                                                        token::get_name(name));
+                                                        name);
 
                                     return Failed(Some((span, msg)));
                                 }
@@ -1078,7 +1086,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         None => {
                             // There are no type bindings at all.
                             let msg = format!("Not a module `{}`",
-                                              token::get_name(name));
+                                              name);
                             return Failed(Some((span, msg)));
                         }
                     }
@@ -1200,7 +1208,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                     -> ResolveResult<(Target, bool)> {
         debug!("(resolving item in lexical scope) resolving `{}` in \
                 namespace {:?} in `{}`",
-               token::get_name(name),
+               name,
                namespace,
                module_to_string(&*module_));
 
@@ -1302,9 +1310,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                               namespace,
                                               PathSearch,
                                               true) {
-                Failed(Some((span, msg))) =>
-                    self.resolve_error(span, &format!("failed to resolve. {}",
-                                                     msg)),
+                Failed(Some((span, msg))) => {
+                    self.resolve_error(span,
+                                       &format!("failed to resolve. {}",
+                                                msg));
+                },
                 Failed(None) => (), // Continue up the search chain.
                 Indeterminate => {
                     // We couldn't see through the higher scope because of an
@@ -1469,7 +1479,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                               allow_private_imports: bool)
                               -> ResolveResult<(Target, bool)> {
         debug!("(resolving name in module) resolving `{}` in `{}`",
-               &token::get_name(name),
+               name,
                module_to_string(&*module_));
 
         // First, check the direct children of the module.
@@ -1547,7 +1557,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         // We're out of luck.
         debug!("(resolving name in module) failed to resolve `{}`",
-               &token::get_name(name));
+               name);
         return Failed(None);
     }
 
@@ -1623,7 +1633,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 match orig_module.children.borrow().get(&name) {
                     None => {
                         debug!("!!! (with scope) didn't find `{}` in `{}`",
-                               token::get_name(name),
+                               name,
                                module_to_string(&*orig_module));
                     }
                     Some(name_bindings) => {
@@ -1631,7 +1641,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             None => {
                                 debug!("!!! (with scope) didn't find module \
                                         for `{}` in `{}`",
-                                       token::get_name(name),
+                                       name,
                                        module_to_string(&*orig_module));
                             }
                             Some(module_) => {
@@ -1795,7 +1805,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let name = item.ident.name;
 
         debug!("(resolving item) resolving {}",
-               token::get_name(name));
+               name);
 
         match item.node {
             ItemEnum(_, ref generics) |
@@ -1931,7 +1941,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                                      used for a type \
                                                      parameter in this type \
                                                      parameter list",
-                                                    token::get_name(name)))
+                                                    name))
                     }
                     seen_bindings.insert(name);
 
@@ -2177,7 +2187,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 let path_str = path_names_to_string(&trait_ref.path, 0);
                 self.resolve_error(span,
                                     &format!("method `{}` is not a member of trait `{}`",
-                                            token::get_name(name),
+                                            name,
                                             path_str));
             }
         }
@@ -2229,7 +2239,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         p.span,
                         &format!("variable `{}` from pattern #1 is \
                                   not bound in pattern #{}",
-                                token::get_name(key),
+                                key,
                                 i + 1));
                   }
                   Some(binding_i) => {
@@ -2238,7 +2248,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             binding_i.span,
                             &format!("variable `{}` is bound with different \
                                       mode in pattern #{} than in pattern #1",
-                                    token::get_name(key),
+                                    key,
                                     i + 1));
                     }
                   }
@@ -2251,7 +2261,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         binding.span,
                         &format!("variable `{}` from pattern {}{} is \
                                   not bound in pattern {}1",
-                                token::get_name(key),
+                                key,
                                 "#", i + 1, "#"));
                 }
             }
@@ -2410,7 +2420,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 if mode == RefutableMode => {
                             debug!("(resolving pattern) resolving `{}` to \
                                     struct or enum variant",
-                                   token::get_name(renamed));
+                                   renamed);
 
                             self.enforce_default_binding_mode(
                                 pattern,
@@ -2428,12 +2438,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 &format!("declaration of `{}` shadows an enum \
                                          variant or unit-like struct in \
                                          scope",
-                                        token::get_name(renamed)));
+                                        renamed));
                         }
                         FoundConst(def, lp) if mode == RefutableMode => {
                             debug!("(resolving pattern) resolving `{}` to \
                                     constant",
-                                   token::get_name(renamed));
+                                   renamed);
 
                             self.enforce_default_binding_mode(
                                 pattern,
@@ -2452,7 +2462,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         }
                         BareIdentifierPatternUnresolved => {
                             debug!("(resolving pattern) binding `{}`",
-                                   token::get_name(renamed));
+                                   renamed);
 
                             let def = DefLocal(pattern.id);
 
@@ -2639,7 +2649,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             Success((target, _)) => {
                 debug!("(resolve bare identifier pattern) succeeded in \
                          finding {} at {:?}",
-                        token::get_name(name),
+                        name,
                         target.bindings.value_def.borrow());
                 match *target.bindings.value_def.borrow() {
                     None => {
@@ -2685,7 +2695,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 }
 
                 debug!("(resolve bare identifier pattern) failed to find {}",
-                        token::get_name(name));
+                        name);
                 return BareIdentifierPatternUnresolved;
             }
         }
@@ -3043,13 +3053,13 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         // found a module instead. Modules don't have defs.
                         debug!("(resolving item path by identifier in lexical \
                                  scope) failed to resolve {} after success...",
-                                 token::get_name(name));
+                                 name);
                         return None;
                     }
                     Some(def) => {
                         debug!("(resolving item path in lexical scope) \
                                 resolved `{}` to item",
-                               token::get_name(name));
+                               name);
                         // This lookup is "all public" because it only searched
                         // for one identifier in the current module (couldn't
                         // have passed through reexports or anything like that.
@@ -3062,7 +3072,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
             Failed(err) => {
                 debug!("(resolving item path by identifier in lexical scope) \
-                         failed to resolve {}", token::get_name(name));
+                         failed to resolve {}", name);
 
                 if let Some((span, msg)) = err {
                     self.resolve_error(span, &format!("failed to resolve. {}", msg))
@@ -3472,7 +3482,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     fn get_traits_containing_item(&mut self, name: Name) -> Vec<DefId> {
         debug!("(getting traits containing item) looking for '{}'",
-               token::get_name(name));
+               name);
 
         fn add_trait_info(found_traits: &mut Vec<DefId>,
                           trait_def_id: DefId,
@@ -3480,7 +3490,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             debug!("(adding trait info) found trait {}:{} for method '{}'",
                 trait_def_id.krate,
                 trait_def_id.node,
-                token::get_name(name));
+                name);
             found_traits.push(trait_def_id);
         }
 
@@ -3591,7 +3601,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         debug!("Children:");
         build_reduced_graph::populate_module_if_necessary(self, &module_);
         for (&name, _) in module_.children.borrow().iter() {
-            debug!("* {}", token::get_name(name));
+            debug!("* {}", name);
         }
 
         debug!("Import resolutions:");
@@ -3615,7 +3625,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 }
             }
 
-            debug!("* {}:{}{}", token::get_name(name), value_repr, type_repr);
+            debug!("* {}:{}{}", name, value_repr, type_repr);
         }
     }
 }
