@@ -34,7 +34,7 @@
 	* [Races](races.md)
 	* [Send and Sync](send-and-sync.md)
 	* [Atomics](atomics.md)
-* [Example: Implementing Vec](vec.md)
+* [Implementing Vec](vec.md)
 	* [Layout](vec-layout.md)
 	* [Allocating](vec-alloc.md)
 	* [Push and Pop](vec-push-pop.md)
@@ -44,3 +44,4 @@
 	* [IntoIter](vec-into-iter.md)
 	* [Drain](vec-drain.md)
 	* [Final Code](vec-final.md)
+* [Implementing Arc and Mutex](arc-and-mutex.md)

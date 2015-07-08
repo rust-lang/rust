@@ -220,8 +220,5 @@ relaxed operations can be cheaper on weakly-ordered platforms.
 
 
 
-TODO: implementing Arc example (why does Drop need the trailing barrier?)
-
-
 [C11-busted]: http://plv.mpi-sws.org/c11comp/popl15.pdf
 [C11-model]: http://en.cppreference.com/w/c/atomic/memory_order
