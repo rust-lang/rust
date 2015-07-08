@@ -200,7 +200,7 @@ mod platform {
                         return Some(VerbatimUNC(server, share));
                     } else {
                         // \\?\path
-                        let idx = path.position_elem(&b'\\');
+                        let idx = path.iter().position(|&b| b == b'\\');
                         if idx == Some(2) && path[1] == b':' {
                             let c = path[0];
                             if c.is_ascii() && (c as char).is_alphabetic() {
@@ -214,7 +214,8 @@ mod platform {
                 } else if path.starts_with(b".\\") {
                     // \\.\path
                     path = &path[2..];
-                    let slice = &path[.. path.position_elem(&b'\\').unwrap_or(path.len())];
+                    let pos = path.iter().position(|&b| b == b'\\');
+                    let slice = &path[..pos.unwrap_or(path.len())];
                     return Some(DeviceNS(u8_slice_as_os_str(slice)));
                 }
                 match parse_two_comps(path, is_sep_byte) {
