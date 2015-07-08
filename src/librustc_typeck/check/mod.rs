@@ -1138,8 +1138,13 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
         trait_def.associated_type_names.contains(&assoc_name)
     }
 
-    fn ty_infer(&self, _span: Span) -> Ty<'tcx> {
-        self.infcx().next_ty_var()
+    fn ty_infer(&self, default: Option<Ty<'tcx>>, _span: Span) -> Ty<'tcx> {
+        let ty_var = self.infcx().next_ty_var();
+        match default {
+            Some(default) => { self.infcx().defaults.borrow_mut().insert(ty_var, default); }
+            None => {}
+        }
+        ty_var
     }
 
     fn projected_ty_from_poly_trait_ref(&self,
