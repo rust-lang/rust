@@ -33,7 +33,7 @@ fn do_idx(idx: usize, arr: &[u8]) -> Option<u8> {
 }
 ```
 
-This program is now unsound, an yet *we only modified safe code*. This is the
+This program is now unsound, and yet *we only modified safe code*. This is the
 fundamental problem of safety: it's non-local. The soundness of our unsafe
 operations necessarily depends on the state established by "safe" operations.
 Although safety *is* modular (we *still* don't need to worry about about
