@@ -1563,7 +1563,7 @@ type Foo = Trait; // error: the value of the associated type `Bar` (from
                   //        the trait `Trait`) must be specified
 ```
 
-Please verify you specified all associated types of the trait or that you
+Please verify you specified all associated types of the trait and that you
 used the right trait. Example:
 
 ```
@@ -1869,7 +1869,7 @@ type Foo = Trait<F=i32>; // error: associated type `F` not found for
                          //        `Trait`
 ```
 
-Please verify you used the good trait or you didn't mispelled the
+Please verify you used the right trait or you didn't misspell the
 associated type name. Example:
 
 ```
@@ -1878,6 +1878,22 @@ trait Trait {
 }
 
 type Foo = Trait<Bar=i32>; // ok!
+```
+"##,
+
+E0232: r##"
+The attribute must have a value. Erroneous code example:
+
+```
+#[rustc_on_unimplemented] // error: this attribute must have a value
+trait Bar {}
+```
+
+Please supply the missing value of the attribute. Example:
+
+```
+#[rustc_on_unimplemented = "foo"] // ok!
+trait Bar {}
 ```
 "##,
 
@@ -2153,7 +2169,6 @@ register_diagnostics! {
     E0229, // associated type bindings are not allowed here
     E0230, // there is no type parameter on trait
     E0231, // only named substitution parameters are allowed
-    E0232, // this attribute must have a value
     E0233,
     E0234,
     E0235, // structure constructor specifies a structure of type but
