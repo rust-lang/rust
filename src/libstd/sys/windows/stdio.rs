@@ -12,7 +12,6 @@ use prelude::v1::*;
 use io::prelude::*;
 
 use io::{self, Cursor};
-use iter::repeat;
 use libc;
 use ptr;
 use str;
@@ -94,7 +93,7 @@ impl Stdin {
         let mut utf8 = self.utf8.lock().unwrap();
         // Read more if the buffer is empty
         if utf8.position() as usize == utf8.get_ref().len() {
-            let mut utf16: Vec<u16> = repeat(0u16).take(0x1000).collect();
+            let mut utf16 = vec![0u16; 0x1000];
             let mut num = 0;
             try!(cvt(unsafe {
                 c::ReadConsoleW(handle,

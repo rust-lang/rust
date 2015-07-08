@@ -15,7 +15,6 @@
 
 use std::io::prelude::*;
 use std::io;
-use std::iter::repeat;
 use std::env;
 
 // Computes a single solution to a given 9x9 sudoku
@@ -59,8 +58,7 @@ impl Sudoku {
         reader.read_line(&mut s).unwrap();
         assert_eq!(s, "9,9\n");
 
-        let mut g = repeat(vec![0, 0, 0, 0, 0, 0, 0, 0, 0])
-                          .take(10).collect::<Vec<_>>();
+        let mut g = vec![vec![0, 0, 0, 0, 0, 0, 0, 0, 0]; 10];
         for line in reader.lines() {
             let line = line.unwrap();
             let comps: Vec<&str> = line

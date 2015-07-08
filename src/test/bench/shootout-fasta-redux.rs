@@ -42,7 +42,6 @@ use std::cmp::min;
 use std::env;
 use std::io;
 use std::io::prelude::*;
-use std::iter::repeat;
 
 const LINE_LEN: usize = 60;
 const LOOKUP_SIZE: usize = 4 * 1024;
@@ -121,7 +120,7 @@ impl<'a, W: Write> RepeatFasta<'a, W> {
 
     fn make(&mut self, n: usize) -> io::Result<()> {
         let alu_len = self.alu.len();
-        let mut buf = repeat(0).take(alu_len + LINE_LEN).collect::<Vec<_>>();
+        let mut buf = vec![0; alu_len + LINE_LEN];
         let alu: &[u8] = self.alu.as_bytes();
 
         for (slot, val) in buf.iter_mut().zip(alu) {

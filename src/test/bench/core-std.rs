@@ -12,7 +12,6 @@
 
 #![feature(rand, vec_push_all, duration, duration_span)]
 
-use std::iter::repeat;
 use std::mem::swap;
 use std::env;
 use std::__rand::{thread_rng, Rng};
@@ -56,7 +55,7 @@ fn maybe_run_test<F>(argv: &[String], name: String, test: F) where F: FnOnce() {
 }
 
 fn shift_push() {
-    let mut v1 = repeat(1).take(30000).collect::<Vec<_>>();
+    let mut v1 = vec![1; 30000];
     let mut v2 = Vec::new();
 
     while !v1.is_empty() {
@@ -70,7 +69,7 @@ fn vec_plus() {
     let mut v = Vec::new();
     let mut i = 0;
     while i < 1500 {
-        let rv = repeat(i).take(r.gen_range(0, i + 1)).collect::<Vec<_>>();
+        let rv = vec![i; r.gen_range(0, i + 1)];
         if r.gen() {
             v.extend(rv);
         } else {
@@ -88,7 +87,7 @@ fn vec_append() {
     let mut v = Vec::new();
     let mut i = 0;
     while i < 1500 {
-        let rv = repeat(i).take(r.gen_range(0, i + 1)).collect::<Vec<_>>();
+        let rv = vec![i; r.gen_range(0, i + 1)];
         if r.gen() {
             let mut t = v.clone();
             t.push_all(&rv);
@@ -108,7 +107,7 @@ fn vec_push_all() {
 
     let mut v = Vec::new();
     for i in 0..1500 {
-        let mut rv = repeat(i).take(r.gen_range(0, i + 1)).collect::<Vec<_>>();
+        let mut rv = vec![i; r.gen_range(0, i + 1)];
         if r.gen() {
             v.push_all(&rv);
         }

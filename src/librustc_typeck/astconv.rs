@@ -64,7 +64,6 @@ use rscope::{self, UnelidableRscope, RegionScope, ElidableRscope, ExplicitRscope
 use util::common::{ErrorReported, FN_OUTPUT_NAME};
 use util::nodemap::FnvHashSet;
 
-use std::iter::repeat;
 use std::slice;
 use syntax::{abi, ast, ast_util};
 use syntax::codemap::{Span, Pos};
@@ -588,7 +587,7 @@ fn convert_parenthesized_parameters<'tcx>(this: &AstConv<'tcx>,
                                                0, &region_substs, a_t))
                    .collect::<Vec<Ty<'tcx>>>();
 
-    let input_params: Vec<_> = repeat(String::new()).take(inputs.len()).collect();
+    let input_params = vec![String::new(); inputs.len()];
     let implied_output_region = find_implied_output_region(this.tcx(), &inputs, input_params);
 
     let input_ty = this.tcx().mk_tup(inputs);

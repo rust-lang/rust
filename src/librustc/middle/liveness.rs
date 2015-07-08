@@ -119,7 +119,6 @@ use util::nodemap::NodeMap;
 use std::{fmt, usize};
 use std::io::prelude::*;
 use std::io;
-use std::iter::repeat;
 use std::rc::Rc;
 use syntax::ast::{self, NodeId, Expr};
 use syntax::codemap::{BytePos, original_sp, Span};
@@ -566,8 +565,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         Liveness {
             ir: ir,
             s: specials,
-            successors: repeat(invalid_node()).take(num_live_nodes).collect(),
-            users: repeat(invalid_users()).take(num_live_nodes * num_vars).collect(),
+            successors: vec![invalid_node(); num_live_nodes],
+            users: vec![invalid_users(); num_live_nodes * num_vars],
             loop_scope: Vec::new(),
             break_ln: NodeMap(),
             cont_ln: NodeMap(),
