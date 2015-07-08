@@ -6631,6 +6631,11 @@ impl<'tcx> ctxt<'tcx> {
         self.tables.borrow().method_map.contains_key(&MethodCall::expr(expr_id))
     }
 
+    pub fn is_overloaded_autoderef(&self, expr_id: ast::NodeId, autoderefs: u32) -> bool {
+        self.tables.borrow().method_map.contains_key(&MethodCall::autoderef(expr_id,
+                                                                            autoderefs))
+    }
+
     pub fn upvar_capture(&self, upvar_id: ty::UpvarId) -> Option<ty::UpvarCapture> {
         Some(self.tables.borrow().upvar_capture_map.get(&upvar_id).unwrap().clone())
     }

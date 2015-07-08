@@ -332,7 +332,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
             }
 
             ast::ExprIndex(ref l, ref r) |
-            ast::ExprBinary(_, ref l, ref r) if self.is_method_call(expr) => {
+            ast::ExprBinary(_, ref l, ref r) if self.tcx.is_method_call(expr.id) => {
                 self.call(expr, pred, &**l, Some(&**r).into_iter())
             }
 
@@ -342,7 +342,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 self.straightline(expr, pred, fields)
             }
 
-            ast::ExprUnary(_, ref e) if self.is_method_call(expr) => {
+            ast::ExprUnary(_, ref e) if self.tcx.is_method_call(expr.id) => {
                 self.call(expr, pred, &**e, None::<ast::Expr>.iter())
             }
 
@@ -630,10 +630,5 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                     &format!("bad entry `{:?}` in def_map for label", r));
             }
         }
-    }
-
-    fn is_method_call(&self, expr: &ast::Expr) -> bool {
-        let method_call = ty::MethodCall::expr(expr.id);
-        self.tcx.tables.borrow().method_map.contains_key(&method_call)
     }
 }
