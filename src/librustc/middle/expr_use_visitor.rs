@@ -720,7 +720,7 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
         // are properly handled.
         self.walk_expr(with_expr);
 
-        fn contains_field_named(field: &ty::field,
+        fn contains_field_named(field: &ty::Field,
                                 fields: &Vec<ast::Field>)
                                 -> bool
         {

@@ -1729,7 +1729,7 @@ impl Clean<Item> for ast::StructField {
     }
 }
 
-impl Clean<Item> for ty::field_ty {
+impl Clean<Item> for ty::FieldTy {
     fn clean(&self, cx: &DocContext) -> Item {
         use syntax::parse::token::special_idents::unnamed_field;
         use rustc::metadata::csearch;

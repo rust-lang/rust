@@ -51,7 +51,7 @@ pub enum ProjectionTyError<'tcx> {
 
 #[derive(Clone)]
 pub struct MismatchedProjectionTypes<'tcx> {
-    pub err: ty::type_err<'tcx>
+    pub err: ty::TypeError<'tcx>
 }
 
 #[derive(PartialEq, Eq, Debug)]

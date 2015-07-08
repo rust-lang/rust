@@ -133,7 +133,7 @@ pub enum RegionResolutionError<'tcx> {
     /// should put a lifetime. In those cases we process and put those errors
     /// into `ProcessedErrors` before we do any reporting.
     ProcessedErrors(Vec<RegionVariableOrigin>,
-                    Vec<(TypeTrace<'tcx>, ty::type_err<'tcx>)>,
+                    Vec<(TypeTrace<'tcx>, ty::TypeError<'tcx>)>,
                     Vec<SameRegions>),
 }
 
@@ -873,7 +873,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                 if self.tcx.region_maps.nearest_common_ancestor(fr_scope, s_id) == fr_scope {
                     Ok(s)
                 } else {
-                    Err(ty::terr_regions_no_overlap(b, a))
+                    Err(ty::RegionsNoOverlap(b, a))
                 }
             }
 
@@ -892,7 +892,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                 if a == b {
                     Ok(a)
                 } else {
-                    Err(ty::terr_regions_no_overlap(b, a))
+                    Err(ty::RegionsNoOverlap(b, a))
                 }
             }
         }
@@ -949,7 +949,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         } else if r_id == scope_b {
             Ok(ReScope(scope_a))
         } else {
-            Err(ty::terr_regions_no_overlap(region_a, region_b))
+            Err(ty::RegionsNoOverlap(region_a, region_b))
         }
     }
 }
