@@ -804,8 +804,8 @@ fn write_out_deps(sess: &Session,
         match *output_type {
             config::OutputTypeExe => {
                 for output in sess.crate_types.borrow().iter() {
-                    let p = link::filename_for_input(sess, *output,
-                                                     id, &file);
+                    let p = link::filename_for_input(sess, *output, id,
+                                                     outputs);
                     out_filenames.push(p);
                 }
             }

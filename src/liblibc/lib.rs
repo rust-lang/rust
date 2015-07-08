@@ -6431,6 +6431,7 @@ pub mod funcs {
 }
 
 #[doc(hidden)]
+#[cfg(stage0)]
 pub fn issue_14344_workaround() {} // FIXME #14344 force linkage to happen correctly
 
 #[test] fn work_on_windows() { } // FIXME #10872 needed for a happy windows

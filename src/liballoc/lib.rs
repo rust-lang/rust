@@ -148,4 +148,5 @@ pub fn oom() -> ! {
 //                optimize it out).
 #[doc(hidden)]
 #[unstable(feature = "issue_14344_fixme")]
+#[cfg(stage0)]
 pub fn fixme_14344_be_sure_to_link_to_collections() {}

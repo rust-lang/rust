@@ -4,6 +4,6 @@
 TARGET_RPATH_DIR:=$(TARGET_RPATH_DIR):$(TMPDIR)
 
 all:
-	$(RUSTC) dylib.rs -o $(TMPDIR)/libdylib.so
-	$(RUSTC) main.rs
+	$(RUSTC) dylib.rs -o $(TMPDIR)/libdylib.so -C prefer-dynamic
+	$(RUSTC) main.rs -C prefer-dynamic
 	$(call RUN,main)
