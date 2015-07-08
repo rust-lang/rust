@@ -36,7 +36,6 @@ use sys::os as os_imp;
 ///
 /// * Current directory does not exist.
 /// * There are insufficient permissions to access the current directory.
-/// * The internal buffer is not large enough to hold the path.
 ///
 /// # Examples
 ///

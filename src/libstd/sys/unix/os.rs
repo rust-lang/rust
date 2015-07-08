@@ -22,15 +22,15 @@ use io;
 use iter;
 use libc::{self, c_int, c_char, c_void};
 use mem;
-use ptr;
 use path::{self, PathBuf};
+use ptr;
 use slice;
 use str;
 use sys::c;
 use sys::fd;
 use vec;
 
-const BUF_BYTES: usize = 2048;
+pub const BUF_BYTES: usize = 2048;
 const TMPBUF_SZ: usize = 128;
 
 fn bytes2path(b: &[u8]) -> PathBuf {
@@ -102,14 +102,19 @@ pub fn error_string(errno: i32) -> String {
 }
 
 pub fn getcwd() -> io::Result<PathBuf> {
-    let mut buf = [0 as c_char; BUF_BYTES];
-    unsafe {
-        if libc::getcwd(buf.as_mut_ptr(), buf.len() as libc::size_t).is_null() {
-            Err(io::Error::last_os_error())
-        } else {
-            Ok(bytes2path(CStr::from_ptr(buf.as_ptr()).to_bytes()))
+    super::fill_bytes_buf(|buf, len| {
+        unsafe {
+            Some(if !libc::getcwd(buf, len).is_null() {
+                Ok(bytes2path(CStr::from_ptr(buf).to_bytes()))
+            } else {
+                let error = io::Error::last_os_error();
+                if error.raw_os_error().unwrap() == libc::ERANGE {
+                    return None;
+                }
+                Err(error)
+            })
         }
-    }
+    })
 }
 
 pub fn chdir(p: &path::Path) -> io::Result<()> {
