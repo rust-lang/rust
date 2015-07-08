@@ -1550,6 +1550,30 @@ impl Foo for Bar {
 ```
 "##,
 
+E0191: r##"
+You have to specify all the associated types. Erroneous code example:
+
+```
+trait Trait {
+    type Bar;
+}
+
+type Foo = Trait; // error: the value of the associated type `Bar` (from
+                  //        the trait `Trait`) must be specified
+```
+
+Please verify you specified all associated types of the trait or that you
+used the good trait. Example:
+
+```
+trait Trait {
+    type Bar;
+}
+
+type Foo = Trait<Bar=i32>; // ok!
+```
+"##,
+
 E0192: r##"
 Negative impls are only allowed for traits with default impls. For more
 information see the [opt-in builtin traits RFC](https://github.com/rust-lang/
@@ -2074,7 +2098,6 @@ register_diagnostics! {
     E0188, // can not cast a immutable reference to a mutable pointer
     E0189, // deprecated: can only cast a boxed pointer to a boxed object
     E0190, // deprecated: can only cast a &-pointer to an &-object
-    E0191, // value of the associated type must be specified
     E0193, // cannot bound type where clause bounds may only be attached to types
            // involving type parameters
     E0194,
