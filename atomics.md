@@ -24,7 +24,7 @@ do exactly what we said but, you know, *fast*. Wouldn't that be great?
 # Compiler Reordering
 
 Compilers fundamentally want to be able to do all sorts of crazy transformations
-to reduce data dependencies and eleminate dead code. In particular, they may
+to reduce data dependencies and eliminate dead code. In particular, they may
 radically change the actual order of events, or make events never occur! If we
 write something like
 

@@ -25,14 +25,16 @@ as its direct children. Each variable's direct children would be their fields
 
 From this view, every value in Rust has a unique *path* in the tree of ownership.
 References to a value can subsequently be interpreted as a path in this tree.
-Of particular interest are *prefixes*: `x` is a prefix of `y` if `x` owns `y`
+Of particular interest are *ancestors* and *descendants*: if `x` owns `y`, then
+`x` is an *ancestor* of `y`, and `y` is a *descendant* of `x`. Note that this is
+an inclusive relationship: `x` is a descendant and ancestor of itself.
 
-However much data doesn't reside on the stack, and we must also accommodate this.
+Tragically, plenty of data doesn't reside on the stack, and we must also accommodate this.
 Globals and thread-locals are simple enough to model as residing at the bottom
 of the stack (though we must be careful with mutable globals). Data on
 the heap poses a different problem.
 
-If all Rust had on the heap was data uniquely by a pointer on the stack,
+If all Rust had on the heap was data uniquely owned by a pointer on the stack,
 then we can just treat that pointer as a struct that owns the value on
 the heap. Box, Vec, String, and HashMap, are examples of types which uniquely
 own data on the heap.
@@ -51,6 +53,10 @@ types provide exclusive access through runtime restrictions. However it is also
 possible to establish unique ownership without interior mutability. For instance,
 if an Rc has refcount 1, then it is safe to mutate or move its internals.
 
+In order to correctly communicate to the type system that a variable or field of
+a struct can have interior mutability, it must be wrapped in an UnsafeCell. This
+does not in itself make it safe to perform interior mutability operations on that
+value. You still must yourself ensure that mutual exclusion is upheld.
 
 
 
@@ -61,9 +67,9 @@ dereferenced. Shared references are always live unless they are literally unreac
 (for instance, they reside in freed or leaked memory). Mutable references can be
 reachable but *not* live through the process of *reborrowing*.
 
-A mutable reference can be reborrowed to either a shared or mutable reference.
-Further, the reborrow can produce exactly the same reference, or point to a
-path it is a prefix of. For instance, a mutable reference can be reborrowed
+A mutable reference can be reborrowed to either a shared or mutable reference to
+one of its descendants. A reborrowed reference will only be live again once all
+reborrows derived from it expire. For instance, a mutable reference can be reborrowed
 to point to a field of its referent:
 
 ```rust
@@ -79,7 +85,7 @@ let x = &mut (1, 2);
 ```
 
 It is also possible to reborrow into *multiple* mutable references, as long as
-they are *disjoint*: no reference is a prefix of another. Rust
+they are *disjoint*: no reference is an ancestor of another. Rust
 explicitly enables this to be done with disjoint struct fields, because
 disjointness can be statically proven:
 
@@ -89,6 +95,7 @@ let x = &mut (1, 2);
     // reborrow x to two disjoint subfields
     let y = &mut x.0;
     let z = &mut x.1;
+
     // y and z are now live, but x isn't
     *y = 3;
     *z = 4;
@@ -105,14 +112,14 @@ To simplify things, we can model variables as a fake type of reference: *owned*
 references. Owned references have much the same semantics as mutable references:
 they can be re-borrowed in a mutable or shared manner, which makes them no longer
 live. Live owned references have the unique property that they can be moved
-out of (though mutable references *can* be swapped out of). This is
+out of (though mutable references *can* be swapped out of). This power is
 only given to *live* owned references because moving its referent would of
 course invalidate all outstanding references prematurely.
 
 As a local lint against inappropriate mutation, only variables that are marked
 as `mut` can be borrowed mutably.
 
-It is also interesting to note that Box behaves exactly like an owned
+It is interesting to note that Box behaves exactly like an owned
 reference. It can be moved out of, and Rust understands it sufficiently to
 reason about its paths like a normal variable.
 
@@ -123,8 +130,12 @@ reason about its paths like a normal variable.
 
 With liveness and paths defined, we can now properly define *aliasing*:
 
-**A mutable reference is aliased if there exists another live reference to it or
-one of its prefixes.**
+**A mutable reference is aliased if there exists another live reference to one of
+its ancestors or descendants.**
+
+(If you prefer, you may also say the two live references alias *each other*.
+This has no semantic consequences, but is probably a more useful notion when
+verifying the soundness of a construct.)
 
 That's it. Super simple right? Except for the fact that it took us two pages
 to define all of the terms in that defintion. You know: Super. Simple.
