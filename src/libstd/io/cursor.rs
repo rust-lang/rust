@@ -13,7 +13,6 @@ use io::prelude::*;
 
 use cmp;
 use io::{self, SeekFrom, Error, ErrorKind};
-use iter::repeat;
 use slice;
 
 /// A `Cursor` is a type which wraps a non-I/O object to provide a `Seek`
@@ -143,7 +142,9 @@ impl Write for Cursor<Vec<u8>> {
         // currently are
         let pos = self.position();
         let amt = pos.saturating_sub(self.inner.len() as u64);
-        self.inner.extend(repeat(0).take(amt as usize));
+        // use `resize` so that the zero filling is as efficient as possible
+        let len = self.inner.len();
+        self.inner.resize(len + amt as usize, 0);
 
         // Figure out what bytes will be used to overwrite what's currently
         // there (left), and what will be appended on the end (right)
