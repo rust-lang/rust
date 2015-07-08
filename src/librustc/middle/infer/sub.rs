@@ -10,16 +10,17 @@
 
 use super::combine::{self, CombineFields};
 use super::higher_ranked::HigherRankedRelations;
-use super::Subtype;
+use super::SubregionOrigin;
 use super::type_variable::{SubtypeOf, SupertypeOf};
 
 use middle::ty::{self, Ty};
 use middle::ty::TyVar;
-use middle::ty_relate::{Relate, RelateResult, TypeRelation};
+use middle::ty_relate::{Cause, Relate, RelateResult, TypeRelation};
+use std::mem;
 
 /// "Greatest lower bound" (common subtype)
 pub struct Sub<'a, 'tcx: 'a> {
-    fields: CombineFields<'a, 'tcx>
+    fields: CombineFields<'a, 'tcx>,
 }
 
 impl<'a, 'tcx> Sub<'a, 'tcx> {
@@ -32,6 +33,25 @@ impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Sub<'a, 'tcx> {
     fn tag(&self) -> &'static str { "Sub" }
     fn tcx(&self) -> &'a ty::ctxt<'tcx> { self.fields.infcx.tcx }
     fn a_is_expected(&self) -> bool { self.fields.a_is_expected }
+
+    fn with_cause<F,R>(&mut self, cause: Cause, f: F) -> R
+        where F: FnOnce(&mut Self) -> R
+    {
+        debug!("sub with_cause={:?}", cause);
+        let old_cause = mem::replace(&mut self.fields.cause, Some(cause));
+        let r = f(self);
+        debug!("sub old_cause={:?}", old_cause);
+        self.fields.cause = old_cause;
+        r
+    }
+
+    fn will_change(&mut self, a: bool, b: bool) -> bool {
+        // if we have (Foo+'a) <: (Foo+'b), this requires that 'a:'b.
+        // So if 'a becomes 'static, no additional errors can occur.
+        // OTOH, if 'a stays the same, but 'b becomes 'static, we
+        // could have a problem.
+        !a && b
+    }
 
     fn relate_with_variance<T:Relate<'a,'tcx>>(&mut self,
                                                variance: ty::Variance,
@@ -84,11 +104,14 @@ impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Sub<'a, 'tcx> {
     }
 
     fn regions(&mut self, a: ty::Region, b: ty::Region) -> RelateResult<'tcx, ty::Region> {
-        debug!("{}.regions({:?}, {:?})",
-               self.tag(),
-               a,
-               b);
-        let origin = Subtype(self.fields.trace.clone());
+        debug!("{}.regions({:?}, {:?}) self.cause={:?}",
+               self.tag(), a, b, self.fields.cause);
+        let origin = match self.fields.cause {
+            Some(Cause::ExistentialRegionBound(true)) =>
+                SubregionOrigin::DefaultExistentialBound(self.fields.trace.clone()),
+            _ =>
+                SubregionOrigin::Subtype(self.fields.trace.clone()),
+        };
         self.fields.infcx.region_vars.make_subregion(origin, a, b);
         Ok(a)
     }

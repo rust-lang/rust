@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,13 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
-    static foo: Fn() -> u32 = || -> u32 {
-        //~^ ERROR: mismatched types:
-        //~| expected `core::ops::Fn() -> u32 + 'static`,
-        //~| found closure
-        //~| (expected trait core::ops::Fn,
-        //~| found closure)
-        0
-    };
+#![crate_type = "rlib"]
+
+// Helper for testing that we get suitable warnings when lifetime
+// bound change will cause breakage.
+
+pub fn just_ref(x: &Fn()) {
+}
+
+pub fn ref_obj(x: &Box<Fn()>) {
+    // this will change to &Box<Fn()+'static>...
 }

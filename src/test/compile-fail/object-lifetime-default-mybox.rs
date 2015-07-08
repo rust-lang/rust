@@ -39,5 +39,9 @@ fn load1<'a,'b>(a: &'a MyBox<SomeTrait>,
       //~| ERROR mismatched types
 }
 
+fn load2<'a>(ss: &MyBox<SomeTrait+'a>) -> MyBox<SomeTrait+'a> {
+    load0(ss) //~ WARNING E0398
+}
+
 fn main() {
 }

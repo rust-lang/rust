@@ -22,6 +22,11 @@ use syntax::ast;
 
 pub type RelateResult<'tcx, T> = Result<T, ty::type_err<'tcx>>;
 
+#[derive(Clone, Debug)]
+pub enum Cause {
+    ExistentialRegionBound(bool), // if true, this is a default, else explicit
+}
+
 pub trait TypeRelation<'a,'tcx> : Sized {
     fn tcx(&self) -> &'a ty::ctxt<'tcx>;
 
@@ -31,6 +36,19 @@ pub trait TypeRelation<'a,'tcx> : Sized {
     /// Returns true if the value `a` is the "expected" type in the
     /// relation. Just affects error messages.
     fn a_is_expected(&self) -> bool;
+
+    fn with_cause<F,R>(&mut self, _cause: Cause, f: F) -> R
+        where F: FnOnce(&mut Self) -> R
+    {
+        f(self)
+    }
+
+    /// Hack for deciding whether the lifetime bound defaults change
+    /// will be a breaking change or not. The bools indicate whether
+    /// `a`/`b` have a default that will change to `'static`; the
+    /// result is true if this will potentially affect the affect of
+    /// relating `a` and `b`.
+    fn will_change(&mut self, a: bool, b: bool) -> bool;
 
     /// Generic relation routine suitable for most anything.
     fn relate<T:Relate<'a,'tcx>>(&mut self, a: &T, b: &T) -> RelateResult<'tcx, T> {
@@ -366,14 +384,21 @@ impl<'a,'tcx:'a> Relate<'a,'tcx> for ty::ExistentialBounds<'tcx> {
                  -> RelateResult<'tcx, ty::ExistentialBounds<'tcx>>
         where R: TypeRelation<'a,'tcx>
     {
-        let r = try!(relation.relate_with_variance(ty::Contravariant,
-                                                   &a.region_bound,
-                                                   &b.region_bound));
+        let will_change = relation.will_change(a.region_bound_will_change,
+                                               b.region_bound_will_change);
+
+        let r =
+            try!(relation.with_cause(
+                Cause::ExistentialRegionBound(will_change),
+                |relation| relation.relate_with_variance(ty::Contravariant,
+                                                         &a.region_bound,
+                                                         &b.region_bound)));
         let nb = try!(relation.relate(&a.builtin_bounds, &b.builtin_bounds));
         let pb = try!(relation.relate(&a.projection_bounds, &b.projection_bounds));
         Ok(ty::ExistentialBounds { region_bound: r,
                                    builtin_bounds: nb,
-                                   projection_bounds: pb })
+                                   projection_bounds: pb,
+                                   region_bound_will_change: will_change })
     }
 }
 
