@@ -21,7 +21,7 @@ use io::{self, DEFAULT_BUF_SIZE, Error, ErrorKind, SeekFrom};
 use ptr;
 use iter;
 
-/// Wraps a `Read` and buffers input from it
+/// Wraps a `Read` and buffers input from it.
 ///
 /// It can be excessively inefficient to work directly with a `Read` instance.
 /// For example, every call to `read` on `TcpStream` results in a system call.
@@ -54,13 +54,13 @@ pub struct BufReader<R> {
 }
 
 impl<R: Read> BufReader<R> {
-    /// Creates a new `BufReader` with a default buffer capacity
+    /// Creates a new `BufReader` with a default buffer capacity.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(inner: R) -> BufReader<R> {
         BufReader::with_capacity(DEFAULT_BUF_SIZE, inner)
     }
 
-    /// Creates a new `BufReader` with the specified buffer capacity
+    /// Creates a new `BufReader` with the specified buffer capacity.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with_capacity(cap: usize, inner: R) -> BufReader<R> {
         let mut buf = Vec::with_capacity(cap);
@@ -183,7 +183,7 @@ impl<R: Seek> Seek for BufReader<R> {
     }
 }
 
-/// Wraps a Writer and buffers output to it
+/// Wraps a Writer and buffers output to it.
 ///
 /// It can be excessively inefficient to work directly with a `Write`. For
 /// example, every call to `write` on `TcpStream` results in a system call. A
@@ -205,13 +205,13 @@ pub struct BufWriter<W: Write> {
 pub struct IntoInnerError<W>(W, Error);
 
 impl<W: Write> BufWriter<W> {
-    /// Creates a new `BufWriter` with a default buffer capacity
+    /// Creates a new `BufWriter` with a default buffer capacity.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(inner: W) -> BufWriter<W> {
         BufWriter::with_capacity(DEFAULT_BUF_SIZE, inner)
     }
 
-    /// Creates a new `BufWriter` with the specified buffer capacity
+    /// Creates a new `BufWriter` with the specified buffer capacity.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with_capacity(cap: usize, inner: W) -> BufWriter<W> {
         BufWriter {
@@ -253,11 +253,11 @@ impl<W: Write> BufWriter<W> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get_ref(&self) -> &W { self.inner.as_ref().unwrap() }
 
-    /// Gets a mutable reference to the underlying write.
+    /// Gets a mutable reference to the underlying writer.
     ///
     /// # Warning
     ///
-    /// It is inadvisable to directly read from the underlying writer.
+    /// It is inadvisable to directly write to the underlying writer.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get_mut(&mut self) -> &mut W { self.inner.as_mut().unwrap() }
 
