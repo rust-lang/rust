@@ -27,7 +27,6 @@ use std::ffi::{CStr, CString};
 use std::fs;
 use std::mem;
 use std::path::Path;
-use std::process::Stdio;
 use std::ptr;
 use std::str;
 use std::sync::{Arc, Mutex};
@@ -619,6 +618,8 @@ pub fn run_passes(sess: &Session,
     let needs_crate_bitcode =
             sess.crate_types.borrow().contains(&config::CrateTypeRlib) &&
             sess.opts.output_types.contains(&config::OutputTypeExe);
+    let needs_crate_object =
+            sess.opts.output_types.contains(&config::OutputTypeExe);
     if needs_crate_bitcode {
         modules_config.emit_bc = true;
     }
@@ -696,7 +697,8 @@ pub fn run_passes(sess: &Session,
         if sess.opts.cg.codegen_units == 1 {
             // 1) Only one codegen unit.  In this case it's no difficulty
             //    to copy `foo.0.x` to `foo.x`.
-            copy_gracefully(&crate_output.with_extension(ext), &crate_output.path(output_type));
+            copy_gracefully(&crate_output.with_extension(ext),
+                            &crate_output.path(output_type));
             if !sess.opts.cg.save_temps && !keep_numbered {
                 // The user just wants `foo.x`, not `foo.0.x`.
                 remove(sess, &crate_output.with_extension(ext));
@@ -715,76 +717,11 @@ pub fn run_passes(sess: &Session,
         }
     };
 
-    let link_obj = |output_path: &Path| {
-        // Running `ld -r` on a single input is kind of pointless.
-        if sess.opts.cg.codegen_units == 1 {
-            copy_gracefully(&crate_output.with_extension("0.o"), output_path);
-            // Leave the .0.o file around, to mimic the behavior of the normal
-            // code path.
-            return;
-        }
-
-        // Some builds of MinGW GCC will pass --force-exe-suffix to ld, which
-        // will automatically add a .exe extension if the extension is not
-        // already .exe or .dll.  To ensure consistent behavior on Windows, we
-        // add the .exe suffix explicitly and then rename the output file to
-        // the desired path.  This will give the correct behavior whether or
-        // not GCC adds --force-exe-suffix.
-        let windows_output_path =
-            if sess.target.target.options.is_like_windows {
-                Some(output_path.with_extension("o.exe"))
-            } else {
-                None
-            };
-
-        let (pname, mut cmd) = get_linker(sess);
-
-        cmd.args(&sess.target.target.options.pre_link_args);
-        cmd.arg("-nostdlib");
-
-        for index in 0..trans.modules.len() {
-            cmd.arg(&crate_output.with_extension(&format!("{}.o", index)));
-        }
-
-        cmd.arg("-r").arg("-o")
-           .arg(windows_output_path.as_ref().map(|s| &**s).unwrap_or(output_path));
-
-        cmd.args(&sess.target.target.options.post_link_args);
-
-        if sess.opts.debugging_opts.print_link_args {
-            println!("{:?}", &cmd);
-        }
-
-        cmd.stdin(Stdio::null());
-        match cmd.status() {
-            Ok(status) => {
-                if !status.success() {
-                    sess.err(&format!("linking of {} with `{:?}` failed",
-                                     output_path.display(), cmd));
-                    sess.abort_if_errors();
-                }
-            },
-            Err(e) => {
-                sess.err(&format!("could not exec the linker `{}`: {}",
-                                 pname, e));
-                sess.abort_if_errors();
-            },
-        }
-
-        match windows_output_path {
-            Some(ref windows_path) => {
-                fs::rename(windows_path, output_path).unwrap();
-            },
-            None => {
-                // The file is already named according to `output_path`.
-            }
-        }
-    };
-
     // Flag to indicate whether the user explicitly requested bitcode.
     // Otherwise, we produced it only as a temporary output, and will need
     // to get rid of it.
     let mut user_wants_bitcode = false;
+    let mut user_wants_objects = false;
     for output_type in output_types {
         match *output_type {
             config::OutputTypeBitcode => {
@@ -801,17 +738,10 @@ pub fn run_passes(sess: &Session,
                 copy_if_one_unit("0.s", config::OutputTypeAssembly, false);
             }
             config::OutputTypeObject => {
-                link_obj(&crate_output.path(config::OutputTypeObject));
+                user_wants_objects = true;
+                copy_if_one_unit("0.o", config::OutputTypeObject, true);
             }
-            config::OutputTypeExe => {
-                // If config::OutputTypeObject is already in the list, then
-                // `crate.o` will be handled by the config::OutputTypeObject case.
-                // Otherwise, we need to create the temporary object so we
-                // can run the linker.
-                if !sess.opts.output_types.contains(&config::OutputTypeObject) {
-                    link_obj(&crate_output.temp_path(config::OutputTypeObject));
-                }
-            }
+            config::OutputTypeExe |
             config::OutputTypeDepInfo => {}
         }
     }
@@ -848,15 +778,18 @@ pub fn run_passes(sess: &Session,
         let keep_numbered_bitcode = needs_crate_bitcode ||
                 (user_wants_bitcode && sess.opts.cg.codegen_units > 1);
 
+        let keep_numbered_objects = needs_crate_object ||
+                (user_wants_objects && sess.opts.cg.codegen_units > 1);
+
         for i in 0..trans.modules.len() {
-            if modules_config.emit_obj {
+            if modules_config.emit_obj && !keep_numbered_objects {
                 let ext = format!("{}.o", i);
-                remove(sess, &crate_output.with_extension(&ext[..]));
+                remove(sess, &crate_output.with_extension(&ext));
             }
 
             if modules_config.emit_bc && !keep_numbered_bitcode {
                 let ext = format!("{}.bc", i);
-                remove(sess, &crate_output.with_extension(&ext[..]));
+                remove(sess, &crate_output.with_extension(&ext));
             }
         }
 

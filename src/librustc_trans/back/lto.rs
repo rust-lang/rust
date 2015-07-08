@@ -56,33 +56,14 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
         };
 
         let archive = ArchiveRO::open(&path).expect("wanted an rlib");
-        let file = path.file_name().unwrap().to_str().unwrap();
-        let file = &file[3..file.len() - 5]; // chop off lib/.rlib
-        debug!("reading {}", file);
-        for i in 0.. {
-            let filename = format!("{}.{}.bytecode.deflate", file, i);
-            let msg = format!("check for {}", filename);
-            let bc_encoded = time(sess.time_passes(), &msg, (), |_| {
-                archive.iter().find(|section| {
-                    section.name() == Some(&filename[..])
-                })
-            });
-            let bc_encoded = match bc_encoded {
-                Some(data) => data,
-                None => {
-                    if i == 0 {
-                        // No bitcode was found at all.
-                        sess.fatal(&format!("missing compressed bytecode in {}",
-                                           path.display()));
-                    }
-                    // No more bitcode files to read.
-                    break
-                }
-            };
-            let bc_encoded = bc_encoded.data();
+        let bytecodes = archive.iter().filter_map(|child| {
+            child.name().map(|name| (name, child))
+        }).filter(|&(name, _)| name.ends_with("bytecode.deflate"));
+        for (name, data) in bytecodes {
+            let bc_encoded = data.data();
 
             let bc_decoded = if is_versioned_bytecode_format(bc_encoded) {
-                time(sess.time_passes(), &format!("decode {}.{}.bc", file, i), (), |_| {
+                time(sess.time_passes(), &format!("decode {}", name), (), |_| {
                     // Read the version
                     let version = extract_bytecode_format_version(bc_encoded);
 
@@ -106,7 +87,7 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
                     }
                 })
             } else {
-                time(sess.time_passes(), &format!("decode {}.{}.bc", file, i), (), |_| {
+                time(sess.time_passes(), &format!("decode {}", name), (), |_| {
                 // the object must be in the old, pre-versioning format, so simply
                 // inflate everything and let LLVM decide if it can make sense of it
                     match flate::inflate_bytes(bc_encoded) {
@@ -120,10 +101,8 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
             };
 
             let ptr = bc_decoded.as_ptr();
-            debug!("linking {}, part {}", name, i);
-            time(sess.time_passes(),
-                 &format!("ll link {}.{}", name, i),
-                 (),
+            debug!("linking {}", name);
+            time(sess.time_passes(), &format!("ll link {}", name), (),
                  |()| unsafe {
                 if !llvm::LLVMRustLinkInExternalBitcode(llmod,
                                                         ptr as *const libc::c_char,
