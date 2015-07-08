@@ -62,6 +62,20 @@ the compiler in a backwards compatible fashion. Modifications to existing lints
 to emit new warnings will not get triggered, and new lints will also be entirely
 suppressed **only for upstream dependencies**.
 
+## Cargo Backwards Compatibility
+
+This flag would be first non-1.0 flag that Cargo would be passing to the
+compiler. This means that Cargo can no longer drive a 1.0 compiler, but only a
+1.N+ compiler which has the `--cap-lints` flag. To handle this discrepancy Cargo
+will detect whether `--cap-lints` is a valid flag to the compiler.
+
+Cargo already runs `rustc -vV` to learn about the compiler (e.g. a "unique
+string" that's opaque to Cargo) and it will instead start passing
+`rustc -vV --cap-lints allow` to the compiler instead. This will allow Cargo to
+simultaneously detect whether the flag is valid and learning about the version
+string. If this command fails and `rustc -vV` succeeds then Cargo will fall back
+to the old behavior of passing `-A warnings`.
+
 # Drawbacks
 
 This RFC adds surface area to the command line of the compiler with a relatively
