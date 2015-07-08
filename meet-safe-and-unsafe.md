@@ -14,12 +14,12 @@ on a leap year? Are we ready for that? Unsafe better be, because if they get
 built to Unsafe's standards!
 
 That's where Safe comes in. Safe has to handle *everything else*. Since Safe needs
-to *get work done*, they've grown to be fairly carless and clumsy! Safe doesn't worry
+to *get work done*, they've grown to be fairly careless and clumsy! Safe doesn't worry
 about all the crazy eventualities that Unsafe does, because life is too short to deal
 with leap-year-earthquakes. Of course, this means there's some jobs that Safe just
 can't handle. Safe is all about quantity over quality.
 
-Unsafe loves Safe to bits, but knows that tey *can never trust them to do the
+Unsafe loves Safe to bits, but knows that they *can never trust them to do the
 right thing*. Still, Unsafe acknowledges that not every problem needs quite the
 attention to detail that they apply. Indeed, Unsafe would *love* if Safe could do
 *everything* for them. To accomplish this, Unsafe spends most of their time
