@@ -24,7 +24,7 @@ struct Covariant<'a> {
 }
 
 fn use_<'a>(c: Covariant<'a>) {
-    // OK Because Covariant<'a> <: Covariant<'static> iff 'a <= 'static
+    // OK Because Covariant<'a> <: Covariant<'static> if 'a <= 'static
     let _: Covariant<'static> = c;
 }
 

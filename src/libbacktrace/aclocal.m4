@@ -88,7 +88,7 @@ _AM_AUTOCONF_VERSION(m4_defn([AC_AUTOCONF_VERSION]))])
 # start a VPATH build or use an absolute $srcdir.
 #
 # So we could use something similar to $top_srcdir/$ac_aux_dir/missing,
-# iff we strip the leading $srcdir from $ac_aux_dir.  That would be:
+# if we strip the leading $srcdir from $ac_aux_dir.  That would be:
 #   am_aux_dir='\$(top_srcdir)/'`expr "$ac_aux_dir" : "$srcdir//*\(.*\)"`
 # and then we would define $MISSING as
 #   MISSING="\${SHELL} $am_aux_dir/missing"
