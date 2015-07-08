@@ -89,8 +89,6 @@ However there's a third potential state that the hardware enables:
 
 * `y = 2`: (thread 2 saw `x = 2`, but not `y = 3`, and then overwrote `y = 3`)
 
-```
-
 It's worth noting that different kinds of CPU provide different guarantees. It
 is common to seperate hardware into two categories: strongly-ordered and weakly-
 ordered. Most notably x86/64 provides strong ordering guarantees, while ARM and
