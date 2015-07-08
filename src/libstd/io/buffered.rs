@@ -19,7 +19,6 @@ use error;
 use fmt;
 use io::{self, DEFAULT_BUF_SIZE, Error, ErrorKind, SeekFrom};
 use ptr;
-use iter;
 
 /// Wraps a `Read` and buffers input from it.
 ///
@@ -63,11 +62,9 @@ impl<R: Read> BufReader<R> {
     /// Creates a new `BufReader` with the specified buffer capacity.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with_capacity(cap: usize, inner: R) -> BufReader<R> {
-        let mut buf = Vec::with_capacity(cap);
-        buf.extend(iter::repeat(0).take(cap));
         BufReader {
             inner: inner,
-            buf: buf,
+            buf: vec![0; cap],
             pos: 0,
             cap: 0,
         }
