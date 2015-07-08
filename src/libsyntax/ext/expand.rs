@@ -61,7 +61,7 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
 
             // Keep going, outside-in.
             let fully_expanded = fld.fold_expr(expanded_expr);
-            let span = fld.new_span(span); 
+            let span = fld.new_span(span);
             fld.cx.bt_pop();
 
             fully_expanded.map(|e| ast::Expr {

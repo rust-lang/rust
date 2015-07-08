@@ -61,6 +61,8 @@ pub enum Data {
     VariableRefData(VariableRefData),
     /// Data for a reference to a type or trait.
     TypeRefData(TypeRefData),
+    /// Data about a function call.
+    FunctionCallData(FunctionCallData),
     /// Data about a method call.
     MethodCallData(MethodCallData),
 }
@@ -122,7 +124,7 @@ pub struct ImplData {
 }
 
 /// Data for the use of some item (e.g., the use of a local variable, which
-/// will refere to that variables declaration (by ref_id)).
+/// will refer to that variables declaration (by ref_id)).
 #[derive(Debug)]
 pub struct VariableRefData {
     pub name: String,
@@ -134,6 +136,14 @@ pub struct VariableRefData {
 /// Data for a reference to a type or trait.
 #[derive(Debug)]
 pub struct TypeRefData {
+    pub span: Span,
+    pub scope: NodeId,
+    pub ref_id: DefId,
+}
+
+/// Data about a function call.
+#[derive(Debug)]
+pub struct FunctionCallData {
     pub span: Span,
     pub scope: NodeId,
     pub ref_id: DefId,
@@ -392,17 +402,105 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     ty::TraitContainer(_) => (None, Some(method_id))
                 };
                 let sub_span = self.span_utils.sub_span_for_meth_name(expr.span);
+                let parent = self.tcx.map.get_enclosing_scope(expr.id).unwrap_or(0);
                 Some(Data::MethodCallData(MethodCallData {
                     span: sub_span.unwrap(),
-                    scope: self.tcx.map.get_enclosing_scope(expr.id).unwrap_or(0),
+                    scope: parent,
                     ref_id: def_id,
-                    decl_id: decl_id,                    
+                    decl_id: decl_id,
                 }))
+            }
+            ast::ExprPath(_, ref path) => {
+                Some(self.get_path_data(expr.id, path))
             }
             _ => {
                 // FIXME
                 unimplemented!();
             }
+        }
+    }
+
+    pub fn get_path_data(&self,
+                         id: NodeId,
+                         path: &ast::Path)
+                         -> Data {
+        let def_map = self.tcx.def_map.borrow();
+        if !def_map.contains_key(&id) {
+            self.tcx.sess.span_bug(path.span,
+                                   &format!("def_map has no key for {} in visit_expr", id));
+        }
+        let def = def_map.get(&id).unwrap().full_def();
+        let sub_span = self.span_utils.span_for_last_ident(path.span);
+        match def {
+            def::DefUpvar(..) |
+            def::DefLocal(..) |
+            def::DefStatic(..) |
+            def::DefConst(..) |
+            def::DefAssociatedConst(..) |
+            def::DefVariant(..) => {
+                Data::VariableRefData(VariableRefData {
+                    name: self.span_utils.snippet(sub_span.unwrap()),
+                    span: sub_span.unwrap(),
+                    scope: self.tcx.map.get_enclosing_scope(id).unwrap_or(0),
+                    ref_id: def.def_id(),
+                })
+            }
+            def::DefStruct(def_id) | def::DefTy(def_id, _) => {
+                Data::TypeRefData(TypeRefData {
+                    span: sub_span.unwrap(),
+                    ref_id: def_id,
+                    scope: self.tcx.map.get_enclosing_scope(id).unwrap_or(0),
+                })
+            }
+            def::DefMethod(decl_id, provenence) => {
+                let sub_span = self.span_utils.sub_span_for_meth_name(path.span);
+                let def_id = if decl_id.krate == ast::LOCAL_CRATE {
+                    let ti = self.tcx.impl_or_trait_item(decl_id);
+                    match provenence {
+                        def::FromTrait(def_id) => {
+                            Some(self.tcx.trait_items(def_id)
+                                    .iter()
+                                    .find(|mr| {
+                                        mr.name() == ti.name()
+                                    })
+                                    .unwrap()
+                                    .def_id())
+                        }
+                        def::FromImpl(def_id) => {
+                            let impl_items = self.tcx.impl_items.borrow();
+                            Some(impl_items.get(&def_id)
+                                           .unwrap()
+                                           .iter()
+                                           .find(|mr| {
+                                                self.tcx.impl_or_trait_item(mr.def_id()).name()
+                                                    == ti.name()
+                                            })
+                                           .unwrap()
+                                           .def_id())
+                        }
+                    }
+                } else {
+                    None
+                };
+                Data::MethodCallData(MethodCallData {
+                    span: sub_span.unwrap(),
+                    scope: self.tcx.map.get_enclosing_scope(id).unwrap_or(0),
+                    ref_id: def_id,
+                    decl_id: Some(decl_id),
+                })
+            },
+            def::DefFn(def_id, _) => {
+                Data::FunctionCallData(FunctionCallData {
+                    ref_id: def_id,
+                    span: sub_span.unwrap(),
+                    scope: self.tcx.map.get_enclosing_scope(id).unwrap_or(0),
+                })
+            }
+            _ => self.tcx.sess.span_bug(path.span,
+                                        &format!("Unexpected def kind while looking \
+                                                  up path in `{}`: `{:?}`",
+                                                 self.span_utils.snippet(path.span),
+                                                 def)),
         }
     }
 
