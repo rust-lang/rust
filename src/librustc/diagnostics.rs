@@ -375,6 +375,9 @@ Example:
 ```
 type X = u32; // ok!
 ```
+
+Note that type parameters for enum-variant constructors go after the variant,
+not after the enum (Option::None::<u32>, not Option::<u32>::None).
 "##,
 
 E0110: r##"
