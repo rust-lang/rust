@@ -130,8 +130,8 @@ pub fn type_is_sized<'tcx>(tcx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
 
 pub fn type_is_fat_ptr<'tcx>(cx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
     match ty.sty {
-        ty::TyRawPtr(ty::mt{ty, ..}) |
-        ty::TyRef(_, ty::mt{ty, ..}) |
+        ty::TyRawPtr(ty::TypeWithMutability{ty, ..}) |
+        ty::TyRef(_, ty::TypeWithMutability{ty, ..}) |
         ty::TyBox(ty) => {
             !type_is_sized(cx, ty)
         }

@@ -85,11 +85,11 @@ impl<'a,'tcx> HigherRankedRelations<'a,'tcx> for CombineFields<'a,'tcx> {
                 Err((skol_br, tainted_region)) => {
                     if self.a_is_expected {
                         debug!("Not as polymorphic!");
-                        return Err(ty::terr_regions_insufficiently_polymorphic(skol_br,
+                        return Err(ty::RegionsInsufficientlyPolymorphic(skol_br,
                                                                                tainted_region));
                     } else {
                         debug!("Overly polymorphic!");
-                        return Err(ty::terr_regions_overly_polymorphic(skol_br,
+                        return Err(ty::RegionsOverlyPolymorphic(skol_br,
                                                                        tainted_region));
                     }
                 }

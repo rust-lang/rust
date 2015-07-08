@@ -1030,7 +1030,7 @@ fn report_cast_to_unsized_type<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         format!("cast to unsized type: `{}` as `{}`", actual, tstr)
     }, t_expr, None);
     match t_expr.sty {
-        ty::TyRef(_, ty::mt { mutbl: mt, .. }) => {
+        ty::TyRef(_, ty::TypeWithMutability { mutbl: mt, .. }) => {
             let mtstr = match mt {
                 ast::MutMutable => "mut ",
                 ast::MutImmutable => ""
@@ -1577,7 +1577,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     origin: infer::TypeOrigin,
                     sub: Ty<'tcx>,
                     sup: Ty<'tcx>)
-                    -> Result<(), ty::type_err<'tcx>> {
+                    -> Result<(), ty::TypeError<'tcx>> {
         infer::mk_subty(self.infcx(), a_is_expected, origin, sub, sup)
     }
 
@@ -1586,7 +1586,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                    origin: infer::TypeOrigin,
                    sub: Ty<'tcx>,
                    sup: Ty<'tcx>)
-                   -> Result<(), ty::type_err<'tcx>> {
+                   -> Result<(), ty::TypeError<'tcx>> {
         infer::mk_eqty(self.infcx(), a_is_expected, origin, sub, sup)
     }
 
@@ -1601,7 +1601,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                  sp: Span,
                                  mk_msg: M,
                                  actual_ty: Ty<'tcx>,
-                                 err: Option<&ty::type_err<'tcx>>) where
+                                 err: Option<&ty::TypeError<'tcx>>) where
         M: FnOnce(String) -> String,
     {
         self.infcx().type_error_message(sp, mk_msg, actual_ty, err);
@@ -1611,7 +1611,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                    sp: Span,
                                    e: Ty<'tcx>,
                                    a: Ty<'tcx>,
-                                   err: &ty::type_err<'tcx>) {
+                                   err: &ty::TypeError<'tcx>) {
         self.infcx().report_mismatched_types(sp, e, a, err)
     }
 
@@ -1675,7 +1675,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn lookup_field_ty(&self,
                            span: Span,
                            class_id: ast::DefId,
-                           items: &[ty::field_ty],
+                           items: &[ty::FieldTy],
                            fieldname: ast::Name,
                            substs: &subst::Substs<'tcx>)
                            -> Option<Ty<'tcx>>
@@ -1688,7 +1688,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn lookup_tup_field_ty(&self,
                                span: Span,
                                class_id: ast::DefId,
-                               items: &[ty::field_ty],
+                               items: &[ty::FieldTy],
                                idx: usize,
                                substs: &subst::Substs<'tcx>)
                                -> Option<Ty<'tcx>>
@@ -1895,7 +1895,7 @@ fn try_overloaded_deref<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                   base_expr: Option<&ast::Expr>,
                                   base_ty: Ty<'tcx>,
                                   lvalue_pref: LvaluePreference)
-                                  -> Option<ty::mt<'tcx>>
+                                  -> Option<ty::TypeWithMutability<'tcx>>
 {
     // Try DerefMut first, if preferred.
     let method = match (lvalue_pref, fcx.tcx().lang_items.deref_mut_trait()) {
@@ -1926,7 +1926,7 @@ fn try_overloaded_deref<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 fn make_overloaded_lvalue_return_type<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                                 method_call: Option<MethodCall>,
                                                 method: Option<MethodCallee<'tcx>>)
-                                                -> Option<ty::mt<'tcx>>
+                                                -> Option<ty::TypeWithMutability<'tcx>>
 {
     match method {
         Some(method) => {
@@ -2777,7 +2777,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                                 class_id: ast::DefId,
                                                 node_id: ast::NodeId,
                                                 substitutions: &'tcx subst::Substs<'tcx>,
-                                                field_types: &[ty::field_ty],
+                                                field_types: &[ty::FieldTy],
                                                 ast_fields: &'tcx [ast::Field],
                                                 check_completeness: bool,
                                                 enum_id_opt: Option<ast::DefId>)  {
@@ -3111,7 +3111,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                                     hint,
                                                     lvalue_pref);
 
-        let tm = ty::mt { ty: fcx.expr_ty(&**oprnd), mutbl: mutbl };
+        let tm = ty::TypeWithMutability { ty: fcx.expr_ty(&**oprnd), mutbl: mutbl };
         let oprnd_t = if tm.ty.references_error() {
             tcx.types.err
         } else {
@@ -4909,13 +4909,13 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
             "offset" | "arith_offset" => {
               (1,
                vec!(
-                  tcx.mk_ptr(ty::mt {
+                  tcx.mk_ptr(ty::TypeWithMutability {
                       ty: param(ccx, 0),
                       mutbl: ast::MutImmutable
                   }),
                   ccx.tcx.types.isize
                ),
-               tcx.mk_ptr(ty::mt {
+               tcx.mk_ptr(ty::TypeWithMutability {
                    ty: param(ccx, 0),
                    mutbl: ast::MutImmutable
                }))
@@ -4923,11 +4923,11 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
             "copy" | "copy_nonoverlapping" => {
               (1,
                vec!(
-                  tcx.mk_ptr(ty::mt {
+                  tcx.mk_ptr(ty::TypeWithMutability {
                       ty: param(ccx, 0),
                       mutbl: ast::MutImmutable
                   }),
-                  tcx.mk_ptr(ty::mt {
+                  tcx.mk_ptr(ty::TypeWithMutability {
                       ty: param(ccx, 0),
                       mutbl: ast::MutMutable
                   }),
@@ -4938,11 +4938,11 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
             "volatile_copy_memory" | "volatile_copy_nonoverlapping_memory" => {
               (1,
                vec!(
-                  tcx.mk_ptr(ty::mt {
+                  tcx.mk_ptr(ty::TypeWithMutability {
                       ty: param(ccx, 0),
                       mutbl: ast::MutMutable
                   }),
-                  tcx.mk_ptr(ty::mt {
+                  tcx.mk_ptr(ty::TypeWithMutability {
                       ty: param(ccx, 0),
                       mutbl: ast::MutImmutable
                   }),
@@ -4953,7 +4953,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
             "write_bytes" | "volatile_set_memory" => {
               (1,
                vec!(
-                  tcx.mk_ptr(ty::mt {
+                  tcx.mk_ptr(ty::TypeWithMutability {
                       ty: param(ccx, 0),
                       mutbl: ast::MutMutable
                   }),
