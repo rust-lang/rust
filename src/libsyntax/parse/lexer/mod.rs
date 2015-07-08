@@ -1396,7 +1396,7 @@ fn ident_continue(c: Option<char>) -> bool {
         || (c >= 'A' && c <= 'Z')
         || (c >= '0' && c <= '9')
         || c == '_'
-        || (c > '\x7f' && c.is_xid_continue())
+        || (c > '\x7f' && (c.is_xid_continue() || c.is_superscript()))
 }
 
 #[cfg(test)]

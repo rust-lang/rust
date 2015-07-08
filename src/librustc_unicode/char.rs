@@ -373,6 +373,14 @@ impl char {
     #[inline]
     pub fn is_xid_continue(self) -> bool { derived_property::XID_Continue(self) }
 
+    /// Returns whether the specified `char` is a superscript character in the
+    /// ['Superscripts and Subscripts' unicode block]
+    /// (https://en.wikipedia.org/wiki/Superscripts_and_Subscripts)
+    #[unstable(feature = "unicode",
+               reason = "mainly needed for compiler internals")]
+    #[inline]
+    pub fn is_superscript(self) -> bool { derived_property::Superscript(self) }
+
     /// Indicates whether a character is in lowercase.
     ///
     /// This is defined according to the terms of the Unicode Derived Core

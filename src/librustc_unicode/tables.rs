@@ -1147,6 +1147,14 @@ pub mod derived_property {
         super::bsearch_range_table(c, XID_Start_table)
     }
 
+    pub const Superscript_table: &'static [(char, char)] = &[
+        ('\u{b2}', '\u{b3}'), ('\u{b9}', '\u{b9}'), ('\u{2070}', '\u{2071}'),
+        ('\u{2074}', '\u{207f}')
+    ];
+
+    pub fn Superscript(c: char) -> bool {
+        super::bsearch_range_table(c, Superscript_table)
+    }
 }
 
 pub mod property {
