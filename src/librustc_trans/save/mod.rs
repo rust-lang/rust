@@ -194,7 +194,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     qualname: qualname,
                     declaration: None,
                     span: sub_span.unwrap(),
-                    scope: self.tcx.map.get_enclosing_scope(item.id).unwrap_or(0),
+                    scope: self.enclosing_scope(item.id),
                 })
             }
             ast::ItemStatic(ref typ, mt, ref expr) => {
@@ -213,7 +213,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     name: get_ident(item.ident).to_string(),
                     qualname: qualname,
                     span: sub_span.unwrap(),
-                    scope: self.tcx.map.get_enclosing_scope(item.id).unwrap_or(0),
+                    scope: self.enclosing_scope(item.id),
                     value: value,
                     type_value: ty_to_string(&typ),
                 })
@@ -227,7 +227,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     name: get_ident(item.ident).to_string(),
                     qualname: qualname,
                     span: sub_span.unwrap(),
-                    scope: self.tcx.map.get_enclosing_scope(item.id).unwrap_or(0),
+                    scope: selfenclosing_scope(item.id),
                     value: self.span_utils.snippet(expr.span),
                     type_value: ty_to_string(&typ),
                 })
@@ -245,7 +245,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     name: get_ident(item.ident).to_string(),
                     qualname: qualname,
                     span: sub_span.unwrap(),
-                    scope: self.tcx.map.get_enclosing_scope(item.id).unwrap_or(0),
+                    scope: self.enclosing_scope(item.id),
                     filename: filename,
                 })
             },
@@ -259,14 +259,14 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     value: val,
                     span: sub_span.unwrap(),
                     qualname: enum_name,
-                    scope: self.tcx.map.get_enclosing_scope(item.id).unwrap_or(0),
+                    scope: self.enclosing_scope(item.id),
                 })
             },
             ast::ItemImpl(_, _, _, ref trait_ref, ref typ, _) => {
                 let mut type_data = None;
                 let sub_span;
 
-                let parent = self.tcx.map.get_enclosing_scope(item.id).unwrap_or(0);
+                let parent = self.enclosing_scope(item.id);
 
                 match typ.node {
                     // Common case impl for a struct or something basic.
@@ -303,14 +303,12 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         }
     }
 
-    // FIXME: we ought to be able to get the parent id ourselves, but we can't
-    // for now.
-    pub fn get_field_data(&self, field: &ast::StructField, parent: NodeId) -> Option<Data> {
+    pub fn get_field_data(&self, field: &ast::StructField, scope: NodeId) -> Option<Data> {
         match field.node.kind {
             ast::NamedField(ident, _) => {
                 let name = get_ident(ident);
                 let qualname = format!("::{}::{}",
-                                       self.tcx.map.path_to_string(parent),
+                                       self.tcx.map.path_to_string(scope),
                                        name);
                 let typ = self.tcx.node_types().get(&field.node.id).unwrap()
                                                .to_string();
@@ -320,7 +318,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     name: get_ident(ident).to_string(),
                     qualname: qualname,
                     span: sub_span.unwrap(),
-                    scope: parent,
+                    scope: scope,
                     value: "".to_owned(),
                     type_value: typ,
                 }))
@@ -329,8 +327,6 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         }
     }
 
-    // FIXME: we ought to be able to get the parent id ourselves, but we can't
-    // for now.
     pub fn get_trait_ref_data(&self,
                               trait_ref: &ast::TraitRef,
                               parent: NodeId)
@@ -359,7 +355,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                                 return Some(Data::VariableRefData(VariableRefData {
                                     name: get_ident(ident.node).to_string(),
                                     span: sub_span.unwrap(),
-                                    scope: self.tcx.map.get_enclosing_scope(expr.id).unwrap_or(0),
+                                    scope: self.enclosing_scope(expr.id),
                                     ref_id: f.id,
                                 }));
                             }
@@ -382,7 +378,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                         let sub_span = self.span_utils.span_for_last_ident(path.span);
                         Some(Data::TypeRefData(TypeRefData {
                             span: sub_span.unwrap(),
-                            scope: self.tcx.map.get_enclosing_scope(expr.id).unwrap_or(0),
+                            scope: self.enclosing_scope(expr.id),
                             ref_id: def_id,
                         }))
                     }
@@ -402,7 +398,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     ty::TraitContainer(_) => (None, Some(method_id))
                 };
                 let sub_span = self.span_utils.sub_span_for_meth_name(expr.span);
-                let parent = self.tcx.map.get_enclosing_scope(expr.id).unwrap_or(0);
+                let parent = self.enclosing_scope(expr.id);
                 Some(Data::MethodCallData(MethodCallData {
                     span: sub_span.unwrap(),
                     scope: parent,
@@ -441,7 +437,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 Data::VariableRefData(VariableRefData {
                     name: self.span_utils.snippet(sub_span.unwrap()),
                     span: sub_span.unwrap(),
-                    scope: self.tcx.map.get_enclosing_scope(id).unwrap_or(0),
+                    scope: self.enclosing_scope(id),
                     ref_id: def.def_id(),
                 })
             }
@@ -449,7 +445,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 Data::TypeRefData(TypeRefData {
                     span: sub_span.unwrap(),
                     ref_id: def_id,
-                    scope: self.tcx.map.get_enclosing_scope(id).unwrap_or(0),
+                    scope: self.enclosing_scope(id),
                 })
             }
             def::DefMethod(decl_id, provenence) => {
@@ -484,7 +480,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 };
                 Data::MethodCallData(MethodCallData {
                     span: sub_span.unwrap(),
-                    scope: self.tcx.map.get_enclosing_scope(id).unwrap_or(0),
+                    scope: self.enclosing_scope(id),
                     ref_id: def_id,
                     decl_id: Some(decl_id),
                 })
@@ -493,7 +489,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 Data::FunctionCallData(FunctionCallData {
                     ref_id: def_id,
                     span: sub_span.unwrap(),
-                    scope: self.tcx.map.get_enclosing_scope(id).unwrap_or(0),
+                    scope: self.enclosing_scope(id),
                 })
             }
             _ => self.tcx.sess.span_bug(path.span,
@@ -545,6 +541,10 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         }
     }
 
+    #[inline]
+    fn enclosing_scope(&self, id: NodeId) -> NodeId {
+        self.tcx.map.get_enclosing_scope(id).unwrap_or(0)
+    }
 }
 
 // An AST visitor for collecting paths from patterns.

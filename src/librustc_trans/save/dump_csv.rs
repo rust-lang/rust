@@ -822,6 +822,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
                              struct_lit_data.ref_id,
                              struct_lit_data.scope);
             let struct_def = struct_lit_data.ref_id;
+            let scope = self.save_ctxt.enclosing_scope(ex.id);
 
             for field in fields {
                 if generated_code(field.ident.span) {
@@ -830,7 +831,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
 
                 let field_data = self.save_ctxt.get_field_ref_data(field,
                                                                    struct_def,
-                                                                   self.cur_scope);
+                                                                   scope);
                 self.fmt.ref_str(recorder::VarRef,
                                  field.ident.span,
                                  Some(field_data.span),
