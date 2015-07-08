@@ -75,6 +75,41 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
     }
 }
 
+// Some system functions expect the user to pass a appropiately-sized buffer
+// without specifying its size. They will only report back whether the buffer
+// was large enough or not.
+//
+// The callback is yielded a (pointer, len) pair which can be
+// passed to a syscall. The `ptr` is valid for `len` items (i8 in this case).
+// The closure is expected to return `None` if the space was insufficient and
+// `Some(r)` if the syscall did not fail due to insufficient space.
+fn fill_bytes_buf<F, T>(mut f: F) -> io::Result<T>
+    where F: FnMut(*mut i8, libc::size_t) -> Option<io::Result<T>>,
+{
+    // Start off with a stack buf but then spill over to the heap if we end up
+    // needing more space.
+    let mut stack_buf = [0i8; os::BUF_BYTES];
+    let mut heap_buf = Vec::new();
+    unsafe {
+        let mut n = stack_buf.len();
+        loop {
+            let buf = if n <= stack_buf.len() {
+                &mut stack_buf[..]
+            } else {
+                heap_buf.set_len(0);
+                heap_buf.reserve(n);
+                heap_buf.set_len(n);
+                &mut heap_buf[..]
+            };
+
+            match f(buf.as_mut_ptr(), n as libc::size_t) {
+                None => n *= 2,
+                Some(r) => return r,
+            }
+        }
+    }
+}
+
 pub fn cvt<T: One + PartialEq + Neg<Output=T>>(t: T) -> io::Result<T> {
     let one: T = T::one();
     if t == -one {
