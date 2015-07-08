@@ -138,6 +138,7 @@ pub mod btree_set {
 // FIXME(#14344) this shouldn't be necessary
 #[doc(hidden)]
 #[unstable(feature = "issue_14344_fixme")]
+#[cfg(stage0)]
 pub fn fixme_14344_be_sure_to_link_to_collections() {}
 
 #[cfg(not(test))]

@@ -30,6 +30,7 @@ pub trait Linker {
     fn link_framework(&mut self, framework: &str);
     fn link_staticlib(&mut self, lib: &str);
     fn link_rlib(&mut self, lib: &Path);
+    fn link_whole_rlib(&mut self, lib: &Path);
     fn link_whole_staticlib(&mut self, lib: &str, search_path: &[PathBuf]);
     fn include_path(&mut self, path: &Path);
     fn framework_path(&mut self, path: &Path);
@@ -93,6 +94,17 @@ impl<'a> Linker for GnuLinker<'a> {
                                           search_path,
                                           &self.sess.diagnostic().handler));
             self.cmd.arg(&v);
+        }
+    }
+
+    fn link_whole_rlib(&mut self, lib: &Path) {
+        if self.sess.target.target.options.is_like_osx {
+            let mut v = OsString::from("-Wl,-force_load,");
+            v.push(lib);
+            self.cmd.arg(&v);
+        } else {
+            self.cmd.arg("-Wl,--whole-archive").arg(lib)
+                    .arg("-Wl,--no-whole-archive");
         }
     }
 
@@ -249,6 +261,10 @@ impl<'a> Linker for MsvcLinker<'a> {
     fn link_whole_staticlib(&mut self, lib: &str, _search_path: &[PathBuf]) {
         // not supported?
         self.link_staticlib(lib);
+    }
+    fn link_whole_rlib(&mut self, path: &Path) {
+        // not supported?
+        self.link_rlib(path);
     }
     fn optimize(&mut self) {
         // Needs more investigation of `/OPT` arguments

@@ -2136,11 +2136,7 @@ fn encode_metadata_inner(wr: &mut Cursor<Vec<u8>>,
     let mut rbml_w = Encoder::new(wr);
 
     encode_crate_name(&mut rbml_w, &ecx.link_meta.crate_name);
-    encode_crate_triple(&mut rbml_w,
-                        &tcx.sess
-                           .opts
-                           .target_triple
-                           );
+    encode_crate_triple(&mut rbml_w, &tcx.sess.opts.target_triple);
     encode_hash(&mut rbml_w, &ecx.link_meta.crate_hash);
     encode_dylib_dependency_formats(&mut rbml_w, &ecx);
 
