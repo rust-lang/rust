@@ -86,10 +86,13 @@ use core::raw::{TraitObject};
 #[lang = "exchange_heap"]
 #[unstable(feature = "box_heap",
            reason = "may be renamed; uncertain about custom allocator design")]
+#[allow(deprecated)]
 pub const HEAP: ExchangeHeapSingleton =
     ExchangeHeapSingleton { _force_singleton: () };
 
 /// This the singleton type used solely for `boxed::HEAP`.
+#[unstable(feature = "box_heap",
+           reason = "may be renamed; uncertain about custom allocator design")]
 #[derive(Copy, Clone)]
 pub struct ExchangeHeapSingleton { _force_singleton: () }
 

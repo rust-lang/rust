@@ -660,14 +660,14 @@ pub fn import_codemap(local_codemap: &codemap::CodeMap,
                 // `CodeMap::new_imported_filemap()` will then translate those
                 // coordinates to their new global frame of reference when the
                 // offset of the FileMap is known.
-                let lines = lines.into_inner().map_in_place(|pos| pos - start_pos);
-                let multibyte_chars = multibyte_chars
-                    .into_inner()
-                    .map_in_place(|mbc|
-                        codemap::MultiByteChar {
-                            pos: mbc.pos - start_pos,
-                            bytes: mbc.bytes
-                        });
+                let mut lines = lines.into_inner();
+                for pos in &mut lines {
+                    *pos = *pos - start_pos;
+                }
+                let mut multibyte_chars = multibyte_chars.into_inner();
+                for mbc in &mut multibyte_chars {
+                    mbc.pos = mbc.pos - start_pos;
+                }
 
                 let local_version = local_codemap.new_imported_filemap(name,
                                                                        source_length,

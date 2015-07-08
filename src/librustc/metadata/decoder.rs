@@ -35,7 +35,7 @@ use util::nodemap::FnvHashMap;
 
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
-use std::hash::{self, Hash, SipHasher};
+use std::hash::{Hash, SipHasher, Hasher};
 use std::io::prelude::*;
 use std::io;
 use std::rc::Rc;
@@ -89,9 +89,9 @@ pub fn maybe_find_item<'a>(item_id: ast::NodeId,
     fn eq_item(bytes: &[u8], item_id: ast::NodeId) -> bool {
         u32_from_be_bytes(bytes) == item_id
     }
-    lookup_hash(items,
-                |a| eq_item(a, item_id),
-                hash::hash::<i64, SipHasher>(&(item_id as i64)))
+    let mut s = SipHasher::new_with_keys(0, 0);
+    (item_id as i64).hash(&mut s);
+    lookup_hash(items, |a| eq_item(a, item_id), s.finish())
 }
 
 fn find_item<'a>(item_id: ast::NodeId, items: rbml::Doc<'a>) -> rbml::Doc<'a> {

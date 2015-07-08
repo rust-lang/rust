@@ -772,6 +772,9 @@ impl<T> Vec<T> {
     /// ```
     #[unstable(feature = "map_in_place",
                reason = "API may change to provide stronger guarantees")]
+    #[deprecated(since = "1.3.0",
+                 reason = "unclear that the API is strong enough and did \
+                           not proven itself")]
     pub fn map_in_place<U, F>(self, mut f: F) -> Vec<U> where F: FnMut(T) -> U {
         // FIXME: Assert statically that the types `T` and `U` have the same
         // size.
@@ -1627,6 +1630,7 @@ impl<T> IntoIter<T> {
     #[inline]
     /// Drops all items that have not yet been moved and returns the empty vector.
     #[unstable(feature = "iter_to_vec")]
+    #[deprecated(since = "1.3.0", reason = "replaced by drain()")]
     pub fn into_inner(mut self) -> Vec<T> {
         unsafe {
             for _x in self.by_ref() { }

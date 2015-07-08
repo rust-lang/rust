@@ -14,7 +14,7 @@ pub use self::Param::*;
 use self::States::*;
 use self::FormatState::*;
 use self::FormatOp::*;
-use std::ascii::OwnedAsciiExt;
+use std::ascii::AsciiExt;
 use std::mem::replace;
 use std::iter::repeat;
 
@@ -532,7 +532,7 @@ fn format(val: Param, op: FormatOp, flags: Flags) -> Result<Vec<u8> ,String> {
                     }
                 }
                 FormatHEX => {
-                    s = s.into_ascii_uppercase();
+                    s = s.to_ascii_uppercase();
                     if flags.alternate {
                         let s_ = replace(&mut s, vec!(b'0', b'X'));
                         s.extend(s_);

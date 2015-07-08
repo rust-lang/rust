@@ -590,6 +590,8 @@ impl ExactSizeIterator for ArgsOs {
 
 /// Returns the page size of the current architecture in bytes.
 #[unstable(feature = "page_size", reason = "naming and/or location may change")]
+#[deprecated(since = "1.3.0",
+             reason = "hasn't seen enough usage to justify inclusion")]
 pub fn page_size() -> usize {
     os_imp::page_size()
 }
