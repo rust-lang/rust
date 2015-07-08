@@ -360,10 +360,12 @@ rand="0.3.0"
 The `[dependencies]` section of `Cargo.toml` is like the `[package]` section:
 everything that follows it is part of it, until the next section starts.
 Cargo uses the dependencies section to know what dependencies on external
-crates you have, and what versions you require. In this case, we’ve used version `0.3.0`.
+crates you have, and what versions you require. In this case, we’ve specified version `0.3.0`,
+which Cargo understands to be any release that’s compatible with this specific version.
 Cargo understands [Semantic Versioning][semver], which is a standard for writing version
-numbers. If we wanted to use the latest version we could use `*` or we could use a range
-of versions. [Cargo’s documentation][cargodoc] contains more details.
+numbers. If we wanted to use only `0.3.0` exactly, we could use `=0.3.0`. If we
+wanted to use the latest version we could use `*`; We could use a range of
+versions. [Cargo’s documentation][cargodoc] contains more details.
 
 [semver]: http://semver.org
 [cargodoc]: http://doc.crates.io/crates-io.html
