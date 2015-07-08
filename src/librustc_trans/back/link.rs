@@ -464,26 +464,25 @@ fn is_writeable(p: &Path) -> bool {
 
 pub fn filename_for_input(sess: &Session,
                           crate_type: config::CrateType,
-                          name: &str,
-                          out_filename: &Path) -> PathBuf {
-    let libname = format!("{}{}", name, sess.opts.cg.extra_filename);
+                          crate_name: &str,
+                          outputs: &OutputFilenames) -> PathBuf {
+    let libname = format!("{}{}", crate_name, sess.opts.cg.extra_filename);
     match crate_type {
         config::CrateTypeRlib => {
-            out_filename.with_file_name(&format!("lib{}.rlib", libname))
+            outputs.out_directory.join(&format!("lib{}.rlib", libname))
         }
         config::CrateTypeDylib => {
             let (prefix, suffix) = (&sess.target.target.options.dll_prefix,
                                     &sess.target.target.options.dll_suffix);
-            out_filename.with_file_name(&format!("{}{}{}",
-                                                  prefix,
-                                                 libname,
-                                                 suffix))
+            outputs.out_directory.join(&format!("{}{}{}", prefix, libname,
+                                                suffix))
         }
         config::CrateTypeStaticlib => {
-            out_filename.with_file_name(&format!("lib{}.a", libname))
+            outputs.out_directory.join(&format!("lib{}.a", libname))
         }
         config::CrateTypeExecutable => {
             let suffix = &sess.target.target.options.exe_suffix;
+            let out_filename = outputs.path(OutputTypeExe);
             if suffix.is_empty() {
                 out_filename.to_path_buf()
             } else {
@@ -501,10 +500,7 @@ fn link_binary_output(sess: &Session,
     let objects = object_filenames(sess, outputs);
     let out_filename = match outputs.single_output_file {
         Some(ref file) => file.clone(),
-        None => {
-            let out_filename = outputs.path(OutputTypeExe);
-            filename_for_input(sess, crate_type, crate_name, &out_filename)
-        }
+        None => filename_for_input(sess, crate_type, crate_name, outputs),
     };
 
     // Make sure files are writeable.  Mac, FreeBSD, and Windows system linkers
@@ -551,6 +547,19 @@ fn archive_search_paths(sess: &Session) -> Vec<PathBuf> {
     return search;
 }
 
+fn archive_config<'a>(sess: &'a Session,
+                      output: &Path) -> ArchiveConfig<'a> {
+    ArchiveConfig {
+        handler: &sess.diagnostic().handler,
+        dst: output.to_path_buf(),
+        lib_search_paths: archive_search_paths(sess),
+        slib_prefix: sess.target.target.options.staticlib_prefix.clone(),
+        slib_suffix: sess.target.target.options.staticlib_suffix.clone(),
+        ar_prog: get_ar_prog(sess),
+        command_path: command_path(sess),
+    }
+}
+
 // Create an 'rlib'
 //
 // An rlib in its current incarnation is essentially a renamed .a file. The
@@ -562,17 +571,7 @@ fn link_rlib<'a>(sess: &'a Session,
                  objects: &[PathBuf],
                  out_filename: &Path) -> ArchiveBuilder<'a> {
     info!("preparing rlib from {:?} to {:?}", objects, out_filename);
-    let handler = &sess.diagnostic().handler;
-    let config = ArchiveConfig {
-        handler: handler,
-        dst: out_filename.to_path_buf(),
-        lib_search_paths: archive_search_paths(sess),
-        slib_prefix: sess.target.target.options.staticlib_prefix.clone(),
-        slib_suffix: sess.target.target.options.staticlib_suffix.clone(),
-        ar_prog: get_ar_prog(sess),
-        command_path: command_path(sess),
-    };
-    let mut ab = ArchiveBuilder::create(config);
+    let mut ab = ArchiveBuilder::create(archive_config(sess, out_filename));
     for obj in objects {
         ab.add_file(obj).unwrap();
     }
@@ -1131,7 +1130,7 @@ fn add_upstream_rust_crates(cmd: &mut Linker, sess: &Session,
                 add_dynamic_crate(cmd, sess, &src.dylib.unwrap().0)
             }
             cstore::RequireStatic => {
-                add_static_crate(cmd, sess, tmpdir, &src.rlib.unwrap().0)
+                add_static_crate(cmd, sess, tmpdir, dylib, &src.rlib.unwrap().0)
             }
         }
 
@@ -1147,71 +1146,80 @@ fn add_upstream_rust_crates(cmd: &mut Linker, sess: &Session,
     }
 
     // Adds the static "rlib" versions of all crates to the command line.
+    // There's a bit of magic which happens here specifically related to LTO and
+    // dynamic libraries. Specifically:
+    //
+    // * For LTO, we remove upstream object files.
+    // * For dylibs we remove metadata and bytecode from upstream rlibs
+    //
+    // When performing LTO, all of the bytecode from the upstream libraries has
+    // already been included in our object file output. As a result we need to
+    // remove the object files in the upstream libraries so the linker doesn't
+    // try to include them twice (or whine about duplicate symbols). We must
+    // continue to include the rest of the rlib, however, as it may contain
+    // static native libraries which must be linked in.
+    //
+    // When making a dynamic library, linkers by default don't include any
+    // object files in an archive if they're not necessary to resolve the link.
+    // We basically want to convert the archive (rlib) to a dylib, though, so we
+    // *do* want everything included in the output, regardless of whether the
+    // linker thinks it's needed or not. As a result we must use the
+    // --whole-archive option (or the platform equivalent). When using this
+    // option the linker will fail if there are non-objects in the archive (such
+    // as our own metadata and/or bytecode). All in all, for rlibs to be
+    // entirely included in dylibs, we need to remove all non-object files.
+    //
+    // Note, however, that if we're not doing LTO or we're not producing a dylib
+    // (aka we're making an executable), we can just pass the rlib blindly to
+    // the linker (fast) because it's fine if it's not actually included as
+    // we're at the end of the dependency chain.
     fn add_static_crate(cmd: &mut Linker, sess: &Session, tmpdir: &Path,
-                        cratepath: &Path) {
-        // When performing LTO on an executable output, all of the
-        // bytecode from the upstream libraries has already been
-        // included in our object file output. We need to modify all of
-        // the upstream archives to remove their corresponding object
-        // file to make sure we don't pull the same code in twice.
-        //
-        // We must continue to link to the upstream archives to be sure
-        // to pull in native static dependencies. As the final caveat,
-        // on Linux it is apparently illegal to link to a blank archive,
-        // so if an archive no longer has any object files in it after
-        // we remove `lib.o`, then don't link against it at all.
-        //
-        // If we're not doing LTO, then our job is simply to just link
-        // against the archive.
-        if sess.lto() {
-            let name = cratepath.file_name().unwrap().to_str().unwrap();
-            let name = &name[3..name.len() - 5]; // chop off lib/.rlib
-            time(sess.time_passes(),
-                 &format!("altering {}.rlib", name),
-                 (), |()| {
-                let dst = tmpdir.join(cratepath.file_name().unwrap());
-                match fs::copy(&cratepath, &dst) {
-                    Ok(..) => {}
-                    Err(e) => {
-                        sess.fatal(&format!("failed to copy {} to {}: {}",
-                                            cratepath.display(),
-                                            dst.display(), e));
-                    }
-                }
-                // Fix up permissions of the copy, as fs::copy() preserves
-                // permissions, but the original file may have been installed
-                // by a package manager and may be read-only.
-                match fs::metadata(&dst).and_then(|m| {
-                    let mut perms = m.permissions();
-                    perms.set_readonly(false);
-                    fs::set_permissions(&dst, perms)
-                }) {
-                    Ok(..) => {}
-                    Err(e) => {
-                        sess.fatal(&format!("failed to chmod {} when preparing \
-                                             for LTO: {}", dst.display(), e));
-                    }
-                }
-                let handler = &sess.diagnostic().handler;
-                let config = ArchiveConfig {
-                    handler: handler,
-                    dst: dst.clone(),
-                    lib_search_paths: archive_search_paths(sess),
-                    slib_prefix: sess.target.target.options.staticlib_prefix.clone(),
-                    slib_suffix: sess.target.target.options.staticlib_suffix.clone(),
-                    ar_prog: get_ar_prog(sess),
-                    command_path: command_path(sess),
-                };
-                let mut archive = Archive::open(config);
-                archive.remove_file(&format!("{}.o", name));
-                let files = archive.files();
-                if files.iter().any(|s| s.ends_with(".o")) {
-                    cmd.link_rlib(&dst);
-                }
-            });
-        } else {
+                        dylib: bool, cratepath: &Path) {
+        if !sess.lto() && !dylib {
             cmd.link_rlib(&fix_windows_verbatim_for_gcc(cratepath));
+            return
         }
+
+        let dst = tmpdir.join(cratepath.file_name().unwrap());
+        let name = cratepath.file_name().unwrap().to_str().unwrap();
+        let name = &name[3..name.len() - 5]; // chop off lib/.rlib
+
+        time(sess.time_passes(), &format!("altering {}.rlib", name), (), |()| {
+            let err = (|| {
+                io::copy(&mut try!(fs::File::open(&cratepath)),
+                         &mut try!(fs::File::create(&dst)))
+            })();
+            if let Err(e) = err {
+                sess.fatal(&format!("failed to copy {} to {}: {}",
+                                    cratepath.display(), dst.display(), e));
+            }
+
+            let mut archive = Archive::open(archive_config(sess, &dst));
+            archive.remove_file(METADATA_FILENAME);
+
+            let mut any_objects = false;
+            for f in archive.files() {
+                if f.ends_with("bytecode.deflate") {
+                    archive.remove_file(&f);
+                    continue
+                }
+                let canonical = f.replace("-", "_");
+                let canonical_name = name.replace("-", "_");
+                if sess.lto() && canonical.starts_with(&canonical_name) &&
+                   canonical.ends_with(".o") {
+                    let num = &f[name.len()..f.len() - 2];
+                    if num.len() > 0 && num[1..].parse::<u32>().is_ok() {
+                        archive.remove_file(&f);
+                        continue
+                    }
+                }
+                any_objects = true;
+            }
+
+            if any_objects {
+                cmd.link_whole_rlib(&fix_windows_verbatim_for_gcc(&dst));
+            }
+        });
     }
 
     // Same thing as above, but for dynamic crates instead of static crates.
