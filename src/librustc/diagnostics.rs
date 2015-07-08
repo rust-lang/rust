@@ -895,6 +895,17 @@ impl<T> Foo<T> {
 
 This will fail because the compiler does not know which instance of `Foo` to
 call `bar` on. Change `Foo::bar()` to `Foo::<T>::bar()` to resolve the error.
+
+Also check that you created a `None` value with enough type information:
+
+```
+let none = None; // error: unable to infer enough type information about `_`;
+                 //        type annotations or generic parameter binding required
+```
+
+```
+let none = None::<i32>; // ok!
+```
 "##,
 
 E0296: r##"
