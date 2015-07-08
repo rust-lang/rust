@@ -10,7 +10,6 @@
 
 use core::ptr::*;
 use core::mem;
-use std::iter::repeat;
 
 #[test]
 fn test() {
@@ -110,7 +109,7 @@ fn test_as_mut() {
 #[test]
 fn test_ptr_addition() {
     unsafe {
-        let xs = repeat(5).take(16).collect::<Vec<_>>();
+        let xs = vec![5; 16];
         let mut ptr = xs.as_ptr();
         let end = ptr.offset(16);
 
@@ -128,7 +127,7 @@ fn test_ptr_addition() {
             m_ptr = m_ptr.offset(1);
         }
 
-        assert!(xs_mut == repeat(10).take(16).collect::<Vec<_>>());
+        assert!(xs_mut == vec![10; 16]);
     }
 }
 

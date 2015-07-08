@@ -599,7 +599,6 @@ mod tests {
     use std::io;
     use std::io::prelude::*;
     use std::borrow::IntoCow;
-    use std::iter::repeat;
 
     /// each node is an index in a vector in the graph.
     type Node = usize;
@@ -647,7 +646,7 @@ mod tests {
         fn to_opt_strs(self) -> Vec<Option<&'static str>> {
             match self {
                 UnlabelledNodes(len)
-                    => repeat(None).take(len).collect(),
+                    => vec![None; len],
                 AllNodesLabelled(lbls)
                     => lbls.into_iter().map(
                         |l|Some(l)).collect(),

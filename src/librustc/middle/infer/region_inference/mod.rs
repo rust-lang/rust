@@ -34,7 +34,6 @@ use util::nodemap::{FnvHashMap, FnvHashSet};
 use std::cell::{Cell, RefCell};
 use std::cmp::Ordering::{self, Less, Greater, Equal};
 use std::fmt;
-use std::iter::repeat;
 use std::u32;
 use syntax::ast;
 
@@ -1304,7 +1303,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         // idea is to report errors that derive from independent
         // regions of the graph, but not those that derive from
         // overlapping locations.
-        let mut dup_vec: Vec<_> = repeat(u32::MAX).take(self.num_vars() as usize).collect();
+        let mut dup_vec = vec![u32::MAX; self.num_vars() as usize];
 
         for idx in 0..self.num_vars() as usize {
             match var_data[idx].value {

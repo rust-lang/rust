@@ -42,7 +42,6 @@
 
 #![feature(iter_cmp)]
 
-use std::iter::repeat;
 use std::sync::Arc;
 use std::sync::mpsc::channel;
 use std::thread;
@@ -221,7 +220,7 @@ fn get_id(m: u64) -> u8 {
 
 // Converts a list of mask to a Vec<u8>.
 fn to_vec(raw_sol: &List<u64>) -> Vec<u8> {
-    let mut sol = repeat('.' as u8).take(50).collect::<Vec<_>>();
+    let mut sol = vec![b'.'; 50];
     for &m in raw_sol.iter() {
         let id = '0' as u8 + get_id(m);
         for i in 0..50 {

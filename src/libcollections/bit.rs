@@ -283,7 +283,7 @@ impl BitVec {
     pub fn from_elem(nbits: usize, bit: bool) -> BitVec {
         let nblocks = blocks_for_bits(nbits);
         let mut bit_vec = BitVec {
-            storage: repeat(if bit { !0 } else { 0 }).take(nblocks).collect(),
+            storage: vec![if bit { !0 } else { 0 }; nblocks],
             nbits: nbits
         };
         bit_vec.fix_last_block();

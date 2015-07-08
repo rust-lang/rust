@@ -108,7 +108,6 @@ use util::lev_distance::lev_distance;
 
 use std::cell::{Cell, Ref, RefCell};
 use std::mem::replace;
-use std::iter::repeat;
 use std::slice;
 use syntax::{self, abi, attr};
 use syntax::attr::AttrMetaMethods;
@@ -4340,7 +4339,7 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         def::DefTyParam(..) => {
             // Everything but the final segment should have no
             // parameters at all.
-            segment_spaces = repeat(None).take(segments.len() - 1).collect();
+            segment_spaces = vec![None; segments.len() - 1];
             segment_spaces.push(Some(subst::TypeSpace));
         }
 
@@ -4348,7 +4347,7 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         def::DefFn(..) |
         def::DefConst(..) |
         def::DefStatic(..) => {
-            segment_spaces = repeat(None).take(segments.len() - 1).collect();
+            segment_spaces = vec![None; segments.len() - 1];
             segment_spaces.push(Some(subst::FnSpace));
         }
 
@@ -4362,7 +4361,7 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             }
 
             if segments.len() >= 2 {
-                segment_spaces = repeat(None).take(segments.len() - 2).collect();
+                segment_spaces = vec![None; segments.len() - 2];
                 segment_spaces.push(Some(subst::TypeSpace));
                 segment_spaces.push(Some(subst::FnSpace));
             } else {
@@ -4382,7 +4381,7 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             }
 
             if segments.len() >= 2 {
-                segment_spaces = repeat(None).take(segments.len() - 2).collect();
+                segment_spaces = vec![None; segments.len() - 2];
                 segment_spaces.push(Some(subst::TypeSpace));
                 segment_spaces.push(None);
             } else {
@@ -4400,7 +4399,7 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         def::DefRegion(..) |
         def::DefLabel(..) |
         def::DefUpvar(..) => {
-            segment_spaces = repeat(None).take(segments.len()).collect();
+            segment_spaces = vec![None; segments.len()];
         }
     }
     assert_eq!(segment_spaces.len(), segments.len());
@@ -4681,7 +4680,7 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 if required_len == 1 {""} else {"s"},
                 provided_len,
                 if provided_len == 1 {""} else {"s"});
-            substs.types.replace(space, repeat(fcx.tcx().types.err).take(desired.len()).collect());
+            substs.types.replace(space, vec![fcx.tcx().types.err; desired.len()]);
             return;
         }
 
@@ -4813,7 +4812,7 @@ pub fn check_bounds_are_used<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
     // make a vector of booleans initially false, set to true when used
     if tps.is_empty() { return; }
-    let mut tps_used: Vec<_> = repeat(false).take(tps.len()).collect();
+    let mut tps_used = vec![false; tps.len()];
 
     for leaf_ty in ty.walk() {
         if let ty::TyParam(ParamTy {idx, ..}) = leaf_ty.sty {

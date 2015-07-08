@@ -43,7 +43,6 @@
 #![allow(non_snake_case)]
 #![feature(unboxed_closures, iter_arith, core_simd, scoped)]
 
-use std::iter::repeat;
 use std::thread;
 use std::env;
 use std::simd::f64x2;
@@ -62,7 +61,7 @@ fn main() {
 
 fn spectralnorm(n: usize) -> f64 {
     assert!(n % 2 == 0, "only even lengths are accepted");
-    let mut u = repeat(1.0).take(n).collect::<Vec<_>>();
+    let mut u = vec![1.0; n];
     let mut v = u.clone();
     let mut tmp = v.clone();
     for _ in 0..10 {
