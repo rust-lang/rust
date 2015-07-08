@@ -1844,11 +1844,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         visit::walk_ty_param_bounds_helper(this, bounds);
 
                         for trait_item in trait_items {
-                            // Create a new rib for the trait_item-specific type
-                            // parameters.
-                            //
-                            // FIXME #4951: Do we need a node ID here?
-
                             match trait_item.node {
                                 ast::ConstTraitItem(_, ref default) => {
                                     // Only impose the restrictions of
