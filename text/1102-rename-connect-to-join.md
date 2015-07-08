@@ -1,7 +1,7 @@
 - Feature Name: `rename_connect_to_join`
 - Start Date: 2015-05-02
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#1102](https://github.com/rust-lang/rfcs/pull/1102)
+- Rust Issue: [rust-lang/rust#26900](https://github.com/rust-lang/rust/issues/26900)
 
 # Summary
 
