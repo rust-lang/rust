@@ -586,18 +586,18 @@ extern "rust-intrinsic" {
     pub fn overflowing_mul<T>(a: T, b: T) -> T;
 
     /// Performs an unchecked signed division, which results in undefined behavior,
-    /// in cases where y == 0, or x == int::MIN and y == -1
+    /// in cases where y == 0, or x == isize::MIN and y == -1
     pub fn unchecked_sdiv<T>(x: T, y: T) -> T;
     /// Performs an unchecked unsigned division, which results in undefined behavior,
     /// in cases where y == 0
     pub fn unchecked_udiv<T>(x: T, y: T) -> T;
 
     /// Returns the remainder of an unchecked signed division, which results in
-    /// undefined behavior, in cases where y == 0, or x == int::MIN and y == -1
-    pub fn unchecked_urem<T>(x: T, y: T) -> T;
-    /// Returns the remainder of an unchecked signed division, which results in
-    /// undefined behavior, in cases where y == 0
+    /// undefined behavior, in cases where y == 0, or x == isize::MIN and y == -1
     pub fn unchecked_srem<T>(x: T, y: T) -> T;
+    /// Returns the remainder of an unchecked unsigned division, which results in
+    /// undefined behavior, in cases where y == 0
+    pub fn unchecked_urem<T>(x: T, y: T) -> T;
 
     /// Returns the value of the discriminant for the variant in 'v',
     /// cast to a `u64`; if `T` has no discriminant, returns 0.
