@@ -53,9 +53,13 @@ pub const WSA_FLAG_NO_HANDLE_INHERIT: libc::DWORD = 0x80;
 pub const ERROR_NO_MORE_FILES: libc::DWORD = 18;
 pub const TOKEN_READ: libc::DWORD = 0x20008;
 pub const FILE_FLAG_OPEN_REPARSE_POINT: libc::DWORD = 0x00200000;
+pub const FILE_FLAG_BACKUP_SEMANTICS: libc::DWORD = 0x02000000;
 pub const MAXIMUM_REPARSE_DATA_BUFFER_SIZE: usize = 16 * 1024;
 pub const FSCTL_GET_REPARSE_POINT: libc::DWORD = 0x900a8;
 pub const IO_REPARSE_TAG_SYMLINK: libc::DWORD = 0xa000000c;
+pub const IO_REPARSE_TAG_MOUNT_POINT: libc::DWORD = 0xa0000003;
+pub const FSCTL_SET_REPARSE_POINT: libc::DWORD = 0x900a4;
+pub const FSCTL_DELETE_REPARSE_POINT: libc::DWORD = 0x900ac;
 
 pub const SYMBOLIC_LINK_FLAG_DIRECTORY: libc::DWORD = 0x1;
 
@@ -70,6 +74,9 @@ pub const PROGRESS_CONTINUE: libc::DWORD = 0;
 pub const PROGRESS_CANCEL: libc::DWORD = 1;
 pub const PROGRESS_STOP: libc::DWORD = 2;
 pub const PROGRESS_QUIET: libc::DWORD = 3;
+
+pub const TOKEN_ADJUST_PRIVILEGES: libc::DWORD = 0x0020;
+pub const SE_PRIVILEGE_ENABLED: libc::DWORD = 2;
 
 #[repr(C)]
 #[cfg(target_arch = "x86")]
@@ -287,6 +294,40 @@ pub const CONDITION_VARIABLE_INIT: CONDITION_VARIABLE = CONDITION_VARIABLE {
 };
 pub const SRWLOCK_INIT: SRWLOCK = SRWLOCK { ptr: 0 as *mut _ };
 
+#[repr(C)]
+pub struct LUID {
+    pub LowPart: libc::DWORD,
+    pub HighPart: libc::c_long,
+}
+
+pub type PLUID = *mut LUID;
+
+#[repr(C)]
+pub struct TOKEN_PRIVILEGES {
+    pub PrivilegeCount: libc::DWORD,
+    pub Privileges: [LUID_AND_ATTRIBUTES; 1],
+}
+
+pub type PTOKEN_PRIVILEGES = *mut TOKEN_PRIVILEGES;
+
+#[repr(C)]
+pub struct LUID_AND_ATTRIBUTES {
+    pub Luid: LUID,
+    pub Attributes: libc::DWORD,
+}
+
+#[repr(C)]
+pub struct REPARSE_MOUNTPOINT_DATA_BUFFER {
+    pub ReparseTag: libc::DWORD,
+    pub ReparseDataLength: libc::DWORD,
+    pub Reserved: libc::WORD,
+    pub ReparseTargetLength: libc::WORD,
+    pub ReparseTargetMaximumLength: libc::WORD,
+    pub Reserved1: libc::WORD,
+    pub ReparseTarget: libc::WCHAR,
+}
+
+
 #[link(name = "ws2_32")]
 #[link(name = "userenv")]
 extern "system" {
@@ -437,6 +478,15 @@ extern "system" {
                        lpData: libc::LPVOID,
                        pbCancel: LPBOOL,
                        dwCopyFlags: libc::DWORD) -> libc::BOOL;
+    pub fn LookupPrivilegeValueW(lpSystemName: libc::LPCWSTR,
+                                 lpName: libc::LPCWSTR,
+                                 lpLuid: PLUID) -> libc::BOOL;
+    pub fn AdjustTokenPrivileges(TokenHandle: libc::HANDLE,
+                                 DisableAllPrivileges: libc::BOOL,
+                                 NewState: PTOKEN_PRIVILEGES,
+                                 BufferLength: libc::DWORD,
+                                 PreviousState: PTOKEN_PRIVILEGES,
+                                 ReturnLength: *mut libc::DWORD) -> libc::BOOL;
 }
 
 // Functions that aren't available on Windows XP, but we still use them and just
