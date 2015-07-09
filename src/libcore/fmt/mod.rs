@@ -1488,20 +1488,10 @@ macro_rules! tuple {
         impl<$($name:Debug),*> Debug for ($($name,)*) {
             #[allow(non_snake_case, unused_assignments)]
             fn fmt(&self, f: &mut Formatter) -> Result {
-                try!(write!(f, "("));
+                let mut builder = f.debug_tuple("");
                 let ($(ref $name,)*) = *self;
-                let mut n = 0;
-                $(
-                    if n > 0 {
-                        try!(write!(f, ", "));
-                    }
-                    try!(write!(f, "{:?}", *$name));
-                    n += 1;
-                )*
-                if n == 1 {
-                    try!(write!(f, ","));
-                }
-                write!(f, ")")
+                $(builder.field($name);)*
+                builder.finish()
             }
         }
         peel! { $($name,)* }
