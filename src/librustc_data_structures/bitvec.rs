@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::iter;
-
 /// A very simple BitVector type.
 pub struct BitVector {
     data: Vec<u64>
@@ -18,7 +16,7 @@ pub struct BitVector {
 impl BitVector {
     pub fn new(num_bits: usize) -> BitVector {
         let num_words = (num_bits + 63) / 64;
-        BitVector { data: iter::repeat(0).take(num_words).collect() }
+        BitVector { data: vec![0; num_words] }
     }
 
     fn word_mask(&self, bit: usize) -> (usize, u64) {

@@ -1318,7 +1318,7 @@ mod bench {
 
     #[bench]
     fn mut_iterator(b: &mut Bencher) {
-        let mut v: Vec<_> = repeat(0).take(100).collect();
+        let mut v = vec![0; 100];
 
         b.iter(|| {
             let mut i = 0;
@@ -1419,7 +1419,7 @@ mod bench {
     #[bench]
     fn zero_1kb_from_elem(b: &mut Bencher) {
         b.iter(|| {
-            repeat(0u8).take(1024).collect::<Vec<_>>()
+            vec![0u8; 1024]
         });
     }
 
@@ -1467,7 +1467,7 @@ mod bench {
     fn random_inserts(b: &mut Bencher) {
         let mut rng = thread_rng();
         b.iter(|| {
-            let mut v: Vec<_> = repeat((0, 0)).take(30).collect();
+            let mut v = vec![(0, 0); 30];
             for _ in 0..100 {
                 let l = v.len();
                 v.insert(rng.gen::<usize>() % (l + 1),
@@ -1479,7 +1479,7 @@ mod bench {
     fn random_removes(b: &mut Bencher) {
         let mut rng = thread_rng();
         b.iter(|| {
-            let mut v: Vec<_> = repeat((0, 0)).take(130).collect();
+            let mut v = vec![(0, 0); 130];
             for _ in 0..100 {
                 let l = v.len();
                 v.remove(rng.gen::<usize>() % l);

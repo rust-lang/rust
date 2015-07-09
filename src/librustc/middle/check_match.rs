@@ -704,7 +704,7 @@ fn is_useful(cx: &MatchCheckCtxt,
                 match is_useful(cx, &matrix, v.tail(), witness) {
                     UsefulWithWitness(pats) => {
                         let arity = constructor_arity(cx, &constructor, left_ty);
-                        let wild_pats: Vec<_> = repeat(DUMMY_WILD_PAT).take(arity).collect();
+                        let wild_pats = vec![DUMMY_WILD_PAT; arity];
                         let enum_pat = construct_witness(cx, &constructor, wild_pats, left_ty);
                         let mut new_pats = vec![enum_pat];
                         new_pats.extend(pats);
@@ -862,7 +862,7 @@ pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat],
     } = raw_pat(r[col]);
     let head: Option<Vec<&Pat>> = match *node {
         ast::PatWild(_) =>
-            Some(repeat(DUMMY_WILD_PAT).take(arity).collect()),
+            Some(vec![DUMMY_WILD_PAT; arity]),
 
         ast::PatIdent(_, _, _) => {
             let opt_def = cx.tcx.def_map.borrow().get(&pat_id).map(|d| d.full_def());
@@ -875,7 +875,7 @@ pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat],
                 } else {
                     None
                 },
-                _ => Some(repeat(DUMMY_WILD_PAT).take(arity).collect())
+                _ => Some(vec![DUMMY_WILD_PAT; arity])
             }
         }
 
@@ -889,7 +889,7 @@ pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat],
                 DefVariant(..) | DefStruct(..) => {
                     Some(match args {
                         &Some(ref args) => args.iter().map(|p| &**p).collect(),
-                        &None => repeat(DUMMY_WILD_PAT).take(arity).collect(),
+                        &None => vec![DUMMY_WILD_PAT; arity],
                     })
                 }
                 _ => None

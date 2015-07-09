@@ -13,7 +13,6 @@ use middle::ty;
 use middle::ty_fold;
 
 use std::cell::Cell;
-use std::iter::repeat;
 use syntax::codemap::Span;
 
 #[derive(Clone)]
@@ -147,7 +146,7 @@ impl RegionScope for ElidableRscope {
                     count: usize)
                     -> Result<Vec<ty::Region>, Option<Vec<ElisionFailureInfo>>>
     {
-        Ok(repeat(self.default).take(count).collect())
+        Ok(vec![self.default; count])
     }
 }
 

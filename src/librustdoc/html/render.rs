@@ -1920,7 +1920,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     try!(write!(w, r#"<script type="text/javascript" async
                               src="{root_path}/implementors/{path}/{ty}.{name}.js">
                       </script>"#,
-                root_path = repeat("..").take(cx.current.len()).collect::<Vec<_>>().connect("/"),
+                root_path = vec![".."; cx.current.len()].connect("/"),
                 path = if ast_util::is_local(it.def_id) {
                     cx.current.connect("/")
                 } else {
