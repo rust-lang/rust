@@ -76,12 +76,14 @@ pub fn time<T, U, F>(do_it: bool, what: &str, u: U, f: F) -> T where
 }
 
 // Memory reporting
+#[cfg(unix)]
 fn get_resident() -> Option<usize> {
-    if cfg!(unix) {
-        get_proc_self_statm_field(1)
-    } else {
-        None
-    }
+    get_proc_self_statm_field(1)
+}
+
+#[cfg(windows)]
+fn get_resident() -> Option<usize> {
+    get_working_set_size()
 }
 
 // Like std::macros::try!, but for Option<>.
@@ -89,6 +91,39 @@ macro_rules! option_try(
     ($e:expr) => (match $e { Some(e) => e, None => return None })
 );
 
+#[cfg(windows)]
+fn get_working_set_size() -> Option<usize> {
+    use libc::{BOOL, DWORD, HANDLE, SIZE_T, GetCurrentProcess};
+    use std::mem;
+    #[repr(C)] #[allow(non_snake_case)]
+    struct PROCESS_MEMORY_COUNTERS {
+        cb: DWORD,
+        PageFaultCount: DWORD,
+        PeakWorkingSetSize: SIZE_T,
+        WorkingSetSize: SIZE_T,
+        QuotaPeakPagedPoolUsage: SIZE_T,
+        QuotaPagedPoolUsage: SIZE_T,
+        QuotaPeakNonPagedPoolUsage: SIZE_T,
+        QuotaNonPagedPoolUsage: SIZE_T,
+        PagefileUsage: SIZE_T,
+        PeakPagefileUsage: SIZE_T,
+    }
+    type PPROCESS_MEMORY_COUNTERS = *mut PROCESS_MEMORY_COUNTERS;
+    #[link(name = "psapi")]
+    extern "system" {
+        fn GetProcessMemoryInfo(Process: HANDLE,
+                                ppsmemCounters: PPROCESS_MEMORY_COUNTERS,
+                                cb: DWORD) -> BOOL;
+    }
+    let mut pmc: PROCESS_MEMORY_COUNTERS = unsafe { mem::zeroed() };
+    pmc.cb = mem::size_of_val(&pmc) as DWORD;
+    match unsafe { GetProcessMemoryInfo(GetCurrentProcess(), &mut pmc, pmc.cb) } {
+        0 => None,
+        _ => Some(pmc.WorkingSetSize as usize),
+    }
+}
+
+#[cfg_attr(windows, allow(dead_code))]
 fn get_proc_self_statm_field(field: usize) -> Option<usize> {
     use std::fs::File;
     use std::io::Read;
