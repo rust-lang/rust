@@ -2,6 +2,8 @@ use rustc::lint::Context;
 use syntax::ast::{DefId, Name, Path};
 use syntax::codemap::{ExpnInfo, Span};
 use rustc::middle::ty;
+use std::borrow::{Cow, IntoCow};
+use std::convert::From;
 
 /// returns true if the macro that expanded the crate was outside of
 /// the current crate or was a compiler plugin
@@ -39,4 +41,10 @@ pub fn match_def_path(cx: &Context, def_id: DefId, path: &[&str]) -> bool {
 pub fn match_path(path: &Path, segments: &[&str]) -> bool {
 	path.segments.iter().rev().zip(segments.iter().rev()).all(
 		|(a,b)| a.identifier.as_str() == *b)
+}
+
+/// convert a span to a code snippet if available, otherwise use default, e.g.
+/// `snippet(cx, expr.span, "..")`
+pub fn snippet<'a>(cx: &Context, span: Span, default: &'a str) -> Cow<'a, str> {
+	cx.sess().codemap().span_to_snippet(span).map(From::from).unwrap_or(Cow::Borrowed(default))
 }

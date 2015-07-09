@@ -7,6 +7,8 @@ use syntax::ast_util::{is_comparison_binop, binop_to_string};
 use syntax::ptr::P;
 use syntax::codemap::Span;
 
+use utils::snippet;
+
 declare_lint! { pub IDENTITY_OP, Warn,
     "Warn on identity operations, e.g. '_ + 0'"}
     
@@ -46,10 +48,9 @@ impl LintPass for IdentityOp {
 
 fn check(cx: &Context, e: &Expr, m: i8, span: Span, arg: Span) {
     if have_lit(cx, e, m) {
-        let map = cx.sess().codemap();
         cx.span_lint(IDENTITY_OP, span, &format!(
             "The operation is ineffective. Consider reducing it to '{}'", 
-            &*map.span_to_snippet(arg).unwrap_or("..".to_string())));
+           snippet(cx, arg, "..")));
     }
 }
 
