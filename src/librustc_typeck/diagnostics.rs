@@ -1550,6 +1550,31 @@ impl Foo for Bar {
 ```
 "##,
 
+E0191: r##"
+Trait objects need to have all associated types specified. Erroneous code
+example:
+
+```
+trait Trait {
+    type Bar;
+}
+
+type Foo = Trait; // error: the value of the associated type `Bar` (from
+                  //        the trait `Trait`) must be specified
+```
+
+Please verify you specified all associated types of the trait and that you
+used the right trait. Example:
+
+```
+trait Trait {
+    type Bar;
+}
+
+type Foo = Trait<Bar=i32>; // ok!
+```
+"##,
+
 E0192: r##"
 Negative impls are only allowed for traits with default impls. For more
 information see the [opt-in builtin traits RFC](https://github.com/rust-lang/
@@ -1831,6 +1856,47 @@ extern "rust-intrinsic" {
 ```
 "##,
 
+E0220: r##"
+You used an associated type which isn't defined in the trait.
+Erroneous code example:
+
+```
+trait Trait {
+    type Bar;
+}
+
+type Foo = Trait<F=i32>; // error: associated type `F` not found for
+                         //        `Trait`
+```
+
+Please verify you used the right trait or you didn't misspell the
+associated type name. Example:
+
+```
+trait Trait {
+    type Bar;
+}
+
+type Foo = Trait<Bar=i32>; // ok!
+```
+"##,
+
+E0232: r##"
+The attribute must have a value. Erroneous code example:
+
+```
+#[rustc_on_unimplemented] // error: this attribute must have a value
+trait Bar {}
+```
+
+Please supply the missing value of the attribute. Example:
+
+```
+#[rustc_on_unimplemented = "foo"] // ok!
+trait Bar {}
+```
+"##,
+
 E0243: r##"
 This error indicates that not enough type parameters were found in a type or
 trait.
@@ -2074,7 +2140,6 @@ register_diagnostics! {
     E0188, // can not cast a immutable reference to a mutable pointer
     E0189, // deprecated: can only cast a boxed pointer to a boxed object
     E0190, // deprecated: can only cast a &-pointer to an &-object
-    E0191, // value of the associated type must be specified
     E0193, // cannot bound type where clause bounds may only be attached to types
            // involving type parameters
     E0194,
@@ -2092,7 +2157,6 @@ register_diagnostics! {
     E0217, // ambiguous associated type, defined in multiple supertraits
     E0218, // no associated type defined
     E0219, // associated type defined in higher-ranked supertrait
-    E0220, // associated type not found for type parameter
     E0221, // ambiguous associated type in bounds
     //E0222, // Error code E0045 (variadic function must have C calling
              // convention) duplicate
@@ -2105,7 +2169,6 @@ register_diagnostics! {
     E0229, // associated type bindings are not allowed here
     E0230, // there is no type parameter on trait
     E0231, // only named substitution parameters are allowed
-    E0232, // this attribute must have a value
     E0233,
     E0234,
     E0235, // structure constructor specifies a structure of type but
