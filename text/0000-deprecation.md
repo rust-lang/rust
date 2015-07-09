@@ -17,17 +17,13 @@ Namely the following items:
    code paths in the compiler.
 2. Add an optional `rust = "..."` package attribute to Cargo.toml, 
    which `cargo new` pre-fills with the current rust version.
-3. Allow `std` APIs to declare an 
-   `#[insecure(level="Warn", reason="...")]`  attribute that will 
-   produce a warning or error, depending on level, that cannot be 
-   switched off (even with `-Awarning`)
-4. Add a `removed_at="..."` item to `#[deprecated]` attributes that 
+3. Add a `removed_at="..."` item to `#[deprecated]` attributes that 
    allows making API items unavailable starting from certain target 
    versions.
-5. Add a number of warnings to steer users in the direction of using 
+4. Add a number of warnings to steer users in the direction of using 
    the most recent Rust version that makes sense to them, while making 
    it easy for library writers to support a wide range of Rust versions
-6. (optional) add a `legacy="..."` item to `#[deprecated]` attributes
+5. (optional) add a `legacy="..."` item to `#[deprecated]` attributes
    that allows grouping API items under a legacy flag that is already 
    defined in RFC #1122 (see below)
 
@@ -45,7 +41,7 @@ As a background, in no particular order:
 In addition, there has been an ongoing 
 [discussion on internals](https://internals.rust-lang.org/t/thoughts-on-aggressive-deprecation-in-libstd/2176/55) 
 about how we are going to evolve the standard library, which this
-proposal is mostly based on.
+proposal is somewhat based on.
 
 Finally, the recent discussion on the first breaking change 
 ([RFC PR #1156 Adjust default object bounds](https://github.com/rust-lang/rfcs/pull/1156))
@@ -63,7 +59,7 @@ the `-Awarnings` argument.
 
 ## 1. Language / `std` Evolution
 
-The following motivates items 1 and 2 (and to a lesser extent 5)
+The following motivates items 1 and 2 (and to a lesser extent 4)
 
 With the current setup, we can already evolve the language and APIs,
 albeit in a very limited way. For example, it is virtually impossible
@@ -89,7 +85,7 @@ libraries, in which deprecation doesn't exist!
 
 ## 2. User Experience
 
-The following motivates items 2, 4 and 5.
+The following motivates items 2, 3 and 4.
 
 Currently, there is no way to make an API item unavailable via 
 deprecation. This means the API will only ever expand, with a lot of
@@ -122,12 +118,6 @@ The documentation can be optionally reduced to items relating to the
 current target version (e.g. by a switch), or deprecated items 
 relegated to a separate space, to reduce clutter and possible user
 confusion.
-
-## 3. Security Considerations
-
-I believe that *should* a security issue in one of our APIs be found,
-a swift and effective response will be required, and the current rules
-make no provisions for it. Thus proposal item 3.
 
 # Detailed design
 
@@ -178,22 +168,11 @@ of the specified target version instead the current version, but
 default to the current version if no target version is specified or the 
 specified version has no upper bound.
 
-`rustc` should also show a warning or error, depending on level, on
-encountering usage of API items marked as `#[insecure]`. The attribute
-has two values:
-
-* `level` can either be `Warning` or `Error` and default to `Error`
-* `reason` contains a description on why usage of this item was deemed
-  a security risk. This attribute is mandatory.
-
 While `rustdoc` already parses the deprecation flags, it should in 
 addition relegate items removed in the current version to a separate 
 area below the other documentation and optically mark them as removed. 
 We should not completely remove them, because that would confuse users 
 who see the API items in code written for older target versions.
-
-Also, `rustdoc` should show if API items are marked with `#[insecure]`, 
-including displaying the `reason` prominently.
 
 # Optional Extension: Legacy flags
 
@@ -219,7 +198,11 @@ have lived with this for multiple decades, so it appears the tradeoff
 has seen some confirmation already. 
 
 Cargo and `rustc` need some code to manage the additional rules. I
-estimate the effort to be reasonably low.
+estimate the effort to be reasonably low. For *compiler changes* 
+however, unless it's a genuine bug and unless there could be programs 
+relying on the old behaviours, both the old and new code paths have to
+be maintained in the compiler, which is the biggest cost of 
+implementing this RFC.
 
 # Alternatives
 
@@ -264,6 +247,20 @@ estimate the effort to be reasonably low.
 
 # Unresolved questions
 
-The names for the cargo package attribute and the rustc compiler option
-are still subject to bikeshedding (however, discussion has stalled,
-suggesting the current names are good enough).
+* The names for the cargo package attribute and the rustc compiler 
+  option are still subject to bikeshedding (however, discussion has 
+  stalled, suggesting the current names are good enough).
+
+* How do we determine if something is a genuine bug (and should be 
+  changed retroactively)?
+
+* If we agree that something needs to be changed retroactively (i.e. in 
+  older versions), do we also release the old versions anew? Which 
+  ones? Should we nominate LTS versions? Who would maintain them?
+
+* Is *forward-compatibility* sufficiently handled? Seeing that e.g. 
+  adding an item to a trait could break code using that trait, changing 
+  a trait would require both versions being interoperable, which could 
+  be impossible in the general case. This would needed to be handled by 
+  finding a new name for the trait or supplying a default 
+  implementation.
