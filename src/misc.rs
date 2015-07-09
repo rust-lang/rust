@@ -8,7 +8,7 @@ use rustc::middle::ty;
 use syntax::codemap::{Span, Spanned};
 
 use types::span_note_and_lint;
-use utils::match_path;
+use utils::{match_path, snippet};
 
 pub fn walk_ty<'t>(ty: ty::Ty<'t>) -> ty::Ty<'t> {
 	match ty.sty {
@@ -43,12 +43,11 @@ impl LintPass for MiscPass {
                     // In some cases, an exhaustive match is preferred to catch situations when
                     // an enum is extended. So we only consider cases where a `_` wildcard is used
                     if arms[1].pats[0].node == PatWild(PatWildSingle) && arms[0].pats.len() == 1 {
-                        let map = cx.sess().codemap();
                         span_note_and_lint(cx, SINGLE_MATCH, expr.span,
                               "You seem to be trying to use match for destructuring a single type. Did you mean to use `if let`?",
                               &*format!("Try if let {} = {} {{ ... }}",
-                                      &*map.span_to_snippet(arms[0].pats[0].span).unwrap_or("..".to_string()),
-                                      &*map.span_to_snippet(ex.span).unwrap_or("..".to_string()))
+                                      snippet(cx, arms[0].pats[0].span, ".."),
+                                      snippet(cx, ex.span, ".."))
                         );
                     }
                 }
@@ -156,11 +155,10 @@ impl LintPass for FloatCmp {
 		if let ExprBinary(ref cmp, ref left, ref right) = expr.node {
 			let op = cmp.node;
 			if (op == BiEq || op == BiNe) && (is_float(cx, left) || is_float(cx, right)) {
-				let map = cx.sess().codemap();
 				cx.span_lint(FLOAT_CMP, expr.span, &format!(
 					"{}-Comparison of f32 or f64 detected. You may want to change this to 'abs({} - {}) < epsilon' for some suitable value of epsilon",
-					binop_to_string(op), &*map.span_to_snippet(left.span).unwrap_or("..".to_string()), 
-					&*map.span_to_snippet(right.span).unwrap_or("..".to_string())));
+					binop_to_string(op), snippet(cx, left.span, ".."), 
+					snippet(cx, right.span, "..")));
 			}
 		}
 	}
@@ -246,8 +244,7 @@ fn check_to_owned(cx: &Context, expr: &Expr, other_span: Span) {
 				cx.span_lint(CMP_OWNED, expr.span, &format!(
 					"this creates an owned instance just for comparison. \
 					Consider using {}.as_slice() to compare without allocation",
-					cx.sess().codemap().span_to_snippet(other_span).unwrap_or(
-						"..".to_string())))
+					snippet(cx, other_span, "..")))
 			}
 		},
 		&ExprCall(ref path, _) => {
@@ -257,8 +254,7 @@ fn check_to_owned(cx: &Context, expr: &Expr, other_span: Span) {
 					cx.span_lint(CMP_OWNED, expr.span, &format!(
 					"this creates an owned instance just for comparison. \
 					Consider using {}.as_slice() to compare without allocation",
-					cx.sess().codemap().span_to_snippet(other_span).unwrap_or(
-						"..".to_string())))
+					snippet(cx, other_span, "..")))
 				}
 			}
 		},
