@@ -47,9 +47,9 @@ pub struct Snapshot {
     snapshot: sv::Snapshot
 }
 
-enum UndoEntry {
+enum UndoEntry<'tcx> {
     // The type of the var was specified.
-    SpecifyVar(ty::TyVid, Vec<Relation>),
+    SpecifyVar(ty::TyVid, Vec<Relation>, Option<Default<'tcx>>),
     Relate(ty::TyVid, ty::TyVid),
 }
 
@@ -118,8 +118,8 @@ impl<'tcx> TypeVariableTable<'tcx> {
             mem::replace(value_ptr, Known(ty))
         };
 
-        let relations = match old_value {
-            Bounded { relations, .. } => relations,
+        let (relations, default) = match old_value {
+            Bounded { relations, default } => (relations, default),
             Known(_) => panic!("Asked to instantiate variable that is \
                                already instantiated")
         };
@@ -128,7 +128,7 @@ impl<'tcx> TypeVariableTable<'tcx> {
             stack.push((ty, dir, vid));
         }
 
-        self.values.record(SpecifyVar(vid, relations));
+        self.values.record(SpecifyVar(vid, relations, default));
     }
 
     pub fn new_var(&mut self,
@@ -198,7 +198,7 @@ impl<'tcx> TypeVariableTable<'tcx> {
                     debug!("NewElem({}) new_elem_threshold={}", index, new_elem_threshold);
                 }
 
-                sv::UndoLog::Other(SpecifyVar(vid, _)) => {
+                sv::UndoLog::Other(SpecifyVar(vid, _, _)) => {
                     if vid.index < new_elem_threshold {
                         // quick check to see if this variable was
                         // created since the snapshot started or not.
@@ -229,12 +229,15 @@ impl<'tcx> TypeVariableTable<'tcx> {
 
 impl<'tcx> sv::SnapshotVecDelegate for Delegate<'tcx> {
     type Value = TypeVariableData<'tcx>;
-    type Undo = UndoEntry;
+    type Undo = UndoEntry<'tcx>;
 
-    fn reverse(values: &mut Vec<TypeVariableData<'tcx>>, action: UndoEntry) {
+    fn reverse(values: &mut Vec<TypeVariableData<'tcx>>, action: UndoEntry<'tcx>) {
         match action {
-            SpecifyVar(vid, relations) => {
-                values[vid.index as usize].value = Bounded { relations: relations, default: None };
+            SpecifyVar(vid, relations, default) => {
+                values[vid.index as usize].value = Bounded {
+                    relations: relations,
+                    default: default
+                };
             }
 
             Relate(a, b) => {
