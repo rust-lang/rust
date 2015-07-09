@@ -1059,7 +1059,7 @@ $opt_help || {
 
 
 # func_lalib_p file
-# True if FILE is a libtool `.la' library or `.lo' object file.
+# True iff FILE is a libtool `.la' library or `.lo' object file.
 # This function is only a basic sanity check; it will hardly flush out
 # determined imposters.
 func_lalib_p ()
@@ -1070,7 +1070,7 @@ func_lalib_p ()
 }
 
 # func_lalib_unsafe_p file
-# True if FILE is a libtool `.la' library or `.lo' object file.
+# True iff FILE is a libtool `.la' library or `.lo' object file.
 # This function implements the same check as func_lalib_p without
 # resorting to external programs.  To this end, it redirects stdin and
 # closes it afterwards, without saving the original file descriptor.
@@ -1093,7 +1093,7 @@ func_lalib_unsafe_p ()
 }
 
 # func_ltwrapper_script_p file
-# True if FILE is a libtool wrapper script
+# True iff FILE is a libtool wrapper script
 # This function is only a basic sanity check; it will hardly flush out
 # determined imposters.
 func_ltwrapper_script_p ()
@@ -1102,7 +1102,7 @@ func_ltwrapper_script_p ()
 }
 
 # func_ltwrapper_executable_p file
-# True if FILE is a libtool wrapper executable
+# True iff FILE is a libtool wrapper executable
 # This function is only a basic sanity check; it will hardly flush out
 # determined imposters.
 func_ltwrapper_executable_p ()
@@ -1130,7 +1130,7 @@ func_ltwrapper_scriptname ()
 }
 
 # func_ltwrapper_p file
-# True if FILE is a libtool wrapper script or wrapper executable
+# True iff FILE is a libtool wrapper script or wrapper executable
 # This function is only a basic sanity check; it will hardly flush out
 # determined imposters.
 func_ltwrapper_p ()

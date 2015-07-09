@@ -877,7 +877,7 @@ Thus the presence of an assignment bit indicates that the assignment
 may have occurred. Note that assignments are only killed when the
 variable goes out of scope, as it is not relevant whether or not there
 has been a move in the meantime. Using these bits, we can declare that
-an assignment to an immutable variable is legal if there is no other
+an assignment to an immutable variable is legal iff there is no other
 assignment bit to that same variable in scope.
 
 ## Why is the design made this way?

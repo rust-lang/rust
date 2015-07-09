@@ -145,7 +145,7 @@ impl<'v, P> Visitor<'v> for LoopQueryVisitor<P> where P: FnMut(&ast::Expr_) -> b
     }
 }
 
-// Takes a predicate p, returns true if p is true for any subexpressions
+// Takes a predicate p, returns true iff p is true for any subexpressions
 // of b -- skipping any inner loops (loop, while, loop_body)
 pub fn loop_query<P>(b: &ast::Block, p: P) -> bool where P: FnMut(&ast::Expr_) -> bool {
     let mut v = LoopQueryVisitor {
@@ -168,7 +168,7 @@ impl<'v, P> Visitor<'v> for BlockQueryVisitor<P> where P: FnMut(&ast::Expr) -> b
     }
 }
 
-// Takes a predicate p, returns true if p is true for any subexpressions
+// Takes a predicate p, returns true iff p is true for any subexpressions
 // of b -- skipping any inner loops (loop, while, loop_body)
 pub fn block_query<P>(b: &ast::Block, p: P) -> bool where P: FnMut(&ast::Expr) -> bool {
     let mut v = BlockQueryVisitor {
