@@ -99,7 +99,6 @@ pub mod diagnostics;
 
 pub mod back {
     pub use rustc_back::abi;
-    pub use rustc_back::archive;
     pub use rustc_back::arm;
     pub use rustc_back::mips;
     pub use rustc_back::mipsel;

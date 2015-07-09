@@ -51,7 +51,6 @@ extern crate rustc_llvm;
 #[macro_use] extern crate log;
 
 pub mod abi;
-pub mod archive;
 pub mod tempdir;
 pub mod arm;
 pub mod mips;

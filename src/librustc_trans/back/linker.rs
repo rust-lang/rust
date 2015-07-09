@@ -13,7 +13,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::fs;
 
-use rustc_back::archive;
+use back::archive;
 use session::Session;
 use session::config;
 
@@ -88,11 +88,7 @@ impl<'a> Linker for GnuLinker<'a> {
             // -force_load is the OSX equivalent of --whole-archive, but it
             // involves passing the full path to the library to link.
             let mut v = OsString::from("-Wl,-force_load,");
-            v.push(&archive::find_library(lib,
-                                          &target.options.staticlib_prefix,
-                                          &target.options.staticlib_suffix,
-                                          search_path,
-                                          &self.sess.diagnostic().handler));
+            v.push(&archive::find_library(lib, search_path, &self.sess));
             self.cmd.arg(&v);
         }
     }

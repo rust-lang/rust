@@ -522,6 +522,9 @@ pub type DebugLocRef = *mut DebugLoc_opaque;
 #[allow(missing_copy_implementations)]
 pub enum SMDiagnostic_opaque {}
 pub type SMDiagnosticRef = *mut SMDiagnostic_opaque;
+#[allow(missing_copy_implementations)]
+pub enum RustArchiveMember_opaque {}
+pub type RustArchiveMemberRef = *mut RustArchiveMember_opaque;
 
 pub type DiagnosticHandler = unsafe extern "C" fn(DiagnosticInfoRef, *mut c_void);
 pub type InlineAsmDiagHandler = unsafe extern "C" fn(SMDiagnosticRef, *const c_void, c_uint);
@@ -2069,12 +2072,12 @@ extern {
 
     pub fn LLVMRustOpenArchive(path: *const c_char) -> ArchiveRef;
     pub fn LLVMRustArchiveIteratorNew(AR: ArchiveRef) -> ArchiveIteratorRef;
-    pub fn LLVMRustArchiveIteratorNext(AIR: ArchiveIteratorRef);
-    pub fn LLVMRustArchiveIteratorCurrent(AIR: ArchiveIteratorRef) -> ArchiveChildRef;
+    pub fn LLVMRustArchiveIteratorNext(AIR: ArchiveIteratorRef) -> ArchiveChildRef;
     pub fn LLVMRustArchiveChildName(ACR: ArchiveChildRef,
                                     size: *mut size_t) -> *const c_char;
     pub fn LLVMRustArchiveChildData(ACR: ArchiveChildRef,
                                     size: *mut size_t) -> *const c_char;
+    pub fn LLVMRustArchiveChildFree(ACR: ArchiveChildRef);
     pub fn LLVMRustArchiveIteratorFree(AIR: ArchiveIteratorRef);
     pub fn LLVMRustDestroyArchive(AR: ArchiveRef);
 
@@ -2111,6 +2114,15 @@ extern {
                                              CX: *mut c_void);
 
     pub fn LLVMWriteSMDiagnosticToString(d: SMDiagnosticRef, s: RustStringRef);
+
+    pub fn LLVMRustWriteArchive(Dst: *const c_char,
+                                NumMembers: size_t,
+                                Members: *const RustArchiveMemberRef,
+                                WriteSymbtab: bool) -> c_int;
+    pub fn LLVMRustArchiveMemberNew(Filename: *const c_char,
+                                    Name: *const c_char,
+                                    Child: ArchiveChildRef) -> RustArchiveMemberRef;
+    pub fn LLVMRustArchiveMemberFree(Member: RustArchiveMemberRef);
 }
 
 // LLVM requires symbols from this library, but apparently they're not printed
