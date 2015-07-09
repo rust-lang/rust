@@ -1,3 +1,18 @@
+Version 1.2.0 (August 2015)
+===========================
+
+Highlights
+----------
+
+* [Parallel codegen][parcodegen] is now working again, which can substantially
+  speed up large builds in debug mode; It also gets another ~33% speedup when
+  bootstrapping on a 4 core machine (using 8 jobs). It's not enabled by default,
+  but will be "in the near future"
+
+
+[parcodegen]: https://github.com/rust-lang/rust/pull/26018
+
+
 Version 1.1.0 (June 2015)
 =========================
 
