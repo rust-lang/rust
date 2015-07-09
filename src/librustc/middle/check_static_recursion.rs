@@ -27,6 +27,10 @@ struct CheckCrateVisitor<'a, 'ast: 'a> {
     sess: &'a Session,
     def_map: &'a DefMap,
     ast_map: &'a ast_map::Map<'ast>,
+    // `discriminant_map` is a cache that associates the `NodeId`s of local
+    // variant definitions with the discriminant expression that applies to
+    // each one. If the variant uses the default values (starting from `0`),
+    // then `None` is stored.
     discriminant_map: RefCell<NodeMap<Option<&'ast ast::Expr>>>,
 }
 
