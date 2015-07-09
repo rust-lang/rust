@@ -2522,6 +2522,7 @@ pub mod consts {
             pub const S_IFDIR : c_int = 16384;
             pub const S_IFREG : c_int = 32768;
             pub const S_IFLNK : c_int = 40960;
+            pub const S_IFSOCK : mode_t = 49152;
             pub const S_IFMT : c_int = 61440;
             pub const S_IEXEC : c_int = 64;
             pub const S_IWRITE : c_int = 128;
@@ -2881,6 +2882,7 @@ pub mod consts {
             pub const S_IFDIR : mode_t = 16384;
             pub const S_IFREG : mode_t = 32768;
             pub const S_IFLNK : mode_t = 40960;
+            pub const S_IFSOCK : mode_t = 49152;
             pub const S_IFMT : mode_t = 61440;
             pub const S_IEXEC : mode_t = 64;
             pub const S_IWRITE : mode_t = 128;
@@ -3103,6 +3105,7 @@ pub mod consts {
             pub const S_IFDIR : mode_t = 16384;
             pub const S_IFREG : mode_t = 32768;
             pub const S_IFLNK : mode_t = 40960;
+            pub const S_IFSOCK : mode_t = 49152;
             pub const S_IFMT : mode_t = 61440;
             pub const S_IEXEC : mode_t = 64;
             pub const S_IWRITE : mode_t = 128;
@@ -3905,6 +3908,7 @@ pub mod consts {
             pub const S_IFDIR : mode_t = 16384;
             pub const S_IFREG : mode_t = 32768;
             pub const S_IFLNK : mode_t = 40960;
+            pub const S_IFSOCK : mode_t = 49152;
             pub const S_IFMT : mode_t = 61440;
             pub const S_IEXEC : mode_t = 64;
             pub const S_IWRITE : mode_t = 128;
@@ -4365,6 +4369,7 @@ pub mod consts {
             pub const S_IFDIR : mode_t = 16384;
             pub const S_IFREG : mode_t = 32768;
             pub const S_IFLNK : mode_t = 40960;
+            pub const S_IFSOCK : mode_t = 49152;
             pub const S_IFMT : mode_t = 61440;
             pub const S_IEXEC : mode_t = 64;
             pub const S_IWRITE : mode_t = 128;
@@ -4791,6 +4796,7 @@ pub mod consts {
             pub const S_IFDIR : mode_t = 16384;
             pub const S_IFREG : mode_t = 32768;
             pub const S_IFLNK : mode_t = 40960;
+            pub const S_IFSOCK : mode_t = 49152;
             pub const S_IFMT : mode_t = 61440;
             pub const S_IEXEC : mode_t = 64;
             pub const S_IWRITE : mode_t = 128;

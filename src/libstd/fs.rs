@@ -637,6 +637,10 @@ impl FileType {
     pub fn is_symlink(&self) -> bool { self.0.is_symlink() }
 }
 
+impl AsInner<fs_imp::FileType> for FileType {
+    fn as_inner(&self) -> &fs_imp::FileType { &self.0 }
+}
+
 impl FromInner<fs_imp::FilePermissions> for Permissions {
     fn from_inner(f: fs_imp::FilePermissions) -> Permissions {
         Permissions(f)
