@@ -87,6 +87,7 @@ use fmt_macros::{Parser, Piece, Position};
 use middle::astconv_util::{check_path_args, NO_TPS, NO_REGIONS};
 use middle::def;
 use middle::infer;
+use middle::infer::type_variable;
 use middle::pat_util::{self, pat_id_map};
 use middle::privacy::{AllPublic, LastMod};
 use middle::region::{self, CodeExtent};
@@ -1139,12 +1140,8 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
     }
 
     fn ty_infer(&self, default: Option<Ty<'tcx>>, _span: Span) -> Ty<'tcx> {
-        let ty_var = self.infcx().next_ty_var();
-        match default {
-            Some(default) => { self.infcx().defaults.borrow_mut().insert(ty_var, default); }
-            None => {}
-        }
-        ty_var
+        let default = default.map(|t| type_variable::Default { ty: t });
+        self.infcx().next_ty_var_with_default(default)
     }
 
     fn projected_ty_from_poly_trait_ref(&self,
@@ -1697,7 +1694,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn select_all_obligations_and_apply_defaults(&self) {
         use middle::ty::UnconstrainedNumeric::{UnconstrainedInt, UnconstrainedFloat, Neither};
 
-        debug!("select_all_obligations_and_apply_defaults: defaults={:?}", self.infcx().defaults);
+        // debug!("select_all_obligations_and_apply_defaults: defaults={:?}", self.infcx().defaults);
 
         for _ in (0..self.tcx().sess.recursion_limit.get()) {
             self.select_obligations_where_possible();
@@ -1725,11 +1722,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             // Collect the set of variables that need fallback applied
             for ty in &unsolved_variables {
-                if self.inh.infcx.defaults.borrow().contains_key(ty) {
+                if let Some(_) = self.inh.infcx.default(ty) {
                     let resolved = self.infcx().resolve_type_vars_if_possible(ty);
 
-                    debug!("select_all_obligations_and_apply_defaults: ty: {:?} with default: {:?}",
-                            ty, self.inh.infcx.defaults.borrow().get(ty));
+                    // debug!("select_all_obligations_and_apply_defaults: ty: {:?} with default: {:?}",
+                    //         ty, self.inh.infcx.defaults.borrow().get(ty));
 
                     match resolved.sty {
                         ty::TyInfer(ty::TyVar(_)) => {
@@ -1754,7 +1751,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             // Go through the unbound variables and unify them with the proper fallbacks
             for ty in &unbound_tyvars {
-                // let resolved = self.infcx().resolve_type_vars_if_possible(ty);
                 if self.infcx().type_var_diverges(ty) {
                     demand::eqtype(self, codemap::DUMMY_SP, *ty, self.tcx().mk_nil());
                 } else {
@@ -1766,17 +1762,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             demand::eqtype(self, codemap::DUMMY_SP, *ty, self.tcx().types.f64)
                         }
                         Neither => {
-                            let default_map = self.inh.infcx.defaults.borrow();
-                            if let Some(default) = default_map.get(ty) {
+                            if let Some(default) = self.inh.infcx.default(ty) {
                                 match infer::mk_eqty(self.infcx(), false,
                                                      infer::Misc(codemap::DUMMY_SP),
-                                                     ty, default) {
+                                                     ty, default.ty) {
                                     Ok(()) => { /* ok */ }
                                     Err(_) => {
                                         self.infcx().report_conflicting_default_types(
                                             codemap::DUMMY_SP,
                                             ty,
-                                            default)
+                                            default.ty)
                                     }
                                 }
                             }

@@ -95,9 +95,6 @@ pub struct InferCtxt<'a, 'tcx: 'a> {
     normalize: bool,
 
     err_count_on_creation: usize,
-
-    // Default Type Parameter fallbacks
-    pub defaults: RefCell<FnvHashMap<Ty<'tcx>, Ty<'tcx>>>,
 }
 
 /// A map returned by `skolemize_late_bound_regions()` indicating the skolemized
@@ -353,8 +350,7 @@ pub fn new_infer_ctxt<'a, 'tcx>(tcx: &'a ty::ctxt<'tcx>,
         parameter_environment: param_env.unwrap_or(tcx.empty_parameter_environment()),
         fulfillment_cx: RefCell::new(traits::FulfillmentContext::new(errors_will_be_reported)),
         normalize: false,
-        err_count_on_creation: tcx.sess.err_count(),
-        defaults: RefCell::new(FnvHashMap()),
+        err_count_on_creation: tcx.sess.err_count()
     }
 }
 
@@ -657,27 +653,44 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
     }
 
+    /// Returns a type variable's default fallback if any exists. A default
+    /// must be attached to the variable when created, if it is created
+    /// without a default, this will return None.
+    ///
+    /// See `new_ty_var_with_default` to create a type variable with a default.
+    /// See `type_variable::Default` for details about what a default entails.
+    pub fn default(&self, ty: Ty<'tcx>) -> Option<type_variable::Default<'tcx>> {
+        match ty.sty {
+            ty::TyInfer(ty::TyVar(vid)) => self.type_variables.borrow().default(vid),
+            _ => None
+        }
+    }
+
     pub fn unsolved_variables(&self) -> Vec<ty::Ty<'tcx>> {
         let mut variables = Vec::new();
 
         let unbound_ty_vars = self.type_variables
                                   .borrow()
                                   .unsolved_variables()
-                                  .into_iter().map(|t| self.tcx.mk_var(t));
+                                  .into_iter()
+                                  .map(|t| self.tcx.mk_var(t));
 
         let unbound_int_vars = self.int_unification_table
                                    .borrow_mut()
                                    .unsolved_variables()
-                                   .into_iter().map(|v| self.tcx.mk_int_var(v));
+                                   .into_iter()
+                                   .map(|v| self.tcx.mk_int_var(v));
 
         let unbound_float_vars = self.float_unification_table
                                      .borrow_mut()
                                      .unsolved_variables()
-                                     .into_iter().map(|v| self.tcx.mk_float_var(v));
+                                     .into_iter()
+                                     .map(|v| self.tcx.mk_float_var(v));
 
         variables.extend(unbound_ty_vars);
         variables.extend(unbound_int_vars);
         variables.extend(unbound_float_vars);
+        
         return variables;
     }
 
@@ -984,11 +997,20 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn next_ty_var_id(&self, diverging: bool) -> TyVid {
         self.type_variables
             .borrow_mut()
-            .new_var(diverging)
+            .new_var(diverging, None)
     }
 
     pub fn next_ty_var(&self) -> Ty<'tcx> {
         self.tcx.mk_var(self.next_ty_var_id(false))
+    }
+
+    pub fn next_ty_var_with_default(&self,
+                                    default: Option<type_variable::Default<'tcx>>) -> Ty<'tcx> {
+        let ty_var_id = self.type_variables
+                            .borrow_mut()
+                            .new_var(false, default);
+
+        self.tcx.mk_var(ty_var_id)
     }
 
     pub fn next_diverging_ty_var(&self) -> Ty<'tcx> {
@@ -1027,14 +1049,18 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn type_vars_for_defs(&self,
                               defs: &[ty::TypeParameterDef<'tcx>])
                               -> Vec<ty::Ty<'tcx>> {
+        let mut substs = Substs::empty();
         let mut vars = Vec::with_capacity(defs.len());
 
         for def in defs.iter() {
-            let ty_var = self.next_ty_var();
-            match def.default {
-                None => {},
-                Some(default) => { self.defaults.borrow_mut().insert(ty_var, default); }
-            }
+            let default = def.default.map(|default| {
+                type_variable::Default {
+                    ty: default
+                }
+            });
+            //.subst(self.tcx, &substs)
+            let ty_var = self.next_ty_var_with_default(default);
+            substs.types.push(subst::ParamSpace::SelfSpace, ty_var);
             vars.push(ty_var)
         }
 

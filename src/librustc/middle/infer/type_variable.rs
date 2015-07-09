@@ -30,7 +30,17 @@ struct TypeVariableData<'tcx> {
 
 enum TypeVariableValue<'tcx> {
     Known(Ty<'tcx>),
-    Bounded(Vec<Relation>),
+    Bounded {
+        relations: Vec<Relation>,
+        default: Option<Default<'tcx>>
+    }
+}
+
+// We will use this to store the required information to recapitulate what happened when
+// an error occurs.
+#[derive(Clone)]
+pub struct Default<'tcx> {
+    pub ty: Ty<'tcx>
 }
 
 pub struct Snapshot {
@@ -72,6 +82,13 @@ impl<'tcx> TypeVariableTable<'tcx> {
         relations(self.values.get_mut(a.index as usize))
     }
 
+    pub fn default(&self, vid: ty::TyVid) -> Option<Default<'tcx>> {
+        match &self.values.get(vid.index as usize).value {
+            &Known(_) => None,
+            &Bounded { ref default, .. } => default.clone()
+        }
+    }
+
     pub fn var_diverges<'a>(&'a self, vid: ty::TyVid) -> bool {
         self.values.get(vid.index as usize).diverging
     }
@@ -102,7 +119,7 @@ impl<'tcx> TypeVariableTable<'tcx> {
         };
 
         let relations = match old_value {
-            Bounded(b) => b,
+            Bounded { relations, .. } => relations,
             Known(_) => panic!("Asked to instantiate variable that is \
                                already instantiated")
         };
@@ -114,9 +131,11 @@ impl<'tcx> TypeVariableTable<'tcx> {
         self.values.record(SpecifyVar(vid, relations));
     }
 
-    pub fn new_var(&mut self, diverging: bool) -> ty::TyVid {
+    pub fn new_var(&mut self,
+                   diverging: bool,
+                   default: Option<Default<'tcx>>) -> ty::TyVid {
         let index = self.values.push(TypeVariableData {
-            value: Bounded(vec![]),
+            value: Bounded { relations: vec![], default: default },
             diverging: diverging
         });
         ty::TyVid { index: index as u32 }
@@ -124,7 +143,7 @@ impl<'tcx> TypeVariableTable<'tcx> {
 
     pub fn probe(&self, vid: ty::TyVid) -> Option<Ty<'tcx>> {
         match self.values.get(vid.index as usize).value {
-            Bounded(..) => None,
+            Bounded { .. } => None,
             Known(t) => Some(t)
         }
     }
@@ -197,12 +216,14 @@ impl<'tcx> TypeVariableTable<'tcx> {
     }
 
     pub fn unsolved_variables(&self) -> Vec<ty::TyVid> {
-        self.values.iter().enumerate().filter_map(|(i, value)|
-            match &value.value {
+        self.values
+            .iter()
+            .enumerate()
+            .filter_map(|(i, value)| match &value.value {
                 &TypeVariableValue::Known(_) => None,
-                &TypeVariableValue::Bounded(_) => Some(ty::TyVid { index: i as u32 })
-            }
-        ).collect()
+                &TypeVariableValue::Bounded { .. } => Some(ty::TyVid { index: i as u32 })
+            })
+            .collect()
     }
 }
 
@@ -213,7 +234,7 @@ impl<'tcx> sv::SnapshotVecDelegate for Delegate<'tcx> {
     fn reverse(values: &mut Vec<TypeVariableData<'tcx>>, action: UndoEntry) {
         match action {
             SpecifyVar(vid, relations) => {
-                values[vid.index as usize].value = Bounded(relations);
+                values[vid.index as usize].value = Bounded { relations: relations, default: None };
             }
 
             Relate(a, b) => {
@@ -227,6 +248,6 @@ impl<'tcx> sv::SnapshotVecDelegate for Delegate<'tcx> {
 fn relations<'a>(v: &'a mut TypeVariableData) -> &'a mut Vec<Relation> {
     match v.value {
         Known(_) => panic!("var_sub_var: variable is known"),
-        Bounded(ref mut relations) => relations
+        Bounded { ref mut relations, .. } => relations
     }
 }
