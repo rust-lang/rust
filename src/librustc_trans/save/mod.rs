@@ -15,6 +15,8 @@ use std::env;
 use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 
+use rustc::ast_map::NodeItem;
+
 use syntax::{attr};
 use syntax::ast::{self, NodeId, DefId};
 use syntax::ast_util;
@@ -227,7 +229,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     name: get_ident(item.ident).to_string(),
                     qualname: qualname,
                     span: sub_span.unwrap(),
-                    scope: selfenclosing_scope(item.id),
+                    scope: self.enclosing_scope(item.id),
                     value: self.span_utils.snippet(expr.span),
                     type_value: ty_to_string(&typ),
                 })
@@ -303,7 +305,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         }
     }
 
-    pub fn get_field_data(&self, field: &ast::StructField, scope: NodeId) -> Option<Data> {
+    pub fn get_field_data(&self, field: &ast::StructField, scope: NodeId) -> Option<VariableData> {
         match field.node.kind {
             ast::NamedField(ident, _) => {
                 let name = get_ident(ident);
@@ -313,7 +315,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 let typ = self.tcx.node_types().get(&field.node.id).unwrap()
                                                .to_string();
                 let sub_span = self.span_utils.sub_span_before_token(field.span, token::Colon);
-                Some(Data::VariableData(VariableData {
+                Some(VariableData {
                     id: field.node.id,
                     name: get_ident(ident).to_string(),
                     qualname: qualname,
@@ -321,9 +323,93 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     scope: scope,
                     value: "".to_owned(),
                     type_value: typ,
-                }))
+                })
             },
             _ => None,
+        }
+    }
+
+    // FIXME would be nice to take a MethodItem here, but the ast provides both
+    // trait and impl flavours, so the caller must do the disassembly.
+    pub fn get_method_data(&self,
+                           id: ast::NodeId,
+                           name: ast::Name,
+                           span: Span) -> FunctionData {
+        // The qualname for a method is the trait name or name of the struct in an impl in
+        // which the method is declared in, followed by the method's name.
+        let qualname = match self.tcx.impl_of_method(ast_util::local_def(id)) {
+            Some(impl_id) => match self.tcx.map.get(impl_id.node) {
+                NodeItem(item) => {
+                    match item.node {
+                        ast::ItemImpl(_, _, _, _, ref ty, _) => {
+                            let mut result = String::from("<");
+                            result.push_str(&ty_to_string(&**ty));
+
+                            match self.tcx.trait_of_item(ast_util::local_def(id)) {
+                                Some(def_id) => {
+                                    result.push_str(" as ");
+                                    result.push_str(
+                                        &self.tcx.item_path_str(def_id));
+                                },
+                                None => {}
+                            }
+                            result.push_str(">");
+                            result
+                        }
+                        _ => {
+                            self.tcx.sess.span_bug(span,
+                                &format!("Container {} for method {} not an impl?",
+                                         impl_id.node, id));
+                        },
+                    }
+                },
+                _ => {
+                    self.tcx.sess.span_bug(span,
+                        &format!("Container {} for method {} is not a node item {:?}",
+                                 impl_id.node, id, self.tcx.map.get(impl_id.node)));
+                },
+            },
+            None => match self.tcx.trait_of_item(ast_util::local_def(id)) {
+                Some(def_id) => {
+                    match self.tcx.map.get(def_id.node) {
+                        NodeItem(_) => {
+                            format!("::{}", self.tcx.item_path_str(def_id))
+                        }
+                        _ => {
+                            self.tcx.sess.span_bug(span,
+                                &format!("Could not find container {} for method {}",
+                                         def_id.node, id));
+                        }
+                    }
+                },
+                None => {
+                    self.tcx.sess.span_bug(span,
+                        &format!("Could not find container for method {}", id));
+                },
+            },
+        };
+
+        let qualname = format!("{}::{}", qualname, &token::get_name(name));
+
+        let decl_id = self.tcx.trait_item_of_item(ast_util::local_def(id))
+            .and_then(|new_id| {
+                let def_id = new_id.def_id();
+                if def_id.node != 0 && def_id != ast_util::local_def(id) {
+                    Some(def_id)
+                } else {
+                    None
+                }
+            });
+
+        let sub_span = self.span_utils.sub_span_after_keyword(span, keywords::Fn);
+
+        FunctionData {
+            id: id,
+            name: token::get_name(name).to_string(),
+            qualname: qualname,
+            declaration: decl_id,
+            span: sub_span.unwrap(),
+            scope: self.enclosing_scope(id),
         }
     }
 

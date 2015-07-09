@@ -34,13 +34,11 @@ use session::Session;
 
 use middle::def;
 use middle::ty::{self, Ty};
-use rustc::ast_map::NodeItem;
 
 use std::cell::Cell;
 use std::fs::File;
 use std::path::Path;
 
-use syntax::ast_util;
 use syntax::ast::{self, NodeId, DefId};
 use syntax::codemap::*;
 use syntax::parse::token::{self, get_ident, keywords};
@@ -298,9 +296,11 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
         }
     }
 
-    fn process_method(&mut self, sig: &ast::MethodSig,
+    fn process_method(&mut self,
+                      sig: &ast::MethodSig,
                       body: Option<&ast::Block>,
-                      id: ast::NodeId, name: ast::Name,
+                      id: ast::NodeId,
+                      name: ast::Name,
                       span: Span) {
         if generated_code(span) {
             return;
@@ -308,91 +308,22 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
 
         debug!("process_method: {}:{}", id, token::get_name(name));
 
-        let scope_id;
-        // The qualname for a method is the trait name or name of the struct in an impl in
-        // which the method is declared in, followed by the method's name.
-        let qualname = match self.tcx.impl_of_method(ast_util::local_def(id)) {
-            Some(impl_id) => match self.tcx.map.get(impl_id.node) {
-                NodeItem(item) => {
-                    scope_id = item.id;
-                    match item.node {
-                        ast::ItemImpl(_, _, _, _, ref ty, _) => {
-                            let mut result = String::from("<");
-                            result.push_str(&ty_to_string(&**ty));
+        let method_data = self.save_ctxt.get_method_data(id, name, span);
 
-                            match self.tcx.trait_of_item(ast_util::local_def(id)) {
-                                Some(def_id) => {
-                                    result.push_str(" as ");
-                                    result.push_str(
-                                        &self.tcx.item_path_str(def_id));
-                                },
-                                None => {}
-                            }
-                            result.push_str(">");
-                            result
-                        }
-                        _ => {
-                            self.sess.span_bug(span,
-                                &format!("Container {} for method {} not an impl?",
-                                         impl_id.node, id));
-                        },
-                    }
-                },
-                _ => {
-                    self.sess.span_bug(span,
-                        &format!("Container {} for method {} is not a node item {:?}",
-                                 impl_id.node, id, self.tcx.map.get(impl_id.node)));
-                },
-            },
-            None => match self.tcx.trait_of_item(ast_util::local_def(id)) {
-                Some(def_id) => {
-                    scope_id = def_id.node;
-                    match self.tcx.map.get(def_id.node) {
-                        NodeItem(_) => {
-                            format!("::{}", self.tcx.item_path_str(def_id))
-                        }
-                        _ => {
-                            self.sess.span_bug(span,
-                                &format!("Could not find container {} for method {}",
-                                         def_id.node, id));
-                        }
-                    }
-                },
-                None => {
-                    self.sess.span_bug(span,
-                        &format!("Could not find container for method {}", id));
-                },
-            },
-        };
-
-        let qualname = &format!("{}::{}", qualname, &token::get_name(name));
-
-        // record the decl for this def (if it has one)
-        let decl_id = self.tcx.trait_item_of_item(ast_util::local_def(id))
-            .and_then(|new_id| {
-                let def_id = new_id.def_id();
-                if def_id.node != 0 && def_id != ast_util::local_def(id) {
-                    Some(def_id)
-                } else {
-                    None
-                }
-            });
-
-        let sub_span = self.span.sub_span_after_keyword(span, keywords::Fn);
         if body.is_some() {
             self.fmt.method_str(span,
-                                sub_span,
-                                id,
-                                qualname,
-                                decl_id,
-                                scope_id);
-            self.process_formals(&sig.decl.inputs, qualname);
+                                Some(method_data.span),
+                                method_data.id,
+                                &method_data.qualname,
+                                method_data.declaration,
+                                method_data.scope);
+            self.process_formals(&sig.decl.inputs, &method_data.qualname);
         } else {
             self.fmt.method_decl_str(span,
-                                     sub_span,
-                                     id,
-                                     qualname,
-                                     scope_id);
+                                     Some(method_data.span),
+                                     method_data.id,
+                                     &method_data.qualname,
+                                     method_data.scope);
         }
 
         // walk arg and return types
@@ -411,7 +342,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
 
         self.process_generic_params(&sig.generics,
                                     span,
-                                    qualname,
+                                    &method_data.qualname,
                                     id);
     }
 
@@ -432,7 +363,6 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
                                 parent_id: NodeId) {
         let field_data = self.save_ctxt.get_field_data(field, parent_id);
         if let Some(field_data) = field_data {
-            down_cast_data!(field_data, VariableData, self, field.span);
             self.fmt.field_str(field.span,
                                Some(field_data.span),
                                field_data.id,
@@ -1087,8 +1017,11 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
                                    trait_item.span, &*ty, &*expr);
             }
             ast::MethodTraitItem(ref sig, ref body) => {
-                self.process_method(sig, body.as_ref().map(|x| &**x),
-                                    trait_item.id, trait_item.ident.name, trait_item.span);
+                self.process_method(sig,
+                                    body.as_ref().map(|x| &**x),
+                                    trait_item.id,
+                                    trait_item.ident.name,
+                                    trait_item.span);
             }
             ast::ConstTraitItem(_, None) |
             ast::TypeTraitItem(..) => {}
@@ -1102,8 +1035,11 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
                                    impl_item.span, &ty, &expr);
             }
             ast::MethodImplItem(ref sig, ref body) => {
-                self.process_method(sig, Some(body), impl_item.id,
-                                    impl_item.ident.name, impl_item.span);
+                self.process_method(sig,
+                                    Some(body),
+                                    impl_item.id,
+                                    impl_item.ident.name,
+                                    impl_item.span);
             }
             ast::TypeImplItem(_) |
             ast::MacImplItem(_) => {}
