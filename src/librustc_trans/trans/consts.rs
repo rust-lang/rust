@@ -35,7 +35,6 @@ use middle::subst::Substs;
 use middle::ty::{self, Ty};
 use util::nodemap::NodeMap;
 
-use std::iter::repeat;
 use libc::c_uint;
 use syntax::{ast, ast_util};
 use syntax::parse::token;
@@ -780,7 +779,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             let llunitty = type_of::type_of(cx, unit_ty);
             let n = cx.tcx().eval_repeat_count(count);
             let unit_val = const_expr(cx, &**elem, param_substs, fn_args).0;
-            let vs: Vec<_> = repeat(unit_val).take(n).collect();
+            let vs = vec![unit_val; n];
             if val_ty(unit_val) != llunitty {
                 C_struct(cx, &vs[..], false)
             } else {

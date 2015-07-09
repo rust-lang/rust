@@ -68,12 +68,9 @@ impl Drop for AsciiArt {
 // If there is a canonical constructor it is typically named the same as the type.
 // Other constructor sort of functions are typically named from_foo, from_bar, etc.
 fn AsciiArt(width: usize, height: usize, fill: char) -> AsciiArt {
-    // Use an anonymous function to build a vector of vectors containing
-    // blank characters for each position in our canvas.
-    let mut lines = Vec::new();
-    for _ in 0..height {
-        lines.push(repeat('.').take(width).collect::<Vec<_>>());
-    }
+    // Build a vector of vectors containing blank characters for each position in
+    // our canvas.
+    let lines = vec![vec!['.'; width]; height];
 
     // Rust code often returns values by omitting the trailing semi-colon
     // instead of using an explicit return statement.

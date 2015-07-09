@@ -83,7 +83,6 @@ use syntax::{ast, ast_util, codemap};
 use syntax::parse::token::InternedString;
 use syntax::ptr::P;
 use syntax::parse::token;
-use std::iter::repeat;
 use std::mem;
 
 // Destinations
@@ -1400,7 +1399,7 @@ fn trans_struct<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     let tcx = bcx.tcx();
     with_field_tys(tcx, ty, Some(expr_id), |discr, field_tys| {
-        let mut need_base: Vec<bool> = repeat(true).take(field_tys.len()).collect();
+        let mut need_base = vec![true; field_tys.len()];
 
         let numbered_fields = fields.iter().map(|field| {
             let opt_pos =
