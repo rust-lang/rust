@@ -90,6 +90,11 @@ pub trait Visitor<'v> : Sized {
         walk_struct_def(self, s)
     }
     fn visit_struct_field(&mut self, s: &'v StructField) { walk_struct_field(self, s) }
+    fn visit_enum_def(&mut self, enum_definition: &'v EnumDef,
+                      generics: &'v Generics) {
+        walk_enum_def(self, enum_definition, generics)
+    }
+
     fn visit_variant(&mut self, v: &'v Variant, g: &'v Generics) { walk_variant(self, v, g) }
 
     /// Visits an optional reference to a lifetime. The `span` is the span of some surrounding
@@ -268,7 +273,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
         }
         ItemEnum(ref enum_definition, ref type_parameters) => {
             visitor.visit_generics(type_parameters);
-            walk_enum_def(visitor, enum_definition, type_parameters)
+            visitor.visit_enum_def(enum_definition, type_parameters)
         }
         ItemDefaultImpl(_, ref trait_ref) => {
             visitor.visit_trait_ref(trait_ref)
