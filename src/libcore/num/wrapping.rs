@@ -119,6 +119,16 @@ macro_rules! wrapping_impl {
             }
         }
 
+        #[stable(feature = "wrapping_div", since = "1.3.0")]
+        impl Div for Wrapping<$t> {
+            type Output = Wrapping<$t>;
+
+            #[inline(always)]
+            fn div(self, other: Wrapping<$t>) -> Wrapping<$t> {
+                Wrapping(self.0.wrapping_div(other.0))
+            }
+        }
+
         #[stable(feature = "rust1", since = "1.0.0")]
         impl Not for Wrapping<$t> {
             type Output = Wrapping<$t>;
