@@ -532,11 +532,9 @@ pub trait Read {
 
 /// A trait for objects which are byte-oriented sinks.
 ///
-/// The `write` method will attempt to write some data into the object,
-/// returning how many bytes were successfully written.
+/// Implementors of the `Write` trait are sometimes called 'writers'.
 ///
-/// The `flush` method is useful for adaptors and explicit buffers themselves
-/// for ensuring that all buffered data has been pushed out to the "true sink".
+/// Writers are defined by two required methods, `write()` and `flush()`:
 ///
 /// * The `write()` method will attempt to write some data into the object,
 ///   returning how many bytes were successfully written.
@@ -588,6 +586,20 @@ pub trait Write {
     ///
     /// It is **not** considered an error if the entire buffer could not be
     /// written to this writer.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::io::prelude::*;
+    /// use std::fs::File;
+    ///
+    /// # fn foo() -> std::io::Result<()> {
+    /// let mut buffer = try!(File::create("foo.txt"));
+    ///
+    /// try!(buffer.write(b"some bytes"));
+    /// # Ok(())
+    /// # }
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn write(&mut self, buf: &[u8]) -> Result<usize>;
 
@@ -598,6 +610,22 @@ pub trait Write {
     ///
     /// It is considered an error if not all bytes could be written due to
     /// I/O errors or EOF being reached.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::io::prelude::*;
+    /// use std::io::BufWriter;
+    /// use std::fs::File;
+    ///
+    /// # fn foo() -> std::io::Result<()> {
+    /// let mut buffer = BufWriter::new(try!(File::create("foo.txt")));
+    ///
+    /// try!(buffer.write(b"some bytes"));
+    /// try!(buffer.flush());
+    /// # Ok(())
+    /// # }
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn flush(&mut self) -> Result<()>;
 
@@ -611,6 +639,20 @@ pub trait Write {
     /// # Errors
     ///
     /// This function will return the first error that `write` returns.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::io::prelude::*;
+    /// use std::fs::File;
+    ///
+    /// # fn foo() -> std::io::Result<()> {
+    /// let mut buffer = try!(File::create("foo.txt"));
+    ///
+    /// try!(buffer.write_all(b"some bytes"));
+    /// # Ok(())
+    /// # }
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn write_all(&mut self, mut buf: &[u8]) -> Result<()> {
         while !buf.is_empty() {
@@ -628,17 +670,41 @@ pub trait Write {
     /// Writes a formatted string into this writer, returning any error
     /// encountered.
     ///
-    /// This method is primarily used to interface with the `format_args!`
-    /// macro, but it is rare that this should explicitly be called. The
-    /// `write!` macro should be favored to invoke this method instead.
+    /// This method is primarily used to interface with the
+    /// [`format_args!`][formatargs] macro, but it is rare that this should
+    /// explicitly be called. The [`write!`][write] macro should be favored to
+    /// invoke this method instead.
     ///
-    /// This function internally uses the `write_all` method on this trait and
-    /// hence will continuously write data so long as no errors are received.
-    /// This also means that partial writes are not indicated in this signature.
+    /// [formatargs]: ../std/macro.format_args!.html
+    /// [write]: ../std/macro.write!.html
+    ///
+    /// This function internally uses the [`write_all`][writeall] method on
+    /// this trait and hence will continuously write data so long as no errors
+    /// are received. This also means that partial writes are not indicated in
+    /// this signature.
+    ///
+    /// [writeall]: #method.write_all
     ///
     /// # Errors
     ///
     /// This function will return any I/O error reported while formatting.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::io::prelude::*;
+    /// use std::fs::File;
+    ///
+    /// # fn foo() -> std::io::Result<()> {
+    /// let mut buffer = try!(File::create("foo.txt"));
+    ///
+    /// // this call
+    /// try!(write!(buffer, "{:.*}", 2, 1.234567));
+    /// // turns into this:
+    /// try!(buffer.write_fmt(format_args!("{:.*}", 2, 1.234567)));
+    /// # Ok(())
+    /// # }
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn write_fmt(&mut self, fmt: fmt::Arguments) -> Result<()> {
         // Create a shim which translates a Write to a fmt::Write and saves
@@ -671,6 +737,23 @@ pub trait Write {
     ///
     /// The returned adaptor also implements `Write` and will simply borrow this
     /// current writer.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::io::Write;
+    /// use std::fs::File;
+    ///
+    /// # fn foo() -> std::io::Result<()> {
+    /// let mut buffer = try!(File::create("foo.txt"));
+    ///
+    /// let reference = buffer.by_ref();
+    ///
+    /// // we can use reference just like our original buffer
+    /// try!(reference.write_all(b"some bytes"));
+    /// # Ok(())
+    /// # }
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn by_ref(&mut self) -> &mut Self where Self: Sized { self }
 
@@ -682,6 +765,25 @@ pub trait Write {
     /// implementation do not precisely track where errors happen. For example
     /// an error on the second call to `write` will not report that the first
     /// call to `write` succeeded.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(io)]
+    /// use std::io::prelude::*;
+    /// use std::fs::File;
+    ///
+    /// # fn foo() -> std::io::Result<()> {
+    /// let mut buffer1 = try!(File::create("foo.txt"));
+    /// let mut buffer2 = Vec::new();
+    ///
+    /// // write the output to buffer1 as we read
+    /// let mut handle = buffer1.broadcast(&mut buffer2);
+    ///
+    /// try!(handle.write(b"some bytes"));
+    /// # Ok(())
+    /// # }
+    /// ```
     #[unstable(feature = "io", reason = "the semantics of a partial read/write \
                                          of where errors happen is currently \
                                          unclear and may change")]
@@ -706,15 +808,15 @@ pub trait Write {
 ///
 /// ```
 /// use std::io;
+/// use std::io::prelude::*;
 /// use std::fs::File;
-/// use std::io::Seek;
 /// use std::io::SeekFrom;
 ///
 /// # fn foo() -> io::Result<()> {
 /// let mut f = try!(File::open("foo.txt"));
 ///
 /// // move the cursor 42 bytes from the start of the file
-/// f.seek(SeekFrom::Start(42)).unwrap();
+/// try!(f.seek(SeekFrom::Start(42)));
 /// # Ok(())
 /// # }
 /// ```
