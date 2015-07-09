@@ -1475,6 +1475,8 @@ simplifier. The full story there, of course, depends on the forthcoming companio
 
 # Alternatives
 
+## Alternatives to specialization
+
 The main alternative to specialization in general is an approach based on
 negative bounds, such as the one outlined in an
 [earlier RFC](https://github.com/rust-lang/rfcs/pull/586). Negative bounds make
@@ -1483,6 +1485,10 @@ Limitations section). But negative bounds are also fundamentally *closed*: they
 make it possible to perform a certain amount of specialization up front when
 defining a trait, but don't easily support downstream crates further
 specializing the trait impls.
+
+## Alternative specialization designs
+
+### Relaxing the rule
 
 Assuming we want specialization, there are alternative designs for the
 specialization rule that allow it to handle more cases, but lose out on
@@ -1551,6 +1557,15 @@ All that said, it's possible to transition from the proposed `<=` rule to
 something like `<=alt` backwards-compatibly, since the latter allows strictly
 more specializations (i.e. only changes things in cases that would have
 previously generated an error).
+
+### Explicit ordering
+
+Another, perhaps more palatable alternative would be to take the specialization
+rule proposed in this RFC, but have some other way of specifying precedence when
+that rule can't resolve it -- perhaps by explicit priority numbering. That kind
+of mechanism is usually noncompositional, but due to the orphan rule, it's a
+least a crate-local concern. Like the alternative rule above, it could be added
+backwards compatibly if needed, since it only enables new cases.
 
 # Unresolved questions
 
