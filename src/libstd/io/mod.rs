@@ -505,24 +505,69 @@ fn read_until<R: BufRead + ?Sized>(r: &mut R, delim: u8, buf: &mut Vec<u8>)
     }
 }
 
-/// A `BufRead` is a type of reader which has some form of internal buffering to
-/// allow certain kinds of reading operations to be more optimized than others.
+/// A `BufRead` is a type of `Read`er which has an internal buffer, allowing it
+/// to perform extra ways of reading.
 ///
-/// This type extends the `Read` trait with a few methods that are not
-/// possible to reasonably implement with purely a read interface.
+/// For example, reading line-by-line requires using a buffer, so if you want
+/// to read by line, you'll need `BufRead`, which includes a
+/// [`read_line()`][readline] method as well as a [`lines()`][lines] iterator.
 ///
-/// You can use the [`BufReader` wrapper type](struct.BufReader.html) to turn any
-/// reader into a buffered reader.
+/// [readline]: #method.read_line
+/// [lines]: #method.lines
+///
+/// # Examples
+///
+/// A locked standard input implements `BufRead`:
+///
+/// ```
+/// use std::io;
+/// use std::io::BufRead;
+///
+/// let stdin = io::stdin();
+/// for line in stdin.lock().lines() {
+///     println!("{}", line.unwrap());
+/// }
+/// ```
+///
+/// If you have something that implements `Read`, you can use the [`BufReader`
+/// type][bufreader] to turn it into a `BufRead`.
+///
+/// For example, [`File`][file] implements `Read`, but not `BufRead`.
+/// `BufReader` to the rescue!
+///
+/// [bufreader]: struct.BufReader.html
+/// [file]: ../fs/struct.File.html
+///
+/// ```
+/// use std::io;
+/// use std::fs::File;
+/// use std::io::BufRead;
+/// use std::io::BufReader;
+///
+/// # fn foo() -> io::Result<()> {
+/// let f = try!(File::open("foo.txt"));
+/// let f = BufReader::new(f);
+///
+/// for line in f.lines() {
+///     println!("{}", line.unwrap());
+/// }
+///
+/// # Ok(())
+/// # }
+/// ```
+///
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait BufRead: Read {
     /// Fills the internal buffer of this object, returning the buffer contents.
     ///
-    /// None of the contents will be "read" in the sense that later calling
-    /// `read` may return the same contents.
+    /// This function is a lower-level call. It needs to be paired with the
+    /// [`consume`][consume] method to function properly. When calling this
+    /// method, none of the contents will be "read" in the sense that later
+    /// calling `read` may return the same contents. As such, `consume` must be
+    /// called with the number of bytes that are consumed from this buffer to
+    /// ensure that the bytes are never returned twice.
     ///
-    /// The `consume` function must be called with the number of bytes that are
-    /// consumed from this buffer returned to ensure that the bytes are never
-    /// returned twice.
+    /// [consume]: #tymethod.consume
     ///
     /// An empty buffer returned indicates that the stream has reached EOF.
     ///
@@ -530,34 +575,66 @@ pub trait BufRead: Read {
     ///
     /// This function will return an I/O error if the underlying reader was
     /// read, but returned an error.
+    ///
+    /// # Examples
+    ///
+    /// A locked standard input implements `BufRead`:
+    ///
+    /// ```
+    /// use std::io;
+    /// use std::io::prelude::*;
+    ///
+    /// let stdin = io::stdin();
+    /// let mut stdin = stdin.lock();
+    ///
+    /// // we can't have two `&mut` references to `stdin`, so use a block
+    /// // to end the borrow early.
+    /// let length = {
+    ///     let buffer = stdin.fill_buf().unwrap();
+    ///
+    ///     // work with buffer
+    ///     println!("{:?}", buffer);
+    ///
+    ///     buffer.len()
+    /// };
+    ///
+    /// // ensure the bytes we worked with aren't returned again later
+    /// stdin.consume(length);
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn fill_buf(&mut self) -> Result<&[u8]>;
 
     /// Tells this buffer that `amt` bytes have been consumed from the buffer,
     /// so they should no longer be returned in calls to `read`.
     ///
-    /// This function does not perform any I/O, it simply informs this object
-    /// that some amount of its buffer, returned from `fill_buf`, has been
-    /// consumed and should no longer be returned.
+    /// This function is a lower-level call. It needs to be paired with the
+    /// [`fill_buf`][fillbuf] method to function properly. This function does
+    /// not perform any I/O, it simply informs this object that some amount of
+    /// its buffer, returned from `fill_buf`, has been consumed and should no
+    /// longer be returned. As such, this function may do odd things if
+    /// `fill_buf` isn't called before calling it.
     ///
-    /// This function is used to tell the buffer how many bytes you've consumed
-    /// from the return value of `fill_buf`, and so may do odd things if
-    /// `fill_buf` isn't called before calling this.
+    /// [fillbuf]: #tymethod.fill_buff
     ///
-    /// The `amt` must be `<=` the number of bytes in the buffer returned by `fill_buf`.
+    /// The `amt` must be `<=` the number of bytes in the buffer returned by
+    /// `fill_buf`.
+    ///
+    /// # Examples
+    ///
+    /// Since `consume()` is meant to be used with [`fill_buf()`][fillbuf],
+    /// that method's example includes an example of `consume()`.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn consume(&mut self, amt: usize);
 
-    /// Read all bytes until the delimiter `byte` is reached.
+    /// Read all bytes into `buf` until the delimiter `byte` is reached.
     ///
-    /// This function will continue to read (and buffer) bytes from the
-    /// underlying stream until the delimiter or EOF is found. Once found, all
-    /// bytes up to, and including, the delimiter (if found) will be appended to
-    /// `buf`.
+    /// This function will read bytes from the underlying stream until the
+    /// delimiter or EOF is found. Once found, all bytes up to, and including,
+    /// the delimiter (if found) will be appended to `buf`.
     ///
-    /// If this buffered reader is currently at EOF, then this function will not
-    /// place any more bytes into `buf` and will return `Ok(n)` where `n` is the
-    /// number of bytes which were read.
+    /// If this reader is currently at EOF then this function will not modify
+    /// `buf` and will return `Ok(n)` where `n` is the number of bytes which
+    /// were read.
     ///
     /// # Errors
     ///
@@ -566,18 +643,39 @@ pub trait BufRead: Read {
     ///
     /// If an I/O error is encountered then all bytes read so far will be
     /// present in `buf` and its length will have been adjusted appropriately.
+    ///
+    /// # Examples
+    ///
+    /// A locked standard input implements `BufRead`. In this example, we'll
+    /// read from standard input until we see an `a` byte.
+    ///
+    /// ```
+    /// use std::io;
+    /// use std::io::prelude::*;
+    ///
+    /// fn foo() -> io::Result<()> {
+    /// let stdin = io::stdin();
+    /// let mut stdin = stdin.lock();
+    /// let mut buffer = Vec::new();
+    ///
+    /// try!(stdin.read_until(b'a', &mut buffer));
+    ///
+    /// println!("{:?}", buffer);
+    /// # Ok(())
+    /// # }
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn read_until(&mut self, byte: u8, buf: &mut Vec<u8>) -> Result<usize> {
         read_until(self, byte, buf)
     }
 
-    /// Read all bytes until a newline (the 0xA byte) is reached, and
-    /// append them to the provided buffer.
+    /// Read all bytes until a newline (the 0xA byte) is reached, and append
+    /// them to the provided buffer.
     ///
-    /// This function will continue to read (and buffer) bytes from the
-    /// underlying stream until the newline delimiter (the 0xA byte) or EOF is
-    /// found. Once found, all bytes up to, and including, the delimiter (if
-    /// found) will be appended to `buf`.
+    /// This function will read bytes from the underlying stream until the
+    /// newline delimiter (the 0xA byte) or EOF is found. Once found, all bytes
+    /// up to, and including, the delimiter (if found) will be appended to
+    /// `buf`.
     ///
     /// If this reader is currently at EOF then this function will not modify
     /// `buf` and will return `Ok(n)` where `n` is the number of bytes which
@@ -589,6 +687,31 @@ pub trait BufRead: Read {
     /// return an error if the read bytes are not valid UTF-8. If an I/O error
     /// is encountered then `buf` may contain some bytes already read in the
     /// event that all data read so far was valid UTF-8.
+    ///
+    /// # Examples
+    ///
+    /// A locked standard input implements `BufRead`. In this example, we'll
+    /// read all of the lines from standard input. If we were to do this in
+    /// an actual project, the [`lines()`][lines] method would be easier, of
+    /// course.
+    ///
+    /// [lines]: #method.lines
+    ///
+    /// ```
+    /// use std::io;
+    /// use std::io::prelude::*;
+    ///
+    /// let stdin = io::stdin();
+    /// let mut stdin = stdin.lock();
+    /// let mut buffer = String::new();
+    ///
+    /// while stdin.read_line(&mut buffer).unwrap() > 0 {
+    ///     // work with buffer
+    ///     println!("{:?}", buffer);
+    ///
+    ///     buffer.clear();
+    /// }
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn read_line(&mut self, buf: &mut String) -> Result<usize> {
         // Note that we are not calling the `.read_until` method here, but
@@ -606,6 +729,22 @@ pub trait BufRead: Read {
     ///
     /// This function will yield errors whenever `read_until` would have also
     /// yielded an error.
+    ///
+    /// # Examples
+    ///
+    /// A locked standard input implements `BufRead`. In this example, we'll
+    /// read some input from standard input, splitting on commas.
+    ///
+    /// ```
+    /// use std::io;
+    /// use std::io::prelude::*;
+    ///
+    /// let stdin = io::stdin();
+    ///
+    /// for content in stdin.lock().split(b',') {
+    ///     println!("{:?}", content.unwrap());
+    /// }
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn split(self, byte: u8) -> Split<Self> where Self: Sized {
         Split { buf: self, delim: byte }
@@ -616,6 +755,21 @@ pub trait BufRead: Read {
     /// The iterator returned from this function will yield instances of
     /// `io::Result<String>`. Each string returned will *not* have a newline
     /// byte (the 0xA byte) at the end.
+    ///
+    /// # Examples
+    ///
+    /// A locked standard input implements `BufRead`:
+    ///
+    /// ```
+    /// use std::io;
+    /// use std::io::prelude::*;
+    ///
+    /// let stdin = io::stdin();
+    ///
+    /// for line in stdin.lock().lines() {
+    ///     println!("{}", line.unwrap());
+    /// }
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn lines(self) -> Lines<Self> where Self: Sized {
         Lines { buf: self }
