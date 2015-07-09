@@ -692,17 +692,38 @@ pub trait Write {
     }
 }
 
-/// An object implementing `Seek` internally has some form of cursor which can
-/// be moved within a stream of bytes.
+/// The `Seek` trait provides a cursor which can be moved within a stream of
+/// bytes.
 ///
 /// The stream typically has a fixed size, allowing seeking relative to either
 /// end or the current offset.
+///
+/// # Examples
+///
+/// [`File`][file]s implement `Seek`:
+///
+/// [file]: ../std/fs/struct.File.html
+///
+/// ```
+/// use std::io;
+/// use std::fs::File;
+/// use std::io::Seek;
+/// use std::io::SeekFrom;
+///
+/// # fn foo() -> io::Result<()> {
+/// let mut f = try!(File::open("foo.txt"));
+///
+/// // move the cursor 42 bytes from the start of the file
+/// f.seek(SeekFrom::Start(42)).unwrap();
+/// # Ok(())
+/// # }
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Seek {
-    /// Seek to an offset, in bytes, in a stream
+    /// Seek to an offset, in bytes, in a stream.
     ///
-    /// A seek beyond the end of a stream is allowed, but seeking before offset
-    /// 0 is an error.
+    /// A seek beyond the end of a stream is allowed, but implementation
+    /// defined.
     ///
     /// The behavior when seeking past the end of the stream is implementation
     /// defined.
@@ -712,7 +733,7 @@ pub trait Seek {
     ///
     /// # Errors
     ///
-    /// Seeking to a negative offset is considered an error
+    /// Seeking to a negative offset is considered an error.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn seek(&mut self, pos: SeekFrom) -> Result<u64>;
 }
