@@ -166,6 +166,11 @@ pub struct TargetOptions {
     /// the functions in the executable are not randomized and can be used
     /// during an exploit of a vulnerability in any code.
     pub position_independent_executables: bool,
+    /// Format that archives should be emitted in. This affects whether we use
+    /// LLVM to assemble an archive or fall back to the system linker, and
+    /// currently only "gnu" is used to fall into LLVM. Unknown strings cause
+    /// the system linker to be used.
+    pub archive_format: String,
 }
 
 impl Default for TargetOptions {
@@ -202,6 +207,7 @@ impl Default for TargetOptions {
             position_independent_executables: false,
             pre_link_objects: Vec::new(),
             post_link_objects: Vec::new(),
+            archive_format: String::new(),
         }
     }
 }
