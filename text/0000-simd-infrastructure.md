@@ -348,6 +348,11 @@ cfg_if_else! {
   to be worth it. (Each "feature" would essentially be a platform
   specific `cfg` anyway.)
 - Check vector operators in debug mode just like the scalar versions.
+- Make fixed length arrays `repr(simd)`-able (via just flattening), so
+  that, say, `#[repr(simd)] struct u32x4([u32; 4]);` and
+  `#[repr(simd)] struct f64x8([f64; 4], [f64; 4]);` etc works. This
+  will be most useful if/when we allow generic-lengths, `#[repr(simd)]
+  struct Simd<T, n>([T; n]);`
 
 # Unresolved questions
 
