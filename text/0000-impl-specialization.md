@@ -14,9 +14,7 @@ implementations based on specifics about the types involved.
 Altogether, this relatively small extension to the trait system yields benefits
 for performance and code reuse, and it lays the groundwork for an "efficient
 inheritance" scheme that is largely based on the trait system (described in a
-[companion RFC][data]).
-
-[data]:
+forthcoming companion RFC).
 
 # Motivation
 
