@@ -64,7 +64,7 @@ There are two new attributes: `repr(simd)` and `simd_primitive_trait`
 
 ```rust
 #[repr(simd)]
-struct f32x4(f32, f32, f23, f23);
+struct f32x4(f32, f32, f32, f32);
 
 #[repr(simd)]
 struct Simd2<T>(T, T);
@@ -261,9 +261,10 @@ SIMD vectors can be converted with `as`. As with intrinsics, this is
 their lengths match and their elements are castable (i.e. are
 primitives), there's no enforcement of nominal types.
 
-All of these are never checked: explicit SIMD is essentially only
-required for speed, and checking inflates one instruction to 5 or
-more.
+All of these operators and conversions are never checked (in the sense
+of the arithmetic overflow checks of `-C debug-assertions`): explicit
+SIMD is essentially only required for speed, and checking inflates one
+instruction to 5 or more.
 
 ## Platform Detection
 
