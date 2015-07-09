@@ -10,7 +10,7 @@
 
 // check that the derived impls for the comparison traits shortcircuit
 // where possible, by having a type that panics when compared as the
-// second element, so this passes if the instances shortcircuit.
+// second element, so this passes iff the instances shortcircuit.
 
 
 use std::cmp::Ordering;

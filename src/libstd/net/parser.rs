@@ -104,7 +104,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    // Return char and advance if next char is equal to requested
+    // Return char and advance iff next char is equal to requested
     fn read_given_char(&mut self, c: char) -> Option<char> {
         self.read_atomically(|p| {
             match p.read_char() {

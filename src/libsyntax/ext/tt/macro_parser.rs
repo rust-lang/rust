@@ -321,7 +321,7 @@ pub fn parse(sess: &ParseSess,
             if idx >= len {
                 // can't move out of `match`es, so:
                 if ei.up.is_some() {
-                    // hack: a matcher sequence is repeating if it has a
+                    // hack: a matcher sequence is repeating iff it has a
                     // parent (the top level is just a container)
 
 

@@ -15,7 +15,7 @@
 // variance inference works in the first place.
 
 // This is contravariant with respect to 'a, meaning that
-// Contravariant<'long> <: Contravariant<'short> if
+// Contravariant<'long> <: Contravariant<'short> iff
 // 'short <= 'long
 struct Contravariant<'a> {
     f: &'a isize

@@ -216,7 +216,7 @@
 //! this case, because the `Self` parameter is contravariant and `A` is
 //! covariant, it means that:
 //!
-//!     V_O <: V_S if
+//!     V_O <: V_S iff
 //!         int <: int
 //!         String <: Object
 //!
