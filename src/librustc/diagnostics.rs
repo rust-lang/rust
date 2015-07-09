@@ -1211,7 +1211,6 @@ register_diagnostics! {
     E0138,
     E0139,
     E0264, // unknown external lang item
-    E0266, // expected item
     E0269, // not all control paths return a value
     E0270, // computation may converge in a function marked as diverging
     E0272, // rustc_on_unimplemented attribute refers to non-existent type parameter
