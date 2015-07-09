@@ -33,14 +33,6 @@ use vec;
 pub const BUF_BYTES: usize = 2048;
 const TMPBUF_SZ: usize = 128;
 
-fn bytes2path(b: &[u8]) -> PathBuf {
-    PathBuf::from(<OsStr as OsStrExt>::from_bytes(b))
-}
-
-fn os2path(os: OsString) -> PathBuf {
-    bytes2path(os.as_bytes())
-}
-
 /// Returns the platform-specific value of errno
 pub fn errno() -> i32 {
     #[cfg(any(target_os = "macos",
@@ -102,14 +94,17 @@ pub fn error_string(errno: i32) -> String {
 }
 
 pub fn getcwd() -> io::Result<PathBuf> {
-    super::fill_bytes_buf(|buf, len| {
+    super::fill_bytes_buf(|mut buf| {
         unsafe {
-            Some(if !libc::getcwd(buf, len).is_null() {
-                Ok(bytes2path(CStr::from_ptr(buf).to_bytes()))
+            let ptr = buf.as_mut_ptr() as *mut libc::c_char;
+            Ok(if !libc::getcwd(ptr, buf.capacity() as libc::size_t).is_null() {
+                let len = CStr::from_ptr(buf.as_ptr() as *const libc::c_char).to_bytes().len();
+                buf.set_len(len);
+                Ok(PathBuf::from(OsString::from_bytes(buf).unwrap()))
             } else {
                 let error = io::Error::last_os_error();
                 if error.raw_os_error().unwrap() == libc::ERANGE {
-                    return None;
+                    return Err(buf);
                 }
                 Err(error)
             })
@@ -134,11 +129,14 @@ pub struct SplitPaths<'a> {
 }
 
 pub fn split_paths<'a>(unparsed: &'a OsStr) -> SplitPaths<'a> {
+    fn bytes_to_path(b: &[u8]) -> PathBuf {
+        PathBuf::from(<OsStr as OsStrExt>::from_bytes(b))
+    }
     fn is_colon(b: &u8) -> bool { *b == b':' }
     let unparsed = unparsed.as_bytes();
     SplitPaths {
         iter: unparsed.split(is_colon as fn(&u8) -> bool)
-                      .map(bytes2path as fn(&'a [u8]) -> PathBuf)
+                      .map(bytes_to_path as fn(&'a [u8]) -> PathBuf)
     }
 }
 
@@ -449,7 +447,7 @@ pub fn page_size() -> usize {
 }
 
 pub fn temp_dir() -> PathBuf {
-    getenv("TMPDIR".as_ref()).map(os2path).unwrap_or_else(|| {
+    getenv("TMPDIR".as_ref()).map(PathBuf::from).unwrap_or_else(|| {
         if cfg!(target_os = "android") {
             PathBuf::from("/data/local/tmp")
         } else {
@@ -461,7 +459,7 @@ pub fn temp_dir() -> PathBuf {
 pub fn home_dir() -> Option<PathBuf> {
     return getenv("HOME".as_ref()).or_else(|| unsafe {
         fallback()
-    }).map(os2path);
+    }).map(PathBuf::from);
 
     #[cfg(any(target_os = "android",
               target_os = "ios"))]
