@@ -8,19 +8,48 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! The fixed-size array type (`[T; n]`).
+//! A fixed-size array is denoted `[T; N]` for the element type `T` and
+//! the compile time constant size `N`. The size should be zero or positive.
 //!
-//! Some usage examples:
+//! Arrays values are created either with an explicit expression that lists
+//! each element: `[x, y, z]` or a repeat expression: `[x; N]`. The repeat
+//! expression requires that the element type is `Copy`.
+//!
+//! The type `[T; N]` is `Copy` if `T: Copy`.
+//!
+//! Arrays of sizes from 0 to 32 (inclusive) implement the following traits
+//! if the element type allows it:
+//!
+//! - `Clone`
+//! - `Debug`
+//! - `IntoIterator` (implemented for `&[T; N]` and `&mut [T; N]`)
+//! - `PartialEq`, `PartialOrd`, `Ord`, `Eq`
+//! - `Hash`
+//! - `AsRef`, `AsMut`
+//!
+//! Arrays dereference to [slices (`[T]`)][slice], so their methods can be called
+//! on arrays.
+//!
+//! [slice]: primitive.slice.html
+//!
+//! ## Examples
 //!
 //! ```
-//! let array: [i32; 3] = [0, 1, 2];
+//! let mut array: [i32; 3] = [0; 3];
 //!
-//! assert_eq!(0, array[0]);
-//! assert_eq!([0, 1], &array[..2]);
+//! array[1] = 1;
+//! array[2] = 2;
 //!
+//! assert_eq!([1, 2], &array[1..]);
+//!
+//! // This loop prints: 0 1 2
 //! for x in &array {
-//!     println!("{}", x);
+//!     print!("{} ", x);
 //! }
+//!
 //! ```
+//!
+//! Rust does not currently support generics over the size of an array type.
+//!
 
 #![doc(primitive = "array")]
