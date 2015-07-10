@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use borrow::{Cow, ToOwned};
+use borrow::{Cow, ToOwned, Borrow};
 use boxed::Box;
 use clone::Clone;
 use convert::{Into, From};
@@ -272,6 +272,11 @@ impl fmt::Debug for CString {
     }
 }
 
+#[stable(feature = "cstr_borrow", since = "1.3.0")]
+impl Borrow<CStr> for CString {
+    fn borrow(&self) -> &CStr { self }
+}
+
 impl NulError {
     /// Returns the position of the nul byte in the slice that was provided to
     /// `CString::new`.
@@ -444,6 +449,15 @@ impl Ord for CStr {
     }
 }
 
+#[stable(feature = "cstr_borrow", since = "1.3.0")]
+impl ToOwned for CStr {
+    type Owned = CString;
+
+    fn to_owned(&self) -> CString {
+        unsafe { CString::from_vec_unchecked(self.to_bytes().to_vec()) }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use prelude::v1::*;
@@ -514,5 +528,29 @@ mod tests {
             assert!(CStr::from_ptr(ptr).to_str().is_err());
             assert_eq!(CStr::from_ptr(ptr).to_string_lossy(), Owned::<str>(format!("123\u{FFFD}")));
         }
+    }
+
+    #[test]
+    fn to_owned() {
+        let data = b"123\0";
+        let ptr = data.as_ptr() as *const libc::c_char;
+
+        let owned = unsafe { CStr::from_ptr(ptr).to_owned() };
+        assert_eq!(owned.as_bytes_with_nul(), data);
+    }
+
+    #[test]
+    fn equal_hash() {
+        use hash;
+
+        let data = b"123\xE2\xFA\xA6\0";
+        let ptr = data.as_ptr() as *const libc::c_char;
+        let cstr: &'static CStr = unsafe { CStr::from_ptr(ptr) };
+
+        let cstr_hash = hash::hash::<_, hash::SipHasher>(&cstr);
+        let cstring_hash =
+            hash::hash::<_, hash::SipHasher>(&CString::new(&data[..data.len() - 1]).unwrap());
+
+        assert_eq!(cstr_hash, cstring_hash);
     }
 }
