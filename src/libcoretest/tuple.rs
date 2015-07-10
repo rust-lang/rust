@@ -60,7 +60,7 @@ fn test_tuple_cmp() {
 #[test]
 fn test_show() {
     let s = format!("{:?}", (1,));
-    assert_eq!(s, "(1)");
+    assert_eq!(s, "(1,)");
     let s = format!("{:?}", (1, true));
     assert_eq!(s, "(1, true)");
     let s = format!("{:?}", (1, "hi", true));
