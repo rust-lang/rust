@@ -92,6 +92,10 @@ modification, so that booleans are bit-packed. The official external
 library providing SIMD support will have private fields so this will
 not be generally observable.
 
+Adding `repr(simd)` to a type may increase its minimum/preferred
+alignment, based on platform behaviour. (E.g. x86 wants its 128-bit
+SSE vectors to be 128-bit aligned.)
+
 ## Operations
 
 CPU vendors usually offer "standard" C headers for their CPU specific
