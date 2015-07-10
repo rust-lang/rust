@@ -1490,7 +1490,16 @@ macro_rules! tuple {
             fn fmt(&self, f: &mut Formatter) -> Result {
                 let mut builder = f.debug_tuple("");
                 let ($(ref $name,)*) = *self;
-                $(builder.field($name);)*
+                let mut n = 0;
+                $(
+                    builder.field($name);
+                    n += 1;
+                )*
+
+                if n == 1 {
+                    try!(write!(builder.formatter(), ","));
+                }
+
                 builder.finish()
             }
         }
