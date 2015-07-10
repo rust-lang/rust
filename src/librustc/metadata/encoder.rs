@@ -2028,7 +2028,7 @@ fn encode_dylib_dependency_formats(rbml_w: &mut Encoder, ecx: &EncodeContext) {
                     cstore::RequireStatic => "s",
                 })).to_string())
             }).collect::<Vec<String>>();
-            rbml_w.wr_tagged_str(tag, &s.connect(","));
+            rbml_w.wr_tagged_str(tag, &s.join(","));
         }
         None => {
             rbml_w.wr_tagged_str(tag, "");

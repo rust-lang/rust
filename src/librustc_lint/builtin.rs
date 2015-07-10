@@ -923,7 +923,7 @@ impl NonSnakeCase {
             }
             words.push(buf);
         }
-        words.connect("_")
+        words.join("_")
     }
 
     fn check_snake_case(&self, cx: &Context, sort: &str, name: &str, span: Option<Span>) {

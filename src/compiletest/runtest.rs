@@ -344,7 +344,7 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
         check_lines,
         breakpoint_lines
     } = parse_debugger_commands(testfile, "gdb");
-    let mut cmds = commands.connect("\n");
+    let mut cmds = commands.join("\n");
 
     // compile test file (it should have 'compile-flags:-g' in the header)
     let compiler_run_result = compile_test(config, props, testfile);
@@ -799,7 +799,7 @@ fn cleanup_debug_info_options(options: &Option<String>) -> Option<String> {
         split_maybe_args(options).into_iter()
                                  .filter(|x| !options_to_remove.contains(x))
                                  .collect::<Vec<String>>()
-                                 .connect(" ");
+                                 .join(" ");
     Some(new_options)
 }
 
@@ -1412,7 +1412,7 @@ fn make_cmdline(libpath: &str, prog: &str, args: &[String]) -> String {
 
     // Linux and mac don't require adjusting the library search path
     if cfg!(unix) {
-        format!("{} {}", prog, args.connect(" "))
+        format!("{} {}", prog, args.join(" "))
     } else {
         // Build the LD_LIBRARY_PATH variable as it would be seen on the command line
         // for diagnostic purposes
@@ -1420,7 +1420,7 @@ fn make_cmdline(libpath: &str, prog: &str, args: &[String]) -> String {
             format!("{}=\"{}\"", util::lib_path_env_var(), util::make_new_path(path))
         }
 
-        format!("{} {} {}", lib_path_cmd_prefix(libpath), prog, args.connect(" "))
+        format!("{} {} {}", lib_path_cmd_prefix(libpath), prog, args.join(" "))
     }
 }
 

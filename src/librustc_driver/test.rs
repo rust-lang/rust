@@ -178,7 +178,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
         return match search_mod(self, &self.infcx.tcx.map.krate().module, 0, names) {
             Some(id) => id,
             None => {
-                panic!("no item found: `{}`", names.connect("::"));
+                panic!("no item found: `{}`", names.join("::"));
             }
         };
 

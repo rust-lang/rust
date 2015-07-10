@@ -167,7 +167,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                args.iter()
                    .map(|&v| self.ccx.tn().val_to_string(v))
                    .collect::<Vec<String>>()
-                   .connect(", "));
+                   .join(", "));
 
         unsafe {
             let v = llvm::LLVMBuildInvoke(self.llbuilder,
@@ -809,7 +809,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                args.iter()
                    .map(|&v| self.ccx.tn().val_to_string(v))
                    .collect::<Vec<String>>()
-                   .connect(", "));
+                   .join(", "));
 
         unsafe {
             let v = llvm::LLVMBuildCall(self.llbuilder, llfn, args.as_ptr(),

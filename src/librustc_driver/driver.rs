@@ -843,7 +843,7 @@ fn write_out_deps(sess: &Session,
         let mut file = try!(fs::File::create(&deps_filename));
         for path in &out_filenames {
             try!(write!(&mut file,
-                        "{}: {}\n\n", path.display(), files.connect(" ")));
+                        "{}: {}\n\n", path.display(), files.join(" ")));
         }
         Ok(())
     })();

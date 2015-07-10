@@ -360,7 +360,7 @@ fn resolved_path(w: &mut fmt::Formatter, did: ast::DefId, path: &clean::Path,
     match href(did) {
         Some((url, shortty, fqp)) => {
             try!(write!(w, "<a class='{}' href='{}' title='{}'>{}</a>",
-                          shortty, url, fqp.connect("::"), last.name));
+                          shortty, url, fqp.join("::"), last.name));
         }
         _ => try!(write!(w, "{}", last.name)),
     }
