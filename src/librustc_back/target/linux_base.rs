@@ -29,6 +29,7 @@ pub fn opts() -> TargetOptions {
             "-Wl,--as-needed".to_string(),
         ],
         position_independent_executables: true,
+        archive_format: "gnu".to_string(),
         .. Default::default()
     }
 }
