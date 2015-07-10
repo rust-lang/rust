@@ -30,7 +30,7 @@ use sys::c;
 use sys::fd;
 use vec;
 
-pub const BUF_BYTES: usize = 2048;
+const GETCWD_BUF_BYTES: usize = 2048;
 const TMPBUF_SZ: usize = 128;
 
 /// Returns the platform-specific value of errno
@@ -94,22 +94,26 @@ pub fn error_string(errno: i32) -> String {
 }
 
 pub fn getcwd() -> io::Result<PathBuf> {
-    super::fill_bytes_buf(|mut buf| {
+    let mut buf = Vec::new();
+    let mut n = GETCWD_BUF_BYTES;
+    loop {
         unsafe {
+            buf.reserve(n);
             let ptr = buf.as_mut_ptr() as *mut libc::c_char;
-            Ok(if !libc::getcwd(ptr, buf.capacity() as libc::size_t).is_null() {
+            if !libc::getcwd(ptr, buf.capacity() as libc::size_t).is_null() {
                 let len = CStr::from_ptr(buf.as_ptr() as *const libc::c_char).to_bytes().len();
                 buf.set_len(len);
-                Ok(PathBuf::from(OsString::from_bytes(buf).unwrap()))
+                buf.shrink_to_fit();
+                return Ok(PathBuf::from(OsString::from_vec(buf)));
             } else {
                 let error = io::Error::last_os_error();
-                if error.raw_os_error().unwrap() == libc::ERANGE {
-                    return Err(buf);
+                if error.raw_os_error() != Some(libc::ERANGE) {
+                    return Err(error);
                 }
-                Err(error)
-            })
+            }
+            n *= 2;
         }
-    })
+    }
 }
 
 pub fn chdir(p: &path::Path) -> io::Result<()> {
