@@ -538,4 +538,19 @@ mod tests {
         let owned = unsafe { CStr::from_ptr(ptr).to_owned() };
         assert_eq!(owned.as_bytes_with_nul(), data);
     }
+
+    #[test]
+    fn equal_hash() {
+        use hash;
+
+        let data = b"123\xE2\xFA\xA6\0";
+        let ptr = data.as_ptr() as *const libc::c_char;
+        let cstr: &'static CStr = unsafe { CStr::from_ptr(ptr) };
+
+        let cstr_hash = hash::hash::<_, hash::SipHasher>(&cstr);
+        let cstring_hash =
+            hash::hash::<_, hash::SipHasher>(&CString::new(&data[..data.len() - 1]).unwrap());
+
+        assert_eq!(cstr_hash, cstring_hash);
+    }
 }
