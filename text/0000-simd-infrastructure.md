@@ -58,9 +58,9 @@ many platforms, but this RFC doesn't try to extract that, it is just
 building tools that can be wrapped into a more uniform API later.
 
 
-## Types & traits
+## Types
 
-There are two new attributes: `repr(simd)` and `simd_primitive_trait`
+There is a new attributes: `repr(simd)`.
 
 ```rust
 #[repr(simd)]
@@ -68,53 +68,29 @@ struct f32x4(f32, f32, f32, f32);
 
 #[repr(simd)]
 struct Simd2<T>(T, T);
-
-#[simd_primitive_trait]
-trait SimdPrim {}
 ```
-
-### `repr(simd)`
 
 The `simd` `repr` can be attached to a struct and will cause such a
 struct to be compiled to a SIMD vector. It can be generic, but it is
 required that any fully monomorphised instance of the type consist of
-only a single "primitive" type, repeated some number of times. The
-restrictions on the element type are exactly the same restrictions as
-`#[simd_primitive_trait]` traits impose on their implementing types.
+only a single "primitive" type, repeated some number of times. Types
+are flattened, so, for `struct Bar(u64);`, `Simd2<Bar>` has the same
+representation as `Simd2<u64>`.
 
-The `repr(simd)` may not enforce that the trait bound exists/does the
+The `repr(simd)` may not enforce that any trait bounds exists/does the
 right thing at the type checking level for generic `repr(simd)`
 types. As such, it will be possible to get the code-generator to error
-out (ala the old `transmute` size errosr), however, this shouldn't
+out (ala the old `transmute` size errors), however, this shouldn't
 cause problems in practice: libraries wrapping this functionality
 would layer type-safety on top (i.e. generic `repr(simd)` types would
-use the `SimdPrim` trait as a bound).
+use some `unsafe` trait as a bound that is designed to only be
+implemented by types that will work).
 
 It is illegal to take an internal reference to the fields of a
 `repr(simd)` type, because the representation of booleans may require
-to change, so that booleans are bit-packed. The official external
+modification, so that booleans are bit-packed. The official external
 library providing SIMD support will have private fields so this will
 not be generally observable.
-
-### `simd_primitive_trait`
-
-Traits marked with the `simd_primitive_trait` attribute are special:
-types implementing it are those that can be stored in SIMD
-vectors. Initially, only primitives and single-field structs that
-store `SimdPrim` types will be allowed to implement it.
-
-This is explicitly not a lang item: it is legal to have multiple
-distinct traits in a compilation. The attribute just adds the
-restriction and possibly tweaks type's internal representation (as
-such, it's legal for a single type to implement multiple traits with
-the attribute, if a bit pointless).
-
-This trait exists to allow new-type wrappers around primitives to also
-be usable in a SIMD context. However, this only works in limited
-scenarios (i.e. when the type wraps a single primitive) and so needs
-to be an explicit part of every type's API: type authors opt-in to
-being designed-for-SIMD. If it was implicit, changes to private fields
-may break downstream code.
 
 ## Operations
 
@@ -312,8 +288,8 @@ cfg_if_else! {
 # Extensions
 
 - scatter/gather operations allow (partially) operating on a SIMD
-  vector of pointers. This would require extending `SimdPrim` to also
-  allow pointer types.
+  vector of pointers. This would require allowing
+  pointers(/references?) in `repr(simd)` types.
 - allow (and ignore for everything but type checking) zero-sized types
   in `repr(simd)` structs, to allow tagging them with markers
 
@@ -353,9 +329,12 @@ cfg_if_else! {
   `#[repr(simd)] struct f64x8([f64; 4], [f64; 4]);` etc works. This
   will be most useful if/when we allow generic-lengths, `#[repr(simd)]
   struct Simd<T, n>([T; n]);`
+- have 100% guaranteed type-safety for generic `#[repr(simd)]` types
+  and the generic intrinsics. This would probably require a relatively
+  complicated set of traits (with compiler integration).
 
 # Unresolved questions
 
 - Should integer vectors get `/` and `%` automatically? Most CPUs
-  don't support them for vectors.
+  don't support them for vectors. However
 - How should out-of-bounds shuffle and insert/extract indices be handled?
