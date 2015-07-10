@@ -28,7 +28,7 @@ use rustc_unicode::str::Utf16Item;
 use borrow::{Cow, IntoCow};
 use range::RangeArgument;
 use str::{self, FromStr, Utf8Error, Chars};
-use vec::{DerefVec, Vec, as_vec};
+use vec::Vec;
 use boxed::Box;
 
 /// A growable string stored as a UTF-8 encoded buffer.
@@ -1027,49 +1027,6 @@ impl ops::DerefMut for String {
     fn deref_mut(&mut self) -> &mut str {
         unsafe { mem::transmute(&mut self.vec[..]) }
     }
-}
-
-/// Wrapper type providing a `&String` reference via `Deref`.
-#[unstable(feature = "collections")]
-#[deprecated(since = "1.2.0",
-             reason = "replaced with deref coercions or Borrow")]
-#[allow(deprecated)]
-pub struct DerefString<'a> {
-    x: DerefVec<'a, u8>
-}
-
-#[allow(deprecated)]
-impl<'a> Deref for DerefString<'a> {
-    type Target = String;
-
-    #[inline]
-    fn deref<'b>(&'b self) -> &'b String {
-        unsafe { mem::transmute(&*self.x) }
-    }
-}
-
-/// Converts a string slice to a wrapper type providing a `&String` reference.
-///
-/// # Examples
-///
-/// ```
-/// # #![feature(collections)]
-/// use std::string::as_string;
-///
-/// // Let's pretend we have a function that requires `&String`
-/// fn string_consumer(s: &String) {
-///     assert_eq!(s, "foo");
-/// }
-///
-/// // Provide a `&String` from a `&str` without allocating
-/// string_consumer(&as_string("foo"));
-/// ```
-#[unstable(feature = "collections")]
-#[deprecated(since = "1.2.0",
-             reason = "replaced with deref coercions or Borrow")]
-#[allow(deprecated)]
-pub fn as_string<'a>(x: &'a str) -> DerefString<'a> {
-    DerefString { x: as_vec(x.as_bytes()) }
 }
 
 /// Error returned from `String::from`

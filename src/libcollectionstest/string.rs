@@ -10,17 +10,8 @@
 
 use std::borrow::{IntoCow, Cow};
 use std::iter::repeat;
-#[allow(deprecated)]
-use std::string::as_string;
 
 use test::Bencher;
-
-#[test]
-#[allow(deprecated)]
-fn test_as_string() {
-    let x = "foo";
-    assert_eq!(x, &**as_string(x));
-}
 
 #[test]
 fn test_from_str() {
