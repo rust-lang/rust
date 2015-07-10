@@ -4978,6 +4978,8 @@ pub mod consts {
             pub const F_GETFL : c_int = 3;
             pub const F_SETFL : c_int = 4;
 
+            pub const O_ACCMODE : c_int = 3;
+
             pub const SIGTRAP : c_int = 5;
             pub const SIG_IGN: size_t = 1;
 
@@ -5130,6 +5132,7 @@ pub mod consts {
             pub const O_DSYNC : c_int = 4194304;
             pub const O_SYNC : c_int = 128;
             pub const O_NONBLOCK : c_int = 4;
+            pub const F_GETPATH : c_int = 50;
             pub const F_FULLFSYNC : c_int = 51;
 
             pub const MAP_COPY : c_int = 0x0002;
@@ -5151,6 +5154,8 @@ pub mod consts {
             pub const SO_DONTTRUNC: c_int = 0x2000;
             pub const SO_WANTMORE: c_int = 0x4000;
             pub const SO_WANTOOBFLAG: c_int = 0x8000;
+
+            pub const PATH_MAX: c_int = 1024;
         }
         pub mod sysconf {
             use types::os::arch::c95::c_int;
