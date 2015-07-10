@@ -32,7 +32,6 @@
 
 #![feature(alloc)]
 #![feature(box_patterns)]
-#![feature(box_raw)]
 #![feature(box_syntax)]
 #![feature(core)]
 #![feature(core_intrinsics)]
