@@ -19,6 +19,9 @@ This RFC lays the ground-work for building nice SIMD functionality,
 but doesn't fill everything out. The goal here is to provide the raw
 types and access to the raw instructions on each platform.
 
+(An earlier variant of this RFC was discussed as a
+[pre-RFC](https://internals.rust-lang.org/t/pre-rfc-simd-groundwork/2343).)
+
 ## Where does this code go? Aka. why not in `std`?
 
 This RFC is focused on building stable, powerful SIMD functionality in
