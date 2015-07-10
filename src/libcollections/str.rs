@@ -105,7 +105,7 @@ impl<S: Borrow<str>> SliceConcatExt<str> for [S] {
         result
     }
 
-    fn connect(&self, sep: &str) -> String {
+    fn join(&self, sep: &str) -> String {
         if self.is_empty() {
             return String::new();
         }
@@ -131,6 +131,10 @@ impl<S: Borrow<str>> SliceConcatExt<str> for [S] {
             result.push_str(s.borrow());
         }
         result
+    }
+
+    fn connect(&self, sep: &str) -> String {
+        self.join(sep)
     }
 }
 
