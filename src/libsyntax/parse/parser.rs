@@ -1566,12 +1566,13 @@ impl<'a> Parser<'a> {
     // Assumes that the leading `<` has been parsed already.
     pub fn parse_qualified_path(&mut self, mode: PathParsingMode)
                                 -> PResult<(QSelf, ast::Path)> {
+        let span = self.last_span;
         let self_type = try!(self.parse_ty_sum());
         let mut path = if try!(self.eat_keyword(keywords::As)) {
             try!(self.parse_path(LifetimeAndTypesWithoutColons))
         } else {
             ast::Path {
-                span: self.span,
+                span: span,
                 global: false,
                 segments: vec![]
             }
@@ -1598,9 +1599,6 @@ impl<'a> Parser<'a> {
         };
         path.segments.extend(segments);
 
-        if path.segments.len() == 1 {
-            path.span.lo = self.last_span.lo;
-        }
         path.span.hi = self.last_span.hi;
 
         Ok((qself, path))

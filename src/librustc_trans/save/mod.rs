@@ -15,6 +15,8 @@ use std::env;
 use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 
+use rustc::ast_map::NodeItem;
+
 use syntax::{attr};
 use syntax::ast::{self, NodeId, DefId};
 use syntax::ast_util;
@@ -61,6 +63,10 @@ pub enum Data {
     VariableRefData(VariableRefData),
     /// Data for a reference to a type or trait.
     TypeRefData(TypeRefData),
+    /// Data about a function call.
+    FunctionCallData(FunctionCallData),
+    /// Data about a method call.
+    MethodCallData(MethodCallData),
 }
 
 /// Data for all kinds of functions and methods.
@@ -120,7 +126,7 @@ pub struct ImplData {
 }
 
 /// Data for the use of some item (e.g., the use of a local variable, which
-/// will refere to that variables declaration (by ref_id)).
+/// will refer to that variables declaration (by ref_id)).
 #[derive(Debug)]
 pub struct VariableRefData {
     pub name: String,
@@ -136,6 +142,24 @@ pub struct TypeRefData {
     pub scope: NodeId,
     pub ref_id: DefId,
 }
+
+/// Data about a function call.
+#[derive(Debug)]
+pub struct FunctionCallData {
+    pub span: Span,
+    pub scope: NodeId,
+    pub ref_id: DefId,
+}
+
+/// Data about a method call.
+#[derive(Debug)]
+pub struct MethodCallData {
+    pub span: Span,
+    pub scope: NodeId,
+    pub ref_id: Option<DefId>,
+    pub decl_id: Option<DefId>,
+}
+
 
 
 impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
@@ -172,7 +196,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     qualname: qualname,
                     declaration: None,
                     span: sub_span.unwrap(),
-                    scope: self.tcx.map.get_enclosing_scope(item.id).unwrap_or(0),
+                    scope: self.enclosing_scope(item.id),
                 })
             }
             ast::ItemStatic(ref typ, mt, ref expr) => {
@@ -191,7 +215,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     name: get_ident(item.ident).to_string(),
                     qualname: qualname,
                     span: sub_span.unwrap(),
-                    scope: self.tcx.map.get_enclosing_scope(item.id).unwrap_or(0),
+                    scope: self.enclosing_scope(item.id),
                     value: value,
                     type_value: ty_to_string(&typ),
                 })
@@ -205,7 +229,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     name: get_ident(item.ident).to_string(),
                     qualname: qualname,
                     span: sub_span.unwrap(),
-                    scope: self.tcx.map.get_enclosing_scope(item.id).unwrap_or(0),
+                    scope: self.enclosing_scope(item.id),
                     value: self.span_utils.snippet(expr.span),
                     type_value: ty_to_string(&typ),
                 })
@@ -223,7 +247,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     name: get_ident(item.ident).to_string(),
                     qualname: qualname,
                     span: sub_span.unwrap(),
-                    scope: self.tcx.map.get_enclosing_scope(item.id).unwrap_or(0),
+                    scope: self.enclosing_scope(item.id),
                     filename: filename,
                 })
             },
@@ -237,14 +261,14 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     value: val,
                     span: sub_span.unwrap(),
                     qualname: enum_name,
-                    scope: self.tcx.map.get_enclosing_scope(item.id).unwrap_or(0),
+                    scope: self.enclosing_scope(item.id),
                 })
             },
             ast::ItemImpl(_, _, _, ref trait_ref, ref typ, _) => {
                 let mut type_data = None;
                 let sub_span;
 
-                let parent = self.tcx.map.get_enclosing_scope(item.id).unwrap_or(0);
+                let parent = self.enclosing_scope(item.id);
 
                 match typ.node {
                     // Common case impl for a struct or something basic.
@@ -281,34 +305,114 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         }
     }
 
-    // FIXME: we ought to be able to get the parent id ourselves, but we can't
-    // for now.
-    pub fn get_field_data(&self, field: &ast::StructField, parent: NodeId) -> Option<Data> {
+    pub fn get_field_data(&self, field: &ast::StructField, scope: NodeId) -> Option<VariableData> {
         match field.node.kind {
             ast::NamedField(ident, _) => {
                 let name = get_ident(ident);
                 let qualname = format!("::{}::{}",
-                                       self.tcx.map.path_to_string(parent),
+                                       self.tcx.map.path_to_string(scope),
                                        name);
                 let typ = self.tcx.node_types().get(&field.node.id).unwrap()
                                                .to_string();
                 let sub_span = self.span_utils.sub_span_before_token(field.span, token::Colon);
-                Some(Data::VariableData(VariableData {
+                Some(VariableData {
                     id: field.node.id,
                     name: get_ident(ident).to_string(),
                     qualname: qualname,
                     span: sub_span.unwrap(),
-                    scope: parent,
+                    scope: scope,
                     value: "".to_owned(),
                     type_value: typ,
-                }))
+                })
             },
             _ => None,
         }
     }
 
-    // FIXME: we ought to be able to get the parent id ourselves, but we can't
-    // for now.
+    // FIXME would be nice to take a MethodItem here, but the ast provides both
+    // trait and impl flavours, so the caller must do the disassembly.
+    pub fn get_method_data(&self,
+                           id: ast::NodeId,
+                           name: ast::Name,
+                           span: Span) -> FunctionData {
+        // The qualname for a method is the trait name or name of the struct in an impl in
+        // which the method is declared in, followed by the method's name.
+        let qualname = match self.tcx.impl_of_method(ast_util::local_def(id)) {
+            Some(impl_id) => match self.tcx.map.get(impl_id.node) {
+                NodeItem(item) => {
+                    match item.node {
+                        ast::ItemImpl(_, _, _, _, ref ty, _) => {
+                            let mut result = String::from("<");
+                            result.push_str(&ty_to_string(&**ty));
+
+                            match self.tcx.trait_of_item(ast_util::local_def(id)) {
+                                Some(def_id) => {
+                                    result.push_str(" as ");
+                                    result.push_str(
+                                        &self.tcx.item_path_str(def_id));
+                                },
+                                None => {}
+                            }
+                            result.push_str(">");
+                            result
+                        }
+                        _ => {
+                            self.tcx.sess.span_bug(span,
+                                &format!("Container {} for method {} not an impl?",
+                                         impl_id.node, id));
+                        },
+                    }
+                },
+                _ => {
+                    self.tcx.sess.span_bug(span,
+                        &format!("Container {} for method {} is not a node item {:?}",
+                                 impl_id.node, id, self.tcx.map.get(impl_id.node)));
+                },
+            },
+            None => match self.tcx.trait_of_item(ast_util::local_def(id)) {
+                Some(def_id) => {
+                    match self.tcx.map.get(def_id.node) {
+                        NodeItem(_) => {
+                            format!("::{}", self.tcx.item_path_str(def_id))
+                        }
+                        _ => {
+                            self.tcx.sess.span_bug(span,
+                                &format!("Could not find container {} for method {}",
+                                         def_id.node, id));
+                        }
+                    }
+                },
+                None => {
+                    self.tcx.sess.span_bug(span,
+                        &format!("Could not find container for method {}", id));
+                },
+            },
+        };
+
+        let qualname = format!("{}::{}", qualname, &token::get_name(name));
+
+        let decl_id = self.tcx.trait_item_of_item(ast_util::local_def(id))
+            .and_then(|new_id| {
+                let def_id = new_id.def_id();
+                if def_id.node != 0 && def_id != ast_util::local_def(id) {
+                    Some(def_id)
+                } else {
+                    None
+                }
+            });
+
+        let sub_span = self.span_utils.sub_span_after_keyword(span, keywords::Fn);
+
+        FunctionData {
+            id: id,
+            name: token::get_name(name).to_string(),
+            qualname: qualname,
+            declaration: decl_id,
+            span: sub_span.unwrap(),
+            scope: self.enclosing_scope(id),
+        }
+    }
+
     pub fn get_trait_ref_data(&self,
                               trait_ref: &ast::TraitRef,
                               parent: NodeId)
@@ -337,7 +441,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                                 return Some(Data::VariableRefData(VariableRefData {
                                     name: get_ident(ident.node).to_string(),
                                     span: sub_span.unwrap(),
-                                    scope: self.tcx.map.get_enclosing_scope(expr.id).unwrap_or(0),
+                                    scope: self.enclosing_scope(expr.id),
                                     ref_id: f.id,
                                 }));
                             }
@@ -360,7 +464,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                         let sub_span = self.span_utils.span_for_last_ident(path.span);
                         Some(Data::TypeRefData(TypeRefData {
                             span: sub_span.unwrap(),
-                            scope: self.tcx.map.get_enclosing_scope(expr.id).unwrap_or(0),
+                            scope: self.enclosing_scope(expr.id),
                             ref_id: def_id,
                         }))
                     }
@@ -372,10 +476,113 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     }
                 }
             }
+            ast::ExprMethodCall(..) => {
+                let method_call = ty::MethodCall::expr(expr.id);
+                let method_id = self.tcx.tables.borrow().method_map[&method_call].def_id;
+                let (def_id, decl_id) = match self.tcx.impl_or_trait_item(method_id).container() {
+                    ty::ImplContainer(_) => (Some(method_id), None),
+                    ty::TraitContainer(_) => (None, Some(method_id))
+                };
+                let sub_span = self.span_utils.sub_span_for_meth_name(expr.span);
+                let parent = self.enclosing_scope(expr.id);
+                Some(Data::MethodCallData(MethodCallData {
+                    span: sub_span.unwrap(),
+                    scope: parent,
+                    ref_id: def_id,
+                    decl_id: decl_id,
+                }))
+            }
+            ast::ExprPath(_, ref path) => {
+                Some(self.get_path_data(expr.id, path))
+            }
             _ => {
                 // FIXME
                 unimplemented!();
             }
+        }
+    }
+
+    pub fn get_path_data(&self,
+                         id: NodeId,
+                         path: &ast::Path)
+                         -> Data {
+        let def_map = self.tcx.def_map.borrow();
+        if !def_map.contains_key(&id) {
+            self.tcx.sess.span_bug(path.span,
+                                   &format!("def_map has no key for {} in visit_expr", id));
+        }
+        let def = def_map.get(&id).unwrap().full_def();
+        let sub_span = self.span_utils.span_for_last_ident(path.span);
+        match def {
+            def::DefUpvar(..) |
+            def::DefLocal(..) |
+            def::DefStatic(..) |
+            def::DefConst(..) |
+            def::DefAssociatedConst(..) |
+            def::DefVariant(..) => {
+                Data::VariableRefData(VariableRefData {
+                    name: self.span_utils.snippet(sub_span.unwrap()),
+                    span: sub_span.unwrap(),
+                    scope: self.enclosing_scope(id),
+                    ref_id: def.def_id(),
+                })
+            }
+            def::DefStruct(def_id) | def::DefTy(def_id, _) => {
+                Data::TypeRefData(TypeRefData {
+                    span: sub_span.unwrap(),
+                    ref_id: def_id,
+                    scope: self.enclosing_scope(id),
+                })
+            }
+            def::DefMethod(decl_id, provenence) => {
+                let sub_span = self.span_utils.sub_span_for_meth_name(path.span);
+                let def_id = if decl_id.krate == ast::LOCAL_CRATE {
+                    let ti = self.tcx.impl_or_trait_item(decl_id);
+                    match provenence {
+                        def::FromTrait(def_id) => {
+                            Some(self.tcx.trait_items(def_id)
+                                    .iter()
+                                    .find(|mr| {
+                                        mr.name() == ti.name()
+                                    })
+                                    .unwrap()
+                                    .def_id())
+                        }
+                        def::FromImpl(def_id) => {
+                            let impl_items = self.tcx.impl_items.borrow();
+                            Some(impl_items.get(&def_id)
+                                           .unwrap()
+                                           .iter()
+                                           .find(|mr| {
+                                                self.tcx.impl_or_trait_item(mr.def_id()).name()
+                                                    == ti.name()
+                                            })
+                                           .unwrap()
+                                           .def_id())
+                        }
+                    }
+                } else {
+                    None
+                };
+                Data::MethodCallData(MethodCallData {
+                    span: sub_span.unwrap(),
+                    scope: self.enclosing_scope(id),
+                    ref_id: def_id,
+                    decl_id: Some(decl_id),
+                })
+            },
+            def::DefFn(def_id, _) => {
+                Data::FunctionCallData(FunctionCallData {
+                    ref_id: def_id,
+                    span: sub_span.unwrap(),
+                    scope: self.enclosing_scope(id),
+                })
+            }
+            _ => self.tcx.sess.span_bug(path.span,
+                                        &format!("Unexpected def kind while looking \
+                                                  up path in `{}`: `{:?}`",
+                                                 self.span_utils.snippet(path.span),
+                                                 def)),
         }
     }
 
@@ -420,6 +627,10 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         }
     }
 
+    #[inline]
+    fn enclosing_scope(&self, id: NodeId) -> NodeId {
+        self.tcx.map.get_enclosing_scope(id).unwrap_or(0)
+    }
 }
 
 // An AST visitor for collecting paths from patterns.
