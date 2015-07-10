@@ -172,6 +172,11 @@ impl<'a> StringReader<'a> {
         self.span_diagnostic.span_err(sp, m)
     }
 
+    /// Suggest some help with a given span.
+    pub fn help_span(&self, sp: Span, m: &str) {
+        self.span_diagnostic.span_help(sp, m)
+    }
+
     /// Report a fatal error spanning [`from_pos`, `to_pos`).
     fn fatal_span_(&self, from_pos: BytePos, to_pos: BytePos, m: &str) -> ! {
         self.fatal_span(codemap::mk_sp(from_pos, to_pos), m)
@@ -180,6 +185,11 @@ impl<'a> StringReader<'a> {
     /// Report a lexical error spanning [`from_pos`, `to_pos`).
     fn err_span_(&self, from_pos: BytePos, to_pos: BytePos, m: &str) {
         self.err_span(codemap::mk_sp(from_pos, to_pos), m)
+    }
+
+    /// Suggest some help spanning [`from_pos`, `to_pos`).
+    fn help_span_(&self, from_pos: BytePos, to_pos: BytePos, m: &str) {
+        self.help_span(codemap::mk_sp(from_pos, to_pos), m)
     }
 
     /// Report a lexical error spanning [`from_pos`, `to_pos`), appending an
@@ -742,6 +752,13 @@ impl<'a> StringReader<'a> {
                                    valid
                                 }
                             }
+                            'u' if !ascii_only => {
+                                self.err_span_(escaped_pos, self.last_pos,
+                                    "incomplete unicode escape sequence");
+                                self.help_span_(escaped_pos, self.last_pos,
+                                    "format of unicode escape sequences is `\\u{…}`");
+                                false
+                            }
                             '\n' if delim == '"' => {
                                 self.consume_whitespace();
                                 true
@@ -757,16 +774,13 @@ impl<'a> StringReader<'a> {
                                     if ascii_only { "unknown byte escape" }
                                     else { "unknown character escape" },
                                     c);
-                                let sp = codemap::mk_sp(escaped_pos, last_pos);
                                 if e == '\r' {
-                                    self.span_diagnostic.span_help(
-                                        sp,
+                                    self.help_span_(escaped_pos, last_pos,
                                         "this is an isolated carriage return; consider checking \
                                          your editor and version control settings")
                                 }
                                 if (e == '{' || e == '}') && !ascii_only {
-                                    self.span_diagnostic.span_help(
-                                        sp,
+                                    self.help_span_(escaped_pos, last_pos,
                                         "if used in a formatting string, \
                                         curly braces are escaped with `{{` and `}}`")
                                 }
