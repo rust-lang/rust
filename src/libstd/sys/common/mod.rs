@@ -16,6 +16,7 @@ pub mod backtrace;
 pub mod condvar;
 pub mod mutex;
 pub mod net;
+pub mod io;
 pub mod poison;
 pub mod remutex;
 pub mod rwlock;
