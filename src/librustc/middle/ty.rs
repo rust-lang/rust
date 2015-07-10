@@ -11,7 +11,6 @@
 // FIXME: (@jroesch) @eddyb should remove this when he renames ctxt
 #![allow(non_camel_case_types)]
 
-pub use self::TypeError::*;
 pub use self::InferTy::*;
 pub use self::InferRegion::*;
 pub use self::ImplOrTraitItemId::*;
@@ -4932,6 +4931,7 @@ impl<'tcx> TyS<'tcx> {
     }
 
     fn sort_string(&self, cx: &ctxt) -> String {
+
         match self.sty {
             TyBool | TyChar | TyInt(_) |
             TyUint(_) | TyFloat(_) | TyStr => self.to_string(),
@@ -4977,6 +4977,8 @@ impl<'tcx> TyS<'tcx> {
 /// errors.
 impl<'tcx> fmt::Display for TypeError<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use self::TypeError::*;
+
         match *self {
             CyclicTy => write!(f, "cyclic type of infinite size"),
             Mismatch => write!(f, "types differ"),
@@ -5413,6 +5415,8 @@ impl<'tcx> ctxt<'tcx> {
     }
 
     pub fn note_and_explain_type_err(&self, err: &TypeError<'tcx>, sp: Span) {
+        use self::TypeError::*;
+        
         match *err {
             RegionsDoesNotOutlive(subregion, superregion) => {
                 self.note_and_explain_region("", subregion, "...");

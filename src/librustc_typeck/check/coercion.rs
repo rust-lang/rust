@@ -66,7 +66,7 @@ use middle::infer::{self, Coercion};
 use middle::traits::{self, ObligationCause};
 use middle::traits::{predicate_for_trait_def, report_selection_error};
 use middle::ty::{AutoDerefRef, AdjustDerefRef};
-use middle::ty::{self, TypeWithMutability, Ty};
+use middle::ty::{self, TypeWithMutability, Ty, TypeError};
 use middle::ty_relate::RelateResult;
 use util::common::indent;
 
@@ -247,7 +247,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             (u, cu)
         } else {
             debug!("Missing Unsize or CoerceUnsized traits");
-            return Err(ty::Mismatch);
+            return Err(TypeError::Mismatch);
         };
 
         // Note, we want to avoid unnecessary unsizing. We don't want to coerce to
@@ -307,7 +307,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 // Uncertain or unimplemented.
                 Ok(None) | Err(traits::Unimplemented) => {
                     debug!("coerce_unsized: early return - can't prove obligation");
-                    return Err(ty::Mismatch);
+                    return Err(TypeError::Mismatch);
                 }
 
                 // Object safety violations or miscellaneous.
@@ -472,6 +472,6 @@ fn coerce_mutbls<'tcx>(from_mutbl: ast::Mutability,
         (ast::MutMutable, ast::MutMutable) |
         (ast::MutImmutable, ast::MutImmutable) |
         (ast::MutMutable, ast::MutImmutable) => Ok(None),
-        (ast::MutImmutable, ast::MutMutable) => Err(ty::Mutability)
+        (ast::MutImmutable, ast::MutMutable) => Err(TypeError::Mutability)
     }
 }

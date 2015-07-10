@@ -23,7 +23,7 @@ use super::{RegionVariableOrigin, SubregionOrigin, TypeTrace, MiscVariable};
 use rustc_data_structures::graph::{self, Direction, NodeIndex};
 use middle::free_region::FreeRegionMap;
 use middle::region;
-use middle::ty::{self, Ty};
+use middle::ty::{self, Ty, TypeError};
 use middle::ty::{BoundRegion, FreeRegion, Region, RegionVid};
 use middle::ty::{ReEmpty, ReStatic, ReInfer, ReFree, ReEarlyBound};
 use middle::ty::{ReLateBound, ReScope, ReVar, ReSkolemized, BrFresh};
@@ -873,7 +873,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                 if self.tcx.region_maps.nearest_common_ancestor(fr_scope, s_id) == fr_scope {
                     Ok(s)
                 } else {
-                    Err(ty::RegionsNoOverlap(b, a))
+                    Err(TypeError::RegionsNoOverlap(b, a))
                 }
             }
 
@@ -892,7 +892,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                 if a == b {
                     Ok(a)
                 } else {
-                    Err(ty::RegionsNoOverlap(b, a))
+                    Err(TypeError::RegionsNoOverlap(b, a))
                 }
             }
         }
@@ -949,7 +949,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         } else if r_id == scope_b {
             Ok(ReScope(scope_a))
         } else {
-            Err(ty::RegionsNoOverlap(region_a, region_b))
+            Err(TypeError::RegionsNoOverlap(region_a, region_b))
         }
     }
 }

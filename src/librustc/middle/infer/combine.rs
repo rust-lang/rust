@@ -43,7 +43,7 @@ use super::type_variable::{RelationDir, BiTo, EqTo, SubtypeOf, SupertypeOf};
 
 use middle::ty::{TyVar};
 use middle::ty::{IntType, UintType};
-use middle::ty::{self, Ty};
+use middle::ty::{self, Ty, TypeError};
 use middle::ty_fold;
 use middle::ty_fold::{TypeFolder, TypeFoldable};
 use middle::ty_relate::{self, Relate, RelateResult, TypeRelation};
@@ -108,7 +108,7 @@ pub fn super_combine_tys<'a,'tcx:'a,R>(infcx: &InferCtxt<'a, 'tcx>,
         // All other cases of inference are errors
         (&ty::TyInfer(_), _) |
         (_, &ty::TyInfer(_)) => {
-            Err(ty::Sorts(ty_relate::expected_found(relation, &a, &b)))
+            Err(TypeError::Sorts(ty_relate::expected_found(relation, &a, &b)))
         }
 
 
@@ -278,7 +278,7 @@ impl<'a, 'tcx> CombineFields<'a, 'tcx> {
         };
         let u = ty.fold_with(&mut generalize);
         if generalize.cycle_detected {
-            Err(ty::CyclicTy)
+            Err(TypeError::CyclicTy)
         } else {
             Ok(u)
         }
@@ -384,7 +384,7 @@ fn int_unification_error<'tcx>(a_is_expected: bool, v: (ty::IntVarValue, ty::Int
                                -> ty::TypeError<'tcx>
 {
     let (a, b) = v;
-    ty::IntMismatch(ty_relate::expected_found_bool(a_is_expected, &a, &b))
+    TypeError::IntMismatch(ty_relate::expected_found_bool(a_is_expected, &a, &b))
 }
 
 fn float_unification_error<'tcx>(a_is_expected: bool,
@@ -392,5 +392,5 @@ fn float_unification_error<'tcx>(a_is_expected: bool,
                                  -> ty::TypeError<'tcx>
 {
     let (a, b) = v;
-    ty::FloatMismatch(ty_relate::expected_found_bool(a_is_expected, &a, &b))
+    TypeError::FloatMismatch(ty_relate::expected_found_bool(a_is_expected, &a, &b))
 }
