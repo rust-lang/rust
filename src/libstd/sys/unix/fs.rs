@@ -370,13 +370,25 @@ impl fmt::Debug for File {
             readlink(&p).ok()
         }
 
-        #[cfg(not(target_os = "linux"))]
+        #[cfg(target_os = "macos")]
+        fn get_path(fd: c_int) -> Option<PathBuf> {
+            let mut buf = vec![0;libc::PATH_MAX as usize];
+            let n = unsafe { libc::fcntl(fd, libc::F_GETPATH, buf.as_ptr()) };
+            if n == -1 {
+                return None;
+            }
+            let l = buf.iter().position(|&c| c == 0).unwrap();
+            buf.truncate(l as usize);
+            Some(PathBuf::from(OsString::from_vec(buf)))
+        }
+
+        #[cfg(not(any(target_os = "linux", target_os = "macos")))]
         fn get_path(_fd: c_int) -> Option<PathBuf> {
             // FIXME(#24570): implement this for other Unix platforms
             None
         }
 
-        #[cfg(target_os = "linux")]
+        #[cfg(any(target_os = "linux", target_os = "macos"))]
         fn get_mode(fd: c_int) -> Option<(bool, bool)> {
             let mode = unsafe { libc::fcntl(fd, libc::F_GETFL) };
             if mode == -1 {
@@ -390,7 +402,7 @@ impl fmt::Debug for File {
             }
         }
 
-        #[cfg(not(target_os = "linux"))]
+        #[cfg(not(any(target_os = "linux", target_os = "macos")))]
         fn get_mode(_fd: c_int) -> Option<(bool, bool)> {
             // FIXME(#24570): implement this for other Unix platforms
             None
