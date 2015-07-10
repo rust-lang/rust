@@ -41,5 +41,5 @@ fn main() {
     //~^ ERROR illegal unicode character escape
     //~^^ ERROR illegal character in numeric character escape:
     //~^^^ ERROR form of character escape may only be used with characters in the range [\x00-\x7f]
-    //~^^^^ ERROR unknown character escape: u
+    //~^^^^ ERROR incomplete unicode escape sequence
 }
