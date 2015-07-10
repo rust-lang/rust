@@ -149,22 +149,23 @@ fn read_to_end<R: Read + ?Sized>(r: &mut R, buf: &mut Vec<u8>) -> Result<usize> 
 ///
 /// ```
 /// use std::io;
+/// use std::io::prelude::*;
 /// use std::fs::File;
-/// use std::io::Read;
 ///
 /// # fn foo() -> io::Result<()> {
 /// let mut f = try!(File::open("foo.txt"));
-/// let mut buffer = Vec::new();
+/// let mut buffer = [0; 10];
 ///
-/// // read some bytes
-/// f.read(&mut buffer).unwrap();
+/// // read up to 10 bytes
+/// try!(f.read(&mut buffer));
 ///
+/// let mut buffer = vec![0; 10];
 /// // read the whole file
-/// f.read_to_end(&mut buffer).unwrap();
+/// try!(f.read_to_end(&mut buffer));
 ///
 /// // read into a String, so that you don't need to do the conversion.
 /// let mut buffer = String::new();
-/// f.read_to_string(&mut buffer).unwrap();
+/// try!(f.read_to_string(&mut buffer));
 ///
 /// // and more! See the other methods for more details.
 /// # Ok(())
@@ -910,7 +911,7 @@ fn read_until<R: BufRead + ?Sized>(r: &mut R, delim: u8, buf: &mut Vec<u8>)
 ///
 /// ```
 /// use std::io;
-/// use std::io::BufRead;
+/// use std::io::prelude::*;
 ///
 /// let stdin = io::stdin();
 /// for line in stdin.lock().lines() {
@@ -928,10 +929,9 @@ fn read_until<R: BufRead + ?Sized>(r: &mut R, delim: u8, buf: &mut Vec<u8>)
 /// [file]: ../fs/struct.File.html
 ///
 /// ```
-/// use std::io;
+/// use std::io::{self, BufReader};
+/// use std::io::prelude::*;
 /// use std::fs::File;
-/// use std::io::BufRead;
-/// use std::io::BufReader;
 ///
 /// # fn foo() -> io::Result<()> {
 /// let f = try!(File::open("foo.txt"));
