@@ -60,14 +60,14 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
             };
 
             // Keep going, outside-in.
-            //
             let fully_expanded = fld.fold_expr(expanded_expr);
+            let span = fld.new_span(span);
             fld.cx.bt_pop();
 
             fully_expanded.map(|e| ast::Expr {
                 id: ast::DUMMY_NODE_ID,
                 node: e.node,
-                span: fld.new_span(span),
+                span: span,
             })
         }
 
@@ -367,7 +367,8 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
 /// of expansion and the mark which must be applied to the result.
 /// Our current interface doesn't allow us to apply the mark to the
 /// result until after calling make_expr, make_items, etc.
-fn expand_mac_invoc<T, F, G>(mac: ast::Mac, span: codemap::Span,
+fn expand_mac_invoc<T, F, G>(mac: ast::Mac,
+                             span: codemap::Span,
                              parse_thunk: F,
                              mark_thunk: G,
                              fld: &mut MacroExpander)
