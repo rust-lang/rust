@@ -75,28 +75,6 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
     }
 }
 
-// Some system functions expect the user to pass a appropiately-sized buffer
-// without specifying its size. They will only report back whether the buffer
-// was large enough or not.
-//
-// The callback is yielded an uninitialized vector which can be passed to a
-// syscall. The closure is expected to return `Err(v)` with the passed vector
-// if the space was insufficient and `Ok(r)` if the syscall did not fail due to
-// insufficient space.
-fn fill_bytes_buf<F, T>(mut f: F) -> io::Result<T>
-    where F: FnMut(Vec<u8>) -> Result<io::Result<T>,Vec<u8>>,
-{
-    let mut buf = Vec::new();
-    let mut n = os::BUF_BYTES;
-    loop {
-        buf.reserve(n);
-        match f(buf) {
-            Err(b) => { buf = b; n *= 2; }
-            Ok(r) => return r,
-        }
-    }
-}
-
 pub fn cvt<T: One + PartialEq + Neg<Output=T>>(t: T) -> io::Result<T> {
     let one: T = T::one();
     if t == -one {
