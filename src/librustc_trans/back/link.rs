@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use super::archive::{Archive, ArchiveBuilder, ArchiveConfig, METADATA_FILENAME};
+use super::archive::{ArchiveBuilder, ArchiveConfig};
 use super::linker::{Linker, GnuLinker, MsvcLinker};
 use super::rpath::RPathConfig;
 use super::rpath;
@@ -20,8 +20,9 @@ use session::config::{OutputFilenames, Input, OutputTypeBitcode, OutputTypeExe, 
 use session::search_paths::PathKind;
 use session::Session;
 use metadata::common::LinkMeta;
-use metadata::{encoder, cstore, filesearch, csearch, creader};
 use metadata::filesearch::FileDoesntMatch;
+use metadata::loader::METADATA_FILENAME;
+use metadata::{encoder, cstore, filesearch, csearch, creader};
 use middle::ty::{self, Ty};
 use rustc::ast_map::{PathElem, PathElems, PathName};
 use trans::{CrateContext, CrateTranslation, gensym_name};
@@ -513,18 +514,22 @@ fn link_binary_output(sess: &Session,
         }
     }
 
+    let tmpdir = TempDir::new("rustc").ok().expect("needs a temp dir");
     match crate_type {
         config::CrateTypeRlib => {
-            link_rlib(sess, Some(trans), &objects, &out_filename).build();
+            link_rlib(sess, Some(trans), &objects, &out_filename,
+                      tmpdir.path()).build();
         }
         config::CrateTypeStaticlib => {
-            link_staticlib(sess, &objects, &out_filename);
+            link_staticlib(sess, &objects, &out_filename, tmpdir.path());
         }
         config::CrateTypeExecutable => {
-            link_natively(sess, trans, false, &objects, &out_filename, outputs);
+            link_natively(sess, trans, false, &objects, &out_filename, outputs,
+                          tmpdir.path());
         }
         config::CrateTypeDylib => {
-            link_natively(sess, trans, true, &objects, &out_filename, outputs);
+            link_natively(sess, trans, true, &objects, &out_filename, outputs,
+                          tmpdir.path());
         }
     }
 
@@ -548,13 +553,13 @@ fn archive_search_paths(sess: &Session) -> Vec<PathBuf> {
 }
 
 fn archive_config<'a>(sess: &'a Session,
-                      output: &Path) -> ArchiveConfig<'a> {
+                      output: &Path,
+                      input: Option<&Path>) -> ArchiveConfig<'a> {
     ArchiveConfig {
-        handler: &sess.diagnostic().handler,
+        sess: sess,
         dst: output.to_path_buf(),
+        src: input.map(|p| p.to_path_buf()),
         lib_search_paths: archive_search_paths(sess),
-        slib_prefix: sess.target.target.options.staticlib_prefix.clone(),
-        slib_suffix: sess.target.target.options.staticlib_suffix.clone(),
         ar_prog: get_ar_prog(sess),
         command_path: command_path(sess),
     }
@@ -569,11 +574,12 @@ fn archive_config<'a>(sess: &'a Session,
 fn link_rlib<'a>(sess: &'a Session,
                  trans: Option<&CrateTranslation>, // None == no metadata/bytecode
                  objects: &[PathBuf],
-                 out_filename: &Path) -> ArchiveBuilder<'a> {
+                 out_filename: &Path,
+                 tmpdir: &Path) -> ArchiveBuilder<'a> {
     info!("preparing rlib from {:?} to {:?}", objects, out_filename);
-    let mut ab = ArchiveBuilder::create(archive_config(sess, out_filename));
+    let mut ab = ArchiveBuilder::new(archive_config(sess, out_filename, None));
     for obj in objects {
-        ab.add_file(obj).unwrap();
+        ab.add_file(obj);
     }
 
     for &(ref l, kind) in sess.cstore.get_used_libraries().borrow().iter() {
@@ -587,13 +593,12 @@ fn link_rlib<'a>(sess: &'a Session,
     // symbol table of the archive.
     ab.update_symbols();
 
-    let mut ab = match sess.target.target.options.is_like_osx {
-        // For OSX/iOS, we must be careful to update symbols only when adding
-        // object files.  We're about to start adding non-object files, so run
-        // `ar` now to process the object files.
-        true => ab.build().extend(),
-        false => ab,
-    };
+    // For OSX/iOS, we must be careful to update symbols only when adding
+    // object files.  We're about to start adding non-object files, so run
+    // `ar` now to process the object files.
+    if sess.target.target.options.is_like_osx && !ab.using_llvm() {
+        ab.build();
+    }
 
     // Note that it is important that we add all of our non-object "magical
     // files" *after* all of the object files in the archive. The reason for
@@ -622,8 +627,7 @@ fn link_rlib<'a>(sess: &'a Session,
             // contain the metadata in a separate file. We use a temp directory
             // here so concurrent builds in the same directory don't try to use
             // the same filename for metadata (stomping over one another)
-            let tmpdir = TempDir::new("rustc").ok().expect("needs a temp dir");
-            let metadata = tmpdir.path().join(METADATA_FILENAME);
+            let metadata = tmpdir.join(METADATA_FILENAME);
             match fs::File::create(&metadata).and_then(|mut f| {
                 f.write_all(&trans.metadata)
             }) {
@@ -633,8 +637,7 @@ fn link_rlib<'a>(sess: &'a Session,
                                         metadata.display(), e));
                 }
             }
-            ab.add_file(&metadata).unwrap();
-            remove(sess, &metadata);
+            ab.add_file(&metadata);
 
             // For LTO purposes, the bytecode of this library is also inserted
             // into the archive.  If codegen_units > 1, we insert each of the
@@ -646,7 +649,9 @@ fn link_rlib<'a>(sess: &'a Session,
                 // would cause it to crash if the name of a file in an archive
                 // was exactly 16 bytes.
                 let bc_filename = obj.with_extension("bc");
-                let bc_deflated_filename = obj.with_extension("bytecode.deflate");
+                let bc_deflated_filename = tmpdir.join({
+                    obj.with_extension("bytecode.deflate").file_name().unwrap()
+                });
 
                 let mut bc_data = Vec::new();
                 match fs::File::open(&bc_filename).and_then(|mut f| {
@@ -676,8 +681,7 @@ fn link_rlib<'a>(sess: &'a Session,
                     }
                 };
 
-                ab.add_file(&bc_deflated_filename).unwrap();
-                remove(sess, &bc_deflated_filename);
+                ab.add_file(&bc_deflated_filename);
 
                 // See the bottom of back::write::run_passes for an explanation
                 // of when we do and don't keep .0.bc files around.
@@ -692,7 +696,7 @@ fn link_rlib<'a>(sess: &'a Session,
             // After adding all files to the archive, we need to update the
             // symbol table of the archive. This currently dies on OSX (see
             // #11162), and isn't necessary there anyway
-            if !sess.target.target.options.is_like_osx {
+            if !sess.target.target.options.is_like_osx || ab.using_llvm() {
                 ab.update_symbols();
             }
         }
@@ -749,12 +753,12 @@ fn write_rlib_bytecode_object_v1(writer: &mut Write,
 // There's no need to include metadata in a static archive, so ensure to not
 // link in the metadata object file (and also don't prepare the archive with a
 // metadata file).
-fn link_staticlib(sess: &Session, objects: &[PathBuf], out_filename: &Path) {
-    let ab = link_rlib(sess, None, objects, out_filename);
-    let mut ab = match sess.target.target.options.is_like_osx {
-        true => ab.build().extend(),
-        false => ab,
-    };
+fn link_staticlib(sess: &Session, objects: &[PathBuf], out_filename: &Path,
+                  tempdir: &Path) {
+    let mut ab = link_rlib(sess, None, objects, out_filename, tempdir);
+    if sess.target.target.options.is_like_osx && !ab.using_llvm() {
+        ab.build();
+    }
     if sess.target.target.options.morestack {
         ab.add_native_library("morestack").unwrap();
     }
@@ -781,7 +785,7 @@ fn link_staticlib(sess: &Session, objects: &[PathBuf], out_filename: &Path) {
     }
 
     ab.update_symbols();
-    let _ = ab.build();
+    ab.build();
 
     if !all_native_libs.is_empty() {
         sess.note("link against the following native artifacts when linking against \
@@ -806,10 +810,10 @@ fn link_staticlib(sess: &Session, objects: &[PathBuf], out_filename: &Path) {
 // links to all upstream files as well.
 fn link_natively(sess: &Session, trans: &CrateTranslation, dylib: bool,
                  objects: &[PathBuf], out_filename: &Path,
-                 outputs: &OutputFilenames) {
+                 outputs: &OutputFilenames,
+                 tmpdir: &Path) {
     info!("preparing dylib? ({}) from {:?} to {:?}", dylib, objects,
           out_filename);
-    let tmpdir = TempDir::new("rustc").ok().expect("needs a temp dir");
 
     // The invocations of cc share some flags across platforms
     let (pname, mut cmd) = get_linker(sess);
@@ -827,7 +831,7 @@ fn link_natively(sess: &Session, trans: &CrateTranslation, dylib: bool,
         } else {
             Box::new(GnuLinker { cmd: &mut cmd, sess: &sess }) as Box<Linker>
         };
-        link_args(&mut *linker, sess, dylib, tmpdir.path(),
+        link_args(&mut *linker, sess, dylib, tmpdir,
                   trans, objects, out_filename, outputs);
         if !sess.target.target.options.no_compiler_rt {
             linker.link_staticlib("compiler-rt");
@@ -1185,20 +1189,13 @@ fn add_upstream_rust_crates(cmd: &mut Linker, sess: &Session,
         let name = &name[3..name.len() - 5]; // chop off lib/.rlib
 
         time(sess.time_passes(), &format!("altering {}.rlib", name), (), |()| {
-            let err = (|| {
-                io::copy(&mut try!(fs::File::open(&cratepath)),
-                         &mut try!(fs::File::create(&dst)))
-            })();
-            if let Err(e) = err {
-                sess.fatal(&format!("failed to copy {} to {}: {}",
-                                    cratepath.display(), dst.display(), e));
-            }
-
-            let mut archive = Archive::open(archive_config(sess, &dst));
+            let cfg = archive_config(sess, &dst, Some(cratepath));
+            let mut archive = ArchiveBuilder::new(cfg);
             archive.remove_file(METADATA_FILENAME);
+            archive.update_symbols();
 
             let mut any_objects = false;
-            for f in archive.files() {
+            for f in archive.src_files() {
                 if f.ends_with("bytecode.deflate") {
                     archive.remove_file(&f);
                     continue
@@ -1217,6 +1214,7 @@ fn add_upstream_rust_crates(cmd: &mut Linker, sess: &Session,
             }
 
             if any_objects {
+                archive.build();
                 cmd.link_whole_rlib(&fix_windows_verbatim_for_gcc(&dst));
             }
         });
