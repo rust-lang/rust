@@ -44,6 +44,7 @@
 #![feature(str_escape)]
 #![feature(str_match_indices)]
 #![feature(str_utf16)]
+#![feature(box_str)]
 #![feature(subslice_offset)]
 #![feature(test)]
 #![feature(unboxed_closures)]
