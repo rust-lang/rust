@@ -28,6 +28,22 @@ use io::{self, Read, Write, ErrorKind, BufRead};
 /// This function will return an error immediately if any call to `read` or
 /// `write` returns an error. All instances of `ErrorKind::Interrupted` are
 /// handled by this function and the underlying operation is retried.
+///
+/// # Examples
+///
+/// ```
+/// use std::io;
+///
+/// # fn foo() -> io::Result<()> {
+/// let mut reader: &[u8] = b"hello";
+/// let mut writer: Vec<u8> = vec![];
+///
+/// try!(io::copy(&mut reader, &mut writer));
+///
+/// assert_eq!(reader, &writer[..]);
+/// # Ok(())
+/// # }
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn copy<R: Read, W: Write>(reader: &mut R, writer: &mut W) -> io::Result<u64> {
     let mut buf = [0; super::DEFAULT_BUF_SIZE];
@@ -48,9 +64,24 @@ pub fn copy<R: Read, W: Write>(reader: &mut R, writer: &mut W) -> io::Result<u64
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Empty { _priv: () }
 
-/// Creates an instance of an empty reader.
+/// Constructs a new handle to an empty reader.
 ///
 /// All reads from the returned reader will return `Ok(0)`.
+///
+/// # Examples
+///
+/// A slightly sad example of not reading anything into a buffer:
+///
+/// ```
+/// use std::io;
+/// use std::io::Read;
+///
+/// # fn foo() -> io::Result<String> {
+/// let mut buffer = String::new();
+/// try!(io::empty().read_to_string(&mut buffer));
+/// # Ok(buffer)
+/// # }
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn empty() -> Empty { Empty { _priv: () } }
 
