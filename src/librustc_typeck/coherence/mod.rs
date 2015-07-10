@@ -514,7 +514,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
                                                 } else {
                                                     name.to_string()
                                                 }, a, b)
-                                   }).collect::<Vec<_>>().connect(", "));
+                                   }).collect::<Vec<_>>().join(", "));
                         return;
                     }
 

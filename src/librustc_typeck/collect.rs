@@ -1536,7 +1536,7 @@ fn convert_typed_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                      d => format!("{:?}", d),
                                  })
                                  .collect::<Vec<String>>()
-                                 .connect(",");
+                                 .join(",");
 
         tcx.sess.span_err(it.span, &object_lifetime_default_reprs);
     }

@@ -457,7 +457,7 @@ fn llvm_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     let tstr = if strings.is_empty() {
         base
     } else {
-        format!("{}<{}>", base, strings.connect(", "))
+        format!("{}<{}>", base, strings.join(", "))
     };
 
     if did.krate == 0 {

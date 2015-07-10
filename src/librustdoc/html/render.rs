@@ -285,7 +285,7 @@ impl fmt::Display for IndexItemFunctionType {
         let inputs: Vec<String> = self.inputs.iter().map(|ref t| {
             format!("{}", t)
         }).collect();
-        try!(write!(f, "{{\"inputs\":[{}],\"output\":", inputs.connect(",")));
+        try!(write!(f, "{{\"inputs\":[{}],\"output\":", inputs.join(",")));
 
         match self.output {
             Some(ref t) => try!(write!(f, "{}", t)),
@@ -461,7 +461,7 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> io::Result<String> {
                     search_index.push(IndexItem {
                         ty: shortty(item),
                         name: item.name.clone().unwrap(),
-                        path: fqp[..fqp.len() - 1].connect("::"),
+                        path: fqp[..fqp.len() - 1].join("::"),
                         desc: shorter(item.doc_value()),
                         parent: Some(did),
                         search_type: get_index_search_type(&item, parent_basename),
@@ -957,7 +957,7 @@ impl DocFolder for Cache {
                     self.search_index.push(IndexItem {
                         ty: shortty(&item),
                         name: s.to_string(),
-                        path: path.connect("::").to_string(),
+                        path: path.join("::").to_string(),
                         desc: shorter(item.doc_value()),
                         parent: parent,
                         search_type: get_index_search_type(&item, parent_basename),
@@ -1187,7 +1187,7 @@ impl Context {
                 *slot.borrow_mut() = cx.current.clone();
             });
 
-            let mut title = cx.current.connect("::");
+            let mut title = cx.current.join("::");
             if pushname {
                 if !title.is_empty() {
                     title.push_str("::");
@@ -1393,7 +1393,7 @@ impl<'a> Item<'a> {
             Some(format!("{root}src/{krate}/{path}.html#{href}",
                          root = self.cx.root_path,
                          krate = self.cx.layout.krate,
-                         path = path.connect("/"),
+                         path = path.join("/"),
                          href = href))
 
         // If this item is not part of the local crate, then things get a little
@@ -1417,7 +1417,7 @@ impl<'a> Item<'a> {
             };
             Some(format!("{root}{path}/{file}?gotosrc={goto}",
                          root = root,
-                         path = path[..path.len() - 1].connect("/"),
+                         path = path[..path.len() - 1].join("/"),
                          file = item_path(self.item),
                          goto = self.item.def_id.node))
         }
@@ -1523,7 +1523,7 @@ fn item_path(item: &clean::Item) -> String {
 }
 
 fn full_path(cx: &Context, item: &clean::Item) -> String {
-    let mut s = cx.current.connect("::");
+    let mut s = cx.current.join("::");
     s.push_str("::");
     s.push_str(item.name.as_ref().unwrap());
     return s
@@ -1535,7 +1535,7 @@ fn shorter<'a>(s: Option<&'a str>) -> String {
             (*line).chars().any(|chr|{
                 !chr.is_whitespace()
             })
-        }).collect::<Vec<_>>().connect("\n"),
+        }).collect::<Vec<_>>().join("\n"),
         None => "".to_string()
     }
 }
@@ -1920,12 +1920,12 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     try!(write!(w, r#"<script type="text/javascript" async
                               src="{root_path}/implementors/{path}/{ty}.{name}.js">
                       </script>"#,
-                root_path = vec![".."; cx.current.len()].connect("/"),
+                root_path = vec![".."; cx.current.len()].join("/"),
                 path = if ast_util::is_local(it.def_id) {
-                    cx.current.connect("/")
+                    cx.current.join("/")
                 } else {
                     let path = &cache.external_paths[&it.def_id];
-                    path[..path.len() - 1].connect("/")
+                    path[..path.len() - 1].join("/")
                 },
                 ty = shortty(it).to_static_str(),
                 name = *it.name.as_ref().unwrap()));
