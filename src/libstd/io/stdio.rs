@@ -18,6 +18,7 @@ use io::lazy::Lazy;
 use io::{self, BufReader, LineWriter};
 use sync::{Arc, Mutex, MutexGuard};
 use sys::stdio;
+use sys_common::io::{read_to_end_uninitialized};
 use sys_common::remutex::{ReentrantMutex, ReentrantMutexGuard};
 use libc;
 
@@ -276,6 +277,9 @@ impl Read for Stdin {
 impl<'a> Read for StdinLock<'a> {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         self.inner.read(buf)
+    }
+    fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
+        unsafe { read_to_end_uninitialized(self, buf) }
     }
 }
 

@@ -906,6 +906,8 @@ mod tests {
     use io::prelude::*;
     use io;
     use super::Cursor;
+    use test;
+    use super::repeat;
 
     #[test]
     fn read_until() {
@@ -1023,5 +1025,14 @@ mod tests {
 
         let mut buf = [0; 1];
         assert_eq!(0, R.take(0).read(&mut buf).unwrap());
+    }
+
+    #[bench]
+    fn bench_read_to_end(b: &mut test::Bencher) {
+        b.iter(|| {
+            let mut lr = repeat(1).take(10000000);
+            let mut vec = Vec::with_capacity(1024);
+            super::read_to_end(&mut lr, &mut vec);
+        });
     }
 }

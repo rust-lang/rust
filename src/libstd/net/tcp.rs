@@ -19,6 +19,7 @@ use io;
 use net::{ToSocketAddrs, SocketAddr, Shutdown};
 use sys_common::net as net_imp;
 use sys_common::{AsInner, FromInner};
+use sys_common::io::read_to_end_uninitialized;
 use time::Duration;
 
 /// A structure which represents a TCP stream between a local socket and a
@@ -189,6 +190,9 @@ impl TcpStream {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Read for TcpStream {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> { self.0.read(buf) }
+    fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
+        unsafe { read_to_end_uninitialized(self, buf) }
+    }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Write for TcpStream {
@@ -198,6 +202,9 @@ impl Write for TcpStream {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Read for &'a TcpStream {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> { self.0.read(buf) }
+    fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
+        unsafe { read_to_end_uninitialized(self, buf) }
+    }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Write for &'a TcpStream {
