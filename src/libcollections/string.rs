@@ -29,6 +29,7 @@ use borrow::{Cow, IntoCow};
 use range::RangeArgument;
 use str::{self, FromStr, Utf8Error, Chars};
 use vec::{DerefVec, Vec, as_vec};
+use boxed::Box;
 
 /// A growable string stored as a UTF-8 encoded buffer.
 #[derive(Clone, PartialOrd, Eq, Ord)]
@@ -740,6 +741,16 @@ impl String {
             iter: chars_iter,
             string: self_ptr,
         }
+    }
+
+    /// Converts the string into `Box<str>`.
+    ///
+    /// Note that this will drop any excess capacity.
+    #[unstable(feature = "box_str",
+               reason = "recently added, matches RFC")]
+    pub fn into_boxed_slice(self) -> Box<str> {
+        let slice = self.vec.into_boxed_slice();
+        unsafe { mem::transmute::<Box<[u8]>, Box<str>>(slice) }
     }
 }
 

@@ -1746,6 +1746,14 @@ fn to_uppercase() {
     assert_eq!("aéǅßﬁᾀ".to_uppercase(), "AÉǄSSFIἈΙ");
 }
 
+#[test]
+fn test_into_string() {
+    // The only way to acquire a Box<str> in the first place is through a String, so just
+    // test that we can round-trip between Box<str> and String.
+    let string = String::from("Some text goes here");
+    assert_eq!(string.clone().into_boxed_slice().into_string(), string);
+}
+
 mod pattern {
     use std::str::pattern::Pattern;
     use std::str::pattern::{Searcher, ReverseSearcher};
