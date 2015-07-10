@@ -575,3 +575,28 @@ pub fn canonicalize(p: &Path) -> io::Result<PathBuf> {
         PathBuf::from(OsString::from_wide(buf))
     })
 }
+
+pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
+    unsafe extern "system" fn callback(
+        _TotalFileSize: libc::LARGE_INTEGER,
+        TotalBytesTransferred: libc::LARGE_INTEGER,
+        _StreamSize: libc::LARGE_INTEGER,
+        _StreamBytesTransferred: libc::LARGE_INTEGER,
+        _dwStreamNumber: libc::DWORD,
+        _dwCallbackReason: libc::DWORD,
+        _hSourceFile: HANDLE,
+        _hDestinationFile: HANDLE,
+        lpData: libc::LPVOID,
+    ) -> libc::DWORD {
+        *(lpData as *mut i64) = TotalBytesTransferred;
+        c::PROGRESS_CONTINUE
+    }
+    let pfrom = to_utf16(from);
+    let pto = to_utf16(to);
+    let mut size = 0i64;
+    try!(cvt(unsafe {
+        c::CopyFileExW(pfrom.as_ptr(), pto.as_ptr(), Some(callback),
+                       &mut size as *mut _ as *mut _, ptr::null_mut(), 0)
+    }));
+    Ok(size as u64)
+}

@@ -14,7 +14,7 @@ use os::unix::prelude::*;
 
 use ffi::{CString, CStr, OsString, OsStr};
 use fmt;
-use io::{self, Error, SeekFrom};
+use io::{self, Error, ErrorKind, SeekFrom};
 use libc::{self, c_int, size_t, off_t, c_char, mode_t};
 use mem;
 use path::{Path, PathBuf};
@@ -515,4 +515,20 @@ pub fn canonicalize(p: &Path) -> io::Result<PathBuf> {
     let p = buf.iter().position(|i| *i == 0).unwrap();
     buf.truncate(p);
     Ok(PathBuf::from(OsString::from_vec(buf)))
+}
+
+pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
+    use fs::{File, PathExt, set_permissions};
+    if !from.is_file() {
+        return Err(Error::new(ErrorKind::InvalidInput,
+                              "the source path is not an existing file"))
+    }
+
+    let mut reader = try!(File::open(from));
+    let mut writer = try!(File::create(to));
+    let perm = try!(reader.metadata()).permissions();
+
+    let ret = try!(io::copy(&mut reader, &mut writer));
+    try!(set_permissions(to, perm));
+    Ok(ret)
 }
