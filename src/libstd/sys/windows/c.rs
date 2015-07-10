@@ -66,6 +66,11 @@ pub const STD_ERROR_HANDLE: libc::DWORD = -12i32 as libc::DWORD;
 
 pub const HANDLE_FLAG_INHERIT: libc::DWORD = 0x00000001;
 
+pub const PROGRESS_CONTINUE: libc::DWORD = 0;
+pub const PROGRESS_CANCEL: libc::DWORD = 1;
+pub const PROGRESS_STOP: libc::DWORD = 2;
+pub const PROGRESS_QUIET: libc::DWORD = 3;
+
 #[repr(C)]
 #[cfg(target_arch = "x86")]
 pub struct WSADATA {
@@ -249,6 +254,19 @@ pub type PCONDITION_VARIABLE = *mut CONDITION_VARIABLE;
 pub type PSRWLOCK = *mut SRWLOCK;
 pub type ULONG = c_ulong;
 pub type ULONG_PTR = c_ulong;
+pub type LPBOOL = *mut BOOL;
+
+pub type LPPROGRESS_ROUTINE = ::option::Option<unsafe extern "system" fn(
+    TotalFileSize: libc::LARGE_INTEGER,
+    TotalBytesTransferred: libc::LARGE_INTEGER,
+    StreamSize: libc::LARGE_INTEGER,
+    StreamBytesTransferred: libc::LARGE_INTEGER,
+    dwStreamNumber: DWORD,
+    dwCallbackReason: DWORD,
+    hSourceFile: HANDLE,
+    hDestinationFile: HANDLE,
+    lpData: LPVOID,
+) -> DWORD>;
 
 #[repr(C)]
 pub struct CONDITION_VARIABLE { pub ptr: LPVOID }
@@ -413,6 +431,12 @@ extern "system" {
     pub fn SetHandleInformation(hObject: libc::HANDLE,
                                 dwMask: libc::DWORD,
                                 dwFlags: libc::DWORD) -> libc::BOOL;
+    pub fn CopyFileExW(lpExistingFileName: libc::LPCWSTR,
+                       lpNewFileName: libc::LPCWSTR,
+                       lpProgressRoutine: LPPROGRESS_ROUTINE,
+                       lpData: libc::LPVOID,
+                       pbCancel: LPBOOL,
+                       dwCopyFlags: libc::DWORD) -> libc::BOOL;
 }
 
 // Functions that aren't available on Windows XP, but we still use them and just
