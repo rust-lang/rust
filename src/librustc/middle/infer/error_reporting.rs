@@ -77,7 +77,7 @@ use middle::def;
 use middle::infer;
 use middle::region;
 use middle::subst;
-use middle::ty::{self, Ty, HasTypeFlags};
+use middle::ty::{self, Ty, TypeError, HasTypeFlags};
 use middle::ty::{Region, ReFree};
 
 use std::cell::{Cell, RefCell};
@@ -351,8 +351,8 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                     match free_regions_from_same_fn(self.tcx, sub, sup) {
                         Some(ref same_frs) if trace.is_some() => {
                             let trace = trace.unwrap();
-                            let terr = ty::RegionsDoesNotOutlive(sup,
-                                                                         sub);
+                            let terr = TypeError::RegionsDoesNotOutlive(sup,
+                                                                        sub);
                             trace_origins.push((trace, terr));
                             append_to_same_regions(&mut same_regions, same_frs);
                         }
@@ -595,7 +595,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
         match origin {
             infer::Subtype(trace) |
             infer::DefaultExistentialBound(trace) => {
-                let terr = ty::RegionsDoesNotOutlive(sup, sub);
+                let terr = TypeError::RegionsDoesNotOutlive(sup, sub);
                 self.report_and_explain_type_error(trace, &terr);
             }
             infer::Reborrow(span) => {

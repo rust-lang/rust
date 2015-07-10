@@ -32,7 +32,7 @@ use middle::subst::Subst;
 use middle::traits::{self, FulfillmentContext, Normalized,
                      SelectionContext, ObligationCause};
 use middle::ty::{TyVid, IntVid, FloatVid, RegionVid, UnconstrainedNumeric};
-use middle::ty::{self, Ty, HasTypeFlags};
+use middle::ty::{self, Ty, TypeError, HasTypeFlags};
 use middle::ty_fold::{self, TypeFolder, TypeFoldable};
 use middle::ty_relate::{Relate, RelateResult, TypeRelation};
 use rustc_data_structures::unify::{self, UnificationTable};
@@ -913,7 +913,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         match higher_ranked::leak_check(self, skol_map, snapshot) {
             Ok(()) => Ok(()),
-            Err((br, r)) => Err(ty::RegionsInsufficientlyPolymorphic(br, r))
+            Err((br, r)) => Err(TypeError::RegionsInsufficientlyPolymorphic(br, r))
         }
     }
 
