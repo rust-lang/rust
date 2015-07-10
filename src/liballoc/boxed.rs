@@ -71,7 +71,7 @@ use core::raw::{TraitObject};
 /// The following two examples are equivalent:
 ///
 /// ```
-/// # #![feature(box_heap)]
+/// #![feature(box_heap)]
 /// #![feature(box_syntax)]
 /// use std::boxed::HEAP;
 ///
@@ -162,7 +162,7 @@ impl<T : ?Sized> Box<T> {
 ///
 /// # Examples
 /// ```
-/// # #![feature(box_raw)]
+/// #![feature(box_raw)]
 /// use std::boxed;
 ///
 /// let seventeen = Box::new(17u32);
