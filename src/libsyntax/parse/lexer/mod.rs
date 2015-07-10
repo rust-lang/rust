@@ -738,26 +738,24 @@ impl<'a> StringReader<'a> {
                         return match e {
                             'n' | 'r' | 't' | '\\' | '\'' | '"' | '0' => true,
                             'x' => self.scan_byte_escape(delim, !ascii_only),
-                            'u' if self.curr_is('{') => {
-                                let valid = self.scan_unicode_escape(delim);
-                                if valid && ascii_only {
-                                    self.err_span_(
-                                        start,
-                                        self.last_pos,
+                            'u' => {
+                                let valid = if self.curr_is('{') {
+                                    self.scan_unicode_escape(delim) && !ascii_only
+                                } else {
+                                    self.err_span_(start, self.last_pos,
+                                        "incorrect unicode escape sequence");
+                                    self.help_span_(start, self.last_pos,
+                                        "format of unicode escape sequences is `\\u{…}`");
+                                    false
+                                };
+                                if ascii_only {
+                                    self.err_span_(start, self.last_pos,
                                         "unicode escape sequences cannot be used as a byte or in \
                                         a byte string"
                                     );
-                                    false
-                                } else {
-                                   valid
                                 }
-                            }
-                            'u' if !ascii_only => {
-                                self.err_span_(start, self.last_pos,
-                                    "incomplete unicode escape sequence");
-                                self.help_span_(start, self.last_pos,
-                                    "format of unicode escape sequences is `\\u{…}`");
-                                false
+                                valid
+
                             }
                             '\n' if delim == '"' => {
                                 self.consume_whitespace();
