@@ -30,12 +30,12 @@ pub struct File { handle: Handle }
 
 pub struct FileAttr {
     data: c::WIN32_FILE_ATTRIBUTE_DATA,
-    is_symlink: bool,
+    reparse_tag: libc::DWORD,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub enum FileType {
-    Dir, File, Symlink, ReparsePoint
+    Dir, File, Symlink, ReparsePoint, MountPoint,
 }
 
 pub struct ReadDir {
@@ -133,7 +133,7 @@ impl DirEntry {
 
     pub fn file_type(&self) -> io::Result<FileType> {
         Ok(FileType::new(self.data.dwFileAttributes,
-                         self.data.dwReserved0 == c::IO_REPARSE_TAG_SYMLINK))
+                         /* reparse_tag = */ self.data.dwReserved0))
     }
 
     pub fn metadata(&self) -> io::Result<FileAttr> {
@@ -146,7 +146,7 @@ impl DirEntry {
                 nFileSizeHigh: self.data.nFileSizeHigh,
                 nFileSizeLow: self.data.nFileSizeLow,
             },
-            is_symlink: self.data.dwReserved0 == c::IO_REPARSE_TAG_SYMLINK,
+            reparse_tag: self.data.dwReserved0,
         })
     }
 }
@@ -218,10 +218,12 @@ impl OpenOptions {
 }
 
 impl File {
-    fn open_reparse_point(path: &Path) -> io::Result<File> {
+    fn open_reparse_point(path: &Path, write: bool) -> io::Result<File> {
         let mut opts = OpenOptions::new();
-        opts.read(true);
-        opts.flags_and_attributes(c::FILE_FLAG_OPEN_REPARSE_POINT);
+        opts.read(!write);
+        opts.write(write);
+        opts.flags_and_attributes(c::FILE_FLAG_OPEN_REPARSE_POINT |
+                                  c::FILE_FLAG_BACKUP_SEMANTICS);
         File::open(path, &opts)
     }
 
@@ -278,10 +280,13 @@ impl File {
                     nFileSizeHigh: info.nFileSizeHigh,
                     nFileSizeLow: info.nFileSizeLow,
                 },
-                is_symlink: false,
+                reparse_tag: 0,
             };
             if attr.is_reparse_point() {
-                attr.is_symlink = self.is_symlink();
+                let mut b = [0; c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
+                if let Ok((_, buf)) = self.reparse_point(&mut b) {
+                    attr.reparse_tag = buf.ReparseTag;
+                }
             }
             Ok(attr)
         }
@@ -314,15 +319,11 @@ impl File {
 
     pub fn handle(&self) -> &Handle { &self.handle }
 
-    fn is_symlink(&self) -> bool {
-        self.readlink().is_ok()
-    }
-
-    fn readlink(&self) -> io::Result<PathBuf> {
-        let mut space = [0u8; c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
-        let mut bytes = 0;
-
+    fn reparse_point<'a>(&self,
+                         space: &'a mut [u8; c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE])
+                         -> io::Result<(libc::DWORD, &'a c::REPARSE_DATA_BUFFER)> {
         unsafe {
+            let mut bytes = 0;
             try!(cvt({
                 c::DeviceIoControl(self.handle.raw(),
                                    c::FSCTL_GET_REPARSE_POINT,
@@ -333,12 +334,20 @@ impl File {
                                    &mut bytes,
                                    0 as *mut _)
             }));
-            let buf: *const c::REPARSE_DATA_BUFFER = space.as_ptr() as *const _;
-            if (*buf).ReparseTag != c::IO_REPARSE_TAG_SYMLINK {
-                return Err(io::Error::new(io::ErrorKind::Other, "not a symlink"))
-            }
+            Ok((bytes, &*(space.as_ptr() as *const c::REPARSE_DATA_BUFFER)))
+        }
+    }
+
+    fn readlink(&self) -> io::Result<PathBuf> {
+        let mut space = [0u8; c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
+        let (_bytes, buf) = try!(self.reparse_point(&mut space));
+        if buf.ReparseTag != c::IO_REPARSE_TAG_SYMLINK {
+            return Err(io::Error::new(io::ErrorKind::Other, "not a symlink"))
+        }
+
+        unsafe {
             let info: *const c::SYMBOLIC_LINK_REPARSE_BUFFER =
-                    &(*buf).rest as *const _ as *const _;
+                    &buf.rest as *const _ as *const _;
             let path_buffer = &(*info).PathBuffer as *const _ as *const u16;
             let subst_off = (*info).SubstituteNameOffset / 2;
             let subst_ptr = path_buffer.offset(subst_off as isize);
@@ -383,7 +392,7 @@ impl FileAttr {
     pub fn attrs(&self) -> u32 { self.data.dwFileAttributes as u32 }
 
     pub fn file_type(&self) -> FileType {
-        FileType::new(self.data.dwFileAttributes, self.is_symlink)
+        FileType::new(self.data.dwFileAttributes, self.reparse_tag)
     }
 
     pub fn created(&self) -> u64 { self.to_u64(&self.data.ftCreationTime) }
@@ -414,12 +423,12 @@ impl FilePermissions {
 }
 
 impl FileType {
-    fn new(attrs: libc::DWORD, is_symlink: bool) -> FileType {
+    fn new(attrs: libc::DWORD, reparse_tag: libc::DWORD) -> FileType {
         if attrs & libc::FILE_ATTRIBUTE_REPARSE_POINT != 0 {
-            if is_symlink {
-                FileType::Symlink
-            } else {
-                FileType::ReparsePoint
+            match reparse_tag {
+                c::IO_REPARSE_TAG_SYMLINK => FileType::Symlink,
+                c::IO_REPARSE_TAG_MOUNT_POINT => FileType::MountPoint,
+                _ => FileType::ReparsePoint,
             }
         } else if attrs & c::FILE_ATTRIBUTE_DIRECTORY != 0 {
             FileType::Dir
@@ -430,7 +439,9 @@ impl FileType {
 
     pub fn is_dir(&self) -> bool { *self == FileType::Dir }
     pub fn is_file(&self) -> bool { *self == FileType::File }
-    pub fn is_symlink(&self) -> bool { *self == FileType::Symlink }
+    pub fn is_symlink(&self) -> bool {
+        *self == FileType::Symlink || *self == FileType::MountPoint
+    }
 }
 
 impl DirBuilder {
@@ -488,7 +499,7 @@ pub fn rmdir(p: &Path) -> io::Result<()> {
 }
 
 pub fn readlink(p: &Path) -> io::Result<PathBuf> {
-    let file = try!(File::open_reparse_point(p));
+    let file = try!(File::open_reparse_point(p, false));
     file.readlink()
 }
 
@@ -517,8 +528,15 @@ pub fn link(src: &Path, dst: &Path) -> io::Result<()> {
 
 pub fn stat(p: &Path) -> io::Result<FileAttr> {
     let attr = try!(lstat(p));
-    if attr.data.dwFileAttributes & libc::FILE_ATTRIBUTE_REPARSE_POINT != 0 {
-        let opts = OpenOptions::new();
+
+    // If this is a reparse point, then we need to reopen the file to get the
+    // actual destination. We also pass the FILE_FLAG_BACKUP_SEMANTICS flag to
+    // ensure that we can open directories (this path may be a directory
+    // junction). Once the file is opened we ask the opened handle what its
+    // metadata information is.
+    if attr.is_reparse_point() {
+        let mut opts = OpenOptions::new();
+        opts.flags_and_attributes(c::FILE_FLAG_BACKUP_SEMANTICS);
         let file = try!(File::open(p, &opts));
         file.file_attr()
     } else {
@@ -534,9 +552,10 @@ pub fn lstat(p: &Path) -> io::Result<FileAttr> {
                                          c::GetFileExInfoStandard,
                                          &mut attr.data as *mut _ as *mut _)));
         if attr.is_reparse_point() {
-            attr.is_symlink = File::open_reparse_point(p).map(|f| {
-                f.is_symlink()
-            }).unwrap_or(false);
+            attr.reparse_tag = File::open_reparse_point(p, false).and_then(|f| {
+                let mut b = [0; c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
+                f.reparse_point(&mut b).map(|(_, b)| b.ReparseTag)
+            }).unwrap_or(0);
         }
         Ok(attr)
     }
@@ -599,4 +618,125 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
                        &mut size as *mut _ as *mut _, ptr::null_mut(), 0)
     }));
     Ok(size as u64)
+}
+
+#[test]
+fn directory_junctions_are_directories() {
+    use ffi::OsStr;
+    use env;
+    use rand::{self, StdRng, Rng};
+
+    macro_rules! t {
+        ($e:expr) => (match $e {
+            Ok(e) => e,
+            Err(e) => panic!("{} failed with: {}", stringify!($e), e),
+        })
+    }
+
+    let d = DirBuilder::new();
+    let p = env::temp_dir();
+    let mut r = rand::thread_rng();
+    let ret = p.join(&format!("rust-{}", r.next_u32()));
+    let foo = ret.join("foo");
+    let bar = ret.join("bar");
+    t!(d.mkdir(&ret));
+    t!(d.mkdir(&foo));
+    t!(d.mkdir(&bar));
+
+    t!(create_junction(&bar, &foo));
+    let metadata = stat(&bar);
+    t!(delete_junction(&bar));
+
+    t!(rmdir(&foo));
+    t!(rmdir(&bar));
+    t!(rmdir(&ret));
+
+    let metadata = t!(metadata);
+    assert!(metadata.file_type().is_dir());
+
+    // Creating a directory junction on windows involves dealing with reparse
+    // points and the DeviceIoControl function, and this code is a skeleton of
+    // what can be found here:
+    //
+    // http://www.flexhex.com/docs/articles/hard-links.phtml
+    fn create_junction(src: &Path, dst: &Path) -> io::Result<()> {
+        let f = try!(opendir(src, true));
+        let h = f.handle().raw();
+
+        unsafe {
+            let mut data = [0u8; c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
+            let mut db = data.as_mut_ptr()
+                            as *mut c::REPARSE_MOUNTPOINT_DATA_BUFFER;
+            let mut buf = &mut (*db).ReparseTarget as *mut _;
+            let mut i = 0;
+            let v = br"\??\";
+            let v = v.iter().map(|x| *x as u16);
+            for c in v.chain(dst.as_os_str().encode_wide()) {
+                *buf.offset(i) = c;
+                i += 1;
+            }
+            *buf.offset(i) = 0;
+            i += 1;
+            (*db).ReparseTag = c::IO_REPARSE_TAG_MOUNT_POINT;
+            (*db).ReparseTargetMaximumLength = (i * 2) as libc::WORD;
+            (*db).ReparseTargetLength = ((i - 1) * 2) as libc::WORD;
+            (*db).ReparseDataLength =
+                    (*db).ReparseTargetLength as libc::DWORD + 12;
+
+            let mut ret = 0;
+            cvt(c::DeviceIoControl(h as *mut _,
+                                   c::FSCTL_SET_REPARSE_POINT,
+                                   data.as_ptr() as *mut _,
+                                   (*db).ReparseDataLength + 8,
+                                   0 as *mut _, 0,
+                                   &mut ret,
+                                   0 as *mut _)).map(|_| ())
+        }
+    }
+
+    fn opendir(p: &Path, write: bool) -> io::Result<File> {
+        unsafe {
+            let mut token = 0 as *mut _;
+            let mut tp: c::TOKEN_PRIVILEGES = mem::zeroed();
+            try!(cvt(c::OpenProcessToken(c::GetCurrentProcess(),
+                                         c::TOKEN_ADJUST_PRIVILEGES,
+                                         &mut token)));
+            let name: &OsStr = if write {
+                "SeRestorePrivilege".as_ref()
+            } else {
+                "SeBackupPrivilege".as_ref()
+            };
+            let name = name.encode_wide().chain(Some(0)).collect::<Vec<_>>();
+            try!(cvt(c::LookupPrivilegeValueW(0 as *const _,
+                                              name.as_ptr(),
+                                              &mut tp.Privileges[0].Luid)));
+            tp.PrivilegeCount = 1;
+            tp.Privileges[0].Attributes = c::SE_PRIVILEGE_ENABLED;
+            let size = mem::size_of::<c::TOKEN_PRIVILEGES>() as libc::DWORD;
+            try!(cvt(c::AdjustTokenPrivileges(token, libc::FALSE, &mut tp, size,
+                                              0 as *mut _, 0 as *mut _)));
+            try!(cvt(libc::CloseHandle(token)));
+
+            File::open_reparse_point(p, write)
+        }
+    }
+
+    fn delete_junction(p: &Path) -> io::Result<()> {
+        unsafe {
+            let f = try!(opendir(p, true));
+            let h = f.handle().raw();
+            let mut data = [0u8; c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
+            let mut db = data.as_mut_ptr()
+                            as *mut c::REPARSE_MOUNTPOINT_DATA_BUFFER;
+            (*db).ReparseTag = c::IO_REPARSE_TAG_MOUNT_POINT;
+            let mut bytes = 0;
+            cvt(c::DeviceIoControl(h as *mut _,
+                                   c::FSCTL_DELETE_REPARSE_POINT,
+                                   data.as_ptr() as *mut _,
+                                   (*db).ReparseDataLength + 8,
+                                   0 as *mut _, 0,
+                                   &mut bytes,
+                                   0 as *mut _)).map(|_| ())
+        }
+    }
 }
