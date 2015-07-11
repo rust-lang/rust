@@ -55,10 +55,9 @@ fn foo(x: Empty) {
         // empty
     }
 }
-
 ```
 
-but this won't:
+However, this won't:
 
 ```
 fn foo(x: Option<String>) {
@@ -71,7 +70,18 @@ fn foo(x: Option<String>) {
 
 E0003: r##"
 Not-a-Number (NaN) values cannot be compared for equality and hence can never
-match the input to a match expression. To match against NaN values, you should
+match the input to a match expression. So, the following will not compile:
+
+```
+const NAN: f32 = 0.0 / 0.0;
+
+match number {
+    NAN => { /* ... */ },
+    // ...
+}
+```
+
+To match against NaN values, you should
 instead use the `is_nan()` method in a guard, like so:
 
 ```
@@ -429,21 +439,19 @@ match 5u32 {
 "##,
 
 E0038: r####"
+Trait objects like `Box<Trait>` can only be constructed when certain
+requirements are satisfied by the trait in question.
 
-Trait objects like `Box<Trait>`, can only be constructed when certain
-requirements are obeyed by the trait in question.
-
-Trait objects are a form of dynamic dispatch and use dynamically sized types.
-So, for a given trait `Trait`, when `Trait` is treated as a type, as in
-`Box<Trait>`, the inner type is "unsized". In such cases the boxed pointer is a
-"fat pointer" and contains an extra pointer to a method table for dynamic
-dispatch. This design mandates some restrictions on the types of traits that are
-allowed to be used in trait objects, which are collectively termed as "object
-safety" rules.
+Trait objects are a form of dynamic dispatch and use a dynamically sized type
+for the inner type. So, for a given trait `Trait`, when `Trait` is treated as a
+type, as in `Box<Trait>`, the inner type is "unsized". In such cases the boxed
+pointer is a "fat pointer" that contains an extra pointer to a table of methods
+(among other things) for dynamic dispatch. This design mandates some
+restrictions on the types of traits that are allowed to be used in trait
+objects, which are collectively termed as "object safety" rules.
 
 Attempting to create a trait object for a non object-safe trait will trigger
 this error.
-
 
 There are various rules:
 
@@ -463,7 +471,7 @@ trait Foo where Self: Sized {
 we cannot create an object of type `Box<Foo>` or `&Foo` since in this case
 `Self` would not be `Sized`.
 
-Generally `Self : Sized` is used to indicate that the trait should not be used
+Generally, `Self : Sized` is used to indicate that the trait should not be used
 as a trait object. If the trait comes from your own crate, consider removing
 this restriction.
 
@@ -475,6 +483,7 @@ This happens when a trait has a method like the following:
 trait Trait {
     fn foo(&self) -> Self;
 }
+
 impl Trait for String {
     fn foo(&self) -> Self {
         "hi".to_owned()
@@ -488,8 +497,11 @@ impl Trait for u8 {
 }
 ```
 
-In such a case, the compiler cannot predict the return type of `foo()` in a case
-like the following:
+(Note that `&self` and `&mut self` are okay, it's additional `Self` types which
+cause this problem)
+
+In such a case, the compiler cannot predict the return type of `foo()` in a
+situation like the following:
 
 ```
 fn call_foo(x: Box<Trait>) {
@@ -498,8 +510,10 @@ fn call_foo(x: Box<Trait>) {
 }
 ```
 
-If the offending method isn't actually being called on the trait object, you can
-add a `where Self: Sized` bound on the method:
+If only some methods aren't object-safe, you can add a `where Self: Sized` bound
+on them to mark them as explicitly unavailable to trait objects. The
+functionality will still be available to all other implementers, including
+`Box<Trait>` which is itself sized (assuming you `impl Trait for Box<Trait>`)
 
 ```
 trait Trait {
@@ -508,10 +522,10 @@ trait Trait {
 }
 ```
 
-Now, `foo()` can no longer be called on the trait object, but you will be
-allowed to call other trait methods and construct the trait objects. With such a
-bound, one can still call `foo()` on types implementing that trait that aren't
-behind trait objects.
+Now, `foo()` can no longer be called on a trait object, but you will now be
+allowed to make a trait object, and that will be able to call any object-safe
+methods". With such a bound, one can still call `foo()` on types implementing
+that trait that aren't behind trait objects.
 
 ### Method has generic type parameters
 
@@ -535,10 +549,10 @@ impl Trait for u8 {
 // ...
 ```
 
-at compile time a table of all implementations of `Trait`, containing pointers
-to the implementation of `foo()` would be generated.
+at compile time each implementation of `Trait` will produce a table containing
+the various methods (and other items) related to the implementation.
 
-This works fine, but when we the method gains generic parameters, we can have a
+This works fine, but when the method gains generic parameters, we can have a
 problem.
 
 Usually, generic parameters get _monomorphized_. For example, if I have
@@ -555,12 +569,14 @@ implementation on-demand. If you call `foo()` with a `bool` parameter, the
 compiler will only generate code for `foo::<bool>()`. When we have additional
 type parameters, the number of monomorphized implementations the compiler
 generates does not grow drastically, since the compiler will only generate an
-implementation if the function is called with hard substitutions.
+implementation if the function is called with unparametrized substitutions
+(i.e., substitutions where none of the substituted types are themselves
+parametrized).
 
 However, with trait objects we have to make a table containing _every object
 that implements the trait_. Now, if it has type parameters, we need to add
-implementations for every type that implements the trait, bloating the table
-quickly.
+implementations for every type that implements the trait, and there could
+theoretically be an infinite number of types.
 
 For example, with
 
@@ -675,13 +691,46 @@ safe, so they are forbidden when specifying supertraits.
 
 There's no easy fix for this, generally code will need to be refactored so that
 you no longer need to derive from `Super<Self>`.
-
 "####,
 
 E0079: r##"
 Enum variants which contain no data can be given a custom integer
 representation. This error indicates that the value provided is not an
 integer literal and is therefore invalid.
+
+For example, in the following code,
+
+```
+enum Foo {
+    Q = "32"
+}
+```
+
+we try to set the representation to a string.
+
+There's no general fix for this; if you can work with an integer
+then just set it to one:
+
+```
+enum Foo {
+    Q = 32
+}
+```
+
+however if you actually wanted a mapping between variants
+and non-integer objects, it may be preferable to use a method with
+a match instead:
+
+```
+enum Foo { Q }
+impl Foo {
+    fn get_str(&self) -> &'static str {
+        match *self {
+            Foo::Q => "32",
+        }
+    }
+}
+```
 "##,
 
 E0080: r##"
@@ -704,8 +753,7 @@ https://doc.rust-lang.org/reference.html#ffi-attributes
 "##,
 
 E0109: r##"
-You tried to give a type parameter to a type which doesn't need it. Erroneous
-code example:
+You tried to give a type parameter to a type which doesn't need it; for example:
 
 ```
 type X = u32<i32>; // error: type parameters are not allowed on this type
@@ -713,24 +761,25 @@ type X = u32<i32>; // error: type parameters are not allowed on this type
 
 Please check that you used the correct type and recheck its definition. Perhaps
 it doesn't need the type parameter.
+
 Example:
 
 ```
-type X = u32; // ok!
+type X = u32; // this compiles
 ```
 "##,
 
 E0110: r##"
-You tried to give a lifetime parameter to a type which doesn't need it.
-Erroneous code example:
+You tried to give a lifetime parameter to a type which doesn't need it; for
+example:
 
 ```
 type X = u32<'static>; // error: lifetime parameters are not allowed on
                        //        this type
 ```
 
-Please check that you used the correct type and recheck its definition,
-perhaps it doesn't need the lifetime parameter. Example:
+Please check that the correct type was used and recheck its definition; perhaps
+it doesn't need the lifetime parameter. Example:
 
 ```
 type X = u32; // ok!
