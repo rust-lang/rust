@@ -22,7 +22,7 @@ use term::Term;
 use error::{err, CliResult, CommandResult};
 use book;
 use book::{Book, BookItem};
-use css;
+
 use javascript;
 
 use rustdoc;
@@ -195,9 +195,16 @@ impl Subcommand for Build {
         }
         try!(fs::create_dir(&tgt));
 
-        try!(File::create(&tgt.join("rust-book.css")).and_then(|mut f| {
-            f.write_all(css::STYLE.as_bytes())
-        }));
+        // Copy static files
+        try!(fs::copy(
+            &cwd.join("src/rustbook/static/rustbook.css"),
+            &tgt.join("rust-book.css")
+        ));
+
+        try!(fs::copy(
+            &cwd.join("src/rustbook/static/rustbook.js"),
+            &tgt.join("rust-book.js")
+        ));
 
         let mut summary = try!(File::open(&src.join("SUMMARY.md")));
         match book::parse_summary(&mut summary, &src) {
