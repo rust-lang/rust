@@ -428,6 +428,256 @@ match 5u32 {
 ```
 "##,
 
+E0038: r####"
+
+Trait objects like `Box<Trait>`, can only be constructed when certain
+requirements are obeyed by the trait in question.
+
+Trait objects are a form of dynamic dispatch and use dynamically sized types.
+So, for a given trait `Trait`, when `Trait` is treated as a type, as in
+`Box<Trait>`, the inner type is "unsized". In such cases the boxed pointer is a
+"fat pointer" and contains an extra pointer to a method table for dynamic
+dispatch. This design mandates some restrictions on the types of traits that are
+allowed to be used in trait objects, which are collectively termed as "object
+safety" rules.
+
+Attempting to create a trait object for a non object-safe trait will trigger
+this error.
+
+
+There are various rules:
+
+### The trait cannot require `Self: Sized`
+
+When `Trait` is treated as a type, the type does not implement the special
+`Sized` trait, because the type does not have a known size at compile time and
+can only be accessed behind a pointer. Thus, if we have a trait like the
+following:
+
+```
+trait Foo where Self: Sized {
+
+}
+```
+
+we cannot create an object of type `Box<Foo>` or `&Foo` since in this case
+`Self` would not be `Sized`.
+
+Generally `Self : Sized` is used to indicate that the trait should not be used
+as a trait object. If the trait comes from your own crate, consider removing
+this restriction.
+
+### Method references the `Self` type in its arguments or return type
+
+This happens when a trait has a method like the following:
+
+```
+trait Trait {
+    fn foo(&self) -> Self;
+}
+impl Trait for String {
+    fn foo(&self) -> Self {
+        "hi".to_owned()
+    }
+}
+
+impl Trait for u8 {
+    fn foo(&self) -> Self {
+        1
+    }
+}
+```
+
+In such a case, the compiler cannot predict the return type of `foo()` in a case
+like the following:
+
+```
+fn call_foo(x: Box<Trait>) {
+    let y = x.foo(); // What type is y?
+    // ...
+}
+```
+
+If the offending method isn't actually being called on the trait object, you can
+add a `where Self: Sized` bound on the method:
+
+```
+trait Trait {
+    fn foo(&self) -> Self where Self: Sized;
+    // more functions
+}
+```
+
+Now, `foo()` can no longer be called on the trait object, but you will be
+allowed to call other trait methods and construct the trait objects. With such a
+bound, one can still call `foo()` on types implementing that trait that aren't
+behind trait objects.
+
+### Method has generic type parameters
+
+As mentioned before, trait objects contain pointers to method tables. So, if we
+have
+
+```
+trait Trait {
+    fn foo(&self);
+}
+impl Trait for String {
+    fn foo(&self) {
+        // implementation 1
+    }
+}
+impl Trait for u8 {
+    fn foo(&self) {
+        // implementation 2
+    }
+}
+// ...
+```
+
+at compile time a table of all implementations of `Trait`, containing pointers
+to the implementation of `foo()` would be generated.
+
+This works fine, but when we the method gains generic parameters, we can have a
+problem.
+
+Usually, generic parameters get _monomorphized_. For example, if I have
+
+```
+fn foo<T>(x: T) {
+    // ...
+}
+```
+
+the machine code for `foo::<u8>()`, `foo::<bool>()`, `foo::<String>()`, or any
+other type substitution is different. Hence the compiler generates the
+implementation on-demand. If you call `foo()` with a `bool` parameter, the
+compiler will only generate code for `foo::<bool>()`. When we have additional
+type parameters, the number of monomorphized implementations the compiler
+generates does not grow drastically, since the compiler will only generate an
+implementation if the function is called with hard substitutions.
+
+However, with trait objects we have to make a table containing _every object
+that implements the trait_. Now, if it has type parameters, we need to add
+implementations for every type that implements the trait, bloating the table
+quickly.
+
+For example, with
+
+```
+trait Trait {
+    fn foo<T>(&self, on: T);
+    // more methods
+}
+impl Trait for String {
+    fn foo<T>(&self, on: T) {
+        // implementation 1
+    }
+}
+impl Trait for u8 {
+    fn foo<T>(&self, on: T) {
+        // implementation 2
+    }
+}
+// 8 more implementations
+```
+
+Now, if I have the following code:
+
+```
+fn call_foo(thing: Box<Trait>) {
+    thing.foo(true); // this could be any one of the 8 types above
+    thing.foo(1);
+    thing.foo("hello");
+}
+```
+
+we don't just need to create a table of all implementations of all methods of
+`Trait`, we need to create a table of all implementations of `foo()`, _for each
+different type fed to `foo()`_. In this case this turns out to be (10 types
+implementing `Trait`)*(3 types being fed to `foo()`) = 30 implementations!
+
+With real world traits these numbers can grow drastically.
+
+To fix this, it is suggested to use a `where Self: Sized` bound similar to the
+fix for the sub-error above if you do not intend to call the method with type
+parameters:
+
+```
+trait Trait {
+    fn foo<T>(&self, on: T) where Self: Sized;
+    // more methods
+}
+```
+
+If this is not an option, consider replacing the type parameter with another
+trait object (e.g. if `T: OtherTrait`, use `on: Box<OtherTrait>`). If the number
+of types you intend to feed to this method is limited, consider manually listing
+out the methods of different types.
+
+### Method has no receiver
+
+Methods that do not take a `self` parameter can't be called since there won't be
+a way to get a pointer to the method table for them
+
+```
+trait Foo {
+    fn foo() -> u8;
+}
+```
+
+This could be called as `<Foo as Foo>::foo()`, which would not be able to pick
+an implementation.
+
+Adding a `Self: Sized` bound to these methods will generally make this compile.
+
+
+```
+trait Foo {
+    fn foo() -> u8 where Self: Sized;
+}
+```
+
+### The trait cannot use `Self` as a type parameter in the supertrait listing
+
+This is similar to the second sub-error, but subtler. It happens in situations
+like the following:
+
+```
+trait Super<A> {}
+
+trait Trait: Super<Self> {
+}
+
+struct Foo;
+
+impl Super<Foo> for Foo{}
+
+impl Trait for Foo {}
+```
+
+Here, the supertrait might have methods as follows:
+
+```
+trait Super<A> {
+    fn get_a(&self) -> A; // note that this is object safe!
+}
+```
+
+If the trait `Foo` was deriving from something like `Super<String>` or
+`Super<T>` (where `Foo` itself is `Foo<T>`), this is okay, because given a type
+`get_a()` will definitely return an object of that type.
+
+However, if it derives from `Super<Self>`, the method `get_a()` would return an
+object of unknown type when called on the function, _even though `Super` is
+object safe_. `Self` type parameters let us make object safe traits no longer
+safe, so they are forbidden when specifying supertraits.
+
+There's no easy fix for this, generally code will need to be refactored so that
+you no longer need to derive from `Super<Self>`.
+
+"####,
+
 E0079: r##"
 Enum variants which contain no data can be given a custom integer
 representation. This error indicates that the value provided is not an
@@ -1295,7 +1545,6 @@ contain references (with a maximum lifetime of `'a`).
 
 register_diagnostics! {
     // E0006 // merged with E0005
-    E0038,
 //  E0134,
 //  E0135,
     E0136,
