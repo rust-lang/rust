@@ -1126,7 +1126,7 @@ macro_rules! uint_impl {
             acc
         }
 
-        /// Returns `true` iff `self == 2^k` for some `k`.
+        /// Returns `true` if and only if `self == 2^k` for some `k`.
         #[stable(feature = "rust1", since = "1.0.0")]
         #[inline]
         pub fn is_power_of_two(self) -> bool {
