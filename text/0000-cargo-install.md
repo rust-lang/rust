@@ -219,7 +219,7 @@ drawbacks at this time.
 
 ### System Package Managers
 
-The primary alternative to putting effort behind `cargo install` it to instead
+The primary alternative to putting effort behind `cargo install` is to instead
 put effort behind system-specific package managers. For example the line between
 a system package manager and `cargo install` is a little blurry, and the
 "official" way to distribute a package should in theory be through a system
