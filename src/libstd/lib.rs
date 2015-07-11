@@ -119,6 +119,7 @@
 #![feature(core_intrinsics)]
 #![feature(core_prelude)]
 #![feature(core_simd)]
+#![feature(drain)]
 #![feature(fnbox)]
 #![feature(heap_api)]
 #![feature(int_error_internals)]
