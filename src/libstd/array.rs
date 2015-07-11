@@ -9,7 +9,7 @@
 // except according to those terms.
 
 //! A fixed-size array is denoted `[T; N]` for the element type `T` and
-//! the compile time constant size `N`. The size should be zero or positive.
+//! the compile time constant size `N`. The size must be zero or positive.
 //!
 //! Arrays values are created either with an explicit expression that lists
 //! each element: `[x, y, z]` or a repeat expression: `[x; N]`. The repeat
@@ -32,7 +32,9 @@
 //!
 //! [slice]: primitive.slice.html
 //!
-//! ## Examples
+//! Rust does not currently support generics over the size of an array type.
+//!
+//! # Examples
 //!
 //! ```
 //! let mut array: [i32; 3] = [0; 3];
@@ -48,8 +50,6 @@
 //! }
 //!
 //! ```
-//!
-//! Rust does not currently support generics over the size of an array type.
 //!
 
 #![doc(primitive = "array")]
