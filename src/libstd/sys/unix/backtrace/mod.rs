@@ -92,13 +92,13 @@ pub use sys::backtrace::gcc_s::write;
 #[cfg(all(target_os = "ios", target_arch = "arm"))]
 pub use sys::backtrace::libbacktrace::write;
 
-use io;
-use io::prelude::*;
-use libc;
-use prelude::v1::*;
-use str;
+#[cfg(not(target_os = "nacl"))] use io;
+#[cfg(not(target_os = "nacl"))] use io::prelude::*;
+#[cfg(not(target_os = "nacl"))] use libc;
+#[cfg(not(target_os = "nacl"))] use prelude::v1::*;
+#[cfg(not(target_os = "nacl"))] use str;
 
-use sys_common::backtrace::{demangle, HEX_WIDTH};
+#[cfg(not(target_os = "nacl"))] use sys_common::backtrace::{demangle, HEX_WIDTH};
 
 // symbol resolvers:
 mod printer;
@@ -108,7 +108,7 @@ mod printer;
 #[cfg(all(target_os = "ios", target_arch = "arm"))] mod libbacktrace;
 #[cfg(target_os = "nacl")] mod none;
 
-// Finally, after all that work above, we can emit a symbol.
+#[cfg(not(target_os = "nacl"))]
 pub fn output(w: &mut Write, idx: isize, addr: *mut libc::c_void,
               s: Option<&[u8]>) -> io::Result<()> {
     try!(write!(w, "  {:2}: {:2$?} - ", idx, addr, HEX_WIDTH));
@@ -119,6 +119,7 @@ pub fn output(w: &mut Write, idx: isize, addr: *mut libc::c_void,
     w.write_all(&['\n' as u8])
 }
 
+#[cfg(not(target_os = "nacl"))]
 pub fn output_fileline(w: &mut Write, file: &[u8], line: libc::c_int,
                        more: bool) -> io::Result<()> {
     let file = str::from_utf8(file).unwrap_or("<unknown>");

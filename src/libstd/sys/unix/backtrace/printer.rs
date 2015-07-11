@@ -10,7 +10,6 @@
 
 pub use self::dladdr::*;
 pub use self::libbacktrace::*;
-pub use self::none::*;
 
 #[cfg(not(any(target_os = "macos", target_os = "ios")))]
 mod dladdr { }
@@ -245,25 +244,5 @@ mod libbacktrace {
         }
 
         Ok(())
-    }
-}
-
-
-#[cfg(not(target_os = "nacl"))]
-mod none { }
-#[cfg(target_os = "nacl")]
-mod none {
-    use io;
-    use io::prelude::*;
-    use libc;
-
-    use prelude::v1::*;
-
-    #[inline(always)]
-    pub fn print(_w: &mut Write, _idx: isize, _addr: *mut libc::c_void,
-                 _symaddr: *mut libc::c_void) -> io::Result<()> {
-        use io::ErrorKind;
-        Err(io::Error::new(ErrorKind::Other,
-                           "no library is available to print stack backtraces"))
     }
 }

@@ -36,7 +36,6 @@ pub const HEX_WIDTH: usize = 10;
 // Note that this demangler isn't quite as fancy as it could be. We have lots
 // of other information in our symbols like hashes, version, type information,
 // etc. Additionally, this doesn't handle glue symbols at all.
-#[allow(dead_code)]
 pub fn demangle(writer: &mut Write, s: &str) -> io::Result<()> {
     // First validate the symbol. If it doesn't look like anything we're
     // expecting, we just print it literally. Note that we must handle non-rust
