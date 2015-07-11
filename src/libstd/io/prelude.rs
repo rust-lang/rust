@@ -17,10 +17,6 @@
 //! # #![allow(unused_imports)]
 //! use std::io::prelude::*;
 //! ```
-//!
-//! This module contains reexports of many core I/O traits such as `Read`,
-//! `Write` and `BufRead`. Structures and functions are not
-//! contained in this module.
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
