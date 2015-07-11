@@ -16,7 +16,8 @@ f = open(sys.argv[1], 'wb')
 
 components = sys.argv[2].split() # splits on whitespace
 enable_static = sys.argv[3]
-llvm_config = sys.argv[4]
+enable_libcpp = sys.argv[4]
+llvm_config = sys.argv[5]
 
 f.write("""// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
@@ -72,17 +73,18 @@ for lib in out.strip().split(' '):
 
 # C++ runtime library
 out = run([llvm_config, '--cxxflags'])
-if enable_static == '1':
-    assert('stdlib=libc++' not in out)
-    f.write("#[link(name = \"stdc++\", kind = \"static\")]\n")
+
+if enable_libcpp != '0' or 'stdlib=libc++' in out:
+    name = 'c++'
 else:
-    # Note that we use `cfg_attr` here because on MSVC the C++ standard library
-    # is not c++ or stdc++, but rather the linker takes care of linking the
-    # right standard library.
-    if 'stdlib=libc++' in out:
-        f.write("#[cfg_attr(not(target_env = \"msvc\"), link(name = \"c++\"))]\n")
-    else:
-        f.write("#[cfg_attr(not(target_env = \"msvc\"), link(name = \"stdc++\"))]\n")
+    name = 'stdc++'
+
+if enable_static == '1':
+    kind = ', kind = \"static\"'
+else:
+    kind = ''
+
+f.write("#[cfg_attr(not(target_env = \"msvc\"), link(name = \"%s\"%s))]\n" % (name, kind))
 
 # Attach everything to an extern block
 f.write("extern {}\n")
