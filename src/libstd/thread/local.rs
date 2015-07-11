@@ -275,6 +275,7 @@ mod imp {
 
     use cell::{Cell, UnsafeCell};
     use intrinsics;
+    use ptr;
 
     pub struct Key<T> {
         inner: UnsafeCell<Option<T>>,
@@ -327,7 +328,6 @@ mod imp {
     #[cfg(target_os = "linux")]
     unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern fn(*mut u8)) {
         use mem;
-        use ptr;
         use libc;
         use sys_common::thread_local as os;
 
@@ -394,7 +394,24 @@ mod imp {
         // destructor as running for this thread so calls to `get` will return
         // `None`.
         (*ptr).dtor_running.set(true);
-        intrinsics::drop_in_place((*ptr).inner.get());
+
+        // The OSX implementation of TLS apparently had an odd aspect to it
+        // where the pointer we have may be overwritten while this destructor
+        // is running. Specifically if a TLS destructor re-accesses TLS it may
+        // trigger a re-initialization of all TLS variables, paving over at
+        // least some destroyed ones with initial values.
+        //
+        // This means that if we drop a TLS value in place on OSX that we could
+        // revert the value to its original state halfway through the
+        // destructor, which would be bad!
+        //
+        // Hence, we use `ptr::read` on OSX (to move to a "safe" location)
+        // instead of drop_in_place.
+        if cfg!(target_os = "macos") {
+            ptr::read((*ptr).inner.get());
+        } else {
+            intrinsics::drop_in_place((*ptr).inner.get());
+        }
     }
 }
 
