@@ -1402,7 +1402,7 @@ fn base_def_to_ty<'tcx>(this: &AstConv<'tcx>,
                                                           base_segments.last().unwrap(),
                                                           &mut projection_bounds);
 
-            check_path_args(tcx, base_segments.init(), NO_TPS | NO_REGIONS);
+            check_path_args(tcx, base_segments.split_last().unwrap().1, NO_TPS | NO_REGIONS);
             trait_ref_to_object_type(this,
                                      rscope,
                                      span,
@@ -1411,7 +1411,7 @@ fn base_def_to_ty<'tcx>(this: &AstConv<'tcx>,
                                      &[])
         }
         def::DefTy(did, _) | def::DefStruct(did) => {
-            check_path_args(tcx, base_segments.init(), NO_TPS | NO_REGIONS);
+            check_path_args(tcx, base_segments.split_last().unwrap().1, NO_TPS | NO_REGIONS);
             ast_path_to_ty(this,
                            rscope,
                            span,

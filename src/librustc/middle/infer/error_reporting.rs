@@ -1495,7 +1495,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
             parameters: new_parameters
         };
         let mut new_segs = Vec::new();
-        new_segs.push_all(path.segments.init());
+        new_segs.push_all(path.segments.split_last().unwrap().1);
         new_segs.push(new_seg);
         ast::Path {
             span: path.span,

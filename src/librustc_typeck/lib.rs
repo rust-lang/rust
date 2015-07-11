@@ -85,7 +85,7 @@ This API is completely unstable and subject to change.
 #![feature(ref_slice)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
-#![feature(slice_extras)]
+#![feature(slice_splits)]
 #![feature(staged_api)]
 #![feature(vec_push_all)]
 #![feature(cell_extras)]
