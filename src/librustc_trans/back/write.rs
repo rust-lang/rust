@@ -334,6 +334,8 @@ struct CodegenContext<'a> {
     plugin_passes: Vec<String>,
     // LLVM optimizations for which we want to print remarks.
     remark: Passes,
+
+    is_like_pnacl: bool,
 }
 
 impl<'a> CodegenContext<'a> {
@@ -343,6 +345,8 @@ impl<'a> CodegenContext<'a> {
             handler: sess.diagnostic().handler(),
             plugin_passes: sess.plugin_llvm_passes.borrow().clone(),
             remark: sess.opts.cg.remark.clone(),
+
+            is_like_pnacl: sess.target.target.options.is_like_pnacl,
         }
     }
 }
@@ -560,9 +564,14 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
 
         if config.emit_obj {
             let path = output_names.with_extension(&format!("{}.o", name_extra));
-            with_codegen(tm, llmod, config.no_builtins, |cpm| {
-                write_output_file(cgcx.handler, tm, cpm, llmod, &path, llvm::ObjectFileType);
-            });
+            if !cgcx.is_like_pnacl {
+                with_codegen(tm, llmod, config.no_builtins, |cpm| {
+                    write_output_file(cgcx.handler, tm, cpm, llmod, &path, llvm::ObjectFileType);
+                });
+            } else {
+                let out = path2cstr(&path);
+                llvm::LLVMWriteBitcodeToFile(llmod, out.as_ptr());
+            }
         }
     });
 
@@ -648,24 +657,6 @@ pub fn run_passes(sess: &Session,
     modules_config.set_flags(sess, trans);
     metadata_config.set_flags(sess, trans);
 
-    if sess.target.target.options.is_like_pnacl {
-        // If targeting PNaCl, we only want to emit bitcode.
-        metadata_config.emit_bc = true;
-        metadata_config.emit_no_opt_bc = false;
-        metadata_config.emit_lto_bc = false;
-        metadata_config.emit_ir = false;
-        metadata_config.emit_asm = false;
-        metadata_config.emit_obj = false;
-
-        modules_config.emit_bc = true;
-        modules_config.emit_no_opt_bc = false;
-        modules_config.emit_lto_bc = false;
-        modules_config.emit_ir = false;
-        modules_config.emit_asm = false;
-        modules_config.emit_obj = false;
-    }
-
-
     // Populate a buffer with a list of codegen threads.  Items are processed in
     // LIFO order, just because it's a tiny bit simpler that way.  (The order
     // doesn't actually matter.)
@@ -694,20 +685,6 @@ pub fn run_passes(sess: &Session,
         run_work_singlethreaded(sess, &trans.reachable[..], work_items);
     } else {
         run_work_multithreaded(sess, work_items, sess.opts.cg.codegen_units);
-    }
-
-    if sess.target.target.options.is_like_pnacl {
-        // PNaCl targets (ie PNaCl/ASM.js) use a separate tool for native/js codegen.
-        // Therefore we just return.
-        unsafe {
-            llvm::LLVMRustDisposeTargetMachine(tm);
-        }
-        // FIXME: time_llvm_passes support - does this use a global context or
-        // something?
-        if sess.opts.cg.codegen_units == 1 && sess.time_llvm_passes() {
-            unsafe { llvm::LLVMRustPrintPassTimings(); }
-        }
-        return;
     }
 
     // Produce final compile outputs.
@@ -883,6 +860,7 @@ fn run_work_multithreaded(sess: &Session,
     let work_items_arc = Arc::new(Mutex::new(work_items));
     let mut diag_emitter = SharedEmitter::new();
     let mut futures = Vec::with_capacity(num_workers);
+    let is_like_pnacl = sess.target.target.options.is_like_pnacl;
 
     for i in 0..num_workers {
         let work_items_arc = work_items_arc.clone();
@@ -904,6 +882,7 @@ fn run_work_multithreaded(sess: &Session,
                 handler: &diag_handler,
                 plugin_passes: plugin_passes,
                 remark: remark,
+                is_like_pnacl: is_like_pnacl,
             };
 
             loop {
