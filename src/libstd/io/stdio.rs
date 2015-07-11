@@ -154,15 +154,42 @@ pub struct StdinLock<'a> {
     inner: MutexGuard<'a, BufReader<Maybe<StdinRaw>>>,
 }
 
-/// Creates a new handle to the global standard input stream of this process.
+/// Constructs a new handle to the standard input of the current process.
 ///
-/// The handle returned refers to a globally shared buffer between all threads.
-/// Access is synchronized and can be explicitly controlled with the `lock()`
-/// method.
+/// Each handle returned is a reference to a shared global buffer whose access
+/// is synchronized via a mutex. If you need more explicit control over
+/// locking, see the [lock() method][lock].
 ///
-/// The `Read` trait is implemented for the returned value but the `BufRead`
-/// trait is not due to the global nature of the standard input stream. The
-/// locked version, `StdinLock`, implements both `Read` and `BufRead`, however.
+/// [lock]: struct.Stdin.html#method.lock
+///
+/// # Examples
+///
+/// Using implicit synchronization:
+///
+/// ```
+/// use std::io::{self, Read};
+///
+/// # fn foo() -> io::Result<String> {
+/// let mut buffer = String::new();
+/// try!(io::stdin().read_to_string(&mut buffer));
+/// # Ok(buffer)
+/// # }
+/// ```
+///
+/// Using explicit synchronization:
+///
+/// ```
+/// use std::io::{self, Read};
+///
+/// # fn foo() -> io::Result<String> {
+/// let mut buffer = String::new();
+/// let stdin = io::stdin();
+/// let mut handle = stdin.lock();
+///
+/// try!(handle.read_to_string(&mut buffer));
+/// # Ok(buffer)
+/// # }
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn stdin() -> Stdin {
     static INSTANCE: Lazy<Mutex<BufReader<Maybe<StdinRaw>>>> = Lazy::new(stdin_init);
@@ -298,13 +325,42 @@ pub struct StdoutLock<'a> {
     inner: ReentrantMutexGuard<'a, RefCell<LineWriter<Maybe<StdoutRaw>>>>,
 }
 
-/// Constructs a new reference to the standard output of the current process.
+/// Constructs a new handle to the standard output of the current process.
 ///
 /// Each handle returned is a reference to a shared global buffer whose access
-/// is synchronized via a mutex. Explicit control over synchronization is
-/// provided via the `lock` method.
+/// is synchronized via a mutex. If you need more explicit control over
+/// locking, see the [lock() method][lock].
 ///
-/// The returned handle implements the `Write` trait.
+/// [lock]: struct.Stdout.html#method.lock
+///
+/// # Examples
+///
+/// Using implicit synchronization:
+///
+/// ```
+/// use std::io::{self, Write};
+///
+/// # fn foo() -> io::Result<()> {
+/// try!(io::stdout().write(b"hello world"));
+///
+/// # Ok(())
+/// # }
+/// ```
+///
+/// Using explicit synchronization:
+///
+/// ```
+/// use std::io::{self, Write};
+///
+/// # fn foo() -> io::Result<()> {
+/// let stdout = io::stdout();
+/// let mut handle = stdout.lock();
+///
+/// try!(handle.write(b"hello world"));
+///
+/// # Ok(())
+/// # }
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn stdout() -> Stdout {
     static INSTANCE: Lazy<ReentrantMutex<RefCell<LineWriter<Maybe<StdoutRaw>>>>>
@@ -376,12 +432,38 @@ pub struct StderrLock<'a> {
     inner: ReentrantMutexGuard<'a, RefCell<Maybe<StderrRaw>>>,
 }
 
-/// Constructs a new reference to the standard error stream of a process.
+/// Constructs a new handle to the standard error of the current process.
 ///
-/// Each returned handle is synchronized amongst all other handles created from
-/// this function. No handles are buffered, however.
+/// This handle is not buffered.
 ///
-/// The returned handle implements the `Write` trait.
+/// # Examples
+///
+/// Using implicit synchronization:
+///
+/// ```
+/// use std::io::{self, Write};
+///
+/// # fn foo() -> io::Result<()> {
+/// try!(io::stderr().write(b"hello world"));
+///
+/// # Ok(())
+/// # }
+/// ```
+///
+/// Using explicit synchronization:
+///
+/// ```
+/// use std::io::{self, Write};
+///
+/// # fn foo() -> io::Result<()> {
+/// let stderr = io::stderr();
+/// let mut handle = stderr.lock();
+///
+/// try!(handle.write(b"hello world"));
+///
+/// # Ok(())
+/// # }
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn stderr() -> Stderr {
     static INSTANCE: Lazy<ReentrantMutex<RefCell<Maybe<StderrRaw>>>> = Lazy::new(stderr_init);
