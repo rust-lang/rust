@@ -66,7 +66,7 @@ use middle::infer::{self, Coercion};
 use middle::traits::{self, ObligationCause};
 use middle::traits::{predicate_for_trait_def, report_selection_error};
 use middle::ty::{AutoDerefRef, AdjustDerefRef};
-use middle::ty::{self, TypeWithMutability, Ty, TypeError};
+use middle::ty::{self, TypeAndMut, Ty, TypeError};
 use middle::ty_relate::RelateResult;
 use util::common::indent;
 
@@ -202,7 +202,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 return None;
             }
             let ty = self.tcx().mk_ref(r_borrow,
-                                        TypeWithMutability {ty: inner_ty, mutbl: mutbl_b});
+                                        TypeAndMut {ty: inner_ty, mutbl: mutbl_b});
             if let Err(err) = self.subtype(ty, b) {
                 if first_error.is_none() {
                     first_error = Some(err);
@@ -411,7 +411,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         };
 
         // Check that the types which they point at are compatible.
-        let a_unsafe = self.tcx().mk_ptr(ty::TypeWithMutability{ mutbl: mutbl_b, ty: mt_a.ty });
+        let a_unsafe = self.tcx().mk_ptr(ty::TypeAndMut{ mutbl: mutbl_b, ty: mt_a.ty });
         try!(self.subtype(a_unsafe, b));
         try!(coerce_mutbls(mt_a.mutbl, mutbl_b));
 

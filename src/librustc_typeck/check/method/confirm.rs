@@ -433,7 +433,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
         };
 
         match sig.0.inputs[0].sty {
-            ty::TyRef(_, ty::TypeWithMutability {
+            ty::TyRef(_, ty::TypeAndMut {
                 ty: _,
                 mutbl: ast::MutMutable,
             }) => {}

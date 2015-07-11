@@ -621,7 +621,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
             let len = unsafe { llvm::LLVMConstIntGetZExtValue(len) as u64 };
             let len = match bt.sty {
-                ty::TyBox(ty) | ty::TyRef(_, ty::TypeWithMutability{ty, ..}) => match ty.sty {
+                ty::TyBox(ty) | ty::TyRef(_, ty::TypeAndMut{ty, ..}) => match ty.sty {
                     ty::TyStr => {
                         assert!(len > 0);
                         len - 1

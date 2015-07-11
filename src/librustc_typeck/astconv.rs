@@ -1556,7 +1556,7 @@ pub fn ast_ty_to_ty<'tcx>(this: &AstConv<'tcx>,
             }
         }
         ast::TyPtr(ref mt) => {
-            tcx.mk_ptr(ty::TypeWithMutability {
+            tcx.mk_ptr(ty::TypeAndMut {
                 ty: ast_ty_to_ty(this, rscope, &*mt.ty),
                 mutbl: mt.mutbl
             })
@@ -1569,7 +1569,7 @@ pub fn ast_ty_to_ty<'tcx>(this: &AstConv<'tcx>,
                     rscope,
                     ty::ObjectLifetimeDefault::Specific(r));
             let t = ast_ty_to_ty(this, rscope1, &*mt.ty);
-            tcx.mk_ref(tcx.mk_region(r), ty::TypeWithMutability {ty: t, mutbl: mt.mutbl})
+            tcx.mk_ref(tcx.mk_region(r), ty::TypeAndMut {ty: t, mutbl: mt.mutbl})
         }
         ast::TyTup(ref fields) => {
             let flds = fields.iter()
@@ -1755,7 +1755,7 @@ fn ty_of_method_or_bare_fn<'a, 'tcx>(this: &AstConv<'tcx>,
                 ty::ByReferenceExplicitSelfCategory(region, mutability) => {
                     (Some(this.tcx().mk_ref(
                                       this.tcx().mk_region(region),
-                                      ty::TypeWithMutability {
+                                      ty::TypeAndMut {
                                         ty: self_info.untransformed_self_ty,
                                         mutbl: mutability
                                       })),
