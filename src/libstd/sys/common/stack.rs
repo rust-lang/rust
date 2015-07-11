@@ -293,7 +293,7 @@ pub unsafe fn get_sp_limit() -> usize {
     // powerpc - FIXME(POWERPC): missing...
     // arm-ios - no segmented stacks.
     // openbsd/bitrig/netbsd - no segmented stacks.
-    // x86-freebsd - no segmented stacks. 
+    // x86-freebsd - no segmented stacks..
     //
     // This function might be called by runtime though
     // so it is unsafe to unreachable, let's return a fixed constant.
