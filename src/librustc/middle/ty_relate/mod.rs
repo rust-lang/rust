@@ -89,11 +89,11 @@ pub trait Relate<'a,'tcx>: TypeFoldable<'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 // Relate impls
 
-impl<'a,'tcx:'a> Relate<'a,'tcx> for ty::TypeWithMutability<'tcx> {
+impl<'a,'tcx:'a> Relate<'a,'tcx> for ty::TypeAndMut<'tcx> {
     fn relate<R>(relation: &mut R,
-                 a: &ty::TypeWithMutability<'tcx>,
-                 b: &ty::TypeWithMutability<'tcx>)
-                 -> RelateResult<'tcx, ty::TypeWithMutability<'tcx>>
+                 a: &ty::TypeAndMut<'tcx>,
+                 b: &ty::TypeAndMut<'tcx>)
+                 -> RelateResult<'tcx, ty::TypeAndMut<'tcx>>
         where R: TypeRelation<'a,'tcx>
     {
         debug!("{}.mts({:?}, {:?})",
@@ -109,7 +109,7 @@ impl<'a,'tcx:'a> Relate<'a,'tcx> for ty::TypeWithMutability<'tcx> {
                 ast::MutMutable => ty::Invariant,
             };
             let ty = try!(relation.relate_with_variance(variance, &a.ty, &b.ty));
-            Ok(ty::TypeWithMutability {ty: ty, mutbl: mutbl})
+            Ok(ty::TypeAndMut {ty: ty, mutbl: mutbl})
         }
     }
 }

@@ -1030,7 +1030,7 @@ fn report_cast_to_unsized_type<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         format!("cast to unsized type: `{}` as `{}`", actual, tstr)
     }, t_expr, None);
     match t_expr.sty {
-        ty::TyRef(_, ty::TypeWithMutability { mutbl: mt, .. }) => {
+        ty::TyRef(_, ty::TypeAndMut { mutbl: mt, .. }) => {
             let mtstr = match mt {
                 ast::MutMutable => "mut ",
                 ast::MutImmutable => ""
@@ -1895,7 +1895,7 @@ fn try_overloaded_deref<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                   base_expr: Option<&ast::Expr>,
                                   base_ty: Ty<'tcx>,
                                   lvalue_pref: LvaluePreference)
-                                  -> Option<ty::TypeWithMutability<'tcx>>
+                                  -> Option<ty::TypeAndMut<'tcx>>
 {
     // Try DerefMut first, if preferred.
     let method = match (lvalue_pref, fcx.tcx().lang_items.deref_mut_trait()) {
@@ -1926,7 +1926,7 @@ fn try_overloaded_deref<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 fn make_overloaded_lvalue_return_type<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                                 method_call: Option<MethodCall>,
                                                 method: Option<MethodCallee<'tcx>>)
-                                                -> Option<ty::TypeWithMutability<'tcx>>
+                                                -> Option<ty::TypeAndMut<'tcx>>
 {
     match method {
         Some(method) => {
@@ -3111,7 +3111,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                                     hint,
                                                     lvalue_pref);
 
-        let tm = ty::TypeWithMutability { ty: fcx.expr_ty(&**oprnd), mutbl: mutbl };
+        let tm = ty::TypeAndMut { ty: fcx.expr_ty(&**oprnd), mutbl: mutbl };
         let oprnd_t = if tm.ty.references_error() {
             tcx.types.err
         } else {
@@ -4909,13 +4909,13 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
             "offset" | "arith_offset" => {
               (1,
                vec!(
-                  tcx.mk_ptr(ty::TypeWithMutability {
+                  tcx.mk_ptr(ty::TypeAndMut {
                       ty: param(ccx, 0),
                       mutbl: ast::MutImmutable
                   }),
                   ccx.tcx.types.isize
                ),
-               tcx.mk_ptr(ty::TypeWithMutability {
+               tcx.mk_ptr(ty::TypeAndMut {
                    ty: param(ccx, 0),
                    mutbl: ast::MutImmutable
                }))
@@ -4923,11 +4923,11 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
             "copy" | "copy_nonoverlapping" => {
               (1,
                vec!(
-                  tcx.mk_ptr(ty::TypeWithMutability {
+                  tcx.mk_ptr(ty::TypeAndMut {
                       ty: param(ccx, 0),
                       mutbl: ast::MutImmutable
                   }),
-                  tcx.mk_ptr(ty::TypeWithMutability {
+                  tcx.mk_ptr(ty::TypeAndMut {
                       ty: param(ccx, 0),
                       mutbl: ast::MutMutable
                   }),
@@ -4938,11 +4938,11 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
             "volatile_copy_memory" | "volatile_copy_nonoverlapping_memory" => {
               (1,
                vec!(
-                  tcx.mk_ptr(ty::TypeWithMutability {
+                  tcx.mk_ptr(ty::TypeAndMut {
                       ty: param(ccx, 0),
                       mutbl: ast::MutMutable
                   }),
-                  tcx.mk_ptr(ty::TypeWithMutability {
+                  tcx.mk_ptr(ty::TypeAndMut {
                       ty: param(ccx, 0),
                       mutbl: ast::MutImmutable
                   }),
@@ -4953,7 +4953,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
             "write_bytes" | "volatile_set_memory" => {
               (1,
                vec!(
-                  tcx.mk_ptr(ty::TypeWithMutability {
+                  tcx.mk_ptr(ty::TypeAndMut {
                       ty: param(ccx, 0),
                       mutbl: ast::MutMutable
                   }),

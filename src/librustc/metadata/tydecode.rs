@@ -587,11 +587,11 @@ fn parse_mutability(st: &mut PState) -> ast::Mutability {
     }
 }
 
-fn parse_mt_<'a, 'tcx, F>(st: &mut PState<'a, 'tcx>, conv: &mut F) -> ty::TypeWithMutability<'tcx> where
+fn parse_mt_<'a, 'tcx, F>(st: &mut PState<'a, 'tcx>, conv: &mut F) -> ty::TypeAndMut<'tcx> where
     F: FnMut(DefIdSource, ast::DefId) -> ast::DefId,
 {
     let m = parse_mutability(st);
-    ty::TypeWithMutability { ty: parse_ty_(st, conv), mutbl: m }
+    ty::TypeAndMut { ty: parse_ty_(st, conv), mutbl: m }
 }
 
 fn parse_def_<F>(st: &mut PState, source: DefIdSource, conv: &mut F) -> ast::DefId where

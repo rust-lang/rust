@@ -85,7 +85,7 @@ pub trait TypeFolder<'tcx> : Sized {
         super_fold_ty(self, t)
     }
 
-    fn fold_mt(&mut self, t: &ty::TypeWithMutability<'tcx>) -> ty::TypeWithMutability<'tcx> {
+    fn fold_mt(&mut self, t: &ty::TypeAndMut<'tcx>) -> ty::TypeAndMut<'tcx> {
         super_fold_mt(self, t)
     }
 
@@ -251,8 +251,8 @@ impl<'tcx> TypeFoldable<'tcx> for ty::ClosureTy<'tcx> {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for ty::TypeWithMutability<'tcx> {
-    fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> ty::TypeWithMutability<'tcx> {
+impl<'tcx> TypeFoldable<'tcx> for ty::TypeAndMut<'tcx> {
+    fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> ty::TypeAndMut<'tcx> {
         folder.fold_mt(self)
     }
 }
@@ -685,9 +685,9 @@ pub fn super_fold_trait_ref<'tcx, T: TypeFolder<'tcx>>(this: &mut T,
 }
 
 pub fn super_fold_mt<'tcx, T: TypeFolder<'tcx>>(this: &mut T,
-                                                mt: &ty::TypeWithMutability<'tcx>)
-                                                -> ty::TypeWithMutability<'tcx> {
-    ty::TypeWithMutability {ty: mt.ty.fold_with(this),
+                                                mt: &ty::TypeAndMut<'tcx>)
+                                                -> ty::TypeAndMut<'tcx> {
+    ty::TypeAndMut {ty: mt.ty.fold_with(this),
             mutbl: mt.mutbl}
 }
 

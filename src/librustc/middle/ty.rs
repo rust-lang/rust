@@ -110,7 +110,7 @@ pub struct CrateAnalysis {
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Field<'tcx> {
     pub name: ast::Name,
-    pub mt: TypeWithMutability<'tcx>
+    pub mt: TypeAndMut<'tcx>
 }
 
 
@@ -487,7 +487,7 @@ pub struct AssociatedType<'tcx> {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-pub struct TypeWithMutability<'tcx> {
+pub struct TypeAndMut<'tcx> {
     pub ty: Ty<'tcx>,
     pub mutbl: ast::Mutability,
 }
@@ -1746,11 +1746,11 @@ pub enum TypeVariants<'tcx> {
     TySlice(Ty<'tcx>),
 
     /// A raw pointer. Written as `*mut T` or `*const T`
-    TyRawPtr(TypeWithMutability<'tcx>),
+    TyRawPtr(TypeAndMut<'tcx>),
 
     /// A reference; a pointer with an associated lifetime. Written as
     /// `&a mut T` or `&'a T`.
-    TyRef(&'tcx Region, TypeWithMutability<'tcx>),
+    TyRef(&'tcx Region, TypeAndMut<'tcx>),
 
     /// If the def-id is Some(_), then this is the type of a specific
     /// fn item. Otherwise, if None(_), it a fn pointer type.
@@ -3564,28 +3564,28 @@ impl<'tcx> ctxt<'tcx> {
         self.mk_ty(TyBox(ty))
     }
 
-    pub fn mk_ptr(&self, tm: TypeWithMutability<'tcx>) -> Ty<'tcx> {
+    pub fn mk_ptr(&self, tm: TypeAndMut<'tcx>) -> Ty<'tcx> {
         self.mk_ty(TyRawPtr(tm))
     }
 
-    pub fn mk_ref(&self, r: &'tcx Region, tm: TypeWithMutability<'tcx>) -> Ty<'tcx> {
+    pub fn mk_ref(&self, r: &'tcx Region, tm: TypeAndMut<'tcx>) -> Ty<'tcx> {
         self.mk_ty(TyRef(r, tm))
     }
 
     pub fn mk_mut_ref(&self, r: &'tcx Region, ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.mk_ref(r, TypeWithMutability {ty: ty, mutbl: ast::MutMutable})
+        self.mk_ref(r, TypeAndMut {ty: ty, mutbl: ast::MutMutable})
     }
 
     pub fn mk_imm_ref(&self, r: &'tcx Region, ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.mk_ref(r, TypeWithMutability {ty: ty, mutbl: ast::MutImmutable})
+        self.mk_ref(r, TypeAndMut {ty: ty, mutbl: ast::MutImmutable})
     }
 
     pub fn mk_mut_ptr(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.mk_ptr(TypeWithMutability {ty: ty, mutbl: ast::MutMutable})
+        self.mk_ptr(TypeAndMut {ty: ty, mutbl: ast::MutMutable})
     }
 
     pub fn mk_imm_ptr(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.mk_ptr(TypeWithMutability {ty: ty, mutbl: ast::MutImmutable})
+        self.mk_ptr(TypeAndMut {ty: ty, mutbl: ast::MutImmutable})
     }
 
     pub fn mk_nil_ptr(&self) -> Ty<'tcx> {
@@ -4269,7 +4269,7 @@ impl<'tcx> TyS<'tcx> {
         }
 
         fn tc_mt<'tcx>(cx: &ctxt<'tcx>,
-                       mt: TypeWithMutability<'tcx>,
+                       mt: TypeAndMut<'tcx>,
                        cache: &mut FnvHashMap<Ty<'tcx>, TypeContents>) -> TypeContents
         {
             let mc = TC::ReachesMutable.when(mt.mutbl == MutMutable);
@@ -4341,11 +4341,11 @@ impl<'tcx> TyS<'tcx> {
         // Fast-path for primitive types
         let result = match self.sty {
             TyBool | TyChar | TyInt(..) | TyUint(..) | TyFloat(..) |
-            TyRawPtr(..) | TyBareFn(..) | TyRef(_, TypeWithMutability {
+            TyRawPtr(..) | TyBareFn(..) | TyRef(_, TypeAndMut {
                 mutbl: ast::MutImmutable, ..
             }) => Some(false),
 
-            TyStr | TyBox(..) | TyRef(_, TypeWithMutability {
+            TyStr | TyBox(..) | TyRef(_, TypeAndMut {
                 mutbl: ast::MutMutable, ..
             }) => Some(true),
 
@@ -4780,10 +4780,10 @@ impl<'tcx> TyS<'tcx> {
     //
     // The parameter `explicit` indicates if this is an *explicit* dereference.
     // Some types---notably unsafe ptrs---can only be dereferenced explicitly.
-    pub fn builtin_deref(&self, explicit: bool) -> Option<TypeWithMutability<'tcx>> {
+    pub fn builtin_deref(&self, explicit: bool) -> Option<TypeAndMut<'tcx>> {
         match self.sty {
             TyBox(ty) => {
-                Some(TypeWithMutability {
+                Some(TypeAndMut {
                     ty: ty,
                     mutbl: ast::MutImmutable,
                 })
@@ -4922,10 +4922,10 @@ impl<'tcx> TyS<'tcx> {
         match autoref {
             None => self,
             Some(AutoPtr(r, m)) => {
-                cx.mk_ref(r, TypeWithMutability { ty: self, mutbl: m })
+                cx.mk_ref(r, TypeAndMut { ty: self, mutbl: m })
             }
             Some(AutoUnsafe(m)) => {
-                cx.mk_ptr(TypeWithMutability { ty: self, mutbl: m })
+                cx.mk_ptr(TypeAndMut { ty: self, mutbl: m })
             }
         }
     }
@@ -5416,7 +5416,7 @@ impl<'tcx> ctxt<'tcx> {
 
     pub fn note_and_explain_type_err(&self, err: &TypeError<'tcx>, sp: Span) {
         use self::TypeError::*;
-        
+
         match *err {
             RegionsDoesNotOutlive(subregion, superregion) => {
                 self.note_and_explain_region("", subregion, "...");
@@ -5984,7 +5984,7 @@ impl<'tcx> ctxt<'tcx> {
         self.lookup_struct_fields(did).iter().map(|f| {
            Field {
                 name: f.name,
-                mt: TypeWithMutability {
+                mt: TypeAndMut {
                     ty: self.lookup_field_type(did, f.id, substs),
                     mutbl: MutImmutable
                 }
@@ -6070,7 +6070,7 @@ impl<'tcx> ctxt<'tcx> {
                                     }
                                     UpvarCapture::ByRef(borrow) => {
                                         tcx.mk_ref(tcx.mk_region(borrow.region),
-                                            ty::TypeWithMutability {
+                                            ty::TypeAndMut {
                                                 ty: freevar_ty,
                                                 mutbl: borrow.kind.to_mutbl_lossy(),
                                             })
@@ -6423,7 +6423,7 @@ impl<'tcx> ctxt<'tcx> {
                 h.as_str().hash(state);
                 did.node.hash(state);
             };
-            let mt = |state: &mut SipHasher, mt: TypeWithMutability| {
+            let mt = |state: &mut SipHasher, mt: TypeAndMut| {
                 mt.mutbl.hash(state);
             };
             let fn_sig = |state: &mut SipHasher, sig: &Binder<FnSig<'tcx>>| {
