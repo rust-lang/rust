@@ -261,7 +261,7 @@ impl Session {
         self.opts.debugging_opts.print_llvm_passes
     }
     pub fn lto(&self) -> bool {
-        self.opts.cg.lto && !self.target.target.options.lto_supported
+        self.opts.cg.lto && self.target.target.options.lto_supported
     }
     pub fn no_landing_pads(&self) -> bool {
         self.opts.debugging_opts.no_landing_pads
