@@ -269,14 +269,18 @@ impl File {
     /// will be extended to `size` and have all of the intermediate data filled
     /// in with 0s.
     ///
+    /// # Errors
+    ///
+    /// This function will return an error if the file is not opened for writing.
+    ///
     /// # Examples
     ///
     /// ```no_run
     /// use std::fs::File;
     ///
     /// # fn foo() -> std::io::Result<()> {
-    /// let mut f = try!(File::open("foo.txt"));
-    /// try!(f.set_len(0));
+    /// let mut f = try!(File::create("foo.txt"));
+    /// try!(f.set_len(10));
     /// # Ok(())
     /// # }
     /// ```
