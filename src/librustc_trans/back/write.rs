@@ -575,9 +575,6 @@ pub fn run_passes(sess: &Session,
                   trans: &mut CrateTranslation,
                   output_types: &[config::OutputType],
                   crate_output: &OutputFilenames) {
-    // Once https://codereview.chromium.org/1202733003 lands, remove the next line:
-    if sess.target.target.options.is_like_pnacl { return; }
-
     // It's possible that we have `codegen_units > 1` but only one item in
     // `trans.modules`.  We could theoretically proceed and do LTO in that
     // case, but it would be confusing to have the validity of
