@@ -29,7 +29,7 @@
 //! through the absolute path `::std`, as in
 //! [`::std::env::args()`](env/fn.args.html).
 //!
-//! [book-crate-root]: file:///home/brian/dev/rust2/build/doc/book/crates-and-modules.html#basic-terminology:-crates-and-modules
+//! [book-crate-root]: ../book/crates-and-modules.html#basic-terminology:-crates-and-modules
 //! [book-use]: ../book/crates-and-modules.html#importing-modules-with-use
 //!
 //! Furthermore, the standard library defines [The Rust
