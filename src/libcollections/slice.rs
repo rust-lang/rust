@@ -1033,7 +1033,7 @@ pub trait SliceConcatExt<T: ?Sized> {
     /// ```
     /// assert_eq!(["hello", "world"].join(" "), "hello world");
     /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.3.0")]
     fn join(&self, sep: &T) -> Self::Output;
 
     /// Flattens a slice of `T` into a single value `Self::Output`, placing a
