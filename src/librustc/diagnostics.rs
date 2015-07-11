@@ -375,7 +375,7 @@ fn main() {
 ```
 
 Remember: you can't use a function call inside a const's initialization
-expression! However, you can totally use it elsewhere you want:
+expression! However, you can totally use it anywhere else:
 
 ```
 fn main() {
@@ -390,6 +390,24 @@ fn main() {
 E0020: r##"
 This error indicates that an attempt was made to divide by zero (or take the
 remainder of a zero divisor) in a static or constant expression.
+"##,
+
+E0022: r##"
+Constant functions are not allowed to mutate anything. Thus, binding to an
+argument with a mutable pattern is not allowed. For example,
+
+```
+const fn foo(mut x: u8) {
+    // do stuff
+}
+```
+
+is bad because the function body may not mutate `x`.
+
+Remove any mutable bindings from the argument list to fix this error. In case
+you need to mutate the argument, try lazily initializing a global variable
+instead of using a const fn, or refactoring the code to a functional style to
+avoid mutation if possible.
 "##,
 
 E0030: r##"
@@ -1277,7 +1295,6 @@ contain references (with a maximum lifetime of `'a`).
 
 register_diagnostics! {
     // E0006 // merged with E0005
-    E0022,
     E0038,
 //  E0134,
 //  E0135,
