@@ -202,8 +202,8 @@ http://doc.rust-lang.org/reference.html#types
 }
 
 register_diagnostics! {
-    E0157,
-    E0153,
+    E0153, // called no where
+    E0157, // called from no where
     E0253, // not directly importable
     E0254, // import conflicts with imported crate in this module
     E0257,
