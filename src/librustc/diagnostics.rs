@@ -306,6 +306,28 @@ const FOO: i32 = { const X : i32 = 0; X };
 ```
 "##,
 
+E0017: r##"
+References in statics and constants may only refer to immutable values. Example:
+
+```
+static X: i32 = 1;
+const C: i32 = 2;
+
+// these three are not allowed:
+const CR: &'static mut i32 = &mut C;
+static STATIC_REF: &'static mut i32 = &mut X;
+static CONST_REF: &'static mut i32 = &mut C;
+```
+
+Statics are shared everywhere, and if they refer to mutable data one might
+violate memory safety since holding multiple mutable references to shared data
+is not allowed.
+
+If you really want global mutable state, try using a global `UnsafeCell` or
+`static mut`.
+
+"##,
+
 E0018: r##"
 The value of static and const variables must be known at compile time. You
 can't cast a pointer as an integer because we can't know what value the
@@ -1255,7 +1277,6 @@ contain references (with a maximum lifetime of `'a`).
 
 register_diagnostics! {
     // E0006 // merged with E0005
-    E0017,
     E0022,
     E0038,
 //  E0134,
