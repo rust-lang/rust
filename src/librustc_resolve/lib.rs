@@ -23,7 +23,7 @@
 #![feature(rc_weak)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
-#![feature(slice_extras)]
+#![feature(slice_splits)]
 #![feature(staged_api)]
 
 #[macro_use] extern crate log;
@@ -2881,7 +2881,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                     segments: &[ast::PathSegment],
                                     namespace: Namespace)
                                     -> Option<(Def, LastPrivate)> {
-        let module_path = segments.init().iter()
+        let module_path = segments.split_last().unwrap().1.iter()
                                          .map(|ps| ps.identifier.name)
                                          .collect::<Vec<_>>();
 
@@ -2939,7 +2939,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                    segments: &[ast::PathSegment],
                                    namespace: Namespace)
                                        -> Option<(Def, LastPrivate)> {
-        let module_path = segments.init().iter()
+        let module_path = segments.split_last().unwrap().1.iter()
                                          .map(|ps| ps.identifier.name)
                                          .collect::<Vec<_>>();
 

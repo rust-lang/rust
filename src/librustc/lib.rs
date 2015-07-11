@@ -53,7 +53,7 @@
 #![feature(rustc_private)]
 #![feature(scoped_tls)]
 #![feature(slice_bytes)]
-#![feature(slice_extras)]
+#![feature(slice_splits)]
 #![feature(slice_patterns)]
 #![feature(slice_position_elem)]
 #![feature(staged_api)]

@@ -83,6 +83,8 @@ pub trait SliceExt {
     fn first<'a>(&'a self) -> Option<&'a Self::Item>;
     fn tail<'a>(&'a self) -> &'a [Self::Item];
     fn init<'a>(&'a self) -> &'a [Self::Item];
+    fn split_first<'a>(&'a self) -> Option<(&'a Self::Item, &'a [Self::Item])>;
+    fn split_last<'a>(&'a self) -> Option<(&'a Self::Item, &'a [Self::Item])>;
     fn last<'a>(&'a self) -> Option<&'a Self::Item>;
     unsafe fn get_unchecked<'a>(&'a self, index: usize) -> &'a Self::Item;
     fn as_ptr(&self) -> *const Self::Item;
@@ -95,6 +97,8 @@ pub trait SliceExt {
     fn first_mut<'a>(&'a mut self) -> Option<&'a mut Self::Item>;
     fn tail_mut<'a>(&'a mut self) -> &'a mut [Self::Item];
     fn init_mut<'a>(&'a mut self) -> &'a mut [Self::Item];
+    fn split_first_mut<'a>(&'a mut self) -> Option<(&'a mut Self::Item, &'a mut [Self::Item])>;
+    fn split_last_mut<'a>(&'a mut self) -> Option<(&'a mut Self::Item, &'a mut [Self::Item])>;
     fn last_mut<'a>(&'a mut self) -> Option<&'a mut Self::Item>;
     fn split_mut<'a, P>(&'a mut self, pred: P) -> SplitMut<'a, Self::Item, P>
                         where P: FnMut(&Self::Item) -> bool;
@@ -238,8 +242,17 @@ impl<T> SliceExt for [T] {
     fn tail(&self) -> &[T] { &self[1..] }
 
     #[inline]
-    fn init(&self) -> &[T] {
-        &self[..self.len() - 1]
+    fn split_first(&self) -> Option<(&T, &[T])> {
+        if self.is_empty() { None } else { Some((&self[0], &self[1..])) }
+    }
+
+    #[inline]
+    fn init(&self) -> &[T] { &self[..self.len() - 1] }
+
+    #[inline]
+    fn split_last(&self) -> Option<(&T, &[T])> {
+        let len = self.len();
+        if len == 0 { None } else { Some((&self[len - 1], &self[..(len - 1)])) }
     }
 
     #[inline]
@@ -328,14 +341,29 @@ impl<T> SliceExt for [T] {
     }
 
     #[inline]
-    fn tail_mut(&mut self) -> &mut [T] {
-        &mut self[1 ..]
+    fn tail_mut(&mut self) -> &mut [T] { &mut self[1 ..] }
+
+    #[inline]
+    fn split_first_mut(&mut self) -> Option<(&mut T, &mut [T])> {
+        if self.is_empty() { None } else {
+            let split = self.split_at_mut(1);
+            Some((&mut split.0[0], split.1))
+        }
     }
 
     #[inline]
     fn init_mut(&mut self) -> &mut [T] {
         let len = self.len();
         &mut self[.. (len - 1)]
+    }
+
+    #[inline]
+    fn split_last_mut(&mut self) -> Option<(&mut T, &mut [T])> {
+        let len = self.len();
+        if len == 0 { None } else {
+            let split = self.split_at_mut(len - 1);
+            Some((&mut split.1[0], split.0))
+        }
     }
 
     #[inline]
