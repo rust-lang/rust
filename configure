@@ -1137,11 +1137,6 @@ do
 	    then
 		err "I need the NaCl SDK path! (use --nacl-cross-path)"
 	    fi
-            if [ ! -z "$CFG_LLVM_ROOT" ]
-            then
-                CFG_LLVM_ROOT="${CFG_NACL_CROSS_PATH}/toolchain/`${CFG_NACL_CROSS_PATH}/tools/getos.py`_pnacl"
-                putvar CFG_LLVM_ROOT
-            fi
 	    ;;
         arm-apple-darwin)
             if [ $CFG_OSTYPE != apple-darwin ]
