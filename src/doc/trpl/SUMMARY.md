@@ -16,6 +16,7 @@
     * [Iterators](iterators.md)
     * [Concurrency](concurrency.md)
     * [Error Handling](error-handling.md)
+    * [Choosing your Guarantees](choosing-your-guarantees.md)
     * [FFI](ffi.md)
     * [Borrow and AsRef](borrow-and-asref.md)
     * [Release Channels](release-channels.md)
