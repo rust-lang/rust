@@ -84,7 +84,7 @@ crates.
 
 Cargo attempts to be as flexible as possible in terms of installing crates from
 various locations and specifying what should be installed. All binaries will be
-stored in the **cargo-local** directory `CARGO_HOME/bin`. This is typically
+stored in the **cargo-local** directory `$CARGO_HOME/bin`. This is typically
 `$HOME/.cargo/bin` but the home directory can be modified via the `$CARGO_HOME`
 environment variable.
 
