@@ -765,7 +765,9 @@ pub fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                         trait_pointer_metadata(cx, t, None, unique_type_id),
             false)
         }
-        ty::TyBox(ty) | ty::TyRawPtr(ty::TypeAndMut{ty, ..}) | ty::TyRef(_, ty::TypeAndMut{ty, ..}) => {
+        ty::TyBox(ty) |
+        ty::TyRawPtr(ty::TypeAndMut{ty, ..}) |
+        ty::TyRef(_, ty::TypeAndMut{ty, ..}) => {
             match ty.sty {
                 ty::TySlice(typ) => {
                     vec_slice_metadata(cx, t, typ, unique_type_id, usage_site_span)

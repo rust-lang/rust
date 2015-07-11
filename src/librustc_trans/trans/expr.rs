@@ -440,9 +440,12 @@ fn coerce_unsized<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     match (&source.ty.sty, &target.ty.sty) {
         (&ty::TyBox(a), &ty::TyBox(b)) |
-        (&ty::TyRef(_, ty::TypeAndMut { ty: a, .. }), &ty::TyRef(_, ty::TypeAndMut { ty: b, .. })) |
-        (&ty::TyRef(_, ty::TypeAndMut { ty: a, .. }), &ty::TyRawPtr(ty::TypeAndMut { ty: b, .. })) |
-        (&ty::TyRawPtr(ty::TypeAndMut { ty: a, .. }), &ty::TyRawPtr(ty::TypeAndMut { ty: b, .. })) => {
+        (&ty::TyRef(_, ty::TypeAndMut { ty: a, .. }),
+         &ty::TyRef(_, ty::TypeAndMut { ty: b, .. })) |
+        (&ty::TyRef(_, ty::TypeAndMut { ty: a, .. }),
+         &ty::TyRawPtr(ty::TypeAndMut { ty: b, .. })) |
+        (&ty::TyRawPtr(ty::TypeAndMut { ty: a, .. }),
+         &ty::TyRawPtr(ty::TypeAndMut { ty: b, .. })) => {
             let (inner_source, inner_target) = (a, b);
 
             let (base, old_info) = if !type_is_sized(bcx.tcx(), inner_source) {

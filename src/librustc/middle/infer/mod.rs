@@ -10,14 +10,11 @@
 
 //! See the Book for more information.
 
-#![allow(non_camel_case_types)]
-
 pub use self::LateBoundRegionConversionTime::*;
 pub use self::RegionVariableOrigin::*;
 pub use self::SubregionOrigin::*;
 pub use self::TypeOrigin::*;
 pub use self::ValuePairs::*;
-pub use self::fixup_err::*;
 pub use middle::ty::IntVarValue;
 pub use self::freshen::TypeFreshener;
 pub use self::region_inference::GenericKind;
@@ -65,7 +62,7 @@ pub mod unify_key;
 
 pub type Bound<T> = Option<T>;
 pub type UnitResult<'tcx> = RelateResult<'tcx, ()>; // "unify result"
-pub type fres<T> = Result<T, fixup_err>; // "fixup result"
+pub type FixupResult<T> = Result<T, FixupError>; // "fixup result"
 
 pub struct InferCtxt<'a, 'tcx: 'a> {
     pub tcx: &'a ty::ctxt<'tcx>,
@@ -313,23 +310,25 @@ pub enum RegionVariableOrigin {
 }
 
 #[derive(Copy, Clone, Debug)]
-pub enum fixup_err {
-    unresolved_int_ty(IntVid),
-    unresolved_float_ty(FloatVid),
-    unresolved_ty(TyVid)
+pub enum FixupError {
+    UnresolvedIntTy(IntVid),
+    UnresolvedFloatTy(FloatVid),
+    UnresolvedTy(TyVid)
 }
 
-pub fn fixup_err_to_string(f: fixup_err) -> String {
+pub fn fixup_err_to_string(f: FixupError) -> String {
+    use self::FixupError::*;
+
     match f {
-      unresolved_int_ty(_) => {
+      UnresolvedIntTy(_) => {
           "cannot determine the type of this integer; add a suffix to \
            specify the type explicitly".to_string()
       }
-      unresolved_float_ty(_) => {
+      UnresolvedFloatTy(_) => {
           "cannot determine the type of this number; add a suffix to specify \
            the type explicitly".to_string()
       }
-      unresolved_ty(_) => "unconstrained type".to_string(),
+      UnresolvedTy(_) => "unconstrained type".to_string(),
     }
 }
 
@@ -1169,7 +1168,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         if ty.has_infer_types() || ty.references_error() { Err(()) } else { Ok(ty) }
     }
 
-    pub fn fully_resolve<T:TypeFoldable<'tcx>>(&self, value: &T) -> fres<T> {
+    pub fn fully_resolve<T:TypeFoldable<'tcx>>(&self, value: &T) -> FixupResult<T> {
         /*!
          * Attempts to resolve all type/region variables in
          * `value`. Region inference must have been run already (e.g.,

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use super::{InferCtxt, fixup_err, fres, unresolved_ty, unresolved_int_ty, unresolved_float_ty};
+use super::{InferCtxt, FixupError, FixupResult};
 use middle::ty::{self, Ty, HasTypeFlags};
 use middle::ty_fold::{self, TypeFoldable};
 
@@ -51,7 +51,7 @@ impl<'a, 'tcx> ty_fold::TypeFolder<'tcx> for OpportunisticTypeResolver<'a, 'tcx>
 /// Full type resolution replaces all type and region variables with
 /// their concrete results. If any variable cannot be replaced (never unified, etc)
 /// then an `Err` result is returned.
-pub fn fully_resolve<'a, 'tcx, T>(infcx: &InferCtxt<'a,'tcx>, value: &T) -> fres<T>
+pub fn fully_resolve<'a, 'tcx, T>(infcx: &InferCtxt<'a,'tcx>, value: &T) -> FixupResult<T>
     where T : TypeFoldable<'tcx>
 {
     let mut full_resolver = FullTypeResolver { infcx: infcx, err: None };
@@ -66,7 +66,7 @@ pub fn fully_resolve<'a, 'tcx, T>(infcx: &InferCtxt<'a,'tcx>, value: &T) -> fres
 // `err` field is not enforcable otherwise.
 struct FullTypeResolver<'a, 'tcx:'a> {
     infcx: &'a InferCtxt<'a, 'tcx>,
-    err: Option<fixup_err>,
+    err: Option<FixupError>,
 }
 
 impl<'a, 'tcx> ty_fold::TypeFolder<'tcx> for FullTypeResolver<'a, 'tcx> {
@@ -81,15 +81,15 @@ impl<'a, 'tcx> ty_fold::TypeFolder<'tcx> for FullTypeResolver<'a, 'tcx> {
             let t = self.infcx.shallow_resolve(t);
             match t.sty {
                 ty::TyInfer(ty::TyVar(vid)) => {
-                    self.err = Some(unresolved_ty(vid));
+                    self.err = Some(FixupError::UnresolvedTy(vid));
                     self.tcx().types.err
                 }
                 ty::TyInfer(ty::IntVar(vid)) => {
-                    self.err = Some(unresolved_int_ty(vid));
+                    self.err = Some(FixupError::UnresolvedIntTy(vid));
                     self.tcx().types.err
                 }
                 ty::TyInfer(ty::FloatVar(vid)) => {
-                    self.err = Some(unresolved_float_ty(vid));
+                    self.err = Some(FixupError::UnresolvedFloatTy(vid));
                     self.tcx().types.err
                 }
                 ty::TyInfer(_) => {
