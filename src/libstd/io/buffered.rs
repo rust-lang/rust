@@ -20,7 +20,7 @@ use fmt;
 use io::{self, DEFAULT_BUF_SIZE, Error, ErrorKind, SeekFrom};
 use ptr;
 
-/// Wraps a `Read` and buffers input from it.
+/// The `BufReader` struct adds buffering to any reader.
 ///
 /// It can be excessively inefficient to work directly with a `Read` instance.
 /// For example, every call to `read` on `TcpStream` results in a system call.
@@ -29,7 +29,7 @@ use ptr;
 ///
 /// # Examples
 ///
-/// ```no_run
+/// ```
 /// use std::io::prelude::*;
 /// use std::io::BufReader;
 /// use std::fs::File;
@@ -54,12 +54,40 @@ pub struct BufReader<R> {
 
 impl<R: Read> BufReader<R> {
     /// Creates a new `BufReader` with a default buffer capacity.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::io::BufReader;
+    /// use std::fs::File;
+    ///
+    /// # fn foo() -> std::io::Result<()> {
+    /// let mut f = try!(File::open("log.txt"));
+    /// let mut reader = BufReader::new(f);
+    /// # Ok(())
+    /// # }
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(inner: R) -> BufReader<R> {
         BufReader::with_capacity(DEFAULT_BUF_SIZE, inner)
     }
 
     /// Creates a new `BufReader` with the specified buffer capacity.
+    ///
+    /// # Examples
+    ///
+    /// Creating a buffer with ten bytes of capacity:
+    ///
+    /// ```
+    /// use std::io::BufReader;
+    /// use std::fs::File;
+    ///
+    /// # fn foo() -> std::io::Result<()> {
+    /// let mut f = try!(File::open("log.txt"));
+    /// let mut reader = BufReader::with_capacity(10, f);
+    /// # Ok(())
+    /// # }
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with_capacity(cap: usize, inner: R) -> BufReader<R> {
         BufReader {
@@ -71,20 +99,65 @@ impl<R: Read> BufReader<R> {
     }
 
     /// Gets a reference to the underlying reader.
+    ///
+    /// It is inadvisable to directly read from the underlying reader.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::io::BufReader;
+    /// use std::fs::File;
+    ///
+    /// # fn foo() -> std::io::Result<()> {
+    /// let mut f1 = try!(File::open("log.txt"));
+    /// let mut reader = BufReader::new(f1);
+    ///
+    /// let f2 = reader.get_ref();
+    /// # Ok(())
+    /// # }
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get_ref(&self) -> &R { &self.inner }
 
     /// Gets a mutable reference to the underlying reader.
     ///
-    /// # Warning
-    ///
     /// It is inadvisable to directly read from the underlying reader.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::io::BufReader;
+    /// use std::fs::File;
+    ///
+    /// # fn foo() -> std::io::Result<()> {
+    /// let mut f1 = try!(File::open("log.txt"));
+    /// let mut reader = BufReader::new(f1);
+    ///
+    /// let f2 = reader.get_mut();
+    /// # Ok(())
+    /// # }
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get_mut(&mut self) -> &mut R { &mut self.inner }
 
     /// Unwraps this `BufReader`, returning the underlying reader.
     ///
     /// Note that any leftover data in the internal buffer is lost.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::io::BufReader;
+    /// use std::fs::File;
+    ///
+    /// # fn foo() -> std::io::Result<()> {
+    /// let mut f1 = try!(File::open("log.txt"));
+    /// let mut reader = BufReader::new(f1);
+    ///
+    /// let f2 = reader.into_inner();
+    /// # Ok(())
+    /// # }
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_inner(self) -> R { self.inner }
 }
