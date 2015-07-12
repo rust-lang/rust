@@ -8,17 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::ops::{Index};
-
-trait Hierarchy {
-    type Value;
-    type ChildKey;
-    type Children = Index<Self::ChildKey, Output=Hierarchy>;
-    //~^ ERROR: the value of the associated type `ChildKey`
-    //~^^ ERROR: the value of the associated type `Children`
-    //~^^^ ERROR: the value of the associated type `Value`
-
-    fn data(&self) -> Option<(Self::Value, Self::Children)>;
+pub trait Trait where Self::Out: std::fmt::Display {
+    type Out;
 }
 
 fn main() {}
