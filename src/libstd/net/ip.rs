@@ -442,7 +442,7 @@ impl fmt::Display for Ipv6Addr {
                             .iter()
                             .map(|&seg| format!("{:x}", seg))
                             .collect::<Vec<String>>()
-                            .connect(":")
+                            .join(":")
                     }
 
                     write!(fmt, "{}::{}",

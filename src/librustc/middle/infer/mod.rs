@@ -1097,7 +1097,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
     pub fn tys_to_string(&self, ts: &[Ty<'tcx>]) -> String {
         let tstrs: Vec<String> = ts.iter().map(|t| self.ty_to_string(*t)).collect();
-        format!("({})", tstrs.connect(", "))
+        format!("({})", tstrs.join(", "))
     }
 
     pub fn trait_ref_to_string(&self, t: &ty::TraitRef<'tcx>) -> String {

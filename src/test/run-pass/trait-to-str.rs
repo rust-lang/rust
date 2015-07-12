@@ -24,7 +24,7 @@ impl<T:to_str> to_str for Vec<T> {
                 self.iter()
                     .map(|e| e.to_string_())
                     .collect::<Vec<String>>()
-                    .connect(", "))
+                    .join(", "))
     }
 }
 

@@ -1445,7 +1445,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                 let discrfield = discrfield.iter()
                                            .skip(1)
                                            .map(|x| x.to_string())
-                                           .collect::<Vec<_>>().connect("$");
+                                           .collect::<Vec<_>>().join("$");
                 let union_member_name = format!("RUST$ENCODED$ENUM${}${}",
                                                 discrfield,
                                                 null_variant_name);

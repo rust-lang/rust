@@ -1002,7 +1002,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             "not all trait items implemented, missing: `{}`",
             missing_items.iter()
                   .map(<ast::Name>::as_str)
-                  .collect::<Vec<_>>().connect("`, `"))
+                  .collect::<Vec<_>>().join("`, `"))
     }
 
     if !invalidated_items.is_empty() {
@@ -1013,7 +1013,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                   invalidator.ident.as_str(),
                   invalidated_items.iter()
                                    .map(<ast::Name>::as_str)
-                                   .collect::<Vec<_>>().connect("`, `"))
+                                   .collect::<Vec<_>>().join("`, `"))
     }
 }
 
@@ -2868,7 +2868,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                 span_err!(tcx.sess, span, E0063,
                     "missing field{}: {}",
                     if missing_fields.len() == 1 {""} else {"s"},
-                    missing_fields.connect(", "));
+                    missing_fields.join(", "));
              }
         }
 

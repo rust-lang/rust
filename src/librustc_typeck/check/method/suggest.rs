@@ -134,7 +134,7 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                      p.self_ty(),
                                      p))
                     .collect::<Vec<_>>()
-                    .connect(", ");
+                    .join(", ");
                 cx.sess.fileline_note(
                     span,
                     &format!("the method `{}` exists but the \

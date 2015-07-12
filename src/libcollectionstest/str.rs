@@ -158,32 +158,32 @@ fn test_concat_for_different_lengths() {
     test_concat!("abc", ["", "a", "bc"]);
 }
 
-macro_rules! test_connect {
+macro_rules! test_join {
     ($expected: expr, $string: expr, $delim: expr) => {
         {
-            let s = $string.connect($delim);
+            let s = $string.join($delim);
             assert_eq!($expected, s);
         }
     }
 }
 
 #[test]
-fn test_connect_for_different_types() {
-    test_connect!("a-b", ["a", "b"], "-");
+fn test_join_for_different_types() {
+    test_join!("a-b", ["a", "b"], "-");
     let hyphen = "-".to_string();
-    test_connect!("a-b", [s("a"), s("b")], &*hyphen);
-    test_connect!("a-b", vec!["a", "b"], &*hyphen);
-    test_connect!("a-b", &*vec!["a", "b"], "-");
-    test_connect!("a-b", vec![s("a"), s("b")], "-");
+    test_join!("a-b", [s("a"), s("b")], &*hyphen);
+    test_join!("a-b", vec!["a", "b"], &*hyphen);
+    test_join!("a-b", &*vec!["a", "b"], "-");
+    test_join!("a-b", vec![s("a"), s("b")], "-");
 }
 
 #[test]
-fn test_connect_for_different_lengths() {
+fn test_join_for_different_lengths() {
     let empty: &[&str] = &[];
-    test_connect!("", empty, "-");
-    test_connect!("a", ["a"], "-");
-    test_connect!("a-b", ["a", "b"], "-");
-    test_connect!("-a-bc", ["", "a", "bc"], "-");
+    test_join!("", empty, "-");
+    test_join!("a", ["a"], "-");
+    test_join!("a-b", ["a", "b"], "-");
+    test_join!("-a-bc", ["", "a", "bc"], "-");
 }
 
 #[test]
@@ -2089,12 +2089,12 @@ mod bench {
     }
 
     #[bench]
-    fn bench_connect(b: &mut Bencher) {
+    fn bench_join(b: &mut Bencher) {
         let s = "ศไทย中华Việt Nam; Mary had a little lamb, Little lamb";
         let sep = "→";
         let v = vec![s, s, s, s, s, s, s, s, s, s];
         b.iter(|| {
-            assert_eq!(v.connect(sep).len(), s.len() * 10 + sep.len() * 9);
+            assert_eq!(v.join(sep).len(), s.len() * 10 + sep.len() * 9);
         })
     }
 

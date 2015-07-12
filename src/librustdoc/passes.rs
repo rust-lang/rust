@@ -361,7 +361,7 @@ pub fn unindent(s: &str) -> String {
                 line[min_indent..].to_string()
             }
         }).collect::<Vec<_>>());
-        unindented.connect("\n")
+        unindented.join("\n")
     } else {
         s.to_string()
     }

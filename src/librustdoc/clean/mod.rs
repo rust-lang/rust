@@ -2536,12 +2536,12 @@ fn name_from_pat(p: &ast::Pat) -> String {
             format!("{} {{ {}{} }}", path_to_string(name),
                 fields.iter().map(|&Spanned { node: ref fp, .. }|
                                   format!("{}: {}", fp.ident.as_str(), name_from_pat(&*fp.pat)))
-                             .collect::<Vec<String>>().connect(", "),
+                             .collect::<Vec<String>>().join(", "),
                 if etc { ", ..." } else { "" }
             )
         },
         PatTup(ref elts) => format!("({})", elts.iter().map(|p| name_from_pat(&**p))
-                                            .collect::<Vec<String>>().connect(", ")),
+                                            .collect::<Vec<String>>().join(", ")),
         PatBox(ref p) => name_from_pat(&**p),
         PatRegion(ref p, _) => name_from_pat(&**p),
         PatLit(..) => {
@@ -2555,7 +2555,7 @@ fn name_from_pat(p: &ast::Pat) -> String {
             let begin = begin.iter().map(|p| name_from_pat(&**p));
             let mid = mid.as_ref().map(|p| format!("..{}", name_from_pat(&**p))).into_iter();
             let end = end.iter().map(|p| name_from_pat(&**p));
-            format!("[{}]", begin.chain(mid).chain(end).collect::<Vec<_>>().connect(", "))
+            format!("[{}]", begin.chain(mid).chain(end).collect::<Vec<_>>().join(", "))
         },
         PatMac(..) => {
             warn!("can't document the name of a function argument \

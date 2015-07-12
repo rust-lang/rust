@@ -1062,9 +1062,21 @@ pub trait SliceConcatExt<T: ?Sized> {
     /// # Examples
     ///
     /// ```
+    /// assert_eq!(["hello", "world"].join(" "), "hello world");
+    /// ```
+    #[stable(feature = "rename_connect_to_join", since = "1.3.0")]
+    fn join(&self, sep: &T) -> Self::Output;
+
+    /// Flattens a slice of `T` into a single value `Self::Output`, placing a
+    /// given separator between each.
+    ///
+    /// # Examples
+    ///
+    /// ```
     /// assert_eq!(["hello", "world"].connect(" "), "hello world");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[deprecated(since = "1.3.0", reason = "renamed to join")]
     fn connect(&self, sep: &T) -> Self::Output;
 }
 
@@ -1080,7 +1092,7 @@ impl<T: Clone, V: Borrow<[T]>> SliceConcatExt<T> for [V] {
         result
     }
 
-    fn connect(&self, sep: &T) -> Vec<T> {
+    fn join(&self, sep: &T) -> Vec<T> {
         let size = self.iter().fold(0, |acc, v| acc + v.borrow().len());
         let mut result = Vec::with_capacity(size + self.len());
         let mut first = true;
@@ -1089,6 +1101,10 @@ impl<T: Clone, V: Borrow<[T]>> SliceConcatExt<T> for [V] {
             result.push_all(v.borrow())
         }
         result
+    }
+
+    fn connect(&self, sep: &T) -> Vec<T> {
+        self.join(sep)
     }
 }
 

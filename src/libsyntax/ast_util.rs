@@ -27,7 +27,7 @@ pub fn path_name_i(idents: &[Ident]) -> String {
     // FIXME: Bad copies (#2543 -- same for everything else that says "bad")
     idents.iter().map(|i| {
         token::get_ident(*i).to_string()
-    }).collect::<Vec<String>>().connect("::")
+    }).collect::<Vec<String>>().join("::")
 }
 
 pub fn local_def(id: NodeId) -> DefId {
