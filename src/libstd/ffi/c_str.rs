@@ -8,13 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use ascii;
 use borrow::{Cow, ToOwned, Borrow};
 use boxed::Box;
 use clone::Clone;
 use convert::{Into, From};
 use cmp::{PartialEq, Eq, PartialOrd, Ord, Ordering};
 use error::Error;
-use fmt;
+use fmt::{self, Write};
 use io;
 use iter::Iterator;
 use libc;
@@ -268,7 +269,18 @@ impl Deref for CString {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Debug for CString {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Debug::fmt(&String::from_utf8_lossy(self.as_bytes()), f)
+        fmt::Debug::fmt(&**self, f)
+    }
+}
+
+#[stable(feature = "cstr_debug", since = "1.3.0")]
+impl fmt::Debug for CStr {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        try!(write!(f, "\""));
+        for byte in self.to_bytes().iter().flat_map(|&b| ascii::escape_default(b)) {
+            try!(f.write_char(byte as char));
+        }
+        write!(f, "\"")
     }
 }
 
@@ -501,8 +513,8 @@ mod tests {
 
     #[test]
     fn formatted() {
-        let s = CString::new(&b"12"[..]).unwrap();
-        assert_eq!(format!("{:?}", s), "\"12\"");
+        let s = CString::new(&b"abc\x01\x02\n\xE2\x80\xA6\xFF"[..]).unwrap();
+        assert_eq!(format!("{:?}", s), r#""abc\x01\x02\n\xe2\x80\xa6\xff""#);
     }
 
     #[test]
