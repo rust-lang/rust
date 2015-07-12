@@ -2051,6 +2051,20 @@ pub mod types {
                 pub type LPFILETIME = *mut FILETIME;
 
                 #[repr(C)]
+                #[derive(Copy, Clone)] pub struct SYSTEMTIME {
+                    pub wYear: WORD,
+                    pub wMonth: WORD,
+                    pub wDayOfWeek: WORD,
+                    pub wDay: WORD,
+                    pub wHour: WORD,
+                    pub wMinute: WORD,
+                    pub wSecond: WORD,
+                    pub wMilliseconds: WORD
+                }
+
+                pub type LPSYSTEMTIME = *mut SYSTEMTIME;
+
+                #[repr(C)]
                 #[derive(Copy, Clone)] pub struct GUID {
                     pub Data1: DWORD,
                     pub Data2: WORD,
@@ -6329,7 +6343,8 @@ pub mod funcs {
                                                LPMEMORY_BASIC_INFORMATION,
                                                LPSYSTEM_INFO, HANDLE, LPHANDLE,
                                                LARGE_INTEGER, PLARGE_INTEGER,
-                                               LPFILETIME, LPWIN32_FIND_DATAW};
+                                               LPFILETIME, LPSYSTEMTIME,
+                                               LPWIN32_FIND_DATAW};
 
             extern "system" {
                 pub fn GetEnvironmentVariableW(n: LPCWSTR,
@@ -6467,8 +6482,11 @@ pub mod funcs {
                                         dwMoveMethod: DWORD) -> BOOL;
                 pub fn SetEndOfFile(hFile: HANDLE) -> BOOL;
 
+                pub fn GetSystemTime(lpSystemTime: LPSYSTEMTIME);
                 pub fn GetSystemTimeAsFileTime(
                             lpSystemTimeAsFileTime: LPFILETIME);
+
+                pub fn GetLocalTime(lpSystemTime: LPSYSTEMTIME);
 
                 pub fn QueryPerformanceFrequency(
                             lpFrequency: *mut LARGE_INTEGER) -> BOOL;
