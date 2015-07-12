@@ -17,7 +17,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     var featureRegexp = new RegExp('^\s*#!\\[feature\\(\.*?\\)\\]');
-    var elements = document.querySelectorAll('pre.rust');
+    var elements = document.querySelectorAll('pre.rust-example-rendered');
 
     Array.prototype.forEach.call(elements, function(el) {
         el.onmouseover = function(e) {
