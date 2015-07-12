@@ -99,9 +99,11 @@ An imported symbol resolved to an already imported symbol.
 An example of this error:
 
 ```
-extern crate foo; // foo is a crate that doesn't export symbols
+extern crate foo; // foo is a crate that exported its own symbol
 
-use foo::*; // error, `foo::*` resolves to `foo` already imported
+use foo::*; // error, `foo::*` also resolves to `foo` already imported
+// or
+use foo::self; // error, `use`ing self resolves to `foo` already imported
 ```
 "##,
 
