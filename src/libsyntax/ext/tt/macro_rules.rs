@@ -501,7 +501,7 @@ fn is_in_follow(_: &ExtCtxt, tok: &Token, frag: &str) -> Result<bool, String> {
             },
             "path" | "ty" => {
                 match *tok {
-                    Comma | FatArrow | Colon | Eq | Gt => Ok(true),
+                    Comma | FatArrow | Colon | Eq | Gt | Semi => Ok(true),
                     Ident(i, _) if i.as_str() == "as" => Ok(true),
                     _ => Ok(false)
                 }
