@@ -26,16 +26,6 @@
 #![feature(slice_extras)]
 #![feature(staged_api)]
 
-#![macro_use]
-
-macro_rules! resolve_err {
-    ($this:expr, $span:expr, $code:ident, $($rest:tt)*) => {
-        if $this.emit_errors {
-            span_err!($this.session, $span, $code, $($rest)*);
-        }
-    }
-}
-
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;
 #[macro_use] #[no_link] extern crate rustc_bitflags;
@@ -109,10 +99,17 @@ use std::usize;
 use resolve_imports::{Target, ImportDirective, ImportResolution};
 use resolve_imports::Shadowable;
 
-
 // NB: This module needs to be declared first so diagnostics are
 // registered before they are used.
 pub mod diagnostics;
+
+macro_rules! resolve_err {
+    ($this:expr, $span:expr, $code:ident, $($rest:tt)*) => {
+        if $this.emit_errors {
+            span_err!($this.session, $span, $code, $($rest)*);
+        }
+    }
+}
 
 mod check_unused;
 mod record_exports;
@@ -2253,10 +2250,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             for (&key, &binding) in &map_i {
                 if !map_0.contains_key(&key) {
                     resolve_err!(self, binding.span, E0410,
-                                 "variable `{}` from pattern {}{} is \
-                                  not bound in pattern {}1",
+                                 "variable `{}` from pattern #{} is \
+                                  not bound in pattern #1",
                                  key,
-                                 "#", i + 1, "#");
+                                 i + 1);
                 }
             }
         }
@@ -2371,7 +2368,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             path.segments[0].identifier.name == self_type_name;
                         if is_invalid_self_type_name {
                             resolve_err!(self, ty.span, E0411,
-                                         "{}",
                                          "use of `Self` outside of an impl or trait");
                         } else {
                             resolve_err!(self, ty.span, E0412,
@@ -3091,12 +3087,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let rs = f(self);
         self.emit_errors = true;
         rs
-    }
-
-    fn resolve_error(&self, span: Span, s: &str) {
-        if self.emit_errors {
-            self.session.span_err(span, s);
-        }
     }
 
     fn find_fallback_in_self_type(&mut self, name: Name) -> FallbackSuggestion {
