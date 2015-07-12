@@ -1930,10 +1930,17 @@ pub mod types {
                 pub type LONG = c_long;
                 pub type PLONG = *mut c_long;
 
+                pub type ULONG = c_ulong;
+
                 #[cfg(target_arch = "x86")]
                 pub type LONG_PTR = c_long;
                 #[cfg(target_arch = "x86_64")]
                 pub type LONG_PTR = i64;
+
+                #[cfg(target_arch = "x86")]
+                pub type ULONG_PTR = c_ulong;
+                #[cfg(target_arch = "x86_64")]
+                pub type ULONG_PTR = u64;
 
                 pub type LARGE_INTEGER = c_longlong;
                 pub type PLARGE_INTEGER = *mut c_longlong;
