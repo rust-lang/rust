@@ -61,6 +61,7 @@ use core::result::Result;
 use core::str as core_str;
 use core::str::pattern::Pattern;
 use core::str::pattern::{Searcher, ReverseSearcher, DoubleEndedSearcher};
+use core::mem;
 use rustc_unicode::str::{UnicodeStr, Utf16Encoder};
 
 use vec_deque::VecDeque;
@@ -69,6 +70,7 @@ use string::String;
 use rustc_unicode;
 use vec::Vec;
 use slice::SliceConcatExt;
+use boxed::Box;
 
 pub use core::str::{FromStr, Utf8Error};
 pub use core::str::{Lines, LinesAny, CharRange};
@@ -81,10 +83,6 @@ pub use core::str::{from_utf8, Chars, CharIndices, Bytes};
 pub use core::str::{from_utf8_unchecked, ParseBoolError};
 pub use rustc_unicode::str::{SplitWhitespace, Words, Graphemes, GraphemeIndices};
 pub use core::str::pattern;
-
-/*
-Section: Creating a string
-*/
 
 impl<S: Borrow<str>> SliceConcatExt<str> for [S] {
     type Output = String;
@@ -133,10 +131,6 @@ impl<S: Borrow<str>> SliceConcatExt<str> for [S] {
         result
     }
 }
-
-/*
-Section: Iterators
-*/
 
 // Helper functions used for Unicode normalization
 fn canonical_sort(comb: &mut [(char, u8)]) {
@@ -382,10 +376,6 @@ impl<'a> Iterator for Utf16Units<'a> {
     fn size_hint(&self) -> (usize, Option<usize>) { self.encoder.size_hint() }
 }
 
-/*
-Section: Misc
-*/
-
 // Return the initial codepoint accumulator for the first byte.
 // The first byte is special, only want bottom 5 bits for width 2, 4 bits
 // for width 3, and 3 bits for width 4
@@ -413,15 +403,6 @@ impl ToOwned for str {
         }
     }
 }
-
-/*
-Section: CowString
-*/
-
-/*
-Section: Trait implementations
-*/
-
 
 /// Any string that can be represented as a slice.
 #[lang = "str"]
@@ -1923,5 +1904,15 @@ impl str {
                reason = "return type may change to be an iterator")]
     pub fn escape_unicode(&self) -> String {
         self.chars().flat_map(|c| c.escape_unicode()).collect()
+    }
+
+    /// Converts the `Box<str>` into a `String` without copying or allocating.
+    #[unstable(feature = "box_str",
+               reason = "recently added, matches RFC")]
+    pub fn into_string(self: Box<str>) -> String {
+        unsafe {
+            let slice = mem::transmute::<Box<str>, Box<[u8]>>(self);
+            String::from_utf8_unchecked(slice.into_vec())
+        }
     }
 }

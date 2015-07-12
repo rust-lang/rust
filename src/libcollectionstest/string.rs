@@ -374,6 +374,13 @@ fn test_extend_ref() {
     assert_eq!(&a, "foobar");
 }
 
+#[test]
+fn test_into_boxed_slice() {
+    let xs = String::from("hello my name is bob");
+    let ys = xs.into_boxed_slice();
+    assert_eq!(&*ys, "hello my name is bob");
+}
+
 #[bench]
 fn bench_with_capacity(b: &mut Bencher) {
     b.iter(|| {
