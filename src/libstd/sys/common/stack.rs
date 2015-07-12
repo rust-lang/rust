@@ -170,8 +170,7 @@ pub unsafe fn record_sp_limit(limit: usize) {
         asm!("movl $$0x48+90*4, %eax
               movl $0, %gs:(%eax)" :: "r"(limit) : "eax" : "volatile")
     }
-    #[cfg(all(target_arch = "x86",
-              any(target_os = "linux", target_os = "freebsd")))]
+    #[cfg(all(target_arch = "x86", target_os = "linux"))]
     #[inline(always)]
     unsafe fn target_record_sp_limit(limit: usize) {
         asm!("movl $0, %gs:48" :: "r"(limit) :: "volatile")
@@ -197,10 +196,12 @@ pub unsafe fn record_sp_limit(limit: usize) {
     // aarch64 - FIXME(AARCH64): missing...
     // powerpc - FIXME(POWERPC): missing...
     // arm-ios - iOS segmented stack is disabled for now, see related notes
-    // openbsd - segmented stack is disabled
+    // openbsd/bitrig/netbsd - no segmented stacks.
+    // x86-freebsd - no segmented stacks.
     #[cfg(any(target_arch = "aarch64",
               target_arch = "powerpc",
               all(target_arch = "arm", target_os = "ios"),
+              all(target_arch = "x86", target_os = "freebsd"),
               target_os = "bitrig",
               target_os = "netbsd",
               target_os = "openbsd"))]
@@ -262,8 +263,7 @@ pub unsafe fn get_sp_limit() -> usize {
               movl %gs:(%eax), $0" : "=r"(limit) :: "eax" : "volatile");
         return limit;
     }
-    #[cfg(all(target_arch = "x86",
-              any(target_os = "linux", target_os = "freebsd")))]
+    #[cfg(all(target_arch = "x86", target_os = "linux"))]
     #[inline(always)]
     unsafe fn target_get_sp_limit() -> usize {
         let limit;
@@ -291,14 +291,16 @@ pub unsafe fn get_sp_limit() -> usize {
 
     // aarch64 - FIXME(AARCH64): missing...
     // powerpc - FIXME(POWERPC): missing...
-    // arm-ios - iOS doesn't support segmented stacks yet.
-    // openbsd - OpenBSD doesn't support segmented stacks.
+    // arm-ios - no segmented stacks.
+    // openbsd/bitrig/netbsd - no segmented stacks.
+    // x86-freebsd - no segmented stacks..
     //
     // This function might be called by runtime though
     // so it is unsafe to unreachable, let's return a fixed constant.
     #[cfg(any(target_arch = "aarch64",
               target_arch = "powerpc",
               all(target_arch = "arm", target_os = "ios"),
+              all(target_arch = "x86", target_os = "freebsd"),
               target_os = "bitrig",
               target_os = "netbsd",
               target_os = "openbsd"))]
