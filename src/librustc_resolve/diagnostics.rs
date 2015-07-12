@@ -94,7 +94,8 @@ mod bar {
 "##,
 
 E0254: r##"
-An imported symbol resolved to an already imported symbol.
+This error indicates that an imported symbol resolved to an already imported
+symbol.
 
 An example of this error:
 
@@ -102,8 +103,14 @@ An example of this error:
 extern crate foo; // foo is a crate that exported its own symbol
 
 use foo::*; // error, `foo::*` also resolves to `foo` already imported
-// or
-use foo::self; // error, `use`ing self resolves to `foo` already imported
+```
+
+Or yet:
+
+```
+extern crate foo; // foo is a crate that didn't export its own symbol
+
+use foo::{self,bar}; // error, `use`ing self resolves to `foo` already imported
 ```
 "##,
 
