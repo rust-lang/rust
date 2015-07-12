@@ -936,7 +936,7 @@ fn compile_guard<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
            bcx.to_str(),
            guard_expr,
            m,
-           vals.iter().map(|v| bcx.val_to_string(*v)).collect::<Vec<_>>().connect(", "));
+           vals.iter().map(|v| bcx.val_to_string(*v)).collect::<Vec<_>>().join(", "));
     let _indenter = indenter();
 
     let mut bcx = insert_lllocals(bcx, &data.bindings_map, None);
@@ -981,7 +981,7 @@ fn compile_submatch<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     debug!("compile_submatch(bcx={}, m={:?}, vals=[{}])",
            bcx.to_str(),
            m,
-           vals.iter().map(|v| bcx.val_to_string(*v)).collect::<Vec<_>>().connect(", "));
+           vals.iter().map(|v| bcx.val_to_string(*v)).collect::<Vec<_>>().join(", "));
     let _indenter = indenter();
     let _icx = push_ctxt("match::compile_submatch");
     let mut bcx = bcx;

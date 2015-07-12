@@ -78,7 +78,7 @@ pub fn expand_mod(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                    .iter()
                    .map(|x| token::get_ident(*x).to_string())
                    .collect::<Vec<String>>()
-                   .connect("::");
+                   .join("::");
     base::MacEager::expr(cx.expr_str(
             sp,
             token::intern_and_get_ident(&string[..])))

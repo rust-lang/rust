@@ -5215,7 +5215,7 @@ impl<'a> Parser<'a> {
                             last_span,
                             &format!("illegal ABI: expected one of [{}], \
                                      found `{}`",
-                                    abi::all_names().connect(", "),
+                                    abi::all_names().join(", "),
                                     the_string));
                         Ok(None)
                     }
