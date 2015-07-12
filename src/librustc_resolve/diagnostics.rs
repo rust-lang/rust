@@ -93,6 +93,18 @@ mod bar {
 ```
 "##,
 
+E0254: r##"
+An imported symbol resolved to an already imported symbol.
+
+An example of this error:
+
+```
+extern crate foo; // foo is a crate that doesn't export symbols
+
+use foo::*; // error, `foo::*` resolves to `foo` already imported
+```
+"##,
+
 E0255: r##"
 You can't import a value whose name is the same as another value defined in the
 module.
@@ -205,7 +217,6 @@ register_diagnostics! {
     E0157,
     E0153,
     E0253, // not directly importable
-    E0254, // import conflicts with imported crate in this module
     E0257,
     E0258,
     E0364, // item is private
