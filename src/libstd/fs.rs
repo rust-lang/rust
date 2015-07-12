@@ -414,6 +414,8 @@ impl OpenOptions {
     ///
     /// This option, when true, means that writes will append to a file instead
     /// of overwriting previous contents.
+    /// Note that setting `.write(true).append(true)` has the same effect as
+    /// setting only `.append(true)`.
     ///
     /// # Examples
     ///
@@ -450,6 +452,9 @@ impl OpenOptions {
     ///
     /// This option indicates whether a new file will be created if the file
     /// does not yet already exist.
+    ///
+    /// The access mode (e.g. read, write and/or append) does not influence whether
+    /// a new file is created, or with which permissions it is created.
     ///
     /// # Examples
     ///
