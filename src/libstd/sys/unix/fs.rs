@@ -256,7 +256,7 @@ impl OpenOptions {
         let append = (self.flags & libc::O_APPEND) == libc::O_APPEND;
         let truncate = (self.flags & libc::O_TRUNC) == libc::O_TRUNC;
 
-        if truncate && !(self.write || append) {
+        if truncate && (!self.write || append) {
             // The result of using O_TRUNC with O_RDONLY is undefined.
             // Not allowed, for consistency with Windows.
             Err(Error::from_raw_os_error(libc::EINVAL))

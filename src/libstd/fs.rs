@@ -1963,61 +1963,111 @@ mod tests {
 
         let mut r = OO::new(); r.read(true);
         let mut w = OO::new(); w.write(true);
-        let mut rw = OO::new(); rw.write(true).read(true);
+        let mut rw = OO::new(); rw.read(true).write(true);
+        let mut a = OO::new(); a.append(true);
+        let mut ra = OO::new(); ra.read(true).append(true);
 
+        // Test opening a non-existing file
         match r.open(&tmpdir.join("a")) {
             Ok(..) => panic!(), Err(..) => {}
         }
 
-        // Perform each one twice to make sure that it succeeds the second time
-        // (where the file exists)
-        check!(c(&w).create(true).open(&tmpdir.join("b")));
+        // Test various combinations of access modes with open options.
+        // Tested combinations:
+        // - .create(true).open() when file does not exist
+        // - .create(true).open() when file exists
+        // - .open() when file exists
+        // - .truncate.open() when file exists
+        check!(c(&r).create(true).open(&tmpdir.join("b")));
         assert!(tmpdir.join("b").exists());
-        check!(c(&w).create(true).open(&tmpdir.join("b")));
-        check!(w.open(&tmpdir.join("b")));
+        check!(c(&r).create(true).open(&tmpdir.join("b")));
+        check!(r.open(&tmpdir.join("b")));
+        error!(c(&r).truncate(true).open(&tmpdir.join("b")), invalid_options);
 
-        check!(c(&rw).create(true).open(&tmpdir.join("c")));
+        check!(c(&w).create(true).open(&tmpdir.join("c")));
         assert!(tmpdir.join("c").exists());
-        check!(c(&rw).create(true).open(&tmpdir.join("c")));
-        check!(rw.open(&tmpdir.join("c")));
+        check!(c(&w).create(true).open(&tmpdir.join("c")));
+        check!(w.open(&tmpdir.join("c")));
+        check!(c(&w).truncate(true).open(&tmpdir.join("c")));
 
-        check!(c(&w).append(true).create(true).open(&tmpdir.join("d")));
+        check!(c(&rw).create(true).open(&tmpdir.join("d")));
         assert!(tmpdir.join("d").exists());
-        check!(c(&w).append(true).create(true).open(&tmpdir.join("d")));
-        check!(c(&w).append(true).open(&tmpdir.join("d")));
+        check!(c(&rw).create(true).open(&tmpdir.join("d")));
+        check!(rw.open(&tmpdir.join("d")));
+        check!(c(&rw).truncate(true).open(&tmpdir.join("d")));
 
-        check!(c(&rw).append(true).create(true).open(&tmpdir.join("e")));
+        check!(c(&a).create(true).open(&tmpdir.join("e")));
         assert!(tmpdir.join("e").exists());
-        check!(c(&rw).append(true).create(true).open(&tmpdir.join("e")));
-        check!(c(&rw).append(true).open(&tmpdir.join("e")));
+        check!(c(&a).create(true).open(&tmpdir.join("e")));
+        check!(a.open(&tmpdir.join("e")));
+        error!(c(&a).truncate(true).open(&tmpdir.join("e")), invalid_options);
 
-        check!(c(&w).truncate(true).create(true).open(&tmpdir.join("f")));
+        check!(c(&ra).create(true).open(&tmpdir.join("f")));
         assert!(tmpdir.join("f").exists());
-        check!(c(&w).truncate(true).create(true).open(&tmpdir.join("f")));
-        check!(c(&w).truncate(true).open(&tmpdir.join("f")));
+        check!(c(&ra).create(true).open(&tmpdir.join("f")));
+        check!(ra.open(&tmpdir.join("f")));
+        error!(c(&ra).truncate(true).open(&tmpdir.join("f")), invalid_options);
 
-        check!(c(&rw).truncate(true).create(true).open(&tmpdir.join("g")));
+        // Test combination of .create(true) and .truncate(true)
+        // Tested combinations:
+        // - .truncate.open() when file does not exist
+        // - .create(true).truncate.open() when file does not exist
+        // - .create(true).truncate.open() when file exists
+        assert!(c(&w).truncate(true).open(&tmpdir.join("g")).is_err());
+        check!(c(&w).create(true).truncate(true).open(&tmpdir.join("g")));
         assert!(tmpdir.join("g").exists());
-        check!(c(&rw).truncate(true).create(true).open(&tmpdir.join("g")));
-        check!(c(&rw).truncate(true).open(&tmpdir.join("g")));
+        check!(c(&w).create(true).truncate(true).open(&tmpdir.join("g")));
 
-        check!(check!(File::create(&tmpdir.join("h"))).write("foo".as_bytes()));
+        // Test open options have effect
+        // Test write works
+        check!(check!(File::create(&tmpdir.join("h"))).write("foobar".as_bytes()));
+        // Test write fails for read-only
         check!(r.open(&tmpdir.join("h")));
         {
             let mut f = check!(r.open(&tmpdir.join("h")));
             assert!(f.write("wut".as_bytes()).is_err());
         }
+        // Test write overwrites
+        {
+            let mut f = check!(c(&w).open(&tmpdir.join("h")));
+            check!(f.write("baz".as_bytes()));
+        }
+        {
+            let mut f = check!(c(&r).open(&tmpdir.join("h")));
+            let mut b = vec![0; 6];
+            check!(f.read(&mut b));
+            assert_eq!(b, "bazbar".as_bytes());
+        }
+        // Test truncate works
+        {
+            let mut f = check!(c(&w).truncate(true).open(&tmpdir.join("h")));
+            check!(f.write("foo".as_bytes()));
+        }
+        assert_eq!(check!(fs::metadata(&tmpdir.join("h"))).len(), 3);
+        // Test append works
         assert_eq!(check!(fs::metadata(&tmpdir.join("h"))).len(), 3);
         {
-            let mut f = check!(c(&w).append(true).open(&tmpdir.join("h")));
+            let mut f = check!(c(&a).open(&tmpdir.join("h")));
             check!(f.write("bar".as_bytes()));
         }
         assert_eq!(check!(fs::metadata(&tmpdir.join("h"))).len(), 6);
+        // Test .append(true) equals .write(true).append(true)
         {
-            let mut f = check!(c(&w).truncate(true).open(&tmpdir.join("h")));
-            check!(f.write("bar".as_bytes()));
+            let mut f = check!(c(&w).append(true).open(&tmpdir.join("h")));
+            check!(f.write("baz".as_bytes()));
         }
-        assert_eq!(check!(fs::metadata(&tmpdir.join("h"))).len(), 3);
+        assert_eq!(check!(fs::metadata(&tmpdir.join("h"))).len(), 9);
+
+        // Test opening a file without setting an access mode
+        let mut blank = OO::new();
+        if cfg!(unix) {
+            error!(blank.create(true).open(&tmpdir.join("i")), invalid_options);
+        }
+        if cfg!(windows) {
+            let mut f = check!(blank.create(true).open(&tmpdir.join("i")));
+            let mut b = vec![0; 6];
+            assert!(f.read(&mut b).is_err());
+        }
     }
 
     #[test]
