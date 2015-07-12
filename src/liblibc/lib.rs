@@ -1912,6 +1912,8 @@ pub mod types {
                 use types::os::arch::c95::{c_char, c_int, c_uint, size_t};
                 use types::os::arch::c95::{c_long, c_ulong};
                 use types::os::arch::c95::{wchar_t};
+                #[cfg(target_arch = "x86")]
+                use types::os::arch::c95::c_double;
                 use types::os::arch::c99::{c_ulonglong, c_longlong, uintptr_t};
 
                 pub type BOOL = c_int;
@@ -1930,7 +1932,17 @@ pub mod types {
                 pub type LONG = c_long;
                 pub type PLONG = *mut c_long;
 
+                #[cfg(target_arch = "x86")]
+                pub type LONGLONG = c_double;
+                #[cfg(target_arch = "x86_64")]
+                pub type LONGLONG = i64;
+
                 pub type ULONG = c_ulong;
+
+                #[cfg(target_arch = "x86")]
+                pub type ULONGLONG = c_double;
+                #[cfg(target_arch = "x86_64")]
+                pub type ULONGLONG = u64;
 
                 #[cfg(target_arch = "x86")]
                 pub type LONG_PTR = c_long;
@@ -1941,6 +1953,9 @@ pub mod types {
                 pub type ULONG_PTR = c_ulong;
                 #[cfg(target_arch = "x86_64")]
                 pub type ULONG_PTR = u64;
+
+                pub type LONG32 = c_int;
+                pub type LONG64 = i64;
 
                 pub type LARGE_INTEGER = c_longlong;
                 pub type PLARGE_INTEGER = *mut c_longlong;
