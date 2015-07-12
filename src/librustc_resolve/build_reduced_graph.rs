@@ -276,7 +276,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                 let module_path = match view_path.node {
                     ViewPathSimple(_, ref full_path) => {
                         full_path.segments
-                            .init()
+                            .split_last().unwrap().1
                             .iter().map(|ident| ident.identifier.name)
                             .collect()
                     }
@@ -347,7 +347,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                                             continue;
                                         }
                                     };
-                                    let module_path = module_path.init();
+                                    let module_path = module_path.split_last().unwrap().1;
                                     (module_path.to_vec(), name)
                                 }
                             };

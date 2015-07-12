@@ -119,71 +119,48 @@ fn test_first_mut() {
 }
 
 #[test]
-fn test_tail() {
+fn test_split_first() {
     let mut a = vec![11];
     let b: &[i32] = &[];
-    assert_eq!(a.tail(), b);
+    assert!(b.split_first().is_none());
+    assert_eq!(a.split_first(), Some((&11, b)));
     a = vec![11, 12];
     let b: &[i32] = &[12];
-    assert_eq!(a.tail(), b);
+    assert_eq!(a.split_first(), Some((&11, b)));
 }
 
 #[test]
-fn test_tail_mut() {
+fn test_split_first_mut() {
     let mut a = vec![11];
     let b: &mut [i32] = &mut [];
-    assert!(a.tail_mut() == b);
+    assert!(b.split_first_mut().is_none());
+    assert!(a.split_first_mut() == Some((&mut 11, b)));
     a = vec![11, 12];
     let b: &mut [_] = &mut [12];
-    assert!(a.tail_mut() == b);
+    assert!(a.split_first_mut() == Some((&mut 11, b)));
 }
 
 #[test]
-#[should_panic]
-fn test_tail_empty() {
-    let a = Vec::<i32>::new();
-    a.tail();
-}
-
-#[test]
-#[should_panic]
-fn test_tail_mut_empty() {
-    let mut a = Vec::<i32>::new();
-    a.tail_mut();
-}
-
-#[test]
-fn test_init() {
+fn test_split_last() {
     let mut a = vec![11];
     let b: &[i32] = &[];
-    assert_eq!(a.init(), b);
+    assert!(b.split_last().is_none());
+    assert_eq!(a.split_last(), Some((&11, b)));
     a = vec![11, 12];
     let b: &[_] = &[11];
-    assert_eq!(a.init(), b);
+    assert_eq!(a.split_last(), Some((&12, b)));
 }
 
 #[test]
-fn test_init_mut() {
+fn test_split_last_mut() {
     let mut a = vec![11];
     let b: &mut [i32] = &mut [];
-    assert!(a.init_mut() == b);
+    assert!(b.split_last_mut().is_none());
+    assert!(a.split_last_mut() == Some((&mut 11, b)));
+
     a = vec![11, 12];
     let b: &mut [_] = &mut [11];
-    assert!(a.init_mut() == b);
-}
-
-#[test]
-#[should_panic]
-fn test_init_empty() {
-    let a = Vec::<i32>::new();
-    a.init();
-}
-
-#[test]
-#[should_panic]
-fn test_init_mut_empty() {
-    let mut a = Vec::<i32>::new();
-    a.init_mut();
+    assert!(a.split_last_mut() == Some((&mut 12, b)));
 }
 
 #[test]
