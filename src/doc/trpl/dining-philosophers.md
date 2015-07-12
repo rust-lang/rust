@@ -460,15 +460,15 @@ If you run this program, you’ll see that the philosophers eat out of order!
 We have multi-threading!
 
 ```text
-Gilles Deleuze is eating.
-Gilles Deleuze is done eating.
-Emma Goldman is eating.
-Emma Goldman is done eating.
-Michel Foucault is eating.
 Judith Butler is eating.
-Judith Butler is done eating.
+Gilles Deleuze is eating.
 Karl Marx is eating.
+Emma Goldman is eating.
+Michel Foucault is eating.
+Judith Butler is done eating.
+Gilles Deleuze is done eating.
 Karl Marx is done eating.
+Emma Goldman is done eating.
 Michel Foucault is done eating.
 ```
 
