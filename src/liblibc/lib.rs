@@ -1909,9 +1909,11 @@ pub mod types {
                 use consts::os::extra::{MAX_PROTOCOL_CHAIN,
                                               WSAPROTOCOL_LEN};
                 use types::common::c95::c_void;
-                use types::os::arch::c95::{c_char, c_int, c_uint, size_t};
-                use types::os::arch::c95::{c_long, c_ulong};
-                use types::os::arch::c95::{wchar_t};
+                use types::os::arch::c95::{c_char, c_schar, c_int, c_uint};
+                use types::os::arch::c95::{size_t, c_short, c_long, c_ulong};
+                use types::os::arch::c95::{c_uchar, c_ushort, wchar_t};
+                #[cfg(target_arch = "x86")]
+                use types::os::arch::c95::c_double;
                 use types::os::arch::c99::{c_ulonglong, c_longlong, uintptr_t};
 
                 pub type BOOL = c_int;
@@ -1919,6 +1921,18 @@ pub mod types {
                 pub type BOOLEAN = BYTE;
                 pub type CCHAR = c_char;
                 pub type CHAR = c_char;
+
+                pub type INT = c_int;
+                pub type INT8 = c_schar;
+                pub type INT16 = c_short;
+                pub type INT32 = c_int;
+                pub type INT64 = i64;
+
+                pub type UINT = c_uint;
+                pub type UINT8 = c_uchar;
+                pub type UINT16 = c_ushort;
+                pub type UINT32 = c_uint;
+                pub type UINT64 = u64;
 
                 pub type DWORD = c_ulong;
                 pub type DWORDLONG = c_ulonglong;
@@ -1931,9 +1945,29 @@ pub mod types {
                 pub type PLONG = *mut c_long;
 
                 #[cfg(target_arch = "x86")]
+                pub type LONGLONG = c_double;
+                #[cfg(target_arch = "x86_64")]
+                pub type LONGLONG = i64;
+
+                pub type ULONG = c_ulong;
+
+                #[cfg(target_arch = "x86")]
+                pub type ULONGLONG = c_double;
+                #[cfg(target_arch = "x86_64")]
+                pub type ULONGLONG = u64;
+
+                #[cfg(target_arch = "x86")]
                 pub type LONG_PTR = c_long;
                 #[cfg(target_arch = "x86_64")]
                 pub type LONG_PTR = i64;
+
+                #[cfg(target_arch = "x86")]
+                pub type ULONG_PTR = c_ulong;
+                #[cfg(target_arch = "x86_64")]
+                pub type ULONG_PTR = u64;
+
+                pub type LONG32 = c_int;
+                pub type LONG64 = i64;
 
                 pub type LARGE_INTEGER = c_longlong;
                 pub type PLARGE_INTEGER = *mut c_longlong;
