@@ -2049,6 +2049,20 @@ pub mod types {
                 }
 
                 pub type LPFILETIME = *mut FILETIME;
+                
+                #[repr(C)]
+                #[derive(Copy, Clone)] pub struct SYSTEMTIME {
+                    pub wYear: WORD,
+                    pub wMonth: WORD,
+                    pub wDayOfWeek: WORD,
+                    pub wDay: WORD,
+                    pub wHour: WORD,
+                    pub wMinute: WORD,
+                    pub wSecond: WORD,
+                    pub wMilliseconds: WORD
+                }
+                
+                pub type LPSYSTEMTIME = *mut SYSTEMTIME;
 
                 #[repr(C)]
                 #[derive(Copy, Clone)] pub struct GUID {
