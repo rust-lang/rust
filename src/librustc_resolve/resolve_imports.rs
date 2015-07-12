@@ -272,7 +272,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                         Some((span, msg)) => (span, format!(". {}", msg)),
                         None => (import_directive.span, String::new())
                     };
-                    resolve_err!(self.resolver, span, E0398,
+                    resolve_err!(self.resolver, span, E0432,
                                  "unresolved import `{}`{}",
                                  import_path_to_string(
                                           &import_directive.module_path,
