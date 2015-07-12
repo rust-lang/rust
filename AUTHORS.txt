@@ -958,7 +958,7 @@ Santiago Rodriguez <sanrodari@gmail.com>
 Saurabh Anand <saurabhanandiit@gmail.com>
 Scott Jenkins <scottdjwales@gmail.com>
 Scott Lawrence <bytbox@gmail.com>
-Scott Olson <scott@scott-olson.org>
+Scott Olson <scott@solson.me>
 Sean Bowe <ewillbefull@gmail.com>
 Sean Chalmers <sclhiannan@gmail.com>
 Sean Collins <sean@cllns.com>
