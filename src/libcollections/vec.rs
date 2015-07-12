@@ -812,32 +812,6 @@ impl<T> Vec<T> {
         self.truncate(0)
     }
 
-    /// Returns the number of elements in the vector.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let a = vec![1, 2, 3];
-    /// assert_eq!(a.len(), 3);
-    /// ```
-    #[inline]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn len(&self) -> usize { self.len }
-
-    /// Returns `true` if the vector contains no elements.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let mut v = Vec::new();
-    /// assert!(v.is_empty());
-    ///
-    /// v.push(1);
-    /// assert!(!v.is_empty());
-    /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn is_empty(&self) -> bool { self.len() == 0 }
-
     /// Converts a `Vec<T>` to a `Vec<U>` where `T` and `U` have the same
     /// size and in case they are not zero-sized the same minimal alignment.
     ///
