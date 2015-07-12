@@ -368,6 +368,7 @@ impl Target {
             arm_linux_androideabi,
             aarch64_linux_android,
 
+            i686_unknown_freebsd,
             x86_64_unknown_freebsd,
 
             i686_unknown_dragonfly,
