@@ -23,6 +23,9 @@ src_dir = sys.argv[1]
 errcode_map = {}
 error_re = re.compile("(E\d\d\d\d)")
 
+long_diag_begin = "r##\""
+long_diag_end = "\"##"
+
 for (dirpath, dirnames, filenames) in os.walk(src_dir):
     if "src/test" in dirpath or "src/llvm" in dirpath:
         # Short circuit for fast
@@ -35,7 +38,13 @@ for (dirpath, dirnames, filenames) in os.walk(src_dir):
         path = os.path.join(dirpath, filename)
 
         with open(path, 'r') as f:
+            inside_long_diag = False
             for line_num, line in enumerate(f, start=1):
+                if inside_long_diag:
+                    if long_diag_end in line:
+                        inside_long_diag = False
+                    continue
+
                 match = error_re.search(line)
                 if match:
                     errcode = match.group(1)
@@ -46,6 +55,9 @@ for (dirpath, dirnames, filenames) in os.walk(src_dir):
                         errcode_map[errcode] = existing + new_record
                     else:
                         errcode_map[errcode] = new_record
+
+                if long_diag_begin in line:
+                    inside_long_diag = True
 
 errors = False
 all_errors = []
