@@ -2571,7 +2571,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 for &i in &ty_params {
                     new_substs.types.get_mut_slice(TypeSpace)[i] = tcx.types.err;
                 }
-                for &ty in fields.init() {
+                for &ty in fields.split_last().unwrap().1 {
                     if ty.subst(tcx, &new_substs).references_error() {
                         return Err(Unimplemented);
                     }

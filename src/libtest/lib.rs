@@ -44,7 +44,6 @@
 #![feature(rt)]
 #![feature(rustc_private)]
 #![feature(set_stdio)]
-#![feature(slice_extras)]
 #![feature(staged_api)]
 
 extern crate getopts;
@@ -359,7 +358,7 @@ Test Attributes:
 
 // Parses command line arguments into test options
 pub fn parse_opts(args: &[String]) -> Option<OptRes> {
-    let args_ = args.tail();
+    let args_ = &args[1..];
     let matches =
         match getopts::getopts(args_, &optgroups()) {
           Ok(m) => m,

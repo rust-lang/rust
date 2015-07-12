@@ -3668,7 +3668,7 @@ pub fn resolve_ty_and_def_ufcs<'a, 'b, 'tcx>(fcx: &FnCtxt<'b, 'tcx>,
         Some((opt_self_ty, &path.segments, path_res.base_def))
     } else {
         let mut def = path_res.base_def;
-        let ty_segments = path.segments.init();
+        let ty_segments = path.segments.split_last().unwrap().1;
         let base_ty_end = path.segments.len() - path_res.depth;
         let ty = astconv::finish_resolving_def_to_ty(fcx, fcx, span,
                                                      PathParamMode::Optional,

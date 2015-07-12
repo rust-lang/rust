@@ -170,8 +170,8 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                 }
 
                 // For DST, all intermediate types must be sized.
-                if !variant.fields.is_empty() {
-                    for field in variant.fields.init() {
+                if let Some((_, fields)) = variant.fields.split_last() {
+                    for field in fields {
                         fcx.register_builtin_bound(
                             field.ty,
                             ty::BoundSized,

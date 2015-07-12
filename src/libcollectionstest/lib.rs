@@ -36,7 +36,7 @@
 #![feature(rustc_private)]
 #![feature(slice_bytes)]
 #![feature(slice_chars)]
-#![feature(slice_extras)]
+#![feature(slice_splits)]
 #![feature(slice_position_elem)]
 #![feature(split_off)]
 #![feature(step_by)]
@@ -52,8 +52,9 @@
 #![feature(vec_deque_retain)]
 #![feature(vec_from_raw_buf)]
 #![feature(vec_push_all)]
-#![feature(vec_split_off)]
 #![feature(vecmap)]
+
+#![allow(deprecated)]
 
 #[macro_use] extern crate log;
 

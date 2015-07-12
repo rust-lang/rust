@@ -29,7 +29,6 @@
 #![feature(path_relative_from)]
 #![feature(rustc_private)]
 #![feature(set_stdio)]
-#![feature(slice_extras)]
 #![feature(slice_patterns)]
 #![feature(staged_api)]
 #![feature(subslice_offset)]
@@ -192,7 +191,7 @@ pub fn usage(argv0: &str) {
 }
 
 pub fn main_args(args: &[String]) -> isize {
-    let matches = match getopts::getopts(args.tail(), &opts()) {
+    let matches = match getopts::getopts(&args[1..], &opts()) {
         Ok(m) => m,
         Err(err) => {
             println!("{}", err);

@@ -56,7 +56,7 @@
 //!         optopt("o", "", "set output file name", "NAME"),
 //!         optflag("h", "help", "print this help menu")
 //!     ];
-//!     let matches = match getopts(args.tail(), opts) {
+//!     let matches = match getopts(args[1..], opts) {
 //!         Ok(m) => { m }
 //!         Err(f) => { panic!(f.to_string()) }
 //!     };
