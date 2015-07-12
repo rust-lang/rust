@@ -6343,7 +6343,8 @@ pub mod funcs {
                                                LPMEMORY_BASIC_INFORMATION,
                                                LPSYSTEM_INFO, HANDLE, LPHANDLE,
                                                LARGE_INTEGER, PLARGE_INTEGER,
-                                               LPFILETIME, LPWIN32_FIND_DATAW};
+                                               LPFILETIME, LPSYSTEMTIME,
+                                               LPWIN32_FIND_DATAW};
 
             extern "system" {
                 pub fn GetEnvironmentVariableW(n: LPCWSTR,
