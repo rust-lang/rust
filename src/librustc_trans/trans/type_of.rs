@@ -193,7 +193,9 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
         ty::TyUint(t) => Type::uint_from_ty(cx, t),
         ty::TyFloat(t) => Type::float_from_ty(cx, t),
 
-        ty::TyBox(ty) | ty::TyRef(_, ty::mt{ty, ..}) | ty::TyRawPtr(ty::mt{ty, ..}) => {
+        ty::TyBox(ty) |
+        ty::TyRef(_, ty::TypeAndMut{ty, ..}) |
+        ty::TyRawPtr(ty::TypeAndMut{ty, ..}) => {
             if type_is_sized(cx.tcx(), ty) {
                 Type::i8p(cx)
             } else {
@@ -352,7 +354,9 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
           adt::incomplete_type_of(cx, &*repr, "closure")
       }
 
-      ty::TyBox(ty) | ty::TyRef(_, ty::mt{ty, ..}) | ty::TyRawPtr(ty::mt{ty, ..}) => {
+      ty::TyBox(ty) |
+      ty::TyRef(_, ty::TypeAndMut{ty, ..}) |
+      ty::TyRawPtr(ty::TypeAndMut{ty, ..}) => {
           if !type_is_sized(cx.tcx(), ty) {
               if let ty::TyStr = ty.sty {
                   // This means we get a nicer name in the output (str is always

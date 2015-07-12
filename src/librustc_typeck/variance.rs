@@ -1074,7 +1074,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
     /// appearing in a context with ambient variance `variance`
     fn add_constraints_from_mt(&mut self,
                                generics: &ty::Generics<'tcx>,
-                               mt: &ty::mt<'tcx>,
+                               mt: &ty::TypeAndMut<'tcx>,
                                variance: VarianceTermPtr<'a>) {
         match mt.mutbl {
             ast::MutMutable => {

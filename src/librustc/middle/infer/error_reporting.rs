@@ -77,7 +77,7 @@ use middle::def;
 use middle::infer;
 use middle::region;
 use middle::subst;
-use middle::ty::{self, Ty, HasTypeFlags};
+use middle::ty::{self, Ty, TypeError, HasTypeFlags};
 use middle::ty::{Region, ReFree};
 
 use std::cell::{Cell, RefCell};
@@ -220,17 +220,17 @@ pub trait ErrorReporting<'tcx> {
     fn process_errors(&self, errors: &Vec<RegionResolutionError<'tcx>>)
                       -> Vec<RegionResolutionError<'tcx>>;
 
-    fn report_type_error(&self, trace: TypeTrace<'tcx>, terr: &ty::type_err<'tcx>);
+    fn report_type_error(&self, trace: TypeTrace<'tcx>, terr: &ty::TypeError<'tcx>);
 
     fn report_and_explain_type_error(&self,
                                      trace: TypeTrace<'tcx>,
-                                     terr: &ty::type_err<'tcx>);
+                                     terr: &ty::TypeError<'tcx>);
 
     fn values_str(&self, values: &ValuePairs<'tcx>) -> Option<String>;
 
     fn expected_found_str<T: fmt::Display + Resolvable<'tcx> + HasTypeFlags>(
         &self,
-        exp_found: &ty::expected_found<T>)
+        exp_found: &ty::ExpectedFound<T>)
         -> Option<String>;
 
     fn report_concrete_failure(&self,
@@ -260,7 +260,7 @@ pub trait ErrorReporting<'tcx> {
 
     fn report_processed_errors(&self,
                                var_origin: &[RegionVariableOrigin],
-                               trace_origin: &[(TypeTrace<'tcx>, ty::type_err<'tcx>)],
+                               trace_origin: &[(TypeTrace<'tcx>, ty::TypeError<'tcx>)],
                                same_regions: &[SameRegions]);
 
     fn give_suggestion(&self, same_regions: &[SameRegions]);
@@ -351,8 +351,8 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                     match free_regions_from_same_fn(self.tcx, sub, sup) {
                         Some(ref same_frs) if trace.is_some() => {
                             let trace = trace.unwrap();
-                            let terr = ty::terr_regions_does_not_outlive(sup,
-                                                                         sub);
+                            let terr = TypeError::RegionsDoesNotOutlive(sup,
+                                                                        sub);
                             trace_origins.push((trace, terr));
                             append_to_same_regions(&mut same_regions, same_frs);
                         }
@@ -467,7 +467,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
         }
     }
 
-    fn report_type_error(&self, trace: TypeTrace<'tcx>, terr: &ty::type_err<'tcx>) {
+    fn report_type_error(&self, trace: TypeTrace<'tcx>, terr: &ty::TypeError<'tcx>) {
         let expected_found_str = match self.values_str(&trace.values) {
             Some(v) => v,
             None => {
@@ -490,7 +490,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
 
     fn report_and_explain_type_error(&self,
                                      trace: TypeTrace<'tcx>,
-                                     terr: &ty::type_err<'tcx>) {
+                                     terr: &ty::TypeError<'tcx>) {
         let span = trace.origin.span();
         self.report_type_error(trace, terr);
         self.tcx.note_and_explain_type_err(terr, span);
@@ -508,7 +508,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
 
     fn expected_found_str<T: fmt::Display + Resolvable<'tcx> + HasTypeFlags>(
         &self,
-        exp_found: &ty::expected_found<T>)
+        exp_found: &ty::ExpectedFound<T>)
         -> Option<String>
     {
         let expected = exp_found.expected.resolve(self);
@@ -595,7 +595,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
         match origin {
             infer::Subtype(trace) |
             infer::DefaultExistentialBound(trace) => {
-                let terr = ty::terr_regions_does_not_outlive(sup, sub);
+                let terr = TypeError::RegionsDoesNotOutlive(sup, sub);
                 self.report_and_explain_type_error(trace, &terr);
             }
             infer::Reborrow(span) => {
@@ -888,7 +888,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
 
     fn report_processed_errors(&self,
                                var_origins: &[RegionVariableOrigin],
-                               trace_origins: &[(TypeTrace<'tcx>, ty::type_err<'tcx>)],
+                               trace_origins: &[(TypeTrace<'tcx>, ty::TypeError<'tcx>)],
                                same_regions: &[SameRegions]) {
         for vo in var_origins {
             self.report_inference_failure(vo.clone());

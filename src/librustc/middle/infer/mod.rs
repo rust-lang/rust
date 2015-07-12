@@ -10,14 +10,11 @@
 
 //! See the Book for more information.
 
-#![allow(non_camel_case_types)]
-
 pub use self::LateBoundRegionConversionTime::*;
 pub use self::RegionVariableOrigin::*;
 pub use self::SubregionOrigin::*;
 pub use self::TypeOrigin::*;
 pub use self::ValuePairs::*;
-pub use self::fixup_err::*;
 pub use middle::ty::IntVarValue;
 pub use self::freshen::TypeFreshener;
 pub use self::region_inference::GenericKind;
@@ -32,7 +29,7 @@ use middle::subst::Subst;
 use middle::traits::{self, FulfillmentContext, Normalized,
                      SelectionContext, ObligationCause};
 use middle::ty::{TyVid, IntVid, FloatVid, RegionVid, UnconstrainedNumeric};
-use middle::ty::{self, Ty, HasTypeFlags};
+use middle::ty::{self, Ty, TypeError, HasTypeFlags};
 use middle::ty_fold::{self, TypeFolder, TypeFoldable};
 use middle::ty_relate::{Relate, RelateResult, TypeRelation};
 use rustc_data_structures::unify::{self, UnificationTable};
@@ -65,7 +62,7 @@ pub mod unify_key;
 
 pub type Bound<T> = Option<T>;
 pub type UnitResult<'tcx> = RelateResult<'tcx, ()>; // "unify result"
-pub type fres<T> = Result<T, fixup_err>; // "fixup result"
+pub type FixupResult<T> = Result<T, FixupError>; // "fixup result"
 
 pub struct InferCtxt<'a, 'tcx: 'a> {
     pub tcx: &'a ty::ctxt<'tcx>,
@@ -171,9 +168,9 @@ impl fmt::Display for TypeOrigin {
 /// See `error_reporting.rs` for more details
 #[derive(Clone, Debug)]
 pub enum ValuePairs<'tcx> {
-    Types(ty::expected_found<Ty<'tcx>>),
-    TraitRefs(ty::expected_found<ty::TraitRef<'tcx>>),
-    PolyTraitRefs(ty::expected_found<ty::PolyTraitRef<'tcx>>),
+    Types(ty::ExpectedFound<Ty<'tcx>>),
+    TraitRefs(ty::ExpectedFound<ty::TraitRef<'tcx>>),
+    PolyTraitRefs(ty::ExpectedFound<ty::PolyTraitRef<'tcx>>),
 }
 
 /// The trace designates the path through inference that we took to
@@ -313,23 +310,25 @@ pub enum RegionVariableOrigin {
 }
 
 #[derive(Copy, Clone, Debug)]
-pub enum fixup_err {
-    unresolved_int_ty(IntVid),
-    unresolved_float_ty(FloatVid),
-    unresolved_ty(TyVid)
+pub enum FixupError {
+    UnresolvedIntTy(IntVid),
+    UnresolvedFloatTy(FloatVid),
+    UnresolvedTy(TyVid)
 }
 
-pub fn fixup_err_to_string(f: fixup_err) -> String {
+pub fn fixup_err_to_string(f: FixupError) -> String {
+    use self::FixupError::*;
+
     match f {
-      unresolved_int_ty(_) => {
+      UnresolvedIntTy(_) => {
           "cannot determine the type of this integer; add a suffix to \
            specify the type explicitly".to_string()
       }
-      unresolved_float_ty(_) => {
+      UnresolvedFloatTy(_) => {
           "cannot determine the type of this number; add a suffix to specify \
            the type explicitly".to_string()
       }
-      unresolved_ty(_) => "unconstrained type".to_string(),
+      UnresolvedTy(_) => "unconstrained type".to_string(),
     }
 }
 
@@ -460,12 +459,12 @@ pub fn mk_sub_poly_trait_refs<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
 fn expected_found<T>(a_is_expected: bool,
                      a: T,
                      b: T)
-                     -> ty::expected_found<T>
+                     -> ty::ExpectedFound<T>
 {
     if a_is_expected {
-        ty::expected_found {expected: a, found: b}
+        ty::ExpectedFound {expected: a, found: b}
     } else {
-        ty::expected_found {expected: b, found: a}
+        ty::ExpectedFound {expected: b, found: a}
     }
 }
 
@@ -913,7 +912,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         match higher_ranked::leak_check(self, skol_map, snapshot) {
             Ok(()) => Ok(()),
-            Err((br, r)) => Err(ty::terr_regions_insufficiently_polymorphic(br, r))
+            Err((br, r)) => Err(TypeError::RegionsInsufficientlyPolymorphic(br, r))
         }
     }
 
@@ -1169,7 +1168,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         if ty.has_infer_types() || ty.references_error() { Err(()) } else { Ok(ty) }
     }
 
-    pub fn fully_resolve<T:TypeFoldable<'tcx>>(&self, value: &T) -> fres<T> {
+    pub fn fully_resolve<T:TypeFoldable<'tcx>>(&self, value: &T) -> FixupResult<T> {
         /*!
          * Attempts to resolve all type/region variables in
          * `value`. Region inference must have been run already (e.g.,
@@ -1198,7 +1197,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                      sp: Span,
                                      mk_msg: M,
                                      actual_ty: String,
-                                     err: Option<&ty::type_err<'tcx>>) where
+                                     err: Option<&ty::TypeError<'tcx>>) where
         M: FnOnce(Option<String>, String) -> String,
     {
         self.type_error_message_str_with_expected(sp, mk_msg, None, actual_ty, err)
@@ -1209,7 +1208,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                                    mk_msg: M,
                                                    expected_ty: Option<Ty<'tcx>>,
                                                    actual_ty: String,
-                                                   err: Option<&ty::type_err<'tcx>>) where
+                                                   err: Option<&ty::TypeError<'tcx>>) where
         M: FnOnce(Option<String>, String) -> String,
     {
         debug!("hi! expected_ty = {:?}, actual_ty = {}", expected_ty, actual_ty);
@@ -1235,7 +1234,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                  sp: Span,
                                  mk_msg: M,
                                  actual_ty: Ty<'tcx>,
-                                 err: Option<&ty::type_err<'tcx>>) where
+                                 err: Option<&ty::TypeError<'tcx>>) where
         M: FnOnce(String) -> String,
     {
         let actual_ty = self.resolve_type_vars_if_possible(&actual_ty);
@@ -1254,10 +1253,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                    span: Span,
                                    expected: Ty<'tcx>,
                                    actual: Ty<'tcx>,
-                                   err: &ty::type_err<'tcx>) {
+                                   err: &ty::TypeError<'tcx>) {
         let trace = TypeTrace {
             origin: Misc(span),
-            values: Types(ty::expected_found {
+            values: Types(ty::ExpectedFound {
                 expected: expected,
                 found: actual
             })
@@ -1431,7 +1430,7 @@ impl<'tcx> TypeTrace<'tcx> {
     pub fn dummy(tcx: &ty::ctxt<'tcx>) -> TypeTrace<'tcx> {
         TypeTrace {
             origin: Misc(codemap::DUMMY_SP),
-            values: Types(ty::expected_found {
+            values: Types(ty::ExpectedFound {
                 expected: tcx.types.err,
                 found: tcx.types.err,
             })

@@ -206,7 +206,7 @@ impl<'tcx> TypeMap<'tcx> {
                 let inner_type_id = self.get_unique_type_id_as_string(inner_type_id);
                 unique_type_id.push_str(&inner_type_id[..]);
             },
-            ty::TyRawPtr(ty::mt { ty: inner_type, mutbl } ) => {
+            ty::TyRawPtr(ty::TypeAndMut { ty: inner_type, mutbl } ) => {
                 unique_type_id.push('*');
                 if mutbl == ast::MutMutable {
                     unique_type_id.push_str("mut");
@@ -216,7 +216,7 @@ impl<'tcx> TypeMap<'tcx> {
                 let inner_type_id = self.get_unique_type_id_as_string(inner_type_id);
                 unique_type_id.push_str(&inner_type_id[..]);
             },
-            ty::TyRef(_, ty::mt { ty: inner_type, mutbl }) => {
+            ty::TyRef(_, ty::TypeAndMut { ty: inner_type, mutbl }) => {
                 unique_type_id.push('&');
                 if mutbl == ast::MutMutable {
                     unique_type_id.push_str("mut");
@@ -561,7 +561,7 @@ fn vec_slice_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                 unique_type_id: UniqueTypeId,
                                 span: Span)
                                 -> MetadataCreationResult {
-    let data_ptr_type = cx.tcx().mk_ptr(ty::mt {
+    let data_ptr_type = cx.tcx().mk_ptr(ty::TypeAndMut {
         ty: element_type,
         mutbl: ast::MutImmutable
     });
@@ -765,7 +765,9 @@ pub fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                         trait_pointer_metadata(cx, t, None, unique_type_id),
             false)
         }
-        ty::TyBox(ty) | ty::TyRawPtr(ty::mt{ty, ..}) | ty::TyRef(_, ty::mt{ty, ..}) => {
+        ty::TyBox(ty) |
+        ty::TyRawPtr(ty::TypeAndMut{ty, ..}) |
+        ty::TyRef(_, ty::TypeAndMut{ty, ..}) => {
             match ty.sty {
                 ty::TySlice(typ) => {
                     vec_slice_metadata(cx, t, typ, unique_type_id, usage_site_span)
@@ -1113,7 +1115,7 @@ impl<'tcx> MemberDescriptionFactory<'tcx> {
 
 // Creates MemberDescriptions for the fields of a struct
 struct StructMemberDescriptionFactory<'tcx> {
-    fields: Vec<ty::field<'tcx>>,
+    fields: Vec<ty::Field<'tcx>>,
     is_simd: bool,
     span: Span,
 }

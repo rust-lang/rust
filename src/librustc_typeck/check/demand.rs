@@ -32,7 +32,7 @@ pub fn suptype_with_fn<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                     ty_a: Ty<'tcx>,
                                     ty_b: Ty<'tcx>,
                                     handle_err: F) where
-    F: FnOnce(Span, Ty<'tcx>, Ty<'tcx>, &ty::type_err<'tcx>),
+    F: FnOnce(Span, Ty<'tcx>, Ty<'tcx>, &ty::TypeError<'tcx>),
 {
     // n.b.: order of actual, expected is reversed
     match infer::mk_subty(fcx.infcx(), b_is_expected, infer::Misc(sp),

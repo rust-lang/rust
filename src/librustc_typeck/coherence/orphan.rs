@@ -100,14 +100,14 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
                                                   "[T]",
                                                   item.span);
                     }
-                    ty::TyRawPtr(ty::mt { ty: _, mutbl: ast::MutImmutable }) => {
+                    ty::TyRawPtr(ty::TypeAndMut { ty: _, mutbl: ast::MutImmutable }) => {
                         self.check_primitive_impl(def_id,
                                                   self.tcx.lang_items.const_ptr_impl(),
                                                   "const_ptr",
                                                   "*const T",
                                                   item.span);
                     }
-                    ty::TyRawPtr(ty::mt { ty: _, mutbl: ast::MutMutable }) => {
+                    ty::TyRawPtr(ty::TypeAndMut { ty: _, mutbl: ast::MutMutable }) => {
                         self.check_primitive_impl(def_id,
                                                   self.tcx.lang_items.mut_ptr_impl(),
                                                   "mut_ptr",

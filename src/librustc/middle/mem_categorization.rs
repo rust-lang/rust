@@ -1614,7 +1614,7 @@ impl fmt::Debug for InteriorKind {
 
 fn element_kind(t: Ty) -> ElementKind {
     match t.sty {
-        ty::TyRef(_, ty::mt{ty, ..}) |
+        ty::TyRef(_, ty::TypeAndMut{ty, ..}) |
         ty::TyBox(ty) => match ty.sty {
             ty::TySlice(_) => VecElement,
             _ => OtherElement

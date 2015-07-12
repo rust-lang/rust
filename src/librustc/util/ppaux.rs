@@ -19,7 +19,7 @@ use middle::ty::{TyError, TyStr, TyArray, TySlice, TyFloat, TyBareFn};
 use middle::ty::{TyParam, TyRawPtr, TyRef, TyTuple};
 use middle::ty::TyClosure;
 use middle::ty::{TyBox, TyTrait, TyInt, TyUint, TyInfer};
-use middle::ty::{self, mt, Ty, HasTypeFlags};
+use middle::ty::{self, TypeAndMut, Ty, HasTypeFlags};
 use middle::ty_fold::{self, TypeFoldable};
 
 use std::fmt;
@@ -321,7 +321,7 @@ impl<'tcx> fmt::Debug for ty::TyS<'tcx> {
     }
 }
 
-impl<'tcx> fmt::Display for ty::mt<'tcx> {
+impl<'tcx> fmt::Display for ty::TypeAndMut<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}{}",
                if self.mutbl == ast::MutMutable { "mut " } else { "" },

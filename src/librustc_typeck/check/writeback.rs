@@ -390,7 +390,7 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
                    reason: reason }
     }
 
-    fn report_error(&self, e: infer::fixup_err) {
+    fn report_error(&self, e: infer::FixupError) {
         self.writeback_errors.set(true);
         if !self.tcx.sess.has_errors() {
             match self.reason {

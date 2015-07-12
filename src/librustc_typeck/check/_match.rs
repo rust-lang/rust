@@ -170,7 +170,7 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                     // then `x` is assigned a value of type `&M T` where M is the mutability
                     // and T is the expected type.
                     let region_var = fcx.infcx().next_region_var(infer::PatternRegion(pat.span));
-                    let mt = ty::mt { ty: expected, mutbl: mutbl };
+                    let mt = ty::TypeAndMut { ty: expected, mutbl: mutbl };
                     let region_ty = tcx.mk_ref(tcx.mk_region(region_var), mt);
 
                     // `x` is assigned a value of type `&M T`, hence `&M T <: typeof(x)` is
@@ -272,7 +272,7 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
         ast::PatRegion(ref inner, mutbl) => {
             let inner_ty = fcx.infcx().next_ty_var();
 
-            let mt = ty::mt { ty: inner_ty, mutbl: mutbl };
+            let mt = ty::TypeAndMut { ty: inner_ty, mutbl: mutbl };
             let region = fcx.infcx().next_region_var(infer::PatternRegion(pat.span));
             let rptr_ty = tcx.mk_ref(tcx.mk_region(region), mt);
 
@@ -301,7 +301,7 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                 }),
                 _ => {
                     let region = fcx.infcx().next_region_var(infer::PatternRegion(pat.span));
-                    tcx.mk_ref(tcx.mk_region(region), ty::mt {
+                    tcx.mk_ref(tcx.mk_region(region), ty::TypeAndMut {
                         ty: tcx.mk_slice(inner_ty),
                         mutbl: expected_ty.builtin_deref(true).map(|mt| mt.mutbl)
                                                               .unwrap_or(ast::MutImmutable)
@@ -324,7 +324,7 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                 let mutbl = expected_ty.builtin_deref(true)
                     .map_or(ast::MutImmutable, |mt| mt.mutbl);
 
-                let slice_ty = tcx.mk_ref(tcx.mk_region(region), ty::mt {
+                let slice_ty = tcx.mk_ref(tcx.mk_region(region), ty::TypeAndMut {
                     ty: tcx.mk_slice(inner_ty),
                     mutbl: mutbl
                 });
@@ -729,7 +729,7 @@ pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
 pub fn check_struct_pat_fields<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                                          span: Span,
                                          fields: &'tcx [Spanned<ast::FieldPat>],
-                                         struct_fields: &[ty::field<'tcx>],
+                                         struct_fields: &[ty::Field<'tcx>],
                                          struct_id: ast::DefId,
                                          etc: bool) {
     let tcx = pcx.fcx.ccx.tcx;

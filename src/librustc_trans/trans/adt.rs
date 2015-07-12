@@ -398,7 +398,7 @@ fn find_discr_field_candidate<'tcx>(tcx: &ty::ctxt<'tcx>,
                                     mut path: DiscrField) -> Option<DiscrField> {
     match ty.sty {
         // Fat &T/&mut T/Box<T> i.e. T is [T], str, or Trait
-        ty::TyRef(_, ty::mt { ty, .. }) | ty::TyBox(ty) if !type_is_sized(tcx, ty) => {
+        ty::TyRef(_, ty::TypeAndMut { ty, .. }) | ty::TyBox(ty) if !type_is_sized(tcx, ty) => {
             path.push(FAT_PTR_ADDR);
             Some(path)
         },
@@ -415,7 +415,7 @@ fn find_discr_field_candidate<'tcx>(tcx: &ty::ctxt<'tcx>,
             assert_eq!(nonzero_fields.len(), 1);
             let nonzero_field = tcx.lookup_field_type(did, nonzero_fields[0].id, substs);
             match nonzero_field.sty {
-                ty::TyRawPtr(ty::mt { ty, .. }) if !type_is_sized(tcx, ty) => {
+                ty::TyRawPtr(ty::TypeAndMut { ty, .. }) if !type_is_sized(tcx, ty) => {
                     path.push_all(&[0, FAT_PTR_ADDR]);
                     Some(path)
                 },

@@ -36,9 +36,9 @@ pub enum CastTy<'tcx> {
     /// Function Pointers
     FnPtr,
     /// Raw pointers
-    Ptr(&'tcx ty::mt<'tcx>),
+    Ptr(&'tcx ty::TypeAndMut<'tcx>),
     /// References
-    RPtr(&'tcx ty::mt<'tcx>),
+    RPtr(&'tcx ty::TypeAndMut<'tcx>),
 }
 
 /// Cast Kind. See RFC 401 (or librustc_typeck/check/cast.rs)

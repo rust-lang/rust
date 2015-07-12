@@ -315,7 +315,7 @@ pub fn get_base_and_len<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         }
 
         // Only used for pattern matching.
-        ty::TyBox(ty) | ty::TyRef(_, ty::mt{ty, ..}) => {
+        ty::TyBox(ty) | ty::TyRef(_, ty::TypeAndMut{ty, ..}) => {
             let inner = if type_is_sized(bcx.tcx(), ty) {
                 Load(bcx, llval)
             } else {

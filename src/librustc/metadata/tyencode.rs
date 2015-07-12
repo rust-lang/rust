@@ -183,7 +183,7 @@ fn enc_mutability(w: &mut Encoder, mt: ast::Mutability) {
 }
 
 fn enc_mt<'a, 'tcx>(w: &mut Encoder, cx: &ctxt<'a, 'tcx>,
-                    mt: ty::mt<'tcx>) {
+                    mt: ty::TypeAndMut<'tcx>) {
     enc_mutability(w, mt.mutbl);
     enc_ty(w, cx, mt.ty);
 }
