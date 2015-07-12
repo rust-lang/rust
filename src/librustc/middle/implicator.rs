@@ -115,7 +115,7 @@ impl<'a, 'tcx> Implicator<'a, 'tcx> {
 
             ty::TyArray(t, _) |
             ty::TySlice(t) |
-            ty::TyRawPtr(ty::mt { ty: t, .. }) |
+            ty::TyRawPtr(ty::TypeAndMut { ty: t, .. }) |
             ty::TyBox(t) => {
                 self.accumulate_from_ty(t)
             }

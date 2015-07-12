@@ -271,7 +271,7 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                     // Trait method is fn(&self) or fn(&mut self), need an
                     // autoref. Pull the region etc out of the type of first argument.
                     match transformed_self_ty.sty {
-                        ty::TyRef(region, ty::mt { mutbl, ty: _ }) => {
+                        ty::TyRef(region, ty::TypeAndMut { mutbl, ty: _ }) => {
                             fcx.write_adjustment(self_expr.id,
                                 ty::AdjustDerefRef(ty::AutoDerefRef {
                                     autoderefs: autoderefs,

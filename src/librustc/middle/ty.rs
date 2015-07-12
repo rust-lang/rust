@@ -8,10 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// FIXME: (@jroesch) @eddyb should remove this when he renames ctxt
 #![allow(non_camel_case_types)]
 
-pub use self::terr_vstore_kind::*;
-pub use self::type_err::*;
 pub use self::InferTy::*;
 pub use self::InferRegion::*;
 pub use self::ImplOrTraitItemId::*;
@@ -109,9 +108,9 @@ pub struct CrateAnalysis {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
-pub struct field<'tcx> {
+pub struct Field<'tcx> {
     pub name: ast::Name,
-    pub mt: mt<'tcx>
+    pub mt: TypeAndMut<'tcx>
 }
 
 
@@ -488,13 +487,13 @@ pub struct AssociatedType<'tcx> {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-pub struct mt<'tcx> {
+pub struct TypeAndMut<'tcx> {
     pub ty: Ty<'tcx>,
     pub mutbl: ast::Mutability,
 }
 
 #[derive(Clone, Copy, Debug)]
-pub struct field_ty {
+pub struct FieldTy {
     pub name: Name,
     pub id: DefId,
     pub vis: ast::Visibility,
@@ -674,7 +673,7 @@ pub type MethodMap<'tcx> = FnvHashMap<MethodCall, MethodCallee<'tcx>>;
 // Contains information needed to resolve types and (in the future) look up
 // the types of AST nodes.
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
-pub struct creader_cache_key {
+pub struct CReaderCacheKey {
     pub cnum: CrateNum,
     pub pos: usize,
     pub len: usize
@@ -864,7 +863,7 @@ pub struct ctxt<'tcx> {
     pub map: ast_map::Map<'tcx>,
     pub freevars: RefCell<FreevarMap>,
     pub tcache: RefCell<DefIdMap<TypeScheme<'tcx>>>,
-    pub rcache: RefCell<FnvHashMap<creader_cache_key, Ty<'tcx>>>,
+    pub rcache: RefCell<FnvHashMap<CReaderCacheKey, Ty<'tcx>>>,
     pub tc_cache: RefCell<FnvHashMap<Ty<'tcx>, TypeContents>>,
     pub ast_ty_to_ty_cache: RefCell<NodeMap<Ty<'tcx>>>,
     pub enum_var_cache: RefCell<DefIdMap<Rc<Vec<Rc<VariantInfo<'tcx>>>>>>,
@@ -873,7 +872,7 @@ pub struct ctxt<'tcx> {
     pub lang_items: middle::lang_items::LanguageItems,
     /// A mapping of fake provided method def_ids to the default implementation
     pub provided_method_sources: RefCell<DefIdMap<ast::DefId>>,
-    pub struct_fields: RefCell<DefIdMap<Rc<Vec<field_ty>>>>,
+    pub struct_fields: RefCell<DefIdMap<Rc<Vec<FieldTy>>>>,
 
     /// Maps from def-id of a type or region parameter to its
     /// (inferred) variance.
@@ -1747,11 +1746,11 @@ pub enum TypeVariants<'tcx> {
     TySlice(Ty<'tcx>),
 
     /// A raw pointer. Written as `*mut T` or `*const T`
-    TyRawPtr(mt<'tcx>),
+    TyRawPtr(TypeAndMut<'tcx>),
 
     /// A reference; a pointer with an associated lifetime. Written as
     /// `&a mut T` or `&'a T`.
-    TyRef(&'tcx Region, mt<'tcx>),
+    TyRef(&'tcx Region, TypeAndMut<'tcx>),
 
     /// If the def-id is Some(_), then this is the type of a specific
     /// fn item. Otherwise, if None(_), it a fn pointer type.
@@ -1945,50 +1944,42 @@ pub enum IntVarValue {
 }
 
 #[derive(Clone, Copy, Debug)]
-pub enum terr_vstore_kind {
-    terr_vec,
-    terr_str,
-    terr_fn,
-    terr_trait
-}
-
-#[derive(Clone, Copy, Debug)]
-pub struct expected_found<T> {
+pub struct ExpectedFound<T> {
     pub expected: T,
     pub found: T
 }
 
 // Data structures used in type unification
 #[derive(Clone, Copy, Debug)]
-pub enum type_err<'tcx> {
-    terr_mismatch,
-    terr_unsafety_mismatch(expected_found<ast::Unsafety>),
-    terr_abi_mismatch(expected_found<abi::Abi>),
-    terr_mutability,
-    terr_box_mutability,
-    terr_ptr_mutability,
-    terr_ref_mutability,
-    terr_vec_mutability,
-    terr_tuple_size(expected_found<usize>),
-    terr_fixed_array_size(expected_found<usize>),
-    terr_ty_param_size(expected_found<usize>),
-    terr_arg_count,
-    terr_regions_does_not_outlive(Region, Region),
-    terr_regions_not_same(Region, Region),
-    terr_regions_no_overlap(Region, Region),
-    terr_regions_insufficiently_polymorphic(BoundRegion, Region),
-    terr_regions_overly_polymorphic(BoundRegion, Region),
-    terr_sorts(expected_found<Ty<'tcx>>),
-    terr_integer_as_char,
-    terr_int_mismatch(expected_found<IntVarValue>),
-    terr_float_mismatch(expected_found<ast::FloatTy>),
-    terr_traits(expected_found<ast::DefId>),
-    terr_builtin_bounds(expected_found<BuiltinBounds>),
-    terr_variadic_mismatch(expected_found<bool>),
-    terr_cyclic_ty,
-    terr_convergence_mismatch(expected_found<bool>),
-    terr_projection_name_mismatched(expected_found<ast::Name>),
-    terr_projection_bounds_length(expected_found<usize>),
+pub enum TypeError<'tcx> {
+    Mismatch,
+    UnsafetyMismatch(ExpectedFound<ast::Unsafety>),
+    AbiMismatch(ExpectedFound<abi::Abi>),
+    Mutability,
+    BoxMutability,
+    PtrMutability,
+    RefMutability,
+    VecMutability,
+    TupleSize(ExpectedFound<usize>),
+    FixedArraySize(ExpectedFound<usize>),
+    TyParamSize(ExpectedFound<usize>),
+    ArgCount,
+    RegionsDoesNotOutlive(Region, Region),
+    RegionsNotSame(Region, Region),
+    RegionsNoOverlap(Region, Region),
+    RegionsInsufficientlyPolymorphic(BoundRegion, Region),
+    RegionsOverlyPolymorphic(BoundRegion, Region),
+    Sorts(ExpectedFound<Ty<'tcx>>),
+    IntegerAsChar,
+    IntMismatch(ExpectedFound<IntVarValue>),
+    FloatMismatch(ExpectedFound<ast::FloatTy>),
+    Traits(ExpectedFound<ast::DefId>),
+    BuiltinBoundsMismatch(ExpectedFound<BuiltinBounds>),
+    VariadicMismatch(ExpectedFound<bool>),
+    CyclicTy,
+    ConvergenceMismatch(ExpectedFound<bool>),
+    ProjectionNameMismatched(ExpectedFound<ast::Name>),
+    ProjectionBoundsLength(ExpectedFound<usize>),
 }
 
 /// Bounds suitable for an existentially quantified type parameter
@@ -3573,28 +3564,28 @@ impl<'tcx> ctxt<'tcx> {
         self.mk_ty(TyBox(ty))
     }
 
-    pub fn mk_ptr(&self, tm: mt<'tcx>) -> Ty<'tcx> {
+    pub fn mk_ptr(&self, tm: TypeAndMut<'tcx>) -> Ty<'tcx> {
         self.mk_ty(TyRawPtr(tm))
     }
 
-    pub fn mk_ref(&self, r: &'tcx Region, tm: mt<'tcx>) -> Ty<'tcx> {
+    pub fn mk_ref(&self, r: &'tcx Region, tm: TypeAndMut<'tcx>) -> Ty<'tcx> {
         self.mk_ty(TyRef(r, tm))
     }
 
     pub fn mk_mut_ref(&self, r: &'tcx Region, ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.mk_ref(r, mt {ty: ty, mutbl: ast::MutMutable})
+        self.mk_ref(r, TypeAndMut {ty: ty, mutbl: ast::MutMutable})
     }
 
     pub fn mk_imm_ref(&self, r: &'tcx Region, ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.mk_ref(r, mt {ty: ty, mutbl: ast::MutImmutable})
+        self.mk_ref(r, TypeAndMut {ty: ty, mutbl: ast::MutImmutable})
     }
 
     pub fn mk_mut_ptr(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.mk_ptr(mt {ty: ty, mutbl: ast::MutMutable})
+        self.mk_ptr(TypeAndMut {ty: ty, mutbl: ast::MutMutable})
     }
 
     pub fn mk_imm_ptr(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.mk_ptr(mt {ty: ty, mutbl: ast::MutImmutable})
+        self.mk_ptr(TypeAndMut {ty: ty, mutbl: ast::MutImmutable})
     }
 
     pub fn mk_nil_ptr(&self) -> Ty<'tcx> {
@@ -4278,7 +4269,7 @@ impl<'tcx> TyS<'tcx> {
         }
 
         fn tc_mt<'tcx>(cx: &ctxt<'tcx>,
-                       mt: mt<'tcx>,
+                       mt: TypeAndMut<'tcx>,
                        cache: &mut FnvHashMap<Ty<'tcx>, TypeContents>) -> TypeContents
         {
             let mc = TC::ReachesMutable.when(mt.mutbl == MutMutable);
@@ -4350,11 +4341,11 @@ impl<'tcx> TyS<'tcx> {
         // Fast-path for primitive types
         let result = match self.sty {
             TyBool | TyChar | TyInt(..) | TyUint(..) | TyFloat(..) |
-            TyRawPtr(..) | TyBareFn(..) | TyRef(_, mt {
+            TyRawPtr(..) | TyBareFn(..) | TyRef(_, TypeAndMut {
                 mutbl: ast::MutImmutable, ..
             }) => Some(false),
 
-            TyStr | TyBox(..) | TyRef(_, mt {
+            TyStr | TyBox(..) | TyRef(_, TypeAndMut {
                 mutbl: ast::MutMutable, ..
             }) => Some(true),
 
@@ -4789,10 +4780,10 @@ impl<'tcx> TyS<'tcx> {
     //
     // The parameter `explicit` indicates if this is an *explicit* dereference.
     // Some types---notably unsafe ptrs---can only be dereferenced explicitly.
-    pub fn builtin_deref(&self, explicit: bool) -> Option<mt<'tcx>> {
+    pub fn builtin_deref(&self, explicit: bool) -> Option<TypeAndMut<'tcx>> {
         match self.sty {
             TyBox(ty) => {
-                Some(mt {
+                Some(TypeAndMut {
                     ty: ty,
                     mutbl: ast::MutImmutable,
                 })
@@ -4931,15 +4922,16 @@ impl<'tcx> TyS<'tcx> {
         match autoref {
             None => self,
             Some(AutoPtr(r, m)) => {
-                cx.mk_ref(r, mt { ty: self, mutbl: m })
+                cx.mk_ref(r, TypeAndMut { ty: self, mutbl: m })
             }
             Some(AutoUnsafe(m)) => {
-                cx.mk_ptr(mt { ty: self, mutbl: m })
+                cx.mk_ptr(TypeAndMut { ty: self, mutbl: m })
             }
         }
     }
 
     fn sort_string(&self, cx: &ctxt) -> String {
+
         match self.sty {
             TyBool | TyChar | TyInt(_) |
             TyUint(_) | TyFloat(_) | TyStr => self.to_string(),
@@ -4983,67 +4975,69 @@ impl<'tcx> TyS<'tcx> {
 /// in parentheses after some larger message. You should also invoke `note_and_explain_type_err()`
 /// afterwards to present additional details, particularly when it comes to lifetime-related
 /// errors.
-impl<'tcx> fmt::Display for type_err<'tcx> {
+impl<'tcx> fmt::Display for TypeError<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use self::TypeError::*;
+
         match *self {
-            terr_cyclic_ty => write!(f, "cyclic type of infinite size"),
-            terr_mismatch => write!(f, "types differ"),
-            terr_unsafety_mismatch(values) => {
+            CyclicTy => write!(f, "cyclic type of infinite size"),
+            Mismatch => write!(f, "types differ"),
+            UnsafetyMismatch(values) => {
                 write!(f, "expected {} fn, found {} fn",
                        values.expected,
                        values.found)
             }
-            terr_abi_mismatch(values) => {
+            AbiMismatch(values) => {
                 write!(f, "expected {} fn, found {} fn",
                        values.expected,
                        values.found)
             }
-            terr_mutability => write!(f, "values differ in mutability"),
-            terr_box_mutability => {
+            Mutability => write!(f, "values differ in mutability"),
+            BoxMutability => {
                 write!(f, "boxed values differ in mutability")
             }
-            terr_vec_mutability => write!(f, "vectors differ in mutability"),
-            terr_ptr_mutability => write!(f, "pointers differ in mutability"),
-            terr_ref_mutability => write!(f, "references differ in mutability"),
-            terr_ty_param_size(values) => {
+            VecMutability => write!(f, "vectors differ in mutability"),
+            PtrMutability => write!(f, "pointers differ in mutability"),
+            RefMutability => write!(f, "references differ in mutability"),
+            TyParamSize(values) => {
                 write!(f, "expected a type with {} type params, \
                            found one with {} type params",
                        values.expected,
                        values.found)
             }
-            terr_fixed_array_size(values) => {
+            FixedArraySize(values) => {
                 write!(f, "expected an array with a fixed size of {} elements, \
                            found one with {} elements",
                        values.expected,
                        values.found)
             }
-            terr_tuple_size(values) => {
+            TupleSize(values) => {
                 write!(f, "expected a tuple with {} elements, \
                            found one with {} elements",
                        values.expected,
                        values.found)
             }
-            terr_arg_count => {
+            ArgCount => {
                 write!(f, "incorrect number of function parameters")
             }
-            terr_regions_does_not_outlive(..) => {
+            RegionsDoesNotOutlive(..) => {
                 write!(f, "lifetime mismatch")
             }
-            terr_regions_not_same(..) => {
+            RegionsNotSame(..) => {
                 write!(f, "lifetimes are not the same")
             }
-            terr_regions_no_overlap(..) => {
+            RegionsNoOverlap(..) => {
                 write!(f, "lifetimes do not intersect")
             }
-            terr_regions_insufficiently_polymorphic(br, _) => {
+            RegionsInsufficientlyPolymorphic(br, _) => {
                 write!(f, "expected bound lifetime parameter {}, \
                            found concrete lifetime", br)
             }
-            terr_regions_overly_polymorphic(br, _) => {
+            RegionsOverlyPolymorphic(br, _) => {
                 write!(f, "expected concrete lifetime, \
                            found bound lifetime parameter {}", br)
             }
-            terr_sorts(values) => tls::with(|tcx| {
+            Sorts(values) => tls::with(|tcx| {
                 // A naive approach to making sure that we're not reporting silly errors such as:
                 // (expected closure, found closure).
                 let expected_str = values.expected.sort_string(tcx);
@@ -5054,12 +5048,12 @@ impl<'tcx> fmt::Display for type_err<'tcx> {
                     write!(f, "expected {}, found {}", expected_str, found_str)
                 }
             }),
-            terr_traits(values) => tls::with(|tcx| {
+            Traits(values) => tls::with(|tcx| {
                 write!(f, "expected trait `{}`, found trait `{}`",
                        tcx.item_path_str(values.expected),
                        tcx.item_path_str(values.found))
             }),
-            terr_builtin_bounds(values) => {
+            BuiltinBoundsMismatch(values) => {
                 if values.expected.is_empty() {
                     write!(f, "expected no bounds, found `{}`",
                            values.found)
@@ -5072,35 +5066,35 @@ impl<'tcx> fmt::Display for type_err<'tcx> {
                            values.found)
                 }
             }
-            terr_integer_as_char => {
+            IntegerAsChar => {
                 write!(f, "expected an integral type, found `char`")
             }
-            terr_int_mismatch(ref values) => {
+            IntMismatch(ref values) => {
                 write!(f, "expected `{:?}`, found `{:?}`",
                        values.expected,
                        values.found)
             }
-            terr_float_mismatch(ref values) => {
+            FloatMismatch(ref values) => {
                 write!(f, "expected `{:?}`, found `{:?}`",
                        values.expected,
                        values.found)
             }
-            terr_variadic_mismatch(ref values) => {
+            VariadicMismatch(ref values) => {
                 write!(f, "expected {} fn, found {} function",
                        if values.expected { "variadic" } else { "non-variadic" },
                        if values.found { "variadic" } else { "non-variadic" })
             }
-            terr_convergence_mismatch(ref values) => {
+            ConvergenceMismatch(ref values) => {
                 write!(f, "expected {} fn, found {} function",
                        if values.expected { "converging" } else { "diverging" },
                        if values.found { "converging" } else { "diverging" })
             }
-            terr_projection_name_mismatched(ref values) => {
+            ProjectionNameMismatched(ref values) => {
                 write!(f, "expected {}, found {}",
                        values.expected,
                        values.found)
             }
-            terr_projection_bounds_length(ref values) => {
+            ProjectionBoundsLength(ref values) => {
                 write!(f, "expected {} associated type bindings, found {}",
                        values.expected,
                        values.found)
@@ -5408,7 +5402,7 @@ impl<'tcx> ctxt<'tcx> {
         }
     }
 
-    pub fn field_idx_strict(&self, name: ast::Name, fields: &[field])
+    pub fn field_idx_strict(&self, name: ast::Name, fields: &[Field<'tcx>])
                             -> usize {
         let mut i = 0;
         for f in fields { if f.name == name { return i; } i += 1; }
@@ -5420,36 +5414,38 @@ impl<'tcx> ctxt<'tcx> {
                   .collect::<Vec<String>>()));
     }
 
-    pub fn note_and_explain_type_err(&self, err: &type_err<'tcx>, sp: Span) {
+    pub fn note_and_explain_type_err(&self, err: &TypeError<'tcx>, sp: Span) {
+        use self::TypeError::*;
+
         match *err {
-            terr_regions_does_not_outlive(subregion, superregion) => {
+            RegionsDoesNotOutlive(subregion, superregion) => {
                 self.note_and_explain_region("", subregion, "...");
                 self.note_and_explain_region("...does not necessarily outlive ",
                                            superregion, "");
             }
-            terr_regions_not_same(region1, region2) => {
+            RegionsNotSame(region1, region2) => {
                 self.note_and_explain_region("", region1, "...");
                 self.note_and_explain_region("...is not the same lifetime as ",
                                            region2, "");
             }
-            terr_regions_no_overlap(region1, region2) => {
+            RegionsNoOverlap(region1, region2) => {
                 self.note_and_explain_region("", region1, "...");
                 self.note_and_explain_region("...does not overlap ",
                                            region2, "");
             }
-            terr_regions_insufficiently_polymorphic(_, conc_region) => {
+            RegionsInsufficientlyPolymorphic(_, conc_region) => {
                 self.note_and_explain_region("concrete lifetime that was found is ",
                                            conc_region, "");
             }
-            terr_regions_overly_polymorphic(_, ty::ReInfer(ty::ReVar(_))) => {
+            RegionsOverlyPolymorphic(_, ty::ReInfer(ty::ReVar(_))) => {
                 // don't bother to print out the message below for
                 // inference variables, it's not very illuminating.
             }
-            terr_regions_overly_polymorphic(_, conc_region) => {
+            RegionsOverlyPolymorphic(_, conc_region) => {
                 self.note_and_explain_region("expected concrete lifetime is ",
                                            conc_region, "");
             }
-            terr_sorts(values) => {
+            Sorts(values) => {
                 let expected_str = values.expected.sort_string(self);
                 let found_str = values.found.sort_string(self);
                 if expected_str == found_str && expected_str == "closure" {
@@ -5960,7 +5956,7 @@ impl<'tcx> ctxt<'tcx> {
 
     // Look up the list of field names and IDs for a given struct.
     // Panics if the id is not bound to a struct.
-    pub fn lookup_struct_fields(&self, did: ast::DefId) -> Vec<field_ty> {
+    pub fn lookup_struct_fields(&self, did: ast::DefId) -> Vec<FieldTy> {
         if did.krate == ast::LOCAL_CRATE {
             let struct_fields = self.struct_fields.borrow();
             match struct_fields.get(&did) {
@@ -5984,11 +5980,11 @@ impl<'tcx> ctxt<'tcx> {
     // Returns a list of fields corresponding to the struct's items. trans uses
     // this. Takes a list of substs with which to instantiate field types.
     pub fn struct_fields(&self, did: ast::DefId, substs: &Substs<'tcx>)
-                         -> Vec<field<'tcx>> {
+                         -> Vec<Field<'tcx>> {
         self.lookup_struct_fields(did).iter().map(|f| {
-           field {
+           Field {
                 name: f.name,
-                mt: mt {
+                mt: TypeAndMut {
                     ty: self.lookup_field_type(did, f.id, substs),
                     mutbl: MutImmutable
                 }
@@ -6074,7 +6070,7 @@ impl<'tcx> ctxt<'tcx> {
                                     }
                                     UpvarCapture::ByRef(borrow) => {
                                         tcx.mk_ref(tcx.mk_region(borrow.region),
-                                            ty::mt {
+                                            ty::TypeAndMut {
                                                 ty: freevar_ty,
                                                 mutbl: borrow.kind.to_mutbl_lossy(),
                                             })
@@ -6427,7 +6423,7 @@ impl<'tcx> ctxt<'tcx> {
                 h.as_str().hash(state);
                 did.node.hash(state);
             };
-            let mt = |state: &mut SipHasher, mt: mt| {
+            let mt = |state: &mut SipHasher, mt: TypeAndMut| {
                 mt.mutbl.hash(state);
             };
             let fn_sig = |state: &mut SipHasher, sig: &Binder<FnSig<'tcx>>| {
@@ -7227,7 +7223,7 @@ impl<'tcx> HasTypeFlags for FnSig<'tcx> {
     }
 }
 
-impl<'tcx> HasTypeFlags for field<'tcx> {
+impl<'tcx> HasTypeFlags for Field<'tcx> {
     fn has_type_flags(&self, flags: TypeFlags) -> bool {
         self.mt.ty.has_type_flags(flags)
     }
@@ -7256,7 +7252,7 @@ impl<'tcx> fmt::Debug for ClosureUpvar<'tcx> {
     }
 }
 
-impl<'tcx> fmt::Debug for field<'tcx> {
+impl<'tcx> fmt::Debug for Field<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "field({},{})", self.name, self.mt)
     }

@@ -450,11 +450,11 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
 
             let infcx = new_infer_ctxt(tcx, &tcx.tables, Some(param_env), true);
 
-            let check_mutbl = |mt_a: ty::mt<'tcx>, mt_b: ty::mt<'tcx>,
+            let check_mutbl = |mt_a: ty::TypeAndMut<'tcx>, mt_b: ty::TypeAndMut<'tcx>,
                                mk_ptr: &Fn(Ty<'tcx>) -> Ty<'tcx>| {
                 if (mt_a.mutbl, mt_b.mutbl) == (ast::MutImmutable, ast::MutMutable) {
                     infcx.report_mismatched_types(span, mk_ptr(mt_b.ty),
-                                                  target, &ty::terr_mutability);
+                                                  target, &ty::TypeError::Mutability);
                 }
                 (mt_a.ty, mt_b.ty, unsize_trait, None)
             };

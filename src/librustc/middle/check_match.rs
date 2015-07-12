@@ -535,7 +535,7 @@ fn construct_witness(cx: &MatchCheckCtxt, ctor: &Constructor,
             }
         }
 
-        ty::TyRef(_, ty::mt { ty, mutbl }) => {
+        ty::TyRef(_, ty::TypeAndMut { ty, mutbl }) => {
             match ty.sty {
                ty::TyArray(_, n) => match ctor {
                     &Single => {
@@ -600,7 +600,7 @@ fn all_constructors(cx: &MatchCheckCtxt, left_ty: Ty,
         ty::TyBool =>
             [true, false].iter().map(|b| ConstantValue(ConstVal::Bool(*b))).collect(),
 
-        ty::TyRef(_, ty::mt { ty, .. }) => match ty.sty {
+        ty::TyRef(_, ty::TypeAndMut { ty, .. }) => match ty.sty {
             ty::TySlice(_) =>
                 range_inclusive(0, max_slice_length).map(|length| Slice(length)).collect(),
             _ => vec!(Single)
@@ -808,7 +808,7 @@ pub fn constructor_arity(cx: &MatchCheckCtxt, ctor: &Constructor, ty: Ty) -> usi
     match ty.sty {
         ty::TyTuple(ref fs) => fs.len(),
         ty::TyBox(_) => 1,
-        ty::TyRef(_, ty::mt { ty, .. }) => match ty.sty {
+        ty::TyRef(_, ty::TypeAndMut { ty, .. }) => match ty.sty {
             ty::TySlice(_) => match *ctor {
                 Slice(length) => length,
                 ConstantValue(_) => 0,

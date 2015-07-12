@@ -77,7 +77,7 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             push_debuginfo_type_name(cx, inner_type, true, output);
             output.push('>');
         },
-        ty::TyRawPtr(ty::mt { ty: inner_type, mutbl } ) => {
+        ty::TyRawPtr(ty::TypeAndMut { ty: inner_type, mutbl } ) => {
             output.push('*');
             match mutbl {
                 ast::MutImmutable => output.push_str("const "),
@@ -86,7 +86,7 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
             push_debuginfo_type_name(cx, inner_type, true, output);
         },
-        ty::TyRef(_, ty::mt { ty: inner_type, mutbl }) => {
+        ty::TyRef(_, ty::TypeAndMut { ty: inner_type, mutbl }) => {
             output.push('&');
             if mutbl == ast::MutMutable {
                 output.push_str("mut ");

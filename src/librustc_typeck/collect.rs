@@ -655,7 +655,7 @@ fn convert_field<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                            struct_predicates: &ty::GenericPredicates<'tcx>,
                            v: &ast::StructField,
                            origin: ast::DefId)
-                           -> ty::field_ty
+                           -> ty::FieldTy
 {
     let tt = ccx.icx(struct_predicates).to_ty(&ExplicitRscope, &*v.node.ty);
     write_ty_to_tcx(ccx.tcx, v.node.id, tt);
@@ -671,7 +671,7 @@ fn convert_field<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
     match v.node.kind {
         ast::NamedField(ident, visibility) => {
-            ty::field_ty {
+            ty::FieldTy {
                 name: ident.name,
                 id: local_def(v.node.id),
                 vis: visibility,
@@ -679,7 +679,7 @@ fn convert_field<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             }
         }
         ast::UnnamedField(visibility) => {
-            ty::field_ty {
+            ty::FieldTy {
                 name: special_idents::unnamed_field.name,
                 id: local_def(v.node.id),
                 vis: visibility,

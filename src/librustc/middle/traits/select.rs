@@ -1659,7 +1659,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
             }
 
-            ty::TyRef(_, ty::mt { ty: _, mutbl }) => {
+            ty::TyRef(_, ty::TypeAndMut { ty: _, mutbl }) => {
                 // &mut T or &T
                 match bound {
                     ty::BoundCopy => {
@@ -1851,8 +1851,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 Some(vec![referent_ty])
             }
 
-            ty::TyRawPtr(ty::mt { ty: element_ty, ..}) |
-            ty::TyRef(_, ty::mt { ty: element_ty, ..}) => {
+            ty::TyRawPtr(ty::TypeAndMut { ty: element_ty, ..}) |
+            ty::TyRef(_, ty::TypeAndMut { ty: element_ty, ..}) => {
                 Some(vec![element_ty])
             },
 

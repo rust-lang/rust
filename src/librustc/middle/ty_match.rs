@@ -78,7 +78,7 @@ impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Match<'a, 'tcx> {
 
             (&ty::TyInfer(_), _) |
             (_, &ty::TyInfer(_)) => {
-                Err(ty::terr_sorts(ty_relate::expected_found(self, &a, &b)))
+                Err(ty::TypeError::Sorts(ty_relate::expected_found(self, &a, &b)))
             }
 
             (&ty::TyError, _) | (_, &ty::TyError) => {

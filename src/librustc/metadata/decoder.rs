@@ -1049,7 +1049,7 @@ fn struct_field_family_to_visibility(family: Family) -> ast::Visibility {
 }
 
 pub fn get_struct_fields(intr: Rc<IdentInterner>, cdata: Cmd, id: ast::NodeId)
-    -> Vec<ty::field_ty> {
+    -> Vec<ty::FieldTy> {
     let data = cdata.data();
     let item = lookup_item(id, data);
     reader::tagged_docs(item, tag_item_field).filter_map(|an_item| {
@@ -1059,7 +1059,7 @@ pub fn get_struct_fields(intr: Rc<IdentInterner>, cdata: Cmd, id: ast::NodeId)
             let did = item_def_id(an_item, cdata);
             let tagdoc = reader::get_doc(an_item, tag_item_field_origin);
             let origin_id =  translated_def_id(cdata, tagdoc);
-            Some(ty::field_ty {
+            Some(ty::FieldTy {
                 name: name,
                 id: did,
                 vis: struct_field_family_to_visibility(f),
@@ -1073,7 +1073,7 @@ pub fn get_struct_fields(intr: Rc<IdentInterner>, cdata: Cmd, id: ast::NodeId)
         let tagdoc = reader::get_doc(an_item, tag_item_field_origin);
         let f = item_family(an_item);
         let origin_id =  translated_def_id(cdata, tagdoc);
-        ty::field_ty {
+        ty::FieldTy {
             name: special_idents::unnamed_field.name,
             id: did,
             vis: struct_field_family_to_visibility(f),

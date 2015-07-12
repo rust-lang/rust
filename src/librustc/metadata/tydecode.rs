@@ -525,7 +525,7 @@ fn parse_ty_<'a, 'tcx, F>(st: &mut PState<'a, 'tcx>, conv: &mut F) -> Ty<'tcx> w
         assert_eq!(next(st), ':');
         let len = parse_hex(st);
         assert_eq!(next(st), '#');
-        let key = ty::creader_cache_key {cnum: st.krate,
+        let key = ty::CReaderCacheKey {cnum: st.krate,
                                          pos: pos,
                                          len: len };
 
@@ -587,11 +587,11 @@ fn parse_mutability(st: &mut PState) -> ast::Mutability {
     }
 }
 
-fn parse_mt_<'a, 'tcx, F>(st: &mut PState<'a, 'tcx>, conv: &mut F) -> ty::mt<'tcx> where
+fn parse_mt_<'a, 'tcx, F>(st: &mut PState<'a, 'tcx>, conv: &mut F) -> ty::TypeAndMut<'tcx> where
     F: FnMut(DefIdSource, ast::DefId) -> ast::DefId,
 {
     let m = parse_mutability(st);
-    ty::mt { ty: parse_ty_(st, conv), mutbl: m }
+    ty::TypeAndMut { ty: parse_ty_(st, conv), mutbl: m }
 }
 
 fn parse_def_<F>(st: &mut PState, source: DefIdSource, conv: &mut F) -> ast::DefId where
