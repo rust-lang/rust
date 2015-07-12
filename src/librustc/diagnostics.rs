@@ -791,8 +791,7 @@ trait Foo {
     fn bar(&self);
 }
 
-// we now declare a function which takes an object with Foo trait implemented
-// as parameter
+// we now declare a function which takes an object implementing the Foo trait
 fn some_func<T: Foo>(foo: T) {
     foo.bar();
 }
