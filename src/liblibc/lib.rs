@@ -6481,8 +6481,11 @@ pub mod funcs {
                                         dwMoveMethod: DWORD) -> BOOL;
                 pub fn SetEndOfFile(hFile: HANDLE) -> BOOL;
 
+                pub fn GetSystemTime(lpSystemTime: LPSYSTEMTIME);
                 pub fn GetSystemTimeAsFileTime(
                             lpSystemTimeAsFileTime: LPFILETIME);
+
+                pub fn GetLocalTime(lpSystemTime: LPSYSTEMTIME);
 
                 pub fn QueryPerformanceFrequency(
                             lpFrequency: *mut LARGE_INTEGER) -> BOOL;
