@@ -902,12 +902,11 @@ fn trans_args_under_call_abi<'blk, 'tcx>(
             let repr = adt::represent_type(bcx.ccx(), tuple_type);
             let repr_ptr = &*repr;
             for (i, field_type) in field_types.iter().enumerate() {
-                let arg_datum = tuple_lvalue_datum.get_element(
+                let arg_datum = tuple_lvalue_datum.get_field(
                     bcx,
-                    field_type,
-                    |srcval| {
-                        adt::trans_field_ptr(bcx, repr_ptr, srcval, 0, i)
-                    }).to_expr_datum();
+                    repr_ptr,
+                    0,
+                    i).to_expr_datum();
                 bcx = trans_arg_datum(bcx,
                                       field_type,
                                       arg_datum,
