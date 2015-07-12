@@ -459,7 +459,7 @@ macro_rules! int_impl {
             }
         }
 
-        /// Wrapping (modular) division. Computes `floor(self / other)`,
+        /// Wrapping (modular) division. Computes `self / other`,
         /// wrapping around at the boundary of the type.
         ///
         /// The only case where such wrapping can occur is when one
@@ -467,7 +467,7 @@ macro_rules! int_impl {
         /// negative minimal value for the type); this is equivalent
         /// to `-MIN`, a positive value that is too large to represent
         /// in the type. In such a case, this function returns `MIN`
-        /// itself..
+        /// itself.
         #[stable(feature = "num_wrapping", since = "1.2.0")]
         #[inline(always)]
         pub fn wrapping_div(self, rhs: Self) -> Self {
@@ -1031,7 +1031,7 @@ macro_rules! uint_impl {
             }
         }
 
-        /// Wrapping (modular) division. Computes `floor(self / other)`,
+        /// Wrapping (modular) division. Computes `self / other`,
         /// wrapping around at the boundary of the type.
         ///
         /// The only case where such wrapping can occur is when one
@@ -1039,7 +1039,7 @@ macro_rules! uint_impl {
         /// negative minimal value for the type); this is equivalent
         /// to `-MIN`, a positive value that is too large to represent
         /// in the type. In such a case, this function returns `MIN`
-        /// itself..
+        /// itself.
         #[stable(feature = "num_wrapping", since = "1.2.0")]
         #[inline(always)]
         pub fn wrapping_div(self, rhs: Self) -> Self {

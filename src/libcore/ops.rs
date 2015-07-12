@@ -315,6 +315,9 @@ mul_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
 
 /// The `Div` trait is used to specify the functionality of `/`.
 ///
+/// For primitive integral types, this operation rounds towards zero,
+/// truncating any fractional part of the exact result.
+///
 /// # Examples
 ///
 /// A trivial implementation of `Div`. When `Foo / Foo` happens, it ends up
@@ -368,6 +371,9 @@ macro_rules! div_impl {
 div_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
 
 /// The `Rem` trait is used to specify the functionality of `%`.
+///
+/// For primitive integral types, this operation satisfies `n % d == n
+/// - (n / d) * d`.  The result has the same sign as the left operand.
 ///
 /// # Examples
 ///
