@@ -210,10 +210,6 @@ register_diagnostics! {
     E0258,
     E0364, // item is private
     E0365, // item is private
-    E0397, // failed to resolve
-    E0398, // unresolved import
-    E0399, // can't capture dynamic environment in a fn item
-    E0400, // attempt to use a non-constant value in a constant
     E0401, // can't use type parameters from outer function
     E0402, // cannot use an outer type parameter in this context
     E0403, // the name `{}` is already used
@@ -248,6 +244,10 @@ register_diagnostics! {
     E0428, // duplicate definition of ...
     E0429, // `self` imports are only allowed within a { } list
     E0430, // `self` import can only appear once in the list
-    E0431  // `self` import can only appear in an import list with a non-empty
+    E0431, // `self` import can only appear in an import list with a non-empty
            // prefix
+    E0432, // unresolved import
+    E0433, // failed to resolve
+    E0434, // can't capture dynamic environment in a fn item
+    E0435  // attempt to use a non-constant value in a constant
 }

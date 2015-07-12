@@ -1310,7 +1310,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                               PathSearch,
                                               true) {
                 Failed(Some((span, msg))) => {
-                    resolve_err!(self, span, E0397, "failed to resolve. {}", msg);
+                    resolve_err!(self, span, E0433, "failed to resolve. {}", msg);
                 },
                 Failed(None) => (), // Continue up the search chain.
                 Indeterminate => {
@@ -1568,10 +1568,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                          .span_to_snippet((*imports)[index].span)
                          .unwrap();
             if sn.contains("::") {
-                resolve_err!(self, (*imports)[index].span, E0398,
+                resolve_err!(self, (*imports)[index].span, E0432,
                              "{}", "unresolved import");
             } else {
-                resolve_err!(self, (*imports)[index].span, E0398,
+                resolve_err!(self, (*imports)[index].span, E0432,
                              "unresolved import (maybe you meant `{}::*`?)", sn);
             }
         }
@@ -1698,14 +1698,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             // This was an attempt to access an upvar inside a
                             // named function item. This is not allowed, so we
                             // report an error.
-                            resolve_err!(self, span, E0399, "{}",
+                            resolve_err!(self, span, E0434, "{}",
                                          "can't capture dynamic environment in a fn item; \
                                           use the || { ... } closure form instead");
                             return None;
                         }
                         ConstantItemRibKind => {
                             // Still doesn't deal with upvars
-                            resolve_err!(self, span, E0400, "{}",
+                            resolve_err!(self, span, E0435, "{}",
                                          "attempt to use a non-constant \
                                           value in a constant");
                             return None;
@@ -2678,7 +2678,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             Failed(err) => {
                 match err {
                     Some((span, msg)) => {
-                        resolve_err!(self, span, E0397,
+                        resolve_err!(self, span, E0433,
                                      "failed to resolve: {}",
                                      msg);
                     }
@@ -2909,7 +2909,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     }
                 };
 
-                resolve_err!(self, span, E0397,
+                resolve_err!(self, span, E0433,
                              "failed to resolve: {}",
                              msg);
                 return None;
@@ -2972,7 +2972,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
                 /*self.resolve_error(span, &format!("failed to resolve. {}",
                                                  msg));*/
-                resolve_err!(self, span, E0397,
+                resolve_err!(self, span, E0433,
                              "failed to resolve: {}",
                              msg);
                 return None;
@@ -3070,7 +3070,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                          failed to resolve {}", name);
 
                 if let Some((span, msg)) = err {
-                    resolve_err!(self, span, E0397,
+                    resolve_err!(self, span, E0433,
                                  "failed to resolve: {}",
                                  msg)
                 }
