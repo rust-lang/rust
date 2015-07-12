@@ -1006,7 +1006,7 @@ a compile-time constant.
 
 E0308: r##"
 This error occurs when the compiler was unable to infer the concrete type of a
-variable. This error can occur for several cases, the most common of which is a
+variable. It can occur for several cases, the most common of which is a
 mismatch in the expected type that the compiler inferred for a variable's
 initializing expression, and the actual type explicitly assigned to the
 variable.
