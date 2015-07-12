@@ -128,6 +128,9 @@ code, pre {
     border-radius: 3px;
     padding: 0 0.2em;
 }
+.docblock pre code {
+    padding: 0;
+}
 pre {
     background-color: #F5F5F5;
     padding: 14px;
