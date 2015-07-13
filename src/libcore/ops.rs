@@ -351,7 +351,25 @@ pub trait Div<RHS=Self> {
     fn div(self, rhs: RHS) -> Self::Output;
 }
 
-macro_rules! div_impl {
+macro_rules! div_impl_integer {
+    ($($t:ty)*) => ($(
+        /// This operation rounds towards zero, truncating any
+        /// fractional part of the exact result.
+        #[stable(feature = "rust1", since = "1.0.0")]
+        impl Div for $t {
+            type Output = $t;
+
+            #[inline]
+            fn div(self, other: $t) -> $t { self / other }
+        }
+
+        forward_ref_binop! { impl Div, div for $t, $t }
+    )*)
+}
+
+div_impl_integer! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
+
+macro_rules! div_impl_float {
     ($($t:ty)*) => ($(
         #[stable(feature = "rust1", since = "1.0.0")]
         impl Div for $t {
@@ -365,7 +383,7 @@ macro_rules! div_impl {
     )*)
 }
 
-div_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
+div_impl_float! { f32 f64 }
 
 /// The `Rem` trait is used to specify the functionality of `%`.
 ///
@@ -407,6 +425,8 @@ pub trait Rem<RHS=Self> {
 
 macro_rules! rem_impl {
     ($($t:ty)*) => ($(
+        /// This operation satisfies `n % d == n - (n / d) * d`.  The
+        /// result has the same sign as the left operand.
         #[stable(feature = "rust1", since = "1.0.0")]
         impl Rem for $t {
             type Output = $t;
