@@ -1384,7 +1384,8 @@ impl<'tcx> euv::Delegate<'tcx> for ReassignmentChecker {
                 match base_cmt.cat {
                     mc::cat_upvar(mc::Upvar { id: ty::UpvarId { var_id: vid, .. }, .. }) |
                     mc::cat_local(vid) => {
-                        self.reassigned |= self.node == vid && Some(field) == self.field
+                        self.reassigned |= self.node == vid &&
+                            (self.field.is_none() || Some(field) == self.field)
                     },
                     _ => {}
                 }
