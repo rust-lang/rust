@@ -1,11 +1,11 @@
 % Working with Unsafe
 
-Rust generally only gives us the tools to talk about safety in a scoped and
-binary manner. Unfortunately reality is significantly more complicated than that.
+Rust generally only gives us the tools to talk about Unsafe in a scoped and
+binary manner. Unfortunately, reality is significantly more complicated than that.
 For instance, consider the following toy function:
 
 ```rust
-fn do_idx(idx: usize, arr: &[u8]) -> Option<u8> {
+pub fn index(idx: usize, arr: &[u8]) -> Option<u8> {
     if idx < arr.len() {
         unsafe {
             Some(*arr.get_unchecked(idx))
@@ -22,7 +22,7 @@ function, the scope of the unsafe block is questionable. Consider changing the
 `<` to a `<=`:
 
 ```rust
-fn do_idx(idx: usize, arr: &[u8]) -> Option<u8> {
+pub fn index(idx: usize, arr: &[u8]) -> Option<u8> {
     if idx <= arr.len() {
         unsafe {
             Some(*arr.get_unchecked(idx))
@@ -45,7 +45,7 @@ implementation of `Vec`:
 
 ```rust
 // Note this defintion is insufficient. See the section on lifetimes.
-struct Vec<T> {
+pub struct Vec<T> {
     ptr: *mut T,
     len: usize,
     cap: usize,
@@ -55,7 +55,7 @@ struct Vec<T> {
 // We currently live in a nice imaginary world of only positive fixed-size
 // types.
 impl<T> Vec<T> {
-    fn push(&mut self, elem: T) {
+    pub fn push(&mut self, elem: T) {
         if self.len == self.cap {
             // not important for this example
             self.reallocate();
@@ -80,9 +80,25 @@ adding the following method:
 
 This code is safe, but it is also completely unsound. Changing the capacity
 violates the invariants of Vec (that `cap` reflects the allocated space in the
-Vec). This is not something the rest of `Vec` can guard against. It *has* to
+Vec). This is not something the rest of Vec can guard against. It *has* to
 trust the capacity field because there's no way to verify it.
 
 `unsafe` does more than pollute a whole function: it pollutes a whole *module*.
 Generally, the only bullet-proof way to limit the scope of unsafe code is at the
 module boundary with privacy.
+
+However this works *perfectly*. The existence of `make_room` is *not* a
+problem for the soundness of Vec because we didn't mark it as public. Only the
+module that defines this function can call it. Also, `make_room` directly
+accesses the private fields of Vec, so it can only be written in the same module
+as Vec.
+
+It is therefore possible for us to write a completely safe abstraction that
+relies on complex invariants. This is *critical* to the relationship between
+Safe Rust and Unsafe Rust. We have already seen that Unsafe code must trust
+*some* Safe code, but can't trust *arbitrary* Safe code. However if Unsafe
+couldn't prevent client Safe code from messing with its state in arbitrary ways,
+safety would be a lost cause.
+
+Safety lives!
+

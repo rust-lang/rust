@@ -1,7 +1,7 @@
 # Summary
 
 * [Meet Safe and Unsafe](meet-safe-and-unsafe.md)
-	* [What Do Safe and Unsafe Mean](safe-unsafe-meaning.md)
+	* [How Safe and Unsafe Interact](safe-unsafe-meaning.md)
 	* [Working with Unsafe](working-with-unsafe.md)
 * [Data Layout](data.md)
 	* [repr(Rust)](repr-rust.md)
