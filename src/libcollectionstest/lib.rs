@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(ascii)]
 #![feature(append)]
 #![feature(bitset)]
 #![feature(bitvec)]
@@ -43,6 +44,7 @@
 #![feature(str_char)]
 #![feature(str_escape)]
 #![feature(str_match_indices)]
+#![feature(str_split_at)]
 #![feature(str_utf16)]
 #![feature(box_str)]
 #![feature(subslice_offset)]

@@ -979,6 +979,38 @@ impl ops::Index<ops::RangeFull> for String {
     }
 }
 
+#[cfg(not(stage0))]
+#[stable(feature = "derefmut_for_string", since = "1.2.0")]
+impl ops::IndexMut<ops::Range<usize>> for String {
+    #[inline]
+    fn index_mut(&mut self, index: ops::Range<usize>) -> &mut str {
+        &mut self[..][index]
+    }
+}
+#[cfg(not(stage0))]
+#[stable(feature = "derefmut_for_string", since = "1.2.0")]
+impl ops::IndexMut<ops::RangeTo<usize>> for String {
+    #[inline]
+    fn index_mut(&mut self, index: ops::RangeTo<usize>) -> &mut str {
+        &mut self[..][index]
+    }
+}
+#[cfg(not(stage0))]
+#[stable(feature = "derefmut_for_string", since = "1.2.0")]
+impl ops::IndexMut<ops::RangeFrom<usize>> for String {
+    #[inline]
+    fn index_mut(&mut self, index: ops::RangeFrom<usize>) -> &mut str {
+        &mut self[..][index]
+    }
+}
+#[stable(feature = "derefmut_for_string", since = "1.2.0")]
+impl ops::IndexMut<ops::RangeFull> for String {
+    #[inline]
+    fn index_mut(&mut self, _index: ops::RangeFull) -> &mut str {
+        unsafe { mem::transmute(&mut *self.vec) }
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl ops::Deref for String {
     type Target = str;
@@ -986,6 +1018,14 @@ impl ops::Deref for String {
     #[inline]
     fn deref(&self) -> &str {
         unsafe { mem::transmute(&self.vec[..]) }
+    }
+}
+
+#[stable(feature = "derefmut_for_string", since = "1.2.0")]
+impl ops::DerefMut for String {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut str {
+        unsafe { mem::transmute(&mut self.vec[..]) }
     }
 }
 

@@ -550,6 +550,14 @@ impl str {
         core_str::StrExt::slice_unchecked(self, begin, end)
     }
 
+    /// Takes a bytewise mutable slice from a string.
+    ///
+    /// Same as `slice_unchecked`, but works with `&mut str` instead of `&str`.
+    #[unstable(feature = "str_slice_mut", reason = "recently added")]
+    pub unsafe fn slice_mut_unchecked(&mut self, begin: usize, end: usize) -> &mut str {
+        core_str::StrExt::slice_mut_unchecked(self, begin, end)
+    }
+
     /// Returns a slice of the string from the character range [`begin`..`end`).
     ///
     /// That is, start at the `begin`-th code point of the string and continue
@@ -776,7 +784,7 @@ impl str {
     ///
     /// # Examples
     /// ```
-    /// # #![feature(collections)]
+    /// # #![feature(str_split_at)]
     /// let s = "Löwe 老虎 Léopard";
     /// let first_space = s.find(' ').unwrap_or(s.len());
     /// let (a, b) = s.split_at(first_space);
@@ -785,8 +793,16 @@ impl str {
     /// assert_eq!(b, " 老虎 Léopard");
     /// ```
     #[inline]
+    #[unstable(feature = "str_split_at", reason = "recently added")]
     pub fn split_at(&self, mid: usize) -> (&str, &str) {
         core_str::StrExt::split_at(self, mid)
+    }
+
+    /// Divide one mutable string slice into two at an index.
+    #[inline]
+    #[unstable(feature = "str_split_at", reason = "recently added")]
+    pub fn split_at_mut(&mut self, mid: usize) -> (&mut str, &mut str) {
+        core_str::StrExt::split_at_mut(self, mid)
     }
 
     /// An iterator over the codepoints of `self`.
