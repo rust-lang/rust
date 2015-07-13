@@ -259,8 +259,8 @@ Michel Foucault is done eating.
 Easy enough, they’re all done! We haven’t actually implemented the real problem
 yet, though, so we’re not done yet!
 
-Next, we want to make our philosophers not just finish eating, but actually
-eat. Here’s the next version:
+For our philosophers to finish eating they first must have started eating. Here’s
+the next version:
 
 ```rust
 use std::thread;
@@ -277,7 +277,7 @@ impl Philosopher {
     }
     
     fn eat(&self) {
-        println!("{} is eating.", self.name);
+        println!("{} is about to eat.", self.name);
 
         thread::sleep_ms(1000);
 
@@ -311,7 +311,7 @@ from the standard library, and so we need to `use` it.
 
 ```rust,ignore
     fn eat(&self) {
-        println!("{} is eating.", self.name);
+        println!("{} is about to eat.", self.name);
 
         thread::sleep_ms(1000);
 
@@ -325,15 +325,15 @@ simulate the time it takes a philosopher to eat.
 If you run this program, you should see each philosopher eat in turn:
 
 ```text
-Judith Butler is eating.
+Judith Butler is about to eat.
 Judith Butler is done eating.
-Gilles Deleuze is eating.
+Gilles Deleuze is about to eat.
 Gilles Deleuze is done eating.
-Karl Marx is eating.
+Karl Marx is about to eat.
 Karl Marx is done eating.
-Emma Goldman is eating.
+Emma Goldman is about to eat.
 Emma Goldman is done eating.
-Michel Foucault is eating.
+Michel Foucault is about to eat.
 Michel Foucault is done eating.
 ```
 
@@ -358,7 +358,7 @@ impl Philosopher {
     }
 
     fn eat(&self) {
-        println!("{} is eating.", self.name);
+        println!("{} is about to eat.", self.name);
 
         thread::sleep_ms(1000);
 
@@ -460,14 +460,14 @@ If you run this program, you’ll see that the philosophers eat out of order!
 We have multi-threading!
 
 ```text
-Gilles Deleuze is eating.
+Gilles Deleuze is about to eat.
 Gilles Deleuze is done eating.
-Emma Goldman is eating.
+Emma Goldman is about to eat.
 Emma Goldman is done eating.
-Michel Foucault is eating.
-Judith Butler is eating.
+Michel Foucault is about to eat.
+Judith Butler is about to eat.
 Judith Butler is done eating.
-Karl Marx is eating.
+Karl Marx is about to eat.
 Karl Marx is done eating.
 Michel Foucault is done eating.
 ```
@@ -511,13 +511,12 @@ impl Philosopher {
     }
 
     fn eat(&self, table: &Table) {
+        println!("{} is about to eat.", self.name);
+        
         let _left = table.forks[self.left].lock().unwrap();
-        let _right = table.forks[self.right].lock().unwrap();
-
-        println!("{} is eating.", self.name);
-
         thread::sleep_ms(1000);
-
+        let _right = table.forks[self.right].lock().unwrap();
+        
         println!("{} is done eating.", self.name);
     }
 }
@@ -596,13 +595,12 @@ We now need to construct those `left` and `right` values, so we add them to
 
 ```rust,ignore
 fn eat(&self, table: &Table) {
+    println!("{} is about to eat.", self.name);
+    
     let _left = table.forks[self.left].lock().unwrap();
-    let _right = table.forks[self.right].lock().unwrap();
-
-    println!("{} is eating.", self.name);
-
     thread::sleep_ms(1000);
-
+    let _right = table.forks[self.right].lock().unwrap();
+    
     println!("{} is done eating.", self.name);
 }
 ```
@@ -660,7 +658,9 @@ We need to pass in our `left` and `right` values to the constructors for our
 you look at the pattern, it’s all consistent until the very end. Monsieur
 Foucault should have `4, 0` as arguments, but instead, has `0, 4`. This is what
 prevents deadlock, actually: one of our philosophers is left handed! This is
-one way to solve the problem, and in my opinion, it’s the simplest.
+one way to solve the problem, and in my opinion, it’s the simplest. If you
+switched these around and caused a deadlock you can use `Ctrl-C` to interrupt
+execution of the program.
 
 ```rust,ignore
 let handles: Vec<_> = philosophers.into_iter().map(|p| {
@@ -686,14 +686,14 @@ With this, our program works! Only two philosophers can eat at any one time,
 and so you’ll get some output like this:
 
 ```text
-Gilles Deleuze is eating.
-Emma Goldman is eating.
+Gilles Deleuze is about to eat.
+Emma Goldman is about to eat.
 Emma Goldman is done eating.
 Gilles Deleuze is done eating.
-Judith Butler is eating.
-Karl Marx is eating.
+Judith Butler is about to eat.
+Karl Marx is about to eat.
 Judith Butler is done eating.
-Michel Foucault is eating.
+Michel Foucault is about to eat.
 Karl Marx is done eating.
 Michel Foucault is done eating.
 ```
