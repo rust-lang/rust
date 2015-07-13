@@ -132,6 +132,33 @@ in a "duck-typed" manner: it will just ensure that the types are SIMD
 vectors with the appropriate length and element type, it will not
 enforce a specific nominal type.
 
+NB. The structural typing is just for the declaration: if a SIMD intrinsic
+is declared to take a type `X`, it must always be called with `X`,
+even if other types are structurally equal to `X`. Also, within a
+signature, SIMD types that must be structurally equal must be nominal
+equal. I.e. if the `add_...` all refer to the same intrinsic to add a
+SIMD vector of bytes,
+
+```rust
+// (same length)
+struct A(u8, u8, ..., u8);
+struct B(u8, u8, ..., u8);
+
+extern "rust-intrinsic" {
+    fn add_aaa(x: A, y: A) -> A; // ok
+    fn add_bbb(x: B, y: B) -> B; // ok
+    fn add_aab(x: A, y: A) -> B; // error, expected B, found A
+    fn add_bab(x: B, y: A) -> B; // error, expected A, found B
+}
+
+fn double_a(x: A) -> A {
+    add_aaa(x, x)
+}
+fn double_b(x: B) -> B {
+    add_aaa(x, x) // error, expected A, found B
+}
+```
+
 There would additionally be a small set of cross-platform operations
 that are either generally efficiently supported everywhere or are
 extremely useful. These won't necessarily map to a single instruction,
@@ -173,9 +200,9 @@ extern "rust-intrinsic" {
 ```
 
 The raw definitions are only checked for validity at monomorphisation
-time, ensure that `T` is a SIMD vector, `U` is the element type of `T`
-etc. Libraries can use traits to ensure that these will be enforced by
-the type checker too.
+time, ensure that `T` is a SIMD vector, `Elem` is the element type of
+`T` etc. Libraries can use traits to ensure that these will be
+enforced by the type checker too.
 
 This approach has some downsides: `simd_shuffle32` (e.g. `Simd32<u8>`
 on AVX, and `Simd32<u16>` on AVX-512) and especially `simd_shuffle64`
