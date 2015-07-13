@@ -18,6 +18,59 @@ Read ["Installing Rust"] from [The Book].
 
 ## Building from Source
 
+Starting from `e645ed59` the Rust Build System is being converted to use
+Cargo. The new build system is supposed to replace the old Makefile-based
+build system once it is mature enough. It is encouraged to use the new build
+system whenever possible as the Makefile-based system is marked for deletion
+in the future.
+
+To build the compiler,
+
+1. Make sure you have installed the dependencies:
+
+   * `g++` 4.7 or `clang++` 3.x
+   * `python` 2.7 or later (but not 3.x)
+   * `git`
+
+   On a Unix-based system (Linux/Mac) you also need:
+
+   * GNU `make` 3.81 or later
+
+2. Download the latest nightly build of Rust, and install it.
+
+   On Unix-based systems, you can use the `multirust` tool to do this.
+
+3. Clone the [source] with `git`:
+
+   ```sh
+   $ git clone https://github.com/rust-lang/rust.git
+   $ cd rust
+   ```
+
+[source]: https://github.com/rust-lang/rust
+
+4. Update the git submodules within the source repository:
+
+   ```sh
+   $ git submodule init
+   $ git submodule update
+   ```
+
+5. On a Unix-based system, run
+
+   ```sh
+   $ ./build.sh
+   ```
+
+   On Windows, open a (normal) command line window and run
+
+   ```
+   python src\etc\build_rust.py
+   ```
+
+
+## Building from Source with the Makefile-based Build System
+
 1. Make sure you have installed the dependencies:
 
    * `g++` 4.7 or `clang++` 3.x
@@ -55,7 +108,7 @@ Read ["Installing Rust"] from [The Book].
 
 [Cargo]: https://github.com/rust-lang/cargo
 
-### Building on Windows
+### Building on Windows with the Makefile-based Build System
 
 [MSYS2](http://msys2.github.io/) can be used to easily build Rust on Windows:
 
