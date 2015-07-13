@@ -100,17 +100,31 @@ symbol.
 An example of this error:
 
 ```
-extern crate foo; // foo is a crate that exported its own symbol
+// crate foo
+pub use foo::bar;
+pub mod foo; // note that there's a `pub` here
+```
 
-use foo::*; // error, `foo::*` also resolves to `foo` already imported
+```
+// other program
+extern crate foo;
+
+use foo::*; // error, `foo::*` tries to bind `foo::foo` to `foo`
 ```
 
 Or yet:
 
 ```
-extern crate foo; // foo is a crate that didn't export its own symbol
+// crate foo
+pub use foo::bar;
+mod foo; // note that there's no `pub` here
+```
 
-use foo::{self,bar}; // error, `use`ing self resolves to `foo` already imported
+```
+// other program
+extern crate foo;
+
+use foo::{self,bar}; // error, `use`ing `self` tries to bind `foo::foo` to `foo`
 ```
 "##,
 
