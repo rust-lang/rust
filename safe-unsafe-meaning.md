@@ -70,7 +70,7 @@ basically a language bug.
 
 That said, it would be best to minimize *needlessly* relying on properties of
 concrete safe code. Bugs happen! Of course, I must reinforce that this is only
-a concern for Unsafe code. Safe code can't blindly trust anyone and everyone
+a concern for Unsafe code. Safe code can blindly trust anyone and everyone
 as far as basic memory-safety is concerned.
 
 On the other hand, safe traits are free to declare arbitrary contracts, but because
