@@ -975,6 +975,8 @@ pub unsafe fn configure_llvm(sess: &Session) {
     // using --llvm-root will have multiple platforms that rustllvm
     // doesn't actually link to and it's pointless to put target info
     // into the registry that Rust cannot generate machine code for.
+        // `librustc_llvm` provides no-op wrappers of these functions for
+        // targets LLVM can't codegen for.
     llvm::LLVMInitializeX86TargetInfo();
     llvm::LLVMInitializeX86Target();
     llvm::LLVMInitializeX86TargetMC();
