@@ -60,7 +60,7 @@ use ast::{ViewPath, ViewPathGlob, ViewPathList, ViewPathSimple};
 use ast::{Visibility, WhereClause};
 use ast;
 use ast_util::{self, AS_PREC, ident_to_path, operator_prec};
-use codemap::{self, Span, BytePos, Spanned, spanned, mk_sp};
+use codemap::{self, Span, BytePos, Spanned, spanned, mk_sp, CodeMap};
 use diagnostic;
 use ext::tt::macro_parser;
 use parse;
@@ -296,6 +296,24 @@ impl TokenType {
 fn is_plain_ident_or_underscore(t: &token::Token) -> bool {
     t.is_plain_ident() || *t == token::Underscore
 }
+
+/// Information about the path to a module.
+pub struct ModulePath {
+    pub name: String,
+    pub path_exists: bool,
+    pub result: Result<ModulePathSuccess, ModulePathError>,
+}
+
+pub struct ModulePathSuccess {
+    pub path: ::std::path::PathBuf,
+    pub owns_directory: bool,
+}
+
+pub struct ModulePathError {
+    pub err_msg: String,
+    pub help_msg: String,
+}
+
 
 impl<'a> Parser<'a> {
     pub fn new(sess: &'a ParseSess,
@@ -4859,82 +4877,104 @@ impl<'a> Parser<'a> {
         self.mod_path_stack.pop().unwrap();
     }
 
-    /// Read a module from a source file.
-    fn eval_src_mod(&mut self,
-                    id: ast::Ident,
-                    outer_attrs: &[ast::Attribute],
-                    id_sp: Span)
-                    -> PResult<(ast::Item_, Vec<ast::Attribute> )> {
+    pub fn submod_path_from_attr(attrs: &[ast::Attribute], dir_path: &Path) -> Option<PathBuf> {
+        ::attr::first_attr_value_str_by_name(attrs, "path").map(|d| dir_path.join(&*d))
+    }
+
+    /// Returns either a path to a module, or .
+    pub fn default_submod_path(id: ast::Ident, dir_path: &Path, codemap: &CodeMap) -> ModulePath
+    {
+        let mod_string = token::get_ident(id);
+        let mod_name = mod_string.to_string();
+        let default_path_str = format!("{}.rs", mod_name);
+        let secondary_path_str = format!("{}/mod.rs", mod_name);
+        let default_path = dir_path.join(&default_path_str);
+        let secondary_path = dir_path.join(&secondary_path_str);
+        let default_exists = codemap.file_exists(&default_path);
+        let secondary_exists = codemap.file_exists(&secondary_path);
+
+        let result = match (default_exists, secondary_exists) {
+            (true, false) => Ok(ModulePathSuccess { path: default_path, owns_directory: false }),
+            (false, true) => Ok(ModulePathSuccess { path: secondary_path, owns_directory: true }),
+            (false, false) => Err(ModulePathError {
+                err_msg: format!("file not found for module `{}`", mod_name),
+                help_msg: format!("name the file either {} or {} inside the directory {:?}",
+                                  default_path_str,
+                                  secondary_path_str,
+                                  dir_path.display()),
+            }),
+            (true, true) => Err(ModulePathError {
+                err_msg: format!("file for module `{}` found at both {} and {}",
+                                 mod_name,
+                                 default_path_str,
+                                 secondary_path_str),
+                help_msg: "delete or rename one of them to remove the ambiguity".to_owned(),
+            }),
+        };
+
+        ModulePath {
+            name: mod_name,
+            path_exists: default_exists || secondary_exists,
+            result: result,
+        }
+    }
+
+    fn submod_path(&mut self,
+                   id: ast::Ident,
+                   outer_attrs: &[ast::Attribute],
+                   id_sp: Span) -> PResult<ModulePathSuccess> {
         let mut prefix = PathBuf::from(&self.sess.codemap().span_to_filename(self.span));
         prefix.pop();
         let mut dir_path = prefix;
         for part in &self.mod_path_stack {
             dir_path.push(&**part);
         }
-        let mod_string = token::get_ident(id);
-        let (file_path, owns_directory) = match ::attr::first_attr_value_str_by_name(
-                outer_attrs, "path") {
-            Some(d) => (dir_path.join(&*d), true),
-            None => {
-                let mod_name = mod_string.to_string();
-                let default_path_str = format!("{}.rs", mod_name);
-                let secondary_path_str = format!("{}/mod.rs", mod_name);
-                let default_path = dir_path.join(&default_path_str[..]);
-                let secondary_path = dir_path.join(&secondary_path_str[..]);
-                let default_exists = self.sess.codemap().file_exists(&default_path);
-                let secondary_exists = self.sess.codemap().file_exists(&secondary_path);
 
-                if !self.owns_directory {
-                    self.span_err(id_sp,
-                                  "cannot declare a new module at this location");
-                    let this_module = match self.mod_path_stack.last() {
-                        Some(name) => name.to_string(),
-                        None => self.root_module_name.as_ref().unwrap().clone(),
-                    };
-                    self.span_note(id_sp,
-                                   &format!("maybe move this module `{0}` \
-                                            to its own directory via \
-                                            `{0}/mod.rs`",
-                                           this_module));
-                    if default_exists || secondary_exists {
-                        self.span_note(id_sp,
-                                       &format!("... or maybe `use` the module \
-                                                `{}` instead of possibly \
-                                                redeclaring it",
-                                               mod_name));
-                    }
-                    self.abort_if_errors();
-                }
+        if let Some(p) = Parser::submod_path_from_attr(outer_attrs, &dir_path) {
+            return Ok(ModulePathSuccess { path: p, owns_directory: true });
+        }
 
-                match (default_exists, secondary_exists) {
-                    (true, false) => (default_path, false),
-                    (false, true) => (secondary_path, true),
-                    (false, false) => {
-                        return Err(self.span_fatal_help(id_sp,
-                                             &format!("file not found for module `{}`",
-                                                     mod_name),
-                                             &format!("name the file either {} or {} inside \
-                                                     the directory {:?}",
-                                                     default_path_str,
-                                                     secondary_path_str,
-                                                     dir_path.display())));
-                    }
-                    (true, true) => {
-                        return Err(self.span_fatal_help(
-                            id_sp,
-                            &format!("file for module `{}` found at both {} \
-                                     and {}",
-                                    mod_name,
-                                    default_path_str,
-                                    secondary_path_str),
-                            "delete or rename one of them to remove the ambiguity"));
-                    }
-                }
+        let paths = Parser::default_submod_path(id, &dir_path, self.sess.codemap());
+
+        if !self.owns_directory {
+            self.span_err(id_sp, "cannot declare a new module at this location");
+            let this_module = match self.mod_path_stack.last() {
+                Some(name) => name.to_string(),
+                None => self.root_module_name.as_ref().unwrap().clone(),
+            };
+            self.span_note(id_sp,
+                           &format!("maybe move this module `{0}` to its own directory \
+                                     via `{0}/mod.rs`",
+                                    this_module));
+            if paths.path_exists {
+                self.span_note(id_sp,
+                               &format!("... or maybe `use` the module `{}` instead \
+                                         of possibly redeclaring it",
+                                        paths.name));
             }
-        };
+            self.abort_if_errors();
+        }
 
-        self.eval_src_mod_from_path(file_path, owns_directory,
-                                    mod_string.to_string(), id_sp)
+        match paths.result {
+            Ok(succ) => Ok(succ),
+            Err(err) => Err(self.span_fatal_help(id_sp, &err.err_msg, &err.help_msg)),
+        }
+    }
+
+    /// Read a module from a source file.
+    fn eval_src_mod(&mut self,
+                    id: ast::Ident,
+                    outer_attrs: &[ast::Attribute],
+                    id_sp: Span)
+                    -> PResult<(ast::Item_, Vec<ast::Attribute> )> {
+        let ModulePathSuccess { path, owns_directory } = try!(self.submod_path(id,
+                                                                               outer_attrs,
+                                                                               id_sp));
+
+        self.eval_src_mod_from_path(path,
+                                    owns_directory,
+                                    token::get_ident(id).to_string(),
+                                    id_sp)
     }
 
     fn eval_src_mod_from_path(&mut self,
