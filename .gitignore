@@ -93,3 +93,9 @@ tmp.*.rs
 version.md
 version.ml
 version.texi
+*.racertmp
+Cargo.lock
+/src/*/target
+/src/*/tmp
+/target/
+!/src/librustc_back/target
