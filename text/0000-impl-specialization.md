@@ -102,7 +102,8 @@ pub trait Extend<A, T: IntoIterator<Item=A>> {
 
 // The generic implementation
 impl<A, T> Extend<A, T> for Vec<A> where T: IntoIterator<Item=A> {
-    fn extend(&mut self, iterable: T) {
+    // the `default` qualifier allows this method to be specialized below
+    default fn extend(&mut self, iterable: T) {
         ... // implementation using push (like today's extend)
     }
 }
@@ -150,7 +151,8 @@ implementation:
 
 ```rust
 partial impl<T: Clone, Rhs> Add<Rhs> for T {
-    fn add_assign(&mut self, rhs: R) {
+    // the `default` qualifier allows further specialization
+    default fn add_assign(&mut self, rhs: R) {
         let tmp = self.clone() + rhs;
         *self = tmp;
     }
@@ -190,10 +192,11 @@ partial impl<T> Iterator for T where T: ExactSizeIterator {
 ```
 
 As we'll see later, the design of this RFC makes it possible to "lock down" such
-method impls, preventing any further refinement (akin to Java's `final`
-keyword); that in turn makes it possible to statically enforce the contract that
-is supposed to connect the `len` and `size_hint` methods. (Of course, we can't
-make *that* particular change, since the relevant APIs are already stable.)
+method impls (by not using the `default` qualifier), preventing any further
+refinement (akin to Java's `final` keyword); that in turn makes it possible to
+statically enforce the contract that is supposed to connect the `len` and
+`size_hint` methods. (Of course, we can't make *that* particular change, since
+the relevant APIs are already stable.)
 
 ## Supporting efficient inheritance
 
@@ -344,14 +347,17 @@ Furthermore, it doesn't work to say that the compiler can make this kind of
 assumption *unless* specialization is being used, since we want to allow
 downstream crates to add specialized impls. We need to know up front.
 
+Another possibility would be to simply disallow specialization of associated
+types. But the trouble described above isn't limited to associated types. Every
+function/method in a trait has an implicit associated type that implements the
+closure types, and similar bad assumptions about blanket impls can crop up
+there. It's not entirely clear whether they can be weaponized, however. (That
+said, it may be reasonable to stabilize only specialization of functions/methods
+to begin with, and wait for strong use cases of associated type specialization
+to emerge before stabilizing that.)
+
 The solution proposed in this RFC is instead to treat specialization of items in
 a trait as a per-item *opt in*, described in the next section.
-
-(As a sidenote, the trouble described above isn't limited to associated
-types. Every function/method in a trait has an implicit associated type that
-implements the closure types, and similar bad assumptions about blanket impls
-can crop up there. It's not entirely clear whether they can be weaponized,
-however.)
 
 ## The `default` keyword
 
@@ -473,10 +479,11 @@ because the applicable blanket impl marks the type as `default`. The fact that
 The main drawbacks of this solution are:
 
 - **API evolution**. Adding `default` to an associated type *takes away* some
-  abilities, which makes it a breaking change. (In principle, this is probably
-  true for functions/methods as well, but the breakage there is theoretical at
-  most.) However, given the design constraints discussed so far, this seems like
-  an inevitable aspect of any simple, backwards-compatible design.
+  abilities, which makes it a breaking change to a public API. (In principle,
+  this is probably true for functions/methods as well, but the breakage there is
+  theoretical at most.) However, given the design constraints discussed so far,
+  this seems like an inevitable aspect of any simple, backwards-compatible
+  design.
 
 - **Verbosity**. It's possible that certain uses of the trait system will result
   in typing `default` quite a bit. This RFC takes a conservative approach of
@@ -579,7 +586,9 @@ motivating use cases as possible.
 The basic intuition we've been using for specialization is the idea that one
 impl is "more specific" than another it overlaps with. Before turning this
 intuition into a rule, let's go through the previous examples of overlap and
-decide which, if any, of the impls is intuitively more specific:
+decide which, if any, of the impls is intuitively more specific. **Note that since
+we're leaving out the body of the impls, you won't see the `default` keyword
+that would be required in practice for the less specialized impls.**
 
 ```rust
 trait Foo {}
@@ -1155,7 +1164,7 @@ inherent impls, e.g.:
 
 ```rust
 impl<T, I> Vec<T> where I: IntoIterator<Item = T> {
-    fn extend(iter: I) { .. }
+    default fn extend(iter: I) { .. }
 }
 
 impl<T> Vec<T> {
@@ -1177,7 +1186,7 @@ for `extend` look superficially different, although it's clear that the first
 impl is the more general of the two.
 
 For the intended desugaring into "inherent traits" to be coherent, we need to
-determine the items signatures. To do this, we apply the following test:
+determine the item signatures. To do this, we apply the following test:
 
 - Suppose an item of the same kind, named `foo`, occurs in two inherent impl
   blocks for the same type constructor.
