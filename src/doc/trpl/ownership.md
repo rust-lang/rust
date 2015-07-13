@@ -42,8 +42,8 @@ With that in mind, let’s learn about ownership.
 # Ownership
 
 [Variable bindings][bindings] have a property in Rust: they ‘have ownership’
-of what they’re bound to. This means that when a binding goes out of scope, the
-resource that they’re bound to are freed. For example:
+of what they’re bound to. This means that when a binding goes out of scope, 
+Rust will free the bound resources. For example:
 
 ```rust
 fn foo() {
