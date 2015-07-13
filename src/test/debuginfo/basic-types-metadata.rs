@@ -43,7 +43,7 @@
 // gdb-command:whatis f64
 // gdb-check:type = f64
 // gdb-command:info functions _yyy
-// gdb-check:[...]![...]_yyy([...])([...]);
+// gdb-check:[...]![...]_yyy([...]);
 // gdb-command:continue
 
 #![allow(unused_variables)]

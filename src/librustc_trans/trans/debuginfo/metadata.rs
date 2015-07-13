@@ -920,7 +920,7 @@ pub fn scope_metadata(fcx: &FunctionContext,
     }
 }
 
-fn diverging_type_metadata(cx: &CrateContext) -> DIType {
+pub fn diverging_type_metadata(cx: &CrateContext) -> DIType {
     unsafe {
         llvm::LLVMDIBuilderCreateBasicType(
             DIB(cx),
