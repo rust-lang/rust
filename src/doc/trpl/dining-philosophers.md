@@ -151,7 +151,7 @@ look at `main()` again:
 # struct Philosopher {
 #     name: String,
 # }
-# 
+#
 # impl Philosopher {
 #     fn new(name: &str) -> Philosopher {
 #         Philosopher {
@@ -159,7 +159,7 @@ look at `main()` again:
 #         }
 #     }
 # }
-# 
+#
 fn main() {
     let p1 = Philosopher::new("Judith Butler");
     let p2 = Philosopher::new("Gilles Deleuze");
@@ -197,15 +197,15 @@ a method, and then loop through all the philosophers, calling it:
 ```rust
 struct Philosopher {
     name: String,
-}   
+}
 
-impl Philosopher { 
+impl Philosopher {
     fn new(name: &str) -> Philosopher {
         Philosopher {
             name: name.to_string(),
         }
     }
-    
+
     fn eat(&self) {
         println!("{} is done eating.", self.name);
     }
@@ -267,15 +267,15 @@ use std::thread;
 
 struct Philosopher {
     name: String,
-}   
+}
 
-impl Philosopher { 
+impl Philosopher {
     fn new(name: &str) -> Philosopher {
         Philosopher {
             name: name.to_string(),
         }
     }
-    
+
     fn eat(&self) {
         println!("{} is eating.", self.name);
 
@@ -348,9 +348,9 @@ use std::thread;
 
 struct Philosopher {
     name: String,
-}   
+}
 
-impl Philosopher { 
+impl Philosopher {
     fn new(name: &str) -> Philosopher {
         Philosopher {
             name: name.to_string(),
@@ -401,7 +401,7 @@ let handles: Vec<_> = philosophers.into_iter().map(|p| {
 While this is only five lines, they’re a dense five. Let’s break it down.
 
 ```rust,ignore
-let handles: Vec<_> = 
+let handles: Vec<_> =
 ```
 
 We introduce a new binding, called `handles`. We’ve given it this name because
@@ -460,15 +460,15 @@ If you run this program, you’ll see that the philosophers eat out of order!
 We have multi-threading!
 
 ```text
-Gilles Deleuze is eating.
-Gilles Deleuze is done eating.
-Emma Goldman is eating.
-Emma Goldman is done eating.
-Michel Foucault is eating.
 Judith Butler is eating.
-Judith Butler is done eating.
+Gilles Deleuze is eating.
 Karl Marx is eating.
+Emma Goldman is eating.
+Michel Foucault is eating.
+Judith Butler is done eating.
+Gilles Deleuze is done eating.
 Karl Marx is done eating.
+Emma Goldman is done eating.
 Michel Foucault is done eating.
 ```
 
