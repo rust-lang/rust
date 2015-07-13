@@ -517,7 +517,6 @@ pub trait Neg {
 macro_rules! neg_impl_core {
     ($id:ident => $body:expr, $($t:ty)*) => ($(
         #[stable(feature = "rust1", since = "1.0.0")]
-        #[allow(unsigned_negation)]
         impl Neg for $t {
             #[stable(feature = "rust1", since = "1.0.0")]
             type Output = $t;

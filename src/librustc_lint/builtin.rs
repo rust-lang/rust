@@ -53,7 +53,7 @@ use syntax::{abi, ast};
 use syntax::ast_util::{self, is_shift_binop, local_def};
 use syntax::attr::{self, AttrMetaMethods};
 use syntax::codemap::{self, Span};
-use syntax::feature_gate::{KNOWN_ATTRIBUTES, AttributeType};
+use syntax::feature_gate::{KNOWN_ATTRIBUTES, AttributeType, emit_feature_err};
 use syntax::parse::token;
 use syntax::ast::{TyIs, TyUs, TyI8, TyU8, TyI16, TyU16, TyI32, TyU32, TyI64, TyU64};
 use syntax::ptr::P;
@@ -86,12 +86,6 @@ impl LintPass for WhileTrue {
             }
         }
     }
-}
-
-declare_lint! {
-    UNSIGNED_NEGATION,
-    Warn,
-    "using an unary minus operator on unsigned type"
 }
 
 declare_lint! {
@@ -128,8 +122,7 @@ impl TypeLimits {
 
 impl LintPass for TypeLimits {
     fn get_lints(&self) -> LintArray {
-        lint_array!(UNSIGNED_NEGATION, UNUSED_COMPARISONS, OVERFLOWING_LITERALS,
-                    EXCEEDING_BITSHIFTS)
+        lint_array!(UNUSED_COMPARISONS, OVERFLOWING_LITERALS, EXCEEDING_BITSHIFTS)
     }
 
     fn check_expr(&mut self, cx: &Context, e: &ast::Expr) {
@@ -139,9 +132,12 @@ impl LintPass for TypeLimits {
                     ast::ExprLit(ref lit) => {
                         match lit.node {
                             ast::LitInt(_, ast::UnsignedIntLit(_)) => {
-                                cx.span_lint(UNSIGNED_NEGATION, e.span,
-                                             "negation of unsigned int literal may \
-                                             be unintentional");
+                                check_unsigned_negation_feature(cx, e.span);
+                            },
+                            ast::LitInt(_, ast::UnsuffixedIntLit(_)) => {
+                                if let ty::TyUint(_) = cx.tcx.expr_ty(e).sty {
+                                    check_unsigned_negation_feature(cx, e.span);
+                                }
                             },
                             _ => ()
                         }
@@ -150,9 +146,7 @@ impl LintPass for TypeLimits {
                         let t = cx.tcx.expr_ty(&**expr);
                         match t.sty {
                             ty::TyUint(_) => {
-                                cx.span_lint(UNSIGNED_NEGATION, e.span,
-                                             "negation of unsigned int variable may \
-                                             be unintentional");
+                                check_unsigned_negation_feature(cx, e.span);
                             },
                             _ => ()
                         }
@@ -383,6 +377,16 @@ impl LintPass for TypeLimits {
                 ast::BiEq | ast::BiLt | ast::BiLe |
                 ast::BiNe | ast::BiGe | ast::BiGt => true,
                 _ => false
+            }
+        }
+
+        fn check_unsigned_negation_feature(cx: &Context, span: Span) {
+            if !cx.sess().features.borrow().negate_unsigned {
+                emit_feature_err(
+                    &cx.sess().parse_sess.span_diagnostic,
+                    "negate_unsigned",
+                    span,
+                    "unary negation of unsigned integers may be removed in the future");
             }
         }
     }
