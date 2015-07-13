@@ -366,6 +366,9 @@ cfg_if_else! {
 - have 100% guaranteed type-safety for generic `#[repr(simd)]` types
   and the generic intrinsics. This would probably require a relatively
   complicated set of traits (with compiler integration).
+- use generic intrinsics like shuffles for the arithmetic operations,
+  instead of providing the operations implicitly.
+
 
 # Unresolved questions
 
