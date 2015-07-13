@@ -38,6 +38,7 @@
 #![feature(step_by)]
 
 #![cfg_attr(test, feature(test, rand, rustc_private, iter_order))]
+#![cfg_attr(test, allow(unused_imports, unused_features))]
 
 #![allow(deprecated)]
 
