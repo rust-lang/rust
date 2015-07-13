@@ -20,10 +20,12 @@
 //! possibilities, naturally, but they are all variants of these base
 //! forms):
 //!
+//! ```{.text}
 //!     E = rvalue    // some computed rvalue
 //!       | x         // address of a local variable or argument
 //!       | *E        // deref of a ptr
 //!       | E.comp    // access to an interior component
+//! ```
 //!
 //! Imagine a routine ToAddr(Expr) that evaluates an expression and returns an
 //! address where the result is to be found.  If Expr is an lvalue, then this
@@ -50,9 +52,11 @@
 //! closure upvars into the dereference of a borrowed pointer; this more closely
 //! resembles the runtime translation. So, for example, if we had:
 //!
+//! ```rust,ignore
 //!     let mut x = 3;
 //!     let y = 5;
 //!     let inc = || x += y;
+//! ```
 //!
 //! Then when we categorize `x` (*within* the closure) we would yield a
 //! result of `*x'`, effectively, where `x'` is a `cat_upvar` reference

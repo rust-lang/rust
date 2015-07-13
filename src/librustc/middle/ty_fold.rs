@@ -14,7 +14,9 @@
 //! instance of a "folder" (a type which implements `TypeFolder`). Then
 //! the setup is intended to be:
 //!
+//! ```{.text}
 //!     T.fold_with(F) --calls--> F.fold_T(T) --calls--> super_fold_T(F, T)
+//! ```
 //!
 //! This way, when you define a new folder F, you can override
 //! `fold_T()` to customize the behavior, and invoke `super_fold_T()`

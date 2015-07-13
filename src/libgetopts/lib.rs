@@ -30,9 +30,11 @@
 //! file name following `-o`, and accepts both `-h` and `--help` as optional flags.
 //!
 //! ```{.rust}
+//! #![feature(rustc_private)]
+//! #![feature(slice_extras)]
 //! extern crate getopts;
 //! use getopts::{optopt,optflag,getopts,OptGroup,usage};
-//! use std::os;
+//! use std::env;
 //!
 //! fn do_work(inp: &str, out: Option<String>) {
 //!     println!("{}", inp);
@@ -44,13 +46,13 @@
 //!
 //! fn print_usage(program: &str, opts: &[OptGroup]) {
 //!     let brief = format!("Usage: {} [options]", program);
-//!     print!("{}", usage(brief, opts));
+//!     print!("{}", usage(&brief, opts));
 //! }
 //!
 //! fn main() {
-//!     let args: Vec<String> = os::args();
+//!     let args: Vec<String> = env::args().collect();
 //!
-//!     let program = args[0].clone();
+//!     let program = &args[0];
 //!
 //!     let opts = &[
 //!         optopt("o", "", "set output file name", "NAME"),
@@ -71,7 +73,7 @@
 //!         print_usage(program, opts);
 //!         return;
 //!     };
-//!     do_work(input, output);
+//!     do_work(&input, output);
 //! }
 //! ```
 

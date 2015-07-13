@@ -685,18 +685,20 @@ impl<'a,'tcx> SubstFolder<'a,'tcx> {
     /// when we are substituting a type with escaping regions into a context where we have passed
     /// through region binders. That's quite a mouthful. Let's see an example:
     ///
-    /// ```
+    /// ```rust,ignore
     /// type Func<A> = fn(A);
     /// type MetaFunc = for<'a> fn(Func<&'a int>)
     /// ```
     ///
     /// The type `MetaFunc`, when fully expanded, will be
     ///
+    /// ```{.text}
     ///     for<'a> fn(fn(&'a int))
     ///             ^~ ^~ ^~~
     ///             |  |  |
     ///             |  |  DebruijnIndex of 2
     ///             Binders
+    /// ```
     ///
     /// Here the `'a` lifetime is bound in the outer function, but appears as an argument of the
     /// inner one. Therefore, that appearance will have a DebruijnIndex of 2, because we must skip
@@ -707,18 +709,20 @@ impl<'a,'tcx> SubstFolder<'a,'tcx> {
     ///
     /// As a second example, consider this twist:
     ///
-    /// ```
+    /// ```rust,ignore
     /// type FuncTuple<A> = (A,fn(A));
     /// type MetaFuncTuple = for<'a> fn(FuncTuple<&'a int>)
     /// ```
     ///
     /// Here the final type will be:
     ///
+    /// ```{.text}
     ///     for<'a> fn((&'a int, fn(&'a int)))
     ///                 ^~~         ^~~
     ///                 |           |
     ///          DebruijnIndex of 1 |
     ///                      DebruijnIndex of 2
+    /// ```
     ///
     /// As indicated in the diagram, here the same type `&'a int` is substituted once, but in the
     /// first case we do not increase the Debruijn index and in the second case we do. The reason

@@ -53,7 +53,7 @@
 //! an identifier in the source code. For example, the `x`s in the
 //! following snippet
 //!
-//! ```rust
+//! ```rust,ignore
 //! struct A { x : i32 }
 //!
 //! struct B(i32);
@@ -86,7 +86,7 @@
 //!
 //! The following simplified `PartialEq` is used for in-code examples:
 //!
-//! ```rust
+//! ```rust,ignore
 //! trait PartialEq {
 //!     fn eq(&self, other: &Self);
 //! }
@@ -886,7 +886,7 @@ impl<'a> MethodDef<'a> {
         })
     }
 
-    /// ```
+    /// ```rust,ignore
     /// #[derive(PartialEq)]
     /// struct A { x: i32, y: i32 }
     ///
@@ -991,7 +991,7 @@ impl<'a> MethodDef<'a> {
                                       &StaticStruct(struct_def, summary))
     }
 
-    /// ```
+    /// ```rust,ignore
     /// #[derive(PartialEq)]
     /// enum A {
     ///     A1,
@@ -1616,7 +1616,7 @@ pub fn cs_fold<F>(use_foldl: bool,
 /// Call the method that is being derived on all the fields, and then
 /// process the collected results. i.e.
 ///
-/// ```
+/// ```rust,ignore
 /// f(cx, span, vec![self_1.method(__arg_1_1, __arg_2_1),
 ///                  self_2.method(__arg_1_2, __arg_2_2)])
 /// ```

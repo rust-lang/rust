@@ -1813,7 +1813,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ///
     /// Here are some (simple) examples:
     ///
-    /// ```
+    /// ```rust,ignore
     /// (i32, u32) -> [i32, u32]
     /// Foo where struct Foo { x: i32, y: u32 } -> [i32, u32]
     /// Bar<i32> where struct Bar<T> { x: T, y: u32 } -> [i32, u32]
@@ -2410,7 +2410,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// `Closure`, and `Closure` expects an int as argument. Then it
     /// is "as if" the compiler generated this impl:
     ///
+    /// ```rust,ignore
     ///     impl Fn(int) for Closure { ... }
+    /// ```
     ///
     /// Now imagine our obligation is `Fn(usize) for Closure`. So far
     /// we have matched the self-type `Closure`. At this point we'll

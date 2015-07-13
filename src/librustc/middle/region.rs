@@ -47,10 +47,10 @@ use syntax::visit::{Visitor, FnKind};
 /// expression for the indexed statement, until the end of the block.
 ///
 /// So: the following code can be broken down into the extents beneath:
-/// ```
+/// ```rust,ignore
 /// let a = f().g( 'b: { let x = d(); let y = d(); x.h(y)  }   ) ;
 /// ```
-///
+/// ```{.text}
 ///                                                              +-+ (D12.)
 ///                                                        +-+       (D11.)
 ///                                              +---------+         (R10.)
@@ -63,6 +63,7 @@ use syntax::visit::{Visitor, FnKind};
 ///         +--------------------------------------------------+      (M3.)
 ///         +--+                                                      (M2.)
 /// +-----------------------------------------------------------+     (M1.)
+/// ```
 ///
 ///  (M1.): Misc extent of the whole `let a = ...;` statement.
 ///  (M2.): Misc extent of the `f()` expression.
