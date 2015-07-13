@@ -1909,9 +1909,9 @@ pub mod types {
                 use consts::os::extra::{MAX_PROTOCOL_CHAIN,
                                               WSAPROTOCOL_LEN};
                 use types::common::c95::c_void;
-                use types::os::arch::c95::{c_char, c_int, c_uint, size_t};
-                use types::os::arch::c95::{c_long, c_ulong};
-                use types::os::arch::c95::{wchar_t};
+                use types::os::arch::c95::{c_char, c_schar, c_int, c_uint};
+                use types::os::arch::c95::{size_t, c_short, c_long, c_ulong};
+                use types::os::arch::c95::{c_uchar, c_ushort, wchar_t};
                 #[cfg(target_arch = "x86")]
                 use types::os::arch::c95::c_double;
                 use types::os::arch::c99::{c_ulonglong, c_longlong, uintptr_t};
@@ -1921,6 +1921,18 @@ pub mod types {
                 pub type BOOLEAN = BYTE;
                 pub type CCHAR = c_char;
                 pub type CHAR = c_char;
+
+                pub type INT = c_int;
+                pub type INT8 = c_schar;
+                pub type INT16 = c_short;
+                pub type INT32 = c_int;
+                pub type INT64 = i64;
+
+                pub type UINT = c_uint;
+                pub type UINT8 = c_uchar;
+                pub type UINT16 = c_ushort;
+                pub type UINT32 = c_uint;
+                pub type UINT64 = u64;
 
                 pub type DWORD = c_ulong;
                 pub type DWORDLONG = c_ulonglong;
