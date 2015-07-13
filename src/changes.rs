@@ -99,6 +99,14 @@ impl<'a> ChangeSet<'a> {
         self.push_str(&file_name, text)
     }
 
+    // Fetch the output buffer for the given file name.
+    // Panics on unknown files.
+    pub fn get(&mut self, file_name: &str) -> &StringBuffer {
+        self.file_map.get(file_name).unwrap()
+    }
+
+    // Fetch a mutable reference to the output buffer for the given file name.
+    // Panics on unknown files.
     pub fn get_mut(&mut self, file_name: &str) -> &mut StringBuffer {
         self.file_map.get_mut(file_name).unwrap()
     }

@@ -38,7 +38,9 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
                self.codemap.lookup_char_pos(ex.span.hi));
         self.format_missing(ex.span.lo);
         let offset = self.changes.cur_offset_span(ex.span);
-        let context = RewriteContext { codemap: self.codemap, config: self.config };
+        let context = RewriteContext { codemap: self.codemap,
+                                       config: self.config,
+                                       block_indent: self.block_indent, };
         let rewrite = ex.rewrite(&context, self.config.max_width - offset, offset);
 
         if let Some(new_str) = rewrite {
