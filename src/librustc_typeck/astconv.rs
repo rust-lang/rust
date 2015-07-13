@@ -111,7 +111,7 @@ pub trait AstConv<'tcx> {
     }
 
     /// What type should we use when a type is omitted?
-    fn ty_infer(&self, default: Option<Ty<'tcx>>, span: Span) -> Ty<'tcx>;
+    fn ty_infer(&self, default: Option<ty::TypeParameterDef<'tcx>>, span: Span) -> Ty<'tcx>;
 
     /// Projecting an associated type from a (potentially)
     /// higher-ranked trait reference is more complicated, because of
@@ -403,7 +403,7 @@ fn create_substs_for_ast_path<'tcx>(
     // they were optional (e.g. paths inside expressions).
     let mut type_substs = if param_mode == PathParamMode::Optional &&
                              types_provided.is_empty() {
-        ty_param_defs.iter().map(|p| this.ty_infer(p.default, span)).collect()
+        ty_param_defs.iter().map(|p| this.ty_infer(Some(p.clone()), span)).collect()
     } else {
         types_provided
     };

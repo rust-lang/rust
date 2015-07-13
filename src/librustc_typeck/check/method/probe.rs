@@ -1207,7 +1207,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             !method.generics.regions.is_empty_in(subst::FnSpace)
         {
             let method_types =
-                self.infcx().type_vars_for_defs(
+                self.infcx().type_vars_for_defs(self.span,
                     method.generics.types.get_slice(subst::FnSpace));
 
             // In general, during probe we erase regions. See

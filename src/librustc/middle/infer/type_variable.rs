@@ -11,8 +11,9 @@
 pub use self::RelationDir::*;
 use self::TypeVariableValue::*;
 use self::UndoEntry::*;
-
 use middle::ty::{self, Ty};
+use syntax::codemap::Span;
+
 use std::cmp::min;
 use std::marker::PhantomData;
 use std::mem;
@@ -38,9 +39,13 @@ enum TypeVariableValue<'tcx> {
 
 // We will use this to store the required information to recapitulate what happened when
 // an error occurs.
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Default<'tcx> {
-    pub ty: Ty<'tcx>
+    pub ty: Ty<'tcx>,
+    /// The span where the default was incurred
+    pub origin_span: Span,
+    /// The definition that the default originates from
+    pub definition_span: Span
 }
 
 pub struct Snapshot {

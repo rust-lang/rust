@@ -176,7 +176,7 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         }
 
         None => {
-            fcx.inh.infcx.type_vars_for_defs(type_parameter_defs)
+            fcx.inh.infcx.type_vars_for_defs(span, type_parameter_defs)
         }
     };
 

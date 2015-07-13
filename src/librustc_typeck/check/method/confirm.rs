@@ -315,11 +315,11 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
 
         let method_types = {
             if num_supplied_types == 0 {
-                self.fcx.infcx().type_vars_for_defs(method_types)
+                self.fcx.infcx().type_vars_for_defs(self.span, method_types)
             } else if num_method_types == 0 {
                 span_err!(self.tcx().sess, self.span, E0035,
                     "does not take type parameters");
-                self.fcx.infcx().type_vars_for_defs(method_types)
+                self.fcx.infcx().type_vars_for_defs(self.span, method_types)
             } else if num_supplied_types != num_method_types {
                 span_err!(self.tcx().sess, self.span, E0036,
                     "incorrect number of type parameters given for this method");
