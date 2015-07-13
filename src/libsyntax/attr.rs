@@ -579,6 +579,7 @@ pub fn find_repr_attrs(diagnostic: &SpanHandler, attr: &Attribute) -> Vec<ReprAt
                             // Can't use "extern" because it's not a lexical identifier.
                             "C" => Some(ReprExtern),
                             "packed" => Some(ReprPacked),
+                            "simd" => Some(ReprSimd),
                             _ => match int_type_of_word(&word) {
                                 Some(ity) => Some(ReprInt(item.span, ity)),
                                 None => {
@@ -628,6 +629,7 @@ pub enum ReprAttr {
     ReprInt(Span, IntType),
     ReprExtern,
     ReprPacked,
+    ReprSimd,
 }
 
 impl ReprAttr {
@@ -636,7 +638,8 @@ impl ReprAttr {
             ReprAny => false,
             ReprInt(_sp, ity) => ity.is_ffi_safe(),
             ReprExtern => true,
-            ReprPacked => false
+            ReprPacked => false,
+            ReprSimd => true,
         }
     }
 }
