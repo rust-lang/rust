@@ -1185,27 +1185,48 @@ match. Thinking about `Vec` above, for example, notice that the two signatures
 for `extend` look superficially different, although it's clear that the first
 impl is the more general of the two.
 
-For the intended desugaring into "inherent traits" to be coherent, we need to
-determine the item signatures. To do this, we apply the following test:
+We propose a very simple-minded conceptual desugaring: each item desugars into a
+distinct trait, with type parameters for e.g. each argument and the return
+type. All concrete type information then emerges from desugaring into impl
+blocks. Thus, for example:
 
-- Suppose an item of the same kind, named `foo`, occurs in two inherent impl
-  blocks for the same type constructor.
+```
+impl<T, I> Vec<T> where I: IntoIterator<Item = T> {
+    default fn extend(iter: I) { .. }
+}
 
-- If it's possible to unify the two impl headers, then the two signatures for
-  `foo` must be "equivalent" under that unification.
+impl<T> Vec<T> {
+    fn extend(slice: &[T]) { .. }
+}
 
-- Two signatures `S` and `T` are equivalent if:
-  - After skolemizing all type variables in `S`, it is possible to unify the two signatures, and,
-  - After that unification, the where clauses in `S` imply those in `T`, and
-  - Vice versa.
+// Desugars to:
 
-Basically, this check ensures that any overlapping inherent items provide
-"identical" signatures for the area of overlap. That in turn means that callers
-can be typechecked against *any* of the definitions that applies, and
-typechecking would equally succeed with any other.
+trait Vec_extend<Arg, Result> {
+    fn extend(Arg) -> Result;
+}
 
-Note that this is a breaking change, since examples like the following are
-(surprisingly!) allowed today:
+impl<T, I> Vec_extend<I, ()> for Vec<T> where I: IntoIterator<Item = T> {
+    default fn extend(iter: I) { .. }
+}
+
+impl<T> Vec_extend<&[T], ()> for Vec<T> {
+    fn extend(slice: &[T]) { .. }
+}
+```
+
+All items of a given name must desugar to the same trait, which means that the
+number of arguments must be consistent across all impl blocks for a given `Self`
+type. In addition, we require that *all of the impl blocks overlap* (meaning
+that there is a single, most general impl). Without these constraints, we would
+implicitly be permitting full-blown overloading on both arity and type
+signatures. For the time being at least, we want to restrict overloading to
+explicit uses of the trait system, as it is today.
+
+This "desugaring" semantics has the benefits of allowing inherent item
+specialization, and also making it *actually* be the case that inherent impls
+are really just implicit traits -- unifying the two forms of dispatch. Note that
+this is a breaking change, since examples like the following are (surprisingly!)
+allowed today:
 
 ```rust
 struct Foo<A, B>(A, B);
@@ -1574,6 +1595,42 @@ of mechanism is usually noncompositional, but due to the orphan rule, it's a
 least a crate-local concern. Like the alternative rule above, it could be added
 backwards compatibly if needed, since it only enables new cases.
 
+### Singleton non-default wins
+
+@pnkfelix suggested the following rule, which allows overlap so long as there is
+a unique non-default item.
+
+> For any given type-based lookup, either:
+>
+>  0. There are no results (error)
+>
+>  1. There is only one lookup result, in which case we're done (regardless of
+>     whether it is tagged as default or not),
+>
+>  2. There is a non-empty set of results with defaults, where exactly one
+>     result is non-default -- and then that non-default result is the answer,
+>     *or*
+>
+>  3. There is a non-empty set of results with defaults, where 0 or >1 results
+>     are non-default (and that is an error).
+
+This rule is arguably simpler than the one proposed in this RFC, and can
+accommodate the examples we've presented throughout. It would also support some
+of the cases this RFC cannot, because the default/non-default distinction can be
+used to specify an ordering between impls when the subset ordering fails to do
+so. For that reason, it is not forward-compatible with the main proposal in this
+RFC.
+
+The downsides are:
+
+- Because actual dispatch occurs at monomorphization, errors are generated quite
+  late, and only at use sites, not impl sites. That moves traits much more in
+  the direction of C++ templates.
+
+- It's less scalable/compositional: this alternative design forces the
+  "specialization hierarchy" to be flat, in particular ruling out multiple
+  levels of increasingly-specialized blanket impls.
+
 # Unresolved questions
 
 Finally, there are a few important questions not yet addressed by this RFC:
@@ -1591,4 +1648,5 @@ Finally, there are a few important questions not yet addressed by this RFC:
   all-or-nothing affair, but it would occasionally be useful to say that all
   further specializations will at least guarantee some additional trait bound on
   the associated type. This is particularly relevant for the "efficient
-  inheritance" use case. Such a mechanism can likely be added, if needed, later on.
+  inheritance" use case. Such a mechanism can likely be added, if needed, later
+  on.
