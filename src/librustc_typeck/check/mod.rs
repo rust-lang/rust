@@ -1141,7 +1141,11 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
 
     fn ty_infer(&self, ty_param_def: Option<ty::TypeParameterDef<'tcx>>, span: Span) -> Ty<'tcx> {
         let default = ty_param_def.and_then(|t|
-            t.default.map(|ty| type_variable::Default { ty: ty, origin_span: span, definition_span: span }));
+            t.default.map(|ty| type_variable::Default {
+                ty: ty,
+                origin_span: span,
+                definition_span: span
+        }));
         self.infcx().next_ty_var_with_default(default)
     }
 
