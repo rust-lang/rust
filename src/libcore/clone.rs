@@ -80,7 +80,9 @@ clone_impl! { u16 }
 clone_impl! { u32 }
 clone_impl! { u64 }
 
+#[cfg(not(disable_float))]
 clone_impl! { f32 }
+#[cfg(not(disable_float))]
 clone_impl! { f64 }
 
 clone_impl! { () }
