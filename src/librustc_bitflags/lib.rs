@@ -20,10 +20,17 @@
 #![no_std]
 #![unstable(feature = "rustc_private")]
 #![cfg_attr(test, feature(hash_default))]
+#![cfg_attr(target_os = "macos", feature(lang_items))]
 
 //! A typesafe bitmask flag generator.
 
 #[cfg(test)] #[macro_use] extern crate std;
+
+// Fix Mac complaining about missing _rust_stack_exhausted
+#[cfg(target_os = "macos")]
+#[lang = "sized"] trait Sized {}
+#[cfg(target_os = "macos")]
+#[lang = "stack_exhausted"] fn stack_exhausted() {}
 
 /// The `bitflags!` macro generates a `struct` that holds a set of C-style
 /// bitmask flags. It is useful for creating typesafe wrappers for C APIs.
@@ -62,6 +69,7 @@
 /// The generated `struct`s can also be extended with type and trait implementations:
 ///
 /// ```{.rust}
+/// # #![feature(associated_consts)]
 /// # #![feature(rustc_private)]
 /// #[macro_use] extern crate rustc_bitflags;
 ///
