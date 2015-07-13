@@ -56,6 +56,7 @@ Options:
     -p, --package CRATE     Install this crate from crates.io or select the
                             package in a repository/path to install.
     -v, --verbose           Use verbose output
+    --root                  Directory to install packages into
 
 This command manages Cargo's local set of install binary crates. Only packages
 which have [[bin]] targets can be installed, and all binaries are installed into
@@ -84,9 +85,8 @@ crates.
 
 Cargo attempts to be as flexible as possible in terms of installing crates from
 various locations and specifying what should be installed. All binaries will be
-stored in the **cargo-local** directory `$CARGO_HOME/bin`. This is typically
-`$HOME/.cargo/bin` but the home directory can be modified via the `$CARGO_HOME`
-environment variable.
+stored in a **cargo-local** directory, and more details on where exactly this is
+located can be found below.
 
 Cargo will not attempt to install binaries or crates into system directories
 (e.g. `/usr`) as that responsibility is intended for system package managers.
@@ -139,6 +139,24 @@ arise in terms of binary names. For example if crates A and B both provide a
 binary called `foo` they cannot be both installed at once. Cargo will reject
 these situations and recommend that a binary is selected via `--bin` or the
 conflicting crate is uninstalled.
+
+#### Placing output artifacts
+
+The `cargo install` command can be customized where it puts its output artifacts
+to install packages in a custom location. The root directory of the installation
+will be determined in a hierarchical fashion, choosing the first of the
+following that is specified:
+
+1. The `--root` argument on the command line.
+2. The environment variable `CARGO_INSTALL_ROOT`.
+3. The `install.root` configuration option.
+4. The value of `$CARGO_HOME` (also determined in an independent and
+   hierarchical fashion).
+
+Once the root directory is found, Cargo will place all binaries in the
+`$INSTALL_ROOT/bin` folder. Cargo will also reserve the right to retain some
+metadata in this folder in order to keep track of what's installed and what
+binaries belong to which package.
 
 ## Managing Installations
 
