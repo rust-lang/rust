@@ -988,29 +988,44 @@ if [ ! -z "$CFG_ENABLE_CLANG" ]
 then
     case "$CC" in
         (''|*clang)
-        CFG_CLANG_VERSION=$($CFG_CC \
-            --version \
-            | grep version \
-            | sed 's/.*\(version .*\)/\1/; s/.*based on \(LLVM .*\))/\1/' \
-            | cut -d ' ' -f 2)
+        CFG_CLANG_REPORTED_VERSION=$($CFG_CC --version | grep version)
 
-        case $CFG_CLANG_VERSION in
-            (3.2* | 3.3* | 3.4* | 3.5* | 3.6* | 3.7*)
-            step_msg "found ok version of CLANG: $CFG_CLANG_VERSION"
-            if [ -z "$CC" ]
-            then
-                CFG_CC="clang"
-                CFG_CXX="clang++"
-            fi
-            ;;
-            (*)
-            err "bad CLANG version: $CFG_CLANG_VERSION, need >=3.0svn"
-            ;;
-        esac
-        ;;
-        (*)
-        msg "skipping CFG_ENABLE_CLANG version check; provided CC=$CC"
-        ;;
+        if [[ $CFG_CLANG_REPORTED_VERSION == *"(based on LLVM "* ]]
+        then
+            CFG_CLANG_VERSION=$(echo $CFG_CLANG_REPORTED_VERSION | sed 's/.*(based on LLVM \(.*\))/\1/')
+        elif [[ $CFG_CLANG_REPORTED_VERSION == "Apple LLVM"* ]]
+        then
+            CFG_OSX_CLANG_VERSION=$(echo $CFG_CLANG_REPORTED_VERSION | sed 's/.*version \(.*\) .*/\1/')
+        else
+            CFG_CLANG_VERSION=$(echo $CFG_CLANG_REPORTED_VERSION | sed 's/.*version \(.*\) .*/\1/')
+        fi
+
+        if [ ! -z "$CFG_OSX_CLANG_VERSION" ]
+        then
+            case $CFG_OSX_CLANG_VERSION in
+                (7.0*)
+                step_msg "found ok version of APPLE CLANG: $CFG_OSX_CLANG_VERSION"
+                ;;
+                (*)
+                err "bad APPLE CLANG version: $CFG_OSX_CLANG_VERSION, need >=7.0"
+                ;;
+            esac
+        else
+            case $CFG_CLANG_VERSION in
+                (3.2* | 3.3* | 3.4* | 3.5* | 3.6* | 3.7*)
+                step_msg "found ok version of CLANG: $CFG_CLANG_VERSION"
+                ;;
+                (*)
+                err "bad CLANG version: $CFG_CLANG_VERSION, need >=3.0svn"
+                ;;
+            esac
+        fi
+
+        if [ -z "$CC" ]
+        then
+            CFG_CC="clang"
+            CFG_CXX="clang++"
+        fi
     esac
 fi
 
