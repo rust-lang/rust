@@ -1784,43 +1784,49 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // variable would only be in `unbound_tyvars` and have a concrete value if
             // it had been solved by previously applying a default.
 
-            // We take a snapshot for use in error reporting.
-            let snapshot = self.infcx().start_snapshot();
-
-            for ty in &unbound_tyvars {
-                if self.infcx().type_var_diverges(ty) {
-                    demand::eqtype(self, codemap::DUMMY_SP, *ty, self.tcx().mk_nil());
-                } else {
-                    match self.infcx().type_is_unconstrained_numeric(ty) {
-                        UnconstrainedInt => {
-                            demand::eqtype(self, codemap::DUMMY_SP, *ty, self.tcx().types.i32)
-                        },
-                        UnconstrainedFloat => {
-                            demand::eqtype(self, codemap::DUMMY_SP, *ty, self.tcx().types.f64)
-                        }
-                        Neither => {
-                            if let Some(default) = default_map.get(ty) {
-                                let default = default.clone();
-                                match infer::mk_eqty(self.infcx(), false,
-                                                     infer::Misc(default.origin_span),
-                                                     ty, default.ty) {
-                                    Ok(()) => {}
-                                    Err(_) => {
-                                        conflicts.push((*ty, default));
+            // We wrap this in a transaction for error reporting, if we detect a conflict
+            // we will rollback the inference context to its prior state so we can probe
+            // for conflicts and correctly report them.
+            let _ = self.infcx().commit_if_ok(|_: &infer::CombinedSnapshot| {
+                for ty in &unbound_tyvars {
+                    if self.infcx().type_var_diverges(ty) {
+                        demand::eqtype(self, codemap::DUMMY_SP, *ty, self.tcx().mk_nil());
+                    } else {
+                        match self.infcx().type_is_unconstrained_numeric(ty) {
+                            UnconstrainedInt => {
+                                demand::eqtype(self, codemap::DUMMY_SP, *ty, self.tcx().types.i32)
+                            },
+                            UnconstrainedFloat => {
+                                demand::eqtype(self, codemap::DUMMY_SP, *ty, self.tcx().types.f64)
+                            }
+                            Neither => {
+                                if let Some(default) = default_map.get(ty) {
+                                    let default = default.clone();
+                                    match infer::mk_eqty(self.infcx(), false,
+                                                         infer::Misc(default.origin_span),
+                                                         ty, default.ty) {
+                                        Ok(()) => {}
+                                        Err(_) => {
+                                            conflicts.push((*ty, default));
+                                        }
                                     }
                                 }
                             }
                         }
                     }
                 }
-            }
 
-            // There are some errors to report
+                // If there are conflicts we rollback, otherwise commit
+                if conflicts.len() > 0 {
+                    Err(())
+                } else {
+                    Ok(())
+                }
+            });
+
             if conflicts.len() > 0 {
-                self.infcx().rollback_to(snapshot);
-
-                // Loop through each conflicting default compute the conflict
-                // and then report the error.
+                // Loop through each conflicting default, figuring out the default that caused
+                // a unification failure and then report an error for each.
                 for (conflict, default) in conflicts {
                     let conflicting_default =
                         self.find_conflicting_default(
@@ -1832,13 +1838,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 definition_span: codemap::DUMMY_SP
                             });
 
-                            self.infcx().report_conflicting_default_types(
-                                conflicting_default.origin_span,
-                                conflicting_default,
-                                default)
+                    self.infcx().report_conflicting_default_types(
+                        conflicting_default.origin_span,
+                        conflicting_default,
+                        default)
                 }
-            } else {
-                self.infcx().commit_from(snapshot)
             }
         }
 
@@ -1856,7 +1860,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 -> Option<type_variable::Default<'tcx>> {
         use middle::ty::UnconstrainedNumeric::{UnconstrainedInt, UnconstrainedFloat, Neither};
 
-        // Ensure that the conflicting default is applied first
+        // Ensure that we apply the conflicting default first
         let mut unbound_tyvars = Vec::with_capacity(unbound_vars.len() + 1);
         unbound_tyvars.push(conflict);
         unbound_tyvars.extend(unbound_vars.iter());
@@ -1864,33 +1868,39 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut result = None;
         // We run the same code as above applying defaults in order, this time when
         // we find the conflict we just return it for error reporting above.
-        for ty in &unbound_tyvars {
-            if self.infcx().type_var_diverges(ty) {
-                demand::eqtype(self, codemap::DUMMY_SP, *ty, self.tcx().mk_nil());
-            } else {
-                match self.infcx().type_is_unconstrained_numeric(ty) {
-                    UnconstrainedInt => {
-                        demand::eqtype(self, codemap::DUMMY_SP, *ty, self.tcx().types.i32)
-                    },
-                    UnconstrainedFloat => {
-                        demand::eqtype(self, codemap::DUMMY_SP, *ty, self.tcx().types.f64)
-                    },
-                    Neither => {
-                        if let Some(default) = default_map.get(ty) {
-                            let default = default.clone();
-                            match infer::mk_eqty(self.infcx(), false,
-                                                 infer::Misc(default.origin_span),
-                                                 ty, default.ty) {
-                                Ok(()) => {}
-                                Err(_) => {
-                                    result = Some(default);
+
+        // We also run this inside snapshot that never commits so we can do error
+        // reporting for more then one conflict.
+        //let _ = self.infcx().commit_if_ok(|_: &infer::CombinedSnapshot| {
+            for ty in &unbound_tyvars {
+                if self.infcx().type_var_diverges(ty) {
+                    demand::eqtype(self, codemap::DUMMY_SP, *ty, self.tcx().mk_nil());
+                } else {
+                    match self.infcx().type_is_unconstrained_numeric(ty) {
+                        UnconstrainedInt => {
+                            demand::eqtype(self, codemap::DUMMY_SP, *ty, self.tcx().types.i32)
+                        },
+                        UnconstrainedFloat => {
+                            demand::eqtype(self, codemap::DUMMY_SP, *ty, self.tcx().types.f64)
+                        },
+                        Neither => {
+                            if let Some(default) = default_map.get(ty) {
+                                let default = default.clone();
+                                match infer::mk_eqty(self.infcx(), false,
+                                                     infer::Misc(default.origin_span),
+                                                     ty, default.ty) {
+                                    Ok(()) => {}
+                                    Err(_) => {
+                                        result = Some(default);
+                                    }
                                 }
                             }
                         }
                     }
                 }
             }
-        }
+            // let result: Result<(), ()> = Err(()); result
+        //});
 
         return result;
     }
