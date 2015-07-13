@@ -21,7 +21,6 @@ use self::EXCEPTION_DISPOSITION::*;
 use rt::dwarf::eh;
 use core::mem;
 use core::ptr;
-use simd;
 use libc::{c_void, c_ulonglong, DWORD, LPVOID};
 type ULONG_PTR = c_ulonglong;
 
