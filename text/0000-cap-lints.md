@@ -47,7 +47,7 @@ flag to the compiler:
 ```
 
 For example when `--cap-lints allow` is passed, all instances of `#[warn]`,
-`#[deny]`, and `#[forbid] are ignored. If, however `--cap-lints warn` is passed
+`#[deny]`, and `#[forbid]` are ignored. If, however `--cap-lints warn` is passed
 only `deny` and `forbid` directives are ignored.
 
 The acceptable values for `LEVEL` will be `allow`, `warn`, `deny`, or `forbid`.
