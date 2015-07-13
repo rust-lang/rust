@@ -116,24 +116,37 @@ mod record_exports;
 mod build_reduced_graph;
 mod resolve_imports;
 
-fn resolve_err_417<'a, 'tcx>(this: &Resolver<'a, 'tcx>, span: syntax::codemap::Span, formatted: &str) {
-    resolve_err!(this, span, E0417, "{}", formatted);
+pub enum ResolutionError<'b, 'a:'b, 'tcx:'a> {
+    /// error: static variables cannot be referenced in a pattern
+    StaticVariableReference(&'b Resolver<'a, 'tcx>, syntax::codemap::Span),
+    /// error: does not name a struct
+    DoesNotNameAStruct(&'b Resolver<'a, 'tcx>, syntax::codemap::Span),
+    /// error: is a struct variant name, but this expression uses it like a function name
+    StructVariantUsedAsFunction(&'a Resolver<'a, 'tcx>, syntax::codemap::Span),
+    /// error: unresolved import
+    UnresolvedImport(&'b Resolver<'a, 'tcx>, syntax::codemap::Span),
+    /// error: failed to resolve
+    FailedToResolve(&'b Resolver<'a, 'tcx>, syntax::codemap::Span),
 }
 
-fn resolve_err_422<'a, 'tcx>(this: &Resolver<'a, 'tcx>, span: syntax::codemap::Span, formatted: &str) {
-    resolve_err!(this, span, E0422, "{}", formatted);
-}
-
-fn resolve_err_423<'a, 'tcx>(this: &Resolver<'a, 'tcx>, span: syntax::codemap::Span, formatted: &str) {
-    resolve_err!(this, span, E0423, "{}", formatted);
-}
-
-fn resolve_err_432<'a, 'tcx>(this: &Resolver<'a, 'tcx>, span: syntax::codemap::Span, formatted: &str) {
-    resolve_err!(this, span, E0432, "{}", formatted);
-}
-
-fn resolve_err_433<'a, 'tcx>(this: &Resolver<'a, 'tcx>, span: syntax::codemap::Span, formatted: &str) {
-    resolve_err!(this, span, E0433, "{}", formatted);
+fn resolve_error<'b, 'a:'b, 'tcx:'a>(resolution_error: &ResolutionError<'b, 'a, 'tcx>, formatted: &str) {
+    match resolution_error {
+        &ResolutionError::StaticVariableReference(resolver, span) => {
+            resolve_err!(resolver, span, E0417, "{}", formatted);
+        },
+        &ResolutionError::DoesNotNameAStruct(resolver, span) => {
+            resolve_err!(resolver, span, E0422, "{}", formatted);
+        },
+        &ResolutionError::StructVariantUsedAsFunction(resolver, span) => {
+            resolve_err!(resolver, span, E0423, "{}", formatted);
+        },
+        &ResolutionError::UnresolvedImport(resolver, span) => {
+            resolve_err!(resolver, span, E0432, "{}", formatted);
+        },
+        &ResolutionError::FailedToResolve(resolver, span) => {
+            resolve_err!(resolver, span, E0433, "{}", formatted);
+        },
+    }
 }
 
 #[derive(Copy, Clone)]
@@ -1330,7 +1343,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                               PathSearch,
                                               true) {
                 Failed(Some((span, msg))) => {
-                    resolve_err_433(self, span, &*format!("failed to resolve. {}", msg));
+                    resolve_error(&ResolutionError::FailedToResolve(self, span),
+                                  &*format!("failed to resolve. {}",
+                                        msg)
+                                 );
                 },
                 Failed(None) => (), // Continue up the search chain.
                 Indeterminate => {
@@ -1588,12 +1604,13 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                          .span_to_snippet((*imports)[index].span)
                          .unwrap();
             if sn.contains("::") {
-                resolve_err_432(self, (*imports)[index].span, "unresolved import");
+                resolve_error(&ResolutionError::UnresolvedImport(self, (*imports)[index].span),
+                              "unresolved import");
             } else {
-                resolve_err_432(self, (*imports)[index].span,
-                    &*format!("unresolved import (maybe you meant `{}::*`?)",
-                          sn)
-                );
+                resolve_error(&ResolutionError::UnresolvedImport(self, (*imports)[index].span),
+                              &*format!("unresolved import (maybe you meant `{}::*`?)",
+                                    sn)
+                             );
             }
         }
 
@@ -2549,10 +2566,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 self.record_def(pattern.id, path_res);
                             }
                             DefStatic(..) => {
-                                resolve_err_417(self, path.span,
-                                             "static variables cannot be \
-                                              referenced in a pattern, \
-                                              use a `const` instead");
+                                resolve_error(&ResolutionError::StaticVariableReference(&self, path.span),
+                                              "static variables cannot be \
+                                               referenced in a pattern, \
+                                               use a `const` instead");
                             }
                             _ => {
                                 // If anything ends up here entirely resolved,
@@ -2630,7 +2647,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         result => {
                             debug!("(resolving pattern) didn't find struct \
                                     def: {:?}", result);
-                            resolve_err_422(self, path.span,
+                            resolve_error(&ResolutionError::DoesNotNameAStruct(self, path.span),
                                          &*format!("`{}` does not name a structure",
                                              path_names_to_string(path, 0)));
                         }
@@ -2678,10 +2695,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 return FoundConst(def, LastMod(AllPublic));
                             }
                             DefStatic(..) => {
-                                resolve_err_417(self, span,
-                                             "static variables cannot be \
-                                              referenced in a pattern, \
-                                              use a `const` instead");
+                                resolve_error(&ResolutionError::StaticVariableReference(self, span),
+                                              "static variables cannot be \
+                                               referenced in a pattern, \
+                                               use a `const` instead");
                                 return BareIdentifierPatternUnresolved;
                             }
                             _ => {
@@ -2698,9 +2715,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             Failed(err) => {
                 match err {
                     Some((span, msg)) => {
-                        resolve_err_433(self, span,
-                                     &*format!("failed to resolve: {}",
-                                         msg));
+                        resolve_error(&ResolutionError::FailedToResolve(self, span),
+                                      &*format!("failed to resolve. {}",
+                                            msg)
+                                     );
                     }
                     None => ()
                 }
@@ -2929,9 +2947,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     }
                 };
 
-                resolve_err_433(self, span,
-                             &*format!("failed to resolve: {}",
-                                 msg));
+                resolve_error(&ResolutionError::FailedToResolve(self, span),
+                              &*format!("failed to resolve. {}",
+                                    msg)
+                             );
                 return None;
             }
             Indeterminate => panic!("indeterminate unexpected"),
@@ -2990,11 +3009,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     }
                 };
 
-                /*self.resolve_error(span, &format!("failed to resolve. {}",
-                                                 msg));*/
-                resolve_err_433(self, span,
-                             &*format!("failed to resolve: {}",
-                                 msg));
+                resolve_error(&ResolutionError::FailedToResolve(self, span),
+                              &*format!("failed to resolve. {}",
+                                    msg)
+                             );
                 return None;
             }
 
@@ -3090,9 +3108,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                          failed to resolve {}", name);
 
                 if let Some((span, msg)) = err {
-                    resolve_err_433(self, span,
-                                 &*format!("failed to resolve: {}",
-                                     msg))
+                    resolve_error(&ResolutionError::FailedToResolve(self, span),
+                                  &*format!("failed to resolve. {}",
+                                        msg)
+                                 )
                 }
 
                 return None;
@@ -3294,11 +3313,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     // Check if struct variant
                     if let DefVariant(_, _, true) = path_res.base_def {
                         let path_name = path_names_to_string(path, 0);
-                        resolve_err_423(self, expr.span,
-                                     &*format!("`{}` is a struct variant name, but \
-                                          this expression \
-                                          uses it like a function name",
-                                         path_name));
+
+                        resolve_error(&ResolutionError::StructVariantUsedAsFunction(self, expr.span),
+                                      &*format!("`{}` is a struct variant name, but \
+                                           this expression \
+                                           uses it like a function name",
+                                          path_name));
 
                         let msg = format!("did you mean to write: \
                                            `{} {{ /* fields */ }}`?",
@@ -3335,11 +3355,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     match type_res.map(|r| r.base_def) {
                         Some(DefTy(struct_id, _))
                             if self.structs.contains_key(&struct_id) => {
-                                resolve_err_423(self, expr.span,
-                                             &*format!("{}` is a structure name, but \
-                                                   this expression \
-                                                   uses it like a function name",
-                                                  path_name));
+                                resolve_error(&ResolutionError::StructVariantUsedAsFunction(self, expr.span),
+                                              &*format!("`{}` is a struct variant name, but \
+                                                  this expression \
+                                                  uses it like a function name",
+                                                 path_name));
 
                                 let msg = format!("did you mean to write: \
                                                      `{} {{ /* fields */ }}`?",
@@ -3414,7 +3434,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     Some(definition) => self.record_def(expr.id, definition),
                     None => {
                         debug!("(resolving expression) didn't find struct def",);
-                        resolve_err_422(self, path.span,
+
+                        resolve_error(&ResolutionError::DoesNotNameAStruct(self, path.span),
                                      &*format!("`{}` does not name a structure",
                                          path_names_to_string(path, 0)));
                     }
