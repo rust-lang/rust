@@ -272,12 +272,13 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                         Some((span, msg)) => (span, format!(". {}", msg)),
                         None => (import_directive.span, String::new())
                     };
-                    resolve_err!(self.resolver, span, E0432,
-                                 "unresolved import `{}`{}",
-                                 import_path_to_string(
-                                          &import_directive.module_path,
-                                          import_directive.subclass),
-                                 help);
+                    ::resolve_err_432(self.resolver, span,
+                                      &*format!("unresolved import `{}`{}",
+                                            import_path_to_string(
+                                                &import_directive.module_path,
+                                                import_directive.subclass),
+                                            help)
+                                     );
                 }
                 ResolveResult::Indeterminate => break, // Bail out. We'll come around next time.
                 ResolveResult::Success(()) => () // Good. Continue.
