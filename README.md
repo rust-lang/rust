@@ -1,4 +1,8 @@
-# The Rust Programming Language
+# Temporary Rust Patch for El Capitan
+
+##This is a terrible, hacky, patch to keep rust compiling on OS X El Capitan for the time being
+
+##This fork should not be developed on further
 
 Rust is a fast systems programming language that guarantees
 memory safety and offers painless concurrency ([no data races]).

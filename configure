@@ -995,7 +995,7 @@ then
             | cut -d ' ' -f 2)
 
         case $CFG_CLANG_VERSION in
-            (3.2* | 3.3* | 3.4* | 3.5* | 3.6* | 3.7*)
+            (3.2* | 3.3* | 3.4* | 3.5* | 3.6* | 3.7* | 7.0*)
             step_msg "found ok version of CLANG: $CFG_CLANG_VERSION"
             if [ -z "$CC" ]
             then
