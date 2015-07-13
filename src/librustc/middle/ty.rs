@@ -3312,10 +3312,10 @@ impl<'tcx, 'container> AdtDefData<'tcx, 'container> {
            variants: Vec<VariantDefData<'tcx, 'container>>) -> Self {
         let mut flags = AdtFlags::NO_ADT_FLAGS;
         let attrs = tcx.get_attrs(did);
-        if attrs.iter().any(|item| item.check_name("fundamental")) {
+        if attr::contains_name(&attrs, "fundamental") {
             flags = flags | AdtFlags::IS_FUNDAMENTAL;
         }
-        if attrs.iter().any(|item| item.check_name("simd")) {
+        if tcx.lookup_simd(did) {
             flags = flags | AdtFlags::IS_SIMD;
         }
         if Some(did) == tcx.lang_items.phantom_data() {
@@ -6116,6 +6116,7 @@ impl<'tcx> ctxt<'tcx> {
     /// Determine whether an item is annotated with `#[simd]`
     pub fn lookup_simd(&self, did: DefId) -> bool {
         self.has_attr(did, "simd")
+            || self.lookup_repr_hints(did).contains(&attr::ReprSimd)
     }
 
     /// Obtain the representation annotation for a struct definition.

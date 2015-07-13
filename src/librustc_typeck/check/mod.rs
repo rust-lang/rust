@@ -4421,6 +4421,9 @@ pub fn check_enum_variants<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                             "discriminant type specified here");
                     }
                 }
+                attr::ReprSimd => {
+                    ccx.tcx.sess.bug("range_to_inttype: found ReprSimd on an enum");
+                }
                 attr::ReprPacked => {
                     ccx.tcx.sess.bug("range_to_inttype: found ReprPacked on an enum");
                 }
