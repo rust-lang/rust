@@ -1259,8 +1259,8 @@ Here's one example of this error:
 impl Drop for u32 {}
 ```
 
-To avoid this error, ensure that at least one local type is referenced by
-the `impl`:
+To avoid this kind of error, ensure that at least one local type is referenced
+by the `impl`:
 
 ```
 pub struct Foo; // you define your type in your crate
