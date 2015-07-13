@@ -2039,7 +2039,7 @@ pub struct ExpectedFound<T> {
 }
 
 // Data structures used in type unification
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub enum TypeError<'tcx> {
     Mismatch,
     UnsafetyMismatch(ExpectedFound<ast::Unsafety>),
@@ -2069,7 +2069,7 @@ pub enum TypeError<'tcx> {
     ConvergenceMismatch(ExpectedFound<bool>),
     ProjectionNameMismatched(ExpectedFound<ast::Name>),
     ProjectionBoundsLength(ExpectedFound<usize>),
-    TyParamDefaultMismatch(ExpectedFound<Ty<'tcx>>)
+    TyParamDefaultMismatch(ExpectedFound<type_variable::Default<'tcx>>)
 }
 
 /// Bounds suitable for an existentially quantified type parameter
@@ -5083,7 +5083,7 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
                        values.expected,
                        values.found)
             },
-            terr_ty_param_default_mismatch(ref values) => {
+            TyParamDefaultMismatch(ref values) => {
                 write!(f, "conflicting type parameter defaults {} and {}",
                        values.expected.ty,
                        values.found.ty)
@@ -5445,7 +5445,7 @@ impl<'tcx> ctxt<'tcx> {
                                   using it as a trait object"));
                 }
             },
-            terr_ty_param_default_mismatch(values) => {
+            TyParamDefaultMismatch(values) => {
                 let expected = values.expected;
                 let found = values.found;
                 self.sess.span_note(sp,

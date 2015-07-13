@@ -73,7 +73,7 @@ pub struct InferCtxt<'a, 'tcx: 'a> {
     // We instantiate UnificationTable with bounds<Ty> because the
     // types that might instantiate a general type variable have an
     // order, represented by its upper and lower bounds.
-    pub type_variables: RefCell<type_variable::TypeVariableTable<'tcx>>,
+    type_variables: RefCell<type_variable::TypeVariableTable<'tcx>>,
 
     // Map from integral variable to the kind of integer it represents
     int_unification_table: RefCell<UnificationTable<ty::IntVid>>,
@@ -1366,19 +1366,19 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 
     pub fn report_conflicting_default_types(&self,
-                                   span: Span,
-                                   expected: type_variable::Default<'tcx>,
-                                   actual: type_variable::Default<'tcx>) {
+                                            span: Span,
+                                            expected: type_variable::Default<'tcx>,
+                                            actual: type_variable::Default<'tcx>) {
         let trace = TypeTrace {
             origin: Misc(span),
-            values: Types(ty::expected_found {
+            values: Types(ty::ExpectedFound {
                 expected: expected.ty,
                 found: actual.ty
             })
         };
 
         self.report_and_explain_type_error(trace,
-            &ty::type_err::terr_ty_param_default_mismatch(ty::expected_found {
+            &TypeError::TyParamDefaultMismatch(ty::ExpectedFound {
                 expected: expected,
                 found: actual
         }));
