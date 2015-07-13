@@ -11,7 +11,7 @@ fn main() {
 fn build_rustllvm() {
     let cfg = Config::new();
     let src_dir = cfg.src_dir().join("rustllvm");
-    let src_files = vec!["ExecutionEngineWrapper.cpp",
+    let src_files = vec!["ExecutionEngineWrapper.cpp", "ArchiveWrapper.cpp",
                          "PassWrapper.cpp", "RustWrapper.cpp"];
     build_static_lib(&cfg)
         .set_src_dir(&src_dir)
