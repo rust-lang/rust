@@ -2313,6 +2313,12 @@ pub unsafe fn debug_loc_to_string(c: ContextRef, tr: DebugLocRef) -> String {
 // parts of LLVM that rustllvm depends on aren't thrown away by the linker.
 // Works to the above fix for #15460 to ensure LLVM dependencies that
 // are only used by rustllvm don't get stripped by the linker.
+#[cfg(not(feature = "cargo"))]
 mod llvmdeps {
     include! { env!("CFG_LLVM_LINKAGE_FILE") }
+}
+
+#[cfg(feature = "cargo")]
+mod llvmdeps {
+    include! { concat!(env!("OUT_DIR"), "/llvmdeps.rs") }
 }
