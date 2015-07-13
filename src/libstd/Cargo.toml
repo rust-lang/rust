@@ -1,0 +1,27 @@
+[package]
+authors = ["The Rust Project Developers"]
+name = "std"
+version = "0.0.0"
+build = "build.rs"
+
+[lib]
+name = "std"
+path = "lib.rs"
+crate-type = ["dylib", "rlib"]
+
+[dependencies]
+alloc = { path = "../liballoc" }
+collections = { path = "../libcollections" }
+core = { path = "../libcore" }
+libc = { path = "../liblibc" }
+rand = { path = "../librand" }
+rustc_bitflags = { path = "../librustc_bitflags" }
+rustc_unicode = { path = "../librustc_unicode" }
+
+[build-dependencies]
+build_helper = { path = "../build_helper" }
+
+[dev-dependencies]
+log = { path = "../liblog" }
+test = { path = "../libtest" }
+std = { path = "." }

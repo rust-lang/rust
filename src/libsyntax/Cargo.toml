@@ -1,0 +1,22 @@
+[package]
+authors = ["The Rust Project Developers"]
+name = "syntax"
+version = "0.0.0"
+
+[lib]
+name = "syntax"
+path = "lib.rs"
+crate-type = ["dylib", "rlib"]
+
+[dependencies]
+arena = { path = "../libarena" }
+fmt_macros = { path = "../libfmt_macros" }
+serialize = { path = "../libserialize" }
+term = { path = "../libterm" }
+libc = { path = "../liblibc" }
+log = { path = "../liblog" }
+rustc_bitflags = { path = "../librustc_bitflags" }
+std = { path = "../libstd" }
+
+[dev-dependencies]
+test = { path = "../libtest" }

@@ -1,0 +1,15 @@
+[package]
+authors = ["The Rust Project Developers"]
+name = "log"
+version = "0.0.0"
+
+[lib]
+name = "log"
+path = "lib.rs"
+crate-type = ["dylib", "rlib"]
+
+[dependencies]
+std = { path = "../libstd" }
+
+[dev-dependencies]
+test = { path = "../libtest" }

@@ -1,0 +1,21 @@
+[package]
+authors = ["The Rust Project Developers"]
+name = "flate"
+version = "0.0.0"
+build = "build.rs"
+
+[lib]
+name = "flate"
+path = "lib.rs"
+crate-type = ["dylib", "rlib"]
+
+[dependencies]
+std = { path = "../libstd" }
+libc = { path = "../liblibc" }
+
+[build-dependencies]
+build_helper = { path = "../build_helper" }
+
+[dev-dependencies]
+test = { path = "../libtest" }
+log = { path = "../liblog" }
