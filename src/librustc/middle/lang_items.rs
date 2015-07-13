@@ -90,6 +90,10 @@ impl LanguageItems {
         }
     }
 
+    pub fn require_owned_box(&self) -> Result<ast::DefId, String> {
+        self.require(OwnedBoxLangItem)
+    }
+
     pub fn from_builtin_kind(&self, bound: ty::BuiltinBound)
                              -> Result<ast::DefId, String>
     {

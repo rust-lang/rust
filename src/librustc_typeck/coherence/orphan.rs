@@ -77,7 +77,10 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
                         self.check_def_id(item, data.principal_def_id());
                     }
                     ty::TyBox(..) => {
-                        self.check_def_id(item, self.tcx.lang_items.owned_box().unwrap());
+                        match self.tcx.lang_items.require_owned_box() {
+                            Ok(trait_id) => self.check_def_id(item, trait_id),
+                            Err(msg) => self.tcx.sess.span_fatal(item.span, &msg),
+                        }
                     }
                     ty::TyChar => {
                         self.check_primitive_impl(def_id,
