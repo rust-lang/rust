@@ -40,6 +40,7 @@ use syntax::codemap;
 use syntax::codemap::{Span, DUMMY_SP};
 use util::nodemap::{FnvHashMap, NodeMap};
 
+use ast_map;
 use self::combine::CombineFields;
 use self::region_inference::{RegionVarBindings, RegionSnapshot};
 use self::error_reporting::ErrorReporting;
@@ -72,7 +73,7 @@ pub struct InferCtxt<'a, 'tcx: 'a> {
     // We instantiate UnificationTable with bounds<Ty> because the
     // types that might instantiate a general type variable have an
     // order, represented by its upper and lower bounds.
-    type_variables: RefCell<type_variable::TypeVariableTable<'tcx>>,
+    pub type_variables: RefCell<type_variable::TypeVariableTable<'tcx>>,
 
     // Map from integral variable to the kind of integer it represents
     int_unification_table: RefCell<UnificationTable<ty::IntVid>>,
@@ -690,7 +691,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         variables.extend(unbound_ty_vars);
         variables.extend(unbound_int_vars);
         variables.extend(unbound_float_vars);
-        
+
         return variables;
     }
 
@@ -1047,15 +1048,36 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 
     pub fn type_vars_for_defs(&self,
+                              span: Span,
+                              // substs: Substs,
                               defs: &[ty::TypeParameterDef<'tcx>])
                               -> Vec<ty::Ty<'tcx>> {
+
+        fn definition_span<'tcx>(tcx: &ty::ctxt<'tcx>, def_id: ast::DefId) -> Span {
+            let parent = tcx.map.get_parent(def_id.node);
+            debug!("definition_span def_id={:?} parent={:?} node={:?} parent_node={:?}",
+                def_id, parent, tcx.map.find(def_id.node), tcx.map.find(parent));
+            match tcx.map.find(parent) {
+                None => DUMMY_SP,
+                Some(ref node) => match *node {
+                    ast_map::NodeItem(ref item) => item.span,
+                    ast_map::NodeForeignItem(ref item) => item.span,
+                    ast_map::NodeTraitItem(ref item) => item.span,
+                    ast_map::NodeImplItem(ref item) => item.span,
+                    _ => DUMMY_SP
+                }
+            }
+        }
+
         let mut substs = Substs::empty();
         let mut vars = Vec::with_capacity(defs.len());
 
         for def in defs.iter() {
             let default = def.default.map(|default| {
                 type_variable::Default {
-                    ty: default
+                    ty: default,
+                    origin_span: span,
+                    definition_span: definition_span(self.tcx, def.def_id)
                 }
             });
             //.subst(self.tcx, &substs)
@@ -1077,7 +1099,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let mut type_params = subst::VecPerParamSpace::empty();
 
         for space in subst::ParamSpace::all().iter() {
-            type_params.replace(*space, self.type_vars_for_defs(generics.types.get_slice(*space)))
+            type_params.replace(*space,
+                                self.type_vars_for_defs(span, generics.types.get_slice(*space)))
         }
 
         let region_params =
@@ -1102,7 +1125,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         assert!(generics.regions.len(subst::FnSpace) == 0);
 
         let type_parameter_defs = generics.types.get_slice(subst::TypeSpace);
-        let type_parameters = self.type_vars_for_defs(type_parameter_defs);
+        let type_parameters = self.type_vars_for_defs(span, type_parameter_defs);
 
         let region_param_defs = generics.regions.get_slice(subst::TypeSpace);
         let regions = self.region_vars_for_defs(span, region_param_defs);
@@ -1344,13 +1367,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
     pub fn report_conflicting_default_types(&self,
                                    span: Span,
-                                   expected: Ty<'tcx>,
-                                   actual: Ty<'tcx>) {
+                                   expected: type_variable::Default<'tcx>,
+                                   actual: type_variable::Default<'tcx>) {
         let trace = TypeTrace {
             origin: Misc(span),
             values: Types(ty::expected_found {
-                expected: expected,
-                found: actual
+                expected: expected.ty,
+                found: actual.ty
             })
         };
 

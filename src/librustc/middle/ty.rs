@@ -54,6 +54,7 @@ use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem, FnOnceTraitLangIte
 use middle::region;
 use middle::resolve_lifetime;
 use middle::infer;
+use middle::infer::type_variable;
 use middle::pat_util;
 use middle::region::RegionMaps;
 use middle::stability;
@@ -2068,7 +2069,7 @@ pub enum TypeError<'tcx> {
     ConvergenceMismatch(ExpectedFound<bool>),
     ProjectionNameMismatched(ExpectedFound<ast::Name>),
     ProjectionBoundsLength(ExpectedFound<usize>),
-    terr_ty_param_default_mismatch(expected_found<Ty<'tcx>>)
+    TyParamDefaultMismatch(ExpectedFound<Ty<'tcx>>)
 }
 
 /// Bounds suitable for an existentially quantified type parameter
@@ -5083,9 +5084,9 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
                        values.found)
             },
             terr_ty_param_default_mismatch(ref values) => {
-                write!(f, "conflicting type parameter defaults {} {}",
-                       values.expected,
-                       values.found)
+                write!(f, "conflicting type parameter defaults {} and {}",
+                       values.expected.ty,
+                       values.found.ty)
             }
         }
     }
@@ -5405,7 +5406,7 @@ impl<'tcx> ctxt<'tcx> {
     pub fn note_and_explain_type_err(&self, err: &TypeError<'tcx>, sp: Span) {
         use self::TypeError::*;
 
-        match *err {
+        match err.clone() {
             RegionsDoesNotOutlive(subregion, superregion) => {
                 self.note_and_explain_region("", subregion, "...");
                 self.note_and_explain_region("...does not necessarily outlive ",
@@ -5444,10 +5445,21 @@ impl<'tcx> ctxt<'tcx> {
                                   using it as a trait object"));
                 }
             },
-            terr_ty_param_default_mismatch(expected) => {
+            terr_ty_param_default_mismatch(values) => {
+                let expected = values.expected;
+                let found = values.found;
                 self.sess.span_note(sp,
-                    &format!("found conflicting defaults {:?} {:?}",
-                             expected.expected, expected.found))
+                    &format!("conflicting type parameter defaults {} and {}",
+                             expected.ty,
+                             found.ty));
+                self.sess.span_note(expected.definition_span,
+                    &format!("...a default was defined"));
+                self.sess.span_note(expected.origin_span,
+                    &format!("...that was applied to an unconstrained type variable here"));
+                self.sess.span_note(found.definition_span,
+                    &format!("...a second default was defined"));
+                self.sess.span_note(found.origin_span,
+                    &format!("...that also applies to the same type variable here"));
             }
             _ => {}
         }
