@@ -276,6 +276,33 @@ of the arithmetic overflow checks of `-C debug-assertions`): explicit
 SIMD is essentially only required for speed, and checking inflates one
 instruction to 5 or more.
 
+### Why not inline asm?
+
+One alternative to providing intrinsics is to instead just use
+inline-asm to expose each CPU instruction. However, this approach has
+essentially only one benefit (avoiding defining the intrinsics), but
+several downsides, e.g.
+
+- assembly is generally a black-box to optimisers, inhibiting
+  optimisations, like algebraic simplification/transformation,
+- programmers would have to manually synthesise the right sequence of
+  operations to achieve a given shuffle, while having a generic
+  shuffle intrinsic lets the compiler do it (NB. the intention is that
+  the programmer will still have access to the platform specific
+  operations for when the compiler synthesis isn't quite right),
+- inline assembly is not currently stable in
+  Rust and there's not a strong push for it to be so in the immediate
+  future (although this could change).
+
+Benefits of manual assembly writing, like instruction scheduling and
+register allocation don't apply to the (generally) one-instruction
+`asm!` blocks that replace the intrinsics (they need to be designed so
+that the compiler has full control over register allocation, or else
+the result will be strictly worse). Those possible advantages of hand
+written assembly over intrinsics only come in to play when writing
+longer blocks of raw assembly, i.e. some inner loop might be faster
+when written as a single chunk of asm rather than as intrinsics.
+
 ## Platform Detection
 
 The availability of efficient SIMD functionality is very fine-grained,
