@@ -12,7 +12,6 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 #![allow(missing_docs)]
-#![allow(unsigned_negation)]
 #![doc(primitive = "f32")]
 
 use prelude::v1::*;

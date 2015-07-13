@@ -9,7 +9,6 @@
 // except according to those terms.
 
 #![allow(non_camel_case_types)]
-#![allow(unsigned_negation)]
 
 use self::ConstVal::*;
 
@@ -27,7 +26,6 @@ use util::num::ToPrimitive;
 use syntax::ast::{self, Expr};
 use syntax::ast_util;
 use syntax::codemap::Span;
-use syntax::feature_gate;
 use syntax::parse::token::InternedString;
 use syntax::ptr::P;
 use syntax::{codemap, visit};
@@ -745,13 +743,6 @@ pub fn eval_const_expr_with_substs<'tcx, S>(tcx: &ty::ctxt<'tcx>,
           Float(f) => Float(-f),
           Int(n) =>  try!(const_int_checked_neg(n, e, expr_int_type)),
           Uint(i) => {
-              if !tcx.sess.features.borrow().negate_unsigned {
-                  feature_gate::emit_feature_err(
-                      &tcx.sess.parse_sess.span_diagnostic,
-                      "negate_unsigned",
-                      e.span,
-                      "unary negation of unsigned integers may be removed in the future");
-              }
               try!(const_uint_checked_neg(i, e, expr_uint_type))
           }
           Str(_) => signal!(e, NegateOnString),

@@ -9,7 +9,6 @@
 // except according to those terms.
 
 #![doc(hidden)]
-#![allow(unsigned_negation)]
 
 macro_rules! uint_module { ($T:ident) => (
 

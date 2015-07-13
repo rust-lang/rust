@@ -11,7 +11,28 @@
 // Test that negating unsigned integers is gated by `negate_unsigned` feature
 // gate
 
-const MAX: usize = -1;
+struct S;
+impl std::ops::Neg for S {
+    type Output = u32;
+    fn neg(self) -> u32 { 0 }
+}
+
+const _MAX: usize = -1;
 //~^ ERROR unary negation of unsigned integers may be removed in the future
 
-fn main() {}
+fn main() {
+    let a = -1;
+    //~^ ERROR unary negation of unsigned integers may be removed in the future
+    let _b : u8 = a; // for infering variable a to u8.
+
+    -a;
+    //~^ ERROR unary negation of unsigned integers may be removed in the future
+
+    let _d = -1u8;
+    //~^ ERROR unary negation of unsigned integers may be removed in the future
+
+    for _ in -10..10u8 {}
+    //~^ ERROR unary negation of unsigned integers may be removed in the future
+
+    -S; // should not trigger the gate; issue 26840
+}
