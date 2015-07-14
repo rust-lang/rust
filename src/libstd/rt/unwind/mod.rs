@@ -14,7 +14,7 @@
 //! "Exception Handling in LLVM" (llvm.org/docs/ExceptionHandling.html) and
 //! documents linked from it.
 //! These are also good reads:
-//!     http://theofilos.cs.columbia.edu/blog/2013/09/22/base_abi/
+//!     http://mentorembedded.github.io/cxx-abi/abi-eh.html
 //!     http://monoinfinito.wordpress.com/series/exception-handling-in-c/
 //!     http://www.airs.com/blog/index.php?s=exception+frames
 //!
@@ -76,9 +76,20 @@ use sys_common::mutex::Mutex;
 // The actual unwinding implementation is cfg'd here, and we've got two current
 // implementations. One goes through SEH on Windows and the other goes through
 // libgcc via the libunwind-like API.
-#[cfg(target_env = "msvc")] #[path = "seh.rs"] #[doc(hidden)]
+
+// *-pc-windows-msvc
+#[cfg(all(windows, target_env = "msvc"))]
+#[path = "seh.rs"] #[doc(hidden)]
 pub mod imp;
-#[cfg(not(target_env = "msvc"))] #[path = "gcc.rs"] #[doc(hidden)]
+
+// x86_64-pc-windows-gnu
+#[cfg(all(windows, target_arch="x86_64", target_env="gnu"))]
+#[path = "seh64_gnu.rs"] #[doc(hidden)]
+pub mod imp;
+
+// i686-pc-windows-gnu and all others
+#[cfg(any(unix, all(windows, target_arch="x86", target_env="gnu")))]
+#[path = "gcc.rs"] #[doc(hidden)]
 pub mod imp;
 
 pub type Callback = fn(msg: &(Any + Send), file: &'static str, line: u32);

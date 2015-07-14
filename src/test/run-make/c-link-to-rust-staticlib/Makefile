@@ -1,8 +1,6 @@
 -include ../tools.mk
 
-ifndef IS_WINDOWS
 EXTRAFLAGS := $(EXTRACFLAGS)
-endif
 
 # FIXME: ignore freebsd
 ifneq ($(shell uname),FreeBSD)

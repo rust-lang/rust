@@ -327,6 +327,7 @@ lets_do_this! {
 
     EhPersonalityLangItem,           "eh_personality",          eh_personality;
     EhPersonalityCatchLangItem,      "eh_personality_catch",    eh_personality_catch;
+    EhUnwindResumeLangItem,          "eh_unwind_resume",        eh_unwind_resume;
     MSVCTryFilterLangItem,           "msvc_try_filter",         msvc_try_filter;
 
     ExchangeHeapLangItem,            "exchange_heap",           exchange_heap;

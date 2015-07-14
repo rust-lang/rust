@@ -2171,6 +2171,12 @@ fn finish_register_fn(ccx: &CrateContext, sym: String, node_id: ast::NodeId,
             llvm::SetDLLStorageClass(llfn, llvm::DLLExportStorageClass);
         }
     }
+    if ccx.tcx().lang_items.eh_unwind_resume() == Some(def) {
+        llvm::SetLinkage(llfn, llvm::ExternalLinkage);
+        if ccx.use_dll_storage_attrs() {
+            llvm::SetDLLStorageClass(llfn, llvm::DLLExportStorageClass);
+        }
+    }
 }
 
 fn register_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
