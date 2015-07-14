@@ -10,8 +10,8 @@ C.
 Trying to fully explain the model in this book is fairly hopeless. It's defined
 in terms of madness-inducing causality graphs that require a full book to properly
 understand in a practical way. If you want all the nitty-gritty details, you
-should check out [C's specification][C11-model]. Still, we'll try to cover the
-basics and some of the problems Rust developers face.
+should check out [C's specification (Section 7.17)][C11-model]. Still, we'll try
+to cover the basics and some of the problems Rust developers face.
 
 The C11 memory model is fundamentally about trying to bridge the gap between
 the semantics we want, the optimizations compilers want, and the inconsistent
@@ -127,7 +127,8 @@ to propagate the changes made in data accesses to other threads
 as lazily and inconsistently as it wants. Mostly critically, data accesses are
 how data races happen. Data accesses are very friendly to the hardware and
 compiler, but as we've seen they offer *awful* semantics to try to
-write synchronized code with.
+write synchronized code with. Actually, that's too weak. *It is literally
+impossible to write correct synchronized code using only data accesses*.
 
 Atomic accesses are how we tell the hardware and compiler that our program is
 multi-threaded. Each atomic access can be marked with
@@ -146,29 +147,33 @@ exposes are:
 (Note: We explicitly do not expose the C11 *consume* ordering)
 
 TODO: negative reasoning vs positive reasoning?
-
+TODO: "can't forget to synchronize"
 
 
 
 # Sequentially Consistent
 
 Sequentially Consistent is the most powerful of all, implying the restrictions
-of all other orderings. A Sequentially Consistent operation *cannot*
+of all other orderings. Intuitively, a sequentially consistent operation *cannot*
 be reordered: all accesses on one thread that happen before and after it *stay*
-before and after it. A program that has sequential consistency has the very nice
-property that there is a single global execution of the program's instructions
-that all threads agree on. This execution is also particularly nice to reason
-about: it's just an interleaving of each thread's individual executions.
+before and after it. A data-race-free program that uses only sequentially consistent
+atomics and data accesses has the very nice property that there is a single global
+execution of the program's instructions that all threads agree on. This execution
+is also particularly nice to reason about: it's just an interleaving of each thread's
+individual executions. This *does not* hold if you start using the weaker atomic
+orderings.
 
 The relative developer-friendliness of sequential consistency doesn't come for
-free. Even on strongly-ordered platforms, sequential consistency involves
+free. Even on strongly-ordered platforms sequential consistency involves
 emitting memory fences.
 
 In practice, sequential consistency is rarely necessary for program correctness.
 However sequential consistency is definitely the right choice if you're not
 confident about the other memory orders. Having your program run a bit slower
 than it needs to is certainly better than it running incorrectly! It's also
-completely trivial to downgrade to a weaker consistency later.
+*mechanically* trivial to downgrade atomic operations to have a weaker
+consistency later on. Just change `SeqCst` to e.g. `Relaxed` and you're done! Of
+course, proving that this transformation is *correct* is whole other matter.
 
 
 
@@ -179,20 +184,42 @@ Acquire and Release are largely intended to be paired. Their names hint at
 their use case: they're perfectly suited for acquiring and releasing locks,
 and ensuring that critical sections don't overlap.
 
-An acquire access ensures that every access after it *stays* after it. However
-operations that occur before an acquire are free to be reordered to occur after
-it.
+Intuitively, an acquire access ensures that every access after it *stays* after
+it. However operations that occur before an acquire are free to be reordered to
+occur after it. Similarly, a release access ensures that every access before it
+*stays* before it. However operations that occur after a release are free to
+be reordered to occur before it.
 
-A release access ensures that every access before it *stays* before it. However
-operations that occur after a release are free to be reordered to occur before
-it.
+When thread A releases a location in memory and then thread B subsequently
+acquires *the same* location in memory, causality is established. Every write
+that happened *before* A's release will be observed by B *after* it's release.
+However no causality is established with any other threads. Similarly, no
+causality is established if A and B access *different* locations in memory.
 
-Basic use of release-acquire is simple: you acquire a location of memory to
-begin the critical section, and the release that location to end it. If
-thread A releases a location of memory and thread B acquires that location of
-memory, this establishes that A's critical section *happened before* B's
-critical section. All accesses that happened before the release will be observed
-by anything that happens after the acquire.
+Basic use of release-acquire is therefore simple: you acquire a location of
+memory to begin the critical section, and then release that location to end it.
+For instance, a simple spinlock might look like:
+
+```rust
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::thread;
+
+fn main() {
+    let lock = Arc::new(AtomicBool::new(true)); // value answers "am I locked?"
+
+    // ... distribute lock to threads somehow ...
+
+    // Try to acquire the lock by setting it to false
+    while !lock.compare_and_swap(true, false, Ordering::Acquire) { }
+    // broke out of the loop, so we successfully acquired the lock!
+
+    // ... scary data accesses ...
+
+    // ok we're done, release the lock
+    lock.store(true, Ordering::Release);
+}
+```
 
 On strongly-ordered platforms most accesses have release or acquire semantics,
 making release and acquire often totally free. This is not the case on
@@ -205,10 +232,12 @@ weakly-ordered platforms.
 
 Relaxed accesses are the absolute weakest. They can be freely re-ordered and
 provide no happens-before relationship. Still, relaxed operations *are* still
-atomic, which is valuable. Relaxed operations are appropriate for things that
-you definitely want to happen, but don't particularly care about much else. For
-instance, incrementing a counter can be relaxed if you're not using the
-counter to synchronize any other accesses.
+atomic. That is, they don't count as data accesses and any read-modify-write
+operations done to them occur atomically. Relaxed operations are appropriate for
+things that you definitely want to happen, but don't particularly otherwise care
+about. For instance, incrementing a counter can be safely done by multiple
+threads using a relaxed `fetch_add` if you're not using the counter to
+synchronize any other accesses.
 
 There's rarely a benefit in making an operation relaxed on strongly-ordered
 platforms, since they usually provide release-acquire semantics anyway. However
@@ -219,4 +248,4 @@ relaxed operations can be cheaper on weakly-ordered platforms.
 
 
 [C11-busted]: http://plv.mpi-sws.org/c11comp/popl15.pdf
-[C11-model]: http://en.cppreference.com/w/c/atomic/memory_order
+[C11-model]: http://www.open-std.org/jtc1/sc22/wg14/www/standards.html#9899
