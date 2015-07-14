@@ -71,7 +71,7 @@ fn descriptive_probability(event: Event) -> &'static str {
 }
 
 fn main() {
-    std::io::println(descriptive_probability(NewRelease));
+    println!("{}", descriptive_probability(Event::NewRelease));
 }
 ```
 
@@ -85,8 +85,6 @@ While we know that we've covered all possible cases, Rust can't tell. It
 doesn't know that probability is between 0.0 and 1.0. So we add another case:
 
 ```rust
-use Event::NewRelease;
-
 enum Event {
     NewRelease,
 }
@@ -109,7 +107,7 @@ fn descriptive_probability(event: Event) -> &'static str {
 }
 
 fn main() {
-    println!("{}", descriptive_probability(NewRelease));
+    println!("{}", descriptive_probability(Event::NewRelease));
 }
 ```
 
