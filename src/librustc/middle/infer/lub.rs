@@ -35,11 +35,6 @@ impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Lub<'a, 'tcx> {
 
     fn a_is_expected(&self) -> bool { self.fields.a_is_expected }
 
-    fn will_change(&mut self, a: bool, b: bool) -> bool {
-        // result will be 'static if a || b
-        a || b
-    }
-
     fn relate_with_variance<T:Relate<'a,'tcx>>(&mut self,
                                                variance: ty::Variance,
                                                a: &T,

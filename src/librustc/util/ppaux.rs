@@ -300,10 +300,6 @@ impl<'tcx> fmt::Display for ty::TraitTy<'tcx> {
             try!(write!(f, " + {}", bound));
         }
 
-        if bounds.region_bound_will_change && verbose() {
-            try!(write!(f, " [WILL-CHANGE]"));
-        }
-
         Ok(())
     }
 }
