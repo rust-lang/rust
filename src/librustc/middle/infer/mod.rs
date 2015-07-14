@@ -191,9 +191,6 @@ pub enum SubregionOrigin<'tcx> {
     // Arose from a subtyping relation
     Subtype(TypeTrace<'tcx>),
 
-    // Arose from a subtyping relation
-    DefaultExistentialBound(TypeTrace<'tcx>),
-
     // Stack-allocated closures cannot outlive innermost loop
     // or function so as to ensure we only require finite stack
     InfStackClosure(Span),
@@ -1466,7 +1463,6 @@ impl<'tcx> SubregionOrigin<'tcx> {
     pub fn span(&self) -> Span {
         match *self {
             Subtype(ref a) => a.span(),
-            DefaultExistentialBound(ref a) => a.span(),
             InfStackClosure(a) => a,
             InvokeClosure(a) => a,
             DerefPointer(a) => a,

@@ -35,16 +35,6 @@ impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Glb<'a, 'tcx> {
 
     fn a_is_expected(&self) -> bool { self.fields.a_is_expected }
 
-    fn will_change(&mut self, a: bool, b: bool) -> bool {
-        // Hmm, so the result of GLB will still be a LB if one or both
-        // sides change to 'static, but it may no longer be the GLB.
-        // I'm going to go with `a || b` here to be conservative,
-        // since the result of this operation may be affected, though
-        // I think it would mostly be more accepting than before (since the result
-        // would be a bigger region).
-        a || b
-    }
-
     fn relate_with_variance<T:Relate<'a,'tcx>>(&mut self,
                                                variance: ty::Variance,
                                                a: &T,
