@@ -10,6 +10,7 @@
 
 use attr::AttrMetaMethods;
 use diagnostic::SpanHandler;
+use feature_gate::GatedCfg;
 use fold::Folder;
 use {ast, fold, attr};
 use codemap::{Spanned, respan};
@@ -25,10 +26,13 @@ struct Context<F> where F: FnMut(&[ast::Attribute]) -> bool {
 
 // Support conditional compilation by transforming the AST, stripping out
 // any items that do not belong in the current configuration
-pub fn strip_unconfigured_items(diagnostic: &SpanHandler, krate: ast::Crate) -> ast::Crate {
-    let krate = process_cfg_attr(diagnostic, krate);
+pub fn strip_unconfigured_items(diagnostic: &SpanHandler, krate: ast::Crate,
+                                feature_gated_cfgs: &mut Vec<GatedCfg>)
+                                -> ast::Crate
+{
+    let krate = process_cfg_attr(diagnostic, krate, feature_gated_cfgs);
     let config = krate.config.clone();
-    strip_items(krate, |attrs| in_cfg(diagnostic, &config, attrs))
+    strip_items(krate, |attrs| in_cfg(diagnostic, &config, attrs, feature_gated_cfgs))
 }
 
 impl<F> fold::Folder for Context<F> where F: FnMut(&[ast::Attribute]) -> bool {
@@ -248,7 +252,8 @@ fn foreign_item_in_cfg<F>(cx: &mut Context<F>, item: &ast::ForeignItem) -> bool 
 
 // Determine if an item should be translated in the current crate
 // configuration based on the item's attributes
-fn in_cfg(diagnostic: &SpanHandler, cfg: &[P<ast::MetaItem>], attrs: &[ast::Attribute]) -> bool {
+fn in_cfg(diagnostic: &SpanHandler, cfg: &[P<ast::MetaItem>], attrs: &[ast::Attribute],
+          feature_gated_cfgs: &mut Vec<GatedCfg>) -> bool {
     attrs.iter().all(|attr| {
         let mis = match attr.node.value.node {
             ast::MetaList(_, ref mis) if attr.check_name("cfg") => mis,
@@ -260,25 +265,29 @@ fn in_cfg(diagnostic: &SpanHandler, cfg: &[P<ast::MetaItem>], attrs: &[ast::Attr
             return true;
         }
 
-        attr::cfg_matches(diagnostic, cfg, &*mis[0])
+        attr::cfg_matches(diagnostic, cfg, &*mis[0],
+                          feature_gated_cfgs)
     })
 }
 
-struct CfgAttrFolder<'a> {
+struct CfgAttrFolder<'a, 'b> {
     diag: &'a SpanHandler,
     config: ast::CrateConfig,
+    feature_gated_cfgs: &'b mut Vec<GatedCfg>
 }
 
 // Process `#[cfg_attr]`.
-fn process_cfg_attr(diagnostic: &SpanHandler, krate: ast::Crate) -> ast::Crate {
+fn process_cfg_attr(diagnostic: &SpanHandler, krate: ast::Crate,
+                    feature_gated_cfgs: &mut Vec<GatedCfg>) -> ast::Crate {
     let mut fld = CfgAttrFolder {
         diag: diagnostic,
         config: krate.config.clone(),
+        feature_gated_cfgs: feature_gated_cfgs,
     };
     fld.fold_crate(krate)
 }
 
-impl<'a> fold::Folder for CfgAttrFolder<'a> {
+impl<'a,'b> fold::Folder for CfgAttrFolder<'a,'b> {
     fn fold_attribute(&mut self, attr: ast::Attribute) -> Option<ast::Attribute> {
         if !attr.check_name("cfg_attr") {
             return fold::noop_fold_attribute(attr, self);
@@ -299,7 +308,8 @@ impl<'a> fold::Folder for CfgAttrFolder<'a> {
             }
         };
 
-        if attr::cfg_matches(self.diag, &self.config[..], &cfg) {
+        if attr::cfg_matches(self.diag, &self.config[..], &cfg,
+                             self.feature_gated_cfgs) {
             Some(respan(mi.span, ast::Attribute_ {
                 id: attr::mk_attr_id(),
                 style: attr.node.style,

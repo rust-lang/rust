@@ -21,7 +21,7 @@ use attr::AttrMetaMethods;
 use codemap;
 use codemap::{Span, Spanned, ExpnInfo, NameAndSpan, MacroBang, MacroAttribute, CompilerExpansion};
 use ext::base::*;
-use feature_gate::{self, Features};
+use feature_gate::{self, Features, GatedCfg};
 use fold;
 use fold::*;
 use parse;
@@ -1687,8 +1687,10 @@ pub fn expand_crate<'feat>(parse_sess: &parse::ParseSess,
                            // these are the macros being imported to this crate:
                            imported_macros: Vec<ast::MacroDef>,
                            user_exts: Vec<NamedSyntaxExtension>,
+                           feature_gated_cfgs: &mut Vec<GatedCfg>,
                            c: Crate) -> Crate {
-    let mut cx = ExtCtxt::new(parse_sess, c.config.clone(), cfg);
+    let mut cx = ExtCtxt::new(parse_sess, c.config.clone(), cfg,
+                              feature_gated_cfgs);
     if std_inject::no_core(&c) {
         cx.crate_root = None;
     } else if std_inject::no_std(&c) {
@@ -1878,7 +1880,7 @@ mod tests {
             src,
             Vec::new(), &sess);
         // should fail:
-        expand_crate(&sess,test_ecfg(),vec!(),vec!(),crate_ast);
+        expand_crate(&sess,test_ecfg(),vec!(),vec!(), &mut vec![], crate_ast);
     }
 
     // make sure that macros can't escape modules
@@ -1891,7 +1893,7 @@ mod tests {
             "<test>".to_string(),
             src,
             Vec::new(), &sess);
-        expand_crate(&sess,test_ecfg(),vec!(),vec!(),crate_ast);
+        expand_crate(&sess,test_ecfg(),vec!(),vec!(), &mut vec![], crate_ast);
     }
 
     // macro_use modules should allow macros to escape
@@ -1903,14 +1905,14 @@ mod tests {
             "<test>".to_string(),
             src,
             Vec::new(), &sess);
-        expand_crate(&sess, test_ecfg(), vec!(), vec!(), crate_ast);
+        expand_crate(&sess, test_ecfg(), vec!(), vec!(), &mut vec![], crate_ast);
     }
 
     fn expand_crate_str(crate_str: String) -> ast::Crate {
         let ps = parse::ParseSess::new();
         let crate_ast = panictry!(string_to_parser(&ps, crate_str).parse_crate_mod());
         // the cfg argument actually does matter, here...
-        expand_crate(&ps,test_ecfg(),vec!(),vec!(),crate_ast)
+        expand_crate(&ps,test_ecfg(),vec!(),vec!(), &mut vec![], crate_ast)
     }
 
     // find the pat_ident paths in a crate
