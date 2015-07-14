@@ -34,9 +34,9 @@
 //! ```
 //!
 //! The prelude is primarily concerned with exporting *traits* that
-//! are so pervasive that it would be onerous to import for every use,
+//! are so pervasive that they would be onerous to import for every use,
 //! particularly those that are commonly mentioned in [generic type
-//! bounds][book-traits], and that are often used
+//! bounds][book-traits].
 //!
 //! The current version of the prelude (version 1) lives in
 //! [`std::prelude::v1`](v1/index.html), and reexports the following.
