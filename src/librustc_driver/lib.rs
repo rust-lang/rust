@@ -204,7 +204,9 @@ pub trait CompilerCalls<'a> {
     fn early_callback(&mut self,
                       &getopts::Matches,
                       &diagnostics::registry::Registry)
-                      -> Compilation;
+                      -> Compilation {
+        Compilation::Continue
+    }
 
     // Hook for a callback late in the process of handling arguments. This will
     // be called just before actual compilation starts (and before build_controller
@@ -215,7 +217,9 @@ pub trait CompilerCalls<'a> {
                      &Input,
                      &Option<PathBuf>,
                      &Option<PathBuf>)
-                     -> Compilation;
+                     -> Compilation {
+        Compilation::Continue
+    }
 
     // Called after we extract the input from the arguments. Gives the implementer
     // an opportunity to change the inputs or to add some custom input handling.
@@ -236,7 +240,9 @@ pub trait CompilerCalls<'a> {
                 &Option<PathBuf>,
                 &Option<PathBuf>,
                 &diagnostics::registry::Registry)
-                -> Option<(Input, Option<PathBuf>)>;
+                -> Option<(Input, Option<PathBuf>)> {
+        None
+    }
 
     // Parse pretty printing information from the arguments. The implementer can
     // choose to ignore this (the default will return None) which will skip pretty
