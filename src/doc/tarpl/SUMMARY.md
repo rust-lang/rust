@@ -45,5 +45,6 @@
 	* [Insert and Remove](vec-insert-remove.md)
 	* [IntoIter](vec-into-iter.md)
 	* [Drain](vec-drain.md)
+	* [Handling Zero-Sized Types](vec-zsts.md)
 	* [Final Code](vec-final.md)
 * [Implementing Arc and Mutex](arc-and-mutex.md)
