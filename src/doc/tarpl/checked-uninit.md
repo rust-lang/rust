@@ -1,13 +1,13 @@
 % Checked Uninitialized Memory
 
-Like C, all stack variables in Rust are uninitialized until a
-value is explicitly assigned to them. Unlike C, Rust statically prevents you
-from ever reading them until you do:
+Like C, all stack variables in Rust are uninitialized until a value is
+explicitly assigned to them. Unlike C, Rust statically prevents you from ever
+reading them until you do:
 
 ```rust
 fn main() {
-	let x: i32;
-	println!("{}", x);
+    let x: i32;
+    println!("{}", x);
 }
 ```
 
@@ -25,13 +25,13 @@ or anything like that. So this compiles:
 
 ```rust
 fn main() {
-	let x: i32;
+    let x: i32;
 
-	if true {
-		x = 1;
-	} else {
-		x = 2;
-	}
+    if true {
+        x = 1;
+    } else {
+        x = 2;
+    }
 
     println!("{}", x);
 }
@@ -41,30 +41,30 @@ but this doesn't:
 
 ```rust
 fn main() {
-	let x: i32;
-	if true {
-		x = 1;
-	}
-	println!("{}", x);
+    let x: i32;
+    if true {
+        x = 1;
+    }
+    println!("{}", x);
 }
 ```
 
 ```text
 src/main.rs:6:17: 6:18 error: use of possibly uninitialized variable: `x`
-src/main.rs:6 	println!("{}", x);
+src/main.rs:6   println!("{}", x);
 ```
 
 while this does:
 
 ```rust
 fn main() {
-	let x: i32;
-	if true {
-		x = 1;
-		println!("{}", x);
-	}
-	// Don't care that there are branches where it's not initialized
-	// since we don't use the value in those branches
+    let x: i32;
+    if true {
+        x = 1;
+        println!("{}", x);
+    }
+    // Don't care that there are branches where it's not initialized
+    // since we don't use the value in those branches
 }
 ```
 
@@ -73,10 +73,10 @@ uninitialized if the type of the value isn't Copy. That is:
 
 ```rust
 fn main() {
-	let x = 0;
-	let y = Box::new(0);
-	let z1 = x; // x is still valid because i32 is Copy
-	let z2 = y; // y is now logically uninitialized because Box isn't Copy
+    let x = 0;
+    let y = Box::new(0);
+    let z1 = x; // x is still valid because i32 is Copy
+    let z2 = y; // y is now logically uninitialized because Box isn't Copy
 }
 ```
 

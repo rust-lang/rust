@@ -34,6 +34,6 @@ Due to the nature of advanced Rust programming, we will be spending a lot of tim
 talking about *safety* and *guarantees*. In particular, a significant portion of
 the book will be dedicated to correctly writing and understanding Unsafe Rust.
 
-[trpl]: https://doc.rust-lang.org/book/
-[The stack and heap]: https://doc.rust-lang.org/book/the-stack-and-the-heap.html
-[Basic Rust]: https://doc.rust-lang.org/book/syntax-and-semantics.html
+[trpl]: ../book/
+[The stack and heap]: ../book/the-stack-and-the-heap.html
+[Basic Rust]: ../book/syntax-and-semantics.html

@@ -7,7 +7,7 @@ if it overflows. Unless you are very careful and tightly control what code runs,
 pretty much everything can unwind, and you need to be ready for it.
 
 Being ready for unwinding is often referred to as *exception safety*
-in the broader programming world. In Rust, their are two levels of exception
+in the broader programming world. In Rust, there are two levels of exception
 safety that one may concern themselves with:
 
 * In unsafe code, we *must* be exception safe to the point of not violating
@@ -58,16 +58,17 @@ impl<T: Clone> Vec<T> {
 We bypass `push` in order to avoid redundant capacity and `len` checks on the
 Vec that we definitely know has capacity. The logic is totally correct, except
 there's a subtle problem with our code: it's not exception-safe! `set_len`,
-`offset`, and `write` are all fine, but *clone* is the panic bomb we over-looked.
+`offset`, and `write` are all fine, but *clone* is the panic bomb we over-
+looked.
 
-Clone is completely out of our control, and is totally free to panic. If it does,
-our function will exit early with the length of the Vec set too large. If
+Clone is completely out of our control, and is totally free to panic. If it
+does, our function will exit early with the length of the Vec set too large. If
 the Vec is looked at or dropped, uninitialized memory will be read!
 
 The fix in this case is fairly simple. If we want to guarantee that the values
 we *did* clone are dropped we can set the len *in* the loop. If we just want to
-guarantee that uninitialized memory can't be observed, we can set the len *after*
-the loop.
+guarantee that uninitialized memory can't be observed, we can set the len
+*after* the loop.
 
 
 
