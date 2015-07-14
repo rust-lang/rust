@@ -30,7 +30,7 @@ use middle::subst::{self, Substs};
 use rustc::ast_map;
 use trans::common::{NodeIdAndSpan, CrateContext, FunctionContext, Block};
 use trans;
-use trans::monomorphize;
+use trans::{monomorphize, type_of};
 use middle::ty::{self, Ty};
 use session::config::{self, FullDebugInfo, LimitedDebugInfo, NoDebugInfo};
 use util::nodemap::{NodeMap, FnvHashMap, FnvHashSet};
@@ -41,7 +41,7 @@ use std::ffi::CString;
 use std::ptr;
 use std::rc::Rc;
 use syntax::codemap::{Span, Pos};
-use syntax::{ast, codemap, ast_util};
+use syntax::{abi, ast, codemap, ast_util};
 use syntax::attr::IntType;
 use syntax::parse::token::{self, special_idents};
 
@@ -412,12 +412,13 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         assert_type_for_node_id(cx, fn_ast_id, error_reporting_span);
         let fn_type = cx.tcx().node_id_to_type(fn_ast_id);
 
-        let sig = match fn_type.sty {
+        let (sig, abi) = match fn_type.sty {
             ty::TyBareFn(_, ref barefnty) => {
-                cx.tcx().erase_late_bound_regions(&barefnty.sig)
+                (cx.tcx().erase_late_bound_regions(&barefnty.sig), barefnty.abi)
             }
             ty::TyClosure(def_id, substs) => {
-                cx.tcx().erase_late_bound_regions(&cx.tcx().closure_type(def_id, substs).sig)
+                let closure_type = cx.tcx().closure_type(def_id, substs);
+                (cx.tcx().erase_late_bound_regions(&closure_type.sig), closure_type.abi)
             }
 
             _ => cx.sess().bug("get_function_metdata: Expected a function type!")
@@ -435,8 +436,14 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             ty::FnDiverging => diverging_type_metadata(cx)
         });
 
+        let inputs = &if abi == abi::RustCall {
+            type_of::untuple_arguments(cx, &sig.inputs)
+        } else {
+            sig.inputs
+        };
+
         // Arguments types
-        for &argument_type in &sig.inputs {
+        for &argument_type in inputs {
             signature.push(type_metadata(cx, argument_type, codemap::DUMMY_SP));
         }
 
