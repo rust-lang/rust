@@ -46,10 +46,12 @@ fn get_cross_target() -> Option<CrossTarget> { None }
 
 pub fn target() -> Target {
     let opts = TargetOptions {
-        linker: "pnacl-ld".to_string(),
+        linker: "pnacl-clang".to_string(),
         ar: "pnacl-ar".to_string(),
 
-        pre_link_args: vec!("--pnacl-exceptions=sjlj".to_string()),
+        pre_link_args: vec!("--pnacl-exceptions=sjlj".to_string(),
+                            "-Wl,--start-group".to_string()),
+        post_link_args: vec!("-Wl,--end-group".to_string()),
 
         dynamic_linking: false,
         executables: true,
