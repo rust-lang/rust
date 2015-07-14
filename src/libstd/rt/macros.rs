@@ -18,7 +18,7 @@ macro_rules! rterrln {
         ::rt::util::dumb_print(format_args!(concat!($fmt, "\n")))
     } );
     ($fmt:expr, $($arg:expr),*) => ( {
-        ::rt::util::dumb_print(format_args!(concat!($fmt, "\n"), $($arg)*))
+        ::rt::util::dumb_print(format_args!(concat!($fmt, "\n"), $($arg),*))
     } )
 }
 
@@ -31,7 +31,7 @@ macro_rules! rtdebug {
     } );
     ($str:expr, $($arg:expr),*) => ( {
         if cfg!(rtdebug) {
-            rterrln!($str, $($arg)*)
+            rterrln!($str, $($arg),*)
         }
     })
 }

@@ -16,6 +16,7 @@ pub fn target() -> Target {
     // On Win64 unwinding is handled by the OS, so we can link libgcc statically.
     base.pre_link_args.push("-static-libgcc".to_string());
     base.pre_link_args.push("-m64".to_string());
+    base.custom_unwind_resume = true;
 
     Target {
         llvm_target: "x86_64-pc-windows-gnu".to_string(),
