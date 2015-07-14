@@ -169,22 +169,28 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
     let type_parameter_defs = trait_def.generics.types.get_slice(subst::TypeSpace);
     let expected_number_of_input_types = type_parameter_defs.len();
-    let input_types = match opt_input_types {
-        Some(input_types) => {
-            assert_eq!(expected_number_of_input_types, input_types.len());
-            input_types
-        }
-
-        None => {
-            fcx.inh.infcx.type_vars_for_defs(span, type_parameter_defs)
-        }
-    };
 
     assert_eq!(trait_def.generics.types.len(subst::FnSpace), 0);
     assert!(trait_def.generics.regions.is_empty());
 
     // Construct a trait-reference `self_ty : Trait<input_tys>`
-    let substs = subst::Substs::new_trait(input_types, Vec::new(), self_ty);
+    let mut substs = subst::Substs::new_trait(Vec::new(), Vec::new(), self_ty);
+
+    match opt_input_types {
+        Some(input_types) => {
+            assert_eq!(expected_number_of_input_types, input_types.len());
+            substs.types.replace(subst::ParamSpace::TypeSpace, input_types);
+        }
+
+        None => {
+            fcx.inh.infcx.type_vars_for_defs(
+                span,
+                subst::ParamSpace::TypeSpace,
+                &mut substs,
+                type_parameter_defs);
+        }
+    }
+    
     let trait_ref = ty::TraitRef::new(trait_def_id, fcx.tcx().mk_substs(substs));
 
     // Construct an obligation

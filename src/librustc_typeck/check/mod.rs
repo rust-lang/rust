@@ -2616,8 +2616,10 @@ pub fn impl_self_ty<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     debug!("impl_self_ty: tps={:?} rps={:?} raw_ty={:?}", tps, rps, raw_ty);
 
     let rps = fcx.inh.infcx.region_vars_for_defs(span, rps);
-    let tps = fcx.inh.infcx.type_vars_for_defs(span, tps);
-    let substs = subst::Substs::new_type(tps, rps);
+    let mut substs = subst::Substs::new(
+        VecPerParamSpace::empty(),
+        VecPerParamSpace::new(rps, Vec::new(), Vec::new()));
+    fcx.inh.infcx.type_vars_for_defs(span, ParamSpace::TypeSpace, &mut substs, tps);
     let substd_ty = fcx.instantiate_type_scheme(span, &substs, &raw_ty);
 
     TypeAndSubsts { substs: substs, ty: substd_ty }
@@ -4611,6 +4613,7 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             }
         }
     }
+
     if let Some(self_ty) = opt_self_ty {
         if type_defs.len(subst::SelfSpace) == 1 {
             substs.types.push(subst::SelfSpace, self_ty);
@@ -4623,7 +4626,7 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     // variables. If the user provided some types, we may still need
     // to add defaults. If the user provided *too many* types, that's
     // a problem.
-    for &space in &ParamSpace::all() {
+    for &space in &[subst::SelfSpace, subst::TypeSpace, subst::FnSpace] {
         adjust_type_parameters(fcx, span, space, type_defs,
                                require_type_space, &mut substs);
         assert_eq!(substs.types.len(space), type_defs.len(space));
@@ -4836,7 +4839,7 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         // Nothing specified at all: supply inference variables for
         // everything.
         if provided_len == 0 && !(require_type_space && space == subst::TypeSpace) {
-            substs.types.replace(space, fcx.infcx().type_vars_for_defs(span, &desired[..]));
+            fcx.infcx().type_vars_for_defs(span, space, substs, &desired[..]);
             return;
         }
 

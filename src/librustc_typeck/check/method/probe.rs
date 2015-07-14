@@ -1200,16 +1200,12 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             return impl_ty;
         }
 
-        let placeholder;
+        let mut placeholder;
         let mut substs = substs;
         if
             !method.generics.types.is_empty_in(subst::FnSpace) ||
             !method.generics.regions.is_empty_in(subst::FnSpace)
         {
-            let method_types =
-                self.infcx().type_vars_for_defs(self.span,
-                    method.generics.types.get_slice(subst::FnSpace));
-
             // In general, during probe we erase regions. See
             // `impl_self_ty()` for an explanation.
             let method_regions =
@@ -1218,7 +1214,14 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                 .map(|_| ty::ReStatic)
                 .collect();
 
-            placeholder = (*substs).clone().with_method(method_types, method_regions);
+            placeholder = (*substs).clone().with_method(Vec::new(), method_regions);
+
+            self.infcx().type_vars_for_defs(
+                self.span,
+                subst::FnSpace,
+                &mut placeholder,
+                method.generics.types.get_slice(subst::FnSpace));
+
             substs = &placeholder;
         }
 
