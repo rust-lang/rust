@@ -84,9 +84,12 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
 
         // Create substitutions for the method's type parameters.
         let rcvr_substs = self.fresh_receiver_substs(self_ty, &pick);
-        let (method_types, method_regions) =
-            self.instantiate_method_substs(&pick, supplied_method_types);
-        let all_substs = rcvr_substs.with_method(method_types, method_regions);
+        let all_substs =
+            self.instantiate_method_substs(
+                &pick,
+                supplied_method_types,
+                rcvr_substs);
+
         debug!("all_substs={:?}", all_substs);
 
         // Create the final signature for the method, replacing late-bound regions.
@@ -302,8 +305,9 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
 
     fn instantiate_method_substs(&mut self,
                                  pick: &probe::Pick<'tcx>,
-                                 supplied_method_types: Vec<Ty<'tcx>>)
-                                 -> (Vec<Ty<'tcx>>, Vec<ty::Region>)
+                                 supplied_method_types: Vec<Ty<'tcx>>,
+                                 substs: subst::Substs<'tcx>)
+                                 -> subst::Substs<'tcx>
     {
         // Determine the values for the generic parameters of the method.
         // If they were not explicitly supplied, just construct fresh
@@ -313,21 +317,6 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
         let method_types = method.generics.types.get_slice(subst::FnSpace);
         let num_method_types = method_types.len();
 
-        let method_types = {
-            if num_supplied_types == 0 {
-                self.fcx.infcx().type_vars_for_defs(self.span, method_types)
-            } else if num_method_types == 0 {
-                span_err!(self.tcx().sess, self.span, E0035,
-                    "does not take type parameters");
-                self.fcx.infcx().type_vars_for_defs(self.span, method_types)
-            } else if num_supplied_types != num_method_types {
-                span_err!(self.tcx().sess, self.span, E0036,
-                    "incorrect number of type parameters given for this method");
-                vec![self.tcx().types.err; num_method_types]
-            } else {
-                supplied_method_types
-            }
-        };
 
         // Create subst for early-bound lifetime parameters, combining
         // parameters from the type and those from the method.
@@ -339,7 +328,33 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                 pick.item.as_opt_method().unwrap()
                     .generics.regions.get_slice(subst::FnSpace));
 
-        (method_types, method_regions)
+        let subst::Substs { types, regions } = substs;
+        let regions = regions.map(|r| r.with_vec(subst::FnSpace, method_regions));
+        let mut final_substs = subst::Substs { types: types, regions: regions };
+
+        if num_supplied_types == 0 {
+            self.fcx.infcx().type_vars_for_defs(
+                self.span,
+                subst::FnSpace,
+                &mut final_substs,
+                method_types);
+        } else if num_method_types == 0 {
+            span_err!(self.tcx().sess, self.span, E0035,
+                "does not take type parameters");
+            self.fcx.infcx().type_vars_for_defs(
+                self.span,
+                subst::FnSpace,
+                &mut final_substs,
+                method_types);
+        } else if num_supplied_types != num_method_types {
+            span_err!(self.tcx().sess, self.span, E0036,
+                "incorrect number of type parameters given for this method");
+            final_substs.types.replace(subst::FnSpace, vec![self.tcx().types.err; num_method_types]);
+        } else {
+            final_substs.types.replace(subst::FnSpace, supplied_method_types);
+        }
+
+        return final_substs;
     }
 
     fn unify_receivers(&mut self,

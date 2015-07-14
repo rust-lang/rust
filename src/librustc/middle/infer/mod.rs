@@ -1047,12 +1047,15 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             .collect()
     }
 
+    // We have to take `&mut Substs` in order to provide the correct substitutions for defaults
+    // along the way, for this reason we don't return them.
     pub fn type_vars_for_defs(&self,
                               span: Span,
-                              // substs: Substs,
-                              defs: &[ty::TypeParameterDef<'tcx>])
-                              -> Vec<ty::Ty<'tcx>> {
+                              space: subst::ParamSpace,
+                              substs: &mut Substs<'tcx>,
+                              defs: &[ty::TypeParameterDef<'tcx>]) {
 
+        // This doesn't work ...
         fn definition_span<'tcx>(tcx: &ty::ctxt<'tcx>, def_id: ast::DefId) -> Span {
             let parent = tcx.map.get_parent(def_id.node);
             debug!("definition_span def_id={:?} parent={:?} node={:?} parent_node={:?}",
@@ -1069,24 +1072,21 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             }
         }
 
-        let mut substs = Substs::empty();
         let mut vars = Vec::with_capacity(defs.len());
 
         for def in defs.iter() {
-            let default = def.default.map(|default| {
+            let default = def.default.subst_spanned(self.tcx, substs, Some(span)).map(|default| {
                 type_variable::Default {
                     ty: default,
                     origin_span: span,
                     definition_span: definition_span(self.tcx, def.def_id)
                 }
             });
-            //.subst(self.tcx, &substs)
+
             let ty_var = self.next_ty_var_with_default(default);
-            substs.types.push(subst::ParamSpace::SelfSpace, ty_var);
+            substs.types.push(space, ty_var);
             vars.push(ty_var)
         }
-
-        vars
     }
 
     /// Given a set of generics defined on a type or impl, returns a substitution mapping each
@@ -1096,17 +1096,23 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                      generics: &ty::Generics<'tcx>)
                                      -> subst::Substs<'tcx>
     {
-        let mut type_params = subst::VecPerParamSpace::empty();
-
-        for space in subst::ParamSpace::all().iter() {
-            type_params.replace(*space,
-                                self.type_vars_for_defs(span, generics.types.get_slice(*space)))
-        }
+        let type_params = subst::VecPerParamSpace::empty();
 
         let region_params =
             generics.regions.map(
                 |d| self.next_region_var(EarlyBoundRegion(span, d.name)));
-        subst::Substs::new(type_params, region_params)
+
+        let mut substs = subst::Substs::new(type_params, region_params);
+
+        for space in subst::ParamSpace::all().iter() {
+            self.type_vars_for_defs(
+                span,
+                *space,
+                &mut substs,
+                generics.types.get_slice(*space));
+        }
+
+        return substs;
     }
 
     /// Given a set of generics defined on a trait, returns a substitution mapping each output
@@ -1124,13 +1130,17 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         assert!(generics.regions.len(subst::SelfSpace) == 0);
         assert!(generics.regions.len(subst::FnSpace) == 0);
 
-        let type_parameter_defs = generics.types.get_slice(subst::TypeSpace);
-        let type_parameters = self.type_vars_for_defs(span, type_parameter_defs);
+        let type_params = Vec::new();
 
         let region_param_defs = generics.regions.get_slice(subst::TypeSpace);
         let regions = self.region_vars_for_defs(span, region_param_defs);
 
-        subst::Substs::new_trait(type_parameters, regions, self_ty)
+        let mut substs = subst::Substs::new_trait(type_params, regions, self_ty);
+
+        let type_parameter_defs = generics.types.get_slice(subst::TypeSpace);
+        self.type_vars_for_defs(span, subst::TypeSpace, &mut substs, type_parameter_defs);
+
+        return substs;
     }
 
     pub fn fresh_bound_region(&self, debruijn: ty::DebruijnIndex) -> ty::Region {
