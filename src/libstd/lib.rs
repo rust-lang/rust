@@ -150,6 +150,7 @@
 #![feature(wrapping)]
 #![feature(zero_one)]
 #![cfg_attr(windows, feature(str_utf16))]
+#![cfg_attr(windows, feature(num_bits_bytes))]
 #![cfg_attr(test, feature(float_from_str_radix, range_inclusive, float_extras, hash_default))]
 #![cfg_attr(test, feature(test, rustc_private, float_consts))]
 #![cfg_attr(target_env = "msvc", feature(link_args))]

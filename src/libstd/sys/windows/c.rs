@@ -518,36 +518,293 @@ compat_fn! {
                     _dwBufferSize: DWORD) -> BOOL {
         SetLastError(ERROR_CALL_NOT_IMPLEMENTED as DWORD); 0
     }
+}
+
+// Functions for SRWLocks and condition variables. Fallbacks will be used for
+// all functions if any aren't available since Windows Vista has SRWLocks, but
+// doesn't have the TryAcquireSRWLock* functions.
+use sync::atomic::{AtomicBool, AtomicPtr, AtomicUsize, Ordering};
+use ptr;
+
+compat_group! {
+    SyncPrimitives, SYNC_PRIMITIVES, load_sync_primitives, kernel32:
+    // FIXME - Implement shared lock flag?
     pub fn SleepConditionVariableSRW(ConditionVariable: PCONDITION_VARIABLE,
                                      SRWLock: PSRWLOCK,
                                      dwMilliseconds: DWORD,
                                      Flags: ULONG) -> BOOL {
-        panic!("condition variables not available")
+        {
+            let condvar = &*(ConditionVariable as *mut AtomicUsize);
+            // Increment the waiting thread counter.
+            condvar.fetch_add(1, Ordering::SeqCst);
+            let mut timeout = dwMilliseconds as libc::LARGE_INTEGER;
+            let timeout_ptr = if dwMilliseconds == libc::INFINITE {
+                ptr::null_mut()
+            } else {
+                &mut timeout as *mut _
+            };
+            ReleaseSRWLockExclusive(SRWLock);
+            let mut status = NtWaitForKeyedEvent(keyed_event_handle(),
+                                                 ConditionVariable as PVOID,
+                                                 0,
+                                                 timeout_ptr);
+            if status != STATUS_SUCCESS {
+                // If we weren't woken by another thread, try to decrement the counter.
+                if !update_atomic(condvar, |x| (if x > 0 { x - 1 } else { x }, x > 0)) {
+                    // If we can't decrement it, another thread is trying to wake us
+                    // up right now.  Wait so that we can allow it to do so.
+                    status = NtWaitForKeyedEvent(keyed_event_handle(),
+                                                 ConditionVariable as PVOID,
+                                                 0,
+                                                 ptr::null_mut());
+                }
+            }
+            AcquireSRWLockExclusive(SRWLock);
+            SetLastError(RtlNtStatusToDosError(status) as DWORD);
+            if status == STATUS_SUCCESS { libc::TRUE } else { libc::FALSE }
+        }
     }
     pub fn WakeConditionVariable(ConditionVariable: PCONDITION_VARIABLE)
                                  -> () {
-        panic!("condition variables not available")
+        {
+            let condvar = &*(ConditionVariable as *mut AtomicUsize);
+            // Try to decrement the thread counter.
+            if update_atomic(condvar, |x| (if x > 0 { x - 1 } else { x }, x > 0)) {
+                // If successful, wake up a thread.
+                NtReleaseKeyedEvent(keyed_event_handle(),
+                                    ConditionVariable as PVOID,
+                                    0,
+                                    ptr::null_mut());
+            }
+        }
     }
     pub fn WakeAllConditionVariable(ConditionVariable: PCONDITION_VARIABLE)
                                     -> () {
-        panic!("condition variables not available")
+        {
+            let condvar = &*(ConditionVariable as *mut AtomicUsize);
+            // Take the thread counter value, swap it with zero, and wake up that many threads.
+            for _ in 0..condvar.swap(0, Ordering::SeqCst) {
+                NtReleaseKeyedEvent(keyed_event_handle(),
+                                    ConditionVariable as PVOID,
+                                    0,
+                                    ptr::null_mut());
+            }
+        }
     }
     pub fn AcquireSRWLockExclusive(SRWLock: PSRWLOCK) -> () {
-        panic!("rwlocks not available")
+        {
+            // Increment the exclusive counter and wait if any other thread is
+            // holding this lock in any way.
+            let wait = update_srwlock(&*(SRWLock as *mut AtomicUsize), |f, ex, sh| {
+                let f = f | ((ex == 0) & (sh == 0));
+                let ex = ex + 1;
+                (f, ex, sh, !(f & (ex == 1)))
+            });
+            if wait {
+                NtWaitForKeyedEvent(keyed_event_handle(), SRWLock as PVOID, 0, ptr::null_mut());
+            }
+        }
     }
     pub fn AcquireSRWLockShared(SRWLock: PSRWLOCK) -> () {
-        panic!("rwlocks not available")
+        {
+            // Increment the shared counter and wait if the lock is currently being
+            // held exclusively.
+            let wait = update_srwlock(&*(SRWLock as *mut AtomicUsize), |f, ex, sh| {
+                let sh = sh + 1;
+                (f, ex, sh, f)
+            });
+            if wait {
+                NtWaitForKeyedEvent(keyed_event_handle(),
+                                    ((SRWLock as usize) + 2) as PVOID,
+                                    0,
+                                    ptr::null_mut());
+            }
+        }
     }
     pub fn ReleaseSRWLockExclusive(SRWLock: PSRWLOCK) -> () {
-        panic!("rwlocks not available")
+        {
+            // If other threads are trying to hold this lock exclusively, wake one up.
+            // Otherwise, if threads are trying to share this lock, wake them all up.
+            let release = update_srwlock(&*(SRWLock as *mut AtomicUsize), |f, ex, sh| {
+                let ex = ex - 1;
+                let rel = if ex > 0 {
+                    Release::Exclusive
+                } else if sh > 0 {
+                    Release::Shared(sh)
+                } else {
+                    Release::None
+                };
+                (rel == Release::Exclusive, ex, sh, rel)
+            });
+            release_srwlock(SRWLock, release);
+        }
     }
     pub fn ReleaseSRWLockShared(SRWLock: PSRWLOCK) -> () {
-        panic!("rwlocks not available")
+        {
+            // If we're the last thread to share this lock and other threads are trying to
+            // hold it exclusively, wake one up.
+            let release = update_srwlock(&*(SRWLock as *mut AtomicUsize), |f, ex, sh| {
+                let sh = sh - 1;
+                let f = (ex > 0) & (sh == 0);
+                (f, ex, sh, if f { Release::Exclusive } else { Release::None })
+            });
+            release_srwlock(SRWLock, release);
+        }
     }
     pub fn TryAcquireSRWLockExclusive(SRWLock: PSRWLOCK) -> BOOLEAN {
-        panic!("rwlocks not available")
+        update_srwlock(&*(SRWLock as *mut AtomicUsize), |f, ex, sh| {
+            if (f, ex, sh) == (false, 0, 0) {
+                (true, 1, 0, libc::TRUE as BOOLEAN)
+            } else {
+                (f, ex, sh, libc::FALSE as BOOLEAN)
+            }
+        })
     }
     pub fn TryAcquireSRWLockShared(SRWLock: PSRWLOCK) -> BOOLEAN {
-        panic!("rwlocks not available")
+        update_srwlock(&*(SRWLock as *mut AtomicUsize), |f, ex, sh| {
+            if !f {
+                (false, ex, sh + 1, libc::TRUE as BOOLEAN)
+            } else {
+                (f, ex, sh, libc::FALSE as BOOLEAN)
+            }
+        })
+    }
+}
+
+// This implementation splits the SRWLock into 3 parts: a shared thread count, an exclusive thread
+// count, and an exclusive lock flag. The shared thread count is stored in the lower half, and the
+// exclusive thread count is stored in the upper half, except for the MSB which is used for the
+// exclusive lock flag.
+const EXCLUSIVE_FLAG: usize = 1 << (::usize::BITS - 1);
+const EXCLUSIVE_MASK: usize = !(SHARED_MASK | EXCLUSIVE_FLAG);
+const EXCLUSIVE_SHIFT: usize = ::usize::BITS / 2;
+const SHARED_MASK: usize = (1 << EXCLUSIVE_SHIFT) - 1;
+
+fn decompose_srwlock(x: usize) -> (bool, usize, usize) {
+    ((x & EXCLUSIVE_FLAG) != 0, (x & EXCLUSIVE_MASK) >> EXCLUSIVE_SHIFT, x & SHARED_MASK)
+}
+
+fn compose_srwlock(flag: bool, exclusive: usize, shared: usize) -> usize {
+    (if flag { EXCLUSIVE_FLAG } else { 0 }) | (exclusive << EXCLUSIVE_SHIFT) | shared
+}
+
+use ops::FnMut;
+fn update_srwlock<T, F: FnMut(bool, usize, usize) -> (bool, usize, usize, T)>
+                 (atom: &AtomicUsize, mut func: F) -> T {
+    update_atomic(atom, |x| {
+        let (f, ex, sh) = decompose_srwlock(x);
+        let (f, ex, sh, ret) = func(f, ex, sh);
+        (compose_srwlock(f, ex, sh), ret)
+    })
+}
+
+fn update_atomic<T, F: FnMut(usize) -> (usize, T)>(atom: &AtomicUsize, mut func: F) -> T {
+    let mut old = atom.load(Ordering::SeqCst);
+    loop {
+        let (new, ret) = func(old);
+        let cmp = atom.compare_and_swap(old, new, Ordering::SeqCst);
+        if cmp == old {
+            return ret;
+        } else {
+            old = cmp;
+        }
+    }
+}
+
+#[derive(PartialEq, Copy, Clone)]
+enum Release {
+    None,
+    Exclusive,
+    Shared(usize)
+}
+
+fn release_srwlock(srwlock: PSRWLOCK, rel: Release) {
+    let exclusive = srwlock as PVOID;
+    let shared = ((exclusive as usize) + 2) as PVOID;
+    let handle = keyed_event_handle();
+    match rel {
+        Release::None => {},
+        Release::Exclusive => {
+            unsafe { NtReleaseKeyedEvent(handle, exclusive, 0, ptr::null_mut()); }
+        },
+        Release::Shared(s) => {
+            for _ in 0..s {
+                unsafe { NtReleaseKeyedEvent(handle, shared, 0, ptr::null_mut()); }
+            }
+        }
+    }
+}
+
+fn keyed_event_handle() -> HANDLE {
+    static KE_HANDLE: AtomicPtr<()> = AtomicPtr::new(libc::INVALID_HANDLE_VALUE as *mut ());
+
+    fn load() -> HANDLE {
+        static LOCK: AtomicBool = AtomicBool::new(false);
+        while LOCK.fetch_or(true, Ordering::SeqCst) {
+            // busywait...
+        }
+        let mut h: HANDLE = KE_HANDLE.load(Ordering::SeqCst) as HANDLE;
+        if h == libc::INVALID_HANDLE_VALUE {
+            let status = unsafe {
+                NtCreateKeyedEvent((&mut h) as PHANDLE, !0, ptr::null_mut(), 0)
+            };
+            if status != STATUS_SUCCESS {
+                LOCK.store(false, Ordering::SeqCst);
+                panic!("error creating keyed event handle");
+            }
+            KE_HANDLE.store(h as *mut (), Ordering::SeqCst);
+        }
+        LOCK.store(false, Ordering::SeqCst);
+        h
+    }
+
+    let handle = KE_HANDLE.load(Ordering::SeqCst) as HANDLE;
+    if handle == libc::INVALID_HANDLE_VALUE {
+        load()
+    } else {
+        handle
+    }
+}
+
+// Undocumented functions for keyed events used by SRWLock and condition
+// variable fallbacks.  Don't need fallbacks for these, but put them here to
+// avoid directly linking to them in (the unlikely) case these functions are
+// removed in later versions of Windows.
+pub type PHANDLE = libc::LPHANDLE;
+pub type ACCESS_MASK = ULONG;
+pub type NTSTATUS = LONG;
+pub type PVOID = LPVOID;
+pub type PLARGE_INTEGER = *mut libc::LARGE_INTEGER;
+
+pub const STATUS_SUCCESS: NTSTATUS = 0x00000000;
+pub const STATUS_NOT_IMPLEMENTED: NTSTATUS = 0xC0000002;
+
+compat_fn! {
+    ntdll:
+
+    // FIXME - ObjectAttributes should be POBJECT_ATTRIBUTES
+    pub fn NtCreateKeyedEvent(KeyedEventHandle: PHANDLE,
+                              DesiredAccess: ACCESS_MASK,
+                              ObjectAttributes: PVOID,
+                              Flags: ULONG) -> NTSTATUS {
+        STATUS_NOT_IMPLEMENTED
+    }
+
+    pub fn NtReleaseKeyedEvent(EventHandle: HANDLE,
+                               Key: PVOID,
+                               Alertable: BOOLEAN,
+                               Timeout: PLARGE_INTEGER) -> NTSTATUS {
+        STATUS_NOT_IMPLEMENTED
+    }
+
+    pub fn NtWaitForKeyedEvent(EventHandle: HANDLE,
+                               Key: PVOID,
+                               Alertable: BOOLEAN,
+                               Timeout: PLARGE_INTEGER) -> NTSTATUS {
+        STATUS_NOT_IMPLEMENTED
+    }
+
+    pub fn RtlNtStatusToDosError(Status: NTSTATUS) -> ULONG {
+        ERROR_CALL_NOT_IMPLEMENTED as ULONG
     }
 }
