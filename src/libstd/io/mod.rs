@@ -611,7 +611,7 @@ pub trait BufRead: Read {
         Split { buf: self, delim: byte }
     }
 
-    /// Returns an iterator over the lines of this reader.
+    /// Returns an iterator over the lines of this reader, separated by `\n`.
     ///
     /// The iterator returned from this function will yield instances of
     /// `io::Result<String>`. Each string returned will *not* have a newline
@@ -619,6 +619,16 @@ pub trait BufRead: Read {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn lines(self) -> Lines<Self> where Self: Sized {
         Lines { buf: self }
+    }
+
+    /// Returns an iterator over the lines of this reader, separated by either `\n` or `\r\n`.
+    ///
+    /// The iterator returned from this function will yield instances of
+    /// `io::Result<String>`. Each string returned will *not* have the newline
+    /// separator at the end.
+    #[unstable(feature = "lines_any", reason = "Just recently added.")]
+    fn lines_any(self) -> LinesAny<Self> where Self: Sized {
+        LinesAny { buf: self }
     }
 }
 
@@ -873,7 +883,7 @@ impl<B: BufRead> Iterator for Split<B> {
 }
 
 /// An iterator over the lines of an instance of `BufRead` split on a newline
-/// byte.
+/// byte (`\n`).
 ///
 /// See `BufRead::lines` for more information.
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -892,6 +902,36 @@ impl<B: BufRead> Iterator for Lines<B> {
             Ok(_n) => {
                 if buf.ends_with("\n") {
                     buf.pop();
+                }
+                Some(Ok(buf))
+            }
+            Err(e) => Some(Err(e))
+        }
+    }
+}
+
+/// An iterator over the lines of an instance of `BufRead` split on either `\n` or `\r\n`.
+///
+/// See `BufRead::lines_any` for more information.
+#[unstable(feature = "lines_any", reason = "Just recently added.")]
+pub struct LinesAny<B> {
+    buf: B,
+}
+
+#[unstable(feature = "lines_any", reason = "Just recently added.")]
+impl<B: BufRead> Iterator for LinesAny<B> {
+    type Item = Result<String>;
+
+    fn next(&mut self) -> Option<Result<String>> {
+        let mut buf = String::new();
+        match self.buf.read_line(&mut buf) {
+            Ok(0) => None,
+            Ok(_n) => {
+                if buf.ends_with("\n") {
+                    buf.pop();
+                    if buf.ends_with("\r") {
+                        buf.pop();
+                    }
                 }
                 Some(Ok(buf))
             }
@@ -970,6 +1010,36 @@ mod tests {
         let mut s = buf.lines();
         assert_eq!(s.next().unwrap().unwrap(), "12".to_string());
         assert_eq!(s.next().unwrap().unwrap(), "".to_string());
+        assert!(s.next().is_none());
+
+        let buf = Cursor::new(&b"12\n\r\n12\r\n12\r"[..]);
+        let mut s = buf.lines();
+        assert_eq!(s.next().unwrap().unwrap(), "12".to_string());
+        assert_eq!(s.next().unwrap().unwrap(), "\r".to_string());
+        assert_eq!(s.next().unwrap().unwrap(), "12\r".to_string());
+        assert_eq!(s.next().unwrap().unwrap(), "12\r".to_string());
+        assert!(s.next().is_none());
+    }
+
+    #[test]
+    fn lines_any() {
+        let buf = Cursor::new(&b"12"[..]);
+        let mut s = buf.lines_any();
+        assert_eq!(s.next().unwrap().unwrap(), "12".to_string());
+        assert!(s.next().is_none());
+
+        let buf = Cursor::new(&b"12\n\r\n"[..]);
+        let mut s = buf.lines_any();
+        assert_eq!(s.next().unwrap().unwrap(), "12".to_string());
+        assert_eq!(s.next().unwrap().unwrap(), "".to_string());
+        assert!(s.next().is_none());
+
+        let buf = Cursor::new(&b"12\n\r\n12\r\n12\r"[..]);
+        let mut s = buf.lines_any();
+        assert_eq!(s.next().unwrap().unwrap(), "12".to_string());
+        assert_eq!(s.next().unwrap().unwrap(), "".to_string());
+        assert_eq!(s.next().unwrap().unwrap(), "12".to_string());
+        assert_eq!(s.next().unwrap().unwrap(), "12\r".to_string());
         assert!(s.next().is_none());
     }
 
