@@ -103,7 +103,7 @@ fn main() {
 If you would like to use real operands in this position, however,
 you are required to put curly braces `{}` around the register that
 you want, and you are required to put the specific size of the
-operand. This is useful for very low level programming, where 
+operand. This is useful for very low level programming, where
 which register you use is important:
 
 ```rust
@@ -166,3 +166,12 @@ unsafe {
 println!("eax is currently {}", result);
 # }
 ```
+
+## More Information
+
+The current implementation of the `asm!` macro is a direct binding to [LLVM's
+inline assembler expressions][llvm-docs], so be sure to check out [their
+documentation as well][llvm-docs] for more information about clobbers,
+constraints, etc.
+
+[llvm-docs]: http://llvm.org/docs/LangRef.html#inline-assembler-expressions
