@@ -10,3 +10,4 @@ path = "compiletest.rs"
 
 [build-dependencies]
 build_helper = { path = "../build_helper" }
+
