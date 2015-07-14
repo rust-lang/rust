@@ -67,7 +67,7 @@ fields in the order specified, we expect it to *pad* the values in the struct to
 their *alignment* requirements. So if Rust didn't reorder fields, we would expect Rust to
 produce the following:
 
-```rust
+```rust,ignore
 struct Foo<u16, u32> {
     count: u16,
     data1: u16,

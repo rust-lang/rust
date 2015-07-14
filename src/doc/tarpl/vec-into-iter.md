@@ -37,7 +37,7 @@ indistinguishable from the case where there are no more elements to yield.
 
 So we're going to use the following struct:
 
-```rust
+```rust,ignore
 struct IntoIter<T> {
     buf: Unique<T>,
     cap: usize,
@@ -63,7 +63,7 @@ cap or len being 0 to not do the offset.
 
 So this is what we end up with for initialization:
 
-```rust
+```rust,ignore
 impl<T> Vec<T> {
     fn into_iter(self) -> IntoIter<T> {
         // Can't destructure Vec since it's Drop
@@ -93,7 +93,7 @@ impl<T> Vec<T> {
 
 Here's iterating forward:
 
-```rust
+```rust,ignore
 impl<T> Iterator for IntoIter<T> {
     type Item = T;
     fn next(&mut self) -> Option<T> {
@@ -118,7 +118,7 @@ impl<T> Iterator for IntoIter<T> {
 
 And here's iterating backwards.
 
-```rust
+```rust,ignore
 impl<T> DoubleEndedIterator for IntoIter<T> {
     fn next_back(&mut self) -> Option<T> {
         if self.start == self.end {
@@ -138,14 +138,14 @@ to free it. However it *also* wants to implement Drop to drop any elements it
 contains that weren't yielded.
 
 
-```rust
+```rust,ignore
 impl<T> Drop for IntoIter<T> {
     fn drop(&mut self) {
         if self.cap != 0 {
             // drop any remaining elements
             for _ in &mut *self {}
 
-            let align = mem::min_align_of::<T>();
+            let align = mem::align_of::<T>();
             let elem_size = mem::size_of::<T>();
             let num_bytes = elem_size * self.cap;
             unsafe {
@@ -164,7 +164,7 @@ compression.
 We're going to abstract out the `(ptr, cap)` pair and give them the logic for
 allocating, growing, and freeing:
 
-```rust
+```rust,ignore
 
 struct RawVec<T> {
     ptr: Unique<T>,
@@ -182,7 +182,7 @@ impl<T> RawVec<T> {
     // unchanged from Vec
     fn grow(&mut self) {
         unsafe {
-            let align = mem::min_align_of::<T>();
+            let align = mem::align_of::<T>();
             let elem_size = mem::size_of::<T>();
 
             let (new_cap, ptr) = if self.cap == 0 {
@@ -210,7 +210,7 @@ impl<T> RawVec<T> {
 impl<T> Drop for RawVec<T> {
     fn drop(&mut self) {
         if self.cap != 0 {
-            let align = mem::min_align_of::<T>();
+            let align = mem::align_of::<T>();
             let elem_size = mem::size_of::<T>();
             let num_bytes = elem_size * self.cap;
             unsafe {
@@ -223,7 +223,7 @@ impl<T> Drop for RawVec<T> {
 
 And change vec as follows:
 
-```rust
+```rust,ignore
 pub struct Vec<T> {
     buf: RawVec<T>,
     len: usize,
@@ -254,14 +254,14 @@ impl<T> Drop for Vec<T> {
 
 And finally we can really simplify IntoIter:
 
-```rust
+```rust,ignore
 struct IntoIter<T> {
     _buf: RawVec<T>, // we don't actually care about this. Just need it to live.
     start: *const T,
     end: *const T,
 }
 
-// next and next_back litterally unchanged since they never referred to the buf
+// next and next_back literally unchanged since they never referred to the buf
 
 impl<T> Drop for IntoIter<T> {
     fn drop(&mut self) {

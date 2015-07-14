@@ -5,7 +5,7 @@ binary manner. Unfortunately, reality is significantly more complicated than tha
 For instance, consider the following toy function:
 
 ```rust
-pub fn index(idx: usize, arr: &[u8]) -> Option<u8> {
+fn index(idx: usize, arr: &[u8]) -> Option<u8> {
     if idx < arr.len() {
         unsafe {
             Some(*arr.get_unchecked(idx))
@@ -22,7 +22,7 @@ function, the scope of the unsafe block is questionable. Consider changing the
 `<` to a `<=`:
 
 ```rust
-pub fn index(idx: usize, arr: &[u8]) -> Option<u8> {
+fn index(idx: usize, arr: &[u8]) -> Option<u8> {
     if idx <= arr.len() {
         unsafe {
             Some(*arr.get_unchecked(idx))
@@ -44,7 +44,9 @@ Trickier than that is when we get into actual statefulness. Consider a simple
 implementation of `Vec`:
 
 ```rust
-// Note this definition is insufficient. See the section on lifetimes.
+use std::ptr;
+
+// Note this definition is insufficient. See the section on implementing Vec.
 pub struct Vec<T> {
     ptr: *mut T,
     len: usize,
@@ -61,21 +63,25 @@ impl<T> Vec<T> {
             self.reallocate();
         }
         unsafe {
-            ptr::write(self.ptr.offset(len as isize), elem);
+            ptr::write(self.ptr.offset(self.len as isize), elem);
             self.len += 1;
         }
     }
+
+    # fn reallocate(&mut self) { }
 }
+
+# fn main() {}
 ```
 
 This code is simple enough to reasonably audit and verify. Now consider
 adding the following method:
 
-```rust
-    fn make_room(&mut self) {
-        // grow the capacity
-        self.cap += 1;
-    }
+```rust,ignore
+fn make_room(&mut self) {
+    // grow the capacity
+    self.cap += 1;
+}
 ```
 
 This code is safe, but it is also completely unsound. Changing the capacity

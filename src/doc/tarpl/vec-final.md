@@ -38,7 +38,7 @@ impl<T> RawVec<T> {
             // 0, getting to here necessarily means the Vec is overfull.
             assert!(elem_size != 0, "capacity overflow");
 
-            let align = mem::min_align_of::<T>();
+            let align = mem::align_of::<T>();
 
             let (new_cap, ptr) = if self.cap == 0 {
                 let ptr = heap::allocate(elem_size, align);
@@ -65,7 +65,7 @@ impl<T> Drop for RawVec<T> {
     fn drop(&mut self) {
         let elem_size = mem::size_of::<T>();
         if self.cap != 0 && elem_size != 0 {
-            let align = mem::min_align_of::<T>();
+            let align = mem::align_of::<T>();
 
             let num_bytes = elem_size * self.cap;
             unsafe {
@@ -306,4 +306,6 @@ impl<'a, T> Drop for Drain<'a, T> {
 fn oom() {
     ::std::process::exit(-9999);
 }
+
+# fn main() {}
 ```

@@ -16,7 +16,7 @@ issue...). This is a pervasive problem that C and C++ need to deal with.
 Consider this simple mistake that all of us who have used a non-GC'd language
 have made at one point:
 
-```rust
+```rust,ignore
 fn as_str(data: &u32) -> &str {
     // compute the string
     let s = format!("{}", data);
@@ -45,7 +45,7 @@ verifying that references don't escape the scope of their referent. That's
 because ensuring pointers are always valid is much more complicated than this.
 For instance in this code,
 
-```rust
+```rust,ignore
 let mut data = vec![1, 2, 3];
 // get an internal reference
 let x = &data[0];

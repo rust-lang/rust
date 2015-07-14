@@ -38,7 +38,7 @@ let z = &y;
 The borrow checker always tries to minimize the extent of a lifetime, so it will
 likely desugar to the following:
 
-```rust
+```rust,ignore
 // NOTE: `'a: {` and `&'b x` is not valid syntax!
 'a: {
     let x: i32 = 0;
@@ -69,8 +69,8 @@ z = y;
 The borrow checker always tries to minimize the extent of a lifetime, so it will
 likely desugar to something like the following:
 
-```rust
-// NOTE: `'a: {` and `&'b x` is not valid syntax!
+```rust,ignore
+// NOTE: `'a: {` and `foo = &'b x` is not valid syntax!
 'a: {
     let x: i32 = 0;
     'b: {
@@ -174,14 +174,14 @@ our implementation *just a bit*.)
 
 How about the other example:
 
-```rust
+```rust,ignore
 let mut data = vec![1, 2, 3];
 let x = &data[0];
 data.push(4);
 println!("{}", x);
 ```
 
-```rust
+```rust,ignore
 'a: {
     let mut data: Vec<i32> = vec![1, 2, 3];
     'b: {

@@ -156,7 +156,7 @@ way to do this is to store the algorithm's state in a separate struct with a
 destructor for the "finally" logic. Whether we panic or not, that destructor
 will run and clean up after us.
 
-```rust
+```rust,ignore
 struct Hole<'a, T: 'a> {
     data: &'a mut [T],
     /// `elt` is always `Some` from new until drop.

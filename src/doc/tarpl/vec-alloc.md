@@ -2,7 +2,7 @@
 
 So:
 
-```rust
+```rust,ignore
 #![feature(heap_api)]
 
 use std::rt::heap::EMPTY;
@@ -69,7 +69,7 @@ Anything else will use up too much space.
 However since this is a tutorial, we're not going to be particularly optimal here,
 and just unconditionally check, rather than use clever platform-specific `cfg`s.
 
-```rust
+```rust,ignore
 fn grow(&mut self) {
     // this is all pretty delicate, so let's say it's all unsafe
     unsafe {

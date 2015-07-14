@@ -104,7 +104,7 @@ However what should happen when passing *by-value* is less obvious. It turns out
 that, yes, you can use subtyping when passing by-value. That is, this works:
 
 ```rust
-fn get_box<'a>(&'a u8) -> Box<&'a str> {
+fn get_box<'a>(str: &'a u8) -> Box<&'a str> {
     // string literals are `&'static str`s
     Box::new("hello")
 }
@@ -123,7 +123,7 @@ must be invariant to avoid lifetime smuggling.
 `Fn(T) -> U` should be invariant over T, consider the following function
 signature:
 
-```rust
+```rust,ignore
 // 'a is derived from some parent scope
 fn foo(&'a str) -> usize;
 ```
@@ -131,7 +131,7 @@ fn foo(&'a str) -> usize;
 This signature claims that it can handle any `&str` that lives *at least* as long
 as `'a`. Now if this signature was variant with respect to `&str`, that would mean
 
-```rust
+```rust,ignore
 fn foo(&'static str) -> usize;
 ```
 
@@ -142,7 +142,7 @@ and nothing else. Therefore functions are not variant over their arguments.
 To see why `Fn(T) -> U` should be *variant* over U, consider the following
 function signature:
 
-```rust
+```rust,ignore
 // 'a is derived from some parent scope
 fn foo(usize) -> &'a str;
 ```
@@ -150,7 +150,7 @@ fn foo(usize) -> &'a str;
 This signature claims that it will return something that outlives `'a`. It is
 therefore completely reasonable to provide
 
-```rust
+```rust,ignore
 fn foo(usize) -> &'static str;
 ```
 
@@ -171,15 +171,17 @@ in multiple fields.
 * Otherwise, Foo is invariant over A
 
 ```rust
-struct Foo<'a, 'b, A, B, C, D, E, F, G, H> {
+use std::cell::Cell;
+
+struct Foo<'a, 'b, A: 'a, B: 'b, C, D, E, F, G, H> {
     a: &'a A,     // variant over 'a and A
     b: &'b mut B, // invariant over 'b and B
     c: *const C,  // variant over C
     d: *mut D,    // invariant over D
     e: Vec<E>,    // variant over E
     f: Cell<F>,   // invariant over F
-    g: G          // variant over G
-    h1: H         // would also be variant over H except...
-    h2: Cell<H>   // invariant over H, because invariance wins
+    g: G,         // variant over G
+    h1: H,        // would also be variant over H except...
+    h2: Cell<H>,  // invariant over H, because invariance wins
 }
 ```
